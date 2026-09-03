@@ -11,14 +11,10 @@ import {
   HeartPulse,
   ShieldCheck,
   ChevronRight,
-  Filter,
-  CheckCircle2,
-  TrendingUp,
-  FileQuestion,
   ShieldAlert,
   Layers,
-  Award,
-  Zap,
+  Target,
+  ArrowRight,
 } from "lucide-react";
 import { MEDICAL_AREAS_CONFIG, ALL_GRANDES_TEMAS } from "../../data/grandesTemas";
 import { GrandeTema, MedicalAreaId, RecurrenceLevel } from "../../types/grandesTemas";
@@ -26,12 +22,38 @@ import { ThemeInteractiveLesson } from "./ThemeInteractiveLesson";
 import { useApp } from "../../context/AppContext";
 
 export const GrandesTemasView: React.FC = () => {
-  const { setActiveTab } = useApp();
+  const { setActiveTab, todayMission, knowledgeGraph } = useApp();
   const [selectedAreaId, setSelectedAreaId] = useState<MedicalAreaId | "todas">("todas");
   const [searchQuery, setSearchQuery] = useState("");
   const [recurrenceFilter, setRecurrenceFilter] = useState<RecurrenceLevel | "todas">("todas");
   const [onlyProtocolUpdates, setOnlyProtocolUpdates] = useState(false);
   const [activeTheme, setActiveTheme] = useState<GrandeTema | null>(null);
+
+  // In-progress / Recommended study theme
+  const inProgressTheme = useMemo(() => {
+    const focusTitle = todayMission?.focusTopic?.toLowerCase();
+    if (focusTitle) {
+      const found = ALL_GRANDES_TEMAS.find((t) =>
+        t.title.toLowerCase().includes(focusTitle) || focusTitle.includes(t.title.toLowerCase())
+      );
+      if (found) return found;
+    }
+
+    if (Array.isArray(knowledgeGraph) && knowledgeGraph.length > 0) {
+      const topWeakness = [...knowledgeGraph].sort(
+        (a, b) => (b?.expectedPointGain ?? 0) - (a?.expectedPointGain ?? 0)
+      )[0];
+      if (topWeakness?.name) {
+        const found = ALL_GRANDES_TEMAS.find((t) =>
+          t.title.toLowerCase().includes(topWeakness.name.toLowerCase()) ||
+          topWeakness.name.toLowerCase().includes(t.title.toLowerCase())
+        );
+        if (found) return found;
+      }
+    }
+
+    return null;
+  }, [todayMission, knowledgeGraph]);
 
   // Filtered list
   const filteredThemes = useMemo(() => {
@@ -66,6 +88,7 @@ export const GrandesTemasView: React.FC = () => {
     switch (areaId) {
       case "clinica-medica":
         return Stethoscope;
+      case "cirurgia":
       case "cirurgia-geral":
         return Scissors;
       case "pediatria":
@@ -80,7 +103,6 @@ export const GrandesTemasView: React.FC = () => {
   };
 
   const handleOpenQuestions = (themeTitle: string) => {
-    // Navigate to questions bank with the topic
     setActiveTab("questions");
   };
 
@@ -97,59 +119,77 @@ export const GrandesTemasView: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-20 max-w-7xl mx-auto">
-      {/* Top Banner Header */}
-      <div className="bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-zinc-950 border border-zinc-800 rounded-2xl p-6 sm:p-8 relative overflow-hidden shadow-xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* 1. CONTINUAR ESTUDANDO (Exibido se houver tema prioritário/em andamento) */}
+      {inProgressTheme && (
+        <div className="bg-gradient-to-br from-[#0B192C] via-[#10243E] to-[#0A1A2F] text-white border border-[#1B355A] rounded-3xl p-6 sm:p-7 shadow-md relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20">
-              <BookOpenCheck className="w-3.5 h-3.5" />
-              Módulo Estruturante Revalida INEP
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+            <div className="space-y-2 max-w-xl">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                <Target className="w-3.5 h-3.5 text-teal-400" />
+                <span>Continuar Estudando</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                {inProgressTheme.title}
+              </h2>
+              <p className="text-xs text-slate-300">
+                Área: <span className="text-teal-300 font-medium">{inProgressTheme.areaName}</span> • Recorrência histórica: {inProgressTheme.recurrence === "altissima" ? "Altíssima" : inProgressTheme.recurrence === "alta" ? "Alta" : "Média"}
+              </p>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-              Grandes Temas do Revalida
-            </h1>
-            <p className="text-zinc-400 text-sm sm:text-base max-w-2xl leading-relaxed">
-              Matriz completa dos <strong>75 assuntos de maior relevância e recorrência histórica</strong> no Revalida INEP, distribuídos uniformemente pelas 5 grandes áreas da Medicina com diretrizes e condutas do SUS.
-            </p>
-          </div>
 
-          {/* Quick Metrics Badge */}
-          <div className="grid grid-cols-3 gap-3 bg-zinc-950/80 border border-zinc-800/80 rounded-xl p-4 self-start md:self-auto">
-            <div className="text-center">
-              <div className="text-xl sm:text-2xl font-bold text-blue-400">75</div>
-              <div className="text-[11px] text-zinc-400 font-medium">Grandes Temas</div>
-            </div>
-            <div className="text-center border-x border-zinc-800 px-3">
-              <div className="text-xl sm:text-2xl font-bold text-emerald-400">5</div>
-              <div className="text-[11px] text-zinc-400 font-medium">Áreas Médicas</div>
-            </div>
-            <div className="text-center">
-              <div className="text-xl sm:text-2xl font-bold text-amber-400">100%</div>
-              <div className="text-[11px] text-zinc-400 font-medium">Foco no SUS</div>
-            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTheme(inProgressTheme)}
+              className="px-5 py-3 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-sm transition-all hover:scale-[1.02] cursor-pointer shrink-0"
+            >
+              <span>Continuar estudo</span>
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
+        </div>
+      )}
+
+      {/* 2. COMPACT HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-teal-500 shadow-xs shadow-teal-500/50" />
+            <span>Grandes Temas do Revalida</span>
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Os 75 temas essenciais da Taxonomia Canônica StaziaMed organizados nas 5 grandes áreas médicas do Revalida INEP.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-white border border-slate-200/80 px-3.5 py-1.5 rounded-xl shadow-2xs self-start sm:self-auto">
+          <span className="text-teal-700 font-bold">75</span>
+          <span>Grandes Temas</span>
+          <span className="text-slate-300">•</span>
+          <span className="text-slate-700 font-bold">5</span>
+          <span>Áreas</span>
         </div>
       </div>
 
-      {/* 5 Medical Area Tabs */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+      {/* 3. 5 MEDICAL AREA FILTER PILLS */}
+      <div className="flex items-center gap-1.5 bg-slate-100/90 border border-slate-200/80 p-1 rounded-2xl overflow-x-auto">
         <button
           onClick={() => setSelectedAreaId("todas")}
-          className={`p-3.5 rounded-xl border transition text-left flex flex-col justify-between ${
+          className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
             selectedAreaId === "todas"
-              ? "bg-zinc-800 border-blue-500 text-white shadow-md"
-              : "bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+              ? "bg-teal-600 text-white font-bold shadow-xs"
+              : "text-slate-600 hover:text-slate-900 hover:bg-white"
           }`}
         >
-          <div className="flex items-center justify-between mb-2">
-            <Layers className="w-5 h-5 text-blue-400" />
-            <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-zinc-950 text-zinc-300">
-              75
-            </span>
-          </div>
-          <div className="text-xs font-semibold">Todas as Áreas</div>
+          <Layers className="w-3.5 h-3.5" />
+          <span>Todas as Áreas</span>
+          <span
+            className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+              selectedAreaId === "todas" ? "bg-teal-700 text-teal-100" : "bg-slate-200 text-slate-600"
+            }`}
+          >
+            75
+          </span>
         </button>
 
         {MEDICAL_AREAS_CONFIG.map((area) => {
@@ -160,45 +200,44 @@ export const GrandesTemasView: React.FC = () => {
             <button
               key={area.id}
               onClick={() => setSelectedAreaId(area.id)}
-              className={`p-3.5 rounded-xl border transition text-left flex flex-col justify-between ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
                 isSelected
-                  ? `bg-zinc-800 ${area.colorTheme.border} text-white shadow-md`
-                  : "bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+                  ? "bg-teal-600 text-white font-bold shadow-xs"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white"
               }`}
             >
-              <div className="flex items-center justify-between mb-2">
-                <Icon className={`w-5 h-5 ${area.colorTheme.text}`} />
-                <span className="text-xs font-bold px-1.5 py-0.5 rounded bg-zinc-950 text-zinc-300">
-                  {area.themeCount}
-                </span>
-              </div>
-              <div className="text-xs font-semibold truncate">{area.name}</div>
+              <Icon className="w-3.5 h-3.5" />
+              <span>{area.shortName || area.name}</span>
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] ${
+                  isSelected ? "bg-teal-700 text-teal-100" : "bg-slate-200 text-slate-600"
+                }`}
+              >
+                {area.themeCount}
+              </span>
             </button>
           );
         })}
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Search Input */}
+      {/* 4. SEARCH & RECURRENCE BAR */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Buscar por tema, conduta do SUS, diagnóstico ou palavras-chave..."
+            placeholder="Buscar tema, doença ou conduta..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition"
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 transition shadow-inner"
           />
         </div>
 
-        {/* Quick Filters */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Recurrence Filter */}
           <select
             value={recurrenceFilter}
             onChange={(e) => setRecurrenceFilter(e.target.value as any)}
-            className="px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-lg text-xs text-zinc-300 focus:outline-none focus:border-blue-500"
+            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-teal-500 cursor-pointer"
           >
             <option value="todas">Todas as Recorrências</option>
             <option value="altissima">🔥 Altíssima Recorrência</option>
@@ -206,39 +245,38 @@ export const GrandesTemasView: React.FC = () => {
             <option value="media">🟡 Média Recorrência</option>
           </select>
 
-          {/* Protocol Update Toggle */}
           <button
             onClick={() => setOnlyProtocolUpdates(!onlyProtocolUpdates)}
-            className={`px-3 py-2 rounded-lg text-xs font-medium border transition flex items-center gap-1.5 ${
+            className={`px-3 py-2 rounded-xl text-xs font-semibold border transition flex items-center gap-1.5 cursor-pointer ${
               onlyProtocolUpdates
-                ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
-                : "bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+                ? "bg-amber-50 border-amber-200 text-amber-800"
+                : "bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900"
             }`}
           >
-            <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
-            Apenas Diretrizes Atualizadas
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-500" />
+            <span>Diretrizes Atualizadas</span>
           </button>
         </div>
       </div>
 
-      {/* Themes Grid */}
+      {/* 5. 75 THEMES COMPACT SCANNABLE GRID */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between text-xs text-zinc-400 px-1">
+        <div className="flex items-center justify-between text-xs text-slate-500 px-1">
           <div>
             Exibindo <strong>{filteredThemes.length}</strong> de {ALL_GRANDES_TEMAS.length} Grandes Temas
           </div>
           {selectedAreaId !== "todas" && (
-            <div className="text-zinc-500 font-mono">
-              Filtro ativo: {MEDICAL_AREAS_CONFIG.find((a) => a.id === selectedAreaId)?.name}
+            <div className="font-medium text-teal-700">
+              {MEDICAL_AREAS_CONFIG.find((a) => a.id === selectedAreaId)?.name}
             </div>
           )}
         </div>
 
         {filteredThemes.length === 0 ? (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-12 text-center space-y-3">
-            <BookOpenCheck className="w-10 h-10 text-zinc-600 mx-auto" />
-            <div className="text-white font-semibold">Nenhum Grande Tema encontrado</div>
-            <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-10 text-center space-y-3 shadow-xs">
+            <BookOpenCheck className="w-8 h-8 text-slate-400 mx-auto" />
+            <div className="text-slate-800 font-bold text-sm">Nenhum Grande Tema encontrado</div>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
               Tente ajustar os termos da busca ou limpar os filtros de área e recorrência.
             </p>
             <button
@@ -248,13 +286,13 @@ export const GrandesTemasView: React.FC = () => {
                 setRecurrenceFilter("todas");
                 setOnlyProtocolUpdates(false);
               }}
-              className="px-4 py-2 rounded-lg bg-zinc-800 text-zinc-200 hover:bg-zinc-700 text-xs font-semibold transition"
+              className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition cursor-pointer"
             >
               Limpar Filtros
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {filteredThemes.map((tema) => {
               const AreaIcon = getAreaIcon(tema.areaId);
 
@@ -262,49 +300,52 @@ export const GrandesTemasView: React.FC = () => {
                 <div
                   key={tema.id}
                   onClick={() => setActiveTheme(tema)}
-                  className="bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 rounded-2xl p-5 cursor-pointer transition flex flex-col justify-between group shadow-sm hover:shadow-md"
+                  className="bg-white hover:bg-slate-50/80 border border-slate-200/80 hover:border-teal-300 rounded-2xl p-4.5 cursor-pointer transition flex flex-col justify-between group shadow-2xs hover:shadow-xs space-y-3"
                 >
-                  <div className="space-y-3">
+                  <div className="space-y-2">
                     {/* Top Row: Area Tag & Recurrence */}
                     <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-zinc-800 text-zinc-300 border border-zinc-700">
-                        <AreaIcon className="w-3 h-3 text-blue-400" />
-                        {tema.areaName}
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/60">
+                        <AreaIcon className="w-3 h-3 text-teal-600" />
+                        <span>{tema.areaName}</span>
                       </span>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
-                        {tema.recurrenceBadgeLabel}
+
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200/60 flex items-center gap-1">
+                        <Flame className="w-3 h-3 text-amber-500" />
+                        <span>
+                          {tema.recurrence === "altissima"
+                            ? "Altíssima"
+                            : tema.recurrence === "alta"
+                            ? "Alta"
+                            : "Média"}
+                        </span>
                       </span>
                     </div>
 
                     {/* Theme Title */}
-                    <h3 className="text-base font-bold text-white group-hover:text-blue-400 transition tracking-tight">
+                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-teal-700 transition tracking-tight line-clamp-2 leading-snug">
                       {tema.title}
                     </h3>
 
-                    {/* Short Summary */}
-                    <p className="text-xs text-zinc-400 line-clamp-3 leading-relaxed">
-                      {tema.summary}
-                    </p>
-
                     {/* Protocol Update Alert if exists */}
                     {tema.hasProtocolUpdate && (
-                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium bg-amber-950/40 text-amber-300 border border-amber-500/30">
-                        <ShieldAlert className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-                        <span>Atualização de Diretriz Oficial</span>
+                      <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200/60">
+                        <ShieldAlert className="w-3 h-3 text-amber-600 shrink-0" />
+                        <span>Diretriz atualizada</span>
                       </div>
                     )}
                   </div>
 
-                  {/* Bottom Meta Bar */}
-                  <div className="pt-4 mt-4 border-t border-zinc-800/80 flex items-center justify-between text-xs text-zinc-500">
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-zinc-400" />
-                      <span>{tema.estimatedMinutes}</span>
+                  {/* Bottom Meta & CTA Bar */}
+                  <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-1 text-slate-400 text-[11px]">
+                      <Clock className="w-3 h-3" />
+                      <span>~{tema.estimatedMinutes}</span>
                     </div>
 
-                    <div className="flex items-center gap-1 text-blue-400 font-semibold group-hover:translate-x-1 transition">
-                      <span>Acessar Aula</span>
-                      <ChevronRight className="w-4 h-4" />
+                    <div className="flex items-center gap-1 text-teal-700 font-bold text-xs group-hover:translate-x-0.5 transition-transform">
+                      <span>Estudar Tema</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
                     </div>
                   </div>
                 </div>
