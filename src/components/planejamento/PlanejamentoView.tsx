@@ -3,19 +3,14 @@ import {
   Calendar as CalendarIcon,
   Clock,
   TrendingUp,
-  Sliders,
   RotateCcw,
-  Sparkles,
   CheckCircle2,
-  AlertCircle,
   CalendarCheck,
-  ChevronRight,
-  ShieldCheck,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { AdaptiveCalendarView } from "../calendar/AdaptiveCalendarView";
 import { WeeklyPlanView } from "./WeeklyPlanView";
-import { formatMedicalArea } from "../../utils/formatters";
+import { RoadToExamView } from "./RoadToExamView";
 
 export type PlanejamentoSubTab =
   | "CALENDARIO"
@@ -31,7 +26,7 @@ interface PlanejamentoViewProps {
 export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({
   initialSubTab = "CALENDARIO",
 }) => {
-  const { activeTab, setActiveTab, user, setIsExamConfigOpen } = useApp();
+  const { activeTab, setActiveTab, user } = useApp();
   const [currentSubTab, setCurrentSubTab] = useState<PlanejamentoSubTab>(initialSubTab);
 
   // Availability state
@@ -47,7 +42,11 @@ export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({
     else if (activeTab === "planejamento-ate-prova") setCurrentSubTab("ATE_PROVA");
     else if (activeTab === "planejamento-disponibilidade") setCurrentSubTab("DISPONIBILIDADE");
     else if (activeTab === "planejamento-replanejamento") setCurrentSubTab("REPLANEJAMENTO");
-    else if (activeTab === "planejamento-calendario" || activeTab === "calendario-inteligente" || activeTab === "calendar") {
+    else if (
+      activeTab === "planejamento-calendario" ||
+      activeTab === "calendario-inteligente" ||
+      activeTab === "calendar"
+    ) {
       setCurrentSubTab("CALENDARIO");
     }
   }, [activeTab]);
@@ -71,61 +70,7 @@ export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({
       {currentSubTab === "SEMANAL" && <WeeklyPlanView />}
 
       {/* 3. PLANO ATÉ A PROVA */}
-      {currentSubTab === "ATE_PROVA" && (
-        <div className="space-y-6">
-          <div className="p-6 rounded-3xl bg-zinc-900/80 border border-zinc-800 shadow-xl space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
-              <div>
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-md bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                  Macro-Ciclo de Aprovação
-                </span>
-                <h3 className="text-lg font-bold text-white mt-1">Roadmap até o Revalida INEP</h3>
-                <p className="text-xs text-zinc-400">Cronograma de 3 fases sincronizado com a data prevista do exame.</p>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-black text-emerald-400">46 Dias</div>
-                <div className="text-[10px] text-zinc-400">Até a 1ª Fase Teórica</div>
-              </div>
-            </div>
-
-            {/* 3 Phases Timeline */}
-            <div className="space-y-4">
-              <div className="p-4 rounded-2xl bg-zinc-950 border border-emerald-500/30 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-400">FASE 1: DOMÍNIO DOS GRANDES TEMAS (Em Andamento)</span>
-                  <span className="text-xs font-mono text-zinc-400">Semanas 1 a 6</span>
-                </div>
-                <p className="text-xs text-zinc-300">
-                  Varredura intensiva dos 75 Grandes Temas com maior recorrência no INEP e resolução de 1.500+ questões comentadas.
-                </p>
-                <div className="w-full h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-                  <div className="h-full bg-emerald-500 w-[68%]" />
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-zinc-300">FASE 2: SIMULADOS & CONDICIONAMENTO DE PROVA</span>
-                  <span className="text-xs font-mono text-zinc-400">Semanas 7 a 10</span>
-                </div>
-                <p className="text-xs text-zinc-400">
-                  Simulados cronometrados de 100 questões aos sábados, fechamento de lacunas cognitivas e treino de tempo sob pressão.
-                </p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-zinc-300">FASE 3: SPRINT FINAL & ATUALIZAÇÕES 2026</span>
-                  <span className="text-xs font-mono text-zinc-400">Últimas 2 Semanas</span>
-                </div>
-                <p className="text-xs text-zinc-400">
-                  Revisão turbo de condutas de alto impacto, doses e esquemas terapêuticos do SUS e checagem do radar de diretrizes.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {currentSubTab === "ATE_PROVA" && <RoadToExamView />}
 
       {/* 4. DISPONIBILIDADE */}
       {currentSubTab === "DISPONIBILIDADE" && (
