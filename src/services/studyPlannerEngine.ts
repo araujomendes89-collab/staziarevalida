@@ -22,66 +22,146 @@ export interface StudyPriorityScoreItem {
   irsScore: number; // 0-100 INEP recurrence
   masteryPct: number; // 0-100 current student mastery
   forgettingRiskPct: number; // 0-100 based on FSRS
-  temporalUrgencyMultiplier: number; // 1.0 to 1.8 based on days to exam
-  finalPpsScore: number; // 0-100 composite priority
+  temporalUrgencyMultiplier: number; // 1.0 to 1.3 based on days to exam
+  finalPpsScore: number; // 0-99 composite priority
   recommendedAction: "TEORIA_DIRECIONADA" | "QUESTOES" | "FLASHCARDS" | "REVISAO_ESPACADA" | "NAO_PRIORIZAR";
   reason: string;
 }
 
+export interface TopicPriorityInput {
+  id: string;
+  name: string;
+  area: MedicalArea;
+  irs: number;
+  mastery?: number;
+  attempts?: number;
+  totalQuestionsAnswered?: number;
+  daysSinceLastReview?: number;
+  stabilityDays?: number;
+}
+
+export const PPS_CONFIG = {
+  WEIGHTS: {
+    IRS: 0.40,
+    DEFICIT: 0.35,
+    FORGETTING_RISK: 0.25,
+  },
+  SAMPLE_PRIOR_STRENGTH: 10, // K = 10: Bayesian smoothing prior strength
+  PRIOR_DEFICIT: 50,         // Neutral default deficit (50%) when no student data exists
+  URGENCY_BOOST: {
+    NORMAL: 0.00,            // > 45 days
+    ATTENTION: 0.10,         // 22-45 days
+    HIGH: 0.20,              // 8-21 days
+    FINAL_STRETCH: 0.30,     // <= 7 days
+  },
+  MAX_SCORE: 99,
+  MIN_SCORE: 0,
+} as const;
+
 export class StudyPlannerEngine {
   /**
    * Calculates the Study Priority Score (PPS) for each topic
-   * PPS = INEP Recurrence (IRS) * Deficit (100 - Mastery) * Forgetting Risk * Urgency Multiplier
+   * PPS combines INEP Recurrence (IRS), Confidence-Adjusted Deficit, and FSRS Forgetting Risk
    */
   static calculateTopicPriorities(
-    topics: { id: string; name: string; area: MedicalArea; irs: number; mastery: number; daysSinceLastReview: number; stabilityDays: number }[],
+    topics: TopicPriorityInput[],
     daysRemaining: number
   ): StudyPriorityScoreItem[] {
-    // Determine exam urgency factor
-    let urgencyFactor = 1.0;
-    if (daysRemaining <= 7) urgencyFactor = 1.6;
-    else if (daysRemaining <= 21) urgencyFactor = 1.4;
-    else if (daysRemaining <= 45) urgencyFactor = 1.2;
+    // Determine exam urgency boost factor (bounded asymptotic curve)
+    let urgencyBoost: number = PPS_CONFIG.URGENCY_BOOST.NORMAL;
+    if (daysRemaining <= 7) urgencyBoost = PPS_CONFIG.URGENCY_BOOST.FINAL_STRETCH;
+    else if (daysRemaining <= 21) urgencyBoost = PPS_CONFIG.URGENCY_BOOST.HIGH;
+    else if (daysRemaining <= 45) urgencyBoost = PPS_CONFIG.URGENCY_BOOST.ATTENTION;
 
     return topics.map((t) => {
-      const retrievability = SpacedRepetitionEngine.calculateRetrievability(t.stabilityDays || 5, t.daysSinceLastReview || 7);
-      const forgettingRiskPct = Math.round((1 - retrievability) * 100);
-      const deficit = Math.max(5, 100 - (t.mastery || 50));
-      
-      // Core priority formula: high INEP weight + student weakness + forgetting risk
-      const rawScore = (t.irs * 0.4) + (deficit * 0.35) + (forgettingRiskPct * 0.25);
-      const finalPps = Math.min(99, Math.round(rawScore * urgencyFactor));
+      // 1. Forgetting Risk from FSRS Retrievability
+      const stability =
+        typeof t.stabilityDays === "number" && !isNaN(t.stabilityDays) && t.stabilityDays > 0
+          ? t.stabilityDays
+          : 5;
+      const elapsedDays =
+        typeof t.daysSinceLastReview === "number" && !isNaN(t.daysSinceLastReview) && t.daysSinceLastReview >= 0
+          ? t.daysSinceLastReview
+          : 7;
+      const retrievability = SpacedRepetitionEngine.calculateRetrievability(stability, elapsedDays);
+      const forgettingRiskPct = Math.max(0, Math.min(100, Math.round((1 - retrievability) * 100)));
+
+      // 2. Confidence-Adjusted Deficit (Bayesian smoothing with neutral prior)
+      const attempts =
+        typeof t.attempts === "number" && !isNaN(t.attempts) && t.attempts >= 0
+          ? t.attempts
+          : typeof t.totalQuestionsAnswered === "number" && !isNaN(t.totalQuestionsAnswered) && t.totalQuestionsAnswered >= 0
+          ? t.totalQuestionsAnswered
+          : 0;
+
+      const mastery =
+        typeof t.mastery === "number" && !isNaN(t.mastery)
+          ? Math.max(0, Math.min(100, t.mastery))
+          : attempts === 0
+          ? 50
+          : 0;
+
+      const observedDeficit = Math.max(5, Math.min(100, 100 - mastery));
+      const sampleConfidence = attempts / (attempts + PPS_CONFIG.SAMPLE_PRIOR_STRENGTH);
+      const adjustedDeficit =
+        sampleConfidence * observedDeficit + (1 - sampleConfidence) * PPS_CONFIG.PRIOR_DEFICIT;
+      const finalDeficit = Math.max(0, Math.min(100, adjustedDeficit));
+
+      // 3. INEP Recurrence (IRS)
+      const irs = typeof t.irs === "number" && !isNaN(t.irs) ? Math.max(0, Math.min(100, t.irs)) : 50;
+
+      // 4. Core Weighted Priority: 40% IRS + 35% Deficit + 25% Forgetting Risk
+      const rawScore =
+        irs * PPS_CONFIG.WEIGHTS.IRS +
+        finalDeficit * PPS_CONFIG.WEIGHTS.DEFICIT +
+        forgettingRiskPct * PPS_CONFIG.WEIGHTS.FORGETTING_RISK;
+
+      // 5. Asymptotic Bounded Urgency Boost: finalScore = rawScore + ((100 - rawScore) * urgencyBoost)
+      const finalScore = rawScore + (100 - rawScore) * urgencyBoost;
+      const finalPps = Math.max(
+        PPS_CONFIG.MIN_SCORE,
+        Math.min(PPS_CONFIG.MAX_SCORE, Math.round(finalScore))
+      );
 
       let recommendedAction: StudyPriorityScoreItem["recommendedAction"] = "QUESTOES";
       let reason = "";
 
-      if (t.mastery >= 85 && forgettingRiskPct < 25) {
+      if (mastery >= 85 && forgettingRiskPct < 25 && attempts >= 5) {
         recommendedAction = "NAO_PRIORIZAR";
-        reason = `Domínio excelente (${t.mastery}%) e memória estável. Otimizado para não gastar tempo.`;
+        reason = `Domínio excelente (${mastery}%) e memória estável. Otimizado para não gastar tempo.`;
       } else if (forgettingRiskPct >= 45) {
         recommendedAction = "REVISAO_ESPACADA";
         reason = `Risco de esquecimento de ${forgettingRiskPct}% detectado pelo modelo de memória.`;
-      } else if (t.mastery < 50) {
+      } else if (mastery < 50 || finalDeficit > 60) {
         recommendedAction = "TEORIA_DIRECIONADA";
-        reason = `Lacuna conceitual com taxa de acerto de ${t.mastery}% em tema de alto peso INEP (IRS ${t.irs}).`;
+        reason = `Lacuna conceitual identificada em tema de alto peso INEP (IRS ${irs}).`;
       } else {
         recommendedAction = "QUESTOES";
-        reason = `Consolidação por prática ativa (${t.mastery}% de domínio atual).`;
+        reason = `Consolidação por prática ativa (${mastery}% de domínio atual).`;
       }
 
       return {
         topicId: t.id,
         topicName: t.name,
         area: t.area,
-        irsScore: t.irs,
-        masteryPct: t.mastery,
+        irsScore: irs,
+        masteryPct: mastery,
         forgettingRiskPct,
-        temporalUrgencyMultiplier: urgencyFactor,
+        temporalUrgencyMultiplier: Number((1 + urgencyBoost).toFixed(2)),
         finalPpsScore: finalPps,
         recommendedAction,
         reason,
       };
-    }).sort((a, b) => b.finalPpsScore - a.finalPpsScore);
+    }).sort((a, b) => {
+      // Deterministic sort with multi-level tie-breaker
+      if (b.finalPpsScore !== a.finalPpsScore) {
+        return b.finalPpsScore - a.finalPpsScore;
+      }
+      if (b.irsScore !== a.irsScore) {
+        return b.irsScore - a.irsScore;
+      }
+      return a.topicName.localeCompare(b.topicName);
+    });
   }
 
   /**
