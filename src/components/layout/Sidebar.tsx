@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useApp, NavTab } from "../../context/AppContext";
 import { STUDENT_NAVIGATION_CONFIG, NavigationSection, SubNavigationItem } from "../../config/navigation";
+import { SpacedRepetitionService } from "../../services/spacedRepetitionService";
 
 export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobile }) => {
   const {
@@ -26,9 +27,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
     logout,
   } = useApp();
 
-  const dueFlashcardsCount = (flashcards || []).filter(
-    (f) => new Date(f.dueDate) <= new Date()
-  ).length;
+  const dueFlashcardsCount = SpacedRepetitionService.getDueFlashcards(flashcards || []).length;
 
   const rawName = user?.name || "Doutor(a)";
   const userName = rawName.replace("Dr. ", "").replace("Dra. ", "");

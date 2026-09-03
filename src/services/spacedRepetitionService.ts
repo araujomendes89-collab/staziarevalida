@@ -213,10 +213,25 @@ export class SpacedRepetitionService {
   }
 
   /**
-   * Checks if card is currently due for review
+   * Validates if a dueDate string is a valid ISO/date string
+   */
+  static isValidDate(dateStr?: string | null): boolean {
+    if (!dateStr || typeof dateStr !== "string" || dateStr.trim().length === 0) {
+      return false;
+    }
+    const timestamp = new Date(dateStr).getTime();
+    return !isNaN(timestamp);
+  }
+
+  /**
+   * Checks if card is currently due for review under FSRS temporal rules
    */
   static isCardDue(card: Flashcard, now: Date = new Date()): boolean {
-    if (!card.dueDate) return true;
+    if (!card) return false;
+    if (!this.isValidDate(card.dueDate)) {
+      // Unscheduled or unreviewed new card without valid due date: due immediately for initial review
+      return true;
+    }
     return new Date(card.dueDate).getTime() <= now.getTime();
   }
 
@@ -246,13 +261,12 @@ export class SpacedRepetitionService {
   }
 
   /**
-   * Converts a date or ISO string to a canonical local YYYY-MM-DD string
+   * Converts a date or ISO string to a canonical local YYYY-MM-DD string without timezone displacement
    */
   static toLocalDateKey(date: Date | string): string {
     const d = typeof date === "string" ? new Date(date) : date;
-    if (isNaN(d.getTime())) {
-      const fallback = new Date();
-      return `${fallback.getFullYear()}-${String(fallback.getMonth() + 1).padStart(2, "0")}-${String(fallback.getDate()).padStart(2, "0")}`;
+    if (!d || isNaN(d.getTime())) {
+      return "";
     }
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, "0");
@@ -272,7 +286,7 @@ export class SpacedRepetitionService {
     const todayKey = this.toLocalDateKey(now);
     const result: Record<string, { dateKey: string; count: number; estimatedMinutes: number; isToday: boolean }> = {};
 
-    if (!Array.isArray(cards)) return result;
+    if (!Array.isArray(cards) || !todayKey) return result;
 
     for (const card of cards) {
       if (this.isCardDue(card, now)) {
@@ -286,18 +300,20 @@ export class SpacedRepetitionService {
           };
         }
         result[todayKey].count += 1;
-      } else if (card.dueDate) {
-        // Future due date -> grouped under its future dateKey
+      } else if (this.isValidDate(card.dueDate)) {
+        // Future valid due date -> grouped under its specific future dateKey
         const cardDateKey = this.toLocalDateKey(card.dueDate);
-        if (!result[cardDateKey]) {
-          result[cardDateKey] = {
-            dateKey: cardDateKey,
-            count: 0,
-            estimatedMinutes: 0,
-            isToday: cardDateKey === todayKey,
-          };
+        if (cardDateKey && cardDateKey.length > 0) {
+          if (!result[cardDateKey]) {
+            result[cardDateKey] = {
+              dateKey: cardDateKey,
+              count: 0,
+              estimatedMinutes: 0,
+              isToday: cardDateKey === todayKey,
+            };
+          }
+          result[cardDateKey].count += 1;
         }
-        result[cardDateKey].count += 1;
       }
     }
 

@@ -659,7 +659,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         projectedPassScoreMax: readinessData.projectedMax,
         flashcardStats: {
           total: flashcards.length + (createdCardId ? 1 : 0),
-          dueToday: flashcards.filter((f) => new Date(f.dueDate) <= new Date()).length,
+          dueToday: SpacedRepetitionService.getDueFlashcards(flashcards || []).length,
           mastered: flashcards.filter((f) => f.masteryLevel >= 80).length,
         },
         lastActiveDate: new Date().toISOString(),

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { ExamEngine } from "../../services/examEngine";
+import { SpacedRepetitionService } from "../../services/spacedRepetitionService";
 
 export const DashboardView: React.FC = () => {
   const {
@@ -54,9 +55,7 @@ export const DashboardView: React.FC = () => {
     totalAttempts > 0 ? Math.round((correctAttempts / totalAttempts) * 100) : 0;
   const readinessScore = readinessData?.score ?? 0;
 
-  const dueFlashcards = (flashcards || []).filter(
-    (f) => new Date(f.dueDate) <= new Date()
-  );
+  const dueFlashcards = SpacedRepetitionService.getDueFlashcards(flashcards || []);
 
   // Determine study mission details
   const studyTopic =

@@ -8,6 +8,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
+import { SpacedRepetitionService } from "../../services/spacedRepetitionService";
 import { SpacedReviewView } from "../review/SpacedReviewView";
 import { ErrorNotebookView } from "../errors/ErrorNotebookView";
 import { ProtocolUpdatesHubView } from "../protocols/ProtocolUpdatesHubView";
@@ -29,9 +30,7 @@ export const RevisarView: React.FC<RevisarViewProps> = ({ initialSubTab = "FLASH
   const { activeTab, setActiveTab, flashcards } = useApp();
   const [currentSubTab, setCurrentSubTab] = useState<RevisarSubTab>(initialSubTab);
 
-  const dueFlashcardsCount = (flashcards || []).filter(
-    (f) => new Date(f.dueDate) <= new Date()
-  ).length;
+  const dueFlashcardsCount = SpacedRepetitionService.getDueFlashcards(flashcards || []).length;
 
   useEffect(() => {
     if (activeTab === "revisar-erros" || activeTab === "errors") {
