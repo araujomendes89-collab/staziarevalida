@@ -23,6 +23,7 @@ import {
 import { GrandeTema } from "../../types/grandesTemas";
 import { ThemeProtocolUpdateBadge } from "./ThemeProtocolUpdateBadge";
 import { useApp } from "../../context/AppContext";
+import { getAreaVisualTheme } from "../../config/areaThemes";
 
 interface Props {
   tema: GrandeTema;
@@ -233,7 +234,7 @@ export const ThemeInteractiveLesson: React.FC<Props> = ({ tema, onBack, onOpenQu
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2.5 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+              <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold ${getAreaVisualTheme(tema.areaId).badgeBg} ${getAreaVisualTheme(tema.areaId).badgeText} ${getAreaVisualTheme(tema.areaId).badgeBorder}`}>
                 {tema.areaName}
               </span>
               <span className="px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-white/10 text-slate-200 border border-white/10 flex items-center gap-1">

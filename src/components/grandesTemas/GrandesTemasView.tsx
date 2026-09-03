@@ -14,12 +14,12 @@ import {
   ShieldAlert,
   Layers,
   Target,
-  ArrowRight,
 } from "lucide-react";
 import { MEDICAL_AREAS_CONFIG, ALL_GRANDES_TEMAS } from "../../data/grandesTemas";
 import { GrandeTema, MedicalAreaId, RecurrenceLevel } from "../../types/grandesTemas";
 import { ThemeInteractiveLesson } from "./ThemeInteractiveLesson";
 import { useApp } from "../../context/AppContext";
+import { getAreaVisualTheme } from "../../config/areaThemes";
 
 export const GrandesTemasView: React.FC = () => {
   const { setActiveTab, todayMission, knowledgeGraph } = useApp();
@@ -171,7 +171,7 @@ export const GrandesTemasView: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. 5 MEDICAL AREA FILTER PILLS */}
+      {/* 3. 5 MEDICAL AREA FILTER PILLS (SISTEMA CENTRALIZADO DE CORES) */}
       <div className="flex items-center gap-1.5 bg-slate-100/90 border border-slate-200/80 p-1 rounded-2xl overflow-x-auto">
         <button
           onClick={() => setSelectedAreaId("todas")}
@@ -195,6 +195,7 @@ export const GrandesTemasView: React.FC = () => {
         {MEDICAL_AREAS_CONFIG.map((area) => {
           const Icon = getAreaIcon(area.id);
           const isSelected = selectedAreaId === area.id;
+          const areaTheme = getAreaVisualTheme(area.id);
 
           return (
             <button
@@ -202,7 +203,7 @@ export const GrandesTemasView: React.FC = () => {
               onClick={() => setSelectedAreaId(area.id)}
               className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
                 isSelected
-                  ? "bg-teal-600 text-white font-bold shadow-xs"
+                  ? `${areaTheme.activePillBg} text-white font-bold shadow-xs`
                   : "text-slate-600 hover:text-slate-900 hover:bg-white"
               }`}
             >
@@ -210,7 +211,7 @@ export const GrandesTemasView: React.FC = () => {
               <span>{area.shortName || area.name}</span>
               <span
                 className={`px-1.5 py-0.2 rounded-full text-[10px] ${
-                  isSelected ? "bg-teal-700 text-teal-100" : "bg-slate-200 text-slate-600"
+                  isSelected ? "bg-white/20 text-white" : "bg-slate-200 text-slate-600"
                 }`}
               >
                 {area.themeCount}
@@ -259,7 +260,7 @@ export const GrandesTemasView: React.FC = () => {
         </div>
       </div>
 
-      {/* 5. 75 THEMES COMPACT SCANNABLE GRID */}
+      {/* 5. 75 THEMES COMPACT SCANNABLE GRID (COM SINALIZAÇÃO CROMÁTICA DISCRETA) */}
       <div className="space-y-3">
         <div className="flex items-center justify-between text-xs text-slate-500 px-1">
           <div>
@@ -295,18 +296,19 @@ export const GrandesTemasView: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
             {filteredThemes.map((tema) => {
               const AreaIcon = getAreaIcon(tema.areaId);
+              const areaTheme = getAreaVisualTheme(tema.areaId);
 
               return (
                 <div
                   key={tema.id}
                   onClick={() => setActiveTheme(tema)}
-                  className="bg-white hover:bg-slate-50/80 border border-slate-200/80 hover:border-teal-300 rounded-2xl p-4.5 cursor-pointer transition flex flex-col justify-between group shadow-2xs hover:shadow-xs space-y-3"
+                  className={`bg-white hover:bg-slate-50/80 border border-slate-200/80 ${areaTheme.borderLeft} border-l-[3.5px] rounded-2xl p-4.5 cursor-pointer transition flex flex-col justify-between group shadow-2xs hover:shadow-xs space-y-3`}
                 >
                   <div className="space-y-2">
-                    {/* Top Row: Area Tag & Recurrence */}
+                    {/* Top Row: Area Tag with semantic area color & Recurrence */}
                     <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200/60">
-                        <AreaIcon className="w-3 h-3 text-teal-600" />
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold ${areaTheme.badgeBg} ${areaTheme.badgeText} ${areaTheme.badgeBorder}`}>
+                        <AreaIcon className={`w-3 h-3 ${areaTheme.iconColor}`} />
                         <span>{tema.areaName}</span>
                       </span>
 
