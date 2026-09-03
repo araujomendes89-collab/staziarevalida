@@ -132,7 +132,7 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
     <div className="space-y-6 pb-20 max-w-7xl mx-auto">
       {/* SUBVIEWS */}
       {/* 1. VISÃO GERAL */}
-      {currentSubTab === "GERAL" && <UnifiedProgressView defaultTab="READINESS" />}
+      {currentSubTab === "GERAL" && <UnifiedProgressView />}
 
       {/* 2. EVOLUÇÃO */}
       {currentSubTab === "EVOLUCAO" && (
