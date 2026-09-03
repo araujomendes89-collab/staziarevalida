@@ -15,166 +15,130 @@ import {
   Sparkles,
   ShieldCheck,
   Timer,
-  Filter,
+  SlidersHorizontal,
+  Stethoscope,
+  Activity,
+  HeartPulse,
+  Baby,
+  ArrowRight,
+  Zap,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { formatMedicalArea } from "../../utils/formatters";
-import { SessionBuilderService } from "../../services/sessionBuilderService";
-import { QuestionSessionConfig, ActiveTrainingSession } from "../../types";
+import { SessionBuilderService, DEFAULT_SESSION_CONFIG } from "../../services/sessionBuilderService";
+import { QuestionSessionConfig, ActiveTrainingSession, MedicalArea } from "../../types";
 
-export interface SimuladoCardData {
-  id: string;
-  title: string;
-  category: "OFICIAL_INEP" | "INEDITO_AUTORAL" | "TEMATICO" | "TIRO_RAPIDO";
-  questionsCount: number;
-  timeLimitMinutes: number;
-  difficulty: "MÉDIA" | "ALTA" | "PADRÃO_INEP";
+const MEDICAL_AREAS: {
+  id: MedicalArea;
+  label: string;
+  icon: React.ElementType;
   description: string;
-  areaDistribution: Record<string, number>;
-  status: "DISPONIVEL" | "EM_ANDAMENTO" | "CONCLUIDO";
-  score?: number; // 0-100
-  totalCorrect?: number;
-  completedAt?: string;
-  currentQuestionIndex?: number;
-  timeSpentSeconds?: number;
-}
-
-const DEFAULT_SIMULADOS: SimuladoCardData[] = [
+}[] = [
   {
-    id: "sim-inep-2026-1",
-    title: "Simulado Geral Revalida INEP 2026.1 (1ª Etapa Teórica)",
-    category: "OFICIAL_INEP",
-    questionsCount: 100,
-    timeLimitMinutes: 300,
-    difficulty: "PADRÃO_INEP",
-    description: "Simulação integral da prova objetiva com 100 questões distribuídas igualmente pelas 5 grandes áreas da Medicina, tempo oficial de 5 horas e nota de corte calculada.",
-    areaDistribution: {
-      CLINICA_MEDICA: 20,
-      CIRURGIA_GERAL: 20,
-      GINECOLOGIA_OBSTETRICIA: 20,
-      PEDIATRIA: 20,
-      MEDICINA_FAMILIA_COMUNIDADE: 20,
-    },
-    status: "DISPONIVEL",
+    id: "CLINICA_MEDICA",
+    label: "Clínica Médica",
+    icon: Stethoscope,
+    description: "Cardio, Pneumo, Nefro, Gastro, Infecto e Neuro",
   },
   {
-    id: "sim-inedito-2026",
-    title: "Simulado Inédito Praxis 2026 (PCDTs SUS Atualizados)",
-    category: "INEDITO_AUTORAL",
-    questionsCount: 50,
-    timeLimitMinutes: 150,
-    difficulty: "ALTA",
-    description: "50 questões 100% inéditas com foco nas novas diretrizes do Ministério da Saúde 2025/2026, novas diretrizes de Pré-Eclâmpsia e rastreamento de Câncer de Colo.",
-    areaDistribution: {
-      CLINICA_MEDICA: 10,
-      CIRURGIA_GERAL: 10,
-      GINECOLOGIA_OBSTETRICIA: 10,
-      PEDIATRIA: 10,
-      MEDICINA_FAMILIA_COMUNIDADE: 10,
-    },
-    status: "EM_ANDAMENTO",
-    currentQuestionIndex: 18,
-    timeSpentSeconds: 2450,
+    id: "CIRURGIA_GERAL",
+    label: "Cirurgia Geral",
+    icon: Activity,
+    description: "Trauma ATLS, Abdome Agudo, Queimaduras e Pré/Pós-operatório",
   },
   {
-    id: "sim-clinica-rapido",
-    title: "Simulado Temático de Urgências em Clínica Médica",
-    category: "TEMATICO",
-    questionsCount: 30,
-    timeLimitMinutes: 60,
-    difficulty: "MÉDIA",
-    description: "Foco intensivo em Síndromes Coronarianas, Sepse, AVC isquêmico/hemorrágico, Cetoacidose Diabética e Insuficiência Respiratória Aguda.",
-    areaDistribution: {
-      CLINICA_MEDICA: 30,
-    },
-    status: "CONCLUIDO",
-    score: 83,
-    totalCorrect: 25,
-    completedAt: "01/09/2026 às 16:45",
+    id: "PEDIATRIA",
+    label: "Pediatria",
+    icon: Baby,
+    description: "Neonatologia, Puericultura, Urgências Pediátricas e PNI",
   },
   {
-    id: "sim-cirurgia-trauma",
-    title: "Simulado Cirurgia Geral & Trauma ATLS 10ª Edição",
-    category: "TEMATICO",
-    questionsCount: 25,
-    timeLimitMinutes: 50,
-    difficulty: "PADRÃO_INEP",
-    description: "Avaliação do doente politraumatizado, abdome agudo inflamatório e obstrutivo, hérnias da parede abdominal e choque hipovolêmico.",
-    areaDistribution: {
-      CIRURGIA_GERAL: 25,
-    },
-    status: "CONCLUIDO",
-    score: 76,
-    totalCorrect: 19,
-    completedAt: "28/08/2026 às 20:10",
+    id: "GINECOLOGIA_OBSTETRICIA",
+    label: "Ginecologia e Obstetrícia",
+    icon: HeartPulse,
+    description: "Pré-natal, Pré-Eclâmpsia, Sangramentos e Rastreio",
   },
   {
-    id: "sim-tiro-rapido-1",
-    title: "Mini-Simulado de Tiro Rápido (Multidisciplinar)",
-    category: "TIRO_RAPIDO",
-    questionsCount: 20,
-    timeLimitMinutes: 40,
-    difficulty: "PADRÃO_INEP",
-    description: "20 questões express com 2 minutos por questão para calibração de velocidade de raciocínio clínico e gerenciamento de estresse.",
-    areaDistribution: {
-      CLINICA_MEDICA: 4,
-      CIRURGIA_GERAL: 4,
-      GINECOLOGIA_OBSTETRICIA: 4,
-      PEDIATRIA: 4,
-      MEDICINA_FAMILIA_COMUNIDADE: 4,
-    },
-    status: "DISPONIVEL",
+    id: "MEDICINA_FAMILIA_COMUNIDADE",
+    label: "Medicina Preventiva / MFC",
+    icon: ShieldCheck,
+    description: "SUS, Epidemiologia, Saúde Coletiva e Bioética",
   },
 ];
 
 export const SimuladosHubView: React.FC = () => {
-  const { setActiveTab, setQuestionMode, questions, attempts, knowledgeGraph } = useApp();
-  const [activeSubTab, setActiveSubTab] = useState<"DISPONIVEIS" | "EM_ANDAMENTO" | "CONCLUIDOS">("DISPONIVEIS");
-  const [simuladosList, setSimuladosList] = useState<SimuladoCardData[]>(DEFAULT_SIMULADOS);
+  const {
+    setActiveTab,
+    setQuestionMode,
+    questions,
+    attempts,
+    knowledgeGraph,
+  } = useApp();
 
-  // Group by tab
-  const disponiveis = useMemo(() => simuladosList.filter((s) => s.status === "DISPONIVEL"), [simuladosList]);
-  const emAndamento = useMemo(() => simuladosList.filter((s) => s.status === "EM_ANDAMENTO"), [simuladosList]);
-  const concluidos = useMemo(() => simuladosList.filter((s) => s.status === "CONCLUIDO"), [simuladosList]);
+  // Active Session from SessionBuilderService
+  const [activeSession, setActiveSession] = useState<ActiveTrainingSession | null>(
+    () => SessionBuilderService.getActiveSession()
+  );
 
-  const handleStartSimulado = (simulado: SimuladoCardData) => {
-    // Config session
-    const config: QuestionSessionConfig = {
-      title: simulado.title,
-      mode: "SIMULADO",
-      objective: simulado.category === "INEDITO_AUTORAL" ? "INEDITAS" : "OFICIAIS",
-      areas: ["ALL"],
-      topics: [],
-      competencies: [],
-      years: ["ALL"],
-      origin: simulado.category === "INEDITO_AUTORAL" ? "INEDITAS" : "INEP_OFICIAL",
-      difficulty: "ALL",
-      inepRelevance: "ALL",
-      smartFilters: {
-        onlyUnanswered: false,
-        onlyWrong: false,
-        onlyCorrect: false,
-        onlyFlagged: false,
-        onlyReincidentErrors: false,
-        onlyWithUpdatedGuideline: false,
-        onlyHighInepPattern: false,
-        excludeMastered: false,
-      },
-      quantity: simulado.questionsCount,
-      feedbackMode: "END_OF_SESSION",
-      timerMode: "EXAM_STRICT",
-      showComments: false,
-      ordering: "ORIGINAL_ORDER",
-    };
-    
-    const matchedQuestions = SessionBuilderService.buildQuestionSession(config, questions, attempts, knowledgeGraph);
-    const selectedQuestions = matchedQuestions.slice(0, simulado.questionsCount);
-    
-    const newSession = {
+  // Custom simulation config state
+  const [activeCategory, setActiveCategory] = useState<
+    "RAPIDO" | "AREA" | "COMPLETO" | "PERSONALIZADO"
+  >("RAPIDO");
+
+  // Rapido Config
+  const [rapidoCount, setRapidoCount] = useState<number>(20);
+
+  // Area Config
+  const [selectedArea, setSelectedArea] = useState<MedicalArea>("CLINICA_MEDICA");
+  const [areaQuestionCount, setAreaQuestionCount] = useState<number>(20);
+
+  // Completo Config
+  const [completoCount, setCompletoCount] = useState<number>(50);
+
+  // Personalizado Config
+  const [customAreas, setCustomAreas] = useState<MedicalArea[]>([
+    "CLINICA_MEDICA",
+    "CIRURGIA_GERAL",
+    "PEDIATRIA",
+    "GINECOLOGIA_OBSTETRICIA",
+    "MEDICINA_FAMILIA_COMUNIDADE",
+  ]);
+  const [customCount, setCustomCount] = useState<number>(30);
+  const [customFeedbackMode, setCustomFeedbackMode] = useState<
+    "END_OF_SESSION" | "IMMEDIATE"
+  >("END_OF_SESSION");
+
+  // Stats
+  const totalQuestionsInBank = questions.length;
+  const questionsCountPerArea = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const a of MEDICAL_AREAS) {
+      map[a.id] = questions.filter((q) => q.area === a.id).length;
+    }
+    return map;
+  }, [questions]);
+
+  // Start Simulation Session
+  const handleStartSimulado = (config: QuestionSessionConfig) => {
+    const matchedQuestions = SessionBuilderService.buildQuestionSession(
+      config,
+      questions,
+      attempts,
+      knowledgeGraph
+    );
+
+    if (matchedQuestions.length === 0) {
+      alert("Nenhuma questão disponível para esta configuração de simulado.");
+      return;
+    }
+
+    const selectedQuestions = matchedQuestions.slice(0, config.quantity);
+
+    const newSession: ActiveTrainingSession = {
       id: `simulado-${Date.now()}`,
-      title: simulado.title,
-      subtitle: `${selectedQuestions.length} questões • Simulado Oficial`,
-      mode: config.mode,
+      title: config.title || "Simulado Revalida INEP",
+      subtitle: `${selectedQuestions.length} questões • Modo Simulado`,
+      mode: "SIMULADO",
       config,
       questionIds: selectedQuestions.map((q) => q.id),
       currentIndex: 0,
@@ -188,246 +152,537 @@ export const SimuladosHubView: React.FC = () => {
     };
 
     SessionBuilderService.saveActiveSession(newSession);
+    setActiveSession(newSession);
     setQuestionMode("EXAM");
     setActiveTab("praticar-questoes");
   };
 
+  // Discard in-progress session
+  const handleDiscardSession = () => {
+    SessionBuilderService.clearActiveSession();
+    setActiveSession(null);
+  };
+
+  // Resume in-progress session
+  const handleResumeSession = () => {
+    setQuestionMode("EXAM");
+    setActiveTab("praticar-questoes");
+  };
+
+  const hasActiveSession = Boolean(activeSession && !activeSession.isCompleted);
+
   return (
-    <div className="space-y-6 pb-20 max-w-7xl mx-auto">
-      {/* Top Main Banner */}
-      <div className="bg-gradient-to-br from-[#0b1424] via-[#0d1a30] to-[#091120] border border-blue-500/20 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="max-w-4xl mx-auto space-y-6 pb-20">
+      {/* 1. CABEÇALHO */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+            Simulados
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Treine em condições próximas à prova oficial do Revalida.
+          </p>
+        </div>
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-300 border border-blue-500/20">
-              <FileText className="w-3.5 h-3.5" />
-              <span>Ambiente Oficial de Simulação Revalida INEP</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Central de Simulados
-            </h1>
-            <p className="text-zinc-300 text-sm max-w-2xl leading-relaxed">
-              Treine em condições reais de prova com cronômetro regressivo, 100 questões ponderadas pelas 5 grandes áreas, cálculo de nota de corte e análise de tempo por questão.
-            </p>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-3 bg-zinc-950/80 border border-zinc-800 rounded-2xl p-4 shrink-0">
-            <div className="text-center px-2">
-              <div className="text-xl font-bold text-blue-400">{disponiveis.length}</div>
-              <div className="text-[10px] text-zinc-400">Disponíveis</div>
-            </div>
-            <div className="text-center border-x border-zinc-800 px-2">
-              <div className="text-xl font-bold text-amber-400">{emAndamento.length}</div>
-              <div className="text-[10px] text-zinc-400">Em Curso</div>
-            </div>
-            <div className="text-center px-2">
-              <div className="text-xl font-bold text-emerald-400">{concluidos.length}</div>
-              <div className="text-[10px] text-zinc-400">Concluídos</div>
-            </div>
-          </div>
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 shrink-0">
+          <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+          <span className="font-bold text-slate-900">
+            {totalQuestionsInBank} questões
+          </span>
+          <span className="text-slate-400">|</span>
+          <span className="text-slate-500">5 Grandes Áreas</span>
         </div>
       </div>
 
-      {/* Navigation Sub-Tabs */}
-      <div className="border-b border-zinc-800 flex items-center gap-2 overflow-x-auto pb-1">
+      {/* 2. SESSÃO EM ANDAMENTO (Se houver) */}
+      {hasActiveSession && activeSession && (
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 font-bold">
+              <RotateCcw className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-amber-950">
+                Simulado em andamento: {activeSession.title}
+              </p>
+              <p className="text-[11px] text-amber-700">
+                Questão {activeSession.currentIndex + 1} de{" "}
+                {activeSession.questionIds.length} · Progresso salvo
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleDiscardSession}
+              className="px-3 py-1.5 text-slate-500 hover:text-slate-800 text-xs font-semibold transition-colors cursor-pointer"
+            >
+              Descartar
+            </button>
+            <button
+              type="button"
+              onClick={handleResumeSession}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-xs"
+            >
+              Continuar Simulado
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 3. SELETOR DE MODALIDADE */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         {[
-          { id: "DISPONIVEIS" as const, label: "Disponíveis", count: disponiveis.length, icon: FileText },
-          { id: "EM_ANDAMENTO" as const, label: "Em Andamento", count: emAndamento.length, icon: Timer },
-          { id: "CONCLUIDOS" as const, label: "Concluídos", count: concluidos.length, icon: CheckCircle2 },
+          { id: "RAPIDO" as const, label: "Simulado Rápido", icon: Zap, desc: "10, 20 ou 30 questões" },
+          { id: "AREA" as const, label: "Por Grande Área", icon: Layers, desc: "Foco especializado" },
+          { id: "COMPLETO" as const, label: "Simulado Geral", icon: FileText, desc: "50 ou 100 questões" },
+          { id: "PERSONALIZADO" as const, label: "Personalizado", icon: SlidersHorizontal, desc: "Filtros sob medida" },
         ].map((tab) => {
-          const TabIcon = tab.icon;
-          const isActive = activeSubTab === tab.id;
+          const Icon = tab.icon;
+          const isActive = activeCategory === tab.id;
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveSubTab(tab.id)}
-              className={`px-5 py-3 rounded-t-xl text-xs font-bold flex items-center gap-2.5 transition-all cursor-pointer whitespace-nowrap border-b-2 ${
+              type="button"
+              onClick={() => setActiveCategory(tab.id)}
+              className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1.5 ${
                 isActive
-                  ? "text-white border-blue-500 bg-white/[0.04]"
-                  : "text-zinc-400 border-transparent hover:text-zinc-200 hover:bg-white/[0.02]"
+                  ? "bg-teal-50 border-teal-500 text-teal-950 shadow-xs ring-1 ring-teal-500/30"
+                  : "bg-white border-slate-200/80 text-slate-600 hover:text-slate-900 hover:border-slate-300"
               }`}
             >
-              <TabIcon className={`w-4 h-4 ${isActive ? "text-blue-400" : "text-zinc-400"}`} />
-              <span>{tab.label}</span>
-              <span
-                className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
-                  isActive ? "bg-blue-500/20 text-blue-300" : "bg-zinc-800 text-zinc-400"
-                }`}
-              >
-                {tab.count}
-              </span>
+              <div className="flex items-center justify-between">
+                <Icon className={`w-4 h-4 ${isActive ? "text-teal-600" : "text-slate-400"}`} />
+                {isActive && <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />}
+              </div>
+              <div>
+                <span className="text-xs font-bold block leading-tight">
+                  {tab.label}
+                </span>
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  {tab.desc}
+                </span>
+              </div>
             </button>
           );
         })}
       </div>
 
-      {/* Tab 1: DISPONÍVEIS */}
-      {activeSubTab === "DISPONIVEIS" && (
-        <div className="space-y-4">
-          {disponiveis.map((simulado) => (
-            <div
-              key={simulado.id}
-              className="p-6 rounded-3xl bg-zinc-900/80 border border-zinc-800 hover:border-blue-500/40 transition-all shadow-lg flex flex-col lg:flex-row lg:items-center justify-between gap-6"
-            >
-              <div className="space-y-3 max-w-3xl">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-blue-500/10 text-blue-300 border border-blue-500/20">
-                    {simulado.category === "OFICIAL_INEP" ? "Simulado Oficial INEP" : simulado.category === "TIRO_RAPIDO" ? "Tiro Rápido" : "Simulado Autoral"}
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                    Dificuldade: {simulado.difficulty}
-                  </span>
-                  <span className="text-xs text-zinc-400 font-mono flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-zinc-400" />
-                    {simulado.timeLimitMinutes} min ({Math.round(simulado.timeLimitMinutes / 60)}h)
-                  </span>
-                </div>
+      {/* 4. CONTEÚDO DA MODALIDADE SELECIONADA */}
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-6">
+        {/* MODALIDADE 1: SIMULADO RÁPIDO */}
+        {activeCategory === "RAPIDO" && (
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Simulado Rápido de Tiro Curto
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Treino ágil multidisciplinar com questões oficiais das 5 grandes áreas para calibração de velocidade.
+              </p>
+            </div>
 
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-white">{simulado.title}</h3>
-                  <p className="text-xs text-zinc-300 leading-relaxed mt-1">{simulado.description}</p>
-                </div>
+            {/* Presets de Quantidade */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                Quantidade de Questões
+              </label>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { count: 10, time: "20 min", label: "Express" },
+                  { count: 20, time: "40 min", label: "Padrão" },
+                  { count: 30, time: "60 min", label: "Intensivo" },
+                ].map((p) => {
+                  const isSelected = rapidoCount === p.count;
+                  return (
+                    <button
+                      key={p.count}
+                      type="button"
+                      onClick={() => setRapidoCount(p.count)}
+                      className={`p-4 rounded-2xl border text-center transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-teal-50 border-teal-500 text-teal-950 ring-1 ring-teal-500/30 font-bold"
+                          : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      <span className="text-lg font-extrabold block">
+                        {p.count} q.
+                      </span>
+                      <span className="text-xs text-slate-500 block mt-0.5">
+                        ~{p.time} • {p.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-                {/* Area Breakdown Pills */}
-                <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
-                  {Object.entries(simulado.areaDistribution).map(([areaKey, count]) => (
-                    <span key={areaKey} className="px-2 py-0.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300">
-                      <strong>{count}q</strong> {formatMedicalArea(areaKey)}
-                    </span>
+            {/* Resumo e CTA */}
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-sm font-bold text-slate-900 block">
+                  Simulado Rápido • {rapidoCount} questões
+                </span>
+                <span className="text-xs text-slate-500">
+                  Multidisciplinar • Gabarito no final • Tempo estimado: ~{rapidoCount * 2} min
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleStartSimulado({
+                    ...DEFAULT_SESSION_CONFIG,
+                    mode: "SIMULADO",
+                    title: `Simulado Rápido (${rapidoCount} Questões)`,
+                    objective: "TREINO_LIVRE",
+                    areas: ["ALL"],
+                    quantity: rapidoCount,
+                    feedbackMode: "END_OF_SESSION",
+                    timerMode: "EXAM_STRICT",
+                  })
+                }
+                className="px-7 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                <span>INICIAR SIMULADO</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* MODALIDADE 2: SIMULADO POR GRANDE ÁREA */}
+        {activeCategory === "AREA" && (
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Simulado por Grande Área Médica
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Aprofunde seu desempenho em uma área específica para consolidar condutas clínicas.
+              </p>
+            </div>
+
+            {/* Seletor das 5 Áreas */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {MEDICAL_AREAS.map((area) => {
+                const isSelected = selectedArea === area.id;
+                const count = questionsCountPerArea[area.id] || 0;
+                const Icon = area.icon;
+
+                return (
+                  <button
+                    key={area.id}
+                    type="button"
+                    onClick={() => setSelectedArea(area.id)}
+                    className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                      isSelected
+                        ? "bg-teal-50 border-teal-500 text-teal-950 ring-1 ring-teal-500/30 font-semibold"
+                        : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <Icon className={`w-5 h-5 ${isSelected ? "text-teal-600" : "text-slate-400"}`} />
+                      <span className="text-xs font-bold text-slate-500">
+                        {count} disponíveis
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-sm font-bold block leading-tight">
+                        {area.label}
+                      </span>
+                      <span className="text-[11px] text-slate-500 block mt-1 line-clamp-2">
+                        {area.description}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Quantidade */}
+            <div className="space-y-2 pt-2 border-t border-slate-100">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                Quantidade de Questões
+              </label>
+              <div className="flex items-center gap-2">
+                {[10, 20, 30].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setAreaQuestionCount(c)}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      areaQuestionCount === c
+                        ? "bg-slate-900 text-white shadow-2xs"
+                        : "bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {c} questões
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Resumo e CTA */}
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-sm font-bold text-slate-900 block">
+                  Simulado: {MEDICAL_AREAS.find((a) => a.id === selectedArea)?.label}
+                </span>
+                <span className="text-xs text-slate-500">
+                  {areaQuestionCount} questões • Gabarito no final • Tempo estimado: ~{areaQuestionCount * 2} min
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleStartSimulado({
+                    ...DEFAULT_SESSION_CONFIG,
+                    mode: "SIMULADO",
+                    title: `Simulado de ${MEDICAL_AREAS.find((a) => a.id === selectedArea)?.label}`,
+                    objective: "TREINO_LIVRE",
+                    areas: [selectedArea],
+                    quantity: areaQuestionCount,
+                    feedbackMode: "END_OF_SESSION",
+                    timerMode: "EXAM_STRICT",
+                  })
+                }
+                className="px-7 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                <span>INICIAR SIMULADO</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* MODALIDADE 3: SIMULADO GERAL COMPLETO */}
+        {activeCategory === "COMPLETO" && (
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Simulado Geral Multidisciplinar
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Simulação ampla com distribuição equilibrada nas 5 grandes áreas médicas e cálculo de pontuação global.
+              </p>
+            </div>
+
+            {/* Opções de Escala */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div
+                onClick={() => setCompletoCount(50)}
+                className={`p-5 rounded-2xl border transition-all cursor-pointer space-y-2 ${
+                  completoCount === 50
+                    ? "bg-teal-50 border-teal-500 text-teal-950 ring-1 ring-teal-500/30 shadow-2xs"
+                    : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-teal-700">
+                    Meia Prova
+                  </span>
+                  <span className="text-xs font-mono text-slate-500">~100 min</span>
+                </div>
+                <h4 className="text-base font-bold">50 Questões Objetivas</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  10 questões de cada uma das 5 grandes áreas. Ideal para finais de semana e diagnóstico intermediário.
+                </p>
+              </div>
+
+              <div
+                onClick={() => setCompletoCount(100)}
+                className={`p-5 rounded-2xl border transition-all cursor-pointer space-y-2 ${
+                  completoCount === 100
+                    ? "bg-teal-50 border-teal-500 text-teal-950 ring-1 ring-teal-500/30 shadow-2xs"
+                    : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-teal-700">
+                    Prova Integral
+                  </span>
+                  <span className="text-xs font-mono text-slate-500">~200 min</span>
+                </div>
+                <h4 className="text-base font-bold">100 Questões Objetivas</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  20 questões por área. Formato idêntico à 1ª Etapa Teórica Objetiva do Revalida INEP.
+                </p>
+              </div>
+            </div>
+
+            {/* Resumo e CTA */}
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-sm font-bold text-slate-900 block">
+                  Simulado Geral • {completoCount} questões
+                </span>
+                <span className="text-xs text-slate-500">
+                  Multidisciplinar balanceado • Gabarito no final • Tempo estimado: ~{completoCount * 2} min
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleStartSimulado({
+                    ...DEFAULT_SESSION_CONFIG,
+                    mode: "SIMULADO",
+                    title: `Simulado Geral (${completoCount} Questões)`,
+                    objective: "OFICIAIS",
+                    areas: ["ALL"],
+                    quantity: completoCount,
+                    feedbackMode: "END_OF_SESSION",
+                    timerMode: "EXAM_STRICT",
+                  })
+                }
+                className="px-7 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                <span>INICIAR SIMULADO GERAL</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* MODALIDADE 4: SIMULADO PERSONALIZADO */}
+        {activeCategory === "PERSONALIZADO" && (
+          <div className="space-y-5">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                Simulado Personalizado
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Monte seu caderno de simulado definindo as áreas médicas participantes, volume de questões e modo de feedback.
+              </p>
+            </div>
+
+            {/* Seleção de Áreas */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                Áreas Médicas Participantes
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                {MEDICAL_AREAS.map((a) => {
+                  const isSelected = customAreas.includes(a.id);
+                  return (
+                    <button
+                      key={a.id}
+                      type="button"
+                      onClick={() => {
+                        if (isSelected) {
+                          if (customAreas.length > 1) {
+                            setCustomAreas(customAreas.filter((id) => id !== a.id));
+                          }
+                        } else {
+                          setCustomAreas([...customAreas, a.id]);
+                        }
+                      }}
+                      className={`p-2.5 rounded-xl border text-center text-xs font-bold transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-teal-50 border-teal-500 text-teal-950 ring-1 ring-teal-500/30"
+                          : "bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      {a.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Quantidade e Modo de Feedback */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                  Volume de Questões
+                </label>
+                <div className="flex items-center gap-1.5">
+                  {[10, 20, 30, 50].map((count) => (
+                    <button
+                      key={count}
+                      type="button"
+                      onClick={() => setCustomCount(count)}
+                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        customCount === count
+                          ? "bg-slate-900 text-white shadow-2xs"
+                          : "bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      {count}
+                    </button>
                   ))}
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => handleStartSimulado(simulado)}
-                  className="px-6 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-105"
-                >
-                  <Play className="w-4 h-4 fill-current" />
-                  <span>Iniciar Simulado</span>
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Tab 2: EM ANDAMENTO */}
-      {activeSubTab === "EM_ANDAMENTO" && (
-        <div className="space-y-4">
-          {emAndamento.length === 0 ? (
-            <div className="p-12 text-center bg-zinc-900/50 border border-zinc-800 rounded-3xl space-y-2">
-              <CheckCircle2 className="w-10 h-10 text-zinc-600 mx-auto" />
-              <h3 className="text-white font-bold text-sm">Nenhum simulado em andamento</h3>
-              <p className="text-xs text-zinc-400">Escolha um simulado na aba "Disponíveis" para iniciar.</p>
-            </div>
-          ) : (
-            emAndamento.map((simulado) => (
-              <div
-                key={simulado.id}
-                className="p-6 rounded-3xl bg-[#0c1424] border border-amber-500/30 shadow-xl flex flex-col lg:flex-row lg:items-center justify-between gap-6"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-300 animate-pulse">
-                      Em Andamento
-                    </span>
-                    <span className="text-xs text-zinc-400">
-                      Questão {simulado.currentQuestionIndex || 1} de {simulado.questionsCount}
-                    </span>
-                  </div>
-
-                  <h3 className="text-base sm:text-lg font-bold text-white">{simulado.title}</h3>
-                  <p className="text-xs text-zinc-300">{simulado.description}</p>
-
-                  <div className="w-full max-w-md space-y-1.5 pt-1">
-                    <div className="flex justify-between text-[11px] text-zinc-400">
-                      <span>Progresso do Caderno</span>
-                      <span className="text-amber-300 font-bold">
-                        {Math.round(((simulado.currentQuestionIndex || 1) / simulado.questionsCount) * 100)}%
-                      </span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
-                      <div
-                        className="h-full bg-amber-500 rounded-full"
-                        style={{ width: `${Math.round(((simulado.currentQuestionIndex || 1) / simulado.questionsCount) * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3 shrink-0">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                  Modo de Feedback
+                </label>
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => handleStartSimulado(simulado)}
-                    className="px-6 py-3.5 rounded-2xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs shadow-lg shadow-amber-500/30 transition-all flex items-center justify-center gap-2 cursor-pointer hover:scale-105"
+                    onClick={() => setCustomFeedbackMode("END_OF_SESSION")}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      customFeedbackMode === "END_OF_SESSION"
+                        ? "bg-teal-600 text-white shadow-2xs"
+                        : "bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
                   >
-                    <Play className="w-4 h-4 fill-current" />
-                    <span>Continuar Simulado</span>
+                    No Final (Prova)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCustomFeedbackMode("IMMEDIATE")}
+                    className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      customFeedbackMode === "IMMEDIATE"
+                        ? "bg-teal-600 text-white shadow-2xs"
+                        : "bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    Imediato (Estudo)
                   </button>
                 </div>
               </div>
-            ))
-          )}
-        </div>
-      )}
+            </div>
 
-      {/* Tab 3: CONCLUÍDOS */}
-      {activeSubTab === "CONCLUIDOS" && (
-        <div className="space-y-4">
-          {concluidos.map((simulado) => {
-            const isApproved = (simulado.score || 0) >= 60;
-            return (
-              <div
-                key={simulado.id}
-                className="p-6 rounded-3xl bg-zinc-900/80 border border-zinc-800 shadow-lg flex flex-col lg:flex-row lg:items-center justify-between gap-6"
-              >
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-md text-[10px] font-bold ${
-                        isApproved
-                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                          : "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                      }`}
-                    >
-                      {isApproved ? "APROVADO (≥60%)" : "ABAIXO DO CORTE (<60%)"}
-                    </span>
-                    <span className="text-xs text-zinc-400">Concluído em: {simulado.completedAt}</span>
-                  </div>
-
-                  <h3 className="text-base font-bold text-white">{simulado.title}</h3>
-                  <p className="text-xs text-zinc-300">
-                    Acertos: <strong>{simulado.totalCorrect}/{simulado.questionsCount} questões</strong> ({simulado.score}%)
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <div className={`text-2xl font-black ${isApproved ? "text-emerald-400" : "text-rose-400"}`}>
-                      {simulado.score}%
-                    </div>
-                    <div className="text-[10px] text-zinc-400">Desempenho Geral</div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setActiveTab("revisar-erros");
-                    }}
-                    className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-semibold transition-colors cursor-pointer"
-                  >
-                    Ver Gabarito & Erros
-                  </button>
-                </div>
+            {/* Resumo e CTA */}
+            <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-sm font-bold text-slate-900 block">
+                  Simulado Personalizado • {customCount} questões
+                </span>
+                <span className="text-xs text-slate-500">
+                  {customAreas.length} {customAreas.length === 1 ? "área selecionada" : "áreas selecionadas"} •{" "}
+                  {customFeedbackMode === "END_OF_SESSION" ? "Gabarito no final" : "Feedback imediato"}
+                </span>
               </div>
-            );
-          })}
-        </div>
-      )}
+
+              <button
+                type="button"
+                onClick={() =>
+                  handleStartSimulado({
+                    ...DEFAULT_SESSION_CONFIG,
+                    mode: "SIMULADO",
+                    title: "Simulado Personalizado",
+                    objective: "TREINO_LIVRE",
+                    areas: customAreas.length === 5 ? ["ALL"] : customAreas,
+                    quantity: customCount,
+                    feedbackMode: customFeedbackMode,
+                    timerMode: customFeedbackMode === "END_OF_SESSION" ? "EXAM_STRICT" : "FREE",
+                  })
+                }
+                className="px-7 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                <span>INICIAR SIMULADO</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

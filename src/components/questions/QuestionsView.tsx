@@ -27,6 +27,7 @@ export const QuestionsView: React.FC = () => {
     knowledgeGraph,
     editionsInventory,
     recordQuestionAttempt,
+    questionMode,
   } = useApp();
 
   // Subview State: "HOME" | "ACTIVE_SESSION" | "RESULTS" | "EXAM_SELECTOR" | "PRINT_EXAM"
@@ -50,13 +51,16 @@ export const QuestionsView: React.FC = () => {
     Partial<QuestionSessionConfig> | undefined
   >(undefined);
 
-  // If there's an active session on boot and user was practicing, we can allow them to resume
+  // If there's an active session on boot or questionMode triggers EXAM, sync view
   useEffect(() => {
     const saved = SessionBuilderService.getActiveSession();
     if (saved && !saved.isCompleted) {
       setActiveSession(saved);
+      if (questionMode === "EXAM") {
+        setCurrentView("ACTIVE_SESSION");
+      }
     }
-  }, []);
+  }, [questionMode]);
 
   // Handler: Start a Direct Session from config
   const handleStartSession = (config: QuestionSessionConfig) => {
