@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { AdaptiveCalendarView } from "../calendar/AdaptiveCalendarView";
+import { WeeklyPlanView } from "./WeeklyPlanView";
 import { formatMedicalArea } from "../../utils/formatters";
 
 export type PlanejamentoSubTab =
@@ -111,68 +112,7 @@ export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({
       {currentSubTab === "CALENDARIO" && <AdaptiveCalendarView />}
 
       {/* 2. PLANO SEMANAL */}
-      {currentSubTab === "SEMANAL" && (
-        <div className="space-y-6">
-          <div className="p-6 rounded-3xl bg-zinc-900/80 border border-zinc-800 shadow-xl space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-bold text-white">Estrutura da Semana Atual</h3>
-                <p className="text-xs text-zinc-400">Distribuição equilibrada dos blocos de estudo e revisões ativas.</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCurrentSubTab("CALENDARIO")}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all cursor-pointer"
-              >
-                Ver na Linha do Tempo
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-7 gap-3 pt-2">
-              {[
-                { day: "Segunda", area: "CLINICA_MEDICA", topic: "Síndromes Coronarianas & ECG", duration: "4h", status: "DONE" },
-                { day: "Terça", area: "CIRURGIA_GERAL", topic: "Trauma Abdominal & ATLS", duration: "3h", status: "DONE" },
-                { day: "Quarta", area: "GINECOLOGIA_OBSTETRICIA", topic: "Pré-Eclâmpsia & Hemorragias", duration: "4h", status: "TODAY" },
-                { day: "Quinta", area: "PEDIATRIA", topic: "PAC & Bronquiolite", duration: "3h", status: "UPCOMING" },
-                { day: "Sexta", area: "MEDICINA_FAMILIA_COMUNIDADE", topic: "Atenção Básica & SINAN", duration: "3h", status: "UPCOMING" },
-                { day: "Sábado", area: "TODAS", topic: "Simulado Geral INEP (100q)", duration: "5h", status: "UPCOMING" },
-                { day: "Domingo", area: "TODAS", topic: "Autópsia de Erros & Flashcards", duration: "2h", status: "UPCOMING" },
-              ].map((item, idx) => (
-                <div
-                  key={idx}
-                  className={`p-3.5 rounded-2xl border flex flex-col justify-between space-y-2 ${
-                    item.status === "TODAY"
-                      ? "bg-emerald-500/10 border-emerald-500/40 shadow-md ring-1 ring-emerald-500/30"
-                      : item.status === "DONE"
-                      ? "bg-zinc-900/60 border-zinc-800/80"
-                      : "bg-zinc-950 border-zinc-800/60"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-white">{item.day}</span>
-                    <span className="text-[10px] text-zinc-400 font-mono">{item.duration}</span>
-                  </div>
-                  <div>
-                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-white/[0.06] text-zinc-300 block w-max truncate max-w-full">
-                      {formatMedicalArea(item.area)}
-                    </span>
-                    <p className="text-xs text-zinc-200 font-medium mt-1 line-clamp-2">{item.topic}</p>
-                  </div>
-                  <div className="text-[10px] font-semibold text-zinc-400">
-                    {item.status === "TODAY" ? (
-                      <span className="text-emerald-400 font-bold">● Bloco de Hoje</span>
-                    ) : item.status === "DONE" ? (
-                      <span className="text-teal-400">✓ Concluído</span>
-                    ) : (
-                      <span>Agendado</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {currentSubTab === "SEMANAL" && <WeeklyPlanView />}
 
       {/* 3. PLANO ATÉ A PROVA */}
       {currentSubTab === "ATE_PROVA" && (
