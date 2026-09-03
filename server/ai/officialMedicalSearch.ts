@@ -14,7 +14,14 @@ export interface OfficialSearchResult {
   protocolName: string;
   publisher: string;
   publicationYear: string;
+  publicationDate?: string;
+  revisionDate?: string;
+  reviewedAt?: string;
   status: "ATUALIZADO_2026" | "VIGENTE" | "EM_CONSULTA" | "ATENCAO_MUDANCA";
+  versionStatus?: "CURRENT_VERIFIED" | "CURRENT_UNVERIFIED" | "SUPERSEDED" | "UNKNOWN";
+  verificationStatus?: "VERIFIED_PRIMARY_SOURCE" | "PARTIALLY_VERIFIED" | "UNVERIFIED";
+  sourceType?: "GOVERNMENT_HEALTH" | "INEP" | "SCIENTIFIC_SOCIETY" | "OTHER_PRIMARY_SOURCE";
+  sourceTypeLabel?: string;
   relevantChanges: string;
   previousConduct?: string;
   currentConduct: string;

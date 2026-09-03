@@ -15,8 +15,7 @@ import {
   Check,
   Globe2,
   ArrowRight,
-  Filter,
-  Zap,
+  BookmarkCheck,
 } from "lucide-react";
 import {
   OfficialSearchService,
@@ -33,7 +32,6 @@ export const OfficialMedicalSearchView: React.FC<{ initialQuery?: string }> = ({
   const [query, setQuery] = useState(initialQuery);
   const [loading, setLoading] = useState(false);
   const [selectedModel, setSelectedModel] = useState<"gemini" | "sonnet" | "opus">("gemini");
-  const [selectedFilter, setSelectedFilter] = useState<string>("ALL");
   const [result, setResult] = useState<OfficialSearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sourcesDir, setSourcesDir] = useState<OfficialSourcesDirectory | null>(null);
@@ -67,22 +65,23 @@ export const OfficialMedicalSearchView: React.FC<{ initialQuery?: string }> = ({
 
   const copyResultToClipboard = () => {
     if (!result) return;
-    const text = `📋 PESQUISA MÉDICA OFICIAL - REVALIDA INEP 2026
-Protocolo: ${result.protocolName}
-Órgão Emissor: ${result.publisher} (${result.publicationYear})
+    const text = `📋 PESQUISA MÉDICA DOCUMENTAL - STAZIAMED REVALIDA
+Protocolo / Tema: ${result.protocolName}
+Órgão / Sociedade Emissora: ${result.publisher} (${result.publicationYear})
+Classificação de Fonte: ${result.sourceTypeLabel || "Fonte Verificada"}
 Status: ${result.status}
 
 🔄 MUDANÇA RELEVANTE:
 ${result.relevantChanges}
 
-🏛️ CONDUTA PADRÃO-OURO NO SUS:
-${result.susStandardConduct}
+🏛️ CONDUTA:
+${result.susStandardConduct || result.currentConduct}
 
-🎯 IMPACTO NO REVALIDA INEP:
+🎯 IMPACTO NO REVALIDA INEP (SÍNTESE PEDAGÓGICA):
 ${result.inepImpact}
 
-🔗 FONTES OFICIAIS:
-${result.officialSources.map((s) => `- ${s.title} (${s.uri})`).join("\n")}`;
+🔗 FONTES VERIFICADAS:
+${result.officialSources.map((s) => `- ${s.title} (${s.uri}) [${s.sourceTypeLabel || s.domain}]`).join("\n")}`;
 
     navigator.clipboard.writeText(text);
     setCopied(true);
@@ -101,11 +100,11 @@ ${result.officialSources.map((s) => `- ${s.title} (${s.uri})`).join("\n")}`;
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
               <ShieldCheck className="w-3.5 h-3.5" />
-              FONTES GOVERNAMENTAIS & DIRETRIZES 2026
+              FONTES GOVERNAMENTAIS & DIRETRIZES CIENTÍFICAS
             </span>
             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-white/5 text-zinc-300 border border-white/10">
               <Globe2 className="w-3 h-3 text-cyan-400" />
-              gov.br • saude.gov.br • conitec • inep • anvisa
+              gov.br • saude.gov.br • conitec • inep • anvisa • sociedades
             </span>
           </div>
 
@@ -114,8 +113,8 @@ ${result.officialSources.map((s) => `- ${s.title} (${s.uri})`).join("\n")}`;
           </h1>
           <p className="text-sm text-zinc-300 max-w-2xl mt-1.5 leading-relaxed">
             Verifique condutas clínicas e PCDTs diretamente nas bases do <strong>Ministério da Saúde</strong>,{" "}
-            <strong>CONITEC</strong>, <strong>ANVISA</strong> e <strong>INEP</strong>. Sem blogs secundários, apenas
-            recomendações oficiais com impacto no Revalida 2026.
+            <strong>CONITEC</strong>, <strong>ANVISA</strong>, <strong>INEP</strong> e diretrizes de sociedades científicas.
+            Sem blogs secundários, com identificação clara de proveniência para o Revalida.
           </p>
 
           {/* Search Box Form */}
@@ -164,23 +163,23 @@ ${result.officialSources.map((s) => `- ${s.title} (${s.uri})`).join("\n")}`;
                 Busca Grounded em Tempo Real
               </span>
               <span className="text-zinc-500">•</span>
-              <span className="text-zinc-400">PCDTs Oficiais & Manuais MS</span>
+              <span className="text-zinc-400">PCDTs Governamentais & Diretrizes de Especialidade</span>
             </div>
 
             <div className="flex items-center gap-1.5 text-zinc-400">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Restrição estrita a domínios <strong>.gov.br</strong> e Sociedades Médicas Oficiais</span>
+              <span>Restrição estrita a domínios <strong>.gov.br</strong> e Sociedades Médicas Científicas</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Quick Trending 2026 Topics Carousel / Grid */}
+      {/* Quick Trending Topics Grid */}
       <div>
         <div className="flex items-center justify-between mb-3 px-1">
           <h2 className="text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-            🔥 Atualizações 2025–2026 de Alto Impacto no Revalida
+            🔥 Atualizações Normativas & Clínicas em Destaque
           </h2>
           <span className="text-xs text-slate-400">Clique para auditar</span>
         </div>
@@ -228,15 +227,15 @@ ${result.officialSources.map((s) => `- ${s.title} (${s.uri})`).join("\n")}`;
             <RefreshCw className="w-6 h-6 animate-spin" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-white">Consultando Bases Governamentais Oficiais...</h3>
+            <h3 className="text-base font-bold text-white">Consultando Fontes Governamentais & Diretrizes...</h3>
             <p className="text-xs text-zinc-400 mt-1">
-              Filtrando em <em>saude.gov.br</em>, <em>bvsms</em>, <em>conitec</em> e diretrizes curriculares do <em>INEP</em>.
+              Filtrando em <em>saude.gov.br</em>, <em>bvsms</em>, <em>conitec</em>, <em>inep</em> e sociedades médicas científicas.
             </p>
           </div>
           <div className="flex justify-center gap-2 pt-2">
-            <span className="px-3 py-1 rounded-full text-[10px] bg-white/5 text-zinc-300">Auditoria de Portarias</span>
-            <span className="px-3 py-1 rounded-full text-[10px] bg-white/5 text-zinc-300">PCDT Vigente</span>
-            <span className="px-3 py-1 rounded-full text-[10px] bg-white/5 text-zinc-300">Matriz de Distratores INEP</span>
+            <span className="px-3 py-1 rounded-full text-[10px] bg-white/5 text-zinc-300">Portarias & PCDTs</span>
+            <span className="px-3 py-1 rounded-full text-[10px] bg-white/5 text-zinc-300">Diretrizes Clínicas</span>
+            <span className="px-3 py-1 rounded-full text-[10px] bg-white/5 text-zinc-300">Matriz de Habilidades Revalida</span>
           </div>
         </div>
       )}
@@ -262,12 +261,12 @@ ${result.officialSources.map((s) => `- ${s.title} (${s.uri})`).join("\n")}`;
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    PROTOCOLO OFICIAL SUS / INEP
+                    <BookmarkCheck className="w-3.5 h-3.5" />
+                    {result.sourceTypeLabel || "Fonte Verificada"}
                   </span>
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
-                    Vigência: {result.publicationYear}
+                    Publicação: {result.publicationYear}
                   </span>
                   {result.searchGroundingUsed && (
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center gap-1">
@@ -281,7 +280,7 @@ ${result.officialSources.map((s) => `- ${s.title} (${s.uri})`).join("\n")}`;
                 </h2>
                 <p className="text-xs text-zinc-400 flex items-center gap-2">
                   <Building2 className="w-3.5 h-3.5 text-zinc-400" />
-                  <strong>Órgão Emissor:</strong> {result.publisher}
+                  <strong>Órgão / Emissor:</strong> {result.publisher}
                 </p>
               </div>
 
@@ -313,7 +312,7 @@ ${result.officialSources.map((s) => `- ${s.title} (${s.uri})`).join("\n")}`;
               <div className="p-4 rounded-2xl bg-amber-500/[0.04] border border-amber-500/20 space-y-2">
                 <div className="flex items-center gap-2 text-xs font-bold text-amber-300 uppercase tracking-wider">
                   <RefreshCw className="w-4 h-4 text-amber-400" />
-                  <span>1. Mudança Relevante (O que Mudou)</span>
+                  <span>1. Mudança Relevante (Síntese Clínica)</span>
                 </div>
                 <p className="text-xs text-zinc-200 leading-relaxed">
                   {result.relevantChanges}
@@ -329,34 +328,38 @@ ${result.officialSources.map((s) => `- ${s.title} (${s.uri})`).join("\n")}`;
               <div className="p-4 rounded-2xl bg-rose-500/[0.04] border border-rose-500/20 space-y-2">
                 <div className="flex items-center gap-2 text-xs font-bold text-rose-300 uppercase tracking-wider">
                   <AlertTriangle className="w-4 h-4 text-rose-400" />
-                  <span>2. Impacto no Revalida INEP</span>
+                  <span>2. Impacto no Revalida INEP (Análise Pedagógica)</span>
                 </div>
                 <p className="text-xs text-zinc-200 leading-relaxed">
                   {result.inepImpact}
                 </p>
                 {result.pitfallsInDistractors && (
                   <div className="pt-2 mt-2 border-t border-rose-500/10 text-[11px] text-rose-300/80">
-                    <strong>Pegadinha de Prova:</strong> {result.pitfallsInDistractors}
+                    <strong>Atenção aos Distratores:</strong> {result.pitfallsInDistractors}
                   </div>
                 )}
               </div>
 
-              {/* 3. Conduta Padrão-Ouro no SUS */}
+              {/* 3. Conduta Padrão no SUS ou Recomendação de Especialidade */}
               <div className="p-4 rounded-2xl bg-emerald-500/[0.04] border border-emerald-500/20 space-y-2">
                 <div className="flex items-center gap-2 text-xs font-bold text-emerald-300 uppercase tracking-wider">
                   <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>3. Conduta Padrão-Ouro no SUS (APS/RAS)</span>
+                  <span>
+                    {result.sourceType === "GOVERNMENT_HEALTH"
+                      ? "3. Conduta Padrão-Ouro no SUS (APS/RAS)"
+                      : "3. Recomendação Clínica / Diretriz de Especialidade"}
+                  </span>
                 </div>
                 <p className="text-xs text-zinc-200 leading-relaxed">
                   {result.susStandardConduct || result.currentConduct}
                 </p>
               </div>
 
-              {/* 4. Fontes Oficiais & Links Verificados */}
+              {/* 4. Fontes Primárias & Diretrizes Verificadas */}
               <div className="p-4 rounded-2xl bg-cyan-500/[0.04] border border-cyan-500/20 space-y-2">
                 <div className="flex items-center gap-2 text-xs font-bold text-cyan-300 uppercase tracking-wider">
                   <Globe2 className="w-4 h-4 text-cyan-400" />
-                  <span>4. Fontes Oficiais Verificadas</span>
+                  <span>4. Fontes Primárias & Diretrizes Verificadas</span>
                 </div>
 
                 <div className="space-y-1.5 pt-1">
@@ -372,7 +375,10 @@ ${result.officialSources.map((s) => `- ${s.title} (${s.uri})`).join("\n")}`;
                         <p className="font-semibold text-white group-hover:text-cyan-300 transition-colors truncate">
                           {source.title}
                         </p>
-                        <p className="text-[10px] text-zinc-400 truncate">{source.domain}</p>
+                        <p className="text-[10px] text-zinc-400 truncate">
+                          {source.sourceTypeLabel ? `${source.sourceTypeLabel} • ` : ""}
+                          {source.domain}
+                        </p>
                       </div>
                       <span className="p-1 rounded-lg bg-white/5 group-hover:bg-cyan-500/20 text-cyan-400 shrink-0">
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -383,12 +389,12 @@ ${result.officialSources.map((s) => `- ${s.title} (${s.uri})`).join("\n")}`;
               </div>
             </div>
 
-            {/* In-depth Analysis Markdown Accordion / Section */}
+            {/* In-depth Analysis Markdown Section */}
             {result.fullAnalysisMarkdown && (
               <div className="p-5 sm:p-6 bg-black/30 border-t border-white/10 space-y-3">
                 <div className="flex items-center gap-2 text-xs font-bold text-zinc-300 uppercase tracking-wider">
                   <FileText className="w-4 h-4 text-emerald-400" />
-                  <span>Análise Clínica Estruturada Completa</span>
+                  <span>Síntese Estruturada StaziaMed</span>
                 </div>
                 <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-xs text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans">
                   {result.fullAnalysisMarkdown}
@@ -410,11 +416,11 @@ ${result.officialSources.map((s) => `- ${s.title} (${s.uri})`).join("\n")}`;
         </div>
       )}
 
-      {/* Directory of Verified Official Domains (Trust Banner) */}
+      {/* Directory of Verified Domains (Trust Banner) */}
       <div className="rounded-3xl bg-[#0b0f1c] border border-slate-800 p-6 space-y-4 shadow-xl">
         <h3 className="text-xs sm:text-sm font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          Bases Governamentais & Sociedades Auditadas
+          Bases Governamentais & Sociedades Científicas Auditadas
         </h3>
         <p className="text-xs sm:text-sm text-slate-300">
           Esta ferramenta restringe a busca a repositórios científicos e normativos de autoridade médica nacional:
