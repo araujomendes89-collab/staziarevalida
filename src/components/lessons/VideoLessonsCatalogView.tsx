@@ -1,6 +1,5 @@
 import React, { useState, useMemo } from "react";
 import {
-  Play,
   Tv,
   CheckCircle2,
   Clock,
@@ -192,7 +191,7 @@ export const VideoLessonsCatalogView: React.FC = () => {
     });
   }, [selectedArea, searchQuery]);
 
-  // View: LESSON_PREVIEW / DETALHE DA AULA
+  // View: LESSON_PREVIEW / DETALHE DA ESTRUTURA DA AULA
   if (activeLesson) {
     const areaTheme = getAreaVisualTheme(activeLesson.area);
 
@@ -209,7 +208,7 @@ export const VideoLessonsCatalogView: React.FC = () => {
           </button>
         </div>
 
-        {/* Video Preview Stage */}
+        {/* Video Preview Stage (Sem simulação de player ou timers fake) */}
         <div className="bg-gradient-to-br from-[#0B192C] via-[#10243E] to-[#0A1A2F] text-white border border-[#1B355A] rounded-3xl overflow-hidden shadow-md">
           <div className="aspect-video w-full relative flex flex-col justify-between p-6 sm:p-8 bg-black/40 border-b border-white/10">
             <div className="flex items-center justify-between">
@@ -218,13 +217,13 @@ export const VideoLessonsCatalogView: React.FC = () => {
               </span>
               <span className="text-xs text-slate-300 flex items-center gap-1 font-mono">
                 <Clock className="w-3.5 h-3.5 text-slate-400" />
-                <span>{activeLesson.durationMinutes} min</span>
+                <span>Estimativa: ~{activeLesson.durationMinutes} min</span>
               </span>
             </div>
 
             <div className="text-center space-y-3 max-w-lg mx-auto my-auto">
-              <div className="w-16 h-16 rounded-full bg-teal-500 text-slate-950 flex items-center justify-center mx-auto shadow-lg shadow-teal-500/30">
-                <Play className="w-7 h-7 fill-current ml-1" />
+              <div className="w-16 h-16 rounded-full bg-teal-500/20 border border-teal-500/30 text-teal-300 flex items-center justify-center mx-auto shadow-lg">
+                <Tv className="w-7 h-7" />
               </div>
               <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
                 {activeLesson.title}
@@ -234,13 +233,13 @@ export const VideoLessonsCatalogView: React.FC = () => {
               </p>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-teal-300 text-xs font-medium">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Preview teórico-prático orientado ao Revalida INEP</span>
+                <span>Estrutura e preview teórico-prático para o Revalida</span>
               </div>
             </div>
 
             <div className="flex items-center justify-between text-xs text-slate-400 border-t border-white/10 pt-3">
               <span>Módulo Audiovisual StaziaMed</span>
-              <span>Padrão SUS / Diretrizes Oficiais</span>
+              <span>Diretrizes e Condutas do SUS</span>
             </div>
           </div>
 
@@ -282,7 +281,7 @@ export const VideoLessonsCatalogView: React.FC = () => {
 
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 pt-2">
                   <Sparkles className="w-4 h-4 text-amber-500" />
-                  <span>Pontos-Chave Mais Cobrados no Revalida</span>
+                  <span>Pontos-Chave para o Revalida</span>
                 </h3>
                 <div className="space-y-2">
                   {activeLesson.keyPoints.map((point, idx) => (
@@ -350,11 +349,10 @@ export const VideoLessonsCatalogView: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-white border border-slate-200/80 px-3.5 py-1.5 rounded-xl shadow-2xs self-start sm:self-auto">
-          <span className="text-teal-700 font-bold">{SAMPLE_VIDEO_LESSONS.length}</span>
-          <span>Aulas</span>
+          <span className="text-teal-700 font-bold">5</span>
+          <span>Grandes Áreas</span>
           <span className="text-slate-300">•</span>
-          <span className="text-slate-700 font-bold">5</span>
-          <span>Áreas</span>
+          <span className="text-slate-600">Módulo em Estruturação</span>
         </div>
       </div>
 
@@ -401,7 +399,7 @@ export const VideoLessonsCatalogView: React.FC = () => {
       <div className="space-y-3">
         <div className="flex items-center justify-between text-xs text-slate-500 px-1">
           <div>
-            Exibindo <strong>{filteredLessons.length}</strong> de {SAMPLE_VIDEO_LESSONS.length} Aulas
+            Tópicos e estruturas curriculares preparadas
           </div>
         </div>
 
@@ -460,11 +458,11 @@ export const VideoLessonsCatalogView: React.FC = () => {
                   {/* Bottom Meta & CTA */}
                   <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
                     <span className="text-[11px] text-slate-400 font-medium">
-                      Conteúdo em vídeo
+                      Estrutura da aula
                     </span>
 
                     <div className="flex items-center gap-1 text-teal-700 font-bold text-xs group-hover:translate-x-0.5 transition-transform">
-                      <span>Ver aula</span>
+                      <span>Ver conteúdo</span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </div>
                   </div>
