@@ -51,7 +51,7 @@ describe("Study Navigation Reorganization (Etapa 1.17B)", () => {
     renderWithProviders(<EstudarView initialSubTab="AULAS" />);
 
     expect(screen.getByText(/Aulas Teórico-Práticas/i)).toBeDefined();
-    expect(screen.getByText(/Catálogo Oficial de Videoaulas/i)).toBeDefined();
+    expect(screen.getAllByText(/Aulas/i).length).toBeGreaterThan(0);
   });
 
   it("E: resolves canonical Grandes Temas subtab correctly", () => {

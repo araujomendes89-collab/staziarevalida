@@ -6,19 +6,17 @@ import {
   Clock,
   BookOpen,
   Search,
-  Filter,
-  Flame,
-  Award,
   ChevronRight,
   Sparkles,
   FileText,
   Volume2,
   Download,
-  CheckCircle,
-  BarChart2,
+  Layers,
+  ArrowLeft,
+  GraduationCap,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
-import { formatMedicalArea } from "../../utils/formatters";
+import { getAreaVisualTheme } from "../../config/areaThemes";
 
 export interface VideoLesson {
   id: string;
@@ -32,12 +30,12 @@ export interface VideoLesson {
   summary: string;
   keyPoints: string[];
   materialsCount: number;
-  progressPercent: number; // 0 to 100
+  progressPercent?: number;
   lastWatchedAt?: string;
   isCompleted?: boolean;
 }
 
-const SAMPLE_VIDEO_LESSONS: VideoLesson[] = [
+export const SAMPLE_VIDEO_LESSONS: VideoLesson[] = [
   {
     id: "aula-1",
     title: "Síndromes Hipertensivas na Gestação & Pré-Eclâmpsia Grave",
@@ -52,9 +50,6 @@ const SAMPLE_VIDEO_LESSONS: VideoLesson[] = [
       "Conduta na síndrome HELLP: interrupção da gestação após estabilização",
     ],
     materialsCount: 3,
-    progressPercent: 65,
-    lastWatchedAt: "Ontem às 21:30",
-    isCompleted: false,
   },
   {
     id: "aula-2",
@@ -70,9 +65,6 @@ const SAMPLE_VIDEO_LESSONS: VideoLesson[] = [
       "Contraindicações absolutas à trombólise",
     ],
     materialsCount: 4,
-    progressPercent: 100,
-    lastWatchedAt: "Há 2 dias",
-    isCompleted: true,
   },
   {
     id: "aula-3",
@@ -88,9 +80,6 @@ const SAMPLE_VIDEO_LESSONS: VideoLesson[] = [
       "Corticoterapia na sepse refratária a vasopressores",
     ],
     materialsCount: 2,
-    progressPercent: 20,
-    lastWatchedAt: "Hoje às 09:15",
-    isCompleted: false,
   },
   {
     id: "aula-4",
@@ -106,8 +95,6 @@ const SAMPLE_VIDEO_LESSONS: VideoLesson[] = [
       "Sinais de peritonite e evisceração",
     ],
     materialsCount: 3,
-    progressPercent: 0,
-    isCompleted: false,
   },
   {
     id: "aula-5",
@@ -123,9 +110,6 @@ const SAMPLE_VIDEO_LESSONS: VideoLesson[] = [
       "Não prescrever broncodilatadores de rotina na bronquiolite viral",
     ],
     materialsCount: 3,
-    progressPercent: 85,
-    lastWatchedAt: "Há 3 dias",
-    isCompleted: false,
   },
   {
     id: "aula-6",
@@ -141,9 +125,6 @@ const SAMPLE_VIDEO_LESSONS: VideoLesson[] = [
       "Notificação compulsória imediata vs semanal (SINAN)",
     ],
     materialsCount: 5,
-    progressPercent: 100,
-    lastWatchedAt: "Há 4 dias",
-    isCompleted: true,
   },
   {
     id: "aula-7",
@@ -159,8 +140,6 @@ const SAMPLE_VIDEO_LESSONS: VideoLesson[] = [
       "Antibioticoprofilaxia com ceftriaxona na cirrose",
     ],
     materialsCount: 2,
-    progressPercent: 0,
-    isCompleted: false,
   },
   {
     id: "aula-8",
@@ -176,10 +155,16 @@ const SAMPLE_VIDEO_LESSONS: VideoLesson[] = [
       "Conduta no LIE-AG: encaminhamento imediato para colposcopia",
     ],
     materialsCount: 4,
-    progressPercent: 40,
-    lastWatchedAt: "Hoje às 11:00",
-    isCompleted: false,
   },
+];
+
+const AREA_FILTERS = [
+  { id: "ALL", label: "Todas as Áreas", areaKey: "todas" },
+  { id: "CLINICA_MEDICA", label: "Clínica Médica", areaKey: "clinica-medica" },
+  { id: "CIRURGIA_GERAL", label: "Cirurgia Geral", areaKey: "cirurgia-geral" },
+  { id: "PEDIATRIA", label: "Pediatria", areaKey: "pediatria" },
+  { id: "GINECOLOGIA_OBSTETRICIA", label: "Ginecologia e Obstetrícia", areaKey: "ginecologia-obstetricia" },
+  { id: "MEDICINA_FAMILIA_COMUNIDADE", label: "Medicina Preventiva e Saúde Coletiva", areaKey: "medicina-preventiva" },
 ];
 
 export const VideoLessonsCatalogView: React.FC = () => {
@@ -187,7 +172,6 @@ export const VideoLessonsCatalogView: React.FC = () => {
   const [selectedArea, setSelectedArea] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [activeLesson, setActiveLesson] = useState<VideoLesson | null>(null);
-  const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
   // Filter lessons
   const filteredLessons = useMemo(() => {
@@ -208,101 +192,76 @@ export const VideoLessonsCatalogView: React.FC = () => {
     });
   }, [selectedArea, searchQuery]);
 
-  // Lessons currently in progress (for "Continuar assistindo")
-  const inProgressLessons = useMemo(() => {
-    return SAMPLE_VIDEO_LESSONS.filter(
-      (l) => l.progressPercent > 0 && l.progressPercent < 100
-    );
-  }, []);
-
-  const totalWatchMinutes = SAMPLE_VIDEO_LESSONS.reduce(
-    (acc, l) => acc + (l.durationMinutes * l.progressPercent) / 100,
-    0
-  );
-  const completedCount = SAMPLE_VIDEO_LESSONS.filter((l) => l.isCompleted).length;
-
+  // View: LESSON_PREVIEW / DETALHE DA AULA
   if (activeLesson) {
+    const areaTheme = getAreaVisualTheme(activeLesson.area);
+
     return (
-      <div className="space-y-6 pb-20 max-w-7xl mx-auto">
-        {/* Back Button */}
-        <button
-          onClick={() => {
-            setActiveLesson(null);
-            setIsPlaying(false);
-          }}
-          className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
-        >
-          ← Voltar para o Catálogo de Aulas
-        </button>
+      <div className="space-y-6 pb-20 max-w-5xl mx-auto">
+        {/* Top Back Navigation */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setActiveLesson(null)}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
+            <span>Voltar para o Catálogo de Aulas</span>
+          </button>
+        </div>
 
-        {/* Video Player Stage */}
-        <div className="bg-zinc-950 border border-zinc-800 rounded-3xl overflow-hidden shadow-2xl">
-          {/* Simulated Video Player Screen */}
-          <div className="aspect-video w-full bg-gradient-to-br from-zinc-900 via-black to-zinc-950 relative flex items-center justify-center border-b border-zinc-800">
-            {!isPlaying ? (
-              <div className="text-center p-6 space-y-4 max-w-md">
-                <div className="w-16 h-16 rounded-full bg-teal-600 hover:bg-teal-500 text-white flex items-center justify-center mx-auto shadow-2xl shadow-teal-500/40 cursor-pointer hover:scale-110 transition-transform"
-                  onClick={() => setIsPlaying(true)}
-                >
-                  <Play className="w-7 h-7 fill-current ml-1" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-white">{activeLesson.title}</h3>
-                  <p className="text-xs text-zinc-400 mt-1">{activeLesson.instructor} • {activeLesson.durationMinutes} min</p>
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-400 text-xs font-medium">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Resolução orientada a casos clínicos do Revalida</span>
-                </div>
-              </div>
-            ) : (
-              <div className="w-full h-full flex flex-col justify-between p-6 bg-zinc-950 relative">
-                {/* Playing simulation overlay */}
-                <div className="flex items-center justify-between text-xs text-zinc-400">
-                  <span className="font-semibold text-white">{activeLesson.title}</span>
-                  <span className="px-2 py-0.5 rounded bg-rose-600 text-white font-bold text-[10px] animate-pulse">REPRODUZINDO</span>
-                </div>
-                
-                <div className="text-center space-y-2">
-                  <div className="w-14 h-14 rounded-full bg-teal-500/20 text-teal-400 flex items-center justify-center mx-auto border border-teal-500/30">
-                    <Tv className="w-6 h-6 animate-pulse" />
-                  </div>
-                  <p className="text-sm font-semibold text-white">Videoaula em reprodução contínua HD</p>
-                  <p className="text-xs text-zinc-400">{activeLesson.instructor}</p>
-                </div>
+        {/* Video Preview Stage */}
+        <div className="bg-gradient-to-br from-[#0B192C] via-[#10243E] to-[#0A1A2F] text-white border border-[#1B355A] rounded-3xl overflow-hidden shadow-md">
+          <div className="aspect-video w-full relative flex flex-col justify-between p-6 sm:p-8 bg-black/40 border-b border-white/10">
+            <div className="flex items-center justify-between">
+              <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold ${areaTheme.badgeBg} ${areaTheme.badgeText} ${areaTheme.badgeBorder}`}>
+                {areaTheme.name}
+              </span>
+              <span className="text-xs text-slate-300 flex items-center gap-1 font-mono">
+                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                <span>{activeLesson.durationMinutes} min</span>
+              </span>
+            </div>
 
-                {/* Progress bar */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                    <span>14:20</span>
-                    <span>{activeLesson.durationMinutes}:00</span>
-                  </div>
-                  <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
-                    <div className="h-full bg-teal-500 w-[35%]" />
-                  </div>
-                </div>
+            <div className="text-center space-y-3 max-w-lg mx-auto my-auto">
+              <div className="w-16 h-16 rounded-full bg-teal-500 text-slate-950 flex items-center justify-center mx-auto shadow-lg shadow-teal-500/30">
+                <Play className="w-7 h-7 fill-current ml-1" />
               </div>
-            )}
+              <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
+                {activeLesson.title}
+              </h2>
+              <p className="text-xs text-slate-300">
+                {activeLesson.instructor} • {activeLesson.theme}
+              </p>
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-teal-300 text-xs font-medium">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Preview teórico-prático orientado ao Revalida INEP</span>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-400 border-t border-white/10 pt-3">
+              <span>Módulo Audiovisual StaziaMed</span>
+              <span>Padrão SUS / Diretrizes Oficiais</span>
+            </div>
           </div>
 
-          {/* Lesson Metadata & Clinical Pearls */}
-          <div className="p-6 sm:p-8 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-800/80 pb-6">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-md text-[11px] font-bold bg-teal-500/10 text-teal-300 border border-teal-500/20">
-                    {formatMedicalArea(activeLesson.area)}
-                  </span>
-                  <span className="text-xs text-zinc-400">• {activeLesson.theme}</span>
+          {/* Lesson Content Body */}
+          <div className="p-6 sm:p-8 space-y-6 bg-white text-slate-900">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200/80 pb-6">
+              <div className="space-y-1">
+                <div className="text-xs text-slate-500">
+                  Área: <strong className="text-slate-800">{areaTheme.name}</strong> • Tema: <strong className="text-slate-800">{activeLesson.theme}</strong>
                 </div>
-                <h1 className="text-xl sm:text-2xl font-bold text-white">{activeLesson.title}</h1>
-                <p className="text-xs text-zinc-400">Ministrado por: <strong className="text-zinc-200">{activeLesson.instructor}</strong></p>
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900">{activeLesson.title}</h1>
+                <p className="text-xs text-slate-500 flex items-center gap-1.5 pt-0.5">
+                  <GraduationCap className="w-3.5 h-3.5 text-teal-600" />
+                  <span>Ministrado por: <strong className="text-slate-700">{activeLesson.instructor}</strong></span>
+                </p>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   onClick={() => setActiveTab("praticar-questoes")}
-                  className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
                 >
                   <FileText className="w-4 h-4" />
                   <span>Treinar Questões Deste Tema</span>
@@ -310,57 +269,61 @@ export const VideoLessonsCatalogView: React.FC = () => {
               </div>
             </div>
 
-            {/* Summary & Core Pearls */}
+            {/* Summary & Key Points */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-4">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-teal-400" />
-                  Resumo & Fisiopatologia
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                  <BookOpen className="w-4 h-4 text-teal-600" />
+                  <span>Resumo & Racionalidade Clínica</span>
                 </h3>
-                <p className="text-sm text-zinc-300 leading-relaxed bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4">
+                <p className="text-xs sm:text-sm text-slate-700 leading-relaxed bg-slate-50 border border-slate-200/80 rounded-2xl p-4.5">
                   {activeLesson.summary}
                 </p>
 
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 pt-2">
-                  <Flame className="w-4 h-4 text-amber-400" />
-                  Pontos-Chave Mais Cobrados no Revalida
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2 pt-2">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <span>Pontos-Chave Mais Cobrados no Revalida</span>
                 </h3>
                 <div className="space-y-2">
                   {activeLesson.keyPoints.map((point, idx) => (
-                    <div key={idx} className="flex items-start gap-3 p-3 rounded-xl bg-zinc-900/40 border border-zinc-800/80 text-xs text-zinc-200">
-                      <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0 mt-0.5" />
+                    <div
+                      key={idx}
+                      className="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200/80 text-xs text-slate-700"
+                    >
+                      <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
                       <span>{point}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
+              {/* Complementary Materials */}
               <div className="space-y-4">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <Download className="w-4 h-4 text-blue-400" />
-                  Materiais Complementares
+                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+                  <Download className="w-4 h-4 text-blue-600" />
+                  <span>Materiais Complementares</span>
                 </h3>
                 <div className="space-y-2">
-                  <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 text-zinc-300">
-                      <FileText className="w-4 h-4 text-blue-400" />
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <FileText className="w-4 h-4 text-blue-600" />
                       <span>Slides da Aula (PDF)</span>
                     </div>
-                    <span className="text-[10px] text-teal-400 font-semibold cursor-pointer hover:underline">Baixar</span>
+                    <span className="text-[11px] text-teal-700 font-semibold cursor-pointer hover:underline">Disponível</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 text-zinc-300">
-                      <Volume2 className="w-4 h-4 text-purple-400" />
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <Volume2 className="w-4 h-4 text-purple-600" />
                       <span>Áudio Flashcast (MP3)</span>
                     </div>
-                    <span className="text-[10px] text-teal-400 font-semibold cursor-pointer hover:underline">Ouvir</span>
+                    <span className="text-[11px] text-teal-700 font-semibold cursor-pointer hover:underline">Disponível</span>
                   </div>
-                  <div className="p-3 rounded-xl bg-zinc-900/60 border border-zinc-800 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 text-zinc-300">
-                      <BookOpen className="w-4 h-4 text-emerald-400" />
-                      <span>Diretriz SUS / PCDT 2026</span>
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-slate-700">
+                      <BookOpen className="w-4 h-4 text-emerald-600" />
+                      <span>Diretriz SUS / PCDT</span>
                     </div>
-                    <span className="text-[10px] text-teal-400 font-semibold cursor-pointer hover:underline">Ver</span>
+                    <span className="text-[11px] text-teal-700 font-semibold cursor-pointer hover:underline">Disponível</span>
                   </div>
                 </div>
               </div>
@@ -371,184 +334,145 @@ export const VideoLessonsCatalogView: React.FC = () => {
     );
   }
 
+  // View: CATÁLOGO DE AULAS
   return (
     <div className="space-y-6 pb-20 max-w-7xl mx-auto">
-      {/* Top Banner Header */}
-      <div className="bg-gradient-to-br from-[#0c1322] via-[#0f1a2e] to-[#0c1524] border border-teal-500/20 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-xl">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* 1. COMPACT HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 pb-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2.5">
+            <span className="w-2.5 h-2.5 rounded-full bg-teal-500 shadow-xs shadow-teal-500/50" />
+            <span>Aulas Teórico-Práticas</span>
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Conteúdo audiovisual complementar para aprofundamento nos temas essenciais do Revalida INEP.
+          </p>
+        </div>
 
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-teal-500/10 text-teal-300 border border-teal-500/20">
-              <Tv className="w-3.5 h-3.5" />
-              <span>Catálogo Oficial de Videoaulas</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-              Aulas Teórico-Práticas
-            </h1>
-            <p className="text-zinc-300 text-sm max-w-2xl leading-relaxed">
-              Videoaulas de alta densidade clínica ministradas por especialistas, focadas nos temas de maior incidência no Revalida INEP e baseadas nas condutas oficiais do SUS.
-            </p>
-          </div>
-
-          {/* Metrics summary */}
-          <div className="grid grid-cols-2 gap-3 bg-zinc-950/80 border border-zinc-800 rounded-2xl p-4 shrink-0">
-            <div className="text-center px-2">
-              <div className="text-xl font-bold text-teal-400">{completedCount}/{SAMPLE_VIDEO_LESSONS.length}</div>
-              <div className="text-[11px] text-zinc-400">Aulas Concluídas</div>
-            </div>
-            <div className="text-center border-l border-zinc-800 px-2">
-              <div className="text-xl font-bold text-amber-400">{Math.round(totalWatchMinutes)} min</div>
-              <div className="text-[11px] text-zinc-400">Tempo Assistido</div>
-            </div>
-          </div>
+        <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 bg-white border border-slate-200/80 px-3.5 py-1.5 rounded-xl shadow-2xs self-start sm:self-auto">
+          <span className="text-teal-700 font-bold">{SAMPLE_VIDEO_LESSONS.length}</span>
+          <span>Aulas</span>
+          <span className="text-slate-300">•</span>
+          <span className="text-slate-700 font-bold">5</span>
+          <span>Áreas</span>
         </div>
       </div>
 
-      {/* Continuar Assistindo Section */}
-      {inProgressLessons.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Clock className="w-4 h-4 text-teal-400" />
-              Continuar Assistindo
-            </h2>
-            <span className="text-xs text-zinc-400">{inProgressLessons.length} em andamento</span>
-          </div>
+      {/* 2. 5 MEDICAL AREA FILTER PILLS */}
+      <div className="flex items-center gap-1.5 bg-slate-100/90 border border-slate-200/80 p-1 rounded-2xl overflow-x-auto">
+        {AREA_FILTERS.map((f) => {
+          const isSelected = selectedArea === f.id;
+          const areaTheme = getAreaVisualTheme(f.areaKey);
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {inProgressLessons.map((lesson) => (
-              <div
-                key={lesson.id}
-                onClick={() => setActiveLesson(lesson)}
-                className="p-4 rounded-2xl bg-[#0c111c] border border-teal-500/30 hover:border-teal-500/60 transition-all cursor-pointer group shadow-lg space-y-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-teal-500/20 text-teal-300">
-                      {formatMedicalArea(lesson.area)}
-                    </span>
-                    <h3 className="text-xs font-bold text-white group-hover:text-teal-300 transition-colors line-clamp-1">
-                      {lesson.title}
-                    </h3>
-                  </div>
-                  <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
-                    <Play className="w-4 h-4 fill-current ml-0.5" />
-                  </div>
-                </div>
+          return (
+            <button
+              key={f.id}
+              onClick={() => setSelectedArea(f.id)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+                isSelected
+                  ? f.id === "ALL"
+                    ? "bg-teal-600 text-white font-bold shadow-xs"
+                    : `${areaTheme.activePillBg} text-white font-bold shadow-xs`
+                  : "text-slate-600 hover:text-slate-900 hover:bg-white"
+              }`}
+            >
+              {f.id === "ALL" && <Layers className="w-3.5 h-3.5" />}
+              <span>{f.label}</span>
+            </button>
+          );
+        })}
+      </div>
 
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between text-[11px] text-zinc-400">
-                    <span>{lesson.lastWatchedAt || "Em andamento"}</span>
-                    <span className="font-semibold text-teal-300">{lesson.progressPercent}%</span>
-                  </div>
-                  <div className="w-full h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-                    <div
-                      className="h-full bg-teal-500 rounded-full transition-all duration-300"
-                      style={{ width: `${lesson.progressPercent}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Filter & Search Bar */}
-      <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Search */}
+      {/* 3. SEARCH BAR */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-3.5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             placeholder="Buscar aula por título, professor, tema ou conduta..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-teal-500 transition"
+            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-teal-500 transition shadow-inner"
           />
-        </div>
-
-        {/* Medical Area Filter */}
-        <div className="flex flex-wrap items-center gap-2">
-          {[
-            { id: "ALL", label: "Todas as Áreas" },
-            { id: "CLINICA_MEDICA", label: "Clínica Médica" },
-            { id: "CIRURGIA_GERAL", label: "Cirurgia Geral" },
-            { id: "GINECOLOGIA_OBSTETRICIA", label: "Ginecologia e Obstetrícia" },
-            { id: "PEDIATRIA", label: "Pediatria" },
-            { id: "MEDICINA_FAMILIA_COMUNIDADE", label: "Medicina de Família / SUS" },
-          ].map((area) => (
-            <button
-              key={area.id}
-              onClick={() => setSelectedArea(area.id)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
-                selectedArea === area.id
-                  ? "bg-teal-600 text-white"
-                  : "bg-zinc-950 text-zinc-400 hover:text-white border border-zinc-800"
-              }`}
-            >
-              {area.label}
-            </button>
-          ))}
         </div>
       </div>
 
-      {/* Video Lessons Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredLessons.map((lesson) => {
-          const isDone = lesson.isCompleted || lesson.progressPercent === 100;
-          return (
-            <div
-              key={lesson.id}
-              onClick={() => setActiveLesson(lesson)}
-              className="p-5 rounded-3xl bg-zinc-900/80 border border-zinc-800 hover:border-teal-500/50 transition-all cursor-pointer group shadow-md flex flex-col justify-between space-y-4"
+      {/* 4. LESSONS GRID */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between text-xs text-slate-500 px-1">
+          <div>
+            Exibindo <strong>{filteredLessons.length}</strong> de {SAMPLE_VIDEO_LESSONS.length} Aulas
+          </div>
+        </div>
+
+        {filteredLessons.length === 0 ? (
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-10 text-center space-y-3 shadow-xs">
+            <Tv className="w-8 h-8 text-slate-400 mx-auto" />
+            <div className="text-slate-800 font-bold text-sm">Nenhuma aula encontrada</div>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              Tente ajustar os termos da busca ou selecionar outra grande área médica.
+            </p>
+            <button
+              onClick={() => {
+                setSelectedArea("ALL");
+                setSearchQuery("");
+              }}
+              className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition cursor-pointer"
             >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-lg bg-white/[0.06] text-zinc-300 border border-white/10">
-                    {formatMedicalArea(lesson.area)}
-                  </span>
-                  <div className="flex items-center gap-1.5 text-xs text-zinc-400 font-mono">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>{lesson.durationMinutes} min</span>
+              Limpar Filtros
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {filteredLessons.map((lesson) => {
+              const areaTheme = getAreaVisualTheme(lesson.area);
+
+              return (
+                <div
+                  key={lesson.id}
+                  onClick={() => setActiveLesson(lesson)}
+                  className={`bg-white hover:bg-slate-50/80 border border-slate-200/80 ${areaTheme.borderLeft} border-l-[3.5px] rounded-2xl p-4.5 cursor-pointer transition flex flex-col justify-between group shadow-2xs hover:shadow-xs space-y-3`}
+                >
+                  <div className="space-y-2">
+                    {/* Top Row: Area Tag & Duration */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold ${areaTheme.badgeBg} ${areaTheme.badgeText} ${areaTheme.badgeBorder}`}>
+                        <span>{areaTheme.name}</span>
+                      </span>
+
+                      <span className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        <span>~{lesson.durationMinutes} min</span>
+                      </span>
+                    </div>
+
+                    {/* Lesson Title */}
+                    <h3 className="text-sm font-bold text-slate-900 group-hover:text-teal-700 transition tracking-tight line-clamp-2 leading-snug">
+                      {lesson.title}
+                    </h3>
+
+                    {/* Instructor / Theme Subtitle */}
+                    <p className="text-xs text-slate-500 line-clamp-1">
+                      {lesson.instructor} • {lesson.theme}
+                    </p>
+                  </div>
+
+                  {/* Bottom Meta & CTA */}
+                  <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      Conteúdo em vídeo
+                    </span>
+
+                    <div className="flex items-center gap-1 text-teal-700 font-bold text-xs group-hover:translate-x-0.5 transition-transform">
+                      <span>Ver aula</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </div>
                   </div>
                 </div>
-
-                <div className="space-y-1">
-                  <h3 className="text-sm font-bold text-white group-hover:text-teal-300 transition-colors leading-snug">
-                    {lesson.title}
-                  </h3>
-                  <p className="text-xs text-zinc-400 line-clamp-2">
-                    {lesson.summary}
-                  </p>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between">
-                <div className="text-[11px] text-zinc-400 truncate max-w-[180px]">
-                  {lesson.instructor}
-                </div>
-
-                {isDone ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md">
-                    <CheckCircle className="w-3.5 h-3.5" />
-                    Concluída
-                  </span>
-                ) : lesson.progressPercent > 0 ? (
-                  <span className="text-[11px] font-bold text-teal-300 bg-teal-500/10 px-2 py-0.5 rounded-md">
-                    {lesson.progressPercent}% assistido
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-zinc-400 group-hover:text-white transition-colors">
-                    <span>Assistir</span>
-                    <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
