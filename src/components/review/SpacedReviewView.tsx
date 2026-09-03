@@ -32,15 +32,9 @@ export const SpacedReviewView: React.FC = () => {
   const [isSessionFinished, setIsSessionFinished] = useState(false);
   const [selectedAreaFilter, setSelectedAreaFilter] = useState<MedicalArea | "ALL">("ALL");
 
-  // Filter due flashcards (due today or earlier, or not yet reviewed)
-  const now = new Date().toISOString();
+  // Filter due flashcards using central SpacedRepetitionService
   const dueCards = useMemo(() => {
-    return flashcards.filter((card) => {
-      if (selectedAreaFilter !== "ALL" && card.area !== selectedAreaFilter) {
-        return false;
-      }
-      return SpacedRepetitionService.isCardDue(card);
-    });
+    return SpacedRepetitionService.getDueFlashcards(flashcards, undefined, selectedAreaFilter);
   }, [flashcards, selectedAreaFilter]);
 
   // Breakdown counts
@@ -350,7 +344,7 @@ export const SpacedReviewView: React.FC = () => {
               </h3>
               <p className="text-xs text-slate-600">
                 {dueCards.length > 0
-                  ? `Tempo estimado: ~${Math.ceil(dueCards.length * 0.7)} min • Algoritmo de Repetição Espaçada Ativo`
+                  ? `Tempo estimado: ~${SpacedRepetitionService.estimateReviewTimeMinutes(dueCards.length)} min • Algoritmo de Repetição Espaçada FSRS`
                   : "Todos os seus flashcards programados estão em dia! Você pode antecipar revisões ou resolver novas questões."}
               </p>
             </div>

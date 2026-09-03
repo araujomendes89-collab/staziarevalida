@@ -221,6 +221,31 @@ export class SpacedRepetitionService {
   }
 
   /**
+   * Returns all cards due for review for the specified timestamp and optional area filter
+   */
+  static getDueFlashcards(
+    cards: Flashcard[],
+    now: Date = new Date(),
+    areaFilter: MedicalArea | "ALL" = "ALL"
+  ): Flashcard[] {
+    if (!Array.isArray(cards)) return [];
+    return cards.filter((card) => {
+      if (areaFilter !== "ALL" && card.area !== areaFilter) {
+        return false;
+      }
+      return this.isCardDue(card, now);
+    });
+  }
+
+  /**
+   * Estimates total review time in minutes based on flashcard volume
+   */
+  static estimateReviewTimeMinutes(cardCount: number): number {
+    if (cardCount <= 0) return 0;
+    return Math.ceil(cardCount * 0.7);
+  }
+
+  /**
    * Migrates legacy flashcards conservatively without fabricating past lapses/reviews
    */
   static migrateLegacyFlashcards(
