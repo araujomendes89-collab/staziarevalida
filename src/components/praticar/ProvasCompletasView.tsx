@@ -86,7 +86,12 @@ export const ProvasCompletasView: React.FC = () => {
   };
 
   const handleFinishSession = (session: ActiveTrainingSession) => {
-    const finished: ActiveTrainingSession = { ...session, status: "COMPLETED", lastUpdated: new Date().toISOString() };
+    const finished: ActiveTrainingSession = {
+      ...session,
+      isCompleted: true,
+      completedAt: new Date().toISOString(),
+      lastUpdated: new Date().toISOString(),
+    };
     setActiveSession(finished);
 
     // If authenticated, sync session to Firestore using authoritative Auth UID
@@ -100,12 +105,12 @@ export const ProvasCompletasView: React.FC = () => {
         questionIds: finished.questionIds,
         currentIndex: finished.currentIndex || 0,
         answers: finished.answers || {},
-        flaggedQuestionIds: [],
-        startTime: finished.createdAt || new Date().toISOString(),
+        flaggedQuestionIds: finished.flaggedQuestionIds || [],
+        startTime: finished.startTime || new Date().toISOString(),
         lastUpdated: finished.lastUpdated || new Date().toISOString(),
         totalDurationSeconds: finished.totalDurationSeconds || 0,
         isCompleted: true,
-        completedAt: new Date().toISOString(),
+        completedAt: finished.completedAt || new Date().toISOString(),
         paused: false,
       };
       saveSessionToFirestore(firestoreSession);
