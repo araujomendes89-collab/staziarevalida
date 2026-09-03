@@ -1,23 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   AlertOctagon,
-  RefreshCw,
   CheckCircle2,
   AlertTriangle,
   RotateCcw,
-  Sparkles,
   ArrowRight,
   Filter,
   Brain,
   Layers,
-  FileQuestion,
+  Search,
   BookOpen,
-  Edit3,
-  Check,
+  ChevronDown,
+  ChevronUp,
+  Save,
+  Clock,
+  Sparkles,
+  Stethoscope,
+  X,
+  Play,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
-import { AdaptiveEngine } from "../../services/adaptiveEngine";
-import { ErrorTaxonomy, MedicalArea } from "../../types";
+import { formatMedicalArea } from "../../utils/formatters";
+import { ErrorTaxonomy, MedicalArea, Question } from "../../types";
+import { SessionBuilderService, DEFAULT_SESSION_CONFIG } from "../../services/sessionBuilderService";
 
 const TAXONOMY_OPTIONS: { id: ErrorTaxonomy; label: string; desc: string }[] = [
   { id: "DISTRACTOR_TRAP", label: "Pegadinha / Distrator", desc: "Alternativa atraente com termo incorreto" },
@@ -34,296 +39,551 @@ export const ErrorNotebookView: React.FC = () => {
   const {
     attempts,
     questions,
+    errorAutopsies,
+    updateErrorAutopsyReflection,
     setActiveTab,
-    setActiveQuestionIndex,
-    setQuestionFilterArea,
+    setQuestionMode,
   } = useApp();
 
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState<"ALL" | "PENDING" | "REMEDIATED">("ALL");
   const [selectedAreaFilter, setSelectedAreaFilter] = useState<MedicalArea | "ALL">("ALL");
-  const [selectedTaxonomyFilter, setSelectedTaxonomyFilter] = useState<ErrorTaxonomy | "ALL">("ALL");
-  const [editingAttemptId, setEditingAttemptId] = useState<string | null>(null);
-  const [customTaxonomies, setCustomTaxonomies] = useState<Record<string, ErrorTaxonomy>>({});
-  const [flashcardCreatedSet, setFlashcardCreatedSet] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState("");
+  const [expandedAttemptId, setExpandedAttemptId] = useState<string | null>(null);
+  const [reflectionTexts, setReflectionTexts] = useState<Record<string, string>>({});
+  const [savedReflections, setSavedReflections] = useState<Set<string>>(new Set());
 
-  const { persistentErrors, returnedErrors, newErrors, byTaxonomy } =
-    AdaptiveEngine.categorizeErrors(attempts);
-
-  const wrongAttempts = attempts.filter((a) => !a.isCorrect);
-
-  const filteredWrongAttempts = wrongAttempts.filter((att) => {
-    const q = questions.find((item) => item.id === att.questionId);
-    if (!q) return false;
-    if (selectedAreaFilter !== "ALL" && q.area !== selectedAreaFilter) return false;
+  // Derive wrong attempts list with linked question
+  const wrongAttemptItems = useMemo(() => {
+    const qMap = new Map(questions.map((q) => [q.id, q]));
     
-    const effectiveTaxonomy = customTaxonomies[att.id] || att.errorTaxonomy || "DISTRACTOR_TRAP";
-    if (selectedTaxonomyFilter !== "ALL" && effectiveTaxonomy !== selectedTaxonomyFilter) return false;
+    // Sort chronologically descending (most recent first)
+    const sorted = [...attempts]
+      .filter((a) => !a.isCorrect)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-    return true;
-  });
+    return sorted
+      .map((att) => {
+        const question = qMap.get(att.questionId);
+        const autopsy = errorAutopsies?.find((ea) => ea.questionId === att.questionId || ea.id === att.id);
+        const hasLaterCorrectAttempt = attempts.some(
+          (other) =>
+            other.questionId === att.questionId &&
+            other.isCorrect &&
+            new Date(other.timestamp).getTime() > new Date(att.timestamp).getTime()
+        );
 
-  const handleUpdateTaxonomy = (attemptId: string, taxonomy: ErrorTaxonomy) => {
-    setCustomTaxonomies((prev) => ({ ...prev, [attemptId]: taxonomy }));
-    setEditingAttemptId(null);
+        return {
+          attempt: att,
+          question,
+          autopsy,
+          isRemediated: hasLaterCorrectAttempt || autopsy?.resolutionStatus === "REMEDIATED" || autopsy?.resolutionStatus === "MASTERED",
+          reflection: reflectionTexts[att.id] ?? autopsy?.userReflection ?? att.userReflection ?? "",
+        };
+      })
+      .filter((item) => Boolean(item.question));
+  }, [attempts, questions, errorAutopsies, reflectionTexts]);
+
+  // Recurrent error topics analysis
+  const recurrentTopicsMap = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const item of wrongAttemptItems) {
+      const topic = item.question?.topic || "Geral";
+      counts[topic] = (counts[topic] || 0) + 1;
+    }
+    return counts;
+  }, [wrongAttemptItems]);
+
+  // Filter items
+  const filteredItems = useMemo(() => {
+    return wrongAttemptItems.filter((item) => {
+      const q = item.question!;
+      
+      // Status filter
+      if (selectedStatusFilter === "PENDING" && item.isRemediated) return false;
+      if (selectedStatusFilter === "REMEDIATED" && !item.isRemediated) return false;
+
+      // Area filter
+      if (selectedAreaFilter !== "ALL" && q.area !== selectedAreaFilter) return false;
+
+      // Search query
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const matchesTopic = q.topic?.toLowerCase().includes(query);
+        const matchesSubtopic = q.subtopic?.toLowerCase().includes(query);
+        const matchesCase = q.clinicalCase?.toLowerCase().includes(query);
+        const matchesCode = q.code?.toLowerCase().includes(query);
+        if (!matchesTopic && !matchesSubtopic && !matchesCase && !matchesCode) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [wrongAttemptItems, selectedStatusFilter, selectedAreaFilter, searchQuery]);
+
+  // Stats
+  const totalErrors = wrongAttemptItems.length;
+  const pendingErrors = wrongAttemptItems.filter((i) => !i.isRemediated).length;
+  const remediatedErrors = wrongAttemptItems.filter((i) => i.isRemediated).length;
+  const recurrentTopicsCount = Object.values(recurrentTopicsMap).filter((c) => c >= 2).length;
+
+  // Handle Save Reflection
+  const handleSaveReflection = async (attemptId: string, questionId: string, text: string) => {
+    setReflectionTexts((prev) => ({ ...prev, [attemptId]: text }));
+    if (updateErrorAutopsyReflection) {
+      const autopsy = errorAutopsies?.find((ea) => ea.questionId === questionId);
+      if (autopsy) {
+        await updateErrorAutopsyReflection(autopsy.id, autopsy.resolutionStatus, text);
+      }
+    }
+    setSavedReflections((prev) => new Set(prev).add(attemptId));
+    setTimeout(() => {
+      setSavedReflections((prev) => {
+        const next = new Set(prev);
+        next.delete(attemptId);
+        return next;
+      });
+    }, 2500);
   };
 
-  const handleCreateFlashcard = (attemptId: string) => {
-    setFlashcardCreatedSet((prev) => new Set(prev).add(attemptId));
+  // Start Training Session with all filtered error questions
+  const handleTrainErrorQuestions = (itemsToTrain = filteredItems) => {
+    const errorQIds = Array.from(new Set(itemsToTrain.map((i) => i.attempt.questionId)));
+    if (errorQIds.length === 0) return;
+
+    const config = {
+      ...DEFAULT_SESSION_CONFIG,
+      title: "Treino de Caderno de Erros",
+      mode: "ESTUDO" as const,
+      objective: "TREINO_ERROS" as any,
+      quantity: errorQIds.length,
+      feedbackMode: "IMMEDIATE" as const,
+      timerMode: "FREE" as const,
+    };
+
+    const newSession = {
+      id: `error-session-${Date.now()}`,
+      title: config.title,
+      subtitle: `${errorQIds.length} questões do Caderno de Erros`,
+      mode: "ESTUDO" as const,
+      config,
+      questionIds: errorQIds,
+      currentIndex: 0,
+      answers: {},
+      flaggedQuestionIds: [],
+      startTime: new Date().toISOString(),
+      lastUpdated: new Date().toISOString(),
+      totalDurationSeconds: 0,
+      isCompleted: false,
+      paused: false,
+    };
+
+    SessionBuilderService.saveActiveSession(newSession);
+    setQuestionMode("EXAM");
+    setActiveTab("praticar-questoes");
+  };
+
+  // Retrain single question
+  const handleRetrainSingleQuestion = (questionId: string) => {
+    const config = {
+      ...DEFAULT_SESSION_CONFIG,
+      title: "Revisão de Questão",
+      mode: "SIMULADO" as const,
+      quantity: 1,
+      feedbackMode: "IMMEDIATE" as const,
+      timerMode: "FREE" as const,
+    };
+
+    const newSession = {
+      id: `single-retrain-${Date.now()}`,
+      title: "Revisão de Questão",
+      subtitle: "1 questão para fixação",
+      mode: "SIMULADO" as const,
+      config,
+      questionIds: [questionId],
+      currentIndex: 0,
+      answers: {},
+      flaggedQuestionIds: [],
+      startTime: new Date().toISOString(),
+      lastUpdated: new Date().toISOString(),
+      totalDurationSeconds: 0,
+      isCompleted: false,
+      paused: false,
+    };
+
+    SessionBuilderService.saveActiveSession(newSession);
+    setQuestionMode("EXAM");
+    setActiveTab("praticar-questoes");
   };
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-20">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 sm:p-7 rounded-3xl bg-[#0e1322] border border-slate-800 shadow-xl">
+      {/* 1. CABEÇALHO COMPACTO */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs">
         <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <AlertOctagon className="w-5 h-5 text-amber-400" />
-            <span className="text-[10px] font-bold text-amber-300 uppercase tracking-widest bg-amber-500/20 px-2.5 py-0.5 rounded-full border border-amber-500/40">
-              Caderno de Erros & Autópsia Clínica
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-rose-700 bg-rose-50 px-2 py-0.5 rounded-md">
+              Revisão Ativa
+            </span>
+            <span className="text-xs text-slate-400">
+              {totalErrors} {totalErrors === 1 ? "erro registrado" : "erros registrados"}
             </span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-            Autópsia do Raciocínio & Diagnóstico de Lacunas
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-xl leading-relaxed">
-            Identifique se o erro ocorreu por lacuna teórica, distrator da banca ou desatenção, e execute a ação corretiva imediata.
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mt-1">
+            Caderno de Erros
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Revise os pontos que mais estão custando questões e elimine lacunas clínicas.
           </p>
         </div>
 
-        <button
-          onClick={() => setActiveTab("review")}
-          id="error-notebook-flashcards-btn"
-          className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white text-slate-900 font-bold text-xs hover:bg-slate-100 hover:scale-[1.02] transition-all active:scale-95 shadow-lg shrink-0 cursor-pointer"
-        >
-          <RotateCcw className="w-4 h-4 text-indigo-600" />
-          <span>REVISAR FLASHCARDS DE ERROS</span>
-        </button>
+        {pendingErrors > 0 && (
+          <button
+            type="button"
+            onClick={() => handleTrainErrorQuestions()}
+            className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-xs transition-all hover:scale-[1.02] cursor-pointer shrink-0"
+          >
+            <Play className="w-4 h-4 fill-current" />
+            <span>TREINAR {pendingErrors} ERROS PENDENTES</span>
+          </button>
+        )}
       </div>
 
-      {/* 4 Diagnostic Counters */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-        <div className="p-5 rounded-2xl bg-[#141220] border border-red-500/30 shadow-md">
-          <span className="text-xs font-bold text-red-400 block mb-1">
-            Erros Persistentes
+      {/* 2. RESUMO SUPERIOR (3 Indicadores Úteis) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Para Revisar
+            </span>
+            <span className="w-2 h-2 rounded-full bg-rose-500" />
+          </div>
+          <span className="text-2xl sm:text-3xl font-black text-slate-900 font-mono block">
+            {pendingErrors}
           </span>
-          <span className="text-3xl font-black text-white">
-            {persistentErrors.length}
-          </span>
-          <p className="text-xs text-slate-400 mt-1">
-            Reincidentes em ≥2 sessões
+          <p className="text-xs text-slate-400">
+            Erros ainda não superados em novos testes
           </p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#0e1b1f] border border-emerald-500/30 shadow-md">
-          <span className="text-xs font-bold text-emerald-400 block mb-1">
-            Erros Consolidados
+        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Temas Recorrentes
+            </span>
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
+          </div>
+          <span className="text-2xl sm:text-3xl font-black text-slate-900 font-mono block">
+            {recurrentTopicsCount}
           </span>
-          <span className="text-3xl font-black text-white">
-            {attempts.filter((a) => a.isCorrect).length}
-          </span>
-          <p className="text-xs text-slate-400 mt-1">
-            Superados em retestes
+          <p className="text-xs text-slate-400">
+            Temas com 2 ou mais erros no histórico
           </p>
         </div>
 
-        <div className="p-5 rounded-2xl bg-[#1b1712] border border-amber-500/30 shadow-md">
-          <span className="text-xs font-bold text-amber-400 block mb-1">
-            Erros de Retenção
+        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              Questões Superadas
+            </span>
+            <span className="w-2 h-2 rounded-full bg-teal-500" />
+          </div>
+          <span className="text-2xl sm:text-3xl font-black text-slate-900 font-mono block">
+            {remediatedErrors}
           </span>
-          <span className="text-3xl font-black text-white">
-            {returnedErrors.length}
-          </span>
-          <p className="text-xs text-slate-400 mt-1">
-            Curva de esquecimento ativa
-          </p>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-[#121626] border border-indigo-500/30 shadow-md">
-          <span className="text-xs font-bold text-indigo-400 block mb-1">
-            Novos Erros
-          </span>
-          <span className="text-3xl font-black text-white">
-            {newErrors.length}
-          </span>
-          <p className="text-xs text-slate-400 mt-1">
-            Últimas sessões de treino
+          <p className="text-xs text-slate-400">
+            Acertadas em tentativas subsequentes
           </p>
         </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="p-4 rounded-2xl bg-[#0e1322] border border-slate-800 flex flex-wrap items-center justify-between gap-3 shadow-md">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-slate-400 font-bold uppercase tracking-wider mr-1">
-            Área:
-          </span>
-          {(["ALL", "CLINICA_MEDICA", "CIRURGIA_GERAL", "GINECOLOGIA_OBSTETRICIA", "PEDIATRIA", "MEDICINA_FAMILIA_COMUNIDADE"] as const).map((area) => {
-            const labels: Record<string, string> = {
-              ALL: "Todas as Áreas",
-              CLINICA_MEDICA: "Clínica",
-              CIRURGIA_GERAL: "Cirurgia",
-              GINECOLOGIA_OBSTETRICIA: "G.O.",
-              PEDIATRIA: "Pediatria",
-              MEDICINA_FAMILIA_COMUNIDADE: "SUS / Preventiva",
-            };
-            return (
+      {/* 3. FILTROS & BUSCA */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200/80 shadow-xs space-y-3">
+        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+          {/* Status Tabs */}
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl shrink-0">
+            {[
+              { id: "ALL" as const, label: `Todos (${totalErrors})` },
+              { id: "PENDING" as const, label: `Para Revisar (${pendingErrors})` },
+              { id: "REMEDIATED" as const, label: `Superados (${remediatedErrors})` },
+            ].map((tab) => (
               <button
-                key={area}
-                onClick={() => setSelectedAreaFilter(area)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                  selectedAreaFilter === area
-                    ? "bg-white text-slate-900 shadow-md font-bold"
-                    : "bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 border border-slate-700"
+                key={tab.id}
+                type="button"
+                onClick={() => setSelectedStatusFilter(tab.id)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  selectedStatusFilter === tab.id
+                    ? "bg-white text-slate-900 shadow-2xs"
+                    : "text-slate-500 hover:text-slate-800"
                 }`}
               >
-                {labels[area]}
+                {tab.label}
               </button>
-            );
-          })}
+            ))}
+          </div>
+
+          {/* Search Input */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Buscar por tema, subtema ou enunciado..."
+              className="w-full pl-9 pr-8 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
-        <div className="text-xs text-slate-400">
-          Mostrando <strong className="text-white">{filteredWrongAttempts.length}</strong> erros registrados
+        {/* Area Filter Chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 border-t border-slate-100">
+          <span className="text-[11px] font-bold text-slate-400 uppercase mr-1 shrink-0">
+            Área:
+          </span>
+          {[
+            { id: "ALL" as const, label: "Todas" },
+            { id: "CLINICA_MEDICA" as const, label: "Clínica Médica" },
+            { id: "CIRURGIA_GERAL" as const, label: "Cirurgia Geral" },
+            { id: "PEDIATRIA" as const, label: "Pediatria" },
+            { id: "GINECOLOGIA_OBSTETRICIA" as const, label: "Ginecologia & Obstetrícia" },
+            { id: "MEDICINA_FAMILIA_COMUNIDADE" as const, label: "Preventiva / SUS" },
+          ].map((area) => (
+            <button
+              key={area.id}
+              type="button"
+              onClick={() => setSelectedAreaFilter(area.id)}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                selectedAreaFilter === area.id
+                  ? "bg-slate-900 text-white font-bold shadow-2xs"
+                  : "bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              {area.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Actionable Error Cards List */}
-      <div className="space-y-4">
-        {filteredWrongAttempts.length === 0 ? (
-          <div className="p-12 text-center rounded-3xl bg-[#0e1322] border border-slate-800 shadow-md">
-            <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2" />
-            <p className="text-sm font-bold text-white">Nenhum erro encontrado para estes filtros</p>
-            <p className="text-xs text-slate-400 mt-1">Selecione outra área ou continue resolvendo questões.</p>
+      {/* 4. LISTA DE ERROS / ESTADO VAZIO */}
+      {filteredItems.length === 0 ? (
+        <div className="p-12 text-center bg-white rounded-3xl border border-slate-200/80 shadow-xs space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-teal-50 text-teal-600 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-6 h-6" />
           </div>
-        ) : (
-          filteredWrongAttempts.map((att) => {
-            const q = questions.find((item) => item.id === att.questionId);
-            if (!q) return null;
+          <div>
+            <h3 className="text-base font-bold text-slate-900">
+              {totalErrors === 0
+                ? "Nenhuma questão no seu Caderno de Erros"
+                : "Nenhum erro encontrado com os filtros selecionados"}
+            </h3>
+            <p className="text-xs text-slate-500 max-w-md mx-auto mt-1">
+              {totalErrors === 0
+                ? "Continue praticando! Conforme você responder simulados e treinos, os pontos que merecem revisão aparecerão organizados aqui."
+                : "Tente redefinir a busca ou selecionar outra área médica."}
+            </p>
+          </div>
 
-            const effectiveTaxonomy = customTaxonomies[att.id] || att.errorTaxonomy || "DISTRACTOR_TRAP";
-            const currentTaxonomyObj = TAXONOMY_OPTIONS.find((t) => t.id === effectiveTaxonomy) || TAXONOMY_OPTIONS[0];
-            const isFlashcardCreated = flashcardCreatedSet.has(att.id);
+          <button
+            type="button"
+            onClick={() => setActiveTab("praticar-questoes")}
+            className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-2xs transition-all cursor-pointer"
+          >
+            Resolver Questões
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredItems.map((item) => {
+            const q = item.question!;
+            const isExpanded = expandedAttemptId === item.attempt.id;
+            const topicErrors = recurrentTopicsMap[q.topic || "Geral"] || 0;
+            const isRecurrent = topicErrors >= 2;
+            const isSaved = savedReflections.has(item.attempt.id);
+            const correctOption = q.options?.find((o) => o.isCorrect);
 
             return (
               <div
-                key={att.id}
-                className="p-6 rounded-3xl bg-[#0f1424] border border-slate-800 hover:border-slate-700 transition-all space-y-4 shadow-lg"
+                key={item.attempt.id}
+                className="rounded-2xl border border-slate-200/90 bg-white hover:border-slate-300 shadow-xs transition-all overflow-hidden"
               >
-                {/* Header Row */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-bold text-white px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700">
-                      {q.code}
-                    </span>
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                      {q.area.replace("_", " ")}
-                    </span>
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-red-500/20 text-red-300 border border-red-500/30">
-                      Marcou {att.selectedOption} (Gabarito: {q.correctAnswer || (q as any).correctOption || "A"})
-                    </span>
+                {/* Compact Card Header */}
+                <div
+                  onClick={() =>
+                    setExpandedAttemptId(isExpanded ? null : item.attempt.id)
+                  }
+                  className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none"
+                >
+                  <div className="space-y-1.5 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200">
+                        {q.code || `Q${q.originalNumber || 1}`}
+                      </span>
+
+                      <span className="text-xs font-semibold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md">
+                        {formatMedicalArea(q.area)}
+                      </span>
+
+                      {isRecurrent && (
+                        <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded-md">
+                          ⚠️ {topicErrors} erros neste tema
+                        </span>
+                      )}
+
+                      {item.isRemediated && (
+                        <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-md">
+                          ✓ Superado
+                        </span>
+                      )}
+                    </div>
+
+                    <h4 className="text-sm font-bold text-slate-900 tracking-tight">
+                      {q.topic} {q.subtopic ? `• ${q.subtopic}` : ""}
+                    </h4>
+
+                    <p className="text-xs text-slate-500 line-clamp-1">
+                      {q.clinicalCase}
+                    </p>
                   </div>
 
-                  {/* Taxonomy Badge with Reclassify Option */}
-                  <div className="relative">
-                    {editingAttemptId === att.id ? (
-                      <div className="flex flex-wrap items-center gap-1.5 p-2 rounded-xl bg-slate-900 border border-slate-700 z-20">
-                        {TAXONOMY_OPTIONS.map((opt) => (
-                          <button
-                            key={opt.id}
-                            onClick={() => handleUpdateTaxonomy(att.id, opt.id)}
-                            className="px-2 py-1 rounded-lg text-[10px] font-bold bg-slate-800 hover:bg-slate-700 text-white transition-all"
-                          >
-                            {opt.label}
-                          </button>
-                        ))}
-                      </div>
+                  <div className="flex items-center gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                    <div className="text-right">
+                      <span className="text-xs text-rose-700 font-bold block">
+                        Marcou {item.attempt.selectedOption}
+                      </span>
+                      <span className="text-[11px] text-teal-700 font-semibold block">
+                        Gabarito: {q.correctAnswer || correctOption?.id || "-"}
+                      </span>
+                    </div>
+
+                    {isExpanded ? (
+                      <ChevronUp className="w-4 h-4 text-slate-400" />
                     ) : (
-                      <button
-                        onClick={() => setEditingAttemptId(att.id)}
-                        className="flex items-center gap-1.5 text-xs font-bold text-amber-300 bg-amber-500/20 border border-amber-500/40 px-3 py-1 rounded-full hover:bg-amber-500/30 transition-all"
-                        title="Clique para corrigir a classificação do erro"
-                      >
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Causa: {currentTaxonomyObj.label}</span>
-                        <Edit3 className="w-3 h-3 text-amber-400 ml-0.5" />
-                      </button>
+                      <ChevronDown className="w-4 h-4 text-slate-400" />
                     )}
                   </div>
                 </div>
 
-                {/* Question Vignette / Finding */}
-                <div>
-                  <p className="text-xs sm:text-sm font-medium text-slate-100 leading-relaxed">
-                    {q.clinicalCase || (q as any).statement}
-                  </p>
-                </div>
+                {/* Expanded Details */}
+                {isExpanded && (
+                  <div className="p-5 bg-slate-50/70 border-t border-slate-200/80 space-y-4 text-xs">
+                    {/* Caso Clínico Completo */}
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block">
+                        Caso Clínico Integral
+                      </span>
+                      <p className="text-slate-800 leading-relaxed whitespace-pre-wrap">
+                        {q.clinicalCase}
+                      </p>
+                    </div>
 
-                {/* Distractor & Conduct Rationale */}
-                <div className="p-4 rounded-2xl bg-[#080d1a] border border-slate-800/80 space-y-2 text-xs">
-                  <div className="flex items-center gap-1.5 font-bold text-emerald-400">
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>Conduta Padrão-Ouro INEP:</span>
+                    {/* Resposta Marcada vs Gabarito Oficial */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      <div className="p-3 rounded-xl bg-rose-50 border border-rose-200/80">
+                        <span className="text-[10px] font-bold text-rose-800 uppercase block">
+                          Sua Resposta Registrada
+                        </span>
+                        <span className="text-sm font-bold text-rose-900 mt-0.5 block">
+                          Alternativa {item.attempt.selectedOption} (Incorreta)
+                        </span>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-teal-50 border border-teal-200/80">
+                        <span className="text-[10px] font-bold text-teal-800 uppercase block">
+                          Gabarito Oficial (INEP)
+                        </span>
+                        <span className="text-sm font-bold text-teal-900 mt-0.5 block">
+                          Alternativa {q.correctAnswer || correctOption?.id || "-"}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Comentário Editorial StaziaMed */}
+                    {correctOption?.explanation && (
+                      <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-1">
+                        <span className="text-[10px] font-bold text-slate-700 uppercase tracking-wider block">
+                          Comentário Editorial StaziaMed
+                        </span>
+                        <p className="text-slate-700 leading-relaxed">
+                          {correctOption.explanation}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Reflexão do Aluno: POR QUE EU ERREI? */}
+                    <div className="p-4 rounded-xl bg-white border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-slate-800 uppercase tracking-wider block">
+                          Por que eu errei esta questão? (Reflexão Pessoal)
+                        </label>
+                        {isSaved && (
+                          <span className="text-[10px] font-bold text-teal-700 bg-teal-50 px-2 py-0.5 rounded-md">
+                            ✓ Salvo com sucesso
+                          </span>
+                        )}
+                      </div>
+
+                      <textarea
+                        rows={2}
+                        value={item.reflection}
+                        onChange={(e) =>
+                          setReflectionTexts((prev) => ({
+                            ...prev,
+                            [item.attempt.id]: e.target.value,
+                          }))
+                        }
+                        placeholder="Ex: Confundi os critérios de internação para pneumonia; não me atentei à frequência respiratória no enunciado."
+                        className="w-full p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+                      />
+
+                      <div className="flex justify-end">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleSaveReflection(
+                              item.attempt.id,
+                              q.id,
+                              item.reflection
+                            )
+                          }
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors cursor-pointer shadow-2xs"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          <span>Salvar Reflexão</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Ações do Card */}
+                    <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between">
+                      <span className="text-[11px] text-slate-400">
+                        Registrado em {new Date(item.attempt.timestamp).toLocaleDateString("pt-BR")}
+                      </span>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRetrainSingleQuestion(q.id)}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition-all shadow-xs cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Refazer Esta Questão</span>
+                      </button>
+                    </div>
                   </div>
-                  <p className="text-slate-300 pl-5 leading-relaxed">
-                    {q.expectedConduct || q.options?.find(o => o.isCorrect)?.explanation || (q as any).explanation || "Revisão e estabilização de acordo com o protocolo vigente."}
-                  </p>
-                </div>
-
-                {/* Actionable Next Steps Bar */}
-                <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    {/* Action 1: Drill 5 questions of this theme */}
-                    <button
-                      onClick={() => {
-                        setQuestionFilterArea(q.area);
-                        setActiveTab("questions");
-                      }}
-                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white text-slate-900 font-bold text-xs hover:bg-slate-100 hover:scale-[1.02] active:scale-95 transition-all shadow-md cursor-pointer"
-                    >
-                      <FileQuestion className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Treinar Tema ({q.topic || q.area})</span>
-                    </button>
-
-                    {/* Action 2: Create Flashcard */}
-                    <button
-                      onClick={() => handleCreateFlashcard(att.id)}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
-                        isFlashcardCreated
-                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                          : "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
-                      }`}
-                    >
-                      {isFlashcardCreated ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-400" />
-                          <span>Flashcard Criado</span>
-                        </>
-                      ) : (
-                        <>
-                          <Layers className="w-3.5 h-3.5 text-indigo-400" />
-                          <span>Criar Flashcard</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Action 3: Retest Question */}
-                  <button
-                    onClick={() => {
-                      const qIndex = questions.findIndex((item) => item.id === q.id);
-                      if (qIndex >= 0) setActiveQuestionIndex(qIndex);
-                      setActiveTab("questions");
-                    }}
-                    className="flex items-center gap-1 text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
-                  >
-                    <span>Refazer Esta Questão</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                )}
               </div>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
     </div>
   );
 };
