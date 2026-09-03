@@ -117,14 +117,23 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
     return weeks;
   }, [attempts]);
 
-  // Trajectory Summary Metrics
+  // Trajectory & Period Aggregates (Strictly weighted by actual attempts)
   const trajectorySummary = useMemo(() => {
     const activeWeeks = evolutionWeeks.filter((w) => w.hasData);
-    const totalQuestions = evolutionWeeks.reduce((acc, w) => acc + w.questions, 0);
+    const totalQuestions = attempts?.length ?? 0;
+    const totalCorrect = attempts?.filter((a) => a.isCorrect).length ?? 0;
+    const totalIncorrect = totalQuestions - totalCorrect;
 
-    if (activeWeeks.length === 0) {
+    // True weighted period accuracy: (totalCorrect / totalQuestions) * 100
+    const periodAccuracy =
+      totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+
+    if (activeWeeks.length === 0 || totalQuestions === 0) {
       return {
         hasData: false,
+        periodAccuracy: 0,
+        totalCorrect: 0,
+        totalIncorrect: 0,
         latestRate: 0,
         firstRate: 0,
         deltaPp: 0,
@@ -138,12 +147,15 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
 
     return {
       hasData: true,
+      periodAccuracy,
+      totalCorrect,
+      totalIncorrect,
       latestRate,
       firstRate,
       deltaPp,
       totalQuestions,
     };
-  }, [evolutionWeeks]);
+  }, [attempts, evolutionWeeks]);
 
   // Dynamic Area Performance Breakdown in stable canonical order
   const areaPerformance = useMemo(() => {
@@ -197,7 +209,7 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
       {/* 1. VISÃO GERAL */}
       {currentSubTab === "GERAL" && <UnifiedProgressView />}
 
-      {/* 2. EVOLUÇÃO (REFINED VIEW) */}
+      {/* 2. EVOLUÇÃO (REFINED VIEW 2.0) */}
       {currentSubTab === "EVOLUCAO" && (
         <div className="space-y-6">
           {/* HEADER */}
@@ -252,20 +264,35 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
             </div>
           ) : (
             <div className="space-y-6">
-              {/* 3 SUMMARY METRICS */}
+              {/* 3 SUMMARY METRICS (Quality, Volume, Trajectory) */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                {/* 1. Taxa de Acerto Ponderada do Período */}
                 <div className="p-5 rounded-2xl bg-zinc-900/80 border border-zinc-800 shadow-md space-y-1">
                   <span className="text-[11px] text-zinc-400 font-semibold uppercase tracking-wider">
-                    Taxa Mais Recente
+                    Taxa de Acerto do Período
                   </span>
                   <div className="text-3xl font-black text-white">
-                    {trajectorySummary.latestRate}%
+                    {trajectorySummary.periodAccuracy}%
                   </div>
                   <p className="text-[11px] text-zinc-400">
-                    Acurácia na semana mais recente.
+                    {trajectorySummary.totalCorrect} acertos · {trajectorySummary.totalIncorrect} erros
                   </p>
                 </div>
 
+                {/* 2. Volume de Questões */}
+                <div className="p-5 rounded-2xl bg-zinc-900/80 border border-zinc-800 shadow-md space-y-1">
+                  <span className="text-[11px] text-zinc-400 font-semibold uppercase tracking-wider">
+                    Questões Resolvidas
+                  </span>
+                  <div className="text-3xl font-black text-cyan-400">
+                    {trajectorySummary.totalQuestions}
+                  </div>
+                  <p className="text-[11px] text-zinc-400">
+                    Total de tentativas registradas no período.
+                  </p>
+                </div>
+
+                {/* 3. Variação no Período */}
                 <div className="p-5 rounded-2xl bg-zinc-900/80 border border-zinc-800 shadow-md space-y-1">
                   <span className="text-[11px] text-zinc-400 font-semibold uppercase tracking-wider">
                     Variação no Período
@@ -280,19 +307,7 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
                       : `${trajectorySummary.deltaPp} p.p.`}
                   </div>
                   <p className="text-[11px] text-zinc-400">
-                    Diferença em pontos percentuais vs início do período.
-                  </p>
-                </div>
-
-                <div className="p-5 rounded-2xl bg-zinc-900/80 border border-zinc-800 shadow-md space-y-1">
-                  <span className="text-[11px] text-zinc-400 font-semibold uppercase tracking-wider">
-                    Volume no Período
-                  </span>
-                  <div className="text-3xl font-black text-cyan-400">
-                    {trajectorySummary.totalQuestions}
-                  </div>
-                  <p className="text-[11px] text-zinc-400">
-                    Questões resolvidas ao longo das 4 semanas.
+                    Diferença entre semana inicial e atual.
                   </p>
                 </div>
               </div>
@@ -308,7 +323,7 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
                   </p>
                 </div>
 
-                {/* SVG TRAJECTORY LINE CHART */}
+                {/* SVG TRAJECTORY CHART */}
                 <div className="relative pt-4 pb-2">
                   <div className="grid grid-cols-4 gap-2">
                     {evolutionWeeks.map((w, idx) => (
