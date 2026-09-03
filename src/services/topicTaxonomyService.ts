@@ -2,6 +2,35 @@ import { MedicalArea, Question } from "../types";
 import { GrandeTema, MedicalAreaId } from "../types/grandesTemas";
 import { ALL_GRANDES_TEMAS, getGrandeTemaById } from "../data/grandesTemas";
 
+export type StagingTaxonomyStatus =
+  | "OCR_RAW"
+  | "STRUCTURED"
+  | "ANSWER_KEY_MATCHED"
+  | "TAXONOMY_PENDING"
+  | "REVIEW_REQUIRED"
+  | "VERIFIED"
+  | "PUBLISHED";
+
+export interface QuestionTaxonomyContract {
+  canonicalTopicId: string;
+  area: MedicalArea;
+  topic: string;
+  subtopic?: string;
+  taxonomyStatus?: StagingTaxonomyStatus;
+  taxonomyConfidence?: number;
+  taxonomyNotes?: string;
+}
+
+export interface TaxonomyValidationResult {
+  valid: boolean;
+  canonicalTopicId: string | null;
+  canonicalTopicTitle: string | null;
+  area: MedicalArea | null;
+  areaCompatible: boolean;
+  issues: string[];
+  confidence: number;
+}
+
 export type TopicMatchType =
   | "DIRECT_ID"
   | "CANONICAL_NAME"
@@ -28,6 +57,9 @@ export interface QuestionTopicInput {
   topic?: string;
   subtopic?: string;
   canonicalTopicId?: string;
+  taxonomyStatus?: StagingTaxonomyStatus;
+  taxonomyConfidence?: number;
+  taxonomyNotes?: string;
 }
 
 /**
@@ -1009,6 +1041,92 @@ export class TopicTaxonomyService {
 
     // 6. Unmapped Fallback
     return makeUnmapped(topic || subtopic, "Nenhuma correspondência canônica inequívoca encontrada");
+  }
+
+  /**
+   * Validates a question against the canonical ingestion contract for the 75 Grandes Temas.
+   * New published verified questions MUST pass this validation.
+   */
+  static validateQuestionTaxonomy(input: QuestionTopicInput | Question): TaxonomyValidationResult {
+    this.initialize();
+
+    const issues: string[] = [];
+    const area = input.area as MedicalArea | undefined;
+    const directCanonicalId = input.canonicalTopicId;
+
+    if (!area) {
+      issues.push("Área médica não especificada na questão");
+    }
+
+    // 1. If explicit canonicalTopicId is present
+    if (directCanonicalId) {
+      const theme = getGrandeTemaById(directCanonicalId);
+      if (!theme) {
+        issues.push(
+          `canonicalTopicId '${directCanonicalId}' não existe na taxonomia canônica dos 75 Grandes Temas`
+        );
+        return {
+          valid: false,
+          canonicalTopicId: directCanonicalId,
+          canonicalTopicTitle: null,
+          area: area || null,
+          areaCompatible: false,
+          issues,
+          confidence: 0,
+        };
+      }
+
+      const expectedArea = AREA_ID_TO_MEDICAL_AREA[theme.areaId];
+      const areaCompatible = Boolean(area && expectedArea && area === expectedArea);
+
+      if (!areaCompatible) {
+        issues.push(
+          `Área informada (${area || "vazia"}) é incompatível com a área canônica do tema (${expectedArea})`
+        );
+      }
+
+      return {
+        valid: areaCompatible && issues.length === 0,
+        canonicalTopicId: theme.id,
+        canonicalTopicTitle: theme.title,
+        area: expectedArea || null,
+        areaCompatible,
+        issues,
+        confidence: areaCompatible ? 1.0 : 0.5,
+      };
+    }
+
+    // 2. If canonicalTopicId is missing (Legacy or unclassified ingestion)
+    const resolution = this.resolveCanonicalTopic(input);
+    if (
+      resolution.matchType === "DIRECT_ID" ||
+      resolution.matchType === "CANONICAL_NAME" ||
+      resolution.matchType === "EXPLICIT_ALIAS"
+    ) {
+      issues.push(
+        `Questão não possui canonicalTopicId explícito (resolvido por alias para '${resolution.canonicalTopicId}')`
+      );
+      return {
+        valid: false, // Ingestion contract requires explicit canonicalTopicId for new VERIFIED questions
+        canonicalTopicId: resolution.canonicalTopicId,
+        canonicalTopicTitle: resolution.canonicalTopicTitle,
+        area: resolution.area,
+        areaCompatible: resolution.matchType !== "AREA_MISMATCH",
+        issues,
+        confidence: resolution.confidence,
+      };
+    }
+
+    issues.push(resolution.notes || "Taxonomia indefinida ou incompatível");
+    return {
+      valid: false,
+      canonicalTopicId: null,
+      canonicalTopicTitle: null,
+      area: area || null,
+      areaCompatible: false,
+      issues,
+      confidence: resolution.confidence,
+    };
   }
 
   /**

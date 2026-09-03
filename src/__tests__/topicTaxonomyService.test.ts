@@ -164,4 +164,79 @@ describe("TopicTaxonomyService Unit Tests (Etapa 1.14E)", () => {
       }
     });
   });
+
+  describe("4. Canonical Ingestion Contract Validation (Etapa 1.14G)", () => {
+    it("A. Accepts valid canonicalTopicId and matching medical area", () => {
+      const validQuestion = {
+        canonicalTopicId: "go-02",
+        area: "GINECOLOGIA_OBSTETRICIA" as MedicalArea,
+        topic: "Síndromes Hipertensivas da Gestação",
+        subtopic: "Pré-Eclâmpsia e Esquema de Zuspan",
+      };
+
+      const result = TopicTaxonomyService.validateQuestionTaxonomy(validQuestion);
+
+      expect(result.valid).toBe(true);
+      expect(result.canonicalTopicId).toBe("go-02");
+      expect(result.canonicalTopicTitle).toBe("Síndromes Hipertensivas da Gestação");
+      expect(result.areaCompatible).toBe(true);
+      expect(result.issues).toHaveLength(0);
+      expect(result.confidence).toBe(1.0);
+    });
+
+    it("B. Rejects non-existent canonicalTopicId", () => {
+      const invalidIdQuestion = {
+        canonicalTopicId: "invalid-999",
+        area: "CLINICA_MEDICA" as MedicalArea,
+        topic: "Tema Inexistente",
+      };
+
+      const result = TopicTaxonomyService.validateQuestionTaxonomy(invalidIdQuestion);
+
+      expect(result.valid).toBe(false);
+      expect(result.issues[0]).toContain("não existe na taxonomia canônica");
+    });
+
+    it("C. Rejects incompatible medical area with canonical topic", () => {
+      const mismatchQuestion = {
+        canonicalTopicId: "cm-01", // Hipertensão Arterial (Clínica Médica)
+        area: "CIRURGIA_GERAL" as MedicalArea,
+        topic: "Hipertensão Arterial",
+      };
+
+      const result = TopicTaxonomyService.validateQuestionTaxonomy(mismatchQuestion);
+
+      expect(result.valid).toBe(false);
+      expect(result.areaCompatible).toBe(false);
+      expect(result.issues.some((i) => i.includes("incompatível com a área canônica"))).toBe(true);
+    });
+
+    it("D. Flags questions without explicit canonicalTopicId as requiring explicit ID for new ingestion", () => {
+      const legacyQuestion = {
+        area: "PEDIATRIA" as MedicalArea,
+        topic: "Calendário Vacinal",
+      };
+
+      const result = TopicTaxonomyService.validateQuestionTaxonomy(legacyQuestion);
+
+      expect(result.valid).toBe(false);
+      expect(result.canonicalTopicId).toBe("ped-05");
+      expect(result.issues.some((i) => i.includes("não possui canonicalTopicId explícito"))).toBe(true);
+    });
+
+    it("E. Validation is 100% deterministic and non-mutating", () => {
+      const question = {
+        canonicalTopicId: "prev-01",
+        area: "MEDICINA_FAMILIA_COMUNIDADE" as MedicalArea,
+        topic: "Princípios do SUS",
+      };
+
+      const copy = { ...question };
+      const res1 = TopicTaxonomyService.validateQuestionTaxonomy(question);
+      const res2 = TopicTaxonomyService.validateQuestionTaxonomy(question);
+
+      expect(res1).toEqual(res2);
+      expect(question).toEqual(copy);
+    });
+  });
 });
