@@ -1,57 +1,18 @@
 import React, { useState, useEffect } from "react";
 import {
-  Home,
-  BookOpen,
-  HelpCircle,
-  FileText,
-  Tv,
-  Layers,
-  Target,
-  Calendar,
-  BarChart2,
-  BookMarked,
-  FolderOpen,
-  Brain,
-  Mic,
-  Activity,
-  SlidersHorizontal,
-  Database,
-  Crown,
   ChevronRight,
   ChevronDown,
   LogOut,
-  Sparkles,
-  CalendarCheck,
-  TrendingUp,
-  Clock,
-  RotateCcw,
-  Compass,
-  PieChart,
-  Car,
-  History,
-  ShieldAlert,
-  Flame,
-  Volume2,
+  SlidersHorizontal,
+  Database,
+  Crown,
+  Activity,
   User,
   Settings,
   Bell,
 } from "lucide-react";
 import { useApp, NavTab } from "../../context/AppContext";
-
-interface SubNavItem {
-  id: NavTab;
-  label: string;
-  badge?: string;
-  icon?: React.ElementType;
-}
-
-interface NavSection {
-  id: NavTab;
-  label: string;
-  icon: React.ElementType;
-  badge?: string;
-  subItems?: SubNavItem[];
-}
+import { STUDENT_NAVIGATION_CONFIG, NavigationSection, SubNavigationItem } from "../../config/navigation";
 
 export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobile }) => {
   const {
@@ -60,7 +21,6 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
     user,
     firebaseUser,
     flashcards,
-    setIsExamConfigOpen,
     setIsSubscriptionModalOpen,
     setQuestionMode,
     logout,
@@ -74,163 +34,74 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
   const userName = rawName.replace("Dr. ", "").replace("Dra. ", "");
   const userInitial = userName.charAt(0).toUpperCase() || "D";
 
-  // Manage open state for collapsible parent sections
-  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    estudar: true,
-    praticar: true,
-    revisar: false,
-    planejamento: false,
-    desempenho: false,
-    "tutor-ia": false,
-  });
-
-  const toggleSection = (sectionId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setOpenSections((prev) => ({
-      ...prev,
-      [sectionId]: !prev[sectionId],
-    }));
-  };
-
-  // The 7 Official Navigation Areas
-  const navSections: NavSection[] = [
-    {
-      id: "home",
-      label: "Início",
-      icon: Home,
-    },
-    {
-      id: "estudar",
-      label: "Estudar",
-      icon: BookOpen,
-      subItems: [
-        { id: "estudar-plano-hoje", label: "Plano de hoje", icon: CalendarCheck },
-        { id: "estudar-aulas", label: "Aulas", icon: Tv },
-        { id: "estudar-grandes-temas", label: "Grandes Temas", icon: Target },
-        { id: "estudar-materiais", label: "Materiais oficiais", icon: FolderOpen },
-      ],
-    },
-    {
-      id: "praticar",
-      label: "Praticar",
-      icon: HelpCircle,
-      subItems: [
-        { id: "praticar-questoes", label: "Questões", icon: HelpCircle },
-        { id: "praticar-simulados", label: "Simulados", icon: FileText },
-        { id: "praticar-provas", label: "Provas completas", icon: FileText },
-        { id: "praticar-questoes-ia", label: "Questões por IA", icon: Brain },
-      ],
-    },
-    {
-      id: "revisar",
-      label: "Revisar",
-      icon: Layers,
-      badge: dueFlashcardsCount > 0 ? `${dueFlashcardsCount}` : undefined,
-      subItems: [
-        { id: "revisar-flashcards", label: "Flashcards", icon: Layers, badge: dueFlashcardsCount > 0 ? `${dueFlashcardsCount}` : undefined },
-        { id: "revisar-erros", label: "Caderno de erros", icon: BookMarked },
-        { id: "revisar-atualizacoes", label: "Atualizações", icon: Flame },
-        { id: "revisar-radar", label: "Radar de diretrizes", icon: ShieldAlert },
-        { id: "revisar-audio", label: "Flash-Audio", icon: Volume2 },
-      ],
-    },
-    {
-      id: "planejamento",
-      label: "Planejamento",
-      icon: Calendar,
-      subItems: [
-        { id: "planejamento-calendario", label: "Calendário", icon: Calendar },
-        { id: "planejamento-semanal", label: "Plano semanal", icon: CalendarCheck },
-        { id: "planejamento-ate-prova", label: "Plano até a prova", icon: TrendingUp },
-        { id: "planejamento-disponibilidade", label: "Disponibilidade", icon: Clock },
-        { id: "planejamento-replanejamento", label: "Replanejamento", icon: RotateCcw },
-      ],
-    },
-    {
-      id: "desempenho",
-      label: "Desempenho",
-      icon: BarChart2,
-      subItems: [
-        { id: "desempenho-geral", label: "Visão geral", icon: BarChart2 },
-        { id: "desempenho-evolucao", label: "Evolução", icon: TrendingUp },
-        { id: "desempenho-matriz", label: "Matriz de competências", icon: Compass },
-        { id: "desempenho-tendencias", label: "Tendências INEP", icon: PieChart },
-        { id: "desempenho-areas", label: "Desempenho por área", icon: Layers },
-      ],
-    },
-    {
-      id: "tutor-ia",
-      label: "Tutor IA",
-      icon: Mic,
-      subItems: [
-        { id: "tutor-conversar", label: "Conversar com tutor", icon: Mic },
-        { id: "tutor-transito", label: "Modo trânsito", icon: Car },
-        { id: "tutor-historico", label: "Histórico", icon: History },
-      ],
-    },
-  ];
-
   // Helper to determine if section or any of its subItems is currently active
-  const isSectionActive = (section: NavSection): boolean => {
+  const isSectionActive = (section: NavigationSection): boolean => {
     if (activeTab === section.id) return true;
     if (section.subItems) {
-      return section.subItems.some((sub) => {
-        if (activeTab === sub.id) return true;
-        // Legacy tab mappings
-        if (sub.id === "estudar-aulas" && activeTab === "grandes-temas") return false;
-        if (sub.id === "estudar-grandes-temas" && activeTab === "grandes-temas") return true;
-        if (sub.id === "estudar-materiais" && activeTab === "official-search") return true;
-        if (sub.id === "praticar-questoes" && activeTab === "questions") return true;
-        if (sub.id === "praticar-simulados" && activeTab === "ineditas") return true;
-        if (sub.id === "praticar-questoes-ia" && activeTab === "questoes-ia") return true;
-        if (sub.id === "revisar-flashcards" && activeTab === "review") return true;
-        if (sub.id === "revisar-erros" && activeTab === "errors") return true;
-        if (sub.id === "revisar-radar" && (activeTab === "guidelines" || activeTab === "radar")) return true;
-        if (sub.id === "planejamento-calendario" && (activeTab === "calendario-inteligente" || activeTab === "calendar")) return true;
-        if (sub.id === "desempenho-geral" && activeTab === "progress") return true;
-        if (sub.id === "desempenho-matriz" && activeTab === "matrix") return true;
-        if (sub.id === "desempenho-tendencias" && activeTab === "pattern-engine") return true;
-        if (sub.id === "tutor-conversar" && activeTab === "voice-tutor") return true;
-        return false;
-      });
+      return section.subItems.some((sub) => isSubItemActive(sub.id));
     }
     return false;
   };
 
-  // Automatically expand section when its child or section is active
-  useEffect(() => {
-    navSections.forEach((section) => {
-      if (section.subItems && isSectionActive(section)) {
-        setOpenSections((prev) => ({ ...prev, [section.id]: true }));
-      }
-    });
-  }, [activeTab]);
-
   const isSubItemActive = (subId: NavTab): boolean => {
     if (activeTab === subId) return true;
+    // Estudar aliases
     if (subId === "estudar-grandes-temas" && activeTab === "grandes-temas") return true;
-    if (subId === "estudar-materiais" && activeTab === "official-search") return true;
+    if (subId === "estudar-materiais" && (activeTab === "official-search" || activeTab === "brazil")) return true;
+    // Praticar aliases
     if (subId === "praticar-questoes" && activeTab === "questions") return true;
     if (subId === "praticar-simulados" && activeTab === "ineditas") return true;
+    if (subId === "praticar-provas" && (activeTab === "provas" || activeTab === "provas-completas")) return true;
     if (subId === "praticar-questoes-ia" && activeTab === "questoes-ia") return true;
+    // Revisar aliases
     if (subId === "revisar-flashcards" && activeTab === "review") return true;
-    if (subId === "revisar-erros" && activeTab === "errors") return true;
-    if (subId === "revisar-radar" && (activeTab === "guidelines" || activeTab === "radar")) return true;
+    if (subId === "revisar-erros" && (activeTab === "errors" || activeTab === "caderno-de-erros")) return true;
+    if (subId === "revisar-atualizacoes" && (activeTab === "guidelines" || activeTab === "radar" || activeTab === "revisar-radar")) return true;
+    // Planejamento aliases
     if (subId === "planejamento-calendario" && (activeTab === "calendario-inteligente" || activeTab === "calendar")) return true;
+    // Desempenho aliases
     if (subId === "desempenho-geral" && activeTab === "progress") return true;
-    if (subId === "desempenho-matriz" && activeTab === "matrix") return true;
-    if (subId === "desempenho-tendencias" && activeTab === "pattern-engine") return true;
+    if (subId === "desempenho-evolucao" && activeTab === "evolucao") return true;
+    if (subId === "desempenho-areas" && activeTab === "desempenho-areas") return true;
+    // Tutor aliases
     if (subId === "tutor-conversar" && activeTab === "voice-tutor") return true;
     return false;
   };
 
-  const handleSelectSection = (section: NavSection) => {
+  // Find initial active section for single accordion state
+  const getActiveSectionId = (): string | null => {
+    for (const section of STUDENT_NAVIGATION_CONFIG) {
+      if (section.subItems && isSectionActive(section)) {
+        return section.id;
+      }
+    }
+    return null;
+  };
+
+  // Single active accordion state: only ONE section can remain expanded at a time
+  const [expandedSection, setExpandedSection] = useState<string | null>(getActiveSectionId() || "estudar");
+
+  // Synchronize expanded accordion with active route/tab
+  useEffect(() => {
+    const currentActiveSecId = getActiveSectionId();
+    if (currentActiveSecId) {
+      setExpandedSection(currentActiveSecId);
+    }
+  }, [activeTab]);
+
+  const toggleSection = (sectionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedSection((prev) => (prev === sectionId ? null : sectionId));
+  };
+
+  const handleSelectSection = (section: NavigationSection) => {
     if (section.id === "home") {
       setActiveTab("home");
+      setExpandedSection(null);
     } else {
       setActiveTab(section.id);
-      // Ensure section is expanded
-      setOpenSections((prev) => ({ ...prev, [section.id]: true }));
+      // Ensure only this section is expanded
+      setExpandedSection(section.id);
     }
     if (onCloseMobile) onCloseMobile();
   };
@@ -245,6 +116,13 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
     if (onCloseMobile) onCloseMobile();
   };
 
+  const resolveBadge = (badgeKey?: string): string | undefined => {
+    if (badgeKey === "dueFlashcards" && dueFlashcardsCount > 0) {
+      return `${dueFlashcardsCount}`;
+    }
+    return undefined;
+  };
+
   return (
     <aside className="w-64 bg-[#0B192C] text-slate-300 flex flex-col h-full lg:min-h-screen select-none border-r border-[#132644] transition-all">
       {/* Brand Header */}
@@ -252,6 +130,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
         <button
           onClick={() => {
             setActiveTab("home");
+            setExpandedSection(null);
             if (onCloseMobile) onCloseMobile();
           }}
           className="flex items-center gap-2.5 text-left group min-h-[40px] focus:outline-hidden cursor-pointer"
@@ -273,13 +152,14 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
         </button>
       </div>
 
-      {/* Navigation List (7 Main Areas) */}
+      {/* Navigation List (7 Main Areas with Single-Open Accordion) */}
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1 scrollbar-thin scrollbar-thumb-slate-700/50">
-        {navSections.map((section) => {
+        {STUDENT_NAVIGATION_CONFIG.map((section) => {
           const Icon = section.icon;
-          const isSectionOpen = !!openSections[section.id];
+          const isSectionOpen = expandedSection === section.id;
           const hasActiveChild = isSectionActive(section);
           const hasSubItems = section.subItems && section.subItems.length > 0;
+          const sectionBadge = resolveBadge(section.badgeKey);
 
           return (
             <div key={section.id} className="space-y-0.5">
@@ -304,9 +184,9 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  {section.badge && (
+                  {sectionBadge && (
                     <span className="text-[10px] px-1.5 py-0.2 rounded-md font-bold bg-teal-500/20 text-teal-300">
-                      {section.badge}
+                      {sectionBadge}
                     </span>
                   )}
                   {hasSubItems && (
@@ -314,6 +194,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                       type="button"
                       onClick={(e) => toggleSection(section.id, e)}
                       className="p-1 rounded-md hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                      aria-label={`Alternar seção ${section.label}`}
                     >
                       {isSectionOpen ? (
                         <ChevronDown className="w-3.5 h-3.5" />
@@ -325,12 +206,13 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                 </div>
               </div>
 
-              {/* Sub-Items List */}
+              {/* Sub-Items List (Single Accordion Expanded) */}
               {hasSubItems && isSectionOpen && (
                 <div className="pl-4 pr-1 py-1 space-y-0.5 border-l border-white/[0.08] ml-4 my-0.5">
-                  {section.subItems?.map((sub) => {
+                  {section.subItems?.map((sub: SubNavigationItem) => {
                     const isSubActive = isSubItemActive(sub.id);
                     const SubIcon = sub.icon;
+                    const subBadge = resolveBadge(sub.badgeKey);
 
                     return (
                       <button
@@ -349,9 +231,9 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                           )}
                           <span className="truncate">{sub.label}</span>
                         </div>
-                        {sub.badge && (
+                        {subBadge && (
                           <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-purple-500/20 text-purple-300">
-                            {sub.badge}
+                            {subBadge}
                           </span>
                         )}
                       </button>
