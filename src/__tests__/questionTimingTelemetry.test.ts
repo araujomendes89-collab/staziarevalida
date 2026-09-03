@@ -158,7 +158,7 @@ describe("Question Timing Telemetry - Metrics & Analytical Calculations", () => 
     const metrics = getQuestionTimingMetrics(attempts);
     expect(metrics.countWithTiming).toBe(2);
     expect(metrics.meanActiveDurationMs).toBe(60000); // (30s + 90s)/2 = 60s
-    expect(metrics.formattedMean).toBe("1m 00s");
+    expect(metrics.formattedMean).toBe("1m00s");
   });
 
   it("J: computes median correctly for odd number of items", () => {
@@ -166,7 +166,7 @@ describe("Question Timing Telemetry - Metrics & Analytical Calculations", () => 
     const values = [120000, 30000, 60000];
     const median = calculateMedian(values);
     expect(median).toBe(60000);
-    expect(formatDuration(median)).toBe("1m 00s");
+    expect(formatDuration(median)).toBe("1m00s");
   });
 
   it("K: computes median correctly for even number of items", () => {

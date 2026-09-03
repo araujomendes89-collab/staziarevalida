@@ -7,9 +7,12 @@ import { QuestionAttempt } from "../types";
  * - Uses `performance.now()` for monotonic timestamps (resilient against system clock adjustments)
  * - Page Visibility API (`document.visibilityState`) integration to pause accumulation when the tab is backgrounded
  * - Handles question navigation without losing previous accumulated time
- * - Idle timeout awareness (configurable max inactivity threshold)
+ * - Foreground active time tracking (VISIBLE_IDLE_TIME_EXCLUDED = NO: tracks time while tab is in foreground)
  * - Pure analytical functions for mean, median (odd/even), and telemetry coverage
  */
+
+export const MIN_TIMED_ATTEMPTS_FOR_DISPLAY = 10;
+export const TIMING_VERSION_ACTIVE_MONOTONIC = 1;
 
 export interface QuestionTimingMetrics {
   totalAttempts: number;
@@ -19,9 +22,8 @@ export interface QuestionTimingMetrics {
   medianActiveDurationMs: number | null;
   formattedMean: string;
   formattedMedian: string;
+  isTimingDisplayable: boolean; // countWithTiming >= MIN_TIMED_ATTEMPTS_FOR_DISPLAY
 }
-
-export const TIMING_VERSION_ACTIVE_MONOTONIC = 1;
 
 /**
  * Checks whether an attempt has reliable, valid active timing telemetry.
@@ -53,9 +55,12 @@ export function calculateMedian(values: number[]): number | null {
 }
 
 /**
- * Formats duration in milliseconds to human-readable string (e.g. "1m 42s", "45s").
+ * Formats duration in milliseconds to human-readable string:
+ * - 42.000 ms -> "42s"
+ * - 82.000 ms -> "1m22s"
+ * - 145.000 ms -> "2m25s"
  */
-export function formatDuration(ms: number | null | undefined): string {
+export function formatQuestionDuration(ms: number | null | undefined): string {
   if (ms === null || ms === undefined || !Number.isFinite(ms) || ms < 0) {
     return "--";
   }
@@ -66,8 +71,11 @@ export function formatDuration(ms: number | null | undefined): string {
   if (minutes === 0) {
     return `${seconds}s`;
   }
-  return `${minutes}m ${seconds.toString().padStart(2, "0")}s`;
+  return `${minutes}m${seconds.toString().padStart(2, "0")}s`;
 }
+
+// Alias for backwards compatibility
+export const formatDuration = formatQuestionDuration;
 
 /**
  * Computes aggregate timing metrics across an array of question attempts.
@@ -84,6 +92,7 @@ export function getQuestionTimingMetrics(attempts: QuestionAttempt[]): QuestionT
       medianActiveDurationMs: null,
       formattedMean: "--",
       formattedMedian: "--",
+      isTimingDisplayable: false,
     };
   }
 
@@ -96,6 +105,7 @@ export function getQuestionTimingMetrics(attempts: QuestionAttempt[]): QuestionT
 
   const countWithTiming = validDurations.length;
   const timingCoverage = totalAttempts > 0 ? countWithTiming / totalAttempts : 0;
+  const isTimingDisplayable = countWithTiming >= MIN_TIMED_ATTEMPTS_FOR_DISPLAY;
 
   if (countWithTiming === 0) {
     return {
@@ -106,6 +116,7 @@ export function getQuestionTimingMetrics(attempts: QuestionAttempt[]): QuestionT
       medianActiveDurationMs: null,
       formattedMean: "--",
       formattedMedian: "--",
+      isTimingDisplayable: false,
     };
   }
 
@@ -119,8 +130,9 @@ export function getQuestionTimingMetrics(attempts: QuestionAttempt[]): QuestionT
     timingCoverage,
     meanActiveDurationMs,
     medianActiveDurationMs,
-    formattedMean: formatDuration(meanActiveDurationMs),
-    formattedMedian: formatDuration(medianActiveDurationMs),
+    formattedMean: formatQuestionDuration(meanActiveDurationMs),
+    formattedMedian: formatQuestionDuration(medianActiveDurationMs),
+    isTimingDisplayable,
   };
 }
 

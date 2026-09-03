@@ -15,11 +15,13 @@ import {
   BookOpen,
   Target,
   Clock,
+  HelpCircle,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { UnifiedProgressView } from "../progress/UnifiedProgressView";
 import { KnowledgeGraphView } from "../matrix/KnowledgeGraphView";
 import { InepPatternEngineView } from "../patternEngine/InepPatternEngineView";
+import { getQuestionTimingMetrics } from "../../services/questionTimingService";
 import { formatMedicalArea } from "../../utils/formatters";
 import { MedicalArea } from "../../types";
 
@@ -157,6 +159,11 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
     };
   }, [attempts, evolutionWeeks]);
 
+  // Question Timing Telemetry Metrics (Rhythm)
+  const timingMetrics = useMemo(() => {
+    return getQuestionTimingMetrics(attempts);
+  }, [attempts]);
+
   // Dynamic Area Performance Breakdown in stable canonical order
   const areaPerformance = useMemo(() => {
     const questionMap = new Map(questions.map((q) => [q.id, q]));
@@ -209,7 +216,7 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
       {/* 1. VISÃO GERAL */}
       {currentSubTab === "GERAL" && <UnifiedProgressView />}
 
-      {/* 2. EVOLUÇÃO (REFINED VIEW 2.0) */}
+      {/* 2. EVOLUÇÃO (REFINED VIEW 3.0: QUALIDADE + VOLUME + RITMO) */}
       {currentSubTab === "EVOLUCAO" && (
         <div className="space-y-6">
           {/* HEADER */}
@@ -225,7 +232,7 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
                 </span>
               </div>
               <p className="text-xs text-zinc-400 mt-1">
-                Acompanhe a trajetória de acertos e volume de prática com base no seu histórico real de resolução.
+                Acompanhe a trajetória de acertos, volume de prática e ritmo de resolução no seu treino.
               </p>
             </div>
 
@@ -250,7 +257,7 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
               <div className="space-y-1 max-w-md mx-auto">
                 <h2 className="text-base font-bold text-white">Ainda não há dados suficientes para mostrar sua evolução</h2>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Resolva questões ao longo dos dias para que sua curva de aprendizado e retenção seja traçada.
+                  Resolva questões ao longo dos dias para que sua curva de aprendizado, volume e ritmo sejam traçados.
                 </p>
               </div>
               <button
@@ -264,7 +271,7 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
             </div>
           ) : (
             <div className="space-y-6">
-              {/* 3 SUMMARY METRICS (Quality, Volume, Trajectory) */}
+              {/* 3 SUMMARY METRICS (1. Qualidade, 2. Volume, 3. Ritmo) */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 {/* 1. Taxa de Acerto Ponderada do Período */}
                 <div className="p-5 rounded-2xl bg-zinc-900/80 border border-zinc-800 shadow-md space-y-1">
@@ -292,35 +299,60 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
                   </p>
                 </div>
 
-                {/* 3. Variação no Período */}
+                {/* 3. Tempo Típico por Questão (Ritmo - Mediana) */}
                 <div className="p-5 rounded-2xl bg-zinc-900/80 border border-zinc-800 shadow-md space-y-1">
-                  <span className="text-[11px] text-zinc-400 font-semibold uppercase tracking-wider">
-                    Variação no Período
-                  </span>
-                  <div
-                    className={`text-3xl font-black ${
-                      trajectorySummary.deltaPp >= 0 ? "text-emerald-400" : "text-amber-400"
-                    }`}
-                  >
-                    {trajectorySummary.deltaPp >= 0
-                      ? `+${trajectorySummary.deltaPp} p.p.`
-                      : `${trajectorySummary.deltaPp} p.p.`}
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-zinc-400 font-semibold uppercase tracking-wider">
+                      Tempo Típico por Questão
+                    </span>
+                    <span
+                      title="Mediana do tempo ativo registrado nas questões respondidas."
+                      className="cursor-help text-zinc-500 hover:text-zinc-300 transition-colors"
+                    >
+                      <Info className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+                  <div className="text-3xl font-black text-white">
+                    {timingMetrics.isTimingDisplayable ? (
+                      timingMetrics.formattedMedian
+                    ) : (
+                      <span className="text-xl font-bold text-zinc-400">Coletando dados</span>
+                    )}
                   </div>
                   <p className="text-[11px] text-zinc-400">
-                    Diferença entre semana inicial e atual.
+                    {timingMetrics.isTimingDisplayable
+                      ? `Mediana baseada em ${timingMetrics.countWithTiming} questões.`
+                      : "Mínimo de 10 questões cronometradas."}
                   </p>
                 </div>
               </div>
 
               {/* TRAJECTORY CHART & VOLUME CONTAINER */}
               <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/80 border border-zinc-800 shadow-xl space-y-6">
-                <div>
-                  <h2 className="text-base font-bold text-white tracking-tight">
-                    Trajetória Semanal de Acurácia
-                  </h2>
-                  <p className="text-xs text-zinc-400 mt-0.5">
-                    Desempenho registrado em cada janela semanal de prática.
-                  </p>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <div>
+                    <h2 className="text-base font-bold text-white tracking-tight">
+                      Trajetória Semanal de Acurácia
+                    </h2>
+                    <p className="text-xs text-zinc-400 mt-0.5">
+                      Desempenho registrado em cada janela semanal de prática.
+                    </p>
+                  </div>
+                  {trajectorySummary.hasData && (
+                    <div className="text-xs font-bold font-mono">
+                      <span className="text-zinc-400 font-normal">Variação: </span>
+                      <span
+                        className={
+                          trajectorySummary.deltaPp >= 0 ? "text-emerald-400" : "text-amber-400"
+                        }
+                      >
+                        {trajectorySummary.deltaPp >= 0
+                          ? `+${trajectorySummary.deltaPp} p.p.`
+                          : `${trajectorySummary.deltaPp} p.p.`}{" "}
+                        no período
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* SVG TRAJECTORY CHART */}
