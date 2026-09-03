@@ -22,6 +22,7 @@ import {
   ActiveTrainingSession,
   SessionAnswerState,
 } from "../../types";
+import { QuestionTimingTracker } from "../../services/questionTimingService";
 import { LayeredCorrectionFeedback } from "./LayeredCorrectionFeedback";
 
 interface ActiveSessionResolutionViewProps {
@@ -72,6 +73,9 @@ export const ActiveSessionResolutionView: React.FC<
       : false
   );
 
+  // Precision Monotonic Question Timing Tracker
+  const timingTrackerRef = useRef<QuestionTimingTracker>(new QuestionTimingTracker());
+
   // Timer per question and overall session
   const [questionTimerSeconds, setQuestionTimerSeconds] = useState<number>(
     currentAnswerState ? currentAnswerState.timeSpentSeconds : 0
@@ -81,11 +85,16 @@ export const ActiveSessionResolutionView: React.FC<
   const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
   const [autosaveIndicator, setAutosaveIndicator] = useState<boolean>(false);
 
-  // Sync state when currentIndex changes
+  // Sync state & timing tracker when currentIndex changes
   useEffect(() => {
     const ans = session?.answers
       ? session.answers[currentQuestionId]
       : undefined;
+
+    const initialMs = ans?.activeDurationMs ?? (ans?.timeSpentSeconds ? ans.timeSpentSeconds * 1000 : 0);
+    timingTrackerRef.current.startQuestion(currentQuestionId, initialMs);
+    timingTrackerRef.current.setPaused(isPaused);
+
     if (ans) {
       setSelectedOption(ans.selectedOption);
       setIsAnswerSubmitted(true);
@@ -104,11 +113,27 @@ export const ActiveSessionResolutionView: React.FC<
     );
   }, [session.currentIndex, currentQuestionId]);
 
-  // Tick timers
+  // Handle visibility changes (pause when tab hidden, resume when visible)
+  useEffect(() => {
+    const handleVisChange = () => {
+      timingTrackerRef.current.handleVisibilityChange(document.visibilityState === "visible");
+    };
+    document.addEventListener("visibilitychange", handleVisChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisChange);
+    };
+  }, []);
+
+  // Sync paused state with tracker
+  useEffect(() => {
+    timingTrackerRef.current.setPaused(isPaused);
+  }, [isPaused]);
+
+  // Tick timer for UI display using monotonic active time
   useEffect(() => {
     if (isPaused || isAnswerSubmitted) return;
     const interval = setInterval(() => {
-      setQuestionTimerSeconds((prev) => prev + 1);
+      setQuestionTimerSeconds(Math.round(timingTrackerRef.current.getCurrentActiveDurationMs() / 1000));
     }, 1000);
     return () => clearInterval(interval);
   }, [isPaused, isAnswerSubmitted]);
@@ -198,11 +223,15 @@ export const ActiveSessionResolutionView: React.FC<
       currentQuestion.options.find((o) => o.id === selectedOption)?.isCorrect ??
       false;
 
+    const timingResult = timingTrackerRef.current.finishQuestion();
+
     const newAnswer: SessionAnswerState = {
       questionId: currentQuestionId,
       selectedOption,
       isCorrect,
-      timeSpentSeconds: questionTimerSeconds,
+      timeSpentSeconds: timingResult.timeSpentSeconds,
+      activeDurationMs: timingResult.activeDurationMs,
+      timingVersion: timingResult.timingVersion,
       confidence: selectedConfidence,
       timestamp: new Date().toISOString(),
       isFlagged,

@@ -227,6 +227,8 @@ export interface QuestionAttempt {
   selectedOption: "A" | "B" | "C" | "D";
   isCorrect: boolean;
   timeSpentSeconds: number;
+  activeDurationMs?: number; // Monotonic active time spent on question in ms
+  timingVersion?: number; // 1 = High precision monotonic active timing
   confidence: ConfidenceLevel;
   errorReason?: ErrorTaxonomy;
   errorTaxonomy?: ErrorTaxonomy;

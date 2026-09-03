@@ -112,6 +112,8 @@ export const QuestionsView: React.FC = () => {
         selectedOption: ans.selectedOption,
         isCorrect: ans.isCorrect,
         timeSpentSeconds: ans.timeSpentSeconds,
+        activeDurationMs: ans.activeDurationMs,
+        timingVersion: ans.timingVersion,
         confidence: ans.confidence,
         errorReason: ans.errorReason,
         userReflection: ans.userReflection,

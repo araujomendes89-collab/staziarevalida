@@ -72,6 +72,8 @@ export interface SessionAnswerState {
   selectedOption: "A" | "B" | "C" | "D";
   isCorrect: boolean;
   timeSpentSeconds: number;
+  activeDurationMs?: number; // Monotonic active time in ms
+  timingVersion?: number; // 1 = High precision monotonic active timing
   confidence: ConfidenceLevel;
   timestamp: string;
   errorReason?: ErrorTaxonomy;

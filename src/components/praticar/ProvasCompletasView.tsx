@@ -124,6 +124,8 @@ export const ProvasCompletasView: React.FC = () => {
         timestamp: ans.timestamp,
         isCorrect: ans.isCorrect,
         timeSpentSeconds: ans.timeSpentSeconds || 0,
+        activeDurationMs: ans.activeDurationMs,
+        timingVersion: ans.timingVersion,
         selectedOption: ans.selectedOption,
         confidence: ans.confidence,
         sessionContext: "SIMULADO_OFICIAL",
