@@ -9,8 +9,9 @@ import { InventoryValidatorService } from "../../services/inventoryValidatorServ
 import { ActiveTrainingSession, SessionAnswerState } from "../../types";
 
 export const ProvasCompletasView: React.FC = () => {
-  const { user, firebaseUser, questions, attempts, recordQuestionAttempt, activeSession, setActiveSession, saveSessionToFirestore } = useApp();
+  const { user, firebaseUser, questions, attempts, recordQuestionAttempt, saveSessionToFirestore } = useApp();
   const [currentView, setCurrentView] = useState<"SELECTOR" | "PRINT_EXAM" | "ACTIVE_SESSION" | "RESULTS">("SELECTOR");
+  const [activeSession, setActiveSession] = useState<ActiveTrainingSession | null>(null);
   
   const [printableQuestions, setPrintableQuestions] = useState<any[]>([]);
   const [printableExamTitle, setPrintableExamTitle] = useState("");
@@ -30,24 +31,34 @@ export const ProvasCompletasView: React.FC = () => {
     
     const newSession: ActiveTrainingSession = {
       id: crypto.randomUUID(),
-      userId: firebaseUser?.uid || user?.id || "local-session",
-      createdAt: new Date().toISOString(),
-      lastUpdated: new Date().toISOString(),
+      title: editionLabel || `Prova Oficial ${year}`,
+      subtitle: `${sorted.length} questões • 1ª Etapa Teórica Objetiva`,
+      mode: "SIMULADO",
       config: {
         mode: "SIMULADO",
         title: `Prova Oficial: ${editionLabel || year}`,
         objective: "FULL_EXAM",
         topics: [],
+        competencies: [],
+        areas: ["ALL"],
+        years: [year ? year.toString() : "ALL"],
+        difficulty: "ALL",
+        inepRelevance: "ALL",
         quantity: sorted.length,
         feedbackMode: "END_OF_SESSION",
-        timerMode: "STRICT_EXAM",
-        ordering: "OFFICIAL_SEQUENCE",
+        timerMode: "EXAM_STRICT",
+        showComments: false,
+        ordering: "ORIGINAL_ORDER",
       },
       questionIds: sorted.map(q => q.id),
       currentIndex: 0,
       answers: {},
+      flaggedQuestionIds: [],
+      startTime: new Date().toISOString(),
+      lastUpdated: new Date().toISOString(),
       totalDurationSeconds: 0,
-      status: "IN_PROGRESS"
+      isCompleted: false,
+      paused: false,
     };
     
     setActiveSession(newSession);
@@ -141,17 +152,17 @@ export const ProvasCompletasView: React.FC = () => {
       {currentView === "ACTIVE_SESSION" && activeSession && (
         <ActiveSessionResolutionView
           session={activeSession}
-          questions={questions.filter(q => activeSession.questionIds.includes(q.id))}
+          allQuestions={questions}
           onUpdateSession={setActiveSession}
           onFinishSession={handleFinishSession}
-          onExit={() => setCurrentView("SELECTOR")}
+          onExitSession={() => setCurrentView("SELECTOR")}
         />
       )}
       
       {currentView === "RESULTS" && activeSession && (
         <SessionResultsView
           session={activeSession}
-          questions={questions.filter(q => activeSession.questionIds.includes(q.id))}
+          allQuestions={questions}
           onClose={() => setCurrentView("SELECTOR")}
         />
       )}
