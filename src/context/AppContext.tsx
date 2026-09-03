@@ -36,6 +36,7 @@ import {
   FirebaseUser,
 } from "../lib/firebase";
 import { AdaptiveEngine } from "../services/adaptiveEngine";
+import { SpacedRepetitionService } from "../services/spacedRepetitionService";
 import { SEED_RADAR_UPDATES } from "../data/knowledgeGraphData";
 import { REVALIDA_EDITIONS_INVENTORY } from "../data/revalidaInventoryData";
 import { SEED_MEDICAL_GUIDELINES, SEED_GUIDELINE_WATCH_ALERTS, SEED_GUIDELINE_AUDIT_LOGS } from "../data/guidelinesData";
@@ -619,7 +620,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // If user got it wrong, auto-generate a smart flashcard from the key finding & record Error Autopsy
       if (!attemptData.isCorrect) {
         createdCardId = `fc-auto-${Date.now()}`;
-        const newCard: Flashcard = {
+        const newCard: Flashcard = SpacedRepetitionService.createInitialFSRSCard({
           id: createdCardId,
           questionId: question.id,
           area: question.area,
@@ -627,12 +628,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           front: `[Autópsia do Erro] ${question.keyFinding} — Qual é a conduta padrão-ouro no SUS?`,
           back: `${question.expectedConduct}\n\nJustificativa: ${question.inepIntent}`,
           keyMnemonic: question.brazilContextNote,
-          intervalDays: 1,
-          easeFactor: 2.5,
-          repetitionCount: 0,
-          dueDate: new Date().toISOString(),
-          masteryLevel: 25,
-        };
+        });
         setFlashcards((prev) => {
           const updated = [newCard, ...prev];
           StorageService.saveFlashcards(updated);
@@ -676,35 +672,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setFlashcards((prev) => {
       const updated = prev.map((card) => {
         if (card.id !== cardId) return card;
-        let nextInterval = card.intervalDays;
-        let nextRep = card.repetitionCount + 1;
-        let nextMastery = card.masteryLevel;
-
-        if (rating === "AGAIN") {
-          nextInterval = 1;
-          nextMastery = Math.max(10, card.masteryLevel - 15);
-        } else if (rating === "HARD") {
-          nextInterval = Math.max(1, Math.round(card.intervalDays * 1.2));
-          nextMastery = Math.min(100, card.masteryLevel + 5);
-        } else if (rating === "MEDIUM") {
-          nextInterval = Math.max(2, Math.round(card.intervalDays * 2.0));
-          nextMastery = Math.min(100, card.masteryLevel + 15);
-        } else if (rating === "EASY") {
-          nextInterval = Math.max(4, Math.round(card.intervalDays * 2.8));
-          nextMastery = Math.min(100, card.masteryLevel + 25);
-        }
-
-        const nextDate = new Date();
-        nextDate.setDate(nextDate.getDate() + nextInterval);
-
-        return {
-          ...card,
-          intervalDays: nextInterval,
-          repetitionCount: nextRep,
-          dueDate: nextDate.toISOString(),
-          lastReviewed: new Date().toISOString(),
-          masteryLevel: nextMastery,
-        };
+        return SpacedRepetitionService.scheduleFSRSReview(card, rating);
       });
       StorageService.saveFlashcards(updated);
       return updated;

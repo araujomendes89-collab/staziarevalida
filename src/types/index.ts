@@ -242,12 +242,24 @@ export interface Flashcard {
   front: string; // Pergunta / Gatilho clínico
   back: string; // Resposta / Conduta ouro
   keyMnemonic?: string;
+
+  // FSRS Core State Fields (Source of Truth for Scheduling)
+  schedulerVersion?: "FSRS_V1" | "LEGACY_V1";
+  stability?: number; // S: Memory stability in days
+  difficulty?: number; // D: Difficulty rating (1-10)
+  elapsedDays?: number; // Days elapsed since last review
+  scheduledDays?: number; // Target days for this interval
+  reps?: number; // Total number of reviews
+  lapses?: number; // Total number of failed reviews (Again)
+  state?: number; // FSRS State: 0=New, 1=Learning, 2=Review, 3=Relearning
+  lastReviewed?: string; // ISO date string of last review
+  dueDate: string; // ISO date string when card is due for review
+
+  // Legacy Compatibility Fields (Kept in sync for visual components)
   intervalDays: number;
-  easeFactor: number; // SM-2 style
+  easeFactor: number; // Legacy SM-2 field (decorative)
   repetitionCount: number;
-  dueDate: string;
-  lastReviewed?: string;
-  masteryLevel: number; // 0-100
+  masteryLevel: number; // 0-100 indicator
 }
 
 export interface KnowledgeNode {

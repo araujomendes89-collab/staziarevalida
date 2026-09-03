@@ -10,12 +10,14 @@ import {
 import { ALL_CANONICAL_QUESTIONS } from "../data/allOfficialQuestions";
 import { normalizeQuestionList } from "../utils/questionNormalizer";
 import { INITIAL_KNOWLEDGE_GRAPH } from "../data/knowledgeGraphData";
+import { SpacedRepetitionService } from "./spacedRepetitionService";
 
 const STORAGE_KEYS = {
   USER_PROFILE: "praxis_user_profile_v2",
   QUESTIONS: "praxis_questions_v3",
   ATTEMPTS: "praxis_attempts_v2",
   FLASHCARDS: "praxis_flashcards_v2",
+  FLASHCARDS_BACKUP_V1: "praxis_flashcards_v1_backup",
   KNOWLEDGE_GRAPH: "praxis_knowledge_graph_v2",
   OSCE_ATTEMPTS: "praxis_osce_attempts_v2",
   STUDY_MISSION: "praxis_study_mission_v2",
@@ -200,7 +202,18 @@ export class StorageService {
     try {
       const data = safeGetItem(STORAGE_KEYS.FLASHCARDS);
       if (!data) return [];
-      return JSON.parse(data);
+      const parsed: Flashcard[] = JSON.parse(data);
+      if (!Array.isArray(parsed)) return [];
+
+      const { migrated, hadLegacyCards } = SpacedRepetitionService.migrateLegacyFlashcards(parsed);
+      if (hadLegacyCards) {
+        // Create backup if not already present
+        if (!safeGetItem(STORAGE_KEYS.FLASHCARDS_BACKUP_V1)) {
+          safeSetItem(STORAGE_KEYS.FLASHCARDS_BACKUP_V1, data);
+        }
+        safeSetItem(STORAGE_KEYS.FLASHCARDS, JSON.stringify(migrated));
+      }
+      return migrated;
     } catch {
       return [];
     }

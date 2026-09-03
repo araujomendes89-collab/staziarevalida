@@ -20,6 +20,7 @@ import {
 import { useApp } from "../../context/AppContext";
 import { Flashcard, MedicalArea } from "../../types";
 import { formatMedicalArea } from "../../utils/formatters";
+import { SpacedRepetitionService } from "../../services/spacedRepetitionService";
 
 export const SpacedReviewView: React.FC = () => {
   const { flashcards, updateFlashcardScore, setActiveTab } = useApp();
@@ -38,17 +39,23 @@ export const SpacedReviewView: React.FC = () => {
       if (selectedAreaFilter !== "ALL" && card.area !== selectedAreaFilter) {
         return false;
       }
-      return !card.dueDate || card.dueDate <= now;
+      return SpacedRepetitionService.isCardDue(card);
     });
-  }, [flashcards, selectedAreaFilter, now]);
+  }, [flashcards, selectedAreaFilter]);
 
   // Breakdown counts
   const totalCardsCount = flashcards.length;
-  const newCardsCount = flashcards.filter((c) => c.repetitionCount === 0).length;
-  const learningCardsCount = flashcards.filter((c) => c.repetitionCount > 0 && c.masteryLevel < 70).length;
-  const masteredCardsCount = flashcards.filter((c) => c.masteryLevel >= 70).length;
+  const newCardsCount = flashcards.filter((c) => (c.reps ?? c.repetitionCount ?? 0) === 0).length;
+  const learningCardsCount = flashcards.filter((c) => (c.reps ?? c.repetitionCount ?? 0) > 0 && (c.stability ?? 0) < 14).length;
+  const masteredCardsCount = flashcards.filter((c) => (c.stability ?? 0) >= 14 || c.masteryLevel >= 70).length;
 
   const currentCard: Flashcard | undefined = sessionCards[currentIndex];
+
+  // FSRS interval projections for current card
+  const fsrsProjections = useMemo(() => {
+    if (!currentCard) return null;
+    return SpacedRepetitionService.previewFSRSNextIntervals(currentCard);
+  }, [currentCard]);
 
   // Start review session
   const handleStartSession = (cardsToReview = dueCards) => {
@@ -61,22 +68,10 @@ export const SpacedReviewView: React.FC = () => {
     setIsSessionActive(true);
   };
 
-  // Compute next intervals based on current card
-  const getProjectedInterval = (card: Flashcard, rating: "AGAIN" | "HARD" | "MEDIUM" | "EASY") => {
-    if (rating === "AGAIN") return "1 dia";
-    if (rating === "HARD") {
-      const days = Math.max(1, Math.round(card.intervalDays * 1.2));
-      return `${days} ${days === 1 ? "dia" : "dias"}`;
-    }
-    if (rating === "MEDIUM") {
-      const days = Math.max(2, Math.round(card.intervalDays * 2.0));
-      return `${days} dias`;
-    }
-    if (rating === "EASY") {
-      const days = Math.max(4, Math.round(card.intervalDays * 2.8));
-      return `${days} dias`;
-    }
-    return "";
+  // Compute next intervals based on true FSRS
+  const getProjectedInterval = (rating: "AGAIN" | "HARD" | "MEDIUM" | "EASY") => {
+    if (!fsrsProjections) return "";
+    return fsrsProjections[rating]?.label || "";
   };
 
   // Handle rating rating: AGAIN | HARD | MEDIUM | EASY
@@ -252,7 +247,7 @@ export const SpacedReviewView: React.FC = () => {
                 >
                   <span className="text-xs font-bold">1. Errei</span>
                   <span className="text-[10px] text-rose-600 font-medium">
-                    {getProjectedInterval(currentCard, "AGAIN")}
+                    {getProjectedInterval("AGAIN")}
                   </span>
                 </button>
 
@@ -263,7 +258,7 @@ export const SpacedReviewView: React.FC = () => {
                 >
                   <span className="text-xs font-bold">2. Difícil</span>
                   <span className="text-[10px] text-amber-600 font-medium">
-                    {getProjectedInterval(currentCard, "HARD")}
+                    {getProjectedInterval("HARD")}
                   </span>
                 </button>
 
@@ -274,7 +269,7 @@ export const SpacedReviewView: React.FC = () => {
                 >
                   <span className="text-xs font-bold">3. Bom</span>
                   <span className="text-[10px] text-blue-600 font-medium">
-                    {getProjectedInterval(currentCard, "MEDIUM")}
+                    {getProjectedInterval("MEDIUM")}
                   </span>
                 </button>
 
@@ -285,7 +280,7 @@ export const SpacedReviewView: React.FC = () => {
                 >
                   <span className="text-xs font-bold">4. Fácil</span>
                   <span className="text-[10px] text-teal-600 font-medium">
-                    {getProjectedInterval(currentCard, "EASY")}
+                    {getProjectedInterval("EASY")}
                   </span>
                 </button>
               </div>
