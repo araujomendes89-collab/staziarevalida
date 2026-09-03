@@ -173,7 +173,10 @@ describe("Question Timing Telemetry - Multi-Version Analytics Compatibility", ()
       },
     ];
 
-    const metrics = getQuestionTimingMetrics(mixedAttempts);
+    const metrics = getQuestionTimingMetrics(mixedAttempts, [
+      TIMING_VERSION_ACTIVE_MONOTONIC,
+      TIMING_VERSION_IDLE_AWARE,
+    ]);
     expect(metrics.totalAttempts).toBe(3);
     expect(metrics.countWithTiming).toBe(2);
     expect(metrics.medianActiveDurationMs).toBe(50000); // (40s + 60s)/2

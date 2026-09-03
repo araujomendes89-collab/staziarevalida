@@ -3,7 +3,7 @@ import {
   formatQuestionDuration,
   getQuestionTimingMetrics,
   MIN_TIMED_ATTEMPTS_FOR_DISPLAY,
-  TIMING_VERSION_ACTIVE_MONOTONIC,
+  TIMING_VERSION_IDLE_AWARE,
 } from "../services/questionTimingService";
 import { QuestionAttempt } from "../types";
 
@@ -26,7 +26,7 @@ describe("Question Timing Rhythm & Presentation (Evolução 3.0)", () => {
       isCorrect: true,
       timeSpentSeconds: 60,
       activeDurationMs: 60000 + idx * 2000,
-      timingVersion: TIMING_VERSION_ACTIVE_MONOTONIC,
+      timingVersion: TIMING_VERSION_IDLE_AWARE,
       confidence: "HIGH",
       mode: "STUDY",
     }));
@@ -47,7 +47,7 @@ describe("Question Timing Rhythm & Presentation (Evolução 3.0)", () => {
       isCorrect: true,
       timeSpentSeconds: 45,
       activeDurationMs: 45000,
-      timingVersion: TIMING_VERSION_ACTIVE_MONOTONIC,
+      timingVersion: TIMING_VERSION_IDLE_AWARE,
       confidence: "HIGH",
       mode: "STUDY",
     }));
@@ -59,7 +59,7 @@ describe("Question Timing Rhythm & Presentation (Evolução 3.0)", () => {
 
   it("C, D, E: ignores legacy, printable and invalid attempts from rhythm calculations", () => {
     const mixed: QuestionAttempt[] = [
-      // 10 valid timed attempts
+      // 10 valid timed attempts (v2)
       ...Array.from({ length: 10 }, (_, idx) => ({
         id: `valid-${idx}`,
         questionId: `qv-${idx}`,
@@ -68,7 +68,7 @@ describe("Question Timing Rhythm & Presentation (Evolução 3.0)", () => {
         isCorrect: true,
         timeSpentSeconds: 50,
         activeDurationMs: 50000,
-        timingVersion: TIMING_VERSION_ACTIVE_MONOTONIC,
+        timingVersion: TIMING_VERSION_IDLE_AWARE,
         confidence: "HIGH" as const,
         mode: "STUDY" as const,
       })),

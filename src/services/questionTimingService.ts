@@ -1,22 +1,25 @@
 import { QuestionAttempt } from "../types";
 
 /**
- * Question Timing Telemetry Service (Idle-Aware 2.0)
+ * Question Timing Telemetry Service (Version-Aware Analytics 3.0)
  *
- * Implements high-precision active time tracking per question:
+ * Implements high-precision active time tracking per question and version-aware analytics:
  * - Uses `performance.now()` for monotonic timestamps (resilient against system clock adjustments)
  * - Page Visibility API (`document.visibilityState`) integration to pause accumulation when the tab is backgrounded
  * - Idle detection with `QUESTION_IDLE_TIMEOUT_MS`: after 5 minutes without user activity (pointer/keyboard/touch/scroll),
  *   pauses active accumulation and caps the active segment at the instant of last activity (`lastActivityAt`).
+ * - Version-Aware Policy:
+ *   - timingVersion = 1: Foreground-only active time (historical / legacy).
+ *   - timingVersion = 2: Idle-aware active time (current product standard).
+ *   - The primary rhythm metric ("Tempo típico por questão") strictly requires timingVersion = 2 without mixing v1.
  * - Pure analytical functions for mean, median (odd/even), and telemetry coverage.
- * - Multi-version analytical compatibility (v1 = foreground only, v2 = idle-aware active time).
  */
 
 export const MIN_TIMED_ATTEMPTS_FOR_DISPLAY = 10;
 export const QUESTION_IDLE_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes operational timeout
 
-export const TIMING_VERSION_ACTIVE_MONOTONIC = 1;
-export const TIMING_VERSION_IDLE_AWARE = 2;
+export const TIMING_VERSION_ACTIVE_MONOTONIC = 1; // v1: Foreground only
+export const TIMING_VERSION_IDLE_AWARE = 2;       // v2: Idle-aware active time (Primary Source of Truth)
 export const CURRENT_TIMING_VERSION = TIMING_VERSION_IDLE_AWARE;
 
 export interface QuestionTimingMetrics {
@@ -28,16 +31,26 @@ export interface QuestionTimingMetrics {
   formattedMean: string;
   formattedMedian: string;
   isTimingDisplayable: boolean; // countWithTiming >= MIN_TIMED_ATTEMPTS_FOR_DISPLAY
+  primaryVersion: number;
+  v1Count: number;
+  v2Count: number;
+  v1MedianActiveDurationMs: number | null;
+  v2MedianActiveDurationMs: number | null;
+}
+
+export interface TimingAnalyticsOptions {
+  timingVersions?: number[];
+  minAttemptsForDisplay?: number;
 }
 
 /**
  * Checks whether an attempt has reliable, valid active timing telemetry.
  * Excludes legacy attempts (undefined activeDurationMs), printable exam defaults, and corrupt values.
- * By default supports valid version 1 (foreground) and version 2 (idle-aware).
+ * By default validates against timingVersion = 2 (or specified versions).
  */
 export function isValidTiming(
   attempt: Partial<QuestionAttempt> | null | undefined,
-  allowedVersions: number[] = [TIMING_VERSION_ACTIVE_MONOTONIC, TIMING_VERSION_IDLE_AWARE]
+  allowedVersions: number[] = [TIMING_VERSION_IDLE_AWARE]
 ): boolean {
   if (!attempt) return false;
   if (typeof attempt.timingVersion !== "number" || !allowedVersions.includes(attempt.timingVersion)) {
@@ -90,36 +103,51 @@ export const formatDuration = formatQuestionDuration;
 
 /**
  * Computes aggregate timing metrics across an array of question attempts.
- * Strictly filters out invalid or legacy attempts without timing telemetry.
+ * By default, strictly enforces TIMING_VERSION_IDLE_AWARE (v2) for the primary rhythm metrics,
+ * preventing semantic contamination from v1 (foreground only) while maintaining full inspection capabilities.
  */
 export function getQuestionTimingMetrics(
   attempts: QuestionAttempt[],
-  allowedVersions: number[] = [TIMING_VERSION_ACTIVE_MONOTONIC, TIMING_VERSION_IDLE_AWARE]
+  optionsOrVersions: TimingAnalyticsOptions | number[] = [TIMING_VERSION_IDLE_AWARE]
 ): QuestionTimingMetrics {
-  const totalAttempts = attempts?.length ?? 0;
-  if (totalAttempts === 0) {
-    return {
-      totalAttempts: 0,
-      countWithTiming: 0,
-      timingCoverage: 0,
-      meanActiveDurationMs: null,
-      medianActiveDurationMs: null,
-      formattedMean: "--",
-      formattedMedian: "--",
-      isTimingDisplayable: false,
-    };
-  }
+  const options: TimingAnalyticsOptions = Array.isArray(optionsOrVersions)
+    ? { timingVersions: optionsOrVersions }
+    : optionsOrVersions;
 
-  const validDurations: number[] = [];
-  for (const att of attempts) {
-    if (isValidTiming(att, allowedVersions)) {
-      validDurations.push(att.activeDurationMs!);
+  const allowedVersions = options.timingVersions ?? [TIMING_VERSION_IDLE_AWARE];
+  const minThreshold = options.minAttemptsForDisplay ?? MIN_TIMED_ATTEMPTS_FOR_DISPLAY;
+
+  const totalAttempts = attempts?.length ?? 0;
+
+  // Track breakdown across versions
+  const v1Durations: number[] = [];
+  const v2Durations: number[] = [];
+  const targetDurations: number[] = [];
+
+  if (totalAttempts > 0) {
+    for (const att of attempts) {
+      if (typeof att.activeDurationMs === "number" && Number.isFinite(att.activeDurationMs) && att.activeDurationMs >= 0) {
+        if (att.timingVersion === TIMING_VERSION_ACTIVE_MONOTONIC) {
+          v1Durations.push(att.activeDurationMs);
+        } else if (att.timingVersion === TIMING_VERSION_IDLE_AWARE) {
+          v2Durations.push(att.activeDurationMs);
+        }
+
+        if (typeof att.timingVersion === "number" && allowedVersions.includes(att.timingVersion)) {
+          targetDurations.push(att.activeDurationMs);
+        }
+      }
     }
   }
 
-  const countWithTiming = validDurations.length;
+  const v1Count = v1Durations.length;
+  const v2Count = v2Durations.length;
+  const v1MedianActiveDurationMs = calculateMedian(v1Durations);
+  const v2MedianActiveDurationMs = calculateMedian(v2Durations);
+
+  const countWithTiming = targetDurations.length;
   const timingCoverage = totalAttempts > 0 ? countWithTiming / totalAttempts : 0;
-  const isTimingDisplayable = countWithTiming >= MIN_TIMED_ATTEMPTS_FOR_DISPLAY;
+  const isTimingDisplayable = countWithTiming >= minThreshold;
 
   if (countWithTiming === 0) {
     return {
@@ -131,12 +159,17 @@ export function getQuestionTimingMetrics(
       formattedMean: "--",
       formattedMedian: "--",
       isTimingDisplayable: false,
+      primaryVersion: TIMING_VERSION_IDLE_AWARE,
+      v1Count,
+      v2Count,
+      v1MedianActiveDurationMs,
+      v2MedianActiveDurationMs,
     };
   }
 
-  const sum = validDurations.reduce((acc, val) => acc + val, 0);
+  const sum = targetDurations.reduce((acc, val) => acc + val, 0);
   const meanActiveDurationMs = sum / countWithTiming;
-  const medianActiveDurationMs = calculateMedian(validDurations);
+  const medianActiveDurationMs = calculateMedian(targetDurations);
 
   return {
     totalAttempts,
@@ -147,6 +180,11 @@ export function getQuestionTimingMetrics(
     formattedMean: formatQuestionDuration(meanActiveDurationMs),
     formattedMedian: formatQuestionDuration(medianActiveDurationMs),
     isTimingDisplayable,
+    primaryVersion: TIMING_VERSION_IDLE_AWARE,
+    v1Count,
+    v2Count,
+    v1MedianActiveDurationMs,
+    v2MedianActiveDurationMs,
   };
 }
 
