@@ -134,7 +134,7 @@ export const GrandesTemasView: React.FC = () => {
                 {inProgressTheme.title}
               </h2>
               <p className="text-xs text-slate-300">
-                Área: <span className="text-teal-300 font-medium">{inProgressTheme.areaName}</span> • Recorrência histórica: {inProgressTheme.recurrence === "altissima" ? "Altíssima" : inProgressTheme.recurrence === "alta" ? "Alta" : "Média"}
+                Área: <span className="text-teal-300 font-medium">{getAreaVisualTheme(inProgressTheme.areaId).name}</span> • Recorrência histórica: {inProgressTheme.recurrence === "altissima" ? "Altíssima" : inProgressTheme.recurrence === "alta" ? "Alta" : "Média"}
               </p>
             </div>
 
@@ -309,7 +309,7 @@ export const GrandesTemasView: React.FC = () => {
                     <div className="flex items-center justify-between gap-2">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[11px] font-semibold ${areaTheme.badgeBg} ${areaTheme.badgeText} ${areaTheme.badgeBorder}`}>
                         <AreaIcon className={`w-3 h-3 ${areaTheme.iconColor}`} />
-                        <span>{tema.areaName}</span>
+                        <span>{areaTheme.name}</span>
                       </span>
 
                       <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200/60 flex items-center gap-1">

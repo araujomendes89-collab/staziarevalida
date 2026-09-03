@@ -33,7 +33,7 @@ describe("Area Visual Theme System (Adendo)", () => {
 
     // 5. Medicina Preventiva / SUS -> emerald/green
     const preventiva = getAreaVisualTheme("medicina-preventiva");
-    expect(preventiva.name).toBe("Medicina Preventiva e Social");
+    expect(preventiva.name).toBe("Medicina Preventiva e Saúde Coletiva");
     expect(preventiva.colorHex).toBe("#059669");
     expect(preventiva.borderLeft).toContain("emerald");
     expect(preventiva.badgeBg).toContain("emerald");

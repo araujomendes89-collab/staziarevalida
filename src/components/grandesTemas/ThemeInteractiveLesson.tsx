@@ -235,7 +235,7 @@ export const ThemeInteractiveLesson: React.FC<Props> = ({ tema, onBack, onOpenQu
           <div className="space-y-2.5 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold ${getAreaVisualTheme(tema.areaId).badgeBg} ${getAreaVisualTheme(tema.areaId).badgeText} ${getAreaVisualTheme(tema.areaId).badgeBorder}`}>
-                {tema.areaName}
+                {getAreaVisualTheme(tema.areaId).name}
               </span>
               <span className="px-2.5 py-0.5 rounded-md text-[11px] font-medium bg-white/10 text-slate-200 border border-white/10 flex items-center gap-1">
                 <Flame className="w-3 h-3 text-amber-400" />

@@ -19,6 +19,14 @@ export interface AreaVisualTheme {
   hoverBorder: string;
 }
 
+export const CANONICAL_AREA_DISPLAY_LABELS = {
+  CLINICA_MEDICA: "Clínica Médica",
+  CIRURGIA_GERAL: "Cirurgia Geral",
+  PEDIATRIA: "Pediatria",
+  GINECOLOGIA_OBSTETRICIA: "Ginecologia e Obstetrícia",
+  MEDICINA_PREVENTIVA: "Medicina Preventiva e Saúde Coletiva",
+} as const;
+
 export const AREA_VISUAL_THEMES: Record<string, AreaVisualTheme> = {
   "clinica-medica": {
     id: "clinica-medica",
@@ -107,7 +115,7 @@ export const AREA_VISUAL_THEMES: Record<string, AreaVisualTheme> = {
   },
   "medicina-preventiva": {
     id: "medicina-preventiva",
-    name: "Medicina Preventiva e Social",
+    name: "Medicina Preventiva e Saúde Coletiva",
     shortName: "Preventiva / SUS",
     colorHex: "#059669",
     borderLeft: "border-l-emerald-500",
@@ -191,9 +199,26 @@ export const AREA_VISUAL_THEMES: Record<string, AreaVisualTheme> = {
     activePillText: "text-white",
     hoverBorder: "hover:border-rose-300",
   },
+  "MEDICINA_PREVENTIVA": {
+    id: "medicina-preventiva",
+    name: "Medicina Preventiva e Saúde Coletiva",
+    shortName: "Preventiva / SUS",
+    colorHex: "#059669",
+    borderLeft: "border-l-emerald-500",
+    borderTop: "border-t-emerald-500",
+    accentBorder: "border-emerald-500",
+    indicatorBg: "bg-emerald-500",
+    badgeBg: "bg-emerald-50",
+    badgeText: "text-emerald-700",
+    badgeBorder: "border-emerald-200/80",
+    iconColor: "text-emerald-600",
+    activePillBg: "bg-emerald-600",
+    activePillText: "text-white",
+    hoverBorder: "hover:border-emerald-300",
+  },
   "MEDICINA_FAMILIA_COMUNIDADE": {
     id: "medicina-preventiva",
-    name: "Medicina Preventiva e Social",
+    name: "Medicina Preventiva e Saúde Coletiva",
     shortName: "Preventiva / SUS",
     colorHex: "#059669",
     borderLeft: "border-l-emerald-500",
@@ -210,7 +235,41 @@ export const AREA_VISUAL_THEMES: Record<string, AreaVisualTheme> = {
   },
   "PREVENTIVA": {
     id: "medicina-preventiva",
-    name: "Medicina Preventiva e Social",
+    name: "Medicina Preventiva e Saúde Coletiva",
+    shortName: "Preventiva / SUS",
+    colorHex: "#059669",
+    borderLeft: "border-l-emerald-500",
+    borderTop: "border-t-emerald-500",
+    accentBorder: "border-emerald-500",
+    indicatorBg: "bg-emerald-500",
+    badgeBg: "bg-emerald-50",
+    badgeText: "text-emerald-700",
+    badgeBorder: "border-emerald-200/80",
+    iconColor: "text-emerald-600",
+    activePillBg: "bg-emerald-600",
+    activePillText: "text-white",
+    hoverBorder: "hover:border-emerald-300",
+  },
+  "PREVENTIVA_MFC": {
+    id: "medicina-preventiva",
+    name: "Medicina Preventiva e Saúde Coletiva",
+    shortName: "Preventiva / SUS",
+    colorHex: "#059669",
+    borderLeft: "border-l-emerald-500",
+    borderTop: "border-t-emerald-500",
+    accentBorder: "border-emerald-500",
+    indicatorBg: "bg-emerald-500",
+    badgeBg: "bg-emerald-50",
+    badgeText: "text-emerald-700",
+    badgeBorder: "border-emerald-200/80",
+    iconColor: "text-emerald-600",
+    activePillBg: "bg-emerald-600",
+    activePillText: "text-white",
+    hoverBorder: "hover:border-emerald-300",
+  },
+  "preventiva": {
+    id: "medicina-preventiva",
+    name: "Medicina Preventiva e Saúde Coletiva",
     shortName: "Preventiva / SUS",
     colorHex: "#059669",
     borderLeft: "border-l-emerald-500",
@@ -250,5 +309,11 @@ const DEFAULT_THEME: AreaVisualTheme = {
  */
 export function getAreaVisualTheme(areaKey?: string | null): AreaVisualTheme {
   if (!areaKey) return DEFAULT_THEME;
-  return AREA_VISUAL_THEMES[areaKey] || AREA_VISUAL_THEMES[areaKey.toLowerCase()] || DEFAULT_THEME;
+  const normalizedKey = areaKey.replace(/_/g, "-").toLowerCase();
+  return (
+    AREA_VISUAL_THEMES[areaKey] ||
+    AREA_VISUAL_THEMES[areaKey.toLowerCase()] ||
+    AREA_VISUAL_THEMES[normalizedKey] ||
+    DEFAULT_THEME
+  );
 }
