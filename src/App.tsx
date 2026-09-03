@@ -122,9 +122,7 @@ const MainContent: React.FC = () => {
             activeTab === "official-search") && (
             <EstudarView
               initialSubTab={
-                activeTab === "estudar"
-                  ? "HUB"
-                  : activeTab === "estudar-aulas"
+                activeTab === "estudar-aulas"
                   ? "AULAS"
                   : activeTab === "estudar-grandes-temas" || activeTab === "grandes-temas"
                   ? "GRANDES_TEMAS"

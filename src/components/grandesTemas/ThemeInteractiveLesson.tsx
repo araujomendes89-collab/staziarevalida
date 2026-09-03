@@ -291,7 +291,7 @@ export const ThemeInteractiveLesson: React.FC<Props> = ({ tema, onBack, onOpenQu
           }`}
         >
           <Layers className="w-4 h-4 text-blue-400" />
-          Aulas & Módulos Progressivos (16)
+          Módulos Progressivos do Tema (16)
         </button>
 
         <button
@@ -337,7 +337,7 @@ export const ThemeInteractiveLesson: React.FC<Props> = ({ tema, onBack, onOpenQu
           {/* Module Step Selector Sidebar */}
           <div className="lg:col-span-4 space-y-2 bg-zinc-900/70 border border-zinc-800/80 rounded-2xl p-3 sm:p-4 max-h-[600px] overflow-y-auto">
             <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider px-2 py-1 mb-2">
-              Estrutura da Aula (16 Etapas)
+              Estrutura do Estudo (16 Etapas)
             </div>
             {progressiveModules.map((mod, idx) => {
               const isCurrent = activeStepIndex === idx;
