@@ -1,0 +1,7 @@
+{
+  "name": "StaziaMed Revalida",
+  "description": "O Sistema Operacional inteligente para preparação de excelência no Revalida INEP: diagnóstico adaptativo, autópsia de erros, simulador OSCE com paciente virtual e monitoramento de prontidão.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

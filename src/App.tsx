@@ -1,0 +1,349 @@
+import React, { useState, useEffect } from "react";
+import { AppProvider, useApp } from "./context/AppContext";
+import { Header } from "./components/layout/Header";
+import { Sidebar } from "./components/layout/Sidebar";
+import { BottomNav } from "./components/layout/BottomNav";
+import { DashboardView } from "./components/dashboard/DashboardView";
+import { QuestionsView } from "./components/questions/QuestionsView";
+import { UnifiedReviewView } from "./components/review/UnifiedReviewView";
+import { UnifiedOsceView } from "./components/osce/UnifiedOsceView";
+import { UnifiedProgressView } from "./components/progress/UnifiedProgressView";
+import { AdminEditorialView } from "./components/admin/AdminEditorialView";
+import { DataExportView } from "./components/export/DataExportView";
+import { StudyForMeModal } from "./components/modals/StudyForMeModal";
+import { WhatIfModal } from "./components/modals/WhatIfModal";
+import { PricingModal } from "./components/modals/PricingModal";
+import { ExamConfigModal } from "./components/modals/ExamConfigModal";
+import { OfficialMedicalSearchView } from "./components/search/OfficialMedicalSearchView";
+import { OfficialSearchModal } from "./components/search/OfficialSearchModal";
+import { StudentMemoryView } from "./components/memory/StudentMemoryView";
+import { FunctionCallingAgentView } from "./components/agent/FunctionCallingAgentView";
+import { VoiceTutorView } from "./components/voice/VoiceTutorView";
+import { GrandesTemasView } from "./components/grandesTemas/GrandesTemasView";
+import { QuestoesIAView } from "./components/questoesIA/QuestoesIAView";
+import { AdaptiveCalendarView } from "./components/calendar/AdaptiveCalendarView";
+import { EstudarView } from "./components/estudar/EstudarView";
+import { PraticarView } from "./components/praticar/PraticarView";
+import { RevisarView } from "./components/revisar/RevisarView";
+import { PlanejamentoView } from "./components/planejamento/PlanejamentoView";
+import { DesempenhoView } from "./components/desempenho/DesempenhoView";
+import { TutorIaView } from "./components/tutor/TutorIaView";
+import { ProfileSettingsView } from "./components/profile/ProfileSettingsView";
+import { SimuladosHubView } from "./components/simulados/SimuladosHubView";
+import { VideoLessonsCatalogView } from "./components/lessons/VideoLessonsCatalogView";
+import { LoginView } from "./components/auth/LoginView";
+import { EmailVerificationBanner } from "./components/auth/EmailVerificationBanner";
+import { EmailVerificationRequiredView } from "./components/auth/EmailVerificationRequiredView";
+import { BrowserRouter } from "react-router-dom";
+import { testFirestoreConnection, FIRESTORE_DATABASE_ID, FIRESTORE_REGION } from "./lib/firebase";
+
+const MainContent: React.FC = () => {
+  const {
+    activeTab,
+    isExamConfigOpen,
+    setIsExamConfigOpen,
+    isOfficialSearchOpen,
+    setIsOfficialSearchOpen,
+    officialSearchQuery,
+  } = useApp();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    async function runFirestoreHealthCheck() {
+      console.log(
+        `[StaziaMed Revalida] Checking Firestore connection to DB "${FIRESTORE_DATABASE_ID}" in region "${FIRESTORE_REGION}"...`
+      );
+      try {
+        const isOnline = await testFirestoreConnection();
+        if (isOnline) {
+          console.log(
+            `%c[Firestore: HEALTHY] Connected successfully to database: ${FIRESTORE_DATABASE_ID} (${FIRESTORE_REGION})`,
+            "color: #10b981; font-weight: bold;"
+          );
+        } else {
+          console.warn(
+            `[Firestore: OFFLINE / FALLBACK] Local cache persistence active for database: ${FIRESTORE_DATABASE_ID}`
+          );
+        }
+      } catch (err) {
+        console.error(
+          `[Firestore: HEALTH CHECK ERROR] Could not probe database: ${FIRESTORE_DATABASE_ID}`,
+          err
+        );
+      }
+    }
+
+    runFirestoreHealthCheck();
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#F6F8FB] text-slate-800 flex font-sans selection:bg-teal-500/20 selection:text-teal-900 relative">
+      {/* Desktop Sidebar (Left column) */}
+      <div className="hidden lg:flex lg:shrink-0 sticky top-0 h-screen z-30">
+        <Sidebar />
+      </div>
+
+      {/* Mobile Slide-over Sidebar Drawer */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex">
+          <div
+            className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity"
+            onClick={() => setIsMobileMenuOpen(false)}
+          />
+          <div className="relative z-10 w-64 bg-[#0B192C] h-full shadow-2xl flex flex-col">
+            <Sidebar onCloseMobile={() => setIsMobileMenuOpen(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* Main Content Area (Header + Stage) */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen overflow-x-hidden">
+        {/* Top Header */}
+        <Header
+          onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          isMobileMenuOpen={isMobileMenuOpen}
+        />
+
+        {/* Email Verification Alert Banner for unverified email/password accounts */}
+        <EmailVerificationBanner />
+
+        {/* Dynamic Center Stage Content */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-28 lg:pb-12 safe-bottom">
+          {/* 1. Início */}
+          {activeTab === "home" && <DashboardView />}
+
+          {/* 2. Estudar (Plano de hoje, Aulas, Grandes Temas, Materiais oficiais) */}
+          {(activeTab === "estudar" ||
+            activeTab === "estudar-plano-hoje" ||
+            activeTab === "estudar-aulas" ||
+            activeTab === "estudar-grandes-temas" ||
+            activeTab === "estudar-materiais" ||
+            activeTab === "grandes-temas" ||
+            activeTab === "official-search") && (
+            <EstudarView
+              initialSubTab={
+                activeTab === "estudar-aulas"
+                  ? "AULAS"
+                  : activeTab === "estudar-grandes-temas" || activeTab === "grandes-temas"
+                  ? "GRANDES_TEMAS"
+                  : activeTab === "estudar-materiais" || activeTab === "official-search"
+                  ? "MATERIAIS"
+                  : "PLANO_HOJE"
+              }
+            />
+          )}
+
+          {/* 3. Praticar (Questões, Simulados, Provas completas, Questões geradas por IA) */}
+          {(activeTab === "praticar" ||
+            activeTab === "praticar-questoes" ||
+            activeTab === "praticar-simulados" ||
+            activeTab === "praticar-provas" ||
+            activeTab === "praticar-questoes-ia" ||
+            activeTab === "questions" ||
+            activeTab === "ineditas" ||
+            activeTab === "questoes-ia") && (
+            <PraticarView
+              initialSubTab={
+                activeTab === "praticar-simulados" || activeTab === "ineditas"
+                  ? "SIMULADOS"
+                  : activeTab === "praticar-provas"
+                  ? "PROVAS"
+                  : activeTab === "praticar-questoes-ia" || activeTab === "questoes-ia"
+                  ? "QUESTOES_IA"
+                  : "QUESTOES"
+              }
+            />
+          )}
+
+          {/* 4. Revisar (Flashcards, Caderno de erros, Atualizações, Radar de diretrizes, Flash-Audio) */}
+          {(activeTab === "revisar" ||
+            activeTab === "revisar-flashcards" ||
+            activeTab === "revisar-erros" ||
+            activeTab === "revisar-atualizacoes" ||
+            activeTab === "revisar-radar" ||
+            activeTab === "revisar-audio" ||
+            activeTab === "review" ||
+            activeTab === "errors" ||
+            activeTab === "guidelines" ||
+            activeTab === "radar") && (
+            <RevisarView
+              initialSubTab={
+                activeTab === "revisar-erros" || activeTab === "errors"
+                  ? "ERRORS"
+                  : activeTab === "revisar-atualizacoes"
+                  ? "ATUALIZACOES"
+                  : activeTab === "revisar-radar" || activeTab === "guidelines" || activeTab === "radar"
+                  ? "RADAR"
+                  : activeTab === "revisar-audio"
+                  ? "AUDIO"
+                  : "FLASHCARDS"
+              }
+            />
+          )}
+
+          {/* 5. Planejamento (Calendário, Plano semanal, Plano até a prova, Disponibilidade, Replanejamento) */}
+          {(activeTab === "planejamento" ||
+            activeTab === "planejamento-calendario" ||
+            activeTab === "planejamento-semanal" ||
+            activeTab === "planejamento-ate-prova" ||
+            activeTab === "planejamento-disponibilidade" ||
+            activeTab === "planejamento-replanejamento" ||
+            activeTab === "calendario-inteligente" ||
+            activeTab === "calendar") && (
+            <PlanejamentoView
+              initialSubTab={
+                activeTab === "planejamento-semanal"
+                  ? "SEMANAL"
+                  : activeTab === "planejamento-ate-prova"
+                  ? "ATE_PROVA"
+                  : activeTab === "planejamento-disponibilidade"
+                  ? "DISPONIBILIDADE"
+                  : activeTab === "planejamento-replanejamento"
+                  ? "REPLANEJAMENTO"
+                  : "CALENDARIO"
+              }
+            />
+          )}
+
+          {/* 6. Desempenho (Visão geral, Evolução, Matriz de competências, Tendências INEP, Desempenho por área) */}
+          {(activeTab === "desempenho" ||
+            activeTab === "desempenho-geral" ||
+            activeTab === "desempenho-evolucao" ||
+            activeTab === "desempenho-matriz" ||
+            activeTab === "desempenho-tendencias" ||
+            activeTab === "desempenho-areas" ||
+            activeTab === "progress" ||
+            activeTab === "pattern-engine" ||
+            activeTab === "matrix") && (
+            <DesempenhoView
+              initialSubTab={
+                activeTab === "desempenho-evolucao"
+                  ? "EVOLUCAO"
+                  : activeTab === "desempenho-matriz" || activeTab === "matrix"
+                  ? "MATRIZ"
+                  : activeTab === "desempenho-tendencias" || activeTab === "pattern-engine"
+                  ? "TENDENCIAS"
+                  : activeTab === "desempenho-areas"
+                  ? "AREAS"
+                  : "GERAL"
+              }
+            />
+          )}
+
+          {/* 7. Tutor IA (Conversar com tutor, Modo trânsito, Histórico) */}
+          {(activeTab === "tutor-ia" ||
+            activeTab === "tutor-conversar" ||
+            activeTab === "tutor-transito" ||
+            activeTab === "tutor-historico" ||
+            activeTab === "voice-tutor") && (
+            <TutorIaView
+              initialSubTab={
+                activeTab === "tutor-transito"
+                  ? "TRANSITO"
+                  : activeTab === "tutor-historico"
+                  ? "HISTORICO"
+                  : "CONVERSAR"
+              }
+            />
+          )}
+
+          {/* Special / Advanced / OSCE modules */}
+          {activeTab === "osce" && <UnifiedOsceView />}
+          {activeTab === "student-memory" && <StudentMemoryView />}
+          {activeTab === "agent" && <FunctionCallingAgentView />}
+          {activeTab === "admin" && <AdminEditorialView />}
+          {(activeTab === "profile" || activeTab === "settings") && <ProfileSettingsView />}
+          {activeTab === "export" && <DataExportView />}
+          {activeTab === "subscription" && (
+            <div className="py-6">
+              <PricingModal />
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Mobile Bottom Navigation */}
+      <BottomNav />
+
+      {/* Global Modals */}
+      <StudyForMeModal />
+      <WhatIfModal />
+      <PricingModal />
+      <ExamConfigModal
+        isOpen={isExamConfigOpen}
+        onClose={() => setIsExamConfigOpen(false)}
+      />
+      <OfficialSearchModal
+        isOpen={isOfficialSearchOpen}
+        onClose={() => setIsOfficialSearchOpen(false)}
+        initialQuery={officialSearchQuery}
+      />
+    </div>
+  );
+};
+
+const AppRoot: React.FC = () => {
+  const { firebaseUser, isAuthLoading, isGuestMode } = useApp();
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen w-full bg-[#06101E] flex flex-col items-center justify-center p-4 text-white">
+        <div className="flex flex-col items-center space-y-4 animate-in fade-in duration-300">
+          <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-600 p-0.5 shadow-xl shadow-teal-500/20 flex items-center justify-center">
+            <div className="w-full h-full bg-[#07162A] rounded-[14px] flex items-center justify-center">
+              <svg
+                className="w-7 h-7 text-teal-300 animate-pulse"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M16 6l-8 6 8 6" />
+                <circle cx="16" cy="6" r="2" fill="currentColor" />
+                <circle cx="8" cy="12" r="2" fill="currentColor" />
+                <circle cx="16" cy="18" r="2" fill="currentColor" />
+              </svg>
+            </div>
+          </div>
+          <div className="text-center">
+            <h1 className="text-xl font-bold tracking-tight text-white">
+              Stazia<span className="text-teal-400">Med</span>{" "}
+              <span className="text-[10px] font-black tracking-widest uppercase text-teal-400/90 ml-1">REVALIDA</span>
+            </h1>
+            <p className="text-xs text-slate-400 mt-1">Carregando ambiente seguro...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!firebaseUser && !isGuestMode) {
+    return <LoginView />;
+  }
+
+  // Mandatory Full-Screen Email Verification Gate
+  // When an account is registered with Email/Password and emailVerified is false,
+  // block ALL app modules (Sidebar, Header, MainContent, Modals) and render only the confirmation screen.
+  const isGoogleAuth = Boolean(
+    firebaseUser?.providerData?.some((p) => p.providerId === "google.com")
+  );
+  if (firebaseUser && !isGoogleAuth && !firebaseUser.emailVerified) {
+    return <EmailVerificationRequiredView />;
+  }
+
+  return <MainContent />;
+};
+
+export function App() {
+  return (
+    <BrowserRouter>
+      <AppProvider>
+        <AppRoot />
+      </AppProvider>
+    </BrowserRouter>
+  );
+}
+
+export default App;

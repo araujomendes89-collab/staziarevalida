@@ -1,0 +1,65 @@
+{
+  "indexes": [],
+  "fieldOverrides": [
+    {
+      "collectionGroup": "questions",
+      "fieldPath": "statement",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "questions",
+      "fieldPath": "clinicalCase",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "questions",
+      "fieldPath": "inepIntent",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "questions",
+      "fieldPath": "expectedConduct",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "questions",
+      "fieldPath": "keyFinding",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "questions",
+      "fieldPath": "brazilContextNote",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "osce_stations",
+      "fieldPath": "clinicalScenario",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "osce_stations",
+      "fieldPath": "patientScript",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "osce_stations",
+      "fieldPath": "actorInstructions",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "osce_stations",
+      "fieldPath": "evaluatorChecklist",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "guidelines",
+      "fieldPath": "summary",
+      "indexes": []
+    },
+    {
+      "collectionGroup": "guidelines",
+      "fieldPath": "recommendations",
+      "indexes": []
+    }
+  ]
+}

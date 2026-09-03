@@ -1,0 +1,347 @@
+{
+  "entities": {
+    "Question": {
+      "title": "Question",
+      "description": "Schema representing official INEP and high-yield ineditas medical exam questions.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique question ID" },
+        "code": { "type": "string", "description": "Human-readable question code (e.g. REV-2024.1-CM-12)" },
+        "origin": { "type": "string", "enum": ["INEP_OFICIAL", "INEDITAS"], "description": "Question origin" },
+        "examYear": { "type": "number", "description": "Exam year" },
+        "examEdition": { "type": "string", "description": "Exam edition name" },
+        "area": { "type": "string", "description": "Medical area" },
+        "topic": { "type": "string", "description": "Clinical topic" },
+        "clinicalCase": { "type": "string", "description": "Stem / clinical case text" },
+        "options": { "type": "array", "description": "Multiple choice alternatives A-D" },
+        "correctAnswer": { "type": "string", "description": "Correct option key (A, B, C, D)" }
+      },
+      "required": ["id", "code", "origin", "area", "topic", "clinicalCase", "options"]
+    },
+    "MedicalGuideline": {
+      "title": "MedicalGuideline",
+      "description": "Official Brazilian Ministry of Health (SUS) and medical society clinical guidelines.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "area": { "type": "string" },
+        "issuingBody": { "type": "string" },
+        "year": { "type": "number" },
+        "status": { "type": "string" }
+      },
+      "required": ["id", "title", "area", "issuingBody", "status"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Schema representing a candidate's profile, INEP target edition, metrics, and study settings.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique user ID" },
+        "name": { "type": "string", "description": "Candidate full name" },
+        "email": { "type": "string", "description": "Candidate email address" },
+        "avatarSeed": { "type": "string", "description": "Avatar seed for visual identification" },
+        "graduationCountry": { "type": "string", "description": "Country of medical graduation" },
+        "graduationUniversity": { "type": "string", "description": "University where graduated" },
+        "graduationYear": { "type": "number", "description": "Year of graduation" },
+        "targetEdition": { "type": "string", "description": "Target INEP Revalida edition (e.g. 2026/2)" },
+        "examDate": { "type": "string", "description": "Target exam date formatted as ISO date string" },
+        "isFirstAttempt": { "type": "boolean", "description": "Whether this is the first attempt in Revalida" },
+        "previousScore": { "type": "number", "description": "Score achieved in previous attempt if applicable" },
+        "dailyStudyMinutes": { "type": "number", "description": "Target daily study duration in minutes" },
+        "availableDaysPerWeek": { "type": "number", "description": "Days available for study per week" },
+        "weakAreas": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Medical areas requiring focus"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["STUDENT", "EDITOR", "ADMIN"],
+          "description": "Authoritative user role within the platform. Immutable by standard client; provisioned solely by backend or project admin."
+        },
+        "tier": {
+          "type": "string",
+          "enum": ["TRIAL", "EXPIRED", "FREE", "PRO", "PRO_PLUS", "ADMIN"],
+          "description": "User subscription tier"
+        },
+        "plan": {
+          "type": "string",
+          "enum": ["trial", "expired", "pro", "pro_plus", "admin"],
+          "description": "User subscription plan code"
+        },
+        "trialStartedAt": { "type": "string", "description": "ISO timestamp when 7-day trial began" },
+        "trialEndsAt": { "type": "string", "description": "ISO timestamp when 7-day trial expires" },
+        "subscriptionExpiresAt": { "type": "string", "description": "ISO timestamp when paid plan expires" },
+        "planUpdatedAt": { "type": "string", "description": "ISO timestamp of last plan change" },
+        "isOnboardingCompleted": { "type": "boolean", "description": "Whether onboarding has been completed" },
+        "hasConfiguredExamDate": { "type": "boolean", "description": "Whether exam date countdown is configured" },
+        "studyStreakDays": { "type": "number", "description": "Consecutive days of study activity" },
+        "totalQuestionsSolved": { "type": "number", "description": "Lifetime total questions answered" },
+        "overallReadiness": { "type": "number", "description": "Calculated readiness index (0-100)" },
+        "projectedPassScoreMin": { "type": "number", "description": "Lower bound of projected pass score (PPS)" },
+        "projectedPassScoreMax": { "type": "number", "description": "Upper bound of projected pass score (PPS)" },
+        "createdAt": { "type": "string", "description": "Account creation ISO timestamp" },
+        "updatedAt": { "type": "string", "description": "Last update ISO timestamp" }
+      },
+      "required": ["id", "name", "email", "role", "tier", "overallReadiness"]
+    },
+    "TrainingSession": {
+      "title": "TrainingSession",
+      "description": "Schema representing an active or completed training session, exam simulation, or customized question batch.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique session ID" },
+        "userId": { "type": "string", "description": "ID of the user who owns this session" },
+        "title": { "type": "string", "description": "Human-readable session title" },
+        "mode": {
+          "type": "string",
+          "enum": ["RAPIDO", "ADAPTATIVO", "ERROS", "SIMULADO", "PROVA_INTEGRA", "PERSONALIZADO"],
+          "description": "Session training mode"
+        },
+        "config": {
+          "type": "object",
+          "description": "Configuration used to generate the session",
+          "properties": {
+            "mode": { "type": "string" },
+            "title": { "type": "string" },
+            "objective": { "type": "string" },
+            "areas": { "type": "array", "items": { "type": "string" } },
+            "topics": { "type": "array", "items": { "type": "string" } },
+            "competencies": { "type": "array", "items": { "type": "string" } },
+            "years": { "type": "array", "items": { "type": "string" } },
+            "origin": { "type": "string" },
+            "difficulty": { "type": "string" },
+            "inepRelevance": { "type": "string" },
+            "quantity": { "type": "number" },
+            "feedbackMode": { "type": "string" },
+            "timerMode": { "type": "string" },
+            "showComments": { "type": "boolean" },
+            "ordering": { "type": "string" }
+          }
+        },
+        "questionIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Ordered list of question IDs in this session"
+        },
+        "currentIndex": { "type": "number", "description": "Current active question index" },
+        "answers": {
+          "type": "object",
+          "description": "Map of questionId to user answer state"
+        },
+        "flaggedQuestionIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of flagged question IDs"
+        },
+        "startTime": { "type": "string", "description": "ISO start timestamp" },
+        "lastUpdated": { "type": "string", "description": "ISO last update timestamp" },
+        "totalDurationSeconds": { "type": "number", "description": "Total elapsed seconds in session" },
+        "isCompleted": { "type": "boolean", "description": "Whether session is finished" },
+        "completedAt": { "type": "string", "description": "ISO completion timestamp" },
+        "paused": { "type": "boolean", "description": "Whether session is currently paused" },
+        "summaryReport": {
+          "type": "object",
+          "description": "Detailed performance metrics and breakdown upon completion"
+        }
+      },
+      "required": ["id", "userId", "mode", "questionIds", "startTime", "isCompleted"]
+    },
+    "UserProgress": {
+      "title": "UserProgress",
+      "description": "Schema representing user study progress, daily missions tracking, knowledge graph mastery, and readiness timeline.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Progress document ID (e.g. progress_{userId} or daily date ID)" },
+        "userId": { "type": "string", "description": "ID of the candidate" },
+        "missionDate": { "type": "string", "description": "Date string for daily mission tracking (YYYY-MM-DD)" },
+        "todayMission": {
+          "type": "object",
+          "description": "Dynamic adaptive study mission for the day",
+          "properties": {
+            "id": { "type": "string" },
+            "title": { "type": "string" },
+            "estimatedMinutes": { "type": "number" },
+            "targetArea": { "type": "string" },
+            "focusTopic": { "type": "string" },
+            "rationale": { "type": "string" },
+            "tasks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": { "type": "string" },
+                  "description": { "type": "string" },
+                  "count": { "type": "number" },
+                  "minutes": { "type": "number" },
+                  "completed": { "type": "boolean" }
+                },
+                "required": ["type", "description", "minutes", "completed"]
+              }
+            }
+          },
+          "required": ["id", "title", "estimatedMinutes", "targetArea", "focusTopic", "tasks"]
+        },
+        "knowledgeGraphNodes": {
+          "type": "array",
+          "description": "Mastery level and incidence weight per clinical competency node",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "area": { "type": "string" },
+              "name": { "type": "string" },
+              "parentTopic": { "type": "string" },
+              "incidenceWeight": { "type": "number" },
+              "userMastery": { "type": "number" },
+              "expectedPointGain": { "type": "number" },
+              "riskLevel": { "type": "string" },
+              "totalQuestionsAnswered": { "type": "number" },
+              "lastStudied": { "type": "string" }
+            },
+            "required": ["id", "area", "name", "incidenceWeight", "userMastery", "riskLevel"]
+          }
+        },
+        "studyStreakDays": { "type": "number", "description": "Current consecutive streak days" },
+        "totalQuestionsSolved": { "type": "number", "description": "Lifetime questions solved" },
+        "overallReadiness": { "type": "number", "description": "Overall percentage readiness (0-100)" },
+        "projectedPassScoreMin": { "type": "number", "description": "Minimum PPS estimation" },
+        "projectedPassScoreMax": { "type": "number", "description": "Maximum PPS estimation" },
+        "flashcardStats": {
+          "type": "object",
+          "properties": {
+            "total": { "type": "number" },
+            "dueToday": { "type": "number" },
+            "mastered": { "type": "number" }
+          }
+        },
+        "lastActiveDate": { "type": "string", "description": "Last activity timestamp" },
+        "updatedAt": { "type": "string", "description": "Last updated ISO timestamp" }
+      },
+      "required": ["id", "userId", "todayMission", "overallReadiness"]
+    },
+    "ErrorAutopsy": {
+      "title": "ErrorAutopsy",
+      "description": "Schema representing deep diagnostic error autopsy, root-cause taxonomy, reflection notes, and clinical remediation.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique error autopsy record ID" },
+        "userId": { "type": "string", "description": "Candidate ID" },
+        "questionId": { "type": "string", "description": "ID of the missed question" },
+        "questionCode": { "type": "string", "description": "Code of the question (e.g. REV-2024.1-CM-12)" },
+        "area": {
+          "type": "string",
+          "enum": ["CLINICA_MEDICA", "CIRURGIA_GERAL", "GINECOLOGIA_OBSTETRICIA", "PEDIATRIA", "MEDICINA_FAMILIA_COMUNIDADE"],
+          "description": "Medical area"
+        },
+        "topic": { "type": "string", "description": "Core clinical topic" },
+        "subtopic": { "type": "string", "description": "Specific subtopic" },
+        "selectedOption": {
+          "type": "string",
+          "enum": ["A", "B", "C", "D"],
+          "description": "Option chosen by candidate"
+        },
+        "correctOption": {
+          "type": "string",
+          "enum": ["A", "B", "C", "D"],
+          "description": "Official gold standard answer"
+        },
+        "timeSpentSeconds": { "type": "number", "description": "Seconds spent before answering" },
+        "confidence": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH"],
+          "description": "Confidence level at moment of answer"
+        },
+        "errorReason": {
+          "type": "string",
+          "enum": [
+            "KNOWLEDGE_GAP",
+            "DISTRACTOR_TRAP",
+            "DIAGNOSIS_VS_CONDUCT",
+            "READING_HASTE",
+            "PROTOCOL_CONFUSION",
+            "ELIMINATED_RIGHT_ANSWER",
+            "TIME_PRESSURE",
+            "OUTDATED_GUIDELINE",
+            "GUESS"
+          ],
+          "description": "Taxonomy of cognitive/clinical error"
+        },
+        "userReflection": { "type": "string", "description": "Candidate self-reflection / metacognitive notes" },
+        "keyFinding": { "type": "string", "description": "Decisive diagnostic clue in the stem" },
+        "expectedConduct": { "type": "string", "description": "Gold standard conduct expected by INEP / SUS" },
+        "inepIntent": { "type": "string", "description": "Underlying clinical competency evaluated by the exam board" },
+        "remedialCardCreated": { "type": "boolean", "description": "Whether an auto-generated flashcard was created" },
+        "remedialCardId": { "type": "string", "description": "ID of linked remedial flashcard if present" },
+        "resolutionStatus": {
+          "type": "string",
+          "enum": ["PENDING_REVIEW", "REMEDIATED", "MASTERED"],
+          "description": "Autopsy remediation lifecycle status"
+        },
+        "retestAttempts": {
+          "type": "array",
+          "description": "Subsequent re-test attempts for this question",
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp": { "type": "string" },
+              "isCorrect": { "type": "boolean" },
+              "mode": { "type": "string" }
+            },
+            "required": ["timestamp", "isCorrect"]
+          }
+        },
+        "timestamp": { "type": "string", "description": "ISO timestamp when error was recorded" },
+        "updatedAt": { "type": "string", "description": "Last updated ISO timestamp" }
+      },
+      "required": ["id", "userId", "questionId", "area", "topic", "selectedOption", "correctOption", "errorReason", "timestamp"]
+    },
+    "DailyAiUsage": {
+      "title": "DailyAiUsage",
+      "type": "object",
+      "description": "Tracks daily token consumption, costs in USD, model provenance and request counts per user for AI quota enforcement",
+      "properties": {
+        "userId": { "type": "string", "description": "Unique user ID" },
+        "date": { "type": "string", "description": "Date formatted as YYYY-MM-DD" },
+        "totalInputTokens": { "type": "number", "description": "Total prompt tokens consumed today" },
+        "totalOutputTokens": { "type": "number", "description": "Total generation tokens consumed today" },
+        "totalCostUsd": { "type": "number", "description": "Accumulated estimated cost in USD" },
+        "requestCount": { "type": "number", "description": "Total number of AI requests made today" },
+        "lastModelUsed": { "type": "string", "description": "Last model invoked (e.g. claude-sonnet-5, gemini-3.7-flash)" },
+        "lastUpdatedAt": { "type": "string", "description": "ISO timestamp of the last AI interaction" }
+      },
+      "required": ["userId", "date", "totalInputTokens", "totalOutputTokens", "totalCostUsd", "requestCount"]
+    }
+  },
+  "firestore": {
+    "/questions/{questionId}": {
+      "schema": "Question",
+      "description": "Stores the central repository of validated INEP and ineditas medical questions."
+    },
+    "/guidelines/{guidelineId}": {
+      "schema": "MedicalGuideline",
+      "description": "Stores official SUS clinical protocols, PCDTs, and national medical society guidelines."
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Stores user profiles, preferences, exam targets, and aggregate readiness metrics."
+    },
+    "/users/{userId}/usage/{date}": {
+      "schema": "DailyAiUsage",
+      "description": "Stores daily AI quota and token consumption ledger per user."
+    },
+    "/sessions/{sessionId}": {
+      "schema": "TrainingSession",
+      "description": "Stores active and completed training and exam sessions for candidates."
+    },
+    "/progress/{progressId}": {
+      "schema": "UserProgress",
+      "description": "Stores daily study mission tracking, competency mastery graph, and readiness history."
+    },
+    "/errors/{errorId}": {
+      "schema": "ErrorAutopsy",
+      "description": "Stores error autopsy logs, root-cause taxonomy classifications, and remediation state."
+    }
+  }
+}

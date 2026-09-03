@@ -1,0 +1,12 @@
+{
+  "projectId": "staziamed-revalida-prod",
+  "appId": "1:186513473712:web:d7f1f2df30799938757b75",
+  "apiKey": "AIzaSyA0xv7NM9CSTBf5-lYd1_3KRMf1XzqUBjY",
+  "authDomain": "staziamed-revalida-prod.firebaseapp.com",
+  "storageBucket": "staziamed-revalida-prod.firebasestorage.app",
+  "messagingSenderId": "186513473712",
+  "measurementId": "",
+  "oAuthClientId": "",
+  "recaptchaSiteKey": "",
+  "firestoreDatabaseId": "staziamed-revalida-prod"
+}

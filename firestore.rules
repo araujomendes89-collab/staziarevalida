@@ -1,0 +1,182 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------------------------------------------
+    // HELPER FUNCTIONS & PRIVILEGE CHECKS
+    // -------------------------------------------------------------
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && (request.auth.uid == userId);
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'ADMIN')
+      );
+    }
+
+    // Prevents privilege escalation when creating a user profile
+    function isUnprivilegedCreate(data) {
+      return (!('role' in data) || data.role == 'STUDENT') &&
+             (!('tier' in data) || data.tier in ['TRIAL', 'FREE', 'EXPIRED']) &&
+             (!('plan' in data) || data.plan in ['trial', 'expired']) &&
+             (!('subscriptionExpiresAt' in data) || data.subscriptionExpiresAt == null);
+    }
+
+    // Prevents privilege escalation when updating an existing user profile
+    // Regular users cannot modify role, tier, plan, or subscription/trial expiration dates
+    function isAdministrativeFieldUnmodified() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+        'role',
+        'tier',
+        'plan',
+        'subscriptionExpiresAt',
+        'trialStartedAt',
+        'trialEndsAt',
+        'planUpdatedAt'
+      ]) || (
+        (resource != null) &&
+        (!('role' in request.resource.data) || request.resource.data.role == resource.data.role) &&
+        (!('tier' in request.resource.data) || request.resource.data.tier == resource.data.tier) &&
+        (!('plan' in request.resource.data) || request.resource.data.plan == resource.data.plan) &&
+        (!('subscriptionExpiresAt' in request.resource.data) || request.resource.data.subscriptionExpiresAt == resource.data.subscriptionExpiresAt) &&
+        (!('trialStartedAt' in request.resource.data) || request.resource.data.trialStartedAt == resource.data.trialStartedAt) &&
+        (!('trialEndsAt' in request.resource.data) || request.resource.data.trialEndsAt == resource.data.trialEndsAt) &&
+        (!('planUpdatedAt' in request.resource.data) || request.resource.data.planUpdatedAt == resource.data.planUpdatedAt)
+      );
+    }
+
+    function isValidUser(data) {
+      return data.id is string &&
+             data.name is string &&
+             data.email is string &&
+             (!('role' in data) || data.role in ['STUDENT', 'EDITOR', 'ADMIN']) &&
+             (!('tier' in data) || data.tier in ['TRIAL', 'EXPIRED', 'FREE', 'PRO', 'PRO_PLUS', 'ADMIN']) &&
+             (!('plan' in data) || data.plan in ['trial', 'expired', 'pro', 'pro_plus', 'admin']);
+    }
+
+    function isValidSession(data) {
+      return data.keys().hasAll(['id', 'userId', 'mode', 'questionIds', 'startTime', 'isCompleted']) &&
+             data.id is string &&
+             data.userId is string &&
+             data.mode is string &&
+             data.questionIds is list &&
+             data.startTime is string &&
+             data.isCompleted is bool;
+    }
+
+    function isValidProgress(data) {
+      return data.keys().hasAll(['userId']) &&
+             data.userId is string;
+    }
+
+    function isValidErrorAutopsy(data) {
+      return data.keys().hasAll(['id', 'userId', 'questionId', 'area', 'topic', 'selectedOption', 'correctOption', 'errorReason', 'timestamp']) &&
+             data.id is string &&
+             data.userId is string &&
+             data.questionId is string &&
+             data.area in ['CLINICA_MEDICA', 'CIRURGIA_GERAL', 'GINECOLOGIA_OBSTETRICIA', 'PEDIATRIA', 'MEDICINA_FAMILIA_COMUNIDADE'] &&
+             data.selectedOption in ['A', 'B', 'C', 'D'] &&
+             data.correctOption in ['A', 'B', 'C', 'D'] &&
+             data.errorReason is string &&
+             data.timestamp is string;
+    }
+
+    // -------------------------------------------------------------
+    // CONTEÚDO PÚBLICO (Leitura Aberta / Escrita Restrita a Admin)
+    // -------------------------------------------------------------
+    match /questions/{questionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /guidelines/{guidelineId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /editions/{editionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /knowledge_nodes/{nodeId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /brazil_medicine/{itemId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // ESTAÇÕES OSCE (Leitura para Autenticados / Escrita Admin)
+    // -------------------------------------------------------------
+    match /osce_stations/{stationId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // ADMINISTRAÇÃO & HEALTH CHECK (Protegidos Contra Exposição)
+    // -------------------------------------------------------------
+    match /admins/{adminId} {
+      allow read, write: if isAdmin();
+    }
+
+    match /_health_check/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // -------------------------------------------------------------
+    // COLEÇÕES PRIVADAS (Restritas ao Usuário Autenticado Proprietário)
+    // -------------------------------------------------------------
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAdmin() || (
+        isOwner(userId) &&
+        isValidUser(request.resource.data) &&
+        isUnprivilegedCreate(request.resource.data)
+      );
+      allow update: if isAdmin() || (
+        isOwner(userId) &&
+        isValidUser(request.resource.data) &&
+        isAdministrativeFieldUnmodified()
+      );
+      allow delete: if isAdmin() || isOwner(userId);
+
+      match /usage/{date} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    match /sessions/{sessionId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isAdmin()) && isValidSession(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || (resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId)) && isValidSession(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /progress/{progressId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isAdmin()) && isValidProgress(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || (resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId)) && isValidProgress(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /errors/{errorId} {
+      allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isAdmin()) && isValidErrorAutopsy(request.resource.data);
+      allow update: if isAuthenticated() && (isAdmin() || (resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId)) && isValidErrorAutopsy(request.resource.data);
+      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+  }
+}
