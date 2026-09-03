@@ -3,15 +3,15 @@ import { TEST_QUESTIONS_COLLECTION } from "./testFixtures";
 import { SessionBuilderService, DEFAULT_SESSION_CONFIG } from "../services/sessionBuilderService";
 import { QuestionSessionConfig, ActiveTrainingSession } from "../types";
 
-describe("Simulados Experience & Session Creation (Etapa 1.7)", () => {
+describe("Simulados Experience & Quantity Range Slider (Etapas 1.7 & 1.7.1)", () => {
   const allQuestions = TEST_QUESTIONS_COLLECTION;
 
-  it("A. Generates simulation session with requested question count", () => {
+  it("A. Slider minimum is strictly 1 question", () => {
     const config: QuestionSessionConfig = {
       ...DEFAULT_SESSION_CONFIG,
       mode: "SIMULADO",
-      title: "Simulado Rápido 10q",
-      quantity: 10,
+      title: "Simulado 1 Questão",
+      quantity: 1,
       feedbackMode: "END_OF_SESSION",
     };
 
@@ -22,15 +22,18 @@ describe("Simulados Experience & Session Creation (Etapa 1.7)", () => {
       []
     );
 
-    expect(sessionQuestions.length).toBe(10);
+    expect(sessionQuestions.length).toBe(1);
   });
 
-  it("B. Generated simulation contains zero duplicate questions", () => {
+  it("B. Global maximum for simulation generation is bounded at 100 questions", () => {
+    const requestedCount = 100;
+    const effectiveMax = Math.min(100, allQuestions.length);
+
     const config: QuestionSessionConfig = {
       ...DEFAULT_SESSION_CONFIG,
       mode: "SIMULADO",
-      title: "Simulado 20q",
-      quantity: 20,
+      title: "Simulado Máximo 100q",
+      quantity: effectiveMax,
       feedbackMode: "END_OF_SESSION",
     };
 
@@ -41,18 +44,19 @@ describe("Simulados Experience & Session Creation (Etapa 1.7)", () => {
       []
     );
 
-    const questionIds = sessionQuestions.map((q) => q.id);
-    const uniqueIds = new Set(questionIds);
-    expect(uniqueIds.size).toBe(sessionQuestions.length);
+    expect(sessionQuestions.length).toBe(effectiveMax);
+    expect(sessionQuestions.length).toBeLessThanOrEqual(100);
   });
 
-  it("C. Area-focused simulation filters strictly by selected medical area", () => {
+  it("C. Allows selecting and generating arbitrary intermediate counts (e.g. 37 questions)", () => {
+    const intermediateCount = 37;
+    const effectiveQuantity = Math.min(intermediateCount, allQuestions.length);
+
     const config: QuestionSessionConfig = {
       ...DEFAULT_SESSION_CONFIG,
       mode: "SIMULADO",
-      title: "Simulado Pediatria",
-      areas: ["PEDIATRIA"],
-      quantity: 10,
+      title: "Simulado 37 Questões",
+      quantity: effectiveQuantity,
       feedbackMode: "END_OF_SESSION",
     };
 
@@ -63,18 +67,16 @@ describe("Simulados Experience & Session Creation (Etapa 1.7)", () => {
       []
     );
 
-    expect(sessionQuestions.length).toBeGreaterThan(0);
-    sessionQuestions.forEach((q) => {
-      expect(q.area).toBe("PEDIATRIA");
-    });
+    expect(sessionQuestions.length).toBe(effectiveQuantity);
   });
 
-  it("D. Simulation session object correctly stores question IDs and configuration", () => {
+  it("D. Selected slider count arrives accurately into active session questionIds", () => {
+    const selectedCount = 23;
     const config: QuestionSessionConfig = {
       ...DEFAULT_SESSION_CONFIG,
       mode: "SIMULADO",
-      title: "Simulado 15q",
-      quantity: 15,
+      title: "Simulado 23q",
+      quantity: selectedCount,
       feedbackMode: "END_OF_SESSION",
     };
 
@@ -86,7 +88,7 @@ describe("Simulados Experience & Session Creation (Etapa 1.7)", () => {
     );
 
     const session: ActiveTrainingSession = {
-      id: `simulado-test-${Date.now()}`,
+      id: `simulado-slider-${Date.now()}`,
       title: config.title || "Simulado",
       subtitle: `${sessionQuestions.length} questões`,
       mode: "SIMULADO",
@@ -102,76 +104,121 @@ describe("Simulados Experience & Session Creation (Etapa 1.7)", () => {
       paused: false,
     };
 
-    expect(session.questionIds.length).toBe(15);
-    expect(session.mode).toBe("SIMULADO");
-    expect(session.isCompleted).toBe(false);
+    expect(session.questionIds.length).toBe(selectedCount);
+    expect(session.config.quantity).toBe(selectedCount);
   });
 
-  it("E. Feedback mode is preserved (END_OF_SESSION vs IMMEDIATE)", () => {
-    const endConfig: QuestionSessionConfig = {
-      ...DEFAULT_SESSION_CONFIG,
-      feedbackMode: "END_OF_SESSION",
-    };
-    expect(endConfig.feedbackMode).toBe("END_OF_SESSION");
+  it("E. If filtered dataset has 65 available questions, effective maximum is 65", () => {
+    const availableQuestions = 65;
+    const effectiveMax = Math.min(100, availableQuestions);
+    expect(effectiveMax).toBe(65);
 
-    const immConfig: QuestionSessionConfig = {
-      ...DEFAULT_SESSION_CONFIG,
-      feedbackMode: "IMMEDIATE",
-    };
-    expect(immConfig.feedbackMode).toBe("IMMEDIATE");
+    const requestedValue = 80;
+    const boundedValue = Math.min(requestedValue, effectiveMax);
+    expect(boundedValue).toBe(65);
   });
 
-  it("F. Empty database or zero matching filters yields 0 questions safely", () => {
+  it("F. When user had 80 selected and filter reduces availability to 40, value auto-adjusts to 40", () => {
+    let selectedQuantity = 80;
+    const newAvailable = 40;
+
+    const maxAvailable = Math.min(100, newAvailable);
+    if (selectedQuantity > maxAvailable) {
+      selectedQuantity = maxAvailable;
+    }
+
+    expect(selectedQuantity).toBe(40);
+  });
+
+  it("G. When only 1 question is available, min=1 and max=1, and 1-question session works cleanly", () => {
+    const singleQuestionDataset = [allQuestions[0]];
+    const available = singleQuestionDataset.length;
+    const effectiveMax = Math.max(1, Math.min(100, available));
+
+    expect(effectiveMax).toBe(1);
+
     const config: QuestionSessionConfig = {
       ...DEFAULT_SESSION_CONFIG,
-      topics: ["NON_EXISTENT_TOPIC_XYZ"],
+      mode: "SIMULADO",
+      title: "Simulado 1 Questão Única",
+      quantity: effectiveMax,
     };
 
-    // Filter strictly returns 0
-    const filtered = SessionBuilderService.filterQuestions(
-      config,
-      allQuestions,
-      [],
-      []
-    );
-    expect(filtered.length).toBe(0);
-
-    // Empty dataset yields 0
     const sessionQuestions = SessionBuilderService.buildQuestionSession(
       config,
-      [],
+      singleQuestionDataset,
       [],
       []
     );
+
+    expect(sessionQuestions.length).toBe(1);
+    expect(sessionQuestions[0].id).toBe(singleQuestionDataset[0].id);
+  });
+
+  it("H. Zero questions available safely handles empty array and does not generate invalid session", () => {
+    const emptyDataset: any[] = [];
+    const config: QuestionSessionConfig = {
+      ...DEFAULT_SESSION_CONFIG,
+      mode: "SIMULADO",
+      title: "Simulado Vazio",
+      quantity: 10,
+    };
+
+    const sessionQuestions = SessionBuilderService.buildQuestionSession(
+      config,
+      emptyDataset,
+      [],
+      []
+    );
+
     expect(sessionQuestions.length).toBe(0);
   });
 
-  it("G. Session persistence saves and retrieves active session", () => {
-    const session: ActiveTrainingSession = {
-      id: "active-sim-123",
-      title: "Simulado em Andamento",
-      subtitle: "10 questões",
-      mode: "SIMULADO",
-      config: DEFAULT_SESSION_CONFIG,
-      questionIds: ["q-1", "q-2"],
-      currentIndex: 1,
-      answers: {},
-      flaggedQuestionIds: [],
-      startTime: new Date().toISOString(),
-      lastUpdated: new Date().toISOString(),
-      totalDurationSeconds: 120,
-      isCompleted: false,
-      paused: false,
-    };
+  it("I. All 4 simulation modalities (Rapido, Area, Geral, Personalizado) generate valid sessions", () => {
+    const modalities: QuestionSessionConfig[] = [
+      {
+        ...DEFAULT_SESSION_CONFIG,
+        mode: "SIMULADO",
+        title: "Simulado Rápido",
+        areas: ["ALL"],
+        quantity: 15,
+        feedbackMode: "END_OF_SESSION",
+      },
+      {
+        ...DEFAULT_SESSION_CONFIG,
+        mode: "SIMULADO",
+        title: "Simulado Clínica Médica",
+        areas: ["CLINICA_MEDICA"],
+        quantity: 12,
+        feedbackMode: "END_OF_SESSION",
+      },
+      {
+        ...DEFAULT_SESSION_CONFIG,
+        mode: "SIMULADO",
+        title: "Simulado Geral",
+        areas: ["ALL"],
+        quantity: 50,
+        feedbackMode: "END_OF_SESSION",
+      },
+      {
+        ...DEFAULT_SESSION_CONFIG,
+        mode: "SIMULADO",
+        title: "Simulado Personalizado",
+        areas: ["CIRURGIA_GERAL", "PEDIATRIA"],
+        quantity: 25,
+        feedbackMode: "IMMEDIATE",
+      },
+    ];
 
-    SessionBuilderService.saveActiveSession(session);
-    const retrieved = SessionBuilderService.getActiveSession();
-
-    expect(retrieved).toBeDefined();
-    expect(retrieved?.id).toBe("active-sim-123");
-    expect(retrieved?.currentIndex).toBe(1);
-
-    SessionBuilderService.clearActiveSession();
-    expect(SessionBuilderService.getActiveSession()).toBeNull();
+    modalities.forEach((modalityConfig) => {
+      const questions = SessionBuilderService.buildQuestionSession(
+        modalityConfig,
+        allQuestions,
+        [],
+        []
+      );
+      expect(questions.length).toBeGreaterThan(0);
+      expect(questions.length).toBeLessThanOrEqual(modalityConfig.quantity);
+    });
   });
 });

@@ -1,16 +1,9 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   FileText,
   Clock,
   CheckCircle2,
   Play,
-  Award,
-  AlertCircle,
-  BarChart2,
-  Calendar,
-  Layers,
-  ChevronRight,
-  TrendingUp,
   RotateCcw,
   Sparkles,
   ShieldCheck,
@@ -22,6 +15,7 @@ import {
   Baby,
   ArrowRight,
   Zap,
+  Layers,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { formatMedicalArea } from "../../utils/formatters";
@@ -65,6 +59,79 @@ const MEDICAL_AREAS: {
     description: "SUS, Epidemiologia, Saúde Coletiva e Bioética",
   },
 ];
+
+interface QuantityRangeSliderProps {
+  value: number;
+  onChange: (val: number) => void;
+  maxAvailable: number;
+  label?: string;
+}
+
+export const QuantityRangeSlider: React.FC<QuantityRangeSliderProps> = ({
+  value,
+  onChange,
+  maxAvailable,
+  label = "Quantidade de Questões",
+}) => {
+  const effectiveMax = Math.max(1, Math.min(100, maxAvailable));
+  const effectiveValue = Math.max(1, Math.min(value, effectiveMax));
+
+  if (maxAvailable === 0) {
+    return (
+      <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-1">
+        <p className="text-xs font-bold text-amber-900">
+          Nenhuma questão disponível para esta configuração.
+        </p>
+        <p className="text-[11px] text-amber-700">
+          Selecione outras áreas ou filtros para habilitar o simulado.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200/80">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+          {label}
+        </span>
+        <div className="flex items-baseline gap-1 bg-white px-3 py-1 rounded-xl border border-slate-200 shadow-2xs">
+          <span className="text-base sm:text-lg font-extrabold text-teal-700 font-mono">
+            {effectiveValue}
+          </span>
+          <span className="text-xs font-bold text-slate-600">
+            {effectiveValue === 1 ? "questão" : "questões"}
+          </span>
+        </div>
+      </div>
+
+      <div className="space-y-1.5 pt-1">
+        <div className="relative flex items-center">
+          <input
+            type="range"
+            min={1}
+            max={effectiveMax}
+            step={1}
+            value={effectiveValue}
+            onChange={(e) => onChange(parseInt(e.target.value, 10))}
+            aria-label={label}
+            aria-valuemin={1}
+            aria-valuemax={effectiveMax}
+            aria-valuenow={effectiveValue}
+            className="w-full h-2.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500/40"
+          />
+        </div>
+
+        <div className="flex items-center justify-between text-[11px] font-semibold text-slate-400">
+          <span>1 questão</span>
+          <span className="text-slate-500">
+            Máx: {effectiveMax} {effectiveMax === 1 ? "questão" : "questões"}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const SimuladosHubView: React.FC = () => {
   const {
@@ -117,6 +184,34 @@ export const SimuladosHubView: React.FC = () => {
     }
     return map;
   }, [questions]);
+
+  // Dynamic available counts
+  const availableInSelectedArea = questionsCountPerArea[selectedArea] || 0;
+  const availableInCustomAreas = useMemo(() => {
+    return questions.filter((q) => customAreas.includes(q.area)).length;
+  }, [questions, customAreas]);
+
+  // Safe effective values bounded by available questions
+  const effectiveRapidoCount = Math.max(1, Math.min(rapidoCount, Math.min(100, totalQuestionsInBank) || 1));
+  const effectiveAreaCount = Math.max(1, Math.min(areaQuestionCount, Math.min(100, availableInSelectedArea) || 1));
+  const effectiveCompletoCount = Math.max(1, Math.min(completoCount, Math.min(100, totalQuestionsInBank) || 1));
+  const effectiveCustomCount = Math.max(1, Math.min(customCount, Math.min(100, availableInCustomAreas) || 1));
+
+  // Auto-adjust area count if area changes
+  useEffect(() => {
+    const maxForArea = Math.min(100, availableInSelectedArea);
+    if (areaQuestionCount > maxForArea && maxForArea > 0) {
+      setAreaQuestionCount(maxForArea);
+    }
+  }, [selectedArea, availableInSelectedArea]);
+
+  // Auto-adjust custom count if custom areas change
+  useEffect(() => {
+    const maxForCustom = Math.min(100, availableInCustomAreas);
+    if (customCount > maxForCustom && maxForCustom > 0) {
+      setCustomCount(maxForCustom);
+    }
+  }, [customAreas, availableInCustomAreas]);
 
   // Start Simulation Session
   const handleStartSimulado = (config: QuestionSessionConfig) => {
@@ -187,7 +282,7 @@ export const SimuladosHubView: React.FC = () => {
         <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 shrink-0">
           <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
           <span className="font-bold text-slate-900">
-            {totalQuestionsInBank} questões
+            {totalQuestionsInBank} questões disponíveis
           </span>
           <span className="text-slate-400">|</span>
           <span className="text-slate-500">5 Grandes Áreas</span>
@@ -234,9 +329,9 @@ export const SimuladosHubView: React.FC = () => {
       {/* 3. SELETOR DE MODALIDADE */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         {[
-          { id: "RAPIDO" as const, label: "Simulado Rápido", icon: Zap, desc: "10, 20 ou 30 questões" },
+          { id: "RAPIDO" as const, label: "Simulado Rápido", icon: Zap, desc: "Slider de 1 a 100 q." },
           { id: "AREA" as const, label: "Por Grande Área", icon: Layers, desc: "Foco especializado" },
-          { id: "COMPLETO" as const, label: "Simulado Geral", icon: FileText, desc: "50 ou 100 questões" },
+          { id: "COMPLETO" as const, label: "Simulado Geral", icon: FileText, desc: "Simulação ampla" },
           { id: "PERSONALIZADO" as const, label: "Personalizado", icon: SlidersHorizontal, desc: "Filtros sob medida" },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -279,71 +374,45 @@ export const SimuladosHubView: React.FC = () => {
                 Simulado Rápido de Tiro Curto
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Treino ágil multidisciplinar com questões oficiais das 5 grandes áreas para calibração de velocidade.
+                Treino ágil multidisciplinar com questões oficiais das 5 grandes áreas. Arraste o controle para definir o volume de questões.
               </p>
             </div>
 
-            {/* Presets de Quantidade */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                Quantidade de Questões
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { count: 10, time: "20 min", label: "Express" },
-                  { count: 20, time: "40 min", label: "Padrão" },
-                  { count: 30, time: "60 min", label: "Intensivo" },
-                ].map((p) => {
-                  const isSelected = rapidoCount === p.count;
-                  return (
-                    <button
-                      key={p.count}
-                      type="button"
-                      onClick={() => setRapidoCount(p.count)}
-                      className={`p-4 rounded-2xl border text-center transition-all cursor-pointer ${
-                        isSelected
-                          ? "bg-teal-50 border-teal-500 text-teal-950 ring-1 ring-teal-500/30 font-bold"
-                          : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                      }`}
-                    >
-                      <span className="text-lg font-extrabold block">
-                        {p.count} q.
-                      </span>
-                      <span className="text-xs text-slate-500 block mt-0.5">
-                        ~{p.time} • {p.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            {/* Range Slider */}
+            <QuantityRangeSlider
+              value={effectiveRapidoCount}
+              onChange={setRapidoCount}
+              maxAvailable={totalQuestionsInBank}
+              label="Volume de Questões"
+            />
 
             {/* Resumo e CTA */}
             <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <span className="text-sm font-bold text-slate-900 block">
-                  Simulado Rápido • {rapidoCount} questões
+                  Simulado Rápido • {effectiveRapidoCount} {effectiveRapidoCount === 1 ? "questão" : "questões"}
                 </span>
                 <span className="text-xs text-slate-500">
-                  Multidisciplinar • Gabarito no final • Tempo estimado: ~{rapidoCount * 2} min
+                  Multidisciplinar • Gabarito no final • Tempo estimado: ~{effectiveRapidoCount * 2} min
                 </span>
               </div>
 
               <button
                 type="button"
+                disabled={totalQuestionsInBank === 0}
                 onClick={() =>
                   handleStartSimulado({
                     ...DEFAULT_SESSION_CONFIG,
                     mode: "SIMULADO",
-                    title: `Simulado Rápido (${rapidoCount} Questões)`,
+                    title: `Simulado Rápido (${effectiveRapidoCount} Questões)`,
                     objective: "TREINO_LIVRE",
                     areas: ["ALL"],
-                    quantity: rapidoCount,
+                    quantity: effectiveRapidoCount,
                     feedbackMode: "END_OF_SESSION",
                     timerMode: "EXAM_STRICT",
                   })
                 }
-                className="px-7 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
+                className="px-7 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
               >
                 <span>INICIAR SIMULADO</span>
                 <ArrowRight className="w-4 h-4" />
@@ -401,28 +470,13 @@ export const SimuladosHubView: React.FC = () => {
               })}
             </div>
 
-            {/* Quantidade */}
-            <div className="space-y-2 pt-2 border-t border-slate-100">
-              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                Quantidade de Questões
-              </label>
-              <div className="flex items-center gap-2">
-                {[10, 20, 30].map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setAreaQuestionCount(c)}
-                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      areaQuestionCount === c
-                        ? "bg-slate-900 text-white shadow-2xs"
-                        : "bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100"
-                    }`}
-                  >
-                    {c} questões
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* Range Slider de Área */}
+            <QuantityRangeSlider
+              value={effectiveAreaCount}
+              onChange={setAreaQuestionCount}
+              maxAvailable={availableInSelectedArea}
+              label={`Questões de ${MEDICAL_AREAS.find((a) => a.id === selectedArea)?.label}`}
+            />
 
             {/* Resumo e CTA */}
             <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -431,12 +485,13 @@ export const SimuladosHubView: React.FC = () => {
                   Simulado: {MEDICAL_AREAS.find((a) => a.id === selectedArea)?.label}
                 </span>
                 <span className="text-xs text-slate-500">
-                  {areaQuestionCount} questões • Gabarito no final • Tempo estimado: ~{areaQuestionCount * 2} min
+                  {effectiveAreaCount} {effectiveAreaCount === 1 ? "questão" : "questões"} • Gabarito no final • Tempo estimado: ~{effectiveAreaCount * 2} min
                 </span>
               </div>
 
               <button
                 type="button"
+                disabled={availableInSelectedArea === 0}
                 onClick={() =>
                   handleStartSimulado({
                     ...DEFAULT_SESSION_CONFIG,
@@ -444,12 +499,12 @@ export const SimuladosHubView: React.FC = () => {
                     title: `Simulado de ${MEDICAL_AREAS.find((a) => a.id === selectedArea)?.label}`,
                     objective: "TREINO_LIVRE",
                     areas: [selectedArea],
-                    quantity: areaQuestionCount,
+                    quantity: effectiveAreaCount,
                     feedbackMode: "END_OF_SESSION",
                     timerMode: "EXAM_STRICT",
                   })
                 }
-                className="px-7 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
+                className="px-7 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
               >
                 <span>INICIAR SIMULADO</span>
                 <ArrowRight className="w-4 h-4" />
@@ -466,79 +521,45 @@ export const SimuladosHubView: React.FC = () => {
                 Simulado Geral Multidisciplinar
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Simulação ampla com distribuição equilibrada nas 5 grandes áreas médicas e cálculo de pontuação global.
+                Simulação ampla com distribuição equilibrada nas 5 grandes áreas médicas. Arraste para escolher o volume desejado.
               </p>
             </div>
 
-            {/* Opções de Escala */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div
-                onClick={() => setCompletoCount(50)}
-                className={`p-5 rounded-2xl border transition-all cursor-pointer space-y-2 ${
-                  completoCount === 50
-                    ? "bg-teal-50 border-teal-500 text-teal-950 ring-1 ring-teal-500/30 shadow-2xs"
-                    : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-teal-700">
-                    Meia Prova
-                  </span>
-                  <span className="text-xs font-mono text-slate-500">~100 min</span>
-                </div>
-                <h4 className="text-base font-bold">50 Questões Objetivas</h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  10 questões de cada uma das 5 grandes áreas. Ideal para finais de semana e diagnóstico intermediário.
-                </p>
-              </div>
-
-              <div
-                onClick={() => setCompletoCount(100)}
-                className={`p-5 rounded-2xl border transition-all cursor-pointer space-y-2 ${
-                  completoCount === 100
-                    ? "bg-teal-50 border-teal-500 text-teal-950 ring-1 ring-teal-500/30 shadow-2xs"
-                    : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-teal-700">
-                    Prova Integral
-                  </span>
-                  <span className="text-xs font-mono text-slate-500">~200 min</span>
-                </div>
-                <h4 className="text-base font-bold">100 Questões Objetivas</h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  20 questões por área. Formato idêntico à 1ª Etapa Teórica Objetiva do Revalida INEP.
-                </p>
-              </div>
-            </div>
+            {/* Range Slider Geral */}
+            <QuantityRangeSlider
+              value={effectiveCompletoCount}
+              onChange={setCompletoCount}
+              maxAvailable={totalQuestionsInBank}
+              label="Volume Global de Questões"
+            />
 
             {/* Resumo e CTA */}
             <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <span className="text-sm font-bold text-slate-900 block">
-                  Simulado Geral • {completoCount} questões
+                  Simulado Geral • {effectiveCompletoCount} {effectiveCompletoCount === 1 ? "questão" : "questões"}
                 </span>
                 <span className="text-xs text-slate-500">
-                  Multidisciplinar balanceado • Gabarito no final • Tempo estimado: ~{completoCount * 2} min
+                  Multidisciplinar balanceado • Gabarito no final • Tempo estimado: ~{effectiveCompletoCount * 2} min
                 </span>
               </div>
 
               <button
                 type="button"
+                disabled={totalQuestionsInBank === 0}
                 onClick={() =>
                   handleStartSimulado({
                     ...DEFAULT_SESSION_CONFIG,
                     mode: "SIMULADO",
-                    title: `Simulado Geral (${completoCount} Questões)`,
+                    title: `Simulado Geral (${effectiveCompletoCount} Questões)`,
                     objective: "OFICIAIS",
                     areas: ["ALL"],
-                    quantity: completoCount,
+                    quantity: effectiveCompletoCount,
                     feedbackMode: "END_OF_SESSION",
                     timerMode: "EXAM_STRICT",
                   })
                 }
-                className="px-7 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
+                className="px-7 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
               >
                 <span>INICIAR SIMULADO GERAL</span>
                 <ArrowRight className="w-4 h-4" />
@@ -555,7 +576,7 @@ export const SimuladosHubView: React.FC = () => {
                 Simulado Personalizado
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Monte seu caderno de simulado definindo as áreas médicas participantes, volume de questões e modo de feedback.
+                Monte seu caderno de simulado definindo as áreas médicas participantes, volume de questões pelo slider e modo de feedback.
               </p>
             </div>
 
@@ -593,42 +614,33 @@ export const SimuladosHubView: React.FC = () => {
               </div>
             </div>
 
-            {/* Quantidade e Modo de Feedback */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                  Volume de Questões
-                </label>
-                <div className="flex items-center gap-1.5">
-                  {[10, 20, 30, 50].map((count) => (
-                    <button
-                      key={count}
-                      type="button"
-                      onClick={() => setCustomCount(count)}
-                      className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                        customCount === count
-                          ? "bg-slate-900 text-white shadow-2xs"
-                          : "bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100"
-                      }`}
-                    >
-                      {count}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            {/* Range Slider e Modo de Feedback */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t border-slate-100">
+              <QuantityRangeSlider
+                value={effectiveCustomCount}
+                onChange={setCustomCount}
+                maxAvailable={availableInCustomAreas}
+                label="Volume de Questões"
+              />
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                  Modo de Feedback
-                </label>
-                <div className="flex items-center gap-2">
+              <div className="space-y-2 p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200/80 flex flex-col justify-between">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+                    Modo de Feedback
+                  </label>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Escolha quando deseja visualizar o gabarito e comentários.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2">
                   <button
                     type="button"
                     onClick={() => setCustomFeedbackMode("END_OF_SESSION")}
                     className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       customFeedbackMode === "END_OF_SESSION"
                         ? "bg-teal-600 text-white shadow-2xs"
-                        : "bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100"
+                        : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
                     }`}
                   >
                     No Final (Prova)
@@ -639,7 +651,7 @@ export const SimuladosHubView: React.FC = () => {
                     className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       customFeedbackMode === "IMMEDIATE"
                         ? "bg-teal-600 text-white shadow-2xs"
-                        : "bg-slate-50 border border-slate-200 text-slate-700 hover:bg-slate-100"
+                        : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
                     }`}
                   >
                     Imediato (Estudo)
@@ -652,7 +664,7 @@ export const SimuladosHubView: React.FC = () => {
             <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <span className="text-sm font-bold text-slate-900 block">
-                  Simulado Personalizado • {customCount} questões
+                  Simulado Personalizado • {effectiveCustomCount} {effectiveCustomCount === 1 ? "questão" : "questões"}
                 </span>
                 <span className="text-xs text-slate-500">
                   {customAreas.length} {customAreas.length === 1 ? "área selecionada" : "áreas selecionadas"} •{" "}
@@ -662,6 +674,7 @@ export const SimuladosHubView: React.FC = () => {
 
               <button
                 type="button"
+                disabled={availableInCustomAreas === 0}
                 onClick={() =>
                   handleStartSimulado({
                     ...DEFAULT_SESSION_CONFIG,
@@ -669,12 +682,12 @@ export const SimuladosHubView: React.FC = () => {
                     title: "Simulado Personalizado",
                     objective: "TREINO_LIVRE",
                     areas: customAreas.length === 5 ? ["ALL"] : customAreas,
-                    quantity: customCount,
+                    quantity: effectiveCustomCount,
                     feedbackMode: customFeedbackMode,
                     timerMode: customFeedbackMode === "END_OF_SESSION" ? "EXAM_STRICT" : "FREE",
                   })
                 }
-                className="px-7 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
+                className="px-7 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
               >
                 <span>INICIAR SIMULADO</span>
                 <ArrowRight className="w-4 h-4" />
