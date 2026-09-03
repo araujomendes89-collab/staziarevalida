@@ -113,14 +113,36 @@ export const ActiveSessionResolutionView: React.FC<
     );
   }, [session.currentIndex, currentQuestionId]);
 
-  // Handle visibility changes (pause when tab hidden, resume when visible)
+  // Handle visibility changes & user activity (pause when tab hidden or idle, resume when active)
   useEffect(() => {
     const handleVisChange = () => {
       timingTrackerRef.current.handleVisibilityChange(document.visibilityState === "visible");
     };
+
+    let lastMouseMove = 0;
+    const handleUserActivity = (e: Event) => {
+      if (e.type === "mousemove") {
+        const now = Date.now();
+        if (now - lastMouseMove < 2000) return; // Throttle mousemove
+        lastMouseMove = now;
+      }
+      timingTrackerRef.current.recordActivity();
+    };
+
     document.addEventListener("visibilitychange", handleVisChange);
+    window.addEventListener("pointerdown", handleUserActivity, { passive: true });
+    window.addEventListener("keydown", handleUserActivity, { passive: true });
+    window.addEventListener("touchstart", handleUserActivity, { passive: true });
+    window.addEventListener("scroll", handleUserActivity, { passive: true });
+    window.addEventListener("mousemove", handleUserActivity, { passive: true });
+
     return () => {
       document.removeEventListener("visibilitychange", handleVisChange);
+      window.removeEventListener("pointerdown", handleUserActivity);
+      window.removeEventListener("keydown", handleUserActivity);
+      window.removeEventListener("touchstart", handleUserActivity);
+      window.removeEventListener("scroll", handleUserActivity);
+      window.removeEventListener("mousemove", handleUserActivity);
     };
   }, []);
 

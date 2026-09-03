@@ -6,6 +6,7 @@ import {
   formatDuration,
   isValidTiming,
   TIMING_VERSION_ACTIVE_MONOTONIC,
+  TIMING_VERSION_IDLE_AWARE,
 } from "../services/questionTimingService";
 import { QuestionAttempt } from "../types";
 
@@ -75,7 +76,7 @@ describe("Question Timing Telemetry - QuestionTimingTracker", () => {
     const result = tracker.finishQuestion();
     expect(result.activeDurationMs).toBe(45000);
     expect(result.timeSpentSeconds).toBe(45);
-    expect(result.timingVersion).toBe(TIMING_VERSION_ACTIVE_MONOTONIC);
+    expect(result.timingVersion).toBe(TIMING_VERSION_IDLE_AWARE);
 
     // Advancing timers after finish should NOT increase active time
     vi.advanceTimersByTime(10000);
