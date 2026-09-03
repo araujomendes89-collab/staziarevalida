@@ -246,6 +246,70 @@ export class SpacedRepetitionService {
   }
 
   /**
+   * Converts a date or ISO string to a canonical local YYYY-MM-DD string
+   */
+  static toLocalDateKey(date: Date | string): string {
+    const d = typeof date === "string" ? new Date(date) : date;
+    if (isNaN(d.getTime())) {
+      const fallback = new Date();
+      return `${fallback.getFullYear()}-${String(fallback.getMonth() + 1).padStart(2, "0")}-${String(fallback.getDate()).padStart(2, "0")}`;
+    }
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  /**
+   * Computes the aggregated review load map of flashcards grouped by date.
+   * Overdue cards (dueDate < now) are aggregated into today's load for operational readiness.
+   * Future cards (dueDate > now) are grouped under their specific future calendar date.
+   */
+  static getFlashcardReviewLoadByDate(
+    cards: Flashcard[],
+    now: Date = new Date()
+  ): Record<string, { dateKey: string; count: number; estimatedMinutes: number; isToday: boolean }> {
+    const todayKey = this.toLocalDateKey(now);
+    const result: Record<string, { dateKey: string; count: number; estimatedMinutes: number; isToday: boolean }> = {};
+
+    if (!Array.isArray(cards)) return result;
+
+    for (const card of cards) {
+      if (this.isCardDue(card, now)) {
+        // Overdue or due right now -> grouped under today
+        if (!result[todayKey]) {
+          result[todayKey] = {
+            dateKey: todayKey,
+            count: 0,
+            estimatedMinutes: 0,
+            isToday: true,
+          };
+        }
+        result[todayKey].count += 1;
+      } else if (card.dueDate) {
+        // Future due date -> grouped under its future dateKey
+        const cardDateKey = this.toLocalDateKey(card.dueDate);
+        if (!result[cardDateKey]) {
+          result[cardDateKey] = {
+            dateKey: cardDateKey,
+            count: 0,
+            estimatedMinutes: 0,
+            isToday: cardDateKey === todayKey,
+          };
+        }
+        result[cardDateKey].count += 1;
+      }
+    }
+
+    // Compute estimatedMinutes for all grouped days
+    for (const key of Object.keys(result)) {
+      result[key].estimatedMinutes = this.estimateReviewTimeMinutes(result[key].count);
+    }
+
+    return result;
+  }
+
+  /**
    * Migrates legacy flashcards conservatively without fabricating past lapses/reviews
    */
   static migrateLegacyFlashcards(

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Calendar,
   Clock,
@@ -56,6 +56,7 @@ import {
 import { MedicalArea } from "../../types";
 import { ExamEngine } from "../../services/examEngine";
 import { CalendarService } from "../../services/calendarService";
+import { SpacedRepetitionService } from "../../services/spacedRepetitionService";
 import { StudyPlannerEngine, StudyPriorityScoreItem } from "../../services/studyPlannerEngine";
 import { WeeklyBulletinModal } from "./WeeklyBulletinModal";
 import { WhyThisBlockModal } from "./WhyThisBlockModal";
@@ -83,13 +84,26 @@ export type CalendarSubView =
   | "WEEKLY_REPORT";
 
 export const AdaptiveCalendarView: React.FC = () => {
-  const { setActiveTab, readinessData, user, setIsExamConfigOpen } = useApp();
+  const { setActiveTab, readinessData, user, setIsExamConfigOpen, flashcards } = useApp();
 
   const examInfo = ExamEngine.getExamInfo(
     user.targetEdition,
     user.examDate,
     user.hasConfiguredExamDate !== false
   );
+
+  const now = useMemo(() => new Date(), []);
+  const todayKey = useMemo(() => SpacedRepetitionService.toLocalDateKey(now), [now]);
+
+  const reviewLoadByDate = useMemo(() => {
+    return SpacedRepetitionService.getFlashcardReviewLoadByDate(flashcards || [], now);
+  }, [flashcards, now]);
+
+  const todayDueCards = useMemo(() => {
+    return SpacedRepetitionService.getDueFlashcards(flashcards || [], now);
+  }, [flashcards, now]);
+
+  const todayDueCount = todayDueCards.length;
 
   const [selectedDayId, setSelectedDayId] = useState<string>("day-2026-08-31");
   const [scheduleDays, setScheduleDays] = useState<ScheduledDayItem[]>(ADAPTIVE_SCHEDULE_DAYS);
@@ -109,6 +123,36 @@ export const AdaptiveCalendarView: React.FC = () => {
 
   const selectedDay = scheduleDays.find((d) => d.id === selectedDayId) || scheduleDays[0];
   const todayDay = scheduleDays[0] || selectedDay;
+
+  const getDayReviewLoad = (d: ScheduledDayItem, index: number) => {
+    if (d.isToday || index === 0) {
+      return (
+        reviewLoadByDate[todayKey] || {
+          dateKey: todayKey,
+          count: todayDueCount,
+          estimatedMinutes: SpacedRepetitionService.estimateReviewTimeMinutes(todayDueCount),
+          isToday: true,
+        }
+      );
+    }
+    const dateKey =
+      d.date ||
+      SpacedRepetitionService.toLocalDateKey(new Date(now.getTime() + index * 86400000));
+    return (
+      reviewLoadByDate[dateKey] || {
+        dateKey,
+        count: 0,
+        estimatedMinutes: 0,
+        isToday: dateKey === todayKey,
+      }
+    );
+  };
+
+  const selectedDayIndex = scheduleDays.findIndex((d) => d.id === selectedDayId);
+  const selectedDayLoad = getDayReviewLoad(
+    selectedDay,
+    selectedDayIndex >= 0 ? selectedDayIndex : 0
+  );
 
   const formatDayDate = (day?: ScheduledDayItem | null): string => {
     if (!day) return "";
@@ -377,7 +421,11 @@ export const AdaptiveCalendarView: React.FC = () => {
             </div>
             <div className="text-center p-2 rounded-lg bg-zinc-900/50">
               <div className="text-[11px] text-zinc-400 font-medium">Revisões FSRS</div>
-              <div className="text-xl font-black text-purple-400">7 pendentes</div>
+              <div className="text-xl font-black text-purple-400">
+                {todayDueCount > 0
+                  ? `${todayDueCount} ${todayDueCount === 1 ? "pendente" : "pendentes"}`
+                  : "Em dia"}
+              </div>
             </div>
             <div className="text-center p-2 rounded-lg bg-zinc-900/50">
               <div className="text-[11px] text-zinc-400 font-medium">Ganho Projetado</div>
@@ -602,6 +650,68 @@ export const AdaptiveCalendarView: React.FC = () => {
             </button>
           </div>
 
+          {/* FSRS Spaced Repetition Block for Today */}
+          <div
+            className={`p-4 rounded-2xl border transition-all ${
+              todayDueCount > 0
+                ? "bg-purple-950/20 border-purple-800/40"
+                : "bg-emerald-950/20 border-emerald-800/40"
+            }`}
+          >
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                    todayDueCount > 0
+                      ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                      : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                  }`}
+                >
+                  <Layers className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                        todayDueCount > 0
+                          ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                          : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                      }`}
+                    >
+                      {todayDueCount > 0 ? "FSRS PENDENTE" : "FSRS EM DIA"}
+                    </span>
+                    {todayDueCount > 0 && (
+                      <span className="text-xs font-bold text-purple-400">
+                        ~{SpacedRepetitionService.estimateReviewTimeMinutes(todayDueCount)} min
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-sm font-bold text-white mt-1">
+                    {todayDueCount > 0
+                      ? `${todayDueCount} ${
+                          todayDueCount === 1
+                            ? "flashcard programado para revisão hoje"
+                            : "flashcards programados para revisão hoje"
+                        }`
+                      : "Revisão espaçada de flashcards em dia"}
+                  </h3>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("revisar-flashcards")}
+                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 shadow-md ${
+                  todayDueCount > 0
+                    ? "bg-purple-600 hover:bg-purple-500 text-white"
+                    : "bg-slate-800 hover:bg-slate-700 text-slate-200"
+                }`}
+              >
+                {todayDueCount > 0 ? "Revisar Flashcards Agora" : "Ver Flashcards"}
+              </button>
+            </div>
+          </div>
+
           <div className="space-y-3.5">
             {todayDay.blocks.map((block, idx) => {
               const colorClass = getBlockTypeColor(block.type);
@@ -702,9 +812,10 @@ export const AdaptiveCalendarView: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
-            {scheduleDays.slice(0, 7).map((d) => {
+            {scheduleDays.slice(0, 7).map((d, dIndex) => {
               const isSelected = d.id === selectedDayId;
               const completedCount = d.blocks.filter((b) => b.completed).length;
+              const dayLoad = getDayReviewLoad(d, dIndex);
               return (
                 <button
                   key={d.id}
@@ -725,6 +836,19 @@ export const AdaptiveCalendarView: React.FC = () => {
                     <div className="text-[11px] text-zinc-300 font-semibold mt-2 line-clamp-2">
                       {d.focusTheme || d.primaryTopicName || "Estudo Estruturado"}
                     </div>
+                    {dayLoad.count > 0 ? (
+                      <div className="mt-1.5 flex items-center gap-1 text-[10px] font-semibold text-purple-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0" />
+                        <span>
+                          {dayLoad.count} {dayLoad.count === 1 ? "revisão" : "revisões"}
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="mt-1.5 flex items-center gap-1 text-[10px] text-zinc-500">
+                        <span className="w-1.5 h-1.5 rounded-full bg-zinc-600 shrink-0" />
+                        <span>Em dia</span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="pt-2 border-t border-white/[0.06] flex items-center justify-between text-[10px] text-zinc-400">
@@ -756,6 +880,48 @@ export const AdaptiveCalendarView: React.FC = () => {
               >
                 {getPhaseBadge(selectedDay.phase).label}
               </span>
+            </div>
+
+            {/* FSRS Spaced Repetition Load for Selected Day */}
+            <div className="p-3.5 rounded-xl bg-purple-950/30 border border-purple-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center shrink-0">
+                  <Layers className="w-3.5 h-3.5 text-purple-400" />
+                </div>
+                <div>
+                  <div className="font-bold text-white flex items-center gap-2">
+                    <span>Revisão Espaçada FSRS</span>
+                    {selectedDayLoad.count > 0 ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold">
+                        {selectedDayLoad.count}{" "}
+                        {selectedDayLoad.count === 1
+                          ? "flashcard programado"
+                          : "flashcards programados"}{" "}
+                        (~{selectedDayLoad.estimatedMinutes} min)
+                      </span>
+                    ) : (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold">
+                        Revisão em dia
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                    {selectedDayLoad.count > 0
+                      ? "Carga calculada automaticamente pelo FSRS para fixação na memória de longo prazo."
+                      : "Nenhum flashcard agendado para esta data."}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab("revisar-flashcards")}
+                className="self-start sm:self-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white transition-colors cursor-pointer shrink-0"
+              >
+                {selectedDayLoad.isToday && selectedDayLoad.count > 0
+                  ? "Revisar agora"
+                  : "Ver Flashcards"}
+              </button>
             </div>
 
             <div className="space-y-2">
