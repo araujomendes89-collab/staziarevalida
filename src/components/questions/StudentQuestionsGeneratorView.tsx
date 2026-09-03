@@ -1,29 +1,23 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import {
   Search,
   SlidersHorizontal,
   Play,
-  Sparkles,
-  BookOpen,
-  Clock,
   RotateCcw,
-  FileText,
   CheckCircle2,
-  Layers,
   HelpCircle,
   X,
-  ChevronRight,
   ChevronDown,
   ChevronUp,
-  Filter,
-  Check,
   Stethoscope,
   Activity,
   HeartPulse,
   Baby,
   ShieldCheck,
   ArrowRight,
-  Info,
+  Filter,
+  Check,
+  Layers,
 } from "lucide-react";
 import {
   MedicalArea,
@@ -33,7 +27,6 @@ import {
   UserProfile,
   ActiveTrainingSession,
   QuestionSessionConfig,
-  TrainingMode,
 } from "../../types";
 import {
   SessionBuilderService,
@@ -56,38 +49,38 @@ interface StudentQuestionsGeneratorViewProps {
 const MEDICAL_AREAS_CONFIG: {
   id: MedicalArea;
   label: string;
+  shortLabel: string;
   icon: React.ElementType;
-  description: string;
 }[] = [
   {
     id: "CLINICA_MEDICA",
     label: "Clínica Médica",
+    shortLabel: "Clínica Médica",
     icon: Stethoscope,
-    description: "Cardio, Pneumo, Gastro, Nefro, Neuro, Infecto",
   },
   {
     id: "CIRURGIA_GERAL",
     label: "Cirurgia Geral",
+    shortLabel: "Cirurgia",
     icon: Activity,
-    description: "Trauma, Abdome Agudo, Pré/Pós-operatório, Queimaduras",
   },
   {
     id: "PEDIATRIA",
     label: "Pediatria",
+    shortLabel: "Pediatria",
     icon: Baby,
-    description: "Neonatologia, Puericultura, PNE, Urgências infantis",
   },
   {
     id: "GINECOLOGIA_OBSTETRICIA",
     label: "Ginecologia e Obstetrícia",
+    shortLabel: "Gineco & Obstetrícia",
     icon: HeartPulse,
-    description: "Pré-natal, Ciclo Gravídico, Sangramentos, Rastreio",
   },
   {
     id: "MEDICINA_FAMILIA_COMUNIDADE",
     label: "Medicina Preventiva / MFC",
+    shortLabel: "Preventiva / MFC",
     icon: ShieldCheck,
-    description: "SUS, Epidemiologia, Saúde Coletiva, Bioética",
   },
 ];
 
@@ -103,16 +96,15 @@ const AVAILABLE_YEARS = [
 ];
 
 const POPULAR_THEMES = [
-  "Asma",
-  "Tuberculose",
   "Pré-Eclâmpsia",
-  "Hipertensão",
-  "Diabetes Mellitus",
-  "Apendicite Aguda",
-  "Pneumonia (PAC)",
+  "Síndrome Coronariana",
   "Sepse",
-  "Vacinação Infantil",
-  "Hemorragia Pós-Parto",
+  "Pneumonia",
+  "Asma",
+  "Diabetes Mellitus",
+  "Hipertensão",
+  "Tuberculose",
+  "Apendicite Aguda",
   "Trauma Abdominal",
 ];
 
@@ -132,6 +124,8 @@ const EXAM_OPTIONS = [
   { id: "ENAMED", label: "ENAMED 2025" },
 ];
 
+const QUANTITY_PRESETS = [10, 20, 30, 50];
+
 export const StudentQuestionsGeneratorView: React.FC<
   StudentQuestionsGeneratorViewProps
 > = ({
@@ -143,43 +137,28 @@ export const StudentQuestionsGeneratorView: React.FC<
   onResumeSession,
   onDiscardSession,
   onStartDirectSession,
-  onOpenExamSelector,
-  onOpenPrintSimulado,
 }) => {
   // 1. Filter States
-  const [selectedAreas, setSelectedAreas] = useState<MedicalArea[]>([
-    "CLINICA_MEDICA",
-    "CIRURGIA_GERAL",
-    "PEDIATRIA",
-    "GINECOLOGIA_OBSTETRICIA",
-    "MEDICINA_FAMILIA_COMUNIDADE",
-  ]);
-
-  const [selectedYear, setSelectedYear] = useState<string>("ALL");
+  const [selectedArea, setSelectedArea] = useState<MedicalArea | "ALL">("ALL");
   const [topicSearch, setTopicSearch] = useState<string>("");
   const [selectedExam, setSelectedExam] = useState<string>("ALL");
+  const [selectedYear, setSelectedYear] = useState<string>("ALL");
+
+  // Advanced Filters State
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState<boolean>(false);
   const [onlyWithComments, setOnlyWithComments] = useState<boolean>(true);
-  const [onlyDiscursive, setOnlyDiscursive] = useState<boolean>(false);
   const [onlyUnanswered, setOnlyUnanswered] = useState<boolean>(false);
   const [onlyWrong, setOnlyWrong] = useState<boolean>(false);
-
-  // 2. Quantity Slider
-  const [questionCount, setQuestionCount] = useState<number>(20);
-
-  // 3. Feedback Mode: Immediate (Estudo) vs End of Session (Simulado)
+  const [onlyDiscursive, setOnlyDiscursive] = useState<boolean>(false);
   const [studyMode, setStudyMode] = useState<"ESTUDO" | "SIMULADO">("ESTUDO");
 
-  // 4. Expand question preview list
-  const [showPreviewList, setShowPreviewList] = useState<boolean>(false);
+  // 2. Quantity
+  const [questionCount, setQuestionCount] = useState<number>(20);
 
-  // Stats calculation
+  // Statistics from actual in-memory database
   const totalQuestionsInBank = questions.length;
   const answeredCount = useMemo(() => {
     return new Set(attempts.map((a) => a.questionId)).size;
-  }, [attempts]);
-
-  const wrongCount = useMemo(() => {
-    return attempts.filter((a) => !a.isCorrect).length;
   }, [attempts]);
 
   // Questions count per area
@@ -193,22 +172,19 @@ export const StudentQuestionsGeneratorView: React.FC<
 
   // Active configuration for SessionBuilderService
   const currentConfig = useMemo<QuestionSessionConfig>(() => {
-    const isAllAreas =
-      selectedAreas.length === 5 || selectedAreas.length === 0;
-
     return {
       ...DEFAULT_SESSION_CONFIG,
       mode: studyMode === "SIMULADO" ? "SIMULADO" : "RAPIDO",
       title: topicSearch.trim()
         ? `Treino: ${topicSearch.trim()}`
-        : selectedAreas.length === 1
+        : selectedArea !== "ALL"
         ? `Treino: ${
-            MEDICAL_AREAS_CONFIG.find((a) => a.id === selectedAreas[0])?.label ||
+            MEDICAL_AREAS_CONFIG.find((a) => a.id === selectedArea)?.label ||
             "Área Médica"
           }`
-        : "Caderno Personalizado de Questões",
+        : "Treino Personalizado de Questões",
       objective: onlyWrong ? "REVISAO_ERROS" : "TREINO_LIVRE",
-      areas: isAllAreas ? ["ALL"] : selectedAreas,
+      areas: selectedArea === "ALL" ? ["ALL"] : [selectedArea],
       topics: topicSearch.trim() ? [topicSearch.trim()] : [],
       years: selectedYear === "ALL" ? ["ALL"] : [parseInt(selectedYear)],
       examEditionId: selectedExam !== "ALL" ? selectedExam : undefined,
@@ -227,7 +203,7 @@ export const StudentQuestionsGeneratorView: React.FC<
   }, [
     studyMode,
     topicSearch,
-    selectedAreas,
+    selectedArea,
     onlyWrong,
     selectedYear,
     selectedExam,
@@ -250,29 +226,97 @@ export const StudentQuestionsGeneratorView: React.FC<
   const effectiveCount = Math.min(questionCount, matchingQuestions.length);
   const estimatedTimeMinutes = Math.ceil(effectiveCount * 2);
 
-  // Toggle individual area
-  const handleToggleArea = (areaId: MedicalArea) => {
-    setSelectedAreas((prev) => {
-      if (prev.includes(areaId)) {
-        // If clicking and it's the last one, keep it or allow deselection
-        const updated = prev.filter((id) => id !== areaId);
-        return updated;
-      } else {
-        return [...prev, areaId];
+  // Reset all filters
+  const handleResetFilters = () => {
+    setSelectedArea("ALL");
+    setTopicSearch("");
+    setSelectedExam("ALL");
+    setSelectedYear("ALL");
+    setOnlyWithComments(true);
+    setOnlyUnanswered(false);
+    setOnlyWrong(false);
+    setOnlyDiscursive(false);
+    setStudyMode("ESTUDO");
+    setQuestionCount(20);
+  };
+
+  // Active filters list
+  const activeFilterChips = useMemo(() => {
+    const chips: { id: string; label: string; onRemove: () => void }[] = [];
+
+    if (selectedArea !== "ALL") {
+      const conf = MEDICAL_AREAS_CONFIG.find((c) => c.id === selectedArea);
+      if (conf) {
+        chips.push({
+          id: `area-${selectedArea}`,
+          label: conf.label,
+          onRemove: () => setSelectedArea("ALL"),
+        });
       }
-    });
-  };
-
-  const handleSelectAllAreas = () => {
-    if (selectedAreas.length === 5) {
-      setSelectedAreas([]);
-    } else {
-      setSelectedAreas(MEDICAL_AREAS_CONFIG.map((a) => a.id));
     }
-  };
 
-  // Generate / Start Session
-  const handleGenerateQuestions = () => {
+    if (topicSearch.trim()) {
+      chips.push({
+        id: "topic",
+        label: `Tema: ${topicSearch.trim()}`,
+        onRemove: () => setTopicSearch(""),
+      });
+    }
+
+    if (selectedExam !== "ALL") {
+      const examLabel = EXAM_OPTIONS.find((e) => e.id === selectedExam)?.label || selectedExam;
+      chips.push({
+        id: "exam",
+        label: `Prova: ${examLabel}`,
+        onRemove: () => setSelectedExam("ALL"),
+      });
+    }
+
+    if (selectedYear !== "ALL") {
+      chips.push({
+        id: "year",
+        label: `Ano: ${selectedYear}`,
+        onRemove: () => setSelectedYear("ALL"),
+      });
+    }
+
+    if (onlyWrong) {
+      chips.push({
+        id: "wrong",
+        label: "Apenas erros anteriores",
+        onRemove: () => setOnlyWrong(false),
+      });
+    }
+
+    if (onlyUnanswered) {
+      chips.push({
+        id: "unanswered",
+        label: "Apenas não resolvidas",
+        onRemove: () => setOnlyUnanswered(false),
+      });
+    }
+
+    if (onlyDiscursive) {
+      chips.push({
+        id: "discursive",
+        label: "Apenas discursivas",
+        onRemove: () => setOnlyDiscursive(false),
+      });
+    }
+
+    return chips;
+  }, [
+    selectedArea,
+    topicSearch,
+    selectedExam,
+    selectedYear,
+    onlyWrong,
+    onlyUnanswered,
+    onlyDiscursive,
+  ]);
+
+  // Start Session handler
+  const handleStartTreino = () => {
     if (matchingQuestions.length === 0) return;
     onStartDirectSession(currentConfig);
   };
@@ -280,50 +324,40 @@ export const StudentQuestionsGeneratorView: React.FC<
   const hasActiveSession = Boolean(activeSession && !activeSession.isCompleted);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-20 animate-in fade-in duration-300">
-      {/* 1. Header & Summary Strip */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.08] pb-4">
+    <div className="max-w-4xl mx-auto space-y-6 pb-20">
+      {/* 1. CABEÇALHO */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white rounded-2xl p-5 sm:p-6 border border-slate-200/80 shadow-xs">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-xs shadow-blue-500/50" />
-            <span>Caderno de Questões</span>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+            Banco de Questões
           </h1>
-          <p className="text-xs text-zinc-400 mt-1">
-            Selecione as áreas médicas, ano da prova e temas para gerar seu caderno de questões personalizado.
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Monte seu treino com questões do Revalida.
           </p>
         </div>
 
-        {/* Quick Database Stat Pill */}
-        <div className="flex items-center gap-2 bg-[#0c101c] border border-zinc-800 px-3.5 py-1.5 rounded-xl text-xs text-zinc-300 shrink-0">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="font-semibold text-white">
-            {totalQuestionsInBank.toLocaleString("pt-BR")} questões
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 shrink-0 shadow-2xs">
+          <span className="w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+          <span className="font-bold text-slate-900">
+            {totalQuestionsInBank.toLocaleString("pt-BR")} questões disponíveis
           </span>
-          <span className="text-zinc-500">|</span>
-          <span>{answeredCount} resolvidas</span>
-          {wrongCount > 0 && (
-            <>
-              <span className="text-zinc-500">|</span>
-              <span className="text-rose-400 font-medium">
-                {wrongCount} erros
-              </span>
-            </>
-          )}
+          <span className="text-slate-400">|</span>
+          <span className="text-slate-500">{answeredCount} resolvidas</span>
         </div>
       </div>
 
-      {/* 2. Active Session Card if any */}
+      {/* 2. SESSÃO EM ANDAMENTO (Se houver) */}
       {hasActiveSession && activeSession && (
-        <div className="p-4 sm:p-5 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 rounded-2xl bg-amber-50 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center shrink-0 font-bold">
               <RotateCcw className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs font-bold text-white">
+              <p className="text-xs font-bold text-amber-950">
                 Sessão em andamento: {activeSession.title}
               </p>
-              <p className="text-[11px] text-zinc-400">
+              <p className="text-[11px] text-amber-700">
                 Questão {activeSession.currentIndex + 1} de{" "}
                 {activeSession.questionIds.length} · Progresso salvo
               </p>
@@ -332,14 +366,16 @@ export const StudentQuestionsGeneratorView: React.FC<
 
           <div className="flex items-center gap-2 shrink-0">
             <button
+              type="button"
               onClick={onDiscardSession}
-              className="px-3.5 py-2 text-zinc-400 hover:text-white text-xs font-semibold transition-colors cursor-pointer"
+              className="px-3 py-1.5 text-slate-500 hover:text-slate-800 text-xs font-semibold transition-colors cursor-pointer"
             >
               Descartar
             </button>
             <button
+              type="button"
               onClick={onResumeSession}
-              className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-black font-bold text-xs rounded-xl transition-all cursor-pointer shadow-sm"
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl transition-all cursor-pointer shadow-xs"
             >
               Continuar Sessão
             </button>
@@ -347,146 +383,41 @@ export const StudentQuestionsGeneratorView: React.FC<
         </div>
       )}
 
-      {/* 3. Main Filter Card */}
-      <div className="rounded-3xl bg-[#0e1322] border border-white/[0.08] shadow-2xl overflow-hidden divide-y divide-white/[0.06]">
-        
-        {/* FILTRO 1: ÁREAS MÉDICAS */}
-        <div className="p-5 sm:p-6 space-y-3">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-blue-400 uppercase tracking-wider flex items-center gap-2">
-              <span>1. Áreas Médicas</span>
-              <span className="text-[10px] text-zinc-400 font-normal lowercase">
-                ({selectedAreas.length} de 5 selecionadas)
-              </span>
-            </label>
-            <button
-              type="button"
-              onClick={handleSelectAllAreas}
-              className="text-xs text-blue-400 hover:text-blue-300 font-semibold cursor-pointer transition-colors"
-            >
-              {selectedAreas.length === 5
-                ? "Desmarcar todas"
-                : "Selecionar todas"}
-            </button>
-          </div>
-
-          {/* 5 Big Area Toggle Chips */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
-            {MEDICAL_AREAS_CONFIG.map((area) => {
-              const isSelected = selectedAreas.includes(area.id);
-              const count = questionsCountPerArea[area.id] || 0;
-              const Icon = area.icon;
-
-              return (
-                <button
-                  key={area.id}
-                  type="button"
-                  onClick={() => handleToggleArea(area.id)}
-                  className={`p-3.5 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
-                    isSelected
-                      ? "bg-blue-600/20 border-blue-500 text-white shadow-sm shadow-blue-500/10 ring-1 ring-blue-500/30"
-                      : "bg-[#090d18] border-white/[0.07] text-zinc-400 hover:text-zinc-200 hover:border-white/15"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div
-                      className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                        isSelected
-                          ? "bg-blue-500 text-white"
-                          : "bg-white/[0.05] text-zinc-400"
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div
-                      className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-                        isSelected
-                          ? "bg-blue-500 border-blue-400 text-white"
-                          : "border-white/20 bg-transparent"
-                      }`}
-                    >
-                      {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
-                    </div>
-                  </div>
-
-                  <div>
-                    <span className="text-xs font-bold block text-white leading-tight">
-                      {area.label}
-                    </span>
-                    <span className="text-[10px] text-zinc-400 block mt-0.5">
-                      {count} questões disponíveis
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* FILTRO 2: ANO / EDIÇÃO */}
-        <div className="p-5 sm:p-6 space-y-3">
-          <label className="text-xs font-bold text-blue-400 uppercase tracking-wider block">
-            2. Ano / Edição da Prova
+      {/* 3. CARD PRINCIPAL DE CONFIGURAÇÃO DO TREINO */}
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-slate-200/80 shadow-xs space-y-6">
+        {/* BUSCA POR TEMA OU ASSUNTO */}
+        <div className="space-y-2">
+          <label
+            htmlFor="topic-search-input"
+            className="text-xs font-bold text-slate-700 uppercase tracking-wider block"
+          >
+            Buscar Tema ou Assunto
           </label>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            {AVAILABLE_YEARS.map((y) => {
-              const isSelected = selectedYear === y.id;
-              return (
-                <button
-                  key={y.id}
-                  type="button"
-                  onClick={() => setSelectedYear(y.id)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                    isSelected
-                      ? "bg-blue-600 text-white font-bold shadow-xs"
-                      : "bg-[#090d18] text-zinc-400 hover:text-white border border-white/[0.07] hover:border-white/20"
-                  }`}
-                >
-                  {y.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* FILTRO 3: BUSCA POR TEMA ESPECÍFICO */}
-        <div className="p-5 sm:p-6 space-y-3">
-          <div className="flex items-center justify-between">
-            <label
-              htmlFor="topic-search-input"
-              className="text-xs font-bold text-blue-400 uppercase tracking-wider block"
-            >
-              3. Tema Específico
-            </label>
-            {topicSearch && (
-              <button
-                type="button"
-                onClick={() => setTopicSearch("")}
-                className="text-xs text-zinc-400 hover:text-zinc-200 flex items-center gap-1 cursor-pointer"
-              >
-                <X className="w-3 h-3" />
-                <span>Limpar tema</span>
-              </button>
-            )}
-          </div>
-
           <div className="relative">
-            <Search className="w-4 h-4 text-zinc-400 absolute left-3.5 top-3.5" />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
             <input
               id="topic-search-input"
               type="text"
               value={topicSearch}
               onChange={(e) => setTopicSearch(e.target.value)}
-              placeholder="Digite o tema desejado (ex: Asma, tuberculose, pneumonia, pré-eclâmpsia...)"
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-[#090d18] border border-white/[0.1] text-white text-xs placeholder:text-zinc-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/50 transition-all"
+              placeholder="Buscar tema ou assunto (ex: Asma, sepse, pré-eclâmpsia...)"
+              className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs placeholder:text-slate-400 focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500 transition-all"
             />
+            {topicSearch && (
+              <button
+                type="button"
+                onClick={() => setTopicSearch("")}
+                className="absolute right-3 top-3 p-0.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                title="Limpar busca"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
           </div>
 
-          {/* Popular Theme Pills for 1-Click Search */}
+          {/* Sugestões Rápidas de Tema */}
           <div className="flex items-center gap-1.5 flex-wrap pt-1">
-            <span className="text-[11px] text-zinc-500 font-medium mr-1">
-              Sugestões frequentes:
-            </span>
+            <span className="text-[11px] text-slate-400 mr-1">Sugestões:</span>
             {POPULAR_THEMES.map((theme) => {
               const isActive =
                 topicSearch.toLowerCase().trim() === theme.toLowerCase();
@@ -497,8 +428,8 @@ export const StudentQuestionsGeneratorView: React.FC<
                   onClick={() => setTopicSearch(isActive ? "" : theme)}
                   className={`text-[11px] px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
                     isActive
-                      ? "bg-blue-500/20 text-blue-300 border border-blue-500/40 font-bold"
-                      : "bg-white/[0.03] text-zinc-400 hover:text-zinc-200 border border-white/[0.05]"
+                      ? "bg-teal-50 text-teal-700 border border-teal-200 font-bold"
+                      : "bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200/70"
                   }`}
                 >
                   {theme}
@@ -508,27 +439,77 @@ export const StudentQuestionsGeneratorView: React.FC<
           </div>
         </div>
 
-        {/* FILTRO 4: BUSCA POR PROVA ESPECÍFICA */}
-        <div className="p-5 sm:p-6 space-y-3">
+        {/* GRANDE ÁREA */}
+        <div className="space-y-2.5 pt-2 border-t border-slate-100">
+          <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+            Grande Área
+          </label>
+
+          {/* Seletores de Grande Área */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            {/* Botão [ Todas ] */}
+            <button
+              type="button"
+              onClick={() => setSelectedArea("ALL")}
+              className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                selectedArea === "ALL"
+                  ? "bg-teal-600 text-white border-teal-600 shadow-xs font-bold"
+                  : "bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+              }`}
+            >
+              <span className="text-xs font-bold block">Todas</span>
+              <span className={`text-[10px] block ${selectedArea === "ALL" ? "text-teal-100" : "text-slate-400"}`}>
+                {totalQuestionsInBank} q.
+              </span>
+            </button>
+
+            {/* 5 Áreas Médicas */}
+            {MEDICAL_AREAS_CONFIG.map((area) => {
+              const isSelected = selectedArea === area.id;
+              const count = questionsCountPerArea[area.id] || 0;
+              const Icon = area.icon;
+
+              return (
+                <button
+                  key={area.id}
+                  type="button"
+                  onClick={() => setSelectedArea(area.id)}
+                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+                    isSelected
+                      ? "bg-teal-600 text-white border-teal-600 shadow-xs font-bold"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 mb-0.5 ${isSelected ? "text-white" : "text-slate-400"}`} />
+                  <span className="text-xs font-bold block leading-tight">
+                    {area.shortLabel}
+                  </span>
+                  <span className={`text-[10px] block ${isSelected ? "text-teal-100" : "text-slate-400"}`}>
+                    {count} q.
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* PROVA / EDIÇÃO */}
+        <div className="space-y-2 pt-2 border-t border-slate-100">
           <label
             htmlFor="exam-select-dropdown"
-            className="text-xs font-bold text-blue-400 uppercase tracking-wider block"
+            className="text-xs font-bold text-slate-700 uppercase tracking-wider block"
           >
-            4. Caderno de Prova Específico
+            Prova / Edição
           </label>
           <div className="max-w-md">
             <select
               id="exam-select-dropdown"
               value={selectedExam}
               onChange={(e) => setSelectedExam(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-[#090d18] border border-white/[0.1] text-white text-xs focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
+              className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-800 text-xs focus:outline-none focus:border-teal-500 transition-all cursor-pointer"
             >
               {EXAM_OPTIONS.map((exam) => (
-                <option
-                  key={exam.id}
-                  value={exam.id}
-                  className="bg-[#0e1322] text-white"
-                >
+                <option key={exam.id} value={exam.id}>
                   {exam.label}
                 </option>
               ))}
@@ -536,357 +517,249 @@ export const StudentQuestionsGeneratorView: React.FC<
           </div>
         </div>
 
-        {/* FILTRO 5: TOGGLES DE CRITÉRIOS DE ESTUDO */}
-        <div className="p-5 sm:p-6 space-y-3">
-          <label className="text-xs font-bold text-blue-400 uppercase tracking-wider block">
-            5. Filtros de Resolução & Formato
-          </label>
+        {/* FILTROS AVANÇADOS (Accordion Colapsável) */}
+        <div className="pt-2 border-t border-slate-100 space-y-3">
+          <button
+            type="button"
+            onClick={() => setIsAdvancedOpen(!isAdvancedOpen)}
+            className="flex items-center justify-between w-full text-xs font-bold text-slate-700 hover:text-slate-900 cursor-pointer"
+          >
+            <span className="flex items-center gap-1.5">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-teal-600" />
+              Filtros Avançados
+            </span>
+            {isAdvancedOpen ? (
+              <ChevronUp className="w-4 h-4 text-slate-400" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-slate-400" />
+            )}
+          </button>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {/* Toggle: Apenas com comentários */}
-            <label className="p-3 rounded-2xl bg-[#090d18] border border-white/[0.07] hover:border-white/15 flex items-center justify-between gap-3 cursor-pointer transition-colors">
-              <div className="space-y-0.5">
-                <span className="text-xs font-bold text-white block">
-                  Apenas com comentários
+          {isAdvancedOpen && (
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-4 animate-in fade-in duration-200">
+              {/* Ano da Prova */}
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                  Ano da Prova
                 </span>
-                <span className="text-[10px] text-zinc-400 block">
-                  Resolução passo a passo
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={onlyWithComments}
-                onChange={(e) => setOnlyWithComments(e.target.checked)}
-                className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
-              />
-            </label>
-
-            {/* Toggle: Apenas discursivas */}
-            <label className="p-3 rounded-2xl bg-[#090d18] border border-white/[0.07] hover:border-white/15 flex items-center justify-between gap-3 cursor-pointer transition-colors">
-              <div className="space-y-0.5">
-                <span className="text-xs font-bold text-white block">
-                  Apenas discursivas
-                </span>
-                <span className="text-[10px] text-zinc-400 block">
-                  Padrão discursivo INEP
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={onlyDiscursive}
-                onChange={(e) => setOnlyDiscursive(e.target.checked)}
-                className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
-              />
-            </label>
-
-            {/* Toggle: Apenas não respondidas */}
-            <label className="p-3 rounded-2xl bg-[#090d18] border border-white/[0.07] hover:border-white/15 flex items-center justify-between gap-3 cursor-pointer transition-colors">
-              <div className="space-y-0.5">
-                <span className="text-xs font-bold text-white block">
-                  Apenas não resolvidas
-                </span>
-                <span className="text-[10px] text-zinc-400 block">
-                  Itens inéditos no seu histórico
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={onlyUnanswered}
-                onChange={(e) => setOnlyUnanswered(e.target.checked)}
-                className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
-              />
-            </label>
-
-            {/* Toggle: Apenas erros */}
-            <label className="p-3 rounded-2xl bg-[#090d18] border border-white/[0.07] hover:border-white/15 flex items-center justify-between gap-3 cursor-pointer transition-colors">
-              <div className="space-y-0.5">
-                <span className="text-xs font-bold text-white block">
-                  Apenas que errei
-                </span>
-                <span className="text-[10px] text-zinc-400 block">
-                  Caderno de revisão de erros
-                </span>
-              </div>
-              <input
-                type="checkbox"
-                checked={onlyWrong}
-                onChange={(e) => setOnlyWrong(e.target.checked)}
-                className="w-4 h-4 accent-blue-600 rounded cursor-pointer"
-              />
-            </label>
-          </div>
-        </div>
-
-        {/* FILTRO 6: MODO DE ESTUDO & SLIDER DE QUANTIDADE */}
-        <div className="p-5 sm:p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
-            {/* Modo de Resolução */}
-            <div className="space-y-2.5">
-              <label className="text-xs font-bold text-blue-400 uppercase tracking-wider block">
-                6. Modo de Resolução
-              </label>
-              <div className="grid grid-cols-2 gap-2 bg-[#090d18] p-1.5 rounded-2xl border border-white/[0.07]">
-                <button
-                  type="button"
-                  onClick={() => setStudyMode("ESTUDO")}
-                  className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    studyMode === "ESTUDO"
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "text-zinc-400 hover:text-white"
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Modo Estudo</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setStudyMode("SIMULADO")}
-                  className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    studyMode === "SIMULADO"
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "text-zinc-400 hover:text-white"
-                  }`}
-                >
-                  <Clock className="w-3.5 h-3.5" />
-                  <span>Modo Simulado</span>
-                </button>
-              </div>
-              <p className="text-[11px] text-zinc-400">
-                {studyMode === "ESTUDO"
-                  ? "Comentário e gabarito liberados imediatamente após responder cada questão."
-                  : "Gabarito retido e cronômetro contínuo. Resultados e análise ao final."}
-              </p>
-            </div>
-
-            {/* Slider de Quantidade */}
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between">
-                <label
-                  htmlFor="question-quantity-slider"
-                  className="text-xs font-bold text-blue-400 uppercase tracking-wider block"
-                >
-                  7. Quantidade de Questões
-                </label>
-                <div className="flex items-center gap-1 text-xs">
-                  <span className="font-extrabold text-white text-base">
-                    {questionCount}
-                  </span>
-                  <span className="text-zinc-400">questões</span>
-                  <span className="text-zinc-500">·</span>
-                  <span className="text-zinc-400">~{estimatedTimeMinutes} min</span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {AVAILABLE_YEARS.map((y) => {
+                    const isSelected = selectedYear === y.id;
+                    return (
+                      <button
+                        key={y.id}
+                        type="button"
+                        onClick={() => setSelectedYear(y.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-teal-600 text-white font-bold shadow-2xs"
+                            : "bg-white text-slate-600 hover:text-slate-900 border border-slate-200"
+                        }`}
+                      >
+                        {y.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              <input
-                id="question-quantity-slider"
-                type="range"
-                min="5"
-                max="50"
-                step="5"
-                value={questionCount}
-                onChange={(e) => setQuestionCount(parseInt(e.target.value))}
-                className="w-full accent-blue-600 h-2 bg-zinc-800 rounded-lg cursor-pointer"
-              />
+              {/* Toggles de Filtros Especiais */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                {/* Apenas com comentários */}
+                <label className="p-2.5 rounded-xl bg-white border border-slate-200 flex items-center justify-between gap-3 cursor-pointer">
+                  <span className="text-xs text-slate-700 font-medium">
+                    Apenas com gabarito comentado
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={onlyWithComments}
+                    onChange={(e) => setOnlyWithComments(e.target.checked)}
+                    className="w-4 h-4 accent-teal-600 rounded cursor-pointer"
+                  />
+                </label>
 
-              {/* Quick Presets */}
-              <div className="flex items-center justify-between text-xs text-zinc-400 pt-1">
-                {[5, 10, 15, 20, 30, 50].map((q) => (
+                {/* Apenas não resolvidas */}
+                <label className="p-2.5 rounded-xl bg-white border border-slate-200 flex items-center justify-between gap-3 cursor-pointer">
+                  <span className="text-xs text-slate-700 font-medium">
+                    Apenas não resolvidas
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={onlyUnanswered}
+                    onChange={(e) => setOnlyUnanswered(e.target.checked)}
+                    className="w-4 h-4 accent-teal-600 rounded cursor-pointer"
+                  />
+                </label>
+
+                {/* Apenas erros anteriores */}
+                <label className="p-2.5 rounded-xl bg-white border border-slate-200 flex items-center justify-between gap-3 cursor-pointer">
+                  <span className="text-xs text-slate-700 font-medium">
+                    Apenas erros anteriores
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={onlyWrong}
+                    onChange={(e) => setOnlyWrong(e.target.checked)}
+                    className="w-4 h-4 accent-teal-600 rounded cursor-pointer"
+                  />
+                </label>
+
+                {/* Apenas discursivas */}
+                <label className="p-2.5 rounded-xl bg-white border border-slate-200 flex items-center justify-between gap-3 cursor-pointer">
+                  <span className="text-xs text-slate-700 font-medium">
+                    Apenas discursivas
+                  </span>
+                  <input
+                    type="checkbox"
+                    checked={onlyDiscursive}
+                    onChange={(e) => setOnlyDiscursive(e.target.checked)}
+                    className="w-4 h-4 accent-teal-600 rounded cursor-pointer"
+                  />
+                </label>
+              </div>
+
+              {/* Modo de Feedback */}
+              <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between">
+                <span className="text-xs text-slate-700 font-medium">
+                  Modo de Feedback
+                </span>
+                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200">
                   <button
-                    key={q}
                     type="button"
-                    onClick={() => setQuestionCount(q)}
-                    className={`px-2 py-0.5 rounded-md text-[11px] font-semibold cursor-pointer transition-colors ${
-                      questionCount === q
-                        ? "bg-blue-600 text-white font-bold"
-                        : "hover:text-white"
+                    onClick={() => setStudyMode("ESTUDO")}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      studyMode === "ESTUDO"
+                        ? "bg-teal-600 text-white font-bold"
+                        : "text-slate-600 hover:text-slate-900"
                     }`}
                   >
-                    {q} Qs
+                    Imediato
                   </button>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => setStudyMode("SIMULADO")}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      studyMode === "SIMULADO"
+                        ? "bg-teal-600 text-white font-bold"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    No final
+                  </button>
+                </div>
               </div>
             </div>
+          )}
+        </div>
+
+        {/* QUANTIDADE DE QUESTÕES */}
+        <div className="space-y-2.5 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+              Quantidade de Questões
+            </label>
+            <span className="text-xs font-bold text-teal-700">
+              {questionCount} questões selecionadas
+            </span>
+          </div>
+
+          {/* Quick Preset Buttons */}
+          <div className="flex items-center gap-2">
+            {QUANTITY_PRESETS.map((count) => {
+              const isSelected = questionCount === count;
+              return (
+                <button
+                  key={count}
+                  type="button"
+                  onClick={() => setQuestionCount(count)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    isSelected
+                      ? "bg-slate-900 text-white shadow-2xs"
+                      : "bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200"
+                  }`}
+                >
+                  {count}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* FOOTER CTA & LIVE COUNT */}
-        <div className="p-5 sm:p-6 bg-gradient-to-r from-[#0c1222] to-[#0a0f1d] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-sm font-bold text-white">
-                {matchingQuestions.length} questões encontradas
+        {/* FILTROS ATIVOS CHIPS (Se houver filtros aplicados) */}
+        {activeFilterChips.length > 0 && (
+          <div className="pt-2 border-t border-slate-100 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Filtros Ativos ({activeFilterChips.length})
               </span>
-            </div>
-            <p className="text-xs text-zinc-400">
-              {matchingQuestions.length > 0
-                ? `Serão selecionadas as melhores ${effectiveCount} questões para esta sessão.`
-                : "Nenhuma questão disponível com os filtros atuais. Tente selecionar mais áreas."}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 shrink-0">
-            {matchingQuestions.length > 0 && (
               <button
                 type="button"
-                onClick={() => setShowPreviewList(!showPreviewList)}
-                className="px-4 py-3 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white text-xs font-semibold border border-white/[0.08] transition-all flex items-center gap-1.5 cursor-pointer"
+                onClick={handleResetFilters}
+                className="text-xs text-rose-600 hover:text-rose-700 font-semibold cursor-pointer"
               >
-                <span>{showPreviewList ? "Ocultar prévia" : "Ver lista"}</span>
-                {showPreviewList ? (
-                  <ChevronUp className="w-3.5 h-3.5" />
-                ) : (
-                  <ChevronDown className="w-3.5 h-3.5" />
-                )}
+                Limpar todos os filtros
               </button>
-            )}
+            </div>
 
-            <button
-              type="button"
-              id="btn-generate-questions-main"
-              onClick={handleGenerateQuestions}
-              disabled={matchingQuestions.length === 0}
-              className="px-7 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs uppercase tracking-wider shadow-xl shadow-blue-600/30 flex items-center justify-center gap-2.5 transition-all cursor-pointer min-h-[48px]"
-            >
-              <Play className="w-4 h-4 fill-white" />
-              <span>
-                Gerar Questões ({effectiveCount})
-              </span>
-            </button>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {activeFilterChips.map((chip) => (
+                <span
+                  key={chip.id}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 text-xs border border-slate-200"
+                >
+                  <span>{chip.label}</span>
+                  <button
+                    type="button"
+                    onClick={chip.onRemove}
+                    className="p-0.5 hover:text-rose-600 cursor-pointer"
+                    title="Remover filtro"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* 4. EXPANDABLE PREVIEW LIST */}
-      {showPreviewList && matchingQuestions.length > 0 && (
-        <div className="p-5 rounded-3xl bg-[#0e1322] border border-white/[0.08] space-y-3 animate-in fade-in">
-          <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <FileText className="w-3.5 h-3.5 text-blue-400" />
-              <span>Prévia dos Itens Selecionados ({matchingQuestions.length})</span>
-            </h3>
-            <span className="text-[11px] text-zinc-400">
-              Mostrando os primeiros {Math.min(10, matchingQuestions.length)} itens
-            </span>
-          </div>
-
-          <div className="space-y-2">
-            {matchingQuestions.slice(0, 10).map((q, idx) => (
-              <div
-                key={q.id}
-                className="p-3 rounded-xl bg-[#090d18] border border-white/[0.05] hover:border-white/15 transition-all flex items-start justify-between gap-3 text-xs"
+        {/* ESTADO 0 RESULTADOS OU CTA PRINCIPAL */}
+        <div className="pt-4 border-t border-slate-100 space-y-3">
+          {matchingQuestions.length === 0 ? (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-center space-y-2">
+              <p className="text-xs font-bold text-amber-900">
+                Nenhuma questão encontrada com esses filtros.
+              </p>
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                className="px-4 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold transition-colors cursor-pointer"
               >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-blue-500/20 text-blue-300">
-                      {q.code || `Q-${idx + 1}`}
-                    </span>
-                    <span className="text-[10px] text-zinc-400">
-                      {q.examEdition || `${q.examYear || "INEP"}`}
-                    </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 font-medium">
-                      {MEDICAL_AREAS_CONFIG.find((a) => a.id === q.area)?.label || q.area}
-                    </span>
-                  </div>
-                  <p className="text-white font-medium line-clamp-2">
-                    {q.clinicalCase || q.topic}
-                  </p>
-                </div>
-
-                <div className="shrink-0 text-right">
-                  <span className="text-[10px] text-zinc-500 block">Tema</span>
-                  <span className="text-zinc-300 font-semibold text-[11px]">
-                    {q.topic}
-                  </span>
-                </div>
+                Limpar filtros
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <span className="text-base font-extrabold text-slate-900 block">
+                  {matchingQuestions.length} questões encontradas
+                </span>
+                <span className="text-xs text-slate-500">
+                  Tempo estimado de treino: ~{estimatedTimeMinutes} min
+                </span>
               </div>
-            ))}
-          </div>
 
-          <div className="pt-2 text-center">
-            <button
-              type="button"
-              onClick={handleGenerateQuestions}
-              className="inline-flex items-center gap-2 text-xs font-bold text-blue-400 hover:text-blue-300 cursor-pointer"
-            >
-              <span>Iniciar sessão completa com estes itens</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={handleStartTreino}
+                disabled={matchingQuestions.length === 0}
+                className="px-8 py-3 rounded-2xl bg-teal-600 hover:bg-teal-500 disabled:bg-slate-200 disabled:text-slate-400 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-xs transition-all hover:scale-[1.02] cursor-pointer"
+              >
+                <span>COMEÇAR TREINO</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
         </div>
-      )}
-
-      {/* 5. Quick Access Shortcuts */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-        {/* Treino Rápido 10 Qs */}
-        <button
-          type="button"
-          onClick={() => {
-            onStartDirectSession({
-              ...DEFAULT_SESSION_CONFIG,
-              mode: "RAPIDO",
-              title: "Treino Rápido 10 Questões",
-              quantity: 10,
-              feedbackMode: "IMMEDIATE",
-            });
-          }}
-          className="p-4 rounded-2xl bg-[#0e1322] border border-white/[0.06] hover:border-blue-500/40 text-left transition-all group cursor-pointer"
-        >
-          <div className="flex items-center gap-2 mb-1.5">
-            <div className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
-              <Sparkles className="w-3.5 h-3.5" />
-            </div>
-            <span className="text-xs font-bold text-white group-hover:text-amber-300 transition-colors">
-              Treino Rápido
-            </span>
-          </div>
-          <p className="text-[11px] text-zinc-400 leading-relaxed">
-            10 questões de áreas variadas para treinar em 15 minutos sem filtros.
-          </p>
-        </button>
-
-        {/* Provas Completas na Íntegra */}
-        {onOpenExamSelector && (
-          <button
-            type="button"
-            onClick={onOpenExamSelector}
-            className="p-4 rounded-2xl bg-[#0e1322] border border-white/[0.06] hover:border-purple-500/40 text-left transition-all group cursor-pointer"
-          >
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-7 h-7 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                <BookOpen className="w-3.5 h-3.5" />
-              </div>
-              <span className="text-xs font-bold text-white group-hover:text-purple-300 transition-colors">
-                Provas Completas
-              </span>
-            </div>
-            <p className="text-[11px] text-zinc-400 leading-relaxed">
-              Edições oficiais completas (2020 a 2026) com 100 questões cronometradas.
-            </p>
-          </button>
-        )}
-
-        {/* Simulado Imprimível PDF */}
-        {onOpenPrintSimulado && (
-          <button
-            type="button"
-            onClick={onOpenPrintSimulado}
-            className="p-4 rounded-2xl bg-[#0e1322] border border-white/[0.06] hover:border-cyan-500/40 text-left transition-all group cursor-pointer"
-          >
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
-                <Layers className="w-3.5 h-3.5" />
-              </div>
-              <span className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors">
-                Imprimir Caderno PDF
-              </span>
-            </div>
-            <p className="text-[11px] text-zinc-400 leading-relaxed">
-              Caderno de prova em 2 colunas com folha de respostas óptica e QR code.
-            </p>
-          </button>
-        )}
       </div>
     </div>
   );
