@@ -63,50 +63,6 @@ export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({
 
   return (
     <div className="space-y-6 pb-20 max-w-7xl mx-auto">
-      {/* Top Section Navigation Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-xs shadow-emerald-400/50" />
-            <span>Planejamento</span>
-          </h1>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            Calendário adaptativo inteligente, plano semanal, roadmap até a prova e replanejador dinâmico.
-          </p>
-        </div>
-
-        {/* 5 Area Sub-Tabs */}
-        <div className="flex items-center gap-1.5 bg-zinc-950/80 border border-zinc-800 p-1 rounded-2xl overflow-x-auto">
-          {[
-            { id: "CALENDARIO" as PlanejamentoSubTab, label: "Calendário", icon: CalendarIcon, navTab: "planejamento-calendario" as const },
-            { id: "SEMANAL" as PlanejamentoSubTab, label: "Plano Semanal", icon: CalendarCheck, navTab: "planejamento-semanal" as const },
-            { id: "ATE_PROVA" as PlanejamentoSubTab, label: "Plano até a Prova", icon: TrendingUp, navTab: "planejamento-ate-prova" as const },
-            { id: "DISPONIBILIDADE" as PlanejamentoSubTab, label: "Disponibilidade", icon: Clock, navTab: "planejamento-disponibilidade" as const },
-            { id: "REPLANEJAMENTO" as PlanejamentoSubTab, label: "Replanejamento", icon: RotateCcw, navTab: "planejamento-replanejamento" as const },
-          ].map((tab) => {
-            const Icon = tab.icon;
-            const isActive = currentSubTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  setCurrentSubTab(tab.id);
-                  setActiveTab(tab.navTab);
-                }}
-                className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-                  isActive
-                    ? "bg-emerald-600 text-white shadow-xs font-bold"
-                    : "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
-                }`}
-              >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? "text-white" : "text-zinc-400"}`} />
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* SUBVIEWS */}
       {/* 1. CALENDÁRIO */}
       {currentSubTab === "CALENDARIO" && <AdaptiveCalendarView />}

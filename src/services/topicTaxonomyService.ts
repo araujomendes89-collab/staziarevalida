@@ -870,7 +870,7 @@ export class TopicTaxonomyService {
     const area = input.area as MedicalArea | undefined;
     const topic = input.topic || "";
     const subtopic = input.subtopic || "";
-    const directCanonicalId = input.canonicalTopicId;
+    const directCanonicalId = (input as any).canonicalTopicId;
 
     // Helper: build unmapped result
     const makeUnmapped = (term: string, notes?: string): CanonicalTopicResolution => ({
@@ -1052,7 +1052,7 @@ export class TopicTaxonomyService {
 
     const issues: string[] = [];
     const area = input.area as MedicalArea | undefined;
-    const directCanonicalId = input.canonicalTopicId;
+    const directCanonicalId = (input as any).canonicalTopicId;
 
     if (!area) {
       issues.push("Área médica não especificada na questão");
@@ -1111,7 +1111,7 @@ export class TopicTaxonomyService {
         canonicalTopicId: resolution.canonicalTopicId,
         canonicalTopicTitle: resolution.canonicalTopicTitle,
         area: resolution.area,
-        areaCompatible: resolution.matchType !== "AREA_MISMATCH",
+        areaCompatible: (resolution.matchType as string) !== "AREA_MISMATCH",
         issues,
         confidence: resolution.confidence,
       };
@@ -1133,7 +1133,7 @@ export class TopicTaxonomyService {
    * Retrieves canonical IRS for a Grande Tema
    */
   static getIrsForTheme(theme: GrandeTema): number {
-    switch (theme.recurrence) {
+    switch (theme.recurrence as string) {
       case "altissima":
         return 95;
       case "alta":
