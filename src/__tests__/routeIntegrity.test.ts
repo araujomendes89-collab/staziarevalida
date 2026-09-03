@@ -87,7 +87,13 @@ describe('Route & Navigation Integrity Automated Audit', () => {
       { path: '/calendario-inteligente', expectedTab: 'planejamento-calendario' },
       { path: '/desempenho', expectedTab: 'desempenho' },
       { path: '/desempenho/geral', expectedTab: 'desempenho-geral' },
+      { path: '/desempenho/areas', expectedTab: 'desempenho-areas' },
+      { path: '/desempenho/evolucao', expectedTab: 'desempenho-evolucao' },
       { path: '/evolucao', expectedTab: 'desempenho-evolucao' },
+      { path: '/desempenho/matriz', expectedTab: 'desempenho-matriz' },
+      { path: '/matriz', expectedTab: 'desempenho-matriz' },
+      { path: '/desempenho/tendencias', expectedTab: 'desempenho-tendencias' },
+      { path: '/tendencias', expectedTab: 'desempenho-tendencias' },
       { path: '/estudar/plano-hoje', expectedTab: 'estudar-plano-hoje' },
       { path: '/plano-hoje', expectedTab: 'estudar-plano-hoje' },
     ];
