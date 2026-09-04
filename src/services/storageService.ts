@@ -11,6 +11,7 @@ import { ALL_CANONICAL_QUESTIONS } from "../data/allOfficialQuestions";
 import { normalizeQuestionList } from "../utils/questionNormalizer";
 import { INITIAL_KNOWLEDGE_GRAPH } from "../data/knowledgeGraphData";
 import { SpacedRepetitionService } from "./spacedRepetitionService";
+import { FlashcardProvenanceService } from "./flashcardProvenanceService";
 
 export interface FlashcardStorageScope {
   userId?: string | null;
@@ -314,9 +315,19 @@ export class StorageService {
       }
 
       const { migrated } = SpacedRepetitionService.migrateLegacyFlashcards(parsed);
-      safeSetItem(scopeKey, JSON.stringify(migrated));
+      const enriched = migrated.map((card) => ({
+        ...card,
+        provenance:
+          card.provenance?.origin === "QUESTION_DERIVED"
+            ? card.provenance
+            : FlashcardProvenanceService.createLegacyProvenance("IMPORTED_LEGACY"),
+        contentFingerprint:
+          card.contentFingerprint ||
+          FlashcardProvenanceService.createFlashcardContentFingerprint(card.front, card.back, card.keyMnemonic),
+      }));
+      safeSetItem(scopeKey, JSON.stringify(enriched));
       safeSetItem(`praxis_legacy_dismissed:${scopeKey}`, "true");
-      return migrated;
+      return enriched;
     } catch (e) {
       console.warn("Error importing legacy flashcards:", e);
       return [];

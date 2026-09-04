@@ -236,14 +236,56 @@ export interface QuestionAttempt {
   mode: "STUDY" | "EXAM" | "PRESSURE" | "DUEL";
 }
 
+export type FlashcardOrigin =
+  | "QUESTION_DERIVED"
+  | "AI_GENERATED"
+  | "MANUAL"
+  | "IMPORTED_LEGACY"
+  | "LEGACY_LOCAL"
+  | "UNKNOWN";
+
+export type FlashcardProvenanceStatus = "COMPLETE" | "PARTIAL" | "LEGACY_OR_UNKNOWN";
+
+export type FlashcardContentReviewStatus = "UNREVIEWED" | "AUTO_VALIDATED" | "MEDICAL_REVIEWED" | "APPROVED";
+
+export interface FlashcardProvenance {
+  origin: FlashcardOrigin;
+  createdAt: string; // ISO string
+  sourceQuestionId?: string;
+  sourceCanonicalQuestionId?: string;
+  sourceQuestionFingerprint?: string;
+  canonicalTopicId?: string;
+  sourceArea?: MedicalArea;
+  sourceTopic?: string;
+  sourceSubtopic?: string;
+  sourceExamEdition?: string;
+  sourceExamYear?: number;
+  aiGeneratedMetadata?: {
+    model?: string;
+    promptVersion?: string;
+    agentTraceId?: string;
+    generatedAt?: string;
+  };
+  contentReviewStatus?: FlashcardContentReviewStatus;
+  reviewedByDoctor?: string;
+  reviewedAt?: string;
+}
+
 export interface Flashcard {
-  id: string;
+  id: string; // Runtime instance ID (TIMESTAMP_PLUS_RANDOM)
   questionId?: string;
+  canonicalTopicId?: string;
   area: MedicalArea;
   topic: string;
   front: string; // Pergunta / Gatilho clínico
   back: string; // Resposta / Conduta ouro
   keyMnemonic?: string;
+
+  // Content Identity & Provenance (Etapa 1.22C)
+  provenance?: FlashcardProvenance;
+  contentFingerprint?: string;
+  contentFingerprintVersion?: number;
+  contentVersion?: number;
 
   // FSRS Core State Fields (Source of Truth for Scheduling)
   schedulerVersion?: "FSRS_V1" | "LEGACY_V1";
@@ -262,6 +304,39 @@ export interface Flashcard {
   easeFactor: number; // Legacy SM-2 field (decorative)
   repetitionCount: number;
   masteryLevel: number; // 0-100 indicator
+}
+
+/**
+ * Future Decoupled Content & State Model Contracts (Etapa 1.22C Target Architecture)
+ */
+export interface FlashcardContent {
+  contentId: string;
+  front: string;
+  back: string;
+  keyMnemonic?: string;
+  canonicalTopicId?: string;
+  area: MedicalArea;
+  topic: string;
+  provenance: FlashcardProvenance;
+  contentFingerprint: string;
+  contentFingerprintVersion: number;
+  contentVersion: number;
+  contentReviewStatus?: FlashcardContentReviewStatus;
+}
+
+export interface UserFlashcardState {
+  flashcardId: string; // References FlashcardContent.contentId in future split
+  userId: string;
+  schedulerVersion: "FSRS_V1";
+  stability: number;
+  difficulty: number;
+  elapsedDays: number;
+  scheduledDays: number;
+  reps: number;
+  lapses: number;
+  state: number;
+  lastReviewed?: string;
+  dueDate: string;
 }
 
 export interface KnowledgeNode {

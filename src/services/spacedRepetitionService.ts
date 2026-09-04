@@ -1,6 +1,7 @@
 import { Card, createEmptyCard, Rating, State, forgetting_curve } from "ts-fsrs";
-import { Flashcard, MedicalArea } from "../types";
+import { Flashcard, MedicalArea, FlashcardProvenance } from "../types";
 import { defaultFSRS, FSRS_CONFIG } from "../config/spacedRepetition";
+import { FlashcardProvenanceService } from "./flashcardProvenanceService";
 
 export type FSRSRatingInput = "AGAIN" | "HARD" | "MEDIUM" | "EASY";
 
@@ -70,25 +71,44 @@ export class SpacedRepetitionService {
     params: {
       id?: string;
       questionId?: string;
+      canonicalTopicId?: string;
       area: MedicalArea;
       topic: string;
       front: string;
       back: string;
       keyMnemonic?: string;
+      provenance?: FlashcardProvenance;
+      contentFingerprint?: string;
+      contentFingerprintVersion?: number;
+      contentVersion?: number;
     },
     now: Date = new Date()
   ): Flashcard {
     const fsrsCard = createEmptyCard(now);
     const cardId = params.id || `fc-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+    const contentFingerprint =
+      params.contentFingerprint ||
+      FlashcardProvenanceService.createFlashcardContentFingerprint(
+        params.front,
+        params.back,
+        params.keyMnemonic
+      );
 
     return {
       id: cardId,
       questionId: params.questionId,
+      canonicalTopicId: params.canonicalTopicId,
       area: params.area,
       topic: params.topic,
       front: params.front,
       back: params.back,
       keyMnemonic: params.keyMnemonic,
+
+      // Content Identity & Provenance (Etapa 1.22C)
+      provenance: params.provenance,
+      contentFingerprint,
+      contentFingerprintVersion: params.contentFingerprintVersion ?? FlashcardProvenanceService.CONTENT_FINGERPRINT_VERSION,
+      contentVersion: params.contentVersion ?? FlashcardProvenanceService.CONTENT_VERSION,
 
       // FSRS Core State Fields
       schedulerVersion: FSRS_CONFIG.schedulerVersion,
@@ -335,7 +355,21 @@ export class SpacedRepetitionService {
     let hadLegacyCards = false;
 
     const migrated = cards.map((card) => {
+      const contentFingerprint =
+        card.contentFingerprint ||
+        FlashcardProvenanceService.createFlashcardContentFingerprint(card.front, card.back, card.keyMnemonic);
+      const provenance = card.provenance || FlashcardProvenanceService.createLegacyProvenance("LEGACY_LOCAL", now);
+
       if (card.schedulerVersion === FSRS_CONFIG.schedulerVersion) {
+        if (!card.contentFingerprint || !card.provenance) {
+          return {
+            ...card,
+            provenance,
+            contentFingerprint,
+            contentFingerprintVersion: card.contentFingerprintVersion ?? FlashcardProvenanceService.CONTENT_FINGERPRINT_VERSION,
+            contentVersion: card.contentVersion ?? FlashcardProvenanceService.CONTENT_VERSION,
+          };
+        }
         return card;
       }
 
@@ -350,6 +384,10 @@ export class SpacedRepetitionService {
 
       return {
         ...card,
+        provenance,
+        contentFingerprint,
+        contentFingerprintVersion: card.contentFingerprintVersion ?? FlashcardProvenanceService.CONTENT_FINGERPRINT_VERSION,
+        contentVersion: card.contentVersion ?? FlashcardProvenanceService.CONTENT_VERSION,
         schedulerVersion: FSRS_CONFIG.schedulerVersion,
         stability,
         difficulty,

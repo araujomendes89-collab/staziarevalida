@@ -37,6 +37,7 @@ import {
 } from "../lib/firebase";
 import { AdaptiveEngine } from "../services/adaptiveEngine";
 import { SpacedRepetitionService } from "../services/spacedRepetitionService";
+import { FlashcardProvenanceService } from "../services/flashcardProvenanceService";
 import { SEED_RADAR_UPDATES } from "../data/knowledgeGraphData";
 import { REVALIDA_EDITIONS_INVENTORY } from "../data/revalidaInventoryData";
 import { SEED_MEDICAL_GUIDELINES, SEED_GUIDELINE_WATCH_ALERTS, SEED_GUIDELINE_AUDIT_LOGS } from "../data/guidelinesData";
@@ -660,14 +661,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // If user got it wrong, auto-generate a smart flashcard from the key finding & record Error Autopsy
       if (!attemptData.isCorrect) {
         createdCardId = `fc-auto-${Date.now()}`;
+        const provenance = FlashcardProvenanceService.createQuestionDerivedProvenance(question);
         const newCard: Flashcard = SpacedRepetitionService.createInitialFSRSCard({
           id: createdCardId,
           questionId: question.id,
+          canonicalTopicId: (question as any).canonicalTopicId || undefined,
           area: question.area,
           topic: question.subtopic || question.topic,
           front: `[Autópsia do Erro] ${question.keyFinding} — Qual é a conduta padrão-ouro no SUS?`,
           back: `${question.expectedConduct}\n\nJustificativa: ${question.inepIntent}`,
           keyMnemonic: question.brazilContextNote,
+          provenance,
         });
         setFlashcards((prev) => {
           const updated = [newCard, ...prev];
