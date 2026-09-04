@@ -44,11 +44,13 @@ export const GuidelineWatchView: React.FC = () => {
     approveGuidelineAlert,
     setActiveTab,
     setActiveQuestionIndex,
+    user,
+    isAuthLoading,
+    isGuestMode,
   } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<"student_hub" | "grounded_radar" | "audit_queue" | "repository" | "logs">("student_hub");
   const [selectedGuidelineFilter, setSelectedGuidelineFilter] = useState<string>("ALL");
-
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Microaula / Sessão de Atualização modal state
@@ -72,6 +74,48 @@ export const GuidelineWatchView: React.FC = () => {
   const [selectedNewStatus, setSelectedNewStatus] = useState<ContentStatus>("OFFICIAL_ANSWER_HISTORICAL");
   const [selectedImpact, setSelectedImpact] = useState<GuidelineImpactLevel>("ALTO");
   const [reviewerName, setReviewerName] = useState<string>("Dr. Rodrigo Valente Mendes (CRM-SP 184.920)");
+
+  // Fail-closed authorization check
+  if (isAuthLoading) {
+    return (
+      <div className="max-w-xl mx-auto my-12 p-8 text-center text-slate-400 text-xs">
+        Carregando credenciais de acesso...
+      </div>
+    );
+  }
+
+  const isDeveloperAdmin = !isGuestMode && (user?.role === "ADMIN" || user?.tier === "ADMIN");
+
+  if (!isDeveloperAdmin) {
+    return (
+      <div
+        id="admin-access-denied"
+        className="max-w-xl mx-auto my-12 p-8 rounded-[28px] bg-slate-950/90 border border-rose-500/30 text-center space-y-5 shadow-2xl backdrop-blur-2xl"
+      >
+        <div className="w-16 h-16 rounded-2xl bg-rose-500/20 text-rose-400 mx-auto flex items-center justify-center border border-rose-500/30">
+          <ShieldAlert className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-white tracking-tight">
+            Acesso Restrito à Administração
+          </h2>
+          <p className="text-xs text-slate-300 leading-relaxed max-w-md mx-auto">
+            Esta área exige confirmação de privilégios <code className="text-rose-300 font-mono">ADMIN</code> validados pelo servidor.
+            O Radar de Diretrizes e a Fila de Auditoria Editorial são restritos à equipe médica gestora.
+          </p>
+        </div>
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab("home")}
+            className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg shadow-teal-600/20 transition-all cursor-pointer"
+          >
+            Voltar para a Área do Aluno
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Questions with guideline updates
   const updatedQuestions = questions.filter((q) => q.guidelineUpdate);

@@ -1,13 +1,31 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import { AppProvider } from '../context/AppContext';
+import { AppProvider, useApp } from '../context/AppContext';
 import { RevisarView } from '../components/revisar/RevisarView';
 import { STUDENT_NAVIGATION_CONFIG } from '../config/navigation';
 import { tabToPath, pathToTab } from '../services/routeMapping';
+import { StorageService } from '../services/storageService';
 
-describe('Review Navigation Reorganization (Etapa 1.20B)', () => {
+const AdminRoleSetter: React.FC<{ role: 'STUDENT' | 'ADMIN'; isGuest?: boolean }> = ({ role, isGuest }) => {
+  const { updateUserProfile, enterGuestMode, exitGuestMode } = useApp();
+  React.useEffect(() => {
+    updateUserProfile({ role, tier: role === 'ADMIN' ? 'ADMIN' : 'PRO' });
+    if (isGuest) {
+      enterGuestMode();
+    } else {
+      exitGuestMode();
+    }
+  }, [role, isGuest]);
+  return null;
+};
+
+describe('Review Navigation & Admin Access Control (Etapa 1.20C)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it('should have exactly 3 sub-items in the student Sidebar for REVISAR', () => {
     const revisarSection = STUDENT_NAVIGATION_CONFIG.find((s) => s.id === 'revisar');
     expect(revisarSection).toBeDefined();
@@ -32,7 +50,7 @@ describe('Review Navigation Reorganization (Etapa 1.20B)', () => {
     expect(screen.getByText(/Revisão espaçada dos conteúdos clínicos/i)).toBeInTheDocument();
   });
 
-  it('should preserve all routes and direct access for all review submodules', () => {
+  it('should preserve all routes and direct access mappings for all review submodules', () => {
     expect(tabToPath('revisar')).toBe('/revisar');
     expect(tabToPath('revisar-flashcards')).toBe('/revisar/flashcards');
     expect(tabToPath('revisar-erros')).toBe('/revisar/erros');
@@ -48,28 +66,59 @@ describe('Review Navigation Reorganization (Etapa 1.20B)', () => {
     expect(pathToTab('/revisar/audio')).toBe('revisar-audio');
   });
 
-  it('should render ErrorNotebookView when initialSubTab is ERRORS', () => {
+  it('should DENY access to GuidelineWatchView (Radar) for a STUDENT user', async () => {
     render(
       <BrowserRouter>
         <AppProvider>
-          <RevisarView initialSubTab="ERRORS" />
+          <AdminRoleSetter role="STUDENT" />
+          <RevisarView initialSubTab="RADAR" />
         </AppProvider>
       </BrowserRouter>
     );
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Caderno de Erros' })).toBeInTheDocument();
-    expect(screen.getByText(/Revise os pontos que mais estão custando questões/i)).toBeInTheDocument();
+    // Access Denied screen rendered after auth resolution
+    const deniedHeading = await screen.findByText(/Acesso Restrito à Administração/i);
+    expect(deniedHeading).toBeInTheDocument();
+    expect(screen.getByText(/Esta área exige confirmação de privilégios/i)).toBeInTheDocument();
+    // Backoffice main container must NOT be visible
+    expect(screen.queryByText(/Guideline Watch & O Que Mudou na Medicina/i)).toBeNull();
   });
 
-  it('should render ProtocolUpdatesHubView when initialSubTab is ATUALIZACOES', () => {
+  it('should DENY access to GuidelineWatchView for unauthenticated / GUEST mode', async () => {
     render(
       <BrowserRouter>
         <AppProvider>
-          <RevisarView initialSubTab="ATUALIZACOES" />
+          <AdminRoleSetter role="ADMIN" isGuest={true} />
+          <RevisarView initialSubTab="RADAR" />
         </AppProvider>
       </BrowserRouter>
     );
 
-    expect(screen.getByText(/ATUALIZAÇÕES REVALIDA 2025–2026/i)).toBeInTheDocument();
+    const deniedHeading = await screen.findByText(/Acesso Restrito à Administração/i);
+    expect(deniedHeading).toBeInTheDocument();
+    expect(screen.queryByText(/Guideline Watch & O Que Mudou na Medicina/i)).toBeNull();
+  });
+
+  it('should ALLOW access to GuidelineWatchView for authorized ADMIN user', async () => {
+    // Seed admin profile in localStorage
+    const adminProfile = {
+      ...StorageService.getUserProfile(),
+      role: 'ADMIN' as const,
+      tier: 'ADMIN' as const,
+    };
+    StorageService.saveUserProfile(adminProfile);
+
+    render(
+      <BrowserRouter>
+        <AppProvider>
+          <RevisarView initialSubTab="RADAR" />
+        </AppProvider>
+      </BrowserRouter>
+    );
+
+    // Radar content rendered for authenticated admin after auth resolution
+    const radarTitle = await screen.findByText(/Guideline Watch & O Que Mudou na Medicina/i);
+    expect(radarTitle).toBeInTheDocument();
+    expect(screen.queryByText(/Acesso Restrito à Administração/i)).toBeNull();
   });
 });
