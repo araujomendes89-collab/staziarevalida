@@ -93,16 +93,18 @@ describe('Protocol Updates Pedagogical & Visual Redesign (Etapa 1.20E)', () => {
     // Protagonist: O que mudou? (Antes x Agora)
     expect(screen.getByText(/O que mudou na conduta médica\?/i)).toBeInTheDocument();
     expect(screen.getByText(/Conduta Anterior \(Antes de 2025\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/Conduta Vigente \(Padrão Atual Oficial\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Conduta Vigente$/i)).toBeInTheDocument();
     expect(screen.getByText(/Rastreamento exclusivamente por citopatologia convencional/i)).toBeInTheDocument();
 
     // Para o Revalida
-    expect(screen.getByText(/O que lembrar para o Revalida INEP/i)).toBeInTheDocument();
+    expect(screen.getByText(/^O que lembrar para o Revalida$/i)).toBeInTheDocument();
+    expect(screen.getByText(/Como isso pode aparecer no Revalida:/i)).toBeInTheDocument();
     expect(screen.getByText(/Alerta de Pegadinha da Banca:/i)).toBeInTheDocument();
 
-    // Fonte Oficial
-    expect(screen.getByText(/Fonte Oficial & Documento Primário/i)).toBeInTheDocument();
+    // Fonte e Classificação
+    expect(screen.getByText(/Fonte Governamental & Referência/i)).toBeInTheDocument();
     expect(screen.getByText(/PCDT para Prevenção e Rastreamento do Câncer do Colo do Útero/i)).toBeInTheDocument();
+    expect(screen.getByText(/Abrir fonte original/i)).toBeInTheDocument();
 
     // Questões Históricas da Prova Afetadas (Accordion)
     const historicalAccordionBtn = screen.getByRole('button', { name: /Questões Históricas da Prova Afetadas/i });

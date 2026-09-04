@@ -144,15 +144,46 @@ export const ProtocolUpdatesHubView: React.FC<{ initialTab?: ProtocolSubTab }> =
     if (priority === "PRIORIDADE_1_MUITO_ALTA") {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-rose-500/10 text-rose-600 dark:text-rose-300 border border-rose-500/20">
-          Prioridade editorial: Muito Alta
+          Prioridade de revisão: Muito Alta
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-600 dark:text-amber-300 border border-amber-500/20">
-        Prioridade editorial: Alta
+        Prioridade de revisão: Alta
       </span>
     );
+  };
+
+  const getSourceClassificationLabel = (instituicao: string) => {
+    const inst = instituicao.toUpperCase();
+    if (
+      inst.includes("MINISTÉRIO") ||
+      inst.includes("MINISTERIO") ||
+      inst.includes("CONITEC") ||
+      inst.includes("INCA") ||
+      inst.includes("PNI") ||
+      inst.includes("ANVISA") ||
+      inst.includes("SVSA") ||
+      inst.includes("OPAS")
+    ) {
+      return "Fonte Governamental";
+    }
+    if (inst.includes("INEP")) {
+      return "Documento INEP";
+    }
+    if (
+      inst.includes("FEBRASGO") ||
+      inst.includes("SBC") ||
+      inst.includes("SBD") ||
+      inst.includes("ILAS") ||
+      inst.includes("SBPT") ||
+      inst.includes("SBMFC") ||
+      inst.includes("CFM")
+    ) {
+      return "Diretriz de Sociedade Científica";
+    }
+    return "Fonte Primária";
   };
 
   // =========================================================================
@@ -228,7 +259,7 @@ export const ProtocolUpdatesHubView: React.FC<{ initialTab?: ProtocolSubTab }> =
             <div className="p-5 rounded-2xl bg-emerald-500/10 dark:bg-emerald-950/30 border border-emerald-500/30 space-y-2">
               <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
                 <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                <span>Conduta Vigente (Padrão Atual Oficial)</span>
+                <span>Conduta Vigente</span>
               </div>
               <p className="text-xs sm:text-sm font-medium text-emerald-950 dark:text-emerald-100 leading-relaxed">
                 {selectedProtocol.conduta_vigente}
@@ -265,14 +296,14 @@ export const ProtocolUpdatesHubView: React.FC<{ initialTab?: ProtocolSubTab }> =
           <div className="flex items-center gap-2 text-slate-900 dark:text-white">
             <Award className="w-4 h-4 text-amber-500" />
             <h3 className="text-sm font-bold uppercase tracking-wider">
-              O que lembrar para o Revalida INEP
+              O que lembrar para o Revalida
             </h3>
           </div>
 
           <div className="space-y-3 text-xs sm:text-sm">
             <div className="space-y-1">
               <span className="font-bold text-slate-900 dark:text-amber-300">
-                🎯 Como o INEP cobra na prova:
+                🎯 Como isso pode aparecer no Revalida:
               </span>
               <p className="text-slate-700 dark:text-zinc-300 leading-relaxed">
                 {selectedProtocol.impacto_revalida}
@@ -307,7 +338,7 @@ export const ProtocolUpdatesHubView: React.FC<{ initialTab?: ProtocolSubTab }> =
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-slate-800 dark:text-zinc-200 font-bold">
               <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              <span>Fonte Oficial & Documento Primário</span>
+              <span>{getSourceClassificationLabel(selectedProtocol.instituicao)} & Referência</span>
             </div>
             <span className="text-[11px] text-slate-500 dark:text-zinc-500">
               Verificado: {selectedProtocol.ultima_verificacao}
@@ -325,7 +356,7 @@ export const ProtocolUpdatesHubView: React.FC<{ initialTab?: ProtocolSubTab }> =
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 dark:text-emerald-400 hover:underline min-h-[44px]"
             >
-              <span>Abrir documento oficial primário</span>
+              <span>Abrir fonte original</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>
