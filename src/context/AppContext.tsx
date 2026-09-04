@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { pathToTab, tabToPath, tabToTitle } from "../services/routeMapping";
 import {
@@ -19,7 +19,7 @@ import {
   TrainingSessionDoc,
   ErrorAutopsyDoc,
 } from "../types";
-import { StorageService, DEFAULT_USER } from "../services/storageService";
+import { StorageService, DEFAULT_USER, FlashcardStorageScope } from "../services/storageService";
 import { FirebaseService } from "../services/firebaseService";
 import { normalizeQuestionList } from "../utils/questionNormalizer";
 import {
@@ -177,6 +177,9 @@ interface AppContextType {
   readinessData: ReturnType<typeof AdaptiveEngine.calculateReadiness>;
   resetUserData: () => void;
   resetAllData: () => void;
+  hasLegacyFlashcards: boolean;
+  importLegacyFlashcards: () => void;
+  dismissLegacyFlashcards: () => void;
   // Auth state & methods
   firebaseUser: FirebaseUser | null;
   isAuthLoading: boolean;
@@ -244,7 +247,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [guidelineAuditLogs, setGuidelineAuditLogs] = useState<GuidelineAuditLog[]>(SEED_GUIDELINE_AUDIT_LOGS);
 
   const [attempts, setAttempts] = useState<QuestionAttempt[]>(() => StorageService.getAttempts());
-  const [flashcards, setFlashcards] = useState<Flashcard[]>(() => StorageService.getFlashcards());
+  
+  const currentFlashcardScope = useMemo<FlashcardStorageScope>(() => {
+    if (firebaseUser?.uid && !isGuestMode) {
+      return { userId: firebaseUser.uid, isGuest: false };
+    }
+    return { userId: null, isGuest: true };
+  }, [firebaseUser?.uid, isGuestMode]);
+
+  const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
+  const [hasLegacyFlashcards, setHasLegacyFlashcards] = useState<boolean>(false);
+
+  // Scoped Flashcard Hydration — fail-closed during auth loading, isolated per account/guest
+  useEffect(() => {
+    if (isAuthLoading) {
+      setFlashcards([]);
+      return;
+    }
+    const loadedCards = StorageService.getFlashcards(currentFlashcardScope);
+    setFlashcards(loadedCards);
+    setHasLegacyFlashcards(
+      StorageService.hasLegacyFlashcards() && !StorageService.hasDismissedLegacyRecovery(currentFlashcardScope)
+    );
+  }, [isAuthLoading, currentFlashcardScope]);
+
+  const importLegacyFlashcards = useCallback(() => {
+    const imported = StorageService.importLegacyFlashcards(currentFlashcardScope);
+    if (imported.length > 0) {
+      setFlashcards(imported);
+    }
+    setHasLegacyFlashcards(false);
+  }, [currentFlashcardScope]);
+
+  const dismissLegacyFlashcards = useCallback(() => {
+    StorageService.dismissLegacyRecovery(currentFlashcardScope);
+    setHasLegacyFlashcards(false);
+  }, [currentFlashcardScope]);
+
   const [knowledgeGraph, setKnowledgeGraph] = useState<KnowledgeNode[]>(() => StorageService.getKnowledgeGraph());
   const [osceAttempts, setOsceAttempts] = useState<OSCEStationAttempt[]>(() => StorageService.getOSCEAttempts());
   const [todayMission, setTodayMission] = useState<StudyMission>(() => StorageService.getTodayMission());
@@ -517,6 +556,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const logout = async (): Promise<void> => {
     exitGuestMode();
+    setFlashcards([]);
     await signOutCurrentUser();
     setFirebaseUser(null);
   };
@@ -631,7 +671,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
         setFlashcards((prev) => {
           const updated = [newCard, ...prev];
-          StorageService.saveFlashcards(updated);
+          StorageService.saveFlashcards(updated, currentFlashcardScope);
           return updated;
         });
 
@@ -674,7 +714,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (card.id !== cardId) return card;
         return SpacedRepetitionService.scheduleFSRSReview(card, rating);
       });
-      StorageService.saveFlashcards(updated);
+      StorageService.saveFlashcards(updated, currentFlashcardScope);
       return updated;
     });
   };
@@ -836,6 +876,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const resetUserData = () => {
     StorageService.resetUserData();
+    StorageService.saveFlashcards([], currentFlashcardScope);
     setAttempts([]);
     setFlashcards([]);
     setKnowledgeGraph(StorageService.getKnowledgeGraph());
@@ -853,6 +894,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const resetAllData = () => {
     StorageService.resetAllLocalData();
+    StorageService.saveFlashcards([], currentFlashcardScope);
     setUser(DEFAULT_USER);
     setAttempts([]);
     setFlashcards([]);
@@ -878,6 +920,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         guidelineAuditLogs,
         attempts,
         flashcards,
+        hasLegacyFlashcards,
+        importLegacyFlashcards,
+        dismissLegacyFlashcards,
         knowledgeGraph,
         osceAttempts,
         todayMission,

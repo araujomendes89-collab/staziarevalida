@@ -12,26 +12,63 @@ import { normalizeQuestionList } from "../utils/questionNormalizer";
 import { INITIAL_KNOWLEDGE_GRAPH } from "../data/knowledgeGraphData";
 import { SpacedRepetitionService } from "./spacedRepetitionService";
 
+export interface FlashcardStorageScope {
+  userId?: string | null;
+  isGuest?: boolean;
+}
+
 const STORAGE_KEYS = {
   USER_PROFILE: "praxis_user_profile_v2",
   QUESTIONS: "praxis_questions_v3",
   ATTEMPTS: "praxis_attempts_v2",
-  FLASHCARDS: "praxis_flashcards_v2",
+  FLASHCARDS_LEGACY_V2: "praxis_flashcards_v2",
+  FLASHCARDS_V3_PREFIX: "praxis_flashcards_v3",
   FLASHCARDS_BACKUP_V1: "praxis_flashcards_v1_backup",
+  FLASHCARDS_BACKUP_V2: "praxis_flashcards_v2_migrated_backup",
+  GUEST_ID: "praxis_guest_id_v1",
   KNOWLEDGE_GRAPH: "praxis_knowledge_graph_v2",
   OSCE_ATTEMPTS: "praxis_osce_attempts_v2",
   STUDY_MISSION: "praxis_study_mission_v2",
   THEME_MODE: "praxis_theme_mode_v2",
 };
 
+export function getOrGenerateGuestId(): string {
+  let guestId = safeGetItem(STORAGE_KEYS.GUEST_ID);
+  if (!guestId || guestId.trim().length === 0) {
+    guestId = `guest_${Math.random().toString(36).substring(2, 10)}`;
+    safeSetItem(STORAGE_KEYS.GUEST_ID, guestId);
+  }
+  return guestId;
+}
+
+export function getFlashcardStorageKey(scope?: FlashcardStorageScope | string | null): string {
+  if (typeof scope === "string" && scope.trim().length > 0) {
+    return `${STORAGE_KEYS.FLASHCARDS_V3_PREFIX}:user:${scope.trim()}`;
+  }
+  if (scope && typeof scope === "object") {
+    if (scope.userId && scope.userId.trim().length > 0 && !scope.isGuest) {
+      return `${STORAGE_KEYS.FLASHCARDS_V3_PREFIX}:user:${scope.userId.trim()}`;
+    }
+    if (scope.isGuest) {
+      const guestId = getOrGenerateGuestId();
+      return `${STORAGE_KEYS.FLASHCARDS_V3_PREFIX}:guest:${guestId}`;
+    }
+  }
+  const guestId = getOrGenerateGuestId();
+  return `${STORAGE_KEYS.FLASHCARDS_V3_PREFIX}:guest:${guestId}`;
+}
+
 // In-memory fallback cache when localStorage is full (QuotaExceeded) or disabled in private browsing
 const memoryStore = new Map<string, string>();
+
+export function clearMemoryStore(): void {
+  memoryStore.clear();
+}
 
 function safeGetItem(key: string): string | null {
   try {
     if (typeof window !== "undefined" && window.localStorage) {
-      const val = window.localStorage.getItem(key);
-      if (val !== null) return val;
+      return window.localStorage.getItem(key);
     }
   } catch (e) {
     console.warn(`[StorageService] Safe read failed for key ${key}:`, e);
@@ -40,25 +77,27 @@ function safeGetItem(key: string): string | null {
 }
 
 function safeSetItem(key: string, value: string): void {
-  // Always update in-memory store
-  memoryStore.set(key, value);
   try {
     if (typeof window !== "undefined" && window.localStorage) {
       window.localStorage.setItem(key, value);
+      memoryStore.delete(key);
+      return;
     }
   } catch (e) {
     // QuotaExceededError (e.g. on iOS Safari / private browsing)
     console.warn(`[StorageService] Quota exceeded or storage restricted for key ${key}, keeping in memory:`, e);
-    // If quota exceeded, try to clean up stale heavy keys (like old questions cache)
     try {
       if (key !== STORAGE_KEYS.QUESTIONS) {
         window.localStorage.removeItem(STORAGE_KEYS.QUESTIONS);
         window.localStorage.setItem(key, value);
+        memoryStore.delete(key);
+        return;
       }
     } catch {
       // Memory store is active, continue safely
     }
   }
+  memoryStore.set(key, value);
 }
 
 function safeRemoveItem(key: string): void {
@@ -198,20 +237,21 @@ export class StorageService {
     this.saveAttempts(list);
   }
 
-  static getFlashcards(): Flashcard[] {
+  static getFlashcardStorageKey(scope?: FlashcardStorageScope | string | null): string {
+    return getFlashcardStorageKey(scope);
+  }
+
+  static getFlashcards(scope?: FlashcardStorageScope | string | null): Flashcard[] {
+    const key = getFlashcardStorageKey(scope);
     try {
-      const data = safeGetItem(STORAGE_KEYS.FLASHCARDS);
+      const data = safeGetItem(key);
       if (!data) return [];
       const parsed: Flashcard[] = JSON.parse(data);
       if (!Array.isArray(parsed)) return [];
 
       const { migrated, hadLegacyCards } = SpacedRepetitionService.migrateLegacyFlashcards(parsed);
       if (hadLegacyCards) {
-        // Create backup if not already present
-        if (!safeGetItem(STORAGE_KEYS.FLASHCARDS_BACKUP_V1)) {
-          safeSetItem(STORAGE_KEYS.FLASHCARDS_BACKUP_V1, data);
-        }
-        safeSetItem(STORAGE_KEYS.FLASHCARDS, JSON.stringify(migrated));
+        safeSetItem(key, JSON.stringify(migrated));
       }
       return migrated;
     } catch {
@@ -219,11 +259,67 @@ export class StorageService {
     }
   }
 
-  static saveFlashcards(cards: Flashcard[]): void {
+  static saveFlashcards(cards: Flashcard[], scope?: FlashcardStorageScope | string | null): void {
+    const key = getFlashcardStorageKey(scope);
     try {
-      safeSetItem(STORAGE_KEYS.FLASHCARDS, JSON.stringify(cards));
+      safeSetItem(key, JSON.stringify(cards));
     } catch (e) {
       console.warn("Error saving flashcards:", e);
+    }
+  }
+
+  static hasLegacyFlashcards(): boolean {
+    try {
+      const data = safeGetItem(STORAGE_KEYS.FLASHCARDS_LEGACY_V2);
+      if (!data) return false;
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  static getLegacyFlashcardsCount(): number {
+    try {
+      const data = safeGetItem(STORAGE_KEYS.FLASHCARDS_LEGACY_V2);
+      if (!data) return 0;
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed.length : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  static hasDismissedLegacyRecovery(scope?: FlashcardStorageScope | string | null): boolean {
+    const scopeKey = getFlashcardStorageKey(scope);
+    return safeGetItem(`praxis_legacy_dismissed:${scopeKey}`) === "true";
+  }
+
+  static dismissLegacyRecovery(scope?: FlashcardStorageScope | string | null): void {
+    const scopeKey = getFlashcardStorageKey(scope);
+    safeSetItem(`praxis_legacy_dismissed:${scopeKey}`, "true");
+  }
+
+  static importLegacyFlashcards(scope?: FlashcardStorageScope | string | null): Flashcard[] {
+    const scopeKey = getFlashcardStorageKey(scope);
+    try {
+      const data = safeGetItem(STORAGE_KEYS.FLASHCARDS_LEGACY_V2);
+      if (!data) return [];
+      const parsed: Flashcard[] = JSON.parse(data);
+      if (!Array.isArray(parsed) || parsed.length === 0) return [];
+
+      // Preserve technical backup
+      if (!safeGetItem(STORAGE_KEYS.FLASHCARDS_BACKUP_V2)) {
+        safeSetItem(STORAGE_KEYS.FLASHCARDS_BACKUP_V2, data);
+      }
+
+      const { migrated } = SpacedRepetitionService.migrateLegacyFlashcards(parsed);
+      safeSetItem(scopeKey, JSON.stringify(migrated));
+      safeSetItem(`praxis_legacy_dismissed:${scopeKey}`, "true");
+      return migrated;
+    } catch (e) {
+      console.warn("Error importing legacy flashcards:", e);
+      return [];
     }
   }
 

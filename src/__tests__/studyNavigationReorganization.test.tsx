@@ -64,6 +64,6 @@ describe("Study Navigation Reorganization (Etapa 1.17B)", () => {
   it("F: resolves canonical Materiais Oficiais subtab correctly", () => {
     renderWithProviders(<EstudarView initialSubTab="MATERIAIS" />);
 
-    expect(screen.getByText(/Pesquisa Médica Oficial/i)).toBeDefined();
+    expect(screen.getByText(/Materiais Oficiais & Diretrizes/i)).toBeDefined();
   });
 });

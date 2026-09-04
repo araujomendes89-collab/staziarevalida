@@ -23,7 +23,14 @@ import { formatMedicalArea } from "../../utils/formatters";
 import { SpacedRepetitionService } from "../../services/spacedRepetitionService";
 
 export const SpacedReviewView: React.FC = () => {
-  const { flashcards, updateFlashcardScore, setActiveTab } = useApp();
+  const {
+    flashcards,
+    updateFlashcardScore,
+    setActiveTab,
+    hasLegacyFlashcards,
+    importLegacyFlashcards,
+    dismissLegacyFlashcards,
+  } = useApp();
 
   const [isSessionActive, setIsSessionActive] = useState(false);
   const [sessionCards, setSessionCards] = useState<Flashcard[]>([]);
@@ -138,6 +145,39 @@ export const SpacedReviewView: React.FC = () => {
           <span>Modo Áudio</span>
         </button>
       </div>
+
+      {/* 1.1 BANNER DE RECUPERAÇÃO DE DADOS LEGADOS COM CONSENTIMENTO EXPLÍCITO */}
+      {hasLegacyFlashcards && (
+        <div className="bg-amber-50/90 border border-amber-200/80 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-amber-950 shadow-xs animate-in fade-in duration-200">
+          <div className="flex items-start gap-3">
+            <Sparkles className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-xs sm:text-sm font-semibold text-amber-900">
+                Flashcards anteriores detectados neste navegador
+              </p>
+              <p className="text-xs text-amber-800/80 mt-0.5">
+                Encontramos {StorageService.getLegacyFlashcardsCount()} cartões de estudo da versão anterior. Deseja importá-los para sua conta atual?
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <button
+              type="button"
+              onClick={importLegacyFlashcards}
+              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+            >
+              Importar para esta conta
+            </button>
+            <button
+              type="button"
+              onClick={dismissLegacyFlashcards}
+              className="px-3 py-1.5 bg-white hover:bg-amber-100 text-amber-900 font-medium text-xs rounded-xl border border-amber-200 transition-colors cursor-pointer"
+            >
+              Ignorar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 2. SESSÃO ATIVA DE REVISÃO */}
       {isSessionActive && !isSessionFinished && currentCard && (
