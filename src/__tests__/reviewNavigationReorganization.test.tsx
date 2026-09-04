@@ -7,6 +7,8 @@ import { RevisarView } from '../components/revisar/RevisarView';
 import { STUDENT_NAVIGATION_CONFIG } from '../config/navigation';
 import { tabToPath, pathToTab } from '../services/routeMapping';
 import { StorageService } from '../services/storageService';
+import * as libFirebase from '../lib/firebase';
+import { FirebaseService } from '../services/firebaseService';
 
 const AdminRoleSetter: React.FC<{ role: 'STUDENT' | 'ADMIN'; isGuest?: boolean }> = ({ role, isGuest }) => {
   const { updateUserProfile, enterGuestMode, exitGuestMode } = useApp();
@@ -100,13 +102,26 @@ describe('Review Navigation & Admin Access Control (Etapa 1.20C)', () => {
   });
 
   it('should ALLOW access to GuidelineWatchView for authorized ADMIN user', async () => {
-    // Seed admin profile in localStorage
-    const adminProfile = {
-      ...StorageService.getUserProfile(),
-      role: 'ADMIN' as const,
-      tier: 'ADMIN' as const,
-    };
-    StorageService.saveUserProfile(adminProfile);
+    const mockFbUser = {
+      uid: 'usr-admin-master',
+      email: 'araujomendes@staziamed.com.br',
+      displayName: 'Administrador Master',
+      emailVerified: true,
+    } as any;
+
+    vi.spyOn(libFirebase, 'subscribeToAuthState').mockImplementation((cb) => {
+      cb(mockFbUser);
+      return () => {};
+    });
+
+    vi.spyOn(FirebaseService, 'getUserProfile').mockResolvedValue({
+      id: 'usr-admin-master',
+      name: 'Administrador Master',
+      email: 'araujomendes@staziamed.com.br',
+      role: 'ADMIN',
+      tier: 'PRO_PLUS',
+      plan: 'pro_plus',
+    } as any);
 
     render(
       <BrowserRouter>

@@ -25,6 +25,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
     setIsSubscriptionModalOpen,
     setQuestionMode,
     logout,
+    isDeveloperAdmin,
   } = useApp();
 
   const dueFlashcardsCount = SpacedRepetitionService.getDueFlashcards(flashcards || []).length;
@@ -245,21 +246,22 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
         })}
 
         {/* Administration Links (if ADMIN confirmed by server) */}
-        {user?.role === "ADMIN" && (
-          <div className="pt-3 mt-2 border-t border-[#142847]/70 space-y-1">
-            <p className="px-3 text-[10px] font-bold tracking-wider text-teal-400 uppercase">
+        {isDeveloperAdmin && (
+          <div className="pt-3 mt-2 border-t border-[#142847]/70 space-y-1" data-testid="admin-sidebar-section">
+            <p className="px-3 text-[10px] font-bold tracking-wider text-teal-400 uppercase flex items-center gap-1.5">
               Administração do Sistema
             </p>
             <button
               id="nav-admin-panel"
+              data-testid="nav-admin-panel"
               onClick={() => {
                 setActiveTab("admin");
                 if (onCloseMobile) onCloseMobile();
               }}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-colors cursor-pointer ${
                 activeTab === "admin"
-                  ? "bg-teal-600 text-white font-semibold"
-                  : "text-slate-400 hover:text-white hover:bg-white/[0.04]"
+                  ? "bg-teal-600 text-white font-semibold shadow-xs"
+                  : "text-slate-300 hover:text-white hover:bg-white/[0.05]"
               }`}
             >
               <SlidersHorizontal className="w-4 h-4 shrink-0" />
@@ -267,14 +269,15 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
             </button>
             <button
               id="nav-export-panel"
+              data-testid="nav-export-panel"
               onClick={() => {
                 setActiveTab("export");
                 if (onCloseMobile) onCloseMobile();
               }}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-colors cursor-pointer ${
                 activeTab === "export"
-                  ? "bg-teal-600 text-white font-semibold"
-                  : "text-slate-400 hover:text-white hover:bg-white/[0.04]"
+                  ? "bg-teal-600 text-white font-semibold shadow-xs"
+                  : "text-slate-300 hover:text-white hover:bg-white/[0.05]"
               }`}
             >
               <Database className="w-4 h-4 shrink-0" />

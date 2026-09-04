@@ -29,6 +29,8 @@ import {
   ExternalLink,
   Activity,
   CheckCircle,
+  BookOpen,
+  Palette,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { AdminQualityRiskPanel } from "./AdminQualityRiskPanel";
@@ -37,11 +39,15 @@ import { FirebaseService } from "../../services/firebaseService";
 import { FIRESTORE_DATABASE_ID, FIRESTORE_REGION } from "../../lib/firebase";
 import { SEED_OSCE_STATIONS } from "../../data/osceStationsData";
 import { AiModelSelector } from "./AiModelSelector";
+import { AdminContentEngineView } from "./AdminContentEngineView";
+import { AdminDesignStudioView } from "./AdminDesignStudioView";
 
 export type AdminTab =
   | "users"
   | "canonical-inventory"
   | "content"
+  | "content-engine"
+  | "design-studio"
   | "ai-models"
   | "integrations"
   | "firebase-cloud"
@@ -59,6 +65,7 @@ export const AdminEditorialView: React.FC = () => {
     resetUserData,
     resetAllData,
     setActiveTab,
+    isDeveloperAdmin,
   } = useApp();
 
   const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>("users");
@@ -79,7 +86,7 @@ export const AdminEditorialView: React.FC = () => {
     {
       id: "usr-admin-master",
       name: "Administrador Chefe",
-      email: "admin@staziamed.com.br",
+      email: "araujomendes@staziamed.com.br",
       role: "ADMIN" as const,
       tier: "PRO_PLUS" as const,
       status: "Ativo",
@@ -122,11 +129,7 @@ export const AdminEditorialView: React.FC = () => {
     },
   ]);
 
-  // Server security check: Must be ADMIN role
-  const isDeveloperAdmin =
-    user?.role === "ADMIN" ||
-    user?.tier === "ADMIN";
-
+  // Server security check: Must be ADMIN role (Fail-closed)
   if (!isDeveloperAdmin) {
     return (
       <div
@@ -200,6 +203,8 @@ export const AdminEditorialView: React.FC = () => {
     { id: "users", label: "Usuários e permissões", icon: Users },
     { id: "canonical-inventory", label: "Banco Canônico & Auditoria INEP", icon: ShieldCheck },
     { id: "content", label: "Conteúdo e questões", icon: ListOrdered },
+    { id: "content-engine", label: "Content Engine", icon: BookOpen },
+    { id: "design-studio", label: "Design Studio", icon: Palette },
     { id: "ai-models", label: "Modelos de IA", icon: Cpu },
     { id: "integrations", label: "Integrações", icon: Radio },
     { id: "firebase-cloud", label: "Firebase e nuvem", icon: Database },
@@ -420,7 +425,21 @@ export const AdminEditorialView: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* 3. MODELOS DE IA                                                          */}
+      {/* 3.1. CONTENT ENGINE (Etapa 1.27B)                                         */}
+      {/* ========================================================================= */}
+      {activeAdminTab === "content-engine" && (
+        <AdminContentEngineView />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 3.2. DESIGN STUDIO (Etapa 1.27B)                                          */}
+      {/* ========================================================================= */}
+      {activeAdminTab === "design-studio" && (
+        <AdminDesignStudioView />
+      )}
+
+      {/* ========================================================================= */}
+      {/* 4. MODELOS DE IA                                                          */}
       {/* ========================================================================= */}
       {activeAdminTab === "ai-models" && (
         <div className="space-y-6">

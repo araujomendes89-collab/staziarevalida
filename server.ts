@@ -26,8 +26,11 @@ import {
   generateTransitQuizQuestion,
   evaluateTransitSpokenAnswer,
 } from "./server/ai/voiceTutor";
+import { adminFlashcardDraftsRouter } from "./server/routes/adminFlashcardDrafts";
+import { adminDesignCloneRouter } from "./server/routes/adminDesignClone";
 
 dotenv.config();
+
 
 function getGenAI(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -49,8 +52,11 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json({ limit: "10mb" }));
+  app.use("/api/admin/flashcards/drafts", adminFlashcardDraftsRouter);
+  app.use("/api/admin/design", adminDesignCloneRouter);
 
   // API Health Check
+
   app.get("/api/health", (_req: Request, res: Response) => {
     const claudeStatus = getClaudeEngineStatus();
     res.json({

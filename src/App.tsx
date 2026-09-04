@@ -34,7 +34,22 @@ import { VideoLessonsCatalogView } from "./components/lessons/VideoLessonsCatalo
 import { LoginView } from "./components/auth/LoginView";
 import { EmailVerificationBanner } from "./components/auth/EmailVerificationBanner";
 import { EmailVerificationRequiredView } from "./components/auth/EmailVerificationRequiredView";
-import { BrowserRouter } from "react-router-dom";
+import { OnboardingSplashView } from "./components/onboarding/OnboardingSplashView";
+import { OnboardingWelcomeView } from "./components/onboarding/OnboardingWelcomeView";
+import { OnboardingEcosystemView } from "./components/onboarding/OnboardingEcosystemView";
+import { OnboardingDemoQuestionView } from "./components/onboarding/OnboardingDemoQuestionView";
+import { OnboardingPersonalizationView } from "./components/onboarding/OnboardingPersonalizationView";
+import { OnboardingProgressPreviewView } from "./components/onboarding/OnboardingProgressPreviewView";
+import { OnboardingFinishView } from "./components/onboarding/OnboardingFinishView";
+import { TermsOfUseView } from "./components/legal/TermsOfUseView";
+import { PrivacyPolicyView } from "./components/legal/PrivacyPolicyView";
+import { PlanSelectionView } from "./components/auth/PlanSelectionView";
+import {
+  SHOW_SPLASH_FOR_ALL,
+  hasSeenSplashThisSession,
+  markSplashSeenThisSession,
+} from "./config/splashConfig";
+import { BrowserRouter, useLocation } from "react-router-dom";
 import { testFirestoreConnection, FIRESTORE_DATABASE_ID, FIRESTORE_REGION } from "./lib/firebase";
 
 const MainContent: React.FC = () => {
@@ -282,8 +297,52 @@ const MainContent: React.FC = () => {
   );
 };
 
-const AppRoot: React.FC = () => {
-  const { firebaseUser, isAuthLoading, isGuestMode } = useApp();
+export const AppRoot: React.FC = () => {
+  const {
+    firebaseUser,
+    isAuthLoading,
+    isGuestMode,
+    profileResolutionStatus,
+    profileError,
+    retryProfileResolution,
+    logout,
+  } = useApp();
+  const location = useLocation();
+  const [splashSessionSeen, setSplashSessionSeen] = useState<boolean>(() =>
+    hasSeenSplashThisSession()
+  );
+
+  // Development / Prototype Preview Routes for Onboarding
+  if (location.pathname === "/onboarding/splash") {
+    return <OnboardingSplashView />;
+  }
+  if (location.pathname === "/onboarding/welcome") {
+    return <OnboardingWelcomeView />;
+  }
+  if (location.pathname === "/onboarding/ecosystem") {
+    return <OnboardingEcosystemView />;
+  }
+  if (location.pathname === "/onboarding/experience") {
+    return <OnboardingDemoQuestionView />;
+  }
+  if (location.pathname === "/onboarding/personalize") {
+    return <OnboardingPersonalizationView />;
+  }
+  if (location.pathname === "/onboarding/progress-preview") {
+    return <OnboardingProgressPreviewView />;
+  }
+  if (location.pathname === "/onboarding/finish") {
+    return <OnboardingFinishView />;
+  }
+  if (location.pathname === "/termos-de-uso") {
+    return <TermsOfUseView />;
+  }
+  if (location.pathname === "/politica-de-privacidade") {
+    return <PrivacyPolicyView />;
+  }
+  if (location.pathname === "/auth/select-plan") {
+    return <PlanSelectionView />;
+  }
 
   if (isAuthLoading) {
     return (
@@ -323,6 +382,102 @@ const AppRoot: React.FC = () => {
     return <LoginView />;
   }
 
+  // Authenticated Profile Resolution Barrier (Fail-Closed)
+  // Non-guest authenticated users MUST have their UserProfile resolved from Firestore before entering main content.
+  if (firebaseUser && !isGuestMode) {
+    if (profileResolutionStatus === "LOADING") {
+      return (
+        <div
+          data-testid="profile-loading-barrier"
+          className="min-h-screen w-full bg-[#06101E] flex flex-col items-center justify-center p-4 text-white"
+        >
+          <div className="flex flex-col items-center space-y-4 animate-in fade-in duration-300">
+            <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-600 p-0.5 shadow-xl shadow-teal-500/20 flex items-center justify-center">
+              <div className="w-full h-full bg-[#07162A] rounded-[14px] flex items-center justify-center">
+                <svg
+                  className="w-7 h-7 text-teal-300 animate-spin"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                </svg>
+              </div>
+            </div>
+            <div className="text-center space-y-1.5">
+              <h1 className="text-lg font-bold tracking-tight text-white">
+                Preparando seu perfil médico
+              </h1>
+              <p className="text-xs text-slate-400">
+                Sincronizando dados acadêmicos e plano de estudos...
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (profileResolutionStatus === "ERROR") {
+      return (
+        <div
+          data-testid="profile-error-barrier"
+          className="min-h-screen w-full bg-[#06101E] flex flex-col items-center justify-center p-4 text-white"
+        >
+          <div className="max-w-md w-full bg-[#0B192C] border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6 text-center animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 mx-auto flex items-center justify-center">
+              <svg
+                className="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-lg font-bold text-white">
+                Não foi possível carregar seu perfil
+              </h2>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {profileError ||
+                  "Ocorreu uma instabilidade de conexão ao sincronizar seu perfil médico. Por favor, tente novamente."}
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <button
+                onClick={() => retryProfileResolution()}
+                data-testid="retry-profile-button"
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-600 hover:from-teal-400 hover:to-emerald-500 text-white font-medium text-xs rounded-xl shadow-lg shadow-teal-500/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Tentar novamente
+              </button>
+              <button
+                onClick={() => logout()}
+                data-testid="logout-profile-button"
+                className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white font-medium text-xs rounded-xl border border-slate-700 transition-all cursor-pointer"
+              >
+                Sair da conta
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
+
   // Mandatory Full-Screen Email Verification Gate
   // When an account is registered with Email/Password and emailVerified is false,
   // block ALL app modules (Sidebar, Header, MainContent, Modals) and render only the confirmation screen.
@@ -331,6 +486,19 @@ const AppRoot: React.FC = () => {
   );
   if (firebaseUser && !isGoogleAuth && !firebaseUser.emailVerified) {
     return <EmailVerificationRequiredView />;
+  }
+
+  // Global Splash Test Mode (Etapa 1.26E)
+  // Shows the animated mascot splash screen once per session for all users who enter the app.
+  if (SHOW_SPLASH_FOR_ALL && !splashSessionSeen) {
+    return (
+      <OnboardingSplashView
+        onComplete={() => {
+          markSplashSeenThisSession();
+          setSplashSessionSeen(true);
+        }}
+      />
+    );
   }
 
   return <MainContent />;

@@ -47,6 +47,7 @@ export const GuidelineWatchView: React.FC = () => {
     user,
     isAuthLoading,
     isGuestMode,
+    isDeveloperAdmin,
   } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<"student_hub" | "grounded_radar" | "audit_queue" | "repository" | "logs">("student_hub");
@@ -76,16 +77,6 @@ export const GuidelineWatchView: React.FC = () => {
   const [reviewerName, setReviewerName] = useState<string>("Dr. Rodrigo Valente Mendes (CRM-SP 184.920)");
 
   // Fail-closed authorization check
-  if (isAuthLoading) {
-    return (
-      <div className="max-w-xl mx-auto my-12 p-8 text-center text-slate-400 text-xs">
-        Carregando credenciais de acesso...
-      </div>
-    );
-  }
-
-  const isDeveloperAdmin = !isGuestMode && (user?.role === "ADMIN" || user?.tier === "ADMIN");
-
   if (!isDeveloperAdmin) {
     return (
       <div

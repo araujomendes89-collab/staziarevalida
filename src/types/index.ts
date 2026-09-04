@@ -9,7 +9,11 @@ export type QuestionOrigin = "INEP_OFICIAL" | "INEDITA_PRAXIS" | "PLATFORM_ORIGI
 
 export * from "./questionFactory";
 export * from "./session";
+export * from "./onboarding";
+import { UserOnboardingState, UserPersonalizationMetadata } from "./onboarding";
 import { TrainingMode, QuestionSessionConfig, SessionAnswerState, SessionSummaryReport } from "./session";
+
+export type ProfileResolutionStatus = "IDLE" | "LOADING" | "READY" | "ERROR";
 
 export type ConfidenceLevel = "LOW" | "MEDIUM" | "HIGH";
 
@@ -508,6 +512,9 @@ export interface UserProfile {
   subscriptionExpiresAt?: string;
   planUpdatedAt?: string;
   isOnboardingCompleted: boolean;
+  onboarding?: UserOnboardingState;
+  personalization?: UserPersonalizationMetadata;
+  onboardingPersonalization?: PersistedOnboardingPersonalization;
   hasConfiguredExamDate?: boolean;
   hasSeenWelcomeHero?: boolean;
   studyStreakDays: number;
@@ -877,6 +884,7 @@ export interface ProtocolUpdatesSummaryDoc {
   lastSyncAt: string;
 }
 
-
-
+export * from "./canonicalFlashcard";
+export * from "./canonicalWorkflow";
+export * from "./onboarding";
 

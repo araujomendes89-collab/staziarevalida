@@ -18,8 +18,11 @@ import {
   RevalidaEditionInventory,
   TrainingSessionDoc,
   ErrorAutopsyDoc,
+  CURRENT_ONBOARDING_VERSION,
+  ProfileResolutionStatus,
 } from "../types";
 import { StorageService, DEFAULT_USER, FlashcardStorageScope } from "../services/storageService";
+import { clearSplashSeenThisSession } from "../config/splashConfig";
 import { FirebaseService } from "../services/firebaseService";
 import { normalizeQuestionList } from "../utils/questionNormalizer";
 import {
@@ -182,8 +185,12 @@ interface AppContextType {
   importLegacyFlashcards: () => void;
   dismissLegacyFlashcards: () => void;
   // Auth state & methods
+  isDeveloperAdmin: boolean;
   firebaseUser: FirebaseUser | null;
   isAuthLoading: boolean;
+  profileResolutionStatus: ProfileResolutionStatus;
+  profileError: string | null;
+  retryProfileResolution: () => Promise<void>;
   isGuestMode: boolean;
   isGoogleProvider: boolean;
   isEmailVerified: boolean;
@@ -205,6 +212,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [user, setUser] = useState<UserProfile>(() => StorageService.getUserProfile());
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
+  const [profileResolutionStatus, setProfileResolutionStatus] = useState<ProfileResolutionStatus>("IDLE");
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const activeResolutionIdRef = React.useRef<number>(0);
+
   const [isGuestMode, setIsGuestMode] = useState<boolean>(() => {
     try {
       return localStorage.getItem("praxis_guest_mode") === "true";
@@ -329,6 +340,153 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Calculate live readiness & Pass Score
   const readinessData = AdaptiveEngine.calculateReadiness(knowledgeGraph, attempts);
 
+  // Pure & Protected Profile Resolution Function
+  const resolveProfileForUser = useCallback(async (fbUser: FirebaseUser) => {
+    const resolutionId = ++activeResolutionIdRef.current;
+    setProfileResolutionStatus("LOADING");
+    setProfileError(null);
+
+    // Reset in-memory active user to baseline placeholder to prevent leaking previous user data
+    setUser({
+      ...DEFAULT_USER,
+      id: fbUser.uid,
+      email: fbUser.email || "",
+      name: fbUser.displayName || DEFAULT_USER.name,
+    });
+
+    try {
+      const now = new Date();
+      const nowIso = now.toISOString();
+      const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+      // Check if user profile exists in Firestore
+      const cloudProfile = await FirebaseService.getUserProfile(fbUser.uid);
+
+      // Guard against stale async result if user logged out or switched account in-flight
+      if (resolutionId !== activeResolutionIdRef.current) return;
+
+      if (cloudProfile) {
+        let plan =
+          cloudProfile.plan ||
+          (cloudProfile.tier === "PRO"
+            ? "pro"
+            : cloudProfile.tier === "PRO_PLUS"
+            ? "pro_plus"
+            : cloudProfile.tier === "ADMIN"
+            ? "admin"
+            : "trial");
+        let tier = cloudProfile.tier || "TRIAL";
+        let trialStartedAt = cloudProfile.trialStartedAt || nowIso;
+        let trialEndsAt = cloudProfile.trialEndsAt || sevenDaysLater;
+
+        // Check if trial has expired
+        if (tier !== "PRO" && tier !== "PRO_PLUS" && tier !== "ADMIN") {
+          const trialEndsTimestamp = new Date(trialEndsAt).getTime();
+          if (!isNaN(trialEndsTimestamp) && trialEndsTimestamp <= now.getTime()) {
+            plan = "expired";
+            tier = "EXPIRED";
+          } else {
+            plan = "trial";
+            tier = "TRIAL";
+          }
+        } else if (cloudProfile.subscriptionExpiresAt && tier !== "ADMIN") {
+          // Check paid subscription expiration
+          const subEndsTimestamp = new Date(cloudProfile.subscriptionExpiresAt).getTime();
+          if (!isNaN(subEndsTimestamp) && subEndsTimestamp <= now.getTime()) {
+            plan = "expired";
+            tier = "EXPIRED";
+          }
+        }
+
+        const syncedUser: UserProfile = {
+          ...DEFAULT_USER,
+          ...cloudProfile,
+          id: fbUser.uid,
+          email: fbUser.email || cloudProfile.email || "",
+          name: fbUser.displayName || cloudProfile.name || "Dr. Candidato",
+          plan: plan as any,
+          tier: tier as any,
+          trialStartedAt,
+          trialEndsAt,
+        };
+
+        if (resolutionId !== activeResolutionIdRef.current) return;
+
+        setUser(syncedUser);
+        StorageService.saveUserProfile(syncedUser);
+
+        // Sync back to Firestore if plan status updated or trial dates were missing
+        if (
+          syncedUser.tier !== cloudProfile.tier ||
+          syncedUser.plan !== cloudProfile.plan ||
+          !cloudProfile.trialEndsAt
+        ) {
+          await FirebaseService.saveUserProfile(syncedUser);
+        }
+
+        if (resolutionId !== activeResolutionIdRef.current) return;
+        setProfileResolutionStatus("READY");
+      } else {
+        // New profile creation for newly authenticated user (Trial 7 days linked to UID)
+        const newUserProfile: UserProfile = {
+          ...DEFAULT_USER,
+          id: fbUser.uid,
+          email: fbUser.email || "",
+          name: fbUser.displayName || DEFAULT_USER.name || "Dr. Candidato",
+          role: "STUDENT",
+          plan: "trial",
+          tier: "TRIAL",
+          trialStartedAt: nowIso,
+          trialEndsAt: sevenDaysLater,
+          planUpdatedAt: nowIso,
+          isOnboardingCompleted: false,
+          onboarding: {
+            version: CURRENT_ONBOARDING_VERSION,
+            status: "REQUIRED",
+          },
+        };
+
+        if (resolutionId !== activeResolutionIdRef.current) return;
+
+        StorageService.saveUserProfile(newUserProfile);
+        await FirebaseService.saveUserProfile(newUserProfile);
+
+        if (resolutionId !== activeResolutionIdRef.current) return;
+        setUser(newUserProfile);
+        setProfileResolutionStatus("READY");
+      }
+
+      // Hydrate user's latest progress & mission from Firestore
+      const cloudProgress = await FirebaseService.getUserLatestProgress(fbUser.uid);
+      if (resolutionId === activeResolutionIdRef.current && cloudProgress) {
+        if (cloudProgress.todayMission) {
+          setTodayMission(cloudProgress.todayMission);
+          StorageService.saveTodayMission(cloudProgress.todayMission);
+        }
+        if (cloudProgress.knowledgeGraphNodes && cloudProgress.knowledgeGraphNodes.length > 0) {
+          setKnowledgeGraph(cloudProgress.knowledgeGraphNodes);
+          StorageService.saveKnowledgeGraph(cloudProgress.knowledgeGraphNodes);
+        }
+      }
+    } catch (err: any) {
+      if (resolutionId === activeResolutionIdRef.current) {
+        console.error("[FirebaseAuth] Error resolving user profile:", err);
+        setProfileResolutionStatus("ERROR");
+        setProfileError(
+          err?.message
+            ? `Não foi possível carregar seu perfil. (${err.message})`
+            : "Não foi possível carregar seu perfil. Verifique sua conexão e tente novamente."
+        );
+      }
+    }
+  }, []);
+
+  const retryProfileResolution = useCallback(async () => {
+    if (firebaseUser && !isGuestMode) {
+      await resolveProfileForUser(firebaseUser);
+    }
+  }, [firebaseUser, isGuestMode, resolveProfileForUser]);
+
   // Set up Firebase Authentication session listener
   useEffect(() => {
     // Safety timeout: ensure loading state never hangs forever in sandboxed iframes
@@ -343,93 +501,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (fbUser) {
         console.log(`[FirebaseAuth] Active session detected: ${fbUser.email || fbUser.uid}`);
-        try {
-          const now = new Date();
-          const nowIso = now.toISOString();
-          const sevenDaysLater = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
-
-          // Check if user profile exists in Firestore
-          const cloudProfile = await FirebaseService.getUserProfile(fbUser.uid);
-          if (cloudProfile) {
-            let plan = cloudProfile.plan || (cloudProfile.tier === "PRO" ? "pro" : cloudProfile.tier === "PRO_PLUS" ? "pro_plus" : cloudProfile.tier === "ADMIN" ? "admin" : "trial");
-            let tier = cloudProfile.tier || "TRIAL";
-            let trialStartedAt = cloudProfile.trialStartedAt || nowIso;
-            let trialEndsAt = cloudProfile.trialEndsAt || sevenDaysLater;
-
-            // Check if trial has expired
-            if (tier !== "PRO" && tier !== "PRO_PLUS" && tier !== "ADMIN") {
-              const trialEndsTimestamp = new Date(trialEndsAt).getTime();
-              if (!isNaN(trialEndsTimestamp) && trialEndsTimestamp <= now.getTime()) {
-                plan = "expired";
-                tier = "EXPIRED";
-              } else {
-                plan = "trial";
-                tier = "TRIAL";
-              }
-            } else if (cloudProfile.subscriptionExpiresAt && tier !== "ADMIN") {
-              // Check paid subscription expiration
-              const subEndsTimestamp = new Date(cloudProfile.subscriptionExpiresAt).getTime();
-              if (!isNaN(subEndsTimestamp) && subEndsTimestamp <= now.getTime()) {
-                plan = "expired";
-                tier = "EXPIRED";
-              }
-            }
-
-            const syncedUser: UserProfile = {
-              ...user,
-              ...cloudProfile,
-              id: fbUser.uid,
-              email: fbUser.email || cloudProfile.email || "",
-              name: fbUser.displayName || cloudProfile.name || "Dr. Candidato",
-              plan: plan as any,
-              tier: tier as any,
-              trialStartedAt,
-              trialEndsAt,
-            };
-            setUser(syncedUser);
-            StorageService.saveUserProfile(syncedUser);
-
-            // Sync back to Firestore if plan status updated or trial dates were missing
-            if (syncedUser.tier !== cloudProfile.tier || syncedUser.plan !== cloudProfile.plan || !cloudProfile.trialEndsAt) {
-              await FirebaseService.saveUserProfile(syncedUser);
-            }
-          } else {
-            // New profile creation for newly authenticated user (Trial 7 days linked to UID)
-            const newUserProfile: UserProfile = {
-              ...user,
-              id: fbUser.uid,
-              email: fbUser.email || "",
-              name: fbUser.displayName || user.name || "Dr. Candidato",
-              role: "STUDENT",
-              plan: "trial",
-              tier: "TRIAL",
-              trialStartedAt: nowIso,
-              trialEndsAt: sevenDaysLater,
-              planUpdatedAt: nowIso,
-              isOnboardingCompleted: false,
-            };
-            setUser(newUserProfile);
-            StorageService.saveUserProfile(newUserProfile);
-            await FirebaseService.saveUserProfile(newUserProfile);
-          }
-
-          // Hydrate user's latest progress & mission from Firestore
-          const cloudProgress = await FirebaseService.getUserLatestProgress(fbUser.uid);
-          if (cloudProgress) {
-            if (cloudProgress.todayMission) {
-              setTodayMission(cloudProgress.todayMission);
-              StorageService.saveTodayMission(cloudProgress.todayMission);
-            }
-            if (cloudProgress.knowledgeGraphNodes && cloudProgress.knowledgeGraphNodes.length > 0) {
-              setKnowledgeGraph(cloudProgress.knowledgeGraphNodes);
-              StorageService.saveKnowledgeGraph(cloudProgress.knowledgeGraphNodes);
-            }
-          }
-        } catch (err) {
-          console.error("[FirebaseAuth] Error syncing user session with Firestore:", err);
+        if (!isGuestMode) {
+          await resolveProfileForUser(fbUser);
         }
       } else {
         console.log("[FirebaseAuth] No active auth session (Guest/Offline state)");
+        activeResolutionIdRef.current++;
+        setProfileResolutionStatus("IDLE");
+        setProfileError(null);
+        setUser(StorageService.getUserProfile());
       }
     });
 
@@ -455,7 +535,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       window.removeEventListener("open-pricing-modal", handleOpenPricing);
       window.removeEventListener("ai-plan-expired", handlePlanExpired);
     };
-  }, []);
+  }, [isGuestMode, resolveProfileForUser]);
 
   // Sync Questions with Firestore
   const syncQuestionsFromFirestore = async (): Promise<number> => {
@@ -556,7 +636,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = async (): Promise<void> => {
+    clearSplashSeenThisSession();
     exitGuestMode();
+    activeResolutionIdRef.current++;
+    setProfileResolutionStatus("IDLE");
+    setProfileError(null);
+    setUser(DEFAULT_USER);
+    StorageService.saveUserProfile(DEFAULT_USER);
     setFlashcards([]);
     await signOutCurrentUser();
     setFirebaseUser(null);
@@ -907,9 +993,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTodayMission(StorageService.getTodayMission());
   };
 
+  const isDeveloperAdmin = useMemo(() => {
+    return Boolean(
+      !isGuestMode &&
+      !!firebaseUser &&
+      profileResolutionStatus === "READY" &&
+      user?.role === "ADMIN"
+    );
+  }, [isGuestMode, firebaseUser, profileResolutionStatus, user?.role]);
+
   return (
     <AppContext.Provider
       value={{
+        isDeveloperAdmin,
         user,
         setUser,
         activeTab,
@@ -982,6 +1078,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         resetAllData,
         firebaseUser,
         isAuthLoading,
+        profileResolutionStatus,
+        profileError,
+        retryProfileResolution,
         isGuestMode,
         isGoogleProvider,
         isEmailVerified,
@@ -1008,4 +1107,12 @@ export const useApp = () => {
     throw new Error("useApp must be used within an AppProvider");
   }
   return context;
+};
+
+export const useAppOptional = () => {
+  try {
+    return useApp();
+  } catch {
+    return null;
+  }
 };

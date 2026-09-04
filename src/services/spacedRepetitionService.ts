@@ -38,6 +38,7 @@ export class SpacedRepetitionService {
   static toFSRSCard(card: Flashcard, now: Date = new Date()): Card {
     const defaultCard = createEmptyCard(now);
     return {
+      ...defaultCard,
       due: card.dueDate ? new Date(card.dueDate) : defaultCard.due,
       stability: card.stability ?? defaultCard.stability,
       difficulty: card.difficulty ?? defaultCard.difficulty,
@@ -228,7 +229,7 @@ export class SpacedRepetitionService {
 
     const last = new Date(card.lastReviewed).getTime();
     const elapsedDays = Math.max(0, (now.getTime() - last) / (1000 * 60 * 60 * 24));
-    const r = forgetting_curve(elapsedDays, card.stability);
+    const r = forgetting_curve(defaultFSRS.parameters.w, elapsedDays, card.stability);
     return Math.max(0.0, Math.min(1.0, Number(r.toFixed(4))));
   }
 

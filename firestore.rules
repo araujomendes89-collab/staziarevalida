@@ -125,6 +125,31 @@ service cloud.firestore {
     }
 
     // -------------------------------------------------------------
+    // CATÁLOGO CANÔNICO DE FLASHCARDS (Leitura PUBLISHED / Escrita Restrita a Servidor Confiável)
+    // -------------------------------------------------------------
+    match /flashcardContents/{contentId} {
+      allow read: if resource.data.publicationStatus == 'PUBLISHED';
+      allow write: if false; // Escrita direta pelo cliente é estritamente proibida (publicação futura via trusted backend / Admin SDK)
+
+      match /versions/{versionId} {
+        allow read, write: if false; // Histórico de versões é interno/backoffice
+      }
+
+      match /audit/{auditId} {
+        allow read, write: if false; // Trilha de auditoria é interna
+      }
+    }
+
+    // -------------------------------------------------------------
+    // WORKFLOW PRIVADO DE FLASHCARDS CANÔNICOS (Acesso Direto pelo Cliente DENIED)
+    // -------------------------------------------------------------
+    match /flashcardWorkflows/{contentId} {
+      allow read, write: if false; // Todo acesso deve ocorrer exclusivamente através do backend seguro (Admin SDK)
+    }
+
+
+
+    // -------------------------------------------------------------
     // ADMINISTRAÇÃO & HEALTH CHECK (Protegidos Contra Exposição)
     // -------------------------------------------------------------
     match /admins/{adminId} {

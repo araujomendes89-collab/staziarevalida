@@ -627,7 +627,7 @@ export class StorageService {
   static resetUserData(): void {
     try {
       safeRemoveItem(STORAGE_KEYS.ATTEMPTS);
-      safeRemoveItem(STORAGE_KEYS.FLASHCARDS);
+      safeRemoveItem(STORAGE_KEYS.FLASHCARDS_LEGACY_V2);
       safeRemoveItem(STORAGE_KEYS.KNOWLEDGE_GRAPH);
       safeRemoveItem(STORAGE_KEYS.OSCE_ATTEMPTS);
       safeRemoveItem(STORAGE_KEYS.STUDY_MISSION);
@@ -642,7 +642,7 @@ export class StorageService {
       safeRemoveItem(STORAGE_KEYS.USER_PROFILE);
       safeRemoveItem(STORAGE_KEYS.QUESTIONS);
       safeRemoveItem(STORAGE_KEYS.ATTEMPTS);
-      safeRemoveItem(STORAGE_KEYS.FLASHCARDS);
+      safeRemoveItem(STORAGE_KEYS.FLASHCARDS_LEGACY_V2);
       safeRemoveItem(STORAGE_KEYS.KNOWLEDGE_GRAPH);
       safeRemoveItem(STORAGE_KEYS.OSCE_ATTEMPTS);
       safeRemoveItem(STORAGE_KEYS.STUDY_MISSION);
