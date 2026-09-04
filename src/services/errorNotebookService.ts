@@ -1,0 +1,184 @@
+import { Question, QuestionAttempt, MedicalArea, ErrorAutopsyDoc } from "../types";
+
+export interface ErrorCase {
+  questionId: string;
+  question: Question;
+  wrongAttempts: QuestionAttempt[];
+  allAttempts: QuestionAttempt[];
+  wrongAttemptCount: number;
+  totalAttemptCount: number;
+  firstErrorAt: string;
+  lastErrorAt: string;
+  latestWrongAttempt: QuestionAttempt;
+  latestAttempt: QuestionAttempt;
+  laterCorrectAttempt?: QuestionAttempt;
+  isRemediated: boolean;
+  reflection: string;
+  recurrentTopicErrorCount: number;
+}
+
+export type ErrorNotebookStatusFilter = "PENDING" | "REMEDIATED" | "ALL";
+export type ErrorNotebookSortOption = "NEWEST" | "OLDEST" | "MOST_ERRORS";
+
+/**
+ * Pure selector that transforms raw question attempts into consolidated ErrorCase view models.
+ * Preserves the factual attempt history while providing an active remediation view.
+ */
+export function buildErrorCases(
+  attempts: QuestionAttempt[],
+  questions: Question[],
+  errorAutopsies: ErrorAutopsyDoc[] = [],
+  reflectionTexts: Record<string, string> = {}
+): ErrorCase[] {
+  const qMap = new Map<string, Question>(questions.map((q) => [q.id, q]));
+
+  // Pre-calculate topic error counts across all raw wrong attempts
+  const topicCounts: Record<string, number> = {};
+  for (const att of attempts) {
+    if (!att.isCorrect) {
+      const q = qMap.get(att.questionId);
+      const topic = q?.topic || "Geral";
+      topicCounts[topic] = (topicCounts[topic] || 0) + 1;
+    }
+  }
+
+  // Group attempts by questionId (Authoritative identity key)
+  const attemptsByQuestion = new Map<string, QuestionAttempt[]>();
+  for (const att of attempts) {
+    const list = attemptsByQuestion.get(att.questionId) || [];
+    list.push(att);
+    attemptsByQuestion.set(att.questionId, list);
+  }
+
+  const errorCases: ErrorCase[] = [];
+
+  for (const [questionId, qAttempts] of attemptsByQuestion.entries()) {
+    const question = qMap.get(questionId);
+    if (!question) continue;
+
+    // Chronological order (oldest to newest)
+    const sortedAsc = [...qAttempts].sort(
+      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    const wrongAttempts = sortedAsc.filter((a) => !a.isCorrect);
+    if (wrongAttempts.length === 0) continue;
+
+    const firstErrorAt = wrongAttempts[0].timestamp;
+    const latestWrongAttempt = wrongAttempts[wrongAttempts.length - 1];
+    const lastErrorAt = latestWrongAttempt.timestamp;
+    const latestAttempt = sortedAsc[sortedAsc.length - 1];
+
+    // Check if there is a correct attempt occurring AFTER the latest wrong attempt
+    const latestWrongTime = new Date(latestWrongAttempt.timestamp).getTime();
+    const laterCorrectAttempt = sortedAsc.find(
+      (a) => a.isCorrect && new Date(a.timestamp).getTime() > latestWrongTime
+    );
+
+    const autopsy = errorAutopsies.find(
+      (ea) => ea.questionId === questionId || ea.id === latestWrongAttempt.id
+    );
+
+    const isRemediated =
+      Boolean(laterCorrectAttempt) ||
+      autopsy?.resolutionStatus === "REMEDIATED" ||
+      autopsy?.resolutionStatus === "MASTERED";
+
+    // Reflection text priority: local user edit > autopsy doc > attempt record
+    const reflection =
+      reflectionTexts[latestWrongAttempt.id] ??
+      reflectionTexts[questionId] ??
+      autopsy?.userReflection ??
+      latestWrongAttempt.userReflection ??
+      "";
+
+    const topic = question.topic || "Geral";
+
+    errorCases.push({
+      questionId,
+      question,
+      wrongAttempts,
+      allAttempts: sortedAsc,
+      wrongAttemptCount: wrongAttempts.length,
+      totalAttemptCount: sortedAsc.length,
+      firstErrorAt,
+      lastErrorAt,
+      latestWrongAttempt,
+      latestAttempt,
+      laterCorrectAttempt,
+      isRemediated,
+      reflection,
+      recurrentTopicErrorCount: topicCounts[topic] || 0,
+    });
+  }
+
+  return errorCases;
+}
+
+/**
+ * Filter ErrorCases by status, medical area, exam year, and search term.
+ */
+export function filterErrorCases(
+  errorCases: ErrorCase[],
+  options: {
+    statusFilter: ErrorNotebookStatusFilter;
+    areaFilter: MedicalArea | "ALL";
+    yearFilter?: number | "ALL";
+    searchQuery?: string;
+  }
+): ErrorCase[] {
+  const { statusFilter, areaFilter, yearFilter = "ALL", searchQuery = "" } = options;
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+
+  return errorCases.filter((ec) => {
+    // Status Filter
+    if (statusFilter === "PENDING" && ec.isRemediated) return false;
+    if (statusFilter === "REMEDIATED" && !ec.isRemediated) return false;
+
+    // Area Filter
+    if (areaFilter !== "ALL" && ec.question.area !== areaFilter) return false;
+
+    // Year Filter
+    if (yearFilter !== "ALL" && ec.question.examYear !== yearFilter) return false;
+
+    // Search Query Filter
+    if (normalizedQuery) {
+      const q = ec.question;
+      const matchesTopic = q.topic?.toLowerCase().includes(normalizedQuery);
+      const matchesSubtopic = q.subtopic?.toLowerCase().includes(normalizedQuery);
+      const matchesCase = q.clinicalCase?.toLowerCase().includes(normalizedQuery);
+      const matchesCode = q.code?.toLowerCase().includes(normalizedQuery);
+      const matchesEdition = q.examEdition?.toLowerCase().includes(normalizedQuery);
+
+      if (!matchesTopic && !matchesSubtopic && !matchesCase && !matchesCode && !matchesEdition) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+/**
+ * Sort ErrorCases deterministically.
+ */
+export function sortErrorCases(
+  errorCases: ErrorCase[],
+  sortOption: ErrorNotebookSortOption
+): ErrorCase[] {
+  return [...errorCases].sort((a, b) => {
+    if (sortOption === "NEWEST") {
+      return new Date(b.lastErrorAt).getTime() - new Date(a.lastErrorAt).getTime();
+    }
+    if (sortOption === "OLDEST") {
+      return new Date(a.firstErrorAt).getTime() - new Date(b.firstErrorAt).getTime();
+    }
+    if (sortOption === "MOST_ERRORS") {
+      if (b.wrongAttemptCount !== a.wrongAttemptCount) {
+        return b.wrongAttemptCount - a.wrongAttemptCount;
+      }
+      return new Date(b.lastErrorAt).getTime() - new Date(a.lastErrorAt).getTime();
+    }
+    return 0;
+  });
+}
