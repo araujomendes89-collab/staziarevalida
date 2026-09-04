@@ -519,6 +519,17 @@ export const ProfileSettingsView: React.FC = () => {
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-300 border border-teal-500/30 font-semibold uppercase">
                     Plano {user.tier === "PRO" || user.plan === "pro" ? "PRO" : "Trial"}
                   </span>
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full border font-bold uppercase tracking-wider ${
+                      user.role === "ADMIN"
+                        ? "bg-purple-500/20 text-purple-300 border-purple-500/40"
+                        : user.role === "EDITOR"
+                        ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
+                        : "bg-slate-500/20 text-slate-300 border-slate-500/30"
+                    }`}
+                  >
+                    Papel: {user.role === "ADMIN" ? "Administrador" : user.role === "EDITOR" ? "Editor" : "Aluno"}
+                  </span>
                 </div>
               </div>
             </div>

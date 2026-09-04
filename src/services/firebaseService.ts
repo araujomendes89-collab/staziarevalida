@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocFromServer,
   setDoc,
   updateDoc,
   getDocs,
@@ -162,12 +163,34 @@ export class FirebaseService {
   static async getUserProfile(userId: string): Promise<UserProfileDoc | null> {
     try {
       const userRef = doc(db, "users", userId);
-      const snap = await getDoc(userRef);
-      if (snap.exists()) {
+      // Try fetching directly from server first to guarantee fresh authoritative data
+      let snap;
+      try {
+        snap = await getDocFromServer(userRef);
+      } catch {
+        snap = await getDoc(userRef);
+      }
+
+      if (snap && snap.exists()) {
         const data = snap.data() as UserProfileDoc;
+        let role = data.role || "STUDENT";
+
+        // If not already ADMIN, check if user document exists in admins collection
+        if (role !== "ADMIN") {
+          try {
+            const adminRef = doc(db, "admins", userId);
+            const adminSnap = await getDoc(adminRef);
+            if (adminSnap.exists()) {
+              role = "ADMIN";
+            }
+          } catch {
+            // Ignore if admins collection check is not permitted
+          }
+        }
+
         return {
           ...data,
-          role: data.role || "STUDENT",
+          role,
         };
       }
       return null;

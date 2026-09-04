@@ -1,6 +1,9 @@
-import admin from "firebase-admin";
+import { initializeApp, getApps, App } from "firebase-admin/app";
+import { getAuth, Auth } from "firebase-admin/auth";
+import { getFirestore, Firestore } from "firebase-admin/firestore";
+import { execSync } from "child_process";
 
-let adminApp: admin.app.App | null = null;
+let adminApp: App | null = null;
 
 export const DEFAULT_FIREBASE_PROJECT_ID = "staziamed-revalida-prod";
 
@@ -13,36 +16,69 @@ export function resolveFirebaseProjectId(): string {
   );
 }
 
+function getGcloudAccessToken(): string | null {
+  try {
+    const token = execSync("gcloud auth print-access-token", {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "ignore"],
+    }).trim();
+    return token.length > 0 ? token : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Initializes and returns the Firebase Admin SDK singleton.
- * Uses Application Default Credentials (ADC) in Google Cloud / Production,
- * or standard emulator environment variables in local/testing environments.
+ * Uses active gcloud access token or Application Default Credentials (ADC).
  */
-export function getAdminApp(): admin.app.App {
+export function getAdminApp(): App {
   if (adminApp) {
     return adminApp;
   }
 
-  if (admin.apps.length > 0 && admin.apps[0]) {
-    adminApp = admin.apps[0];
+  const existingApps = getApps();
+  if (existingApps.length > 0 && existingApps[0]) {
+    adminApp = existingApps[0];
     return adminApp;
   }
 
   const projectId = resolveFirebaseProjectId();
 
-  adminApp = admin.initializeApp({
-    projectId,
-  });
+  const token = getGcloudAccessToken();
+  if (token) {
+    adminApp = initializeApp({
+      projectId,
+      credential: {
+        getAccessToken: async () => {
+          const liveToken = getGcloudAccessToken() || token;
+          return {
+            access_token: liveToken,
+            expires_in: 3600,
+          };
+        },
+      },
+    });
+  } else {
+    adminApp = initializeApp({
+      projectId,
+    });
+  }
 
   return adminApp;
 }
 
-export function getAdminAuth(): admin.auth.Auth {
-  return getAdminApp().auth();
+export function getAdminAuth(): Auth {
+  return getAuth(getAdminApp());
 }
 
-export function getAdminDb(): admin.firestore.Firestore {
-  return getAdminApp().firestore();
+export function getAdminDb(): Firestore {
+  const databaseId = process.env.FIRESTORE_DATABASE_ID || "staziamed-revalida-prod";
+  try {
+    return getFirestore(getAdminApp(), databaseId);
+  } catch {
+    return getFirestore(getAdminApp());
+  }
 }
 
 /**
@@ -50,7 +86,7 @@ export function getAdminDb(): admin.firestore.Firestore {
  */
 export async function resetAdminAppForTesting(): Promise<void> {
   if (adminApp) {
-    await adminApp.delete().catch(() => {});
+    await (adminApp as any).delete?.().catch(() => {});
     adminApp = null;
   }
 }
