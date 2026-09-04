@@ -39,6 +39,32 @@ describe("Official Materials Evidence Integrity (Etapa 1.19B)", () => {
     const sbpAuth = classifySourceAuthority("sbp.com.br", "Sociedade Brasileira de Pediatria");
     expect(sbpAuth.sourceType).toBe("SCIENTIFIC_SOCIETY");
     expect(sbpAuth.isGov).toBe(false);
+
+    // 7. OPAS / PAHO (International Health Organization)
+    const opasAuth = classifySourceAuthority("paho.org", "Organização Pan-Americana da Saúde (OPAS)");
+    expect(opasAuth.sourceType).toBe("INTERNATIONAL_HEALTH_ORGANIZATION");
+    expect(opasAuth.sourceType).not.toBe("GOVERNMENT_HEALTH");
+    expect(opasAuth.isGov).toBe(false);
+    expect(opasAuth.label).toContain("Organização Internacional de Saúde");
+
+    // 8. CFM (Professional Regulatory Body)
+    const cfmAuth = classifySourceAuthority("portal.cfm.org.br", "Conselho Federal de Medicina (CFM)");
+    expect(cfmAuth.sourceType).toBe("PROFESSIONAL_REGULATORY_BODY");
+    expect(cfmAuth.sourceType).not.toBe("SCIENTIFIC_SOCIETY");
+    expect(cfmAuth.isGov).toBe(false);
+    expect(cfmAuth.label).toContain("Conselho Profissional / Regulador");
+
+    // 9. ILAS (Technical Institute / Other Primary Source)
+    const ilasAuth = classifySourceAuthority("ilas.org.br", "Instituto Latino Americano de Sepse (ILAS)");
+    expect(ilasAuth.sourceType).toBe("OTHER_PRIMARY_SOURCE");
+    expect(ilasAuth.sourceType).not.toBe("SCIENTIFIC_SOCIETY");
+    expect(ilasAuth.isGov).toBe(false);
+
+    // 10. Unknown Issuer Safe Fallback
+    const unknownAuth = classifySourceAuthority("unknown-medical-portal.net", "Editora Médica Independente");
+    expect(unknownAuth.sourceType).toBe("OTHER_PRIMARY_SOURCE");
+    expect(unknownAuth.label).toBe("Fonte Primária / Referência");
+    expect(unknownAuth.isGov).toBe(false);
   });
 
   it("B: ensures curated hot topics contain reviewedAt audit timestamps and valid sourceTypes", () => {
@@ -48,9 +74,14 @@ describe("Official Materials Evidence Integrity (Etapa 1.19B)", () => {
       expect(item.reviewedAt).toBeDefined();
       expect(item.sourceType).toBeDefined();
       expect(item.sourceTypeLabel).toBeDefined();
-      expect(["GOVERNMENT_HEALTH", "INEP", "SCIENTIFIC_SOCIETY", "OTHER_PRIMARY_SOURCE"]).toContain(
-        item.sourceType
-      );
+      expect([
+        "GOVERNMENT_HEALTH",
+        "INEP",
+        "SCIENTIFIC_SOCIETY",
+        "PROFESSIONAL_REGULATORY_BODY",
+        "INTERNATIONAL_HEALTH_ORGANIZATION",
+        "OTHER_PRIMARY_SOURCE",
+      ]).toContain(item.sourceType);
     }
   });
 

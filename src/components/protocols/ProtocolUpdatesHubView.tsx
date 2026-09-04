@@ -33,6 +33,7 @@ import {
   ProtocolFlashcard,
 } from "../../types";
 import { getAreaVisualTheme, CANONICAL_AREA_DISPLAY_LABELS } from "../../config/areaThemes";
+import { classifySourceAuthority } from "../../services/officialSearchService";
 
 export type ProtocolSubTab =
   | "overview"
@@ -153,37 +154,6 @@ export const ProtocolUpdatesHubView: React.FC<{ initialTab?: ProtocolSubTab }> =
         Prioridade de revisão: Alta
       </span>
     );
-  };
-
-  const getSourceClassificationLabel = (instituicao: string) => {
-    const inst = instituicao.toUpperCase();
-    if (
-      inst.includes("MINISTÉRIO") ||
-      inst.includes("MINISTERIO") ||
-      inst.includes("CONITEC") ||
-      inst.includes("INCA") ||
-      inst.includes("PNI") ||
-      inst.includes("ANVISA") ||
-      inst.includes("SVSA") ||
-      inst.includes("OPAS")
-    ) {
-      return "Fonte Governamental";
-    }
-    if (inst.includes("INEP")) {
-      return "Documento INEP";
-    }
-    if (
-      inst.includes("FEBRASGO") ||
-      inst.includes("SBC") ||
-      inst.includes("SBD") ||
-      inst.includes("ILAS") ||
-      inst.includes("SBPT") ||
-      inst.includes("SBMFC") ||
-      inst.includes("CFM")
-    ) {
-      return "Diretriz de Sociedade Científica";
-    }
-    return "Fonte Primária";
   };
 
   // =========================================================================
@@ -338,7 +308,14 @@ export const ProtocolUpdatesHubView: React.FC<{ initialTab?: ProtocolSubTab }> =
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-slate-800 dark:text-zinc-200 font-bold">
               <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              <span>{getSourceClassificationLabel(selectedProtocol.instituicao)} & Referência</span>
+              <span>
+                {
+                  classifySourceAuthority(
+                    selectedProtocol.url_oficial,
+                    selectedProtocol.instituicao
+                  ).label
+                }
+              </span>
             </div>
             <span className="text-[11px] text-slate-500 dark:text-zinc-500">
               Verificado: {selectedProtocol.ultima_verificacao}

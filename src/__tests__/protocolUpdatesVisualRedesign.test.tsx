@@ -102,7 +102,7 @@ describe('Protocol Updates Pedagogical & Visual Redesign (Etapa 1.20E)', () => {
     expect(screen.getByText(/Alerta de Pegadinha da Banca:/i)).toBeInTheDocument();
 
     // Fonte e Classificação
-    expect(screen.getByText(/Fonte Governamental & Referência/i)).toBeInTheDocument();
+    expect(screen.getByText(/Fonte Governamental \(SUS \/ MS\)/i)).toBeInTheDocument();
     expect(screen.getByText(/PCDT para Prevenção e Rastreamento do Câncer do Colo do Útero/i)).toBeInTheDocument();
     expect(screen.getByText(/Abrir fonte original/i)).toBeInTheDocument();
 

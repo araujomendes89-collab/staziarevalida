@@ -4,6 +4,8 @@ export type OfficialSourceType =
   | "GOVERNMENT_HEALTH"
   | "INEP"
   | "SCIENTIFIC_SOCIETY"
+  | "PROFESSIONAL_REGULATORY_BODY"
+  | "INTERNATIONAL_HEALTH_ORGANIZATION"
   | "OTHER_PRIMARY_SOURCE";
 
 export type DocumentVersionStatus =
@@ -77,6 +79,7 @@ export function classifySourceAuthority(
   const d = (domain || "").toLowerCase();
   const p = (publisher || "").toLowerCase();
 
+  // 1. INEP (Exames, Matrizes, Editais)
   if (d.includes("inep.gov.br") || p.includes("inep")) {
     return {
       sourceType: "INEP",
@@ -85,17 +88,60 @@ export function classifySourceAuthority(
     };
   }
 
+  // 2. International Health Organization (OPAS, WHO, OMS, PAHO, CDC)
+  if (
+    d.includes("paho.org") ||
+    d.includes("who.int") ||
+    d.includes("cdc.gov") ||
+    p.includes("opas") ||
+    p.includes("paho") ||
+    p.includes("organização pan-americana") ||
+    p.includes("organizacao pan-americana") ||
+    p.includes("organização mundial da saúde") ||
+    p.includes("organizacao mundial da saude") ||
+    p.includes("oms") ||
+    p.includes("who")
+  ) {
+    return {
+      sourceType: "INTERNATIONAL_HEALTH_ORGANIZATION",
+      label: "Organização Internacional de Saúde",
+      isGov: false,
+    };
+  }
+
+  // 3. Professional Regulatory Body (CFM, CRM)
+  if (
+    d.includes("cfm.org.br") ||
+    d.includes("portalmedico.org.br") ||
+    d.includes("cremesp.org.br") ||
+    p.includes("conselho federal de medicina") ||
+    p.includes("conselho regional de medicina") ||
+    p.includes("cfm") ||
+    p.includes("crm")
+  ) {
+    return {
+      sourceType: "PROFESSIONAL_REGULATORY_BODY",
+      label: "Conselho Profissional / Regulador",
+      isGov: false,
+    };
+  }
+
+  // 4. Brazilian Government Health (MS, CONITEC, ANVISA, INCA, PNI, SVSA, SUS)
   if (
     d.includes("saude.gov.br") ||
     d.includes("conitec.gov.br") ||
     d.includes("anvisa.gov.br") ||
+    d.includes("inca.gov.br") ||
     d.includes("bvsms.saude.gov.br") ||
     d.endsWith(".gov.br") ||
     p.includes("ministério da saúde") ||
+    p.includes("ministerio da saude") ||
     p.includes("conitec") ||
     p.includes("anvisa") ||
+    p.includes("inca") ||
     p.includes("pni") ||
-    p.includes("svsa")
+    p.includes("svsa") ||
+    p.includes("sus")
   ) {
     return {
       sourceType: "GOVERNMENT_HEALTH",
@@ -104,6 +150,7 @@ export function classifySourceAuthority(
     };
   }
 
+  // 5. Scientific Societies (SBC, SBP, FEBRASGO, SBD, SBPT, SBMFC, AMB, SBIM, SBN)
   if (
     d.includes("cardiol.br") ||
     d.includes("sbp.com.br") ||
@@ -111,17 +158,20 @@ export function classifySourceAuthority(
     d.includes("diabetes.org.br") ||
     d.includes("sbpt.org.br") ||
     d.includes("amb.org.br") ||
-    d.includes("cfm.org.br") ||
     d.includes("sbim.org.br") ||
     d.includes("sbn.org.br") ||
     p.includes("sociedade brasileira") ||
+    p.includes("associação médica brasileira") ||
+    p.includes("associacao medica brasileira") ||
     p.includes("febrasgo") ||
     p.includes("sbc") ||
     p.includes("sbp") ||
     p.includes("sbd") ||
-    p.includes("amb") ||
-    p.includes("cfm") ||
-    p.includes("college of surgeons")
+    p.includes("sbpt") ||
+    p.includes("sbmfc") ||
+    p.includes("sbim") ||
+    p.includes("sbn") ||
+    p.includes("amb")
   ) {
     return {
       sourceType: "SCIENTIFIC_SOCIETY",
@@ -130,6 +180,7 @@ export function classifySourceAuthority(
     };
   }
 
+  // 6. Other Primary Sources / Technical Institutes / Consensus (ILAS, ATLS, etc.)
   return {
     sourceType: "OTHER_PRIMARY_SOURCE",
     label: "Fonte Primária / Referência",
