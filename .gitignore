@@ -8,3 +8,6 @@ coverage/
 !.env.example
 ._*
 .firebase/
+content-engine/
+server/storage/
+server/data/

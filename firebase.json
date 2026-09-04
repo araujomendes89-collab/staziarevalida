@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "staziamed-revalida-prod",
     "public": "dist",
     "ignore": [
       "firebase.json",

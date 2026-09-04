@@ -1,0 +1,85 @@
+/**
+ * StaziaMed Revalida — Medical Editorial Print Stylesheet (Etapa 1.28E).
+ * Dedicated CSS for high-fidelity A4 portrait printing and Playwright PDF generation.
+ */
+
+@page {
+  size: 210mm 297mm portrait;
+  margin: 0;
+}
+
+@media print {
+  html, body {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 210mm !important;
+    background-color: #F8FAFC !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
+  .a4-print-page {
+    width: 210mm !important;
+    min-height: 297mm !important;
+    height: 297mm !important;
+    max-height: 297mm !important;
+    box-sizing: border-box !important;
+    page-break-after: always !important;
+    break-after: page !important;
+    position: relative !important;
+    background-color: #FFFFFF !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+  }
+
+  .a4-print-page:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* Table Continuation and Row Break Protection */
+  table {
+    page-break-inside: auto !important;
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  thead {
+    display: table-header-group !important;
+  }
+
+  tr {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Card and Block Break Protection */
+  .break-inside-avoid,
+  .editorial-print-block,
+  [data-block-type="ClinicalWarningCard"],
+  [data-block-type="StickyNoteCard"],
+  [data-block-type="ComparisonCard"],
+  [data-block-type="ProtocolUpdateCard"],
+  [data-block-type="DefinitionCard"],
+  [data-block-type="QuickSummaryStrip"],
+  [data-block-type="ReferenceBlock"],
+  [data-block-type="MedicalImageBlock"],
+  [data-block-type="ClinicalAlgorithmSteps"] {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Typography & Contrast */
+  h1, h2, h3, h4, p, span, li, td, th {
+    text-rendering: optimizeLegibility !important;
+    -webkit-font-smoothing: antialiased !important;
+  }
+
+  /* Ensure background colors are printed faithfully */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

@@ -28,6 +28,7 @@ import {
 } from "./server/ai/voiceTutor";
 import { adminFlashcardDraftsRouter } from "./server/routes/adminFlashcardDrafts";
 import { adminDesignCloneRouter } from "./server/routes/adminDesignClone";
+import { adminPdfIngestionRouter } from "./server/routes/adminPdfIngestion";
 
 dotenv.config();
 
@@ -51,9 +52,10 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json({ limit: "10mb" }));
+  app.use(express.json({ limit: "50mb" }));
   app.use("/api/admin/flashcards/drafts", adminFlashcardDraftsRouter);
   app.use("/api/admin/design", adminDesignCloneRouter);
+  app.use("/api/admin/content", adminPdfIngestionRouter);
 
   // API Health Check
 
