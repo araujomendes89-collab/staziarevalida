@@ -5,6 +5,7 @@ import {
   buildErrorCases,
   filterErrorCases,
   sortErrorCases,
+  getQuestionAnswerProvenance,
 } from "../services/errorNotebookService";
 import { ErrorNotebookView } from "../components/errors/ErrorNotebookView";
 import { Question, QuestionAttempt, MedicalArea } from "../types";
@@ -17,7 +18,7 @@ function mockQuestion(id: string, overrides: Partial<Question> = {}): Question {
     canonicalQuestionId: id,
     questionFingerprint: `fp-${id}`,
     code: `REV-${id}`,
-    origin: "OFICIAL_INEP" as any,
+    origin: "INEP_OFICIAL" as any,
     examYear: 2025,
     examEdition: "Revalida INEP 2025/1",
     area: "PEDIATRIA" as MedicalArea,
@@ -61,7 +62,7 @@ function mockAttempt(
   };
 }
 
-describe("Error Notebook Derived Model & Consolidation (Etapa 1.21B)", () => {
+describe("Error Notebook Derived Model & Consolidation (Etapa 1.21B & 1.21C)", () => {
   const q1 = mockQuestion("q1", { area: "PEDIATRIA", topic: "Bronquiolite" });
   const q2 = mockQuestion("q2", { area: "PEDIATRIA", topic: "Bronquiolite" });
   const q3 = mockQuestion("q3", { area: "CLINICA_MEDICA", topic: "Hipertensão", examYear: 2024 });
@@ -233,9 +234,87 @@ describe("Error Notebook Derived Model & Consolidation (Etapa 1.21B)", () => {
   });
 });
 
+describe("Question Provenance & Answer Label Normalization (Etapa 1.21C)", () => {
+  it("derives Official INEP label for genuine official questions", () => {
+    const qOfficial = mockQuestion("q-of", { origin: "INEP_OFICIAL" as any, correctAnswer: "B" });
+    const prov = getQuestionAnswerProvenance(qOfficial);
+
+    expect(prov.isOfficial).toBe(true);
+    expect(prov.compactLabel).toBe("Gabarito oficial");
+    expect(prov.detailedLabel).toBe("Gabarito Oficial (INEP)");
+    expect(prov.displayAnswerText).toBe("Alternativa B");
+  });
+
+  it("derives Editorial label for ineditas questions without claiming official INEP status", () => {
+    const qInedita = mockQuestion("q-in", { origin: "INEDITA_PRAXIS" as any, correctAnswer: "C" });
+    const prov = getQuestionAnswerProvenance(qInedita);
+
+    expect(prov.isOfficial).toBe(false);
+    expect(prov.compactLabel).toBe("Resposta correta");
+    expect(prov.detailedLabel).toBe("Resposta Correta (Gabarito Editorial)");
+    expect(prov.displayAnswerText).toBe("Alternativa C");
+  });
+
+  it("derives Expected label for AI-generated / platform questions", () => {
+    const qAI = mockQuestion("q-ai", { origin: "AI_GENERATED" as any, correctAnswer: "A" });
+    const prov = getQuestionAnswerProvenance(qAI);
+
+    expect(prov.isOfficial).toBe(false);
+    expect(prov.compactLabel).toBe("Resposta esperada");
+    expect(prov.detailedLabel).toBe("Resposta Esperada");
+    expect(prov.displayAnswerText).toBe("Alternativa A");
+  });
+
+  it("derives Safe Fallback for unknown origin", () => {
+    const qUnknown = mockQuestion("q-unk", { origin: undefined as any, correctAnswer: "D" });
+    const prov = getQuestionAnswerProvenance(qUnknown);
+
+    expect(prov.isOfficial).toBe(false);
+    expect(prov.compactLabel).toBe("Resposta correta");
+    expect(prov.detailedLabel).toBe("Resposta Correta");
+    expect(prov.displayAnswerText).toBe("Alternativa D");
+  });
+
+  it("handles Annulled questions properly", () => {
+    const qAnnulled = mockQuestion("q-ann", {
+      origin: "INEP_OFICIAL" as any,
+      officialStatus: "annulled",
+      answerFinal: "ANNULLED",
+    });
+    const prov = getQuestionAnswerProvenance(qAnnulled);
+
+    expect(prov.isAnnulled).toBe(true);
+    expect(prov.compactLabel).toBe("Status");
+    expect(prov.detailedLabel).toBe("Questão Anulada (INEP)");
+    expect(prov.displayAnswerText).toBe("Anulada pela Banca");
+  });
+
+  it("handles Provisional and Post-Appeal Official keys", () => {
+    const qProvisional = mockQuestion("q-prov", {
+      origin: "INEP_OFICIAL" as any,
+      officialStatus: "pending_validation",
+      correctAnswer: "A",
+    });
+    const provProvisional = getQuestionAnswerProvenance(qProvisional);
+    expect(provProvisional.isProvisional).toBe(true);
+    expect(provProvisional.compactLabel).toBe("Gabarito preliminar");
+    expect(provProvisional.detailedLabel).toBe("Gabarito Preliminar (INEP)");
+
+    const qChanged = mockQuestion("q-ch", {
+      origin: "INEP_OFICIAL" as any,
+      officialStatus: "changed_after_appeal",
+      correctAnswer: "C",
+    });
+    const provChanged = getQuestionAnswerProvenance(qChanged);
+    expect(provChanged.isChangedAfterAppeal).toBe(true);
+    expect(provChanged.compactLabel).toBe("Gabarito pós-recurso");
+    expect(provChanged.detailedLabel).toBe("Gabarito Oficial (Pós-Recurso)");
+  });
+});
+
 describe("ErrorNotebookView UI Component", () => {
-  const q1 = mockQuestion("q1", { area: "PEDIATRIA", topic: "Bronquiolite Viral Aguda" });
-  const q2 = mockQuestion("q2", { area: "CIRURGIA_GERAL", topic: "Apendicite Aguda" });
+  const q1 = mockQuestion("q1", { area: "PEDIATRIA", topic: "Bronquiolite Viral Aguda", origin: "INEP_OFICIAL" as any });
+  const q2 = mockQuestion("q2", { area: "CIRURGIA_GERAL", topic: "Apendicite Aguda", origin: "INEDITA_PRAXIS" as any });
   const questions = [q1, q2];
 
   const attempts: QuestionAttempt[] = [
@@ -273,18 +352,20 @@ describe("ErrorNotebookView UI Component", () => {
     // Q1 is visible in default "Para Revisar"
     expect(screen.getByText(/Bronquiolite Viral Aguda/)).toBeDefined();
 
-    // Answer comparison in preview
+    // Answer comparison in preview for official question
     expect(screen.getByText(/Marcou B/)).toBeDefined();
+    expect(screen.getByText(/Gabarito oficial: D/)).toBeDefined();
   });
 
-  it("switches to Superados tab and displays remediated questions", () => {
+  it("switches to Superados tab and displays remediated questions with honest non-official provenance", () => {
     render(<ErrorNotebookView />);
 
     const superadosTab = screen.getByText(/Superados \(1\)/);
     fireEvent.click(superadosTab);
 
-    // Q2 is superado
+    // Q2 is superado and is INEDITA_PRAXIS -> should use "Resposta correta: D" instead of claiming "Gabarito oficial"
     expect(screen.getByText(/Apendicite Aguda/)).toBeDefined();
     expect(screen.getAllByText(/Superado/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/Resposta correta: D/)).toBeDefined();
   });
 });

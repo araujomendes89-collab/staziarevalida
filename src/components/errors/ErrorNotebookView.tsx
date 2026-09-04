@@ -25,6 +25,7 @@ import {
   buildErrorCases,
   filterErrorCases,
   sortErrorCases,
+  getQuestionAnswerProvenance,
   ErrorCase,
   ErrorNotebookStatusFilter,
   ErrorNotebookSortOption,
@@ -460,6 +461,7 @@ export const ErrorNotebookView: React.FC = () => {
           {visibleCases.map((ec) => {
             const q = ec.question;
             const theme = getAreaVisualTheme(q.area);
+            const provenance = getQuestionAnswerProvenance(q);
             const isExpanded = expandedCaseId === ec.questionId;
             const isHistoryOpen = historyOpenCaseId === ec.questionId;
             const isSaved = savedReflections.has(ec.questionId);
@@ -543,7 +545,7 @@ export const ErrorNotebookView: React.FC = () => {
                         <span className="text-rose-500 font-bold">✕</span>
                       </div>
                       <div className="flex items-center justify-end gap-1.5 text-[11px] text-teal-700 dark:text-teal-400 font-semibold">
-                        <span>Gabarito: {q.correctAnswer || correctOption?.id || "-"}</span>
+                        <span>{provenance.compactLabel}: {provenance.isAnnulled ? "Anulada" : (q.correctAnswer || correctOption?.id || "-")}</span>
                         <span className="text-teal-600 font-bold">✓</span>
                       </div>
                     </div>
@@ -575,7 +577,7 @@ export const ErrorNotebookView: React.FC = () => {
                       </p>
                     </div>
 
-                    {/* Resposta Marcada vs Gabarito Oficial (High Clarity & Accessible) */}
+                    {/* Resposta Marcada vs Gabarito Oficial / Resposta Correta (Semantic & Accessible) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div className="p-3.5 rounded-xl bg-rose-50/80 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-900/60">
                         <div className="flex items-center gap-1.5">
@@ -597,11 +599,11 @@ export const ErrorNotebookView: React.FC = () => {
                             ✓
                           </span>
                           <span className="text-[10px] font-bold text-teal-800 dark:text-teal-300 uppercase">
-                            Gabarito Oficial (INEP)
+                            {provenance.detailedLabel}
                           </span>
                         </div>
                         <span className="text-sm font-bold text-teal-900 dark:text-teal-200 mt-1 block">
-                          Alternativa {q.correctAnswer || correctOption?.id || "-"}
+                          {provenance.displayAnswerText}
                         </span>
                       </div>
                     </div>

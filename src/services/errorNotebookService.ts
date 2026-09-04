@@ -20,6 +20,130 @@ export interface ErrorCase {
 export type ErrorNotebookStatusFilter = "PENDING" | "REMEDIATED" | "ALL";
 export type ErrorNotebookSortOption = "NEWEST" | "OLDEST" | "MOST_ERRORS";
 
+export interface QuestionAnswerProvenance {
+  compactLabel: string;
+  detailedLabel: string;
+  isOfficial: boolean;
+  isAnnulled: boolean;
+  isProvisional: boolean;
+  isChangedAfterAppeal: boolean;
+  displayAnswerText: string;
+}
+
+/**
+ * Normalizes and derives the appropriate, honest answer label based on question provenance & status.
+ * Prevents non-official/editorial questions from falsely claiming to be an "Official INEP Answer Key".
+ */
+export function getQuestionAnswerProvenance(question?: Partial<Question> | null): QuestionAnswerProvenance {
+  if (!question) {
+    return {
+      compactLabel: "Resposta correta",
+      detailedLabel: "Resposta Correta",
+      isOfficial: false,
+      isAnnulled: false,
+      isProvisional: false,
+      isChangedAfterAppeal: false,
+      displayAnswerText: "Resposta Correta",
+    };
+  }
+
+  const origin = (question.origin || "").toUpperCase();
+  const isOfficial = origin === "INEP_OFICIAL" || origin === "OFICIAL_INEP" || origin === "INEP";
+  const status = (question.officialStatus || "").toLowerCase();
+  const isAnnulled =
+    status === "annulled" ||
+    question.answerFinal === "ANNULLED" ||
+    (question.correctAnswer as string) === "ANNULLED";
+  const isProvisional =
+    status === "pending_validation" ||
+    (Boolean(question.answerPreliminary) && !question.answerFinal && status !== "valid");
+  const isChangedAfterAppeal = status === "changed_after_appeal";
+
+  const answerLetter = question.correctAnswer || question.options?.find((o) => o.isCorrect)?.id || "-";
+  const displayAnswerText = isAnnulled ? "Anulada pela Banca" : `Alternativa ${answerLetter}`;
+
+  if (isAnnulled) {
+    return {
+      compactLabel: "Status",
+      detailedLabel: isOfficial ? "Questão Anulada (INEP)" : "Questão Anulada",
+      isOfficial,
+      isAnnulled: true,
+      isProvisional: false,
+      isChangedAfterAppeal: false,
+      displayAnswerText: "Anulada pela Banca",
+    };
+  }
+
+  if (isOfficial) {
+    if (isProvisional) {
+      return {
+        compactLabel: "Gabarito preliminar",
+        detailedLabel: "Gabarito Preliminar (INEP)",
+        isOfficial: true,
+        isAnnulled: false,
+        isProvisional: true,
+        isChangedAfterAppeal: false,
+        displayAnswerText,
+      };
+    }
+    if (isChangedAfterAppeal) {
+      return {
+        compactLabel: "Gabarito pós-recurso",
+        detailedLabel: "Gabarito Oficial (Pós-Recurso)",
+        isOfficial: true,
+        isAnnulled: false,
+        isProvisional: false,
+        isChangedAfterAppeal: true,
+        displayAnswerText,
+      };
+    }
+    return {
+      compactLabel: "Gabarito oficial",
+      detailedLabel: "Gabarito Oficial (INEP)",
+      isOfficial: true,
+      isAnnulled: false,
+      isProvisional: false,
+      isChangedAfterAppeal: false,
+      displayAnswerText,
+    };
+  }
+
+  if (origin.includes("INEDITA") || origin.includes("EDITORIAL")) {
+    return {
+      compactLabel: "Resposta correta",
+      detailedLabel: "Resposta Correta (Gabarito Editorial)",
+      isOfficial: false,
+      isAnnulled: false,
+      isProvisional: false,
+      isChangedAfterAppeal: false,
+      displayAnswerText,
+    };
+  }
+
+  if (origin.includes("AI") || origin.includes("PLATFORM")) {
+    return {
+      compactLabel: "Resposta esperada",
+      detailedLabel: "Resposta Esperada",
+      isOfficial: false,
+      isAnnulled: false,
+      isProvisional: false,
+      isChangedAfterAppeal: false,
+      displayAnswerText,
+    };
+  }
+
+  // Safe fallback (fail-safe for unknown origin)
+  return {
+    compactLabel: "Resposta correta",
+    detailedLabel: "Resposta Correta",
+    isOfficial: false,
+    isAnnulled: false,
+    isProvisional: false,
+    isChangedAfterAppeal: false,
+    displayAnswerText,
+  };
+}
+
 /**
  * Pure selector that transforms raw question attempts into consolidated ErrorCase view models.
  * Preserves the factual attempt history while providing an active remediation view.
