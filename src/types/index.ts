@@ -307,10 +307,10 @@ export interface Flashcard {
 }
 
 /**
- * Future Decoupled Content & State Model Contracts (Etapa 1.22C Target Architecture)
+ * Decoupled Content & State Model Contracts (Etapa 1.22E V4 Architecture)
  */
 export interface FlashcardContent {
-  contentId: string;
+  localBridgeId: string; // The linking key during local v4 phase (matches historical flashcard.id)
   front: string;
   back: string;
   keyMnemonic?: string;
@@ -322,12 +322,14 @@ export interface FlashcardContent {
   contentFingerprintVersion: number;
   contentVersion: number;
   contentReviewStatus?: FlashcardContentReviewStatus;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface UserFlashcardState {
-  flashcardId: string; // References FlashcardContent.contentId in future split
+  localBridgeId: string; // Links to FlashcardContent.localBridgeId
   userId: string;
-  schedulerVersion: "FSRS_V1";
+  schedulerVersion: "FSRS_V1" | "LEGACY_V1";
   stability: number;
   difficulty: number;
   elapsedDays: number;
@@ -337,6 +339,19 @@ export interface UserFlashcardState {
   state: number;
   lastReviewed?: string;
   dueDate: string;
+  intervalDays?: number;
+  easeFactor?: number;
+  repetitionCount?: number;
+  masteryLevel?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface FlashcardStorageEnvelopeV4 {
+  schemaVersion: 4;
+  updatedAt: string;
+  contents: Record<string, FlashcardContent>;
+  userStates: Record<string, UserFlashcardState>;
 }
 
 export interface KnowledgeNode {

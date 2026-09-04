@@ -74,13 +74,13 @@ describe("User-Scoped Flashcard Local Storage (Etapa 1.22B)", () => {
     it("should generate namespaced key for authenticated users", () => {
       const scope: FlashcardStorageScope = { userId: "user-123", isGuest: false };
       const key = getFlashcardStorageKey(scope);
-      expect(key).toBe("praxis_flashcards_v3:user:user-123");
+      expect(key).toBe("praxis_flashcards_v4:user:user-123");
     });
 
     it("should generate namespaced key for guests with a stable guest ID", () => {
       const scope: FlashcardStorageScope = { userId: null, isGuest: true };
       const key1 = getFlashcardStorageKey(scope);
-      expect(key1).toMatch(/^praxis_flashcards_v3:guest:guest_[a-z0-9]+$/);
+      expect(key1).toMatch(/^praxis_flashcards_v4:guest:guest_[a-z0-9]+$/);
 
       const key2 = getFlashcardStorageKey(scope);
       expect(key2).toBe(key1);
@@ -88,7 +88,7 @@ describe("User-Scoped Flashcard Local Storage (Etapa 1.22B)", () => {
 
     it("should accept string userId directly", () => {
       const key = getFlashcardStorageKey("user-456");
-      expect(key).toBe("praxis_flashcards_v3:user:user-456");
+      expect(key).toBe("praxis_flashcards_v4:user:user-456");
     });
   });
 

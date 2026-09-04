@@ -3,6 +3,9 @@ import {
   Question,
   QuestionAttempt,
   Flashcard,
+  FlashcardContent,
+  UserFlashcardState,
+  FlashcardStorageEnvelopeV4,
   KnowledgeNode,
   OSCEStationAttempt,
   StudyMission,
@@ -12,6 +15,7 @@ import { normalizeQuestionList } from "../utils/questionNormalizer";
 import { INITIAL_KNOWLEDGE_GRAPH } from "../data/knowledgeGraphData";
 import { SpacedRepetitionService } from "./spacedRepetitionService";
 import { FlashcardProvenanceService } from "./flashcardProvenanceService";
+import { FlashcardStorageAdapter } from "./flashcardStorageAdapter";
 
 export interface FlashcardStorageScope {
   userId?: string | null;
@@ -24,6 +28,7 @@ const STORAGE_KEYS = {
   ATTEMPTS: "praxis_attempts_v2",
   FLASHCARDS_LEGACY_V2: "praxis_flashcards_v2",
   FLASHCARDS_V3_PREFIX: "praxis_flashcards_v3",
+  FLASHCARDS_V4_PREFIX: "praxis_flashcards_v4",
   FLASHCARDS_BACKUP_V1: "praxis_flashcards_v1_backup",
   FLASHCARDS_BACKUP_V2: "praxis_flashcards_v2_migrated_backup",
   GUEST_ID: "praxis_guest_id_v1",
@@ -42,7 +47,24 @@ export function getOrGenerateGuestId(): string {
   return guestId;
 }
 
-export function getFlashcardStorageKey(scope?: FlashcardStorageScope | string | null): string {
+export function getFlashcardStorageKeyV4(scope?: FlashcardStorageScope | string | null): string {
+  if (typeof scope === "string" && scope.trim().length > 0) {
+    return `${STORAGE_KEYS.FLASHCARDS_V4_PREFIX}:user:${scope.trim()}`;
+  }
+  if (scope && typeof scope === "object") {
+    if (scope.userId && scope.userId.trim().length > 0 && !scope.isGuest) {
+      return `${STORAGE_KEYS.FLASHCARDS_V4_PREFIX}:user:${scope.userId.trim()}`;
+    }
+    if (scope.isGuest) {
+      const guestId = getOrGenerateGuestId();
+      return `${STORAGE_KEYS.FLASHCARDS_V4_PREFIX}:guest:${guestId}`;
+    }
+  }
+  const guestId = getOrGenerateGuestId();
+  return `${STORAGE_KEYS.FLASHCARDS_V4_PREFIX}:guest:${guestId}`;
+}
+
+export function getFlashcardStorageKeyV3(scope?: FlashcardStorageScope | string | null): string {
   if (typeof scope === "string" && scope.trim().length > 0) {
     return `${STORAGE_KEYS.FLASHCARDS_V3_PREFIX}:user:${scope.trim()}`;
   }
@@ -57,6 +79,10 @@ export function getFlashcardStorageKey(scope?: FlashcardStorageScope | string | 
   }
   const guestId = getOrGenerateGuestId();
   return `${STORAGE_KEYS.FLASHCARDS_V3_PREFIX}:guest:${guestId}`;
+}
+
+export function getFlashcardStorageKey(scope?: FlashcardStorageScope | string | null): string {
+  return getFlashcardStorageKeyV4(scope);
 }
 
 // In-memory fallback cache when localStorage is full (QuotaExceeded) or disabled in private browsing
@@ -239,33 +265,190 @@ export class StorageService {
   }
 
   static getFlashcardStorageKey(scope?: FlashcardStorageScope | string | null): string {
-    return getFlashcardStorageKey(scope);
+    return getFlashcardStorageKeyV4(scope);
   }
 
-  static getFlashcards(scope?: FlashcardStorageScope | string | null): Flashcard[] {
-    const key = getFlashcardStorageKey(scope);
-    try {
-      const data = safeGetItem(key);
-      if (!data) return [];
-      const parsed: Flashcard[] = JSON.parse(data);
-      if (!Array.isArray(parsed)) return [];
+  static getFlashcardStorageKeyV4(scope?: FlashcardStorageScope | string | null): string {
+    return getFlashcardStorageKeyV4(scope);
+  }
 
-      const { migrated, hadLegacyCards } = SpacedRepetitionService.migrateLegacyFlashcards(parsed);
-      if (hadLegacyCards) {
-        safeSetItem(key, JSON.stringify(migrated));
+  static getFlashcardStorageKeyV3(scope?: FlashcardStorageScope | string | null): string {
+    return getFlashcardStorageKeyV3(scope);
+  }
+
+  /**
+   * Retrieves or migrates the V4 Flashcard Storage Envelope for the active scope
+   */
+  static getFlashcardsEnvelope(scope?: FlashcardStorageScope | string | null): FlashcardStorageEnvelopeV4 {
+    const v4Key = getFlashcardStorageKeyV4(scope);
+    const v3Key = getFlashcardStorageKeyV3(scope);
+
+    // 1. Try reading V4 single envelope
+    try {
+      const dataV4 = safeGetItem(v4Key);
+      if (dataV4) {
+        const parsed = JSON.parse(dataV4);
+        if (FlashcardStorageAdapter.validateV4Envelope(parsed)) {
+          return parsed;
+        }
       }
-      return migrated;
-    } catch {
+    } catch (e) {
+      console.warn("[StorageService] Error reading V4 flashcards envelope:", e);
+    }
+
+    // 2. If V4 not present or invalid, attempt deterministic migration from V3 in same scope
+    try {
+      const dataV3 = safeGetItem(v3Key);
+      if (dataV3) {
+        const parsedV3 = JSON.parse(dataV3);
+        if (Array.isArray(parsedV3) && parsedV3.length > 0) {
+          const userId = typeof scope === "string" ? scope : scope?.userId || "guest";
+          const envelopeV4 = FlashcardStorageAdapter.migrateV3CardsToV4Envelope(parsedV3, userId);
+          // Atomically write V4 envelope and preserve V3 as rollback backup
+          safeSetItem(v4Key, JSON.stringify(envelopeV4));
+          return envelopeV4;
+        }
+      }
+    } catch (e) {
+      console.warn("[StorageService] Error migrating V3 to V4 flashcards:", e);
+    }
+
+    return {
+      schemaVersion: 4,
+      updatedAt: new Date().toISOString(),
+      contents: {},
+      userStates: {},
+    };
+  }
+
+  /**
+   * Saves the V4 Flashcard Storage Envelope atomically for the active scope
+   */
+  static saveFlashcardsEnvelope(
+    envelope: FlashcardStorageEnvelopeV4,
+    scope?: FlashcardStorageScope | string | null
+  ): void {
+    const v4Key = getFlashcardStorageKeyV4(scope);
+    try {
+      if (!FlashcardStorageAdapter.validateV4Envelope(envelope)) {
+        throw new Error("Invalid V4 envelope structure");
+      }
+      safeSetItem(v4Key, JSON.stringify(envelope));
+    } catch (e) {
+      console.warn("[StorageService] Error saving V4 flashcards envelope:", e);
+    }
+  }
+
+  /**
+   * Reads decoupled V4 storage and hydrates a compatible Flashcard view model list for consumers
+   */
+  static getFlashcards(scope?: FlashcardStorageScope | string | null): Flashcard[] {
+    try {
+      const envelope = this.getFlashcardsEnvelope(scope);
+      const contents = envelope.contents || {};
+      const userStates = envelope.userStates || {};
+
+      const hydrated: Flashcard[] = [];
+      for (const bridgeId of Object.keys(contents)) {
+        const content = contents[bridgeId];
+        const state = userStates[bridgeId];
+        if (!content) continue;
+
+        // If user state is missing for this content (orphan content), provide safe baseline state
+        const effectiveState =
+          state || {
+            localBridgeId: bridgeId,
+            userId: typeof scope === "string" ? scope : scope?.userId || "guest",
+            schedulerVersion: "FSRS_V1" as const,
+            stability: 0,
+            difficulty: 5.0,
+            elapsedDays: 0,
+            scheduledDays: 1,
+            reps: 0,
+            lapses: 0,
+            state: 0,
+            dueDate: new Date().toISOString(),
+            intervalDays: 1,
+            easeFactor: 2.5,
+            repetitionCount: 0,
+            masteryLevel: 25,
+          };
+
+        hydrated.push(FlashcardStorageAdapter.hydrateFlashcardItem(content, effectiveState));
+      }
+
+      return hydrated;
+    } catch (e) {
+      console.warn("[StorageService] Error hydrating flashcards from V4 envelope:", e);
       return [];
     }
   }
 
+  /**
+   * Saves flashcards into the V4 single envelope, keeping FlashcardContent immutable during ratings
+   */
   static saveFlashcards(cards: Flashcard[], scope?: FlashcardStorageScope | string | null): void {
-    const key = getFlashcardStorageKey(scope);
     try {
-      safeSetItem(key, JSON.stringify(cards));
+      const userId = typeof scope === "string" ? scope : scope?.userId || "guest";
+      const envelope = this.getFlashcardsEnvelope(scope);
+      const contents: Record<string, FlashcardContent> = { ...envelope.contents };
+      const userStates: Record<string, UserFlashcardState> = { ...envelope.userStates };
+
+      const currentIds = new Set<string>();
+
+      for (const card of cards) {
+        if (!card || !card.id) continue;
+        currentIds.add(card.id);
+
+        const existingContent = contents[card.id];
+        const existingState = userStates[card.id];
+
+        if (existingContent && existingState) {
+          // Content is IMMUTABLE during review/rating: update ONLY UserFlashcardState
+          userStates[card.id] = {
+            ...existingState,
+            schedulerVersion: card.schedulerVersion || existingState.schedulerVersion || "FSRS_V1",
+            stability: card.stability ?? existingState.stability,
+            difficulty: card.difficulty ?? existingState.difficulty,
+            elapsedDays: card.elapsedDays ?? existingState.elapsedDays,
+            scheduledDays: card.scheduledDays ?? card.intervalDays ?? existingState.scheduledDays,
+            reps: card.reps ?? card.repetitionCount ?? existingState.reps,
+            lapses: card.lapses ?? existingState.lapses,
+            state: card.state ?? existingState.state,
+            lastReviewed: card.lastReviewed ?? existingState.lastReviewed,
+            dueDate: card.dueDate || existingState.dueDate,
+            intervalDays: card.intervalDays ?? existingState.intervalDays,
+            easeFactor: card.easeFactor ?? existingState.easeFactor,
+            repetitionCount: card.repetitionCount ?? card.reps ?? existingState.repetitionCount,
+            masteryLevel: card.masteryLevel ?? existingState.masteryLevel,
+            updatedAt: new Date().toISOString(),
+          };
+        } else {
+          // New card: deconstruct and insert both
+          const { content, userState } = FlashcardStorageAdapter.deconstructFlashcardItem(card, userId);
+          contents[card.id] = content;
+          userStates[card.id] = userState;
+        }
+      }
+
+      // Handle card removals if user passed a pruned list (e.g. data reset)
+      for (const id of Object.keys(contents)) {
+        if (!currentIds.has(id)) {
+          delete contents[id];
+          delete userStates[id];
+        }
+      }
+
+      const updatedEnvelope: FlashcardStorageEnvelopeV4 = {
+        schemaVersion: 4,
+        updatedAt: new Date().toISOString(),
+        contents,
+        userStates,
+      };
+
+      this.saveFlashcardsEnvelope(updatedEnvelope, scope);
     } catch (e) {
-      console.warn("Error saving flashcards:", e);
+      console.warn("[StorageService] Error saving flashcards to V4 envelope:", e);
     }
   }
 
@@ -292,17 +475,17 @@ export class StorageService {
   }
 
   static hasDismissedLegacyRecovery(scope?: FlashcardStorageScope | string | null): boolean {
-    const scopeKey = getFlashcardStorageKey(scope);
+    const scopeKey = getFlashcardStorageKeyV4(scope);
     return safeGetItem(`praxis_legacy_dismissed:${scopeKey}`) === "true";
   }
 
   static dismissLegacyRecovery(scope?: FlashcardStorageScope | string | null): void {
-    const scopeKey = getFlashcardStorageKey(scope);
+    const scopeKey = getFlashcardStorageKeyV4(scope);
     safeSetItem(`praxis_legacy_dismissed:${scopeKey}`, "true");
   }
 
   static importLegacyFlashcards(scope?: FlashcardStorageScope | string | null): Flashcard[] {
-    const scopeKey = getFlashcardStorageKey(scope);
+    const v4Key = getFlashcardStorageKeyV4(scope);
     try {
       const data = safeGetItem(STORAGE_KEYS.FLASHCARDS_LEGACY_V2);
       if (!data) return [];
@@ -315,7 +498,8 @@ export class StorageService {
       }
 
       const { migrated } = SpacedRepetitionService.migrateLegacyFlashcards(parsed);
-      const enriched = migrated.map((card) => ({
+      const userId = typeof scope === "string" ? scope : scope?.userId || "guest";
+      const enrichedCards = migrated.map((card) => ({
         ...card,
         provenance:
           card.provenance?.origin === "QUESTION_DERIVED"
@@ -325,9 +509,12 @@ export class StorageService {
           card.contentFingerprint ||
           FlashcardProvenanceService.createFlashcardContentFingerprint(card.front, card.back, card.keyMnemonic),
       }));
-      safeSetItem(scopeKey, JSON.stringify(enriched));
-      safeSetItem(`praxis_legacy_dismissed:${scopeKey}`, "true");
-      return enriched;
+
+      // Directly build V4 envelope and save
+      const envelope = FlashcardStorageAdapter.migrateV3CardsToV4Envelope(enrichedCards, userId);
+      this.saveFlashcardsEnvelope(envelope, scope);
+      safeSetItem(`praxis_legacy_dismissed:${v4Key}`, "true");
+      return this.getFlashcards(scope);
     } catch (e) {
       console.warn("Error importing legacy flashcards:", e);
       return [];
