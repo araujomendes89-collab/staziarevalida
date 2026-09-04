@@ -130,6 +130,7 @@ export class FirebaseService {
       if (data.userProfile) {
         const uRef = doc(db, "users", data.userProfile.id);
         const sanitized = JSON.parse(JSON.stringify(data.userProfile, (_, v) => (v === undefined ? null : v)));
+        delete sanitized.role;
         await setDoc(uRef, { ...sanitized, updatedAt: new Date().toISOString() }, { merge: true });
       }
 
