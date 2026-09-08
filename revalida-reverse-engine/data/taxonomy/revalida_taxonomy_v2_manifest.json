@@ -1,0 +1,8 @@
+{
+  "taxonomy_id": "revalida_specific_medical_taxonomy",
+  "version": "2.0.0",
+  "status": "FROZEN",
+  "created_at_utc": "2026-09-05T16:52:08.698110+00:00",
+  "file": "data/taxonomy/revalida_taxonomy_v2.json",
+  "sha256": "8794d9f3c8ad4afe59f59cb68885606b0387a1384d4f02550f98b33b40bfb8d2"
+}

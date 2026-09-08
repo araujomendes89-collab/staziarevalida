@@ -1,0 +1,1 @@
+"""Relatórios analíticos entre edições."""

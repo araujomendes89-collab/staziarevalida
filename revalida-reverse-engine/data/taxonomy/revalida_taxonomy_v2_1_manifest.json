@@ -1,0 +1,8 @@
+{
+  "taxonomy_version": "2.1.0",
+  "file": "data/taxonomy/revalida_taxonomy_v2_1.json",
+  "sha256": "610f4815ec29e5fe9c7e11254765f90251a533d56cf719c1c2eb2357c83bbd5e",
+  "created_at_utc": "2026-09-05T18:09:08.405801+00:00",
+  "parent_version": "2.0.0",
+  "status": "FROZEN"
+}

@@ -1,0 +1,318 @@
+[
+  {
+    "exam_id": "enamed_2025",
+    "exam_name": "Enamed INEP 2025",
+    "exam_family": "ENAMED",
+    "exam_year": 2025,
+    "exam_edition": 1,
+    "dataset_version": "1.0.0",
+    "active_questions": 90,
+    "all_questions": 100,
+    "source_manifest": {
+      "schema_version": "staziamed.revalida.export-manifest.v1",
+      "exam_id": "enamed_2025",
+      "active_questions": 90,
+      "annulled_questions": 7,
+      "statistically_excluded_questions": 3,
+      "individual_question_files": 100,
+      "files": {
+        "question_bank": "question_bank.json",
+        "active_jsonl": "questions_active.jsonl",
+        "all_jsonl": "questions_all.jsonl",
+        "generation_profile": "generation_profile.json",
+        "questions_directory": "questions"
+      }
+    }
+  },
+  {
+    "exam_id": "revalida_2020_1",
+    "exam_name": "Revalida INEP 2020/1",
+    "exam_family": "REVALIDA",
+    "exam_year": 2020,
+    "exam_edition": 1,
+    "dataset_version": "1.0.0",
+    "active_questions": 100,
+    "all_questions": 100,
+    "source_manifest": {
+      "schema_version": "staziamed.revalida.export-manifest.v1",
+      "exam_id": "revalida_2020_1",
+      "active_questions": 100,
+      "annulled_questions": 0,
+      "statistically_excluded_questions": 0,
+      "individual_question_files": 100,
+      "files": {
+        "question_bank": "question_bank.json",
+        "active_jsonl": "questions_active.jsonl",
+        "all_jsonl": "questions_all.jsonl",
+        "generation_profile": "generation_profile.json",
+        "questions_directory": "questions"
+      }
+    }
+  },
+  {
+    "exam_id": "revalida_2020_2",
+    "exam_name": "Revalida INEP 2020/2",
+    "exam_family": "REVALIDA",
+    "exam_year": 2020,
+    "exam_edition": 2,
+    "dataset_version": "1.0.0",
+    "active_questions": 100,
+    "all_questions": 100,
+    "source_manifest": {
+      "schema_version": "staziamed.revalida.export-manifest.v1",
+      "exam_id": "revalida_2020_2",
+      "active_questions": 100,
+      "annulled_questions": 0,
+      "statistically_excluded_questions": 0,
+      "individual_question_files": 100,
+      "files": {
+        "question_bank": "question_bank.json",
+        "active_jsonl": "questions_active.jsonl",
+        "all_jsonl": "questions_all.jsonl",
+        "generation_profile": "generation_profile.json",
+        "questions_directory": "questions"
+      }
+    }
+  },
+  {
+    "exam_id": "revalida_2021_1",
+    "exam_name": "Revalida INEP 2021/1",
+    "exam_family": "REVALIDA",
+    "exam_year": 2021,
+    "exam_edition": 1,
+    "dataset_version": "1.0.0",
+    "active_questions": 88,
+    "all_questions": 100,
+    "source_manifest": {
+      "schema_version": "staziamed.revalida.export-manifest.v1",
+      "exam_id": "revalida_2021_1",
+      "active_questions": 88,
+      "annulled_questions": 12,
+      "statistically_excluded_questions": 0,
+      "individual_question_files": 100,
+      "files": {
+        "question_bank": "question_bank.json",
+        "active_jsonl": "questions_active.jsonl",
+        "all_jsonl": "questions_all.jsonl",
+        "generation_profile": "generation_profile.json",
+        "questions_directory": "questions"
+      }
+    }
+  },
+  {
+    "exam_id": "revalida_2022_1",
+    "exam_name": "Revalida INEP 2022/1",
+    "exam_family": "REVALIDA",
+    "exam_year": 2022,
+    "exam_edition": 1,
+    "dataset_version": "1.0.0",
+    "active_questions": 90,
+    "all_questions": 100,
+    "source_manifest": {
+      "schema_version": "staziamed.revalida.export-manifest.v1",
+      "exam_id": "revalida_2022_1",
+      "active_questions": 90,
+      "annulled_questions": 10,
+      "individual_question_files": 100,
+      "files": {
+        "question_bank": "question_bank.json",
+        "active_jsonl": "questions_active.jsonl",
+        "all_jsonl": "questions_all.jsonl",
+        "generation_profile": "generation_profile.json",
+        "questions_directory": "questions"
+      }
+    }
+  },
+  {
+    "exam_id": "revalida_2022_2",
+    "exam_name": "Revalida INEP 2022/2",
+    "exam_family": "REVALIDA",
+    "exam_year": 2022,
+    "exam_edition": 2,
+    "dataset_version": "1.0.0",
+    "active_questions": 86,
+    "all_questions": 100,
+    "source_manifest": {
+      "schema_version": "staziamed.revalida.export-manifest.v1",
+      "exam_id": "revalida_2022_2",
+      "active_questions": 86,
+      "annulled_questions": 14,
+      "individual_question_files": 100,
+      "files": {
+        "question_bank": "question_bank.json",
+        "active_jsonl": "questions_active.jsonl",
+        "all_jsonl": "questions_all.jsonl",
+        "generation_profile": "generation_profile.json",
+        "questions_directory": "questions"
+      }
+    }
+  },
+  {
+    "exam_id": "revalida_2023_1",
+    "exam_name": "Revalida INEP 2023/1",
+    "exam_family": "REVALIDA",
+    "exam_year": 2023,
+    "exam_edition": 1,
+    "dataset_version": "1.0.0",
+    "active_questions": 93,
+    "all_questions": 100,
+    "source_manifest": {
+      "schema_version": "staziamed.revalida.export-manifest.v1",
+      "exam_id": "revalida_2023_1",
+      "active_questions": 93,
+      "annulled_questions": 7,
+      "individual_question_files": 100,
+      "files": {
+        "question_bank": "question_bank.json",
+        "active_jsonl": "questions_active.jsonl",
+        "all_jsonl": "questions_all.jsonl",
+        "generation_profile": "generation_profile.json",
+        "questions_directory": "questions"
+      }
+    }
+  },
+  {
+    "exam_id": "revalida_2023_2",
+    "exam_name": "Revalida INEP 2023/2",
+    "exam_family": "REVALIDA",
+    "exam_year": 2023,
+    "exam_edition": 2,
+    "dataset_version": "1.0.0",
+    "active_questions": 91,
+    "all_questions": 100,
+    "source_manifest": {
+      "schema_version": "staziamed.revalida.export-manifest.v1",
+      "exam_id": "revalida_2023_2",
+      "active_questions": 91,
+      "annulled_questions": 9,
+      "individual_question_files": 100,
+      "files": {
+        "question_bank": "question_bank.json",
+        "active_jsonl": "questions_active.jsonl",
+        "all_jsonl": "questions_all.jsonl",
+        "generation_profile": "generation_profile.json",
+        "questions_directory": "questions"
+      }
+    }
+  },
+  {
+    "exam_id": "revalida_2024_1",
+    "exam_name": "Revalida INEP 2024/1",
+    "exam_family": "REVALIDA",
+    "exam_year": 2024,
+    "exam_edition": 1,
+    "dataset_version": "1.0.0",
+    "active_questions": 95,
+    "all_questions": 100,
+    "source_manifest": {
+      "schema_version": "staziamed.revalida.export-manifest.v1",
+      "exam_id": "revalida_2024_1",
+      "active_questions": 95,
+      "annulled_questions": 5,
+      "individual_question_files": 100,
+      "files": {
+        "question_bank": "question_bank.json",
+        "active_jsonl": "questions_active.jsonl",
+        "all_jsonl": "questions_all.jsonl",
+        "generation_profile": "generation_profile.json",
+        "questions_directory": "questions"
+      }
+    }
+  },
+  {
+    "exam_id": "revalida_2024_2",
+    "exam_name": "Revalida INEP 2024/2",
+    "exam_family": "REVALIDA",
+    "exam_year": 2024,
+    "exam_edition": 2,
+    "dataset_version": "1.0.0",
+    "active_questions": 94,
+    "all_questions": 100,
+    "source_manifest": {
+      "schema_version": "staziamed.revalida.export-manifest.v1",
+      "exam_id": "revalida_2024_2",
+      "active_questions": 94,
+      "annulled_questions": 6,
+      "individual_question_files": 100,
+      "files": {
+        "question_bank": "question_bank.json",
+        "active_jsonl": "questions_active.jsonl",
+        "all_jsonl": "questions_all.jsonl",
+        "generation_profile": "generation_profile.json",
+        "questions_directory": "questions"
+      }
+    }
+  },
+  {
+    "exam_id": "revalida_2025_1",
+    "exam_name": "Revalida INEP 2025/1",
+    "exam_family": "REVALIDA",
+    "exam_year": 2025,
+    "exam_edition": 1,
+    "dataset_version": "1.0.0",
+    "active_questions": 97,
+    "all_questions": 100,
+    "source_manifest": {
+      "schema_version": "staziamed.revalida.export-manifest.v1",
+      "exam_id": "revalida_2025_1",
+      "active_questions": 97,
+      "annulled_questions": 3,
+      "individual_question_files": 100,
+      "files": {
+        "question_bank": "question_bank.json",
+        "active_jsonl": "questions_active.jsonl",
+        "all_jsonl": "questions_all.jsonl",
+        "generation_profile": "generation_profile.json",
+        "questions_directory": "questions"
+      }
+    }
+  },
+  {
+    "exam_id": "revalida_2025_2",
+    "exam_name": "Revalida INEP 2025/2",
+    "exam_family": "REVALIDA",
+    "exam_year": 2025,
+    "exam_edition": 2,
+    "dataset_version": "1.0.0",
+    "active_questions": 93,
+    "all_questions": 100,
+    "source_manifest": {
+      "schema_version": "staziamed.revalida.export-manifest.v1",
+      "exam_id": "revalida_2025_2",
+      "active_questions": 93,
+      "annulled_questions": 7,
+      "individual_question_files": 100,
+      "files": {
+        "question_bank": "question_bank.json",
+        "active_jsonl": "questions_active.jsonl",
+        "all_jsonl": "questions_all.jsonl",
+        "generation_profile": "generation_profile.json",
+        "questions_directory": "questions"
+      }
+    }
+  },
+  {
+    "exam_id": "revalida_2026_1",
+    "exam_name": "Revalida INEP 2026/1",
+    "exam_family": "REVALIDA",
+    "exam_year": 2026,
+    "exam_edition": 1,
+    "dataset_version": "1.2.0",
+    "active_questions": 100,
+    "all_questions": 100,
+    "source_manifest": {
+      "schema_version": "staziamed.revalida.export-manifest.v1",
+      "exam_id": "revalida_2026_1",
+      "active_questions": 100,
+      "annulled_questions": 0,
+      "individual_question_files": 100,
+      "files": {
+        "question_bank": "question_bank.json",
+        "active_jsonl": "questions_active.jsonl",
+        "all_jsonl": "questions_all.jsonl",
+        "generation_profile": "generation_profile.json",
+        "questions_directory": "questions"
+      }
+    }
+  }
+]

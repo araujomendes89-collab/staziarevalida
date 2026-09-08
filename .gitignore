@@ -7,7 +7,14 @@ coverage/
 .env*
 !.env.example
 ._*
+**/._*
 .firebase/
 content-engine/
 server/storage/
 server/data/
+revalida-reverse-engine/.git/
+revalida-reverse-engine/.git.backup-*/
+revalida-reverse-engine/.venv/
+revalida-reverse-engine/.env
+revalida-reverse-engine/**/__pycache__/
+revalida-reverse-engine/**/*.pyc

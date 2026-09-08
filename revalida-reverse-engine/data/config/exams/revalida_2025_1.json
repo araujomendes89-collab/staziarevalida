@@ -1,0 +1,30 @@
+{
+  "exam_id": "revalida_2025_1",
+  "dataset_version": "1.0.0",
+  "question_count": 100,
+  "master_relative_path": "data/processed/revalida_2025_1_master_v1_0.json",
+  "assets_relative_dir": "data/processed/visual_assets_v2/revalida_2025_1",
+  "crops_relative_dir": "data/processed/question_crops/revalida_2025_1",
+  "classification_taxonomy_relative_path": "data/taxonomy/revalida_taxonomy_v2.json",
+  "classification_taxonomy_version": "2.0.0",
+  "canonical_taxonomy_relative_path": "data/taxonomy/revalida_taxonomy_v2_1.json",
+  "canonical_taxonomy_version": "2.1.0",
+  "answer_key_adapter": "src.answer_key.adapters.generic_text",
+  "exam_name": "Revalida INEP 2025/1",
+  "exam_year": 2025,
+  "exam_edition": 1,
+  "exam_stage": "FIRST_PHASE",
+  "booklet": 1,
+  "question_pdf_relative_path": "data/raw/provas/revalida_2025_1_caderno_1.pdf",
+  "answer_key_pdf_relative_path": "data/raw/gabaritos/revalida_2025_1_gabarito.pdf",
+  "question_start_page": 2,
+  "question_end_page": 26,
+  "api_max_retries": 2,
+  "api_timeout_seconds": 120.0,
+  "excluded_question_numbers": [
+    7,
+    23,
+    34
+  ],
+  "expected_canonical_counts": null
+}

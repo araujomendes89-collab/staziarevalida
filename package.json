@@ -9,6 +9,9 @@
     "start": "node dist/server.cjs",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
+    "revalida:validate-package": "tsx -e \"import { resolvePackageRoot, validateReverseEnginePackage } from './scripts/reverseEnginePackage.ts'; const root = resolvePackageRoot(); const result = validateReverseEnginePackage(root); console.log(JSON.stringify({ root, schema: result.manifest.schema_version, questions: result.questions.length, activeQuestions: result.manifest.active_question_count, editions: result.editions.length, assets: result.manifest.asset_count }, null, 2));\"",
+    "revalida:import": "tsx scripts/import_reverse_engine_parallel.ts",
+    "revalida:upload-assets": "tsx scripts/upload_reverse_engine_assets.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

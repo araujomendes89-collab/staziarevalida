@@ -1,0 +1,209 @@
+{
+  "taxonomy_id": "revalida_medical_taxonomy",
+  "version": "1.0.0",
+
+  "primary_areas": {
+    "CLINICAL_MEDICINE": {
+      "label": "Clínica Médica",
+      "subareas": [
+        "CARDIOLOGY",
+        "PULMONOLOGY",
+        "GASTROENTEROLOGY_HEPATOLOGY",
+        "ENDOCRINOLOGY",
+        "NEPHROLOGY",
+        "NEUROLOGY",
+        "INFECTIOUS_DISEASES",
+        "RHEUMATOLOGY",
+        "HEMATOLOGY",
+        "ONCOLOGY",
+        "DERMATOLOGY",
+        "PSYCHIATRY",
+        "GERIATRICS",
+        "EMERGENCY_CRITICAL_CARE",
+        "OTHER_CLINICAL"
+      ]
+    },
+
+    "SURGERY": {
+      "label": "Cirurgia",
+      "subareas": [
+        "GENERAL_SURGERY",
+        "TRAUMA",
+        "ORTHOPEDICS",
+        "UROLOGY",
+        "VASCULAR_SURGERY",
+        "THORACIC_SURGERY",
+        "NEUROSURGERY",
+        "COLOPROCTOLOGY",
+        "PERIOPERATIVE_CARE",
+        "OTHER_SURGERY"
+      ]
+    },
+
+    "OBSTETRICS_GYNECOLOGY": {
+      "label": "Ginecologia e Obstetrícia",
+      "subareas": [
+        "OBSTETRICS",
+        "GYNECOLOGY",
+        "REPRODUCTIVE_HEALTH",
+        "GYNECOLOGIC_ONCOLOGY",
+        "MATERNAL_FETAL_MEDICINE",
+        "OTHER_OBGYN"
+      ]
+    },
+
+    "PEDIATRICS": {
+      "label": "Pediatria",
+      "subareas": [
+        "NEONATOLOGY",
+        "GROWTH_DEVELOPMENT",
+        "PEDIATRIC_INFECTIOUS_DISEASES",
+        "PEDIATRIC_PULMONOLOGY",
+        "PEDIATRIC_GASTRO_NUTRITION",
+        "PEDIATRIC_NEUROLOGY",
+        "PEDIATRIC_CARDIOLOGY",
+        "PEDIATRIC_NEPHROLOGY",
+        "PEDIATRIC_ENDOCRINOLOGY",
+        "PEDIATRIC_EMERGENCY",
+        "ADOLESCENT_HEALTH",
+        "OTHER_PEDIATRICS"
+      ]
+    },
+
+    "FAMILY_COMMUNITY_PUBLIC_HEALTH": {
+      "label": "Medicina de Família, Comunidade e Saúde Coletiva",
+      "subareas": [
+        "PRIMARY_CARE",
+        "PREVENTION_SCREENING",
+        "EPIDEMIOLOGY",
+        "BIOSTATISTICS",
+        "PUBLIC_HEALTH",
+        "HEALTH_SURVEILLANCE",
+        "IMMUNIZATION",
+        "OCCUPATIONAL_HEALTH",
+        "HEALTH_SYSTEM",
+        "ETHICS_BIOETHICS",
+        "MEDICAL_LEGAL",
+        "OTHER_PUBLIC_HEALTH"
+      ]
+    }
+  },
+
+  "competencies": [
+    "DIAGNOSIS",
+    "DIFFERENTIAL_DIAGNOSIS",
+    "INITIAL_ASSESSMENT",
+    "SELECT_DIAGNOSTIC_TEST",
+    "INTERPRET_DIAGNOSTIC_TEST",
+    "SELECT_TREATMENT",
+    "PHARMACOLOGIC_TREATMENT",
+    "NONPHARMACOLOGIC_TREATMENT",
+    "EMERGENCY_STABILIZATION",
+    "SURGICAL_MANAGEMENT",
+    "PREVENTION",
+    "SCREENING",
+    "VACCINATION",
+    "FOLLOW_UP",
+    "REFERRAL",
+    "RECOGNIZE_COMPLICATION",
+    "PROGNOSIS",
+    "RISK_STRATIFICATION",
+    "EPIDEMIOLOGIC_REASONING",
+    "PUBLIC_HEALTH_ACTION",
+    "ETHICAL_LEGAL_DECISION"
+  ],
+
+  "cognitive_tasks": [
+    "IDENTIFY_DIAGNOSIS",
+    "IDENTIFY_MOST_LIKELY_CAUSE",
+    "CHOOSE_NEXT_STEP",
+    "CHOOSE_BEST_TEST",
+    "INTERPRET_RESULT",
+    "CHOOSE_INITIAL_TREATMENT",
+    "CHOOSE_DEFINITIVE_TREATMENT",
+    "CHOOSE_EMERGENCY_CONDUCT",
+    "IDENTIFY_COMPLICATION",
+    "IDENTIFY_CONTRAINDICATION",
+    "IDENTIFY_RISK_FACTOR",
+    "APPLY_GUIDELINE",
+    "CALCULATE_INTERPRET_EPIS",
+    "PRIORITIZE_ACTION"
+  ],
+
+  "care_settings": [
+    "PRIMARY_CARE",
+    "OUTPATIENT_SPECIALTY",
+    "EMERGENCY_DEPARTMENT",
+    "HOSPITAL_WARD",
+    "ICU",
+    "OPERATING_ROOM",
+    "MATERNITY",
+    "DELIVERY_ROOM",
+    "NEONATAL_UNIT",
+    "COMMUNITY_PUBLIC_HEALTH",
+    "UNSPECIFIED"
+  ],
+
+  "patient_groups": [
+    "NEONATE",
+    "INFANT",
+    "CHILD",
+    "ADOLESCENT",
+    "ADULT",
+    "OLDER_ADULT",
+    "PREGNANT",
+    "PUERPERAL",
+    "GENERAL_POPULATION",
+    "NOT_SPECIFIED"
+  ],
+
+  "urgency_levels": [
+    "ELECTIVE",
+    "URGENT",
+    "EMERGENCY",
+    "NOT_APPLICABLE"
+  ],
+
+  "question_formats": [
+    "CLINICAL_VIGNETTE",
+    "DIRECT_CONCEPT",
+    "IMAGE_BASED",
+    "TABLE_BASED",
+    "LAB_INTERPRETATION",
+    "IMAGING_INTERPRETATION",
+    "ECG_INTERPRETATION",
+    "EPIDEMIOLOGY_CALCULATION",
+    "PUBLIC_HEALTH_SCENARIO",
+    "ETHICS_LEGAL_SCENARIO",
+    "MULTIMODAL"
+  ],
+
+  "reasoning_types": [
+    "PATTERN_RECOGNITION",
+    "CLINICAL_INTEGRATION",
+    "PATHOPHYSIOLOGIC_REASONING",
+    "GUIDELINE_APPLICATION",
+    "RISK_BENEFIT_DECISION",
+    "TEMPORAL_SEQUENCE",
+    "TEST_INTERPRETATION",
+    "EPIDEMIOLOGIC_REASONING"
+  ],
+
+  "distractor_patterns": [
+    "PLAUSIBLE_DIFFERENTIAL",
+    "WRONG_TEST",
+    "WRONG_TIMING",
+    "WRONG_TREATMENT",
+    "CONTRAINDICATED_TREATMENT",
+    "OVERTREATMENT",
+    "UNDERTREATMENT",
+    "OVERTESTING",
+    "OBSOLETE_PROTOCOL",
+    "WRONG_DOSE_ROUTE",
+    "WRONG_REFERRAL",
+    "WRONG_SEQUENCE",
+    "PARTIALLY_CORRECT",
+    "UNRELATED_CONCEPT",
+    "OTHER"
+  ]
+}

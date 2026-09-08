@@ -14,6 +14,11 @@ import { validatePdfBytes } from "../../src/services/pdfValidationService";
 import { StaziaNativePdfExtractor } from "../../src/services/pdfExtractionService";
 import { PDF_CONTENT_ENGINE_LIMITS } from "../../src/config/pdfContentEngineLimits";
 import { OcrJobManager } from "../ocr/ocrJobQueue";
+import { SourceDocumentRepository } from "../contentEngine/sourceDocumentRepository";
+import { SourcePageRepository } from "../contentEngine/sourcePageRepository";
+import { SourceDocumentHydrationService } from "../contentEngine/sourceDocumentHydrationService";
+import { SourcePdfStorageService } from "../contentEngine/sourcePdfStorageService";
+import { toPersistedSourceDocumentMetadata } from "../contentEngine/sourceDocumentPersistence";
 
 export const adminPdfIngestionRouter = Router();
 
@@ -21,13 +26,13 @@ export const adminPdfIngestionRouter = Router();
 adminPdfIngestionRouter.use(authenticateFirebaseRequest);
 adminPdfIngestionRouter.use(requireServerRole("ADMIN"));
 
-// In-Memory Storage Registry for Ingested Source Documents (Server State)
+// In-Memory RAM Cache for Ingested Source Documents (Cache/test compatibility layer)
 const ingestedSourceDocumentsStore: Map<string, SourceDocument> = new Map();
-// Cache of binary buffers for OCR processing
+// In-Memory RAM Cache of binary buffers for fast OCR processing
 const documentBinaryStore: Map<string, Buffer> = new Map();
 
 /**
- * Helper to reset or seed store (used in testing)
+ * Helper to reset or seed store (used in testing and test isolation)
  */
 export function resetSourceDocumentsStore(): void {
   ingestedSourceDocumentsStore.clear();
@@ -48,7 +53,7 @@ export function resetSourceDocumentsStore(): void {
 }
 
 /**
- * Helper to add document to store directly (used in testing/persistence)
+ * Helper to add document to store directly (used in testing/cache)
  */
 export function registerSourceDocumentInStore(doc: SourceDocument, rawBuffer?: Buffer): void {
   ingestedSourceDocumentsStore.set(doc.id, doc);
@@ -96,6 +101,19 @@ adminPdfIngestionRouter.post("/pdf-ingest", async (req: Request, res: Response):
       return;
     }
 
+    // Strict admin principal derivation
+    const createdBy = req.principal?.uid;
+    if (!createdBy) {
+      res.status(403).json({
+        success: false,
+        error: {
+          code: "AUTH_FORBIDDEN",
+          message: "Operação administrativa requer credencial de usuário válida.",
+        },
+      });
+      return;
+    }
+
     // Decode base64 to buffer
     const pdfBuffer = Buffer.from(base64Pdf, "base64");
 
@@ -112,18 +130,22 @@ adminPdfIngestionRouter.post("/pdf-ingest", async (req: Request, res: Response):
       return;
     }
 
-    // 2. Check for duplicate SHA-256 fingerprint
+    // 2. Check for duplicate SHA-256 fingerprint in Firestore persistent repository (and in-memory fallback)
     let duplicateOfDocumentId: string | undefined;
-    for (const existingDoc of ingestedSourceDocumentsStore.values()) {
-      if (existingDoc.documentFingerprint === validation.fingerprint) {
-        duplicateOfDocumentId = existingDoc.id;
-        break;
+    const existingInDb = await SourceDocumentRepository.findByFingerprint(validation.fingerprint);
+    if (existingInDb) {
+      duplicateOfDocumentId = existingInDb.id;
+    } else {
+      for (const existingDoc of ingestedSourceDocumentsStore.values()) {
+        if (existingDoc.documentFingerprint === validation.fingerprint) {
+          duplicateOfDocumentId = existingDoc.id;
+          break;
+        }
       }
     }
 
     const documentId = `src_doc_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const storagePath = `${PDF_CONTENT_ENGINE_LIMITS.STORAGE_BASE_PATH}/${documentId}/source.pdf`;
-    const createdBy = req.principal?.uid || "admin-system";
     const now = new Date().toISOString();
 
     const initialSourceDoc: SourceDocument = {
@@ -147,12 +169,55 @@ adminPdfIngestionRouter.post("/pdf-ingest", async (req: Request, res: Response):
       duplicateOfDocumentId,
     };
 
-    // 3. Perform Verbatim Native Extraction
-    const extractor = new StaziaNativePdfExtractor();
-    const extractedDocument: ExtractedPdfDocument = await extractor.extract(initialSourceDoc, pdfBuffer);
+    // 3. Persist raw PDF to Firebase Storage
+    await SourcePdfStorageService.uploadSourcePdf(storagePath, pdfBuffer, {
+      sourceDocumentId: documentId,
+      documentFingerprint: validation.fingerprint,
+    });
 
-    // 4. Finalize Document Status and Store
+    // 4. Persist initial metadata to Firestore (excluding large payloads)
+    await SourceDocumentRepository.save(toPersistedSourceDocumentMetadata(initialSourceDoc));
+
+    // 5. Perform Verbatim Native Extraction
+    let extractedDocument: ExtractedPdfDocument;
+    try {
+      const extractor = new StaziaNativePdfExtractor();
+      extractedDocument = await extractor.extract(initialSourceDoc, pdfBuffer);
+
+      // Persist individual native pages to Firestore subcollection
+      if (extractedDocument.pages && extractedDocument.pages.length > 0) {
+        await SourcePageRepository.saveNativePages(documentId, extractedDocument.pages);
+      }
+    } catch (extractErr: any) {
+      await SourceDocumentRepository.update(documentId, {
+        status: "EXTRACTION_FAILED",
+        failureCode: extractErr?.code || "NATIVE_EXTRACTION_FAILED",
+        updatedAt: new Date().toISOString(),
+      });
+      throw extractErr;
+    }
+
+    // 6. Finalize Document Status and Update persistent metadata in Firestore (including nativeExtractionSummary)
     const finalStatus = extractedDocument.pagesRequiringOcr > 0 ? "OCR_REQUIRED" : "EXTRACTED";
+    await SourceDocumentRepository.update(documentId, {
+      pageCount: extractedDocument.pageCount,
+      contentMode: extractedDocument.contentMode,
+      status: finalStatus,
+      updatedAt: new Date().toISOString(),
+      nativeExtractionSummary: {
+        pageCount: extractedDocument.pageCount,
+        contentMode: extractedDocument.contentMode,
+        totalCharacterCount: extractedDocument.totalCharacterCount,
+        imageCount: extractedDocument.imageCount,
+        tableCount: extractedDocument.tableCount,
+        pagesRequiringOcr: extractedDocument.pagesRequiringOcr,
+        engineName: extractedDocument.engineName,
+        engineVersion: extractedDocument.engineVersion,
+        startedAt: extractedDocument.startedAt,
+        finishedAt: extractedDocument.finishedAt,
+      },
+    });
+
     const finalizedDoc: SourceDocument = {
       ...initialSourceDoc,
       pageCount: extractedDocument.pageCount,
@@ -162,6 +227,7 @@ adminPdfIngestionRouter.post("/pdf-ingest", async (req: Request, res: Response):
       extractedDocument,
     };
 
+    // Keep RAM cache for subsequent pipeline steps
     ingestedSourceDocumentsStore.set(documentId, finalizedDoc);
     documentBinaryStore.set(documentId, pdfBuffer);
 
@@ -186,40 +252,87 @@ adminPdfIngestionRouter.post("/pdf-ingest", async (req: Request, res: Response):
 
 /**
  * GET /api/admin/content/source-documents
- * Lists all registered source documents.
+ * Lists all registered source documents from persistent Firestore repository.
  */
-adminPdfIngestionRouter.get("/source-documents", (_req: Request, res: Response): void => {
-  const documents = Array.from(ingestedSourceDocumentsStore.values());
-  res.json({
-    success: true,
-    totalCount: documents.length,
-    documents,
-  });
+adminPdfIngestionRouter.get("/source-documents", async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const persistentDocs = await SourceDocumentRepository.list();
+    const documents: SourceDocument[] = persistentDocs.map((pDoc) => {
+      const cached = ingestedSourceDocumentsStore.get(pDoc.id);
+      if (cached) {
+        return {
+          ...pDoc,
+          ...cached,
+        };
+      }
+      return pDoc as SourceDocument;
+    });
+
+    // Also include any in-memory test documents not in DB (for test isolation)
+    for (const [id, memDoc] of ingestedSourceDocumentsStore.entries()) {
+      if (!documents.some((d) => d.id === id)) {
+        documents.push(memDoc);
+      }
+    }
+
+    res.json({
+      success: true,
+      totalCount: documents.length,
+      documents,
+    });
+  } catch (err: any) {
+    console.error("[List Source Documents Error]:", err);
+    const documents = Array.from(ingestedSourceDocumentsStore.values());
+    res.json({
+      success: true,
+      totalCount: documents.length,
+      documents,
+    });
+  }
 });
 
 /**
  * GET /api/admin/content/source-documents/:id
- * Retrieves detailed source document with extracted elements.
+ * Retrieves detailed source document from Firestore with in-memory enrichment if available.
  */
-adminPdfIngestionRouter.get("/source-documents/:id", (req: Request, res: Response): void => {
-  const { id } = req.params;
-  const doc = ingestedSourceDocumentsStore.get(id);
+adminPdfIngestionRouter.get("/source-documents/:id", async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    let doc = ingestedSourceDocumentsStore.get(id);
 
-  if (!doc) {
-    res.status(404).json({
+    if (!doc) {
+      const hydrated = await SourceDocumentHydrationService.hydrateSourceDocument(id);
+      if (hydrated) {
+        doc = hydrated;
+        ingestedSourceDocumentsStore.set(doc.id, doc);
+      }
+    }
+
+    if (!doc) {
+      res.status(404).json({
+        success: false,
+        error: {
+          code: "DOCUMENT_NOT_FOUND",
+          message: `Documento com id '${id}' não foi encontrado.`,
+        },
+      });
+      return;
+    }
+
+    res.json({
+      success: true,
+      document: doc,
+    });
+  } catch (err: any) {
+    console.error("[Get Source Document Error]:", err);
+    res.status(500).json({
       success: false,
       error: {
-        code: "DOCUMENT_NOT_FOUND",
-        message: `Documento com id '${id}' não foi encontrado.`,
+        code: "INTERNAL_ERROR",
+        message: err?.message || "Erro ao recuperar documento.",
       },
     });
-    return;
   }
-
-  res.json({
-    success: true,
-    document: doc,
-  });
 });
 
 /**
@@ -238,7 +351,15 @@ adminPdfIngestionRouter.post("/ocr/start-job", async (req: Request, res: Respons
       return;
     }
 
-    const doc = ingestedSourceDocumentsStore.get(documentId);
+    let doc = ingestedSourceDocumentsStore.get(documentId);
+    if (!doc) {
+      const hydrated = await SourceDocumentHydrationService.hydrateSourceDocument(documentId);
+      if (hydrated) {
+        doc = hydrated;
+        ingestedSourceDocumentsStore.set(doc.id, doc);
+      }
+    }
+
     if (!doc) {
       res.status(404).json({
         success: false,
@@ -261,21 +382,45 @@ adminPdfIngestionRouter.post("/ocr/start-job", async (req: Request, res: Respons
     const ocrManager = OcrJobManager.getInstance();
     const jobState = await ocrManager.createJob(doc.id, targetPages, doc.documentFingerprint);
 
-    // Update document status to queued/processing
+    // Update document status to queued/processing in memory and Firestore
     doc.status = "OCR_PROCESSING";
     doc.ocrJobId = jobState.jobId;
     doc.updatedAt = new Date().toISOString();
+    await SourceDocumentRepository.update(doc.id, {
+      status: "OCR_PROCESSING",
+      ocrJobId: jobState.jobId,
+      updatedAt: doc.updatedAt,
+    });
 
-    // Retrieve or decode binary buffer
+    // Retrieve or download binary buffer from Storage
     let pdfBuffer = documentBinaryStore.get(doc.id);
     if (!pdfBuffer && base64Pdf) {
       pdfBuffer = Buffer.from(base64Pdf, "base64");
       documentBinaryStore.set(doc.id, pdfBuffer);
     }
 
+    if (!pdfBuffer && doc.storagePath) {
+      try {
+        const existsInStorage = await SourcePdfStorageService.exists(doc.storagePath);
+        if (existsInStorage) {
+          pdfBuffer = await SourcePdfStorageService.downloadSourcePdf(doc.storagePath);
+          documentBinaryStore.set(doc.id, pdfBuffer);
+        }
+      } catch (storageErr) {
+        console.warn("[OCR] Failed to download source PDF from Storage:", storageErr);
+      }
+    }
+
+    // Fail-Closed: No synthetic PDF fallback
     if (!pdfBuffer) {
-      // Fallback empty buffer for simulated parsing if original buffer not in memory
-      pdfBuffer = Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Page >>\nendobj\n%%EOF");
+      res.status(404).json({
+        success: false,
+        error: {
+          code: "SOURCE_PDF_NOT_FOUND",
+          message: `Arquivo PDF original do documento '${doc.id}' não foi encontrado no Storage ou cache.`,
+        },
+      });
+      return;
     }
 
     // Execute job asynchronously (or immediately await for synchronous response)
@@ -292,6 +437,25 @@ adminPdfIngestionRouter.post("/ocr/start-job", async (req: Request, res: Respons
     doc.updatedAt = new Date().toISOString();
 
     ingestedSourceDocumentsStore.set(doc.id, doc);
+
+    // Persist individual OCR pages and Resolved pages to Firestore subcollections
+    const ocrPagesToSave: any[] = [];
+    for (const p of resolvedPages) {
+      if (p.ocrExtraction) {
+        ocrPagesToSave.push(p.ocrExtraction);
+      }
+    }
+    if (ocrPagesToSave.length > 0) {
+      await SourcePageRepository.saveOcrPages(doc.id, ocrPagesToSave);
+    }
+    await SourcePageRepository.saveResolvedPages(doc.id, resolvedPages);
+
+    // Persist small status update to Firestore
+    await SourceDocumentRepository.update(doc.id, {
+      status: finalDocStatus,
+      completenessStatus: finalCompleteness,
+      updatedAt: doc.updatedAt,
+    });
 
     res.json({
       success: true,
@@ -340,16 +504,34 @@ adminPdfIngestionRouter.get("/ocr/jobs/:jobId", (req: Request, res: Response): v
  * Records ADMIN manual review, approval, or verbatim correction for a resolved page source.
  * Preserves original extraction and full provenance.
  */
-adminPdfIngestionRouter.post("/source-documents/:id/manual-review", (req: Request, res: Response): void => {
+adminPdfIngestionRouter.post("/source-documents/:id/manual-review", async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
     const { pageNumber, action, editedText, note } = req.body;
 
-    const doc = ingestedSourceDocumentsStore.get(id);
+    let doc = ingestedSourceDocumentsStore.get(id);
+    if (!doc) {
+      const hydrated = await SourceDocumentHydrationService.hydrateSourceDocument(id);
+      if (hydrated) {
+        doc = hydrated;
+        ingestedSourceDocumentsStore.set(doc.id, doc);
+      }
+    }
+
     if (!doc) {
       res.status(404).json({
         success: false,
         error: { code: "DOCUMENT_NOT_FOUND", message: `Documento '${id}' não encontrado.` },
+      });
+      return;
+    }
+
+    // Fail-Closed: require valid admin principal
+    const editorUid = req.principal?.uid;
+    if (!editorUid) {
+      res.status(403).json({
+        success: false,
+        error: { code: "AUTH_FORBIDDEN", message: "Revisão manual requer usuário autenticado com perfil ADMIN." },
       });
       return;
     }
@@ -391,7 +573,7 @@ adminPdfIngestionRouter.post("/source-documents/:id/manual-review", (req: Reques
       updatedPage.manualEdit = {
         originalExtraction: existingPage.resolvedText,
         editedSource: editedText,
-        editedBy: req.principal?.uid || "admin-master",
+        editedBy: editorUid,
         editedAt: new Date().toISOString(),
         note,
       };
@@ -407,6 +589,15 @@ adminPdfIngestionRouter.post("/source-documents/:id/manual-review", (req: Reques
     doc.updatedAt = new Date().toISOString();
 
     ingestedSourceDocumentsStore.set(doc.id, doc);
+
+    // Persist single resolved page to Firestore subcollection
+    await SourcePageRepository.saveResolvedPage(doc.id, updatedPage);
+
+    await SourceDocumentRepository.update(doc.id, {
+      status: doc.status,
+      completenessStatus: doc.completenessStatus,
+      updatedAt: doc.updatedAt,
+    });
 
     res.json({
       success: true,
@@ -438,7 +629,15 @@ adminPdfIngestionRouter.post("/segmentation/start-job", async (req: Request, res
       return;
     }
 
-    const doc = ingestedSourceDocumentsStore.get(documentId);
+    let doc = ingestedSourceDocumentsStore.get(documentId);
+    if (!doc) {
+      const hydrated = await SourceDocumentHydrationService.hydrateSourceDocument(documentId);
+      if (hydrated) {
+        doc = hydrated;
+        ingestedSourceDocumentsStore.set(doc.id, doc);
+      }
+    }
+
     if (!doc) {
       res.status(404).json({
         success: false,
@@ -473,7 +672,7 @@ adminPdfIngestionRouter.post("/segmentation/start-job", async (req: Request, res
 adminPdfIngestionRouter.get("/segmentation/jobs/:jobId", async (req: Request, res: Response): Promise<void> => {
   const { jobId } = req.params;
   const segManager = (await import("../segmentation/segmentationJobQueue")).SegmentationJobManager.getInstance();
-  const job = segManager.getJob(jobId);
+  const job = await segManager.getJob(jobId);
 
   if (!job) {
     res.status(404).json({
@@ -493,7 +692,7 @@ adminPdfIngestionRouter.get("/segmentation/jobs/:jobId", async (req: Request, re
 adminPdfIngestionRouter.get("/source-documents/:id/structured-content", async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
   const segManager = (await import("../segmentation/segmentationJobQueue")).SegmentationJobManager.getInstance();
-  const contents = segManager.getStructuredContentsByDocument(id);
+  const contents = await segManager.getStructuredContentsByDocument(id);
 
   res.json({
     success: true,
@@ -521,7 +720,7 @@ adminPdfIngestionRouter.post("/structured-content/:id/confirm-canonical", async 
     }
 
     const segManager = (await import("../segmentation/segmentationJobQueue")).SegmentationJobManager.getInstance();
-    const updated = segManager.confirmCanonicalTopic(id, canonicalTopicId.trim());
+    const updated = await segManager.confirmCanonicalTopic(id, canonicalTopicId.trim());
 
     res.json({
       success: true,
@@ -544,7 +743,7 @@ adminPdfIngestionRouter.post("/structured-content/:id/approve-structure", async 
   try {
     const { id } = req.params;
     const segManager = (await import("../segmentation/segmentationJobQueue")).SegmentationJobManager.getInstance();
-    const updated = segManager.approveStructure(id);
+    const updated = await segManager.approveStructure(id);
 
     res.json({
       success: true,
@@ -569,7 +768,7 @@ adminPdfIngestionRouter.post("/structured-content/:id/split", async (req: Reques
     const { splitAtIndex } = req.body;
 
     const segManager = (await import("../segmentation/segmentationJobQueue")).SegmentationJobManager.getInstance();
-    const resultParts = segManager.splitSegment(id, Number(splitAtIndex));
+    const resultParts = await segManager.splitSegment(id, Number(splitAtIndex));
 
     res.json({
       success: true,
@@ -592,7 +791,7 @@ adminPdfIngestionRouter.post("/structured-content/merge", async (req: Request, r
   try {
     const { contentIdA, contentIdB } = req.body;
     const segManager = (await import("../segmentation/segmentationJobQueue")).SegmentationJobManager.getInstance();
-    const merged = segManager.mergeSegments(contentIdA, contentIdB);
+    const merged = await segManager.mergeSegments(contentIdA, contentIdB);
 
     res.json({
       success: true,
@@ -623,7 +822,7 @@ adminPdfIngestionRouter.post("/editorial/start-job", async (req: Request, res: R
     }
 
     const segManager = (await import("../segmentation/segmentationJobQueue")).SegmentationJobManager.getInstance();
-    const structuredContent = segManager.getStructuredContent(structuredContentId);
+    const structuredContent = await segManager.getStructuredContentById(structuredContentId);
 
     if (!structuredContent) {
       res.status(404).json({
@@ -657,7 +856,7 @@ adminPdfIngestionRouter.post("/editorial/start-job", async (req: Request, res: R
 adminPdfIngestionRouter.get("/editorial/jobs/:jobId", async (req: Request, res: Response): Promise<void> => {
   const { jobId } = req.params;
   const edManager = (await import("../editorial/editorialJobQueue")).EditorialJobManager.getInstance();
-  const job = edManager.getJob(jobId);
+  const job = await edManager.getJob(jobId);
 
   if (!job) {
     res.status(404).json({
@@ -677,7 +876,7 @@ adminPdfIngestionRouter.get("/editorial/jobs/:jobId", async (req: Request, res: 
 adminPdfIngestionRouter.get("/editorial/drafts/:draftId", async (req: Request, res: Response): Promise<void> => {
   const { draftId } = req.params;
   const edManager = (await import("../editorial/editorialJobQueue")).EditorialJobManager.getInstance();
-  const draft = edManager.getDraft(draftId);
+  const draft = await edManager.getDraft(draftId);
 
   if (!draft) {
     res.status(404).json({
@@ -700,7 +899,12 @@ adminPdfIngestionRouter.post("/editorial/drafts/:draftId/reorder", async (req: R
     const { pageIndex, fromIndex, toIndex } = req.body;
 
     const edManager = (await import("../editorial/editorialJobQueue")).EditorialJobManager.getInstance();
-    const updatedDraft = edManager.reorderPageBlocks(draftId, Number(pageIndex), Number(fromIndex), Number(toIndex));
+    const updatedDraft = await edManager.reorderPageBlocks(
+      draftId,
+      Number(pageIndex),
+      Number(fromIndex),
+      Number(toIndex)
+    );
 
     res.json({ success: true, draft: updatedDraft });
   } catch (error: any) {
@@ -722,7 +926,7 @@ adminPdfIngestionRouter.post("/editorial/drafts/:draftId/change-component-type",
     const { blockId, newType } = req.body;
 
     const edManager = (await import("../editorial/editorialJobQueue")).EditorialJobManager.getInstance();
-    const updatedDraft = edManager.changeComponentType(draftId, blockId, newType);
+    const updatedDraft = await edManager.changeComponentType(draftId, blockId, newType);
 
     res.json({ success: true, draft: updatedDraft });
   } catch (error: any) {
@@ -744,7 +948,7 @@ adminPdfIngestionRouter.post("/editorial/drafts/:draftId/insert-page-break", asy
     const { blockId } = req.body;
 
     const edManager = (await import("../editorial/editorialJobQueue")).EditorialJobManager.getInstance();
-    const updatedDraft = edManager.insertPageBreakAtBlock(draftId, blockId);
+    const updatedDraft = await edManager.insertPageBreakAtBlock(draftId, blockId);
 
     res.json({ success: true, draft: updatedDraft });
   } catch (error: any) {
@@ -764,7 +968,7 @@ adminPdfIngestionRouter.post("/editorial/drafts/:draftId/approve-layout", async 
   try {
     const { draftId } = req.params;
     const edManager = (await import("../editorial/editorialJobQueue")).EditorialJobManager.getInstance();
-    const approvedDraft = edManager.approveEditorialLayout(draftId);
+    const approvedDraft = await edManager.approveEditorialLayout(draftId);
 
     res.json({ success: true, draft: approvedDraft });
   } catch (error: any) {
@@ -786,7 +990,7 @@ adminPdfIngestionRouter.post("/editorial/drafts/:draftId/export-pdf", async (req
     const { adminNotes } = req.body || {};
 
     const edManager = (await import("../editorial/editorialJobQueue")).EditorialJobManager.getInstance();
-    const draft = edManager.getDraft(draftId);
+    const draft = await edManager.getDraft(draftId);
 
     if (!draft) {
       res.status(404).json({
@@ -797,7 +1001,7 @@ adminPdfIngestionRouter.post("/editorial/drafts/:draftId/export-pdf", async (req
     }
 
     const exportManager = (await import("../editorial/editorialExportJobQueue")).EditorialExportJobManager.getInstance();
-    const result = await exportManager.requestExport(draft, (req as any).user?.uid || "admin-master", adminNotes);
+    const result = await exportManager.requestExport(draft, req.principal?.uid || "system-admin", adminNotes);
 
     res.json({
       success: true,
@@ -932,7 +1136,7 @@ adminPdfIngestionRouter.get("/editorial/drafts/:draftId/exports-history", async 
   try {
     const { draftId } = req.params;
     const edManager = (await import("../editorial/editorialJobQueue")).EditorialJobManager.getInstance();
-    const draft = edManager.getDraft(draftId);
+    const draft = await edManager.getDraft(draftId);
 
     const exportManager = (await import("../editorial/editorialExportJobQueue")).EditorialExportJobManager.getInstance();
     const history = await exportManager.listExportsForDraft(draftId, draft);
@@ -946,5 +1150,4 @@ adminPdfIngestionRouter.get("/editorial/drafts/:draftId/exports-history", async 
     });
   }
 });
-
 

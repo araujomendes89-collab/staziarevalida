@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "revalida-reverse-engine"
+version = "0.1.0"
+description = "Pipeline multi-edição para análise de provas do Revalida INEP"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "openai==3.8.0",
+  "pydantic==2.13.5",
+  "pymupdf==1.28.2",
+  "python-dotenv==1.2.3",
+  "rapidfuzz==3.14.6",
+  "reportlab==4.4.9",
+  "pypdf==6.7.5",
+  "rich==15.0.0",
+  "typer==0.27.2",
+]
+
+[project.optional-dependencies]
+test = ["pytest==9.1.1"]
+
+[project.scripts]
+revalida = "src.cli.main:app"
+
+[tool.setuptools.packages.find]
+include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider"
+pythonpath = ["."]

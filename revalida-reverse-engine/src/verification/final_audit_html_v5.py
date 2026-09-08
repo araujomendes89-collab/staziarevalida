@@ -1,0 +1,1691 @@
+import html
+import json
+from pathlib import Path
+
+
+MASTER_PATH = Path(
+    "data/processed/revalida_2026_1_master_v1_1.json"
+)
+
+OUTPUT_PATH = Path(
+    "data/processed/auditoria_final_2026_1_v5.html"
+)
+
+ASSET_DIR = Path(
+    "data/processed/visual_assets_v2/revalida_2026_1"
+)
+
+LAYOUT_PATH = Path(
+    "data/processed/revalida_2026_1_layout_overrides.json"
+)
+
+LAYOUT_OVERRIDES = {}
+
+
+def esc(value):
+    if value is None:
+        return ""
+    return html.escape(str(value))
+
+
+def html_src(path):
+    """
+    Converte um caminho do projeto para caminho
+    relativo ao HTML salvo em data/processed/.
+    """
+    path = Path(path)
+
+    try:
+        return path.relative_to(
+            OUTPUT_PATH.parent
+        ).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
+def asset_src(filename):
+    path = ASSET_DIR / filename
+    return html_src(path)
+
+
+def build_assets(question):
+    visual = question.get(
+        "visual",
+        {}
+    )
+
+    assets = visual.get(
+        "assets",
+        []
+    )
+
+    if not assets:
+        return """
+        <div class="no-assets">
+            Nenhum asset visual específico isolado.
+            O conteúdo visual completo permanece preservado
+            no recorte original da questão.
+        </div>
+        """
+
+    blocks = []
+
+    for asset in assets:
+        asset_type = asset.get(
+            "asset_type",
+            "VISUAL"
+        )
+
+        filename = asset.get(
+            "file"
+        )
+
+        page = asset.get(
+            "source_page",
+            "—"
+        )
+
+        source_kind = asset.get(
+            "source_kind",
+            "—"
+        )
+
+        if filename:
+            image = f"""
+            <img
+                class="asset-image"
+                src="{esc(asset_src(filename))}"
+                alt="{esc(asset_type)}"
+            >
+            """
+        else:
+            image = """
+            <div class="missing">
+                Arquivo não encontrado
+            </div>
+            """
+
+        table_data = asset.get(
+            "table_data"
+        )
+
+        table_html = ""
+
+        if table_data:
+            rows = []
+
+            for row in table_data:
+                cells = "".join(
+                    f"<td>{esc(cell)}</td>"
+                    for cell in row
+                )
+
+                rows.append(
+                    f"<tr>{cells}</tr>"
+                )
+
+            table_html = f"""
+            <div class="table-data-title">
+                Dados estruturados da tabela
+            </div>
+
+            <div class="table-scroll">
+                <table>
+                    {''.join(rows)}
+                </table>
+            </div>
+            """
+
+        blocks.append(
+            f"""
+            <div class="asset-card">
+
+                <div class="asset-header">
+                    <strong>
+                        {esc(asset_type)}
+                    </strong>
+
+                    <span>
+                        Página {esc(page)}
+                        · {esc(source_kind)}
+                    </span>
+                </div>
+
+                <div class="asset-body">
+                    {image}
+                    {table_html}
+                </div>
+
+            </div>
+            """
+        )
+
+    return "".join(blocks)
+
+
+def build_inline_assets(question):
+    visual = question.get(
+        "visual",
+        {}
+    )
+
+    assets = visual.get(
+        "assets",
+        []
+    )
+
+    if not assets:
+        return ""
+
+    # Mantém a ordem vertical original do PDF.
+    assets = sorted(
+        assets,
+        key=lambda item:
+            item.get(
+                "bbox",
+                {}
+            ).get(
+                "y0",
+                0
+            )
+    )
+
+    blocks = []
+
+    for asset in assets:
+        filename = asset.get(
+            "file"
+        )
+
+        if not filename:
+            continue
+
+        asset_type = asset.get(
+            "asset_type",
+            "VISUAL"
+        )
+
+        image_path = asset_src(
+            filename
+        )
+
+        css_type = (
+            asset_type
+            .lower()
+            .replace("_", "-")
+        )
+
+        image = f"""
+        <div class="inline-asset {css_type}">
+
+            <img
+                src="{esc(image_path)}"
+                class="inline-asset-image"
+                alt="{esc(asset_type)}"
+            >
+
+            <div class="inline-asset-caption">
+                {esc(asset_type.replace("_", " "))}
+            </div>
+
+        </div>
+        """
+
+        blocks.append(image)
+
+        table_data = asset.get(
+            "table_data"
+        )
+
+        if table_data:
+            rows = []
+
+            for row in table_data:
+                cells = "".join(
+                    f"<td>{esc(cell)}</td>"
+                    for cell in row
+                )
+
+                rows.append(
+                    f"<tr>{cells}</tr>"
+                )
+
+            blocks.append(
+                f"""
+                <div class="inline-table-wrapper">
+                    <table class="inline-table">
+                        {''.join(rows)}
+                    </table>
+                </div>
+                """
+            )
+
+    if not blocks:
+        return ""
+
+    return (
+        '<div class="inline-assets">'
+        + "".join(blocks)
+        + '</div>'
+    )
+
+
+
+def load_layout_overrides():
+    global LAYOUT_OVERRIDES
+
+    if not LAYOUT_PATH.exists():
+        LAYOUT_OVERRIDES = {}
+        return
+
+    data = json.loads(
+        LAYOUT_PATH.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    LAYOUT_OVERRIDES = data.get(
+        "questions",
+        {}
+    )
+
+
+def make_semantic_table(layout):
+    headers = layout.get(
+        "headers",
+        []
+    )
+
+    title = layout.get(
+        "title"
+    )
+
+    rows = layout.get(
+        "rows",
+        []
+    )
+
+    notes = layout.get(
+        "notes",
+        []
+    )
+
+    header_html = "".join(
+        f"<th>{esc(value)}</th>"
+        for value in headers
+    )
+
+    body_html = ""
+
+    for row in rows:
+        body_html += (
+            "<tr>"
+            + "".join(
+                f"<td>{esc(value)}</td>"
+                for value in row
+            )
+            + "</tr>"
+        )
+
+    notes_html = ""
+
+    if notes:
+        notes_html = """
+        <div class="semantic-table-notes">
+        """
+
+        for index, note in enumerate(
+            notes,
+            start=1,
+        ):
+            notes_html += (
+                f"<div>"
+                f"*{index if index > 1 else ''}"
+                f"{esc(note)}"
+                f"</div>"
+            )
+
+        notes_html += "</div>"
+
+    title_html = ""
+
+    if title:
+        title_html = f"""
+        <div class="semantic-table-title">
+            {esc(title)}
+        </div>
+        """
+
+    return f"""
+    <div class="semantic-table-wrapper">
+
+        {title_html}
+
+        <table class="semantic-table">
+
+            <thead>
+                <tr>
+                    {header_html}
+                </tr>
+            </thead>
+
+            <tbody>
+                {body_html}
+            </tbody>
+
+        </table>
+
+        {notes_html}
+
+    </div>
+    """
+
+
+def split_for_semantic_table(
+    stem,
+    layout,
+):
+    start_marker = layout.get(
+        "table_start"
+    )
+
+    end_marker = layout.get(
+        "table_end"
+    )
+
+    if not start_marker:
+        return (
+            stem,
+            "",
+        )
+
+    position = stem.find(
+        start_marker
+    )
+
+    if position == -1:
+        return (
+            stem,
+            "",
+        )
+
+    before = stem[
+        :position
+    ].strip()
+
+    if end_marker:
+        end_position = stem.find(
+            end_marker,
+            position,
+        )
+
+        if end_position != -1:
+            after = stem[
+                end_position:
+            ].strip()
+
+            return (
+                before,
+                after,
+            )
+
+    #
+    # Quando não temos marcador explícito
+    # de término, removemos somente o trecho
+    # correspondente à tabela procurando
+    # a última célula registrada.
+    #
+    rows = layout.get(
+        "rows",
+        []
+    )
+
+    if rows:
+        last_row = rows[-1]
+
+        candidates = [
+            str(value)
+            for value in reversed(
+                last_row
+            )
+            if str(value).strip()
+        ]
+
+        for last_value in candidates:
+            end = stem.find(
+                last_value,
+                position,
+            )
+
+            if end != -1:
+                end += len(
+                    last_value
+                )
+
+                after = stem[
+                    end:
+                ].strip()
+
+                return (
+                    before,
+                    after,
+                )
+
+    return (
+        before,
+        "",
+    )
+
+
+def split_reference_for_display(stem, has_assets):
+    """
+    Para questões com elemento visual, tenta reconstruir:
+
+    enunciado
+    imagem
+    referência bibliográfica
+    comando da questão
+    """
+
+    import re
+
+    stem = stem.strip()
+
+    if not has_assets:
+        return stem, None, ""
+
+    pattern = re.compile(
+        r"""
+        (?P<reference>
+            \b
+            [A-ZÁÉÍÓÚÂÊÔÃÕÇ]
+            [A-ZÁÉÍÓÚÂÊÔÃÕÇ\-']{1,}
+            ,
+            \s+
+            .*?
+            (?:19|20)\d{2}
+            \.
+        )
+        """,
+        flags=re.VERBOSE,
+    )
+
+    match = pattern.search(stem)
+
+    if not match:
+        return stem, None, ""
+
+    before = stem[:match.start()].strip()
+
+    reference = (
+        match.group("reference")
+        .strip()
+    )
+
+    after = stem[match.end():].strip()
+
+    return (
+        before,
+        reference,
+        after,
+    )
+
+
+def build_inep_assets(question):
+    visual = question.get(
+        "visual",
+        {}
+    )
+
+    assets = visual.get(
+        "assets",
+        []
+    )
+
+    if not assets:
+        return ""
+
+    assets = sorted(
+        assets,
+        key=lambda asset:
+            asset.get(
+                "bbox",
+                {}
+            ).get(
+                "y0",
+                0,
+            )
+    )
+
+    blocks = []
+
+    for asset in assets:
+
+        filename = asset.get(
+            "file"
+        )
+
+        if not filename:
+            continue
+
+        asset_type = asset.get(
+            "asset_type",
+            "IMAGE",
+        )
+
+        css_type = (
+            asset_type
+            .lower()
+            .replace("_", "-")
+        )
+
+        blocks.append(
+            f"""
+            <div class="inep-visual {css_type}">
+
+                <img
+                    src="{esc(asset_src(filename))}"
+                    class="inep-visual-image"
+                    alt=""
+                >
+
+            </div>
+            """
+        )
+
+        table_data = asset.get(
+            "table_data"
+        )
+
+        if table_data:
+
+            rows = []
+
+            for row in table_data:
+
+                cells = "".join(
+                    f"<td>{esc(cell)}</td>"
+                    for cell in row
+                )
+
+                rows.append(
+                    f"<tr>{cells}</tr>"
+                )
+
+            blocks.append(
+                f"""
+                <div class="inep-table-wrapper">
+
+                    <table class="inep-table">
+                        {''.join(rows)}
+                    </table>
+
+                </div>
+                """
+            )
+
+    return "".join(blocks)
+
+
+def build_question(question):
+    number = question[
+        "question_number"
+    ]
+
+    correct = question[
+        "official_answer"
+    ]
+
+    layout = LAYOUT_OVERRIDES.get(
+        str(number),
+        {}
+    )
+
+    layout_type = layout.get(
+        "type"
+    )
+
+    visual = question.get(
+        "visual",
+        {}
+    )
+
+    assets = visual.get(
+        "assets",
+        []
+    )
+
+    has_assets = bool(
+        assets
+    )
+
+    original = visual.get(
+        "question_original"
+    )
+
+    if original:
+
+        original_html = f"""
+        <img
+            class="original-image"
+            src="{esc(html_src(original))}"
+            alt="Questão {number}"
+        >
+        """
+
+    else:
+
+        original_html = """
+        <div class="missing">
+            Recorte original ausente
+        </div>
+        """
+
+    raw_stem = question["stem"]
+
+    if layout_type == "STRIP_PREFIX":
+        strip_prefix = layout.get(
+            "strip_prefix",
+            ""
+        )
+
+        if strip_prefix:
+            position = raw_stem.find(
+                strip_prefix
+            )
+
+            if position != -1:
+                raw_stem = (
+                    raw_stem[
+                        position
+                        + len(strip_prefix):
+                    ]
+                    .strip()
+                )
+
+    semantic_table_html = ""
+
+    if layout_type == "INLINE_TABLE":
+
+        (
+            stem_before,
+            stem_after,
+        ) = split_for_semantic_table(
+            raw_stem,
+            layout,
+        )
+
+        visual_reference = None
+
+        semantic_table_html = (
+            make_semantic_table(
+                layout
+            )
+        )
+
+    elif (
+        layout_type
+        == "IMAGE_BEFORE_TEXT"
+    ):
+
+        marker = layout.get(
+            "post_image_start",
+            "",
+        )
+
+        position = raw_stem.find(
+            marker
+        )
+
+        if (
+            marker
+            and position != -1
+        ):
+            stem_before = (
+                raw_stem[:position]
+                .strip()
+            )
+
+            stem_after = (
+                raw_stem[position:]
+                .strip()
+            )
+
+        else:
+            stem_before = raw_stem
+            stem_after = ""
+
+        visual_reference = None
+
+    else:
+
+        (
+            stem_before,
+            visual_reference,
+            stem_after,
+        ) = split_reference_for_display(
+            raw_stem,
+            has_assets,
+        )
+
+    inline_visual = (
+        build_inep_assets(
+            question
+        )
+    )
+
+    if visual_reference:
+
+        reference_html = f"""
+        <div class="inep-reference">
+            {esc(visual_reference)}
+        </div>
+        """
+
+    else:
+
+        reference_html = ""
+
+    if stem_after:
+
+        after_html = f"""
+        <div class="stem inep-command">
+            {esc(stem_after)}
+        </div>
+        """
+
+    else:
+
+        after_html = ""
+
+    alternatives = ""
+
+    for letter in "ABCD":
+
+        alt_text = question[
+            "alternatives"
+        ].get(
+            letter,
+            "",
+        )
+
+        correct_class = (
+            " correct"
+            if letter == correct
+            else ""
+        )
+
+        badge = (
+            '<span class="badge">'
+            'GABARITO'
+            '</span>'
+            if letter == correct
+            else ""
+        )
+
+        alternatives += f"""
+        <div class="alternative{correct_class}">
+
+            <div class="letter">
+                {letter}
+            </div>
+
+            <div class="alt-text">
+                {esc(alt_text)}
+            </div>
+
+            {badge}
+
+        </div>
+        """
+
+    verification = question.get(
+        "verification",
+        {}
+    )
+
+    return f"""
+    <section
+        class="question"
+        id="q{number:03d}"
+    >
+
+        <header class="question-header">
+
+            <div>
+
+                <div class="qtitle">
+                    QUESTÃO {number}
+                </div>
+
+                <div class="metadata">
+                    ITEM {esc(question.get('item_code') or '—')}
+                    · V. {esc(question.get('version_code') or '—')}
+                    · Página {esc(question.get('page_start'))}
+                </div>
+
+            </div>
+
+            <div class="answer-box">
+                Gabarito
+                <strong>
+                    {esc(correct)}
+                </strong>
+            </div>
+
+        </header>
+
+        <div class="main-grid">
+
+            <div class="original-panel">
+
+                <div class="panel-title">
+                    ORIGINAL DA QUESTÃO
+                </div>
+
+                <div class="original-scroll">
+                    {original_html}
+                </div>
+
+            </div>
+
+            <div class="structured-panel">
+
+                <div class="panel-title">
+                    EXTRAÇÃO ESTRUTURADA
+                </div>
+
+                <div class="stem">
+                    {esc(stem_before)}
+                </div>
+
+                {
+                    semantic_table_html
+                    if layout_type == "INLINE_TABLE"
+                    else inline_visual
+                }
+
+                {reference_html}
+
+                {after_html}
+
+                <div class="alternatives">
+                    {alternatives}
+                </div>
+
+                <details class="technical-details">
+
+                    <summary>
+                        Detalhes técnicos
+                    </summary>
+
+                    <div class="technical-content">
+
+                        <div>
+                            <span>Texto</span>
+                            <strong>
+                                {esc(
+                                    verification.get(
+                                        'text',
+                                        '—'
+                                    )
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>Integridade</span>
+                            <strong>
+                                {esc(
+                                    verification.get(
+                                        'token_integrity',
+                                        '—'
+                                    )
+                                )}
+                            </strong>
+                        </div>
+
+                        <div>
+                            <span>Gabarito</span>
+                            <strong>
+                                {esc(
+                                    verification.get(
+                                        'answer_key',
+                                        '—'
+                                    )
+                                )}
+                            </strong>
+                        </div>
+
+                    </div>
+
+                </details>
+
+            </div>
+
+        </div>
+
+        <footer class="footer">
+
+            <a href="#top">
+                ↑ topo
+            </a>
+
+            {
+                f'<a href="#q{number + 1:03d}">'
+                f'próxima questão →'
+                f'</a>'
+                if number < 100
+                else ''
+            }
+
+        </footer>
+
+    </section>
+    """
+
+
+def main():
+    load_layout_overrides()
+
+    data = json.loads(
+        MASTER_PATH.read_text(
+            encoding="utf-8"
+        )
+    )
+
+    questions = data[
+        "questions"
+    ]
+
+    navigation = "".join(
+        f'<a href="#q{q["question_number"]:03d}">'
+        f'{q["question_number"]}'
+        f'</a>'
+        for q in questions
+    )
+
+    cards = "\n".join(
+        build_question(q)
+        for q in questions
+    )
+
+    document = f"""<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+<meta charset="utf-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+>
+
+<title>
+Auditoria Visual V5 — Revalida 2026/1
+</title>
+
+<style>
+
+* {{
+    box-sizing: border-box;
+}}
+
+body {{
+    margin: 0;
+    background: #f2f4f7;
+    color: #17202a;
+    font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Arial,
+        sans-serif;
+}}
+
+.top {{
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: white;
+    border-bottom: 1px solid #ddd;
+    padding: 18px 24px;
+}}
+
+.top h1 {{
+    margin: 0;
+    font-size: 21px;
+}}
+
+.top p {{
+    margin: 5px 0 0;
+    color: #667085;
+    font-size: 13px;
+}}
+
+.nav {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 12px;
+}}
+
+.nav a {{
+    width: 29px;
+    height: 29px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    background: #eef2f6;
+    color: #344054;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 700;
+}}
+
+.container {{
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 24px;
+}}
+
+.question {{
+    background: white;
+    border: 1px solid #dfe4ea;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 32px;
+    box-shadow:
+        0 2px 8px
+        rgba(0,0,0,.05);
+}}
+
+.question-header {{
+    padding: 17px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom:
+        1px solid #e5e7eb;
+}}
+
+.qtitle {{
+    font-size: 20px;
+    font-weight: 800;
+}}
+
+.metadata {{
+    color: #667085;
+    font-size: 12px;
+    margin-top: 4px;
+}}
+
+.answer-box {{
+    background: #eefaf1;
+    border: 1px solid #a7d9b5;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 12px;
+}}
+
+.answer-box strong {{
+    margin-left: 7px;
+    background: #1d7f42;
+    color: white;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+}}
+
+.main-grid {{
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1fr)
+        minmax(0, 1fr);
+}}
+
+.original-panel {{
+    background: #f8f9fb;
+    border-right:
+        1px solid #e5e7eb;
+}}
+
+.panel-title,
+.assets-title {{
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .07em;
+    color: #667085;
+    padding: 11px 15px;
+    border-bottom:
+        1px solid #e5e7eb;
+}}
+
+.original-scroll {{
+    padding: 15px;
+    text-align: center;
+    overflow: auto;
+    max-height: 850px;
+}}
+
+.original-image {{
+    max-width: 100%;
+    height: auto;
+    background: white;
+    box-shadow:
+        0 1px 5px
+        rgba(0,0,0,.12);
+}}
+
+.stem {{
+    padding: 20px;
+    font-size: 15px;
+    line-height: 1.55;
+}}
+
+.alternatives {{
+    padding: 0 20px 20px;
+}}
+
+.alternative {{
+    display: grid;
+    grid-template-columns:
+        36px 1fr auto;
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid #e1e5ea;
+    border-radius: 8px;
+    margin-bottom: 9px;
+    line-height: 1.4;
+}}
+
+.alternative.correct {{
+    border: 2px solid #32a15a;
+    background: #effaf2;
+}}
+
+.letter {{
+    width: 29px;
+    height: 29px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef1f4;
+    border-radius: 50%;
+    font-weight: 800;
+}}
+
+.correct .letter {{
+    background: #208846;
+    color: white;
+}}
+
+.alt-text {{
+    padding-top: 3px;
+}}
+
+.badge {{
+    background: #208846;
+    color: white;
+    font-size: 9px;
+    font-weight: 800;
+    padding: 4px 6px;
+    border-radius: 4px;
+    height: fit-content;
+}}
+
+.technical-details {{
+    margin: 4px 20px 20px;
+    border-top: 1px solid #eef0f2;
+    padding-top: 10px;
+}}
+
+.technical-details summary {{
+    cursor: pointer;
+    color: #7a828d;
+    font-size: 11px;
+    user-select: none;
+}}
+
+.technical-details summary:hover {{
+    color: #344054;
+}}
+
+.technical-content {{
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: #f8f9fb;
+    border: 1px solid #e5e7eb;
+    border-radius: 7px;
+    font-size: 10px;
+}}
+
+.technical-content div {{
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+    padding: 4px 0;
+}}
+
+.technical-content span {{
+    color: #667085;
+}}
+
+.technical-content strong {{
+    color: #344054;
+    font-weight: 600;
+}}
+
+
+.assets-section {{
+    border-top:
+        1px solid #e5e7eb;
+}}
+
+.assets-grid {{
+    padding: 18px;
+    display: grid;
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(280px, 1fr)
+        );
+    gap: 16px;
+}}
+
+.asset-card {{
+    border: 1px solid #dfe4ea;
+    border-radius: 9px;
+    overflow: hidden;
+}}
+
+.asset-header {{
+    background: #f7f8fa;
+    border-bottom: 1px solid #ddd;
+    padding: 9px 12px;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    font-size: 11px;
+}}
+
+.asset-header span {{
+    color: #667085;
+}}
+
+.asset-body {{
+    padding: 12px;
+    text-align: center;
+}}
+
+.asset-image {{
+    max-width: 100%;
+    max-height: 600px;
+    object-fit: contain;
+}}
+
+.no-assets {{
+    padding: 18px;
+    background: #fafafa;
+    border: 1px dashed #ccc;
+    border-radius: 7px;
+    color: #667085;
+    font-size: 12px;
+    grid-column: 1 / -1;
+}}
+
+.table-data-title {{
+    margin-top: 14px;
+    font-weight: 700;
+    font-size: 12px;
+    text-align: left;
+}}
+
+.table-scroll {{
+    overflow-x: auto;
+    margin-top: 7px;
+}}
+
+table {{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}}
+
+td {{
+    border: 1px solid #ddd;
+    padding: 5px;
+    text-align: left;
+}}
+
+.footer {{
+    display: flex;
+    justify-content: space-between;
+    padding: 11px 18px;
+    border-top:
+        1px solid #e5e7eb;
+}}
+
+.footer a {{
+    color: #175cd3;
+    text-decoration: none;
+    font-size: 12px;
+}}
+
+.missing {{
+    color: #b42318;
+    padding: 30px;
+}}
+
+.inline-assets {{
+    padding:
+        0 24px
+        20px 24px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    gap: 14px;
+}}
+
+.inline-asset {{
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    margin:
+        4px 0
+        14px 0;
+}}
+
+.inline-asset-image {{
+    display: block;
+
+    max-width: 72%;
+    max-height: 520px;
+
+    width: auto;
+    height: auto;
+
+    object-fit: contain;
+
+    background: white;
+}}
+
+.inline-asset.clinical-image
+.inline-asset-image {{
+    max-width: 68%;
+}}
+
+.inline-asset.radiology
+.inline-asset-image {{
+    max-width: 78%;
+}}
+
+.inline-asset.ecg
+.inline-asset-image {{
+    max-width: 92%;
+}}
+
+.inline-asset.diagram
+.inline-asset-image {{
+    max-width: 82%;
+}}
+
+.inline-asset-caption {{
+    margin-top: 6px;
+
+    font-size: 9px;
+    color: #858b94;
+
+    text-align: center;
+
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}}
+
+.inline-table-wrapper {{
+    width: 92%;
+
+    overflow-x: auto;
+
+    margin:
+        4px auto
+        18px auto;
+}}
+
+.inline-table {{
+    width: 100%;
+
+    border-collapse:
+        collapse;
+
+    font-size: 11px;
+}}
+
+.inline-table td {{
+    border:
+        1px solid #9fa7b2;
+
+    padding:
+        5px 7px;
+
+    text-align:
+        center;
+}}
+
+
+@media (
+    max-width: 900px
+) {{
+
+    .main-grid {{
+        grid-template-columns: 1fr;
+    }}
+
+    .original-panel {{
+        border-right: 0;
+        border-bottom:
+            1px solid #e5e7eb;
+    }}
+
+}}
+
+
+.inep-visual {{
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    margin: 3px 0 6px;
+}}
+
+.inep-visual-image {{
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: 72%;
+    max-height: 520px;
+    object-fit: contain;
+}}
+
+.inep-visual.clinical-image
+.inep-visual-image {{
+    max-width: 68%;
+}}
+
+.inep-visual.radiology
+.inep-visual-image {{
+    max-width: 82%;
+}}
+
+.inep-visual.diagram
+.inep-visual-image {{
+    max-width: 82%;
+}}
+
+.inep-reference {{
+    width: 80%;
+    margin: 4px auto 14px;
+    text-align: center;
+    color: #4e5661;
+    font-size: 10px;
+    line-height: 1.35;
+}}
+
+.inep-command {{
+    padding-top: 5px;
+}}
+
+.inep-table-wrapper {{
+    width: 90%;
+    margin: 4px auto 14px;
+    overflow-x: auto;
+}}
+
+.inep-table {{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}}
+
+.inep-table td {{
+    border: 1px solid #9ca3af;
+    padding: 5px 7px;
+    text-align: center;
+}}
+
+
+.semantic-table-title {{
+    margin-bottom: 7px;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: left;
+    color: #303640;
+}}
+
+.semantic-table-wrapper {{
+    width: 92%;
+    margin: 6px auto 18px;
+    overflow-x: auto;
+}}
+
+.semantic-table {{
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    font-size: 12px;
+    line-height: 1.3;
+}}
+
+.semantic-table th {{
+    background: #f0f2f4;
+    border: 1px solid #8e969f;
+    padding: 7px 8px;
+    text-align: center;
+    font-weight: 700;
+}}
+
+.semantic-table td {{
+    border: 1px solid #aab0b7;
+    padding: 6px 8px;
+    text-align: center;
+}}
+
+.semantic-table td:first-child {{
+    text-align: left;
+}}
+
+.semantic-table-notes {{
+    margin-top: 6px;
+    font-size: 10px;
+    color: #4f5660;
+    line-height: 1.4;
+}}
+
+</style>
+
+</head>
+
+<body>
+
+<header
+    class="top"
+    id="top"
+>
+
+    <h1>
+        Auditoria Visual V5 — Revalida 2026/1
+    </h1>
+
+    <p>
+        Original × extração × gabarito × assets visuais
+    </p>
+
+    <nav class="nav">
+        {navigation}
+    </nav>
+
+</header>
+
+<main class="container">
+    {cards}
+</main>
+
+</body>
+</html>
+"""
+
+    OUTPUT_PATH.write_text(
+        document,
+        encoding="utf-8"
+    )
+
+    questions_with_assets = sum(
+        1
+        for q in questions
+        if q.get(
+            "visual",
+            {}
+        ).get(
+            "has_specific_assets",
+            False
+        )
+    )
+
+    print()
+    print("=" * 78)
+    print("AUDITORIA VISUAL V5 — LAYOUT SEMÂNTICO")
+    print("=" * 78)
+
+    print(
+        f"Questões: "
+        f"{len(questions)}"
+    )
+
+    print(
+        f"Questões com assets: "
+        f"{questions_with_assets}"
+    )
+
+    print()
+    print(
+        f"Arquivo: "
+        f"{OUTPUT_PATH}"
+    )
+
+    print()
+    print(
+        "STATUS: VISUAL_AUDIT_V5_READY"
+    )
+
+
+if __name__ == "__main__":
+    main()
