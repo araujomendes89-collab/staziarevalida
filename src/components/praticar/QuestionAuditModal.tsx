@@ -74,7 +74,7 @@ export const QuestionAuditModal: React.FC<QuestionAuditModalProps> = ({
   const handleCopyAudit = () => {
     if (!auditResult) return;
     const { opusFinalAudit, officialKey, ragProtocolMatch } = auditResult;
-    const text = `📋 AUDITORIA DE QUESTÃO — PRAXIS REVALIDA 2026
+    const text = `📋 AUDITORIA DE QUESTÃO — StaziaMed Revalida 2026
 Questão: ${question.id} (${question.specialty || "Clínica Médica"} - ${question.examYear || "2026"})
 Gabarito Oficial: ${officialKey}
 

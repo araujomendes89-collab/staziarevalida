@@ -376,7 +376,7 @@ export class AiService {
 
     try {
       // 1. First try the universal generate endpoint with Claude Sonnet 5 as default
-      const systemPrompt = `Você é o Mentor IA oficial do PRAXIS REVALIDA (Brasil).
+      const systemPrompt = `Você é o Mentor IA oficial do StaziaMed Revalida (Brasil).
 Você é um médico preceptor sênior com profundo domínio da Matriz de Correspondência do INEP e dos Protocolos do Ministério da Saúde / SUS.
 Seu tom é técnico, objetivo, cirúrgico e focado em alta densidade de acerto.
 
@@ -424,7 +424,7 @@ Pergunta do aluno: ${params.userQuery || "Análise completa da questão."}`;
         : "";
 
       return {
-        text: `${memoryPrefix}### 🩺 Análise Clínica Estruturada (PRAXIS REVALIDA)
+        text: `${memoryPrefix}### 🩺 Análise Clínica Estruturada (StaziaMed Revalida)
 
 **Pista Decisiva (Key Finding):** ${params.questionContext.keyFinding}
 

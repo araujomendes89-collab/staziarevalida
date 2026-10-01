@@ -49,7 +49,7 @@ export async function generateVoiceTutorExplanation(params: {
 }> {
   const { userInput, contextArea = "Geral", studentLevel = "Interno / Médico Revalidando", preferredModel = "gemini" } = params;
 
-  const systemInstruction = `Você é o Preceptor e Tutor por Voz do PRAXIS REVALIDA.
+  const systemInstruction = `Você é o Preceptor e Tutor por Voz do StaziaMed Revalida.
 Sua missão é explicar conceitos médicos difíceis para o aluno de forma ORAL, fluida, socrática e extremamente memorável (ideal para Text-to-Speech e escuta em trânsito ou caminhada).
 
 DIRETRIZES PARA RESPOSTA FALADA (TTS):
@@ -149,7 +149,7 @@ export async function generateTransitQuizQuestion(params: {
 }): Promise<TransitQuizQuestion> {
   const { area, questionNumber, totalQuestions, preferredModel = "gemini" } = params;
 
-  const systemInstruction = `Você é o Examinador Oral do PRAXIS REVALIDA em "MODO TRÂNSITO".
+  const systemInstruction = `Você é o Examinador Oral do StaziaMed Revalida em "MODO TRÂNSITO".
 O aluno está ouvindo o áudio no carro ou fone de ouvido sem olhar para a tela.
 Você deve formular 1 pergunta oral objetiva e instigante sobre a especialidade médica solicitada.
 
@@ -260,7 +260,7 @@ export async function evaluateTransitSpokenAnswer(params: {
 }): Promise<TransitEvaluationResult> {
   const { question, spokenAnswer, preferredModel = "gemini" } = params;
 
-  const systemInstruction = `Você é o Preceptor e Examinador Oral do PRAXIS REVALIDA em "MODO TRÂNSITO".
+  const systemInstruction = `Você é o Preceptor e Examinador Oral do StaziaMed Revalida em "MODO TRÂNSITO".
 O aluno respondeu por voz a uma pergunta oral de medicina.
 Você deve avaliar a precisão clínica da resposta falada dele, identificar se ele acertou a conduta/diagnóstico, e gerar um feedback falado acolhedor e direto (TTS).
 

@@ -24,7 +24,7 @@ export const DataExportView: React.FC = () => {
   const generateJSON = () => {
     return JSON.stringify(
       {
-        dataset_name: "PRAXIS_REVALIDA_INEP_CANONICAL_2021_2026",
+        dataset_name: "STAZIAMED_REVALIDA_INEP_CANONICAL_2021_2026",
         version: "2.4.0",
         generated_at: new Date().toISOString(),
         stats: REVALIDA_GLOBAL_STATS,
@@ -82,7 +82,7 @@ export const DataExportView: React.FC = () => {
 
   const generateSQL = () => {
     return `-- =========================================================================
--- PRAXIS REVALIDA INEP DDL SCHEMA & SEED DATA (2021-2026)
+-- StaziaMed Revalida INEP DDL SCHEMA & SEED DATA (2021-2026)
 -- Target: PostgreSQL 14+ / Cloud SQL
 -- =========================================================================
 
@@ -180,7 +180,7 @@ ${questions
 
 **Data de Emissão:** ${new Date().toLocaleDateString("pt-BR")}
 **Órgão de Origem dos Dados:** Instituto Nacional de Estudos e Pesquisas Educacionais Anísio Teixeira (INEP) / gov.br
-**Plataforma de Engenharia:** PRAXIS Revalida Knowledge Core
+**Plataforma de Engenharia:** StaziaMed Revalida Knowledge Core
 
 ---
 

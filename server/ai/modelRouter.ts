@@ -408,7 +408,7 @@ function handleOfflineFallback(
   }
 
   return {
-    text: `### 🩺 Análise Clínica Estruturada (PRAXIS REVALIDA / Diretrizes Oficiais MS)
+    text: `### 🩺 Análise Clínica Estruturada (StaziaMed Revalida / Diretrizes Oficiais MS)
 
 **1. Raciocínio Clínico:** O quadro demanda reconhecimento prioritário dos sinais de alerta e estabilização clínica antes de propedêuticas invasivas.
 **2. Conduta Padrão-Ouro:** Aplicar o protocolo preconizado pelo Ministério da Saúde e pelas Sociedades Brasileiras de Especialidade.

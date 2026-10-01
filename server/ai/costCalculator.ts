@@ -1,5 +1,5 @@
 /**
- * Centralized Token Pricing & Cost Calculation Engine for PRAXIS REVALIDA
+ * Centralized Token Pricing & Cost Calculation Engine for StaziaMed Revalida
  * Grounded in official Anthropic and Google Gemini 2026 pricing tables.
  */
 

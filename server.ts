@@ -78,7 +78,7 @@ async function startServer() {
     const claudeStatus = getClaudeEngineStatus();
     res.json({
       status: "ok",
-      appName: "PRAXIS REVALIDA",
+      appName: "StaziaMed Revalida",
       timestamp: new Date().toISOString(),
       hasGeminiKey: !!process.env.GEMINI_API_KEY,
       hasClaudeKey: claudeStatus.hasDirectKey,
@@ -645,7 +645,7 @@ async function startServer() {
         });
       }
 
-      const systemInstruction = `Você é o RADAR GROUNDED DE DIRETRIZES CLÍNICAS DO SUS do PRAXIS REVALIDA.
+      const systemInstruction = `Você é o RADAR GROUNDED DE DIRETRIZES CLÍNICAS DO SUS do StaziaMed Revalida.
 Sua missão é auditar em tempo real se uma determinada conduta, diretriz ou protocolo clínico está VIGENTE, ATUALIZADA ou OBSOLETA para a prova do Revalida INEP.
 Você analisa normas do Ministério da Saúde (MS), CONITEC, FEBRASGO, Sociedade Brasileira de Cardiologia (SBC), Sociedade Brasileira de Diabetes (SBD), Sociedade Brasileira de Pediatria (SBP) e Colégio Brasileiro de Cirurgiões (CBC).
 Retorne estritamente um JSON estruturado com fontes grounding, status ("CONFIRMED_CURRENT", "OUTDATED_DETECTED", "CONTROVERSIAL"), condutas obsoletas que são pegadinhas no INEP e a conduta correta.`;
@@ -704,7 +704,7 @@ Formato JSON Obrigatório:
         return res.json(generateFallbackIneditaQuestion(gapItem));
       }
 
-      const systemInstruction = `Você é o MOTOR DE CRIAÇÃO DE QUESTÕES INÉDITAS do PRAXIS REVALIDA (Padrão INEP 2026).
+      const systemInstruction = `Você é o MOTOR DE CRIAÇÃO DE QUESTÕES INÉDITAS do StaziaMed Revalida (Padrão INEP 2026).
 Sua missão é criar uma questão médica inédita e de altíssimo nível clínico, rigorosamente idêntica ao estilo de redação das provas oficiais do Revalida INEP.
 
 DIRETRIZES FUNDAMENTAIS DO INEP:
@@ -1072,7 +1072,7 @@ Formato JSON esperado:
         });
       }
 
-      const systemInstruction = `Você é o Mentor IA oficial do PRAXIS REVALIDA, o Sistema Operacional definitivo para médicos se prepararem para o Revalida INEP (Brasil).
+      const systemInstruction = `Você é o Mentor IA oficial do StaziaMed Revalida, o Sistema Operacional definitivo para médicos se prepararem para o Revalida INEP (Brasil).
 Você é um médico preceptor e educador sênior com profundo conhecimento da Matriz de Referência do INEP, das 5 grandes áreas (Clínica Médica, Cirurgia, Ginecologia e Obstetrícia, Pediatria, Medicina de Família e Comunidade / Saúde Coletiva), dos Protocolos do Ministério da Saúde, SUS, CONITEC e das Sociedades Brasileiras (SBC, FEBRASGO, SBP, CBC, SBMFC).
 
 Seu tom é:
@@ -1152,11 +1152,11 @@ Pergunta do aluno: ${userQuery || "Explique o raciocínio detalhado desta quest�
 
       if (!ai) {
         return res.json({
-          reply: `Olá! Sou o Preceptor IA do PRAXIS REVALIDA. Estou pronto para tirar qualquer dúvida clínica, explicar protocolos do Ministério da Saúde (SUS), propor casos rápidos ou analisar questões do INEP. Em que posso te apoiar agora?`,
+          reply: `Olá! Sou o Preceptor IA do StaziaMed Revalida. Estou pronto para tirar qualquer dúvida clínica, explicar protocolos do Ministério da Saúde (SUS), propor casos rápidos ou analisar questões do INEP. Em que posso te apoiar agora?`,
         });
       }
 
-      const systemInstruction = `Você é o PRECEPTOR MÉDICO VIRTUAL 24H do PRAXIS REVALIDA.
+      const systemInstruction = `Você é o PRECEPTOR MÉDICO VIRTUAL 24H do StaziaMed Revalida.
 Você ajuda médicos em preparação intensiva para o Revalida INEP.
 Suas características:
 - Domínio total da Matriz de Correspondência do INEP (Clínica Médica, Cirurgia Geral, GO, Pediatria, Medicina de Família e Comunidade / SUS).
@@ -1276,7 +1276,7 @@ Formato JSON:
         return res.json(getFallbackPatientResponse(patientProfile, doctorStatement, actionType));
       }
 
-      const systemInstruction = `Você é o SIMULADOR DE PACIENTE VIRTUAL para o módulo REVALIDA PRÁTICA (OSCE) do PRAXIS REVALIDA.
+      const systemInstruction = `Você é o SIMULADOR DE PACIENTE VIRTUAL para o módulo REVALIDA PRÁTICA (OSCE) do StaziaMed Revalida.
 Você interpretará com fidelidade o paciente clínico ou familiar descrito abaixo.
 
 Perfil do Paciente:
@@ -1403,7 +1403,7 @@ Retorne um JSON com a avaliação rigorosa baseada no padrão INEP:
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`PRAXIS REVALIDA Server running on http://0.0.0.0:${PORT}`);
+    console.log(`StaziaMed Revalida Server running on http://0.0.0.0:${PORT}`);
   });
 }
 

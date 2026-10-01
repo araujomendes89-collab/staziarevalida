@@ -198,7 +198,7 @@ export const GuidelineWatchView: React.FC = () => {
       newStatus: selectedNewStatus,
       guidelineTitle: reviewingAlert.guidelineTitle,
       changedBy: reviewerName,
-      approvedBy: "Conselho Editorial PRAXIS Revalida",
+      approvedBy: "Conselho Editorial StaziaMed Revalida",
       reason: reviewJustification || "Revisão e homologação de diretriz médica atualizada.",
       impactLevel: selectedImpact,
     });

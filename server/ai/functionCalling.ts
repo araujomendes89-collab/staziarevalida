@@ -697,7 +697,7 @@ export async function runAutonomousAgentWithTools(params: {
         },
       ];
 
-      const systemInstruction = `Você é o Preceptor e Mentor de IA Autônomo do PRAXIS REVALIDA.
+      const systemInstruction = `Você é o Preceptor e Mentor de IA Autônomo do StaziaMed Revalida.
 Você possui um conjunto de ferramentas internas de alta precisão médica:
 - consultar_desempenho()
 - identificar_pontos_fracos()

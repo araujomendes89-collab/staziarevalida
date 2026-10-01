@@ -13,7 +13,7 @@ export class CalendarService {
     durationMinutes: number;
     location?: string;
   }): string {
-    const { title, description, startDate, durationMinutes, location = "PRAXIS Revalida / Sala de Estudos Online" } = params;
+    const { title, description, startDate, durationMinutes, location = "StaziaMed Revalida / Sala de Estudos Online" } = params;
 
     const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
 
@@ -25,7 +25,7 @@ export class CalendarService {
     const endFormatted = formatGCalDate(endDate);
 
     const baseUrl = "https://calendar.google.com/calendar/render?action=TEMPLATE";
-    const textParam = `&text=${encodeURIComponent(`[PRAXIS Revalida] ${title}`)}`;
+    const textParam = `&text=${encodeURIComponent(`[StaziaMed Revalida] ${title}`)}`;
     const datesParam = `&dates=${startFormatted}/${endFormatted}`;
     const detailsParam = `&details=${encodeURIComponent(description)}`;
     const locationParam = `&location=${encodeURIComponent(location)}`;
@@ -43,7 +43,7 @@ export class CalendarService {
     durationMinutes: number;
     location?: string;
   }): string {
-    const { title, description, startDate, durationMinutes, location = "PRAXIS Revalida" } = params;
+    const { title, description, startDate, durationMinutes, location = "StaziaMed Revalida" } = params;
     const endDate = new Date(startDate.getTime() + durationMinutes * 60000);
 
     const formatIcsDate = (date: Date) => {
@@ -53,7 +53,7 @@ export class CalendarService {
     return [
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
-      "PRODID:-//PRAXIS Revalida//Study Planner//PT",
+      "PRODID:-//StaziaMed Revalida//Study Planner//PT",
       "CALSCALE:GREGORIAN",
       "METHOD:PUBLISH",
       "BEGIN:VEVENT",
@@ -61,7 +61,7 @@ export class CalendarService {
       `DTSTAMP:${formatIcsDate(new Date())}`,
       `DTSTART:${formatIcsDate(startDate)}`,
       `DTEND:${formatIcsDate(endDate)}`,
-      `SUMMARY:[PRAXIS Revalida] ${title}`,
+      `SUMMARY:[StaziaMed Revalida] ${title}`,
       `DESCRIPTION:${description.replace(/\n/g, "\\n")}`,
       `LOCATION:${location}`,
       "STATUS:CONFIRMED",
@@ -104,7 +104,7 @@ export class CalendarService {
             `DTEND:${formatIcsDate(endDate)}`,
             `SUMMARY:[Revalida] ${block.title}`,
             `DESCRIPTION:${block.description || block.title}\\nÁrea: ${day.primaryArea}\\nMeta INEP: +${(day.expectedScoreGain || 0).toFixed(1)} pts`,
-            `LOCATION:PRAXIS Revalida (${day.primaryTopicName})`,
+            `LOCATION:StaziaMed Revalida (${day.primaryTopicName})`,
             "STATUS:CONFIRMED",
             "END:VEVENT",
           ].join("\r\n")
@@ -116,7 +116,7 @@ export class CalendarService {
       "BEGIN:VCALENDAR",
       "VERSION:2.0",
       `X-WR-CALNAME:Cronograma Revalida - ${user.name}`,
-      "PRODID:-//PRAXIS Revalida//Adaptive Calendar//PT",
+      "PRODID:-//StaziaMed Revalida//Adaptive Calendar//PT",
       "CALSCALE:GREGORIAN",
       "METHOD:PUBLISH",
       ...events,
@@ -286,7 +286,7 @@ export class CalendarService {
       `Raciocínio INEP: ${mission.rationale}\n\n` +
       `Tarefas:\n` +
       mission.tasks.map((t, idx) => `${idx + 1}. ${t.description} (${t.minutes} min)`).join("\n") +
-      `\n\nAcesse o PRAXIS REVALIDA para iniciar seu treino com IA.`;
+      `\n\nAcesse o StaziaMed Revalida para iniciar seu treino com IA.`;
 
     const gcalUrl = this.generateGoogleCalendarUrl({
       title: mission.title,

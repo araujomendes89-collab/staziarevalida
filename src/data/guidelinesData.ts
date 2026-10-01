@@ -165,7 +165,7 @@ export const SEED_GUIDELINE_AUDIT_LOGS: GuidelineAuditLog[] = [
     newStatus: "OFFICIAL_ANSWER_HISTORICAL",
     guidelineTitle: "Diretrizes Brasileiras de Hipertensão Arterial — 2026 (SBC)",
     changedBy: "Dr. Rodrigo Valente Mendes (CRM-SP 184.920 - Cardiologia)",
-    approvedBy: "Dra. Carolina Albuquerque (Conselho Editorial PRAXIS)",
+    approvedBy: "Dra. Carolina Albuquerque (Conselho Editorial StaziaMed)",
     timestamp: "2026-05-14T10:30:00Z",
     reason: "Gabarito histórico da prova de 2022 considerou monoterapia com IECA (Alternativa B), porém sob a diretriz de 2026 a conduta indicada é combinação fixa IECA + BCC (Alternativa C).",
     impactLevel: "ALTO"
@@ -178,7 +178,7 @@ export const SEED_GUIDELINE_AUDIT_LOGS: GuidelineAuditLog[] = [
     newStatus: "OUTDATED",
     guidelineTitle: "Calendário Nacional de Vacinação do SUS — PNI 2026",
     changedBy: "Dra. Mariana Rios (CRM-RJ 142.110 - Pediatria)",
-    approvedBy: "Dr. Rodrigo Valente Mendes (Conselho Editorial PRAXIS)",
+    approvedBy: "Dr. Rodrigo Valente Mendes (Conselho Editorial StaziaMed)",
     timestamp: "2026-02-01T14:15:00Z",
     reason: "A VOP foi descontinuada no Brasil em 2024/2025; o esquema atual é 100% VIP injetável. Gabarito histórico mantido com alerta clínico.",
     impactLevel: "CRITICO"
@@ -191,7 +191,7 @@ export const SEED_GUIDELINE_AUDIT_LOGS: GuidelineAuditLog[] = [
     newStatus: "UPDATED_GUIDELINE",
     guidelineTitle: "Diretrizes SBD 2026: Nefroproteção no DM2",
     changedBy: "Dr. Lucas Fontes (CRM-MG 98.740 - Endocrinologia)",
-    approvedBy: "Dra. Carolina Albuquerque (Conselho Editorial PRAXIS)",
+    approvedBy: "Dra. Carolina Albuquerque (Conselho Editorial StaziaMed)",
     timestamp: "2026-03-10T16:45:00Z",
     reason: "Adicionada nota de atualização sobre indicação de Dapagliflozina/Empagliflozina independente do controle glicêmico na presença de albuminúria > 30 mg/g.",
     impactLevel: "MEDIO"

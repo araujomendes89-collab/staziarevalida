@@ -450,7 +450,7 @@ export const StudentMemoryView: React.FC<StudentMemoryViewProps> = ({
             </p>
           </div>
 
-          {/* Memória Real (PRAXIS REVALIDA) */}
+          {/* Memória Real (StaziaMed Revalida) */}
           <div className="p-4 rounded-xl bg-purple-950/25 border border-purple-500/40 space-y-2">
             <div className="flex items-center justify-between text-xs text-purple-300 font-bold">
               <span className="flex items-center gap-1.5">
