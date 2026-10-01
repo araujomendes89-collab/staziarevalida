@@ -1,8 +1,5 @@
 import React, { useState } from "react";
 import {
-  Mail,
-  Lock,
-  User as UserIcon,
   Eye,
   EyeOff,
   ArrowRight,
@@ -10,18 +7,103 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  UserPlus,
 } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { motion, useReducedMotion } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { StaziaMedLogo } from "../brand/StaziaMedLogo";
 import { getPurchaseIntent } from "../billing/pricingTypes";
 
-type AuthMode = "ENTRY" | "LOGIN" | "SIGNUP" | "FORGOT_PASSWORD";
+type AuthMode = "LOGIN" | "SIGNUP" | "FORGOT_PASSWORD";
+
+type FieldErrors = {
+  name?: string;
+  email?: string;
+  password?: string;
+  confirmPassword?: string;
+};
+
+// Curva e duração do deslizamento do painel (mesmas do STEA Code Drop #002).
+const SLIDE_EASE = [0.22, 1, 0.36, 1] as const;
+const SLIDE_DURATION = 0.65;
+
+const INPUT_BASE =
+  "w-full min-h-[44px] px-3.5 rounded-[11px] border text-sm outline-none transition-all bg-[#FAFBFC] text-slate-900 placeholder:text-slate-400 hover:border-slate-300 focus:bg-white focus:border-teal-600/70 focus:ring-4 focus:ring-teal-500/10 disabled:opacity-60";
+
+const HERO_BACKGROUND =
+  "radial-gradient(circle at 25% 20%, rgba(0,210,180,.28), transparent 42%), " +
+  "radial-gradient(circle at 85% 85%, rgba(2,132,199,.22), transparent 38%), " +
+  "linear-gradient(160deg, #0A1C3E 0%, #0E2856 55%, #0B3552 100%)";
+
+const GoogleIcon = () => (
+  <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+    <path
+      fill="#4285F4"
+      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+    />
+    <path
+      fill="#34A853"
+      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+    />
+    <path
+      fill="#FBBC05"
+      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+    />
+    <path
+      fill="#EA4335"
+      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+    />
+  </svg>
+);
+
+interface FieldProps {
+  id: string;
+  label: string;
+  error?: string;
+  labelAction?: React.ReactNode;
+  children: React.ReactNode;
+}
+
+const Field: React.FC<FieldProps> = ({ id, label, error, labelAction, children }) => (
+  <div className="space-y-1.5">
+    <div className="flex items-center justify-between gap-2">
+      <label htmlFor={id} className="block text-xs font-bold text-slate-700">
+        {label}
+      </label>
+      {labelAction}
+    </div>
+    {children}
+    {error && <p className="text-[11px] text-rose-600 font-medium pl-1">{error}</p>}
+  </div>
+);
+
+interface PasswordInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {
+  visible: boolean;
+  onToggle: () => void;
+  hasError: boolean;
+}
+
+const PasswordInput: React.FC<PasswordInputProps> = ({ visible, onToggle, hasError, ...inputProps }) => (
+  <div className="relative">
+    <input
+      {...inputProps}
+      type={visible ? "text" : "password"}
+      className={`${INPUT_BASE} pr-12 ${hasError ? "border-rose-500" : "border-[#E7EAF0]"}`}
+    />
+    <button
+      type="button"
+      onClick={onToggle}
+      className="absolute top-1/2 right-1.5 -translate-y-1/2 w-[34px] h-[34px] grid place-items-center rounded-[9px] text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+      aria-label={visible ? "Ocultar senha" : "Exibir senha"}
+    >
+      {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+    </button>
+  </div>
+);
 
 export const LoginView: React.FC = () => {
   const navigate = useNavigate();
+  const prefersReducedMotion = useReducedMotion();
   const {
     signInWithGoogle,
     signInWithEmail,
@@ -30,7 +112,7 @@ export const LoginView: React.FC = () => {
     setActiveTab,
   } = useApp();
 
-  const [mode, setMode] = useState<AuthMode>("ENTRY");
+  const [mode, setMode] = useState<AuthMode>("LOGIN");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,14 +125,10 @@ export const LoginView: React.FC = () => {
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{
-    name?: string;
-    email?: string;
-    password?: string;
-    confirmPassword?: string;
-  }>({});
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const isSubmitting = isLoading || isLoadingGoogle;
+  const isSignup = mode === "SIGNUP";
 
   const getPortugueseAuthError = (errorCode: string): string => {
     switch (errorCode) {
@@ -80,12 +158,7 @@ export const LoginView: React.FC = () => {
   };
 
   const validateForm = (): boolean => {
-    const errors: {
-      name?: string;
-      email?: string;
-      password?: string;
-      confirmPassword?: string;
-    } = {};
+    const errors: FieldErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (mode === "SIGNUP" && name.trim().length > 0 && name.trim().length < 2) {
@@ -118,6 +191,10 @@ export const LoginView: React.FC = () => {
     return Object.keys(errors).length === 0;
   };
 
+  const goToAppAfterAuth = () => {
+    setActiveTab(getPurchaseIntent() ? "subscription" : "home");
+  };
+
   const handleGoogleSubmit = async () => {
     if (isSubmitting) return;
 
@@ -128,12 +205,7 @@ export const LoginView: React.FC = () => {
 
     try {
       await signInWithGoogle();
-      const intent = getPurchaseIntent();
-      if (intent) {
-        setActiveTab("subscription");
-      } else {
-        setActiveTab("home");
-      }
+      goToAppAfterAuth();
     } catch (err: any) {
       console.error("[LoginView] Google Sign-In error:", err);
       const code = err?.code || "";
@@ -159,21 +231,11 @@ export const LoginView: React.FC = () => {
     try {
       if (mode === "LOGIN") {
         await signInWithEmail(email.trim(), password);
-        const intent = getPurchaseIntent();
-        if (intent) {
-          setActiveTab("subscription");
-        } else {
-          setActiveTab("home");
-        }
+        goToAppAfterAuth();
       } else if (mode === "SIGNUP") {
         const displayName = name.trim() || undefined;
         await signUpWithEmail(email.trim(), password, displayName);
-        const intent = getPurchaseIntent();
-        if (intent) {
-          setActiveTab("subscription");
-        } else {
-          setActiveTab("home");
-        }
+        goToAppAfterAuth();
       } else if (mode === "FORGOT_PASSWORD") {
         await sendPasswordReset(email.trim());
         // Neutral confirmation message to prevent email enumeration
@@ -197,350 +259,133 @@ export const LoginView: React.FC = () => {
     setFieldErrors({});
   };
 
+  const clearFieldError = (field: keyof FieldErrors) => {
+    if (fieldErrors[field]) setFieldErrors((p) => ({ ...p, [field]: undefined }));
+    if (errorMessage) setErrorMessage(null);
+  };
+
+  const slideTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { layout: { duration: SLIDE_DURATION, ease: SLIDE_EASE } };
+
+  const heroContent = isSignup
+    ? {
+        title: "Já tem uma conta?",
+        text: "Acesse sua conta e retome seus estudos de onde parou.",
+        action: "Já tenho uma conta",
+        target: "LOGIN" as AuthMode,
+      }
+    : {
+        title: "Novo por aqui?",
+        text: "Questões oficiais comentadas, simulados e revisão inteligente para a sua aprovação no Revalida.",
+        action: "Criar uma nova conta",
+        target: "SIGNUP" as AuthMode,
+      };
+
+  const headings: Record<AuthMode, { title: string; subtitle: string }> = {
+    LOGIN: {
+      title: "Bem-vindo de volta.",
+      subtitle: "Entre para continuar sua preparação.",
+    },
+    SIGNUP: {
+      title: "Pronto para começar sua preparação?",
+      subtitle: "Crie sua conta e organize seus estudos para o Revalida.",
+    },
+    FORGOT_PASSWORD: {
+      title: "Recuperar senha",
+      subtitle: "Informe seu e-mail para receber as instruções de recuperação.",
+    },
+  };
+
+  const emailInput = (
+    <Field id="auth-email-input" label={mode === "FORGOT_PASSWORD" ? "E-mail cadastrado" : "E-mail"} error={fieldErrors.email}>
+      <input
+        id="auth-email-input"
+        type="email"
+        inputMode="email"
+        name="email"
+        autoComplete="email"
+        value={email}
+        disabled={isSubmitting}
+        onChange={(e) => {
+          setEmail(e.target.value);
+          clearFieldError("email");
+        }}
+        placeholder="seu@email.com.br"
+        className={`${INPUT_BASE} ${fieldErrors.email ? "border-rose-500" : "border-[#E7EAF0]"}`}
+      />
+    </Field>
+  );
+
+  const submitLabel: Record<AuthMode, { idle: string; busy: string; id: string }> = {
+    LOGIN: { idle: "Entrar", busy: "Entrando...", id: "btn-auth-submit" },
+    SIGNUP: { idle: "Criar minha conta", busy: "Criando conta...", id: "btn-signup-submit" },
+    FORGOT_PASSWORD: { idle: "Enviar instruções", busy: "Enviando...", id: "btn-forgot-submit" },
+  };
+
   return (
-    <div className="min-h-[100dvh] w-full flex flex-col justify-between items-center p-4 sm:p-6 lg:p-8 font-sans relative overflow-hidden bg-[#F8FAFC] text-slate-800 selection:bg-teal-500/30 selection:text-teal-900">
-      {/* Subtle Ambient Background Glows */}
+    <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans relative overflow-hidden bg-[#F4F6F9] text-slate-800 selection:bg-teal-500/30 selection:text-teal-900">
+      {/* Ambient background glows */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[550px] h-[400px] bg-[#00D2B4]/8 rounded-full blur-3xl" />
-        <div className="absolute bottom-10 right-1/4 w-[450px] h-[350px] bg-[#0284C7]/6 rounded-full blur-3xl" />
+        <div className="absolute -top-24 -left-24 w-[520px] h-[420px] bg-[#00D2B4]/10 rounded-full blur-3xl" />
+        <div className="absolute -bottom-24 -right-24 w-[480px] h-[380px] bg-[#0284C7]/8 rounded-full blur-3xl" />
       </div>
 
-      {/* Top Spacer */}
-      <div className="h-2 sm:h-4" aria-hidden="true" />
-
-      {/* Main Single Centered Card */}
-      <motion.div
-        key={mode}
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-[440px] sm:max-w-[460px] my-auto flex flex-col items-center text-center p-7 sm:p-9 rounded-3xl bg-white border border-slate-200/90 shadow-xl shadow-slate-900/5 z-10"
-      >
-        {/* Official StaziaMed Logo */}
-        <div className="mb-6 sm:mb-7">
-          <StaziaMedLogo layout="vertical" size="lg" />
-        </div>
-
-        {/* ----------------------------------------------------------- */}
-        {/* 1. STATE: ENTRY (Initial Choice: Já tenho conta / Criar)    */}
-        {/* ----------------------------------------------------------- */}
-        {mode === "ENTRY" && (
-          <div className="w-full flex flex-col items-center animate-in fade-in duration-200">
-            {/* Headline & Subheadline */}
-            <div className="space-y-1.5 mb-7">
-              <h1 className="text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#0A1C3E]">
-                Bem-vindo à StaziaMed.
-              </h1>
-              <p className="text-xs sm:text-sm font-normal text-slate-600 max-w-xs mx-auto leading-relaxed">
-                Escolha como deseja continuar.
-              </p>
+      {/* Dual-panel auth card */}
+      <div className="relative z-10 w-full max-w-[920px] md:min-h-[620px] flex flex-col md:flex-row rounded-[24px] bg-white border-[6px] sm:border-8 border-white shadow-[0_30px_90px_rgba(8,11,20,0.14),0_8px_30px_rgba(10,28,62,0.08)] overflow-hidden">
+        {/* FORM PANEL */}
+        <motion.section
+          layout="position"
+          transition={slideTransition}
+          aria-label={isSignup ? "Criar conta" : mode === "FORGOT_PASSWORD" ? "Recuperar senha" : "Entrar"}
+          className={`md:w-1/2 flex items-center justify-center px-5 py-8 sm:px-10 sm:py-10 ${
+            isSignup ? "md:order-2" : "md:order-1"
+          }`}
+        >
+          <motion.div
+            key={mode}
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: prefersReducedMotion ? 0 : 0.15, ease: SLIDE_EASE }}
+            className="w-full max-w-[340px]"
+          >
+            {/* Box sized to the square logo PNG; negative margin offsets its built-in padding */}
+            <div className="w-24 sm:w-28 -ml-3 -mt-3 mb-3">
+              <StaziaMedLogo layout="vertical" size="sm" />
             </div>
 
-            {/* CTAs */}
-            <div className="w-full space-y-3">
-              {/* Option A: Já tenho uma conta */}
-              <button
-                type="button"
-                id="btn-choice-login"
-                onClick={() => switchMode("LOGIN")}
-                className="w-full min-h-[50px] sm:min-h-[52px] px-6 py-3.5 rounded-xl bg-[#0A1C3E] hover:bg-[#0E2856] text-white text-sm font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer active:scale-[0.99]"
-              >
-                <span>Já tenho uma conta</span>
-                <ArrowRight className="w-4 h-4 text-[#00D2B4]" />
-              </button>
+            <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-[-0.04em] leading-tight text-[#0A1C3E]">
+              {headings[mode].title}
+            </h1>
+            <p className="mt-1.5 mb-5 text-xs sm:text-[13px] leading-relaxed text-slate-500">
+              {headings[mode].subtitle}
+            </p>
 
-              {/* Option B: Criar uma nova conta */}
-              <button
-                type="button"
-                id="btn-choice-signup"
-                onClick={() => switchMode("SIGNUP")}
-                className="w-full min-h-[50px] sm:min-h-[52px] px-6 py-3.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-300/90 text-slate-800 text-sm font-bold flex items-center justify-center gap-2 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.99]"
-              >
-                <span>Criar uma nova conta</span>
-                <UserPlus className="w-4 h-4 text-slate-600" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ----------------------------------------------------------- */}
-        {/* 2. STATE: LOGIN (Email / Senha ou Google)                  */}
-        {/* ----------------------------------------------------------- */}
-        {mode === "LOGIN" && (
-          <div className="w-full flex flex-col items-center animate-in fade-in duration-200">
-            {/* Headline */}
-            <div className="space-y-1.5 mb-6 text-center">
-              <h1 className="text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#0A1C3E]">
-                Bem-vindo de volta.
-              </h1>
-              <p className="text-xs sm:text-sm font-normal text-slate-600 max-w-xs mx-auto leading-relaxed">
-                Entre para continuar sua preparação.
-              </p>
-            </div>
-
-            {/* Error Banner */}
             {errorMessage && (
               <div
                 role="alert"
                 aria-live="polite"
-                className="w-full mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2.5 text-left animate-in fade-in duration-200"
+                className="w-full mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2.5 text-left"
               >
                 <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                 <span className="flex-1 font-medium">{errorMessage}</span>
               </div>
             )}
 
-            {/* Google Primary CTA */}
-            <button
-              type="button"
-              id="btn-google-login"
-              disabled={isSubmitting}
-              onClick={handleGoogleSubmit}
-              className="w-full min-h-[50px] sm:min-h-[52px] px-5 py-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-300/90 text-slate-800 text-sm font-semibold flex items-center justify-center gap-3 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.99] disabled:opacity-60"
-            >
-              {isLoadingGoogle ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-[#00D2B4]" />
-                  <span>Continuando...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      fill="#4285F4"
-                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                    />
-                  </svg>
-                  <span>Continuar com Google</span>
-                </>
-              )}
-            </button>
-
-            {/* Divider */}
-            <div className="relative flex items-center justify-center my-4 w-full">
-              <div className="border-t border-slate-200 w-full" />
-              <span className="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 bg-white">
-                ou
-              </span>
-              <div className="border-t border-slate-200 w-full" />
-            </div>
-
-            {/* Email / Password Form */}
-            <form onSubmit={handleEmailSubmit} noValidate className="w-full space-y-3.5 text-left">
-              {/* E-mail */}
-              <div className="space-y-1">
-                <label htmlFor="auth-email-input" className="block text-xs font-semibold text-slate-700">
-                  E-mail
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Mail className="w-4 h-4" />
-                  </div>
-                  <input
-                    id="auth-email-input"
-                    type="email"
-                    inputMode="email"
-                    name="email"
-                    autoComplete="email"
-                    value={email}
-                    disabled={isSubmitting}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }));
-                      if (errorMessage) setErrorMessage(null);
-                    }}
-                    placeholder="seu@email.com.br"
-                    className={`w-full pl-10 pr-4 min-h-[46px] py-2.5 rounded-xl border text-sm transition-all outline-none bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:opacity-60 ${
-                      fieldErrors.email ? "border-rose-500" : ""
-                    }`}
-                  />
-                </div>
-                {fieldErrors.email && (
-                  <p className="text-[11px] text-rose-600 font-medium pl-1">{fieldErrors.email}</p>
-                )}
-              </div>
-
-              {/* Senha */}
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="auth-password-input" className="block text-xs font-semibold text-slate-700">
-                    Senha
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => switchMode("FORGOT_PASSWORD")}
-                    className="text-xs font-medium text-teal-700 hover:text-teal-900 hover:underline cursor-pointer"
-                  >
-                    Esqueci minha senha
-                  </button>
-                </div>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <input
-                    id="auth-password-input"
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    autoComplete="current-password"
-                    value={password}
-                    disabled={isSubmitting}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: undefined }));
-                      if (errorMessage) setErrorMessage(null);
-                    }}
-                    placeholder="Sua senha"
-                    className={`w-full pl-10 pr-11 min-h-[46px] py-2.5 rounded-xl border text-sm transition-all outline-none bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:opacity-60 ${
-                      fieldErrors.password ? "border-rose-500" : ""
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="min-w-[40px] min-h-[40px] absolute inset-y-0 right-0 flex items-center justify-center text-slate-400 hover:text-slate-600 cursor-pointer"
-                    aria-label={showPassword ? "Ocultar senha" : "Exibir senha"}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {fieldErrors.password && (
-                  <p className="text-[11px] text-rose-600 font-medium pl-1">{fieldErrors.password}</p>
-                )}
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                id="btn-auth-submit"
-                disabled={isSubmitting}
-                className="w-full min-h-[48px] py-3 px-5 rounded-xl bg-[#0A1C3E] hover:bg-[#0E2856] text-white text-sm font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer active:scale-[0.99] disabled:opacity-60"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-[#00D2B4]" />
-                    <span>Entrando...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Entrar</span>
-                    <ArrowRight className="w-4 h-4 text-[#00D2B4]" />
-                  </>
-                )}
-              </button>
-            </form>
-
-            {/* Back Button */}
-            <div className="pt-4">
-              <button
-                type="button"
-                onClick={() => switchMode("ENTRY")}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Voltar</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ----------------------------------------------------------- */}
-        {/* 3. STATE: SIGNUP (Cadastro com E-mail / Senha ou Google)     */}
-        {/* ----------------------------------------------------------- */}
-        {mode === "SIGNUP" && (
-          <div className="w-full flex flex-col items-center animate-in fade-in duration-200">
-            {/* Headline */}
-            <div className="space-y-1.5 mb-5 text-center">
-              <h1 className="text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#0A1C3E]">
-                Pronto para começar sua preparação?
-              </h1>
-              <p className="text-xs sm:text-sm font-normal text-slate-600 max-w-xs mx-auto leading-relaxed">
-                Crie sua conta e organize seus estudos para o Revalida.
-              </p>
-            </div>
-
-            {/* Error Banner */}
-            {errorMessage && (
+            {successMessage && (
               <div
-                role="alert"
+                role="status"
                 aria-live="polite"
-                className="w-full mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2.5 text-left animate-in fade-in duration-200"
+                className="w-full mb-4 p-3 rounded-xl bg-teal-50 border border-teal-200 text-xs text-teal-800 flex items-center gap-2.5 text-left"
               >
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span className="flex-1 font-medium">{errorMessage}</span>
+                <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
+                <span className="flex-1 font-medium">{successMessage}</span>
               </div>
             )}
 
-            {/* Google Primary CTA */}
-            <button
-              type="button"
-              id="btn-google-signup"
-              disabled={isSubmitting}
-              onClick={handleGoogleSubmit}
-              className="w-full min-h-[50px] sm:min-h-[52px] px-5 py-3 rounded-xl bg-white hover:bg-slate-50 border border-slate-300/90 text-slate-800 text-sm font-semibold flex items-center justify-center gap-3 shadow-xs hover:shadow-md transition-all duration-200 cursor-pointer active:scale-[0.99] disabled:opacity-60"
-            >
-              {isLoadingGoogle ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-[#00D2B4]" />
-                  <span>Continuando...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
-                    <path
-                      fill="#4285F4"
-                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
-                    />
-                    <path
-                      fill="#34A853"
-                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
-                    />
-                    <path
-                      fill="#FBBC05"
-                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-                    />
-                    <path
-                      fill="#EA4335"
-                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                    />
-                  </svg>
-                  <span>Continuar com Google</span>
-                </>
-              )}
-            </button>
-
-            {/* Divider */}
-            <div className="relative flex items-center justify-center my-3.5 w-full">
-              <div className="border-t border-slate-200 w-full" />
-              <span className="px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400 bg-white">
-                ou
-              </span>
-              <div className="border-t border-slate-200 w-full" />
-            </div>
-
-            {/* Form */}
             <form onSubmit={handleEmailSubmit} noValidate className="w-full space-y-3 text-left">
-              {/* Nome */}
-              <div className="space-y-1">
-                <label htmlFor="auth-name-input" className="block text-xs font-semibold text-slate-700">
-                  Nome completo
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <UserIcon className="w-4 h-4" />
-                  </div>
+              {isSignup && (
+                <Field id="auth-name-input" label="Nome completo" error={fieldErrors.name}>
                   <input
                     id="auth-name-input"
                     type="text"
@@ -550,308 +395,202 @@ export const LoginView: React.FC = () => {
                     disabled={isSubmitting}
                     onChange={(e) => {
                       setName(e.target.value);
-                      if (fieldErrors.name) setFieldErrors((p) => ({ ...p, name: undefined }));
+                      clearFieldError("name");
                     }}
                     placeholder="Dr(a). Seu Nome"
-                    className={`w-full pl-10 pr-4 min-h-[44px] py-2 rounded-xl border text-sm transition-all outline-none bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:opacity-60 ${
-                      fieldErrors.name ? "border-rose-500" : ""
-                    }`}
+                    className={`${INPUT_BASE} ${fieldErrors.name ? "border-rose-500" : "border-[#E7EAF0]"}`}
                   />
-                </div>
-                {fieldErrors.name && (
-                  <p className="text-[11px] text-rose-600 font-medium pl-1">{fieldErrors.name}</p>
-                )}
-              </div>
+                </Field>
+              )}
 
-              {/* E-mail */}
-              <div className="space-y-1">
-                <label htmlFor="auth-email-input" className="block text-xs font-semibold text-slate-700">
-                  E-mail
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Mail className="w-4 h-4" />
-                  </div>
-                  <input
-                    id="auth-email-input"
-                    type="email"
-                    inputMode="email"
-                    name="email"
-                    autoComplete="email"
-                    value={email}
-                    disabled={isSubmitting}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }));
-                      if (errorMessage) setErrorMessage(null);
-                    }}
-                    placeholder="seu@email.com.br"
-                    className={`w-full pl-10 pr-4 min-h-[44px] py-2 rounded-xl border text-sm transition-all outline-none bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:opacity-60 ${
-                      fieldErrors.email ? "border-rose-500" : ""
-                    }`}
-                  />
-                </div>
-                {fieldErrors.email && (
-                  <p className="text-[11px] text-rose-600 font-medium pl-1">{fieldErrors.email}</p>
-                )}
-              </div>
+              {emailInput}
 
-              {/* Senha */}
-              <div className="space-y-1">
-                <label htmlFor="auth-password-input" className="block text-xs font-semibold text-slate-700">
-                  Senha
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <input
+              {mode !== "FORGOT_PASSWORD" && (
+                <Field
+                  id="auth-password-input"
+                  label="Senha"
+                  error={fieldErrors.password}
+                  labelAction={
+                    mode === "LOGIN" ? (
+                      <button
+                        type="button"
+                        onClick={() => switchMode("FORGOT_PASSWORD")}
+                        className="text-xs font-bold text-teal-700 hover:text-teal-900 hover:underline cursor-pointer"
+                      >
+                        Esqueci minha senha
+                      </button>
+                    ) : undefined
+                  }
+                >
+                  <PasswordInput
                     id="auth-password-input"
-                    type={showPassword ? "text" : "password"}
                     name="password"
-                    autoComplete="new-password"
+                    autoComplete={isSignup ? "new-password" : "current-password"}
                     value={password}
                     disabled={isSubmitting}
                     onChange={(e) => {
                       setPassword(e.target.value);
-                      if (fieldErrors.password) setFieldErrors((p) => ({ ...p, password: undefined }));
-                      if (errorMessage) setErrorMessage(null);
+                      clearFieldError("password");
                     }}
-                    placeholder="Crie uma senha (mín. 6 caracteres)"
-                    className={`w-full pl-10 pr-11 min-h-[44px] py-2 rounded-xl border text-sm transition-all outline-none bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:opacity-60 ${
-                      fieldErrors.password ? "border-rose-500" : ""
-                    }`}
+                    placeholder={isSignup ? "Crie uma senha (mín. 6 caracteres)" : "Sua senha"}
+                    visible={showPassword}
+                    onToggle={() => setShowPassword(!showPassword)}
+                    hasError={Boolean(fieldErrors.password)}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="min-w-[40px] min-h-[40px] absolute inset-y-0 right-0 flex items-center justify-center text-slate-400 hover:text-slate-600 cursor-pointer"
-                    aria-label={showPassword ? "Ocultar senha" : "Exibir senha"}
-                  >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {fieldErrors.password && (
-                  <p className="text-[11px] text-rose-600 font-medium pl-1">{fieldErrors.password}</p>
-                )}
-              </div>
+                </Field>
+              )}
 
-              {/* Confirmar Senha */}
-              <div className="space-y-1">
-                <label
-                  htmlFor="auth-confirm-password-input"
-                  className="block text-xs font-semibold text-slate-700"
-                >
-                  Confirmar senha
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Lock className="w-4 h-4" />
-                  </div>
-                  <input
+              {isSignup && (
+                <Field id="auth-confirm-password-input" label="Confirmar senha" error={fieldErrors.confirmPassword}>
+                  <PasswordInput
                     id="auth-confirm-password-input"
-                    type={showConfirmPassword ? "text" : "password"}
                     name="confirmPassword"
                     autoComplete="new-password"
                     value={confirmPassword}
                     disabled={isSubmitting}
                     onChange={(e) => {
                       setConfirmPassword(e.target.value);
-                      if (fieldErrors.confirmPassword)
-                        setFieldErrors((p) => ({ ...p, confirmPassword: undefined }));
-                      if (errorMessage) setErrorMessage(null);
+                      clearFieldError("confirmPassword");
                     }}
                     placeholder="Confirme sua senha"
-                    className={`w-full pl-10 pr-11 min-h-[44px] py-2 rounded-xl border text-sm transition-all outline-none bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:opacity-60 ${
-                      fieldErrors.confirmPassword ? "border-rose-500" : ""
-                    }`}
+                    visible={showConfirmPassword}
+                    onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
+                    hasError={Boolean(fieldErrors.confirmPassword)}
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="min-w-[40px] min-h-[40px] absolute inset-y-0 right-0 flex items-center justify-center text-slate-400 hover:text-slate-600 cursor-pointer"
-                    aria-label={showConfirmPassword ? "Ocultar senha" : "Exibir senha"}
-                  >
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {fieldErrors.confirmPassword && (
-                  <p className="text-[11px] text-rose-600 font-medium pl-1">
-                    {fieldErrors.confirmPassword}
-                  </p>
-                )}
-              </div>
+                </Field>
+              )}
 
-              {/* Submit Button */}
               <button
                 type="submit"
-                id="btn-signup-submit"
+                id={submitLabel[mode].id}
                 disabled={isSubmitting}
-                className="w-full min-h-[48px] py-3 px-5 mt-2 rounded-xl bg-[#0A1C3E] hover:bg-[#0E2856] text-white text-sm font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer active:scale-[0.99] disabled:opacity-60"
+                className="w-full min-h-[46px] mt-2 px-5 rounded-[11px] bg-gradient-to-br from-[#0A1C3E] to-[#16336B] text-white text-sm font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(10,28,62,0.18)] hover:shadow-[0_11px_26px_rgba(10,28,62,0.26)] hover:-translate-y-px hover:brightness-110 active:translate-y-0 transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:hover:translate-y-0"
               >
                 {isLoading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin text-[#00D2B4]" />
-                    <span>Criando conta...</span>
+                    <span>{submitLabel[mode].busy}</span>
                   </>
                 ) : (
                   <>
-                    <span>Criar minha conta</span>
+                    <span>{submitLabel[mode].idle}</span>
                     <ArrowRight className="w-4 h-4 text-[#00D2B4]" />
                   </>
                 )}
               </button>
             </form>
 
-            {/* Back Button */}
-            <div className="pt-4">
-              <button
-                type="button"
-                onClick={() => switchMode("ENTRY")}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Voltar</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ----------------------------------------------------------- */}
-        {/* 4. STATE: FORGOT_PASSWORD (Recuperação de Senha)            */}
-        {/* ----------------------------------------------------------- */}
-        {mode === "FORGOT_PASSWORD" && (
-          <div className="w-full flex flex-col items-center animate-in fade-in duration-200">
-            {/* Headline */}
-            <div className="space-y-1.5 mb-6 text-center">
-              <h1 className="text-2xl sm:text-[26px] font-extrabold tracking-tight text-[#0A1C3E]">
-                Recuperar senha
-              </h1>
-              <p className="text-xs sm:text-sm font-normal text-slate-600 max-w-xs mx-auto leading-relaxed">
-                Informe seu e-mail para receber as instruções de recuperação.
-              </p>
-            </div>
-
-            {/* Error Banner */}
-            {errorMessage && (
-              <div
-                role="alert"
-                aria-live="polite"
-                className="w-full mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2.5 text-left animate-in fade-in duration-200"
-              >
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span className="flex-1 font-medium">{errorMessage}</span>
+            {mode === "FORGOT_PASSWORD" ? (
+              <div className="pt-4">
+                <button
+                  type="button"
+                  onClick={() => switchMode("LOGIN")}
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Voltar para o login</span>
+                </button>
               </div>
-            )}
-
-            {/* Success Neutral Banner */}
-            {successMessage && (
-              <div
-                role="status"
-                aria-live="polite"
-                className="w-full mb-4 p-3 rounded-xl bg-teal-50 border border-teal-200 text-xs text-teal-800 flex items-center gap-2.5 text-left animate-in fade-in duration-200"
-              >
-                <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
-                <span className="flex-1 font-medium">{successMessage}</span>
-              </div>
-            )}
-
-            {/* Form */}
-            <form onSubmit={handleEmailSubmit} noValidate className="w-full space-y-3.5 text-left">
-              <div className="space-y-1">
-                <label htmlFor="auth-email-input" className="block text-xs font-semibold text-slate-700">
-                  E-mail cadastrado
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                    <Mail className="w-4 h-4" />
-                  </div>
-                  <input
-                    id="auth-email-input"
-                    type="email"
-                    inputMode="email"
-                    name="email"
-                    autoComplete="email"
-                    value={email}
-                    disabled={isSubmitting}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }));
-                      if (errorMessage) setErrorMessage(null);
-                    }}
-                    placeholder="seu@email.com.br"
-                    className={`w-full pl-10 pr-4 min-h-[46px] py-2.5 rounded-xl border text-sm transition-all outline-none bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-teal-600 focus:ring-2 focus:ring-teal-100 disabled:opacity-60 ${
-                      fieldErrors.email ? "border-rose-500" : ""
-                    }`}
-                  />
+            ) : (
+              <>
+                <div className="flex items-center gap-3 my-4 text-[11px] font-semibold text-slate-400 whitespace-nowrap before:h-px before:flex-1 before:bg-[#E7EAF0] after:h-px after:flex-1 after:bg-[#E7EAF0]">
+                  {isSignup ? "ou cadastre-se com" : "ou entre com"}
                 </div>
-                {fieldErrors.email && (
-                  <p className="text-[11px] text-rose-600 font-medium pl-1">{fieldErrors.email}</p>
-                )}
-              </div>
 
-              <button
-                type="submit"
-                id="btn-forgot-submit"
-                disabled={isSubmitting}
-                className="w-full min-h-[48px] py-3 px-5 rounded-xl bg-[#0A1C3E] hover:bg-[#0E2856] text-white text-sm font-bold flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all duration-200 cursor-pointer active:scale-[0.99] disabled:opacity-60"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-[#00D2B4]" />
-                    <span>Enviando...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Enviar instruções</span>
-                    <ArrowRight className="w-4 h-4 text-[#00D2B4]" />
-                  </>
-                )}
-              </button>
-            </form>
+                <button
+                  type="button"
+                  id={isSignup ? "btn-google-signup" : "btn-google-login"}
+                  disabled={isSubmitting}
+                  onClick={handleGoogleSubmit}
+                  className="w-full min-h-[44px] px-5 rounded-[11px] bg-white border border-[#E7EAF0] text-slate-800 text-sm font-semibold flex items-center justify-center gap-3 hover:bg-[#FAFBFC] hover:border-slate-300 hover:-translate-y-px active:translate-y-0 transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:hover:translate-y-0"
+                >
+                  {isLoadingGoogle ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-[#00D2B4]" />
+                      <span>Continuando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <GoogleIcon />
+                      <span>Continuar com Google</span>
+                    </>
+                  )}
+                </button>
+              </>
+            )}
 
-            {/* Back to Login */}
-            <div className="pt-4">
+            {/* Legal disclaimer */}
+            <p className="mt-6 text-[11px] leading-relaxed text-center text-slate-500">
+              Ao continuar, você concorda com nossos{" "}
               <button
                 type="button"
-                onClick={() => switchMode("LOGIN")}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                id="link-termos-de-uso"
+                onClick={() => navigate("/termos-de-uso")}
+                className="font-semibold underline underline-offset-2 hover:text-teal-600 transition-colors cursor-pointer text-slate-700"
               >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Voltar para o login</span>
+                Termos de Uso
+              </button>{" "}
+              e{" "}
+              <button
+                type="button"
+                id="link-politica-de-privacidade"
+                onClick={() => navigate("/politica-de-privacidade")}
+                className="font-semibold underline underline-offset-2 hover:text-teal-600 transition-colors cursor-pointer text-slate-700"
+              >
+                Política de Privacidade
               </button>
-            </div>
-          </div>
-        )}
+              .
+            </p>
+          </motion.div>
+        </motion.section>
 
-        {/* Legal Disclaimer Footer */}
-        <div className="mt-7 pt-4 border-t border-slate-200/90 w-full text-center">
-          <p className="text-[11px] leading-relaxed max-w-xs mx-auto text-slate-500">
-            Ao continuar, você concorda com nossos{" "}
+        {/* HERO PANEL — slides to the opposite side of the form */}
+        <motion.section
+          layout="position"
+          transition={slideTransition}
+          aria-label={isSignup ? "Já tenho conta" : "Novo usuário"}
+          style={{ background: HERO_BACKGROUND }}
+          className={`relative md:w-1/2 rounded-[18px] overflow-hidden text-white flex flex-col items-center justify-center text-center gap-4 px-6 py-9 sm:px-10 md:py-12 ${
+            isSignup ? "md:order-1" : "md:order-2"
+          }`}
+        >
+          <div
+            className="absolute inset-0 pointer-events-none opacity-[0.05]"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
+              backgroundSize: "32px 32px",
+            }}
+            aria-hidden="true"
+          />
+
+          <motion.div
+            key={heroContent.target}
+            initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: prefersReducedMotion ? 0 : 0.25, ease: SLIDE_EASE }}
+            className="relative flex flex-col items-center gap-4"
+          >
+            <div className="hidden md:grid w-16 h-16 place-items-center rounded-2xl bg-white shadow-[0_10px_30px_rgba(0,0,0,0.25)] ring-4 ring-white/10">
+              <StaziaMedLogo layout="monogram" size="md" />
+            </div>
+
+            <h2 className="text-[26px] sm:text-[34px] md:text-[38px] font-extrabold leading-[1.05] tracking-[-0.045em]">
+              {heroContent.title}
+            </h2>
+            <p className="max-w-[270px] text-[13px] sm:text-sm leading-relaxed text-white/85">{heroContent.text}</p>
+
             <button
               type="button"
-              id="link-termos-de-uso"
-              onClick={() => navigate("/termos-de-uso")}
-              className="font-semibold underline underline-offset-2 hover:text-teal-600 transition-colors cursor-pointer text-slate-700"
+              onClick={() => switchMode(heroContent.target)}
+              disabled={isSubmitting}
+              className="mt-1 min-w-[150px] min-h-[46px] px-7 rounded-xl border border-white/20 bg-white/10 backdrop-blur-md text-white text-sm font-bold hover:bg-white hover:text-[#0A1C3E] hover:border-white hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer disabled:opacity-60"
             >
-              Termos de Uso
-            </button>{" "}
-            e{" "}
-            <button
-              type="button"
-              id="link-politica-de-privacidade"
-              onClick={() => navigate("/politica-de-privacidade")}
-              className="font-semibold underline underline-offset-2 hover:text-teal-600 transition-colors cursor-pointer text-slate-700"
-            >
-              Política de Privacidade
+              {heroContent.action}
             </button>
-            .
-          </p>
-        </div>
-      </motion.div>
-
-      {/* Bottom Spacer */}
-      <div className="h-2 sm:h-4" aria-hidden="true" />
+          </motion.div>
+        </motion.section>
+      </div>
     </div>
   );
 };

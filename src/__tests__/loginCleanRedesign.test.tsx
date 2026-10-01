@@ -48,21 +48,21 @@ describe("1.25A — Clean Auth Entry + Login + Signup Flow", () => {
   });
 
   /* ------------------------------------------------------------- */
-  /* 1. INITIAL ENTRY SCREEN                                       */
+  /* 1. INITIAL SCREEN (dual panel, opens on LOGIN)                */
   /* ------------------------------------------------------------- */
-  it("should render initial Entry screen with StaziaMed logo and two main choice CTAs", () => {
+  it("should open directly on LOGIN with StaziaMed logo and the side panel CTA to create an account", () => {
     renderLoginView();
 
     // Brand logo exactly once
     expect(screen.getAllByAltText("StaziaMed Revalida")).toHaveLength(1);
 
     // Headline & Subheadline
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bem-vindo à StaziaMed.");
-    expect(screen.getByText("Escolha como deseja continuar.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bem-vindo de volta.");
+    expect(screen.getByText("Entre para continuar sua preparação.")).toBeInTheDocument();
 
-    // Two main choice CTAs
-    expect(screen.getByRole("button", { name: /Já tenho uma conta/i })).toBeInTheDocument();
+    // Side panel offers signup; the "back to login" CTA only appears in SIGNUP
     expect(screen.getByRole("button", { name: /Criar uma nova conta/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Já tenho uma conta/i })).not.toBeInTheDocument();
 
     // Guest mode / visitor link is removed
     expect(screen.queryByRole("button", { name: /Explorar como visitante/i })).not.toBeInTheDocument();
@@ -73,14 +73,11 @@ describe("1.25A — Clean Auth Entry + Login + Signup Flow", () => {
   });
 
   /* ------------------------------------------------------------- */
-  /* 2. LOGIN FLOW (Já tenho uma conta)                            */
+  /* 2. LOGIN FLOW                                                 */
   /* ------------------------------------------------------------- */
-  it("should navigate to LOGIN flow, render Google and Email/Password fields, and support login", async () => {
+  it("should render Google and Email/Password fields in LOGIN, and support login", async () => {
     mockSignInWithEmail.mockResolvedValueOnce({ uid: "user_login_1" });
     renderLoginView();
-
-    // Click "Já tenho uma conta"
-    fireEvent.click(screen.getByRole("button", { name: /Já tenho uma conta/i }));
 
     // Headline
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bem-vindo de volta.");
@@ -122,7 +119,6 @@ describe("1.25A — Clean Auth Entry + Login + Signup Flow", () => {
     mockSignInWithGoogle.mockRejectedValueOnce({ code: "auth/network-request-failed" });
     renderLoginView();
 
-    fireEvent.click(screen.getByRole("button", { name: /Já tenho uma conta/i }));
     fireEvent.click(screen.getByRole("button", { name: /Continuar com Google/i }));
 
     await waitFor(() => {
@@ -132,14 +128,15 @@ describe("1.25A — Clean Auth Entry + Login + Signup Flow", () => {
     });
   });
 
-  it("should return to Entry screen when clicking 'Voltar' from LOGIN", () => {
+  it("should switch between LOGIN and SIGNUP using the side panel CTA", () => {
     renderLoginView();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bem-vindo de volta.");
+
+    fireEvent.click(screen.getByRole("button", { name: /Criar uma nova conta/i }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Pronto para começar sua preparação?");
 
     fireEvent.click(screen.getByRole("button", { name: /Já tenho uma conta/i }));
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bem-vindo de volta.");
-
-    fireEvent.click(screen.getByRole("button", { name: /Voltar/i }));
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bem-vindo à StaziaMed.");
   });
 
   /* ------------------------------------------------------------- */
@@ -207,8 +204,7 @@ describe("1.25A — Clean Auth Entry + Login + Signup Flow", () => {
     mockSendPasswordReset.mockResolvedValueOnce(undefined);
     renderLoginView();
 
-    // Go to Login, then Forgot Password
-    fireEvent.click(screen.getByRole("button", { name: /Já tenho uma conta/i }));
+    // From LOGIN (initial screen), go to Forgot Password
     fireEvent.click(screen.getByText("Esqueci minha senha"));
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Recuperar senha");
