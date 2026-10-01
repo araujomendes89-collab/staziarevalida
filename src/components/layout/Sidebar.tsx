@@ -207,7 +207,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                 Stazia<span className="text-teal-400">Med</span>
               </span>
             </div>
-            <span className="text-[9px] font-bold text-teal-400 tracking-widest uppercase block mt-0.5">
+            <span className="text-[11px] font-bold text-teal-400 tracking-widest uppercase block mt-0.5">
               REVALIDA
             </span>
           </div>
@@ -228,7 +228,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                   Admin Master
                 </span>
               </div>
-              <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-teal-500/30 text-teal-200">
+              <span className="text-[11px] px-1.5 py-0.2 rounded-full font-bold bg-teal-500/30 text-teal-200">
                 Painel
               </span>
             </div>
@@ -307,7 +307,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
             <button
               type="button"
               onClick={() => setStudentPreviewExpanded((prev) => !prev)}
-              className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold tracking-wider text-slate-400 hover:text-slate-200 uppercase cursor-pointer"
+              className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-bold tracking-wider text-slate-400 hover:text-slate-200 uppercase cursor-pointer"
             >
               <span className="flex items-center gap-1.5">
                 Área do Aluno (Visualização)
@@ -332,7 +332,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                     <div key={section.id} className="space-y-0.5">
                       <div
                         onClick={() => handleSelectSection(section)}
-                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer group ${
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all cursor-pointer group ${
                           hasActiveChild && (!hasSubItems || activeTab === section.id)
                             ? "bg-teal-600 text-white shadow-xs"
                             : hasActiveChild
@@ -385,7 +385,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                                 key={sub.id}
                                 type="button"
                                 onClick={() => handleSelectSubItem(sub.id)}
-                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer text-left ${
+                                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer text-left ${
                                   isSubActive
                                     ? "bg-teal-500/20 text-teal-200 font-bold border border-teal-500/30"
                                     : "text-slate-400 hover:text-slate-100 hover:bg-white/[0.04]"
@@ -409,7 +409,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                                     </span>
                                   )}
                                   {subBadge && (
-                                    <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-purple-500/20 text-purple-300">
+                                    <span className="text-[11px] px-1.5 py-0.2 rounded-full font-bold bg-purple-500/20 text-purple-300">
                                       {subBadge}
                                     </span>
                                   )}
@@ -437,7 +437,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
               <div key={section.id} className="space-y-0.5">
                 <div
                   onClick={() => handleSelectSection(section)}
-                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer group ${
+                  className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-semibold transition-all cursor-pointer group ${
                     hasActiveChild && (!hasSubItems || activeTab === section.id)
                       ? "bg-teal-600 text-white shadow-xs"
                       : hasActiveChild
@@ -490,7 +490,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                           key={sub.id}
                           type="button"
                           onClick={() => handleSelectSubItem(sub.id)}
-                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer text-left ${
+                          className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-all cursor-pointer text-left ${
                             isSubActive
                               ? "bg-teal-500/20 text-teal-200 font-bold border border-teal-500/30"
                               : "text-slate-400 hover:text-slate-100 hover:bg-white/[0.04]"
@@ -514,7 +514,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                               </span>
                             )}
                             {subBadge && (
-                              <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-purple-500/20 text-purple-300">
+                              <span className="text-[11px] px-1.5 py-0.2 rounded-full font-bold bg-purple-500/20 text-purple-300">
                                 {subBadge}
                               </span>
                             )}
@@ -613,7 +613,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
               onClick={() => {
                 openAccountSettings();
               }}
-              className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-teal-300 transition-colors flex flex-col items-center justify-center gap-0.5 cursor-pointer text-[9px]"
+              className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-teal-300 transition-colors flex flex-col items-center justify-center gap-0.5 cursor-pointer text-[11px]"
               title="Minha Conta"
             >
               <User className="w-3.5 h-3.5" />
@@ -624,7 +624,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
               onClick={() => {
                 openAppSettings();
               }}
-              className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-teal-300 transition-colors flex flex-col items-center justify-center gap-0.5 cursor-pointer text-[9px]"
+              className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-teal-300 transition-colors flex flex-col items-center justify-center gap-0.5 cursor-pointer text-[11px]"
               title="Preferências"
             >
               <Settings className="w-3.5 h-3.5" />
@@ -635,7 +635,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
               onClick={() => {
                 openAppSettings("alerts");
               }}
-              className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-teal-300 transition-colors flex flex-col items-center justify-center gap-0.5 cursor-pointer text-[9px]"
+              className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-teal-300 transition-colors flex flex-col items-center justify-center gap-0.5 cursor-pointer text-[11px]"
               title="Notificações"
             >
               <Bell className="w-3.5 h-3.5" />
@@ -650,7 +650,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                   console.error("Logout error", e);
                 }
               }}
-              className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors flex flex-col items-center justify-center gap-0.5 cursor-pointer text-[9px]"
+              className="p-1.5 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 transition-colors flex flex-col items-center justify-center gap-0.5 cursor-pointer text-[11px]"
               title="Sair da Conta"
             >
               <LogOut className="w-3.5 h-3.5" />
