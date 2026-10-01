@@ -262,12 +262,12 @@ export const AdaptiveCalendarView: React.FC = () => {
       {/* COMPACT CLEAN HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
         <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-xs shadow-emerald-400/50" />
             <span>Calendário de Estudos</span>
           </h1>
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
-              <span className="font-semibold text-slate-700">{examInfo?.targetEdition || "Revalida INEP"}</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-300">{examInfo?.targetEdition || "Revalida INEP"}</span>
             <span>•</span>
               <span className="text-emerald-700 font-semibold">
               {examInfo.hasConfiguredDate ? `${examInfo.daysRemaining} dias para a prova` : "Data a definir"}

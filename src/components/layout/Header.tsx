@@ -113,6 +113,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleMobileMenu, isMobileMenu
       ? "Início"
       : activeTab.includes("quest") || activeTab === "praticar"
       ? "Questões"
+      : activeTab.startsWith("praticar")
+      ? "Praticar"
       : activeTab.includes("tema") || activeTab.startsWith("estudar")
       ? "Estudar"
       : activeTab.startsWith("planejamento") || activeTab === "calendar"
