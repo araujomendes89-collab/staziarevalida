@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useId } from "react";
 
 interface StaziaMedLogoProps {
   className?: string;
@@ -13,6 +13,10 @@ export const StaziaMedLogo: React.FC<StaziaMedLogoProps> = ({
   layout = "horizontal",
   isDark = false,
 }) => {
+  // Unique gradient id per instance: with a fixed id, several logos on the same page
+  // all resolve to the first gradient (which breaks when that one is display:none).
+  const gradientId = `stazia-grad-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
+
   const sizeMap = {
     sm: { width: 140, height: 44, iconSize: 34 },
     md: { width: 200, height: 60, iconSize: 48 },
@@ -36,7 +40,7 @@ export const StaziaMedLogo: React.FC<StaziaMedLogoProps> = ({
         role="img"
       >
         <defs>
-          <linearGradient id="staziaSGrad" x1="10%" y1="0%" x2="90%" y2="100%">
+          <linearGradient id={gradientId} x1="10%" y1="0%" x2="90%" y2="100%">
             <stop offset="0%" stopColor="#00E5C0" />
             <stop offset="25%" stopColor="#00D2B4" />
             <stop offset="60%" stopColor="#0284C7" />
@@ -57,7 +61,7 @@ export const StaziaMedLogo: React.FC<StaziaMedLogoProps> = ({
              C 116 126 128 136 128 152
              C 128 170 112 186 86 186
              C 58 186 36 178 26 172"
-          stroke="url(#staziaSGrad)"
+          stroke={`url(#${gradientId})`}
           strokeWidth="20"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -121,7 +125,7 @@ export const StaziaMedLogo: React.FC<StaziaMedLogoProps> = ({
         className="shrink-0"
       >
         <defs>
-          <linearGradient id="staziaSGradHoriz" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#00E5C0" />
             <stop offset="25%" stopColor="#00D2B4" />
             <stop offset="60%" stopColor="#0284C7" />
@@ -142,7 +146,7 @@ export const StaziaMedLogo: React.FC<StaziaMedLogoProps> = ({
              C 116 126 128 136 128 152
              C 128 170 112 186 86 186
              C 58 186 36 178 26 172"
-          stroke="url(#staziaSGradHoriz)"
+          stroke={`url(#${gradientId})`}
           strokeWidth="20"
           strokeLinecap="round"
           strokeLinejoin="round"

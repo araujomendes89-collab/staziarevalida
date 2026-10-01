@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { setAuthRememberMe } from "../../lib/firebase";
+import { StaziaMedLogo } from "../brand/StaziaMedLogo";
 import { getPurchaseIntent } from "../billing/pricingTypes";
 import "./steaAuth.css";
 
@@ -358,6 +359,9 @@ export const LoginView: React.FC = () => {
 
         {/* REGISTER HERO */}
         <section className="hero register" aria-label="Já tenho conta" inert={!isRegister} aria-hidden={!isRegister}>
+          <div className="brand-badge">
+            <StaziaMedLogo layout="horizontal" size="sm" />
+          </div>
           <h2>Já tem conta?</h2>
           <p>Entre para revisar sua conta e continuar sua jornada.</p>
           <button type="button" className="switch" onClick={() => switchMode("LOGIN")}>
@@ -423,6 +427,9 @@ export const LoginView: React.FC = () => {
 
         {/* LOGIN HERO */}
         <section className="hero login" aria-label="Novo usuário" inert={isRegister} aria-hidden={isRegister}>
+          <div className="brand-badge">
+            <StaziaMedLogo layout="horizontal" size="sm" />
+          </div>
           <h2>Olá!</h2>
           <p>Comece sua jornada com a gente e descubra algo novo.</p>
           <button type="button" className="switch" onClick={() => switchMode("SIGNUP")}>
