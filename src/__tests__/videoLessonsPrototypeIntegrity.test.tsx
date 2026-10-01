@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
-import { VideoLessonsCatalogView, SAMPLE_VIDEO_LESSONS } from "../components/lessons/VideoLessonsCatalogView";
+import { VideoLessonsCatalogView, SAMPLE_VIDEO_LESSONS } from "../components/estudar/VideoLessonsCatalogView";
 import { AppProvider } from "../context/AppContext";
 
 const renderWithProviders = (ui: React.ReactElement) => {

@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useApp } from "../../context/AppContext";
 import { SpacedReviewView } from "./SpacedReviewView";
 import { ErrorNotebookView } from "./ErrorNotebookView";
-import { ProtocolUpdatesHubView } from "../protocols/ProtocolUpdatesHubView";
-import { GuidelineWatchView } from "../guidelines/GuidelineWatchView";
+import { ProtocolUpdatesHubView } from "../materiais/ProtocolUpdatesHubView";
+import { GuidelineWatchView } from "../materiais/GuidelineWatchView";
 import { FlashAudioPlayerView } from "./FlashAudioPlayerView";
 
 export type RevisarSubTab =

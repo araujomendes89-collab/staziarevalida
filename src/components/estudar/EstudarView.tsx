@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "../../context/AppContext";
-import { VideoLessonsCatalogView } from "../lessons/VideoLessonsCatalogView";
-import { GrandesTemasView } from "../grandesTemas/GrandesTemasView";
-import { OfficialMedicalSearchView } from "../search/OfficialMedicalSearchView";
+import { VideoLessonsCatalogView } from "./VideoLessonsCatalogView";
+import { GrandesTemasView } from "./GrandesTemasView";
+import { OfficialMedicalSearchView } from "../materiais/OfficialMedicalSearchView";
 import { PlanoDeHojeView } from "./PlanoDeHojeView";
 import { EstudarHubView } from "./EstudarHubView";
 

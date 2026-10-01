@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { GrandesTemasView, resolveCanonicalTopicId } from "../components/grandesTemas/GrandesTemasView";
+import { GrandesTemasView, resolveCanonicalTopicId } from "../components/estudar/GrandesTemasView";
 import { StudentTopicContentClientService } from "../services/studentTopicContentClientService";
 import { ALL_GRANDES_TEMAS } from "../data/grandesTemas";
 

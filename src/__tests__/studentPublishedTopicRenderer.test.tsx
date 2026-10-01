@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { StudentPublishedTopicRenderer } from "../components/grandesTemas/StudentPublishedTopicRenderer";
+import { StudentPublishedTopicRenderer } from "../components/estudar/StudentPublishedTopicRenderer";
 import { PublishedTopicHeader, PublishedTopicContentVersion } from "../types/publishedContent";
 
 const MOCK_HEADER: PublishedTopicHeader = {

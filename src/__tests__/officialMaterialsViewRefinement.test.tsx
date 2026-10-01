@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { render, screen, act } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
-import { OfficialMedicalSearchView } from "../components/search/OfficialMedicalSearchView";
+import { OfficialMedicalSearchView } from "../components/materiais/OfficialMedicalSearchView";
 import { OfficialSearchService } from "../services/officialSearchService";
 import { AppProvider } from "../context/AppContext";
 

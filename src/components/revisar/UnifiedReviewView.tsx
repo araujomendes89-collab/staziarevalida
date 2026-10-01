@@ -10,9 +10,9 @@ import {
 } from "lucide-react";
 import { SpacedReviewView } from "./SpacedReviewView";
 import { ErrorNotebookView } from "./ErrorNotebookView";
-import { GuidelineWatchView } from "../guidelines/GuidelineWatchView";
+import { GuidelineWatchView } from "../materiais/GuidelineWatchView";
 import { FlashAudioPlayerView } from "./FlashAudioPlayerView";
-import { ProtocolUpdatesHubView } from "../protocols/ProtocolUpdatesHubView";
+import { ProtocolUpdatesHubView } from "../materiais/ProtocolUpdatesHubView";
 
 export type ReviewTabType =
   | "PROTOCOLS_2025_2026"

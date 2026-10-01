@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
-import { ThemeInteractiveLesson } from "../components/grandesTemas/ThemeInteractiveLesson";
+import { ThemeInteractiveLesson } from "../components/estudar/ThemeInteractiveLesson";
 import { ALL_GRANDES_TEMAS } from "../data/grandesTemas";
 import { AppProvider } from "../context/AppContext";
 

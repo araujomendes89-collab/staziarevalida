@@ -2,7 +2,7 @@ import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { AdminEditorialView } from "../components/admin/AdminEditorialView";
-import { GuidelineWatchView } from "../components/guidelines/GuidelineWatchView";
+import { GuidelineWatchView } from "../components/materiais/GuidelineWatchView";
 import * as AppContextModule from "../context/AppContext";
 
 // Mock AppContext

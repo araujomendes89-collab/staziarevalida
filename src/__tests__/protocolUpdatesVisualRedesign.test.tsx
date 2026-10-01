@@ -3,7 +3,7 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { AppProvider } from '../context/AppContext';
-import { ProtocolUpdatesHubView } from '../components/protocols/ProtocolUpdatesHubView';
+import { ProtocolUpdatesHubView } from '../components/materiais/ProtocolUpdatesHubView';
 import { PROTOCOL_UPDATES_2025_2026 } from '../data/protocolUpdatesData';
 
 describe('Protocol Updates Pedagogical & Visual Redesign (Etapa 1.20E)', () => {
