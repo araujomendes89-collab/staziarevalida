@@ -14,8 +14,9 @@ import { QuestionsView } from "../questions/QuestionsView";
 import { SimuladosHubView } from "../simulados/SimuladosHubView";
 import { QuestoesIAView } from "../questoesIA/QuestoesIAView";
 import { ProvasCompletasView } from "./ProvasCompletasView";
+import { UnifiedOsceView } from "../osce/UnifiedOsceView";
 
-export type PraticarSubTab = "QUESTOES" | "SIMULADOS" | "PROVAS" | "QUESTOES_IA";
+export type PraticarSubTab = "QUESTOES" | "SIMULADOS" | "PROVAS" | "QUESTOES_IA" | "CHECKLISTS";
 
 interface PraticarViewProps {
   initialSubTab?: PraticarSubTab;
@@ -32,6 +33,8 @@ export const PraticarView: React.FC<PraticarViewProps> = ({ initialSubTab = "QUE
       setCurrentSubTab("PROVAS");
     } else if (activeTab === "praticar-questoes-ia" || activeTab === "questoes-ia") {
       setCurrentSubTab("QUESTOES_IA");
+    } else if (activeTab === "praticar-checklists" || activeTab === "osce" || activeTab === "checklists") {
+      setCurrentSubTab("CHECKLISTS");
     } else if (activeTab === "praticar-questoes" || activeTab === "questions") {
       setCurrentSubTab("QUESTOES");
     }
@@ -52,6 +55,9 @@ export const PraticarView: React.FC<PraticarViewProps> = ({ initialSubTab = "QUE
 
       {/* 4. QUESTÕES IA */}
       {currentSubTab === "QUESTOES_IA" && <QuestoesIAView />}
+
+      {/* 5. BANCO DE CHECKLISTS (OSCE) */}
+      {currentSubTab === "CHECKLISTS" && <UnifiedOsceView />}
     </div>
   );
 };

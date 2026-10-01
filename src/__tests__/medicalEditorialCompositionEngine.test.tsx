@@ -16,6 +16,178 @@ import { StaziaEditorialEditor } from "../components/admin/contentEngine/StaziaE
 import { A4PageContainer } from "../components/admin/contentEngine/editorial/A4PageContainer";
 import { ScreenPageContainer } from "../components/admin/contentEngine/editorial/ScreenPageContainer";
 
+import * as firebaseAdminModule from "../../server/firebaseAdmin";
+
+/**
+ * High-fidelity in-memory Firestore Mock supporting subcollections and transactions.
+ */
+class InMemoryFirestoreMock {
+  public store: Map<string, any> = new Map();
+
+  collection(collectionPath: string) {
+    const rootThis = this;
+    return {
+      doc: (docId: string) => {
+        const fullDocPath = `${collectionPath}/${docId}`;
+        return {
+          id: docId,
+          set: async (data: any, options?: { merge?: boolean }) => {
+            if (options?.merge) {
+              const existing = rootThis.store.get(fullDocPath) || {};
+              rootThis.store.set(fullDocPath, { ...existing, ...data });
+            } else {
+              rootThis.store.set(fullDocPath, { ...data });
+            }
+          },
+          get: async () => {
+            const data = rootThis.store.get(fullDocPath);
+            return {
+              exists: Boolean(data),
+              id: docId,
+              data: () => (data ? JSON.parse(JSON.stringify(data)) : undefined),
+            };
+          },
+          delete: async () => {
+            rootThis.store.delete(fullDocPath);
+          },
+          collection: (subcollectionPath: string) => {
+            const fullSubPath = `${fullDocPath}/${subcollectionPath}`;
+            return {
+              doc: (subDocId: string) => {
+                const fullSubDocPath = `${fullSubPath}/${subDocId}`;
+                return {
+                  id: subDocId,
+                  set: async (data: any, options?: { merge?: boolean }) => {
+                    if (options?.merge) {
+                      const existing = rootThis.store.get(fullSubDocPath) || {};
+                      rootThis.store.set(fullSubDocPath, { ...existing, ...data });
+                    } else {
+                      rootThis.store.set(fullSubDocPath, { ...data });
+                    }
+                  },
+                  get: async () => {
+                    const data = rootThis.store.get(fullSubDocPath);
+                    return {
+                      exists: Boolean(data),
+                      id: subDocId,
+                      data: () => (data ? JSON.parse(JSON.stringify(data)) : undefined),
+                    };
+                  },
+                };
+              },
+              get: async () => {
+                const docs: any[] = [];
+                const prefix = `${fullSubPath}/`;
+                for (const [key, value] of rootThis.store.entries()) {
+                  if (key.startsWith(prefix)) {
+                    const subId = key.substring(prefix.length);
+                    if (!subId.includes("/")) {
+                      docs.push({
+                        id: subId,
+                        data: () => JSON.parse(JSON.stringify(value)),
+                      });
+                    }
+                  }
+                }
+                return {
+                  empty: docs.length === 0,
+                  docs,
+                };
+              },
+            };
+          },
+        };
+      },
+      where: (field: string, op: string, value: any) => {
+        const rootThis = this;
+        return {
+          limit: (n: number) => ({
+            get: async () => {
+              const docs: any[] = [];
+              const prefix = `${collectionPath}/`;
+              for (const [key, val] of rootThis.store.entries()) {
+                if (key.startsWith(prefix)) {
+                  const subId = key.substring(prefix.length);
+                  if (!subId.includes("/") && val[field] === value) {
+                    docs.push({
+                      id: subId,
+                      data: () => JSON.parse(JSON.stringify(val)),
+                    });
+                    if (docs.length >= n) break;
+                  }
+                }
+              }
+              return { empty: docs.length === 0, docs };
+            },
+          }),
+          get: async () => {
+            const docs: any[] = [];
+            const prefix = `${collectionPath}/`;
+            for (const [key, val] of rootThis.store.entries()) {
+              if (key.startsWith(prefix)) {
+                const subId = key.substring(prefix.length);
+                if (!subId.includes("/") && val[field] === value) {
+                  docs.push({
+                    id: subId,
+                    data: () => JSON.parse(JSON.stringify(val)),
+                  });
+                }
+              }
+            }
+            return { empty: docs.length === 0, docs };
+          },
+        };
+      },
+      get: async () => {
+        const docs: any[] = [];
+        const prefix = `${collectionPath}/`;
+        for (const [key, value] of rootThis.store.entries()) {
+          if (key.startsWith(prefix)) {
+            const subId = key.substring(prefix.length);
+            if (!subId.includes("/")) {
+              docs.push({
+                id: subId,
+                data: () => JSON.parse(JSON.stringify(value)),
+              });
+            }
+          }
+        }
+        return {
+          empty: docs.length === 0,
+          docs,
+        };
+      },
+    };
+  }
+
+  batch() {
+    const ops: Array<() => Promise<void>> = [];
+    return {
+      set: (docRef: any, data: any, options?: { merge?: boolean }) => {
+        ops.push(async () => {
+          await docRef.set(data, options);
+        });
+      },
+      commit: async () => {
+        for (const op of ops) {
+          await op();
+        }
+      },
+    };
+  }
+
+  async runTransaction(updateFunction: (transaction: any) => Promise<any>) {
+    const transaction = {
+      get: async (docRef: any) => docRef.get(),
+      set: (docRef: any, data: any, options?: { merge?: boolean }) => {
+        return docRef.set(data, options);
+      },
+      delete: (docRef: any) => docRef.delete(),
+    };
+    return await updateFunction(transaction);
+  }
+}
+
 describe("Medical Editorial Composition Engine — Etapa 1.28D", () => {
   let sampleContent: StructuredSourceContent;
 
@@ -239,8 +411,14 @@ describe("Medical Editorial Composition Engine — Etapa 1.28D", () => {
 
   describe("5. Editorial Job Queue & Admin Operations", () => {
     let jobManager: EditorialJobManager;
+    let mockFirestore: InMemoryFirestoreMock;
 
     beforeEach(() => {
+      mockFirestore = new InMemoryFirestoreMock();
+      vi.spyOn(firebaseAdminModule, "getAdminDb").mockImplementation(() => {
+        return mockFirestore as any;
+      });
+
       jobManager = EditorialJobManager.getInstance();
       jobManager.reset();
     });
@@ -252,7 +430,7 @@ describe("Medical Editorial Composition Engine — Etapa 1.28D", () => {
       expect(job.progress).toBe(100);
       expect(draft.pages.length).toBeGreaterThanOrEqual(1);
 
-      const retrieved = jobManager.getDraft(draft.id);
+      const retrieved = await jobManager.getDraft(draft.id);
       expect(retrieved).toBeDefined();
       expect(retrieved?.id).toBe(draft.id);
     });
@@ -263,7 +441,7 @@ describe("Medical Editorial Composition Engine — Etapa 1.28D", () => {
       const initialFirstBlockId = draft.pages[0].blocks[0].id;
       const initialSecondBlockId = draft.pages[0].blocks[1].id;
 
-      const updated = jobManager.reorderPageBlocks(draft.id, pageIndex, 0, 1);
+      const updated = await jobManager.reorderPageBlocks(draft.id, pageIndex, 0, 1);
       expect(updated.pages[0].blocks[0].id).toBe(initialSecondBlockId);
       expect(updated.pages[0].blocks[1].id).toBe(initialFirstBlockId);
     });
@@ -272,7 +450,7 @@ describe("Medical Editorial Composition Engine — Etapa 1.28D", () => {
       const { draft } = await jobManager.createAndRunCompositionJob(sampleContent);
       const targetBlockId = draft.pages[0].blocks[1].id;
 
-      const updated = jobManager.changeComponentType(draft.id, targetBlockId, "StickyNoteCard");
+      const updated = await jobManager.changeComponentType(draft.id, targetBlockId, "StickyNoteCard");
       const targetBlock = updated.pages[0].blocks.find((b) => b.id === targetBlockId);
       expect(targetBlock?.type).toBe("StickyNoteCard");
     });
@@ -282,7 +460,7 @@ describe("Medical Editorial Composition Engine — Etapa 1.28D", () => {
       const initialPageCount = draft.pages.length;
       const secondBlockId = draft.pages[0].blocks[1].id;
 
-      const updated = jobManager.insertPageBreakAtBlock(draft.id, secondBlockId);
+      const updated = await jobManager.insertPageBreakAtBlock(draft.id, secondBlockId);
       expect(updated.pages.length).toBe(initialPageCount + 1);
       expect(updated.pages[1].blocks[0].id).toBe(secondBlockId);
       expect(updated.pages[1].pageBreakReason).toContain("Quebra manual");
@@ -292,7 +470,7 @@ describe("Medical Editorial Composition Engine — Etapa 1.28D", () => {
       const { draft } = await jobManager.createAndRunCompositionJob(sampleContent);
       expect(draft.status).toBe("DRAFT");
 
-      const approved = jobManager.approveEditorialLayout(draft.id);
+      const approved = await jobManager.approveEditorialLayout(draft.id);
       expect(approved.status).toBe("APPROVED_EDITORIAL");
       expect(approved.plan.compositionStatus).toBe("APPROVED_EDITORIAL");
     });

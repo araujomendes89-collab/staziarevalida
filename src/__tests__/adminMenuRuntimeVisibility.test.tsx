@@ -361,4 +361,42 @@ describe("Admin Menu Runtime Visibility Fix (Etapa 1.27B.1)", () => {
       expect(screen.queryByTestId("nav-admin-panel")).not.toBeInTheDocument();
     });
   });
+
+  describe("4. Header Master Admin Controls and Badges", () => {
+    it("should render Master Admin header with toggle and MASTER badge when isDeveloperAdmin is true", async () => {
+      const { Header } = await import("../components/layout/Header");
+      const setActiveTab = vi.fn();
+      mockUseApp.mockReturnValue({
+        ...baseAdminState,
+        activeTab: "admin",
+        setActiveTab,
+        isDeveloperAdmin: true,
+      });
+
+      render(<Header onToggleMobileMenu={vi.fn()} isMobileMenuOpen={false} />);
+
+      expect(screen.getByText(/painel de gestão master/i)).toBeInTheDocument();
+      expect(screen.getByText("MASTER")).toBeInTheDocument();
+      expect(screen.getByText("Visão do Aluno")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText("Visão do Aluno"));
+      expect(setActiveTab).toHaveBeenCalledWith("home");
+    });
+
+    it("should render normal student header and study streak when isDeveloperAdmin is false", async () => {
+      const { Header } = await import("../components/layout/Header");
+      mockUseApp.mockReturnValue({
+        ...baseAdminState,
+        activeTab: "home",
+        isDeveloperAdmin: false,
+        user: { ...baseAdminState.user, role: "STUDENT", studyStreakDays: 5 },
+      });
+
+      render(<Header onToggleMobileMenu={vi.fn()} isMobileMenuOpen={false} />);
+
+      expect(screen.queryByText(/painel de gestão master/i)).not.toBeInTheDocument();
+      expect(screen.queryByText("MASTER")).not.toBeInTheDocument();
+      expect(screen.getByText("5 dias")).toBeInTheDocument();
+    });
+  });
 });

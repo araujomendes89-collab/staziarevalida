@@ -20,6 +20,7 @@ export const TAB_TO_PATH: Record<NavTab, string> = {
   "praticar-simulados": "/praticar/simulados",
   "praticar-provas": "/praticar/provas-completas",
   "praticar-questoes-ia": "/praticar/questoes-ia",
+  "praticar-checklists": "/praticar/checklists",
 
   // Revisar
   revisar: "/revisar",
@@ -180,7 +181,12 @@ const PATH_TO_TAB_MAP: Record<string, NavTab> = {
   "/precos": "subscription",
   "/subscription": "subscription",
   "/assinatura": "subscription",
-  "/osce": "osce",
+  "/osce": "praticar-checklists",
+  "/praticar/checklists": "praticar-checklists",
+  "/checklist-bank": "praticar-checklists",
+  "/app/checklist-bank": "praticar-checklists",
+  "/checklists": "praticar-checklists",
+  "/estacoes": "praticar-checklists",
   "/memoria": "student-memory",
   "/student-memory": "student-memory",
   "/agente": "agent",
@@ -307,8 +313,9 @@ export function tabToTitle(tab: NavTab): string {
       return "StaziaMed Revalida | Inventário & Exportação";
     case "subscription":
       return "StaziaMed Revalida | Planos & Assinatura";
+    case "praticar-checklists":
     case "osce":
-      return "StaziaMed Revalida | Estações Clínicas OSCE";
+      return "StaziaMed Revalida | Banco de Checklist";
     case "student-memory":
       return "StaziaMed Revalida | Memória Cognitiva";
     case "agent":

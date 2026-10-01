@@ -206,8 +206,8 @@ export function requireServerCapability(allowedRoles: ServerUserRole[]) {
       sendAuthError(
         res,
         500,
-        "AUTH_INTERNAL_ERROR",
-        "Internal error verifying server authorization."
+        "AUTHZ_BACKEND_UNAVAILABLE",
+        "Serviço de autorização indisponível. Erro ao consultar o banco de dados."
       );
     }
   };

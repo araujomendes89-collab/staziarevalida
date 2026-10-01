@@ -216,6 +216,17 @@ export class SessionBuilderService {
         if (!config.areas.includes(q.area)) return false;
       }
 
+      // 2b. Sub-areas Filter: match specialty or subtopic
+      if (config.subareas && config.subareas.length > 0 && !config.subareas.includes("ALL")) {
+        const matchesSubarea = config.subareas.some(
+          (sub) =>
+            q.specialty?.toLowerCase() === sub.toLowerCase() ||
+            q.subtopic?.toLowerCase().includes(sub.toLowerCase()) ||
+            q.specialty?.toLowerCase().includes(sub.toLowerCase())
+        );
+        if (!matchesSubarea) return false;
+      }
+
       // 3. Topics Filter: match topic, subtopic, tags, specialty or clinicalCase (supports comma-separated queries)
       if (config.topics && config.topics.length > 0) {
         const matchesTopic = config.topics.some((t) => {

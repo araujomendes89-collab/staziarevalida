@@ -1,17 +1,22 @@
 /**
- * Editorial Job Queue & Draft Manager (Etapa 1.28D).
+ * Editorial Job Queue & Draft Manager (Etapa 1.28D + Persistência Durável).
  * Handles asynchronous composition jobs, manual block reordering,
- * component type changes, manual page breaks, and editorial approvals.
+ * component type changes, manual page breaks, and editorial approvals with durable Firestore persistence.
+ *
+ * Firestore = persistent source of truth
+ * Map = runtime transient cache only
  */
 
 import {
   EditorialComponentType,
-  EditorialPagePlan,
   StaziaEditorialDocumentDraft,
 } from "../../src/types/medicalEditorial";
 import { StructuredSourceContent } from "../../src/types/medicalTaxonomy";
 import { StaziaEditorialCompositionEngine } from "./staziaEditorialCompositionEngine";
 import { computeSha256Fingerprint } from "../../src/services/pdfValidationService";
+import { EditorialDraftRepository } from "./editorialDraftRepository";
+import { EditorialDraftHydrationService } from "./editorialDraftHydrationService";
+import { EditorialJobRepository } from "./editorialJobRepository";
 
 export type EditorialJobStatus =
   | "COMPOSITION_QUEUED"
@@ -35,6 +40,7 @@ export interface EditorialJobState {
 
 export class EditorialJobManager {
   private static instance: EditorialJobManager;
+  // In-Memory RAM Cache (Firestore is the persistent source of truth)
   private jobs: Map<string, EditorialJobState> = new Map();
   private draftsStore: Map<string, StaziaEditorialDocumentDraft> = new Map();
   private engine: StaziaEditorialCompositionEngine;
@@ -67,14 +73,36 @@ export class EditorialJobManager {
       blocksCount: sourceContent.blocks.length,
       updatedAt: sourceContent.updatedAt,
     });
-    const jobFingerprint = computeSha256Fingerprint(Buffer.from(rawContentStr, "utf-8"));
+    const jobFingerprint = await computeSha256Fingerprint(Buffer.from(rawContentStr, "utf-8"));
 
-    // Check for existing completed job
+    // Check for existing completed job in memory or Firestore
     const existing = Array.from(this.jobs.values()).find(
       (j) => j.jobFingerprint === jobFingerprint && j.draft
     );
     if (existing && existing.draft) {
       return { job: existing, draft: existing.draft };
+    }
+
+    const existingPersisted = await EditorialJobRepository.findByFingerprint(jobFingerprint);
+    if (existingPersisted && existingPersisted.status === "DRAFT_READY" && existingPersisted.draftId) {
+      const hydratedDraft = await EditorialDraftHydrationService.hydrateDraft(
+        existingPersisted.draftId
+      );
+      if (hydratedDraft) {
+        const job: EditorialJobState = {
+          jobId: existingPersisted.jobId,
+          structuredContentId: existingPersisted.structuredContentId,
+          status: existingPersisted.status,
+          progress: existingPersisted.progress,
+          startedAt: existingPersisted.startedAt,
+          finishedAt: existingPersisted.finishedAt,
+          jobFingerprint: existingPersisted.jobFingerprint,
+          draft: hydratedDraft,
+        };
+        this.jobs.set(job.jobId, job);
+        this.draftsStore.set(hydratedDraft.id, hydratedDraft);
+        return { job, draft: hydratedDraft };
+      }
     }
 
     const jobId = `job_ed_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
@@ -88,170 +116,182 @@ export class EditorialJobManager {
     };
 
     this.jobs.set(jobId, jobState);
+    await EditorialJobRepository.saveJob(jobState);
 
     try {
       const { draft } = await this.engine.composeDocument(sourceContent);
 
       jobState.progress = 90;
       jobState.status = "LAYOUT_VALIDATING";
+      await EditorialJobRepository.updateProgress(jobId, 90, "LAYOUT_VALIDATING");
 
       // Validate zero loss
-      if (draft.plan.unaccountedSourceBlocks > 0 || draft.plan.duplicatedSourceBlockAssignments > 0) {
+      if (
+        draft.plan.unaccountedSourceBlocks > 0 ||
+        draft.plan.duplicatedSourceBlockAssignments > 0
+      ) {
         throw new Error("Falha de auditoria: blocos de fonte não atribuídos ou duplicados.");
       }
+
+      // Persist complete normalized draft to Firestore
+      await EditorialDraftRepository.saveDraft(draft);
 
       jobState.status = "DRAFT_READY";
       jobState.progress = 100;
       jobState.finishedAt = new Date().toISOString();
       jobState.draft = draft;
 
+      await EditorialJobRepository.saveJob(jobState, draft.id);
+
       this.draftsStore.set(draft.id, draft);
+      this.jobs.set(jobId, jobState);
+
       return { job: jobState, draft };
     } catch (err: any) {
+      console.error(`[Editorial Job Failed] ${jobId}:`, err);
       jobState.status = "FAILED";
       jobState.errorMessage = err?.message || "Erro durante a composição editorial.";
       jobState.finishedAt = new Date().toISOString();
+      await EditorialJobRepository.saveJob(jobState);
+      this.jobs.set(jobId, jobState);
       throw err;
     }
   }
 
-  public getJob(jobId: string): EditorialJobState | undefined {
-    return this.jobs.get(jobId);
+  public async getJob(jobId: string): Promise<EditorialJobState | undefined> {
+    const cached = this.jobs.get(jobId);
+    if (cached && cached.draft) {
+      return cached;
+    }
+
+    const persisted = await EditorialJobRepository.getJob(jobId);
+    if (!persisted) {
+      return undefined;
+    }
+
+    let draft: StaziaEditorialDocumentDraft | undefined;
+    if (persisted.draftId) {
+      const hydrated = await EditorialDraftHydrationService.hydrateDraft(persisted.draftId);
+      if (hydrated) {
+        draft = hydrated;
+      }
+    }
+
+    const jobState: EditorialJobState = {
+      jobId: persisted.jobId,
+      structuredContentId: persisted.structuredContentId,
+      status: persisted.status,
+      progress: persisted.progress,
+      startedAt: persisted.startedAt,
+      finishedAt: persisted.finishedAt,
+      errorMessage: persisted.errorMessage,
+      jobFingerprint: persisted.jobFingerprint,
+      draft,
+    };
+
+    this.jobs.set(jobId, jobState);
+    return jobState;
   }
 
-  public getDraft(draftId: string): StaziaEditorialDocumentDraft | undefined {
-    return this.draftsStore.get(draftId);
+  public async getDraft(draftId: string): Promise<StaziaEditorialDocumentDraft | undefined> {
+    const cached = this.draftsStore.get(draftId);
+    if (cached) {
+      return cached;
+    }
+
+    const hydrated = await EditorialDraftHydrationService.hydrateDraft(draftId);
+    if (hydrated) {
+      this.draftsStore.set(hydrated.id, hydrated);
+      return hydrated;
+    }
+
+    return undefined;
   }
 
-  public getDraftByStructuredContentId(contentId: string): StaziaEditorialDocumentDraft | undefined {
-    return Array.from(this.draftsStore.values()).find(
+  public async getDraftByStructuredContentId(
+    contentId: string
+  ): Promise<StaziaEditorialDocumentDraft | undefined> {
+    const cached = Array.from(this.draftsStore.values()).find(
       (d) => d.structuredSourceContentId === contentId
     );
+    if (cached) {
+      return cached;
+    }
+
+    const hydrated = await EditorialDraftHydrationService.getDraftByStructuredContentId(contentId);
+    if (hydrated) {
+      this.draftsStore.set(hydrated.id, hydrated);
+      return hydrated;
+    }
+
+    return undefined;
   }
 
   /**
    * Reorders blocks within an editorial page.
    */
-  public reorderPageBlocks(
+  public async reorderPageBlocks(
     draftId: string,
     pageIndex: number,
     fromIndex: number,
     toIndex: number
-  ): StaziaEditorialDocumentDraft {
-    const draft = this.draftsStore.get(draftId);
-    if (!draft) throw new Error(`Draft '${draftId}' não encontrado.`);
-
-    const targetPage = draft.pages.find((p) => p.pageIndex === pageIndex);
-    if (!targetPage) throw new Error(`Página '${pageIndex}' não encontrada no draft.`);
-
-    if (fromIndex < 0 || fromIndex >= targetPage.blocks.length || toIndex < 0 || toIndex >= targetPage.blocks.length) {
-      throw new Error("Índices de reordenação inválidos.");
+  ): Promise<StaziaEditorialDocumentDraft> {
+    await EditorialDraftRepository.reorderPageBlocks(draftId, pageIndex, fromIndex, toIndex);
+    const draft = await EditorialDraftHydrationService.hydrateDraft(draftId);
+    if (!draft) {
+      throw new Error(`Draft '${draftId}' não encontrado após reordenação.`);
     }
 
-    const [moved] = targetPage.blocks.splice(fromIndex, 1);
-    targetPage.blocks.splice(toIndex, 0, moved);
-
-    // Update editorial orders
-    targetPage.blocks.forEach((b, idx) => {
-      b.editorialOrder = idx + 1;
-    });
-
-    draft.updatedAt = new Date().toISOString();
+    this.draftsStore.set(draftId, draft);
     return draft;
   }
 
   /**
-   * Changes the visual component type of an editorial block (e.g. Paragraph -> StickyNoteCard).
+   * Changes the visual component type of an editorial block.
    */
-  public changeComponentType(
+  public async changeComponentType(
     draftId: string,
     blockId: string,
     newType: EditorialComponentType
-  ): StaziaEditorialDocumentDraft {
-    const draft = this.draftsStore.get(draftId);
-    if (!draft) throw new Error(`Draft '${draftId}' não encontrado.`);
-
-    let targetBlock = null;
-    for (const page of draft.pages) {
-      const found = page.blocks.find((b) => b.id === blockId);
-      if (found) {
-        targetBlock = found;
-        break;
-      }
+  ): Promise<StaziaEditorialDocumentDraft> {
+    await EditorialDraftRepository.changeComponentType(draftId, blockId, newType);
+    const draft = await EditorialDraftHydrationService.hydrateDraft(draftId);
+    if (!draft) {
+      throw new Error(`Draft '${draftId}' não encontrado após alteração de tipo.`);
     }
 
-    if (!targetBlock) throw new Error(`Bloco '${blockId}' não encontrado.`);
-
-    targetBlock.type = newType;
-    draft.updatedAt = new Date().toISOString();
+    this.draftsStore.set(draftId, draft);
     return draft;
   }
 
   /**
    * Inserts a manual page break at a specific block, moving subsequent blocks to a new page.
    */
-  public insertPageBreakAtBlock(
+  public async insertPageBreakAtBlock(
     draftId: string,
     blockId: string
-  ): StaziaEditorialDocumentDraft {
-    const draft = this.draftsStore.get(draftId);
-    if (!draft) throw new Error(`Draft '${draftId}' não encontrado.`);
-
-    let targetPageIndex = -1;
-    let targetBlockIndex = -1;
-
-    for (let pIdx = 0; pIdx < draft.pages.length; pIdx++) {
-      const bIdx = draft.pages[pIdx].blocks.findIndex((b) => b.id === blockId);
-      if (bIdx !== -1) {
-        targetPageIndex = pIdx;
-        targetBlockIndex = bIdx;
-        break;
-      }
+  ): Promise<StaziaEditorialDocumentDraft> {
+    await EditorialDraftRepository.insertPageBreakAtBlock(draftId, blockId);
+    const draft = await EditorialDraftHydrationService.hydrateDraft(draftId);
+    if (!draft) {
+      throw new Error(`Draft '${draftId}' não encontrado após quebra de página.`);
     }
 
-    if (targetPageIndex === -1 || targetBlockIndex === -1) {
-      throw new Error(`Bloco '${blockId}' não encontrado para quebra de página.`);
-    }
-
-    const curPage = draft.pages[targetPageIndex];
-    const remainingBlocks = curPage.blocks.splice(targetBlockIndex);
-
-    curPage.sourceBlockRefs = curPage.blocks.flatMap((b) => b.sourceBlockRefs);
-
-    const newPage: EditorialPagePlan = {
-      pageIndex: targetPageIndex + 2,
-      pageRole: "CORE_CONTENT",
-      blocks: remainingBlocks,
-      sourceBlockRefs: remainingBlocks.flatMap((b) => b.sourceBlockRefs),
-      estimatedDensity: "BALANCED",
-      densityScore: 5.0,
-      pageBreakReason: "Quebra manual inserida pelo Administrador",
-    };
-
-    // Insert new page and shift subsequent page numbers
-    draft.pages.splice(targetPageIndex + 1, 0, newPage);
-    for (let i = targetPageIndex + 1; i < draft.pages.length; i++) {
-      draft.pages[i].pageIndex = i + 1;
-    }
-
-    draft.updatedAt = new Date().toISOString();
+    this.draftsStore.set(draftId, draft);
     return draft;
   }
 
   /**
    * Approves the editorial layout draft.
    */
-  public approveEditorialLayout(draftId: string): StaziaEditorialDocumentDraft {
-    const draft = this.draftsStore.get(draftId);
-    if (!draft) throw new Error(`Draft '${draftId}' não encontrado.`);
-
-    if (draft.plan.unaccountedSourceBlocks > 0) {
-      throw new Error("Não é possível aprovar layout com blocos de fonte não atribuídos.");
+  public async approveEditorialLayout(draftId: string): Promise<StaziaEditorialDocumentDraft> {
+    await EditorialDraftRepository.approveEditorialLayout(draftId);
+    const draft = await EditorialDraftHydrationService.hydrateDraft(draftId);
+    if (!draft) {
+      throw new Error(`Draft '${draftId}' não encontrado após aprovação.`);
     }
 
-    draft.status = "APPROVED_EDITORIAL";
-    draft.plan.compositionStatus = "APPROVED_EDITORIAL";
-    draft.updatedAt = new Date().toISOString();
+    this.draftsStore.set(draftId, draft);
     return draft;
   }
 }

@@ -18,7 +18,7 @@ function maskUid(uid: string): string {
 async function repairAdminRole() {
   const projectId = "staziamed-revalida-prod";
   const databaseId = "staziamed-revalida-prod";
-  const targetUid = "cQjACViZuhV275H381gHhM6ugxj2";
+  const targetUid = "cQjACVALpedbijS0WiCwuFRJgxj2";
   const token = getGcloudAccessToken();
 
   console.log("============================================================");

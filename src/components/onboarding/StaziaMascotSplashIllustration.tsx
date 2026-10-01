@@ -24,7 +24,7 @@ export const StaziaMascotSplashIllustration: React.FC<StaziaMascotSplashIllustra
           --teal: #52C7B8;
           --teal-strong: #45E0CE;
           --blue: #2D68B8;
-          --total-dur: 11000ms;
+          --total-dur: 7500ms;
         }
 
         /* Ambient floating dots */

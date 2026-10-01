@@ -29,9 +29,17 @@ import {
 import { adminFlashcardDraftsRouter } from "./server/routes/adminFlashcardDrafts";
 import { adminDesignCloneRouter } from "./server/routes/adminDesignClone";
 import { adminPdfIngestionRouter } from "./server/routes/adminPdfIngestion";
+import { adminContentPublicationRouter } from "./server/routes/adminContentPublication";
+import { publishedContentRouter } from "./server/routes/publishedContent";
+import { adminUsersRouter } from "./server/routes/adminUsers";
+import { entitlementsRouter, adminEntitlementsRouter } from "./server/routes/entitlements";
+import { paymentWebhooksRouter } from "./server/routes/paymentWebhooks";
+import { billingRouter } from "./server/routes/billing";
+import { resolveServerPort } from "./server/config/serverPort";
 
 dotenv.config();
 
+export { resolveServerPort };
 
 function getGenAI(): GoogleGenAI | null {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -50,12 +58,19 @@ function getGenAI(): GoogleGenAI | null {
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = resolveServerPort(process.env.PORT);
 
   app.use(express.json({ limit: "50mb" }));
+  app.use("/api/billing", billingRouter);
+  app.use("/api/entitlements", entitlementsRouter);
+  app.use("/api/admin/entitlements", adminEntitlementsRouter);
+  app.use("/api/webhooks", paymentWebhooksRouter);
+  app.use("/api/admin/users", adminUsersRouter);
   app.use("/api/admin/flashcards/drafts", adminFlashcardDraftsRouter);
   app.use("/api/admin/design", adminDesignCloneRouter);
+  app.use("/api/admin/content/publication", adminContentPublicationRouter);
   app.use("/api/admin/content", adminPdfIngestionRouter);
+  app.use("/api/published-content", publishedContentRouter);
 
   // API Health Check
 

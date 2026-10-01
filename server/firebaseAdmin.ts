@@ -1,7 +1,6 @@
-import { initializeApp, getApps, App } from "firebase-admin/app";
+import { initializeApp, getApps, App, applicationDefault } from "firebase-admin/app";
 import { getAuth, Auth } from "firebase-admin/auth";
 import { getFirestore, Firestore } from "firebase-admin/firestore";
-import { execSync } from "child_process";
 
 let adminApp: App | null = null;
 
@@ -16,21 +15,10 @@ export function resolveFirebaseProjectId(): string {
   );
 }
 
-function getGcloudAccessToken(): string | null {
-  try {
-    const token = execSync("gcloud auth print-access-token", {
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "ignore"],
-    }).trim();
-    return token.length > 0 ? token : null;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Initializes and returns the Firebase Admin SDK singleton.
- * Uses active gcloud access token or Application Default Credentials (ADC).
+ * Initializes and returns the canonical Firebase Admin SDK singleton.
+ * Uses standard Application Default Credentials (ADC) in Google Cloud and local environments.
+ * Single unified instance for both Firebase Auth and Firestore.
  */
 export function getAdminApp(): App {
   if (adminApp) {
@@ -45,25 +33,10 @@ export function getAdminApp(): App {
 
   const projectId = resolveFirebaseProjectId();
 
-  const token = getGcloudAccessToken();
-  if (token) {
-    adminApp = initializeApp({
-      projectId,
-      credential: {
-        getAccessToken: async () => {
-          const liveToken = getGcloudAccessToken() || token;
-          return {
-            access_token: liveToken,
-            expires_in: 3600,
-          };
-        },
-      },
-    });
-  } else {
-    adminApp = initializeApp({
-      projectId,
-    });
-  }
+  adminApp = initializeApp({
+    projectId,
+    credential: applicationDefault(),
+  });
 
   return adminApp;
 }
@@ -74,11 +47,7 @@ export function getAdminAuth(): Auth {
 
 export function getAdminDb(): Firestore {
   const databaseId = process.env.FIRESTORE_DATABASE_ID || "staziamed-revalida-prod";
-  try {
-    return getFirestore(getAdminApp(), databaseId);
-  } catch {
-    return getFirestore(getAdminApp());
-  }
+  return getFirestore(getAdminApp(), databaseId);
 }
 
 /**

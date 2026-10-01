@@ -24,6 +24,7 @@ import { InepPatternEngineView } from "../patternEngine/InepPatternEngineView";
 import { getQuestionTimingMetrics } from "../../services/questionTimingService";
 import { formatMedicalArea } from "../../utils/formatters";
 import { MedicalArea } from "../../types";
+import { FeatureGate } from "../common/FeatureGate";
 
 export type DesempenhoSubTab =
   | "GERAL"
@@ -218,20 +219,25 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
 
       {/* 2. EVOLUÇÃO (REFINED VIEW 3.0: QUALIDADE + VOLUME + RITMO) */}
       {currentSubTab === "EVOLUCAO" && (
-        <div className="space-y-6">
-          {/* HEADER */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
+        <FeatureGate
+          feature="weakness_map"
+          title="Mapa de Fraquezas & Evolução"
+          description="O mapa analítico de fraquezas e evolução histórica de acertos é exclusivo dos planos Stazia PRO e Elite."
+        >
+          <div className="space-y-6">
+            {/* HEADER */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
             <div>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-xs shadow-cyan-400/50" />
                   <span>Evolução do Desempenho</span>
                 </h1>
-                <span className="text-[10px] px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-medium">
+                <span className="text-[10px] px-2 py-0.5 rounded-md bg-cyan-50 text-cyan-800 border border-cyan-200 font-medium">
                   Últimas 4 Semanas
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 mt-1">
+              <p className="text-xs text-slate-500 mt-1">
                 Acompanhe a trajetória de acertos, volume de prática e ritmo de resolução no seu treino.
               </p>
             </div>
@@ -240,7 +246,7 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab("desempenho-tendencias")}
-                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition-colors flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
               >
                 <PieChart className="w-3.5 h-3.5 text-cyan-400" />
                 <span>Ver Tendências Históricas INEP</span>
@@ -250,13 +256,13 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
 
           {totalAllAttempts === 0 ? (
             /* Empty State */
-            <div className="p-8 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-center space-y-4 shadow-xl">
+            <div className="p-8 rounded-2xl bg-white border border-slate-300 text-center space-y-4 shadow-md">
               <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto">
                 <BookOpen className="w-6 h-6" />
               </div>
               <div className="space-y-1 max-w-md mx-auto">
-                <h2 className="text-base font-bold text-white">Ainda não há dados suficientes para mostrar sua evolução</h2>
-                <p className="text-xs text-zinc-400 leading-relaxed">
+                <h2 className="text-base font-bold text-slate-900">Ainda não há dados suficientes para mostrar sua evolução</h2>
+                <p className="text-xs text-slate-500 leading-relaxed">
                   Resolva questões ao longo dos dias para que sua curva de aprendizado, volume e ritmo sejam traçados.
                 </p>
               </div>
@@ -274,52 +280,52 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
               {/* 3 SUMMARY METRICS (1. Qualidade, 2. Volume, 3. Ritmo) */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                 {/* 1. Taxa de Acerto Ponderada do Período */}
-                <div className="p-5 rounded-2xl bg-zinc-900/80 border border-zinc-800 shadow-md space-y-1">
-                  <span className="text-[11px] text-zinc-400 font-semibold uppercase tracking-wider">
+                <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
+                  <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">
                     Taxa de Acerto do Período
                   </span>
-                  <div className="text-3xl font-black text-white">
+                  <div className="text-3xl font-black text-slate-900">
                     {trajectorySummary.periodAccuracy}%
                   </div>
-                  <p className="text-[11px] text-zinc-400">
+                  <p className="text-[11px] text-slate-500">
                     {trajectorySummary.totalCorrect} acertos · {trajectorySummary.totalIncorrect} erros
                   </p>
                 </div>
 
                 {/* 2. Volume de Questões */}
-                <div className="p-5 rounded-2xl bg-zinc-900/80 border border-zinc-800 shadow-md space-y-1">
-                  <span className="text-[11px] text-zinc-400 font-semibold uppercase tracking-wider">
+                <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
+                  <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">
                     Questões Resolvidas
                   </span>
                   <div className="text-3xl font-black text-cyan-400">
                     {trajectorySummary.totalQuestions}
                   </div>
-                  <p className="text-[11px] text-zinc-400">
+                  <p className="text-[11px] text-slate-500">
                     Total de tentativas registradas no período.
                   </p>
                 </div>
 
                 {/* 3. Tempo Típico por Questão (Ritmo - Mediana) */}
-                <div className="p-5 rounded-2xl bg-zinc-900/80 border border-zinc-800 shadow-md space-y-1">
+                <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] text-zinc-400 font-semibold uppercase tracking-wider">
+                    <span className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">
                       Tempo Típico por Questão
                     </span>
                     <span
                       title="Mediana do tempo ativo registrado nas questões respondidas."
-                      className="cursor-help text-zinc-500 hover:text-zinc-300 transition-colors"
+                      className="cursor-help text-slate-400 hover:text-slate-600 transition-colors"
                     >
                       <Info className="w-3.5 h-3.5" />
                     </span>
                   </div>
-                  <div className="text-3xl font-black text-white">
+                  <div className="text-3xl font-black text-slate-900">
                     {timingMetrics.isTimingDisplayable ? (
                       timingMetrics.formattedMedian
                     ) : (
-                      <span className="text-xl font-bold text-zinc-400">Coletando dados</span>
+                      <span className="text-xl font-bold text-slate-500">Coletando dados</span>
                     )}
                   </div>
-                  <p className="text-[11px] text-zinc-400">
+                  <p className="text-[11px] text-slate-500">
                     {timingMetrics.isTimingDisplayable
                       ? `Mediana baseada em ${timingMetrics.countWithTiming} questões.`
                       : "Mínimo de 10 questões cronometradas."}
@@ -328,19 +334,19 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
               </div>
 
               {/* TRAJECTORY CHART & VOLUME CONTAINER */}
-              <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/80 border border-zinc-800 shadow-xl space-y-6">
+              <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
                   <div>
-                    <h2 className="text-base font-bold text-white tracking-tight">
+                    <h2 className="text-base font-bold text-slate-900 tracking-tight">
                       Trajetória Semanal de Acurácia
                     </h2>
-                    <p className="text-xs text-zinc-400 mt-0.5">
+                    <p className="text-xs text-slate-500 mt-0.5">
                       Desempenho registrado em cada janela semanal de prática.
                     </p>
                   </div>
                   {trajectorySummary.hasData && (
                     <div className="text-xs font-bold font-mono">
-                      <span className="text-zinc-400 font-normal">Variação: </span>
+                      <span className="text-slate-500 font-normal">Variação: </span>
                       <span
                         className={
                           trajectorySummary.deltaPp >= 0 ? "text-emerald-400" : "text-amber-400"
@@ -363,7 +369,7 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
                         <div className="h-28 flex flex-col justify-end items-center">
                           {w.hasData ? (
                             <div className="w-full flex flex-col items-center gap-1.5">
-                              <span className="font-mono text-xs font-bold text-white">
+                                <span className="font-mono text-xs font-bold text-slate-900">
                                 {w.rate}%
                               </span>
                               <div
@@ -372,17 +378,17 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
                               />
                             </div>
                           ) : (
-                            <div className="h-8 flex items-center justify-center text-[10px] text-zinc-500 italic">
+                            <div className="h-8 flex items-center justify-center text-[10px] text-slate-400 italic">
                               Sem atividade
                             </div>
                           )}
                         </div>
 
-                        <div className="border-t border-zinc-800 pt-2 space-y-0.5">
-                          <span className="text-xs font-bold text-zinc-300 block">
+                        <div className="border-t border-slate-200 pt-2 space-y-0.5">
+                          <span className="text-xs font-bold text-slate-700 block">
                             {w.week}
                           </span>
-                          <span className="text-[10px] text-zinc-400 font-mono block">
+                          <span className="text-[10px] text-slate-500 font-mono block">
                             {w.hasData ? `${w.questions} questões` : "0 questões"}
                           </span>
                         </div>
@@ -392,10 +398,10 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
                 </div>
 
                 {/* FACTUAL OBSERVATION SUMMARY */}
-                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800/80 text-xs text-zinc-300 flex items-center justify-between gap-4">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700 flex items-center justify-between gap-4">
                   <div className="space-y-0.5">
-                    <span className="font-bold text-white block">Leitura do Período</span>
-                    <p className="text-zinc-400 text-[11px]">
+                    <span className="font-bold text-slate-900 block">Leitura do Período</span>
+                    <p className="text-slate-500 text-[11px]">
                       {trajectorySummary.deltaPp > 0
                         ? `Sua taxa de acerto variou de ${trajectorySummary.firstRate}% para ${trajectorySummary.latestRate}% (+${trajectorySummary.deltaPp} p.p.) ao longo das últimas 4 semanas de prática.`
                         : trajectorySummary.deltaPp < 0
@@ -406,16 +412,16 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
                 </div>
 
                 {/* INEP HISTORICAL TRENDS FOOTER BANNER */}
-                <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center shrink-0">
                       <PieChart className="w-4 h-4" />
                     </div>
                     <div>
-                      <span className="font-bold text-white block">
+                        <span className="font-bold text-slate-900 block">
                         Recorrência Histórica das Provas INEP
                       </span>
-                      <span className="text-zinc-400 text-[11px] block">
+                        <span className="text-slate-500 text-[11px] block">
                         Consulte o mapa de temas mais cobrados nas edições anteriores do Revalida.
                       </span>
                     </div>
@@ -423,7 +429,7 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
                   <button
                     type="button"
                     onClick={() => setActiveTab("desempenho-tendencias")}
-                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 text-cyan-300 border border-zinc-800 transition-colors cursor-pointer self-start sm:self-center"
+                    className="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 text-cyan-700 border border-slate-200 transition-colors cursor-pointer self-start sm:self-center"
                   >
                     Ver Tendências Históricas INEP →
                   </button>
@@ -432,6 +438,7 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
             </div>
           )}
         </div>
+        </FeatureGate>
       )}
 
       {/* 3. MATRIZ DE COMPETÊNCIAS (ROTA PRESERVADA / SUBVIEW ESPECIALIZADA) */}
@@ -470,8 +477,13 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
 
       {/* 5. DESEMPENHO POR ÁREA (REFINED VIEW) */}
       {currentSubTab === "AREAS" && (
-        <div className="space-y-6">
-          {/* HEADER */}
+        <FeatureGate
+          feature="revalida_dna"
+          title="Desempenho por Área & DNA Revalida"
+          description="O diagnóstico detalhado por especialidade médica e mapeamento de competências é exclusivo dos planos Stazia PRO e Elite."
+        >
+          <div className="space-y-6">
+            {/* HEADER */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
             <div>
               <div className="flex items-center gap-2.5">
@@ -502,13 +514,13 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
 
           {totalAllAttempts === 0 ? (
             /* Empty State */
-            <div className="p-8 rounded-2xl bg-zinc-900/80 border border-zinc-800 text-center space-y-4 shadow-xl">
+            <div className="p-8 rounded-2xl bg-white border border-slate-200 text-center space-y-4 shadow-sm">
               <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mx-auto">
                 <BookOpen className="w-6 h-6" />
               </div>
               <div className="space-y-1 max-w-md mx-auto">
-                <h2 className="text-base font-bold text-white">Ainda não há dados suficientes para comparar</h2>
-                <p className="text-xs text-zinc-400 leading-relaxed">
+                <h2 className="text-base font-bold text-slate-900">Ainda não há dados suficientes para comparar</h2>
+                <p className="text-xs text-slate-500 leading-relaxed">
                   Resolva questões nas 5 grandes áreas para visualizar seu diagnóstico comparativo de acertos.
                 </p>
               </div>
@@ -669,6 +681,7 @@ export const DesempenhoView: React.FC<DesempenhoViewProps> = ({
             </div>
           )}
         </div>
+        </FeatureGate>
       )}
     </div>
   );

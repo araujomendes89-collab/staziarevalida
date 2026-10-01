@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   User,
   Award,
@@ -35,6 +36,7 @@ import {
   Bell,
   Smartphone,
   Info,
+  CreditCard,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { MedicalArea, UserProfile, UserPreferences } from "../../types";
@@ -47,6 +49,12 @@ import {
   FIRESTORE_REGION,
 } from "../../lib/firebase";
 import { StorageService } from "../../services/storageService";
+import {
+  consumeQueuedProfileNavigation,
+  PROFILE_NAVIGATION_EVENT,
+  ProfileFocusTarget,
+  ProfileNavigationRequest,
+} from "../../utils/profileNavigation";
 
 export type ProfileSection =
   | "overview"
@@ -54,6 +62,7 @@ export type ProfileSection =
   | "exam"
   | "study"
   | "app"
+  | "alerts"
   | "security"
   | "privacy"
   | "help";
@@ -64,14 +73,22 @@ export const ProfileSettingsView: React.FC = () => {
     updateUserProfile,
     firebaseUser,
     logout,
+    activeTab,
     setActiveTab,
     setIsSubscriptionModalOpen,
+    setIsDarkMode,
     attempts,
     flashcards,
     questions,
   } = useApp();
 
-  const [activeSection, setActiveSection] = useState<ProfileSection>("overview");
+  const navigate = useNavigate();
+
+  const [activeSection, setActiveSection] = useState<ProfileSection>(
+    activeTab === "settings" ? "app" : "account"
+  );
+  const [pendingFocusTarget, setPendingFocusTarget] = useState<ProfileFocusTarget | null>(null);
+  const lastActiveTabRef = useRef(activeTab);
 
   // Feedback notifications
   const [successToast, setSuccessToast] = useState<string | null>(null);
@@ -120,6 +137,11 @@ export const ProfileSettingsView: React.FC = () => {
     notificationsEmail: user.preferences?.notificationsEmail ?? true,
     notificationsPush: user.preferences?.notificationsPush ?? true,
     notificationsAlerts: user.preferences?.notificationsAlerts ?? true,
+    alertExamUpdates: user.preferences?.alertExamUpdates ?? user.preferences?.notificationsAlerts ?? true,
+    alertStudyTips: user.preferences?.alertStudyTips ?? true,
+    alertPlanRenewal: user.preferences?.alertPlanRenewal ?? true,
+    alertAiCredits: user.preferences?.alertAiCredits ?? true,
+    alertSecurity: user.preferences?.alertSecurity ?? true,
   });
 
   // SECTION 6: Excluir conta confirmation modal
@@ -332,6 +354,9 @@ export const ProfileSettingsView: React.FC = () => {
 
   // SECTION 4: Save
   const handleSaveApp = () => {
+    if (appForm.appTheme !== "system") {
+      setIsDarkMode(appForm.appTheme === "dark");
+    }
     updateUserProfile({
       preferences: {
         ...user.preferences,
@@ -341,9 +366,59 @@ export const ProfileSettingsView: React.FC = () => {
         notificationsEmail: appForm.notificationsEmail,
         notificationsPush: appForm.notificationsPush,
         notificationsAlerts: appForm.notificationsAlerts,
+        alertExamUpdates: appForm.alertExamUpdates,
+        alertStudyTips: appForm.alertStudyTips,
+        alertPlanRenewal: appForm.alertPlanRenewal,
+        alertAiCredits: appForm.alertAiCredits,
+        alertSecurity: appForm.alertSecurity,
       },
     });
     showSuccess("Preferências do aplicativo salvas com sucesso.");
+  };
+
+  const handleAppThemeChange = (appTheme: UserPreferences["appTheme"]) => {
+    setAppForm({ ...appForm, appTheme });
+    updateUserProfile({
+      preferences: {
+        ...user.preferences,
+        appTheme,
+      },
+    });
+    if (appTheme !== "system") {
+      setIsDarkMode(appTheme === "dark");
+    }
+  };
+
+  const handleToggleAlertPreference = (
+    key:
+      | "notificationsEmail"
+      | "notificationsPush"
+      | "notificationsAlerts"
+      | "alertExamUpdates"
+      | "alertStudyTips"
+      | "alertPlanRenewal"
+      | "alertAiCredits"
+      | "alertSecurity"
+  ) => {
+    const nextValue = !appForm[key];
+    const nextForm = { ...appForm, [key]: nextValue };
+    setAppForm(nextForm);
+    updateUserProfile({
+      preferences: {
+        ...user.preferences,
+        appTheme: nextForm.appTheme as any,
+        textSize: nextForm.textSize as any,
+        audioSpeed: nextForm.audioSpeed as any,
+        notificationsEmail: nextForm.notificationsEmail,
+        notificationsPush: nextForm.notificationsPush,
+        notificationsAlerts: nextForm.notificationsAlerts,
+        alertExamUpdates: nextForm.alertExamUpdates,
+        alertStudyTips: nextForm.alertStudyTips,
+        alertPlanRenewal: nextForm.alertPlanRenewal,
+        alertAiCredits: nextForm.alertAiCredits,
+        alertSecurity: nextForm.alertSecurity,
+      },
+    });
   };
 
   const handleCancelApp = () => {
@@ -354,6 +429,11 @@ export const ProfileSettingsView: React.FC = () => {
       notificationsEmail: user.preferences?.notificationsEmail ?? true,
       notificationsPush: user.preferences?.notificationsPush ?? true,
       notificationsAlerts: user.preferences?.notificationsAlerts ?? true,
+      alertExamUpdates: user.preferences?.alertExamUpdates ?? user.preferences?.notificationsAlerts ?? true,
+      alertStudyTips: user.preferences?.alertStudyTips ?? true,
+      alertPlanRenewal: user.preferences?.alertPlanRenewal ?? true,
+      alertAiCredits: user.preferences?.alertAiCredits ?? true,
+      alertSecurity: user.preferences?.alertSecurity ?? true,
     });
     setActiveSection("overview");
   };
@@ -424,19 +504,74 @@ export const ProfileSettingsView: React.FC = () => {
   };
 
   // Sidebar Menu Items
-  const navItems: { id: ProfileSection; label: string; icon: React.ElementType; description: string }[] = [
+  const accountNavItems: { id: ProfileSection; label: string; icon: React.ElementType; description: string }[] = [
     { id: "overview", label: "Visão Geral", icon: User, description: "Resumo do perfil e atalhos rápidos" },
-    { id: "account", label: "1. Minha conta", icon: User, description: "Nome, e-mail, foto e confirmação" },
-    { id: "exam", label: "2. Minha prova", icon: Award, description: "Revalida ou ENAMED e edição alvo" },
-    { id: "study", label: "3. Preferências de estudo", icon: BookOpen, description: "Horas, dias, intensidade e áreas" },
-    { id: "app", label: "4. Preferências do app", icon: Sliders, description: "Tema, texto, áudio e alertas" },
-    { id: "security", label: "5. Segurança", icon: Shield, description: "Senha, Google e sessões ativas" },
-    { id: "privacy", label: "6. Privacidade e dados", icon: Database, description: "Exportação, exclusão e LGPD" },
-    { id: "help", label: "7. Ajuda & Suporte", icon: HelpCircle, description: "Central de dúvidas e contato" },
+    { id: "account", label: "Minha conta", icon: User, description: "Nome, e-mail, foto e confirmação" },
+    { id: "security", label: "Segurança", icon: Shield, description: "Senha, Google e sessões ativas" },
+    { id: "privacy", label: "Privacidade e dados", icon: Database, description: "Exportação, exclusão e LGPD" },
   ];
+  const settingsNavItems: { id: ProfileSection; label: string; icon: React.ElementType; description: string }[] = [
+    { id: "exam", label: "Minha prova", icon: Award, description: "Revalida ou ENAMED e edição alvo" },
+    { id: "study", label: "Preferências de estudo", icon: BookOpen, description: "Horas, dias, intensidade e áreas" },
+    { id: "app", label: "Preferências do app", icon: Sliders, description: "Tema, texto e áudio" },
+    { id: "alerts", label: "Alertas", icon: Bell, description: "Atualizações, dicas, plano, IA e segurança" },
+    { id: "help", label: "Ajuda & Suporte", icon: HelpCircle, description: "Central de dúvidas e contato" },
+  ];
+  const isSettingsScreen = activeTab === "settings";
+  const navItems = isSettingsScreen ? settingsNavItems : accountNavItems;
+  const screenTitle = isSettingsScreen ? "Ajustes" : "Conta";
+  const screenDescription = isSettingsScreen
+    ? "Configure prova, estudo, aplicativo, alertas e preferências de uso."
+    : "Gerencie seus dados pessoais, acesso, segurança, privacidade e dados da conta.";
 
   const userInitial = (user.name || firebaseUser?.displayName || "D").charAt(0).toUpperCase();
   const isEmailVerified = Boolean(firebaseUser?.emailVerified);
+
+  useEffect(() => {
+    const handleNavigationRequest = (request: ProfileNavigationRequest) => {
+      setActiveSection(request.section);
+      setPendingFocusTarget(request.focus ?? null);
+    };
+
+    const queuedRequest = consumeQueuedProfileNavigation();
+    if (queuedRequest) {
+      handleNavigationRequest(queuedRequest);
+    }
+
+    const handleProfileNavigation = (event: Event) => {
+      const customEvent = event as CustomEvent<ProfileNavigationRequest>;
+      if (!customEvent.detail?.section) return;
+      handleNavigationRequest(customEvent.detail);
+    };
+
+    window.addEventListener(PROFILE_NAVIGATION_EVENT, handleProfileNavigation);
+    return () => {
+      window.removeEventListener(PROFILE_NAVIGATION_EVENT, handleProfileNavigation);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (lastActiveTabRef.current === activeTab) return;
+    lastActiveTabRef.current = activeTab;
+
+    if (activeTab === "settings") {
+      setActiveSection("app");
+    } else if (activeTab === "profile") {
+      setActiveSection("account");
+    }
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (activeSection !== "alerts" || pendingFocusTarget !== "alerts") return;
+
+    const scrollTarget = window.document.getElementById("profile-app-alerts");
+    if (!scrollTarget) return;
+
+    window.requestAnimationFrame(() => {
+      scrollTarget.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    setPendingFocusTarget(null);
+  }, [activeSection, pendingFocusTarget]);
 
   return (
     <div id="profile-settings-page" className="max-w-6xl mx-auto space-y-6 pb-20">
@@ -461,16 +596,28 @@ export const ProfileSettingsView: React.FC = () => {
         </div>
       )}
 
+      <div className="rounded-[28px] bg-[#0c1626] border border-slate-800 shadow-xl p-5 sm:p-6">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-300 flex items-center justify-center">
+            {isSettingsScreen ? <Sliders className="w-5 h-5" /> : <User className="w-5 h-5" />}
+          </div>
+          <div>
+            <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">{screenTitle}</h2>
+            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">{screenDescription}</p>
+          </div>
+        </div>
+      </div>
+
       {/* Breadcrumb / Top Bar on Mobile when inside a sub-section */}
       {activeSection !== "overview" && (
         <div className="lg:hidden flex items-center justify-between p-3 rounded-2xl bg-white/[0.04] border border-white/10">
           <button
             type="button"
-            onClick={() => setActiveSection("overview")}
+            onClick={() => setActiveSection(isSettingsScreen ? "app" : "account")}
             className="flex items-center gap-2 text-xs font-semibold text-teal-300 hover:text-white transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Voltar ao Perfil</span>
+            <span>Voltar</span>
           </button>
           <span className="text-xs font-bold text-white/60">
             {navItems.find((n) => n.id === activeSection)?.label}
@@ -482,12 +629,10 @@ export const ProfileSettingsView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Menu Lateral & Perfil Compacto (Hidden on mobile if inside a section) */}
         <div
-          className={`lg:col-span-4 space-y-4 ${
-            activeSection !== "overview" ? "hidden lg:block" : "block"
-          }`}
+          className="lg:col-span-4 space-y-4"
         >
           {/* User Preview Card */}
-          <div className="p-5 rounded-[24px] bg-[#0c1626]/80 backdrop-blur-xl border border-slate-800 shadow-xl space-y-4">
+          <div className="p-5 rounded-[24px] bg-[#0c1626] backdrop-blur-xl border border-slate-800 shadow-xl space-y-4">
             <div className="flex items-center gap-3.5">
               {firebaseUser?.photoURL ? (
                 <img
@@ -541,9 +686,9 @@ export const ProfileSettingsView: React.FC = () => {
           </div>
 
           {/* Navigation Menu of Sections */}
-          <div className="p-2 rounded-[24px] bg-[#0c1626]/80 backdrop-blur-xl border border-slate-800 shadow-xl space-y-1">
+          <div className="p-2 rounded-[24px] bg-[#0c1626] backdrop-blur-xl border border-slate-800 shadow-xl space-y-1">
             <p className="px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Seções de Configuração
+              {screenTitle}
             </p>
 
             {navItems.map((item) => {
@@ -651,7 +796,7 @@ export const ProfileSettingsView: React.FC = () => {
                 </div>
 
                 {/* Prova Escolhida & Data */}
-                <div className="p-4 sm:p-5 rounded-2xl bg-black/30 border border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="p-4 sm:p-5 rounded-2xl bg-[#07101d] border border-slate-800 grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div>
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Prova Escolhida</span>
                     <span className="text-sm font-bold text-white mt-0.5 block">{currentSummary.title}</span>
@@ -673,12 +818,26 @@ export const ProfileSettingsView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Atalhos Rápidos para Preferências e Segurança */}
+                {/* Atalhos Rápidos para Preferências, Assinatura e Segurança */}
                 <div className="pt-2 border-t border-slate-800">
                   <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-3">
                     Atalhos Rápidos
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => navigate("/conta/assinatura")}
+                      className="p-3.5 rounded-xl bg-white/[0.04] hover:bg-teal-500/10 border border-slate-800 hover:border-teal-500/40 text-left transition-all group cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <CreditCard className="w-4 h-4 text-teal-400" />
+                        <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-teal-300 group-hover:translate-x-0.5 transition-all" />
+                      </div>
+                      <span className="text-xs font-bold text-white block">Minha Assinatura</span>
+                      <span className="text-[10px] text-slate-400 block mt-0.5">
+                        Plano, vigência e opções
+                      </span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => setActiveSection("study")}
@@ -741,7 +900,7 @@ export const ProfileSettingsView: React.FC = () => {
                         key={item.id}
                         type="button"
                         onClick={() => setActiveSection(item.id)}
-                        className="w-full flex items-center justify-between p-4 rounded-2xl bg-[#0c1626]/90 border border-slate-800 hover:border-teal-500/30 text-left transition-all cursor-pointer"
+                        className="w-full flex items-center justify-between p-4 rounded-2xl bg-[#0c1626] border border-slate-800 hover:border-teal-500/30 text-left transition-all cursor-pointer"
                       >
                         <div className="flex items-center gap-3">
                           <div className="p-2.5 rounded-xl bg-teal-500/10 text-teal-400 border border-teal-500/20">
@@ -764,14 +923,14 @@ export const ProfileSettingsView: React.FC = () => {
           {/* SEÇÃO 1: MINHA CONTA                                                      */}
           {/* ========================================================================= */}
           {activeSection === "account" && (
-            <div id="profile-section-account" className="p-6 sm:p-8 rounded-[28px] bg-[#0c1626]/90 border border-slate-800 shadow-xl space-y-6">
+            <div id="profile-section-account" className="p-6 sm:p-8 rounded-[28px] bg-[#0c1626] border border-slate-800 shadow-xl space-y-6">
               <div className="border-b border-slate-800 pb-4">
                 <h3 className="text-lg font-bold text-white">1. Minha Conta</h3>
                 <p className="text-xs text-slate-400">Gerencie seus dados pessoais, foto e status de confirmação do e-mail</p>
               </div>
 
               {/* Status de Confirmação do E-mail */}
-              <div className="p-4 rounded-2xl bg-black/30 border border-slate-800 space-y-3">
+              <div className="p-4 rounded-2xl bg-[#07101d] border border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {isEmailVerified ? (
@@ -826,7 +985,7 @@ export const ProfileSettingsView: React.FC = () => {
                     value={accountForm.name}
                     onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })}
                     placeholder="Dr(a). Seu Nome"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#050b14] border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none"
                   />
                 </div>
 
@@ -836,7 +995,7 @@ export const ProfileSettingsView: React.FC = () => {
                     type="email"
                     value={accountForm.email}
                     disabled
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/20 border border-slate-800 text-slate-400 text-xs cursor-not-allowed"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#0a1322] border border-slate-800 text-slate-400 text-xs cursor-not-allowed"
                   />
                   <span className="text-[10px] text-slate-500">O e-mail é vinculado à sua autenticação de segurança.</span>
                 </div>
@@ -848,7 +1007,7 @@ export const ProfileSettingsView: React.FC = () => {
                     value={accountForm.graduationCountry}
                     onChange={(e) => setAccountForm({ ...accountForm, graduationCountry: e.target.value })}
                     placeholder="Ex: Brasil, Bolívia, Paraguai, Argentina"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#050b14] border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none"
                   />
                 </div>
 
@@ -859,7 +1018,7 @@ export const ProfileSettingsView: React.FC = () => {
                     value={accountForm.graduationUniversity}
                     onChange={(e) => setAccountForm({ ...accountForm, graduationUniversity: e.target.value })}
                     placeholder="Ex: UFMG, Univalle, UBA, etc."
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#050b14] border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none"
                   />
                 </div>
               </div>
@@ -888,7 +1047,7 @@ export const ProfileSettingsView: React.FC = () => {
           {/* SEÇÃO 2: MINHA PROVA                                                      */}
           {/* ========================================================================= */}
           {activeSection === "exam" && (
-            <div id="profile-section-exam" className="p-6 sm:p-8 rounded-[28px] bg-[#0c1626]/90 border border-slate-800 shadow-xl space-y-6">
+            <div id="profile-section-exam" className="p-6 sm:p-8 rounded-[28px] bg-[#0c1626] border border-slate-800 shadow-xl space-y-6">
               <div className="border-b border-slate-800 pb-4">
                 <h3 className="text-lg font-bold text-white">2. Minha Prova</h3>
                 <p className="text-xs text-slate-400">Defina o exame e a edição alvo para calibrar cronograma e simulados</p>
@@ -907,7 +1066,7 @@ export const ProfileSettingsView: React.FC = () => {
                       className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                         examForm.examType === "REVALIDA"
                           ? "bg-teal-500/20 border-teal-400 text-white font-bold"
-                          : "bg-black/30 border-slate-800 text-slate-400 hover:text-white"
+                          : "bg-[#07101d] border-slate-800 text-slate-400 hover:text-white"
                       }`}
                     >
                       <span className="text-xs block">Revalida INEP</span>
@@ -920,7 +1079,7 @@ export const ProfileSettingsView: React.FC = () => {
                       className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                         examForm.examType === "ENAMED"
                           ? "bg-teal-500/20 border-teal-400 text-white font-bold"
-                          : "bg-black/30 border-slate-800 text-slate-400 hover:text-white"
+                          : "bg-[#07101d] border-slate-800 text-slate-400 hover:text-white"
                       }`}
                     >
                       <span className="text-xs block">ENAMED</span>
@@ -944,7 +1103,7 @@ export const ProfileSettingsView: React.FC = () => {
                       if (newEd === "2027/1") defaultDate = "2027-03-21";
                       setExamForm({ ...examForm, examEdition: newEd, customDate: defaultDate });
                     }}
-                    className="w-full px-3.5 py-3 rounded-xl bg-black/40 border border-slate-700 text-white text-xs font-semibold focus:border-teal-400 focus:outline-none"
+                    className="w-full px-3.5 py-3 rounded-xl bg-[#050b14] border border-slate-700 text-white text-xs font-semibold focus:border-teal-400 focus:outline-none"
                   >
                     {examForm.examType === "REVALIDA" ? (
                       <>
@@ -964,7 +1123,7 @@ export const ProfileSettingsView: React.FC = () => {
               </div>
 
               {/* Data da Prova Opcional / Customizável */}
-              <div className="p-3.5 rounded-xl bg-black/20 border border-slate-800/80 flex items-center justify-between">
+              <div className="p-3.5 rounded-xl bg-[#0a1322] border border-slate-800/80 flex items-center justify-between">
                 <div>
                   <span className="text-xs font-medium text-slate-300">Data Prevista da Prova:</span>
                   <span className="text-xs font-bold text-teal-300 ml-2">{currentSummary.formattedDate}</span>
@@ -973,7 +1132,7 @@ export const ProfileSettingsView: React.FC = () => {
                   type="date"
                   value={examForm.customDate}
                   onChange={(e) => setExamForm({ ...examForm, customDate: e.target.value })}
-                  className="px-2.5 py-1.5 rounded-lg bg-black/40 border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none"
+                  className="px-2.5 py-1.5 rounded-lg bg-[#050b14] border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none"
                 />
               </div>
 
@@ -1017,7 +1176,7 @@ export const ProfileSettingsView: React.FC = () => {
           {/* SEÇÃO 3: PREFERÊNCIAS DE ESTUDO                                           */}
           {/* ========================================================================= */}
           {activeSection === "study" && (
-            <div id="profile-section-study" className="p-6 sm:p-8 rounded-[28px] bg-[#0c1626]/90 border border-slate-800 shadow-xl space-y-6">
+            <div id="profile-section-study" className="p-6 sm:p-8 rounded-[28px] bg-[#0c1626] border border-slate-800 shadow-xl space-y-6">
               <div className="border-b border-slate-800 pb-4">
                 <h3 className="text-lg font-bold text-white">3. Preferências de Estudo</h3>
                 <p className="text-xs text-slate-400">Ajuste seu ritmo diário, disponibilidade, áreas prioritárias e lembretes</p>
@@ -1039,7 +1198,7 @@ export const ProfileSettingsView: React.FC = () => {
                         className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                           studyForm.studyHoursPerDay === h
                             ? "bg-teal-500/20 border-teal-400 text-white font-bold"
-                            : "bg-black/30 border-slate-800 text-slate-400 hover:text-white"
+                            : "bg-[#07101d] border-slate-800 text-slate-400 hover:text-white"
                         }`}
                       >
                         {h}h
@@ -1062,7 +1221,7 @@ export const ProfileSettingsView: React.FC = () => {
                         className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                           studyForm.studyDaysPerWeek === d
                             ? "bg-teal-500/20 border-teal-400 text-white font-bold"
-                            : "bg-black/30 border-slate-800 text-slate-400 hover:text-white"
+                            : "bg-[#07101d] border-slate-800 text-slate-400 hover:text-white"
                         }`}
                       >
                         {d} dias
@@ -1090,7 +1249,7 @@ export const ProfileSettingsView: React.FC = () => {
                       className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                         studyForm.planIntensity === lvl.id
                           ? "bg-teal-500/20 border-teal-400 text-white font-bold"
-                          : "bg-black/30 border-slate-800 text-slate-400 hover:text-white"
+                          : "bg-[#07101d] border-slate-800 text-slate-400 hover:text-white"
                       }`}
                     >
                       <span className="text-xs block font-bold">{lvl.label}</span>
@@ -1127,7 +1286,7 @@ export const ProfileSettingsView: React.FC = () => {
                         className={`p-2.5 rounded-xl border text-left flex items-center justify-between text-xs transition-all cursor-pointer ${
                           isSelected
                             ? "bg-teal-500/20 border-teal-400 text-white font-semibold"
-                            : "bg-black/30 border-slate-800 text-slate-400 hover:text-slate-200"
+                            : "bg-[#07101d] border-slate-800 text-slate-400 hover:text-slate-200"
                         }`}
                       >
                         <span className="truncate">{area.label}</span>
@@ -1139,7 +1298,7 @@ export const ProfileSettingsView: React.FC = () => {
               </div>
 
               {/* Lembretes */}
-              <div className="p-4 rounded-2xl bg-black/30 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="p-4 rounded-2xl bg-[#07101d] border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <span className="text-xs font-bold text-white block">Lembretes Diários de Estudo</span>
                   <span className="text-[11px] text-slate-400 block mt-0.5">
@@ -1151,7 +1310,7 @@ export const ProfileSettingsView: React.FC = () => {
                     type="time"
                     value={studyForm.studyReminderTime}
                     onChange={(e) => setStudyForm({ ...studyForm, studyReminderTime: e.target.value })}
-                    className="px-2.5 py-1.5 rounded-lg bg-black/40 border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none"
+                    className="px-2.5 py-1.5 rounded-lg bg-[#050b14] border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none"
                   />
                   <button
                     type="button"
@@ -1193,7 +1352,7 @@ export const ProfileSettingsView: React.FC = () => {
           {/* SEÇÃO 4: PREFERÊNCIAS DO APLICATIVO                                       */}
           {/* ========================================================================= */}
           {activeSection === "app" && (
-            <div id="profile-section-app" className="p-6 sm:p-8 rounded-[28px] bg-[#0c1626]/90 border border-slate-800 shadow-xl space-y-6">
+            <div id="profile-section-app" className="p-6 sm:p-8 rounded-[28px] bg-[#0c1626] border border-slate-800 shadow-xl space-y-6">
               <div className="border-b border-slate-800 pb-4">
                 <h3 className="text-lg font-bold text-white">4. Preferências do Aplicativo</h3>
                 <p className="text-xs text-slate-400">Personalize o tema visual, tamanho de fonte, velocidade de áudio e alertas</p>
@@ -1215,11 +1374,11 @@ export const ProfileSettingsView: React.FC = () => {
                       <button
                         key={t.id}
                         type="button"
-                        onClick={() => setAppForm({ ...appForm, appTheme: t.id as any })}
+                        onClick={() => handleAppThemeChange(t.id as UserPreferences["appTheme"])}
                         className={`p-3 rounded-xl border text-left flex items-center gap-2.5 transition-all cursor-pointer ${
                           appForm.appTheme === t.id
                             ? "bg-teal-500/20 border-teal-400 text-white font-bold"
-                            : "bg-black/30 border-slate-800 text-slate-400 hover:text-white"
+                            : "bg-[#07101d] border-slate-800 text-slate-400 hover:text-white"
                         }`}
                       >
                         <Icon className="w-4 h-4 text-teal-400" />
@@ -1241,7 +1400,7 @@ export const ProfileSettingsView: React.FC = () => {
                       className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
                         appForm.textSize === "standard"
                           ? "bg-teal-500/20 border-teal-400 text-white font-bold"
-                          : "bg-black/30 border-slate-800 text-slate-400 hover:text-white"
+                          : "bg-[#07101d] border-slate-800 text-slate-400 hover:text-white"
                       }`}
                     >
                       <span className="text-xs block font-bold">Padrão</span>
@@ -1253,7 +1412,7 @@ export const ProfileSettingsView: React.FC = () => {
                       className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
                         appForm.textSize === "large"
                           ? "bg-teal-500/20 border-teal-400 text-white font-bold"
-                          : "bg-black/30 border-slate-800 text-slate-400 hover:text-white"
+                          : "bg-[#07101d] border-slate-800 text-slate-400 hover:text-white"
                       }`}
                     >
                       <span className="text-xs block font-bold">Confortável</span>
@@ -1273,50 +1432,13 @@ export const ProfileSettingsView: React.FC = () => {
                         className={`flex-1 py-2.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                           appForm.audioSpeed === spd
                             ? "bg-teal-500/20 border-teal-400 text-white font-bold"
-                            : "bg-black/30 border-slate-800 text-slate-400 hover:text-white"
+                            : "bg-[#07101d] border-slate-800 text-slate-400 hover:text-white"
                         }`}
                       >
                         {spd}x
                       </button>
                     ))}
                   </div>
-                </div>
-              </div>
-
-              {/* Toggles de Notificações */}
-              <div className="space-y-3 pt-2">
-                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
-                  Alertas e Notificações
-                </label>
-                <div className="space-y-2">
-                  {[
-                    { key: "notificationsEmail", title: "Relatório Semanal de Desempenho", desc: "Resumo semanal com taxa de acerto por área e tempo investido" },
-                    { key: "notificationsPush", title: "Revisão Espaçada (Flashcards)", desc: "Avisos quando cartões de alta retenção atingirem a data de revisão" },
-                    { key: "notificationsAlerts", title: "Atualizações de Editais e Diretrizes", desc: "Alertas críticos do INEP, Ministério da Saúde e notas de corte" },
-                  ].map((notif) => {
-                    const isEnabled = (appForm as any)[notif.key];
-                    return (
-                      <div key={notif.key} className="p-3.5 rounded-xl bg-black/30 border border-slate-800 flex items-center justify-between">
-                        <div>
-                          <span className="text-xs font-bold text-white block">{notif.title}</span>
-                          <span className="text-[11px] text-slate-400 block mt-0.5">{notif.desc}</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setAppForm({ ...appForm, [notif.key]: !isEnabled })}
-                          className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ml-3 ${
-                            isEnabled ? "bg-teal-500" : "bg-slate-700"
-                          }`}
-                        >
-                          <span
-                            className={`w-4 h-4 rounded-full bg-white block transition-transform absolute top-1 ${
-                              isEnabled ? "left-6" : "left-1"
-                            }`}
-                          />
-                        </button>
-                      </div>
-                    );
-                  })}
                 </div>
               </div>
 
@@ -1341,17 +1463,90 @@ export const ProfileSettingsView: React.FC = () => {
           )}
 
           {/* ========================================================================= */}
+          {/* SEÇÃO 5: ALERTAS                                                          */}
+          {/* ========================================================================= */}
+          {activeSection === "alerts" && (
+            <div id="profile-section-alerts" className="p-6 sm:p-8 rounded-[28px] bg-[#0c1626] border border-slate-800 shadow-xl space-y-6">
+              <div className="border-b border-slate-800 pb-4">
+                <h3 className="text-lg font-bold text-white">Alertas</h3>
+                <p className="text-xs text-slate-400">Defina quais avisos a plataforma deve exibir para sua conta</p>
+              </div>
+
+              <div id="profile-app-alerts" className="space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+                      Categorias de aviso
+                    </label>
+                    <p className="text-[11px] text-slate-500 mt-1">
+                      Atualizações, dicas, renovação do plano, uso de créditos de IA e alertas de segurança.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-bold text-teal-300 bg-teal-500/10 border border-teal-500/20 rounded-full px-2 py-1 shrink-0">
+                    Salvamento imediato
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  {[
+                    { key: "notificationsEmail", title: "E-mail", desc: "Receber resumos, comprovantes e avisos importantes no e-mail cadastrado" },
+                    { key: "notificationsPush", title: "Notificações no app", desc: "Exibir avisos dentro da plataforma durante o uso" },
+                    { key: "alertExamUpdates", title: "Atualizações", desc: "Editais, diretrizes, notas do INEP, mudanças de calendário e conteúdos novos" },
+                    { key: "alertStudyTips", title: "Dicas de estudo", desc: "Sugestões de revisão, pontos fracos, flashcards vencidos e metas do dia" },
+                    { key: "alertPlanRenewal", title: "Renovação do plano", desc: "Vencimento, renovação, confirmação de assinatura e alertas de cobrança" },
+                    { key: "alertAiCredits", title: "Créditos de IA", desc: "Uso de créditos, limite diário, cota próxima do fim e bloqueio por consumo" },
+                    { key: "alertSecurity", title: "Segurança da conta", desc: "Login novo, troca de senha, verificação de e-mail e sessões ativas" },
+                    { key: "notificationsAlerts", title: "Alertas críticos", desc: "Avisos urgentes da plataforma que impactam acesso, prova ou funcionamento" },
+                  ].map((notif) => {
+                    const key = notif.key as
+                      | "notificationsEmail"
+                      | "notificationsPush"
+                      | "notificationsAlerts"
+                      | "alertExamUpdates"
+                      | "alertStudyTips"
+                      | "alertPlanRenewal"
+                      | "alertAiCredits"
+                      | "alertSecurity";
+                    const isEnabled = appForm[key];
+                    return (
+                      <div key={notif.key} className="p-3.5 rounded-xl bg-[#07101d] border border-slate-800 flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-bold text-white block">{notif.title}</span>
+                          <span className="text-[11px] text-slate-400 block mt-0.5">{notif.desc}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleAlertPreference(key)}
+                          className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ml-3 ${
+                            isEnabled ? "bg-teal-500" : "bg-slate-700"
+                          }`}
+                        >
+                          <span
+                            className={`w-4 h-4 rounded-full bg-white block transition-transform absolute top-1 ${
+                              isEnabled ? "left-6" : "left-1"
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
           {/* SEÇÃO 5: SEGURANÇA                                                        */}
           {/* ========================================================================= */}
           {activeSection === "security" && (
-            <div id="profile-section-security" className="p-6 sm:p-8 rounded-[28px] bg-[#0c1626]/90 border border-slate-800 shadow-xl space-y-6">
+            <div id="profile-section-security" className="p-6 sm:p-8 rounded-[28px] bg-[#0c1626] border border-slate-800 shadow-xl space-y-6">
               <div className="border-b border-slate-800 pb-4">
                 <h3 className="text-lg font-bold text-white">5. Segurança da Conta</h3>
                 <p className="text-xs text-slate-400">Proteção de acesso, credenciais, provedores conectados e encerramento de sessões</p>
               </div>
 
               {/* Provedor Conectado */}
-              <div className="p-4 rounded-2xl bg-black/30 border border-slate-800 space-y-3">
+              <div className="p-4 rounded-2xl bg-[#07101d] border border-slate-800 space-y-3">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
                   Método de Autenticação Conectado
                 </span>
@@ -1387,7 +1582,7 @@ export const ProfileSettingsView: React.FC = () => {
               </div>
 
               {/* Alterar Senha */}
-              <div className="p-4 rounded-2xl bg-black/30 border border-slate-800 space-y-3">
+              <div className="p-4 rounded-2xl bg-[#07101d] border border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs font-bold text-white block">Alterar Senha</span>
@@ -1408,7 +1603,7 @@ export const ProfileSettingsView: React.FC = () => {
               </div>
 
               {/* Sair de todos os dispositivos */}
-              <div className="p-4 rounded-2xl bg-black/30 border border-slate-800 space-y-3">
+              <div className="p-4 rounded-2xl bg-[#07101d] border border-slate-800 space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs font-bold text-white block">Sair de Todos os Dispositivos</span>
@@ -1451,14 +1646,14 @@ export const ProfileSettingsView: React.FC = () => {
           {/* SEÇÃO 6: PRIVACIDADE E DADOS                                              */}
           {/* ========================================================================= */}
           {activeSection === "privacy" && (
-            <div id="profile-section-privacy" className="p-6 sm:p-8 rounded-[28px] bg-[#0c1626]/90 border border-slate-800 shadow-xl space-y-6">
+            <div id="profile-section-privacy" className="p-6 sm:p-8 rounded-[28px] bg-[#0c1626] border border-slate-800 shadow-xl space-y-6">
               <div className="border-b border-slate-800 pb-4">
                 <h3 className="text-lg font-bold text-white">6. Privacidade e Dados</h3>
                 <p className="text-xs text-slate-400">Transparência dos registros armazenados, portabilidade e exclusão definitiva</p>
               </div>
 
               {/* Resumo de Dados Armazenados */}
-              <div className="p-4 rounded-2xl bg-black/30 border border-slate-800 space-y-3">
+              <div className="p-4 rounded-2xl bg-[#07101d] border border-slate-800 space-y-3">
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
                   Dados Armazenados na sua Conta
                 </span>
@@ -1485,7 +1680,7 @@ export const ProfileSettingsView: React.FC = () => {
               </div>
 
               {/* Exportar Dados */}
-              <div className="p-4 rounded-2xl bg-black/30 border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="p-4 rounded-2xl bg-[#07101d] border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                   <span className="text-xs font-bold text-white block">Exportar Meus Dados (JSON)</span>
                   <span className="text-[11px] text-slate-400 block mt-0.5">
@@ -1503,7 +1698,7 @@ export const ProfileSettingsView: React.FC = () => {
               </div>
 
               {/* Política de Privacidade e LGPD */}
-              <div className="p-4 rounded-2xl bg-black/30 border border-slate-800 space-y-2">
+              <div className="p-4 rounded-2xl bg-[#07101d] border border-slate-800 space-y-2">
                 <span className="text-xs font-bold text-white block">Proteção e Tratamento de Dados (LGPD)</span>
                 <p className="text-[11px] text-slate-400 leading-relaxed">
                   Seus dados de estudo e métricas de desempenho são utilizados estritamente para o cálculo adaptativo do algoritmo do Revalida INEP. Não compartilhamos, vendemos nem transmitimos seus dados clínicos ou cadastrais para terceiros sem autorização explícita.
@@ -1552,7 +1747,7 @@ export const ProfileSettingsView: React.FC = () => {
                       value={deleteConfirmationText}
                       onChange={(e) => setDeleteConfirmationText(e.target.value)}
                       placeholder="Digite EXCLUIR"
-                      className="w-full px-3 py-2 rounded-xl bg-black/50 border border-slate-700 text-white text-xs font-mono focus:border-rose-400 focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-[#050b14] border border-slate-700 text-white text-xs font-mono focus:border-rose-400 focus:outline-none"
                     />
 
                     <div className="flex items-center justify-end gap-2 pt-2">
@@ -1597,7 +1792,7 @@ export const ProfileSettingsView: React.FC = () => {
           {/* SEÇÃO 7: AJUDA & SUPORTE                                                  */}
           {/* ========================================================================= */}
           {activeSection === "help" && (
-            <div id="profile-section-help" className="p-6 sm:p-8 rounded-[28px] bg-[#0c1626]/90 border border-slate-800 shadow-xl space-y-6">
+            <div id="profile-section-help" className="p-6 sm:p-8 rounded-[28px] bg-[#0c1626] border border-slate-800 shadow-xl space-y-6">
               <div className="border-b border-slate-800 pb-4">
                 <h3 className="text-lg font-bold text-white">7. Ajuda & Suporte</h3>
                 <p className="text-xs text-slate-400">Dúvidas frequentes do Revalida INEP, envio de relatos técnicos e contato direto</p>
@@ -1625,7 +1820,7 @@ export const ProfileSettingsView: React.FC = () => {
                   ].map((faq, idx) => (
                     <details
                       key={idx}
-                      className="p-3.5 rounded-xl bg-black/30 border border-slate-800 group cursor-pointer"
+                      className="p-3.5 rounded-xl bg-[#07101d] border border-slate-800 group cursor-pointer"
                     >
                       <summary className="text-xs font-bold text-white flex items-center justify-between">
                         <span>{faq.q}</span>
@@ -1640,7 +1835,7 @@ export const ProfileSettingsView: React.FC = () => {
               </div>
 
               {/* Reportar Problema Form */}
-              <form onSubmit={handleSubmitSupportTicket} className="p-5 rounded-2xl bg-black/30 border border-slate-800 space-y-3">
+              <form onSubmit={handleSubmitSupportTicket} className="p-5 rounded-2xl bg-[#07101d] border border-slate-800 space-y-3">
                 <div className="flex items-center gap-2">
                   <MessageSquare className="w-4 h-4 text-teal-400" />
                   <span className="text-xs font-bold text-white uppercase tracking-wider">
@@ -1654,7 +1849,7 @@ export const ProfileSettingsView: React.FC = () => {
                     <select
                       value={supportTicket.category}
                       onChange={(e) => setSupportTicket({ ...supportTicket, category: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-[#050b14] border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none"
                     >
                       <option value="QUESTAO_GABARITO">Dúvida ou divergência em Gabarito</option>
                       <option value="ERRO_SISTEMA">Falha ou lentidão no aplicativo</option>
@@ -1670,7 +1865,7 @@ export const ProfileSettingsView: React.FC = () => {
                       value={supportTicket.subject}
                       onChange={(e) => setSupportTicket({ ...supportTicket, subject: e.target.value })}
                       placeholder="Ex: Questão 42 de Pediatria com divergência"
-                      className="w-full px-3 py-2 rounded-xl bg-black/40 border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none"
+                      className="w-full px-3 py-2 rounded-xl bg-[#050b14] border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1682,7 +1877,7 @@ export const ProfileSettingsView: React.FC = () => {
                     value={supportTicket.description}
                     onChange={(e) => setSupportTicket({ ...supportTicket, description: e.target.value })}
                     placeholder="Descreva o que ocorreu ou sua sugestão para nossa equipe..."
-                    className="w-full px-3 py-2 rounded-xl bg-black/40 border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none resize-none"
+                    className="w-full px-3 py-2 rounded-xl bg-[#050b14] border border-slate-700 text-white text-xs focus:border-teal-400 focus:outline-none resize-none"
                   />
                 </div>
 

@@ -64,8 +64,8 @@ describe("Onboarding Cinematic Splash View Prototype (Tela 00 — Splash Animado
     expect(progressTrack).toBeInTheDocument();
   });
 
-  it("should have SPLASH_DURATION_MS defined as 11000ms", () => {
-    expect(SPLASH_DURATION_MS).toBe(11000);
+  it("should have SPLASH_DURATION_MS defined as 7500ms", () => {
+    expect(SPLASH_DURATION_MS).toBe(7500);
     expect(REDUCED_MOTION_DURATION_MS).toBe(1000);
   });
 

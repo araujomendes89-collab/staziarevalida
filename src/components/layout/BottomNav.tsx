@@ -9,14 +9,14 @@ export const BottomNav: React.FC = () => {
     { id: "home", label: "Início", icon: Home },
     { id: "praticar-questoes", label: "Questões", icon: HelpCircle },
     { id: "estudar-grandes-temas", label: "Temas", icon: Target },
-    { id: "planejamento", label: "Planejamento", icon: Calendar },
-    { id: "desempenho", label: "Desempenho", icon: BarChart2 },
+    { id: "planejamento", label: "Planos", icon: Calendar },
+    { id: "desempenho", label: "Métricas", icon: BarChart2 },
   ];
 
   return (
     <nav
       id="mobile-bottom-navigation"
-      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0B192C]/95 backdrop-blur-md border-t border-slate-800/80 px-1 py-1.5 flex justify-around items-center shadow-lg safe-bottom"
+      className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#0B192C]/95 backdrop-blur-md border-t border-slate-800/80 px-1 pt-1.5 flex justify-around items-center shadow-lg mobile-safe-bottom"
     >
       {navItems.map((item) => {
         const Icon = item.icon;

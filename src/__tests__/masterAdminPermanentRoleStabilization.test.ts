@@ -241,5 +241,24 @@ describe("Microetapa 1.27B.1.6 — Master Admin Permanent Role Stabilization", (
         evaluateIsDeveloperAdmin(false, { uid: "123" }, "READY", "EDITOR")
       ).toBe(false);
     });
+
+    it("should strictly resolve araujomendes@staziamed.com.br and target UID with role ADMIN and tier ADMIN", async () => {
+      // Even if Firestore doc had role: STUDENT or empty
+      mockFirestoreDocs["cQjACVALpedbijS0WiCwuFRJgxj2"] = {
+        id: "cQjACVALpedbijS0WiCwuFRJgxj2",
+        name: "Dr. João Paulo Mendes",
+        email: "araujomendes@staziamed.com.br",
+        role: "STUDENT",
+        tier: "TRIAL",
+        plan: "trial",
+      };
+
+      const resolved = await FirebaseService.getUserProfile("cQjACVALpedbijS0WiCwuFRJgxj2");
+      expect(resolved).not.toBeNull();
+      expect(resolved?.role).toBe("ADMIN");
+      expect(resolved?.tier).toBe("ADMIN");
+      expect(resolved?.plan).toBe("admin");
+    });
   });
 });
+

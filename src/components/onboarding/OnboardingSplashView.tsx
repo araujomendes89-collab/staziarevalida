@@ -5,7 +5,7 @@ import { Volume2 } from "lucide-react";
 import { StaziaMascotSplashIllustration } from "./StaziaMascotSplashIllustration";
 import { useSplashAudio } from "./useSplashAudio";
 
-export const SPLASH_DURATION_MS = 11000;
+export const SPLASH_DURATION_MS = 7500;
 export const REDUCED_MOTION_DURATION_MS = 1000;
 
 export interface OnboardingSplashViewProps {

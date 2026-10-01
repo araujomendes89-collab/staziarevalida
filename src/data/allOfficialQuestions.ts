@@ -3,6 +3,7 @@ import { normalizeQuestionList } from "../utils/questionNormalizer";
 import { SEED_QUESTIONS } from "./questionsData";
 import { SEED_INEDITAS_QUESTIONS } from "./ineditasData";
 
+import { REVALIDA_2020_CANONICAL_COMPILED } from "./revalida2020CompiledQuestions";
 import { REVALIDA_2021_CANONICAL_COMPILED } from "./revalida2021CompiledQuestions";
 import { REVALIDA_2022_1_CANONICAL_COMPILED } from "./revalida2022_1CompiledQuestions";
 import { REVALIDA_2022_2_CANONICAL_COMPILED } from "./revalida2022_2CompiledQuestions";
@@ -19,6 +20,7 @@ import { ENAMED_2025_CANONICAL_COMPILED } from "./enamed2025CompiledQuestions";
 const RAW_ALL_ITEMS = [
   ...SEED_QUESTIONS,
   ...SEED_INEDITAS_QUESTIONS,
+  ...REVALIDA_2020_CANONICAL_COMPILED,
   ...REVALIDA_2021_CANONICAL_COMPILED,
   ...REVALIDA_2022_1_CANONICAL_COMPILED,
   ...REVALIDA_2022_2_CANONICAL_COMPILED,

@@ -121,6 +121,8 @@ describe("Admin Content Engine & Design Studio Foundation (Etapa 1.27B)", () => 
         user: { id: "admin-1", role: "ADMIN", tier: "PRO_PLUS", name: "Admin Test" },
         firebaseUser: { uid: "admin-1", email: "araujomendes@staziamed.com.br", emailVerified: true },
         isDeveloperAdmin: true,
+        isAuthLoading: false,
+        profileResolutionStatus: "READY",
         questions: [],
         guidelines: [],
         editionsInventory: [],
@@ -186,6 +188,9 @@ describe("Admin Content Engine & Design Studio Foundation (Etapa 1.27B)", () => 
       mockUseApp.mockReturnValue({
         user: { id: "student-1", role: "STUDENT", tier: "PRO", name: "Student Test" },
         firebaseUser: { uid: "student-1", email: "student@test.com", emailVerified: true },
+        isDeveloperAdmin: false,
+        isAuthLoading: false,
+        profileResolutionStatus: "READY",
         questions: [],
         guidelines: [],
         editionsInventory: [],

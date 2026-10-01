@@ -13,6 +13,7 @@ import { DataExportView } from "./components/export/DataExportView";
 import { StudyForMeModal } from "./components/modals/StudyForMeModal";
 import { WhatIfModal } from "./components/modals/WhatIfModal";
 import { PricingModal } from "./components/modals/PricingModal";
+import { PricingPage } from "./components/pricing/PricingPage";
 import { ExamConfigModal } from "./components/modals/ExamConfigModal";
 import { OfficialMedicalSearchView } from "./components/search/OfficialMedicalSearchView";
 import { OfficialSearchModal } from "./components/search/OfficialSearchModal";
@@ -44,6 +45,11 @@ import { OnboardingFinishView } from "./components/onboarding/OnboardingFinishVi
 import { TermsOfUseView } from "./components/legal/TermsOfUseView";
 import { PrivacyPolicyView } from "./components/legal/PrivacyPolicyView";
 import { PlanSelectionView } from "./components/auth/PlanSelectionView";
+import { CheckoutView } from "./components/billing/CheckoutView";
+import { PaymentProcessingView } from "./components/billing/PaymentProcessingView";
+import { PaymentSuccessView } from "./components/billing/PaymentSuccessView";
+import { PaymentErrorView } from "./components/billing/PaymentErrorView";
+import { MySubscriptionView } from "./components/billing/MySubscriptionView";
 import {
   SHOW_SPLASH_FOR_ALL,
   hasSeenSplashThisSession,
@@ -92,7 +98,7 @@ const MainContent: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#F6F8FB] text-slate-800 flex font-sans selection:bg-teal-500/20 selection:text-teal-900 relative">
+    <div className="min-h-screen bg-[#F6F8FB] dark:bg-[#050b14] text-slate-800 dark:text-slate-100 flex font-sans selection:bg-teal-500/20 selection:text-teal-900 dark:selection:text-teal-50 relative">
       {/* Desktop Sidebar (Left column) */}
       <div className="hidden lg:flex lg:shrink-0 sticky top-0 h-screen z-30">
         <Sidebar />
@@ -154,6 +160,8 @@ const MainContent: React.FC = () => {
             activeTab === "praticar-simulados" ||
             activeTab === "praticar-provas" ||
             activeTab === "praticar-questoes-ia" ||
+            activeTab === "praticar-checklists" ||
+            activeTab === "osce" ||
             activeTab === "questions" ||
             activeTab === "ineditas" ||
             activeTab === "questoes-ia") && (
@@ -165,6 +173,8 @@ const MainContent: React.FC = () => {
                   ? "PROVAS"
                   : activeTab === "praticar-questoes-ia" || activeTab === "questoes-ia"
                   ? "QUESTOES_IA"
+                  : activeTab === "praticar-checklists" || activeTab === "osce"
+                  ? "CHECKLISTS"
                   : "QUESTOES"
               }
             />
@@ -262,18 +272,13 @@ const MainContent: React.FC = () => {
             />
           )}
 
-          {/* Special / Advanced / OSCE modules */}
-          {activeTab === "osce" && <UnifiedOsceView />}
+          {/* Special / Advanced / Other modules */}
           {activeTab === "student-memory" && <StudentMemoryView />}
           {activeTab === "agent" && <FunctionCallingAgentView />}
           {activeTab === "admin" && <AdminEditorialView />}
           {(activeTab === "profile" || activeTab === "settings") && <ProfileSettingsView />}
           {activeTab === "export" && <DataExportView />}
-          {activeTab === "subscription" && (
-            <div className="py-6">
-              <PricingModal />
-            </div>
-          )}
+          {activeTab === "subscription" && <PricingPage />}
         </main>
       </div>
 
@@ -342,6 +347,29 @@ export const AppRoot: React.FC = () => {
   }
   if (location.pathname === "/auth/select-plan") {
     return <PlanSelectionView />;
+  }
+  if (
+    location.pathname === "/planos" ||
+    location.pathname === "/precos" ||
+    location.pathname === "/assinatura" ||
+    location.pathname === "/pricing"
+  ) {
+    return <PricingPage />;
+  }
+  if (location.pathname === "/checkout") {
+    return <CheckoutView />;
+  }
+  if (location.pathname === "/pagamento/processando") {
+    return <PaymentProcessingView />;
+  }
+  if (location.pathname === "/pagamento/sucesso") {
+    return <PaymentSuccessView />;
+  }
+  if (location.pathname === "/pagamento/erro") {
+    return <PaymentErrorView />;
+  }
+  if (location.pathname === "/conta/assinatura") {
+    return <MySubscriptionView />;
   }
 
   if (isAuthLoading) {
@@ -481,10 +509,15 @@ export const AppRoot: React.FC = () => {
   // Mandatory Full-Screen Email Verification Gate
   // When an account is registered with Email/Password and emailVerified is false,
   // block ALL app modules (Sidebar, Header, MainContent, Modals) and render only the confirmation screen.
+  // Exception: Master Admin (araujomendes@staziamed.com.br / master UID) has full direct bypass.
+  const isMasterUser = Boolean(
+    (firebaseUser?.email || "").trim().toLowerCase() === "araujomendes@staziamed.com.br" ||
+    firebaseUser?.uid === "cQjACVALpedbijS0WiCwuFRJgxj2"
+  );
   const isGoogleAuth = Boolean(
     firebaseUser?.providerData?.some((p) => p.providerId === "google.com")
   );
-  if (firebaseUser && !isGoogleAuth && !firebaseUser.emailVerified) {
+  if (firebaseUser && !isMasterUser && !isGoogleAuth && !firebaseUser.emailVerified) {
     return <EmailVerificationRequiredView />;
   }
 

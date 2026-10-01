@@ -30,6 +30,7 @@ import {
   Loader2,
   History,
   ShieldAlert,
+  Send,
 } from "lucide-react";
 import {
   EditorialBlock,
@@ -43,6 +44,7 @@ import {
 import { CANONICAL_AREA_LABELS } from "../../../types/medicalTaxonomy";
 import { A4PageContainer } from "./editorial/A4PageContainer";
 import { ScreenPageContainer } from "./editorial/ScreenPageContainer";
+import { AdminPublishModal } from "./editorial/AdminPublishModal";
 
 interface StaziaEditorialEditorProps {
   draft: StaziaEditorialDocumentDraft;
@@ -91,6 +93,7 @@ export const StaziaEditorialEditor: React.FC<StaziaEditorialEditorProps> = ({
 
   // PDF Export Modal & Progress States
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [exportStep, setExportStep] = useState<ExportModalStep>("IDLE");
   const [currentExport, setCurrentExport] = useState<EditorialPdfExport | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
@@ -315,7 +318,7 @@ export const StaziaEditorialEditor: React.FC<StaziaEditorialEditorProps> = ({
             </div>
           )}
 
-          {/* Approve Layout Action */}
+          {/* Action Buttons */}
           {!isApproved ? (
             <button
               type="button"
@@ -327,14 +330,25 @@ export const StaziaEditorialEditor: React.FC<StaziaEditorialEditorProps> = ({
               <span>Aprovar Layout</span>
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={handleStartExport}
-              className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-teal-500/20 transition-all flex items-center gap-2 cursor-pointer shrink-0"
-            >
-              <Download className="w-4 h-4" />
-              <span>Exportar PDF</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleStartExport}
+                className="px-3.5 py-2 bg-slate-850 hover:bg-slate-750 text-slate-200 hover:text-white font-bold text-xs rounded-xl border border-slate-700 shadow-sm transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <Download className="w-4 h-4 text-teal-400" />
+                <span>Exportar PDF</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsPublishModalOpen(true)}
+                className="px-4 py-2 bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-teal-500/20 transition-all flex items-center gap-2 cursor-pointer shrink-0"
+              >
+                <Send className="w-4 h-4" />
+                <span>Publicar no StaziaMed</span>
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -779,6 +793,16 @@ export const StaziaEditorialEditor: React.FC<StaziaEditorialEditorProps> = ({
           </div>
         </div>
       )}
+
+      {/* 4. Publication Modal */}
+      <AdminPublishModal
+        draft={draft}
+        isOpen={isPublishModalOpen}
+        onClose={() => setIsPublishModalOpen(false)}
+        onPublishedSuccess={() => {
+          setIsPublishModalOpen(false);
+        }}
+      />
     </div>
   );
 };

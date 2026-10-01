@@ -16,6 +16,7 @@ import {
   BarChart2,
   Mic,
   MessageSquare,
+  Stethoscope,
 } from "lucide-react";
 import { NavTab } from "../context/AppContext";
 
@@ -64,6 +65,7 @@ export const STUDENT_NAVIGATION_CONFIG: NavigationSection[] = [
       { id: "praticar-simulados", label: "Simulados", icon: FileText },
       { id: "praticar-provas", label: "Provas completas", icon: FileText },
       { id: "praticar-questoes-ia", label: "Questões por IA", icon: Brain },
+      { id: "praticar-checklists", label: "Banco de Checklist", icon: Stethoscope },
     ],
   },
   {

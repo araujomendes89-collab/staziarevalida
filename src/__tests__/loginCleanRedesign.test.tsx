@@ -64,8 +64,8 @@ describe("1.25A — Clean Auth Entry + Login + Signup Flow", () => {
     expect(screen.getByRole("button", { name: /Já tenho uma conta/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Criar uma nova conta/i })).toBeInTheDocument();
 
-    // Discrete guest link
-    expect(screen.getByRole("button", { name: /Explorar como visitante/i })).toBeInTheDocument();
+    // Guest mode / visitor link is removed
+    expect(screen.queryByRole("button", { name: /Explorar como visitante/i })).not.toBeInTheDocument();
 
     // Legal links
     expect(screen.getByRole("button", { name: /Termos de Uso/i })).toBeInTheDocument();
@@ -227,16 +227,13 @@ describe("1.25A — Clean Auth Entry + Login + Signup Flow", () => {
   });
 
   /* ------------------------------------------------------------- */
-  /* 5. GUEST MODE                                                 */
+  /* 5. GUEST MODE REMOVED                                         */
   /* ------------------------------------------------------------- */
-  it("should allow entering guest mode from Entry screen", () => {
+  it("should not render visitor/guest mode button from Entry screen", () => {
     renderLoginView();
 
-    const guestBtn = screen.getByRole("button", { name: /Explorar como visitante/i });
-    fireEvent.click(guestBtn);
-
-    expect(mockEnterGuestMode).toHaveBeenCalledTimes(1);
-    expect(mockSetActiveTab).toHaveBeenCalledWith("home");
+    const guestBtn = screen.queryByRole("button", { name: /Explorar como visitante/i });
+    expect(guestBtn).not.toBeInTheDocument();
   });
 
   /* ------------------------------------------------------------- */

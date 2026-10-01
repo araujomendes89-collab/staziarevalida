@@ -10,6 +10,7 @@ export type QuestionOrigin = "INEP_OFICIAL" | "INEDITA_PRAXIS" | "PLATFORM_ORIGI
 export * from "./questionFactory";
 export * from "./session";
 export * from "./onboarding";
+export * from "./adminUser";
 import { UserOnboardingState, UserPersonalizationMetadata } from "./onboarding";
 import { TrainingMode, QuestionSessionConfig, SessionAnswerState, SessionSummaryReport } from "./session";
 
@@ -485,6 +486,11 @@ export interface UserPreferences {
   notificationsEmail?: boolean;
   notificationsPush?: boolean;
   notificationsAlerts?: boolean;
+  alertExamUpdates?: boolean;
+  alertStudyTips?: boolean;
+  alertPlanRenewal?: boolean;
+  alertAiCredits?: boolean;
+  alertSecurity?: boolean;
 }
 
 export interface UserProfile {
@@ -887,4 +893,3 @@ export interface ProtocolUpdatesSummaryDoc {
 export * from "./canonicalFlashcard";
 export * from "./canonicalWorkflow";
 export * from "./onboarding";
-

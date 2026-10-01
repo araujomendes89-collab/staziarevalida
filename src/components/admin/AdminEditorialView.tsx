@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   SlidersHorizontal,
   CheckCircle2,
@@ -41,9 +41,12 @@ import { SEED_OSCE_STATIONS } from "../../data/osceStationsData";
 import { AiModelSelector } from "./AiModelSelector";
 import { AdminContentEngineView } from "./AdminContentEngineView";
 import { AdminDesignStudioView } from "./AdminDesignStudioView";
+import { AdminUserDirectoryClientService } from "../../services/adminUserDirectoryClientService";
+import { AdminUserDirectoryEntry } from "../../types/adminUser";
 
 export type AdminTab =
   | "users"
+  | "subscriptions"
   | "canonical-inventory"
   | "content"
   | "content-engine"
@@ -66,6 +69,10 @@ export const AdminEditorialView: React.FC = () => {
     resetAllData,
     setActiveTab,
     isDeveloperAdmin,
+    isAuthLoading,
+    profileResolutionStatus,
+    profileError,
+    retryProfileResolution,
   } = useApp();
 
   const [activeAdminTab, setActiveAdminTab] = useState<AdminTab>("users");
@@ -81,59 +88,98 @@ export const AdminEditorialView: React.FC = () => {
   // Search filter for content & logs
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Simulated server-backed user list for the admin console
-  const [adminUsersList, setAdminUsersList] = useState([
-    {
-      id: "usr-admin-master",
-      name: "Administrador Chefe",
-      email: "araujomendes@staziamed.com.br",
-      role: "ADMIN" as const,
-      tier: "PRO_PLUS" as const,
-      status: "Ativo",
-      verified: true,
-      lastLogin: "Hoje, 11:42",
-      origin: "Firebase Server Claims",
-    },
-    {
-      id: user.id,
-      name: user.name || "Dr(a). Candidato(a) Atual",
-      email: firebaseUser?.email || user.email || "aluno@revalidando.med.br",
-      role: user.role,
-      tier: user.tier,
-      status: "Ativo",
-      verified: Boolean(firebaseUser?.emailVerified),
-      lastLogin: "Agora",
-      origin: "Firestore Server Doc",
-    },
-    {
-      id: "usr-student-sample-1",
-      name: "Dra. Mariana Costa",
-      email: "mariana.costa@medicina.br",
-      role: "STUDENT" as const,
-      tier: "PRO" as const,
-      status: "Ativo",
-      verified: true,
-      lastLogin: "Ontem, 19:15",
-      origin: "Firestore Server Doc",
-    },
-    {
-      id: "usr-editor-sample-2",
-      name: "Dr. Carlos Eduardo (Curador Geral)",
-      email: "carlos.curadoria@staziamed.com.br",
-      role: "EDITOR" as const,
-      tier: "PRO_PLUS" as const,
-      status: "Ativo",
-      verified: true,
-      lastLogin: "Hoje, 09:30",
-      origin: "Firestore Server Doc",
-    },
-  ]);
+  // Real server-backed user directory state (NO MOCKS)
+  const [adminUsersList, setAdminUsersList] = useState<AdminUserDirectoryEntry[]>([]);
+  const [usersLoading, setUsersLoading] = useState<boolean>(true);
+  const [usersError, setUsersError] = useState<string | null>(null);
 
-  // Server security check: Must be ADMIN role (Fail-closed)
+  const loadAdminUsers = useCallback(async () => {
+    setUsersLoading(true);
+    setUsersError(null);
+    try {
+      const response = await AdminUserDirectoryClientService.fetchUsers();
+      setAdminUsersList(response.users || []);
+    } catch (err: any) {
+      console.error("[AdminEditorialView] Error loading admin users directory:", err);
+      setUsersError(err?.message || "Não foi possível carregar o diretório de usuários.");
+      setAdminUsersList([]);
+    } finally {
+      setUsersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeAdminTab === "users" && isDeveloperAdmin) {
+      loadAdminUsers();
+    }
+  }, [activeAdminTab, isDeveloperAdmin, loadAdminUsers]);
+
+  // 1. Loading boundary: wait while auth is initializing or profile is in-flight/unresolved
+  if (
+    isAuthLoading ||
+    (firebaseUser &&
+      profileResolutionStatus !== "READY" &&
+      profileResolutionStatus !== "ERROR")
+  ) {
+    return (
+      <div
+        data-testid="admin-loading-boundary"
+        className="max-w-xl mx-auto my-24 p-8 rounded-[28px] bg-slate-950/80 border border-slate-800 text-center space-y-4 shadow-2xl backdrop-blur-2xl"
+      >
+        <RefreshCw className="w-8 h-8 animate-spin text-teal-400 mx-auto" />
+        <p className="text-xs text-slate-300 font-semibold">
+          Validando credenciais administrativas com o servidor...
+        </p>
+      </div>
+    );
+  }
+
+  // 2. Profile resolution error boundary: infrastructure failure is distinct from access denied
+  if (profileResolutionStatus === "ERROR") {
+    return (
+      <div
+        data-testid="admin-profile-error-boundary"
+        className="max-w-xl mx-auto my-12 p-8 rounded-[28px] bg-slate-950/90 border border-amber-500/30 text-center space-y-5 shadow-2xl backdrop-blur-2xl"
+      >
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 mx-auto flex items-center justify-center border border-amber-500/30">
+          <AlertTriangle className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-white tracking-tight">
+            Não foi possível confirmar suas permissões
+          </h2>
+          <p className="text-xs text-slate-300 leading-relaxed max-w-md mx-auto">
+            {profileError ||
+              "Ocorreu uma instabilidade na verificação de privilégios com o servidor. Suas credenciais não puderam ser validadas no momento."}
+          </p>
+        </div>
+        <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
+          <button
+            type="button"
+            onClick={() => retryProfileResolution?.()}
+            className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg shadow-teal-600/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Tentar Novamente
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("home")}
+            className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 transition-all cursor-pointer"
+          >
+            Voltar para a Área do Aluno
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Stabilized Access Denied: only rendered when resolution completed (READY) and user is not ADMIN
   if (!isDeveloperAdmin) {
     return (
       <div
         id="admin-access-denied"
+        data-testid="admin-access-denied"
         className="max-w-xl mx-auto my-12 p-8 rounded-[28px] bg-slate-950/90 border border-rose-500/30 text-center space-y-5 shadow-2xl backdrop-blur-2xl"
       >
         <div className="w-16 h-16 rounded-2xl bg-rose-500/20 text-rose-400 mx-auto flex items-center justify-center border border-rose-500/30">
@@ -201,6 +247,7 @@ export const AdminEditorialView: React.FC = () => {
 
   const adminTabsConfig: { id: AdminTab; label: string; icon: React.ElementType }[] = [
     { id: "users", label: "Usuários e permissões", icon: Users },
+    { id: "subscriptions", label: "Assinaturas & Entitlements", icon: Key },
     { id: "canonical-inventory", label: "Banco Canônico & Auditoria INEP", icon: ShieldCheck },
     { id: "content", label: "Conteúdo e questões", icon: ListOrdered },
     { id: "content-engine", label: "Content Engine", icon: BookOpen },
@@ -288,49 +335,242 @@ export const AdminEditorialView: React.FC = () => {
               </span>
             </div>
 
-            {/* User List Table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 text-slate-400 text-[11px] uppercase tracking-wider">
-                    <th className="pb-3 font-semibold">Usuário</th>
-                    <th className="pb-3 font-semibold">E-mail</th>
-                    <th className="pb-3 font-semibold">Papel (Role)</th>
-                    <th className="pb-3 font-semibold">Plano</th>
-                    <th className="pb-3 font-semibold">Origem do Privilégio</th>
-                    <th className="pb-3 font-semibold text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 text-slate-300">
-                  {adminUsersList.map((u) => (
-                    <tr key={u.id} className="hover:bg-white/[0.02]">
-                      <td className="py-3 font-semibold text-white">{u.name}</td>
-                      <td className="py-3 font-mono text-[11px] text-slate-400">{u.email}</td>
-                      <td className="py-3">
-                        <span
-                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                            u.role === "ADMIN"
-                              ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
-                              : u.role === "EDITOR"
-                              ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
-                              : "bg-teal-500/20 text-teal-300 border-teal-500/30"
-                          }`}
-                        >
-                          {u.role}
-                        </span>
-                      </td>
-                      <td className="py-3 font-bold text-white text-[11px]">{u.tier}</td>
-                      <td className="py-3 font-mono text-[11px] text-slate-400">{u.origin}</td>
-                      <td className="py-3 text-right">
-                        <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400 font-semibold">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          {u.status}
-                        </span>
-                      </td>
+            {/* User List Table Header & Actions */}
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[11px] text-slate-400">
+                {usersLoading
+                  ? "Carregando diretório de usuários..."
+                  : `Total de ${adminUsersList.length} conta(s) registrada(s)`}
+              </span>
+              <button
+                type="button"
+                id="btn-refresh-admin-users"
+                onClick={loadAdminUsers}
+                disabled={usersLoading}
+                className="text-[11px] font-bold px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${usersLoading ? "animate-spin" : ""}`} />
+                <span>Atualizar Lista</span>
+              </button>
+            </div>
+
+            {usersLoading ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-3 text-slate-400" data-testid="admin-users-loading">
+                <RefreshCw className="w-6 h-6 animate-spin text-teal-400" />
+                <p className="text-xs">Consultando diretório de autenticação e perfis...</p>
+              </div>
+            ) : usersError ? (
+              <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs" data-testid="admin-users-error">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>{usersError}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={loadAdminUsers}
+                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shrink-0 cursor-pointer"
+                >
+                  Tentar Novamente
+                </button>
+              </div>
+            ) : adminUsersList.length === 0 ? (
+              <div className="py-12 text-center text-slate-400 text-xs" data-testid="admin-users-empty">
+                Nenhum usuário encontrado.
+              </div>
+            ) : (
+              <div className="overflow-x-auto" data-testid="admin-users-table">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 text-slate-400 text-[11px] uppercase tracking-wider">
+                      <th className="pb-3 font-semibold">Usuário</th>
+                      <th className="pb-3 font-semibold">E-mail</th>
+                      <th className="pb-3 font-semibold">Papel (Role)</th>
+                      <th className="pb-3 font-semibold">Plano</th>
+                      <th className="pb-3 font-semibold">Origem do Privilégio</th>
+                      <th className="pb-3 font-semibold text-right">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                    {adminUsersList.map((u) => (
+                      <tr key={u.uid} className="hover:bg-white/[0.02]">
+                        <td className="py-3">
+                          <div className="font-semibold text-white">{u.displayName}</div>
+                          <div className="font-mono text-[10px] text-slate-400">{u.uidMasked}</div>
+                        </td>
+                        <td className="py-3 font-mono text-[11px] text-slate-300">
+                          <div className="flex items-center gap-1.5">
+                            <span>{u.email}</span>
+                            {u.emailVerified && (
+                              <span className="text-[9px] px-1 py-0.2 rounded-md bg-emerald-500/20 text-emerald-300 font-bold">
+                                Verificado
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3">
+                          <span
+                            className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                              u.role === "ADMIN"
+                                ? "bg-rose-500/20 text-rose-300 border-rose-500/30"
+                                : u.role === "EDITOR"
+                                ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                                : u.role === "STUDENT"
+                                ? "bg-teal-500/20 text-teal-300 border-teal-500/30"
+                                : "bg-slate-500/20 text-slate-300 border-slate-500/30"
+                            }`}
+                          >
+                            {u.role}
+                          </span>
+                        </td>
+                        <td className="py-3 font-bold text-white text-[11px]">
+                          {u.plan !== "—" ? u.plan : u.tier}
+                        </td>
+                        <td className="py-3 font-mono text-[11px] text-slate-400">{u.privilegeSource}</td>
+                        <td className="py-3 text-right">
+                          <span
+                            className={`inline-flex items-center gap-1 text-[11px] font-semibold ${
+                              u.status === "Ativo" ? "text-emerald-400" : "text-rose-400"
+                            }`}
+                          >
+                            {u.status === "Ativo" ? (
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                            ) : (
+                              <AlertCircle className="w-3.5 h-3.5" />
+                            )}
+                            {u.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 1.1 ASSINATURAS & ENTITLEMENTS                                            */}
+      {/* ========================================================================= */}
+      {activeAdminTab === "subscriptions" && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-2xl bg-[#0a1526] border border-slate-800 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Key className="w-4 h-4 text-teal-400" />
+                  Matriz de Planos & Limites Canônicos
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Gerenciamento de assinaturas ativas, regras de expiração do Trial e controle de recursos (Entitlements).
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-teal-500/20 text-teal-300 border border-teal-500/30">
+                  3 Níveis Estritos: Trial / PRO / Elite
+                </span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+              <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-300 uppercase tracking-wider">Trial 7 Dias</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">R$ 0</span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Período demonstrativo com expiração estrita. 100 questões, 20 flashcards, 10 usos de IA, 1 prova completa demonstrativa.
+                </p>
+                <div className="pt-2 text-[10px] text-slate-500 space-y-1">
+                  <div>• Bloqueio automático: <code className="text-slate-300">now &gt;= trial_ends_at</code></div>
+                  <div>• Sem Cronograma Inteligente, DNA ou Pareto</div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-[#0d233a]/60 border border-teal-500/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-teal-300 uppercase tracking-wider">Stazia PRO</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 font-bold">R$ 67/mês</span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Plano principal completo para preparação. Questões ilimitadas, comentários, simulados, flashcards e mapa de fraquezas.
+                </p>
+                <div className="pt-2 text-[10px] text-slate-500 space-y-1">
+                  <div>• Limite de IA: <code className="text-teal-300">300/mês</code></div>
+                  <div>• Acesso ao Grupo PRO exclusivo</div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-[#1a1333]/60 border border-purple-500/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-purple-300 uppercase tracking-wider">Stazia Elite</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold">R$ 147/mês</span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Acesso irrestrito com inteligência médica avançada. Coach IA Stazia, Modo Pareto 80/20, Radar e Grupo VIP.
+                </p>
+                <div className="pt-2 text-[10px] text-slate-500 space-y-1">
+                  <div>• Limite de IA: <code className="text-purple-300">1000/mês</code></div>
+                  <div>• Cronograma Adaptativo + Simulado Adaptativo</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-800">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-3">
+                Assinaturas dos Usuários Ativos ({adminUsersList.length})
+              </h4>
+              <div className="overflow-x-auto rounded-xl border border-slate-800/80">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-800 bg-slate-900/40 text-slate-400 text-[11px] uppercase tracking-wider">
+                      <th className="p-3 font-semibold">Usuário</th>
+                      <th className="p-3 font-semibold">E-mail</th>
+                      <th className="p-3 font-semibold">Plano Atual</th>
+                      <th className="p-3 font-semibold">Status de Assinatura</th>
+                      <th className="p-3 font-semibold text-right">Acesso Canônico</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                    {adminUsersList.map((u) => (
+                      <tr key={u.uid} className="hover:bg-white/[0.02]">
+                        <td className="p-3 font-semibold text-white">
+                          {u.displayName}
+                        </td>
+                        <td className="p-3 font-mono text-slate-400 text-[11px]">
+                          {u.email}
+                        </td>
+                        <td className="p-3 font-bold">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            u.plan === "elite"
+                              ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                              : u.plan === "pro"
+                              ? "bg-teal-500/20 text-teal-300 border border-teal-500/30"
+                              : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                          }`}>
+                            {u.plan ? u.plan.toUpperCase() : "TRIAL"}
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                            u.status === "Ativo"
+                              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                              : "bg-rose-500/10 text-rose-400 border border-rose-500/20"
+                          }`}>
+                            {u.status}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">
+                          <span className="text-[11px] font-mono text-slate-300">
+                            {u.role === "ADMIN" ? "Bypass Total (Admin)" : "Limitado por Entitlement"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

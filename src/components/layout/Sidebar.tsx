@@ -10,10 +10,18 @@ import {
   User,
   Settings,
   Bell,
+  ShieldCheck,
+  BookOpen,
+  Palette,
+  Lock,
+  Sparkles,
 } from "lucide-react";
 import { useApp, NavTab } from "../../context/AppContext";
 import { STUDENT_NAVIGATION_CONFIG, NavigationSection, SubNavigationItem } from "../../config/navigation";
 import { SpacedRepetitionService } from "../../services/spacedRepetitionService";
+import { queueProfileNavigation } from "../../utils/profileNavigation";
+import { useEntitlements } from "../../hooks/useEntitlements";
+import { FeatureCode } from "../../services/entitlementsClient";
 
 export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobile }) => {
   const {
@@ -53,6 +61,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
     if (subId === "praticar-simulados" && activeTab === "ineditas") return true;
     if (subId === "praticar-provas" && (activeTab === "provas" || activeTab === "provas-completas")) return true;
     if (subId === "praticar-questoes-ia" && activeTab === "questoes-ia") return true;
+    if (subId === "praticar-checklists" && (activeTab === "praticar-checklists" || activeTab === "osce" || activeTab === "checklists")) return true;
     // Revisar aliases
     if (subId === "revisar-flashcards" && activeTab === "review") return true;
     if (subId === "revisar-erros" && (activeTab === "errors" || activeTab === "caderno-de-erros")) return true;
@@ -81,17 +90,36 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
   // Single active accordion state: only ONE section can remain expanded at a time
   const [expandedSection, setExpandedSection] = useState<string | null>(getActiveSectionId() || "estudar");
 
+  // In Admin Master mode, student sections can be collapsed or toggled as inspection mode
+  const [studentPreviewExpanded, setStudentPreviewExpanded] = useState<boolean>(false);
+
   // Synchronize expanded accordion with active route/tab
   useEffect(() => {
     const currentActiveSecId = getActiveSectionId();
     if (currentActiveSecId) {
       setExpandedSection(currentActiveSecId);
+      // Auto-expand student preview if an academic route is directly opened
+      if (isDeveloperAdmin) {
+        setStudentPreviewExpanded(true);
+      }
     }
-  }, [activeTab]);
+  }, [activeTab, isDeveloperAdmin]);
 
   const toggleSection = (sectionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setExpandedSection((prev) => (prev === sectionId ? null : sectionId));
+  };
+
+  const openAccountSettings = () => {
+    queueProfileNavigation({ section: "account" });
+    setActiveTab("profile");
+    if (onCloseMobile) onCloseMobile();
+  };
+
+  const openAppSettings = (focus?: "alerts") => {
+    queueProfileNavigation({ section: focus === "alerts" ? "alerts" : "app", focus });
+    setActiveTab("settings");
+    if (onCloseMobile) onCloseMobile();
   };
 
   const handleSelectSection = (section: NavigationSection) => {
@@ -114,6 +142,40 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
     }
     setActiveTab(subId);
     if (onCloseMobile) onCloseMobile();
+  };
+
+  const {
+    plan,
+    isTrial,
+    isExpired,
+    trialDaysRemaining,
+    canUse,
+    getFeatureDetails,
+  } = useEntitlements();
+
+  // Map subId to feature requirement
+  const getSubItemFeatureRequirement = (subId: NavTab): { feature?: FeatureCode; requiredPlan?: "pro" | "elite"; isLocked: boolean } => {
+    let feature: FeatureCode | undefined;
+    if (subId === "praticar-simulados") feature = "simulations";
+    else if (subId === "praticar-provas") feature = "full_exams";
+    else if (subId === "praticar-questoes-ia") feature = "ai_question_generation";
+    else if (subId === "estudar-grandes-temas") feature = "great_topics";
+    else if (subId === "planejamento-calendario") feature = "smart_schedule";
+    else if (subId === "planejamento-semanal") feature = "daily_adaptive_plan";
+    else if (subId === "planejamento-ate-prova") feature = "final_review";
+    else if (subId === "desempenho-areas") feature = "revalida_dna";
+    else if (subId === "desempenho-evolucao") feature = "weakness_map";
+    else if (subId === "tutor-conversar") feature = "ai_coach";
+
+    if (!feature) return { isLocked: false };
+
+    const details = getFeatureDetails(feature);
+    const hasAccess = canUse(feature);
+    return {
+      feature,
+      requiredPlan: details.requiredPlan,
+      isLocked: !hasAccess,
+    };
   };
 
   const resolveBadge = (badgeKey?: string): string | undefined => {
@@ -152,105 +214,26 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
         </button>
       </div>
 
-      {/* Navigation List (7 Main Areas with Single-Open Accordion) */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1 scrollbar-thin scrollbar-thumb-slate-700/50">
-        {STUDENT_NAVIGATION_CONFIG.map((section) => {
-          const Icon = section.icon;
-          const isSectionOpen = expandedSection === section.id;
-          const hasActiveChild = isSectionActive(section);
-          const hasSubItems = section.subItems && section.subItems.length > 0;
-          const sectionBadge = resolveBadge(section.badgeKey);
-
-          return (
-            <div key={section.id} className="space-y-0.5">
-              {/* Parent Nav Item Button */}
-              <div
-                onClick={() => handleSelectSection(section)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer group ${
-                  hasActiveChild && (!hasSubItems || activeTab === section.id)
-                    ? "bg-teal-600 text-white shadow-xs"
-                    : hasActiveChild
-                    ? "bg-white/[0.08] text-white"
-                    : "text-slate-300/90 hover:text-white hover:bg-white/[0.05]"
-                }`}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Icon
-                    className={`w-4 h-4 shrink-0 ${
-                      hasActiveChild ? "text-teal-300 group-hover:text-white" : "text-slate-400 group-hover:text-slate-200"
-                    }`}
-                  />
-                  <span className="truncate">{section.label}</span>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  {sectionBadge && (
-                    <span className="text-[10px] px-1.5 py-0.2 rounded-md font-bold bg-teal-500/20 text-teal-300">
-                      {sectionBadge}
-                    </span>
-                  )}
-                  {hasSubItems && (
-                    <button
-                      type="button"
-                      onClick={(e) => toggleSection(section.id, e)}
-                      className="p-1 rounded-md hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
-                      aria-label={`Alternar seção ${section.label}`}
-                    >
-                      {isSectionOpen ? (
-                        <ChevronDown className="w-3.5 h-3.5" />
-                      ) : (
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      )}
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Sub-Items List (Single Accordion Expanded) */}
-              {hasSubItems && isSectionOpen && (
-                <div className="pl-4 pr-1 py-1 space-y-0.5 border-l border-white/[0.08] ml-4 my-0.5">
-                  {section.subItems?.map((sub: SubNavigationItem) => {
-                    const isSubActive = isSubItemActive(sub.id);
-                    const SubIcon = sub.icon;
-                    const subBadge = resolveBadge(sub.badgeKey);
-
-                    return (
-                      <button
-                        key={sub.id}
-                        type="button"
-                        onClick={() => handleSelectSubItem(sub.id)}
-                        className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer text-left ${
-                          isSubActive
-                            ? "bg-teal-500/20 text-teal-200 font-bold border border-teal-500/30"
-                            : "text-slate-400 hover:text-slate-100 hover:bg-white/[0.04]"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          {SubIcon && (
-                            <SubIcon className={`w-3 h-3 shrink-0 ${isSubActive ? "text-teal-300" : "text-slate-500"}`} />
-                          )}
-                          <span className="truncate">{sub.label}</span>
-                        </div>
-                        {subBadge && (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-purple-500/20 text-purple-300">
-                            {subBadge}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Administration Links (if ADMIN confirmed by server) */}
+      {/* Navigation List */}
+      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5 scrollbar-thin scrollbar-thumb-slate-700/50">
+        {/* ============================================================ */}
+        {/* 1. MASTER ADMIN NAVIGATION CONTROLS (Top Priority for Admins) */}
+        {/* ============================================================ */}
         {isDeveloperAdmin && (
-          <div className="pt-3 mt-2 border-t border-[#142847]/70 space-y-1" data-testid="admin-sidebar-section">
-            <p className="px-3 text-[10px] font-bold tracking-wider text-teal-400 uppercase flex items-center gap-1.5">
-              Administração do Sistema
-            </p>
+          <div className="space-y-1 pb-3 mb-2 border-b border-[#142847]/80" data-testid="admin-sidebar-section">
+            <div className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-teal-500/15 to-emerald-500/10 border border-teal-500/30 flex items-center justify-between">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <ShieldCheck className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                <span className="text-[10px] font-black tracking-wider text-teal-300 uppercase truncate">
+                  Admin Master
+                </span>
+              </div>
+              <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-teal-500/30 text-teal-200">
+                Painel
+              </span>
+            </div>
+
+            {/* Painel Principal de Administração */}
             <button
               id="nav-admin-panel"
               data-testid="nav-admin-panel"
@@ -264,9 +247,39 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                   : "text-slate-300 hover:text-white hover:bg-white/[0.05]"
               }`}
             >
-              <SlidersHorizontal className="w-4 h-4 shrink-0" />
+              <SlidersHorizontal className="w-4 h-4 shrink-0 text-teal-300" />
               <span>Painel de Administração</span>
             </button>
+
+            {/* Content Engine Direct Tab */}
+            <button
+              id="nav-content-engine"
+              data-testid="nav-content-engine"
+              onClick={() => {
+                setActiveTab("admin");
+                if (onCloseMobile) onCloseMobile();
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-colors cursor-pointer text-slate-300 hover:text-white hover:bg-white/[0.05]"
+            >
+              <BookOpen className="w-4 h-4 shrink-0 text-purple-400" />
+              <span>Content Engine & OCR</span>
+            </button>
+
+            {/* Design Studio Direct Tab */}
+            <button
+              id="nav-design-studio"
+              data-testid="nav-design-studio"
+              onClick={() => {
+                setActiveTab("admin");
+                if (onCloseMobile) onCloseMobile();
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition-colors cursor-pointer text-slate-300 hover:text-white hover:bg-white/[0.05]"
+            >
+              <Palette className="w-4 h-4 shrink-0 text-amber-400" />
+              <span>Design Studio</span>
+            </button>
+
+            {/* Inventário Canônico de Provas */}
             <button
               id="nav-export-panel"
               data-testid="nav-export-panel"
@@ -280,29 +293,283 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
                   : "text-slate-300 hover:text-white hover:bg-white/[0.05]"
               }`}
             >
-              <Database className="w-4 h-4 shrink-0" />
+              <Database className="w-4 h-4 shrink-0 text-cyan-300" />
               <span>Inventário de Provas</span>
             </button>
           </div>
+        )}
+
+        {/* ============================================================ */}
+        {/* 2. STUDENT NAVIGATION (Direct for students, Inspection for Admin) */}
+        {/* ============================================================ */}
+        {isDeveloperAdmin ? (
+          <div>
+            <button
+              type="button"
+              onClick={() => setStudentPreviewExpanded((prev) => !prev)}
+              className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-bold tracking-wider text-slate-400 hover:text-slate-200 uppercase cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5">
+                Área do Aluno (Visualização)
+              </span>
+              {studentPreviewExpanded ? (
+                <ChevronDown className="w-3 h-3 text-slate-400" />
+              ) : (
+                <ChevronRight className="w-3 h-3 text-slate-400" />
+              )}
+            </button>
+
+            {studentPreviewExpanded && (
+              <div className="space-y-1 mt-1 pt-1 border-t border-white/[0.04]">
+                {STUDENT_NAVIGATION_CONFIG.map((section) => {
+                  const Icon = section.icon;
+                  const isSectionOpen = expandedSection === section.id;
+                  const hasActiveChild = isSectionActive(section);
+                  const hasSubItems = section.subItems && section.subItems.length > 0;
+                  const sectionBadge = resolveBadge(section.badgeKey);
+
+                  return (
+                    <div key={section.id} className="space-y-0.5">
+                      <div
+                        onClick={() => handleSelectSection(section)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer group ${
+                          hasActiveChild && (!hasSubItems || activeTab === section.id)
+                            ? "bg-teal-600 text-white shadow-xs"
+                            : hasActiveChild
+                            ? "bg-white/[0.08] text-white"
+                            : "text-slate-300/90 hover:text-white hover:bg-white/[0.05]"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <Icon
+                            className={`w-4 h-4 shrink-0 ${
+                              hasActiveChild ? "text-teal-300 group-hover:text-white" : "text-slate-400 group-hover:text-slate-200"
+                            }`}
+                          />
+                          <span className="truncate">{section.label}</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {sectionBadge && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded-md font-bold bg-teal-500/20 text-teal-300">
+                              {sectionBadge}
+                            </span>
+                          )}
+                          {hasSubItems && (
+                            <button
+                              type="button"
+                              onClick={(e) => toggleSection(section.id, e)}
+                              className="p-1 rounded-md hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                              aria-label={`Alternar seção ${section.label}`}
+                            >
+                              {isSectionOpen ? (
+                                <ChevronDown className="w-3.5 h-3.5" />
+                              ) : (
+                                <ChevronRight className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {hasSubItems && isSectionOpen && (
+                        <div className="pl-4 pr-1 py-1 space-y-0.5 border-l border-white/[0.08] ml-4 my-0.5">
+                          {section.subItems?.map((sub: SubNavigationItem) => {
+                            const isSubActive = isSubItemActive(sub.id);
+                            const SubIcon = sub.icon;
+                            const subBadge = resolveBadge(sub.badgeKey);
+                            const req = getSubItemFeatureRequirement(sub.id);
+
+                            return (
+                              <button
+                                key={sub.id}
+                                type="button"
+                                onClick={() => handleSelectSubItem(sub.id)}
+                                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer text-left ${
+                                  isSubActive
+                                    ? "bg-teal-500/20 text-teal-200 font-bold border border-teal-500/30"
+                                    : "text-slate-400 hover:text-slate-100 hover:bg-white/[0.04]"
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0">
+                                  {SubIcon && (
+                                    <SubIcon className={`w-3 h-3 shrink-0 ${isSubActive ? "text-teal-300" : "text-slate-500"}`} />
+                                  )}
+                                  <span className="truncate">{sub.label}</span>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {req.isLocked && (
+                                    <span className={`text-[8px] font-bold px-1 py-0.2 rounded-sm uppercase tracking-wider flex items-center gap-0.5 ${
+                                      req.requiredPlan === "elite"
+                                        ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                                        : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                    }`}>
+                                      <Lock className="w-2.5 h-2.5" />
+                                      {req.requiredPlan === "elite" ? "Elite" : "Pro"}
+                                    </span>
+                                  )}
+                                  {subBadge && (
+                                    <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-purple-500/20 text-purple-300">
+                                      {subBadge}
+                                    </span>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ) : (
+          STUDENT_NAVIGATION_CONFIG.map((section) => {
+            const Icon = section.icon;
+            const isSectionOpen = expandedSection === section.id;
+            const hasActiveChild = isSectionActive(section);
+            const hasSubItems = section.subItems && section.subItems.length > 0;
+            const sectionBadge = resolveBadge(section.badgeKey);
+
+            return (
+              <div key={section.id} className="space-y-0.5">
+                <div
+                  onClick={() => handleSelectSection(section)}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer group ${
+                    hasActiveChild && (!hasSubItems || activeTab === section.id)
+                      ? "bg-teal-600 text-white shadow-xs"
+                      : hasActiveChild
+                      ? "bg-white/[0.08] text-white"
+                      : "text-slate-300/90 hover:text-white hover:bg-white/[0.05]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <Icon
+                      className={`w-4 h-4 shrink-0 ${
+                        hasActiveChild ? "text-teal-300 group-hover:text-white" : "text-slate-400 group-hover:text-slate-200"
+                      }`}
+                    />
+                    <span className="truncate">{section.label}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    {sectionBadge && (
+                      <span className="text-[10px] px-1.5 py-0.2 rounded-md font-bold bg-teal-500/20 text-teal-300">
+                        {sectionBadge}
+                      </span>
+                    )}
+                    {hasSubItems && (
+                      <button
+                        type="button"
+                        onClick={(e) => toggleSection(section.id, e)}
+                        className="p-1 rounded-md hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                        aria-label={`Alternar seção ${section.label}`}
+                      >
+                        {isSectionOpen ? (
+                          <ChevronDown className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {hasSubItems && isSectionOpen && (
+                  <div className="pl-4 pr-1 py-1 space-y-0.5 border-l border-white/[0.08] ml-4 my-0.5">
+                    {section.subItems?.map((sub: SubNavigationItem) => {
+                      const isSubActive = isSubItemActive(sub.id);
+                      const SubIcon = sub.icon;
+                      const subBadge = resolveBadge(sub.badgeKey);
+                      const req = getSubItemFeatureRequirement(sub.id);
+
+                      return (
+                        <button
+                          key={sub.id}
+                          type="button"
+                          onClick={() => handleSelectSubItem(sub.id)}
+                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-all cursor-pointer text-left ${
+                            isSubActive
+                              ? "bg-teal-500/20 text-teal-200 font-bold border border-teal-500/30"
+                              : "text-slate-400 hover:text-slate-100 hover:bg-white/[0.04]"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            {SubIcon && (
+                              <SubIcon className={`w-3 h-3 shrink-0 ${isSubActive ? "text-teal-300" : "text-slate-500"}`} />
+                            )}
+                            <span className="truncate">{sub.label}</span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {req.isLocked && (
+                              <span className={`text-[8px] font-bold px-1 py-0.2 rounded-sm uppercase tracking-wider flex items-center gap-0.5 ${
+                                req.requiredPlan === "elite"
+                                  ? "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                                  : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                              }`}>
+                                <Lock className="w-2.5 h-2.5" />
+                                {req.requiredPlan === "elite" ? "Elite" : "Pro"}
+                              </span>
+                            )}
+                            {subBadge && (
+                              <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-purple-500/20 text-purple-300">
+                                {subBadge}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 
       {/* Bottom Area: Perfil & Configurações Footer */}
       <div className="p-3 pt-2 space-y-2 border-t border-[#142847]/70 bg-[#091526]">
-        {/* Seja Premium Banner */}
-        <div className="p-3 rounded-2xl bg-[#0F223D] border border-teal-500/20 space-y-1.5">
+        {/* Dynamic Plan Badge Banner */}
+        <div className={`p-3 rounded-2xl border space-y-1.5 ${
+          plan === "elite"
+            ? "bg-purple-950/30 border-purple-500/30"
+            : plan === "pro"
+            ? "bg-[#0F223D] border-teal-500/20"
+            : isExpired
+            ? "bg-rose-950/30 border-rose-500/30"
+            : "bg-amber-950/20 border-amber-500/20"
+        }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-              <span className="text-xs font-bold text-white">StaziaMed Pro</span>
+              {plan === "elite" ? (
+                <Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+              ) : plan === "pro" ? (
+                <Crown className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              ) : (
+                <Crown className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+              )}
+              <span className="text-xs font-bold text-white">
+                {plan === "elite"
+                  ? "Stazia Elite"
+                  : plan === "pro"
+                  ? "Stazia PRO"
+                  : isExpired
+                  ? "Trial Expirado"
+                  : `Trial (${trialDaysRemaining}d restantes)`}
+              </span>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsSubscriptionModalOpen(true)}
-              className="text-[10px] text-teal-300 hover:underline font-bold"
-            >
-              Planos →
-            </button>
+            {plan !== "elite" && (
+              <button
+                type="button"
+                onClick={() => setIsSubscriptionModalOpen(true)}
+                className="text-[10px] text-teal-300 hover:underline font-bold"
+              >
+                {plan === "pro" ? "Upgrade →" : "Assinar →"}
+              </button>
+            )}
           </div>
         </div>
 
@@ -312,8 +579,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
           <button
             type="button"
             onClick={() => {
-              setActiveTab("profile");
-              if (onCloseMobile) onCloseMobile();
+              openAccountSettings();
             }}
             className="w-full flex items-center justify-between p-1.5 text-left rounded-xl hover:bg-white/[0.04] transition-colors cursor-pointer"
           >
@@ -345,8 +611,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
             <button
               type="button"
               onClick={() => {
-                setActiveTab("profile");
-                if (onCloseMobile) onCloseMobile();
+                openAccountSettings();
               }}
               className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-teal-300 transition-colors flex flex-col items-center justify-center gap-0.5 cursor-pointer text-[9px]"
               title="Minha Conta"
@@ -357,8 +622,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
             <button
               type="button"
               onClick={() => {
-                setActiveTab("profile");
-                if (onCloseMobile) onCloseMobile();
+                openAppSettings();
               }}
               className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-teal-300 transition-colors flex flex-col items-center justify-center gap-0.5 cursor-pointer text-[9px]"
               title="Preferências"
@@ -369,8 +633,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
             <button
               type="button"
               onClick={() => {
-                setActiveTab("profile");
-                if (onCloseMobile) onCloseMobile();
+                openAppSettings("alerts");
               }}
               className="p-1.5 rounded-lg hover:bg-white/[0.06] text-slate-400 hover:text-teal-300 transition-colors flex flex-col items-center justify-center gap-0.5 cursor-pointer text-[9px]"
               title="Notificações"

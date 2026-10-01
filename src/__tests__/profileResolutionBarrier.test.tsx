@@ -213,4 +213,28 @@ describe("1.26B — Authenticated Profile Resolution Barrier", () => {
     expect(screen.queryByTestId("login-view")).not.toBeInTheDocument();
     expect(screen.getByTestId("main-content-stage")).toBeInTheDocument();
   });
+
+  it("8. MASTER ADMIN BYPASS: should bypass EmailVerificationRequiredView for araujomendes@staziamed.com.br even if emailVerified is false", () => {
+    vi.spyOn(AppContextModule, "useApp").mockReturnValue({
+      ...baseContext,
+      firebaseUser: {
+        uid: "cQjACVALpedbijS0WiCwuFRJgxj2",
+        email: "araujomendes@staziamed.com.br",
+        emailVerified: false,
+        providerData: [{ providerId: "password" }],
+      } as any,
+      isGuestMode: false,
+      isAuthLoading: false,
+      profileResolutionStatus: "READY",
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <AppRoot />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByTestId("email-verification-required-view")).not.toBeInTheDocument();
+    expect(screen.getByTestId("main-content-stage")).toBeInTheDocument();
+  });
 });

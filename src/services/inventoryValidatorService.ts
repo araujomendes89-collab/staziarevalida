@@ -59,53 +59,183 @@ export class InventoryValidatorService {
     }
 
     if (ed.id === "rev-2020") {
-      return (qYear === 2020 || qEd.includes("2020") || qCode.includes("2020")) && !qEd.includes("enamed");
+      const isCaderno2 =
+        qEd.includes("2020_2") ||
+        qCode.includes("2020_2") ||
+        qId.includes("2020_2") ||
+        qEd.includes("caderno 2") ||
+        qEd.includes("caderno_2") ||
+        qEd.includes("amarelo");
+      return (
+        ((qYear === 2020 || qEd.includes("2020") || qCode.includes("2020") || qId.includes("2020")) &&
+          !qEd.includes("enamed")) &&
+        !isCaderno2
+      );
     }
 
     if (ed.id === "rev-2021") {
-      return (qYear === 2021 || qEd.includes("2021") || qCode.includes("2021")) && !qEd.includes("enamed");
+      return (
+        (qYear === 2021 || qEd.includes("2021") || qCode.includes("2021") || qId.includes("2021")) &&
+        !qEd.includes("enamed")
+      );
     }
 
     if (ed.id === "rev-2022-1") {
-      return (qYear === 2022 && (qEd.includes("2022/1") || qEd.includes("2022.1") || qEd.includes("1ª"))) || qCode.includes("2022.1") || qCode.includes("2022-1");
+      return (
+        (qYear === 2022 &&
+          (qEd.includes("2022/1") ||
+            qEd.includes("2022.1") ||
+            qEd.includes("2022_1") ||
+            qEd.includes("2022-1") ||
+            qEd.includes("1ª"))) ||
+        qCode.includes("2022.1") ||
+        qCode.includes("2022-1") ||
+        qCode.includes("2022_1") ||
+        qId.includes("2022_1") ||
+        qId.includes("2022-1")
+      );
     }
 
     if (ed.id === "rev-2022-2") {
-      return (qYear === 2022 && (qEd.includes("2022/2") || qEd.includes("2022.2") || qEd.includes("2ª"))) || qCode.includes("2022.2") || qCode.includes("2022-2");
+      return (
+        (qYear === 2022 &&
+          (qEd.includes("2022/2") ||
+            qEd.includes("2022.2") ||
+            qEd.includes("2022_2") ||
+            qEd.includes("2022-2") ||
+            qEd.includes("2ª"))) ||
+        qCode.includes("2022.2") ||
+        qCode.includes("2022-2") ||
+        qCode.includes("2022_2") ||
+        qId.includes("2022_2") ||
+        qId.includes("2022-2")
+      );
     }
 
     if (ed.id === "rev-2023-1") {
-      return (qYear === 2023 && (qEd.includes("2023/1") || qEd.includes("2023.1") || qEd.includes("1ª"))) || qCode.includes("2023.1") || qCode.includes("2023-1");
+      return (
+        (qYear === 2023 &&
+          (qEd.includes("2023/1") ||
+            qEd.includes("2023.1") ||
+            qEd.includes("2023_1") ||
+            qEd.includes("2023-1") ||
+            qEd.includes("1ª"))) ||
+        qCode.includes("2023.1") ||
+        qCode.includes("2023-1") ||
+        qCode.includes("2023_1") ||
+        qId.includes("2023_1") ||
+        qId.includes("2023-1")
+      );
     }
 
     if (ed.id === "rev-2023-2") {
-      return (qYear === 2023 && (qEd.includes("2023/2") || qEd.includes("2023.2") || qEd.includes("2ª"))) || qCode.includes("2023.2") || qCode.includes("2023-2");
+      return (
+        (qYear === 2023 &&
+          (qEd.includes("2023/2") ||
+            qEd.includes("2023.2") ||
+            qEd.includes("2023_2") ||
+            qEd.includes("2023-2") ||
+            qEd.includes("2ª"))) ||
+        qCode.includes("2023.2") ||
+        qCode.includes("2023-2") ||
+        qCode.includes("2023_2") ||
+        qId.includes("2023_2") ||
+        qId.includes("2023-2")
+      );
     }
 
     if (ed.id === "rev-2024-1") {
-      return (qYear === 2024 && (qEd.includes("2024/1") || qEd.includes("2024.1") || qEd.includes("1ª"))) || qCode.includes("2024.1") || qCode.includes("2024-1");
+      return (
+        (qYear === 2024 &&
+          (qEd.includes("2024/1") ||
+            qEd.includes("2024.1") ||
+            qEd.includes("2024_1") ||
+            qEd.includes("2024-1") ||
+            qEd.includes("1ª"))) ||
+        qCode.includes("2024.1") ||
+        qCode.includes("2024-1") ||
+        qCode.includes("2024_1") ||
+        qId.includes("2024_1") ||
+        qId.includes("2024-1")
+      );
     }
 
     if (ed.id === "rev-2024-2") {
-      return (qYear === 2024 && (qEd.includes("2024/2") || qEd.includes("2024.2") || qEd.includes("2ª"))) || qCode.includes("2024.2") || qCode.includes("2024-2");
+      return (
+        (qYear === 2024 &&
+          (qEd.includes("2024/2") ||
+            qEd.includes("2024.2") ||
+            qEd.includes("2024_2") ||
+            qEd.includes("2024-2") ||
+            qEd.includes("2ª"))) ||
+        qCode.includes("2024.2") ||
+        qCode.includes("2024-2") ||
+        qCode.includes("2024_2") ||
+        qId.includes("2024_2") ||
+        qId.includes("2024-2")
+      );
     }
 
     if (ed.id === "rev-2025-1") {
-      return (qYear === 2025 && (qEd.includes("2025/1") || qEd.includes("2025.1") || qEd.includes("1ª"))) || qCode.includes("2025.1") || qCode.includes("2025-1");
+      return (
+        (qYear === 2025 &&
+          (qEd.includes("2025/1") ||
+            qEd.includes("2025.1") ||
+            qEd.includes("2025_1") ||
+            qEd.includes("2025-1") ||
+            qEd.includes("1ª"))) ||
+        qCode.includes("2025.1") ||
+        qCode.includes("2025-1") ||
+        qCode.includes("2025_1") ||
+        qId.includes("2025_1") ||
+        qId.includes("2025-1")
+      );
     }
 
     if (ed.id === "rev-2025-2") {
-      return (qYear === 2025 && (qEd.includes("2025/2") || qEd.includes("2025.2") || qEd.includes("2ª"))) || qCode.includes("2025.2") || qCode.includes("2025-2");
+      return (
+        (qYear === 2025 &&
+          (qEd.includes("2025/2") ||
+            qEd.includes("2025.2") ||
+            qEd.includes("2025_2") ||
+            qEd.includes("2025-2") ||
+            qEd.includes("2ª"))) ||
+        qCode.includes("2025.2") ||
+        qCode.includes("2025-2") ||
+        qCode.includes("2025_2") ||
+        qId.includes("2025_2") ||
+        qId.includes("2025-2")
+      );
     }
 
     if (ed.id === "rev-2026-1") {
-      return (qYear === 2026 && (qEd.includes("2026/1") || qEd.includes("2026.1") || qEd.includes("1ª"))) || qCode.includes("2026.1") || qCode.includes("2026-1");
+      return (
+        (qYear === 2026 &&
+          (qEd.includes("2026/1") ||
+            qEd.includes("2026.1") ||
+            qEd.includes("2026_1") ||
+            qEd.includes("2026-1") ||
+            qEd.includes("1ª"))) ||
+        qCode.includes("2026.1") ||
+        qCode.includes("2026-1") ||
+        qCode.includes("2026_1") ||
+        qId.includes("2026_1") ||
+        qId.includes("2026-1")
+      );
     }
 
     if (ed.id === "rev-2026-2") {
       return (
         qYear === 2026 &&
-        (qEd.includes("2026/2") || qEd.includes("2026.2") || qEd.includes("2ª") || qEd.includes("inéditas") || qEd.includes("vigente") || qCode.includes("ined-2026"))
+        (qEd.includes("2026/2") ||
+          qEd.includes("2026.2") ||
+          qEd.includes("2026_2") ||
+          qEd.includes("2026-2") ||
+          qEd.includes("2ª") ||
+          qEd.includes("inéditas") ||
+          qEd.includes("vigente") ||
+          qCode.includes("ined-2026") ||
+          qId.includes("ined-2026"))
       );
     }
 
@@ -120,7 +250,7 @@ export class InventoryValidatorService {
     let isOnline = false;
 
     try {
-      const qSnap = await getDocs(collection(db, "questions"));
+      const qSnap = await getDocs(collection(db, "questions_v2"));
       if (!qSnap.empty) {
         firestoreQuestions = qSnap.docs.map((d) => d.data());
         isOnline = true;

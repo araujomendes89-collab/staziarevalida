@@ -75,18 +75,18 @@ export const ReverseEngineeringFlow: React.FC<ReverseEngineeringFlowProps> = ({
   return (
     <div className="space-y-6">
       {/* Visual Pipeline Flowchart Header */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-950/40 via-purple-950/30 to-[#0c0e17] border border-blue-500/20 space-y-4">
+      <div className="p-6 rounded-2xl bg-[#101827] border border-slate-700 space-y-4 shadow-lg">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="space-y-1">
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               <BrainCircuit className="w-5 h-5 text-blue-400" />
               <span>Pipeline de Engenharia Reversa Avançada</span>
             </h3>
-            <p className="text-xs text-zinc-400 max-w-2xl">
+            <p className="text-xs text-slate-300 max-w-2xl">
               Geração de questões inéditas guiada por 13 etapas de desconstrução das provas históricas do Revalida INEP, validação de diretrizes SUS 2026 e auditoria adversarial com Claude Opus 5.
             </p>
           </div>
-          <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30 w-fit">
+          <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-blue-900 text-blue-200 border border-blue-500/60 w-fit">
             INEP Reverse Engine v4.2
           </span>
         </div>
@@ -98,17 +98,17 @@ export const ReverseEngineeringFlow: React.FC<ReverseEngineeringFlowProps> = ({
               const StepIcon = step.icon;
               return (
                 <React.Fragment key={step.id}>
-                  <div className="flex-1 min-w-[110px] p-2.5 rounded-xl bg-white/[0.04] border border-white/10 hover:border-blue-500/40 transition-colors group">
+                  <div className="flex-1 min-w-[110px] p-2.5 rounded-xl bg-[#1a2638] border border-slate-600 hover:border-blue-400 transition-colors group">
                     <div className="flex items-center gap-1.5 text-blue-400 mb-1">
                       <StepIcon className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
-                      <span className="text-[10px] font-mono font-bold text-zinc-400">
+                      <span className="text-[10px] font-mono font-bold text-slate-300">
                         {String(step.id).padStart(2, "0")}
                       </span>
                     </div>
-                    <div className="text-[11px] font-bold text-white truncate" title={step.label}>
+                    <div className="text-[11px] font-bold text-slate-50 truncate" title={step.label}>
                       {step.label}
                     </div>
-                    <div className="text-[10px] text-zinc-400 truncate mt-0.5" title={step.desc}>
+                    <div className="text-[10px] text-slate-300 truncate mt-0.5" title={step.desc}>
                       {step.desc}
                     </div>
                   </div>

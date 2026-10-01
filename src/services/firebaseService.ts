@@ -25,9 +25,11 @@ import {
   ErrorTaxonomy,
 } from "../types";
 
+const ACTIVE_QUESTION_CATALOG = "questions_v2";
+
 export class FirebaseService {
   // -------------------------------------------------------------
-  // QUESTIONS COLLECTION (/questions/{questionId})
+  // Legacy question writes remain isolated while reads use the promoted catalog.
   // -------------------------------------------------------------
   static async saveQuestion(question: Question): Promise<void> {
     try {
@@ -41,10 +43,12 @@ export class FirebaseService {
 
   static async getQuestions(): Promise<Question[]> {
     try {
-      const questionsRef = collection(db, "questions");
+      const questionsRef = collection(db, ACTIVE_QUESTION_CATALOG);
       const querySnap = await getDocs(questionsRef);
       if (querySnap.empty) return [];
-      return querySnap.docs.map((d) => d.data() as Question);
+      return querySnap.docs
+        .map((d) => d.data() as Question & { sourceStatus?: string })
+        .filter((question) => !question.sourceStatus || question.sourceStatus === "ACTIVE");
     } catch (err) {
       console.warn("[FirebaseService] Error fetching questions:", err);
       return [];
@@ -163,34 +167,23 @@ export class FirebaseService {
   static async getUserProfile(userId: string): Promise<UserProfileDoc | null> {
     try {
       const userRef = doc(db, "users", userId);
-      // Try fetching directly from server first to guarantee fresh authoritative data
-      let snap;
-      try {
-        snap = await getDocFromServer(userRef);
-      } catch {
-        snap = await getDoc(userRef);
-      }
+      const snap = await getDoc(userRef);
 
-      if (snap && snap.exists()) {
+      if (snap.exists()) {
         const data = snap.data() as UserProfileDoc;
-        let role = data.role || "STUDENT";
+        const isMasterAdmin =
+          (data.email || "").trim().toLowerCase() === "araujomendes@staziamed.com.br" ||
+          userId === "cQjACVALpedbijS0WiCwuFRJgxj2";
 
-        // If not already ADMIN, check if user document exists in admins collection
-        if (role !== "ADMIN") {
-          try {
-            const adminRef = doc(db, "admins", userId);
-            const adminSnap = await getDoc(adminRef);
-            if (adminSnap.exists()) {
-              role = "ADMIN";
-            }
-          } catch {
-            // Ignore if admins collection check is not permitted
-          }
-        }
+        const role = isMasterAdmin ? "ADMIN" : (data.role || "STUDENT");
+        const tier = isMasterAdmin ? "ADMIN" : data.tier;
+        const plan = isMasterAdmin ? "admin" : data.plan;
 
         return {
           ...data,
           role,
+          tier,
+          plan,
         };
       }
       return null;

@@ -182,7 +182,7 @@ export const ProtocolUpdatesHubView: React.FC<{ initialTab?: ProtocolSubTab }> =
 
         {/* Protocol Detail Header */}
         <div
-          className={`p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#0f1322] border border-slate-200 dark:border-white/10 shadow-sm border-l-4 ${areaTheme.borderLeft} space-y-4`}
+          className={`p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#0f1322] border border-slate-200 dark:border-white/10 shadow-sm border-l-2 ${areaTheme.borderLeft} space-y-4`}
         >
           <div className="flex flex-wrap items-center gap-2">
             <span
@@ -812,7 +812,7 @@ export const ProtocolUpdatesHubView: React.FC<{ initialTab?: ProtocolSubTab }> =
           return (
             <div
               key={protocol.id}
-              className={`p-5 rounded-2xl bg-white dark:bg-[#0f1322] border border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 transition-all shadow-sm border-l-4 ${areaTheme.borderLeft} flex flex-col md:flex-row md:items-center justify-between gap-4`}
+              className={`p-5 rounded-2xl bg-white dark:bg-[#0f1322] border border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 transition-all shadow-sm border-l-2 ${areaTheme.borderLeft} flex flex-col md:flex-row md:items-center justify-between gap-4`}
             >
               <div className="space-y-2 flex-1">
                 <div className="flex flex-wrap items-center gap-2">

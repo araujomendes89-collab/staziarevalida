@@ -31,6 +31,7 @@ import {
   TransitQuizQuestion,
   TransitEvaluationResult,
 } from "../../services/voiceTutorService";
+import { FeatureGate } from "../common/FeatureGate";
 
 interface ChatEntry {
   id: string;
@@ -384,9 +385,14 @@ export const VoiceTutorView: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-20 animate-in fade-in duration-300">
-      {/* 1. HERO HEADER */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-[#0c1024] via-[#101432] to-[#0c1024] border border-blue-500/30 shadow-xl space-y-4">
+    <FeatureGate
+      feature="ai_coach"
+      title="Tutor por Voz & Stazia AI Coach"
+      description="O Tutor por Voz com preceptoria socrática em tempo real e o Modo Trânsito hands-free são exclusivos do plano Stazia Elite."
+    >
+      <div className="max-w-6xl mx-auto space-y-6 pb-20 animate-in fade-in duration-300">
+        {/* 1. HERO HEADER */}
+        <div className="p-6 rounded-2xl bg-[#101827] border border-slate-700 shadow-lg space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="relative">
@@ -405,18 +411,18 @@ export const VoiceTutorView: React.FC = () => {
                 <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
                   Tutor por Voz & Modo Trânsito
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 text-xs font-mono font-bold">
+                <span className="px-2.5 py-0.5 rounded-full bg-blue-900 text-blue-200 border border-blue-500/60 text-xs font-mono font-bold">
                   Speech-to-Text & Text-to-Speech
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-zinc-300 mt-1">
+              <p className="text-xs sm:text-sm text-slate-300 mt-1">
                 Converse naturalmente em português com o preceptor socrático ou treine oralmente no carro com o Modo Trânsito hands-free.
               </p>
             </div>
           </div>
 
           {/* Mode Switcher */}
-          <div className="flex items-center p-1 rounded-xl bg-black/50 border border-white/10 self-start md:self-auto">
+          <div className="flex items-center p-1 rounded-xl bg-[#1a2638] border border-slate-600 self-start md:self-auto">
             <button
               type="button"
               onClick={() => {
@@ -426,7 +432,7 @@ export const VoiceTutorView: React.FC = () => {
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeMode === "conversar"
                   ? "bg-blue-600 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-white"
+                  : "text-slate-300 hover:text-white"
               }`}
             >
               <Mic className="w-3.5 h-3.5" />
@@ -441,7 +447,7 @@ export const VoiceTutorView: React.FC = () => {
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeMode === "transito"
                   ? "bg-amber-600 text-white shadow-sm"
-                  : "text-zinc-400 hover:text-white"
+                  : "text-slate-300 hover:text-white"
               }`}
             >
               <Car className="w-3.5 h-3.5" />
@@ -542,7 +548,7 @@ export const VoiceTutorView: React.FC = () => {
           {/* Main Chat Stream & Mic Console (2 Cols) */}
           <div className="lg:col-span-2 space-y-4">
             {/* Conversation Log Card */}
-            <div className="p-4 sm:p-6 rounded-2xl bg-[#0e111d] border border-white/10 shadow-lg min-h-[420px] max-h-[560px] overflow-y-auto space-y-4 flex flex-col">
+            <div className="p-4 sm:p-6 rounded-2xl bg-[#101827] border border-slate-700 shadow-lg min-h-[420px] max-h-[560px] overflow-y-auto space-y-4 flex flex-col">
               {conversation.map((msg) => (
                 <div
                   key={msg.id}
@@ -565,8 +571,8 @@ export const VoiceTutorView: React.FC = () => {
                   <div
                     className={`p-4 rounded-2xl text-xs sm:text-sm space-y-2.5 ${
                       msg.sender === "user"
-                        ? "bg-purple-950/40 border border-purple-500/30 text-purple-100 rounded-tr-none"
-                        : "bg-black/50 border border-white/10 text-zinc-200 rounded-tl-none"
+                        ? "bg-purple-950 border border-purple-500/50 text-purple-100 rounded-tr-none"
+                        : "bg-[#1a2638] border border-slate-600 text-slate-100 rounded-tl-none"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3 text-[11px] text-zinc-400 border-b border-white/5 pb-1">
@@ -600,7 +606,7 @@ export const VoiceTutorView: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => speakTutorMessage(msg.spokenText!)}
-                          className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-blue-600/30 text-blue-300 border border-white/10 hover:border-blue-500/40 text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
+                          className="px-2.5 py-1 rounded-lg bg-[#1a2638] hover:bg-blue-900 text-blue-200 border border-slate-600 hover:border-blue-400 text-xs flex items-center gap-1.5 cursor-pointer transition-colors"
                         >
                           <Volume2 className="w-3 h-3" />
                           <span>Ouvir novamente</span>
@@ -617,7 +623,7 @@ export const VoiceTutorView: React.FC = () => {
                   <div className="w-8 h-8 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-300">
                     <Brain className="w-4 h-4 animate-spin" />
                   </div>
-                  <div className="p-3.5 rounded-2xl bg-black/40 border border-white/10 text-xs text-blue-200">
+                  <div className="p-3.5 rounded-2xl bg-[#1a2638] border border-slate-600 text-xs text-blue-100">
                     Claude estruturando resposta oral com fisiopatologia e conduta...
                   </div>
                 </div>
@@ -629,7 +635,7 @@ export const VoiceTutorView: React.FC = () => {
                   <div className="w-8 h-8 rounded-xl bg-red-600/30 border border-red-500/40 flex items-center justify-center text-red-200">
                     <Mic className="w-4 h-4 animate-bounce" />
                   </div>
-                  <div className="p-3.5 rounded-2xl bg-red-950/30 border border-red-500/30 text-xs text-red-200 italic">
+                  <div className="p-3.5 rounded-2xl bg-red-950 border border-red-500/50 text-xs text-red-100 italic">
                     "{liveTranscript}"
                   </div>
                 </div>
@@ -639,7 +645,7 @@ export const VoiceTutorView: React.FC = () => {
             </div>
 
             {/* Big Reactive Voice Mic Bar */}
-            <div className="p-4 rounded-2xl bg-[#0e111d] border border-blue-500/30 shadow-lg space-y-3">
+            <div className="p-4 rounded-2xl bg-[#101827] border border-slate-700 shadow-lg space-y-3">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                   <button
@@ -695,11 +701,11 @@ export const VoiceTutorView: React.FC = () => {
           {/* Sidebar with Prompt Presets & Pedagogical Focus (1 Col) */}
           <div className="space-y-4">
             <div className="p-4 rounded-2xl bg-[#0e111d] border border-white/10 shadow-lg space-y-3">
-              <div className="flex items-center gap-2 text-xs font-bold text-zinc-200 uppercase tracking-wider">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-100 uppercase tracking-wider">
                 <Sparkles className="w-4 h-4 text-amber-400" />
                 <span>Exemplos de Dúvidas Clínicas</span>
               </div>
-              <p className="text-xs text-zinc-400">
+              <p className="text-xs text-slate-300">
                 Clique para simular uma fala instantânea do aluno:
               </p>
 
@@ -709,13 +715,13 @@ export const VoiceTutorView: React.FC = () => {
                     key={idx}
                     type="button"
                     onClick={() => stopListeningAndSend(preset.prompt)}
-                    className="w-full p-3 rounded-xl bg-white/5 hover:bg-blue-950/40 border border-white/5 hover:border-blue-500/40 text-left transition-all cursor-pointer group"
+                    className="w-full p-3 rounded-xl bg-[#1a2638] hover:bg-blue-900 border border-slate-600 hover:border-blue-400 text-left transition-all cursor-pointer group"
                   >
-                    <div className="font-bold text-xs text-white group-hover:text-blue-300 flex items-center justify-between">
+                    <div className="font-bold text-xs text-slate-50 group-hover:text-blue-200 flex items-center justify-between">
                       <span>{preset.label}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-blue-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
-                    <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2 italic">
+                    <p className="text-[11px] text-slate-300 mt-1 line-clamp-2 italic">
                       "{preset.prompt}"
                     </p>
                   </button>
@@ -724,15 +730,15 @@ export const VoiceTutorView: React.FC = () => {
             </div>
 
             {/* Quick Switch to Modo Trânsito */}
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-950/30 to-[#0e111d] border border-amber-500/30 shadow-lg space-y-3">
+            <div className="p-4 rounded-2xl bg-[#1a1720] border border-amber-500/50 shadow-lg space-y-3">
               <div className="flex items-center gap-2">
                 <Car className="w-5 h-5 text-amber-400" />
                 <div>
                   <h3 className="font-bold text-sm text-white">Modo Trânsito</h3>
-                  <span className="text-[11px] text-zinc-400">Treino oral sem olhar para a tela</span>
+                  <span className="text-[11px] text-slate-300">Treino oral sem olhar para a tela</span>
                 </div>
               </div>
-              <p className="text-xs text-zinc-300 leading-relaxed">
+              <p className="text-xs text-slate-200 leading-relaxed">
                 A IA pergunta oralmente 10 casos clínicos rápidos, você responde por voz, ela avalia e avança sozinha.
               </p>
               <button
@@ -755,8 +761,8 @@ export const VoiceTutorView: React.FC = () => {
       {activeMode === "transito" && (
         <div className="space-y-6">
           {/* Transit Mode Setup & Active Card */}
-          <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-[#101428] via-[#0c0e1c] to-[#101428] border border-amber-500/40 shadow-2xl space-y-6 text-center max-w-4xl mx-auto">
-            <div className="flex items-center justify-between gap-4 border-b border-white/10 pb-4">
+          <div className="p-6 sm:p-8 rounded-3xl bg-[#101827] border border-amber-500/60 shadow-lg space-y-6 text-center max-w-4xl mx-auto">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-600 pb-4">
               <div className="flex items-center gap-3 text-left">
                 <div className="p-3 rounded-2xl bg-amber-500/20 text-amber-300 border border-amber-500/40">
                   <Car className="w-6 h-6" />
@@ -765,7 +771,7 @@ export const VoiceTutorView: React.FC = () => {
                   <h2 className="text-lg sm:text-xl font-black text-white">
                     Modo Trânsito & Caminhada
                   </h2>
-                  <p className="text-xs text-zinc-400">
+                  <p className="text-xs text-slate-300">
                     Sessão de quiz oral contínuo · Feedback em áudio e avanço inteligente
                   </p>
                 </div>
@@ -778,7 +784,7 @@ export const VoiceTutorView: React.FC = () => {
                   value={transitArea}
                   disabled={transitState !== "idle" && transitState !== "finished"}
                   onChange={(e) => setTransitArea(e.target.value)}
-                  className="bg-black/60 border border-white/20 rounded-xl px-3 py-1.5 text-xs text-amber-200 font-bold focus:outline-none cursor-pointer"
+                  className="bg-[#1a2638] border border-amber-500/60 rounded-xl px-3 py-1.5 text-xs text-amber-100 font-bold focus:outline-none cursor-pointer"
                 >
                   <option value="Pediatria">Pediatria (10 Questões)</option>
                   <option value="Clínica Médica">Clínica Médica (10 Questões)</option>
@@ -799,7 +805,7 @@ export const VoiceTutorView: React.FC = () => {
                   <h3 className="text-lg font-bold text-white">
                     Pronto para Iniciar Quiz Oral de {transitArea}?
                   </h3>
-                  <p className="text-xs sm:text-sm text-zinc-300 max-w-lg mx-auto mt-1">
+                  <p className="text-xs sm:text-sm text-slate-200 max-w-lg mx-auto mt-1">
                     Coloque seus fones de ouvido. A IA vai falar o primeiro caso clínico e abrir o microfone para ouvir sua conduta.
                   </p>
                 </div>
@@ -1013,5 +1019,6 @@ export const VoiceTutorView: React.FC = () => {
         </div>
       )}
     </div>
+    </FeatureGate>
   );
 };

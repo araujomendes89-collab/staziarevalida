@@ -71,7 +71,7 @@ export const UnifiedProgressView: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-xs shadow-cyan-400/50" />
               <span>Visão Geral do Desempenho</span>
             </h1>
@@ -79,7 +79,7 @@ export const UnifiedProgressView: React.FC = () => {
               Dados Reais
             </span>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
+            <p className="text-xs text-slate-500 mt-1">
             Seu desempenho consolidado com base nas questões resolvidas no banco de treino.
           </p>
         </div>

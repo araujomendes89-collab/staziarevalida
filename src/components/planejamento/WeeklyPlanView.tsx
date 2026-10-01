@@ -16,6 +16,7 @@ import { ADAPTIVE_SCHEDULE_DAYS } from "../../data/adaptiveCalendarData";
 import { ScheduledDayItem } from "../../types/adaptiveCalendar";
 import { Flashcard } from "../../types";
 import { formatMedicalArea } from "../../utils/formatters";
+import { FeatureGate } from "../common/FeatureGate";
 
 export interface WeeklyPlanDay {
   id: string;
@@ -186,22 +187,27 @@ export const WeeklyPlanView: React.FC = () => {
   }, [weeklyDays]);
 
   return (
-    <div className="space-y-6">
-      {/* COMPACT CLEAN HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
+    <FeatureGate
+      feature="daily_adaptive_plan"
+      title="Plano Semanal Adaptativo"
+      description="O plano semanal adaptativo com distribuição automática de horas, questões e revisões espaçadas é exclusivo dos planos Stazia PRO e Elite."
+    >
+      <div className="space-y-6 text-slate-100">
+        {/* COMPACT CLEAN HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200/80 dark:border-slate-800/80 pb-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-xs shadow-emerald-400/50" />
-              <span>Plano Semanal</span>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-teal-500 shadow-xs shadow-teal-500/50" />
+              <span>Plano Semanal & Cronograma</span>
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-teal-500/10 text-teal-700 dark:text-teal-400 border border-teal-500/20">
               {periodLabel}
             </span>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             Seus próximos 7 dias de estudo • Carga total planejada:{" "}
-            <strong className="text-zinc-200">{formatDurationHours(totalWeeklyMinutes)}</strong>
+            <strong className="text-teal-600 dark:text-teal-300">{formatDurationHours(totalWeeklyMinutes)}</strong>
           </p>
         </div>
 
@@ -209,11 +215,65 @@ export const WeeklyPlanView: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab("planejamento-calendario")}
-            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#09101D] hover:bg-slate-800 text-slate-300 border border-slate-800 transition-colors flex items-center gap-1.5 cursor-pointer"
           >
-            <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+            <Calendar className="w-3.5 h-3.5 text-teal-400" />
             <span>Ver Calendário Completo</span>
           </button>
+        </div>
+      </div>
+
+      {/* TOP KPI CARDS (Medtask metric banner) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+        <div className="p-4 rounded-2xl bg-[#09101D] border border-slate-800/90 shadow-md flex items-center justify-between">
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+              HORAS PLANEJADAS
+            </span>
+            <div className="text-xl font-extrabold text-white font-mono">
+              {formatDurationHours(totalWeeklyMinutes)}
+            </div>
+            <span className="text-[11px] text-teal-400 font-semibold">
+              Distribuídas em 7 dias
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-400 flex items-center justify-center">
+            <Clock className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-[#09101D] border border-slate-800/90 shadow-md flex items-center justify-between">
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+              QUESTÕES PROGRAMADAS
+            </span>
+            <div className="text-xl font-extrabold text-white font-mono">
+              {weeklyDays.reduce((acc, d) => acc + d.practiceQuestionCount, 0)}q
+            </div>
+            <span className="text-[11px] text-sky-400 font-semibold">
+              Questões oficiais com gabarito
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center">
+            <FileQuestion className="w-5 h-5" />
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-[#09101D] border border-slate-800/90 shadow-md flex items-center justify-between">
+          <div className="space-y-0.5">
+            <span className="text-[10px] font-bold tracking-wider text-slate-400 uppercase">
+              FLASHCARDS FSRS
+            </span>
+            <div className="text-xl font-extrabold text-white font-mono">
+              {weeklyDays.reduce((acc, d) => acc + d.reviewCount, 0)} cards
+            </div>
+            <span className="text-[11px] text-amber-400 font-semibold">
+              Algoritmo de retenção ativa
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center">
+            <Layers className="w-5 h-5" />
+          </div>
         </div>
       </div>
 
@@ -228,31 +288,31 @@ export const WeeklyPlanView: React.FC = () => {
               onClick={() => setSelectedDayKey(day.dateKey)}
               className={`p-3.5 rounded-2xl text-left border transition-all flex flex-col justify-between min-h-[140px] cursor-pointer ${
                 isSelected
-                  ? "bg-emerald-500/10 border-emerald-500 shadow-md shadow-emerald-500/10 ring-1 ring-emerald-500/40"
+                  ? "bg-[#0B1526] border-teal-500 shadow-lg shadow-teal-500/10 ring-1 ring-teal-500/50"
                   : day.isToday
-                  ? "bg-zinc-900/90 border-emerald-500/40 hover:bg-zinc-800/80"
-                  : "bg-zinc-950 border-zinc-800/80 hover:bg-zinc-900/50"
+                  ? "bg-[#09101D] border-teal-500/50 hover:bg-[#0B1526]"
+                  : "bg-[#09101D] border-slate-800/90 hover:bg-[#0B1526]"
               }`}
             >
               <div>
                 {/* Day header */}
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-zinc-400">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
                     {day.dayOfWeek}
                   </span>
                   {day.isToday && (
-                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-300 border border-teal-500/30">
                       HOJE
                     </span>
                   )}
                 </div>
 
-                <div className="text-sm font-black text-white mt-0.5">
+                <div className={`text-sm font-black mt-0.5 ${isSelected ? "text-teal-300" : "text-white"}`}>
                   {day.formattedDate}
                 </div>
 
                 {/* Content theme */}
-                <div className="mt-2 text-[11px] font-semibold text-zinc-200 line-clamp-2 leading-snug">
+                <div className="mt-2 text-[11px] font-semibold text-slate-300 line-clamp-2 leading-snug">
                   {day.studyTheme}
                 </div>
               </div>
@@ -279,22 +339,22 @@ export const WeeklyPlanView: React.FC = () => {
       </div>
 
       {/* SELECTED DAY OPERATIONAL BREAKDOWN (CLEAN ROWS INSTEAD OF NESTED CARDS) */}
-      <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/80 border border-zinc-800 shadow-xl space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
+      <div className="p-5 sm:p-6 rounded-3xl bg-[#09101D] border border-slate-800/90 shadow-xl space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-base sm:text-lg font-bold text-white">
                 {selectedDay.fullDayName}, {selectedDay.formattedDate}
               </h2>
               {selectedDay.isToday && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/30">
                   HOJE
                 </span>
               )}
             </div>
-            <p className="text-xs text-zinc-400 mt-0.5">
+            <p className="text-xs text-slate-400 mt-0.5">
               Carga total estimada:{" "}
-              <strong className="text-zinc-200">
+              <strong className="text-teal-300">
                 {formatDurationHours(selectedDay.totalEstimatedMinutes)}
               </strong>
             </p>
@@ -306,7 +366,7 @@ export const WeeklyPlanView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setActiveTab("revisar-flashcards")}
-                  className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white transition-colors cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-colors cursor-pointer"
                 >
                   Revisar Flashcards ({todayItem.reviewCount})
                 </button>
@@ -314,14 +374,14 @@ export const WeeklyPlanView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setActiveTab("estudar-plano-hoje")}
-                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-md shadow-emerald-900/20"
+                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-teal-500 hover:bg-teal-400 text-slate-950 transition-colors cursor-pointer flex items-center gap-1.5 shadow-md shadow-teal-500/20"
               >
                 <span>Começar Plano de Hoje</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
           ) : (
-            <span className="text-xs text-zinc-400 italic">
+            <span className="text-xs text-slate-400 italic">
               Programação prevista para os próximos dias
             </span>
           )}
@@ -330,17 +390,17 @@ export const WeeklyPlanView: React.FC = () => {
         {/* 3 Core Activities in Clean Divider Rows */}
         <div className="space-y-3">
           {/* 1. ESTUDAR */}
-          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="p-4 rounded-2xl bg-[#0B1526] border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+              <div className="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-400 border border-teal-500/20 flex items-center justify-center shrink-0 mt-0.5">
                 <BookOpen className="w-4 h-4" />
               </div>
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-emerald-400 uppercase tracking-wider text-[10px]">
+                  <span className="font-bold text-teal-400 uppercase tracking-wider text-[10px]">
                     1. ESTUDAR
                   </span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-zinc-900 text-zinc-300">
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
                     {formatMedicalArea(selectedDay.studyArea)}
                   </span>
                 </div>
@@ -349,42 +409,42 @@ export const WeeklyPlanView: React.FC = () => {
                 </h3>
               </div>
             </div>
-            <div className="self-end sm:self-center font-mono text-zinc-400 text-xs shrink-0">
+            <div className="self-end sm:self-center font-mono text-slate-400 text-xs shrink-0">
               {selectedDay.studyDurationMinutes} min
             </div>
           </div>
 
           {/* 2. PRATICAR */}
-          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="p-4 rounded-2xl bg-[#0B1526] border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center shrink-0 mt-0.5">
+              <div className="w-8 h-8 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center justify-center shrink-0 mt-0.5">
                 <FileQuestion className="w-4 h-4" />
               </div>
               <div className="space-y-1">
-                <span className="font-bold text-blue-400 uppercase tracking-wider text-[10px]">
+                <span className="font-bold text-sky-400 uppercase tracking-wider text-[10px]">
                   2. PRATICAR
                 </span>
                 <h3 className="text-sm font-bold text-white">
                   {selectedDay.practiceTitle}
                 </h3>
-                <p className="text-[11px] text-zinc-400">
+                <p className="text-[11px] text-slate-400">
                   {selectedDay.practiceQuestionCount} questões objetivas direcionadas
                 </p>
               </div>
             </div>
-            <div className="self-end sm:self-center font-mono text-zinc-400 text-xs shrink-0">
+            <div className="self-end sm:self-center font-mono text-slate-400 text-xs shrink-0">
               {selectedDay.practiceDurationMinutes} min
             </div>
           </div>
 
           {/* 3. REVISAR */}
-          <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="p-4 rounded-2xl bg-[#0B1526] border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center shrink-0 mt-0.5">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
                 <Layers className="w-4 h-4" />
               </div>
               <div className="space-y-1">
-                <span className="font-bold text-purple-400 uppercase tracking-wider text-[10px]">
+                <span className="font-bold text-amber-400 uppercase tracking-wider text-[10px]">
                   3. REVISAR (REVISÃO ESPAÇADA)
                 </span>
                 {selectedDay.reviewCount > 0 ? (
@@ -395,7 +455,7 @@ export const WeeklyPlanView: React.FC = () => {
                         ? "flashcard programado"
                         : "flashcards programados"}
                     </h3>
-                    <p className="text-[11px] text-zinc-400">
+                    <p className="text-[11px] text-slate-400">
                       Fixação espaçada calculada para retenção de 90%.
                     </p>
                   </div>
@@ -404,21 +464,21 @@ export const WeeklyPlanView: React.FC = () => {
                     <h3 className="text-sm font-semibold text-emerald-400">
                       Revisão em dia
                     </h3>
-                    <p className="text-[11px] text-zinc-500">
+                    <p className="text-[11px] text-slate-400">
                       Nenhum flashcard pendente agendado para esta data.
                     </p>
                   </div>
                 )}
               </div>
             </div>
-            <div className="self-end sm:self-center font-mono text-zinc-400 text-xs shrink-0">
+            <div className="self-end sm:self-center font-mono text-slate-400 text-xs shrink-0">
               {selectedDay.reviewMinutes > 0 ? `${selectedDay.reviewMinutes} min` : "0 min"}
             </div>
           </div>
         </div>
 
         {!selectedDay.isToday && (
-          <p className="text-[11px] text-zinc-500 pt-1 flex items-center gap-1.5">
+          <p className="text-[11px] text-slate-500 pt-1 flex items-center gap-1.5">
             <Info className="w-3.5 h-3.5 shrink-0" />
             <span>
               As revisões futuras se ajustam dinamicamente conforme seu desempenho diário.
@@ -427,5 +487,6 @@ export const WeeklyPlanView: React.FC = () => {
         )}
       </div>
     </div>
+    </FeatureGate>
   );
 };

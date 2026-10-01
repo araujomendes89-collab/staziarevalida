@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --font-serif: "Newsreader", ui-serif, Georgia, serif;
+}
+
+.mobile-safe-bottom {
+  padding-bottom: max(0.375rem, env(safe-area-inset-bottom));
+}
+
 @media print {
   body {
     background-color: #ffffff !important;

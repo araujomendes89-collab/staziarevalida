@@ -50,93 +50,138 @@ export const PlanSelectionView: React.FC = () => {
         </div>
 
         {/* Plan Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full mb-8 text-left">
-          {/* Option A: Plano Padrão / Inicial */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 w-full mb-8 text-left">
+          {/* Option A: Trial 7 Dias */}
           <div
-            onClick={() => setSelectedPlan("standard")}
-            className={`p-5 rounded-2xl border-2 transition-all cursor-pointer relative ${
-              selectedPlan === "standard"
-                ? "border-[#00D2B4] bg-teal-50/30 shadow-sm"
+            onClick={() => setSelectedPlan("trial")}
+            className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer relative ${
+              selectedPlan === "trial"
+                ? "border-[#00D2B4] bg-teal-50/40 shadow-sm"
                 : "border-slate-200 hover:border-slate-300 bg-white"
             }`}
           >
-            <div className="flex items-start justify-between mb-3">
+            <div className="flex items-start justify-between mb-2">
               <div>
-                <span className="text-xs font-bold text-teal-700 uppercase tracking-wide">
-                  Acesso Inicial
+                <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wide">
+                  Degustação Gratuita
                 </span>
-                <h3 className="text-lg font-bold text-[#0A1C3E] mt-0.5">Plano Padrão</h3>
+                <h3 className="text-base font-bold text-[#0A1C3E] mt-0.5">Trial 7 Dias</h3>
               </div>
               <div
                 className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                  selectedPlan === "standard"
+                  selectedPlan === "trial"
                     ? "border-[#00D2B4] bg-[#00D2B4] text-slate-950"
                     : "border-slate-300"
                 }`}
               >
-                {selectedPlan === "standard" && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                {selectedPlan === "trial" && <Check className="w-3.5 h-3.5 stroke-[3]" />}
               </div>
             </div>
-            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
-              Ideal para iniciar seu diagnóstico de desempenho e praticar questões oficiais.
+            <p className="text-xs text-slate-600 mb-3 leading-relaxed">
+              Avaliação inicial com até 100 questões oficiais e 1 prova demonstrativa.
             </p>
-            <ul className="space-y-2 text-xs text-slate-700">
-              <li className="flex items-center gap-2">
+            <ul className="space-y-1.5 text-xs text-slate-700">
+              <li className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                <span>Banco com 1.200+ questões oficiais</span>
+                <span>Até 100 questões no período</span>
               </li>
-              <li className="flex items-center gap-2">
+              <li className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                <span>Diagnóstico inicial por grandes áreas</span>
+                <span>1 prova completa oficial</span>
               </li>
-              <li className="flex items-center gap-2">
+              <li className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                <span>Caderno de erros básico</span>
+                <span>Até 20 flashcards e 10 IAs</span>
               </li>
             </ul>
           </div>
 
-          {/* Option B: Plano Completo */}
+          {/* Option B: Stazia PRO */}
           <div
-            onClick={() => setSelectedPlan("complete")}
-            className={`p-5 rounded-2xl border-2 transition-all cursor-pointer relative ${
-              selectedPlan === "complete"
-                ? "border-[#00D2B4] bg-teal-50/30 shadow-sm"
+            onClick={() => setSelectedPlan("pro")}
+            className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer relative ${
+              selectedPlan === "pro"
+                ? "border-[#00D2B4] bg-teal-50/40 shadow-sm"
                 : "border-slate-200 hover:border-slate-300 bg-white"
             }`}
           >
-            <div className="flex items-start justify-between mb-3">
+            <div className="flex items-start justify-between mb-2">
               <div>
-                <span className="text-xs font-bold text-teal-700 uppercase tracking-wide">
-                  Preparação Avançada
+                <span className="text-[10px] font-bold text-teal-700 uppercase tracking-wide">
+                  Plano Principal
                 </span>
-                <h3 className="text-lg font-bold text-[#0A1C3E] mt-0.5">Plano Completo</h3>
+                <h3 className="text-base font-bold text-[#0A1C3E] mt-0.5">Stazia PRO</h3>
               </div>
               <div
                 className={`w-5 h-5 rounded-full border flex items-center justify-center ${
-                  selectedPlan === "complete"
+                  selectedPlan === "pro"
                     ? "border-[#00D2B4] bg-[#00D2B4] text-slate-950"
                     : "border-slate-300"
                 }`}
               >
-                {selectedPlan === "complete" && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                {selectedPlan === "pro" && <Check className="w-3.5 h-3.5 stroke-[3]" />}
               </div>
             </div>
-            <p className="text-xs text-slate-600 mb-4 leading-relaxed">
-              Recursos de IA avançada, simulador de estações práticas OSCE e flashcards inteligentes.
+            <p className="text-xs text-slate-600 mb-3 leading-relaxed">
+              Banco completo ilimitado, caderno inteligente e cronograma.
             </p>
-            <ul className="space-y-2 text-xs text-slate-700">
-              <li className="flex items-center gap-2">
+            <ul className="space-y-1.5 text-xs text-slate-700">
+              <li className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                <span>Todos os recursos do plano padrão</span>
+                <span>Questões ilimitadas + ENAMED</span>
               </li>
-              <li className="flex items-center gap-2">
+              <li className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                <span>Simulador de Estações Práticas OSCE</span>
+                <span>Caderno de erros inteligente</span>
               </li>
-              <li className="flex items-center gap-2">
+              <li className="flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-                <span>Tutor Socrático e flashcards adaptativos</span>
+                <span>Flashcards FSRS ilimitados</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* Option C: Stazia Elite */}
+          <div
+            onClick={() => setSelectedPlan("elite")}
+            className={`p-4 sm:p-5 rounded-2xl border-2 transition-all cursor-pointer relative ${
+              selectedPlan === "elite"
+                ? "border-purple-500 bg-purple-50/40 shadow-sm"
+                : "border-slate-200 hover:border-slate-300 bg-white"
+            }`}
+          >
+            <div className="flex items-start justify-between mb-2">
+              <div>
+                <span className="text-[10px] font-bold text-purple-700 uppercase tracking-wide">
+                  Nível Premium
+                </span>
+                <h3 className="text-base font-bold text-[#0A1C3E] mt-0.5">Stazia Elite</h3>
+              </div>
+              <div
+                className={`w-5 h-5 rounded-full border flex items-center justify-center ${
+                  selectedPlan === "elite"
+                    ? "border-purple-600 bg-purple-600 text-white"
+                    : "border-slate-300"
+                }`}
+              >
+                {selectedPlan === "elite" && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+              </div>
+            </div>
+            <p className="text-xs text-slate-600 mb-3 leading-relaxed">
+              Tudo do PRO + AI Coach socrático, Modo Pareto e simulados adaptativos.
+            </p>
+            <ul className="space-y-1.5 text-xs text-slate-700">
+              <li className="flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                <span>Stazia AI Coach & Pareto</span>
+              </li>
+              <li className="flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                <span>Simulados adaptativos calibrados</span>
+              </li>
+              <li className="flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                <span>Grupo VIP & Mentoria direta</span>
               </li>
             </ul>
           </div>

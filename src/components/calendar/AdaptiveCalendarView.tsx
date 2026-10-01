@@ -56,6 +56,7 @@ import { TimeBoxModal } from "./TimeBoxModal";
 import { GuidedStudySessionModal } from "./GuidedStudySessionModal";
 import { ScheduleConfigModal } from "./ScheduleConfigModal";
 import { RecoveryPlanModal } from "./RecoveryPlanModal";
+import { FeatureGate } from "../common/FeatureGate";
 
 const AREA_LABELS: Record<MedicalArea, string> = {
   CLINICA_MEDICA: "Clínica Médica",
@@ -236,7 +237,12 @@ export const AdaptiveCalendarView: React.FC = () => {
   const totalMinutesToday = todayDay.blocks.reduce((acc, b) => acc + b.durationMinutes, 0);
 
   return (
-    <div className="space-y-6 pb-12">
+    <FeatureGate
+      feature="smart_schedule"
+      title="Cronograma Inteligente & Calendário Adaptativo"
+      description="O cronograma inteligente de estudos com reorganização automática de blocos e cálculo de prioridade é um recurso dos planos Stazia PRO e Elite."
+    >
+      <div className="space-y-6 pb-12">
       {/* Toast Notification */}
       {notificationMsg && (
         <div className="p-3.5 rounded-xl bg-emerald-950/90 border border-emerald-500/40 text-emerald-200 text-xs font-semibold flex items-center justify-between shadow-xl">
@@ -256,20 +262,20 @@ export const AdaptiveCalendarView: React.FC = () => {
       {/* COMPACT CLEAN HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-xs shadow-emerald-400/50" />
             <span>Calendário de Estudos</span>
           </h1>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400 mt-1">
-            <span className="font-semibold text-zinc-300">{examInfo?.targetEdition || "Revalida INEP"}</span>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
+              <span className="font-semibold text-slate-700">{examInfo?.targetEdition || "Revalida INEP"}</span>
             <span>•</span>
-            <span className="text-emerald-400 font-semibold">
+              <span className="text-emerald-700 font-semibold">
               {examInfo.hasConfiguredDate ? `${examInfo.daysRemaining} dias para a prova` : "Data a definir"}
             </span>
             <span>•</span>
             <span>14h planejadas na semana</span>
             <span>•</span>
-            <span className={todayDueCount > 0 ? "text-purple-400 font-medium" : "text-zinc-400"}>
+              <span className={todayDueCount > 0 ? "text-purple-700 font-medium" : "text-slate-500"}>
               {todayDueCount > 0 ? `${todayDueCount} ${todayDueCount === 1 ? "revisão" : "revisões"} hoje` : "Revisão em dia"}
             </span>
           </div>
@@ -790,5 +796,6 @@ export const AdaptiveCalendarView: React.FC = () => {
         onClose={() => setShowWeeklyBulletinModal(false)}
       />
     </div>
+    </FeatureGate>
   );
 };

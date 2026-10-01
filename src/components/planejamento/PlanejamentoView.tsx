@@ -74,17 +74,17 @@ export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({
 
       {/* 4. DISPONIBILIDADE */}
       {currentSubTab === "DISPONIBILIDADE" && (
-        <div className="p-6 rounded-3xl bg-zinc-900/80 border border-zinc-800 shadow-xl space-y-6 max-w-2xl">
+        <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6 max-w-2xl">
           <div className="space-y-1">
-            <h3 className="text-lg font-bold text-white">Configuração de Horas & Rotina</h3>
-            <p className="text-xs text-zinc-400">Ajuste seu ritmo para que o cronograma se adapte à sua carga horária real.</p>
+            <h3 className="text-lg font-bold text-slate-900">Configuração de Horas & Rotina</h3>
+            <p className="text-xs text-slate-500">Ajuste seu ritmo para que o cronograma se adapte à sua carga horária real.</p>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-zinc-300 flex justify-between">
+              <label className="text-xs font-semibold text-slate-700 flex justify-between">
                 <span>Horas disponíveis por dia:</span>
-                <strong className="text-emerald-400 font-mono text-sm">{hoursPerDay}h / dia</strong>
+                <strong className="text-emerald-700 font-mono text-sm">{hoursPerDay}h / dia</strong>
               </label>
               <input
                 type="range"
@@ -98,12 +98,12 @@ export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-semibold text-zinc-300">Data Alvo da Prova:</label>
+              <label className="text-xs font-semibold text-slate-700">Data Alvo da Prova:</label>
               <input
                 type="date"
                 value={targetExamDate}
                 onChange={(e) => setTargetExamDate(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-white text-xs focus:outline-none focus:border-emerald-500"
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-xs focus:outline-none focus:border-emerald-500"
               />
             </div>
 
@@ -120,28 +120,28 @@ export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({
 
       {/* 5. REPLANEJAMENTO */}
       {currentSubTab === "REPLANEJAMENTO" && (
-        <div className="p-6 sm:p-8 rounded-3xl bg-zinc-900/80 border border-zinc-800 shadow-xl space-y-6 max-w-3xl">
+        <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6 max-w-3xl">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
               <RotateCcw className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white">Replanejador Adaptativo Inteligente</h3>
-              <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
+              <h3 className="text-lg font-bold text-slate-900">Replanejador Adaptativo Inteligente</h3>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                 Atrasou blocos ou teve rendimento abaixo de 60% em algum grande tema? O algoritmo redistribui automaticamente os conteúdos pendentes nos dias livres sem sobrecarregar sua rotina.
               </p>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-zinc-950 border border-zinc-800 space-y-3">
-            <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-wider">Diagnóstico Atual de Aderência</h4>
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Diagnóstico Atual de Aderência</h4>
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-zinc-900/50 border border-zinc-800/80">
-                <span className="text-zinc-400">Blocos Atrasados:</span>
+              <div className="p-3 rounded-xl bg-white border border-slate-200">
+                <span className="text-slate-500">Blocos Atrasados:</span>
                 <div className="text-base font-bold text-amber-400">2 blocos</div>
               </div>
-              <div className="p-3 rounded-xl bg-zinc-900/50 border border-zinc-800/80">
-                <span className="text-zinc-400">Índice de Aderência:</span>
+              <div className="p-3 rounded-xl bg-white border border-slate-200">
+                <span className="text-slate-500">Índice de Aderência:</span>
                 <div className="text-base font-bold text-emerald-400">92%</div>
               </div>
             </div>

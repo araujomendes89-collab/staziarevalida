@@ -33,6 +33,8 @@ import {
   reload,
   Unsubscribe,
 } from "firebase/auth";
+import { getDatabase, Database } from "firebase/database";
+
 import firebaseConfigJson from "../../firebase-applet-config.json";
 
 // Target Database ID & Region Constants
@@ -79,6 +81,21 @@ export const db: Firestore = (() => {
 
 // Initialize Firebase Auth
 export const auth: Auth = getAuth(app);
+
+// Initialize Firebase Realtime Database (RTDB) safely with fallback
+export const rtdb: Database | null = (() => {
+  try {
+    const rtdbUrl =
+      metaEnv.VITE_FIREBASE_DATABASE_URL ||
+      (firebaseConfigJson as any).databaseURL ||
+      `https://${firebaseConfig.projectId}-default-rtdb.firebaseio.com`;
+    return getDatabase(app, rtdbUrl);
+  } catch {
+    return null;
+  }
+})();
+
+
 
 // ---------------------------------------------------------------------------
 // Standardized Firestore Error Handling & Data Operations Utilities

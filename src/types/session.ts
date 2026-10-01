@@ -65,6 +65,8 @@ export interface QuestionSessionConfig {
   ordering: SessionOrdering;
   examEditionId?: string; // Para provas na íntegra (ex: "REV-2024.1")
   sisterTopicTarget?: string; // Se gerado a partir de uma questão irmã
+  subareas?: string[]; // Sub-áreas / especialidades clínicas selecionadas
+  customDurationMinutes?: number; // Tempo personalizado para o cronômetro do simulado (em minutos)
 }
 
 export interface SessionAnswerState {

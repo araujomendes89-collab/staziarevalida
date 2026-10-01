@@ -6,16 +6,11 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // Checking if the user is an admin by validating a document in Firestore
+    // Checking if the user is an admin by validating role == 'ADMIN' in named Firestore database
     function isAdmin() {
-      return isAuthenticated() && (
-        firestore.exists(/databases/staziamed-revalida-prod/documents/admins/$(request.auth.uid)) ||
-        firestore.exists(/databases/(default)/documents/admins/$(request.auth.uid)) ||
-        (firestore.exists(/databases/staziamed-revalida-prod/documents/users/$(request.auth.uid)) &&
-         firestore.get(/databases/staziamed-revalida-prod/documents/users/$(request.auth.uid)).data.role == 'ADMIN') ||
-        (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
-         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'ADMIN')
-      );
+      return isAuthenticated() &&
+        firestore.exists(/databases/staziamed-revalida-prod/documents/users/$(request.auth.uid)) &&
+        firestore.get(/databases/staziamed-revalida-prod/documents/users/$(request.auth.uid)).data.role == 'ADMIN';
     }
 
     match /questions-images/{allPaths=**} {
@@ -23,11 +18,15 @@ service firebase.storage {
       allow write: if isAdmin();
     }
 
-    match /source-pdfs/{allPaths=**} {
-      allow read: if true;
-      allow write: if isAdmin();
+    match /content-engine/source-documents/{allPaths=**} {
+      allow read, write: if isAdmin();
     }
     
+    match /published-content/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

@@ -16,6 +16,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { StaziaMedLogo } from "../brand/StaziaMedLogo";
+import { getPurchaseIntent } from "../pricing/pricingTypes";
 
 type AuthMode = "ENTRY" | "LOGIN" | "SIGNUP" | "FORGOT_PASSWORD";
 
@@ -26,7 +27,6 @@ export const LoginView: React.FC = () => {
     signInWithEmail,
     signUpWithEmail,
     sendPasswordReset,
-    enterGuestMode,
     setActiveTab,
   } = useApp();
 
@@ -128,7 +128,12 @@ export const LoginView: React.FC = () => {
 
     try {
       await signInWithGoogle();
-      setActiveTab("home");
+      const intent = getPurchaseIntent();
+      if (intent) {
+        setActiveTab("subscription");
+      } else {
+        setActiveTab("home");
+      }
     } catch (err: any) {
       console.error("[LoginView] Google Sign-In error:", err);
       const code = err?.code || "";
@@ -154,11 +159,21 @@ export const LoginView: React.FC = () => {
     try {
       if (mode === "LOGIN") {
         await signInWithEmail(email.trim(), password);
-        setActiveTab("home");
+        const intent = getPurchaseIntent();
+        if (intent) {
+          setActiveTab("subscription");
+        } else {
+          setActiveTab("home");
+        }
       } else if (mode === "SIGNUP") {
         const displayName = name.trim() || undefined;
         await signUpWithEmail(email.trim(), password, displayName);
-        setActiveTab("home");
+        const intent = getPurchaseIntent();
+        if (intent) {
+          setActiveTab("subscription");
+        } else {
+          setActiveTab("home");
+        }
       } else if (mode === "FORGOT_PASSWORD") {
         await sendPasswordReset(email.trim());
         // Neutral confirmation message to prevent email enumeration
@@ -173,12 +188,6 @@ export const LoginView: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleGuestSubmit = () => {
-    if (isSubmitting) return;
-    enterGuestMode();
-    setActiveTab("home");
   };
 
   const switchMode = (newMode: AuthMode) => {
@@ -250,18 +259,6 @@ export const LoginView: React.FC = () => {
                 <span>Criar uma nova conta</span>
                 <UserPlus className="w-4 h-4 text-slate-600" />
               </button>
-
-              {/* Guest Mode Link */}
-              <div className="pt-2">
-                <button
-                  type="button"
-                  id="btn-guest-mode"
-                  onClick={handleGuestSubmit}
-                  className="text-xs font-semibold text-slate-500 hover:text-slate-800 underline-offset-4 hover:underline transition-colors cursor-pointer"
-                >
-                  Explorar como visitante
-                </button>
-              </div>
             </div>
           </div>
         )}

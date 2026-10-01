@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { ExamEngine } from "../../services/examEngine";
+import { FeatureGate } from "../common/FeatureGate";
 
 export const RoadToExamView: React.FC = () => {
   const { setActiveTab, user } = useApp();
@@ -54,12 +55,17 @@ export const RoadToExamView: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* COMPACT CLEAN HEADER */}
+    <FeatureGate
+      feature="final_review"
+      title="Reta Final Até a Prova"
+      description="O planejamento estratégico de reta final com acompanhamento de fases e contagem regressiva personalizada é exclusivo dos planos Stazia PRO e Elite."
+    >
+      <div className="space-y-6">
+        {/* COMPACT CLEAN HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-4">
         <div>
           <div className="flex items-center gap-2.5">
-            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-xs shadow-emerald-400/50" />
               <span>Até a Prova</span>
             </h1>
@@ -67,9 +73,9 @@ export const RoadToExamView: React.FC = () => {
               {targetEdition}
             </span>
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
-            Data oficial: <strong className="text-zinc-200">{examDateFormatted}</strong> •{" "}
-            <span className="text-emerald-400 font-semibold">{daysRemaining} dias restantes</span> para a 1ª Etapa
+            <p className="text-xs text-slate-500 mt-1">
+              Data oficial: <strong className="text-slate-700">{examDateFormatted}</strong> •{" "}
+              <span className="text-emerald-700 font-semibold">{daysRemaining} dias restantes</span> para a 1ª Etapa
           </p>
         </div>
 
@@ -86,13 +92,13 @@ export const RoadToExamView: React.FC = () => {
       </div>
 
       {/* MACRO JOURNEY TIMELINE (DESKTOP STEPPER / MOBILE VERTICAL) */}
-      <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/80 border border-zinc-800 shadow-xl space-y-6">
+      <div className="p-5 sm:p-6 rounded-2xl bg-white border border-slate-200 shadow-sm space-y-6">
         <div>
-          <h2 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-emerald-400" />
+          <h2 className="text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-emerald-600" />
             <span>Jornada de Preparação</span>
           </h2>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-xs text-slate-500 mt-0.5">
             Cronograma macro em 3 fases estratégicas sincronizado com a data do exame.
           </p>
         </div>
@@ -106,13 +112,13 @@ export const RoadToExamView: React.FC = () => {
                 key={phase.number}
                 className={`p-4 rounded-xl border transition-all space-y-2.5 flex flex-col justify-between ${
                   isCurrent
-                    ? "bg-zinc-950 border-emerald-500/40 ring-1 ring-emerald-500/20"
-                    : "bg-zinc-950/60 border-zinc-800/80"
+                    ? "bg-emerald-50 border-emerald-500/40 ring-1 ring-emerald-500/20"
+                    : "bg-slate-50 border-slate-200"
                 }`}
               >
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                       FASE {phase.number}
                     </span>
                     {isCurrent ? (
@@ -120,25 +126,25 @@ export const RoadToExamView: React.FC = () => {
                         EM ANDAMENTO
                       </span>
                     ) : (
-                      <span className="text-[10px] font-mono text-zinc-500">{phase.period}</span>
+                      <span className="text-[10px] font-mono text-slate-500">{phase.period}</span>
                     )}
                   </div>
-                  <h3 className="text-sm font-bold text-white">{phase.name}</h3>
+                  <h3 className="text-sm font-bold text-slate-900">{phase.name}</h3>
                   {isCurrent && (
                     <div className="text-[11px] font-mono text-emerald-400 font-semibold">
                       {phase.period}
                     </div>
                   )}
-                  <p className="text-xs text-zinc-300 leading-relaxed pt-1">{phase.objective}</p>
+                  <p className="text-xs text-slate-600 leading-relaxed pt-1">{phase.objective}</p>
                 </div>
 
                 {isCurrent && (
-                  <div className="space-y-1.5 pt-2 border-t border-zinc-800">
-                    <div className="flex justify-between text-[10px] font-semibold text-zinc-400">
+                  <div className="space-y-1.5 pt-2 border-t border-slate-200">
+                    <div className="flex justify-between text-[10px] font-semibold text-slate-500">
                       <span>Progresso da Fase</span>
                       <span className="text-emerald-400">{phase.progressPct}%</span>
                     </div>
-                    <div className="w-full h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                    <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden">
                       <div
                         className="h-full bg-emerald-500 rounded-full"
                         style={{ width: `${phase.progressPct}%` }}
@@ -160,12 +166,12 @@ export const RoadToExamView: React.FC = () => {
                 key={phase.number}
                 className={`p-4 rounded-xl border space-y-2 ${
                   isCurrent
-                    ? "bg-zinc-950 border-emerald-500/40"
-                    : "bg-zinc-950/60 border-zinc-800/80"
+                    ? "bg-emerald-50 border-emerald-500/40"
+                    : "bg-slate-50 border-slate-200"
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-bold uppercase text-zinc-400">
+                  <span className="text-[10px] font-bold uppercase text-slate-500">
                     FASE {phase.number} • {phase.period}
                   </span>
                   {isCurrent && (
@@ -174,15 +180,15 @@ export const RoadToExamView: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <h3 className="text-sm font-bold text-white">{phase.name}</h3>
-                <p className="text-xs text-zinc-300">{phase.objective}</p>
+                <h3 className="text-sm font-bold text-slate-900">{phase.name}</h3>
+                <p className="text-xs text-slate-600">{phase.objective}</p>
                 {isCurrent && (
                   <div className="space-y-1 pt-1.5">
-                    <div className="flex justify-between text-[10px] text-zinc-400">
+                    <div className="flex justify-between text-[10px] text-slate-500">
                       <span>Progresso</span>
                       <span className="text-emerald-400 font-bold">{phase.progressPct}%</span>
                     </div>
-                    <div className="w-full h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                    <div className="w-full h-1.5 rounded-full bg-slate-200 overflow-hidden">
                       <div
                         className="h-full bg-emerald-500 rounded-full"
                         style={{ width: `${phase.progressPct}%` }}
@@ -196,14 +202,14 @@ export const RoadToExamView: React.FC = () => {
         </div>
 
         {/* Target Exam Final Marker */}
-        <div className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800/80 flex items-center justify-between text-xs">
+        <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between text-xs">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
               <Flag className="w-3.5 h-3.5" />
             </div>
             <div>
-              <span className="font-bold text-white">Destino: 1ª Etapa {targetEdition}</span>
-              <span className="text-zinc-400 text-[11px] block">
+              <span className="font-bold text-slate-900">Destino: 1ª Etapa {targetEdition}</span>
+              <span className="text-slate-500 text-[11px] block">
                 Aplicação oficial prevista para {examDateFormatted}
               </span>
             </div>
@@ -211,12 +217,13 @@ export const RoadToExamView: React.FC = () => {
           <button
             type="button"
             onClick={() => setActiveTab("planejamento-calendario")}
-            className="text-xs text-zinc-400 hover:text-white transition-colors cursor-pointer"
+            className="text-xs text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
           >
             Ver Calendário
           </button>
         </div>
       </div>
     </div>
+    </FeatureGate>
   );
 };

@@ -20,6 +20,7 @@ import {
   ErrorAutopsyDoc,
   CURRENT_ONBOARDING_VERSION,
   ProfileResolutionStatus,
+  UserPreferences,
 } from "../types";
 import { StorageService, DEFAULT_USER, FlashcardStorageScope } from "../services/storageService";
 import { clearSplashSeenThisSession } from "../config/splashConfig";
@@ -59,6 +60,7 @@ export type NavTab =
   | "praticar-simulados"
   | "praticar-provas"
   | "praticar-questoes-ia"
+  | "praticar-checklists"
   // 3. Revisar
   | "revisar"
   | "revisar-flashcards"
@@ -208,6 +210,17 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+const resolveSystemDarkMode = () => {
+  if (typeof window === "undefined") return true;
+  return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? true;
+};
+
+const resolveThemePreference = (theme?: UserPreferences["appTheme"]) => {
+  if (theme === "light") return false;
+  if (theme === "dark") return true;
+  return resolveSystemDarkMode();
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<UserProfile>(() => StorageService.getUserProfile());
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
@@ -316,7 +329,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isOfficialSearchOpen, setIsOfficialSearchOpen] = useState<boolean>(false);
   const [officialSearchQuery, setOfficialSearchQuery] = useState<string>("");
   const [selectedOSCEId, setSelectedOSCEId] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(true);
+  const [isDarkMode, setIsDarkModeState] = useState<boolean>(() =>
+    resolveThemePreference(StorageService.getUserProfile().preferences?.appTheme)
+  );
   const [prefilledGenerationParams, setPrefilledGenerationParams] = useState<{
     area?: string;
     theme?: string;
@@ -398,14 +413,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         }
 
+        const isMasterAdmin =
+          (fbUser.email || "").trim().toLowerCase() === "araujomendes@staziamed.com.br" ||
+          fbUser.uid === "cQjACVALpedbijS0WiCwuFRJgxj2";
+
+        const effectiveRole = isMasterAdmin ? "ADMIN" : (cloudProfile.role || "STUDENT");
+        const effectiveTier = isMasterAdmin ? "ADMIN" : tier;
+        const effectivePlan = isMasterAdmin ? "admin" : plan;
+
         const syncedUser: UserProfile = {
           ...DEFAULT_USER,
           ...cloudProfile,
           id: fbUser.uid,
           email: fbUser.email || cloudProfile.email || "",
-          name: fbUser.displayName || cloudProfile.name || "Dr. Candidato",
-          plan: plan as any,
-          tier: tier as any,
+          name: fbUser.displayName || cloudProfile.name || (isMasterAdmin ? "Dr. João Paulo Mendes" : "Dr. Candidato"),
+          role: effectiveRole as any,
+          plan: effectivePlan as any,
+          tier: effectiveTier as any,
           trialStartedAt,
           trialEndsAt,
         };
@@ -426,23 +450,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (resolutionId !== activeResolutionIdRef.current) return;
         setProfileResolutionStatus("READY");
+
+        // Master Admin Auto-Redirect: Send directly to Admin Control Panel if on root/home
+        if (syncedUser.role === "ADMIN") {
+          const currentPath = window.location.pathname.toLowerCase().replace(/\/+$/, "") || "/";
+          if (currentPath === "/" || currentPath === "/home" || currentPath === "/dashboard") {
+            setActiveTab("admin");
+          }
+        }
       } else {
         // New profile creation for newly authenticated user (Trial 7 days linked to UID)
+        const isMasterAdmin =
+          (fbUser.email || "").trim().toLowerCase() === "araujomendes@staziamed.com.br" ||
+          fbUser.uid === "cQjACVALpedbijS0WiCwuFRJgxj2";
+
         const newUserProfile: UserProfile = {
           ...DEFAULT_USER,
           id: fbUser.uid,
           email: fbUser.email || "",
-          name: fbUser.displayName || DEFAULT_USER.name || "Dr. Candidato",
-          role: "STUDENT",
-          plan: "trial",
-          tier: "TRIAL",
+          name: fbUser.displayName || DEFAULT_USER.name || (isMasterAdmin ? "Dr. João Paulo Mendes" : "Dr. Candidato"),
+          role: isMasterAdmin ? "ADMIN" : "STUDENT",
+          plan: isMasterAdmin ? "admin" : "trial",
+          tier: isMasterAdmin ? "ADMIN" : "TRIAL",
           trialStartedAt: nowIso,
           trialEndsAt: sevenDaysLater,
           planUpdatedAt: nowIso,
-          isOnboardingCompleted: false,
+          isOnboardingCompleted: isMasterAdmin ? true : false,
           onboarding: {
             version: CURRENT_ONBOARDING_VERSION,
-            status: "REQUIRED",
+            status: isMasterAdmin ? "COMPLETED" : "REQUIRED",
           },
         };
 
@@ -454,6 +490,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (resolutionId !== activeResolutionIdRef.current) return;
         setUser(newUserProfile);
         setProfileResolutionStatus("READY");
+
+        if (newUserProfile.role === "ADMIN") {
+          const currentPath = window.location.pathname.toLowerCase().replace(/\/+$/, "") || "/";
+          if (currentPath === "/" || currentPath === "/home" || currentPath === "/dashboard") {
+            setActiveTab("admin");
+          }
+        }
       }
 
       // Hydrate user's latest progress & mission from Firestore
@@ -481,11 +524,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, []);
 
+  const exitGuestModeForAuthenticatedUser = useCallback(() => {
+    try {
+      localStorage.removeItem("praxis_guest_mode");
+    } catch (e) {
+      console.warn("Could not clear guest mode:", e);
+    }
+    setIsGuestMode(false);
+  }, []);
+
+  const exitGuestMode = useCallback(() => {
+    exitGuestModeForAuthenticatedUser();
+  }, [exitGuestModeForAuthenticatedUser]);
+
   const retryProfileResolution = useCallback(async () => {
-    if (firebaseUser && !isGuestMode) {
+    if (firebaseUser) {
+      exitGuestModeForAuthenticatedUser();
       await resolveProfileForUser(firebaseUser);
     }
-  }, [firebaseUser, isGuestMode, resolveProfileForUser]);
+  }, [firebaseUser, exitGuestModeForAuthenticatedUser, resolveProfileForUser]);
 
   // Set up Firebase Authentication session listener
   useEffect(() => {
@@ -499,13 +556,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setFirebaseUser(fbUser);
       setIsAuthLoading(false);
 
-      if (fbUser) {
-        console.log(`[FirebaseAuth] Active session detected: ${fbUser.email || fbUser.uid}`);
-        if (!isGuestMode) {
-          await resolveProfileForUser(fbUser);
-        }
+      if (fbUser && !fbUser.isAnonymous) {
+        exitGuestModeForAuthenticatedUser();
+        await resolveProfileForUser(fbUser);
+      } else if (fbUser && fbUser.isAnonymous) {
+        await resolveProfileForUser(fbUser);
       } else {
-        console.log("[FirebaseAuth] No active auth session (Guest/Offline state)");
         activeResolutionIdRef.current++;
         setProfileResolutionStatus("IDLE");
         setProfileError(null);
@@ -535,7 +591,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       window.removeEventListener("open-pricing-modal", handleOpenPricing);
       window.removeEventListener("ai-plan-expired", handlePlanExpired);
     };
-  }, [isGuestMode, resolveProfileForUser]);
+  }, [exitGuestModeForAuthenticatedUser, resolveProfileForUser]);
 
   // Sync Questions with Firestore
   const syncQuestionsFromFirestore = async (): Promise<number> => {
@@ -570,22 +626,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Authentication actions
   const signInWithGoogle = async (): Promise<FirebaseUser> => {
     const userCred = await signInWithGooglePopup();
+    exitGuestModeForAuthenticatedUser();
     return userCred;
   };
 
   const signInAnonymously = async (): Promise<FirebaseUser> => {
     const userCred = await signInAnonymouslyUser();
+    exitGuestModeForAuthenticatedUser();
     return userCred;
   };
 
   const signInWithEmail = async (email: string, pass: string): Promise<FirebaseUser> => {
     const userCred = await loginWithEmail(email, pass);
+    exitGuestModeForAuthenticatedUser();
     return userCred;
   };
 
   const signUpWithEmail = async (email: string, pass: string, name?: string): Promise<FirebaseUser> => {
     try {
       const userCred = await registerWithEmail(email, pass, name);
+      exitGuestModeForAuthenticatedUser();
       return userCred;
     } catch (err) {
       setFirebaseUser(null);
@@ -597,11 +657,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await resetPasswordWithEmail(email);
   };
 
+  const isMasterAdminEmail = Boolean(
+    (firebaseUser?.email || "").trim().toLowerCase() === "araujomendes@staziamed.com.br" ||
+    firebaseUser?.uid === "cQjACVALpedbijS0WiCwuFRJgxj2"
+  );
   const isGoogleProvider = Boolean(
     firebaseUser?.providerData?.some((p) => p.providerId === "google.com")
   );
   const isEmailVerified = Boolean(
-    firebaseUser && (isGoogleProvider || firebaseUser.emailVerified)
+    firebaseUser && (isMasterAdminEmail || isGoogleProvider || firebaseUser.emailVerified)
   );
 
   const resendVerificationEmail = async (): Promise<void> => {
@@ -612,7 +676,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const reloaded = await reloadCurrentUser();
     if (reloaded) {
       setFirebaseUser({ ...reloaded } as FirebaseUser);
-      return Boolean(reloaded.emailVerified || isGoogleProvider);
+      const isMaster = Boolean(
+        (reloaded.email || "").trim().toLowerCase() === "araujomendes@staziamed.com.br" ||
+        reloaded.uid === "cQjACVALpedbijS0WiCwuFRJgxj2"
+      );
+      return Boolean(isMaster || reloaded.emailVerified || isGoogleProvider);
     }
     return false;
   };
@@ -626,18 +694,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const exitGuestMode = () => {
-    setIsGuestMode(false);
-    try {
-      localStorage.removeItem("praxis_guest_mode");
-    } catch (e) {
-      console.warn("Could not clear guest mode:", e);
-    }
-  };
-
   const logout = async (): Promise<void> => {
     clearSplashSeenThisSession();
-    exitGuestMode();
+    exitGuestModeForAuthenticatedUser();
     activeResolutionIdRef.current++;
     setProfileResolutionStatus("IDLE");
     setProfileError(null);
@@ -675,6 +734,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return updated;
     });
   };
+
+  const setIsDarkMode = useCallback(
+    (dark: boolean) => {
+      setIsDarkModeState(dark);
+      setUser((prev) => {
+        const updated: UserProfile = {
+          ...prev,
+          preferences: {
+            ...prev.preferences,
+            appTheme: dark ? "dark" : "light",
+          },
+        };
+        StorageService.saveUserProfile(updated);
+        if (firebaseUser && !isGuestMode) {
+          FirebaseService.saveUserProfile(updated);
+        }
+        return updated;
+      });
+    },
+    [firebaseUser, isGuestMode]
+  );
+
+  useEffect(() => {
+    const theme = user.preferences?.appTheme || "dark";
+    const apply = () => {
+      setIsDarkModeState(resolveThemePreference(theme));
+    };
+
+    apply();
+
+    if (theme !== "system" || typeof window === "undefined" || !window.matchMedia) return;
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    mediaQuery.addEventListener("change", apply);
+    return () => mediaQuery.removeEventListener("change", apply);
+  }, [user.preferences?.appTheme]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", isDarkMode);
+    document.documentElement.style.colorScheme = isDarkMode ? "dark" : "light";
+  }, [isDarkMode]);
 
   const addGuidelineAuditLog = (logData: Omit<GuidelineAuditLog, "id" | "timestamp">) => {
     const newLog: GuidelineAuditLog = {

@@ -43,6 +43,7 @@ describe('Route & Navigation Integrity Automated Audit', () => {
       { tab: 'praticar-simulados', expectedPath: '/praticar/simulados' },
       { tab: 'praticar-provas', expectedPath: '/praticar/provas-completas' },
       { tab: 'praticar-questoes-ia', expectedPath: '/praticar/questoes-ia' },
+      { tab: 'praticar-checklists', expectedPath: '/praticar/checklists' },
       { tab: 'revisar', expectedPath: '/revisar' },
       { tab: 'revisar-erros', expectedPath: '/revisar/erros' },
       { tab: 'revisar-flashcards', expectedPath: '/revisar/flashcards' },

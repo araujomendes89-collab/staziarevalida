@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Clock,
   Flag,
@@ -14,6 +14,7 @@ import {
   Sparkles,
   ArrowRight,
   RotateCcw,
+  ZoomIn,
 } from "lucide-react";
 import {
   Question,
@@ -24,6 +25,9 @@ import {
 } from "../../types";
 import { QuestionTimingTracker } from "../../services/questionTimingService";
 import { LayeredCorrectionFeedback } from "./LayeredCorrectionFeedback";
+import { SimulationTimerHUD } from "./SimulationTimerHUD";
+import { SimulationQuestionDock } from "./SimulationQuestionDock";
+import { ClinicalMediaLightbox } from "./ClinicalMediaLightbox";
 
 interface ActiveSessionResolutionViewProps {
   session: ActiveTrainingSession;
@@ -84,6 +88,46 @@ export const ActiveSessionResolutionView: React.FC<
   const [isGridOpen, setIsGridOpen] = useState<boolean>(false);
   const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
   const [autosaveIndicator, setAutosaveIndicator] = useState<boolean>(false);
+
+  // Lightbox State for Image / Table Expansion
+  const [lightboxImage, setLightboxImage] = useState<{
+    isOpen: boolean;
+    url: string;
+    caption?: string;
+  }>({ isOpen: false, url: "", caption: "" });
+
+  // Overall Simulation Timer (accumulated seconds across session or countdown)
+  const isSimulationMode = session?.mode === "SIMULADO" || session?.config?.mode === "SIMULADO" || session?.config?.feedbackMode === "END_OF_SESSION";
+  const customLimitSeconds = session?.config?.customDurationMinutes ? session.config.customDurationMinutes * 60 : undefined;
+  const isCountDown = Boolean(customLimitSeconds && customLimitSeconds > 0);
+
+  const [simulationElapsedSeconds, setSimulationElapsedSeconds] = useState<number>(() => {
+    return session?.totalDurationSeconds || 0;
+  });
+
+  // Tick timer for overall simulation when in simulation mode and not paused
+  useEffect(() => {
+    if (!isSimulationMode || isPaused) return;
+    const interval = setInterval(() => {
+      setSimulationElapsedSeconds((prev) => {
+        const next = prev + 1;
+        if (customLimitSeconds && next >= customLimitSeconds) {
+          // Auto-finish when countdown time reaches zero
+          clearInterval(interval);
+          onFinishSession(session);
+        }
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isSimulationMode, isPaused, customLimitSeconds, session, onFinishSession]);
+
+  const displayedTimerSeconds = useMemo(() => {
+    if (isCountDown && customLimitSeconds) {
+      return Math.max(0, customLimitSeconds - simulationElapsedSeconds);
+    }
+    return simulationElapsedSeconds;
+  }, [isCountDown, customLimitSeconds, simulationElapsedSeconds]);
 
   // Sync state & timing tracker when currentIndex changes
   useEffect(() => {
@@ -373,7 +417,19 @@ export const ActiveSessionResolutionView: React.FC<
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-5 pb-24 relative">
+    <div className={`mx-auto space-y-5 relative ${isSimulationMode ? "max-w-4xl pb-32" : "max-w-3xl pb-24"}`}>
+      {/* HUD de Cronômetro Central em Destaque no Modo Simulado (Inspirado no Hardwork / INEP) */}
+      {isSimulationMode && (
+        <SimulationTimerHUD
+          totalSeconds={displayedTimerSeconds}
+          isPaused={isPaused}
+          onTogglePause={() => setIsPaused(!isPaused)}
+          onFinish={() => onFinishSession(session)}
+          modeLabel={session.title || "Simulado INEP"}
+          isCountDown={isCountDown}
+        />
+      )}
+
       {/* 1. TOP BAR — Compacta, Clara e Focada */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-xs sticky top-[65px] z-20 space-y-2">
         <div className="flex items-center justify-between gap-3">
@@ -412,29 +468,33 @@ export const ActiveSessionResolutionView: React.FC<
 
           {/* Cronômetro e Controles Rápidos */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Cronômetro */}
-            <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-700">
-              <Clock className="w-3.5 h-3.5 text-slate-400" />
-              <span>{formatTimer(questionTimerSeconds)}</span>
-            </div>
+            {/* Cronômetro da Questão (oculto se no HUD de simulado para evitar redundância visual) */}
+            {!isSimulationMode && (
+              <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-700">
+                <Clock className="w-3.5 h-3.5 text-slate-400" />
+                <span>{formatTimer(questionTimerSeconds)}</span>
+              </div>
+            )}
 
-            {/* Pausar */}
-            <button
-              type="button"
-              onClick={() => setIsPaused(!isPaused)}
-              className={`p-1.5 rounded-xl text-xs transition-colors cursor-pointer ${
-                isPaused
-                  ? "bg-amber-100 text-amber-800 border border-amber-300"
-                  : "bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900"
-              }`}
-              title={isPaused ? "Retomar treino" : "Pausar cronômetro"}
-            >
-              {isPaused ? (
-                <Play className="w-4 h-4" />
-              ) : (
-                <Pause className="w-4 h-4" />
-              )}
-            </button>
+            {/* Pausar (no modo estudo) */}
+            {!isSimulationMode && (
+              <button
+                type="button"
+                onClick={() => setIsPaused(!isPaused)}
+                className={`p-1.5 rounded-xl text-xs transition-colors cursor-pointer ${
+                  isPaused
+                    ? "bg-amber-100 text-amber-800 border border-amber-300"
+                    : "bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900"
+                }`}
+                title={isPaused ? "Retomar treino" : "Pausar cronômetro"}
+              >
+                {isPaused ? (
+                  <Play className="w-4 h-4" />
+                ) : (
+                  <Pause className="w-4 h-4" />
+                )}
+              </button>
+            )}
 
             {/* Flag / Marcar para Revisar */}
             <button
@@ -480,7 +540,9 @@ export const ActiveSessionResolutionView: React.FC<
           <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto">
             <Pause className="w-5 h-5" />
           </div>
-          <h3 className="text-sm font-bold text-amber-950">Treino Pausado</h3>
+          <h3 className="text-sm font-bold text-amber-950">
+            {isSimulationMode ? "Simulado Pausado" : "Treino Pausado"}
+          </h3>
           <p className="text-xs text-amber-800 max-w-md mx-auto leading-relaxed">
             O cronômetro foi pausado e a questão está oculta. Clique no botão abaixo para retomar quando estiver pronto.
           </p>
@@ -489,7 +551,7 @@ export const ActiveSessionResolutionView: React.FC<
             onClick={() => setIsPaused(false)}
             className="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
           >
-            Continuar Treino
+            {isSimulationMode ? "Continuar Simulado" : "Continuar Treino"}
           </button>
         </div>
       )}
@@ -544,22 +606,40 @@ export const ActiveSessionResolutionView: React.FC<
                         img.url === imgPath ||
                         (img.filename && imgPath.includes(img.filename))
                     );
+                    const targetUrl = matchedImg?.url || `/${imgPath}`;
+                    const targetCaption = matchedImg?.caption || "Imagem clínica";
                     return (
                       <div
                         key={i}
-                        className="my-4 rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 p-2 block w-full max-w-lg mx-auto shadow-2xs"
+                        className="my-4 rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 p-2 block w-full max-w-lg mx-auto shadow-2xs group cursor-zoom-in"
+                        onClick={() =>
+                          setLightboxImage({
+                            isOpen: true,
+                            url: targetUrl,
+                            caption: targetCaption,
+                          })
+                        }
                       >
-                        <img
-                          src={matchedImg?.url || `/${imgPath}`}
-                          alt={matchedImg?.caption || "Imagem clínica"}
-                          className="max-h-80 mx-auto object-contain rounded-xl"
-                          referrerPolicy="no-referrer"
-                        />
-                        {matchedImg?.caption && (
-                          <p className="text-[11px] text-slate-500 text-center mt-2 font-medium">
-                            {matchedImg.caption}
+                        <div className="relative overflow-hidden rounded-xl bg-white">
+                          <img
+                            src={targetUrl}
+                            alt={targetCaption}
+                            className="max-h-80 mx-auto object-contain transition-transform duration-200 group-hover:scale-[1.02]"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                            <span className="bg-slate-900/80 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-md">
+                              <ZoomIn className="w-3.5 h-3.5" />
+                              <span>Clique para ampliar</span>
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-center gap-1 mt-2 text-slate-500 hover:text-slate-800 transition-colors">
+                          <ZoomIn className="w-3 h-3 text-slate-400" />
+                          <p className="text-[11px] font-medium">
+                            {targetCaption} • Clique na imagem para ampliar
                           </p>
-                        )}
+                        </div>
                       </div>
                     );
                   }
@@ -585,28 +665,44 @@ export const ActiveSessionResolutionView: React.FC<
                           img.filename || ""
                         )
                     )
-                    .map((img, idx) => (
-                      <div
-                        key={idx}
-                        className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 p-2 max-w-lg mx-auto shadow-2xs"
-                      >
-                        <img
-                          src={
-                            img.url ||
-                            `/${img.relativePath}` ||
-                            "/placeholder-clinical.png"
+                    .map((img, idx) => {
+                      const targetUrl = img.url || `/${img.relativePath}` || "/placeholder-clinical.png";
+                      const targetCaption = img.caption || "Imagem clínica da questão";
+                      return (
+                        <div
+                          key={idx}
+                          className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 p-2 max-w-lg mx-auto shadow-2xs group cursor-zoom-in"
+                          onClick={() =>
+                            setLightboxImage({
+                              isOpen: true,
+                              url: targetUrl,
+                              caption: targetCaption,
+                            })
                           }
-                          alt={img.caption || "Imagem clínica da questão"}
-                          className="max-h-80 mx-auto object-contain rounded-xl"
-                          referrerPolicy="no-referrer"
-                        />
-                        {img.caption && (
-                          <p className="text-[11px] text-slate-500 text-center mt-2 font-medium">
-                            {img.caption}
-                          </p>
-                        )}
-                      </div>
-                    ))}
+                        >
+                          <div className="relative overflow-hidden rounded-xl bg-white">
+                            <img
+                              src={targetUrl}
+                              alt={targetCaption}
+                              className="max-h-80 mx-auto object-contain transition-transform duration-200 group-hover:scale-[1.02]"
+                              referrerPolicy="no-referrer"
+                            />
+                            <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                              <span className="bg-slate-900/80 text-white text-[11px] font-bold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-md">
+                                <ZoomIn className="w-3.5 h-3.5" />
+                                <span>Clique para ampliar</span>
+                              </span>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-center gap-1 mt-2 text-slate-500 hover:text-slate-800 transition-colors">
+                            <ZoomIn className="w-3 h-3 text-slate-400" />
+                            <p className="text-[11px] font-medium">
+                              {targetCaption} • Clique na imagem para ampliar
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               )}
 
@@ -739,46 +835,23 @@ export const ActiveSessionResolutionView: React.FC<
               />
             )}
 
-          {/* 5. NAVEGAÇÃO FOOTER (Anterior / Próxima) */}
-          <div className="flex items-center justify-between pt-2">
-            <button
-              type="button"
-              onClick={handlePrevious}
-              disabled={session.currentIndex === 0}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
-                session.currentIndex > 0
-                  ? "bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs cursor-pointer"
-                  : "bg-slate-50 text-slate-300 border-slate-200/60 cursor-not-allowed"
-              }`}
-            >
-              <ChevronLeft className="w-4 h-4" />
-              <span>Anterior</span>
-            </button>
+          {/* 5. NAVEGAÇÃO FOOTER (Anterior / Próxima) — Exibido apenas no Modo Treino/Estudo */}
+          {!isSimulationMode && (
+            <div className="flex items-center justify-between pt-2">
+              <button
+                type="button"
+                onClick={handlePrevious}
+                disabled={session.currentIndex === 0}
+                className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold border transition-all ${
+                  session.currentIndex > 0
+                    ? "bg-white hover:bg-slate-50 text-slate-700 border-slate-200 shadow-2xs cursor-pointer"
+                    : "bg-slate-50 text-slate-300 border-slate-200/60 cursor-not-allowed"
+                }`}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Anterior</span>
+              </button>
 
-            {/* Modo Simulado (Feedback no final): Botão de avançar ou finalizar */}
-            {session.config.feedbackMode === "END_OF_SESSION" ? (
-              <div className="flex items-center gap-2">
-                {session.currentIndex === session.questionIds.length - 1 ? (
-                  <button
-                    type="button"
-                    onClick={() => onFinishSession(session)}
-                    className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-xs transition-transform hover:scale-[1.02] cursor-pointer"
-                  >
-                    <FileCheck className="w-4 h-4" />
-                    <span>Finalizar e Ver Gabarito</span>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleNext}
-                    className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all shadow-xs cursor-pointer hover:scale-[1.02]"
-                  >
-                    <span>Próxima</span>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                )}
-              </div>
-            ) : (
               <button
                 type="button"
                 onClick={handleNext}
@@ -791,9 +864,24 @@ export const ActiveSessionResolutionView: React.FC<
                 </span>
                 <ChevronRight className="w-4 h-4" />
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </div>
+      )}
+
+      {/* Dock Inferior Fixo de Navegação de Questões (Estilo INEP / Hardwork) */}
+      {isSimulationMode && !isPaused && (
+        <SimulationQuestionDock
+          questionIds={session.questionIds}
+          currentIndex={session.currentIndex}
+          answers={session.answers || {}}
+          flaggedQuestionIds={session.flaggedQuestionIds || []}
+          onSelectIndex={handleNavigateTo}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+          onFinish={() => onFinishSession(session)}
+          isLastQuestion={session.currentIndex === session.questionIds.length - 1}
+        />
       )}
 
       {/* 6. MODAL DA GRADE DE TODAS AS QUESTÕES DA SESSÃO */}
@@ -922,6 +1010,14 @@ export const ActiveSessionResolutionView: React.FC<
           </div>
         </div>
       )}
+
+      {/* 8. MODAL LIGHTBOX DE IMAGENS E TABELAS CLÍNICAS */}
+      <ClinicalMediaLightbox
+        isOpen={lightboxImage.isOpen}
+        onClose={() => setLightboxImage({ isOpen: false, url: "", caption: "" })}
+        imageUrl={lightboxImage.url}
+        caption={lightboxImage.caption}
+      />
     </div>
   );
 };

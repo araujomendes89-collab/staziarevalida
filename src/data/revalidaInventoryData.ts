@@ -43,7 +43,7 @@ export const REVALIDA_EDITIONS_INVENTORY: RevalidaEditionInventory[] = [
     examDate: "2021-09-05",
     stage: "1ª Etapa (Teórica)",
     objectiveCount: 100,
-    annulledQuestions: [14, 38, 77],
+    annulledQuestions: [10, 11, 26, 32, 44, 57, 59, 63, 67, 80, 92, 93],
     alteredQuestions: [
       { questionNumber: 22, from: "A", to: "C" },
       { questionNumber: 61, from: "D", to: "B" }

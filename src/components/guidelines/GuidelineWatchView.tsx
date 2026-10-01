@@ -48,6 +48,10 @@ export const GuidelineWatchView: React.FC = () => {
     isAuthLoading,
     isGuestMode,
     isDeveloperAdmin,
+    firebaseUser,
+    profileResolutionStatus,
+    profileError,
+    retryProfileResolution,
   } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<"student_hub" | "grounded_radar" | "audit_queue" | "repository" | "logs">("student_hub");
@@ -76,11 +80,72 @@ export const GuidelineWatchView: React.FC = () => {
   const [selectedImpact, setSelectedImpact] = useState<GuidelineImpactLevel>("ALTO");
   const [reviewerName, setReviewerName] = useState<string>("Dr. Rodrigo Valente Mendes (CRM-SP 184.920)");
 
-  // Fail-closed authorization check
+  // 1. Loading boundary: wait while auth is initializing or profile is in-flight/unresolved
+  if (
+    isAuthLoading ||
+    (firebaseUser &&
+      profileResolutionStatus !== "READY" &&
+      profileResolutionStatus !== "ERROR")
+  ) {
+    return (
+      <div
+        data-testid="guideline-loading-boundary"
+        className="max-w-xl mx-auto my-24 p-8 rounded-[28px] bg-slate-950/80 border border-slate-800 text-center space-y-4 shadow-2xl backdrop-blur-2xl"
+      >
+        <RefreshCw className="w-8 h-8 animate-spin text-teal-400 mx-auto" />
+        <p className="text-xs text-slate-300 font-semibold">
+          Validando credenciais administrativas com o servidor...
+        </p>
+      </div>
+    );
+  }
+
+  // 2. Profile resolution error boundary: infrastructure failure is distinct from access denied
+  if (profileResolutionStatus === "ERROR") {
+    return (
+      <div
+        data-testid="guideline-profile-error-boundary"
+        className="max-w-xl mx-auto my-12 p-8 rounded-[28px] bg-slate-950/90 border border-amber-500/30 text-center space-y-5 shadow-2xl backdrop-blur-2xl"
+      >
+        <div className="w-16 h-16 rounded-2xl bg-amber-500/20 text-amber-400 mx-auto flex items-center justify-center border border-amber-500/30">
+          <AlertTriangle className="w-8 h-8" />
+        </div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-white tracking-tight">
+            Não foi possível confirmar suas permissões
+          </h2>
+          <p className="text-xs text-slate-300 leading-relaxed max-w-md mx-auto">
+            {profileError ||
+              "Ocorreu uma instabilidade na verificação de privilégios com o servidor. Suas credenciais não puderam ser validadas no momento."}
+          </p>
+        </div>
+        <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
+          <button
+            type="button"
+            onClick={() => retryProfileResolution?.()}
+            className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-lg shadow-teal-600/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Tentar Novamente
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("home")}
+            className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold border border-slate-700 transition-all cursor-pointer"
+          >
+            Voltar para a Área do Aluno
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Stabilized Access Denied: only rendered when resolution completed (READY) and user is not ADMIN
   if (!isDeveloperAdmin) {
     return (
       <div
         id="admin-access-denied"
+        data-testid="admin-access-denied"
         className="max-w-xl mx-auto my-12 p-8 rounded-[28px] bg-slate-950/90 border border-rose-500/30 text-center space-y-5 shadow-2xl backdrop-blur-2xl"
       >
         <div className="w-16 h-16 rounded-2xl bg-rose-500/20 text-rose-400 mx-auto flex items-center justify-center border border-rose-500/30">

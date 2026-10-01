@@ -1,18 +1,30 @@
 /**
- * Segmentation Job Queue & Structured Content Store (Etapa 1.28C).
+ * Segmentation Job Queue & Structured Content Store (Etapa 1.28C + Persistência Durável).
  * Handles async medical segmentation, canonical topic matching confirmations,
- * segment split/merge actions, and structural approvals without source loss.
+ * segment split/merge actions, and structural approvals with durable Firestore persistence.
+ *
+ * Firestore = persistent source of truth
+ * Map = runtime transient cache only
  */
 
 import {
   CanonicalMedicalArea,
   MedicalSegmentationResult,
   STAZIAMED_TAXONOMY_VERSION,
+  StructuredSourceBlock,
   StructuredSourceContent,
 } from "../../src/types/medicalTaxonomy";
 import { SourceDocument } from "../../src/types/pdfIngestion";
 import { MedicalSegmentationEngine } from "./medicalSegmentationEngine";
 import { computeSha256Fingerprint } from "../../src/services/pdfValidationService";
+import {
+  SegmentationJobRepository,
+  SegmentationJobResultSummary,
+} from "./segmentationJobRepository";
+import { StructuredBlockRepository } from "../contentEngine/structuredBlockRepository";
+import { StructuredContentRepository } from "../contentEngine/structuredContentRepository";
+import { StructuredContentHydrationService } from "../contentEngine/structuredContentHydrationService";
+import { toPersistedStructuredContentHeader } from "../contentEngine/structuredContentPersistence";
 
 export type SegmentationJobStatus =
   | "SEGMENTATION_QUEUED"
@@ -36,6 +48,7 @@ export interface SegmentationJobState {
 
 export class SegmentationJobManager {
   private static instance: SegmentationJobManager;
+  // In-Memory RAM Cache (Firestore is the persistent source of truth)
   private jobs: Map<string, SegmentationJobState> = new Map();
   private structuredContentsStore: Map<string, StructuredSourceContent> = new Map();
   private engine: MedicalSegmentationEngine;
@@ -73,25 +86,64 @@ export class SegmentationJobManager {
     };
 
     this.jobs.set(jobId, jobState);
+    await SegmentationJobRepository.saveJob(jobState);
 
     try {
       jobState.status = "CLASSIFICATION_PROCESSING";
       jobState.progress = 60;
+      await SegmentationJobRepository.updateProgress(jobId, 60, "CLASSIFICATION_PROCESSING");
 
       const result = await this.engine.segmentDocument(sourceDoc);
 
       jobState.status = "STRUCTURING";
       jobState.progress = 90;
+      await SegmentationJobRepository.updateProgress(jobId, 90, "STRUCTURING");
 
-      // Register generated structured content items
-      result.structuredContents.forEach((sc) => {
-        this.structuredContentsStore.set(sc.id, sc);
-      });
+      // 1. Persist unique StructuredSourceBlocks into sourceDocuments/{docId}/structuredBlocks
+      const allBlocks: StructuredSourceBlock[] = [];
+      for (const sc of result.structuredContents) {
+        if (sc.blocks && Array.isArray(sc.blocks)) {
+          allBlocks.push(...sc.blocks);
+        }
+      }
+      if (allBlocks.length > 0) {
+        await StructuredBlockRepository.saveBlocks(sourceDoc.id, allBlocks);
+      }
+
+      // 2. Persist lightweight StructuredSourceContent headers into structuredContents/{contentId}
+      const headers = result.structuredContents.map((sc) =>
+        toPersistedStructuredContentHeader(sc, jobId)
+      );
+      await StructuredContentRepository.saveHeaders(headers);
+
+      // 3. Persist DocumentSegments into segmentationJobs/{jobId}/segments/{segmentId}
+      if (result.segments && result.segments.length > 0) {
+        await SegmentationJobRepository.saveSegments(jobId, result.segments);
+      }
+
+      // 4. Persist resultSummary and mark job REVIEW_REQUIRED / 100%
+      const resultSummary: SegmentationJobResultSummary = {
+        areasFoundSummary: result.areasFoundSummary,
+        totalSourceBlocks: result.totalSourceBlocks,
+        assignedSourceBlocks: result.assignedSourceBlocks,
+        unassignedSourceBlocks: result.unassignedSourceBlocks,
+        segmentationDurationMs: result.segmentationDurationMs,
+        segmentCount: result.segments.length,
+        structuredContentCount: result.structuredContents.length,
+      };
 
       jobState.status = "REVIEW_REQUIRED";
       jobState.progress = 100;
       jobState.finishedAt = new Date().toISOString();
       jobState.result = result;
+
+      await SegmentationJobRepository.saveJob(jobState, resultSummary);
+
+      // Update runtime cache
+      result.structuredContents.forEach((sc) => {
+        this.structuredContentsStore.set(sc.id, sc);
+      });
+      this.jobs.set(jobId, jobState);
 
       return { job: jobState, result };
     } catch (error: any) {
@@ -99,134 +151,157 @@ export class SegmentationJobManager {
       jobState.status = "FAILED";
       jobState.errorMessage = error?.message || "Falha na segmentação médica estruturada.";
       jobState.finishedAt = new Date().toISOString();
+      await SegmentationJobRepository.saveJob(jobState);
+      this.jobs.set(jobId, jobState);
       throw error;
     }
   }
 
-  public getJob(jobId: string): SegmentationJobState | undefined {
-    return this.jobs.get(jobId);
+  public async getJob(jobId: string): Promise<SegmentationJobState | undefined> {
+    const cached = this.jobs.get(jobId);
+    if (cached && cached.result) {
+      return cached;
+    }
+
+    const persistedJob = await SegmentationJobRepository.getJob(jobId);
+    if (!persistedJob) {
+      return undefined;
+    }
+
+    // Reconstruct result from durable segments and structured content
+    const segments = await SegmentationJobRepository.listSegments(jobId);
+    const structuredContents = await StructuredContentHydrationService.listStructuredContentsByDocument(
+      persistedJob.documentId
+    );
+
+    const areasFoundSummary = persistedJob.resultSummary?.areasFoundSummary || ({} as any);
+
+    const result: MedicalSegmentationResult = {
+      documentId: persistedJob.documentId,
+      segments,
+      structuredContents,
+      areasFoundSummary,
+      totalSourceBlocks: persistedJob.resultSummary?.totalSourceBlocks ?? 0,
+      assignedSourceBlocks: persistedJob.resultSummary?.assignedSourceBlocks ?? 0,
+      unassignedSourceBlocks: persistedJob.resultSummary?.unassignedSourceBlocks ?? 0,
+      segmentationDurationMs: persistedJob.resultSummary?.segmentationDurationMs ?? 0,
+    };
+
+    const jobState: SegmentationJobState = {
+      jobId: persistedJob.jobId,
+      documentId: persistedJob.documentId,
+      status: persistedJob.status,
+      progress: persistedJob.progress,
+      startedAt: persistedJob.startedAt,
+      finishedAt: persistedJob.finishedAt,
+      errorMessage: persistedJob.errorMessage,
+      jobFingerprint: persistedJob.jobFingerprint,
+      result,
+    };
+
+    this.jobs.set(jobId, jobState);
+    return jobState;
   }
 
-  public getStructuredContentsByDocument(documentId: string): StructuredSourceContent[] {
+  public async getStructuredContentsByDocument(documentId: string): Promise<StructuredSourceContent[]> {
+    const hydrated = await StructuredContentHydrationService.listStructuredContentsByDocument(documentId);
+    if (hydrated.length > 0) {
+      hydrated.forEach((sc) => this.structuredContentsStore.set(sc.id, sc));
+      return hydrated;
+    }
+
+    // Cache fallback
     return Array.from(this.structuredContentsStore.values()).filter(
       (sc) => sc.sourceDocumentId === documentId
     );
   }
 
-  public getStructuredContentById(id: string): StructuredSourceContent | undefined {
-    return this.structuredContentsStore.get(id);
-  }
-
-  public confirmCanonicalTopic(contentId: string, canonicalTopicId: string): StructuredSourceContent {
-    const item = this.structuredContentsStore.get(contentId);
-    if (!item) throw new Error(`Conteúdo estruturado '${contentId}' não encontrado.`);
-
-    item.canonicalTopicId = canonicalTopicId;
-    item.updatedAt = new Date().toISOString();
-    this.structuredContentsStore.set(contentId, item);
-    return item;
-  }
-
-  public updateMetadata(
-    contentId: string,
-    updates: { area?: CanonicalMedicalArea; specialty?: string; topic?: string; subtopics?: string[] }
-  ): StructuredSourceContent {
-    const item = this.structuredContentsStore.get(contentId);
-    if (!item) throw new Error(`Conteúdo estruturado '${contentId}' não encontrado.`);
-
-    if (updates.area) item.area = updates.area;
-    if (updates.specialty) item.specialty = updates.specialty;
-    if (updates.topic) item.topic = updates.topic;
-    if (updates.subtopics) item.subtopics = updates.subtopics;
-    item.updatedAt = new Date().toISOString();
-
-    this.structuredContentsStore.set(contentId, item);
-    return item;
-  }
-
-  public approveStructure(contentId: string): StructuredSourceContent {
-    const item = this.structuredContentsStore.get(contentId);
-    if (!item) throw new Error(`Conteúdo estruturado '${contentId}' não encontrado.`);
-
-    item.status = "APPROVED_STRUCTURE";
-    item.updatedAt = new Date().toISOString();
-    this.structuredContentsStore.set(contentId, item);
-    return item;
-  }
-
-  public splitSegment(contentId: string, splitAtIndex: number): StructuredSourceContent[] {
-    const item = this.structuredContentsStore.get(contentId);
-    if (!item) throw new Error(`Conteúdo estruturado '${contentId}' não encontrado.`);
-
-    if (splitAtIndex <= 0 || splitAtIndex >= item.blocks.length) {
-      throw new Error(`Índice de divisão inválido (${splitAtIndex}).`);
+  public async getStructuredContentById(id: string): Promise<StructuredSourceContent | undefined> {
+    const cached = this.structuredContentsStore.get(id);
+    if (cached) {
+      return cached;
     }
 
-    const blocksPart1 = item.blocks.slice(0, splitAtIndex);
-    const blocksPart2 = item.blocks.slice(splitAtIndex);
+    const hydrated = await StructuredContentHydrationService.hydrateStructuredContent(id);
+    if (hydrated) {
+      this.structuredContentsStore.set(hydrated.id, hydrated);
+      return hydrated;
+    }
 
-    const part1Pages = Array.from(new Set(blocksPart1.map((b) => b.pageNumber)));
-    const part2Pages = Array.from(new Set(blocksPart2.map((b) => b.pageNumber)));
-
-    const itemPart1: StructuredSourceContent = {
-      ...item,
-      id: `${item.id}_part1`,
-      blocks: blocksPart1,
-      sourcePages: part1Pages,
-      sourceBlockRefs: blocksPart1.map((b) => b.sourceBlockId),
-      totalSourceBlocks: blocksPart1.length,
-      assignedSourceBlocks: blocksPart1.length,
-      updatedAt: new Date().toISOString(),
-    };
-
-    const itemPart2: StructuredSourceContent = {
-      ...item,
-      id: `${item.id}_part2`,
-      topic: `${item.topic} (Parte 2)`,
-      blocks: blocksPart2,
-      sourcePages: part2Pages,
-      sourceBlockRefs: blocksPart2.map((b) => b.sourceBlockId),
-      totalSourceBlocks: blocksPart2.length,
-      assignedSourceBlocks: blocksPart2.length,
-      updatedAt: new Date().toISOString(),
-    };
-
-    this.structuredContentsStore.delete(contentId);
-    this.structuredContentsStore.set(itemPart1.id, itemPart1);
-    this.structuredContentsStore.set(itemPart2.id, itemPart2);
-
-    return [itemPart1, itemPart2];
+    return undefined;
   }
 
-  public mergeSegments(contentIdA: string, contentIdB: string): StructuredSourceContent {
-    const itemA = this.structuredContentsStore.get(contentIdA);
-    const itemB = this.structuredContentsStore.get(contentIdB);
+  public async confirmCanonicalTopic(
+    contentId: string,
+    canonicalTopicId: string
+  ): Promise<StructuredSourceContent> {
+    await StructuredContentRepository.confirmCanonicalTopic(contentId, canonicalTopicId);
+    const item = await StructuredContentHydrationService.hydrateStructuredContent(contentId);
+    if (!item) {
+      throw new Error(`CONTENT_NOT_FOUND: Conteúdo estruturado '${contentId}' não encontrado.`);
+    }
 
-    if (!itemA || !itemB) throw new Error("Segmentos para união não encontrados.");
+    this.structuredContentsStore.set(contentId, item);
+    return item;
+  }
 
-    const mergedBlocks = [...itemA.blocks, ...itemB.blocks].map((b, idx) => ({
-      ...b,
-      order: idx + 1,
-    }));
+  public async updateMetadata(
+    contentId: string,
+    updates: { area?: CanonicalMedicalArea; specialty?: string; topic?: string; subtopics?: string[] }
+  ): Promise<StructuredSourceContent> {
+    await StructuredContentRepository.updateMetadata(contentId, updates);
+    const item = await StructuredContentHydrationService.hydrateStructuredContent(contentId);
+    if (!item) {
+      throw new Error(`CONTENT_NOT_FOUND: Conteúdo estruturado '${contentId}' não encontrado.`);
+    }
 
-    const mergedPages = Array.from(new Set([...itemA.sourcePages, ...itemB.sourcePages])).sort((a, b) => a - b);
+    this.structuredContentsStore.set(contentId, item);
+    return item;
+  }
 
-    const mergedItem: StructuredSourceContent = {
-      ...itemA,
-      id: `sc_merged_${Date.now()}`,
-      subtopics: Array.from(new Set([...itemA.subtopics, ...itemB.subtopics])),
-      sourcePages: mergedPages,
-      sourceBlockRefs: mergedBlocks.map((b) => b.sourceBlockId),
-      blocks: mergedBlocks,
-      totalSourceBlocks: mergedBlocks.length,
-      assignedSourceBlocks: mergedBlocks.length,
-      updatedAt: new Date().toISOString(),
-    };
+  public async approveStructure(contentId: string): Promise<StructuredSourceContent> {
+    await StructuredContentRepository.approveStructure(contentId);
+    const item = await StructuredContentHydrationService.hydrateStructuredContent(contentId);
+    if (!item) {
+      throw new Error(`CONTENT_NOT_FOUND: Conteúdo estruturado '${contentId}' não encontrado.`);
+    }
+
+    this.structuredContentsStore.set(contentId, item);
+    return item;
+  }
+
+  public async splitSegment(contentId: string, splitAtIndex: number): Promise<StructuredSourceContent[]> {
+    const [part1Header, part2Header] = await StructuredContentRepository.splitContent(
+      contentId,
+      splitAtIndex
+    );
+
+    const part1 = await StructuredContentHydrationService.hydrateStructuredContent(part1Header.id);
+    const part2 = await StructuredContentHydrationService.hydrateStructuredContent(part2Header.id);
+
+    if (!part1 || !part2) {
+      throw new Error("Falha ao reidratar partes divididas do conteúdo estruturado.");
+    }
+
+    this.structuredContentsStore.delete(contentId);
+    this.structuredContentsStore.set(part1.id, part1);
+    this.structuredContentsStore.set(part2.id, part2);
+
+    return [part1, part2];
+  }
+
+  public async mergeSegments(contentIdA: string, contentIdB: string): Promise<StructuredSourceContent> {
+    const mergedHeader = await StructuredContentRepository.mergeContents(contentIdA, contentIdB);
+    const merged = await StructuredContentHydrationService.hydrateStructuredContent(mergedHeader.id);
+
+    if (!merged) {
+      throw new Error("Falha ao reidratar conteúdo estruturado unificado.");
+    }
 
     this.structuredContentsStore.delete(contentIdA);
     this.structuredContentsStore.delete(contentIdB);
-    this.structuredContentsStore.set(mergedItem.id, mergedItem);
+    this.structuredContentsStore.set(merged.id, merged);
 
-    return mergedItem;
+    return merged;
   }
 }

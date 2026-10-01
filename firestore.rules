@@ -96,12 +96,22 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /questions_v2/{questionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /guidelines/{guidelineId} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
     match /editions/{editionId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /editions_v2/{editionId} {
       allow read: if true;
       allow write: if isAdmin();
     }
@@ -148,6 +158,19 @@ service cloud.firestore {
     }
 
 
+
+    // -------------------------------------------------------------
+    // CONTEÚDO PUBLICADO CANÔNICO (Leitura Autenticada / Escrita Restrita a Admin)
+    // -------------------------------------------------------------
+    match /publishedTopicContents/{topicId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+
+      match /versions/{versionId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin();
+      }
+    }
 
     // -------------------------------------------------------------
     // ADMINISTRAÇÃO & HEALTH CHECK (Protegidos Contra Exposição)
@@ -203,5 +226,73 @@ service cloud.firestore {
       allow update: if isAuthenticated() && (isAdmin() || (resource.data.userId == request.auth.uid && request.resource.data.userId == resource.data.userId)) && isValidErrorAutopsy(request.resource.data);
       allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
     }
+
+    // -------------------------------------------------------------
+    // PRESENÇA EM TEMPO REAL & RADAR DE DUPLAS (Leitura Autenticada / Escrita do Proprietário)
+    // -------------------------------------------------------------
+    match /presence/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow delete: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // -------------------------------------------------------------
+    // CONVITES DE ESTUDO EM DUPLA (Participantes ou Admin)
+    // -------------------------------------------------------------
+    match /study_invites/{inviteId} {
+      allow read: if isAuthenticated() && (
+        resource.data.fromUserId == request.auth.uid ||
+        resource.data.toUserId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.fromUserId == request.auth.uid ||
+        isAdmin()
+      );
+      allow update: if isAuthenticated() && (
+        resource.data.fromUserId == request.auth.uid ||
+        resource.data.toUserId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.fromUserId == request.auth.uid ||
+        isAdmin()
+      );
+    }
+
+    // -------------------------------------------------------------
+    // RADAR POOL & MATCHMAKING DE DUPLAS (Autenticado)
+    // -------------------------------------------------------------
+    match /radar_pool/{userId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
+    }
+
+    // -------------------------------------------------------------
+    // SALAS DE TREINO EM DUPLA (Médico, Avaliador ou Admin)
+    // -------------------------------------------------------------
+    match /duo_sessions/{sessionId} {
+      allow read: if isAuthenticated() && (
+        resource.data.doctorUserId == request.auth.uid ||
+        resource.data.evaluatorUserId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if isAuthenticated() && (
+        request.resource.data.doctorUserId == request.auth.uid ||
+        request.resource.data.evaluatorUserId == request.auth.uid ||
+        isAdmin()
+      );
+      allow update: if isAuthenticated() && (
+        resource.data.doctorUserId == request.auth.uid ||
+        resource.data.evaluatorUserId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isAuthenticated() && (
+        resource.data.doctorUserId == request.auth.uid ||
+        isAdmin()
+      );
+    }
   }
 }
+
+

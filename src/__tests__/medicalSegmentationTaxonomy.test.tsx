@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
+import * as firebaseAdminModule from "../../server/firebaseAdmin";
 import {
   CANONICAL_MEDICAL_AREAS,
   CANONICAL_AREA_LABELS,
@@ -269,7 +270,66 @@ describe("Etapa 1.28C — Medical Segmentation Engine (Zero-Loss & Verbatim Fide
 
 describe("Etapa 1.28C — Segmentation Job Queue & Admin Governance Lifecycle", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     SegmentationJobManager.getInstance().reset();
+
+    const inMemoryStore = new Map<string, any>();
+    const mockDb = {
+      collection: (col: string) => ({
+        doc: (id: string) => ({
+          id,
+          set: async (data: any) => { inMemoryStore.set(`${col}/${id}`, data); },
+          get: async () => ({
+            exists: inMemoryStore.has(`${col}/${id}`),
+            id,
+            data: () => inMemoryStore.get(`${col}/${id}`),
+          }),
+          delete: async () => { inMemoryStore.delete(`${col}/${id}`); },
+          collection: (subCol: string) => ({
+            doc: (subId: string) => ({
+              id: subId,
+              set: async (data: any) => { inMemoryStore.set(`${col}/${id}/${subCol}/${subId}`, data); },
+              get: async () => ({
+                exists: inMemoryStore.has(`${col}/${id}/${subCol}/${subId}`),
+                id: subId,
+                data: () => inMemoryStore.get(`${col}/${id}/${subCol}/${subId}`),
+              }),
+              delete: async () => { inMemoryStore.delete(`${col}/${id}/${subCol}/${subId}`); },
+            }),
+            get: async () => {
+              const prefix = `${col}/${id}/${subCol}/`;
+              const docs: any[] = [];
+              for (const [key, value] of inMemoryStore.entries()) {
+                if (key.startsWith(prefix) && !key.slice(prefix.length).includes("/")) {
+                  docs.push({
+                    id: key.slice(prefix.length),
+                    data: () => value,
+                  });
+                }
+              }
+              return { docs, empty: docs.length === 0 };
+            },
+          }),
+        }),
+        where: () => ({
+          get: async () => ({ docs: [], empty: true }),
+        }),
+      }),
+      batch: () => ({
+        set: (docRef: any, data: any) => docRef.set(data),
+        delete: (docRef: any) => docRef.delete(),
+        commit: async () => {},
+      }),
+      runTransaction: async (fn: any) => {
+        const tx = {
+          get: async (docRef: any) => docRef.get(),
+          set: (docRef: any, data: any) => { docRef.set(data); },
+          delete: (docRef: any) => { docRef.delete(); },
+        };
+        return await fn(tx);
+      },
+    };
+    vi.spyOn(firebaseAdminModule, "getAdminDb").mockReturnValue(mockDb as any);
   });
 
   const sampleDoc: SourceDocument = {
@@ -348,7 +408,7 @@ describe("Etapa 1.28C — Segmentation Job Queue & Admin Governance Lifecycle", 
     const { result } = await manager.createAndRunJob(sampleDoc);
     const contentId = result.structuredContents[0].id;
 
-    const updated = manager.confirmCanonicalTopic(contentId, "top_ic");
+    const updated = await manager.confirmCanonicalTopic(contentId, "top_ic");
     expect(updated.canonicalTopicId).toBe("top_ic");
   });
 
@@ -358,7 +418,7 @@ describe("Etapa 1.28C — Segmentation Job Queue & Admin Governance Lifecycle", 
     const content = result.structuredContents[0];
 
     if (content.blocks.length >= 2) {
-      const parts = manager.splitSegment(content.id, 1);
+      const parts = await manager.splitSegment(content.id, 1);
       expect(parts).toHaveLength(2);
       expect(parts[0].blocks.length + parts[1].blocks.length).toBe(content.blocks.length);
       expect(parts[0].unassignedSourceBlocks).toBe(0);
@@ -371,7 +431,7 @@ describe("Etapa 1.28C — Segmentation Job Queue & Admin Governance Lifecycle", 
     const { result } = await manager.createAndRunJob(sampleDoc);
     const contentId = result.structuredContents[0].id;
 
-    const approved = manager.approveStructure(contentId);
+    const approved = await manager.approveStructure(contentId);
     expect(approved.status).toBe("APPROVED_STRUCTURE");
   });
 });

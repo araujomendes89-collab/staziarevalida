@@ -25,7 +25,8 @@ export type AuthErrorCode =
   | "AUTH_PROFILE_NOT_FOUND"
   | "AUTH_USER_DISABLED"
   | "AUTH_FORBIDDEN"
-  | "AUTH_INTERNAL_ERROR";
+  | "AUTH_INTERNAL_ERROR"
+  | "AUTHZ_BACKEND_UNAVAILABLE";
 
 export interface AuthErrorResponse {
   error: {

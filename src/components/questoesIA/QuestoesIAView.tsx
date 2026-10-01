@@ -426,7 +426,7 @@ export const QuestoesIAView: React.FC = () => {
       )}
 
       {/* Main Navigation Sub-Tabs */}
-      <div className="border-b border-white/10 flex items-center justify-between gap-2 overflow-x-auto pb-1">
+      <div className="border-b border-slate-200 flex items-center justify-between gap-2 overflow-x-auto pb-1">
         <div className="flex items-center gap-2">
           {[
             { id: "GERAR" as QuestoesIATab, label: "Gerar Questões", icon: Sparkles },
@@ -441,14 +441,14 @@ export const QuestoesIAView: React.FC = () => {
                 onClick={() => setActiveSubTab(tab.id)}
                 className={`px-4 py-3 rounded-t-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap border-b-2 ${
                   isActive
-                    ? "text-white border-blue-500 bg-white/[0.04]"
-                    : "text-zinc-400 border-transparent hover:text-zinc-200 hover:bg-white/[0.02]"
+                    ? "text-slate-900 border-blue-600 bg-blue-50"
+                    : "text-slate-500 border-transparent hover:text-slate-900 hover:bg-slate-50"
                 }`}
               >
-                <TabIcon className={`w-4 h-4 ${isActive ? "text-blue-400" : "text-zinc-400"}`} />
+                <TabIcon className={`w-4 h-4 ${isActive ? "text-blue-600" : "text-slate-400"}`} />
                 <span>{tab.label}</span>
                 {tab.count !== undefined && tab.count > 0 && (
-                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-white/10 text-zinc-300">
+                  <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono bg-slate-100 text-slate-600">
                     {tab.count}
                   </span>
                 )}
@@ -473,11 +473,11 @@ export const QuestoesIAView: React.FC = () => {
                     onClick={() => setActiveSubTab(tab.id)}
                     className={`px-3 py-3 rounded-t-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap border-b-2 ${
                       isActive
-                        ? "text-purple-300 border-purple-500 bg-purple-500/10"
-                        : "text-zinc-400 border-transparent hover:text-purple-200 hover:bg-white/[0.02]"
+                        ? "text-purple-800 border-purple-600 bg-purple-50"
+                        : "text-slate-500 border-transparent hover:text-purple-800 hover:bg-purple-50"
                     }`}
                   >
-                    <TabIcon className={`w-3.5 h-3.5 ${isActive ? "text-purple-400" : "text-zinc-400"}`} />
+                    <TabIcon className={`w-3.5 h-3.5 ${isActive ? "text-purple-700" : "text-slate-400"}`} />
                     <span>{tab.label}</span>
                     {tab.count !== undefined && tab.count > 0 && (
                       <span
@@ -504,7 +504,7 @@ export const QuestoesIAView: React.FC = () => {
           className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors flex items-center gap-1.5 shrink-0 cursor-pointer ${
             showAdvancedTools
               ? "bg-purple-500/20 border-purple-500/40 text-purple-300"
-              : "bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200"
+              : "bg-white border-slate-200 text-slate-600 hover:text-slate-900"
           }`}
           title="Ferramentas avançadas de auditoria clínica e engenharia reversa"
         >

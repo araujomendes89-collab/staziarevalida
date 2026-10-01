@@ -470,7 +470,7 @@ export const ErrorNotebookView: React.FC = () => {
             return (
               <div
                 key={ec.questionId}
-                className={`rounded-2xl border bg-white dark:bg-slate-900 shadow-xs transition-all overflow-hidden border-l-4 ${theme.borderLeft} ${
+                className={`rounded-2xl border bg-white dark:bg-slate-900 shadow-xs transition-all overflow-hidden border-l-2 ${theme.borderLeft} ${
                   isExpanded
                     ? "border-slate-300 dark:border-slate-700"
                     : "border-slate-200/90 dark:border-slate-800 hover:border-slate-300"

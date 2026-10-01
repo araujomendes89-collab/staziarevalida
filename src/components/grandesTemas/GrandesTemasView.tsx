@@ -17,9 +17,23 @@ import {
 } from "lucide-react";
 import { MEDICAL_AREAS_CONFIG, ALL_GRANDES_TEMAS } from "../../data/grandesTemas";
 import { GrandeTema, MedicalAreaId, RecurrenceLevel } from "../../types/grandesTemas";
+import { STAZIAMED_CANONICAL_TOPICS } from "../../types/medicalTaxonomy";
+import { PublishedTopicHeader, PublishedTopicContentVersion } from "../../types/publishedContent";
+import { StudentTopicContentClientService } from "../../services/studentTopicContentClientService";
 import { ThemeInteractiveLesson } from "./ThemeInteractiveLesson";
+import { StudentPublishedTopicRenderer } from "./StudentPublishedTopicRenderer";
 import { useApp } from "../../context/AppContext";
 import { getAreaVisualTheme } from "../../config/areaThemes";
+
+export function resolveCanonicalTopicId(tema: GrandeTema): string {
+  const normTitle = tema.title.toLowerCase();
+  const direct = STAZIAMED_CANONICAL_TOPICS.find((t) => {
+    const tName = t.name.toLowerCase();
+    return normTitle.includes(tName) || tName.includes(normTitle) || t.synonyms.some((s) => normTitle.includes(s.toLowerCase()));
+  });
+  if (direct) return direct.id;
+  return `top_${tema.id.replace(/-/g, "_")}`;
+}
 
 export const GrandesTemasView: React.FC = () => {
   const { setActiveTab, todayMission, knowledgeGraph } = useApp();
@@ -28,6 +42,21 @@ export const GrandesTemasView: React.FC = () => {
   const [recurrenceFilter, setRecurrenceFilter] = useState<RecurrenceLevel | "todas">("todas");
   const [onlyProtocolUpdates, setOnlyProtocolUpdates] = useState(false);
   const [activeTheme, setActiveTheme] = useState<GrandeTema | null>(null);
+  const [publishedHeaders, setPublishedHeaders] = useState<Map<string, PublishedTopicHeader>>(new Map());
+  const [activePublishedTopic, setActivePublishedTopic] = useState<{
+    header: PublishedTopicHeader;
+    version: PublishedTopicContentVersion;
+  } | null>(null);
+  const [isLoadingTopic, setIsLoadingTopic] = useState(false);
+
+  // Load published topic headers on mount
+  React.useEffect(() => {
+    async function loadPublishedCatalog() {
+      const headers = await StudentTopicContentClientService.getAllPublishedTopicHeaders();
+      setPublishedHeaders(headers);
+    }
+    loadPublishedCatalog();
+  }, []);
 
   // In-progress / Recommended study theme
   const inProgressTheme = useMemo(() => {
@@ -106,7 +135,39 @@ export const GrandesTemasView: React.FC = () => {
     setActiveTab("questions");
   };
 
-  // If a theme is opened for full interactive lesson
+  const handleSelectTheme = async (tema: GrandeTema) => {
+    const canonicalId = resolveCanonicalTopicId(tema);
+    setIsLoadingTopic(true);
+    try {
+      const publishedResult = await StudentTopicContentClientService.getPublishedTopic(canonicalId);
+      if (publishedResult.status === "READY" && publishedResult.header && publishedResult.version) {
+        setActivePublishedTopic({
+          header: publishedResult.header,
+          version: publishedResult.version,
+        });
+        setIsLoadingTopic(false);
+        return;
+      }
+    } catch (err) {
+      console.warn("Published content load fallback:", err);
+    }
+    setIsLoadingTopic(false);
+    setActiveTheme(tema);
+  };
+
+  // If a published topic is opened
+  if (activePublishedTopic) {
+    return (
+      <StudentPublishedTopicRenderer
+        header={activePublishedTopic.header}
+        version={activePublishedTopic.version}
+        onBack={() => setActivePublishedTopic(null)}
+        onOpenQuestions={handleOpenQuestions}
+      />
+    );
+  }
+
+  // If a theme is opened for full interactive lesson (fallback)
   if (activeTheme) {
     return (
       <ThemeInteractiveLesson
@@ -297,11 +358,14 @@ export const GrandesTemasView: React.FC = () => {
             {filteredThemes.map((tema) => {
               const AreaIcon = getAreaIcon(tema.areaId);
               const areaTheme = getAreaVisualTheme(tema.areaId);
+              const canonicalId = resolveCanonicalTopicId(tema);
+              const publishedHeader = publishedHeaders.get(canonicalId);
+              const isPublished = Boolean(publishedHeader && publishedHeader.publicationStatus === "PUBLISHED");
 
               return (
                 <div
                   key={tema.id}
-                  onClick={() => setActiveTheme(tema)}
+                  onClick={() => handleSelectTheme(tema)}
                   className={`bg-white hover:bg-slate-50/80 border border-slate-200/80 ${areaTheme.borderLeft} border-l-[3.5px] rounded-2xl p-4.5 cursor-pointer transition flex flex-col justify-between group shadow-2xs hover:shadow-xs space-y-3`}
                 >
                   <div className="space-y-2">
@@ -312,16 +376,24 @@ export const GrandesTemasView: React.FC = () => {
                         <span>{areaTheme.name}</span>
                       </span>
 
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200/60 flex items-center gap-1">
-                        <Flame className="w-3 h-3 text-amber-500" />
-                        <span>
-                          {tema.recurrence === "altissima"
-                            ? "Altíssima"
-                            : tema.recurrence === "alta"
-                            ? "Alta"
-                            : "Média"}
+                      <div className="flex items-center gap-1.5">
+                        {isPublished && (
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-teal-500/15 text-teal-700 border border-teal-500/30 flex items-center gap-1">
+                            <ShieldCheck className="w-3 h-3 text-teal-600" />
+                            <span>v{publishedHeader?.currentContentVersion}</span>
+                          </span>
+                        )}
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200/60 flex items-center gap-1">
+                          <Flame className="w-3 h-3 text-amber-500" />
+                          <span>
+                            {tema.recurrence === "altissima"
+                              ? "Altíssima"
+                              : tema.recurrence === "alta"
+                              ? "Alta"
+                              : "Média"}
+                          </span>
                         </span>
-                      </span>
+                      </div>
                     </div>
 
                     {/* Theme Title */}
