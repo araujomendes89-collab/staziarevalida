@@ -11,7 +11,7 @@ export default defineConfig({
     include: ['src/__tests__/**/[!._]*.test.{ts,tsx}'],
     exclude: [
       '**/._*',
-      'test_firestore_rules.ts',
+      'scripts/ops/test_firestore_rules.ts',
       'node_modules/**',
       'dist/**',
     ],

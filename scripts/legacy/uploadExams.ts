@@ -1,6 +1,6 @@
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
-import { revalida2025_2Part1 } from './src/data/revalida2025_2Part1';
+import { revalida2025_2Part1 } from '../../src/data/revalida2025_2Part1';
 
 async function run() {
   console.log("Initializing Firebase Admin with Application Default Credentials...");
