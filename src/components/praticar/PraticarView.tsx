@@ -10,9 +10,9 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
-import { QuestionsView } from "../questions/QuestionsView";
-import { SimuladosHubView } from "../simulados/SimuladosHubView";
-import { QuestoesIAView } from "../questoesIA/QuestoesIAView";
+import { QuestionsView } from "./QuestionsView";
+import { SimuladosHubView } from "./SimuladosHubView";
+import { QuestoesIAView } from "./QuestoesIAView";
 import { ProvasCompletasView } from "./ProvasCompletasView";
 import { UnifiedOsceView } from "../osce/UnifiedOsceView";
 

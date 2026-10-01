@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { ActiveSessionResolutionView } from "../components/questions/ActiveSessionResolutionView";
+import { ActiveSessionResolutionView } from "../components/praticar/ActiveSessionResolutionView";
 import { TEST_QUESTIONS_COLLECTION } from "./testFixtures";
 import { ActiveTrainingSession, Question } from "../types";
 

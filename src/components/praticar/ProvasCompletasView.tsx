@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useApp } from "../../context/AppContext";
-import { FullExamSelectorView } from "../questions/FullExamSelectorView";
-import { InepPrintableExam } from "../questions/InepPrintableExam";
-import { ActiveSessionResolutionView } from "../questions/ActiveSessionResolutionView";
-import { SessionResultsView } from "../questions/SessionResultsView";
+import { FullExamSelectorView } from "./FullExamSelectorView";
+import { InepPrintableExam } from "./InepPrintableExam";
+import { ActiveSessionResolutionView } from "./ActiveSessionResolutionView";
+import { SessionResultsView } from "./SessionResultsView";
 import { REVALIDA_EDITIONS_INVENTORY } from "../../data/revalidaInventoryData";
 import { InventoryValidatorService } from "../../services/inventoryValidatorService";
 import { ActiveTrainingSession, SessionAnswerState } from "../../types";

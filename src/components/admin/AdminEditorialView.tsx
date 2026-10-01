@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { AdminQualityRiskPanel } from "./AdminQualityRiskPanel";
-import { InventoryAuditView } from "../questions/InventoryAuditView";
+import { InventoryAuditView } from "../praticar/InventoryAuditView";
 import { FirebaseService } from "../../services/firebaseService";
 import { FIRESTORE_DATABASE_ID, FIRESTORE_REGION } from "../../lib/firebase";
 import { SEED_OSCE_STATIONS } from "../../data/osceStationsData";
