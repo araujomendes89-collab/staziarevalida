@@ -156,44 +156,6 @@ export const SEED_GUIDELINE_WATCH_ALERTS: GuidelineWatchAlert[] = [
   }
 ];
 
-export const SEED_GUIDELINE_AUDIT_LOGS: GuidelineAuditLog[] = [
-  {
-    id: "log-001",
-    questionId: "q-cm-03-has",
-    questionCode: "REV-2022.1-CM-34",
-    previousStatus: "CURRENT",
-    newStatus: "OFFICIAL_ANSWER_HISTORICAL",
-    guidelineTitle: "Diretrizes Brasileiras de Hipertensão Arterial — 2026 (SBC)",
-    changedBy: "Dr. Rodrigo Valente Mendes (CRM-SP 184.920 - Cardiologia)",
-    approvedBy: "Dra. Carolina Albuquerque (Conselho Editorial StaziaMed)",
-    timestamp: "2026-05-14T10:30:00Z",
-    reason: "Gabarito histórico da prova de 2022 considerou monoterapia com IECA (Alternativa B), porém sob a diretriz de 2026 a conduta indicada é combinação fixa IECA + BCC (Alternativa C).",
-    impactLevel: "ALTO"
-  },
-  {
-    id: "log-002",
-    questionId: "q-ped-02-vip",
-    questionCode: "REV-2021-PED-19",
-    previousStatus: "CURRENT",
-    newStatus: "OUTDATED",
-    guidelineTitle: "Calendário Nacional de Vacinação do SUS — PNI 2026",
-    changedBy: "Dra. Mariana Rios (CRM-RJ 142.110 - Pediatria)",
-    approvedBy: "Dr. Rodrigo Valente Mendes (Conselho Editorial StaziaMed)",
-    timestamp: "2026-02-01T14:15:00Z",
-    reason: "A VOP foi descontinuada no Brasil em 2024/2025; o esquema atual é 100% VIP injetável. Gabarito histórico mantido com alerta clínico.",
-    impactLevel: "CRITICO"
-  },
-  {
-    id: "log-003",
-    questionId: "q-cm-04-dm",
-    questionCode: "REV-2023.1-CM-41",
-    previousStatus: "REVIEW_REQUIRED",
-    newStatus: "UPDATED_GUIDELINE",
-    guidelineTitle: "Diretrizes SBD 2026: Nefroproteção no DM2",
-    changedBy: "Dr. Lucas Fontes (CRM-MG 98.740 - Endocrinologia)",
-    approvedBy: "Dra. Carolina Albuquerque (Conselho Editorial StaziaMed)",
-    timestamp: "2026-03-10T16:45:00Z",
-    reason: "Adicionada nota de atualização sobre indicação de Dapagliflozina/Empagliflozina independente do controle glicêmico na presença de albuminúria > 30 mg/g.",
-    impactLevel: "MEDIO"
-  }
-];
+// Começa vazio: o histórico só deve conter revisões reais, registradas na tela
+// de Diretrizes por quem homologou (nome e CRM informados no formulário).
+export const SEED_GUIDELINE_AUDIT_LOGS: GuidelineAuditLog[] = [];

@@ -78,7 +78,7 @@ export const GuidelineWatchView: React.FC = () => {
   const [reviewJustification, setReviewJustification] = useState<string>("");
   const [selectedNewStatus, setSelectedNewStatus] = useState<ContentStatus>("OFFICIAL_ANSWER_HISTORICAL");
   const [selectedImpact, setSelectedImpact] = useState<GuidelineImpactLevel>("ALTO");
-  const [reviewerName, setReviewerName] = useState<string>("Dr. Rodrigo Valente Mendes (CRM-SP 184.920)");
+  const [reviewerName, setReviewerName] = useState<string>("");
 
   // 1. Loading boundary: wait while auth is initializing or profile is in-flight/unresolved
   if (
@@ -187,7 +187,7 @@ export const GuidelineWatchView: React.FC = () => {
   };
 
   const handleCompleteReview = () => {
-    if (!reviewingAlert) return;
+    if (!reviewingAlert || !reviewerName.trim()) return;
     const targetQ = updatedQuestions[0] || questions[0];
     if (!targetQ) return;
 
@@ -197,8 +197,9 @@ export const GuidelineWatchView: React.FC = () => {
       previousStatus: targetQ.guidelineUpdate?.status || "CURRENT",
       newStatus: selectedNewStatus,
       guidelineTitle: reviewingAlert.guidelineTitle,
-      changedBy: reviewerName,
-      approvedBy: "Conselho Editorial StaziaMed Revalida",
+      changedBy: reviewerName.trim(),
+      // Quem homologa nesta tela é quem aprova; não atribuir a um conselho fictício.
+      approvedBy: reviewerName.trim(),
       reason: reviewJustification || "Revisão e homologação de diretriz médica atualizada.",
       impactLevel: selectedImpact,
     });
@@ -651,6 +652,11 @@ export const GuidelineWatchView: React.FC = () => {
           </div>
 
           <div className="space-y-3">
+            {guidelineAuditLogs.length === 0 && (
+              <p className="p-6 rounded-2xl border border-dashed border-white/10 text-center text-xs text-white/50">
+                Nenhuma revisão registrada ainda. As homologações feitas nesta tela aparecem aqui.
+              </p>
+            )}
             {guidelineAuditLogs.map((log) => (
               <div
                 key={log.id}
@@ -992,6 +998,7 @@ export const GuidelineWatchView: React.FC = () => {
                 <input
                   type="text"
                   value={reviewerName}
+                  placeholder="Nome completo e CRM do médico responsável"
                   onChange={(e) => setReviewerName(e.target.value)}
                   className="w-full p-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white"
                 />
@@ -1007,7 +1014,9 @@ export const GuidelineWatchView: React.FC = () => {
               </button>
               <button
                 onClick={handleCompleteReview}
-                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)]"
+                disabled={!reviewerName.trim()}
+                title={reviewerName.trim() ? undefined : "Informe o médico responsável para homologar"}
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all shadow-[0_0_15px_rgba(16,185,129,0.4)] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-emerald-600"
               >
                 Homologar Parecer e Gravar no Log de Auditoria
               </button>
