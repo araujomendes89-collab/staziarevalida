@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
-import { PricingPage } from "../components/pricing/PricingPage";
-import { COMMERCIAL_PLANS, savePurchaseIntent, getPurchaseIntent, clearPurchaseIntent } from "../components/pricing/pricingTypes";
+import { PricingPage } from "../components/billing/PricingPage";
+import { COMMERCIAL_PLANS, savePurchaseIntent, getPurchaseIntent, clearPurchaseIntent } from "../components/billing/pricingTypes";
 
 // Mock AppContext
 const mockSetActiveTab = vi.fn();

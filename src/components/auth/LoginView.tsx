@@ -16,7 +16,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
 import { StaziaMedLogo } from "../brand/StaziaMedLogo";
-import { getPurchaseIntent } from "../pricing/pricingTypes";
+import { getPurchaseIntent } from "../billing/pricingTypes";
 
 type AuthMode = "ENTRY" | "LOGIN" | "SIGNUP" | "FORGOT_PASSWORD";
 

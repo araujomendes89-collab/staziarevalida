@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { ShieldCheck, Lock, ArrowLeft, ArrowRight, Loader2, AlertCircle, CheckCircle2, Crown, Gem, Sparkles } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { useEntitlements } from "../../hooks/useEntitlements";
-import { COMMERCIAL_PLANS, BillingCycle, getPurchaseIntent, clearPurchaseIntent } from "../pricing/pricingTypes";
+import { COMMERCIAL_PLANS, BillingCycle, getPurchaseIntent, clearPurchaseIntent } from "./pricingTypes";
 import { BillingClient } from "../../services/billingClient";
 import { StaziaMedLogo } from "../brand/StaziaMedLogo";
 

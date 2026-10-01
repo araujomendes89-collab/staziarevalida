@@ -1,5 +1,5 @@
 import { auth } from "../lib/firebase";
-import { BillingCycle } from "../components/pricing/pricingTypes";
+import { BillingCycle } from "../components/billing/pricingTypes";
 
 export interface CheckoutResult {
   paymentId: string;

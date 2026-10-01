@@ -13,7 +13,7 @@ import { DataExportView } from "./components/export/DataExportView";
 import { StudyForMeModal } from "./components/modals/StudyForMeModal";
 import { WhatIfModal } from "./components/modals/WhatIfModal";
 import { PricingModal } from "./components/modals/PricingModal";
-import { PricingPage } from "./components/pricing/PricingPage";
+import { PricingPage } from "./components/billing/PricingPage";
 import { ExamConfigModal } from "./components/modals/ExamConfigModal";
 import { OfficialMedicalSearchView } from "./components/materiais/OfficialMedicalSearchView";
 import { OfficialSearchModal } from "./components/materiais/OfficialSearchModal";
