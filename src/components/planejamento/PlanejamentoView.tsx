@@ -8,7 +8,7 @@ import {
   CalendarCheck,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
-import { AdaptiveCalendarView } from "../calendar/AdaptiveCalendarView";
+import { AdaptiveCalendarView } from "./AdaptiveCalendarView";
 import { WeeklyPlanView } from "./WeeklyPlanView";
 import { RoadToExamView } from "./RoadToExamView";
 

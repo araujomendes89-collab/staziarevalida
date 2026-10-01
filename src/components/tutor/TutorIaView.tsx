@@ -10,7 +10,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
-import { VoiceTutorView } from "../voice/VoiceTutorView";
+import { VoiceTutorView } from "./VoiceTutorView";
 
 export type TutorIaSubTab = "CONVERSAR" | "TRANSITO" | "HISTORICO";
 
