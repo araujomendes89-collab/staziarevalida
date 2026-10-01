@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useApp } from "../../context/AppContext";
-import { SpacedReviewView } from "../review/SpacedReviewView";
-import { ErrorNotebookView } from "../errors/ErrorNotebookView";
+import { SpacedReviewView } from "./SpacedReviewView";
+import { ErrorNotebookView } from "./ErrorNotebookView";
 import { ProtocolUpdatesHubView } from "../protocols/ProtocolUpdatesHubView";
 import { GuidelineWatchView } from "../guidelines/GuidelineWatchView";
-import { FlashAudioPlayerView } from "../review/FlashAudioPlayerView";
+import { FlashAudioPlayerView } from "./FlashAudioPlayerView";
 
 export type RevisarSubTab =
   | "FLASHCARDS"

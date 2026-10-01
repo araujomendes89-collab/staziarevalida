@@ -9,7 +9,7 @@ import {
   Flame,
 } from "lucide-react";
 import { SpacedReviewView } from "./SpacedReviewView";
-import { ErrorNotebookView } from "../errors/ErrorNotebookView";
+import { ErrorNotebookView } from "./ErrorNotebookView";
 import { GuidelineWatchView } from "../guidelines/GuidelineWatchView";
 import { FlashAudioPlayerView } from "./FlashAudioPlayerView";
 import { ProtocolUpdatesHubView } from "../protocols/ProtocolUpdatesHubView";

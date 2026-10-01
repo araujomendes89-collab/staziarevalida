@@ -7,7 +7,7 @@ import {
   sortErrorCases,
   getQuestionAnswerProvenance,
 } from "../services/errorNotebookService";
-import { ErrorNotebookView } from "../components/errors/ErrorNotebookView";
+import { ErrorNotebookView } from "../components/revisar/ErrorNotebookView";
 import { Question, QuestionAttempt, MedicalArea } from "../types";
 import * as AppContextModule from "../context/AppContext";
 

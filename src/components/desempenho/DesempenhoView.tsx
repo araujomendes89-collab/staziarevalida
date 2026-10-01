@@ -18,8 +18,8 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
-import { UnifiedProgressView } from "../progress/UnifiedProgressView";
-import { KnowledgeGraphView } from "../matrix/KnowledgeGraphView";
+import { UnifiedProgressView } from "./UnifiedProgressView";
+import { KnowledgeGraphView } from "./KnowledgeGraphView";
 import { InepPatternEngineView } from "../patternEngine/InepPatternEngineView";
 import { getQuestionTimingMetrics } from "../../services/questionTimingService";
 import { formatMedicalArea } from "../../utils/formatters";
