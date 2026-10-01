@@ -194,7 +194,8 @@ describe("Terms of Use Legal Page (/termos-de-uso)", () => {
       </MemoryRouter>
     );
 
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    // "Lembrar de mim" is allowed; a terms-acceptance checkbox is not
+    expect(screen.queryByRole("checkbox", { name: /termos|aceito|concordo|privacidade/i })).not.toBeInTheDocument();
     expect(screen.queryByText(/Li e aceito os termos/i)).not.toBeInTheDocument();
   });
 });

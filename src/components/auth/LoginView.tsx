@@ -1,18 +1,11 @@
-import React, { useState } from "react";
-import {
-  Eye,
-  EyeOff,
-  ArrowRight,
-  ArrowLeft,
-  Loader2,
-  AlertCircle,
-  CheckCircle2,
-} from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useApp } from "../../context/AppContext";
-import { StaziaMedLogo } from "../brand/StaziaMedLogo";
+import { setAuthRememberMe } from "../../lib/firebase";
 import { getPurchaseIntent } from "../billing/pricingTypes";
+import "./steaAuth.css";
+
+// Visual: STEA Code Drop #002 (sign in / sign up), ver steaAuth.css.
 
 type AuthMode = "LOGIN" | "SIGNUP" | "FORGOT_PASSWORD";
 
@@ -20,38 +13,41 @@ type FieldErrors = {
   name?: string;
   email?: string;
   password?: string;
-  confirmPassword?: string;
 };
 
-// Curva e duração do deslizamento do painel (mesmas do STEA Code Drop #002).
-const SLIDE_EASE = [0.22, 1, 0.36, 1] as const;
-const SLIDE_DURATION = 0.65;
+const EyeOpenIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+    <path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z" />
+    <circle cx="12" cy="12" r="2.5" />
+  </svg>
+);
 
-const INPUT_BASE =
-  "w-full min-h-[44px] px-3.5 rounded-[11px] border text-sm outline-none transition-all bg-[#FAFBFC] text-slate-900 placeholder:text-slate-400 hover:border-slate-300 focus:bg-white focus:border-teal-600/70 focus:ring-4 focus:ring-teal-500/10 disabled:opacity-60";
-
-const HERO_BACKGROUND =
-  "radial-gradient(circle at 25% 20%, rgba(0,210,180,.28), transparent 42%), " +
-  "radial-gradient(circle at 85% 85%, rgba(2,132,199,.22), transparent 38%), " +
-  "linear-gradient(160deg, #0A1C3E 0%, #0E2856 55%, #0B3552 100%)";
+const EyeClosedIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+    <path d="M3 3l18 18" />
+    <path d="M10.6 5.1A10.5 10.5 0 0 1 12 5c6.1 0 9.5 7 9.5 7a17.7 17.7 0 0 1-3.1 3.8" />
+    <path d="M6.2 6.3C3.8 8 2.5 12 2.5 12s3.4 6 9.5 6c1.5 0 2.8-.3 4-.8" />
+    <path d="M9.9 9.9a2.8 2.8 0 0 0 4.2 4.2" />
+  </svg>
+);
 
 const GoogleIcon = () => (
-  <svg className="w-[18px] h-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden="true">
+  <svg viewBox="0 0 24 24" aria-hidden="true">
     <path
       fill="#4285F4"
-      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+      d="M21.35 12.23c0-.74-.07-1.45-.22-2.12H12v4.01h5.24a4.48 4.48 0 0 1-1.95 2.94v2.44h3.15c1.84-1.69 2.91-4.18 2.91-7.27Z"
     />
     <path
       fill="#34A853"
-      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+      d="M12 21.99c2.63 0 4.84-.87 6.45-2.49l-3.15-2.44c-.87.58-1.98.93-3.3.93-2.54 0-4.69-1.72-5.46-4.03H3.29v2.52A9.75 9.75 0 0 0 12 21.99Z"
     />
     <path
       fill="#FBBC05"
-      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+      d="M6.54 13.96A5.86 5.86 0 0 1 6.23 12c0-.68.12-1.34.31-1.96V7.52H3.29A9.75 9.75 0 0 0 2.25 12c0 1.57.38 3.06 1.04 4.48l3.25-2.52Z"
     />
     <path
       fill="#EA4335"
-      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+      d="M12 6.01c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.84 3.02 14.63 2.01 12 2.01a9.75 9.75 0 0 0-8.71 5.51l3.25 2.52C7.31 7.73 9.46 6.01 12 6.01Z"
     />
   </svg>
 );
@@ -60,50 +56,81 @@ interface FieldProps {
   id: string;
   label: string;
   error?: string;
-  labelAction?: React.ReactNode;
+  className?: string;
   children: React.ReactNode;
 }
 
-const Field: React.FC<FieldProps> = ({ id, label, error, labelAction, children }) => (
-  <div className="space-y-1.5">
-    <div className="flex items-center justify-between gap-2">
-      <label htmlFor={id} className="block text-xs font-bold text-slate-700">
-        {label}
-      </label>
-      {labelAction}
-    </div>
+const Field: React.FC<FieldProps> = ({ id, label, error, className, children }) => (
+  <div className={className ? `field ${className}` : "field"}>
+    <label htmlFor={id}>{label}</label>
     {children}
-    {error && <p className="text-[11px] text-rose-600 font-medium pl-1">{error}</p>}
+    {error && (
+      <p className="field-error" id={`${id}-error`}>
+        {error}
+      </p>
+    )}
   </div>
 );
 
-interface PasswordInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {
+interface PasswordFieldProps {
+  id: string;
+  label: string;
+  name: string;
+  autoComplete: string;
+  value: string;
+  error?: string;
+  disabled: boolean;
   visible: boolean;
   onToggle: () => void;
-  hasError: boolean;
+  onChange: (value: string) => void;
 }
 
-const PasswordInput: React.FC<PasswordInputProps> = ({ visible, onToggle, hasError, ...inputProps }) => (
-  <div className="relative">
-    <input
-      {...inputProps}
-      type={visible ? "text" : "password"}
-      className={`${INPUT_BASE} pr-12 ${hasError ? "border-rose-500" : "border-[#E7EAF0]"}`}
-    />
-    <button
-      type="button"
-      onClick={onToggle}
-      className="absolute top-1/2 right-1.5 -translate-y-1/2 w-[34px] h-[34px] grid place-items-center rounded-[9px] text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
-      aria-label={visible ? "Ocultar senha" : "Exibir senha"}
-    >
-      {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-    </button>
+const PasswordField: React.FC<PasswordFieldProps> = ({
+  id,
+  label,
+  name,
+  autoComplete,
+  value,
+  error,
+  disabled,
+  visible,
+  onToggle,
+  onChange,
+}) => (
+  <Field id={id} label={label} error={error} className="password-field">
+    <div className="input-wrap">
+      <input
+        id={id}
+        name={name}
+        type={visible ? "text" : "password"}
+        autoComplete={autoComplete}
+        placeholder="••••••••"
+        value={value}
+        disabled={disabled}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <button
+        className="eye"
+        type="button"
+        onClick={onToggle}
+        aria-label={visible ? "Ocultar senha" : "Exibir senha"}
+      >
+        {visible ? <EyeClosedIcon /> : <EyeOpenIcon />}
+      </button>
+    </div>
+  </Field>
+);
+
+const FormMessage: React.FC<{ error?: string | null; success?: string | null }> = ({ error, success }) => (
+  <div className={error ? "message is-error" : "message"} role={error ? "alert" : "status"} aria-live="polite">
+    {error || success || ""}
   </div>
 );
 
 export const LoginView: React.FC = () => {
   const navigate = useNavigate();
-  const prefersReducedMotion = useReducedMotion();
   const {
     signInWithGoogle,
     signInWithEmail,
@@ -116,9 +143,9 @@ export const LoginView: React.FC = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  // Marcado por padrão para manter o comportamento anterior (sessão persistente).
+  const [rememberMe, setRememberMe] = useState(true);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingGoogle, setIsLoadingGoogle] = useState(false);
@@ -128,7 +155,20 @@ export const LoginView: React.FC = () => {
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const isSubmitting = isLoading || isLoadingGoogle;
-  const isSignup = mode === "SIGNUP";
+  const isRegister = mode === "SIGNUP";
+
+  // Firebase já começa com sessão persistente; só troca quando a escolha muda.
+  // Aplicado fora do clique para não atrasar o popup do Google (bloqueio de pop-up).
+  const appliedRememberRef = useRef(true);
+  const persistenceRef = useRef<Promise<void>>(Promise.resolve());
+  useEffect(() => {
+    const desired = isRegister ? true : rememberMe;
+    if (desired === appliedRememberRef.current) return;
+    appliedRememberRef.current = desired;
+    persistenceRef.current = setAuthRememberMe(desired).catch((err) => {
+      console.warn("[LoginView] Could not set auth persistence:", err);
+    });
+  }, [isRegister, rememberMe]);
 
   const getPortugueseAuthError = (errorCode: string): string => {
     switch (errorCode) {
@@ -177,14 +217,6 @@ export const LoginView: React.FC = () => {
       } else if (password.length < 6) {
         errors.password = "A senha deve conter no mínimo 6 caracteres.";
       }
-
-      if (mode === "SIGNUP") {
-        if (!confirmPassword) {
-          errors.confirmPassword = "Confirme sua senha.";
-        } else if (password !== confirmPassword) {
-          errors.confirmPassword = "As senhas não coincidem.";
-        }
-      }
     }
 
     setFieldErrors(errors);
@@ -230,9 +262,11 @@ export const LoginView: React.FC = () => {
 
     try {
       if (mode === "LOGIN") {
+        await persistenceRef.current;
         await signInWithEmail(email.trim(), password);
         goToAppAfterAuth();
       } else if (mode === "SIGNUP") {
+        await persistenceRef.current;
         const displayName = name.trim() || undefined;
         await signUpWithEmail(email.trim(), password, displayName);
         goToAppAfterAuth();
@@ -264,333 +298,222 @@ export const LoginView: React.FC = () => {
     if (errorMessage) setErrorMessage(null);
   };
 
-  const slideTransition = prefersReducedMotion
-    ? { duration: 0 }
-    : { layout: { duration: SLIDE_DURATION, ease: SLIDE_EASE } };
-
-  const heroContent = isSignup
-    ? {
-        title: "Já tem uma conta?",
-        text: "Acesse sua conta e retome seus estudos de onde parou.",
-        action: "Já tenho uma conta",
-        target: "LOGIN" as AuthMode,
-      }
-    : {
-        title: "Novo por aqui?",
-        text: "Questões oficiais comentadas, simulados e revisão inteligente para a sua aprovação no Revalida.",
-        action: "Criar uma nova conta",
-        target: "SIGNUP" as AuthMode,
-      };
-
-  const headings: Record<AuthMode, { title: string; subtitle: string }> = {
-    LOGIN: {
-      title: "Bem-vindo de volta.",
-      subtitle: "Entre para continuar sua preparação.",
-    },
-    SIGNUP: {
-      title: "Pronto para começar sua preparação?",
-      subtitle: "Crie sua conta e organize seus estudos para o Revalida.",
-    },
-    FORGOT_PASSWORD: {
-      title: "Recuperar senha",
-      subtitle: "Informe seu e-mail para receber as instruções de recuperação.",
-    },
-  };
-
-  const emailInput = (
-    <Field id="auth-email-input" label={mode === "FORGOT_PASSWORD" ? "E-mail cadastrado" : "E-mail"} error={fieldErrors.email}>
+  const renderEmailField = (id: string, label: string, active: boolean) => (
+    <Field id={id} label={label} error={active ? fieldErrors.email : undefined}>
       <input
-        id="auth-email-input"
+        id={id}
+        name="email"
         type="email"
         inputMode="email"
-        name="email"
         autoComplete="email"
+        placeholder="voce@exemplo.com"
         value={email}
         disabled={isSubmitting}
+        aria-invalid={active && Boolean(fieldErrors.email)}
+        aria-describedby={active && fieldErrors.email ? `${id}-error` : undefined}
         onChange={(e) => {
           setEmail(e.target.value);
           clearFieldError("email");
         }}
-        placeholder="seu@email.com.br"
-        className={`${INPUT_BASE} ${fieldErrors.email ? "border-rose-500" : "border-[#E7EAF0]"}`}
       />
     </Field>
   );
 
-  const submitLabel: Record<AuthMode, { idle: string; busy: string; id: string }> = {
-    LOGIN: { idle: "Entrar", busy: "Entrando...", id: "btn-auth-submit" },
-    SIGNUP: { idle: "Criar minha conta", busy: "Criando conta...", id: "btn-signup-submit" },
-    FORGOT_PASSWORD: { idle: "Enviar instruções", busy: "Enviando...", id: "btn-forgot-submit" },
-  };
+  const renderGoogleButton = (label: string) => (
+    <div className="socials">
+      <button
+        type="button"
+        className="social-btn"
+        disabled={isSubmitting}
+        onClick={handleGoogleSubmit}
+      >
+        <GoogleIcon />
+        <span>{isLoadingGoogle ? "Continuando..." : label}</span>
+      </button>
+    </div>
+  );
+
+  const renderTerms = (intro: string) => (
+    <p className="terms">
+      {intro}{" "}
+      <button type="button" className="link" onClick={() => navigate("/termos-de-uso")}>
+        Termos de Uso
+      </button>{" "}
+      e a{" "}
+      <button type="button" className="link" onClick={() => navigate("/politica-de-privacidade")}>
+        Política de Privacidade
+      </button>
+      .
+    </p>
+  );
+
+  const loginActive = !isRegister;
+  const loginMessage = loginActive ? <FormMessage error={errorMessage} success={successMessage} /> : <FormMessage />;
+  const registerMessage = isRegister ? <FormMessage error={errorMessage} /> : <FormMessage />;
 
   return (
-    <div className="min-h-[100dvh] w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 font-sans relative overflow-hidden bg-[#F4F6F9] text-slate-800 selection:bg-teal-500/30 selection:text-teal-900">
-      {/* Ambient background glows */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        <div className="absolute -top-24 -left-24 w-[520px] h-[420px] bg-[#00D2B4]/10 rounded-full blur-3xl" />
-        <div className="absolute -bottom-24 -right-24 w-[480px] h-[380px] bg-[#0284C7]/8 rounded-full blur-3xl" />
-      </div>
+    <div className="stea-auth">
+      <main className={isRegister ? "card register" : "card"} data-mode={isRegister ? "register" : "login"}>
+        <div className="card-bg" aria-hidden="true" />
 
-      {/* Dual-panel auth card */}
-      <div className="relative z-10 w-full max-w-[920px] md:min-h-[620px] flex flex-col md:flex-row rounded-[24px] bg-white border-[6px] sm:border-8 border-white shadow-[0_30px_90px_rgba(8,11,20,0.14),0_8px_30px_rgba(10,28,62,0.08)] overflow-hidden">
-        {/* FORM PANEL */}
-        <motion.section
-          layout="position"
-          transition={slideTransition}
-          aria-label={isSignup ? "Criar conta" : mode === "FORGOT_PASSWORD" ? "Recuperar senha" : "Entrar"}
-          className={`md:w-1/2 flex items-center justify-center px-5 py-8 sm:px-10 sm:py-10 ${
-            isSignup ? "md:order-2" : "md:order-1"
-          }`}
-        >
-          <motion.div
-            key={mode}
-            initial={prefersReducedMotion ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35, delay: prefersReducedMotion ? 0 : 0.15, ease: SLIDE_EASE }}
-            className="w-full max-w-[340px]"
-          >
-            {/* Box sized to the square logo PNG; negative margin offsets its built-in padding */}
-            <div className="w-24 sm:w-28 -ml-3 -mt-3 mb-3">
-              <StaziaMedLogo layout="vertical" size="sm" />
-            </div>
+        {/* REGISTER HERO */}
+        <section className="hero register" aria-label="Já tenho conta" inert={!isRegister} aria-hidden={!isRegister}>
+          <h2>Já tem conta?</h2>
+          <p>Entre para revisar sua conta e continuar sua jornada.</p>
+          <button type="button" className="switch" onClick={() => switchMode("LOGIN")}>
+            Entrar
+          </button>
+        </section>
 
-            <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-[-0.04em] leading-tight text-[#0A1C3E]">
-              {headings[mode].title}
-            </h1>
-            <p className="mt-1.5 mb-5 text-xs sm:text-[13px] leading-relaxed text-slate-500">
-              {headings[mode].subtitle}
-            </p>
+        {/* REGISTER FORM */}
+        <section className="form register" aria-label="Criar conta" inert={!isRegister} aria-hidden={!isRegister}>
+          <div className="form-inner">
+            <h1>Criar conta</h1>
+            <p className="subtitle">Crie sua conta e comece sua jornada.</p>
 
-            {errorMessage && (
-              <div
-                role="alert"
-                aria-live="polite"
-                className="w-full mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2.5 text-left"
-              >
-                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                <span className="flex-1 font-medium">{errorMessage}</span>
-              </div>
-            )}
+            <form onSubmit={handleEmailSubmit} noValidate>
+              <Field id="registerName" label="Nome completo" error={isRegister ? fieldErrors.name : undefined}>
+                <input
+                  id="registerName"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  placeholder="Seu nome"
+                  value={name}
+                  disabled={isSubmitting}
+                  aria-invalid={isRegister && Boolean(fieldErrors.name)}
+                  aria-describedby={isRegister && fieldErrors.name ? "registerName-error" : undefined}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    clearFieldError("name");
+                  }}
+                />
+              </Field>
 
-            {successMessage && (
-              <div
-                role="status"
-                aria-live="polite"
-                className="w-full mb-4 p-3 rounded-xl bg-teal-50 border border-teal-200 text-xs text-teal-800 flex items-center gap-2.5 text-left"
-              >
-                <CheckCircle2 className="w-4 h-4 text-teal-600 shrink-0" />
-                <span className="flex-1 font-medium">{successMessage}</span>
-              </div>
-            )}
+              {renderEmailField("registerEmail", "E-mail", isRegister)}
 
-            <form onSubmit={handleEmailSubmit} noValidate className="w-full space-y-3 text-left">
-              {isSignup && (
-                <Field id="auth-name-input" label="Nome completo" error={fieldErrors.name}>
-                  <input
-                    id="auth-name-input"
-                    type="text"
-                    name="name"
-                    autoComplete="name"
-                    value={name}
-                    disabled={isSubmitting}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      clearFieldError("name");
-                    }}
-                    placeholder="Dr(a). Seu Nome"
-                    className={`${INPUT_BASE} ${fieldErrors.name ? "border-rose-500" : "border-[#E7EAF0]"}`}
-                  />
-                </Field>
-              )}
-
-              {emailInput}
-
-              {mode !== "FORGOT_PASSWORD" && (
-                <Field
-                  id="auth-password-input"
-                  label="Senha"
-                  error={fieldErrors.password}
-                  labelAction={
-                    mode === "LOGIN" ? (
-                      <button
-                        type="button"
-                        onClick={() => switchMode("FORGOT_PASSWORD")}
-                        className="text-xs font-bold text-teal-700 hover:text-teal-900 hover:underline cursor-pointer"
-                      >
-                        Esqueci minha senha
-                      </button>
-                    ) : undefined
-                  }
-                >
-                  <PasswordInput
-                    id="auth-password-input"
-                    name="password"
-                    autoComplete={isSignup ? "new-password" : "current-password"}
-                    value={password}
-                    disabled={isSubmitting}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      clearFieldError("password");
-                    }}
-                    placeholder={isSignup ? "Crie uma senha (mín. 6 caracteres)" : "Sua senha"}
-                    visible={showPassword}
-                    onToggle={() => setShowPassword(!showPassword)}
-                    hasError={Boolean(fieldErrors.password)}
-                  />
-                </Field>
-              )}
-
-              {isSignup && (
-                <Field id="auth-confirm-password-input" label="Confirmar senha" error={fieldErrors.confirmPassword}>
-                  <PasswordInput
-                    id="auth-confirm-password-input"
-                    name="confirmPassword"
-                    autoComplete="new-password"
-                    value={confirmPassword}
-                    disabled={isSubmitting}
-                    onChange={(e) => {
-                      setConfirmPassword(e.target.value);
-                      clearFieldError("confirmPassword");
-                    }}
-                    placeholder="Confirme sua senha"
-                    visible={showConfirmPassword}
-                    onToggle={() => setShowConfirmPassword(!showConfirmPassword)}
-                    hasError={Boolean(fieldErrors.confirmPassword)}
-                  />
-                </Field>
-              )}
-
-              <button
-                type="submit"
-                id={submitLabel[mode].id}
+              <PasswordField
+                id="registerPassword"
+                label="Senha"
+                name="password"
+                autoComplete="new-password"
+                value={password}
+                error={isRegister ? fieldErrors.password : undefined}
                 disabled={isSubmitting}
-                className="w-full min-h-[46px] mt-2 px-5 rounded-[11px] bg-gradient-to-br from-[#0A1C3E] to-[#16336B] text-white text-sm font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(10,28,62,0.18)] hover:shadow-[0_11px_26px_rgba(10,28,62,0.26)] hover:-translate-y-px hover:brightness-110 active:translate-y-0 transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:hover:translate-y-0"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin text-[#00D2B4]" />
-                    <span>{submitLabel[mode].busy}</span>
-                  </>
-                ) : (
-                  <>
-                    <span>{submitLabel[mode].idle}</span>
-                    <ArrowRight className="w-4 h-4 text-[#00D2B4]" />
-                  </>
-                )}
+                visible={showPassword}
+                onToggle={() => setShowPassword(!showPassword)}
+                onChange={(value) => {
+                  setPassword(value);
+                  clearFieldError("password");
+                }}
+              />
+
+              <button className="primary" type="submit" disabled={isSubmitting}>
+                {isLoading && isRegister ? "Criando conta..." : "Criar conta"}
               </button>
+
+              {registerMessage}
             </form>
 
+            <div className="or">Ou cadastre-se com</div>
+            {renderGoogleButton("Continuar com Google")}
+            {renderTerms("Ao criar uma conta, você concorda com os")}
+          </div>
+        </section>
+
+        {/* LOGIN HERO */}
+        <section className="hero login" aria-label="Novo usuário" inert={isRegister} aria-hidden={isRegister}>
+          <h2>Olá!</h2>
+          <p>Comece sua jornada com a gente e descubra algo novo.</p>
+          <button type="button" className="switch" onClick={() => switchMode("SIGNUP")}>
+            Cadastre-se
+          </button>
+        </section>
+
+        {/* LOGIN FORM (inclui a recuperação de senha) */}
+        <section
+          className="form login"
+          aria-label={mode === "FORGOT_PASSWORD" ? "Recuperar senha" : "Entrar"}
+          inert={isRegister}
+          aria-hidden={isRegister}
+        >
+          <div className="form-inner">
             {mode === "FORGOT_PASSWORD" ? (
-              <div className="pt-4">
-                <button
-                  type="button"
-                  onClick={() => switchMode("LOGIN")}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
-                >
-                  <ArrowLeft className="w-3.5 h-3.5" />
-                  <span>Voltar para o login</span>
-                </button>
-              </div>
+              <>
+                <h1>Recuperar senha</h1>
+                <p className="subtitle">Informe seu e-mail para receber as instruções de recuperação.</p>
+
+                <form onSubmit={handleEmailSubmit} noValidate>
+                  {renderEmailField("loginEmail", "E-mail cadastrado", loginActive)}
+
+                  <button className="primary" type="submit" disabled={isSubmitting}>
+                    {isLoading ? "Enviando..." : "Enviar instruções"}
+                  </button>
+
+                  {loginMessage}
+                </form>
+
+                <p className="back-row">
+                  <button type="button" className="link" onClick={() => switchMode("LOGIN")}>
+                    Voltar para o login
+                  </button>
+                </p>
+              </>
             ) : (
               <>
-                <div className="flex items-center gap-3 my-4 text-[11px] font-semibold text-slate-400 whitespace-nowrap before:h-px before:flex-1 before:bg-[#E7EAF0] after:h-px after:flex-1 after:bg-[#E7EAF0]">
-                  {isSignup ? "ou cadastre-se com" : "ou entre com"}
-                </div>
+                <h1>Bem-vindo de volta</h1>
+                <p className="subtitle">Entre para continuar na sua conta.</p>
 
-                <button
-                  type="button"
-                  id={isSignup ? "btn-google-signup" : "btn-google-login"}
-                  disabled={isSubmitting}
-                  onClick={handleGoogleSubmit}
-                  className="w-full min-h-[44px] px-5 rounded-[11px] bg-white border border-[#E7EAF0] text-slate-800 text-sm font-semibold flex items-center justify-center gap-3 hover:bg-[#FAFBFC] hover:border-slate-300 hover:-translate-y-px active:translate-y-0 transition-all duration-200 cursor-pointer disabled:opacity-60 disabled:hover:translate-y-0"
-                >
-                  {isLoadingGoogle ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-[#00D2B4]" />
-                      <span>Continuando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <GoogleIcon />
-                      <span>Continuar com Google</span>
-                    </>
-                  )}
-                </button>
+                <form onSubmit={handleEmailSubmit} noValidate>
+                  {renderEmailField("loginEmail", "E-mail", loginActive)}
+
+                  <PasswordField
+                    id="loginPassword"
+                    label="Senha"
+                    name="password"
+                    autoComplete="current-password"
+                    value={password}
+                    error={loginActive ? fieldErrors.password : undefined}
+                    disabled={isSubmitting}
+                    visible={showPassword}
+                    onToggle={() => setShowPassword(!showPassword)}
+                    onChange={(value) => {
+                      setPassword(value);
+                      clearFieldError("password");
+                    }}
+                  />
+
+                  <div className="form-row">
+                    <label className="remember">
+                      <input
+                        type="checkbox"
+                        name="remember"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                      />
+                      Lembrar de mim
+                    </label>
+
+                    <button type="button" className="link" onClick={() => switchMode("FORGOT_PASSWORD")}>
+                      Esqueceu a senha?
+                    </button>
+                  </div>
+
+                  <button className="primary" type="submit" disabled={isSubmitting}>
+                    {isLoading && loginActive ? "Entrando..." : "Entrar"}
+                  </button>
+
+                  {loginMessage}
+                </form>
+
+                <div className="or">Ou entre com</div>
+                {renderGoogleButton("Continuar com Google")}
+                {renderTerms("Ao continuar, você concorda com os")}
               </>
             )}
-
-            {/* Legal disclaimer */}
-            <p className="mt-6 text-[11px] leading-relaxed text-center text-slate-500">
-              Ao continuar, você concorda com nossos{" "}
-              <button
-                type="button"
-                id="link-termos-de-uso"
-                onClick={() => navigate("/termos-de-uso")}
-                className="font-semibold underline underline-offset-2 hover:text-teal-600 transition-colors cursor-pointer text-slate-700"
-              >
-                Termos de Uso
-              </button>{" "}
-              e{" "}
-              <button
-                type="button"
-                id="link-politica-de-privacidade"
-                onClick={() => navigate("/politica-de-privacidade")}
-                className="font-semibold underline underline-offset-2 hover:text-teal-600 transition-colors cursor-pointer text-slate-700"
-              >
-                Política de Privacidade
-              </button>
-              .
-            </p>
-          </motion.div>
-        </motion.section>
-
-        {/* HERO PANEL — slides to the opposite side of the form */}
-        <motion.section
-          layout="position"
-          transition={slideTransition}
-          aria-label={isSignup ? "Já tenho conta" : "Novo usuário"}
-          style={{ background: HERO_BACKGROUND }}
-          className={`relative md:w-1/2 rounded-[18px] overflow-hidden text-white flex flex-col items-center justify-center text-center gap-4 px-6 py-9 sm:px-10 md:py-12 ${
-            isSignup ? "md:order-1" : "md:order-2"
-          }`}
-        >
-          <div
-            className="absolute inset-0 pointer-events-none opacity-[0.05]"
-            style={{
-              backgroundImage:
-                "linear-gradient(rgba(255,255,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,1) 1px, transparent 1px)",
-              backgroundSize: "32px 32px",
-            }}
-            aria-hidden="true"
-          />
-
-          <motion.div
-            key={heroContent.target}
-            initial={prefersReducedMotion ? false : { opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: prefersReducedMotion ? 0 : 0.25, ease: SLIDE_EASE }}
-            className="relative flex flex-col items-center gap-4"
-          >
-            <div className="hidden md:grid w-16 h-16 place-items-center rounded-2xl bg-white shadow-[0_10px_30px_rgba(0,0,0,0.25)] ring-4 ring-white/10">
-              <StaziaMedLogo layout="monogram" size="md" />
-            </div>
-
-            <h2 className="text-[26px] sm:text-[34px] md:text-[38px] font-extrabold leading-[1.05] tracking-[-0.045em]">
-              {heroContent.title}
-            </h2>
-            <p className="max-w-[270px] text-[13px] sm:text-sm leading-relaxed text-white/85">{heroContent.text}</p>
-
-            <button
-              type="button"
-              onClick={() => switchMode(heroContent.target)}
-              disabled={isSubmitting}
-              className="mt-1 min-w-[150px] min-h-[46px] px-7 rounded-xl border border-white/20 bg-white/10 backdrop-blur-md text-white text-sm font-bold hover:bg-white hover:text-[#0A1C3E] hover:border-white hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 cursor-pointer disabled:opacity-60"
-            >
-              {heroContent.action}
-            </button>
-          </motion.div>
-        </motion.section>
-      </div>
+          </div>
+        </section>
+      </main>
     </div>
   );
 };

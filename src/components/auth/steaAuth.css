@@ -1,0 +1,806 @@
+/* =========================================================
+   Tela de login — porta do STEA Code Drop #002 (sign in / sign up).
+   Valores visuais iguais ao style.css original; todas as regras ficam
+   sob .stea-auth para não vazar para o resto do app.
+
+   Adaptações em relação ao original:
+   - o cartão usa grid (em vez de painéis absolutos com aspect-ratio fixo)
+     e a proporção 660/520 vira altura mínima, para crescer quando aparecem
+     mensagens de erro, sem cortar conteúdo;
+   - abaixo de 560px o layout empilha (formulário + painel com a foto),
+     porque o original encolhe as fontes para 8–9px em celulares;
+   - h1/h2/links recebem pesos e resets explícitos por causa do preflight
+     do Tailwind.
+========================================================= */
+
+.stea-auth {
+  --ink: #18202b;
+  --muted: #737d8d;
+  --navy: #080b14;
+  --navy-2: #0d1422;
+  --blue: #3b82f6;
+  --blue-bright: #60a5fa;
+  --gold: #f5a524;
+  --line: #e7eaf0;
+  --white: #ffffff;
+  --soft: #f7f8fb;
+  --danger: #d92d4b;
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --panel-image:
+    linear-gradient(135deg, rgba(8,11,20,.28), rgba(22,28,64,.68)),
+    url("/images/auth/stea-auth-panel.jpg") center / cover no-repeat;
+
+  box-sizing: border-box;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+
+  background:
+    radial-gradient(circle at 15% 20%, rgba(59,130,246,.12), transparent 32%),
+    radial-gradient(circle at 85% 80%, rgba(245,165,36,.07), transparent 28%),
+    #f4f6f9;
+
+  color: var(--ink);
+}
+
+.stea-auth *,
+.stea-auth *::before,
+.stea-auth *::after {
+  box-sizing: border-box;
+}
+
+.stea-auth button,
+.stea-auth input {
+  font: inherit;
+}
+
+.stea-auth button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stea-auth button:disabled {
+  cursor: not-allowed;
+  opacity: .6;
+}
+
+.stea-auth :focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+/* =========================================================
+   CARD
+========================================================= */
+
+.stea-auth .card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  width: min(660px, calc(100vw - 32px));
+  /* proporção 660/520 do original como altura mínima: com overflow hidden,
+     aspect-ratio não deixaria o cartão crescer quando surgem mensagens de erro */
+  min-height: calc(min(660px, 100vw - 32px) * 520 / 660);
+  height: auto;
+
+  border: 8px solid #fff;
+  border-radius: 24px;
+
+  background: #fff;
+
+  box-shadow:
+    0 30px 90px rgba(8,11,20,.14),
+    0 8px 30px rgba(41,30,113,.08);
+}
+
+/* =========================================================
+   BACKGROUND IMAGE PANEL
+========================================================= */
+
+.stea-auth .card-bg {
+  position: absolute;
+  z-index: 2;
+
+  top: 0;
+  left: 0;
+  bottom: 0;
+
+  width: 50%;
+
+  border-radius: 18px;
+
+  background: var(--panel-image);
+
+  transform: translateX(100%);
+
+  transition: transform .65s var(--ease);
+}
+
+.stea-auth .card-bg::after {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  background:
+    radial-gradient(circle at 25% 20%, rgba(59,130,246,.30), transparent 38%),
+    linear-gradient(160deg, transparent 50%, rgba(245,165,36,.10));
+
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.stea-auth .card.register .card-bg {
+  transform: translateX(0);
+}
+
+/* =========================================================
+   HERO + FORMS (todos na mesma linha do grid)
+========================================================= */
+
+.stea-auth .hero,
+.stea-auth .form {
+  position: relative;
+  grid-row: 1;
+  min-width: 0;
+
+  opacity: 0;
+  visibility: hidden;
+
+  transition:
+    transform .65s var(--ease),
+    opacity .65s ease,
+    visibility .65s ease;
+}
+
+.stea-auth .form.login { grid-column: 1; }
+.stea-auth .hero.login { grid-column: 2; }
+.stea-auth .form.register { grid-column: 2; }
+.stea-auth .hero.register { grid-column: 1; }
+
+/* DEFAULT — LOGIN */
+
+.stea-auth .hero.login,
+.stea-auth .form.login {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+}
+
+/* REGISTER STATE */
+
+.stea-auth .card.register .hero.login,
+.stea-auth .card.register .form.login {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.stea-auth .card.register .hero.register,
+.stea-auth .card.register .form.register {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* HERO MOVEMENT */
+
+.stea-auth .hero.register {
+  transform: translateX(-100%);
+}
+
+.stea-auth .card.register .hero.register {
+  transform: translateX(0);
+}
+
+.stea-auth .card.register .hero.login {
+  transform: translateX(100%);
+}
+
+/* FORM MOVEMENT */
+
+.stea-auth .form.register {
+  transform: translateX(-100%);
+}
+
+.stea-auth .card.register .form.register {
+  transform: translateX(0);
+}
+
+.stea-auth .card.register .form.login {
+  transform: translateX(100%);
+}
+
+/* =========================================================
+   HERO
+========================================================= */
+
+.stea-auth .hero {
+  z-index: 3;
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: clamp(10px, 2.2vw, 16px);
+
+  padding: clamp(18px, 4vw, 28px);
+
+  color: #fff;
+  text-align: center;
+}
+
+.stea-auth .hero h2 {
+  margin: 0;
+
+  font-size: clamp(23px, 5.8vw, 38px);
+  font-weight: 700;
+  line-height: 1.05;
+
+  letter-spacing: -.045em;
+}
+
+.stea-auth .hero p {
+  max-width: 235px;
+
+  margin: 0 0 7px;
+
+  color: rgba(255,255,255,.88);
+
+  font-size: clamp(10px, 2vw, 14px);
+  line-height: 1.55;
+}
+
+.stea-auth .switch {
+  min-width: clamp(105px, 20vw, 130px);
+  min-height: clamp(38px, 6.8vw, 45px);
+
+  padding: clamp(8px, 2vw, 11px) clamp(18px, 4vw, 30px);
+
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 12px;
+
+  color: #fff;
+  background: rgba(255,255,255,.10);
+
+  backdrop-filter: blur(8px);
+
+  font-size: clamp(11px, 2.2vw, 15px);
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background .25s ease,
+    color .25s ease,
+    transform .25s ease,
+    border-color .25s ease;
+}
+
+.stea-auth .switch:hover {
+  color: var(--navy);
+  background: #fff;
+  border-color: #fff;
+  transform: translateY(-2px);
+}
+
+.stea-auth .switch:active {
+  transform: translateY(0);
+}
+
+/* =========================================================
+   FORM
+========================================================= */
+
+.stea-auth .form {
+  z-index: 1;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding:
+    clamp(16px, 4vw, 28px)
+    clamp(17px, 5vw, 34px);
+
+  background: #fff;
+}
+
+.stea-auth .form-inner {
+  width: min(100%, 285px);
+}
+
+.stea-auth .form h1 {
+  margin: 0 0 6px;
+
+  font-size: clamp(20px, 5vw, 28px);
+  font-weight: 700;
+  line-height: 1.1;
+
+  letter-spacing: -.045em;
+}
+
+.stea-auth .subtitle {
+  margin: 0 0 clamp(11px, 2.7vw, 18px);
+
+  color: var(--muted);
+
+  font-size: clamp(9.5px, 1.9vw, 12.5px);
+  line-height: 1.5;
+}
+
+/* =========================================================
+   FIELDS
+========================================================= */
+
+.stea-auth .field {
+  margin-bottom: clamp(7px, 2vw, 11px);
+}
+
+.stea-auth .field label {
+  display: block;
+
+  margin: 0 0 6px;
+
+  color: #343c49;
+
+  font-size: clamp(8.5px, 1.7vw, 11px);
+  font-weight: 750;
+}
+
+.stea-auth .input-wrap {
+  position: relative;
+}
+
+.stea-auth .field input {
+  width: 100%;
+
+  height: clamp(36px, 6.5vw, 43px);
+
+  padding: 0 clamp(9px, 2vw, 13px);
+
+  border: 1px solid var(--line);
+  border-radius: 11px;
+
+  outline: none;
+
+  background: #fafbfc;
+
+  color: var(--ink);
+
+  font-size: clamp(10px, 2vw, 13px);
+
+  transition:
+    border-color .2s ease,
+    box-shadow .2s ease,
+    background .2s ease;
+}
+
+.stea-auth .field input::placeholder {
+  color: #a8afba;
+}
+
+.stea-auth .field input:hover {
+  border-color: #d8dce4;
+}
+
+.stea-auth .field input:focus {
+  border-color: rgba(59,130,246,.65);
+
+  background: #fff;
+
+  box-shadow: 0 0 0 4px rgba(59,130,246,.08);
+}
+
+.stea-auth .field input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+
+.stea-auth .field input[aria-invalid="true"]:focus {
+  box-shadow: 0 0 0 4px rgba(217,45,75,.10);
+}
+
+.stea-auth .field-error {
+  margin: 4px 0 0 2px;
+
+  color: var(--danger);
+
+  font-size: clamp(8px, 1.6vw, 10px);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+/* =========================================================
+   PASSWORD
+========================================================= */
+
+.stea-auth .password-field input {
+  padding-right: 45px;
+}
+
+.stea-auth .eye {
+  position: absolute;
+
+  top: 50%;
+  right: 6px;
+
+  width: 33px;
+  height: 33px;
+
+  display: grid;
+  place-items: center;
+
+  transform: translateY(-50%);
+
+  border: 0;
+  border-radius: 9px;
+
+  color: #89919d;
+  background: transparent;
+
+  cursor: pointer;
+
+  transition:
+    background .2s ease,
+    color .2s ease;
+}
+
+.stea-auth .eye:hover {
+  color: var(--ink);
+  background: #f0f2f5;
+}
+
+.stea-auth .eye svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* =========================================================
+   FORM ROW
+========================================================= */
+
+.stea-auth .form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 8px;
+
+  margin: 5px 0 13px;
+
+  font-size: clamp(8px, 1.7vw, 10.5px);
+}
+
+.stea-auth .remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+
+  color: var(--muted);
+
+  cursor: pointer;
+}
+
+.stea-auth .remember input {
+  width: 13px;
+  height: 13px;
+
+  accent-color: var(--blue);
+}
+
+.stea-auth .link {
+  padding: 0;
+
+  border: 0;
+  background: none;
+
+  color: #315fd0;
+
+  text-decoration: none;
+
+  font-size: inherit;
+  font-weight: 750;
+
+  cursor: pointer;
+}
+
+.stea-auth .link:hover {
+  text-decoration: underline;
+}
+
+.stea-auth .back-row {
+  margin-top: 12px;
+
+  text-align: center;
+
+  font-size: clamp(8.5px, 1.7vw, 11px);
+}
+
+/* =========================================================
+   PRIMARY BUTTON
+========================================================= */
+
+.stea-auth .primary {
+  width: 100%;
+  height: clamp(36px, 6.5vw, 43px);
+
+  border: 0;
+  border-radius: 11px;
+
+  color: #fff;
+
+  background: linear-gradient(135deg, #291e71, #3d318d);
+
+  font-size: clamp(10px, 2vw, 13px);
+  font-weight: 750;
+
+  cursor: pointer;
+
+  box-shadow: 0 8px 20px rgba(41,30,113,.18);
+
+  transition:
+    transform .25s ease,
+    box-shadow .25s ease,
+    filter .25s ease;
+}
+
+.stea-auth .primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+
+  filter: brightness(1.05);
+
+  box-shadow: 0 11px 26px rgba(41,30,113,.24);
+}
+
+.stea-auth .primary:active {
+  transform: translateY(0);
+}
+
+/* =========================================================
+   SOCIAL
+========================================================= */
+
+.stea-auth .or {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  margin: clamp(9px, 2.5vw, 14px) 0 9px;
+
+  color: #969da8;
+
+  font-size: clamp(8px, 1.6vw, 10px);
+
+  white-space: nowrap;
+}
+
+.stea-auth .or::before,
+.stea-auth .or::after {
+  content: "";
+
+  height: 1px;
+
+  flex: 1;
+
+  background: var(--line);
+}
+
+.stea-auth .socials {
+  display: grid;
+
+  grid-template-columns: 1fr;
+
+  gap: 7px;
+}
+
+.stea-auth .social-btn {
+  height: clamp(32px, 5.8vw, 38px);
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  border: 1px solid var(--line);
+  border-radius: 10px;
+
+  color: #343c49;
+  background: #fff;
+
+  font-size: clamp(9.5px, 1.9vw, 12px);
+  font-weight: 650;
+
+  cursor: pointer;
+
+  transition:
+    background .2s ease,
+    border-color .2s ease,
+    transform .2s ease;
+}
+
+.stea-auth .social-btn:hover:not(:disabled) {
+  background: #fafbfc;
+  border-color: #ccd1da;
+  transform: translateY(-1px);
+}
+
+.stea-auth .social-btn:active {
+  transform: translateY(0);
+}
+
+.stea-auth .social-btn svg {
+  width: 17px;
+  height: 17px;
+}
+
+/* =========================================================
+   TERMS + MESSAGE
+========================================================= */
+
+.stea-auth .terms {
+  margin: 10px 0 0;
+
+  color: #969da8;
+
+  text-align: center;
+
+  font-size: clamp(7px, 1.4vw, 9px);
+  line-height: 1.45;
+}
+
+.stea-auth .terms .link {
+  color: #6b7380;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.stea-auth .message {
+  min-height: 14px;
+
+  margin-top: 5px;
+
+  color: #315fd0;
+
+  text-align: center;
+
+  font-size: clamp(8px, 1.5vw, 10px);
+  line-height: 1.35;
+}
+
+.stea-auth .message.is-error {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* =========================================================
+   PHONES — layout empilhado (adaptação; ver cabeçalho)
+========================================================= */
+
+@media (max-width: 559px) {
+  .stea-auth {
+    padding: 12px;
+  }
+
+  .stea-auth .card {
+    grid-template-columns: 1fr;
+    width: 100%;
+    min-height: 0;
+    border-width: 6px;
+    border-radius: 20px;
+  }
+
+  .stea-auth .card-bg {
+    display: none;
+  }
+
+  /* .card no seletor para vencer as regras .form.login/.hero.register etc. */
+  .stea-auth .card .hero,
+  .stea-auth .card .form {
+    grid-column: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .stea-auth .card .form { grid-row: 1; }
+  .stea-auth .card .hero { grid-row: 2; }
+
+  .stea-auth .card:not(.register) .form.register,
+  .stea-auth .card:not(.register) .hero.register,
+  .stea-auth .card.register .form.login,
+  .stea-auth .card.register .hero.login {
+    display: none;
+  }
+
+  .stea-auth .hero {
+    gap: 10px;
+    padding: 24px 18px;
+    border-radius: 14px;
+    background: var(--panel-image);
+  }
+
+  .stea-auth .hero h2 { font-size: 26px; }
+  .stea-auth .hero p { max-width: 280px; font-size: 13px; }
+  .stea-auth .switch { min-height: 44px; font-size: 14px; }
+
+  .stea-auth .form { padding: 22px 16px 24px; }
+  .stea-auth .form-inner { width: 100%; }
+  .stea-auth .form h1 { font-size: 26px; }
+  .stea-auth .subtitle { font-size: 13px; margin-bottom: 16px; }
+  .stea-auth .field { margin-bottom: 12px; }
+  .stea-auth .field label { font-size: 12px; }
+
+  /* 16px evita o zoom automático do iOS ao focar o campo */
+  .stea-auth .field input { height: 46px; font-size: 16px; }
+
+  .stea-auth .field-error,
+  .stea-auth .message { font-size: 12px; }
+  .stea-auth .form-row,
+  .stea-auth .back-row { font-size: 12.5px; }
+  .stea-auth .primary { height: 46px; font-size: 15px; }
+  .stea-auth .or { font-size: 11.5px; }
+  .stea-auth .social-btn { height: 44px; font-size: 14px; }
+  .stea-auth .terms { font-size: 11px; }
+}
+
+/* =========================================================
+   SHORT VIEWPORTS
+========================================================= */
+
+@media (max-height: 620px) {
+  .stea-auth {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .stea-auth .form {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .stea-auth .field {
+    margin-bottom: 6px;
+  }
+
+  .stea-auth .subtitle {
+    margin-bottom: 8px;
+  }
+
+  .stea-auth .or {
+    margin-top: 7px;
+    margin-bottom: 5px;
+  }
+
+  .stea-auth .terms {
+    margin-top: 5px;
+  }
+}
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .stea-auth *,
+  .stea-auth *::before,
+  .stea-auth *::after {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

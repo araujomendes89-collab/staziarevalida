@@ -32,6 +32,9 @@ import {
   updateProfile,
   reload,
   Unsubscribe,
+  setPersistence,
+  indexedDBLocalPersistence,
+  browserSessionPersistence,
 } from "firebase/auth";
 import { getDatabase, Database } from "firebase/database";
 
@@ -299,6 +302,15 @@ export async function signInAnonymouslyUser(): Promise<User> {
     console.error("[FirebaseAuth] Anonymous Sign-In Error:", error);
     throw error;
   }
+}
+
+/**
+ * "Lembrar de mim": true mantém a sessão entre aberturas do navegador
+ * (persistência padrão do Firebase na web); false encerra ao fechar a aba/janela.
+ * Deve ser chamado antes do login.
+ */
+export async function setAuthRememberMe(remember: boolean): Promise<void> {
+  await setPersistence(auth, remember ? indexedDBLocalPersistence : browserSessionPersistence);
 }
 
 /**

@@ -1,10 +1,19 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
 import { LoginView } from "../components/auth/LoginView";
 import { PlanSelectionView } from "../components/auth/PlanSelectionView";
 import * as AppContextModule from "../context/AppContext";
+
+const { mockSetAuthRememberMe } = vi.hoisted(() => ({
+  mockSetAuthRememberMe: vi.fn(),
+}));
+
+vi.mock("../lib/firebase", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../lib/firebase")>()),
+  setAuthRememberMe: mockSetAuthRememberMe,
+}));
 
 // Mock AppContext
 const mockSignInWithGoogle = vi.fn();
@@ -41,28 +50,32 @@ const renderLoginView = () =>
     </MemoryRouter>
   );
 
+// Login e cadastro ficam montados ao mesmo tempo (como no STEA Code Drop #002);
+// a seção inativa recebe aria-hidden, então as consultas usam a região visível.
+const loginRegion = () => screen.getByRole("region", { name: "Entrar" });
+const registerRegion = () => screen.getByRole("region", { name: "Criar conta" });
+
 describe("1.25A — Clean Auth Entry + Login + Signup Flow", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSetAuthRememberMe.mockResolvedValue(undefined);
     vi.spyOn(AppContextModule, "useApp").mockReturnValue(defaultContextValues);
   });
 
   /* ------------------------------------------------------------- */
   /* 1. INITIAL SCREEN (dual panel, opens on LOGIN)                */
   /* ------------------------------------------------------------- */
-  it("should open directly on LOGIN with StaziaMed logo and the side panel CTA to create an account", () => {
+  it("should open on LOGIN with the side panel offering signup and the legal links", () => {
     renderLoginView();
 
-    // Brand logo exactly once
-    expect(screen.getAllByAltText("StaziaMed Revalida")).toHaveLength(1);
+    // Only the active form is exposed to assistive tech
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bem-vindo de volta");
+    expect(within(loginRegion()).getByText("Entre para continuar na sua conta.")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Criar conta" })).not.toBeInTheDocument();
 
-    // Headline & Subheadline
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bem-vindo de volta.");
-    expect(screen.getByText("Entre para continuar sua preparação.")).toBeInTheDocument();
-
-    // Side panel offers signup; the "back to login" CTA only appears in SIGNUP
-    expect(screen.getByRole("button", { name: /Criar uma nova conta/i })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Já tenho uma conta/i })).not.toBeInTheDocument();
+    // Side panel (hero) offers signup
+    expect(screen.getByRole("heading", { level: 2, name: "Olá!" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cadastre-se" })).toBeInTheDocument();
 
     // Guest mode / visitor link is removed
     expect(screen.queryByRole("button", { name: /Explorar como visitante/i })).not.toBeInTheDocument();
@@ -78,30 +91,22 @@ describe("1.25A — Clean Auth Entry + Login + Signup Flow", () => {
   it("should render Google and Email/Password fields in LOGIN, and support login", async () => {
     mockSignInWithEmail.mockResolvedValueOnce({ uid: "user_login_1" });
     renderLoginView();
-
-    // Headline
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bem-vindo de volta.");
-    expect(screen.getByText("Entre para continuar sua preparação.")).toBeInTheDocument();
+    const login = within(loginRegion());
 
     // Google button
     expect(screen.getByRole("button", { name: /Continuar com Google/i })).toBeInTheDocument();
 
     // Form inputs with proper autocomplete attributes
-    const emailInput = screen.getByPlaceholderText("seu@email.com.br");
-    const passwordInput = screen.getByPlaceholderText("Sua senha");
-    expect(emailInput).toBeInTheDocument();
+    const emailInput = login.getByLabelText("E-mail");
+    const passwordInput = login.getByLabelText("Senha");
     expect(emailInput).toHaveAttribute("autocomplete", "email");
-    expect(passwordInput).toBeInTheDocument();
     expect(passwordInput).toHaveAttribute("autocomplete", "current-password");
 
     // Toggle password visibility
-    const showPasswordBtn = screen.getByLabelText("Exibir senha");
-    expect(showPasswordBtn).toBeInTheDocument();
     expect(passwordInput).toHaveAttribute("type", "password");
-    fireEvent.click(showPasswordBtn);
+    fireEvent.click(login.getByLabelText("Exibir senha"));
     expect(passwordInput).toHaveAttribute("type", "text");
-    const hidePasswordBtn = screen.getByLabelText("Ocultar senha");
-    fireEvent.click(hidePasswordBtn);
+    fireEvent.click(login.getByLabelText("Ocultar senha"));
     expect(passwordInput).toHaveAttribute("type", "password");
 
     // Fill form and submit
@@ -115,6 +120,16 @@ describe("1.25A — Clean Auth Entry + Login + Signup Flow", () => {
     });
   });
 
+  it("should show field errors and not call Firebase when LOGIN is submitted empty", () => {
+    renderLoginView();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Entrar$/i }));
+
+    expect(within(loginRegion()).getByText("Informe seu endereço de e-mail.")).toBeInTheDocument();
+    expect(within(loginRegion()).getByText("Informe sua senha de acesso.")).toBeInTheDocument();
+    expect(mockSignInWithEmail).not.toHaveBeenCalled();
+  });
+
   it("should trigger Google Sign-In and handle errors gracefully in LOGIN state", async () => {
     mockSignInWithGoogle.mockRejectedValueOnce({ code: "auth/network-request-failed" });
     renderLoginView();
@@ -122,61 +137,84 @@ describe("1.25A — Clean Auth Entry + Login + Signup Flow", () => {
     fireEvent.click(screen.getByRole("button", { name: /Continuar com Google/i }));
 
     await waitFor(() => {
-      expect(
-        screen.getByText("Falha de comunicação com os servidores. Verifique sua conexão com a internet.")
-      ).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Falha de comunicação com os servidores. Verifique sua conexão com a internet."
+      );
     });
   });
 
-  it("should switch between LOGIN and SIGNUP using the side panel CTA", () => {
+  it("should apply 'Lembrar de mim' as session-only persistence when unchecked", async () => {
+    mockSignInWithEmail.mockResolvedValueOnce({ uid: "user_login_2" });
     renderLoginView();
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bem-vindo de volta.");
 
-    fireEvent.click(screen.getByRole("button", { name: /Criar uma nova conta/i }));
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Pronto para começar sua preparação?");
+    const remember = screen.getByRole("checkbox", { name: "Lembrar de mim" });
+    expect(remember).toBeChecked();
+    expect(mockSetAuthRememberMe).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: /Já tenho uma conta/i }));
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bem-vindo de volta.");
+    fireEvent.click(remember);
+    expect(mockSetAuthRememberMe).toHaveBeenLastCalledWith(false);
+
+    const login = within(loginRegion());
+    fireEvent.change(login.getByLabelText("E-mail"), { target: { value: "medico@revalida.com.br" } });
+    fireEvent.change(login.getByLabelText("Senha"), { target: { value: "senhaSegura123" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Entrar$/i }));
+
+    await waitFor(() => {
+      expect(mockSignInWithEmail).toHaveBeenCalledWith("medico@revalida.com.br", "senhaSegura123");
+    });
+
+    // Signup always keeps the persistent session
+    fireEvent.click(screen.getByRole("button", { name: "Cadastre-se" }));
+    expect(mockSetAuthRememberMe).toHaveBeenLastCalledWith(true);
+  });
+
+  it("should switch between LOGIN and SIGNUP using the side panel buttons", () => {
+    renderLoginView();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bem-vindo de volta");
+
+    fireEvent.click(screen.getByRole("button", { name: "Cadastre-se" }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Criar conta");
+    expect(screen.queryByRole("region", { name: "Entrar" })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^Entrar$/i }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bem-vindo de volta");
   });
 
   /* ------------------------------------------------------------- */
-  /* 3. SIGNUP FLOW (Criar uma nova conta)                         */
+  /* 3. SIGNUP FLOW                                                */
   /* ------------------------------------------------------------- */
-  it("should navigate to SIGNUP flow, validate password match, create user and navigate directly to home", async () => {
+  it("should validate password length in SIGNUP, create user and navigate directly to home", async () => {
     mockSignUpWithEmail.mockResolvedValueOnce({ uid: "user_signup_1" });
     renderLoginView();
 
-    // Click "Criar uma nova conta"
-    fireEvent.click(screen.getByRole("button", { name: /Criar uma nova conta/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Cadastre-se" }));
 
-    // Headline
-    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Pronto para começar sua preparação?");
-    expect(screen.getByText("Crie sua conta e organize seus estudos para o Revalida.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Criar conta");
+    const register = within(registerRegion());
+    expect(register.getByText("Crie sua conta e comece sua jornada.")).toBeInTheDocument();
 
-    // Fields
-    const nameInput = screen.getByPlaceholderText("Dr(a). Seu Nome");
-    const emailInput = screen.getByPlaceholderText("seu@email.com.br");
-    const passInput = screen.getByPlaceholderText("Crie uma senha (mín. 6 caracteres)");
-    const confirmInput = screen.getByPlaceholderText("Confirme sua senha");
+    // Fields (same three as the STEA model: name, e-mail, password)
+    const nameInput = register.getByLabelText("Nome completo");
+    const emailInput = register.getByLabelText("E-mail");
+    const passInput = register.getByLabelText("Senha");
+    expect(register.queryByLabelText("Confirmar senha")).not.toBeInTheDocument();
 
     expect(nameInput).toHaveAttribute("autocomplete", "name");
     expect(emailInput).toHaveAttribute("autocomplete", "email");
     expect(passInput).toHaveAttribute("autocomplete", "new-password");
-    expect(confirmInput).toHaveAttribute("autocomplete", "new-password");
 
-    // 1. Password mismatch validation
+    // 1. Short password validation
     fireEvent.change(nameInput, { target: { value: "Dr. Carlos" } });
     fireEvent.change(emailInput, { target: { value: "carlos@medicina.com" } });
-    fireEvent.change(passInput, { target: { value: "123456" } });
-    fireEvent.change(confirmInput, { target: { value: "654321" } });
-    fireEvent.click(screen.getByRole("button", { name: /Criar minha conta/i }));
+    fireEvent.change(passInput, { target: { value: "123" } });
+    fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
 
-    expect(screen.getByText("As senhas não coincidem.")).toBeInTheDocument();
+    expect(register.getByText("A senha deve conter no mínimo 6 caracteres.")).toBeInTheDocument();
     expect(mockSignUpWithEmail).not.toHaveBeenCalled();
 
     // 2. Fix password and submit
-    fireEvent.change(confirmInput, { target: { value: "123456" } });
-    fireEvent.click(screen.getByRole("button", { name: /Criar minha conta/i }));
+    fireEvent.change(passInput, { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Criar conta" }));
 
     await waitFor(() => {
       expect(mockSignUpWithEmail).toHaveBeenCalledWith("carlos@medicina.com", "123456", "Dr. Carlos");
@@ -188,7 +226,7 @@ describe("1.25A — Clean Auth Entry + Login + Signup Flow", () => {
     mockSignInWithGoogle.mockResolvedValueOnce({ uid: "user_google_signup" });
     renderLoginView();
 
-    fireEvent.click(screen.getByRole("button", { name: /Criar uma nova conta/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Cadastre-se" }));
     fireEvent.click(screen.getByRole("button", { name: /Continuar com Google/i }));
 
     await waitFor(() => {
@@ -204,22 +242,24 @@ describe("1.25A — Clean Auth Entry + Login + Signup Flow", () => {
     mockSendPasswordReset.mockResolvedValueOnce(undefined);
     renderLoginView();
 
-    // From LOGIN (initial screen), go to Forgot Password
-    fireEvent.click(screen.getByText("Esqueci minha senha"));
+    fireEvent.click(screen.getByRole("button", { name: "Esqueceu a senha?" }));
 
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Recuperar senha");
 
-    const emailInput = screen.getByPlaceholderText("seu@email.com.br");
-    fireEvent.change(emailInput, { target: { value: "esqueci@medicina.com" } });
+    const forgot = within(screen.getByRole("region", { name: "Recuperar senha" }));
+    fireEvent.change(forgot.getByLabelText("E-mail cadastrado"), { target: { value: "esqueci@medicina.com" } });
     fireEvent.click(screen.getByRole("button", { name: /Enviar instruções/i }));
 
     await waitFor(() => {
       expect(mockSendPasswordReset).toHaveBeenCalledWith("esqueci@medicina.com");
       // Neutral message preventing email enumeration
       expect(
-        screen.getByText("Se houver uma conta vinculada a este e-mail, enviaremos as instruções de recuperação.")
+        forgot.getByText("Se houver uma conta vinculada a este e-mail, enviaremos as instruções de recuperação.")
       ).toBeInTheDocument();
     });
+
+    fireEvent.click(screen.getByRole("button", { name: "Voltar para o login" }));
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Bem-vindo de volta");
   });
 
   /* ------------------------------------------------------------- */

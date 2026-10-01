@@ -85,8 +85,8 @@ describe("1.26E — Global Splash Test Mode", () => {
         </MemoryRouter>
       );
 
-      expect(screen.getByText(/Bem-vindo de volta/i)).toBeDefined();
-      expect(screen.getByText(/Criar uma nova conta/i)).toBeDefined();
+      expect(screen.getByRole("heading", { level: 1, name: /Bem-vindo de volta/i })).toBeDefined();
+      expect(screen.getByRole("button", { name: "Cadastre-se" })).toBeDefined();
       expect(screen.queryByText(/Toque para ativar o som/i)).toBeNull();
     });
 
