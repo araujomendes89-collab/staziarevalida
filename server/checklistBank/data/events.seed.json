@@ -1,0 +1,13 @@
+[
+  {
+    "id": "simulado-2026-10",
+    "title": "Simulado Prático StaziaMed — Outubro/2026",
+    "description": "Simulado de exemplo com 5 estações autorais, uma por grande área, 10 minutos cada. Faça em dupla: um colega atua como paciente e avaliador, o outro como médico.",
+    "starts_at": "2026-10-01T03:00:00.000Z",
+    "ends_at": "2026-11-01T02:59:59.000Z",
+    "station_ids": ["seed-01", "seed-03", "seed-05", "seed-07", "seed-09"],
+    "cover_url": null,
+    "is_pro_only": false,
+    "type": "Public"
+  }
+]

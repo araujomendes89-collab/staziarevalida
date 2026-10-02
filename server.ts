@@ -36,6 +36,8 @@ import { entitlementsRouter, adminEntitlementsRouter } from "./server/routes/ent
 import { paymentWebhooksRouter } from "./server/routes/paymentWebhooks";
 import { billingRouter } from "./server/routes/billing";
 import { resolveServerPort } from "./server/config/serverPort";
+import { checklistBankRouter } from "./server/checklistBank/router";
+import { getChecklistCatalog } from "./server/checklistBank/catalog";
 
 dotenv.config();
 
@@ -71,6 +73,14 @@ async function startServer() {
   app.use("/api/admin/content/publication", adminContentPublicationRouter);
   app.use("/api/admin/content", adminPdfIngestionRouter);
   app.use("/api/published-content", publishedContentRouter);
+
+  // Banco de Checklists + Simulados. Valida o catálogo agora: estação que não soma
+  // 10,0 impede o servidor de subir.
+  const checklistCatalog = getChecklistCatalog();
+  console.log(
+    `[ChecklistBank] ${checklistCatalog.stations.length} estações e ${checklistCatalog.events.length} simulado(s) validados.`
+  );
+  app.use("/api/checklist-bank", checklistBankRouter);
 
   // API Health Check
 

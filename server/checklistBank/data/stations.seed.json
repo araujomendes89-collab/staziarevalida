@@ -1,0 +1,2787 @@
+[
+ {
+  "id": "seed-01",
+  "name": "Cetoacidose diabética",
+  "topic": "Diabetes mellitus tipo 1 descompensado",
+  "area": "Clínica Médica",
+  "setting": "Urgência/emergência",
+  "doctor_scene": "Pronto-socorro. Paciente de 24 anos, 3 dias de náuseas, vômitos e sede intensa. PA 100x60, FC 118, FR 28 (profunda), T 36,8 °C.",
+  "doctor_tasks": "Realizar anamnese dirigida e exame físico; solicitar exames; verbalizar diagnóstico; definir conduta inicial; orientar o paciente.",
+  "actor_script": "Você tem DM1 há 10 anos. Há 3 dias com muita sede, urina muito, vômitos e dor na barriga. Resfriado há 5 dias. Parou a insulina há 2 dias porque 'não estava comendo'. Sem alergias. Mostre-se cansado e sonolento, mas orientado.",
+  "pressings": [
+   {
+    "id": "p1",
+    "name": "Gasometria venosa",
+    "content": "pH 7,12 | HCO3 8 mEq/L | pCO2 22 mmHg"
+   },
+   {
+    "id": "p2",
+    "name": "Bioquímica",
+    "content": "Glicemia 540 mg/dL | Na 134 | K 4,6 mEq/L | Creatinina 1,3 | Cetonemia positiva (3+)"
+   },
+   {
+    "id": "p3",
+    "name": "ECG",
+    "content": "Taquicardia sinusal, sem alterações de T."
+   }
+  ],
+  "checklist_items": [
+   {
+    "order": 1,
+    "phase": "Apresentação",
+    "content": "Apresenta-se, cumprimenta o paciente, confirma nome e idade e pede permissão para iniciar.",
+    "tip": "",
+    "grades": {
+     "correct": 0.3,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 2,
+    "phase": "Anamnese",
+    "content": "Explora a história atual: (1) poliúria/polidipsia; (2) vômitos; (3) dor abdominal; (4) tempo de evolução; (5) fator precipitante (infecção, omissão de insulina).",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 5 subitens.",
+     "incorrect": "Cita menos de 3 subitens.",
+     "partial": "Cita pelo menos 3 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "2.1",
+      "text": "Poliúria/polidipsia"
+     },
+     {
+      "id": "2.2",
+      "text": "Vômitos"
+     },
+     {
+      "id": "2.3",
+      "text": "Dor abdominal"
+     },
+     {
+      "id": "2.4",
+      "text": "Tempo de evolução"
+     },
+     {
+      "id": "2.5",
+      "text": "Fator precipitante"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 3,
+    "phase": "Anamnese",
+    "content": "Pergunta sobre DM1, insulina em uso, última dose, alergias e outras medicações.",
+    "tip": "",
+    "grades": {
+     "correct": 0.5,
+     "partial": 0.25,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 4,
+    "phase": "Exame físico",
+    "content": "Avalia: (1) sinais vitais; (2) nível de consciência; (3) respiração de Kussmaul; (4) hálito cetônico; (5) hidratação/perfusão.",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 5 subitens.",
+     "incorrect": "Cita menos de 3 subitens.",
+     "partial": "Cita pelo menos 3 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "4.1",
+      "text": "Sinais vitais"
+     },
+     {
+      "id": "4.2",
+      "text": "Consciência"
+     },
+     {
+      "id": "4.3",
+      "text": "Kussmaul"
+     },
+     {
+      "id": "4.4",
+      "text": "Hálito cetônico"
+     },
+     {
+      "id": "4.5",
+      "text": "Hidratação/perfusão"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 5,
+    "phase": "Exames",
+    "content": "Solicita: (1) glicemia; (2) gasometria; (3) eletrólitos com potássio; (4) cetonemia/cetonúria; (5) creatinina; (6) ECG.",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 6 subitens.",
+     "incorrect": "Cita menos de 3 subitens.",
+     "partial": "Cita pelo menos 3 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "5.1",
+      "text": "Glicemia"
+     },
+     {
+      "id": "5.2",
+      "text": "Gasometria"
+     },
+     {
+      "id": "5.3",
+      "text": "Eletrólitos/K"
+     },
+     {
+      "id": "5.4",
+      "text": "Cetonas"
+     },
+     {
+      "id": "5.5",
+      "text": "Creatinina"
+     },
+     {
+      "id": "5.6",
+      "text": "ECG"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 6,
+    "phase": "Raciocínio/diagnóstico",
+    "content": "Verbaliza diagnóstico de cetoacidose diabética (hiperglicemia, acidose metabólica e cetose).",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 7,
+    "phase": "Raciocínio/diagnóstico",
+    "content": "Classifica como grave (pH < 7,2 / bicarbonato < 10) e identifica o fator precipitante (omissão de insulina e infecção respiratória).",
+    "tip": "",
+    "grades": {
+     "correct": 0.5,
+     "partial": 0.25,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 8,
+    "phase": "Conduta",
+    "content": "Inicia hidratação com SF 0,9% (15–20 mL/kg ou ~1 L na primeira hora).",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 9,
+    "phase": "Conduta",
+    "content": "Prescreve insulina regular EV contínua (0,1 U/kg/h) após confirmar K ≥ 3,3 mEq/L.",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 10,
+    "phase": "Conduta",
+    "content": "Prescreve reposição de potássio conforme a calemia, mantendo K entre 4 e 5 mEq/L.",
+    "tip": "",
+    "grades": {
+     "correct": 0.8,
+     "partial": 0.4,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 11,
+    "phase": "Conduta",
+    "content": "Define monitorização (glicemia horária; gasometria e eletrólitos a cada 2–4 h), internação em unidade intensiva/semi-intensiva e tratamento do fator precipitante.",
+    "tip": "",
+    "grades": {
+     "correct": 0.8,
+     "partial": 0.4,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 12,
+    "phase": "Orientação",
+    "content": "Explica de forma acessível o quadro, a necessidade de internação e a importância de não suspender a insulina.",
+    "tip": "",
+    "grades": {
+     "correct": 0.6,
+     "partial": 0.3,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   }
+  ],
+  "max_score": 10.0,
+  "duration_ms": 600000,
+  "origin": "authorial-seed"
+ },
+ {
+  "id": "seed-02",
+  "name": "Insuficiência cardíaca descompensada",
+  "topic": "Dispneia e edema em idoso",
+  "area": "Clínica Médica",
+  "setting": "Urgência/emergência",
+  "doctor_scene": "Pronto-socorro. Paciente de 68 anos com falta de ar há 3 dias. PA 150x90, FC 104, FR 26, SpO2 89% em ar ambiente.",
+  "doctor_tasks": "Anamnese e exame físico dirigidos; solicitar exames; verbalizar diagnóstico; definir conduta; orientar.",
+  "actor_script": "Hipertenso e com infarto prévio há 6 anos. Falta de ar piorando, só dorme sentado, acorda à noite sufocado, pernas inchadas, ganhou 4 kg. Estava sem tomar remédios há 2 semanas (acabaram) e comeu muita comida salgada em festa. Sem dor no peito.",
+  "pressings": [
+   {
+    "id": "p1",
+    "name": "RX de tórax",
+    "content": "Cardiomegalia, congestão pulmonar, derrame pleural bilateral pequeno."
+   },
+   {
+    "id": "p2",
+    "name": "BNP",
+    "content": "1.450 pg/mL"
+   },
+   {
+    "id": "p3",
+    "name": "ECG",
+    "content": "Fibrilação atrial ausente; ritmo sinusal, área inativa em parede anterior."
+   },
+   {
+    "id": "p4",
+    "name": "Laboratório",
+    "content": "Creatinina 1,2 | K 4,2 | Na 136 | Troponina negativa"
+   }
+  ],
+  "checklist_items": [
+   {
+    "order": 1,
+    "phase": "Apresentação",
+    "content": "Apresenta-se, cumprimenta o paciente, confirma nome e idade e pede permissão para iniciar.",
+    "tip": "",
+    "grades": {
+     "correct": 0.3,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 2,
+    "phase": "Anamnese",
+    "content": "Explora: (1) dispneia e tempo; (2) ortopneia; (3) dispneia paroxística noturna; (4) edema; (5) ganho de peso; (6) dor torácica.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 6 subitens.",
+     "incorrect": "Cita menos de 3 subitens.",
+     "partial": "Cita pelo menos 3 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "2.1",
+      "text": "Dispneia"
+     },
+     {
+      "id": "2.2",
+      "text": "Ortopneia"
+     },
+     {
+      "id": "2.3",
+      "text": "DPN"
+     },
+     {
+      "id": "2.4",
+      "text": "Edema"
+     },
+     {
+      "id": "2.5",
+      "text": "Ganho de peso"
+     },
+     {
+      "id": "2.6",
+      "text": "Dor torácica"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 3,
+    "phase": "Anamnese",
+    "content": "Pergunta antecedentes (HAS, IAM, DM), medicações em uso/adesão, ingestão de sal e sinais de infecção.",
+    "tip": "",
+    "grades": {
+     "correct": 0.8,
+     "partial": 0.4,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 4,
+    "phase": "Exame físico",
+    "content": "Avalia: (1) sinais vitais e SpO2; (2) turgência jugular; (3) ausculta pulmonar (estertores); (4) ausculta cardíaca (B3, sopros); (5) edema de MMII; (6) perfusão periférica.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 6 subitens.",
+     "incorrect": "Cita menos de 3 subitens.",
+     "partial": "Cita pelo menos 3 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "4.1",
+      "text": "Sinais vitais/SpO2"
+     },
+     {
+      "id": "4.2",
+      "text": "Jugulares"
+     },
+     {
+      "id": "4.3",
+      "text": "Pulmões"
+     },
+     {
+      "id": "4.4",
+      "text": "Coração"
+     },
+     {
+      "id": "4.5",
+      "text": "Edema"
+     },
+     {
+      "id": "4.6",
+      "text": "Perfusão"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 5,
+    "phase": "Exames",
+    "content": "Solicita: (1) ECG; (2) RX de tórax; (3) BNP/NT-proBNP; (4) função renal e eletrólitos; (5) troponina; (6) hemograma.",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 6 subitens.",
+     "incorrect": "Cita menos de 3 subitens.",
+     "partial": "Cita pelo menos 3 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "5.1",
+      "text": "ECG"
+     },
+     {
+      "id": "5.2",
+      "text": "RX tórax"
+     },
+     {
+      "id": "5.3",
+      "text": "BNP"
+     },
+     {
+      "id": "5.4",
+      "text": "Renal/eletrólitos"
+     },
+     {
+      "id": "5.5",
+      "text": "Troponina"
+     },
+     {
+      "id": "5.6",
+      "text": "Hemograma"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 6,
+    "phase": "Raciocínio/diagnóstico",
+    "content": "Verbaliza insuficiência cardíaca descompensada com congestão, perfil 'quente e úmido', por suspensão da medicação e excesso de sal.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 7,
+    "phase": "Conduta",
+    "content": "Posiciona sentado e administra oxigênio suplementar para manter SpO2 ≥ 94%.",
+    "tip": "",
+    "grades": {
+     "correct": 0.5,
+     "partial": 0.25,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 8,
+    "phase": "Conduta",
+    "content": "Prescreve diurético de alça endovenoso (furosemida) e monitora diurese.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 9,
+    "phase": "Conduta",
+    "content": "Reintroduz/otimiza a terapia crônica (IECA/BRA, betabloqueador) quando estável e investiga o fator precipitante.",
+    "tip": "",
+    "grades": {
+     "correct": 0.8,
+     "partial": 0.4,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 10,
+    "phase": "Conduta",
+    "content": "Indica internação, balanço hídrico, peso diário e reavaliação clínica.",
+    "tip": "",
+    "grades": {
+     "correct": 0.8,
+     "partial": 0.4,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 11,
+    "phase": "Orientação",
+    "content": "Orienta: (1) restrição de sal; (2) peso diário; (3) adesão contínua à medicação; (4) sinais de alerta.",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 4 subitens.",
+     "incorrect": "Cita menos de 2 subitens.",
+     "partial": "Cita pelo menos 2 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "11.1",
+      "text": "Restrição de sal"
+     },
+     {
+      "id": "11.2",
+      "text": "Peso diário"
+     },
+     {
+      "id": "11.3",
+      "text": "Adesão"
+     },
+     {
+      "id": "11.4",
+      "text": "Sinais de alerta"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   }
+  ],
+  "max_score": 10.0,
+  "duration_ms": 600000,
+  "origin": "authorial-seed"
+ },
+ {
+  "id": "seed-03",
+  "name": "Dor abdominal em fossa ilíaca direita",
+  "topic": "Apendicite aguda",
+  "area": "Cirurgia Geral",
+  "setting": "Urgência/emergência",
+  "doctor_scene": "Pronto-socorro. Homem de 22 anos com dor abdominal há 24 h. PA 120x80, FC 100, T 38,0 °C.",
+  "doctor_tasks": "Anamnese e exame físico; solicitar exames; verbalizar diagnóstico; indicar conduta; orientar.",
+  "actor_script": "A dor começou ao redor do umbigo e migrou para a direita embaixo. Sem apetite, náuseas, 1 vômito. Dói ao andar e tossir. Sem cirurgias prévias, sem alergias. Último alimento há 8 h.",
+  "pressings": [
+   {
+    "id": "p1",
+    "name": "Hemograma",
+    "content": "Leucócitos 15.200 com desvio à esquerda"
+   },
+   {
+    "id": "p2",
+    "name": "PCR",
+    "content": "48 mg/L"
+   },
+   {
+    "id": "p3",
+    "name": "Ultrassom",
+    "content": "Apêndice não compressível, 9 mm, com borramento de gordura periapendicular."
+   }
+  ],
+  "checklist_items": [
+   {
+    "order": 1,
+    "phase": "Apresentação",
+    "content": "Apresenta-se, cumprimenta o paciente, confirma nome e idade e pede permissão para iniciar.",
+    "tip": "",
+    "grades": {
+     "correct": 0.3,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 2,
+    "phase": "Anamnese",
+    "content": "Explora: (1) início periumbilical com migração; (2) anorexia; (3) náuseas/vômitos; (4) febre; (5) piora ao movimento.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 5 subitens.",
+     "incorrect": "Cita menos de 3 subitens.",
+     "partial": "Cita pelo menos 3 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "2.1",
+      "text": "Migração da dor"
+     },
+     {
+      "id": "2.2",
+      "text": "Anorexia"
+     },
+     {
+      "id": "2.3",
+      "text": "Náuseas/vômitos"
+     },
+     {
+      "id": "2.4",
+      "text": "Febre"
+     },
+     {
+      "id": "2.5",
+      "text": "Piora ao movimento"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 3,
+    "phase": "Anamnese",
+    "content": "Pergunta cirurgias prévias, alergias, medicações e horário da última alimentação.",
+    "tip": "",
+    "grades": {
+     "correct": 0.4,
+     "partial": 0.2,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 4,
+    "phase": "Exame físico",
+    "content": "Realiza: (1) inspeção do abdome; (2) palpação superficial e profunda; (3) ponto de McBurney; (4) descompressão brusca (Blumberg); (5) Rovsing/psoas/obturador.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 5 subitens.",
+     "incorrect": "Cita menos de 3 subitens.",
+     "partial": "Cita pelo menos 3 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "4.1",
+      "text": "Inspeção"
+     },
+     {
+      "id": "4.2",
+      "text": "Palpação"
+     },
+     {
+      "id": "4.3",
+      "text": "McBurney"
+     },
+     {
+      "id": "4.4",
+      "text": "Blumberg"
+     },
+     {
+      "id": "4.5",
+      "text": "Rovsing/psoas/obturador"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 5,
+    "phase": "Exames",
+    "content": "Solicita hemograma, PCR, EAS e exame de imagem (ultrassom ou tomografia).",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 4 subitens.",
+     "incorrect": "Cita menos de 2 subitens.",
+     "partial": "Cita pelo menos 2 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "5.1",
+      "text": "Hemograma"
+     },
+     {
+      "id": "5.2",
+      "text": "PCR"
+     },
+     {
+      "id": "5.3",
+      "text": "EAS"
+     },
+     {
+      "id": "5.4",
+      "text": "Imagem"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 6,
+    "phase": "Raciocínio/diagnóstico",
+    "content": "Verbaliza apendicite aguda, citando o quadro clássico e/ou escore de Alvarado.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 7,
+    "phase": "Conduta",
+    "content": "Mantém em jejum, prescreve hidratação venosa, analgesia e antibiótico.",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 4 subitens.",
+     "incorrect": "Cita menos de 2 subitens.",
+     "partial": "Cita pelo menos 2 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "7.1",
+      "text": "Jejum"
+     },
+     {
+      "id": "7.2",
+      "text": "Hidratação"
+     },
+     {
+      "id": "7.3",
+      "text": "Analgesia"
+     },
+     {
+      "id": "7.4",
+      "text": "Antibiótico"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 8,
+    "phase": "Conduta",
+    "content": "Indica apendicectomia e aciona a equipe cirúrgica.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 9,
+    "phase": "Orientação",
+    "content": "Explica o diagnóstico, a cirurgia, os riscos e obtém consentimento.",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 10,
+    "phase": "Orientação",
+    "content": "Informa sinais que indicam complicação (piora da dor, febre alta, abdome rígido).",
+    "tip": "",
+    "grades": {
+     "correct": 0.6,
+     "partial": 0.3,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   }
+  ],
+  "max_score": 10.0,
+  "duration_ms": 600000,
+  "origin": "authorial-seed"
+ },
+ {
+  "id": "seed-04",
+  "name": "Trauma torácico com instabilidade",
+  "topic": "Pneumotórax hipertensivo",
+  "area": "Cirurgia Geral",
+  "setting": "Urgência/emergência",
+  "doctor_scene": "Sala de emergência. Homem de 35 anos vítima de colisão de moto. Dispneia intensa, PA 80x50, FC 130, SpO2 84%.",
+  "doctor_tasks": "Conduzir o atendimento inicial, identificar a lesão que ameaça a vida e realizar a conduta imediata.",
+  "actor_script": "Atue como paciente muito dispneico, falando frases curtas. O examinador informa: ausência de murmúrio à direita, hipertimpanismo, turgência jugular e traqueia desviada à esquerda.",
+  "pressings": [
+   {
+    "id": "p1",
+    "name": "RX de tórax (pós-descompressão)",
+    "content": "Pneumotórax residual à direita sem desvio do mediastino."
+   }
+  ],
+  "checklist_items": [
+   {
+    "order": 1,
+    "phase": "Apresentação",
+    "content": "Apresenta-se, cumprimenta o paciente, confirma nome e idade e pede permissão para iniciar.",
+    "tip": "",
+    "grades": {
+     "correct": 0.3,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 2,
+    "phase": "Procedimento",
+    "content": "Inicia avaliação primária: vias aéreas com proteção da coluna cervical.",
+    "tip": "",
+    "grades": {
+     "correct": 0.6,
+     "partial": 0.3,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 3,
+    "phase": "Exame físico",
+    "content": "Avalia o tórax: (1) murmúrio vesicular ausente; (2) hipertimpanismo; (3) turgência jugular; (4) desvio de traqueia.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 4 subitens.",
+     "incorrect": "Cita menos de 2 subitens.",
+     "partial": "Cita pelo menos 2 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "3.1",
+      "text": "Murmúrio ausente"
+     },
+     {
+      "id": "3.2",
+      "text": "Hipertimpanismo"
+     },
+     {
+      "id": "3.3",
+      "text": "Jugulares"
+     },
+     {
+      "id": "3.4",
+      "text": "Traqueia"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 4,
+    "phase": "Exame físico",
+    "content": "Reconhece choque (hipotensão, taquicardia) e perfusão alterada.",
+    "tip": "",
+    "grades": {
+     "correct": 0.5,
+     "partial": 0.25,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 5,
+    "phase": "Raciocínio/diagnóstico",
+    "content": "Diagnostica pneumotórax hipertensivo clinicamente, sem aguardar radiografia.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 6,
+    "phase": "Procedimento",
+    "content": "Realiza descompressão imediata com agulha/cateter calibroso no 5º espaço intercostal anterior à linha axilar média (ou 2º espaço, linha hemiclavicular).",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 7,
+    "phase": "Conduta",
+    "content": "Administra oxigênio em alta concentração e reavalia sinais vitais após o procedimento.",
+    "tip": "",
+    "grades": {
+     "correct": 0.6,
+     "partial": 0.3,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 8,
+    "phase": "Conduta",
+    "content": "Indica drenagem torácica em selo d'água.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 9,
+    "phase": "Procedimento",
+    "content": "Descreve a técnica: (1) assepsia; (2) anestesia local; (3) incisão no 5º EIC; (4) passagem pela borda superior da costela inferior; (5) fixação e selo d'água.",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 5 subitens.",
+     "incorrect": "Cita menos de 3 subitens.",
+     "partial": "Cita pelo menos 3 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "9.1",
+      "text": "Assepsia"
+     },
+     {
+      "id": "9.2",
+      "text": "Anestesia"
+     },
+     {
+      "id": "9.3",
+      "text": "Incisão 5º EIC"
+     },
+     {
+      "id": "9.4",
+      "text": "Borda superior da costela"
+     },
+     {
+      "id": "9.5",
+      "text": "Fixação/selo d'água"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 10,
+    "phase": "Exames",
+    "content": "Solicita RX de tórax de controle e avaliação complementar (FAST).",
+    "tip": "",
+    "grades": {
+     "correct": 0.6,
+     "partial": 0.3,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 11,
+    "phase": "Comunicação",
+    "content": "Comunica a equipe e mantém reavaliação contínua (ABCDE).",
+    "tip": "",
+    "grades": {
+     "correct": 0.7,
+     "partial": 0.35,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   }
+  ],
+  "max_score": 10.0,
+  "duration_ms": 600000,
+  "origin": "authorial-seed"
+ },
+ {
+  "id": "seed-05",
+  "name": "Diarreia aguda em criança",
+  "topic": "Gastroenterite com desidratação",
+  "area": "Pediatria",
+  "setting": "APS/UBS",
+  "doctor_scene": "UBS. Menina de 2 anos, 12 kg, com diarreia há 3 dias e vômitos. Irritada, bebe com sede.",
+  "doctor_tasks": "Anamnese e exame físico; classificar a desidratação; definir conduta e orientar o responsável.",
+  "actor_script": "Você é a mãe. 8 evacuações líquidas/dia, sem sangue, 4 vômitos ontem, urina menos. Vacinas em dia. Frequenta creche, outras crianças com diarreia. Peso 12 kg. Mostre preocupação.",
+  "pressings": [
+   {
+    "id": "p1",
+    "name": "Exame do examinador",
+    "content": "Olhos fundos, lágrimas ausentes, mucosa seca, prega retorna lentamente, enchimento capilar 2 s."
+   }
+  ],
+  "checklist_items": [
+   {
+    "order": 1,
+    "phase": "Apresentação",
+    "content": "Apresenta-se, cumprimenta o paciente, confirma nome e idade e pede permissão para iniciar.",
+    "tip": "",
+    "grades": {
+     "correct": 0.3,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 2,
+    "phase": "Anamnese",
+    "content": "Pergunta: (1) número de evacuações; (2) vômitos; (3) febre; (4) ingesta de líquidos; (5) diurese; (6) sangue nas fezes; (7) contactantes.",
+    "tip": "",
+    "grades": {
+     "correct": 1.3,
+     "partial": 0.65,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 7 subitens.",
+     "incorrect": "Cita menos de 4 subitens.",
+     "partial": "Cita pelo menos 4 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "2.1",
+      "text": "Evacuações"
+     },
+     {
+      "id": "2.2",
+      "text": "Vômitos"
+     },
+     {
+      "id": "2.3",
+      "text": "Febre"
+     },
+     {
+      "id": "2.4",
+      "text": "Ingesta"
+     },
+     {
+      "id": "2.5",
+      "text": "Diurese"
+     },
+     {
+      "id": "2.6",
+      "text": "Sangue nas fezes"
+     },
+     {
+      "id": "2.7",
+      "text": "Contactantes"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 3,
+    "phase": "Anamnese",
+    "content": "Pergunta vacinas (rotavírus), alergias e peso.",
+    "tip": "",
+    "grades": {
+     "correct": 0.5,
+     "partial": 0.25,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 4,
+    "phase": "Exame físico",
+    "content": "Avalia: (1) estado geral; (2) olhos; (3) lágrimas; (4) mucosas; (5) prega cutânea; (6) enchimento capilar.",
+    "tip": "",
+    "grades": {
+     "correct": 1.3,
+     "partial": 0.65,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 6 subitens.",
+     "incorrect": "Cita menos de 3 subitens.",
+     "partial": "Cita pelo menos 3 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "4.1",
+      "text": "Estado geral"
+     },
+     {
+      "id": "4.2",
+      "text": "Olhos"
+     },
+     {
+      "id": "4.3",
+      "text": "Lágrimas"
+     },
+     {
+      "id": "4.4",
+      "text": "Mucosas"
+     },
+     {
+      "id": "4.5",
+      "text": "Prega"
+     },
+     {
+      "id": "4.6",
+      "text": "Enchimento capilar"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 5,
+    "phase": "Raciocínio/diagnóstico",
+    "content": "Classifica como desidratação (Plano B) por sinais clínicos.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 6,
+    "phase": "Conduta",
+    "content": "Prescreve SRO 50–100 mL/kg em 4 a 6 horas, em pequenos volumes, com observação.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 7,
+    "phase": "Conduta",
+    "content": "Reavalia a criança ao final do período de hidratação.",
+    "tip": "",
+    "grades": {
+     "correct": 0.6,
+     "partial": 0.3,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 8,
+    "phase": "Conduta",
+    "content": "Mantém alimentação habitual e aleitamento.",
+    "tip": "",
+    "grades": {
+     "correct": 0.4,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 9,
+    "phase": "Conduta",
+    "content": "Prescreve zinco (20 mg/dia por 10 dias para ≥ 6 meses).",
+    "tip": "",
+    "grades": {
+     "correct": 0.6,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 10,
+    "phase": "Conduta",
+    "content": "Não prescreve antibiótico nem antidiarreico.",
+    "tip": "",
+    "grades": {
+     "correct": 0.6,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 11,
+    "phase": "Orientação",
+    "content": "Orienta: (1) sinais de alarme; (2) retorno imediato; (3) lavagem de mãos; (4) preparo da SRO.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 4 subitens.",
+     "incorrect": "Cita menos de 2 subitens.",
+     "partial": "Cita pelo menos 2 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "11.1",
+      "text": "Sinais de alarme"
+     },
+     {
+      "id": "11.2",
+      "text": "Retorno"
+     },
+     {
+      "id": "11.3",
+      "text": "Higiene"
+     },
+     {
+      "id": "11.4",
+      "text": "Preparo da SRO"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 12,
+    "phase": "Comunicação",
+    "content": "Usa linguagem acessível e acolhe a ansiedade da mãe.",
+    "tip": "",
+    "grades": {
+     "correct": 0.2,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   }
+  ],
+  "max_score": 10.0,
+  "duration_ms": 600000,
+  "origin": "authorial-seed"
+ },
+ {
+  "id": "seed-06",
+  "name": "Crise de sibilância em escolar",
+  "topic": "Asma aguda",
+  "area": "Pediatria",
+  "setting": "Urgência/emergência",
+  "doctor_scene": "Pronto atendimento. Menino de 6 anos com tosse, chiado e cansaço há 1 dia. FR 34, FC 124, SpO2 91%.",
+  "doctor_tasks": "Anamnese e exame físico; classificar a crise; definir conduta e orientar na alta.",
+  "actor_script": "Você é o pai. Já teve crises antes, 1 internação. Usa bombinha só 'quando precisa'. Começou após resfriado. Fala frases curtas, usa musculatura acessória.",
+  "pressings": [
+   {
+    "id": "p1",
+    "name": "Exame do examinador",
+    "content": "Sibilos difusos, tiragem subcostal, fala frases curtas."
+   }
+  ],
+  "checklist_items": [
+   {
+    "order": 1,
+    "phase": "Apresentação",
+    "content": "Apresenta-se, cumprimenta o paciente, confirma nome e idade e pede permissão para iniciar.",
+    "tip": "",
+    "grades": {
+     "correct": 0.3,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 2,
+    "phase": "Anamnese",
+    "content": "Explora: (1) início/gatilho; (2) tosse e dispneia; (3) crises prévias/internações; (4) medicações e adesão.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 4 subitens.",
+     "incorrect": "Cita menos de 2 subitens.",
+     "partial": "Cita pelo menos 2 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "2.1",
+      "text": "Gatilho"
+     },
+     {
+      "id": "2.2",
+      "text": "Tosse/dispneia"
+     },
+     {
+      "id": "2.3",
+      "text": "Crises prévias"
+     },
+     {
+      "id": "2.4",
+      "text": "Medicações/adesão"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 3,
+    "phase": "Exame físico",
+    "content": "Avalia: (1) FR e FC; (2) SpO2; (3) musculatura acessória; (4) sibilos; (5) capacidade de falar.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 5 subitens.",
+     "incorrect": "Cita menos de 3 subitens.",
+     "partial": "Cita pelo menos 3 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "3.1",
+      "text": "FR/FC"
+     },
+     {
+      "id": "3.2",
+      "text": "SpO2"
+     },
+     {
+      "id": "3.3",
+      "text": "Musculatura acessória"
+     },
+     {
+      "id": "3.4",
+      "text": "Sibilos"
+     },
+     {
+      "id": "3.5",
+      "text": "Fala"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 4,
+    "phase": "Exames",
+    "content": "Utiliza oximetria e justifica não solicitar exames de rotina (RX apenas se suspeita de complicação).",
+    "tip": "",
+    "grades": {
+     "correct": 0.5,
+     "partial": 0.25,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 5,
+    "phase": "Raciocínio/diagnóstico",
+    "content": "Classifica como crise de asma moderada/grave e verbaliza o diagnóstico.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 6,
+    "phase": "Conduta",
+    "content": "Oferece oxigênio se SpO2 < 92%.",
+    "tip": "",
+    "grades": {
+     "correct": 0.6,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 7,
+    "phase": "Conduta",
+    "content": "Prescreve beta-2 agonista de curta ação inalatório (salbutamol com espaçador) repetido na primeira hora.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 8,
+    "phase": "Conduta",
+    "content": "Prescreve corticoide sistêmico precoce (prednisolona/prednisona 1–2 mg/kg, máx. 40 mg).",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 9,
+    "phase": "Conduta",
+    "content": "Reavalia após o tratamento e define alta ou internação.",
+    "tip": "",
+    "grades": {
+     "correct": 0.6,
+     "partial": 0.3,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 10,
+    "phase": "Orientação",
+    "content": "Na alta: (1) plano de ação; (2) técnica inalatória; (3) controle de gatilhos; (4) seguimento e corticoide inalatório.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 4 subitens.",
+     "incorrect": "Cita menos de 2 subitens.",
+     "partial": "Cita pelo menos 2 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "10.1",
+      "text": "Plano de ação"
+     },
+     {
+      "id": "10.2",
+      "text": "Técnica inalatória"
+     },
+     {
+      "id": "10.3",
+      "text": "Gatilhos"
+     },
+     {
+      "id": "10.4",
+      "text": "Seguimento/CI"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 11,
+    "phase": "Comunicação",
+    "content": "Explica de forma clara e acolhe o pai.",
+    "tip": "",
+    "grades": {
+     "correct": 0.5,
+     "partial": 0.25,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   }
+  ],
+  "max_score": 10.0,
+  "duration_ms": 600000,
+  "origin": "authorial-seed"
+ },
+ {
+  "id": "seed-07",
+  "name": "Gestante com hipertensão e cefaleia",
+  "topic": "Pré-eclâmpsia grave",
+  "area": "Ginecologia e Obstetrícia",
+  "setting": "Urgência/emergência",
+  "doctor_scene": "Maternidade. Gestante de 30 anos, 33 semanas, primigesta. Cefaleia intensa. PA 170x110.",
+  "doctor_tasks": "Anamnese e exame físico; solicitar exames; verbalizar diagnóstico; definir conduta; orientar.",
+  "actor_script": "Cefaleia forte há 1 dia, luzes brilhantes, dor no estômago. Pré-natal sem intercorrências, não usa remédios. Mexe o bebê bem. Sem sangramento.",
+  "pressings": [
+   {
+    "id": "p1",
+    "name": "Laboratório",
+    "content": "Plaquetas 98.000 | TGO 120 | TGP 95 | DHL 450 | Creatinina 1,1 | Proteinúria 2+"
+   },
+   {
+    "id": "p2",
+    "name": "Cardiotocografia",
+    "content": "BCF 140, reatividade presente."
+   }
+  ],
+  "checklist_items": [
+   {
+    "order": 1,
+    "phase": "Apresentação",
+    "content": "Apresenta-se, cumprimenta o paciente, confirma nome e idade e pede permissão para iniciar.",
+    "tip": "",
+    "grades": {
+     "correct": 0.3,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 2,
+    "phase": "Anamnese",
+    "content": "Explora: (1) cefaleia; (2) escotomas; (3) epigastralgia; (4) movimentos fetais; (5) perda de líquido/sangramento.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 5 subitens.",
+     "incorrect": "Cita menos de 3 subitens.",
+     "partial": "Cita pelo menos 3 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "2.1",
+      "text": "Cefaleia"
+     },
+     {
+      "id": "2.2",
+      "text": "Escotomas"
+     },
+     {
+      "id": "2.3",
+      "text": "Epigastralgia"
+     },
+     {
+      "id": "2.4",
+      "text": "Movimentos fetais"
+     },
+     {
+      "id": "2.5",
+      "text": "Perdas"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 3,
+    "phase": "Anamnese",
+    "content": "Pergunta antecedentes (HAS, pré-eclâmpsia), medicações e pré-natal.",
+    "tip": "",
+    "grades": {
+     "correct": 0.5,
+     "partial": 0.25,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 4,
+    "phase": "Exame físico",
+    "content": "Avalia: (1) repetição da PA; (2) reflexos e clônus; (3) edema; (4) altura uterina; (5) BCF.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 5 subitens.",
+     "incorrect": "Cita menos de 3 subitens.",
+     "partial": "Cita pelo menos 3 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "4.1",
+      "text": "PA"
+     },
+     {
+      "id": "4.2",
+      "text": "Reflexos/clônus"
+     },
+     {
+      "id": "4.3",
+      "text": "Edema"
+     },
+     {
+      "id": "4.4",
+      "text": "Altura uterina"
+     },
+     {
+      "id": "4.5",
+      "text": "BCF"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 5,
+    "phase": "Exames",
+    "content": "Solicita hemograma/plaquetas, TGO/TGP/DHL, creatinina, proteinúria e avaliação fetal (CTG/US).",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 6,
+    "phase": "Raciocínio/diagnóstico",
+    "content": "Diagnostica pré-eclâmpsia com sinais de gravidade (HELLP em evolução).",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 7,
+    "phase": "Conduta",
+    "content": "Prescreve sulfato de magnésio (ataque 4 g EV e manutenção 1–2 g/h).",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 8,
+    "phase": "Conduta",
+    "content": "Trata a crise hipertensiva (hidralazina EV ou nifedipina VO) para PA < 160/110.",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 9,
+    "phase": "Conduta",
+    "content": "Monitora toxicidade do magnésio (reflexo patelar, FR, diurese).",
+    "tip": "",
+    "grades": {
+     "correct": 0.6,
+     "partial": 0.3,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 10,
+    "phase": "Conduta",
+    "content": "Administra corticoide para maturação pulmonar e planeja interrupção da gestação após estabilização.",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 11,
+    "phase": "Comunicação",
+    "content": "Explica à paciente a gravidade e o plano de cuidado.",
+    "tip": "",
+    "grades": {
+     "correct": 0.5,
+     "partial": 0.25,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   }
+  ],
+  "max_score": 10.0,
+  "duration_ms": 600000,
+  "origin": "authorial-seed"
+ },
+ {
+  "id": "seed-08",
+  "name": "Dor pélvica em mulher jovem",
+  "topic": "Doença inflamatória pélvica",
+  "area": "Ginecologia e Obstetrícia",
+  "setting": "Ambulatório",
+  "doctor_scene": "Ambulatório. Mulher de 24 anos com dor em baixo ventre há 5 dias, febre e corrimento.",
+  "doctor_tasks": "Anamnese, exame físico, exames, diagnóstico, tratamento e orientação.",
+  "actor_script": "Dor pélvica há 5 dias, febre baixa, corrimento amarelado, dor na relação. Novo parceiro há 1 mês, sem preservativo. DUM há 20 dias. Sem outras doenças.",
+  "pressings": [
+   {
+    "id": "p1",
+    "name": "Exames",
+    "content": "βhCG negativo | Leucócitos 13.000 | PCR 40 | US transvaginal: sem massas"
+   }
+  ],
+  "checklist_items": [
+   {
+    "order": 1,
+    "phase": "Apresentação",
+    "content": "Apresenta-se, cumprimenta o paciente, confirma nome e idade e pede permissão para iniciar.",
+    "tip": "",
+    "grades": {
+     "correct": 0.3,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 2,
+    "phase": "Anamnese",
+    "content": "Pergunta: (1) dor pélvica; (2) corrimento; (3) dispareunia; (4) febre; (5) DUM; (6) parceiros e preservativo.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 6 subitens.",
+     "incorrect": "Cita menos de 3 subitens.",
+     "partial": "Cita pelo menos 3 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "2.1",
+      "text": "Dor"
+     },
+     {
+      "id": "2.2",
+      "text": "Corrimento"
+     },
+     {
+      "id": "2.3",
+      "text": "Dispareunia"
+     },
+     {
+      "id": "2.4",
+      "text": "Febre"
+     },
+     {
+      "id": "2.5",
+      "text": "DUM"
+     },
+     {
+      "id": "2.6",
+      "text": "Parceiros/preservativo"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 3,
+    "phase": "Anamnese",
+    "content": "Pergunta ISTs prévias, gravidez, método contraceptivo.",
+    "tip": "",
+    "grades": {
+     "correct": 0.5,
+     "partial": 0.25,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 4,
+    "phase": "Exame físico",
+    "content": "Realiza: (1) sinais vitais; (2) palpação abdominal; (3) exame especular; (4) toque com dor à mobilização do colo.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 4 subitens.",
+     "incorrect": "Cita menos de 2 subitens.",
+     "partial": "Cita pelo menos 2 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "4.1",
+      "text": "Sinais vitais"
+     },
+     {
+      "id": "4.2",
+      "text": "Abdome"
+     },
+     {
+      "id": "4.3",
+      "text": "Especular"
+     },
+     {
+      "id": "4.4",
+      "text": "Toque"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 5,
+    "phase": "Exames",
+    "content": "Solicita βhCG, hemograma/PCR, pesquisa de clamídia/gonococo, ultrassom e sorologias (HIV, sífilis, hepatites).",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 6,
+    "phase": "Raciocínio/diagnóstico",
+    "content": "Diagnostica DIP com base nos critérios clínicos.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 7,
+    "phase": "Raciocínio/diagnóstico",
+    "content": "Cita diagnósticos diferenciais (gravidez ectópica, apendicite).",
+    "tip": "",
+    "grades": {
+     "correct": 0.6,
+     "partial": 0.3,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 8,
+    "phase": "Conduta",
+    "content": "Prescreve: ceftriaxona 500 mg IM dose única + doxiciclina 100 mg 12/12 h por 14 dias + metronidazol 500 mg 12/12 h por 14 dias.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 9,
+    "phase": "Conduta",
+    "content": "Cita critérios de internação (gestação, abscesso, falha ao tratamento, quadro grave).",
+    "tip": "",
+    "grades": {
+     "correct": 0.6,
+     "partial": 0.3,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 10,
+    "phase": "Orientação",
+    "content": "Orienta: (1) tratamento do parceiro; (2) preservativo/abstinência; (3) retorno em 72 h; (4) sinais de alarme.",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 4 subitens.",
+     "incorrect": "Cita menos de 2 subitens.",
+     "partial": "Cita pelo menos 2 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "10.1",
+      "text": "Parceiro"
+     },
+     {
+      "id": "10.2",
+      "text": "Preservativo"
+     },
+     {
+      "id": "10.3",
+      "text": "Retorno 72 h"
+     },
+     {
+      "id": "10.4",
+      "text": "Sinais de alarme"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 11,
+    "phase": "Comunicação",
+    "content": "Aborda a vida sexual sem julgamento e com respeito à privacidade.",
+    "tip": "",
+    "grades": {
+     "correct": 0.3,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   }
+  ],
+  "max_score": 10.0,
+  "duration_ms": 600000,
+  "origin": "authorial-seed"
+ },
+ {
+  "id": "seed-09",
+  "name": "Hipertensão arterial na UBS",
+  "topic": "Hipertensão arterial sistêmica",
+  "area": "Medicina de Família e Comunidade",
+  "setting": "APS/UBS",
+  "doctor_scene": "UBS. Homem de 52 anos, assintomático, com PA 156x98 em duas medidas.",
+  "doctor_tasks": "Anamnese, medida da PA, exames iniciais, diagnóstico, conduta e seguimento.",
+  "actor_script": "Sem sintomas. Pai teve AVC. Fuma 10 cigarros/dia, bebe cerveja nos fins de semana, come muito salgado, sedentário, peso 92 kg, 1,72 m. Sem outras doenças.",
+  "pressings": [
+   {
+    "id": "p1",
+    "name": "Exames",
+    "content": "Glicemia 102 | Creatinina 0,9 | K 4,3 | LDL 150 | EAS normal | ECG normal"
+   }
+  ],
+  "checklist_items": [
+   {
+    "order": 1,
+    "phase": "Apresentação",
+    "content": "Apresenta-se, cumprimenta o paciente, confirma nome e idade e pede permissão para iniciar.",
+    "tip": "",
+    "grades": {
+     "correct": 0.3,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 2,
+    "phase": "Anamnese",
+    "content": "Explora fatores de risco: (1) tabagismo; (2) sal; (3) álcool; (4) sedentarismo; (5) história familiar; (6) DM/dislipidemia; (7) medicamentos.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 7 subitens.",
+     "incorrect": "Cita menos de 4 subitens.",
+     "partial": "Cita pelo menos 4 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "2.1",
+      "text": "Tabagismo"
+     },
+     {
+      "id": "2.2",
+      "text": "Sal"
+     },
+     {
+      "id": "2.3",
+      "text": "Álcool"
+     },
+     {
+      "id": "2.4",
+      "text": "Sedentarismo"
+     },
+     {
+      "id": "2.5",
+      "text": "História familiar"
+     },
+     {
+      "id": "2.6",
+      "text": "DM/dislipidemia"
+     },
+     {
+      "id": "2.7",
+      "text": "Medicamentos"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 3,
+    "phase": "Exame físico",
+    "content": "Mede a PA corretamente (repouso, manguito adequado, 2 medidas) e avalia peso, IMC, circunferência abdominal e coração.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 4,
+    "phase": "Exames",
+    "content": "Solicita creatinina, potássio, glicemia, perfil lipídico, EAS e ECG.",
+    "tip": "",
+    "grades": {
+     "correct": 1.0,
+     "partial": 0.5,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 5,
+    "phase": "Raciocínio/diagnóstico",
+    "content": "Diagnostica HAS (confirmação por medidas repetidas/MRPA/MAPA) e estratifica o risco cardiovascular.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 6,
+    "phase": "Conduta",
+    "content": "Orienta medidas não farmacológicas: dieta pobre em sal, atividade física, perda de peso, álcool e cessação do tabagismo.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 7,
+    "phase": "Conduta",
+    "content": "Inicia anti-hipertensivo (IECA/BRA, BCC ou tiazídico) e explica o esquema.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 8,
+    "phase": "Conduta",
+    "content": "Define metas de PA e retorno para reavaliação.",
+    "tip": "",
+    "grades": {
+     "correct": 0.8,
+     "partial": 0.4,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 9,
+    "phase": "Orientação",
+    "content": "Reforça adesão, efeitos adversos e retorno em 30 dias.",
+    "tip": "",
+    "grades": {
+     "correct": 0.7,
+     "partial": 0.35,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 10,
+    "phase": "Comunicação",
+    "content": "Constrói o plano de forma compartilhada.",
+    "tip": "",
+    "grades": {
+     "correct": 0.3,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   }
+  ],
+  "max_score": 10.0,
+  "duration_ms": 600000,
+  "origin": "authorial-seed"
+ },
+ {
+  "id": "seed-10",
+  "name": "Tosse prolongada",
+  "topic": "Tuberculose pulmonar",
+  "area": "Medicina de Família e Comunidade",
+  "setting": "APS/UBS",
+  "doctor_scene": "UBS. Mulher de 38 anos, tosse há 5 semanas, emagrecimento e sudorese noturna.",
+  "doctor_tasks": "Anamnese, exame físico, exames, diagnóstico, tratamento, notificação e orientação.",
+  "actor_script": "Tosse há 5 semanas com catarro, febre à tarde, suor à noite, perdeu 6 kg. Mora com 4 pessoas. Sem HIV conhecido, nunca tratou TB. Fuma. Pai teve TB há 5 anos.",
+  "pressings": [
+   {
+    "id": "p1",
+    "name": "Baciloscopia/TRM-TB",
+    "content": "Mycobacterium tuberculosis detectado, sem resistência à rifampicina"
+   },
+   {
+    "id": "p2",
+    "name": "RX de tórax",
+    "content": "Cavitação em lobo superior direito"
+   },
+   {
+    "id": "p3",
+    "name": "Teste rápido HIV",
+    "content": "Não reagente"
+   }
+  ],
+  "checklist_items": [
+   {
+    "order": 1,
+    "phase": "Apresentação",
+    "content": "Apresenta-se, cumprimenta o paciente, confirma nome e idade e pede permissão para iniciar.",
+    "tip": "",
+    "grades": {
+     "correct": 0.3,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 2,
+    "phase": "Anamnese",
+    "content": "Explora: (1) tosse > 3 semanas; (2) febre vespertina; (3) sudorese noturna; (4) emagrecimento; (5) hemoptise; (6) contato com TB.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Cita todos os 6 subitens.",
+     "incorrect": "Cita menos de 3 subitens.",
+     "partial": "Cita pelo menos 3 e não todos os subitens."
+    },
+    "subitems": [
+     {
+      "id": "2.1",
+      "text": "Tosse"
+     },
+     {
+      "id": "2.2",
+      "text": "Febre"
+     },
+     {
+      "id": "2.3",
+      "text": "Sudorese"
+     },
+     {
+      "id": "2.4",
+      "text": "Emagrecimento"
+     },
+     {
+      "id": "2.5",
+      "text": "Hemoptise"
+     },
+     {
+      "id": "2.6",
+      "text": "Contato"
+     }
+    ],
+    "auto_grade_rule": "all/half/none"
+   },
+   {
+    "order": 3,
+    "phase": "Anamnese",
+    "content": "Pergunta TB prévia, HIV, diabetes, tabagismo e álcool.",
+    "tip": "",
+    "grades": {
+     "correct": 0.6,
+     "partial": 0.3,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 4,
+    "phase": "Exame físico",
+    "content": "Avalia sinais vitais, peso, ausculta pulmonar e linfonodos.",
+    "tip": "",
+    "grades": {
+     "correct": 0.8,
+     "partial": 0.4,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 5,
+    "phase": "Exames",
+    "content": "Solicita baciloscopia/TRM-TB, RX de tórax, teste rápido de HIV e glicemia.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 6,
+    "phase": "Raciocínio/diagnóstico",
+    "content": "Diagnostica tuberculose pulmonar em sintomático respiratório.",
+    "tip": "",
+    "grades": {
+     "correct": 1.2,
+     "partial": 0.6,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 7,
+    "phase": "Conduta",
+    "content": "Prescreve esquema RIPE (rifampicina, isoniazida, pirazinamida e etambutol) por 2 meses + RH por 4 meses.",
+    "tip": "",
+    "grades": {
+     "correct": 1.5,
+     "partial": 0.75,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 8,
+    "phase": "Conduta",
+    "content": "Organiza tratamento diretamente observado.",
+    "tip": "",
+    "grades": {
+     "correct": 0.8,
+     "partial": 0.4,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 9,
+    "phase": "Conduta",
+    "content": "Realiza notificação compulsória (SINAN).",
+    "tip": "",
+    "grades": {
+     "correct": 0.6,
+     "partial": null,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 10,
+    "phase": "Conduta",
+    "content": "Investiga contatos domiciliares.",
+    "tip": "",
+    "grades": {
+     "correct": 0.8,
+     "partial": 0.4,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   },
+   {
+    "order": 11,
+    "phase": "Orientação",
+    "content": "Orienta: adesão, efeitos adversos, transmissão e ventilação do ambiente.",
+    "tip": "",
+    "grades": {
+     "correct": 0.7,
+     "partial": 0.35,
+     "incorrect": 0
+    },
+    "criteria": {
+     "correct": "Atende integralmente ao descrito.",
+     "incorrect": "Não realiza ou realiza de forma inadequada.",
+     "partial": "Realiza parcialmente."
+    },
+    "subitems": [],
+    "auto_grade_rule": null
+   }
+  ],
+  "max_score": 10.0,
+  "duration_ms": 600000,
+  "origin": "authorial-seed"
+ }
+]

@@ -292,6 +292,27 @@ service cloud.firestore {
         isAdmin()
       );
     }
+
+    // -------------------------------------------------------------
+    // BANCO DE CHECKLISTS + SIMULADOS (somente backend / Admin SDK)
+    // Nota, favoritos, inscrições e relatos passam pela API /api/checklist-bank,
+    // que recalcula a nota no servidor. Nenhuma escrita direta do cliente.
+    // -------------------------------------------------------------
+    match /checklist_study_sessions/{sessionId} {
+      allow read, write: if false;
+    }
+    match /checklist_study_schedules/{scheduleId} {
+      allow read, write: if false;
+    }
+    match /checklist_favorites/{userId} {
+      allow read, write: if false;
+    }
+    match /checklist_event_confirmations/{confirmationId} {
+      allow read, write: if false;
+    }
+    match /checklist_station_reports/{reportId} {
+      allow read, write: if false;
+    }
   }
 }
 
