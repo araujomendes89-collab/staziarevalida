@@ -1,0 +1,16 @@
+:root{
+/* Brand teal — from the logo gradient start */
+--teal-50:#EEFBF9;--teal-100:#D2F4EF;--teal-200:#A6E8DF;--teal-300:#6CD5CA;--teal-400:#2DBDB1;--teal-500:#12A79B;--teal-600:#0C8A80;--teal-700:#0B6F68;--teal-800:#0D5853;--teal-900:#0E4945;
+/* Brand navy — from the logo gradient end + wordmark */
+--navy-50:#F1F5FB;--navy-100:#E2E9F5;--navy-200:#C4D1EA;--navy-300:#93A8D3;--navy-400:#5E7DBA;--navy-500:#3A5CA2;--navy-600:#254588;--navy-700:#1A346E;--navy-800:#132858;--navy-900:#0D1C42;--navy-950:#08122B;
+/* Neutrals — cool slate */
+--gray-0:#FFFFFF;--gray-25:#FAFBFC;--gray-50:#F4F6F9;--gray-100:#ECEFF3;--gray-200:#DCE1E8;--gray-300:#C3CBD5;--gray-400:#94A0AF;--gray-500:#687586;--gray-600:#4F5A69;--gray-700:#3A4350;--gray-800:#252C36;--gray-900:#151A21;
+/* Semantic bases */
+--green-50:#EAF7EF;--green-200:#B5E3C6;--green-600:#16803C;--green-700:#126632;
+--amber-50:#FEF5E3;--amber-200:#F8D99A;--amber-500:#E59A0B;--amber-700:#9A5B06;
+--red-50:#FDEEEE;--red-200:#F5C0C0;--red-600:#C62828;--red-700:#A11F1F;
+--blue-50:#EDF2FD;--blue-200:#C2D3F7;--blue-600:#2556D1;--blue-700:#1C43A8;
+--orange-50:#FFF2E8;--orange-500:#F26B1D;--orange-700:#B34A0C;
+--violet-50:#F3EFFE;--violet-600:#6236D6;--violet-700:#4F28B0;
+--magenta-50:#FCEEF5;--magenta-600:#B8336F;
+}

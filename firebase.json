@@ -9,6 +9,14 @@
     ],
     "rewrites": [
       {
+        "source": "/novo",
+        "destination": "/novo.html"
+      },
+      {
+        "source": "/novo/**",
+        "destination": "/novo.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

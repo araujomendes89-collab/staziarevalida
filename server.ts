@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
@@ -1403,10 +1404,24 @@ Retorne um JSON com a avaliação rigorosa baseada no padrão INEP:
       server: { middlewareMode: true },
       appType: "spa",
     });
+    // App novo (/novo): serve novo.html para as rotas dele; o resto segue o app atual.
+    app.use(async (req: Request, res: Response, next) => {
+      const wantsHtml = req.method === "GET" && (req.headers.accept || "").includes("text/html");
+      if (!wantsHtml || !(req.path === "/novo" || req.path.startsWith("/novo/"))) return next();
+      try {
+        const template = await fs.promises.readFile(path.join(process.cwd(), "novo.html"), "utf-8");
+        res.status(200).set({ "Content-Type": "text/html" }).end(await vite.transformIndexHtml(req.originalUrl, template));
+      } catch (error) {
+        next(error);
+      }
+    });
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
+    app.get(["/novo", "/novo/*"], (_req: Request, res: Response) => {
+      res.sendFile(path.join(distPath, "novo.html"));
+    });
     app.get("*", (_req: Request, res: Response) => {
       res.sendFile(path.join(distPath, "index.html"));
     });

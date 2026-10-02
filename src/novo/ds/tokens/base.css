@@ -1,0 +1,6 @@
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font:var(--type-body);color:var(--text-primary);background:var(--bg-app);-webkit-font-smoothing:antialiased}
+a{color:var(--text-link);text-decoration:underline;text-underline-offset:2px}a:hover{color:var(--text-link-hover)}
+:focus-visible{outline:2px solid var(--focus-color);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}

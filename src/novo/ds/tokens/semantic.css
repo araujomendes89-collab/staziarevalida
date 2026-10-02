@@ -1,0 +1,39 @@
+:root{
+--bg-app:var(--gray-50);--surface-card:var(--gray-0);--surface-subtle:var(--gray-25);--surface-sunken:var(--gray-100);--surface-inverse:var(--navy-900);--surface-brand-soft:var(--teal-50);--surface-overlay:rgba(8,18,43,.48);
+--border-subtle:var(--gray-100);--border-default:var(--gray-200);--border-strong:var(--gray-300);--border-brand:var(--teal-500);
+--text-primary:var(--navy-900);--text-secondary:var(--gray-600);--text-tertiary:var(--gray-500);--text-disabled:var(--gray-400);--text-inverse:var(--gray-0);--text-brand:var(--teal-700);--text-link:var(--teal-700);--text-link-hover:var(--teal-800);
+--action-primary:var(--teal-700);--action-primary-hover:var(--teal-800);--action-primary-pressed:var(--teal-900);--action-on-primary:var(--gray-0);
+--action-strong:var(--navy-900);--action-strong-hover:var(--navy-800);--action-on-strong:var(--gray-0);
+--action-secondary-bg:var(--gray-0);--action-secondary-hover:var(--gray-50);--action-secondary-border:var(--gray-200);
+--action-ghost-hover:var(--gray-100);
+--selected-bg:var(--teal-50);--selected-border:var(--teal-600);--selected-text:var(--teal-800);
+--focus-ring:0 0 0 3px rgba(18,167,155,.35);--focus-color:var(--teal-500);
+--success-bg:var(--green-50);--success-border:var(--green-200);--success-text:var(--green-700);--success-solid:var(--green-600);
+--warning-bg:var(--amber-50);--warning-border:var(--amber-200);--warning-text:var(--amber-700);--warning-solid:var(--amber-500);
+--danger-bg:var(--red-50);--danger-border:var(--red-200);--danger-text:var(--red-700);--danger-solid:var(--red-600);
+--info-bg:var(--blue-50);--info-border:var(--blue-200);--info-text:var(--blue-700);--info-solid:var(--blue-600);
+--pro-bg:var(--amber-50);--pro-border:var(--amber-200);--pro-text:var(--amber-700);
+--streak:var(--orange-500);--streak-bg:var(--orange-50);--streak-text:var(--orange-700);
+--ai:var(--violet-600);--ai-bg:var(--violet-50);--ai-text:var(--violet-700);
+/* 5 grandes áreas do Revalida */
+--area-clinica:#2F5FD0;--area-cirurgia:#D9650A;--area-go:#C23A74;--area-pediatria:#0E8A5F;--area-preventiva:#6A47E0;
+--chart-1:var(--teal-500);--chart-2:var(--navy-500);--chart-track:var(--gray-100);
+--brand-gradient:linear-gradient(160deg,#12B5AA 0%,#1E4F96 100%);/* @kind color */
+}
+[data-theme="dark"]{
+--bg-app:#08111F;--surface-card:#0F1A2B;--surface-subtle:#132036;--surface-sunken:#0B1525;--surface-inverse:var(--gray-0);--surface-brand-soft:rgba(45,189,177,.12);
+--border-subtle:#17243A;--border-default:#22324B;--border-strong:#304463;--border-brand:var(--teal-400);
+--text-primary:#EAF0F7;--text-secondary:#A9B5C7;--text-tertiary:#8592A6;--text-disabled:#5A677B;--text-inverse:var(--navy-950);--text-brand:var(--teal-300);--text-link:var(--teal-300);--text-link-hover:var(--teal-200);
+--action-primary:var(--teal-400);--action-primary-hover:var(--teal-300);--action-primary-pressed:var(--teal-500);--action-on-primary:var(--navy-950);
+--action-strong:#EAF0F7;--action-strong-hover:#FFFFFF;--action-on-strong:var(--navy-950);
+--action-secondary-bg:#132036;--action-secondary-hover:#192A44;--action-secondary-border:#2A3C59;--action-ghost-hover:#17263D;
+--selected-bg:rgba(45,189,177,.14);--selected-border:var(--teal-400);--selected-text:var(--teal-200);
+--success-bg:rgba(22,128,60,.18);--success-border:rgba(74,190,120,.4);--success-text:#7FD8A2;
+--warning-bg:rgba(229,154,11,.14);--warning-border:rgba(229,154,11,.4);--warning-text:#F5C462;
+--danger-bg:rgba(198,40,40,.18);--danger-border:rgba(240,110,110,.4);--danger-text:#F59C9C;
+--info-bg:rgba(37,86,209,.2);--info-border:rgba(110,150,240,.4);--info-text:#9DB9F5;
+--pro-bg:rgba(229,154,11,.14);--pro-border:rgba(229,154,11,.4);--pro-text:#F5C462;
+--streak-bg:rgba(242,107,29,.16);--streak-text:#FFA36B;--ai-bg:rgba(98,54,214,.22);--ai-text:#BCA7FA;
+--area-clinica:#7FA2F2;--area-cirurgia:#F59A5E;--area-go:#EE8DBA;--area-pediatria:#6FCF95;--area-preventiva:#B39BF7;
+--chart-1:var(--teal-400);--chart-2:#6F8FD6;--chart-track:#1A2840;
+}
