@@ -27,6 +27,15 @@ export interface Backend {
   signOut(): Promise<void>;
   /** Chama uma função `app_*` do banco. */
   rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T>;
+  /**
+   * Só no banco local: criar o primeiro administrador (conta master) pela tela de entrada,
+   * enquanto não existir nenhum. No Supabase o primeiro admin é definido no painel
+   * (ver supabase/README.md), nunca pelo navegador.
+   */
+  readonly masterSetup?: {
+    needed(): Promise<boolean>;
+    create(name: string, email: string, password: string): Promise<void>;
+  };
 }
 
 export type BackendErrorCode =

@@ -19,6 +19,7 @@ import { ErrorNotebook } from "./review/ErrorNotebook.jsx";
 import { PerformanceScreen } from "./review/PerformanceScreen.jsx";
 import { FlashcardsScreen } from "./review/FlashcardsScreen.jsx";
 import { AccountScreen } from "./account/AccountScreen.jsx";
+import { AdminScreen, isStaffRole } from "./admin/AdminScreen.jsx";
 import { QuestionBuilder } from "./practice/QuestionBuilder.jsx";
 import { PracticeSession } from "./practice/PracticeSession.jsx";
 
@@ -42,12 +43,13 @@ const TITLES = {
   peps: ["Meus PEPs", "Estações avaliadas"],
   paciente: ["Paciente simulado", "Treine a anamnese com IA"],
   desempenho2: ["Desempenho prático", "Notas pelo PEP"],
+  admin: ["Administração", "Gestão da plataforma"],
 };
 const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps", "paciente", "desempenho2"];
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "perfil"]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "perfil", "admin"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -84,6 +86,7 @@ function Screen() {
   }, [theme]);
 
   if (!ROUTES.has(route)) return <Navigate to="/" replace />;
+  if (route === "admin" && !isStaffRole(boot.role)) return <Navigate to="/" replace />;
 
   const go = (next, query) => {
     const target = next === "planos" ? "perfil" : next;
@@ -123,7 +126,8 @@ function Screen() {
   else if (route === "peps") body = <Peps go={go} />;
   else if (route === "paciente") body = <SimPatient go={go} />;
   else if (route === "desempenho2") body = <Perf2 go={go} data={data} />;
-  else body = <AccountScreen />;
+  else if (route === "admin") body = <AdminScreen />;
+  else body = <AccountScreen go={go} />;
 
   const isHome = route === "home" || route === "home2";
   const [title, sub] = isHome
@@ -159,6 +163,7 @@ function Screen() {
         streakDays: boot.streak_days,
         flashcardsDue: boot.flashcards_due,
         onSignOut: () => signOut(),
+        isStaff: isStaffRole(boot.role),
       }}
     >
       {!CONNECTED.has(route) && (

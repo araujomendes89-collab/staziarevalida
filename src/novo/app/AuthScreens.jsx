@@ -71,6 +71,18 @@ function Login({ go }) {
   const [emailError, setEmailError] = React.useState(false);
   const [error, setError] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
+  const [needsMaster, setNeedsMaster] = React.useState(false);
+
+  React.useEffect(() => {
+    let alive = true;
+    backend.masterSetup
+      ?.needed()
+      .then((needed) => alive && setNeedsMaster(needed))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [backend]);
 
   const submit = async (e) => {
     e.preventDefault();
@@ -117,6 +129,20 @@ function Login({ go }) {
           <h1 style={{ margin: 0, font: "var(--type-h2)" }}>Bem-vindo de volta</h1>
           <p style={{ margin: "6px 0 0", color: "var(--text-secondary)" }}>Entre para continuar na sua conta.</p>
         </div>
+        {needsMaster && (
+          <Banner
+            tone="brand"
+            icon="shield-check"
+            title="Primeiro acesso"
+            action={
+              <Button size="sm" variant="secondary" onClick={() => go("master")}>
+                Criar conta master
+              </Button>
+            }
+          >
+            Ainda não há administrador neste ambiente.
+          </Banner>
+        )}
         {error && <Banner tone="danger">{error}</Banner>}
         <TextField name="email" label="E-mail" type="email" placeholder="voce@exemplo.com" autoComplete="email" error={emailError ? "Informe um e-mail válido." : undefined} />
         <TextField name="pw" label="Senha" type="password" autoComplete="current-password" />
@@ -272,7 +298,67 @@ function Forgot({ go }) {
   );
 }
 
-/** Fluxo de entrada: login → cadastro → recuperar senha. */
+/** Primeiro acesso no banco local: cria o administrador (conta master). */
+function MasterSetup({ go }) {
+  const { backend } = useSession();
+  const [errors, setErrors] = React.useState({});
+  const [error, setError] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    const name = e.target.name.value.trim();
+    const email = e.target.email.value.trim();
+    const password = e.target.pw.value;
+    const next = {};
+    if (name.length < 2) next.name = "Informe seu nome.";
+    if (!isEmail(email)) next.email = "Informe um e-mail válido.";
+    if (password.length < PASSWORD_MIN_LENGTH) next.pw = `Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`;
+    else if (password !== e.target.pw2.value) next.pw2 = "As duas senhas não são iguais.";
+    setErrors(next);
+    setError(null);
+    if (Object.keys(next).length) return;
+    setLoading(true);
+    try {
+      rememberChoice(true);
+      await backend.masterSetup.create(name, email, password);
+    } catch (err) {
+      setError(/administrador/.test(err?.message ?? "") ? "Já existe um administrador neste ambiente. Entre com a conta dele." : messageFor(err));
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AuthLayout
+      aside={
+        <>
+          <h2 style={{ margin: 0, font: "var(--type-h2)", color: "#fff" }}>Conta master</h2>
+          <p style={{ margin: 0, color: "var(--navy-200)" }}>Administra usuários, questões, planos, estações e configurações da plataforma.</p>
+        </>
+      }
+    >
+      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 18 }} noValidate>
+        <div>
+          <h1 style={{ margin: 0, font: "var(--type-h2)" }}>Criar conta master</h1>
+          <p style={{ margin: "6px 0 0", color: "var(--text-secondary)" }}>Este é o primeiro acesso: a conta criada aqui será a administradora. Guarde o e-mail e a senha.</p>
+        </div>
+        {error && <Banner tone="danger">{error}</Banner>}
+        <TextField name="name" label="Nome completo" autoComplete="name" error={errors.name} />
+        <TextField name="email" label="E-mail" type="email" autoComplete="email" error={errors.email} />
+        <TextField name="pw" label="Senha" type="password" hint={`Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`} autoComplete="new-password" error={errors.pw} />
+        <TextField name="pw2" label="Repita a senha" type="password" autoComplete="new-password" error={errors.pw2} />
+        <Button type="submit" size="lg" fullWidth loading={loading}>
+          Criar conta master
+        </Button>
+        <Button variant="ghost" icon="arrow-left" onClick={() => go("login")}>
+          Voltar para o login
+        </Button>
+      </form>
+    </AuthLayout>
+  );
+}
+
+/** Fluxo de entrada: login → cadastro → recuperar senha (e, no 1º acesso local, conta master). */
 export function AuthFlow() {
   const [screen, setScreen] = React.useState("login");
   const go = (next) => {
@@ -281,5 +367,6 @@ export function AuthFlow() {
   };
   if (screen === "signup") return <Signup go={go} />;
   if (screen === "forgot") return <Forgot go={go} />;
+  if (screen === "master") return <MasterSetup go={go} />;
   return <Login go={go} />;
 }

@@ -84,6 +84,28 @@ describe("App novo — camada de dados (modo local)", () => {
   });
 });
 
+describe("App novo — conta master (banco local)", () => {
+  it("cria o primeiro administrador uma única vez", async () => {
+    const local = await createLocalBackend({ persist: false, seed: false });
+    expect(await local.masterSetup!.needed()).toBe(true);
+    await local.signUp("Aluno", "aluno@teste.dev", "senha-segura");
+    expect(await local.masterSetup!.needed()).toBe(true);
+
+    await expect(local.masterSetup!.create("Master", "aluno@teste.dev", "senha-segura")).rejects.toMatchObject({ code: "email_taken" });
+    await local.masterSetup!.create("Master", "master@teste.dev", "senha-master-1");
+    expect((await local.getUser())?.email).toBe("master@teste.dev");
+    expect(await local.rpc<any>("app_bootstrap")).toMatchObject({ role: "admin", has_pro: true });
+    expect((await local.rpc<any>("app_admin_users")).total).toBe(2);
+
+    expect(await local.masterSetup!.needed()).toBe(false);
+    await expect(local.masterSetup!.create("Outro", "outro@teste.dev", "senha-segura")).rejects.toThrow(/Já existe um administrador/);
+
+    // aluno comum continua sem acesso
+    await local.signIn("aluno@teste.dev", "senha-segura");
+    await expect(local.rpc("app_admin_users")).rejects.toThrow(/Acesso restrito/);
+  }, 60_000);
+});
+
 describe("App novo — atualização do banco local", () => {
   const all = Object.fromEntries(
     fs

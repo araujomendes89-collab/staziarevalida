@@ -4,6 +4,7 @@
 // notificações.
 import React from "react";
 import { Avatar, Badge, Banner, Button, Card, Icon, SectionHeader, SegmentedControl, SelectField, TextField } from "../../ds";
+import { isStaffRole } from "../admin/AdminScreen.jsx";
 import { PASSWORD_MIN_LENGTH } from "../../data";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
@@ -294,7 +295,7 @@ function PrivacySection() {
   );
 }
 
-export function AccountScreen() {
+export function AccountScreen({ go }) {
   const { boot, user, signOut } = useSession();
   const mobile = useMobile();
   const [section, setSection] = React.useState("conta");
@@ -322,6 +323,20 @@ export function AccountScreen() {
           </div>
         </div>
       </Card>
+      {isStaffRole(boot.role) && (
+        <Banner
+          tone="brand"
+          icon="shield-check"
+          title={boot.role === "admin" ? "Você é administrador" : "Você é editor"}
+          action={
+            <Button size="sm" iconRight="arrow-right" onClick={() => go("admin")}>
+              Abrir administração
+            </Button>
+          }
+        >
+          {boot.role === "admin" ? "Usuários, questões, planos, estações e configurações." : "Questões e estações."}
+        </Banner>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: mobile ? "minmax(0,1fr)" : "260px minmax(0,1fr)", gap: 24, alignItems: "start" }}>
         <Card padding={8}>
           <nav aria-label="Seções da conta" style={{ display: "flex", flexDirection: "column", gap: 2 }}>

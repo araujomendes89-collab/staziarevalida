@@ -10,6 +10,7 @@
  */
 import { ALL_CANONICAL_QUESTIONS } from "../../src/data/allOfficialQuestions";
 import { loadEvents, loadStations, toLite } from "../../src/shared/checklistBank/catalog";
+import { citesFigure } from "../../src/shared/questions/figure";
 import stationsSeed from "../../server/checklistBank/data/stations.seed.json";
 import eventsSeed from "../../server/checklistBank/data/events.seed.json";
 
@@ -69,23 +70,6 @@ function assertCleanText(value: unknown, where: string): void {
   } else if (value && typeof value === "object") {
     for (const [k, v] of Object.entries(value)) assertCleanText(v, `${where}.${k}`);
   }
-}
-
-// Enunciados que remetem a uma figura (imagem, ECG, gráfico, partograma…) que não acompanha
-// o texto. Quadros e tabelas ficam de fora: os valores vêm escritos no próprio enunciado.
-const PICTURE = "(?:imagem|imagens|figura|foto|fotografia|gr[áa]fico|tra[çc]ado|partograma|genograma|heredograma|eletrocardiograma|ECG)";
-const PICTURE_REFERENCES = [
-  new RegExp(`(?:^|[^\\p{L}])${PICTURE}\\s+(?:radiol[óo]gica\\s+|tomogr[áa]fica\\s+)?(?:é\\s+|está\\s+)?(?:a seguir|abaixo|apresentad[oa]|exibid[oa]|mostrad[oa])`, "iu"),
-  new RegExp(`(?:^|[^\\p{L}])(?:n[ao]|conforme(?:\\s+indica)?(?:\\s+a)?)\\s+${PICTURE}(?:\\s+(?:a seguir|abaixo|radiol[óo]gica|\\d+)|[.,:;])`, "iu"),
-  /(?:^|[^\p{L}])Figura\s*(?:\d+\s*)?[:—–-]/u,
-  /respectiva imagem/i,
-  /exibid[oa] a seguir/i,
-  /A seguir,\s+(?:reproduz-se|pode-se observar)/,
-];
-
-/** O enunciado cita uma figura que precisa estar à vista para responder? */
-export function citesFigure(statement: string): boolean {
-  return PICTURE_REFERENCES.some((pattern) => pattern.test(statement));
 }
 
 // Texto-padrão das alternativas erradas na base atual: não explica nada, então não é carregado.

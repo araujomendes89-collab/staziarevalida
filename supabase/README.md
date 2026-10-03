@@ -18,6 +18,7 @@ Esquema, políticas de acesso (RLS) e carga do StaziaMed no Supabase.
 | `migrations/…1000_flashcards_api.sql` | Funções `app_*` dos Flashcards: fila do dia, cartões pessoais e revisão com FSRS |
 | `migrations/…1100_planning_api.sql` | Função `app_planning`: semana, dias estudados no mês e ritmo até a prova |
 | `migrations/…1200_account_api.sql` | Conta (LGPD): exportar os próprios dados e excluir a conta |
+| `migrations/…1300_admin.sql` | Administração: usuários, papéis, planos, questões (edição e importação), estações, configurações e registro de ações |
 | `tests/bootstrap.sql` | Só para testes: imita o ambiente Supabase no PGlite |
 | `seed.sql` | Gerado por `npm run supabase:seed` (não fica no Git) |
 
@@ -61,3 +62,16 @@ As 10 estações do seed entram com `medical_review = 'pending'` e só aparecem 
 ```sql
 update public.checklist_stations set medical_review = 'approved' where id in ('seed-01', '...');
 ```
+
+## Primeiro administrador (conta master)
+
+No banco local (sem chaves do Supabase), a tela de login oferece **Criar conta master** enquanto não houver nenhum administrador.
+
+No Supabase isso nunca é feito pelo navegador. Depois de criar a sua conta normalmente pelo app, rode no **SQL Editor** do painel do Supabase (troque o e-mail):
+
+```sql
+update public.user_roles set role = 'admin', updated_at = now()
+where user_id = (select id from auth.users where email = 'seu-email@exemplo.com');
+```
+
+Depois disso, novos administradores e editores são definidos em **Administração › Usuários**. Toda alteração fica em **Administração › Registro**.

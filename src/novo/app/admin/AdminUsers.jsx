@@ -1,0 +1,295 @@
+// Gestão de usuários: lista, busca, papel, plano e exclusão.
+import React from "react";
+import { Avatar, Badge, Banner, Button, Card, EmptyState, Icon, SegmentedControl, SelectField, TextField } from "../../ds";
+import { useSession } from "../session.jsx";
+import { useMobile } from "../Shell.jsx";
+import { percent } from "../practice/format.js";
+import {
+  dateBR,
+  dateTimeBR,
+  fromDateInput,
+  ListRow,
+  LoadError,
+  Loading,
+  messageOf,
+  PLAN_LABEL,
+  ROLE_LABEL,
+  SUB_STATUS_LABEL,
+  toDateInput,
+  useDebounced,
+  useLoad,
+} from "./common.jsx";
+
+const PAGE = 50;
+const roleTone = { admin: "danger", editor: "info", student: "neutral" };
+
+function Fact({ label, value }) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{label}</div>
+      <div style={{ font: "600 15px var(--font-sans)", marginTop: 2, overflowWrap: "anywhere" }}>{value}</div>
+    </div>
+  );
+}
+
+function RoleForm({ user, onSaved }) {
+  const { backend, user: me } = useSession();
+  const [role, setRole] = React.useState(user.role);
+  const [state, setState] = React.useState({ saving: false, error: null, done: false });
+  const save = async () => {
+    setState({ saving: true, error: null, done: false });
+    try {
+      onSaved(await backend.rpc("app_admin_set_role", { p_user_id: user.id, p_role: role }));
+      setState({ saving: false, error: null, done: true });
+    } catch (error) {
+      setState({ saving: false, error: messageOf(error), done: false });
+    }
+  };
+  const self = user.id === me?.id;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="sm-field__label">Papel</div>
+      <div style={{ overflowX: "auto" }}>
+        <SegmentedControl
+          label="Papel"
+          value={role}
+          onChange={(value) => (setRole(value), setState((s) => ({ ...s, done: false })))}
+          options={[
+            { value: "student", label: "Aluno" },
+            { value: "editor", label: "Editor" },
+            { value: "admin", label: "Administrador" },
+          ]}
+        />
+      </div>
+      <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+        Editor cuida de questões e estações. Administrador tem acesso a tudo, inclusive usuários e planos.
+        {self && " Você não pode tirar o próprio acesso de administrador."}
+      </div>
+      {state.error && <Banner tone="danger">{state.error}</Banner>}
+      <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
+        {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Papel salvo.</span>}
+        <Button size="sm" onClick={save} loading={state.saving} disabled={role === user.role}>
+          Salvar papel
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function PlanForm({ user, onSaved }) {
+  const { backend } = useSession();
+  const [form, setForm] = React.useState({
+    plan: user.plan ?? "trial",
+    status: user.status ?? "trialing",
+    trial: toDateInput(user.trial_ends_at),
+    period: toDateInput(user.current_period_end),
+  });
+  const [state, setState] = React.useState({ saving: false, error: null, done: false });
+  const set = (patch) => (setForm((f) => ({ ...f, ...patch })), setState((s) => ({ ...s, done: false })));
+  const save = async () => {
+    setState({ saving: true, error: null, done: false });
+    try {
+      onSaved(
+        await backend.rpc("app_admin_set_subscription", {
+          p_user_id: user.id,
+          p_plan: form.plan,
+          p_status: form.status,
+          p_trial_ends_at: fromDateInput(form.trial),
+          p_current_period_end: fromDateInput(form.period),
+        })
+      );
+      setState({ saving: false, error: null, done: true });
+    } catch (error) {
+      setState({ saving: false, error: messageOf(error), done: false });
+    }
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="sm-field__label">Plano</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>
+        <SelectField label="Plano" value={form.plan} onChange={(e) => set({ plan: e.target.value })} options={Object.entries(PLAN_LABEL).map(([value, label]) => ({ value, label }))} />
+        <SelectField label="Situação" value={form.status} onChange={(e) => set({ status: e.target.value })} options={Object.entries(SUB_STATUS_LABEL).map(([value, label]) => ({ value, label }))} />
+        <TextField label="Teste grátis até" type="date" value={form.trial} onChange={(e) => set({ trial: e.target.value })} />
+        <TextField label="Plano pago até" type="date" value={form.period} onChange={(e) => set({ period: e.target.value })} />
+      </div>
+      <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+        Para liberar acesso de cortesia, escolha Pro ou Elite com situação Ativo. A cobrança automática ainda não está ligada.
+      </div>
+      {state.error && <Banner tone="danger">{state.error}</Banner>}
+      <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
+        {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Plano salvo.</span>}
+        <Button size="sm" onClick={save} loading={state.saving}>
+          Salvar plano
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function DeleteUser({ user, onDeleted }) {
+  const { backend, user: me } = useSession();
+  const [confirm, setConfirm] = React.useState("");
+  const [state, setState] = React.useState({ deleting: false, error: null });
+  if (user.id === me?.id) return null;
+  const remove = async () => {
+    setState({ deleting: true, error: null });
+    try {
+      await backend.rpc("app_admin_delete_user", { p_user_id: user.id, p_confirm_email: confirm });
+      onDeleted();
+    } catch (error) {
+      setState({ deleting: false, error: messageOf(error) });
+    }
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, borderRadius: 16, border: "1px solid var(--danger-border)", background: "var(--danger-bg)" }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-label)", color: "var(--danger-text)" }}>
+        <Icon name="triangle-alert" size={18} /> Excluir usuário
+      </div>
+      <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Apaga a conta e todo o histórico dessa pessoa. Não dá para desfazer.</div>
+      {state.error && <Banner tone="danger">{state.error}</Banner>}
+      <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 240px" }}>
+          <TextField label={`Digite ${user.email} para confirmar`} value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" />
+        </div>
+        <Button variant="danger" icon="trash-2" onClick={remove} loading={state.deleting} disabled={confirm.trim().toLowerCase() !== String(user.email).toLowerCase()}>
+          Excluir usuário
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function UserDetail({ id, onBack, onChanged }) {
+  const { backend } = useSession();
+  const { data: user, error, reload, setData } = useLoad(() => backend.rpc("app_admin_user", { p_user_id: id }), [backend, id]);
+  const saved = (row) => {
+    setData({ ...user, ...row });
+    onChanged();
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div>
+        <Button variant="ghost" size="sm" icon="arrow-left" onClick={onBack}>
+          Voltar à lista
+        </Button>
+      </div>
+      {error && <LoadError error={error} retry={reload} />}
+      {!user && !error && <Loading />}
+      {user && (
+        <>
+          <Card>
+            <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+              <Avatar name={user.name || user.email} size={56} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h2 style={{ margin: 0, font: "var(--type-h3)" }}>{user.name || "Sem nome"}</h2>
+                <div style={{ color: "var(--text-secondary)", font: "var(--type-body-sm)", overflowWrap: "anywhere" }}>{user.email}</div>
+                <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                  <Badge tone={roleTone[user.role]} size="sm">
+                    {ROLE_LABEL[user.role]}
+                  </Badge>
+                  <Badge tone="pro" size="sm">
+                    {PLAN_LABEL[user.plan] ?? user.plan} · {SUB_STATUS_LABEL[user.status] ?? user.status}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 16, marginTop: 20, paddingTop: 20, borderTop: "1px solid var(--border-subtle)" }}>
+              <Fact label="Cadastro" value={dateBR(user.created_at)} />
+              <Fact label="Última atividade" value={dateTimeBR(user.last_activity)} />
+              <Fact label="Respostas" value={user.answered ? `${user.answered} · ${percent(user.correct, user.answered)}% de acerto` : "0"} />
+              <Fact label="Treinos e simulados" value={`${user.sessions} · ${user.simulados} simulados`} />
+              <Fact label="Flashcards" value={`${user.flashcards} criados · ${user.flashcard_reviews} revisões`} />
+              <Fact label="Erros para revisar" value={user.pending_errors} />
+              <Fact label="Meta" value={user.target_edition ? `${user.exam_type === "ENAMED" ? "ENAMED" : "Revalida"} ${user.target_edition}` : "—"} />
+              <Fact label="Teste grátis até" value={dateBR(user.trial_ends_at)} />
+            </div>
+          </Card>
+          <Card>
+            <RoleForm key={`r-${user.id}`} user={user} onSaved={saved} />
+          </Card>
+          <Card>
+            <PlanForm key={`p-${user.id}`} user={user} onSaved={saved} />
+          </Card>
+          <DeleteUser
+            user={user}
+            onDeleted={() => {
+              onChanged();
+              onBack();
+            }}
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+export function AdminUsers() {
+  const { backend } = useSession();
+  const mobile = useMobile();
+  const [search, setSearch] = React.useState("");
+  const [role, setRole] = React.useState("");
+  const [plan, setPlan] = React.useState("");
+  const [limit, setLimit] = React.useState(PAGE);
+  const [selected, setSelected] = React.useState(null);
+  const query = useDebounced(search.trim());
+  const list = useLoad(() => backend.rpc("app_admin_users", { p_search: query, p_role: role, p_plan: plan, p_limit: limit }), [backend, query, role, plan, limit]);
+
+  if (selected) return <UserDetail id={selected} onBack={() => setSelected(null)} onChanged={list.reload} />;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card>
+        <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "minmax(0,2fr) 1fr 1fr", gap: 12 }}>
+          <TextField label="Buscar" icon="search" placeholder="Nome ou e-mail" value={search} onChange={(e) => (setSearch(e.target.value), setLimit(PAGE))} />
+          <SelectField label="Papel" value={role} onChange={(e) => (setRole(e.target.value), setLimit(PAGE))} options={[{ value: "", label: "Todos" }, ...Object.entries(ROLE_LABEL).map(([value, label]) => ({ value, label }))]} />
+          <SelectField label="Plano" value={plan} onChange={(e) => (setPlan(e.target.value), setLimit(PAGE))} options={[{ value: "", label: "Todos" }, ...Object.entries(PLAN_LABEL).map(([value, label]) => ({ value, label }))]} />
+        </div>
+      </Card>
+      {list.error && <LoadError error={list.error} retry={list.reload} />}
+      {!list.data && !list.error && <Loading />}
+      {list.data && (
+        <>
+          <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }} aria-live="polite">
+            {list.data.total} {list.data.total === 1 ? "usuário" : "usuários"}
+          </div>
+          {list.data.items.length === 0 ? (
+            <EmptyState icon="users" title="Nenhum usuário encontrado" description="Ajuste a busca ou os filtros." />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {list.data.items.map((u) => (
+                <ListRow key={u.id} onClick={() => setSelected(u.id)} label={`Abrir ${u.name || u.email}`}>
+                  <Avatar name={u.name || u.email} size={40} />
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                      <span style={{ font: "600 15px var(--font-sans)", color: "var(--text-primary)" }}>{u.name || "Sem nome"}</span>
+                      {u.role !== "student" && (
+                        <Badge tone={roleTone[u.role]} size="sm">
+                          {ROLE_LABEL[u.role]}
+                        </Badge>
+                      )}
+                      <Badge tone={u.status === "active" ? "success" : u.status === "trialing" ? "pro" : "neutral"} size="sm">
+                        {PLAN_LABEL[u.plan] ?? u.plan} · {SUB_STATUS_LABEL[u.status] ?? u.status}
+                      </Badge>
+                    </div>
+                    <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", overflowWrap: "anywhere" }}>{u.email}</span>
+                    <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
+                      Cadastro {dateBR(u.created_at)} · {u.answered} respostas · última atividade {u.last_activity ? dateBR(u.last_activity) : "—"}
+                    </span>
+                  </div>
+                  <Icon name="chevron-right" size={18} style={{ color: "var(--text-tertiary)", flex: "none", alignSelf: "center" }} />
+                </ListRow>
+              ))}
+            </div>
+          )}
+          {list.data.items.length < list.data.total && (
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <Button variant="secondary" onClick={() => setLimit((n) => n + PAGE)} loading={list.loading}>
+                Carregar mais
+              </Button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

@@ -48,7 +48,7 @@ function Rail({route,go,phase,collapsed,setCollapsed,info}){
       {ind&&<span aria-hidden="true" style={{position:'absolute',left:0,right:0,top:ind.top,height:ind.h,background:'var(--action-primary)',boxShadow:'0 6px 18px -6px color-mix(in oklab,var(--action-primary) 70%,transparent)',transition:'top 420ms cubic-bezier(.3,1.25,.5,1),height 300ms',zIndex:0}}/>}
       {G.map(([t,its])=><div key={t}>{label(t)}{its.map(([id,ic,l,bd,kids])=>kids?<div key={id}>{row(id,ic,l,{chev:true,open:openSub,onClick:()=>collapsed?go(kids[0][0]):setOpenSub(o=>!o)})}{openSub&&!collapsed&&<div style={{position:'relative'}}><span style={{position:'absolute',left:29,top:2,bottom:2,width:1,background:'var(--border-default)',zIndex:2}}/>{kids.map(([k,kl])=>row(k,null,kl,{small:true}))}</div>}</div>:row(id,ic,l,{badge:badgeOf[id]??null}))}</div>)}
       <div style={{flex:1}}/>
-      <div>{label('Geral')}{row('perfil','settings','Ajustes')}{row('sair','log-out','Sair',{onClick:info.onSignOut})}</div>
+      <div>{label('Geral')}{info.isStaff&&row('admin','users','Administração')}{row('perfil','settings','Ajustes')}{row('sair','log-out','Sair',{onClick:info.onSignOut})}</div>
     </div>
   </nav>;
 }

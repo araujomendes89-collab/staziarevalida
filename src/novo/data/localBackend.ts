@@ -159,6 +159,26 @@ export async function createLocalBackend(options: LocalBackendOptions = {}): Pro
     if (!exists) current = null;
   }
 
+  /** Cria a conta (sem entrar). `admin`: já nasce administradora, na mesma transação. */
+  const createAccount = async (name: string, email: string, password: string, admin = false): Promise<AuthUser> => {
+    const mail = normalizeEmail(email);
+    if (!isEmail(mail)) throw new BackendError("invalid_email", "E-mail inválido.");
+    if (password.length < PASSWORD_MIN_LENGTH) throw new BackendError("weak_password", "Senha muito curta.");
+    const taken = (await db.query(`select 1 from auth.local_credentials where email = $1`, [mail])).rows.length > 0;
+    if (taken) throw new BackendError("email_taken", "Já existe uma conta com este e-mail.");
+
+    const id = crypto.randomUUID();
+    const hash = await sha256(password);
+    await db.transaction(async (tx) => {
+      await tx.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)`, [id, mail, { name: name.trim() }]);
+      await tx.query(`insert into auth.local_credentials (user_id, email, password_sha256) values ($1, $2, $3)`, [id, mail, hash]);
+      if (admin) await tx.query(`update public.user_roles set role = 'admin', updated_at = now() where user_id = $1`, [id]);
+    });
+    await flush();
+    return { id, email: mail };
+  };
+  const hasAdmin = async () => (await db.query(`select 1 from public.user_roles where role = 'admin' limit 1`)).rows.length > 0;
+
   const listeners = new Set<(user: AuthUser | null) => void>();
   const setUser = (user: AuthUser | null) => {
     current = user;
@@ -187,21 +207,17 @@ export async function createLocalBackend(options: LocalBackendOptions = {}): Pro
       setUser({ id: row.user_id, email: row.email });
     },
     async signUp(name, email, password) {
-      const mail = normalizeEmail(email);
-      if (!isEmail(mail)) throw new BackendError("invalid_email", "E-mail inválido.");
-      if (password.length < PASSWORD_MIN_LENGTH) throw new BackendError("weak_password", "Senha muito curta.");
-      const taken = (await db.query(`select 1 from auth.local_credentials where email = $1`, [mail])).rows.length > 0;
-      if (taken) throw new BackendError("email_taken", "Já existe uma conta com este e-mail.");
-
-      const id = crypto.randomUUID();
-      const hash = await sha256(password);
-      await db.transaction(async (tx) => {
-        await tx.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)`, [id, mail, { name: name.trim() }]);
-        await tx.query(`insert into auth.local_credentials (user_id, email, password_sha256) values ($1, $2, $3)`, [id, mail, hash]);
-      });
-      await flush();
-      setUser({ id, email: mail });
+      setUser(await createAccount(name, email, password));
       return { needsEmailConfirmation: false };
+    },
+    masterSetup: {
+      async needed() {
+        return !(await hasAdmin());
+      },
+      async create(name, email, password) {
+        if (await hasAdmin()) throw new BackendError("unknown", "Já existe um administrador neste ambiente.");
+        setUser(await createAccount(name, email, password, true));
+      },
     },
     async signInWithGoogle() {
       throw new BackendError("google_unavailable", "O login com Google só funciona com o Supabase configurado.");

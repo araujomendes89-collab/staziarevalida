@@ -212,8 +212,8 @@ export function HomeScreen({ go, mobile }) {
 
   React.useEffect(() => {
     let alive = true;
-    Promise.all([backend.rpc("app_home"), backend.rpc("app_today")])
-      .then(([home, plan]) => alive && setData({ home, plan }))
+    Promise.all([backend.rpc("app_home"), backend.rpc("app_today"), backend.rpc("app_announcement").catch(() => null)])
+      .then(([home, plan, announcement]) => alive && setData({ home, plan, announcement }))
       .catch(() => alive && setError("Não foi possível carregar o Início. Recarregue a página."));
     return () => {
       alive = false;
@@ -254,6 +254,11 @@ export function HomeScreen({ go, mobile }) {
   return (
     <>
       {error && <Banner tone="danger">{error}</Banner>}
+      {data.announcement && (
+        <Banner tone={data.announcement.tone} icon="megaphone" title={data.announcement.title}>
+          {data.announcement.text}
+        </Banner>
+      )}
       {home.attempts < DIAGNOSTIC_SIZE ? (
         <HomeNew go={go} mobile={mobile} home={home} profile={boot.profile} startDiagnostic={startDiagnostic} busy={busy} />
       ) : (
