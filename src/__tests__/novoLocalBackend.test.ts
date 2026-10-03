@@ -4,9 +4,13 @@
  * mesmas migrações e políticas de acesso.
  */
 import { beforeAll, describe, expect, it } from "vitest";
-import { createLocalBackend } from "../novo/data/localBackend";
+import fs from "fs";
+import path from "path";
+import { PGlite } from "@electric-sql/pglite";
+import { createLocalBackend, migrateLocalDatabase } from "../novo/data/localBackend";
 import { BackendError, type Backend } from "../novo/data/backend";
 
+const MIGRATIONS = path.resolve(__dirname, "../../supabase/migrations");
 let backend: Backend;
 
 beforeAll(async () => {
@@ -67,4 +71,44 @@ describe("App novo — camada de dados (modo local)", () => {
     const boot = await backend.rpc<any>("app_bootstrap");
     expect(boot.profile.name).toBe("Bruno");
   });
+});
+
+describe("App novo — atualização do banco local", () => {
+  const all = Object.fromEntries(
+    fs
+      .readdirSync(MIGRATIONS)
+      .filter((f) => f.endsWith(".sql"))
+      .map((f) => [`../../../supabase/migrations/${f}`, fs.readFileSync(path.join(MIGRATIONS, f), "utf8")])
+  );
+  const names = Object.keys(all).sort();
+  const older = Object.fromEntries(names.slice(0, -1).map((n) => [n, all[n]]));
+
+  it("aplica só a migração que falta e preserva as contas; a carga roda de novo", async () => {
+    const db = new PGlite();
+    let seeded = 0;
+    const seed = async () => (seeded++, [] as string[]);
+
+    expect(await migrateLocalDatabase(db, older, seed)).toBe("ready");
+    await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'ana@teste.dev', '{"name":"Ana"}')`, [
+      "00000000-0000-4000-8000-00000000000a",
+    ]);
+    expect((await db.query<any>(`select to_regprocedure('public.app_get_session(uuid)') is null as missing`)).rows[0].missing).toBe(true);
+
+    expect(await migrateLocalDatabase(db, all, seed)).toBe("ready");
+    expect((await db.query<any>(`select to_regprocedure('public.app_get_session(uuid)') is null as missing`)).rows[0].missing).toBe(false);
+    expect((await db.query<any>(`select name from public.profiles`)).rows).toEqual([{ name: "Ana" }]);
+    expect((await db.query<any>(`select count(*)::int as n from local_meta.migrations`)).rows[0].n).toBe(names.length);
+    expect(seeded).toBe(2);
+
+    expect(await migrateLocalDatabase(db, all, seed)).toBe("ready");
+    expect(seeded).toBe(2);
+  }, 60_000);
+
+  it("migração já aplicada que mudou ou sumiu pede para recriar o banco", async () => {
+    const db = new PGlite();
+    await migrateLocalDatabase(db, all, null);
+    const edited = { ...all, [names[0]]: `${all[names[0]]}\n-- alterada` };
+    expect(await migrateLocalDatabase(db, edited, null)).toBe("drift");
+    expect(await migrateLocalDatabase(db, older, null)).toBe("drift");
+  }, 60_000);
 });

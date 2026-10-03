@@ -71,6 +71,26 @@ function assertCleanText(value: unknown, where: string): void {
   }
 }
 
+// Enunciados que remetem a uma figura (imagem, ECG, gráfico, partograma…) que não acompanha
+// o texto. Quadros e tabelas ficam de fora: os valores vêm escritos no próprio enunciado.
+const PICTURE = "(?:imagem|imagens|figura|foto|fotografia|gr[áa]fico|tra[çc]ado|partograma|genograma|heredograma|eletrocardiograma|ECG)";
+const PICTURE_REFERENCES = [
+  new RegExp(`(?:^|[^\\p{L}])${PICTURE}\\s+(?:radiol[óo]gica\\s+|tomogr[áa]fica\\s+)?(?:é\\s+|está\\s+)?(?:a seguir|abaixo|apresentad[oa]|exibid[oa]|mostrad[oa])`, "iu"),
+  new RegExp(`(?:^|[^\\p{L}])(?:n[ao]|conforme(?:\\s+indica)?(?:\\s+a)?)\\s+${PICTURE}(?:\\s+(?:a seguir|abaixo|radiol[óo]gica|\\d+)|[.,:;])`, "iu"),
+  /(?:^|[^\p{L}])Figura\s*(?:\d+\s*)?[:—–-]/u,
+  /respectiva imagem/i,
+  /exibid[oa] a seguir/i,
+  /A seguir,\s+(?:reproduz-se|pode-se observar)/,
+];
+
+/** O enunciado cita uma figura que precisa estar à vista para responder? */
+export function citesFigure(statement: string): boolean {
+  return PICTURE_REFERENCES.some((pattern) => pattern.test(statement));
+}
+
+// Texto-padrão das alternativas erradas na base atual: não explica nada, então não é carregado.
+const PLACEHOLDER_EXPLANATION = "Alternativa incorreta.";
+
 export function buildSeedRows() {
   const questions = ALL_CANONICAL_QUESTIONS as any[];
   for (const q of questions) assertCleanText(q, q.id);
@@ -100,7 +120,11 @@ export function buildSeedRows() {
     topic: q.topic,
     subtopic: q.subtopic ?? null,
     statement: q.clinicalCase,
-    options: (q.options ?? []).map((o: any) => ({ id: o.id, text: o.text, explanation: o.explanation ?? "" })),
+    options: (q.options ?? []).map((o: any) => ({
+      id: o.id,
+      text: o.text,
+      explanation: !o.explanation || o.explanation.trim() === PLACEHOLDER_EXPLANATION ? "" : o.explanation,
+    })),
     correct_option: q.correctAnswer,
     status: q.officialStatus === "annulled" ? "annulled" : q.officialStatus === "changed_after_appeal" ? "changed_after_appeal" : "valid",
     key_finding: q.keyFinding ?? null,
@@ -108,6 +132,7 @@ export function buildSeedRows() {
     inep_intent: q.inepIntent ?? null,
     images: q.images ?? [],
     sources: q.sources ?? [],
+    needs_image: citesFigure(q.clinicalCase),
   }));
 
   const stations = loadStations(stationsSeed);

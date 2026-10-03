@@ -59,6 +59,25 @@ describe("Carga real no Supabase", () => {
     expect(Object.keys(q.options[0]).sort()).toEqual(["explanation", "id", "text"]);
   });
 
+  it("alternativas erradas não carregam o texto-padrão no lugar da explicação", () => {
+    const all = buildSeedRows().questions.flatMap((q: any) => q.options.map((o: any) => o.explanation));
+    expect(all.some((e: string) => /^Alternativa incorreta\.?$/.test(e.trim()))).toBe(false);
+    const valid = buildSeedRows().questions.filter((q: any) => q.status !== "annulled") as any[];
+    expect(valid.every((q) => q.options.find((o: any) => o.id === q.correct_option).explanation.trim().length > 0)).toBe(true);
+  });
+
+  it("questões que citam figura ficam fora do treino enquanto a imagem não é vinculada", async () => {
+    const flagged = (buildSeedRows().questions as any[]).filter((q) => q.needs_image && q.status !== "annulled");
+    expect(flagged.map((q) => q.code)).toEqual(expect.arrayContaining(["REV-2021-Q100", "REV-2023.2-Q055", "REV-2026.1-Q011", "ENAMED-2025-Q053"]));
+    // Imagem citada só como achado descrito no texto não conta.
+    expect(flagged.map((q) => q.code)).not.toEqual(expect.arrayContaining(["REV-2021-Q013"]));
+    expect(flagged.length).toBeGreaterThanOrEqual(25);
+    expect(flagged.length).toBeLessThanOrEqual(40);
+
+    const total = await asStudent((q) => q(`select (public.app_question_filters() ->> 'total')::int as n`));
+    expect(total[0].n).toBe(1117 - flagged.length);
+  });
+
   it("busca em português encontra questões por tema e por palavras do enunciado", async () => {
     const r = await asStudent((q) =>
       q(`select count(*)::int as n from public.questions where search @@ websearch_to_tsquery('portuguese', 'pré-eclâmpsia')`)

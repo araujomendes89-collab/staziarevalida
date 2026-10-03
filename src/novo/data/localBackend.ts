@@ -22,15 +22,92 @@ const LOCAL_AUTH_SQL = `
     password_sha256 text not null
   );
 `;
+// Quais migrações este banco já recebeu (o Supabase guarda o mesmo controle do lado dele).
+const LOCAL_META_SQL = `
+  create schema local_meta;
+  create table local_meta.migrations (
+    name text primary key,
+    hash text not null,
+    applied_at timestamptz not null default now()
+  );
+`;
 const SESSION_KEY = "smn-local-user";
+const DB_NAME = "staziamed-local-v2";
+const IDB_PREFIX = "/pglite/";
 
-/** Versão do esquema: muda quando alguma migração muda, e aí o banco local é recriado. */
-function schemaVersion(): string {
+function hashOf(text: string): string {
   let hash = 0;
-  for (const [name, sql] of Object.entries(migrations).sort()) {
-    for (const ch of name + sql) hash = (hash * 31 + ch.charCodeAt(0)) | 0;
-  }
+  for (let i = 0; i < text.length; i++) hash = (hash * 31 + text.charCodeAt(i)) | 0;
   return (hash >>> 0).toString(36);
+}
+
+/** Migrações pelo nome do arquivo, na ordem em que devem ser aplicadas. */
+function migrationList(source: Record<string, string>): { name: string; sql: string }[] {
+  return Object.entries(source)
+    .map(([file, sql]) => ({ name: file.split("/").pop() as string, sql }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Deixa o banco no esquema atual aplicando só as migrações que faltam, para que as contas
+ * e o histórico de teste sobrevivam a uma atualização do app.
+ * Devolve "drift" quando uma migração já aplicada mudou ou sumiu: aí o banco precisa ser recriado.
+ */
+export async function migrateLocalDatabase(
+  db: PGlite,
+  source: Record<string, string>,
+  seed: (() => Promise<string[]>) | null
+): Promise<"ready" | "drift"> {
+  const fresh = !(await db.query<{ ok: boolean }>(`select to_regclass('local_meta.migrations') is not null as ok`)).rows[0].ok;
+  if (fresh) {
+    await db.exec(bootstrapSql);
+    await db.exec(LOCAL_AUTH_SQL);
+    await db.exec(LOCAL_META_SQL);
+  }
+
+  const list = migrationList(source);
+  const applied = new Map(
+    (await db.query<{ name: string; hash: string }>(`select name, hash from local_meta.migrations`)).rows.map((r) => [r.name, r.hash])
+  );
+  if ([...applied.keys()].some((name) => !list.some((m) => m.name === name))) return "drift";
+
+  let changed = false;
+  for (const { name, sql } of list) {
+    const hash = hashOf(sql);
+    if (applied.has(name)) {
+      if (applied.get(name) !== hash) return "drift";
+      continue;
+    }
+    await db.transaction(async (tx) => {
+      await tx.exec(sql);
+      await tx.query(`insert into local_meta.migrations (name, hash) values ($1, $2)`, [name, hash]);
+    });
+    changed = true;
+  }
+
+  // A carga é idempotente (insert … on conflict do update): roda de novo quando o esquema muda.
+  if (changed && seed) {
+    for (const statement of await seed()) await db.exec(statement);
+  }
+  return "ready";
+}
+
+function deleteIndexedDb(name: string): Promise<void> {
+  return new Promise((resolve) => {
+    const request = indexedDB.deleteDatabase(name);
+    request.onsuccess = request.onerror = request.onblocked = () => resolve();
+  });
+}
+
+/** Apaga bancos locais de versões anteriores (cada um ocupa alguns MB no navegador). */
+async function dropStaleDatabases(): Promise<void> {
+  try {
+    const all = (await indexedDB.databases?.()) ?? [];
+    const stale = all.map((d) => d.name ?? "").filter((n) => n.startsWith(`${IDB_PREFIX}staziamed-local-`) && n !== IDB_PREFIX + DB_NAME);
+    await Promise.all(stale.map(deleteIndexedDb));
+  } catch {
+    /* limpeza é opcional */
+  }
 }
 
 async function sha256(text: string): Promise<string> {
@@ -50,18 +127,19 @@ export interface LocalBackendOptions {
 
 export async function createLocalBackend(options: LocalBackendOptions = {}): Promise<Backend> {
   const canPersist = options.persist !== false && typeof indexedDB !== "undefined";
-  const db = new PGlite(canPersist ? `idb://staziamed-local-${schemaVersion()}` : undefined);
+  const open = () => new PGlite(canPersist ? `idb://${DB_NAME}` : undefined);
+  const seed =
+    options.seed === false ? null : async () => (await import("../../../scripts/supabase/seed-builder")).buildSeedStatements();
 
-  const ready = (await db.query<{ ok: boolean }>(`select to_regclass('public.profiles') is not null as ok`)).rows[0].ok;
-  if (!ready) {
-    await db.exec(bootstrapSql);
-    await db.exec(LOCAL_AUTH_SQL);
-    for (const name of Object.keys(migrations).sort()) await db.exec(migrations[name]);
-    if (options.seed !== false) {
-      const { buildSeedStatements } = await import("../../../scripts/supabase/seed-builder");
-      for (const statement of buildSeedStatements()) await db.exec(statement);
-    }
+  let db = open();
+  if ((await migrateLocalDatabase(db, migrations, seed)) === "drift") {
+    // Uma migração já aplicada foi alterada: não há como atualizar no lugar, recria o banco.
+    await db.close();
+    if (canPersist) await deleteIndexedDb(IDB_PREFIX + DB_NAME);
+    db = open();
+    await migrateLocalDatabase(db, migrations, seed);
   }
+  if (canPersist) void dropStaleDatabases();
 
   // Garante que a gravação chegou ao IndexedDB antes de devolver (sem isso, um
   // recarregamento logo depois de uma escrita perde a alteração).

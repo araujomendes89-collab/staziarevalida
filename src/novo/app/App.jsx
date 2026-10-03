@@ -8,7 +8,6 @@ import { AppShell, useMobile } from "./Shell.jsx";
 import { AuthFlow } from "./AuthScreens.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
 import { Home } from "../prototype/Home.jsx";
-import { Session, Builder } from "../prototype/Session.jsx";
 import { Performance, Planning, Tutor } from "../prototype/More.jsx";
 import { Aulas, Temas, Materiais } from "../prototype/Study1.jsx";
 import { Home2, Stations, Station, Peps, Perf2, SimPatient } from "../prototype/Phase2.jsx";
@@ -16,6 +15,8 @@ import { Pair } from "../prototype/Match.jsx";
 import { Theory2 } from "../prototype/Theory2.jsx";
 import { FlashcardsScreen, ErrorsScreen } from "../prototype/ReviewScreens.jsx";
 import { TodayScreen, ProfileScreen } from "../prototype/OtherScreens.jsx";
+import { QuestionBuilder } from "./practice/QuestionBuilder.jsx";
+import { PracticeSession } from "./practice/PracticeSession.jsx";
 
 // [título, subtítulo] de cada rota (o início é montado com nome e data reais).
 const TITLES = {
@@ -42,7 +43,7 @@ const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set([]);
+const CONNECTED = new Set(["questoes", "simulados"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -80,9 +81,9 @@ function Screen() {
 
   if (!ROUTES.has(route)) return <Navigate to="/" replace />;
 
-  const go = (next) => {
+  const go = (next, query) => {
     const target = next === "planos" ? "perfil" : next;
-    navigate(target === defaultRoute ? "/" : `/${target}`);
+    navigate((target === defaultRoute ? "/" : `/${target}`) + (query ? `?${new URLSearchParams(query)}` : ""));
     window.scrollTo(0, 0);
   };
   const phase = PHASE2_ROUTES.includes(route) ? 2 : 1;
@@ -93,7 +94,7 @@ function Screen() {
   };
   const setTheme = (next) => updateProfile({ theme: next }).catch(() => {});
 
-  if (route === "sessao") return <Session go={go} />;
+  if (route === "sessao") return <PracticeSession go={go} />;
   if (route === "estacao") return <Station go={go} />;
 
   // Até cada tela ser ligada aos dados, usa o estado "aluno novo" do design (sem números inventados).
@@ -104,8 +105,8 @@ function Screen() {
   else if (route === "aulas") body = <Aulas />;
   else if (route === "temas") body = <Temas go={go} />;
   else if (route === "materiais") body = <Materiais />;
-  else if (route === "questoes") body = <Builder go={go} mode="q" />;
-  else if (route === "simulados") body = <Builder go={go} mode="sim" />;
+  else if (route === "questoes") body = <QuestionBuilder key="q" go={go} mode="q" />;
+  else if (route === "simulados") body = <QuestionBuilder key="sim" go={go} mode="sim" />;
   else if (route === "flash") body = <FlashcardsScreen go={go} />;
   else if (route === "erros") body = <ErrorsScreen go={go} />;
   else if (route === "plano") body = <Planning go={go} />;
