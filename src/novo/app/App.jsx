@@ -7,15 +7,17 @@ import { Banner, Button, EmptyState, SegmentedControl } from "../ds";
 import { AppShell, useMobile } from "./Shell.jsx";
 import { AuthFlow } from "./AuthScreens.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
-import { Performance, Planning, Tutor } from "../prototype/More.jsx";
+import { Planning, Tutor } from "../prototype/More.jsx";
 import { Aulas, Temas, Materiais } from "../prototype/Study1.jsx";
 import { Home2, Stations, Station, Peps, Perf2, SimPatient } from "../prototype/Phase2.jsx";
 import { Pair } from "../prototype/Match.jsx";
 import { Theory2 } from "../prototype/Theory2.jsx";
-import { FlashcardsScreen, ErrorsScreen } from "../prototype/ReviewScreens.jsx";
+import { FlashcardsScreen } from "../prototype/ReviewScreens.jsx";
 import { ProfileScreen } from "../prototype/OtherScreens.jsx";
 import { HomeScreen } from "./home/HomeScreen.jsx";
 import { TodayPlan } from "./home/TodayPlan.jsx";
+import { ErrorNotebook } from "./review/ErrorNotebook.jsx";
+import { PerformanceScreen } from "./review/PerformanceScreen.jsx";
 import { QuestionBuilder } from "./practice/QuestionBuilder.jsx";
 import { PracticeSession } from "./practice/PracticeSession.jsx";
 
@@ -44,7 +46,7 @@ const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["home", "hoje", "questoes", "simulados"]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "erros", "desempenho"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -109,9 +111,9 @@ function Screen() {
   else if (route === "questoes") body = <QuestionBuilder key="q" go={go} mode="q" />;
   else if (route === "simulados") body = <QuestionBuilder key="sim" go={go} mode="sim" />;
   else if (route === "flash") body = <FlashcardsScreen go={go} />;
-  else if (route === "erros") body = <ErrorsScreen go={go} />;
+  else if (route === "erros") body = <ErrorNotebook go={go} />;
   else if (route === "plano") body = <Planning go={go} />;
-  else if (route === "desempenho") body = <Performance go={go} data={data} />;
+  else if (route === "desempenho") body = <PerformanceScreen go={go} />;
   else if (route === "tutor") body = <Tutor go={go} />;
   else if (route === "home2") body = <Home2 go={go} data={data} mobile={mobile} />;
   else if (route === "estacoes") body = <Stations go={go} />;
