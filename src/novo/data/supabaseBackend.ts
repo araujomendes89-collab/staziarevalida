@@ -53,6 +53,10 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
       const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) throw toBackendError(error);
     },
+    async updatePassword(password) {
+      const { error } = await client.auth.updateUser({ password });
+      if (error) throw toBackendError(error);
+    },
     async signOut() {
       const { error } = await client.auth.signOut();
       if (error) throw toBackendError(error);

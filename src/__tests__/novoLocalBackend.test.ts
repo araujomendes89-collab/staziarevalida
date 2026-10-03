@@ -66,6 +66,17 @@ describe("App novo — camada de dados (modo local)", () => {
     expect(boot.subscription).toBeNull();
   });
 
+  it("troca a senha de quem está logado", async () => {
+    await backend.signIn("ana@teste.dev", "senha-segura");
+    await expect(backend.updatePassword("curta")).rejects.toMatchObject({ code: "weak_password" });
+    await backend.updatePassword("outra-senha-1");
+    await backend.signOut();
+    await expect(backend.updatePassword("outra-senha-2")).rejects.toMatchObject({ code: "invalid_credentials" });
+    await expect(backend.signIn("ana@teste.dev", "senha-segura")).rejects.toMatchObject({ code: "invalid_credentials" });
+    await backend.signIn("ana@teste.dev", "outra-senha-1");
+    expect((await backend.getUser())?.email).toBe("ana@teste.dev");
+  });
+
   it("um aluno não enxerga o perfil de outro", async () => {
     await backend.signUp("Bruno", "bruno@teste.dev", "senha-segura");
     const boot = await backend.rpc<any>("app_bootstrap");

@@ -22,6 +22,8 @@ export interface Backend {
   signUp(name: string, email: string, password: string): Promise<{ needsEmailConfirmation: boolean }>;
   signInWithGoogle(): Promise<void>;
   resetPassword(email: string): Promise<void>;
+  /** Troca a senha de quem está logado. */
+  updatePassword(password: string): Promise<void>;
   signOut(): Promise<void>;
   /** Chama uma função `app_*` do banco. */
   rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T>;

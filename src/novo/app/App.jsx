@@ -12,13 +12,13 @@ import { Aulas, Temas, Materiais } from "../prototype/Study1.jsx";
 import { Home2, Stations, Station, Peps, Perf2, SimPatient } from "../prototype/Phase2.jsx";
 import { Pair } from "../prototype/Match.jsx";
 import { Theory2 } from "../prototype/Theory2.jsx";
-import { ProfileScreen } from "../prototype/OtherScreens.jsx";
 import { HomeScreen } from "./home/HomeScreen.jsx";
 import { TodayPlan } from "./home/TodayPlan.jsx";
 import { PlanningScreen } from "./home/PlanningScreen.jsx";
 import { ErrorNotebook } from "./review/ErrorNotebook.jsx";
 import { PerformanceScreen } from "./review/PerformanceScreen.jsx";
 import { FlashcardsScreen } from "./review/FlashcardsScreen.jsx";
+import { AccountScreen } from "./account/AccountScreen.jsx";
 import { QuestionBuilder } from "./practice/QuestionBuilder.jsx";
 import { PracticeSession } from "./practice/PracticeSession.jsx";
 
@@ -47,7 +47,7 @@ const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho"]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "perfil"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -123,7 +123,7 @@ function Screen() {
   else if (route === "peps") body = <Peps go={go} />;
   else if (route === "paciente") body = <SimPatient go={go} />;
   else if (route === "desempenho2") body = <Perf2 go={go} data={data} />;
-  else body = <ProfileScreen go={go} />;
+  else body = <AccountScreen />;
 
   const isHome = route === "home" || route === "home2";
   const [title, sub] = isHome

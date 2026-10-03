@@ -209,6 +209,12 @@ export async function createLocalBackend(options: LocalBackendOptions = {}): Pro
     async resetPassword() {
       // Sem e-mail no modo local: nada a enviar.
     },
+    async updatePassword(password) {
+      if (!current) throw new BackendError("invalid_credentials", "Entre na sua conta.");
+      if (password.length < PASSWORD_MIN_LENGTH) throw new BackendError("weak_password", "Senha muito curta.");
+      await db.query(`update auth.local_credentials set password_sha256 = $2 where user_id = $1`, [current.id, await sha256(password)]);
+      await flush();
+    },
     async signOut() {
       setUser(null);
     },
