@@ -1,6 +1,7 @@
 // Montar treino (Questões) e simulado, com dados do banco.
 // Mesma marcação do Builder do protótipo (prototype/Session.jsx); muda de onde vêm os números.
 import React from "react";
+import { useSearchParams } from "react-router-dom";
 import { Badge, Banner, Button, Card, Chip, EmptyState, SegmentedControl, SelectField, TextField } from "../../ds";
 import { IconTile } from "../../prototype/RealIcons.jsx";
 import { useMobile } from "../Shell.jsx";
@@ -78,13 +79,19 @@ export function QuestionBuilder({ go, mode }) {
   const sim = mode === "sim";
   const kind = sim ? "simulado" : "questoes";
 
-  const [form, setForm] = React.useState({
-    area: "",
-    search: "",
-    exam: "",
-    status: sim ? "all" : "unanswered",
-    count: sim ? "30" : "20",
-    timer: "prova",
+  // O endereço pode trazer um ponto de partida (ex.: tema prioritário escolhido no Início).
+  const [params] = useSearchParams();
+  const [form, setForm] = React.useState(() => {
+    const area = params.get("area");
+    const status = params.get("status");
+    return {
+      area: AREAS.some((a) => a.id === area) ? area : "",
+      search: params.get("tema") ?? "",
+      exam: "",
+      status: sim ? "all" : STATUS_OPTIONS.some((o) => o.value === status) ? status : "unanswered",
+      count: sim ? "30" : "20",
+      timer: "prova",
+    };
   });
   const set = (patch) => setForm((current) => ({ ...current, ...patch }));
   // O tipo de simulado é um atalho: preenche os campos. Mexer num campo depois vira "Personalizado"

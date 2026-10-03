@@ -7,14 +7,15 @@ import { Banner, Button, EmptyState, SegmentedControl } from "../ds";
 import { AppShell, useMobile } from "./Shell.jsx";
 import { AuthFlow } from "./AuthScreens.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
-import { Home } from "../prototype/Home.jsx";
 import { Performance, Planning, Tutor } from "../prototype/More.jsx";
 import { Aulas, Temas, Materiais } from "../prototype/Study1.jsx";
 import { Home2, Stations, Station, Peps, Perf2, SimPatient } from "../prototype/Phase2.jsx";
 import { Pair } from "../prototype/Match.jsx";
 import { Theory2 } from "../prototype/Theory2.jsx";
 import { FlashcardsScreen, ErrorsScreen } from "../prototype/ReviewScreens.jsx";
-import { TodayScreen, ProfileScreen } from "../prototype/OtherScreens.jsx";
+import { ProfileScreen } from "../prototype/OtherScreens.jsx";
+import { HomeScreen } from "./home/HomeScreen.jsx";
+import { TodayPlan } from "./home/TodayPlan.jsx";
 import { QuestionBuilder } from "./practice/QuestionBuilder.jsx";
 import { PracticeSession } from "./practice/PracticeSession.jsx";
 
@@ -43,7 +44,7 @@ const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["questoes", "simulados"]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -100,8 +101,8 @@ function Screen() {
   // Até cada tela ser ligada aos dados, usa o estado "aluno novo" do design (sem números inventados).
   const data = "novo";
   let body;
-  if (route === "home") body = <Home go={go} data={data} mobile={mobile} />;
-  else if (route === "hoje") body = <TodayScreen go={go} />;
+  if (route === "home") body = <HomeScreen go={go} mobile={mobile} />;
+  else if (route === "hoje") body = <TodayPlan go={go} />;
   else if (route === "aulas") body = <Aulas />;
   else if (route === "temas") body = <Temas go={go} />;
   else if (route === "materiais") body = <Materiais />;

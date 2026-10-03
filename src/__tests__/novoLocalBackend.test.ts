@@ -81,9 +81,10 @@ describe("App novo — atualização do banco local", () => {
       .map((f) => [`../../../supabase/migrations/${f}`, fs.readFileSync(path.join(MIGRATIONS, f), "utf8")])
   );
   const names = Object.keys(all).sort();
-  const older = Object.fromEntries(names.slice(0, -1).map((n) => [n, all[n]]));
+  // Banco "antigo": parado antes da migração de treino (…0700), que cria app_get_session.
+  const older = Object.fromEntries(names.filter((n) => path.basename(n) < "20261003000700").map((n) => [n, all[n]]));
 
-  it("aplica só a migração que falta e preserva as contas; a carga roda de novo", async () => {
+  it("aplica só as migrações que faltam e preserva as contas; a carga roda de novo", async () => {
     const db = new PGlite();
     let seeded = 0;
     const seed = async () => (seeded++, [] as string[]);

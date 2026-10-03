@@ -13,6 +13,7 @@ Esquema, políticas de acesso (RLS) e carga do StaziaMed no Supabase.
 | `migrations/…0500_billing_ai.sql` | Uso de IA e eventos de pagamento (só o backend escreve) |
 | `migrations/…0600_app_api.sql` | Funções `app_*` da estrutura do app: dados de abertura e perfil |
 | `migrations/…0700_practice_api.sql` | Funções `app_*` de Questões, Simulados e da sessão: sorteio, resposta, correção e placar; questões marcadas |
+| `migrations/…0800_home_api.sql` | Funções `app_*` do Início e do Plano de hoje: números do aluno e tarefas do dia montadas pelo histórico |
 | `tests/bootstrap.sql` | Só para testes: imita o ambiente Supabase no PGlite |
 | `seed.sql` | Gerado por `npm run supabase:seed` (não fica no Git) |
 
