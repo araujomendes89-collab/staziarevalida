@@ -50,3 +50,16 @@ describe("App novo — formatação do treino", () => {
     expect(formatWhen(new Date(2026, 8, 12, 18, 0).toISOString(), now)).toMatch(/^12 de set\.?, 18:00$/);
   });
 });
+
+describe("App novo — ritmo do planejamento", () => {
+  it("projeta pelo ritmo real ou, sem ele, pela meta diária", async () => {
+    const { paceText } = await import("../novo/app/home/PlanningScreen.jsx");
+    const base = { unanswered: 1000, daily_target: 20, days_to_exam: null };
+    expect(paceText({ ...base, last_7_days: 0 })).toBe("Com a meta de 20 questões por dia, as 1000 questões inéditas acabam em cerca de 8 semanas.");
+    expect(paceText({ ...base, last_7_days: 250, days_to_exam: 60 })).toBe(
+      "No ritmo dos últimos 7 dias (250 questões), as 1000 questões inéditas acabam em cerca de 4 semanas. Dá tempo antes da prova."
+    );
+    expect(paceText({ ...base, last_7_days: 70, days_to_exam: 50 })).toMatch(/15 semanas\. Para fechar antes da prova, seriam cerca de 20 por dia\.$/);
+    expect(paceText({ ...base, unanswered: 0, last_7_days: 3 })).toMatch(/todas as questões disponíveis/);
+  });
+});

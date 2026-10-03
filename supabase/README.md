@@ -16,6 +16,7 @@ Esquema, políticas de acesso (RLS) e carga do StaziaMed no Supabase.
 | `migrations/…0800_home_api.sql` | Funções `app_*` do Início e do Plano de hoje: números do aluno e tarefas do dia montadas pelo histórico |
 | `migrations/…0900_review_api.sql` | Funções `app_*` do Caderno de erros (lista, correção, anotação) e do Desempenho |
 | `migrations/…1000_flashcards_api.sql` | Funções `app_*` dos Flashcards: fila do dia, cartões pessoais e revisão com FSRS |
+| `migrations/…1100_planning_api.sql` | Função `app_planning`: semana, dias estudados no mês e ritmo até a prova |
 | `tests/bootstrap.sql` | Só para testes: imita o ambiente Supabase no PGlite |
 | `seed.sql` | Gerado por `npm run supabase:seed` (não fica no Git) |
 
