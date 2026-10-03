@@ -1,9 +1,9 @@
 // Entrada do app novo (/novo), construído com o StaziaMed Design System.
-// Etapa 1: reproduz o protótipo do design system fielmente; as telas são ligadas
-// aos dados reais nas próximas etapas (src/novo/screens).
+// A estrutura (login, menu, rotas, perfil) usa dados reais; as telas internas são ligadas
+// aos dados etapa por etapa (ver CONNECTED em ./app/App.jsx).
 import React from "react";
 import { createRoot } from "react-dom/client";
 import "./ds/styles.css";
-import { App } from "./prototype/App.jsx";
+import { App } from "./app/App.jsx";
 
 createRoot(document.getElementById("root")).render(<App />);

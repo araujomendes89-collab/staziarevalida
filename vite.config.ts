@@ -11,6 +11,11 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    // O PGlite (banco local de desenvolvimento) carrega .wasm/.data ao lado do próprio módulo;
+    // o pré-empacotamento do Vite quebra esses caminhos.
+    optimizeDeps: {
+      exclude: ['@electric-sql/pglite'],
+    },
     build: {
       rollupOptions: {
         // Duas páginas: o app atual (index.html) e o app novo do design system (novo.html, em /novo).

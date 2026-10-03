@@ -1,13 +1,13 @@
 // @vitest-environment node
 /**
- * A carga real (scripts/supabase/build-seed.ts) entra no esquema sem violar nenhuma
+ * A carga real (scripts/supabase/seed-builder.ts) entra no esquema sem violar nenhuma
  * restrição, e os dados ficam consultáveis como o app novo vai precisar.
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
 import { PGlite } from "@electric-sql/pglite";
-import { buildSeedRows, buildSeedStatements } from "../../scripts/supabase/build-seed";
+import { buildSeedRows, buildSeedStatements } from "../../scripts/supabase/seed-builder";
 
 const ROOT = path.resolve(__dirname, "../..");
 const ANA = "00000000-0000-4000-8000-00000000000a";
