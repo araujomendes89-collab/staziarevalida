@@ -1,7 +1,8 @@
 // Correção de uma questão: veredito, explicação e o que a banca cobra.
 // Usada no painel da sessão e na revisão do resultado. Só mostra o que existe no banco.
 import React from "react";
-import { Badge, Icon } from "../../ds";
+import { Badge, Button, Icon } from "../../ds";
+import { FlashcardForm } from "../review/FlashcardForm.jsx";
 
 export function Verdict({ selected, correction }) {
   const blank = selected == null;
@@ -20,7 +21,39 @@ export function Verdict({ selected, correction }) {
   );
 }
 
-export function Correction({ selected, correction }) {
+/** Salvar um flashcard pessoal a partir da questão: o verso vem com a conduta esperada. */
+function SaveAsFlashcard({ question, correction }) {
+  const [state, setState] = React.useState("closed"); // closed | open | saved
+  if (state === "saved") {
+    return (
+      <div style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-body-sm)", color: "var(--success-text)" }} role="status">
+        <Icon name="circle-check" size={16} /> Flashcard salvo. Ele aparece na sua revisão de Flashcards.
+      </div>
+    );
+  }
+  if (state === "closed") {
+    return (
+      <div>
+        <Button variant="secondary" size="sm" icon="layers" onClick={() => setState("open")}>
+          Criar flashcard
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <div style={{ padding: 16, borderRadius: 16, background: "var(--surface-card)", border: "1px solid var(--border-default)" }}>
+      <div style={{ font: "600 15px var(--font-sans)", marginBottom: 12 }}>Novo flashcard</div>
+      <FlashcardForm
+        compact
+        initial={{ area: question.area, topic: correction.topic ?? "", front: "", back: correction.expected_conduct ?? "", source_question_id: question.id }}
+        onCancel={() => setState("closed")}
+        onSaved={() => setState("saved")}
+      />
+    </div>
+  );
+}
+
+export function Correction({ selected, correction, question }) {
   const source = correction.sources?.[0];
   return (
     <>
@@ -69,6 +102,7 @@ export function Correction({ selected, correction }) {
           {source.organization ? ` · ${source.organization}` : ""}
         </div>
       )}
+      {question && <SaveAsFlashcard key={question.id} question={question} correction={correction} />}
     </>
   );
 }

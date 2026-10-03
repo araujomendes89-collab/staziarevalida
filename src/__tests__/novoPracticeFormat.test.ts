@@ -46,6 +46,7 @@ describe("App novo — formatação do treino", () => {
     const now = new Date(2026, 9, 3, 15, 0);
     expect(formatWhen(new Date(2026, 9, 3, 9, 5).toISOString(), now)).toBe("hoje, 09:05");
     expect(formatWhen(new Date(2026, 9, 2, 23, 50).toISOString(), now)).toBe("ontem, 23:50");
+    expect(formatWhen(new Date(2026, 9, 4, 8, 0).toISOString(), now)).toBe("amanhã, 08:00");
     expect(formatWhen(new Date(2026, 8, 12, 18, 0).toISOString(), now)).toMatch(/^12 de set\.?, 18:00$/);
   });
 });

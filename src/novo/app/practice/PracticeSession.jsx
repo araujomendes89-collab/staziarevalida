@@ -248,7 +248,7 @@ function Runner({ session, go, onFinished }) {
       style={{ background: "var(--surface-subtle)", borderLeft: mobile ? 0 : "1px solid var(--border-subtle)", borderTop: mobile ? "1px solid var(--border-subtle)" : 0, padding: 28, display: "flex", flexDirection: "column", gap: 16 }}
       aria-live="polite"
     >
-      <Correction selected={question.selected} correction={question.correction} />
+      <Correction selected={question.selected} correction={question.correction} question={question} />
     </aside>
   );
 

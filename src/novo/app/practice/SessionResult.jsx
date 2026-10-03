@@ -51,7 +51,7 @@ function ReviewRow({ question, position, first, open, onToggle }) {
               </AnswerOption>
             ))}
           </div>
-          <Correction selected={question.selected} correction={question.correction} />
+          <Correction selected={question.selected} correction={question.correction} question={question} />
         </div>
       )}
     </div>

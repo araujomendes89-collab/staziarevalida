@@ -42,6 +42,7 @@ export function formatWhen(iso, now = new Date()) {
   const days = Math.round((dayOf(now) - dayOf(date)) / 86_400_000);
   if (days === 0) return `hoje, ${time}`;
   if (days === 1) return `ontem, ${time}`;
+  if (days === -1) return `amanhã, ${time}`;
   return `${new Intl.DateTimeFormat("pt-BR", { day: "numeric", month: "short" }).format(date)}, ${time}`;
 }
 
