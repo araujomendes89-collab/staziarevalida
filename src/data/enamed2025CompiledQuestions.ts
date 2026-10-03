@@ -4335,8 +4335,8 @@ export const ENAMED_2025_CANONICAL_COMPILED: Question[] = [
     "sourceDocument": "PROVA_OBJETIVA_ENAMED_2025.pdf",
     "area": "PEDIATRIA",
     "specialty": "PEDIATRIC_NEUROLOGY",
-    "topic": "Convuls\u0003e3o febril",
-    "subtopic": "Convuls\u0000e3o febril simples e conduta ap\u0000f3s o primeiro epis\u0000f3dio",
+    "topic": "Convulsão febril",
+    "subtopic": "Convulsão febril simples e conduta após o primeiro episódio",
     "clinicalCase": "Criança de 2 anos encaminhada ao matriciamento de pediatria, com história de ter apresentado há 7 dias uma crise tônico- clônica generalizada em vigência de temperatura axilar de 39,3 °C, duração de 2 minutos, sem recorrência em 24 horas. Naquela ocasião foi realizado exame físico e neurológico, compatível com infecção viral de vias aéreas superiores, sem outras alterações. A conduta adequada nesse caso é",
     "options": [
       {
@@ -4355,7 +4355,7 @@ export const ENAMED_2025_CANONICAL_COMPILED: Question[] = [
         "id": "C",
         "text": "tranquilizar e orientar puericultura de rotina.",
         "isCorrect": true,
-        "explanation": "Conduta expectante, com tranquiliza\u0000e7\u0000e3o dos respons\u0000e1veis e seguimento de rotina, para crian\u0000e7a com convuls\u0000e3o febril simples."
+        "explanation": "Conduta expectante, com tranquilização dos responsáveis e seguimento de rotina, para criança com convulsão febril simples."
       },
       {
         "id": "D",
@@ -4369,8 +4369,8 @@ export const ENAMED_2025_CANONICAL_COMPILED: Question[] = [
     "officialStatus": "valid",
     "extractionConfidence": "HIGH",
     "keyFinding": "tranquilizar e orientar puericultura de rotina.",
-    "expectedConduct": "Reconhecer uma convuls\u0000e3o febril simples e indicar tranquiliza\u0000e7\u0000e3o dos respons\u0000e1veis, sem necessidade de eletroencefalograma, exames laboratoriais, neuroimagem ou profilaxia anticonvulsivante.",
-    "inepIntent": "Avaliar o reconhecimento dos crit\u0000e9rios de convuls\u0000e3o febril simples e evitar investiga\u0000e7\u0000e3o complementar ou profilaxia anticonvulsivante desnecess\u0000e1ria.",
+    "expectedConduct": "Reconhecer uma convulsão febril simples e indicar tranquilização dos responsáveis, sem necessidade de eletroencefalograma, exames laboratoriais, neuroimagem ou profilaxia anticonvulsivante.",
+    "inepIntent": "Avaliar o reconhecimento dos critérios de convulsão febril simples e evitar investigação complementar ou profilaxia anticonvulsivante desnecessária.",
     "sources": [
       {
         "title": "Gabarito Oficial Definitivo Exame Nacional da Medicina 2025 — ENAMED",

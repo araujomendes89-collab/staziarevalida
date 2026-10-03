@@ -21,3 +21,7 @@ revalida-reverse-engine/**/*.pyc
 
 # Ícones do design system (gerados por scripts/design-system/sync-icons.mjs)
 public/ds-icons/
+
+# Carga gerada por scripts/supabase/build-seed.ts (npm run supabase:seed)
+supabase/seed.sql
+supabase/.temp/

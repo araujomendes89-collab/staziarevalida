@@ -21,6 +21,8 @@ const localStorageMock = (() => {
   };
 })();
 
+// Testes com `@vitest-environment node` (ex.: banco no PGlite) não têm window.
+if (typeof window !== 'undefined') {
 Object.defineProperty(window, 'localStorage', {
   value: localStorageMock,
   writable: true,
@@ -40,3 +42,4 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: () => false,
   }),
 });
+}
