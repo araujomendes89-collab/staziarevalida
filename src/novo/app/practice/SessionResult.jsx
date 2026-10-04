@@ -5,6 +5,7 @@ import { AnswerOption, Badge, Banner, Button, Card, Icon, ProgressBar, StatCard,
 import { useMQ } from "../Shell.jsx";
 import { Correction } from "./Correction.jsx";
 import { areaLabel, areaOf, examLabel, formatClock, formatWhen, percent, splitStatement } from "./format.js";
+import { QuestionFigures } from "./QuestionFigures.jsx";
 
 const stateOf = (question) => (question.selected == null ? "blank" : question.correction.is_correct ? "right" : "wrong");
 const STATE = {
@@ -39,6 +40,7 @@ function ReviewRow({ question, position, first, open, onToggle }) {
             </Badge>
           </div>
           <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, textWrap: "pretty" }}>{stem}</p>
+          <QuestionFigures images={question.images} />
           {ask && <p style={{ margin: 0, font: "600 16px/1.45 var(--font-sans)" }}>{ask}</p>}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {question.options.map((option) => (

@@ -8,7 +8,7 @@ import { AppShell, useMobile } from "./Shell.jsx";
 import { AuthFlow } from "./AuthScreens.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
 import { Tutor } from "../prototype/More.jsx";
-import { Aulas, Temas, Materiais } from "../prototype/Study1.jsx";
+import { Aulas, Materiais } from "../prototype/Study1.jsx";
 import { Home2, Stations, Station, Peps, Perf2, SimPatient } from "../prototype/Phase2.jsx";
 import { Pair } from "../prototype/Match.jsx";
 import { Theory2 } from "../prototype/Theory2.jsx";
@@ -20,13 +20,14 @@ import { PerformanceScreen } from "./review/PerformanceScreen.jsx";
 import { FlashcardsScreen } from "./review/FlashcardsScreen.jsx";
 import { AccountScreen } from "./account/AccountScreen.jsx";
 import { AdminScreen, isStaffRole } from "./admin/AdminScreen.jsx";
+import { ThemesScreen } from "./study/ThemesScreen.jsx";
 import { QuestionBuilder } from "./practice/QuestionBuilder.jsx";
 import { PracticeSession } from "./practice/PracticeSession.jsx";
 
 // [título, subtítulo] de cada rota (o início é montado com nome e data reais).
 const TITLES = {
   aulas: ["Aulas teórico-práticas", "Estudar · conteúdo audiovisual por grande área"],
-  temas: ["Grandes Temas do Revalida", "Estudar · temas nas 5 grandes áreas"],
+  temas: ["Grandes Temas do Revalida", "Estudar · incidência real nas provas oficiais"],
   materiais: ["Materiais oficiais e diretrizes", "Estudar · PCDTs, protocolos do MS, INEP e sociedades"],
   hoje: ["Plano de hoje", "Estudar · praticar · revisar"],
   questoes: ["Questões", "Monte seu treino"],
@@ -49,7 +50,7 @@ const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "perfil", "admin"]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "perfil", "admin", "temas"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -111,7 +112,7 @@ function Screen() {
   if (route === "home") body = <HomeScreen go={go} mobile={mobile} />;
   else if (route === "hoje") body = <TodayPlan go={go} />;
   else if (route === "aulas") body = <Aulas />;
-  else if (route === "temas") body = <Temas go={go} />;
+  else if (route === "temas") body = <ThemesScreen go={go} />;
   else if (route === "materiais") body = <Materiais />;
   else if (route === "questoes") body = <QuestionBuilder key="q" go={go} mode="q" />;
   else if (route === "simulados") body = <QuestionBuilder key="sim" go={go} mode="sim" />;

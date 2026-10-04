@@ -4,10 +4,11 @@
  */
 import fs from "fs";
 import path from "path";
-import { buildSeedRows, buildSeedSql } from "./seed-builder";
+import { buildSeedRows, buildSeedStatements } from "./seed-builder";
+import { buildEngineStatements } from "./engine-seed";
 
 const out = path.resolve("supabase/seed.sql");
-const sql = buildSeedSql();
+const sql = ["-- Gerado por scripts/supabase/build-seed.ts. Não editar à mão.", "begin;", ...buildSeedStatements(), ...buildEngineStatements(), "commit;", ""].join("\n");
 fs.writeFileSync(out, sql);
 const r = buildSeedRows();
 console.log(

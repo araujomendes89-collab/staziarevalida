@@ -36,7 +36,11 @@ function readMigrations(): Record<string, string> {
 async function open(dir: string): Promise<DevDatabase> {
   fs.mkdirSync(dir, { recursive: true });
   const bootstrap = fs.readFileSync(path.join(ROOT, "supabase/tests/bootstrap.sql"), "utf8");
-  const seed = async () => (await import("../../scripts/supabase/seed-builder")).buildSeedStatements();
+  const seed = async () => [
+    ...(await import("../../scripts/supabase/seed-builder")).buildSeedStatements(),
+    // pacote do motor: imagens, classificação detalhada e questões equivalentes
+    ...(await import("../../scripts/supabase/engine-seed")).buildEngineStatements(),
+  ];
   let db = new PGlite(dir);
   if ((await migrateDatabase(db, bootstrap, readMigrations(), seed)) === "drift") {
     // Migração já aplicada foi alterada: guarda o banco antigo ao lado e recria.

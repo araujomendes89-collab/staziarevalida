@@ -9,6 +9,7 @@ import { AnswerOption, Badge, Banner, Button, Card, EmptyState, Icon } from "../
 import { useMQ } from "../Shell.jsx";
 import { useSession } from "../session.jsx";
 import { Correction } from "./Correction.jsx";
+import { QuestionFigures } from "./QuestionFigures.jsx";
 import { SessionResult } from "./SessionResult.jsx";
 import { areaLabel, examLabel, formatClock, splitStatement } from "./format.js";
 
@@ -333,6 +334,7 @@ function Runner({ session, go, onFinished }) {
               </div>
             )}
             <p style={{ font: `400 ${mobile ? 17 : 19}px/1.65 var(--font-sans)`, margin: "22px 0 0", textWrap: "pretty" }}>{stem}</p>
+            <QuestionFigures images={question.images} />
             {ask && <p style={{ font: "600 18px/1.4 var(--font-sans)", margin: "28px 0 0" }}>{ask}</p>}
             <div role="radiogroup" aria-label="Alternativas" style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: ask ? 20 : 28 }}>
               {question.options.map((option) => {

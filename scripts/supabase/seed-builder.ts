@@ -11,6 +11,7 @@
 import { ALL_CANONICAL_QUESTIONS } from "../../src/data/allOfficialQuestions";
 import { loadEvents, loadStations, toLite } from "../../src/shared/checklistBank/catalog";
 import { citesFigure } from "../../src/shared/questions/figure";
+import { cleanQuestionText } from "../../src/shared/questions/footer";
 import stationsSeed from "../../server/checklistBank/data/stations.seed.json";
 import eventsSeed from "../../server/checklistBank/data/events.seed.json";
 
@@ -36,9 +37,9 @@ function insert(table: string, rows: Row[], conflict: string): string {
   const cols = Object.keys(rows[0]);
   const values = rows.map((r) => `(${cols.map((c) => sqlLiteral(r[c])).join(", ")})`).join(",\n");
   const updates = cols.filter((c) => !conflict.split(",").map((s) => s.trim()).includes(c));
-  return `insert into ${table} (${cols.join(", ")}) values\n${values}\non conflict (${conflict}) do update set ${updates
-    .map((c) => `${c} = excluded.${c}`)
-    .join(", ")};\n`;
+  // tabela só de chave: nada a atualizar
+  const action = updates.length ? `do update set ${updates.map((c) => `${c} = excluded.${c}`).join(", ")}` : "do nothing";
+  return `insert into ${table} (${cols.join(", ")}) values\n${values}\non conflict (${conflict}) ${action};\n`;
 }
 
 /** Prova de origem: revalida-2025-1, revalida-2021, enamed-2025 */
@@ -93,6 +94,14 @@ export function buildSeedRows() {
     });
   }
 
+  // Sobras de rodapé da extração saem do texto, mas cada trecho removido fica registrado.
+  const cleanups: Row[] = [];
+  const clean = (questionId: string, field: string, text: string) => {
+    const r = cleanQuestionText(text);
+    for (const x of r.removed) cleanups.push({ question_id: questionId, field, rule: x.rule, removed_text: x.text });
+    return r.text;
+  };
+
   const questionRows: Row[] = questions.map((q) => ({
     id: q.id,
     code: questionCode(q),
@@ -103,10 +112,10 @@ export function buildSeedRows() {
     specialty: q.specialty ?? null,
     topic: q.topic,
     subtopic: q.subtopic ?? null,
-    statement: q.clinicalCase,
+    statement: clean(q.id, "statement", q.clinicalCase),
     options: (q.options ?? []).map((o: any) => ({
       id: o.id,
-      text: o.text,
+      text: clean(q.id, `option_${o.id}`, o.text),
       explanation: !o.explanation || o.explanation.trim() === PLACEHOLDER_EXPLANATION ? "" : o.explanation,
     })),
     correct_option: q.correctAnswer,
@@ -155,7 +164,7 @@ export function buildSeedRows() {
     type: e.type,
   }));
 
-  return { exams: [...exams.values()], questions: questionRows, stations: stationRows, contents: contentRows, events: eventRows };
+  return { exams: [...exams.values()], questions: questionRows, cleanups, stations: stationRows, contents: contentRows, events: eventRows };
 }
 
 /** Comandos da carga, um por tabela e lotes de 100 questões (cada um cabe numa mensagem). */
@@ -166,6 +175,7 @@ export function buildSeedStatements(): string[] {
     ...Array.from({ length: Math.ceil(r.questions.length / 100) }, (_, i) =>
       insert("public.questions", r.questions.slice(i * 100, i * 100 + 100), "id")
     ),
+    `delete from public.question_cleanups;\n${insert("public.question_cleanups", r.cleanups, "question_id, field, rule, removed_text")}`,
     insert("public.checklist_stations", r.stations, "id"),
     insert("public.checklist_station_contents", r.contents, "station_id"),
     insert("public.checklist_events", r.events, "id"),
