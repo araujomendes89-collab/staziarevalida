@@ -94,6 +94,15 @@ export const SOURCE_KIND = {
   society_guideline: "Diretriz de sociedade médica",
 };
 
+// Nível de autoridade da fonte: só A–D valem como evidência; E serve para descobrir o assunto.
+export const AUTHORITY = {
+  A: "A · Oficial (Ministério da Saúde, INEP, Conitec, Anvisa, legislação)",
+  B: "B · Sociedade médica reconhecida",
+  C: "C · Organização internacional (OMS, OPAS, CDC, NICE…)",
+  D: "D · Revisão sistemática, metanálise, periódico de alto nível",
+  E: "E · Livro, apostila ou curso (não vale como evidência)",
+};
+
 export const SOURCE_STATUS = { current: ["Vigente", "success"], superseded: ["Substituída", "warning"], withdrawn: ["Retirada", "danger"] };
 
 export const CRITICAL = {
