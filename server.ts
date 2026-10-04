@@ -40,6 +40,7 @@ import { resolveServerPort } from "./server/config/serverPort";
 import { checklistBankRouter } from "./server/checklistBank/router";
 import { createDevDbRouter } from "./server/devDb/router";
 import { getDevDatabase } from "./server/devDb/devDatabase";
+import { setupContentHub } from "./server/contentHub";
 import { getChecklistCatalog } from "./server/checklistBank/catalog";
 
 dotenv.config();
@@ -84,6 +85,8 @@ async function startServer() {
     `[ChecklistBank] ${checklistCatalog.stations.length} estações e ${checklistCatalog.events.length} simulado(s) validados.`
   );
   app.use("/api/checklist-bank", checklistBankRouter);
+  // Central de Conteúdo: envio de PDFs, fila de processamento, arquivos finais (chaves só no servidor).
+  app.use("/api/content-hub", (await setupContentHub()).router);
   if (process.env.NODE_ENV !== "production") {
     // Banco de desenvolvimento no servidor: app do aluno, painel e processamento usam o mesmo.
     app.use("/api/dev-db", createDevDbRouter(() => getDevDatabase()));
