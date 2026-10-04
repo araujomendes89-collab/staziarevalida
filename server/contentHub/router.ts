@@ -7,6 +7,7 @@ import crypto from "crypto";
 import express, { type Request, type Response, type NextFunction } from "express";
 import { stepVersions, type PipelineDeps } from "./pipeline";
 import { loadBrand } from "./render";
+import { compareSourceVersions } from "./sourceCompare";
 import type { Identity } from "./infra";
 import type { ContentHubWorker } from "./worker";
 
@@ -167,6 +168,19 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       res.json(await opts.worker.checkSources());
     } catch (error) {
       fail(res, forbidden(error) ? 403 : 500, message(error));
+    }
+  });
+
+  /** Compara o conteúdo de duas versões de uma fonte e tria o impacto por afirmação (administrador). */
+  router.post("/sources/:old/compare/:new", async (req: Authed, res) => {
+    try {
+      const me = await requireStaff(req);
+      if (!me.admin) return fail(res, 403, "Somente administradores.");
+      const uuid = /^[0-9a-f-]{36}$/i;
+      if (!uuid.test(String(req.params.old)) || !uuid.test(String(req.params.new))) return fail(res, 400, "Fonte inválida.");
+      res.json(await compareSourceVersions(deps!.db, String(req.params.old), String(req.params.new)));
+    } catch (error) {
+      fail(res, forbidden(error) ? 403 : 400, message(error));
     }
   });
 

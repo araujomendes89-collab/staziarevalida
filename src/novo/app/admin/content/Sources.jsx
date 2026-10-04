@@ -7,8 +7,8 @@ import { useSession } from "../../session.jsx";
 import { useMobile } from "../../Shell.jsx";
 import { LoadError, Loading, useLoad } from "../common.jsx";
 import { hubAvailable, hubPost, hubUploadPdf } from "./api.js";
-import { AUTHORITY, SOURCE_KIND, SOURCE_STATUS } from "./labels.js";
-import { KeyValue, Section, shortHash, StatusBadge, useAction, when } from "./ui.jsx";
+import { AUTHORITY, DIFF_KIND, FRESHNESS, SOURCE_KIND, SOURCE_STATUS } from "./labels.js";
+import { KeyValue, Label, Section, shortHash, StatusBadge, useAction, when } from "./ui.jsx";
 
 export function Sources({ isAdmin, go }) {
   const { backend } = useSession();
@@ -99,6 +99,7 @@ function SourceRow({ source: s, isAdmin, onChanged }) {
   const [file, setFile] = React.useState(null);
   const [watchUrl, setWatchUrl] = React.useState(s.watch?.url ?? s.url ?? "");
   const [days, setDays] = React.useState(String(s.watch?.interval_days ?? 7));
+  const [diffKey, setDiffKey] = React.useState(0);
   const act = useAction();
   return (
     <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "10px 0" }}>
@@ -114,8 +115,10 @@ function SourceRow({ source: s, isAdmin, onChanged }) {
         <Badge size="sm" tone={s.passages ? "success" : "warning"}>
           {s.passages ? `${s.passages} trechos` : "sem documento completo"}
         </Badge>
-        {s.watch && <Badge size="sm" tone="info">monitorada</Badge>}
+        {s.status === "current" && <StatusBadge map={FRESHNESS} value={s.freshness} />}
+        {s.update_in_progress && <Badge size="sm" tone="warning">em atualização pelo órgão</Badge>}
         {s.changes > 0 && <Badge size="sm" tone="danger">{s.changes} mudança(s) a analisar</Badge>}
+        {s.diffs > 0 && <Badge size="sm" tone="info">{s.diffs} comparação(ões) de conteúdo</Badge>}
       </button>
       {open && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
@@ -127,6 +130,12 @@ function SourceRow({ source: s, isAdmin, onChanged }) {
               ["Acesso", s.accessed_on],
               ["SHA-256", s.sha256 ? <code key="h">{shortHash(s.sha256)}</code> : null],
               ["Aprovação editorial", s.kind === "society_guideline" ? (s.editorial_approved ? "sim" : "não") : undefined],
+              ["País", s.country],
+              ["Vale para o SUS", s.applies_to_sus ? "sim" : "não"],
+              ["Especialidade", s.specialty],
+              ["Tema", s.theme],
+              ["Vigência a partir de", s.effective_date],
+              ["Última revisão", s.revision_date],
               ["Monitoramento", s.watch ? `${s.watch.url} · a cada ${s.watch.interval_days} dia(s) · última conferência ${when(s.watch.last_checked_at)} (${s.watch.last_status ?? "—"}) · próxima ${when(s.watch.next_check_at)}` : "não"],
             ]}
           />
@@ -159,9 +168,139 @@ function SourceRow({ source: s, isAdmin, onChanged }) {
               </Button>
             </div>
           )}
+          {isAdmin && s.changes > 0 && <ResolveChange source={s} onChanged={onChanged} />}
+          {isAdmin && <Registry source={s} onChanged={onChanged} />}
+          {isAdmin && s.status === "superseded" && s.superseded_by && hubAvailable(backend) && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <Button
+                size="sm"
+                variant="secondary"
+                icon="git-compare"
+                disabled={!s.passages || !s.successor_passages}
+                loading={act.busy}
+                onClick={() => act.run(() => hubPost(backend, `/sources/${s.id}/compare/${s.superseded_by}`), "Comparação concluída: as questões afetadas foram triadas para o revisor médico.").then((r) => r && (setDiffKey((k) => k + 1), onChanged()))}
+              >
+                Comparar conteúdo com a versão nova
+              </Button>
+              {(!s.passages || !s.successor_passages) && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Para comparar, as duas versões precisam do PDF completo enviado.</span>}
+            </div>
+          )}
           {act.feedback}
+          {s.diffs > 0 && <SourceDiffs sourceId={s.id} reloadKey={diffKey} />}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Campos do registro da fonte: país, SUS, especialidade, tema, vigência, revisão e "em atualização". */
+function Registry({ source: s, onChanged }) {
+  const { backend } = useSession();
+  const mobile = useMobile();
+  const [f, setF] = React.useState({
+    country: s.country ?? "BR",
+    applies_to_sus: Boolean(s.applies_to_sus),
+    specialty: s.specialty ?? "",
+    theme: s.theme ?? "",
+    effective_date: s.effective_date ?? "",
+    revision_date: s.revision_date ?? "",
+    update_in_progress: Boolean(s.update_in_progress),
+  });
+  const set = (patch) => setF((v) => ({ ...v, ...patch }));
+  const act = useAction();
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <Label>Registro da fonte</Label>
+      <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr 1fr", gap: 12 }}>
+        <TextField label="País (sigla)" value={f.country} onChange={(e) => set({ country: e.target.value.toUpperCase().slice(0, 2) })} />
+        <TextField label="Especialidade" value={f.specialty} onChange={(e) => set({ specialty: e.target.value })} />
+        <TextField label="Tema" value={f.theme} onChange={(e) => set({ theme: e.target.value })} />
+        <TextField label="Vigência a partir de" type="date" value={f.effective_date} onChange={(e) => set({ effective_date: e.target.value })} />
+        <TextField label="Última revisão" type="date" value={f.revision_date} onChange={(e) => set({ revision_date: e.target.value })} />
+      </div>
+      <Checkbox label="Vale para o SUS" checked={f.applies_to_sus} onChange={(e) => set({ applies_to_sus: e.target.checked })} />
+      <Checkbox label="Em atualização pelo órgão (a versão publicada continua valendo até sair a nova)" checked={f.update_in_progress} onChange={(e) => set({ update_in_progress: e.target.checked })} />
+      {act.feedback}
+      <div>
+        <Button size="sm" variant="secondary" icon="save" loading={act.busy} onClick={() => act.run(() => backend.rpc("app_ch_set_source_registry", { p_source_id: s.id, p_fields: f }), "Registro atualizado.").then((r) => r && onChanged())}>
+          Salvar registro
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** A publicação mudou: a pessoa registra o que analisou. Isso não devolve validade a nenhuma evidência. */
+function ResolveChange({ source: s, onChanged }) {
+  const { backend } = useSession();
+  const [note, setNote] = React.useState("");
+  const act = useAction();
+  return (
+    <Banner tone="warning">
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <span>A publicação monitorada mudou. As evidências desta fonte ficaram desatualizadas e as questões ligadas a elas entraram na fila de revisão. Depois de analisar, registre o que foi feito.</span>
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <TextField label="O que foi analisado" value={note} onChange={(e) => setNote(e.target.value)} />
+          </div>
+          <Button size="sm" variant="secondary" icon="check" disabled={note.trim().length < 10} loading={act.busy} onClick={() => act.run(() => backend.rpc("app_ch_resolve_source_change", { p_source_id: s.id, p_note: note }), "Mudança registrada como analisada.").then((r) => r && onChanged())}>
+            Marcar como analisada
+          </Button>
+        </div>
+        {act.feedback}
+      </div>
+    </Banner>
+  );
+}
+
+/** O que mudou no conteúdo entre duas versões (ou duas leituras) da fonte. Triagem automática, sem IA. */
+function SourceDiffs({ sourceId, reloadKey }) {
+  const { backend } = useSession();
+  const { data, error, reload } = useLoad(() => backend.rpc("app_source_diffs", { p_source_id: sourceId }), [backend, sourceId, reloadKey]);
+  if (error) return <LoadError error={error} retry={reload} />;
+  if (!data) return <Loading />;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <Label>Comparações de conteúdo</Label>
+      <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Comparação automática de texto (sem IA). Serve para ordenar a revisão médica; não decide qual é a conduta atual.</span>
+      {data.map((d) => (
+        <div key={d.id} style={{ borderTop: "1px solid var(--border-subtle)", paddingTop: 8 }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+            <strong style={{ font: "var(--type-body-sm)" }}>{when(d.created_at)}</strong>
+            <Badge size="sm">{d.origin === "version" ? "entre duas versões" : "entre duas leituras da página"}</Badge>
+            {d.summary?.critical > 0 && <Badge size="sm" tone="danger">{d.summary.critical} trecho(s) crítico(s)</Badge>}
+            {Object.entries(DIFF_KIND)
+              .filter(([k]) => d.summary?.[k] > 0)
+              .map(([k, [label, tone]]) => (
+                <Badge key={k} size="sm" tone={tone}>
+                  {d.summary[k]} · {label}
+                </Badge>
+              ))}
+          </div>
+          {d.items.length === 0 && <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", marginTop: 4 }}>Nenhum trecho mudou.</div>}
+          {d.items.map((it, i) => (
+            <div key={i} style={{ marginTop: 8, paddingLeft: 12, borderLeft: `3px solid var(${it.critical ? "--danger-solid" : "--border-subtle"})` }}>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <StatusBadge map={DIFF_KIND} value={it.kind} />
+                {it.critical && <Badge size="sm" tone="danger">crítico</Badge>}
+                {it.section && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{it.section}</span>}
+              </div>
+              {it.old_text && (
+                <div style={{ font: "var(--type-body-sm)", marginTop: 4 }}>
+                  <span style={{ color: "var(--text-tertiary)" }}>Antes: </span>
+                  {it.old_text}
+                </div>
+              )}
+              {it.new_text && (
+                <div style={{ font: "var(--type-body-sm)", marginTop: 4 }}>
+                  <span style={{ color: "var(--text-tertiary)" }}>Agora: </span>
+                  {it.new_text}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }

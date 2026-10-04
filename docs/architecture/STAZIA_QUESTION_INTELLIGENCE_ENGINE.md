@@ -106,7 +106,7 @@ O criador e o conferente são de famílias de modelo diferentes (regra já imple
 |---|---|---|
 | **1** | gabarito oficial com histórico, trilha de mudanças, análise da questão e de cada alternativa, comentário versionado, conferência por software | **pronta** (nenhuma análise gerada ainda) |
 | **2** | `question_claims`, integração com o Knowledge Core, citações, impacto seletivo | **pronta** (1.117 afirmações ligadas às questões; 0 com evidência oficial, pois não há acervo) |
-| 3 | Source Registry ampliado, Watcher com diff, Claim Impact | pendente (depende do acervo oficial) |
+| **3** | Source Registry ampliado, Watcher com diff, Claim Impact | **pronta** (comparação de conteúdo, triagem por afirmação, frescor; só exercitada com fontes sintéticas) |
 | 4 | reanálise automática, gabarito histórico × atual, cartão de atualização, linha do tempo | pendente |
 | 5 | diagnóstico do erro do aluno, reforço adaptativo, questões novas | pendente |
 
@@ -115,3 +115,48 @@ O criador e o conferente são de famílias de modelo diferentes (regra já imple
 Só vale como funcional quando o cenário de 20 passos rodar de ponta a ponta com **fonte oficial real**. Sem acervo
 oficial cadastrado, os passos 7, 8, 10 a 13 e 15 a 20 **não podem ser demonstrados com honestidade**; serão testados com
 fontes sintéticas identificadas como tal, e isso será dito em cada relatório.
+
+## 8. Fase 3 — como o vigia compara o conteúdo (migração `2500_sqie_source_diff`)
+
+A comparação é **texto contra texto, sem IA**. Ela não decide conduta: só ordena a fila do revisor médico.
+
+```
+versão nova cadastrada (ou página monitorada mudou)
+   → ch_flag_dependents: evidências da fonte antiga ficam desatualizadas; SÓ as questões ligadas entram na fila ("impacto a definir")
+   → comparação de conteúdo (server/contentHub/sourceDiff.ts): alinha os trechos e classifica cada um
+   → impacto por afirmação (pelo trecho que sustentava a evidência) → a fila ganha triagem e passa a "revisão necessária"
+```
+
+| O que mudou no trecho | Triagem da questão | Crítico |
+|---|---|---|
+| idêntico / só a forma (pontuação, espaços) | "trecho igual: confirmar a nova versão" | não |
+| pequena mudança de redação, mesmos números e negações | "só o comentário" | não |
+| número (dose, prazo, intervalo, valor) | "impacto a definir" — reanálise obrigatória | **sim** |
+| negação ou restrição ("não", "contraindicado", "evitar"…) | "impacto a definir" — reanálise obrigatória | **sim** |
+| trecho reescrito ou removido | "impacto a definir" — reanálise obrigatória | sim, se tratar de dose, conduta, critério… |
+| evidência não localizada no texto comparado | "impacto a definir" — **nunca** "sem impacto" | **sim** |
+
+Regras que valem sempre:
+
+- Nenhuma atualização é encerrada sozinha: mesmo com o trecho idêntico, uma pessoa confirma a nova versão.
+- A análise da questão segue "atualidade não conferida" até a revisão; nada volta a "atual" por comparação automática.
+- Várias evidências da mesma afirmação na mesma fonte: vale a pior mudança.
+- Quem já foi triado não é reescrito por uma segunda comparação.
+
+**Quando a comparação roda**
+
+| Situação | O que acontece |
+|---|---|
+| PDF da versão nova termina de ser lido (etapa `source_index`) | compara sozinho com a versão que ela substituiu, se a antiga também tiver o documento completo |
+| Administrador clica "Comparar conteúdo com a versão nova" | `POST /api/content-hub/sources/:antiga/compare/:nova` |
+| Página **HTML ou texto** monitorada mudou | o vigia compara a leitura atual com a anterior (parágrafos de 40 caracteres ou mais) |
+| **PDF** monitorado por endereço mudou | só a impressão digital acusa a mudança; a comparação de conteúdo acontece quando o PDF novo for enviado como nova versão |
+
+**Registro de fontes.** `app_ch_set_source_registry` grava país, SUS, especialidade, tema, vigência, revisão e "em atualização".
+O frescor é uma regra só (`ch_source_freshness`): *a publicação mudou* → *evidências a reconferir* → *conferida no prazo* /
+*conferência vencida* → *não monitorada*. `app_ch_resolve_source_change` registra, com nota, que uma pessoa analisou a mudança;
+isso **não** devolve validade a nenhuma evidência.
+
+**Limites.** A comparação não entende medicina: sinônimos, reordenação de capítulos e mudanças de sentido sem mudança de
+número ou negação podem cair em "redação" ou "reescrito". Por isso tudo termina em revisão humana. Tabelas e linhas curtas de
+páginas HTML não entram na comparação. Sem acervo oficial cadastrado, tudo isto só foi exercitado com fontes sintéticas.

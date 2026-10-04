@@ -105,6 +105,29 @@ export const AUTHORITY = {
 
 export const SOURCE_STATUS = { current: ["Vigente", "success"], superseded: ["Substituída", "warning"], withdrawn: ["Retirada", "danger"] };
 
+// Frescor da fonte: se alguém (o vigia) confere que a publicação continua igual.
+export const FRESHNESS = {
+  FRESH: ["Conferida no prazo", "success"],
+  CHECK_DUE: ["Conferência vencida", "warning"],
+  CHECKING: ["Conferindo", "info"],
+  SOURCE_CHANGED: ["A publicação mudou", "danger"],
+  REVIEW_REQUIRED: ["Evidências a reconferir", "warning"],
+  UNKNOWN: ["Não monitorada", "neutral"],
+};
+
+// O que mudou em um trecho entre duas versões da fonte (comparação automática, sem IA).
+export const DIFF_KIND = {
+  UNCHANGED: ["Idêntico", "neutral"],
+  EDITORIAL: ["Só a forma", "neutral"],
+  MINOR_WORDING: ["Redação", "info"],
+  NUMERIC: ["Número mudou", "danger"],
+  NEGATION: ["Negação mudou", "danger"],
+  SUBSTANTIVE: ["Reescrito", "warning"],
+  REMOVED: ["Removido", "warning"],
+  ADDED: ["Novo", "info"],
+  NOT_LOCATED: ["Evidência não localizada", "danger"],
+};
+
 export const CRITICAL = {
   dose: "dose",
   route: "via",

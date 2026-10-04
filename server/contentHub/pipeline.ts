@@ -14,6 +14,7 @@
  *     motivo — nunca é simulada em produção;
  *   - checkpoints permitem retomar; reprocessar reaproveita respostas idênticas e não duplica.
  */
+import { compareSourceVersions } from "./sourceCompare";
 import crypto from "crypto";
 import fs from "fs";
 import os from "os";
@@ -335,6 +336,16 @@ async function stepSourceIndex(ctx: Ctx): Promise<Step | null> {
   const blocks = await svc<Block[]>(ctx, "ch_worker_blocks", { p_document_id: docId(ctx) });
   const passages = buildPassages(blocks);
   const n = await svc<number>(ctx, "ch_worker_replace_passages", { p_source_id: source.id, p_passages: passages });
+  // versão nova de uma fonte já cadastrada: compara o conteúdo com a anterior e tria as questões afetadas (falha aqui não derruba a leitura)
+  try {
+    const previous = await svc<string | null>(ctx, "ch_worker_predecessor_source", { p_source_id: source.id });
+    if (previous && n > 0) {
+      const r = await compareSourceVersions(ctx.deps.db, previous, source.id);
+      Object.assign(ctx.metrics, { diff_critical: r.summary.critical, diff_claims: r.claims });
+    }
+  } catch (error) {
+    Object.assign(ctx.metrics, { diff_error: (error as Error).message });
+  }
   await setMeta(ctx, { status: "awaiting_review" });
   Object.assign(ctx.metrics, { passages: n, unresolved_blocks: blocks.filter((b) => b.status === "pending" || b.status === "illegible").length });
   return null;

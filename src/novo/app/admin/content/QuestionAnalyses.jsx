@@ -76,7 +76,8 @@ export function QuestionAnalyses({ reviewerAreas }) {
   );
 }
 
-const IMPACT = { UNDETERMINED: "impacto a definir", NO_IMPACT: "sem impacto", COMMENT_ONLY: "só o comentário", RATIONALE_CHANGED: "justificativa mudou", DISTRACTOR_CHANGED: "distrator mudou", CURRENT_ANSWER_CHANGED: "resposta atual mudou", NO_VALID_ALTERNATIVE: "nenhuma alternativa válida hoje", MAJOR_CHANGE: "mudança importante" };
+const IMPACT = { UNDETERMINED: "impacto a definir", NO_IMPACT: "trecho igual: confirmar a nova versão", COMMENT_ONLY: "só o comentário", RATIONALE_CHANGED: "justificativa mudou", DISTRACTOR_CHANGED: "distrator mudou", CURRENT_ANSWER_CHANGED: "resposta atual mudou", NO_VALID_ALTERNATIVE: "nenhuma alternativa válida hoje", MAJOR_CHANGE: "mudança importante" };
+const TRIAGE = { UNCHANGED: "trecho idêntico", EDITORIAL: "só a forma", MINOR_WORDING: "redação", NUMERIC: "número mudou", NEGATION: "negação mudou", SUBSTANTIVE: "trecho reescrito", REMOVED: "trecho removido", NOT_LOCATED: "evidência não localizada" };
 const VERDICT_EV = { compatible: ["compatível", "success"], outdated: ["desatualizada", "danger"], conflicting: ["conflitante", "danger"], insufficient: ["insuficiente", "warning"], context_dependent: ["depende de contexto", "warning"] };
 
 /** Alertas (item 88): questões impactadas por mudança de fonte e a cobertura de evidência oficial. */
@@ -92,8 +93,10 @@ function UpdateAlerts() {
         <Badge tone={data.claims_with_official_evidence ? "success" : "warning"}>{data.claims_with_official_evidence} de {data.claims} afirmações com evidência oficial conferida</Badge>
         {pending.length === 0 && <Badge tone="neutral">nenhuma questão impactada por mudança de fonte</Badge>}
         {pending.map(([k, n]) => (
-          <Badge key={k} tone="danger">{n} questão(ões): {IMPACT[k] ?? k}</Badge>
+          <Badge key={k} tone={k === "NO_IMPACT" ? "neutral" : k === "COMMENT_ONLY" ? "warning" : "danger"}>{n} questão(ões): {IMPACT[k] ?? k}</Badge>
         ))}
+        {data.critical_open > 0 && <Badge tone="danger">{data.critical_open} com mudança crítica (número, negação ou trecho removido)</Badge>}
+        {data.with_content_diff > 0 && <Badge tone="info">{data.with_content_diff} já triadas pela comparação de conteúdo</Badge>}
       </div>
       {data.claims_with_official_evidence === 0 && (
         <p style={{ margin: "8px 0 0", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Sem fonte oficial cadastrada e conferida, o sistema não consegue dizer se uma conduta mudou desde a prova. Cadastre o documento completo na aba "Fontes oficiais".</p>
@@ -132,7 +135,7 @@ function Knowledge({ questionId }) {
           <Label>Atualizações detectadas</Label>
           {data.updates.map((u) => (
             <div key={u.id} style={{ font: "var(--type-body-sm)" }}>
-              <Badge size="sm" tone="danger">{IMPACT[u.impact_level] ?? u.impact_level}</Badge> {when(u.detected_at)} · {u.reason}
+              <Badge size="sm" tone={u.impact_level === "NO_IMPACT" ? "neutral" : "danger"}>{IMPACT[u.impact_level] ?? u.impact_level}</Badge> {u.critical && <Badge size="sm" tone="danger">crítico</Badge>} {u.triage_kind && <Badge size="sm">{TRIAGE[u.triage_kind] ?? u.triage_kind}</Badge>} {when(u.detected_at)} · {u.reason}
             </div>
           ))}
         </>

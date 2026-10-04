@@ -5,6 +5,8 @@
  */
 import crypto from "crypto";
 import { runJob, type Job, type PipelineDeps } from "./pipeline";
+import { snapshotPassages, type Passage } from "./sourceDiff";
+import { compareSnapshots } from "./sourceCompare";
 
 export interface WorkerOptions {
   pollMs?: number;
@@ -59,17 +61,30 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
     let unreachable = 0;
     for (const w of due) {
       let hash: string | null = null;
+      let snapshot: Passage[] | null = null;
       try {
         if (!/^https:\/\//.test(w.url)) throw new Error("endereço sem https");
         const res = await fetchImpl(w.url, { signal: AbortSignal.timeout(30_000), redirect: "follow" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        hash = publicationHash(Buffer.from(await res.arrayBuffer()), res.headers.get("content-type") ?? "");
+        const body = Buffer.from(await res.arrayBuffer());
+        const type = res.headers.get("content-type") ?? "";
+        hash = publicationHash(body, type);
+        if (!/pdf/i.test(type) && body.subarray(0, 5).toString("latin1") !== "%PDF-") snapshot = snapshotPassages(body.toString("utf8"), type);
       } catch (error) {
         deps.log?.(`[central] fonte inacessível (${w.url}): ${(error as Error).message}`);
       }
       const r = await deps.db.service<{ changed: boolean } | null>("ch_worker_watch_result", { p_source_id: w.source_id, p_hash: hash, p_status: hash ? "ok" : "unreachable" });
       if (!hash) unreachable++;
       else if (r?.changed) changed++;
+      if (hash && snapshot) {
+        // HTML/texto: guarda a leitura e, se mudou, compara o conteúdo com a anterior (PDF segue só com a impressão digital)
+        try {
+          const before = await deps.db.service<Passage[] | null>("ch_worker_watch_snapshot", { p_source_id: w.source_id, p_passages: snapshot });
+          if (r?.changed && before?.length) await compareSnapshots(deps.db, w.source_id, before, snapshot, { new: hash });
+        } catch (error) {
+          deps.log?.(`[central] comparação de conteúdo falhou (${w.url}): ${(error as Error).message}`);
+        }
+      }
     }
     return { checked: due.length, changed, unreachable };
   };
