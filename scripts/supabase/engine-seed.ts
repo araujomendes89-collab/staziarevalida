@@ -225,6 +225,20 @@ from public.questions q where not exists (select 1 from public.question_official
     out.push(`insert into public.question_dna (${cols}) values\n${rows.slice(i, i + 100).join(",\n")}\non conflict (question_id) do update set ${update};`);
   }
 
+  // afirmações que a questão exige para ser resolvida (decisão clínica da classificação do motor) e a ligação questão → afirmação;
+  // a mesma decisão em várias questões vira UMA afirmação (não se pesquisa a mesma coisa duas vezes). Reaplicar não duplica.
+  out.push(`insert into public.ch_claims (statement, context, origin, created_by_model, status)
+select distinct on (md5(lower(btrim(d.detail ->> 'clinical_decision')))) btrim(d.detail ->> 'clinical_decision'),
+       jsonb_build_object('fonte', 'classificacao-do-motor', 'subarea', d.subarea, 'competencia', d.competency, 'cenario', d.care_setting, 'paciente', d.patient_group),
+       'question_dna', 'revalida-reverse-engine', 'extracted'
+from public.question_dna d where coalesce(btrim(d.detail ->> 'clinical_decision'), '') <> ''
+order by md5(lower(btrim(d.detail ->> 'clinical_decision'))), d.question_id
+on conflict (md5(lower(btrim(statement)))) where origin = 'question_dna' do nothing;`);
+  out.push(`insert into public.question_claims (question_id, claim_id, role)
+select d.question_id, c.id, 'solves' from public.question_dna d
+join public.ch_claims c on c.origin = 'question_dna' and md5(lower(btrim(c.statement))) = md5(lower(btrim(d.detail ->> 'clinical_decision')))
+on conflict do nothing;`);
+
   // área da questão vem da classificação do motor quando o banco não tiver a mesma (nunca inventada)
   const eq = findEquivalents(questions);
   out.push("delete from public.question_equivalents;");

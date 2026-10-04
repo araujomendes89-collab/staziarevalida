@@ -40,6 +40,7 @@ export function QuestionAnalyses({ reviewerAreas }) {
       <Banner tone="info" icon="shield-check" title="Gabarito oficial preservado">
         O gabarito de cada prova é registro histórico e não é alterado aqui. A análise explica as quatro alternativas e só chega ao aluno depois que um revisor médico da área a aprova. "Atualidade" depende de fonte oficial vigente e fica como "não conferida" até existir acervo.
       </Banner>
+      <UpdateAlerts />
       <Section title="Andamento">
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Badge>{s.analyzed} de {s.questions} questões analisadas</Badge>
@@ -72,6 +73,71 @@ export function QuestionAnalyses({ reviewerAreas }) {
         </div>
       )}
     </div>
+  );
+}
+
+const IMPACT = { UNDETERMINED: "impacto a definir", NO_IMPACT: "sem impacto", COMMENT_ONLY: "só o comentário", RATIONALE_CHANGED: "justificativa mudou", DISTRACTOR_CHANGED: "distrator mudou", CURRENT_ANSWER_CHANGED: "resposta atual mudou", NO_VALID_ALTERNATIVE: "nenhuma alternativa válida hoje", MAJOR_CHANGE: "mudança importante" };
+const VERDICT_EV = { compatible: ["compatível", "success"], outdated: ["desatualizada", "danger"], conflicting: ["conflitante", "danger"], insufficient: ["insuficiente", "warning"], context_dependent: ["depende de contexto", "warning"] };
+
+/** Alertas (item 88): questões impactadas por mudança de fonte e a cobertura de evidência oficial. */
+function UpdateAlerts() {
+  const { backend } = useSession();
+  const { data } = useLoad(() => backend.rpc("app_question_update_summary"), [backend]);
+  if (!data) return null;
+  const pending = Object.entries(data.by_impact);
+  return (
+    <Section title="Atualização de diretrizes">
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <Badge>{data.questions_with_claims} questões ligadas a afirmações</Badge>
+        <Badge tone={data.claims_with_official_evidence ? "success" : "warning"}>{data.claims_with_official_evidence} de {data.claims} afirmações com evidência oficial conferida</Badge>
+        {pending.length === 0 && <Badge tone="neutral">nenhuma questão impactada por mudança de fonte</Badge>}
+        {pending.map(([k, n]) => (
+          <Badge key={k} tone="danger">{n} questão(ões): {IMPACT[k] ?? k}</Badge>
+        ))}
+      </div>
+      {data.claims_with_official_evidence === 0 && (
+        <p style={{ margin: "8px 0 0", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Sem fonte oficial cadastrada e conferida, o sistema não consegue dizer se uma conduta mudou desde a prova. Cadastre o documento completo na aba "Fontes oficiais".</p>
+      )}
+    </Section>
+  );
+}
+
+/** Afirmações que a questão exige, com a evidência e a fonte de cada uma (QUESTÃO → AFIRMAÇÃO → EVIDÊNCIA → FONTE). */
+function Knowledge({ questionId }) {
+  const { backend } = useSession();
+  const { data, error } = useLoad(() => backend.rpc("app_question_knowledge", { p_question_id: questionId }), [backend, questionId]);
+  if (error) return null;
+  if (!data) return <Loading />;
+  return (
+    <>
+      <Label>Afirmações que a questão exige e suas fontes</Label>
+      {data.claims.length === 0 && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>nenhuma afirmação ligada</span>}
+      {data.claims.map((c) => (
+        <div key={c.claim_id} style={{ borderTop: "1px solid var(--border-subtle)", padding: "6px 0" }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+            <Badge size="sm" tone={c.status === "compatible" ? "success" : c.status === "needs_review" ? "danger" : "neutral"}>{c.status === "extracted" ? "sem evidência" : c.status === "compatible" ? "compatível" : c.status === "needs_review" ? "fonte mudou: rever" : c.status}</Badge>
+            {c.shared_with > 0 && <Badge size="sm">compartilhada com mais {c.shared_with} questão(ões)</Badge>}
+          </div>
+          <div style={{ font: "var(--type-body-sm)", marginTop: 4 }}>{c.statement}</div>
+          {c.evidence.map((e, i) => (
+            <div key={i} style={{ font: "var(--type-caption)", color: "var(--text-secondary)", paddingLeft: 12, marginTop: 2, opacity: e.stale ? 0.6 : 1 }}>
+              <Badge size="sm" tone={VERDICT_EV[e.verdict]?.[1]}>{VERDICT_EV[e.verdict]?.[0] ?? e.verdict}</Badge> <Badge size="sm" tone={e.official ? "info" : "warning"}>{e.official ? `nível ${e.authority_level}` : "não oficial"}</Badge>
+              {e.stale && <Badge size="sm" tone="warning">fonte substituída</Badge>} {e.source} · {e.organ}{e.version ? ` · versão ${e.version}` : ""}{e.page != null ? ` · p. ${e.page}` : ""}
+            </div>
+          ))}
+        </div>
+      ))}
+      {data.updates.length > 0 && (
+        <>
+          <Label>Atualizações detectadas</Label>
+          {data.updates.map((u) => (
+            <div key={u.id} style={{ font: "var(--type-body-sm)" }}>
+              <Badge size="sm" tone="danger">{IMPACT[u.impact_level] ?? u.impact_level}</Badge> {when(u.detected_at)} · {u.reason}
+            </div>
+          ))}
+        </>
+      )}
+    </>
   );
 }
 
@@ -135,6 +201,7 @@ function Analysis({ item: a, onChanged }) {
           <Label>Armadilha e regra para lembrar</Label>
           <Pre>{a.trap}</Pre>
           <Pre tone="brand">{a.golden_rule}</Pre>
+          <Knowledge questionId={a.question_id} />
           <Label>Atualidade</Label>
           <Badge size="sm" tone="warning">{TEMPORAL[a.temporal_status] ?? a.temporal_status}</Badge>
           <Label>Conferências</Label>

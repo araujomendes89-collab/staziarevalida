@@ -74,6 +74,22 @@ export function QuestionCommentary({ commentary: c }) {
           <b>Para lembrar.</b> {c.golden_rule}
         </div>
       )}
+      {c.sources?.length > 0 && (
+        <div style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>
+          <b>Fontes oficiais conferidas.</b>
+          <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+            {c.sources.map((s, i) => (
+              <li key={i}>
+                {s.url ? <a href={s.url} target="_blank" rel="noopener noreferrer">{s.title}</a> : s.title} · {s.organ}
+                {s.version ? ` · versão ${s.version}` : ""}
+                {s.page != null ? ` · p. ${s.page}` : ""}
+                {s.published_on ? ` · publicado em ${new Date(s.published_on + "T12:00:00").toLocaleDateString("pt-BR")}` : ""}
+              </li>
+            ))}
+          </ul>
+          {c.sources_checked_at && <div style={{ marginTop: 2 }}>Última conferência: {new Date(c.sources_checked_at).toLocaleDateString("pt-BR")}</div>}
+        </div>
+      )}
       {updated && (
         <div style={{ ...box, background: "var(--warning-bg)", borderColor: "var(--warning-border)" }}>
           <b>Atualização de diretriz.</b> O gabarito oficial da prova ({c.official_answer}) permanece. Segundo a recomendação vigente conferida, a alternativa {c.current_best_answer} seria a mais adequada hoje.
