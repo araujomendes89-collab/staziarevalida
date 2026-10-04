@@ -228,6 +228,78 @@ Você não aprova nada: só lista problemas. Lista vazia significa apenas que vo
       },
     } as Schema,
   },
+  solve: {
+    id: "solve",
+    version: "1.0.0",
+    system: `${GUARD}
+Você resolve uma questão de múltipla escolha de prova de residência/Revalida SEM ver o gabarito, como um médico especialista da área.
+Escolha UMA alternativa e explique em poucas linhas. Se mais de uma alternativa parecer correta, ou se faltar dado para decidir, diga em "ambiguity".
+Em "certainty" use: high (sem dúvida), medium (provável) ou low (incerto). Isto é sua opinião, não prova.`,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["answer", "certainty", "rationale", "ambiguity"],
+      properties: {
+        answer: { type: "string", enum: ["A", "B", "C", "D"] },
+        certainty: { type: "string", enum: ["high", "medium", "low"] },
+        rationale: { type: "string", maxLength: 900 },
+        ambiguity: { type: "string", maxLength: 400 },
+      },
+    } as Schema,
+  },
+  redteam: {
+    id: "redteam",
+    version: "1.0.0",
+    system: `${GUARD}
+Você é um REVISOR CLÍNICO ADVERSARIAL, independente de quem escreveu a questão. Procure erros, não confirme.
+Verifique: dose, unidade, via, valor de corte; contraindicação ignorada; erro para gestante ou criança; conduta desatualizada segundo o que você sabe
+(avise que é seu conhecimento, não fonte); mais de uma alternativa correta; gabarito incorreto; dado necessário que não está no enunciado nem na tabela de apoio;
+explicação que contradiz a alternativa; protocolo brasileiro (SUS) diferente do internacional; pista que denuncia a resposta.
+Cada problema precisa de "where" (alternativa, enunciado, explicação…) e "detail" objetivo. Lista vazia = você não encontrou problemas, o que NÃO prova que não existam.`,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["issues"],
+      properties: {
+        issues: {
+          type: "array",
+          maxItems: 20,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["severity", "kind", "where", "detail", "basis"],
+            properties: {
+              severity: { type: "string", enum: ["critical", "major", "minor"] },
+              kind: { type: "string", enum: ["wrong_answer", "multiple_correct", "dose_or_unit", "contraindication", "special_population", "outdated", "missing_data", "explanation_conflict", "brazil_protocol", "answer_cue", "other"] },
+              where: { type: "string", maxLength: 160 },
+              detail: { type: "string", maxLength: 600 },
+              basis: { type: "string", enum: ["model_knowledge", "text_internal"] },
+            },
+          },
+        },
+      },
+    } as Schema,
+  },
+  currency: {
+    id: "currency",
+    version: "1.0.0",
+    system: `${GUARD}
+Você confere ATUALIDADE. Receberá uma AFIRMAÇÃO e TRECHOS de fontes oficiais com versão, data de publicação e vigência.
+Julgue SOMENTE com os trechos fornecidos, nunca com sua memória. current: os trechos da versão vigente sustentam a afirmação;
+outdated: há trecho de versão mais nova que a altera; conflicting: fontes vigentes divergem; inconclusive: os trechos não permitem decidir.
+Não decida pela data sozinha: considere população, cenário e escopo. Copie em "quote" o pedaço LITERAL do trecho que fundamenta.`,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["verdict", "passage_id", "quote", "rationale"],
+      properties: {
+        verdict: { type: "string", enum: ["current", "outdated", "conflicting", "inconclusive"] },
+        passage_id: { type: "string", maxLength: 64 },
+        quote: { type: "string", maxLength: 1500 },
+        rationale: { type: "string", maxLength: 800 },
+      },
+    } as Schema,
+  },
 } as const;
 
 export type PromptKey = keyof typeof PROMPTS;

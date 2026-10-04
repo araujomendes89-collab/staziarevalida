@@ -16,6 +16,20 @@ const STATUS = {
   rejected: ["Recusada", "danger"],
 };
 const batchName = (b) => b.replace(/^simulado_preditivo_(\d{4})_(\d)_(\d+)$/, "Lote $3 · $1/$2");
+const LAYER = {
+  software: "Regras (sem IA)",
+  sources: "Fontes oficiais",
+  currency: "Atualidade",
+  redteam: "Revisão clínica independente (IA)",
+};
+const VERDICT = {
+  pass: ["sem problemas", "success"],
+  issues: ["com apontamentos", "warning"],
+  fail: ["reprovada", "danger"],
+  insufficient: ["fonte insuficiente", "warning"],
+  inconclusive: ["não foi possível conferir", "neutral"],
+};
+const SEVERITY = { critical: ["crítico", "danger"], major: ["importante", "warning"], minor: ["menor", "neutral"], info: ["informação", "info"] };
 const REVIEW_VERDICT = { APPROVED: "sem problemas apontados", REVISION_REQUIRED: "pede revisão", REJECTED: "recusa" };
 
 export function DraftQuestions({ reviewerAreas }) {
@@ -45,6 +59,22 @@ export function DraftQuestions({ reviewerAreas }) {
             </Badge>
           ))}
         </div>
+      </Section>
+      <Section title="Conferência independente">
+        <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+          Cada camada é separada e nenhuma aprova nada. "Fonte insuficiente" e "não foi possível conferir" significam que falta o documento oficial no acervo, e não que o conteúdo esteja certo.
+        </p>
+        {Object.keys(LAYER).map((layer) => (
+          <div key={layer} style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", padding: "4px 0" }}>
+            <strong style={{ minWidth: 250, font: "var(--type-body-sm)" }}>{LAYER[layer]}</strong>
+            {Object.keys(data.checks?.[layer] ?? {}).length === 0 && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>ainda não rodou</span>}
+            {Object.entries(data.checks?.[layer] ?? {}).map(([v, n]) => (
+              <Badge key={v} size="sm" tone={VERDICT[v]?.[1] ?? "neutral"}>
+                {VERDICT[v]?.[0] ?? v}: {n}
+              </Badge>
+            ))}
+          </div>
+        ))}
       </Section>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
         <SegmentedControl
@@ -102,12 +132,33 @@ function Draft({ item: d, onChanged }) {
         <Badge size="sm">{batchName(d.batch)} · nº {d.slot}</Badge>
         {d.similarity_to_official >= 50 && <Badge size="sm" tone="warning">semelhança com questão oficial: {d.similarity_to_official}%</Badge>}
         {d.review_outdated && <Badge size="sm" tone="danger">texto mudou depois da revisão</Badge>}
+        {Object.entries(d.checks ?? {}).filter(([, c]) => c.current && ["fail", "issues"].includes(c.verdict)).map(([layer, c]) => (
+          <Badge key={layer} size="sm" tone={VERDICT[c.verdict][1]}>
+            {LAYER[layer].split(" (")[0]}: {VERDICT[c.verdict][0]}
+          </Badge>
+        ))}
+        {d.support_type === "IMAGE_REQUEST" && <Badge size="sm" tone="danger">pede imagem que não existe</Badge>}
         <strong style={{ flexBasis: "100%", font: "var(--type-body-sm)" }}>{d.title ?? d.stem.slice(0, 90)}</strong>
       </button>
       {open && (
         <div style={{ marginTop: 10 }}>
           <Label>Enunciado</Label>
           <Pre>{d.stem}</Pre>
+          {d.support_rows?.length > 0 && (
+            <>
+              <Label>{d.support_title ?? "Dados de apoio"} (o aluno precisa disto para responder)</Label>
+              <table style={{ borderCollapse: "collapse", font: "var(--type-body-sm)", width: "100%" }}>
+                <tbody>
+                  {d.support_rows.map((r, i) => (
+                    <tr key={i} style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                      <td style={{ padding: "4px 8px", color: "var(--text-secondary)" }}>{r.label}</td>
+                      <td style={{ padding: "4px 8px", fontWeight: 600 }}>{r.value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
+          )}
           <Label>Alternativas (resposta do rascunho: {d.correct_answer})</Label>
           {Object.entries(d.alternatives).map(([id, text]) => (
             <div key={id} style={{ margin: "6px 0", fontWeight: id === d.correct_answer ? 700 : 400 }}>
@@ -139,7 +190,28 @@ function Draft({ item: d, onChanged }) {
               </ul>
             </>
           )}
-          <Label>Revisão automática (IA) — apontamento, não aprovação</Label>
+          <Label>Conferência independente</Label>
+          {Object.keys(LAYER).map((layer) => {
+            const c = d.checks?.[layer];
+            return (
+              <div key={layer} style={{ margin: "4px 0 8px" }}>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                  <strong style={{ font: "var(--type-body-sm)" }}>{LAYER[layer]}</strong>
+                  {!c && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>ainda não conferida</span>}
+                  {c && <Badge size="sm" tone={VERDICT[c.verdict]?.[1]}>{VERDICT[c.verdict]?.[0]}</Badge>}
+                  {c && !c.current && <Badge size="sm" tone="warning">texto mudou: conferir de novo</Badge>}
+                  {c?.model && c.model !== "regras" && <Badge size="sm">{c.model}</Badge>}
+                </div>
+                {(c?.findings ?? []).map((f, i) => (
+                  <div key={i} style={{ font: "var(--type-body-sm)", paddingLeft: 12, marginTop: 2 }}>
+                    <Badge size="sm" tone={SEVERITY[f.severity]?.[1]}>{SEVERITY[f.severity]?.[0] ?? f.severity}</Badge> {f.where ? <em>{f.where}: </em> : null}
+                    {f.detail}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+          <Label>Revisão automática do motor (IA) — apontamento, não aprovação</Label>
           {!ai && <p style={{ margin: 0, color: "var(--text-tertiary)", font: "var(--type-body-sm)" }}>Sem revisão automática neste lote.</p>}
           {ai && (
             <div style={{ display: "flex", flexDirection: "column", gap: 4, font: "var(--type-body-sm)" }}>

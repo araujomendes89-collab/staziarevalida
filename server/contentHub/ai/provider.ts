@@ -132,9 +132,22 @@ export interface AiStatus {
   pending: string | null;   // motivo, quando não está pronto
 }
 
-/** Escolhe o provedor pela configuração. Devolve o motivo quando não há como usar IA. */
-export function resolveProvider(mockRespond?: (req: StructuredRequest) => unknown): { provider: AiProvider | null; status: AiStatus } {
-  const kind = (process.env.CONTENT_HUB_AI_PROVIDER ?? "").trim();
+/** Família do modelo (quem o treinou): conferente e criador não podem ser da mesma família. */
+export function familyOfModel(model: string | null | undefined): string {
+  const m = String(model ?? "").toLowerCase();
+  if (!m) return "desconhecida";
+  if (m.startsWith("mock")) return "mock";
+  if (/claude/.test(m)) return "anthropic";
+  if (/gpt|^o\d|openai|luna/.test(m)) return "openai";
+  if (/gemini|gemma/.test(m)) return "google";
+  if (/qwen/.test(m)) return "qwen";
+  if (/llama/.test(m)) return "meta";
+  if (/mistral|mixtral/.test(m)) return "mistral";
+  return m.split(/[-:/]/)[0];
+}
+
+/** Escolhe o provedor para um tipo ("anthropic", "gemini", "mock"). Devolve o motivo quando não há como usar IA. */
+export function resolveProviderKind(kind: string, mockRespond?: (req: StructuredRequest) => unknown, modelOverride?: string): { provider: AiProvider | null; status: AiStatus } {
   const production = process.env.NODE_ENV === "production";
   const pending = (why: string) => ({ provider: null, status: { ready: false, provider: kind || null, model: null, isMock: false, pending: why } });
 
@@ -151,14 +164,40 @@ export function resolveProvider(mockRespond?: (req: StructuredRequest) => unknow
   if (kind === "anthropic") {
     const key = (process.env.ANTHROPIC_API_KEY ?? "").trim();
     if (!key) return pending("ANTHROPIC_API_KEY vazia no servidor.");
-    const p = new AnthropicProvider(key, process.env.CONTENT_HUB_ANTHROPIC_MODEL || "claude-sonnet-5-5");
+    const p = new AnthropicProvider(key, modelOverride || process.env.CONTENT_HUB_ANTHROPIC_MODEL || "claude-sonnet-5-5");
     return { provider: p, status: { ready: true, provider: p.name, model: p.model, isMock: false, pending: null } };
   }
   if (kind === "gemini") {
     const key = (process.env.GEMINI_API_KEY ?? "").trim();
     if (key.length < 30) return pending("GEMINI_API_KEY ausente ou com formato inválido no servidor.");
-    const p = new GeminiProvider(key, process.env.CONTENT_HUB_GEMINI_MODEL || "gemini-2.5-pro");
+    const p = new GeminiProvider(key, modelOverride || process.env.CONTENT_HUB_GEMINI_MODEL || "gemini-2.5-pro");
     return { provider: p, status: { ready: true, provider: p.name, model: p.model, isMock: false, pending: null } };
   }
   return pending(`Provedor de IA desconhecido: ${kind}.`);
+}
+
+/** Provedor das etapas de criação (configuração global). */
+export function resolveProvider(mockRespond?: (req: StructuredRequest) => unknown): { provider: AiProvider | null; status: AiStatus } {
+  return resolveProviderKind((process.env.CONTENT_HUB_AI_PROVIDER ?? "").trim(), mockRespond);
+}
+
+export type VerifierRole = "sources" | "currency" | "redteam";
+
+/**
+ * Provedor de um papel de CONFERÊNCIA. Padrão: anthropic. Cada papel pode ter o seu
+ * (CONTENT_HUB_AI_PROVIDER_SOURCES / _CURRENCY / _REDTEAM) e o seu modelo (CONTENT_HUB_MODEL_<PAPEL>).
+ * Regra de independência: o conferente nunca é da mesma família do modelo que criou o conteúdo.
+ */
+export function resolveRoleProvider(role: VerifierRole, creatorModel: string | null | undefined, mockRespond?: (req: StructuredRequest) => unknown) {
+  const env = process.env;
+  const key = role.toUpperCase();
+  const kind = (env[`CONTENT_HUB_AI_PROVIDER_${key}`] || env.CONTENT_HUB_VERIFIER_PROVIDER || "anthropic").trim();
+  const resolved = resolveProviderKind(kind, mockRespond, env[`CONTENT_HUB_MODEL_${key}`]);
+  if (resolved.provider && familyOfModel(resolved.provider.model) === familyOfModel(creatorModel)) {
+    return {
+      provider: null as AiProvider | null,
+      status: { ...resolved.status, ready: false, pending: `Sem independência: o conferente (${resolved.provider.model}) é da mesma família do criador (${creatorModel}). Use outro provedor para o papel "${role}".` },
+    };
+  }
+  return resolved;
 }
