@@ -192,6 +192,12 @@ export function resolveProvider(mockRespond?: (req: StructuredRequest) => unknow
   return resolveProviderKind((process.env.CONTENT_HUB_AI_PROVIDER ?? "").trim(), mockRespond);
 }
 
+/** Provedor do papel de CRIAÇÃO das análises (padrão: anthropic; CONTENT_HUB_AI_PROVIDER_CREATE e CONTENT_HUB_MODEL_CREATE). */
+export function resolveCreatorProvider(mockRespond?: (req: StructuredRequest) => unknown) {
+  const env = process.env;
+  return resolveProviderKind((env.CONTENT_HUB_AI_PROVIDER_CREATE || "anthropic").trim(), mockRespond, env.CONTENT_HUB_MODEL_CREATE);
+}
+
 export type VerifierRole = "sources" | "currency" | "redteam";
 
 /**

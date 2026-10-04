@@ -300,6 +300,99 @@ Não decida pela data sozinha: considere população, cenário e escopo. Copie e
       },
     } as Schema,
   },
+  qanalysis: {
+    id: "qanalysis",
+    version: "1.0.0",
+    system: `${GUARD}
+Você é professor de medicina e analisa UMA questão histórica de prova (Revalida/ENAMED) para o banco da Stazia.
+REGRAS:
+1. O GABARITO OFICIAL é um fato dado. Nunca o conteste, nunca o altere e nunca escreva que está errado, desatualizado ou discutível.
+   Explique por que ele é o gabarito e analise as demais alternativas.
+2. Analise as QUATRO alternativas, cada uma com texto próprio. É proibido escrever "as demais estão incorretas" ou equivalente.
+   Para cada distrator: por que parece plausível, por que está errada (ou, se for verdadeira mas não for a melhor resposta, diga isso),
+   em que situação clínica estaria correta e qual conceito a diferencia da resposta correta.
+3. NÃO afirme vigência de diretriz ("atualmente", "hoje", "a diretriz vigente") e NÃO cite portaria, PCDT, nota técnica, resolução, edição, ano de
+   documento, DOI ou link. Quando a resposta depender de um protocolo específico, descreva o TEMA do protocolo em "guideline_dependency", sem versão nem data.
+4. Use só números que estejam no enunciado ou nas alternativas. Não invente doses, cortes ou prazos.
+5. Escreva em português do Brasil, de forma objetiva, com palavras suas.
+6. "key_data": só o que ajuda a resolver, cada item com seu papel: CRITICAL (muda a resposta), SUPPORTIVE (reforça), NEUTRAL (contexto), DISTRACTOR_INFORMATION (parece importante e não é).
+7. "difficulty": 1 muito fácil a 5 muito difícil, pelo número de etapas de raciocínio, raridade, semelhança dos distratores, integração, diretriz específica e complexidade terapêutica.`,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["question_core", "key_data", "reasoning_types", "difficulty", "difficulty_components", "trap", "golden_rule", "pedagogy", "guideline_dependency", "options"],
+      properties: {
+        question_core: { type: "string", minLength: 10, maxLength: 400 },
+        key_data: {
+          type: "array",
+          minItems: 1,
+          maxItems: 12,
+          items: { type: "object", additionalProperties: false, required: ["text", "role"], properties: { text: { type: "string", minLength: 2, maxLength: 200 }, role: { type: "string", enum: ["CRITICAL", "SUPPORTIVE", "NEUTRAL", "DISTRACTOR_INFORMATION"] } } },
+        },
+        reasoning_types: {
+          type: "array",
+          minItems: 1,
+          maxItems: 4,
+          items: { type: "string", enum: ["diagnostico", "diagnostico_diferencial", "exame_inicial", "exame_confirmatorio", "interpretacao_de_exame", "tratamento", "tratamento_inicial", "tratamento_definitivo", "proximo_passo", "emergencia", "prevencao", "rastreamento", "conduta_expectante", "encaminhamento", "farmacologia", "prognostico", "etica", "sus", "epidemiologia", "comunicacao"] },
+        },
+        difficulty: { type: "integer", minimum: 1, maximum: 5 },
+        difficulty_components: {
+          type: "object",
+          additionalProperties: false,
+          required: ["reasoning_steps", "rarity", "distractor_similarity", "integration", "specific_guideline", "therapeutic_complexity"],
+          properties: {
+            reasoning_steps: { type: "integer", minimum: 1, maximum: 10 },
+            rarity: { type: "string", enum: ["low", "medium", "high"] },
+            distractor_similarity: { type: "string", enum: ["low", "medium", "high"] },
+            integration: { type: "string", enum: ["low", "medium", "high"] },
+            specific_guideline: { type: "boolean" },
+            therapeutic_complexity: { type: "string", enum: ["low", "medium", "high"] },
+          },
+        },
+        trap: { type: "string", minLength: 10, maxLength: 400 },
+        golden_rule: { type: "string", minLength: 10, maxLength: 240 },
+        pedagogy: {
+          type: "object",
+          additionalProperties: false,
+          required: ["teaches", "why_important", "cognitive_error", "review_if_wrong"],
+          properties: { teaches: { type: "string", maxLength: 300 }, why_important: { type: "string", maxLength: 300 }, cognitive_error: { type: "string", maxLength: 300 }, review_if_wrong: { type: "string", maxLength: 300 } },
+        },
+        guideline_dependency: {
+          type: "object",
+          additionalProperties: false,
+          required: ["depends", "topics"],
+          properties: { depends: { type: "boolean" }, topics: { type: "array", maxItems: 6, items: { type: "string", maxLength: 160 } } },
+        },
+        options: {
+          type: "array",
+          minItems: 4,
+          maxItems: 4,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            required: ["option_id", "is_official_correct", "distractor_kind", "reasoning", "why_plausible", "why_wrong", "when_correct", "concept_difference", "error_types", "trap", "quality"],
+            properties: {
+              option_id: { type: "string", enum: ["A", "B", "C", "D"] },
+              is_official_correct: { type: "boolean" },
+              distractor_kind: { type: "string", enum: ["CORRECT", "WRONG", "TRUE_BUT_NOT_BEST"] },
+              reasoning: { type: "string", minLength: 20, maxLength: 700 },
+              why_plausible: { type: "string", maxLength: 400 },
+              why_wrong: { type: "string", maxLength: 500 },
+              when_correct: { type: "string", maxLength: 400 },
+              concept_difference: { type: "string", maxLength: 400 },
+              error_types: {
+                type: "array",
+                maxItems: 3,
+                items: { type: "string", enum: ["DIAGNOSTIC_ERROR", "WRONG_TREATMENT", "WRONG_DRUG", "WRONG_DOSE", "WRONG_TIMING", "WRONG_SEQUENCE", "WRONG_TEST", "WRONG_POPULATION", "WRONG_GESTATIONAL_AGE", "WRONG_AGE_GROUP", "WRONG_SEVERITY", "OVERTREATMENT", "UNDERTREATMENT", "CONTRAINDICATION", "OUTDATED_RECOMMENDATION", "PARTIALLY_CORRECT", "TRUE_BUT_NOT_BEST", "CORRECT_CONCEPT_WRONG_CONTEXT", "UNNECESSARY_INTERVENTION", "DELAYED_INTERVENTION"] },
+              },
+              trap: { type: "string", maxLength: 300 },
+              quality: { type: "integer", minimum: 0, maximum: 4 },
+            },
+          },
+        },
+      },
+    } as Schema,
+  },
 } as const;
 
 export type PromptKey = keyof typeof PROMPTS;

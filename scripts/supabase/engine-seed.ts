@@ -181,6 +181,13 @@ export function buildEngineStatements(): string[] {
   const version = manifest.schema_version as string;
   const out: string[] = [];
 
+  // gabarito oficial como versão 1 (definitivo, ou anulada), com a procedência que a questão já traz; reaplicar não duplica
+  out.push(`insert into public.question_official_answers (question_id, answer, answer_status, source, recorded_by)
+select q.id, case when q.status = 'annulled' then null else q.correct_option end,
+       case q.status when 'annulled' then 'ANNULLED' when 'changed_after_appeal' then 'CHANGED_AFTER_APPEAL' else 'FINAL' end,
+       coalesce(q.sources -> 0 ->> 'title', 'Gabarito oficial (pacote do motor)'), null
+from public.questions q where not exists (select 1 from public.question_official_answers o where o.question_id = q.id);`);
+
   // imagens (o texto da questão continua vindo do seed-builder)
   const withImages = questions.filter((q) => q.visual.assets.length);
   for (const q of withImages) {
