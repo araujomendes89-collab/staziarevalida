@@ -3,6 +3,7 @@
 import React from "react";
 import { Badge, Button, Icon } from "../../ds";
 import { FlashcardForm } from "../review/FlashcardForm.jsx";
+import { QuestionCommentary, useCommentary } from "./QuestionCommentary.jsx";
 
 export function Verdict({ selected, correction }) {
   const blank = selected == null;
@@ -55,6 +56,8 @@ function SaveAsFlashcard({ question, correction }) {
 
 export function Correction({ selected, correction, question }) {
   const source = correction.sources?.[0];
+  // Análise Stazia publicada (se houver): substitui "Por que não as outras?", que fica como reserva
+  const commentary = useCommentary(question?.id);
   return (
     <>
       <Verdict selected={selected} correction={correction} />
@@ -64,7 +67,8 @@ export function Correction({ selected, correction, question }) {
           <p style={{ margin: "8px 0 0", fontSize: 15, lineHeight: 1.6 }}>{correction.explanation}</p>
         </div>
       )}
-      {correction.option_notes?.length > 0 && (
+      <QuestionCommentary commentary={commentary} />
+      {!commentary && correction.option_notes?.length > 0 && (
         <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", fontSize: 14, display: "flex", flexDirection: "column", gap: 8 }}>
           <b>Por que não as outras?</b>
           {correction.option_notes.map((note) => (

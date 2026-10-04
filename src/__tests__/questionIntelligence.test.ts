@@ -248,6 +248,10 @@ describe("SQIE com banco e simulação de IA", () => {
     await expect(as(STUDENT, (q) => q(`select public.app_question_analysis_decide($1, 'approved')`, [a.id]))).rejects.toThrow(/revisor cadastrado/);
     await expect(as(ADMIN, (q) => q(`select public.app_question_analysis_decide($1, 'approved')`, [a.id]))).rejects.toThrow(/revisor cadastrado/);
     await dev.db.query(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, $2) on conflict do nothing`, [REVIEWER, a.area]);
+    // análise criada pela simulação nunca é publicada
+    await expect(as(REVIEWER, (q) => q(`select public.app_question_analysis_decide($1, 'approved')`, [a.id]))).rejects.toThrow(/simulação de desenvolvimento/);
+    // (para exercitar o resto do fluxo, o teste a reatribui a um modelo que não é a simulação)
+    await dev.db.query(`update public.question_analysis set generated_by_model = 'modelo-de-teste' where id = $1`, [a.id]);
     await expect(as(REVIEWER, (q) => q(`select public.app_question_analysis_decide($1, 'rejected')`, [a.id]))).rejects.toThrow(/motivo/);
     await as(REVIEWER, (q) => q(`select public.app_question_analysis_decide($1, 'approved', 'Conferi as quatro alternativas.')`, [a.id]));
     expect((await sql(`select status from public.question_comments where analysis_id = $1 order by level`, [a.id])).map((r) => r.status)).toEqual(["published", "published"]);
@@ -264,8 +268,18 @@ describe("SQIE com banco e simulação de IA", () => {
     expect(JSON.stringify(out)).not.toMatch(/mock|claude|gpt/i);
   });
 
+  it("análise reprovada em conferência não pode ser aprovada", async () => {
+    const a = (await sql(`select a.id from public.question_analysis a join public.question_analysis_checks c on c.analysis_id = a.id and c.layer = 'software' and c.verdict = 'fail' where a.is_current limit 1`))[0];
+    if (!a) return;
+    await dev.db.query(`update public.question_analysis set generated_by_model = 'modelo-de-teste' where id = $1`, [a.id]);
+    const area = (await sql(`select public.question_area_code(question_id) area from public.question_analysis where id = $1`, [a.id]))[0].area;
+    await dev.db.query(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, $2) on conflict do nothing`, [REVIEWER, area]);
+    await expect(as(REVIEWER, (q) => q(`select public.app_question_analysis_decide($1, 'approved')`, [a.id]))).rejects.toThrow(/reprovada/);
+  });
+
   it("se a questão mudar depois da análise, a aprovação é barrada e a análise aparece como desatualizada", async () => {
     const a = (await sql(`select a.id, a.question_id from public.question_analysis a where a.is_current and a.status = 'checked' order by a.question_id limit 1`))[0];
+    await sql(`update public.question_analysis set generated_by_model = 'modelo-de-teste' where id = $1`, [a.id]);
     await sql(`update public.questions set statement = statement || ' (editado)' where id = $1`, [a.question_id]);
     await expect(as(REVIEWER, (q) => q(`select public.app_question_analysis_decide($1, 'approved')`, [a.id]))).rejects.toThrow(/gere a análise de novo/);
     const list = (await as(ADMIN, (q) => q(`select public.app_question_analyses('checked', null, 50) r`)))[0].r;
