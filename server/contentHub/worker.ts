@@ -74,6 +74,10 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
     return { checked: due.length, changed, unreachable };
   };
 
+  // Falha seguida (ex.: chave do Supabase recusada): avisa uma vez, espera cada vez mais (até 5 min)
+  // e avisa de novo quando volta ao normal. Nada de repetir a mesma linha a cada poucos segundos.
+  let failures = 0;
+  let lastError = "";
   const loop = async () => {
     if (!running) return;
     let worked = false;
@@ -85,12 +89,21 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
         busy = checkSources();
         await busy;
       }
+      if (failures > 0) deps.log?.("[central] worker voltou ao normal.");
+      failures = 0;
+      lastError = "";
     } catch (error) {
-      deps.log?.(`[central] erro no worker: ${(error as Error).message}`);
+      failures++;
+      const message = (error as Error).message;
+      if (message !== lastError) {
+        lastError = message;
+        deps.log?.(`[central] erro no worker: ${message} (novas tentativas com espera crescente, sem repetir este aviso)`);
+      }
     } finally {
       busy = null;
     }
-    if (running) timer = setTimeout(loop, worked ? 0 : pollMs);
+    const wait = failures > 0 ? Math.min(pollMs * 2 ** Math.min(failures, 7), 5 * 60_000) : worked ? 0 : pollMs;
+    if (running) timer = setTimeout(loop, wait);
   };
 
   return {
