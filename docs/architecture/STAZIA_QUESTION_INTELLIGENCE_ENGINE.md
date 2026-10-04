@@ -105,7 +105,7 @@ O criador e o conferente são de famílias de modelo diferentes (regra já imple
 | Fase | Conteúdo | Estado |
 |---|---|---|
 | **1** | gabarito oficial com histórico, trilha de mudanças, análise da questão e de cada alternativa, comentário versionado, conferência por software | **pronta** (nenhuma análise gerada ainda) |
-| 2 | `question_claims`, integração com o Knowledge Core, citações | pendente |
+| **2** | `question_claims`, integração com o Knowledge Core, citações, impacto seletivo | **pronta** (1.117 afirmações ligadas às questões; 0 com evidência oficial, pois não há acervo) |
 | 3 | Source Registry ampliado, Watcher com diff, Claim Impact | pendente (depende do acervo oficial) |
 | 4 | reanálise automática, gabarito histórico × atual, cartão de atualização, linha do tempo | pendente |
 | 5 | diagnóstico do erro do aluno, reforço adaptativo, questões novas | pendente |
