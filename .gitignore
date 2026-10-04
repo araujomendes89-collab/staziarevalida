@@ -25,3 +25,6 @@ public/ds-icons/
 # Carga gerada por scripts/supabase/build-seed.ts (npm run supabase:seed)
 supabase/seed.sql
 supabase/.temp/
+
+# Banco e arquivos de desenvolvimento (servidor local)
+.data/

@@ -38,6 +38,8 @@ import { paymentWebhooksRouter } from "./server/routes/paymentWebhooks";
 import { billingRouter } from "./server/routes/billing";
 import { resolveServerPort } from "./server/config/serverPort";
 import { checklistBankRouter } from "./server/checklistBank/router";
+import { createDevDbRouter } from "./server/devDb/router";
+import { getDevDatabase } from "./server/devDb/devDatabase";
 import { getChecklistCatalog } from "./server/checklistBank/catalog";
 
 dotenv.config();
@@ -82,6 +84,14 @@ async function startServer() {
     `[ChecklistBank] ${checklistCatalog.stations.length} estações e ${checklistCatalog.events.length} simulado(s) validados.`
   );
   app.use("/api/checklist-bank", checklistBankRouter);
+  if (process.env.NODE_ENV !== "production") {
+    // Banco de desenvolvimento no servidor: app do aluno, painel e processamento usam o mesmo.
+    app.use("/api/dev-db", createDevDbRouter(() => getDevDatabase()));
+    getDevDatabase().then(
+      () => console.log("[dev-db] Banco de desenvolvimento pronto (.data/dev-db)."),
+      (error) => console.error("[dev-db] Falha ao abrir o banco de desenvolvimento:", error)
+    );
+  }
 
   // API Health Check
 
