@@ -13,6 +13,7 @@ import { ASSETS_PUBLIC_DIR, buildEngineStatements, EXCLUDED_EXAMS, findEquivalen
 
 const ROOT = path.resolve(__dirname, "../..");
 const ANA = "00000000-0000-4000-8000-00000000000a";
+const REVIEWER_PED = "00000000-0000-4000-8000-0000000000c2";
 const STAFF = "00000000-0000-4000-8000-0000000000ed";
 let db: PGlite;
 
@@ -33,6 +34,8 @@ beforeAll(async () => {
   for (const statement of [...buildSeedStatements(), ...buildEngineStatements()]) await db.exec(statement);
   await db.query(`insert into auth.users (id, email) values ($1, 'ana@teste.dev'), ($2, 'editor@teste.dev')`, [ANA, STAFF]);
   await db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [STAFF]);
+  await db.query(`insert into auth.users (id, email) values ($1, 'revisor@teste.dev')`, [REVIEWER_PED]);
+  await db.query(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'PEDIATRIA')`, [REVIEWER_PED]);
 }, 180_000);
 
 describe("Pacote do motor", () => {
@@ -151,5 +154,57 @@ describe("Equivalentes (função pura)", () => {
     const text = "Paciente de trinta anos chega ao pronto atendimento com dor abdominal intensa em fossa ilíaca direita há doze horas, febre e vômitos";
     const out = findEquivalents([q("a_q1", "a", text), q("b_q1", "b", text), q("a_q2", "a", text), q("c_q1", "c", "Outro enunciado totalmente diferente sobre vacinação infantil no calendário nacional de rotina")]);
     expect(out.map((e) => e.question_id).sort()).toEqual(["a_q1", "a_q2", "b_q1"]);
+  });
+});
+
+describe("Rascunhos inéditos do motor", () => {
+  it("200 rascunhos (2 lotes de 100) entram aguardando revisão médica, fora do banco de questões", async () => {
+    const r = (await db.query<any>(`select batch, count(*)::int n, count(*) filter (where status = 'awaiting_medical_review')::int w from public.draft_questions group by batch order by batch`)).rows;
+    expect(r).toEqual([
+      { batch: "simulado_preditivo_2026_2_001", n: 100, w: 100 },
+      { batch: "simulado_preditivo_2026_2_002", n: 100, w: 100 },
+    ]);
+    expect((await db.query<any>(`select count(*)::int n from public.questions where id like 'simulado%'`)).rows[0].n).toBe(0);
+    expect((await db.query<any>(`select count(*)::int n from public.draft_questions where reviewed_by is not null`)).rows[0].n).toBe(0);
+  });
+
+  it("a revisão automática (IA) vem como apontamento e não aprova nada", async () => {
+    const r = (await db.query<any>(`select ai_review, similarity_to_official from public.draft_questions where batch = 'simulado_preditivo_2026_2_001' and source_id = 'simulado_revalida_enamed_2026_2_q001'`)).rows[0];
+    expect(r.ai_review.status).toBe("APPROVED_FOR_PDF");
+    expect(Number(r.similarity_to_official)).toBeGreaterThan(0);
+    expect(r.ai_review.medical.verdict).toBeTruthy();
+    expect((await db.query<any>(`select count(*)::int n from public.draft_questions where status = 'approved'`)).rows[0].n).toBe(0);
+  });
+
+  it("só equipe e revisores leem; aluno não vê rascunho nenhum", async () => {
+    expect(await as(ANA, (q) => q(`select id from public.draft_questions`))).toEqual([]);
+    await expect(as(ANA, (q) => q(`select public.app_draft_questions()`))).rejects.toThrow(/restrito/);
+    const list = (await as(STAFF, (q) => q(`select public.app_draft_questions('simulado_preditivo_2026_2_001', null, 'PEDIATRIA', 5) as r`)))[0].r;
+    expect(list.items).toHaveLength(5);
+    expect(list.batches).toHaveLength(2);
+    expect(list.items.every((i: any) => i.area === "PEDIATRIA" && i.can_review === false)).toBe(true);
+  });
+
+  it("só revisor médico da área decide; pedir ajustes ou recusar exige motivo; registra quem e o hash", async () => {
+    const { id } = (await db.query<any>(`select id from public.draft_questions where area = 'PEDIATRIA' order by batch, slot limit 1`)).rows[0];
+    const other = (await db.query<any>(`select id from public.draft_questions where area = 'CIRURGIA' limit 1`)).rows[0].id;
+    await expect(as(STAFF, (q) => q(`select public.app_draft_question_decide($1, 'approved')`, [id]))).rejects.toThrow(/revisor cadastrado na área PEDIATRIA/);
+    await expect(as(REVIEWER_PED, (q) => q(`select public.app_draft_question_decide($1, 'approved')`, [other]))).rejects.toThrow(/área CIRURGIA/);
+    await expect(as(REVIEWER_PED, (q) => q(`select public.app_draft_question_decide($1, 'rejected')`, [id]))).rejects.toThrow(/motivo/);
+    await as(REVIEWER_PED, (q) => q(`select public.app_draft_question_decide($1, 'needs_changes', 'Ajustar a dose citada na alternativa B.')`, [id]));
+    const d = (await db.query<any>(`select status, reviewed_by, review_note, reviewed_hash = content_hash as same from public.draft_questions where id = $1`, [id])).rows[0];
+    expect(d).toMatchObject({ status: "needs_changes", reviewed_by: REVIEWER_PED, same: true });
+  });
+
+  it("reaplicar a carga mantém a decisão; se o conteúdo mudou, a revisão volta a aguardar", async () => {
+    const decided = (await db.query<any>(`select id, source_id, batch from public.draft_questions where status = 'needs_changes'`)).rows[0];
+    const { buildDraftStatements } = await import("../../scripts/supabase/engine-seed");
+    for (const st of buildDraftStatements()) await db.exec(st);
+    expect((await db.query<any>(`select status from public.draft_questions where id = $1`, [decided.id])).rows[0].status).toBe("needs_changes");
+    // o texto mudou depois da revisão: o hash que foi revisado deixa de ser o do conteúdo atual
+    await db.query(`update public.draft_questions set content_hash = 'texto-anterior', reviewed_hash = 'texto-anterior' where id = $1`, [decided.id]);
+    for (const st of buildDraftStatements()) await db.exec(st);
+    const after = (await db.query<any>(`select status, reviewed_hash <> content_hash as stale from public.draft_questions where id = $1`, [decided.id])).rows[0];
+    expect(after).toEqual({ status: "awaiting_medical_review", stale: true });
   });
 });

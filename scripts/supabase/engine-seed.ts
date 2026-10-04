@@ -111,6 +111,70 @@ export const scrubText = (s: string) => s.replace(CONTROL, "");
 
 const arr = (values: string[] | undefined) => (values?.length ? `array[${values.map(sqlLiteral).join(",")}]::text[]` : "'{}'::text[]");
 
+// ---------------------------------------------------------------- rascunhos inéditos
+const GENERATED_DIR = path.join(ROOT, "revalida-reverse-engine/data/exports/generated/revalida_enamed_2026_2");
+// área do motor → código da taxonomia editorial (a mesma usada pelos revisores médicos)
+const REVIEW_AREA: Record<string, string> = {
+  CLINICAL_MEDICINE: "CLINICA_MEDICA", GENERAL_SURGERY: "CIRURGIA", OBSTETRICS_GYNECOLOGY: "GINECOLOGIA_OBSTETRICIA", PEDIATRICS: "PEDIATRIA", FAMILY_COMMUNITY_PUBLIC_HEALTH: "MFC",
+};
+
+export function loadDraftBatches() {
+  if (!fs.existsSync(GENERATED_DIR)) return [];
+  const out: { batch: string; questions: any[]; reviewed: Map<string, any>; verified: boolean }[] = [];
+  for (const batch of fs.readdirSync(GENERATED_DIR).filter((d) => d.startsWith("simulado_preditivo_")).sort()) {
+    const dir = path.join(GENERATED_DIR, batch);
+    const generatedPath = path.join(dir, "generated_exam.json");
+    if (!fs.existsSync(generatedPath)) continue;
+    const raw = fs.readFileSync(generatedPath);
+    const generated = JSON.parse(raw.toString("utf8"));
+    // quando há manifesto, o arquivo precisa conferir com o hash registrado
+    const manifestPath = path.join(dir, "manifest.json");
+    let verified = false;
+    if (fs.existsSync(manifestPath)) {
+      const expected = JSON.parse(fs.readFileSync(manifestPath, "utf8")).files?.generated_exam?.sha256;
+      if (expected && sha(raw) !== expected) throw new Error(`Lote ${batch} alterado: hash de generated_exam.json não confere com o manifesto.`);
+      verified = Boolean(expected);
+    }
+    const reviewedPath = [path.join(dir, "reviewed_exam.json"), path.join(dir, "revisao_local/reviewed_exam.json")].find((f) => fs.existsSync(f));
+    const reviewed = new Map<string, any>();
+    if (reviewedPath) for (const q of JSON.parse(fs.readFileSync(reviewedPath, "utf8")).questions ?? []) reviewed.set(q.id, q);
+    out.push({ batch, questions: generated.questions, reviewed, verified });
+  }
+  return out;
+}
+
+export function buildDraftStatements(): string[] {
+  const rows: string[] = [];
+  for (const { batch, questions, reviewed } of loadDraftBatches()) {
+    for (const q of questions) {
+      const area = REVIEW_AREA[q.blueprint?.primary_area];
+      if (!area) throw new Error(`Rascunho ${batch}/${q.id} sem área reconhecida: ${q.blueprint?.primary_area}`);
+      const x = scrub(q.question);
+      const r = reviewed.get(q.id);
+      // revisão automática: só o que ajuda o revisor humano; o "APPROVED" da IA não aprova nada
+      const aiReview = r ? scrub({ medical: r.medical_review, pedagogical: r.pedagogical_review, status: r.status, model: r.review_model, reviewed_at: r.reviewed_at_utc }) : null;
+      const hash = crypto.createHash("sha256").update(JSON.stringify([x.stem, x.alternatives, x.correct_answer, x.professor_explanation])).digest("hex");
+      rows.push(
+        `(${[batch, q.id].map(sqlLiteral).join(", ")}, ${q.slot}, ${sqlLiteral(area)}, ${sqlLiteral(q.blueprint.primary_subarea ?? null)}, ${sqlLiteral(q.blueprint.primary_competency ?? null)}, ${sqlLiteral(x.title ?? null)}, ${sqlLiteral(x.stem)}, ${sqlLiteral(x.alternatives)}, ${sqlLiteral(x.correct_answer)}, ${sqlLiteral(x.professor_explanation ?? null)}, ${sqlLiteral(x.alternative_explanations ?? {})}, ${sqlLiteral(x.source_citations ?? [])}, ${sqlLiteral(x.update_application ?? null)}, ${sqlLiteral(typeof q.maximum_similarity_to_official_percent === "number" ? q.maximum_similarity_to_official_percent : null)}, ${sqlLiteral(q.model ?? null)}, ${sqlLiteral(q.generated_at_utc ?? null)}, ${sqlLiteral(aiReview)}, ${sqlLiteral(hash)})`
+      );
+    }
+  }
+  if (!rows.length) return [];
+  const cols = "batch, source_id, slot, area, subarea, competency, title, stem, alternatives, correct_answer, explanation, alternative_explanations, source_citations, update_application, similarity_to_official, model, generated_at, ai_review, content_hash";
+  const content = cols.split(", ").slice(2).filter((c) => c !== "content_hash");
+  const statements: string[] = [];
+  for (let i = 0; i < rows.length; i += 50) {
+    statements.push(
+      `insert into public.draft_questions (${cols}) values\n${rows.slice(i, i + 50).join(",\n")}\n` +
+        // reaplicar a carga não apaga decisões: só se o conteúdo mudou a revisão volta a "aguardando"
+        `on conflict (batch, source_id) do update set ${content.map((c) => `${c} = excluded.${c}`).join(", ")}, ` +
+        `status = case when public.draft_questions.content_hash = excluded.content_hash then public.draft_questions.status else 'awaiting_medical_review' end, ` +
+        `content_hash = excluded.content_hash;`
+    );
+  }
+  return statements;
+}
+
 export function buildEngineStatements(): string[] {
   const { manifest, questions } = loadEnginePackage();
   syncAssets(manifest, questions);
@@ -160,5 +224,6 @@ export function buildEngineStatements(): string[] {
   if (eq.length) {
     out.push(`insert into public.question_equivalents (question_id, group_id, similarity) values\n${eq.map((e) => `(${sqlLiteral(e.question_id)}, ${sqlLiteral(e.group_id)}, ${e.similarity})`).join(",\n")};`);
   }
+    out.push(...buildDraftStatements());
   return out;
 }

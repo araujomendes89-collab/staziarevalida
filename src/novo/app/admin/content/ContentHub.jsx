@@ -11,11 +11,13 @@ import { Documents } from "./Documents.jsx";
 import { Units } from "./Units.jsx";
 import { Sources } from "./Sources.jsx";
 import { Taxonomy } from "./Taxonomy.jsx";
+import { DraftQuestions } from "./DraftQuestions.jsx";
 import { HubSettings } from "./HubSettings.jsx";
 
 const SECTIONS = [
   { value: "documentos", label: "Documentos", icon: "file-up", who: "staff" },
   { value: "unidades", label: "Unidades e revisão", icon: "stamp", who: "reviewer" },
+  { value: "ineditas", label: "Questões inéditas", icon: "file-question", who: "reviewer" },
   { value: "fontes", label: "Fontes oficiais", icon: "library", who: "staff" },
   { value: "taxonomia", label: "Taxonomia", icon: "list-tree", who: "staff" },
   { value: "config", label: "Configuração e custos", icon: "gauge", who: "staff" },
@@ -76,6 +78,7 @@ export function ContentHub({ isAdmin, isStaff }) {
       </div>
       {section === "documentos" && <Documents {...ctx} />}
       {section === "unidades" && <Units {...ctx} />}
+      {section === "ineditas" && <DraftQuestions {...ctx} />}
       {section === "fontes" && <Sources {...ctx} />}
       {section === "taxonomia" && <Taxonomy {...ctx} />}
       {section === "config" && <HubSettings {...ctx} />}
