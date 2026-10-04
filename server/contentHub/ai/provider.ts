@@ -70,17 +70,28 @@ class AnthropicProvider implements AiProvider {
   }
   async generate<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
     const t0 = Date.now();
-    const res = await this.client.messages.create({
+    // Saída estruturada (output_config.format): os modelos atuais recusam tool_choice forçado (400).
+    // O esforço padrão é "medium": conferência exige cuidado, mas o raciocínio também consome o limite de saída.
+    const res = await (this.client.messages.create as any)({
       model: this.model,
-      max_tokens: req.maxOutputTokens ?? 4096,
+      max_tokens: Math.max(req.maxOutputTokens ?? 8192, 8192),
       system: req.system,
-      tools: [{ name: req.schemaName, description: "Devolva a resposta neste formato.", input_schema: toProviderSchema(req.schema) as any }],
-      tool_choice: { type: "tool", name: req.schemaName },
+      output_config: { effort: process.env.CONTENT_HUB_ANTHROPIC_EFFORT || "medium", format: { type: "json_schema", schema: toProviderSchema(req.schema) } },
       messages: [{ role: "user", content: req.input }],
     });
-    const block = res.content.find((c: any) => c.type === "tool_use") as any;
-    const output = checked<T>(req.schema, block?.input);
     const usage = res.usage as any;
+    if (res.stop_reason === "refusal") {
+      throw new Error(`O provedor recusou a solicitação (${res.stop_details?.category ?? "sem categoria"}).`);
+    }
+    if (res.stop_reason === "max_tokens") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null);
+    const block = (res.content as any[]).find((c) => c.type === "text");
+    let raw: unknown;
+    try {
+      raw = JSON.parse(block?.text ?? "");
+    } catch {
+      throw new AiInvalidOutput("Resposta não é JSON.", block?.text);
+    }
+    const output = checked<T>(req.schema, raw);
     return { output, provider: this.name, model: res.model ?? this.model, inputTokens: usage?.input_tokens ?? null, outputTokens: usage?.output_tokens ?? null, latencyMs: Date.now() - t0, costUsd: price(usage?.input_tokens ?? null, usage?.output_tokens ?? null) };
   }
 }

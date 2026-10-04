@@ -270,6 +270,20 @@ describe("Camadas com banco e simulação de IA", () => {
     expect(out.findings.find((f) => f.code === "redteam_dose_or_unit")!.detail).toMatch(/conhecimento do modelo, sem fonte/);
   });
 
+  it("revisão clínica: 'Nenhuma relevante' na ambiguidade não vira apontamento; ambiguidade descrita vira", async () => {
+    const [row] = await sql<DraftRow>(`select * from public.draft_questions order by batch, slot limit 1`);
+    const d = row as DraftRow;
+    await sql(`delete from public.ch_ai_runs`); // respostas iguais ficam em cache: parte do zero
+    const run = async (ambiguity: string) => {
+      await sql(`delete from public.ch_ai_runs`);
+      return redteamCheck({ db }, new MockProvider((req: StructuredRequest) => (req.promptId === "solve" ? { answer: d.correct_answer, certainty: "high", rationale: "simulação", ambiguity } : { issues: [] })), d, spend());
+    };
+    expect((await run("Nenhuma relevante.")).findings).toEqual([]);
+    expect((await run("Nenhuma ambiguidade encontrada.")).findings).toEqual([]);
+    const described = await run("A alternativa B também poderia ser aceita por quem segue outra diretriz.");
+    expect(described.findings.map((f) => f.code)).toEqual(["blind_ambiguity"]);
+  });
+
   it("revisão clínica com criador da mesma família: pendente, nada gravado", async () => {
     await sql(`update public.draft_questions set model = 'mock-dev (simulação, não é IA)'`);
     const r = await runDraftChecks({ db, mockRespond: () => ({}) }, { layers: ["redteam"], limit: 5 });

@@ -194,7 +194,10 @@ export async function redteamCheck(deps: RunDeps, provider: AiProvider, d: Draft
   } else if (solved.certainty === "low") {
     findings.push({ severity: "minor", code: "blind_answer_uncertain", where: "gabarito", detail: `O revisor chegou à mesma resposta, mas com certeza baixa. ${solved.ambiguity}` });
   }
-  if (normalize(solved.ambiguity).length > 8 && solved.answer === d.correct_answer && solved.certainty !== "low") {
+  // "Nenhuma relevante" não é apontamento: só registra ambiguidade que o revisor de fato descreveu
+  const ambiguity = normalize(solved.ambiguity);
+  const none = /^(nenhum|nenhuma|nada|n[ãa]o h[áa]|sem ambiguidade|n\/a)\b/i.test(ambiguity);
+  if (ambiguity.length > 8 && !none && solved.answer === d.correct_answer && solved.certainty !== "low") {
     findings.push({ severity: "minor", code: "blind_ambiguity", where: "enunciado", detail: solved.ambiguity });
   }
   const review = await callAi<{ issues: { severity: Finding["severity"]; kind: string; where: string; detail: string; basis: string }[] }>(deps, provider, "redteam", questionForReview(d, true), spend, d, "redteam");

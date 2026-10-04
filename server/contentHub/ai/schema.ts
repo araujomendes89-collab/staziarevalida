@@ -72,6 +72,7 @@ export function toProviderSchema(schema: Schema): Record<string, unknown> {
   if (schema.enum) out.enum = schema.enum;
   if (schema.properties) out.properties = Object.fromEntries(Object.entries(schema.properties).map(([k, v]) => [k, toProviderSchema(v)]));
   if (schema.required) out.required = schema.required;
+  if (schema.type === "object" && schema.additionalProperties === false) out.additionalProperties = false;
   if (schema.items) out.items = toProviderSchema(schema.items);
   if (schema.nullable) out.nullable = true;
   return out;
