@@ -19,6 +19,13 @@ Esquema, políticas de acesso (RLS) e carga do StaziaMed no Supabase.
 | `migrations/…1100_planning_api.sql` | Função `app_planning`: semana, dias estudados no mês e ritmo até a prova |
 | `migrations/…1200_account_api.sql` | Conta (LGPD): exportar os próprios dados e excluir a conta |
 | `migrations/…1300_admin.sql` | Administração: usuários, papéis, planos, questões (edição e importação), estações, configurações e registro de ações |
+| `migrations/…1400_content_hub.sql` | Central de Conteúdo: taxonomia versionada, documentos e blocos, fontes, afirmações e evidências, unidades, aprovações, publicação e fila |
+| `migrations/…1500_content_hub_worker.sql` | Funções do processamento (`ch_worker_*`, só a chave de serviço executa), registro das chamadas de IA, arquivos finais, monitoramento de fontes |
+| `migrations/…1600_content_hub_panel.sql` | Apoio ao painel: revisor médico, regenerar materiais de uma versão, consumo de IA |
+| `migrations/…1700_question_engine.sql` | Pacote do motor: classificação detalhada (só equipe), limpezas registradas, questões equivalentes, incidência real |
+| `migrations/…1800_draft_questions.sql` | Rascunhos inéditos aguardando revisão médica |
+| `migrations/…1900_answer_key_lockdown.sql` | Gabarito fora do alcance direto do aluno: colunas restritas e correção só depois de responder |
+| `migrations/…2000_storage.sql` | Depósito privado `content-hub` (PDFs e arquivos finais) |
 | `tests/bootstrap.sql` | Só para testes: imita o ambiente Supabase no PGlite |
 | `seed.sql` | Gerado por `npm run supabase:seed` (não fica no Git) |
 
@@ -34,26 +41,38 @@ Rodam as migrações e a carga real num Postgres em memória (PGlite), sem Docke
 
 ## Aplicar num projeto Supabase
 
-1. Crie o projeto em supabase.com, região **South America (São Paulo)**. Sugestão: um projeto de desenvolvimento e outro de produção.
-2. Instale e conecte a CLI:
+Não é preciso instalar nada: a CLI roda por `npx`.
+
+1. No painel do Supabase, copie para o `.env` (nunca para o chat nem para o Git):
    ```bash
-   brew install supabase/tap/supabase
-   supabase login
-   supabase link --project-ref <ref-do-projeto>
+   SUPABASE_URL=https://<ref>.supabase.co
+   SUPABASE_DB_URL=<botão Connect → Session pooler → URI, com a senha do banco>
+   SUPABASE_SERVICE_ROLE_KEY=<API Keys → service_role — secreta, só no servidor, nunca com prefixo VITE_>
    ```
-3. Aplique as migrações e a carga:
+2. Confira o que será aplicado, sem alterar nada, e depois aplique as migrações e a carga:
    ```bash
-   supabase db push
-   npm run supabase:seed
-   psql "<connection string do projeto>" -f supabase/seed.sql
+   set -a; source .env; set +a
+   npx supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
+   npm run supabase:seed                      # gera supabase/seed.sql (5,6 MB)
+   npx supabase db push --db-url "$SUPABASE_DB_URL" --include-seed
    ```
-4. Em **Authentication → Providers**, ligue E-mail e Google (o Google pede client ID e secret do Google Cloud). Em **URL Configuration**, cadastre o domínio do app e `http://localhost:3000`.
-5. Variáveis no `.env` (nunca no chat nem no Git):
+   A carga é idempotente (`insert … on conflict`): pode ser reaplicada quando o banco de questões mudar.
+3. Só depois de aplicar, ligue o app ao Supabase no `.env`:
    ```bash
    VITE_SUPABASE_URL=https://<ref>.supabase.co
-   VITE_SUPABASE_ANON_KEY=<chave anon — pública, vai para o navegador>
-   SUPABASE_SERVICE_ROLE_KEY=<chave de serviço — só no servidor, nunca com prefixo VITE_>
+   VITE_SUPABASE_ANON_KEY=<API Keys → anon / publishable — pública, vai para o navegador>
    ```
+   Com essas duas linhas o `/novo` e a Central de Conteúdo deixam o banco local e passam a usar o projeto.
+4. Em **Authentication → Providers**, ligue E-mail e Google (o Google pede client ID e secret do Google Cloud). Em **URL Configuration**, cadastre o domínio do app e `http://localhost:3000/novo`.
+5. Crie a sua conta pelo app e promova-a a administrador (seção "Primeiro administrador", abaixo).
+
+### O que o aluno consegue ler direto no banco
+
+A chave `anon` é pública; o que protege os dados são as políticas (RLS) e as permissões por coluna:
+
+- **Questões**: enunciado, área, tema e figuras. A resposta correta, a explicação das alternativas e a conduta esperada **não** são legíveis; a correção sai pelas funções `app_*`, só depois de responder a questão ou de finalizar a sessão (`…1900_answer_key_lockdown.sql`).
+- **Classificação detalhada, rascunhos inéditos, Central de Conteúdo**: só equipe e revisores.
+- **Dados de estudo** (sessões, respostas, flashcards, plano): cada aluno só os próprios.
 
 ## Liberar estações para os alunos
 

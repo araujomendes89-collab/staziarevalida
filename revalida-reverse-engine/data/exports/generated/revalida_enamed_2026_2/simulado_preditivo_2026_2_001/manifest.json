@@ -1,0 +1,43 @@
+{
+  "schema_version": "staziamed.complete-exam-manifest.v1",
+  "status": "REVISION_REQUIRED",
+  "title": "SIMULADO REVALIDA/ENAMED 2026.2",
+  "question_count": 100,
+  "theme_filter": null,
+  "level_filter": null,
+  "generation_backend": "openai",
+  "generation_model": "gpt-5.6-luna",
+  "review_backend": "openai",
+  "review_model": "gpt-5.6-luna",
+  "review_workers": 4,
+  "tri_scope": "NOVEL_QUESTIONS_ONLY",
+  "empirically_calibrated": false,
+  "created_at_utc": "2026-09-06T03:37:40.887294+00:00",
+  "review_summary": {
+    "total": 100,
+    "approved_for_pdf": 27,
+    "revision_required": 73
+  },
+  "files": {
+    "generated_exam": {
+      "path": "/Volumes/PortableSSD/Projetos/revalida-reverse-engine/data/exports/generated/revalida_enamed_2026_2/simulado_preditivo_2026_2_001/generated_exam.json",
+      "sha256": "66e5fe87b145791be8affc885ac5143b5c0a1ad17f4873f0f35b964b7a12cead"
+    },
+    "reviewed_exam": {
+      "path": "/Volumes/PortableSSD/Projetos/revalida-reverse-engine/data/exports/generated/revalida_enamed_2026_2/simulado_preditivo_2026_2_001/reviewed_exam.json",
+      "sha256": "6792dc4731c34a2961883492185b874f96c8361ff74d364e95ef18a5be2f856a"
+    },
+    "prova": {
+      "path": "/Volumes/PortableSSD/Projetos/revalida-reverse-engine/data/exports/generated/revalida_enamed_2026_2/simulado_preditivo_2026_2_001/prova.pdf",
+      "sha256": "7008bfced754fbd960d6e48eb255efd9638fe3a397a0680381eaa95451bcdad8"
+    },
+    "gabarito": {
+      "path": "/Volumes/PortableSSD/Projetos/revalida-reverse-engine/data/exports/generated/revalida_enamed_2026_2/simulado_preditivo_2026_2_001/gabarito.pdf",
+      "sha256": "c02863b2ad16ebb85c72e2e6551f29d7f2b30d38afee887b28ea64ba1b8a7819"
+    },
+    "correcao_comentada": {
+      "path": "/Volumes/PortableSSD/Projetos/revalida-reverse-engine/data/exports/generated/revalida_enamed_2026_2/simulado_preditivo_2026_2_001/correcao_comentada.pdf",
+      "sha256": "49d63675f7ec9a0a1b07831343213c6d25ff3b7eb8f6a9eaa0fd5977ecbb975e"
+    }
+  }
+}

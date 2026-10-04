@@ -1,0 +1,25 @@
+{
+  "schema_version": "staziamed.library-review-manifest.v1",
+  "status": "READY_FOR_HUMAN_APPROVAL",
+  "source_library_files": [
+    "APOSTILA DE CIRURGIA PARA O REVALIDA.pdf",
+    "APOSTILA DE GINECOLOGIA PARA O REVALIDA.pdf",
+    "APOSTILA DE OBSTETRÍCIA PARA O REVALIDA.pdf",
+    "APOSTILA DE SAÚDE MENTAL PARA O REVALIDA.pdf",
+    "APOSTILA TEÓRICA BLOCO DE CLÍNICA  CURSO SANGUE NOS OLHOS.pdf",
+    "APOSTILA TEÓRICA BLOCO DE PEDIATRIA  CURSO SANGUE NOS OLHOS.pdf",
+    "APOSTILA TEÓRICA BLOCO DE PREVENTIVA  CURSO SANGUE NOS OLHOS.pdf",
+    "ATUALIZAÇÕES 2025-2026.pdf"
+  ],
+  "review_summary": {
+    "total": 100,
+    "approved_for_pdf": 100,
+    "revision_required": 0
+  },
+  "reviewed_exam": "data/exports/generated/revalida_enamed_2026_2/simulado_preditivo_2026_2_002/revisao_local/reviewed_exam.json",
+  "pdfs": [
+    "data/exports/generated/revalida_enamed_2026_2/simulado_preditivo_2026_2_002/revisao_local/prova.pdf",
+    "data/exports/generated/revalida_enamed_2026_2/simulado_preditivo_2026_2_002/revisao_local/gabarito.pdf",
+    "data/exports/generated/revalida_enamed_2026_2/simulado_preditivo_2026_2_002/revisao_local/correcao_comentada.pdf"
+  ]
+}
