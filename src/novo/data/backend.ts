@@ -28,6 +28,11 @@ export interface Backend {
   /** Chama uma função `app_*` do banco. */
   rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T>;
   /**
+   * Token da sessão para as rotas do servidor (/api/content-hub): envio de PDF, arquivos.
+   * Só existe quando há servidor; no banco local do navegador não há.
+   */
+  readonly accessToken?: () => Promise<string | null>;
+  /**
    * Só no banco local: criar o primeiro administrador (conta master) pela tela de entrada,
    * enquanto não existir nenhum. No Supabase o primeiro admin é definido no painel
    * (ver supabase/README.md), nunca pelo navegador.

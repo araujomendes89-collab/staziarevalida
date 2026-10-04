@@ -24,6 +24,10 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
       const { data } = await client.auth.getSession();
       return toUser(data.session?.user);
     },
+    async accessToken() {
+      const { data } = await client.auth.getSession();
+      return data.session?.access_token ?? null;
+    },
     onAuthChange(callback) {
       // O Supabase pede para não chamar a própria API dentro deste callback (trava a fila de
       // autenticação); por isso o aviso sai no próximo ciclo.

@@ -239,6 +239,11 @@ describe("Unidade didática, materiais, aprovação e publicação", () => {
 
     // volta ao texto aprovado e passa de novo pelas duas aprovações
     await rpc(EDITOR, "app_ch_save_unit_version", { p_version_id: version, p_content: content(claimDose) });
+    // a aula (mesmo texto da unidade) e o arquivo final conferido são exigidos para publicar
+    await rpc(EDITOR, "app_ch_save_material", { p_version_id: version, p_kind: "lesson", p_content: { sections: content(claimDose).sections, references: [{ source: "Manual", page: 112 }] } });
+    expect(await rpc(EDITOR, "app_ch_publish_problems", { p_version_id: version })).toEqual(expect.arrayContaining([expect.stringMatching(/arquivo final de "lesson" não foi gerado/)]));
+    const lesson = await one(`select id, content_hash from public.ch_materials where unit_version_id = $1 and kind = 'lesson'`, [version]);
+    await worker(`select public.ch_worker_save_render($1::jsonb)`, [{ material_id: lesson.id, format: "pdf", storage_path: "renders/x.pdf", sha256: SHA(99), template_version: "t", brand_version: "b", material_hash: lesson.content_hash, check_result: { ok: true } }]);
     await rpc(EDITOR, "app_ch_submit_for_review", { p_version_id: version });
     await rpc(REVIEWER_GO, "app_ch_approve", { p_version_id: version, p_kind: "medical" });
     await rpc(EDITOR, "app_ch_approve", { p_version_id: version, p_kind: "editorial" });
@@ -254,7 +259,7 @@ describe("Unidade didática, materiais, aprovação e publicação", () => {
     const visible = await rpc(STUDENT, "app_ch_published_units");
     expect(visible).toHaveLength(1);
     expect(visible[0]).toMatchObject({ title: "Pré-eclâmpsia grave", version: 1 });
-    expect(Object.keys(visible[0].materials)).toEqual(["flashcards"]);
+    expect(Object.keys(visible[0].materials).sort()).toEqual(["flashcards", "lesson"]);
     await expect(rpc(EDITOR, "app_ch_save_unit_version", { p_version_id: version, p_content: content(claimDose) })).rejects.toThrow(/publicada não se edita/);
   });
 
@@ -270,7 +275,7 @@ describe("Unidade didática, materiais, aprovação e publicação", () => {
     expect(await rpc(STUDENT, "app_ch_published_units")).toHaveLength(1);
     // a candidata herda materiais e afirmações, e não publica sem nova evidência e nova revisão
     const candidate = (await one(`select id from public.ch_unit_versions where unit_id = $1 and version = 2`, [unit])).id;
-    expect((await one(`select count(*)::int as n from public.ch_materials where unit_version_id = $1`, [candidate])).n).toBe(1);
+    expect((await one(`select count(*)::int as n from public.ch_materials where unit_version_id = $1`, [candidate])).n).toBe(2);
     const problems = await rpc(EDITOR, "app_ch_publish_problems", { p_version_id: candidate });
     expect(problems.join(" ")).toMatch(/sem evidência compatível/);
     expect(problems.join(" ")).toMatch(/needs_review/);

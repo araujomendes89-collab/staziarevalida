@@ -199,6 +199,26 @@ describe("Central de Conteúdo — processamento", () => {
     expect(m.metrics.ai_calls).toBe(0);
   }, 240_000);
 
+  it("texto editado à mão: a aula antiga não serve para publicar até gerar os materiais de novo (só daquela versão)", async () => {
+    const [v] = await sql(`select id, content from public.ch_unit_versions`);
+    const content = { sections: v.content.sections.map((s: any) => ({ ...s, heading: `${s.heading} (editado)` })) };
+    await db.asUser(admin, "app_ch_save_unit_version", { p_version_id: v.id, p_content: content });
+    let problems = await db.asUser<string[]>(admin, "app_ch_publish_problems", { p_version_id: v.id });
+    expect(problems.join("\n")).toMatch(/A aula não corresponde ao texto atual/);
+
+    const r = await db.asUser<{ id: string }>(admin, "app_ch_regenerate", { p_version_id: v.id });
+    await createContentHubWorker(mockDeps()).drain();
+    const [job] = await sql(`select status, scope_key from public.ch_jobs where id = $1`, [r.id]);
+    expect(job).toEqual({ status: "succeeded", scope_key: `version:${v.id}` });
+    const [lesson] = await sql(`select content from public.ch_materials where unit_version_id = $1 and kind = 'lesson'`, [v.id]);
+    expect(lesson.content.sections).toEqual(content.sections);
+    problems = await db.asUser<string[]>(admin, "app_ch_publish_problems", { p_version_id: v.id });
+    expect(problems.join("\n")).not.toMatch(/A aula não corresponde/);
+    if (renderer) expect(problems.join("\n")).not.toMatch(/arquivo final/);
+    const [doc] = await sql(`select status from public.ch_documents where id = $1`, [studyDoc]);
+    expect(doc.status).toBe(renderer ? "awaiting_review" : "drafting");
+  }, 240_000);
+
   it("arquivo armazenado diferente do enviado: falha definitiva, sem novas tentativas", async () => {
     const id = await registerDoc("Arquivo trocado", Buffer.from("%PDF-1.7 original"));
     const [d] = await sql(`select storage_path from public.ch_documents where id = $1`, [id]);

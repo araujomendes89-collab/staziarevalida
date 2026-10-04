@@ -101,6 +101,7 @@ export function createDevServerBackend(base = "/api/dev-db"): Backend {
       assertRpcCall(fn, args);
       return (await call<{ data: T }>("/rpc", { fn, args })).data;
     },
+    accessToken: async () => token,
   };
 }
 

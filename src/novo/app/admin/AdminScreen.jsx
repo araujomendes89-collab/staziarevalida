@@ -8,6 +8,7 @@ import { useSession } from "../session.jsx";
 import { AdminQuestions } from "./AdminQuestions.jsx";
 import { AdminUsers } from "./AdminUsers.jsx";
 import { AdminAudit, AdminOverview, AdminPlans, AdminSettings, AdminStations } from "./AdminPanels.jsx";
+import { ContentHub } from "./content/ContentHub.jsx";
 
 const TABS = [
   { value: "geral", label: "Visão geral", icon: "layout-dashboard", staff: true },
@@ -15,6 +16,7 @@ const TABS = [
   { value: "questoes", label: "Questões", icon: "file-question", staff: true },
   { value: "planos", label: "Planos", icon: "crown" },
   { value: "estacoes", label: "Estações", icon: "clipboard-list", staff: true },
+  { value: "conteudo", label: "Central de Conteúdo", icon: "library", staff: true, reviewer: true },
   { value: "config", label: "Configurações", icon: "settings" },
   { value: "registro", label: "Registro", icon: "history" },
 ];
@@ -24,9 +26,11 @@ export const isStaffRole = (role) => role === "admin" || role === "editor";
 export function AdminScreen() {
   const { boot } = useSession();
   const isAdmin = boot.role === "admin";
-  const tabs = TABS.filter((t) => isAdmin || t.staff);
+  const isStaff = isStaffRole(boot.role);
+  // revisor médico sem papel de equipe: só a revisão da Central de Conteúdo
+  const tabs = TABS.filter((t) => isAdmin || (isStaff && t.staff) || (!isStaff && t.reviewer));
   const [params, setParams] = useSearchParams();
-  const tab = tabs.some((t) => t.value === params.get("aba")) ? params.get("aba") : "geral";
+  const tab = tabs.some((t) => t.value === params.get("aba")) ? params.get("aba") : tabs[0].value;
 
   return (
     <>
@@ -38,6 +42,7 @@ export function AdminScreen() {
       {tab === "questoes" && <AdminQuestions />}
       {tab === "planos" && <AdminPlans />}
       {tab === "estacoes" && <AdminStations />}
+      {tab === "conteudo" && <ContentHub isAdmin={isAdmin} isStaff={isStaff} />}
       {tab === "config" && <AdminSettings />}
       {tab === "registro" && <AdminAudit />}
     </>

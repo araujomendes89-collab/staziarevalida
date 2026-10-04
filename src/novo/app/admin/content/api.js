@@ -1,0 +1,49 @@
+// Chamadas às rotas do servidor da Central de Conteúdo (/api/content-hub), com o token da
+// sessão. Nenhuma chave de serviço ou de IA passa pelo navegador.
+
+const BASE = "/api/content-hub";
+
+async function headers(backend, extra = {}) {
+  const token = backend.accessToken ? await backend.accessToken() : null;
+  if (!token) throw new Error("A Central de Conteúdo precisa do servidor: entre de novo ou use o modo com servidor.");
+  return { Authorization: `Bearer ${token}`, ...extra };
+}
+
+async function parse(res) {
+  if (res.ok) return res.headers.get("content-type")?.includes("json") ? res.json() : res;
+  let message = `Erro ${res.status}.`;
+  try {
+    message = (await res.json()).error ?? message;
+  } catch {
+    // resposta sem corpo
+  }
+  throw new Error(message);
+}
+
+export const hubAvailable = (backend) => Boolean(backend?.accessToken);
+
+export async function hubGet(backend, path) {
+  return parse(await fetch(BASE + path, { headers: await headers(backend) }));
+}
+
+export async function hubPost(backend, path, body) {
+  return parse(await fetch(BASE + path, { method: "POST", headers: await headers(backend, { "Content-Type": "application/json" }), body: JSON.stringify(body ?? {}) }));
+}
+
+/** Envia um PDF (corpo bruto) com os metadados na consulta. */
+export async function hubUploadPdf(backend, path, file, meta = {}) {
+  const query = new URLSearchParams(Object.entries(meta).filter(([, v]) => v != null && String(v).trim() !== ""));
+  return parse(
+    await fetch(`${BASE}${path}${query.size ? `?${query}` : ""}`, {
+      method: "POST",
+      headers: await headers(backend, { "Content-Type": "application/pdf", "X-File-Name": encodeURIComponent(file.name) }),
+      body: file,
+    })
+  );
+}
+
+/** Baixa um arquivo protegido e devolve um endereço local (blob) para exibir ou abrir. */
+export async function hubBlobUrl(backend, path) {
+  const res = await parse(await fetch(BASE + path, { headers: await headers(backend) }));
+  return URL.createObjectURL(await res.blob());
+}

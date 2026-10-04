@@ -84,7 +84,21 @@ const docId = (ctx: Ctx) => {
   if (!ctx.job.document_id) throw new Fatal("Trabalho sem documento.");
   return ctx.job.document_id;
 };
-const setMeta = (ctx: Ctx, meta: Record<string, unknown>) => svc(ctx, "ch_worker_document_meta", { p_document_id: docId(ctx), p_meta: meta });
+const versionScope = (ctx: Ctx) => (ctx.job.scope_key.startsWith("version:") ? ctx.job.scope_key.slice("version:".length) : null);
+/** Situação do documento: trabalho de uma versão só (edição manual) não mexe no documento. */
+const setMeta = async (ctx: Ctx, meta: Record<string, unknown>) => {
+  if (versionScope(ctx) || !ctx.job.document_id) return;
+  await svc(ctx, "ch_worker_document_meta", { p_document_id: ctx.job.document_id, p_meta: meta });
+};
+/** Versões em rascunho a processar: as do documento ou, em trabalho de versão, só aquela. */
+async function targetVersions(ctx: Ctx): Promise<any[]> {
+  const only = versionScope(ctx);
+  if (only) {
+    const v = await svc<any>(ctx, "ch_worker_unit_version", { p_version_id: only });
+    return v && v.status === "draft" ? [v] : [];
+  }
+  return svc<any[]>(ctx, "ch_worker_unit_versions", { p_document_id: docId(ctx) });
+}
 const checkpoint = (ctx: Ctx, data: Record<string, unknown>) => {
   ctx.job.checkpoint = data;
   return svc(ctx, "ch_worker_checkpoint", { p_job_id: ctx.job.id, p_checkpoint: data });
@@ -577,7 +591,7 @@ export function lessonReferences(claims: any[]) {
 
 async function stepMaterials(ctx: Ctx): Promise<Step | null> {
   await setMeta(ctx, { status: "drafting" });
-  const versions = await svc<any[]>(ctx, "ch_worker_unit_versions", { p_document_id: docId(ctx) });
+  const versions = await targetVersions(ctx);
   const model = ctx.deps.ai.provider?.model ?? null;
   const counts: Record<string, number> = {};
   const save = async (version: string, kind: string, content: unknown, byModel: string | null) => {
@@ -642,7 +656,7 @@ async function stepMaterials(ctx: Ctx): Promise<Step | null> {
 async function stepRender(ctx: Ctx): Promise<Step | null> {
   const renderer = ctx.deps.renderer;
   if (!renderer) throw new Blocked("Renderizador de PDF indisponível no servidor (Playwright/Chromium).");
-  const versions = await svc<any[]>(ctx, "ch_worker_unit_versions", { p_document_id: docId(ctx) });
+  const versions = await targetVersions(ctx);
   let rendered = 0;
   let failed = 0;
   for (const v of versions) {
@@ -665,7 +679,7 @@ async function stepRender(ctx: Ctx): Promise<Step | null> {
 }
 
 async function stepReviewCheck(ctx: Ctx): Promise<Step | null> {
-  const versions = await svc<any[]>(ctx, "ch_worker_unit_versions", { p_document_id: docId(ctx) });
+  const versions = await targetVersions(ctx);
   let issues = 0;
   for (let i = ctx.job.checkpoint?.version ?? 0; i < versions.length; i++) {
     const v = versions[i];
@@ -706,7 +720,7 @@ export async function runJob(deps: PipelineDeps, job: Job): Promise<{ status: st
     const next = await STEPS[job.step](ctx);
     ctx.metrics.ms = Date.now() - t0;
     await deps.db.service("ch_worker_finish", { p_job_id: job.id, p_ok: true, p_error: null, p_metrics: ctx.metrics });
-    if (next && job.document_id) await deps.db.service("ch_worker_next", { p_document_id: job.document_id, p_step: next, p_versions: stepVersions(next, deps) });
+    if (next) await deps.db.service("ch_worker_next", { p_document_id: job.document_id, p_step: next, p_versions: stepVersions(next, deps), p_scope_key: job.scope_key });
     deps.log?.(`[central] ${job.step} concluído (${ctx.metrics.ms} ms)`);
     return { status: "succeeded", next };
   } catch (error) {

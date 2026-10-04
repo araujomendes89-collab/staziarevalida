@@ -86,7 +86,8 @@ function Screen() {
   }, [theme]);
 
   if (!ROUTES.has(route)) return <Navigate to="/" replace />;
-  if (route === "admin" && !isStaffRole(boot.role)) return <Navigate to="/" replace />;
+  // equipe (admin/editor) ou revisor médico de alguma área (só a revisão da Central de Conteúdo)
+  if (route === "admin" && !isStaffRole(boot.role) && !boot.reviewer_areas?.length) return <Navigate to="/" replace />;
 
   const go = (next, query) => {
     const target = next === "planos" ? "perfil" : next;
@@ -164,6 +165,7 @@ function Screen() {
         flashcardsDue: boot.flashcards_due,
         onSignOut: () => signOut(),
         isStaff: isStaffRole(boot.role),
+        isReviewer: Boolean(boot.reviewer_areas?.length),
       }}
     >
       {!CONNECTED.has(route) && (
