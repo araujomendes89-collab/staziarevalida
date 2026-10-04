@@ -83,6 +83,23 @@ describe("Camada software — erros plantados", () => {
     expect(hit!.severity).toBe(severity);
   });
 
+  it("explicação em prosa, sem rótulo, não vira falha crítica (formato real de 18 rascunhos): fica como aviso menor", () => {
+    const d = clean();
+    d.alternative_explanations = {
+      A: "A amoxicilina 90 mg/kg/dia por 10 dias é a melhor resposta, pois é a conduta inicial.",
+      B: "A observação isolada não é a conduta em menores de 2 anos.",
+      C: "A azitromicina não é a primeira escolha.",
+      D: "A ceftriaxona fica para falha terapêutica.",
+    };
+    const found = softwareChecks(d, { officialFiles: official });
+    expect(found.map((f) => f.code)).toEqual(["explanation_unlabeled"]);
+    expect(found[0].severity).toBe("minor");
+    expect(verdictOf(found)).toBe("issues");
+    // 'Adequada/Inadequada' também são rótulos
+    d.alternative_explanations = { A: "Adequada. Conduta inicial.", B: "Inadequada. Não indicada.", C: "Inadequada. Não indicada.", D: "Inadequada. Não indicada." };
+    expect(softwareChecks(d, { officialFiles: official })).toEqual([]);
+  });
+
   it("número que está no enunciado ou na tabela de apoio não é apontado", () => {
     const d = clean();
     d.stem += " Peso de 8 kg.";

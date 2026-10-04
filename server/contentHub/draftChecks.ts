@@ -77,12 +77,15 @@ export function softwareChecks(d: DraftRow, opts: { referenceTexts?: Record<stri
 
   // 1. resposta única e explicações coerentes
   const exp = d.alternative_explanations ?? {};
-  const markedCorrect = LETTERS.filter((l) => /^\s*corret[ao]\b/i.test(exp[l] ?? ""));
-  const markedWrong = LETTERS.filter((l) => /^\s*incorret[ao]\b/i.test(exp[l] ?? ""));
+  const markedCorrect = LETTERS.filter((l) => /^\s*(corret[ao]|adequad[ao])\b/i.test(exp[l] ?? ""));
+  const markedWrong = LETTERS.filter((l) => /^\s*(incorret[ao]|inadequad[ao])\b/i.test(exp[l] ?? ""));
   if (LETTERS.some((l) => !normalize(exp[l] ?? ""))) add("major", "explanation_missing", "Falta a explicação de pelo menos uma alternativa.");
-  if (markedCorrect.length !== 1) add("critical", "single_answer", `A explicação marca ${markedCorrect.length} alternativa(s) como correta(s) (${markedCorrect.join(", ") || "nenhuma"}); precisa ser exatamente uma.`);
+  if (markedCorrect.length + markedWrong.length === 0) {
+    // o gerador escreveu as explicações em prosa, sem rótulo: a regra não consegue conferir, e isso não é erro do conteúdo
+    add("minor", "explanation_unlabeled", "As explicações não usam o rótulo 'Correta/Incorreta': a coerência entre gabarito e explicação precisa ser conferida pelo revisor.");
+  } else if (markedCorrect.length !== 1) add("critical", "single_answer", `A explicação marca ${markedCorrect.length} alternativa(s) como correta(s) (${markedCorrect.join(", ") || "nenhuma"}); precisa ser exatamente uma.`);
   else if (markedCorrect[0] !== d.correct_answer) add("critical", "answer_mismatch", `O gabarito é ${d.correct_answer}, mas a explicação marca ${markedCorrect[0]} como a correta.`);
-  if (markedCorrect.length + markedWrong.length === 4 && markedWrong.length !== 3) add("major", "explanation_labels", "As explicações não dizem 'Incorreta' nas três alternativas erradas.");
+  if (markedCorrect.length === 1 && markedCorrect.length + markedWrong.length === 4 && markedWrong.length !== 3) add("major", "explanation_labels", "As explicações não dizem 'Incorreta' nas três alternativas erradas.");
 
   // 2. alternativas repetidas
   const seen = new Map<string, string>();
