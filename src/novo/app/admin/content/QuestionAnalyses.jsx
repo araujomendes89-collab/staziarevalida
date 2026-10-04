@@ -148,6 +148,28 @@ function Knowledge({ questionId }) {
   );
 }
 
+/** Como os alunos responderam cada alternativa (só com 5+ alunos): mostra qual distrator mais atrai. */
+function DistractorStats({ questionId }) {
+  const { backend } = useSession();
+  const { data } = useLoad(() => backend.rpc("app_distractor_stats", { p_question_id: questionId }), [backend, questionId]);
+  if (!data) return null;
+  return (
+    <>
+      <Label>Como os alunos responderam</Label>
+      {!data.enough ? (
+        <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{data.students} aluno(s) responderam: são precisos pelo menos 5 para mostrar a distribuição.</span>
+      ) : (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {data.options.map((o) => (
+            <Badge key={o.option_id} size="sm" tone={o.correct ? "success" : "neutral"}>{o.option_id}: {Math.round(o.share * 100)}% ({o.count})</Badge>
+          ))}
+          <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{data.students} alunos</span>
+        </div>
+      )}
+    </>
+  );
+}
+
 function Analysis({ item: a, onChanged }) {
   const { backend } = useSession();
   const [open, setOpen] = React.useState(false);
@@ -209,6 +231,7 @@ function Analysis({ item: a, onChanged }) {
           <Pre>{a.trap}</Pre>
           <Pre tone="brand">{a.golden_rule}</Pre>
           <Knowledge questionId={a.question_id} />
+          <DistractorStats questionId={a.question_id} />
           <Label>Atualidade</Label>
           <Badge size="sm" tone="warning">{TEMPORAL[a.temporal_status] ?? a.temporal_status}</Badge>
           <Label>Conferências</Label>

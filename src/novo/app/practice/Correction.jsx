@@ -4,6 +4,8 @@ import React from "react";
 import { Badge, Button, Icon } from "../../ds";
 import { FlashcardForm } from "../review/FlashcardForm.jsx";
 import { QuestionCommentary, useCommentary } from "./QuestionCommentary.jsx";
+import { useSession } from "../session.jsx";
+import { ERROR_TYPE, KIND_LABEL } from "./diagnosisLabels.js";
 
 export function Verdict({ selected, correction }) {
   const blank = selected == null;
@@ -18,6 +20,35 @@ export function Verdict({ selected, correction }) {
     <div style={{ padding: 16, borderRadius: 16, background: `var(--${tone}-bg)`, border: `1px solid var(--${tone}-border)`, display: "flex", gap: 12, alignItems: "center" }}>
       <Icon name={blank ? "circle-minus" : ok ? "circle-check" : "circle-x"} size={22} style={{ color: `var(--${tone}-text)`, flex: "none" }} />
       <div style={{ font: "600 15px var(--font-sans)" }}>{text}</div>
+    </div>
+  );
+}
+
+/** Diagnóstico do erro: só aparece para quem errou, e só com o que a análise revisada por médico diz da alternativa marcada. */
+function ErrorDiagnosis({ questionId }) {
+  const { backend } = useSession();
+  const [d, setD] = React.useState(null);
+  React.useEffect(() => {
+    let alive = true;
+    backend.rpc("app_attempt_diagnosis", { p_question_id: questionId }).then((r) => alive && setD(r), () => alive && setD(null));
+    return () => {
+      alive = false;
+    };
+  }, [backend, questionId]);
+  if (!d || (!d.diagnosed && !d.repeated_same_option)) return null;
+  return (
+    <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", fontSize: 14, display: "grid", gap: 8 }}>
+      <b>Diagnóstico do seu erro</b>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {d.distractor_kind && <Badge size="sm" tone={d.distractor_kind === "TRUE_BUT_NOT_BEST" ? "warning" : "neutral"}>{KIND_LABEL[d.distractor_kind] ?? d.distractor_kind}</Badge>}
+        {d.error_types.map((t) => (
+          <Badge key={t} size="sm" tone="warning">{ERROR_TYPE[t] ?? t}</Badge>
+        ))}
+        {d.repeated_same_option && <Badge size="sm" tone="danger">você já marcou esta mesma alternativa {d.same_option_times} vezes</Badge>}
+        {d.confidence === 3 && <Badge size="sm" tone="danger">você tinha certeza</Badge>}
+      </div>
+      {d.trap && <div><i>Armadilha:</i> {d.trap}</div>}
+      {d.concept_difference && <div style={{ color: "var(--text-secondary)" }}><i>O que diferencia:</i> {d.concept_difference}</div>}
     </div>
   );
 }
@@ -67,6 +98,7 @@ export function Correction({ selected, correction, question }) {
           <p style={{ margin: "8px 0 0", fontSize: 15, lineHeight: 1.6 }}>{correction.explanation}</p>
         </div>
       )}
+      {question && correction.is_correct === false && selected != null && <ErrorDiagnosis questionId={question.id} />}
       <QuestionCommentary commentary={commentary} />
       {!commentary && correction.option_notes?.length > 0 && (
         <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", fontSize: 14, display: "flex", flexDirection: "column", gap: 8 }}>

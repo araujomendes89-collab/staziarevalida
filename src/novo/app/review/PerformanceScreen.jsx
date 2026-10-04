@@ -6,6 +6,7 @@ import { Banner, Button, Card, EmptyState, ProgressBar, SegmentedControl, StatCa
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { areaLabel, areaOf, formatClock, percent } from "../practice/format.js";
+import { ErrorProfile } from "./ErrorProfile.jsx";
 
 const R = { borderRadius: 24 };
 const PERIODS = [
@@ -173,6 +174,7 @@ export function PerformanceScreen({ go }) {
           })}
         </div>
       </Card>
+      <ErrorProfile go={go} days={days} />
     </>
   );
 }
