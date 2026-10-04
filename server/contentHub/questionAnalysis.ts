@@ -65,7 +65,7 @@ const LETTERS = ["A", "B", "C", "D"];
 const LAZY = /(as\s+demais\s+(alternativas\s+)?(est[ãa]o|s[ãa]o)\s+(incorretas|erradas|falsas))|(demais\s+(alternativas\s+)?incorretas)|(as\s+outras\s+(est[ãa]o|s[ãa]o)\s+(incorretas|erradas))/i;
 const REFERENCE = /(portaria|pcdt|nota\s+t[ée]cnica|resolu[çc][ãa]o|diretriz[^.]{0,40}20\d\d|doi\s*:|10\.\d{4,}\/|https?:\/\/|www\.)/i;
 const CURRENCY = /\b(atualmente|hoje em dia|hoje\b|vigente|em vigor|desde\s+20\d\d|a partir de\s+20\d\d|nova\s+diretriz|recomenda[çc][ãa]o\s+atual)\b/i;
-const CHALLENGE = /(gabarito[^.]{0,60}(est[áa]\s+errado|incorret|desatualizad|question[áa]vel|discut[ií]vel|deveria\s+ser)|banca\s+(errou|se\s+equivocou)|quest[ãa]o\s+(mal\s+formulada|anul[áa]vel))/i;
+export const CHALLENGE = /(gabarito[^.]{0,60}(est[áa]\s+errado|incorret|desatualizad|question[áa]vel|discut[ií]vel|deveria\s+ser)|banca\s+(errou|se\s+equivocou)|quest[ãa]o\s+(mal\s+formulada|anul[áa]vel))/i;
 
 function analysisTexts(a: Analysis) {
   return [

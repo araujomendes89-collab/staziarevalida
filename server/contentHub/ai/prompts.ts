@@ -393,6 +393,47 @@ REGRAS:
       },
     } as Schema,
   },
+  qreanalysis: {
+    id: "qreanalysis",
+    version: "1.0.0",
+    system: `${GUARD}
+Você é professor de medicina e AVALIA O IMPACTO de uma mudança de fonte oficial sobre UMA questão histórica de prova (Revalida/ENAMED).
+Você recebe a questão, o gabarito oficial, a análise anterior e, para cada mudança, o trecho ANTIGO e o trecho NOVO da fonte (com título, órgão, versão e data).
+Sua resposta é uma PROPOSTA para um revisor médico. Ela nunca é publicada por você.
+REGRAS:
+1. O GABARITO OFICIAL da prova é um fato histórico e imutável. Nunca o conteste, nunca escreva que "está errado" ou que "a banca errou".
+   Se a conduta atual difere dele, diga que o gabarito oficial da prova permanece e que a conduta ATUAL conferida seria outra.
+2. Use SOMENTE os trechos fornecidos. Não use memória sobre diretrizes, não cite documento que não esteja nos trechos e não invente doses, cortes, prazos ou datas.
+3. "citations": cada item traz "ref" (o "ref" do trecho, ex.: "M1.novo") e "quote" (cópia EXATA de um pedaço do trecho). Sem citação exata, não afirme.
+4. "current_answer": só use A–D quando o trecho NOVO decide a questão com clareza, e cite o trecho novo. Em dúvida, use NONE e INCONCLUSIVE.
+5. "assessment": UPDATED_BUT_SAME_ANSWER (a conduta mudou em detalhe, mas a resposta oficial continua a melhor), PARTIALLY_OUTDATED, OUTDATED_EXPLANATION (só a explicação ficou desatualizada),
+   OFFICIAL_ANSWER_DIFFERS_FROM_CURRENT, NO_CURRENT_VALID_OPTION, CURRENTLY_AMBIGUOUS, MAJOR_GUIDELINE_CHANGE ou INCONCLUSIVE (não dá para concluir com os trechos).
+6. "options_affected": só as alternativas cuja análise muda, com uma nota curta. "what_changed" descreve, em português claro, o que mudou entre o trecho antigo e o novo.
+7. Escreva com palavras suas, de forma objetiva.`,
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      required: ["assessment", "impact_level", "current_answer", "what_changed", "why_it_matters", "options_affected", "citations", "confidence"],
+      properties: {
+        assessment: { type: "string", enum: ["UPDATED_BUT_SAME_ANSWER", "PARTIALLY_OUTDATED", "OUTDATED_EXPLANATION", "OFFICIAL_ANSWER_DIFFERS_FROM_CURRENT", "NO_CURRENT_VALID_OPTION", "CURRENTLY_AMBIGUOUS", "MAJOR_GUIDELINE_CHANGE", "INCONCLUSIVE"] },
+        impact_level: { type: "string", enum: ["NO_IMPACT", "COMMENT_ONLY", "RATIONALE_CHANGED", "DISTRACTOR_CHANGED", "CURRENT_ANSWER_CHANGED", "NO_VALID_ALTERNATIVE", "MAJOR_CHANGE"] },
+        current_answer: { type: "string", enum: ["A", "B", "C", "D", "NONE"] },
+        what_changed: { type: "string", minLength: 20, maxLength: 700 },
+        why_it_matters: { type: "string", maxLength: 500 },
+        options_affected: {
+          type: "array",
+          maxItems: 4,
+          items: { type: "object", additionalProperties: false, required: ["option_id", "note"], properties: { option_id: { type: "string", enum: ["A", "B", "C", "D"] }, note: { type: "string", minLength: 5, maxLength: 300 } } },
+        },
+        citations: {
+          type: "array",
+          maxItems: 6,
+          items: { type: "object", additionalProperties: false, required: ["ref", "quote"], properties: { ref: { type: "string", maxLength: 40 }, quote: { type: "string", minLength: 8, maxLength: 400 } } },
+        },
+        confidence: { type: "integer", minimum: 0, maximum: 100 },
+      },
+    } as Schema,
+  },
 } as const;
 
 export type PromptKey = keyof typeof PROMPTS;

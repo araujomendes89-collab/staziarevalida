@@ -107,7 +107,7 @@ O criador e o conferente são de famílias de modelo diferentes (regra já imple
 | **1** | gabarito oficial com histórico, trilha de mudanças, análise da questão e de cada alternativa, comentário versionado, conferência por software | **pronta** (nenhuma análise gerada ainda) |
 | **2** | `question_claims`, integração com o Knowledge Core, citações, impacto seletivo | **pronta** (1.117 afirmações ligadas às questões; 0 com evidência oficial, pois não há acervo) |
 | **3** | Source Registry ampliado, Watcher com diff, Claim Impact | **pronta** (comparação de conteúdo, triagem por afirmação, frescor; só exercitada com fontes sintéticas) |
-| 4 | reanálise automática, gabarito histórico × atual, cartão de atualização, linha do tempo | pendente |
+| **4** | reanálise seletiva, gabarito histórico × atual, cartão de atualização, linha do tempo | **pronta** (fluxo completo testado com fonte e IA simuladas; nada real publicado) |
 | 5 | diagnóstico do erro do aluno, reforço adaptativo, questões novas | pendente |
 
 ## 7. Critério de aceitação (item 106)
@@ -160,3 +160,34 @@ isso **não** devolve validade a nenhuma evidência.
 **Limites.** A comparação não entende medicina: sinônimos, reordenação de capítulos e mudanças de sentido sem mudança de
 número ou negação podem cair em "redação" ou "reescrito". Por isso tudo termina em revisão humana. Tabelas e linhas curtas de
 páginas HTML não entram na comparação. Sem acervo oficial cadastrado, tudo isto só foi exercitado com fontes sintéticas.
+
+## 9. Fase 4 — da mudança de fonte ao cartão do aluno (migração `2600_sqie_updates`)
+
+```
+mudança de conteúdo relevante (fase 3: número, negação, trecho reescrito ou removido)
+   → reanálise SELETIVA (questionReanalysis.ts): a IA recebe trecho antigo + novo e devolve uma PROPOSTA
+   → conferência por software da proposta (citação exata, número só do texto, sem contestar o gabarito, resposta atual só com trecho novo citado)
+   → fila do revisor médico DA ÁREA (app_question_updates_queue)
+   → decisão: publicar cartão | "a conduta não mudou" | descartar proposta
+   → cartão versionado (question_update_cards) + atualidade da análise + selo
+```
+
+- **Quem gasta IA:** só questões com mudança relevante e sem proposta. Trecho idêntico, só forma ou redação não gastam IA.
+  Comando: `scripts/content-hub/run-question-reanalysis.ts` (`--dry-run` estima; `--allow-external` autoriza o envio).
+- **A IA só propõe.** A proposta fica em `question_updates.proposal`; não muda impacto, atualidade nem o que o aluno vê.
+- **Evidência pronta** (`question_evidence_ready`): toda afirmação que a questão exige precisa ter evidência compatível,
+  não substituída, **conferida por pessoa**, em fonte oficial A–D, documento final e vigente. Sem isso, o revisor não
+  publica cartão, não marca "sem mudança" e não confirma atualidade.
+- **Gabarito histórico × atual.** O cartão guarda o gabarito oficial da prova (como era) ao lado da conduta atual conferida,
+  com fonte, versão, data de vigência e data da conferência. O gabarito oficial nunca é alterado por este fluxo.
+  "Difere do gabarito" exige uma alternativa atual diferente da oficial; "mesma resposta" exige igual; ambígua/sem alternativa não aceita resposta.
+- **Cartão é histórico:** não se edita nem se apaga; nova decisão cria a versão seguinte e marca a anterior como substituída.
+- **Selo "Atualizada":** só com atualidade conferida por revisor da área **e** evidência pronta agora. Se a fonte muda de novo, o
+  selo some e o aluno vê "atualização em revisão" (a última conduta revisada continua à vista, sem trocar nada em silêncio).
+- **Linha do tempo** (`app_question_timeline`): o aluno vê gabarito oficial, análise publicada e cartões; a equipe vê também alertas
+  de mudança e edições da questão. Só depois de responder a questão.
+- **Confirmação inicial de atualidade** (`app_question_confirm_currency`): o revisor confirma a análise contra evidência pronta, sem mudança de fonte.
+
+**Limites.** O conferente independente (outra família de modelo) ainda não existe para as propostas; hoje a barreira é o software + o revisor.
+Uma nova versão de fonte cadastrada começa sem nível de autoridade (informar no cadastro): sem nível, ela não vale como evidência.
+Tudo foi exercitado com fontes e IA simuladas; sem acervo oficial real não há cartão publicado.

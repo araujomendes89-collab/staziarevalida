@@ -5,6 +5,7 @@ import { Badge, Banner, Button, EmptyState, SegmentedControl, SelectField } from
 import { useSession } from "../../session.jsx";
 import { LoadError, Loading, TextArea, useLoad } from "../common.jsx";
 import { AREA_LABEL } from "./labels.js";
+import { UpdateQueue } from "./UpdateQueue.jsx";
 import { Label, Pre, Section, useAction, when } from "./ui.jsx";
 
 const PAGE = 15;
@@ -38,9 +39,10 @@ export function QuestionAnalyses({ reviewerAreas }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Banner tone="info" icon="shield-check" title="Gabarito oficial preservado">
-        O gabarito de cada prova é registro histórico e não é alterado aqui. A análise explica as quatro alternativas e só chega ao aluno depois que um revisor médico da área a aprova. "Atualidade" depende de fonte oficial vigente e fica como "não conferida" até existir acervo.
+        O gabarito de cada prova é registro histórico e não é alterado aqui. A análise explica as quatro alternativas e só chega ao aluno depois que um revisor médico da área a aprova. "Atualidade" depende de fonte oficial vigente conferida por pessoa e fica como "não conferida" até existir acervo.
       </Banner>
       <UpdateAlerts />
+      <UpdateQueue reviewerAreas={reviewerAreas} />
       <Section title="Andamento">
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Badge>{s.analyzed} de {s.questions} questões analisadas</Badge>
@@ -96,6 +98,8 @@ function UpdateAlerts() {
           <Badge key={k} tone={k === "NO_IMPACT" ? "neutral" : k === "COMMENT_ONLY" ? "warning" : "danger"}>{n} questão(ões): {IMPACT[k] ?? k}</Badge>
         ))}
         {data.critical_open > 0 && <Badge tone="danger">{data.critical_open} com mudança crítica (número, negação ou trecho removido)</Badge>}
+        {data.with_proposal > 0 && <Badge tone="info">{data.with_proposal} com proposta da IA aguardando decisão</Badge>}
+        {data.cards_published > 0 && <Badge tone="success">{data.cards_published} cartão(ões) de atualização publicado(s)</Badge>}
         {data.with_content_diff > 0 && <Badge tone="info">{data.with_content_diff} já triadas pela comparação de conteúdo</Badge>}
       </div>
       {data.claims_with_official_evidence === 0 && (
