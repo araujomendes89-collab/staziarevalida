@@ -13,7 +13,8 @@ import type { StructuredRequest } from "../../server/contentHub/ai/provider";
 import { buildEngineStatements } from "../../scripts/supabase/engine-seed";
 import { adaptiveAdjust, effectiveParams, personalityLayer, profanityLevel, type PersonalityParams } from "../../server/tutor/personality";
 import { fallbackReply, safetyCheck, spokenText, type BaseBlock, type SafetyContext } from "../../server/tutor/safety";
-import { sourceQuery, tutorTurn, TutorError } from "../../server/tutor/engine";
+import { resolveTutorProvider, sourceQuery, tutorTurn, TutorError } from "../../server/tutor/engine";
+import { resolveCreatorProvider } from "../../server/contentHub/ai/provider";
 import { TUTOR_CORE, TUTOR_PROMPT_LAYERS, type TutorOutput } from "../../server/tutor/prompts";
 import { tutorMockRespond } from "../../server/tutor/mock";
 import { createTutorRouter } from "../../server/tutor/router";
@@ -554,6 +555,24 @@ describe("Banco e motor (IA simulada)", () => {
         expect((await r.json()).error).toBe("Tutor sem banco configurado.");
       } finally {
         await new Promise((r) => srv2.close(r));
+      }
+    });
+
+    it("IA de verdade só com o consentimento próprio do Tutor: a chave da Central de Conteúdo não vale de carona", async () => {
+      const keep = { ...process.env };
+      try {
+        Object.assign(process.env, { TUTOR_AI_PROVIDER: "anthropic", ANTHROPIC_API_KEY: "chave-de-teste", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1" });
+        delete process.env.TUTOR_AI_ALLOW_EXTERNAL;
+        expect(resolveTutorProvider().status).toMatchObject({ ready: false, pending: expect.stringMatching(/TUTOR_AI_ALLOW_EXTERNAL=1/) });
+        await expect(turn(() => reply("oi"), { type: "message", text: "oi" })).rejects.toMatchObject({ status: 503, message: "O Tutor está indisponível no momento." });
+        process.env.TUTOR_AI_ALLOW_EXTERNAL = "1";
+        expect(resolveTutorProvider().status).toMatchObject({ ready: true, provider: "anthropic", isMock: false });
+        // e o contrário: autorizar o Tutor não autoriza a Central
+        delete process.env.CONTENT_HUB_AI_ALLOW_EXTERNAL;
+        expect(resolveCreatorProvider().status.ready).toBe(false);
+      } finally {
+        for (const k of Object.keys(process.env)) if (!(k in keep)) delete process.env[k];
+        Object.assign(process.env, keep);
       }
     });
 

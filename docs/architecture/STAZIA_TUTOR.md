@@ -118,11 +118,17 @@ Tutor. **Não há previsão de aprovação**: não existe base para isso. A mem�
 
 ## 7. Custo, limites e chaves
 
-- Cada fala do aluno é **uma chamada de IA** (duas quando a primeira resposta é barrada). Estimativa, **não medida**: cerca de US$ 0,01 a 0,02 por mensagem
-  com os preços configurados hoje no servidor. Com o limite padrão de 40 mensagens por aluno por dia, o teto fica perto de US$ 0,60 por aluno por dia.
+- Cada fala do aluno é **uma chamada de IA** (duas quando a primeira resposta é barrada). **Medido em 2026-10-04** com `scripts/tutor/preflight.ts`
+  (3 falas, claude-sonnet-5-5, preços configurados no servidor): US$ 0,029 no total, cerca de **US$ 0,01 por fala**, 3,5 a 5,6 segundos por resposta.
+  É uma amostra pequena. Com o limite padrão de 40 mensagens por aluno por dia, o teto fica perto de US$ 0,40 a 0,80 por aluno por dia.
 - `tutor_config`: ligado/desligado, só planos pagos, mensagens por dia, teto de palavrões, voz. Só administrador muda, com motivo, e fica no registro.
 - Servidor: `TUTOR_AI_PROVIDER` (padrão anthropic), `TUTOR_MODEL` (opcional), `TUTOR_ENABLED=false` desliga no servidor. O Tutor respeita o sinalizador
-  `ai_enabled` da Central de Conteúdo e exige `CONTENT_HUB_AI_ALLOW_EXTERNAL=1`, porque a fala do aluno é enviada ao provedor de IA.
+  `ai_enabled` e exige **`TUTOR_AI_ALLOW_EXTERNAL=1`**, porque a fala do aluno é enviada ao provedor de IA. Esse consentimento é só do Tutor:
+  ligá-lo **não** autoriza o envio de documentos da Central de Conteúdo (`CONTENT_HUB_AI_ALLOW_EXTERNAL`), e vice-versa.
+- **Conferir antes de ligar:** `npx tsx scripts/tutor/preflight.ts --allow-external` faz 3 conversas curtas com a IA de verdade num banco temporário
+  (não toca no Supabase) e mostra as respostas, o que a validação barrou e o custo.
+
+**Estado em 2026-10-04:** ligado no Supabase, **só para planos pagos**; hoje só a conta do administrador tem acesso (não há assinatura paga ativa).
 
 ## 8. Cobertura da especificação (itens 1–58)
 

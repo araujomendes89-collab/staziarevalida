@@ -62,9 +62,17 @@ interface Passage {
   source: string; organ: string; version: string | null; page: number | null; section: string | null; text: string;
 }
 
+/**
+ * Provedor do Tutor. O consentimento para enviar a fala do aluno ao provedor de IA é próprio do Tutor (TUTOR_AI_ALLOW_EXTERNAL=1):
+ * ligar o Tutor não autoriza, de carona, o envio de documentos da Central de Conteúdo, e vice-versa.
+ */
 export function resolveTutorProvider(mockRespond?: (req: StructuredRequest) => unknown) {
   const env = process.env;
-  return withFallback(resolveProviderKind((env.TUTOR_AI_PROVIDER || "anthropic").trim(), mockRespond, env.TUTOR_MODEL), mockRespond);
+  const opts = {
+    allowExternal: env.TUTOR_AI_ALLOW_EXTERNAL === "1",
+    allowHint: "Envio da fala do aluno ao provedor de IA não autorizado: defina TUTOR_AI_ALLOW_EXTERNAL=1 no servidor depois de aprovar o uso.",
+  };
+  return withFallback(resolveProviderKind((env.TUTOR_AI_PROVIDER || "anthropic").trim(), mockRespond, env.TUTOR_MODEL, opts), mockRespond, undefined, opts);
 }
 
 const STATE_PT: Record<string, string> = { open: "aberta", answered: "respondida", revealed: "revelada", none: "sem questão" };

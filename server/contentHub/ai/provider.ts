@@ -162,7 +162,14 @@ export function familyOfModel(model: string | null | undefined): string {
 }
 
 /** Escolhe o provedor para um tipo ("anthropic", "gemini", "mock"). Devolve o motivo quando não há como usar IA. */
-export function resolveProviderKind(kind: string, mockRespond?: (req: StructuredRequest) => unknown, modelOverride?: string): { provider: AiProvider | null; status: AiStatus } {
+export interface ResolveOptions {
+  /** Autorização de envio ao provedor externo decidida por quem chama (ex.: o Tutor tem a sua própria chave de consentimento). */
+  allowExternal?: boolean;
+  /** Como autorizar, na mensagem de pendência. */
+  allowHint?: string;
+}
+
+export function resolveProviderKind(kind: string, mockRespond?: (req: StructuredRequest) => unknown, modelOverride?: string, opts: ResolveOptions = {}): { provider: AiProvider | null; status: AiStatus } {
   const production = process.env.NODE_ENV === "production";
   const pending = (why: string) => ({ provider: null, status: { ready: false, provider: kind || null, model: null, isMock: false, pending: why } });
 
@@ -173,8 +180,8 @@ export function resolveProviderKind(kind: string, mockRespond?: (req: Structured
     const p = new MockProvider(mockRespond);
     return { provider: p, status: { ready: true, provider: p.name, model: p.model, isMock: true, pending: null } };
   }
-  if (process.env.CONTENT_HUB_AI_ALLOW_EXTERNAL !== "1") {
-    return pending("Envio de trechos dos documentos a um provedor externo não autorizado: defina CONTENT_HUB_AI_ALLOW_EXTERNAL=1 depois de aprovar o uso.");
+  if (!(opts.allowExternal ?? process.env.CONTENT_HUB_AI_ALLOW_EXTERNAL === "1")) {
+    return pending(opts.allowHint ?? "Envio de trechos dos documentos a um provedor externo não autorizado: defina CONTENT_HUB_AI_ALLOW_EXTERNAL=1 depois de aprovar o uso.");
   }
   if (kind === "anthropic") {
     const key = (process.env.ANTHROPIC_API_KEY ?? "").trim();
@@ -212,10 +219,10 @@ export function resolveCreatorProvider(mockRespond?: (req: StructuredRequest) =>
 }
 
 /** Acrescenta o secundário (CONTENT_HUB_AI_FALLBACK_PROVIDER) quando os dois estão prontos; senão devolve o principal como está. */
-export function withFallback(primary: { provider: AiProvider | null; status: AiStatus }, mockRespond?: (req: StructuredRequest) => unknown, guard?: (secondary: AiProvider) => string | null) {
+export function withFallback(primary: { provider: AiProvider | null; status: AiStatus }, mockRespond?: (req: StructuredRequest) => unknown, guard?: (secondary: AiProvider) => string | null, opts: ResolveOptions = {}) {
   const kind = (process.env.CONTENT_HUB_AI_FALLBACK_PROVIDER ?? "").trim();
   if (!kind || !primary.provider) return primary;
-  const sec = resolveProviderKind(kind, mockRespond);
+  const sec = resolveProviderKind(kind, mockRespond, undefined, opts);
   if (!sec.provider || sec.provider.name === primary.provider.name) return primary;
   if (guard?.(sec.provider)) return primary;       // o secundário não passa na regra de independência: não entra
   const p = new FallbackProvider(primary.provider, sec.provider, { onFallback: (i) => console.warn(`[central] IA principal falhou (${i.error}); usando ${i.to}.`) });
