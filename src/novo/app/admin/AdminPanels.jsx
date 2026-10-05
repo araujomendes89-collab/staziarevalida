@@ -302,6 +302,93 @@ export function AdminSettings() {
   );
 }
 
+// ---------------------------------------------------------------- Stazia Tutor
+const PROFANITY_CAP = [
+  { value: "off", label: "Desativados para todos" },
+  { value: "mild", label: "Até leves" },
+  { value: "moderate", label: "Até moderados" },
+];
+
+/** Liga e desliga o Tutor, define o limite por aluno e mostra o consumo. Toda mudança pede motivo e vai para o registro. */
+export function AdminTutor() {
+  const { backend } = useSession();
+  const { data, error, reload, setData } = useLoad(() => backend.rpc("app_admin_tutor_config"), [backend]);
+  const [form, setForm] = React.useState(null);
+  const [reason, setReason] = React.useState("");
+  const [server, setServer] = React.useState(null);
+  const [state, setState] = React.useState({ saving: false, error: null, done: false });
+  React.useEffect(() => {
+    if (data) setForm({ enabled: data.enabled, requires_pro: data.requires_pro, daily_message_limit: String(data.daily_message_limit), max_profanity: data.max_profanity, voice_enabled: data.voice_enabled });
+  }, [data]);
+  React.useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const token = backend.accessToken ? await backend.accessToken() : null;
+        if (!token) return;
+        const res = await fetch("/api/tutor/status", { headers: { Authorization: `Bearer ${token}` } });
+        if (alive && res.ok) setServer(await res.json());
+      } catch {
+        // servidor indisponível: o painel segue sem a situação da IA
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [backend]);
+  if (error) return <LoadError error={error} retry={reload} />;
+  if (!form) return <Loading />;
+  const set = (patch) => (setForm((f) => ({ ...f, ...patch })), setState((s) => ({ ...s, done: false })));
+  const save = async (event) => {
+    event.preventDefault();
+    setState({ saving: true, error: null, done: false });
+    try {
+      setData(await backend.rpc("app_admin_tutor_save_config", { p_config: { ...form, daily_message_limit: form.daily_message_limit.trim() }, p_reason: reason }));
+      setReason("");
+      setState({ saving: false, error: null, done: true });
+    } catch (err) {
+      setState({ saving: false, error: messageOf(err), done: false });
+    }
+  };
+  const u = data.usage_30d;
+  return (
+    <form onSubmit={save} noValidate>
+      <Card>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Stazia Tutor</h3>
+          <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+            Cada mensagem do aluno é uma chamada de IA paga. O Tutor nasce desligado. A fala do aluno é enviada ao provedor de IA configurado no servidor.
+          </p>
+          {server && (
+            <Banner tone={server.ready ? (server.simulated ? "warning" : "success") : "warning"}>
+              {server.ready ? (server.simulated ? "IA em modo de SIMULAÇÃO (desenvolvimento): as respostas não são de IA." : `IA pronta no servidor: ${server.provider} (${server.model}).`) : `IA ainda não configurada no servidor: ${server.pending ?? "sem detalhe"}`}
+            </Banner>
+          )}
+          <Switch label="Tutor ligado" description="Desligado: os alunos veem que o Tutor ainda não está no ar." checked={form.enabled} onChange={(e) => set({ enabled: e.target.checked })} />
+          <Switch label="Só para planos pagos" description="Ligado: quem está no teste grátis vê o convite para assinar." checked={form.requires_pro} onChange={(e) => set({ requires_pro: e.target.checked })} />
+          <Switch label="Conversa por voz" description="O aluno fala e ouve o professor no próprio aparelho (voz do navegador, sem custo extra de IA)." checked={form.voice_enabled} onChange={(e) => set({ voice_enabled: e.target.checked })} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+            <TextField label="Mensagens por aluno por dia" value={form.daily_message_limit} inputMode="numeric" maxLength={3} onChange={(e) => set({ daily_message_limit: e.target.value })} hint="De 1 a 500. É o teto de gasto por aluno." />
+            <SelectField label="Palavrões (Professor Xingão)" value={form.max_profanity} onChange={(e) => set({ max_profanity: e.target.value })} options={PROFANITY_CAP} />
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Badge>{u.requests} mensagens em 30 dias</Badge>
+            <Badge>{u.students} aluno(s)</Badge>
+            <Badge>{Number(u.cost_usd) > 0 ? `US$ ${Number(u.cost_usd).toFixed(2)}` : "custo não medido"}</Badge>
+            <Badge>{data.sessions} conversa(s)</Badge>
+          </div>
+          <TextField label="Motivo da mudança (obrigatório, fica no registro)" value={reason} onChange={(e) => setReason(e.target.value)} />
+          {state.error && <Banner tone="danger">{state.error}</Banner>}
+          <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
+            {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Tutor atualizado.</span>}
+            <Button type="submit" loading={state.saving} disabled={reason.trim().length < 10}>Salvar Tutor</Button>
+          </div>
+        </div>
+      </Card>
+    </form>
+  );
+}
+
 // ---------------------------------------------------------------- registro
 const ACTION_LABEL = {
   "user.role": "Papel alterado",
@@ -313,6 +400,7 @@ const ACTION_LABEL = {
   "station.review": "Revisão de estação",
   "plan.save": "Plano editado",
   "settings.save": "Configurações salvas",
+  "tutor.config": "Tutor configurado",
 };
 
 function summary(entry) {

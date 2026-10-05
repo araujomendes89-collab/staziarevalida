@@ -7,7 +7,7 @@ import { Banner, Button, EmptyState, SegmentedControl } from "../ds";
 import { AppShell, useMobile } from "./Shell.jsx";
 import { AuthFlow } from "./AuthScreens.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
-import { Tutor } from "../prototype/More.jsx";
+import { TutorScreen } from "./tutor/TutorScreen.jsx";
 import { Aulas, Materiais } from "../prototype/Study1.jsx";
 import { Home2, Stations, Station, Peps, Perf2, SimPatient } from "../prototype/Phase2.jsx";
 import { Pair } from "../prototype/Match.jsx";
@@ -36,7 +36,7 @@ const TITLES = {
   erros: ["Caderno de erros", "Revisar"],
   plano: ["Planejamento", "Cronograma até a prova"],
   desempenho: ["Desempenho", "Seus dados reais"],
-  tutor: ["Tutor IA", "Discussão clínica socrática"],
+  tutor: ["Stazia Tutor", "Seu professor, do seu jeito"],
   perfil: ["Conta", "Dados, segurança e privacidade"],
   teoria2: ["Teoria para a prática", "Esqueletos, documentos médicos e protocolos aplicados às estações"],
   estacoes: ["Banco de estações", "Estações nas 5 grandes áreas"],
@@ -120,7 +120,7 @@ function Screen() {
   else if (route === "erros") body = <ErrorNotebook go={go} />;
   else if (route === "plano") body = <PlanningScreen go={go} />;
   else if (route === "desempenho") body = <PerformanceScreen go={go} />;
-  else if (route === "tutor") body = <Tutor go={go} />;
+  else if (route === "tutor") body = <TutorScreen go={go} />;
   else if (route === "home2") body = <Home2 go={go} data={data} mobile={mobile} />;
   else if (route === "estacoes") body = <Stations go={go} />;
   else if (route === "teoria2") body = <Theory2 go={go} />;

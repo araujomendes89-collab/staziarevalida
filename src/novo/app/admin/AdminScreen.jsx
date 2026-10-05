@@ -7,7 +7,7 @@ import { Tabs } from "../../ds";
 import { useSession } from "../session.jsx";
 import { AdminQuestions } from "./AdminQuestions.jsx";
 import { AdminUsers } from "./AdminUsers.jsx";
-import { AdminAudit, AdminOverview, AdminPlans, AdminSettings, AdminStations } from "./AdminPanels.jsx";
+import { AdminAudit, AdminOverview, AdminPlans, AdminSettings, AdminStations, AdminTutor } from "./AdminPanels.jsx";
 import { ContentHub } from "./content/ContentHub.jsx";
 
 const TABS = [
@@ -43,7 +43,12 @@ export function AdminScreen() {
       {tab === "planos" && <AdminPlans />}
       {tab === "estacoes" && <AdminStations />}
       {tab === "conteudo" && <ContentHub isAdmin={isAdmin} isStaff={isStaff} />}
-      {tab === "config" && <AdminSettings />}
+      {tab === "config" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <AdminSettings />
+          <AdminTutor />
+        </div>
+      )}
       {tab === "registro" && <AdminAudit />}
     </>
   );
