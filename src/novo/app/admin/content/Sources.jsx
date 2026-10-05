@@ -7,7 +7,7 @@ import { useSession } from "../../session.jsx";
 import { useMobile } from "../../Shell.jsx";
 import { LoadError, Loading, useLoad } from "../common.jsx";
 import { hubAvailable, hubPost, hubUploadPdf } from "./api.js";
-import { AUTHORITY, DIFF_KIND, FRESHNESS, SOURCE_KIND, SOURCE_STATUS } from "./labels.js";
+import { AUTHORITY, DIFF_KIND, FRESHNESS, SOURCE_KIND, SOURCE_STATUS, SOURCE_TYPE } from "./labels.js";
 import { KeyValue, Label, Section, shortHash, StatusBadge, useAction, when } from "./ui.jsx";
 
 export function Sources({ isAdmin, go }) {
@@ -134,6 +134,9 @@ function SourceRow({ source: s, isAdmin, onChanged }) {
               ["Vale para o SUS", s.applies_to_sus ? "sim" : "não"],
               ["Especialidade", s.specialty],
               ["Tema", s.theme],
+              ["Natureza", s.source_type ? SOURCE_TYPE[s.source_type] : undefined],
+              ["Autores", s.authors],
+              ["Fonte primária", s.is_primary_source ? "sim" : undefined],
               ["Vigência a partir de", s.effective_date],
               ["Última revisão", s.revision_date],
               ["Monitoramento", s.watch ? `${s.watch.url} · a cada ${s.watch.interval_days} dia(s) · última conferência ${when(s.watch.last_checked_at)} (${s.watch.last_status ?? "—"}) · próxima ${when(s.watch.next_check_at)}` : "não"],
@@ -205,6 +208,10 @@ function Registry({ source: s, onChanged }) {
     effective_date: s.effective_date ?? "",
     revision_date: s.revision_date ?? "",
     update_in_progress: Boolean(s.update_in_progress),
+    source_type: s.source_type ?? "",
+    authors: s.authors ?? "",
+    language: s.language ?? "pt",
+    is_primary_source: Boolean(s.is_primary_source),
   });
   const set = (patch) => setF((v) => ({ ...v, ...patch }));
   const act = useAction();
@@ -215,9 +222,13 @@ function Registry({ source: s, onChanged }) {
         <TextField label="País (sigla)" value={f.country} onChange={(e) => set({ country: e.target.value.toUpperCase().slice(0, 2) })} />
         <TextField label="Especialidade" value={f.specialty} onChange={(e) => set({ specialty: e.target.value })} />
         <TextField label="Tema" value={f.theme} onChange={(e) => set({ theme: e.target.value })} />
+        <SelectField label="Natureza da fonte" value={f.source_type} onChange={(e) => set({ source_type: e.target.value })} options={[{ value: "", label: "Não informada" }, ...Object.entries(SOURCE_TYPE).map(([value, label]) => ({ value, label }))]} />
+        <TextField label="Autores" value={f.authors} onChange={(e) => set({ authors: e.target.value })} />
+        <TextField label="Idioma" value={f.language} onChange={(e) => set({ language: e.target.value })} />
         <TextField label="Vigência a partir de" type="date" value={f.effective_date} onChange={(e) => set({ effective_date: e.target.value })} />
         <TextField label="Última revisão" type="date" value={f.revision_date} onChange={(e) => set({ revision_date: e.target.value })} />
       </div>
+      <Checkbox label="Fonte primária (a origem da recomendação, não um resumo dela)" checked={f.is_primary_source} onChange={(e) => set({ is_primary_source: e.target.checked })} />
       <Checkbox label="Vale para o SUS" checked={f.applies_to_sus} onChange={(e) => set({ applies_to_sus: e.target.checked })} />
       <Checkbox label="Em atualização pelo órgão (a versão publicada continua valendo até sair a nova)" checked={f.update_in_progress} onChange={(e) => set({ update_in_progress: e.target.checked })} />
       {act.feedback}

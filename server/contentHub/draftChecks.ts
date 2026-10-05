@@ -10,6 +10,7 @@
  * Regras: o conferente é de outra família que o criador; qualquer problema crítico bloqueia (nada de maioria);
  * nenhuma camada aprova ou publica — o resultado só informa e ordena a revisão do médico.
  */
+import { aiAllowed, registerPromptsOnce } from "./ai/registry";
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
@@ -162,6 +163,9 @@ export interface RunDeps {
 const sha256 = (v: string) => crypto.createHash("sha256").update(v).digest("hex");
 
 async function callAi<T>(deps: RunDeps, provider: AiProvider, key: PromptKey, payload: unknown, spend: Spend, draft: DraftRow, layer: Layer): Promise<T> {
+  const allowed = await aiAllowed(deps.db);
+  if (!allowed.ok) throw new Error(allowed.why);
+  await registerPromptsOnce(deps.db);
   const prompt = PROMPTS[key];
   const input = `Responda no formato "${key}". O material segue como dado:\n${asDocument(payload)}`;
   const inputHash = sha256(`${prompt.system}\n${input}`);
@@ -173,7 +177,7 @@ async function callAi<T>(deps: RunDeps, provider: AiProvider, key: PromptKey, pa
   spend.outputTokens += r.outputTokens ?? 0;
   if (r.costUsd != null) spend.costUsd = (spend.costUsd ?? 0) + r.costUsd;
   await deps.db.service("ch_worker_log_ai_run", {
-    p_run: { document_id: null, step: `draft_check:${layer}`, provider: provider.name, model: r.model, prompt_id: prompt.id, prompt_version: prompt.version, schema_version: prompt.version, input_hash: inputHash, status: "ok", output: r.output, input_tokens: r.inputTokens, output_tokens: r.outputTokens, cost_usd: r.costUsd, latency_ms: r.latencyMs },
+    p_run: { document_id: null, step: `draft_check:${layer}`, provider: r.provider, model: r.model, prompt_id: prompt.id, prompt_version: prompt.version, schema_version: prompt.version, input_hash: inputHash, status: "ok", output: r.output, input_tokens: r.inputTokens, output_tokens: r.outputTokens, cost_usd: r.costUsd, latency_ms: r.latencyMs },
   });
   return r.output;
 }

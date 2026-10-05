@@ -51,6 +51,8 @@ beforeAll(async () => {
   await db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [EDITOR]);
   await db.query(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'GINECOLOGIA_OBSTETRICIA'), ($2, 'PEDIATRIA')`, [REVIEWER_GO, REVIEWER_PED]);
+  // a publicação nasce desligada e em modo sombra; estes testes exercitam a publicação, então o administrador a liga
+  await db.query(`update public.ch_flags set value = case key when 'publish_enabled' then true when 'shadow_mode' then false else value end`);
 }, 60_000);
 
 describe("Taxonomia editorial", () => {

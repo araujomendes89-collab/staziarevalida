@@ -2,6 +2,7 @@
 // unidades e materiais StaziaMed, aprovação médica/editorial e publicação.
 // Papéis: admin (tudo), editor (conteúdo), revisor médico (revisão da própria área).
 // A IA nunca aprova nem publica: o banco exige pessoa em cada decisão.
+import { Conflicts } from "./Conflicts.jsx";
 import React from "react";
 import { useSearchParams } from "react-router-dom";
 import { Banner, Chip } from "../../../ds";
@@ -21,6 +22,7 @@ const SECTIONS = [
   { value: "analises", label: "Análise de questões", icon: "brain", who: "reviewer" },
   { value: "ineditas", label: "Questões inéditas", icon: "file-question", who: "reviewer" },
   { value: "fontes", label: "Fontes oficiais", icon: "library", who: "staff" },
+  { value: "conflitos", label: "Conflitos", icon: "scale", who: "staff" },
   { value: "taxonomia", label: "Taxonomia", icon: "list-tree", who: "staff" },
   { value: "config", label: "Configuração e custos", icon: "gauge", who: "staff" },
 ];
@@ -83,6 +85,7 @@ export function ContentHub({ isAdmin, isStaff }) {
       {section === "analises" && <QuestionAnalyses {...ctx} />}
       {section === "ineditas" && <DraftQuestions {...ctx} />}
       {section === "fontes" && <Sources {...ctx} />}
+      {section === "conflitos" && <Conflicts {...ctx} />}
       {section === "taxonomia" && <Taxonomy {...ctx} />}
       {section === "config" && <HubSettings {...ctx} />}
     </div>

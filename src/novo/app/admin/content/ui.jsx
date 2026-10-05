@@ -79,6 +79,34 @@ export function useAction() {
 }
 
 /** Uma afirmação clínica: o que o PDF afirma, o que a referência estabelece e a conferência. */
+const CONFIDENCE = { HIGH: ["Confiança alta", "success"], MODERATE: ["Confiança moderada", "info"], REVIEW_REQUIRED: ["Revisão obrigatória", "danger"] };
+
+/** Nível calculado por regras (nunca uma porcentagem), com os componentes à vista no texto de ajuda. */
+function ConfidenceBadge({ claimId }) {
+  const { backend } = useSession();
+  const [c, setC] = React.useState(null);
+  React.useEffect(() => {
+    let alive = true;
+    backend.rpc("app_ch_claim_confidence", { p_claim_id: claimId }).then((r) => alive && setC(r), () => {});
+    return () => {
+      alive = false;
+    };
+  }, [backend, claimId]);
+  if (!c) return null;
+  const k = c.components;
+  const why = [
+    k.best_authority ? `melhor fonte: nível ${k.best_authority}` : "sem fonte oficial compatível",
+    `${k.official_sources} fonte(s) oficial(is)`,
+    k.cited_with_page ? "citação com página" : "sem citação com página",
+    k.human_checked ? "conferida por pessoa" : "sem conferência humana",
+    k.numbers_supported ? "números sustentados" : "número sem sustentação",
+    k.conflict ? "conflito entre fontes" : null,
+    k.critical_pending ? "dado crítico sem conferência" : null,
+  ].filter(Boolean).join(" · ");
+  const [label, tone] = CONFIDENCE[c.level] ?? [c.level, "neutral"];
+  return <Badge size="sm" tone={tone} title={why}>{label}</Badge>;
+}
+
 export function ClaimCard({ claim, onChanged, canConfirm }) {
   const { backend } = useSession();
   const act = useAction();
@@ -88,6 +116,7 @@ export function ClaimCard({ claim, onChanged, canConfirm }) {
     <div style={{ borderTop: "1px solid var(--border-subtle)", padding: "12px 0" }}>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
         <StatusBadge map={CLAIM_STATUS} value={claim.status} />
+        {claim.id && <ConfidenceBadge claimId={claim.id} />}
         {claim.page_no != null && <Badge size="sm">p. {claim.page_no}</Badge>}
         {(claim.critical_kinds ?? []).map((k) => (
           <Badge key={k} size="sm" tone="danger" icon="triangle-alert">

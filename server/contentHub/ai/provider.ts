@@ -2,7 +2,9 @@
  * Provedores de IA da Central de Conteúdo, com respostas estruturadas e validadas.
  *
  * Configuração (variáveis de ambiente do SERVIDOR; nunca no navegador):
- *   CONTENT_HUB_AI_PROVIDER        anthropic | gemini | mock   (mock só fora de produção)
+ *   CONTENT_HUB_AI_PROVIDER        anthropic | gemini | openai | mock   (mock só fora de produção)
+ *   CONTENT_HUB_AI_FALLBACK_PROVIDER   provedor secundário (nova tentativa no principal e depois nele); só para o papel de CRIAÇÃO e para conferentes independentes
+ *   OPENAI_API_KEY / CONTENT_HUB_OPENAI_MODEL (modelo obrigatório)
  *   CONTENT_HUB_AI_ALLOW_EXTERNAL  1 = autoriza enviar trechos dos documentos ao provedor externo
  *   ANTHROPIC_API_KEY / CONTENT_HUB_ANTHROPIC_MODEL
  *   GEMINI_API_KEY / CONTENT_HUB_GEMINI_MODEL
@@ -13,6 +15,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
 import { toProviderSchema, validate, type Schema } from "./schema";
+import { OpenAIProvider } from "./openai";
+import { FallbackProvider } from "./fallback";
 
 export interface StructuredRequest {
   promptId: string;
@@ -184,6 +188,14 @@ export function resolveProviderKind(kind: string, mockRespond?: (req: Structured
     const p = new GeminiProvider(key, modelOverride || process.env.CONTENT_HUB_GEMINI_MODEL || "gemini-2.5-pro");
     return { provider: p, status: { ready: true, provider: p.name, model: p.model, isMock: false, pending: null } };
   }
+  if (kind === "openai") {
+    const key = (process.env.OPENAI_API_KEY ?? "").trim();
+    const model = (modelOverride || process.env.CONTENT_HUB_OPENAI_MODEL || "").trim();
+    if (!key) return pending("OPENAI_API_KEY vazia no servidor.");
+    if (!model) return pending("Defina CONTENT_HUB_OPENAI_MODEL (o modelo da OpenAI a usar).");
+    const p = new OpenAIProvider(key, model, fetch, process.env.CONTENT_HUB_OPENAI_BASE_URL || "https://api.openai.com/v1", price);
+    return { provider: p, status: { ready: true, provider: p.name, model: p.model, isMock: false, pending: null } };
+  }
   return pending(`Provedor de IA desconhecido: ${kind}.`);
 }
 
@@ -195,7 +207,19 @@ export function resolveProvider(mockRespond?: (req: StructuredRequest) => unknow
 /** Provedor do papel de CRIAÇÃO das análises (padrão: anthropic; CONTENT_HUB_AI_PROVIDER_CREATE e CONTENT_HUB_MODEL_CREATE). */
 export function resolveCreatorProvider(mockRespond?: (req: StructuredRequest) => unknown) {
   const env = process.env;
-  return resolveProviderKind((env.CONTENT_HUB_AI_PROVIDER_CREATE || "anthropic").trim(), mockRespond, env.CONTENT_HUB_MODEL_CREATE);
+  const primary = resolveProviderKind((env.CONTENT_HUB_AI_PROVIDER_CREATE || "anthropic").trim(), mockRespond, env.CONTENT_HUB_MODEL_CREATE);
+  return withFallback(primary, mockRespond);
+}
+
+/** Acrescenta o secundário (CONTENT_HUB_AI_FALLBACK_PROVIDER) quando os dois estão prontos; senão devolve o principal como está. */
+export function withFallback(primary: { provider: AiProvider | null; status: AiStatus }, mockRespond?: (req: StructuredRequest) => unknown, guard?: (secondary: AiProvider) => string | null) {
+  const kind = (process.env.CONTENT_HUB_AI_FALLBACK_PROVIDER ?? "").trim();
+  if (!kind || !primary.provider) return primary;
+  const sec = resolveProviderKind(kind, mockRespond);
+  if (!sec.provider || sec.provider.name === primary.provider.name) return primary;
+  if (guard?.(sec.provider)) return primary;       // o secundário não passa na regra de independência: não entra
+  const p = new FallbackProvider(primary.provider, sec.provider, { onFallback: (i) => console.warn(`[central] IA principal falhou (${i.error}); usando ${i.to}.`) });
+  return { provider: p as AiProvider, status: { ...primary.status, pending: null } };
 }
 
 export type VerifierRole = "sources" | "currency" | "redteam";
@@ -216,5 +240,6 @@ export function resolveRoleProvider(role: VerifierRole, creatorModel: string | n
       status: { ...resolved.status, ready: false, pending: `Sem independência: o conferente (${resolved.provider.model}) é da mesma família do criador (${creatorModel}). Use outro provedor para o papel "${role}".` },
     };
   }
-  return resolved;
+  // o secundário do conferente também precisa ser de outra família que a do criador
+  return withFallback(resolved, mockRespond, (sec) => (familyOfModel(sec.model) === familyOfModel(creatorModel) ? "mesma família do criador" : null));
 }

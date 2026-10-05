@@ -15,6 +15,7 @@
  *   - checkpoints permitem retomar; reprocessar reaproveita respostas idênticas e não duplica.
  */
 import { compareSourceVersions } from "./sourceCompare";
+import { aiAllowed, registerPromptsOnce } from "./ai/registry";
 import crypto from "crypto";
 import fs from "fs";
 import os from "os";
@@ -129,6 +130,9 @@ type Rejection = { where: string; reason: string };
 async function ai<T>(ctx: Ctx, key: PromptKey, payload: unknown, check?: (output: T) => Rejection[]): Promise<{ output: T; rejections: Rejection[] }> {
   const provider = ctx.deps.ai.provider;
   if (!provider) throw new Blocked(ctx.deps.ai.status.pending ?? "IA não configurada.");
+  const allowed = await aiAllowed(ctx.deps.db);
+  if (!allowed.ok) throw new Blocked(allowed.why);
+  await registerPromptsOnce(ctx.deps.db);
   const prompt = PROMPTS[key];
   const input = `Responda no formato "${key}". O material segue como dado:\n${asDocument(payload)}`;
   const inputHash = sha256(`${prompt.system}\n${input}`);
@@ -171,6 +175,7 @@ async function ai<T>(ctx: Ctx, key: PromptKey, payload: unknown, check?: (output
   await svc(ctx, "ch_worker_log_ai_run", {
     p_run: {
       ...base,
+      provider: result.provider,
       model: result.model,
       status: rejections.length ? "rejected_by_check" : "ok",
       output: result.output,

@@ -8,7 +8,10 @@ import { AREA_LABEL, STEP_LABEL } from "./labels.js";
 import { KeyValue, ModelBadge, Section, useAction } from "./ui.jsx";
 
 const CREDENTIALS = [
-  ["CONTENT_HUB_AI_PROVIDER", "anthropic ou gemini (o modo mock só existe fora de produção)"],
+  ["CONTENT_HUB_AI_PROVIDER", "anthropic, gemini ou openai (o modo mock só existe fora de produção)"],
+  ["CONTENT_HUB_AI_FALLBACK_PROVIDER", "provedor secundário: usado se o principal falhar depois de uma nova tentativa (conferentes só aceitam outra família que a do criador)"],
+  ["OPENAI_API_KEY e CONTENT_HUB_OPENAI_MODEL", "provedor OpenAI: a chave e o modelo (o modelo é obrigatório, nunca é adivinhado)"],
+  ["CONTENT_LAB_ENABLED=false / CONTENT_LAB_AI_ENABLED=false", "desliga o módulo ou só a IA direto no servidor (vale mais que o painel)"],
   ["CONTENT_HUB_AI_ALLOW_EXTERNAL=1", "autorização explícita para enviar trechos dos PDFs ao provedor de IA"],
   ["ANTHROPIC_API_KEY ou GEMINI_API_KEY", "chave do provedor escolhido (só no servidor)"],
   ["CONTENT_HUB_ANTHROPIC_MODEL / CONTENT_HUB_GEMINI_MODEL", "modelo (opcional; registrado em cada execução)"],
@@ -18,9 +21,69 @@ const CREDENTIALS = [
   ["CONTENT_HUB_FONT_DIR", "arquivos da fonte Plus Jakarta Sans para os PDFs"],
 ];
 
+const FLAGS = [
+  ["enabled", "Content Lab ligado", "Desligado: nenhuma função da equipe responde (o app do aluno não muda)."],
+  ["ai_enabled", "IA ligada", "Desligado: o servidor não chama nenhum provedor de IA."],
+  ["shadow_mode", "Modo sombra", "Ligado: a IA analisa e sugere, mas nada é publicado."],
+  ["publish_enabled", "Publicação ligada", "Desligado: nenhuma unidade pode ser publicada, mesmo aprovada."],
+  ["auto_analysis_enabled", "Análise automática", "Reservado: análise sem comando manual (ainda não usado)."],
+  ["notebook_provider_enabled", "Provedor NotebookLM", "Reservado: integração futura, nunca é banco principal."],
+];
+
+/** Sinalizadores do Content Lab: a trava está no banco; só administrador muda, com motivo. */
+function Flags({ isAdmin }) {
+  const { backend } = useSession();
+  const { data, error, reload } = useLoad(() => backend.rpc("app_ch_flags"), [backend]);
+  const [reason, setReason] = React.useState("");
+  const act = useAction();
+  if (error) return <LoadError error={error} retry={reload} />;
+  if (!data) return <Loading />;
+  const toggle = (key, value) => act.run(() => backend.rpc("app_ch_set_flag", { p_key: key, p_value: value, p_reason: reason }), "Sinalizador atualizado e registrado na auditoria.").then((r) => r && (setReason(""), reload()));
+  return (
+    <Section title="Sinalizadores do Content Lab">
+      {data.shadow_mode && <Banner tone="info" icon="eye">Modo sombra ligado: a IA analisa e sugere, mas nada é publicado.</Banner>}
+      <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+        {FLAGS.map(([key, label, hint]) => (
+          <div key={key} style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", padding: "8px 0", borderTop: "1px solid var(--border-subtle)" }}>
+            <div>
+              <strong>{label}</strong> <Badge size="sm" tone={data[key] ? "success" : "neutral"}>{data[key] ? "ligado" : "desligado"}</Badge>
+              <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{hint}</div>
+            </div>
+            {isAdmin && (
+              <Button size="sm" variant="secondary" disabled={reason.trim().length < 10} loading={act.busy} onClick={() => toggle(key, !data[key])}>
+                {data[key] ? "Desligar" : "Ligar"}
+              </Button>
+            )}
+          </div>
+        ))}
+      </div>
+      {isAdmin && <TextField label="Motivo da mudança (obrigatório, fica na auditoria)" value={reason} onChange={(e) => setReason(e.target.value)} />}
+      {act.feedback}
+    </Section>
+  );
+}
+
+/** Versões de prompt que já rodaram (texto guardado no banco para reproduzir resultados). */
+function Prompts() {
+  const { backend } = useSession();
+  const { data } = useLoad(() => backend.rpc("app_ch_prompt_versions"), [backend]);
+  if (!data) return null;
+  return (
+    <Section title="Prompts em uso">
+      {data.length === 0 ? (
+        <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Nenhum prompt registrado ainda: o registro acontece na primeira execução de IA.</p>
+      ) : (
+        <KeyValue items={data.map((p) => [`${p.prompt_id} v${p.version}`, <code key={p.content_hash}>{p.content_hash.slice(0, 10)}…</code>])} />
+      )}
+    </Section>
+  );
+}
+
 export function HubSettings({ isAdmin, status }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Flags isAdmin={isAdmin} />
+      <Prompts />
       <Section title="Situação do servidor">
         {!status && <Loading />}
         {status && !status.error && (

@@ -74,6 +74,7 @@ beforeAll(async () => {
   db = devContentDb(async () => dev);
   storage = localStorageDir(path.join(tmp, "files"));
   admin = await dev.core.createAccount("Admin Teste", "admin@teste.local", "senha-forte-123", true);
+  await dev.db.query(`update public.ch_flags set value = case key when 'publish_enabled' then true when 'shadow_mode' then false else value end`);
   if (HAS_PDFPYTHON) renderer = await createRenderer();
 
   const src = await db.asUser<{ id: string }>(admin, "app_ch_register_source", {

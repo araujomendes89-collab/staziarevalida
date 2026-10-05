@@ -14,6 +14,7 @@ import { resolveCreatorProvider, type AiProvider, type StructuredRequest } from 
 import { validate } from "./ai/schema";
 import { normalize, numbers, numbersOutside } from "./checks";
 import type { ContentDb } from "./infra";
+import { aiAllowed, registerPrompts } from "./ai/registry";
 import { verdictOf, type Finding, type Spend } from "./draftChecks";
 
 export interface QuestionForAnalysis {
@@ -210,7 +211,7 @@ export async function generateAnalysis(deps: AnalysisRunDeps, provider: AiProvid
   spend.outputTokens += r.outputTokens ?? 0;
   if (r.costUsd != null) spend.costUsd = (spend.costUsd ?? 0) + r.costUsd;
   await deps.db.service("ch_worker_log_ai_run", {
-    p_run: { document_id: null, step: "question_analysis", provider: provider.name, model: r.model, prompt_id: prompt.id, prompt_version: prompt.version, schema_version: prompt.version, input_hash: inputHash, status: "ok", output: r.output, input_tokens: r.inputTokens, output_tokens: r.outputTokens, cost_usd: r.costUsd, latency_ms: r.latencyMs },
+    p_run: { document_id: null, step: "question_analysis", provider: r.provider, model: r.model, prompt_id: prompt.id, prompt_version: prompt.version, schema_version: prompt.version, input_hash: inputHash, status: "ok", output: r.output, input_tokens: r.inputTokens, output_tokens: r.outputTokens, cost_usd: r.costUsd, latency_ms: r.latencyMs },
   });
   return r.output;
 }
@@ -244,6 +245,12 @@ export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: Analys
     report.estimate = questions.map(estimateAnalysisTokens).reduce((a, b) => ({ calls: a.calls + b.calls, inputTokens: a.inputTokens + b.inputTokens, outputTokens: a.outputTokens + b.outputTokens }));
     return report;
   }
+  const allowed = await aiAllowed(deps.db);
+  if (!allowed.ok) {
+    report.pending = allowed.why;
+    return report;
+  }
+  await registerPrompts(deps.db);
   const { provider, status } = resolveCreatorProvider(deps.mockRespond);
   if (!provider) {
     report.pending = status.pending ?? "Provedor de criação indisponível.";

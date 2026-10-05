@@ -103,6 +103,13 @@ export const AUTHORITY = {
   E: "E · Livro, apostila ou curso (não vale como evidência)",
 };
 
+// Natureza da fonte (o que ela é), diferente de "tipo" (a situação do documento: final, consulta pública…).
+export const SOURCE_TYPE = {
+  GUIDELINE: "Diretriz", PCDT: "PCDT", LAW: "Lei ou norma", MANUAL: "Manual", CONSENSUS: "Consenso", ARTICLE: "Artigo", SYSTEMATIC_REVIEW: "Revisão sistemática",
+  BOOK: "Livro", OFFICIAL_EXAM: "Prova oficial", OFFICIAL_ANSWER_KEY: "Gabarito oficial", VIDEO: "Vídeo", AUDIO: "Áudio", WEB_PAGE: "Página da web",
+  SLIDES: "Slides", DOCUMENT: "Documento", OTHER: "Outra",
+};
+
 export const SOURCE_STATUS = { current: ["Vigente", "success"], superseded: ["Substituída", "warning"], withdrawn: ["Retirada", "danger"] };
 
 // Frescor da fonte: se alguém (o vigia) confere que a publicação continua igual.
