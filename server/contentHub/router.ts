@@ -8,6 +8,7 @@ import express, { type Request, type Response, type NextFunction } from "express
 import { stepVersions, type PipelineDeps } from "./pipeline";
 import { loadBrand } from "./render";
 import { compareSourceVersions } from "./sourceCompare";
+import { applyReferenceCleanup, previewReferenceCleanup, undoReferenceCleanup } from "./referenceCleanup";
 import type { Identity } from "./infra";
 import type { ContentHubWorker } from "./worker";
 
@@ -168,6 +169,26 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       res.json(await opts.worker.checkSources());
     } catch (error) {
       fail(res, forbidden(error) ? 403 : 500, message(error));
+    }
+  });
+
+  /**
+   * Retirada das referências do licenciante (administrador). Só com licença ativa que autorize isso.
+   * body: { action: "preview" | "apply" | "undo" }: a prévia não grava nada; o desfazer restaura o que ninguém revisou depois.
+   */
+  router.post("/documents/:id/clean-references", async (req: Authed, res) => {
+    try {
+      const me = await requireStaff(req);
+      if (!me.admin) return fail(res, 403, "Somente administradores.");
+      const id = String(req.params.id);
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return fail(res, 400, "Documento inválido.");
+      const action = String(req.body?.action ?? "preview");
+      if (action === "apply") return res.json(await applyReferenceCleanup(deps!.db, id, req.user!.id));
+      if (action === "undo") return res.json(await undoReferenceCleanup(deps!.db, id, req.user!.id));
+      const p = await previewReferenceCleanup(deps!.db, id);
+      res.json({ ...p, changes: p.changes.slice(0, 200), shown: Math.min(p.changes.length, 200), total: p.changes.length });
+    } catch (error: any) {
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
     }
   });
 

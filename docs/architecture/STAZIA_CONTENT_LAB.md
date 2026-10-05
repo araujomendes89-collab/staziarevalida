@@ -115,7 +115,8 @@ Não existem: pgvector/embeddings, tabela de aulas própria (a aula é um `ch_ma
 | # | Conteúdo | Estado |
 |---|---|---|
 | 2900 | fundação: sinalizadores, aliases, tipo de fonte, versões de prompt, conflitos, confiança | **feita e aplicada no Supabase** |
-| 3000 | tipos de arquivo (DOCX/PPTX/XLSX/TXT/MD) como adaptadores do extrator; validação de MIME | próxima |
+| 3000 | adaptação licenciada: registro da licença e retirada das referências do licenciante | **feita e aplicada no Supabase** |
+| 3050 | tipos de arquivo (DOCX/PPTX/XLSX/TXT/MD) como adaptadores do extrator; validação de MIME | próxima |
 | 3100 | pgvector, `ch_chunks`, embeddings | depende de decidir o modelo de embeddings |
 | 3200 | claim tipado (`claim_type`, campos estruturados de dose) | |
 | 3300 | caso clínico, algoritmo, checklist, roteiro de áudio em `ch_materials.kind` | |
@@ -159,3 +160,21 @@ Regras mantidas: IA não aprova nem publica; fonte nível E (apostila) não vale
 - Painel: aba **Conflitos**, **Sinalizadores** e **Prompts em uso** em Configuração, aliases na Taxonomia, selo de confiança na afirmação, natureza no registro da fonte.
 
 **Ligar a publicação** (quando você decidir): Configuração → Sinalizadores → desligar "Modo sombra" e ligar "Publicação", cada um com motivo.
+
+## 10. Adaptação licenciada (migração 3000)
+
+Para material de terceiros usado **com licença** (ex.: apostila licenciada), o caminho é:
+
+1. **Registrar a licença** no documento (`app_ch_register_license`, só administrador): quem concedeu, obra, datas, onde está o documento assinado,
+   **o texto da licença** e o que ela autoriza: adaptar, nova roupagem visual, uso comercial e **retirar as referências do licenciante**.
+   O sistema não interpreta contrato: confia no que foi registrado e audita tudo.
+2. **Retirar as referências** (`POST /api/content-hub/documents/:id/clean-references`, ações `preview`, `apply`, `undo`): só funciona se a licença
+   ativa e dentro do prazo autorizar. Remove **somente** o que a licença lista como identificação do licenciante (nome, marca, @, site, autores),
+   mais avisos de direitos e contatos de rede social. Links oficiais e fontes clínicas ficam. Números, doses e negações não são tocados.
+3. **O original nunca muda.** A retirada grava em `revised_text` (ou exclui o bloco que só tinha a referência); cada remoção fica em
+   `ch_reference_cleanups`, com desfazer (que preserva o que uma pessoa revisou depois).
+4. **Nova roupagem.** O texto das unidades é reescrito a partir das afirmações conferidas e renderizado na identidade StaziaMed (já existia).
+   O rascunho de adaptação que voltar a citar o licenciante é barrado por software.
+5. **Licença vencida ou revogada:** o documento volta ao modo de criação independente e a publicação de adaptações é bloqueada.
+
+A licença **não** dispensa a conferência médica: afirmação continua precisando de evidência em fonte oficial (apostila é nível E) e a publicação continua sendo de pessoa.

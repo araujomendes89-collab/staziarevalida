@@ -1,4 +1,5 @@
 // Detalhe de um documento: etapas, inventário, PDF ao lado da extração, afirmações e execuções de IA.
+import { LicensePanel } from "./License.jsx";
 import React from "react";
 import { Badge, Banner, Button, Checkbox, SelectField } from "../../../ds";
 import { useSession } from "../../session.jsx";
@@ -51,6 +52,7 @@ export function DocumentDetail({ id, go, isAdmin, params }) {
         ))}
       </Section>
       <Rights doc={d} onChanged={reload} />
+      <LicensePanel doc={d} isAdmin={isAdmin} onChanged={reload} />
       <Section title="Procedência">
         <KeyValue
           items={[

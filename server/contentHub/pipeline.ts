@@ -501,11 +501,13 @@ export interface DraftParagraph {
   claim_ids: string[];
 }
 
+const foldTerm = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
 /** Conferência do rascunho: remove o que não se sustenta e devolve o motivo de cada remoção. */
 export function checkDraft(
   sections: { heading: string; paragraphs: DraftParagraph[] }[],
   base: Map<string, string>,
-  opts: { originalText?: string; independent: boolean }
+  opts: { originalText?: string; independent: boolean; forbiddenTerms?: string[] }
 ) {
   const flags: { severity: string; kind: string; where: string; detail: string; removed_text: string; by: string }[] = [];
   const kept = sections
@@ -517,6 +519,9 @@ export function checkDraft(
           flags.push({ severity: "critical", kind, where, detail, removed_text: p.text, by: "software" });
           return false;
         };
+        // licença que autoriza retirar as referências: o texto novo não pode voltar a citar o licenciante
+        const leak = (opts.forbiddenTerms ?? []).find((t) => t.trim().length >= 3 && foldTerm(p.text).includes(foldTerm(t)));
+        if (leak) return drop("other", `menciona o licenciante (“${leak}”): as referências dele foram retiradas por licença`);
         const unknown = p.claim_ids.filter((id) => !base.has(id));
         if (unknown.length) return drop("unsupported", "cita afirmação que não faz parte da base do tema");
         const cited = p.claim_ids.map((id) => base.get(id)!);
@@ -543,7 +548,10 @@ async function stepDraft(ctx: Ctx): Promise<Step | null> {
   const claims = await svc<any[]>(ctx, "ch_worker_claims", { p_document_id: docId(ctx) });
   const blocks = await svc<Block[]>(ctx, "ch_worker_blocks", { p_document_id: docId(ctx) });
   const originalText = blocks.map((b) => b.original_text ?? "").join("\n");
-  const adaptation = ["own", "licensed_adaptation"].includes(doc.rights_status);
+  // adaptação só vale com direitos próprios/licenciados; havendo licença registrada, ela precisa estar ativa, dentro do prazo e autorizar adaptar
+  const license = await svc<{ expired: boolean; allows_adaptation: boolean; allows_attribution_removal: boolean; reference_terms: string[] } | null>(ctx, "ch_worker_license", { p_document_id: docId(ctx) });
+  const adaptation = ["own", "licensed_adaptation"].includes(doc.rights_status) && (!license || (!license.expired && license.allows_adaptation));
+  const forbiddenTerms = license?.allows_attribution_removal && adaptation ? license.reference_terms : [];
 
   const byTheme = new Map<string, any[]>();
   for (const c of claims) if (c.theme_node_id) byTheme.set(c.theme_node_id, [...(byTheme.get(c.theme_node_id) ?? []), c]);
@@ -558,7 +566,7 @@ async function stepDraft(ctx: Ctx): Promise<Step | null> {
       const base = new Map(ready.map((c) => [c.id, c.proposed_text ?? c.statement]));
       const payload = { tema: pathOf.get(theme) ?? "", afirmacoes: ready.map((c) => ({ id: c.id, text: base.get(c.id), context: c.context })) };
       const { output } = await ai<any>(ctx, "draft", payload);
-      const checked = checkDraft(output.sections, base, { originalText, independent: !adaptation });
+      const checked = checkDraft(output.sections, base, { originalText, independent: !adaptation, forbiddenTerms });
       removed += checked.flags.length;
       if (checked.sections.some((s) => s.paragraphs.some((p) => p.clinical))) {
         const scope =
