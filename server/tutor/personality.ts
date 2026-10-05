@@ -34,6 +34,8 @@ export interface Personality {
   name: string;
   params: PersonalityParams;
   style_notes: string;
+  /** Falas curtas no tom do personagem (sem conteúdo médico): servem de referência de jeito, não de texto a copiar. */
+  examples?: string[];
 }
 
 const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
@@ -94,51 +96,55 @@ export function adaptiveAdjust(intensity: number, adaptive: boolean, recent: boo
   return { intensity, note: null, notice: null };
 }
 
-/** Regras que valem para TODA personalidade, em qualquer intensidade. */
-export const PERSONALITY_LIMITS = `Limites que nenhuma personalidade ultrapassa:
-- o humor, a ironia e a bronca são sempre contra o ERRO ou o raciocínio, nunca contra a pessoa;
-- proibido: ataque pessoal, humilhação, insulto à inteligência, ameaça, discriminação e qualquer comentário sobre aparência, raça, religião, gênero, orientação sexual, deficiência ou saúde mental;
-- o jeito nunca atrapalha a compreensão: se a piada confunde, corte a piada;
-- personagem consistente, sem parecer robô: varie o começo das respostas e não repita bordão.`;
+/** Limites que valem para TODA personalidade, em qualquer intensidade. */
+export const PERSONALITY_LIMITS =
+  "Limites que você não passa, em nenhuma intensidade: a graça, a ironia e a bronca são contra o erro, nunca contra a pessoa. " +
+  "Nada de humilhação, insulto à inteligência, ameaça, discriminação ou comentário sobre aparência, raça, religião, gênero, orientação sexual, deficiência ou saúde mental. " +
+  "Se a piada atrapalha o entendimento, corta a piada.";
 
-/** Texto da camada de personalidade para o prompt (curto: só os traços que se destacam). */
+/** Os traços que se destacam, em frases de gente (não em lista de regras: texto de regra gera resposta com cara de regra). */
+export function traits(eff: PersonalityParams): string[] {
+  const t: string[] = [];
+  if (eff.humor >= 60) t.push("faz graça com frequência");
+  else if (eff.humor >= 35) t.push("faz uma graça de vez em quando");
+  else t.push("não faz piada");
+  if (eff.sarcasm >= 60) t.push("usa ironia, sempre apontada para o erro");
+  else if (eff.sarcasm >= 30) t.push("solta uma ironia leve de vez em quando");
+  if (eff.friendliness >= 70) t.push("é caloroso");
+  else if (eff.friendliness <= 35) t.push("é seco, de pouco afeto");
+  if (eff.strictness >= 90) t.push("cobra no limite: resposta pela metade não passa e tudo pede o porquê");
+  else if (eff.strictness >= 70) t.push("cobra firme e pede o porquê");
+  else if (eff.strictness <= 35) t.push("cobra pouco");
+  if (eff.patience <= 35) t.push("faz teatro de impaciência com erro básico, e explica mesmo assim");
+  else if (eff.patience >= 80) t.push("tem toda a paciência do mundo");
+  if (eff.verbosity <= 25) t.push("fala pouco: uma ou duas frases");
+  else if (eff.verbosity > 85) t.push("gosta de explicar a fundo, ligando mecanismo, fisiologia e farmacologia, sem nunca inventar número");
+  else if (eff.verbosity > 50) t.push("explica com um pouco mais de detalhe quando o assunto pede");
+  if (eff.socratic_level >= 85) t.push("quase nunca entrega a resposta: devolve com uma pergunta");
+  else if (eff.socratic_level >= 60) t.push("prefere perguntar antes de explicar");
+  else if (eff.socratic_level <= 35) t.push("responde direto");
+  if (eff.motivation >= 80) t.push("aponta o avanço concreto do aluno");
+  if (eff.clinical_pressure >= 75) t.push("traz pressão de plantão: o que mata primeiro vem primeiro");
+  return t;
+}
+
+/** Texto da camada de personalidade: quem é o personagem, como ele está agora e como ele soa. */
 export function personalityLayer(p: Personality, eff: PersonalityParams, profanity: ProfanityLevel, intensity: number, extra: string | null = null): string {
-  const lines: string[] = [];
-  if (eff.humor >= 60) lines.push("Use humor com frequência.");
-  else if (eff.humor >= 35) lines.push("Humor leve e ocasional.");
-  else lines.push("Sem piadas.");
-  if (eff.sarcasm >= 60) lines.push("Ironia e sarcasmo são bem-vindos, sempre apontados para o erro.");
-  else if (eff.sarcasm >= 30) lines.push("Ironia leve de vez em quando.");
-  else lines.push("Sem ironia.");
-  if (eff.friendliness >= 70) lines.push("Tom caloroso e acolhedor.");
-  else if (eff.friendliness <= 35) lines.push("Tom seco, com pouco afeto.");
-  if (eff.strictness >= 90) lines.push("Cobrança máxima: resposta incompleta não passa e toda resposta pede justificativa.");
-  else if (eff.strictness >= 70) lines.push("Cobre com firmeza e exija justificativa.");
-  else if (eff.strictness <= 35) lines.push("Cobrança baixa.");
-  if (eff.patience <= 35) lines.push("Mostre impaciência teatral com erro básico (é encenação: você explica mesmo assim).");
-  else if (eff.patience >= 80) lines.push("Seja muito paciente.");
-  if (eff.verbosity <= 25) lines.push("Respostas bem curtas: 2 a 4 frases.");
-  else if (eff.verbosity <= 50) lines.push("Respostas enxutas: até umas 6 frases.");
-  else if (eff.verbosity <= 85) lines.push("Explique com algum detalhe.");
-  else lines.push("Explique em profundidade, ligando os conceitos (mecanismo, fisiologia, farmacologia), sempre dentro da base.");
-  if (eff.socratic_level >= 85) lines.push("Não entregue a resposta: conduza com UMA pergunta por vez.");
-  else if (eff.socratic_level >= 60) lines.push("Prefira perguntar antes de explicar.");
-  else if (eff.socratic_level <= 35) lines.push("Pode responder direto.");
-  if (eff.motivation >= 80) lines.push("Aponte o progresso concreto do aluno; elogio vazio não vale.");
-  if (eff.clinical_pressure >= 75) lines.push("Traga pressão de tempo e prioridade clínica: risco imediato primeiro.");
-  lines.push(
+  const swearing =
     profanity === "off"
-      ? "Sem palavrões."
+      ? "Sem palavrão."
       : profanity === "mild"
-        ? "Pode usar palavrão leve, raro, só como ênfase bem-humorada."
-        : "Pode usar palavrão moderado como ênfase bem-humorada, sem exagero e nunca como agressão."
-  );
+        ? "Palavrão leve pode, raro, só como ênfase de bom humor."
+        : "Palavrão moderado pode, como ênfase de bom humor, sem exagero e nunca contra o aluno.";
+  const examples = (p.examples ?? []).slice(0, 5);
   return [
-    `Personalidade: ${p.name} (intensidade ${intensity} de 5).`,
+    `QUEM VOCÊ É NESTA CONVERSA: ${p.name} (intensidade ${intensity} de 5).`,
     p.style_notes,
-    ...lines.map((l) => `- ${l}`),
+    `Seu jeito agora: ${traits(eff).join("; ")}.`,
+    examples.length ? `Como você soa (é só o tom: não copie e não repita estas falas): ${examples.map((e) => `«${e}»`).join(" · ")}` : "",
+    swearing,
     PERSONALITY_LIMITS,
-    extra ? `Ajuste desta resposta: ${extra}` : "",
+    extra ? `Só nesta resposta: ${extra}` : "",
   ]
     .filter(Boolean)
     .join("\n");

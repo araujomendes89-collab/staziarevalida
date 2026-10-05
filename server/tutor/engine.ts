@@ -75,6 +75,9 @@ export function resolveTutorProvider(mockRespond?: (req: StructuredRequest) => u
   return withFallback(resolveProviderKind((env.TUTOR_AI_PROVIDER || "anthropic").trim(), mockRespond, env.TUTOR_MODEL, opts), mockRespond, undefined, opts);
 }
 
+/** Conversa pede resposta rápida: o Tutor usa esforço baixo (TUTOR_ANTHROPIC_EFFORT muda). A validação por software continua igual. */
+const EFFORT = (["low", "medium", "high"].includes(process.env.TUTOR_ANTHROPIC_EFFORT ?? "") ? process.env.TUTOR_ANTHROPIC_EFFORT : "low") as "low" | "medium" | "high";
+
 const STATE_PT: Record<string, string> = { open: "aberta", answered: "respondida", revealed: "revelada", none: "sem questão" };
 
 /** Blocos da base conferida. O gabarito e as explicações só entram quando a questão já foi respondida ou quando a tarefa é uma dica. */
@@ -181,12 +184,12 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       if (ctx.session.hint_level >= 5) throw new TutorError("Você já recebeu todas as dicas desta questão.", 409);
       hintLevel = ctx.session.hint_level + 1;
       task = { type: "hint", level: hintLevel };
-      studentText = `Quero a dica ${hintLevel}.`;
+      studentText = hintLevel === 1 ? "Me dá uma ajuda aqui." : "Me ajuda mais um pouco.";
     } else if (action.type === "react") {
       const a = q?.last_answer;
       if (!q || !a || ctx.session.question_state !== "answered") throw new TutorError("Responda a questão antes.", 409);
       task = { type: "react", selected: a.selected, correct: a.is_correct, confidence: a.confidence, hints: a.hints_used, lucky: a.lucky_guess };
-      studentText = `Marquei a alternativa ${a.selected}.`;
+      studentText = `Marquei a ${a.selected}.`;
     } else {
       studentText = (action.text ?? "").trim();
       if (!studentText) throw new TutorError("Escreva ou fale a sua mensagem.", 400);
@@ -249,7 +252,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       const input = attempt === 0 ? baseInput : `${baseInput}\n<correcao_obrigatoria>\nSua resposta anterior foi barrada. Refaça sem estes problemas:\n${violations.map((x) => `- ${x.detail}`).join("\n")}\n</correcao_obrigatoria>`;
       let r;
       try {
-        r = await provider.generate<TutorOutput>({ promptId: "tutor", promptVersion: TUTOR_VERSION, system, input, schema: TUTOR_SCHEMA, schemaName: "staziamed_tutor", maxOutputTokens: 2000 });
+        r = await provider.generate<TutorOutput>({ promptId: "tutor", promptVersion: TUTOR_VERSION, system, input, schema: TUTOR_SCHEMA, schemaName: "staziamed_tutor", maxOutputTokens: 2000, effort: EFFORT });
       } catch (error) {
         // resposta fora do formato: conta como barrada e ganha uma nova tentativa (nunca é "consertada")
         if (error instanceof AiInvalidOutput) {

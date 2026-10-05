@@ -26,6 +26,8 @@ export interface StructuredRequest {
   schema: Schema;
   schemaName: string;
   maxOutputTokens?: number;
+  /** Quanto o modelo "pensa" antes de responder (Anthropic). Conversa pede resposta rápida; conferência pede cuidado. */
+  effort?: "low" | "medium" | "high";
 }
 
 export interface StructuredResult<T> {
@@ -80,7 +82,7 @@ class AnthropicProvider implements AiProvider {
       model: this.model,
       max_tokens: Math.max(req.maxOutputTokens ?? 8192, 8192),
       system: req.system,
-      output_config: { effort: process.env.CONTENT_HUB_ANTHROPIC_EFFORT || "medium", format: { type: "json_schema", schema: toProviderSchema(req.schema) } },
+      output_config: { effort: req.effort || process.env.CONTENT_HUB_ANTHROPIC_EFFORT || "medium", format: { type: "json_schema", schema: toProviderSchema(req.schema) } },
       messages: [{ role: "user", content: req.input }],
     });
     const usage = res.usage as any;

@@ -7,14 +7,14 @@ import type { TutorOutput } from "./prompts";
 
 export function tutorMockRespond(req: StructuredRequest): TutorOutput {
   const task = req.input.split("<tarefa>")[1] ?? "";
-  const hint = task.match(/DICA (\d)/);
+  const hint = task.match(/\(ajuda (\d) de 5\)/);
   const reveals = hint?.[1] === "5";
   const reply = hint
-    ? `[Simulação: não é IA] Esta seria a dica ${hint[1]} de 5.${reveals ? " Aqui o tutor de verdade explicaria a resposta." : " Releia o enunciado e separe o dado que mais pesa."}`
+    ? `[Simulação: não é IA] Esta seria a ajuda ${hint[1]} de 5.${reveals ? " Aqui o tutor de verdade explicaria a resposta." : " Releia o enunciado e separe o dado que mais pesa."}`
     : /ERROU/.test(task)
       ? "[Simulação: não é IA] Você errou esta. Um tutor de verdade mostraria onde o raciocínio desviou e qual pista faltou."
       : /ACERTOU/.test(task)
         ? "[Simulação: não é IA] Correto. Um tutor de verdade apontaria o que foi decisivo no seu raciocínio."
         : "[Simulação: não é IA] O tutor de verdade responderia aqui, com base na questão oficial e nas fontes conferidas. O que você já sabe sobre o tema?";
-  return { reply, grounding: "GENERAL", citations: [], error_class: /ERROU/.test(task) ? "CONCEITUAL" : "NONE", justification: /explicar por que/.test(task) ? "INSUFFICIENT" : "NONE", reveals_answer: reveals, suggested_replies: hint ? [] : ["Não sei por onde começar", "Me dá uma dica"] };
+  return { reply, grounding: "GENERAL", citations: [], error_class: /ERROU/.test(task) ? "CONCEITUAL" : "NONE", justification: /A explicação mostra que sabia/.test(task) ? "INSUFFICIENT" : "NONE", reveals_answer: reveals, suggested_replies: hint ? [] : ["Não sei por onde começar", "Me dá uma dica"] };
 }

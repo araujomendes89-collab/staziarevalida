@@ -12,7 +12,7 @@ import { devContentDb, type ContentDb } from "../../server/contentHub/infra";
 import type { StructuredRequest } from "../../server/contentHub/ai/provider";
 import { buildEngineStatements } from "../../scripts/supabase/engine-seed";
 import { adaptiveAdjust, effectiveParams, personalityLayer, profanityLevel, type PersonalityParams } from "../../server/tutor/personality";
-import { fallbackReply, safetyCheck, spokenText, type BaseBlock, type SafetyContext } from "../../server/tutor/safety";
+import { fallbackReply, quantities, safetyCheck, spokenText, type BaseBlock, type SafetyContext } from "../../server/tutor/safety";
 import { resolveTutorProvider, sourceQuery, tutorTurn, TutorError } from "../../server/tutor/engine";
 import { resolveCreatorProvider } from "../../server/contentHub/ai/provider";
 import { TUTOR_CORE, TUTOR_PROMPT_LAYERS, type TutorOutput } from "../../server/tutor/prompts";
@@ -61,11 +61,16 @@ describe("Personalidade (só o jeito de falar)", () => {
   it("a camada sempre traz os limites e nunca traz conteúdo médico", () => {
     const text = personalityLayer({ id: "rabugento", name: "Professor Rabugento", params: RABUGENTO, style_notes: "Resmunga." }, RABUGENTO, "off", 3);
     expect(text).toContain("Professor Rabugento (intensidade 3 de 5)");
-    expect(text).toContain("Sem palavrões.");
+    expect(text).toContain("Sem palavrão.");
     expect(text).toMatch(/nunca contra a pessoa/);
     expect(text).toMatch(/insulto à inteligência/);
     expect(text).not.toMatch(/\d+\s?(mg|ml|%)/);
-    expect(personalityLayer({ id: "x", name: "X", params: XINGAO, style_notes: "." }, XINGAO, "moderate", 3)).toContain("palavrão moderado");
+    expect(personalityLayer({ id: "x", name: "X", params: XINGAO, style_notes: "." }, XINGAO, "moderate", 3)).toContain("Palavrão moderado pode");
+    // o jeito vai em frases de gente e com falas de referência, não em lista de regras
+    expect(text).toContain("Seu jeito agora: faz graça com frequência; solta uma ironia leve de vez em quando; é seco, de pouco afeto; cobra firme e pede o porquê; faz teatro de impaciência com erro básico, e explica mesmo assim; prefere perguntar antes de explicar.");
+    expect(text).not.toMatch(/^- /m);
+    const withExamples = personalityLayer({ id: "r", name: "R", params: RABUGENTO, style_notes: ".", examples: ["Hum. Quase.", "Agora sim."] }, RABUGENTO, "off", 3);
+    expect(withExamples).toContain("não copie e não repita estas falas): «Hum. Quase.» · «Agora sim.»");
   });
 });
 
@@ -81,6 +86,27 @@ describe("Validação de segurança (regras, sem IA)", () => {
     expect(codes("Na criança de 3 anos o raciocínio é o mesmo.")).toEqual([]); // veio da fala do aluno
     expect(codes("Use 10 mg/kg por dose.")).toEqual(["ungrounded_number"]);
     expect(codes("Pense em três diferenciais antes de decidir.")).toEqual([]); // número sem unidade não é valor clínico
+  });
+
+  it("por extenso também conta: 'dois anos' e 'dez miligramas por quilo' são conferidos como 2 anos e 10 mg/kg", () => {
+    const keys = (t: string) => quantities(t).map((x) => x.key);
+    expect(keys("em geral abaixo de dois anos")).toEqual(["2|ano"]);
+    expect(keys("saturação de noventa e dois por cento")).toEqual(["92|%"]);
+    expect(keys("dez miligramas por quilo por dia, por sete dias")).toEqual(["10|mg/kg/dia", "7|dia"]);
+    expect(keys("Use 10 mg/kg/dia por 7 dias")).toEqual(["10|mg/kg/dia", "7|dia"]); // a mesma coisa em algarismo
+    expect(keys("mil e duzentos mililitros; dois e meio anos; 5 minutos; três vezes ao dia")).toEqual(["5|min", "1200|ml", "2.5|ano", "3|vez/dia"]);
+    // jeito de falar não é quantidade clínica
+    expect(keys("isso aparece uma vez só; um dia você me agradece; já te falei duas vezes; pensa em três diferenciais; primeiro episódio")).toEqual([]);
+    expect(keys("em menores de um ano muda tudo")).toEqual(["1|ano"]); // depois de "menores de", é corte
+    // na conferência: corte por extenso sem fonte é barrado; com a mesma quantidade na base (em algarismo), passa
+    expect(codes("Bronquiolite é em geral abaixo de dois anos.")).toEqual(["ungrounded_number"]);
+    expect(codes("Trate por dez dias.")).toEqual(["ungrounded_number"]);
+    expect(codes("O corte é noventa e dois por cento de saturação.")).toEqual([]); // a base traz 92%
+    expect(codes("Como você disse, a criança tem três anos.")).toEqual([]); // o aluno falou "3 anos"
+    // idade de paciente de exemplo é cenário e passa; o corte na mesma frase, não
+    expect(codes("Imagina um bebê de quatro meses chiando pela primeira vez.")).toEqual([]);
+    expect(codes("Imagina uma gestante de trinta e quatro semanas com pressão alta.")).toEqual([]);
+    expect(codes("Imagina um bebê de quatro meses; isso é doença de até dois anos.")).toEqual(["ungrounded_number"]);
   });
 
   it("documento, link e 'conduta atual' só com citação exata de fonte oficial da base", () => {
@@ -139,8 +165,9 @@ describe("Validação de segurança (regras, sem IA)", () => {
   });
 
   it("resposta fixa quando a IA insiste; texto para voz sem marcação", () => {
-    expect(fallbackReply([{ code: "ungrounded_number", detail: "" }])).toMatch(/Não encontrei confirmação suficiente na base disponível/);
-    expect(fallbackReply([{ code: "answer_leak", detail: "" }])).toMatch(/Ainda não vou entregar a resposta/);
+    expect(fallbackReply([{ code: "ungrounded_number", detail: "" }])).toMatch(/não tenho confirmado aqui/);
+    expect(fallbackReply([{ code: "answer_leak", detail: "" }])).toMatch(/ainda não vou te entregar/);
+    expect(fallbackReply([{ code: "invalid_format", detail: "" }])).toMatch(/Travei aqui/);
     expect(spokenText("**Atenção**:\n- primeiro ponto\n- segundo ponto")).toBe("Atenção:. primeiro ponto. segundo ponto");
     expect(sourceQuery("Pré-eclâmpsia com sinais de gravidade", null, "qual a conduta")).toBe("eclampsia or sinais or gravidade or conduta");
   });
@@ -226,6 +253,15 @@ describe("Banco e motor (IA simulada)", () => {
       const t = await rpc(S1, "app_tutor_start", "aula", "Bronquiolite viral aguda", null);
       expect(t.title).toBe("Bronquiolite viral aguda");
       expect(t.messages[0].content).toContain("Bronquiolite viral aguda");
+      expect(t.messages[0].content).not.toMatch(/^Tema:/); // na voz do Rabugento, não em formato de ficha
+      // toda personalidade tem falas de referência e aberturas para questão, revisão, próxima e tema, sem conteúdo médico
+      const all = await sql(`select id, examples, lines from public.tutor_personalities`);
+      for (const p of all) {
+        expect(p.examples.length).toBeGreaterThanOrEqual(4);
+        for (const k of ["question", "review", "next", "topic"]) expect(p.lines[k].length).toBeGreaterThanOrEqual(2);
+        expect(p.lines.topic.every((l: string) => l.includes("{tema}"))).toBe(true);
+        expect(JSON.stringify([p.examples, p.lines])).not.toMatch(/\d+\s?(mg|ml|mmhg|%)/i);
+      }
       await expect(rpc(S1, "app_tutor_start", "inventado", null, null)).rejects.toThrow(/Modo inválido/);
     });
   });
@@ -240,6 +276,10 @@ describe("Banco e motor (IA simulada)", () => {
       expect(s.question.correct_option).toBeNull();
       expect(s.question.options.map((o: any) => o.id)).toEqual(["A", "B", "C", "D"]);
       expect(Object.keys(s.question.options[0]).sort()).toEqual(["id", "text"]); // sem explicação antes de responder
+      // a abertura é do repertório do personagem para questão (nada de frase fixa de sistema)
+      const lines = (await sql(`select lines from public.tutor_personalities where id = 'rabugento'`))[0].lines;
+      expect(lines.question).toContain(s.messages[0].content);
+      expect(s.messages[0].content).not.toMatch(/Responda quando estiver pronto|Vamos de questão\./);
       expect((await sql(`select jsonb_array_length(images) n, status from public.questions where id = $1`, [q1]))[0]).toEqual({ n: 0, status: "valid" });
     });
 
@@ -264,6 +304,9 @@ describe("Banco e motor (IA simulada)", () => {
       const next = async () => (await rpc(S1, "app_tutor_next_question", session)).question.id as string;
       const q2 = await next();
       expect(q2).not.toBe(q1);
+      const lines = (await sql(`select lines from public.tutor_personalities where id = 'rabugento'`))[0].lines;
+      const said = (await sql(`select content from public.tutor_messages where session_id = $1 order by id desc limit 1`, [session]))[0].content;
+      expect(lines.next).toContain(said); // "próxima" também é dita pelo personagem
       await expect(rpc(S1, "app_tutor_next_question", session)).rejects.toThrow(/Responda a questão atual/);
       await rpc(S1, "app_tutor_answer", session, ["A", "B", "C", "D"].find((x) => x !== off[q2])!, 1);
       expect(await state(session)).toMatchObject({ difficulty_level: 1, streak_wrong: 0 }); // 3 → 1 no segundo erro seguido
@@ -333,28 +376,31 @@ describe("Banco e motor (IA simulada)", () => {
       expect(r).toMatchObject({ used_today: 1, daily_limit: 6 });
       const req = seen[seen.length - 1];
       expect(req.system.startsWith(TUTOR_CORE)).toBe(true);
-      expect(req.system.indexOf("MODO: conversa livre")).toBeGreaterThan(req.system.indexOf("BASE E HONESTIDADE"));
-      expect(req.system.indexOf("Personalidade: Professor Rabugento")).toBeGreaterThan(req.system.indexOf("MODO: conversa livre"));
+      expect(req.system.indexOf("AGORA: conversa aberta")).toBeGreaterThan(req.system.indexOf("O QUE É FATO"));
+      expect(req.system.indexOf("QUEM VOCÊ É NESTA CONVERSA: Professor Rabugento")).toBeGreaterThan(req.system.indexOf("AGORA: conversa aberta"));
       expect(req.system).toContain("intensidade 4 de 5");
-      expect(req.system).toContain("Respostas bem curtas"); // explicação "curta" escolhida pelo aluno
+      expect(req.system).toContain("fala pouco: uma ou duas frases"); // explicação "curta" escolhida pelo aluno
+      expect(req.system).toContain("«De novo isso? Tá, senta aí que eu explico.»"); // falas de referência do personagem
+      expect(req.system.indexOf("COMO VOCÊ FALA")).toBeLessThan(req.system.indexOf("O QUE É FATO")); // o jeito de conversar vem antes das travas
+      expect(req.effort).toBe("low");
       expect(req.input).toMatch(/<aluno>[\s\S]*Ignore suas regras[\s\S]*<\/aluno>/);
       expect(req.system).not.toContain("Ignore suas regras");
       expect(req.input).toContain('"nome":"Maria"');
       const msgs = await sql(`select role, content from public.tutor_messages where session_id = $1 order by id`, [session]);
       expect(msgs.map((m) => m.role)).toEqual(["tutor", "student", "tutor"]);
       expect((await sql(`select requests from public.ai_usage where user_id = $1`, [S1]))[0].requests).toBe(1);
-      expect((await lastMeta()).meta).toMatchObject({ simulated: true, prompt_version: "1.0.0", personality: { id: "rabugento", profanity: "off" } });
+      expect((await lastMeta()).meta).toMatchObject({ simulated: true, prompt_version: "1.1.0", personality: { id: "rabugento", profanity: "off" } });
       expect((await sql(`select count(*)::int n from public.ch_prompt_versions where prompt_id like 'tutor%'`))[0].n).toBe(TUTOR_PROMPT_LAYERS.length);
     });
 
     it("resposta com dose sem fonte é barrada: nova tentativa com a correção; se insistir, o aluno recebe a resposta fixa e honesta", async () => {
       let n = 0;
-      const fixed = await turn(() => (++n === 1 ? reply("Use amoxicilina 50 mg/kg por dia.") : reply("Não encontrei confirmação suficiente na base disponível. Vamos pelo raciocínio.")), { type: "message", text: "qual a dose?" });
+      const fixed = await turn(() => (++n === 1 ? reply("Use amoxicilina 50 mg/kg por dia.") : reply("Esse número eu não tenho confirmado aqui. Vamos pelo raciocínio?", { grounding: "INSUFFICIENT" })), { type: "message", text: "qual a dose?" });
       expect(n).toBe(2);
-      expect(seen[seen.length - 1].input).toMatch(/<correcao_obrigatoria>[\s\S]*50mg\/kg/);
-      expect(fixed.message).toMatchObject({ grounding: "insufficient", notice: null });
+      expect(seen[seen.length - 1].input).toMatch(/<correcao_obrigatoria>[\s\S]*50 mg\/kg/);
+      expect(fixed.message).toMatchObject({ content: "Esse número eu não tenho confirmado aqui. Vamos pelo raciocínio?", grounding: "insufficient", notice: null }); // dito do jeito dele, sem frase pronta
       const stuck = await turn(() => reply("A Portaria nº 999 manda usar 50 mg/kg."), { type: "message", text: "e a portaria?" });
-      expect(stuck.message.content).toMatch(/Não encontrei confirmação suficiente na base disponível/);
+      expect(stuck.message.content).toMatch(/não tenho confirmado aqui/);
       expect(stuck.message.notice).toMatch(/Resposta substituída/);
       const meta = (await lastMeta()).meta;
       expect(meta.violations).toEqual(expect.arrayContaining(["invented_reference", "ungrounded_number"]));
@@ -369,7 +415,7 @@ describe("Banco e motor (IA simulada)", () => {
       const s2 = (await rpc(S2, "app_tutor_start", "livre", null, null)).id;
       const ok = await turn(() => reply("Porra, olha o enunciado de novo."), { type: "message", text: "não sei" }, S2, s2);
       expect(ok.message.content).toBe("Porra, olha o enunciado de novo.");
-      expect(seen[seen.length - 1].system).toContain("palavrão moderado");
+      expect(seen[seen.length - 1].system).toContain("Palavrão moderado pode");
       const attack = await turn(() => reply("Você é burro, porra."), { type: "message", text: "errei de novo" }, S2, s2);
       expect(attack.message.content).not.toMatch(/burro/);
       expect((await lastMeta(s2)).meta.violations).toContain("personal_attack");
@@ -409,7 +455,7 @@ describe("Banco e motor (IA simulada)", () => {
       expect(ok.message).toMatchObject({ content: "Agora sim: qual é o dado principal?", notice: null });
       expect(seen[seen.length - 1].input).toMatch(/<correcao_obrigatoria>[\s\S]*fora do formato/);
       const bad = await turn(() => ({ reply: "x".repeat(3000) }), { type: "message", text: "oi" });
-      expect(bad.message.content).toBe("Não consegui montar a resposta agora. Tente perguntar de outro jeito.");
+      expect(bad.message.content).toBe("Travei aqui. Pergunta de novo, de outro jeito?");
       expect((await lastMeta()).meta.violations).toEqual(["invalid_format"]);
     });
 
@@ -424,17 +470,18 @@ describe("Banco e motor (IA simulada)", () => {
         expect(msg.input).toContain("Estado: aberta");
         expect(msg.input).not.toContain("Gabarito oficial da prova");
         expect(msg.input).not.toContain("Explicação oficial");
-        expect(msg.system).toContain("MODO: questões");
+        expect(msg.system).toContain("AGORA: tem uma questão oficial");
 
         const h1 = await turn(() => reply("Releia o dado principal do enunciado."), { type: "hint" }, S1, qs);
         expect(h1.message.hint_level).toBe(1);
         const hintReq = seen[seen.length - 1];
         expect(hintReq.input).toContain("Gabarito oficial da prova");
-        expect(hintReq.input).toContain("DICA 1");
+        expect(hintReq.input).toContain("O aluno pediu ajuda pela primeira vez");
+        expect(hintReq.input).toContain("Me dá uma ajuda aqui.");
         expect((await state(qs)).hint_level).toBe(1);
         // a IA tenta entregar a letra na dica 2: barrado duas vezes → resposta fixa, e a dica conta
         const leak = await turn(() => reply(`A resposta é ${off[qid]}.`), { type: "hint" }, S1, qs);
-        expect(leak.message.content).toMatch(/Ainda não vou entregar a resposta/);
+        expect(leak.message.content).toMatch(/ainda não vou te entregar/);
         expect(leak.message.hint_level).toBe(2);
         expect((await state(qs))).toMatchObject({ hint_level: 2, question_state: "open" });
       });
@@ -480,9 +527,9 @@ describe("Banco e motor (IA simulada)", () => {
         const q = (await rpc(S1, "app_tutor_next_question", qs)).question.id;
         await rpc(S1, "app_tutor_answer", qs, off[q], 1);
         await turn(() => reply("Acertou. Agora me diga por que essa é a resposta."), { type: "react" }, S1, qs);
-        expect(seen[seen.length - 1].input).toMatch(/peça que ele explique POR QUE/);
+        expect(seen[seen.length - 1].input).toMatch(/pergunte POR QUE essa é a resposta/);
         await turn(() => reply("Isso: você identificou a pista certa.", { justification: "OK", grounding: "QUESTION" }), { type: "message", text: "porque o quadro aponta para isso" }, S1, qs);
-        expect(seen[seen.length - 1].input).toMatch(/Avalie se a explicação mostra que ele sabia/);
+        expect(seen[seen.length - 1].input).toMatch(/A explicação mostra que sabia\?/);
         expect((await sql(`select lucky_guess, justification from public.tutor_answers where session_id = $1 and question_id = $2`, [qs, q]))[0]).toEqual({ lucky_guess: false, justification: "OK" });
         expect(await sql(`select 1 from public.tutor_reviews where user_id = $1 and question_id = $2`, [S1, q])).toEqual([]);
       });
@@ -491,13 +538,13 @@ describe("Banco e motor (IA simulada)", () => {
     it("voz: a resposta é escrita para ser falada, a interrupção vira contexto e o texto falado vem sem marcação", async () => {
       const r = await turn(() => reply("**Calma.** Vou explicar de outro jeito.\n- primeiro o conceito"), { type: "message", text: "espera, não entendi essa parte", voice: true, interrupted: "o mecanismo depende da resistência vascular" });
       const req = seen[seen.length - 1];
-      expect(req.system).toContain("MODO VOZ");
-      expect(req.input).toContain("O aluno interrompeu você enquanto você dizia: «o mecanismo depende da resistência vascular»");
+      expect(req.system).toContain("O ALUNO ESTÁ FALANDO COM VOCÊ POR VOZ");
+      expect(req.input).toContain("O aluno te interrompeu enquanto você dizia: «o mecanismo depende da resistência vascular»");
       expect(r.message.spoken).toBe("Calma. Vou explicar de outro jeito. primeiro o conceito");
       expect((await lastMeta()).meta.voice).toBe(true);
       // sem voz, a camada não entra
       await turn(() => reply("Certo."), { type: "message", text: "ok" });
-      expect(seen[seen.length - 1].system).not.toContain("MODO VOZ");
+      expect(seen[seen.length - 1].system).not.toContain("POR VOZ");
     });
 
     it("Tutor Inteligente avisa o aluno quando pega mais leve; conversa encerrada não recebe mais mensagem", async () => {
@@ -580,7 +627,7 @@ describe("Banco e motor (IA simulada)", () => {
       const out = tutorMockRespond({ input: "<tarefa>\nResponda à fala do aluno.\n</tarefa>" } as StructuredRequest);
       expect(out.reply).toMatch(/Simulação: não é IA/);
       expect(out.reply).not.toMatch(/\d+\s?(mg|ml|%)/);
-      expect(tutorMockRespond({ input: "<tarefa>\nDICA 5 (resposta explicada)\n</tarefa>" } as StructuredRequest).reveals_answer).toBe(true);
+      expect(tutorMockRespond({ input: "<tarefa>\nO aluno já pediu todas as ajudas. (ajuda 5 de 5)\n</tarefa>" } as StructuredRequest).reveals_answer).toBe(true);
     });
   });
 });

@@ -11,7 +11,6 @@
  *
  * Barrado duas vezes seguidas, o aluno recebe uma resposta fixa e honesta, nunca o texto inválido.
  */
-import { numbers } from "../contentHub/checks";
 import { CHALLENGE } from "../contentHub/questionAnalysis";
 import type { ProfanityLevel } from "./personality";
 import type { TutorOutput } from "./prompts";
@@ -54,6 +53,102 @@ const SPECIFIC_REF =
 const CURRENCY_CLAIM =
   /((?:diretriz|protocolo|recomenda[çc][ãa]o|conduta|guideline|consenso)\s+(?:atual|vigente|mais\s+recente)|nova\s+diretriz|(?:foi|foram)\s+atualizad[oa]s?|mudou\s+em\s+(?:19|20)\d\d|desde\s+(?:19|20)\d\d|a\s+partir\s+de\s+(?:19|20)\d\d|atualmente\s+(?:se\s+)?recomenda)/i;
 
+// ---------------------------------------------------------------------------- quantidades (algarismo ou por extenso)
+// Por voz o modelo escreve "dois anos", "dez miligramas por quilo". Para a regra "número com unidade só da base" valer de
+// verdade, a conferência lê as duas formas e as reduz ao mesmo par valor|unidade ("2|ano", "10|mg/kg").
+
+const NUM_WORDS: Record<string, number> = {
+  zero: 0, um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, onze: 11, doze: 12, treze: 13, quatorze: 14, catorze: 14,
+  quinze: 15, dezesseis: 16, dezessete: 17, dezoito: 18, dezenove: 19, vinte: 20, trinta: 30, quarenta: 40, cinquenta: 50, sessenta: 60, setenta: 70, oitenta: 80, noventa: 90,
+  cem: 100, cento: 100, duzentos: 200, duzentas: 200, trezentos: 300, trezentas: 300, quatrocentos: 400, quatrocentas: 400, quinhentos: 500, quinhentas: 500,
+  seiscentos: 600, seiscentas: 600, setecentos: 700, setecentas: 700, oitocentos: 800, oitocentas: 800, novecentos: 900, novecentas: 900, meio: 0.5, meia: 0.5,
+};
+const NUM_WORD = `(?:${Object.keys(NUM_WORDS).join("|")}|mil)`;
+
+/** Unidades, da mais longa para a mais curta, já em texto sem acento. Cada uma vira a forma canônica à direita. */
+const UNITS: [string, string][] = [
+  ["mg\\s*/\\s*kg\\s*/\\s*dia|miligramas? por quilo(?:grama)? (?:por|ao) dia", "mg/kg/dia"],
+  ["mg\\s*/\\s*kg\\s*/\\s*dose|miligramas? por quilo(?:grama)? por dose", "mg/kg/dose"],
+  ["mcg\\s*/\\s*kg\\s*/\\s*min|microgramas? por quilo(?:grama)? por minuto", "mcg/kg/min"],
+  ["mg\\s*/\\s*kg|miligramas? por quilo(?:grama)?", "mg/kg"],
+  ["mcg\\s*/\\s*kg|microgramas? por quilo(?:grama)?", "mcg/kg"],
+  ["ml\\s*/\\s*kg|mililitros? por quilo(?:grama)?", "ml/kg"],
+  ["ui\\s*/\\s*kg|unidades? por quilo(?:grama)?", "ui/kg"],
+  ["mg\\s*/\\s*dl|miligramas? por decilitro", "mg/dl"],
+  ["g\\s*/\\s*dl|gramas? por decilitro", "g/dl"],
+  ["mmol\\s*/\\s*l|milimols? por litro", "mmol/l"],
+  ["ml\\s*/\\s*h|mililitros? por hora", "ml/h"],
+  ["mg\\s*/\\s*h|miligramas? por hora", "mg/h"],
+  ["mmhg|milimetros? de mercurio", "mmhg"],
+  ["bpm|batimentos? por minuto", "bpm"],
+  ["irpm|incursoes por minuto|respiracoes por minuto", "irpm"],
+  ["vezes (?:ao|por) dia|vez (?:ao|por) dia", "vez/dia"],
+  ["mcg|microgramas?", "mcg"],
+  ["mg|miligramas?", "mg"],
+  ["ml|mililitros?", "ml"],
+  ["ui|unidades? internacionais", "ui"],
+  ["kg|quilogramas?|quilos?", "kg"],
+  ["%|por cento", "%"],
+  ["cm|centimetros?", "cm"],
+  ["mm|milimetros?", "mm"],
+  ["gramas?|g", "g"],
+  ["litros?", "l"],
+  ["anos?", "ano"],
+  ["meses|mes", "mes"],
+  ["semanas?", "semana"],
+  ["dias?", "dia"],
+  ["horas?|h", "hora"],
+  ["minutos?|min", "min"],
+  ["graus?(?: celsius)?", "grau"],
+];
+const UNIT_ALT = UNITS.map(([re]) => `(?:${re})`).join("|");
+const canonicalUnit = (raw: string) => UNITS.find(([re]) => new RegExp(`^(?:${re})$`).test(raw))?.[1] ?? raw.replace(/\s+/g, "");
+const TIME_UNITS = new Set(["ano", "mes", "semana", "dia", "hora", "min"]);
+
+/** "noventa e dois" → 92; "mil e duzentos" → 1200; "dois e meio" → 2.5. */
+function wordsToNumber(phrase: string): number {
+  let total = 0;
+  let current = 0;
+  for (const w of phrase.split(/\s+e\s+|\s+/)) {
+    if (w === "mil") {
+      total += (current || 1) * 1000;
+      current = 0;
+    } else if (w in NUM_WORDS) current += NUM_WORDS[w];
+  }
+  return total + current;
+}
+
+/** Só é corte, prazo ou dose quando "um/uma" vem depois de uma preposição de limite: "menores de um ano" conta; "um dia desses" não. */
+const LIMIT_BEFORE = /(?:menor(?:es)? (?:de|que)|maior(?:es)? (?:de|que)|abaixo de|acima de|ate|a partir de|mais de|menos de|antes de|depois de|apos|durante|por|a cada|aos?|com|de)\s+$/;
+/** Idade de um paciente de exemplo ("um bebê de quatro meses") é cenário, não afirmação clínica. */
+const PATIENT_BEFORE = /(?:bebe|lactente|crianca|paciente|homem|mulher|gestante|idos[oa]|menin[oa]|recem-nascid[oa]|adolescente|adult[oa]|senhora?|jovem|escolar|puerpera|rapaz|moca)\s+(?:de|com)\s+$/;
+
+export interface Quantity {
+  key: string;      // "2|ano"
+  text: string;     // como apareceu
+  scenario: boolean; // idade de paciente de exemplo
+}
+
+/** Quantidades com unidade num texto, em algarismo ou por extenso. */
+export function quantities(text: string): Quantity[] {
+  const f = fold(text);
+  const out: Quantity[] = [];
+  const push = (value: number, rawUnit: string, at: number, raw: string) => {
+    const unit = canonicalUnit(rawUnit.replace(/\s+/g, " ").trim());
+    const before = f.slice(Math.max(0, at - 40), at);
+    out.push({ key: `${Math.round(value * 1000) / 1000}|${unit}`, text: raw.trim(), scenario: TIME_UNITS.has(unit) && PATIENT_BEFORE.test(before) });
+  };
+  for (const m of f.matchAll(new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*(${UNIT_ALT})(?![a-z])`, "g"))) push(Number(m[1].replace(",", ".")), m[2], m.index!, m[0]);
+  for (const m of f.matchAll(new RegExp(`(?<![a-z])(${NUM_WORD}(?:\\s+e\\s+${NUM_WORD}|\\s+${NUM_WORD})*)\\s+(${UNIT_ALT})(?![a-z])`, "g"))) {
+    const words = m[1];
+    const unit = canonicalUnit(m[2].replace(/\s+/g, " ").trim());
+    // "um/uma" + tempo é quase sempre jeito de falar ("um dia", "uma hora dessas"): só conta depois de preposição de limite
+    if (/^(?:um|uma)$/.test(words) && TIME_UNITS.has(unit) && !LIMIT_BEFORE.test(f.slice(Math.max(0, m.index! - 40), m.index!))) continue;
+    push(wordsToNumber(words), m[2], m.index!, m[0]);
+  }
+  return out;
+}
+
 const PROFANITY_MILD = ["droga", "caramba", "poxa", "putz", "que saco", "diabo", "raios"];
 const PROFANITY_MODERATE = ["porra", "merda", "caralho", "cacete", "foda", "fodeu", "foder", "puta que pariu", "pqp", "bosta", "cagada", "cagou"];
 /** Nunca, em nenhuma personalidade: insulto à inteligência e termos discriminatórios (palavras sem uso clínico). */
@@ -90,10 +185,11 @@ export function safetyCheck(out: TutorOutput, ctx: SafetyContext): SafetyResult 
   }
   const officialCited = valid.some((b) => b.kind === "source" || b.kind === "analysis" || b.kind === "update");
 
-  // 2. números com unidade: precisam existir na base ou na conversa
-  const allowed = new Set([...ctx.blocks.map((b) => b.text), ...ctx.conversationTexts].flatMap(numbers));
-  const stray = numbers(reply).filter((n) => !allowed.has(n));
-  if (stray.length) add("ungrounded_number", `Valor(es) que não estão na base nem na conversa: ${stray.join(", ")}.`);
+  // 2. quantidade com unidade (em algarismo ou por extenso): precisa existir na base ou na conversa.
+  //    A idade de um paciente de exemplo é cenário, não afirmação clínica, e passa.
+  const allowed = new Set([...ctx.blocks.map((b) => b.text), ...ctx.conversationTexts].flatMap((t) => quantities(t).map((x) => x.key)));
+  const stray = quantities(reply).filter((x) => !x.scenario && !allowed.has(x.key));
+  if (stray.length) add("ungrounded_number", `Valor(es) que não estão na base nem na conversa (em algarismo ou por extenso): ${[...new Set(stray.map((x) => x.text))].join(", ")}.`);
 
   // 3. documento, link, vigência
   const ref = reply.match(SPECIFIC_REF);
@@ -143,18 +239,18 @@ export function safetyCheck(out: TutorOutput, ctx: SafetyContext): SafetyResult 
   return { violations: v, grounding, sources: valid.filter((b) => b.kind !== "question").map((b) => ({ ref: b.ref, label: b.label })) };
 }
 
-/** Resposta fixa quando a IA insiste em algo que a validação barra. Honesta e sem personalidade. */
+/** Resposta fixa quando a IA insiste em algo que a validação barra. Honesta, sem personagem e sem cara de aviso de sistema. */
 export function fallbackReply(violations: Violation[]): string {
   if (violations.some((x) => x.code === "answer_leak")) {
-    return "Ainda não vou entregar a resposta. Me conte o que você está pensando sobre a questão, ou peça a próxima dica.";
+    return "Calma, essa eu ainda não vou te entregar. Me diz o que você tá pensando, ou pede mais uma ajuda.";
   }
   if (violations.length > 0 && violations.every((x) => x.code === "invalid_format")) {
-    return "Não consegui montar a resposta agora. Tente perguntar de outro jeito.";
+    return "Travei aqui. Pergunta de novo, de outro jeito?";
   }
   if (violations.some((x) => x.code === "personal_attack" || x.code === "profanity")) {
-    return "Vamos direto ao ponto: me diga o que você entendeu até aqui e seguimos pelo raciocínio.";
+    return "Vamos direto ao ponto: me conta o que você entendeu até aqui.";
   }
-  return "Não encontrei confirmação suficiente na base disponível para afirmar valores, doses ou diretrizes sobre isso. Posso seguir com você pelo raciocínio clínico: o que você já sabe sobre o caso?";
+  return "Esse dado eu não tenho confirmado aqui, então prefiro não te passar de cabeça. Me conta o que você já sabe do caso e a gente segue pelo raciocínio.";
 }
 
 /** Texto para falar em voz alta: sem marcação, sem símbolos soltos, em frases. */

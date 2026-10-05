@@ -172,7 +172,7 @@ describe("Tela do Tutor", () => {
     await waitFor(() => expect(turns).toHaveLength(1));
     expect(turns[0]).toMatchObject({ action: "message", text: "não entendi o mecanismo", voice: true });
     await waitFor(() => expect(spoken).toHaveLength(1));
-    expect(spoken[0]).toEqual({ text: "Pense primeiro na síndrome.", rate: 1, pitch: 0.85 }); // voz do Rabugento, frase a frase
+    expect(spoken[0]).toEqual({ text: "Pense primeiro na síndrome. Depois na causa.", rate: 1, pitch: 0.85 }); // voz do Rabugento, em fala corrida
     expect(await screen.findByText("O professor está falando.")).toBeTruthy();
     // o aluno interrompe e fala de novo: a frase que estava sendo dita vai junto
     fireEvent.click(screen.getByLabelText("Interromper e falar"));
@@ -180,7 +180,27 @@ describe("Tela do Tutor", () => {
     recognition.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: "explica de outro jeito" }], { isFinal: true })] });
     recognition.onend();
     await waitFor(() => expect(turns).toHaveLength(2));
-    expect(turns[1]).toMatchObject({ text: "explica de outro jeito", voice: true, interrupted: "Pense primeiro na síndrome." });
+    expect(turns[1]).toMatchObject({ text: "explica de outro jeito", voice: true, interrupted: "Pense primeiro na síndrome. Depois na causa." });
+  });
+
+  it("fala corrida e voz mais natural: junta frases curtas, quebra texto longo e prefere a voz natural do aparelho", async () => {
+    const v = await import("../novo/app/tutor/useVoice.js");
+    expect(v.speechChunks("Hum. Quase. Olha de novo o caso.")).toEqual(["Hum. Quase. Olha de novo o caso."]);
+    const long = Array.from({ length: 8 }, (_, i) => `Esta é a frase número ${i + 1} de uma explicação mais comprida do professor.`).join(" ");
+    const chunks = v.speechChunks(long);
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks.every((c: string) => c.length <= 220)).toBe(true);
+    expect(chunks.join(" ")).toBe(long);
+    const keep = (window as any).speechSynthesis.getVoices;
+    (window as any).speechSynthesis.getVoices = () => [
+      { lang: "en-US", name: "Samantha", localService: true },
+      { lang: "pt-BR", name: "Luciana", localService: true },
+      { lang: "pt-PT", name: "Joana (Enhanced)", localService: true },
+      { lang: "pt-BR", name: "Google português do Brasil", localService: false },
+      { lang: "pt-BR", name: "Microsoft Francisca Online (Natural)", localService: false },
+    ];
+    expect(v.portugueseVoices().map((x: any) => x.name)).toEqual(["Microsoft Francisca Online (Natural)", "Google português do Brasil", "Luciana", "Joana (Enhanced)"]);
+    (window as any).speechSynthesis.getVoices = keep;
   });
 
   it("'espera' só faz o professor parar: não vira mensagem", async () => {

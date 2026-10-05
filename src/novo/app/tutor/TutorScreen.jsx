@@ -9,7 +9,7 @@ import { useMobile } from "../Shell.jsx";
 import { examLabel, splitStatement } from "../practice/format.js";
 import { tutorAvailable, tutorTurn } from "./api.js";
 import { CONFIDENCE, ERROR_CLASS, EXPLANATION, GROUNDING, HUMOR, INTENSITY, LEVEL, MODES, PROFANITY, STRICTNESS, modeLabel } from "./labels.js";
-import { isPauseWord, useVoice, voiceSupport } from "./useVoice.js";
+import { chooseVoice, chosenVoiceName, isPauseWord, portugueseVoices, useVoice, voiceSupport } from "./useVoice.js";
 
 const R = { borderRadius: 24 };
 const messageOf = (error) => error?.message || "Não foi possível concluir. Tente de novo.";
@@ -163,12 +163,53 @@ function ProfessorPicker({ status, onSaved }) {
           {chosen?.swears && profanityOptions.length > 1 && <SelectField label="Palavrões" hint="Só como ênfase bem-humorada, nunca contra você." value={prefs.profanity} onChange={(e) => set({ profanity: e.target.value })} options={profanityOptions} />}
         </div>
         <Switch label="Tutor Inteligente" description="Ajusta a intensidade por um tempo quando você trava ou embala, e sempre avisa. O professor escolhido não muda." checked={prefs.adaptive} onChange={(e) => set({ adaptive: e.target.checked })} />
+        {status.voice_enabled && <VoicePicker voice={chosen?.voice} />}
         {state.error && <Banner tone="danger">{state.error}</Banner>}
         <div>
           <Button icon="check" loading={state.saving} onClick={save}>Salvar professor</Button>
         </div>
       </div>
     </Card>
+  );
+}
+
+/** Voz do aparelho: lista as vozes em português (a mais natural primeiro) e deixa ouvir antes de escolher. */
+function VoicePicker({ voice }) {
+  const [voices, setVoices] = React.useState(() => portugueseVoices());
+  const [name, setName] = React.useState(() => chosenVoiceName());
+  React.useEffect(() => {
+    const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
+    if (!synth) return undefined;
+    const refresh = () => setVoices(portugueseVoices());
+    refresh();
+    synth.addEventListener?.("voiceschanged", refresh);
+    return () => synth.removeEventListener?.("voiceschanged", refresh);
+  }, []);
+  if (voices.length === 0) return null;
+  const listen = () => {
+    const synth = window.speechSynthesis;
+    synth.cancel();
+    const u = new SpeechSynthesisUtterance("Oi. É assim que eu vou falar com você. Se ficar estranho, escolhe outra voz.");
+    const v = voices.find((x) => x.name === name) ?? voices[0];
+    u.voice = v;
+    u.lang = v.lang;
+    u.rate = Number(voice?.rate) || 1;
+    u.pitch = Number(voice?.pitch) || 1;
+    synth.speak(u);
+  };
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+      <div style={{ flex: 1, minWidth: 220, maxWidth: 420 }}>
+        <SelectField
+          label="Voz do professor (deste aparelho)"
+          hint="As vozes vêm do seu aparelho e do navegador. As marcadas como natural, neural ou aprimorada soam menos robóticas."
+          value={name}
+          onChange={(e) => (setName(e.target.value), chooseVoice(e.target.value))}
+          options={[{ value: "", label: `A mais natural (${voices[0].name})` }, ...voices.map((v) => ({ value: v.name, label: v.name }))]}
+        />
+      </div>
+      <Button size="sm" variant="secondary" icon="volume-2" onClick={listen}>Ouvir</Button>
+    </div>
   );
 }
 
@@ -261,7 +302,7 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
     const spoken = byVoice || voiceOn;
     setError(null);
     setSending(true);
-    const mine = action === "message" ? said : action === "hint" ? `Quero a dica ${session.hint_level + 1}.` : null;
+    const mine = action === "message" ? said : action === "hint" ? (session.hint_level === 0 ? "Me dá uma ajuda aqui." : "Me ajuda mais um pouco.") : null;
     if (mine) setMessages((m) => [...m, { id: `local-${Date.now()}`, role: "student", content: mine }]);
     try {
       const r = await tutorTurn(backend, { session_id: session.id, action, text: said, voice: spoken, interrupted: interrupted.current });
@@ -306,7 +347,7 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
     try {
       await backend.rpc("app_tutor_answer", { p_session_id: session.id, p_option: option, p_confidence: confidence });
       const fresh = await reload();
-      setMessages((m) => [...m, { id: `local-${Date.now()}`, role: "student", content: `Marquei a alternativa ${option}.` }]);
+      setMessages((m) => [...m, { id: `local-${Date.now()}`, role: "student", content: `Marquei a ${option}.` }]);
       setSending(false);
       if (fresh.question_state === "answered") await send({ action: "react" });
     } catch (e) {
@@ -400,7 +441,7 @@ function Bubble({ message: m }) {
         </div>
         {!mine && (label || m.notice || m.hint_level) && (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 6 }}>
-            {m.hint_level ? <Badge size="sm">dica {m.hint_level} de 5</Badge> : null}
+            {m.hint_level ? <Badge size="sm">ajuda {m.hint_level} de 5</Badge> : null}
             {label && <Badge size="sm" tone={tone}>{label}</Badge>}
             {(m.sources ?? []).map((s) => (
               <span key={s.ref} style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>{s.label}</span>
@@ -459,18 +500,18 @@ function QuestionCard({ session, busy, onAnswer, onHint, onNext, limitReached })
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Button icon="check" disabled={!selected || busy} onClick={() => onAnswer(selected, confidence)}>Responder</Button>
             <Button variant="secondary" icon="lightbulb" disabled={busy || limitReached || session.hint_level >= 5} onClick={onHint}>
-              {session.hint_level >= 5 ? "Sem mais dicas" : `Pedir dica (${session.hint_level + 1} de 5)`}
+              {session.hint_level >= 5 ? "Sem mais ajuda" : session.hint_level === 0 ? "Pedir ajuda" : `Pedir mais ajuda (${session.hint_level + 1} de 5)`}
             </Button>
           </div>
-          {session.hint_level >= 3 && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Com 3 dicas ou mais, mesmo acertando a questão volta em revisão.</span>}
+          {session.hint_level >= 3 && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Com 3 ajudas ou mais, mesmo acertando a questão volta em revisão.</span>}
         </>
       )}
       {!open && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          {q.state === "revealed" && <Badge tone="warning">Resposta revelada pela dica 5: não conta no seu histórico</Badge>}
+          {q.state === "revealed" && <Badge tone="warning">O professor contou a resposta: não conta no seu histórico</Badge>}
           {answered && <Badge tone={answered.is_correct ? "success" : "danger"}>{answered.is_correct ? "Você acertou" : `Você marcou ${answered.selected}; a correta é ${q.correct_option}`}</Badge>}
           {answered?.lucky_guess && <Badge tone="warning">Provável chute: volta em revisão</Badge>}
-          {answered?.heavy_hints && <Badge tone="warning">Com muita dica: volta em revisão</Badge>}
+          {answered?.heavy_hints && <Badge tone="warning">Com muita ajuda: volta em revisão</Badge>}
           {answered?.outcome === "priority" && <Badge tone="danger">Errou com certeza: prioridade</Badge>}
           {["questao", "erros"].includes(session.mode) && session.status === "active" && <Button size="sm" iconRight="arrow-right" disabled={busy} onClick={onNext}>Próxima questão</Button>}
         </div>
@@ -536,8 +577,8 @@ function Report({ onBack }) {
         <Badge>{data.tutor.correct} acertos em {data.tutor.answers} respostas</Badge>
         {data.tutor.wrong_but_sure > 0 && <Badge tone="danger">{data.tutor.wrong_but_sure} erro(s) com certeza</Badge>}
         {data.tutor.lucky_guesses > 0 && <Badge tone="warning">{data.tutor.lucky_guesses} provável(is) chute(s)</Badge>}
-        {data.tutor.with_heavy_hints > 0 && <Badge tone="warning">{data.tutor.with_heavy_hints} com muita dica</Badge>}
-        <Badge>{data.tutor.avg_hints} dica(s) por questão, em média</Badge>
+        {data.tutor.with_heavy_hints > 0 && <Badge tone="warning">{data.tutor.with_heavy_hints} com muita ajuda</Badge>}
+        <Badge>{data.tutor.avg_hints} ajuda(s) por questão, em média</Badge>
       </div>
       {classes.length > 0 && (
         <>

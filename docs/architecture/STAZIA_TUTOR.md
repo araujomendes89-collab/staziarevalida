@@ -146,3 +146,32 @@ Tutor. **Não há previsão de aprovação**: não existe base para isso. A mem�
    Afrouxar isso é possível, mas faria a IA afirmar conduta sem conferência: não recomendo.
 3. **Quem tem acesso**: todos, ou só planos pagos. O protótipo falava em voz no plano Elite; isso não foi decidido aqui.
 4. **Palavrões**: o teto da plataforma (hoje: até moderados, e só para quem escolhe o Xingão e libera).
+
+## 10. Fala natural (versão 1.1.0 do prompt, migração `3200_tutor_natural`)
+
+No primeiro teste do dono o Tutor saiu **robotizado**. As causas eram minhas e de forma, não de conteúdo:
+
+| Causa | Correção |
+|---|---|
+| O núcleo era uma lista de regras; o modelo imitava o tom de regra | o núcleo agora **começa pelo jeito de conversar** (português falado, uma a três frases, reagir ao que o aluno disse, sem lista, sem frase de assistente) e trata as travas como bastidor |
+| A personalidade ia como lista de diretivas | vai em frases ("faz graça com frequência; cobra firme e pede o porquê…") mais **falas de referência** do personagem (`tutor_personalities.examples`): o tom, não o texto |
+| Frases fixas de sistema ("Vamos de questão. Responda quando estiver pronto.", "Próxima questão.", "Tema: X.") | cada personagem tem as suas aberturas (`tutor_personalities.lines`: questão, revisão, próxima, tema), escolhidas sem IA |
+| Frase obrigatória "Não encontrei confirmação suficiente na base disponível." | o Tutor diz que não tem o dado confirmado **do jeito dele**; a etiqueta "Sem confirmação na base" continua embaixo da resposta |
+| Correção em formato de ficha (certa, por quê, cada alternativa) | conversa sobre a escolha do aluno; passa pelas outras alternativas uma de cada vez, se ele quiser |
+| "Dica 1: …", "Quero a dica 2." | ajuda sem número e sem anúncio; o aluno "pede ajuda" |
+| As instruções chamavam o aluno de "ele", e a IA chegou a falar dele em terceira pessoa | as instruções dizem "o aluno" e mandam falar sempre com ele, em "você" |
+| Resposta em 3,5 a 5,6 s | esforço de raciocínio baixo para conversa (`TUTOR_ANTHROPIC_EFFORT`, padrão `low`): 2,8 a 4,1 s nas conferências |
+| Voz picada (uma frase por vez) e tom forçado | fala em pedaços de até 220 caracteres; tom perto do natural; o aluno escolhe a voz do aparelho, com as "naturais/neurais" primeiro |
+
+**Falha de segurança achada no teste real e fechada.** Por voz a IA escreve os números por extenso ("em geral abaixo de dois anos") e a validação só lia
+algarismos. Agora `quantities()` lê as duas formas e as reduz ao mesmo par valor|unidade ("dois anos" = "2 anos", "dez miligramas por quilo" = "10 mg/kg").
+Jeito de falar não conta ("uma vez só", "um dia desses", "já te falei duas vezes"). **A idade de um paciente de exemplo** ("imagina um bebê de quatro meses")
+passa, porque é cenário; corte, prazo e dose sem fonte ("até dois anos", "por dez dias") não passam.
+
+**Conferido com a IA de verdade** (`scripts/tutor/preflight.ts`, 8 falas: questão com ajuda, erro e reação; conversa solta; dose sem fonte; fala por voz):
+cerca de US$ 0,01 por fala. Exemplos reais do Rabugento depois da mudança: *"Jurava por quê? Aposto que você viu 'cefálica' na A e travou nela, sem olhar a
+primeira palavra."* · *"Olha, a dose de amoxicilina pra otite eu não tenho confirmada aqui, então não vou te passar de cabeça."*
+
+**O que continua soando artificial: a voz.** A fala sai da voz do aparelho e do navegador. Ela melhora escolhendo uma voz "natural" (o Edge tem; no Mac é
+possível baixar vozes aprimoradas em Ajustes → Acessibilidade → Conteúdo Falado), mas não chega a uma voz humana. Voz realmente natural exige um serviço
+de voz neural no servidor (pago por caractere), que ainda não foi escolhido nem construído.
