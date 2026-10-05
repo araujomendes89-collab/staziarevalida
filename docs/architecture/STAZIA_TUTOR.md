@@ -175,3 +175,22 @@ primeira palavra."* · *"Olha, a dose de amoxicilina pra otite eu não tenho con
 **O que continua soando artificial: a voz.** A fala sai da voz do aparelho e do navegador. Ela melhora escolhendo uma voz "natural" (o Edge tem; no Mac é
 possível baixar vozes aprimoradas em Ajustes → Acessibilidade → Conteúdo Falado), mas não chega a uma voz humana. Voz realmente natural exige um serviço
 de voz neural no servidor (pago por caractere), que ainda não foi escolhido nem construído.
+
+## 11. Conversa por voz: a fala do estudante (2026-10-05)
+
+Pedido do dono: o reconhecimento da fala do estudante tem de valer de verdade, não só digitar. O que existia era um botão pequeno de microfone.
+Agora há um modo **"Conversar por voz"** no topo da conversa (`voiceCommands.js`, `useVoice.js`):
+
+- o professor fala e, quando termina, **volta a ouvir sozinho**; interromper é um toque;
+- numa questão, ele **lê o enunciado e as alternativas** e o aluno faz tudo falando:
+  "alternativa B" (marca) → "confirmo" (responde) · "me dá uma ajuda" · "repete a questão" · "próxima" · "espera";
+- **marcar por voz nunca responde sozinho**: o aplicativo repete a letra e espera o "confirmo", porque resposta gravada não se desfaz e o
+  reconhecimento pode trocar "bê" por "dê";
+- letra solta não é comando: "se", "de" e "a" são palavras comuns, então a letra só vale depois de "alternativa", "letra", "marco", "vou de"…;
+  pergunta sobre uma alternativa ("por que a B não serve?") vai para o professor como conversa;
+- microfone bloqueado, sem microfone ou navegador sem suporte: o aluno recebe a explicação em vez de um botão mudo;
+- os comandos são regras no navegador: **não gastam IA**.
+
+Limites de hoje: o reconhecimento é o do navegador (Chrome, Edge, Safari; no Chrome o áudio é processado pelo Google), pode errar termo médico e não
+existe no Firefox. O passo seguinte é o reconhecimento **no servidor**, junto com a voz neural, que depende de uma chave real do Gemini
+(a `GEMINI_API_KEY` do `.env` ainda é o texto de exemplo). O roteiro das amostras de voz está em `scripts/tutor/voice-samples.ts`.

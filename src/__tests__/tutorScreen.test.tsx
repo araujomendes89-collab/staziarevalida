@@ -203,6 +203,67 @@ describe("Tela do Tutor", () => {
     (window as any).speechSynthesis.getVoices = keep;
   });
 
+  it("conversa por voz numa questão: o professor lê, o aluno marca e confirma falando, sem digitar nem clicar", async () => {
+    let current = session();
+    rpcImpl.app_tutor_start = () => current;
+    rpcImpl.app_tutor_session = () => current;
+    const answers: any[] = [];
+    rpcImpl.app_tutor_answer = (a) => {
+      answers.push(a);
+      current = session({ question_state: "answered", question: { ...QUESTION, state: "answered", correct_option: "A" }, last_answer: { selected: "B", is_correct: false, confidence: null, outcome: "normal", lucky_guess: false, heavy_hints: false } });
+      return { is_correct: false };
+    };
+    turnReply = { message: { id: 13, role: "tutor", content: "Hum, a B. Olha de novo a saturação.", spoken: "Hum, a B. Olha de novo a saturação.", grounding: "question", sources: [], hint_level: null, suggested: [], notice: null }, question_state: "answered", used_today: 3, daily_limit: 40 };
+    const finishSpeech = async () => {
+      for (let i = 0; i < 20 && pendingEnd.length; i++) pendingEnd.shift()!();
+      await new Promise((r) => setTimeout(r, 0));
+    };
+    const speakNow = async (said: string) => {
+      await waitFor(() => expect(recognition).not.toBeNull());
+      const rec = recognition;
+      recognition = null;
+      rec.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: said }], { isFinal: true })] });
+      rec.onend();
+    };
+    const TutorScreen = await load();
+    render(<TutorScreen go={() => {}} />);
+    fireEvent.click(await screen.findByText("Começar"));
+    fireEvent.click(await screen.findByText("Conversar por voz"));
+    // 1. lê o enunciado e as alternativas
+    await waitFor(() => expect(spoken.length).toBeGreaterThan(0));
+    expect(spoken.map((x) => x.text).join(" ")).toContain("Lactente com sibilância. Qual a conduta? Alternativa A: Oxigênio Alternativa B: Salbutamol");
+    expect(screen.getByText(/Lendo a questão/)).toBeTruthy();
+    await finishSpeech();
+    // 2. o aluno marca falando: nada é enviado ainda, o app pede a confirmação
+    await speakNow("acho que é a alternativa bê");
+    await waitFor(() => expect(screen.getByText(/Marquei a B\. Diga “confirmo”/)).toBeTruthy());
+    expect(answers).toHaveLength(0);
+    expect(turns).toHaveLength(0);
+    await finishSpeech();
+    // 3. confirma falando: a resposta vai para o banco e o professor reage em voz alta
+    await speakNow("confirmo");
+    await waitFor(() => expect(answers).toEqual([{ p_session_id: current.id, p_option: "B", p_confidence: null }]));
+    await waitFor(() => expect(turns).toHaveLength(1));
+    expect(turns[0]).toMatchObject({ action: "react", voice: true });
+    await waitFor(() => expect(spoken.some((x) => x.text.includes("Olha de novo a saturação"))).toBe(true));
+    // 4. interromper a LEITURA da questão não vira "você me interrompeu" para o professor
+    expect(turns[0].interrupted).toBeNull();
+    expect(screen.getByText("Encerrar voz")).toBeTruthy();
+  });
+
+  it("microfone bloqueado ou navegador sem suporte: o aluno recebe a explicação, não um botão mudo", async () => {
+    rpcImpl.app_tutor_start = () => session({ mode: "livre", question: null, question_state: "none" });
+    const TutorScreen = await load();
+    render(<TutorScreen go={() => {}} />);
+    fireEvent.click(await screen.findByText("Conversa livre"));
+    fireEvent.click(screen.getByText("Começar"));
+    fireEvent.click(await screen.findByLabelText("Falar com o professor"));
+    recognition.onerror({ error: "not-allowed" });
+    recognition.onend();
+    expect(await screen.findByText(/O navegador bloqueou o microfone/)).toBeTruthy();
+    expect(turns).toHaveLength(0);
+  });
+
   it("'espera' só faz o professor parar: não vira mensagem", async () => {
     rpcImpl.app_tutor_start = () => session({ mode: "livre", question: null, question_state: "none" });
     const TutorScreen = await load();

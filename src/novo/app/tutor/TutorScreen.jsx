@@ -9,7 +9,8 @@ import { useMobile } from "../Shell.jsx";
 import { examLabel, splitStatement } from "../practice/format.js";
 import { tutorAvailable, tutorTurn } from "./api.js";
 import { CONFIDENCE, ERROR_CLASS, EXPLANATION, GROUNDING, HUMOR, INTENSITY, LEVEL, MODES, PROFANITY, STRICTNESS, modeLabel } from "./labels.js";
-import { chooseVoice, chosenVoiceName, isPauseWord, portugueseVoices, useVoice, voiceSupport } from "./useVoice.js";
+import { chooseVoice, chosenVoiceName, portugueseVoices, useVoice, voiceSupport } from "./useVoice.js";
+import { micErrorMessage, parseVoiceCommand, questionSpeech } from "./voiceCommands.js";
 
 const R = { borderRadius: 24 };
 const messageOf = (error) => error?.message || "Não foi possível concluir. Tente de novo.";
@@ -273,23 +274,43 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
   const [text, setText] = React.useState("");
   const [sending, setSending] = React.useState(false);
   const [error, setError] = React.useState(null);
-  const [voiceOn, setVoiceOn] = React.useState(false);
+  const [voiceOn, setVoiceOn] = React.useState(false); // conversa por voz: o professor fala e volta a ouvir sozinho
+  const [voiceNote, setVoiceNote] = React.useState(null); // aviso curto do modo voz (não é fala do professor)
+  const [picked, setPicked] = React.useState(null); // alternativa escolhida, por clique ou por voz
+  const [confidence, setConfidence] = React.useState(null);
   const interrupted = React.useRef(null);
   const endRef = React.useRef(null);
   const support = React.useMemo(voiceSupport, []);
   const voiceAllowed = status.voice_enabled && (support.speak || support.listen);
+  // a voz chama de volta fora do ciclo de desenho: estas referências sempre apontam para o estado e as ações mais recentes
+  const live = React.useRef({});
+  const actions = React.useRef({});
 
-  const sendRef = React.useRef(null);
   const voice = useVoice({
-    onUtterance: (said) => {
-      if (isPauseWord(said)) return; // "espera": o professor já parou; fica aguardando o aluno
-      sendRef.current?.({ action: "message", text: said, byVoice: true });
-    },
+    onUtterance: (said) => actions.current.heard?.(said),
+    onSilence: () => live.current.voiceOn && setVoiceNote("Não ouvi nada. Toque no microfone quando quiser falar."),
   });
 
   React.useEffect(() => {
     endRef.current?.scrollIntoView?.({ block: "end" });
   }, [messages.length, voice.interim]);
+  React.useEffect(() => {
+    setPicked(null);
+    setConfidence(null);
+  }, [session.question?.id]);
+
+  const listenAgain = () => live.current.voiceOn && support.listen && voice.listen();
+
+  /** Fala algo do aplicativo (aviso ou leitura da questão), que não é resposta do professor, e volta a ouvir. */
+  const say = (textToSay, note = textToSay) => {
+    setVoiceNote(note);
+    if (!support.speak) return listenAgain();
+    return voice.speak(textToSay, live.current.session.personality.voice, "system").then((finished) => finished && listenAgain());
+  };
+  const readQuestion = (s = live.current.session, lead = "") => {
+    if (!s.question) return listenAgain();
+    return say(`${lead} ${questionSpeech(s.question, splitStatement(s.question.statement))}`.trim(), "Lendo a questão. Toque em Interromper para pular.");
+  };
 
   const reload = async () => {
     const fresh = await backend.rpc("app_tutor_session", { p_session_id: session.id });
@@ -298,10 +319,12 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
   };
 
   const send = async ({ action, text: said, byVoice = false }) => {
-    if (sending) return;
-    const spoken = byVoice || voiceOn;
+    if (live.current.sending) return;
+    const spoken = byVoice || live.current.voiceOn;
     setError(null);
+    setVoiceNote(null);
     setSending(true);
+    live.current.sending = true;
     const mine = action === "message" ? said : action === "hint" ? (session.hint_level === 0 ? "Me dá uma ajuda aqui." : "Me ajuda mais um pouco.") : null;
     if (mine) setMessages((m) => [...m, { id: `local-${Date.now()}`, role: "student", content: mine }]);
     try {
@@ -312,18 +335,18 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
       if (action === "hint" || r.question_state !== session.question_state) await reload();
       if (spoken && support.speak) {
         // a fala não segura a conversa: o aluno pode interromper e mandar outra mensagem
-        voice.speak(r.message.spoken, session.personality.voice).then((finished) => {
-          if (finished && byVoice && support.listen) voice.listen(); // conversa por voz: volta a ouvir quando termina de falar
+        voice.speak(r.message.spoken, session.personality.voice, "reply").then((finished) => {
+          if (finished && (byVoice || live.current.voiceOn) && support.listen) voice.listen(); // conversa por voz: volta a ouvir quando termina de falar
         });
-      }
+      } else if (spoken) listenAgain();
     } catch (e) {
       setError(messageOf(e));
       if (mine) setMessages((m) => m.slice(0, -1));
     } finally {
       setSending(false);
+      live.current.sending = false;
     }
   };
-  sendRef.current = send;
 
   const submit = (event) => {
     event.preventDefault();
@@ -338,21 +361,46 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
     if (voice.listening) return voice.stopListening();
     if (voice.speaking) interrupted.current = voice.interrupt();
     setVoiceOn(true);
+    live.current.voiceOn = true;
+    setVoiceNote(null);
     voice.listen();
   };
 
-  const answer = async (option, confidence) => {
+  /** Liga ou desliga a conversa por voz. Ao ligar com questão aberta, o professor lê a questão e depois ouve. */
+  const toggleVoice = () => {
+    if (voiceOn) {
+      setVoiceOn(false);
+      live.current.voiceOn = false;
+      voice.interrupt();
+      voice.stopListening();
+      setVoiceNote(null);
+      return;
+    }
+    setVoiceOn(true);
+    live.current.voiceOn = true;
+    if (session.question_state === "open") readQuestion(session);
+    else {
+      setVoiceNote(null);
+      voice.listen();
+    }
+  };
+
+  const answer = async (option, conf) => {
     setError(null);
+    setVoiceNote(null);
     setSending(true);
+    live.current.sending = true;
     try {
-      await backend.rpc("app_tutor_answer", { p_session_id: session.id, p_option: option, p_confidence: confidence });
+      await backend.rpc("app_tutor_answer", { p_session_id: session.id, p_option: option, p_confidence: conf });
       const fresh = await reload();
       setMessages((m) => [...m, { id: `local-${Date.now()}`, role: "student", content: `Marquei a ${option}.` }]);
       setSending(false);
+      live.current.sending = false;
       if (fresh.question_state === "answered") await send({ action: "react" });
     } catch (e) {
       setError(messageOf(e));
       setSending(false);
+      live.current.sending = false;
     }
   };
 
@@ -362,15 +410,54 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
       const fresh = await backend.rpc("app_tutor_next_question", { p_session_id: session.id });
       setSession(fresh);
       setMessages(fresh.messages);
+      if (live.current.voiceOn) readQuestion(fresh, fresh.messages[fresh.messages.length - 1]?.content ?? "");
     } catch (e) {
       setError(messageOf(e));
+      listenAgain();
     }
   };
+
+  /** O que o aluno falou: comando (marcar, confirmar, ajuda, próxima, repetir, parar) ou fala para o professor. */
+  const heard = (said) => {
+    const s = live.current.session;
+    const cmd = parseVoiceCommand(said, {
+      questionOpen: s.question_state === "open",
+      picked: live.current.picked,
+      canNext: ["questao", "erros"].includes(s.mode) && s.question_state !== "open" && s.status === "active",
+    });
+    switch (cmd.type) {
+      case "pause":
+        return setVoiceNote("Tô te esperando. Toque no microfone quando quiser falar.");
+      case "answer":
+        setPicked(cmd.option);
+        return say(`Marquei a ${cmd.option}. Diga confirmo para responder, ou fale outra alternativa.`, `Marquei a ${cmd.option}. Diga “confirmo” para responder, ou fale outra alternativa.`);
+      case "confirm":
+        return answer(live.current.picked, live.current.confidence);
+      case "cancel":
+        setPicked(null);
+        return say("Desmarquei. Qual você escolhe?");
+      case "hint":
+        return send({ action: "hint", byVoice: true });
+      case "next":
+        return nextQuestion();
+      case "repeat":
+        return readQuestion();
+      case "message":
+        return send({ action: "message", text: cmd.text, byVoice: true });
+      default:
+        return listenAgain();
+    }
+  };
+
+  live.current = { ...live.current, session, voiceOn, picked, confidence, sending };
+  actions.current = { heard };
 
   const last = messages[messages.length - 1];
   const suggestions = last?.role === "tutor" ? (last.suggested ?? []) : [];
   const limitReached = status.used_today >= status.daily_limit;
   const closed = session.status !== "active";
+  const micProblem = micErrorMessage(voice.error);
+  const voiceState = voice.listening ? "listening" : voice.speaking ? "speaking" : sending ? "thinking" : "idle";
 
   return (
     <Card style={{ ...R, display: "flex", flexDirection: "column", minHeight: mobile ? 520 : 600 }} padding={0}>
@@ -381,11 +468,17 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
         <Badge size="sm" tone="brand">{modeLabel(session.mode)}</Badge>
         {session.question && <Badge size="sm">nível {session.difficulty_level} de 10</Badge>}
         <span style={{ flex: 1 }} />
-        {voiceAllowed && support.speak && <Switch label="Voz" checked={voiceOn} onChange={(e) => (setVoiceOn(e.target.checked), !e.target.checked && voice.interrupt())} />}
+        {voiceAllowed && !closed && (
+          <Button size="sm" variant={voiceOn ? "primary" : "secondary"} icon={voiceOn ? "phone-off" : "audio-lines"} onClick={toggleVoice} disabled={limitReached}>
+            {voiceOn ? "Encerrar voz" : "Conversar por voz"}
+          </Button>
+        )}
       </div>
 
       <div style={{ flex: 1, padding: mobile ? 18 : 28, display: "flex", flexDirection: "column", gap: 14 }} aria-live="polite">
-        {session.question && <QuestionCard session={session} busy={sending} onAnswer={answer} onHint={() => send({ action: "hint" })} onNext={nextQuestion} limitReached={limitReached} />}
+        {session.question && (
+          <QuestionCard session={session} busy={sending} picked={picked} onPick={setPicked} confidence={confidence} onConfidence={setConfidence} onAnswer={answer} onHint={() => send({ action: "hint" })} onNext={nextQuestion} limitReached={limitReached} />
+        )}
         {messages.map((m) => (
           <Bubble key={m.id} message={m} />
         ))}
@@ -396,14 +489,26 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
 
       <div style={{ padding: mobile ? 14 : 20, borderTop: "1px solid var(--border-subtle)", display: "flex", flexDirection: "column", gap: 10 }}>
         {error && <Banner tone="danger">{error}</Banner>}
+        {micProblem && <Banner tone="warning">{micProblem}</Banner>}
         {limitReached && <Banner tone="warning">Você chegou ao limite de {status.daily_limit} mensagens de hoje. Amanhã tem mais.</Banner>}
         {closed && <Banner tone="info">Esta conversa foi encerrada. Abra uma nova para continuar.</Banner>}
-        {voice.speaking && (
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <Icon name="volume-2" size={16} />
-            <span style={{ font: "var(--type-caption)", color: "var(--text-secondary)", flex: 1 }}>O professor está falando.</span>
-            <Button size="sm" variant="secondary" icon="square" onClick={() => (interrupted.current = voice.interrupt())}>Interromper</Button>
+        {(voiceOn || voice.speaking || voice.listening) && !closed && (
+          <div role="status" style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 14px", borderRadius: 14, background: "var(--surface-subtle)" }}>
+            <Icon name={voiceState === "listening" ? "mic" : voiceState === "speaking" ? "volume-2" : "audio-lines"} size={18} />
+            <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", flex: 1, minWidth: 0 }}>
+              {voiceState === "listening"
+                ? `Ouvindo você… ${voice.interim}`
+                : voiceState === "speaking"
+                  ? (voiceNote ?? "O professor está falando.")
+                  : voiceState === "thinking"
+                    ? "O professor está pensando…"
+                    : (voiceNote ?? "Toque no microfone para falar.")}
+            </span>
+            {voice.speaking && <Button size="sm" variant="secondary" icon="square" onClick={() => ((interrupted.current = voice.interrupt()), setVoiceNote(null), listenAgain())}>Interromper</Button>}
           </div>
+        )}
+        {voiceOn && session.question_state === "open" && (
+          <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Você pode dizer: “alternativa B”, “confirmo”, “me dá uma ajuda”, “repete a questão”. Ou converse sobre o caso.</span>
         )}
         {suggestions.length > 0 && !closed && (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -416,14 +521,13 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
           <div style={{ flex: 1 }}>
             <TextField aria-label="Mensagem" placeholder={voice.listening ? "Ouvindo…" : "Pergunte ao tutor…"} value={text} maxLength={2000} disabled={closed || limitReached} onChange={(e) => setText(e.target.value)} />
           </div>
-          {voiceAllowed && support.listen && (
+          {voiceAllowed && (
             <IconButton icon={voice.listening ? "mic-off" : "mic"} label={voice.listening ? "Parar de ouvir" : voice.speaking ? "Interromper e falar" : "Falar com o professor"} variant={voice.listening ? "primary" : "secondary"} onClick={mic} disabled={closed || limitReached || sending} />
           )}
           <Button type="submit" icon="arrow-up" aria-label="Enviar" loading={sending} disabled={closed || limitReached || !text.trim()}>
             {mobile ? "" : "Enviar"}
           </Button>
         </form>
-        {voiceAllowed && !support.listen && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Este navegador não ouve por microfone; a leitura em voz alta funciona.</span>}
       </div>
     </Card>
   );
@@ -455,14 +559,8 @@ function Bubble({ message: m }) {
 }
 
 /** A questão da conversa: sem gabarito enquanto aberta; depois da resposta (ou da dica 5) mostra a correta. */
-function QuestionCard({ session, busy, onAnswer, onHint, onNext, limitReached }) {
+function QuestionCard({ session, busy, picked: selected, onPick: setSelected, confidence, onConfidence: setConfidence, onAnswer, onHint, onNext, limitReached }) {
   const q = session.question;
-  const [selected, setSelected] = React.useState(null);
-  const [confidence, setConfidence] = React.useState(null);
-  React.useEffect(() => {
-    setSelected(null);
-    setConfidence(null);
-  }, [q.id]);
   const open = q.state === "open";
   const parts = splitStatement(q.statement);
   const answered = session.last_answer;

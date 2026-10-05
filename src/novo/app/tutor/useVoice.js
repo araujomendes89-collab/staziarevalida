@@ -66,10 +66,14 @@ function portugueseVoice() {
 /** "espera", "para", "um momento": o aluno só quer que o professor pare de falar. */
 export const isPauseWord = (text) => /^(espera(?: a[ií])?|pera(?: a[ií])?|para(?: a[ií])?|um momento|calma|s[oó] um minuto)[.!…]*$/i.test(text.trim());
 
-export function useVoice({ onUtterance }) {
+export function useVoice({ onUtterance, onSilence }) {
   const [listening, setListening] = React.useState(false);
   const [speaking, setSpeaking] = React.useState(false);
   const [interim, setInterim] = React.useState("");
+  const [error, setError] = React.useState(null);   // código do erro do microfone (ver micErrorMessage)
+  const speakingKind = React.useRef(null);          // "reply" (fala do professor) ou "system" (leitura da questão, avisos)
+  const silence = React.useRef(onSilence);
+  silence.current = onSilence;
   const recRef = React.useRef(null);
   const current = React.useRef(null);     // frase sendo falada agora
   const token = React.useRef(0);          // invalida a fala anterior quando há interrupção
@@ -78,19 +82,21 @@ export function useVoice({ onUtterance }) {
   handler.current = onUtterance;
 
   const stopListening = React.useCallback(() => {
+    const rec = recRef.current;
+    recRef.current = null;   // parada pedida: o fim desta escuta não conta como "silêncio"
     try {
-      recRef.current?.abort();
+      rec?.abort();
     } catch {
       // já parado
     }
-    recRef.current = null;
     setListening(false);
     setInterim("");
   }, []);
 
-  /** Interrompe a fala e devolve a frase que estava sendo dita (ou nulo). */
+  /** Interrompe a fala. Devolve o trecho que estava sendo dito, só quando era o professor respondendo (para ele retomar dali). */
   const interrupt = React.useCallback(() => {
-    const said = current.current;
+    const said = speakingKind.current === "reply" ? current.current : null;
+    speakingKind.current = null;
     token.current++;
     current.current = null;
     synth?.cancel();
@@ -102,9 +108,10 @@ export function useVoice({ onUtterance }) {
 
   /** Fala o texto frase a frase, com a velocidade e o tom do professor. Resolve quando termina (ou é interrompida). */
   const speak = React.useCallback(
-    (text, voice = {}) =>
+    (text, voice = {}, kind = "reply") =>
       new Promise((done) => {
         if (!synth || !text) return done(false);
+        speakingKind.current = kind;
         settle.current?.(false);          // uma fala nova encerra a anterior
         const mine = ++token.current;
         let finished = false;
@@ -144,7 +151,11 @@ export function useVoice({ onUtterance }) {
   );
 
   const listen = React.useCallback(() => {
-    if (!Recognition || recRef.current) return false;
+    if (!Recognition) {
+      setError("unsupported");
+      return false;
+    }
+    if (recRef.current) return false;
     const rec = new Recognition();
     rec.lang = "pt-BR";
     rec.interimResults = true;
@@ -159,25 +170,32 @@ export function useVoice({ onUtterance }) {
       }
       setInterim(finalText + partial);
     };
-    rec.onerror = () => {
-      recRef.current = null;
-      setListening(false);
-      setInterim("");
+    let failed = false;
+    rec.onerror = (event) => {
+      // "no-speech" e "aborted" não são defeito: o aluno ficou em silêncio ou a escuta foi interrompida de propósito
+      if (event?.error && event.error !== "no-speech" && event.error !== "aborted") {
+        failed = true;
+        setError(event.error);
+      }
     };
     rec.onend = () => {
+      const wasMine = recRef.current === rec;
       recRef.current = null;
       setListening(false);
       setInterim("");
       const text = finalText.trim();
       if (text) handler.current?.(text);
+      else if (wasMine && !failed) silence.current?.();
     };
     recRef.current = rec;
+    setError(null);
     setListening(true);
     try {
       rec.start();
     } catch {
       recRef.current = null;
       setListening(false);
+      setError("start");
       return false;
     }
     return true;
@@ -197,5 +215,5 @@ export function useVoice({ onUtterance }) {
     []
   );
 
-  return { listening, speaking, interim, speak, interrupt, listen, stopListening };
+  return { listening, speaking, interim, error, speak, interrupt, listen, stopListening };
 }
