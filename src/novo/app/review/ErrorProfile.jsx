@@ -6,6 +6,7 @@ import { useSession } from "../session.jsx";
 import { ERROR_TYPE, KIND_LABEL } from "../practice/diagnosisLabels.js";
 
 const R = { borderRadius: 24 };
+const REASON = { conhecimento: "Não sabia o conteúdo", interpretacao: "Interpretei mal", atencao: "Falta de atenção", chute: "Chutei", outro: "Outro" };
 const pct = (a, b) => (b ? Math.round((100 * a) / b) : 0);
 
 export function ErrorProfile({ go, days }) {
@@ -13,10 +14,12 @@ export function ErrorProfile({ go, days }) {
   const [data, setData] = React.useState(null);
   const [error, setError] = React.useState(null);
   const [starting, setStarting] = React.useState(null);
+  const [reasons, setReasons] = React.useState(null);
   React.useEffect(() => {
     let alive = true;
     setData(null);
     backend.rpc("app_error_profile", { p_days: Number(days) }).then((r) => alive && setData(r), () => alive && setError("Não foi possível carregar o seu perfil de erros."));
+    backend.rpc("app_error_reasons", { p_days: Number(days) }).then((r) => alive && setReasons(r), () => {});
     return () => {
       alive = false;
     };
@@ -59,6 +62,17 @@ export function ErrorProfile({ go, days }) {
         {data.confidence.wrong_but_sure > 0 && <Badge tone="danger">{data.confidence.wrong_but_sure} erro(s) com certeza da resposta</Badge>}
         {data.confidence.wrong_and_guessing > 0 && <Badge>{data.confidence.wrong_and_guessing} erro(s) em chute</Badge>}
       </div>
+      {reasons && Object.keys(reasons.declared).length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div className="sm-overline">O que você mesmo declarou como motivo</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 6 }}>
+            {Object.entries(reasons.declared).map(([k, n]) => (
+              <Badge key={k}>{REASON[k] ?? k} · {n}</Badge>
+            ))}
+          </div>
+          <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", marginTop: 4 }}>Vem das suas anotações no caderno de erros ({Object.values(reasons.declared).reduce((a, b) => a + b, 0)} de {reasons.wrong_questions} questões erradas).</div>
+        </div>
+      )}
       {data.traps.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <div className="sm-overline">Armadilhas em que você mais caiu</div>

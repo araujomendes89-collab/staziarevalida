@@ -2,7 +2,7 @@
 // O banco só devolve análise PUBLICADA por revisor médico e só depois de responder; sem ela, nada aparece.
 // O gabarito oficial é o da prova. "Conduta atual" só aparece quando uma fonte vigente foi conferida e aprovada.
 import React from "react";
-import { Badge, Button } from "../../ds";
+import { Badge, Button, SegmentedControl } from "../../ds";
 import { useSession } from "../session.jsx";
 
 const ROLE = { CRITICAL: "danger", SUPPORTIVE: "info", NEUTRAL: "neutral", DISTRACTOR_INFORMATION: "warning" };
@@ -31,7 +31,12 @@ export function useCommentary(questionId) {
     let alive = true;
     if (!questionId) return undefined;
     backend.rpc("app_question_commentary", { p_question_id: questionId, p_level: "full" }).then(
-      (data) => alive && setState({ id: questionId, data }),
+      (data) => {
+        if (!alive) return;
+        setState({ id: questionId, data });
+        // verificar ao servir: com a conferência da fonte vencida, antecipa a verificação (não muda nada sozinho)
+        if (data && data.freshness && data.freshness.score < 80) backend.rpc("app_question_verify_on_serve", { p_question_id: questionId }).catch(() => {});
+      },
       () => alive && setState({ id: questionId, data: null })
     );
     return () => {
@@ -42,13 +47,29 @@ export function useCommentary(questionId) {
 }
 
 export function QuestionCommentary({ commentary: c }) {
+  const [mode, setMode] = React.useState("exam"); // exam | today | changed
   if (!c) return null;
   const others = c.options.filter((o) => !o.is_official_correct);
   const right = c.options.find((o) => o.is_official_correct);
   const reviewed = c.reviewed_at ? new Date(c.reviewed_at).toLocaleDateString("pt-BR") : null;
+  const card = c.update_card;
+  const hasCard = Boolean(card);
   return (
     <section aria-label="Análise Stazia da questão" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div className="sm-overline">Análise Stazia{reviewed ? ` · revisada em ${reviewed}` : ""}</div>
+      <Freshness c={c} />
+      {hasCard && (
+        <SegmentedControl
+          label="Ponto de vista"
+          value={mode}
+          onChange={setMode}
+          options={[{ value: "exam", label: "Como caiu na prova" }, { value: "today", label: "Como responder hoje" }, { value: "changed", label: "O que mudou" }]}
+        />
+      )}
+      {hasCard && mode === "today" && <TodayView c={c} />}
+      {hasCard && mode === "changed" && <ChangedView c={c} />}
+      {(!hasCard || mode === "exam") && (
+      <>
       <div style={box}>
         <b>O que a questão pede.</b> {c.question_core}
       </div>
@@ -87,6 +108,8 @@ export function QuestionCommentary({ commentary: c }) {
         <div style={{ ...box, background: "var(--surface-brand-soft)", borderColor: "var(--border-brand)" }}>
           <b>Para lembrar.</b> {c.golden_rule}
         </div>
+      )}
+      </>
       )}
       {c.sources?.length > 0 && (
         <div style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>
@@ -181,6 +204,53 @@ function Timeline({ questionId }) {
           </li>
         ))}
       </ol>
+    </div>
+  );
+}
+
+/** Atualidade médica (0–100): só mostra o que o banco calculou; sem fonte oficial conferida o indicador não aparece. */
+function Freshness({ c }) {
+  const f = c.freshness;
+  if (!f || f.sources === 0) return null;
+  const tone = f.score >= 80 ? "success" : f.score >= 50 ? "warning" : "danger";
+  const label = f.score >= 100 ? "Fonte conferida no prazo" : f.score >= 80 ? "Fonte em dia; nova conferência em breve" : f.score >= 60 ? "Conferência da fonte vencida: verificando" : "Fonte sem conferência em dia";
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", font: "var(--type-caption)", color: "var(--text-secondary)" }}>
+      <Badge size="sm" tone={tone}>Atualidade {f.score}%</Badge>
+      <span>{label}{f.last_source_check_at ? ` · última verificação ${fmt(f.last_source_check_at)}` : ""}</span>
+    </div>
+  );
+}
+
+/** Como responder hoje: a conduta atual conferida, claramente separada do gabarito da prova. */
+function TodayView({ c }) {
+  const k = c.update_card;
+  return (
+    <div style={{ ...box, background: "var(--warning-bg)", borderColor: "var(--warning-border)", display: "grid", gap: 6 }}>
+      <div className="sm-overline">Como seria respondida hoje</div>
+      {k.current_answer ? (
+        <div><b>Pelas recomendações vigentes conferidas, a alternativa {k.current_answer} seria a mais adequada.</b></div>
+      ) : (
+        <div><b>Nenhuma alternativa representa, sozinha, a conduta atualmente recomendada.</b></div>
+      )}
+      <div>{TEMPORAL[k.temporal_status]}</div>
+      <div style={{ color: "var(--text-secondary)" }}>O gabarito oficial da prova ({k.official_answer}) continua sendo o da prova e não muda.</div>
+      <div>{k.what_changed}</div>
+    </div>
+  );
+}
+
+/** O que mudou desde a prova: antes × agora, quando, por quê e a fonte. */
+function ChangedView({ c }) {
+  const k = c.update_card;
+  return (
+    <div style={{ ...box, display: "grid", gap: 8 }}>
+      <div className="sm-overline">O que mudou desde esta prova</div>
+      <div><b>Na época da prova:</b> o gabarito oficial foi a alternativa {k.official_answer}{c.official_status === "FINAL" ? " (definitivo)" : ""}.</div>
+      <div><b>Atualmente:</b> {k.current_answer ? `a conduta vigente conferida aponta a alternativa ${k.current_answer}` : "nenhuma alternativa traz integralmente a conduta vigente"}{k.effective_date ? `, em vigor desde ${new Date(k.effective_date + "T12:00:00").toLocaleDateString("pt-BR")}` : ""}.</div>
+      <div><b>O que mudou:</b> {k.what_changed}</div>
+      {k.why_it_matters && <div><b>Por que importa:</b> {k.why_it_matters}</div>}
+      {k.sources?.length > 0 && <div style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}><b>Fonte:</b> {k.sources.map((x) => `${x.title} · ${x.organ}${x.version ? ` · versão ${x.version}` : ""}${x.page != null ? ` · p. ${x.page}` : ""}`).join("; ")}. Conferido em {fmt(k.verified_at)}.</div>}
     </div>
   );
 }

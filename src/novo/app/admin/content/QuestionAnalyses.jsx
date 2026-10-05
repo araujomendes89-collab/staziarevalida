@@ -6,6 +6,7 @@ import { useSession } from "../../session.jsx";
 import { LoadError, Loading, TextArea, useLoad } from "../common.jsx";
 import { AREA_LABEL } from "./labels.js";
 import { UpdateQueue } from "./UpdateQueue.jsx";
+import { UpdatedQuestions } from "./UpdatedQuestions.jsx";
 import { Label, Pre, Section, useAction, when } from "./ui.jsx";
 
 const PAGE = 15;
@@ -43,6 +44,7 @@ export function QuestionAnalyses({ reviewerAreas }) {
       </Banner>
       <UpdateAlerts />
       <UpdateQueue reviewerAreas={reviewerAreas} />
+      <UpdatedQuestions />
       <Section title="Andamento">
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <Badge>{s.analyzed} de {s.questions} questões analisadas</Badge>

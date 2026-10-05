@@ -108,7 +108,7 @@ O criador e o conferente são de famílias de modelo diferentes (regra já imple
 | **2** | `question_claims`, integração com o Knowledge Core, citações, impacto seletivo | **pronta** (1.117 afirmações ligadas às questões; 0 com evidência oficial, pois não há acervo) |
 | **3** | Source Registry ampliado, Watcher com diff, Claim Impact | **pronta** (comparação de conteúdo, triagem por afirmação, frescor; só exercitada com fontes sintéticas) |
 | **4** | reanálise seletiva, gabarito histórico × atual, cartão de atualização, linha do tempo | **pronta** (fluxo completo testado com fonte e IA simuladas; nada real publicado) |
-| 5 | diagnóstico do erro do aluno, reforço adaptativo, questões novas | pendente |
+| **5** | diagnóstico do erro do aluno, reforço adaptativo | **pronta** (sem questões novas: ver §11) |
 
 ## 7. Critério de aceitação (item 106)
 
@@ -191,3 +191,31 @@ mudança de conteúdo relevante (fase 3: número, negação, trecho reescrito ou
 **Limites.** O conferente independente (outra família de modelo) ainda não existe para as propostas; hoje a barreira é o software + o revisor.
 Uma nova versão de fonte cadastrada começa sem nível de autoridade (informar no cadastro): sem nível, ela não vale como evidência.
 Tudo foi exercitado com fontes e IA simuladas; sem acervo oficial real não há cartão publicado.
+
+## 10. Fase 5 e fechamento (migrações `2700` e `2800`)
+
+- **Diagnóstico do erro** (`app_attempt_diagnosis`, `app_error_profile`): usa a alternativa que o aluno marcou e a análise **publicada por revisor**
+  (tipo de distrator, tipos de erro, armadilha). Sem análise publicada não há "tipo de erro" e a tela diz quanto dos erros já foi diagnosticado.
+  Repetir a mesma alternativa errada vira "ideia fixa". Os motivos do erro (`app_error_reasons`) são os que **o próprio aluno declara** no caderno de erros.
+- **Reforço** (`app_start_reinforcement`): sessão com questões **reais** do ponto fraco (subárea + competência com 3+ respostas e 40%+ de erro):
+  primeiro as erradas e não superadas, depois as ainda não respondidas; equivalentes contam como uma só e nada já acertado volta.
+- **Tipos de alteração clínica** no diff (dose, ponto de corte, faixa etária, idade gestacional, rastreamento, tempo, seguimento, contraindicação,
+  critério, tratamento, nova/removida/modificada, terminologia, sem impacto) com **valor antigo e novo**. Regras, sem IA.
+- **Frescor da questão** (`question_freshness`, 0–100) e **verificar ao servir** (`app_question_verify_on_serve`): selo só com frescor ≥ 80.
+  A conferência vencida pede ao worker uma verificação imediata, sem confirmar nada sozinha.
+- **Eventos** (`sqie_events`): `guideline.updated`, `guideline.diff_ready`, `claim.updated`, `question.impacted`, `question.reanalysis_started/completed`,
+  `question.review_required`, `question.published`, emitidos por gatilhos do banco.
+- **Conflito entre fontes**: evidência conflitante ou desatualizada de fonte oficial vigente impede "evidência pronta" (`app_question_conflicts` lista).
+- **Painel "Questões atualizadas"** (`app_updated_questions`) e os três modos do aluno: *Como caiu na prova*, *Como responder hoje*, *O que mudou*.
+
+## 11. Cobertura da especificação (itens 1–106)
+
+| Situação | Itens |
+|---|---|
+| **Feito** | 1–3 (dois gabaritos), 5 (data dupla: prova e análise), 7–8 (estado e histórico do gabarito), 9–21 (análise, dados-chave, distratores, armadilha, regra, dificuldade), 22–23 (claims e Knowledge Core), 24 e 28 (vigia permanente), 27 (registro de fontes), 30–31 (frescor e verificar ao servir), 32–35 e 97 (diff com tipos e valores), 36–42 (impacto por afirmação, status temporal, tipos de impacto, cartão), 43 (linha do tempo), 44 e 90 (selos e indicador), 45–48 (modos e comentário padrão), 49 (níveis rápido/completo), 51 (originalidade), 54 (conflito), 57 (itens de alto risco: tudo vai ao revisor), 63 (versionamento), 65–66 (reanálise seletiva e eventos), 67–68 (frescor), 70–72 (fonte em atualização, minuta ≠ vigente, vigência), 74 (nada de referência inventada), 79–81 (diagnóstico do erro e reforço), 87–88 (painéis), 93–94 (uma pesquisa por afirmação: afirmações são compartilhadas e a evidência é por afirmação × fonte × versão), 96, 98–99, 102 (regra mestra) |
+| **Feito em parte** | 4 e 52–53 (sem alternativa válida, ambiguidade e má formulação: existem os estados e o revisor decide; não há detector automático além das conferências por software), 55 (confianças existem nas análises, mas só a de resposta é preenchida pela IA), 73 e 75 (auditor de citações e red team existem para rascunhos; para as análises e propostas a barreira é software + revisor), 77 (qualidade do distrator 0–4 vem da IA e é conferida só por software), 83 (padrões de distrator vêm da classificação do motor), 95 (hierarquia de modelos: criação e conferência separadas por família; falta o conferente OpenAI no servidor), 84–86 (busca por filtros e painel existem; a "evolução do tema" e a busca em linguagem natural não) |
+| **Decidido não fazer** | 56 (publicação automática: contraria a regra combinada de que IA não aprova nem publica; a reanálise é automática, a publicação é do revisor médico) |
+| **Não feito** | 82 e Fase 5 "questões novas" (exigem a Fábrica de Conteúdo e revisão médica: o reforço usa questões reais), 76 (escores de qualidade/discriminação/relevância), 85 (como o tema mudou ao longo dos anos), 86 (busca em linguagem natural), 92 (workers separados por função: hoje há uma fila durável e um worker), 25–26 e 29 (a lista de fontes e as frequências por prioridade dependem do acervo, que você ainda não forneceu) |
+| **Depende de você** | acervo oficial (itens 6, 25–29, 106), revisores médicos, texto da licença de "Sangue nos Olhos" |
+
+O critério final (item 106, 20 passos) só pode ser considerado cumprido com **fonte oficial real**: todo o caminho foi exercitado com fontes e IA simuladas.

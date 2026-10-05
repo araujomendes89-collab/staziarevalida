@@ -46,6 +46,11 @@ async function publish(questionId: string, uid: string) {
   return off as string;
 }
 
+// fonte monitorada e conferida agora (como o vigia faz): frescor em dia
+const monitor = async (sourceId: string) => {
+  await rpc(ADMIN, "app_ch_watch_source", sourceId, "https://exemplo.invalid/doc.pdf", 30);
+  await db.service("ch_worker_watch_result", { p_source_id: sourceId, p_hash: "a".repeat(64), p_status: "ok" });
+};
 const link = (claimId: string, sourceId: string, passageId: string, quote: string) =>
   rpc(ADMIN, "app_ch_link_evidence", claimId, { source_id: sourceId, passage_id: passageId, quote, verdict: "compatible", page: 1 });
 
@@ -89,6 +94,7 @@ describe("Selo 'Atualizada' (fonte sintética)", () => {
     expect((await sql(`select public.question_evidence_ready($1) r`, [q1]))[0].r).toBe(false);
     await link(claim1, v1, p1, statement1);
     await link(claim3, v1, p3, s3);
+    await monitor(v1); // sem monitoramento a fonte é "não monitorada" e o selo não existe
     expect((await sql(`select public.question_evidence_ready($1) r`, [q1]))[0].r).toBe(true);
     await expect(rpc(OTHER_AREA_REVIEWER, "app_question_confirm_currency", q1, "conferi tudo certinho aqui")).rejects.toThrow(/revisor cadastrado na área/);
     await expect(rpc(STUDENT, "app_question_confirm_currency", q1, "conferi tudo certinho aqui")).rejects.toThrow();
@@ -275,6 +281,7 @@ describe("Decisão do revisor e cartão para o aluno", () => {
     const np = (await sql(`insert into public.ch_source_passages (source_id, page, text) values ($1, 2, $2) returning id`, [cur, `${s3} Conduta mantida sem alterações nesta seção do documento.`]))[0].id;
     void p;
     await link(claim3, cur, np, s3);
+    await monitor(cur);
     const r = await rpc(OTHER_AREA_REVIEWER, "app_question_update_decide", open.id, "no_change", "O trecho está igual na nova versão do documento.", null);
     expect(r).toMatchObject({ status: "reviewed", temporal_status: "UPDATED_BUT_SAME_ANSWER", card_id: null });
     expect((await sql(`select count(*)::int n from public.question_update_cards where question_id = $1`, [q3]))[0].n).toBe(0);

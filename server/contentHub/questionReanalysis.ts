@@ -174,6 +174,7 @@ export async function runQuestionReanalysis(deps: ReanalysisDeps, options: Reana
   }
   for (const q of questions) {
     try {
+      await deps.db.service("ch_worker_reanalysis_started", { p_question_id: q.question_id });
       const proposal = await generate(deps, provider, q, report.spend);
       const findings = reanalysisChecks(q, proposal);
       const verdict = verdictOf(findings);

@@ -99,7 +99,9 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
     try {
       busy = tick();
       worked = Boolean(await busy);
-      if (Date.now() - lastWatch > watchEveryMs) {
+      // verificar ao servir: alguém abriu uma questão com a fonte vencida; atende já, sem esperar a rodada de 30 minutos
+      const requested = Date.now() - lastWatch > 10_000 && (await deps.db.service<number>("ch_worker_watch_requested")) > 0;
+      if (requested || Date.now() - lastWatch > watchEveryMs) {
         lastWatch = Date.now();
         busy = checkSources();
         await busy;

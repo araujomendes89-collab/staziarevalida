@@ -14,8 +14,17 @@ export interface Passage {
 
 export type ChangeKind = "UNCHANGED" | "EDITORIAL" | "MINOR_WORDING" | "NUMERIC" | "NEGATION" | "SUBSTANTIVE" | "REMOVED" | "ADDED";
 
+/** Tipos de alteração clínica (item 34 da especificação). Classificação por regras, sem IA: serve de triagem. */
+export type ClinicalChange =
+  | "NEW_RECOMMENDATION" | "REMOVED_RECOMMENDATION" | "MODIFIED_RECOMMENDATION" | "DOSE_CHANGED" | "CUT_OFF_CHANGED" | "SCREENING_CHANGED"
+  | "DIAGNOSTIC_CRITERIA_CHANGED" | "TREATMENT_CHANGED" | "CONTRAINDICATION_CHANGED" | "TIMING_CHANGED" | "AGE_RANGE_CHANGED"
+  | "GESTATIONAL_AGE_CHANGED" | "FOLLOW_UP_CHANGED" | "TERMINOLOGY_CHANGED" | "NO_CLINICAL_IMPACT";
+
 export interface DiffItem {
   kind: ChangeKind;
+  changeType: ClinicalChange;
+  oldValues: string[];
+  newValues: string[];
   oldIndex: number | null;
   newIndex: number | null;
   similarity: number;
@@ -94,6 +103,56 @@ function classify(oldText: string, newText: string): { kind: ChangeKind; similar
 const isCritical = (kind: ChangeKind, oldText: string | null, newText: string | null) =>
   kind === "NUMERIC" || kind === "NEGATION" || ((kind === "REMOVED" || kind === "ADDED" || kind === "SUBSTANTIVE") && CRITICAL_WORDS.test(fold(`${oldText ?? ""} ${newText ?? ""}`)));
 
+const NUM = "^\\d+(\\.\\d+)?";
+const UNIT_DOSE = new RegExp(`${NUM}(mg|mcg|ug|ui|ml|u|g|meq)(/kg(/dia|/dose)?)?$`);
+const UNIT_CUTOFF = new RegExp(`${NUM}(mmhg|mg/dl|g/dl|mmol/l|%|kg|cm|mm)$`);
+const UNIT_AGE = new RegExp(`${NUM}(anos?|meses|mes)$`);
+const UNIT_WEEKS = new RegExp(`${NUM}(semanas?)$`);
+const UNIT_TIME = new RegExp(`${NUM}(dias?|horas?|h|min)$`);
+
+/** Valores que só existem num dos lados (o que realmente mudou) e o tipo clínico da alteração. */
+export function clinicalChange(it: Pick<DiffItem, "kind" | "oldText" | "newText" | "numbersOld" | "numbersNew">): { type: ClinicalChange; oldValues: string[]; newValues: string[] } {
+  const oldValues = it.numbersOld.filter((n) => !it.numbersNew.includes(n));
+  const newValues = it.numbersNew.filter((n) => !it.numbersOld.includes(n));
+  const text = fold(`${it.oldText ?? ""} ${it.newText ?? ""}`);
+  const has = (re: RegExp) => re.test(text);
+  let type: ClinicalChange;
+  switch (it.kind) {
+    case "UNCHANGED":
+    case "EDITORIAL":
+      type = "NO_CLINICAL_IMPACT";
+      break;
+    case "MINOR_WORDING":
+      type = "TERMINOLOGY_CHANGED";
+      break;
+    case "REMOVED":
+      type = "REMOVED_RECOMMENDATION";
+      break;
+    case "ADDED":
+      type = "NEW_RECOMMENDATION";
+      break;
+    case "NUMERIC": {
+      const units = [...oldValues, ...newValues];
+      const some = (re: RegExp) => units.some((u) => re.test(u));
+      if (has(/rastreament|screening/)) type = "SCREENING_CHANGED";
+      else if (has(/criterio/) && !some(UNIT_DOSE)) type = "DIAGNOSTIC_CRITERIA_CHANGED";
+      else if (some(UNIT_WEEKS) && has(/gestac|gestante|gravidez|obstetric/)) type = "GESTATIONAL_AGE_CHANGED";
+      else if (some(UNIT_AGE) && has(/idade|faixa|a partir|entre|menores|maiores|anos de/)) type = "AGE_RANGE_CHANGED";
+      else if (some(UNIT_CUTOFF) && !some(UNIT_DOSE)) type = "CUT_OFF_CHANGED";
+      else if (some(UNIT_DOSE)) type = "DOSE_CHANGED";
+      else if (some(UNIT_TIME) || some(UNIT_WEEKS) || some(UNIT_AGE)) type = has(/seguimento|acompanhamento|retorno|reavali/) ? "FOLLOW_UP_CHANGED" : "TIMING_CHANGED";
+      else type = "MODIFIED_RECOMMENDATION";
+      break;
+    }
+    case "NEGATION":
+      type = has(/contraindic/) ? "CONTRAINDICATION_CHANGED" : "MODIFIED_RECOMMENDATION";
+      break;
+    default:
+      type = has(/tratamento|esquema|conduta|terapeut/) ? "TREATMENT_CHANGED" : has(/criterio/) ? "DIAGNOSTIC_CRITERIA_CHANGED" : "MODIFIED_RECOMMENDATION";
+  }
+  return { type, oldValues, newValues };
+}
+
 const MATCH_MIN = 0.35;
 
 /** Alinha os trechos da versão antiga com os da nova (iguais primeiro, depois os mais parecidos) e classifica cada par. */
@@ -129,17 +188,23 @@ export function diffPassages(oldP: Passage[], newP: Passage[]): SourceDiff {
   oldP.forEach((o, i) => {
     const j = pairs.get(i);
     if (j === undefined) {
-      items.push({ kind: "REMOVED", oldIndex: i, newIndex: null, similarity: 0, critical: false, oldText: o.text, newText: null, section: o.section ?? null, numbersOld: numbersOf(o.text), numbersNew: [] });
+      items.push({ changeType: "REMOVED_RECOMMENDATION", oldValues: [], newValues: [], kind: "REMOVED", oldIndex: i, newIndex: null, similarity: 0, critical: false, oldText: o.text, newText: null, section: o.section ?? null, numbersOld: numbersOf(o.text), numbersNew: [] });
       return;
     }
     const n = newP[j];
     const { kind, similarity: sim } = classify(o.text, n.text);
-    items.push({ kind, oldIndex: i, newIndex: j, similarity: Math.round(sim * 1000) / 1000, critical: false, oldText: o.text, newText: n.text, section: n.section ?? o.section ?? null, numbersOld: numbersOf(o.text), numbersNew: numbersOf(n.text) });
+    items.push({ changeType: "MODIFIED_RECOMMENDATION", oldValues: [], newValues: [], kind, oldIndex: i, newIndex: j, similarity: Math.round(sim * 1000) / 1000, critical: false, oldText: o.text, newText: n.text, section: n.section ?? o.section ?? null, numbersOld: numbersOf(o.text), numbersNew: numbersOf(n.text) });
   });
   newP.forEach((n, j) => {
-    if (!usedNew.has(j)) items.push({ kind: "ADDED", oldIndex: null, newIndex: j, similarity: 0, critical: false, oldText: null, newText: n.text, section: n.section ?? null, numbersOld: [], numbersNew: numbersOf(n.text) });
+    if (!usedNew.has(j)) items.push({ changeType: "NEW_RECOMMENDATION", oldValues: [], newValues: [], kind: "ADDED", oldIndex: null, newIndex: j, similarity: 0, critical: false, oldText: null, newText: n.text, section: n.section ?? null, numbersOld: [], numbersNew: numbersOf(n.text) });
   });
-  for (const it of items) it.critical = isCritical(it.kind, it.oldText, it.newText);
+  for (const it of items) {
+    it.critical = isCritical(it.kind, it.oldText, it.newText);
+    const c = clinicalChange(it);
+    it.changeType = c.type;
+    it.oldValues = c.oldValues;
+    it.newValues = c.newValues;
+  }
 
   const summary = { UNCHANGED: 0, EDITORIAL: 0, MINOR_WORDING: 0, NUMERIC: 0, NEGATION: 0, SUBSTANTIVE: 0, REMOVED: 0, ADDED: 0, critical: 0 } as SourceDiff["summary"];
   for (const it of items) {

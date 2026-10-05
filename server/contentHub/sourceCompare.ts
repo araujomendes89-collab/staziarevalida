@@ -28,7 +28,7 @@ async function record(db: ContentDb, args: { sourceId: string; newSourceId?: str
       old_hash: args.oldHash ?? null,
       new_hash: args.newHash ?? null,
       summary: args.diff.summary,
-      items: args.diff.items.map((i) => ({ kind: i.kind, section: i.section, old_text: i.oldText, new_text: i.newText, similarity: i.similarity, critical: i.critical })),
+      items: args.diff.items.map((i) => ({ kind: i.kind, change_type: i.changeType, old_values: i.oldValues, new_values: i.newValues, section: i.section, old_text: i.oldText, new_text: i.newText, similarity: i.similarity, critical: i.critical })),
       impacts: worstPerClaim(args.impacts).map((i) => ({ claim_id: i.claimId, level: i.level, critical: i.critical, kind: i.kind, item_index: i.itemIndex, reason: i.reason })),
     },
   });
