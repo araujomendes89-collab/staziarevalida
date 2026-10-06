@@ -8,6 +8,7 @@ import {
   dateBR,
   dateTimeBR,
   fromDateInput,
+  isStaffRole,
   ListRow,
   LoadError,
   Loading,
@@ -22,6 +23,8 @@ import {
 
 const PAGE = 50;
 const roleTone = { admin: "danger", editor: "info", student: "neutral" };
+/** Plano como aparece: a equipe tem acesso pelo papel (sem teste); os outros, pela assinatura. */
+const planText = (u) => (isStaffRole(u.role) ? "Equipe · acesso completo" : `${PLAN_LABEL[u.plan] ?? u.plan} · ${SUB_STATUS_LABEL[u.status] ?? u.status}`);
 
 function Fact({ label, value }) {
   return (
@@ -113,7 +116,9 @@ function PlanForm({ user, onSaved }) {
         <TextField label="Plano pago até" type="date" value={form.period} onChange={(e) => set({ period: e.target.value })} />
       </div>
       <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
-        Para liberar acesso de cortesia, escolha Pro ou Elite com situação Ativo. A cobrança automática ainda não está ligada.
+        {isStaffRole(user.role)
+          ? "Administrador e editor têm acesso completo pelo papel, sem período de teste. Este plano só passa a valer se a pessoa sair da equipe."
+          : "Para liberar acesso de cortesia, escolha Pro ou Elite com situação Ativo. A cobrança automática ainda não está ligada."}
       </div>
       {state.error && <Banner tone="danger">{state.error}</Banner>}
       <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
@@ -188,7 +193,7 @@ function UserDetail({ id, onBack, onChanged }) {
                     {ROLE_LABEL[user.role]}
                   </Badge>
                   <Badge tone="pro" size="sm">
-                    {PLAN_LABEL[user.plan] ?? user.plan} · {SUB_STATUS_LABEL[user.status] ?? user.status}
+                    {planText(user)}
                   </Badge>
                 </div>
               </div>
@@ -201,7 +206,7 @@ function UserDetail({ id, onBack, onChanged }) {
               <Fact label="Flashcards" value={`${user.flashcards} criados · ${user.flashcard_reviews} revisões`} />
               <Fact label="Erros para revisar" value={user.pending_errors} />
               <Fact label="Meta" value={user.target_edition ? `${user.exam_type === "ENAMED" ? "ENAMED" : "Revalida"} ${user.target_edition}` : "—"} />
-              <Fact label="Teste grátis até" value={dateBR(user.trial_ends_at)} />
+              <Fact label="Teste grátis até" value={isStaffRole(user.role) ? "Não se aplica (equipe)" : dateBR(user.trial_ends_at)} />
             </div>
           </Card>
           <Card>
@@ -267,8 +272,8 @@ export function AdminUsers() {
                           {ROLE_LABEL[u.role]}
                         </Badge>
                       )}
-                      <Badge tone={u.status === "active" ? "success" : u.status === "trialing" ? "pro" : "neutral"} size="sm">
-                        {PLAN_LABEL[u.plan] ?? u.plan} · {SUB_STATUS_LABEL[u.status] ?? u.status}
+                      <Badge tone={isStaffRole(u.role) || u.status === "active" ? "success" : u.status === "trialing" ? "pro" : "neutral"} size="sm">
+                        {planText(u)}
                       </Badge>
                     </div>
                     <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", overflowWrap: "anywhere" }}>{u.email}</span>

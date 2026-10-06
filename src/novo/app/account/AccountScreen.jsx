@@ -33,7 +33,8 @@ const PLAN_LABEL = { trial: "Teste grátis", pro: "Plano Pro", elite: "Plano Eli
 
 const dateBR = (iso) => new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso));
 
-function planBadge(subscription) {
+function planBadge(subscription, role) {
+  if (isStaffRole(role)) return "Equipe · acesso completo";
   if (!subscription) return null;
   const label = PLAN_LABEL[subscription.plan] ?? subscription.plan;
   if (subscription.status === "trialing" && subscription.trial_ends_at) return `${label} até ${dateBR(subscription.trial_ends_at)}`;
@@ -302,7 +303,7 @@ export function AccountScreen({ go }) {
   const mobile = useMobile();
   const [section, setSection] = React.useState("conta");
   const profile = boot.profile;
-  const plan = planBadge(boot.subscription);
+  const plan = planBadge(boot.subscription, boot.role);
   const goal = profile.target_edition ? `Meta: ${profile.exam_type === "ENAMED" ? "ENAMED" : "Revalida INEP"} ${profile.target_edition}` : null;
 
   return (
@@ -336,7 +337,8 @@ export function AccountScreen({ go }) {
             </Button>
           }
         >
-          {boot.role === "admin" ? "Usuários, questões, planos, estações e configurações." : "Questões e estações."}
+          Acesso completo ao app, sem período de teste.{" "}
+          {boot.role === "admin" ? "Na administração: usuários, planos, conteúdo e configurações." : "Na administração: questões, aulas, atualizações, estações e Central de Conteúdo."}
         </Banner>
       )}
       <div style={{ display: "grid", gridTemplateColumns: mobile ? "minmax(0,1fr)" : "260px minmax(0,1fr)", gap: 24, alignItems: "start" }}>

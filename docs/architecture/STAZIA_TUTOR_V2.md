@@ -57,6 +57,8 @@ CONHECIMENTO (Truth Engine: tutor_truth)  →  AVALIAÇÃO (campo "evaluation" n
 
 Todos ajustáveis no painel (Administração → Configurações → Stazia Tutor), com motivo registrado. O interruptor "Planos pagos + teste grátis" desligado libera tudo (só para testes internos).
 
+**Equipe** (desde 2026-10-06, migração `…4600_equipe_acesso_completo.sql`): administrador **e editor** entram como plano pago (`staff: true` na resposta), nunca no teste grátis, e o teste do Tutor nunca começa para eles. O mesmo vale fora do Tutor: conteúdo Pro (`has_pro()`), aviso do teste no Início (`app_home`) e contagem de planos na visão geral (só alunos). A assinatura da pessoa fica como está: se ela sair da equipe, volta a valer. Limites diários de IA (custo) são os do plano pago.
+
 **Concorrência**: texto reserva uma interação numa transação com trava por aluno antes de chamar a IA (dois aparelhos não passam do limite); falha da IA devolve a reserva (+1/−1 no ledger, nada apagado). Voz: uma chamada ativa por aluno (índice único); a chamada reserva janelas de 2 min, renovadas pelo app a cada minuto; o tempo conta pelo relógio do servidor; sem renovação, a chamada expira (conta até o fim da reserva) e a varredura do servidor a desliga na OpenAI (`POST /v1/realtime/calls/{id}/hangup`). Abrir em outro aparelho: "Assumir aqui" encerra a anterior.
 
 ## 4. Voz em tempo real (OpenAI Realtime, WebRTC)

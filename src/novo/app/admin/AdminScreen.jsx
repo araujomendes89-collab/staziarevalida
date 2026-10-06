@@ -12,6 +12,7 @@ import { ContentHub } from "./content/ContentHub.jsx";
 import { AdminPlay } from "./AdminPlay.jsx";
 import { AdminLessons } from "./AdminLessons.jsx";
 import { AdminUpdates } from "./AdminUpdates.jsx";
+import { isStaffRole } from "./common.jsx";
 
 const TABS = [
   { value: "geral", label: "Visão geral", icon: "layout-dashboard", staff: true },
@@ -27,7 +28,7 @@ const TABS = [
   { value: "registro", label: "Registro", icon: "history" },
 ];
 
-export const isStaffRole = (role) => role === "admin" || role === "editor";
+export { isStaffRole };
 
 export function AdminScreen() {
   const { boot } = useSession();

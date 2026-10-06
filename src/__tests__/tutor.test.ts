@@ -800,6 +800,8 @@ describe("Banco e motor (IA simulada)", () => {
 
     it("motor na conversa: a Durona começa calma, sobe o tom com o mesmo erro, trava a próxima questão até o aluno explicar e o conteúdo não muda", async () => {
       const s = await rpc(S2, "app_tutor_start", "questao", null, null);
+      // o humor do dia é sorteado na abertura (1 em 4 começa "impaciente"); aqui o dia é neutro, para ver o tom subir a partir do calmo
+      await sql(`update public.tutor_sessions set emotion = emotion || '{"session_mood": "neutral", "frustration": 5}'::jsonb where id = $1`, [s.id]);
       const trap = { ...NO_EVALUATION, error_type: "distractor_trap" as const, knowledge_gap: "caiu na alternativa mais longa", severity: 3 as const, reasoning_quality: "low" as const };
       const moods: string[] = [];
       let gated = 0;

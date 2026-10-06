@@ -165,7 +165,7 @@ export function TutorQuota({ status, realtime, compact = false }) {
   const trial = e.mode === "trial";
   const head = trial
     ? e.trial.state === "active" ? `Teste grátis · Dia ${e.trial.day} de ${e.trial.days}` : `Teste grátis de ${e.trial.days} dias: começa no primeiro uso`
-    : e.is_paid ? "Plano ativo" : "Acesso liberado";
+    : e.staff ? "Acesso da equipe" : e.is_paid ? "Plano ativo" : "Acesso liberado";
   const text = `Texto ${e.text.used}/${e.text.limit} interações hoje`;
   const voice = realtime && e.voice?.enabled
     ? `Voz ${minutes(e.voice.remaining_today_s)} min disponíveis hoje${e.voice.remaining_total_s != null ? ` · ${minutes(e.voice.remaining_total_s)} min restantes no teste` : ""}`

@@ -5,6 +5,7 @@
 import React from "react";
 import { Banner, Button, Card, EmptyState, Icon, TopicRow } from "../../ds";
 import { useSession } from "../session.jsx";
+import { isStaffRole } from "../admin/AdminScreen.jsx";
 import { areaLabel, formatClock, percent } from "../practice/format.js";
 import { KIND_LABEL, reasonText, trialTitle } from "./plan.js";
 import { PlayError, PlayHeader, PlayLoading, PlayLower, TrailPreview, usePlayHome } from "../play/PlayDashboard.jsx";
@@ -254,7 +255,9 @@ export function HomeScreen({ go, mobile }) {
     return error ? <Banner tone="danger">{error}</Banner> : <p style={{ margin: 0, color: "var(--text-tertiary)" }}>Carregando…</p>;
   }
 
-  const { home, plan } = data;
+  const { plan } = data;
+  // equipe (administrador ou editor) tem acesso completo: sem aviso de teste grátis
+  const home = isStaffRole(boot.role) ? { ...data.home, trial: null } : data.home;
   const startDiagnostic = () => {
     if (home.open_session) return go("sessao", { s: home.open_session.id });
     const task = plan.tasks.find((t) => t.ref?.reason === "diagnostic");
