@@ -1,8 +1,10 @@
 // Feedback de cada resposta: "+17 XP" subindo ao lado do veredito, detalhe do XP, aviso de sequência,
-// e os modais curtos de novo nível, medalha e liga. Tudo vem do bloco `play` que o banco devolve.
+// e as conquistas (sequência do dia, novo nível, medalha) com a animação em tela cheia de Celebration.jsx.
+// Os modais curtos abaixo continuam disponíveis. Tudo vem do bloco `play` que o banco devolve.
 import React from "react";
 import { Button, Icon } from "../../ds";
 import { invalidReason, pluralDays, xpLines } from "./format.js";
+import { useCelebrations } from "./Celebration.jsx";
 import "./play.css";
 
 /** "+17 XP" com o detalhe (primeira tentativa +3, difícil +4). Sem XP válido, explica o motivo. */
@@ -126,20 +128,10 @@ export function LeaguePromotionModal({ league, onClose }) {
 }
 
 /**
- * Fila de modais a partir do bloco `play` de uma resposta: primeiro o nível, depois cada medalha.
- * `levels` (lista do banco) traz nome, ícone e cor do nível.
+ * Fila de conquistas a partir do bloco `play` de uma resposta: sequência do dia, novo nível e cada medalha, uma depois da
+ * outra, com a animação de conquista (pedido de 2026-10-06). `levels` (lista do banco, opcional) traz nome, ícone e cor do nível.
  */
 export function useTurnFeedback() {
-  const [queue, setQueue] = React.useState([]);
-  const push = React.useCallback((play, levels = []) => {
-    if (!play) return;
-    const items = [];
-    if (play.level_up) items.push({ type: "level", level: levels.find((l) => l.slug === play.level_up.to) ?? play.level_up });
-    for (const a of play.achievements_unlocked ?? []) items.push({ type: "achievement", achievement: a });
-    if (items.length) setQueue((q) => [...q, ...items]);
-  }, []);
-  const next = React.useCallback(() => setQueue((q) => q.slice(1)), []);
-  const current = queue[0] ?? null;
-  const modal = !current ? null : current.type === "level" ? <LevelUpModal level={current.level} onClose={next} /> : <AchievementUnlockedModal achievement={current.achievement} onClose={next} />;
-  return { push, modal };
+  const { push, node } = useCelebrations();
+  return { push, modal: node };
 }

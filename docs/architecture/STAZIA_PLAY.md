@@ -144,3 +144,27 @@ Reversão: a migração é aditiva (tabelas, funções, gatilhos e uma coluna). 
 - **Defeito encontrado depois da publicação**: o simulado grava todas as respostas de uma vez ao finalizar, e a regra de enxurrada (30 respostas por minuto) marcava as seguintes como inválidas, sem XP e fora das estatísticas. Agora o simulado não conta como enxurrada nem entra na conta dos treinos seguintes; o tipo da sessão fica no evento (`session_kind`). Em produção nenhum aluno foi afetado (só havia uma resposta registrada, válida, e nenhum simulado finalizado).
 - **Desempenho**: missões, sequência, score e medalhas rodam uma vez por comando (gatilho por comando com tabela de transição), não uma vez por resposta; medalhas calculam cada agregado no máximo uma vez e só se alguma pendente precisar; os fatos do período usam o índice por aluno e horário; o score usa junções em vez de função por linha.
 - Medido no banco local (PGlite), aluno com 400 respostas: resposta no treino ~97 ms → ~10 ms; simulado de 100 questões finalizado 9,6 s → 0,13 s; respostas do simulado sem XP 80/100 → 0/100.
+
+## 9. Animação de conquista (pedido de 2026-10-06)
+
+Pedido: usar o estilo do vídeo de referência "Daily streak animation" (React + Motion) quando o aluno tiver uma conquista.
+`src/novo/app/play/Celebration.jsx` + `celebration.css`, com a biblioteca `motion` (Framer Motion) que já estava no projeto.
+
+- **Quando aparece**: depois de uma resposta no treino, pelo bloco `play` que o banco devolve, na ordem: sequência do dia
+  (`streak_incremented`, uma vez por dia), novo nível (`level_up`) e cada medalha (`achievements_unlocked`). A fila é a mesma de
+  antes (`useTurnFeedback` em `PlayFeedback.jsx`), agora com a animação de tela cheia no lugar dos modais curtos (os componentes
+  antigos continuam no arquivo).
+- **Sequência do vídeo, com as cores e a ilustração do StaziaMed**: o ícone aparece apagado com o número anterior → acende
+  (estica e encolhe) → a tela inunda com a cor da conquista a partir do ícone → explode em faíscas com raios girando → o número
+  rola (N-1 → N) ou o XP conta → o conteúdo sobe e entram o rótulo e os detalhes → botões. Cores: sequência em laranja
+  (`--orange-500`), medalha em âmbar (`--amber-500`), nível na cor do nível. Não há mascote: a chama e a medalha seguem o estilo
+  dos ícones ilustrados do app.
+- **Semana da sequência**: `app_play_streak_week()` (migração …4800) devolve segunda a domingo com estudou, protegido (proteção
+  usada), hoje, perdido ou por vir, lidos dos próprios eventos `STREAK_INCREMENTED` e `STREAK_FREEZE_USED`. Os dias estudados
+  marcam um a um e hoje marca por último, em branco.
+- **Nível**: o bloco da resposta só traz o código do nível; a tela busca nome, ícone, cor e descrição no `app_gamification_summary`.
+- **Acessibilidade**: diálogo com nome ("Sequência de 30 dias!", "Medalha desbloqueada: …"), aviso por leitor de tela, foco em
+  "Continuar", Esc fecha, a página atrás não rola. Tocar na tela pula para o fim. Com "reduzir movimento" no sistema, mostra
+  direto o estado final.
+- **Compartilhar** (só na sequência): usa o compartilhamento do celular; sem ele, copia o texto.
+- Testes: `celebration.test.tsx`.

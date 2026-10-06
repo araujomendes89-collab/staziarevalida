@@ -5,7 +5,7 @@
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { gapText, levelProgress, movementText, topLabel, xpLines } from "../novo/app/play/format.js";
 
 const backend: any = { rpc: vi.fn() };
@@ -171,7 +171,7 @@ describe("Feedback da resposta", () => {
     expect(screen.getByText("Resposta rápida demais para contar.")).toBeTruthy();
   });
 
-  it("novo nível e medalha viram modais, um depois do outro", async () => {
+  it("novo nível e medalha viram a animação de conquista, uma depois da outra", async () => {
     function Harness() {
       const f = useTurnFeedback();
       return (
@@ -185,11 +185,12 @@ describe("Feedback da resposta", () => {
     }
     render(<Harness />);
     fireEvent.click(screen.getByText("disparar"));
-    expect(screen.getByRole("dialog", { name: "Explorador" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(screen.getByRole("dialog", { name: "Primeiros Passos" })).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
-    expect(screen.queryByRole("dialog")).toBeNull();
+    // animação de conquista (Celebration.jsx): um depois do outro; durante o esmaecer, o anterior ainda está na tela
+    const level = screen.getByRole("dialog", { name: "Novo nível: Explorador" });
+    fireEvent.click(within(level).getByRole("button", { name: "Continuar" }));
+    const medal = await screen.findByRole("dialog", { name: "Medalha desbloqueada: Primeiros Passos" });
+    fireEvent.click(within(medal).getByRole("button", { name: "Continuar" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });
 
