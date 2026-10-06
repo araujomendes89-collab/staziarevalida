@@ -48,19 +48,25 @@ let blobs = 0;
 };
 
 const PERSONALITIES = [
-  { id: "amigavel", name: "Professor Amigável", emoji: "🙂", tagline: "Calmo", swears: false, voice: { rate: 0.95, pitch: 1.05 } },
-  { id: "rabugento", name: "Professor Rabugento", emoji: "😠", tagline: "Resmunga, mas ensina", swears: false, voice: { rate: 1, pitch: 0.85 } },
-  { id: "xingao", name: "Professor Xingão", emoji: "🤬", tagline: "Boca suja", swears: true, foul_mouthed: true, voice: { rate: 1.15, pitch: 1 } },
+  { id: "acolhedor", name: "Acolhedor", emoji: "🙂", tagline: "Calmo, paciente e didático", swears: false, voice: { rate: 0.98, pitch: 1.02 } },
+  { id: "direto", name: "Direto", emoji: "🎯", tagline: "Objetivo, exigente e sem enrolação", swears: false, voice: { rate: 1, pitch: 0.85 } },
+  { id: "durona", name: "Durona", emoji: "🔥", tagline: "Provocadora e escrachada", swears: true, voice: { rate: 1.06, pitch: 1 } },
 ];
+const ENTITLEMENT = {
+  enabled: true, mode: "trial", plan: "trial", is_paid: false, trial: { state: "active", days: 7, day: 3 }, can_use: true, can_text: true, can_voice: true, block_reason: null,
+  text: { used: 2, limit: 40, remaining: 38 }, voice: { enabled: true, limit_today_s: 600, used_today_s: 120, remaining_today_s: 480, limit_total_s: 2400, used_total_s: 480, remaining_total_s: 1920, remaining_s: 480 },
+  questions: { used: 1, limit: 30, remaining: 29 },
+};
 const status = (over: any = {}) => ({
-  enabled: true, available: true, requires_pro: false, daily_limit: 40, used_today: 2, max_profanity: "moderate", voice_enabled: true, reviews_due: 1,
-  preferences: { personality_id: "rabugento", intensity: 4, humor: null, explanation: "normal", strictness: "normal", profanity: "off", adaptive: true, chosen: true },
+  enabled: true, available: true, requires_pro: true, daily_limit: 40, used_today: 2, max_profanity: "moderate", voice_enabled: true, reviews_due: 1,
+  entitlement: ENTITLEMENT,
+  preferences: { personality_id: "direto", profanity: "off", chosen: true },
   personalities: PERSONALITIES, ...over,
 });
 const QUESTION = { id: "q1", number: 12, area: "PEDIATRIA", topic: "Bronquiolite", exam: { kind: "REVALIDA", year: 2022, semester: 1 }, statement: "Lactente com sibilância. Qual a conduta?", options: [{ id: "A", text: "Oxigênio" }, { id: "B", text: "Salbutamol" }, { id: "C", text: "Antibiótico" }, { id: "D", text: "Corticoide" }], state: "open", correct_option: null };
 const session = (over: any = {}) => ({
   id: "11111111-1111-4111-8111-111111111111", mode: "questao", title: "Questões", topic: null, status: "active", question_state: "open", hint_level: 0, difficulty_level: 3, intensity: 4,
-  personality: { id: "rabugento", name: "Professor Rabugento", emoji: "😠", voice: { rate: 1, pitch: 0.85 } }, question: QUESTION, last_answer: null,
+  personality: { id: "direto", name: "Direto", emoji: "🎯", voice: { rate: 1, pitch: 0.85 } }, question: QUESTION, last_answer: null,
   messages: [{ id: 1, role: "tutor", content: "Vamos de questão. Responda quando estiver pronto.", grounding: "none", sources: null, hint_level: null, suggested: null, notice: null }], ...over,
 });
 
@@ -79,7 +85,7 @@ beforeEach(() => {
   audios.length = 0;
   speechCalls.length = 0;
   speechFail = false;
-  serverStatus = { ready: true, simulated: false, neural_voice: false };
+  serverStatus = { ready: true, simulated: false, neural_voice: false, realtime_voice: false };
   rpcImpl = { app_tutor_status: () => status(), app_tutor_sessions: () => [] };
   backend.rpc.mockImplementation(async (fn: string, args: any) => {
     if (!rpcImpl[fn]) throw new Error(`rpc inesperada: ${fn}`);
@@ -118,44 +124,57 @@ describe("Tela do Tutor", () => {
     expect(go).toHaveBeenCalledWith("perfil");
   });
 
-  it("primeira vez: escolhe o professor e a intensidade; palavrões só aparecem para quem xinga", async () => {
-    rpcImpl.app_tutor_status = () => status({ preferences: { ...status().preferences, personality_id: "amigavel", intensity: 2, chosen: false } });
+  it("três professores na tela inicial: trocar salva na hora; nada de intensidade nem campo de palavrões", async () => {
     const saved: any[] = [];
-    rpcImpl.app_tutor_save_preferences = (a) => (saved.push(a.p_prefs), a.p_prefs);
+    rpcImpl.app_tutor_save_preferences = (a) => (saved.push(a.p_prefs), { ...a.p_prefs, chosen: true });
     const TutorScreen = await load();
     render(<TutorScreen go={() => {}} />);
-    expect(await screen.findByText("Escolha seu professor")).toBeTruthy();
-    expect(screen.getAllByRole("radio", { name: /Amigável|Rabugento|Xingão/ })).toHaveLength(3);
+    expect(await screen.findByText("Seu professor particular para o Revalida.")).toBeTruthy();
+    expect(screen.getAllByRole("radio", { name: /Acolhedor|Direto|Durona/ })).toHaveLength(3);
+    expect(screen.getByRole("radio", { name: /Direto/ }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(screen.getByRole("radio", { name: /Durona/ }));
+    await waitFor(() => expect(saved).toEqual([{ personality_id: "durona" }]));
+    expect(screen.queryByText(/intensidade/i)).toBeNull();
     expect(screen.queryByText("Palavrões")).toBeNull();
-    fireEvent.click(screen.getByRole("radio", { name: /Xingão/ }));
-    expect(screen.getByText("Palavrões")).toBeTruthy();
-    fireEvent.click(screen.getByRole("radio", { name: /Rabugento/ }));
-    expect(screen.queryByText("Palavrões")).toBeNull();
-    fireEvent.click(screen.getByText("Salvar professor"));
-    await waitFor(() => expect(saved).toHaveLength(1));
-    expect(saved[0]).toMatchObject({ personality_id: "rabugento", profanity: "off", adaptive: true });
+    // quatro modos
+    for (const label of [/^Questões$/, /^Meus erros/, /^Me teste$/, /^Perguntar ao Tutor$/]) expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+    expect(screen.getByText("Revisar onde você mais erra.")).toBeTruthy();
   });
 
-  it("Xingão: o palavrão já vem liberado (é o personagem) e o aluno pode baixar; o que ele marcar no campo passa a valer", async () => {
-    rpcImpl.app_tutor_status = () => status({ preferences: { ...status().preferences, personality_id: "amigavel", intensity: 3, chosen: false } });
-    const saved: any[] = [];
-    rpcImpl.app_tutor_save_preferences = (a) => (saved.push(a.p_prefs), a.p_prefs);
+  it("uso do Tutor: teste grátis com dia, texto, voz e questões (números do servidor); histórico por sessão de estudo", async () => {
+    serverStatus = { ...serverStatus, realtime_voice: true };
+    rpcImpl.app_tutor_sessions = () => [
+      { id: "s1", title: "Calendário vacinal", mode: "questao", status: "closed", personality: "🙂", persona: "Acolhedor", minutes: 20, questions: 12 },
+      { id: "s2", title: "Sepse: choque séptico", mode: "livre", status: "closed", personality: "🎯", persona: "Direto", minutes: 8, questions: 0 },
+    ];
     const TutorScreen = await load();
     render(<TutorScreen go={() => {}} />);
-    await screen.findByText("Escolha seu professor");
-    fireEvent.click(screen.getByRole("radio", { name: /Xingão/ }));
-    const field = screen.getByLabelText("Palavrões") as HTMLSelectElement;
-    expect(field.value).toBe("moderate");
-    expect(screen.getByText(/xinga de verdade, inclusive você, na zoeira/)).toBeTruthy();
-    expect(Array.from(field.options).map((o) => o.textContent)).toEqual(["Sem palavrão", "Leves (putz, que saco)", "Liberados (inclusive com você)"]);
-    fireEvent.change(field, { target: { value: "off" } });
-    fireEvent.click(screen.getByRole("radio", { name: /Amigável/ }));
-    fireEvent.click(screen.getByRole("radio", { name: /Xingão/ }));
-    expect((screen.getByLabelText("Palavrões") as HTMLSelectElement).value).toBe("off"); // a escolha do aluno não é desfeita
-    fireEvent.change(screen.getByLabelText("Palavrões"), { target: { value: "moderate" } });
-    fireEvent.click(screen.getByText("Salvar professor"));
-    await waitFor(() => expect(saved).toHaveLength(1));
-    expect(saved[0]).toMatchObject({ personality_id: "xingao", profanity: "moderate", intensity: 3 });
+    expect(await screen.findByText("Teste grátis · Dia 3 de 7")).toBeTruthy();
+    expect(screen.getByText("Texto 2/40 interações hoje")).toBeTruthy();
+    expect(await screen.findByText("Voz 8 min disponíveis hoje · 32 min restantes no teste")).toBeTruthy();
+    expect(screen.getByText("Questões 1/30 hoje")).toBeTruthy();
+    expect(screen.getByText("12 questões · Acolhedor")).toBeTruthy();
+    expect(screen.getByText("8 min · Direto")).toBeTruthy();
+    expect(screen.queryByText(/de 40 mensagens hoje/)).toBeNull();
+  });
+
+  it("modos: 'Me teste' nos pontos fracos e 'Perguntar ao Tutor' com a pergunta já escrita (vai sozinha)", async () => {
+    const started: any[] = [];
+    rpcImpl.app_tutor_start = (a) => (started.push(a), session({ mode: a.p_mode, question: null, question_state: "none", title: "Meus pontos fracos" }));
+    const TutorScreen = await load();
+    const { unmount } = render(<TutorScreen go={() => {}} />);
+    fireEvent.click(await screen.findByText("Me teste"));
+    expect(screen.getByText("Meus pontos fracos")).toBeTruthy();
+    fireEvent.click(screen.getByText("Começar"));
+    await waitFor(() => expect(started[0]).toMatchObject({ p_mode: "perguntas", p_context: { type: "weak_points" } }));
+    unmount();
+    render(<TutorScreen go={() => {}} />);
+    fireEvent.click(await screen.findByText("Perguntar ao Tutor"));
+    fireEvent.change(screen.getByLabelText("Sua pergunta (opcional)"), { target: { value: "Explique pré-eclâmpsia." } });
+    fireEvent.click(screen.getByText("Começar"));
+    await waitFor(() => expect(turns).toHaveLength(1));
+    expect(started[1]).toMatchObject({ p_mode: "livre", p_context: { type: "free" } });
+    expect(turns[0]).toMatchObject({ action: "message", text: "Explique pré-eclâmpsia." });
   });
 
   it("questão: sem gabarito à vista; a resposta vai para o banco, e o professor reage com a base indicada", async () => {
@@ -192,7 +211,7 @@ describe("Tela do Tutor", () => {
     turnReply = { message: { id: 11, role: "tutor", content: "Não encontrei confirmação suficiente na base disponível.", spoken: "x", grounding: "insufficient", sources: [], hint_level: null, suggested: [], notice: "Resposta substituída: a primeira versão trazia informação que não pôde ser conferida." }, question_state: "none", used_today: 3, daily_limit: 40 };
     const TutorScreen = await load();
     render(<TutorScreen go={() => {}} />);
-    fireEvent.click(await screen.findByText("Conversa livre"));
+    fireEvent.click(await screen.findByText("Perguntar ao Tutor"));
     fireEvent.click(screen.getByText("Começar"));
     const input = await screen.findByLabelText("Mensagem");
     fireEvent.change(input, { target: { value: "qual a dose de amoxicilina?" } });
@@ -209,7 +228,7 @@ describe("Tela do Tutor", () => {
     turnReply = { message: { id: 12, role: "tutor", content: "Pense primeiro na síndrome. Depois na causa.", spoken: "Pense primeiro na síndrome. Depois na causa.", grounding: "general", sources: [], hint_level: null, suggested: [], notice: null }, question_state: "none", used_today: 3, daily_limit: 40 };
     const TutorScreen = await load();
     render(<TutorScreen go={() => {}} />);
-    fireEvent.click(await screen.findByText("Conversa livre"));
+    fireEvent.click(await screen.findByText("Perguntar ao Tutor"));
     fireEvent.click(screen.getByText("Começar"));
     fireEvent.click(await screen.findByLabelText("Falar com o professor"));
     expect(recognition.lang).toBe("pt-BR");
@@ -218,7 +237,7 @@ describe("Tela do Tutor", () => {
     await waitFor(() => expect(turns).toHaveLength(1));
     expect(turns[0]).toMatchObject({ action: "message", text: "não entendi o mecanismo", voice: true });
     await waitFor(() => expect(spoken).toHaveLength(1));
-    expect(spoken[0]).toEqual({ text: "Pense primeiro na síndrome. Depois na causa.", rate: 1, pitch: 0.85 }); // voz do Rabugento, em fala corrida
+    expect(spoken[0]).toEqual({ text: "Pense primeiro na síndrome. Depois na causa.", rate: 1, pitch: 0.85 }); // voz do professor, em fala corrida
     expect(await screen.findByText("O professor está falando.")).toBeTruthy();
     // o aluno interrompe e fala de novo: a frase que estava sendo dita vai junto
     fireEvent.click(screen.getByLabelText("Interromper e falar"));
@@ -230,14 +249,14 @@ describe("Tela do Tutor", () => {
   });
 
   it("voz natural ligada no servidor: a resposta toca o áudio gerado lá (pela fala validada, nunca texto livre); se falhar, a voz do aparelho assume", async () => {
-    serverStatus = { ready: true, simulated: false, neural_voice: true };
+    serverStatus = { ready: true, simulated: false, neural_voice: true, realtime_voice: false };
     rpcImpl.app_tutor_start = () => session({ mode: "livre", question: null, question_state: "none" });
     const first = "Olha, antes de pensar em remédio, pensa em qual síndrome está na sua frente, porque é ela que manda em todo o resto do raciocínio.";
     const second = "Depois disso, pergunta pra você mesmo qual é a causa mais comum nessa idade, e só então qual é o achado que muda a conduta de verdade.";
     turnReply = { message: { id: 12, role: "tutor", content: `${first} ${second}`, spoken: `${first} ${second}`, grounding: "general", sources: [], hint_level: null, suggested: [], notice: null }, question_state: "none", used_today: 3, daily_limit: 40 };
     const TutorScreen = await load();
     render(<TutorScreen go={() => {}} />);
-    fireEvent.click(await screen.findByText("Conversa livre"));
+    fireEvent.click(await screen.findByText("Perguntar ao Tutor"));
     fireEvent.click(screen.getByText("Começar"));
     await waitFor(() => expect((globalThis as any).fetch).toHaveBeenCalledWith("/api/tutor/status", expect.anything()));
     fireEvent.click(await screen.findByLabelText("Falar com o professor"));
@@ -262,17 +281,16 @@ describe("Tela do Tutor", () => {
     await waitFor(() => expect(spoken.map((x) => x.text).join(" ")).toContain(first));
   });
 
-  it("escolha da voz: com a voz natural ligada, ela vem marcada e dá para ouvir o professor antes de salvar", async () => {
-    serverStatus = { ready: true, simulated: false, neural_voice: true };
-    rpcImpl.app_tutor_status = () => status({ preferences: { ...status().preferences, personality_id: "xingao", chosen: false } });
+  it("voz do aparelho (sem voz em tempo real): a voz natural vem marcada e dá para ouvir o professor", async () => {
+    serverStatus = { ready: true, simulated: false, neural_voice: true, realtime_voice: false };
+    rpcImpl.app_tutor_status = () => status({ preferences: { personality_id: "durona", profanity: "moderate", chosen: false } });
     const TutorScreen = await load();
     render(<TutorScreen go={() => {}} />);
-    await screen.findByText("Escolha seu professor");
     const field = (await screen.findByLabelText("Voz do professor")) as HTMLSelectElement;
     await waitFor(() => expect(field.value).toBe("__voz_natural__"));
     expect(Array.from(field.options).map((o) => o.textContent)).toEqual(["Voz natural do professor (recomendada)", "A mais natural do aparelho (Voz de teste)", "Voz de teste"]);
     fireEvent.click(screen.getByText("Ouvir"));
-    await waitFor(() => expect(speechCalls).toEqual([{ kind: "phrase", phrase: "sample", personality_id: "xingao" }]));
+    await waitFor(() => expect(speechCalls).toEqual([{ kind: "phrase", phrase: "sample", personality_id: "durona" }]));
     // trocar para a do aparelho fica guardado e não pede nada ao servidor
     fireEvent.change(field, { target: { value: "Voz de teste" } });
     fireEvent.click(screen.getByText("Ouvir"));
@@ -355,7 +373,7 @@ describe("Tela do Tutor", () => {
     rpcImpl.app_tutor_start = () => session({ mode: "livre", question: null, question_state: "none" });
     const TutorScreen = await load();
     render(<TutorScreen go={() => {}} />);
-    fireEvent.click(await screen.findByText("Conversa livre"));
+    fireEvent.click(await screen.findByText("Perguntar ao Tutor"));
     fireEvent.click(screen.getByText("Começar"));
     fireEvent.click(await screen.findByLabelText("Falar com o professor"));
     recognition.onerror({ error: "not-allowed" });
@@ -368,7 +386,7 @@ describe("Tela do Tutor", () => {
     rpcImpl.app_tutor_start = () => session({ mode: "livre", question: null, question_state: "none" });
     const TutorScreen = await load();
     render(<TutorScreen go={() => {}} />);
-    fireEvent.click(await screen.findByText("Conversa livre"));
+    fireEvent.click(await screen.findByText("Perguntar ao Tutor"));
     fireEvent.click(screen.getByText("Começar"));
     fireEvent.click(await screen.findByLabelText("Falar com o professor"));
     recognition.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: "Espera." }], { isFinal: true })] });

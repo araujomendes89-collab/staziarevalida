@@ -7,6 +7,7 @@ import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { areaLabel, areaOf, formatClock, percent } from "../practice/format.js";
 import { ErrorProfile } from "./ErrorProfile.jsx";
+import { TutorButton } from "../tutor/TutorDrawer.jsx";
 
 const R = { borderRadius: 24 };
 const PERIODS = [
@@ -157,7 +158,10 @@ export function PerformanceScreen({ go }) {
         <AccuracyChart daily={data.daily} days={data.days} />
       </Card>
       <Card style={R} padding={28}>
-        <h3 style={{ margin: "0 0 18px", font: "600 18px var(--font-sans)" }}>Por grande área</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", margin: "0 0 18px" }}>
+          <h3 style={{ margin: 0, font: "600 18px var(--font-sans)" }}>Por grande área</h3>
+          <TutorButton request={{ mode: "perguntas", context: { type: "weak_points" } }} label="Me teste nos pontos fracos" />
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: "18px 40px" }}>
           {data.areas.map((area) => {
             const value = percent(area.correct, area.attempts);

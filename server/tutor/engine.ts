@@ -14,8 +14,9 @@ import { asDocument } from "../contentHub/ai/prompts";
 import { AiInvalidOutput, resolveProviderKind, withFallback, type StructuredRequest } from "../contentHub/ai/provider";
 import { aiAllowed, registerPrompts, type PromptEntry } from "../contentHub/ai/registry";
 import type { ContentDb } from "../contentHub/infra";
-import { adaptiveAdjust, effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings } from "./personality";
-import { TUTOR_CORE, TUTOR_MODES, TUTOR_PROMPT_LAYERS, TUTOR_SCHEMA, TUTOR_VERSION, TUTOR_VOICE, taskInstruction, type TutorMode, type TutorOutput, type TutorTask } from "./prompts";
+import { applyEvents, emotionLabel, emotionLayer, normalize, swearingByEmotion, type Emotion, type EmotionEvent } from "./emotion";
+import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings } from "./personality";
+import { NO_EVALUATION, TUTOR_PROMPT_LAYERS, TUTOR_SCHEMA, TUTOR_VERSION, composeSystem, taskInstruction, type TutorMode, type TutorOutput, type TutorTask } from "./prompts";
 import { fallbackReply, safetyCheck, spokenText, type BaseBlock, type SafetyResult, type Violation } from "./safety";
 
 export interface TutorDeps {
@@ -24,10 +25,13 @@ export interface TutorDeps {
   log?: (m: string) => void;
   /** Voz natural: nos testes, um provedor fixo (ou null = desligada); fora deles, vem do .env (speech.ts). */
   speech?: import("./speech").SpeechProvider | null;
+  /** Voz em tempo real: nos testes, configuração e fetch simulados; fora deles, .env e fetch de verdade (realtime.ts). */
+  realtime?: import("./realtime").RealtimeConfig;
+  fetch?: typeof fetch;
 }
 
 export interface TutorAction {
-  type: "message" | "hint" | "react";
+  type: "message" | "hint" | "react" | "reveal";
   text?: string;
   voice?: boolean;
   interrupted?: string | null;
@@ -40,12 +44,33 @@ export class TutorError extends Error {
   }
 }
 
+export interface Entitlement {
+  enabled: boolean;
+  mode: "paid" | "trial" | "blocked";
+  text: { used: number; limit: number; remaining: number };
+  can_use: boolean;
+  can_text: boolean;
+  block_reason: string | null;
+}
+
+interface Memory {
+  areas: { area: string; level: string; accuracy: number | null }[];
+  weak_subareas: { area: string; subarea: string; accuracy: number }[];
+  recurrent_errors: { error_type: string; knowledge_gap: string | null; times: number }[];
+  recent_errors: { error_type: string; knowledge_gap: string | null; theme: string | null; question_id: string | null; resolved: boolean }[];
+}
+
 interface Context {
   config: { enabled: boolean; requires_pro: boolean; daily_limit: number; max_profanity: ProfanityLevel };
-  is_pro: boolean;
-  used_today: number;
-  session: { id: string; mode: TutorMode; topic: string | null; status: string; question_state: string; hint_level: number; intensity: number; settings: TutorSettings & { params?: unknown }; difficulty_level: number };
+  entitlement: Entitlement;
+  session: {
+    id: string; mode: TutorMode; topic: string | null; title: string; status: string; question_state: string; hint_level: number; intensity: number;
+    settings: TutorSettings & { params?: unknown; area?: string | null }; difficulty_level: number; streak_wrong: number; emotion: Partial<Emotion> | null;
+    context: { type: string | null; id: string | null; label: string | null };
+  };
   personality: Personality;
+  memory: Memory | null;
+  session_errors: { error_type: string; question_id: string | null }[];
   student: { first_name: string | null; phase: number; days_to_exam: number | null } | null;
   mastery: { areas: { area: string; level: string; accuracy: number | null }[] };
   recent_results: boolean[];
@@ -53,14 +78,15 @@ interface Context {
   question: {
     id: string; area: string; topic: string; subtopic: string | null; statement: string; exam: string | null; number: number;
     options: { id: string; text: string; explanation: string | null }[];
-    official_answer: string; expected_conduct: string | null; inep_intent: string | null;
+    official_answer: string; expected_conduct: string | null; inep_intent: string | null; sources?: unknown;
     last_answer: { selected: string; is_correct: boolean; confidence: number | null; lucky_guess: boolean; heavy_hints: boolean; hints_used: number; justification: string | null } | null;
+    practice_answer?: { selected: string; is_correct: boolean } | null;
     analysis: { question_core: string; trap: string | null; golden_rule: string | null; options: { option_id: string; reasoning: string; why_wrong: string | null; trap: string | null }[] | null } | null;
     update_card: { official_answer: string; current_answer: string | null; what_changed: string; effective_date: string | null; sources: unknown } | null;
   } | null;
 }
 
-interface Passage {
+export interface Passage {
   source: string; organ: string; version: string | null; page: number | null; section: string | null; text: string;
 }
 
@@ -82,6 +108,10 @@ const EFFORT = (["low", "medium", "high"].includes(process.env.TUTOR_ANTHROPIC_E
 
 const STATE_PT: Record<string, string> = { open: "aberta", answered: "respondida", revealed: "revelada", none: "sem questão" };
 
+export const TRIAL_OVER = "Seu teste grátis do Tutor terminou. O Tutor continua nos planos pagos.";
+export const textLimitMessage = (e: Pick<Entitlement, "mode" | "text">) =>
+  `Você chegou ao limite de ${e.text.limit} interações de hoje${e.mode === "trial" ? " no teste grátis" : ""}. Amanhã tem mais.`;
+
 /** Blocos da base conferida. O gabarito e as explicações só entram quando a questão já foi respondida ou quando a tarefa é uma dica. */
 export function buildBlocks(ctx: Context, passages: Passage[], includeAnswer: boolean): BaseBlock[] {
   const blocks: BaseBlock[] = [];
@@ -100,6 +130,7 @@ export function buildBlocks(ctx: Context, passages: Passage[], includeAnswer: bo
       if (q.inep_intent) lines.push(`O que a questão avalia: ${q.inep_intent}`);
     }
     if (q.last_answer) lines.push(`Resposta do aluno: ${q.last_answer.selected} (${q.last_answer.is_correct ? "acertou" : "errou"})`);
+    else if (q.practice_answer) lines.push(`Resposta do aluno no treino: ${q.practice_answer.selected} (${q.practice_answer.is_correct ? "acertou" : "errou"})`);
     blocks.push({ ref: "Q", kind: "question", label: "Questão oficial", text: lines.join("\n") });
     if (q.analysis) {
       const a = q.analysis;
@@ -138,7 +169,7 @@ export function sourceQuery(...texts: (string | null | undefined)[]): string {
   return [...new Set(words)].slice(0, 8).join(" or ");
 }
 
-async function searchSources(deps: TutorDeps, query: string): Promise<Passage[]> {
+export async function searchSources(deps: TutorDeps, query: string): Promise<Passage[]> {
   if (!query) return [];
   try {
     return (await deps.db.service<Passage[]>("ch_worker_search_official_passages", { p_query: query, p_limit: 3 })) ?? [];
@@ -165,10 +196,11 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
   try {
     const ctx = await deps.db.service<Context | null>("ch_worker_tutor_context", { p_user: userId, p_session_id: sessionId });
     if (!ctx) throw new TutorError("Conversa não encontrada.", 404);
-    if (!ctx.config.enabled) throw new TutorError("O Tutor ainda não está ligado.", 503);
-    if (ctx.config.requires_pro && !ctx.is_pro) throw new TutorError("O Tutor faz parte dos planos pagos.", 403);
+    const ent = ctx.entitlement;
+    if (!ent.enabled) throw new TutorError("O Tutor ainda não está ligado.", 503);
+    if (ent.mode === "blocked") throw new TutorError(TRIAL_OVER, 403);
     if (ctx.session.status !== "active") throw new TutorError("Esta conversa foi encerrada. Abra uma nova.", 409);
-    if (ctx.used_today >= ctx.config.daily_limit) throw new TutorError(`Você chegou ao limite de ${ctx.config.daily_limit} mensagens de hoje. Amanhã tem mais.`, 429);
+    if (!ent.can_text) throw new TutorError(textLimitMessage(ent), 429);
     const allowed = await aiAllowed(deps.db);
     if (!allowed.ok) {
       deps.log?.(`[tutor] IA bloqueada: ${allowed.why}`);
@@ -181,17 +213,33 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     let task: TutorTask;
     let studentText = "";
     let hintLevel: number | null = null;
+    const pre: EmotionEvent[] = [];
     if (action.type === "hint") {
       if (!q || !open) throw new TutorError("Não há questão aberta para pedir dica.", 409);
       if (ctx.session.hint_level >= 5) throw new TutorError("Você já recebeu todas as dicas desta questão.", 409);
       hintLevel = ctx.session.hint_level + 1;
       task = { type: "hint", level: hintLevel };
       studentText = hintLevel === 1 ? "Me dá uma ajuda aqui." : "Me ajuda mais um pouco.";
+      pre.push("asked_for_help");
+    } else if (action.type === "reveal") {
+      if (!q || !open) throw new TutorError("Não há questão aberta para mostrar a resolução.", 409);
+      hintLevel = 5;
+      task = { type: "reveal" };
+      studentText = "Me mostra a resolução.";
     } else if (action.type === "react") {
       const a = q?.last_answer;
       if (!q || !a || ctx.session.question_state !== "answered") throw new TutorError("Responda a questão antes.", 409);
-      task = { type: "react", selected: a.selected, correct: a.is_correct, confidence: a.confidence, hints: a.hints_used, lucky: a.lucky_guess };
+      const repeated = 1 + (ctx.memory?.recent_errors ?? []).filter((e) => e.question_id === q.id && !e.resolved).length;
+      task = { type: "react", selected: a.selected, correct: a.is_correct, confidence: a.confidence, hints: a.hints_used, lucky: a.lucky_guess, repeated };
       studentText = `Marquei a ${a.selected}.`;
+      if (a.is_correct) pre.push(a.lucky_guess ? "serious_attempt" : ctx.session.difficulty_level >= 6 ? "correct_hard" : "correct");
+      else {
+        pre.push("wrong");
+        if (repeated >= 2) pre.push("repeated_error");
+        // chutando: três erros seguidos com confiança mínima
+        const last3 = (ctx.recent_results ?? []).slice(-3); // inclui a resposta de agora
+        if ((a.confidence ?? 5) <= 1 && last3.length === 3 && last3.every((ok) => !ok)) pre.push("random_answers");
+      }
     } else {
       studentText = (action.text ?? "").trim();
       if (!studentText) throw new TutorError("Escreva ou fale a sua mensagem.", 400);
@@ -211,21 +259,29 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     }
 
     // ---- base conferida
-    const includeAnswer = Boolean(q) && (!open || task.type === "hint");
-    const passages = await searchSources(deps, sourceQuery(q?.topic, q?.subtopic, ctx.session.topic, task.type === "message" && !q ? studentText : ""));
+    const includeAnswer = Boolean(q) && (!open || task.type === "hint" || task.type === "reveal");
+    const weak = ctx.session.context?.type === "weak_points" ? (ctx.memory?.weak_subareas ?? []).slice(0, 3).map((w) => w.subarea).join(" ") : "";
+    const passages = await searchSources(deps, sourceQuery(q?.topic, q?.subtopic, ctx.session.topic, ctx.session.context?.label, weak, task.type === "message" && !q ? studentText : ""));
     const blocks = buildBlocks(ctx, passages, includeAnswer);
 
-    // ---- personalidade (sempre depois do conteúdo)
+    // ---- personalidade (sempre depois do conteúdo): estilo do professor + estado da sessão
     const settings = ctx.session.settings;
-    const adjust = adaptiveAdjust(ctx.session.intensity, settings.adaptive !== false, ctx.recent_results ?? []);
-    const eff = effectiveParams(ctx.personality.params, adjust.intensity, settings);
+    const sessionTypes = (ctx.session_errors ?? []).map((x) => x.error_type);
+    const mood0 = applyEvents(ctx.session.emotion, pre);
+    const eff = effectiveParams(ctx.personality.params, 3, settings);
     const profanity = profanityLevel(ctx.personality.params, settings.profanity ?? "off", ctx.config.max_profanity);
-    const system = [TUTOR_CORE, TUTOR_MODES[ctx.session.mode], action.voice ? TUTOR_VOICE : "", personalityLayer(ctx.personality, eff, profanity, adjust.intensity, adjust.note)].filter(Boolean).join("\n\n");
+    const mood = { label: emotionLabel(mood0), text: emotionLayer(ctx.personality.id, mood0), swearing: swearingByEmotion(mood0) };
+    const system = composeSystem({ mode: ctx.session.mode, browserVoice: Boolean(action.voice), persona: personalityLayer(ctx.personality, eff, profanity, 3, null, mood) });
 
+    const mem = ctx.memory;
     const studentCtx = {
       nome: ctx.student?.first_name ?? null,
       dias_para_a_prova: ctx.student?.days_to_exam ?? null,
       dominio_por_area: (ctx.mastery?.areas ?? []).filter((a) => a.level !== "SEM_DADOS").map((a) => ({ area: a.area, nivel: a.level })),
+      pontos_fracos: (mem?.weak_subareas ?? []).slice(0, 5).map((w) => `${w.subarea} (${w.accuracy}%)`),
+      erros_recorrentes: (mem?.recurrent_errors ?? []).map((r) => ({ tipo: r.error_type, lacuna: r.knowledge_gap, vezes: r.times })),
+      erros_recentes: (mem?.recent_errors ?? []).slice(0, 4).map((r) => ({ tipo: r.error_type, lacuna: r.knowledge_gap, tema: r.theme })),
+      contexto_da_sessao: ctx.session.context?.label ?? ctx.session.topic ?? null,
       nivel_da_conversa: ctx.session.difficulty_level,
     };
     const conversation = ctx.history.map((h) => `${h.role === "student" ? "Aluno" : "Tutor"}: ${h.content.slice(0, 600)}`).join("\n");
@@ -243,8 +299,17 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       profanity,
     };
 
+    // ---- reserva atômica de uma interação (dois aparelhos não passam do limite juntos); devolvida se a IA falhar
+    const reserved = await deps.db.service<{ ok: boolean; reason?: string; reservation?: number; entitlement?: Entitlement }>("ch_worker_tutor_text_reserve", { p_user: userId, p_session_id: sessionId });
+    if (!reserved.ok) {
+      if (reserved.reason === "trial_expired") throw new TutorError(TRIAL_OVER, 403);
+      if (reserved.reason === "disabled") throw new TutorError("O Tutor ainda não está ligado.", 503);
+      throw new TutorError(textLimitMessage(reserved.entitlement ?? ent), 429);
+    }
+    const release = () => deps.db.service("ch_worker_tutor_text_release", { p_user: userId, p_reservation: reserved.reservation }).catch(() => undefined);
+
     // ---- gerar e validar (uma nova tentativa com a correção)
-    const usage = { calls: 0, input_tokens: 0, output_tokens: 0, cost_usd: 0 };
+    const usage = { calls: 0, input_tokens: 0, output_tokens: 0, cost_usd: 0, provider: provider.name, model: provider.model };
     let out: TutorOutput | null = null;
     let check: SafetyResult | null = null;
     let violations: Violation[] = [];
@@ -263,7 +328,10 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
           continue;
         }
         deps.log?.(`[tutor] falha do provedor: ${(error as Error).message.slice(0, 200)}`);
-        if (usage.calls === 0) throw new TutorError("O Tutor não conseguiu responder agora. Tente de novo em instantes.", 502);
+        if (usage.calls === 0) {
+          await release(); // erro do provedor não gasta a cota do aluno
+          throw new TutorError("O Tutor não conseguiu responder agora. Tente de novo em instantes.", 502);
+        }
         break;
       }
       usage.calls++;
@@ -272,6 +340,8 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       usage.cost_usd += r.costUsd ?? 0;
       model = r.model;
       providerName = r.provider;
+      usage.model = r.model;
+      usage.provider = r.provider;
       const c = safetyCheck(r.output, safetyCtx);
       violations = c.violations;
       if (!violations.length) {
@@ -283,28 +353,61 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
 
     const replaced = !out;
     const reply = out ? out.reply.trim() : fallbackReply(violations);
-    const reveals = Boolean(out?.reveals_answer) && hintLevel === 5;
+    // a resolução (dica 5 ou pedido explícito) revela a resposta mesmo se a IA esquecer de marcar
+    const reveals = hintLevel === 5 && (Boolean(out?.reveals_answer) || task.type === "reveal" || replaced);
+    const ev = out?.evaluation ?? NO_EVALUATION;
+
+    // ---- avaliação silenciosa: vira evento pedagógico (erro registrado) e mexe no estado da sessão
+    const post: EmotionEvent[] = [];
+    if (ev.reasoning_quality === "medium" || ev.reasoning_quality === "high") post.push("serious_attempt");
+    if (ev.self_corrected) post.push("self_correction");
+    let learning: Record<string, unknown> | null = null;
+    // erro na questão respondida (no Tutor ou no treino) só vira evento uma vez por questão nesta sessão
+    const wrongHere = Boolean(q && !open && (q.last_answer ? !q.last_answer.is_correct : q.practice_answer?.is_correct === false));
+    const alreadyLogged = Boolean(q && (ctx.session_errors ?? []).some((x) => x.question_id === q.id));
+    const errorTurn = (task.type === "react" && !task.correct) || (task.type === "justify" && out?.justification === "INSUFFICIENT") || (task.type === "message" && wrongHere && !alreadyLogged) || (!q && ev.answer_correct === "no");
+    if (out && ev.error_type !== "none" && errorTurn) {
+      learning = { kind: "error", error_type: ev.error_type, knowledge_gap: ev.knowledge_gap || null, question_id: q?.id ?? null, source: "tutor_text" };
+      if (!pre.includes("repeated_error") && (sessionTypes.includes(ev.error_type) || (ctx.memory?.recurrent_errors ?? []).some((r) => r.error_type === ev.error_type))) post.push("repeated_error");
+    } else if (task.type === "react" && task.correct) learning = { kind: "correct", question_id: q?.id ?? null };
+    if (ctx.session.mode === "perguntas" && ev.answer_correct === "yes") post.push(ev.reasoning_quality === "high" ? "correct_hard" : "correct");
+    const emotion = applyEvents(mood0, post);
+    // "Me teste": a dificuldade acompanha as respostas orais
+    const level = ctx.session.mode === "perguntas" && ev.answer_correct !== "na"
+      ? Math.max(1, Math.min(10, ctx.session.difficulty_level + (ev.answer_correct === "yes" ? 1 : ev.answer_correct === "no" ? -1 : 0)))
+      : null;
+
     const meta: Record<string, unknown> = {
       grounding: replaced ? "insufficient" : check!.grounding,
       sources: replaced ? [] : check!.sources,
       suggested: replaced ? [] : out!.suggested_replies,
-      notice: replaced ? "Resposta substituída: a primeira versão trazia informação que não pôde ser conferida." : adjust.notice,
+      notice: replaced ? "Resposta substituída: a primeira versão trazia informação que não pôde ser conferida." : null,
       model, provider: providerName, prompt_version: TUTOR_VERSION, simulated: provider.isMock,
-      personality: { id: ctx.personality.id, intensity: adjust.intensity, profanity },
+      personality: { id: ctx.personality.id, profanity, mood: mood.label },
       voice: Boolean(action.voice),
+      emotion,
+      ...(out ? { evaluation: ev } : {}),
+      ...(learning ? { learning_event: learning } : {}),
+      ...(level != null ? { difficulty_level: level } : {}),
       ...(violations.length ? { violations: violations.map((x) => x.code) } : {}),
       ...(hintLevel != null ? { hint_level: hintLevel, reveals_answer: reveals } : {}),
-      ...(task.type === "react" && !task.correct && out && out.error_class !== "NONE" ? { error_class: out.error_class } : {}),
+      ...(task.type === "react" && !task.correct && out && ev.error_type !== "none" ? { error_class: ev.error_type } : {}),
       ...(task.type === "justify" && out && out.justification !== "NONE" ? { justification: out.justification } : {}),
     };
-    const saved = await deps.db.service<{ id: number; used_today: number }>("ch_worker_tutor_append", {
-      p_user: userId, p_session_id: sessionId, p_student: studentText, p_tutor: reply, p_meta: meta, p_usage: usage,
-    });
+    let saved: { id: number; used_today: number };
+    try {
+      saved = await deps.db.service<{ id: number; used_today: number }>("ch_worker_tutor_append", {
+        p_user: userId, p_session_id: sessionId, p_student: studentText, p_tutor: reply, p_meta: meta, p_usage: usage,
+      });
+    } catch (error) {
+      await release();
+      throw error;
+    }
     return {
       message: { id: saved.id, role: "tutor", content: reply, spoken: spokenText(reply), grounding: String(meta.grounding), sources: meta.sources as { ref: string; label: string }[], hint_level: hintLevel, suggested: meta.suggested as string[], notice: (meta.notice as string | null) ?? null },
       question_state: reveals ? "revealed" : ctx.session.question_state,
       used_today: saved.used_today,
-      daily_limit: ctx.config.daily_limit,
+      daily_limit: ent.text.limit,
     };
   } finally {
     busy.delete(userId);

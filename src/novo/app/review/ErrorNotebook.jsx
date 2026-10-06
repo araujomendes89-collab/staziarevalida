@@ -139,7 +139,7 @@ function ErrorRow({ item, first, open, onToggle, onNote }) {
                   </AnswerOption>
                 ))}
               </div>
-              <Correction selected={detail.selected} correction={detail.correction} question={detail} />
+              <Correction selected={detail.selected} correction={detail.correction} question={detail} tutorContext="error" />
               <NoteEditor
                 questionId={item.question_id}
                 initial={detail}

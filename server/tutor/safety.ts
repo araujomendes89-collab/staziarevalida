@@ -154,7 +154,7 @@ export function quantities(text: string): Quantity[] {
  * "poxa" e "caramba" não são palavrão.
  */
 const PROFANITY_MILD = ["putz", "que saco", "meu saco", "saco cheio", "que droga", "que diabo", "que inferno", "sacanagem"];
-/** Palavrão de verdade: só no nível liberado. Ali pode ser ênfase e pode ir pra cima do aluno, de leve ("porra, você leu o enunciado?"). */
+/** Palavrão de verdade: só no nível liberado, como ênfase sobre a resposta ou a situação ("porra, você sabia essa"). Apelido para o aluno é barrado (DIRECTED). */
 const PROFANITY_MODERATE = [
   "porra", "merda", "caralho", "cacete", "foda", "fodeu", "foder", "fudeu", "fuder", "fodido", "fodida", "puta que pariu", "puta merda", "puta", "pqp",
   "bosta", "cagada", "cagou", "cagar", "cagando", "desgraca", "desgracado", "desgracada",
@@ -169,7 +169,7 @@ const PROFANITY_HEAVY = [
 const FORBIDDEN = ["burro", "burra", "idiota", "imbecil", "estupido", "estupida", "debil mental", "mongoloide", "otario", "otaria", "babaca", "viado", "bicha", "sapatao", "traveco", "aleijado", "crioulo"];
 /** Palavras que têm uso clínico legítimo ("esvaziamento retardado", "válvula incompetente", "corno anterior da medula"): só são ataque quando dirigidas ao aluno. */
 const DIRECTED =
-  /(?:voce|vc|tu)\s+(?:e|es|esta|parece|foi|continua)\s+(?:um\s+|uma\s+|muito\s+|bem\s+|tao\s+)?(?:retardad[oa]|incompetente|inutil|lixo|vagabund[oa]|louc[oa]|maluc[oa]|gord[oa]|fei[oa]|doente\s+mental|fracassad[oa])|(?<![a-z])seu\s+(?:lixo|inutil|incompetente|vagabundo|retardado|fracassado|corno)(?![a-z])|(?<![a-z])sua\s+(?:inutil|incompetente|vagabunda|retardada|fracassada)(?![a-z])/;
+  /(?:voce|vc|tu)\s+(?:e|es|esta|parece|foi|continua)\s+(?:um\s+|uma\s+|muito\s+|bem\s+|tao\s+)?(?:retardad[oa]|incompetente|inutil|lixo|vagabund[oa]|louc[oa]|maluc[oa]|gord[oa]|fei[oa]|doente\s+mental|fracassad[oa]|preguicos[oa]|lerd[oa]|tapad[oa]|jumento|anta|besta|mula|lento\s+demais)(?![a-z])|(?<![a-z])seu\s+(?:lixo|inutil|incompetente|vagabundo|retardado|fracassado|corno|preguicoso|lerdo|tapado|jumento|anta|besta|mula)(?![a-z])|(?<![a-z])sua\s+(?:inutil|incompetente|vagabunda|retardada|fracassada|preguicosa|lerda|tapada|anta|besta|mula)(?![a-z])/;
 
 const hasWord = (text: string, word: string) => new RegExp(`(?<![a-z])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z])`).test(text);
 

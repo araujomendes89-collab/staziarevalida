@@ -40,3 +40,28 @@ export async function tutorSpeech(backend, body) {
 export async function tutorServerStatus(backend) {
   return parse(await fetch(`${BASE}/status`, { headers: await headers(backend) }));
 }
+
+/** Voz em tempo real: o servidor confere direito, cota e reserva; devolve o segredo temporário da OpenAI (nunca a chave). */
+async function voicePost(backend, path, body) {
+  const res = await fetch(`${BASE}/voice/${path}`, { method: "POST", headers: await headers(backend, { "Content-Type": "application/json" }), body: JSON.stringify(body) });
+  if (res.ok) return res.json();
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {
+    // resposta sem corpo
+  }
+  const error = new Error(data.error ?? `Erro ${res.status}.`);
+  error.status = res.status;
+  error.code = data.code ?? null;
+  error.entitlement = data.entitlement ?? null;
+  throw error;
+}
+export const voiceApi = {
+  start: (backend, sessionId, force = false) => voicePost(backend, "start", { session_id: sessionId, force }),
+  renew: (backend, voiceCallId, callId) => voicePost(backend, "renew", { voice_call_id: voiceCallId, call_id: callId ?? null }),
+  end: (backend, voiceCallId, reason = "student") => voicePost(backend, "end", { voice_call_id: voiceCallId, reason }),
+  usage: (backend, voiceCallId, usage) => voicePost(backend, "usage", { voice_call_id: voiceCallId, usage }),
+  transcript: (backend, voiceCallId, role, text) => voicePost(backend, "transcript", { voice_call_id: voiceCallId, role, text }),
+  tool: (backend, voiceCallId, name, args) => voicePost(backend, "tool", { voice_call_id: voiceCallId, name, arguments: args }),
+};

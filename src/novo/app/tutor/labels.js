@@ -1,37 +1,23 @@
 // Rótulos do Stazia Tutor.
+// Quatro modos públicos: Questões, Meus erros, Me teste (o professor pergunta) e Perguntar ao Tutor.
+// Os ids são os do banco (questao, erros, perguntas, livre); "aula" e "revisao" só aparecem em conversas antigas.
 export const MODES = [
-  { id: "questao", label: "Questões", icon: "file-question", hint: "Questões reais do banco, com dicas e correção" },
-  { id: "erros", label: "Revisão de erros", icon: "rotate-ccw", hint: "O que você errou e o que está na hora de rever" },
-  { id: "perguntas", label: "Perguntas", icon: "message-circle-question", hint: "O professor conduz por perguntas", topic: true },
-  { id: "aula", label: "Aula", icon: "book-open", hint: "Explicação de um tema", topic: true },
-  { id: "revisao", label: "Revisão rápida", icon: "zap", hint: "Alta densidade, em poucas linhas", topic: true },
-  { id: "livre", label: "Conversa livre", icon: "message-square", hint: "Pergunte o que quiser" },
+  { id: "questao", label: "Questões", icon: "file-question", hint: "Resolver questões com o professor." },
+  { id: "erros", label: "Meus erros", icon: "rotate-ccw", hint: "Revisar onde você mais erra." },
+  { id: "perguntas", label: "Me teste", icon: "message-circle-question", hint: "O professor pergunta e você responde." },
+  { id: "livre", label: "Perguntar ao Tutor", icon: "message-square", hint: "Tire dúvidas ou peça uma explicação." },
 ];
-export const modeLabel = (id) => MODES.find((m) => m.id === id)?.label ?? id;
+const LEGACY = { aula: "Aula", revisao: "Revisão rápida" };
+export const modeLabel = (id) => MODES.find((m) => m.id === id)?.label ?? LEGACY[id] ?? id;
 
-export const INTENSITY = ["leve", "moderada", "forte", "muito forte", "extrema"];
-export const EXPLANATION = [
-  { value: "short", label: "Curta" },
-  { value: "normal", label: "Normal" },
-  { value: "detailed", label: "Detalhada" },
-  { value: "nerd", label: "Professor Nerd" },
-];
-export const STRICTNESS = [
-  { value: "low", label: "Baixa" },
-  { value: "normal", label: "Normal" },
-  { value: "high", label: "Alta" },
-  { value: "insane", label: "Insana" },
-];
-export const HUMOR = [
-  { value: "", label: "O do professor" },
-  { value: "15", label: "Pouco" },
-  { value: "50", label: "Médio" },
-  { value: "85", label: "Muito" },
-];
-export const PROFANITY = [
-  { value: "off", label: "Sem palavrão" },
-  { value: "mild", label: "Leves (putz, que saco)" },
-  { value: "moderate", label: "Liberados (inclusive com você)" },
+// Grandes áreas (iguais ao banco)
+export const AREA_OPTIONS = [
+  { value: "", label: "Todas as áreas" },
+  { value: "CLINICA_MEDICA", label: "Clínica médica" },
+  { value: "CIRURGIA_GERAL", label: "Cirurgia geral" },
+  { value: "GINECOLOGIA_OBSTETRICIA", label: "Ginecologia e obstetrícia" },
+  { value: "PEDIATRIA", label: "Pediatria" },
+  { value: "MEDICINA_FAMILIA_COMUNIDADE", label: "Medicina de família e comunidade" },
 ];
 
 // De onde veio o conteúdo da resposta (calculado no servidor pelas citações conferidas, não pelo que a IA declara).
@@ -52,9 +38,11 @@ export const LEVEL = {
   SEM_DADOS: ["Sem dados", "neutral"],
 };
 
+// Tipos de erro da avaliação silenciosa (o aluno vê o nome, não o código)
 export const ERROR_CLASS = {
-  CONCEITUAL: "Conceito", INTERPRETACAO: "Interpretação", DIAGNOSTICO: "Diagnóstico", CONDUTA: "Conduta", PRIORIDADE: "Prioridade", FARMACOLOGIA: "Farmacologia",
-  DIRETRIZ: "Diretriz", CALCULO: "Cálculo", DISTRACAO: "Distração", PROVA: "Leitura de prova", EXCESSO_INVESTIGACAO: "Excesso de investigação", OMISSAO: "Omissão",
+  knowledge_gap: "Lacuna de conhecimento", interpretation_error: "Leitura do caso", command_word_error: "Comando da questão", distractor_trap: "Alternativa-armadilha",
+  outdated_guideline: "Conduta desatualizada", calculation_error: "Cálculo", priority_of_management: "Prioridade da conduta", diagnostic_reasoning: "Raciocínio diagnóstico",
+  therapeutic_reasoning: "Raciocínio terapêutico", memory_failure: "Memória", attention_error: "Atenção", changed_correct_answer: "Trocou a certa", unknown: "Não classificado",
 };
 
 export const CONFIDENCE = ["Chute", "Muito baixa", "Baixa", "Média", "Alta", "Certeza"];

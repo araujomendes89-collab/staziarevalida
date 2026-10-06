@@ -1,5 +1,7 @@
 # Stazia Tutor — desenho, o que foi feito e o que falta
 
+> **Versão 2 (2026-10-06):** três professores, quatro modos, teste grátis com cotas, voz em tempo real e registro de uso. Ver `STAZIA_TUTOR_V2.md`; este documento descreve a v1 e o histórico.
+
 > Escrito para: o dono do produto (decisões e custo) e quem for programar (mapa técnico).
 > Origem: "Prompt mestre — Agente Tutor IA StaziaMed Revalida" (2026-10-04) e o lembrete de que o Tutor também é por voz.
 > Estado: versão 1 implementada (migração `3100_tutor`). O Tutor nasce **desligado**.

@@ -6,6 +6,7 @@ import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { LoadError, Loading, useDebounced, useLoad } from "../admin/common.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
+import { TutorButton } from "../tutor/TutorDrawer.jsx";
 
 const DIMENSIONS = [
   { value: "subarea", label: "Subárea" },
@@ -120,9 +121,12 @@ export function ThemesScreen({ go }) {
                 ))}
             </div>
             <div style={{ marginTop: "auto", paddingTop: 10, borderTop: "1px solid var(--border-subtle)" }}>
-              <Button variant="link" size="sm" iconRight="chevron-right" loading={starting === r.key} onClick={() => train(r)}>
-                Treinar {dimension === "topic" ? "este tema" : dimension === "subarea" ? "esta subárea" : "esta competência"}
-              </Button>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <Button variant="link" size="sm" iconRight="chevron-right" loading={starting === r.key} onClick={() => train(r)}>
+                  Treinar {dimension === "topic" ? "este tema" : dimension === "subarea" ? "esta subárea" : "esta competência"}
+                </Button>
+                <TutorButton request={{ mode: "perguntas", topic: pretty(r.key), context: { type: "theme", id: r.key, label: pretty(r.key), area: r.area ?? undefined } }} label="Me teste" variant="ghost" />
+              </div>
             </div>
           </Card>
         ))}

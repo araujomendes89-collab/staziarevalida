@@ -306,7 +306,7 @@ export function AdminSettings() {
 const PROFANITY_CAP = [
   { value: "off", label: "Desativados para todos" },
   { value: "mild", label: "Até leves" },
-  { value: "moderate", label: "Até liberados (xinga o aluno na zoeira)" },
+  { value: "moderate", label: "Até liberados (Durona: contra a resposta, nunca contra o aluno)" },
 ];
 
 /** Liga e desliga o Tutor, define o limite por aluno e mostra o consumo. Toda mudança pede motivo e vai para o registro. */
@@ -318,7 +318,13 @@ export function AdminTutor() {
   const [server, setServer] = React.useState(null);
   const [state, setState] = React.useState({ saving: false, error: null, done: false });
   React.useEffect(() => {
-    if (data) setForm({ enabled: data.enabled, requires_pro: data.requires_pro, daily_message_limit: String(data.daily_message_limit), max_profanity: data.max_profanity, voice_enabled: data.voice_enabled });
+    if (data)
+      setForm({
+        enabled: data.enabled, requires_pro: data.requires_pro, daily_message_limit: String(data.daily_message_limit), max_profanity: data.max_profanity, voice_enabled: data.voice_enabled,
+        trial_text_daily: String(data.trial_text_daily ?? 40), trial_questions_daily: String(data.trial_questions_daily ?? 30),
+        trial_voice_daily_min: String(Math.round((data.trial_voice_daily_seconds ?? 600) / 60)), trial_voice_total_min: String(Math.round((data.trial_voice_total_seconds ?? 2400) / 60)),
+        paid_voice_daily_min: String(Math.round((data.paid_voice_daily_seconds ?? 3600) / 60)),
+      });
   }, [data]);
   React.useEffect(() => {
     let alive = true;
@@ -343,7 +349,14 @@ export function AdminTutor() {
     event.preventDefault();
     setState({ saving: true, error: null, done: false });
     try {
-      setData(await backend.rpc("app_admin_tutor_save_config", { p_config: { ...form, daily_message_limit: form.daily_message_limit.trim() }, p_reason: reason }));
+      const n = (x) => String(x ?? "").trim();
+      const min = (x) => (n(x) === "" ? "" : String(Math.round(Number(n(x)) * 60)));
+      const config = {
+        enabled: form.enabled, requires_pro: form.requires_pro, max_profanity: form.max_profanity, voice_enabled: form.voice_enabled,
+        daily_message_limit: n(form.daily_message_limit), trial_text_daily: n(form.trial_text_daily), trial_questions_daily: n(form.trial_questions_daily),
+        trial_voice_daily_seconds: min(form.trial_voice_daily_min), trial_voice_total_seconds: min(form.trial_voice_total_min), paid_voice_daily_seconds: min(form.paid_voice_daily_min),
+      };
+      setData(await backend.rpc("app_admin_tutor_save_config", { p_config: config, p_reason: reason }));
       setReason("");
       setState({ saving: false, error: null, done: true });
     } catch (err) {
@@ -365,18 +378,39 @@ export function AdminTutor() {
             </Banner>
           )}
           <Switch label="Tutor ligado" description="Desligado: os alunos veem que o Tutor ainda não está no ar." checked={form.enabled} onChange={(e) => set({ enabled: e.target.checked })} />
-          <Switch label="Só para planos pagos" description="Ligado: quem está no teste grátis vê o convite para assinar." checked={form.requires_pro} onChange={(e) => set({ requires_pro: e.target.checked })} />
-          <Switch label="Conversa por voz" description="O aluno fala e ouve o professor no próprio aparelho (voz do navegador, sem custo extra de IA)." checked={form.voice_enabled} onChange={(e) => set({ voice_enabled: e.target.checked })} />
+          {server && (
+            <Banner tone={server.realtime_voice ? "success" : "warning"}>
+              {server.realtime_voice ? `Voz em tempo real pronta no servidor (${server.realtime_model}).` : `Voz em tempo real não configurada: ${server.realtime_pending ?? "sem detalhe"} Sem ela, a voz é a do aparelho.`}
+            </Banner>
+          )}
+          <Switch label="Planos pagos + teste grátis" description="Ligado: quem não assina tem o teste grátis do Tutor (começa no primeiro uso) e depois vê o convite para assinar. Desligado: o Tutor fica liberado para todos (só para testes internos)." checked={form.requires_pro} onChange={(e) => set({ requires_pro: e.target.checked })} />
+          <Switch label="Conversa por voz" description="Voz em tempo real pelo servidor (paga por minuto) quando configurada; senão, a voz do próprio aparelho." checked={form.voice_enabled} onChange={(e) => set({ voice_enabled: e.target.checked })} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
-            <TextField label="Mensagens por aluno por dia" value={form.daily_message_limit} inputMode="numeric" maxLength={3} onChange={(e) => set({ daily_message_limit: e.target.value })} hint="De 1 a 500. É o teto de gasto por aluno." />
-            <SelectField label="Palavrões (teto para todos os professores)" value={form.max_profanity} onChange={(e) => set({ max_profanity: e.target.value })} options={PROFANITY_CAP} />
+            <TextField label="Interações de texto por dia (plano pago)" value={form.daily_message_limit} inputMode="numeric" maxLength={3} onChange={(e) => set({ daily_message_limit: e.target.value })} hint="De 1 a 500. É o teto de gasto por aluno." />
+            <TextField label="Voz por dia (plano pago, minutos)" value={form.paid_voice_daily_min} inputMode="numeric" maxLength={4} onChange={(e) => set({ paid_voice_daily_min: e.target.value })} />
+            <SelectField label="Palavrões (teto para a Durona)" value={form.max_profanity} onChange={(e) => set({ max_profanity: e.target.value })} options={PROFANITY_CAP} />
+          </div>
+          <div className="sm-overline">Teste grátis (7 dias, a partir do primeiro uso)</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>
+            <TextField label="Interações de texto por dia" value={form.trial_text_daily} inputMode="numeric" maxLength={3} onChange={(e) => set({ trial_text_daily: e.target.value })} />
+            <TextField label="Questões por dia" value={form.trial_questions_daily} inputMode="numeric" maxLength={3} onChange={(e) => set({ trial_questions_daily: e.target.value })} />
+            <TextField label="Voz por dia (minutos)" value={form.trial_voice_daily_min} inputMode="numeric" maxLength={4} onChange={(e) => set({ trial_voice_daily_min: e.target.value })} />
+            <TextField label="Voz no teste todo (minutos)" value={form.trial_voice_total_min} inputMode="numeric" maxLength={5} onChange={(e) => set({ trial_voice_total_min: e.target.value })} />
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Badge>{u.requests} mensagens em 30 dias</Badge>
             <Badge>{u.students} aluno(s)</Badge>
             <Badge>{Number(u.cost_usd) > 0 ? `US$ ${Number(u.cost_usd).toFixed(2)}` : "custo não medido"}</Badge>
-            <Badge>{data.sessions} conversa(s)</Badge>
+            <Badge>{data.sessions} sessão(ões)</Badge>
+            {u.voice_minutes > 0 && <Badge>{u.voice_minutes} min de voz</Badge>}
+            {data.trials && <Badge>{data.trials.started} teste(s) iniciados · {data.trials.converted} assinaram</Badge>}
           </div>
+          {data.cost_by_feature && Object.keys(data.cost_by_feature).length > 0 && (
+            <p style={{ margin: 0, font: "var(--type-caption)", color: "var(--text-secondary)" }}>
+              Custo estimado em 30 dias por recurso: {Object.entries(data.cost_by_feature).map(([k, v]) => `${k} US$ ${Number(v).toFixed(2)}`).join(" · ")}
+              {data.cost_by_persona && Object.keys(data.cost_by_persona).length > 0 ? ` | por professor: ${Object.entries(data.cost_by_persona).map(([k, v]) => `${k} US$ ${Number(v).toFixed(2)}`).join(" · ")}` : ""}
+            </p>
+          )}
           <TextField label="Motivo da mudança (obrigatório, fica no registro)" value={reason} onChange={(e) => setReason(e.target.value)} />
           {state.error && <Banner tone="danger">{state.error}</Banner>}
           <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>

@@ -4,7 +4,7 @@
  *
  *   npx tsx scripts/tutor/preflight.ts                      só mostra o que seria feito (não envia nada)
  *   npx tsx scripts/tutor/preflight.ts --allow-external     faz 8 falas de teste de verdade (custo de poucos centavos de dólar)
- *   npx tsx scripts/tutor/preflight.ts --allow-external --professor xingao --palavroes moderate
+ *   npx tsx scripts/tutor/preflight.ts --allow-external --professor durona
  *
  * Com --allow-external, a fala de teste e uma questão oficial do banco são enviadas ao provedor de IA, só nesta execução.
  */
@@ -58,8 +58,8 @@ try {
   await sql(`insert into auth.users (id, email) values ($1, 'teste@preflight.local')`, [USER]);
   await sql(`update public.profiles set name = 'Aluno de Teste' where id = $1`, [USER]);
   await sql(`update public.tutor_config set enabled = true, daily_message_limit = 20`);
-  const professor = value("professor", "rabugento");
-  await asUser(`select public.app_tutor_save_preferences($1::jsonb) r`, [JSON.stringify({ personality_id: professor, intensity: Number(value("intensidade", "3")), profanity: value("palavroes", "off") })]);
+  const professor = value("professor", "direto"); // acolhedor | direto | durona
+  await asUser(`select public.app_tutor_save_preferences($1::jsonb) r`, [JSON.stringify({ personality_id: professor })]);
 
   const show = async (title: string, sessionId: string, action: TutorAction) => {
     console.log(`\n── ${title}`);
@@ -74,7 +74,7 @@ try {
     return r;
   };
 
-  const q = await asUser(`select public.app_tutor_start('questao', null, null) r`);
+  const q = await asUser(`select public.app_tutor_start('questao', null, null, null) r`);
   const official = (await sql(`select correct_option from public.questions where id = $1`, [q.question.id]))[0].correct_option;
   console.log(`\nQuestão do teste: ${q.question.id} · ${q.question.topic} (o gabarito NÃO é mostrado aqui nem enviado na primeira fala)`);
   console.log(`abertura (sem IA): ${q.messages[0].content}`);
@@ -87,7 +87,7 @@ try {
   await show(`3. O aluno marca ${wrong} (errada), com confiança alta`, q.id, { type: "react" });
   await show("4. Ele reage", q.id, { type: "message", text: "putz, jurava que era essa. por que não é?" });
 
-  const free = await asUser(`select public.app_tutor_start('livre', null, null) r`);
+  const free = await asUser(`select public.app_tutor_start('livre', null, null, null) r`);
   console.log(`\nabertura da conversa livre (sem IA): ${free.messages[0].content}`);
   await show("5. Conversa solta", free.id, { type: "message", text: "oi, tô meio travado em pediatria hoje" });
   await show("6. Continua", free.id, { type: "message", text: "é que eu sempre confundo bronquiolite com asma" });

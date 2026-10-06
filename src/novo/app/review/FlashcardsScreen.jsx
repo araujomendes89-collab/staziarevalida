@@ -8,6 +8,7 @@ import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel, formatWhen } from "../practice/format.js";
 import { FlashcardForm } from "./FlashcardForm.jsx";
 import { intervalLabel, nextSchedule, previewDays } from "./fsrs.js";
+import { TutorButton } from "../tutor/TutorDrawer.jsx";
 
 const RATINGS = [
   { value: 1, label: "Errei", variant: "danger" },
@@ -160,6 +161,11 @@ export function FlashcardsScreen({ go }) {
             <Button size="lg" variant="strong" fullWidth onClick={() => setFlipped(true)}>
               Mostrar resposta
             </Button>
+          )}
+          {flipped && card.topic && (
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <TutorButton request={{ mode: "livre", topic: card.topic, context: { type: "flashcard", id: String(card.id), label: card.topic } }} label="Perguntar ao Tutor sobre este tema" variant="ghost" />
+            </div>
           )}
           {card.mine && (
             <div style={{ display: "flex", justifyContent: "center" }}>

@@ -43,6 +43,7 @@ import { getDevDatabase } from "./server/devDb/devDatabase";
 import { setupContentHub } from "./server/contentHub";
 import { createTutorRouter } from "./server/tutor/router";
 import { tutorMockRespond } from "./server/tutor/mock";
+import { startVoiceSweeper } from "./server/tutor/realtime";
 import { getChecklistCatalog } from "./server/checklistBank/catalog";
 
 dotenv.config();
@@ -91,7 +92,10 @@ async function startServer() {
   const hub = await setupContentHub();
   app.use("/api/content-hub", hub.router);
   // Stazia Tutor: usa o mesmo banco; a simulação de IA só existe com o banco de desenvolvimento
-  app.use("/api/tutor", createTutorRouter(hub.deps ? { db: hub.deps.db, mockRespond: hub.deps.db.mode === "dev" ? tutorMockRespond : undefined, log: (m) => console.log(m) } : null, hub.pending));
+  const tutorDeps = hub.deps ? { db: hub.deps.db, mockRespond: hub.deps.db.mode === "dev" ? tutorMockRespond : undefined, log: (m: string) => console.log(m) } : null;
+  app.use("/api/tutor", createTutorRouter(tutorDeps, hub.pending));
+  // voz em tempo real: chamadas sem renovação expiram e o servidor as desliga (cota nunca depende só do navegador)
+  if (tutorDeps) startVoiceSweeper(tutorDeps);
   if (process.env.NODE_ENV !== "production") {
     // Banco de desenvolvimento no servidor: app do aluno, painel e processamento usam o mesmo.
     app.use("/api/dev-db", createDevDbRouter(() => getDevDatabase()));

@@ -6,6 +6,7 @@ import { FlashcardForm } from "../review/FlashcardForm.jsx";
 import { QuestionCommentary, useCommentary } from "./QuestionCommentary.jsx";
 import { useSession } from "../session.jsx";
 import { ERROR_TYPE, KIND_LABEL } from "./diagnosisLabels.js";
+import { TutorButton } from "../tutor/TutorDrawer.jsx";
 
 export function Verdict({ selected, correction }) {
   const blank = selected == null;
@@ -85,13 +86,18 @@ function SaveAsFlashcard({ question, correction }) {
   );
 }
 
-export function Correction({ selected, correction, question }) {
+export function Correction({ selected, correction, question, tutorContext = "question" }) {
   const source = correction.sources?.[0];
   // Análise Stazia publicada (se houver): substitui "Por que não as outras?", que fica como reserva
   const commentary = useCommentary(question?.id);
   return (
     <>
       <Verdict selected={selected} correction={correction} />
+      {question?.id && selected != null && (
+        <div>
+          <TutorButton request={{ mode: "livre", questionId: question.id, context: { type: tutorContext, id: question.id } }} label={correction.is_correct === false ? "Discutir com o Tutor" : "Conversar com o Tutor"} />
+        </div>
+      )}
       {correction.explanation && (
         <div>
           <div className="sm-overline">Explicação clínica</div>

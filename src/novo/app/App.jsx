@@ -8,6 +8,7 @@ import { AppShell, useMobile } from "./Shell.jsx";
 import { AuthFlow } from "./AuthScreens.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
 import { TutorScreen } from "./tutor/TutorScreen.jsx";
+import { TutorDockProvider } from "./tutor/TutorDrawer.jsx";
 import { Aulas, Materiais } from "../prototype/Study1.jsx";
 import { Home2, Stations, Station, Peps, Perf2, SimPatient } from "../prototype/Phase2.jsx";
 import { Pair } from "../prototype/Match.jsx";
@@ -36,7 +37,7 @@ const TITLES = {
   erros: ["Caderno de erros", "Revisar"],
   plano: ["Planejamento", "Cronograma até a prova"],
   desempenho: ["Desempenho", "Seus dados reais"],
-  tutor: ["Stazia Tutor", "Seu professor, do seu jeito"],
+  tutor: ["Stazia Tutor", "Seu professor particular para o Revalida"],
   perfil: ["Conta", "Dados, segurança e privacidade"],
   teoria2: ["Teoria para a prática", "Esqueletos, documentos médicos e protocolos aplicados às estações"],
   estacoes: ["Banco de estações", "Estações nas 5 grandes áreas"],
@@ -103,7 +104,8 @@ function Screen() {
   };
   const setTheme = (next) => updateProfile({ theme: next }).catch(() => {});
 
-  if (route === "sessao") return <PracticeSession go={go} />;
+  // o Tutor abre em qualquer tela de estudo, com o contexto que a tela já conhece
+  if (route === "sessao") return <TutorDockProvider><PracticeSession go={go} /></TutorDockProvider>;
   if (route === "estacao") return <Station go={go} />;
 
   // Até cada tela ser ligada aos dados, usa o estado "aluno novo" do design (sem números inventados).
@@ -151,6 +153,7 @@ function Screen() {
   );
 
   return (
+    <TutorDockProvider>
     <AppShell
       route={route}
       go={go}
@@ -178,6 +181,7 @@ function Screen() {
       {route === "erros" && reviewSwitch("erros")}
       {body}
     </AppShell>
+    </TutorDockProvider>
   );
 }
 

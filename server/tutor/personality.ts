@@ -83,40 +83,14 @@ export function swearingFrequency(eff: PersonalityParams): string {
   return "de vez em quando";
 }
 
-export interface Adjustment {
-  intensity: number;
-  note: string | null;      // instrução extra para esta resposta
-  notice: string | null;    // aviso curto que o aluno vê (a personalidade principal nunca muda sem avisar)
-}
-
 /**
- * "Tutor Inteligente": ajuste TEMPORÁRIO de intensidade pelo andamento da conversa.
- * Três erros seguidos → pega mais leve e volta aos fundamentos. Três acertos limpos seguidos → sobe a complexidade.
- */
-export function adaptiveAdjust(intensity: number, adaptive: boolean, recent: boolean[]): Adjustment {
-  if (!adaptive || recent.length < 3) return { intensity, note: null, notice: null };
-  const last = recent.slice(-3);
-  if (last.every((r) => r === false)) {
-    return {
-      intensity: Math.max(1, intensity - 1),
-      note: "O aluno errou três seguidas. Nesta resposta, reduza a cobrança, volte aos fundamentos do tema e diga em uma frase curta que você vai pegar mais leve por enquanto.",
-      notice: "Peguei mais leve por enquanto: você errou três seguidas e vamos reconstruir a base.",
-    };
-  }
-  if (last.every((r) => r === true)) {
-    return { intensity, note: "O aluno acertou três seguidas sem ajuda. Aumente a complexidade das perguntas.", notice: null };
-  }
-  return { intensity, note: null, notice: null };
-}
-
-/**
- * Limites que valem para TODA personalidade, em qualquer intensidade. A bronca pode ser com o aluno (ele não leu, chutou,
- * enrolou); o que não pode é atacar quem ele é. A conferência por software (safety.ts) barra o que passar daqui.
+ * Limites que valem para TODA personalidade, em qualquer intensidade (versão 2: a bronca vai para a RESPOSTA e para a CONDUTA,
+ * nunca para a pessoa). A conferência por software (safety.ts) barra o que passar daqui.
  */
 export const PERSONALITY_LIMITS =
-  "Limites que você não passa, em nenhuma intensidade: nada de humilhação, de chamar o aluno de burro, idiota ou coisa do tipo, de ameaça, de discriminação, " +
-  "nem de comentário sobre aparência, raça, religião, gênero, orientação sexual, deficiência ou saúde mental. " +
-  "A bronca é pelo que o aluno fez (não leu, chutou, enrolou), nunca por quem ele é. Se a graça atrapalhar o entendimento, primeiro o entendimento.";
+  "Limites que você não passa, em nenhuma intensidade: a bronca, a ironia e o palavrão vão para a resposta e para a conduta (\"que conduta foi essa?\"), nunca para a pessoa. " +
+  "Nada de humilhar, de chamar o aluno de burro, idiota, preguiçoso ou qualquer apelido, de ameaçar, de assediar, de discriminar, " +
+  "nem de comentar aparência, raça, religião, gênero, orientação sexual, deficiência ou saúde mental. Se a graça atrapalhar o entendimento, primeiro o entendimento.";
 
 /** O quanto carregar no personagem, pela intensidade que o aluno escolheu. */
 const INTENSITY_NOTE = [
@@ -158,31 +132,41 @@ export function traits(eff: PersonalityParams): string[] {
   return t;
 }
 
-/** Como o personagem lida com palavrão nesta conversa. No nível liberado, o palavrão pode ir pra cima do aluno, de leve. */
-export function swearingNote(profanity: ProfanityLevel, eff: PersonalityParams, swears: boolean): string {
-  if (profanity === "off") return swears ? "O aluno pediu sem palavrão: mantenha a energia e a bronca, só com palavra limpa." : "Sem palavrão.";
-  if (profanity === "mild") return `Palavrão leve liberado (putz, que saco, que droga), ${swearingFrequency(eff)}. Nada mais pesado que isso.`;
+/**
+ * Como o personagem lida com palavrão nesta conversa. `frequency` vem do estado da sessão (emotion.ts) quando há; senão, do parâmetro.
+ * O palavrão é ênfase sobre a resposta ou a situação ("porra, você sabia essa"), nunca um apelido para o aluno.
+ */
+export function swearingNote(profanity: ProfanityLevel, eff: PersonalityParams, swears: boolean, frequency: string | null = null): string {
+  if (profanity === "off") return swears ? "Sem palavrão nesta conversa: mantenha a energia e a bronca, só com palavra limpa." : "Sem palavrão.";
+  const often = frequency ?? swearingFrequency(eff);
+  if (profanity === "mild") return `Palavrão leve (putz, que saco, que droga), ${often}. Nada mais pesado que isso.`;
   return (
-    `Palavrão liberado de verdade, e foi o aluno que pediu: porra, caralho, merda, cacete, puta que pariu, fodeu. Use ${swearingFrequency(eff)}, ` +
-    "do jeito que brasileiro fala quando está irritado ou empolgado. Não economize e não troque por versão limpa, mas não deixe virar tique: " +
-    "varie o palavrão e o lugar dele na frase, e não abra toda fala com ele. " +
-    "Pode xingar pra cima do aluno, na zoeira e de leve: «porra, você leu o enunciado?», «acorda, cacete», «ô seu preguiçoso do caralho». " +
-    "O que não entra nem na zoeira: xingamento pesado contra ele (mandar tomar naquele lugar, xingar a mãe, «seu merda») e os limites abaixo."
+    `Palavrão liberado (porra, caralho, merda, cacete, puta merda), ${often}. Quando usar, use com naturalidade, sem trocar por versão limpa; ` +
+    "não abra toda fala com ele e não repita o mesmo. É ênfase sobre a resposta ou a situação: «porra, você sabia essa», «que merda de conduta foi essa?». " +
+    "Nunca vira apelido para o aluno («seu preguiçoso», «seu merda») e nunca é xingamento pesado."
   );
 }
 
-/** Texto da camada de personalidade: quem é o personagem, como ele está agora e como ele soa. */
-export function personalityLayer(p: Personality, eff: PersonalityParams, profanity: ProfanityLevel, intensity: number, extra: string | null = null): string {
-  const strong = profanity === "moderate" && (p.examples_strong?.length ?? 0) > 0;
+/**
+ * Texto da camada de personalidade (só ESTILO): quem é o personagem, como ele está agora e como ele soa.
+ * `mood` é o estado da sessão já em texto (emotion.ts) e `swearing` a frequência de palavrão que ele pede.
+ */
+export function personalityLayer(
+  p: Personality, eff: PersonalityParams, profanity: ProfanityLevel, intensity: number, extra: string | null = null,
+  mood: { text: string; swearing: string; label: string } | null = null,
+): string {
+  // falas de referência com palavrão só quando o estado pede (a Durona calma não xinga)
+  const strong = profanity === "moderate" && (p.examples_strong?.length ?? 0) > 0 && (!mood || ["IMPACIENTE", "IRRITADO", "ORGULHOSO"].includes(mood.label));
   const examples = (strong ? p.examples_strong! : (p.examples ?? [])).slice(0, 6);
   const level = Math.max(1, Math.min(5, Math.round(intensity)));
   return [
-    `QUEM VOCÊ É NESTA CONVERSA: ${p.name} (intensidade ${level} de 5).`,
+    `QUEM VOCÊ É NESTA CONVERSA: ${p.name}${mood ? "" : ` (intensidade ${level} de 5)`}.`,
     p.style_notes,
-    `Seu jeito agora: ${traits(eff).join("; ")}.`,
-    `${INTENSITY_NOTE[level]} Você é esse personagem do começo ao fim: não saia dele, não peça desculpa pelo jeito e não explique que é brincadeira. O aluno escolheu este professor porque quer exatamente esse tratamento.`,
+    `Seu jeito: ${traits(eff).join("; ")}.`,
+    mood ? mood.text : "",
+    `${mood ? "" : `${INTENSITY_NOTE[level]} `}Você é esse personagem do começo ao fim: não saia dele, não peça desculpa pelo jeito e não explique que é brincadeira. O aluno escolheu este professor porque quer exatamente esse tratamento.`,
     examples.length ? `Como você soa (é só o tom: não copie e não repita estas falas): ${examples.map((e) => `«${e}»`).join(" · ")}` : "",
-    swearingNote(profanity, eff, p.params.profanity >= 20),
+    swearingNote(profanity, eff, p.params.profanity >= 20, mood?.swearing ?? null),
     PERSONALITY_LIMITS,
     extra ? `Só nesta resposta: ${extra}` : "",
   ]
