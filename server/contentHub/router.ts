@@ -11,6 +11,10 @@ import { compareSourceVersions } from "./sourceCompare";
 import { applyReferenceCleanup, previewReferenceCleanup, undoReferenceCleanup } from "./referenceCleanup";
 import type { Identity } from "./infra";
 import type { ContentHubWorker } from "./worker";
+import type { ProcessingReport } from "./capabilities";
+
+/** A tarefa no Cloud Run roda a cada 10 minutos: sem relato há mais de 30, ela parou. */
+const PROCESSING_STALE_MIN = 30;
 
 const MAX_PDF_MB = Number(process.env.CONTENT_HUB_MAX_PDF_MB || 300);
 
@@ -42,26 +46,46 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
     return me;
   };
 
-  /** Situação da configuração: o que está pronto e o que é pendência real. */
+  /**
+   * Situação da configuração: o que está pronto e o que é pendência real. Quem lê os PDFs, faz OCR e gera os arquivos
+   * finais é o processamento: no desenvolvimento, este servidor; em produção, a tarefa no Google Cloud Run (o servidor do
+   * site na Vercel não processa). Sem processamento aqui, o painel mostra o último relato da tarefa (ch_worker_report).
+   */
   router.get("/status", async (req: Authed, res) => {
     try {
       const me = await requireStaff(req);
-      const brand = loadBrand();
-      const pending = [
-        ...(deps!.ai.status.ready ? [] : [deps!.ai.status.pending!]),
-        ...(deps!.renderer ? [] : ["Renderizador de PDF (Playwright/Chromium) indisponível no servidor."]),
-        ...brand.pending,
-        "Busca por significado (embeddings) ainda não configurada: a busca de evidências usa palavras.",
-      ];
-      res.json({
-        me,
-        storage: deps!.db.mode,
-        ai: deps!.ai.status,
-        renderer: Boolean(deps!.renderer),
-        brand: { version: brand.version, pending: brand.pending },
-        worker: Boolean(opts.worker?.running),
-        pending,
-      });
+      const local = Boolean(opts.worker?.running);
+      const pending: string[] = deps!.ai.status.ready ? [] : [deps!.ai.status.pending!];
+      let renderer: boolean;
+      let brand: { version: string; pending: string[] };
+      let processing: Record<string, unknown>;
+      if (local) {
+        const b = loadBrand();
+        renderer = Boolean(deps!.renderer);
+        brand = { version: b.version, pending: b.pending };
+        pending.push(...(renderer ? [] : ["Renderizador de PDF (Playwright/Chromium) indisponível no servidor."]), ...b.pending);
+        processing = { where: "servidor", running: true };
+      } else {
+        const last = await deps!.db
+          .service<{ worker: string; reported_at: string; report: ProcessingReport & { jobs?: number; finished_at?: string } } | null>("ch_worker_last_report")
+          .catch(() => null);
+        if (!last) {
+          renderer = false;
+          brand = { version: "", pending: [] };
+          processing = { where: null };
+          pending.push("O processamento da Central (leitura dos PDFs, OCR e geração dos arquivos finais) ainda não rodou: ele roda como tarefa no Google Cloud Run, que ainda não foi implantada.");
+        } else {
+          const minutes = Math.max(0, Math.round((Date.now() - Date.parse(last.reported_at)) / 60_000));
+          const stale = minutes > PROCESSING_STALE_MIN;
+          if (stale) pending.push(`O processamento da Central não roda desde ${new Date(last.reported_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}: confira a tarefa no Google Cloud Run.`);
+          for (const p of last.report.pending ?? []) if (!pending.includes(p)) pending.push(p);
+          renderer = Boolean(last.report.renderer);
+          brand = last.report.brand ?? { version: "", pending: [] };
+          processing = { where: last.worker, reported_at: last.reported_at, minutes_ago: minutes, stale, python: Boolean(last.report.python), ocr_languages: last.report.ocr_languages ?? [], jobs: last.report.jobs ?? null };
+        }
+      }
+      pending.push("Busca por significado (embeddings) ainda não existe: a busca de evidências usa palavras. Depende de escolher o modelo de embeddings.");
+      res.json({ me, storage: deps!.db.mode, ai: deps!.ai.status, renderer, brand, worker: local, processing, pending });
     } catch (error) {
       fail(res, forbidden(error) ? 403 : 500, message(error));
     }

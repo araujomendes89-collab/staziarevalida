@@ -25,5 +25,6 @@ RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 COPY --from=build /app/dist-worker ./dist-worker
 COPY scripts/content-hub/*.py ./scripts/content-hub/
 COPY public/novo-assets/logo-horizontal.png ./public/novo-assets/logo-horizontal.png
+COPY server/contentHub/fonts ./server/contentHub/fonts
 USER pwuser
 CMD ["node", "dist-worker/worker-job.cjs"]

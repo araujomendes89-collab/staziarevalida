@@ -11,6 +11,7 @@
  */
 import { buildContentHubDeps } from "../../server/contentHub/index";
 import { createContentHubWorker } from "../../server/contentHub/worker";
+import { probeProcessing, reportProcessing } from "../../server/contentHub/capabilities";
 
 const budgetMs = (Number(process.env.CONTENT_HUB_JOB_BUDGET_MIN) > 0 ? Number(process.env.CONTENT_HUB_JOB_BUDGET_MIN) : 50) * 60_000;
 const staleSeconds = Number(process.env.CONTENT_HUB_STALE_SECONDS) > 0 ? Number(process.env.CONTENT_HUB_STALE_SECONDS) : 1800;
@@ -24,11 +25,16 @@ async function main() {
     return;
   }
   console.log(`[central] tarefa: banco ${deps.db.mode === "supabase" ? "Supabase" : "desenvolvimento"} · IA ${deps.ai.status.ready ? deps.ai.status.provider : `pendente (${deps.ai.status.pending})`} · gerador de PDF ${deps.renderer ? "pronto" : "indisponível"}`);
+  // o painel da Central mostra este relato (o servidor do site não processa)
+  const report = await probeProcessing(deps);
+  if (report.pending.length) console.log(`[central] pendências do processamento: ${report.pending.join(" | ")}`);
+  await reportProcessing(deps, report, { started_at: new Date(t0).toISOString() });
   const worker = createContentHubWorker(deps, { staleSeconds });
   let jobs = 0;
   while (Date.now() - t0 < budgetMs && (await worker.tick())) jobs++;
   const sources = await worker.checkSources();
   await deps.renderer?.close().catch(() => undefined);
+  await reportProcessing(deps, report, { started_at: new Date(t0).toISOString(), finished_at: new Date().toISOString(), jobs, sources });
   console.log(`[central] tarefa concluída: ${jobs} trabalho(s) da fila · fontes conferidas ${sources.checked} (mudaram ${sources.changed}, inacessíveis ${sources.unreachable}) · ${Math.round((Date.now() - t0) / 1000)} s`);
 }
 

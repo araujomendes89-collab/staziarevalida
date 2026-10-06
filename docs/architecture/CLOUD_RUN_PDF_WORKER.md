@@ -32,3 +32,13 @@ o resto é proporcional ao tempo de processamento real. Conferir na página de p
 ## Com o Cloud Run no ar
 Desligar o processamento no servidor local (`CONTENT_HUB_WORKER=0` no `.env` do Mac) para uma fila ter um só dono no dia a dia
 (os dois juntos não estragam nada: a fila não entrega o mesmo trabalho a dois ao mesmo tempo).
+
+## Relato do processamento no painel (2026-10-06)
+
+O servidor do site (Vercel) não lê PDF, não faz OCR nem gera os arquivos finais; quem faz isso é esta tarefa. Por isso o painel da Central (Administração › Central de Conteúdo) não testa o próprio servidor: a cada execução a tarefa grava em `ch_worker_heartbeats` (função `ch_worker_report`, só com a chave de serviço) o que tem pronto (gerador de PDF, Python com PyMuPDF, idiomas do OCR, logo, fonte, IA) e o painel mostra esse relato (`ch_worker_last_report`):
+
+- sem relato: "O processamento da Central … ainda não rodou: ele roda como tarefa no Google Cloud Run, que ainda não foi implantada";
+- relato com mais de 30 minutos (o agendador roda a cada 10): "não roda desde …";
+- relato recente: só as pendências reais do processamento.
+
+A fonte do Design System (Plus Jakarta Sans, licença SIL OFL, 6 pesos em `server/contentHub/fonts`) vai dentro da imagem; `CONTENT_HUB_FONT_DIR` só é preciso para trocar a pasta. O logo já era copiado.

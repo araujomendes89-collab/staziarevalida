@@ -148,7 +148,21 @@ function Video({ url, lesson }) {
   );
 }
 
-const MATERIAL = { slides: ["file-text", "Slides da aula", "PDF"], flashcast: ["headphones", "Áudio Flashcast", "MP3"], guideline: ["shield-check", "Diretriz SUS / PCDT", "Fonte oficial"], other: ["paperclip", "Material", ""] };
+const MATERIAL = { slides: ["file-text", "Material complementar", "PDF"], flashcast: ["headphones", "Áudio Flashcast", "MP3"], guideline: ["shield-check", "Diretriz SUS / PCDT", ""], other: ["paperclip", "Material", ""] };
+
+/** Linha fixa de material (como no app anterior): "Disponível" com o botão, ou "Não disponível". */
+function MaterialSlot({ kind, m, backend }) {
+  if (m) return <Material m={m} backend={backend} />;
+  const [icon, label, ext] = MATERIAL[kind];
+  return (
+    <div style={{ display: "flex", gap: 12, alignItems: "center", padding: 14, borderRadius: 16, background: "var(--surface-subtle)", border: "1px solid var(--border-subtle)", opacity: 0.75 }}>
+      <IconTile name={icon} size={36} tone="neutral" />
+      <div style={{ flex: 1, minWidth: 0, font: "600 14px var(--font-sans)" }}>{label}{ext ? ` (${ext})` : ""}</div>
+      <Badge size="sm">Não disponível</Badge>
+    </div>
+  );
+}
+
 function Material({ m, backend }) {
   const [icon, label, kind] = MATERIAL[m.kind] ?? MATERIAL.other;
   const [state, setState] = React.useState({ url: null, busy: false, error: null });
@@ -180,8 +194,11 @@ function Material({ m, backend }) {
       <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
         <IconTile name={icon} size={36} tone="brand" />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ font: "500 12px var(--font-sans)", color: "var(--text-tertiary)" }}>{label}{kind ? ` · ${kind}` : ""}{m.size_bytes ? ` · ${sizeLabel(m.size_bytes)}` : ""}</div>
-          <div style={{ font: "600 14px var(--font-sans)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.title}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", font: "600 14px var(--font-sans)" }}>
+            {label}{kind ? ` (${kind})` : ""}
+            <Badge size="sm" tone="success" icon="check">Disponível</Badge>
+          </div>
+          <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{[m.title, m.size_bytes ? sizeLabel(m.size_bytes) : null].filter(Boolean).join(" · ")}</div>
         </div>
         <Button size="sm" variant="secondary" icon={m.url ? "external-link" : m.kind === "flashcast" ? "play" : "download"} loading={state.busy} onClick={open} disabled={!m.url && (!m.has_file || !lessonsAvailable(backend))}>
           {m.url ? "Abrir" : m.kind === "flashcast" ? (state.url ? "Pronto" : "Ouvir") : "Abrir"}
@@ -288,11 +305,14 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
         <Card style={{ borderRadius: 24, position: mobile ? "static" : "sticky", top: 24 }} padding={mobile ? 18 : 20}>
           <span className="sm-overline" style={{ color: "var(--text-secondary)" }}>Materiais complementares</span>
           <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 10 }}>
-            {lesson.materials.map((m) => <Material key={m.id} m={m} backend={backend} />)}
-            {lesson.guideline_url && !lesson.materials.some((m) => m.kind === "guideline") && (
-              <Material m={{ id: "guideline", kind: "guideline", title: lesson.guideline_title || "Diretriz SUS / PCDT", url: lesson.guideline_url }} backend={backend} />
-            )}
-            {lesson.materials.length === 0 && !lesson.guideline_url && <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Nenhum material anexado a esta aula ainda.</p>}
+            <MaterialSlot kind="slides" m={lesson.materials.find((m) => m.kind === "slides")} backend={backend} />
+            <MaterialSlot kind="flashcast" m={lesson.materials.find((m) => m.kind === "flashcast")} backend={backend} />
+            <MaterialSlot
+              kind="guideline"
+              m={lesson.materials.find((m) => m.kind === "guideline") ?? (lesson.guideline_url ? { id: "guideline", kind: "guideline", title: lesson.guideline_title || "Documento oficial", url: lesson.guideline_url } : null)}
+              backend={backend}
+            />
+            {lesson.materials.filter((m) => m.kind === "other").map((m) => <Material key={m.id} m={m} backend={backend} />)}
           </div>
           <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--border-subtle)", display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Badge size="sm" tone="brand">{areaLabel(lesson.area)}</Badge>

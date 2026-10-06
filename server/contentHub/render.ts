@@ -51,7 +51,8 @@ export function loadBrand(): Brand {
   const logoPath = path.join(ROOT, "public/novo-assets/logo-horizontal.png");
   const logo = fs.existsSync(logoPath) ? `data:image/png;base64,${fs.readFileSync(logoPath).toString("base64")}` : null;
   if (!logo) pending.push("Logo horizontal não encontrado em public/novo-assets/logo-horizontal.png.");
-  const fontDir = process.env.CONTENT_HUB_FONT_DIR;
+  // Plus Jakarta Sans (licença SIL OFL, em server/contentHub/fonts); CONTENT_HUB_FONT_DIR troca a pasta
+  const fontDir = process.env.CONTENT_HUB_FONT_DIR || path.join(ROOT, "server/contentHub/fonts");
   let fontFaces = "";
   const files = fontDir && fs.existsSync(fontDir) ? fs.readdirSync(fontDir).filter((f) => /PlusJakartaSans.*\.(ttf|woff2?)$/i.test(f)) : [];
   for (const f of files) {

@@ -51,6 +51,44 @@ describe("Aulas (painel)", () => {
     expect(call).toMatchObject({ topic: "Bronquiolite", title: "Aula de teste", summary: "Resumo digitado.", key_points: ["Ponto 1", "Ponto 2"] });
     expect(await screen.findByText("Aula salva.")).toBeTruthy();
   });
+
+  it("nova aula: materiais complementares escolhidos antes de criar sobem logo depois de salvar", async () => {
+    const uploads: string[] = [];
+    const saved = { id: "l1", area: "PEDIATRIA", topic: "Bronquiolite", title: "Aula de teste", key_points: [], materials: [] as any[], published: false, updated_at: "2026-10-06T12:00:00Z" };
+    (globalThis as any).fetch = vi.fn(async (url: string, init: any) => {
+      if (url === "/api/lessons/l1/upload") return new Response(JSON.stringify({ mode: "direct" }), { status: 200, headers: { "content-type": "application/json" } });
+      if (url.startsWith("/api/lessons/l1/materials?")) {
+        const kind = new URL(url, "http://x").searchParams.get("kind")!;
+        uploads.push(kind);
+        saved.materials.push({ id: `m-${kind}`, kind, title: kind === "slides" ? "apostila.pdf" : "audio.mp3", has_file: true, size_bytes: 2048, url: null });
+        return new Response(JSON.stringify({ ...saved, materials: [...saved.materials] }), { status: 201, headers: { "content-type": "application/json" } });
+      }
+      return new Response("{}", { status: 404 });
+    });
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_lessons") return { lessons: [] };
+      if (fn === "app_lesson_topics") return [];
+      if (fn === "app_admin_save_lesson") return Object.assign(saved, args.p_lesson, { id: "l1", key_points: [], materials: [] }); // a função real devolve a aula completa
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    render(<AdminLessons />);
+    fireEvent.click(await screen.findByRole("button", { name: "Nova aula" }));
+    expect(screen.getByText("Material complementar (PDF)")).toBeTruthy();
+    expect(screen.getByText("Áudio Flashcast (MP3)")).toBeTruthy();
+    expect(screen.getByText("Diretriz SUS / PCDT")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Tema"), { target: { value: "Bronquiolite" } });
+    fireEvent.change(screen.getByLabelText("Título da aula"), { target: { value: "Aula de teste" } });
+    fireEvent.change(screen.getByLabelText("Escolher PDF"), { target: { files: [new File(["%PDF-1.4"], "apostila.pdf", { type: "application/pdf" })] } });
+    fireEvent.change(screen.getByLabelText("Escolher MP3"), { target: { files: [new File(["ID3"], "audio.mp3", { type: "audio/mpeg" })] } });
+    expect(screen.getAllByText("Será enviado ao criar a aula").length).toBe(2);
+    fireEvent.change(screen.getByLabelText("Endereço oficial (https)"), { target: { value: "https://www.gov.br/saude/pcdt" } });
+    fireEvent.click(screen.getByRole("button", { name: "Criar aula" }));
+    await waitFor(() => expect(uploads).toEqual(["slides", "flashcast"]));
+    const call = backend.rpc.mock.calls.find((c: any[]) => c[0] === "app_admin_save_lesson")[1].p_lesson;
+    expect(call.guideline_url).toBe("https://www.gov.br/saude/pcdt");
+    expect(await screen.findByText("Aula salva.")).toBeTruthy();
+    expect(screen.getAllByText("Disponível").length).toBe(3); // PDF, áudio e diretriz
+  });
 });
 
 describe("Atualizações & Diretrizes (painel)", () => {

@@ -3,7 +3,7 @@
 import React from "react";
 import { Badge, Banner, Button, Checkbox, TextField } from "../../../ds";
 import { useSession } from "../../session.jsx";
-import { LoadError, Loading, useDebounced, useLoad } from "../common.jsx";
+import { dateTimeBR, LoadError, Loading, useDebounced, useLoad } from "../common.jsx";
 import { AREA_LABEL, STEP_LABEL } from "./labels.js";
 import { KeyValue, ModelBadge, Section, useAction } from "./ui.jsx";
 
@@ -79,6 +79,15 @@ function Prompts() {
   );
 }
 
+/** Onde o processamento roda e quando deu sinal (o servidor do site na Vercel não processa). */
+function processingLabel(status) {
+  if (status.worker) return "ligado neste servidor";
+  const p = status.processing;
+  if (!p?.where) return "ainda não implantado (tarefa no Google Cloud Run)";
+  const where = p.where === "cloud_run" ? "Google Cloud Run" : p.where;
+  return `${where} · último relato ${dateTimeBR(p.reported_at)}${p.stale ? " (parado)" : ""}`;
+}
+
 export function HubSettings({ isAdmin, status }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -91,9 +100,9 @@ export function HubSettings({ isAdmin, status }) {
             items={[
               ["Banco e arquivos", status.storage === "dev" ? "desenvolvimento (.data no servidor)" : "Supabase"],
               ["IA", status.ai?.ready ? <span key="ai">{status.ai.provider} <ModelBadge model={status.ai.model} /></span> : `pendente — ${status.ai?.pending}`],
-              ["Renderizador de PDF", status.renderer ? "pronto (Chromium)" : "indisponível"],
-              ["Processamento em segundo plano", status.worker ? "ligado" : "desligado"],
-              ["Identidade visual", status.brand?.pending?.length ? status.brand.pending.join(" ") : `completa (${status.brand?.version})`],
+              ["Processamento (leitura de PDF, OCR e arquivos finais)", processingLabel(status)],
+              ["Renderizador de PDF", status.renderer ? "pronto (Chromium)" : status.worker || status.processing?.where ? "indisponível" : "sem relato do processamento"],
+              ["Identidade visual", status.brand?.pending?.length ? status.brand.pending.join(" ") : status.brand?.version ? `completa (${status.brand.version})` : "sem relato do processamento"],
             ]}
           />
         )}

@@ -79,6 +79,11 @@ describe("Aula aberta", () => {
     expect(screen.getByText("Resumo & racionalidade clínica")).toBeTruthy();
     expect(screen.getByText("Não usar broncodilatador de rotina")).toBeTruthy();
     expect(screen.getByText("PCDT Bronquiolite")).toBeTruthy();
+    // as três linhas fixas do app anterior: PDF complementar, áudio e diretriz, todas disponíveis aqui
+    expect(screen.getByText("Material complementar (PDF)")).toBeTruthy();
+    expect(screen.getByText("Áudio Flashcast (MP3)")).toBeTruthy();
+    expect(screen.getByText("Diretriz SUS / PCDT")).toBeTruthy();
+    expect(screen.getAllByText("Disponível").length).toBe(3);
     expect(screen.getByText("5 questões do tema")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Ouvir" }));
@@ -104,5 +109,22 @@ describe("Vídeo e textos", () => {
     expect(videoEmbed(null)).toBeNull();
     expect(durationLabel(45)).toBe("45 min");
     expect(durationLabel(90)).toBe("1h30");
+  });
+});
+
+describe("Materiais que faltam", () => {
+  it("sem áudio e sem diretriz: as linhas aparecem como não disponíveis", async () => {
+    const only = { ...LESSON, guideline_url: null, guideline_title: null, materials: [LESSON.materials[0]] };
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_lessons") return { ...catalog, lessons: [only] };
+      if (fn === "app_lesson") return { ...only, questions_topic: 5, questions_area: 120 };
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    render(<LessonsScreen go={vi.fn()} />);
+    const cards = await screen.findAllByRole("button", { name: /Bronquiolite viral aguda/ });
+    fireEvent.click(cards[cards.length - 1]);
+    await screen.findByText("Material complementar (PDF)");
+    expect(screen.getAllByText("Disponível").length).toBe(1);
+    expect(screen.getAllByText("Não disponível").length).toBe(2);
   });
 });

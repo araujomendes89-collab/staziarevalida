@@ -15,7 +15,7 @@ Data: 2026-10-06. Pedido: recriar no app novo a estrutura de aula do app antigo,
 | Área, tema, título, duração estimada, professor/convidado, especialidade | `lessons` |
 | Vídeo (Módulo Audiovisual) | `lessons.video_url` (YouTube, Vimeo ou MP4, sempre https; o vídeo é hospedado fora) |
 | Botão "Treinar questões deste tema" | `app_start_lesson_questions`: treino de 20 questões do **mesmo tema** das questões oficiais; sem questão nesse tema, da grande área |
-| Slides da aula (PDF) e áudio Flashcast (MP3) | `lesson_materials` + depósito privado `lessons` |
+| Material complementar (PDF) e áudio Flashcast (MP3) | `lesson_materials` (tipos `slides` e `flashcast`) + depósito privado `lessons` |
 | Diretriz SUS / PCDT | `lessons.guideline_title/guideline_url` (endereço da fonte oficial) |
 | Resumo & racionalidade clínica | `lessons.summary` |
 | Pontos-chave para o Revalida | `lessons.key_points` (lista) |
@@ -25,8 +25,8 @@ Data: 2026-10-06. Pedido: recriar no app novo a estrutura de aula do app antigo,
 ## Telas
 
 - **Estudar › Aulas** (`/novo/aulas`): mesmo carrossel do protótipo, agora com as aulas publicadas (abas por grande área com contagem, busca sem acento, ← → para navegar, clique na central para abrir) e uma lista em cartões logo abaixo. Sem aulas publicadas, a tela diz isso e oferece "Montar um treino".
-- **Aula aberta**: palco escuro do protótipo com o vídeo de verdade, título, professor · especialidade · duração, **Treinar questões deste tema** e **Marcar como concluída**; abaixo, "Resumo & racionalidade clínica" e "Pontos-chave para o Revalida" numerados; ao lado, "Materiais complementares" (slides abrem em nova aba, o Flashcast toca na própria página, a diretriz abre a fonte oficial).
-- **Administração › Aulas** (equipe: administrador e editor): criar e editar com todos os campos, sugestão de temas que já têm questões (para o treino cair no tema certo), enviar slides e áudio, publicar. Apagar aula só administrador. Tudo vai para o registro de ações.
+- **Aula aberta**: palco escuro do protótipo com o vídeo de verdade, título, professor · especialidade · duração, **Treinar questões deste tema** e **Marcar como concluída**; abaixo, "Resumo & racionalidade clínica" e "Pontos-chave para o Revalida" numerados; ao lado, "Materiais complementares" com as três linhas fixas do app anterior: Material complementar (PDF), Áudio Flashcast (MP3) e Diretriz SUS / PCDT, cada uma com "Disponível" e o botão (o PDF abre em nova aba, o áudio toca na própria página, a diretriz abre a fonte oficial) ou "Não disponível".
+- **Administração › Aulas** (equipe: administrador e editor): criar e editar com todos os campos, sugestão de temas que já têm questões (para o treino cair no tema certo) e a seção **Materiais complementares** já na criação: Material complementar (PDF), Áudio Flashcast (MP3) e Diretriz SUS / PCDT (título e link). Em aula nova, os arquivos escolhidos sobem logo depois de criar a aula; em aula salva, na hora. Cada linha mostra "Disponível" ou "Não disponível". Publicar; apagar aula só administrador. Tudo vai para o registro de ações.
 
 ## Arquivos (por que não passam pelo servidor em produção)
 
