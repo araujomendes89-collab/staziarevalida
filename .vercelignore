@@ -1,0 +1,13 @@
+# Fora do deploy da Vercel: segredos, dados locais, saídas de build e pastas que o site e o servidor não usam.
+.env
+.env.*
+!.env.example
+.data
+dist
+server-dist
+content-engine
+checklists-pack
+.claude
+revalida-reverse-engine
+_unused
+*.log
