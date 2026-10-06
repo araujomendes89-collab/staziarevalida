@@ -7,6 +7,7 @@ import { Banner, Button, Card, EmptyState, Icon, TopicRow } from "../../ds";
 import { useSession } from "../session.jsx";
 import { areaLabel, percent } from "../practice/format.js";
 import { KIND_LABEL, reasonText, trialTitle } from "./plan.js";
+import { PlayError, PlayHeader, PlayLoading, PlayLower, TrailPreview, usePlayHome } from "../play/PlayDashboard.jsx";
 
 const DIAGNOSTIC_SIZE = 10;
 const R = { borderRadius: 24 };
@@ -79,7 +80,7 @@ function HomeNew({ go, mobile, home, profile, startDiagnostic, busy }) {
   );
 }
 
-function HomeActive({ go, mobile, home, plan, startTask, toggleTask, busy }) {
+function HomeActive({ go, mobile, home, plan, startTask, toggleTask, busy, play }) {
   const open = home.open_session;
   const pending = plan.tasks.find((t) => !t.done);
   let hero;
@@ -116,9 +117,13 @@ function HomeActive({ go, mobile, home, plan, startTask, toggleTask, busy }) {
     ["Para revisar", home.wrong_pending, home.wrong_pending ? "questões erradas no caderno" : "nenhuma questão pendente", home.wrong_pending === 0, "erros"],
   ];
 
+  const s = play.summary;
+  const playOn = s.data?.enabled !== false;
   return (
     <>
       {home.trial && home.trial.days_left <= 2 && <TrialBanner trial={home.trial} attempts={home.attempts} go={go} />}
+      {playOn && (s.error ? <PlayError retry={s.reload} /> : !s.data ? <PlayLoading /> : <PlayHeader summary={s.data} mobile={mobile} go={go} />)}
+      {play.error && <Banner tone="danger">{play.error}</Banner>}
       <Card style={{ borderRadius: 28 }} padding={mobile ? 24 : 36}>
         <div style={{ display: "flex", flexDirection: "column", gap: mobile ? 24 : 32 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, flexWrap: "wrap" }}>
@@ -167,6 +172,8 @@ function HomeActive({ go, mobile, home, plan, startTask, toggleTask, busy }) {
           )}
         </div>
       </Card>
+      {playOn && s.data?.flags?.trail !== false && <TrailPreview go={go} mobile={mobile} onStart={play.startNode} busy={play.busy} />}
+      {playOn && s.data && <PlayLower summary={s.data} mobile={mobile} go={go} />}
       <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(3,1fr)", gap: mobile ? 12 : 20 }}>
         {metrics.map(([label, value, caption, ok, route]) => (
           <button key={label} type="button" onClick={() => go(route)} className="sm-card sm-card--interactive" style={{ borderRadius: 24, padding: mobile ? 18 : 24, textAlign: "left", font: "inherit", color: "inherit", cursor: "pointer" }}>
@@ -206,6 +213,7 @@ function HomeActive({ go, mobile, home, plan, startTask, toggleTask, busy }) {
 
 export function HomeScreen({ go, mobile }) {
   const { backend, boot } = useSession();
+  const play = usePlayHome(go);
   const [data, setData] = React.useState(null);
   const [error, setError] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
@@ -262,7 +270,7 @@ export function HomeScreen({ go, mobile }) {
       {home.attempts < DIAGNOSTIC_SIZE ? (
         <HomeNew go={go} mobile={mobile} home={home} profile={boot.profile} startDiagnostic={startDiagnostic} busy={busy} />
       ) : (
-        <HomeActive go={go} mobile={mobile} home={home} plan={plan} startTask={startTask} toggleTask={toggleTask} busy={busy} />
+        <HomeActive go={go} mobile={mobile} home={home} plan={plan} startTask={startTask} toggleTask={toggleTask} busy={busy} play={play} />
       )}
     </>
   );

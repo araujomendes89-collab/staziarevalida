@@ -63,6 +63,11 @@ interface Memory {
   recent_errors: { error_type: string; knowledge_gap: string | null; theme: string | null; question_id: string | null; resolved: boolean }[];
 }
 
+interface PlayContext {
+  rank: number | null; percentile: number | null; league: string | null; weekly_xp: number; stazia_score: number | null;
+  questions: number; accuracy: number; streak: number; weakest_area: string | null; missions_pending: number;
+}
+
 interface Context {
   config: { enabled: boolean; requires_pro: boolean; daily_limit: number; max_profanity: ProfanityLevel };
   entitlement: Entitlement;
@@ -220,6 +225,8 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
   try {
     const ctx = await deps.db.service<Context | null>("ch_worker_tutor_context", { p_user: userId, p_session_id: sessionId });
     if (!ctx) throw new TutorError("Conversa não encontrada.", 404);
+    // Stazia Play: só números agregados (ranking, liga, sequência, área mais fraca); a IA interpreta, nunca decide pontos
+    const play = await deps.db.service<PlayContext | null>("ch_worker_tutor_play_context", { p_user: userId }).catch(() => null);
     const ent = ctx.entitlement;
     if (!ent.enabled) throw new TutorError("O Tutor ainda não está ligado.", 503);
     if (ent.mode === "blocked") throw new TutorError(TRIAL_OVER, 403);
@@ -321,6 +328,10 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       contexto_da_sessao: ctx.session.context?.label ?? ctx.session.topic ?? null,
       nivel_da_conversa: ctx.session.difficulty_level,
       perfil: mem?.profile ?? null,
+      jogo: play ? {
+        posicao_no_ranking: play.rank, percentil: play.percentile, liga: play.league, xp_na_semana: play.weekly_xp, stazia_score: play.stazia_score,
+        questoes: play.questions, precisao: play.accuracy, sequencia_dias: play.streak, area_mais_fraca: play.weakest_area, missoes_pendentes_hoje: play.missions_pending,
+      } : null,
       evolucao: (mem?.improvements ?? []).map((i) => `${i.topic}: errava (${i.errors_before}x), agora acertou ${i.correct_recent} nos últimos 7 dias`),
     };
     // memória do professor nesta sessão: erros, repetições, piadas internas e o que não repetir

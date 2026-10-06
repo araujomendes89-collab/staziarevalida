@@ -12,6 +12,7 @@ import { Correction } from "./Correction.jsx";
 import { QuestionFigures } from "./QuestionFigures.jsx";
 import { SessionResult } from "./SessionResult.jsx";
 import { areaLabel, examLabel, formatClock, splitStatement } from "./format.js";
+import { XPToast, useTurnFeedback } from "../play/PlayFeedback.jsx";
 
 // Até aqui, um traço por questão na barra do topo; acima disso, uma barra contínua.
 const SEGMENT_LIMIT = 30;
@@ -77,6 +78,8 @@ function Runner({ session, go, onFinished }) {
   const [error, setError] = React.useState(null);
   const saving = React.useRef(Promise.resolve());
   const finishing = React.useRef(false);
+  const feedback = useTurnFeedback(); // Stazia Play: novo nível e medalhas viram modais curtos
+  const [sessionXp, setSessionXp] = React.useState(0);
 
   const total = questions.length;
   const question = questions[index];
@@ -171,7 +174,10 @@ function Runner({ session, go, onFinished }) {
         p_option: picked,
         p_active_ms: ms,
       });
-      patch(question.id, { selected: correction.selected, correction, active_ms: ms });
+      const { play, ...rest } = correction;
+      patch(question.id, { selected: rest.selected, correction: rest, play, active_ms: ms });
+      if (play?.xp?.valid) setSessionXp((n) => n + (play.xp.total ?? 0) + (play.bonus ?? []).reduce((sum, b) => sum + (b.xp ?? 0), 0));
+      feedback.push(play);
       setPicked(null);
       setStriking(false);
     } catch {
@@ -249,6 +255,7 @@ function Runner({ session, go, onFinished }) {
       style={{ background: "var(--surface-subtle)", borderLeft: mobile ? 0 : "1px solid var(--border-subtle)", borderTop: mobile ? "1px solid var(--border-subtle)" : 0, padding: 28, display: "flex", flexDirection: "column", gap: 16 }}
       aria-live="polite"
     >
+      {question.play && <XPToast play={question.play} />}
       <Correction selected={question.selected} correction={question.correction} question={question} />
     </aside>
   );
@@ -274,6 +281,12 @@ function Runner({ session, go, onFinished }) {
           <span style={{ font: "600 14px var(--font-mono)", color: "var(--text-secondary)" }}>
             {index + 1}/{total}
           </span>
+          {sessionXp > 0 && (
+            <span className="sm-pill" style={{ color: "var(--xp-text)", background: "var(--xp-bg)", borderColor: "transparent" }} title="XP ganho nesta sessão">
+              <Icon name="zap" size={16} />
+              <span style={{ fontFamily: "var(--font-mono)" }}>+{sessionXp}</span>
+            </span>
+          )}
           {(!mobile || remaining !== null) && (
             <span className="sm-pill" style={urgent ? { color: "var(--danger-text)" } : undefined} title={remaining !== null ? "Tempo restante" : "Tempo respondendo"}>
               <Icon name="timer" size={16} />
@@ -374,6 +387,7 @@ function Runner({ session, go, onFinished }) {
         )}
       </div>
       {!mobile && !confirming && panel}
+      {feedback.modal}
     </div>
   );
 }

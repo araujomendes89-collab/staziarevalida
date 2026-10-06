@@ -8,9 +8,11 @@ import { isStaffRole } from "../admin/AdminScreen.jsx";
 import { PASSWORD_MIN_LENGTH } from "../../data";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
+import { PlayProfileSection } from "../play/PlayProfile.jsx";
 
 const SECTIONS = [
   { id: "conta", label: "Minha conta", sub: "Nome, e-mail e aparência", icon: "user" },
+  { id: "play", label: "Meu Stazia Play", sub: "Nível, score, ranking e visibilidade", icon: "trophy" },
   { id: "estudo", label: "Estudo e prova", sub: "Fase, prova-alvo e rotina", icon: "graduation-cap" },
   { id: "seg", label: "Segurança", sub: "Senha e sessão", icon: "shield-check" },
   { id: "priv", label: "Privacidade e dados", sub: "Exportação e exclusão (LGPD)", icon: "file-lock" },
@@ -357,6 +359,7 @@ export function AccountScreen({ go }) {
         </Card>
         <Card padding={mobile ? 20 : 28}>
           {section === "conta" && <AccountSection email={user?.email} />}
+          {section === "play" && <PlayProfileSection go={go} />}
           {section === "estudo" && <StudySection />}
           {section === "seg" && <SecuritySection />}
           {section === "priv" && <PrivacySection />}

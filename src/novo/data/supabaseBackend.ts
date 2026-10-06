@@ -71,5 +71,15 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
       if (error) throw new BackendError(/fetch|network/i.test(error.message) ? "network" : "unknown", error.message);
       return data as T;
     },
+    subscribeStats(userId, onChange) {
+      // Só a própria linha (filtro + RLS): nunca chega dado de outro aluno.
+      const channel = client
+        .channel(`play-stats-${userId}`)
+        .on("postgres_changes", { event: "UPDATE", schema: "public", table: "user_gamification_stats", filter: `user_id=eq.${userId}` }, () => onChange())
+        .subscribe();
+      return () => {
+        client.removeChannel(channel).catch(() => {});
+      };
+    },
   };
 }

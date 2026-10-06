@@ -28,6 +28,11 @@ export interface Backend {
   /** Chama uma função `app_*` do banco. */
   rpc<T>(fn: string, args?: Record<string, unknown>): Promise<T>;
   /**
+   * Stazia Play em tempo real: avisa quando a linha de estatísticas do próprio aluno muda
+   * (XP, posição, sequência). Só existe no Supabase (Realtime); devolve a função para cancelar.
+   */
+  readonly subscribeStats?: (userId: string, onChange: () => void) => () => void;
+  /**
    * Token da sessão para as rotas do servidor (/api/content-hub): envio de PDF, arquivos.
    * Só existe quando há servidor; no banco local do navegador não há.
    */

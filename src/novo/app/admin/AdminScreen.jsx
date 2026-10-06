@@ -9,6 +9,7 @@ import { AdminQuestions } from "./AdminQuestions.jsx";
 import { AdminUsers } from "./AdminUsers.jsx";
 import { AdminAudit, AdminOverview, AdminPlans, AdminSettings, AdminStations, AdminTutor } from "./AdminPanels.jsx";
 import { ContentHub } from "./content/ContentHub.jsx";
+import { AdminPlay } from "./AdminPlay.jsx";
 
 const TABS = [
   { value: "geral", label: "Visão geral", icon: "layout-dashboard", staff: true },
@@ -17,6 +18,7 @@ const TABS = [
   { value: "planos", label: "Planos", icon: "crown" },
   { value: "estacoes", label: "Estações", icon: "clipboard-list", staff: true },
   { value: "conteudo", label: "Central de Conteúdo", icon: "library", staff: true, reviewer: true },
+  { value: "play", label: "Stazia Play", icon: "trophy" },
   { value: "config", label: "Configurações", icon: "settings" },
   { value: "registro", label: "Registro", icon: "history" },
 ];
@@ -43,6 +45,7 @@ export function AdminScreen() {
       {tab === "planos" && <AdminPlans />}
       {tab === "estacoes" && <AdminStations />}
       {tab === "conteudo" && <ContentHub isAdmin={isAdmin} isStaff={isStaff} />}
+      {tab === "play" && <AdminPlay />}
       {tab === "config" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <AdminSettings />

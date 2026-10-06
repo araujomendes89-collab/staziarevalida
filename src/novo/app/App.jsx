@@ -24,6 +24,10 @@ import { AdminScreen, isStaffRole } from "./admin/AdminScreen.jsx";
 import { ThemesScreen } from "./study/ThemesScreen.jsx";
 import { QuestionBuilder } from "./practice/QuestionBuilder.jsx";
 import { PracticeSession } from "./practice/PracticeSession.jsx";
+import { TrailScreen } from "./play/TrailScreen.jsx";
+import { LeaderboardScreen } from "./play/LeaderboardScreen.jsx";
+import { MissionsScreen } from "./play/MissionsScreen.jsx";
+import { AchievementsScreen } from "./play/AchievementsScreen.jsx";
 
 // [título, subtítulo] de cada rota (o início é montado com nome e data reais).
 const TITLES = {
@@ -38,6 +42,10 @@ const TITLES = {
   plano: ["Planejamento", "Cronograma até a prova"],
   desempenho: ["Desempenho", "Seus dados reais"],
   tutor: ["Stazia Tutor", "Seu professor particular para o Revalida"],
+  trilha: ["Trilha de aprendizado", "Stazia Play · uma etapa de cada vez"],
+  classificacao: ["Classificação", "Stazia Play · ranking e liga da semana"],
+  missoes: ["Missões", "Stazia Play · metas de hoje e da semana"],
+  conquistas: ["Conquistas", "Stazia Play · medalhas e recompensas"],
   perfil: ["Conta", "Dados, segurança e privacidade"],
   teoria2: ["Teoria para a prática", "Esqueletos, documentos médicos e protocolos aplicados às estações"],
   estacoes: ["Banco de estações", "Estações nas 5 grandes áreas"],
@@ -51,7 +59,7 @@ const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "perfil", "admin", "temas"]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -123,6 +131,10 @@ function Screen() {
   else if (route === "plano") body = <PlanningScreen go={go} />;
   else if (route === "desempenho") body = <PerformanceScreen go={go} />;
   else if (route === "tutor") body = <TutorScreen go={go} />;
+  else if (route === "trilha") body = <TrailScreen go={go} />;
+  else if (route === "classificacao") body = <LeaderboardScreen go={go} />;
+  else if (route === "missoes") body = <MissionsScreen go={go} />;
+  else if (route === "conquistas") body = <AchievementsScreen go={go} />;
   else if (route === "home2") body = <Home2 go={go} data={data} mobile={mobile} />;
   else if (route === "estacoes") body = <Stations go={go} />;
   else if (route === "teoria2") body = <Theory2 go={go} />;
@@ -165,7 +177,7 @@ function Screen() {
       sub={sub}
       info={{
         name: profile.name || "Sua conta",
-        streakDays: boot.streak_days,
+        streakDays: boot.play?.enabled ? boot.play.streak : boot.streak_days,
         flashcardsDue: boot.flashcards_due,
         onSignOut: () => signOut(),
         isStaff: isStaffRole(boot.role),
