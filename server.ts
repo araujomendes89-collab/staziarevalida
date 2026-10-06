@@ -1,7 +1,6 @@
 import express, { Request, Response } from "express";
 import path from "path";
 import fs from "fs";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import { generateAI, streamAI, checkRateLimit, extractRateLimitClientId } from "./server/ai/modelRouter";
@@ -65,9 +64,15 @@ function getGenAI(): GoogleGenAI | null {
   });
 }
 
-async function startServer() {
+/**
+ * Monta o app com todas as rotas /api. Serve para os dois jeitos de rodar:
+ *   - servidor normal (npm run dev / npm start): startServer() acrescenta o site e escuta a porta;
+ *   - Vercel: api/index.ts usa só este app, como função (o site sai do CDN da Vercel).
+ * `serverless`: sem worker da Central (processo não fica vivo) e sem varredura por intervalo (vira tarefa agendada).
+ */
+export async function createApp(opts: { serverless?: boolean } = {}) {
   const app = express();
-  const PORT = resolveServerPort(process.env.PORT);
+  if (opts.serverless) process.env.CONTENT_HUB_WORKER = "0";
 
   app.use(express.json({ limit: "50mb" }));
   app.use("/api/billing", billingRouter);
@@ -94,8 +99,6 @@ async function startServer() {
   // Stazia Tutor: usa o mesmo banco; a simulação de IA só existe com o banco de desenvolvimento
   const tutorDeps = hub.deps ? { db: hub.deps.db, mockRespond: hub.deps.db.mode === "dev" ? tutorMockRespond : undefined, log: (m: string) => console.log(m) } : null;
   app.use("/api/tutor", createTutorRouter(tutorDeps, hub.pending));
-  // voz em tempo real: chamadas sem renovação expiram e o servidor as desliga (cota nunca depende só do navegador)
-  if (tutorDeps) startVoiceSweeper(tutorDeps);
   if (process.env.NODE_ENV !== "production") {
     // Banco de desenvolvimento no servidor: app do aluno, painel e processamento usam o mesmo.
     app.use("/api/dev-db", createDevDbRouter(() => getDevDatabase()));
@@ -1420,8 +1423,18 @@ Retorne um JSON com a avaliação rigorosa baseada no padrão INEP:
     }
   });
 
+  return { app, tutorDeps };
+}
+
+async function startServer() {
+  const PORT = resolveServerPort(process.env.PORT);
+  const { app, tutorDeps } = await createApp();
+  // voz em tempo real: chamadas sem renovação expiram e o servidor as desliga (cota nunca depende só do navegador)
+  if (tutorDeps) startVoiceSweeper(tutorDeps);
+
   // Vite Middleware integration
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -1653,6 +1666,9 @@ function getFallbackPatientResponse(
   };
 }
 
-startServer().catch((err) => {
-  console.error("Failed to start server:", err);
-});
+// Na Vercel o servidor não escuta porta: a função api/index.ts usa createApp().
+if (!process.env.VERCEL) {
+  startServer().catch((err) => {
+    console.error("Failed to start server:", err);
+  });
+}

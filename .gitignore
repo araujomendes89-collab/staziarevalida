@@ -28,3 +28,6 @@ supabase/.temp/
 
 # Banco e arquivos de desenvolvimento (servidor local)
 .data/
+# Vercel
+server-dist/
+.vercel

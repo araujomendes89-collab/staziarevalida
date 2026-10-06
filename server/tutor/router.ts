@@ -6,7 +6,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import type { Identity } from "../contentHub/infra";
 import { TutorError, resolveTutorProvider, tutorTurn, type TutorDeps } from "./engine";
 import { speechProviderFor, tutorSpeech } from "./speech";
-import { endVoice, realtimeConfig, recordVoiceUsage, rememberEvidence, renewVoice, startVoice, voiceCall, voiceTranscript } from "./realtime";
+import { endVoice, realtimeConfig, recordVoiceUsage, rememberEvidence, renewVoice, startVoice, sweepVoice, voiceCall, voiceTranscript } from "./realtime";
 import { runTutorTool, TOOL_NAMES } from "./tools";
 
 type Authed = Request & { user?: Identity };
@@ -14,6 +14,20 @@ const fail = (res: Response, status: number, error: string) => res.status(status
 
 export function createTutorRouter(deps: TutorDeps | null, pending: string | null = null) {
   const router = express.Router();
+
+  /**
+   * Varredura da voz pela tarefa agendada (Vercel Cron manda "Authorization: Bearer CRON_SECRET"). No servidor normal quem
+   * varre é o intervalo de startVoiceSweeper; na Vercel, além desta tarefa, toda rota de voz varre antes de responder.
+   */
+  router.get("/voice/sweep", async (req, res) => {
+    const secret = process.env.CRON_SECRET;
+    if (!deps || !secret || req.headers.authorization !== `Bearer ${secret}`) return fail(res, 401, "Não autorizado.");
+    try {
+      res.json({ expired: await sweepVoice(deps) });
+    } catch (error) {
+      fail(res, 500, (error as Error).message.slice(0, 120));
+    }
+  });
 
   router.use(async (req: Authed, res: Response, next: NextFunction) => {
     if (!deps) return fail(res, 503, pending ?? "Tutor não configurado no servidor.");
@@ -102,8 +116,14 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
 
   // ---------------------------------------------------------------- voz em tempo real
   const uuid = /^[0-9a-f-]{36}$/i;
+  let lastSweep = 0;
   const voiceRoute = (handler: (req: Authed, body: Record<string, any>) => Promise<unknown>) => async (req: Authed, res: Response) => {
     try {
+      // varredura oportunista (no máximo a cada 20 s por instância): na Vercel não há processo vivo para o intervalo
+      if (Date.now() - lastSweep > 20_000) {
+        lastSweep = Date.now();
+        await sweepVoice(deps!).catch((error) => deps!.log?.(`[tutor] voz: varredura falhou: ${(error as Error).message.slice(0, 120)}`));
+      }
       res.json(await handler(req, req.body ?? {}));
     } catch (error) {
       if (error instanceof TutorError) {

@@ -285,12 +285,18 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
   };
 }
 
-/** Varredura: chamadas sem renovação expiram (contam até o fim da reserva) e o servidor as desliga. */
+/** Uma varredura: chamadas sem renovação expiram (contam até o fim da reserva) e o servidor as desliga. Devolve quantas. */
+export async function sweepVoice(deps: TutorDeps): Promise<number> {
+  const ids = await deps.db.service<string[]>("ch_worker_tutor_voice_expire", {});
+  for (const id of ids ?? []) await hangup(id, deps);
+  return (ids ?? []).length;
+}
+
+/** Varredura por intervalo (servidor que fica de pé). */
 export function startVoiceSweeper(deps: TutorDeps, everyMs = 20_000) {
   const tick = async () => {
     try {
-      const ids = await deps.db.service<string[]>("ch_worker_tutor_voice_expire", {});
-      for (const id of ids ?? []) await hangup(id, deps);
+      await sweepVoice(deps);
     } catch (error) {
       deps.log?.(`[tutor] voz: varredura falhou: ${(error as Error).message.slice(0, 160)}`);
     }
