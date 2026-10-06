@@ -29,9 +29,9 @@ export const HUMOR = [
   { value: "85", label: "Muito" },
 ];
 export const PROFANITY = [
-  { value: "off", label: "Desativados" },
-  { value: "mild", label: "Leves" },
-  { value: "moderate", label: "Moderados" },
+  { value: "off", label: "Sem palavrão" },
+  { value: "mild", label: "Leves (putz, que saco)" },
+  { value: "moderate", label: "Liberados (inclusive com você)" },
 ];
 
 // De onde veio o conteúdo da resposta (calculado no servidor pelas citações conferidas, não pelo que a IA declara).

@@ -217,7 +217,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const settings = ctx.session.settings;
     const adjust = adaptiveAdjust(ctx.session.intensity, settings.adaptive !== false, ctx.recent_results ?? []);
     const eff = effectiveParams(ctx.personality.params, adjust.intensity, settings);
-    const profanity = profanityLevel(eff, settings.profanity ?? "off", ctx.config.max_profanity);
+    const profanity = profanityLevel(ctx.personality.params, settings.profanity ?? "off", ctx.config.max_profanity);
     const system = [TUTOR_CORE, TUTOR_MODES[ctx.session.mode], action.voice ? TUTOR_VOICE : "", personalityLayer(ctx.personality, eff, profanity, adjust.intensity, adjust.note)].filter(Boolean).join("\n\n");
 
     const studentCtx = {

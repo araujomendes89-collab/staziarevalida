@@ -7,7 +7,7 @@
  *   - citação que não é cópia exata do bloco da base      → barrado
  *   - contestar o gabarito oficial                         → barrado
  *   - entregar a resposta antes da hora (questão aberta)   → barrado
- *   - palavrão acima do nível permitido ou ataque pessoal → barrado
+ *   - palavrão acima do nível permitido, xingamento pesado contra o aluno ou ataque pessoal → barrado
  *
  * Barrado duas vezes seguidas, o aluno recebe uma resposta fixa e honesta, nunca o texto inválido.
  */
@@ -149,15 +149,45 @@ export function quantities(text: string): Quantity[] {
   return out;
 }
 
-const PROFANITY_MILD = ["droga", "caramba", "poxa", "putz", "que saco", "diabo", "raios"];
-const PROFANITY_MODERATE = ["porra", "merda", "caralho", "cacete", "foda", "fodeu", "foder", "puta que pariu", "pqp", "bosta", "cagada", "cagou"];
+/**
+ * Leves: só como interjeição. "droga" e "raios" sozinhos são termo clínico ("droga vasoativa", "raios X") e não contam;
+ * "poxa" e "caramba" não são palavrão.
+ */
+const PROFANITY_MILD = ["putz", "que saco", "meu saco", "saco cheio", "que droga", "que diabo", "que inferno", "sacanagem"];
+/** Palavrão de verdade: só no nível liberado. Ali pode ser ênfase e pode ir pra cima do aluno, de leve ("porra, você leu o enunciado?"). */
+const PROFANITY_MODERATE = [
+  "porra", "merda", "caralho", "cacete", "foda", "fodeu", "foder", "fudeu", "fuder", "fodido", "fodida", "puta que pariu", "puta merda", "puta", "pqp",
+  "bosta", "cagada", "cagou", "cagar", "cagando", "desgraca", "desgracado", "desgracada",
+];
+/** Xingamento pesado contra a pessoa: nunca, nem com palavrão liberado (o dono liberou xingar o aluno, mas sem pegar pesado). */
+const PROFANITY_HEAVY = [
+  "tomar no cu", "tomar no seu cu", "vai se foder", "vai se fuder", "va se foder", "va se fuder", "vai te foder", "vai a merda", "vai pra merda", "vai pra puta que pariu",
+  "filho da puta", "filha da puta", "fdp", "arrombado", "arrombada", "cuzao", "cuzona", "seu merda", "um merda", "seu bosta", "um bosta", "seu puto", "sua puta",
+  "vadia", "piranha", "vagabunda",
+];
 /** Nunca, em nenhuma personalidade: insulto à inteligência e termos discriminatórios (palavras sem uso clínico). */
 const FORBIDDEN = ["burro", "burra", "idiota", "imbecil", "estupido", "estupida", "debil mental", "mongoloide", "otario", "otaria", "babaca", "viado", "bicha", "sapatao", "traveco", "aleijado", "crioulo"];
-/** Palavras que têm uso clínico legítimo ("esvaziamento retardado", "válvula incompetente"): só são ataque quando dirigidas ao aluno. */
+/** Palavras que têm uso clínico legítimo ("esvaziamento retardado", "válvula incompetente", "corno anterior da medula"): só são ataque quando dirigidas ao aluno. */
 const DIRECTED =
-  /(?:voce|vc|tu)\s+(?:e|es|esta|parece|foi|continua)\s+(?:um\s+|uma\s+|muito\s+|bem\s+|tao\s+)?(?:retardad[oa]|incompetente|inutil|lixo|vagabund[oa]|louc[oa]|maluc[oa]|gord[oa]|fei[oa]|doente\s+mental|fracassad[oa])|(?<![a-z])seu\s+(?:lixo|inutil|incompetente|vagabundo|retardado|fracassado)(?![a-z])|(?<![a-z])sua\s+(?:inutil|incompetente|vagabunda|retardada|fracassada)(?![a-z])/;
+  /(?:voce|vc|tu)\s+(?:e|es|esta|parece|foi|continua)\s+(?:um\s+|uma\s+|muito\s+|bem\s+|tao\s+)?(?:retardad[oa]|incompetente|inutil|lixo|vagabund[oa]|louc[oa]|maluc[oa]|gord[oa]|fei[oa]|doente\s+mental|fracassad[oa])|(?<![a-z])seu\s+(?:lixo|inutil|incompetente|vagabundo|retardado|fracassado|corno)(?![a-z])|(?<![a-z])sua\s+(?:inutil|incompetente|vagabunda|retardada|fracassada)(?![a-z])/;
 
 const hasWord = (text: string, word: string) => new RegExp(`(?<![a-z])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![a-z])`).test(text);
+
+/**
+ * Linguagem de uma fala no nível de palavrão que vale: ataque pessoal e xingamento pesado nunca passam; palavrão passa só até o nível.
+ * Serve para a resposta da IA e para conferir as falas fixas dos personagens.
+ */
+export function languageViolations(text: string, level: ProfanityLevel): Violation[] {
+  const folded = fold(text);
+  const v: Violation[] = [];
+  for (const w of FORBIDDEN) if (hasWord(folded, w)) v.push({ code: "personal_attack", detail: `Termo proibido em qualquer personalidade: "${w}".` });
+  for (const w of PROFANITY_HEAVY) if (hasWord(folded, w)) v.push({ code: "personal_attack", detail: `Xingamento pesado demais, mesmo com palavrão liberado: "${w}".` });
+  const directed = folded.match(DIRECTED);
+  if (directed) v.push({ code: "personal_attack", detail: `Ataque dirigido ao aluno: "${directed[0]}".` });
+  if (level !== "moderate") for (const w of PROFANITY_MODERATE) if (hasWord(folded, w)) v.push({ code: "profanity", detail: `Palavrão acima do nível liberado: "${w}".` });
+  if (level === "off") for (const w of PROFANITY_MILD) if (hasWord(folded, w)) v.push({ code: "profanity", detail: `Palavrão com palavrões desligados: "${w}".` });
+  return v;
+}
 
 export interface SafetyResult {
   violations: Violation[];
@@ -221,11 +251,7 @@ export function safetyCheck(out: TutorOutput, ctx: SafetyContext): SafetyResult 
   }
 
   // 6. linguagem
-  for (const w of FORBIDDEN) if (hasWord(folded, w)) add("personal_attack", `Termo proibido em qualquer personalidade: "${w}".`);
-  const directed = folded.match(DIRECTED);
-  if (directed) add("personal_attack", `Ataque dirigido ao aluno: "${directed[0]}".`);
-  if (ctx.profanity !== "moderate") for (const w of PROFANITY_MODERATE) if (hasWord(folded, w)) add("profanity", `Palavrão acima do nível liberado: "${w}".`);
-  if (ctx.profanity === "off") for (const w of PROFANITY_MILD) if (hasWord(folded, w)) add("profanity", `Palavrão com palavrões desligados: "${w}".`);
+  v.push(...languageViolations(reply, ctx.profanity));
 
   const grounding: SafetyResult["grounding"] = valid.some((b) => b.kind === "source")
     ? "source"

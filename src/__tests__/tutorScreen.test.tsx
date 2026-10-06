@@ -38,7 +38,7 @@ const pendingEnd: (() => void)[] = [];
 const PERSONALITIES = [
   { id: "amigavel", name: "Professor Amigável", emoji: "🙂", tagline: "Calmo", swears: false, voice: { rate: 0.95, pitch: 1.05 } },
   { id: "rabugento", name: "Professor Rabugento", emoji: "😠", tagline: "Resmunga, mas ensina", swears: false, voice: { rate: 1, pitch: 0.85 } },
-  { id: "xingao", name: "Professor Xingão", emoji: "🤬", tagline: "Irreverente", swears: true, voice: { rate: 1.15, pitch: 1 } },
+  { id: "xingao", name: "Professor Xingão", emoji: "🤬", tagline: "Boca suja", swears: true, foul_mouthed: true, voice: { rate: 1.15, pitch: 1 } },
 ];
 const status = (over: any = {}) => ({
   enabled: true, available: true, requires_pro: false, daily_limit: 40, used_today: 2, max_profanity: "moderate", voice_enabled: true, reviews_due: 1,
@@ -110,6 +110,28 @@ describe("Tela do Tutor", () => {
     fireEvent.click(screen.getByText("Salvar professor"));
     await waitFor(() => expect(saved).toHaveLength(1));
     expect(saved[0]).toMatchObject({ personality_id: "rabugento", profanity: "off", adaptive: true });
+  });
+
+  it("Xingão: o palavrão já vem liberado (é o personagem) e o aluno pode baixar; o que ele marcar no campo passa a valer", async () => {
+    rpcImpl.app_tutor_status = () => status({ preferences: { ...status().preferences, personality_id: "amigavel", intensity: 3, chosen: false } });
+    const saved: any[] = [];
+    rpcImpl.app_tutor_save_preferences = (a) => (saved.push(a.p_prefs), a.p_prefs);
+    const TutorScreen = await load();
+    render(<TutorScreen go={() => {}} />);
+    await screen.findByText("Escolha seu professor");
+    fireEvent.click(screen.getByRole("radio", { name: /Xingão/ }));
+    const field = screen.getByLabelText("Palavrões") as HTMLSelectElement;
+    expect(field.value).toBe("moderate");
+    expect(screen.getByText(/xinga de verdade, inclusive você, na zoeira/)).toBeTruthy();
+    expect(Array.from(field.options).map((o) => o.textContent)).toEqual(["Sem palavrão", "Leves (putz, que saco)", "Liberados (inclusive com você)"]);
+    fireEvent.change(field, { target: { value: "off" } });
+    fireEvent.click(screen.getByRole("radio", { name: /Amigável/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /Xingão/ }));
+    expect((screen.getByLabelText("Palavrões") as HTMLSelectElement).value).toBe("off"); // a escolha do aluno não é desfeita
+    fireEvent.change(screen.getByLabelText("Palavrões"), { target: { value: "moderate" } });
+    fireEvent.click(screen.getByText("Salvar professor"));
+    await waitFor(() => expect(saved).toHaveLength(1));
+    expect(saved[0]).toMatchObject({ personality_id: "xingao", profanity: "moderate", intensity: 3 });
   });
 
   it("questão: sem gabarito à vista; a resposta vai para o banco, e o professor reage com a base indicada", async () => {

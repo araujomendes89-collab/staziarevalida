@@ -130,6 +130,10 @@ function ProfessorPicker({ status, onSaved }) {
   const set = (patch) => setPrefs((p) => ({ ...p, ...patch }));
   const chosen = status.personalities.find((p) => p.id === prefs.personality_id);
   const profanityOptions = PROFANITY.filter((o) => PROFANITY.findIndex((x) => x.value === o.value) <= PROFANITY.findIndex((x) => x.value === status.max_profanity));
+  // Professor boca-suja (o Xingão): o palavrão já vem no máximo liberado pela plataforma, porque é o personagem. O aluno pode baixar,
+  // e o que ele escolher no campo vale dali em diante. Nos outros que xingam, só sai se o aluno marcar.
+  const profanityTouched = React.useRef(false);
+  const pick = (p) => set({ personality_id: p.id, ...(p.foul_mouthed && !profanityTouched.current ? { profanity: status.max_profanity } : {}) });
   const save = async () => {
     setState({ saving: true, error: null });
     try {
@@ -147,7 +151,7 @@ function ProfessorPicker({ status, onSaved }) {
       <p style={{ margin: "6px 0 16px", color: "var(--text-secondary)", font: "var(--type-body-sm)" }}>O professor muda o jeito de ensinar. O conteúdo, o gabarito e as fontes são sempre os mesmos.</p>
       <div role="radiogroup" aria-label="Professor" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(190px,1fr))", gap: 10 }}>
         {status.personalities.map((p) => (
-          <button key={p.id} type="button" role="radio" aria-checked={p.id === prefs.personality_id} onClick={() => set({ personality_id: p.id })}
+          <button key={p.id} type="button" role="radio" aria-checked={p.id === prefs.personality_id} onClick={() => pick(p)}
             style={{ all: "unset", cursor: "pointer", boxSizing: "border-box", padding: 12, borderRadius: 14, border: `2px solid var(${p.id === prefs.personality_id ? "--border-brand" : "--border-subtle"})`, background: p.id === prefs.personality_id ? "var(--surface-brand-soft)" : "var(--surface-card)" }}>
             <div style={{ fontSize: 22, lineHeight: 1 }} aria-hidden="true">{p.emoji}</div>
             <div style={{ font: "600 14px var(--font-sans)", marginTop: 6 }}>{p.name.replace(/^Professor /, "")}</div>
@@ -161,7 +165,7 @@ function ProfessorPicker({ status, onSaved }) {
           <SelectField label="Explicação" value={prefs.explanation} onChange={(e) => set({ explanation: e.target.value })} options={EXPLANATION} />
           <SelectField label="Cobrança" value={prefs.strictness} onChange={(e) => set({ strictness: e.target.value })} options={STRICTNESS} />
           <SelectField label="Humor" value={prefs.humor} onChange={(e) => set({ humor: e.target.value })} options={HUMOR} />
-          {chosen?.swears && profanityOptions.length > 1 && <SelectField label="Palavrões" hint="Só como ênfase bem-humorada, nunca contra você." value={prefs.profanity} onChange={(e) => set({ profanity: e.target.value })} options={profanityOptions} />}
+          {chosen?.swears && profanityOptions.length > 1 && <SelectField label="Palavrões" hint="No liberado, o professor xinga de verdade, inclusive você, na zoeira. Ofensa pesada e humilhação não entram." value={prefs.profanity} onChange={(e) => ((profanityTouched.current = true), set({ profanity: e.target.value }))} options={profanityOptions} />}
         </div>
         <Switch label="Tutor Inteligente" description="Ajusta a intensidade por um tempo quando você trava ou embala, e sempre avisa. O professor escolhido não muda." checked={prefs.adaptive} onChange={(e) => set({ adaptive: e.target.checked })} />
         {status.voice_enabled && <VoicePicker voice={chosen?.voice} />}

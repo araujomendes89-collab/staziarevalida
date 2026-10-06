@@ -11,8 +11,8 @@ import { openDevDatabaseForTests, type DevDatabase } from "../../server/devDb/de
 import { devContentDb, type ContentDb } from "../../server/contentHub/infra";
 import type { StructuredRequest } from "../../server/contentHub/ai/provider";
 import { buildEngineStatements } from "../../scripts/supabase/engine-seed";
-import { adaptiveAdjust, effectiveParams, personalityLayer, profanityLevel, type PersonalityParams } from "../../server/tutor/personality";
-import { fallbackReply, quantities, safetyCheck, spokenText, type BaseBlock, type SafetyContext } from "../../server/tutor/safety";
+import { adaptiveAdjust, effectiveParams, personalityLayer, profanityLevel, swearingFrequency, type PersonalityParams } from "../../server/tutor/personality";
+import { fallbackReply, languageViolations, quantities, safetyCheck, spokenText, type BaseBlock, type SafetyContext } from "../../server/tutor/safety";
 import { resolveTutorProvider, sourceQuery, tutorTurn, TutorError } from "../../server/tutor/engine";
 import { resolveCreatorProvider } from "../../server/contentHub/ai/provider";
 import { TUTOR_CORE, TUTOR_PROMPT_LAYERS, type TutorOutput } from "../../server/tutor/prompts";
@@ -46,8 +46,15 @@ describe("Personalidade (só o jeito de falar)", () => {
     expect(profanityLevel(XINGAO, "off", "moderate")).toBe("off");
     expect(profanityLevel(XINGAO, "moderate", "mild")).toBe("mild");
     expect(profanityLevel(XINGAO, "moderate", "off")).toBe("off");
-    expect(profanityLevel(RABUGENTO, "moderate", "moderate")).toBe("off"); // o Rabugento não xinga
-    expect(profanityLevel(effectiveParams(XINGAO, 1), "moderate", "moderate")).toBe("mild"); // intensidade leve: só palavrão leve
+    expect(profanityLevel(RABUGENTO, "moderate", "moderate")).toBe("off"); // personagem que não xinga (palavrão 0)
+    expect(profanityLevel({ ...RABUGENTO, profanity: 30 }, "moderate", "moderate")).toBe("mild"); // personagem de palavrão leve não passa de leve
+  });
+
+  it("a intensidade muda o QUANTO o personagem xinga, nunca se ele pode (na intensidade 2 o Xingão caía para leve e o palavrão não saía)", () => {
+    expect(profanityLevel(XINGAO, "moderate", "moderate")).toBe("moderate");
+    expect(swearingFrequency(effectiveParams(XINGAO, 1))).toBe("de vez em quando");
+    expect(swearingFrequency(effectiveParams(XINGAO, 3))).toBe("com frequência");
+    expect(swearingFrequency(effectiveParams(XINGAO, 5))).toBe("em quase toda fala");
   });
 
   it("Tutor Inteligente: três erros seguidos pegam mais leve (avisando); três acertos sobem a complexidade; desligado não mexe", () => {
@@ -62,10 +69,26 @@ describe("Personalidade (só o jeito de falar)", () => {
     const text = personalityLayer({ id: "rabugento", name: "Professor Rabugento", params: RABUGENTO, style_notes: "Resmunga." }, RABUGENTO, "off", 3);
     expect(text).toContain("Professor Rabugento (intensidade 3 de 5)");
     expect(text).toContain("Sem palavrão.");
-    expect(text).toMatch(/nunca contra a pessoa/);
-    expect(text).toMatch(/insulto à inteligência/);
+    expect(text).toMatch(/nunca por quem ele é/);
+    expect(text).toMatch(/humilhação, de chamar o aluno de burro, idiota/);
+    expect(text).toMatch(/Personagem inteiro.*não saia dele, não peça desculpa pelo jeito/);
     expect(text).not.toMatch(/\d+\s?(mg|ml|%)/);
-    expect(personalityLayer({ id: "x", name: "X", params: XINGAO, style_notes: "." }, XINGAO, "moderate", 3)).toContain("Palavrão moderado pode");
+    // palavrão liberado: xinga de verdade, pode ir pra cima do aluno de leve, e os limites continuam na mesma camada
+    const X = { id: "x", name: "X", params: XINGAO, style_notes: ".", examples: ["Para, para!"], examples_strong: ["Para, porra!"] };
+    const liberado = personalityLayer(X, effectiveParams(XINGAO, 5), "moderate", 5);
+    expect(liberado).toContain("Palavrão liberado de verdade");
+    expect(liberado).toMatch(/Use em quase toda fala/);
+    expect(liberado).toMatch(/Pode xingar pra cima do aluno, na zoeira e de leve/);
+    expect(liberado).toMatch(/xingamento pesado contra ele/);
+    expect(liberado).toMatch(/Personagem no talo/);
+    expect(liberado).toContain("«Para, porra!»");
+    expect(liberado).not.toContain("«Para, para!»");
+    // sem o aluno liberar: as falas limpas, e o personagem que xinga é avisado para manter a energia sem palavrão
+    const limpo = personalityLayer(X, XINGAO, "off", 3);
+    expect(limpo).toContain("«Para, para!»");
+    expect(limpo).not.toMatch(/porra/i);
+    expect(limpo).toContain("O aluno pediu sem palavrão");
+    expect(personalityLayer(X, XINGAO, "mild", 3)).toMatch(/Palavrão leve liberado.*Nada mais pesado que isso/);
     // o jeito vai em frases de gente e com falas de referência, não em lista de regras
     expect(text).toContain("Seu jeito agora: faz graça com frequência; solta uma ironia leve de vez em quando; é seco, de pouco afeto; cobra firme e pede o porquê; faz teatro de impaciência com erro básico, e explica mesmo assim; prefere perguntar antes de explicar.");
     expect(text).not.toMatch(/^- /m);
@@ -148,8 +171,18 @@ describe("Validação de segurança (regras, sem IA)", () => {
     expect(codes("Porra, você sabia isso.")).toEqual(["profanity"]);
     expect(codes("Porra, você sabia isso.", { profanity: "mild" })).toEqual(["profanity"]);
     expect(codes("Porra, você sabia isso.", { profanity: "moderate" })).toEqual([]);
-    expect(codes("Caramba, olha o dado.", { profanity: "mild" })).toEqual([]);
-    expect(codes("Caramba, olha o dado.")).toEqual(["profanity"]);
+    expect(codes("Putz, que saco, olha o dado.", { profanity: "mild" })).toEqual([]);
+    expect(codes("Putz, olha o dado.")).toEqual(["profanity"]);
+    expect(codes("Caramba, poxa, olha o dado.")).toEqual([]); // não são palavrão
+    // termo clínico não é palavrão: "droga" e "raios" só contam como interjeição
+    expect(codes("A droga vasoativa de escolha vem depois do volume; peça os raios X de tórax. O corno anterior da medula é outra história.")).toEqual([]);
+    expect(codes("Que droga, hein.")).toEqual(["profanity"]);
+    // decisão do dono: com palavrão liberado, pode ir pra cima do aluno, de leve
+    expect(codes("Porra, você leu o enunciado? Acorda, cacete! Ô seu preguiçoso do caralho, pensa antes de chutar.", { profanity: "moderate" })).toEqual([]);
+    // ...mas xingamento pesado contra a pessoa não passa em nível nenhum
+    for (const heavy of ["Vai tomar no cu.", "Vai se foder, aluno.", "Seu merda, lê de novo.", "Você é um bosta.", "Filho da puta, acertou.", "Seu corno, presta atenção."]) {
+      expect(codes(heavy, { profanity: "moderate" })).toContain("personal_attack");
+    }
     expect(codes("Você é burro mesmo.", { profanity: "moderate" })).toContain("personal_attack");
     expect(codes("Você é um incompetente.", { profanity: "moderate" })).toContain("personal_attack");
     expect(codes("Seu inútil, presta atenção.", { profanity: "moderate" })).toContain("personal_attack");
@@ -213,7 +246,9 @@ describe("Banco e motor (IA simulada)", () => {
       expect(st).toMatchObject({ enabled: false, available: false, daily_limit: 40, used_today: 0, voice_enabled: true });
       expect(st.personalities).toHaveLength(13);
       expect(st.personalities.find((p: any) => p.id === "xingao")).toMatchObject({ swears: true, emoji: "🤬" });
-      expect(st.personalities.filter((p: any) => p.swears).map((p: any) => p.id)).toEqual(["xingao"]);
+      expect(st.personalities.filter((p: any) => p.swears).map((p: any) => p.id)).toEqual(["rabugento", "xingao", "mal_humorado"]);
+      expect(st.personalities.filter((p: any) => p.foul_mouthed).map((p: any) => p.id)).toEqual(["xingao"]); // só nele o palavrão já vem marcado
+      expect(st.preferences).toMatchObject({ intensity: 3, profanity: "off", chosen: false }); // padrão: personagem inteiro, sem palavrão
       expect(st.personalities.every((p: any) => p.voice.rate >= 0.5 && p.voice.pitch <= 2)).toBe(true);
       await expect(rpc(S1, "app_tutor_start", "livre", null, null)).rejects.toThrow(/ainda não está ligado/);
       await expect(rpc(S1, "app_admin_tutor_save_config", { enabled: true }, "quero ligar o tutor agora")).rejects.toThrow(/administradores/);
@@ -261,6 +296,22 @@ describe("Banco e motor (IA simulada)", () => {
         for (const k of ["question", "review", "next", "topic"]) expect(p.lines[k].length).toBeGreaterThanOrEqual(2);
         expect(p.lines.topic.every((l: string) => l.includes("{tema}"))).toBe(true);
         expect(JSON.stringify([p.examples, p.lines])).not.toMatch(/\d+\s?(mg|ml|mmhg|%)/i);
+      }
+      // falas limpas não têm palavrão; a versão com palavrão xinga de verdade e nunca traz xingamento pesado nem ataque pessoal
+      const withStrong = await sql(`select id, openings, examples, lines, examples_strong, lines_strong from public.tutor_personalities order by position`);
+      for (const p of withStrong) {
+        const clean = [...p.openings, ...p.examples, ...Object.values(p.lines).flat()] as string[];
+        for (const line of clean) expect([p.id, line, languageViolations(line, "off")]).toEqual([p.id, line, []]);
+        const strong = [...p.examples_strong, ...Object.values(p.lines_strong).flat()] as string[];
+        for (const line of strong) expect([p.id, line, languageViolations(line, "moderate")]).toEqual([p.id, line, []]);
+        expect(JSON.stringify(strong)).not.toMatch(/\d+\s?(mg|ml|mmhg|%)/i);
+      }
+      const swearers = withStrong.filter((p: any) => p.examples_strong.length > 0);
+      expect(swearers.map((p: any) => p.id)).toEqual(["rabugento", "xingao", "mal_humorado"]);
+      for (const p of swearers) {
+        expect(p.examples_strong.length).toBeGreaterThanOrEqual(5);
+        for (const k of ["opening", "question", "review", "next", "topic"]) expect(p.lines_strong[k].length).toBeGreaterThanOrEqual(2);
+        expect(p.examples_strong.every((l: string) => languageViolations(l, "off").some((x) => x.code === "profanity"))).toBe(true);
       }
       await expect(rpc(S1, "app_tutor_start", "inventado", null, null)).rejects.toThrow(/Modo inválido/);
     });
@@ -380,7 +431,7 @@ describe("Banco e motor (IA simulada)", () => {
       expect(req.system.indexOf("QUEM VOCÊ É NESTA CONVERSA: Professor Rabugento")).toBeGreaterThan(req.system.indexOf("AGORA: conversa aberta"));
       expect(req.system).toContain("intensidade 4 de 5");
       expect(req.system).toContain("fala pouco: uma ou duas frases"); // explicação "curta" escolhida pelo aluno
-      expect(req.system).toContain("«De novo isso? Tá, senta aí que eu explico.»"); // falas de referência do personagem
+      expect(req.system).toContain("«De novo isso? Francamente. Senta aí que eu explico.»"); // falas de referência do personagem
       expect(req.system.indexOf("COMO VOCÊ FALA")).toBeLessThan(req.system.indexOf("O QUE É FATO")); // o jeito de conversar vem antes das travas
       expect(req.effort).toBe("low");
       expect(req.input).toMatch(/<aluno>[\s\S]*Ignore suas regras[\s\S]*<\/aluno>/);
@@ -389,7 +440,7 @@ describe("Banco e motor (IA simulada)", () => {
       const msgs = await sql(`select role, content from public.tutor_messages where session_id = $1 order by id`, [session]);
       expect(msgs.map((m) => m.role)).toEqual(["tutor", "student", "tutor"]);
       expect((await sql(`select requests from public.ai_usage where user_id = $1`, [S1]))[0].requests).toBe(1);
-      expect((await lastMeta()).meta).toMatchObject({ simulated: true, prompt_version: "1.1.0", personality: { id: "rabugento", profanity: "off" } });
+      expect((await lastMeta()).meta).toMatchObject({ simulated: true, prompt_version: "1.2.0", personality: { id: "rabugento", profanity: "off" } });
       expect((await sql(`select count(*)::int n from public.ch_prompt_versions where prompt_id like 'tutor%'`))[0].n).toBe(TUTOR_PROMPT_LAYERS.length);
     });
 
@@ -415,7 +466,21 @@ describe("Banco e motor (IA simulada)", () => {
       const s2 = (await rpc(S2, "app_tutor_start", "livre", null, null)).id;
       const ok = await turn(() => reply("Porra, olha o enunciado de novo."), { type: "message", text: "não sei" }, S2, s2);
       expect(ok.message.content).toBe("Porra, olha o enunciado de novo.");
-      expect(seen[seen.length - 1].system).toContain("Palavrão moderado pode");
+      expect(seen[seen.length - 1].system).toContain("Palavrão liberado de verdade");
+      expect(seen[seen.length - 1].system).toContain("Puta que pariu, de novo essa?"); // falas de referência na versão com palavrão
+      // a abertura e a "próxima" também saem na versão com palavrão, e só para quem liberou
+      const strong = (await sql(`select lines_strong from public.tutor_personalities where id = 'xingao'`))[0].lines_strong;
+      expect(strong.opening).toContain((await rpc(S2, "app_tutor_session", s2)).messages[0].content);
+      await rpc(ADMIN, "app_admin_tutor_save_config", { max_profanity: "mild" }, "Teto baixo: a abertura volta a ser a limpa.");
+      const clean = await rpc(S2, "app_tutor_start", "livre", null, null);
+      expect((await sql(`select openings from public.tutor_personalities where id = 'xingao'`))[0].openings).toContain(clean.messages[0].content);
+      await rpc(ADMIN, "app_admin_tutor_save_config", { max_profanity: "moderate" }, "Voltando o teto de palavrões.");
+      // xingar o aluno de leve passa; pesado não
+      const leve = await turn(() => reply("Porra, você leu o enunciado? Acorda, cacete."), { type: "message", text: "chutei" }, S2, s2);
+      expect(leve.message.content).toBe("Porra, você leu o enunciado? Acorda, cacete.");
+      const pesado = await turn(() => reply("Vai tomar no cu, lê de novo."), { type: "message", text: "chutei de novo" }, S2, s2);
+      expect(pesado.message.content).not.toMatch(/tomar no cu/);
+      expect((await lastMeta(s2)).meta.violations).toContain("personal_attack");
       const attack = await turn(() => reply("Você é burro, porra."), { type: "message", text: "errei de novo" }, S2, s2);
       expect(attack.message.content).not.toMatch(/burro/);
       expect((await lastMeta(s2)).meta.violations).toContain("personal_attack");

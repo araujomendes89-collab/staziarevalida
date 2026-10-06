@@ -306,7 +306,7 @@ export function AdminSettings() {
 const PROFANITY_CAP = [
   { value: "off", label: "Desativados para todos" },
   { value: "mild", label: "Até leves" },
-  { value: "moderate", label: "Até moderados" },
+  { value: "moderate", label: "Até liberados (xinga o aluno na zoeira)" },
 ];
 
 /** Liga e desliga o Tutor, define o limite por aluno e mostra o consumo. Toda mudança pede motivo e vai para o registro. */
@@ -369,7 +369,7 @@ export function AdminTutor() {
           <Switch label="Conversa por voz" description="O aluno fala e ouve o professor no próprio aparelho (voz do navegador, sem custo extra de IA)." checked={form.voice_enabled} onChange={(e) => set({ voice_enabled: e.target.checked })} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
             <TextField label="Mensagens por aluno por dia" value={form.daily_message_limit} inputMode="numeric" maxLength={3} onChange={(e) => set({ daily_message_limit: e.target.value })} hint="De 1 a 500. É o teto de gasto por aluno." />
-            <SelectField label="Palavrões (Professor Xingão)" value={form.max_profanity} onChange={(e) => set({ max_profanity: e.target.value })} options={PROFANITY_CAP} />
+            <SelectField label="Palavrões (teto para todos os professores)" value={form.max_profanity} onChange={(e) => set({ max_profanity: e.target.value })} options={PROFANITY_CAP} />
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Badge>{u.requests} mensagens em 30 dias</Badge>

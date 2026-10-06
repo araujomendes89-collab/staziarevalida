@@ -56,7 +56,7 @@ Dados: `<base>` (blocos Q, A, U, F1…), `<contexto_do_aluno>`, `<conversa>`, `<
 
 **Validação (item 26, 48.10).** Barra, por regra de software: número com unidade fora da base; documento, link ou "conduta atual" sem citação de fonte;
 citação que não é cópia exata; contestar o gabarito oficial; entregar a resposta com a questão aberta (antes da dica 5); palavrão acima do liberado;
-ataque pessoal. Barrada, a IA recebe a lista e tenta de novo uma vez. Barrada outra vez, o aluno recebe uma resposta **fixa e honesta** e o texto inválido
+xingamento pesado contra o aluno; ataque pessoal. Barrada, a IA recebe a lista e tenta de novo uma vez. Barrada outra vez, o aluno recebe uma resposta **fixa e honesta** e o texto inválido
 nunca é gravado. Embaixo de cada resposta aparece de onde ela veio, calculado pelas citações válidas (não pelo que a IA declara).
 
 **Quem corrige questão é o banco.** A IA nunca decide se o aluno acertou. Com a questão aberta, a IA **nem recebe** o gabarito (só nas dicas, que precisam dele).
@@ -66,11 +66,12 @@ nunca é gravado. Embaixo de cada resposta aparece de onde ela veio, calculado p
 13 professores em `tutor_personalities` (parâmetros, jeito, primeiras falas e voz): Amigável, Rabugento, Xingão, Mal-Humorado, Preguiçoso, Socrático,
 Preceptor de Plantão, Examinador do Revalida, Militar, Ansioso, Sarcástico, Nerd, Motivador.
 
-- **Intensidade 1 a 5** afasta ou aproxima cada traço do neutro. Nunca toca em conteúdo.
+- **Intensidade 1 a 5** afasta ou aproxima cada traço do neutro e diz o quanto carregar no personagem (padrão: 3, "personagem inteiro"). Nunca toca em conteúdo.
 - **Escolhas do aluno**: humor, tamanho da explicação (curta, normal, detalhada, nerd), cobrança (baixa, normal, alta, insana), palavrões.
-- **Palavrão** só sai com três chaves: o personagem xinga (hoje só o Xingão), o aluno liberou e a plataforma permite. Vale o menor nível. É ênfase, nunca agressão.
-- **Limites de toda personalidade**: nada de ataque pessoal, humilhação, insulto à inteligência, discriminação ou comentário sobre aparência, raça, religião,
-  gênero, orientação sexual, deficiência ou saúde mental. Isso está no prompt **e** na validação.
+- **Palavrão** só sai com três chaves: o personagem xinga (Xingão, Rabugento e Mal-Humorado), o aluno liberou e a plataforma permite. Vale o menor nível.
+  No nível liberado ele pode ir pra cima do aluno, de leve (§12).
+- **Limites de toda personalidade**: nada de humilhação, de chamar o aluno de burro ou idiota, de xingamento pesado contra ele, de ameaça, de discriminação
+  ou de comentário sobre aparência, raça, religião, gênero, orientação sexual, deficiência ou saúde mental. Isso está no prompt **e** na validação.
 - **Tutor Inteligente (item 31)**: três erros seguidos → pega mais leve e volta aos fundamentos, **avisando o aluno**; três acertos limpos → sobe a complexidade.
   O professor escolhido nunca muda sozinho.
 - A primeira fala de cada conversa vem do repertório do personagem, **sem chamar IA**.
@@ -145,7 +146,7 @@ Tutor. **Não há previsão de aprovação**: não existe base para isso. A mem�
 2. **Regra de base estrita.** Hoje o Tutor não diz dose, valor de corte ou diretriz sem fonte na base. É a mesma regra do resto do sistema ("nada inventado").
    Afrouxar isso é possível, mas faria a IA afirmar conduta sem conferência: não recomendo.
 3. **Quem tem acesso**: todos, ou só planos pagos. O protótipo falava em voz no plano Elite; isso não foi decidido aqui.
-4. **Palavrões**: o teto da plataforma (hoje: até moderados, e só para quem escolhe o Xingão e libera).
+4. **Palavrões**: o teto da plataforma (hoje: até liberados, para quem escolhe Xingão, Rabugento ou Mal-Humorado e libera). Onde fica a linha: §12.
 
 ## 10. Fala natural (versão 1.1.0 do prompt, migração `3200_tutor_natural`)
 
@@ -194,3 +195,34 @@ Agora há um modo **"Conversar por voz"** no topo da conversa (`voiceCommands.js
 Limites de hoje: o reconhecimento é o do navegador (Chrome, Edge, Safari; no Chrome o áudio é processado pelo Google), pode errar termo médico e não
 existe no Firefox. O passo seguinte é o reconhecimento **no servidor**, junto com a voz neural, que depende de uma chave real do Gemini
 (a `GEMINI_API_KEY` do `.env` ainda é o texto de exemplo). O roteiro das amostras de voz está em `scripts/tutor/voice-samples.ts`.
+
+## 12. Personagem carregado e palavrão pra cima do aluno (versão 1.2.0 do prompt, migração `3300_tutor_escrachado`, 2026-10-05)
+
+O dono testou de novo: *"não estou escutando xingamento, não estou vendo a personalidade pesada, mal-humorada, seja muito escrachado"*, e decidiu:
+palavrão pode ir **contra a pessoa, porém não pesado**.
+
+**O defeito que escondia o palavrão.** O nível de palavrão era calculado com os parâmetros já escalados pela intensidade. Na intensidade padrão (2) o
+Xingão caía para "leve", e o que o aluno liberava não saía. Agora a intensidade muda **o quanto** ele xinga, nunca **se** ele pode; e o texto do prompt
+deixou de pedir "raro" e "sem exagero".
+
+| O que mudou | Como ficou |
+|---|---|
+| Quem xinga | Xingão (em quase toda fala), Mal-Humorado e Rabugento (com frequência). O Sarcástico ficou mais ácido, sem palavrão |
+| Jeito | parâmetros e descrição mais pesados; o núcleo não amacia mais o personagem (a reação ao erro é a dele) |
+| Intensidade | padrão 3; a 4 "carrega no personagem" e a 5 é "no talo: escrachado, teatral" |
+| Falas | cada um dos três tem a versão **com palavrão** das falas de referência e das aberturas (`examples_strong`, `lines_strong`), usada só com o palavrão liberado |
+| Tela | no Xingão o campo Palavrões já vem em "Liberados" (é o personagem) e o aluno pode baixar; no Rabugento e no Mal-Humorado só sai se o aluno marcar |
+
+**Onde fica a linha** (`server/tutor/safety.ts`, vale para a resposta da IA e é conferida nas falas fixas pelos testes):
+
+- **passa, no nível liberado**: palavrão como ênfase e pra cima do aluno, de leve: "porra, você leu o enunciado?", "acorda, cacete", "ô seu preguiçoso do caralho";
+- **não passa em nível nenhum**: xingamento pesado contra a pessoa (mandar tomar naquele lugar, "filho da puta", "seu merda", "seu bosta"), chamar de burro,
+  idiota, imbecil e afins, termos de preconceito, e ataque dirigido ("você é um inútil");
+- **não é palavrão**: "droga" e "raios" sozinhos são termo clínico ("droga vasoativa", "raios X") e só contam como interjeição ("que droga"); "poxa" e "caramba" saíram da lista.
+
+Esta linha é uma escolha de implementação da frase "não pesada" e está em três listas no arquivo: mudar é trocar palavra de lista.
+
+**Conferência com a IA de verdade** (banco temporário, `scripts/tutor/preflight.ts`, 2 × 8 falas, intensidade 4, palavrão liberado): Xingão e Mal-Humorado
+xingaram em toda fala, nenhuma resposta foi barrada, a letra do gabarito não saiu com a questão aberta e a dose sem fonte foi recusada no tom do personagem
+(*"essa dose eu não tenho confirmada aqui, então não vou te passar de cabeça, que número chutado em pediatria dá merda"*). Custo: US$ 0,18.
+
