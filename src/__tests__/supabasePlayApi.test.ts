@@ -16,6 +16,7 @@ const ANA = "00000000-0000-4000-8000-00000000000a";
 const BRUNO = "00000000-0000-4000-8000-00000000000b";
 const CARLA = "00000000-0000-4000-8000-00000000000c";
 const ADMIN = "00000000-0000-4000-8000-0000000000ad";
+const DIEGO = "00000000-0000-4000-8000-00000000000d";
 const TOPICS_PER_AREA = 4;
 const PER_TOPIC = 5;
 
@@ -80,7 +81,7 @@ beforeAll(async () => {
   for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   }
-  await db.query(`insert into auth.users (id, email) values ($1, 'ana@teste.dev'), ($2, 'bruno@teste.dev'), ($3, 'carla@teste.dev'), ($4, 'admin@teste.dev')`, [ANA, BRUNO, CARLA, ADMIN]);
+  await db.query(`insert into auth.users (id, email) values ($1, 'ana@teste.dev'), ($2, 'bruno@teste.dev'), ($3, 'carla@teste.dev'), ($4, 'admin@teste.dev'), ($5, 'diego@teste.dev')`, [ANA, BRUNO, CARLA, ADMIN, DIEGO]);
   await db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await db.query(`update public.profiles set name = 'Ana Maria Souza' where id = $1`, [ANA]);
   await db.query(`update public.profiles set name = 'Bruno Lima' where id = $1`, [BRUNO]);
@@ -493,5 +494,28 @@ describe("Flashcards e Tutor", () => {
     const c = (await sql(`select public.ch_worker_tutor_play_context($1) as r`, [ANA]))[0].r;
     expect(c).toMatchObject({ league: expect.any(String), streak: expect.any(Number), questions: expect.any(Number) });
     expect(Object.keys(c).sort()).toEqual(["accuracy", "league", "missions_pending", "percentile", "questions", "rank", "stazia_score", "streak", "weakest_area", "weekly_xp"]);
+  });
+});
+
+describe("Simulado finalizado de uma vez", () => {
+  it("40 respostas gravadas juntas valem todas (não é enxurrada) e o treino logo depois também vale", async () => {
+    const ids = [...questionIds.CLINICA_MEDICA, ...questionIds.CIRURGIA_GERAL].slice(0, 40);
+    const started = await rpc(DIEGO, "app_start_session", { p_kind: "simulado", p_filters: {}, p_count: 40, p_time_limit_seconds: 7200 });
+    await sql(`update public.practice_sessions set question_ids = $2 where id = $1`, [started.session_id, ids]);
+    for (const id of ids) await rpc(DIEGO, "app_answer_question", { p_session_id: started.session_id, p_question_id: id, p_option: "B", p_active_ms: 30000 });
+    const t0 = Date.now();
+    await rpc(DIEGO, "app_finish_session", { p_session_id: started.session_id });
+    const ms = Date.now() - t0;
+    const ev = await events(DIEGO);
+    const answers = ev.filter((e) => e.source_type === "question_attempt");
+    expect(answers.length).toBe(40);
+    expect(answers.every((e) => e.is_valid)).toBe(true);
+    expect(answers[0].metadata.session_kind).toBe("simulado");
+    expect((await stats(DIEGO)).questions_answered).toBe(40);
+    expect(ev.filter((e) => e.event_type === "SIMULATION_COMPLETED").length).toBe(1);
+    // treino logo em seguida: as 40 do simulado não entram na conta de enxurrada
+    const { answers: next } = await practice(DIEGO, [questionIds.PEDIATRIA[19]], () => true);
+    expect(next[0].play.xp).toMatchObject({ valid: true });
+    console.log(`[play] simulado de 40 questões finalizado em ${ms} ms`);
   });
 });

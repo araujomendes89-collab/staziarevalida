@@ -30,6 +30,10 @@ export interface Storage {
   put(key: string, data: Buffer, contentType: string): Promise<string>;
   get(key: string): Promise<Buffer>;
   exists(key: string): Promise<boolean>;
+  /** Endereço temporário para o navegador baixar direto do depósito (só no Supabase). */
+  signedUrl?(key: string, seconds: number): Promise<string>;
+  /** Envio direto do navegador ao depósito (só no Supabase): não passa pelo limite de corpo da Vercel (4,5 MB). */
+  signedUpload?(key: string): Promise<{ path: string; token: string }>;
 }
 
 const FN = /^(ch_worker_[a-z_]+|app_[a-z0-9_]+)$/;
@@ -126,6 +130,16 @@ export function supabaseStorage(bucket = "content-hub"): Storage {
       const dir = path.posix.dirname(key);
       const { data } = await admin.storage.from(bucket).list(dir === "." ? "" : dir, { search: path.posix.basename(key) });
       return Boolean(data?.some((f) => f.name === path.posix.basename(key)));
+    },
+    async signedUrl(key, seconds) {
+      const { data, error } = await admin.storage.from(bucket).createSignedUrl(key, seconds);
+      if (error || !data) throw new Error(error?.message ?? "Arquivo não encontrado.");
+      return data.signedUrl;
+    },
+    async signedUpload(key) {
+      const { data, error } = await admin.storage.from(bucket).createSignedUploadUrl(key, { upsert: true });
+      if (error || !data) throw new Error(error?.message ?? "Não foi possível preparar o envio.");
+      return { path: data.path, token: data.token };
     },
   };
 }

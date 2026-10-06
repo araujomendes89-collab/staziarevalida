@@ -44,6 +44,7 @@ import { createTutorRouter } from "./server/tutor/router";
 import { tutorMockRespond } from "./server/tutor/mock";
 import { startVoiceSweeper } from "./server/tutor/realtime";
 import { createPlayRouter, startPlayScheduler } from "./server/play/router";
+import { createLessonsRouter, lessonsStorage } from "./server/lessons/router";
 import { getChecklistCatalog } from "./server/checklistBank/catalog";
 
 dotenv.config();
@@ -102,6 +103,8 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   app.use("/api/tutor", createTutorRouter(tutorDeps, hub.pending));
   // Stazia Play: rotina diária (sequências, score, ranking, ligas) com o papel de serviço
   app.use("/api/play", createPlayRouter(hub.deps ? { db: hub.deps.db, log: (m: string) => console.log(m) } : null));
+  // Aulas: slides e áudios ficam no depósito privado; o banco decide quem vê
+  app.use("/api/lessons", createLessonsRouter(hub.deps ? { db: hub.deps.db, storage: lessonsStorage(hub.deps.db.mode), log: (m: string) => console.log(m) } : null, hub.pending));
   if (process.env.NODE_ENV !== "production") {
     // Banco de desenvolvimento no servidor: app do aluno, painel e processamento usam o mesmo.
     app.use("/api/dev-db", createDevDbRouter(() => getDevDatabase()));

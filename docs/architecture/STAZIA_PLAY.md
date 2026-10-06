@@ -136,3 +136,9 @@ Reversão: a migração é aditiva (tabelas, funções, gatilhos e uma coluna). 
 - **Horas estudadas** somam só `active_ms` das questões (flashcards não medem tempo).
 - Não implementados nesta fase (arquitetura pronta): amigos, desafios, feed social (`flags.social_feed_enabled` existe, desligada), aulas (`xp.lesson_completed`), recompensas acadêmicas além de proteção e molduras, campo de fuso na tela da conta, i18n (o app é só pt-BR).
 - O `fraud_score` é fixo por motivo (50 ou 80), não um modelo.
+
+## 8. Correção e desempenho (migração `20261003003900_stazia_play_desempenho.sql`)
+
+- **Defeito encontrado depois da publicação**: o simulado grava todas as respostas de uma vez ao finalizar, e a regra de enxurrada (30 respostas por minuto) marcava as seguintes como inválidas, sem XP e fora das estatísticas. Agora o simulado não conta como enxurrada nem entra na conta dos treinos seguintes; o tipo da sessão fica no evento (`session_kind`). Em produção nenhum aluno foi afetado (só havia uma resposta registrada, válida, e nenhum simulado finalizado).
+- **Desempenho**: missões, sequência, score e medalhas rodam uma vez por comando (gatilho por comando com tabela de transição), não uma vez por resposta; medalhas calculam cada agregado no máximo uma vez e só se alguma pendente precisar; os fatos do período usam o índice por aluno e horário; o score usa junções em vez de função por linha.
+- Medido no banco local (PGlite), aluno com 400 respostas: resposta no treino ~97 ms → ~10 ms; simulado de 100 questões finalizado 9,6 s → 0,13 s; respostas do simulado sem XP 80/100 → 0/100.

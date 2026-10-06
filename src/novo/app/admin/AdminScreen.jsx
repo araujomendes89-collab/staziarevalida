@@ -10,11 +10,15 @@ import { AdminUsers } from "./AdminUsers.jsx";
 import { AdminAudit, AdminOverview, AdminPlans, AdminSettings, AdminStations, AdminTutor } from "./AdminPanels.jsx";
 import { ContentHub } from "./content/ContentHub.jsx";
 import { AdminPlay } from "./AdminPlay.jsx";
+import { AdminLessons } from "./AdminLessons.jsx";
+import { AdminUpdates } from "./AdminUpdates.jsx";
 
 const TABS = [
   { value: "geral", label: "Visão geral", icon: "layout-dashboard", staff: true },
   { value: "usuarios", label: "Usuários", icon: "users" },
   { value: "questoes", label: "Questões", icon: "file-question", staff: true },
+  { value: "aulas", label: "Aulas", icon: "tv", staff: true },
+  { value: "atualizacoes", label: "Atualizações", icon: "refresh-cw", staff: true, reviewer: true },
   { value: "planos", label: "Planos", icon: "crown" },
   { value: "estacoes", label: "Estações", icon: "clipboard-list", staff: true },
   { value: "conteudo", label: "Central de Conteúdo", icon: "library", staff: true, reviewer: true },
@@ -42,6 +46,8 @@ export function AdminScreen() {
       {tab === "geral" && <AdminOverview isAdmin={isAdmin} />}
       {tab === "usuarios" && <AdminUsers />}
       {tab === "questoes" && <AdminQuestions />}
+      {tab === "aulas" && <AdminLessons />}
+      {tab === "atualizacoes" && <AdminUpdates />}
       {tab === "planos" && <AdminPlans />}
       {tab === "estacoes" && <AdminStations />}
       {tab === "conteudo" && <ContentHub isAdmin={isAdmin} isStaff={isStaff} />}

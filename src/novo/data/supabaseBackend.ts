@@ -71,6 +71,10 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
       if (error) throw new BackendError(/fetch|network/i.test(error.message) ? "network" : "unknown", error.message);
       return data as T;
     },
+    async uploadToSignedUrl(bucket, path, token, file, contentType) {
+      const { error } = await client.storage.from(bucket).uploadToSignedUrl(path, token, file, { contentType });
+      if (error) throw new BackendError(/fetch|network/i.test(error.message) ? "network" : "unknown", error.message);
+    },
     subscribeStats(userId, onChange) {
       // Só a própria linha (filtro + RLS): nunca chega dado de outro aluno.
       const channel = client

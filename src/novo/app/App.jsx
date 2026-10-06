@@ -9,7 +9,8 @@ import { AuthFlow } from "./AuthScreens.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
 import { TutorScreen } from "./tutor/TutorScreen.jsx";
 import { TutorDockProvider } from "./tutor/TutorDrawer.jsx";
-import { Aulas, Materiais } from "../prototype/Study1.jsx";
+import { LessonsScreen } from "./study/LessonsScreen.jsx";
+import { UpdatesScreen } from "./study/UpdatesScreen.jsx";
 import { Home2, Stations, Station, Peps, Perf2, SimPatient } from "../prototype/Phase2.jsx";
 import { Pair } from "../prototype/Match.jsx";
 import { Theory2 } from "../prototype/Theory2.jsx";
@@ -33,7 +34,7 @@ import { AchievementsScreen } from "./play/AchievementsScreen.jsx";
 const TITLES = {
   aulas: ["Aulas teórico-práticas", "Estudar · conteúdo audiovisual por grande área"],
   temas: ["Grandes Temas do Revalida", "Estudar · incidência real nas provas oficiais"],
-  materiais: ["Materiais oficiais e diretrizes", "Estudar · PCDTs, protocolos do MS, INEP e sociedades"],
+  atualizacoes: ["Atualizações & Diretrizes", "Estudar · o que mudou nas condutas e onde conferir"],
   hoje: ["Plano de hoje", "Estudar · praticar · revisar"],
   questoes: ["Questões", "Monte seu treino"],
   simulados: ["Simulados", "Condições de prova"],
@@ -59,7 +60,7 @@ const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas"]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -95,6 +96,8 @@ function Screen() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
+  // "Materiais oficiais" virou "Atualizações & Diretrizes": endereços antigos continuam funcionando
+  if (route === "materiais") return <Navigate to="/atualizacoes" replace />;
   if (!ROUTES.has(route)) return <Navigate to="/" replace />;
   // equipe (admin/editor) ou revisor médico de alguma área (só a revisão da Central de Conteúdo)
   if (route === "admin" && !isStaffRole(boot.role) && !boot.reviewer_areas?.length) return <Navigate to="/" replace />;
@@ -121,9 +124,9 @@ function Screen() {
   let body;
   if (route === "home") body = <HomeScreen go={go} mobile={mobile} />;
   else if (route === "hoje") body = <TodayPlan go={go} />;
-  else if (route === "aulas") body = <Aulas />;
+  else if (route === "aulas") body = <LessonsScreen go={go} />;
   else if (route === "temas") body = <ThemesScreen go={go} />;
-  else if (route === "materiais") body = <Materiais />;
+  else if (route === "atualizacoes") body = <UpdatesScreen go={go} />;
   else if (route === "questoes") body = <QuestionBuilder key="q" go={go} mode="q" />;
   else if (route === "simulados") body = <QuestionBuilder key="sim" go={go} mode="sim" />;
   else if (route === "flash") body = <FlashcardsScreen go={go} />;
