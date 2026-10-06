@@ -331,6 +331,21 @@ describe("Isolamento, relatório e custo", () => {
     expect(list[0]).toMatchObject({ persona: expect.any(String), minutes: expect.any(Number), questions: expect.any(Number) });
   });
 
+  it("memória de longo prazo: evolução (errava um tema e agora acerta), piada interna e perfil do aluno", async () => {
+    const s = await rpc(S3, "app_tutor_start", "livre", null, null);
+    const q = Object.keys(off)[0];
+    const topic = (await sql(`select topic from public.questions where id = $1`, [q]))[0].topic;
+    // errava o tema há uma semana (2 erros) e acertou 2 questões dele nos últimos dias
+    await sql(`insert into public.student_error_events (user_id, question_id, session_id, theme, error_type, knowledge_gap, source, occurred_at)
+               values ($1, $2, $3, $4, 'knowledge_gap', 'conduta no tema', 'tutor_text', now() - interval '7 days'), ($1, $2, $3, $4, 'knowledge_gap', 'conduta no tema', 'tutor_text', now() - interval '6 days')`, [S3, q, s.id, topic]);
+    for (let i = 0; i < 2; i++)
+      await sql(`insert into public.tutor_answers (session_id, user_id, question_id, selected_option, is_correct, outcome, response_ms) values ($1, $2, $3, $4, true, 'normal', 20000)`, [s.id, S3, q, off[q]]);
+    const mem = (await sql(`select public.tutor_learning_memory($1, null, null) m`, [S3]))[0].m;
+    expect(mem.improvements).toEqual(expect.arrayContaining([expect.objectContaining({ topic, errors_before: 2, correct_recent: 2 })]));
+    expect(mem.inside_jokes.map((j: any) => j.topic)).toContain("conduta no tema");
+    expect(mem.profile).toMatchObject({ average_response_s: 20 });
+  });
+
   it("custo central (AI_COST_CONFIG): preço por modelo, prefixo de versão e atualização pelo .env sem migração", () => {
     expect(priceFor("gpt-realtime-2.1-2026-09-01")).toMatchObject({ audio_out: 64 });
     expect(priceFor("modelo-desconhecido")).toBeNull();

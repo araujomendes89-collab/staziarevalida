@@ -221,6 +221,32 @@ describe("Tutor fora da tela do Tutor, resolução, encerramento e relatório", 
     expect(screen.getByText("Próximos temas sugeridos: Sepse.")).toBeTruthy();
   });
 
+  it("trava do professor: depois de um erro repetido, a próxima questão só libera quando o aluno explica o raciocínio", async () => {
+    let current = session({ question_state: "answered", question: { ...QUESTION, state: "answered", correct_option: "A" }, last_answer: { selected: "B", is_correct: false } });
+    rpcImpl.app_tutor_session = () => current;
+    server["/api/tutor/status"] = () => ({ body: { realtime_voice: false } });
+    let gate: string | null = "explain";
+    server["/api/tutor/turn"] = (b) => {
+      if (b.action === "message") gate = null;
+      return { body: { message: { id: 30, role: "tutor", content: gate ? "Porra, de novo? Me explica o raciocínio." : "Agora sim.", spoken: "x", grounding: "question", sources: [], hint_level: null, suggested: [], notice: null, avatar: { emotion: "irritated" } }, gate, question_state: "answered", used_today: 1, daily_limit: 40 } };
+    };
+    const TutorScreen = await load();
+    render(<TutorScreen go={() => {}} />);
+    fireEvent.click(await screen.findByText("Começar"));
+    const input = await screen.findByLabelText("Mensagem");
+    fireEvent.change(input, { target: { value: "por que não é a B?" } });
+    fireEvent.submit(input.closest("form")!);
+    // a resposta do servidor veio com a trava: o botão some e o aviso aparece
+    gate = "explain";
+    await screen.findByText("Agora sim.");
+    expect((screen.getByText("Próxima questão").closest("button") as HTMLButtonElement).disabled).toBe(false);
+    server["/api/tutor/turn"] = () => ({ body: { message: { id: 31, role: "tutor", content: "Porra, de novo? Me explica o raciocínio.", spoken: "x", grounding: "question", sources: [], hint_level: null, suggested: [], notice: null }, gate: "explain", question_state: "answered", used_today: 2, daily_limit: 40 } });
+    fireEvent.change(input, { target: { value: "chutei" } });
+    fireEvent.submit(input.closest("form")!);
+    expect(await screen.findByText("Antes da próxima: explique ao professor o seu raciocínio nesta questão.")).toBeTruthy();
+    expect((screen.getByText("Próxima questão").closest("button") as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("relatório: 'O Tutor percebeu' com o número de casos; erros que se repetem; sessões", async () => {
     rpcImpl.app_tutor_report = () => ({
       mastery: { areas: [{ area: "PEDIATRIA", level: "FRACO", attempts: 30, accuracy: 50 }], subareas: [] }, critical_topics: [], highest_risk_area: "PEDIATRIA",

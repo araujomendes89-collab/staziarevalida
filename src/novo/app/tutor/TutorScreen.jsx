@@ -375,7 +375,15 @@ export function Chat({ session, setSession, status, neural, realtime = false, on
   const [error, setError] = React.useState(null);
   const [voiceOn, setVoiceOn] = React.useState(false); // conversa por voz: o professor fala e volta a ouvir sozinho
   const [voiceNote, setVoiceNote] = React.useState(null); // aviso curto do modo voz (não é fala do professor)
-  const [picked, setPicked] = React.useState(null); // alternativa escolhida, por clique ou por voz
+  const [picked, setPickedState] = React.useState(null); // alternativa escolhida, por clique ou por voz
+  const [gate, setGate] = React.useState(session.gate ?? null); // "explain": o professor quer o raciocínio antes da próxima questão
+  // para o motor de personalidade: quanto tempo levou e qual foi a primeira alternativa marcada (troca de certa para errada)
+  const shownAt = React.useRef(Date.now());
+  const firstPick = React.useRef(null);
+  const setPicked = (id) => {
+    if (id && !firstPick.current) firstPick.current = id;
+    setPickedState(id);
+  };
   const [confidence, setConfidence] = React.useState(null);
   const interrupted = React.useRef(null);
   const endRef = React.useRef(null);
@@ -402,8 +410,10 @@ export function Chat({ session, setSession, status, neural, realtime = false, on
     endRef.current?.scrollIntoView?.({ block: "end" });
   }, [messages.length, voice.interim]);
   React.useEffect(() => {
-    setPicked(null);
+    setPickedState(null);
     setConfidence(null);
+    firstPick.current = null;
+    shownAt.current = Date.now();
   }, [session.question?.id]);
   // "Perguntar ao Tutor" com a pergunta já escrita na tela inicial: vai sozinha
   const firstSent = React.useRef(false);
@@ -462,6 +472,7 @@ export function Chat({ session, setSession, status, neural, realtime = false, on
       const r = await tutorTurn(backend, { session_id: session.id, action, text: said, voice: spoken, interrupted: interrupted.current });
       interrupted.current = null;
       setMessages((m) => [...m, r.message]);
+      if ("gate" in r) setGate(r.gate ?? null);
       onUsage(r.used_today);
       if (action === "hint" || action === "reveal" || r.question_state !== session.question_state) await reload();
       if (spoken && canSpeak()) {
@@ -532,7 +543,10 @@ export function Chat({ session, setSession, status, neural, realtime = false, on
     setSending(true);
     live.current.sending = true;
     try {
-      await backend.rpc("app_tutor_answer", { p_session_id: session.id, p_option: option, p_confidence: conf });
+      await backend.rpc("app_tutor_answer", {
+        p_session_id: session.id, p_option: option, p_confidence: conf,
+        p_response_ms: Math.max(0, Date.now() - shownAt.current), p_first_pick: firstPick.current && firstPick.current !== option ? firstPick.current : null,
+      });
       const fresh = await reload();
       setMessages((m) => [...m, { id: `local-${Date.now()}`, role: "student", content: `Marquei a ${option}.` }]);
       setSending(false);
@@ -631,7 +645,7 @@ export function Chat({ session, setSession, status, neural, realtime = false, on
 
       <div style={{ flex: 1, padding: mobile ? 18 : 28, display: "flex", flexDirection: "column", gap: 14 }} aria-live="polite">
         {session.question && (
-          <QuestionCard session={session} busy={sending} picked={picked} onPick={setPicked} confidence={confidence} onConfidence={setConfidence} onAnswer={answer} onHint={() => send({ action: "hint" })} onReveal={() => send({ action: "reveal" })} onNext={nextQuestion} limitReached={limitReached} />
+          <QuestionCard session={session} busy={sending} picked={picked} onPick={setPicked} confidence={confidence} onConfidence={setConfidence} onAnswer={answer} onHint={() => send({ action: "hint" })} onReveal={() => send({ action: "reveal" })} onNext={nextQuestion} limitReached={limitReached} gate={gate} />
         )}
         {messages.map((m) => (
           <Bubble key={m.id} message={m} />
@@ -755,7 +769,7 @@ function Bubble({ message: m }) {
 }
 
 /** A questão da conversa: sem gabarito enquanto aberta; depois da resposta (ou da dica 5) mostra a correta. */
-function QuestionCard({ session, busy, picked: selected, onPick: setSelected, confidence, onConfidence: setConfidence, onAnswer, onHint, onReveal, onNext, limitReached }) {
+function QuestionCard({ session, busy, picked: selected, onPick: setSelected, confidence, onConfidence: setConfidence, onAnswer, onHint, onReveal, onNext, limitReached, gate }) {
   const q = session.question;
   const open = q.state === "open";
   const parts = splitStatement(q.statement);
@@ -808,7 +822,8 @@ function QuestionCard({ session, busy, picked: selected, onPick: setSelected, co
           {answered?.lucky_guess && <Badge tone="warning">Provável chute: volta em revisão</Badge>}
           {answered?.heavy_hints && <Badge tone="warning">Com muita ajuda: volta em revisão</Badge>}
           {answered?.outcome === "priority" && <Badge tone="danger">Errou com certeza: prioridade</Badge>}
-          {["questao", "erros"].includes(session.mode) && session.status === "active" && <Button size="sm" iconRight="arrow-right" disabled={busy} onClick={onNext}>Próxima questão</Button>}
+          {["questao", "erros"].includes(session.mode) && session.status === "active" && <Button size="sm" iconRight="arrow-right" disabled={busy || gate === "explain"} onClick={onNext}>Próxima questão</Button>}
+          {gate === "explain" && <span style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>Antes da próxima: explique ao professor o seu raciocínio nesta questão.</span>}
         </div>
       )}
     </div>

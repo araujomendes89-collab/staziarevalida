@@ -15,7 +15,7 @@
  *   OPENAI_REALTIME_TRANSCRIBE_MODEL opcional: transcrição da fala do aluno (sem ele, só a fala do professor vira texto)
  */
 import { createHash } from "crypto";
-import { emotionLabel, emotionLayer, normalize, swearingByEmotion, type Emotion } from "./emotion";
+import { engineFor, languageIntensity, normalize, profanityForIntensity, stateLayer, type PersonaEngine, type TutorState } from "./emotion";
 import { TRIAL_OVER, TutorError, type Entitlement, type TutorDeps } from "./engine";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings } from "./personality";
 import { composeRealtimeInstructions, type TutorMode } from "./prompts";
@@ -74,8 +74,8 @@ export async function hangup(callId: string | null | undefined, deps: Pick<Tutor
 interface VoiceContext {
   entitlement: Entitlement & { voice: { remaining_s: number; remaining_today_s: number; remaining_total_s: number | null } };
   config: { max_profanity: ProfanityLevel };
-  session: { id: string; mode: TutorMode; title: string; topic: string | null; status: string; question_state: string; settings: TutorSettings; emotion: Partial<Emotion> | null; context: { type: string | null; label: string | null } };
-  personality: Personality & { voice?: { realtime?: string } };
+  session: { id: string; mode: TutorMode; title: string; topic: string | null; status: string; question_state: string; settings: TutorSettings; emotion: (Partial<TutorState> & Record<string, unknown>) | null; context: { type: string | null; label: string | null } };
+  personality: Personality & { voice?: { realtime?: string }; engine?: Partial<PersonaEngine> | null };
   student: { first_name: string | null; days_to_exam: number | null } | null;
   memory: { weak_subareas: { subarea: string; accuracy: number }[]; recurrent_errors: { error_type: string; knowledge_gap: string | null; times: number }[] } | null;
   question: { id: string } | null;
@@ -141,9 +141,12 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
   if (!r.ok) throw reasonError(r.reason, r.entitlement);
   if (r.replaced_call_id) void hangup(r.replaced_call_id, deps);
 
-  const mood0 = normalize(ctx.session.emotion);
-  const mood = { label: emotionLabel(mood0), text: emotionLayer(ctx.personality.id, mood0), swearing: swearingByEmotion(mood0) };
+  const engine = engineFor(ctx.personality.id, ctx.personality.engine);
+  const state = normalize(ctx.session.emotion, engine);
+  const li = languageIntensity(state, engine);
+  // na voz o estado muda pelas ferramentas (o "tom" volta junto); o teto de palavrão da sessão é o do professor
   const profanity = profanityLevel(ctx.personality.params, ctx.session.settings.profanity ?? "off", ctx.config.max_profanity);
+  const mood = { label: state.mood, text: stateLayer(ctx.personality.id, state, engine), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado (ela muda ao longo da conversa: siga o tom que as ferramentas devolverem)", strong: li >= 3 };
   const persona = personalityLayer(ctx.personality, effectiveParams(ctx.personality.params, 3, ctx.session.settings), profanity, 3, null, mood);
   const instructions = composeRealtimeInstructions({ mode: ctx.session.mode, persona, context: sessionContext(ctx) });
   const session = {
@@ -249,7 +252,7 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
     await deps.db.service("ch_worker_tutor_append", { p_user: userId, p_session_id: v.session_id, p_student: clean, p_tutor: null, p_meta: { realtime: true }, p_usage: {} });
     return { correction: null };
   }
-  const ctx = await deps.db.service<{ question: any; history: { content: string }[]; config: { max_profanity: ProfanityLevel }; session: { settings: TutorSettings; question_state: string }; personality: Personality } | null>(
+  const ctx = await deps.db.service<{ question: any; history: { content: string }[]; config: { max_profanity: ProfanityLevel }; session: { settings: TutorSettings; question_state: string; emotion: (Partial<TutorState> & Record<string, unknown>) | null }; personality: Personality & { engine?: Partial<PersonaEngine> | null } } | null>(
     "ch_worker_tutor_context", { p_user: userId, p_session_id: v.session_id });
   const q = ctx?.question;
   const open = ctx?.session.question_state === "open";
@@ -259,9 +262,17 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
       : []),
     ...(evidence.get(voiceCallId) ?? []).map((text, i) => ({ ref: `F${i + 1}`, kind: "source" as const, label: "Fonte trazida pela ferramenta", text })),
   ];
-  const profanity = ctx ? profanityLevel(ctx.personality.params, ctx.session.settings.profanity ?? "off", ctx.config.max_profanity) : "off";
+  // palavrão: no máximo o do professor, e um degrau acima do que o estado da sessão pede agora (a voz não é conferida antes)
+  let profanity: ProfanityLevel = "off";
+  if (ctx) {
+    const engine = engineFor(ctx.personality.id, ctx.personality.engine);
+    const byState = profanityForIntensity(Math.min(5, languageIntensity(normalize(ctx.session.emotion, engine), engine) + 1));
+    const max = profanityLevel(ctx.personality.params, ctx.session.settings.profanity ?? "off", ctx.config.max_profanity);
+    const RANK = { off: 0, mild: 1, moderate: 2 } as const;
+    profanity = RANK[byState] < RANK[max] ? byState : max;
+  }
   const check = safetyCheck(
-    { reply: clean, grounding: "GENERAL", citations: [], evaluation: { error_type: "none", knowledge_gap: "", reasoning_quality: "na", recommended_action: "none", answer_correct: "na", self_corrected: false }, justification: "NONE", reveals_answer: false, suggested_replies: [] },
+    { reply: clean, grounding: "GENERAL", citations: [], evaluation: { error_type: "none", knowledge_gap: "", severity: 1, unsafe: false, reasoning_quality: "na", recommended_action: "none", answer_correct: "na", self_corrected: false }, justification: "NONE", reveals_answer: false, suggested_replies: [] },
     { blocks, conversationTexts: (ctx?.history ?? []).map((h) => h.content), question: q ? { open, officialLetter: q.official_answer ?? null, officialText: (q.options ?? []).find((o: any) => o.id === q.official_answer)?.text ?? null } : null, hintLevel: null, hasUpdateCard: Boolean(q?.update_card), profanity },
   );
   // valores e documentos ditos sem ferramenta não são conferíveis aqui (as ferramentas trazem fontes): o que importa barrar na voz

@@ -98,3 +98,27 @@ Feito e testado com IA e OpenAI **simuladas**: 1–5 (professor, modo, texto), 9
 - Decisão: o texto continua na Anthropic (testado) ou passa para a OpenAI (`TUTOR_AI_PROVIDER=openai`, `TUTOR_MODEL=...`).
 - Depois de a voz em tempo real ser confirmada em produção: remover a voz do navegador e o TTS (item K).
 - Retenção das transcrições: hoje ficam como mensagens da sessão, sem áudio guardado; falta a política de quanto tempo guardar.
+
+## 10. Motor de personalidade humana (prompt 2.2.0, migração `3700_tutor_motor_personalidade`, 2026-10-06)
+
+Pedido: "MOTOR DE PERSONALIDADE HUMANA" (itens 1–32). Código: `server/tutor/emotion.ts` (estado e regras), `engine.ts` (turno de texto),
+`tools.ts` (voz), `prompts.ts` (base do personagem). Princípio mantido: o motor decide **como** falar; o que ensinar vem do Truth Engine.
+
+| Item do pedido | Como ficou |
+|---|---|
+| 3. Estado interno | paciência, irritação, calor, entusiasmo, rigor, sarcasmo, confiança no aluno, frustração; contadores (erros e acertos seguidos, repetidos, por desatenção, de raciocínio, de conhecimento, questões); 8 humores. Guardado em `tutor_sessions.emotion` |
+| 4–5. Tipo e gravidade do erro | a avaliação silenciosa devolve `error_type`, `severity` (1–5) e `unsafe`; chute, troca de alternativa e "esqueceu a explicação" saem dos fatos |
+| 7–8. Frustração | gravidade × 3 × multiplicador do professor (Acolhedor 0,25, Direto 0,70, Durona 1,25); repetido +12, explicação esquecida +15, desatenção +8, conduta perigosa +18 (todos × multiplicador); acerto −7, excelente −12, três seguidos −15; limite 0–100 |
+| 9–13. Professores e escalada | texto de personagem do pedido em cada professor; faixas da Durona (0–20 … 81–100) como referência de tom; no topo, mais cobrança, não mais palavrão; a bronca vai para a resposta, nunca para a pessoa |
+| 14. Palavrão sem roteiro | intensidade de linguagem 0–5 por resposta (sobe com a frustração até o teto do professor: Acolhedor 1, Direto 3, Durona 5). A conferência aceita palavrão só a partir da intensidade 3 (um degrau de folga) |
+| 15. Não repetir frases | as expressões das últimas falas vão como "evite repetir" |
+| 16. Variação humana | ±8 na subida da frustração, com semente por turno (mesmo valor antes e depois da avaliação) |
+| 17. Humor do dia | bom, neutro ou impaciente, sorteado ao abrir a sessão; aberturas próprias por humor |
+| 18–22. Eventos | primeira questão, primeiro erro, 3 e 5 erros, erro repetido, 3/5/10 acertos, raciocínio perfeito, conduta perigosa, trocou certa por errada (e o inverso), resposta rápida (< 12 s) ou lenta (> 6 min). A tela manda o tempo de resposta e a primeira alternativa marcada |
+| 12 (topo). Parar a sequência | a Durona a partir de 61 (os outros a partir de 81), em erro repetido, trava a próxima questão até o aluno explicar com raciocínio aceitável (ou insistir duas vezes) |
+| 23–24. Memória longa e piadas internas | `tutor_learning_memory`: perfil (temas fortes e fracos, taxa de desatenção, tempo médio, professor preferido, qualidade do raciocínio), piada interna (o assunto que mais derrubou o aluno, e se ele já superou) e evolução (tema que errava e agora acerta) |
+| 25–26. Avatar e voz | cada resposta devolve `avatar` (emoção, intensidade, animação, expressão, estilo de voz, velocidade). **Não existe mascote animado no app**: os dados estão prontos para ele |
+| 31. Resposta estruturada | `pedagogical_action` virou `recommended_action` com "require_explanation"; emoção e avatar são calculados no servidor (consistentes), não escolhidos pela IA |
+
+Não foi feito: o mascote NEX (não há desenho nem animações no projeto) e tags de emoção para TTS (a voz em tempo real recebe o tom
+pelas instruções e pelas ferramentas). O nome do produto segue StaziaMed; o pedido fala em "StaziaNexus".

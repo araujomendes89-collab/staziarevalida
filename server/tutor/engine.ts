@@ -14,7 +14,7 @@ import { asDocument } from "../contentHub/ai/prompts";
 import { AiInvalidOutput, resolveProviderKind, withFallback, type StructuredRequest } from "../contentHub/ai/provider";
 import { aiAllowed, registerPrompts, type PromptEntry } from "../contentHub/ai/registry";
 import type { ContentDb } from "../contentHub/infra";
-import { applyEvents, emotionLabel, emotionLayer, normalize, swearingByEmotion, type Emotion, type EmotionEvent } from "./emotion";
+import { avatarOf, engineFor, languageIntensity, normalize, profanityForIntensity, recentExpressions, stateLayer, step, type Happening, type PersonaEngine, type TutorState } from "./emotion";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings } from "./personality";
 import { NO_EVALUATION, TUTOR_PROMPT_LAYERS, TUTOR_SCHEMA, TUTOR_VERSION, composeSystem, taskInstruction, type TutorMode, type TutorOutput, type TutorTask } from "./prompts";
 import { fallbackReply, safetyCheck, spokenText, type BaseBlock, type SafetyResult, type Violation } from "./safety";
@@ -54,6 +54,9 @@ export interface Entitlement {
 }
 
 interface Memory {
+  profile?: { strongest_topics: string[]; weak_topics: string[]; careless_error_rate: number | null; average_response_s: number | null; preferred_personality: string | null; reasoning_quality: number | null };
+  inside_jokes?: { topic: string; strength: number; beaten: boolean }[];
+  improvements?: { topic: string; errors_before: number; correct_recent: number }[];
   areas: { area: string; level: string; accuracy: number | null }[];
   weak_subareas: { area: string; subarea: string; accuracy: number }[];
   recurrent_errors: { error_type: string; knowledge_gap: string | null; times: number }[];
@@ -65,12 +68,12 @@ interface Context {
   entitlement: Entitlement;
   session: {
     id: string; mode: TutorMode; topic: string | null; title: string; status: string; question_state: string; hint_level: number; intensity: number;
-    settings: TutorSettings & { params?: unknown; area?: string | null }; difficulty_level: number; streak_wrong: number; emotion: Partial<Emotion> | null;
+    settings: TutorSettings & { params?: unknown; area?: string | null }; difficulty_level: number; streak_wrong: number; emotion: (Partial<TutorState> & Record<string, unknown>) | null;
     context: { type: string | null; id: string | null; label: string | null };
   };
-  personality: Personality;
+  personality: Personality & { engine?: Partial<PersonaEngine> | null };
   memory: Memory | null;
-  session_errors: { error_type: string; question_id: string | null }[];
+  session_errors: { error_type: string; question_id: string | null; knowledge_gap?: string | null; theme?: string | null }[];
   student: { first_name: string | null; phase: number; days_to_exam: number | null } | null;
   mastery: { areas: { area: string; level: string; accuracy: number | null }[] };
   recent_results: boolean[];
@@ -79,7 +82,7 @@ interface Context {
     id: string; area: string; topic: string; subtopic: string | null; statement: string; exam: string | null; number: number;
     options: { id: string; text: string; explanation: string | null }[];
     official_answer: string; expected_conduct: string | null; inep_intent: string | null; sources?: unknown;
-    last_answer: { selected: string; is_correct: boolean; confidence: number | null; lucky_guess: boolean; heavy_hints: boolean; hints_used: number; justification: string | null } | null;
+    last_answer: { selected: string; is_correct: boolean; confidence: number | null; lucky_guess: boolean; heavy_hints: boolean; hints_used: number; justification: string | null; response_ms?: number | null; first_pick?: string | null } | null;
     practice_answer?: { selected: string; is_correct: boolean } | null;
     analysis: { question_core: string; trap: string | null; golden_rule: string | null; options: { option_id: string; reasoning: string; why_wrong: string | null; trap: string | null }[] | null } | null;
     update_card: { official_answer: string; current_answer: string | null; what_changed: string; effective_date: string | null; sources: unknown } | null;
@@ -105,6 +108,21 @@ export function resolveTutorProvider(mockRespond?: (req: StructuredRequest) => u
 
 /** Conversa pede resposta rápida: o Tutor usa esforço baixo (TUTOR_ANTHROPIC_EFFORT muda). A validação por software continua igual. */
 const EFFORT = (["low", "medium", "high"].includes(process.env.TUTOR_ANTHROPIC_EFFORT ?? "") ? process.env.TUTOR_ANTHROPIC_EFFORT : "low") as "low" | "medium" | "high";
+
+/** Gerador simples com semente (mulberry32): a variação humana do humor é reprodutível em teste. */
+export function seededRandom(seed: string) {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  return () => {
+    let x = h;
+    return () => {
+      x = (x + 0x6d2b79f5) | 0;
+      let t = Math.imul(x ^ (x >>> 15), 1 | x);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  };
+}
 
 const STATE_PT: Record<string, string> = { open: "aberta", answered: "respondida", revealed: "revelada", none: "sem questão" };
 
@@ -183,7 +201,13 @@ const registered = new WeakSet<object>();
 const busy = new Set<string>();
 
 export interface TurnResult {
-  message: { id: number; role: "tutor"; content: string; spoken: string; grounding: string; sources: { ref: string; label: string }[]; hint_level: number | null; suggested: string[]; notice: string | null };
+  message: {
+    id: number; role: "tutor"; content: string; spoken: string; grounding: string; sources: { ref: string; label: string }[]; hint_level: number | null; suggested: string[]; notice: string | null;
+    /** Para o mascote e a voz (o texto é o que se mostra). */
+    avatar: ReturnType<typeof avatarOf>;
+  };
+  /** "explain": o professor só segue para a próxima questão depois de o aluno explicar o raciocínio. */
+  gate: "explain" | null;
   question_state: string;
   used_today: number;
   daily_limit: number;
@@ -213,33 +237,36 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     let task: TutorTask;
     let studentText = "";
     let hintLevel: number | null = null;
-    const pre: EmotionEvent[] = [];
+    // o que aconteceu, pelos fatos (antes da IA); a avaliação completa o quadro depois
+    let happening: Happening = { kind: "message" };
     if (action.type === "hint") {
       if (!q || !open) throw new TutorError("Não há questão aberta para pedir dica.", 409);
       if (ctx.session.hint_level >= 5) throw new TutorError("Você já recebeu todas as dicas desta questão.", 409);
       hintLevel = ctx.session.hint_level + 1;
       task = { type: "hint", level: hintLevel };
       studentText = hintLevel === 1 ? "Me dá uma ajuda aqui." : "Me ajuda mais um pouco.";
-      pre.push("asked_for_help");
+      happening = { kind: "hint" };
     } else if (action.type === "reveal") {
       if (!q || !open) throw new TutorError("Não há questão aberta para mostrar a resolução.", 409);
       hintLevel = 5;
       task = { type: "reveal" };
       studentText = "Me mostra a resolução.";
+      happening = { kind: "reveal" };
     } else if (action.type === "react") {
       const a = q?.last_answer;
       if (!q || !a || ctx.session.question_state !== "answered") throw new TutorError("Responda a questão antes.", 409);
       const repeated = 1 + (ctx.memory?.recent_errors ?? []).filter((e) => e.question_id === q.id && !e.resolved).length;
       task = { type: "react", selected: a.selected, correct: a.is_correct, confidence: a.confidence, hints: a.hints_used, lucky: a.lucky_guess, repeated };
       studentText = `Marquei a ${a.selected}.`;
-      if (a.is_correct) pre.push(a.lucky_guess ? "serious_attempt" : ctx.session.difficulty_level >= 6 ? "correct_hard" : "correct");
-      else {
-        pre.push("wrong");
-        if (repeated >= 2) pre.push("repeated_error");
-        // chutando: três erros seguidos com confiança mínima
-        const last3 = (ctx.recent_results ?? []).slice(-3); // inclui a resposta de agora
-        if ((a.confidence ?? 5) <= 1 && last3.length === 3 && last3.every((ok) => !ok)) pre.push("random_answers");
-      }
+      const fast = a.response_ms != null && a.response_ms < 12_000;
+      const changed = a.first_pick && a.first_pick !== a.selected
+        ? a.first_pick === q.official_answer ? "correct_to_wrong" as const : a.is_correct ? "wrong_to_correct" as const : "wrong_to_wrong" as const
+        : null;
+      happening = {
+        kind: "answer", correct: a.is_correct, severity: 3, repeated: repeated >= 2, changed, responseMs: a.response_ms ?? null,
+        // chute: confiança mínima, ou rápido demais e errado sem confiança informada
+        guess: (a.confidence != null && a.confidence <= 1) || (!a.is_correct && fast && a.confidence == null),
+      };
     } else {
       studentText = (action.text ?? "").trim();
       if (!studentText) throw new TutorError("Escreva ou fale a sua mensagem.", 400);
@@ -267,10 +294,20 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     // ---- personalidade (sempre depois do conteúdo): estilo do professor + estado da sessão
     const settings = ctx.session.settings;
     const sessionTypes = (ctx.session_errors ?? []).map((x) => x.error_type);
-    const mood0 = applyEvents(ctx.session.emotion, pre);
+    const engine = engineFor(ctx.personality.id, ctx.personality.engine);
+    const prev = normalize(ctx.session.emotion, engine);
+    // a mesma variação nas duas passagens (antes e depois da avaliação): o humor não "pula" entre elas
+    const seed = seededRandom(`${sessionId}:${ctx.history.length}`);
+    const before = step(prev, engine, happening, seed()).state;
     const eff = effectiveParams(ctx.personality.params, 3, settings);
-    const profanity = profanityLevel(ctx.personality.params, settings.profanity ?? "off", ctx.config.max_profanity);
-    const mood = { label: emotionLabel(mood0), text: emotionLayer(ctx.personality.id, mood0), swearing: swearingByEmotion(mood0) };
+    const personaMax = profanityLevel(ctx.personality.params, settings.profanity ?? "off", ctx.config.max_profanity);
+    const li = languageIntensity(before, engine);
+    const RANK = { off: 0, mild: 1, moderate: 2 } as const;
+    const byIntensity = profanityForIntensity(li);
+    const profanity = RANK[byIntensity] < RANK[personaMax] ? byIntensity : personaMax;
+    // a conferência aceita um degrau acima do pedido (a reação à gravidade real do erro pode subir o tom)
+    const checkLevel = RANK[profanityForIntensity(Math.min(5, li + 1))] < RANK[personaMax] ? profanityForIntensity(Math.min(5, li + 1)) : personaMax;
+    const mood = { label: before.mood, text: stateLayer(ctx.personality.id, before, engine), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado", strong: li >= 3 };
     const system = composeSystem({ mode: ctx.session.mode, browserVoice: Boolean(action.voice), persona: personalityLayer(ctx.personality, eff, profanity, 3, null, mood) });
 
     const mem = ctx.memory;
@@ -283,11 +320,20 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       erros_recentes: (mem?.recent_errors ?? []).slice(0, 4).map((r) => ({ tipo: r.error_type, lacuna: r.knowledge_gap, tema: r.theme })),
       contexto_da_sessao: ctx.session.context?.label ?? ctx.session.topic ?? null,
       nivel_da_conversa: ctx.session.difficulty_level,
+      perfil: mem?.profile ?? null,
+      evolucao: (mem?.improvements ?? []).map((i) => `${i.topic}: errava (${i.errors_before}x), agora acertou ${i.correct_recent} nos últimos 7 dias`),
+    };
+    // memória do professor nesta sessão: erros, repetições, piadas internas e o que não repetir
+    const teacher = {
+      erros_nesta_sessao: (ctx.session_errors ?? []).slice(-6).map((e) => ({ tipo: e.error_type, lacuna: e.knowledge_gap ?? null, tema: e.theme ?? null })),
+      erros_repetidos: (mem?.recurrent_errors ?? []).filter((r) => r.times >= 2).map((r) => `${r.error_type}${r.knowledge_gap ? ` (${r.knowledge_gap})` : ""} ×${r.times}`),
+      piadas_internas: (mem?.inside_jokes ?? []).map((j) => (j.beaten ? `${j.topic}: já foi o "inimigo" dele (${j.strength} erros) e ele superou` : `${j.topic}: o assunto que mais o derruba (${j.strength} erros); dá para virar uma referência recorrente, com leveza e de vez em quando`)),
+      evite_repetir: recentExpressions(ctx.history.filter((h) => h.role === "tutor").map((h) => h.content)),
     };
     const conversation = ctx.history.map((h) => `${h.role === "student" ? "Aluno" : "Tutor"}: ${h.content.slice(0, 600)}`).join("\n");
     const baseInput =
       `Responda no formato "tutor".\n<base>\n${JSON.stringify(blocks.map((b) => ({ ref: b.ref, tipo: b.kind, rotulo: b.label, texto: b.text })))}\n</base>\n` +
-      `<contexto_do_aluno>\n${JSON.stringify(studentCtx)}\n</contexto_do_aluno>\n<conversa>\n${conversation}\n</conversa>\n<aluno>\n${asDocument(studentText)}\n</aluno>\n` +
+      `<contexto_do_aluno>\n${JSON.stringify(studentCtx)}\n</contexto_do_aluno>\n<estado_do_professor>\n${JSON.stringify(teacher)}\n</estado_do_professor>\n<conversa>\n${conversation}\n</conversa>\n<aluno>\n${asDocument(studentText)}\n</aluno>\n` +
       `<tarefa>\n${taskInstruction(task)}\n</tarefa>`;
 
     const safetyCtx = {
@@ -296,7 +342,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       question: q ? { open, officialLetter: q.official_answer, officialText: q.options.find((o) => o.id === q.official_answer)?.text ?? null } : null,
       hintLevel,
       hasUpdateCard: Boolean(q?.update_card),
-      profanity,
+      profanity: checkLevel,
     };
 
     // ---- reserva atômica de uma interação (dois aparelhos não passam do limite juntos); devolvida se a IA falhar
@@ -358,20 +404,33 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const ev = out?.evaluation ?? NO_EVALUATION;
 
     // ---- avaliação silenciosa: vira evento pedagógico (erro registrado) e mexe no estado da sessão
-    const post: EmotionEvent[] = [];
-    if (ev.reasoning_quality === "medium" || ev.reasoning_quality === "high") post.push("serious_attempt");
-    if (ev.self_corrected) post.push("self_correction");
     let learning: Record<string, unknown> | null = null;
     // erro na questão respondida (no Tutor ou no treino) só vira evento uma vez por questão nesta sessão
     const wrongHere = Boolean(q && !open && (q.last_answer ? !q.last_answer.is_correct : q.practice_answer?.is_correct === false));
     const alreadyLogged = Boolean(q && (ctx.session_errors ?? []).some((x) => x.question_id === q.id));
     const errorTurn = (task.type === "react" && !task.correct) || (task.type === "justify" && out?.justification === "INSUFFICIENT") || (task.type === "message" && wrongHere && !alreadyLogged) || (!q && ev.answer_correct === "no");
     if (out && ev.error_type !== "none" && errorTurn) {
-      learning = { kind: "error", error_type: ev.error_type, knowledge_gap: ev.knowledge_gap || null, question_id: q?.id ?? null, source: "tutor_text" };
-      if (!pre.includes("repeated_error") && (sessionTypes.includes(ev.error_type) || (ctx.memory?.recurrent_errors ?? []).some((r) => r.error_type === ev.error_type))) post.push("repeated_error");
+      learning = { kind: "error", error_type: ev.error_type, knowledge_gap: ev.knowledge_gap || null, question_id: q?.id ?? null, source: "tutor_text", metadata: { severity: ev.severity, unsafe: ev.unsafe } };
     } else if (task.type === "react" && task.correct) learning = { kind: "correct", question_id: q?.id ?? null };
-    if (ctx.session.mode === "perguntas" && ev.answer_correct === "yes") post.push(ev.reasoning_quality === "high" ? "correct_hard" : "correct");
-    const emotion = applyEvents(mood0, post);
+    // o quadro completo: fatos + avaliação (tipo e gravidade do erro, repetição, explicação esquecida, conduta perigosa)
+    const gap = (ev.knowledge_gap || "").trim().toLowerCase();
+    const repeatedType = sessionTypes.includes(ev.error_type) || (ctx.memory?.recurrent_errors ?? []).some((r) => r.error_type === ev.error_type);
+    const forgot = Boolean(gap) && (ctx.session_errors ?? []).some((e) => (e.knowledge_gap ?? "").trim().toLowerCase() === gap);
+    const oral = ctx.session.mode === "perguntas" && !q && ev.answer_correct !== "na" ? { correct: ev.answer_correct === "yes" ? true : ev.answer_correct === "no" ? false : null } : {};
+    const full: Happening = {
+      ...happening,
+      ...oral,
+      ...(happening.correct === false || oral.correct === false
+        ? { severity: ev.error_type !== "none" ? ev.severity : happening.severity ?? 3, errorType: ev.error_type !== "none" ? ev.error_type : null, repeated: Boolean(happening.repeated) || (ev.error_type !== "none" && repeatedType), forgotExplanation: forgot, unsafe: ev.unsafe }
+        : {}),
+      excellent: (happening.correct === true || oral.correct === true) && ev.reasoning_quality === "high",
+      seriousAttempt: ev.reasoning_quality === "medium" || ev.reasoning_quality === "high",
+      selfCorrected: ev.self_corrected,
+      // destrava: o aluno explicou com raciocínio aceitável (ou já insistiu duas vezes)
+      explained: prev.gate === "explain" && task.type !== "react" && action.type === "message" && (ev.reasoning_quality === "medium" || ev.reasoning_quality === "high" || prev.events.filter((e) => e === "explain_attempt").length >= 2),
+    };
+    const after = step(prev, engine, full, seed()).state;
+    const emotion: TutorState = prev.gate === "explain" && action.type === "message" && !full.explained ? { ...after, events: [...after.events, "explain_attempt"].slice(-8) } : after;
     // "Me teste": a dificuldade acompanha as respostas orais
     const level = ctx.session.mode === "perguntas" && ev.answer_correct !== "na"
       ? Math.max(1, Math.min(10, ctx.session.difficulty_level + (ev.answer_correct === "yes" ? 1 : ev.answer_correct === "no" ? -1 : 0)))
@@ -383,7 +442,9 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       suggested: replaced ? [] : out!.suggested_replies,
       notice: replaced ? "Resposta substituída: a primeira versão trazia informação que não pôde ser conferida." : null,
       model, provider: providerName, prompt_version: TUTOR_VERSION, simulated: provider.isMock,
-      personality: { id: ctx.personality.id, profanity, mood: mood.label },
+      personality: { id: ctx.personality.id, profanity, mood: before.mood, language_intensity: li, frustration: before.frustration },
+      avatar: avatarOf(ctx.personality.id, emotion),
+      ...(task.type === "react" || task.type === "justify" ? { answer_reasoning_quality: ev.reasoning_quality } : {}),
       voice: Boolean(action.voice),
       emotion,
       ...(out ? { evaluation: ev } : {}),
@@ -404,7 +465,11 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       throw error;
     }
     return {
-      message: { id: saved.id, role: "tutor", content: reply, spoken: spokenText(reply), grounding: String(meta.grounding), sources: meta.sources as { ref: string; label: string }[], hint_level: hintLevel, suggested: meta.suggested as string[], notice: (meta.notice as string | null) ?? null },
+      message: {
+        id: saved.id, role: "tutor", content: reply, spoken: spokenText(reply), grounding: String(meta.grounding), sources: meta.sources as { ref: string; label: string }[], hint_level: hintLevel,
+        suggested: meta.suggested as string[], notice: (meta.notice as string | null) ?? null, avatar: avatarOf(ctx.personality.id, emotion),
+      },
+      gate: emotion.gate,
       question_state: reveals ? "revealed" : ctx.session.question_state,
       used_today: saved.used_today,
       daily_limit: ent.text.limit,

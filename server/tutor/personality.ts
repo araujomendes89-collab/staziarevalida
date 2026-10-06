@@ -153,10 +153,10 @@ export function swearingNote(profanity: ProfanityLevel, eff: PersonalityParams, 
  */
 export function personalityLayer(
   p: Personality, eff: PersonalityParams, profanity: ProfanityLevel, intensity: number, extra: string | null = null,
-  mood: { text: string; swearing: string; label: string } | null = null,
+  mood: { text: string; swearing: string; label: string; strong?: boolean } | null = null,
 ): string {
   // falas de referência com palavrão só quando o estado pede (a Durona calma não xinga)
-  const strong = profanity === "moderate" && (p.examples_strong?.length ?? 0) > 0 && (!mood || ["IMPACIENTE", "IRRITADO", "ORGULHOSO"].includes(mood.label));
+  const strong = profanity === "moderate" && (p.examples_strong?.length ?? 0) > 0 && (!mood || Boolean(mood.strong));
   const examples = (strong ? p.examples_strong! : (p.examples ?? [])).slice(0, 6);
   const level = Math.max(1, Math.min(5, Math.round(intensity)));
   return [

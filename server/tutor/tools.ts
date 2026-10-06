@@ -7,7 +7,7 @@
  *   - quem corrige a resposta é o banco (submit_answer);
  *   - nada de SQL vindo do modelo: cada ferramenta é uma função fixa.
  */
-import { applyEvents, emotionLayer, normalize, type Emotion, type EmotionEvent } from "./emotion";
+import { engineFor, normalize, stateLayer, step, type Happening, type PersonaEngine, type TutorState } from "./emotion";
 import { searchSources, sourceQuery, TutorError, type TutorDeps } from "./engine";
 import { evaluateReasoning } from "./evaluation";
 import { ERROR_TYPES } from "./prompts";
@@ -63,11 +63,14 @@ interface ToolCtx {
   remember?: (texts: string[]) => void;
 }
 
-async function moodAfter(t: ToolCtx, events: EmotionEvent[]): Promise<string> {
-  const ctx = await t.deps.db.service<{ session: { emotion: Partial<Emotion> } } | null>("ch_worker_tutor_context", { p_user: t.userId, p_session_id: t.sessionId });
-  const next = applyEvents(normalize(ctx?.session.emotion), events);
+/** Passa o acontecimento pelo motor de personalidade, guarda o novo estado e devolve o tom para a voz seguir. */
+async function moodAfter(t: ToolCtx, h: Happening): Promise<string> {
+  const ctx = await t.deps.db.service<{ session: { emotion: Partial<TutorState> & Record<string, unknown> }; personality: { engine?: Partial<PersonaEngine> } } | null>(
+    "ch_worker_tutor_context", { p_user: t.userId, p_session_id: t.sessionId });
+  const engine = engineFor(t.personaId, ctx?.personality.engine);
+  const next = step(normalize(ctx?.session.emotion, engine), engine, h).state;
   await t.deps.db.service("ch_worker_tutor_set_emotion", { p_user: t.userId, p_session_id: t.sessionId, p_emotion: next });
-  return emotionLayer(t.personaId, next);
+  return stateLayer(t.personaId, next, engine);
 }
 
 /** Executa uma ferramenta pedida pela voz. Erros esperados voltam como { error } para o modelo dizer com naturalidade. */
@@ -86,7 +89,7 @@ export async function runTutorTool(t: ToolCtx, name: string, args: Record<string
         const conf = Number.isInteger(args.confidence) && (args.confidence as number) >= 0 && (args.confidence as number) <= 5 ? (args.confidence as number) : null;
         const r = await svc<Record<string, unknown>>("ch_worker_tutor_answer_as", { p_session_id: t.sessionId, p_option: option, p_confidence: conf });
         const q = await svc<Record<string, unknown> | null>("ch_worker_tutor_tool_question", { p_session_id: t.sessionId, p_reveal: false });
-        const mood = await moodAfter(t, r.is_correct ? ["correct"] : ["wrong"]);
+        const mood = await moodAfter(t, { kind: "answer", correct: Boolean(r.is_correct), severity: 3, guess: conf != null && conf <= 1 });
         return { result: { is_correct: r.is_correct, correct_option: r.correct_option, outcome: r.outcome, review_scheduled: r.review_scheduled }, question: q, tone: mood };
       }
       case "next_question":
@@ -115,10 +118,11 @@ export async function runTutorTool(t: ToolCtx, name: string, args: Record<string
         if (ev.error_type !== "none" && ev.correct === false) {
           times = (await svc<{ times: number }>("ch_worker_tutor_learning_event", { p_session_id: t.sessionId, p_event: { kind: "error", error_type: ev.error_type, knowledge_gap: ev.knowledge_gap, source: "tutor_voice" } })).times;
         }
-        const events: EmotionEvent[] = [];
-        if (ev.reasoning_quality === "medium" || ev.reasoning_quality === "high") events.push("serious_attempt");
-        if (times >= 2) events.push("repeated_error");
-        const tone = await moodAfter(t, events);
+        const tone = await moodAfter(t, {
+          kind: "message", correct: null, seriousAttempt: ev.reasoning_quality === "medium" || ev.reasoning_quality === "high",
+          excellent: ev.correct === true && ev.reasoning_quality === "high",
+          adjust: ev.correct === false ? { severity: ev.severity, repeated: times >= 2, careless: ev.error_type === "attention_error", unsafe: ev.unsafe } : null,
+        });
         const { usage, ...out } = ev;
         return { evaluation: { ...out, times_seen: times }, tone };
       }
@@ -128,7 +132,7 @@ export async function runTutorTool(t: ToolCtx, name: string, args: Record<string
         const r = await svc<{ times: number }>("ch_worker_tutor_learning_event", {
           p_session_id: t.sessionId, p_event: { kind, error_type: str(args.error_type, 40) || "unknown", knowledge_gap: str(args.knowledge_gap, 160) || null, source: "tutor_voice" },
         });
-        const tone = await moodAfter(t, kind === "self_correction" ? ["self_correction"] : kind === "correct" ? ["correct"] : r.times >= 2 ? ["repeated_error"] : ["wrong"]);
+        const tone = await moodAfter(t, kind === "self_correction" ? { kind: "message", selfCorrected: true } : kind === "correct" ? { kind: "message", seriousAttempt: true } : { kind: "message", correct: null, adjust: { repeated: r.times >= 2 } });
         return { ok: true, times_seen: r.times, tone };
       }
     }

@@ -197,7 +197,7 @@ describe("Tela do Tutor", () => {
     fireEvent.click(screen.getByText("Salbutamol"));
     fireEvent.click(screen.getByText("5 · Certeza"));
     fireEvent.click(screen.getByText("Responder"));
-    await waitFor(() => expect(answers).toEqual([{ p_session_id: current.id, p_option: "B", p_confidence: 5 }]));
+    await waitFor(() => expect(answers).toEqual([{ p_session_id: current.id, p_option: "B", p_confidence: 5, p_response_ms: expect.any(Number), p_first_pick: null }]));
     expect(await screen.findByText("Você tratou o chiado e esqueceu a hipoxemia.")).toBeTruthy();
     expect(turns[0]).toMatchObject({ action: "react", session_id: current.id });
     expect(screen.getByText("Baseado na questão oficial")).toBeTruthy();
@@ -360,7 +360,7 @@ describe("Tela do Tutor", () => {
     await finishSpeech();
     // 3. confirma falando: a resposta vai para o banco e o professor reage em voz alta
     await speakNow("confirmo");
-    await waitFor(() => expect(answers).toEqual([{ p_session_id: current.id, p_option: "B", p_confidence: null }]));
+    await waitFor(() => expect(answers).toEqual([{ p_session_id: current.id, p_option: "B", p_confidence: null, p_response_ms: expect.any(Number), p_first_pick: null }]));
     await waitFor(() => expect(turns).toHaveLength(1));
     expect(turns[0]).toMatchObject({ action: "react", voice: true });
     await waitFor(() => expect(spoken.some((x) => x.text.includes("Olha de novo a saturação"))).toBe(true));

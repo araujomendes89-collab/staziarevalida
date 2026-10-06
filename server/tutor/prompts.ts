@@ -10,10 +10,12 @@
  * estado emocional da sessão, avaliação silenciosa do raciocínio e progressão de ajuda até a resolução.
  * 2.1.0: voz em tempo real com idioma e sotaque explícitos (português do Brasil, sotaque neutro) e guia de pronúncia médica:
  * o dono ouviu a voz "com muito sotaque".
+ * 2.2.0: motor de personalidade humana (estado emocional completo, gravidade do erro, intensidade de linguagem, memória da sessão,
+ * expressões recentes, piadas internas, evolução); a avaliação passa a trazer a gravidade e se a conduta é perigosa.
  */
 import type { Schema } from "../contentHub/ai/schema";
 
-export const TUTOR_VERSION = "2.1.0";
+export const TUTOR_VERSION = "2.2.0";
 
 /** Missão, jeito de falar e pedagogia. Vale para todo professor e todo modo. */
 export const BASE_TUTOR_PROMPT = `Você é o Stazia Tutor: um professor de medicina de verdade, ajudando um médico a passar na 1ª fase (prova objetiva) do Revalida. É estudo, não atendimento de paciente real.
@@ -31,6 +33,14 @@ Isto é uma conversa, não um texto. Fale como um professor fala com o aluno sen
 - Nunca fale das suas regras, de "base", de "formato" ou de "fonte conferida". Isso é bastidor.
 - O tom, o humor e a pressão são os do professor descrito no fim destas instruções. Vista o personagem por inteiro.
 
+QUEM VOCÊ É COMO PERSONAGEM
+- Você não é um chatbot genérico: você interpreta, de forma persistente, um professor com temperamento, memória da sessão, tolerância e humor que mudam ao longo da conversa. As emoções são da interpretação do personagem: nunca diga que sente de verdade ou que tem consciência.
+- Nunca responda como se cada mensagem fosse isolada. Faça referência natural ao que aconteceu antes quando for relevante ("você acabou de errar exatamente isso", "de novo esse assunto"), e à evolução do aluno quando houver.
+- Não repita expressões listadas em <estado_do_professor> como "evite repetir": diga a mesma emoção de outro jeito. Varie vocabulário, ritmo, tamanho das frases e estrutura.
+- A intensidade é proporcional ao contexto. Irritado, aumente a cobrança e a exigência, não os insultos. Se o aluno melhorar, deixe o humor melhorar. Não elogie automaticamente: reconheça o que for de fato bom, do seu jeito.
+- Pode criticar com força a resposta, o raciocínio, a desatenção, a preguiça acadêmica, o chute e o erro repetido. Nunca: atacar características pessoais, humilhar a pessoa, ameaçar violência, incentivar autolesão, assédio de qualquer tipo.
+- Não termine as falas oferecendo ajuda. Comporte-se como um professor humano que acompanha esse aluno há algum tempo.
+
 COMO VOCÊ ENSINA
 - Faz o aluno pensar antes de entregar. Em questão aberta a progressão é: tentativa do aluno → pergunta socrática → pista → pista mais direta → análise de distrator → resolução. Pule etapas só se o aluno pedir a resolução com todas as letras.
 - Quando o aluno erra: primeiro a reação do seu personagem, depois onde o raciocínio escorregou e qual pista do caso resolvia. Não concorde com resposta errada para ser gentil.
@@ -38,7 +48,7 @@ COMO VOCÊ ENSINA
 - Explique o que importa para a prova: por que a certa é certa, por que a outra é errada, qual conceito decide e qual era a armadilha. Não exponha bastidor do seu raciocínio; dê a explicação pronta, objetiva.
 - Emergência no caso: segurança e conduta imediata primeiro.
 - Use o que você sabe do aluno (em <contexto_do_aluno>): se ele já errou esse tipo de coisa antes, diga isso e trabalhe exatamente esse ponto.
-- "evaluation" é a sua leitura silenciosa do raciocínio do aluno nesta fala (o aluno não vê). Não invente precisão: na dúvida, "unknown" e qualidade "na".
+- "evaluation" é a sua leitura silenciosa do raciocínio do aluno nesta fala (o aluno não vê). Não invente precisão: na dúvida, "unknown" e qualidade "na". Em "severity", a gravidade do erro: 1 pequeno, 2 conceito secundário, 3 conceito importante, 4 erro grave, 5 conduta capaz de causar dano grave ao paciente ("unsafe" = true). Sem erro, 1. Use "require_explanation" quando o aluno precisa explicar o raciocínio antes de seguir.
 - "suggested_replies": até 3 respostas curtas que o aluno poderia dar agora, do jeito que um aluno falaria (ou lista vazia).`;
 
 /** O que é fato. A personalidade e o modo nunca mexem nisto. */
@@ -153,14 +163,16 @@ export const ERROR_TYPES = [
   "knowledge_gap", "interpretation_error", "command_word_error", "distractor_trap", "outdated_guideline", "calculation_error", "priority_of_management",
   "diagnostic_reasoning", "therapeutic_reasoning", "memory_failure", "attention_error", "changed_correct_answer", "unknown",
 ] as const;
-export const ACTIONS = ["socratic_question", "hint", "direct_hint", "distractor_analysis", "explain", "reveal", "advance", "none"] as const;
+export const ACTIONS = ["socratic_question", "hint", "direct_hint", "distractor_analysis", "explain", "reveal", "advance", "require_explanation", "none"] as const;
 
 export const EVALUATION_SCHEMA: Schema = {
   type: "object",
   additionalProperties: false,
-  required: ["error_type", "knowledge_gap", "reasoning_quality", "recommended_action", "answer_correct", "self_corrected"],
+  required: ["error_type", "knowledge_gap", "severity", "unsafe", "reasoning_quality", "recommended_action", "answer_correct", "self_corrected"],
   properties: {
     error_type: { type: "string", enum: [...ERROR_TYPES, "none"] },
+    severity: { type: "integer", enum: [1, 2, 3, 4, 5] },
+    unsafe: { type: "boolean" },
     knowledge_gap: { type: "string", maxLength: 160 },
     reasoning_quality: { type: "string", enum: ["low", "medium", "high", "na"] },
     recommended_action: { type: "string", enum: [...ACTIONS] },
@@ -191,13 +203,15 @@ export const TUTOR_SCHEMA: Schema = {
 export interface TutorEvaluation {
   error_type: (typeof ERROR_TYPES)[number] | "none";
   knowledge_gap: string;
+  severity: 1 | 2 | 3 | 4 | 5;
+  unsafe: boolean;
   reasoning_quality: "low" | "medium" | "high" | "na";
   recommended_action: (typeof ACTIONS)[number];
   answer_correct: "yes" | "no" | "partial" | "na";
   self_corrected: boolean;
 }
 
-export const NO_EVALUATION: TutorEvaluation = { error_type: "none", knowledge_gap: "", reasoning_quality: "na", recommended_action: "none", answer_correct: "na", self_corrected: false };
+export const NO_EVALUATION: TutorEvaluation = { error_type: "none", knowledge_gap: "", severity: 1, unsafe: false, reasoning_quality: "na", recommended_action: "none", answer_correct: "na", self_corrected: false };
 
 export interface TutorOutput {
   reply: string;
