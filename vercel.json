@@ -5,13 +5,32 @@
   "buildCommand": "npm run build:vercel",
   "outputDirectory": "dist",
   "functions": {
-    "api/index.js": { "maxDuration": 60 }
+    "api/index.js": {
+      "maxDuration": 300
+    }
   },
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api" },
-    { "source": "/novo", "destination": "/novo.html" },
-    { "source": "/novo/:path*", "destination": "/novo.html" },
-    { "source": "/:path*", "destination": "/index.html" }
+    {
+      "source": "/api/:path*",
+      "destination": "/api"
+    },
+    {
+      "source": "/novo",
+      "destination": "/novo.html"
+    },
+    {
+      "source": "/novo/:path*",
+      "destination": "/novo.html"
+    },
+    {
+      "source": "/:path*",
+      "destination": "/index.html"
+    }
   ],
-  "crons": [{ "path": "/api/tutor/voice/sweep", "schedule": "0 5 * * *" }]
+  "crons": [
+    {
+      "path": "/api/tutor/voice/sweep",
+      "schedule": "* * * * *"
+    }
+  ]
 }
