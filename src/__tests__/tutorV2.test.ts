@@ -337,6 +337,12 @@ describe("Isolamento, relatório e custo", () => {
     expect(estimateCost("gpt-realtime-2.1-mini", { output_audio_tokens: 1_000_000 })).toBe(20);
     expect(estimateCost("gpt-realtime-2.1-mini", { output_audio_tokens: 1_000_000 }, { AI_COST_CONFIG: '{"gpt-realtime-2.1-mini":{"audio_out":30}}' } as any)).toBe(30);
     expect(estimateCost("x", { output_audio_tokens: 10 })).toBeNull();
-    expect(composeRealtimeInstructions({ mode: "livre", persona: "P", context: "C" })).not.toContain("<base>");
+    const rt = composeRealtimeInstructions({ mode: "livre", persona: "P", context: "C" });
+    expect(rt).not.toContain("<base>");
+    // idioma e sotaque no começo e lembrados no fim (o dono ouviu "muito sotaque")
+    expect(rt.startsWith("IDIOMA E SOTAQUE")).toBe(true);
+    expect(rt).toContain("sotaque brasileiro neutro");
+    expect(rt).toContain('AVC "a-vê-cê"');
+    expect(rt.trim().endsWith("português do Brasil, sotaque brasileiro neutro de locutor nacional, em toda fala.")).toBe(true);
   });
 });

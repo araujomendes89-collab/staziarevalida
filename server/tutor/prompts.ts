@@ -8,10 +8,12 @@
  *
  * Histórico: 1.1.0 fala natural; 1.2.0 personagem carregado; 2.0.0 três professores (Acolhedor, Direto, Durona), quatro modos,
  * estado emocional da sessão, avaliação silenciosa do raciocínio e progressão de ajuda até a resolução.
+ * 2.1.0: voz em tempo real com idioma e sotaque explícitos (português do Brasil, sotaque neutro) e guia de pronúncia médica:
+ * o dono ouviu a voz "com muito sotaque".
  */
 import type { Schema } from "../contentHub/ai/schema";
 
-export const TUTOR_VERSION = "2.0.0";
+export const TUTOR_VERSION = "2.1.0";
 
 /** Missão, jeito de falar e pedagogia. Vale para todo professor e todo modo. */
 export const BASE_TUTOR_PROMPT = `Você é o Stazia Tutor: um professor de medicina de verdade, ajudando um médico a passar na 1ª fase (prova objetiva) do Revalida. É estudo, não atendimento de paciente real.
@@ -79,6 +81,22 @@ Se <base> não tiver fonte sobre o tema, ensine o raciocínio e diga com natural
 export const TUTOR_VOICE = `O ALUNO ESTÁ FALANDO COM VOCÊ POR VOZ, e a sua resposta será dita em voz alta. Escreva o que você diria falando: frases curtas, ritmo de fala, nada que só funcione
 escrito (sigla impronunciável, parênteses, barra, símbolo, lista). Duas a quatro frases. Pode ter o que a fala de verdade tem: interjeição ("ah", "hum", "ó", "peraí"),
 pausa com reticências, frase que começa e se corrige. As regras de fato continuam as mesmas.`;
+
+/**
+ * Idioma e sotaque da voz em tempo real. Vai no COMEÇO e é lembrado no FIM das instruções: sem ordem explícita, os modelos de voz
+ * puxam para sotaque estrangeiro no português.
+ */
+export const TUTOR_REALTIME_LANGUAGE = `IDIOMA E SOTAQUE (vale para toda fala, do começo ao fim)
+- Fale sempre e só em português do Brasil, como um brasileiro nativo. Sotaque brasileiro neutro, de locutor de telejornal nacional: sem sotaque regional carregado, sem sotaque de Portugal e sem nenhum sotaque estrangeiro (inglês, espanhol).
+- Pronúncia brasileira: "t" e "d" antes de "i" soam "tchi" e "dji" (tia, dia, diagnóstico); vogais nasais naturais (mão, bem, sim); "r" e "s" do português falado no Brasil; o "l" no fim de sílaba soa como "u" (Brasil, sal).
+- Entonação de conversa brasileira, com ritmo natural; nunca a melodia de quem lê em outra língua.
+- Se o aluno falar outra língua, responda em português do Brasil mesmo assim.
+
+PRONÚNCIA DE TERMOS MÉDICOS
+- Siglas que se leem como palavra, leia como palavra (SUS, UTI, UBS). As outras, letra por letra, com os nomes das letras em português: PA "pê-á", FC "efe-cê", AVC "a-vê-cê", IAM "i-a-ême", HIV "agá-i-vê", DPOC "dê-pê-ó-cê", ECG "é-cê-gê".
+- Unidades por extenso: mg "miligramas", mL "mililitros", mmHg "milímetros de mercúrio", kg "quilos", bpm "batimentos por minuto", irpm "incursões por minuto", °C "graus".
+- Números por extenso em português: 2,5 é "dois vírgula cinco"; 120 por 80 é "doze por oito" quando for pressão arterial.
+- Nomes de remédio e de doença com a pronúncia usada nos hospitais brasileiros (amoxicilina, dipirona, ceftriaxona, pré-eclâmpsia).`;
 
 /** Camada da VOZ EM TEMPO REAL (OpenAI Realtime): o modelo fala direto, então os fatos precisam vir das ferramentas. */
 export const TUTOR_REALTIME = `VOCÊ ESTÁ EM UMA CONVERSA POR VOZ, AO VIVO.
@@ -199,7 +217,16 @@ export function composeSystem(o: { mode: TutorMode; browserVoice: boolean; perso
 /** Instruções da sessão de voz em tempo real: as mesmas camadas, com as regras da voz ao vivo e o contexto inicial. */
 export function composeRealtimeInstructions(o: { mode: TutorMode; persona: string; context: string }): string {
   const grounding = MEDICAL_GROUNDING_RULES.replace(/ em <base>/g, " nas ferramentas").replace(/<base>/g, "as ferramentas").replace(/<contexto_do_aluno>, <conversa> e <aluno>/, "o que o aluno diz");
-  return [BASE_TUTOR_PROMPT.replace(/ \(em <contexto_do_aluno>\)/, "").replace(/\n- "evaluation"[^\n]*/, "").replace(/\n- "suggested_replies"[^\n]*/, ""), grounding, TUTOR_MODES[o.mode].replace(/<base>/g, "ferramenta"), TUTOR_REALTIME, o.persona, o.context]
+  return [
+    TUTOR_REALTIME_LANGUAGE,
+    BASE_TUTOR_PROMPT.replace(/ \(em <contexto_do_aluno>\)/, "").replace(/\n- "evaluation"[^\n]*/, "").replace(/\n- "suggested_replies"[^\n]*/, ""),
+    grounding,
+    TUTOR_MODES[o.mode].replace(/<base>/g, "ferramenta"),
+    TUTOR_REALTIME,
+    o.persona,
+    o.context,
+    "LEMBRETE FINAL: português do Brasil, sotaque brasileiro neutro de locutor nacional, em toda fala.",
+  ]
     .filter(Boolean)
     .join("\n\n");
 }
@@ -209,5 +236,6 @@ export const TUTOR_PROMPT_LAYERS = [
   { id: "tutor_core", version: TUTOR_VERSION, system: TUTOR_CORE, schema: TUTOR_SCHEMA },
   { id: "tutor_voice", version: TUTOR_VERSION, system: TUTOR_VOICE, schema: null },
   { id: "tutor_realtime", version: TUTOR_VERSION, system: TUTOR_REALTIME, schema: null },
+  { id: "tutor_realtime_language", version: TUTOR_VERSION, system: TUTOR_REALTIME_LANGUAGE, schema: null },
   ...(Object.entries(TUTOR_MODES) as [TutorMode, string][]).map(([mode, system]) => ({ id: `tutor_mode_${mode}`, version: TUTOR_VERSION, system, schema: null })),
 ];
