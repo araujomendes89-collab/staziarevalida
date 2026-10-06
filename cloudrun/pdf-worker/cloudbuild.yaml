@@ -4,5 +4,6 @@ steps:
     args: ["build", "-f", "cloudrun/pdf-worker/Dockerfile", "-t", "${_IMAGE}", "."]
 images: ["${_IMAGE}"]
 options:
+  machineType: E2_HIGHCPU_4
   logging: CLOUD_LOGGING_ONLY
 timeout: 1800s
