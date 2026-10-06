@@ -1,0 +1,20 @@
+# O que NÃO vai para o Google Cloud Build (a imagem do processamento de PDF só precisa do servidor e dos scripts).
+.git
+.gitignore
+.env
+.env.*
+node_modules
+.data
+dist
+dist-worker
+server-dist
+.vercel
+content-engine
+checklists-pack
+.claude
+revalida-reverse-engine
+_unused
+src
+docs
+supabase
+*.log

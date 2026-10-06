@@ -31,3 +31,4 @@ supabase/.temp/
 # Vercel
 server-dist/
 .vercel
+dist-worker/
