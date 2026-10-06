@@ -28,6 +28,18 @@ class FakeUtterance {
   },
 };
 const pendingEnd: (() => void)[] = [];
+// voz natural do servidor simulada: o áudio "toca" num elemento falso e o teste decide quando ele termina
+const audios: any[] = [];
+class FakeAudio {
+  src = ""; muted = false; currentTime = 0; duration = 10; paused = true; onended: any = null; onerror: any = null; played: string[] = [];
+  constructor(src?: string) { if (src) this.src = src; audios.push(this); }
+  play() { this.paused = false; this.played.push(this.src); return Promise.resolve(); }
+  pause() { this.paused = true; }
+}
+(globalThis as any).Audio = FakeAudio;
+let blobs = 0;
+(URL as any).createObjectURL = () => `blob:voz-${++blobs}`;
+(URL as any).revokeObjectURL = () => {};
 (window as any).webkitSpeechRecognition = class {
   lang = ""; interimResults = false; continuous = false; onresult: any; onerror: any; onend: any;
   constructor() { recognition = this; }
@@ -53,6 +65,9 @@ const session = (over: any = {}) => ({
 });
 
 let rpcImpl: Record<string, (args: any) => any> = {};
+let serverStatus: any;
+const speechCalls: any[] = [];
+let speechFail = false;
 const turns: any[] = [];
 let turnReply: any;
 
@@ -61,13 +76,22 @@ beforeEach(() => {
   pendingEnd.length = 0;
   turns.length = 0;
   recognition = null;
+  audios.length = 0;
+  speechCalls.length = 0;
+  speechFail = false;
+  serverStatus = { ready: true, simulated: false, neural_voice: false };
   rpcImpl = { app_tutor_status: () => status(), app_tutor_sessions: () => [] };
   backend.rpc.mockImplementation(async (fn: string, args: any) => {
     if (!rpcImpl[fn]) throw new Error(`rpc inesperada: ${fn}`);
     return rpcImpl[fn](args);
   });
   turnReply = { message: { id: 9, role: "tutor", content: "Qual é a síndrome principal?", spoken: "Qual é a síndrome principal?", grounding: "general", sources: [], hint_level: null, suggested: ["Não sei"], notice: null }, question_state: "open", used_today: 3, daily_limit: 40 };
-  (globalThis as any).fetch = vi.fn(async (_url: string, init: any) => {
+  (globalThis as any).fetch = vi.fn(async (url: string, init: any) => {
+    if (String(url).endsWith("/status")) return new Response(JSON.stringify(serverStatus), { status: 200 });
+    if (String(url).endsWith("/speech")) {
+      speechCalls.push(JSON.parse(init.body));
+      return speechFail ? new Response(JSON.stringify({ error: "A voz natural falhou agora." }), { status: 502 }) : new Response(new Blob([new Uint8Array([1, 2, 3])], { type: "audio/mpeg" }), { status: 200 });
+    }
     turns.push(JSON.parse(init.body));
     return new Response(JSON.stringify(typeof turnReply === "function" ? turnReply(turns[turns.length - 1]) : turnReply), { status: 200 });
   });
@@ -203,6 +227,60 @@ describe("Tela do Tutor", () => {
     recognition.onend();
     await waitFor(() => expect(turns).toHaveLength(2));
     expect(turns[1]).toMatchObject({ text: "explica de outro jeito", voice: true, interrupted: "Pense primeiro na síndrome. Depois na causa." });
+  });
+
+  it("voz natural ligada no servidor: a resposta toca o áudio gerado lá (pela fala validada, nunca texto livre); se falhar, a voz do aparelho assume", async () => {
+    serverStatus = { ready: true, simulated: false, neural_voice: true };
+    rpcImpl.app_tutor_start = () => session({ mode: "livre", question: null, question_state: "none" });
+    const first = "Olha, antes de pensar em remédio, pensa em qual síndrome está na sua frente, porque é ela que manda em todo o resto do raciocínio.";
+    const second = "Depois disso, pergunta pra você mesmo qual é a causa mais comum nessa idade, e só então qual é o achado que muda a conduta de verdade.";
+    turnReply = { message: { id: 12, role: "tutor", content: `${first} ${second}`, spoken: `${first} ${second}`, grounding: "general", sources: [], hint_level: null, suggested: [], notice: null }, question_state: "none", used_today: 3, daily_limit: 40 };
+    const TutorScreen = await load();
+    render(<TutorScreen go={() => {}} />);
+    fireEvent.click(await screen.findByText("Conversa livre"));
+    fireEvent.click(screen.getByText("Começar"));
+    await waitFor(() => expect((globalThis as any).fetch).toHaveBeenCalledWith("/api/tutor/status", expect.anything()));
+    fireEvent.click(await screen.findByLabelText("Falar com o professor"));
+    recognition.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: "não entendi o mecanismo" }], { isFinal: true })] });
+    recognition.onend();
+    await waitFor(() => expect(speechCalls).toHaveLength(1));
+    expect(speechCalls[0]).toEqual({ kind: "message", session_id: session().id, message_id: 12 });
+    await waitFor(() => expect(audios.some((a) => a.played.some((src: string) => src.startsWith("blob:")))).toBe(true));
+    expect(spoken).toHaveLength(0); // a voz do aparelho não foi usada
+    // interrompe com 90% do áudio tocado: o trecho que estava sendo dito volta como contexto
+    const playing = audios.find((a) => a.played.some((src: string) => src.startsWith("blob:")));
+    playing.currentTime = 9;
+    fireEvent.click(screen.getByLabelText("Interromper e falar"));
+    expect(playing.paused).toBe(true);
+    speechFail = true; // a próxima voz natural vai falhar
+    recognition.onresult({ resultIndex: 0, results: [Object.assign([{ transcript: "explica de outro jeito" }], { isFinal: true })] });
+    recognition.onend();
+    await waitFor(() => expect(turns).toHaveLength(2));
+    expect(turns[1].interrupted).toBe(second);
+    // a voz natural falhou: a do aparelho assume com o mesmo texto validado
+    await waitFor(() => expect(speechCalls).toHaveLength(2));
+    await waitFor(() => expect(spoken.map((x) => x.text).join(" ")).toContain(first));
+  });
+
+  it("escolha da voz: com a voz natural ligada, ela vem marcada e dá para ouvir o professor antes de salvar", async () => {
+    serverStatus = { ready: true, simulated: false, neural_voice: true };
+    rpcImpl.app_tutor_status = () => status({ preferences: { ...status().preferences, personality_id: "xingao", chosen: false } });
+    const TutorScreen = await load();
+    render(<TutorScreen go={() => {}} />);
+    await screen.findByText("Escolha seu professor");
+    const field = (await screen.findByLabelText("Voz do professor")) as HTMLSelectElement;
+    await waitFor(() => expect(field.value).toBe("__voz_natural__"));
+    expect(Array.from(field.options).map((o) => o.textContent)).toEqual(["Voz natural do professor (recomendada)", "A mais natural do aparelho (Voz de teste)", "Voz de teste"]);
+    fireEvent.click(screen.getByText("Ouvir"));
+    await waitFor(() => expect(speechCalls).toEqual([{ kind: "phrase", phrase: "sample", personality_id: "xingao" }]));
+    // trocar para a do aparelho fica guardado e não pede nada ao servidor
+    fireEvent.change(field, { target: { value: "Voz de teste" } });
+    fireEvent.click(screen.getByText("Ouvir"));
+    expect(spoken.at(-1)?.text).toMatch(/É assim que eu vou falar com você/);
+    expect(speechCalls).toHaveLength(1);
+    expect(localStorage.getItem("smn-tutor-voice-engine")).toBe("device");
+    fireEvent.change(field, { target: { value: "__voz_natural__" } });
+    expect(localStorage.getItem("smn-tutor-voice-engine")).toBeNull();
   });
 
   it("fala corrida e voz mais natural: junta frases curtas, quebra texto longo e prefere a voz natural do aparelho", async () => {

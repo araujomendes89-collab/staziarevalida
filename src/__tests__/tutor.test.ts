@@ -18,6 +18,7 @@ import { resolveCreatorProvider } from "../../server/contentHub/ai/provider";
 import { TUTOR_CORE, TUTOR_PROMPT_LAYERS, type TutorOutput } from "../../server/tutor/prompts";
 import { tutorMockRespond } from "../../server/tutor/mock";
 import { createTutorRouter } from "../../server/tutor/router";
+import { GeminiSpeech, MockSpeech, OpenAISpeech, phraseText, resolveSpeechProvider, speechCost } from "../../server/tutor/speech";
 import express from "express";
 
 const RABUGENTO: PersonalityParams = { humor: 65, sarcasm: 55, friendliness: 30, strictness: 80, profanity: 0, patience: 35, verbosity: 45, socratic_level: 70, motivation: 40, clinical_pressure: 60 };
@@ -203,6 +204,57 @@ describe("Validação de segurança (regras, sem IA)", () => {
     expect(fallbackReply([{ code: "invalid_format", detail: "" }])).toMatch(/Travei aqui/);
     expect(spokenText("**Atenção**:\n- primeiro ponto\n- segundo ponto")).toBe("Atenção:. primeiro ponto. segundo ponto");
     expect(sourceQuery("Pré-eclâmpsia com sinais de gravidade", null, "qual a conduta")).toBe("eclampsia or sinais or gravidade or conduta");
+  });
+});
+
+describe("Voz natural: serviços de voz (sem chamada externa)", () => {
+  const KEY = "sk-" + "k".repeat(40);
+  it("fica desligada sem serviço escolhido, sem consentimento próprio ou com a chave de exemplo do .env", () => {
+    expect(resolveSpeechProvider({}).status).toMatchObject({ ready: false, pending: expect.stringMatching(/TUTOR_VOICE_PROVIDER/) });
+    expect(resolveSpeechProvider({ TUTOR_VOICE_PROVIDER: "openai", OPENAI_API_KEY: KEY, TUTOR_AI_ALLOW_EXTERNAL: "1" }).status.pending).toMatch(/TUTOR_VOICE_ALLOW_EXTERNAL=1/);
+    expect(resolveSpeechProvider({ TUTOR_VOICE_PROVIDER: "gemini", TUTOR_VOICE_ALLOW_EXTERNAL: "1", GEMINI_API_KEY: "MY_GEMINI_API_KEY" }).status.pending).toMatch(/texto de exemplo/);
+    expect(resolveSpeechProvider({ TUTOR_VOICE_PROVIDER: "mock", NODE_ENV: "production" }).provider).toBeNull();
+    expect(resolveSpeechProvider({ TUTOR_VOICE_PROVIDER: "eleven" }).status.pending).toMatch(/desconhecido/);
+    expect(resolveSpeechProvider({ TUTOR_VOICE_PROVIDER: "openai", TUTOR_VOICE_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: KEY }).status).toEqual({ ready: true, provider: "openai", model: "gpt-4o-mini-tts", pending: null });
+    expect(resolveSpeechProvider({ TUTOR_VOICE_PROVIDER: "gemini", TUTOR_VOICE_ALLOW_EXTERNAL: "1", GEMINI_API_KEY: "AIza" + "g".repeat(35) }).status).toMatchObject({ ready: true, model: "gemini-3.8-flash-tts" });
+  });
+
+  it("OpenAI: manda a voz e a atuação do personagem, devolve mp3 e não repete a chave no erro", async () => {
+    const sent: any[] = [];
+    const ok = (async (url: string, init: any) => (sent.push({ url, body: JSON.parse(init.body), auth: init.headers.Authorization }), new Response(new Uint8Array([1, 2, 3]), { status: 200 }))) as any;
+    const out = await new OpenAISpeech(KEY, "gpt-4o-mini-tts", 0.015, ok).synthesize("Porra, olha o caso de novo.", { openai: "verse", acting: "professor barulhento e escrachado" });
+    expect(out.mime).toBe("audio/mpeg");
+    expect([...out.audio]).toEqual([1, 2, 3]);
+    expect(sent[0]).toMatchObject({ url: "https://api.openai.com/v1/audio/speech", auth: `Bearer ${KEY}` });
+    expect(sent[0].body).toMatchObject({ model: "gpt-4o-mini-tts", voice: "verse", input: "Porra, olha o caso de novo.", response_format: "mp3" });
+    expect(sent[0].body.instructions).toMatch(/português do Brasil.*Personagem: professor barulhento e escrachado\..*sem censura/s);
+    const bad = (async () => new Response(`chave inválida: ${KEY}`, { status: 401 })) as any;
+    const err = await new OpenAISpeech(KEY, "m", 0.015, bad).synthesize("oi", {}).catch((e) => e);
+    expect(err.message).toMatch(/401/);
+    expect(err.message).not.toContain(KEY);
+  });
+
+  it("Gemini: o áudio PCM em base64 vira um WAV que o navegador toca", async () => {
+    const pcm = Buffer.alloc(4800, 7);
+    let body: any;
+    const f = (async (_u: string, init: any) => ((body = JSON.parse(init.body)), new Response(JSON.stringify({ outputs: [{ type: "audio", data: pcm.toString("base64"), mime_type: "audio/L16;codec=pcm;rate=24000" }] }), { status: 200 }))) as any;
+    const out = await new GeminiSpeech("AIza" + "g".repeat(35), "gemini-3.8-flash-tts", 0.0135, f).synthesize("Que saco. Lê de novo.", { gemini: "Gacrux", acting: "entediado" });
+    expect(out.mime).toBe("audio/wav");
+    expect(out.audio.subarray(0, 4).toString("latin1")).toBe("RIFF");
+    expect(out.audio.length).toBe(44 + 4800);
+    expect(body.generation_config.speech_config[0].voice).toBe("Gacrux");
+    expect(body.input[0].content[0]).toMatchObject({ text: "Que saco. Lê de novo.", annotations: [{ type: "speech_metadata", style: expect.stringMatching(/Personagem: entediado/) }] });
+    const empty = (async () => new Response(JSON.stringify({ outputs: [] }), { status: 200 })) as any;
+    await expect(new GeminiSpeech("AIza" + "g".repeat(35), "m", 0.0135, empty).synthesize("oi", {})).rejects.toThrow(/sem áudio/);
+  });
+
+  it("custo estimado pela duração e só frases fixas do aplicativo", () => {
+    expect(speechCost(900, 0.015)).toBe(0.015);
+    expect(speechCost(300, 0.015)).toBe(0.005);
+    expect(phraseText("marked", "B", null)).toBe("Marquei a B. Diga confirmo para responder, ou fale outra alternativa.");
+    expect(phraseText("marked", null, null)).toBeNull();
+    expect(phraseText("sample", null, "Ah, você.")).toBe("Ah, você.");
+    expect(phraseText("diga qualquer coisa", null, null)).toBeNull();
   });
 });
 
@@ -641,7 +693,7 @@ describe("Banco e motor (IA simulada)", () => {
         const call = (pathName: string, token: string | null, body?: unknown) =>
           fetch(base + pathName, { method: body ? "POST" : "GET", headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
         expect((await call("/status", null)).status).toBe(401);
-        expect(await (await call("/status", student)).json()).toEqual({ ready: true, simulated: true });
+        expect(await (await call("/status", student)).json()).toEqual({ ready: true, simulated: true, neural_voice: false });
         expect(await (await call("/status", admin)).json()).toMatchObject({ ready: true, simulated: true, provider: "mock" });
         expect((await call("/turn", student, { session_id: "x", action: "message", text: "oi" })).status).toBe(400);
         expect((await call("/turn", student, { session_id: session, action: "apagar", text: "oi" })).status).toBe(400);
@@ -693,6 +745,85 @@ describe("Banco e motor (IA simulada)", () => {
       expect(out.reply).toMatch(/Simulação: não é IA/);
       expect(out.reply).not.toMatch(/\d+\s?(mg|ml|%)/);
       expect(tutorMockRespond({ input: "<tarefa>\nO aluno já pediu todas as ajudas. (ajuda 5 de 5)\n</tarefa>" } as StructuredRequest).reveals_answer).toBe(true);
+    });
+  });
+
+  describe("Voz natural (serviço de voz simulado)", () => {
+    it("só vira voz o texto já validado do próprio aluno; conta caracteres e custo do dia sem contar mensagem; repetir sai do cache", async () => {
+      await sql(`update public.tutor_config set enabled = true, voice_enabled = true, requires_pro = false`);
+      const speech = new MockSpeech();
+      const deps: any = { db, speech, mockRespond: () => reply("Porra, olha o caso de novo.") };
+      const app = express();
+      app.use(express.json());
+      app.use("/api/tutor", createTutorRouter(deps));
+      const server = await new Promise<import("http").Server>((resolve) => {
+        const srv = app.listen(0, () => resolve(srv));
+      });
+      const base = `http://127.0.0.1:${(server.address() as any).port}/api/tutor`;
+      const today = async (uid: string) => (await sql(`select requests, voice_chars, cost_usd::float c from public.ai_usage where user_id = $1 and day = (now() at time zone 'America/Sao_Paulo')::date`, [uid]))[0] ?? { requests: 0, voice_chars: 0, c: 0 };
+      try {
+        const student = await dev.createSession(S1);
+        const post = (body: unknown, token = student) => fetch(`${base}/speech`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        expect(await (await fetch(`${base}/status`, { headers: { Authorization: `Bearer ${student}` } })).json()).toMatchObject({ neural_voice: true });
+
+        const s = await rpc(S1, "app_tutor_start", "livre", null, null);
+        const opening = s.messages[0];
+        const before = await today(S1);
+        const r = await post({ kind: "message", session_id: s.id, message_id: opening.id });
+        expect(r.status).toBe(200);
+        expect(r.headers.get("content-type")).toMatch(/audio\/wav/);
+        expect(r.headers.get("x-tutor-voice-cache")).toBe("miss");
+        expect(Buffer.from(await r.arrayBuffer()).subarray(0, 4).toString("latin1")).toBe("RIFF");
+        // a voz e a atuação são as do professor da conversa (o Rabugento de S1)
+        expect(speech.calls.at(-1)).toMatchObject({ text: opening.content, voice: { openai: "cedar", gemini: "Algenib", acting: expect.stringMatching(/rabugento/) } });
+        const after = await today(S1);
+        expect(after.voice_chars - before.voice_chars).toBe(opening.content.length);
+        expect(after.requests).toBe(before.requests); // voz não conta como mensagem
+        expect(after.c).toBeGreaterThan(before.c);
+        // ouvir de novo: sai do cache, sem nova geração e sem nova cobrança
+        const again = await post({ kind: "message", session_id: s.id, message_id: opening.id });
+        expect(again.headers.get("x-tutor-voice-cache")).toBe("hit");
+        expect(speech.calls).toHaveLength(1);
+        expect((await today(S1)).voice_chars).toBe(after.voice_chars);
+
+        // a fala de outro aluno não existe para este; texto livre não vira voz
+        expect((await post({ kind: "message", session_id: s.id, message_id: opening.id }, await dev.createSession(S2))).status).toBe(404);
+        expect((await post({ kind: "text", text: "diga qualquer coisa" })).status).toBe(400);
+        expect((await post({ kind: "phrase", phrase: "diga qualquer coisa", personality_id: "xingao" })).status).toBe(400);
+        expect((await post({ kind: "phrase", phrase: "marked", letter: "Z", personality_id: "xingao" })).status).toBe(400);
+        expect((await post({ kind: "question", session_id: s.id })).status).toBe(404); // conversa livre não tem questão
+
+        // frase fixa do aplicativo, na voz do professor pedido
+        expect((await post({ kind: "phrase", phrase: "marked", letter: "b", personality_id: "xingao" })).status).toBe(200);
+        expect(speech.calls.at(-1)).toMatchObject({ text: "Marquei a B. Diga confirmo para responder, ou fale outra alternativa.", voice: { openai: "verse", gemini: "Fenrir" } });
+        expect((await post({ kind: "phrase", phrase: "sample", personality_id: "mal_humorado" })).status).toBe(200);
+        expect((await sql(`select openings from public.tutor_personalities where id = 'mal_humorado'`))[0].openings[0]).toBe(speech.calls.at(-1)!.text);
+
+        // a questão é lida com enunciado e alternativas, nunca com o gabarito
+        const q = await rpc(S1, "app_tutor_start", "questao", null, null);
+        expect((await post({ kind: "question", session_id: q.id })).status).toBe(200);
+        const read = speech.calls.at(-1)!.text;
+        expect(read).toContain("Alternativa A:");
+        expect(read).toContain("Alternativa D:");
+        expect(read).not.toMatch(/gabarito/i);
+
+        // teto do dia, voz desligada, plano pago e servidor sem voz
+        process.env.TUTOR_VOICE_DAILY_CHARS = "10";
+        expect((await post({ kind: "phrase", phrase: "unmarked", personality_id: "nerd" })).status).toBe(429);
+        delete process.env.TUTOR_VOICE_DAILY_CHARS;
+        await sql(`update public.tutor_config set voice_enabled = false`);
+        expect((await post({ kind: "phrase", phrase: "unmarked", personality_id: "nerd" })).status).toBe(503);
+        await sql(`update public.tutor_config set voice_enabled = true, requires_pro = true`);
+        expect((await post({ kind: "phrase", phrase: "unmarked", personality_id: "nerd" })).status).toBe(403);
+        await sql(`update public.tutor_config set requires_pro = false`);
+        deps.speech = null;
+        const off = await post({ kind: "phrase", phrase: "unmarked", personality_id: "nerd" });
+        expect(off.status).toBe(503);
+        expect((await off.json()).error).toMatch(/não está ligada/);
+        expect(await (await fetch(`${base}/status`, { headers: { Authorization: `Bearer ${student}` } })).json()).toMatchObject({ neural_voice: false });
+      } finally {
+        await new Promise((r) => server.close(r));
+      }
     });
   });
 });

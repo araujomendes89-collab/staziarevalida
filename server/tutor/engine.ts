@@ -22,6 +22,8 @@ export interface TutorDeps {
   db: ContentDb;
   mockRespond?: (req: StructuredRequest) => unknown;
   log?: (m: string) => void;
+  /** Voz natural: nos testes, um provedor fixo (ou null = desligada); fora deles, vem do .env (speech.ts). */
+  speech?: import("./speech").SpeechProvider | null;
 }
 
 export interface TutorAction {

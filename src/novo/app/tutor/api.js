@@ -27,6 +27,16 @@ export async function tutorTurn(backend, body) {
   return parse(await fetch(`${BASE}/turn`, { method: "POST", headers: await headers(backend, { "Content-Type": "application/json" }), body: JSON.stringify(body) }));
 }
 
+/**
+ * Voz natural de um texto que o servidor já validou: { kind: "message", session_id, message_id } | { kind: "question", session_id }
+ * | { kind: "phrase", phrase, letter?, personality_id }. Devolve o áudio (Blob).
+ */
+export async function tutorSpeech(backend, body) {
+  const res = await fetch(`${BASE}/speech`, { method: "POST", headers: await headers(backend, { "Content-Type": "application/json" }), body: JSON.stringify(body) });
+  if (!res.ok) await parse(res);
+  return res.blob();
+}
+
 export async function tutorServerStatus(backend) {
   return parse(await fetch(`${BASE}/status`, { headers: await headers(backend) }));
 }

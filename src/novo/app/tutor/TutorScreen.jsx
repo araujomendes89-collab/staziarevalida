@@ -7,9 +7,9 @@ import { AnswerOption, Badge, Banner, Button, Card, Chip, EmptyState, Icon, Icon
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { examLabel, splitStatement } from "../practice/format.js";
-import { tutorAvailable, tutorTurn } from "./api.js";
+import { tutorAvailable, tutorServerStatus, tutorSpeech, tutorTurn } from "./api.js";
 import { CONFIDENCE, ERROR_CLASS, EXPLANATION, GROUNDING, HUMOR, INTENSITY, LEVEL, MODES, PROFANITY, STRICTNESS, modeLabel } from "./labels.js";
-import { chooseVoice, chosenVoiceName, portugueseVoices, useVoice, voiceSupport } from "./useVoice.js";
+import { chooseNeural, chooseVoice, chosenVoiceName, neuralChosen, portugueseVoices, useVoice, voiceSupport } from "./useVoice.js";
 import { micErrorMessage, parseVoiceCommand, questionSpeech } from "./voiceCommands.js";
 
 const R = { borderRadius: 24 };
@@ -23,6 +23,7 @@ export function TutorScreen({ go }) {
   const [session, setSession] = React.useState(null);
   const [view, setView] = React.useState("loading"); // loading | setup | start | chat | report
   const [error, setError] = React.useState(null);
+  const [neural, setNeural] = React.useState(false); // o servidor tem voz natural ligada
 
   const refresh = React.useCallback(async () => {
     const [st, list] = await Promise.all([backend.rpc("app_tutor_status"), backend.rpc("app_tutor_sessions", { p_limit: 20 })]);
@@ -41,6 +42,18 @@ export function TutorScreen({ go }) {
       alive = false;
     };
   }, [refresh]);
+
+  React.useEffect(() => {
+    if (!status?.available || !status.voice_enabled || !tutorAvailable(backend)) return undefined;
+    let alive = true;
+    tutorServerStatus(backend).then(
+      (s) => alive && setNeural(Boolean(s?.neural_voice)),
+      () => {}
+    );
+    return () => {
+      alive = false;
+    };
+  }, [backend, status?.available, status?.voice_enabled]);
 
   const open = async (id) => {
     setError(null);
@@ -99,9 +112,9 @@ export function TutorScreen({ go }) {
   );
 
   let body;
-  if (view === "setup") body = <ProfessorPicker status={status} onSaved={() => refresh().then(() => setView(session ? "chat" : "start"))} />;
+  if (view === "setup") body = <ProfessorPicker status={status} neural={neural} onSaved={() => refresh().then(() => setView(session ? "chat" : "start"))} />;
   else if (view === "report") body = <Report onBack={() => setView(session ? "chat" : "start")} />;
-  else if (view === "chat" && session) body = <Chat key={session.id} session={session} setSession={setSession} status={status} onUsage={(used) => setStatus((s) => ({ ...s, used_today: used }))} mobile={mobile} />;
+  else if (view === "chat" && session) body = <Chat key={session.id} session={session} setSession={setSession} status={status} neural={neural} onUsage={(used) => setStatus((s) => ({ ...s, used_today: used }))} mobile={mobile} />;
   else body = <StartPanel status={status} onStart={start} onSetup={() => setView("setup")} />;
 
   return (
@@ -123,7 +136,7 @@ export function TutorScreen({ go }) {
 }
 
 // ---------------------------------------------------------------- escolha do professor
-function ProfessorPicker({ status, onSaved }) {
+function ProfessorPicker({ status, neural, onSaved }) {
   const { backend } = useSession();
   const [prefs, setPrefs] = React.useState(() => ({ ...status.preferences, humor: status.preferences.humor == null ? "" : String(status.preferences.humor) }));
   const [state, setState] = React.useState({ saving: false, error: null });
@@ -168,7 +181,7 @@ function ProfessorPicker({ status, onSaved }) {
           {chosen?.swears && profanityOptions.length > 1 && <SelectField label="Palavrões" hint="No liberado, o professor xinga de verdade, inclusive você, na zoeira. Ofensa pesada e humilhação não entram." value={prefs.profanity} onChange={(e) => ((profanityTouched.current = true), set({ profanity: e.target.value }))} options={profanityOptions} />}
         </div>
         <Switch label="Tutor Inteligente" description="Ajusta a intensidade por um tempo quando você trava ou embala, e sempre avisa. O professor escolhido não muda." checked={prefs.adaptive} onChange={(e) => set({ adaptive: e.target.checked })} />
-        {status.voice_enabled && <VoicePicker voice={chosen?.voice} />}
+        {status.voice_enabled && <VoicePicker voice={chosen?.voice} personalityId={chosen?.id} neural={neural} />}
         {state.error && <Banner tone="danger">{state.error}</Banner>}
         <div>
           <Button icon="check" loading={state.saving} onClick={save}>Salvar professor</Button>
@@ -178,10 +191,16 @@ function ProfessorPicker({ status, onSaved }) {
   );
 }
 
-/** Voz do aparelho: lista as vozes em português (a mais natural primeiro) e deixa ouvir antes de escolher. */
-function VoicePicker({ voice }) {
+/**
+ * Voz do professor: a natural (gerada no servidor, quando ligada) ou uma do aparelho, em português (a mais natural primeiro).
+ * Dá para ouvir antes de escolher.
+ */
+function VoicePicker({ voice, personalityId, neural }) {
+  const { backend } = useSession();
   const [voices, setVoices] = React.useState(() => portugueseVoices());
-  const [name, setName] = React.useState(() => chosenVoiceName());
+  const [name, setName] = React.useState(() => (neural && neuralChosen() ? NEURAL : chosenVoiceName()));
+  const [state, setState] = React.useState({ busy: false, error: null });
+  const player = React.useRef(null);
   React.useEffect(() => {
     const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
     if (!synth) return undefined;
@@ -190,33 +209,66 @@ function VoicePicker({ voice }) {
     synth.addEventListener?.("voiceschanged", refresh);
     return () => synth.removeEventListener?.("voiceschanged", refresh);
   }, []);
-  if (voices.length === 0) return null;
-  const listen = () => {
-    const synth = window.speechSynthesis;
-    synth.cancel();
+  React.useEffect(() => {
+    if (neural && neuralChosen()) setName(NEURAL);
+  }, [neural]);
+  React.useEffect(() => () => player.current?.pause?.(), []);
+  if (voices.length === 0 && !neural) return null;
+  const pick = (value) => {
+    setName(value);
+    setState({ busy: false, error: null });
+    if (value === NEURAL) chooseNeural(true);
+    else {
+      chooseNeural(false);
+      chooseVoice(value);
+    }
+  };
+  const listen = async () => {
+    window.speechSynthesis?.cancel();
+    player.current?.pause?.();
+    if (name === NEURAL) {
+      setState({ busy: true, error: null });
+      try {
+        const blob = await tutorSpeech(backend, { kind: "phrase", phrase: "sample", personality_id: personalityId });
+        player.current = new Audio(URL.createObjectURL(blob));
+        await player.current.play();
+        setState({ busy: false, error: null });
+      } catch (e) {
+        setState({ busy: false, error: messageOf(e) });
+      }
+      return;
+    }
     const u = new SpeechSynthesisUtterance("Oi. É assim que eu vou falar com você. Se ficar estranho, escolhe outra voz.");
     const v = voices.find((x) => x.name === name) ?? voices[0];
     u.voice = v;
     u.lang = v.lang;
     u.rate = Number(voice?.rate) || 1;
     u.pitch = Number(voice?.pitch) || 1;
-    synth.speak(u);
+    window.speechSynthesis.speak(u);
   };
+  const options = [
+    ...(neural ? [{ value: NEURAL, label: "Voz natural do professor (recomendada)" }] : []),
+    ...(voices.length ? [{ value: "", label: `A mais natural do aparelho (${voices[0].name})` }, ...voices.map((v) => ({ value: v.name, label: v.name }))] : []),
+  ];
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
-      <div style={{ flex: 1, minWidth: 220, maxWidth: 420 }}>
-        <SelectField
-          label="Voz do professor (deste aparelho)"
-          hint="As vozes vêm do seu aparelho e do navegador. As marcadas como natural, neural ou aprimorada soam menos robóticas."
-          value={name}
-          onChange={(e) => (setName(e.target.value), chooseVoice(e.target.value))}
-          options={[{ value: "", label: `A mais natural (${voices[0].name})` }, ...voices.map((v) => ({ value: v.name, label: v.name }))]}
-        />
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 220, maxWidth: 420 }}>
+          <SelectField
+            label="Voz do professor"
+            hint={neural ? "A voz natural é gerada no servidor, com o jeito de cada professor. As do aparelho são a reserva." : "As vozes vêm do seu aparelho e do navegador. As marcadas como natural, neural ou aprimorada soam menos robóticas."}
+            value={name}
+            onChange={(e) => pick(e.target.value)}
+            options={options}
+          />
+        </div>
+        <Button size="sm" variant="secondary" icon="volume-2" loading={state.busy} disabled={name === NEURAL && !personalityId} onClick={listen}>Ouvir</Button>
       </div>
-      <Button size="sm" variant="secondary" icon="volume-2" onClick={listen}>Ouvir</Button>
+      {state.error && <span style={{ font: "var(--type-caption)", color: "var(--text-danger)" }}>{state.error}</span>}
     </div>
   );
 }
+const NEURAL = "__voz_natural__";
 
 // ---------------------------------------------------------------- começar
 function StartPanel({ status, onStart, onSetup }) {
@@ -272,7 +324,7 @@ function StartPanel({ status, onStart, onSetup }) {
 }
 
 // ---------------------------------------------------------------- conversa
-function Chat({ session, setSession, status, onUsage, mobile }) {
+function Chat({ session, setSession, status, neural, onUsage, mobile }) {
   const { backend } = useSession();
   const [messages, setMessages] = React.useState(session.messages);
   const [text, setText] = React.useState("");
@@ -285,7 +337,7 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
   const interrupted = React.useRef(null);
   const endRef = React.useRef(null);
   const support = React.useMemo(voiceSupport, []);
-  const voiceAllowed = status.voice_enabled && (support.speak || support.listen);
+  const voiceAllowed = status.voice_enabled && (support.speak || support.listen || neural);
   // a voz chama de volta fora do ciclo de desenho: estas referências sempre apontam para o estado e as ações mais recentes
   const live = React.useRef({});
   const actions = React.useRef({});
@@ -304,16 +356,31 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
   }, [session.question?.id]);
 
   const listenAgain = () => live.current.voiceOn && support.listen && voice.listen();
+  /** Voz natural: busca no servidor o áudio de um texto que ele já validou (nunca texto livre). Sem ela, a voz é a do aparelho. */
+  const wantsNeural = () => Boolean(live.current.neural) && neuralChosen();
+  const neuralLoad = (body) => (body && wantsNeural() ? () => tutorSpeech(backend, body) : null);
+  const canSpeak = () => support.speak || wantsNeural();
 
   /** Fala algo do aplicativo (aviso ou leitura da questão), que não é resposta do professor, e volta a ouvir. */
-  const say = (textToSay, note = textToSay) => {
+  const say = (textToSay, note = textToSay, body = null, thenListen = true) => {
     setVoiceNote(note);
-    if (!support.speak) return listenAgain();
-    return voice.speak(textToSay, live.current.session.personality.voice, "system").then((finished) => finished && listenAgain());
+    if (!canSpeak()) {
+      if (thenListen) listenAgain();
+      return Promise.resolve(false);
+    }
+    return voice.speak(textToSay, live.current.session.personality.voice, "system", neuralLoad(body)).then((finished) => {
+      if (finished && thenListen) listenAgain();
+      return finished;
+    });
   };
-  const readQuestion = (s = live.current.session, lead = "") => {
+  /** Lê a questão (antes, a fala de abertura do professor, quando há). Com a voz natural, são dois áudios em sequência. */
+  const readQuestion = (s = live.current.session, lead = null) => {
     if (!s.question) return listenAgain();
-    return say(`${lead} ${questionSpeech(s.question, splitStatement(s.question.statement))}`.trim(), "Lendo a questão. Toque em Interromper para pular.");
+    const note = "Lendo a questão. Toque em Interromper para pular.";
+    const text = questionSpeech(s.question, splitStatement(s.question.statement));
+    if (!wantsNeural()) return say(`${lead?.content ?? ""} ${text}`.trim(), note);
+    const first = lead && typeof lead.id === "number" ? say(lead.content, note, { kind: "message", session_id: s.id, message_id: lead.id }, false) : Promise.resolve(true);
+    return first.then((ok) => ok && say(text, note, { kind: "question", session_id: s.id }));
   };
 
   const reload = async () => {
@@ -337,9 +404,9 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
       setMessages((m) => [...m, r.message]);
       onUsage(r.used_today);
       if (action === "hint" || r.question_state !== session.question_state) await reload();
-      if (spoken && support.speak) {
+      if (spoken && canSpeak()) {
         // a fala não segura a conversa: o aluno pode interromper e mandar outra mensagem
-        voice.speak(r.message.spoken, session.personality.voice, "reply").then((finished) => {
+        voice.speak(r.message.spoken, session.personality.voice, "reply", neuralLoad({ kind: "message", session_id: session.id, message_id: r.message.id })).then((finished) => {
           if (finished && (byVoice || live.current.voiceOn) && support.listen) voice.listen(); // conversa por voz: volta a ouvir quando termina de falar
         });
       } else if (spoken) listenAgain();
@@ -362,6 +429,7 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
 
   /** Microfone: se o professor está falando, interrompe (e guarda o ponto); depois ouve o aluno. */
   const mic = () => {
+    if (wantsNeural()) voice.unlock();
     if (voice.listening) return voice.stopListening();
     if (voice.speaking) interrupted.current = voice.interrupt();
     setVoiceOn(true);
@@ -380,6 +448,7 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
       setVoiceNote(null);
       return;
     }
+    if (wantsNeural()) voice.unlock();
     setVoiceOn(true);
     live.current.voiceOn = true;
     if (session.question_state === "open") readQuestion(session);
@@ -414,7 +483,7 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
       const fresh = await backend.rpc("app_tutor_next_question", { p_session_id: session.id });
       setSession(fresh);
       setMessages(fresh.messages);
-      if (live.current.voiceOn) readQuestion(fresh, fresh.messages[fresh.messages.length - 1]?.content ?? "");
+      if (live.current.voiceOn) readQuestion(fresh, fresh.messages[fresh.messages.length - 1] ?? null);
     } catch (e) {
       setError(messageOf(e));
       listenAgain();
@@ -434,12 +503,12 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
         return setVoiceNote("Tô te esperando. Toque no microfone quando quiser falar.");
       case "answer":
         setPicked(cmd.option);
-        return say(`Marquei a ${cmd.option}. Diga confirmo para responder, ou fale outra alternativa.`, `Marquei a ${cmd.option}. Diga “confirmo” para responder, ou fale outra alternativa.`);
+        return say(`Marquei a ${cmd.option}. Diga confirmo para responder, ou fale outra alternativa.`, `Marquei a ${cmd.option}. Diga “confirmo” para responder, ou fale outra alternativa.`, { kind: "phrase", phrase: "marked", letter: cmd.option, personality_id: s.personality.id });
       case "confirm":
         return answer(live.current.picked, live.current.confidence);
       case "cancel":
         setPicked(null);
-        return say("Desmarquei. Qual você escolhe?");
+        return say("Desmarquei. Qual você escolhe?", undefined, { kind: "phrase", phrase: "unmarked", personality_id: s.personality.id });
       case "hint":
         return send({ action: "hint", byVoice: true });
       case "next":
@@ -453,7 +522,7 @@ function Chat({ session, setSession, status, onUsage, mobile }) {
     }
   };
 
-  live.current = { ...live.current, session, voiceOn, picked, confidence, sending };
+  live.current = { ...live.current, session, voiceOn, picked, confidence, sending, neural };
   actions.current = { heard };
 
   const last = messages[messages.length - 1];

@@ -1,6 +1,7 @@
-// Voz do Stazia Tutor no aparelho do aluno: ouvir (reconhecimento de fala) e falar (síntese de voz) do próprio navegador.
-// A resposta falada é sempre o texto que já passou pela validação do servidor. O aluno pode interromper a qualquer momento;
-// a frase que estava sendo dita volta para o servidor, para o professor retomar daquele ponto.
+// Voz do Stazia Tutor no aparelho do aluno: ouvir (reconhecimento de fala do navegador) e falar. Para falar há dois caminhos:
+// a VOZ NATURAL, gerada no servidor (áudio de um serviço de voz neural), e a voz do próprio aparelho, que é a reserva quando a
+// natural não está ligada ou falha. Nos dois, o que se fala é sempre o texto que já passou pela validação do servidor.
+// O aluno pode interromper a qualquer momento; a frase que estava sendo dita volta para o servidor, para o professor retomar dali.
 import React from "react";
 
 const Recognition = typeof window !== "undefined" ? window.SpeechRecognition || window.webkitSpeechRecognition : null;
@@ -9,6 +10,8 @@ const synth = typeof window !== "undefined" ? window.speechSynthesis : null;
 export const voiceSupport = () => ({ listen: Boolean(Recognition), speak: Boolean(synth) });
 
 const VOICE_KEY = "smn-tutor-voice";
+const ENGINE_KEY = "smn-tutor-voice-engine"; // "device" quando o aluno prefere a voz do aparelho à natural
+const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
 
 /**
  * Pedaços de fala: frases juntas até uns 220 caracteres. Frase a frase a voz fica picada; um texto longo de uma vez é
@@ -57,6 +60,35 @@ export function chooseVoice(name) {
   }
 }
 
+/** O aluno quer a voz natural (padrão, quando o servidor tem uma)? */
+export function neuralChosen() {
+  try {
+    return localStorage.getItem(ENGINE_KEY) !== "device";
+  } catch {
+    return true;
+  }
+}
+export function chooseNeural(on) {
+  try {
+    if (on) localStorage.removeItem(ENGINE_KEY);
+    else localStorage.setItem(ENGINE_KEY, "device");
+  } catch {
+    // armazenamento indisponível: vale o padrão
+  }
+}
+
+/** O pedaço do texto que estava sendo dito quando o áudio parou (pela fração já tocada). */
+export function chunkAt(text, fraction) {
+  const parts = speechChunks(text);
+  const total = parts.reduce((n, x) => n + x.length, 0) || 1;
+  let acc = 0;
+  for (const part of parts) {
+    acc += part.length;
+    if (acc / total >= fraction) return part;
+  }
+  return parts[parts.length - 1] ?? text;
+}
+
 function portugueseVoice() {
   const voices = portugueseVoices();
   const wanted = chosenVoiceName();
@@ -80,6 +112,41 @@ export function useVoice({ onUtterance, onSilence }) {
   const settle = React.useRef(null);      // encerra a promessa da fala em curso (nem todo navegador avisa quando a fala é cancelada)
   const handler = React.useRef(onUtterance);
   handler.current = onUtterance;
+  const player = React.useRef(null);      // elemento de áudio da voz natural (um só, liberado no primeiro toque do aluno)
+  const playing = React.useRef(null);     // { text, url } da fala natural em curso
+
+  const audioEl = () => {
+    if (!player.current && typeof Audio !== "undefined") player.current = new Audio();
+    return player.current;
+  };
+  /** Chamado num toque do aluno: alguns navegadores (Safari) só deixam tocar áudio depois de um gesto. */
+  const unlock = React.useCallback(() => {
+    const a = audioEl();
+    if (!a || playing.current) return;
+    try {
+      a.muted = true;
+      if (!a.src) a.src = SILENT;
+      const p = a.play?.();
+      p?.then?.(() => (a.pause(), (a.muted = false)), () => (a.muted = false));
+    } catch {
+      a.muted = false;
+    }
+  }, []);
+  const stopAudio = () => {
+    const now = playing.current;
+    playing.current = null;
+    if (!now) return null;
+    const a = player.current;
+    const fraction = a && a.duration > 0 ? a.currentTime / a.duration : 0;
+    try {
+      a?.pause();
+    } catch {
+      // já parado
+    }
+    if (a) a.onended = a.onerror = null;
+    URL.revokeObjectURL?.(now.url);
+    return chunkAt(now.text, fraction);
+  };
 
   const stopListening = React.useCallback(() => {
     const rec = recRef.current;
@@ -95,7 +162,8 @@ export function useVoice({ onUtterance, onSilence }) {
 
   /** Interrompe a fala. Devolve o trecho que estava sendo dito, só quando era o professor respondendo (para ele retomar dali). */
   const interrupt = React.useCallback(() => {
-    const said = speakingKind.current === "reply" ? current.current : null;
+    const atAudio = stopAudio();
+    const said = speakingKind.current === "reply" ? (atAudio ?? current.current) : null;
     speakingKind.current = null;
     token.current++;
     current.current = null;
@@ -106,11 +174,15 @@ export function useVoice({ onUtterance, onSilence }) {
     return said;
   }, []);
 
-  /** Fala o texto frase a frase, com a velocidade e o tom do professor. Resolve quando termina (ou é interrompida). */
+  /**
+   * Fala o texto. Com `load` (busca o áudio da voz natural no servidor), toca esse áudio; sem ele, ou se falhar, fala frase a
+   * frase com a voz do aparelho, na velocidade e no tom do professor. Resolve quando termina (ou é interrompida).
+   */
   const speak = React.useCallback(
-    (text, voice = {}, kind = "reply") =>
+    (text, voice = {}, kind = "reply", load = null) =>
       new Promise((done) => {
-        if (!synth || !text) return done(false);
+        if (!text || (!synth && !load)) return done(false);
+        stopAudio();
         speakingKind.current = kind;
         settle.current?.(false);          // uma fala nova encerra a anterior
         const mine = ++token.current;
@@ -122,11 +194,53 @@ export function useVoice({ onUtterance, onSilence }) {
           done(value);
         };
         settle.current = resolve;
-        synth.cancel();
+        synth?.cancel();
         const parts = speechChunks(text);
         const chosen = portugueseVoice();
         setSpeaking(true);
-        const next = (i) => {
+        if (load && audioEl()) {
+          current.current = parts[0] ?? text;
+          load().then(
+            (blob) => {
+              if (mine !== token.current) return resolve(false);
+              const a = audioEl();
+              const url = URL.createObjectURL(blob);
+              playing.current = { text, url };
+              const failed = () => {
+                if (playing.current?.url !== url) return;
+                stopAudio();
+                if (mine === token.current) device();
+              };
+              a.onended = () => {
+                if (playing.current?.url !== url) return;
+                stopAudio();
+                current.current = null;
+                setSpeaking(false);
+                resolve(true);
+              };
+              a.onerror = failed;
+              a.muted = false;
+              a.src = url;
+              try {
+                a.play()?.catch?.(failed);
+              } catch {
+                failed();
+              }
+            },
+            () => mine === token.current && device()
+          );
+          return;
+        }
+        device();
+        function device() {
+          if (!synth) {
+            setSpeaking(false);
+            return resolve(false);
+          }
+          synth.cancel();
+          next(0);
+        }
+        function next(i) {
           if (mine !== token.current) return resolve(false);
           if (i >= parts.length) {
             current.current = null;
@@ -144,8 +258,7 @@ export function useVoice({ onUtterance, onSilence }) {
           u.onend = () => next(i + 1);
           u.onerror = () => next(i + 1);
           synth.speak(u);
-        };
-        next(0);
+        }
       }),
     []
   );
@@ -205,6 +318,7 @@ export function useVoice({ onUtterance, onSilence }) {
     () => () => {
       token.current++;
       synth?.cancel();
+      stopAudio();
       settle.current?.(false);
       try {
         recRef.current?.abort();
@@ -215,5 +329,5 @@ export function useVoice({ onUtterance, onSilence }) {
     []
   );
 
-  return { listening, speaking, interim, error, speak, interrupt, listen, stopListening };
+  return { listening, speaking, interim, error, speak, interrupt, listen, stopListening, unlock };
 }

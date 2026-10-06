@@ -226,3 +226,43 @@ Esta linha é uma escolha de implementação da frase "não pesada" e está em t
 xingaram em toda fala, nenhuma resposta foi barrada, a letra do gabarito não saiu com a questão aberta e a dose sem fonte foi recusada no tom do personagem
 (*"essa dose eu não tenho confirmada aqui, então não vou te passar de cabeça, que número chutado em pediatria dá merda"*). Custo: US$ 0,18.
 
+## 13. Voz natural pelo servidor (migração `3400_tutor_voz_natural`, 2026-10-06)
+
+O dono: *"ainda está muito robótica"*. A voz do navegador é a do aparelho e não soa como gente. A voz natural é gerada **no servidor** por um
+serviço de voz neural, pago à parte. Está pronta no código e **desligada** até haver chave de verdade e consentimento.
+
+**A regra que não muda: só vira voz o que o servidor já validou.** O navegador não manda texto para virar voz; manda o número da fala do
+professor (`message`), pede a questão da conversa (`question`, enunciado e alternativas, nunca o gabarito) ou o nome de uma frase fixa do
+aplicativo (`phrase`: "marquei a B…", "desmarquei…", amostra do professor). Assim a rota não serve de gerador de voz grátis e nada sai falado
+sem ter passado pela conferência.
+
+| Peça | Onde |
+|---|---|
+| Serviços de voz (OpenAI `gpt-4o-mini-tts`, Gemini TTS, simulado para testes) | `server/tutor/speech.ts` |
+| Rota `POST /api/tutor/speech` e `neural_voice` no `GET /api/tutor/status` | `server/tutor/router.ts` |
+| Voz e direção de atuação de cada professor (`voice.openai`, `voice.gemini`, `voice.acting`) | `tutor_personalities.voice` |
+| O que pode virar voz, para quem; caracteres e custo do dia (`ai_usage.voice_chars`, sem contar como mensagem) | `ch_worker_tutor_speech`, `ch_worker_tutor_voice_charge` |
+| Tocar o áudio, interromper (o trecho que estava tocando volta como contexto) e cair para a voz do aparelho se falhar | `src/novo/app/tutor/useVoice.js` |
+| Escolha "Voz natural do professor (recomendada)" ou uma voz do aparelho, com botão Ouvir | tela Escolha seu professor |
+
+**Para ligar** (no `.env` do servidor, depois de aprovar o envio do texto das respostas ao serviço):
+
+```
+TUTOR_VOICE_PROVIDER=openai          # ou gemini
+TUTOR_VOICE_ALLOW_EXTERNAL=1
+OPENAI_API_KEY=...                   # ou GEMINI_API_KEY=... (a do .env hoje é o texto de exemplo)
+```
+
+**Custo e limite.** Estimativa pela duração (uns 900 caracteres por minuto de fala): OpenAI cerca de US$ 0,015 por minuto; Gemini cerca de
+US$ 0,0135 por minuto até 31/12/2026 (o preço dobra em 2027). Uma resposta curta (300 caracteres) custa uns US$ 0,005. Teto por aluno:
+30.000 caracteres por dia (cerca de meia hora de fala); passou disso, o professor segue com a voz do aparelho. Repetir a mesma fala sai de um
+cache em memória, sem gerar nem cobrar de novo.
+
+**Por que não o GPT Realtime (voz para voz).** No Realtime o modelo fala **enquanto gera**: a resposta chega ao ouvido do aluno antes de
+existir texto para conferir. Isso desliga a regra "nada de número, dose ou diretriz sem fonte" e a trava do gabarito. O caminho adotado
+(gerar o texto, conferir, depois falar) custa uns 2 a 4 segundos a mais de espera e mantém as travas.
+
+**Limites de hoje.** O áudio vem inteiro (sem fluxo), então a fala começa depois de gerado; o reconhecimento da fala do aluno continua sendo
+o do navegador. Nenhuma das duas chaves disponíveis funciona: a `GEMINI_API_KEY` do `.env` é o texto de exemplo e a `OPENAI_API_KEY` do
+`revalida-reverse-engine/.env` foi recusada pela OpenAI (401, chave inválida) em 2026-10-05. Por isso o som real ainda não foi ouvido aqui.
+
