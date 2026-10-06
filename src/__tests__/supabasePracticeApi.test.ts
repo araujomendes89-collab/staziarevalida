@@ -271,3 +271,105 @@ describe("Treino — simulado", () => {
     expect(recent.map((s: any) => s.started_at)).toEqual([...recent.map((s: any) => s.started_at)].sort().reverse());
   });
 });
+
+describe("Simulado — cronômetro: tempo escolhido, pausar, continuar e encerrar (…4300_simulado_cronometro.sql)", () => {
+  const CAIO = "00000000-0000-4000-8000-00000000000c";
+  let sessionId: string;
+  let questions: any[];
+  const answer = (index: number, option = "B") =>
+    rpc(CAIO, "app_answer_question", { p_session_id: sessionId, p_question_id: questions[index].id, p_option: option, p_active_ms: 20_000 });
+  const near = (value: number, expected: number, tolerance = 3) => expect(Math.abs(value - expected), `${value} ≈ ${expected}`).toBeLessThanOrEqual(tolerance);
+  /** Volta o relógio da sessão: simula tempo passado sem esperar de verdade. */
+  const shift = (sql: string) => db.query(`update public.practice_sessions set ${sql} where id = $1`, [sessionId]);
+
+  beforeAll(async () => {
+    await db.query(`insert into auth.users (id, email) values ($1, 'caio@teste.dev')`, [CAIO]);
+  });
+
+  it("o tempo escolhido pelo aluno vira o prazo e a sessão diz quanto falta", async () => {
+    const started = await rpc(CAIO, "app_start_session", { p_kind: "simulado", p_filters: {}, p_count: 5, p_time_limit_seconds: 45 * 60 });
+    sessionId = started.session_id;
+    const s = await rpc(CAIO, "app_get_session", { p_session_id: sessionId });
+    questions = s.questions;
+    expect(s).toMatchObject({ time_limit_seconds: 2700, paused_at: null, paused_seconds: 0 });
+    near(s.remaining_seconds, 2700);
+    expect(Date.parse(s.deadline_at) - Date.parse(s.started_at)).toBe(2_700_000);
+    // de 1 minuto a 12 horas
+    for (const seconds of [59, 43_201]) {
+      await expect(rpc(CAIO, "app_start_session", { p_kind: "simulado", p_filters: {}, p_count: 5, p_time_limit_seconds: seconds })).rejects.toThrow(/Tempo limite inválido/);
+    }
+  });
+
+  it("pausado: o tempo para, a resposta é recusada e o simulado não expira", async () => {
+    expect(await answer(0)).toEqual({ saved: true });
+    const paused = await rpc(CAIO, "app_pause_session", { p_session_id: sessionId });
+    expect(paused.paused_at).not.toBeNull();
+    near(paused.remaining_seconds, 2700);
+    expect((await rpc(CAIO, "app_pause_session", { p_session_id: sessionId })).paused_at).toBe(paused.paused_at); // pausar de novo não muda nada
+    await expect(answer(1)).rejects.toThrow(/está pausado/);
+
+    // correu 10 minutos e está pausado há 2 horas: o prazo original já passou, mas pausado não conta
+    await shift(`started_at = started_at - interval '2 hours 10 minutes', paused_at = paused_at - interval '2 hours'`);
+    const s = await rpc(CAIO, "app_get_session", { p_session_id: sessionId });
+    near(s.remaining_seconds, 35 * 60);
+    near(s.paused_seconds, 7200);
+    const [recent] = await rpc(CAIO, "app_recent_sessions", { p_kind: "simulado" });
+    expect(recent).toMatchObject({ id: sessionId, paused: true, expired: false, answered: 1 });
+    near(recent.remaining_seconds, 35 * 60);
+    const open = (await rpc(CAIO, "app_home")).open_session;
+    expect(open).toMatchObject({ id: sessionId, kind: "simulado", paused: true, answered: 1 });
+    near(open.remaining_seconds, 35 * 60);
+    await new Promise((r) => setTimeout(r, 1100));
+    near((await rpc(CAIO, "app_get_session", { p_session_id: sessionId })).remaining_seconds, 35 * 60, 1); // parado continua parado
+  });
+
+  it("continuar: o tempo volta a correr de onde parou e as respostas voltam a valer", async () => {
+    const resumed = await rpc(CAIO, "app_resume_session", { p_session_id: sessionId });
+    expect(resumed.paused_at).toBeNull();
+    near(resumed.remaining_seconds, 35 * 60);
+    near(resumed.paused_seconds, 7200);
+    near((Date.parse(resumed.deadline_at) - Date.parse(resumed.server_now)) / 1000, 35 * 60);
+    expect(await answer(1)).toEqual({ saved: true });
+    near((await rpc(CAIO, "app_resume_session", { p_session_id: sessionId })).paused_seconds, 7200); // continuar sem pausa não muda nada
+    expect((await rpc(CAIO, "app_recent_sessions", { p_kind: "simulado" }))[0]).toMatchObject({ paused: false, expired: false });
+  });
+
+  it("o prazo conta só o tempo correndo: passado o tempo escolhido, não responde nem pausa", async () => {
+    await shift(`started_at = started_at - interval '36 minutes'`); // 10 + 36 min de prova correndo > 45 min
+    await expect(answer(2)).rejects.toThrow(/tempo do simulado acabou/);
+    await expect(rpc(CAIO, "app_pause_session", { p_session_id: sessionId })).rejects.toThrow(/tempo do simulado acabou/);
+    expect((await rpc(CAIO, "app_recent_sessions", { p_kind: "simulado" }))[0]).toMatchObject({ expired: true, paused: false, remaining_seconds: 0 });
+    expect((await rpc(CAIO, "app_home")).open_session).toBeNull();
+    await shift(`started_at = started_at + interval '36 minutes'`); // de volta para dentro do tempo
+  });
+
+  it("encerrar pausado: finaliza, fecha a pausa e o tempo do resultado não conta as pausas", async () => {
+    await rpc(CAIO, "app_pause_session", { p_session_id: sessionId });
+    await shift(`started_at = started_at - interval '30 minutes', paused_at = paused_at - interval '30 minutes'`); // pausado há 30 min
+    const done = await rpc(CAIO, "app_finish_session", { p_session_id: sessionId });
+    expect(done).toMatchObject({ paused_at: null, result: { total: 5, answered: 2, correct: 2 } });
+    expect(done.finished_at).not.toBeNull();
+    near(done.result.paused_seconds, 2 * 3600 + 30 * 60);
+    near(done.result.elapsed_seconds, 10 * 60); // 10 min de prova; o resto foi pausa
+    const row = (await db.query<any>(`select paused_at, paused_ms from public.practice_sessions where id = $1`, [sessionId])).rows[0];
+    expect(row.paused_at).toBeNull();
+    near(Number(row.paused_ms) / 1000, 9000);
+    await expect(rpc(CAIO, "app_pause_session", { p_session_id: sessionId })).rejects.toThrow(/já foi finalizada/);
+    await expect(rpc(CAIO, "app_resume_session", { p_session_id: sessionId })).rejects.toThrow(/já foi finalizada/);
+  });
+
+  it("treino não pausa; ninguém pausa a sessão de outro aluno; simulado sem cronômetro também pausa", async () => {
+    const treino = await rpc(CAIO, "app_start_session", { p_kind: "questoes", p_filters: {}, p_count: 5 });
+    await expect(rpc(CAIO, "app_pause_session", { p_session_id: treino.session_id })).rejects.toThrow(/Só o simulado tem pausa/);
+    const sim = await rpc(CAIO, "app_start_session", { p_kind: "simulado", p_filters: {}, p_count: 5, p_time_limit_seconds: 600 });
+    await expect(rpc(ANA, "app_pause_session", { p_session_id: sim.session_id })).rejects.toThrow(/não encontrada/);
+    await expect(rpc(ANA, "app_resume_session", { p_session_id: sim.session_id })).rejects.toThrow(/não encontrada/);
+    await expect(rpc(null, "app_pause_session", { p_session_id: sim.session_id })).rejects.toThrow(/não encontrada/);
+    const free = await rpc(CAIO, "app_start_session", { p_kind: "simulado", p_filters: {}, p_count: 5 });
+    const p = await rpc(CAIO, "app_pause_session", { p_session_id: free.session_id });
+    expect(p).toMatchObject({ time_limit_seconds: null, deadline_at: null, remaining_seconds: null });
+    expect(p.paused_at).not.toBeNull();
+    // a pausa não pode ficar presa num treino nem numa sessão finalizada
+    await expect(db.query(`update public.practice_sessions set paused_at = now() where id = $1`, [treino.session_id])).rejects.toThrow(/practice_sessions_pause_check/);
+  });
+});

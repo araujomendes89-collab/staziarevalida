@@ -1,0 +1,9 @@
+/* Montagem do treino e do simulado. */
+
+/* Tipo de simulado em tela estreita: as quatro opções não cabem numa linha; viram duas linhas de duas. */
+@media (max-width: 480px) {
+  .qb-simtype .sm-seg--full {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}

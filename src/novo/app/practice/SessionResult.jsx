@@ -124,7 +124,7 @@ export function SessionResult({ session, go, timeUp = false }) {
           <StatCard label="Acertos" value={result.correct} icon="circle-check" tone="success" />
           <StatCard label="Erros" value={wrong} icon="circle-x" tone="danger" />
           <StatCard label="Em branco" value={blank} icon="circle-minus" tone="neutral" />
-          <StatCard label="Tempo" value={formatClock(sim ? result.elapsed_seconds : result.active_seconds)} icon="timer" tone="info" caption={sim ? "do início ao fim" : "respondendo"} />
+          <StatCard label="Tempo" value={formatClock(sim ? result.elapsed_seconds : result.active_seconds)} icon="timer" tone="info" caption={sim ? (result.paused_seconds > 0 ? "do início ao fim, sem as pausas" : "do início ao fim") : "respondendo"} />
         </div>
 
         {result.by_area.length > 1 && (

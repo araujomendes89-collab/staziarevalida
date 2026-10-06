@@ -5,7 +5,7 @@
 import React from "react";
 import { Banner, Button, Card, EmptyState, Icon, TopicRow } from "../../ds";
 import { useSession } from "../session.jsx";
-import { areaLabel, percent } from "../practice/format.js";
+import { areaLabel, formatClock, percent } from "../practice/format.js";
 import { KIND_LABEL, reasonText, trialTitle } from "./plan.js";
 import { PlayError, PlayHeader, PlayLoading, PlayLower, TrailPreview, usePlayHome } from "../play/PlayDashboard.jsx";
 
@@ -93,7 +93,9 @@ function HomeActive({ go, mobile, home, plan, startTask, toggleTask, busy, play 
           : open.status === "wrong"
             ? `Revisão de ${open.total} ${open.total === 1 ? "questão errada" : "questões erradas"}`
             : `${open.total} questões · ${areaLabel(open.area)}`,
-      text: left > 0 ? `Você parou na questão ${open.answered + 1}. ${left === 1 ? "Falta 1" : `Faltam ${left}`}.` : "Todas respondidas: falta só concluir para ver o resultado.",
+      text:
+        (open.paused ? `Simulado pausado${open.remaining_seconds != null ? ` com ${formatClock(open.remaining_seconds)} de prova` : ""}. ` : "") +
+        (left > 0 ? `Você parou na questão ${open.answered + 1}. ${left === 1 ? "Falta 1" : `Faltam ${left}`}.` : "Todas respondidas: falta só concluir para ver o resultado."),
       cta: "Continuar",
       run: () => go("sessao", { s: open.id }),
     };

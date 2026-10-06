@@ -25,6 +25,31 @@ export function formatMinutes(minutes) {
   return `${Math.floor(total / 60)}h${rest ? String(rest).padStart(2, "0") : ""}`;
 }
 
+// Tempo personalizado do simulado: de 1 minuto a 12 horas (o mesmo intervalo que o banco aceita).
+export const SIM_MAX_MINUTES = 12 * 60;
+
+/**
+ * Horas e minutos digitados pelo aluno → minutos, ou o motivo de não valer.
+ * ("1", "30") → { minutes: 90 } · ("", "") → { error } · ("13", "0") → { error }
+ */
+export function parseDuration(hours, minutes) {
+  const read = (value) => (String(value ?? "").trim() === "" ? 0 : Number(value));
+  const h = read(hours);
+  const m = read(minutes);
+  if (!Number.isInteger(h) || !Number.isInteger(m) || h < 0 || m < 0 || m > 59) return { error: "Use horas inteiras e minutos de 0 a 59." };
+  const total = h * 60 + m;
+  if (total < 1) return { error: "Escolha pelo menos 1 minuto." };
+  if (total > SIM_MAX_MINUTES) return { error: "O máximo é 12 horas." };
+  return { minutes: total };
+}
+
+/** Ritmo por questão: 180 → "3 min por questão" · 150 → "2,5 min por questão" · 45 → "45 s por questão" */
+export function paceLabel(secondsPerQuestion) {
+  const seconds = Math.max(0, Number(secondsPerQuestion) || 0);
+  if (seconds < 60) return `${Math.round(seconds)} s por questão`;
+  return `${String(Math.round(seconds / 6) / 10).replace(".", ",")} min por questão`;
+}
+
 /** 75 → "01:15" · 3725 → "1:02:05" */
 export function formatClock(seconds) {
   const total = Math.max(0, Math.floor(seconds));

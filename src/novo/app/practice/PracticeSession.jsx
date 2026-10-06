@@ -2,10 +2,13 @@
 // Mesma marcação da Session do protótipo (prototype/Session.jsx). Diferenças de comportamento:
 //  - treino: confirmar grava a tentativa e o banco devolve a correção;
 //  - simulado: marcar já guarda a resposta, sem correção; dá para voltar e trocar até finalizar.
+//    O cronômetro do simulado pausa, continua e encerra (com confirmação). A pausa fica no banco
+//    (…4300_simulado_cronometro.sql): pausado, o tempo não corre, a questão fica escondida e o banco
+//    não aceita resposta; dá para sair e continuar outro dia.
 // A dica e o tutor de IA entram quando o Tutor for ligado.
 import React from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
-import { AnswerOption, Badge, Banner, Button, Card, EmptyState, Icon } from "../../ds";
+import { AnswerOption, Badge, Banner, Button, Card, EmptyState, Icon, IconButton, IconTile } from "../../ds";
 import { useMQ } from "../Shell.jsx";
 import { useSession } from "../session.jsx";
 import { Correction } from "./Correction.jsx";
@@ -27,29 +30,43 @@ function useNow() {
   return now;
 }
 
-/** Tempo gasto na questão atual, contando só com a aba à vista. */
-function useActiveTime(key, baseMs) {
+/** Tempo gasto na questão atual, contando só com a aba à vista e o cronômetro correndo (pausado não conta). */
+function useActiveTime(key, baseMs, paused = false) {
   const ref = React.useRef({ base: 0, since: 0 });
+  const pausedRef = React.useRef(paused);
+  pausedRef.current = paused;
+  const sync = React.useCallback(() => {
+    const t = ref.current;
+    const counting = !document.hidden && !pausedRef.current;
+    if (!counting && t.since) {
+      t.base += Date.now() - t.since;
+      t.since = 0;
+    } else if (counting && !t.since) {
+      t.since = Date.now();
+    }
+  }, []);
   React.useEffect(() => {
-    ref.current = { base: baseMs, since: document.hidden ? 0 : Date.now() };
-    const onVisibility = () => {
-      const t = ref.current;
-      if (document.hidden && t.since) {
-        t.base += Date.now() - t.since;
-        t.since = 0;
-      } else if (!document.hidden && !t.since) {
-        t.since = Date.now();
-      }
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
+    ref.current = { base: baseMs, since: !document.hidden && !pausedRef.current ? Date.now() : 0 };
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
     // baseMs só vale na troca de questão
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
+  React.useEffect(sync, [paused, sync]);
   return React.useCallback(() => {
     const t = ref.current;
     return Math.round(t.base + (t.since ? Date.now() - t.since : 0));
   }, []);
+}
+
+/**
+ * Cronômetro como o banco devolve (sessão, pausar, continuar): prazo no relógio do servidor, já com as pausas.
+ * Pausado, vale o tempo que restava (parado); sem prazo, o simulado não tem cronômetro regressivo.
+ */
+export function readTimer(t) {
+  const limit = t?.time_limit_seconds ?? null;
+  const deadline = t?.deadline_at ? Date.parse(t.deadline_at) : limit && t?.started_at ? Date.parse(t.started_at) + limit * 1000 : null;
+  return { paused: t?.paused_at != null, deadline, frozen: t?.remaining_seconds ?? null };
 }
 
 function Centered({ children }) {
@@ -73,8 +90,10 @@ function Runner({ session, go, onFinished }) {
   const [picked, setPicked] = React.useState(null); // treino: alternativa escolhida, ainda sem confirmar
   const [strike, setStrike] = React.useState({}); // alternativas riscadas por questão (só na tela)
   const [striking, setStriking] = React.useState(false);
-  const [confirming, setConfirming] = React.useState(false);
+  const [confirming, setConfirming] = React.useState(false); // false · "finish" (última questão) · "end" (encerrar pelo cronômetro)
   const [busy, setBusy] = React.useState(false);
+  const [timer, setTimer] = React.useState(() => readTimer(session));
+  const [toggling, setToggling] = React.useState(false); // pausando ou continuando
   const [error, setError] = React.useState(null);
   const saving = React.useRef(Promise.resolve());
   const finishing = React.useRef(false);
@@ -90,12 +109,17 @@ function Runner({ session, go, onFinished }) {
   const last = index + 1 >= total;
   const patch = (id, changes) => setQuestions((list) => list.map((q) => (q.id === id ? { ...q, ...changes } : q)));
 
-  // Cronômetro: o prazo usa o relógio do servidor (diferença medida ao abrir a sessão).
+  // Cronômetro: o prazo usa o relógio do servidor (diferença medida ao abrir a sessão). Pausado, fica parado.
   const skew = React.useRef(Date.parse(session.server_now) - Date.now());
   const now = useNow();
-  const activeMs = useActiveTime(question.id, sim ? question.active_ms : 0);
-  const deadline = session.time_limit_seconds ? Date.parse(session.started_at) + session.time_limit_seconds * 1000 : null;
-  const remaining = deadline === null ? null : Math.max(0, Math.ceil((deadline - (now + skew.current)) / 1000));
+  const paused = sim && timer.paused;
+  const activeMs = useActiveTime(question.id, sim ? question.active_ms : 0, paused);
+  const remaining =
+    timer.deadline === null
+      ? null
+      : paused && timer.frozen !== null
+        ? timer.frozen
+        : Math.max(0, Math.ceil((timer.deadline - (now + skew.current)) / 1000));
   const running = !revealed && !confirming;
   const spent = Math.floor(
     (questions.reduce((sum, q) => sum + (q.id === question.id && running ? 0 : q.active_ms), 0) + (running ? activeMs() : 0)) / 1000
@@ -122,6 +146,33 @@ function Runner({ session, go, onFinished }) {
   React.useEffect(() => {
     if (remaining === 0) finish(true);
   }, [remaining, finish]);
+
+  const timeIsUp = (e) => /tempo do simulado acabou/i.test(e?.message ?? "");
+  const pause = async () => {
+    if (toggling || busy || paused) return;
+    setToggling(true);
+    setError(null);
+    try {
+      await saving.current.catch(() => {}); // a resposta que estava saindo entra antes da pausa
+      setTimer(readTimer(await backend.rpc("app_pause_session", { p_session_id: session.id })));
+      setStriking(false);
+    } catch (e) {
+      if (timeIsUp(e)) finish(true);
+      else setError("Não foi possível pausar. Verifique a conexão e tente de novo.");
+    }
+    setToggling(false);
+  };
+  const resume = async () => {
+    if (toggling || busy || !paused) return;
+    setToggling(true);
+    setError(null);
+    try {
+      setTimer(readTimer(await backend.rpc("app_resume_session", { p_session_id: session.id })));
+    } catch {
+      setError("Não foi possível continuar. Verifique a conexão e tente de novo.");
+    }
+    setToggling(false);
+  };
 
   const goTo = (next) => {
     setIndex(next);
@@ -156,9 +207,14 @@ function Runner({ session, go, onFinished }) {
     saving.current = saving.current
       .catch(() => {})
       .then(() => backend.rpc("app_answer_question", { p_session_id: session.id, p_question_id: id, p_option: option, p_active_ms: ms }))
-      .catch(() => {
+      .catch(async (e) => {
         patch(id, { selected: previous });
-        setError("Não foi possível guardar sua resposta. Marque de novo.");
+        if (/pausado/i.test(e?.message ?? "")) {
+          // pausado em outra janela: pausar de novo não muda nada e devolve o cronômetro como está no banco
+          const state = await backend.rpc("app_pause_session", { p_session_id: session.id }).catch(() => null);
+          if (state) setTimer(readTimer(state));
+          setError("O simulado foi pausado em outra janela. Continue para responder.");
+        } else setError("Não foi possível guardar sua resposta. Marque de novo.");
       });
   };
 
@@ -188,7 +244,7 @@ function Runner({ session, go, onFinished }) {
 
   const next = () => {
     if (!last) goTo(index + 1);
-    else if (sim) setConfirming(true);
+    else if (sim) setConfirming("finish");
     else finish();
   };
 
@@ -200,15 +256,15 @@ function Runner({ session, go, onFinished }) {
   };
 
   const exit = async () => {
-    // Sessão aberta sem nenhuma resposta não precisa ficar no histórico.
-    if (answered === 0) await backend.rpc("app_finish_session", { p_session_id: session.id }).catch(() => {});
+    // Sessão aberta sem nenhuma resposta não precisa ficar no histórico (a pausada fica: o aluno vai continuar depois).
+    if (answered === 0 && !paused) await backend.rpc("app_finish_session", { p_session_id: session.id }).catch(() => {});
     go(sim ? "simulados" : "questoes");
   };
 
   // Atalhos: A–D (ou 1–4) marca; Enter confirma ou avança.
   const keys = React.useRef(null);
   keys.current = (event) => {
-    if (event.metaKey || event.ctrlKey || event.altKey || confirming) return;
+    if (event.metaKey || event.ctrlKey || event.altKey || confirming || paused) return;
     const tag = (event.target?.tagName ?? "").toLowerCase();
     if (["input", "textarea", "select"].includes(tag)) return;
     if (event.key === "Enter") {
@@ -249,7 +305,18 @@ function Runner({ session, go, onFinished }) {
 
   const { stem, ask } = splitStatement(question.statement);
   const blanks = questions.map((q, k) => ({ q, k })).filter(({ q }) => q.selected == null);
-  const urgent = remaining !== null && remaining <= 300;
+  const urgent = remaining !== null && remaining <= 300 && !paused;
+  const clock = remaining !== null ? remaining : spent;
+  const ending = confirming === "end";
+  // Controles do cronômetro do simulado: com texto no computador, só o ícone no celular.
+  const timerControl = (icon, label, onClick, disabled) =>
+    mobile ? (
+      <IconButton size="sm" icon={icon} label={`${label} o simulado`} onClick={onClick} disabled={disabled} />
+    ) : (
+      <Button variant="ghost" size="sm" icon={icon} onClick={onClick} disabled={disabled} aria-label={`${label} o simulado`}>
+        {label}
+      </Button>
+    );
   const panel = revealed && (
     <aside
       style={{ background: "var(--surface-subtle)", borderLeft: mobile ? 0 : "1px solid var(--border-subtle)", borderTop: mobile ? "1px solid var(--border-subtle)" : 0, padding: 28, display: "flex", flexDirection: "column", gap: 16 }}
@@ -263,12 +330,16 @@ function Runner({ session, go, onFinished }) {
   return (
     <div style={{ minHeight: "100vh", display: "grid", gridTemplateColumns: revealed && !mobile ? "minmax(0,1fr) 440px" : "1fr", background: "var(--surface-card)" }}>
       <div style={{ position: "relative", paddingBottom: 120 }}>
-        <header style={{ position: "sticky", top: 0, zIndex: 5, height: 68, display: "flex", alignItems: "center", gap: 16, padding: mobile ? "0 12px" : "0 32px", borderBottom: "1px solid var(--border-subtle)", background: "color-mix(in oklab,var(--surface-card) 90%,transparent)", backdropFilter: "blur(12px)" }}>
-          <Button variant="ghost" size="sm" icon="x" onClick={exit}>
-            Sair
-          </Button>
-          <div style={{ flex: 1, display: "flex", gap: 3, maxWidth: 560, margin: "0 auto" }} aria-hidden="true">
-            {total <= SEGMENT_LIMIT ? (
+        <header style={{ position: "sticky", top: 0, zIndex: 5, height: 68, display: "flex", alignItems: "center", gap: mobile ? 10 : 16, padding: mobile ? "0 12px" : "0 32px", borderBottom: "1px solid var(--border-subtle)", background: "color-mix(in oklab,var(--surface-card) 90%,transparent)", backdropFilter: "blur(12px)" }}>
+          {mobile && sim ? (
+            <IconButton size="sm" icon="x" label="Sair" onClick={exit} />
+          ) : (
+            <Button variant="ghost" size="sm" icon="x" onClick={exit}>
+              Sair
+            </Button>
+          )}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", gap: 3, maxWidth: 560, margin: "0 auto" }} aria-hidden="true">
+            {total <= SEGMENT_LIMIT && !(mobile && sim) ? (
               questions.map((q, k) => (
                 <span key={q.id} style={{ flex: 1, height: 6, borderRadius: 9, background: k === index ? "var(--teal-300)" : q.selected != null ? "var(--action-primary)" : "var(--chart-track)" }} />
               ))
@@ -287,26 +358,52 @@ function Runner({ session, go, onFinished }) {
               <span style={{ fontFamily: "var(--font-mono)" }}>+{sessionXp}</span>
             </span>
           )}
-          {(!mobile || remaining !== null) && (
-            <span className="sm-pill" style={urgent ? { color: "var(--danger-text)" } : undefined} title={remaining !== null ? "Tempo restante" : "Tempo respondendo"}>
-              <Icon name="timer" size={16} />
-              <span style={{ fontFamily: "var(--font-mono)" }}>{formatClock(remaining !== null ? remaining : spent)}</span>
-            </span>
+          {sim ? (
+            <div role="group" aria-label="Cronômetro do simulado" style={{ display: "flex", alignItems: "center", gap: mobile ? 2 : 4 }}>
+              <span
+                className="sm-pill"
+                style={paused ? { color: "var(--warning-text)", background: "var(--warning-bg)", borderColor: "transparent", cursor: "default" } : { cursor: "default", ...(urgent ? { color: "var(--danger-text)" } : null) }}
+                title={`${remaining !== null ? "Tempo restante" : "Tempo de prova"}${paused ? " (pausado)" : ""}`}
+              >
+                <Icon name={paused ? "pause" : "timer"} size={16} />
+                <span style={{ fontFamily: "var(--font-mono)" }}>{formatClock(clock)}</span>
+                {paused && !mobile && <span>Pausado</span>}
+              </span>
+              {paused ? timerControl("play", "Continuar", resume, toggling || busy) : timerControl("pause", "Pausar", pause, toggling || busy)}
+              {timerControl("square", "Encerrar", () => setConfirming("end"), busy || !!confirming)}
+            </div>
+          ) : (
+            !mobile && (
+              <span className="sm-pill" title="Tempo respondendo">
+                <Icon name="timer" size={16} />
+                <span style={{ fontFamily: "var(--font-mono)" }}>{formatClock(spent)}</span>
+              </span>
+            )
           )}
         </header>
 
         {confirming ? (
           <div style={{ maxWidth: 560, margin: "0 auto", padding: mobile ? "24px 18px" : "44px 32px" }}>
             <Card style={{ borderRadius: 24 }} padding={mobile ? 22 : 32}>
-              <h1 style={{ margin: 0, font: "var(--type-h2)" }}>Finalizar simulado?</h1>
+              <h1 style={{ margin: 0, font: "var(--type-h2)" }}>{ending ? "Encerrar o simulado?" : "Finalizar simulado?"}</h1>
               <p style={{ margin: "10px 0 0", color: "var(--text-secondary)" }}>
                 Você respondeu {answered} de {total} questões.
                 {blanks.length > 0 && ` ${blanks.length === 1 ? "A questão em branco conta" : `As ${blanks.length} em branco contam`} como erro.`}
+                {ending && remaining !== null && ` Ainda restam ${formatClock(remaining)} de prova.`}
               </p>
               {blanks.length > 0 && (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 16 }} aria-label="Questões em branco">
                   {blanks.slice(0, BLANK_CHIPS).map(({ q, k }) => (
-                    <button key={q.id} type="button" className="sm-chip" onClick={() => goTo(k)} aria-label={`Ir para a questão ${k + 1}`}>
+                    <button
+                      key={q.id}
+                      type="button"
+                      className="sm-chip"
+                      onClick={() => {
+                        goTo(k);
+                        if (paused) resume(); // para responder, o cronômetro volta a correr
+                      }}
+                      aria-label={`Ir para a questão ${k + 1}`}
+                    >
                       {k + 1}
                     </button>
                   ))}
@@ -320,10 +417,42 @@ function Runner({ session, go, onFinished }) {
               )}
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 24 }}>
                 <Button onClick={() => finish()} loading={busy}>
-                  Finalizar e ver resultado
+                  {ending ? "Encerrar e ver resultado" : "Finalizar e ver resultado"}
                 </Button>
                 <Button variant="secondary" onClick={() => setConfirming(false)} disabled={busy}>
-                  Voltar às questões
+                  {paused ? "Voltar" : "Voltar às questões"}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        ) : paused ? (
+          <div style={{ maxWidth: 560, margin: "0 auto", padding: mobile ? "24px 18px" : "44px 32px" }}>
+            <Card style={{ borderRadius: 24 }} padding={mobile ? 22 : 32}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center" }}>
+                <IconTile name="pause" size={56} tone="brand" />
+                <h1 style={{ margin: "18px 0 0", font: "var(--type-h2)" }}>Simulado pausado</h1>
+                <div style={{ marginTop: 14, font: "700 44px/1 var(--font-mono)", letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>{formatClock(clock)}</div>
+                <p style={{ margin: "8px 0 0", color: "var(--text-secondary)" }}>
+                  {remaining !== null ? "de prova restantes. O cronômetro só volta a correr quando você continuar." : "de prova até aqui. O tempo só volta a contar quando você continuar."}
+                </p>
+                <p style={{ margin: "12px 0 0", font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>
+                  Você respondeu {answered} de {total}. As respostas estão guardadas e as questões ficam escondidas durante a pausa.
+                </p>
+              </div>
+              {error && (
+                <div style={{ marginTop: 16 }}>
+                  <Banner tone="danger">{error}</Banner>
+                </div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
+                <Button size="lg" fullWidth icon="play" onClick={resume} loading={toggling}>
+                  Continuar simulado
+                </Button>
+                <Button variant="secondary" fullWidth icon="square" onClick={() => setConfirming("end")} disabled={toggling}>
+                  Encerrar simulado
+                </Button>
+                <Button variant="ghost" fullWidth onClick={() => go("simulados")} disabled={toggling}>
+                  Sair e continuar depois
                 </Button>
               </div>
             </Card>
@@ -363,9 +492,9 @@ function Runner({ session, go, onFinished }) {
             </div>
           </div>
         )}
-        {mobile && !confirming && panel}
+        {mobile && !confirming && !paused && panel}
 
-        {!confirming && (
+        {!confirming && !paused && (
           <div
             role="toolbar"
             aria-label="Ferramentas da questão"
@@ -386,7 +515,7 @@ function Runner({ session, go, onFinished }) {
           </div>
         )}
       </div>
-      {!mobile && !confirming && panel}
+      {!mobile && !confirming && !paused && panel}
       {feedback.modal}
     </div>
   );
@@ -408,9 +537,9 @@ export function PracticeSession({ go }) {
       try {
         let session = await backend.rpc("app_get_session", { p_session_id: id });
         let timeUp = false;
-        // Simulado cujo tempo acabou com a página fechada: finaliza com o que estava marcado.
-        if (session && !session.finished_at && session.time_limit_seconds) {
-          const deadline = Date.parse(session.started_at) + session.time_limit_seconds * 1000;
+        // Simulado cujo tempo acabou com a página fechada: finaliza com o que estava marcado (pausado não acaba).
+        if (session && !session.finished_at && session.time_limit_seconds && !session.paused_at) {
+          const { deadline } = readTimer(session);
           if (Date.parse(session.server_now) >= deadline) {
             session = await backend.rpc("app_finish_session", { p_session_id: id });
             timeUp = true;
