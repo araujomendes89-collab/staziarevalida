@@ -1,4 +1,4 @@
-// Administração das aulas (equipe): cadastro com a estrutura padrão, materiais complementares já na criação
+// Administração das aulas (equipe): cadastro com a estrutura padrão, assistente de IA (LessonAssistant.jsx), materiais complementares já na criação
 // (PDF complementar, áudio Flashcast em MP3 e diretriz SUS/PCDT por link), publicação e exclusão. Os arquivos vão
 // para o depósito privado "lessons" (com o Supabase, direto do navegador por envio assinado; ver server/lessons/router.ts).
 import React from "react";
@@ -8,6 +8,7 @@ import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
 import { lessonsAvailable, sizeLabel, uploadLessonFile } from "../study/lessonsApi.js";
 import { dateTimeBR, LoadError, Loading, messageOf, TextArea, useLoad } from "./common.jsx";
+import { LessonAssistant } from "./LessonAssistant.jsx";
 
 const EMPTY = { area: "CLINICA_MEDICA", topic: "", title: "", duration_minutes: "", instructor: "", specialty: "", video_url: "", summary: "", key_points: "", guideline_title: "", guideline_url: "", published: false, position: 0 };
 const toForm = (l) => ({ ...EMPTY, ...l, duration_minutes: l.duration_minutes ?? "", key_points: (l.key_points ?? []).join("\n"), instructor: l.instructor ?? "", specialty: l.specialty ?? "", video_url: l.video_url ?? "", summary: l.summary ?? "", guideline_title: l.guideline_title ?? "", guideline_url: l.guideline_url ?? "" });
@@ -154,6 +155,7 @@ function LessonEditor({ lesson, topics, onSaved, onClose, isAdmin }) {
         </div>
         {state.error && <Banner tone="danger">{state.error}</Banner>}
         {state.done && !state.error && <Banner tone="success">Aula salva.</Banner>}
+        <LessonAssistant form={form} set={set} lesson={current} pending={pending} />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
           <SelectField label="Grande área" value={form.area} onChange={(e) => set({ area: e.target.value })} options={AREAS.map((a) => ({ value: a.id, label: a.label }))} />
           <div>

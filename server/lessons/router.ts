@@ -13,6 +13,10 @@ import crypto from "crypto";
 import path from "path";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { localStorageDir, supabaseStorage, type ContentDb, type Identity, type Storage } from "../contentHub/infra";
+import type { StructuredRequest } from "../contentHub/ai/provider";
+import { fetchLink, type ExtractedPage } from "../podcasts/extract";
+import { providerChoices } from "../podcasts/script";
+import { AREA_CODES, generateLessonAssist, MAX_ASSIST_CHARS, type AssistProvider } from "./assist";
 
 export const LESSONS_BUCKET = "lessons";
 const MAX_MB = Number(process.env.LESSONS_MAX_FILE_MB || 200);
@@ -33,6 +37,10 @@ export interface LessonsDeps {
   db: ContentDb;
   storage: Storage;
   log?: (m: string) => void;
+  /** Testes do assistente: links sem rede, endereço conferido e IA simulada. */
+  fetchImpl?: typeof fetch;
+  checkHost?: (host: string) => Promise<void>;
+  mockAssist?: (req: StructuredRequest) => unknown;
 }
 
 /** Depósito das aulas: bucket privado "lessons" no Supabase; pasta .data/lessons no desenvolvimento. */
@@ -160,6 +168,78 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       res.send(data);
     } catch (error: any) {
       fail(res, error?.status ?? (forbidden(error) ? 403 : 404), message(error));
+    }
+  });
+
+  // ------------------------------------------------------------------ assistente de IA da aula (equipe)
+  /** IAs prontas no servidor (Gemini, Claude, OpenAI) e o motivo das que faltam. */
+  router.get("/assist/providers", async (req: Authed, res) => {
+    try {
+      await asUser(req, "app_admin_lessons");
+      res.json(providerChoices());
+    } catch (error: any) {
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 500), message(error));
+    }
+  });
+
+  /**
+   * Sugestões para a aula a partir do material: PDF (o app manda o texto por página, lido no navegador), texto colado ou link.
+   * Devolve rascunhos com as páginas de origem; nada é gravado na aula (a equipe aplica e salva).
+   */
+  router.post("/assist", async (req: Authed, res) => {
+    try {
+      const b = (req.body ?? {}) as Record<string, any>;
+      const kind = String(b.provider ?? "gemini");
+      if (!["gemini", "anthropic", "openai", "mock"].includes(kind)) throw httpError(400, "Escolha Gemini, Claude ou OpenAI.");
+      await asUser(req, "app_admin_lessons"); // só a equipe
+      const str = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) || null : null);
+      let pages: ExtractedPage[];
+      if (Array.isArray(b.pages)) {
+        pages = b.pages.slice(0, 3000).map((p: any) => ({ page: Number.isInteger(p?.page) && p.page > 0 ? p.page : null, text: String(p?.text ?? "") }));
+      } else if (typeof b.text === "string") {
+        pages = [{ page: null, text: b.text }];
+      } else if (typeof b.url === "string") {
+        const url = b.url.trim();
+        if (!/^https:\/\/\S+$/i.test(url) || url.length > 2000) throw httpError(400, "Use um link https.");
+        try {
+          pages = (await fetchLink(url, deps!.fetchImpl ?? fetch, deps!.checkHost)).pages;
+        } catch (error) {
+          throw httpError(422, message(error));
+        }
+      } else {
+        throw httpError(400, "Envie o material: PDF (texto por página), texto ou link.");
+      }
+      const chars = pages.reduce((n, p) => n + p.text.length, 0);
+      if (chars < 80) throw httpError(422, "O material não tem texto aproveitável (PDF escaneado?). Cole o texto.");
+      if (chars > MAX_ASSIST_CHARS) throw httpError(413, "Material longo demais: até 400 mil caracteres.");
+      let r;
+      try {
+        r = await generateLessonAssist({
+          kind: kind as AssistProvider,
+          pages,
+          title: str(b.title, 200),
+          topic: str(b.topic, 120),
+          area: AREA_CODES.includes(b.area) ? b.area : null,
+          instructions: str(b.instructions, 800),
+          mockRespond: kind === "mock" ? deps!.mockAssist : undefined,
+        });
+      } catch (error: any) {
+        throw httpError(error?.status ?? 502, `O assistente falhou: ${message(error)}`);
+      }
+      if (kind !== "mock") {
+        try {
+          await deps!.db.service("ch_worker_tutor_ledger", {
+            p_user: req.user!.id,
+            p_session_id: null,
+            p_entry: { feature: "lesson_assist", provider: r.usage.provider, model: r.usage.model, input_text_tokens: r.usage.input_tokens, output_text_tokens: r.usage.output_tokens, estimated_cost_usd: r.usage.cost_usd, meta: { calls: r.usage.calls, chunks: r.used_chunks } },
+          });
+        } catch (error) {
+          deps!.log?.(`aulas: registro de custo do assistente falhou: ${message(error)}`);
+        }
+      }
+      res.json(r);
+    } catch (error: any) {
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
     }
   });
 

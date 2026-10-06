@@ -192,8 +192,8 @@ export function resolveProviderKind(kind: string, mockRespond?: (req: Structured
     return { provider: p, status: { ready: true, provider: p.name, model: p.model, isMock: false, pending: null } };
   }
   if (kind === "gemini") {
-    const key = (process.env.GEMINI_API_KEY ?? "").trim();
-    if (key.length < 30) return pending("GEMINI_API_KEY ausente ou com formato inválido no servidor.");
+    const key = (process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || "").trim();
+    if (key.length < 30) return pending("GEMINI_API_KEY (ou GOOGLE_GEMINI_API_KEY) ausente ou com formato inválido no servidor.");
     const p = new GeminiProvider(key, modelOverride || process.env.CONTENT_HUB_GEMINI_MODEL || "gemini-2.5-pro");
     return { provider: p, status: { ready: true, provider: p.name, model: p.model, isMock: false, pending: null } };
   }

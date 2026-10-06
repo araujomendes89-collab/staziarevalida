@@ -10,6 +10,7 @@ import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
 import { XPToast } from "../play/PlayFeedback.jsx";
 import { durationLabel, lessonFileUrl, lessonsAvailable, sizeLabel, videoEmbed } from "./lessonsApi.js";
+import { PodcastsSection } from "../podcasts/PodcastsSection.jsx";
 
 const AREA_ICON = { CLINICA_MEDICA: "stethoscope", CIRURGIA_GERAL: "scissors", PEDIATRIA: "baby", GINECOLOGIA_OBSTETRICIA: "heart-pulse", MEDICINA_FAMILIA_COMUNIDADE: "shield-plus" };
 const AREA_COLOR = { CLINICA_MEDICA: "#2F5FD0", CIRURGIA_GERAL: "#D9650A", PEDIATRIA: "#0E8A5F", GINECOLOGIA_OBSTETRICIA: "#C23A74", MEDICINA_FAMILIA_COMUNIDADE: "#6A47E0" };
@@ -400,6 +401,7 @@ export function LessonsScreen({ go }) {
           </div>
         </>
       )}
+      <PodcastsSection backend={backend} area={area} />
     </>
   );
 }

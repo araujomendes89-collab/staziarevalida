@@ -34,6 +34,8 @@ export interface Storage {
   signedUrl?(key: string, seconds: number): Promise<string>;
   /** Envio direto do navegador ao depósito (só no Supabase): não passa pelo limite de corpo da Vercel (4,5 MB). */
   signedUpload?(key: string): Promise<{ path: string; token: string }>;
+  /** Apaga arquivos (o que não existir é ignorado). */
+  remove?(keys: string[]): Promise<void>;
 }
 
 const FN = /^(ch_worker_[a-z_]+|app_[a-z0-9_]+)$/;
@@ -107,6 +109,16 @@ export function localStorageDir(dir = process.env.CONTENT_HUB_STORAGE_DIR || pat
     async exists(key) {
       return fs.existsSync(full(key));
     },
+    async remove(keys) {
+      for (const key of keys) fs.rmSync(full(key), { force: true });
+      for (const d of [...new Set(keys.map((k) => path.dirname(full(k))))]) {
+        try {
+          if (path.resolve(d).startsWith(path.resolve(dir) + path.sep) && fs.readdirSync(d).length === 0) fs.rmdirSync(d);
+        } catch {
+          // pasta já saiu ou não está vazia
+        }
+      }
+    },
   };
 }
 
@@ -140,6 +152,11 @@ export function supabaseStorage(bucket = "content-hub"): Storage {
       const { data, error } = await admin.storage.from(bucket).createSignedUploadUrl(key, { upsert: true });
       if (error || !data) throw new Error(error?.message ?? "Não foi possível preparar o envio.");
       return { path: data.path, token: data.token };
+    },
+    async remove(keys) {
+      if (!keys.length) return;
+      const { error } = await admin.storage.from(bucket).remove(keys);
+      if (error) throw new Error(error.message);
     },
   };
 }

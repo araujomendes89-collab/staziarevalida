@@ -12,6 +12,7 @@ import { ContentHub } from "./content/ContentHub.jsx";
 import { AdminPlay } from "./AdminPlay.jsx";
 import { AdminLessons } from "./AdminLessons.jsx";
 import { AdminUpdates } from "./AdminUpdates.jsx";
+import { AdminPodcasts } from "./AdminPodcasts.jsx";
 import { isStaffRole } from "./common.jsx";
 
 const TABS = [
@@ -19,6 +20,7 @@ const TABS = [
   { value: "usuarios", label: "Usuários", icon: "users" },
   { value: "questoes", label: "Questões", icon: "file-question", staff: true },
   { value: "aulas", label: "Aulas", icon: "tv", staff: true },
+  { value: "podcasts", label: "Podcasts", icon: "headphones", staff: true },
   { value: "atualizacoes", label: "Atualizações", icon: "refresh-cw", staff: true, reviewer: true },
   { value: "planos", label: "Planos", icon: "crown" },
   { value: "estacoes", label: "Estações", icon: "clipboard-list", staff: true },
@@ -48,6 +50,7 @@ export function AdminScreen() {
       {tab === "usuarios" && <AdminUsers />}
       {tab === "questoes" && <AdminQuestions />}
       {tab === "aulas" && <AdminLessons />}
+      {tab === "podcasts" && <AdminPodcasts />}
       {tab === "atualizacoes" && <AdminUpdates />}
       {tab === "planos" && <AdminPlans />}
       {tab === "estacoes" && <AdminStations />}

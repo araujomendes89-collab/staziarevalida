@@ -23,6 +23,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",
     "@anthropic-ai/vertex-sdk": "^0.19.6",
+    "@breezystack/lamejs": "^1.2.7",
     "@google/genai": "^2.4.0",
     "@supabase/supabase-js": "^2.117.2",
     "@tailwindcss/vite": "^4.1.14",
@@ -32,12 +33,14 @@
     "firebase": "^12.18.0",
     "firebase-admin": "^14.3.0",
     "lucide-react": "^0.546.0",
+    "mammoth": "^1.13.0",
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "react-router-dom": "^7.18.3",
     "recharts": "^3.10.1",
     "ts-fsrs": "^5.4.2",
+    "unpdf": "^1.8.1",
     "vite": "^6.2.3",
     "ws": "^8.22.0"
   },
