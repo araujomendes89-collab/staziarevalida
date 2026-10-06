@@ -20,7 +20,7 @@ const R = { borderRadius: 24 };
 const messageOf = (error) => error?.message || "Não foi possível concluir. Tente de novo.";
 const minutes = (s) => Math.max(0, Math.floor((s ?? 0) / 60));
 
-export function TutorScreen({ go }) {
+export function TutorScreen({ go, initialView = "start" }) {
   const { backend } = useSession();
   const mobile = useMobile();
   const [status, setStatus] = React.useState(null);
@@ -40,7 +40,7 @@ export function TutorScreen({ go }) {
   React.useEffect(() => {
     let alive = true;
     refresh().then(
-      () => alive && setView("start"),
+      () => alive && setView(initialView === "report" ? "report" : "start"),
       (e) => alive && (setError(messageOf(e)), setView("start"))
     );
     return () => {

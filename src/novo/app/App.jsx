@@ -42,6 +42,7 @@ const TITLES = {
   erros: ["Caderno de erros", "Revisar"],
   plano: ["Planejamento", "Cronograma até a prova"],
   desempenho: ["Desempenho", "Seus dados reais"],
+  analise: ["Análise", "Evolução · o que o Tutor percebeu nos seus erros e acertos"],
   tutor: ["Stazia Tutor", "Seu professor particular para o Revalida"],
   trilha: ["Trilha de aprendizado", "Stazia Arena · uma etapa de cada vez"],
   classificacao: ["Classificação", "Stazia Arena · ranking e liga da semana"],
@@ -60,7 +61,7 @@ const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes"]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -134,6 +135,8 @@ function Screen() {
   else if (route === "plano") body = <PlanningScreen go={go} />;
   else if (route === "desempenho") body = <PerformanceScreen go={go} />;
   else if (route === "tutor") body = <TutorScreen go={go} />;
+  // "Análise" (grupo Evolução): o relatório do Tutor (o que ele percebeu, erros que se repetem, evolução por área)
+  else if (route === "analise") body = <TutorScreen key="analise" go={go} initialView="report" />;
   else if (route === "trilha") body = <TrailScreen go={go} />;
   else if (route === "classificacao") body = <LeaderboardScreen go={go} />;
   else if (route === "missoes") body = <MissionsScreen go={go} />;

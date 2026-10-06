@@ -1,4 +1,4 @@
-// Ícones ilustrados dos itens novos do menu (Trilha, Missões, Classificação, Conquistas e Perfil), no mesmo padrão de
+// Ícones ilustrados dos itens novos do menu (Trilha, Missões, Classificação, Conquistas, Perfil, Aulas, Atualizações e Análise), no mesmo padrão de
 // prototype/RealIcons.jsx: caixa 32×32, gradientes, brilho branco, sombra e as mesmas animações ao passar o mouse
 // (classes ri-*). O arquivo do protótipo é gerado a partir do Design System e não é editado à mão; por isso estes ficam aqui.
 import React from "react";
@@ -107,6 +107,66 @@ const DEF = {
         <circle cx="16" cy="10.5" r="5.6" fill={u(p, "s")} />
         <path d="M5.5 28c0-6 4.7-10.5 10.5-10.5S26.5 22 26.5 28z" fill={u(p, "a")} />
         <path d="M12.3 7.4a4.6 4.6 0 0 1 3.3-1.6" stroke={SH} strokeWidth="1" strokeLinecap="round" />
+      </>
+    ),
+  },
+  // Aulas: tela com o botão de play (conteúdo audiovisual)
+  tv: {
+    an: "pop",
+    d: (p) => (
+      <>
+        <defs>
+          {g(p + "b", "#7C9BE0", "#1E3F8A")}
+          {g(p + "s", "#E9F0FF", "#C6D4F2")}
+          {g(p + "a", "#6CDDD2", "#0B7F76")}
+        </defs>
+        <rect x="3" y="5" width="26" height="18" rx="3.2" fill={u(p, "b")} />
+        <rect x="5.4" y="7.4" width="21.2" height="13.2" rx="1.6" fill={u(p, "s")} />
+        <path d="M13.6 10.6v7l6-3.5z" fill={u(p, "a")} />
+        <path d="M12 27h8" stroke="#3A4350" strokeWidth="2" strokeLinecap="round" />
+        <path d="M16 23v4" stroke="#3A4350" strokeWidth="1.8" />
+        <path d="M5.2 8.6a2 2 0 0 1 1.6-1.4" stroke={SH} strokeWidth="1" strokeLinecap="round" />
+      </>
+    ),
+  },
+  // Atualizações: folha de conduta com a seta de "mudou"
+  newspaper: {
+    an: "wiggle",
+    d: (p) => (
+      <>
+        <defs>
+          {g(p + "f", "#FFFFFF", "#E3E9F3")}
+          {g(p + "o", "#FFB15C", "#D9650A")}
+          {g(p + "l", "#7C9BE0", "#1E3F8A")}
+        </defs>
+        <rect x="5" y="3.5" width="18" height="24" rx="2.6" fill={u(p, "f")} stroke="#C3CBD5" strokeWidth=".8" />
+        <rect x="8.2" y="7.4" width="11.6" height="3" rx="1.2" fill={u(p, "l")} />
+        <rect x="8.2" y="13" width="11.6" height="1.8" rx=".9" fill="#DCE1E8" />
+        <rect x="8.2" y="16.6" width="8.6" height="1.8" rx=".9" fill="#DCE1E8" />
+        <rect x="8.2" y="20.2" width="10" height="1.8" rx=".9" fill="#DCE1E8" />
+        <circle cx="24" cy="23.5" r="6.2" fill={u(p, "o")} />
+        <path d="M21.4 23.2a2.7 2.7 0 0 1 4.6-1.8" stroke="#fff" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+        <path d="M26.6 19.9v1.9h-1.9" stroke="#fff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M26.6 23.8a2.7 2.7 0 0 1-4.6 1.8" stroke="#fff" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+        <path d="M21.4 27.1v-1.9h1.9" stroke="#fff" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M7 6a1.6 1.6 0 0 1 1.2-1" stroke={SH} strokeWidth="1" strokeLinecap="round" />
+      </>
+    ),
+  },
+  // Análise: gráfico de pizza com a fatia destacada (o que o Tutor percebeu)
+  "chart-pie": {
+    an: "pop",
+    d: (p) => (
+      <>
+        <defs>
+          {g(p + "b", "#7C9BE0", "#1E3F8A")}
+          {g(p + "t", "#6CDDD2", "#0B7F76")}
+          {g(p + "o", "#FFB15C", "#D9650A")}
+        </defs>
+        <path d="M14.5 6.2A11.3 11.3 0 1 0 25.8 17.5H14.5z" fill={u(p, "b")} />
+        <path d="M14.5 17.5 6.1 25.1A11.3 11.3 0 0 0 25.8 17.5z" fill={u(p, "t")} />
+        <path d="M17.6 3.4a11.3 11.3 0 0 1 11 11h-11z" fill={u(p, "o")} />
+        <path d="M6.4 11.6a10 10 0 0 1 5-4.4" stroke={SH} strokeWidth="1.1" fill="none" strokeLinecap="round" />
       </>
     ),
   },

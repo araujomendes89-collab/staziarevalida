@@ -9,7 +9,7 @@ import { AppRealIcon } from "../novo/app/AppIcons.jsx";
 
 describe("Ícones ilustrados do menu", () => {
   it("os novos desenham um svg animável; os do protótipo seguem do protótipo; nome desconhecido não desenha nada", () => {
-    for (const name of ["route", "target", "trophy", "award", "user"]) {
+    for (const name of ["route", "target", "trophy", "award", "user", "tv", "newspaper", "chart-pie"]) {
       const { container, unmount } = render(<>{AppRealIcon({ name, size: 22 })}</>);
       const svg = container.querySelector("svg");
       expect(svg, name).toBeTruthy();
