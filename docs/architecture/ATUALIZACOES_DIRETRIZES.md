@@ -34,5 +34,5 @@ Por isso o conteúdo entrou como **rascunho para conferência médica**: nada di
 ## Pendências
 
 - Cadastrar os revisores médicos por área (Central de Conteúdo › Configuração) e conferir as 19 no documento oficial (ou recusar/apagar).
-- Decidir com o dono do produto se alguma entra publicada antes da conferência (com o aviso na tela).
+- Decidido pelo dono do produto em 06/10/2026: as 19 do app anterior ficam como rascunho até a conferência médica (nenhuma publicada antes).
 - Ligar as atualizações ao acervo de fontes oficiais do SQIE (`ch_sources`) quando ele tiver documentos.
