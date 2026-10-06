@@ -1,14 +1,14 @@
-# Processamento de PDF da Central de Conteúdo (Google Cloud Run Job).
-# Node + Chromium (gerador dos PDFs finais, Playwright) + Python com PyMuPDF + Tesseract (OCR em português, espanhol e inglês).
-# Mesma versão do Playwright do package.json, para o navegador da imagem servir à biblioteca instalada.
+# Processamento de PDF da Central de Conteudo (Google Cloud Run Job).
+# Node + Chromium (gerador dos PDFs finais, Playwright) + Python com PyMuPDF + Tesseract (OCR em portugues, espanhol e ingles).
+# Mesma versao do Playwright do package.json, para o navegador da imagem servir a biblioteca instalada.
 
 FROM mcr.microsoft.com/playwright:v1.62.1-noble AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci --ignore-scripts
+RUN npm ci --include=optional --ignore-scripts
 COPY server ./server
 COPY scripts/content-hub ./scripts/content-hub
-RUN npx esbuild scripts/content-hub/worker-job.ts --bundle --platform=node --format=cjs --packages=external --target=node22 --outfile=dist-worker/worker-job.cjs
+RUN mkdir -p dist-worker && ./node_modules/.bin/esbuild scripts/content-hub/worker-job.ts --bundle --platform=node --format=cjs --packages=external --target=node22 --outfile=dist-worker/worker-job.cjs
 
 FROM mcr.microsoft.com/playwright:v1.62.1-noble
 ENV NODE_ENV=production \
