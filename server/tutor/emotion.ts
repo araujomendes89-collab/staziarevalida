@@ -8,7 +8,13 @@
  *
  * O aluno não vê números. Eventos vêm de fatos (o banco corrigiu, o tempo de resposta, a troca de alternativa) e da avaliação
  * silenciosa do raciocínio (tipo e gravidade do erro).
+ *
+ * Inércia: o humor sai da frustração, que cai aos poucos (acerto −7, três seguidos −15). A Durona furiosa que acerta uma não
+ * vira "feliz": ela reconhece pouco ("Tá. Pelo menos essa.") e melhora a cada acerto. O evento "recovering" lembra isso ao prompt.
+ * Painel: "nível da Durona" (moderada / forte / sem filtro cosmético) mexe no teto de sarcasmo, na intensidade de linguagem e no
+ * quanto a frustração sobe; os limites contra ataque pessoal valem em qualquer nível. DETERMINISTIC_TUTOR=true tira a variação.
  */
+import { deterministicTutor } from "./settings";
 
 export type Mood = "neutral" | "pleased" | "encouraged" | "impatient" | "irritated" | "angry" | "impressed" | "disappointed";
 export type SessionMood = "good" | "neutral" | "impatient";
@@ -30,9 +36,18 @@ export const PERSONA_ENGINE: Record<string, PersonaEngine> = {
   durona: { frustration_multiplier: 1.25, sarcasm_max: 85, aggression_max: 75, patience_base: 35, warmth_base: 25, language_max: 5 },
 };
 
-export const engineFor = (personaId: string, fromDb?: Partial<PersonaEngine> | null): PersonaEngine => ({
+/** Nível da Durona no painel. "forte" é o motor de sempre; os outros ajustam o teto (nunca os limites de respeito). */
+export type DuronaLevel = "moderada" | "forte" | "sem_filtro";
+export const DURONA_LEVELS: Record<DuronaLevel, Partial<PersonaEngine>> = {
+  moderada: { frustration_multiplier: 1.0, sarcasm_max: 60, aggression_max: 55, language_max: 3 },
+  forte: {},
+  sem_filtro: { frustration_multiplier: 1.4, sarcasm_max: 100, aggression_max: 90, language_max: 5 },
+};
+
+export const engineFor = (personaId: string, fromDb?: Partial<PersonaEngine> | null, duronaLevel?: DuronaLevel | null): PersonaEngine => ({
   ...(PERSONA_ENGINE[personaId] ?? PERSONA_ENGINE.direto),
   ...Object.fromEntries(Object.entries(fromDb ?? {}).filter(([, v]) => typeof v === "number")),
+  ...(personaId === "durona" && duronaLevel ? DURONA_LEVELS[duronaLevel] ?? {} : {}),
 });
 
 export interface TutorState {
@@ -67,9 +82,11 @@ const clamp = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 export function normalize(raw: Partial<TutorState> & Record<string, unknown> | null | undefined, engine: PersonaEngine): TutorState {
   const r = (raw ?? {}) as Partial<TutorState> & Record<string, unknown>;
   const num = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? v : d);
-  const sessionMood: SessionMood = r.sessionMood === "good" || r.sessionMood === "impatient" || r.sessionMood === "neutral"
-    ? r.sessionMood
-    : r.session_mood === "good" || r.session_mood === "impatient" ? (r.session_mood as SessionMood) : "neutral";
+  const sessionMood: SessionMood = deterministicTutor()
+    ? "neutral"
+    : r.sessionMood === "good" || r.sessionMood === "impatient" || r.sessionMood === "neutral"
+      ? r.sessionMood
+      : r.session_mood === "good" || r.session_mood === "impatient" ? (r.session_mood as SessionMood) : "neutral";
   const frustration = clamp(num(r.frustration, sessionMood === "impatient" ? 12 : sessionMood === "good" ? 0 : 5));
   const base: TutorState = {
     patience: clamp(num(r.patience, engine.patience_base - frustration * 0.6)),
@@ -123,7 +140,7 @@ const REASONING = new Set(["diagnostic_reasoning", "therapeutic_reasoning", "pri
  * Um passo do motor: atualiza contadores, frustração (com o multiplicador do professor e uma pequena variação humana),
  * as outras dimensões, o humor e os eventos. `rand` devolve 0–1 (injetável para teste).
  */
-export function step(prev: TutorState, engine: PersonaEngine, h: Happening, rand: () => number = Math.random): { state: TutorState; events: string[]; frustrationDelta: number } {
+export function step(prev: TutorState, engine: PersonaEngine, h: Happening, rand: () => number = deterministicTutor() ? () => 0.5 : Math.random): { state: TutorState; events: string[]; frustrationDelta: number } {
   const s: TutorState = { ...prev, events: [...prev.events] };
   const ev: string[] = [];
   const m = engine.frustration_multiplier;
@@ -178,7 +195,10 @@ export function step(prev: TutorState, engine: PersonaEngine, h: Happening, rand
       s.enthusiasm += 12;
       ev.push("perfect_reasoning");
     }
-    if (recovering) s.enthusiasm += 8;
+    if (recovering) {
+      s.enthusiasm += 8;
+      ev.push("recovering"); // inércia: depois de uma sequência de erros, um acerto não muda o humor de uma vez
+    }
     if (s.consecutiveCorrect === 3) {
       down += 15;
       ev.push("three_correct");
@@ -304,6 +324,7 @@ const EVENT_PT: Record<string, string> = {
   repeated_error: "repetiu um erro", three_correct: "três acertos seguidos", five_correct: "cinco acertos seguidos", ten_correct: "dez acertos seguidos",
   perfect_reasoning: "raciocínio perfeito", unsafe_answer: "conduta perigosa para o paciente", changed_correct_to_wrong: "marcou a certa e trocou pela errada",
   changed_wrong_to_correct: "trocou a errada pela certa", very_fast_answer: "respondeu rápido demais", very_slow_answer: "demorou muito para responder",
+  recovering: "acertou depois de uma sequência de erros (não mude de humor de uma vez: reconheça pouco, do seu jeito, e melhore a cada acerto)",
 };
 
 /** Bloco de ESTADO do professor para o prompt (sistema). */
@@ -342,13 +363,13 @@ export function avatarOf(personaId: string, s: TutorState) {
  * Expressões recentes do professor, para ele não repetir ("Porra, de novo?" a cada erro): o começo de cada fala e as interjeições
  * e palavrões usados nas últimas falas.
  */
-export function recentExpressions(tutorTexts: string[], max = 10): string[] {
+export function recentExpressions(tutorTexts: string[], max = 20): string[] {
   const out: string[] = [];
   const push = (x: string) => {
     const t = x.trim().replace(/\s+/g, " ");
     if (t && !out.some((o) => o.toLowerCase() === t.toLowerCase())) out.push(t);
   };
-  for (const text of tutorTexts.slice(-6).reverse()) {
+  for (const text of tutorTexts.slice(-12).reverse()) {
     const first = text.split(/(?<=[.!?…])\s+/)[0] ?? "";
     if (first && first.split(/\s+/).length <= 7) push(first);
     else push(text.split(/\s+/).slice(0, 4).join(" "));

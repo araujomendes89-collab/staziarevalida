@@ -107,7 +107,9 @@ describe("Voz em tempo real na tela", () => {
     expect(sdp.headers).toMatchObject({ Authorization: "Bearer ek_temporario", "Content-Type": "application/sdp" }); // só o segredo temporário
     expect(sdp.body).toBe("v=0 offer");
     dc.onopen();
-    expect(await screen.findByText("Ouvindo você…")).toBeTruthy();
+    // a conversa por voz abre em tela cheia (Stazia Voice Mode)
+    expect(await screen.findByRole("dialog", { name: "Tutor Stazia" })).toBeTruthy();
+    expect(await screen.findByText("Ouvindo...")).toBeTruthy();
     expect(sent[0]).toEqual({ type: "response.create" }); // o professor abre a conversa
     // ferramenta pedida pela voz: o servidor executa e o resultado volta pelo canal
     emit({ type: "response.done", response: { output: [{ type: "function_call", call_id: "c1", name: "get_question_context", arguments: "{}" }], usage: { total_tokens: 10 } } });
@@ -119,13 +121,15 @@ describe("Voz em tempo real na tela", () => {
     // a fala do professor aparece como mensagem e vai para a conferência no servidor
     emit({ type: "output_audio_buffer.started" });
     emit({ type: "response.output_audio_transcript.done", transcript: "Tem certeza? Olha o comando." });
-    expect(await screen.findByText("Tem certeza? Olha o comando.")).toBeTruthy();
+    expect((await screen.findAllByText("Tem certeza? Olha o comando.")).length).toBeGreaterThan(0); // legenda e conversa
     expect(calls.find((c) => c.url === "/api/tutor/voice/transcript")!.body).toMatchObject({ role: "tutor", text: "Tem certeza? Olha o comando." });
     fireEvent.click(await screen.findByText("Interromper"));
     expect(sent.slice(-2)).toEqual([{ type: "response.cancel" }, { type: "output_audio_buffer.clear" }]);
-    // encerrar: o servidor registra o fim
-    fireEvent.click(screen.getByText("Encerrar voz"));
+    // encerrar: a tela de voz fecha e o servidor registra o fim (com as métricas da ligação)
+    fireEvent.click(screen.getByLabelText("Encerrar a conversa por voz"));
     await waitFor(() => expect(urls()).toContain("/api/tutor/voice/end"));
+    expect(calls.find((c) => c.url === "/api/tutor/voice/end")!.body).toMatchObject({ reason: "student", metrics: { provider_used: "realtime", mic_permission: "granted", tools: 1 } });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Tutor Stazia" })).toBeNull());
   });
 
   it("o servidor achou algo errado no que foi dito: o professor recebe a correção na hora", async () => {

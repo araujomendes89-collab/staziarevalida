@@ -122,3 +122,9 @@ Pedido: "MOTOR DE PERSONALIDADE HUMANA" (itens 1–32). Código: `server/tutor/e
 
 Não foi feito: o mascote NEX (não há desenho nem animações no projeto) e tags de emoção para TTS (a voz em tempo real recebe o tom
 pelas instruções e pelas ferramentas). O nome do produto segue StaziaMed; o pedido fala em "StaziaNexus".
+
+## 11. Voz em tela cheia (Stazia Voice Mode, prompt 2.4.0, migração `4400_tutor_voice_mode`, 2026-10-06)
+
+A conversa por voz saiu da barra dentro do chat e virou uma tela cheia com a esfera animada (vídeo enviado pelo dono), GPT-Live como
+provedor preferido (com o Realtime de reserva), delegação do conteúdo ao motor do Tutor, painel da voz, lembranças entre conversas e
+métricas por ligação. Detalhes, pendências e validação manual: `STAZIA_VOICE_MODE.md`.

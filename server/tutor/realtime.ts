@@ -1,28 +1,37 @@
 /**
- * VOZ EM TEMPO REAL do Stazia Tutor (OpenAI Realtime, WebRTC no navegador).
+ * VOZ EM TEMPO REAL do Stazia Tutor (OpenAI, WebRTC no navegador). Dois provedores atrás da mesma ligação (voiceProviders.ts):
  *
- *   aluno → /api/tutor/voice/start (servidor: login, direito, teste, cota, uma voz por aluno, reserva curta de uso)
- *         → o servidor pede à OpenAI um SEGREDO TEMPORÁRIO (POST /v1/realtime/client_secrets) com as instruções e as ferramentas
- *         → o navegador abre o WebRTC direto com a OpenAI usando esse segredo (a chave principal nunca sai do servidor)
- *         → a cada ~minuto, /voice/renew conta o tempo real e renova a reserva; sem saldo, o servidor encerra a chamada
- *         → /voice/end fecha e registra; chamadas sem renovação expiram sozinhas (varredura) e o servidor desliga
+ *   GPT-Live (preferido quando configurado): o navegador manda a oferta WebRTC para /api/tutor/voice/start; o servidor confere
+ *     login, direito, teste, cota e uma voz por aluno, reserva o tempo e troca a oferta com a OpenAI (POST /v1/live/sessions) com
+ *     a chave daqui. O GPT-Live conversa e DELEGA o conteúdo ao aplicativo (/voice/delegate → delegate.ts → motor do Tutor).
+ *   Realtime (reserva, ou escolhido no painel): o servidor pede um SEGREDO TEMPORÁRIO (POST /v1/realtime/client_secrets) com as
+ *     instruções e as ferramentas; o navegador abre o WebRTC direto com a OpenAI usando esse segredo; ferramentas por /voice/tool.
  *
- * A cota comercial é TEMPO autorizado pelo servidor; tokens (response.done) servem só para custo e telemetria.
+ *   → a cada ~minuto, /voice/renew conta o tempo real e renova a reserva; sem saldo ou no limite da conversa, o servidor manda
+ *     encerrar com uma folga curta (o professor termina a frase) e derruba a ligação se o aplicativo não encerrar;
+ *   → /voice/end fecha e registra; chamadas sem renovação expiram sozinhas (varredura) e o servidor desliga.
+ *
+ * A cota comercial é TEMPO autorizado pelo servidor; tokens e minutos servem só para custo e telemetria.
  *
  *   OPENAI_API_KEY                   chave (só no servidor)
- *   OPENAI_REALTIME_MODEL            modelo de voz em tempo real (obrigatório: não há nome fixo no código)
+ *   OPENAI_REALTIME_MODEL            modelo do Realtime (sem nome fixo no código)
+ *   OPENAI_LIVE_MODEL                modelo do GPT-Live (sem nome fixo no código)
+ *   OPENAI_VOICE_PROVIDER            live | realtime | auto
+ *   OPENAI_REALTIME_VOICE            voz padrão quando o professor não tem uma
  *   TUTOR_VOICE_ALLOW_EXTERNAL=1     consentimento: a voz do aluno e as respostas passam pela OpenAI
- *   OPENAI_REALTIME_TRANSCRIBE_MODEL opcional: transcrição da fala do aluno (sem ele, só a fala do professor vira texto)
+ *   OPENAI_REALTIME_TRANSCRIBE_MODEL opcional (Realtime): transcrição da fala do aluno
  */
 import { createHash } from "crypto";
 import { engineFor, languageIntensity, normalize, profanityForIntensity, stateLayer, type PersonaEngine, type TutorState } from "./emotion";
 import { TRIAL_OVER, TutorError, type Entitlement, type TutorDeps } from "./engine";
-import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings } from "./personality";
-import { composeRealtimeInstructions, type TutorMode } from "./prompts";
+import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings as SessionPrefs } from "./personality";
+import { composeLiveInstructions, composeRealtimeInstructions, type TutorMode } from "./prompts";
 import { safetyCheck, type BaseBlock } from "./safety";
 import { realKey } from "./speech";
 import { REALTIME_TOOLS } from "./tools";
-import { estimateCost } from "./costs";
+import { estimateCost, voiceTimeCost } from "./costs";
+import { deterministicTutor, tutorSettings, type TutorSettings } from "./settings";
+import { closeLiveSession, createLiveSession, liveConfig, LiveSessionError, markLiveUnavailable, planProviders, type LiveConfig, type VoiceProviderId } from "./voiceProviders";
 
 const API = "https://api.openai.com/v1";
 
@@ -57,9 +66,23 @@ export function realtimeConfig(env: NodeJS.ProcessEnv = process.env): RealtimeCo
   return { ready: !pending, model, pending, key: pending ? null : key, transcribeModel };
 }
 
+const liveOf = (deps: Pick<TutorDeps, "live">): LiveConfig => deps.live ?? liveConfig();
+
+/** A voz está disponível no servidor por algum provedor? (a tela mostra o botão de voz) */
+export function voiceReady(deps: Pick<TutorDeps, "realtime" | "live">) {
+  const rt = deps.realtime ?? realtimeConfig();
+  const live = liveOf(deps);
+  return { ready: rt.ready || live.ready, realtime: rt, live };
+}
+
 /** Encerra uma chamada pelo servidor (cota acabou, reserva venceu, outra aba assumiu). Melhor esforço. */
-export async function hangup(callId: string | null | undefined, deps: Pick<TutorDeps, "log" | "realtime" | "fetch">) {
+export async function hangup(callId: string | null | undefined, deps: Pick<TutorDeps, "log" | "realtime" | "fetch" | "live">, provider: VoiceProviderId | string | null = "realtime") {
   if (!callId || !/^[A-Za-z0-9_-]{4,120}$/.test(callId)) return;
+  if (provider === "live") {
+    const key = liveOf(deps).key ?? (deps.realtime ? deps.realtime.key : realKey(process.env.OPENAI_API_KEY));
+    await closeLiveSession(key, callId, deps.log);
+    return;
+  }
   const key = deps.realtime ? deps.realtime.key : realKey(process.env.OPENAI_API_KEY);
   if (!key) return;
   const fetchImpl = deps.fetch ?? fetch;
@@ -74,36 +97,62 @@ export async function hangup(callId: string | null | undefined, deps: Pick<Tutor
 interface VoiceContext {
   entitlement: Entitlement & { voice: { remaining_s: number; remaining_today_s: number; remaining_total_s: number | null } };
   config: { max_profanity: ProfanityLevel };
-  session: { id: string; mode: TutorMode; title: string; topic: string | null; status: string; question_state: string; settings: TutorSettings; emotion: (Partial<TutorState> & Record<string, unknown>) | null; context: { type: string | null; label: string | null } };
+  session: { id: string; mode: TutorMode; title: string; topic: string | null; status: string; question_state: string; settings: SessionPrefs; emotion: (Partial<TutorState> & Record<string, unknown>) | null; context: { type: string | null; label: string | null } };
   personality: Personality & { voice?: { realtime?: string }; engine?: Partial<PersonaEngine> | null };
   student: { first_name: string | null; days_to_exam: number | null } | null;
   memory: { weak_subareas: { subarea: string; accuracy: number }[]; recurrent_errors: { error_type: string; knowledge_gap: string | null; times: number }[] } | null;
   question: { id: string } | null;
 }
 
-/** Contexto inicial da sessão de voz (sem gabarito: os fatos vêm das ferramentas). */
-function sessionContext(ctx: VoiceContext): string {
+/** Lembranças e a última conversa (continuidade entre dias). */
+interface VoiceExtras {
+  memories: { kind: string; concept: string; note: string | null; strength: number }[];
+  last_session: { id: string; title: string; topic: string | null; mode: string; days_ago: number; summary: { topics?: unknown; recurrent_errors?: unknown; next_topics?: unknown } | null } | null;
+}
+
+const MEMORY_KIND: Record<string, string> = { inside_joke: "piada interna", fact: "fato", preference: "preferência", goal: "meta", milestone: "conquista" };
+
+/** Contexto inicial da sessão de voz (sem gabarito: os fatos vêm das ferramentas ou do servidor). */
+export function sessionContext(ctx: VoiceContext, extras: VoiceExtras | null, opts: { live: boolean; continuity: boolean }): string {
   const lines = [`SESSÃO: ${ctx.session.title}.`];
   if (ctx.student?.first_name) lines.push(`O aluno se chama ${ctx.student.first_name}.`);
   if (ctx.question) {
     lines.push(ctx.session.question_state === "open"
-      ? "Há uma questão ABERTA nesta sessão: chame get_question_context antes de falar dela e deixe o aluno tentar primeiro."
-      : "A questão desta sessão já foi respondida: chame get_question_context para discutir a escolha do aluno.");
+      ? opts.live
+        ? "Há uma questão ABERTA nesta sessão: o backend traz o caso; deixe o aluno tentar primeiro."
+        : "Há uma questão ABERTA nesta sessão: chame get_question_context antes de falar dela e deixe o aluno tentar primeiro."
+      : opts.live
+        ? "A questão desta sessão já foi respondida: o backend traz a correção para discutir a escolha do aluno."
+        : "A questão desta sessão já foi respondida: chame get_question_context para discutir a escolha do aluno.");
   } else if (ctx.session.context.type === "weak_points") {
     lines.push(`Foco: pontos fracos do aluno${ctx.memory?.weak_subareas?.length ? ` (${ctx.memory.weak_subareas.slice(0, 3).map((w) => w.subarea).join(", ")})` : ""}.`);
   } else if (ctx.session.topic || ctx.session.context.label) lines.push(`Tema: ${ctx.session.topic ?? ctx.session.context.label}.`);
   const rec = ctx.memory?.recurrent_errors ?? [];
   if (rec.length) lines.push(`Erros que já se repetiram com este aluno: ${rec.slice(0, 3).map((r) => `${r.error_type}${r.knowledge_gap ? ` (${r.knowledge_gap})` : ""}`).join("; ")}.`);
-  lines.push("Comece cumprimentando em uma frase curta, no seu jeito, e já puxe o assunto da sessão.");
+  const mem = (extras?.memories ?? []).slice(0, 6);
+  if (mem.length) lines.push(`O que você lembra deste aluno (use com naturalidade e de vez em quando, nunca tudo de uma vez): ${mem.map((m) => `${MEMORY_KIND[m.kind] ?? m.kind}: ${m.concept}${m.note ? ` (${m.note})` : ""}`).join("; ")}.`);
+  const last = extras?.last_session;
+  if (opts.continuity && last && last.days_ago <= 14) {
+    const when = last.days_ago === 0 ? "mais cedo hoje" : last.days_ago === 1 ? "ontem" : `há ${last.days_ago} dias`;
+    lines.push(`Continuidade (use nesta abertura só se encaixar): a última conversa foi ${when}, sobre ${last.topic ?? last.title}.`);
+  }
+  lines.push("Comece numa frase curta, no seu jeito, e já puxe o assunto da sessão. Varie: nem toda abertura retoma a conversa anterior.");
   return lines.join("\n");
 }
 
 export interface VoiceStart {
+  provider: VoiceProviderId;
   voice_call_id: string;
-  client_secret: string;
-  expires_at: number | null;
+  /** Realtime: segredo temporário para o navegador abrir o WebRTC com a OpenAI. */
+  client_secret?: string;
+  expires_at?: number | null;
+  /** GPT-Live: resposta SDP (o servidor já trocou a oferta) e o id da sessão na OpenAI. */
+  sdp?: string;
+  live_session_id?: string;
   model: string;
+  voice: string;
   lease_seconds: number;
+  session_max_seconds: number;
   entitlement: unknown;
 }
 
@@ -126,86 +175,158 @@ const reasonError = (reason: string | undefined, e: unknown): TutorError => {
   }
 };
 
-/** Abre uma chamada de voz: direito + reserva no banco, depois o segredo temporário na OpenAI. */
-export async function startVoice(deps: TutorDeps, userId: string, sessionId: string, force: boolean): Promise<VoiceStart> {
-  const cfg = deps.realtime ?? realtimeConfig();
-  const fetchImpl = deps.fetch ?? fetch;
-  if (!cfg.ready) {
-    deps.log?.(`[tutor] voz em tempo real indisponível: ${cfg.pending}`);
-    throw new TutorError("A conversa por voz ainda não está configurada no servidor.", 503);
-  }
-  const ctx = await deps.db.service<VoiceContext | null>("ch_worker_tutor_context", { p_user: userId, p_session_id: sessionId });
-  if (!ctx) throw new TutorError("Conversa não encontrada.", 404);
-  const r = await deps.db.service<{ ok: boolean; reason?: string; voice_call_id?: string; lease_seconds?: number; replaced_call_id?: string | null; entitlement?: unknown }>(
-    "ch_worker_tutor_voice_start", { p_user: userId, p_session_id: sessionId, p_force: force, p_model: cfg.model });
-  if (!r.ok) throw reasonError(r.reason, r.entitlement);
-  if (r.replaced_call_id) void hangup(r.replaced_call_id, deps);
-
-  const engine = engineFor(ctx.personality.id, ctx.personality.engine);
-  const state = normalize(ctx.session.emotion, engine);
-  const li = languageIntensity(state, engine);
-  // na voz o estado muda pelas ferramentas (o "tom" volta junto); o teto de palavrão da sessão é o do professor
-  const profanity = profanityLevel(ctx.personality.params, ctx.session.settings.profanity ?? "off", ctx.config.max_profanity);
-  const mood = { label: state.mood, text: stateLayer(ctx.personality.id, state, engine), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado (ela muda ao longo da conversa: siga o tom que as ferramentas devolverem)", strong: li >= 3 };
-  const persona = personalityLayer(ctx.personality, effectiveParams(ctx.personality.params, 3, ctx.session.settings), profanity, 3, null, mood);
-  const instructions = composeRealtimeInstructions({ mode: ctx.session.mode, persona, context: sessionContext(ctx) });
-  const session = {
-    type: "realtime",
-    model: cfg.model,
-    instructions,
-    audio: {
-      input: {
-        // fim de fala pelo sentido (não só pelo silêncio): "aham" no meio da explicação não vira pergunta; o aluno pode interromper
-        turn_detection: { type: "semantic_vad", eagerness: "auto", create_response: true, interrupt_response: true },
-        ...(cfg.transcribeModel ? { transcription: { model: cfg.transcribeModel, language: "pt" } } : {}),
-      },
-      output: { voice: ctx.personality.voice?.realtime || "marin" },
-    },
-    tools: REALTIME_TOOLS,
-    tool_choice: "auto",
-  };
-  try {
-    const res = await fetchImpl(`${API}/realtime/client_secrets`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${cfg.key}`,
-        "Content-Type": "application/json",
-        // identificador estável e sem dado pessoal, para a OpenAI tratar abuso por aluno
-        "OpenAI-Safety-Identifier": createHash("sha256").update(`stazia:${userId}`).digest("hex"),
-      },
-      body: JSON.stringify({ expires_after: { anchor: "created_at", seconds: 120 }, session }),
-      signal: AbortSignal.timeout(20_000),
-    });
-    if (!res.ok) throw new Error(`OpenAI respondeu ${res.status}: ${(await res.text()).replace(cfg.key!, "[chave]").slice(0, 200)}`);
-    const data = (await res.json()) as { value?: string; expires_at?: number };
-    if (!data.value) throw new Error("OpenAI respondeu sem segredo temporário.");
-    return { voice_call_id: r.voice_call_id!, client_secret: data.value, expires_at: data.expires_at ?? null, model: cfg.model!, lease_seconds: r.lease_seconds!, entitlement: r.entitlement };
-  } catch (error) {
-    deps.log?.(`[tutor] voz: falha ao criar o segredo temporário: ${(error as Error).message.slice(0, 200)}`);
-    // não conectou: libera a reserva sem cobrar
-    await deps.db.service("ch_worker_tutor_voice_end", { p_user: userId, p_voice_call: r.voice_call_id, p_reason: "error" }).catch(() => undefined);
-    throw new TutorError("Não consegui abrir a conversa por voz agora. Tente de novo em instantes.", 502);
-  }
+/** Voz da ligação: a do painel (todos), senão a do professor, senão a padrão do ambiente. */
+export function voiceFor(settings: Pick<TutorSettings, "voice_name">, personality: { voice?: { realtime?: string } }, env: NodeJS.ProcessEnv = process.env): string {
+  return settings.voice_name || personality.voice?.realtime || (env.OPENAI_REALTIME_VOICE ?? "").trim() || "marin";
 }
 
+/** Abre uma chamada de voz: direito + reserva no banco, depois a sessão na OpenAI (GPT-Live ou Realtime). */
+export async function startVoice(deps: TutorDeps, userId: string, sessionId: string, force: boolean, sdp: string | null = null): Promise<VoiceStart> {
+  const rt = deps.realtime ?? realtimeConfig();
+  const live = liveOf(deps);
+  const settings = await tutorSettings(deps);
+  const plan = planProviders(settings.voice_provider, process.env, live, rt, Boolean(sdp));
+  if (!plan.first) {
+    deps.log?.(`[tutor] voz em tempo real indisponível: ${plan.pending}`);
+    throw new TutorError("A conversa por voz ainda não está configurada no servidor.", 503);
+  }
+  const fetchImpl = deps.fetch ?? fetch;
+  const ctx = await deps.db.service<VoiceContext | null>("ch_worker_tutor_context", { p_user: userId, p_session_id: sessionId });
+  if (!ctx) throw new TutorError("Conversa não encontrada.", 404);
+  const extras = await deps.db.service<VoiceExtras | null>("ch_worker_tutor_voice_context", { p_user: userId, p_session_id: sessionId }).catch(() => null);
+
+  const engine = engineFor(ctx.personality.id, ctx.personality.engine, settings.durona_level);
+  const state = normalize(ctx.session.emotion, engine);
+  const li = languageIntensity(state, engine);
+  // na voz o estado muda pelas ferramentas ou pelo servidor (o "tom" volta junto); o teto de palavrão da sessão é o do professor
+  const profanity = profanityLevel(ctx.personality.params, ctx.session.settings.profanity ?? "off", ctx.config.max_profanity);
+  const mood = { label: state.mood, text: stateLayer(ctx.personality.id, state, engine), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado (ela muda ao longo da conversa: siga o tom que o sistema devolver)", strong: li >= 3 };
+  const persona = personalityLayer(ctx.personality, effectiveParams(ctx.personality.params, 3, ctx.session.settings), profanity, 3, null, mood);
+  // continuidade em algumas aberturas, não em todas (sem sorteio no modo determinístico)
+  const continuity = deterministicTutor() ? true : createHash("sha256").update(`${sessionId}:abertura`).digest()[0] % 2 === 0;
+  const voice = voiceFor(settings, ctx.personality);
+
+  const reserve = async (model: string) => {
+    const r = await deps.db.service<{ ok: boolean; reason?: string; voice_call_id?: string; lease_seconds?: number; replaced_call_id?: string | null; replaced_provider?: string | null; entitlement?: unknown }>(
+      "ch_worker_tutor_voice_start", { p_user: userId, p_session_id: sessionId, p_force: force, p_model: model });
+    if (!r.ok) throw reasonError(r.reason, r.entitlement);
+    if (r.replaced_call_id) void hangup(r.replaced_call_id, deps, r.replaced_provider ?? "realtime"); // a anterior pode ser de outro provedor
+    return r as { voice_call_id: string; lease_seconds: number; entitlement: unknown };
+  };
+  const release = (id: string) => deps.db.service("ch_worker_tutor_voice_end", { p_user: userId, p_voice_call: id, p_reason: "error" }).catch(() => undefined);
+  const base = { voice, session_max_seconds: settings.voice_session_max_seconds };
+
+  const tryLive = async (): Promise<VoiceStart> => {
+    const r = await reserve(live.model!);
+    try {
+      const instructions = composeLiveInstructions({ mode: ctx.session.mode, persona, context: sessionContext(ctx, extras, { live: true, continuity }), pronunciations: settings.pronunciations });
+      const s = await createLiveSession({ key: live.key!, model: live.model!, instructions, voice, sdp: sdp!, userId, fetchImpl });
+      await deps.db.service("ch_worker_tutor_voice_attach", { p_user: userId, p_voice_call: r.voice_call_id, p_call_id: s.sessionId, p_provider: "live" });
+      return { provider: "live", voice_call_id: r.voice_call_id, sdp: s.sdp, live_session_id: s.sessionId, model: live.model!, lease_seconds: r.lease_seconds, entitlement: r.entitlement, ...base };
+    } catch (error) {
+      await release(r.voice_call_id); // não conectou: libera a reserva sem cobrar
+      throw error;
+    }
+  };
+
+  const tryRealtime = async (): Promise<VoiceStart> => {
+    const r = await reserve(rt.model!);
+    const instructions = composeRealtimeInstructions({ mode: ctx.session.mode, persona, context: sessionContext(ctx, extras, { live: false, continuity }), pronunciations: settings.pronunciations });
+    const session = {
+      type: "realtime",
+      model: rt.model,
+      instructions,
+      audio: {
+        input: {
+          // fim de fala pelo sentido (não só pelo silêncio): "aham" no meio da explicação não vira pergunta; o aluno pode interromper
+          turn_detection: { type: "semantic_vad", eagerness: "auto", create_response: true, interrupt_response: true },
+          ...(rt.transcribeModel ? { transcription: { model: rt.transcribeModel, language: "pt" } } : {}),
+        },
+        output: { voice },
+      },
+      tools: REALTIME_TOOLS,
+      tool_choice: "auto",
+    };
+    try {
+      const res = await fetchImpl(`${API}/realtime/client_secrets`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${rt.key}`,
+          "Content-Type": "application/json",
+          // identificador estável e sem dado pessoal, para a OpenAI tratar abuso por aluno
+          "OpenAI-Safety-Identifier": createHash("sha256").update(`stazia:${userId}`).digest("hex"),
+        },
+        body: JSON.stringify({ expires_after: { anchor: "created_at", seconds: 120 }, session }),
+        signal: AbortSignal.timeout(20_000),
+      });
+      if (!res.ok) throw new Error(`OpenAI respondeu ${res.status}: ${(await res.text()).replace(rt.key!, "[chave]").slice(0, 200)}`);
+      const data = (await res.json()) as { value?: string; expires_at?: number };
+      if (!data.value) throw new Error("OpenAI respondeu sem segredo temporário.");
+      return { provider: "realtime", voice_call_id: r.voice_call_id, client_secret: data.value, expires_at: data.expires_at ?? null, model: rt.model!, lease_seconds: r.lease_seconds, entitlement: r.entitlement, ...base };
+    } catch (error) {
+      deps.log?.(`[tutor] voz: falha ao criar o segredo temporário: ${(error as Error).message.slice(0, 200)}`);
+      await release(r.voice_call_id); // não conectou: libera a reserva sem cobrar
+      throw new TutorError("Não consegui abrir a conversa por voz agora. Tente de novo em instantes.", 502);
+    }
+  };
+
+  if (plan.first === "live") {
+    try {
+      return await tryLive();
+    } catch (error) {
+      if (error instanceof TutorError) throw error; // direito, cota, outra aba: não adianta trocar de provedor
+      deps.log?.(`[tutor] voz: GPT-Live falhou: ${(error as Error).message.slice(0, 200)}`);
+      if (error instanceof LiveSessionError && error.access) markLiveUnavailable(); // sem acesso: Realtime por um tempo
+      if (plan.fallback === "realtime") return tryRealtime();
+      throw new TutorError("Não consegui abrir a conversa por voz agora. Tente de novo em instantes.", 502);
+    }
+  }
+  return tryRealtime();
+}
+
+const STOP_MESSAGE: Record<string, string> = {
+  quota: "Você atingiu seu limite de voz de hoje. O acesso é renovado amanhã.",
+  session_limit: "Esta conversa por voz chegou ao tempo máximo. Você pode abrir outra.",
+  timeout: "A conversa por voz caiu por falta de sinal. Pode abrir de novo.",
+};
+
 export async function renewVoice(deps: TutorDeps, userId: string, voiceCallId: string, callId: string | null) {
-  const r = await deps.db.service<{ ok: boolean; stop?: boolean; reason?: string; call_id?: string | null; lease_seconds?: number; remaining_s?: number; warn?: boolean; entitlement?: unknown }>(
+  const r = await deps.db.service<{ ok: boolean; stop?: boolean; reason?: string; call_id?: string | null; provider?: string; grace_seconds?: number; lease_seconds?: number; remaining_s?: number; warn?: boolean; session_left_s?: number; entitlement?: unknown }>(
     "ch_worker_tutor_voice_renew", { p_user: userId, p_voice_call: voiceCallId, p_call_id: callId });
   if (r.stop) {
-    void hangup(r.call_id ?? callId, deps);
+    // com folga: o professor termina a frase e o aplicativo encerra; sem folga (ou já vencida), o servidor derruba agora
+    const grace = Math.max(0, Number(r.grace_seconds ?? 0));
+    if (!grace) void hangup(r.call_id ?? callId, deps, r.provider ?? "realtime");
     return {
-      stop: true, reason: r.reason,
-      message: r.reason === "quota" ? "Você atingiu seu limite de voz de hoje. O acesso é renovado amanhã." : r.reason === "timeout" ? "A conversa por voz caiu por falta de sinal. Pode abrir de novo." : "A conversa por voz foi encerrada.",
+      stop: true, reason: r.reason, grace_seconds: grace,
+      message: STOP_MESSAGE[r.reason ?? ""] ?? "A conversa por voz foi encerrada.",
       entitlement: r.entitlement ?? null,
     };
   }
-  return { stop: false, lease_seconds: r.lease_seconds, remaining_s: r.remaining_s, warn: r.warn ? `Restam ${Math.max(1, Math.round((r.remaining_s ?? 0) / 60))} minuto(s) de Tutor por voz hoje.` : null, entitlement: r.entitlement };
+  const sessionWarn = r.session_left_s != null && r.session_left_s <= 120 ? "Faltam 2 minutos para o fim desta conversa por voz." : null;
+  return {
+    stop: false, lease_seconds: r.lease_seconds, remaining_s: r.remaining_s, session_left_s: r.session_left_s ?? null,
+    warn: r.warn ? `Restam ${Math.max(1, Math.round((r.remaining_s ?? 0) / 60))} minuto(s) de Tutor por voz hoje.` : sessionWarn,
+    entitlement: r.entitlement,
+  };
 }
 
-export async function endVoice(deps: TutorDeps, userId: string, voiceCallId: string, reason: "student" | "error") {
-  const r = await deps.db.service<{ ok: boolean; consumed_seconds?: number; call_id?: string | null }>("ch_worker_tutor_voice_end", { p_user: userId, p_voice_call: voiceCallId, p_reason: reason });
+/** Custo da voz por tempo (GPT-Live): entra no registro quando a ligação acaba. */
+async function recordLiveMinutes(deps: TutorDeps, userId: string, sessionId: string | null, model: string | null, seconds: number, voiceCallId: string) {
+  if (!seconds) return;
+  const cost = voiceTimeCost(model, seconds) ?? 0;
+  await deps.db.service("ch_worker_tutor_ledger", { p_user: userId, p_session_id: sessionId, p_entry: { feature: "tutor_voice_live", provider: "openai", model, duration_seconds: seconds, estimated_cost_usd: cost, meta: { voice_call: voiceCallId } } })
+    .catch((error: Error) => deps.log?.(`[tutor] voz: custo do GPT-Live não registrado: ${error.message.slice(0, 120)}`));
+}
+
+export type EndReason = "student" | "error" | "quota" | "session_limit";
+
+export async function endVoice(deps: TutorDeps, userId: string, voiceCallId: string, reason: EndReason) {
+  const r = await deps.db.service<{ ok: boolean; consumed_seconds?: number; call_id?: string | null; provider?: string; model?: string | null; session_id?: string; already?: boolean }>(
+    "ch_worker_tutor_voice_end", { p_user: userId, p_voice_call: voiceCallId, p_reason: reason });
   if (!r.ok) throw new TutorError("Chamada de voz não encontrada.", 404);
-  void hangup(r.call_id, deps);
+  void hangup(r.call_id, deps, r.provider ?? "realtime");
+  if (!r.already && r.provider === "live") await recordLiveMinutes(deps, userId, r.session_id ?? null, r.model ?? null, r.consumed_seconds ?? 0, voiceCallId);
   return { consumed_seconds: r.consumed_seconds ?? 0 };
 }
 
@@ -215,6 +336,8 @@ interface VoiceCall {
   status: string;
   model: string | null;
   call_id: string | null;
+  provider?: VoiceProviderId;
+  closing_at?: string | null;
 }
 
 export async function voiceCall(deps: TutorDeps, userId: string, voiceCallId: string): Promise<VoiceCall> {
@@ -225,9 +348,13 @@ export async function voiceCall(deps: TutorDeps, userId: string, voiceCallId: st
 
 const int = (x: unknown) => (Number.isFinite(Number(x)) ? Math.max(0, Math.min(10_000_000, Math.round(Number(x)))) : 0);
 
-/** Uso de uma resposta da voz (evento response.done): só telemetria e custo, nunca cota. */
+/**
+ * Uso de uma resposta da voz (Realtime: evento response.done): só telemetria e custo, nunca cota. No GPT-Live o custo é por tempo e
+ * é registrado ao encerrar (os eventos de uso dele só trazem segundos).
+ */
 export async function recordVoiceUsage(deps: TutorDeps, userId: string, voiceCallId: string, usage: Record<string, any>) {
   const v = await voiceCall(deps, userId, voiceCallId);
+  if (v.provider === "live") return { estimated_cost_usd: 0, by_time: true };
   const tokens = {
     input_text_tokens: int(usage?.input_token_details?.text_tokens),
     input_audio_tokens: int(usage?.input_token_details?.audio_tokens),
@@ -240,9 +367,17 @@ export async function recordVoiceUsage(deps: TutorDeps, userId: string, voiceCal
   return { estimated_cost_usd: cost };
 }
 
+/** Métricas da ligação (latências, reconexões, motivo do fim): só números e rótulos curtos. */
+export async function recordVoiceMetrics(deps: TutorDeps, userId: string, voiceCallId: string, metrics: Record<string, unknown>) {
+  const ok = await deps.db.service<boolean | null>("ch_worker_tutor_voice_metrics", { p_user: userId, p_voice_call: voiceCallId, p_metrics: metrics });
+  if (!ok) throw new TutorError("Chamada de voz não encontrada.", 404);
+  return { ok: true };
+}
+
 /**
  * Transcrição do que foi dito na voz. A fala do professor passa pela MESMA conferência do texto (safety.ts) DEPOIS de dita
  * (na voz ao vivo não dá para conferir antes): se algo escapou, o servidor devolve uma correção para o professor dizer em seguida.
+ * No GPT-Live o conteúdo já vem conferido do servidor (delegação); a conferência aqui pega o que a voz acrescentou por conta própria.
  */
 export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCallId: string, role: "student" | "tutor", text: string) {
   const v = await voiceCall(deps, userId, voiceCallId);
@@ -252,8 +387,9 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
     await deps.db.service("ch_worker_tutor_append", { p_user: userId, p_session_id: v.session_id, p_student: clean, p_tutor: null, p_meta: { realtime: true }, p_usage: {} });
     return { correction: null };
   }
-  const ctx = await deps.db.service<{ question: any; history: { content: string }[]; config: { max_profanity: ProfanityLevel }; session: { settings: TutorSettings; question_state: string; emotion: (Partial<TutorState> & Record<string, unknown>) | null }; personality: Personality & { engine?: Partial<PersonaEngine> | null } } | null>(
+  const ctx = await deps.db.service<{ question: any; history: { content: string }[]; config: { max_profanity: ProfanityLevel }; session: { settings: SessionPrefs; question_state: string; emotion: (Partial<TutorState> & Record<string, unknown>) | null }; personality: Personality & { engine?: Partial<PersonaEngine> | null } } | null>(
     "ch_worker_tutor_context", { p_user: userId, p_session_id: v.session_id });
+  const settings = await tutorSettings(deps);
   const q = ctx?.question;
   const open = ctx?.session.question_state === "open";
   const blocks: BaseBlock[] = [
@@ -265,11 +401,12 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
   // palavrão: no máximo o do professor, e um degrau acima do que o estado da sessão pede agora (a voz não é conferida antes)
   let profanity: ProfanityLevel = "off";
   if (ctx) {
-    const engine = engineFor(ctx.personality.id, ctx.personality.engine);
+    const engine = engineFor(ctx.personality.id, ctx.personality.engine, settings.durona_level);
     const byState = profanityForIntensity(Math.min(5, languageIntensity(normalize(ctx.session.emotion, engine), engine) + 1));
     const max = profanityLevel(ctx.personality.params, ctx.session.settings.profanity ?? "off", ctx.config.max_profanity);
     const RANK = { off: 0, mild: 1, moderate: 2 } as const;
-    profanity = RANK[byState] < RANK[max] ? byState : max;
+    // Durona "sem filtro cosmético": o teto do professor vale direto (os limites contra ataque pessoal continuam)
+    profanity = settings.durona_level === "sem_filtro" && ctx.personality.id === "durona" ? max : RANK[byState] < RANK[max] ? byState : max;
   }
   const check = safetyCheck(
     { reply: clean, grounding: "GENERAL", citations: [], evaluation: { error_type: "none", knowledge_gap: "", severity: 1, unsafe: false, reasoning_quality: "na", recommended_action: "none", answer_correct: "na", self_corrected: false }, justification: "NONE", reveals_answer: false, suggested_replies: [] },
@@ -298,9 +435,17 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
 
 /** Uma varredura: chamadas sem renovação expiram (contam até o fim da reserva) e o servidor as desliga. Devolve quantas. */
 export async function sweepVoice(deps: TutorDeps): Promise<number> {
-  const ids = await deps.db.service<string[]>("ch_worker_tutor_voice_expire", {});
-  for (const id of ids ?? []) await hangup(id, deps);
-  return (ids ?? []).length;
+  const gone = await deps.db.service<{ voice_call: string; call_id: string | null; provider: string; model: string | null; user_id: string; session_id: string | null; seconds: number }[]>("ch_worker_tutor_voice_sweep", {});
+  for (const g of gone ?? []) {
+    if (g.call_id) await hangup(g.call_id, deps, g.provider);
+    if (g.provider === "live") await recordLiveMinutes(deps, g.user_id, g.session_id, g.model, g.seconds, g.voice_call);
+  }
+  return (gone ?? []).length;
+}
+
+/** Retenção das transcrições da voz (painel): roda na tarefa diária. Devolve quantas falas saíram. */
+export async function purgeVoiceTranscripts(deps: TutorDeps): Promise<number> {
+  return Number(await deps.db.service<number>("ch_worker_tutor_purge_transcripts", {})) || 0;
 }
 
 /** Varredura por intervalo (servidor que fica de pé). */

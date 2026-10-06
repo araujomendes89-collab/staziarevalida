@@ -9,6 +9,9 @@
  *   6. grava a troca e o uso do dia.
  *
  * A personalidade só entra na etapa 3 e nunca passa pela etapa 5 com conteúdo inválido.
+ *
+ * Voz com GPT-Live: o mesmo turno responde ao que o GPT-Live delega (action.voiceCallId). Muda só a conta: não gasta interação
+ * de texto (a voz é cobrada por tempo), o custo entra como "tutor_voice_backend" e a resposta já sai conferida para ser dita.
  */
 import { asDocument } from "../contentHub/ai/prompts";
 import { AiInvalidOutput, resolveProviderKind, withFallback, type StructuredRequest } from "../contentHub/ai/provider";
@@ -18,6 +21,7 @@ import { avatarOf, engineFor, languageIntensity, normalize, profanityForIntensit
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings } from "./personality";
 import { NO_EVALUATION, TUTOR_PROMPT_LAYERS, TUTOR_SCHEMA, TUTOR_VERSION, composeSystem, taskInstruction, type TutorMode, type TutorOutput, type TutorTask } from "./prompts";
 import { fallbackReply, safetyCheck, spokenText, type BaseBlock, type SafetyResult, type Violation } from "./safety";
+import { deterministicTutor, tutorSettings } from "./settings";
 
 export interface TutorDeps {
   db: ContentDb;
@@ -27,6 +31,8 @@ export interface TutorDeps {
   speech?: import("./speech").SpeechProvider | null;
   /** Voz em tempo real: nos testes, configuração e fetch simulados; fora deles, .env e fetch de verdade (realtime.ts). */
   realtime?: import("./realtime").RealtimeConfig;
+  /** GPT-Live: nos testes, configuração simulada; fora deles, .env (voiceProviders.ts). */
+  live?: import("./voiceProviders").LiveConfig;
   fetch?: typeof fetch;
 }
 
@@ -35,6 +41,8 @@ export interface TutorAction {
   text?: string;
   voice?: boolean;
   interrupted?: string | null;
+  /** Turno pedido pela voz (GPT-Live delegou): a ligação já foi conferida pelo servidor; não usa a cota de texto. */
+  voiceCallId?: string | null;
 }
 
 /** Erro que o aluno pode ler (com o código HTTP certo). */
@@ -211,6 +219,8 @@ export interface TurnResult {
     /** Para o mascote e a voz (o texto é o que se mostra). */
     avatar: ReturnType<typeof avatarOf>;
   };
+  /** Estado do professor depois deste turno (a voz recebe como instrução de tom). */
+  tone: string;
   /** "explain": o professor só segue para a próxima questão depois de o aluno explicar o raciocínio. */
   gate: "explain" | null;
   question_state: string;
@@ -231,7 +241,9 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     if (!ent.enabled) throw new TutorError("O Tutor ainda não está ligado.", 503);
     if (ent.mode === "blocked") throw new TutorError(TRIAL_OVER, 403);
     if (ctx.session.status !== "active") throw new TutorError("Esta conversa foi encerrada. Abra uma nova.", 409);
-    if (!ent.can_text) throw new TutorError(textLimitMessage(ent), 429);
+    const voiceTurn = Boolean(action.voiceCallId);
+    if (!ent.can_text && !voiceTurn) throw new TutorError(textLimitMessage(ent), 429);
+    const settings = await tutorSettings(deps);
     const allowed = await aiAllowed(deps.db);
     if (!allowed.ok) {
       deps.log?.(`[tutor] IA bloqueada: ${allowed.why}`);
@@ -299,15 +311,17 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const blocks = buildBlocks(ctx, passages, includeAnswer);
 
     // ---- personalidade (sempre depois do conteúdo): estilo do professor + estado da sessão
-    const settings = ctx.session.settings;
+    const prefs = ctx.session.settings;
     const sessionTypes = (ctx.session_errors ?? []).map((x) => x.error_type);
-    const engine = engineFor(ctx.personality.id, ctx.personality.engine);
+    const engine = engineFor(ctx.personality.id, ctx.personality.engine, settings.durona_level);
     const prev = normalize(ctx.session.emotion, engine);
     // a mesma variação nas duas passagens (antes e depois da avaliação): o humor não "pula" entre elas
-    const seed = seededRandom(`${sessionId}:${ctx.history.length}`);
-    const before = step(prev, engine, happening, seed()).state;
-    const eff = effectiveParams(ctx.personality.params, 3, settings);
-    const personaMax = profanityLevel(ctx.personality.params, settings.profanity ?? "off", ctx.config.max_profanity);
+    const seed = deterministicTutor() ? () => () => 0.5 : seededRandom(`${sessionId}:${ctx.history.length}`);
+    // motor emocional desligado no painel: o professor fica no tom de base (o resto do turno é igual)
+    const moved = (h: Happening, rand: () => number) => (settings.emotion_engine ? step(prev, engine, h, rand).state : prev);
+    const before = moved(happening, seed());
+    const eff = effectiveParams(ctx.personality.params, 3, prefs);
+    const personaMax = profanityLevel(ctx.personality.params, prefs.profanity ?? "off", ctx.config.max_profanity);
     const li = languageIntensity(before, engine);
     const RANK = { off: 0, mild: 1, moderate: 2 } as const;
     const byIntensity = profanityForIntensity(li);
@@ -338,7 +352,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const teacher = {
       erros_nesta_sessao: (ctx.session_errors ?? []).slice(-6).map((e) => ({ tipo: e.error_type, lacuna: e.knowledge_gap ?? null, tema: e.theme ?? null })),
       erros_repetidos: (mem?.recurrent_errors ?? []).filter((r) => r.times >= 2).map((r) => `${r.error_type}${r.knowledge_gap ? ` (${r.knowledge_gap})` : ""} ×${r.times}`),
-      piadas_internas: (mem?.inside_jokes ?? []).map((j) => (j.beaten ? `${j.topic}: já foi o "inimigo" dele (${j.strength} erros) e ele superou` : `${j.topic}: o assunto que mais o derruba (${j.strength} erros); dá para virar uma referência recorrente, com leveza e de vez em quando`)),
+      piadas_internas: (settings.inside_jokes ? mem?.inside_jokes ?? [] : []).map((j) => (j.beaten ? `${j.topic}: já foi o "inimigo" dele (${j.strength} erros) e ele superou` : `${j.topic}: o assunto que mais o derruba (${j.strength} erros); dá para virar uma referência recorrente, com leveza e de vez em quando`)),
       evite_repetir: recentExpressions(ctx.history.filter((h) => h.role === "tutor").map((h) => h.content)),
     };
     const conversation = ctx.history.map((h) => `${h.role === "student" ? "Aluno" : "Tutor"}: ${h.content.slice(0, 600)}`).join("\n");
@@ -356,17 +370,21 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       profanity: checkLevel,
     };
 
-    // ---- reserva atômica de uma interação (dois aparelhos não passam do limite juntos); devolvida se a IA falhar
-    const reserved = await deps.db.service<{ ok: boolean; reason?: string; reservation?: number; entitlement?: Entitlement }>("ch_worker_tutor_text_reserve", { p_user: userId, p_session_id: sessionId });
-    if (!reserved.ok) {
-      if (reserved.reason === "trial_expired") throw new TutorError(TRIAL_OVER, 403);
-      if (reserved.reason === "disabled") throw new TutorError("O Tutor ainda não está ligado.", 503);
-      throw new TutorError(textLimitMessage(reserved.entitlement ?? ent), 429);
+    // ---- reserva atômica de uma interação (dois aparelhos não passam do limite juntos); devolvida se a IA falhar.
+    // Turno da voz não reserva: a voz é cobrada pelo tempo autorizado na ligação.
+    let release: () => Promise<unknown> = async () => undefined;
+    if (!voiceTurn) {
+      const reserved = await deps.db.service<{ ok: boolean; reason?: string; reservation?: number; entitlement?: Entitlement }>("ch_worker_tutor_text_reserve", { p_user: userId, p_session_id: sessionId });
+      if (!reserved.ok) {
+        if (reserved.reason === "trial_expired") throw new TutorError(TRIAL_OVER, 403);
+        if (reserved.reason === "disabled") throw new TutorError("O Tutor ainda não está ligado.", 503);
+        throw new TutorError(textLimitMessage(reserved.entitlement ?? ent), 429);
+      }
+      release = () => deps.db.service("ch_worker_tutor_text_release", { p_user: userId, p_reservation: reserved.reservation }).catch(() => undefined);
     }
-    const release = () => deps.db.service("ch_worker_tutor_text_release", { p_user: userId, p_reservation: reserved.reservation }).catch(() => undefined);
 
     // ---- gerar e validar (uma nova tentativa com a correção)
-    const usage = { calls: 0, input_tokens: 0, output_tokens: 0, cost_usd: 0, provider: provider.name, model: provider.model };
+    const usage = { calls: 0, input_tokens: 0, output_tokens: 0, cost_usd: 0, provider: provider.name, model: provider.model, ...(voiceTurn ? { feature: "tutor_voice_backend" } : {}) };
     let out: TutorOutput | null = null;
     let check: SafetyResult | null = null;
     let violations: Violation[] = [];
@@ -421,7 +439,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const alreadyLogged = Boolean(q && (ctx.session_errors ?? []).some((x) => x.question_id === q.id));
     const errorTurn = (task.type === "react" && !task.correct) || (task.type === "justify" && out?.justification === "INSUFFICIENT") || (task.type === "message" && wrongHere && !alreadyLogged) || (!q && ev.answer_correct === "no");
     if (out && ev.error_type !== "none" && errorTurn) {
-      learning = { kind: "error", error_type: ev.error_type, knowledge_gap: ev.knowledge_gap || null, question_id: q?.id ?? null, source: "tutor_text", metadata: { severity: ev.severity, unsafe: ev.unsafe } };
+      learning = { kind: "error", error_type: ev.error_type, knowledge_gap: ev.knowledge_gap || null, question_id: q?.id ?? null, source: voiceTurn ? "tutor_voice" : "tutor_text", metadata: { severity: ev.severity, unsafe: ev.unsafe } };
     } else if (task.type === "react" && task.correct) learning = { kind: "correct", question_id: q?.id ?? null };
     // o quadro completo: fatos + avaliação (tipo e gravidade do erro, repetição, explicação esquecida, conduta perigosa)
     const gap = (ev.knowledge_gap || "").trim().toLowerCase();
@@ -440,7 +458,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       // destrava: o aluno explicou com raciocínio aceitável (ou já insistiu duas vezes)
       explained: prev.gate === "explain" && task.type !== "react" && action.type === "message" && (ev.reasoning_quality === "medium" || ev.reasoning_quality === "high" || prev.events.filter((e) => e === "explain_attempt").length >= 2),
     };
-    const after = step(prev, engine, full, seed()).state;
+    const after = moved(full, seed());
     const emotion: TutorState = prev.gate === "explain" && action.type === "message" && !full.explained ? { ...after, events: [...after.events, "explain_attempt"].slice(-8) } : after;
     // "Me teste": a dificuldade acompanha as respostas orais
     const level = ctx.session.mode === "perguntas" && ev.answer_correct !== "na"
@@ -457,6 +475,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       avatar: avatarOf(ctx.personality.id, emotion),
       ...(task.type === "react" || task.type === "justify" ? { answer_reasoning_quality: ev.reasoning_quality } : {}),
       voice: Boolean(action.voice),
+      ...(voiceTurn ? { realtime: true, delegated: true } : {}),
       emotion,
       ...(out ? { evaluation: ev } : {}),
       ...(learning ? { learning_event: learning } : {}),
@@ -480,6 +499,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
         id: saved.id, role: "tutor", content: reply, spoken: spokenText(reply), grounding: String(meta.grounding), sources: meta.sources as { ref: string; label: string }[], hint_level: hintLevel,
         suggested: meta.suggested as string[], notice: (meta.notice as string | null) ?? null, avatar: avatarOf(ctx.personality.id, emotion),
       },
+      tone: stateLayer(ctx.personality.id, emotion, engine),
       gate: emotion.gate,
       question_state: reveals ? "revealed" : ctx.session.question_state,
       used_today: saved.used_today,

@@ -58,9 +58,13 @@ async function voicePost(backend, path, body) {
   throw error;
 }
 export const voiceApi = {
-  start: (backend, sessionId, force = false) => voicePost(backend, "start", { session_id: sessionId, force }),
+  /** Com a oferta WebRTC (sdp), o servidor pode abrir o GPT-Live e devolver a resposta; sem ela, devolve o segredo do Realtime. */
+  start: (backend, sessionId, force = false, sdp = null) => voicePost(backend, "start", sdp ? { session_id: sessionId, force, sdp } : { session_id: sessionId, force }),
   renew: (backend, voiceCallId, callId) => voicePost(backend, "renew", { voice_call_id: voiceCallId, call_id: callId ?? null }),
-  end: (backend, voiceCallId, reason = "student") => voicePost(backend, "end", { voice_call_id: voiceCallId, reason }),
+  end: (backend, voiceCallId, reason = "student", metrics = null) => voicePost(backend, "end", metrics ? { voice_call_id: voiceCallId, reason, metrics } : { voice_call_id: voiceCallId, reason }),
+  metrics: (backend, voiceCallId, metrics) => voicePost(backend, "metrics", { voice_call_id: voiceCallId, metrics }),
+  /** GPT-Live delegou: o servidor responde com o motor do Tutor (o que dizer, o tom e contexto silencioso). */
+  delegate: (backend, voiceCallId, body) => voicePost(backend, "delegate", { voice_call_id: voiceCallId, ...body }),
   usage: (backend, voiceCallId, usage) => voicePost(backend, "usage", { voice_call_id: voiceCallId, usage }),
   transcript: (backend, voiceCallId, role, text) => voicePost(backend, "transcript", { voice_call_id: voiceCallId, role, text }),
   tool: (backend, voiceCallId, name, args) => voicePost(backend, "tool", { voice_call_id: voiceCallId, name, arguments: args }),

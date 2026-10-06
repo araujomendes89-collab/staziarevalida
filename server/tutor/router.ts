@@ -6,8 +6,11 @@ import express, { type NextFunction, type Request, type Response } from "express
 import type { Identity } from "../contentHub/infra";
 import { TutorError, resolveTutorProvider, tutorTurn, type TutorDeps } from "./engine";
 import { speechProviderFor, tutorSpeech } from "./speech";
-import { endVoice, realtimeConfig, recordVoiceUsage, rememberEvidence, renewVoice, startVoice, sweepVoice, voiceCall, voiceTranscript } from "./realtime";
+import { endVoice, purgeVoiceTranscripts, recordVoiceMetrics, recordVoiceUsage, rememberEvidence, renewVoice, startVoice, sweepVoice, voiceCall, voiceReady, voiceTranscript, type EndReason } from "./realtime";
 import { runTutorTool, TOOL_NAMES } from "./tools";
+import { delegateVoice } from "./delegate";
+import { tutorSettings } from "./settings";
+import { planProviders } from "./voiceProviders";
 
 type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -23,7 +26,8 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     const secret = process.env.CRON_SECRET;
     if (!deps || !secret || req.headers.authorization !== `Bearer ${secret}`) return fail(res, 401, "Não autorizado.");
     try {
-      res.json({ expired: await sweepVoice(deps) });
+      // a tarefa diária também aplica a retenção das transcrições da voz (painel)
+      res.json({ expired: await sweepVoice(deps), purged_transcripts: await purgeVoiceTranscripts(deps).catch(() => 0) });
     } catch (error) {
       fail(res, 500, (error as Error).message.slice(0, 120));
     }
@@ -52,11 +56,16 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       admin = false;
     }
     const voice = speechProviderFor(deps!).status;
-    const rt = deps!.realtime ?? realtimeConfig();
+    const vr = voiceReady(deps!);
+    const settings = await tutorSettings(deps!);
+    // GPT-Live disponível agora? (o navegador manda a oferta WebRTC antes de abrir; se o GPT-Live falhar, o servidor cai no Realtime)
+    const plan = planProviders(settings.voice_provider, process.env, vr.live, vr.realtime, true);
     res.json({
-      ready: status.ready, simulated: status.isMock, neural_voice: voice.ready, realtime_voice: rt.ready,
+      ready: status.ready, simulated: status.isMock, neural_voice: voice.ready, realtime_voice: vr.ready && settings.voice_enabled !== false, live_voice: plan.first === "live",
+      voice_session_max_seconds: settings.voice_session_max_seconds,
       ...(admin ? { provider: status.provider, model: status.model, pending: status.pending, voice_provider: voice.provider, voice_model: voice.model, voice_pending: voice.pending,
-                    realtime_model: rt.model, realtime_pending: rt.pending } : {}),
+                    realtime_model: vr.realtime.model, realtime_pending: vr.realtime.pending, live_model: vr.live.model, live_pending: vr.live.pending,
+                    voice_choice: { panel: settings.voice_provider, env: (process.env.OPENAI_VOICE_PROVIDER ?? "").trim() || "auto" } } : {}),
     });
   });
 
@@ -139,14 +148,41 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     return String(b.voice_call_id);
   };
 
-  /** Abre a voz: direito, cota e uma voz por aluno no banco; segredo temporário da OpenAI (a chave principal fica aqui). */
+  /**
+   * Abre a voz: direito, cota e uma voz por aluno no banco. Com a oferta WebRTC do navegador (sdp), o servidor tenta o GPT-Live e
+   * devolve a resposta SDP; sem ela (ou com o Realtime escolhido), devolve o segredo temporário. A chave principal fica aqui.
+   */
   router.post("/voice/start", voiceRoute(async (req, b) => {
     if (!uuid.test(String(b.session_id ?? ""))) throw new TutorError("Conversa inválida.", 400);
-    return startVoice(deps!, req.user!.id, String(b.session_id), b.force === true);
+    const sdp = typeof b.sdp === "string" && b.sdp.length <= 20_000 && b.sdp.startsWith("v=0") ? b.sdp : null;
+    return startVoice(deps!, req.user!.id, String(b.session_id), b.force === true, sdp);
   }));
   /** Renovação da reserva (a cada ~minuto). Sem saldo, o servidor encerra a chamada. */
   router.post("/voice/renew", voiceRoute(async (req, b) => renewVoice(deps!, req.user!.id, callIdOf(b), typeof b.call_id === "string" ? b.call_id.slice(0, 120) : null)));
-  router.post("/voice/end", voiceRoute(async (req, b) => endVoice(deps!, req.user!.id, callIdOf(b), b.reason === "error" ? "error" : "student")));
+  router.post("/voice/end", voiceRoute(async (req, b) => {
+    const reason: EndReason = ["error", "quota", "session_limit"].includes(b.reason) ? b.reason : "student";
+    const id = callIdOf(b);
+    // métricas da ligação (latência, reconexões, motivo do fim) vêm junto do encerramento
+    if (b.metrics && typeof b.metrics === "object") await recordVoiceMetrics(deps!, req.user!.id, id, b.metrics).catch(() => undefined);
+    return endVoice(deps!, req.user!.id, id, reason);
+  }));
+  /** Métricas no meio da ligação (reconexão, troca de microfone): só números e rótulos curtos. */
+  router.post("/voice/metrics", voiceRoute(async (req, b) => {
+    if (!b.metrics || typeof b.metrics !== "object") throw new TutorError("Métricas inválidas.", 400);
+    return recordVoiceMetrics(deps!, req.user!.id, callIdOf(b), b.metrics);
+  }));
+  /**
+   * GPT-Live delegou: o servidor responde com o motor do Tutor (conferido antes de falar). body: { voice_call_id, transcript:
+   * [{ role, text }], typed?, interrupted? }. O aplicativo devolve "say" à voz (session.commentary.append) e "tone" como instrução.
+   */
+  router.post("/voice/delegate", voiceRoute(async (req, b) => {
+    const transcript = Array.isArray(b.transcript)
+      ? b.transcript.slice(-24).filter((x: any) => x && (x.role === "student" || x.role === "tutor") && typeof x.text === "string").map((x: any) => ({ role: x.role, text: String(x.text).slice(0, 2000) }))
+      : [];
+    return delegateVoice(deps!, req.user!.id, callIdOf(b), {
+      transcript, typed: typeof b.typed === "string" ? b.typed.slice(0, 2000) : null, interrupted: typeof b.interrupted === "string" ? b.interrupted.slice(0, 300) : null,
+    });
+  }));
   /** Uso de tokens de uma resposta (response.done): só custo e telemetria; a cota é o tempo autorizado acima. */
   router.post("/voice/usage", voiceRoute(async (req, b) => recordVoiceUsage(deps!, req.user!.id, callIdOf(b), typeof b.usage === "object" && b.usage ? b.usage : {})));
   router.post("/voice/transcript", voiceRoute(async (req, b) => {

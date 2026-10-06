@@ -8,6 +8,8 @@
  * Valores padrão conferidos em 2026-10 (páginas de preço públicas; ver docs/architecture/STAZIA_TUTOR_V2.md):
  *   gpt-realtime-2.1       áudio 32 entrada / 64 saída / 0,40 em cache · texto 4 / 24
  *   gpt-realtime-2.1-mini  áudio 10 / 20 / 0,30 em cache · texto 0,60 / 2,40
+ *   gpt-live-1             US$ 0,05 por minuto de voz, cobrado por segundo (página do modelo, 2026-10); o servidor que
+ *                          responde às delegações é cobrado à parte (tutor_voice_backend, pelos tokens do modelo de texto)
  */
 export interface ModelPrice {
   text_in?: number;
@@ -15,11 +17,14 @@ export interface ModelPrice {
   audio_in?: number;
   audio_out?: number;
   cached_in?: number;
+  /** Voz cobrada por tempo (GPT-Live): US$ por minuto. */
+  per_minute?: number;
 }
 
 const DEFAULTS: Record<string, ModelPrice> = {
   "gpt-realtime-2.1": { text_in: 4, text_out: 24, audio_in: 32, audio_out: 64, cached_in: 0.4 },
   "gpt-realtime-2.1-mini": { text_in: 0.6, text_out: 2.4, audio_in: 10, audio_out: 20, cached_in: 0.3 },
+  "gpt-live-1": { per_minute: 0.05 },
 };
 
 export function costConfig(env: NodeJS.ProcessEnv = process.env): Record<string, ModelPrice> {
@@ -62,4 +67,11 @@ export function estimateCost(model: string | null | undefined, u: TokenUsage, en
   const usd =
     (textIn * (p.text_in ?? 0) + n(u.output_text_tokens) * (p.text_out ?? 0) + audioIn * (p.audio_in ?? 0) + n(u.output_audio_tokens) * (p.audio_out ?? 0) + cached * (p.cached_in ?? p.audio_in ?? 0)) / 1e6;
   return Math.round(usd * 1e6) / 1e6;
+}
+
+/** Custo estimado (US$) de voz cobrada por tempo (GPT-Live). Sem preço por minuto conhecido, devolve null. */
+export function voiceTimeCost(model: string | null | undefined, seconds: number, env: NodeJS.ProcessEnv = process.env): number | null {
+  const p = priceFor(model, env);
+  if (!p?.per_minute) return null;
+  return Math.round((Math.max(0, Number(seconds) || 0) / 60) * p.per_minute * 1e6) / 1e6;
 }

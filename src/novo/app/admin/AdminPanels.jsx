@@ -303,6 +303,32 @@ export function AdminSettings() {
 }
 
 // ---------------------------------------------------------------- Stazia Tutor
+const VOICE_PROVIDERS = [
+  { value: "auto", label: "Automático: GPT-Live quando configurado, senão Realtime" },
+  { value: "live", label: "GPT-Live (OpenAI)" },
+  { value: "realtime", label: "OpenAI Realtime" },
+];
+const VOICE_NAMES = [
+  { value: "", label: "A voz de cada professor (padrão)" },
+  { value: "marin", label: "Marin" },
+  { value: "cedar", label: "Cedar" },
+  { value: "__outra", label: "Outra (digite o nome)" },
+];
+const DURONA_LEVELS = [
+  { value: "moderada", label: "Moderada" },
+  { value: "forte", label: "Forte (padrão)" },
+  { value: "sem_filtro", label: "Sem filtro cosmético (ataque pessoal continua proibido)" },
+];
+const ENDED_LABEL = { student: "pelo aluno", timeout: "sem sinal", quota: "cota", replaced: "outro aparelho", error: "erro", session_closed: "sessão encerrada", session_limit: "limite da conversa", ativa: "ativas" };
+/** "INEP = inépi" (uma por linha) ↔ [{ term, say }] */
+const pronText = (list) => (list ?? []).map((x) => `${x.term} = ${x.say}`).join("\n");
+const pronList = (text) =>
+  String(text ?? "")
+    .split("\n")
+    .map((l) => l.split("="))
+    .filter((p) => p.length >= 2 && p[0].trim() && p.slice(1).join("=").trim())
+    .map((p) => ({ term: p[0].trim().slice(0, 40), say: p.slice(1).join("=").trim().slice(0, 80) }));
+
 const PROFANITY_CAP = [
   { value: "off", label: "Desativados para todos" },
   { value: "mild", label: "Até leves" },
@@ -324,8 +350,29 @@ export function AdminTutor() {
         trial_text_daily: String(data.trial_text_daily ?? 40), trial_questions_daily: String(data.trial_questions_daily ?? 30),
         trial_voice_daily_min: String(Math.round((data.trial_voice_daily_seconds ?? 600) / 60)), trial_voice_total_min: String(Math.round((data.trial_voice_total_seconds ?? 2400) / 60)),
         paid_voice_daily_min: String(Math.round((data.paid_voice_daily_seconds ?? 3600) / 60)),
+        voice_provider: data.voice_provider ?? "auto",
+        voice_choice: !data.voice_name ? "" : ["marin", "cedar"].includes(data.voice_name) ? data.voice_name : "__outra",
+        voice_other: data.voice_name && !["marin", "cedar"].includes(data.voice_name) ? data.voice_name : "",
+        voice_session_max_min: String(Math.round((data.voice_session_max_seconds ?? 1800) / 60)),
+        save_transcripts: data.save_transcripts ?? true,
+        transcript_retention_days: String(data.transcript_retention_days ?? 180),
+        emotion_engine: data.emotion_engine ?? true,
+        inside_jokes: data.inside_jokes ?? true,
+        durona_level: data.durona_level ?? "forte",
+        pronunciations: pronText(data.pronunciations),
       });
   }, [data]);
+  const personas = useLoad(() => backend.rpc("app_admin_tutor_personalities"), [backend]);
+  const [personaState, setPersonaState] = React.useState({ busy: null, error: null });
+  const togglePersona = async (id, active) => {
+    setPersonaState({ busy: id, error: null });
+    try {
+      personas.setData(await backend.rpc("app_admin_tutor_set_personality", { p_id: id, p_active: active, p_reason: reason }));
+      setPersonaState({ busy: null, error: null });
+    } catch (err) {
+      setPersonaState({ busy: null, error: messageOf(err) });
+    }
+  };
   React.useEffect(() => {
     let alive = true;
     (async () => {
@@ -355,6 +402,9 @@ export function AdminTutor() {
         enabled: form.enabled, requires_pro: form.requires_pro, max_profanity: form.max_profanity, voice_enabled: form.voice_enabled,
         daily_message_limit: n(form.daily_message_limit), trial_text_daily: n(form.trial_text_daily), trial_questions_daily: n(form.trial_questions_daily),
         trial_voice_daily_seconds: min(form.trial_voice_daily_min), trial_voice_total_seconds: min(form.trial_voice_total_min), paid_voice_daily_seconds: min(form.paid_voice_daily_min),
+        voice_provider: form.voice_provider, voice_name: form.voice_choice === "__outra" ? n(form.voice_other).toLowerCase() : form.voice_choice,
+        voice_session_max_seconds: min(form.voice_session_max_min), save_transcripts: form.save_transcripts, transcript_retention_days: n(form.transcript_retention_days),
+        emotion_engine: form.emotion_engine, inside_jokes: form.inside_jokes, durona_level: form.durona_level, pronunciations: pronList(form.pronunciations),
       };
       setData(await backend.rpc("app_admin_tutor_save_config", { p_config: config, p_reason: reason }));
       setReason("");
@@ -405,6 +455,53 @@ export function AdminTutor() {
             {u.voice_minutes > 0 && <Badge>{u.voice_minutes} min de voz</Badge>}
             {data.trials && <Badge>{data.trials.started} teste(s) iniciados · {data.trials.converted} assinaram</Badge>}
           </div>
+          <div className="sm-overline" style={{ marginTop: 8 }}>Voz e personalidade</div>
+          {server && (
+            <Banner tone={server.live_model && !server.live_pending ? "success" : "info"}>
+              {server.live_model && !server.live_pending
+                ? `GPT-Live pronto no servidor (${server.live_model}).`
+                : `GPT-Live: ${server.live_pending ?? "não configurado"}`}{" "}
+              {server.realtime_model && !server.realtime_pending ? `Realtime de reserva: ${server.realtime_model}.` : ""}
+            </Banner>
+          )}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+            <SelectField label="Provedor da voz" value={form.voice_provider} onChange={(e) => set({ voice_provider: e.target.value })} options={VOICE_PROVIDERS} hint="Sem acesso ao GPT-Live, o servidor usa o Realtime sozinho." />
+            <SelectField label="Voz" value={form.voice_choice} onChange={(e) => set({ voice_choice: e.target.value })} options={VOICE_NAMES} hint="Trocar a voz vale a partir da próxima ligação. Avalie com ouvido humano em português antes de fixar." />
+            {form.voice_choice === "__outra" && <TextField label="Nome da voz" value={form.voice_other} maxLength={30} onChange={(e) => set({ voice_other: e.target.value })} hint="Só letras minúsculas, como aparece na OpenAI." />}
+            <TextField label="Limite de cada conversa por voz (minutos)" value={form.voice_session_max_min} inputMode="numeric" maxLength={3} onChange={(e) => set({ voice_session_max_min: e.target.value })} hint="O professor termina a frase e a ligação encerra." />
+            <SelectField label="Nível da Durona" value={form.durona_level} onChange={(e) => set({ durona_level: e.target.value })} options={DURONA_LEVELS} />
+          </div>
+          <Switch label="Motor emocional" description="Ligado: o humor do professor muda com os acertos e erros (frustração, paciência, inércia). Desligado: tom de base o tempo todo." checked={form.emotion_engine} onChange={(e) => set({ emotion_engine: e.target.checked })} />
+          <Switch label="Piadas internas" description="O professor pode lembrar, com leveza, do assunto que mais derruba o aluno." checked={form.inside_jokes} onChange={(e) => set({ inside_jokes: e.target.checked })} />
+          <Switch label="Salvar a transcrição da voz" description="As falas viram texto na conversa (para o aluno rever e para o professor lembrar). Desligado: nada da voz é guardado." checked={form.save_transcripts} onChange={(e) => set({ save_transcripts: e.target.checked })} />
+          <Switch label="Salvar o áudio" description="Nunca: o áudio não é gravado em lugar nenhum; ficam só transcrição (se ligada), métricas e resumo." checked={false} disabled onChange={() => {}} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+            <TextField label="Guardar transcrições da voz por (dias)" value={form.transcript_retention_days} inputMode="numeric" maxLength={4} onChange={(e) => set({ transcript_retention_days: e.target.value })} hint="0 = sem prazo. A limpeza roda uma vez por dia." />
+          </div>
+          <TextArea label="Pronúncias (uma por linha: termo = como falar)" value={form.pronunciations} rows={3} maxLength={4000} onChange={(v) => set({ pronunciations: v })} placeholder={"INEP = inépi\nPCDT = pê-cê-dê-tê"} />
+          {personas.data && (
+            <div>
+              <div className="sm-field__label" style={{ marginBottom: 6 }}>Professores disponíveis para os alunos (usa o motivo abaixo)</div>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                {personas.data.map((p) => (
+                  <Switch key={p.id} label={`${p.emoji} ${p.name}`} description={p.default ? "Padrão: fica sempre ligado." : p.voice ? `Voz: ${p.voice}` : p.tagline} checked={p.active} disabled={p.default || personaState.busy === p.id || reason.trim().length < 10} onChange={(e) => togglePersona(p.id, e.target.checked)} />
+                ))}
+              </div>
+              {personaState.error && <div style={{ marginTop: 8 }}><Banner tone="danger">{personaState.error}</Banner></div>}
+            </div>
+          )}
+          {data.voice_30d && data.voice_30d.calls > 0 && (
+            <p style={{ margin: 0, font: "var(--type-caption)", color: "var(--text-secondary)" }}>
+              Voz em 30 dias: {data.voice_30d.calls} ligação(ões) · {data.voice_30d.minutes} min (média {data.voice_30d.avg_minutes} min)
+              {data.voice_30d.cost_usd > 0 ? ` · US$ ${Number(data.voice_30d.cost_usd).toFixed(2)} (US$ ${(Number(data.voice_30d.cost_usd) / data.voice_30d.calls).toFixed(3)} por ligação)` : ""}
+              {data.voice_30d.connect_ms != null ? ` · conectar ${data.voice_30d.connect_ms} ms` : ""}
+              {data.voice_30d.first_audio_ms != null ? ` · primeira fala ${data.voice_30d.first_audio_ms} ms` : ""}
+              {data.voice_30d.turn_ms != null ? ` · resposta ${data.voice_30d.turn_ms} ms` : ""}
+              {` · ${data.voice_30d.reconnects} reconexão(ões)`}
+              {Object.keys(data.voice_30d.by_provider ?? {}).length ? ` · ${Object.entries(data.voice_30d.by_provider).map(([k, v]) => `${k === "live" ? "GPT-Live" : "Realtime"} ${v}`).join(", ")}` : ""}
+              {Object.keys(data.voice_30d.ended_by ?? {}).length ? ` · fim: ${Object.entries(data.voice_30d.ended_by).map(([k, v]) => `${ENDED_LABEL[k] ?? k} ${v}`).join(", ")}` : ""}
+            </p>
+          )}
           {data.cost_by_feature && Object.keys(data.cost_by_feature).length > 0 && (
             <p style={{ margin: 0, font: "var(--type-caption)", color: "var(--text-secondary)" }}>
               Custo estimado em 30 dias por recurso: {Object.entries(data.cost_by_feature).map(([k, v]) => `${k} US$ ${Number(v).toFixed(2)}`).join(" · ")}
@@ -435,6 +532,7 @@ const ACTION_LABEL = {
   "plan.save": "Plano editado",
   "settings.save": "Configurações salvas",
   "tutor.config": "Tutor configurado",
+  "tutor.personality": "Professor ligado ou desligado",
 };
 
 function summary(entry) {

@@ -208,8 +208,18 @@ describe("Voz em tempo real (OpenAI simulada)", () => {
     expect(near.body).toMatchObject({ stop: false, warn: expect.stringMatching(/Restam \d+ minuto\(s\) de Tutor por voz hoje/) });
     await sql(`update public.tutor_voice_calls set started_at = now() - interval '400 seconds', lease_until = now() + interval '5 seconds' where id = $1`, [id]);
     openai.length = 0;
+    // sem saldo: o servidor manda encerrar com uma folga curta (o professor termina a frase); não derruba no meio da fala
     const stop = await post("/voice/renew", { voice_call_id: id, call_id: "rtc_cota" });
-    expect(stop.body).toMatchObject({ stop: true, reason: "quota", message: "Você atingiu seu limite de voz de hoje. O acesso é renovado amanhã." });
+    expect(stop.body).toMatchObject({ stop: true, reason: "quota", grace_seconds: 20, message: "Você atingiu seu limite de voz de hoje. O acesso é renovado amanhã." });
+    await new Promise((x) => setTimeout(x, 20));
+    expect(openai.some((x) => x.url.endsWith("/realtime/calls/rtc_cota/hangup"))).toBe(false);
+    // renovar de novo não estende a folga
+    const again = await post("/voice/renew", { voice_call_id: id, call_id: "rtc_cota" });
+    expect(again.body).toMatchObject({ stop: true, reason: "quota" });
+    expect(again.body.grace_seconds).toBeLessThanOrEqual(20);
+    expect((await sql(`select status, closing_reason, lease_until <= now() + interval '20 seconds' ok from public.tutor_voice_calls where id = $1`, [id]))[0]).toEqual({ status: "active", closing_reason: "quota", ok: true });
+    // o aplicativo encerra depois da frase: aí o servidor desliga e registra
+    await post("/voice/end", { voice_call_id: id, reason: "quota" });
     await new Promise((x) => setTimeout(x, 20));
     expect(openai.some((x) => x.url.endsWith("/realtime/calls/rtc_cota/hangup"))).toBe(true);
     expect((await sql(`select status, termination_reason, consumed_seconds >= 300 ok from public.tutor_voice_calls where id = $1`, [id]))[0]).toEqual({ status: "ended", termination_reason: "quota", ok: true });
@@ -358,6 +368,9 @@ describe("Isolamento, relatório e custo", () => {
     expect(rt.startsWith("IDIOMA E SOTAQUE")).toBe(true);
     expect(rt).toContain("sotaque brasileiro neutro");
     expect(rt).toContain('AVC "a-vê-cê"');
-    expect(rt.trim().endsWith("português do Brasil, sotaque brasileiro neutro de locutor nacional, em toda fala.")).toBe(true);
+    // pedido de 2026-10-06: professor conversando, não locutor; só muda de idioma se o aluno pedir ou passar a falar outra língua
+    expect(rt.trim().endsWith("português do Brasil, sotaque brasileiro neutro, de professor conversando com o aluno, em toda fala.")).toBe(true);
+    expect(rt).toContain("Não transforme a fala em locução publicitária");
+    expect(rt).toContain("Mude de idioma somente quando o aluno realmente pedir");
   });
 });

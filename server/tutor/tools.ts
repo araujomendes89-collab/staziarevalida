@@ -6,9 +6,16 @@
  *   - só a questão da sessão; com ela aberta, sem gabarito (a resolução só com pedido explícito, e a questão sai como "revelada");
  *   - quem corrige a resposta é o banco (submit_answer);
  *   - nada de SQL vindo do modelo: cada ferramenta é uma função fixa.
+ *
+ * Nomes do pedido de 2026-10-06 → ferramentas daqui: get_current_question / get_official_answer / get_question_explanation →
+ * get_question_context (o gabarito só sai depois da resposta ou com reveal); grade_student_answer → submit_answer;
+ * get_authoritative_content → get_topic_context; get_student_profile / get_topic_performance → get_student_learning_memory;
+ * get_recent_errors → get_student_errors; update_learning_state → register_learning_event; e as novas save_tutor_memory,
+ * schedule_review e wait_for_user.
  */
-import { engineFor, normalize, stateLayer, step, type Happening, type PersonaEngine, type TutorState } from "./emotion";
+import { avatarOf, engineFor, normalize, stateLayer, step, type Happening, type PersonaEngine, type TutorState } from "./emotion";
 import { searchSources, sourceQuery, TutorError, type TutorDeps } from "./engine";
+import { tutorSettings } from "./settings";
 import { evaluateReasoning } from "./evaluation";
 import { ERROR_TYPES } from "./prompts";
 
@@ -48,6 +55,25 @@ export const REALTIME_TOOLS = [
     description: "Registra o que aconteceu: erro (com o tipo), acerto ou autocorreção do aluno.",
     parameters: obj({ kind: { type: "string", enum: ["error", "correct", "self_correction"] }, error_type: { type: "string", enum: [...ERROR_TYPES] }, knowledge_gap: { type: "string" } }, ["kind"]),
   },
+  {
+    type: "function", name: "save_tutor_memory",
+    description: "Guarda algo marcante sobre o aluno para lembrar em outras conversas: o assunto que sempre o derruba (inside_joke), um fato, uma preferência de estudo, uma meta ou uma conquista. Use pouco: só o que vale lembrar daqui a dias.",
+    parameters: obj({
+      kind: { type: "string", enum: ["inside_joke", "fact", "preference", "goal", "milestone"] },
+      concept: { type: "string", description: "o assunto, curto (ex.: sulfato de magnésio)" },
+      note: { type: "string", description: "o que lembrar, em uma frase" },
+    }, ["kind", "concept"]),
+  },
+  {
+    type: "function", name: "schedule_review",
+    description: "Manda a questão desta conversa para a revisão espaçada do aluno daqui a alguns dias.",
+    parameters: obj({ days: { type: "integer", minimum: 1, maximum: 60 } }, ["days"]),
+  },
+  {
+    type: "function", name: "wait_for_user",
+    description: "Use quando o som não for o aluno falando com você (TV, outra pessoa, tosse, música, teclado, ruído), quando ele só fez um som de acompanhamento ou está pensando em silêncio. Você não fala nada e continua ouvindo.",
+    parameters: obj({ reason: { type: "string", enum: ["background", "noise", "not_addressed", "thinking_pause"] } }),
+  },
 ] as const;
 
 export const TOOL_NAMES = new Set<string>(REALTIME_TOOLS.map((t) => t.name));
@@ -63,14 +89,20 @@ interface ToolCtx {
   remember?: (texts: string[]) => void;
 }
 
-/** Passa o acontecimento pelo motor de personalidade, guarda o novo estado e devolve o tom para a voz seguir. */
-async function moodAfter(t: ToolCtx, h: Happening): Promise<string> {
+/**
+ * Passa o acontecimento pelo motor de personalidade, guarda o novo estado e devolve o tom para a voz seguir e a emoção para a
+ * esfera da tela de voz (calculada aqui, nunca deduzida do texto).
+ */
+async function moodAfter(t: ToolCtx, h: Happening): Promise<{ tone: string; avatar: ReturnType<typeof avatarOf> }> {
   const ctx = await t.deps.db.service<{ session: { emotion: Partial<TutorState> & Record<string, unknown> }; personality: { engine?: Partial<PersonaEngine> } } | null>(
     "ch_worker_tutor_context", { p_user: t.userId, p_session_id: t.sessionId });
-  const engine = engineFor(t.personaId, ctx?.personality.engine);
-  const next = step(normalize(ctx?.session.emotion, engine), engine, h).state;
-  await t.deps.db.service("ch_worker_tutor_set_emotion", { p_user: t.userId, p_session_id: t.sessionId, p_emotion: next });
-  return stateLayer(t.personaId, next, engine);
+  const settings = await tutorSettings(t.deps);
+  const engine = engineFor(t.personaId, ctx?.personality.engine, settings.durona_level);
+  const prev = normalize(ctx?.session.emotion, engine);
+  // motor emocional desligado no painel: o tom fica o de base
+  const next = settings.emotion_engine ? step(prev, engine, h).state : prev;
+  if (settings.emotion_engine) await t.deps.db.service("ch_worker_tutor_set_emotion", { p_user: t.userId, p_session_id: t.sessionId, p_emotion: next });
+  return { tone: stateLayer(t.personaId, next, engine), avatar: avatarOf(t.personaId, next) };
 }
 
 /** Executa uma ferramenta pedida pela voz. Erros esperados voltam como { error } para o modelo dizer com naturalidade. */
@@ -90,7 +122,7 @@ export async function runTutorTool(t: ToolCtx, name: string, args: Record<string
         const r = await svc<Record<string, unknown>>("ch_worker_tutor_answer_as", { p_session_id: t.sessionId, p_option: option, p_confidence: conf });
         const q = await svc<Record<string, unknown> | null>("ch_worker_tutor_tool_question", { p_session_id: t.sessionId, p_reveal: false });
         const mood = await moodAfter(t, { kind: "answer", correct: Boolean(r.is_correct), severity: 3, guess: conf != null && conf <= 1 });
-        return { result: { is_correct: r.is_correct, correct_option: r.correct_option, outcome: r.outcome, review_scheduled: r.review_scheduled }, question: q, tone: mood };
+        return { result: { is_correct: r.is_correct, correct_option: r.correct_option, outcome: r.outcome, review_scheduled: r.review_scheduled }, question: q, tone: mood.tone, avatar: mood.avatar };
       }
       case "next_question":
         return await svc<Record<string, unknown>>("ch_worker_tutor_next_as", { p_session_id: t.sessionId });
@@ -118,13 +150,13 @@ export async function runTutorTool(t: ToolCtx, name: string, args: Record<string
         if (ev.error_type !== "none" && ev.correct === false) {
           times = (await svc<{ times: number }>("ch_worker_tutor_learning_event", { p_session_id: t.sessionId, p_event: { kind: "error", error_type: ev.error_type, knowledge_gap: ev.knowledge_gap, source: "tutor_voice" } })).times;
         }
-        const tone = await moodAfter(t, {
+        const mood = await moodAfter(t, {
           kind: "message", correct: null, seriousAttempt: ev.reasoning_quality === "medium" || ev.reasoning_quality === "high",
           excellent: ev.correct === true && ev.reasoning_quality === "high",
           adjust: ev.correct === false ? { severity: ev.severity, repeated: times >= 2, careless: ev.error_type === "attention_error", unsafe: ev.unsafe } : null,
         });
         const { usage, ...out } = ev;
-        return { evaluation: { ...out, times_seen: times }, tone };
+        return { evaluation: { ...out, times_seen: times }, tone: mood.tone, avatar: mood.avatar };
       }
       case "register_learning_event": {
         const kind = str(args.kind, 20);
@@ -132,9 +164,22 @@ export async function runTutorTool(t: ToolCtx, name: string, args: Record<string
         const r = await svc<{ times: number }>("ch_worker_tutor_learning_event", {
           p_session_id: t.sessionId, p_event: { kind, error_type: str(args.error_type, 40) || "unknown", knowledge_gap: str(args.knowledge_gap, 160) || null, source: "tutor_voice" },
         });
-        const tone = await moodAfter(t, kind === "self_correction" ? { kind: "message", selfCorrected: true } : kind === "correct" ? { kind: "message", seriousAttempt: true } : { kind: "message", correct: null, adjust: { repeated: r.times >= 2 } });
-        return { ok: true, times_seen: r.times, tone };
+        const mood = await moodAfter(t, kind === "self_correction" ? { kind: "message", selfCorrected: true } : kind === "correct" ? { kind: "message", seriousAttempt: true } : { kind: "message", correct: null, adjust: { repeated: r.times >= 2 } });
+        return { ok: true, times_seen: r.times, tone: mood.tone, avatar: mood.avatar };
       }
+      case "save_tutor_memory": {
+        const r = await svc<{ saved: boolean; strength?: number; reason?: string }>("ch_worker_tutor_save_memory", {
+          p_session_id: t.sessionId, p_memory: { kind: str(args.kind, 20), concept: str(args.concept, 120), note: str(args.note, 400) || null },
+        });
+        return r.saved ? { ok: true, strength: r.strength } : { ok: false, note: r.reason ?? "Não guardei." };
+      }
+      case "schedule_review": {
+        const days = Number.isInteger(args.days) ? (args.days as number) : 3;
+        return await svc<Record<string, unknown>>("ch_worker_tutor_schedule_review", { p_session_id: t.sessionId, p_days: days });
+      }
+      case "wait_for_user":
+        // nada a fazer no servidor: o aplicativo não pede nova resposta e o professor fica em silêncio, ouvindo
+        return { ok: true, action: "stay_silent" };
     }
     return { error: "Ferramenta desconhecida." };
   } catch (error) {

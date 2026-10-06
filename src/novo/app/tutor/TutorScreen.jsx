@@ -1,8 +1,8 @@
 // Stazia Tutor: o professor particular do aluno para a 1ª fase do Revalida. Mesma disposição da tela "Tutor" do protótipo
 // (prototype/More.jsx): sessões de estudo à esquerda, conversa à direita. Três professores (Acolhedor, Direto, Durona) e quatro modos
 // (Questões, Meus erros, Me teste, Perguntar ao Tutor). O professor muda só o jeito; o conteúdo passa por validação no servidor
-// antes de aparecer. Por voz, a conversa é em tempo real (OpenAI Realtime) quando o servidor tem a voz ligada; sem ela, vale a voz do
-// aparelho (modo antigo, até a voz em tempo real ser confirmada em produção).
+// antes de aparecer. Por voz, a conversa é em tempo real (GPT-Live ou OpenAI Realtime) na tela cheia do Stazia Voice Mode
+// (voice/StaziaVoiceMode.jsx) quando o servidor tem a voz ligada; sem ela, vale a voz do aparelho (modo antigo).
 import React from "react";
 import { AnswerOption, Badge, Banner, Button, Card, Chip, EmptyState, Icon, IconButton, IconTile, SelectField, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
@@ -11,7 +11,9 @@ import { examLabel, splitStatement } from "../practice/format.js";
 import { tutorAvailable, tutorServerStatus, tutorSpeech, tutorTurn } from "./api.js";
 import { AREA_OPTIONS, CONFIDENCE, ERROR_CLASS, GROUNDING, LEVEL, MODES, modeLabel } from "./labels.js";
 import { chooseNeural, chooseVoice, chosenVoiceName, neuralChosen, portugueseVoices, useVoice, voiceSupport } from "./useVoice.js";
-import { realtimeErrorMessage, useRealtimeVoice } from "./useRealtimeVoice.js";
+import { useRealtimeVoice } from "./useRealtimeVoice.js";
+import { StaziaVoiceMode, voiceQuotaText } from "./voice/StaziaVoiceMode.jsx";
+import { unlockAudio } from "./voice/audioUnlock.js";
 import { micErrorMessage, parseVoiceCommand, questionSpeech } from "./voiceCommands.js";
 
 const R = { borderRadius: 24 };
@@ -26,7 +28,7 @@ export function TutorScreen({ go }) {
   const [session, setSession] = React.useState(null);
   const [view, setView] = React.useState("loading"); // loading | start | chat | report
   const [error, setError] = React.useState(null);
-  const [server, setServer] = React.useState({ neural: false, realtime: false }); // vozes ligadas no servidor
+  const [server, setServer] = React.useState({ neural: false, realtime: false, live: false }); // vozes ligadas no servidor
 
   const refresh = React.useCallback(async () => {
     const [st, list] = await Promise.all([backend.rpc("app_tutor_status"), backend.rpc("app_tutor_sessions", { p_limit: 20 })]);
@@ -50,7 +52,7 @@ export function TutorScreen({ go }) {
     if (!status?.available || !status.voice_enabled || !tutorAvailable(backend)) return undefined;
     let alive = true;
     tutorServerStatus(backend).then(
-      (s) => alive && setServer({ neural: Boolean(s?.neural_voice), realtime: Boolean(s?.realtime_voice) }),
+      (s) => alive && setServer({ neural: Boolean(s?.neural_voice), realtime: Boolean(s?.realtime_voice), live: Boolean(s?.live_voice) }),
       () => {}
     );
     return () => {
@@ -67,11 +69,12 @@ export function TutorScreen({ go }) {
       setError(messageOf(e));
     }
   };
-  const start = async ({ mode, topic, context, firstMessage }) => {
+  const start = async ({ mode, topic, context, firstMessage, voice = false }) => {
     setError(null);
     try {
       const s = await backend.rpc("app_tutor_start", { p_mode: mode, p_topic: topic || null, p_question_id: null, p_context: context ?? null });
-      setSession(firstMessage ? { ...s, firstMessage } : s);
+      // "Conversar com o Tutor": a conversa já abre no modo de voz (a primeira pergunta, se houver, vai falada pelo aluno)
+      setSession(voice ? { ...s, voiceFirst: true } : firstMessage ? { ...s, firstMessage } : s);
       setView("chat");
       refresh().catch(() => {});
       return s;
@@ -131,7 +134,7 @@ export function TutorScreen({ go }) {
   if (view === "report") body = <Report onBack={() => setView(session ? "chat" : "start")} />;
   else if (view === "chat" && session)
     body = (
-      <Chat key={session.id} session={session} setSession={setSession} status={status} neural={server.neural} realtime={server.realtime}
+      <Chat key={session.id} session={session} setSession={setSession} status={status} neural={server.neural} realtime={server.realtime} live={server.live}
         onUsage={(used) => setStatus((s) => ({ ...s, used_today: used, entitlement: s.entitlement ? { ...s.entitlement, text: { ...s.entitlement.text, used, remaining: Math.max(0, (s.entitlement.text?.limit ?? 0) - used) } } : s.entitlement }))}
         onChanged={() => refresh().catch(() => {})} mobile={mobile} />
     );
@@ -303,8 +306,9 @@ function StartPanel({ status, onStart, onChanged, realtime, neural }) {
   const [busy, setBusy] = React.useState(false);
   const chosen = status.personalities.find((p) => p.id === status.preferences.personality_id);
   const ready = mode !== "perguntas" || focus === "weak" || (focus === "topic" ? topic.trim().length >= 3 : Boolean(area));
-  const go = async () => {
-    setBusy(true);
+  const go = async (voice = false) => {
+    if (voice) unlockAudio(); // gesto do aluno: Safari libera o áudio da voz agora
+    setBusy(voice ? "voice" : "text");
     let request;
     if (mode === "questao" || mode === "erros") request = { mode, context: area ? { type: "area", area } : null };
     else if (mode === "perguntas")
@@ -312,7 +316,7 @@ function StartPanel({ status, onStart, onChanged, realtime, neural }) {
         : focus === "topic" ? { mode, topic: topic.trim(), context: { type: "theme", label: topic.trim() } }
         : { mode, context: { type: "area", area, label: AREA_OPTIONS.find((a) => a.value === area)?.label } };
     else request = { mode, context: { type: "free" }, firstMessage: question.trim() || null };
-    await onStart(request);
+    await onStart({ ...request, voice });
     setBusy(false);
   };
   return (
@@ -355,9 +359,15 @@ function StartPanel({ status, onStart, onChanged, realtime, neural }) {
         )}
         {mode === "livre" && <TextField label="Sua pergunta (opcional)" placeholder="ex.: Explique pré-eclâmpsia. Qual a diferença entre…?" value={question} maxLength={2000} onChange={(e) => setQuestion(e.target.value)} />}
       </div>
-      <div style={{ marginTop: 16 }}>
-        <Button iconRight="arrow-right" loading={busy} disabled={!ready} onClick={go}>Começar</Button>
+      <div style={{ marginTop: 16, display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <Button iconRight="arrow-right" loading={busy === "text"} disabled={!ready || Boolean(busy)} onClick={() => go(false)}>Começar</Button>
+        {realtime && status.voice_enabled && (
+          <Button variant="secondary" icon="audio-lines" loading={busy === "voice"} disabled={!ready || Boolean(busy)} onClick={() => go(true)}>Conversar com o Tutor</Button>
+        )}
       </div>
+      {realtime && status.voice_enabled && status.entitlement?.voice?.enabled && (
+        <p style={{ margin: "8px 0 0", font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Tutor por voz: {voiceQuotaText(status.entitlement)}.</p>
+      )}
       <p style={{ margin: "14px 0 0", font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
         O professor muda o jeito de ensinar; o conteúdo, o gabarito e as fontes são sempre os mesmos. Valores, doses e diretrizes só com base conferida.
       </p>
@@ -367,7 +377,7 @@ function StartPanel({ status, onStart, onChanged, realtime, neural }) {
 
 
 // ---------------------------------------------------------------- conversa
-export function Chat({ session, setSession, status, neural, realtime = false, onUsage, onChanged, mobile, compact = false }) {
+export function Chat({ session, setSession, status, neural, realtime = false, live: liveVoice = false, onUsage, onChanged, mobile, compact = false }) {
   const { backend } = useSession();
   const [messages, setMessages] = React.useState(session.messages);
   const [text, setText] = React.useState("");
@@ -390,12 +400,17 @@ export function Chat({ session, setSession, status, neural, realtime = false, on
   const support = React.useMemo(voiceSupport, []);
   const voiceAllowed = status.voice_enabled && (realtime || support.speak || support.listen || neural);
   const [closing, setClosing] = React.useState(false);
-  // voz em tempo real: a fala dos dois lados aparece como mensagem (transcrição); o servidor grava e confere
+  // voz em tempo real (tela cheia): a fala dos dois lados aparece como mensagem (transcrição); o servidor grava e confere
+  const [voiceMode, setVoiceMode] = React.useState(false);
+  const [voiceAvatar, setVoiceAvatar] = React.useState(null); // emoção calculada pelo servidor, para a esfera
+  const textInput = React.useRef(null);
   const rt = useRealtimeVoice({
     backend,
     sessionId: session.id,
+    live: liveVoice,
     onTranscript: (role, said) => setMessages((m) => [...m, { id: `rt-${Date.now()}-${m.length}`, role, content: said, grounding: role === "tutor" ? "general" : null, voice: true }]),
     onWarning: (w) => setVoiceNote(w),
+    onAvatar: setVoiceAvatar,
   });
   // a voz chama de volta fora do ciclo de desenho: estas referências sempre apontam para o estado e as ações mais recentes
   const live = React.useRef({});
@@ -509,14 +524,40 @@ export function Chat({ session, setSession, status, neural, realtime = false, on
     voice.listen();
   };
 
-  /** Liga ou desliga a conversa por voz. Em tempo real, abre a ligação; no modo antigo, o professor lê a questão e depois ouve. */
+  /** Abre a tela cheia de voz e a ligação (no próprio toque do aluno: o Safari só libera o áudio assim). */
+  const openVoiceMode = () => {
+    unlockAudio();
+    setVoiceNote(null);
+    setVoiceMode(true);
+    rt.start();
+  };
+  /** Fecha a tela de voz: encerra a ligação; numa conversa que nasceu por voz, encerra a sessão (resumo e estado salvos). */
+  const closeVoiceMode = async () => {
+    setVoiceMode(false);
+    if (rt.active) await rt.stop();
+    if (session.voiceFirst && session.status === "active" && messages.some((m) => m.voice)) await closeSession();
+  };
+  /** Voz falhou: segue a mesma conversa por texto. */
+  const textFallback = async () => {
+    setVoiceMode(false);
+    if (rt.active) await rt.stop();
+    setTimeout(() => textInput.current?.focus?.(), 0);
+  };
+  // conversa aberta por "Conversar com o Tutor": já entra no modo de voz
+  const autoVoice = React.useRef(false);
+  React.useEffect(() => {
+    if (session.voiceFirst && realtime && !autoVoice.current && session.status === "active") {
+      autoVoice.current = true;
+      openVoiceMode();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [realtime]);
+
+  /** Liga ou desliga a conversa por voz. Em tempo real, abre a tela cheia; no modo antigo, o professor lê a questão e depois ouve. */
   const toggleVoice = () => {
     if (realtime) {
-      if (rt.active) rt.stop();
-      else {
-        setVoiceNote(null);
-        rt.start();
-      }
+      if (rt.active || voiceMode) closeVoiceMode();
+      else openVoiceMode();
       return;
     }
     if (voiceOn) {
@@ -661,7 +702,9 @@ export function Chat({ session, setSession, status, neural, realtime = false, on
         {limitReached && <Banner tone="warning">Você chegou ao limite de {status.entitlement?.text?.limit ?? status.daily_limit} interações de texto de hoje{status.entitlement?.mode === "trial" ? " no teste grátis" : ""}. O acesso é renovado amanhã.</Banner>}
         {closed && session.summary && <SummaryCard summary={session.summary} />}
         {closed && <Banner tone="info">Esta sessão foi encerrada. Abra uma nova para continuar.</Banner>}
-        {realtime && (rt.active || rt.error) && !closed && <RealtimeBar rt={rt} note={voiceNote} />}
+        {voiceMode && (
+          <StaziaVoiceMode rt={rt} persona={session.personality} messages={messages} avatar={voiceAvatar} entitlement={status.entitlement} note={voiceNote} onClose={closeVoiceMode} onTextFallback={textFallback} />
+        )}
         {(voiceOn || voice.speaking || voice.listening) && !closed && (
           <div role="status" style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 14px", borderRadius: 14, background: "var(--surface-subtle)" }}>
             <Icon name={voiceState === "listening" ? "mic" : voiceState === "speaking" ? "volume-2" : "audio-lines"} size={18} />
@@ -689,7 +732,7 @@ export function Chat({ session, setSession, status, neural, realtime = false, on
         )}
         <form onSubmit={submit} style={{ display: "flex", gap: 8 }}>
           <div style={{ flex: 1 }}>
-            <TextField aria-label="Mensagem" placeholder={voice.listening ? "Ouvindo…" : "Pergunte ao tutor…"} value={text} maxLength={2000} disabled={closed || limitReached} onChange={(e) => setText(e.target.value)} />
+            <TextField ref={textInput} aria-label="Mensagem" placeholder={voice.listening ? "Ouvindo…" : "Pergunte ao tutor…"} value={text} maxLength={2000} disabled={closed || limitReached} onChange={(e) => setText(e.target.value)} />
           </div>
           {voiceAllowed && !realtime && (
             <IconButton icon={voice.listening ? "mic-off" : "mic"} label={voice.listening ? "Parar de ouvir" : voice.speaking ? "Interromper e falar" : "Falar com o professor"} variant={voice.listening ? "primary" : "secondary"} onClick={mic} disabled={closed || limitReached || sending} />
@@ -700,30 +743,6 @@ export function Chat({ session, setSession, status, neural, realtime = false, on
         </form>
       </div>
     </Card>
-  );
-}
-
-const RT_LABEL = {
-  connecting: ["Conectando a voz…", "loader"], listening: ["Ouvindo você…", "mic"], thinking: ["O professor está pensando…", "audio-lines"],
-  speaking: ["O professor está falando. Fale por cima para interromper.", "volume-2"], paused: ["Pausado. Toque em Continuar quando quiser.", "pause"],
-  reconnecting: ["Reconectando…", "wifi"], ended: ["Voz encerrada.", "phone-off"], error: ["", "alert-triangle"],
-};
-
-/** Barra da voz em tempo real: o estado da ligação, sempre com saída (nada de carregando para sempre). */
-function RealtimeBar({ rt, note }) {
-  const [label, icon] = RT_LABEL[rt.state] ?? RT_LABEL.listening;
-  const err = rt.error ? realtimeErrorMessage(rt.error) : null;
-  return (
-    <div role="status" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", padding: "10px 14px", borderRadius: 14, background: "var(--surface-subtle)" }}>
-      <Icon name={icon} size={18} />
-      <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", flex: 1, minWidth: 0 }}>{err ?? note ?? label}</span>
-      {rt.remaining != null && rt.active && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{minutes(rt.remaining)} min de voz hoje</span>}
-      {rt.state === "speaking" && <Button size="sm" variant="secondary" icon="square" onClick={rt.interrupt}>Interromper</Button>}
-      {rt.active && rt.state !== "paused" && rt.state !== "connecting" && <Button size="sm" variant="ghost" icon="pause" onClick={rt.pause}>Pausar</Button>}
-      {rt.state === "paused" && <Button size="sm" variant="secondary" icon="play" onClick={rt.resume}>Continuar</Button>}
-      {rt.error?.kind === "busy" && <Button size="sm" variant="secondary" onClick={() => rt.start(true)}>Assumir aqui</Button>}
-      {rt.error && ["network", "timeout", "server"].includes(rt.error.kind) && <Button size="sm" variant="secondary" icon="refresh-cw" onClick={() => rt.start()}>Reconectar</Button>}
-    </div>
   );
 }
 
