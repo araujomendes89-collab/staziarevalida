@@ -273,7 +273,7 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
       </div>
       {error && <Banner tone="danger">{error}</Banner>}
       {play && <XPToast play={play} />}
-      {boot?.play?.enabled && !done && <p style={{ margin: 0, font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Concluir a aula vale XP no Stazia Play (uma vez por aula).</p>}
+      {boot?.play?.enabled && !done && <p style={{ margin: 0, font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Concluir a aula vale XP na Stazia Arena (uma vez por aula).</p>}
       <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "minmax(0,1.6fr) minmax(280px,1fr)", gap: 20, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <Card style={{ borderRadius: 24 }} padding={mobile ? 18 : 24}>

@@ -34,7 +34,7 @@ import { AchievementsScreen } from "./play/AchievementsScreen.jsx";
 const TITLES = {
   aulas: ["Aulas teórico-práticas", "Estudar · conteúdo audiovisual por grande área"],
   temas: ["Grandes Temas do Revalida", "Estudar · incidência real nas provas oficiais"],
-  atualizacoes: ["Atualizações & Diretrizes", "Estudar · o que mudou nas condutas e onde conferir"],
+  atualizacoes: ["Atualizações", "Estudar · o que mudou nas condutas e onde conferir"],
   hoje: ["Plano de hoje", "Estudar · praticar · revisar"],
   questoes: ["Questões", "Monte seu treino"],
   simulados: ["Simulados", "Condições de prova"],
@@ -43,10 +43,10 @@ const TITLES = {
   plano: ["Planejamento", "Cronograma até a prova"],
   desempenho: ["Desempenho", "Seus dados reais"],
   tutor: ["Stazia Tutor", "Seu professor particular para o Revalida"],
-  trilha: ["Trilha de aprendizado", "Stazia Play · uma etapa de cada vez"],
-  classificacao: ["Classificação", "Stazia Play · ranking e liga da semana"],
-  missoes: ["Missões", "Stazia Play · metas de hoje e da semana"],
-  conquistas: ["Conquistas", "Stazia Play · medalhas e recompensas"],
+  trilha: ["Trilha de aprendizado", "Stazia Arena · uma etapa de cada vez"],
+  classificacao: ["Classificação", "Stazia Arena · ranking e liga da semana"],
+  missoes: ["Missões", "Stazia Arena · metas de hoje e da semana"],
+  conquistas: ["Conquistas", "Stazia Arena · medalhas e recompensas"],
   perfil: ["Conta", "Dados, segurança e privacidade"],
   teoria2: ["Teoria para a prática", "Esqueletos, documentos médicos e protocolos aplicados às estações"],
   estacoes: ["Banco de estações", "Estações nas 5 grandes áreas"],
@@ -96,7 +96,7 @@ function Screen() {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
-  // "Materiais oficiais" virou "Atualizações & Diretrizes": endereços antigos continuam funcionando
+  // "Materiais oficiais" virou "Atualizações": endereços antigos continuam funcionando
   if (route === "materiais") return <Navigate to="/atualizacoes" replace />;
   if (!ROUTES.has(route)) return <Navigate to="/" replace />;
   // equipe (admin/editor) ou revisor médico de alguma área (só a revisão da Central de Conteúdo)

@@ -115,7 +115,7 @@ export function TrailScreen({ go }) {
     }
   };
 
-  if (boot?.play?.enabled === false) return <Banner tone="info">A trilha faz parte do Stazia Play, que está desligado no momento.</Banner>;
+  if (boot?.play?.enabled === false) return <Banner tone="info">A trilha faz parte da Stazia Arena, que está desligada no momento.</Banner>;
   if (error && !data) return <PlayError retry={() => setTick((n) => n + 1)}>{error}</PlayError>;
   if (!data) return <Skeleton height={420} />;
   if (data.enabled === false) return <Banner tone="info">A trilha está desligada no momento.</Banner>;

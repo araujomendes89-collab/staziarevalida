@@ -1,4 +1,4 @@
-// Atualizações & Diretrizes com dados do banco (app_guideline_updates, app_guideline_update, app_start_guideline_questions).
+// Atualizações com dados do banco (app_guideline_updates, app_guideline_update, app_start_guideline_questions).
 // Mesma estrutura do app anterior (o que mudou: antes × agora; o que lembrar para o Revalida; fonte; flashcards; questão de
 // treino; tabela comparativa) com o layout de "Materiais oficiais" do novo design (prototype/Study1.jsx).
 // Só aparece ao aluno o que o administrador publicou; o selo de conferência só existe quando um revisor médico conferiu

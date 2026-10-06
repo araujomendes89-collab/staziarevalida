@@ -1,4 +1,4 @@
-// Administração de Atualizações & Diretrizes: editar (equipe ou revisor da área), conferir no documento oficial
+// Administração de Atualizações: editar (equipe ou revisor da área), conferir no documento oficial
 // (só revisor médico cadastrado na área) e publicar para o aluno (só administrador). O banco confere cada papel.
 import React from "react";
 import { Badge, Banner, Button, Card, SelectField, Switch, TextField } from "../../ds";

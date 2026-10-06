@@ -187,7 +187,7 @@ export function LeagueView() {
 export function LeaderboardScreen({ go }) {
   const { boot } = useSession();
   const [tab, setTab] = React.useState("ranking");
-  if (boot?.play?.enabled === false) return <Banner tone="info">A classificação faz parte do Stazia Play, que está desligado no momento.</Banner>;
+  if (boot?.play?.enabled === false) return <Banner tone="info">A classificação faz parte da Stazia Arena, que está desligada no momento.</Banner>;
   const leagues = boot?.play?.flags?.leagues !== false;
   return (
     <>

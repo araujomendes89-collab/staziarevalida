@@ -1,5 +1,7 @@
 # Stazia Play: gamificação do StaziaMed Revalida
 
+> **Nome no app: Stazia Arena** (o dono renomeou em 2026-10-06; migração `4500_stazia_arena` atualiza os textos do banco). No código, tabelas e funções o nome interno continua "play"/`gam_*`.
+
 Data: 2026-10-06. Pedido: "Analisar o sistema existente e implementar integralmente um novo módulo de gamificação" (itens 1–112, com as seções 39–44 substituídas pela direção visual "Stazia Play": trilha de aprendizado como centro da experiência). O pedido chama o produto de StaziaNexus; o nome do produto continua StaziaMed e o módulo chama-se **Stazia Play**.
 
 ## 1. Auditoria: o que o pedido supunha e o que existe

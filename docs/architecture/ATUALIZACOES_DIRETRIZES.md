@@ -1,5 +1,7 @@
 # Atualizações & Diretrizes
 
+> **Nome no app: Atualizações** (o dono pediu em 2026-10-06 para deixar só "Atualizações" no menu e no título). As tabelas e funções continuam `guideline_updates`/`app_guideline_*`.
+
 Data: 2026-10-06. Pedido: trocar "Materiais oficiais e diretrizes" (app novo) por "Atualizações & Diretrizes" do app anterior, mantendo o design novo.
 
 ## O que existia

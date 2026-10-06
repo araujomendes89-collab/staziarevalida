@@ -116,7 +116,7 @@ export function AchievementsScreen() {
   const mobile = useMobile();
   const [tab, setTab] = React.useState("medalhas");
   const a = usePlayLoad(() => backend.rpc("app_gamification_achievements"), [backend]);
-  if (boot?.play?.enabled === false) return <Banner tone="info">As conquistas fazem parte do Stazia Play, que está desligado no momento.</Banner>;
+  if (boot?.play?.enabled === false) return <Banner tone="info">As conquistas fazem parte da Stazia Arena, que está desligada no momento.</Banner>;
   const coins = boot?.play?.flags?.coins !== false;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

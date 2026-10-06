@@ -10,7 +10,7 @@ export function MissionsScreen({ go }) {
   const { backend, boot } = useSession();
   const mobile = useMobile();
   const m = usePlayLoad(() => backend.rpc("app_gamification_missions"), [backend]);
-  if (boot?.play?.enabled === false) return <Banner tone="info">As missões fazem parte do Stazia Play, que está desligado no momento.</Banner>;
+  if (boot?.play?.enabled === false) return <Banner tone="info">As missões fazem parte da Stazia Arena, que está desligada no momento.</Banner>;
   if (m.error) return <PlayError retry={m.reload} />;
   if (!m.data) return <Skeleton height={360} />;
   const d = m.data;

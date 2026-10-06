@@ -22,7 +22,7 @@ const TABS = [
   { value: "planos", label: "Planos", icon: "crown" },
   { value: "estacoes", label: "Estações", icon: "clipboard-list", staff: true },
   { value: "conteudo", label: "Central de Conteúdo", icon: "library", staff: true, reviewer: true },
-  { value: "play", label: "Stazia Play", icon: "trophy" },
+  { value: "play", label: "Stazia Arena", icon: "trophy" },
   { value: "config", label: "Configurações", icon: "settings" },
   { value: "registro", label: "Registro", icon: "history" },
 ];

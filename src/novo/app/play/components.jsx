@@ -9,7 +9,7 @@ export function Skeleton({ height = 96, style }) {
   return <div aria-hidden="true" style={{ height, borderRadius: 20, background: "var(--surface-sunken)", ...style }} />;
 }
 
-export function PlayError({ retry, children = "Não foi possível carregar o Stazia Play." }) {
+export function PlayError({ retry, children = "Não foi possível carregar a Stazia Arena." }) {
   return (
     <Card variant="subtle" padding={16} style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
       <Icon name="cloud-off" size={18} style={{ color: "var(--text-tertiary)" }} />

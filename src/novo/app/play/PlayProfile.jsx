@@ -90,7 +90,7 @@ export function PlayProfileSection({ go }) {
   const { boot } = useSession();
   const mobile = useMobile();
   const { data: s, error, loading, reload } = usePlaySummary();
-  if (boot?.play?.enabled === false) return <Banner tone="info">O Stazia Play está desligado no momento. Seu histórico fica guardado.</Banner>;
+  if (boot?.play?.enabled === false) return <Banner tone="info">A Stazia Arena está desligada no momento. Seu histórico fica guardado.</Banner>;
   if (error) return <PlayError retry={reload} />;
   if (loading || !s) return <Skeleton height={320} />;
   const name = boot.profile.name || "Sua conta";
@@ -103,7 +103,7 @@ export function PlayProfileSection({ go }) {
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <SectionHeader title="Meu Stazia Play" subtitle="Seu perfil de estudo: nível, score, ranking e conquistas" />
+      <SectionHeader title="Minha Stazia Arena" subtitle="Seu perfil de estudo: nível, score, ranking e conquistas" />
       <Card style={{ borderRadius: 24 }} padding={mobile ? 20 : 28}>
         <div style={{ display: "flex", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ width: 64, height: 64, borderRadius: 22, display: "inline-flex", alignItems: "center", justifyContent: "center", background: `color-mix(in oklab, ${color} 16%, transparent)`, color }}>
