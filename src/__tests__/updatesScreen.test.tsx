@@ -42,12 +42,12 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Lista", () => {
-  it("sem nada publicado: explica a conferência médica e mostra as fontes aceitas", async () => {
+  it("sem nada publicado: explica a conferência médica (sem o quadro de fontes, retirado a pedido)", async () => {
     list = { total: 0, by_area: {}, years: [], items: [] };
     const go = vi.fn();
     render(<UpdatesScreen go={go} />);
     expect(await screen.findByText("As atualizações estão em conferência médica")).toBeTruthy();
-    expect(screen.getByText("Fontes aceitas")).toBeTruthy();
+    expect(screen.queryByText("Fontes aceitas")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Montar um treino" }));
     expect(go).toHaveBeenCalledWith("questoes");
   });

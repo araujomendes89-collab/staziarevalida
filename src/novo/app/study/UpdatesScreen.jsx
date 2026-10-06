@@ -13,14 +13,6 @@ import { AreaTabs } from "./LessonsScreen.jsx";
 
 const AREA_TONE = { CLINICA_MEDICA: "--area-clinica", CIRURGIA_GERAL: "--area-cirurgia", PEDIATRIA: "--area-pediatria", GINECOLOGIA_OBSTETRICIA: "--area-go", MEDICINA_FAMILIA_COMUNIDADE: "--area-preventiva" };
 const PRIORITY = { 1: ["Prioridade muito alta", "streak"], 2: ["Prioridade alta", "warning"], 3: ["Prioridade moderada", "neutral"], 4: ["Prioridade baixa", "neutral"] };
-const BASES = [
-  ["saude.gov.br", "PCDTs, portarias e notas técnicas"],
-  ["bvsms.saude.gov.br", "Manuais e cadernos do MS"],
-  ["gov.br/conitec", "Tecnologias incorporadas ao SUS"],
-  ["inep.gov.br", "Matriz e editais do Revalida"],
-  ["gov.br/anvisa", "Bulas e farmacovigilância"],
-  ["Sociedades médicas", "Diretrizes clínicas publicadas"],
-];
 const dateBR = (iso) => (iso ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso)) : "");
 
 function AreaTag({ area }) {
@@ -370,24 +362,6 @@ export function UpdatesScreen({ go }) {
   // destaque só quando há mais atualizações do que as destacadas (senão repetiria a lista inteira)
   const top = data.items.filter((i) => i.priority === 1).slice(0, 4);
   const featured = data.items.length > top.length ? top : [];
-  const bases = (
-    <Card style={{ borderRadius: 24 }} padding={24}>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <IconTile name="landmark" size={32} tone="navy" />
-        <span style={{ font: "600 16px var(--font-sans)" }}>Fontes aceitas</span>
-      </div>
-      <p style={{ margin: "6px 0 16px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Uma atualização só vale como conduta vigente depois de conferida, por revisor médico, no documento oficial de uma destas bases.</p>
-      <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(6,1fr)", gap: 10 }}>
-        {BASES.map(([n, d]) => (
-          <div key={n} style={{ padding: "12px 14px", borderRadius: 14, background: "var(--surface-subtle)", border: "1px solid var(--border-subtle)" }}>
-            <div style={{ font: "600 13px var(--font-sans)" }}>{n}</div>
-            <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{d}</div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
-
   return (
     <>
       <Card style={{ borderRadius: 24 }} padding={24}>
@@ -410,7 +384,6 @@ export function UpdatesScreen({ go }) {
             description="Cada atualização só aparece aqui depois de conferida no documento oficial. Enquanto isso, treine com as questões oficiais."
             action={<Button onClick={() => go("questoes")}>Montar um treino</Button>}
           />
-          {bases}
         </>
       ) : (
         <>
@@ -448,7 +421,6 @@ export function UpdatesScreen({ go }) {
               {data.items.map((i) => <UpdateCard key={i.id} item={i} onOpen={openItem} />)}
             </div>
           )}
-          {bases}
         </>
       )}
     </>
