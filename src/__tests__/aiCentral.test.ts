@@ -10,6 +10,9 @@ import os from "os";
 import path from "path";
 import { openDevDatabaseForTests, type DevDatabase } from "../../server/devDb/devDatabase";
 import { devContentDb, type ContentDb } from "../../server/contentHub/infra";
+import { listModels } from "../../server/ai/models";
+import { OllamaProvider } from "../../server/contentHub/ai/ollama";
+import { AiInvalidOutput } from "../../server/contentHub/ai/provider";
 
 vi.setConfig({ testTimeout: 120_000 });
 
@@ -176,5 +179,110 @@ describe("Banco", () => {
     expect(t.rows).toEqual([]);
     const f = await dev.db.query<any>(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and (p.proname like 'ch\\_worker\\_ai\\_%' or p.proname = 'ai_assert_admin_actor') and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))`);
     expect(f.rows).toEqual([]);
+  });
+});
+
+describe("Modelos", () => {
+  const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json" } });
+  const fake = (body: unknown, status = 200) => {
+    const calls: { url: string; init: any }[] = [];
+    const f = (async (url: any, init: any) => {
+      calls.push({ url: String(url), init });
+      return json(body, status);
+    }) as unknown as typeof fetch;
+    return { f, calls };
+  };
+
+  it("OpenAI: só modelos de texto", async () => {
+    const { f, calls } = fake({ data: [{ id: "gpt-x" }, { id: "text-embedding-3" }, { id: "tts-1" }, { id: "o9" }] });
+    const r = await listModels("openai", { OPENAI_API_KEY: " sk-secret " }, f);
+    expect(r.status).toBe("pronta");
+    expect(r.models.map((m) => m.id)).toEqual(["gpt-x", "o9"]);
+    expect(calls[0].url).toBe("https://api.openai.com/v1/models");
+  });
+
+  it("Gemini: só generateContent e sem o prefixo models/", async () => {
+    const { f } = fake({
+      models: [
+        { name: "models/gemini-a", displayName: "Gemini A", supportedGenerationMethods: ["generateContent"] },
+        { name: "models/text-embedding-9", supportedGenerationMethods: ["embedContent"] },
+        { name: "models/imagen-3", supportedGenerationMethods: ["generateContent"] },
+        { name: "models/gemini-b", supportedGenerationMethods: ["generateContent", "countTokens"] },
+      ],
+    });
+    const r = await listModels("gemini", { GEMINI_API_KEY: "g-secret" }, f);
+    expect(r.models).toEqual([
+      { id: "gemini-a", label: "Gemini A" },
+      { id: "gemini-b", label: "gemini-b" },
+    ]);
+  });
+
+  it("Claude: id e nome de exibição", async () => {
+    const { f, calls } = fake({ data: [{ id: "claude-z", display_name: "Claude Z" }] });
+    const r = await listModels("anthropic", { ANTHROPIC_API_KEY: "a-secret" }, f);
+    expect(r.models).toEqual([{ id: "claude-z", label: "Claude Z" }]);
+    expect(calls[0].url).toBe("https://api.anthropic.com/v1/models");
+    expect(calls[0].init.headers["anthropic-version"]).toBe("2023-06-01");
+    expect(calls[0].init.headers["x-api-key"]).toBe("a-secret");
+  });
+
+  it("sem chave vira sem_chave e não chama a rede", async () => {
+    const { f, calls } = fake({});
+    const r = await listModels("openai", {}, f);
+    expect(r.status).toBe("sem_chave");
+    expect(calls).toHaveLength(0);
+  });
+
+  it("401 vira chave_recusada sem vazar a chave", async () => {
+    const { f } = fake({ error: "bad key g-secret-123" }, 401);
+    for (const id of ["anthropic", "openai", "gemini"] as const) {
+      const r = await listModels(id, { ANTHROPIC_API_KEY: "g-secret-123", OPENAI_API_KEY: "g-secret-123", GEMINI_API_KEY: "g-secret-123" }, f);
+      expect(r.status).toBe("chave_recusada");
+      expect(r.models).toEqual([]);
+      expect(JSON.stringify(r)).not.toContain("g-secret-123");
+    }
+  });
+
+  it("outro erro HTTP vira erro, sem vazar a chave", async () => {
+    const { f } = fake({}, 500);
+    const r = await listModels("gemini", { GOOGLE_GEMINI_API_KEY: "k-secret" }, f);
+    expect(r.status).toBe("erro");
+    expect(r.detail).toContain("500");
+    expect(JSON.stringify(r)).not.toContain("k-secret");
+  });
+
+  it("Ollama lista modelos e usa OLLAMA_BASE_URL", async () => {
+    const { f, calls } = fake({ models: [{ name: "qwen:7b" }, { name: "llama3" }] });
+    const r = await listModels("ollama", { OLLAMA_BASE_URL: "http://mac:1234" }, f);
+    expect(r.status).toBe("pronta");
+    expect(r.models.map((m) => m.id)).toEqual(["llama3", "qwen:7b"]);
+    expect(calls[0].url).toBe("http://mac:1234/api/tags");
+  });
+
+  it("Ollama sem resposta vira so_no_mac", async () => {
+    const f = (async () => {
+      throw Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:11434"), { code: "ECONNREFUSED" });
+    }) as unknown as typeof fetch;
+    const r = await listModels("ollama", {}, f);
+    expect(r.status).toBe("so_no_mac");
+    expect(r.models).toEqual([]);
+  });
+
+  it("Ollama responde JSON no formato pedido e custa zero", async () => {
+    const schema: any = { type: "object", properties: { ok: { type: "boolean" } }, required: ["ok"] };
+    const req: any = { promptId: "p", promptVersion: "1", system: "s", input: "i", schema, schemaName: "t", maxOutputTokens: 500 };
+    const good = fake({ message: { content: JSON.stringify({ ok: true }) }, prompt_eval_count: 10, eval_count: 5 });
+    const r = await new OllamaProvider("http://localhost:11434", "llama3", good.f).generate<{ ok: boolean }>(req);
+    expect(r.output).toEqual({ ok: true });
+    expect(r).toMatchObject({ costUsd: 0, inputTokens: 10, outputTokens: 5, provider: "ollama", model: "llama3" });
+    expect(good.calls[0].url).toBe("http://localhost:11434/api/chat");
+    const body = JSON.parse(good.calls[0].init.body);
+    expect(body).toMatchObject({ model: "llama3", stream: false, options: { num_predict: 500 } });
+    expect(body.format).toBeTruthy();
+    expect(body.messages.map((m: any) => m.role)).toEqual(["system", "user"]);
+    const bad = fake({ message: { content: JSON.stringify({ ok: "sim" }) } });
+    await expect(new OllamaProvider("http://localhost:11434", "llama3", bad.f).generate(req)).rejects.toBeInstanceOf(AiInvalidOutput);
+    const notJson = fake({ message: { content: "oi" } });
+    await expect(new OllamaProvider("http://localhost:11434", "llama3", notJson.f).generate(req)).rejects.toBeInstanceOf(AiInvalidOutput);
   });
 });
