@@ -57,7 +57,7 @@ function Table({ heads, children }) {
   );
 }
 
-function ProviderCard({ p, spend, pending, backend, reload }) {
+function ProviderCard({ p, spend, pending, blocks, backend, reload }) {
   const name = PROVIDER_NAME[p.id];
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState(null);
@@ -89,6 +89,8 @@ function ProviderCard({ p, spend, pending, backend, reload }) {
   const detail = refreshed ? refreshed.detail : p.last_status_detail;
   const count = (refreshed ? refreshed.models : p.models)?.length ?? 0;
   const by = p.enabled_by_email;
+  // o que impede este servidor de chamar a IA: bloqueio (Ollama no site publicado) ou só a chave ausente aqui no site
+  const pendingText = pending ? (blocks === true ? pending : `Sem chave neste servidor (site): ${pending.replace(/\.$/, "")}. O processamento no Cloud Run usa as próprias chaves.`) : null;
   return (
     <div data-testid={`provider-${p.id}`} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "14px 0", borderTop: "1px solid var(--border-subtle)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -101,7 +103,7 @@ function ProviderCard({ p, spend, pending, backend, reload }) {
         <Switch label={p.enabled ? "Ligada" : "Desligada"} aria-label={`${name}: ligar ou desligar`} checked={p.enabled === true} disabled={busy} onChange={(e) => toggle(e.target.checked)} />
       </div>
       {detail && <div style={subtle}>{detail}</div>}
-      {pending && <div style={subtle}>{pending}</div>}
+      {pendingText && pendingText !== detail && pending !== detail && <div style={subtle}>{pendingText}</div>}
       {p.enabled && <div style={subtle}>{`Ligada${by ? ` por ${by}` : ""} em ${when(p.enabled_at)}`}</div>}
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <span style={{ font: "var(--type-body-sm)" }}>{count === 1 ? "1 modelo" : `${count} modelos`}</span>
@@ -122,7 +124,7 @@ function Providers({ data, backend, reload }) {
     <Section title="IAs">
       <p style={note}>As chaves ficam só no servidor. Uma IA só é chamada se estiver ligada aqui.</p>
       {list.map((p) => (
-        <ProviderCard key={p.id} p={p} spend={data.spend_by_provider?.find((s) => s.provider === p.id)} pending={data.provider_checks?.[p.id]?.pending} backend={backend} reload={reload} />
+        <ProviderCard key={p.id} p={p} spend={data.spend_by_provider?.find((s) => s.provider === p.id)} pending={data.provider_checks?.[p.id]?.pending} blocks={data.provider_checks?.[p.id]?.blocks} backend={backend} reload={reload} />
       ))}
     </Section>
   );

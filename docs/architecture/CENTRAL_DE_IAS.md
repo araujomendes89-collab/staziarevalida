@@ -40,9 +40,19 @@ as IAs e salve as funções em seguida, antes de deixar o processamento trabalha
    como hoje, desde que essa IA esteja ligada: `CONTENT_HUB_AI_PROVIDER` e, quando existirem, as específicas
    `CONTENT_HUB_AI_PROVIDER_CREATE` (criação, engenharia reversa e assistentes) e `CONTENT_HUB_VERIFIER_PROVIDER`
    (verificação). Ou você salva o modo e as IAs de cada uma (recomendado, veja acima). A tela marca a função como
-   **não está pronta** quando a IA escolhida não pode rodar naquele servidor (IA desligada, chave vazia, Ollama no site
-   publicado); se só a principal não roda e há reserva que roda, a tela avisa que a reserva vai responder.
+   **não está pronta** quando a IA escolhida não pode rodar (IA desligada, ou Ollama no site publicado); se só a principal
+   não roda e há reserva que roda, a tela avisa que a reserva vai responder. Chave que falta no site é só aviso (veja
+   "Chaves das IAs: o site e o processamento").
 3. **Gasto e tetos:** se quiser, preencha o teto mensal e o teto por execução e ligue os tetos.
+
+## Chaves das IAs: o site e o processamento
+- O site (Vercel) e o processamento da Central (Cloud Run) são servidores diferentes, cada um com as suas chaves. A tela só
+  enxerga as variáveis do servidor que responde, o site.
+- Chave que falta **no site** é só aviso na tela ("sem chave no site" no seletor, "sem chave neste servidor" na função e no
+  cartão da IA): a IA continua escolhível e a função continua pronta, porque o processamento usa as chaves do Cloud Run (as que
+  o roteiro de implantação leva).
+- Aulas e Podcasts rodam **no site**: para usarem uma IA, a chave dela precisa estar também na Vercel. Hoje falta a do Gemini
+  lá; enquanto isso, o Gemini aparece como sem chave no site e essas abas o mostram como não pronto.
 
 ## As funções
 | Função na tela | Onde é usada hoje |

@@ -178,10 +178,20 @@ export function makeProvider(ref: ModelRef, cfg: AiConfig, env: NodeJS.ProcessEn
   return { provider: r.provider, pending: r.status.pending };
 }
 
-/** Motivo pelo qual este servidor não chama a ref agora (desligada, Ollama fora do Mac, chave vazia), ou null. Sem rede. */
-export function refPending(ref: ModelRef, cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): string | null {
-  return providerPending(ref, cfg, env) ?? makeProvider(ref, cfg, env).pending;
+/**
+ * Chave da IA ausente NESTE servidor, conferida pelo env recebido (sem criar provedor, sem rede), com as mesmas regras e
+ * mensagens de resolveProviderKind. A tela só enxerga as variáveis do servidor que responde (o site): ausente aqui não
+ * quer dizer ausente no processamento da Central (Cloud Run), por isso isto é só aviso, nunca bloqueio. O Ollama não tem chave.
+ */
+export function keyPending(id: AiProviderId, env: NodeJS.ProcessEnv = process.env): string | null {
+  if (id === "anthropic") return (env.ANTHROPIC_API_KEY ?? "").trim() ? null : "ANTHROPIC_API_KEY vazia no servidor.";
+  if (id === "gemini") return (env.GEMINI_API_KEY || env.GOOGLE_GEMINI_API_KEY || "").trim().length < 30 ? "GEMINI_API_KEY (ou GOOGLE_GEMINI_API_KEY) ausente ou com formato inválido no servidor." : null;
+  if (id === "openai") return (env.OPENAI_API_KEY ?? "").trim() ? null : "OPENAI_API_KEY vazia no servidor.";
+  return null;
 }
+
+/** Aviso de função: a IA está sem chave neste servidor (o site). */
+const keyWarning = (id: AiProviderId) => `${PROVIDER_NAMES[id]}: sem chave neste servidor (site). O processamento da Central (Cloud Run) usa as chaves de lá; Aulas e Podcasts rodam no site e precisam da chave aqui.`;
 
 /** Problemas de uma ref: IA desligada, modelo fora da lista (não vazia) e modelo pago sem preço com os tetos ligados. */
 export function refProblems(ref: ModelRef, cfg: AiConfig): string[] {
@@ -251,10 +261,11 @@ export interface FunctionCheck {
 export const FUNCTION_KEYS: AiFunctionKey[] = ["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar"];
 
 /**
- * Função salva: além da validação da configuração, confere o que ESTE servidor consegue chamar (Ollama fora do Mac,
- * chave vazia). Sozinha e linha: se nem a principal nem a reserva rodam, é problema; se só a principal não roda, é
- * aviso (a reserva responde); conferente que não roda é aviso. Comitê: vale por membro (a reserva não entra) e
- * precisam rodar 2. IA desligada já é problema em validateFunctionConfig e não se repete aqui.
+ * Função salva: além da validação da configuração, confere o que ESTE servidor consegue chamar. Bloqueia só o que não
+ * roda em nenhum servidor publicado (Ollama no site publicado ou sem resposta): sozinha e linha, nem a principal nem a
+ * reserva rodando é problema; só a principal não rodando é aviso (a reserva responde); conferente que não roda é aviso
+ * e o comitê vale por membro. Chave ausente neste servidor é só aviso (o processamento roda no Cloud Run com as chaves
+ * de lá). IA desligada já é problema em validateFunctionConfig e não se repete aqui.
  */
 function savedFunctionCheck(saved: FunctionConfig, cfg: AiConfig, env: NodeJS.ProcessEnv): FunctionCheck {
   const { problems, warnings } = validateFunctionConfig(saved, cfg);
@@ -263,13 +274,13 @@ function savedFunctionCheck(saved: FunctionConfig, cfg: AiConfig, env: NodeJS.Pr
   };
   interface RefState {
     ref: ModelRef;
-    /** Por que este servidor não consegue chamar a ref (null: consegue, ou a IA está desligada, o que já é problema). */
+    /** Por que a ref não roda em nenhum servidor publicado (null: roda, ou a IA está desligada, o que já é problema). */
     why: string | null;
     runs: boolean;
   }
   const state = (ref: ModelRef): RefState => {
     const off = cfg.providers[ref.provider]?.enabled !== true;
-    const why = off ? null : refPending(ref, cfg, env);
+    const why = off ? null : providerPending(ref, cfg, env);
     return { ref, why, runs: !off && why === null };
   };
   const cannot = (s: RefState, prefix = "") => `${prefix}${PROVIDER_NAMES[s.ref.provider] ?? s.ref.provider} ${s.ref.model} não pode rodar aqui (${s.why})`;
@@ -295,6 +306,11 @@ function savedFunctionCheck(saved: FunctionConfig, cfg: AiConfig, env: NodeJS.Pr
     }
     for (const o of others) if (o.why) add(warnings, cannot(o));
   }
+
+  // chave ausente neste servidor: só aviso, um por IA ligada que o servidor deixa chamar
+  for (const s of [primary, fallback, ...others]) {
+    if (s?.runs && keyPending(s.ref.provider, env)) add(warnings, keyWarning(s.ref.provider));
+  }
   return { source: "banco", ready: problems.length === 0, ref: saved.primary, problems, warnings };
 }
 
@@ -309,28 +325,33 @@ export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.e
     }
     const ref = envFallbackRef(key, env);
     const problems: string[] = [];
+    const warnings: string[] = [];
     if (!ref) problems.push("Nenhuma IA definida: configure a função.");
     else {
       problems.push(...refProblems(ref, cfg));
       const pending = providerPending(ref, cfg, env);
       if (pending && !problems.includes(pending)) problems.push(pending);
+      // chave ausente neste servidor (o site): só aviso, como nas funções salvas
+      if (!pending && keyPending(ref.provider, env)) warnings.push(keyWarning(ref.provider));
     }
-    out[key] = { source: "variaveis", ready: problems.length === 0, ref, problems, warnings: [] };
+    out[key] = { source: "variaveis", ready: problems.length === 0, ref, problems, warnings };
   }
   return out;
 }
 
 /**
- * Para a tela: por que este servidor não consegue chamar cada IA (Ollama fora do Mac, chave vazia), ou null.
- * Não olha o interruptor Ligada/Desligada (isso já aparece no cartão e no seletor) e não usa a rede: confere com o
- * primeiro modelo da lista da IA, o padrão dela ou um nome qualquer, só para conferir a chave.
+ * Para a tela: o que impede este servidor de chamar cada IA, sem rede e sem olhar o interruptor Ligada/Desligada (isso já
+ * aparece no cartão e no seletor). `blocks` quer dizer que não roda em nenhum servidor publicado (Ollama no site
+ * publicado ou sem resposta): o seletor desabilita. Sem `blocks`, `pending` é só a chave ausente NESTE servidor (o site):
+ * a IA continua escolhível, porque o processamento da Central roda no Cloud Run com as chaves de lá.
  */
-export function providerChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): Record<AiProviderId, { pending: string | null }> {
-  const out = {} as Record<AiProviderId, { pending: string | null }>;
+export function providerChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): Record<AiProviderId, { pending: string | null; blocks: boolean }> {
+  const out = {} as Record<AiProviderId, { pending: string | null; blocks: boolean }>;
   for (const id of PROVIDER_IDS) {
+    // confere como se a IA estivesse ligada
     const on: AiConfig = { ...cfg, providers: { ...cfg.providers, [id]: { ...cfg.providers[id], enabled: true } } };
-    const model = cfg.providers[id].models[0]?.id ?? DEFAULT_MODELS[id] ?? "modelo";
-    out[id] = { pending: refPending({ provider: id, model }, on, env) };
+    const block = providerPending({ provider: id, model: "" }, on, env);
+    out[id] = { pending: block ?? keyPending(id, env), blocks: block !== null };
   }
   return out;
 }

@@ -173,26 +173,35 @@ describe("Central de IAs (painel do administrador)", () => {
   });
 
   describe("IA que o servidor não consegue chamar (provider_checks)", () => {
-    const checks = { anthropic: { pending: null }, openai: { pending: "OPENAI_API_KEY vazia no servidor." }, gemini: { pending: null }, ollama: { pending: "Ollama roda só no Mac." } };
+    const GEM = "GEMINI_API_KEY (ou GOOGLE_GEMINI_API_KEY) ausente ou com formato inválido no servidor.";
+    // blocks: não roda em nenhum servidor publicado (Ollama); sem blocks: só falta a chave NESTE servidor (o site)
+    const checks = {
+      anthropic: { pending: null, blocks: false },
+      openai: { pending: "OPENAI_API_KEY vazia no servidor.", blocks: false },
+      gemini: { pending: GEM, blocks: false },
+      ollama: { pending: "Ollama roda só no Mac.", blocks: true },
+    };
     const option = (select: HTMLSelectElement, text: string) => Array.from(select.options).find((o) => o.textContent === text)!;
 
-    it("o cartão mostra o motivo e os seletores deixam a opção desabilitada, como indisponível", async () => {
+    it("só o que bloqueia (Ollama) fica indisponível e desabilitado; chave ausente no site continua escolhível, com o rótulo", async () => {
       overview.provider_checks = checks;
       render(<AdminAI />);
       const ollama = await screen.findByTestId("provider-ollama");
       expect(within(ollama).getByText("Ollama roda só no Mac.")).toBeTruthy();
-      expect(within(screen.getByTestId("provider-openai")).getByText("OPENAI_API_KEY vazia no servidor.")).toBeTruthy();
+      expect(within(screen.getByTestId("provider-openai")).getByText("Sem chave neste servidor (site): OPENAI_API_KEY vazia no servidor. O processamento no Cloud Run usa as próprias chaves.")).toBeTruthy();
+      expect(within(screen.getByTestId("provider-gemini")).getByText(/^Sem chave neste servidor \(site\): GEMINI_API_KEY .* no servidor\. O processamento no Cloud Run usa as próprias chaves\.$/)).toBeTruthy();
       // quem o servidor consegue chamar não mostra motivo
-      expect(within(screen.getByTestId("provider-anthropic")).queryByText(/vazia no servidor|roda só no Mac/)).toBeNull();
+      expect(within(screen.getByTestId("provider-anthropic")).queryByText(/vazia no servidor|roda só no Mac|Sem chave/)).toBeNull();
 
       const box = screen.getByTestId("function-criacao");
       for (const title of ["Principal", "Reserva"]) {
         const select = within(box).getByLabelText(`${title}: IA — Criação`) as HTMLSelectElement;
         expect(option(select, "Ollama (indisponível)").disabled).toBe(true);
-        expect(option(select, "OpenAI (indisponível)").disabled).toBe(true);
+        // sem chave só aqui no site: o processamento roda no Cloud Run, então continua escolhível
+        expect(option(select, "OpenAI (sem chave no site)").disabled).toBe(false);
+        expect(option(select, "Gemini (sem chave no site)").disabled).toBe(false);
         // desligada, mas o servidor consegue chamar: continua escolhível (o servidor recusa salvar até ligar)
         expect(option(select, "Claude (desligada)").disabled).toBe(false);
-        expect(option(select, "Gemini (desligada)").disabled).toBe(false);
       }
     });
 
@@ -215,16 +224,23 @@ describe("Central de IAs (painel do administrador)", () => {
       expect(option(principal, "Ollama (indisponível)").disabled).toBe(false);
       fireEvent.change(principal, { target: { value: "ollama" } });
       expect(principal.value).toBe("ollama");
-      // a OpenAI, indisponível e não salva aqui, segue desabilitada
-      expect(option(principal, "OpenAI (indisponível)").disabled).toBe(true);
     });
 
-    it("sem provider_checks (servidor antigo) nada fica desabilitado", async () => {
+    it("sem provider_checks (servidor antigo) nada fica desabilitado nem ganha rótulo de chave", async () => {
       render(<AdminAI />);
       const box = await screen.findByTestId("function-criacao");
       const select = within(box).getByLabelText("Principal: IA — Criação") as HTMLSelectElement;
       expect(Array.from(select.options).some((o) => o.disabled)).toBe(false);
       expect(option(select, "Ollama (desligada)")).toBeTruthy();
+      expect(Array.from(select.options).some((o) => /sem chave|indisponível/.test(o.textContent ?? ""))).toBe(false);
+    });
+
+    it("o motivo do cartão não repete o texto da última situação da lista", async () => {
+      overview.provider_checks = checks;
+      overview.providers[3] = provider("ollama", { last_status: "so_no_mac", last_status_detail: "Ollama roda só no Mac." });
+      render(<AdminAI />);
+      const ollama = await screen.findByTestId("provider-ollama");
+      expect(within(ollama).getAllByText("Ollama roda só no Mac.")).toHaveLength(1);
     });
   });
 

@@ -621,18 +621,16 @@ describe("Configuração", () => {
 
   describe("situação das funções salvas neste servidor", () => {
     afterEach(() => vi.unstubAllEnvs());
-    const PROD = { NODE_ENV: "production" } as any;
     const MAC = "Ollama roda só no Mac.";
+    const GEM = "GEMINI_API_KEY (ou GOOGLE_GEMINI_API_KEY) ausente ou com formato inválido no servidor.";
     const O = ref("ollama", "qwen3");
     const C = ref("anthropic", "claude-sonnet-5-5");
     const G = ref("gemini", "gemini-2.5-pro");
-    /** Servidor com a chave do Claude e sem as do OpenAI e do Gemini (as chaves vêm do ambiente do processo). */
-    const keys = () => {
-      vi.stubEnv("ANTHROPIC_API_KEY", "chave-de-teste");
-      vi.stubEnv("OPENAI_API_KEY", "");
-      vi.stubEnv("GEMINI_API_KEY", "");
-      vi.stubEnv("GOOGLE_GEMINI_API_KEY", "");
-    };
+    /** O servidor com as três chaves; PROD é o site publicado e LOCAL o Mac. As chaves são conferidas pelo env recebido. */
+    const KEYS = { ANTHROPIC_API_KEY: "k", OPENAI_API_KEY: "k", GEMINI_API_KEY: "g".repeat(40) };
+    const PROD = { ...KEYS, NODE_ENV: "production" } as any;
+    const LOCAL = { ...KEYS } as any;
+    const SEM_CHAVE = (nome: string) => `${nome}: sem chave neste servidor (site). O processamento da Central (Cloud Run) usa as chaves de lá; Aulas e Podcasts rodam no site e precisam da chave aqui.`;
     const check = async (fn: any, env: any = PROD, over: Parameters<typeof mkCfg>[0] = {}) => {
       const { functionChecks } = await import("../../server/ai/config");
       const cfg = mkCfg(over);
@@ -641,38 +639,27 @@ describe("Configuração", () => {
     };
 
     it("só Ollama no site publicado: não está pronta, com o motivo; no Mac continua pronta", async () => {
-      keys();
       const r = await check(fc("sozinha", O));
       expect(r).toMatchObject({ source: "banco", ready: false, ref: O });
       expect(r.problems).toEqual([MAC]);
       // Ollama sem resposta (situação so_no_mac) vale o mesmo
-      expect((await check(fc("sozinha", O), {} as any, { status: { ollama: "so_no_mac" } })).problems).toEqual([MAC]);
-      expect(await check(fc("sozinha", O), {} as any)).toMatchObject({ ready: true, problems: [], warnings: [] });
+      expect((await check(fc("sozinha", O), LOCAL, { status: { ollama: "so_no_mac" } })).problems).toEqual([MAC]);
+      expect(await check(fc("sozinha", O), LOCAL)).toMatchObject({ ready: true, problems: [], warnings: [] });
     });
 
     it("principal que não roda e reserva que roda: pronta, com o aviso de que a reserva vai responder", async () => {
-      keys();
       const r = await check(fc("sozinha", O, [], C));
       expect(r).toMatchObject({ ready: true, problems: [] });
       expect(r.warnings).toEqual([`A principal não pode rodar aqui (${MAC}); a reserva vai responder.`]);
-      // chave vazia no servidor também: principal Gemini sem chave, reserva Claude
-      const k = await check(fc("sozinha", G, [], C), {} as any);
-      expect(k).toMatchObject({ ready: true, problems: [] });
-      expect(k.warnings).toHaveLength(1);
-      expect(k.warnings[0]).toMatch(/^A principal não pode rodar aqui \(GEMINI_API_KEY .*\); a reserva vai responder\.$/);
     });
 
-    it("principal e reserva que não rodam: não está pronta, com os dois motivos; chave vazia sem reserva também", async () => {
-      keys();
-      const r = await check(fc("sozinha", O, [], ref("openai", "gpt-x")));
+    it("principal e reserva que não rodam: não está pronta, com o motivo (uma vez só)", async () => {
+      const r = await check(fc("sozinha", O, [], ref("ollama", "llama3")));
       expect(r.ready).toBe(false);
-      expect(r.problems).toEqual([MAC, "OPENAI_API_KEY vazia no servidor."]);
-      const k = await check(fc("sozinha", ref("openai", "gpt-x")), {} as any);
-      expect(k).toMatchObject({ ready: false, problems: ["OPENAI_API_KEY vazia no servidor."] });
+      expect(r.problems).toEqual([MAC]);
     });
 
     it("IA desligada continua sendo problema, sem repetir o motivo", async () => {
-      keys();
       const r = await check(fc("sozinha", O, [], C), PROD, { enabled: ["anthropic"] });
       expect(r.ready).toBe(false);
       expect(r.problems).toEqual(["Ollama está desligada na Central de IAs."]);
@@ -680,7 +667,6 @@ describe("Configuração", () => {
     });
 
     it("conferente que não roda vira aviso e não tira a função de pronta", async () => {
-      keys();
       const r = await check(fc("linha", C, [O]));
       expect(r).toMatchObject({ ready: true, problems: [] });
       expect(r.warnings).toEqual([`Ollama qwen3 não pode rodar aqui (${MAC})`]);
@@ -691,32 +677,86 @@ describe("Configuração", () => {
     });
 
     it("comitê: vale por membro (a reserva não entra) e precisa de 2 IAs que rodem", async () => {
-      keys();
-      const um = await check(fc("comite", O, [C, G], C));
-      // Gemini sem chave e Ollama fora do Mac: só o Claude roda (a reserva não entra no comitê) e o comitê precisa de 2
+      const um = await check(fc("comite", O, [ref("ollama", "llama3"), C], C));
+      // dois Ollama fora do Mac: só o Claude roda (a reserva não entra no comitê) e o comitê precisa de 2
       expect(um.ready).toBe(false);
       expect(um.problems).toHaveLength(1);
-      expect(um.problems[0]).toMatch(/^O comitê precisa de pelo menos 2 IAs que possam rodar aqui\. Ollama roda só no Mac\. GEMINI_API_KEY/);
-      expect(um.warnings).toContain(`Ollama qwen3 não pode rodar aqui (${MAC})`);
-      vi.stubEnv("GEMINI_API_KEY", "g".repeat(40));
+      expect(um.problems[0]).toMatch(/^O comitê precisa de pelo menos 2 IAs que possam rodar aqui\. Ollama roda só no Mac\./);
       const dois = await check(fc("comite", O, [C, G]));
       expect(dois).toMatchObject({ ready: true, problems: [] });
       expect(dois.warnings).toEqual([`Ollama qwen3 não pode rodar aqui (${MAC})`]);
     });
 
-    it("provider_checks: o motivo de cada IA não poder ser chamada daqui, sem olhar o interruptor", async () => {
-      keys();
+    it("chave ausente neste servidor (site) é só aviso: a função continua pronta", async () => {
+      const semChaves = { NODE_ENV: "production" } as any;
+      const g = await check(fc("sozinha", G), semChaves);
+      expect(g).toMatchObject({ ready: true, problems: [] });
+      expect(g.warnings).toEqual([SEM_CHAVE("Gemini")]);
+      // um aviso por IA (principal e reserva da mesma IA não repetem); IA com a chave não avisa
+      expect((await check(fc("sozinha", C, [], G), { NODE_ENV: "production", ANTHROPIC_API_KEY: "k" } as any)).warnings).toEqual([SEM_CHAVE("Gemini")]);
+      expect((await check(fc("sozinha", G, [], ref("gemini", "gemini-flash")), semChaves)).warnings).toEqual([SEM_CHAVE("Gemini")]);
+      // chave do Gemini com menos de 30 caracteres conta como sem chave; com 30 não avisa
+      expect((await check(fc("sozinha", G), { GEMINI_API_KEY: "g".repeat(30) } as any)).warnings).toEqual([]);
+      expect((await check(fc("sozinha", G), { GEMINI_API_KEY: "curta" } as any)).warnings).toEqual([SEM_CHAVE("Gemini")]);
+      // Ollama em produção continua não pronta; IA desligada continua problema e não ganha aviso de chave
+      expect(await check(fc("sozinha", O), semChaves)).toMatchObject({ ready: false, problems: [MAC] });
+      expect(await check(fc("sozinha", G), semChaves, { enabled: ["anthropic"] })).toMatchObject({ ready: false, problems: ["Gemini está desligada na Central de IAs."], warnings: [] });
+    });
+
+    it("função sem configuração salva: chave ausente também é só aviso", async () => {
+      const { functionChecks } = await import("../../server/ai/config");
+      const r = functionChecks(mkCfg(), { CONTENT_HUB_AI_PROVIDER: "gemini" } as any).criacao;
+      expect(r).toMatchObject({ source: "variaveis", ready: true, problems: [] });
+      expect(r.warnings).toEqual([SEM_CHAVE("Gemini")]);
+      expect(functionChecks(mkCfg(), { CONTENT_HUB_AI_PROVIDER: "gemini", GEMINI_API_KEY: "g".repeat(40) } as any).criacao.warnings).toEqual([]);
+    });
+
+    it("keyPending: confere as chaves pelo env recebido, com as regras e as mensagens do resolveProviderKind", async () => {
+      const { keyPending } = await import("../../server/ai/config");
+      const { resolveProviderKind } = await import("../../server/contentHub/ai/provider");
+      expect(keyPending("anthropic", {} as any)).toBe("ANTHROPIC_API_KEY vazia no servidor.");
+      expect(keyPending("anthropic", { ANTHROPIC_API_KEY: "   " } as any)).toBe("ANTHROPIC_API_KEY vazia no servidor.");
+      expect(keyPending("anthropic", { ANTHROPIC_API_KEY: "k" } as any)).toBeNull();
+      expect(keyPending("openai", {} as any)).toBe("OPENAI_API_KEY vazia no servidor.");
+      expect(keyPending("openai", { OPENAI_API_KEY: "k" } as any)).toBeNull();
+      expect(keyPending("gemini", {} as any)).toBe(GEM);
+      expect(keyPending("gemini", { GEMINI_API_KEY: "g".repeat(29) } as any)).toBe(GEM);
+      expect(keyPending("gemini", { GEMINI_API_KEY: "g".repeat(30) } as any)).toBeNull();
+      expect(keyPending("gemini", { GOOGLE_GEMINI_API_KEY: "g".repeat(40) } as any)).toBeNull();
+      expect(keyPending("ollama", {} as any)).toBeNull();
+      // as mesmas respostas do resolveProviderKind, que lê o process.env (conferência contra desvio das regras)
+      const estados: Record<string, string>[] = [
+        {},
+        { ANTHROPIC_API_KEY: "k" },
+        { ANTHROPIC_API_KEY: "  " },
+        { OPENAI_API_KEY: "k" },
+        { GEMINI_API_KEY: "curta" },
+        { GEMINI_API_KEY: "g".repeat(30) },
+        { GOOGLE_GEMINI_API_KEY: "g".repeat(40) },
+        { GEMINI_API_KEY: "  ", GOOGLE_GEMINI_API_KEY: "g".repeat(40) },
+      ];
+      for (const estado of estados) {
+        for (const nome of ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "GOOGLE_GEMINI_API_KEY"]) vi.stubEnv(nome, estado[nome] ?? "");
+        for (const id of ["anthropic", "openai", "gemini"] as const) {
+          expect(keyPending(id, process.env), `${id} ${JSON.stringify(estado)}`).toBe(resolveProviderKind(id, undefined, "modelo-x", { allowExternal: true }).status.pending);
+        }
+      }
+    });
+
+    it("provider_checks: o que bloqueia (Ollama fora do Mac) e a chave ausente neste servidor, sem olhar o interruptor", async () => {
       const { providerChecks } = await import("../../server/ai/config");
-      const off = providerChecks(mkCfg({ enabled: [] }), {} as any);
-      expect(Object.keys(off).sort()).toEqual(["anthropic", "gemini", "ollama", "openai"]);
-      expect(off.anthropic).toEqual({ pending: null });
-      expect(off.openai).toEqual({ pending: "OPENAI_API_KEY vazia no servidor." });
-      expect(off.gemini.pending).toMatch(/GEMINI_API_KEY/);
-      expect(off.ollama).toEqual({ pending: null });
-      expect(providerChecks(mkCfg(), PROD).ollama).toEqual({ pending: MAC });
-      expect(providerChecks(mkCfg({ status: { ollama: "so_no_mac" } }), {} as any).ollama).toEqual({ pending: MAC });
-      // testa com o primeiro modelo da lista da IA (um modelo qualquer só para conferir a chave)
-      expect(providerChecks(mkCfg({ models: { openai: ["gpt-x"] } }), {} as any).openai.pending).toBe("OPENAI_API_KEY vazia no servidor.");
+      const soClaude = { ANTHROPIC_API_KEY: "k" } as any;
+      expect(providerChecks(mkCfg({ enabled: [] }), soClaude)).toEqual({
+        anthropic: { pending: null, blocks: false },
+        openai: { pending: "OPENAI_API_KEY vazia no servidor.", blocks: false },
+        gemini: { pending: GEM, blocks: false },
+        ollama: { pending: null, blocks: false },
+      });
+      // no site publicado o Ollama bloqueia; a chave ausente não bloqueia
+      const prod = providerChecks(mkCfg(), { ...soClaude, NODE_ENV: "production" });
+      expect(prod.ollama).toEqual({ pending: MAC, blocks: true });
+      expect(prod.gemini).toEqual({ pending: GEM, blocks: false });
+      expect(providerChecks(mkCfg({ status: { ollama: "so_no_mac" } }), {} as any).ollama).toEqual({ pending: MAC, blocks: true });
     });
   });
 });
@@ -1282,17 +1322,12 @@ describe("Rotas", () => {
     tokens.admin = await dev.createSession(ADMIN);
     tokens.editor = await dev.createSession(EDITOR);
     tokens.student = await dev.createSession(STUDENT);
-    // as chaves das IAs vêm do ambiente do processo: aqui só a do Claude está no servidor
-    vi.stubEnv("ANTHROPIC_API_KEY", KEY);
-    vi.stubEnv("OPENAI_API_KEY", "");
-    vi.stubEnv("GEMINI_API_KEY", "");
-    vi.stubEnv("GOOGLE_GEMINI_API_KEY", "");
+    // as chaves vêm do env do roteador: aqui só a do Claude está neste "servidor"
     const { createAiRouter } = await import("../../server/ai/router");
     base = `${await listen((app) => app.use("/api/ai-central", createAiRouter({ db }, { fetchImpl, env: { ANTHROPIC_API_KEY: KEY } as any })))}/api/ai-central`;
     prod = `${await listen((app) => app.use("/api/ai-central", createAiRouter({ db }, { fetchImpl, env: { ANTHROPIC_API_KEY: KEY, NODE_ENV: "production" } as any })))}/api/ai-central`;
   });
   afterAll(async () => {
-    vi.unstubAllEnvs();
     await Promise.all(servers.map((s) => new Promise((r) => s.close(r))));
   });
   beforeEach(resetAiState);
@@ -1462,14 +1497,15 @@ describe("Rotas", () => {
     expect(text).not.toContain(KEY);
     const j = JSON.parse(text);
     expect(Object.keys(j.provider_checks).sort()).toEqual(["anthropic", "gemini", "ollama", "openai"]);
-    expect(j.provider_checks.anthropic).toEqual({ pending: null });
-    expect(j.provider_checks.openai).toEqual({ pending: "OPENAI_API_KEY vazia no servidor." });
-    expect(j.provider_checks.gemini.pending).toMatch(/GEMINI_API_KEY/);
-    expect(j.provider_checks.ollama).toEqual({ pending: null });
-    // no site publicado o Ollama aparece como "roda só no Mac"
+    expect(j.provider_checks.anthropic).toEqual({ pending: null, blocks: false });
+    // chave ausente neste servidor: motivo, mas não bloqueia
+    expect(j.provider_checks.openai).toEqual({ pending: "OPENAI_API_KEY vazia no servidor.", blocks: false });
+    expect(j.provider_checks.gemini).toEqual({ pending: expect.stringMatching(/GEMINI_API_KEY/), blocks: false });
+    expect(j.provider_checks.ollama).toEqual({ pending: null, blocks: false });
+    // no site publicado o Ollama aparece como "roda só no Mac" e bloqueia
     const site = await (await callAt(prod, "admin", "GET", "/overview")).json();
-    expect(site.provider_checks.ollama).toEqual({ pending: "Ollama roda só no Mac." });
-    expect(site.provider_checks.anthropic).toEqual({ pending: null });
+    expect(site.provider_checks.ollama).toEqual({ pending: "Ollama roda só no Mac.", blocks: true });
+    expect(site.provider_checks.anthropic).toEqual({ pending: null, blocks: false });
 
     // função salva no Mac com Ollama: pronta no Mac, não pronta no site publicado (com o motivo)
     await call("admin", "POST", "/providers/ollama/enabled", { enabled: true });
@@ -1478,6 +1514,14 @@ describe("Rotas", () => {
     expect(mac).toMatchObject({ source: "banco", ready: true, problems: [] });
     const publicado = (await (await callAt(prod, "admin", "GET", "/overview")).json()).checks.criacao;
     expect(publicado).toMatchObject({ source: "banco", ready: false, problems: ["Ollama roda só no Mac."] });
+
+    // Gemini sem chave neste servidor (o site): pode ser salvo, e a função fica pronta, só com o aviso
+    await call("admin", "POST", "/providers/gemini/enabled", { enabled: true });
+    const gem = await call("admin", "PUT", "/functions/verificacao", { config: { mode: "sozinha", primary: { provider: "gemini", model: "gemini-2.5-pro" } } });
+    expect(gem.status).toBe(200);
+    const ver = (await (await callAt(prod, "admin", "GET", "/overview")).json()).checks.verificacao;
+    expect(ver).toMatchObject({ source: "banco", ready: true, problems: [] });
+    expect(ver.warnings).toEqual([expect.stringContaining("Gemini: sem chave neste servidor (site).")]);
   });
 
   it("preço editado grava a data de hoje e recusa número negativo", async () => {

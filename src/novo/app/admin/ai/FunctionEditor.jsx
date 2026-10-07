@@ -18,9 +18,10 @@ const toRef = (r) => (r && r.provider && r.model ? { provider: r.provider, model
 const asDraft = (r) => (r ? { provider: r.provider ?? "", model: r.model ?? "" } : { ...EMPTY });
 
 /**
- * IA + modelo: lista da IA quando houver; senão, o id digitado. A IA que o servidor não consegue chamar (checks[id].pending:
- * Ollama no site publicado, chave vazia) aparece como indisponível e desabilitada, exceto se já for a escolhida aqui ou a
- * salva neste lugar (a pessoa precisa conseguir ver, trocar e voltar).
+ * IA + modelo: lista da IA quando houver; senão, o id digitado. A IA que não roda em nenhum servidor publicado
+ * (checks[id].blocks: Ollama no site publicado) aparece como indisponível e desabilitada, exceto se já for a escolhida aqui
+ * ou a salva neste lugar (a pessoa precisa conseguir ver, trocar e voltar). Chave ausente só neste servidor (o site) não
+ * bloqueia: o processamento da Central roda no Cloud Run com as chaves de lá; a opção continua escolhível, com o rótulo.
  */
 function ModelPicker({ title, fn, value, onChange, providers, checks, saved }) {
   const info = providers.find((p) => p.id === value.provider);
@@ -37,8 +38,9 @@ function ModelPicker({ title, fn, value, onChange, providers, checks, saved }) {
         options={[
           { value: "", label: "Escolha a IA" },
           ...providers.map((p) => {
-            const pending = checks?.[p.id]?.pending;
-            return { value: p.id, label: PROVIDER_NAME[p.id] + (pending ? " (indisponível)" : p.enabled ? "" : " (desligada)"), disabled: Boolean(pending) && p.id !== value.provider && p.id !== saved };
+            const { pending, blocks } = checks?.[p.id] ?? {};
+            const note = pending ? (blocks === true ? " (indisponível)" : " (sem chave no site)") : p.enabled ? "" : " (desligada)";
+            return { value: p.id, label: PROVIDER_NAME[p.id] + note, disabled: blocks === true && p.id !== value.provider && p.id !== saved };
           }),
         ]}
       />
