@@ -156,16 +156,34 @@ export function envFallbackRef(fn: AiFunctionKey, env: NodeJS.ProcessEnv = proce
   return { provider: id, model };
 }
 
-export function makeProvider(ref: ModelRef, cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): { provider: AiProvider | null; pending: string | null } {
+/** Motivo pelo qual a IA não pode ser chamada agora (desligada, Ollama fora do Mac), ou null. */
+export function providerPending(ref: ModelRef, cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): string | null {
   const name = PROVIDER_NAMES[ref.provider] ?? ref.provider;
   const p = cfg.providers[ref.provider];
-  if (p?.enabled !== true) return { provider: null, pending: `${name} está desligada na Central de IAs.` };
-  if (ref.provider === "ollama") {
-    if (env.NODE_ENV === "production" || p.status === "so_no_mac") return { provider: null, pending: "Ollama roda só no Mac." };
-    return { provider: new OllamaProvider((env.OLLAMA_BASE_URL || "http://localhost:11434").trim(), ref.model), pending: null };
-  }
+  if (p?.enabled !== true) return `${name} está desligada na Central de IAs.`;
+  if (ref.provider === "ollama" && (env.NODE_ENV === "production" || p.status === "so_no_mac")) return "Ollama roda só no Mac.";
+  return null;
+}
+
+export function makeProvider(ref: ModelRef, cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): { provider: AiProvider | null; pending: string | null } {
+  const pending = providerPending(ref, cfg, env);
+  if (pending) return { provider: null, pending };
+  if (ref.provider === "ollama") return { provider: new OllamaProvider((env.OLLAMA_BASE_URL || "http://localhost:11434").trim(), ref.model), pending: null };
   const r = resolveProviderKind(ref.provider, undefined, ref.model, { allowExternal: true });
   return { provider: r.provider, pending: r.status.pending };
+}
+
+/** Problemas de uma ref: IA desligada, modelo fora da lista (não vazia) e modelo pago sem preço com os tetos ligados. */
+export function refProblems(ref: ModelRef, cfg: AiConfig): string[] {
+  const out: string[] = [];
+  const name = PROVIDER_NAMES[ref.provider] ?? ref.provider;
+  const p = cfg.providers[ref.provider];
+  if (p?.enabled !== true) out.push(`${name} está desligada na Central de IAs.`);
+  if (p && p.models.length > 0 && !p.models.some((m) => m.id === ref.model)) out.push(`${name} ${ref.model}: modelo não está mais na lista.`);
+  if (cfg.settings.caps_enabled && ref.provider !== "ollama" && !cfg.prices.some((x) => x.provider === ref.provider && x.model === ref.model)) {
+    out.push(`${name} ${ref.model}: sem preço cadastrado, e os tetos estão ligados.`);
+  }
+  return out;
 }
 
 export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig): { problems: string[]; warnings: string[] } {
@@ -176,13 +194,7 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig): { pro
   };
 
   const checkRef = (ref: ModelRef) => {
-    const name = PROVIDER_NAMES[ref.provider] ?? ref.provider;
-    const p = cfg.providers[ref.provider];
-    if (p?.enabled !== true) add(`${name} está desligada na Central de IAs.`);
-    if (p && p.models.length > 0 && !p.models.some((m) => m.id === ref.model)) add(`${name} ${ref.model}: modelo não está mais na lista.`);
-    if (cfg.settings.caps_enabled && ref.provider !== "ollama" && !cfg.prices.some((x) => x.provider === ref.provider && x.model === ref.model)) {
-      add(`${name} ${ref.model}: sem preço cadastrado, e os tetos estão ligados.`);
-    }
+    for (const m of refProblems(ref, cfg)) add(m);
   };
 
   if (!fc.primary) add("Escolha a IA principal.");

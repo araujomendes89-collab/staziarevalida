@@ -4,7 +4,7 @@
  * (e tudo vai para o registro de ações), funções e preços são validados no banco, o gasto do mês é contado no fuso de
  * Brasília e o painel (administrador) e o resumo (equipe) respeitam o papel de quem chama.
  */
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
@@ -509,5 +509,302 @@ describe("Configuração", () => {
     expect(envFallbackRef("criacao", { CONTENT_HUB_GEMINI_MODEL: "g-hub" } as any, "gemini")?.model).toBe("g-hub");
     expect(envFallbackRef("verificacao", {} as any)).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" });
     expect(envFallbackRef("verificacao", { CONTENT_HUB_VERIFIER_PROVIDER: "mock" } as any)).toBeNull();
+  });
+});
+
+describe("Maestro", () => {
+  type R = { provider: string; model: string };
+  const A: R = { provider: "anthropic", model: "claude-sonnet-5-5" };
+  const O: R = { provider: "openai", model: "gpt-5.4" };
+  const G: R = { provider: "gemini", model: "gemini-2.5-pro" };
+  const L: R = { provider: "ollama", model: "qwen3" };
+  const origin = { source: "central" as const, itemId: "item-1", actorId: null };
+  const REQ = { promptId: "t", promptVersion: "1", system: "sistema", input: "x".repeat(400), schema: { type: "object" as const }, schemaName: "teste", maxOutputTokens: 1000 };
+  type Handler = (req: any, n: number) => unknown | Promise<unknown>;
+  const key = (r: R) => `${r.provider}:${r.model}`;
+
+  /** Provedores falsos: cada chamada passa por `handler` (n = número da chamada, a partir de 1); sem rede. */
+  function fakes(handlers: Record<string, Handler>, usage: { inTok?: number; outTok?: number } = {}) {
+    const calls: Record<string, any[]> = {};
+    const makeProviderFor = (ref: R) => {
+      const h = handlers[key(ref)];
+      if (!h) return null;
+      return {
+        name: ref.provider,
+        model: ref.model,
+        isMock: false,
+        async generate(req: any) {
+          (calls[key(ref)] ??= []).push(req);
+          const output = await h(req, calls[key(ref)].length);
+          return { output, provider: ref.provider, model: ref.model, inputTokens: usage.inTok ?? 10, outputTokens: usage.outTok ?? 20, latencyMs: 1, costUsd: null };
+        },
+      } as any;
+    };
+    return { makeProviderFor, calls };
+  }
+
+  const rows = async (runId: string) =>
+    (await dev.db.query<any>(`select role, provider, model, outcome, mode, source, item_id, error, cost_usd::float8 as cost, function_key from public.ai_calls where run_id = $1 order by id`, [runId])).rows;
+  const deps = (f: ReturnType<typeof fakes> | null, extra: any = {}) => ({ db, env: {} as any, makeProviderFor: f?.makeProviderFor, log: () => {}, ...extra });
+  const run = async (d: any, fn: any, req: any = REQ, o: any = origin, override?: any) => {
+    const { runFunction } = await import("../../server/ai/maestro");
+    return runFunction<any>(d, fn, req, o, override);
+  };
+  const on = async (...ids: string[]) => {
+    for (const id of ids) await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: id, p_enabled: true });
+  };
+  const saveFn = async (k: string, mode: string, primary: R | null, reviewers: R[] = [], fallback: R | null = null, care = "caprichado") => {
+    await db.service("ch_worker_ai_save_function", { p_actor: ADMIN, p_key: k, p_config: { mode, primary_ref: primary, fallback_ref: fallback, reviewers, care } });
+  };
+  const settings = async (s: object) => {
+    await db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: s });
+  };
+  const price = async (r: R, i: number, o: number) => {
+    await db.service("ch_worker_ai_save_price", { p_actor: ADMIN, p_provider: r.provider, p_model: r.model, p_price: { input_per_mtok: i, output_per_mtok: o, source_url: "https://exemplo.com", checked_on: "2026-10-07" } });
+  };
+  const monthSpend = async () => Number(await db.service<any>("ch_worker_ai_month_spend", { p_now: new Date().toISOString() }));
+
+  beforeEach(async () => {
+    const { invalidateAiConfig } = await import("../../server/ai/config");
+    for (const sql of [
+      "delete from public.ai_calls",
+      "delete from public.ai_functions",
+      "delete from public.ai_model_prices",
+      "update public.ai_providers set enabled = false, models = '[]'::jsonb, last_status = null",
+      "update public.ai_settings set caps_enabled = false, monthly_cap_usd = null, per_run_cap_usd = null, tab_override_enabled = false",
+    ]) {
+      await dev.db.query(sql);
+    }
+    invalidateAiConfig(db);
+  });
+  const refresh = async () => (await import("../../server/ai/config")).invalidateAiConfig(db);
+
+  it("sozinha: principal falha e a reserva responde; as duas chamadas ficam registradas", async () => {
+    await on("anthropic", "openai");
+    await saveFn("criacao", "sozinha", A, [], O);
+    await refresh();
+    const f = fakes({ [key(A)]: () => { throw new Error("boom"); }, [key(O)]: () => ({ ok: 1 }) });
+    const r = await run(deps(f), "criacao");
+    expect(r.status).toBe("ok");
+    expect(r.output).toEqual({ ok: 1 });
+    const rs = await rows(r.runId);
+    expect(rs.map((x: any) => `${x.role}:${x.outcome}`)).toEqual(["principal:falha", "principal:falha", "reserva:ok"]);
+    expect(rs[0].error).toContain("boom");
+    expect(rs[2].provider).toBe("openai");
+  });
+
+  it("nova tentativa: principal falha uma vez e responde na segunda (duas linhas principal)", async () => {
+    await on("anthropic");
+    await saveFn("criacao", "sozinha", A);
+    await refresh();
+    const f = fakes({ [key(A)]: (_r, n) => { if (n === 1) throw new Error("instável"); return { ok: 2 }; } });
+    const r = await run(deps(f), "criacao");
+    expect(r.status).toBe("ok");
+    expect((await rows(r.runId)).map((x: any) => `${x.role}:${x.outcome}`)).toEqual(["principal:falha", "principal:ok"]);
+  });
+
+  it("linha: problema de gravidade alta vira precisa_revisao", async () => {
+    await on("anthropic", "openai");
+    await saveFn("criacao", "linha", A, [O]);
+    await refresh();
+    const f = fakes({
+      [key(A)]: () => ({ gabarito: "A" }),
+      [key(O)]: (req) => {
+        expect(req.schemaName).toBe("parecer");
+        expect(req.input).toContain("RESPOSTA A CONFERIR");
+        return { verdict: "problemas", problems: [{ severity: "alta", field: "gabarito", description: "errado" }] };
+      },
+    });
+    const r = await run(deps(f), "criacao");
+    expect(r.status).toBe("precisa_revisao");
+    expect(r.output).toEqual({ gabarito: "A" });
+    expect(r.reviews).toHaveLength(1);
+    expect((await rows(r.runId)).map((x: any) => `${x.role}:${x.outcome}`)).toEqual(["criadora:ok", "conferente:ok"]);
+  });
+
+  it("linha: conferente fora do ar vira precisa_revisao (conferência incompleta)", async () => {
+    await on("anthropic");
+    await saveFn("criacao", "linha", A, [O]);
+    await refresh();
+    const f = fakes({ [key(A)]: () => ({ gabarito: "A" }), [key(O)]: () => ({ verdict: "de_acordo", problems: [] }) });
+    const r = await run(deps(f), "criacao");
+    expect(r.status).toBe("precisa_revisao");
+    expect(r.message).toContain("conferência incompleta");
+    expect(f.calls[key(O)]).toBeUndefined();
+    const rs = await rows(r.runId);
+    expect(rs.find((x: any) => x.role === "conferente").outcome).toBe("bloqueada");
+  });
+
+  it("comitê: concordância no gabarito e divergência na área", async () => {
+    await on("anthropic", "openai", "gemini");
+    await saveFn("criacao", "comite", A, [O, G]);
+    await refresh();
+    const f = fakes({ [key(A)]: () => ({ gabarito: "A", area: "x" }), [key(O)]: () => ({ gabarito: "A", area: "y" }), [key(G)]: () => ({ gabarito: "A", area: "x" }) });
+    const r = await run(deps(f), "criacao", { ...REQ, compareFields: ["gabarito", "area"] });
+    expect(r.agreement[0]).toMatchObject({ field: "gabarito", agree: true });
+    expect(r.agreement[1]).toMatchObject({ field: "area", agree: false });
+    expect(r.status).toBe("precisa_revisao");
+    expect(r.outputs).toHaveLength(3);
+    expect(r.output).toEqual({ gabarito: "A", area: "x" });
+    expect((await rows(r.runId)).every((x: any) => x.role === "membro" && x.mode === "comite")).toBe(true);
+  });
+
+  it("comitê com 1 de 3 respondendo falha", async () => {
+    await on("anthropic", "openai", "gemini");
+    await saveFn("criacao", "comite", A, [O, G]);
+    await refresh();
+    const f = fakes({ [key(A)]: () => ({ gabarito: "A" }), [key(O)]: () => { throw new Error("fora"); }, [key(G)]: () => { throw new Error("fora"); } });
+    const r = await run(deps(f), "criacao", { ...REQ, compareFields: ["gabarito"] });
+    expect(r.status).toBe("falhou");
+    expect(r.outputs.filter((o: any) => o.output).length).toBe(1);
+  });
+
+  it("teto por execução: comitê de 3 estimado acima do teto não chama ninguém", async () => {
+    await on("anthropic", "openai", "gemini");
+    await saveFn("criacao", "comite", A, [O, G]);
+    for (const r of [A, O, G]) await price(r, 10, 50);
+    await settings({ caps_enabled: true, per_run_cap_usd: 0.05 });
+    await refresh();
+    const f = fakes({ [key(A)]: () => ({}), [key(O)]: () => ({}), [key(G)]: () => ({}) });
+    const r = await run(deps(f), "criacao");
+    expect(r.status).toBe("parou_no_teto");
+    expect(r.message).toMatch(/teto por execução de US\$ 0,05/);
+    expect(Object.keys(f.calls)).toEqual([]);
+    const rs = await rows(r.runId);
+    expect(rs).toHaveLength(3);
+    expect(rs.every((x: any) => x.outcome === "teto")).toBe(true);
+  });
+
+  it("teto mensal: gasto + estimativa acima do teto para as pagas; Ollama continua", async () => {
+    await on("anthropic", "ollama");
+    await saveFn("criacao", "linha", L, [A]);
+    await price(A, 2, 10);
+    await settings({ caps_enabled: true, monthly_cap_usd: 0.92 });
+    await dev.db.query(`insert into public.ai_calls (function_key, mode, role, provider, model, cost_usd, outcome) values ('criacao', 'sozinha', 'principal', 'anthropic', 'm', 0.9, 'ok')`);
+    await refresh();
+    const f = fakes({ [key(L)]: () => ({ gabarito: "A" }), [key(A)]: () => ({ verdict: "de_acordo", problems: [] }) });
+    const r = await run(deps(f), "criacao");
+    expect(f.calls[key(A)]).toBeUndefined();
+    expect(r.output).toEqual({ gabarito: "A" });
+    expect(r.status).toBe("precisa_revisao");
+    const rs = await rows(r.runId);
+    expect(rs.map((x: any) => `${x.provider}:${x.outcome}`)).toEqual(["ollama:ok", "anthropic:teto"]);
+    expect(rs[0].cost).toBe(0);
+  });
+
+  it("IA desligada depois de configurada: recusa com a mensagem e sem cair nas variáveis", async () => {
+    await on("anthropic");
+    await saveFn("criacao", "sozinha", A);
+    await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "anthropic", p_enabled: false });
+    await refresh();
+    const f = fakes({ [key(A)]: () => ({ ok: 1 }), "anthropic:claude-env": () => ({ ok: 1 }) });
+    const env = { CONTENT_HUB_AI_PROVIDER_CREATE: "anthropic", CONTENT_HUB_MODEL_CREATE: "claude-env" } as any;
+    const r = await run(deps(f, { env }), "criacao");
+    expect(r.status).toBe("falhou");
+    expect(r.message).toContain("Claude está desligada na Central de IAs");
+    expect(Object.keys(f.calls)).toEqual([]);
+    expect((await rows(r.runId))[0].outcome).toBe("bloqueada");
+  });
+
+  it("modelo retirado da lista: falha com o motivo, sem usar outro modelo", async () => {
+    await on("anthropic");
+    await saveFn("criacao", "sozinha", A);
+    await db.service("ch_worker_ai_store_models", { p_provider: "anthropic", p_models: [{ id: "claude-outro", label: "Outro" }], p_status: "ok", p_detail: null });
+    await refresh();
+    const f = fakes({ [key(A)]: () => ({ ok: 1 }), "anthropic:claude-outro": () => ({ ok: 1 }) });
+    const r = await run(deps(f), "criacao");
+    expect(r.status).toBe("falhou");
+    expect(r.message).toContain("modelo não está mais na lista");
+    expect(Object.keys(f.calls)).toEqual([]);
+  });
+
+  it("Ollama em produção usa a reserva", async () => {
+    await on("ollama", "anthropic");
+    await saveFn("criacao", "sozinha", L, [], A);
+    await refresh();
+    const f = fakes({ [key(L)]: () => ({ ok: 0 }), [key(A)]: () => ({ ok: 1 }) });
+    const r = await run(deps(f, { env: { NODE_ENV: "production" } }), "criacao");
+    expect(r.status).toBe("ok");
+    expect(r.output).toEqual({ ok: 1 });
+    expect(f.calls[key(L)]).toBeUndefined();
+    const rs = await rows(r.runId);
+    expect(rs.map((x: any) => `${x.role}:${x.outcome}`)).toEqual(["principal:bloqueada", "reserva:ok"]);
+    expect(rs[0].error).toBe("Ollama roda só no Mac.");
+  });
+
+  it("duas execuções em paralelo perto do teto não passam de teto + 1 estimativa", async () => {
+    await on("anthropic");
+    await saveFn("criacao", "sozinha", A);
+    await price(A, 10, 10);
+    await settings({ caps_enabled: true, monthly_cap_usd: 0.05 });
+    await refresh();
+    const f = fakes({ [key(A)]: () => new Promise((res) => setTimeout(() => res({ ok: 1 }), 40)) }, { inTok: 100, outTok: 3000 });
+    const d = deps(f);
+    const req = { ...REQ, maxOutputTokens: 3000 };
+    const [r1, r2] = await Promise.all([run(d, "criacao", req), run(d, "criacao", req)]);
+    expect(r1.status).toBe("ok");
+    expect(r2.status).toBe("ok");
+    const estimate = (Math.ceil((REQ.system.length + REQ.input.length) / 4) * 10 + 3000 * 10) / 1_000_000;
+    const spent = await monthSpend();
+    expect(spent).toBeGreaterThan(0.05);
+    expect(spent).toBeLessThanOrEqual(0.05 + estimate);
+    await refresh();
+    const r3 = await run(d, "criacao", req);
+    expect(r3.status).toBe("parou_no_teto");
+  });
+
+  it("seletor da aba só vale com o interruptor ligado", async () => {
+    await on("anthropic", "openai");
+    await saveFn("criacao", "sozinha", A);
+    await refresh();
+    const f = fakes({ [key(A)]: () => ({ de: "A" }), [key(O)]: () => ({ de: "O" }) });
+    const r1 = await run(deps(f), "criacao", REQ, origin, { ref: O });
+    expect(r1.output).toEqual({ de: "A" });
+    await settings({ tab_override_enabled: true });
+    await refresh();
+    const r2 = await run(deps(f), "criacao", REQ, origin, { ref: O });
+    expect(r2.output).toEqual({ de: "O" });
+  });
+
+  it("mock não depende de ligado/desligado e custa zero", async () => {
+    const mock = { name: "mock", model: "mock-dev", isMock: true, generate: async () => ({ output: { m: 1 }, provider: "mock", model: "mock-dev", inputTokens: null, outputTokens: null, latencyMs: 0, costUsd: null }) } as any;
+    const r = await run(deps(null, { mockProvider: mock }), "criacao");
+    expect(r.status).toBe("ok");
+    expect(r.output).toEqual({ m: 1 });
+    expect(r.costUsd).toBe(0);
+    expect(await rows(r.runId)).toEqual([]);
+  });
+
+  it("função sem configuração usa a ref das variáveis e grava em ai_calls", async () => {
+    await on("anthropic");
+    await refresh();
+    const f = fakes({ "anthropic:claude-x": () => ({ ok: 1 }) });
+    const env = { CONTENT_HUB_AI_PROVIDER_CREATE: "anthropic", CONTENT_HUB_MODEL_CREATE: "claude-x" } as any;
+    const r = await run(deps(f, { env }), "criacao");
+    expect(r.status).toBe("ok");
+    const rs = await rows(r.runId);
+    expect(rs).toHaveLength(1);
+    expect(rs[0]).toMatchObject({ provider: "anthropic", model: "claude-x", mode: "sozinha", role: "principal", outcome: "ok", source: "central", item_id: "item-1", function_key: "criacao" });
+  });
+
+  it("cuidado caprichado vira effort high só em função salva", async () => {
+    await on("anthropic");
+    await refresh();
+    const f1 = fakes({ [key(A)]: () => ({}) });
+    await run(deps(f1, { env: { CONTENT_HUB_MODEL_CREATE: A.model } }), "criacao");
+    expect(f1.calls[key(A)][0].effort).toBeUndefined();
+    await saveFn("criacao", "sozinha", A, [], null, "caprichado");
+    await refresh();
+    const f2 = fakes({ [key(A)]: () => ({}) });
+    await run(deps(f2), "criacao");
+    expect(f2.calls[key(A)][0].effort).toBe("high");
+    await saveFn("criacao", "sozinha", A, [], null, "rapido");
+    await refresh();
+    const f3 = fakes({ [key(A)]: () => ({}) });
+    await run(deps(f3), "criacao");
+    expect(f3.calls[key(A)][0].effort).toBe("low");
+    const f4 = fakes({ [key(A)]: () => ({}) });
+    await run(deps(f4), "criacao", { ...REQ, effort: "medium" });
+    expect(f4.calls[key(A)][0].effort).toBe("medium");
   });
 });
