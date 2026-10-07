@@ -1,20 +1,25 @@
-# O que NÃO vai para o Google Cloud Build (a imagem do processamento de PDF só precisa do servidor e dos scripts).
+# O que NÃO vai para o Google Cloud Build. A imagem do processamento de PDF precisa do servidor, dos scripts, de src/ (o pacote
+# do processamento usa partes dele) e, de public/, só do logo. Regras com "/" no começo valem só para a raiz do projeto.
 .git
 .gitignore
 .env
 .env.*
 node_modules
-.data
-dist
-dist-worker
-server-dist
-.vercel
-content-engine
-checklists-pack
-.claude
-revalida-reverse-engine
-_unused
-src
-docs
-supabase
 *.log
+/.data
+/dist
+/dist-worker
+/server-dist
+/.vercel
+/content-engine
+/checklists-pack
+/.claude
+/revalida-reverse-engine
+/_unused
+/docs
+/supabase
+/src/__tests__
+/public/*
+!/public/novo-assets/
+/public/novo-assets/*
+!/public/novo-assets/logo-horizontal.png

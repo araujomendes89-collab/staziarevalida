@@ -42,3 +42,23 @@ O servidor do site (Vercel) não lê PDF, não faz OCR nem gera os arquivos fina
 - relato recente: só as pendências reais do processamento.
 
 A fonte do Design System (Plus Jakarta Sans, licença SIL OFL, 6 pesos em `server/contentHub/fonts`) vai dentro da imagem; `CONTENT_HUB_FONT_DIR` só é preciso para trocar a pasta. O logo já era copiado.
+
+## Correção da imagem antes da primeira implantação (2026-10-06)
+
+Uma simulação local da montagem, só com os arquivos que vão para o Cloud Build, mostrou dois problemas. Eles fariam a imagem não
+montar e, depois de corrigida a montagem, fariam a tarefa cair logo ao iniciar:
+
+1. **O pacote do processamento usa mais que `server/` e `scripts/content-hub/`.** Pelo caminho das importações entram `src/`
+   (tipos, normalização de questões e a carga do banco de desenvolvimento) e `scripts/supabase/`. O `.gcloudignore` excluía `src` e
+   a regra `supabase` (sem a barra inicial) excluía também `scripts/supabase`. Agora as regras valem só para a raiz, e a imagem copia
+   `server`, `scripts` e `src` na etapa de montagem.
+2. **Bibliotecas do processamento que no site são de desenvolvimento** (Playwright, que gera os PDFs finais, e PGlite) ficavam
+   de fora com `npm ci --omit=dev`. Agora a montagem gera a lista mínima de bibliotecas do pacote (`scripts/cloudrun/worker-deps.mjs`,
+   a partir do relatório do esbuild e nas versões do `package-lock`). A imagem final instala só essa lista: 6 bibliotecas, cerca de
+   100 MB, sem Vite, React nem ferramentas de teste.
+
+O que foi conferido no Mac:
+- **Envio:** 707 arquivos (13 MB), nenhum `.env`, e de `public/` só o logo (`gcloud meta list-files-for-upload`).
+- **Montagem:** o pacote monta só com esses arquivos.
+- **Inicialização:** com só as 6 bibliotecas instaladas, a tarefa inicia e para no aviso de banco não configurado, o esperado sem as
+  chaves.
