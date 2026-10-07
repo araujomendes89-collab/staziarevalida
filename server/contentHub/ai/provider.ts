@@ -124,7 +124,9 @@ class GeminiProvider implements AiProvider {
     }
     const output = checked<T>(req.schema, raw);
     const u = res.usageMetadata as any;
-    return { output, provider: this.name, model: this.model, inputTokens: u?.promptTokenCount ?? null, outputTokens: u?.candidatesTokenCount ?? null, latencyMs: Date.now() - t0, costUsd: price(u?.promptTokenCount ?? null, u?.candidatesTokenCount ?? null) };
+    // O raciocínio do modelo (thoughtsTokenCount) é cobrado como saída: entra na conta, senão o gasto e os tetos ficam abaixo do real.
+    const outputTokens = u?.candidatesTokenCount == null && u?.thoughtsTokenCount == null ? null : (u?.candidatesTokenCount ?? 0) + (u?.thoughtsTokenCount ?? 0);
+    return { output, provider: this.name, model: this.model, inputTokens: u?.promptTokenCount ?? null, outputTokens, latencyMs: Date.now() - t0, costUsd: price(u?.promptTokenCount ?? null, outputTokens) };
   }
 }
 

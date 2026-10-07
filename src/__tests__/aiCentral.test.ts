@@ -324,6 +324,36 @@ describe("Modelos", () => {
     await expect(new OllamaProvider("http://localhost:11434", "llama3", notJson.f).generate(req)).rejects.toBeInstanceOf(AiInvalidOutput);
   });
 
+  it("Gemini: o raciocínio (thoughtsTokenCount) conta como saída; sem nenhum dos dois o total é nulo", async () => {
+    const { resolveProviderKind } = await import("../../server/contentHub/ai/provider");
+    const schema: any = { type: "object", properties: { ok: { type: "boolean" } }, required: ["ok"] };
+    const req: any = { promptId: "p", promptVersion: "1", system: "s", input: "i", schema, schemaName: "t", maxOutputTokens: 500 };
+    vi.stubEnv("GEMINI_API_KEY", "g".repeat(40));
+    vi.stubEnv("CONTENT_HUB_PRICE_INPUT_PER_MTOK", "1");
+    vi.stubEnv("CONTENT_HUB_PRICE_OUTPUT_PER_MTOK", "10");
+    // a biblioteca do Gemini chama o fetch global: a resposta é simulada, sem rede
+    const run = async (usageMetadata: unknown) => {
+      const body = { candidates: [{ content: { parts: [{ text: JSON.stringify({ ok: true }) }], role: "model" }, finishReason: "STOP", index: 0 }], usageMetadata };
+      vi.stubGlobal("fetch", async () => new Response(JSON.stringify(body), { status: 200, headers: { "Content-Type": "application/json" } }));
+      const { provider } = resolveProviderKind("gemini", undefined, "gemini-x", { allowExternal: true });
+      return provider!.generate<{ ok: boolean }>(req);
+    };
+    try {
+      const ambos = await run({ promptTokenCount: 100, candidatesTokenCount: 40, thoughtsTokenCount: 60, totalTokenCount: 200 });
+      expect(ambos).toMatchObject({ output: { ok: true }, provider: "gemini", model: "gemini-x", inputTokens: 100, outputTokens: 100 });
+      expect(ambos.costUsd).toBeCloseTo((100 * 1 + 100 * 10) / 1_000_000, 8); // o raciocínio é cobrado como saída
+      expect((await run({ promptTokenCount: 100, thoughtsTokenCount: 25 })).outputTokens).toBe(25);
+      expect((await run({ promptTokenCount: 100, candidatesTokenCount: 30 })).outputTokens).toBe(30);
+      const nenhum = await run({ promptTokenCount: 100 });
+      expect(nenhum.outputTokens).toBeNull();
+      expect(nenhum.costUsd).toBeNull();
+      expect((await run(undefined)).outputTokens).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it("Gemini: chave inválida (400 API_KEY_INVALID) vira chave_recusada sem vazar a chave", async () => {
     const { f } = fake({ error: { status: "INVALID_ARGUMENT", details: [{ reason: "API_KEY_INVALID" }], message: "key=k-secret-9" } }, 400);
     const r = await listModels("gemini", { GEMINI_API_KEY: "k-secret-9" }, f);
