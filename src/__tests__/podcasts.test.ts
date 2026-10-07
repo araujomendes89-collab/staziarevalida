@@ -336,6 +336,22 @@ describe("Roteiro com revisão humana", () => {
     expect(rows[0].model).toBe(r.body.podcast.script_meta.model);
   });
 
+  it("Podcasts: simulação em produção responde 503, sem ai_calls e sem salvar roteiro simulado", async () => {
+    await dev.db.query("delete from public.ai_calls");
+    const before = (await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId })).script_meta;
+    const old = process.env.NODE_ENV;
+    process.env.NODE_ENV = "production";
+    try {
+      const r = await post(`${base}/${podcastId}/script`, editor, { provider: "mock" });
+      expect(r.status).toBe(503);
+      expect(r.body.error).toContain("O modo de simulação não existe em produção.");
+    } finally {
+      process.env.NODE_ENV = old;
+    }
+    expect((await dev.db.query<any>(`select count(*)::int n from public.ai_calls`)).rows[0].n).toBe(0);
+    expect((await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId })).script_meta).toEqual(before);
+  });
+
   it("a equipe corrige a dose e tira a fala ruim; editar tira os avisos antigos e a conferência roda de novo", async () => {
     const p = await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId });
     const lines = p.script.lines.slice(0, 5).map((l: any, i: number) => (i === 4 ? { ...l, text: "O material traz 4 g IV no ataque." } : l));

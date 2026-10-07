@@ -131,7 +131,9 @@ export function mockAssistFromInput(input: string): RawAssist {
 
 /** IA das Aulas: sempre pelo maestro (função "criacao"). A escolha da tela só vale com o seletor por aba ligado ou sem função salva. */
 async function assistProvider(o: AssistInput) {
-  const mock = o.mockRespond ? resolveProviderKind("mock", o.mockRespond).provider : o.kind === "mock" ? resolveProviderKind("mock", (req) => mockAssistFromInput(req.input)).provider : null;
+  const mocked = o.mockRespond || o.kind === "mock" ? resolveProviderKind("mock", o.mockRespond ?? ((req) => mockAssistFromInput(req.input))) : null;
+  if (o.kind === "mock" && !mocked?.provider) return { provider: null, status: mocked!.status }; // simulação nunca vira IA de verdade
+  const mock = mocked?.provider ?? null;
   const KIND = o.kind.toUpperCase();
   const model = o.kind === "mock" ? "" : (process.env[`LESSON_ASSIST_${KIND}_MODEL`] ?? "").trim();
   const override = o.kind === "mock" ? {} : { uiKind: o.kind, ...(model ? { ref: { provider: o.kind, model } } : {}) };

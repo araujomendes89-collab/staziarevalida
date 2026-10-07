@@ -183,6 +183,24 @@ describe("Assistente da aula", () => {
       expect(who).toEqual([]);
     });
 
+    it("Aulas: simulação em produção responde 503 e não chama nenhuma IA", async () => {
+      await resetAi();
+      await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "anthropic", p_enabled: true });
+      const who: string[] = [];
+      const url = await listen((() => OUT) as any, maker(who));
+      const old = process.env.NODE_ENV;
+      process.env.NODE_ENV = "production";
+      try {
+        const r = await call(`${url}/assist`, editor, { provider: "mock", pages: PAGES });
+        expect(r.status).toBe(503);
+        expect(r.body.error).toContain("O modo de simulação não existe em produção.");
+      } finally {
+        process.env.NODE_ENV = old;
+      }
+      expect(who).toEqual([]);
+      expect(await calls()).toEqual([]);
+    });
+
     it("Aulas: ligada e sem função salva, a escolha da tela vale e a chamada fica em ai_calls (origem aula)", async () => {
       await resetAi();
       await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "gemini", p_enabled: true });

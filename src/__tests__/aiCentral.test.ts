@@ -608,6 +608,47 @@ describe("Maestro", () => {
     expect((await rows(r.runId)).map((x: any) => `${x.role}:${x.outcome}`)).toEqual(["principal:falha", "principal:ok"]);
   });
 
+  it("seletor da aba: uiKind ignorado com o interruptor desligado e usado com ele ligado (função salva)", async () => {
+    await on("anthropic", "gemini");
+    await saveFn("criacao", "sozinha", A);
+    await refresh();
+    const f = fakes({ [key(A)]: () => ({ ok: "a" }), [key(G)]: () => ({ ok: "g" }) });
+    const off = await run(deps(f), "criacao", REQ, origin, { uiKind: "gemini" });
+    expect(off.output).toEqual({ ok: "a" });
+    expect(f.calls[key(G)]).toBeUndefined();
+    await settings({ tab_override_enabled: true });
+    await refresh();
+    const on2 = await run(deps(f), "criacao", REQ, origin, { uiKind: "gemini" });
+    expect(on2.output).toEqual({ ok: "g" });
+    expect((await rows(on2.runId))[0].provider).toBe("gemini");
+  });
+
+  it("seletor da aba: uiKind de IA sem modelo padrão (openai sem variável) recusa com motivo, sem trocar de modelo", async () => {
+    await on("anthropic", "openai");
+    await saveFn("criacao", "sozinha", A);
+    await settings({ tab_override_enabled: true });
+    await refresh();
+    const f = fakes({ [key(A)]: () => ({ ok: "a" }) });
+    const r = await run(deps(f), "criacao", REQ, origin, { uiKind: "openai" });
+    expect(r.status).toBe("falhou");
+    expect(r.message).toContain("Nenhuma IA definida");
+    expect(f.calls[key(A)]).toBeUndefined();
+  });
+
+  it("seletor da aba: uiKind cujo modelo não está na lista não vazia fica bloqueado", async () => {
+    await on("anthropic", "gemini");
+    await dev.db.query(`update public.ai_providers set models = '[{"id":"outro-modelo","label":"Outro"}]'::jsonb where id = 'gemini'`);
+    await saveFn("criacao", "sozinha", A);
+    await settings({ tab_override_enabled: true });
+    await refresh();
+    const f = fakes({ [key(A)]: () => ({ ok: "a" }), [key(G)]: () => ({ ok: "g" }) });
+    const r = await run(deps(f), "criacao", REQ, origin, { uiKind: "gemini" });
+    expect(r.status).toBe("falhou");
+    expect(f.calls[key(G)]).toBeUndefined();
+    expect(f.calls[key(A)]).toBeUndefined();
+    expect((await rows(r.runId)).map((x: any) => x.outcome)).toEqual(["bloqueada"]);
+  });
+
   it("linha: problema de gravidade alta vira precisa_revisao", async () => {
     await on("anthropic", "openai");
     await saveFn("criacao", "linha", A, [O]);

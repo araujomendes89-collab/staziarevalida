@@ -182,11 +182,9 @@ export function mockScriptFromInput(input: string, minutes: number): PodcastScri
 
 /** IA do roteiro: sempre pelo maestro (função "criacao"). A escolha da tela só vale com o seletor por aba ligado ou sem função salva. */
 async function scriptProvider(o: { kind: ScriptProvider | "mock"; db: ContentDb; actorId?: string | null; podcastId?: string | null; aiMaker?: (ref: ModelRef) => AiProvider | null; mockRespond?: (req: StructuredRequest) => unknown }) {
-  const mock = o.mockRespond
-    ? resolveProviderKind("mock", o.mockRespond).provider
-    : o.kind === "mock"
-      ? resolveProviderKind("mock", (req) => mockScriptFromInput(req.input, Number(/cerca de (\d+) minutos/.exec(req.input)?.[1]) || 8)).provider
-      : null;
+  const mocked = o.mockRespond || o.kind === "mock" ? resolveProviderKind("mock", o.mockRespond ?? ((req) => mockScriptFromInput(req.input, Number(/cerca de (\d+) minutos/.exec(req.input)?.[1]) || 8))) : null;
+  if (o.kind === "mock" && !mocked?.provider) return { provider: null, status: mocked!.status }; // simulação nunca vira IA de verdade
+  const mock = mocked?.provider ?? null;
   return maestroProvider({ db: o.db, mockProvider: mock, makeProviderFor: o.aiMaker }, "criacao", { source: "podcast", actorId: o.actorId ?? null, itemId: o.podcastId ?? null }, o.kind === "mock" ? {} : { uiKind: o.kind });
 }
 
