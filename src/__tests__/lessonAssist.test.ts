@@ -4,7 +4,7 @@
  * só vê o material enviado; as sugestões voltam com as páginas de origem; número fora do trecho citado vira aviso; nada é
  * gravado na aula. Nenhuma chamada real a IA.
  */
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
 import fs from "fs";
 import os from "os";
@@ -14,6 +14,7 @@ import { openDevDatabaseForTests, type DevDatabase } from "../../server/devDb/de
 import { devContentDb, localStorageDir, type ContentDb } from "../../server/contentHub/infra";
 import { createLessonsRouter } from "../../server/lessons/router";
 import { buildAssistInput, mockAssistFromInput } from "../../server/lessons/assist";
+import { AiInvalidOutput } from "../../server/contentHub/ai/provider";
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "assist-"));
 const EDITOR = "00000000-0000-4000-8000-0000000000e1";
@@ -172,6 +173,33 @@ describe("Assistente da aula", () => {
       },
     });
     const calls = async () => (await dev.db.query<any>(`select provider, model, source, actor_id from public.ai_calls order by id`)).rows;
+
+    it("Aulas: resposta sempre fora do formato, sem reserva, gasta no máximo 2 chamadas (principal e nova tentativa) e responde erro", async () => {
+      await resetAi();
+      await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "gemini", p_enabled: true });
+      vi.stubEnv("CONTENT_HUB_AI_FALLBACK_PROVIDER", "");
+      try {
+        const who: string[] = [];
+        const bad = (ref: any) => ({
+          name: ref.provider,
+          model: ref.model,
+          isMock: false,
+          async generate() {
+            who.push(`${ref.provider}:${ref.model}`);
+            throw new AiInvalidOutput("Resposta fora do formato: teste", { x: 1 });
+          },
+        });
+        const url = await listen(undefined, bad);
+        const r = await call(`${url}/assist`, editor, { provider: "gemini", pages: PAGES });
+        expect(r.status).toBe(502);
+        expect(r.body.error).toContain("O assistente falhou");
+        // as Aulas também tentam de novo ao receber AiInvalidOutput; o adaptador não deixa a classe passar, para não multiplicar
+        expect(who).toHaveLength(2);
+        expect((await calls()).map((c: any) => c.source)).toEqual(["aula", "aula"]);
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    });
 
     it("Aulas: IA desligada responde 503 com 'está desligada na Central de IAs'", async () => {
       await resetAi();

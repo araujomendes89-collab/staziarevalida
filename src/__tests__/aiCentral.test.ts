@@ -1198,6 +1198,16 @@ describe("Maestro", () => {
     expect((e as Error).message).toContain("Resposta fora do formato");
     expect(invalid.calls[key(A)]).toHaveLength(2); // principal e nova tentativa
 
+    // só a Central de Conteúdo precisa da classe (grava invalid_output em ch_ai_runs). Aulas, Podcasts e as outras origens
+    // tentam de novo sozinhas ao receber AiInvalidOutput, e cada tentativa é uma execução inteira do maestro: erro comum
+    for (const source of ["aula", "podcast", "assistente", "analise", "conferencia"] as const) {
+      const f = fakes({ [key(A)]: () => { throw new AiInvalidOutput("Resposta fora do formato: campo x", { x: 1 }); } });
+      const x = await (await maestroProvider(deps(f), "criacao", { ...origin, source })).provider!.generate(REQ).catch((err: unknown) => err);
+      expect(x, source).not.toBeInstanceOf(AiInvalidOutput);
+      expect((x as Error).message, source).toContain("Resposta fora do formato");
+      expect(f.calls[key(A)], source).toHaveLength(2);
+    }
+
     // a última falha foi comum (a rede caiu): erro comum, não AiInvalidOutput
     const mixed = fakes({
       [key(A)]: (_r, n) => {

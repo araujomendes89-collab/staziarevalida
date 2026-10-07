@@ -17,6 +17,7 @@ import { createPodcastsRouter, type PodcastsDeps } from "../../server/podcasts/r
 import { chunkPages, fetchLink, htmlToText, privateAddress } from "../../server/podcasts/extract";
 import { checkScript, mockScriptFromInput, buildScriptInput, ungroundedNumbers, type PodcastScript } from "../../server/podcasts/script";
 import { pcmToMp3, pickVoices, silence, splitParts, toPcm, SAMPLE_RATE } from "../../server/podcasts/audio";
+import { AiInvalidOutput } from "../../server/contentHub/ai/provider";
 
 // ler PDF e DOCX carrega bibliotecas grandes na primeira vez (lento no disco externo): mais tempo por teste
 vi.setConfig({ testTimeout: 60_000 });
@@ -334,6 +335,31 @@ describe("Roteiro com revisão humana", () => {
     expect(rows.length).toBeGreaterThan(0);
     expect(rows[0]).toMatchObject({ provider: "anthropic", source: "podcast", item_id: podcastId, actor_id: EDITOR });
     expect(rows[0].model).toBe(r.body.podcast.script_meta.model);
+  });
+
+  it("Podcasts: resposta sempre fora do formato, sem reserva, gasta no máximo 2 chamadas (principal e nova tentativa) e responde erro", async () => {
+    await dev.db.query("delete from public.ai_calls");
+    await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "anthropic", p_enabled: true });
+    const { invalidateAiConfig } = await import("../../server/ai/config");
+    invalidateAiConfig(db);
+    vi.stubEnv("CONTENT_HUB_AI_FALLBACK_PROVIDER", "");
+    try {
+      const calls: string[] = [];
+      const url = await listen({
+        db,
+        storage: files,
+        lessons: lessonFiles,
+        aiMaker: (ref) => ({ name: ref.provider, model: ref.model, isMock: false, async generate() { calls.push(`${ref.provider}:${ref.model}`); throw new AiInvalidOutput("Resposta fora do formato: teste", { x: 1 }); } }) as any,
+      });
+      const r = await post(`${url}/${podcastId}/script`, editor, { provider: "anthropic" });
+      expect(r.status).toBe(502);
+      expect(r.body.error).toContain("A IA do roteiro falhou");
+      // o roteiro também tenta de novo ao receber AiInvalidOutput; o adaptador não deixa a classe passar, para não multiplicar
+      expect(calls).toHaveLength(2);
+      expect((await dev.db.query<any>(`select source from public.ai_calls order by id`)).rows.map((x) => x.source)).toEqual(["podcast", "podcast"]);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("Podcasts: simulação em produção responde 503, sem ai_calls e sem salvar roteiro simulado", async () => {

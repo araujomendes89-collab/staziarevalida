@@ -558,8 +558,10 @@ async function buildAdapter(deps: MaestroDeps, cfg: AiConfig, origin: MaestroOri
       if (!r.ok) {
         const message = run.message();
         if (run.failureStatus() === "parou_no_teto") throw new AiCapReached(message ?? "Teto de gasto atingido.");
-        // a última falha foi resposta fora do formato: mesma classe e o que a IA devolveu, para o registro da etapa
-        if (run.lastError instanceof AiInvalidOutput) throw new AiInvalidOutput(message ?? run.lastError.message, run.lastError.raw);
+        // a última falha foi resposta fora do formato: a Central de Conteúdo precisa da classe e do que a IA devolveu para
+        // gravar invalid_output em ch_ai_runs. As outras origens (Aulas, Podcasts...) tentam de novo sozinhas ao receber
+        // AiInvalidOutput e cada tentativa é uma execução inteira do maestro: para elas, erro comum, sem multiplicar chamadas.
+        if (origin.source === "central" && run.lastError instanceof AiInvalidOutput) throw new AiInvalidOutput(message ?? run.lastError.message, run.lastError.raw);
         throw new Error(message ?? "A IA não respondeu.");
       }
       return { ...r.res, costUsd: r.cost };
