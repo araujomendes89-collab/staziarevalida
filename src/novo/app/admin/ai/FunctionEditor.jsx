@@ -19,9 +19,10 @@ const asDraft = (r) => (r ? { provider: r.provider ?? "", model: r.model ?? "" }
 
 /**
  * IA + modelo: lista da IA quando houver; senão, o id digitado. A IA que o servidor não consegue chamar (checks[id].pending:
- * Ollama no site publicado, chave vazia) aparece como indisponível e desabilitada, exceto se já for a escolhida aqui.
+ * Ollama no site publicado, chave vazia) aparece como indisponível e desabilitada, exceto se já for a escolhida aqui ou a
+ * salva neste lugar (a pessoa precisa conseguir ver, trocar e voltar).
  */
-function ModelPicker({ title, fn, value, onChange, providers, checks }) {
+function ModelPicker({ title, fn, value, onChange, providers, checks, saved }) {
   const info = providers.find((p) => p.id === value.provider);
   const models = Array.isArray(info?.models) ? info.models : [];
   const missing = value.model && models.length > 0 && !models.some((m) => m.id === value.model);
@@ -37,7 +38,7 @@ function ModelPicker({ title, fn, value, onChange, providers, checks }) {
           { value: "", label: "Escolha a IA" },
           ...providers.map((p) => {
             const pending = checks?.[p.id]?.pending;
-            return { value: p.id, label: PROVIDER_NAME[p.id] + (pending ? " (indisponível)" : p.enabled ? "" : " (desligada)"), disabled: Boolean(pending) && p.id !== value.provider };
+            return { value: p.id, label: PROVIDER_NAME[p.id] + (pending ? " (indisponível)" : p.enabled ? "" : " (desligada)"), disabled: Boolean(pending) && p.id !== value.provider && p.id !== saved };
           }),
         ]}
       />
@@ -125,11 +126,11 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
       <SelectField label="Modo" aria-label={`Modo — ${label}`} value={draft.mode} onChange={(e) => set({ mode: e.target.value })} options={MODES} />
       <div>
         <div style={{ ...subtle, marginBottom: 6 }}>IA principal</div>
-        <ModelPicker fn={label} title="Principal" value={draft.primary} onChange={(v) => set({ primary: v })} providers={providers} checks={providerChecks} />
+        <ModelPicker fn={label} title="Principal" value={draft.primary} onChange={(v) => set({ primary: v })} providers={providers} checks={providerChecks} saved={saved?.primary_ref?.provider} />
       </div>
       <div>
         <div style={{ ...subtle, marginBottom: 6 }}>Reserva (opcional)</div>
-        <ModelPicker fn={label} title="Reserva" value={draft.fallback} onChange={(v) => set({ fallback: v })} providers={providers} checks={providerChecks} />
+        <ModelPicker fn={label} title="Reserva" value={draft.fallback} onChange={(v) => set({ fallback: v })} providers={providers} checks={providerChecks} saved={saved?.fallback_ref?.provider} />
       </div>
       {draft.mode !== "sozinha" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -137,7 +138,7 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
           {others.map((o, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
               <div style={{ flex: "1 1 360px" }}>
-                <ModelPicker fn={label} title={`${draft.mode === "linha" ? "Conferente" : "Membro"} ${i + 1}`} value={o} onChange={(v) => setOther(i, v)} providers={providers} checks={providerChecks} />
+                <ModelPicker fn={label} title={`${draft.mode === "linha" ? "Conferente" : "Membro"} ${i + 1}`} value={o} onChange={(v) => setOther(i, v)} providers={providers} checks={providerChecks} saved={saved?.reviewers?.[i]?.provider} />
               </div>
               {others.length > 1 && (
                 <Button size="sm" variant="ghost" icon="trash-2" onClick={() => set({ others: others.filter((_, j) => j !== i) })}>

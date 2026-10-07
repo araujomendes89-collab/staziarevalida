@@ -209,9 +209,14 @@ describe("Central de IAs (painel do administrador)", () => {
       expect(option(principal, "Ollama (indisponível)").disabled).toBe(false);
       // nos outros seletores continua desabilitada
       expect(option(within(box).getByLabelText("Reserva: IA — Criação") as HTMLSelectElement, "Ollama (indisponível)").disabled).toBe(true);
-      // trocar de IA funciona
+      // trocar de IA funciona, e a salva continua escolhível para voltar atrás
       fireEvent.change(principal, { target: { value: "anthropic" } });
       expect(principal.value).toBe("anthropic");
+      expect(option(principal, "Ollama (indisponível)").disabled).toBe(false);
+      fireEvent.change(principal, { target: { value: "ollama" } });
+      expect(principal.value).toBe("ollama");
+      // a OpenAI, indisponível e não salva aqui, segue desabilitada
+      expect(option(principal, "OpenAI (indisponível)").disabled).toBe(true);
     });
 
     it("sem provider_checks (servidor antigo) nada fica desabilitado", async () => {
