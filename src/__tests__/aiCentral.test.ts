@@ -452,9 +452,9 @@ describe("Configuração", () => {
   it("comitê com 1 membro ou 5 membros é recusado", async () => {
     const { validateFunctionConfig } = await import("../../server/ai/config");
     const a = ref("anthropic", "claude-sonnet-5-5");
-    expect(validateFunctionConfig(fc("comite", a, []), mkCfg()).problems.length).toBeGreaterThan(0);
+    expect(validateFunctionConfig(fc("comite", a, []), mkCfg()).problems).toContain("O comitê precisa de pelo menos 2 membros.");
     const quatro = [ref("openai", "gpt-a"), ref("gemini", "gemini-a"), ref("ollama", "qwen3"), ref("openai", "gpt-b")];
-    expect(validateFunctionConfig(fc("comite", a, quatro), mkCfg()).problems.length).toBeGreaterThan(0);
+    expect(validateFunctionConfig(fc("comite", a, quatro), mkCfg()).problems).toContain("O comitê aceita no máximo 4 membros.");
   });
 
   it("linha com conferente da mesma família da reserva é recusada", async () => {
@@ -477,17 +477,26 @@ describe("Configuração", () => {
     const c1 = await p1;
     expect(typeof c1.providers.anthropic.enabled).toBe("boolean");
     expect(Array.isArray(c1.providers.anthropic.models)).toBe(true);
-    const inicial = c1.settings.caps_enabled;
-    expect(typeof inicial).toBe("boolean");
-    for (const v of [c1.settings.monthly_cap_usd, c1.settings.per_run_cap_usd]) expect(v === null || typeof v === "number").toBe(true);
-    for (const pr of c1.prices) expect(typeof pr.input_per_mtok).toBe("number");
-    await db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: { caps_enabled: !inicial } });
-    expect((await loadAiConfig(db)).settings.caps_enabled).toBe(inicial);
-    invalidateAiConfig(db);
-    expect((await loadAiConfig(db)).settings.caps_enabled).toBe(!inicial);
-    await db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: { caps_enabled: inicial } });
-    invalidateAiConfig(db);
-    expect((await loadAiConfig(db)).settings.caps_enabled).toBe(inicial);
+    const orig = c1.settings;
+    try {
+      await db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: { caps_enabled: !orig.caps_enabled } });
+      expect((await loadAiConfig(db)).settings.caps_enabled).toBe(orig.caps_enabled); // ainda no cache
+      invalidateAiConfig(db);
+      expect((await loadAiConfig(db)).settings.caps_enabled).toBe(!orig.caps_enabled);
+
+      await db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: { monthly_cap_usd: 0.5, per_run_cap_usd: null } });
+      await db.service("ch_worker_ai_save_price", { p_actor: ADMIN, p_provider: "anthropic", p_model: "claude-cfg-teste", p_price: { input_per_mtok: 3, output_per_mtok: 15, source_url: "https://exemplo.com", checked_on: "2026-10-07" } });
+      invalidateAiConfig(db);
+      const c2 = await loadAiConfig(db);
+      expect(c2.settings.monthly_cap_usd).toBe(0.5);
+      expect(c2.settings.per_run_cap_usd).toBeNull();
+      const price = c2.prices.find((x) => x.provider === "anthropic" && x.model === "claude-cfg-teste")!;
+      expect(price.input_per_mtok).toBe(3);
+      expect(price.output_per_mtok).toBe(15);
+    } finally {
+      await db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: { caps_enabled: orig.caps_enabled, monthly_cap_usd: orig.monthly_cap_usd, per_run_cap_usd: orig.per_run_cap_usd } });
+      invalidateAiConfig(db);
+    }
   });
 
   it("envFallbackRef com uiKind usa LESSON_ASSIST_/PODCAST_ e os padrões", async () => {
