@@ -1,14 +1,16 @@
 // Configuração da Central: o que está pronto, o que é pendência real, credenciais a cadastrar,
 // consumo e custo das chamadas de IA (piloto) e revisores médicos por área.
 import React from "react";
+import { useSearchParams } from "react-router-dom";
 import { Badge, Banner, Button, Checkbox, TextField } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { dateTimeBR, LoadError, Loading, useDebounced, useLoad } from "../common.jsx";
 import { AREA_LABEL, STEP_LABEL } from "./labels.js";
 import { KeyValue, ModelBadge, Section, useAction } from "./ui.jsx";
+import { aiGet } from "../ai/aiApi.js";
 
 const CREDENTIALS = [
-  ["CONTENT_HUB_AI_PROVIDER", "anthropic, gemini ou openai (o modo mock só existe fora de produção)"],
+  ["CONTENT_HUB_AI_PROVIDER", "a escolha da IA agora é feita na Central de IAs; a variável só vale enquanto a função não está salva (anthropic, gemini ou openai; o modo mock só existe fora de produção)"],
   ["CONTENT_HUB_AI_FALLBACK_PROVIDER", "provedor secundário: usado se o principal falhar depois de uma nova tentativa (conferentes só aceitam outra família que a do criador)"],
   ["OPENAI_API_KEY e CONTENT_HUB_OPENAI_MODEL", "provedor OpenAI: a chave e o modelo (o modelo é obrigatório, nunca é adivinhado)"],
   ["CONTENT_LAB_ENABLED=false / CONTENT_LAB_AI_ENABLED=false", "desliga o módulo ou só a IA direto no servidor (vale mais que o painel)"],
@@ -88,6 +90,30 @@ function processingLabel(status) {
   return `${where} · último relato ${dateTimeBR(p.reported_at)}${p.stale ? " (parado)" : ""}`;
 }
 
+const AI_NAME = { anthropic: "Claude", openai: "OpenAI", gemini: "Gemini", ollama: "Ollama" };
+const usd = (n) => (Number(n ?? 0) === 0 ? "US$ 0" : `US$ ${new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(Number(n))}`);
+
+/** Resumo da Central de IAs (a equipe vê o resumo; só o administrador abre a Central). */
+function AiSummary({ isAdmin }) {
+  const { backend } = useSession();
+  const [, setParams] = useSearchParams();
+  const { data, error } = useLoad(() => aiGet(backend, "/summary"), [backend]);
+  if (error) return <span>{error.message}</span>;
+  if (!data) return <span>Carregando…</span>;
+  const configured = (data.functions ?? []).filter((f) => f.configured).length;
+  const names = (data.providers_enabled ?? []).map((id) => AI_NAME[id] ?? id).join(", ") || "nenhuma";
+  return (
+    <span style={{ display: "inline-flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+      <span>{`Funções configuradas: ${configured} de 6 · IAs ligadas: ${names} · Gasto do mês: ${usd(data.month_spend)}`}</span>
+      {isAdmin && (
+        <Button size="sm" variant="secondary" icon="bot" onClick={() => setParams({ aba: "ias" })}>
+          Abrir a Central de IAs
+        </Button>
+      )}
+    </span>
+  );
+}
+
 export function HubSettings({ isAdmin, status }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -99,7 +125,7 @@ export function HubSettings({ isAdmin, status }) {
           <KeyValue
             items={[
               ["Banco e arquivos", status.storage === "dev" ? "desenvolvimento (.data no servidor)" : "Supabase"],
-              ["IA", status.ai?.ready ? <span key="ai">{status.ai.provider} <ModelBadge model={status.ai.model} /></span> : `pendente — ${status.ai?.pending}`],
+              ["IA", <AiSummary key="ai" isAdmin={isAdmin} />],
               ["Processamento (leitura de PDF, OCR e arquivos finais)", processingLabel(status)],
               ["Renderizador de PDF", status.renderer ? "pronto (Chromium)" : status.worker || status.processing?.where ? "indisponível" : "sem relato do processamento"],
               ["Identidade visual", status.brand?.pending?.length ? status.brand.pending.join(" ") : status.brand?.version ? `completa (${status.brand.version})` : "sem relato do processamento"],

@@ -13,6 +13,7 @@ import { AdminPlay } from "./AdminPlay.jsx";
 import { AdminLessons } from "./AdminLessons.jsx";
 import { AdminUpdates } from "./AdminUpdates.jsx";
 import { AdminPodcasts } from "./AdminPodcasts.jsx";
+import { AdminAI } from "./ai/AdminAI.jsx";
 import { isStaffRole } from "./common.jsx";
 
 const TABS = [
@@ -25,6 +26,7 @@ const TABS = [
   { value: "planos", label: "Planos", icon: "crown" },
   { value: "estacoes", label: "Estações", icon: "clipboard-list", staff: true },
   { value: "conteudo", label: "Central de Conteúdo", icon: "library", staff: true, reviewer: true },
+  { value: "ias", label: "Central de IAs", icon: "bot" },
   { value: "play", label: "Stazia Arena", icon: "trophy" },
   { value: "config", label: "Configurações", icon: "settings" },
   { value: "registro", label: "Registro", icon: "history" },
@@ -55,6 +57,7 @@ export function AdminScreen() {
       {tab === "planos" && <AdminPlans />}
       {tab === "estacoes" && <AdminStations />}
       {tab === "conteudo" && <ContentHub isAdmin={isAdmin} isStaff={isStaff} />}
+      {tab === "ias" && isAdmin && <AdminAI />}
       {tab === "play" && <AdminPlay />}
       {tab === "config" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
