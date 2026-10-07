@@ -73,7 +73,7 @@ describe("Banco", () => {
 
   it("função salva e apagada (null volta às variáveis)", async () => {
     const config = {
-      mode: "linha_producao",
+      mode: "linha",
       primary_ref: { provider: "anthropic", model: "claude-x" },
       fallback_ref: { provider: "openai", model: "gpt-x" },
       reviewers: [{ provider: "gemini", model: "gem-x" }],
@@ -82,7 +82,7 @@ describe("Banco", () => {
     await db.service("ch_worker_ai_save_function", { p_actor: ADMIN, p_key: "criacao", p_config: config });
     let cfg = await db.service<any>("ch_worker_ai_config");
     expect(cfg.functions).toHaveLength(1);
-    expect(cfg.functions[0]).toMatchObject({ key: "criacao", mode: "linha_producao", care: "caprichado", primary_ref: config.primary_ref, reviewers: config.reviewers, updated_by: ADMIN });
+    expect(cfg.functions[0]).toMatchObject({ key: "criacao", mode: "linha", care: "caprichado", primary_ref: config.primary_ref, reviewers: config.reviewers, updated_by: ADMIN });
     await db.service("ch_worker_ai_save_function", { p_actor: ADMIN, p_key: "criacao", p_config: null });
     cfg = await db.service<any>("ch_worker_ai_config");
     expect(cfg.functions).toEqual([]);
@@ -94,6 +94,12 @@ describe("Banco", () => {
     const ok = { mode: "sozinha", primary_ref: { provider: "anthropic", model: "claude-x" }, care: "rapido" };
     const save = (key: string, config: unknown) => db.service("ch_worker_ai_save_function", { p_actor: ADMIN, p_key: key, p_config: config });
     await expect(save("criacao", { ...ok, mode: "todos" })).rejects.toThrow();
+    await expect(save("criacao", { ...ok, mode: "linha_producao" })).rejects.toThrow();
+    // cuidado omitido grava 'caprichado' e o modo 'linha' é aceito
+    await save("criacao", { mode: "linha", primary_ref: ok.primary_ref });
+    const saved = await db.service<any>("ch_worker_ai_config");
+    expect(saved.functions[0]).toMatchObject({ key: "criacao", mode: "linha", care: "caprichado" });
+    await save("criacao", null);
     await expect(save("criacao", { ...ok, care: "nenhum" })).rejects.toThrow();
     await expect(save("outra_funcao", ok)).rejects.toThrow();
     await expect(save("criacao", { ...ok, primary_ref: { provider: "xai", model: "m" } })).rejects.toThrow();

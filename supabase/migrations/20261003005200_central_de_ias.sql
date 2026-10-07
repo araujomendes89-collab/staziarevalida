@@ -14,7 +14,7 @@
 --     pelas funções do servidor;
 --   * ai_functions começa vazia: ausência de linha = a função usa as variáveis de ambiente de hoje;
 --   * a regra de independência entre criadora e conferentes é conferida no servidor (maestro), não aqui.
--- Valores de ai_functions.mode: 'sozinha' | 'linha_producao' | 'comite'. care: 'rapido' | 'caprichado'.
+-- Valores de ai_functions.mode: 'sozinha' | 'linha' | 'comite'. care: 'rapido' | 'caprichado'.
 -- Nada aqui escreve conteúdo clínico: tudo continua rascunho até a aprovação de uma pessoa.
 -- =============================================================================
 
@@ -46,13 +46,13 @@ create table public.ai_model_prices (
 
 create table public.ai_functions (
   key text primary key check (key in ('criacao', 'verificacao', 'engenharia_reversa', 'assistente_preencher', 'assistente_conferir', 'assistente_revisar')),
-  mode text not null check (mode in ('sozinha', 'linha_producao', 'comite')),
+  mode text not null check (mode in ('sozinha', 'linha', 'comite')),
   -- {provider, model}
   primary_ref jsonb check (primary_ref is null or jsonb_typeof(primary_ref) = 'object'),
   fallback_ref jsonb check (fallback_ref is null or jsonb_typeof(fallback_ref) = 'object'),
   -- conferentes (linha de produção) ou membros (comitê): lista de {provider, model}, no máximo 4
   reviewers jsonb not null default '[]'::jsonb check (jsonb_typeof(reviewers) = 'array' and jsonb_array_length(reviewers) <= 4),
-  care text not null default 'rapido' check (care in ('rapido', 'caprichado')),
+  care text not null default 'caprichado' check (care in ('rapido', 'caprichado')),
   updated_by uuid references auth.users (id) on delete set null,
   updated_at timestamptz not null default now()
 );
@@ -75,7 +75,7 @@ create table public.ai_calls (
   run_id uuid,
   actor_id uuid references auth.users (id) on delete set null,
   function_key text not null check (char_length(function_key) between 1 and 60),
-  mode text not null check (mode in ('sozinha', 'linha_producao', 'comite')),
+  mode text not null check (mode in ('sozinha', 'linha', 'comite')),
   role text not null check (role in ('principal', 'reserva', 'criadora', 'conferente', 'membro')),
   provider text not null check (provider in ('anthropic', 'openai', 'gemini', 'ollama')),
   model text not null check (char_length(model) between 1 and 120),
@@ -234,9 +234,9 @@ begin
   end if;
   if jsonb_typeof(p_config) <> 'object' then raise exception 'Configuração inválida.' using errcode = '22023'; end if;
   v_mode := p_config ->> 'mode';
-  v_care := coalesce(p_config ->> 'care', 'rapido');
+  v_care := coalesce(p_config ->> 'care', 'caprichado');
   v_reviewers := coalesce(p_config -> 'reviewers', '[]'::jsonb);
-  if v_mode is null or v_mode not in ('sozinha', 'linha_producao', 'comite') then raise exception 'Modo inválido: %.', v_mode using errcode = '22023'; end if;
+  if v_mode is null or v_mode not in ('sozinha', 'linha', 'comite') then raise exception 'Modo inválido: %.', v_mode using errcode = '22023'; end if;
   if v_care not in ('rapido', 'caprichado') then raise exception 'Cuidado inválido: %.', v_care using errcode = '22023'; end if;
   if jsonb_typeof(v_reviewers) <> 'array' or jsonb_array_length(v_reviewers) > 4 then
     raise exception 'No máximo 4 conferentes ou membros.' using errcode = '22023';
