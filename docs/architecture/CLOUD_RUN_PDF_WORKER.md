@@ -62,3 +62,27 @@ O que foi conferido no Mac:
 - **Montagem:** o pacote monta só com esses arquivos.
 - **Inicialização:** com só as 6 bibliotecas instaladas, a tarefa inicia e para no aviso de banco não configurado, o esperado sem as
   chaves.
+
+## Implantado em 2026-10-06 (projeto `staziamed-revalida-prod`, escolhido pelo dono)
+
+O projeto foi escolhido por ser o único da conta com cobrança ativa. Ele também é o projeto do Firebase do app antigo, por isso
+nada do Firebase foi tocado. Tudo o que foi criado tem nome `stazia-*`:
+- **Contas de serviço:** `stazia-pdf-worker` (a tarefa: só lê os três segredos), `stazia-pdf-scheduler` (só dispara a tarefa) e
+  `stazia-pdf-builder` (só monta a imagem).
+- **Onde a montagem pode mexer:** só a pasta temporária `gs://staziamed-revalida-prod-stazia-build`, que apaga o envio em 7 dias,
+  o repositório `stazia` e o registro da montagem.
+- **Conta padrão do Compute Engine:** é a mesma das funções do Firebase e não ganhou nenhuma permissão.
+- **Segredos:** 3, todos no Secret Manager.
+- **Repositório de imagens:** Artifact Registry `stazia`, em São Paulo.
+- **Tarefa:** `stazia-pdf-worker`, com 2 vCPU e 4 GiB.
+- **Agendador:** `stazia-pdf-worker-agenda`, a cada 10 minutos.
+
+Duas correções no caminho:
+- **Máquina do Cloud Build:** `E2_HIGHCPU_4` não existe (o gcloud responde ".options.machineType: unused"). Agora a montagem usa
+  a máquina padrão.
+- **Conta da montagem:** a montagem rodava com a conta padrão do Compute Engine, sem permissão. Agora roda com a própria conta.
+
+Primeira execução (2026-10-06 22h35):
+- Banco Supabase, gerador de PDF, PyMuPDF e OCR prontos.
+- Fila vazia.
+- Única pendência: a IA do processamento, desligada até o dono autorizar provedor e gasto.

@@ -17,15 +17,20 @@ JOB=stazia-pdf-worker
 REPO=stazia
 RUN_SA="stazia-pdf-worker@${PROJECT}.iam.gserviceaccount.com"
 SCHED_SA="stazia-pdf-scheduler@${PROJECT}.iam.gserviceaccount.com"
+# A montagem da imagem roda com uma conta só dela: a conta padrão do Compute Engine (a mesma das funções do Firebase) não
+# ganha permissão nenhuma. A pasta temporária do envio fica na região e se apaga sozinha em 7 dias.
+BUILD_SA="stazia-pdf-builder@${PROJECT}.iam.gserviceaccount.com"
+BUCKET="${PROJECT}-stazia-build"
 G=(gcloud --project="$PROJECT" --quiet)
 
 echo "== 1/6 APIs do projeto $PROJECT"
 "${G[@]}" services enable run.googleapis.com artifactregistry.googleapis.com cloudbuild.googleapis.com \
   cloudscheduler.googleapis.com secretmanager.googleapis.com iam.googleapis.com
 
-echo "== 2/6 contas de serviço (a da tarefa só lê os segredos; a do agendador só dispara a tarefa)"
+echo "== 2/6 contas de serviço (a da tarefa só lê os segredos; a do agendador só dispara a tarefa; a da montagem só monta a imagem)"
 "${G[@]}" iam service-accounts describe "$RUN_SA" >/dev/null 2>&1 || "${G[@]}" iam service-accounts create stazia-pdf-worker --display-name="Stazia: processamento de PDF"
 "${G[@]}" iam service-accounts describe "$SCHED_SA" >/dev/null 2>&1 || "${G[@]}" iam service-accounts create stazia-pdf-scheduler --display-name="Stazia: agendador do processamento de PDF"
+"${G[@]}" iam service-accounts describe "$BUILD_SA" >/dev/null 2>&1 || "${G[@]}" iam service-accounts create stazia-pdf-builder --display-name="Stazia: montagem da imagem do processamento"
 
 echo "== 3/6 segredos (do .env para o Secret Manager, sem mostrar)"
 envvalue() {
@@ -47,16 +52,33 @@ for NAME in SUPABASE_URL VITE_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
   [ -n "$VALUE" ] || { echo "Falta $NAME no .env"; exit 1; }
   SECRET="stazia-$(echo "$NAME" | tr 'A-Z_' 'a-z-')"
   "${G[@]}" secrets describe "$SECRET" >/dev/null 2>&1 || "${G[@]}" secrets create "$SECRET" --replication-policy=automatic >/dev/null
-  printf '%s' "$VALUE" | "${G[@]}" secrets versions add "$SECRET" --data-file=- >/dev/null
+  # versão nova só quando o valor mudou (comparado aqui, sem mostrar)
+  if [ "$("${G[@]}" secrets versions access latest --secret="$SECRET" 2>/dev/null)" != "$VALUE" ]; then
+    printf '%s' "$VALUE" | "${G[@]}" secrets versions add "$SECRET" --data-file=- >/dev/null
+    echo "   $SECRET: atualizado"
+  else
+    echo "   $SECRET: sem mudança"
+  fi
   "${G[@]}" secrets add-iam-policy-binding "$SECRET" --member="serviceAccount:$RUN_SA" --role=roles/secretmanager.secretAccessor >/dev/null
-  echo "   $SECRET: atualizado"
 done
 
 echo "== 4/6 imagem (montada no Cloud Build, não no Mac)"
 "${G[@]}" artifacts repositories describe "$REPO" --location="$REGION" >/dev/null 2>&1 || \
   "${G[@]}" artifacts repositories create "$REPO" --repository-format=docker --location="$REGION" --description="Imagens da StaziaMed"
+if ! "${G[@]}" storage buckets describe "gs://$BUCKET" >/dev/null 2>&1; then
+  "${G[@]}" storage buckets create "gs://$BUCKET" --location="$REGION" --uniform-bucket-level-access
+  LIFE="$(mktemp)"
+  printf '%s' '{"rule":[{"action":{"type":"Delete"},"condition":{"age":7}}]}' > "$LIFE"
+  "${G[@]}" storage buckets update "gs://$BUCKET" --lifecycle-file="$LIFE" >/dev/null
+  rm -f "$LIFE"
+fi
+# permissões mínimas da montagem: ler o envio, gravar a imagem no repositório e escrever o registro da montagem
+"${G[@]}" storage buckets add-iam-policy-binding "gs://$BUCKET" --member="serviceAccount:$BUILD_SA" --role=roles/storage.objectViewer >/dev/null
+"${G[@]}" artifacts repositories add-iam-policy-binding "$REPO" --location="$REGION" --member="serviceAccount:$BUILD_SA" --role=roles/artifactregistry.writer >/dev/null
+"${G[@]}" projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$BUILD_SA" --role=roles/logging.logWriter --condition=None >/dev/null
 IMAGE="$REGION-docker.pkg.dev/$PROJECT/$REPO/pdf-worker:$(git rev-parse --short HEAD)"
-"${G[@]}" builds submit --region="$REGION" --config=cloudrun/pdf-worker/cloudbuild.yaml --substitutions=_IMAGE="$IMAGE" .
+"${G[@]}" builds submit --region="$REGION" --config=cloudrun/pdf-worker/cloudbuild.yaml --substitutions=_IMAGE="$IMAGE" \
+  --service-account="projects/$PROJECT/serviceAccounts/$BUILD_SA" --gcs-source-staging-dir="gs://$BUCKET/source" .
 
 echo "== 5/6 tarefa no Cloud Run ($JOB)"
 "${G[@]}" run jobs deploy "$JOB" --region="$REGION" --image="$IMAGE" --service-account="$RUN_SA" \

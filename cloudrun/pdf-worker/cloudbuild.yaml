@@ -1,9 +1,10 @@
 # Monta a imagem no Google Cloud Build (nada pesado roda no Mac). Usado por scripts/cloudrun/deploy-pdf-worker.sh.
+# Máquina padrão do Cloud Build (serve em qualquer região). Se precisar de mais velocidade: machineType E2_HIGHCPU_8 ou
+# E2_HIGHCPU_32 (não existe E2_HIGHCPU_4: o gcloud recusa com ".options.machineType: unused").
 steps:
   - name: gcr.io/cloud-builders/docker
     args: ["build", "-f", "cloudrun/pdf-worker/Dockerfile", "-t", "${_IMAGE}", "."]
 images: ["${_IMAGE}"]
 options:
-  machineType: E2_HIGHCPU_4
   logging: CLOUD_LOGGING_ONLY
 timeout: 1800s
