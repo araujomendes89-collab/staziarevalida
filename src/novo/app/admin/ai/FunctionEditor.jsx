@@ -40,7 +40,9 @@ function ModelPicker({ title, fn, value, onChange, providers, checks, savedProvi
           { value: "", label: "Escolha a IA" },
           ...providers.map((p) => {
             const { pending, blocks } = checks?.[p.id] ?? {};
-            const note = pending ? (blocks === true ? " (indisponível)" : " (sem chave no site)") : p.enabled ? "" : " (desligada)";
+            // o que não roda em servidor publicado manda; senão, desligada e sem chave aparecem juntas
+            const parts = blocks === true ? ["indisponível"] : [!p.enabled && "desligada", pending && "sem chave no site"].filter(Boolean);
+            const note = parts.length ? ` (${parts.join(", ")})` : "";
             return { value: p.id, label: PROVIDER_NAME[p.id] + note, disabled: blocks === true && p.id !== value.provider && !savedProviders.includes(p.id) };
           }),
         ]}
@@ -109,7 +111,8 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
     run(() => aiSend(backend, "PUT", `/functions/${fnKey}`, { config: null }), true);
   };
 
-  const warnings = state.warnings ?? check?.warnings ?? [];
+  // avisos da última gravação mais os da situação da função (que continuam valendo depois de salvar)
+  const warnings = [...new Set([...(state.warnings ?? []), ...(check?.warnings ?? [])])];
   const ref = check?.ref;
   return (
     <div data-testid={`function-${fnKey}`} style={{ display: "flex", flexDirection: "column", gap: 12, padding: "14px 0", borderTop: "1px solid var(--border-subtle)" }}>

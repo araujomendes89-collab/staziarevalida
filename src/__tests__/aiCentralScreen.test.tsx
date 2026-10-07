@@ -155,6 +155,19 @@ describe("Central de IAs (painel do administrador)", () => {
     expect(await within(box).findByText(/não é independente/)).toBeTruthy();
   });
 
+  it("os avisos da situação da função continuam na tela depois de salvar", async () => {
+    const aviso = "A principal não pode rodar aqui (Ollama roda só no Mac.); a reserva vai responder.";
+    overview.functions = [savedFn()];
+    overview.checks.criacao = { ...savedCheck, warnings: [aviso] };
+    render(<AdminAI />);
+    const box = await screen.findByTestId("function-criacao");
+    expect(within(box).getByText(aviso)).toBeTruthy();
+    fireEvent.click(within(box).getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai-central/functions/criacao")).toBe(true));
+    await waitFor(() => expect(calls.filter((c) => c.method === "GET" && c.url === "/api/ai-central/overview").length).toBeGreaterThan(1));
+    expect(within(box).getByText(aviso)).toBeTruthy();
+  });
+
   it("voltar às variáveis pede confirmação e manda config null", async () => {
     overview.functions = [savedFn()];
     overview.checks.criacao = savedCheck;
@@ -197,9 +210,10 @@ describe("Central de IAs (painel do administrador)", () => {
       for (const title of ["Principal", "Reserva"]) {
         const select = within(box).getByLabelText(`${title}: IA — Criação`) as HTMLSelectElement;
         expect(option(select, "Ollama (indisponível)").disabled).toBe(true);
-        // sem chave só aqui no site: o processamento roda no Cloud Run, então continua escolhível
-        expect(option(select, "OpenAI (sem chave no site)").disabled).toBe(false);
-        expect(option(select, "Gemini (sem chave no site)").disabled).toBe(false);
+        // sem chave só aqui no site: o processamento roda no Cloud Run, então continua escolhível;
+        // desligada e sem chave mostra as duas coisas
+        expect(option(select, "OpenAI (desligada, sem chave no site)").disabled).toBe(false);
+        expect(option(select, "Gemini (desligada, sem chave no site)").disabled).toBe(false);
         // desligada, mas o servidor consegue chamar: continua escolhível (o servidor recusa salvar até ligar)
         expect(option(select, "Claude (desligada)").disabled).toBe(false);
       }
@@ -243,7 +257,7 @@ describe("Central de IAs (painel do administrador)", () => {
       expect(linha(1).value).toBe("anthropic");
       expect(option(linha(1), "Ollama (indisponível)").disabled).toBe(false);
       // a OpenAI (sem chave só no site) segue escolhível
-      expect(option(linha(1), "OpenAI (sem chave no site)").disabled).toBe(false);
+      expect(option(linha(1), "OpenAI (desligada, sem chave no site)").disabled).toBe(false);
     });
 
     it("sem provider_checks (servidor antigo) nada fica desabilitado nem ganha rótulo de chave", async () => {
