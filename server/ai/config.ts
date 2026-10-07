@@ -229,3 +229,36 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig): { pro
   }
   return { problems, warnings };
 }
+
+export interface FunctionCheck {
+  source: "banco" | "variaveis";
+  ready: boolean;
+  ref: ModelRef | null;
+  problems: string[];
+  warnings: string[];
+}
+
+export const FUNCTION_KEYS: AiFunctionKey[] = ["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar"];
+
+/** Situação de cada uma das 6 funções: pronta ou o motivo. Função sem configuração salva usa as variáveis de ambiente. */
+export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): Record<AiFunctionKey, FunctionCheck> {
+  const out = {} as Record<AiFunctionKey, FunctionCheck>;
+  for (const key of FUNCTION_KEYS) {
+    const saved = cfg.functions[key];
+    if (saved) {
+      const { problems, warnings } = validateFunctionConfig(saved, cfg);
+      out[key] = { source: "banco", ready: problems.length === 0, ref: saved.primary, problems, warnings };
+      continue;
+    }
+    const ref = envFallbackRef(key, env);
+    const problems: string[] = [];
+    if (!ref) problems.push("Nenhuma IA definida: configure a função.");
+    else {
+      problems.push(...refProblems(ref, cfg));
+      const pending = providerPending(ref, cfg, env);
+      if (pending && !problems.includes(pending)) problems.push(pending);
+    }
+    out[key] = { source: "variaveis", ready: problems.length === 0, ref, problems, warnings: [] };
+  }
+  return out;
+}

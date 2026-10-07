@@ -6,6 +6,8 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "fs";
+import express from "express";
+import type http from "http";
 import os from "os";
 import path from "path";
 import { openDevDatabaseForTests, type DevDatabase } from "../../server/devDb/devDatabase";
@@ -38,6 +40,21 @@ afterAll(async () => {
   await dev?.db.close();
   fs.rmSync(tmp, { recursive: true, force: true });
 });
+
+/** Limpa o estado de IA do banco de teste: nenhuma chamada, função ou preço; IAs desligadas; tetos e seletor desligados. */
+async function resetAiState() {
+  const { invalidateAiConfig } = await import("../../server/ai/config");
+  for (const sql of [
+    "delete from public.ai_calls",
+    "delete from public.ai_functions",
+    "delete from public.ai_model_prices",
+    "update public.ai_providers set enabled = false, models = '[]'::jsonb, last_status = null",
+    "update public.ai_settings set caps_enabled = false, monthly_cap_usd = null, per_run_cap_usd = null, tab_override_enabled = false",
+  ]) {
+    await dev.db.query(sql);
+  }
+  invalidateAiConfig(db);
+}
 
 describe("Banco", () => {
   const RESTRITO = /Acesso restrito a administradores/;
@@ -564,19 +581,7 @@ describe("Maestro", () => {
   };
   const monthSpend = async () => Number(await db.service<any>("ch_worker_ai_month_spend", { p_now: new Date().toISOString() }));
 
-  beforeEach(async () => {
-    const { invalidateAiConfig } = await import("../../server/ai/config");
-    for (const sql of [
-      "delete from public.ai_calls",
-      "delete from public.ai_functions",
-      "delete from public.ai_model_prices",
-      "update public.ai_providers set enabled = false, models = '[]'::jsonb, last_status = null",
-      "update public.ai_settings set caps_enabled = false, monthly_cap_usd = null, per_run_cap_usd = null, tab_override_enabled = false",
-    ]) {
-      await dev.db.query(sql);
-    }
-    invalidateAiConfig(db);
-  });
+  beforeEach(resetAiState);
   const refresh = async () => (await import("../../server/ai/config")).invalidateAiConfig(db);
 
   it("sozinha: principal falha e a reserva responde; as duas chamadas ficam registradas", async () => {
@@ -963,5 +968,143 @@ describe("Maestro", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+describe("Rotas", () => {
+  const servers: http.Server[] = [];
+  const tokens: Record<string, string> = {};
+  let base: string;
+  const KEY = "teste-chave";
+  const fetchImpl = (async (url: any) => {
+    if (String(url).includes("anthropic")) {
+      return new Response(JSON.stringify({ data: [{ id: "claude-sonnet-5-5", display_name: "Claude Sonnet 5.5" }, { id: "claude-x", display_name: "X" }] }), { status: 200 });
+    }
+    return new Response("{}", { status: 404 });
+  }) as unknown as typeof fetch;
+
+  beforeAll(async () => {
+    tokens.admin = await dev.createSession(ADMIN);
+    tokens.editor = await dev.createSession(EDITOR);
+    tokens.student = await dev.createSession(STUDENT);
+    const { createAiRouter } = await import("../../server/ai/router");
+    base = await new Promise<string>((resolve) => {
+      const app = express();
+      app.use("/api/ai", createAiRouter({ db }, { fetchImpl, env: { ANTHROPIC_API_KEY: KEY } as any }));
+      const srv = app.listen(0, () => resolve(`http://127.0.0.1:${(srv.address() as any).port}/api/ai`));
+      servers.push(srv);
+    });
+  });
+  afterAll(async () => {
+    await Promise.all(servers.map((s) => new Promise((r) => s.close(r))));
+  });
+  beforeEach(resetAiState);
+
+  const call = (who: string | null, method: string, p: string, body?: unknown) =>
+    fetch(base + p, { method, headers: { ...(who ? { Authorization: `Bearer ${tokens[who]}` } : {}), ...(body !== undefined ? { "Content-Type": "application/json" } : {}) }, body: body !== undefined ? JSON.stringify(body) : undefined });
+  const A = { provider: "anthropic", model: "claude-sonnet-5-5" };
+
+  it("sem login volta 401; aluno recebe 403 até no resumo", async () => {
+    expect((await call(null, "GET", "/summary")).status).toBe(401);
+    const r = await call("student", "GET", "/summary");
+    expect(r.status).toBe(403);
+    expect((await r.json()).error).toBe("Central de IAs: acesso restrito à equipe.");
+  });
+
+  it("editor lê o resumo, mas não grava (403)", async () => {
+    const s = await call("editor", "GET", "/summary");
+    expect(s.status).toBe(200);
+    expect((await s.json()).functions).toHaveLength(6);
+    for (const [m, p, b] of [["GET", "/overview", undefined], ["POST", "/providers/anthropic/enabled", { enabled: true }], ["POST", "/providers/anthropic/refresh", {}], ["PUT", "/settings", { caps_enabled: false }]] as const) {
+      const r = await call("editor", m, p, b);
+      expect(r.status, p).toBe(403);
+      expect((await r.json()).error).toBe("Central de IAs: acesso restrito a administradores.");
+    }
+  });
+
+  it("admin liga a IA e o registro mostra quem ligou", async () => {
+    expect((await call("admin", "POST", "/providers/foo/enabled", { enabled: true })).status).toBe(400);
+    expect((await call("admin", "POST", "/providers/anthropic/enabled", { enabled: "sim" })).status).toBe(400);
+    const r = await call("admin", "POST", "/providers/anthropic/enabled", { enabled: true });
+    expect(r.status).toBe(200);
+    expect((await r.json()).enabled).toBe(true);
+    const ov = await (await call("admin", "GET", "/overview")).json();
+    expect(ov.providers.find((p: any) => p.id === "anthropic")).toMatchObject({ enabled: true, enabled_by: ADMIN });
+    expect(ov.history.some((h: any) => h.action === "ai.provider" && h.actor_id === ADMIN)).toBe(true);
+  });
+
+  it("atualizar lista com fetch simulado grava modelos e preços do seed", async () => {
+    const r = await call("admin", "POST", "/providers/anthropic/refresh", {});
+    expect(r.status).toBe(200);
+    const text = await r.text();
+    expect(text).not.toContain(KEY);
+    const j = JSON.parse(text);
+    expect(j.status).toBe("pronta");
+    expect(j.models.map((m: any) => m.id)).toEqual(["claude-sonnet-5-5", "claude-x"]);
+    expect(j.prices_added).toBe(1);
+    const ov = await (await call("admin", "GET", "/overview")).json();
+    const prices = ov.prices.filter((p: any) => p.provider === "anthropic");
+    expect(prices.map((p: any) => p.model)).toEqual(["claude-sonnet-5-5"]);
+    expect(Number(prices[0].input_per_mtok)).toBe(2);
+    expect(Number(prices[0].output_per_mtok)).toBe(10);
+    expect(ov.providers.find((p: any) => p.id === "anthropic").models).toHaveLength(2);
+    expect((await (await call("admin", "POST", "/providers/anthropic/refresh", {})).json()).prices_added).toBe(0);
+  });
+
+  it("função inválida volta 400 com os problemas (mesma família)", async () => {
+    await call("admin", "POST", "/providers/anthropic/enabled", { enabled: true });
+    expect((await call("admin", "PUT", "/functions/nada", { config: null })).status).toBe(404);
+    const bad = await call("admin", "PUT", "/functions/criacao", { config: { mode: "linha", care: "caprichado", primary: A, reviewers: [{ provider: "anthropic", model: "claude-opus-5-5" }] } });
+    expect(bad.status).toBe(400);
+    const j = await bad.json();
+    expect(j.problems.join(" ")).toMatch(/mesma família/);
+    expect(j.error).toContain("A função tem problemas: ");
+    expect((await call("admin", "PUT", "/functions/criacao", { config: { mode: "xis", primary: A } })).status).toBe(400);
+    const ok = await call("admin", "PUT", "/functions/criacao", { config: { mode: "sozinha", care: "rapido", primary: A } });
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({ ok: true, warnings: [] });
+    const row = (await dev.db.query<any>("select mode, care, primary_ref, reviewers from public.ai_functions where key = 'criacao'")).rows[0];
+    expect(row).toMatchObject({ mode: "sozinha", care: "rapido", primary_ref: A, reviewers: [] });
+    expect(await (await call("admin", "PUT", "/functions/criacao", { config: null })).json()).toEqual({ ok: true, warnings: [] });
+    expect((await dev.db.query("select 1 from public.ai_functions where key = 'criacao'")).rows).toHaveLength(0);
+  });
+
+  it("ligar tetos sem valores volta 400; com valores grava", async () => {
+    const r = await call("admin", "PUT", "/settings", { caps_enabled: true });
+    expect(r.status).toBe(400);
+    expect((await r.json()).error).toBe("Para ligar os tetos, preencha o teto mensal e o teto por execução.");
+    expect((await call("admin", "PUT", "/settings", { monthly_cap_usd: -1 })).status).toBe(400);
+    expect((await call("admin", "PUT", "/settings", { monthly_cap_usd: 10, caps_enabled: true })).status).toBe(400);
+    const ok = await call("admin", "PUT", "/settings", { monthly_cap_usd: 10, per_run_cap_usd: 1, caps_enabled: true });
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toMatchObject({ monthly_cap_usd: 10, per_run_cap_usd: 1, caps_enabled: true });
+    expect((await call("admin", "PUT", "/settings", { per_run_cap_usd: null })).status).toBe(400);
+  });
+
+  it("overview traz checks das 6 funções e nenhuma chave", async () => {
+    const r = await call("admin", "GET", "/overview");
+    const text = await r.text();
+    expect(text).not.toContain(KEY);
+    const j = JSON.parse(text);
+    expect(Object.keys(j.checks).sort()).toEqual(["assistente_conferir", "assistente_preencher", "assistente_revisar", "criacao", "engenharia_reversa", "verificacao"]);
+    expect(j.checks.criacao).toMatchObject({ source: "variaveis", ready: false });
+    expect(j.checks.criacao.problems.join(" ")).toMatch(/desligada/);
+    await call("admin", "POST", "/providers/anthropic/enabled", { enabled: true });
+    await call("admin", "PUT", "/functions/verificacao", { config: { mode: "sozinha", primary: A } });
+    const j2 = await (await call("admin", "GET", "/overview")).json();
+    expect(j2.checks.verificacao).toMatchObject({ source: "banco", ready: true, problems: [] });
+    expect(j2.checks.criacao).toMatchObject({ source: "variaveis", ready: true });
+  });
+
+  it("preço editado grava a data de hoje e recusa número negativo", async () => {
+    const path = `/prices/openai/${encodeURIComponent("gpt-9")}`;
+    expect((await call("admin", "PUT", path, { input_per_mtok: -1, output_per_mtok: 2 })).status).toBe(400);
+    expect((await call("admin", "PUT", "/prices/xx/gpt-9", { input_per_mtok: 1, output_per_mtok: 2 })).status).toBe(400);
+    expect((await call("admin", "PUT", path, { input_per_mtok: 1, output_per_mtok: 2, source_url: "http://x" })).status).toBe(400);
+    const r = await call("admin", "PUT", path, { input_per_mtok: 1.5, output_per_mtok: 3, source_url: "" });
+    expect(r.status).toBe(200);
+    const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
+    const row = (await dev.db.query<any>("select input_per_mtok::float8 i, source_url, checked_on::text c from public.ai_model_prices where model = 'gpt-9'")).rows[0];
+    expect(row).toEqual({ i: 1.5, source_url: null, c: today });
   });
 });
