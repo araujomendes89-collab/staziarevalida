@@ -332,8 +332,10 @@ begin
         from (select function_key, sum(cost_usd) as cost, count(*) as n from public.ai_calls
                where date_trunc('month', created_at at time zone 'America/Sao_Paulo') = v_month group by function_key) s), '[]'::jsonb),
     'month_spend', public.ch_worker_ai_month_spend(now()),
+    -- só o Tutor (feature tutor_*): Aulas (lesson_assist) e Podcasts (podcast_script, podcast_tts) já estão em ai_calls
     'tutor_month_spend', (select coalesce(sum(estimated_cost_usd), 0) from public.ai_usage_ledger
-                           where date_trunc('month', created_at at time zone 'America/Sao_Paulo') = v_month),
+                           where left(feature, 6) = 'tutor_'
+                             and date_trunc('month', created_at at time zone 'America/Sao_Paulo') = v_month),
     'recent_calls', coalesce((select jsonb_agg(to_jsonb(c)) from (select * from public.ai_calls order by created_at desc, id desc limit 30) c), '[]'::jsonb),
     'history', coalesce((select jsonb_agg(to_jsonb(h)) from (select l.id, l.actor_id, (select u.email from auth.users u where u.id = l.actor_id) as actor_email, l.action, l.target, l.details, l.created_at
                                                               from public.admin_audit_log l

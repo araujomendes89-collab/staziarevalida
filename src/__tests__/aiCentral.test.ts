@@ -195,6 +195,23 @@ describe("Banco", () => {
     await expect(db.asUser(studentUser, "app_ai_summary")).rejects.toThrow(/restrito/);
   });
 
+  it("o gasto do Tutor soma só as linhas tutor_ (Aulas e Podcasts já estão em ai_calls)", async () => {
+    const tutor = async () => Number((await db.asUser<any>(adminUser, "app_admin_ai_overview")).tutor_month_spend);
+    const add = (feature: string, cost: number) =>
+      dev.db.query(`insert into public.ai_usage_ledger (user_id, feature, estimated_cost_usd, meta) values ($1, $2, $3, '{"teste":"gasto-tutor"}'::jsonb)`, [ADMIN, feature, cost]);
+    const before = await tutor();
+    try {
+      await add("tutor_text", 0.4);
+      await add("tutor_voice_backend", 0.1);
+      await add("lesson_assist", 2);
+      await add("podcast_script", 3);
+      await add("podcast_tts", 4);
+      expect((await tutor()) - before).toBeCloseTo(0.5, 6);
+    } finally {
+      await dev.db.query(`delete from public.ai_usage_ledger where meta ->> 'teste' = 'gasto-tutor'`);
+    }
+  });
+
   it("as tabelas novas têm RLS e nenhuma função de serviço fica aberta", async () => {
     const t = await dev.db.query<any>(`select relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and relname like 'ai\\_%' and relkind = 'r' and not relrowsecurity`);
     expect(t.rows).toEqual([]);
