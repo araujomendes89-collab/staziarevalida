@@ -83,9 +83,9 @@ como elas trabalham, com teto de gasto. Um único "maestro" no servidor executa 
 
 | Chave | Nome na tela | Usos na etapa 1 |
 |---|---|---|
-| `criacao` | Criação | Rascunhos da Central (classificar, afirmações, rascunho de unidade), criação da análise de questões, roteiro do podcast, assistente das Aulas |
-| `verificacao` | Verificação e checagem | Evidências nas fontes, revisão automática dos rascunhos, conferentes da análise de questões (fontes, atualidade, advogado do diabo) |
-| `engenharia_reversa` | Engenharia reversa | DNA da questão e reanálise na Central (o motor do Mac entra na etapa 5) |
+| `criacao` | Criação | Etapas da Central que escrevem (prompts `classify`, `claims`, `draft`, `summary`, `flashcards`, `questions`), roteiro do podcast, assistente das Aulas |
+| `verificacao` | Verificação e checagem | Etapas da Central que conferem (prompts `evidence`, `review`) e os conferentes da conferência dos rascunhos de questões inéditas (`draftChecks`: papéis fontes, atualidade e advogado do diabo; prompts `solve`, `currency`, `redteam`) |
+| `engenharia_reversa` | Engenharia reversa | Análise e reanálise de questões na Central (prompts `qanalysis`, `qreanalysis`); o motor do Mac entra na etapa 5 |
 | `assistente_preencher` | Assistente: preencher | Reservada para a etapa 2 (já configurável) |
 | `assistente_conferir` | Assistente: conferir | Reservada para a etapa 2 |
 | `assistente_revisar` | Assistente: revisar a redação | Reservada para a etapa 2 |
@@ -159,8 +159,18 @@ executar(função, pedido estruturado, origem, troca da aba?) →
      "precisa de revisão", "parou no teto") e custo total
 ```
 
-- **Compatibilidade:** a regra "o banco vale mais que as variáveis de ambiente" só passa a valer quando a função tiver
-  configuração salva. Antes disso, tudo segue como hoje.
+- **Ligado/desligado vale sempre:** uma IA só é chamada se estiver ligada na Central de IAs (a autorização do dono).
+  Como todas começam desligadas, o assistente das Aulas e o roteiro dos Podcasts, que hoje usam as chaves da Vercel,
+  ficam parados até o dono ligar as IAs no menu (um clique por IA). A simulação (`mock`), que só existe em
+  desenvolvimento e nos testes, não depende disso e não tem custo.
+- **Compatibilidade dos modelos:** enquanto uma função não tiver configuração salva, ela usa o provedor e o modelo das
+  variáveis de hoje (`CONTENT_HUB_AI_PROVIDER`, `CONTENT_HUB_MODEL_CREATE` etc.; nas Aulas e nos Podcasts, a IA escolhida na
+  tela), desde que essa IA esteja ligada. Com configuração salva, vale a do banco.
+- **Modos nos usos atuais:** os usos atuais gravam um único resultado. Neles, a função usa a IA principal e a reserva. Onde
+  já existe conferência em linha (a conferência dos rascunhos), a função `verificacao` fornece os modelos dos três
+  conferentes, na ordem fontes, atualidade e advogado do diabo (faltando conferente, usa a principal), e a regra de
+  independência continua valendo contra o modelo que criou o rascunho. Os modos completos, com pareceres e comitê mostrados para a equipe, ficam disponíveis no
+  maestro e aparecem para as pessoas a partir da etapa 2 (assistentes).
 - **Troca da aba (etapa 2):** só é aceita com o interruptor ligado. Só pode escolher IAs ligadas e modelos da lista, e
   passa pelas mesmas conferências.
 - **Ollama:**
