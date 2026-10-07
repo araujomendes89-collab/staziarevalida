@@ -20,10 +20,11 @@ const asDraft = (r) => (r ? { provider: r.provider ?? "", model: r.model ?? "" }
 /**
  * IA + modelo: lista da IA quando houver; senão, o id digitado. A IA que não roda em nenhum servidor publicado
  * (checks[id].blocks: Ollama no site publicado) aparece como indisponível e desabilitada, exceto se já for a escolhida aqui
- * ou a salva neste lugar (a pessoa precisa conseguir ver, trocar e voltar). Chave ausente só neste servidor (o site) não
+ * ou uma das salvas neste lugar (a pessoa precisa conseguir ver, trocar e voltar; nos conferentes e membros vale pela lista
+ * salva, não pela posição, porque remover uma linha desloca as outras). Chave ausente só neste servidor (o site) não
  * bloqueia: o processamento da Central roda no Cloud Run com as chaves de lá; a opção continua escolhível, com o rótulo.
  */
-function ModelPicker({ title, fn, value, onChange, providers, checks, saved }) {
+function ModelPicker({ title, fn, value, onChange, providers, checks, savedProviders = [] }) {
   const info = providers.find((p) => p.id === value.provider);
   const models = Array.isArray(info?.models) ? info.models : [];
   const missing = value.model && models.length > 0 && !models.some((m) => m.id === value.model);
@@ -40,7 +41,7 @@ function ModelPicker({ title, fn, value, onChange, providers, checks, saved }) {
           ...providers.map((p) => {
             const { pending, blocks } = checks?.[p.id] ?? {};
             const note = pending ? (blocks === true ? " (indisponível)" : " (sem chave no site)") : p.enabled ? "" : " (desligada)";
-            return { value: p.id, label: PROVIDER_NAME[p.id] + note, disabled: blocks === true && p.id !== value.provider && p.id !== saved };
+            return { value: p.id, label: PROVIDER_NAME[p.id] + note, disabled: blocks === true && p.id !== value.provider && !savedProviders.includes(p.id) };
           }),
         ]}
       />
@@ -128,11 +129,11 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
       <SelectField label="Modo" aria-label={`Modo — ${label}`} value={draft.mode} onChange={(e) => set({ mode: e.target.value })} options={MODES} />
       <div>
         <div style={{ ...subtle, marginBottom: 6 }}>IA principal</div>
-        <ModelPicker fn={label} title="Principal" value={draft.primary} onChange={(v) => set({ primary: v })} providers={providers} checks={providerChecks} saved={saved?.primary_ref?.provider} />
+        <ModelPicker fn={label} title="Principal" value={draft.primary} onChange={(v) => set({ primary: v })} providers={providers} checks={providerChecks} savedProviders={[saved?.primary_ref?.provider]} />
       </div>
       <div>
         <div style={{ ...subtle, marginBottom: 6 }}>Reserva (opcional)</div>
-        <ModelPicker fn={label} title="Reserva" value={draft.fallback} onChange={(v) => set({ fallback: v })} providers={providers} checks={providerChecks} saved={saved?.fallback_ref?.provider} />
+        <ModelPicker fn={label} title="Reserva" value={draft.fallback} onChange={(v) => set({ fallback: v })} providers={providers} checks={providerChecks} savedProviders={[saved?.fallback_ref?.provider]} />
       </div>
       {draft.mode !== "sozinha" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -140,7 +141,7 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
           {others.map((o, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
               <div style={{ flex: "1 1 360px" }}>
-                <ModelPicker fn={label} title={`${draft.mode === "linha" ? "Conferente" : "Membro"} ${i + 1}`} value={o} onChange={(v) => setOther(i, v)} providers={providers} checks={providerChecks} saved={saved?.reviewers?.[i]?.provider} />
+                <ModelPicker fn={label} title={`${draft.mode === "linha" ? "Conferente" : "Membro"} ${i + 1}`} value={o} onChange={(v) => setOther(i, v)} providers={providers} checks={providerChecks} savedProviders={(saved?.reviewers ?? []).map((r) => r.provider)} />
               </div>
               {others.length > 1 && (
                 <Button size="sm" variant="ghost" icon="trash-2" onClick={() => set({ others: others.filter((_, j) => j !== i) })}>

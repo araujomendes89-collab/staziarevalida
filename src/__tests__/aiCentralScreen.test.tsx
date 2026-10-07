@@ -226,6 +226,26 @@ describe("Central de IAs (painel do administrador)", () => {
       expect(principal.value).toBe("ollama");
     });
 
+    it("conferentes: a IA indisponível salva na lista continua escolhível em qualquer linha, mesmo depois de remover outra", async () => {
+      overview.provider_checks = checks;
+      overview.functions = [savedFn({ mode: "linha", reviewers: [{ provider: "ollama", model: "qwen3" }, { provider: "anthropic", model: "claude-a" }] })];
+      overview.checks.criacao = savedCheck;
+      render(<AdminAI />);
+      const box = await screen.findByTestId("function-criacao");
+      const linha = (n: number) => within(box).getByLabelText(`Conferente ${n}: IA — Criação`) as HTMLSelectElement;
+      // a linha 2 é do Claude, mas o Ollama está na lista salva de conferentes: continua escolhível (a regra é pela lista, não pela posição)
+      expect(linha(2).value).toBe("anthropic");
+      expect(option(linha(2), "Ollama (indisponível)").disabled).toBe(false);
+      // a reserva não tem Ollama salvo: segue desabilitado
+      expect(option(within(box).getByLabelText("Reserva: IA — Criação") as HTMLSelectElement, "Ollama (indisponível)").disabled).toBe(true);
+      // remover o conferente 1 (Ollama) desloca as linhas: o Claude, agora na linha 1, ainda pode voltar ao Ollama salvo
+      fireEvent.click(within(box).getAllByRole("button", { name: "Remover" })[0]);
+      expect(linha(1).value).toBe("anthropic");
+      expect(option(linha(1), "Ollama (indisponível)").disabled).toBe(false);
+      // a OpenAI (sem chave só no site) segue escolhível
+      expect(option(linha(1), "OpenAI (sem chave no site)").disabled).toBe(false);
+    });
+
     it("sem provider_checks (servidor antigo) nada fica desabilitado nem ganha rótulo de chave", async () => {
       render(<AdminAI />);
       const box = await screen.findByTestId("function-criacao");
