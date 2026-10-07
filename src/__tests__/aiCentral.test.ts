@@ -285,4 +285,33 @@ describe("Modelos", () => {
     const notJson = fake({ message: { content: "oi" } });
     await expect(new OllamaProvider("http://localhost:11434", "llama3", notJson.f).generate(req)).rejects.toBeInstanceOf(AiInvalidOutput);
   });
+
+  it("Gemini: chave inválida (400 API_KEY_INVALID) vira chave_recusada sem vazar a chave", async () => {
+    const { f } = fake({ error: { status: "INVALID_ARGUMENT", details: [{ reason: "API_KEY_INVALID" }], message: "key=k-secret-9" } }, 400);
+    const r = await listModels("gemini", { GEMINI_API_KEY: "k-secret-9" }, f);
+    expect(r.status).toBe("chave_recusada");
+    expect(JSON.stringify(r)).not.toContain("k-secret-9");
+    const outro = fake({ error: { message: "bad request" } }, 400);
+    expect((await listModels("gemini", { GEMINI_API_KEY: "k" }, outro.f)).status).toBe("erro");
+  });
+
+  it("Claude: segue has_more com after_id e avisa lista incompleta se a página seguinte falhar", async () => {
+    const mk = (second: () => Response) => {
+      const urls: string[] = [];
+      const f = (async (url: any) => {
+        urls.push(String(url));
+        return urls.length === 1 ? json({ data: [{ id: "c-a", display_name: "A" }], has_more: true, last_id: "c-a" }) : second();
+      }) as unknown as typeof fetch;
+      return { f, urls };
+    };
+    const ok = mk(() => json({ data: [{ id: "c-b", display_name: "B" }], has_more: false, last_id: "c-b" }));
+    const r = await listModels("anthropic", { ANTHROPIC_API_KEY: "a" }, ok.f);
+    expect(ok.urls[1]).toContain("after_id=c-a");
+    expect(r.models.map((m) => m.id)).toEqual(["c-a", "c-b"]);
+    expect(r.detail).toBeNull();
+    const bad = mk(() => json({}, 500));
+    const r2 = await listModels("anthropic", { ANTHROPIC_API_KEY: "a" }, bad.f);
+    expect(r2).toMatchObject({ status: "pronta", detail: "Lista possivelmente incompleta." });
+    expect(r2.models.map((m) => m.id)).toEqual(["c-a"]);
+  });
 });

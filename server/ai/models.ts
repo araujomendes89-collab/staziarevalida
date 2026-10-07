@@ -50,11 +50,16 @@ export async function listModels(id: AiProviderId, env: NodeJS.ProcessEnv = proc
     return id === "ollama" ? fail("so_no_mac", "Ollama não respondeu: ele roda só no Mac.") : fail("erro", "Não foi possível falar com a empresa.");
   }
   if (res.status === 401 || res.status === 403) return fail("chave_recusada", `A empresa recusou a chave (${res.status}).`);
+  if (id === "gemini" && res.status === 400) {
+    const text = await res.text().catch(() => "");
+    if (text.includes("API_KEY_INVALID")) return fail("chave_recusada", "A empresa recusou a chave (400).");
+  }
   if (!res.ok) return fail("erro", `A empresa respondeu ${res.status}.`);
   let data = (await res.json().catch(() => null)) as any;
   if (!data || typeof data !== "object") return fail("erro", BAD_FORMAT);
 
   let models: ModelEntry[];
+  let incomplete = false;
   if (id === "anthropic") {
     if (!Array.isArray(data.data)) return fail("erro", BAD_FORMAT);
     models = data.data.filter((m: any) => typeof m?.id === "string").map((m: any) => ({ id: m.id, label: m.display_name || m.id }));
@@ -67,7 +72,10 @@ export async function listModels(id: AiProviderId, env: NodeJS.ProcessEnv = proc
       } catch {
         next = null;
       }
-      if (!next || !Array.isArray(next.data)) break;
+      if (!next || !Array.isArray(next.data)) {
+        incomplete = true;
+        break;
+      }
       models.push(...next.data.filter((m: any) => typeof m?.id === "string").map((m: any) => ({ id: m.id, label: m.display_name || m.id })));
       data = next;
     }
@@ -84,5 +92,5 @@ export async function listModels(id: AiProviderId, env: NodeJS.ProcessEnv = proc
     if (!Array.isArray(data.models)) return fail("erro", BAD_FORMAT);
     models = data.models.filter((m: any) => typeof m?.name === "string").map((m: any) => ({ id: m.name, label: m.name }));
   }
-  return { status: "pronta", detail: null, models: models.sort(byId) };
+  return { status: "pronta", detail: incomplete ? "Lista possivelmente incompleta." : null, models: models.sort(byId) };
 }
