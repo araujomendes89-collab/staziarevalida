@@ -271,6 +271,40 @@ describe("SQIE com banco e simulação de IA", () => {
     expect(seen).toEqual([]);
   });
 
+  it("análise de questões para no teto de gasto, com a mensagem do teto, em vez de seguir pelas outras questões", async () => {
+    const { invalidateAiConfig } = await import("../../server/ai/config");
+    const seen: string[] = [];
+    const aiMaker = (ref: { provider: string; model: string }) =>
+      ({
+        name: ref.provider,
+        model: ref.model,
+        isMock: false,
+        async generate(req: StructuredRequest) {
+          seen.push(`${ref.provider}:${ref.model}`);
+          return { output: respond(req), provider: ref.provider, model: ref.model, inputTokens: 10, outputTokens: 20, latencyMs: 1, costUsd: null };
+        },
+      }) as any;
+    const settings = (s: object) => db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: s });
+    await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "anthropic", p_enabled: true });
+    await db.service("ch_worker_ai_save_function", { p_actor: ADMIN, p_key: "engenharia_reversa", p_config: { mode: "sozinha", primary_ref: { provider: "anthropic", model: "claude-rev-teste" }, fallback_ref: null, reviewers: [], care: "caprichado" } });
+    await db.service("ch_worker_ai_save_price", { p_actor: ADMIN, p_provider: "anthropic", p_model: "claude-rev-teste", p_price: { input_per_mtok: 100, output_per_mtok: 200 } });
+    await settings({ caps_enabled: true, monthly_cap_usd: 1000, per_run_cap_usd: 0.01 });
+    await sql(`delete from public.ai_calls`);
+    invalidateAiConfig(db);
+    try {
+      const r = await runQuestionAnalysis({ db, aiMaker }, { limit: 3, exam: "revalida-2022-1" });
+      expect(r).toMatchObject({ considered: 3, saved: 0, skipped: 0 }); // parou: nenhuma questão marcada como falha
+      expect(r.pending).toMatch(/teto por execução de US\$ 0,01/);
+      expect(seen).toEqual([]);
+      // uma linha de teto só (a questão que bateu no teto), não uma por questão
+      expect((await sql(`select count(*)::int n from public.ai_calls where outcome = 'teto'`))[0].n).toBe(1);
+    } finally {
+      await settings({ caps_enabled: false });
+      await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "anthropic", p_enabled: false });
+      invalidateAiConfig(db);
+    }
+  });
+
   it("aluno: nada de análise antes de responder; depois, só a PUBLICADA e só com revisão médica da área", async () => {
     const a = (await sql(`select a.id, a.question_id, public.question_area_code(a.question_id) area from public.question_analysis a where a.is_current and a.status = 'checked' order by a.question_id limit 1`))[0];
     // não publicada: nem a equipe a recebe como "comentário do aluno"

@@ -11,7 +11,7 @@
 import crypto from "crypto";
 import { PROMPTS, asDocument } from "./ai/prompts";
 import { resolveProviderKind, type AiProvider, type StructuredRequest } from "./ai/provider";
-import { maestroProvider } from "../ai/maestro";
+import { AiCapReached, maestroProvider } from "../ai/maestro";
 import type { ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { normalize, numbers, numbersOutside } from "./checks";
@@ -281,6 +281,11 @@ export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: Analys
       report.saved++;
       report.verdicts[verdict] = (report.verdicts[verdict] ?? 0) + 1;
     } catch (error) {
+      // teto de gasto atingido: para aqui, com a mensagem do teto, em vez de seguir pelas outras questões gravando linhas de teto
+      if (error instanceof AiCapReached) {
+        report.pending = error.message;
+        break;
+      }
       report.skipped++;
       report.pending = `Falha em ${q.id} (${(error as Error).message.slice(0, 160)})`;
       if (/recusou|autorizado|ALLOW_EXTERNAL|API key|401|403|429/i.test((error as Error).message)) break;

@@ -226,6 +226,16 @@ describe("Decisão do revisor e cartão para o aluno", () => {
           return { output: { assessment: "INCONCLUSIVE", impact_level: "MAJOR_CHANGE", current_answer: "NONE", what_changed: "A dose do documento mudou, mas os trechos não bastam para concluir.", why_it_matters: "", options_affected: [], citations: [], confidence: 30 }, provider: ref.provider, model: ref.model, inputTokens: 10, outputTokens: 20, latencyMs: 1, costUsd: null };
         },
       }) as any;
+    // teto de gasto atingido: a reanálise para com a mensagem do teto (sem marcar falha) e nada é gravado
+    await db.service("ch_worker_ai_save_price", { p_actor: ADMIN, p_provider: "anthropic", p_model: "claude-reanalise-teste", p_price: { input_per_mtok: 100, output_per_mtok: 200 } });
+    await db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: { caps_enabled: true, monthly_cap_usd: 1000, per_run_cap_usd: 0.01 } });
+    invalidateAiConfig(db);
+    const capped = await runQuestionReanalysis({ db, aiMaker });
+    expect(capped).toMatchObject({ considered: 1, saved: 0, skipped: 0 });
+    expect(capped.pending).toMatch(/teto por execução de US\$ 0,01/);
+    expect(seen).toEqual([]);
+    await db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: { caps_enabled: false } });
+    invalidateAiConfig(db);
     const again = await runQuestionReanalysis({ db, aiMaker });
     expect(again.saved).toBe(1);
     expect(seen).toEqual(["anthropic:claude-reanalise-teste"]);
