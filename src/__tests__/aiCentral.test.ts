@@ -315,3 +315,61 @@ describe("Modelos", () => {
     expect(r2.models.map((m) => m.id)).toEqual(["c-a"]);
   });
 });
+
+describe("Preços", () => {
+  it("estimativa no pior caso", async () => {
+    const { estimateCostUsd } = await import("../../server/ai/prices");
+    const price = { input_per_mtok: 3, output_per_mtok: 15 };
+    const cost = estimateCostUsd(price, 4000, 1000);
+    expect(cost).toBeCloseTo(0.018, 6);
+  });
+
+  it("sem preço devolve null", async () => {
+    const { estimateCostUsd } = await import("../../server/ai/prices");
+    expect(estimateCostUsd(null, 4000, 1000)).toBeNull();
+  });
+
+  it("costUsd com preço devolve o custo exato", async () => {
+    const { costUsd } = await import("../../server/ai/prices");
+    const price = { input_per_mtok: 3, output_per_mtok: 15 };
+    const cost = costUsd(price, 1000, 1000);
+    expect(cost).toBeCloseTo(0.018, 6);
+  });
+
+  it("costUsd com token nulo devolve null", async () => {
+    const { costUsd } = await import("../../server/ai/prices");
+    const price = { input_per_mtok: 3, output_per_mtok: 15 };
+    expect(costUsd(price, null, 1000)).toBeNull();
+    expect(costUsd(price, 1000, null)).toBeNull();
+    expect(costUsd(price, null, null)).toBeNull();
+  });
+
+  it("cada preço inicial tem fonte e data", async () => {
+    const { PRICE_SEED } = await import("../../server/ai/prices");
+    expect(PRICE_SEED.length).toBeGreaterThan(0);
+    const sourceUrl = /^https:\/\//;
+    const dateFormat = /^\d{4}-\d{2}-\d{2}$/;
+    for (const price of PRICE_SEED) {
+      expect(price.source_url).toMatch(sourceUrl);
+      expect(price.checked_on).toMatch(dateFormat);
+      expect(typeof price.input_per_mtok).toBe("number");
+      expect(typeof price.output_per_mtok).toBe("number");
+      expect(price.input_per_mtok).toBeGreaterThanOrEqual(0);
+      expect(price.output_per_mtok).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it("sem preço duplicado no PRICE_SEED e todos os preços são números >= 0", async () => {
+    const { PRICE_SEED } = await import("../../server/ai/prices");
+    const seen = new Set<string>();
+    for (const price of PRICE_SEED) {
+      const key = `${price.provider}:${price.model}`;
+      expect(seen.has(key)).toBe(false);
+      seen.add(key);
+      expect(typeof price.input_per_mtok).toBe("number");
+      expect(typeof price.output_per_mtok).toBe("number");
+      expect(price.input_per_mtok).toBeGreaterThanOrEqual(0);
+      expect(price.output_per_mtok).toBeGreaterThanOrEqual(0);
+    }
+  });
+});
