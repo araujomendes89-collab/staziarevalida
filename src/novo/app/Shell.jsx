@@ -73,16 +73,17 @@ function MobileNav({route,go,phase}){
     {phase===2&&<button type="button" onClick={()=>go('paciente')} aria-label="Paciente simulado" style={{width:56,height:56,border:0,borderRadius:'50%',background:'var(--teal-400)',color:'var(--navy-950)',display:'inline-flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Icon name="sparkles" size={24}/></button>}
   </nav>;
 }
-function PhaseSwitch({phase,setPhase,mobile}){
-  const o=[[1,'1ª Fase','Objetiva'],[2,'2ª Fase','Prática']];
+// phase2Locked: a 2ª fase está "em breve" para o aluno (a equipe segue com acesso): opção apagada, sem clique e com "Em breve" até no celular.
+function PhaseSwitch({phase,setPhase,mobile,phase2Locked}){
+  const o=[[1,'1ª Fase','Objetiva'],[2,'2ª Fase',phase2Locked?'Em breve':'Prática']];
   return <div role="radiogroup" aria-label="Fase do Revalida" style={{display:'inline-flex',padding:4,gap:4,borderRadius:14,background:'var(--surface-sunken)',border:'1px solid var(--border-subtle)'}}>
-    {o.map(([v,l,d])=><button key={v} type="button" role="radio" aria-checked={phase===v} onClick={()=>setPhase(v)} style={{display:'flex',alignItems:'center',gap:8,height:40,padding:'0 14px',border:0,borderRadius:10,cursor:'pointer',background:phase===v?'var(--surface-card)':'transparent',boxShadow:phase===v?'var(--shadow-sm)':'none',color:phase===v?'var(--text-primary)':'var(--text-secondary)',font:'600 14px var(--font-sans)'}}>
-      <span style={{width:8,height:8,borderRadius:'50%',background:phase===v?(v===1?'var(--teal-500)':'var(--violet-600)'):'var(--border-strong)'}}/>{l}{!mobile&&<span style={{fontWeight:500,color:'var(--text-tertiary)'}}>· {d}</span>}</button>)}
+    {o.map(([v,l,d])=>{const lock=!!phase2Locked&&v===2;return <button key={v} type="button" role="radio" aria-checked={phase===v} disabled={lock} aria-disabled={lock?'true':undefined} onClick={lock?undefined:()=>setPhase(v)} style={{display:'flex',alignItems:'center',gap:8,height:40,padding:'0 14px',border:0,borderRadius:10,cursor:lock?'not-allowed':'pointer',background:phase===v?'var(--surface-card)':'transparent',boxShadow:phase===v?'var(--shadow-sm)':'none',color:lock?'var(--text-tertiary)':phase===v?'var(--text-primary)':'var(--text-secondary)',font:'600 14px var(--font-sans)'}}>
+      <span style={{width:8,height:8,borderRadius:'50%',background:phase===v?(v===1?'var(--teal-500)':'var(--violet-600)'):'var(--border-strong)'}}/>{l}{(!mobile||lock)&&<span style={{fontWeight:500,color:'var(--text-tertiary)'}}>· {d}</span>}</button>;})}
   </div>;
 }
-function Header({title,sub,theme,setTheme,go,mobile,phase,setPhase,info}){
+function Header({title,sub,theme,setTheme,go,mobile,phase,setPhase,phase2Locked,info}){
   return <header style={{display:'flex',justifyContent:'space-between',alignItems:'flex-end',gap:16,flexWrap:'wrap'}}>
-    <div style={{minWidth:0,display:'flex',flexDirection:'column',gap:14}}>{mobile&&<button type="button" onClick={()=>go(phase===2?'home2':'home')} aria-label="StaziaMed, início" style={{display:'flex',alignItems:'center',gap:10,border:0,background:'none',padding:0,cursor:'pointer'}}><img src="/novo-assets/logo-mark.png" alt="" style={{height:32}}/><span style={{font:'800 20px var(--font-sans)',letterSpacing:'-0.02em',color:'var(--text-primary)'}}>Stazia<span style={{color:'var(--text-brand)'}}>Med</span></span></button>}<PhaseSwitch phase={phase} setPhase={setPhase} mobile={mobile}/><div>{sub&&<div style={{font:'500 13px var(--font-sans)',color:'var(--text-tertiary)'}}>{sub}</div>}<h1 style={{margin:'4px 0 0',font:'700 '+(mobile?26:32)+'px/1.15 var(--font-sans)',letterSpacing:'-0.02em'}}>{title}</h1></div></div>
+    <div style={{minWidth:0,display:'flex',flexDirection:'column',gap:14}}>{mobile&&<button type="button" onClick={()=>go(phase===2?'home2':'home')} aria-label="StaziaMed, início" style={{display:'flex',alignItems:'center',gap:10,border:0,background:'none',padding:0,cursor:'pointer'}}><img src="/novo-assets/logo-mark.png" alt="" style={{height:32}}/><span style={{font:'800 20px var(--font-sans)',letterSpacing:'-0.02em',color:'var(--text-primary)'}}>Stazia<span style={{color:'var(--text-brand)'}}>Med</span></span></button>}<PhaseSwitch phase={phase} setPhase={setPhase} mobile={mobile} phase2Locked={phase2Locked}/><div>{sub&&<div style={{font:'500 13px var(--font-sans)',color:'var(--text-tertiary)'}}>{sub}</div>}<h1 style={{margin:'4px 0 0',font:'700 '+(mobile?26:32)+'px/1.15 var(--font-sans)',letterSpacing:'-0.02em'}}>{title}</h1></div></div>
     <div style={{display:'flex',gap:8,alignItems:'center'}}>
       {!mobile&&<button type="button" className="sm-pill" onClick={()=>go('missoes')} title="Sequência de dias de estudo"><Icon name="flame" size={16} style={{color:'var(--streak)'}}/>{info.streakDays} {info.streakDays===1?'dia':'dias'}</button>}
       <IconButton icon={theme==='dark'?'sun':'moon'} label={theme==='dark'?'Tema claro':'Tema escuro'} variant="secondary" onClick={()=>setTheme(theme==='dark'?'light':'dark')}/>
@@ -91,13 +92,13 @@ function Header({title,sub,theme,setTheme,go,mobile,phase,setPhase,info}){
     </div>
   </header>;
 }
-function AppShell({route,go,theme,setTheme,title,sub,children,bare,phase=1,setPhase,info}){
+function AppShell({route,go,theme,setTheme,title,sub,children,bare,phase=1,setPhase,phase2Locked=false,info}){
   const mobile=useMobile();const narrowRail=useNarrowRail();const [pref,setC]=React.useState(()=>localStorage.getItem('smf-col'));const collapsed=pref==null?narrowRail:pref==='1';const setCollapsed=v=>{const x=v?'1':'0';setC(x);localStorage.setItem('smf-col',x);};
   return <div style={{minHeight:'100vh',background:'var(--bg-app)'}}>
     {!mobile&&!FULL.includes(route)&&<Rail route={route} go={go} phase={phase} collapsed={collapsed} setCollapsed={setCollapsed} info={info}/>}
     <main style={{marginLeft:mobile||FULL.includes(route)?0:(collapsed?100:288),transition:'margin-left var(--dur-slow) var(--ease-standard)',padding:bare?0:(mobile?'24px 18px 112px':'36px 48px 128px')}}>
       {bare?children:<div style={{maxWidth:1200,margin:'0 auto',display:'flex',flexDirection:'column',gap:24}}>
-        <Header title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} phase={phase} setPhase={setPhase} info={info}/>{children}</div>}
+        <Header title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info}/>{children}</div>}
     </main>
     {mobile?<MobileNav route={route} go={go} phase={phase}/>:<Dock go={go} route={route} phase={phase} info={info}/>}
   </div>;

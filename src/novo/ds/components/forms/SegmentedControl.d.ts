@@ -1,5 +1,6 @@
 export interface SegmentedControlProps {
-  options: Array<string | { value: string; label: string; icon?: string; badge?: React.ReactNode }>;
+  /** An option with `disabled: true` is dimmed and cannot be chosen (like disabled options of SelectField). */
+  options: Array<string | { value: string; label: string; icon?: string; badge?: React.ReactNode; disabled?: boolean }>;
   value: string;
   onChange?: (value: string) => void;
   fullWidth?: boolean;

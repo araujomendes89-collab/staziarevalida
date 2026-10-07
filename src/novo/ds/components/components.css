@@ -85,7 +85,8 @@
 .sm-seg--full{display:flex}
 .sm-seg--full .sm-seg__opt{flex:1}
 .sm-seg__opt{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 var(--space-4);border:0;border-radius:var(--radius-sm);background:transparent;color:var(--text-secondary);font:600 var(--text-sm)/1 var(--font-sans);cursor:pointer;transition:all var(--dur-fast)}
-.sm-seg__opt:hover{color:var(--text-primary)}
+.sm-seg__opt:hover:not(:disabled){color:var(--text-primary)}
+.sm-seg__opt:disabled{color:var(--text-tertiary);cursor:not-allowed}
 .sm-seg__opt[aria-checked="true"]{background:var(--surface-card);color:var(--text-primary);box-shadow:var(--shadow-sm)}
 .sm-seg__opt:focus-visible{outline:none;box-shadow:var(--focus-ring)}
 

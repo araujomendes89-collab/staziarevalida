@@ -88,8 +88,10 @@ function Screen() {
   const navigate = useNavigate();
   const mobile = useMobile();
   const profile = boot.profile;
+  // 2ª fase · prática "em breve": por enquanto só a equipe (admin/editor) entra; aluno e revisor médico não
+  const phase2Locked = !isStaffRole(boot.role);
 
-  const defaultRoute = profile.phase === 2 ? "home2" : "home";
+  const defaultRoute = profile.phase === 2 && !phase2Locked ? "home2" : "home";
   const route = params.route ?? defaultRoute;
   const theme = resolveTheme(profile.theme);
 
@@ -102,6 +104,7 @@ function Screen() {
   if (!ROUTES.has(route)) return <Navigate to="/" replace />;
   // equipe (admin/editor) ou revisor médico de alguma área (só a revisão da Central de Conteúdo)
   if (route === "admin" && !isStaffRole(boot.role) && !boot.reviewer_areas?.length) return <Navigate to="/" replace />;
+  if (phase2Locked && PHASE2_ROUTES.includes(route)) return <Navigate to="/" replace />;
 
   const go = (next, query) => {
     const target = next === "planos" ? "perfil" : next;
@@ -110,6 +113,7 @@ function Screen() {
   };
   const phase = PHASE2_ROUTES.includes(route) ? 2 : 1;
   const setPhase = (next) => {
+    if (next === 2 && phase2Locked) return; // o botão já fica sem clique; esta é a defesa extra
     updateProfile({ phase: next }).catch(() => {});
     navigate(next === 2 ? "/home2" : "/home");
     window.scrollTo(0, 0);
@@ -179,6 +183,7 @@ function Screen() {
       setTheme={setTheme}
       phase={phase}
       setPhase={setPhase}
+      phase2Locked={phase2Locked}
       title={title}
       sub={sub}
       info={{

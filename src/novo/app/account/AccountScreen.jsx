@@ -60,10 +60,14 @@ function SaveBar({ saving, status, onCancel, dirty }) {
   );
 }
 
-/** Formulário ligado a campos do perfil: guarda o rascunho e salva só o que mudou. */
-function useProfileForm(fields) {
+/**
+ * Formulário ligado a campos do perfil: guarda o rascunho e salva só o que mudou.
+ * `adjust` (opcional): `shown` troca os valores que o formulário mostra ao abrir (não contam como alteração do aluno) e
+ * `extra` vai junto em todo salvamento, mesmo sem o aluno ter mexido nesses campos.
+ */
+function useProfileForm(fields, adjust) {
   const { boot, updateProfile } = useSession();
-  const initial = React.useMemo(() => Object.fromEntries(fields.map((f) => [f, boot.profile[f] == null ? "" : String(boot.profile[f])])), [boot.profile, fields]);
+  const initial = React.useMemo(() => ({ ...Object.fromEntries(fields.map((f) => [f, boot.profile[f] == null ? "" : String(boot.profile[f])])), ...adjust?.shown }), [boot.profile, fields, adjust]);
   const [draft, setDraft] = React.useState(initial);
   const [saving, setSaving] = React.useState(false);
   const [status, setStatus] = React.useState(null);
@@ -75,7 +79,7 @@ function useProfileForm(fields) {
   const save = async (toValue) => {
     setSaving(true);
     try {
-      await updateProfile(Object.fromEntries(changed.map((f) => [f, toValue(f, draft[f])])));
+      await updateProfile({ ...Object.fromEntries(changed.map((f) => [f, toValue(f, draft[f])])), ...adjust?.extra });
       setStatus("saved");
     } catch {
       setStatus("error");
@@ -115,8 +119,13 @@ function AccountSection({ email }) {
 }
 
 const STUDY_FIELDS = ["phase", "exam_type", "target_edition", "exam_date", "daily_minutes", "graduation_country", "graduation_university", "graduation_year"];
+// Aluno com a 2ª fase gravada (de antes de ela ficar "em breve"): o campo mostra a 1ª e o salvamento grava 1.
+const SECOND_PHASE_BECOMES_FIRST = { shown: { phase: "1" }, extra: { phase: 1 } };
 function StudySection() {
-  const form = useProfileForm(STUDY_FIELDS);
+  const { boot } = useSession();
+  // 2ª fase · prática "em breve" para o aluno (a equipe segue com a opção livre)
+  const phase2Locked = !isStaffRole(boot.role);
+  const form = useProfileForm(STUDY_FIELDS, phase2Locked && boot.profile.phase === 2 ? SECOND_PHASE_BECOMES_FIRST : undefined);
   const [errors, setErrors] = React.useState({});
   const { draft, set } = form;
   const submit = (event) => {
@@ -145,7 +154,7 @@ function StudySection() {
           onChange={(phase) => set({ phase })}
           options={[
             { value: "1", label: "1ª fase · objetiva" },
-            { value: "2", label: "2ª fase · prática" },
+            phase2Locked ? { value: "2", label: "2ª fase · prática (em breve)", disabled: true } : { value: "2", label: "2ª fase · prática" },
           ]}
         />
       </div>
@@ -304,6 +313,7 @@ export function AccountScreen({ go }) {
   const [section, setSection] = React.useState("conta");
   const profile = boot.profile;
   const plan = planBadge(boot.subscription, boot.role);
+  const phase2Locked = !isStaffRole(boot.role); // 2ª fase "em breve" para o aluno: o selo mostra a 1ª mesmo se a 2ª estiver gravada
   const goal = profile.target_edition ? `Meta: ${profile.exam_type === "ENAMED" ? "ENAMED" : "Revalida INEP"} ${profile.target_edition}` : null;
 
   return (
@@ -321,7 +331,7 @@ export function AccountScreen({ go }) {
                 </Badge>
               )}
               {goal && <Badge size="sm">{goal}</Badge>}
-              <Badge size="sm">{profile.phase === 2 ? "2ª fase" : "1ª fase"}</Badge>
+              <Badge size="sm">{profile.phase === 2 && !phase2Locked ? "2ª fase" : "1ª fase"}</Badge>
             </div>
           </div>
         </div>
