@@ -172,6 +172,57 @@ describe("Central de IAs (painel do administrador)", () => {
     expect(await screen.findByText("Sem configuração salva: usa as variáveis do servidor (Gemini g1)")).toBeTruthy();
   });
 
+  describe("IA que o servidor não consegue chamar (provider_checks)", () => {
+    const checks = { anthropic: { pending: null }, openai: { pending: "OPENAI_API_KEY vazia no servidor." }, gemini: { pending: null }, ollama: { pending: "Ollama roda só no Mac." } };
+    const option = (select: HTMLSelectElement, text: string) => Array.from(select.options).find((o) => o.textContent === text)!;
+
+    it("o cartão mostra o motivo e os seletores deixam a opção desabilitada, como indisponível", async () => {
+      overview.provider_checks = checks;
+      render(<AdminAI />);
+      const ollama = await screen.findByTestId("provider-ollama");
+      expect(within(ollama).getByText("Ollama roda só no Mac.")).toBeTruthy();
+      expect(within(screen.getByTestId("provider-openai")).getByText("OPENAI_API_KEY vazia no servidor.")).toBeTruthy();
+      // quem o servidor consegue chamar não mostra motivo
+      expect(within(screen.getByTestId("provider-anthropic")).queryByText(/vazia no servidor|roda só no Mac/)).toBeNull();
+
+      const box = screen.getByTestId("function-criacao");
+      for (const title of ["Principal", "Reserva"]) {
+        const select = within(box).getByLabelText(`${title}: IA — Criação`) as HTMLSelectElement;
+        expect(option(select, "Ollama (indisponível)").disabled).toBe(true);
+        expect(option(select, "OpenAI (indisponível)").disabled).toBe(true);
+        // desligada, mas o servidor consegue chamar: continua escolhível (o servidor recusa salvar até ligar)
+        expect(option(select, "Claude (desligada)").disabled).toBe(false);
+        expect(option(select, "Gemini (desligada)").disabled).toBe(false);
+      }
+    });
+
+    it("a IA indisponível que já é a escolhida salva continua visível e selecionada, para a pessoa conseguir trocar", async () => {
+      overview.provider_checks = checks;
+      overview.functions = [savedFn({ primary_ref: { provider: "ollama", model: "qwen3" } })];
+      overview.checks.criacao = { source: "banco", ready: false, ref: { provider: "ollama", model: "qwen3" }, problems: ["Ollama roda só no Mac."], warnings: [] };
+      render(<AdminAI />);
+      const box = await screen.findByTestId("function-criacao");
+      expect(within(box).getByText("não está pronta")).toBeTruthy();
+      expect(within(box).getByText("Ollama roda só no Mac.")).toBeTruthy();
+      const principal = within(box).getByLabelText("Principal: IA — Criação") as HTMLSelectElement;
+      expect(principal.value).toBe("ollama");
+      expect(option(principal, "Ollama (indisponível)").disabled).toBe(false);
+      // nos outros seletores continua desabilitada
+      expect(option(within(box).getByLabelText("Reserva: IA — Criação") as HTMLSelectElement, "Ollama (indisponível)").disabled).toBe(true);
+      // trocar de IA funciona
+      fireEvent.change(principal, { target: { value: "anthropic" } });
+      expect(principal.value).toBe("anthropic");
+    });
+
+    it("sem provider_checks (servidor antigo) nada fica desabilitado", async () => {
+      render(<AdminAI />);
+      const box = await screen.findByTestId("function-criacao");
+      const select = within(box).getByLabelText("Principal: IA — Criação") as HTMLSelectElement;
+      expect(Array.from(select.options).some((o) => o.disabled)).toBe(false);
+      expect(option(select, "Ollama (desligada)")).toBeTruthy();
+    });
+  });
+
   it("tetos: ligar exige os dois valores", async () => {
     render(<AdminAI />);
     await screen.findByTestId("provider-anthropic");

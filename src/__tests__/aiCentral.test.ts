@@ -4,7 +4,7 @@
  * (e tudo vai para o registro de ações), funções e preços são validados no banco, o gasto do mês é contado no fuso de
  * Brasília e o painel (administrador) e o resumo (equipe) respeitam o papel de quem chama.
  */
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "fs";
 import express from "express";
 import type http from "http";
@@ -548,6 +548,107 @@ describe("Configuração", () => {
     expect(envFallbackRef("verificacao", {} as any)).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" });
     expect(envFallbackRef("verificacao", { CONTENT_HUB_VERIFIER_PROVIDER: "mock" } as any)).toBeNull();
   });
+
+  describe("situação das funções salvas neste servidor", () => {
+    afterEach(() => vi.unstubAllEnvs());
+    const PROD = { NODE_ENV: "production" } as any;
+    const MAC = "Ollama roda só no Mac.";
+    const O = ref("ollama", "qwen3");
+    const C = ref("anthropic", "claude-sonnet-5-5");
+    const G = ref("gemini", "gemini-2.5-pro");
+    /** Servidor com a chave do Claude e sem as do OpenAI e do Gemini (as chaves vêm do ambiente do processo). */
+    const keys = () => {
+      vi.stubEnv("ANTHROPIC_API_KEY", "chave-de-teste");
+      vi.stubEnv("OPENAI_API_KEY", "");
+      vi.stubEnv("GEMINI_API_KEY", "");
+      vi.stubEnv("GOOGLE_GEMINI_API_KEY", "");
+    };
+    const check = async (fn: any, env: any = PROD, over: Parameters<typeof mkCfg>[0] = {}) => {
+      const { functionChecks } = await import("../../server/ai/config");
+      const cfg = mkCfg(over);
+      cfg.functions.criacao = fn;
+      return functionChecks(cfg, env).criacao;
+    };
+
+    it("só Ollama no site publicado: não está pronta, com o motivo; no Mac continua pronta", async () => {
+      keys();
+      const r = await check(fc("sozinha", O));
+      expect(r).toMatchObject({ source: "banco", ready: false, ref: O });
+      expect(r.problems).toEqual([MAC]);
+      // Ollama sem resposta (situação so_no_mac) vale o mesmo
+      expect((await check(fc("sozinha", O), {} as any, { status: { ollama: "so_no_mac" } })).problems).toEqual([MAC]);
+      expect(await check(fc("sozinha", O), {} as any)).toMatchObject({ ready: true, problems: [], warnings: [] });
+    });
+
+    it("principal que não roda e reserva que roda: pronta, com o aviso de que a reserva vai responder", async () => {
+      keys();
+      const r = await check(fc("sozinha", O, [], C));
+      expect(r).toMatchObject({ ready: true, problems: [] });
+      expect(r.warnings).toEqual([`A principal não pode rodar aqui (${MAC}); a reserva vai responder.`]);
+      // chave vazia no servidor também: principal Gemini sem chave, reserva Claude
+      const k = await check(fc("sozinha", G, [], C), {} as any);
+      expect(k).toMatchObject({ ready: true, problems: [] });
+      expect(k.warnings).toHaveLength(1);
+      expect(k.warnings[0]).toMatch(/^A principal não pode rodar aqui \(GEMINI_API_KEY .*\); a reserva vai responder\.$/);
+    });
+
+    it("principal e reserva que não rodam: não está pronta, com os dois motivos; chave vazia sem reserva também", async () => {
+      keys();
+      const r = await check(fc("sozinha", O, [], ref("openai", "gpt-x")));
+      expect(r.ready).toBe(false);
+      expect(r.problems).toEqual([MAC, "OPENAI_API_KEY vazia no servidor."]);
+      const k = await check(fc("sozinha", ref("openai", "gpt-x")), {} as any);
+      expect(k).toMatchObject({ ready: false, problems: ["OPENAI_API_KEY vazia no servidor."] });
+    });
+
+    it("IA desligada continua sendo problema, sem repetir o motivo", async () => {
+      keys();
+      const r = await check(fc("sozinha", O, [], C), PROD, { enabled: ["anthropic"] });
+      expect(r.ready).toBe(false);
+      expect(r.problems).toEqual(["Ollama está desligada na Central de IAs."]);
+      expect(r.warnings).toEqual([]);
+    });
+
+    it("conferente que não roda vira aviso e não tira a função de pronta", async () => {
+      keys();
+      const r = await check(fc("linha", C, [O]));
+      expect(r).toMatchObject({ ready: true, problems: [] });
+      expect(r.warnings).toEqual([`Ollama qwen3 não pode rodar aqui (${MAC})`]);
+      // reserva que não roda, com a principal rodando, também só avisa
+      const reserva = await check(fc("sozinha", C, [], O));
+      expect(reserva).toMatchObject({ ready: true, problems: [] });
+      expect(reserva.warnings).toEqual([`A reserva Ollama qwen3 não pode rodar aqui (${MAC})`]);
+    });
+
+    it("comitê: vale por membro (a reserva não entra) e precisa de 2 IAs que rodem", async () => {
+      keys();
+      const um = await check(fc("comite", O, [C, G], C));
+      // Gemini sem chave e Ollama fora do Mac: só o Claude roda (a reserva não entra no comitê) e o comitê precisa de 2
+      expect(um.ready).toBe(false);
+      expect(um.problems).toHaveLength(1);
+      expect(um.problems[0]).toMatch(/^O comitê precisa de pelo menos 2 IAs que possam rodar aqui\. Ollama roda só no Mac\. GEMINI_API_KEY/);
+      expect(um.warnings).toContain(`Ollama qwen3 não pode rodar aqui (${MAC})`);
+      vi.stubEnv("GEMINI_API_KEY", "g".repeat(40));
+      const dois = await check(fc("comite", O, [C, G]));
+      expect(dois).toMatchObject({ ready: true, problems: [] });
+      expect(dois.warnings).toEqual([`Ollama qwen3 não pode rodar aqui (${MAC})`]);
+    });
+
+    it("provider_checks: o motivo de cada IA não poder ser chamada daqui, sem olhar o interruptor", async () => {
+      keys();
+      const { providerChecks } = await import("../../server/ai/config");
+      const off = providerChecks(mkCfg({ enabled: [] }), {} as any);
+      expect(Object.keys(off).sort()).toEqual(["anthropic", "gemini", "ollama", "openai"]);
+      expect(off.anthropic).toEqual({ pending: null });
+      expect(off.openai).toEqual({ pending: "OPENAI_API_KEY vazia no servidor." });
+      expect(off.gemini.pending).toMatch(/GEMINI_API_KEY/);
+      expect(off.ollama).toEqual({ pending: null });
+      expect(providerChecks(mkCfg(), PROD).ollama).toEqual({ pending: MAC });
+      expect(providerChecks(mkCfg({ status: { ollama: "so_no_mac" } }), {} as any).ollama).toEqual({ pending: MAC });
+      // testa com o primeiro modelo da lista da IA (um modelo qualquer só para conferir a chave)
+      expect(providerChecks(mkCfg({ models: { openai: ["gpt-x"] } }), {} as any).openai.pending).toBe("OPENAI_API_KEY vazia no servidor.");
+    });
+  });
 });
 
 describe("Maestro", () => {
@@ -1037,6 +1138,8 @@ describe("Rotas", () => {
   const servers: http.Server[] = [];
   const tokens: Record<string, string> = {};
   let base: string;
+  /** A mesma Central com o servidor em produção (como no site publicado e no Cloud Run). */
+  let prod: string;
   const KEY = "teste-chave";
   const fetchImpl = (async (url: any) => {
     if (String(url).includes("anthropic")) {
@@ -1044,27 +1147,37 @@ describe("Rotas", () => {
     }
     return new Response("{}", { status: 404 });
   }) as unknown as typeof fetch;
+  /** Sobe um app só em 127.0.0.1: escutando em todos os endereços, a porta pode coincidir com outro programa do Mac. */
+  const listen = (mount: (app: express.Express) => void) =>
+    new Promise<string>((resolve) => {
+      const app = express();
+      mount(app);
+      const srv = app.listen(0, "127.0.0.1", () => resolve(`http://127.0.0.1:${(srv.address() as any).port}`));
+      servers.push(srv);
+    });
 
   beforeAll(async () => {
     tokens.admin = await dev.createSession(ADMIN);
     tokens.editor = await dev.createSession(EDITOR);
     tokens.student = await dev.createSession(STUDENT);
+    // as chaves das IAs vêm do ambiente do processo: aqui só a do Claude está no servidor
+    vi.stubEnv("ANTHROPIC_API_KEY", KEY);
+    vi.stubEnv("OPENAI_API_KEY", "");
+    vi.stubEnv("GEMINI_API_KEY", "");
+    vi.stubEnv("GOOGLE_GEMINI_API_KEY", "");
     const { createAiRouter } = await import("../../server/ai/router");
-    base = await new Promise<string>((resolve) => {
-      const app = express();
-      app.use("/api/ai-central", createAiRouter({ db }, { fetchImpl, env: { ANTHROPIC_API_KEY: KEY } as any }));
-      // só 127.0.0.1: escutando em todos os endereços, a porta pode coincidir com outro programa do Mac em 127.0.0.1
-      const srv = app.listen(0, "127.0.0.1", () => resolve(`http://127.0.0.1:${(srv.address() as any).port}/api/ai-central`));
-      servers.push(srv);
-    });
+    base = `${await listen((app) => app.use("/api/ai-central", createAiRouter({ db }, { fetchImpl, env: { ANTHROPIC_API_KEY: KEY } as any })))}/api/ai-central`;
+    prod = `${await listen((app) => app.use("/api/ai-central", createAiRouter({ db }, { fetchImpl, env: { ANTHROPIC_API_KEY: KEY, NODE_ENV: "production" } as any })))}/api/ai-central`;
   });
   afterAll(async () => {
+    vi.unstubAllEnvs();
     await Promise.all(servers.map((s) => new Promise((r) => s.close(r))));
   });
   beforeEach(resetAiState);
 
-  const call = (who: string | null, method: string, p: string, body?: unknown) =>
-    fetch(base + p, { method, headers: { ...(who ? { Authorization: `Bearer ${tokens[who]}` } : {}), ...(body !== undefined ? { "Content-Type": "application/json" } : {}) }, body: body !== undefined ? JSON.stringify(body) : undefined });
+  const callAt = (root: string, who: string | null, method: string, p: string, body?: unknown) =>
+    fetch(root + p, { method, headers: { ...(who ? { Authorization: `Bearer ${tokens[who]}` } : {}), ...(body !== undefined ? { "Content-Type": "application/json" } : {}) }, body: body !== undefined ? JSON.stringify(body) : undefined });
+  const call = (who: string | null, method: string, p: string, body?: unknown) => callAt(base, who, method, p, body);
   const A = { provider: "anthropic", model: "claude-sonnet-5-5" };
 
   it("sem login volta 401; aluno recebe 403 até no resumo", async () => {
@@ -1161,13 +1274,6 @@ describe("Rotas", () => {
 
   it("as rotas antigas /api/ai/* continuam respondendo", async () => {
     const { createAiRouter } = await import("../../server/ai/router");
-    const listen = (mount: (app: express.Express) => void) =>
-      new Promise<string>((resolve) => {
-        const app = express();
-        mount(app);
-        const srv = app.listen(0, "127.0.0.1", () => resolve(`http://127.0.0.1:${(srv.address() as any).port}`));
-        servers.push(srv);
-      });
     // a mesma ordem do server.ts: primeiro a Central de IAs, depois as rotas do app antigo
     const novo = await listen((app) => {
       app.use("/api/ai-central", createAiRouter({ db }, { fetchImpl, env: {} as any }));
@@ -1189,6 +1295,67 @@ describe("Rotas", () => {
     const text = fs.readFileSync("server.ts", "utf8");
     expect(text.includes('app.use("/api/ai-central", createAiRouter('), "server.ts monta a Central em /api/ai-central").toBe(true);
     expect(text.includes('app.use("/api/ai", createAiRouter('), "server.ts não pode montar a Central em /api/ai").toBe(false);
+  });
+
+  it("PUT /functions recusa Ollama onde ele não roda (site publicado ou sem resposta) e aceita no Mac", async () => {
+    const ollama = { provider: "ollama", model: "qwen3" };
+    const MAC = "Ollama roda só no Mac.";
+    for (const id of ["anthropic", "ollama"]) await call("admin", "POST", `/providers/${id}/enabled`, { enabled: true });
+    const saved = async () => (await dev.db.query("select 1 from public.ai_functions where key = 'criacao'")).rows.length;
+    const put = (root: string, config: unknown) => callAt(root, "admin", "PUT", "/functions/criacao", { config });
+
+    // site publicado: 400 com o motivo, e nada é gravado
+    const r = await put(prod, { mode: "sozinha", primary: ollama });
+    expect(r.status).toBe(400);
+    const j = await r.json();
+    expect(j.problems).toEqual([MAC]);
+    expect(j.error).toBe(`A função tem problemas: ${MAC}`);
+    expect(await saved()).toBe(0);
+    // como reserva ou como conferente também; repetido em vários lugares, a mensagem aparece uma vez
+    for (const config of [
+      { mode: "sozinha", primary: A, fallback: ollama },
+      { mode: "linha", primary: A, reviewers: [ollama] },
+      { mode: "linha", primary: A, fallback: ollama, reviewers: [{ provider: "ollama", model: "llama3" }] },
+    ]) {
+      const x = await put(prod, config);
+      expect(x.status, JSON.stringify(config)).toBe(400);
+      expect((await x.json()).problems).toEqual([MAC]);
+    }
+    expect(await saved()).toBe(0);
+
+    // no Mac (sem NODE_ENV=production) continua permitido
+    expect((await put(base, { mode: "sozinha", primary: ollama })).status).toBe(200);
+    expect(await saved()).toBe(1);
+    // Ollama que não respondeu na última consulta (so_no_mac) é recusado até fora de produção
+    await put(base, null);
+    await db.service("ch_worker_ai_store_models", { p_provider: "ollama", p_models: null, p_status: "so_no_mac", p_detail: "sem resposta" });
+    const r3 = await put(base, { mode: "sozinha", primary: ollama });
+    expect(r3.status).toBe(400);
+    expect((await r3.json()).problems).toEqual([MAC]);
+    expect(await saved()).toBe(0);
+  });
+
+  it("overview traz provider_checks das 4 IAs, sem chaves, e a função salva com Ollama não fica pronta no site publicado", async () => {
+    const text = await (await call("admin", "GET", "/overview")).text();
+    expect(text).not.toContain(KEY);
+    const j = JSON.parse(text);
+    expect(Object.keys(j.provider_checks).sort()).toEqual(["anthropic", "gemini", "ollama", "openai"]);
+    expect(j.provider_checks.anthropic).toEqual({ pending: null });
+    expect(j.provider_checks.openai).toEqual({ pending: "OPENAI_API_KEY vazia no servidor." });
+    expect(j.provider_checks.gemini.pending).toMatch(/GEMINI_API_KEY/);
+    expect(j.provider_checks.ollama).toEqual({ pending: null });
+    // no site publicado o Ollama aparece como "roda só no Mac"
+    const site = await (await callAt(prod, "admin", "GET", "/overview")).json();
+    expect(site.provider_checks.ollama).toEqual({ pending: "Ollama roda só no Mac." });
+    expect(site.provider_checks.anthropic).toEqual({ pending: null });
+
+    // função salva no Mac com Ollama: pronta no Mac, não pronta no site publicado (com o motivo)
+    await call("admin", "POST", "/providers/ollama/enabled", { enabled: true });
+    expect((await call("admin", "PUT", "/functions/criacao", { config: { mode: "sozinha", primary: { provider: "ollama", model: "qwen3" } } })).status).toBe(200);
+    const mac = (await (await call("admin", "GET", "/overview")).json()).checks.criacao;
+    expect(mac).toMatchObject({ source: "banco", ready: true, problems: [] });
+    const publicado = (await (await callAt(prod, "admin", "GET", "/overview")).json()).checks.criacao;
+    expect(publicado).toMatchObject({ source: "banco", ready: false, problems: ["Ollama roda só no Mac."] });
   });
 
   it("preço editado grava a data de hoje e recusa número negativo", async () => {

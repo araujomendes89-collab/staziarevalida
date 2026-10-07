@@ -35,7 +35,8 @@ export interface AiConfig {
 }
 
 export const PROVIDER_IDS: AiProviderId[] = ["anthropic", "openai", "gemini", "ollama"];
-const PROVIDER_NAMES: Record<AiProviderId, string> = { anthropic: "Claude", openai: "OpenAI", gemini: "Gemini", ollama: "Ollama" };
+/** Nomes das IAs na tela. */
+export const PROVIDER_NAMES: Record<AiProviderId, string> = { anthropic: "Claude", openai: "OpenAI", gemini: "Gemini", ollama: "Ollama" };
 export const DEFAULT_MODELS: Partial<Record<AiProviderId, string>> = { anthropic: "claude-sonnet-5-5", gemini: "gemini-2.5-pro" };
 const CACHE_MS = 10_000;
 
@@ -173,6 +174,11 @@ export function makeProvider(ref: ModelRef, cfg: AiConfig, env: NodeJS.ProcessEn
   return { provider: r.provider, pending: r.status.pending };
 }
 
+/** Motivo pelo qual este servidor não chama a ref agora (desligada, Ollama fora do Mac, chave vazia), ou null. Sem rede. */
+export function refPending(ref: ModelRef, cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): string | null {
+  return providerPending(ref, cfg, env) ?? makeProvider(ref, cfg, env).pending;
+}
+
 /** Problemas de uma ref: IA desligada, modelo fora da lista (não vazia) e modelo pago sem preço com os tetos ligados. */
 export function refProblems(ref: ModelRef, cfg: AiConfig): string[] {
   const out: string[] = [];
@@ -240,14 +246,61 @@ export interface FunctionCheck {
 
 export const FUNCTION_KEYS: AiFunctionKey[] = ["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar"];
 
+/**
+ * Função salva: além da validação da configuração, confere o que ESTE servidor consegue chamar (Ollama fora do Mac,
+ * chave vazia). Sozinha e linha: se nem a principal nem a reserva rodam, é problema; se só a principal não roda, é
+ * aviso (a reserva responde); conferente que não roda é aviso. Comitê: vale por membro (a reserva não entra) e
+ * precisam rodar 2. IA desligada já é problema em validateFunctionConfig e não se repete aqui.
+ */
+function savedFunctionCheck(saved: FunctionConfig, cfg: AiConfig, env: NodeJS.ProcessEnv): FunctionCheck {
+  const { problems, warnings } = validateFunctionConfig(saved, cfg);
+  const add = (list: string[], m: string) => {
+    if (!list.includes(m)) list.push(m);
+  };
+  interface RefState {
+    ref: ModelRef;
+    /** Por que este servidor não consegue chamar a ref (null: consegue, ou a IA está desligada, o que já é problema). */
+    why: string | null;
+    runs: boolean;
+  }
+  const state = (ref: ModelRef): RefState => {
+    const off = cfg.providers[ref.provider]?.enabled !== true;
+    const why = off ? null : refPending(ref, cfg, env);
+    return { ref, why, runs: !off && why === null };
+  };
+  const cannot = (s: RefState, prefix = "") => `${prefix}${PROVIDER_NAMES[s.ref.provider] ?? s.ref.provider} ${s.ref.model} não pode rodar aqui (${s.why})`;
+  const primary = saved.primary ? state(saved.primary) : null;
+  const fallback = saved.fallback ? state(saved.fallback) : null;
+  const others = saved.reviewers.map(state);
+
+  if (saved.mode === "comite") {
+    const members = primary ? [primary, ...others] : others;
+    for (const m of members) if (m.why) add(warnings, cannot(m));
+    if (members.length >= 2 && members.filter((m) => m.runs).length < 2) {
+      add(problems, `O comitê precisa de pelo menos 2 IAs que possam rodar aqui. ${members.flatMap((m) => (m.why ? [m.why] : [])).join(" ")}`.trim());
+    }
+  } else {
+    if (primary?.why) {
+      if (fallback?.runs) add(warnings, `A principal não pode rodar aqui (${primary.why}); a reserva vai responder.`);
+      else {
+        add(problems, primary.why);
+        if (fallback?.why) add(problems, fallback.why);
+      }
+    } else if (fallback?.why) {
+      add(warnings, cannot(fallback, "A reserva "));
+    }
+    for (const o of others) if (o.why) add(warnings, cannot(o));
+  }
+  return { source: "banco", ready: problems.length === 0, ref: saved.primary, problems, warnings };
+}
+
 /** Situação de cada uma das 6 funções: pronta ou o motivo. Função sem configuração salva usa as variáveis de ambiente. */
 export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): Record<AiFunctionKey, FunctionCheck> {
   const out = {} as Record<AiFunctionKey, FunctionCheck>;
   for (const key of FUNCTION_KEYS) {
     const saved = cfg.functions[key];
     if (saved) {
-      const { problems, warnings } = validateFunctionConfig(saved, cfg);
-      out[key] = { source: "banco", ready: problems.length === 0, ref: saved.primary, problems, warnings };
+      out[key] = savedFunctionCheck(saved, cfg, env);
       continue;
     }
     const ref = envFallbackRef(key, env);
@@ -259,6 +312,21 @@ export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.e
       if (pending && !problems.includes(pending)) problems.push(pending);
     }
     out[key] = { source: "variaveis", ready: problems.length === 0, ref, problems, warnings: [] };
+  }
+  return out;
+}
+
+/**
+ * Para a tela: por que este servidor não consegue chamar cada IA (Ollama fora do Mac, chave vazia), ou null.
+ * Não olha o interruptor Ligada/Desligada (isso já aparece no cartão e no seletor) e não usa a rede: confere com o
+ * primeiro modelo da lista da IA, o padrão dela ou um nome qualquer, só para conferir a chave.
+ */
+export function providerChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): Record<AiProviderId, { pending: string | null }> {
+  const out = {} as Record<AiProviderId, { pending: string | null }>;
+  for (const id of PROVIDER_IDS) {
+    const on: AiConfig = { ...cfg, providers: { ...cfg.providers, [id]: { ...cfg.providers[id], enabled: true } } };
+    const model = cfg.providers[id].models[0]?.id ?? DEFAULT_MODELS[id] ?? "modelo";
+    out[id] = { pending: refPending({ provider: id, model }, on, env) };
   }
   return out;
 }

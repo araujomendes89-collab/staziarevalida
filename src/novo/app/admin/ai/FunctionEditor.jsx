@@ -17,8 +17,11 @@ const MAX_OTHERS = { linha: 3, comite: 3 };
 const toRef = (r) => (r && r.provider && r.model ? { provider: r.provider, model: String(r.model).trim() } : null);
 const asDraft = (r) => (r ? { provider: r.provider ?? "", model: r.model ?? "" } : { ...EMPTY });
 
-/** IA + modelo: lista da IA quando houver; senão, o id digitado. */
-function ModelPicker({ title, fn, value, onChange, providers }) {
+/**
+ * IA + modelo: lista da IA quando houver; senão, o id digitado. A IA que o servidor não consegue chamar (checks[id].pending:
+ * Ollama no site publicado, chave vazia) aparece como indisponível e desabilitada, exceto se já for a escolhida aqui.
+ */
+function ModelPicker({ title, fn, value, onChange, providers, checks }) {
   const info = providers.find((p) => p.id === value.provider);
   const models = Array.isArray(info?.models) ? info.models : [];
   const missing = value.model && models.length > 0 && !models.some((m) => m.id === value.model);
@@ -30,7 +33,13 @@ function ModelPicker({ title, fn, value, onChange, providers }) {
         aria-label={`${title}: IA — ${fn}`}
         value={value.provider}
         onChange={(e) => onChange({ provider: e.target.value, model: "" })}
-        options={[{ value: "", label: "Escolha a IA" }, ...providers.map((p) => ({ value: p.id, label: PROVIDER_NAME[p.id] + (p.enabled ? "" : " (desligada)") }))]}
+        options={[
+          { value: "", label: "Escolha a IA" },
+          ...providers.map((p) => {
+            const pending = checks?.[p.id]?.pending;
+            return { value: p.id, label: PROVIDER_NAME[p.id] + (pending ? " (indisponível)" : p.enabled ? "" : " (desligada)"), disabled: Boolean(pending) && p.id !== value.provider };
+          }),
+        ]}
       />
       {models.length > 0 ? (
         <SelectField label="Modelo" aria-label={`${title}: modelo — ${fn}`} value={value.model} onChange={(e) => onChange({ ...value, model: e.target.value })} options={options} hint={missing ? "modelo não está mais na lista" : undefined} />
@@ -43,7 +52,7 @@ function ModelPicker({ title, fn, value, onChange, providers }) {
 
 const subtle = { font: "var(--type-caption)", color: "var(--text-tertiary)" };
 
-export function FunctionEditor({ fnKey, label, saved, check, providers, backend, onSaved }) {
+export function FunctionEditor({ fnKey, label, saved, check, providers, providerChecks, backend, onSaved }) {
   const init = () => ({
     mode: saved?.mode ?? "sozinha",
     care: saved?.care ?? "caprichado",
@@ -116,11 +125,11 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, backend,
       <SelectField label="Modo" aria-label={`Modo — ${label}`} value={draft.mode} onChange={(e) => set({ mode: e.target.value })} options={MODES} />
       <div>
         <div style={{ ...subtle, marginBottom: 6 }}>IA principal</div>
-        <ModelPicker fn={label} title="Principal" value={draft.primary} onChange={(v) => set({ primary: v })} providers={providers} />
+        <ModelPicker fn={label} title="Principal" value={draft.primary} onChange={(v) => set({ primary: v })} providers={providers} checks={providerChecks} />
       </div>
       <div>
         <div style={{ ...subtle, marginBottom: 6 }}>Reserva (opcional)</div>
-        <ModelPicker fn={label} title="Reserva" value={draft.fallback} onChange={(v) => set({ fallback: v })} providers={providers} />
+        <ModelPicker fn={label} title="Reserva" value={draft.fallback} onChange={(v) => set({ fallback: v })} providers={providers} checks={providerChecks} />
       </div>
       {draft.mode !== "sozinha" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -128,7 +137,7 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, backend,
           {others.map((o, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
               <div style={{ flex: "1 1 360px" }}>
-                <ModelPicker fn={label} title={`${draft.mode === "linha" ? "Conferente" : "Membro"} ${i + 1}`} value={o} onChange={(v) => setOther(i, v)} providers={providers} />
+                <ModelPicker fn={label} title={`${draft.mode === "linha" ? "Conferente" : "Membro"} ${i + 1}`} value={o} onChange={(v) => setOther(i, v)} providers={providers} checks={providerChecks} />
               </div>
               {others.length > 1 && (
                 <Button size="sm" variant="ghost" icon="trash-2" onClick={() => set({ others: others.filter((_, j) => j !== i) })}>

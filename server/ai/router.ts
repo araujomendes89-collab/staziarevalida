@@ -1,12 +1,15 @@
 /**
- * Rotas /api/ai-central (Central de IAs; o prefixo /api/ai é do app antigo). Só a equipe entra; só o administrador grava. As gravações passam pelas funções
- * ch_worker_ai_* (que conferem de novo se o ator é administrador). Nenhuma resposta traz chaves nem variáveis de ambiente.
+ * Rotas /api/ai-central (Central de IAs; o prefixo /api/ai é do app antigo). Só a equipe entra; só o administrador
+ * grava. As gravações passam pelas funções ch_worker_ai_* (que conferem de novo se o ator é administrador). Nenhuma
+ * resposta traz chaves nem variáveis de ambiente.
  *
- *   GET  /overview                      painel completo + checks (situação de cada função)  (administrador)
+ *   GET  /overview                      painel completo + checks (situação de cada função) + provider_checks (o que
+ *                                       este servidor não consegue chamar)  (administrador)
  *   GET  /summary                       resumo para a equipe
  *   POST /providers/:id/enabled         { enabled }  liga ou desliga uma IA
  *   POST /providers/:id/refresh         atualiza a lista de modelos e cadastra preços do seed que faltarem
- *   PUT  /functions/:key                { config: FunctionConfig | null }  modo, IAs e cuidado de uma função
+ *   PUT  /functions/:key                { config: FunctionConfig | null }  modo, IAs e cuidado de uma função (recusa
+ *                                       o que este servidor não chama: Ollama no site publicado)
  *   PUT  /settings                      { monthly_cap_usd, per_run_cap_usd, caps_enabled, tab_override_enabled }
  *   PUT  /prices/:provider/:model       { input_per_mtok, output_per_mtok, source_url }
  */
@@ -14,7 +17,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import type { ContentDb, Identity } from "../contentHub/infra";
 import { listModels } from "./models";
 import { PRICE_SEED } from "./prices";
-import { FUNCTION_KEYS, functionChecks, invalidateAiConfig, isProviderId, loadAiConfig, validateFunctionConfig, type AiFunctionKey, type FunctionConfig, type ModelRef } from "./config";
+import { FUNCTION_KEYS, functionChecks, invalidateAiConfig, isProviderId, loadAiConfig, providerChecks, providerPending, validateFunctionConfig, type AiFunctionKey, type FunctionConfig, type ModelRef } from "./config";
 
 type Authed = Request & { user?: Identity; admin?: boolean };
 
@@ -66,7 +69,7 @@ export function createAiRouter(
     try {
       const overview = await db().asUser<Record<string, unknown>>(req.user!, "app_admin_ai_overview");
       const cfg = await fresh();
-      res.json({ ...overview, checks: functionChecks(cfg, env) });
+      res.json({ ...overview, checks: functionChecks(cfg, env), provider_checks: providerChecks(cfg, env) });
     } catch (error) {
       fail(res, error);
     }
@@ -152,7 +155,13 @@ export function createAiRouter(
         fallback: fallback && refOf(fallback),
         reviewers: reviewers.map(refOf),
       };
-      const { problems, warnings } = validateFunctionConfig(config, await fresh());
+      const cfg = await fresh();
+      const { problems, warnings } = validateFunctionConfig(config, cfg);
+      // IA que este servidor não consegue chamar (Ollama no site publicado ou sem resposta) não pode ser escolhida
+      for (const ref of [config.primary, config.fallback, ...config.reviewers]) {
+        const why = ref && providerPending(ref, cfg, env);
+        if (why && !problems.includes(why)) problems.push(why);
+      }
       if (problems.length) return res.status(400).json({ error: "A função tem problemas: " + problems.join(" "), problems, warnings });
       await db().service("ch_worker_ai_save_function", {
         p_actor: req.user!.id,

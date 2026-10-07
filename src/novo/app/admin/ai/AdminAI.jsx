@@ -57,7 +57,7 @@ function Table({ heads, children }) {
   );
 }
 
-function ProviderCard({ p, spend, backend, reload }) {
+function ProviderCard({ p, spend, pending, backend, reload }) {
   const name = PROVIDER_NAME[p.id];
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState(null);
@@ -101,6 +101,7 @@ function ProviderCard({ p, spend, backend, reload }) {
         <Switch label={p.enabled ? "Ligada" : "Desligada"} aria-label={`${name}: ligar ou desligar`} checked={p.enabled === true} disabled={busy} onChange={(e) => toggle(e.target.checked)} />
       </div>
       {detail && <div style={subtle}>{detail}</div>}
+      {pending && <div style={subtle}>{pending}</div>}
       {p.enabled && <div style={subtle}>{`Ligada${by ? ` por ${by}` : ""} em ${when(p.enabled_at)}`}</div>}
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <span style={{ font: "var(--type-body-sm)" }}>{count === 1 ? "1 modelo" : `${count} modelos`}</span>
@@ -121,7 +122,7 @@ function Providers({ data, backend, reload }) {
     <Section title="IAs">
       <p style={note}>As chaves ficam só no servidor. Uma IA só é chamada se estiver ligada aqui.</p>
       {list.map((p) => (
-        <ProviderCard key={p.id} p={p} spend={data.spend_by_provider?.find((s) => s.provider === p.id)} backend={backend} reload={reload} />
+        <ProviderCard key={p.id} p={p} spend={data.spend_by_provider?.find((s) => s.provider === p.id)} pending={data.provider_checks?.[p.id]?.pending} backend={backend} reload={reload} />
       ))}
     </Section>
   );
@@ -132,7 +133,7 @@ function Functions({ data, backend, reload }) {
     <Section title="Funções">
       <p style={note}>Para cada função, escolha como as IAs trabalham. Tudo continua rascunho até uma pessoa aprovar.</p>
       {FUNCTIONS.map(([key, label]) => (
-        <FunctionEditor key={key} fnKey={key} label={label} saved={data.functions?.find((f) => f.key === key)} check={data.checks?.[key]} providers={data.providers} backend={backend} onSaved={reload} />
+        <FunctionEditor key={key} fnKey={key} label={label} saved={data.functions?.find((f) => f.key === key)} check={data.checks?.[key]} providers={data.providers} providerChecks={data.provider_checks} backend={backend} onSaved={reload} />
       ))}
     </Section>
   );
