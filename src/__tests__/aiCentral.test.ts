@@ -662,7 +662,7 @@ describe("Maestro", () => {
   it("teto por execução: comitê de 3 estimado acima do teto não chama ninguém", async () => {
     await on("anthropic", "openai", "gemini");
     await saveFn("criacao", "comite", A, [O, G]);
-    for (const r of [A, O, G]) await price(r, 10, 50);
+    for (const r of [A, O, G]) await price(r, 10, 20); // cada membro ≈ 0,021; os três ≈ 0,063 contra o teto de 0,05
     await settings({ caps_enabled: true, per_run_cap_usd: 0.05 });
     await refresh();
     const f = fakes({ [key(A)]: () => ({}), [key(O)]: () => ({}), [key(G)]: () => ({}) });
@@ -806,5 +806,162 @@ describe("Maestro", () => {
     const f4 = fakes({ [key(A)]: () => ({}) });
     await run(deps(f4), "criacao", { ...REQ, effort: "medium" });
     expect(f4.calls[key(A)][0].effort).toBe("medium");
+  });
+
+  // ---- adaptadores e reforços da rodada de correção 1
+  const adapters = () => import("../../server/ai/maestro");
+  const answers = (extra: Record<string, Handler> = {}) => ({ [key(A)]: () => ({ ok: "A" }), [key(O)]: () => ({ ok: "O" }), [key(G)]: () => ({ ok: "G" }), ...extra });
+
+  it("maestroProvider: mock passa direto e status pronto", async () => {
+    const { maestroProvider } = await adapters();
+    const mock = { name: "mock", model: "mock-dev", isMock: true, generate: async () => ({}) } as any;
+    const r = await maestroProvider(deps(null, { mockProvider: mock }), "criacao", origin);
+    expect(r.provider).toBe(mock);
+    expect(r.status).toMatchObject({ ready: true, isMock: true, pending: null, provider: "mock" });
+  });
+
+  it("maestroProvider: principal desligada e sem reserva → provider null e pending com a mensagem", async () => {
+    const { maestroProvider } = await adapters();
+    await saveFn("criacao", "sozinha", A);
+    await refresh();
+    const r = await maestroProvider(deps(fakes(answers())), "criacao", origin);
+    expect(r.provider).toBeNull();
+    expect(r.status.ready).toBe(false);
+    expect(r.status.pending).toBe("Claude está desligada na Central de IAs.");
+  });
+
+  it("maestroProvider: generate é uma execução sozinha (principal falha → reserva), registra principal/reserva com o modo salvo e devolve provider/model de quem respondeu e o custo", async () => {
+    const { maestroProvider } = await adapters();
+    await on("anthropic", "openai");
+    await saveFn("criacao", "linha", A, [G], O);
+    await price(A, 2, 10);
+    await price(O, 2, 10);
+    await refresh();
+    const f = fakes(answers({ [key(A)]: () => { throw new Error("boom"); } }));
+    const { provider, status } = await maestroProvider(deps(f), "criacao", origin);
+    expect(status).toMatchObject({ ready: true, provider: "anthropic", model: A.model, isMock: false });
+    const res = await provider!.generate<any>(REQ);
+    expect(res.output).toEqual({ ok: "O" });
+    expect(res.provider).toBe("openai");
+    expect(res.model).toBe(O.model);
+    expect(res.costUsd).toBeCloseTo((10 * 2 + 20 * 10) / 1_000_000, 8);
+    const rs = (await dev.db.query<any>(`select role, outcome, mode from public.ai_calls order by id`)).rows;
+    expect(rs.map((x: any) => `${x.role}:${x.outcome}:${x.mode}`)).toEqual(["principal:falha:linha", "principal:falha:linha", "reserva:ok:linha"]);
+  });
+
+  it("maestroProvider: generate lança erro quando ninguém responde e quando passa do teto por execução", async () => {
+    const { maestroProvider } = await adapters();
+    await on("anthropic");
+    await saveFn("criacao", "sozinha", A);
+    await refresh();
+    const bad = fakes({ [key(A)]: () => { throw new Error("boom"); } });
+    const p1 = (await maestroProvider(deps(bad), "criacao", origin)).provider!;
+    await expect(p1.generate(REQ)).rejects.toThrow(/boom/);
+    await price(A, 10, 20);
+    await settings({ caps_enabled: true, per_run_cap_usd: 0.001 });
+    await refresh();
+    const good = fakes(answers());
+    const p2 = (await maestroProvider(deps(good), "criacao", origin)).provider!;
+    await expect(p2.generate(REQ)).rejects.toThrow(/teto por execução/);
+    expect(good.calls[key(A)]).toBeUndefined();
+    expect((await dev.db.query<any>(`select count(*)::int as n from public.ai_calls where outcome = 'teto'`)).rows[0].n).toBe(1);
+  });
+
+  it("maestroRoleProvider: usa reviewers[roleIndex], faltando usa a principal; reserva só se for de outra família", async () => {
+    const { maestroRoleProvider } = await adapters();
+    await on("anthropic", "openai", "gemini");
+    await saveFn("verificacao", "linha", A, [O], G);
+    await refresh();
+    // índice 0 = O (gpt); a reserva G (google) é de outra família que o criador "claude-opus-5-5": vale
+    const f1 = fakes(answers({ [key(O)]: () => { throw new Error("fora"); } }));
+    const r0 = await maestroRoleProvider(deps(f1), 0, "claude-opus-5-5", origin);
+    expect(r0.status).toMatchObject({ ready: true, provider: "openai", model: O.model });
+    expect((await r0.provider!.generate<any>(REQ)).output).toEqual({ ok: "G" });
+    // índice 1 faltando = principal A (claude); criador gpt: a reserva G também é de outra família
+    const r1 = await maestroRoleProvider(deps(fakes(answers())), 1, "gpt-x", origin);
+    expect(r1.status).toMatchObject({ ready: true, provider: "anthropic", model: A.model });
+    expect((await r1.provider!.generate<any>(REQ)).output).toEqual({ ok: "A" });
+    // reserva da mesma família do criador é descartada: criador gemini-x, principal A falha → ninguém responde
+    const f3 = fakes(answers({ [key(A)]: () => { throw new Error("fora"); } }));
+    const r2 = await maestroRoleProvider(deps(f3), 1, "gemini-x", origin);
+    await expect(r2.provider!.generate(REQ)).rejects.toThrow(/fora/);
+    expect(f3.calls[key(G)]).toBeUndefined();
+    const roles = (await dev.db.query<any>(`select distinct role, function_key from public.ai_calls where role = 'conferente'`)).rows;
+    expect(roles).toEqual([{ role: "conferente", function_key: "verificacao" }]);
+  });
+
+  it("maestroRoleProvider: mesma família do criador → pending com a mensagem exata de independência", async () => {
+    const { maestroRoleProvider } = await adapters();
+    await on("anthropic");
+    await saveFn("verificacao", "sozinha", A);
+    await refresh();
+    const r = await maestroRoleProvider(deps(fakes(answers())), 2, "claude-opus-5-5", origin);
+    expect(r.provider).toBeNull();
+    expect(r.status.ready).toBe(false);
+    expect(r.status.pending).toBe(`Sem independência: o conferente (claude-sonnet-5-5) é da mesma família do criador (claude-opus-5-5). Use outro provedor para o papel "redteam".`);
+  });
+
+  it("maestroRoleProvider: sem função salva usa CONTENT_HUB_AI_PROVIDER_<PAPEL> e CONTENT_HUB_MODEL_<PAPEL> (openai sem CONTENT_HUB_OPENAI_MODEL)", async () => {
+    const { maestroRoleProvider } = await adapters();
+    await on("openai", "anthropic");
+    await refresh();
+    const f = fakes({ "openai:gpt-fonte": () => ({ ok: "fonte" }), "anthropic:claude-sonnet-5-5": () => ({ ok: "padrao" }) });
+    const env = { CONTENT_HUB_AI_PROVIDER_SOURCES: "openai", CONTENT_HUB_MODEL_SOURCES: "gpt-fonte" } as any;
+    const r = await maestroRoleProvider(deps(f, { env }), 0, "claude-opus-5-5", origin);
+    expect(r.status).toMatchObject({ ready: true, provider: "openai", model: "gpt-fonte" });
+    expect((await r.provider!.generate<any>(REQ)).output).toEqual({ ok: "fonte" });
+    const r2 = await maestroRoleProvider(deps(f), 1, "gpt-x", origin);
+    expect(r2.status).toMatchObject({ provider: "anthropic", model: "claude-sonnet-5-5" });
+  });
+
+  it("reserva planejada no lugar da principal bloqueada respeita o teto por execução", async () => {
+    await on("openai");
+    await saveFn("criacao", "sozinha", A, [], O);
+    await price(O, 10, 50);
+    await settings({ caps_enabled: true, per_run_cap_usd: 0.05 });
+    await refresh();
+    const f = fakes(answers());
+    const r = await run(deps(f), "criacao");
+    expect(r.status).toBe("parou_no_teto");
+    expect(Object.keys(f.calls)).toEqual([]);
+    expect((await rows(r.runId)).map((x: any) => `${x.role}:${x.provider}:${x.outcome}`)).toEqual(["reserva:openai:teto"]);
+  });
+
+  it("linha: conferente que lança erro vira precisa_revisao (conferência incompleta)", async () => {
+    await on("anthropic", "openai");
+    await saveFn("criacao", "linha", A, [O]);
+    await refresh();
+    const f = fakes(answers({ [key(O)]: () => { throw new Error("caiu"); } }));
+    const r = await run(deps(f), "criacao");
+    expect(r.status).toBe("precisa_revisao");
+    expect(r.message).toContain("conferência incompleta");
+    expect(r.reviews).toEqual([]);
+    expect((await rows(r.runId)).map((x: any) => `${x.role}:${x.outcome}`)).toEqual(["criadora:ok", "conferente:falha"]);
+  });
+
+  it("comitê: membro que não responde em 180 s conta como falha", async () => {
+    await on("anthropic", "openai", "gemini");
+    await saveFn("criacao", "comite", A, [O, G]);
+    await refresh();
+    const f = fakes(answers({ [key(G)]: () => new Promise(() => {}) }));
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      let done = false;
+      const p = run(deps(f), "criacao").finally(() => {
+        done = true;
+      });
+      for (let i = 0; i < 60 && !done; i++) {
+        await new Promise((res) => setImmediate(res));
+        await vi.advanceTimersByTimeAsync(10_000);
+      }
+      const r = await p;
+      expect(r.status).toBe("ok");
+      const g = r.outputs.find((o: any) => o.ref.provider === "gemini");
+      expect(g.output).toBeNull();
+      expect(g.error).toMatch(/Tempo esgotado/);
+      expect((await rows(r.runId)).find((x: any) => x.provider === "gemini").outcome).toBe("falha");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

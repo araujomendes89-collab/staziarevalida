@@ -9,7 +9,9 @@ import type { ContentDb } from "../contentHub/infra";
 import { familyOfModel, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
 import type { Schema } from "../contentHub/ai/schema";
 import {
+  DEFAULT_MODELS,
   envFallbackRef,
+  isProviderId,
   loadAiConfig,
   makeProvider,
   providerPending,
@@ -93,17 +95,14 @@ Não reescreva a resposta, só aponte os problemas.`;
 const TIMEOUT_MS = 180_000;
 const DEFAULT_MAX_OUT = 8192;
 const REVIEW_MAX_OUT = 2048;
-const MODEL_DEFAULTS: Partial<Record<AiProviderId, string>> = { anthropic: "claude-sonnet-5-5", gemini: "gemini-2.5-pro" };
-const PROVIDER_IDS: AiProviderId[] = ["anthropic", "openai", "gemini", "ollama"];
 const ROLE_ENV: Record<0 | 1 | 2, { key: string; label: string }> = { 0: { key: "SOURCES", label: "sources" }, 1: { key: "CURRENCY", label: "currency" }, 2: { key: "REDTEAM", label: "redteam" } };
 
 type Outcome = "ok" | "falha" | "teto" | "bloqueada";
 type Role = "principal" | "reserva" | "criadora" | "conferente" | "membro";
 
-const isProviderId = (v: unknown): v is AiProviderId => PROVIDER_IDS.includes(v as AiProviderId);
 const sameRef = (a: ModelRef | null, b: ModelRef | null) => !!a && !!b && a.provider === b.provider && a.model === b.model;
 const usd = (n: number) => String(Number(n.toFixed(4))).replace(".", ",");
-const errText = (e: unknown) => (e instanceof Error ? e.message : String(e)).replace(/(sk-|AIza|Bearer\s+)[\w.-]+/g, "[chave]").replace(/(key=)[^&\s]+/gi, "$1[chave]").slice(0, 300);
+const errText = (e: unknown) => (e instanceof Error ? e.message : String(e)).replace(/\b(sk-|AIza)[\w-]{8,}|\bBearer\s+[\w.~+/-]+/g, "[chave]").replace(/\b(key=)[^&\s]+/gi, "$1[chave]").slice(0, 300);
 
 function withTimeout<T>(work: () => Promise<T>, ms = TIMEOUT_MS): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -134,7 +133,7 @@ interface Resolved {
 function envReserve(primary: ModelRef | null, env: NodeJS.ProcessEnv): ModelRef | null {
   const id = (env.CONTENT_HUB_AI_FALLBACK_PROVIDER ?? "").trim();
   if (!isProviderId(id) || id === primary?.provider) return null;
-  const model = (env[`CONTENT_HUB_${id.toUpperCase()}_MODEL`] ?? "").trim() || MODEL_DEFAULTS[id];
+  const model = (env[`CONTENT_HUB_${id.toUpperCase()}_MODEL`] ?? "").trim() || DEFAULT_MODELS[id];
   return model ? { provider: id, model } : null;
 }
 
@@ -201,6 +200,8 @@ interface PlannedCall {
 
 type Attempt<T> = { ok: true; res: StructuredResult<T>; cost: number } | { ok: false; outcome: Exclude<Outcome, "ok">; error: string };
 
+type CreatorResult<T> = { ok: true; res: StructuredResult<T>; cost: number; slot: Slot; role: Role } | { ok: false };
+
 class Run {
   readonly runId = crypto.randomUUID();
   readonly rows: LogRow[] = [];
@@ -238,7 +239,7 @@ class Run {
   private push(slot: Slot, role: Role, outcome: Outcome, extra: Partial<LogRow> = {}) {
     this.rows.push({
       run_id: this.runId,
-      actor_id: this.origin.actorId ?? null,
+      actor_id: /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(this.origin.actorId ?? "") ? this.origin.actorId! : null,
       function_key: this.fn,
       mode: this.mode,
       role,
@@ -249,8 +250,8 @@ class Run {
       cost_usd: 0,
       duration_ms: 0,
       outcome,
-      source: this.origin.source,
-      item_id: this.origin.itemId ?? null,
+      source: String(this.origin.source).slice(0, 60),
+      item_id: this.origin.itemId ? String(this.origin.itemId).slice(0, 120) : null,
       error: null,
       ...extra,
     });
@@ -280,12 +281,28 @@ class Run {
     return null;
   }
 
-  /** Grava as chamadas previstas como recusadas pelo teto (ou bloqueadas) e devolve a mensagem. */
-  stopAtCap(items: PlannedCall[], message: string) {
+  /** Confere os tetos; ao parar, grava uma linha por chamada prevista (teto, ou bloqueada) e devolve a mensagem. */
+  checkCaps(items: PlannedCall[]): string | null {
+    const stop = this.plan(items);
+    if (!stop) return null;
     for (const i of items) {
       if (i.slot.blocked) this.refuse(i.slot, i.role, "bloqueada", i.slot.blocked);
-      else this.refuse(i.slot, i.role, "teto", message);
+      else this.refuse(i.slot, i.role, "teto", stop);
     }
+    return stop;
+  }
+
+  /** Chamada prevista da criadora: a principal, ou a reserva no lugar dela quando a principal está bloqueada. */
+  creatorCall(req: StructuredRequest, primary: Slot, fallback: Slot | null, roles: { first: Role; reserve: Role }): PlannedCall {
+    const useReserve = !!primary.blocked && !!fallback && !fallback.blocked;
+    return { slot: useReserve ? fallback! : primary, role: useReserve ? roles.reserve : roles.first, chars: req.system.length + req.input.length, maxOut: req.maxOutputTokens ?? DEFAULT_MAX_OUT };
+  }
+
+  /** Núcleo da execução sozinha (usado pela função e pelo adaptador): tetos e depois principal → nova tentativa → reserva. */
+  async solo<T>(req: StructuredRequest, primary: Slot, fallback: Slot | null, roles: { first: Role; reserve: Role }): Promise<{ stop: string } | CreatorResult<T>> {
+    const stop = this.checkCaps([this.creatorCall(req, primary, fallback, roles)]);
+    if (stop) return { stop };
+    return this.creator<T>(req, primary, fallback, roles);
   }
 
   private monthlyRefusal(est: number, planned: boolean): string | null {
@@ -325,13 +342,13 @@ class Run {
   }
 
   /** Principal, uma nova tentativa com o mesmo provedor e depois a reserva (uma vez). */
-  async creator<T>(req: StructuredRequest, primary: Slot, fallback: Slot | null, roles: { first: Role; reserve: Role }): Promise<{ ok: true; res: StructuredResult<T>; cost: number; slot: Slot; role: Role } | { ok: false }> {
+  async creator<T>(req: StructuredRequest, primary: Slot, fallback: Slot | null, roles: { first: Role; reserve: Role }): Promise<CreatorResult<T>> {
     const chars = req.system.length + req.input.length;
     let a = await this.attempt<T>(primary, roles.first, req, chars, true);
     if (a.ok === false && a.outcome === "falha") a = await this.attempt<T>(primary, roles.first, req, chars, false);
     if (a.ok) return { ...a, slot: primary, role: roles.first };
     if (fallback) {
-      const b = await this.attempt<T>(fallback, roles.reserve, req, chars, false);
+      const b = await this.attempt<T>(fallback, roles.reserve, req, chars, !!primary.blocked);
       if (b.ok) return { ...b, slot: fallback, role: roles.reserve };
     }
     return { ok: false };
@@ -376,13 +393,8 @@ function withCare(req: StructuredRequest, fc: FunctionConfig | null): Structured
 // ------------------------------------------------------------------ modos
 
 async function runSolo<T>(run: Run, req: StructuredRequest, primary: Slot, fallback: Slot | null): Promise<MaestroResult<T>> {
-  const planned: PlannedCall[] = [{ slot: primary, role: "principal", chars: req.system.length + req.input.length, maxOut: req.maxOutputTokens ?? DEFAULT_MAX_OUT }];
-  const stop = run.plan(planned);
-  if (stop) {
-    run.stopAtCap(planned, stop);
-    return finish(run, "parou_no_teto", { message: stop });
-  }
-  const r = await run.creator<T>(req, primary, fallback, { first: "principal", reserve: "reserva" });
+  const r = await run.solo<T>(req, primary, fallback, { first: "principal", reserve: "reserva" });
+  if ("stop" in r) return finish(run, "parou_no_teto", { message: r.stop });
   if (!r.ok) return finish(run, run.failureStatus(), { message: run.message() });
   return finish(run, "ok", { output: r.res.output, outputs: [{ ref: r.slot.ref, role: r.role, output: r.res.output, error: null }] });
 }
@@ -390,16 +402,13 @@ async function runSolo<T>(run: Run, req: StructuredRequest, primary: Slot, fallb
 async function runLine<T>(run: Run, req: MaestroRequest, primary: Slot, fallback: Slot | null, reviewers: Slot[]): Promise<MaestroResult<T>> {
   const maxOut = req.maxOutputTokens ?? DEFAULT_MAX_OUT;
   const reviewChars = REVIEW_SYSTEM.length + req.input.length + maxOut * 4;
-  const planned: PlannedCall[] = [
-    { slot: primary, role: "criadora", chars: req.system.length + req.input.length, maxOut },
+  const roles = { first: "criadora", reserve: "reserva" } as const;
+  const stop = run.checkCaps([
+    run.creatorCall(req, primary, fallback, roles),
     ...reviewers.map((slot): PlannedCall => ({ slot, role: "conferente", chars: reviewChars, maxOut: REVIEW_MAX_OUT })),
-  ];
-  const stop = run.plan(planned);
-  if (stop) {
-    run.stopAtCap(planned, stop);
-    return finish(run, "parou_no_teto", { message: stop });
-  }
-  const made = await run.creator<T>(req, primary, fallback, { first: "criadora", reserve: "reserva" });
+  ]);
+  if (stop) return finish(run, "parou_no_teto", { message: stop });
+  const made = await run.creator<T>(req, primary, fallback, roles);
   if (!made.ok) return finish(run, run.failureStatus(), { message: run.message() });
 
   const reviewReq = (): StructuredRequest => ({
@@ -440,11 +449,8 @@ async function runLine<T>(run: Run, req: MaestroRequest, primary: Slot, fallback
 async function runCommittee<T>(run: Run, req: MaestroRequest, members: Slot[]): Promise<MaestroResult<T>> {
   const chars = req.system.length + req.input.length;
   const planned: PlannedCall[] = members.map((slot) => ({ slot, role: "membro", chars, maxOut: req.maxOutputTokens ?? DEFAULT_MAX_OUT }));
-  const stop = run.plan(planned);
-  if (stop) {
-    run.stopAtCap(planned, stop);
-    return finish(run, "parou_no_teto", { message: stop });
-  }
+  const stop = run.checkCaps(planned);
+  if (stop) return finish(run, "parou_no_teto", { message: stop });
   const attempts = await Promise.all(members.map((slot) => run.attempt<T>(slot, "membro", req, chars, true)));
   const outputs = attempts.map((a, i) => ({ ref: members[i].ref, role: "membro", output: a.ok ? a.res.output : null, error: a.ok === false ? a.error : null }));
   const answered = outputs.filter((_, i) => attempts[i].ok);
@@ -468,16 +474,18 @@ export async function runFunction<T>(deps: MaestroDeps, fn: AiFunctionKey, req: 
   const env = deps.env ?? process.env;
   const cfg = await loadAiConfig(deps.db);
   const rs = resolveRefs(cfg, fn, env, override);
-  const run = await Run.start(deps, cfg, fn, rs.mode, origin);
-  if (!rs.primary) return finish(run, "falhou", { message: `Nenhuma IA definida para ${fn}: configure na Central de IAs.` });
+  const early = (message: string) => emptyResult<T>(crypto.randomUUID(), "falhou", message);
+  if (!rs.primary) return early(`Nenhuma IA definida para ${fn}: configure na Central de IAs.`);
 
   if (rs.fc) {
     const refs = [rs.primary, rs.fallback, ...rs.reviewers].filter(Boolean) as ModelRef[];
     const refSet = new Set(refs.flatMap((r) => refProblems(r, cfg)));
     const effective = { ...rs.fc, primary: rs.primary };
     const structural = validateFunctionConfig(effective, cfg).problems.filter((p) => !refSet.has(p));
-    if (structural.length) return finish(run, "falhou", { message: structural.join(" ") });
+    if (structural.length) return early(structural.join(" "));
   }
+
+  const run = await Run.start(deps, cfg, fn, rs.mode, origin);
 
   const primary = prepareSlot(deps, cfg, rs.primary);
   const fallback = rs.fallback && !sameRef(rs.fallback, rs.primary) ? prepareSlot(deps, cfg, rs.fallback) : null;
@@ -530,15 +538,9 @@ async function buildAdapter(deps: MaestroDeps, cfg: AiConfig, origin: MaestroOri
     async generate<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
       const run = await Run.start(deps, cfg, plan.fn, plan.mode, origin);
       const request = withCare(req, plan.fc);
-      const planned: PlannedCall[] = [{ slot: primary, role: plan.roles.first, chars: request.system.length + request.input.length, maxOut: request.maxOutputTokens ?? DEFAULT_MAX_OUT }];
-      const stop = run.plan(planned);
-      if (stop) {
-        run.stopAtCap(planned, stop);
-        await run.flush();
-        throw new Error(stop);
-      }
-      const r = await run.creator<T>(request, primary, fallback, plan.roles);
+      const r = await run.solo<T>(request, primary, fallback, plan.roles);
       await run.flush();
+      if ("stop" in r) throw new Error(r.stop);
       if (!r.ok) throw new Error(run.message() ?? "A IA não respondeu.");
       return { ...r.res, costUsd: r.cost };
     },
@@ -566,10 +568,9 @@ export async function maestroRoleProvider(deps: MaestroDeps, roleIndex: 0 | 1 | 
     ref = fc.reviewers[roleIndex] ?? fc.primary;
     fallback = fc.fallback;
   } else {
-    const kind = (env[`CONTENT_HUB_AI_PROVIDER_${role.key}`] ?? "").trim();
-    const base = envFallbackRef("verificacao", kind ? { ...env, CONTENT_HUB_VERIFIER_PROVIDER: kind } : env);
-    const model = (env[`CONTENT_HUB_MODEL_${role.key}`] ?? "").trim();
-    ref = base ? { provider: base.provider, model: model || base.model } : null;
+    const id = (env[`CONTENT_HUB_AI_PROVIDER_${role.key}`] || env.CONTENT_HUB_VERIFIER_PROVIDER || "anthropic").trim();
+    const model = (env[`CONTENT_HUB_MODEL_${role.key}`] || (isProviderId(id) ? env[`CONTENT_HUB_${id.toUpperCase()}_MODEL`] : "") || (isProviderId(id) ? DEFAULT_MODELS[id] : "") || "").trim();
+    ref = isProviderId(id) && model ? { provider: id, model } : null;
     fallback = envReserve(ref, env);
   }
   if (!ref) return notReady("Nenhuma IA definida para verificacao: configure na Central de IAs.");
