@@ -73,12 +73,13 @@ function MobileNav({route,go,phase}){
     {phase===2&&<button type="button" onClick={()=>go('paciente')} aria-label="Paciente simulado" style={{width:56,height:56,border:0,borderRadius:'50%',background:'var(--teal-400)',color:'var(--navy-950)',display:'inline-flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Icon name="sparkles" size={24}/></button>}
   </nav>;
 }
-// phase2Locked: a 2ª fase está "em breve" para o aluno (a equipe segue com acesso): opção apagada, sem clique e com "Em breve" até no celular.
+// phase2Locked: a 2ª fase está "em breve" para o aluno (a equipe segue com acesso): opção apagada, sem clique e com "Em breve" até no celular,
+// onde fica embaixo do nome (em linha o seletor passaria de 280 px e empurraria os ícones do canto para outra linha).
 function PhaseSwitch({phase,setPhase,mobile,phase2Locked}){
   const o=[[1,'1ª Fase','Objetiva'],[2,'2ª Fase',phase2Locked?'Em breve':'Prática']];
   return <div role="radiogroup" aria-label="Fase do Revalida" style={{display:'inline-flex',padding:4,gap:4,borderRadius:14,background:'var(--surface-sunken)',border:'1px solid var(--border-subtle)'}}>
-    {o.map(([v,l,d])=>{const lock=!!phase2Locked&&v===2;return <button key={v} type="button" role="radio" aria-checked={phase===v} disabled={lock} aria-disabled={lock?'true':undefined} onClick={lock?undefined:()=>setPhase(v)} style={{display:'flex',alignItems:'center',gap:8,height:40,padding:'0 14px',border:0,borderRadius:10,cursor:lock?'not-allowed':'pointer',background:phase===v?'var(--surface-card)':'transparent',boxShadow:phase===v?'var(--shadow-sm)':'none',color:lock?'var(--text-tertiary)':phase===v?'var(--text-primary)':'var(--text-secondary)',font:'600 14px var(--font-sans)'}}>
-      <span style={{width:8,height:8,borderRadius:'50%',background:phase===v?(v===1?'var(--teal-500)':'var(--violet-600)'):'var(--border-strong)'}}/>{l}{(!mobile||lock)&&<span style={{fontWeight:500,color:'var(--text-tertiary)'}}>· {d}</span>}</button>;})}
+    {o.map(([v,l,d])=>{const lock=!!phase2Locked&&v===2;const stack=lock&&mobile;return <button key={v} type="button" role="radio" aria-checked={phase===v} disabled={lock} aria-disabled={lock?'true':undefined} onClick={lock?undefined:()=>setPhase(v)} style={{display:'flex',alignItems:'center',gap:8,height:40,padding:'0 14px',border:0,borderRadius:10,cursor:lock?'not-allowed':'pointer',background:phase===v?'var(--surface-card)':'transparent',boxShadow:phase===v?'var(--shadow-sm)':'none',color:lock?'var(--text-tertiary)':phase===v?'var(--text-primary)':'var(--text-secondary)',font:'600 14px var(--font-sans)'}}>
+      <span style={{width:8,height:8,borderRadius:'50%',background:phase===v?(v===1?'var(--teal-500)':'var(--violet-600)'):'var(--border-strong)'}}/>{stack?<span style={{display:'flex',flexDirection:'column',alignItems:'flex-start',lineHeight:1.15}}>{l}{' '}<span style={{font:'500 11px/1.2 var(--font-sans)'}}>{d}</span></span>:<>{l}{!mobile&&<span style={{fontWeight:500,color:'var(--text-tertiary)'}}>· {d}</span>}</>}</button>;})}
   </div>;
 }
 function Header({title,sub,theme,setTheme,go,mobile,phase,setPhase,phase2Locked,info}){

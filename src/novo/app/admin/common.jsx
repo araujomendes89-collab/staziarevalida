@@ -5,6 +5,8 @@ import { Banner } from "../../ds";
 export const ROLE_LABEL = { student: "Aluno", editor: "Editor", admin: "Administrador" };
 /** Equipe: administrador ou editor (acesso completo do app, sem período de teste). */
 export const isStaffRole = (role) => role === "admin" || role === "editor";
+/** 2ª fase · prática "em breve": por enquanto só a equipe entra (aluno e revisor médico não). Para liberar aos alunos, devolva `false` aqui. */
+export const isPhase2Locked = (role) => !isStaffRole(role);
 export const PLAN_LABEL = { trial: "Teste grátis", pro: "Pro", elite: "Elite" };
 export const SUB_STATUS_LABEL = { trialing: "Em teste", active: "Ativo", past_due: "Pagamento pendente", canceled: "Cancelado", expired: "Expirado" };
 export const QUESTION_STATUS_LABEL = { valid: "Válida", annulled: "Anulada", changed_after_appeal: "Alterada após recurso" };

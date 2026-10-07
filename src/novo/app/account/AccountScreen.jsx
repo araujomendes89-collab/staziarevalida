@@ -5,10 +5,12 @@
 import React from "react";
 import { Avatar, Badge, Banner, Button, Card, Icon, SectionHeader, SegmentedControl, SelectField, TextField } from "../../ds";
 import { isStaffRole } from "../admin/AdminScreen.jsx";
+import { isPhase2Locked } from "../admin/common.jsx";
 import { PASSWORD_MIN_LENGTH } from "../../data";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { PlayProfileSection } from "../play/PlayProfile.jsx";
+import "./account.css";
 
 const SECTIONS = [
   { id: "conta", label: "Minha conta", sub: "Nome, e-mail e aparência", icon: "user" },
@@ -123,8 +125,9 @@ const STUDY_FIELDS = ["phase", "exam_type", "target_edition", "exam_date", "dail
 const SECOND_PHASE_BECOMES_FIRST = { shown: { phase: "1" }, extra: { phase: 1 } };
 function StudySection() {
   const { boot } = useSession();
+  const mobile = useMobile();
   // 2ª fase · prática "em breve" para o aluno (a equipe segue com a opção livre)
-  const phase2Locked = !isStaffRole(boot.role);
+  const phase2Locked = isPhase2Locked(boot.role);
   const form = useProfileForm(STUDY_FIELDS, phase2Locked && boot.profile.phase === 2 ? SECOND_PHASE_BECOMES_FIRST : undefined);
   const [errors, setErrors] = React.useState({});
   const { draft, set } = form;
@@ -148,15 +151,18 @@ function StudySection() {
         <div className="sm-field__label" style={{ marginBottom: 10 }}>
           Fase
         </div>
-        <SegmentedControl
-          label="Fase"
-          value={draft.phase}
-          onChange={(phase) => set({ phase })}
-          options={[
-            { value: "1", label: "1ª fase · objetiva" },
-            phase2Locked ? { value: "2", label: "2ª fase · prática (em breve)", disabled: true } : { value: "2", label: "2ª fase · prática" },
-          ]}
-        />
+        <div className={phase2Locked ? "acc-phase-soon" : undefined}>
+          <SegmentedControl
+            label="Fase"
+            value={draft.phase}
+            onChange={(phase) => set({ phase })}
+            fullWidth={mobile && phase2Locked}
+            options={[
+              { value: "1", label: "1ª fase · objetiva" },
+              { value: "2", label: phase2Locked ? "2ª fase · prática (em breve)" : "2ª fase · prática", disabled: phase2Locked },
+            ]}
+          />
+        </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 16 }}>
         <SelectField
@@ -313,7 +319,7 @@ export function AccountScreen({ go }) {
   const [section, setSection] = React.useState("conta");
   const profile = boot.profile;
   const plan = planBadge(boot.subscription, boot.role);
-  const phase2Locked = !isStaffRole(boot.role); // 2ª fase "em breve" para o aluno: o selo mostra a 1ª mesmo se a 2ª estiver gravada
+  const phase2Locked = isPhase2Locked(boot.role); // 2ª fase "em breve" para o aluno: o selo mostra a 1ª mesmo se a 2ª estiver gravada
   const goal = profile.target_edition ? `Meta: ${profile.exam_type === "ENAMED" ? "ENAMED" : "Revalida INEP"} ${profile.target_edition}` : null;
 
   return (

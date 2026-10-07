@@ -64,6 +64,7 @@ vi.mock("../novo/prototype/Theory2.jsx", () => ({ Theory2: () => <div data-testi
 import { App } from "../novo/app/App.jsx";
 import { AccountScreen } from "../novo/app/account/AccountScreen.jsx";
 import { SegmentedControl } from "../novo/ds";
+import { isPhase2Locked } from "../novo/app/admin/common.jsx";
 
 const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps", "paciente", "desempenho2"];
 
@@ -132,6 +133,16 @@ afterEach(() => {
   state.shellProps = null;
 });
 
+describe("Regra da 2ª fase em breve", () => {
+  it("só a equipe (admin e editor) entra; aluno, revisor médico (é aluno) e papel ausente ficam em breve", () => {
+    expect(isPhase2Locked("admin")).toBe(false);
+    expect(isPhase2Locked("editor")).toBe(false);
+    expect(isPhase2Locked("student")).toBe(true);
+    expect(isPhase2Locked(undefined)).toBe(true);
+    expect(isPhase2Locked(null)).toBe(true);
+  });
+});
+
 describe("Seletor de fase · aluno", () => {
   it("mostra '2ª Fase · Em breve' desabilitada e clicar não muda de fase", async () => {
     const { updateProfile } = renderApp("/", bootOf("student"));
@@ -159,13 +170,17 @@ describe("Seletor de fase · aluno", () => {
     expect(second).toBeDisabled();
   });
 
-  it("no celular a descrição some, mas a 2ª Fase continua dizendo 'Em breve'", () => {
+  it("no celular a descrição some, mas a 2ª Fase continua dizendo 'Em breve', empilhado sob o nome para o seletor não alargar", () => {
     setMobile(true);
     renderApp("/", bootOf("student"));
     const [first, second] = phaseRadios();
     expect(textOf(first)).toBe("1ª Fase");
-    expect(textOf(second)).toMatch(/^2ª Fase ?· Em breve$/);
+    expect(textOf(second)).toMatch(/^2ª Fase ?Em breve$/);
+    expect(textOf(second)).not.toContain("·"); // sem o "· Em breve" em linha, que deixaria o seletor com ~280 px
+    const emBreve = within(second).getByText("Em breve");
+    expect(emBreve.parentElement).toHaveStyle({ flexDirection: "column" });
     expect(second).toBeDisabled();
+    expect(second).toHaveAttribute("aria-disabled", "true");
   });
 
   it("quem tem a 2ª fase gravada no perfil abre na 1ª fase", () => {
@@ -272,6 +287,29 @@ describe("Conta · campo Fase", () => {
     expect(second).toHaveAttribute("aria-checked", "false");
     expect(saveButton()).toBeDisabled(); // nada mudou no formulário
     expect(updateProfile).not.toHaveBeenCalled();
+  });
+
+  it("aluno no celular: o campo Fase ocupa a largura toda do cartão e tem o gancho do CSS que empilha as opções em cartão estreito", () => {
+    setMobile(true);
+    openStudy(bootOf("student"));
+    const group = screen.getByRole("radiogroup", { name: "Fase" });
+    expect(group).toHaveClass("sm-seg--full");
+    expect(group.parentElement).toHaveClass("acc-phase-soon");
+    cleanup();
+
+    setMobile(false); // no computador segue do tamanho do conteúdo (o CSS ainda empilha se o cartão for estreito)
+    openStudy(bootOf("student"));
+    const wide = screen.getByRole("radiogroup", { name: "Fase" });
+    expect(wide).not.toHaveClass("sm-seg--full");
+    expect(wide.parentElement).toHaveClass("acc-phase-soon");
+  });
+
+  it("equipe no celular: o campo Fase fica como era (sem largura total e sem o gancho do aluno)", () => {
+    setMobile(true);
+    openStudy(bootOf("editor"));
+    const group = screen.getByRole("radiogroup", { name: "Fase" });
+    expect(group).not.toHaveClass("sm-seg--full");
+    expect(group.parentElement).not.toHaveClass("acc-phase-soon");
   });
 
   it("aluno com a 2ª fase gravada: o campo mostra a 1ª fase e salvar grava 1", async () => {

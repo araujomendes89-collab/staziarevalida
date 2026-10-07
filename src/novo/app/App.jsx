@@ -22,6 +22,7 @@ import { PerformanceScreen } from "./review/PerformanceScreen.jsx";
 import { FlashcardsScreen } from "./review/FlashcardsScreen.jsx";
 import { AccountScreen } from "./account/AccountScreen.jsx";
 import { AdminScreen, isStaffRole } from "./admin/AdminScreen.jsx";
+import { isPhase2Locked } from "./admin/common.jsx";
 import { ThemesScreen } from "./study/ThemesScreen.jsx";
 import { QuestionBuilder } from "./practice/QuestionBuilder.jsx";
 import { PracticeSession } from "./practice/PracticeSession.jsx";
@@ -89,7 +90,7 @@ function Screen() {
   const mobile = useMobile();
   const profile = boot.profile;
   // 2ª fase · prática "em breve": por enquanto só a equipe (admin/editor) entra; aluno e revisor médico não
-  const phase2Locked = !isStaffRole(boot.role);
+  const phase2Locked = isPhase2Locked(boot.role);
 
   const defaultRoute = profile.phase === 2 && !phase2Locked ? "home2" : "home";
   const route = params.route ?? defaultRoute;

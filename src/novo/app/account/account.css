@@ -1,0 +1,19 @@
+/* Conta. */
+
+/* Campo "Fase" do aluno: com a opção "2ª fase · prática (em breve)" os dois rótulos não cabem lado a lado quando o cartão é
+   estreito (celular, ou janela pequena no computador). Aí as opções viram uma coluna, cada rótulo numa linha só. */
+.acc-phase-soon {
+  container-type: inline-size;
+}
+@container (max-width: 480px) {
+  .acc-phase-soon .sm-seg {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .acc-phase-soon .sm-seg__opt {
+    height: auto;
+    min-height: 36px;
+    padding-block: 8px;
+    line-height: 1.25;
+  }
+}
