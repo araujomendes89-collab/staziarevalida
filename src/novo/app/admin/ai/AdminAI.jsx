@@ -5,8 +5,8 @@ import { Badge, Banner, Button, Switch, TextField } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { Loading, useLoad } from "../common.jsx";
 import { KeyValue, Section } from "../content/ui.jsx";
-import { aiGet, aiSend } from "./aiApi.js";
-import { FunctionEditor, PROVIDER_NAME } from "./FunctionEditor.jsx";
+import { aiGet, aiSend, PROVIDER_NAME, usd } from "./aiApi.js";
+import { FunctionEditor } from "./FunctionEditor.jsx";
 
 const PROVIDER_ORDER = ["anthropic", "openai", "gemini", "ollama"];
 const FUNCTIONS = [
@@ -23,10 +23,6 @@ const OUTCOME = { ok: ["ok", "success"], falha: ["falha", "danger"], teto: ["tet
 const ACTION = { "ai.provider": "IA ligada/desligada", "ai.function": "função", "ai.settings": "tetos e seletor", "ai.price": "preço" };
 const ROLE = { principal: "principal", reserva: "reserva", criadora: "criadora", conferente: "conferente", membro: "membro" };
 
-const usd = (n) => {
-  const v = Number(n ?? 0);
-  return v === 0 ? "US$ 0" : `US$ ${new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(v)}`;
-};
 const when = (iso) => (iso ? new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "—");
 const day = (iso) => (iso ? new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso)) : "—");
 const statusOf = (s) => (s ? (STATUS[s] ?? [s, "neutral"]) : ["lista ainda não atualizada", "neutral"]);
@@ -92,7 +88,7 @@ function ProviderCard({ p, spend, backend, reload }) {
   const [label, tone] = statusOf(refreshed ? refreshed.status : p.last_status);
   const detail = refreshed ? refreshed.detail : p.last_status_detail;
   const count = (refreshed ? refreshed.models : p.models)?.length ?? 0;
-  const by = p.enabled_by_email || p.enabled_by_name;
+  const by = p.enabled_by_email;
   return (
     <div data-testid={`provider-${p.id}`} style={{ display: "flex", flexDirection: "column", gap: 8, padding: "14px 0", borderTop: "1px solid var(--border-subtle)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -318,7 +314,7 @@ function TabSelector({ data, backend, reload }) {
 
 function History({ data }) {
   const rows = data.history ?? [];
-  const who = (h) => h.details?.actor_email ?? h.details?.actor_name ?? (h.actor_id ? String(h.actor_id).slice(0, 8) : "—");
+  const who = (h) => h.actor_email ?? "—";
   const target = (h) => (typeof h.target === "string" ? h.target : h.target == null ? "—" : JSON.stringify(h.target));
   return (
     <Section title="Histórico">

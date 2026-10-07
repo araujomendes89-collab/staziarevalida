@@ -29,3 +29,11 @@ export async function aiGet(backend, path) {
 export async function aiSend(backend, method, path, body) {
   return parse(await fetch(BASE + path, { method, headers: await headers(backend, { "Content-Type": "application/json" }), body: JSON.stringify(body ?? {}) }));
 }
+
+export const PROVIDER_NAME = { anthropic: "Claude", openai: "OpenAI", gemini: "Gemini", ollama: "Ollama" };
+
+/** Dólar em pt-BR: "US$ 0,0123" (até 4 casas); zero vira "US$ 0". */
+export const usd = (n) => {
+  const v = Number(n ?? 0);
+  return v === 0 ? "US$ 0" : `US$ ${new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(v)}`;
+};

@@ -321,6 +321,8 @@ begin
   perform public.assert_admin();
   v_cfg := public.ch_worker_ai_config();
   return v_cfg || jsonb_build_object(
+    'providers', coalesce((select jsonb_agg(to_jsonb(p) || jsonb_build_object('enabled_by_email', (select u.email from auth.users u where u.id = p.enabled_by)) order by p.id)
+                             from public.ai_providers p), '[]'::jsonb),
     'spend_by_provider', coalesce((
       select jsonb_agg(jsonb_build_object('provider', provider, 'cost_usd', cost, 'calls', n) order by provider)
         from (select provider, sum(cost_usd) as cost, count(*) as n from public.ai_calls
@@ -333,8 +335,9 @@ begin
     'tutor_month_spend', (select coalesce(sum(estimated_cost_usd), 0) from public.ai_usage_ledger
                            where date_trunc('month', created_at at time zone 'America/Sao_Paulo') = v_month),
     'recent_calls', coalesce((select jsonb_agg(to_jsonb(c)) from (select * from public.ai_calls order by created_at desc, id desc limit 30) c), '[]'::jsonb),
-    'history', coalesce((select jsonb_agg(to_jsonb(h)) from (select id, actor_id, action, target, details, created_at from public.admin_audit_log
-                                                             where action like 'ai.%' order by created_at desc, id desc limit 30) h), '[]'::jsonb)
+    'history', coalesce((select jsonb_agg(to_jsonb(h)) from (select l.id, l.actor_id, (select u.email from auth.users u where u.id = l.actor_id) as actor_email, l.action, l.target, l.details, l.created_at
+                                                              from public.admin_audit_log l
+                                                             where l.action like 'ai.%' order by l.created_at desc, l.id desc limit 30) h), '[]'::jsonb)
   );
 end
 $$;

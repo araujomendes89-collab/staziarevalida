@@ -25,7 +25,7 @@ import { AdminAI } from "../novo/app/admin/ai/AdminAI.jsx";
 import { HubSettings } from "../novo/app/admin/content/HubSettings.jsx";
 import { AdminScreen } from "../novo/app/admin/AdminScreen.jsx";
 
-const provider = (id: string, extra: any = {}) => ({ id, enabled: false, enabled_by: null, enabled_at: null, models: [], models_refreshed_at: null, last_status: null, last_status_detail: null, ...extra });
+const provider = (id: string, extra: any = {}) => ({ id, enabled: false, enabled_by: null, enabled_by_email: null, enabled_at: null, models: [], models_refreshed_at: null, last_status: null, last_status_detail: null, ...extra });
 const OVERVIEW: any = {
   providers: [
     provider("anthropic", { models: [{ id: "claude-a", label: "Claude A" }], last_status: "pronta" }),
@@ -109,9 +109,9 @@ describe("Central de IAs (painel do administrador)", () => {
     overview.checks.criacao = savedCheck;
     render(<AdminAI />);
     const box = await screen.findByTestId("function-criacao");
-    fireEvent.change(within(box).getByLabelText("Modo"), { target: { value: "linha" } });
-    fireEvent.change(within(box).getByLabelText("Conferente 1: IA"), { target: { value: "anthropic" } });
-    fireEvent.change(within(box).getByLabelText("Conferente 1: modelo"), { target: { value: "claude-a" } });
+    fireEvent.change(within(box).getByLabelText("Modo — Criação"), { target: { value: "linha" } });
+    fireEvent.change(within(box).getByLabelText("Conferente 1: IA — Criação"), { target: { value: "anthropic" } });
+    fireEvent.change(within(box).getByLabelText("Conferente 1: modelo — Criação"), { target: { value: "claude-a" } });
     fireEvent.click(within(box).getByRole("button", { name: "Salvar" }));
     expect(await within(box).findByText("Conferente da mesma família que a criadora.")).toBeTruthy();
     const put = calls.find((c) => c.method === "PUT" && c.url === "/api/ai/functions/criacao")!;
@@ -119,6 +119,30 @@ describe("Central de IAs (painel do administrador)", () => {
     expect(put.body.config.reviewers).toEqual([{ provider: "anthropic", model: "claude-a" }]);
     // nada mudou na tela salva: não recarregou o painel depois do erro
     expect(calls.filter((c) => c.url === "/api/ai/overview").length).toBe(1);
+  });
+
+  it("conferente incompleto trava o Salvar com mensagem", async () => {
+    overview.functions = [savedFn()];
+    overview.checks.criacao = savedCheck;
+    render(<AdminAI />);
+    const box = await screen.findByTestId("function-criacao");
+    fireEvent.change(within(box).getByLabelText("Modo — Criação"), { target: { value: "linha" } });
+    const save = within(box).getByRole("button", { name: "Salvar" }) as HTMLButtonElement;
+    expect(within(box).getByText("Linha de produção precisa de pelo menos 1 conferente.")).toBeTruthy();
+    expect(save.disabled).toBe(true);
+    fireEvent.change(within(box).getByLabelText("Conferente 1: IA — Criação"), { target: { value: "openai" } });
+    expect(within(box).getByText("Complete ou remova o conferente/membro incompleto.")).toBeTruthy();
+    expect(save.disabled).toBe(true);
+    fireEvent.change(within(box).getByLabelText("Conferente 1: modelo — Criação"), { target: { value: "gpt-x" } });
+    expect(save.disabled).toBe(false);
+  });
+
+  it("mostra quem ligou e quem mudou, pelo e-mail", async () => {
+    overview.providers[0] = provider("anthropic", { enabled: true, enabled_by_email: "ad@t.dev", enabled_at: "2026-10-07T12:00:00Z" });
+    overview.history = [{ id: 1, actor_id: "x", actor_email: "ad@t.dev", action: "ai.provider", target: "anthropic", created_at: "2026-10-07T12:00:00Z" }];
+    render(<AdminAI />);
+    expect(await screen.findByText(/Ligada por ad@t\.dev em/)).toBeTruthy();
+    expect(screen.getByText("ad@t.dev")).toBeTruthy();
   });
 
   it("salvar função com aviso de não independente mostra o aviso", async () => {

@@ -85,6 +85,10 @@ describe("Banco", () => {
     expect(a.enabled).toBe(true);
     expect(a.enabled_by).toBe(ADMIN);
     expect(a.enabled_at).toBeTruthy();
+    const ov = await db.asUser<any>(adminUser, "app_admin_ai_overview");
+    expect(ov.providers.find((p: any) => p.id === "anthropic").enabled_by_email).toBe("ad@t.dev");
+    expect(ov.providers.find((p: any) => p.id === "openai").enabled_by_email).toBeNull();
+    expect(ov.history.find((h: any) => h.action === "ai.provider").actor_email).toBe("ad@t.dev");
     const log = await dev.db.query<any>(`select actor_id, target from public.admin_audit_log where action = 'ai.provider'`);
     expect(log.rows).toHaveLength(1);
     expect(log.rows[0]).toMatchObject({ actor_id: ADMIN, target: "anthropic" });

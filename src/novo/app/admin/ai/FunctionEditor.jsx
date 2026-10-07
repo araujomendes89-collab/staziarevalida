@@ -1,9 +1,8 @@
 // Uma função da Central de IAs: modo, IA principal, reserva, conferentes (linha) ou membros (comitê), cuidado.
 import React from "react";
 import { Badge, Banner, Button, SelectField, TextField } from "../../../ds";
-import { aiSend } from "./aiApi.js";
+import { aiSend, PROVIDER_NAME } from "./aiApi.js";
 
-export const PROVIDER_NAME = { anthropic: "Claude", openai: "OpenAI", gemini: "Gemini", ollama: "Ollama" };
 const MODES = [
   { value: "sozinha", label: "Sozinha" },
   { value: "linha", label: "Linha de produção" },
@@ -19,7 +18,7 @@ const toRef = (r) => (r && r.provider && r.model ? { provider: r.provider, model
 const asDraft = (r) => (r ? { provider: r.provider ?? "", model: r.model ?? "" } : { ...EMPTY });
 
 /** IA + modelo: lista da IA quando houver; senão, o id digitado. */
-function ModelPicker({ title, value, onChange, providers }) {
+function ModelPicker({ title, fn, value, onChange, providers }) {
   const info = providers.find((p) => p.id === value.provider);
   const models = Array.isArray(info?.models) ? info.models : [];
   const missing = value.model && models.length > 0 && !models.some((m) => m.id === value.model);
@@ -28,15 +27,15 @@ function ModelPicker({ title, value, onChange, providers }) {
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, alignItems: "start" }}>
       <SelectField
         label="IA"
-        aria-label={`${title}: IA`}
+        aria-label={`${title}: IA — ${fn}`}
         value={value.provider}
         onChange={(e) => onChange({ provider: e.target.value, model: "" })}
         options={[{ value: "", label: "Escolha a IA" }, ...providers.map((p) => ({ value: p.id, label: PROVIDER_NAME[p.id] + (p.enabled ? "" : " (desligada)") }))]}
       />
       {models.length > 0 ? (
-        <SelectField label="Modelo" aria-label={`${title}: modelo`} value={value.model} onChange={(e) => onChange({ ...value, model: e.target.value })} options={options} hint={missing ? "modelo não está mais na lista" : undefined} />
+        <SelectField label="Modelo" aria-label={`${title}: modelo — ${fn}`} value={value.model} onChange={(e) => onChange({ ...value, model: e.target.value })} options={options} hint={missing ? "modelo não está mais na lista" : undefined} />
       ) : (
-        <TextField label="Modelo (id)" aria-label={`${title}: modelo (id)`} value={value.model} onChange={(e) => onChange({ ...value, model: e.target.value })} hint="Atualize a lista da IA para escolher" disabled={!value.provider} />
+        <TextField label="Modelo (id)" aria-label={`${title}: modelo (id) — ${fn}`} value={value.model} onChange={(e) => onChange({ ...value, model: e.target.value })} hint="Atualize a lista da IA para escolher" disabled={!value.provider} />
       )}
     </div>
   );
@@ -65,6 +64,17 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, backend,
   const max = MAX_OTHERS[draft.mode] ?? 0;
   const setOther = (i, v) => set({ others: others.map((o, j) => (j === i ? v : o)) });
 
+  const complete = others.filter((o) => toRef(o));
+  const half = others.some((o) => (o.provider || o.model) && !toRef(o));
+  const minOthers = draft.mode === "linha" ? 1 : draft.mode === "comite" ? 1 : 0;
+  const localProblem = half
+    ? "Complete ou remova o conferente/membro incompleto."
+    : draft.mode === "linha" && complete.length < 1
+      ? "Linha de produção precisa de pelo menos 1 conferente."
+      : draft.mode === "comite" && complete.length < minOthers
+        ? "O comitê precisa de pelo menos 2 IAs."
+        : null;
+
   const run = async (fn, after) => {
     setState({ busy: true, problems: null, error: null, warnings: null });
     try {
@@ -78,7 +88,7 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, backend,
   const save = () =>
     run(() =>
       aiSend(backend, "PUT", `/functions/${fnKey}`, {
-        config: { mode: draft.mode, care: draft.care, primary: toRef(draft.primary), fallback: toRef(draft.fallback), reviewers: others.map(toRef).filter(Boolean) },
+        config: { mode: draft.mode, care: draft.care, primary: toRef(draft.primary), fallback: toRef(draft.fallback), reviewers: complete.map(toRef) },
       }),
     );
   const revert = () => {
@@ -103,14 +113,14 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, backend,
         </ul>
       )}
 
-      <SelectField label="Modo" value={draft.mode} onChange={(e) => set({ mode: e.target.value })} options={MODES} />
+      <SelectField label="Modo" aria-label={`Modo — ${label}`} value={draft.mode} onChange={(e) => set({ mode: e.target.value })} options={MODES} />
       <div>
         <div style={{ ...subtle, marginBottom: 6 }}>IA principal</div>
-        <ModelPicker title="Principal" value={draft.primary} onChange={(v) => set({ primary: v })} providers={providers} />
+        <ModelPicker fn={label} title="Principal" value={draft.primary} onChange={(v) => set({ primary: v })} providers={providers} />
       </div>
       <div>
         <div style={{ ...subtle, marginBottom: 6 }}>Reserva (opcional)</div>
-        <ModelPicker title="Reserva" value={draft.fallback} onChange={(v) => set({ fallback: v })} providers={providers} />
+        <ModelPicker fn={label} title="Reserva" value={draft.fallback} onChange={(v) => set({ fallback: v })} providers={providers} />
       </div>
       {draft.mode !== "sozinha" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -118,7 +128,7 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, backend,
           {others.map((o, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
               <div style={{ flex: "1 1 360px" }}>
-                <ModelPicker title={`${draft.mode === "linha" ? "Conferente" : "Membro"} ${i + 1}`} value={o} onChange={(v) => setOther(i, v)} providers={providers} />
+                <ModelPicker fn={label} title={`${draft.mode === "linha" ? "Conferente" : "Membro"} ${i + 1}`} value={o} onChange={(v) => setOther(i, v)} providers={providers} />
               </div>
               {others.length > 1 && (
                 <Button size="sm" variant="ghost" icon="trash-2" onClick={() => set({ others: others.filter((_, j) => j !== i) })}>
@@ -136,8 +146,9 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, backend,
           )}
         </div>
       )}
-      <SelectField label="Cuidado" value={draft.care} onChange={(e) => set({ care: e.target.value })} options={CARES} />
+      <SelectField label="Cuidado" aria-label={`Cuidado — ${label}`} value={draft.care} onChange={(e) => set({ care: e.target.value })} options={CARES} />
 
+      {localProblem && <div style={subtle}>{localProblem}</div>}
       {state.error && (
         <Banner tone="danger">
           {state.problems?.length ? state.problems.map((p) => <div key={p}>{p}</div>) : state.error}
@@ -151,7 +162,7 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, backend,
         </Banner>
       )}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <Button size="sm" icon="check" loading={state.busy} onClick={save}>
+        <Button size="sm" icon="check" loading={state.busy} disabled={Boolean(localProblem)} onClick={save}>
           Salvar
         </Button>
         {saved && (

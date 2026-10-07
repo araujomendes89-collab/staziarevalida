@@ -7,7 +7,7 @@ import { useSession } from "../../session.jsx";
 import { dateTimeBR, LoadError, Loading, useDebounced, useLoad } from "../common.jsx";
 import { AREA_LABEL, STEP_LABEL } from "./labels.js";
 import { KeyValue, ModelBadge, Section, useAction } from "./ui.jsx";
-import { aiGet } from "../ai/aiApi.js";
+import { aiGet, PROVIDER_NAME, usd } from "../ai/aiApi.js";
 
 const CREDENTIALS = [
   ["CONTENT_HUB_AI_PROVIDER", "a escolha da IA agora é feita na Central de IAs; a variável só vale enquanto a função não está salva (anthropic, gemini ou openai; o modo mock só existe fora de produção)"],
@@ -90,8 +90,6 @@ function processingLabel(status) {
   return `${where} · último relato ${dateTimeBR(p.reported_at)}${p.stale ? " (parado)" : ""}`;
 }
 
-const AI_NAME = { anthropic: "Claude", openai: "OpenAI", gemini: "Gemini", ollama: "Ollama" };
-const usd = (n) => (Number(n ?? 0) === 0 ? "US$ 0" : `US$ ${new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(Number(n))}`);
 
 /** Resumo da Central de IAs (a equipe vê o resumo; só o administrador abre a Central). */
 function AiSummary({ isAdmin }) {
@@ -101,7 +99,7 @@ function AiSummary({ isAdmin }) {
   if (error) return <span>{error.message}</span>;
   if (!data) return <span>Carregando…</span>;
   const configured = (data.functions ?? []).filter((f) => f.configured).length;
-  const names = (data.providers_enabled ?? []).map((id) => AI_NAME[id] ?? id).join(", ") || "nenhuma";
+  const names = (data.providers_enabled ?? []).map((id) => PROVIDER_NAME[id] ?? id).join(", ") || "nenhuma";
   return (
     <span style={{ display: "inline-flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
       <span>{`Funções configuradas: ${configured} de 6 · IAs ligadas: ${names} · Gasto do mês: ${usd(data.month_spend)}`}</span>
