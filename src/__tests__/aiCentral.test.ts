@@ -1036,7 +1036,8 @@ describe("Rotas", () => {
     base = await new Promise<string>((resolve) => {
       const app = express();
       app.use("/api/ai", createAiRouter({ db }, { fetchImpl, env: { ANTHROPIC_API_KEY: KEY } as any }));
-      const srv = app.listen(0, () => resolve(`http://127.0.0.1:${(srv.address() as any).port}/api/ai`));
+      // só 127.0.0.1: escutando em todos os endereços, a porta pode coincidir com outro programa do Mac em 127.0.0.1
+      const srv = app.listen(0, "127.0.0.1", () => resolve(`http://127.0.0.1:${(srv.address() as any).port}/api/ai`));
       servers.push(srv);
     });
   });
@@ -1245,7 +1246,7 @@ describe("Central", () => {
       const app = express();
       app.use("/api/content-hub", createContentHubRouter(deps, { worker: null }));
       const srv = await new Promise<http.Server>((r) => {
-        const s = app.listen(0, () => r(s));
+        const s = app.listen(0, "127.0.0.1", () => r(s));
       });
       try {
         const res = await fetch(`http://127.0.0.1:${(srv.address() as any).port}/api/content-hub/status`, { headers: { Authorization: `Bearer ${token}` } });

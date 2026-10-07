@@ -178,3 +178,12 @@ Para material de terceiros usado **com licença** (ex.: apostila licenciada), o 
 5. **Licença vencida ou revogada:** o documento volta ao modo de criação independente e a publicação de adaptações é bloqueada.
 
 A licença **não** dispensa a conferência médica: afirmação continua precisando de evidência em fonte oficial (apostila é nível E) e a publicação continua sendo de pessoa.
+
+## 11. Central de IAs (migração 5200)
+
+A escolha de IA e de modelo da Central saiu das variáveis de ambiente e foi para **Administração › Central de IAs**
+(veja `CENTRAL_DE_IAS.md`). Lá o administrador liga Claude, OpenAI, Gemini e Ollama, define o modo de cada função
+(sozinha, linha de produção ou comitê), os tetos de gasto e os preços. Todas as chamadas passam pelo maestro
+(`server/ai/maestro.ts`) e ficam em `ai_calls`, além de `ch_ai_runs`, que segue igual. Sem configuração salva, uma função
+usa as variáveis de hoje, desde que a IA esteja ligada na Central. Os sinalizadores desta seção (`ai_enabled`, modo sombra,
+publicação) continuam valendo por cima.
