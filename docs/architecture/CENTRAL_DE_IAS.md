@@ -51,8 +51,9 @@ as IAs e salve as funções em seguida, antes de deixar o processamento trabalha
 - Chave que falta **no site** é só aviso na tela ("sem chave no site" no seletor, "sem chave neste servidor" na função e no
   cartão da IA): a IA continua escolhível e a função continua pronta, porque o processamento usa as chaves do Cloud Run (as que
   o roteiro de implantação leva).
-- Aulas e Podcasts rodam **no site**: para usarem uma IA, a chave dela precisa estar também na Vercel. Hoje falta a do Gemini
-  lá; enquanto isso, o Gemini aparece como sem chave no site e essas abas o mostram como não pronto.
+- Aulas e Podcasts rodam **no site**: para usarem uma IA, a chave dela precisa estar também na Vercel. Em 2026-10-07 a
+  Vercel (produção) tinha as chaves de Claude, OpenAI e Gemini; uma IA sem chave lá aparece como "sem chave no site" e
+  essas abas a mostram como não pronta.
 
 ## As funções
 | Função na tela | Onde é usada hoje |
