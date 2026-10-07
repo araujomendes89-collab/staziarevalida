@@ -7,6 +7,7 @@ import crypto from "crypto";
 import { runJob, type Job, type PipelineDeps } from "./pipeline";
 import { snapshotPassages, type Passage } from "./sourceDiff";
 import { compareSnapshots } from "./sourceCompare";
+import { embedderAllowed, embedPendingPassages } from "./embeddings";
 
 export interface WorkerOptions {
   pollMs?: number;
@@ -20,6 +21,8 @@ export interface ContentHubWorker {
   tick(): Promise<boolean>;
   drain(max?: number): Promise<number>;
   checkSources(): Promise<{ checked: number; changed: number; unreachable: number }>;
+  /** Vetores dos trechos que faltam (busca por significado); sem a busca ligada, não faz nada. */
+  embed(opts?: { max?: number; deadline?: number }): Promise<{ embedded: number; tokens: number; costUsd: number }>;
   start(): void;
   stop(): Promise<void>;
 }
@@ -69,6 +72,7 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
   let busy: Promise<unknown> | null = null;
   let timer: NodeJS.Timeout | null = null;
   let lastWatch = 0;
+  let lastEmbed = 0;
 
   const tick = async () => {
     const job = await deps.db.service<Job | null>("ch_worker_claim", { p_stale_seconds: staleSeconds });
@@ -111,6 +115,11 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
     return { checked: due.length, changed, unreachable };
   };
 
+  const embed = async (o: { max?: number; deadline?: number } = {}) => {
+    const embedder = await embedderAllowed(deps.db, deps.embedder);
+    return embedder ? embedPendingPassages(deps.db, embedder, { ...o, log: deps.log }) : { embedded: 0, tokens: 0, costUsd: 0 };
+  };
+
   // Falha seguida (ex.: chave do Supabase recusada): avisa uma vez, espera cada vez mais (até 5 min)
   // e avisa de novo quando volta ao normal. Nada de repetir a mesma linha a cada poucos segundos.
   let failures = 0;
@@ -126,6 +135,12 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
       if (requested || Date.now() - lastWatch > watchEveryMs) {
         lastWatch = Date.now();
         busy = checkSources();
+        await busy;
+      }
+      // fila vazia: vetores que faltam para a busca por significado (um lote por vez, no máximo a cada 2 minutos)
+      if (!worked && deps.embedder && Date.now() - lastEmbed > 120_000) {
+        lastEmbed = Date.now();
+        busy = embed({ max: 200 });
         await busy;
       }
       if (failures > 0) deps.log?.("[central] worker voltou ao normal.");
@@ -156,6 +171,7 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
       return n;
     },
     checkSources,
+    embed,
     start() {
       if (running) return;
       running = true;

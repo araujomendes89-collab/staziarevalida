@@ -32,7 +32,8 @@ const listen = (worker: any) =>
     servers.push(srv);
   });
 const status = async (base: string) => (await fetch(`${base}/status`, { headers: { Authorization: `Bearer ${token}` } })).json();
-const EMBEDDINGS = /Busca por significado \(embeddings\) ainda não existe/;
+// sem a autorização do envio ao Google, a busca por significado fica desligada e aparece como pendência (contentHubSemanticSearch.test.ts)
+const EMBEDDINGS = /Busca por significado ainda desligada/;
 
 beforeAll(async () => {
   dev = await openDevDatabaseForTests(path.join(tmp, "db"));
@@ -125,6 +126,8 @@ describe("Processamento neste servidor (desenvolvimento)", () => {
     expect(typeof report.python).toBe("boolean");
     expect(Array.isArray(report.ocr_languages)).toBe(true);
     expect(report.pending).toContain("Gerador de PDF (Playwright/Chromium) indisponível no processamento.");
+    expect(report.embeddings).toMatchObject({ ready: false, model: null });
+    expect(report.pending.some((p) => /^Busca por significado no processamento: /.test(p))).toBe(true);
     await reportProcessing(d, report, { jobs: 0 });
     const last = await db.service<any>("ch_worker_last_report");
     expect(last).toMatchObject({ worker: "servidor", report: { jobs: 0, renderer: false } });

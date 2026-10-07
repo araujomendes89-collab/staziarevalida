@@ -4,6 +4,10 @@ import { Badge, Banner, Button, Card, SelectField } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { dateBR, messageOf, TextArea } from "../common.jsx";
 import { CLAIM_STATUS, CRITICAL, isMockModel, pick, VERDICTS } from "./labels.js";
+import { hubAvailable, hubPost } from "./api.js";
+
+/** Como o trecho foi achado (busca por significado ligada): só pelas palavras, só pelo sentido ou pelos dois. */
+const MATCH_LABEL = { significado: "pelo sentido", ambos: "palavras e sentido" };
 
 export function StatusBadge({ map, value, size = "sm" }) {
   const [label, tone] = pick(map, value);
@@ -181,15 +185,28 @@ function EvidenceForm({ claim, onLinked }) {
   const [chosen, setChosen] = React.useState(null);
   const [quote, setQuote] = React.useState("");
   const [verdict, setVerdict] = React.useState("compatible");
+  const [mode, setMode] = React.useState(null);
   const act = useAction();
-  const search = () => act.run(async () => setResults(await backend.rpc("app_ch_search_passages", { p_query: query, p_filters: {}, p_limit: 10 })), null);
+  // pelo servidor: com a busca por significado ligada, ele faz o vetor da pergunta (a chave nunca vem ao navegador)
+  const search = () =>
+    act.run(async () => {
+      if (hubAvailable(backend)) {
+        const r = await hubPost(backend, "/search", { query, filters: {}, limit: 10 });
+        setMode(r.mode);
+        setResults(r.results);
+      } else {
+        setMode("palavras");
+        setResults(await backend.rpc("app_ch_search_passages", { p_query: query, p_filters: {}, p_limit: 10 }));
+      }
+    }, null);
   return (
     <div style={{ marginTop: 10, padding: 12, border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", display: "flex", flexDirection: "column", gap: 8 }}>
-      <TextArea label="Buscar nas fontes cadastradas (palavras)" value={query} onChange={setQuery} rows={2} />
-      <div>
+      <TextArea label="Buscar nas fontes cadastradas" value={query} onChange={setQuery} rows={2} />
+      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <Button size="sm" icon="search" onClick={search} loading={act.busy && !chosen}>
           Buscar
         </Button>
+        {mode && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Busca por {mode}</span>}
       </div>
       {results && results.length === 0 && <Banner tone="warning">Nenhum trecho encontrado. Cadastre a fonte oficial com o documento completo (aba Fontes).</Banner>}
       {(results ?? []).map((p) => (
@@ -203,6 +220,15 @@ function EvidenceForm({ claim, onLinked }) {
           <span style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>
             {p.source} · {p.organ} · {p.version ? `versão ${p.version} · ` : ""}
             {p.section ?? ""} {p.page != null ? `· p. ${p.page}` : ""} · {p.status === "current" ? "vigente" : p.status}
+            {MATCH_LABEL[p.match] && (
+              <>
+                {" "}
+                <Badge size="sm">
+                  {MATCH_LABEL[p.match]}
+                  {p.similarity != null ? ` · ${Math.round(p.similarity * 100)}% parecido` : ""}
+                </Badge>
+              </>
+            )}
           </span>
           <span style={{ font: "var(--type-body-sm)", textAlign: "left" }}>{p.text.slice(0, 400)}</span>
         </button>

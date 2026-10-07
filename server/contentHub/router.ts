@@ -13,6 +13,7 @@ import type { Identity } from "./infra";
 import type { ContentHubWorker } from "./worker";
 import type { ProcessingReport } from "./capabilities";
 import { functionChecks, loadAiConfig } from "../ai/config";
+import { DEFAULT_EMBEDDING_MODEL, embedderAllowed, embeddingsConfig, queryEmbedding } from "./embeddings";
 
 /** A tarefa no Cloud Run roda a cada 10 minutos: sem relato há mais de 30, ela parou. */
 const PROCESSING_STALE_MIN = 30;
@@ -91,8 +92,34 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
           processing = { where: last.worker, reported_at: last.reported_at, minutes_ago: minutes, stale, python: Boolean(last.report.python), ocr_languages: last.report.ocr_languages ?? [], jobs: last.report.jobs ?? null };
         }
       }
-      pending.push("Busca por significado (embeddings) ainda não existe: a busca de evidências usa palavras. Depende de escolher o modelo de embeddings.");
-      res.json({ me, storage: deps!.db.mode, ai: deps!.ai.status, ai_central: central, renderer, brand, worker: local, processing, pending });
+      // busca por significado: este servidor faz o vetor das perguntas; o processamento, o dos trechos das fontes
+      if (!deps!.embedder) pending.push(embeddingsConfig().pending ?? "Busca por significado indisponível no servidor.");
+      const model = deps!.embedder?.model ?? (embeddingsConfig().model || DEFAULT_EMBEDDING_MODEL);
+      const stats = await deps!.db
+        .service<{ passages: number; embedded: number; vector_index: boolean } | null>("ch_worker_embedding_stats", { p_model: model })
+        .catch(() => null);
+      const embeddings = { ready: Boolean(deps!.embedder), model, passages: stats?.passages ?? null, embedded: stats?.embedded ?? null, vector_index: stats?.vector_index ?? null };
+      res.json({ me, storage: deps!.db.mode, ai: deps!.ai.status, ai_central: central, renderer, brand, worker: local, processing, embeddings, pending });
+    } catch (error) {
+      fail(res, forbidden(error) ? 403 : 500, message(error));
+    }
+  });
+
+  /**
+   * Busca de trechos das fontes pela equipe: palavras e, com a busca por significado ligada, o vetor da pergunta (feito aqui no
+   * servidor; a chave do Google nunca vai ao navegador). Filtros e permissões continuam no banco (app_ch_search_passages).
+   */
+  router.post("/search", express.json({ limit: "64kb" }), async (req: Authed, res) => {
+    try {
+      await requireStaff(req); // antes de gastar com o vetor da pergunta
+      const body = (req.body ?? {}) as { query?: unknown; filters?: unknown; limit?: unknown };
+      const query = String(body.query ?? "").trim().slice(0, 500);
+      if (!query) return fail(res, 400, "Escreva o que procurar.");
+      const filters = body.filters && typeof body.filters === "object" && !Array.isArray(body.filters) ? body.filters : {};
+      const limit = Math.min(Math.max(Math.trunc(Number(body.limit)) || 10, 1), 50);
+      const meaning = await queryEmbedding(await embedderAllowed(deps!.db, deps!.embedder), query, deps!.log);
+      const results = await asUser<any[]>(req, "app_ch_search_passages", { p_query: query, p_filters: filters, p_limit: limit, p_embedding: meaning });
+      res.json({ results: results ?? [], mode: meaning ? "palavras e significado" : "palavras" });
     } catch (error) {
       fail(res, forbidden(error) ? 403 : 500, message(error));
     }

@@ -21,6 +21,8 @@ const CREDENTIALS = [
   ["SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY", "produção: banco e arquivos (bucket privado content-hub); nunca com prefixo VITE_"],
   ["CONTENT_HUB_PYTHON", "comando Python com PyMuPDF e Tesseract (padrão: pdfpython)"],
   ["CONTENT_HUB_FONT_DIR", "arquivos da fonte Plus Jakarta Sans para os PDFs"],
+  ["CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1 e GEMINI_API_KEY", "busca por significado (Gemini Embedding 2): autoriza enviar os textos das fontes e as buscas ao Google; vale no servidor e no processamento"],
+  ["CONTENT_HUB_EMBEDDINGS_MODEL", "modelo da busca por significado (padrão gemini-embedding-2; off desliga)"],
 ];
 
 const FLAGS = [
@@ -81,6 +83,14 @@ function Prompts() {
   );
 }
 
+/** Busca por significado: ligada aqui e quantos trechos das fontes já têm vetor (o processamento gera aos poucos). */
+function embeddingsLabel(status) {
+  const e = status.embeddings;
+  if (!e?.ready) return "desligada: a busca de evidências usa só palavras (veja as pendências)";
+  const count = e.passages == null ? "" : e.passages === 0 ? " · nenhum trecho de fonte cadastrado ainda" : ` · ${e.embedded} de ${e.passages} trechos com vetor`;
+  return `ligada (${e.model})${count}${e.vector_index === false ? " · sem índice pgvector" : ""}`;
+}
+
 /** Onde o processamento roda e quando deu sinal (o servidor do site na Vercel não processa). */
 function processingLabel(status) {
   if (status.worker) return "ligado neste servidor";
@@ -127,6 +137,7 @@ export function HubSettings({ isAdmin, status }) {
               ["Processamento (leitura de PDF, OCR e arquivos finais)", processingLabel(status)],
               ["Renderizador de PDF", status.renderer ? "pronto (Chromium)" : status.worker || status.processing?.where ? "indisponível" : "sem relato do processamento"],
               ["Identidade visual", status.brand?.pending?.length ? status.brand.pending.join(" ") : status.brand?.version ? `completa (${status.brand.version})` : "sem relato do processamento"],
+              ["Busca por significado", embeddingsLabel(status)],
             ]}
           />
         )}

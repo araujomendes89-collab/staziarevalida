@@ -7,6 +7,8 @@
  *   CONTENT_HUB_STALE_SECONDS    depois de quanto tempo sem sinal um trabalho "rodando" volta para a fila (padrão 1800,
  *                                acima dos 20 min que cada faixa de páginas pode levar)
  *
+ * Depois da fila e das fontes, gera os vetores que faltam para a busca por significado (quando ligada: embeddings.ts).
+ *
  * Mesmas regras do servidor: Supabase obrigatório em produção, chaves só no ambiente da tarefa.
  */
 import { buildContentHubDeps } from "../../server/contentHub/index";
@@ -35,9 +37,14 @@ async function main() {
   let jobs = 0;
   while (Date.now() - t0 < budgetMs && (await worker.tick())) jobs++;
   const sources = await worker.checkSources();
+  // busca por significado: os vetores que faltam, no tempo que sobrou (falhar aqui não derruba a tarefa)
+  const vectors = await worker.embed({ deadline: t0 + budgetMs }).catch((error: Error) => {
+    console.error(`[central] vetores da busca por significado: ${error.message.slice(0, 200)}`);
+    return { embedded: 0, tokens: 0, costUsd: 0, error: error.message.slice(0, 200) };
+  });
   await deps.renderer?.close().catch(() => undefined);
-  await reportProcessing(deps, report, { started_at: new Date(t0).toISOString(), finished_at: new Date().toISOString(), jobs, sources });
-  console.log(`[central] tarefa concluída: ${jobs} trabalho(s) da fila · fontes conferidas ${sources.checked} (mudaram ${sources.changed}, inacessíveis ${sources.unreachable}) · ${Math.round((Date.now() - t0) / 1000)} s`);
+  await reportProcessing(deps, report, { started_at: new Date(t0).toISOString(), finished_at: new Date().toISOString(), jobs, sources, vectors });
+  console.log(`[central] tarefa concluída: ${jobs} trabalho(s) da fila · fontes conferidas ${sources.checked} (mudaram ${sources.changed}, inacessíveis ${sources.unreachable}) · vetores novos ${vectors.embedded} · ${Math.round((Date.now() - t0) / 1000)} s`);
 }
 
 main()

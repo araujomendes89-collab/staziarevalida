@@ -8,6 +8,7 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import { loadBrand } from "./render";
 import type { PipelineDeps } from "./pipeline";
+import { embeddingsConfig } from "./embeddings";
 
 const run = promisify(execFile);
 
@@ -18,6 +19,8 @@ export interface ProcessingReport {
   ocr_languages: string[];
   brand: { version: string; pending: string[] };
   ai: { ready: boolean; provider?: string; pending?: string | null };
+  /** Busca por significado: o processamento gera os vetores dos trechos das fontes. */
+  embeddings: { ready: boolean; model: string | null; pending: string | null };
   pending: string[];
   checked_at: string;
 }
@@ -39,8 +42,10 @@ export async function probeProcessing(deps: PipelineDeps): Promise<ProcessingRep
     langs = [];
   }
   const brand = loadBrand();
+  const emb = embeddingsConfig();
   const pending = [
     ...(deps.ai.status.ready ? [] : [`IA do processamento: ${deps.ai.status.pending}`]),
+    ...(deps.embedder ? [] : [`Busca por significado no processamento: ${emb.pending ?? "indisponível."}`]),
     ...(deps.renderer ? [] : ["Gerador de PDF (Playwright/Chromium) indisponível no processamento."]),
     ...(pythonOk ? [] : [`Leitor de PDF indisponível no processamento: "${python}" sem PyMuPDF.`]),
     ...(langs.includes("por") ? [] : ["OCR em português (Tesseract) indisponível no processamento: páginas escaneadas não são lidas."]),
@@ -53,6 +58,7 @@ export async function probeProcessing(deps: PipelineDeps): Promise<ProcessingRep
     ocr_languages: langs,
     brand: { version: brand.version, pending: brand.pending },
     ai: { ready: deps.ai.status.ready, provider: deps.ai.status.provider, pending: deps.ai.status.pending ?? null },
+    embeddings: { ready: Boolean(deps.embedder), model: deps.embedder?.model ?? null, pending: deps.embedder ? null : emb.pending },
     pending,
     checked_at: new Date().toISOString(),
   };

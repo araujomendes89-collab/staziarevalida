@@ -71,7 +71,7 @@ Não existem: pgvector/embeddings, tabela de aulas própria (a aula é um `ch_ma
 | 27–28 publicação não destrutiva | ✅ publica versão nova, retira a anterior, histórico preservado; ⚠️ **sem validação de transação em várias tabelas** (publica uma unidade por vez) |
 | 29–30 shadow mode e feature flags | ❌ **não existem** |
 | 31, 32 NotebookLM e áudio | ❌ fase 9 |
-| 33–34 RAG e chunking | ⚠️ passagens por seção/página com busca por palavras (tsvector); **sem embeddings** (pgvector não instalado) |
+| 33–34 RAG e chunking | ✅ passagens por seção/página com busca por palavras (tsvector) **e por significado** (Gemini Embedding 2, 768 dimensões, pgvector no Supabase; migração 5000, 2026-10-06; ver `CENTRAL_BUSCA_POR_SIGNIFICADO.md`) |
 | 36 saída estruturada | ✅ JSON Schema; resposta inválida é recusada, nunca "consertada" |
 | 37 duplicidade | ⚠️ documento por hash, afirmação por texto normalizado; tema e flashcard sem checagem |
 | 38 score de confiança | ⚠️ **falta o score composto e explicável** |
@@ -117,7 +117,7 @@ Não existem: pgvector/embeddings, tabela de aulas própria (a aula é um `ch_ma
 | 2900 | fundação: sinalizadores, aliases, tipo de fonte, versões de prompt, conflitos, confiança | **feita e aplicada no Supabase** |
 | 3000 | adaptação licenciada: registro da licença e retirada das referências do licenciante | **feita e aplicada no Supabase** |
 | 3050 | tipos de arquivo (DOCX/PPTX/XLSX/TXT/MD) como adaptadores do extrator; validação de MIME | próxima |
-| 3100 | pgvector, `ch_chunks`, embeddings | depende de decidir o modelo de embeddings |
+| 3100 | pgvector, `ch_chunks`, embeddings | feito na migração 5000 (2026-10-06) sobre os trechos existentes (`ch_passage_embeddings`), com o modelo escolhido pelo dono |
 | 3200 | claim tipado (`claim_type`, campos estruturados de dose) | |
 | 3300 | caso clínico, algoritmo, checklist, roteiro de áudio em `ch_materials.kind` | |
 
@@ -133,7 +133,7 @@ Não existem: pgvector/embeddings, tabela de aulas própria (a aula é um `ch_ma
 |---|---|
 | 0 Diagnóstico | **este documento** |
 | 1 Fundação (permissões, fontes, jobs, flags, auditoria) | ✅ quase tudo existe; **entra agora: flags, tipo de fonte** |
-| 2 Ingestão (formatos, chunks, embeddings) | PDF ok; formatos e embeddings pendentes (3000, 3100) |
+| 2 Ingestão (formatos, chunks, embeddings) | PDF ok; embeddings feitos (5000); outros formatos pendentes (3000) |
 | 3 IA (gateway, OpenAI, structured output, prompts) | **entra agora: OpenAI, fallback, prompts guardados** |
 | 4 Extração de conhecimento (claims, aliases, canônico) | claims ok; **entra agora: aliases** |
 | 5 Produção (rascunhos, geradores) | ok para aula/resumo/flashcards/questões; faltam os outros tipos |

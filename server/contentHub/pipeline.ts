@@ -29,6 +29,7 @@ import { functionForPrompt, type ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { copyRatio, flashcardProblems, isVerbatim, negations, negationsLost, normalize, numbers, numbersOutside } from "./checks";
 import type { ContentDb, Storage } from "./infra";
+import { embedderAllowed, queryEmbedding, type Embedder } from "./embeddings";
 import type { Renderer } from "./render";
 import { generateVisualVersion, visualVersionOf, VisualRenderUnavailable } from "./visual/service";
 
@@ -61,6 +62,8 @@ export interface PipelineDeps {
   log?: (message: string) => void;
   /** Só para testes: cria o provedor de cada ref escolhida na Central de IAs (sem rede). */
   aiMaker?: (ref: ModelRef) => AiProvider | null;
+  /** Busca por significado (embeddings.ts); sem ele, a busca de evidências usa só palavras. */
+  embedder?: Embedder | null;
 }
 
 /** Falta configuração: o trabalho fica pendente, sem gastar tentativa. */
@@ -470,12 +473,13 @@ async function stepEvidence(ctx: Ctx): Promise<Step | null> {
   const counts: Record<string, number> = {};
   for (const c of claims) {
     const text = c.proposed_text ?? c.statement;
-    const passages = await svc<any[]>(ctx, "ch_worker_search_passages", { p_query: searchQuery(text), p_limit: 6 });
+    const meaning = await queryEmbedding(await embedderAllowed(ctx.deps.db, ctx.deps.embedder), text, ctx.deps.log);
+    const passages = await svc<any[]>(ctx, "ch_worker_search_passages", { p_query: searchQuery(text), p_limit: 6, p_embedding: meaning });
     if (!passages.length) {
       await svc(ctx, "ch_worker_mark_claim", {
         p_claim_id: c.id,
         p_status: "insufficient",
-        p_note: "Nenhum trecho das fontes cadastradas trata desta afirmação (busca por palavras). Cadastre a fonte oficial completa ou vincule a evidência manualmente.",
+        p_note: `Nenhum trecho das fontes cadastradas trata desta afirmação (busca por ${meaning ? "palavras e significado" : "palavras"}). Cadastre a fonte oficial completa ou vincule a evidência manualmente.`,
       });
       counts.no_passage = (counts.no_passage ?? 0) + 1;
       continue;

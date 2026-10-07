@@ -23,6 +23,7 @@ import type { ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { copyRatio, isVerbatim, negations, normalize, numbers, numbersOutside } from "./checks";
 import type { ContentDb } from "./infra";
+import { embedderAllowed, queryEmbedding, type Embedder } from "./embeddings";
 
 const run = promisify(execFile);
 
@@ -165,6 +166,8 @@ export interface RunDeps {
   /** Só para testes: cria o provedor de uma ref (as regras da Central de IAs continuam valendo). */
   aiMaker?: (ref: ModelRef) => AiProvider | null;
   log?: (m: string) => void;
+  /** Busca por significado (embeddings.ts); sem ele, só palavras. */
+  embedder?: Embedder | null;
 }
 
 const sha256 = (v: string) => crypto.createHash("sha256").update(v).digest("hex");
@@ -224,11 +227,12 @@ export async function redteamCheck(deps: RunDeps, provider: AiProvider, d: Draft
   return { verdict: verdictOf(findings), findings };
 }
 
-/** Passagens oficiais para a afirmação central (busca por palavras, só fontes nível A–D). */
+/** Passagens oficiais para a afirmação central (palavras e, se ligada, significado; só fontes nível A–D). */
 async function officialPassages(deps: RunDeps, claim: string) {
   const query = normalize(claim).toLowerCase().split(/[^a-zà-ú0-9]+/i).filter((w) => w.length >= 4).slice(0, 10).join(" or ");
   if (!query) return [];
-  return deps.db.service<any[]>("ch_worker_search_official_passages", { p_query: query, p_limit: 6 });
+  const meaning = await queryEmbedding(await embedderAllowed(deps.db, deps.embedder), claim, deps.log);
+  return deps.db.service<any[]>("ch_worker_search_official_passages", { p_query: query, p_limit: 6, p_embedding: meaning });
 }
 
 /** Fontes: a afirmação central está sustentada por trecho oficial? Sem acervo, "insuficiente" (sem chamar IA). */

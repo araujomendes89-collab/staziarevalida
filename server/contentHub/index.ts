@@ -13,6 +13,7 @@ import { mockRespond } from "./ai/mock";
 import { resolveProvider } from "./ai/provider";
 import { devContentDb, localStorageDir, supabaseContentDb, supabaseStorage } from "./infra";
 import type { PipelineDeps } from "./pipeline";
+import { createEmbedder, embeddingsConfig } from "./embeddings";
 import { createRenderer } from "./render";
 import { createContentHubRouter } from "./router";
 import { createContentHubWorker, type ContentHubWorker } from "./worker";
@@ -37,7 +38,9 @@ export async function buildContentHubDeps(): Promise<{ deps: PipelineDeps | null
     const db = remote ? supabaseContentDb() : devContentDb(() => getDevDatabase());
     const storage = remote ? supabaseStorage() : localStorageDir();
     const renderer = await createRenderer();
-    return { deps: { db, storage, ai, renderer, log: (m) => console.log(m) }, pending: null };
+    // busca por significado: só com o envio autorizado e a chave (CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1, GEMINI_API_KEY)
+    const embedder = createEmbedder(embeddingsConfig());
+    return { deps: { db, storage, ai, renderer, embedder, log: (m) => console.log(m) }, pending: null };
   } catch (error) {
     return { deps: null, pending: (error as Error).message };
   }

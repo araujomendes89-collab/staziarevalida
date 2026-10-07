@@ -6,7 +6,9 @@
 #
 # Opcionais: REGION (padrão southamerica-east1, São Paulo), SCHEDULE (padrão "*/10 * * * *").
 # As três chaves (SUPABASE_URL, VITE_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY) saem do .env direto para o Secret Manager,
-# sem aparecer na tela. A IA da Central continua desligada (nenhuma chave de IA é enviada).
+# sem aparecer na tela. A IA da Central continua desligada (nenhuma chave de IA de texto é enviada).
+# Busca por significado (Gemini Embedding 2, autorizada pelo dono em 2026-10-06): com GEMINI_API_KEY (ou GOOGLE_GEMINI_API_KEY)
+# no .env, a chave vai para o Secret Manager e a tarefa gera os vetores dos trechos das fontes. EMBEDDINGS=0 desliga.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -85,6 +87,15 @@ for NAME in ANTHROPIC_API_KEY GEMINI_API_KEY OPENAI_API_KEY; do
   fi
 done
 
+# busca por significado: usa a mesma chave do Gemini das IAs (acima); sem ela, a tarefa segue só com palavras
+EMB_ENV=""
+if [ "${EMBEDDINGS:-1}" = "1" ] && [[ "$AI_SECRETS" == *",GEMINI_API_KEY="* ]]; then
+  EMB_ENV=",CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1"
+  echo "   busca por significado: ligada na tarefa"
+else
+  echo "   busca por significado: sem GEMINI_API_KEY no .env; a tarefa segue só com palavras"
+fi
+
 echo "== 4/6 imagem (montada no Cloud Build, não no Mac)"
 "${G[@]}" artifacts repositories describe "$REPO" --location="$REGION" >/dev/null 2>&1 || \
   "${G[@]}" artifacts repositories create "$REPO" --repository-format=docker --location="$REGION" --description="Imagens da StaziaMed"
@@ -106,8 +117,8 @@ IMAGE="$REGION-docker.pkg.dev/$PROJECT/$REPO/pdf-worker:$(git rev-parse --short 
 echo "== 5/6 tarefa no Cloud Run ($JOB)"
 "${G[@]}" run jobs deploy "$JOB" --region="$REGION" --image="$IMAGE" --service-account="$RUN_SA" \
   --tasks=1 --max-retries=0 --task-timeout=3600 --cpu=2 --memory=4Gi \
-  --set-env-vars=NODE_ENV=production,CONTENT_HUB_JOB_BUDGET_MIN=50,CONTENT_HUB_STALE_SECONDS=1800 \
-  --set-secrets=SUPABASE_URL=stazia-supabase-url:latest,VITE_SUPABASE_ANON_KEY=stazia-vite-supabase-anon-key:latest,SUPABASE_SERVICE_ROLE_KEY=stazia-supabase-service-role-key:latest${AI_SECRETS}
+  --set-env-vars="NODE_ENV=production,CONTENT_HUB_JOB_BUDGET_MIN=50,CONTENT_HUB_STALE_SECONDS=1800${EMB_ENV}" \
+  --set-secrets="SUPABASE_URL=stazia-supabase-url:latest,VITE_SUPABASE_ANON_KEY=stazia-vite-supabase-anon-key:latest,SUPABASE_SERVICE_ROLE_KEY=stazia-supabase-service-role-key:latest${AI_SECRETS}"
 "${G[@]}" run jobs add-iam-policy-binding "$JOB" --region="$REGION" --member="serviceAccount:$SCHED_SA" --role=roles/run.invoker >/dev/null
 
 echo "== 6/6 agendador ($SCHEDULE, horário de Brasília)"
