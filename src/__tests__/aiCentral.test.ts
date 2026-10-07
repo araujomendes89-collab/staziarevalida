@@ -373,3 +373,132 @@ describe("Preços", () => {
     }
   });
 });
+
+describe("Configuração", () => {
+  const ids = ["anthropic", "openai", "gemini", "ollama"] as const;
+  const mkCfg = (over: { enabled?: string[]; models?: Record<string, string[]>; caps?: boolean; prices?: any[]; status?: Record<string, string> } = {}): any => {
+    const enabled = over.enabled ?? ["anthropic", "openai", "gemini", "ollama"];
+    const providers: any = {};
+    for (const id of ids) {
+      providers[id] = { enabled: enabled.includes(id), models: (over.models?.[id] ?? []).map((m) => ({ id: m, label: m })), status: over.status?.[id] ?? null };
+    }
+    return { providers, functions: {}, settings: { monthly_cap_usd: null, per_run_cap_usd: null, caps_enabled: over.caps ?? false, tab_override_enabled: false }, prices: over.prices ?? [] };
+  };
+  const ref = (provider: string, model: string) => ({ provider, model }) as any;
+  const fc = (mode: string, primary: any, reviewers: any[] = [], fallback: any = null): any => ({ key: "criacao", mode, primary, fallback, reviewers, care: "caprichado" });
+
+  it("funções do prompt", async () => {
+    const { functionForPrompt } = await import("../../server/ai/config");
+    expect(functionForPrompt("evidence")).toBe("verificacao");
+    expect(functionForPrompt("qanalysis")).toBe("engenharia_reversa");
+    expect(functionForPrompt("classify")).toBe("criacao");
+  });
+
+  it("linha com Sonnet criando e Opus conferindo é recusada (mesma família)", async () => {
+    const { validateFunctionConfig } = await import("../../server/ai/config");
+    const r = validateFunctionConfig(fc("linha", ref("anthropic", "claude-sonnet-5-5"), [ref("anthropic", "claude-opus-5-5")]), mkCfg());
+    expect(r.problems.length).toBeGreaterThan(0);
+    expect(r.problems.join(" ")).toContain("claude-opus-5-5");
+  });
+
+  it("comitê Claude+Claude passa com aviso de não independente", async () => {
+    const { validateFunctionConfig } = await import("../../server/ai/config");
+    const r = validateFunctionConfig(fc("comite", ref("anthropic", "claude-sonnet-5-5"), [ref("anthropic", "claude-opus-5-5")]), mkCfg());
+    expect(r.problems).toEqual([]);
+    expect(r.warnings.join(" ")).toContain("não é independente");
+  });
+
+  it("modelo retirado da lista aparece como problema", async () => {
+    const { validateFunctionConfig } = await import("../../server/ai/config");
+    const cfg = mkCfg({ models: { anthropic: ["claude-opus-5-5"], gemini: [] } });
+    const r = validateFunctionConfig(fc("sozinha", ref("anthropic", "claude-velho")), cfg);
+    expect(r.problems.join(" ")).toContain("modelo não está mais na lista");
+    // lista vazia (nunca atualizada) não acusa
+    expect(validateFunctionConfig(fc("sozinha", ref("gemini", "gemini-x")), cfg).problems).toEqual([]);
+  });
+
+  it("teto ligado e modelo pago sem preço é recusado; Ollama sem preço passa", async () => {
+    const { validateFunctionConfig } = await import("../../server/ai/config");
+    const cfg = mkCfg({ caps: true });
+    expect(validateFunctionConfig(fc("sozinha", ref("openai", "gpt-x")), cfg).problems.join(" ")).toContain("sem preço");
+    expect(validateFunctionConfig(fc("sozinha", ref("ollama", "qwen3")), cfg).problems).toEqual([]);
+    const comPreco = mkCfg({ caps: true, prices: [{ provider: "openai", model: "gpt-x", input_per_mtok: 1, output_per_mtok: 2 }] });
+    expect(validateFunctionConfig(fc("sozinha", ref("openai", "gpt-x")), comPreco).problems).toEqual([]);
+  });
+
+  it("IA desligada não cria provedor", async () => {
+    const { makeProvider } = await import("../../server/ai/config");
+    const r = makeProvider(ref("anthropic", "claude-sonnet-5-5"), mkCfg({ enabled: [] }), {});
+    expect(r.provider).toBeNull();
+    expect(r.pending).toContain("está desligada na Central de IAs");
+    expect(r.pending).toBe("Claude está desligada na Central de IAs.");
+  });
+
+  it("Ollama em produção não cria provedor", async () => {
+    const { makeProvider } = await import("../../server/ai/config");
+    const r = makeProvider(ref("ollama", "qwen3"), mkCfg(), { NODE_ENV: "production" } as any);
+    expect(r.provider).toBeNull();
+    expect(r.pending).toBe("Ollama roda só no Mac.");
+    const r2 = makeProvider(ref("ollama", "qwen3"), mkCfg({ status: { ollama: "so_no_mac" } }), {} as any);
+    expect(r2.pending).toBe("Ollama roda só no Mac.");
+  });
+
+  it("sem função salva, usa o provedor das variáveis", async () => {
+    const { envFallbackRef } = await import("../../server/ai/config");
+    const env = { CONTENT_HUB_AI_PROVIDER_CREATE: "anthropic", CONTENT_HUB_MODEL_CREATE: "claude-x" } as any;
+    expect(envFallbackRef("criacao", env)).toEqual({ provider: "anthropic", model: "claude-x" });
+  });
+
+  it("comitê com 1 membro ou 5 membros é recusado", async () => {
+    const { validateFunctionConfig } = await import("../../server/ai/config");
+    const a = ref("anthropic", "claude-sonnet-5-5");
+    expect(validateFunctionConfig(fc("comite", a, []), mkCfg()).problems.length).toBeGreaterThan(0);
+    const quatro = [ref("openai", "gpt-a"), ref("gemini", "gemini-a"), ref("ollama", "qwen3"), ref("openai", "gpt-b")];
+    expect(validateFunctionConfig(fc("comite", a, quatro), mkCfg()).problems.length).toBeGreaterThan(0);
+  });
+
+  it("linha com conferente da mesma família da reserva é recusada", async () => {
+    const { validateFunctionConfig } = await import("../../server/ai/config");
+    const r = validateFunctionConfig(fc("linha", ref("anthropic", "claude-sonnet-5-5"), [ref("openai", "gpt-a")], ref("openai", "gpt-b")), mkCfg());
+    expect(r.problems.join(" ")).toContain("gpt-b");
+  });
+
+  it("sozinha sem principal é recusada", async () => {
+    const { validateFunctionConfig } = await import("../../server/ai/config");
+    expect(validateFunctionConfig(fc("sozinha", null), mkCfg()).problems).toContain("Escolha a IA principal.");
+  });
+
+  it("loadAiConfig lê o banco, converte números e guarda por 10 s; invalidateAiConfig limpa", async () => {
+    const { loadAiConfig, invalidateAiConfig } = await import("../../server/ai/config");
+    invalidateAiConfig(db);
+    const p1 = loadAiConfig(db);
+    const p2 = loadAiConfig(db);
+    expect(p2).toBe(p1);
+    const c1 = await p1;
+    expect(typeof c1.providers.anthropic.enabled).toBe("boolean");
+    expect(Array.isArray(c1.providers.anthropic.models)).toBe(true);
+    const inicial = c1.settings.caps_enabled;
+    expect(typeof inicial).toBe("boolean");
+    for (const v of [c1.settings.monthly_cap_usd, c1.settings.per_run_cap_usd]) expect(v === null || typeof v === "number").toBe(true);
+    for (const pr of c1.prices) expect(typeof pr.input_per_mtok).toBe("number");
+    await db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: { caps_enabled: !inicial } });
+    expect((await loadAiConfig(db)).settings.caps_enabled).toBe(inicial);
+    invalidateAiConfig(db);
+    expect((await loadAiConfig(db)).settings.caps_enabled).toBe(!inicial);
+    await db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: { caps_enabled: inicial } });
+    invalidateAiConfig(db);
+    expect((await loadAiConfig(db)).settings.caps_enabled).toBe(inicial);
+  });
+
+  it("envFallbackRef com uiKind usa LESSON_ASSIST_/PODCAST_ e os padrões", async () => {
+    const { envFallbackRef } = await import("../../server/ai/config");
+    expect(envFallbackRef("criacao", {} as any, "gemini")).toEqual({ provider: "gemini", model: "gemini-2.5-pro" });
+    expect(envFallbackRef("criacao", {} as any, "openai")).toBeNull();
+    const env = { LESSON_ASSIST_GEMINI_MODEL: "g-lesson", PODCAST_GEMINI_MODEL: "g-pod", CONTENT_HUB_GEMINI_MODEL: "g-hub" } as any;
+    expect(envFallbackRef("assistente_preencher", env, "gemini")?.model).toBe("g-lesson");
+    expect(envFallbackRef("criacao", env, "gemini")?.model).toBe("g-pod");
+    expect(envFallbackRef("criacao", { CONTENT_HUB_GEMINI_MODEL: "g-hub" } as any, "gemini")?.model).toBe("g-hub");
+    expect(envFallbackRef("verificacao", {} as any)).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" });
+    expect(envFallbackRef("verificacao", { CONTENT_HUB_VERIFIER_PROVIDER: "mock" } as any)).toBeNull();
+  });
+});
