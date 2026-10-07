@@ -51,7 +51,7 @@ export async function setupContentHub() {
     worker.start();
   }
   if (deps) console.log(`[central] banco: ${deps.db.mode === "supabase" ? "Supabase" : "desenvolvimento (.data/dev-db)"}`);
-  if (deps) console.log(`[central] IA: ${deps.ai.status.ready ? `${deps.ai.status.provider} (${deps.ai.status.model})` : `pendente — ${deps.ai.status.pending}`}`);
+  if (deps) console.log(`[central] IA: ${deps.ai.provider?.isMock ? "simulação" : "definida em Administração › Central de IAs"}`);
   else console.warn(`[central] desligada: ${pending}`);
   return { router: createContentHubRouter(deps, { pending, worker }), worker, deps, pending };
 }
