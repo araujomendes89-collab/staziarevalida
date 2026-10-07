@@ -1035,9 +1035,9 @@ describe("Rotas", () => {
     const { createAiRouter } = await import("../../server/ai/router");
     base = await new Promise<string>((resolve) => {
       const app = express();
-      app.use("/api/ai", createAiRouter({ db }, { fetchImpl, env: { ANTHROPIC_API_KEY: KEY } as any }));
+      app.use("/api/ai-central", createAiRouter({ db }, { fetchImpl, env: { ANTHROPIC_API_KEY: KEY } as any }));
       // só 127.0.0.1: escutando em todos os endereços, a porta pode coincidir com outro programa do Mac em 127.0.0.1
-      const srv = app.listen(0, "127.0.0.1", () => resolve(`http://127.0.0.1:${(srv.address() as any).port}/api/ai`));
+      const srv = app.listen(0, "127.0.0.1", () => resolve(`http://127.0.0.1:${(srv.address() as any).port}/api/ai-central`));
       servers.push(srv);
     });
   });
@@ -1140,6 +1140,38 @@ describe("Rotas", () => {
     const j2 = await (await call("admin", "GET", "/overview")).json();
     expect(j2.checks.verificacao).toMatchObject({ source: "banco", ready: true, problems: [] });
     expect(j2.checks.criacao).toMatchObject({ source: "variaveis", ready: true });
+  });
+
+  it("as rotas antigas /api/ai/* continuam respondendo", async () => {
+    const { createAiRouter } = await import("../../server/ai/router");
+    const listen = (mount: (app: express.Express) => void) =>
+      new Promise<string>((resolve) => {
+        const app = express();
+        mount(app);
+        const srv = app.listen(0, "127.0.0.1", () => resolve(`http://127.0.0.1:${(srv.address() as any).port}`));
+        servers.push(srv);
+      });
+    // a mesma ordem do server.ts: primeiro a Central de IAs, depois as rotas do app antigo
+    const novo = await listen((app) => {
+      app.use("/api/ai-central", createAiRouter({ db }, { fetchImpl, env: {} as any }));
+      app.get("/api/ai/models", (_q, r) => r.json({ ok: true }));
+    });
+    const r = await fetch(`${novo}/api/ai/models`);
+    expect(r.status).toBe(200);
+    expect(await r.json()).toEqual({ ok: true });
+    // a Central continua protegida no prefixo novo
+    expect((await fetch(`${novo}/api/ai-central/summary`)).status).toBe(401);
+    // o erro antigo: montada em /api/ai, a Central respondia 401 no lugar da rota antiga
+    const antigo = await listen((app) => {
+      app.use("/api/ai", createAiRouter({ db }, { fetchImpl, env: {} as any }));
+      app.get("/api/ai/models", (_q, r) => r.json({ ok: true }));
+    });
+    expect((await fetch(`${antigo}/api/ai/models`)).status).toBe(401);
+
+    // o server.ts monta a Central no prefixo novo e não no antigo
+    const text = fs.readFileSync("server.ts", "utf8");
+    expect(text.includes('app.use("/api/ai-central", createAiRouter('), "server.ts monta a Central em /api/ai-central").toBe(true);
+    expect(text.includes('app.use("/api/ai", createAiRouter('), "server.ts não pode montar a Central em /api/ai").toBe(false);
   });
 
   it("preço editado grava a data de hoje e recusa número negativo", async () => {

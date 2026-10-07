@@ -1,6 +1,7 @@
-// Chamadas às rotas /api/ai (Central de IAs), com o token da sessão. Nenhuma chave de IA passa pelo navegador.
+// Chamadas às rotas /api/ai-central (Central de IAs), com o token da sessão. Nenhuma chave de IA passa pelo navegador.
+// (O prefixo /api/ai é do app antigo: /api/ai/models, /generate, ... continuam lá.)
 
-const BASE = "/api/ai";
+const BASE = "/api/ai-central";
 
 async function headers(backend, extra = {}) {
   const token = backend?.accessToken ? await backend.accessToken() : null;

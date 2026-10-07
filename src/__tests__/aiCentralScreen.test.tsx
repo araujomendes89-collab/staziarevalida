@@ -61,7 +61,7 @@ beforeEach(() => {
     calls.push({ url, method, body });
     const h = handlers[`${method} ${url}`];
     if (h) return h(body);
-    if (method === "GET" && url === "/api/ai/overview") return json(overview);
+    if (method === "GET" && url === "/api/ai-central/overview") return json(overview);
     return json({ ok: true, warnings: [] });
   });
   window.confirm = vi.fn(() => true);
@@ -81,8 +81,8 @@ describe("Central de IAs (painel do administrador)", () => {
     expect(sw.checked).toBe(false);
     fireEvent.click(sw);
     expect((window.confirm as any).mock.calls[0][0]).toBe("Ligar Claude? A partir de agora o servidor pode enviar trechos do material da equipe para Claude. Fica registrado quem ligou e quando.");
-    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.url === "/api/ai/providers/anthropic/enabled")).toBe(true));
-    expect(calls.find((c) => c.url === "/api/ai/providers/anthropic/enabled")!.body).toEqual({ enabled: true });
+    await waitFor(() => expect(calls.some((c) => c.method === "POST" && c.url === "/api/ai-central/providers/anthropic/enabled")).toBe(true));
+    expect(calls.find((c) => c.url === "/api/ai-central/providers/anthropic/enabled")!.body).toEqual({ enabled: true });
   });
 
   it("não liga se a confirmação for recusada", async () => {
@@ -94,7 +94,7 @@ describe("Central de IAs (painel do administrador)", () => {
   });
 
   it("atualizar lista mostra os modelos e a situação", async () => {
-    handlers["POST /api/ai/providers/gemini/refresh"] = () => json({ status: "pronta", detail: "2 modelos", models: [{ id: "g1", label: "G1" }], prices_added: 2 });
+    handlers["POST /api/ai-central/providers/gemini/refresh"] = () => json({ status: "pronta", detail: "2 modelos", models: [{ id: "g1", label: "G1" }], prices_added: 2 });
     render(<AdminAI />);
     const card = await screen.findByTestId("provider-gemini");
     fireEvent.click(within(card).getByRole("button", { name: "Atualizar lista" }));
@@ -104,7 +104,7 @@ describe("Central de IAs (painel do administrador)", () => {
   });
 
   it("linha de produção com mesma família mostra o problema e não salva", async () => {
-    handlers["PUT /api/ai/functions/criacao"] = () => json({ error: "A função tem problemas: Conferente da mesma família.", problems: ["Conferente da mesma família que a criadora."], warnings: [] }, 400);
+    handlers["PUT /api/ai-central/functions/criacao"] = () => json({ error: "A função tem problemas: Conferente da mesma família.", problems: ["Conferente da mesma família que a criadora."], warnings: [] }, 400);
     overview.functions = [savedFn()];
     overview.checks.criacao = savedCheck;
     render(<AdminAI />);
@@ -114,11 +114,11 @@ describe("Central de IAs (painel do administrador)", () => {
     fireEvent.change(within(box).getByLabelText("Conferente 1: modelo — Criação"), { target: { value: "claude-a" } });
     fireEvent.click(within(box).getByRole("button", { name: "Salvar" }));
     expect(await within(box).findByText("Conferente da mesma família que a criadora.")).toBeTruthy();
-    const put = calls.find((c) => c.method === "PUT" && c.url === "/api/ai/functions/criacao")!;
+    const put = calls.find((c) => c.method === "PUT" && c.url === "/api/ai-central/functions/criacao")!;
     expect(put.body.config.mode).toBe("linha");
     expect(put.body.config.reviewers).toEqual([{ provider: "anthropic", model: "claude-a" }]);
     // nada mudou na tela salva: não recarregou o painel depois do erro
-    expect(calls.filter((c) => c.url === "/api/ai/overview").length).toBe(1);
+    expect(calls.filter((c) => c.url === "/api/ai-central/overview").length).toBe(1);
   });
 
   it("conferente incompleto trava o Salvar com mensagem", async () => {
@@ -146,7 +146,7 @@ describe("Central de IAs (painel do administrador)", () => {
   });
 
   it("salvar função com aviso de não independente mostra o aviso", async () => {
-    handlers["PUT /api/ai/functions/verificacao"] = () => json({ ok: true, warnings: ["Membros do comitê: não é independente (mesma família)."] });
+    handlers["PUT /api/ai-central/functions/verificacao"] = () => json({ ok: true, warnings: ["Membros do comitê: não é independente (mesma família)."] });
     overview.functions = [savedFn({ key: "verificacao", mode: "comite", reviewers: [{ provider: "anthropic", model: "claude-a" }] })];
     overview.checks.verificacao = savedCheck;
     render(<AdminAI />);
@@ -162,8 +162,8 @@ describe("Central de IAs (painel do administrador)", () => {
     const box = await screen.findByTestId("function-criacao");
     fireEvent.click(within(box).getByRole("button", { name: "Voltar às variáveis do servidor" }));
     expect(window.confirm).toHaveBeenCalled();
-    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai/functions/criacao")).toBe(true));
-    expect(calls.find((c) => c.url === "/api/ai/functions/criacao")!.body).toEqual({ config: null });
+    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai-central/functions/criacao")).toBe(true));
+    expect(calls.find((c) => c.url === "/api/ai-central/functions/criacao")!.body).toEqual({ config: null });
   });
 
   it("função sem configuração salva diz que usa as variáveis do servidor", async () => {
@@ -186,16 +186,16 @@ describe("Central de IAs (painel do administrador)", () => {
     fireEvent.change(screen.getByLabelText("Teto por execução (US$)"), { target: { value: "2" } });
     expect(save.disabled).toBe(false);
     fireEvent.click(save);
-    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai/settings")).toBe(true));
-    expect(calls.find((c) => c.url === "/api/ai/settings")!.body).toEqual({ monthly_cap_usd: 50, per_run_cap_usd: 2, caps_enabled: true });
+    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai-central/settings")).toBe(true));
+    expect(calls.find((c) => c.url === "/api/ai-central/settings")!.body).toEqual({ monthly_cap_usd: 50, per_run_cap_usd: 2, caps_enabled: true });
   });
 
   it("seletor nas abas grava tab_override_enabled", async () => {
     render(<AdminAI />);
     await screen.findByTestId("provider-anthropic");
     fireEvent.click(screen.getByRole("switch", { name: /Permitir trocar a IA nas abas/ }));
-    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai/settings")).toBe(true));
-    expect(calls.find((c) => c.url === "/api/ai/settings")!.body).toEqual({ tab_override_enabled: true });
+    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai-central/settings")).toBe(true));
+    expect(calls.find((c) => c.url === "/api/ai-central/settings")!.body).toEqual({ tab_override_enabled: true });
   });
 
   it("aba Central de IAs só aparece para administrador", async () => {
@@ -219,7 +219,7 @@ describe("Central de IAs (painel do administrador)", () => {
 
   it("Central de Conteúdo mostra o resumo das IAs e o botão só para administrador", async () => {
     backend.rpc.mockImplementation(async (fn: string) => (fn === "app_ch_flags" ? {} : fn === "app_ch_ai_usage" ? { by_step: [], jobs: {} } : []));
-    handlers["GET /api/ai/summary"] = () => json({ functions: [{ key: "criacao", configured: true }, { key: "verificacao", configured: false }], providers_enabled: ["anthropic"], month_spend: 1.5 });
+    handlers["GET /api/ai-central/summary"] = () => json({ functions: [{ key: "criacao", configured: true }, { key: "verificacao", configured: false }], providers_enabled: ["anthropic"], month_spend: 1.5 });
     const a = render(
       <MemoryRouter>
         <HubSettings isAdmin={true} status={{}} />

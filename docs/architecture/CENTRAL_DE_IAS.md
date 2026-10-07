@@ -122,7 +122,7 @@ feita na aba vale, desde que a IA esteja ligada e o modelo esteja na lista.
 | Preços iniciais e estimativa | `server/ai/prices.ts` |
 | Leitura da configuração, validação, situação das funções | `server/ai/config.ts` |
 | O maestro (modos, tetos, registro, adaptadores, escolhas das abas) | `server/ai/maestro.ts` |
-| Rotas `/api/ai` | `server/ai/router.ts` (montadas em `server.ts`) |
+| Rotas `/api/ai-central` (o prefixo `/api/ai` é do app antigo e não pode ser usado) | `server/ai/router.ts` (montadas em `server.ts`) |
 | Usos | `server/contentHub/pipeline.ts`, `worker.ts`, `router.ts`, `questionAnalysis.ts`, `questionReanalysis.ts`, `draftChecks.ts`, `server/lessons/assist.ts`, `server/podcasts/script.ts` |
 | Tela | `src/novo/app/admin/ai/` (`AdminAI.jsx`, `FunctionEditor.jsx`, `aiApi.js`), aba em `AdminScreen.jsx`, resumo em `content/HubSettings.jsx` |
 | Testes | `src/__tests__/aiCentral.test.ts`, `aiCentralScreen.test.tsx` e os ajustes nos testes de cada uso |

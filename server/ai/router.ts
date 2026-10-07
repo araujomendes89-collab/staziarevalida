@@ -1,5 +1,5 @@
 /**
- * Rotas /api/ai (Central de IAs). Só a equipe entra; só o administrador grava. As gravações passam pelas funções
+ * Rotas /api/ai-central (Central de IAs; o prefixo /api/ai é do app antigo). Só a equipe entra; só o administrador grava. As gravações passam pelas funções
  * ch_worker_ai_* (que conferem de novo se o ator é administrador). Nenhuma resposta traz chaves nem variáveis de ambiente.
  *
  *   GET  /overview                      painel completo + checks (situação de cada função)  (administrador)

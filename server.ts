@@ -102,7 +102,7 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   const hub = await setupContentHub();
   // Materiais visuais (cards, A4, story e flashcards): rotas próprias, montadas antes das da Central
   app.use("/api/content-hub/visual", createVisualRouter(hub.deps, { pending: hub.pending }));
-  app.use("/api/ai", createAiRouter(hub.deps, { pending: hub.pending }));
+  app.use("/api/ai-central", createAiRouter(hub.deps, { pending: hub.pending })); // prefixo próprio: em /api/ai engoliria as rotas do app antigo
   app.use("/api/content-hub", hub.router);
   // Stazia Tutor: usa o mesmo banco; a simulação de IA só existe com o banco de desenvolvimento
   const tutorDeps = hub.deps ? { db: hub.deps.db, mockRespond: hub.deps.db.mode === "dev" ? tutorMockRespond : undefined, log: (m: string) => console.log(m) } : null;
