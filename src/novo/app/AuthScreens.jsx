@@ -9,6 +9,7 @@ import { PASSWORD_MIN_LENGTH } from "../data";
 import { useMobile } from "./Shell.jsx";
 import { useSession, rememberChoice } from "./session.jsx";
 import { LoginScreen } from "./auth/LoginScreen.jsx";
+import "./auth/login.css";
 
 const ERROR_TEXT = {
   invalid_credentials: "Não foi possível entrar com esses dados. Verifique seu e-mail e senha.",
@@ -68,6 +69,50 @@ const legal = (
 
 const asideButtonStyle = { background: "transparent", color: "#fff", borderColor: "rgba(255,255,255,.4)" };
 
+function SecureField({ name, label, type = "text", autoComplete, hint, error }) {
+  return (
+    <div className="lg-field">
+      <label className="lg-label" htmlFor={`secure-${name}`}>{label}</label>
+      <input
+        id={`secure-${name}`}
+        name={name}
+        type={type}
+        autoComplete={autoComplete}
+        className={`lg-input lg-input--plain${error ? " is-error" : ""}`}
+        aria-invalid={error ? "true" : "false"}
+        aria-describedby={error ? `secure-${name}-error` : undefined}
+      />
+      {error ? <span id={`secure-${name}-error`} className="lg-field-error">{error}</span> : hint ? <span className="lg-field-hint">{hint}</span> : null}
+    </div>
+  );
+}
+
+function SecureSignupLayout({ children, onLogin }) {
+  return (
+    <div className="lg-root">
+      <div className="lg-shell lg-shell--auth">
+        <header className="lg-top"><img className="lg-logo" src="/novo-assets/logo-staziamed-revalida-v2-escuro.png" alt="StaziaMed Revalida" width="200" height="61" /></header>
+        <h1 className="lg-h1">Acesso seguro <span className="lg-grad">REVALIDA</span></h1>
+        <section className="lg-card lg-auth-card" aria-label="Criar conta">
+          <div className="lg-auth-form">{children}</div>
+          <aside className="lg-auth-aside">
+            <svg className="lg-auth-mark" aria-hidden="true" viewBox="0 0 120 120" fill="none">
+              <circle cx="60" cy="60" r="52" stroke="#7FE3DE" opacity=".2" />
+              <path d="M60 18 94 31v30c0 23-15 40-34 49-19-9-34-26-34-49V31Z" fill="rgba(31,166,160,.12)" stroke="#7FE3DE" strokeWidth="2" />
+              <path d="M43 60h34M60 43v34" stroke="#7FE3DE" strokeWidth="6" strokeLinecap="round" />
+            </svg>
+            <h2 className="lg-h2">Já tem conta?</h2>
+            <p className="lg-sub lg-auth-copy">Entre para continuar sua preparação para o Revalida.</p>
+            <button type="button" className="lg-btn lg-btn-ghost lg-auth-login" onClick={onLogin}>Entrar</button>
+          </aside>
+        </section>
+        <p className="lg-tagline">Foco no que cai <span className="lg-dot">•</span> Memória no que fica <span className="lg-dot">•</span> Confiança na prova</p>
+        <footer className="lg-footer"><span>© 2026 StaziaMed Revalida</span><a href="/termos-de-uso">Termos de uso</a><a href="/politica-de-privacidade">Privacidade</a></footer>
+      </div>
+    </div>
+  );
+}
+
 function Signup({ go }) {
   const { backend } = useSession();
   const [errors, setErrors] = React.useState({});
@@ -108,41 +153,20 @@ function Signup({ go }) {
   };
 
   return (
-    <AuthLayout
-      aside={
-        <>
-          <h2 style={{ margin: 0, font: "var(--type-h2)", color: "#fff" }}>Já tem conta?</h2>
-          <p style={{ margin: 0, color: "var(--navy-200)" }}>Entre para revisar sua conta e continuar sua jornada.</p>
-          <button className="sm-btn sm-btn--secondary" style={asideButtonStyle} onClick={() => go("login")}>
-            Entrar
-          </button>
-        </>
-      }
-    >
-      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 18 }} noValidate>
-        <div>
-          <h1 style={{ margin: 0, font: "var(--type-h2)" }}>Criar conta</h1>
-          <p style={{ margin: "6px 0 0", color: "var(--text-secondary)" }}>Crie sua conta e comece sua jornada.</p>
-        </div>
-        {error && <Banner tone="danger">{error}</Banner>}
-        {confirmEmail && (
-          <Banner tone="success" title="Confirme seu e-mail">
-            Enviamos um link de confirmação. Depois de confirmar, é só entrar.
-          </Banner>
-        )}
-        <TextField name="name" label="Nome completo" autoComplete="name" error={errors.name} />
-        <TextField name="email" label="E-mail" type="email" autoComplete="email" error={errors.email} />
-        <TextField name="pw" label="Senha" type="password" hint={`Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`} autoComplete="new-password" error={errors.pw} />
-        <Button type="submit" size="lg" fullWidth loading={loading}>
-          Criar conta
-        </Button>
-        <Divider>ou cadastre-se com</Divider>
-        <GoogleBtn onClick={google} disabled={loading}>
-          Continuar com Google
-        </GoogleBtn>
-        {legal}
+    <SecureSignupLayout onLogin={() => go("login")}>
+      <form onSubmit={submit} className="lg-auth-fields" noValidate>
+        <div><h2 className="lg-h2">Criar conta</h2><p className="lg-sub">Crie sua conta e comece sua jornada.</p></div>
+        {error && <div className="lg-msg lg-msg--error" role="alert">{error}</div>}
+        {confirmEmail && <div className="lg-msg lg-msg--success" role="status">Enviamos um link de confirmação. Depois de confirmar, é só entrar.</div>}
+        <SecureField name="name" label="Nome completo" autoComplete="name" error={errors.name} />
+        <SecureField name="email" label="E-mail" type="email" autoComplete="email" error={errors.email} />
+        <SecureField name="pw" label="Senha" type="password" hint={`Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`} autoComplete="new-password" error={errors.pw} />
+        <button type="submit" className="lg-btn lg-btn-primary" disabled={loading}>{loading ? <><span className="lg-spin" />CRIANDO CONTA…</> : "CRIAR CONTA"}</button>
+        <div className="lg-or" aria-hidden="true"><span /><span>ou cadastre-se com</span><span /></div>
+        <button type="button" className="lg-btn lg-btn-ghost" onClick={google} disabled={loading}><img src="/novo-assets/google.svg" alt="" width="18" height="18" />Continuar com Google</button>
+        <p className="lg-auth-legal">Ao continuar, você concorda com os <a href="/termos-de-uso">Termos de Uso</a> e a <a href="/politica-de-privacidade">Política de Privacidade</a>.</p>
       </form>
-    </AuthLayout>
+    </SecureSignupLayout>
   );
 }
 

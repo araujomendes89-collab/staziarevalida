@@ -9,6 +9,18 @@
       "maxDuration": 300
     }
   },
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/novo",
+      "permanent": false
+    },
+    {
+      "source": "/login",
+      "destination": "/novo/login",
+      "permanent": false
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/:path*",

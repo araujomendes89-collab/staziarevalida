@@ -12,7 +12,7 @@ const GROUP={erros:'flash',missoes:'trilha',conquistas:'perfil',classificacao:'c
 const FULL=['sessao','estacao'];
 const GROUPS={1:[['Início',[['home','house','Início'],['hoje','list-checks','Plano de hoje'],['trilha','route','Trilha']]],['Estudar',[['aulas','tv','Aulas'],['temas','book-open','Grandes Temas'],['atualizacoes','newspaper','Atualizações']]],['Praticar',[['questoes','file-question','Questões'],['simulados','timer','Simulados']]],['Revisar',[['flash','layers','Flashcards'],['erros','notebook-pen','Caderno de erros']]],['Stazia Arena',[['missoes','target','Missões'],['classificacao','trophy','Classificação'],['conquistas','award','Conquistas']]],['Evolução',[['desempenho','chart-column','Desempenho'],['analise','chart-pie','Análise'],['plano','calendar-days','Planejamento']]],['Tutor IA',[['tutor','sparkles','Nexus']]]],
 2:[['Menu',[['home2','house','Início'],['teoria2','book-open','Teoria'],['estacoes','clipboard-list','Estações'],['dupla','users','Praticar'],['peps','list-checks','Meus PEPs']]],['Treino com IA',[['paciente','message-circle-heart','Paciente simulado']]],['Análise',[['desempenho2','chart-column','Desempenho']]]]};
-function Rail({route,go,phase,collapsed,setCollapsed,info}){
+function Rail({route,go,phase,collapsed,setCollapsed,info,theme}){
   const badgeOf={flash:info.flashcardsDue||null};
   const G=GROUPS[phase];const W=collapsed?76:264;
   const [txt,setTxt]=React.useState(!collapsed);const [hov,setHov]=React.useState(false);
@@ -34,7 +34,7 @@ function Rail({route,go,phase,collapsed,setCollapsed,info}){
   return <nav aria-label="Navegação principal" onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)} style={{position:'fixed',left:16,top:16,bottom:16,width:W,zIndex:20,display:'flex',flexDirection:'column',borderRadius:24,background:'color-mix(in oklab,var(--surface-card) 88%,transparent)',backdropFilter:'blur(20px) saturate(1.4)',border:'1px solid var(--border-default)',boxShadow:'var(--shadow-lg)',transition:'width 380ms cubic-bezier(.4,0,.2,1)'}}>
     <style>{'.smr-row:hover:not([aria-current]){color:var(--text-primary)!important;background:var(--action-ghost-hover)!important}.smr-row:active .smr-ic{transform:scale(.9)}'+RI_CSS+'.smr-ic .o{opacity:0!important}.smr-ic .c{opacity:1!important;transform:none!important}.smr-row:hover .smr-ic .c{transform:scale(1.12)!important}'}</style>
     <div style={{display:'flex',alignItems:'center',gap:8,padding:collapsed?'18px 0 10px':'18px 16px 10px 20px',justifyContent:collapsed?'center':'space-between',minHeight:64}}>
-      <button type="button" onClick={()=>go(phase===2?'home2':'home')} aria-label="StaziaMed, início" style={{border:0,background:'none',padding:0,cursor:'pointer',display:'flex'}}>{collapsed?<img src="/novo-assets/logo-mark.png" alt="" style={{height:30}}/>:<img src="/novo-assets/logo-horizontal.png" alt="" style={{height:40,...fade}}/>}</button>
+      <button type="button" onClick={()=>go(phase===2?'home2':'home')} aria-label="StaziaMed, início" style={{border:0,background:'none',padding:0,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',minWidth:0,flex:collapsed?'0 0 auto':'1 1 auto'}}>{collapsed?<img src="/novo-assets/logo-mark.png" alt="" style={{height:30}}/>:<img src={theme==='dark'?'/novo-assets/logo-staziamed-revalida-v2-escuro.png':'/novo-assets/logo-staziamed-revalida-v2.png'} alt="StaziaMed Revalida" style={{display:'block',width:'100%',height:'auto',maxWidth:196,...fade}}/>}</button>
       {!collapsed&&<span style={{...fade,position:'relative',display:'inline-flex',color:'var(--text-secondary)'}}><Icon name="bell" size={19}/></span>}
     </div>
     <div style={{position:'absolute',top:30,left:'calc(100% - 14px)',display:'flex',alignItems:'center',gap:6,zIndex:2}}>
@@ -96,7 +96,7 @@ function Header({title,sub,theme,setTheme,go,mobile,phase,setPhase,phase2Locked,
 function AppShell({route,go,theme,setTheme,title,sub,children,bare,phase=1,setPhase,phase2Locked=false,info}){
   const mobile=useMobile();const narrowRail=useNarrowRail();const [pref,setC]=React.useState(()=>localStorage.getItem('smf-col'));const collapsed=pref==null?narrowRail:pref==='1';const setCollapsed=v=>{const x=v?'1':'0';setC(x);localStorage.setItem('smf-col',x);};
   return <div style={{minHeight:'100vh',background:'var(--bg-app)'}}>
-    {!mobile&&!FULL.includes(route)&&<Rail route={route} go={go} phase={phase} collapsed={collapsed} setCollapsed={setCollapsed} info={info}/>}
+    {!mobile&&!FULL.includes(route)&&<Rail route={route} go={go} phase={phase} collapsed={collapsed} setCollapsed={setCollapsed} info={info} theme={theme}/>}
     <main style={{marginLeft:mobile||FULL.includes(route)?0:(collapsed?100:288),transition:'margin-left var(--dur-slow) var(--ease-standard)',padding:bare?0:(mobile?'24px 18px 112px':'36px 48px 128px')}}>
       {bare?children:<div style={{maxWidth:1200,margin:'0 auto',display:'flex',flexDirection:'column',gap:24}}>
         <Header title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info}/>{children}</div>}
