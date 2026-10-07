@@ -1108,3 +1108,119 @@ describe("Rotas", () => {
     expect(row).toEqual({ i: 1.5, source_url: null, c: today });
   });
 });
+
+describe("Central", () => {
+  const A = { provider: "anthropic", model: "claude-sonnet-5-5" };
+  const O = { provider: "openai", model: "gpt-5.4" };
+  const T = "Texto sintético de teste.";
+  const PASSAGE = `${T} Na bronquiolite viral aguda, a oxigenoterapia deve ser iniciada quando a saturação estiver abaixo de 92%.`;
+  const BLOCKS = [
+    { page_no: 1, idx: 0, type: "heading", text: "Bronquiolite viral aguda" },
+    { page_no: 1, idx: 1, type: "paragraph", text: PASSAGE },
+  ];
+  let storage: any;
+  let docId: string;
+
+  /** Provedores falsos por ref: respondem com a simulação de cada prompt, com o nome e o modelo da ref. */
+  const aiMaker = (ref: { provider: string; model: string }) =>
+    ({
+      name: ref.provider,
+      model: ref.model,
+      isMock: false,
+      async generate(req: any) {
+        const { mockRespond } = await import("../../server/contentHub/ai/mock");
+        return { output: mockRespond(req), provider: ref.provider, model: ref.model, inputTokens: 10, outputTokens: 20, latencyMs: 1, costUsd: null };
+      },
+    }) as any;
+  const noAi = { provider: null, status: { ready: false, provider: null, model: null, isMock: false, pending: "IA não configurada." } };
+  const centralDeps = (extra: any = {}) => ({ db, storage, ai: noAi, aiMaker, ...extra }) as any;
+  const saveFn = (k: string, primary: object) =>
+    db.service("ch_worker_ai_save_function", { p_actor: ADMIN, p_key: k, p_config: { mode: "sozinha", primary_ref: primary, fallback_ref: null, reviewers: [], care: "caprichado" } });
+  const refresh = async () => (await import("../../server/ai/config")).invalidateAiConfig(db);
+
+  beforeAll(async () => {
+    const { localStorageDir } = await import("../../server/contentHub/infra");
+    storage = localStorageDir(path.join(tmp, "files-central"));
+    const src = await db.asUser<{ id: string }>(adminUser, "app_ch_register_source", { p_source: { title: "Fonte sintética", organ: "Órgão de teste", version: "1", published_on: "2026-01-01", url: "https://exemplo.invalid/f.pdf" } });
+    await db.asUser(adminUser, "app_ch_add_passage", { p_source_id: src.id, p_passage: { section: "Tratamento", page: 12, text: PASSAGE } });
+    const bytes = Buffer.from("%PDF-1.7 central sintetica");
+    const sha = (await import("crypto")).createHash("sha256").update(bytes).digest("hex");
+    await storage.put(`documents/${sha}.pdf`, bytes, "application/pdf");
+    const r = await db.asUser<{ id: string }>(adminUser, "app_ch_register_document", { p_doc: { name: "Apostila Central", sha256: sha, storage_path: `documents/${sha}.pdf`, rights_status: "unknown" } });
+    docId = r.id;
+    await db.service("ch_worker_save_extraction", { p_document_id: docId, p_text_kind: "text", p_pages: [{ page_no: 1, kind: "text", width: 595, height: 842 }], p_blocks: BLOCKS.map((b) => ({ ...b, bbox: [0, 0, 1, 1] })) });
+  }, 120_000);
+  beforeEach(resetAiState);
+
+  it("etapa da Central usa a IA da função: verificação com OpenAI, criação com Claude", async () => {
+    for (const id of ["anthropic", "openai"]) await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: id, p_enabled: true });
+    await saveFn("criacao", A);
+    await saveFn("verificacao", O);
+    await refresh();
+    const { stepVersions } = await import("../../server/contentHub/pipeline");
+    const { createContentHubWorker } = await import("../../server/contentHub/worker");
+    const deps = centralDeps();
+    await db.service("ch_worker_unblock");
+    await db.service("ch_worker_next", { p_document_id: docId, p_step: "classify", p_versions: stepVersions("classify", deps) });
+    await createContentHubWorker(deps).drain();
+
+    const calls = (await dev.db.query<any>(`select function_key, provider, model, source, item_id from public.ai_calls where outcome = 'ok' order by id`)).rows;
+    const by = (fn: string) => [...new Set(calls.filter((c) => c.function_key === fn).map((c) => `${c.provider}:${c.model}`))];
+    expect(by("criacao")).toEqual(["anthropic:claude-sonnet-5-5"]);
+    expect(by("verificacao")).toEqual(["openai:gpt-5.4"]);
+    expect(calls.every((c) => c.source === "central" && c.item_id === docId)).toBe(true);
+
+    const runs = (await dev.db.query<any>(`select step, provider, model from public.ch_ai_runs where document_id = $1`, [docId])).rows;
+    const classify = runs.filter((r) => r.step === "classify");
+    expect(classify.length).toBeGreaterThan(0);
+    expect(classify.every((r) => r.provider === "anthropic" && r.model === "claude-sonnet-5-5")).toBe(true);
+    const evidence = runs.filter((r) => r.step === "evidence");
+    expect(evidence.length).toBeGreaterThan(0);
+    expect(evidence.every((r) => r.provider === "openai" && r.model === "gpt-5.4")).toBe(true);
+    const claims = (await dev.db.query<any>(`select created_by_model as model from public.ch_claims where document_id = $1`, [docId])).rows;
+    for (const c of claims) expect(c.model).toBe("claude-sonnet-5-5");
+  });
+
+  it("aiAvailable: só mock ou IA ligada destrava a fila", async () => {
+    const { aiAvailable } = await import("../../server/contentHub/worker");
+    expect(await aiAvailable(centralDeps())).toBe(false);
+    // uma IA das variáveis de ambiente (provedor real) não autoriza sozinha
+    expect(await aiAvailable(centralDeps({ ai: { provider: aiMaker(A), status: { ...noAi.status, ready: true } } }))).toBe(false);
+    expect(await aiAvailable(centralDeps({ ai: { provider: { ...aiMaker(A), isMock: true }, status: noAi.status } }))).toBe(true);
+    await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "gemini", p_enabled: true });
+    expect(await aiAvailable(centralDeps())).toBe(true);
+    const broken = { ...db, service: async () => { throw new Error("falhou"); } } as any;
+    expect(await aiAvailable(centralDeps({ db: broken }))).toBe(false);
+  });
+
+  it("/status mostra ai_central e troca a pendência da IA", async () => {
+    const { createContentHubRouter } = await import("../../server/contentHub/router");
+    const token = await dev.createSession(ADMIN);
+    const status = async (deps: any) => {
+      const app = express();
+      app.use("/api/content-hub", createContentHubRouter(deps, { worker: null }));
+      const srv = await new Promise<http.Server>((r) => {
+        const s = app.listen(0, () => r(s));
+      });
+      try {
+        const res = await fetch(`http://127.0.0.1:${(srv.address() as any).port}/api/content-hub/status`, { headers: { Authorization: `Bearer ${token}` } });
+        expect(res.status).toBe(200);
+        return await res.json();
+      } finally {
+        await new Promise((r) => srv.close(r));
+      }
+    };
+    const pend = { provider: null, status: { ...noAi.status, pending: "IA não configurada: defina CONTENT_HUB_AI_PROVIDER." } };
+    const none = "Nenhuma função da Central de IAs está pronta: ligue e configure as IAs em Administração › Central de IAs.";
+    const before = await status(centralDeps({ ai: pend }));
+    expect(before.ai_central.providers_enabled).toEqual([]);
+    expect(before.pending.some((p: string) => p.includes("CONTENT_HUB_AI_PROVIDER"))).toBe(false);
+    expect(before.pending).toContain(none);
+    await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "anthropic", p_enabled: true });
+    await saveFn("criacao", A);
+    await refresh();
+    const after = await status(centralDeps({ ai: pend }));
+    expect(after.ai_central.providers_enabled).toEqual(["anthropic"]);
+    expect(after.pending).not.toContain(none);
+  });
+});

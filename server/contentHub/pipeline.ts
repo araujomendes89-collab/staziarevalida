@@ -24,6 +24,8 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import { PROMPTS, asDocument, CRITICAL_KINDS, type PromptKey } from "./ai/prompts";
 import { AiInvalidOutput, type AiProvider, type AiStatus } from "./ai/provider";
+import { maestroProvider } from "../ai/maestro";
+import { functionForPrompt, type ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { copyRatio, flashcardProblems, isVerbatim, negations, negationsLost, normalize, numbers, numbersOutside } from "./checks";
 import type { ContentDb, Storage } from "./infra";
@@ -57,6 +59,8 @@ export interface PipelineDeps {
   renderer?: Renderer | null;
   python?: string;
   log?: (message: string) => void;
+  /** Só para testes: cria o provedor de cada ref escolhida na Central de IAs (sem rede). */
+  aiMaker?: (ref: ModelRef) => AiProvider | null;
 }
 
 /** Falta configuração: o trabalho fica pendente, sem gastar tentativa. */
@@ -128,9 +132,14 @@ export function stepVersions(step: Step, deps: PipelineDeps): Record<string, unk
 // ---------------------------------------------------------------------------- IA
 type Rejection = { where: string; reason: string };
 
-async function ai<T>(ctx: Ctx, key: PromptKey, payload: unknown, check?: (output: T) => Rejection[]): Promise<{ output: T; rejections: Rejection[] }> {
-  const provider = ctx.deps.ai.provider;
-  if (!provider) throw new Blocked(ctx.deps.ai.status.pending ?? "IA não configurada.");
+async function ai<T>(ctx: Ctx, key: PromptKey, payload: unknown, check?: (output: T) => Rejection[]): Promise<{ output: T; rejections: Rejection[]; model: string | null }> {
+  // a IA vem da Central de IAs (maestro): liga/desliga, modelo por função, tetos e registro de chamadas
+  const { provider, status } = await maestroProvider(
+    { db: ctx.deps.db, mockProvider: ctx.deps.ai.provider?.isMock ? ctx.deps.ai.provider : null, makeProviderFor: ctx.deps.aiMaker },
+    functionForPrompt(key),
+    { source: "central", itemId: ctx.job.document_id }
+  );
+  if (!provider) throw new Blocked(status.pending ?? "IA não configurada.");
   const allowed = await aiAllowed(ctx.deps.db);
   if (!allowed.ok) throw new Blocked(allowed.why);
   await registerPromptsOnce(ctx.deps.db);
@@ -154,7 +163,7 @@ async function ai<T>(ctx: Ctx, key: PromptKey, payload: unknown, check?: (output
     ctx.metrics.cache_hits++;
     const rejections = check?.(cached) ?? [];
     ctx.metrics.rejections += rejections.length;
-    return { output: cached, rejections };
+    return { output: cached, rejections, model: provider.model };
   }
 
   ctx.metrics.ai_calls++;
@@ -187,7 +196,7 @@ async function ai<T>(ctx: Ctx, key: PromptKey, payload: unknown, check?: (output
       latency_ms: result.latencyMs,
     },
   });
-  return { output: result.output, rejections };
+  return { output: result.output, rejections, model: result.model };
 }
 
 // ---------------------------------------------------------------------------- blocos e trechos
@@ -413,7 +422,7 @@ async function stepClaims(ctx: Ctx): Promise<Step | null> {
   for (let i = ctx.job.checkpoint?.chunk ?? 0; i < chunks.length; i++) {
     const chunk = chunks[i];
     const payload = { trechos: chunk.map((b, k) => ({ block_idx: k, page: b.page_no, type: b.type, text: b.text })) };
-    const { output } = await ai<any>(ctx, "claims", payload, (o) =>
+    const { output, model: answered } = await ai<any>(ctx, "claims", payload, (o) =>
       o.claims.flatMap((c: any, k: number) => {
         const b = chunk[c.block_idx];
         if (!b) return [{ where: `claims[${k}]`, reason: "bloco inexistente" }];
@@ -442,7 +451,7 @@ async function stepClaims(ctx: Ctx): Promise<Step | null> {
             negations: negations(statement),
             critical_kinds_added_by_rule: added,
           },
-          model: ctx.deps.ai.provider?.model,
+          model: answered,
         },
       });
       created++;
@@ -474,7 +483,7 @@ async function stepEvidence(ctx: Ctx): Promise<Step | null> {
       afirmacao: { text, context: c.context },
       trechos: passages.map((p) => ({ passage_id: p.passage_id, source: p.source, organ: p.organ, version: p.version, section: p.section, page: p.page, text: String(p.text).slice(0, 2500) })),
     };
-    const { output, rejections } = await ai<any>(ctx, "evidence", payload, (o) => {
+    const { output, rejections, model: answer } = await ai<any>(ctx, "evidence", payload, (o) => {
       const p = byId.get(o.passage_id);
       if (!p) return [{ where: "passage_id", reason: "trecho fora da lista fornecida" }];
       if (!isVerbatim(o.quote, p.text)) return [{ where: "quote", reason: "a citação não é cópia literal do trecho da fonte" }];
@@ -488,7 +497,7 @@ async function stepEvidence(ctx: Ctx): Promise<Step | null> {
     const p = byId.get(output.passage_id);
     const r = await svc<any>(ctx, "ch_worker_link_evidence", {
       p_claim_id: c.id,
-      p_evidence: { source_id: p.source_id, passage_id: p.passage_id, section: p.section, page: p.page, quote: normalize(output.quote), verdict: output.verdict, model: ctx.deps.ai.provider?.model },
+      p_evidence: { source_id: p.source_id, passage_id: p.passage_id, section: p.section, page: p.page, quote: normalize(output.quote), verdict: output.verdict, model: answer },
     });
     counts[r.verdict] = (counts[r.verdict] ?? 0) + 1;
   }
@@ -566,7 +575,7 @@ async function stepDraft(ctx: Ctx): Promise<Step | null> {
     if (ready.length) {
       const base = new Map(ready.map((c) => [c.id, c.proposed_text ?? c.statement]));
       const payload = { tema: pathOf.get(theme) ?? "", afirmacoes: ready.map((c) => ({ id: c.id, text: base.get(c.id), context: c.context })) };
-      const { output } = await ai<any>(ctx, "draft", payload);
+      const { output, model: drafted } = await ai<any>(ctx, "draft", payload);
       const checked = checkDraft(output.sections, base, { originalText, independent: !adaptation, forbiddenTerms });
       removed += checked.flags.length;
       if (checked.sections.some((s) => s.paragraphs.some((p) => p.clinical))) {
@@ -578,7 +587,7 @@ async function stepDraft(ctx: Ctx): Promise<Step | null> {
           p_title: output.title,
           p_content: { sections: checked.sections },
           p_origin: adaptation ? "adaptation" : "independent",
-          p_model: ctx.deps.ai.provider?.model,
+          p_model: drafted,
           p_scope_note: scope,
         });
         await svc(ctx, "ch_worker_review_flags", { p_version_id: saved.version_id, p_flags: checked.flags });
@@ -617,7 +626,6 @@ export function lessonReferences(claims: any[]) {
 async function stepMaterials(ctx: Ctx): Promise<Step | null> {
   await setMeta(ctx, { status: "drafting" });
   const versions = await targetVersions(ctx);
-  const model = ctx.deps.ai.provider?.model ?? null;
   const counts: Record<string, number> = {};
   const save = async (version: string, kind: string, content: unknown, byModel: string | null) => {
     await svc(ctx, "ch_worker_save_material", { p_version_id: version, p_kind: kind, p_content: content, p_model: byModel, p_template: MATERIALS_TEMPLATE });
@@ -640,8 +648,8 @@ async function stepMaterials(ctx: Ctx): Promise<Step | null> {
     );
     const items = summary.output.items.filter((it: any) => supported(it.text, it.claim_ids));
     if (items.length) {
-      await save(v.version_id, "summary", { title: v.title, items }, model);
-      await save(v.version_id, "visual_cards", { title: v.title, cards: items.map((it: any) => ({ text: it.text, claim_ids: it.claim_ids })), label: "Card StaziaMed" }, model);
+      await save(v.version_id, "summary", { title: v.title, items }, summary.model);
+      await save(v.version_id, "visual_cards", { title: v.title, cards: items.map((it: any) => ({ text: it.text, claim_ids: it.claim_ids })), label: "Card StaziaMed" }, summary.model);
     }
 
     const cards = await ai<any>(ctx, "flashcards", payload, (o) =>
@@ -652,7 +660,7 @@ async function stepMaterials(ctx: Ctx): Promise<Step | null> {
       })
     );
     const deck = cards.output.cards.filter((c: any) => !flashcardProblems(c).length && supported(`${c.front} ${c.back}`, c.claim_ids));
-    if (deck.length) await save(v.version_id, "flashcards", { title: v.title, cards: deck }, model);
+    if (deck.length) await save(v.version_id, "flashcards", { title: v.title, cards: deck }, cards.model);
 
     const qs = await ai<any>(ctx, "questions", payload, (o) =>
       o.items.flatMap((q: any, k: number) => {
@@ -670,7 +678,7 @@ async function stepMaterials(ctx: Ctx): Promise<Step | null> {
     const questions = qs.output.items
       .filter((_: any, k: number) => !rejectedQ.has(`items[${k}]`))
       .map((q: any) => ({ ...q, author: "StaziaMed", official: false, label: "Questão inédita StaziaMed (não é questão oficial do Inep)" }));
-    if (questions.length) await save(v.version_id, "questions", { title: v.title, items: questions }, model);
+    if (questions.length) await save(v.version_id, "questions", { title: v.title, items: questions }, qs.model);
 
     await checkpoint(ctx, { version: i + 1 });
   }
@@ -713,9 +721,9 @@ async function stepReviewCheck(ctx: Ctx): Promise<Step | null> {
       texto: v.content.sections,
       afirmacoes: claims.map((c) => ({ id: c.id, text: c.proposed_text ?? c.statement, context: c.context, evidencias: (c.evidence ?? []).map((e: any) => ({ verdict: e.verdict, quote: e.quote, source: e.source, page: e.page })) })),
     };
-    const { output } = await ai<any>(ctx, "review", payload);
+    const { output, model: reviewed } = await ai<any>(ctx, "review", payload);
     const kept = (v.review_flags ?? []).filter((f: any) => f.by !== "ai_review");
-    const found = output.issues.map((x: any) => ({ ...x, by: "ai_review", model: ctx.deps.ai.provider?.model }));
+    const found = output.issues.map((x: any) => ({ ...x, by: "ai_review", model: reviewed }));
     issues += found.length;
     await svc(ctx, "ch_worker_review_flags", { p_version_id: v.version_id, p_flags: [...kept, ...found] });
     await checkpoint(ctx, { version: i + 1 });

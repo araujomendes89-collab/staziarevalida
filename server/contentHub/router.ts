@@ -12,6 +12,7 @@ import { applyReferenceCleanup, previewReferenceCleanup, undoReferenceCleanup } 
 import type { Identity } from "./infra";
 import type { ContentHubWorker } from "./worker";
 import type { ProcessingReport } from "./capabilities";
+import { functionChecks, loadAiConfig } from "../ai/config";
 
 /** A tarefa no Cloud Run roda a cada 10 minutos: sem relato há mais de 30, ela parou. */
 const PROCESSING_STALE_MIN = 30;
@@ -55,7 +56,13 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
     try {
       const me = await requireStaff(req);
       const local = Boolean(opts.worker?.running);
-      const pending: string[] = deps!.ai.status.ready ? [] : [deps!.ai.status.pending!];
+      // a IA vem da Central de IAs: a situação das funções vale no lugar da IA das variáveis de ambiente
+      const central = await asUser<unknown>(req, "app_ai_summary").catch(() => null);
+      const pending: string[] = [];
+      if (!deps!.ai.status.isMock) {
+        const ready = await loadAiConfig(deps!.db).then((cfg) => Object.values(functionChecks(cfg, process.env)).some((c) => c.ready)).catch(() => false);
+        if (!ready) pending.push("Nenhuma função da Central de IAs está pronta: ligue e configure as IAs em Administração › Central de IAs.");
+      }
       let renderer: boolean;
       let brand: { version: string; pending: string[] };
       let processing: Record<string, unknown>;
@@ -78,14 +85,14 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
           const minutes = Math.max(0, Math.round((Date.now() - Date.parse(last.reported_at)) / 60_000));
           const stale = minutes > PROCESSING_STALE_MIN;
           if (stale) pending.push(`O processamento da Central não roda desde ${new Date(last.reported_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}: confira a tarefa no Google Cloud Run.`);
-          for (const p of last.report.pending ?? []) if (!pending.includes(p)) pending.push(p);
+          for (const p of last.report.pending ?? []) if (!p.startsWith("IA do processamento:") && !pending.includes(p)) pending.push(p);
           renderer = Boolean(last.report.renderer);
           brand = last.report.brand ?? { version: "", pending: [] };
           processing = { where: last.worker, reported_at: last.reported_at, minutes_ago: minutes, stale, python: Boolean(last.report.python), ocr_languages: last.report.ocr_languages ?? [], jobs: last.report.jobs ?? null };
         }
       }
       pending.push("Busca por significado (embeddings) ainda não existe: a busca de evidências usa palavras. Depende de escolher o modelo de embeddings.");
-      res.json({ me, storage: deps!.db.mode, ai: deps!.ai.status, renderer, brand, worker: local, processing, pending });
+      res.json({ me, storage: deps!.db.mode, ai: deps!.ai.status, ai_central: central, renderer, brand, worker: local, processing, pending });
     } catch (error) {
       fail(res, forbidden(error) ? 403 : 500, message(error));
     }

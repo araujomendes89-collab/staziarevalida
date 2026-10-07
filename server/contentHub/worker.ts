@@ -25,6 +25,20 @@ export interface ContentHubWorker {
 }
 
 /** Conteúdo comparável de uma publicação: bytes de um PDF; texto visível de uma página HTML. */
+/**
+ * Há IA para destravar a fila? A simulação (só desenvolvimento) ou alguma IA ligada na Central de IAs.
+ * Uma chave nas variáveis de ambiente não autoriza nada sozinha. Erro ao ler o banco = não.
+ */
+export async function aiAvailable(deps: PipelineDeps): Promise<boolean> {
+  if (deps.ai.provider?.isMock === true) return true;
+  try {
+    const cfg = await deps.db.service<{ providers?: { enabled?: boolean }[] } | null>("ch_worker_ai_config");
+    return Boolean(cfg?.providers?.some((p) => p.enabled));
+  } catch {
+    return false;
+  }
+}
+
 export function publicationHash(body: Buffer, contentType: string): string {
   let data: Buffer | string = body;
   if (!/pdf/i.test(contentType) && body.subarray(0, 5).toString("latin1") !== "%PDF-") {
@@ -139,7 +153,7 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
       running = true;
       void (async () => {
         // IA disponível: o que estava pendente por falta de configuração volta para a fila.
-        if (deps.ai.provider) await deps.db.service("ch_worker_unblock").catch(() => undefined);
+        if (await aiAvailable(deps)) await deps.db.service("ch_worker_unblock").catch(() => undefined);
         void loop();
       })();
     },

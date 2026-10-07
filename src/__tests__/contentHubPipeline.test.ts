@@ -105,9 +105,9 @@ describe("Central de Conteúdo — processamento", () => {
     expect(await worker.drain()).toBe(1);
     const [job] = await sql(`select status, attempts, error from public.ch_jobs where document_id = $1 and step = 'classify'`, [studyDoc]);
     expect(job).toMatchObject({ status: "blocked", attempts: 0 });
-    expect(job.error).toMatch(/IA não configurada/);
+    expect(job.error).toMatch(/desligada na Central de IAs/);
     const [doc] = await sql(`select failure from public.ch_documents where id = $1`, [studyDoc]);
-    expect(doc.failure).toMatch(/^Pendência: IA não configurada/);
+    expect(doc.failure).toMatch(/^Pendência: .*desligada na Central de IAs/);
     expect(await sql(`select 1 from public.ch_ai_runs`)).toHaveLength(0);
   });
 

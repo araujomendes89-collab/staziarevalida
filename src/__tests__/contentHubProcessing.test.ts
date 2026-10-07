@@ -83,7 +83,8 @@ describe("Situação no painel (site sem processamento próprio)", () => {
     const report = { where: "cloud_run", renderer: true, python: true, ocr_languages: ["eng", "por", "spa"], brand: { version: "brand-1.0+font", pending: [] }, pending: [], jobs: 2 };
     await dev.db.query(`select public.ch_worker_report('cloud_run', $1::jsonb)`, [JSON.stringify(report)]);
     let s = await status(base);
-    expect(s.pending.filter((p: string) => !EMBEDDINGS.test(p))).toEqual([]);
+    // sem IA ligada na Central de IAs, a única pendência além dos embeddings é a da própria Central
+    expect(s.pending.filter((p: string) => !EMBEDDINGS.test(p) && !/^Nenhuma função da Central de IAs/.test(p))).toEqual([]);
     expect(s).toMatchObject({ renderer: true, brand: { version: "brand-1.0+font", pending: [] }, processing: { where: "cloud_run", stale: false, python: true, ocr_languages: ["eng", "por", "spa"], jobs: 2 } });
     await dev.db.query(`update public.ch_worker_heartbeats set reported_at = now() - interval '2 hours'`);
     s = await status(base);

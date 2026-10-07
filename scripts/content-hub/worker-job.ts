@@ -10,7 +10,7 @@
  * Mesmas regras do servidor: Supabase obrigatório em produção, chaves só no ambiente da tarefa.
  */
 import { buildContentHubDeps } from "../../server/contentHub/index";
-import { createContentHubWorker } from "../../server/contentHub/worker";
+import { aiAvailable, createContentHubWorker } from "../../server/contentHub/worker";
 import { probeProcessing, reportProcessing } from "../../server/contentHub/capabilities";
 
 const budgetMs = (Number(process.env.CONTENT_HUB_JOB_BUDGET_MIN) > 0 ? Number(process.env.CONTENT_HUB_JOB_BUDGET_MIN) : 50) * 60_000;
@@ -30,6 +30,8 @@ async function main() {
   if (report.pending.length) console.log(`[central] pendências do processamento: ${report.pending.join(" | ")}`);
   await reportProcessing(deps, report, { started_at: new Date(t0).toISOString() });
   const worker = createContentHubWorker(deps, { staleSeconds });
+  // trabalhos parados por falta de IA voltam para a fila quando o dono liga alguma IA na Central de IAs
+  if (await aiAvailable(deps)) await deps.db.service("ch_worker_unblock").catch(() => undefined);
   let jobs = 0;
   while (Date.now() - t0 < budgetMs && (await worker.tick())) jobs++;
   const sources = await worker.checkSources();
