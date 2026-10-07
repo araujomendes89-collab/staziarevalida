@@ -1,0 +1,11 @@
+Fontes dos materiais visuais da Central de Conteúdo (cards, A4, story e flashcards), as mesmas das
+pranchas de referência do pacote "StaziaMed Revalida — Modelos educacionais".
+
+Todas sob a SIL Open Font License 1.1 (arquivos OFL-*.txt nesta pasta).
+
+- Barlow (Regular, Medium, SemiBold, Bold) e Barlow Condensed (SemiBold, Bold, ExtraBold, Bold Italic):
+  arquivos originais do repositório google/fonts (ofl/barlow e ofl/barlowcondensed), baixados em 2026-10-06.
+- Caveat SemiBold (600) e Caveat Bold (700): instâncias estáticas geradas em 2026-10-06 com fontTools
+  (varLib.instancer) a partir da fonte variável oficial Caveat[wght].ttf (google/fonts, ofl/caveat). A fonte
+  variável não serve porque o Chromium a grava no PDF como Type3, formato que gráficas costumam recusar.
+  A licença do Caveat não declara nome reservado.

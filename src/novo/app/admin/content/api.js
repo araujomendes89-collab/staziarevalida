@@ -30,6 +30,15 @@ export async function hubPost(backend, path, body) {
   return parse(await fetch(BASE + path, { method: "POST", headers: await headers(backend, { "Content-Type": "application/json" }), body: JSON.stringify(body ?? {}) }));
 }
 
+export async function hubPut(backend, path, body) {
+  return parse(await fetch(BASE + path, { method: "PUT", headers: await headers(backend, { "Content-Type": "application/json" }), body: JSON.stringify(body ?? {}) }));
+}
+
+/** Envia um arquivo qualquer (corpo bruto) com o tipo dele, ex.: imagem da ilustração de um material visual. */
+export async function hubUploadFile(backend, path, file) {
+  return parse(await fetch(BASE + path, { method: "POST", headers: await headers(backend, { "Content-Type": file.type || "application/octet-stream" }), body: file }));
+}
+
 /** Envia um PDF (corpo bruto) com os metadados na consulta. */
 export async function hubUploadPdf(backend, path, file, meta = {}) {
   const query = new URLSearchParams(Object.entries(meta).filter(([, v]) => v != null && String(v).trim() !== ""));

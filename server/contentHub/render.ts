@@ -34,6 +34,8 @@ export interface Renderer {
   templateVersion: string;
   brandVersion: string;
   render(kind: "lesson" | "visual_cards", content: any, meta: RenderMeta): Promise<RenderedFile[]>;
+  /** Página nova no mesmo navegador (materiais visuais: server/contentHub/visual). Quem abre fecha. */
+  newPage?(options?: { viewport?: { width: number; height: number }; deviceScaleFactor?: number }): Promise<import("playwright").Page>;
   close(): Promise<void>;
 }
 
@@ -201,14 +203,15 @@ export async function createRenderer(opts: { python?: string } = {}): Promise<Re
   const python = opts.python ?? process.env.CONTENT_HUB_PYTHON ?? "pdfpython";
   const brand = loadBrand();
   let browser: import("playwright").Browser | null = null;
-  const page = async () => {
+  const page = async (options?: { viewport?: { width: number; height: number }; deviceScaleFactor?: number }) => {
     browser ??= await chromium.launch();
-    return browser.newPage();
+    return browser.newPage(options);
   };
 
   return {
     templateVersion: TEMPLATE_VERSION,
     brandVersion: brand.version,
+    newPage: page,
     async render(kind, content, meta) {
       const html = kind === "lesson" ? lessonHtml(content, meta, brand) : cardsHtml(content, meta, brand);
       const p = await page();

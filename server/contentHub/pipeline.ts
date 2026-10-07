@@ -28,6 +28,7 @@ import { validate } from "./ai/schema";
 import { copyRatio, flashcardProblems, isVerbatim, negations, negationsLost, normalize, numbers, numbersOutside } from "./checks";
 import type { ContentDb, Storage } from "./infra";
 import type { Renderer } from "./render";
+import { generateVisualVersion, visualVersionOf, VisualRenderUnavailable } from "./visual/service";
 
 const run = promisify(execFile);
 
@@ -36,7 +37,7 @@ export const EXTRACTOR_VERSION = "staziamed-extract-1.0";
 export const MATERIALS_TEMPLATE = "materials-1.0";
 const PAGE_RANGE = 20;
 
-export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check";
+export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render";
 
 export interface Job {
   id: string;
@@ -724,6 +725,19 @@ async function stepReviewCheck(ctx: Ctx): Promise<Step | null> {
   return null;
 }
 
+/** Material visual (cards, A4, story e flashcards da Central): gera e confere os arquivos de uma versão (visual/service.ts). */
+async function stepVisualRender(ctx: Ctx): Promise<Step | null> {
+  try {
+    const r = await generateVisualVersion(ctx.deps, visualVersionOf(ctx.job));
+    Object.assign(ctx.metrics, { files: r.files, failed_checks: r.check.ok ? 0 : r.check.problems.length });
+  } catch (error) {
+    // sem gerador neste processamento: espera sem gastar tentativa (como as outras etapas)
+    if (error instanceof VisualRenderUnavailable) throw new Blocked(error.message);
+    throw error;
+  }
+  return null;
+}
+
 const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   extract: stepExtract,
   source_index: stepSourceIndex,
@@ -734,6 +748,7 @@ const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   materials: stepMaterials,
   render: stepRender,
   review_check: stepReviewCheck,
+  visual_render: stepVisualRender,
 };
 
 /** Executa um trabalho já reservado (ch_worker_claim) e registra o resultado na fila. */
