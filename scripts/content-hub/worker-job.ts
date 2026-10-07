@@ -24,7 +24,7 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  console.log(`[central] tarefa: banco ${deps.db.mode === "supabase" ? "Supabase" : "desenvolvimento"} · IA ${deps.ai.status.ready ? deps.ai.status.provider : `pendente (${deps.ai.status.pending})`} · gerador de PDF ${deps.renderer ? "pronto" : "indisponível"}`);
+  console.log(`[central] tarefa: banco ${deps.db.mode === "supabase" ? "Supabase" : "desenvolvimento"} · IA definida na Central de IAs · gerador de PDF ${deps.renderer ? "pronto" : "indisponível"}`);
   // o painel da Central mostra este relato (o servidor do site não processa)
   const report = await probeProcessing(deps);
   if (report.pending.length) console.log(`[central] pendências do processamento: ${report.pending.join(" | ")}`);

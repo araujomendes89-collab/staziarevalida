@@ -24,7 +24,6 @@ export interface ContentHubWorker {
   stop(): Promise<void>;
 }
 
-/** Conteúdo comparável de uma publicação: bytes de um PDF; texto visível de uma página HTML. */
 /**
  * Há IA para destravar a fila? A simulação (só desenvolvimento) ou alguma IA ligada na Central de IAs.
  * Uma chave nas variáveis de ambiente não autoriza nada sozinha. Erro ao ler o banco = não.
@@ -39,6 +38,7 @@ export async function aiAvailable(deps: PipelineDeps): Promise<boolean> {
   }
 }
 
+/** Conteúdo comparável de uma publicação: bytes de um PDF; texto visível de uma página HTML. */
 export function publicationHash(body: Buffer, contentType: string): string {
   let data: Buffer | string = body;
   if (!/pdf/i.test(contentType) && body.subarray(0, 5).toString("latin1") !== "%PDF-") {
