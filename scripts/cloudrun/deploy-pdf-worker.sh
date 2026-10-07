@@ -47,19 +47,39 @@ for line in open(".env", encoding="utf-8"):
         break
 PY
 }
-for NAME in SUPABASE_URL VITE_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
-  VALUE="$(envvalue "$NAME")"
-  [ -n "$VALUE" ] || { echo "Falta $NAME no .env"; exit 1; }
-  SECRET="stazia-$(echo "$NAME" | tr 'A-Z_' 'a-z-')"
+
+# funcao auxiliar: cria ou atualiza um segredo, versao nova so quando mudou, concede leitura para RUN_SA
+store_secret() {
+  local NAME="$1" VALUE="$2"
+  local SECRET="stazia-$(echo "$NAME" | tr 'A-Z_' 'a-z-')"
   "${G[@]}" secrets describe "$SECRET" >/dev/null 2>&1 || "${G[@]}" secrets create "$SECRET" --replication-policy=automatic >/dev/null
-  # versão nova só quando o valor mudou (comparado aqui, sem mostrar)
   if [ "$("${G[@]}" secrets versions access latest --secret="$SECRET" 2>/dev/null)" != "$VALUE" ]; then
     printf '%s' "$VALUE" | "${G[@]}" secrets versions add "$SECRET" --data-file=- >/dev/null
     echo "   $SECRET: atualizado"
   else
-    echo "   $SECRET: sem mudança"
+    echo "   $SECRET: sem mudanca"
   fi
   "${G[@]}" secrets add-iam-policy-binding "$SECRET" --member="serviceAccount:$RUN_SA" --role=roles/secretmanager.secretAccessor >/dev/null
+}
+
+for NAME in SUPABASE_URL VITE_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
+  VALUE="$(envvalue "$NAME")"
+  [ -n "$VALUE" ] || { echo "Falta $NAME no .env"; exit 1; }
+  store_secret "$NAME" "$VALUE"
+done
+
+# chaves das IAs presentes no .env sao opcionais: gravadas so se existirem. A rotacao das chaves sai do .env da tarefa
+# automaticamente quando a chave for removida (o --set-secrets substitui a lista inteira).
+AI_SECRETS=""
+for NAME in ANTHROPIC_API_KEY GEMINI_API_KEY OPENAI_API_KEY; do
+  VALUE="$(envvalue "$NAME")"
+  if [ -z "$VALUE" ]; then
+    echo "   $NAME: ausente no .env (a tarefa fica sem essa IA)"
+  else
+    store_secret "$NAME" "$VALUE"
+    SECRET="stazia-$(echo "$NAME" | tr 'A-Z_' 'a-z-')"
+    AI_SECRETS="$AI_SECRETS,$NAME=$SECRET:latest"
+  fi
 done
 
 echo "== 4/6 imagem (montada no Cloud Build, não no Mac)"
@@ -84,7 +104,7 @@ echo "== 5/6 tarefa no Cloud Run ($JOB)"
 "${G[@]}" run jobs deploy "$JOB" --region="$REGION" --image="$IMAGE" --service-account="$RUN_SA" \
   --tasks=1 --max-retries=0 --task-timeout=3600 --cpu=2 --memory=4Gi \
   --set-env-vars=NODE_ENV=production,CONTENT_HUB_JOB_BUDGET_MIN=50,CONTENT_HUB_STALE_SECONDS=1800 \
-  --set-secrets=SUPABASE_URL=stazia-supabase-url:latest,VITE_SUPABASE_ANON_KEY=stazia-vite-supabase-anon-key:latest,SUPABASE_SERVICE_ROLE_KEY=stazia-supabase-service-role-key:latest
+  --set-secrets=SUPABASE_URL=stazia-supabase-url:latest,VITE_SUPABASE_ANON_KEY=stazia-vite-supabase-anon-key:latest,SUPABASE_SERVICE_ROLE_KEY=stazia-supabase-service-role-key:latest${AI_SECRETS}
 "${G[@]}" run jobs add-iam-policy-binding "$JOB" --region="$REGION" --member="serviceAccount:$SCHED_SA" --role=roles/run.invoker >/dev/null
 
 echo "== 6/6 agendador ($SCHEDULE, horário de Brasília)"

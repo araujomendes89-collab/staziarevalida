@@ -1269,3 +1269,38 @@ describe("Central", () => {
     expect(after.pending).not.toContain(none);
   });
 });
+
+describe("Implantacao", () => {
+  it("o roteiro leva as chaves de IA presentes sem imprimir valores", async () => {
+    const { execFileSync } = await import("child_process");
+    const script = fs.readFileSync("scripts/cloudrun/deploy-pdf-worker.sh", "utf8");
+
+    // confere que os 3 nomes aparecem no laço de segredos opcionais
+    expect(script).toContain("ANTHROPIC_API_KEY");
+    expect(script).toContain("GEMINI_API_KEY");
+    expect(script).toContain("OPENAI_API_KEY");
+
+    // confere que --set-secrets é montado por variável e termina com ${AI_SECRETS}
+    expect(script).toMatch(/--set-secrets=.*\$\{AI_SECRETS\}/);
+
+    // confere que nenhuma linha faz echo "$VALUE" (imprime valor da chave)
+    const lines = script.split("\n");
+    for (const line of lines) {
+      // detecta echo ... "$VALUE" ou echo ${VALUE} mas nao echo "Falta $NAME..." etc
+      if (/echo\s+.*\$VALUE/i.test(line)) {
+        throw new Error(`Found echo with $VALUE: ${line}`);
+      }
+    }
+
+    // confere que store_secret é definida uma vez
+    const storeDefMatches = script.match(/^store_secret\(\)/m) || [];
+    expect(storeDefMatches).toHaveLength(1);
+
+    // confere que store_secret é chamada nos dois laços
+    const storeCallMatches = script.match(/store_secret /g) || [];
+    expect(storeCallMatches.length).toBeGreaterThanOrEqual(2);
+
+    // bash -n passa
+    execFileSync("bash", ["-n", "scripts/cloudrun/deploy-pdf-worker.sh"]);
+  });
+});
