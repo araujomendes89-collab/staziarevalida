@@ -210,7 +210,7 @@ describe("Banco", () => {
     await expect(db.asUser(studentUser, "app_ai_summary")).rejects.toThrow(/restrito/);
   });
 
-  it("o gasto do Tutor soma só as linhas tutor_ (Aulas e Podcasts já estão em ai_calls)", async () => {
+  it("o gasto do Tutor soma só as linhas tutor_ (Aulas e Podcasts ficam de fora dessa linha)", async () => {
     const tutor = async () => Number((await db.asUser<any>(adminUser, "app_admin_ai_overview")).tutor_month_spend);
     const add = (feature: string, cost: number) =>
       dev.db.query(`insert into public.ai_usage_ledger (user_id, feature, estimated_cost_usd, meta) values ($1, $2, $3, '{"teste":"gasto-tutor"}'::jsonb)`, [ADMIN, feature, cost]);

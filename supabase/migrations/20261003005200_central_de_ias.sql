@@ -335,7 +335,8 @@ begin
         from (select function_key, sum(cost_usd) as cost, count(*) as n from public.ai_calls
                where date_trunc('month', created_at at time zone 'America/Sao_Paulo') = v_month group by function_key) s), '[]'::jsonb),
     'month_spend', public.ch_worker_ai_month_spend(now()),
-    -- só o Tutor (feature tutor_*): Aulas (lesson_assist) e Podcasts (podcast_script, podcast_tts) já estão em ai_calls
+    -- só o Tutor (feature tutor_*): o registro também guarda lesson_assist, podcast_script e podcast_tts; as chamadas de texto
+    -- das Aulas e do roteiro dos Podcasts já estão em ai_calls (pelo maestro)
     'tutor_month_spend', (select coalesce(sum(estimated_cost_usd), 0) from public.ai_usage_ledger
                            where left(feature, 6) = 'tutor_'
                              and date_trunc('month', created_at at time zone 'America/Sao_Paulo') = v_month),
