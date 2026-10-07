@@ -3,8 +3,9 @@
  * grava. As gravações passam pelas funções ch_worker_ai_* (que conferem de novo se o ator é administrador). Nenhuma
  * resposta traz chaves nem variáveis de ambiente.
  *
- *   GET  /overview                      painel completo + checks (situação de cada função) + provider_checks (o que
- *                                       este servidor não consegue chamar)  (administrador)
+ *   GET  /overview                      painel completo + checks (situação de cada função) + provider_checks
+ *                                       ({ pending, blocks } por IA: Ollama fora do Mac bloqueia; chave ausente neste
+ *                                       servidor é só aviso)  (administrador)
  *   GET  /summary                       resumo para a equipe
  *   POST /providers/:id/enabled         { enabled }  liga ou desliga uma IA
  *   POST /providers/:id/refresh         atualiza a lista de modelos e cadastra preços do seed que faltarem
