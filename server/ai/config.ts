@@ -130,7 +130,10 @@ export function functionForPrompt(key: PromptKey): AiFunctionKey {
 /**
  * Modelo/IA das variáveis de ambiente, usado quando a função não tem configuração salva. Sem a escolha da tela (uiKind):
  * criação, engenharia reversa e assistentes seguem CONTENT_HUB_AI_PROVIDER_CREATE, depois CONTENT_HUB_AI_PROVIDER;
- * a verificação segue CONTENT_HUB_VERIFIER_PROVIDER, depois CONTENT_HUB_AI_PROVIDER; o padrão é o Claude.
+ * a verificação segue CONTENT_HUB_VERIFIER_PROVIDER, depois CONTENT_HUB_AI_PROVIDER; o padrão é o Claude. Valor que não é
+ * uma das 4 IAs (ex.: "mock") é pulado na cadeia. CONTENT_HUB_MODEL_CREATE só vale junto da IA de
+ * CONTENT_HUB_AI_PROVIDER_CREATE (ou do Claude padrão quando nenhuma variável de IA está definida, como fazia o
+ * resolveCreatorProvider); se a IA veio de CONTENT_HUB_AI_PROVIDER, o modelo é CONTENT_HUB_<IA>_MODEL ou o padrão dela.
  */
 export function envFallbackRef(fn: AiFunctionKey, env: NodeJS.ProcessEnv = process.env, uiKind?: AiProviderId): ModelRef | null {
   const get = (k: string) => (env[k] ?? "").trim();
@@ -141,7 +144,12 @@ export function envFallbackRef(fn: AiFunctionKey, env: NodeJS.ProcessEnv = proce
     for (const k of chain) if (get(k)) return get(k);
     return DEFAULT_MODELS[id] ?? "";
   };
-  let id: string;
+  /** A primeira variável da lista com uma das 4 IAs (pula o que não é IA, como "mock"); sem nenhuma, o Claude. */
+  const chooseAi = (...names: string[]): { id: AiProviderId; from: string | null } => {
+    for (const name of names) if (isProviderId(get(name))) return { id: get(name) as AiProviderId, from: name };
+    return { id: "anthropic", from: null };
+  };
+  let id: AiProviderId;
   let model: string;
   if (uiKind) {
     if (!isProviderId(uiKind)) return null;
@@ -149,16 +157,15 @@ export function envFallbackRef(fn: AiFunctionKey, env: NodeJS.ProcessEnv = proce
     const up = uiKind.toUpperCase();
     model = assistant ? modelFor(uiKind, `LESSON_ASSIST_${up}_MODEL`, `PODCAST_${up}_MODEL`) : modelFor(uiKind, `PODCAST_${up}_MODEL`);
   } else if (fn === "verificacao") {
-    id = get("CONTENT_HUB_VERIFIER_PROVIDER") || get("CONTENT_HUB_AI_PROVIDER") || "anthropic";
-    if (!isProviderId(id)) return null;
+    id = chooseAi("CONTENT_HUB_VERIFIER_PROVIDER", "CONTENT_HUB_AI_PROVIDER").id;
     model = modelFor(id);
   } else {
-    id = get("CONTENT_HUB_AI_PROVIDER_CREATE") || get("CONTENT_HUB_AI_PROVIDER") || "anthropic";
-    if (!isProviderId(id)) return null;
-    model = get("CONTENT_HUB_MODEL_CREATE") || modelFor(id);
+    const chosen = chooseAi("CONTENT_HUB_AI_PROVIDER_CREATE", "CONTENT_HUB_AI_PROVIDER");
+    id = chosen.id;
+    const ownModel = chosen.from === "CONTENT_HUB_AI_PROVIDER_CREATE" || (chosen.from === null && !get("CONTENT_HUB_AI_PROVIDER_CREATE") && !get("CONTENT_HUB_AI_PROVIDER"));
+    model = (ownModel && get("CONTENT_HUB_MODEL_CREATE")) || modelFor(id);
   }
-  if (!isProviderId(id) || !model) return null;
-  return { provider: id, model };
+  return model ? { provider: id, model } : null;
 }
 
 /** Motivo pelo qual a IA não pode ser chamada agora (desligada, Ollama fora do Mac), ou null. */

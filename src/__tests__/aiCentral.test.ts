@@ -600,11 +600,34 @@ describe("Configuração", () => {
     expect(envFallbackRef("verificacao", mix)).toEqual({ provider: "openai", model: "gpt-x" });
     // o modelo vem da variável da IA escolhida
     expect(envFallbackRef("criacao", { CONTENT_HUB_AI_PROVIDER: "gemini", CONTENT_HUB_GEMINI_MODEL: "g-env" } as any)?.model).toBe("g-env");
-    // a simulação não é uma IA da Central; com a escolha da tela (uiKind) vale a tela
-    expect(envFallbackRef("criacao", { CONTENT_HUB_AI_PROVIDER: "mock" } as any)).toBeNull();
+    // com a escolha da tela (uiKind) vale a tela
     expect(envFallbackRef("criacao", env, "anthropic")).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" });
     // nada definido: o padrão de sempre
     expect(envFallbackRef("criacao", {} as any)).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" });
+  });
+
+  it("envFallbackRef: CONTENT_HUB_MODEL_CREATE só vale com a IA de _CREATE (ou o padrão sem variável de IA); o que não é IA é pulado", async () => {
+    const { envFallbackRef } = await import("../../server/ai/config");
+    const claude = { provider: "anthropic", model: "claude-sonnet-5-5" };
+    const gemini = { provider: "gemini", model: "gemini-2.5-pro" };
+    // IA vinda de CONTENT_HUB_AI_PROVIDER: o modelo é o da própria IA, não o CONTENT_HUB_MODEL_CREATE (que era de outra IA)
+    expect(envFallbackRef("criacao", { CONTENT_HUB_AI_PROVIDER: "gemini", CONTENT_HUB_MODEL_CREATE: "claude-x" } as any)).toEqual(gemini);
+    expect(envFallbackRef("criacao", { CONTENT_HUB_AI_PROVIDER: "gemini", CONTENT_HUB_MODEL_CREATE: "claude-x", CONTENT_HUB_GEMINI_MODEL: "g-env" } as any)).toEqual({ provider: "gemini", model: "g-env" });
+    // IA vinda de CONTENT_HUB_AI_PROVIDER_CREATE: o CONTENT_HUB_MODEL_CREATE vale; e _CREATE ganha da geral
+    expect(envFallbackRef("criacao", { CONTENT_HUB_AI_PROVIDER_CREATE: "anthropic", CONTENT_HUB_MODEL_CREATE: "claude-x" } as any)).toEqual({ provider: "anthropic", model: "claude-x" });
+    expect(envFallbackRef("engenharia_reversa", { CONTENT_HUB_AI_PROVIDER_CREATE: "anthropic", CONTENT_HUB_AI_PROVIDER: "gemini", CONTENT_HUB_MODEL_CREATE: "claude-x" } as any)).toEqual({ provider: "anthropic", model: "claude-x" });
+    // nenhuma variável de IA: o padrão Claude, com o CONTENT_HUB_MODEL_CREATE (como o resolveCreatorProvider fazia)
+    expect(envFallbackRef("criacao", { CONTENT_HUB_MODEL_CREATE: "claude-x" } as any)).toEqual({ provider: "anthropic", model: "claude-x" });
+    // IA sem modelo padrão: só com a variável do modelo
+    expect(envFallbackRef("criacao", { CONTENT_HUB_AI_PROVIDER: "openai" } as any)).toBeNull();
+    expect(envFallbackRef("criacao", { CONTENT_HUB_AI_PROVIDER: "openai", CONTENT_HUB_OPENAI_MODEL: "gpt-x" } as any)).toEqual({ provider: "openai", model: "gpt-x" });
+    // valores que não são uma das 4 IAs (ex.: mock) são pulados na cadeia, em vez de devolver nada
+    expect(envFallbackRef("criacao", { CONTENT_HUB_AI_PROVIDER: "mock" } as any)).toEqual(claude);
+    expect(envFallbackRef("criacao", { CONTENT_HUB_AI_PROVIDER_CREATE: "mock", CONTENT_HUB_AI_PROVIDER: "gemini" } as any)).toEqual(gemini);
+    expect(envFallbackRef("verificacao", { CONTENT_HUB_VERIFIER_PROVIDER: "mock", CONTENT_HUB_AI_PROVIDER: "gemini" } as any)).toEqual(gemini);
+    expect(envFallbackRef("verificacao", { CONTENT_HUB_VERIFIER_PROVIDER: "mock" } as any)).toEqual(claude);
+    // IA definida só com valor que não serve: cai no padrão, sem aproveitar o modelo da criação
+    expect(envFallbackRef("criacao", { CONTENT_HUB_AI_PROVIDER: "mock", CONTENT_HUB_MODEL_CREATE: "mock-x" } as any)).toEqual(claude);
   });
 
   it("envFallbackRef com uiKind usa LESSON_ASSIST_/PODCAST_ e os padrões", async () => {
@@ -616,7 +639,6 @@ describe("Configuração", () => {
     expect(envFallbackRef("criacao", env, "gemini")?.model).toBe("g-pod");
     expect(envFallbackRef("criacao", { CONTENT_HUB_GEMINI_MODEL: "g-hub" } as any, "gemini")?.model).toBe("g-hub");
     expect(envFallbackRef("verificacao", {} as any)).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" });
-    expect(envFallbackRef("verificacao", { CONTENT_HUB_VERIFIER_PROVIDER: "mock" } as any)).toBeNull();
   });
 
   describe("situação das funções salvas neste servidor", () => {
