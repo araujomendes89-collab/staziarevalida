@@ -32,3 +32,6 @@ supabase/.temp/
 server-dist/
 .vercel
 dist-worker/
+
+# copias de trabalho (git worktree) criadas pelas ferramentas de desenvolvimento
+.claude/worktrees/
