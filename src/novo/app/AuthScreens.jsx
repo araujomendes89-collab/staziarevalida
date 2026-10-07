@@ -1,12 +1,14 @@
-// Login, cadastro e recuperação de senha.
+// Login, cadastro e recuperação de senha. O login fica em auth/LoginScreen.jsx (tela "Acesso seguro REVALIDA",
+// 2026-10-07); cadastro, recuperação e conta master continuam aqui.
 // Derivado de "ui_kits/auth-billing/AuthScreens.jsx" do design system: mesma marcação e
 // estilos, agora ligados ao backend real. Em telas estreitas o painel azul vai para baixo
 // do formulário (o kit original só tinha a versão de duas colunas).
 import React from "react";
-import { Button, TextField, Checkbox, Banner } from "../ds";
+import { Button, TextField, Banner } from "../ds";
 import { PASSWORD_MIN_LENGTH } from "../data";
 import { useMobile } from "./Shell.jsx";
 import { useSession, rememberChoice } from "./session.jsx";
+import { LoginScreen } from "./auth/LoginScreen.jsx";
 
 const ERROR_TEXT = {
   invalid_credentials: "Não foi possível entrar com esses dados. Verifique seu e-mail e senha.",
@@ -65,105 +67,6 @@ const legal = (
 );
 
 const asideButtonStyle = { background: "transparent", color: "#fff", borderColor: "rgba(255,255,255,.4)" };
-
-function Login({ go }) {
-  const { backend } = useSession();
-  const [emailError, setEmailError] = React.useState(false);
-  const [error, setError] = React.useState(null);
-  const [loading, setLoading] = React.useState(false);
-  const [needsMaster, setNeedsMaster] = React.useState(false);
-
-  React.useEffect(() => {
-    let alive = true;
-    backend.masterSetup
-      ?.needed()
-      .then((needed) => alive && setNeedsMaster(needed))
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [backend]);
-
-  const submit = async (e) => {
-    e.preventDefault();
-    const email = e.target.email.value.trim();
-    const password = e.target.pw.value;
-    setError(null);
-    if (!isEmail(email)) {
-      setEmailError(true);
-      return;
-    }
-    setEmailError(false);
-    setLoading(true);
-    try {
-      rememberChoice(e.target.remember.checked);
-      await backend.signIn(email, password);
-    } catch (err) {
-      setError(messageFor(err));
-      setLoading(false);
-    }
-  };
-  const google = async () => {
-    setError(null);
-    try {
-      await backend.signInWithGoogle();
-    } catch (err) {
-      setError(messageFor(err));
-    }
-  };
-
-  return (
-    <AuthLayout
-      aside={
-        <>
-          <h2 style={{ margin: 0, font: "var(--type-h2)", color: "#fff" }}>Olá!</h2>
-          <p style={{ margin: 0, color: "var(--navy-200)" }}>Comece sua jornada com a gente e descubra algo novo.</p>
-          <button className="sm-btn sm-btn--secondary" style={asideButtonStyle} onClick={() => go("signup")}>
-            Cadastre-se
-          </button>
-        </>
-      }
-    >
-      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 18 }} noValidate>
-        <div>
-          <h1 style={{ margin: 0, font: "var(--type-h2)" }}>Bem-vindo de volta</h1>
-          <p style={{ margin: "6px 0 0", color: "var(--text-secondary)" }}>Entre para continuar na sua conta.</p>
-        </div>
-        {needsMaster && (
-          <Banner
-            tone="brand"
-            icon="shield-check"
-            title="Primeiro acesso"
-            action={
-              <Button size="sm" variant="secondary" onClick={() => go("master")}>
-                Criar conta master
-              </Button>
-            }
-          >
-            Ainda não há administrador neste ambiente.
-          </Banner>
-        )}
-        {error && <Banner tone="danger">{error}</Banner>}
-        <TextField name="email" label="E-mail" type="email" placeholder="voce@exemplo.com" autoComplete="email" error={emailError ? "Informe um e-mail válido." : undefined} />
-        <TextField name="pw" label="Senha" type="password" autoComplete="current-password" />
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Checkbox name="remember" label="Lembrar de mim" defaultChecked />
-          <Button variant="link" size="sm" onClick={() => go("forgot")}>
-            Esqueceu a senha?
-          </Button>
-        </div>
-        <Button type="submit" size="lg" fullWidth loading={loading}>
-          Entrar
-        </Button>
-        <Divider>ou entre com</Divider>
-        <GoogleBtn onClick={google} disabled={loading}>
-          Continuar com Google
-        </GoogleBtn>
-        {legal}
-      </form>
-    </AuthLayout>
-  );
-}
 
 function Signup({ go }) {
   const { backend } = useSession();
@@ -368,5 +271,6 @@ export function AuthFlow() {
   if (screen === "signup") return <Signup go={go} />;
   if (screen === "forgot") return <Forgot go={go} />;
   if (screen === "master") return <MasterSetup go={go} />;
-  return <Login go={go} />;
+  // tela de login "Acesso seguro REVALIDA" (auth/LoginScreen.jsx), com a mesma autenticação de antes
+  return <LoginScreen go={go} />;
 }
