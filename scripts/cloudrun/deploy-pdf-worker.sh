@@ -48,16 +48,19 @@ for line in open(".env", encoding="utf-8"):
 PY
 }
 
-# funcao auxiliar: cria ou atualiza um segredo, versao nova so quando mudou, concede leitura para RUN_SA
+secret_name() { echo "stazia-$(echo "$1" | tr 'A-Z_' 'a-z-')"; }
+# Grava um segredo do .env no Secret Manager (sem mostrar) e dá leitura à conta da tarefa.
 store_secret() {
   local NAME="$1" VALUE="$2"
-  local SECRET="stazia-$(echo "$NAME" | tr 'A-Z_' 'a-z-')"
+  local SECRET
+  SECRET="$(secret_name "$NAME")"
   "${G[@]}" secrets describe "$SECRET" >/dev/null 2>&1 || "${G[@]}" secrets create "$SECRET" --replication-policy=automatic >/dev/null
+  # versão nova só quando o valor mudou (comparado aqui, sem mostrar)
   if [ "$("${G[@]}" secrets versions access latest --secret="$SECRET" 2>/dev/null)" != "$VALUE" ]; then
     printf '%s' "$VALUE" | "${G[@]}" secrets versions add "$SECRET" --data-file=- >/dev/null
     echo "   $SECRET: atualizado"
   else
-    echo "   $SECRET: sem mudanca"
+    echo "   $SECRET: sem mudança"
   fi
   "${G[@]}" secrets add-iam-policy-binding "$SECRET" --member="serviceAccount:$RUN_SA" --role=roles/secretmanager.secretAccessor >/dev/null
 }
@@ -68,8 +71,9 @@ for NAME in SUPABASE_URL VITE_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
   store_secret "$NAME" "$VALUE"
 done
 
-# chaves das IAs presentes no .env sao opcionais: gravadas so se existirem. A rotacao das chaves sai do .env da tarefa
-# automaticamente quando a chave for removida (o --set-secrets substitui a lista inteira).
+# Chaves das IAs: opcionais, vão para a tarefa só as que estiverem no .env. Elas só são usadas quando a IA está ligada
+# na Central de IAs (ligar e desligar continua sendo no painel). Uma chave tirada do .env sai da tarefa na próxima
+# implantação, porque o --set-secrets substitui a lista inteira.
 AI_SECRETS=""
 for NAME in ANTHROPIC_API_KEY GEMINI_API_KEY OPENAI_API_KEY; do
   VALUE="$(envvalue "$NAME")"
@@ -77,8 +81,7 @@ for NAME in ANTHROPIC_API_KEY GEMINI_API_KEY OPENAI_API_KEY; do
     echo "   $NAME: ausente no .env (a tarefa fica sem essa IA)"
   else
     store_secret "$NAME" "$VALUE"
-    SECRET="stazia-$(echo "$NAME" | tr 'A-Z_' 'a-z-')"
-    AI_SECRETS="$AI_SECRETS,$NAME=$SECRET:latest"
+    AI_SECRETS="$AI_SECRETS,$NAME=$(secret_name "$NAME"):latest"
   fi
 done
 
