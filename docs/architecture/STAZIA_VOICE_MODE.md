@@ -90,18 +90,21 @@ OPENAI_API_KEY=…                     # já existe na Vercel
 TUTOR_VOICE_ALLOW_EXTERNAL=1         # já existe
 OPENAI_REALTIME_MODEL=gpt-realtime-2.1   # já existe (reserva)
 OPENAI_LIVE_MODEL=gpt-live-1         # NOVA: liga o GPT-Live
-OPENAI_VOICE_PROVIDER=live           # opcional: live | realtime | auto (o painel pode escolher por cima)
+OPENAI_VOICE_PROVIDER=auto           # opcional: gemini | live | realtime | auto (o painel pode escolher por cima)
+GEMINI_API_KEY=…                     # já existe na Vercel (ou GOOGLE_GEMINI_API_KEY): com ela, a voz do Gemini fica pronta (§16)
+GEMINI_LIVE_MODEL=gemini-3.8-live    # opcional (este já é o padrão)
 OPENAI_REALTIME_VOICE=marin          # opcional: voz padrão quando o professor não tem uma
 DETERMINISTIC_TUTOR=true             # só testes: sem variação aleatória
 TUTOR_SETTINGS_TTL_MS=15000          # opcional: cache da configuração do painel
-AI_COST_CONFIG={"gpt-live-1":{"per_minute":0.05}}   # opcional (este já é o padrão)
+AI_COST_CONFIG={"gpt-live-1":{"per_minute":0.05},"gemini-3.8-live":{"per_minute":0.023}}   # opcional (estes já são o padrão)
 ```
 
 ## 7. Modelo e provedor
 
+Desde a 2.5.0, o "Automático" prefere a voz do Gemini (`gemini-3.8-live`, §16) quando a chave do Gemini existir; depois o
 GPT-Live 1 (`gpt-live-1`, US$ 0,05/min de voz, cobrado por segundo; o servidor que responde às delegações usa o motor de texto do
-Tutor, cobrado à parte) quando `OPENAI_LIVE_MODEL` existir e o painel estiver em "Automático" ou "GPT-Live"; senão, OpenAI Realtime
-(`OPENAI_REALTIME_MODEL`). Nomes de modelo só no ambiente (e na tabela de preços).
+Tutor, cobrado à parte) quando `OPENAI_LIVE_MODEL` existir; depois o OpenAI Realtime (`OPENAI_REALTIME_MODEL`). O painel pode fixar
+um deles. Nomes de modelo só no ambiente (e na tabela de preços).
 
 ## 8. Como trocar a voz
 
@@ -135,7 +138,8 @@ internas; revisão pedida; transcrição desligada e retenção; validação do 
 inércia e motor desligado. `tutorVoiceModeScreen.test.tsx` (tela, 9): tela cheia, oferta pelo servidor, delegação, legenda e emoção;
 microfone, chat, legenda e volume; fechar (microfone parado, fim com métricas); queda para o Realtime; microfone negado e "Continuar por
 texto"; sem vídeo e movimento reduzido; Esc; "Conversar com o Tutor"; painel da voz. Ajustados: `tutorV2.test.ts` (fim com folga, idioma),
-`tutor.test.ts` (versão 2.4.0, situação), `tutorRealtime.test.tsx` (tela cheia).
+`tutor.test.ts` (versão 2.4.0, situação), `tutorRealtime.test.tsx` (tela cheia). Voz do Gemini (§16): `tutorGeminiVoice.test.ts`
+(servidor, 6), `geminiLiveModule.test.ts` (navegador, 5) e `tutorGeminiVoiceScreen.test.tsx` (tela, 4).
 
 ## 13. Pendências reais
 
@@ -144,6 +148,8 @@ texto"; sem vídeo e movimento reduzido; Esc; "Conversar com o Tutor"; painel da
 - Escolher a voz com avaliação humana em português (marin × cedar) no GPT-Live e no Realtime.
 - A migração 4400 e o código ainda não foram aplicados nem publicados (dependem do pedido de deploy).
 - Exportação de dados da conta (LGPD) ainda não inclui `tutor_memories`.
+- **Gemini nunca foi chamado de verdade** (§16): tudo foi testado com o Google simulado, a partir dos tipos do SDK `@google/genai` 2.21
+  e da documentação de 2026-10. Se o modelo ou a chave não servirem, a ligação cai sozinha na OpenAI.
 
 ## 14. Riscos técnicos
 
@@ -163,3 +169,68 @@ texto"; sem vídeo e movimento reduzido; Esc; "Conversar com o Tutor"; painel da
 5. Microfone desligado: falar e conferir que nada é ouvido. Chat: digitar uma pergunta sem desligar a voz.
 6. Fechar e reabrir no dia seguinte: o professor pode lembrar da conversa anterior e de uma piada interna.
 7. Painel: custo por ligação, latências e motivo do fim em "Voz em 30 dias".
+
+## 16. Português do Brasil nativo (Gemini) e fala sem filtro (prompt 2.5.0, 2026-10-06)
+
+Pedido: "Não gostei da linguagem do tutor por IA, quero algo mais sem filtros, bem natural, ela pode gritar. Ainda está com muito
+sotaque americano, quero português do Brasil." Migração `20261003004900_tutor_sem_filtro_voz_gemini.sql`.
+
+**Sotaque.** O texto já era português; o sotaque vinha das vozes da OpenAI, feitas para o inglês. A voz nativa do Gemini (Live API,
+áudio nativo, `gemini-3.8-live`) reconhece o idioma sozinha e fala com pronúncia de brasileiro. No "Automático" ela vem primeiro
+(Gemini → GPT-Live → Realtime) e a OpenAI fica de reserva automática.
+
+- **Servidor** (`voiceProviders.ts`, `realtime.ts`): a cada ligação cria uma chave temporária do Google com tudo travado (instruções do
+  professor, voz, ferramentas, transcrições, diálogo afetivo, compressão de contexto). Ela abre uma conversa só (retomar a mesma
+  conversa não conta) e vence 2 min depois do que a ligação pode durar (o limite da conversa ou o tempo de voz que o aluno ainda tem).
+  A chave principal nunca sai do servidor.
+- **Navegador** (`voice/geminiLive.js`):
+  - Usa o SDK oficial `@google/genai/web`, carregado só quando a voz abre.
+  - O microfone vai em PCM 16 kHz. O contexto de áudio liberado no toque do aluno roda a 48 ou 44,1 kHz e é reduzido no próprio
+    processador de captura, o que funciona no Safari e no Firefox.
+  - A voz do professor sai em PCM 24 kHz pelo mesmo contexto, então a esfera reage igual.
+  - A abertura do professor só sai depois de a conexão estar pronta e entregue ao aplicativo.
+- **Ferramentas:** são as mesmas do Realtime, executadas pelo servidor (`/api/tutor/voice/tool`). A correção do que foi dito entra como
+  instrução do sistema.
+- **Conexão:**
+  - O Google troca a conexão de tempos em tempos (aviso `goAway`). O aplicativo continua a mesma conversa, com até 8 trocas e até
+    2 quedas de rede. A troca de rotina não conta como queda nas métricas.
+  - Se não der para continuar, abre outra ligação, até 2 vezes, como na OpenAI.
+- **Reserva da OpenAI:**
+  - **O Google recusou a chave** (400/401/403/404): o servidor libera a reserva sem cobrar, abre a OpenAI no mesmo pedido e não tenta
+    o Gemini por 10 min.
+  - **O Gemini não abriu no aparelho** (antes de ficar pronto): o aplicativo encerra a reserva sem cobrar e pede outra voz
+    (`avoid: ["gemini"]`). Nesse aparelho, vai direto para a OpenAI por 10 min.
+- **Painel:**
+  - Provedor "Gemini (português do Brasil nativo)".
+  - Vozes do Gemini: Kore é a padrão, e há Sulafat, Orus e outras.
+  - Aviso de pronto ou pendente.
+- **Custo:**
+  - É cobrado por tempo: `tutor_voice_gemini` no `ai_usage_ledger` (provedor `google`).
+  - O padrão é US$ 0,023/min: o teto do Google é US$ 0,005/min de entrada mais US$ 0,018/min de saída.
+- **Limite conhecido:** o servidor não consegue desligar uma conversa do Gemini, porque a ligação é do navegador com o Google. Quem
+  desliga é o aplicativo, quando a renovação manda parar. Um aplicativo adulterado poderia continuar até a chave vencer; por isso a
+  validade é o tempo que resta.
+
+**Fala sem filtro.**
+- **Prompt 2.5.0:**
+  - Bloco "FALA DE GENTE, SEM FILTRO": gíria, palavrão espontâneo no jeito do professor e grito curto em maiúsculas para bronca ou
+    comemoração.
+  - Idioma com "NADA DE SOTAQUE AMERICANO" (fonética do português do Brasil e termos em inglês ditos como um brasileiro diz).
+  - Lembrete final reforçado.
+- **Motor emocional:**
+  - Cada professor tem um piso de linguagem (`language_base`): Acolhedor 1 (sem palavrão), Direto 2 (teto 4) e Durona 3.
+  - A Durona "Sem filtro" é o novo padrão (base 4). As instalações que estavam em "forte" passaram para "sem_filtro".
+  - A alegria também solta a língua: impressionado 4, satisfeito ou animado 3.
+- **Professores:** exemplos e falas novos para os três (migração 4900).
+- **O que não mudou:**
+  - As proibições: ofensa ao aluno, preconceito, palavrão pesado e ataque pessoal.
+  - O gabarito sempre vem do banco.
+  - O teto de palavrão continua sendo o menor entre professor, preferência do aluno e painel.
+
+**Validação manual.**
+1. Vercel: a `GEMINI_API_KEY` e a `TUTOR_VOICE_ALLOW_EXTERNAL=1` já existem. Publicar com a migração 4900 aplicada. Em Painel › Stazia
+   Tutor, deixar "Automático" e conferir "Gemini pronto no servidor".
+2. No celular (Safari e Chrome) e no computador, abrir "Conversar com o Tutor" com a Durona. Ouvir o sotaque, as siglas, os remédios,
+   os números, as gírias e os palavrões. Conferir o grito curto ao errar de novo e ao acertar.
+3. Em Painel › Voz em 30 dias, conferir o custo por ligação (Gemini) e as reconexões.
+4. Reserva: no painel, escolher "Realtime" e conferir que a OpenAI abre. Voltar para "Automático".

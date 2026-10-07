@@ -31,7 +31,10 @@ import { realKey } from "./speech";
 import { REALTIME_TOOLS } from "./tools";
 import { estimateCost, voiceTimeCost } from "./costs";
 import { deterministicTutor, tutorSettings, type TutorSettings } from "./settings";
-import { closeLiveSession, createLiveSession, liveConfig, LiveSessionError, markLiveUnavailable, planProviders, type LiveConfig, type VoiceProviderId } from "./voiceProviders";
+import {
+  closeLiveSession, createGeminiVoiceToken, createLiveSession, geminiVoiceConfig, geminiVoiceName, GeminiVoiceError, liveConfig, LiveSessionError,
+  markGeminiUnavailable, markLiveUnavailable, planProviders, type GeminiVoiceConfig, type LiveConfig, type VoiceProviderId,
+} from "./voiceProviders";
 
 const API = "https://api.openai.com/v1";
 
@@ -67,16 +70,20 @@ export function realtimeConfig(env: NodeJS.ProcessEnv = process.env): RealtimeCo
 }
 
 const liveOf = (deps: Pick<TutorDeps, "live">): LiveConfig => deps.live ?? liveConfig();
+const geminiOf = (deps: Pick<TutorDeps, "gemini">): GeminiVoiceConfig => deps.gemini ?? geminiVoiceConfig();
 
 /** A voz está disponível no servidor por algum provedor? (a tela mostra o botão de voz) */
-export function voiceReady(deps: Pick<TutorDeps, "realtime" | "live">) {
+export function voiceReady(deps: Pick<TutorDeps, "realtime" | "live" | "gemini">) {
   const rt = deps.realtime ?? realtimeConfig();
   const live = liveOf(deps);
-  return { ready: rt.ready || live.ready, realtime: rt, live };
+  const gemini = geminiOf(deps);
+  return { ready: rt.ready || live.ready || gemini.ready, realtime: rt, live, gemini };
 }
 
 /** Encerra uma chamada pelo servidor (cota acabou, reserva venceu, outra aba assumiu). Melhor esforço. */
 export async function hangup(callId: string | null | undefined, deps: Pick<TutorDeps, "log" | "realtime" | "fetch" | "live">, provider: VoiceProviderId | string | null = "realtime") {
+  // Gemini: a ligação é do navegador com o Google; quem desliga é o aplicativo (a renovação diz para parar) e a chave vence sozinha
+  if (provider === "gemini") return;
   if (!callId || !/^[A-Za-z0-9_-]{4,120}$/.test(callId)) return;
   if (provider === "live") {
     const key = liveOf(deps).key ?? (deps.realtime ? deps.realtime.key : realKey(process.env.OPENAI_API_KEY));
@@ -149,6 +156,9 @@ export interface VoiceStart {
   /** GPT-Live: resposta SDP (o servidor já trocou a oferta) e o id da sessão na OpenAI. */
   sdp?: string;
   live_session_id?: string;
+  /** Gemini: chave temporária (instruções travadas no servidor) para o navegador conectar no Google. */
+  gemini_token?: string;
+  gemini_expires_at?: string;
   model: string;
   voice: string;
   lease_seconds: number;
@@ -177,15 +187,26 @@ const reasonError = (reason: string | undefined, e: unknown): TutorError => {
 
 /** Voz da ligação: a do painel (todos), senão a do professor, senão a padrão do ambiente. */
 export function voiceFor(settings: Pick<TutorSettings, "voice_name">, personality: { voice?: { realtime?: string } }, env: NodeJS.ProcessEnv = process.env): string {
-  return settings.voice_name || personality.voice?.realtime || (env.OPENAI_REALTIME_VOICE ?? "").trim() || "marin";
+  // o painel pode ter escolhido uma voz do Gemini: essa não serve para a OpenAI
+  const panel = settings.voice_name && !geminiVoiceName(settings.voice_name) ? settings.voice_name : null;
+  return panel || personality.voice?.realtime || (env.OPENAI_REALTIME_VOICE ?? "").trim() || "marin";
 }
 
-/** Abre uma chamada de voz: direito + reserva no banco, depois a sessão na OpenAI (GPT-Live ou Realtime). */
-export async function startVoice(deps: TutorDeps, userId: string, sessionId: string, force: boolean, sdp: string | null = null): Promise<VoiceStart> {
+/** Voz do Gemini: a do painel quando for do Gemini, senão a do professor (tutor_personalities.voice.gemini), senão Kore. */
+export function geminiVoiceFor(settings: Pick<TutorSettings, "voice_name">, personality: { voice?: { gemini?: string } }): string {
+  return geminiVoiceName(settings.voice_name) ?? geminiVoiceName(personality.voice?.gemini) ?? "Kore";
+}
+
+/**
+ * Abre uma chamada de voz: direito + reserva no banco, depois a sessão no provedor (Gemini, GPT-Live ou Realtime).
+ * `avoid`: provedores que acabaram de falhar no aparelho do aluno (o Gemini conecta pelo navegador; se não abrir, o app pede outro).
+ */
+export async function startVoice(deps: TutorDeps, userId: string, sessionId: string, force: boolean, sdp: string | null = null, avoid: VoiceProviderId[] = []): Promise<VoiceStart> {
   const rt = deps.realtime ?? realtimeConfig();
   const live = liveOf(deps);
+  const gemini = geminiOf(deps);
   const settings = await tutorSettings(deps);
-  const plan = planProviders(settings.voice_provider, process.env, live, rt, Boolean(sdp));
+  const plan = planProviders(settings.voice_provider, process.env, live, rt, Boolean(sdp), gemini, avoid);
   if (!plan.first) {
     deps.log?.(`[tutor] voz em tempo real indisponível: ${plan.pending}`);
     throw new TutorError("A conversa por voz ainda não está configurada no servidor.", 503);
@@ -270,18 +291,39 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
     }
   };
 
-  if (plan.first === "live") {
+  /** Gemini: o servidor cria a chave temporária com tudo travado (instruções, voz, ferramentas); o navegador conecta no Google. */
+  const tryGemini = async (): Promise<VoiceStart> => {
+    const r = await reserve(gemini.model);
     try {
-      return await tryLive();
+      const instructions = composeRealtimeInstructions({ mode: ctx.session.mode, persona, context: sessionContext(ctx, extras, { live: false, continuity }), pronunciations: settings.pronunciations });
+      const gVoice = geminiVoiceFor(settings, ctx.personality as { voice?: { gemini?: string } });
+      // a chave vence junto com o que a ligação pode durar: limite da conversa ou o tempo de voz que o aluno ainda tem hoje
+      const left = Number((r.entitlement as { voice?: { remaining_s?: number } } | null)?.voice?.remaining_s);
+      const maxSeconds = Number.isFinite(left) ? Math.min(settings.voice_session_max_seconds, left + r.lease_seconds) : settings.voice_session_max_seconds;
+      const t = await createGeminiVoiceToken({ key: gemini.key!, model: gemini.model, instructions, voice: gVoice, tools: REALTIME_TOOLS as never, maxSeconds, client: deps.geminiClient });
+      await deps.db.service("ch_worker_tutor_voice_attach", { p_user: userId, p_voice_call: r.voice_call_id, p_call_id: `gemini-${r.voice_call_id.slice(0, 8)}`, p_provider: "gemini" });
+      return { provider: "gemini", voice_call_id: r.voice_call_id, gemini_token: t.token, gemini_expires_at: t.expiresAt, model: gemini.model, lease_seconds: r.lease_seconds, entitlement: r.entitlement, ...base, voice: gVoice };
     } catch (error) {
-      if (error instanceof TutorError) throw error; // direito, cota, outra aba: não adianta trocar de provedor
-      deps.log?.(`[tutor] voz: GPT-Live falhou: ${(error as Error).message.slice(0, 200)}`);
-      if (error instanceof LiveSessionError && error.access) markLiveUnavailable(); // sem acesso: Realtime por um tempo
-      if (plan.fallback === "realtime") return tryRealtime();
-      throw new TutorError("Não consegui abrir a conversa por voz agora. Tente de novo em instantes.", 502);
+      await release(r.voice_call_id); // não abriu: libera a reserva sem cobrar
+      throw error;
+    }
+  };
+
+  const attempt: Record<VoiceProviderId, () => Promise<VoiceStart>> = { gemini: tryGemini, live: tryLive, realtime: tryRealtime };
+  let lastError: unknown = null;
+  for (const p of plan.order) {
+    try {
+      return await attempt[p]();
+    } catch (error) {
+      if (error instanceof TutorError && !(p === "realtime" && plan.order.indexOf(p) < plan.order.length - 1)) throw error; // direito, cota, outra aba: não adianta trocar
+      lastError = error;
+      deps.log?.(`[tutor] voz: ${p} falhou: ${(error as Error).message.slice(0, 200)}`);
+      if (error instanceof LiveSessionError && error.access) markLiveUnavailable(); // sem acesso: os outros por um tempo
+      if (error instanceof GeminiVoiceError && error.access) markGeminiUnavailable();
     }
   }
-  return tryRealtime();
+  if (lastError instanceof TutorError) throw lastError;
+  throw new TutorError("Não consegui abrir a conversa por voz agora. Tente de novo em instantes.", 502);
 }
 
 const STOP_MESSAGE: Record<string, string> = {
@@ -311,12 +353,15 @@ export async function renewVoice(deps: TutorDeps, userId: string, voiceCallId: s
   };
 }
 
-/** Custo da voz por tempo (GPT-Live): entra no registro quando a ligação acaba. */
-async function recordLiveMinutes(deps: TutorDeps, userId: string, sessionId: string | null, model: string | null, seconds: number, voiceCallId: string) {
+/** Custo da voz por tempo (GPT-Live e Gemini): entra no registro quando a ligação acaba. */
+async function recordLiveMinutes(deps: TutorDeps, userId: string, sessionId: string | null, model: string | null, seconds: number, voiceCallId: string, provider: "live" | "gemini" = "live") {
   if (!seconds) return;
   const cost = voiceTimeCost(model, seconds) ?? 0;
-  await deps.db.service("ch_worker_tutor_ledger", { p_user: userId, p_session_id: sessionId, p_entry: { feature: "tutor_voice_live", provider: "openai", model, duration_seconds: seconds, estimated_cost_usd: cost, meta: { voice_call: voiceCallId } } })
-    .catch((error: Error) => deps.log?.(`[tutor] voz: custo do GPT-Live não registrado: ${error.message.slice(0, 120)}`));
+  const entry = provider === "gemini"
+    ? { feature: "tutor_voice_gemini", provider: "google", model, duration_seconds: seconds, estimated_cost_usd: cost, meta: { voice_call: voiceCallId } }
+    : { feature: "tutor_voice_live", provider: "openai", model, duration_seconds: seconds, estimated_cost_usd: cost, meta: { voice_call: voiceCallId } };
+  await deps.db.service("ch_worker_tutor_ledger", { p_user: userId, p_session_id: sessionId, p_entry: entry })
+    .catch((error: Error) => deps.log?.(`[tutor] voz: custo da voz (${provider}) não registrado: ${error.message.slice(0, 120)}`));
 }
 
 export type EndReason = "student" | "error" | "quota" | "session_limit";
@@ -326,7 +371,7 @@ export async function endVoice(deps: TutorDeps, userId: string, voiceCallId: str
     "ch_worker_tutor_voice_end", { p_user: userId, p_voice_call: voiceCallId, p_reason: reason });
   if (!r.ok) throw new TutorError("Chamada de voz não encontrada.", 404);
   void hangup(r.call_id, deps, r.provider ?? "realtime");
-  if (!r.already && r.provider === "live") await recordLiveMinutes(deps, userId, r.session_id ?? null, r.model ?? null, r.consumed_seconds ?? 0, voiceCallId);
+  if (!r.already && (r.provider === "live" || r.provider === "gemini")) await recordLiveMinutes(deps, userId, r.session_id ?? null, r.model ?? null, r.consumed_seconds ?? 0, voiceCallId, r.provider);
   return { consumed_seconds: r.consumed_seconds ?? 0 };
 }
 

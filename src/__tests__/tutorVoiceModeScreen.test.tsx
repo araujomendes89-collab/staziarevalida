@@ -291,11 +291,11 @@ describe("Painel de administração da voz", () => {
       if (fn === "app_admin_tutor_set_personality") return (persona.push(args), [{ id: "acolhedor", name: "Acolhedor", emoji: "🙂", active: true, default: true }, { id: "durona", name: "Durona", emoji: "🔥", active: args.p_active, default: false }]);
       throw new Error(`rpc inesperada: ${fn}`);
     });
-    server["/api/tutor/status"] = () => ({ body: { ready: true, realtime_voice: true, live_voice: true, live_model: "gpt-live-1", live_pending: null, realtime_model: "gpt-realtime-2.1", realtime_pending: null } });
+    server["/api/tutor/status"] = () => ({ body: { ready: true, realtime_voice: true, live_voice: true, live_model: "gpt-live-1", live_pending: null, realtime_model: "gpt-realtime-2.1", realtime_pending: null, gemini_voice_model: "gemini-3.8-live", gemini_voice_pending: null } });
     const { AdminTutor } = await import("../novo/app/admin/AdminPanels.jsx");
     render(<AdminTutor />);
     expect(await screen.findByText("Voz e personalidade")).toBeTruthy();
-    expect(await screen.findByText(/GPT-Live pronto no servidor \(gpt-live-1\)/)).toBeTruthy();
+    expect(await screen.findByText(/Gemini pronto no servidor \(gemini-3.8-live\), com sotaque de brasileiro nativo\. GPT-Live: gpt-live-1\./)).toBeTruthy();
     expect(screen.getByText(/Voz em 30 dias: 3 ligação\(ões\) · 4.5 min/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText("Provedor da voz"), { target: { value: "live" } });
     fireEvent.change(screen.getByLabelText("Voz"), { target: { value: "cedar" } });

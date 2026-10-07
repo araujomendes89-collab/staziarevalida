@@ -59,7 +59,8 @@ async function voicePost(backend, path, body) {
 }
 export const voiceApi = {
   /** Com a oferta WebRTC (sdp), o servidor pode abrir o GPT-Live e devolver a resposta; sem ela, devolve o segredo do Realtime. */
-  start: (backend, sessionId, force = false, sdp = null) => voicePost(backend, "start", sdp ? { session_id: sessionId, force, sdp } : { session_id: sessionId, force }),
+  start: (backend, sessionId, force = false, sdp = null, avoid = null) =>
+    voicePost(backend, "start", { session_id: sessionId, force, ...(sdp ? { sdp } : {}), ...(avoid?.length ? { avoid } : {}) }),
   renew: (backend, voiceCallId, callId) => voicePost(backend, "renew", { voice_call_id: voiceCallId, call_id: callId ?? null }),
   end: (backend, voiceCallId, reason = "student", metrics = null) => voicePost(backend, "end", metrics ? { voice_call_id: voiceCallId, reason, metrics } : { voice_call_id: voiceCallId, reason }),
   metrics: (backend, voiceCallId, metrics) => voicePost(backend, "metrics", { voice_call_id: voiceCallId, metrics }),

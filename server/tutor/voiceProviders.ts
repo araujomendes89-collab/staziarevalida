@@ -1,7 +1,9 @@
 /**
- * PROVEDORES DE VOZ do Stazia Tutor (OpenAI). Nenhum nome de modelo fica no código: tudo vem do ambiente do servidor.
+ * PROVEDORES DE VOZ do Stazia Tutor: Gemini (voz nativa do Google, português do Brasil sem sotaque americano), GPT-Live e
+ * Realtime (OpenAI). Os modelos vêm do ambiente do servidor.
  *
- *   OPENAI_VOICE_PROVIDER   live | realtime | auto   (padrão: auto = GPT-Live quando configurado; senão Realtime)
+ *   GEMINI_LIVE_MODEL       voz ao vivo do Gemini (padrão gemini-3.8-live); chave GEMINI_API_KEY ou GOOGLE_GEMINI_API_KEY
+ *   OPENAI_VOICE_PROVIDER   gemini | live | realtime | auto   (padrão: auto = Gemini quando configurado; senão GPT-Live; senão Realtime)
  *   OPENAI_LIVE_MODEL       modelo do GPT-Live (conversa full-duplex; ex.: gpt-live-1)
  *   OPENAI_REALTIME_MODEL   modelo do Realtime (reserva quando o GPT-Live não estiver disponível; ex.: gpt-realtime-2.1)
  *   OPENAI_REALTIME_VOICE   voz padrão quando o professor não tem uma e o painel não escolheu (ex.: marin)
@@ -23,7 +25,7 @@ import type { RealtimeConfig } from "./realtime";
 
 const API = "https://api.openai.com/v1";
 
-export type VoiceProviderId = "live" | "realtime";
+export type VoiceProviderId = "gemini" | "live" | "realtime";
 export type VoiceProviderChoice = "auto" | VoiceProviderId;
 
 export interface LiveConfig {
@@ -47,11 +49,43 @@ export function liveConfig(env: NodeJS.ProcessEnv = process.env): LiveConfig {
   return { ready: !pending, model, key: pending ? null : key, pending };
 }
 
+/**
+ * Voz nativa do Gemini (Live API, áudio nativo): conversa ao vivo com pronúncia de quem nasceu falando português. O navegador
+ * conecta direto no Google com uma chave temporária que o servidor cria (uma por ligação, com as instruções travadas aqui).
+ */
+export interface GeminiVoiceConfig {
+  ready: boolean;
+  model: string;
+  key: string | null;
+  pending: string | null;
+}
+export function geminiVoiceConfig(env: NodeJS.ProcessEnv = process.env): GeminiVoiceConfig {
+  const model = (env.GEMINI_LIVE_MODEL ?? "").trim() || "gemini-3.8-live";
+  const key = realKey(env.GEMINI_API_KEY) ?? realKey(env.GOOGLE_GEMINI_API_KEY);
+  const pending =
+    env.TUTOR_VOICE_ALLOW_EXTERNAL !== "1"
+      ? "Envio da voz do aluno a provedor externo não autorizado: defina TUTOR_VOICE_ALLOW_EXTERNAL=1 no servidor."
+      : !key
+        ? "GEMINI_API_KEY ausente no servidor."
+        : null;
+  return { ready: !pending, model, key: pending ? null : key, pending };
+}
+
 /** Escolha do ambiente (OPENAI_VOICE_PROVIDER), usada quando o painel está em "automático". */
 export function envProviderChoice(env: NodeJS.ProcessEnv = process.env): VoiceProviderChoice {
   const v = (env.OPENAI_VOICE_PROVIDER ?? "").trim().toLowerCase();
-  return v === "live" || v === "realtime" ? v : "auto";
+  return v === "gemini" || v === "live" || v === "realtime" ? v : "auto";
 }
+
+// Gemini recusado (chave sem acesso ao modelo, configuração recusada): usa a OpenAI por um tempo, sem insistir a cada ligação.
+let geminiDownUntil = 0;
+export const markGeminiUnavailable = (ms = 10 * 60_000) => {
+  geminiDownUntil = Date.now() + ms;
+};
+export const geminiIsDown = () => Date.now() < geminiDownUntil;
+export const resetGeminiAvailability = () => {
+  geminiDownUntil = 0;
+};
 
 // GPT-Live recusado pela OpenAI (conta sem acesso, modelo inexistente): usa o Realtime por um tempo, sem insistir a cada ligação.
 let liveDownUntil = 0;
@@ -66,25 +100,110 @@ export const resetLiveAvailability = () => {
 export interface ProviderPlan {
   /** Provedor a tentar primeiro (null = nenhum configurado). */
   first: VoiceProviderId | null;
-  /** Reserva se o primeiro for recusado pela OpenAI. */
+  /** Reserva se o primeiro for recusado. */
   fallback: VoiceProviderId | null;
+  /** Todos os prontos, na ordem de tentativa. */
+  order: VoiceProviderId[];
   pending: string | null;
 }
 
+const NOT_GEMINI: GeminiVoiceConfig = { ready: false, model: "", key: null, pending: "Gemini não configurado." };
+
 /**
- * Qual provedor usar. Painel "live" ou "realtime" manda; "auto" segue o ambiente; ambiente "auto" prefere o GPT-Live quando
- * configurado. Um provedor só entra se estiver pronto; o outro, se pronto, fica de reserva.
+ * Qual provedor usar. O painel manda quando escolhe um; "auto" segue o ambiente; ambiente "auto" prefere o Gemini (português do
+ * Brasil nativo), depois o GPT-Live, depois o Realtime. Só entra quem estiver pronto; `avoid` tira quem acabou de falhar no
+ * aparelho do aluno (a conexão do Gemini é feita pelo navegador).
  */
-export function planProviders(admin: string | null | undefined, env: NodeJS.ProcessEnv, live: LiveConfig, rt: Pick<RealtimeConfig, "ready" | "pending">, clientCanLive: boolean): ProviderPlan {
-  const wanted: VoiceProviderChoice = admin === "live" || admin === "realtime" ? admin : envProviderChoice(env);
-  const liveOk = live.ready && clientCanLive && !liveIsDown();
-  const order: VoiceProviderId[] = wanted === "realtime" ? ["realtime", "live"] : ["live", "realtime"];
-  const usable = order.filter((p) => (p === "live" ? liveOk : rt.ready));
+export function planProviders(
+  admin: string | null | undefined, env: NodeJS.ProcessEnv, live: LiveConfig, rt: Pick<RealtimeConfig, "ready" | "pending">, clientCanLive: boolean,
+  gemini: GeminiVoiceConfig = NOT_GEMINI, avoid: VoiceProviderId[] = [],
+): ProviderPlan {
+  const wanted: VoiceProviderChoice = admin === "gemini" || admin === "live" || admin === "realtime" ? admin : envProviderChoice(env);
+  const ok: Record<VoiceProviderId, boolean> = {
+    gemini: gemini.ready && !geminiIsDown() && !avoid.includes("gemini"),
+    live: live.ready && clientCanLive && !liveIsDown() && !avoid.includes("live"),
+    realtime: rt.ready && !avoid.includes("realtime"),
+  };
+  const order: VoiceProviderId[] =
+    wanted === "realtime" ? ["realtime", "live", "gemini"] : wanted === "live" ? ["live", "realtime", "gemini"] : ["gemini", "live", "realtime"];
+  const usable = order.filter((p) => ok[p]);
   if (!usable.length) {
-    const why = wanted === "live" && !live.ready ? live.pending : rt.pending ?? live.pending;
-    return { first: null, fallback: null, pending: why ?? "A conversa por voz ainda não está configurada no servidor." };
+    const why = wanted === "gemini" && !gemini.ready ? gemini.pending : wanted === "live" && !live.ready ? live.pending : rt.pending ?? live.pending ?? gemini.pending;
+    return { first: null, fallback: null, order: [], pending: why ?? "A conversa por voz ainda não está configurada no servidor." };
   }
-  return { first: usable[0], fallback: usable[1] ?? null, pending: null };
+  return { first: usable[0], fallback: usable[1] ?? null, order: usable, pending: null };
+}
+
+/** Vozes prontas do Gemini (a lista do Live API). Nome fora da lista não vai para o Google. */
+export const GEMINI_VOICES = [
+  "Zephyr", "Puck", "Charon", "Kore", "Fenrir", "Leda", "Orus", "Aoede", "Callirrhoe", "Autonoe", "Enceladus", "Iapetus", "Umbriel", "Algieba", "Despina",
+  "Erinome", "Algenib", "Rasalgethi", "Laomedeia", "Achernar", "Alnilam", "Schedar", "Gacrux", "Pulcherrima", "Achird", "Zubenelgenubi", "Vindemiatrix",
+  "Sadachbia", "Sadaltager", "Sulafat",
+];
+export const geminiVoiceName = (v: unknown): string | null => {
+  const s = String(v ?? "").trim().toLowerCase();
+  return GEMINI_VOICES.find((n) => n.toLowerCase() === s) ?? null;
+};
+
+/** Ferramentas no formato do Gemini (o mesmo esquema JSON das ferramentas da OpenAI). */
+export function geminiTools(tools: { name: string; description: string; parameters: unknown }[]) {
+  return [{ functionDeclarations: tools.map((t) => ({ name: t.name, description: t.description, parametersJsonSchema: t.parameters })) }];
+}
+
+export class GeminiVoiceError extends Error {
+  constructor(message: string, readonly status: number, readonly access: boolean) {
+    super(message);
+  }
+}
+
+export interface GeminiTokenRequest {
+  key: string;
+  model: string;
+  instructions: string;
+  voice: string | null;
+  tools: { name: string; description: string; parameters: unknown }[];
+  /** Quanto a ligação pode durar (limite do painel ou o tempo de voz que o aluno ainda tem): a chave vale um pouco mais que isso. */
+  maxSeconds: number;
+  /** Testes: troca o cliente do Google (nenhuma chamada de verdade). */
+  client?: { authTokens: { create(params: { config: Record<string, unknown> }): Promise<{ name?: string }> } };
+}
+
+/**
+ * Chave temporária do Gemini Live para o navegador, com TUDO travado aqui: modelo, instruções do professor, voz, ferramentas,
+ * transcrições e o modo de áudio. O navegador só conecta; não consegue trocar as instruções nem usar a chave principal.
+ * Abre UMA conversa (retomar a mesma conversa depois de uma queda não conta como uso, segundo o Google) e vence 2 minutos depois
+ * do tempo que a ligação pode durar: o servidor não consegue desligar uma conversa do Gemini, então a validade é o limite.
+ */
+export async function createGeminiVoiceToken(r: GeminiTokenRequest): Promise<{ token: string; expiresAt: string }> {
+  const client = r.client ?? (await (async () => {
+    const { GoogleGenAI } = (await import("@google/genai")) as typeof import("@google/genai");
+    return new GoogleGenAI({ apiKey: r.key, httpOptions: { apiVersion: "v1alpha" } }) as unknown as NonNullable<GeminiTokenRequest["client"]>;
+  })());
+  const expiresAt = new Date(Date.now() + Math.min(Math.max(r.maxSeconds, 60) + 120, 2 * 3600) * 1000).toISOString();
+  const config = {
+    responseModalities: ["AUDIO"],
+    systemInstruction: r.instructions,
+    ...(r.voice ? { speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: r.voice } } } } : {}),
+    tools: geminiTools(r.tools),
+    inputAudioTranscription: {},
+    outputAudioTranscription: {},
+    // fala com emoção de verdade (bronca, comemoração, grito curto), no tom do que está acontecendo
+    enableAffectiveDialog: true,
+    contextWindowCompression: { slidingWindow: {} },
+    // a continuidade entre conexões (sessionResumption) fica livre: o aplicativo manda o "handle" quando reconecta
+  };
+  let token: { name?: string };
+  try {
+    token = await client.authTokens.create({
+      config: { uses: 1, expireTime: expiresAt, newSessionExpireTime: expiresAt, liveConnectConstraints: { model: r.model, config }, lockAdditionalFields: [] },
+    });
+  } catch (error: any) {
+    const status = Number(error?.status ?? error?.code ?? 502) || 502;
+    const msg = String(error?.message ?? error).split(r.key).join("[chave]").slice(0, 240);
+    throw new GeminiVoiceError(`Gemini recusou a chave temporária (${status}): ${msg}`, status, [400, 401, 403, 404].includes(status));
+  }
+  if (!token?.name) throw new GeminiVoiceError("Gemini respondeu sem chave temporária.", 502, false);
+  return { token: token.name, expiresAt };
 }
 
 /** Erro da OpenAI ao abrir o GPT-Live; `access` = a conta/modelo não tem acesso (vale tentar o Realtime). */

@@ -130,3 +130,10 @@ pelas instruções e pelas ferramentas). O nome do produto segue StaziaMed; o pe
 A conversa por voz saiu da barra dentro do chat e virou uma tela cheia com a esfera animada (vídeo enviado pelo dono), GPT-Live como
 provedor preferido (com o Realtime de reserva), delegação do conteúdo ao motor do Tutor, painel da voz, lembranças entre conversas e
 métricas por ligação. Detalhes, pendências e validação manual: `STAZIA_VOICE_MODE.md`.
+
+## 12. Fala sem filtro e português do Brasil nativo (prompt 2.5.0, migração `4900_tutor_sem_filtro_voz_gemini`, 2026-10-06)
+
+Pedido: "quero algo mais sem filtros, bem natural, ela pode gritar; ainda está com muito sotaque americano". O professor fala como gente
+(gíria, palavrão espontâneo no jeito de cada um, grito curto para bronca ou comemoração), com piso de linguagem por professor; as
+proibições não mudaram. A voz passou a preferir o Gemini (áudio nativo, pronúncia de brasileiro), com a OpenAI de reserva automática.
+Detalhes: `STAZIA_VOICE_MODE.md` §16.

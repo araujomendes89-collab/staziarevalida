@@ -28,7 +28,7 @@ export function TutorScreen({ go, initialView = "start" }) {
   const [session, setSession] = React.useState(null);
   const [view, setView] = React.useState("loading"); // loading | start | chat | report
   const [error, setError] = React.useState(null);
-  const [server, setServer] = React.useState({ neural: false, realtime: false, live: false }); // vozes ligadas no servidor
+  const [server, setServer] = React.useState({ neural: false, realtime: false, live: false, hint: null }); // vozes ligadas no servidor
 
   const refresh = React.useCallback(async () => {
     const [st, list] = await Promise.all([backend.rpc("app_tutor_status"), backend.rpc("app_tutor_sessions", { p_limit: 20 })]);
@@ -52,7 +52,7 @@ export function TutorScreen({ go, initialView = "start" }) {
     if (!status?.available || !status.voice_enabled || !tutorAvailable(backend)) return undefined;
     let alive = true;
     tutorServerStatus(backend).then(
-      (s) => alive && setServer({ neural: Boolean(s?.neural_voice), realtime: Boolean(s?.realtime_voice), live: Boolean(s?.live_voice) }),
+      (s) => alive && setServer({ neural: Boolean(s?.neural_voice), realtime: Boolean(s?.realtime_voice), live: Boolean(s?.live_voice), hint: s?.voice_hint ?? null }),
       () => {}
     );
     return () => {
@@ -134,7 +134,7 @@ export function TutorScreen({ go, initialView = "start" }) {
   if (view === "report") body = <Report onBack={() => setView(session ? "chat" : "start")} />;
   else if (view === "chat" && session)
     body = (
-      <Chat key={session.id} session={session} setSession={setSession} status={status} neural={server.neural} realtime={server.realtime} live={server.live}
+      <Chat key={session.id} session={session} setSession={setSession} status={status} neural={server.neural} realtime={server.realtime} live={server.live} voiceHint={server.hint}
         onUsage={(used) => setStatus((s) => ({ ...s, used_today: used, entitlement: s.entitlement ? { ...s.entitlement, text: { ...s.entitlement.text, used, remaining: Math.max(0, (s.entitlement.text?.limit ?? 0) - used) } } : s.entitlement }))}
         onChanged={() => refresh().catch(() => {})} mobile={mobile} />
     );
@@ -377,7 +377,7 @@ function StartPanel({ status, onStart, onChanged, realtime, neural }) {
 
 
 // ---------------------------------------------------------------- conversa
-export function Chat({ session, setSession, status, neural, realtime = false, live: liveVoice = false, onUsage, onChanged, mobile, compact = false }) {
+export function Chat({ session, setSession, status, neural, realtime = false, live: liveVoice = false, voiceHint = null, onUsage, onChanged, mobile, compact = false }) {
   const { backend } = useSession();
   const [messages, setMessages] = React.useState(session.messages);
   const [text, setText] = React.useState("");
@@ -408,6 +408,7 @@ export function Chat({ session, setSession, status, neural, realtime = false, li
     backend,
     sessionId: session.id,
     live: liveVoice,
+    hint: voiceHint,
     onTranscript: (role, said) => setMessages((m) => [...m, { id: `rt-${Date.now()}-${m.length}`, role, content: said, grounding: role === "tutor" ? "general" : null, voice: true }]),
     onWarning: (w) => setVoiceNote(w),
     onAvatar: setVoiceAvatar,

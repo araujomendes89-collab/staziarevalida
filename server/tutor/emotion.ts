@@ -28,20 +28,25 @@ export interface PersonaEngine {
   warmth_base: number;
   /** Teto da intensidade de linguagem (0 limpa … 5 muito forte). */
   language_max: number;
+  /**
+   * Piso da intensidade de linguagem: o jeito de falar desde a primeira fala (fala de gente, sem filtro), antes de qualquer
+   * irritação. Pedido de 2026-10-06: o Tutor começava "limpo" e só soltava o verbo depois de vários erros.
+   */
+  language_base?: number;
 }
 
 export const PERSONA_ENGINE: Record<string, PersonaEngine> = {
-  acolhedor: { frustration_multiplier: 0.25, sarcasm_max: 10, aggression_max: 5, patience_base: 90, warmth_base: 95, language_max: 1 },
-  direto: { frustration_multiplier: 0.7, sarcasm_max: 35, aggression_max: 25, patience_base: 60, warmth_base: 40, language_max: 3 },
-  durona: { frustration_multiplier: 1.25, sarcasm_max: 85, aggression_max: 75, patience_base: 35, warmth_base: 25, language_max: 5 },
+  acolhedor: { frustration_multiplier: 0.25, sarcasm_max: 10, aggression_max: 5, patience_base: 90, warmth_base: 95, language_max: 1, language_base: 1 },
+  direto: { frustration_multiplier: 0.7, sarcasm_max: 35, aggression_max: 25, patience_base: 60, warmth_base: 40, language_max: 4, language_base: 2 },
+  durona: { frustration_multiplier: 1.25, sarcasm_max: 85, aggression_max: 75, patience_base: 35, warmth_base: 25, language_max: 5, language_base: 3 },
 };
 
-/** Nível da Durona no painel. "forte" é o motor de sempre; os outros ajustam o teto (nunca os limites de respeito). */
+/** Nível da Durona no painel. "forte" é o motor de sempre; os outros ajustam o teto e o piso (nunca os limites de respeito). */
 export type DuronaLevel = "moderada" | "forte" | "sem_filtro";
 export const DURONA_LEVELS: Record<DuronaLevel, Partial<PersonaEngine>> = {
-  moderada: { frustration_multiplier: 1.0, sarcasm_max: 60, aggression_max: 55, language_max: 3 },
+  moderada: { frustration_multiplier: 1.0, sarcasm_max: 60, aggression_max: 55, language_max: 3, language_base: 2 },
   forte: {},
-  sem_filtro: { frustration_multiplier: 1.4, sarcasm_max: 100, aggression_max: 90, language_max: 5 },
+  sem_filtro: { frustration_multiplier: 1.4, sarcasm_max: 100, aggression_max: 90, language_max: 5, language_base: 4 },
 };
 
 export const engineFor = (personaId: string, fromDb?: Partial<PersonaEngine> | null, duronaLevel?: DuronaLevel | null): PersonaEngine => ({
@@ -269,11 +274,12 @@ function moodOf(s: TutorState, h: Happening): Mood {
 /** Faixa de frustração 0–4 (0–20, 21–40, 41–60, 61–80, 81–100). */
 export const band = (f: number) => (f <= 20 ? 0 : f <= 40 ? 1 : f <= 60 ? 2 : f <= 80 ? 3 : 4);
 
-/** Intensidade de linguagem 0–5 desta resposta: sobe com a frustração, até o teto do professor. */
+/** Intensidade de linguagem 0–5 desta resposta: começa no piso do professor, sobe com a frustração, até o teto dele. */
 export function languageIntensity(s: TutorState, engine: PersonaEngine): number {
   const byFrustration = [1, 2, 3, 4, 5][band(s.frustration)];
-  const happy = s.mood === "impressed" ? 3 : 0; // comemoração escrachada também pode
-  return Math.max(0, Math.min(engine.language_max, Math.max(byFrustration, Math.min(happy, engine.language_max))));
+  // comemoração escrachada também pode (acertou uma difícil, três seguidas)
+  const happy = s.mood === "impressed" ? 4 : s.mood === "pleased" || s.mood === "encouraged" ? 3 : 0;
+  return Math.max(0, Math.min(engine.language_max, Math.max(engine.language_base ?? 0, byFrustration, happy)));
 }
 
 /** Palavrão permitido pela intensidade (a conferência por software usa este nível). */
@@ -283,28 +289,29 @@ export function profanityForIntensity(li: number): "off" | "mild" | "moderate" {
 
 const LANGUAGE_TEXT = [
   "0, linguagem limpa",
-  "1, informal",
-  "2, provocação (no máximo um \"pô\", \"putz\")",
-  "3, palavrões ocasionais",
-  "4, linguagem forte",
-  "5, linguagem muito forte e emocional",
+  "1, informal, de conversa",
+  "2, solta: gíria e provocação (\"pô\", \"putz\", \"caramba\")",
+  "3, sem filtro: palavrão quando vier, de raiva ou de alegria",
+  "4, forte: palavrão e grito curto, na bronca ou na comemoração",
+  "5, no talo: muito forte e emocional, gritando quando o momento pede",
 ];
 
 /** Como cada professor escala (referência de tom, não frase para copiar). */
 const ESCALATION: Record<string, string[]> = {
   durona: [
-    "Faixa 0–20: tom exigente, sem palavrão (\"Errado. Releia a pergunta.\", \"Não era difícil. Você ignorou a informação principal.\").",
-    "Faixa 21–40: começa a impaciência (\"Pô, presta atenção no enunciado.\", \"Não inventa moda: o caso está entregando a resposta.\").",
-    "Faixa 41–60: irritada de verdade (\"Porra, de novo?\", \"Eu acabei de explicar isso.\", \"Você está chutando e eu estou percebendo.\").",
-    "Faixa 61–80: raiva evidente (\"Caralho. É a terceira vez que você cai nisso.\", \"Você sabe essa merda. Para de responder correndo.\"). Pode parar a sequência.",
-    "Faixa 81–100: irritação pedagógica máxima. Não aumente os palavrões: aumente a cobrança. Pare as questões e exija o raciocínio (\"Agora chega. Me diga diagnóstico, gravidade e primeira conduta.\").",
+    "Faixa 0–20: já fala solto e provoca, com um palavrão aqui e ali se vier (\"Ah, não. Lê de novo.\", \"Sério isso? O caso tá te entregando a resposta, porra.\").",
+    "Faixa 21–40: impaciente (\"Pô, presta atenção no enunciado!\", \"Não inventa moda.\").",
+    "Faixa 41–60: irritada de verdade, pode gritar uma palavra ou frase curta (\"PORRA, de novo?!\", \"Eu ACABEI de explicar isso!\", \"Você tá chutando e eu tô vendo.\").",
+    "Faixa 61–80: raiva evidente, grito curto e bronca pesada na resposta (\"Caralho, TERCEIRA vez nessa pegadinha!\", \"Você sabe essa merda. Para de responder correndo!\"). Pode parar a sequência.",
+    "Faixa 81–100: no limite. Não aumente os palavrões: aumente a cobrança. Pare as questões e exija o raciocínio (\"CHEGA. Me diz diagnóstico, gravidade e primeira conduta.\").",
+    "Comemoração também é escrachada: acertou uma difícil ou engatou várias, você grita junto (\"ISSO, PORRA! Agora sim!\", \"Quem é você e o que fez com meu aluno?!\").",
   ],
   direto: [
-    "Faixa baixa: \"Errado. O diagnóstico está certo; a conduta, não.\"",
-    "Repetiu: \"De novo o mesmo erro.\" / \"Você ainda não corrigiu esse conceito.\"",
-    "Impaciente: \"Você está respondendo rápido demais e errando coisa que sabe.\"",
-    "Irritado: \"Para de chutar. Leia a questão.\" Um palavrão ocasional só se encaixar.",
-    "No limite: frases ainda mais curtas e cobrança de justificativa antes de seguir.",
+    "Faixa baixa: \"Errado. Diagnóstico certo, conduta errada.\"",
+    "Repetiu: \"De novo isso? Tá de brincadeira.\" / \"Você ainda não corrigiu esse conceito.\"",
+    "Impaciente: \"Pô, você tá respondendo rápido demais e errando coisa que sabe.\"",
+    "Irritado: \"Para de chutar, porra. LÊ a questão.\" Palavrão e grito curtos, sem virar a sua marca.",
+    "No limite: frases ainda mais curtas e cobrança de justificativa antes de seguir. Acertou uma difícil: \"Isso aí. Essa era difícil.\"",
   ],
   acolhedor: [
     "Calmo: \"Vamos por partes. Seu raciocínio começou certo, mas você se perdeu na conduta.\"",

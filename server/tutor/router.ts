@@ -59,12 +59,15 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     const vr = voiceReady(deps!);
     const settings = await tutorSettings(deps!);
     // GPT-Live disponível agora? (o navegador manda a oferta WebRTC antes de abrir; se o GPT-Live falhar, o servidor cai no Realtime)
-    const plan = planProviders(settings.voice_provider, process.env, vr.live, vr.realtime, true);
+    const plan = planProviders(settings.voice_provider, process.env, vr.live, vr.realtime, true, vr.gemini);
     res.json({
       ready: status.ready, simulated: status.isMock, neural_voice: voice.ready, realtime_voice: vr.ready && settings.voice_enabled !== false, live_voice: plan.first === "live",
+      // qual voz o aplicativo abre primeiro (o Gemini não precisa da oferta WebRTC; o GPT-Live precisa)
+      voice_hint: plan.first,
       voice_session_max_seconds: settings.voice_session_max_seconds,
       ...(admin ? { provider: status.provider, model: status.model, pending: status.pending, voice_provider: voice.provider, voice_model: voice.model, voice_pending: voice.pending,
                     realtime_model: vr.realtime.model, realtime_pending: vr.realtime.pending, live_model: vr.live.model, live_pending: vr.live.pending,
+                    gemini_voice_model: vr.gemini.model, gemini_voice_pending: vr.gemini.pending,
                     voice_choice: { panel: settings.voice_provider, env: (process.env.OPENAI_VOICE_PROVIDER ?? "").trim() || "auto" } } : {}),
     });
   });
@@ -155,7 +158,9 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
   router.post("/voice/start", voiceRoute(async (req, b) => {
     if (!uuid.test(String(b.session_id ?? ""))) throw new TutorError("Conversa inválida.", 400);
     const sdp = typeof b.sdp === "string" && b.sdp.length <= 20_000 && b.sdp.startsWith("v=0") ? b.sdp : null;
-    return startVoice(deps!, req.user!.id, String(b.session_id), b.force === true, sdp);
+    // provedores que acabaram de falhar no aparelho do aluno (o Gemini conecta pelo navegador): o servidor escolhe outro
+    const avoid = (Array.isArray(b.avoid) ? b.avoid : []).filter((x: unknown): x is "gemini" | "live" | "realtime" => x === "gemini" || x === "live" || x === "realtime");
+    return startVoice(deps!, req.user!.id, String(b.session_id), b.force === true, sdp, avoid);
   }));
   /** Renovação da reserva (a cada ~minuto). Sem saldo, o servidor encerra a chamada. */
   router.post("/voice/renew", voiceRoute(async (req, b) => renewVoice(deps!, req.user!.id, callIdOf(b), typeof b.call_id === "string" ? b.call_id.slice(0, 120) : null)));

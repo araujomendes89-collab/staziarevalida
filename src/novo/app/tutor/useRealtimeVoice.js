@@ -1,4 +1,8 @@
-// Conversa por voz em tempo real com o Stazia Tutor (OpenAI, WebRTC). Dois provedores, a mesma tela:
+// Conversa por voz em tempo real com o Stazia Tutor. Três provedores, a mesma tela:
+//
+//  - Gemini (voz nativa do Google, português do Brasil sem sotaque americano; preferido no modo automático): o servidor cria uma
+//    chave temporária com as instruções travadas e o navegador conecta direto no Google (voice/geminiLive.js). As ferramentas
+//    passam pelo servidor. Se não conectar neste aparelho, o app pede ao servidor outra voz (OpenAI) na hora.
 //
 //  - GPT-Live (quando o servidor diz que está disponível): o navegador prepara a oferta WebRTC e manda para o NOSSO servidor, que
 //    abre a sessão com a OpenAI e devolve a resposta (nenhuma credencial vem para cá). A voz conversa e, quando precisa do sistema,
@@ -14,12 +18,21 @@
 import React from "react";
 import { voiceApi } from "./api.js";
 import { unlockAudio } from "./voice/audioUnlock.js";
+import { openGeminiLive } from "./voice/geminiLive.js";
 
 const CALLS_URL = "https://api.openai.com/v1/realtime/calls";
 const CONNECT_TIMEOUT_MS = 20_000;
 const UTTERANCE_GAP_MS = 1_200; // GPT-Live manda a transcrição em pedaços: sem pedaço novo por este tempo, a fala terminou
 const SPEAKING_GAP_MS = 900;
 const MAX_RECONNECTS = 2;
+// o Gemini não abriu neste aparelho (rede que bloqueia, navegador sem suporte, modelo recusado): a OpenAI direto por um tempo,
+// sem fazer o aluno esperar outra tentativa a cada ligação
+const GEMINI_RETRY_MS = 10 * 60_000;
+let geminiFailedAt = 0;
+/** Testes: esquece a falha do Gemini neste aparelho. */
+export const resetGeminiDeviceFallback = () => {
+  geminiFailedAt = 0;
+};
 
 export const realtimeSupport = () =>
   typeof window !== "undefined" && typeof window.RTCPeerConnection === "function" && Boolean(navigator?.mediaDevices?.getUserMedia);
@@ -80,7 +93,7 @@ function waitIce(pc, ms = 3_000) {
  * live = o servidor indicou que pode abrir o GPT-Live (manda a oferta antes de abrir a ligação).
  * onAvatar recebe a emoção que o servidor calculou (para a animação), nunca deduzida do texto.
  */
-export function useRealtimeVoice({ backend, sessionId, live = false, onTranscript, onWarning, onAvatar }) {
+export function useRealtimeVoice({ backend, sessionId, live = false, hint = null, onTranscript, onWarning, onAvatar }) {
   const [state, setStateRaw] = React.useState("idle");
   const [error, setError] = React.useState(null);
   const [remaining, setRemaining] = React.useState(null); // segundos de voz que restam (pelo servidor)
@@ -115,6 +128,11 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
   const teardown = (keep = false) => {
     const cur = r.current;
     clearTimers();
+    try {
+      cur.gem?.close();
+    } catch {
+      // já fechado
+    }
     try {
       cur.dc?.close();
     } catch {
@@ -180,7 +198,8 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
       (res) => {
         // o servidor conferiu o que foi dito: se escapou algo, o professor corrige na hora
         if (role !== "tutor" || !res?.correction) return;
-        if (r.current.provider === "live") send({ type: "session.instructions.append", event_id: eid("corr"), delegation_id: null, content: res.correction });
+        if (r.current.provider === "gemini") r.current.gem?.sendText(`Instrução do sistema (não leia em voz alta; diga a correção agora, do seu jeito): ${res.correction}`);
+        else if (r.current.provider === "live") send({ type: "session.instructions.append", event_id: eid("corr"), delegation_id: null, content: res.correction });
         else {
           send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: res.correction }] } });
           send({ type: "response.create" });
@@ -383,6 +402,46 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
     }
   };
 
+  // ------------------------------------------------------------ Gemini
+  /** Transcrição em pedaços: legenda na hora; a fala inteira vai para o servidor quando o turno fecha. */
+  const geminiDelta = (role, text, finished) => {
+    const cur = r.current;
+    cur.utter ??= { role: null, text: "" };
+    if (cur.utter.role && cur.utter.role !== role) finalizeUtterance();
+    cur.utter.role = role;
+    cur.utter.text += text;
+    caption(role, cur.utter.text.trim());
+    clearTimeout(cur.utterTimer);
+    if (finished) finalizeUtterance();
+    else cur.utterTimer = setTimeout(finalizeUtterance, role === "student" ? UTTERANCE_GAP_MS : 4_000);
+    if (role === "student") {
+      studentSpeaking();
+      cur.turnStart = Date.now();
+    }
+  };
+
+  /** O professor pediu ferramentas: o servidor executa; o resultado volta para ele continuar falando. */
+  const geminiTools = async (calls) => {
+    const cur = r.current;
+    const id = cur.voiceCallId;
+    setState("thinking");
+    const responses = [];
+    for (const c of calls) {
+      if (!c?.name) continue;
+      const t0 = Date.now();
+      const out = await voiceApi.tool(backend, id, c.name, JSON.stringify(c.args ?? {})).catch((e) => ({ output: { error: e.message } }));
+      const m = metrics();
+      m.tools++;
+      m.toolSum += Date.now() - t0;
+      const output = out.output ?? out;
+      if (output?.avatar) cb.current.onAvatar?.(output.avatar);
+      responses.push({ id: c.id, name: c.name, response: { output } });
+    }
+    if (r.current !== cur) return;
+    cur.gem?.respondTools(responses);
+    if (calls.every((c) => c.name === "wait_for_user")) setState("listening");
+  };
+
   // ------------------------------------------------------------ renovação, fim com folga
   const renew = async () => {
     const id = r.current.voiceCallId;
@@ -396,6 +455,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
           const m = r.current.metrics;
           if (m) m.disconnect_reason = res.reason ?? "stop";
           if (r.current.provider === "live") send({ type: "session.close" });
+          if (r.current.provider === "gemini") r.current.gem?.close();
           await voiceApi.end(backend, id, ["quota", "session_limit"].includes(res.reason) ? res.reason : "student", m ? metricsOut(m) : null).catch(() => {});
           teardown();
           setState("ended");
@@ -522,14 +582,16 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
   const startError = (e) => ({ kind: e.code === "busy" ? "busy" : e.status === 429 ? "quota" : "server", message: e.message });
 
   /** Realtime: a reserva vem primeiro (segredo temporário); depois microfone e WebRTC direto com a OpenAI. */
-  const startRealtime = async (force) => {
-    let data;
-    try {
-      data = await voiceApi.start(backend, sessionId, force);
-    } catch (e) {
-      setState("error");
-      setError(startError(e));
-      return;
+  const startRealtime = async (force, given = null, avoid = null) => {
+    let data = given;
+    if (!data) {
+      try {
+        data = await voiceApi.start(backend, sessionId, force, null, avoid);
+      } catch (e) {
+        setState("error");
+        setError(startError(e));
+        return;
+      }
     }
     r.current.voiceCallId = data.voice_call_id;
     r.current.provider = "realtime";
@@ -562,7 +624,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
   };
 
   /** GPT-Live: microfone e oferta primeiro; o servidor troca a oferta (ou, sem GPT-Live, devolve o segredo do Realtime). */
-  const startLiveFirst = async (force) => {
+  const startLiveFirst = async (force, avoid = null) => {
     let stream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
@@ -589,7 +651,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
     }
     let data;
     try {
-      data = await voiceApi.start(backend, sessionId, force, pc.localDescription?.sdp ?? offer.sdp);
+      data = await voiceApi.start(backend, sessionId, force, pc.localDescription?.sdp ?? offer.sdp, avoid);
     } catch (e) {
       teardown();
       setState("error");
@@ -619,6 +681,115 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
     }
   };
 
+  /**
+   * Gemini: microfone, depois a reserva (o servidor devolve a chave temporária ou, se o Google recusar, o segredo do Realtime);
+   * se a conexão não abrir neste aparelho, encerra a reserva e pede outra voz ao servidor (avoid = gemini).
+   */
+  const startGemini = async (force) => {
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } });
+      metrics().mic_permission = "granted";
+    } catch (e) {
+      metrics().mic_permission = "denied";
+      teardown();
+      setState("error");
+      setError({ kind: e?.name === "NotFoundError" ? "no_mic" : "mic" });
+      return;
+    }
+    let data;
+    try {
+      data = await voiceApi.start(backend, sessionId, force);
+    } catch (e) {
+      stream.getTracks().forEach((t) => t.stop());
+      teardown();
+      setState("error");
+      setError(startError(e));
+      return;
+    }
+    if (data.provider !== "gemini") {
+      // o servidor caiu para a OpenAI (Realtime): segue o caminho de sempre com este microfone
+      stream.getTracks().forEach((t) => t.stop());
+      await startRealtime(force, data);
+      return;
+    }
+    const cur = r.current;
+    Object.assign(cur, { voiceCallId: data.voice_call_id, provider: "gemini", stream, track: stream.getAudioTracks?.()[0] ?? null });
+    metrics().provider = "gemini";
+    setProvider("gemini");
+    setStreams({ input: stream, output: null });
+    const giveUp = async (reason) => {
+      // não abriu neste aparelho: libera a reserva sem cobrar e pede outra voz
+      if (r.current !== cur || cur.geminiFallback) return;
+      cur.geminiFallback = true;
+      geminiFailedAt = Date.now();
+      metrics().last_error = String(reason ?? "gemini").slice(0, 40);
+      await voiceApi.end(backend, data.voice_call_id, "error").catch(() => {});
+      teardown(true);
+      if (live) await startLiveFirst(true, ["gemini"]);
+      else await startRealtime(true, null, ["gemini"]);
+    };
+    cur.connectTimer = setTimeout(() => giveUp("timeout"), CONNECT_TIMEOUT_MS);
+    try {
+      const gem = await openGeminiLive({
+        token: data.gemini_token,
+        model: data.model,
+        stream,
+        volume: cur.volume ?? 1,
+        handlers: {
+          onReady: () => {
+            if (r.current !== cur) return;
+            clearTimeout(cur.connectTimer);
+            cur.openedAt = Date.now();
+            metrics().connect_ms ??= Date.now() - metrics().t0;
+            setState("listening");
+            setRemaining(data.entitlement?.voice?.remaining_s ?? null);
+            cur.renewTimer = setTimeout(renew, 5_000);
+            // o professor abre a conversa, curto e do jeito dele
+            cur.gem?.sendText("O aluno acabou de abrir a conversa por voz. Abra do seu jeito, numa frase curta.");
+          },
+          onAudio: () => {
+            if (stateRef.current !== "speaking" && stateRef.current !== "paused") speakingStarted();
+          },
+          onIdle: () => speakingStopped(),
+          onInterrupted: () => {
+            metrics().interruptions++;
+            setState((s) => (s === "paused" ? s : "listening"));
+          },
+          onTranscript: (role, text, finished) => geminiDelta(role, text, finished),
+          onTurnComplete: () => {
+            if (r.current.utter?.role === "tutor") finalizeUtterance();
+          },
+          onToolCalls: (calls) => geminiTools(calls),
+          onReconnect: (why) => {
+            // a troca de conexão de rotina do Google não é queda
+            if (why !== "goaway") metrics().reconnects++;
+          },
+          onError: (e) => {
+            metrics().last_error = String(e?.message ?? "erro").slice(0, 40);
+          },
+          onClose: ({ beforeReady, reason }) => {
+            if (r.current !== cur || cur.stopping) return;
+            if (beforeReady) giveUp(reason);
+            else {
+              // caiu no meio da conversa e não deu para retomar: abre de novo (até duas vezes), como na voz da OpenAI
+              metrics().last_error = String(reason ?? "closed").slice(0, 40);
+              reconnect();
+            }
+          },
+        },
+      });
+      if (r.current !== cur || cur.geminiFallback) {
+        gem.close(); // o aluno saiu (ou a voz já trocou para a OpenAI) enquanto esta abria
+        return;
+      }
+      cur.gem = gem;
+      setStreams({ input: stream, output: gem.outputStream });
+    } catch (e) {
+      await giveUp(e?.message ?? "connect");
+    }
+  };
+
   /** Abre a conversa por voz. force = assumir aqui uma voz aberta em outro aparelho. */
   const start = React.useCallback(
     async (force = false, opts = {}) => {
@@ -634,11 +805,13 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
       setMutedState(false);
       setCaptions({ tutor: "", student: "" });
       setState(opts.reconnect ? "reconnecting" : "connecting");
-      if (live) await startLiveFirst(force);
-      else await startRealtime(force);
+      const skipGemini = hint === "gemini" && Date.now() - geminiFailedAt < GEMINI_RETRY_MS;
+      if (hint === "gemini" && !skipGemini) await startGemini(force);
+      else if (live) await startLiveFirst(force, skipGemini ? ["gemini"] : null);
+      else await startRealtime(force, null, skipGemini ? ["gemini"] : null);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [backend, sessionId, live]
+    [backend, sessionId, live, hint]
   );
 
   /** A ligação caiu: tenta abrir de novo (até duas vezes), mantendo a conversa. */
@@ -672,6 +845,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
         setTimeout(resolve, 2_500);
       });
     }
+    if (cur.provider === "gemini") cur.gem?.close();
     const m = cur.metrics;
     if (m && !m.disconnect_reason) m.disconnect_reason = "student";
     teardown();
@@ -682,6 +856,12 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
 
   /** O aluno corta o professor (a voz também corta sozinha quando o aluno começa a falar). */
   const interrupt = React.useCallback(() => {
+    if (r.current.provider === "gemini") {
+      r.current.gem?.interrupt();
+      metrics().interruptions++;
+      setState("listening");
+      return;
+    }
     if (r.current.provider === "live") {
       // GPT-Live é full-duplex: falar por cima basta; aqui só se registra
       metrics().interruptions++;
@@ -701,6 +881,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
     cur.muted = on;
     cur.stream?.getAudioTracks?.().forEach((t) => (t.enabled = !on));
     if (cur.provider === "live") send({ type: on ? "session.input_audio.mute" : "session.input_audio.unmute", event_id: eid(on ? "mudo" : "som") });
+    if (cur.provider === "gemini") cur.gem?.mute(on);
     const m = metrics();
     if (on) m.mutedAt = Date.now();
     else if (m.mutedAt) {
@@ -713,7 +894,10 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
 
   const pause = React.useCallback(() => {
     r.current.stream?.getAudioTracks?.().forEach((t) => (t.enabled = false));
-    if (r.current.provider !== "live") {
+    if (r.current.provider === "gemini") {
+      r.current.gem?.mute(true);
+      r.current.gem?.interrupt();
+    } else if (r.current.provider !== "live") {
       send({ type: "response.cancel" });
       send({ type: "output_audio_buffer.clear" });
     } else send({ type: "session.input_audio.mute", event_id: eid("pausa") });
@@ -723,6 +907,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
   const resume = React.useCallback(() => {
     r.current.stream?.getAudioTracks?.().forEach((t) => (t.enabled = !r.current.muted));
     if (r.current.provider === "live") send({ type: "session.input_audio.unmute", event_id: eid("volta") });
+    if (r.current.provider === "gemini") r.current.gem?.mute(Boolean(r.current.muted));
     setState("listening");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -732,7 +917,11 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
     const clean = String(text ?? "").trim().slice(0, 2000);
     if (!clean || !r.current.voiceCallId) return false;
     metrics().texts++;
-    if (r.current.provider === "live") {
+    if (r.current.provider === "gemini") {
+      finalizeUtterance();
+      pushTranscript("student", clean);
+      r.current.gem?.sendText(clean);
+    } else if (r.current.provider === "live") {
       finalizeUtterance();
       pushTranscript("student", clean);
       send({ type: "session.instructions.append", event_id: eid("chat"), delegation_id: null, content: `O aluno escreveu no chat (trate como se tivesse falado): «${clean}». Responda agora; se depender do sistema, delegue.` });
@@ -751,6 +940,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
       const id = r.current.voiceCallId;
       const m = r.current.metrics;
       if (r.current.provider === "live") send({ type: "session.close" });
+      if (r.current.provider === "gemini") r.current.gem?.close();
       teardown();
       if (id) voiceApi.end(backend, id, "student", m ? metricsOut(m) : null).catch(() => {});
     },
@@ -763,6 +953,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, onTranscrip
     const vol = Math.max(0, Math.min(1, Number(v)));
     r.current.volume = vol;
     if (r.current.audio) r.current.audio.volume = vol;
+    r.current.gem?.setVolume(vol);
   }, []);
 
   return {

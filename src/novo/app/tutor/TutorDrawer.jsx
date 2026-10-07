@@ -42,7 +42,7 @@ function TutorDrawer({ request, onClose }) {
   const { backend } = useSession();
   const [status, setStatus] = React.useState(null);
   const [session, setSession] = React.useState(null);
-  const [server, setServer] = React.useState({ realtime: false, neural: false, live: false });
+  const [server, setServer] = React.useState({ realtime: false, neural: false, live: false, hint: null });
   const [error, setError] = React.useState(null);
 
   React.useEffect(() => {
@@ -58,7 +58,7 @@ function TutorDrawer({ request, onClose }) {
         });
         if (alive) setSession(s);
         if (tutorAvailable(backend)) {
-          tutorServerStatus(backend).then((x) => alive && setServer({ realtime: Boolean(x?.realtime_voice), neural: Boolean(x?.neural_voice), live: Boolean(x?.live_voice) }), () => {});
+          tutorServerStatus(backend).then((x) => alive && setServer({ realtime: Boolean(x?.realtime_voice), neural: Boolean(x?.neural_voice), live: Boolean(x?.live_voice), hint: x?.voice_hint ?? null }), () => {});
         }
       } catch (e) {
         if (alive) setError(messageOf(e));
@@ -95,6 +95,7 @@ function TutorDrawer({ request, onClose }) {
         neural={server.neural}
         realtime={server.realtime}
         live={server.live}
+        voiceHint={server.hint}
         onUsage={(used) => setStatus((s) => ({ ...s, used_today: used }))}
         mobile
         compact

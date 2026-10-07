@@ -10,6 +10,8 @@
  *   gpt-realtime-2.1-mini  áudio 10 / 20 / 0,30 em cache · texto 0,60 / 2,40
  *   gpt-live-1             US$ 0,05 por minuto de voz, cobrado por segundo (página do modelo, 2026-10); o servidor que
  *                          responde às delegações é cobrado à parte (tutor_voice_backend, pelos tokens do modelo de texto)
+ *   gemini-3.8-live        áudio US$ 0,005/min de entrada + 0,018/min de saída (página de preços do Gemini, 2026-10); a
+ *                          estimativa usa a soma (teto: como se o professor falasse o tempo todo), então a conta real é menor
  */
 export interface ModelPrice {
   text_in?: number;
@@ -25,6 +27,7 @@ const DEFAULTS: Record<string, ModelPrice> = {
   "gpt-realtime-2.1": { text_in: 4, text_out: 24, audio_in: 32, audio_out: 64, cached_in: 0.4 },
   "gpt-realtime-2.1-mini": { text_in: 0.6, text_out: 2.4, audio_in: 10, audio_out: 20, cached_in: 0.3 },
   "gpt-live-1": { per_minute: 0.05 },
+  "gemini-3.8-live": { per_minute: 0.023 },
 };
 
 export function costConfig(env: NodeJS.ProcessEnv = process.env): Record<string, ModelPrice> {

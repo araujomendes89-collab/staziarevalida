@@ -304,20 +304,24 @@ export function AdminSettings() {
 
 // ---------------------------------------------------------------- Stazia Tutor
 const VOICE_PROVIDERS = [
-  { value: "auto", label: "Automático: GPT-Live quando configurado, senão Realtime" },
+  { value: "auto", label: "Automático: Gemini quando configurado, senão GPT-Live, senão Realtime" },
+  { value: "gemini", label: "Gemini (português do Brasil nativo)" },
   { value: "live", label: "GPT-Live (OpenAI)" },
   { value: "realtime", label: "OpenAI Realtime" },
 ];
 const VOICE_NAMES = [
   { value: "", label: "A voz de cada professor (padrão)" },
-  { value: "marin", label: "Marin" },
-  { value: "cedar", label: "Cedar" },
+  { value: "kore", label: "Kore (Gemini, feminina firme)" },
+  { value: "sulafat", label: "Sulafat (Gemini, calorosa)" },
+  { value: "orus", label: "Orus (Gemini, masculina firme)" },
+  { value: "marin", label: "Marin (OpenAI)" },
+  { value: "cedar", label: "Cedar (OpenAI)" },
   { value: "__outra", label: "Outra (digite o nome)" },
 ];
 const DURONA_LEVELS = [
   { value: "moderada", label: "Moderada" },
-  { value: "forte", label: "Forte (padrão)" },
-  { value: "sem_filtro", label: "Sem filtro cosmético (ataque pessoal continua proibido)" },
+  { value: "forte", label: "Forte" },
+  { value: "sem_filtro", label: "Sem filtro (padrão; ataque pessoal continua proibido)" },
 ];
 const ENDED_LABEL = { student: "pelo aluno", timeout: "sem sinal", quota: "cota", replaced: "outro aparelho", error: "erro", session_closed: "sessão encerrada", session_limit: "limite da conversa", ativa: "ativas" };
 /** "INEP = inépi" (uma por linha) ↔ [{ term, say }] */
@@ -457,15 +461,16 @@ export function AdminTutor() {
           </div>
           <div className="sm-overline" style={{ marginTop: 8 }}>Voz e personalidade</div>
           {server && (
-            <Banner tone={server.live_model && !server.live_pending ? "success" : "info"}>
-              {server.live_model && !server.live_pending
-                ? `GPT-Live pronto no servidor (${server.live_model}).`
-                : `GPT-Live: ${server.live_pending ?? "não configurado"}`}{" "}
+            <Banner tone={(server.gemini_voice_model && !server.gemini_voice_pending) || (server.live_model && !server.live_pending) ? "success" : "info"}>
+              {server.gemini_voice_model && !server.gemini_voice_pending
+                ? `Gemini pronto no servidor (${server.gemini_voice_model}), com sotaque de brasileiro nativo.`
+                : `Gemini: ${server.gemini_voice_pending ?? "não configurado"}`}{" "}
+              {server.live_model && !server.live_pending ? `GPT-Live: ${server.live_model}.` : `GPT-Live: ${server.live_pending ?? "não configurado"}`}{" "}
               {server.realtime_model && !server.realtime_pending ? `Realtime de reserva: ${server.realtime_model}.` : ""}
             </Banner>
           )}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
-            <SelectField label="Provedor da voz" value={form.voice_provider} onChange={(e) => set({ voice_provider: e.target.value })} options={VOICE_PROVIDERS} hint="Sem acesso ao GPT-Live, o servidor usa o Realtime sozinho." />
+            <SelectField label="Provedor da voz" value={form.voice_provider} onChange={(e) => set({ voice_provider: e.target.value })} options={VOICE_PROVIDERS} hint="Se o escolhido recusar, o servidor usa o próximo sozinho. Cada professor tem uma voz do Gemini e uma da OpenAI." />
             <SelectField label="Voz" value={form.voice_choice} onChange={(e) => set({ voice_choice: e.target.value })} options={VOICE_NAMES} hint="Trocar a voz vale a partir da próxima ligação. Avalie com ouvido humano em português antes de fixar." />
             {form.voice_choice === "__outra" && <TextField label="Nome da voz" value={form.voice_other} maxLength={30} onChange={(e) => set({ voice_other: e.target.value })} hint="Só letras minúsculas, como aparece na OpenAI." />}
             <TextField label="Limite de cada conversa por voz (minutos)" value={form.voice_session_max_min} inputMode="numeric" maxLength={3} onChange={(e) => set({ voice_session_max_min: e.target.value })} hint="O professor termina a frase e a ligação encerra." />
@@ -498,7 +503,7 @@ export function AdminTutor() {
               {data.voice_30d.first_audio_ms != null ? ` · primeira fala ${data.voice_30d.first_audio_ms} ms` : ""}
               {data.voice_30d.turn_ms != null ? ` · resposta ${data.voice_30d.turn_ms} ms` : ""}
               {` · ${data.voice_30d.reconnects} reconexão(ões)`}
-              {Object.keys(data.voice_30d.by_provider ?? {}).length ? ` · ${Object.entries(data.voice_30d.by_provider).map(([k, v]) => `${k === "live" ? "GPT-Live" : "Realtime"} ${v}`).join(", ")}` : ""}
+              {Object.keys(data.voice_30d.by_provider ?? {}).length ? ` · ${Object.entries(data.voice_30d.by_provider).map(([k, v]) => `${k === "live" ? "GPT-Live" : k === "gemini" ? "Gemini" : "Realtime"} ${v}`).join(", ")}` : ""}
               {Object.keys(data.voice_30d.ended_by ?? {}).length ? ` · fim: ${Object.entries(data.voice_30d.ended_by).map(([k, v]) => `${ENDED_LABEL[k] ?? k} ${v}`).join(", ")}` : ""}
             </p>
           )}

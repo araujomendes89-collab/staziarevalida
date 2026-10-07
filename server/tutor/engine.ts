@@ -33,6 +33,9 @@ export interface TutorDeps {
   realtime?: import("./realtime").RealtimeConfig;
   /** GPT-Live: nos testes, configuração simulada; fora deles, .env (voiceProviders.ts). */
   live?: import("./voiceProviders").LiveConfig;
+  /** Voz nativa do Gemini: nos testes, configuração e cliente simulados; fora deles, .env e o Google (voiceProviders.ts). */
+  gemini?: import("./voiceProviders").GeminiVoiceConfig;
+  geminiClient?: import("./voiceProviders").GeminiTokenRequest["client"];
   fetch?: typeof fetch;
 }
 
