@@ -1738,6 +1738,26 @@ describe("Central", () => {
     expect(await aiAvailable(centralDeps({ db: broken }))).toBe(false);
   });
 
+  it("aiAvailable: com os tetos ligados e o gasto do mês já no teto mensal, não destrava a fila", async () => {
+    const { aiAvailable } = await import("../../server/contentHub/worker");
+    await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "anthropic", p_enabled: true });
+    await dev.db.query(`insert into public.ai_calls (function_key, mode, role, provider, model, cost_usd, outcome) values ('criacao', 'sozinha', 'principal', 'anthropic', 'm', 5, 'ok')`);
+    const settings = (s: object) => db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: s });
+    // tetos desligados: o gasto do mês não importa
+    await settings({ caps_enabled: false, monthly_cap_usd: 5, per_run_cap_usd: 1 });
+    expect(await aiAvailable(centralDeps())).toBe(true);
+    // ligados e o gasto (5) já no teto mensal (5): não destrava (senão cada rodada reenfileira e bloqueia de novo)
+    await settings({ caps_enabled: true });
+    expect(await aiAvailable(centralDeps())).toBe(false);
+    // a simulação não gasta: continua destravando
+    expect(await aiAvailable(centralDeps({ ai: { provider: { ...aiMaker(A), isMock: true }, status: noAi.status } }))).toBe(true);
+    // teto mensal acima do gasto, ou sem teto mensal preenchido: destrava
+    await settings({ monthly_cap_usd: 5.01 });
+    expect(await aiAvailable(centralDeps())).toBe(true);
+    await settings({ monthly_cap_usd: null });
+    expect(await aiAvailable(centralDeps())).toBe(true);
+  });
+
   it("/status mostra ai_central e troca a pendência da IA", async () => {
     const { createContentHubRouter } = await import("../../server/contentHub/router");
     const token = await dev.createSession(ADMIN);

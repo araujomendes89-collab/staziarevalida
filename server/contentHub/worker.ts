@@ -26,13 +26,21 @@ export interface ContentHubWorker {
 
 /**
  * Há IA para destravar a fila? A simulação (só desenvolvimento) ou alguma IA ligada na Central de IAs.
- * Uma chave nas variáveis de ambiente não autoriza nada sozinha. Erro ao ler o banco = não.
+ * Uma chave nas variáveis de ambiente não autoriza nada sozinha. Com os tetos ligados e o gasto do mês já no teto mensal
+ * a fila não é destravada (senão cada rodada reenfileira os parados e eles bloqueiam de novo no teto, gravando linhas de
+ * teto): volta quando o mês virar ou o teto subir. Erro ao ler o banco = não.
  */
 export async function aiAvailable(deps: PipelineDeps): Promise<boolean> {
   if (deps.ai.provider?.isMock === true) return true;
   try {
-    const cfg = await deps.db.service<{ providers?: { enabled?: boolean }[] } | null>("ch_worker_ai_config");
-    return Boolean(cfg?.providers?.some((p) => p.enabled));
+    const cfg = await deps.db.service<{ providers?: { enabled?: boolean }[]; settings?: { caps_enabled?: boolean; monthly_cap_usd?: number | string | null } } | null>("ch_worker_ai_config");
+    if (!cfg?.providers?.some((p) => p.enabled)) return false;
+    const cap = cfg.settings?.caps_enabled === true && cfg.settings.monthly_cap_usd != null ? Number(cfg.settings.monthly_cap_usd) : NaN;
+    if (Number.isFinite(cap)) {
+      const spent = Number(await deps.db.service<unknown>("ch_worker_ai_month_spend", { p_now: new Date().toISOString() })) || 0;
+      if (spent >= cap) return false;
+    }
+    return true;
   } catch {
     return false;
   }
