@@ -7,7 +7,10 @@
  * salva. O que o material não esclarece vem em "missing" (a IA não completa com conhecimento próprio) e número com unidade
  * (dose, corte, prazo) fora dos trechos citados vira aviso para conferir.
  */
-import { AiInvalidOutput, resolveProviderKind, type StructuredRequest } from "../contentHub/ai/provider";
+import { AiInvalidOutput, resolveProviderKind, type AiProvider, type StructuredRequest } from "../contentHub/ai/provider";
+import type { ContentDb } from "../contentHub/infra";
+import type { ModelRef } from "../ai/config";
+import { maestroProvider } from "../ai/maestro";
 import type { Schema } from "../contentHub/ai/schema";
 import { chunkPages, type ExtractedPage } from "../podcasts/extract";
 import { selectChunks, ungroundedNumbers, type SourceChunk } from "../podcasts/script";
@@ -15,7 +18,7 @@ import { selectChunks, ungroundedNumbers, type SourceChunk } from "../podcasts/s
 export const LESSON_ASSIST_VERSION = "1.0.0";
 export const AREA_CODES = ["CLINICA_MEDICA", "CIRURGIA_GERAL", "GINECOLOGIA_OBSTETRICIA", "PEDIATRIA", "MEDICINA_FAMILIA_COMUNIDADE"];
 export const MAX_ASSIST_CHARS = 400_000;
-export type AssistProvider = "gemini" | "anthropic" | "openai" | "mock";
+export type AssistProvider = "gemini" | "anthropic" | "openai" | "ollama" | "mock";
 
 export const ASSIST_SCHEMA: Schema = {
   type: "object",
@@ -65,6 +68,11 @@ export interface AssistInput {
   area?: string | null;
   instructions?: string | null;
   mockRespond?: (req: StructuredRequest) => unknown;
+  /** O maestro (Central de IAs) decide a IA; db e quem pediu ficam no registro das chamadas. */
+  db: ContentDb;
+  actorId?: string | null;
+  /** Só para testes: cria o provedor de uma ref (as regras de ligado/lista/preço continuam valendo). */
+  aiMaker?: (ref: ModelRef) => AiProvider | null;
 }
 
 interface RawAssist {
@@ -121,17 +129,19 @@ export function mockAssistFromInput(input: string): RawAssist {
   };
 }
 
-export function assistProvider(kind: AssistProvider, mockRespond?: (req: StructuredRequest) => unknown) {
-  if (mockRespond) return resolveProviderKind("mock", mockRespond);
-  if (kind === "mock") return resolveProviderKind("mock", (req) => mockAssistFromInput(req.input));
-  const KIND = kind.toUpperCase();
-  return resolveProviderKind(kind, undefined, process.env[`LESSON_ASSIST_${KIND}_MODEL`] || process.env[`PODCAST_${KIND}_MODEL`] || undefined);
+/** IA das Aulas: sempre pelo maestro (função "criacao"). A escolha da tela só vale com o seletor por aba ligado ou sem função salva. */
+async function assistProvider(o: AssistInput) {
+  const mock = o.mockRespond ? resolveProviderKind("mock", o.mockRespond).provider : o.kind === "mock" ? resolveProviderKind("mock", (req) => mockAssistFromInput(req.input)).provider : null;
+  const KIND = o.kind.toUpperCase();
+  const model = o.kind === "mock" ? "" : (process.env[`LESSON_ASSIST_${KIND}_MODEL`] ?? "").trim();
+  const override = o.kind === "mock" ? {} : { uiKind: o.kind, ...(model ? { ref: { provider: o.kind, model } } : {}) };
+  return maestroProvider({ db: o.db, mockProvider: mock, makeProviderFor: o.aiMaker }, "criacao", { source: "aula", actorId: o.actorId ?? null }, override);
 }
 
 const pagesOf = (ids: number[], byId: Map<number, SourceChunk>) => [...new Set(ids.map((i) => byId.get(i)?.page).filter((p): p is number => typeof p === "number"))].sort((a, b) => a - b);
 
 export async function generateLessonAssist(o: AssistInput): Promise<AssistResult> {
-  const { provider, status } = assistProvider(o.kind, o.mockRespond);
+  const { provider, status } = await assistProvider(o);
   if (!provider) throw Object.assign(new Error(`IA indisponível: ${status.pending}`), { status: 503 });
   const all: SourceChunk[] = chunkPages(o.pages).map((c, i) => ({ id: i + 1, source: "Material", doc: 1, page: c.page, text: c.text }));
   if (!all.length) throw Object.assign(new Error("O material não tem texto aproveitável (PDF escaneado?). Cole o texto."), { status: 422 });

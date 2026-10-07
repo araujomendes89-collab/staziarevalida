@@ -260,10 +260,15 @@ function ScriptEditor({ podcast, warnings, onSaved, locked }) {
 
 function ScriptStep({ podcast, providers, onChanged }) {
   const { backend } = useSession();
-  const ready = (providers?.script ?? []).filter((p) => p.ready);
-  const [provider, setProvider] = React.useState("");
+  const choices = providers?.script?.choices ?? [];
+  const fixed = providers?.script && providers.script.override_allowed === false && providers.script.current ? providers.script.current : null; // a Central de IAs decide
+  const ready = choices.filter((p) => p.ready);
+  const [picked, setProvider] = React.useState("");
+  const provider = fixed ? fixed.kind : picked;
+  const fixedChoice = fixed ? choices.find((p) => p.kind === fixed.kind) : null;
+  const canPick = fixed ? Boolean(fixedChoice?.ready) : ready.some((p) => p.kind === provider);
   React.useEffect(() => {
-    if (!ready.some((p) => p.kind === provider)) setProvider((ready.find((p) => p.kind === "gemini") ?? ready.find((p) => p.kind !== "mock") ?? ready[0])?.kind ?? "");
+    if (!ready.some((p) => p.kind === picked)) setProvider((ready.find((p) => p.kind === "gemini") ?? ready.find((p) => p.kind !== "mock") ?? ready[0])?.kind ?? "");
   }, [providers]); // eslint-disable-line react-hooks/exhaustive-deps
   const [notes, setNotes] = React.useState("");
   const [warnings, setWarnings] = React.useState(podcast.script_meta?.warnings ?? null);
@@ -306,7 +311,7 @@ function ScriptStep({ podcast, providers, onChanged }) {
     }
   };
   const options = ready.length ? ready.map((p) => ({ value: p.kind, label: `${p.label}${p.model && p.kind !== "mock" ? ` (${p.model})` : ""}` })) : [{ value: "", label: providers ? "Nenhuma IA pronta no servidor" : "Carregando…" }];
-  const unavailable = (providers?.script ?? []).filter((p) => !p.ready && p.kind !== "mock");
+  const unavailable = choices.filter((p) => !p.ready && p.kind !== "mock");
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -314,12 +319,12 @@ function ScriptStep({ podcast, providers, onChanged }) {
       {!locked && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
-            <SelectField label="IA do roteiro" value={provider} onChange={(e) => setProvider(e.target.value)} options={options} />
+            {fixed ? <Muted>IA definida na Central de IAs: {fixed.label} {fixed.model}</Muted> : <SelectField label="IA do roteiro" value={provider} onChange={(e) => setProvider(e.target.value)} options={options} />}
           </div>
-          {unavailable.length > 0 && <Muted>{api.pendingText(unavailable)}</Muted>}
+          {fixed ? fixedChoice && !fixedChoice.ready && <Muted>{fixedChoice.pending}</Muted> : unavailable.length > 0 && <Muted>{api.pendingText(unavailable)}</Muted>}
           <TextArea label="Pedido para a IA (opcional)" value={notes} rows={2} maxLength={1000} onChange={setNotes} placeholder="Ex.: dê ênfase à conduta na emergência e às pegadinhas de prova." />
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <Button icon="sparkles" loading={state.busy === "generate"} disabled={!podcast.chunks_total || !ready.some((p) => p.kind === provider)} onClick={generate}>
+            <Button icon="sparkles" loading={state.busy === "generate"} disabled={!podcast.chunks_total || !canPick} onClick={generate}>
               {hasScript ? "Gerar outro roteiro" : "Gerar roteiro"}
             </Button>
             {!podcast.chunks_total && <Muted>Adicione fontes primeiro.</Muted>}

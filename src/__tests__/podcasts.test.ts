@@ -236,7 +236,8 @@ describe("Episódio, fontes e permissões", () => {
     expect(view).toMatchObject({ status: "draft", target_minutes: 5, language: "pt-BR", format: "two_hosts", sources: [], chunks_total: 0, lesson: { id: lessonId } });
     expect((await call(`${base}/providers`, student)).status).toBe(403);
     const providers = (await call(`${base}/providers`, editor)).body;
-    expect(providers.script.map((p: any) => p.kind)).toEqual(["gemini", "anthropic", "openai", "mock"]);
+    expect(providers.script.choices.map((p: any) => p.kind)).toEqual(["gemini", "anthropic", "openai", "ollama", "mock"]);
+    expect(providers.script).toMatchObject({ override_allowed: true, configured: false, current: null });
     expect(providers.tts.find((p: any) => p.kind === "mock")).toMatchObject({ ready: true });
   });
 
@@ -307,6 +308,32 @@ describe("Roteiro com revisão humana", () => {
     expect(early.body.error).toMatch(/Aprove o roteiro/);
     await expect(rpc(STUDENT, "app_admin_podcast_approve", { p_id: podcastId, p_note: "conferi tudo nas páginas" })).rejects.toThrow();
     await expect(rpc(EDITOR, "app_admin_podcast_approve", { p_id: podcastId, p_note: "ok" })).rejects.toThrow(/pelo menos 10/);
+  });
+
+  it("Podcasts: roteiro registra em ai_calls e guarda o provedor e o modelo de quem respondeu", async () => {
+    await dev.db.query("delete from public.ai_calls");
+    await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "anthropic", p_enabled: true });
+    const off = await listen({ db, storage: files, lessons: lessonFiles, aiMaker: () => null });
+    const { invalidateAiConfig } = await import("../../server/ai/config");
+    invalidateAiConfig(db);
+    const refused = await post(`${off}/${podcastId}/script`, editor, { provider: "gemini" });
+    expect(refused.status).toBe(503);
+    expect(refused.body.error).toContain("Gemini está desligada na Central de IAs");
+    invalidateAiConfig(db);
+    const url = await listen({
+      db,
+      storage: files,
+      lessons: lessonFiles,
+      aiMaker: (ref) => ({ name: ref.provider, model: ref.model, isMock: false, async generate(req: any) { return { output: mockScript(req), provider: ref.provider, model: ref.model, inputTokens: 7, outputTokens: 9, latencyMs: 1, costUsd: null } as any; } }) as any,
+    });
+    const r = await post(`${url}/${podcastId}/script`, editor, { provider: "anthropic" });
+    expect(r.status).toBe(200);
+    expect(r.body.podcast.script_meta).toMatchObject({ provider: "anthropic", simulated: false, calls: 2, input_tokens: 14, output_tokens: 18 });
+    expect(r.body.podcast.script_meta.model).toBeTruthy();
+    const rows = (await dev.db.query<any>(`select provider, model, source, item_id, actor_id from public.ai_calls order by id`)).rows;
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows[0]).toMatchObject({ provider: "anthropic", source: "podcast", item_id: podcastId, actor_id: EDITOR });
+    expect(rows[0].model).toBe(r.body.podcast.script_meta.model);
   });
 
   it("a equipe corrige a dose e tira a fala ruim; editar tira os avisos antigos e a conferência roda de novo", async () => {

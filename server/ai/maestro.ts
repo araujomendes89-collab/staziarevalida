@@ -140,7 +140,11 @@ function envReserve(primary: ModelRef | null, env: NodeJS.ProcessEnv): ModelRef 
 function resolveRefs(cfg: AiConfig, fn: AiFunctionKey, env: NodeJS.ProcessEnv, override?: MaestroOverride): Resolved {
   const fc = cfg.functions[fn] ?? null;
   if (fc) {
-    const primary = cfg.settings.tab_override_enabled && override?.ref ? override.ref : fc.primary;
+    let primary = fc.primary;
+    if (cfg.settings.tab_override_enabled) {
+      if (override?.ref) primary = override.ref;
+      else if (override?.uiKind && fc.primary?.provider !== override.uiKind) primary = envFallbackRef(fn, env, override.uiKind);
+    }
     return { fc, mode: fc.mode, primary, fallback: fc.fallback, reviewers: fc.reviewers };
   }
   const primary = override?.ref ?? envFallbackRef(fn, env, override?.uiKind);
@@ -579,4 +583,48 @@ export async function maestroRoleProvider(deps: MaestroDeps, roleIndex: 0 | 1 | 
   }
   if (fallback && familyOfModel(fallback.model) === familyOfModel(creatorModel)) fallback = null;
   return buildAdapter(deps, cfg, origin, { fn: "verificacao", mode: fc?.mode ?? "sozinha", fc: null, primary: ref, fallback, roles: { first: "conferente", reserve: "reserva" } });
+}
+
+// ------------------------------------------------------------------ escolha de IA nas telas (Aulas, Podcasts)
+
+export interface AiChoice {
+  kind: AiProviderId | "mock";
+  label: string;
+  ready: boolean;
+  model: string | null;
+  pending: string | null;
+}
+
+export interface AiChoices {
+  choices: AiChoice[];
+  /** O seletor da tela vale: seletor por aba ligado, ou função "criacao" sem configuração salva. */
+  override_allowed: boolean;
+  /** A função "criacao" tem configuração salva na Central de IAs. */
+  configured: boolean;
+  /** A IA principal da "criacao" salva (o que a tela mostra quando o seletor está desligado). */
+  current: { kind: AiProviderId; label: string; model: string } | null;
+}
+
+const CHOICE_LABELS: Record<AiProviderId, string> = { gemini: "Gemini", anthropic: "Claude", openai: "OpenAI", ollama: "Ollama" };
+const CHOICE_ORDER: AiProviderId[] = ["gemini", "anthropic", "openai", "ollama"];
+
+/** As IAs que as telas podem oferecer, com o motivo quando uma não está pronta. Sem rede. */
+export async function aiChoices(db: ContentDb, env: NodeJS.ProcessEnv = process.env): Promise<AiChoices> {
+  const cfg = await loadAiConfig(db);
+  const fc = cfg.functions.criacao ?? null;
+  const choices: AiChoice[] = CHOICE_ORDER.map((id) => {
+    const label = CHOICE_LABELS[id];
+    const ref = fc?.primary?.provider === id ? fc.primary : envFallbackRef("criacao", env, id);
+    if (!ref?.model) return { kind: id, label, ready: false, model: null, pending: `Sem modelo definido para ${label}: escolha na Central de IAs.` };
+    const pending = refProblems(ref, cfg)[0] ?? providerPending(ref, cfg, env) ?? makeProvider(ref, cfg, env).pending;
+    return { kind: id, label, ready: pending === null, model: ref.model, pending: pending ?? null };
+  });
+  if (env.NODE_ENV !== "production") choices.push({ kind: "mock", label: "Simulação (sem IA)", ready: true, model: "simulação", pending: null });
+  const primary = fc?.primary ?? null;
+  return {
+    choices,
+    override_allowed: cfg.settings.tab_override_enabled || !fc,
+    configured: !!fc,
+    current: primary ? { kind: primary.provider, label: CHOICE_LABELS[primary.provider], model: primary.model } : null,
+  };
 }

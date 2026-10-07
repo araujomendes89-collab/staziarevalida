@@ -13,9 +13,10 @@ import crypto from "crypto";
 import path from "path";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { localStorageDir, supabaseStorage, type ContentDb, type Identity, type Storage } from "../contentHub/infra";
-import type { StructuredRequest } from "../contentHub/ai/provider";
+import type { AiProvider, StructuredRequest } from "../contentHub/ai/provider";
 import { fetchLink, type ExtractedPage } from "../podcasts/extract";
-import { providerChoices } from "../podcasts/script";
+import { aiChoices } from "../ai/maestro";
+import type { ModelRef } from "../ai/config";
 import { AREA_CODES, generateLessonAssist, MAX_ASSIST_CHARS, type AssistProvider } from "./assist";
 
 export const LESSONS_BUCKET = "lessons";
@@ -41,6 +42,8 @@ export interface LessonsDeps {
   fetchImpl?: typeof fetch;
   checkHost?: (host: string) => Promise<void>;
   mockAssist?: (req: StructuredRequest) => unknown;
+  /** Só para testes: cria o provedor de uma ref pelo maestro. */
+  aiMaker?: (ref: ModelRef) => AiProvider | null;
 }
 
 /** Depósito das aulas: bucket privado "lessons" no Supabase; pasta .data/lessons no desenvolvimento. */
@@ -172,11 +175,11 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
   });
 
   // ------------------------------------------------------------------ assistente de IA da aula (equipe)
-  /** IAs prontas no servidor (Gemini, Claude, OpenAI) e o motivo das que faltam. */
+  /** IAs da Central de IAs com o motivo das que não estão prontas, e se a tela pode escolher. */
   router.get("/assist/providers", async (req: Authed, res) => {
     try {
       await asUser(req, "app_admin_lessons");
-      res.json(providerChoices());
+      res.json(await aiChoices(deps!.db));
     } catch (error: any) {
       fail(res, error?.status ?? (forbidden(error) ? 403 : 500), message(error));
     }
@@ -190,7 +193,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
     try {
       const b = (req.body ?? {}) as Record<string, any>;
       const kind = String(b.provider ?? "gemini");
-      if (!["gemini", "anthropic", "openai", "mock"].includes(kind)) throw httpError(400, "Escolha Gemini, Claude ou OpenAI.");
+      if (!["gemini", "anthropic", "openai", "ollama", "mock"].includes(kind)) throw httpError(400, "Escolha uma das IAs da lista.");
       await asUser(req, "app_admin_lessons"); // só a equipe
       const str = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) || null : null);
       let pages: ExtractedPage[];
@@ -216,6 +219,9 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       try {
         r = await generateLessonAssist({
           kind: kind as AssistProvider,
+          db: deps!.db,
+          actorId: req.user!.id,
+          aiMaker: deps!.aiMaker,
           pages,
           title: str(b.title, 200),
           topic: str(b.topic, 120),

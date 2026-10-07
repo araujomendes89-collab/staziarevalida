@@ -17,9 +17,11 @@ import crypto from "crypto";
 import path from "path";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { localStorageDir, supabaseStorage, type ContentDb, type Identity, type Storage } from "../contentHub/infra";
-import type { StructuredRequest } from "../contentHub/ai/provider";
+import type { AiProvider, StructuredRequest } from "../contentHub/ai/provider";
+import type { ModelRef } from "../ai/config";
+import { aiChoices } from "../ai/maestro";
 import { chunkPages, extractDocx, extractPdf, fetchLink, isPdf, isZip, MAX_SOURCE_BYTES, type ExtractedPage } from "./extract";
-import { checkScript, generateScript, PODCAST_PROMPT_VERSION, providerChoices, type PodcastScript, type ScriptLine, type SourceChunk } from "./script";
+import { checkScript, generateScript, PODCAST_PROMPT_VERSION, type PodcastScript, type ScriptLine, type SourceChunk } from "./script";
 import { DEFAULT_VOICES, pcmToMp3, pickVoices, SAMPLE_RATE, silence, splitParts, synthesizePart, ttsCost, ttsStatus, VOICE_OPTIONS, type PodcastVoices, type TtsKind } from "./audio";
 
 export const PODCASTS_BUCKET = "podcasts";
@@ -32,7 +34,7 @@ const FILE_TYPES: Record<string, { ext: "pdf" | "docx"; magic: (b: Buffer) => bo
   "application/pdf": { ext: "pdf", magic: isPdf },
   [DOCX]: { ext: "docx", magic: isZip },
 };
-const SCRIPT_KINDS = ["gemini", "anthropic", "openai", "mock"];
+const SCRIPT_KINDS = ["gemini", "anthropic", "openai", "ollama", "mock"];
 const TTS_KINDS: TtsKind[] = ["gemini", "openai", "mock"];
 const TTS_LABEL: Record<TtsKind, string> = { gemini: "Gemini (duas vozes na mesma conversa)", openai: "OpenAI (uma voz por fala)", mock: "Simulação (silêncio, sem IA)" };
 
@@ -54,6 +56,8 @@ export interface PodcastsDeps {
   checkHost?: (host: string) => Promise<void>;
   tts?: { fetchImpl?: typeof fetch; env?: NodeJS.ProcessEnv };
   mockScript?: (req: StructuredRequest) => unknown;
+  /** Só para testes: cria o provedor de uma ref pelo maestro. */
+  aiMaker?: (ref: ModelRef) => AiProvider | null;
 }
 
 /** Depósito dos podcasts: bucket privado "podcasts" no Supabase; pasta .data/podcasts no desenvolvimento. */
@@ -148,7 +152,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       await asUser(req, "app_admin_podcasts");
       const env = deps!.tts?.env ?? process.env;
       const tts = TTS_KINDS.filter((k) => k !== "mock" || env.NODE_ENV !== "production").map((k) => ({ label: TTS_LABEL[k], ...ttsStatus(k, env), kind: k }));
-      res.json({ script: providerChoices(), tts, voices: VOICE_OPTIONS, default_voices: DEFAULT_VOICES });
+      res.json({ script: await aiChoices(deps!.db), tts, voices: VOICE_OPTIONS, default_voices: DEFAULT_VOICES });
     } catch (error) {
       fail(res, statusOf(error, 500), message(error));
     }
@@ -302,7 +306,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
   router.post("/:id/script", async (req: Authed, res) => {
     try {
       const kind = String(req.body?.provider ?? "gemini");
-      if (!SCRIPT_KINDS.includes(kind)) throw httpError(400, "Escolha Gemini, Claude ou OpenAI.");
+      if (!SCRIPT_KINDS.includes(kind)) throw httpError(400, "Escolha uma das IAs da lista.");
       const notes = String(req.body?.notes ?? "").trim().slice(0, 1000) || null;
       await staffPodcast(req);
       const { m, chunks } = await loadMaterial(req);
@@ -311,7 +315,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const started = Date.now();
       let r;
       try {
-        r = await generateScript({ kind: kind as any, topic: m.topic || m.title, minutes: Number(m.target_minutes) || 8, chunks, notes, mockRespond: kind === "mock" ? deps!.mockScript : undefined });
+        r = await generateScript({ kind: kind as any, topic: m.topic || m.title, minutes: Number(m.target_minutes) || 8, chunks, notes, mockRespond: kind === "mock" ? deps!.mockScript : undefined, db: deps!.db, actorId: req.user!.id, podcastId: req.params.id, aiMaker: deps!.aiMaker });
       } catch (error: any) {
         throw httpError(error?.status ?? 502, `A IA do roteiro falhou: ${message(error)}`);
       }

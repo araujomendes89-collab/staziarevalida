@@ -5,11 +5,14 @@
  * confere: trecho citado tem que existir, e número com unidade (dose, corte, prazo) dito numa fala tem que estar nos trechos dela —
  * se não estiver, a fala sai marcada para a revisão humana (nada vai para os alunos sem a equipe aprovar).
  */
-import { resolveProviderKind, AiInvalidOutput, type StructuredRequest } from "../contentHub/ai/provider";
+import { resolveProviderKind, AiInvalidOutput, type AiProvider, type StructuredRequest } from "../contentHub/ai/provider";
+import type { ContentDb } from "../contentHub/infra";
+import type { ModelRef } from "../ai/config";
+import { maestroProvider } from "../ai/maestro";
 import type { Schema } from "../contentHub/ai/schema";
 
 export const PODCAST_PROMPT_VERSION = "1.0.0";
-export type ScriptProvider = "gemini" | "anthropic" | "openai";
+export type ScriptProvider = "gemini" | "anthropic" | "openai" | "ollama";
 
 export interface SourceChunk {
   id: number;
@@ -156,18 +159,6 @@ export interface ScriptResult {
   used_chunks: number;
 }
 
-/** Os três provedores de texto do painel (e a simulação fora de produção), com o motivo quando um não está pronto. */
-export function providerChoices(env: NodeJS.ProcessEnv = process.env) {
-  const kinds: (ScriptProvider | "mock")[] = ["gemini", "anthropic", "openai"];
-  if (env.NODE_ENV !== "production") kinds.push("mock");
-  const label: Record<string, string> = { gemini: "Gemini", anthropic: "Claude", openai: "OpenAI", mock: "Simulação (sem IA)" };
-  return kinds.map((kind) => {
-    if (kind === "mock") return { kind, label: label.mock, ready: true, model: "simulação", pending: null as string | null };
-    const { status } = scriptProvider(kind);
-    return { kind, label: label[kind], ready: status.ready, model: status.model, pending: status.pending };
-  });
-}
-
 /**
  * Simulação (desenvolvimento e testes, nunca em produção): monta uma conversa com frases TIRADAS dos trechos, cada fala citando
  * o trecho de onde veio. Serve para conferir o fluxo inteiro (revisão, aprovação, áudio, publicação) sem gastar IA.
@@ -189,15 +180,18 @@ export function mockScriptFromInput(input: string, minutes: number): PodcastScri
   return { title_suggestion: `Simulação: ${topic}`.slice(0, 120), lines, missing: ["Roteiro simulado (sem IA): só para testar o fluxo."] };
 }
 
-/** Provedor de texto pedido no painel (as chaves ficam no servidor). Gemini é o padrão do pedido. */
-export function scriptProvider(kind: ScriptProvider | "mock", mockRespond?: (req: StructuredRequest) => unknown) {
-  if (mockRespond) return resolveProviderKind("mock", mockRespond);
-  if (kind === "mock") return resolveProviderKind("mock", (req) => mockScriptFromInput(req.input, Number(/cerca de (\d+) minutos/.exec(req.input)?.[1]) || 8));
-  return resolveProviderKind(kind, undefined, process.env[`PODCAST_${kind.toUpperCase()}_MODEL`] || undefined);
+/** IA do roteiro: sempre pelo maestro (função "criacao"). A escolha da tela só vale com o seletor por aba ligado ou sem função salva. */
+async function scriptProvider(o: { kind: ScriptProvider | "mock"; db: ContentDb; actorId?: string | null; podcastId?: string | null; aiMaker?: (ref: ModelRef) => AiProvider | null; mockRespond?: (req: StructuredRequest) => unknown }) {
+  const mock = o.mockRespond
+    ? resolveProviderKind("mock", o.mockRespond).provider
+    : o.kind === "mock"
+      ? resolveProviderKind("mock", (req) => mockScriptFromInput(req.input, Number(/cerca de (\d+) minutos/.exec(req.input)?.[1]) || 8)).provider
+      : null;
+  return maestroProvider({ db: o.db, mockProvider: mock, makeProviderFor: o.aiMaker }, "criacao", { source: "podcast", actorId: o.actorId ?? null, itemId: o.podcastId ?? null }, o.kind === "mock" ? {} : { uiKind: o.kind });
 }
 
-export async function generateScript(o: { kind: ScriptProvider | "mock"; topic: string; minutes: number; chunks: SourceChunk[]; notes?: string | null; mockRespond?: (req: StructuredRequest) => unknown }): Promise<ScriptResult> {
-  const { provider, status } = scriptProvider(o.kind, o.mockRespond);
+export async function generateScript(o: { kind: ScriptProvider | "mock"; topic: string; minutes: number; chunks: SourceChunk[]; notes?: string | null; mockRespond?: (req: StructuredRequest) => unknown; db: ContentDb; actorId?: string | null; podcastId?: string | null; aiMaker?: (ref: ModelRef) => AiProvider | null }): Promise<ScriptResult> {
+  const { provider, status } = await scriptProvider(o);
   if (!provider) throw Object.assign(new Error(`IA do roteiro indisponível: ${status.pending}`), { status: 503 });
   const chosen = selectChunks(o.chunks, o.topic);
   if (!chosen.length) throw Object.assign(new Error("Adicione fontes com texto antes de gerar o roteiro."), { status: 409 });

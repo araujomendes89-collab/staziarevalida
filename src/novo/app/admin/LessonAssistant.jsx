@@ -62,7 +62,8 @@ export function LessonAssistant({ form, set, lesson, pending }) {
   const inRouter = useInRouterContext();
   const [open, setOpen] = React.useState(false);
   const [providers, setProviders] = React.useState(null);
-  const [provider, setProvider] = React.useState("");
+  const [central, setCentral] = React.useState({ override_allowed: true, current: null });
+  const [picked, setProvider] = React.useState("");
   const slides = lesson?.materials?.find((m) => m.kind === "slides" && m.storage_path);
   const lessonPdf = pending?.slides ?? (slides ? "saved" : null);
   const [source, setSource] = React.useState(lessonPdf ? "lesson" : "text");
@@ -78,8 +79,10 @@ export function LessonAssistant({ form, set, lesson, pending }) {
   React.useEffect(() => {
     if (!open || providers || !available) return;
     assistProviders(backend)
-      .then((list) => {
+      .then((r) => {
+        const list = r.choices ?? [];
         setProviders(list);
+        setCentral({ override_allowed: r.override_allowed !== false, current: r.current ?? null });
         const ready = list.filter((p) => p.ready);
         setProvider((ready.find((p) => p.kind === "gemini") ?? ready.find((p) => p.kind !== "mock") ?? ready[0])?.kind ?? "");
       })
@@ -123,9 +126,12 @@ export function LessonAssistant({ form, set, lesson, pending }) {
     setUsed({ title: true, topic: true, area: true, summary: true, key_points: true });
   };
 
+  const fixed = !central.override_allowed && central.current ? central.current : null; // a Central de IAs decide
+  const provider = fixed ? fixed.kind : picked;
+  const fixedChoice = fixed ? (providers ?? []).find((p) => p.kind === fixed.kind) : null;
   const ready = (providers ?? []).filter((p) => p.ready);
   const unavailable = (providers ?? []).filter((p) => !p.ready && p.kind !== "mock");
-  const canRun = provider && (source === "lesson" ? Boolean(lessonPdf) : source === "file" ? Boolean(file) : source === "text" ? text.trim().length >= 80 : /^https:\/\/\S+$/i.test(url.trim()));
+  const canRun = provider && (!fixed || fixedChoice?.ready) && (source === "lesson" ? Boolean(lessonPdf) : source === "file" ? Boolean(file) : source === "text" ? text.trim().length >= 80 : /^https:\/\/\S+$/i.test(url.trim()));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 14, borderRadius: 16, border: "1px solid color-mix(in oklab, var(--border-brand, var(--border-default)) 40%, transparent)", background: "var(--surface-brand-soft, var(--surface-subtle))" }}>
@@ -147,9 +153,10 @@ export function LessonAssistant({ form, set, lesson, pending }) {
       {open && available && (
         <>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
-            <SelectField label="IA" value={provider} onChange={(e) => setProvider(e.target.value)} options={ready.length ? ready.map((p) => ({ value: p.kind, label: `${p.label}${p.model && p.kind !== "mock" ? ` (${p.model})` : ""}` })) : [{ value: "", label: providers ? "Nenhuma IA pronta no servidor" : "Carregando…" }]} />
+            {fixed ? <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>IA definida na Central de IAs: {fixed.label} {fixed.model}</span> : <SelectField label="IA" value={provider} onChange={(e) => setProvider(e.target.value)} options={ready.length ? ready.map((p) => ({ value: p.kind, label: `${p.label}${p.model && p.kind !== "mock" ? ` (${p.model})` : ""}` })) : [{ value: "", label: providers ? "Nenhuma IA pronta no servidor" : "Carregando…" }]} />}
           </div>
-          {unavailable.length > 0 && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{pendingText(unavailable)}</span>}
+          {fixed && fixedChoice && !fixedChoice.ready && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{fixedChoice.pending}</span>}
+          {!fixed && unavailable.length > 0 && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{pendingText(unavailable)}</span>}
           <SegmentedControl
             value={source}
             onChange={setSource}

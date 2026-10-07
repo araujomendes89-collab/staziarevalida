@@ -18,12 +18,19 @@ import { LessonAssistant } from "../novo/app/admin/LessonAssistant.jsx";
 import { PodcastsSection } from "../novo/app/podcasts/PodcastsSection.jsx";
 
 const ID = "11111111-1111-4111-8111-111111111111";
-const PROVIDERS = {
-  script: [
+const SCRIPT_CHOICES = {
+  choices: [
     { kind: "gemini", label: "Gemini", ready: false, model: null, pending: "GEMINI_API_KEY ausente no servidor." },
     { kind: "anthropic", label: "Claude", ready: true, model: "claude-sonnet-5-5", pending: null },
     { kind: "openai", label: "OpenAI", ready: true, model: "gpt-5", pending: null },
   ],
+  override_allowed: true,
+  configured: false,
+  current: null,
+};
+const LOCKED_CHOICES = { ...SCRIPT_CHOICES, override_allowed: false, configured: true, current: { kind: "anthropic", label: "Claude", model: "claude-sonnet-5-5" } };
+const PROVIDERS = {
+  script: SCRIPT_CHOICES,
   tts: [
     { kind: "gemini", label: "Gemini (duas vozes na mesma conversa)", ready: false, model: "gemini-3.8-flash-tts", pending: "Chave do Gemini ausente no servidor." },
     { kind: "openai", label: "OpenAI (uma voz por fala)", ready: true, model: "gpt-4o-mini-tts", pending: null },
@@ -99,6 +106,15 @@ describe("Administração › Podcasts", () => {
     expect(screen.getByText(/custo estimado US\$ 0,0123/)).toBeTruthy();
   });
 
+  it("com a IA definida na Central e o seletor desligado, a tela mostra 'IA definida na Central de IAs' e não mostra o seletor", async () => {
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith("/api/podcasts/providers") ? new Response(JSON.stringify({ ...PROVIDERS, script: LOCKED_CHOICES }), { status: 200, headers: { "Content-Type": "application/json" } }) : new Response("{}", { status: 404 })
+    );
+    renderAdmin("editor", episode({ status: "draft", script: null, script_meta: {} }));
+    expect(await screen.findByText(/IA definida na Central de IAs: Claude claude-sonnet-5-5/)).toBeTruthy();
+    expect(screen.queryByLabelText("IA do roteiro")).toBeNull();
+  });
+
   it("aprovar exige escrever o que foi conferido; o editor não publica", async () => {
     renderAdmin("editor", episode());
     const approve = await screen.findByRole("button", { name: /Aprovar roteiro/ });
@@ -141,7 +157,7 @@ describe("Assistente de IA da aula", () => {
   it("lê o texto colado, mostra as sugestões com as páginas e só muda o formulário ao clicar em Usar", async () => {
     const sent: any[] = [];
     (globalThis as any).fetch = vi.fn(async (url: string, init?: any) => {
-      if (url.endsWith("/api/lessons/assist/providers")) return new Response(JSON.stringify(PROVIDERS.script), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/lessons/assist/providers")) return new Response(JSON.stringify(SCRIPT_CHOICES), { status: 200, headers: { "Content-Type": "application/json" } });
       if (url.endsWith("/api/lessons/assist")) {
         sent.push(JSON.parse(init.body));
         return new Response(JSON.stringify(RESULT), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -172,6 +188,30 @@ describe("Assistente de IA da aula", () => {
     expect(set).toHaveBeenLastCalledWith({ title: "Bronquiolite viral aguda" });
     fireEvent.click(screen.getByRole("button", { name: "Usar tudo no formulário" }));
     expect(set).toHaveBeenLastCalledWith({ title: "Bronquiolite viral aguda", topic: "Bronquiolite", area: "PEDIATRIA", summary: "Quadro de sibilância no lactente; tratamento de suporte.", key_points: "Oxigênio se saturação abaixo de 90%." });
+  });
+
+  it("com a IA definida na Central e o seletor desligado, a tela mostra 'IA definida na Central de IAs' e não mostra o seletor", async () => {
+    const sent: any[] = [];
+    (globalThis as any).fetch = vi.fn(async (url: string, init?: any) => {
+      if (url.endsWith("/api/lessons/assist/providers")) return new Response(JSON.stringify(LOCKED_CHOICES), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/api/lessons/assist")) {
+        sent.push(JSON.parse(init.body));
+        return new Response(JSON.stringify(RESULT), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response("{}", { status: 404 });
+    });
+    render(
+      <MemoryRouter>
+        <LessonAssistant form={{ title: "", topic: "", area: "CLINICA_MEDICA", summary: "", key_points: "" }} set={vi.fn()} lesson={null} pending={{ slides: null, flashcast: null }} />
+      </MemoryRouter>
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Abrir assistente" }));
+    expect(await screen.findByText(/IA definida na Central de IAs: Claude claude-sonnet-5-5/)).toBeTruthy();
+    expect(screen.queryByLabelText("IA")).toBeNull();
+    fireEvent.change(screen.getByLabelText(/Texto \(transcrição/), { target: { value: "Bronquiolite: oxigênio se saturação abaixo de 90%. ".repeat(3) } });
+    fireEvent.click(screen.getByRole("button", { name: "Gerar sugestões" }));
+    await screen.findByText("Bronquiolite viral aguda");
+    expect(sent[0]).toMatchObject({ provider: "anthropic" });
   });
 
   it("aula já salva oferece criar o podcast dela", () => {
