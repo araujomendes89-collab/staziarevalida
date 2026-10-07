@@ -676,15 +676,28 @@ describe("Configuração", () => {
       expect(reserva.warnings).toEqual([`A reserva Ollama qwen3 não pode rodar aqui (${MAC})`]);
     });
 
-    it("comitê: vale por membro (a reserva não entra) e precisa de 2 IAs que rodem", async () => {
-      const um = await check(fc("comite", O, [ref("ollama", "llama3"), C], C));
-      // dois Ollama fora do Mac: só o Claude roda (a reserva não entra no comitê) e o comitê precisa de 2
-      expect(um.ready).toBe(false);
-      expect(um.problems).toHaveLength(1);
-      expect(um.problems[0]).toMatch(/^O comitê precisa de pelo menos 2 IAs que possam rodar aqui\. Ollama roda só no Mac\./);
-      const dois = await check(fc("comite", O, [C, G]));
-      expect(dois).toMatchObject({ ready: true, problems: [] });
-      expect(dois.warnings).toEqual([`Ollama qwen3 não pode rodar aqui (${MAC})`]);
+    it("comitê: vale a regra de principal e reserva (o uso real só chama as duas); membro que não roda avisa", async () => {
+      const NOTA = "O comitê completo entra em uso na etapa 2; hoje a função usa a principal e a reserva.";
+      // principal Ollama fora do Mac e 2 membros que rodam, sem reserva: nada responderia → não está pronta
+      const sem = await check(fc("comite", O, [C, G]));
+      expect(sem).toMatchObject({ ready: false, problems: [MAC] });
+      // com reserva que roda, vale: a reserva responde
+      const com = await check(fc("comite", O, [ref("openai", "gpt-x"), G], C));
+      expect(com).toMatchObject({ ready: true, problems: [] });
+      expect(com.warnings).toEqual([`A principal não pode rodar aqui (${MAC}); a reserva vai responder.`]);
+      // membro que não roda: aviso por membro, com o motivo
+      const membro = await check(fc("comite", C, [O, G]));
+      expect(membro).toMatchObject({ ready: true, problems: [] });
+      expect(membro.warnings).toEqual([`Ollama qwen3 não pode rodar aqui (${MAC})`]);
+      // menos de 2 membros rodam: só aviso de que o comitê completo vem na etapa 2
+      const poucos = await check(fc("comite", C, [O]));
+      expect(poucos).toMatchObject({ ready: true, problems: [] });
+      expect(poucos.warnings).toEqual([`Ollama qwen3 não pode rodar aqui (${MAC})`, NOTA]);
+      // membro com a IA desligada também diz o motivo (a função segue com o problema da IA desligada)
+      const off = await check(fc("comite", C, [G, O]), PROD, { enabled: ["anthropic", "gemini"] });
+      expect(off.ready).toBe(false);
+      expect(off.problems).toEqual(["Ollama está desligada na Central de IAs."]);
+      expect(off.warnings).toEqual(["Ollama qwen3 não pode rodar aqui (Ollama está desligada na Central de IAs.)"]);
     });
 
     it("chave ausente neste servidor (site) é só aviso: a função continua pronta", async () => {

@@ -262,10 +262,12 @@ export const FUNCTION_KEYS: AiFunctionKey[] = ["criacao", "verificacao", "engenh
 
 /**
  * Função salva: além da validação da configuração, confere o que ESTE servidor consegue chamar. Bloqueia só o que não
- * roda em nenhum servidor publicado (Ollama no site publicado ou sem resposta): sozinha e linha, nem a principal nem a
- * reserva rodando é problema; só a principal não rodando é aviso (a reserva responde); conferente que não roda é aviso
- * e o comitê vale por membro. Chave ausente neste servidor é só aviso (o processamento roda no Cloud Run com as chaves
- * de lá). IA desligada já é problema em validateFunctionConfig e não se repete aqui.
+ * roda em nenhum servidor publicado (Ollama no site publicado ou sem resposta). Nesta etapa todo uso real passa pelo
+ * adaptador do maestro, que usa só a principal e a reserva, qualquer que seja o modo: nem a principal nem a reserva
+ * rodando é problema; só a principal não rodando é aviso (a reserva responde). Conferente ou membro que não roda é aviso
+ * (no comitê, a IA desligada também diz o motivo; menos de 2 membros rodando avisa que o comitê completo vem na etapa 2).
+ * Chave ausente neste servidor é só aviso (o processamento roda no Cloud Run com as chaves de lá). IA desligada já é
+ * problema em validateFunctionConfig e não se repete como problema.
  */
 function savedFunctionCheck(saved: FunctionConfig, cfg: AiConfig, env: NodeJS.ProcessEnv): FunctionCheck {
   const { problems, warnings } = validateFunctionConfig(saved, cfg);
@@ -274,37 +276,40 @@ function savedFunctionCheck(saved: FunctionConfig, cfg: AiConfig, env: NodeJS.Pr
   };
   interface RefState {
     ref: ModelRef;
-    /** Por que a ref não roda em nenhum servidor publicado (null: roda, ou a IA está desligada, o que já é problema). */
+    /** Por que a ref não roda: IA desligada ou Ollama fora do Mac (null: roda). */
+    reason: string | null;
+    /** Por que não roda em nenhum servidor publicado (null: roda, ou a IA está desligada, o que já é problema). */
     why: string | null;
     runs: boolean;
   }
   const state = (ref: ModelRef): RefState => {
-    const off = cfg.providers[ref.provider]?.enabled !== true;
-    const why = off ? null : providerPending(ref, cfg, env);
-    return { ref, why, runs: !off && why === null };
+    const reason = providerPending(ref, cfg, env);
+    return { ref, reason, why: cfg.providers[ref.provider]?.enabled === true ? reason : null, runs: reason === null };
   };
-  const cannot = (s: RefState, prefix = "") => `${prefix}${PROVIDER_NAMES[s.ref.provider] ?? s.ref.provider} ${s.ref.model} não pode rodar aqui (${s.why})`;
+  const cannot = (s: RefState, reason: string | null, prefix = "") => `${prefix}${PROVIDER_NAMES[s.ref.provider] ?? s.ref.provider} ${s.ref.model} não pode rodar aqui (${reason})`;
   const primary = saved.primary ? state(saved.primary) : null;
   const fallback = saved.fallback ? state(saved.fallback) : null;
   const others = saved.reviewers.map(state);
 
+  if (primary?.why) {
+    if (fallback?.runs) add(warnings, `A principal não pode rodar aqui (${primary.why}); a reserva vai responder.`);
+    else {
+      add(problems, primary.why);
+      if (fallback?.why) add(problems, fallback.why);
+    }
+  } else if (fallback?.why) {
+    add(warnings, cannot(fallback, fallback.why, "A reserva "));
+  }
+  // conferentes (linha) e membros (comitê); no comitê a IA desligada também diz o motivo
+  for (const o of others) {
+    const reason = saved.mode === "comite" ? o.reason : o.why;
+    if (reason) add(warnings, cannot(o, reason));
+  }
   if (saved.mode === "comite") {
     const members = primary ? [primary, ...others] : others;
-    for (const m of members) if (m.why) add(warnings, cannot(m));
     if (members.length >= 2 && members.filter((m) => m.runs).length < 2) {
-      add(problems, `O comitê precisa de pelo menos 2 IAs que possam rodar aqui. ${members.flatMap((m) => (m.why ? [m.why] : [])).join(" ")}`.trim());
+      add(warnings, "O comitê completo entra em uso na etapa 2; hoje a função usa a principal e a reserva.");
     }
-  } else {
-    if (primary?.why) {
-      if (fallback?.runs) add(warnings, `A principal não pode rodar aqui (${primary.why}); a reserva vai responder.`);
-      else {
-        add(problems, primary.why);
-        if (fallback?.why) add(problems, fallback.why);
-      }
-    } else if (fallback?.why) {
-      add(warnings, cannot(fallback, "A reserva "));
-    }
-    for (const o of others) if (o.why) add(warnings, cannot(o));
   }
 
   // chave ausente neste servidor: só aviso, um por IA ligada que o servidor deixa chamar
