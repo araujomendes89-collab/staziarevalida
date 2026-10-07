@@ -6,7 +6,7 @@
  */
 import crypto from "crypto";
 import type { ContentDb } from "../contentHub/infra";
-import { familyOfModel, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
+import { AiInvalidOutput, familyOfModel, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
 import type { Schema } from "../contentHub/ai/schema";
 import {
   DEFAULT_MODELS,
@@ -27,6 +27,12 @@ import type { AiProviderId } from "./models";
 import { costUsd, estimateCostUsd, type ModelPrice } from "./prices";
 
 // ------------------------------------------------------------------ tipos públicos
+
+/**
+ * A execução parou no teto de gasto (por execução ou mensal) sem chamar IA nenhuma. Não é falha da IA: quem usa o
+ * adaptador deixa o trabalho parado para voltar quando o teto permitir (a Central de Conteúdo converte em Blocked).
+ */
+export class AiCapReached extends Error {}
 
 export interface MaestroDeps {
   db: ContentDb;
@@ -212,6 +218,8 @@ class Run {
   readonly reasons: string[] = [];
   private spent = 0;
   private monthBlockedMsg: string | null = null;
+  /** O último erro lançado por uma IA nesta execução (o adaptador preserva AiInvalidOutput para quem registra a resposta). */
+  lastError: unknown = null;
 
   constructor(
     private deps: MaestroDeps,
@@ -338,6 +346,7 @@ class Run {
       this.push(slot, role, "ok", { input_tokens: Math.max(0, Math.trunc(res.inputTokens ?? 0)), output_tokens: Math.max(0, Math.trunc(res.outputTokens ?? 0)), cost_usd: cost, duration_ms: Date.now() - t0 });
       return { ok: true, res, cost };
     } catch (e) {
+      this.lastError = e;
       const error = errText(e);
       this.push(slot, role, "falha", { duration_ms: Date.now() - t0, error });
       this.reason(error);
@@ -544,8 +553,14 @@ async function buildAdapter(deps: MaestroDeps, cfg: AiConfig, origin: MaestroOri
       const request = withCare(req, plan.fc);
       const r = await run.solo<T>(request, primary, fallback, plan.roles);
       await run.flush();
-      if ("stop" in r) throw new Error(r.stop);
-      if (!r.ok) throw new Error(run.message() ?? "A IA não respondeu.");
+      if ("stop" in r) throw new AiCapReached(r.stop);
+      if (!r.ok) {
+        const message = run.message();
+        if (run.failureStatus() === "parou_no_teto") throw new AiCapReached(message ?? "Teto de gasto atingido.");
+        // a última falha foi resposta fora do formato: mesma classe e o que a IA devolveu, para o registro da etapa
+        if (run.lastError instanceof AiInvalidOutput) throw new AiInvalidOutput(message ?? run.lastError.message, run.lastError.raw);
+        throw new Error(message ?? "A IA não respondeu.");
+      }
       return { ...r.res, costUsd: r.cost };
     },
   };

@@ -1035,6 +1035,58 @@ describe("Maestro", () => {
     expect((await dev.db.query<any>(`select count(*)::int as n from public.ai_calls where outcome = 'teto'`)).rows[0].n).toBe(1);
   });
 
+  it("maestroProvider: parar no teto (por execução ou mensal) lança AiCapReached, sem chamar a IA", async () => {
+    const { maestroProvider, AiCapReached } = await adapters();
+    await on("anthropic");
+    await saveFn("criacao", "sozinha", A);
+    await price(A, 10, 20); // a estimativa do pedido de teste é ≈ US$ 0,021
+    await settings({ caps_enabled: true, per_run_cap_usd: 0.01, monthly_cap_usd: 100 });
+    await refresh();
+    const f = fakes(answers());
+    const porExecucao = await (await maestroProvider(deps(f), "criacao", origin)).provider!.generate(REQ).catch((e: unknown) => e);
+    expect(porExecucao).toBeInstanceOf(AiCapReached);
+    expect((porExecucao as Error).message).toMatch(/teto por execução de US\$ 0,01/);
+
+    await settings({ per_run_cap_usd: 5, monthly_cap_usd: 0.01 });
+    await refresh();
+    const mensal = await (await maestroProvider(deps(f), "criacao", origin)).provider!.generate(REQ).catch((e: unknown) => e);
+    expect(mensal).toBeInstanceOf(AiCapReached);
+    expect((mensal as Error).message).toMatch(/teto mensal de US\$ 0,01/);
+    expect(f.calls[key(A)]).toBeUndefined();
+
+    // falha comum não vira AiCapReached
+    await settings({ caps_enabled: false });
+    await refresh();
+    const bad = fakes({ [key(A)]: () => { throw new Error("boom"); } });
+    const comum = await (await maestroProvider(deps(bad), "criacao", origin)).provider!.generate(REQ).catch((e: unknown) => e);
+    expect(comum).not.toBeInstanceOf(AiCapReached);
+    expect((comum as Error).message).toMatch(/boom/);
+  });
+
+  it("maestroProvider: resposta fora do formato nas tentativas lança AiInvalidOutput com o raw; falha comum depois dela, erro comum", async () => {
+    const { maestroProvider } = await adapters();
+    await on("anthropic");
+    await saveFn("criacao", "sozinha", A);
+    await refresh();
+    const invalid = fakes({ [key(A)]: () => { throw new AiInvalidOutput("Resposta fora do formato: campo x", { x: 1 }); } });
+    const e = await (await maestroProvider(deps(invalid), "criacao", origin)).provider!.generate(REQ).catch((x: unknown) => x);
+    expect(e).toBeInstanceOf(AiInvalidOutput);
+    expect((e as AiInvalidOutput).raw).toEqual({ x: 1 });
+    expect((e as Error).message).toContain("Resposta fora do formato");
+    expect(invalid.calls[key(A)]).toHaveLength(2); // principal e nova tentativa
+
+    // a última falha foi comum (a rede caiu): erro comum, não AiInvalidOutput
+    const mixed = fakes({
+      [key(A)]: (_r, n) => {
+        if (n === 1) throw new AiInvalidOutput("fora do formato", { x: 1 });
+        throw new Error("rede caiu");
+      },
+    });
+    const e2 = await (await maestroProvider(deps(mixed), "criacao", origin)).provider!.generate(REQ).catch((x: unknown) => x);
+    expect(e2).not.toBeInstanceOf(AiInvalidOutput);
+    expect((e2 as Error).message).toMatch(/rede caiu/);
+  });
+
   it("maestroRoleProvider: usa reviewers[roleIndex], faltando usa a principal; reserva só se for de outra família", async () => {
     const { maestroRoleProvider } = await adapters();
     await on("anthropic", "openai", "gemini");
@@ -1441,6 +1493,78 @@ describe("Central", () => {
     expect(evidence.every((r) => r.provider === "openai" && r.model === "gpt-5.4")).toBe(true);
     const claims = (await dev.db.query<any>(`select created_by_model as model from public.ch_claims where document_id = $1`, [docId])).rows;
     for (const c of claims) expect(c.model).toBe("claude-sonnet-5-5");
+  });
+
+  describe("teto atingido e resposta fora do formato numa etapa", () => {
+    // outro modelo que o do teste anterior: a resposta guardada daquele não vale aqui (a chamada precisa chegar ao maestro)
+    const A2 = { provider: "anthropic", model: "claude-opus-5-5" };
+    const A3 = { provider: "anthropic", model: "claude-haiku-5-5" };
+    const classify = async (deps: any) => {
+      const { stepVersions } = await import("../../server/contentHub/pipeline");
+      await db.service("ch_worker_unblock");
+      await db.service("ch_worker_next", { p_document_id: docId, p_step: "classify", p_versions: stepVersions("classify", deps) });
+    };
+    const job = async () => (await dev.db.query<any>(`select status, attempts, error from public.ch_jobs where document_id = $1 and step = 'classify'`, [docId])).rows[0];
+    /** Roda trabalhos da fila (outros trabalhos do mesmo documento podem estar na frente) até o da classificação chegar ao estado. */
+    const until = async (worker: { tick(): Promise<boolean> }, status: string) => {
+      for (let i = 0; i < 10 && (await job()).status !== status; i++) if (!(await worker.tick())) break;
+      return job();
+    };
+
+    it("teto atingido deixa o trabalho parado (blocked), com a mensagem do teto, e ele volta quando o teto permite", async () => {
+      const { createContentHubWorker } = await import("../../server/contentHub/worker");
+      await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "anthropic", p_enabled: true });
+      await saveFn("criacao", A2);
+      await db.service("ch_worker_ai_save_price", { p_actor: ADMIN, p_provider: "anthropic", p_model: A2.model, p_price: { input_per_mtok: 100, output_per_mtok: 200 } });
+      await db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: { caps_enabled: true, monthly_cap_usd: 1000, per_run_cap_usd: 0.01 } });
+      await refresh();
+      const deps = centralDeps();
+      const worker = createContentHubWorker(deps);
+      await classify(deps);
+
+      const parado = await until(worker, "blocked");
+      expect(parado.status).toBe("blocked"); // não "failed" nem "dead": nada de nova tentativa gasta
+      expect(parado.attempts).toBe(0);
+      expect(parado.error).toMatch(/teto por execução de US\$ 0,01/);
+      const doc = (await dev.db.query<any>(`select failure from public.ch_documents where id = $1`, [docId])).rows[0];
+      expect(doc.failure).toMatch(/^Pendência: .*teto por execução/);
+      const calls = (await dev.db.query<any>(`select outcome from public.ai_calls`)).rows;
+      expect(calls.map((c) => c.outcome)).toEqual(["teto"]);
+
+      // teto liberado: o trabalho volta para a fila e roda
+      await db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: { per_run_cap_usd: 1000 } });
+      await refresh();
+      await db.service("ch_worker_unblock");
+      expect((await job()).status).toBe("queued");
+      const depois = await until(worker, "succeeded");
+      expect(depois, JSON.stringify(depois)).toMatchObject({ status: "succeeded" });
+    });
+
+    it("resposta fora do formato continua gravando invalid_output em ch_ai_runs, com o que a IA devolveu", async () => {
+      const { createContentHubWorker } = await import("../../server/contentHub/worker");
+      const { AiInvalidOutput } = await import("../../server/contentHub/ai/provider");
+      await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "anthropic", p_enabled: true });
+      await saveFn("criacao", A3);
+      await refresh();
+      const bad = (ref: { provider: string; model: string }) =>
+        ({
+          name: ref.provider,
+          model: ref.model,
+          isMock: false,
+          async generate() {
+            throw new AiInvalidOutput("Resposta fora do formato: campo x", { campo: "x" });
+          },
+        }) as any;
+      const deps = centralDeps({ aiMaker: bad });
+      await classify(deps);
+      const worker = createContentHubWorker(deps);
+      for (let i = 0; i < 10 && (await job()).status === "queued"; i++) if (!(await worker.tick())) break;
+      const runs = (await dev.db.query<any>(`select status, output, error from public.ch_ai_runs where document_id = $1 and model = $2 and step = 'classify'`, [docId, A3.model])).rows;
+      expect(runs.length).toBeGreaterThan(0);
+      expect(runs.every((r) => r.status === "invalid_output")).toBe(true);
+      expect(runs[0].output).toEqual({ raw: JSON.stringify({ campo: "x" }) });
+      expect(runs[0].error).toContain("Resposta fora do formato");
+    });
   });
 
   it("aiAvailable: só mock ou IA ligada destrava a fila", async () => {

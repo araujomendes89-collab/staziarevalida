@@ -24,7 +24,7 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import { PROMPTS, asDocument, CRITICAL_KINDS, type PromptKey } from "./ai/prompts";
 import { AiInvalidOutput, type AiProvider, type AiStatus } from "./ai/provider";
-import { maestroProvider } from "../ai/maestro";
+import { AiCapReached, maestroProvider } from "../ai/maestro";
 import { functionForPrompt, type ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { copyRatio, flashcardProblems, isVerbatim, negations, negationsLost, normalize, numbers, numbersOutside } from "./checks";
@@ -171,6 +171,8 @@ async function ai<T>(ctx: Ctx, key: PromptKey, payload: unknown, check?: (output
   try {
     result = await provider.generate<T>({ promptId: prompt.id, promptVersion: prompt.version, system: prompt.system, input, schema: prompt.schema, schemaName: `staziamed_${key}`, maxOutputTokens: 8192 });
   } catch (error) {
+    // teto de gasto atingido: o trabalho fica parado (sem gastar tentativa) e volta para a fila quando o teto permitir
+    if (error instanceof AiCapReached) throw new Blocked(error.message);
     const invalid = error instanceof AiInvalidOutput;
     await svc(ctx, "ch_worker_log_ai_run", {
       p_run: { ...base, status: invalid ? "invalid_output" : "failed", output: invalid ? { raw: String(JSON.stringify((error as AiInvalidOutput).raw) ?? "").slice(0, 4000) } : null, error: (error as Error).message.slice(0, 1000) },
