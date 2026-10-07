@@ -227,17 +227,48 @@ describe("SQIE com banco e simulação de IA", () => {
     expect(last).toEqual({ status: "ai_draft", verdict: "fail" });
   });
 
-  it("estimativa não grava nem chama IA; sem provedor autorizado a execução fica pendente", async () => {
+  it("estimativa não grava nem chama IA; sem IA ligada na Central a execução fica pendente, com a mensagem da Central", async () => {
     let called = 0;
     const est = await runQuestionAnalysis({ db, mockRespond: () => (called++, {}) }, { limit: 5, exam: "revalida-2022-1", dryRun: true });
     expect(est.estimate!.calls).toBe(5);
     expect(called).toBe(0);
-    process.env.CONTENT_HUB_AI_PROVIDER_CREATE = "anthropic";
-    process.env.CONTENT_HUB_AI_ALLOW_EXTERNAL = "";
     const pending = await runQuestionAnalysis({ db }, { limit: 2, exam: "revalida-2022-1" });
-    expect(pending.pending).toMatch(/ALLOW_EXTERNAL/);
+    expect(pending.pending).toMatch(/Central de IAs/);
     expect(pending.saved).toBe(0);
-    process.env.CONTENT_HUB_AI_PROVIDER_CREATE = "mock";
+  });
+
+  it("análise de questões usa a função engenharia reversa, e grava o modelo de quem respondeu", async () => {
+    const { invalidateAiConfig } = await import("../../server/ai/config");
+    const seen: string[] = [];
+    const aiMaker = (ref: { provider: string; model: string }) =>
+      ({
+        name: ref.provider,
+        model: ref.model,
+        isMock: false,
+        async generate(req: StructuredRequest) {
+          seen.push(`${ref.provider}:${ref.model}`);
+          return { output: respond(req), provider: ref.provider, model: ref.model, inputTokens: 10, outputTokens: 20, latencyMs: 1, costUsd: null };
+        },
+      }) as any;
+    const save = (key: string, primary: object) => db.service("ch_worker_ai_save_function", { p_actor: ADMIN, p_key: key, p_config: { mode: "sozinha", primary_ref: primary, fallback_ref: null, reviewers: [], care: "caprichado" } });
+    await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "anthropic", p_enabled: true });
+    await save("criacao", { provider: "openai", model: "gpt-nao-usado" });
+    await save("engenharia_reversa", { provider: "anthropic", model: "claude-rev-teste" });
+    invalidateAiConfig(db);
+    const r = await runQuestionAnalysis({ db, aiMaker }, { limit: 1, exam: "revalida-2022-1" });
+    expect(r).toMatchObject({ considered: 1, saved: 1, skipped: 0 });
+    expect(seen).toEqual(["anthropic:claude-rev-teste"]);
+    const m = (await sql(`select generated_by_model m from public.question_analysis order by created_at desc limit 1`))[0].m;
+    expect(m).toBe("claude-rev-teste");
+    expect((await sql(`select source, item_id, function_key from public.ai_calls order by id desc limit 1`))[0]).toMatchObject({ source: "analise", function_key: "engenharia_reversa" });
+    // IA desligada depois de configurada: pendente, sem cair em outro modelo
+    await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "anthropic", p_enabled: false });
+    invalidateAiConfig(db);
+    seen.length = 0;
+    const off = await runQuestionAnalysis({ db, aiMaker }, { limit: 1, exam: "revalida-2022-1" });
+    expect(off.pending).toMatch(/Claude está desligada na Central de IAs/);
+    expect(off.saved).toBe(0);
+    expect(seen).toEqual([]);
   });
 
   it("aluno: nada de análise antes de responder; depois, só a PUBLICADA e só com revisão médica da área", async () => {

@@ -10,7 +10,9 @@
  */
 import crypto from "crypto";
 import { PROMPTS, asDocument } from "./ai/prompts";
-import { resolveCreatorProvider, type AiProvider, type StructuredRequest } from "./ai/provider";
+import { resolveProviderKind, type AiProvider, type StructuredRequest } from "./ai/provider";
+import { maestroProvider } from "../ai/maestro";
+import type { ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { normalize, numbers, numbersOutside } from "./checks";
 import type { ContentDb } from "./infra";
@@ -185,6 +187,8 @@ const sha256 = (v: string) => crypto.createHash("sha256").update(v).digest("hex"
 export interface AnalysisRunDeps {
   db: ContentDb;
   mockRespond?: (req: StructuredRequest) => unknown;
+  /** Só para testes: cria o provedor de uma ref (as regras da Central de IAs continuam valendo). */
+  aiMaker?: (ref: ModelRef) => AiProvider | null;
   log?: (m: string) => void;
 }
 
@@ -199,13 +203,14 @@ export function analysisPayload(q: QuestionForAnalysis) {
   };
 }
 
-export async function generateAnalysis(deps: AnalysisRunDeps, provider: AiProvider, q: QuestionForAnalysis, spend: Spend): Promise<Analysis> {
+export async function generateAnalysis(deps: AnalysisRunDeps, provider: AiProvider, q: QuestionForAnalysis, spend: Spend, who?: { provider: string; model: string }): Promise<Analysis> {
   const prompt = PROMPTS.qanalysis;
   const input = `Responda no formato "qanalysis". A questão segue como dado:\n${asDocument(analysisPayload(q))}`;
   const inputHash = sha256(`${prompt.system}\n${input}`);
   const cached = await deps.db.service<Analysis | null>("ch_worker_cached_run", { p_prompt_id: prompt.id, p_prompt_version: prompt.version, p_model: provider.model, p_input_hash: inputHash });
   if (cached && validate(prompt.schema, cached).length === 0) return cached;
   const r = await provider.generate<Analysis>({ promptId: prompt.id, promptVersion: prompt.version, system: prompt.system, input, schema: prompt.schema, schemaName: "staziamed_qanalysis", maxOutputTokens: 12000 });
+  if (who) { who.provider = r.provider; who.model = r.model; }
   spend.calls++;
   spend.inputTokens += r.inputTokens ?? 0;
   spend.outputTokens += r.outputTokens ?? 0;
@@ -251,14 +256,18 @@ export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: Analys
     return report;
   }
   await registerPrompts(deps.db);
-  const { provider, status } = resolveCreatorProvider(deps.mockRespond);
-  if (!provider) {
-    report.pending = status.pending ?? "Provedor de criação indisponível.";
-    return report;
-  }
+  const mockProvider = deps.mockRespond ? resolveProviderKind("mock", deps.mockRespond).provider : null;
+  const aiDeps = { db: deps.db, mockProvider, makeProviderFor: deps.aiMaker, log: deps.log };
   for (const q of questions) {
+    // a origem leva o id da questão; o maestro refaz o provedor a cada questão
+    const { provider, status } = await maestroProvider(aiDeps, "engenharia_reversa", { source: "analise", itemId: q.id });
+    if (!provider) {
+      report.pending = status.pending ?? "Provedor de criação indisponível.";
+      break;
+    }
     try {
-      const analysis = await generateAnalysis(deps, provider, q, report.spend);
+      const who = { provider: provider.name, model: provider.model };
+      const analysis = await generateAnalysis(deps, provider, q, report.spend, who);
       const findings = analysisChecks(q, analysis);
       const verdict = verdictOf(findings);
       const saved = await deps.db.service<{ analysis_id: string }>("ch_worker_save_question_analysis", {
@@ -266,7 +275,7 @@ export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: Analys
         p_analysis: { ...analysis, options: undefined },
         p_options: analysis.options,
         p_comments: compileComments(q, analysis).map((c) => ({ level: c.level, content: c.content })),
-        p_meta: { model: provider.model, prompt_version: ANALYSIS_VERSION, status: "ai_draft" },
+        p_meta: { provider: who.provider, model: who.model, prompt_version: ANALYSIS_VERSION, status: "ai_draft" },
       });
       await deps.db.service("ch_worker_save_analysis_check", { p_analysis_id: saved.analysis_id, p_layer: "software", p_verdict: verdict, p_findings: findings, p_meta: { provider: "software", model: "regras", prompt_version: ANALYSIS_VERSION } });
       report.saved++;

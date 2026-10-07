@@ -284,12 +284,74 @@ describe("Camadas com banco e simulação de IA", () => {
     expect(described.findings.map((f) => f.code)).toEqual(["blind_ambiguity"]);
   });
 
-  it("revisão clínica com criador da mesma família: pendente, nada gravado", async () => {
-    await sql(`update public.draft_questions set model = 'mock-dev (simulação, não é IA)'`);
-    const r = await runDraftChecks({ db, mockRespond: () => ({}) }, { layers: ["redteam"], limit: 5 });
-    expect(r[0].pending).toMatch(/Sem independência/);
-    expect(r[0].saved).toBe(0);
-    await sql(`update public.draft_questions set model = 'gpt-5.6-luna'`);
+  it("conferência dos rascunhos: os 3 papéis usam os conferentes da função verificação na ordem e recusam a mesma família do criador", async () => {
+    const ADMIN = "00000000-0000-4000-8000-0000000000ad";
+    await sql(`insert into auth.users (id, email) values ($1, 'ad@t.dev') on conflict do nothing`, [ADMIN]);
+    await sql(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
+    const { invalidateAiConfig } = await import("../../server/ai/config");
+    const [d] = await sql(`select * from public.draft_questions order by batch, slot limit 1`);
+    expect(d.model).toBe("gpt-5.6-luna"); // criador da família openai
+    const passage = (await sql(`select text from public.ch_source_passages where source_id = (select id from public.ch_sources where title = 'PCDT de teste')`))[0].text;
+    await sql(`update public.ch_sources set valid_until = null where title = 'PCDT de teste'`);
+    const seen: string[] = [];
+    const aiMaker = (ref: { provider: string; model: string }) =>
+      ({
+        name: ref.provider,
+        model: ref.model,
+        isMock: false,
+        async generate(req: StructuredRequest) {
+          seen.push(`${ref.provider}:${ref.model}`);
+          let output: unknown;
+          if (req.promptId === "solve") output = { answer: d.correct_answer, certainty: "high", rationale: "simulação", ambiguity: "" };
+          else if (req.promptId === "redteam") output = { issues: [] };
+          else {
+            const payload = JSON.parse(req.input.match(/<documento>\n([\s\S]*)\n<\/documento>/)![1]);
+            output = { verdict: req.promptId === "currency" ? "current" : "compatible", passage_id: payload.trechos[0].passage_id, quote: passage, rationale: "simulação" };
+          }
+          return { output, provider: ref.provider, model: ref.model, inputTokens: 10, outputTokens: 20, latencyMs: 1, costUsd: null };
+        },
+      }) as any;
+    for (const id of ["anthropic", "openai", "gemini"]) await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: id, p_enabled: true });
+    const G = { provider: "gemini", model: "gemini-teste" };
+    const C = { provider: "anthropic", model: "claude-teste" };
+    const O = { provider: "openai", model: "gpt-teste" };
+    const save = (reviewers: object[]) =>
+      db.service("ch_worker_ai_save_function", { p_actor: ADMIN, p_key: "verificacao", p_config: { mode: "linha", primary_ref: C, fallback_ref: null, reviewers, care: "caprichado" } });
+    const clean = async () => {
+      await sql(`delete from public.draft_checks where draft_id = $1`, [d.id]);
+      await sql(`delete from public.ch_ai_runs`);
+      seen.length = 0;
+    };
+    const metaOf = async (layer: string) => (await sql(`select provider, model from public.draft_checks where draft_id = $1 and layer = $2`, [d.id, layer]))[0];
+
+    // papel 0 = fontes, 1 = atualidade, 2 = revisão clínica; cada um usa o conferente da sua posição
+    await save([G, C, { provider: "anthropic", model: "claude-outro" }]);
+    invalidateAiConfig(db);
+    await clean();
+    const r0 = await runDraftChecks({ db, aiMaker }, { layers: ["sources"], limit: 1 });
+    expect(r0[0].saved).toBe(1);
+    expect(seen).toEqual(["gemini:gemini-teste"]);
+    expect(await metaOf("sources")).toEqual({ provider: "gemini", model: "gemini-teste" });
+    await clean();
+    await runDraftChecks({ db, aiMaker }, { layers: ["currency"], limit: 1 });
+    expect(seen).toEqual(["anthropic:claude-teste"]);
+    expect(await metaOf("currency")).toEqual({ provider: "anthropic", model: "claude-teste" });
+    await clean();
+    const r2 = await runDraftChecks({ db, aiMaker }, { layers: ["redteam"], limit: 1 });
+    expect(r2[0].saved).toBe(1);
+    expect(new Set(seen)).toEqual(new Set(["anthropic:claude-outro"]));
+    expect(await metaOf("redteam")).toEqual({ provider: "anthropic", model: "claude-outro" });
+
+    // conferente da mesma família do criador (openai): o papel não chama a IA e fica pendente por independência
+    await save([G, C, O]);
+    invalidateAiConfig(db);
+    await clean();
+    const same = await runDraftChecks({ db, aiMaker }, { layers: ["redteam"], limit: 5 });
+    expect(same[0].pending).toMatch(/Sem independência/);
+    expect(same[0].saved).toBe(0);
+    expect(seen).toEqual([]);
+    expect(await metaOf("redteam")).toBeUndefined();
+    await clean();
   });
 
   it("estimativa (dry-run) não grava nada nem chama IA", async () => {

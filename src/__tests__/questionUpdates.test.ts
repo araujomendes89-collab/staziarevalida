@@ -210,10 +210,26 @@ describe("Decisão do revisor e cartão para o aluno", () => {
     expect((await rpc(REVIEWER, "app_question_update_decide", updateId, "reject_proposal", "A proposta não cita a tabela do documento.", null)).status).toBe("queued");
     expect((await sql(`select proposal, status, decision from public.question_updates where id = $1`, [updateId]))[0]).toEqual({ proposal: null, status: "queued", decision: "reject_proposal" });
     expect((await runQuestionReanalysis({ db }, { dryRun: true })).considered).toBe(1);
-    // nova proposta (a mesma resposta simulada de antes)
-    process.env.CONTENT_HUB_AI_PROVIDER_CREATE = "mock";
-    const again = await runQuestionReanalysis({ db, mockRespond: () => ({ assessment: "INCONCLUSIVE", impact_level: "MAJOR_CHANGE", current_answer: "NONE", what_changed: "A dose do documento mudou, mas os trechos não bastam para concluir.", why_it_matters: "", options_affected: [], citations: [], confidence: 30 }) });
+    // reanálise usa a função engenharia reversa da Central de IAs e grava o modelo de quem respondeu
+    await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "anthropic", p_enabled: true });
+    await db.service("ch_worker_ai_save_function", { p_actor: ADMIN, p_key: "engenharia_reversa", p_config: { mode: "sozinha", primary_ref: { provider: "anthropic", model: "claude-reanalise-teste" }, fallback_ref: null, reviewers: [], care: "caprichado" } });
+    const { invalidateAiConfig } = await import("../../server/ai/config");
+    invalidateAiConfig(db);
+    const seen: string[] = [];
+    const aiMaker = (ref: { provider: string; model: string }) =>
+      ({
+        name: ref.provider,
+        model: ref.model,
+        isMock: false,
+        async generate() {
+          seen.push(`${ref.provider}:${ref.model}`);
+          return { output: { assessment: "INCONCLUSIVE", impact_level: "MAJOR_CHANGE", current_answer: "NONE", what_changed: "A dose do documento mudou, mas os trechos não bastam para concluir.", why_it_matters: "", options_affected: [], citations: [], confidence: 30 }, provider: ref.provider, model: ref.model, inputTokens: 10, outputTokens: 20, latencyMs: 1, costUsd: null };
+        },
+      }) as any;
+    const again = await runQuestionReanalysis({ db, aiMaker });
     expect(again.saved).toBe(1);
+    expect(seen).toEqual(["anthropic:claude-reanalise-teste"]);
+    expect((await sql(`select proposal_model m from public.question_updates where id = $1`, [updateId]))[0].m).toBe("claude-reanalise-teste");
   });
 
   it("evidência conferida por pessoa na versão nova libera: cartão publicado, análise com a conduta atual, gabarito histórico intacto", async () => {

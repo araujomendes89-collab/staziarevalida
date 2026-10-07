@@ -17,7 +17,9 @@ import path from "path";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import { PROMPTS, asDocument, type PromptKey } from "./ai/prompts";
-import { resolveRoleProvider, type AiProvider, type StructuredRequest, type VerifierRole } from "./ai/provider";
+import { resolveProviderKind, type AiProvider, type StructuredRequest, type VerifierRole } from "./ai/provider";
+import { maestroRoleProvider } from "../ai/maestro";
+import type { ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { copyRatio, isVerbatim, negations, normalize, numbers, numbersOutside } from "./checks";
 import type { ContentDb } from "./infra";
@@ -154,15 +156,20 @@ export interface Spend {
   costUsd: number | null;
 }
 
+/** Provedor e modelo de quem de fato respondeu (a reserva pode ter respondido no lugar do principal). */
+export type Answerer = { provider: string; model: string };
+
 export interface RunDeps {
   db: ContentDb;
   mockRespond?: (req: StructuredRequest) => unknown;
+  /** Só para testes: cria o provedor de uma ref (as regras da Central de IAs continuam valendo). */
+  aiMaker?: (ref: ModelRef) => AiProvider | null;
   log?: (m: string) => void;
 }
 
 const sha256 = (v: string) => crypto.createHash("sha256").update(v).digest("hex");
 
-async function callAi<T>(deps: RunDeps, provider: AiProvider, key: PromptKey, payload: unknown, spend: Spend, draft: DraftRow, layer: Layer): Promise<T> {
+async function callAi<T>(deps: RunDeps, provider: AiProvider, key: PromptKey, payload: unknown, spend: Spend, draft: DraftRow, layer: Layer, who?: Answerer): Promise<T> {
   const allowed = await aiAllowed(deps.db);
   if (!allowed.ok) throw new Error(allowed.why);
   await registerPromptsOnce(deps.db);
@@ -172,6 +179,7 @@ async function callAi<T>(deps: RunDeps, provider: AiProvider, key: PromptKey, pa
   const cached = await deps.db.service<T | null>("ch_worker_cached_run", { p_prompt_id: prompt.id, p_prompt_version: prompt.version, p_model: provider.model, p_input_hash: inputHash });
   if (cached && validate(prompt.schema, cached).length === 0) return cached;
   const r = await provider.generate<T>({ promptId: prompt.id, promptVersion: prompt.version, system: prompt.system, input, schema: prompt.schema, schemaName: `staziamed_${key}`, maxOutputTokens: 4096 });
+  if (who) { who.provider = r.provider; who.model = r.model; }
   spend.calls++;
   spend.inputTokens += r.inputTokens ?? 0;
   spend.outputTokens += r.outputTokens ?? 0;
@@ -190,9 +198,9 @@ const questionForReview = (d: DraftRow, withKey: boolean) => ({
 });
 
 /** Revisão clínica independente: resolve às cegas e depois revisa com tudo. É opinião de IA, nunca prova. */
-export async function redteamCheck(deps: RunDeps, provider: AiProvider, d: DraftRow, spend: Spend): Promise<{ verdict: Verdict; findings: Finding[] }> {
+export async function redteamCheck(deps: RunDeps, provider: AiProvider, d: DraftRow, spend: Spend, who?: Answerer): Promise<{ verdict: Verdict; findings: Finding[] }> {
   const findings: Finding[] = [];
-  const solved = await callAi<{ answer: string; certainty: string; rationale: string; ambiguity: string }>(deps, provider, "solve", questionForReview(d, false), spend, d, "redteam");
+  const solved = await callAi<{ answer: string; certainty: string; rationale: string; ambiguity: string }>(deps, provider, "solve", questionForReview(d, false), spend, d, "redteam", who);
   if (solved.answer !== d.correct_answer) {
     findings.push({ severity: "critical", code: "blind_answer_differs", where: "gabarito", detail: `Resolvendo sem ver o gabarito, o revisor escolheu ${solved.answer} (certeza ${solved.certainty}) e o criador marcou ${d.correct_answer}. Opinião do revisor: ${solved.rationale}` });
   } else if (solved.certainty === "low") {
@@ -204,7 +212,7 @@ export async function redteamCheck(deps: RunDeps, provider: AiProvider, d: Draft
   if (ambiguity.length > 8 && !none && solved.answer === d.correct_answer && solved.certainty !== "low") {
     findings.push({ severity: "minor", code: "blind_ambiguity", where: "enunciado", detail: solved.ambiguity });
   }
-  const review = await callAi<{ issues: { severity: Finding["severity"]; kind: string; where: string; detail: string; basis: string }[] }>(deps, provider, "redteam", questionForReview(d, true), spend, d, "redteam");
+  const review = await callAi<{ issues: { severity: Finding["severity"]; kind: string; where: string; detail: string; basis: string }[] }>(deps, provider, "redteam", questionForReview(d, true), spend, d, "redteam", who);
   for (const i of review.issues) {
     findings.push({
       severity: i.severity,
@@ -224,7 +232,7 @@ async function officialPassages(deps: RunDeps, claim: string) {
 }
 
 /** Fontes: a afirmação central está sustentada por trecho oficial? Sem acervo, "insuficiente" (sem chamar IA). */
-export async function sourcesCheck(deps: RunDeps, provider: AiProvider | null, d: DraftRow, spend: Spend): Promise<{ verdict: Verdict; findings: Finding[] }> {
+export async function sourcesCheck(deps: RunDeps, provider: AiProvider | null, d: DraftRow, spend: Spend, who?: Answerer): Promise<{ verdict: Verdict; findings: Finding[] }> {
   const claim = normalize(d.clinical_decision ?? "");
   if (!claim) return { verdict: "inconclusive", findings: [{ severity: "major", code: "no_claim", detail: "O rascunho não traz a afirmação central a conferir." }] };
   const passages = await officialPassages(deps, claim);
@@ -236,7 +244,7 @@ export async function sourcesCheck(deps: RunDeps, provider: AiProvider | null, d
   const out = await callAi<{ verdict: string; passage_id: string; quote: string; rationale: string }>(
     deps, provider, "evidence",
     { afirmacao: { text: claim, context: { area: d.area } }, trechos: passages.map((p: any) => ({ passage_id: p.passage_id, source: p.source, organ: p.organ, version: p.version, section: p.section, page: p.page, text: String(p.text).slice(0, 2500) })) },
-    spend, d, "sources",
+    spend, d, "sources", who,
   );
   const p = byId.get(out.passage_id) as any;
   const findings: Finding[] = [];
@@ -255,7 +263,7 @@ export async function sourcesCheck(deps: RunDeps, provider: AiProvider | null, d
 }
 
 /** Atualidade: só com documento. Fonte vencida ou substituída pesa mais que qualquer parecer. */
-export async function currencyCheck(deps: RunDeps, provider: AiProvider | null, d: DraftRow, spend: Spend): Promise<{ verdict: Verdict; findings: Finding[] }> {
+export async function currencyCheck(deps: RunDeps, provider: AiProvider | null, d: DraftRow, spend: Spend, who?: Answerer): Promise<{ verdict: Verdict; findings: Finding[] }> {
   const claim = normalize(d.clinical_decision ?? "");
   if (!claim) return { verdict: "inconclusive", findings: [{ severity: "major", code: "no_claim", detail: "O rascunho não traz a afirmação central a conferir." }] };
   const passages = await officialPassages(deps, claim);
@@ -272,7 +280,7 @@ export async function currencyCheck(deps: RunDeps, provider: AiProvider | null, 
   const out = await callAi<{ verdict: string; passage_id: string; quote: string; rationale: string }>(
     deps, provider, "currency",
     { afirmacao: claim, hoje: today, trechos: passages.map((p: any) => ({ passage_id: p.passage_id, source: p.source, organ: p.organ, version: p.version, published_on: p.published_on, valid_until: p.valid_until, page: p.page, text: String(p.text).slice(0, 2500) })) },
-    spend, d, "currency",
+    spend, d, "currency", who,
   );
   const p = byId.get(out.passage_id) as any;
   if (!p || !isVerbatim(out.quote, p.text)) return { verdict: "inconclusive", findings: [{ severity: "major", code: "quote_not_verbatim", detail: "A citação proposta não é cópia literal do trecho: descartada." }] };
@@ -359,7 +367,10 @@ export async function runDraftChecks(deps: RunDeps, options: RunOptions): Promis
         meta = { provider: "software", model: "regras", prompt_version: CHECKS_VERSION };
       } else {
         const role = layer as VerifierRole;
-        const { provider, status } = resolveRoleProvider(role, d.model, deps.mockRespond);
+        const roleIndex = ({ sources: 0, currency: 1, redteam: 2 } as const)[role];
+        const mockProvider = deps.mockRespond ? resolveProviderKind("mock", deps.mockRespond).provider : null;
+        const { provider, status } = await maestroRoleProvider({ db: deps.db, mockProvider, makeProviderFor: deps.aiMaker, log: deps.log }, roleIndex, d.model, { source: "conferencia", itemId: d.id });
+        const who: Answerer = { provider: provider?.name ?? "software", model: provider?.model ?? "" };
         const needsAi = layer === "redteam";
         // fontes/atualidade só chamam IA quando há trecho oficial; antes disso o resultado é determinístico
         if (!provider && needsAi) {
@@ -368,7 +379,7 @@ export async function runDraftChecks(deps: RunDeps, options: RunOptions): Promis
         }
         const before = report.spend.calls;
         try {
-          result = layer === "redteam" ? await redteamCheck(deps, provider!, d, report.spend) : layer === "sources" ? await sourcesCheck(deps, provider, d, report.spend) : await currencyCheck(deps, provider, d, report.spend);
+          result = layer === "redteam" ? await redteamCheck(deps, provider!, d, report.spend, who) : layer === "sources" ? await sourcesCheck(deps, provider, d, report.spend, who) : await currencyCheck(deps, provider, d, report.spend, who);
         } catch (error) {
           if (!provider) {
             report.pending = status.pending ?? (error as Error).message;
@@ -377,7 +388,7 @@ export async function runDraftChecks(deps: RunDeps, options: RunOptions): Promis
           report.pending = `Falha na chamada (${(error as Error).message.slice(0, 160)})`;
           break;
         }
-        meta = { provider: provider?.name ?? "software", model: report.spend.calls > before ? provider?.model : "sem chamada de IA", prompt_version: CHECKS_VERSION };
+        meta = { provider: report.spend.calls > before ? who.provider : (provider?.name ?? "software"), model: report.spend.calls > before ? who.model : "sem chamada de IA", prompt_version: CHECKS_VERSION };
       }
       await deps.db.service("ch_worker_save_draft_check", { p_draft_id: d.id, p_layer: layer, p_verdict: result.verdict, p_findings: result.findings, p_meta: meta });
       report.saved++;

@@ -11,7 +11,9 @@
  */
 import crypto from "crypto";
 import { PROMPTS, asDocument } from "./ai/prompts";
-import { resolveCreatorProvider, type AiProvider, type StructuredRequest } from "./ai/provider";
+import { resolveProviderKind, type AiProvider, type StructuredRequest } from "./ai/provider";
+import { maestroProvider } from "../ai/maestro";
+import type { ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { normalize, numbers } from "./checks";
 import { verdictOf, type Finding, type Spend } from "./draftChecks";
@@ -59,6 +61,8 @@ export interface Proposal {
 export interface ReanalysisDeps {
   db: ContentDb;
   mockRespond?: (req: StructuredRequest) => unknown;
+  /** Só para testes: cria o provedor de uma ref (as regras da Central de IAs continuam valendo). */
+  aiMaker?: (ref: ModelRef) => AiProvider | null;
   log?: (m: string) => void;
 }
 
@@ -142,13 +146,15 @@ export const estimateReanalysisTokens = (q: ReanalysisInput) => ({
   outputTokens: 1200,
 });
 
-async function generate(deps: ReanalysisDeps, provider: AiProvider, q: ReanalysisInput, spend: Spend): Promise<Proposal> {
+async function generate(deps: ReanalysisDeps, provider: AiProvider, q: ReanalysisInput, spend: Spend, who: { provider: string; model: string }): Promise<Proposal> {
   const prompt = PROMPTS.qreanalysis;
   const input = `Responda no formato "qreanalysis". A questão e as mudanças seguem como dado:\n${asDocument(reanalysisPayload(q))}`;
   const inputHash = sha256(`${prompt.system}\n${input}`);
   const cached = await deps.db.service<Proposal | null>("ch_worker_cached_run", { p_prompt_id: prompt.id, p_prompt_version: prompt.version, p_model: provider.model, p_input_hash: inputHash });
   if (cached && validate(prompt.schema, cached).length === 0) return cached;
   const r = await provider.generate<Proposal>({ promptId: prompt.id, promptVersion: prompt.version, system: prompt.system, input, schema: prompt.schema, schemaName: "staziamed_qreanalysis", maxOutputTokens: 6000 });
+  who.provider = r.provider;
+  who.model = r.model;
   spend.calls++;
   spend.inputTokens += r.inputTokens ?? 0;
   spend.outputTokens += r.outputTokens ?? 0;
@@ -174,15 +180,19 @@ export async function runQuestionReanalysis(deps: ReanalysisDeps, options: Reana
     return report;
   }
   await registerPrompts(deps.db);
-  const { provider, status } = resolveCreatorProvider(deps.mockRespond);
-  if (!provider) {
-    report.pending = status.pending ?? "Provedor de criação indisponível.";
-    return report;
-  }
+  const mockProvider = deps.mockRespond ? resolveProviderKind("mock", deps.mockRespond).provider : null;
+  const aiDeps = { db: deps.db, mockProvider, makeProviderFor: deps.aiMaker, log: deps.log };
   for (const q of questions) {
+    // a origem leva o id da questão; o maestro refaz o provedor a cada questão
+    const { provider, status } = await maestroProvider(aiDeps, "engenharia_reversa", { source: "analise", itemId: q.question_id });
+    if (!provider) {
+      report.pending = status.pending ?? "Provedor de criação indisponível.";
+      break;
+    }
     try {
       await deps.db.service("ch_worker_reanalysis_started", { p_question_id: q.question_id });
-      const proposal = await generate(deps, provider, q, report.spend);
+      const who = { provider: provider.name, model: provider.model };
+      const proposal = await generate(deps, provider, q, report.spend, who);
       const findings = reanalysisChecks(q, proposal);
       const verdict = verdictOf(findings);
       const n = await deps.db.service<number>("ch_worker_save_reanalysis", {
@@ -190,7 +200,7 @@ export async function runQuestionReanalysis(deps: ReanalysisDeps, options: Reana
         p_update_ids: q.changes.map((c) => c.update_id),
         p_proposal: { ...proposal, current_answer: proposal.current_answer === "NONE" ? null : proposal.current_answer, simulated: provider.isMock },
         p_checks: { verdict, findings },
-        p_meta: { model: provider.model, prompt_version: REANALYSIS_VERSION },
+        p_meta: { provider: who.provider, model: who.model, prompt_version: REANALYSIS_VERSION },
       });
       if (n > 0) report.saved++;
       report.verdicts[verdict] = (report.verdicts[verdict] ?? 0) + 1;
