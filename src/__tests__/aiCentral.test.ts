@@ -133,6 +133,21 @@ describe("Banco", () => {
     expect(cfg.functions).toEqual([]);
   });
 
+  it("IA sem modelo, ou com modelo que não é texto, é recusada no banco (a conferência dava nulo)", async () => {
+    const ok = { mode: "sozinha", primary_ref: { provider: "anthropic", model: "claude-x" } };
+    const save = (config: unknown) => db.service("ch_worker_ai_save_function", { p_actor: ADMIN, p_key: "criacao", p_config: config });
+    try {
+      await expect(save({ ...ok, primary_ref: { provider: "anthropic" } })).rejects.toThrow(/principal inválido/);
+      await expect(save({ ...ok, primary_ref: { model: "claude-x" } })).rejects.toThrow(/principal inválido/);
+      await expect(save({ ...ok, primary_ref: { provider: "anthropic", model: 5 } })).rejects.toThrow(/principal inválido/);
+      await expect(save({ ...ok, fallback_ref: { provider: "openai" } })).rejects.toThrow(/reserva inválido/);
+      await expect(save({ ...ok, reviewers: [{ provider: "gemini" }] })).rejects.toThrow(/conferente inválido/);
+      expect((await db.service<any>("ch_worker_ai_config")).functions).toEqual([]);
+    } finally {
+      await save(null);
+    }
+  });
+
   it("preços e tetos são validados e gravados", async () => {
     await db.service("ch_worker_ai_save_price", { p_actor: ADMIN, p_provider: "openai", p_model: "gpt-x", p_price: { input_per_mtok: 1.5, output_per_mtok: 6, source_url: "https://exemplo.dev/precos", checked_on: "2026-10-07" } });
     await db.service("ch_worker_ai_save_price", { p_actor: ADMIN, p_provider: "openai", p_model: "gpt-x", p_price: { input_per_mtok: 2, output_per_mtok: 8 } });
@@ -295,6 +310,13 @@ describe("Modelos", () => {
     expect(r.status).toBe("pronta");
     expect(r.models.map((m) => m.id)).toEqual(["llama3", "qwen:7b"]);
     expect(calls[0].url).toBe("http://mac:1234/api/tags");
+  });
+
+  it("Ollama: modelos de busca (embed) ficam de fora da lista de texto", async () => {
+    const { f } = fake({ models: [{ name: "nomic-embed-text:latest" }, { name: "qwen3:8b" }, { name: "mxbai-embed-large" }, { name: "llama3" }] });
+    const r = await listModels("ollama", {}, f);
+    expect(r.status).toBe("pronta");
+    expect(r.models.map((m) => m.id)).toEqual(["llama3", "qwen3:8b"]);
   });
 
   it("Ollama sem resposta vira so_no_mac", async () => {
@@ -565,6 +587,24 @@ describe("Configuração", () => {
       await db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: { caps_enabled: orig.caps_enabled, monthly_cap_usd: orig.monthly_cap_usd, per_run_cap_usd: orig.per_run_cap_usd } });
       invalidateAiConfig(db);
     }
+  });
+
+  it("sem função salva e sem uiKind, vale CONTENT_HUB_AI_PROVIDER antes do padrão; as específicas ganham dela", async () => {
+    const { envFallbackRef } = await import("../../server/ai/config");
+    const gemini = { provider: "gemini", model: "gemini-2.5-pro" };
+    const env = { CONTENT_HUB_AI_PROVIDER: "gemini" } as any;
+    for (const fn of ["criacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "verificacao"] as const) expect(envFallbackRef(fn, env), fn).toEqual(gemini);
+    const mix = { CONTENT_HUB_AI_PROVIDER: "gemini", CONTENT_HUB_AI_PROVIDER_CREATE: "anthropic", CONTENT_HUB_VERIFIER_PROVIDER: "openai", CONTENT_HUB_OPENAI_MODEL: "gpt-x" } as any;
+    expect(envFallbackRef("criacao", mix)).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" });
+    expect(envFallbackRef("engenharia_reversa", mix)).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" });
+    expect(envFallbackRef("verificacao", mix)).toEqual({ provider: "openai", model: "gpt-x" });
+    // o modelo vem da variável da IA escolhida
+    expect(envFallbackRef("criacao", { CONTENT_HUB_AI_PROVIDER: "gemini", CONTENT_HUB_GEMINI_MODEL: "g-env" } as any)?.model).toBe("g-env");
+    // a simulação não é uma IA da Central; com a escolha da tela (uiKind) vale a tela
+    expect(envFallbackRef("criacao", { CONTENT_HUB_AI_PROVIDER: "mock" } as any)).toBeNull();
+    expect(envFallbackRef("criacao", env, "anthropic")).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" });
+    // nada definido: o padrão de sempre
+    expect(envFallbackRef("criacao", {} as any)).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" });
   });
 
   it("envFallbackRef com uiKind usa LESSON_ASSIST_/PODCAST_ e os padrões", async () => {

@@ -127,7 +127,11 @@ export function functionForPrompt(key: PromptKey): AiFunctionKey {
   }
 }
 
-/** Modelo/IA das variáveis de ambiente, usado quando a função não tem configuração salva. */
+/**
+ * Modelo/IA das variáveis de ambiente, usado quando a função não tem configuração salva. Sem a escolha da tela (uiKind):
+ * criação, engenharia reversa e assistentes seguem CONTENT_HUB_AI_PROVIDER_CREATE, depois CONTENT_HUB_AI_PROVIDER;
+ * a verificação segue CONTENT_HUB_VERIFIER_PROVIDER, depois CONTENT_HUB_AI_PROVIDER; o padrão é o Claude.
+ */
 export function envFallbackRef(fn: AiFunctionKey, env: NodeJS.ProcessEnv = process.env, uiKind?: AiProviderId): ModelRef | null {
   const get = (k: string) => (env[k] ?? "").trim();
   const assistant = fn.startsWith("assistente_");
@@ -145,11 +149,11 @@ export function envFallbackRef(fn: AiFunctionKey, env: NodeJS.ProcessEnv = proce
     const up = uiKind.toUpperCase();
     model = assistant ? modelFor(uiKind, `LESSON_ASSIST_${up}_MODEL`, `PODCAST_${up}_MODEL`) : modelFor(uiKind, `PODCAST_${up}_MODEL`);
   } else if (fn === "verificacao") {
-    id = get("CONTENT_HUB_VERIFIER_PROVIDER") || "anthropic";
+    id = get("CONTENT_HUB_VERIFIER_PROVIDER") || get("CONTENT_HUB_AI_PROVIDER") || "anthropic";
     if (!isProviderId(id)) return null;
     model = modelFor(id);
   } else {
-    id = get("CONTENT_HUB_AI_PROVIDER_CREATE") || "anthropic";
+    id = get("CONTENT_HUB_AI_PROVIDER_CREATE") || get("CONTENT_HUB_AI_PROVIDER") || "anthropic";
     if (!isProviderId(id)) return null;
     model = get("CONTENT_HUB_MODEL_CREATE") || modelFor(id);
   }

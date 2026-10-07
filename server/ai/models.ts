@@ -17,6 +17,8 @@ export interface ModelList {
 const TIMEOUT_MS = 10_000;
 const OPENAI_EXCLUDE = ["embedding", "tts", "whisper", "dall-e", "image", "audio", "realtime", "transcribe", "moderation", "search"];
 const GEMINI_EXCLUDE = ["embedding", "imagen", "veo", "tts", "live", "aqa"];
+// modelos de busca (nomic-embed-text, mxbai-embed-large...) não geram texto
+const OLLAMA_EXCLUDE = ["embed"];
 
 const fail = (status: ProviderStatus, detail: string): ModelList => ({ status, detail, models: [] });
 const clean = (v: string | undefined) => (v ?? "").trim();
@@ -90,7 +92,7 @@ export async function listModels(id: AiProviderId, env: NodeJS.ProcessEnv = proc
       .filter((m: ModelEntry) => !excluded(m.id, GEMINI_EXCLUDE));
   } else {
     if (!Array.isArray(data.models)) return fail("erro", BAD_FORMAT);
-    models = data.models.filter((m: any) => typeof m?.name === "string").map((m: any) => ({ id: m.name, label: m.name }));
+    models = data.models.filter((m: any) => typeof m?.name === "string" && !excluded(m.name, OLLAMA_EXCLUDE)).map((m: any) => ({ id: m.name, label: m.name }));
   }
   return { status: "pronta", detail: incomplete ? "Lista possivelmente incompleta." : null, models: models.sort(byId) };
 }

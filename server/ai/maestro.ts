@@ -14,6 +14,7 @@ import {
   isProviderId,
   loadAiConfig,
   makeProvider,
+  PROVIDER_NAMES,
   providerPending,
   refProblems,
   validateFunctionConfig,
@@ -620,7 +621,6 @@ export interface AiChoices {
   current: { kind: AiProviderId; label: string; model: string } | null;
 }
 
-const CHOICE_LABELS: Record<AiProviderId, string> = { gemini: "Gemini", anthropic: "Claude", openai: "OpenAI", ollama: "Ollama" };
 const CHOICE_ORDER: AiProviderId[] = ["gemini", "anthropic", "openai", "ollama"];
 
 /** As IAs que as telas podem oferecer, com o motivo quando uma não está pronta. Sem rede. */
@@ -628,7 +628,7 @@ export async function aiChoices(db: ContentDb, env: NodeJS.ProcessEnv = process.
   const cfg = await loadAiConfig(db);
   const fc = cfg.functions.criacao ?? null;
   const choices: AiChoice[] = CHOICE_ORDER.map((id) => {
-    const label = CHOICE_LABELS[id];
+    const label = PROVIDER_NAMES[id];
     const ref = fc?.primary?.provider === id ? fc.primary : envFallbackRef("criacao", env, id);
     if (!ref?.model) return { kind: id, label, ready: false, model: null, pending: `Sem modelo definido para ${label}: escolha na Central de IAs.` };
     const pending = refProblems(ref, cfg)[0] ?? providerPending(ref, cfg, env) ?? makeProvider(ref, cfg, env).pending;
@@ -640,6 +640,6 @@ export async function aiChoices(db: ContentDb, env: NodeJS.ProcessEnv = process.
     choices,
     override_allowed: cfg.settings.tab_override_enabled || !fc,
     configured: !!fc,
-    current: primary ? { kind: primary.provider, label: CHOICE_LABELS[primary.provider], model: primary.model } : null,
+    current: primary ? { kind: primary.provider, label: PROVIDER_NAMES[primary.provider], model: primary.model } : null,
   };
 }

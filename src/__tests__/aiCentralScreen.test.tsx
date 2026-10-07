@@ -268,6 +268,19 @@ describe("Central de IAs (painel do administrador)", () => {
     expect(screen.queryByRole("tab", { name: /Central de IAs/ })).toBeNull();
   });
 
+  it("a lista de variáveis diz que a IA é escolhida na Central de IAs e o que vale enquanto a função não está salva", async () => {
+    backend.rpc.mockImplementation(async (fn: string) => (fn === "app_ch_flags" ? {} : fn === "app_ch_ai_usage" ? { by_step: [], jobs: {} } : []));
+    handlers["GET /api/ai-central/summary"] = () => json({ functions: [], providers_enabled: [], month_spend: 0 });
+    render(
+      <MemoryRouter>
+        <HubSettings isAdmin={false} status={{}} />
+      </MemoryRouter>,
+    );
+    const text = (await screen.findByText(/Administração › Central de IAs/)).textContent ?? "";
+    expect(text).toMatch(/enquanto uma função não estiver salva/i);
+    for (const name of ["CONTENT_HUB_AI_PROVIDER", "CONTENT_HUB_AI_PROVIDER_CREATE", "CONTENT_HUB_VERIFIER_PROVIDER"]) expect(text).toContain(name);
+  });
+
   it("Central de Conteúdo mostra o resumo das IAs e o botão só para administrador", async () => {
     backend.rpc.mockImplementation(async (fn: string) => (fn === "app_ch_flags" ? {} : fn === "app_ch_ai_usage" ? { by_step: [], jobs: {} } : []));
     handlers["GET /api/ai-central/summary"] = () => json({ functions: [{ key: "criacao", configured: true }, { key: "verificacao", configured: false }], providers_enabled: ["anthropic"], month_spend: 1.5 });

@@ -121,14 +121,17 @@ begin
 end
 $$;
 
--- {provider, model} válido? (IA entre as 4, modelo com 1 a 120 caracteres)
+-- {provider, model} válido? (IA entre as 4, modelo com 1 a 120 caracteres). Faltando provider ou model a conferência dá
+-- nulo: o coalesce transforma em falso (com nulo, "not ai_valid_ref(...)" também dá nulo e a recusa não aconteceria).
 create function public.ai_valid_ref(p_ref jsonb) returns boolean
   language sql immutable set search_path = ''
 as $$
-  select p_ref is not null and jsonb_typeof(p_ref) = 'object'
-     and (p_ref ->> 'provider') in ('anthropic', 'openai', 'gemini', 'ollama')
-     and jsonb_typeof(p_ref -> 'model') = 'string'
-     and char_length(btrim(p_ref ->> 'model')) between 1 and 120
+  select coalesce(
+    p_ref is not null and jsonb_typeof(p_ref) = 'object'
+      and (p_ref ->> 'provider') in ('anthropic', 'openai', 'gemini', 'ollama')
+      and jsonb_typeof(p_ref -> 'model') = 'string'
+      and char_length(btrim(p_ref ->> 'model')) between 1 and 120,
+    false)
 $$;
 
 -- ---------------------------------------------------------------- leitura para o servidor

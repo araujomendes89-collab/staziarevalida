@@ -28,11 +28,20 @@ Especificação: `docs/superpowers/specs/2026-10-07-central-de-ias-design.md`.
 
 Ligar é a autorização: fica registrado quem ligou e quando. O Tutor (texto e voz) **não muda** nesta etapa.
 
+**Recomendação:** salve cada função na tela, em vez de deixá-la sem configuração salva, para o site (Vercel) e o
+processamento (Cloud Run) usarem a mesma escolha. Uma função sem configuração salva segue as variáveis de cada servidor,
+e a Vercel e o Cloud Run podem ter variáveis diferentes. A tela só deixa salvar uma função cuja IA já está ligada: ligue
+as IAs e salve as funções em seguida, antes de deixar o processamento trabalhar.
+
 ## Primeiros passos (depois de publicado)
 1. **IAs:** ligue as que vai usar. Em cada uma, clique **Atualizar lista** para trazer os modelos e ver a situação:
    pronta, sem chave, chave recusada ou roda só no Mac.
 2. **Funções:** cada função pode ficar **sem configuração salva**, usando a IA e o modelo das variáveis do servidor,
-   como hoje, desde que essa IA esteja ligada. Ou você salva o modo e as IAs de cada uma.
+   como hoje, desde que essa IA esteja ligada: `CONTENT_HUB_AI_PROVIDER` e, quando existirem, as específicas
+   `CONTENT_HUB_AI_PROVIDER_CREATE` (criação, engenharia reversa e assistentes) e `CONTENT_HUB_VERIFIER_PROVIDER`
+   (verificação). Ou você salva o modo e as IAs de cada uma (recomendado, veja acima). A tela marca a função como
+   **não está pronta** quando a IA escolhida não pode rodar naquele servidor (IA desligada, chave vazia, Ollama no site
+   publicado); se só a principal não roda e há reserva que roda, a tela avisa que a reserva vai responder.
 3. **Gasto e tetos:** se quiser, preencha o teto mensal e o teto por execução e ligue os tetos.
 
 ## As funções
@@ -68,7 +77,12 @@ comitê mostrados para a equipe aparecem a partir da etapa 2.
   chamadas; o **Ollama continua**.
 - **Duas execuções ao mesmo tempo** podem passar do teto em até o custo de uma execução (a tela avisa).
 - Com os tetos ligados, **modelo pago sem preço fica bloqueado**. Ollama custa zero.
-- O gasto do Tutor aparece à parte, só como informação, e não entra no teto.
+- **Quando o teto é atingido**, os documentos da Central ficam **parados** (pendência) e voltam sozinhos quando o teto
+  permitir: a cada rodada do processamento os parados voltam para a fila e, se o teto ainda não deixa, param de novo sem
+  gastar tentativa. Subir o teto basta; ninguém precisa reenviar o documento.
+- O gasto do Tutor (texto e voz) aparece à parte, só como informação, e não entra no teto. As chamadas das Aulas e do
+  roteiro dos Podcasts passam pelo maestro e contam no gasto da Central.
+- No Gemini, o raciocínio do modelo é cobrado como saída e entra na conta.
 
 ## Preços
 Os preços iniciais foram conferidos em **2026-10-07** nas páginas oficiais, e cada um guarda a fonte e a data:
@@ -85,7 +99,11 @@ preço. Modelo sem preço: preencha na tabela da tela.
 ## Ollama (só no Mac)
 - O servidor procura o Ollama em `OLLAMA_BASE_URL` (padrão `http://localhost:11434`). A lista vem do próprio Ollama,
   sem chave e sem custo.
-- Na Vercel e no Cloud Run ele aparece como **roda só no Mac** e não é chamado; se houver reserva, ela assume.
+- Na Vercel e no Cloud Run ele aparece como **roda só no Mac** e **não pode ser escolhido** no site publicado: no seletor
+  da função ele fica "indisponível" e desabilitado, e o servidor recusa salvar uma função com ele. Se uma função com
+  Ollama foi salva no Mac, no site publicado ela aparece como não pronta, ou com o aviso de que a reserva vai responder,
+  e o Ollama não é chamado.
+- A lista de modelos do Ollama deixa de fora os modelos de busca (os que têm `embed` no nome), que não geram texto.
 
 ## Seletor nas abas
 O interruptor **Permitir trocar a IA nas abas** começa desligado. Desligado: Aulas, Podcasts e as outras abas usam o que
@@ -120,7 +138,7 @@ feita na aba vale, desde que a IA esteja ligada e o modelo esteja na lista.
 | Ollama | `server/contentHub/ai/ollama.ts` |
 | Listas de modelos das empresas | `server/ai/models.ts` |
 | Preços iniciais e estimativa | `server/ai/prices.ts` |
-| Leitura da configuração, validação, situação das funções | `server/ai/config.ts` |
+| Leitura da configuração, validação, situação das funções e das IAs neste servidor | `server/ai/config.ts` |
 | O maestro (modos, tetos, registro, adaptadores, escolhas das abas) | `server/ai/maestro.ts` |
 | Rotas `/api/ai-central` (o prefixo `/api/ai` é do app antigo e não pode ser usado) | `server/ai/router.ts` (montadas em `server.ts`) |
 | Usos | `server/contentHub/pipeline.ts`, `worker.ts`, `router.ts`, `questionAnalysis.ts`, `questionReanalysis.ts`, `draftChecks.ts`, `server/lessons/assist.ts`, `server/podcasts/script.ts` |

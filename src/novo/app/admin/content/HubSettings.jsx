@@ -10,7 +10,7 @@ import { KeyValue, ModelBadge, Section, useAction } from "./ui.jsx";
 import { aiGet, PROVIDER_NAME, usd } from "../ai/aiApi.js";
 
 const CREDENTIALS = [
-  ["CONTENT_HUB_AI_PROVIDER", "a escolha da IA agora é feita na Central de IAs; a variável só vale enquanto a função não está salva (anthropic, gemini ou openai; o modo mock só existe fora de produção)"],
+  ["CONTENT_HUB_AI_PROVIDER", "a IA de cada função é escolhida em Administração › Central de IAs. Enquanto uma função não estiver salva lá, valem esta variável (anthropic, gemini ou openai; o modo mock só existe fora de produção) e as específicas CONTENT_HUB_AI_PROVIDER_CREATE (criação, engenharia reversa e assistentes) e CONTENT_HUB_VERIFIER_PROVIDER (verificação)"],
   ["CONTENT_HUB_AI_FALLBACK_PROVIDER", "provedor secundário: usado se o principal falhar depois de uma nova tentativa (conferentes só aceitam outra família que a do criador)"],
   ["OPENAI_API_KEY e CONTENT_HUB_OPENAI_MODEL", "provedor OpenAI: a chave e o modelo (o modelo é obrigatório, nunca é adivinhado)"],
   ["CONTENT_LAB_ENABLED=false / CONTENT_LAB_AI_ENABLED=false", "desliga o módulo ou só a IA direto no servidor (vale mais que o painel)"],
