@@ -88,10 +88,14 @@ comitê mostrados para a equipe aparecem a partir da etapa 2.
 - **Duas execuções ao mesmo tempo** podem passar do teto em até o custo de uma execução (a tela avisa).
 - Com os tetos ligados, **modelo pago sem preço fica bloqueado**. Ollama custa zero.
 - **Quando o teto é atingido**, os documentos da Central ficam **parados** (pendência) e voltam sozinhos quando o teto
-  permitir: a cada rodada do processamento os parados voltam para a fila e, se o teto ainda não deixa, param de novo sem
-  gastar tentativa. Subir o teto basta; ninguém precisa reenviar o documento.
+  permitir; ninguém precisa reenviar o documento.
+  - Teto **por execução** (o pedido estimado passa do teto): a cada rodada do processamento os parados voltam para a fila
+    e, se o teto ainda não deixa, param de novo sem gastar tentativa. Suba o teto por execução.
+  - Teto **mensal** atingido: a fila não é destravada até o mês virar (horário de Brasília) ou o teto mensal subir; aí os
+    parados voltam na rodada seguinte.
 - O gasto do Tutor (texto e voz) aparece à parte, só como informação, e não entra no teto. As chamadas das Aulas e do
-  roteiro dos Podcasts passam pelo maestro e contam no gasto da Central.
+  roteiro dos Podcasts passam pelo maestro e contam no gasto da Central. A voz dos Podcasts (a geração do áudio) não passa
+  pelo maestro: o gasto dela aparece no painel do Tutor (custos por recurso), não na Central.
 - No Gemini, o raciocínio do modelo é cobrado como saída e entra na conta.
 
 ## Preços

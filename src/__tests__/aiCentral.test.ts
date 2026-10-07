@@ -19,6 +19,7 @@ import { AiInvalidOutput } from "../../server/contentHub/ai/provider";
 vi.setConfig({ testTimeout: 120_000 });
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "aicentral-"));
+const ROOT = path.resolve(__dirname, "../..");
 const ADMIN = "00000000-0000-4000-8000-0000000000ad";
 const EDITOR = "00000000-0000-4000-8000-0000000000e1";
 const STUDENT = "00000000-0000-4000-8000-0000000000b1";
@@ -1494,7 +1495,7 @@ describe("Rotas", () => {
     expect((await fetch(`${antigo}/api/ai/models`)).status).toBe(401);
 
     // o server.ts monta a Central no prefixo novo e não no antigo
-    const text = fs.readFileSync("server.ts", "utf8");
+    const text = fs.readFileSync(path.join(ROOT, "server.ts"), "utf8");
     expect(text.includes('app.use("/api/ai-central", createAiRouter('), "server.ts monta a Central em /api/ai-central").toBe(true);
     expect(text.includes('app.use("/api/ai", createAiRouter('), "server.ts não pode montar a Central em /api/ai").toBe(false);
   });

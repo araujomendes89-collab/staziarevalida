@@ -1,5 +1,7 @@
 # Central de IAs (etapa 1) Implementation Plan
 
+> Nota (2026-10-07): as rotas da Central de IAs ficaram em /api/ai-central (o prefixo /api/ai é do app antigo); ver docs/architecture/CENTRAL_DE_IAS.md.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Uma tela Administração › Central de IAs onde o administrador liga Claude, OpenAI, Gemini e Ollama, escolhe
