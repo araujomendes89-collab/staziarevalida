@@ -73,7 +73,7 @@ describe("Minha conta: aceites", () => {
     render(<AccountScreen go={vi.fn()} />);
     openPrivacy();
     expect(screen.getByText("Termo de Aceite e Uso v1.0 — aceito em 07/10/2026 às 18:05")).toBeTruthy();
-    expect(screen.getByText("Aceite dos Tutores de IA — ainda não aceito")).toBeTruthy();
+    expect(screen.getByText("Aceite dos Tutores de IA v1.0 — ainda não aceito")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Termo de Aceite e Uso" }).getAttribute("href")).toBe("/novo/termos");
     expect(screen.getByRole("link", { name: "Política de Privacidade" }).getAttribute("href")).toBe("/novo/privacidade");
   });

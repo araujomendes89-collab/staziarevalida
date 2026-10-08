@@ -10,9 +10,7 @@ import { PASSWORD_MIN_LENGTH } from "../../data";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { PlayProfileSection } from "../play/PlayProfile.jsx";
-import { PhoneField } from "../legal/PhoneField.jsx";
 import { COUNTRIES, normalizePhone, phoneError, splitPhone } from "../legal/phone.js";
-import "../auth/login.css";
 import "./account.css";
 
 const SECTIONS = [
@@ -106,6 +104,36 @@ function useProfileForm(fields, adjust) {
 
 const ACCOUNT_FIELDS = ["name"];
 const COUNTRY_CODES = new Set(COUNTRIES.filter((c) => c.code !== "outro").map((c) => c.code));
+
+/**
+ * WhatsApp com os componentes do design system, nas mesmas regras e no mesmo contrato "Outro" do PhoneField do cadastro
+ * (lógica do seletor espelhada de legal/PhoneField.jsx; o PhoneField segue só no cadastro e na tela de aceite).
+ */
+function PhoneInputs({ code, number, onChange, error, codeError, id }) {
+  const [other, setOther] = React.useState(() => !COUNTRY_CODES.has(code));
+  const selectValue = !other && COUNTRY_CODES.has(code) ? code : "outro";
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: other ? "minmax(150px,1fr) 110px minmax(0,2fr)" : "minmax(150px,1fr) minmax(0,2fr)", gap: 12, alignItems: "start" }}>
+      <SelectField
+        id={`${id}-country`}
+        label="País do WhatsApp"
+        value={selectValue}
+        onChange={(e) => {
+          if (e.target.value === "outro") {
+            setOther(true);
+            onChange({ code: "", number });
+          } else {
+            setOther(false);
+            onChange({ code: e.target.value, number });
+          }
+        }}
+        options={COUNTRIES.map((c) => ({ value: c.code, label: c.label }))}
+      />
+      {other && <TextField id={`${id}-code`} label="Código do país" placeholder="+44" inputMode="tel" autoComplete="off" value={code} onChange={(e) => onChange({ code: e.target.value, number })} error={codeError} />}
+      <TextField id={`${id}-number`} label="WhatsApp" type="tel" autoComplete="tel-national" value={number} onChange={(e) => onChange({ code, number: e.target.value })} error={error} />
+    </div>
+  );
+}
 function AccountSection({ email }) {
   const { boot, updateProfile } = useSession();
   const savedPhone = React.useMemo(() => splitPhone(boot.profile.phone ?? null), [boot.profile.phone]);
@@ -134,8 +162,7 @@ function AccountSection({ email }) {
         <TextField label="Nome completo" value={form.draft.name} maxLength={120} onChange={(e) => form.set({ name: e.target.value })} error={nameError ?? undefined} autoComplete="name" />
         <TextField label="E-mail cadastrado" value={email ?? ""} hint="O e-mail é vinculado ao seu login e não pode ser alterado aqui." readOnly />
       </div>
-      <div className="lg-root acc-phone">
-        <PhoneField
+      <PhoneInputs
           code={phone.code}
           number={phone.number}
           onChange={(next) => (setPhone(next), form.setStatus(null), setShowPhoneError(false))}
@@ -143,7 +170,6 @@ function AccountSection({ email }) {
           codeError={showPhoneError && codeBad ? msg : undefined}
           id="conta-phone"
         />
-      </div>
       <div style={{ paddingTop: 20, borderTop: "1px solid var(--border-subtle)" }}>
         <div className="sm-field__label" style={{ marginBottom: 10 }}>
           Aparência
@@ -279,7 +305,7 @@ function AcceptanceLine({ title, doc }) {
   if (!doc) return null;
   return (
     <div style={{ font: "var(--type-body-sm)" }}>
-      {doc.accepted && doc.accepted_at ? `${title} v${doc.accepted} — aceito em ${dateTimeBR(doc.accepted_at)}` : `${title} — ainda não aceito`}
+      {doc.accepted && doc.accepted_at ? `${title} v${doc.accepted} — aceito em ${dateTimeBR(doc.accepted_at)}` : `${title}${doc.current ? ` v${doc.current}` : ""} — ainda não aceito`}
     </div>
   );
 }
