@@ -33,6 +33,8 @@ export interface TutorDeps {
   elevenEnv?: NodeJS.ProcessEnv;
   /** Depósito das amostras aprovadas das vozes (tutor-voice-samples): o "Ouvir" do aluno toca daqui. */
   storage?: import("../contentHub/infra").Storage;
+  /** Transcrição da Nexus: nos testes, configuração simulada; fora deles, .env (stt.ts). */
+  stt?: import("./stt").SttConfig;
   /** Voz em tempo real: nos testes, configuração e fetch simulados; fora deles, .env e fetch de verdade (realtime.ts). */
   realtime?: import("./realtime").RealtimeConfig;
   /** GPT-Live: nos testes, configuração simulada; fora deles, .env (voiceProviders.ts). */

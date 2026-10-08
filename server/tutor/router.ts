@@ -14,6 +14,7 @@ import { planProviders } from "./voiceProviders";
 import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
 import { samplePath } from "./voicePreview";
 import type { TtsQuota } from "./nexus";
+import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, sttConfig, transcribe } from "./stt";
 
 type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -135,6 +136,30 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     }
   });
 
+  /**
+   * Transcrição da fala do aluno na Nexus: o áudio (até 4 MB e 45 s) vem no corpo, com X-Voice-Call-Id (a conversa de voz aberta)
+   * e X-Audio-Seconds. Ordem: conversa de voz do aluno, aceite, transcrição ligada, tamanho. Devolve só o texto.
+   */
+  const TOO_BIG = "Áudio acima de 45 segundos ou de 4 MB.";
+  router.post("/voice/transcribe", express.raw({ type: "audio/*", limit: MAX_AUDIO_BYTES }), async (req: Authed, res) => {
+    try {
+      const callId = String(req.headers["x-voice-call-id"] ?? "");
+      const v = uuid.test(callId) ? await voiceCall(deps!, req.user!.id, callId).catch(() => null) : null;
+      if (!v || v.status !== "active" || v.provider !== "tts") return fail(res, 409, "A conversa por voz foi encerrada.");
+      const quota = await deps!.db.service<TtsQuota>("ch_worker_tutor_tts_quota", { p_user: req.user!.id });
+      if (quota?.consent_pending) return failTutor(res, consentError());
+      if (!(deps!.stt ?? sttConfig()).ready) return fail(res, 503, "A transcrição não está ligada no servidor.");
+      const seconds = Number(req.headers["x-audio-seconds"]);
+      const audio = Buffer.isBuffer(req.body) ? req.body : null;
+      if (req.headers["x-audio-seconds"] == null || !Number.isFinite(seconds) || seconds <= 0 || seconds > MAX_AUDIO_SECONDS || !audio?.length) return fail(res, 413, TOO_BIG);
+      res.json(await transcribe(deps!, req.user!.id, callId, audio, String(req.headers["content-type"] ?? ""), seconds));
+    } catch (error) {
+      if (error instanceof TutorError) return failTutor(res, error);
+      deps!.log?.("[tutor] transcrição: erro inesperado");
+      fail(res, 500, "Não entendi, pode repetir ou digitar?");
+    }
+  });
+
   /** Um turno da conversa. body: { session_id, action: "message" | "hint" | "react", text?, voice?, interrupted? } */
   router.post("/turn", async (req: Authed, res) => {
     try {
@@ -242,5 +267,10 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     return { output: await runTutorTool({ deps: deps!, userId: req.user!.id, sessionId: v.session_id, personaId: persona?.personality.id ?? "direto", remember: (t) => rememberEvidence(id, t) }, name, args) };
   }));
 
+  // corpo grande demais no express.raw da transcrição: o mesmo aviso, em JSON
+  router.use((error: { type?: string }, _req: Request, res: Response, next: NextFunction) => {
+    if (error?.type === "entity.too.large") return fail(res, 413, "Áudio acima de 45 segundos ou de 4 MB.");
+    next(error);
+  });
   return router;
 }
