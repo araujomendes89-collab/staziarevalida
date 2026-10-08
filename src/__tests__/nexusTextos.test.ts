@@ -24,6 +24,12 @@ describe("Textos do Tutor do aluno", () => {
     expect(hits.map((f) => path.relative(ROOT, f))).toEqual([]);
   });
 
+  it("o painel de administração também não promete a voz do aparelho (ela saiu)", () => {
+    const admin = path.resolve(__dirname, "../novo/app/admin");
+    const hits = files(admin).filter((f) => /voz (é a )?do (próprio )?aparelho/i.test(fs.readFileSync(f, "utf8")));
+    expect(hits.map((f) => path.relative(admin, f))).toEqual([]);
+  });
+
   it("nenhum texto do aluno nomeia fornecedor", () => {
     const hits: string[] = [];
     for (const f of files(ROOT)) {

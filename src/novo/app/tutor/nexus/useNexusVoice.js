@@ -44,7 +44,8 @@ function micLevel(stream) {
   }
 }
 
-export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream, onSession, onMessage, onFallback }) {
+/** canListen: o servidor transcreve a fala (opened.mic); sem isso, o aluno escreve pelo Chat e o professor responde (em voz, se houver). */
+export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream, canListen = true, onSession, onMessage, onFallback }) {
   const [state, setStateRaw] = React.useState("idle");
   const [captions, setCaptions] = React.useState({ tutor: "", student: "" });
   const [avatar, setAvatar] = React.useState(null);
@@ -57,7 +58,7 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
   const tap = React.useMemo(() => tapToTalkDevice(), []);
   const r = React.useRef({ metrics: { stt: [], engine: [], tts: [], play: [] } });
   // as funções chamadas de fora do ciclo de desenho sempre leem o estado mais novo
-  Object.assign(r.current, { backend, session, jeito, voiceCallId, micStream, onSession, onMessage, onFallback, muted, tap });
+  Object.assign(r.current, { backend, session, jeito, voiceCallId, micStream, canListen, onSession, onMessage, onFallback, muted, tap });
 
   const setState = (s) => {
     r.current.state = s;
@@ -82,7 +83,7 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
   const listen = (manual = false) => {
     const c = r.current;
     if (!c.alive || c.rec) return;
-    if (!c.micStream || c.muted || c.noRecorder || (c.tap && !manual)) {
+    if (!c.micStream || !c.canListen || c.muted || c.noRecorder || (c.tap && !manual)) {
       setState("ready");
       return;
     }
@@ -235,7 +236,8 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     c.alive = true;
     c.metrics = { stt: [], engine: [], tts: [], play: [] };
     setNotice(null);
-    if (!c.micStream && c.jeito === "eleven") {
+    if (!c.canListen) setChatRequest((n) => n + 1); // sem transcrição no servidor: a conversa é pelo Chat
+    else if (!c.micStream && c.jeito === "eleven") {
       setMicError(realtimeErrorMessage({ kind: "mic" }));
       setChatRequest((n) => n + 1);
     } else if (!c.micStream) setChatRequest((n) => n + 1);

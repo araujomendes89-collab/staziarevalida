@@ -18,8 +18,8 @@ export const withArticle = (p) => `${p?.id === "durona" ? "a" : "o"} ${p?.name ?
 
 export function voiceLine(nexus, personalityId) {
   const prof = nexus?.professors?.find((p) => p.id === personalityId);
-  if (nexus?.voice_enabled && prof?.eleven) return { text: `Voz hoje: ${nexus.minutes_today} min`, label: "Voz do professor" };
-  if (nexus?.voice_enabled && nexus.reserve) return { text: `Voz reserva hoje: ${nexus.reserve_minutes} min`, label: "Voz reserva" };
+  if (nexus?.voice_enabled && prof?.eleven) return { text: `Voz hoje: ${nexus.minutes_today} min`, label: "Voz do professor", minutes: true };
+  if (nexus?.voice_enabled && nexus.reserve) return { text: `Voz reserva hoje: ${nexus.reserve_minutes} min`, label: "Voz reserva", minutes: true };
   return { text: "Professor por escrito hoje", label: "Por escrito" };
 }
 
@@ -33,10 +33,13 @@ export function NexusLobby({ status, nexus, request = null, busy = false, error 
   return (
     <div className="nx-lobby">
       <div className="nx-top">
-        <div className="nx-top__title">
-          <span className="nx-top__eyebrow">Seu professor particular para o Revalida</span>
-          <span className="nx-top__name">Stazia Tutor</span>
-        </div>
+        {/* na tela do app o topo já diz "Stazia Tutor"; por cima de outra tela, o título fica aqui */}
+        {onClose ? (
+          <div className="nx-top__title">
+            <span className="nx-top__eyebrow">Seu professor particular para o Revalida</span>
+            <span className="nx-top__name">Stazia Tutor</span>
+          </div>
+        ) : <span />}
         <div className="nx-top__actions">
           <button type="button" className="nx-pill" onClick={onHistory}>Histórico</button>
           {onClose && <button type="button" className="nx-pill" onClick={onClose} aria-label="Fechar o Tutor">Fechar</button>}
@@ -96,7 +99,7 @@ export function NexusLobby({ status, nexus, request = null, busy = false, error 
 
         <div className="nx-lobby__foot">
           <p className="nx-voice-line">
-            <span className="nx-voice-line__min">{line.text}</span>
+            <span className={line.minutes ? "nx-voice-line__min" : undefined}>{line.text}</span>
             <span className="nx-voice-line__jeito">{line.label}</span>
           </p>
           <TutorQuota status={status} compact />

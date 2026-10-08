@@ -264,6 +264,21 @@ describe("Nexus: a conversa pela voz do professor", () => {
     expect(speechCalls()).toHaveLength(0);
   });
 
+  it("sem transcrição no servidor (mic: false): não grava nem diz 'Ouvindo'; o Chat abre para escrever e a resposta sai em voz", async () => {
+    server["/api/tutor/voice/open"] = () => ({ body: { jeito: "eleven", voice_call_id: CALL, mic: false, reason: null, minutes_today: 5, reserve_minutes: 10 } });
+    const dialog = await openConversation();
+    await act(async () => { await new Promise((r) => setTimeout(r, 30)); });
+    expect(rec.calls).toHaveLength(0);
+    expect(within(dialog).queryByText("Ouvindo...")).toBeNull();
+    expect(within(dialog).queryByText(/bloqueou o microfone/)).toBeNull();
+    expect(within(dialog).getByLabelText("Escrever para o Tutor")).toBeInTheDocument();
+    fireEvent.change(within(dialog).getByLabelText("Escrever para o Tutor"), { target: { value: "oi" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Enviar" }));
+    await waitFor(() => expect(speechCalls().at(-1)!.body).toEqual({ kind: "message", session_id: SID, message_id: 7 }));
+    await finishSpeaking();
+    expect(rec.calls).toHaveLength(0);
+  });
+
   it("microfone negado: o aviso de hoje e a conversa segue pelo Chat, com resposta em voz", async () => {
     (navigator as any).mediaDevices.getUserMedia = vi.fn(async () => {
       throw Object.assign(new Error("negado"), { name: "NotAllowedError" });

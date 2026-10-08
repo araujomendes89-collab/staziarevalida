@@ -135,6 +135,12 @@ describe("Nexus: entrada", () => {
     expect((navigator as any).mediaDevices.getUserMedia).not.toHaveBeenCalled();
   });
 
+  it("na tela do app o título não se repete (o topo do app já diz 'Stazia Tutor'); por cima de outra tela, o título aparece", async () => {
+    await mount();
+    expect(screen.queryByText("Seu professor particular para o Revalida")).toBeNull();
+    expect(screen.getByRole("button", { name: "Histórico" })).toBeInTheDocument();
+  });
+
   it("'Perguntar ao Tutor' já marcado; o botão diz 'Começar com a Durona' e muda com a escolha", async () => {
     await mount();
     const modes = within(screen.getByRole("group", { name: "Modo" })).getAllByRole("button");
@@ -162,14 +168,14 @@ describe("Nexus: entrada", () => {
 
   it("linha de voz: 'Voz hoje: 5 min', 'Voz reserva hoje: 10 min' ou 'Professor por escrito hoje'; aviso da Política sempre visível", async () => {
     await mount();
-    expect(await screen.findByText("Voz hoje: 5 min")).toBeInTheDocument();
+    expect(await screen.findByText("Voz hoje: 5 min")).toHaveClass("nx-voice-line__min"); // minutos em fonte de números
     expect(screen.getByText(POLICY)).toBeInTheDocument();
     fireEvent.click(card("Direto")); // a voz do Direto não está aprovada: vai para a reserva
     expect(await screen.findByText("Voz reserva hoje: 10 min")).toBeInTheDocument();
     cleanup();
     server["/api/tutor/nexus"] = () => ({ body: nexus({ reserve: false, reserve_minutes: 0, professors: nexus().professors.map((p: any) => ({ ...p, eleven: false, sample: false })) }) });
     await mount();
-    expect(await screen.findByText("Professor por escrito hoje")).toBeInTheDocument();
+    expect(await screen.findByText("Professor por escrito hoje")).not.toHaveClass("nx-voice-line__min"); // sem números, texto normal
     expect(screen.getByText(POLICY)).toBeInTheDocument();
   });
 

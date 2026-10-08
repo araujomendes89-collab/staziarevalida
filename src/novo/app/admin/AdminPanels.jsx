@@ -445,7 +445,7 @@ export function AdminTutor() {
           <Switch label="Tutor ligado" description="Desligado: os alunos veem que o Tutor ainda não está no ar." checked={form.enabled} onChange={(e) => set({ enabled: e.target.checked })} />
           {server && (
             <Banner tone={server.realtime_voice ? "success" : "warning"}>
-              {server.realtime_voice ? `Voz em tempo real pronta no servidor (${server.realtime_model}).` : `Voz em tempo real não configurada: ${server.realtime_pending ?? "sem detalhe"} Sem ela, a voz é a do aparelho.`}
+              {server.realtime_voice ? `Voz em tempo real pronta no servidor (${server.realtime_model}).` : `Voz em tempo real não configurada: ${server.realtime_pending ?? "sem detalhe"} Sem ela, não há voz reserva: a Nexus usa a voz do professor ou o Chat.`}
             </Banner>
           )}
           <Switch label="Planos pagos + teste grátis" description="Ligado: quem não assina tem o teste grátis do Tutor (começa no primeiro uso) e depois vê o convite para assinar. Desligado: o Tutor fica liberado para todos (só para testes internos)." checked={form.requires_pro} onChange={(e) => set({ requires_pro: e.target.checked })} />

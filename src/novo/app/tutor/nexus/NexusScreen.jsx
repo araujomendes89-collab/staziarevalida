@@ -114,7 +114,7 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
   // voz do professor e por escrito: o turno pelo motor do Tutor
   const ttsRef = React.useRef(null);
   const tts = useNexusVoice({
-    backend, session, jeito: opened?.jeito ?? null, voiceCallId: opened?.voice_call_id ?? null, micStream,
+    backend, session, jeito: opened?.jeito ?? null, voiceCallId: opened?.voice_call_id ?? null, micStream, canListen: Boolean(opened?.mic),
     onSession: reload, onMessage: appendMessage,
     onFallback: (code, message, caption = null) => {
       if (code === "tutor_consent") return void refresh().catch(() => {});
