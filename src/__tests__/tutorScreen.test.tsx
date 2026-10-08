@@ -48,9 +48,9 @@ let blobs = 0;
 };
 
 const PERSONALITIES = [
-  { id: "acolhedor", name: "Acolhedor", emoji: "🙂", tagline: "Calmo, paciente e didático", swears: false, voice: { rate: 0.98, pitch: 1.02 } },
-  { id: "direto", name: "Direto", emoji: "🎯", tagline: "Objetivo, exigente e sem enrolação", swears: false, voice: { rate: 1, pitch: 0.85 } },
+  { id: "acolhedor", name: "Tranquilo", emoji: "😌", tagline: "Descontraído; faz você pensar", swears: false, voice: { rate: 0.92, pitch: 0.95 } },
   { id: "durona", name: "Durona", emoji: "🔥", tagline: "Provocadora e escrachada", swears: true, voice: { rate: 1.06, pitch: 1 } },
+  { id: "direto", name: "Direto", emoji: "🎯", tagline: "Objetivo, exigente e sem enrolação", swears: false, voice: { rate: 1, pitch: 0.85 } },
 ];
 const ENTITLEMENT = {
   enabled: true, mode: "trial", plan: "trial", is_paid: false, trial: { state: "active", days: 7, day: 3 }, can_use: true, can_text: true, can_voice: true, block_reason: null,
@@ -130,7 +130,7 @@ describe("Tela do Tutor", () => {
     const TutorScreen = await load();
     render(<TutorScreen go={() => {}} />);
     expect(await screen.findByText("Seu professor particular para o Revalida.")).toBeTruthy();
-    expect(screen.getAllByRole("radio", { name: /Acolhedor|Direto|Durona/ })).toHaveLength(3);
+    expect(screen.getAllByRole("radio", { name: /Tranquilo|Direto|Durona/ })).toHaveLength(3);
     expect(screen.getByRole("radio", { name: /Direto/ }).getAttribute("aria-checked")).toBe("true");
     fireEvent.click(screen.getByRole("radio", { name: /Durona/ }));
     await waitFor(() => expect(saved).toEqual([{ personality_id: "durona" }]));
@@ -144,7 +144,7 @@ describe("Tela do Tutor", () => {
   it("uso do Tutor: teste grátis com dia, texto, voz e questões (números do servidor); histórico por sessão de estudo", async () => {
     serverStatus = { ...serverStatus, realtime_voice: true };
     rpcImpl.app_tutor_sessions = () => [
-      { id: "s1", title: "Calendário vacinal", mode: "questao", status: "closed", personality: "🙂", persona: "Acolhedor", minutes: 20, questions: 12 },
+      { id: "s1", title: "Calendário vacinal", mode: "questao", status: "closed", personality: "😌", persona: "Tranquilo", minutes: 20, questions: 12 },
       { id: "s2", title: "Sepse: choque séptico", mode: "livre", status: "closed", personality: "🎯", persona: "Direto", minutes: 8, questions: 0 },
     ];
     const TutorScreen = await load();
@@ -153,7 +153,7 @@ describe("Tela do Tutor", () => {
     expect(screen.getByText("Texto 2/40 interações hoje")).toBeTruthy();
     expect(await screen.findByText("Voz 8 min disponíveis hoje · 32 min restantes no teste")).toBeTruthy();
     expect(screen.getByText("Questões 1/30 hoje")).toBeTruthy();
-    expect(screen.getByText("12 questões · Acolhedor")).toBeTruthy();
+    expect(screen.getByText("12 questões · Tranquilo")).toBeTruthy();
     expect(screen.getByText("8 min · Direto")).toBeTruthy();
     expect(screen.queryByText(/de 40 mensagens hoje/)).toBeNull();
   });

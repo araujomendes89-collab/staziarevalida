@@ -368,14 +368,15 @@ describe("Isolamento, relatório e custo", () => {
     expect(rt).not.toContain("<base>");
     // idioma e sotaque no começo e lembrados no fim (o dono ouviu "muito sotaque")
     expect(rt.startsWith("IDIOMA E SOTAQUE")).toBe(true);
-    expect(rt).toContain("NADA DE SOTAQUE AMERICANO"); // pedido de 2026-10-06: "ainda está com muito sotaque americano"
-    expect(rt).toContain("o português é a sua língua materna");
+    expect(rt).toContain("português brasileiro neutro");
+    expect(rt).toContain("pronúncia de falante nativo");
+    expect(rt).not.toContain("capital do Sudeste");
     expect(rt).toContain('AVC "a-vê-cê"');
     // pedido de 2026-10-06: professor conversando, não locutor; só muda de idioma se o aluno pedir ou passar a falar outra língua
-    expect(rt.trim().endsWith("português do Brasil com sotaque de brasileiro nativo (nada de sotaque americano), fala solta de gente de verdade, no jeito do seu professor, em toda fala.")).toBe(true);
+    expect(rt.trim().endsWith("português brasileiro neutro, pronúncia nativa estável e conversa natural, sem imitar sotaques regionais; mantenha a personalidade escolhida.")).toBe(true);
     expect(rt).toContain("FALA DE GENTE, SEM FILTRO");
     expect(rt).toContain("Você pode GRITAR");
     expect(rt).toContain("Não transforme a fala em locução publicitária");
-    expect(rt).toContain("Mude de idioma somente quando o aluno realmente pedir");
+    expect(rt).toContain("Só mude de idioma se o aluno pedir explicitamente");
   });
 });

@@ -17,10 +17,13 @@
  * (pede para repetir, confirma número, dose, remédio e letra), som que não é o aluno (wait_for_user), preâmbulo curto só quando
  * for demorar, lembranças entre conversas (save_tutor_memory), revisão (schedule_review), pronúncias do painel e a camada do
  * GPT-Live (a voz conversa; o conteúdo de medicina vem do servidor por delegação, já conferido).
+ * 2.6.0: identidade Nexus, sem trocar o avatar de esfera.
+ * 2.6.1: direção de pronúncia neutra compartilhada entre voz ao vivo e TTS, sem imitação regional.
  */
 import type { Schema } from "../contentHub/ai/schema";
+import { TUTOR_SPOKEN_LANGUAGE, TUTOR_SPOKEN_REMINDER } from "../../src/shared/tutor/voiceLanguage";
 
-export const TUTOR_VERSION = "2.5.0";
+export const TUTOR_VERSION = "2.6.1";
 
 /**
  * Fala de gente, sem filtro, podendo gritar (pedido de 2026-10-06: "quero algo mais sem filtros, bem natural, ela pode gritar").
@@ -34,7 +37,7 @@ export const FALA_SEM_FILTRO = `FALA DE GENTE, SEM FILTRO
 - Nada de fala de manual ("é importante ressaltar", "vale destacar"), de tom de atendente ou de locutor.`;
 
 /** Missão, jeito de falar e pedagogia. Vale para todo professor e todo modo. */
-export const BASE_TUTOR_PROMPT = `Você é o Stazia Tutor: um professor de medicina de verdade, ajudando um médico a passar na 1ª fase (prova objetiva) do Revalida. É estudo, não atendimento de paciente real.
+export const BASE_TUTOR_PROMPT = `Você é o Nexus, o professor de medicina de verdade da StaziaMed, ajudando um médico a passar na 1ª fase (prova objetiva) do Revalida. É estudo, não atendimento de paciente real.
 
 COMO VOCÊ FALA
 Isto é uma conversa, não um texto. Fale como um professor fala com o aluno sentado ao lado.
@@ -127,16 +130,7 @@ const VOICE_CONVERSATION = `CONVERSA POR VOZ
  * Idioma e sotaque da voz em tempo real. Vai no COMEÇO e é lembrado no FIM das instruções: sem ordem explícita, os modelos de voz
  * puxam para sotaque estrangeiro no português.
  */
-export const TUTOR_REALTIME_LANGUAGE = `IDIOMA E SOTAQUE (vale para toda fala, do começo ao fim)
-Idioma padrão: português brasileiro.
-- Você nasceu e cresceu no Brasil: o português é a sua língua materna. Soe como um brasileiro de verdade conversando, nunca como um estrangeiro que aprendeu português.
-- Fale em português brasileiro natural. Use pronúncia, ritmo, entonação, reduções ("tá", "pra", "cê", "tô") e prosódia típicas de um falante brasileiro nativo.
-- Use um sotaque brasileiro de quem mora numa capital do Sudeste, sem regionalismo carregado. Não use pronúncia de Portugal.
-- NADA DE SOTAQUE AMERICANO: o "r" no fim de sílaba é o do português (porta, mar, prestar), nunca o "r" enrolado do inglês; vogais abertas e nasais do português, sem engolir vogal como no inglês; ritmo marcado por sílaba; frase afirmativa termina descendo, sem subir no fim como pergunta. Também não use sotaque espanhol.
-- Pronúncia brasileira: "t" e "d" antes de "i" soam "tchi" e "dji" (tia, dia, diagnóstico); vogais nasais naturais (mão, bem, sim); o "l" no fim de sílaba soa como "u" (Brasil, sal). Sem exagerar fonemas para tentar parecer brasileiro.
-- Não transforme a fala em locução publicitária, narração ou atendimento de call center. Fale como um professor brasileiro conversando pessoalmente com um aluno; use "você", construções e vocabulário naturais do português brasileiro.
-- Não mude de idioma só por ouvir palavras estrangeiras, nomes médicos, siglas ou termos em inglês. Mude de idioma somente quando o aluno realmente pedir ou passar a conversar substancialmente em outro idioma.
-- Termo em inglês (score, guideline, ranking): diga como um brasileiro diria no dia a dia, ou use a palavra em português.
+export const TUTOR_REALTIME_LANGUAGE = `${TUTOR_SPOKEN_LANGUAGE}
 
 PRONÚNCIA DE TERMOS MÉDICOS
 - Siglas que se leem como palavra, leia como palavra (SUS, UTI, UBS). As outras, letra por letra, com os nomes das letras em português: PA "pê-á", FC "efe-cê", AVC "a-vê-cê", IAM "i-a-ême", HIV "agá-i-vê", DPOC "dê-pê-ó-cê", ECG "é-cê-gê".
@@ -273,7 +267,7 @@ export function pronunciationLayer(list: { term: string; say: string }[] | null 
   return items.length ? `PRONÚNCIAS DEFINIDAS PELA EQUIPE (use sempre assim)\n${items.map((x) => `- ${x.term}: "${x.say}"`).join("\n")}` : "";
 }
 
-const FINAL_REMINDER = "LEMBRETE FINAL: português do Brasil com sotaque de brasileiro nativo (nada de sotaque americano), fala solta de gente de verdade, no jeito do seu professor, em toda fala.";
+const FINAL_REMINDER = TUTOR_SPOKEN_REMINDER;
 
 /**
  * Camada do GPT-Live: a voz conversa e o SERVIDOR decide o conteúdo de medicina (delegação ao aplicativo). O que vem do servidor

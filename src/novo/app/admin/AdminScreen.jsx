@@ -14,6 +14,7 @@ import { AdminLessons } from "./AdminLessons.jsx";
 import { AdminUpdates } from "./AdminUpdates.jsx";
 import { AdminPodcasts } from "./AdminPodcasts.jsx";
 import { AdminAI } from "./ai/AdminAI.jsx";
+import { OfficialVoicesPanel } from "./OfficialVoicesPanel.jsx";
 import { isStaffRole } from "./common.jsx";
 
 const TABS = [
@@ -29,6 +30,7 @@ const TABS = [
   { value: "ias", label: "Central de IAs", icon: "bot" },
   { value: "play", label: "Stazia Arena", icon: "trophy" },
   { value: "config", label: "Configurações", icon: "settings" },
+  { value: "vozes", label: "Vozes do Nexus", icon: "volume-2", admin: true },
   { value: "registro", label: "Registro", icon: "history" },
 ];
 
@@ -39,13 +41,13 @@ export function AdminScreen() {
   const isAdmin = boot.role === "admin";
   const isStaff = isStaffRole(boot.role);
   // revisor médico sem papel de equipe: só a revisão da Central de Conteúdo
-  const tabs = TABS.filter((t) => isAdmin || (isStaff && t.staff) || (!isStaff && t.reviewer));
+  const tabs = TABS.filter((t) => t.admin ? isAdmin : isAdmin || (isStaff && t.staff) || (!isStaff && t.reviewer));
   const [params, setParams] = useSearchParams();
   const tab = tabs.some((t) => t.value === params.get("aba")) ? params.get("aba") : tabs[0].value;
 
   return (
     <>
-      {/* 13 abas não cabem numa linha: a barra quebra linha para todas aparecerem */}
+      {/* 14 abas não cabem numa linha: a barra quebra linha para todas aparecerem */}
       <Tabs wrap label="Administração" value={tab} onChange={(aba) => setParams({ aba }, { replace: true })} tabs={tabs.map(({ value, label, icon }) => ({ value, label, icon }))} />
       {tab === "geral" && <AdminOverview isAdmin={isAdmin} />}
       {tab === "usuarios" && <AdminUsers />}
@@ -64,6 +66,7 @@ export function AdminScreen() {
           <AdminTutor />
         </div>
       )}
+      {tab === "vozes" && <OfficialVoicesPanel />}
       {tab === "registro" && <AdminAudit />}
     </>
   );

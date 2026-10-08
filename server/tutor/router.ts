@@ -11,6 +11,7 @@ import { runTutorTool, TOOL_NAMES } from "./tools";
 import { delegateVoice } from "./delegate";
 import { tutorSettings } from "./settings";
 import { planProviders } from "./voiceProviders";
+import { elevenLabsSelected } from "./officialVoices";
 
 type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -65,10 +66,13 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     const settings = await tutorSettings(deps!);
     // GPT-Live disponível agora? (o navegador manda a oferta WebRTC antes de abrir; se o GPT-Live falhar, o servidor cai no Realtime)
     const plan = planProviders(settings.voice_provider, process.env, vr.live, vr.realtime, true, vr.gemini);
+    // ElevenLabs é somente TTS: a conversa deve passar por /turn e /speech, nunca abrir outro cérebro de voz.
+    const ttsOnly = elevenLabsSelected();
     res.json({
-      ready: status.ready, simulated: status.isMock, neural_voice: voice.ready, realtime_voice: vr.ready && settings.voice_enabled !== false, live_voice: plan.first === "live",
+      ready: status.ready, simulated: status.isMock, neural_voice: voice.ready, realtime_voice: !ttsOnly && vr.ready && settings.voice_enabled !== false, live_voice: !ttsOnly && plan.first === "live",
+      tts_only: ttsOnly,
       // qual voz o aplicativo abre primeiro (o Gemini não precisa da oferta WebRTC; o GPT-Live precisa)
-      voice_hint: plan.first,
+      voice_hint: ttsOnly ? null : plan.first,
       voice_session_max_seconds: settings.voice_session_max_seconds,
       ...(admin ? { provider: status.provider, model: status.model, pending: status.pending, voice_provider: voice.provider, voice_model: voice.model, voice_pending: voice.pending,
                     realtime_model: vr.realtime.model, realtime_pending: vr.realtime.pending, live_model: vr.live.model, live_pending: vr.live.pending,
@@ -160,6 +164,7 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
    * devolve a resposta SDP; sem ela (ou com o Realtime escolhido), devolve o segredo temporário. A chave principal fica aqui.
    */
   router.post("/voice/start", voiceRoute(async (req, b) => {
+    if (elevenLabsSelected()) throw new TutorError("Este ambiente usa o Stazia Tutor Engine com TTS. Inicie a conversa por texto/microfone e use a leitura da resposta validada.", 409);
     if (!uuid.test(String(b.session_id ?? ""))) throw new TutorError("Conversa inválida.", 400);
     const sdp = typeof b.sdp === "string" && b.sdp.length <= 20_000 && b.sdp.startsWith("v=0") ? b.sdp : null;
     // provedores que acabaram de falhar no aparelho do aluno (o Gemini conecta pelo navegador): o servidor escolhe outro

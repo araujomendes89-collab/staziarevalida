@@ -1,4 +1,4 @@
-// A esfera do Tutor Stazia no modo de voz. Base: o vídeo enviado pelo dono (recortado só na esfera, sem a interface desenhada e sem
+// A esfera do Nexus no modo de voz. Base: o vídeo enviado pelo dono (recortado só na esfera, sem a interface desenhada e sem
 // som: public/novo-assets/tutor/stazia-voice-orb.mp4). Não há um vídeo por estado: o mesmo vídeo muda de velocidade, escala, brilho,
 // contraste e cor, com anéis e partículas por cima, conforme o ESTADO da conversa, a EMOÇÃO que o servidor calculou e o NÍVEL do
 // áudio (microfone ao ouvir, voz do professor ao falar). Sem o vídeo, uma esfera desenhada em CSS assume (mesma identidade).

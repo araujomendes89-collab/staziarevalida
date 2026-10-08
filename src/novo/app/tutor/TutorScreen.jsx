@@ -1,5 +1,5 @@
-// Stazia Tutor: o professor particular do aluno para a 1ª fase do Revalida. Mesma disposição da tela "Tutor" do protótipo
-// (prototype/More.jsx): sessões de estudo à esquerda, conversa à direita. Três professores (Acolhedor, Direto, Durona) e quatro modos
+// Nexus: o professor particular do aluno para a 1ª fase do Revalida. Mesma disposição da tela "Tutor" do protótipo
+// (prototype/More.jsx): sessões de estudo à esquerda, conversa à direita. Três professores (Tranquilo, Direto, Durona) e quatro modos
 // (Questões, Meus erros, Me teste, Perguntar ao Tutor). O professor muda só o jeito; o conteúdo passa por validação no servidor
 // antes de aparecer. Por voz, a conversa é em tempo real (GPT-Live ou OpenAI Realtime) na tela cheia do Stazia Voice Mode
 // (voice/StaziaVoiceMode.jsx) quando o servidor tem a voz ligada; sem ela, vale a voz do aparelho (modo antigo).
@@ -325,7 +325,7 @@ function StartPanel({ status, onStart, onChanged, realtime, neural }) {
   };
   return (
     <Card style={R} padding={28}>
-      <h3 style={{ margin: 0, font: "600 20px var(--font-sans)" }}>Stazia Tutor</h3>
+      <h3 style={{ margin: 0, font: "600 20px var(--font-sans)" }}>Nexus</h3>
       <p style={{ margin: "4px 0 16px", color: "var(--text-secondary)", font: "var(--type-body-sm)" }}>Seu professor particular para o Revalida.</p>
       <div className="sm-overline" style={{ marginBottom: 8 }}>Professor</div>
       <PersonaPicker status={status} onChanged={onChanged} />

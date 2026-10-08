@@ -8,6 +8,7 @@ import React from "react";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { TUTOR_SPOKEN_LANGUAGE, TUTOR_SPOKEN_REMINDER } from "../shared/tutor/voiceLanguage";
 
 const backend: any = { rpc: vi.fn(), accessToken: async () => "token-de-teste" };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend }) }));
@@ -129,7 +130,7 @@ describe("Voz do Gemini na tela", () => {
     expect(bodies("/api/tutor/voice/start")).toEqual([{ session_id: session().id, force: false }]);
     expect(opened[0]).toMatchObject({ token: "auth_tokens/temporario", model: "gemini-3.8-live" });
     expect(urls().some((u) => u.startsWith("https://api.openai.com"))).toBe(false); // nada vai para a OpenAI
-    expect(await screen.findByRole("dialog", { name: "Tutor Stazia" })).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: "Nexus" })).toBeTruthy();
     const h = opened[0].handlers;
     act(() => {
       h.onReady();
@@ -166,7 +167,7 @@ describe("Voz do Gemini na tela", () => {
     await waitFor(() => expect(urls()).toContain("/api/tutor/voice/end"));
     expect(gem.closed).toBeGreaterThan(0);
     expect(bodies("/api/tutor/voice/end")[0]).toMatchObject({ voice_call_id: GEMINI_CALL, reason: "student", metrics: { provider_used: "gemini", mic_permission: "granted", tools: 1, reconnects: 0 } });
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Tutor Stazia" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nexus" })).toBeNull());
   });
 
   it("o Gemini não abriu neste aparelho: libera a reserva sem cobrar e a voz da OpenAI assume na hora", async () => {
@@ -176,6 +177,7 @@ describe("Voz do Gemini na tela", () => {
     expect(bodies("/api/tutor/voice/end")[0]).toEqual({ voice_call_id: GEMINI_CALL, reason: "error" });
     expect(bodies("/api/tutor/voice/start")).toEqual([{ session_id: session().id, force: false }, { session_id: session().id, force: true, avoid: ["gemini"] }]);
     dc.onopen();
+    dc.onmessage({ data: JSON.stringify({ type: "session.created", session: { instructions: `${TUTOR_SPOKEN_LANGUAGE}\n\nRegras médicas e personalidade.\n\n${TUTOR_SPOKEN_REMINDER}` } }) });
     expect(await screen.findByText("Ouvindo...")).toBeTruthy();
     cleanup();
     // logo depois, neste aparelho: a OpenAI direto, sem fazer o aluno esperar outra tentativa do Gemini

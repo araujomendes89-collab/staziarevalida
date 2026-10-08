@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-// Administração: as 13 abas do administrador não cabem numa linha (1.744 px contra no máximo 1.200 px de conteúdo) e a
+// Administração: as 14 abas do administrador não cabem numa linha (1.744 px contra no máximo 1.200 px de conteúdo) e a
 // barra rolável escondia as últimas (Central de IAs, Stazia Arena, Configurações, Registro) sem nenhum sinal. A barra da
 // Administração passa a quebrar linha; as outras telas com abas continuam iguais.
 import React from "react";
@@ -19,6 +19,7 @@ vi.mock("../novo/app/admin/AdminPodcasts.jsx", () => ({ AdminPodcasts: () => nul
 vi.mock("../novo/app/admin/AdminPanels.jsx", () => ({ AdminAudit: () => null, AdminOverview: () => null, AdminPlans: () => null, AdminSettings: () => null, AdminStations: () => null }));
 vi.mock("../novo/app/admin/content/ContentHub.jsx", () => ({ ContentHub: () => null }));
 vi.mock("../novo/app/admin/ai/AdminAI.jsx", () => ({ AdminAI: () => null }));
+vi.mock("../novo/app/admin/OfficialVoicesPanel.jsx", () => ({ OfficialVoicesPanel: () => null }));
 
 import { AdminScreen } from "../novo/app/admin/AdminScreen.jsx";
 import { Tabs } from "../novo/ds";
@@ -26,7 +27,7 @@ import { Tabs } from "../novo/ds";
 afterEach(cleanup);
 
 describe("Administração: todas as abas aparecem", () => {
-  it("a barra da Administração quebra linha e mostra as 13 abas do administrador", () => {
+  it("a barra da Administração quebra linha e mostra as 14 abas do administrador", () => {
     render(
       <MemoryRouter initialEntries={["/admin?aba=ias"]}>
         <AdminScreen />
@@ -35,8 +36,8 @@ describe("Administração: todas as abas aparecem", () => {
     const barra = screen.getByRole("tablist", { name: "Administração" });
     expect(barra.classList.contains("sm-tabs--wrap")).toBe(true);
     const abas = within(barra).getAllByRole("tab");
-    expect(abas).toHaveLength(13);
-    expect(abas.map((a) => a.textContent)).toEqual(expect.arrayContaining(["Central de IAs", "Stazia Arena", "Configurações", "Registro"]));
+    expect(abas).toHaveLength(14);
+    expect(abas.map((a) => a.textContent)).toEqual(expect.arrayContaining(["Central de IAs", "Stazia Arena", "Configurações", "Vozes do Nexus", "Registro"]));
     expect(within(barra).getByRole("tab", { name: "Central de IAs" }).getAttribute("aria-selected")).toBe("true");
   });
 

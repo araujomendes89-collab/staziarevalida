@@ -19,6 +19,7 @@ import React from "react";
 import { voiceApi } from "./api.js";
 import { unlockAudio } from "./voice/audioUnlock.js";
 import { openGeminiLive } from "./voice/geminiLive.js";
+import { refreshVoiceLanguage, TUTOR_SPOKEN_LANGUAGE } from "../../../shared/tutor/voiceLanguage";
 
 const CALLS_URL = "https://api.openai.com/v1/realtime/calls";
 const CONNECT_TIMEOUT_MS = 20_000;
@@ -101,6 +102,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
   const [captions, setCaptions] = React.useState({ tutor: "", student: "" });
   const [streams, setStreams] = React.useState({ input: null, output: null });
   const [provider, setProvider] = React.useState(null);
+  const [playbackBlocked, setPlaybackBlocked] = React.useState(false);
   const r = React.useRef({ handled: new Set(), transcript: [] });
   const stateRef = React.useRef("idle");
   const cb = React.useRef({});
@@ -157,6 +159,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
       ? { handled: new Set(), transcript: cur.transcript ?? [], metrics: cur.metrics, utter: { role: null, text: "" }, volume: cur.volume }
       : { handled: new Set(), transcript: [], volume: cur.volume };
     setStreams({ input: null, output: null });
+    setPlaybackBlocked(false);
   };
 
   const end = async (id, reason) => {
@@ -238,9 +241,49 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
   };
 
   // ------------------------------------------------------------ Realtime
+  const realtimeReady = () => {
+    const cur = r.current;
+    if (cur.voiceReady) return;
+    cur.voiceReady = true;
+    clearTimeout(cur.connectTimer);
+    cur.openedAt = Date.now();
+    metrics().connect_ms ??= Date.now() - metrics().t0;
+    if (cur.track) cur.track.enabled = !cur.muted;
+    setState("listening");
+    send({ type: "response.create" });
+  };
+
   const onRealtimeEvent = async (ev) => {
     const id = r.current.voiceCallId;
     switch (ev.type) {
+      case "session.created": {
+        const cur = r.current;
+        if (cur.voiceReady || cur.languageUpdate) break;
+        const instructions = refreshVoiceLanguage(ev.session?.instructions);
+        if (!instructions) {
+          await fail("server", "A voz não recebeu as instruções do professor. Encerre e tente novamente.", "error");
+          break;
+        }
+        if (instructions === ev.session.instructions) realtimeReady();
+        else {
+          // O teste local usa o servidor publicado: atualiza a direção de fala antes da primeira resposta,
+          // sem apagar as regras médicas, o contexto, a personalidade ou as ferramentas da sessão.
+          cur.languageUpdate = { id: eid("idioma"), instructions };
+          send({ type: "session.update", event_id: cur.languageUpdate.id, session: { type: "realtime", instructions } });
+        }
+        break;
+      }
+      case "session.updated":
+        if (r.current.languageUpdate && r.current.languageUpdate.instructions === ev.session?.instructions) {
+          r.current.languageUpdate = null;
+          realtimeReady();
+        }
+        break;
+      case "error":
+        if (r.current.languageUpdate && ev.error?.event_id === r.current.languageUpdate.id) {
+          await fail("server", "Não foi possível aplicar o português brasileiro à voz. Encerre e tente novamente.", "error");
+        }
+        break;
       case "input_audio_buffer.speech_started":
         studentSpeaking();
         break;
@@ -371,9 +414,10 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
         clearTimeout(cur.connectTimer);
         cur.openedAt = Date.now();
         metrics().connect_ms ??= Date.now() - metrics().t0;
+        if (cur.track) cur.track.enabled = !cur.muted;
         setState("ready");
         // o professor abre a conversa (curto, do jeito dele)
-        send({ type: "session.instructions.append", event_id: eid("abre"), delegation_id: null, content: "Abra a conversa agora, numa frase curta, no seu jeito." });
+        send({ type: "session.instructions.append", event_id: eid("abre"), delegation_id: null, content: `${TUTOR_SPOKEN_LANGUAGE}\n\nAbra a conversa agora, numa frase curta, no seu jeito.` });
         break;
       case "session.input_transcript.delta":
         if (ev.delta) liveDelta("student", ev.delta);
@@ -482,6 +526,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
   // ------------------------------------------------------------ conexão
   const wire = (pc, dc, stream, audio) => {
     dc.onmessage = (m) => {
+      if (r.current.pc !== pc) return;
       let ev;
       try {
         ev = JSON.parse(m.data);
@@ -492,21 +537,26 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
       else onRealtimeEvent(ev);
     };
     dc.onopen = () => {
-      if (r.current.provider === "live") return; // o GPT-Live avisa com session.started
-      clearTimeout(r.current.connectTimer);
-      r.current.openedAt = Date.now();
-      metrics().connect_ms ??= Date.now() - metrics().t0;
-      setState("listening");
-      send({ type: "response.create" }); // o professor abre a conversa
+      // Aguarda session.created/session.updated (Realtime) ou session.started (Live).
+      // Abrir o canal não confirma que as instruções de pronúncia foram aplicadas.
     };
     pc.ontrack = (e) => {
-      const out = e.streams?.[0] ?? null;
+      const out = e.streams?.[0] ?? (e.track ? new MediaStream([e.track]) : null);
       if (audio) {
         audio.srcObject = out;
-        audio.play?.()?.catch?.(() => {
+        const blocked = () => {
+          if (r.current.audio !== audio) return;
           metrics().audio_errors++;
-          cb.current.onWarning?.("Toque na tela para ouvir o professor.");
-        });
+          setPlaybackBlocked(true);
+          cb.current.onWarning?.("O navegador bloqueou o som. Toque em Ativar som do Nexus.");
+        };
+        try {
+          audio.play?.()?.then?.(() => {
+            if (r.current.audio === audio) setPlaybackBlocked(false);
+          }, blocked);
+        } catch {
+          blocked();
+        }
       }
       setStreams((s) => ({ ...s, output: out }));
     };
@@ -571,7 +621,10 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
         // sem atributos
       }
     }
-    stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+    stream.getTracks().forEach((t) => {
+      t.enabled = false; // só transmite depois de configurar a voz; evita respostas com a direção antiga
+      pc.addTrack(t, stream);
+    });
     const dc = pc.createDataChannel("oai-events");
     Object.assign(r.current, { pc, dc, stream, audio, track: stream.getAudioTracks?.()[0] ?? null, handled: r.current.handled ?? new Set() });
     wire(pc, dc, stream, audio);
@@ -956,8 +1009,36 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     r.current.gem?.setVolume(vol);
   }, []);
 
+  // Repetir play no gesto do aluno libera o áudio bloqueado por autoplay (retomar só AudioContext não libera HTMLAudio).
+  const enablePlayback = React.useCallback(async () => {
+    const cur = r.current;
+    const ctx = unlockAudio();
+    const volume = cur.volume > 0 ? cur.volume : 1;
+    cur.volume = volume;
+    cur.gem?.setVolume(volume);
+    try {
+      if (cur.audio) {
+        cur.audio.muted = false;
+        cur.audio.volume = volume;
+        await cur.audio.play();
+      } else if (ctx) {
+        await ctx.resume();
+        if (ctx.state !== "running") throw new Error("Áudio suspenso");
+      } else return false;
+      if (r.current !== cur) return false;
+      setPlaybackBlocked(false);
+      return true;
+    } catch {
+      if (r.current === cur) {
+        setPlaybackBlocked(true);
+        cb.current.onWarning?.("Não foi possível reproduzir a voz. Confira a permissão de som desta página e tente novamente.");
+      }
+      return false;
+    }
+  }, []);
+
   return {
-    state, error, remaining, start, stop, interrupt, pause, resume, setVolume,
+    state, error, remaining, start, stop, interrupt, pause, resume, setVolume, enablePlayback, playbackBlocked,
     muted, mute: () => setMuted(true), unmute: () => setMuted(false), toggleMute: () => setMuted(!r.current.muted),
     sendText, captions, streams, provider,
     active: !["idle", "ended", "error"].includes(state),

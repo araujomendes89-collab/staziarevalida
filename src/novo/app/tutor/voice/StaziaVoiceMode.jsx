@@ -52,6 +52,7 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
   const [chatOpen, setChatOpen] = React.useState(false);
   const [showCaptions, setShowCaptionsState] = React.useState(() => readPref("smn-voice-captions", true));
   const [volume, setVolumeState] = React.useState(() => readPref("smn-voice-volume", 1));
+  const [playbackMessage, setPlaybackMessage] = React.useState(null);
   const dialog = React.useRef(null);
   const mic = React.useRef(null);
   const emo = orbEmotion(avatar);
@@ -64,6 +65,11 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
     setVolumeState(v);
     writePref("smn-voice-volume", v);
     rt.setVolume?.(v);
+  };
+  const enableSound = async () => {
+    if (volume === 0) setVolume(1);
+    const ok = await rt.enablePlayback?.();
+    setPlaybackMessage(ok ? "Som liberado." : "Confira a saída de som e a permissão de áudio do navegador.");
   };
   React.useEffect(() => {
     rt.setVolume?.(volume);
@@ -120,7 +126,7 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
         {quota && <span className="svm__quota">{quota}</span>}
       </div>
       <div className="svm__head">
-        <h2 id="svm-title" className="svm__title">Tutor Stazia</h2>
+        <h2 id="svm-title" className="svm__title">Nexus</h2>
         <VoiceStatus state={rt.state} muted={rt.muted} />
       </div>
       <p id="svm-desc" className="svm-sr">Conversa por voz com o professor. Fale quando quiser; para interromper, é só falar. O microfone liga e desliga sem encerrar a conversa.</p>
@@ -156,7 +162,7 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
         </div>
       ) : connected && !hasCaption ? (
         <p className="svm__hint">
-          <strong>Fale com o Tutor Stazia...</strong>
+          <strong>Fale com o Nexus...</strong>
           Experimente: “me explica pré-eclâmpsia” ou “me faz uma pergunta de pediatria”.
           {note && <span style={{ display: "block", marginTop: 6 }}>{note}</span>}
         </p>
@@ -172,6 +178,15 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
           <button type="button" className="svm__pill" onClick={rt.interrupt}>Interromper</button>
         </div>
       )}
+
+      {connected && rt.enablePlayback && (
+        <div className="svm__actions">
+          <button type="button" className="svm__pill" onClick={enableSound}>
+            {rt.playbackBlocked || volume === 0 ? "Ativar som do Nexus" : "Não ouvi a voz"}
+          </button>
+        </div>
+      )}
+      {playbackMessage && <p className="svm__hint" role="status">{playbackMessage}</p>}
 
       <VoiceControls
         muted={rt.muted}

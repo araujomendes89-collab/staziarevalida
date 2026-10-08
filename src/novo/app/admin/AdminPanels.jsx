@@ -302,7 +302,7 @@ export function AdminSettings() {
   );
 }
 
-// ---------------------------------------------------------------- Stazia Tutor
+// ---------------------------------------------------------------- Nexus
 const VOICE_PROVIDERS = [
   { value: "auto", label: "Automático: Gemini quando configurado, senão GPT-Live, senão Realtime" },
   { value: "gemini", label: "Gemini (português do Brasil nativo)" },
@@ -422,7 +422,7 @@ export function AdminTutor() {
     <form onSubmit={save} noValidate>
       <Card>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Stazia Tutor</h3>
+          <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Nexus</h3>
           <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
             Cada mensagem do aluno é uma chamada de IA paga. O Tutor nasce desligado. A fala do aluno é enviada ao provedor de IA configurado no servidor.
           </p>

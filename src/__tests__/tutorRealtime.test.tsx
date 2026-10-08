@@ -5,6 +5,7 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { TUTOR_SPOKEN_LANGUAGE, TUTOR_SPOKEN_REMINDER } from "../shared/tutor/voiceLanguage";
 
 const backend: any = { rpc: vi.fn(), accessToken: async () => "token-de-teste" };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend }) }));
@@ -40,9 +41,9 @@ class FakePC {
 (window as any).speechSynthesis = { getVoices: () => [], cancel() {}, speak() {} };
 
 const PERSONALITIES = [
-  { id: "acolhedor", name: "Acolhedor", emoji: "🙂", tagline: "Calmo", swears: false, voice: {} },
-  { id: "direto", name: "Direto", emoji: "🎯", tagline: "Objetivo", swears: false, voice: {} },
+  { id: "acolhedor", name: "Tranquilo", emoji: "😌", tagline: "Descontraído", swears: false, voice: {} },
   { id: "durona", name: "Durona", emoji: "🔥", tagline: "Escrachada", swears: true, voice: {} },
+  { id: "direto", name: "Direto", emoji: "🎯", tagline: "Objetivo", swears: false, voice: {} },
 ];
 const ENT = { enabled: true, mode: "paid", is_paid: true, trial: { state: "none", days: 7 }, can_use: true, can_text: true, can_voice: true, text: { used: 0, limit: 40, remaining: 40 }, voice: { enabled: true, remaining_today_s: 3600, remaining_s: 3600 }, questions: { limit: null } };
 const status = (over: any = {}) => ({ enabled: true, available: true, requires_pro: true, daily_limit: 40, used_today: 0, voice_enabled: true, reviews_due: 0, entitlement: ENT, preferences: { personality_id: "durona", profanity: "moderate", chosen: true }, personalities: PERSONALITIES, ...over });
@@ -107,8 +108,9 @@ describe("Voz em tempo real na tela", () => {
     expect(sdp.headers).toMatchObject({ Authorization: "Bearer ek_temporario", "Content-Type": "application/sdp" }); // só o segredo temporário
     expect(sdp.body).toBe("v=0 offer");
     dc.onopen();
+    emit({ type: "session.created", session: { instructions: `${TUTOR_SPOKEN_LANGUAGE}\n\nRegras médicas e personalidade.\n\n${TUTOR_SPOKEN_REMINDER}` } });
     // a conversa por voz abre em tela cheia (Stazia Voice Mode)
-    expect(await screen.findByRole("dialog", { name: "Tutor Stazia" })).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: "Nexus" })).toBeTruthy();
     expect(await screen.findByText("Ouvindo...")).toBeTruthy();
     expect(sent[0]).toEqual({ type: "response.create" }); // o professor abre a conversa
     // ferramenta pedida pela voz: o servidor executa e o resultado volta pelo canal
@@ -129,7 +131,7 @@ describe("Voz em tempo real na tela", () => {
     fireEvent.click(screen.getByLabelText("Encerrar a conversa por voz"));
     await waitFor(() => expect(urls()).toContain("/api/tutor/voice/end"));
     expect(calls.find((c) => c.url === "/api/tutor/voice/end")!.body).toMatchObject({ reason: "student", metrics: { provider_used: "realtime", mic_permission: "granted", tools: 1 } });
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Tutor Stazia" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nexus" })).toBeNull());
   });
 
   it("o servidor achou algo errado no que foi dito: o professor recebe a correção na hora", async () => {
@@ -141,6 +143,7 @@ describe("Voz em tempo real na tela", () => {
     await waitFor(() => expect(dc).not.toBeNull());
     await waitFor(() => expect(urls()).toContain("https://api.openai.com/v1/realtime/calls"));
     dc.onopen();
+    emit({ type: "session.created", session: { instructions: `${TUTOR_SPOKEN_LANGUAGE}\n\nRegras médicas e personalidade.\n\n${TUTOR_SPOKEN_REMINDER}` } });
     emit({ type: "response.output_audio_transcript.done", transcript: "A resposta é A." });
     await waitFor(() => expect(sent.some((m) => m.item?.role === "system" && /adiantou a resposta/.test(m.item.content[0].text))).toBe(true));
   });
@@ -185,7 +188,7 @@ describe("Tutor fora da tela do Tutor, resolução, encerramento e relatório", 
       </TutorDockProvider>
     );
     fireEvent.click(screen.getByText("Discutir com o Tutor"));
-    expect(await screen.findByRole("dialog", { name: "Stazia Tutor" })).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: "Nexus" })).toBeTruthy();
     expect(await screen.findByText("A B, é? Me convence: por que essa?")).toBeTruthy();
     expect(started[0]).toEqual({ p_mode: "livre", p_topic: null, p_question_id: "q1", p_context: { type: "question", id: "q1" } });
     fireEvent.click(screen.getByLabelText("Fechar o Tutor"));

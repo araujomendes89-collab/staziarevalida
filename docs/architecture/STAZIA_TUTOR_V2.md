@@ -1,4 +1,4 @@
-# Stazia Tutor v2 (1ª fase): auditoria e implementação
+# Nexus Tutor v2 (1ª fase): auditoria e implementação
 
 Data: 2026-10-06. Pedido: "PROMPT MESTRE — AUDITORIA E IMPLEMENTAÇÃO DO NOVO STAZIA TUTOR" (itens 1–44). Base anterior: `STAZIA_TUTOR.md` (v1).
 
@@ -14,7 +14,7 @@ Data: 2026-10-06. Pedido: "PROMPT MESTRE — AUDITORIA E IMPLEMENTAÇÃO DO NOVO
 | Caderno de erros e desempenho | `question_attempts`, `error_notes`, `app_error_profile` (SQIE fase 5), `my_area_stats` | reaproveitados; o Tutor grava em `question_attempts` e os erros resolvem sozinhos quando o aluno acerta de novo em qualquer tela |
 | Truth Engine | `questions` (gabarito, explicações, conduta esperada, fontes), `question_analysis` e `question_option_analysis` publicadas, `question_update_cards` (gabarito oficial x conduta atual) | `tutor_truth()` junta tudo, em três níveis (aberta, dica, completa) |
 | Voz | voz do navegador (reconhecimento + fala) e voz natural por TTS (`speech.ts`, desligada) | voz em tempo real (OpenAI Realtime) nova; a voz do navegador fica só como reserva enquanto a nova não é confirmada em produção |
-| Personalidades | 13 professores com intensidade 1–5 e campo de palavrões | 3 públicos (Acolhedor, Direto, Durona); os 13 ficam inativos (conversas antigas continuam apontando para eles) |
+| Personalidades | 13 professores com intensidade 1–5 e campo de palavrões | 4 públicos (Acolhedor, Direto, Durona, Questionador); os antigos ficam inativos (conversas antigas continuam apontando para eles) |
 
 ### Mapa
 
@@ -34,7 +34,7 @@ CONHECIMENTO (Truth Engine: tutor_truth)  →  AVALIAÇÃO (campo "evaluation" n
 ```
 
 - **Compositor de prompt** (`prompts.ts`): BASE → REGRAS MÉDICAS → MODO → [VOZ] → PERSONA + ESTADO; como dado: questão (Truth Engine), memória do aluno, conversa, fala, tarefa. Texto e voz usam as mesmas camadas.
-- **Três professores** (`tutor_personalities`): Acolhedor (sem palavrão), Direto (sem palavrão), Durona (palavrão até o teto da plataforma). A Durona não começa xingando: as aberturas são limpas e a frequência vem do estado.
+- **Quatro professores** (`tutor_personalities`): Acolhedor (sem palavrão), Direto, Durona (palavrão até o teto da plataforma) e Questionador (socrático, paciente e sem palavrão). A Durona não começa xingando: as aberturas são limpas e a frequência vem do estado.
 - **Estado emocional** (`emotion.ts`, `tutor_sessions.emotion`): frustração, engajamento, paciência e entusiasmo (0–100), com os eventos do pedido; rótulos CALMO, ENGAJADO, IMPACIENTE, IRRITADO, ORGULHOSO; cada professor manifesta do seu jeito. O aluno não vê números.
 - **Quatro modos**: Questões (`questao`), Meus erros (`erros`), Me teste (`perguntas`: tema, área ou pontos fracos, com nível que sobe e desce), Perguntar ao Tutor (`livre`; a primeira pergunta vira o título).
 - **Progressão de ajuda**: tentativa → pergunta socrática → pista → pista mais direta → análise de distrator → resolução. "Ver resolução" (ação `reveal`) pula para a resolução e a questão sai como revelada (não conta como acerto).
@@ -122,8 +122,9 @@ Pedido: "MOTOR DE PERSONALIDADE HUMANA" (itens 1–32). Código: `server/tutor/e
 | 25–26. Avatar e voz | cada resposta devolve `avatar` (emoção, intensidade, animação, expressão, estilo de voz, velocidade). **Não existe mascote animado no app**: os dados estão prontos para ele |
 | 31. Resposta estruturada | `pedagogical_action` virou `recommended_action` com "require_explanation"; emoção e avatar são calculados no servidor (consistentes), não escolhidos pela IA |
 
-Não foi feito: o mascote NEX (não há desenho nem animações no projeto) e tags de emoção para TTS (a voz em tempo real recebe o tom
-pelas instruções e pelas ferramentas). O nome do produto segue StaziaMed; o pedido fala em "StaziaNexus".
+Não foi feito um mascote separado chamado NEX nem tags de emoção para TTS (a voz em tempo real recebe o tom pelas instruções e
+pelas ferramentas). O avatar atual permanece sendo a esfera reativa do modo de voz. O produto continua sendo StaziaMed; a identidade
+apresentada ao aluno é **Nexus**.
 
 ## 11. Voz em tela cheia (Stazia Voice Mode, prompt 2.4.0, migração `4400_tutor_voice_mode`, 2026-10-06)
 
@@ -137,3 +138,10 @@ Pedido: "quero algo mais sem filtros, bem natural, ela pode gritar; ainda está 
 (gíria, palavrão espontâneo no jeito de cada um, grito curto para bronca ou comemoração), com piso de linguagem por professor; as
 proibições não mudaram. A voz passou a preferir o Gemini (áudio nativo, pronúncia de brasileiro), com a OpenAI de reserva automática.
 Detalhes: `STAZIA_VOICE_MODE.md` §16.
+
+## 13. Nexus e Questionador (prompt 2.6.0, migração `20261007000100_nexus_questionador`)
+
+O Tutor passou a se apresentar como **Nexus**, mantendo a esfera animada atual como avatar. O Questionador é a quarta personalidade
+pública: trabalha por perguntas progressivas, reduz a complexidade quando o aluno trava e só entrega uma explicação direta depois de
+uma tentativa real ou de um pedido explícito. O conteúdo médico, o gabarito, a validação e as regras de segurança continuam iguais
+para os quatro professores.

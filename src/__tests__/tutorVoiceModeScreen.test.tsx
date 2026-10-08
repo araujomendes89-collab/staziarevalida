@@ -7,6 +7,7 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { TUTOR_SPOKEN_LANGUAGE, TUTOR_SPOKEN_REMINDER } from "../shared/tutor/voiceLanguage";
 
 const backend: any = { rpc: vi.fn(), accessToken: async () => "token-de-teste" };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot: { role: "admin" } }) }));
@@ -62,7 +63,7 @@ let reduceMotion = false;
 (window as any).matchMedia = (q: string) => ({ matches: q.includes("reduce") ? reduceMotion : false, addEventListener() {}, removeEventListener() {} });
 
 const PERSONALITIES = [
-  { id: "acolhedor", name: "Acolhedor", emoji: "🙂", tagline: "Calmo", swears: false, voice: {} },
+  { id: "acolhedor", name: "Tranquilo", emoji: "😌", tagline: "Descontraído", swears: false, voice: {} },
   { id: "durona", name: "Durona", emoji: "🔥", tagline: "Escrachada", swears: true, voice: {} },
 ];
 const ENT = { enabled: true, mode: "trial", is_paid: false, trial: { state: "active", day: 2, days: 7 }, can_use: true, can_text: true, can_voice: true, text: { used: 0, limit: 40, remaining: 40 }, voice: { enabled: true, remaining_today_s: 600, remaining_s: 600, remaining_total_s: 1020 }, questions: { limit: 30, used: 0 } };
@@ -134,7 +135,7 @@ const openVoice = async () => {
 describe("Stazia Voice Mode com GPT-Live", () => {
   it("tela cheia; oferta pelo servidor; delegação respondida pelo servidor; legenda; emoção na esfera", async () => {
     await openVoice();
-    expect(screen.getByRole("dialog", { name: "Tutor Stazia" })).toBeTruthy();
+    expect(screen.getByRole("dialog", { name: "Nexus" })).toBeTruthy();
     // o navegador mandou a oferta ao NOSSO servidor (nenhuma chamada direta à OpenAI) e recebeu a resposta
     expect(calls.find((c) => c.url === "/api/tutor/voice/start")!.body).toEqual({ session_id: SID, force: false, sdp: "v=0 offer" });
     expect(urls().some((u) => u.startsWith("https://api.openai.com"))).toBe(false);
@@ -172,7 +173,7 @@ describe("Stazia Voice Mode com GPT-Live", () => {
     expect(sent.at(-1)).toMatchObject({ type: "session.input_audio.mute" });
     expect(tracks[0].enabled).toBe(false);
     expect(await screen.findByText("Microfone desligado")).toBeTruthy();
-    expect(screen.getByRole("dialog", { name: "Tutor Stazia" })).toBeTruthy(); // não encerrou
+    expect(screen.getByRole("dialog", { name: "Nexus" })).toBeTruthy(); // não encerrou
     fireEvent.click(screen.getByRole("button", { name: "Ligar o microfone" }));
     expect(sent.at(-1)).toMatchObject({ type: "session.input_audio.unmute" });
     expect(tracks[0].enabled).toBe(true);
@@ -200,7 +201,7 @@ describe("Stazia Voice Mode com GPT-Live", () => {
     await waitFor(() => expect(urls()).toContain("/api/tutor/voice/end"));
     expect(calls.find((c) => c.url === "/api/tutor/voice/end")!.body).toMatchObject({ voice_call_id: CALL, reason: "student", metrics: { provider_used: "live", mic_permission: "granted", disconnect_reason: "student" } });
     expect(tracks.every((t) => t.stopped)).toBe(true); // microfone parado depois de fechar
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Tutor Stazia" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nexus" })).toBeNull());
   });
 
   it("sem acesso ao GPT-Live, o servidor manda o Realtime e o navegador usa a mesma oferta com o segredo temporário", async () => {
@@ -209,6 +210,7 @@ describe("Stazia Voice Mode com GPT-Live", () => {
     await openVoice();
     expect(calls.find((c) => c.url === "https://api.openai.com/v1/realtime/calls")!.body).toBe("v=0 offer");
     act(() => dc.onopen());
+    await emit({ type: "session.created", session: { instructions: `${TUTOR_SPOKEN_LANGUAGE}\n\nRegras médicas e personalidade.\n\n${TUTOR_SPOKEN_REMINDER}` } });
     expect(sent[0]).toEqual({ type: "response.create" });
     expect(await screen.findByText("Ouvindo...")).toBeTruthy();
   });
@@ -225,7 +227,7 @@ describe("Erros, falta do vídeo e acessibilidade", () => {
     expect(await screen.findByText(/O navegador bloqueou o microfone/)).toBeTruthy();
     expect(urls()).not.toContain("/api/tutor/voice/start"); // GPT-Live: sem microfone, nem chega a reservar tempo
     fireEvent.click(screen.getByText("Continuar por texto"));
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Tutor Stazia" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nexus" })).toBeNull());
     await waitFor(() => expect(document.activeElement?.getAttribute("aria-label")).toBe("Mensagem"));
   });
 
@@ -252,10 +254,10 @@ describe("Erros, falta do vídeo e acessibilidade", () => {
   it("Esc fecha; o foco começa no microfone e fica dentro da tela de voz", async () => {
     await openVoice();
     await emit({ type: "session.started", session: { id: "live_1" } });
-    const dialog = screen.getByRole("dialog", { name: "Tutor Stazia" });
+    const dialog = screen.getByRole("dialog", { name: "Nexus" });
     expect(dialog.getAttribute("aria-modal")).toBe("true");
     fireEvent.keyDown(dialog, { key: "Escape" });
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Tutor Stazia" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Nexus" })).toBeNull());
     // sem a confirmação do GPT-Live (session.closed), o fim é registrado assim mesmo depois de uma espera curta
     await waitFor(() => expect(urls()).toContain("/api/tutor/voice/end"), { timeout: 4000 });
   });
@@ -268,7 +270,7 @@ describe("Começar pela voz", () => {
     expect(await screen.findByText("Tutor por voz: 10 min hoje · 17 min no seu teste.")).toBeTruthy();
     fireEvent.click(await screen.findByText("Conversar com o Tutor"));
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_tutor_start", expect.objectContaining({ p_mode: "questao" })));
-    expect(await screen.findByRole("dialog", { name: "Tutor Stazia" })).toBeTruthy();
+    expect(await screen.findByRole("dialog", { name: "Nexus" })).toBeTruthy();
     await waitFor(() => expect(urls()).toContain("/api/tutor/voice/start"));
   });
 });
@@ -287,8 +289,8 @@ describe("Painel de administração da voz", () => {
     backend.rpc.mockImplementation(async (fn: string, args: any) => {
       if (fn === "app_admin_tutor_config") return CONFIG;
       if (fn === "app_admin_tutor_save_config") return (saved.push(args), { ...CONFIG, ...args.p_config });
-      if (fn === "app_admin_tutor_personalities") return [{ id: "acolhedor", name: "Acolhedor", emoji: "🙂", active: true, default: true, voice: "cedar" }, { id: "durona", name: "Durona", emoji: "🔥", active: true, default: false, voice: "marin" }];
-      if (fn === "app_admin_tutor_set_personality") return (persona.push(args), [{ id: "acolhedor", name: "Acolhedor", emoji: "🙂", active: true, default: true }, { id: "durona", name: "Durona", emoji: "🔥", active: args.p_active, default: false }]);
+      if (fn === "app_admin_tutor_personalities") return [{ id: "acolhedor", name: "Tranquilo", emoji: "😌", active: true, default: true, voice: "cedar" }, { id: "durona", name: "Durona", emoji: "🔥", active: true, default: false, voice: "marin" }];
+      if (fn === "app_admin_tutor_set_personality") return (persona.push(args), [{ id: "acolhedor", name: "Tranquilo", emoji: "😌", active: true, default: true }, { id: "durona", name: "Durona", emoji: "🔥", active: args.p_active, default: false }]);
       throw new Error(`rpc inesperada: ${fn}`);
     });
     server["/api/tutor/status"] = () => ({ body: { ready: true, realtime_voice: true, live_voice: true, live_model: "gpt-live-1", live_pending: null, realtime_model: "gpt-realtime-2.1", realtime_pending: null, gemini_voice_model: "gemini-3.8-live", gemini_voice_pending: null } });

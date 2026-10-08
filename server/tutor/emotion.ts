@@ -1,7 +1,7 @@
 /**
  * MOTOR DE PERSONALIDADE HUMANA do Stazia Tutor: o estado interno do professor numa sessão.
  *
- * Não é uma personalidade nova: é o MESMO professor (Acolhedor, Direto, Durona) mudando de humor com o que acontece. O motor
+ * Não é uma personalidade nova: é o MESMO professor (Tranquilo, Direto ou Durona) mudando de humor com o que acontece. O motor
  * só decide COMO falar (tom, intensidade de linguagem, pressão, avatar); o que ensinar vem do Truth Engine e da pedagogia.
  *
  *   resposta = conhecimento médico + estratégia pedagógica + estado do aluno + ESTADO EMOCIONAL + personalidade + memória + variação
@@ -36,7 +36,8 @@ export interface PersonaEngine {
 }
 
 export const PERSONA_ENGINE: Record<string, PersonaEngine> = {
-  acolhedor: { frustration_multiplier: 0.25, sarcasm_max: 10, aggression_max: 5, patience_base: 90, warmth_base: 95, language_max: 1, language_base: 1 },
+  acolhedor: { frustration_multiplier: 0.45, sarcasm_max: 40, aggression_max: 15, patience_base: 70, warmth_base: 60, language_max: 1, language_base: 1 },
+  preguicoso: { frustration_multiplier: 0.45, sarcasm_max: 40, aggression_max: 15, patience_base: 70, warmth_base: 60, language_max: 1, language_base: 1 },
   direto: { frustration_multiplier: 0.7, sarcasm_max: 35, aggression_max: 25, patience_base: 60, warmth_base: 40, language_max: 4, language_base: 2 },
   durona: { frustration_multiplier: 1.25, sarcasm_max: 85, aggression_max: 75, patience_base: 35, warmth_base: 25, language_max: 5, language_base: 3 },
 };
@@ -314,11 +315,11 @@ const ESCALATION: Record<string, string[]> = {
     "No limite: frases ainda mais curtas e cobrança de justificativa antes de seguir. Acertou uma difícil: \"Isso aí. Essa era difícil.\"",
   ],
   acolhedor: [
-    "Calmo: \"Vamos por partes. Seu raciocínio começou certo, mas você se perdeu na conduta.\"",
-    "Segundo erro parecido: \"Tem um padrão aparecendo aqui.\"",
-    "Terceiro: \"Agora preciso insistir, porque já é a terceira vez que esse ponto aparece.\"",
-    "Irritado: \"Não responde correndo. Você sabe isso; parece pressa.\"",
-    "No limite: \"Eu vou te cobrar agora: acabamos de ver esse conceito. Vamos resolver antes de continuar.\" Nunca humilhação.",
+    "Tranquilo: \"Eu podia explicar, mas você consegue chegar lá. Qual pista pesa mais?\"",
+    "Se o aluno travar, faça uma pergunta menor e dê uma pista concreta.",
+    "Se repetir o erro, devolva a pergunta com leve ironia e peça que compare o raciocínio.",
+    "Quando acertar, reconheça de modo discreto e avance sem discurso motivacional.",
+    "Só explique diretamente quando houver tentativa real, bloqueio ou pedido explícito.",
   ],
 };
 
@@ -360,9 +361,9 @@ export function avatarOf(personaId: string, s: TutorState) {
   const face: Record<Mood, string> = {
     neutral: "neutral", pleased: "smile", encouraged: "smile", impatient: "skeptical", irritated: "annoyed", angry: "angry", impressed: "surprised", disappointed: "sad",
   };
-  const base = personaId === "acolhedor" ? 0.96 : personaId === "durona" ? 1.04 : 1.02;
+  const base = ["acolhedor", "preguicoso"].includes(personaId) ? 0.92 : personaId === "durona" ? 1.04 : 1.02;
   const speechRate = Math.round((base + (s.mood === "irritated" || s.mood === "angry" ? 0.06 : s.mood === "impatient" ? 0.03 : 0)) * 100) / 100;
-  const voiceStyle = s.mood === "angry" ? "angry_firm" : s.mood === "irritated" ? "firm" : s.mood === "impatient" ? "impatient" : s.mood === "impressed" || s.mood === "pleased" ? "warm" : personaId === "acolhedor" ? "calm" : "neutral";
+  const voiceStyle = s.mood === "angry" ? "angry_firm" : s.mood === "irritated" ? "firm" : s.mood === "impatient" ? "impatient" : s.mood === "impressed" || s.mood === "pleased" ? "warm" : ["acolhedor", "preguicoso"].includes(personaId) ? "calm" : "neutral";
   return { emotion: s.mood, intensity, animation: animation[s.mood], facialExpression: face[s.mood], voiceStyle, speechRate };
 }
 

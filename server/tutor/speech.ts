@@ -2,10 +2,11 @@
  * VOZ NATURAL do Stazia Tutor: transforma em áudio, no servidor, um texto que o servidor JÁ validou (fala gravada do professor,
  * a questão da conversa ou uma frase fixa do aplicativo). O navegador nunca manda texto livre para cá.
  *
- *   TUTOR_VOICE_PROVIDER          openai | gemini | mock | off (padrão: off; mock só fora de produção)
- *   TUTOR_VOICE_ALLOW_EXTERNAL=1  consentimento próprio: o texto da resposta vai para o serviço de voz (OpenAI ou Google)
- *   TUTOR_VOICE_MODEL             padrão: gpt-4o-mini-tts (OpenAI) ou gemini-3.8-flash-tts (Gemini)
- *   OPENAI_API_KEY / GEMINI_API_KEY
+ *   TUTOR_VOICE_PROVIDER          openai | gemini | elevenlabs | mock | off (padrão: off; mock só fora de produção)
+ *   TUTOR_VOICE_ALLOW_EXTERNAL=1  consentimento próprio: o texto da resposta vai para o serviço de voz
+ *   TUTOR_VOICE_MODEL             modelo do provedor; ElevenLabs usa eleven_multilingual_v2 por padrão
+ *   OPENAI_API_KEY / GEMINI_API_KEY / ELEVENLABS_API_KEY
+ *   ELEVENLABS_VOICE_ID           voz padrão do ElevenLabs; a personalidade pode sobrescrever com voice.elevenlabs
  *   TUTOR_VOICE_DAILY_CHARS       teto de caracteres falados por aluno por dia (padrão 30.000, cerca de meia hora de fala)
  *   TUTOR_VOICE_PRICE_PER_MIN     preço por minuto de fala, para a estimativa de custo (padrão: 0,015 OpenAI; 0,0135 Gemini até 31/12/2026)
  *
@@ -14,13 +15,20 @@
 import { createHash } from "crypto";
 import { TutorError, consentError, type TutorDeps } from "./engine";
 import { spokenText } from "./safety";
+import { TUTOR_SPOKEN_LANGUAGE } from "../../src/shared/tutor/voiceLanguage";
+import { elevenLabsVoiceSettings, speechDirectionFromState, type SpeechDirection } from "./speechDirector";
+import { OfficialElevenLabsSpeech } from "./elevenlabsTts";
+import { elevenLabsReadiness } from "./officialVoices";
 
 export interface VoiceProfile {
   openai?: string;
   gemini?: string;
+  elevenlabs?: string;
+  personality?: string;
   /** Direção de atuação: como o personagem fala (sem conteúdo médico). */
   acting?: string;
   style?: string;
+  direction?: SpeechDirection;
 }
 
 export interface SpeechAudio {
@@ -34,6 +42,7 @@ export interface SpeechProvider {
   readonly isMock: boolean;
   /** Preço estimado por minuto de fala (US$). */
   readonly pricePerMinute: number;
+  readonly cacheIdentity?: string;
   synthesize(text: string, voice: VoiceProfile): Promise<SpeechAudio>;
 }
 
@@ -58,7 +67,7 @@ export function realKey(value: string | undefined): string | null {
 /** Instrução de atuação para o serviço de voz: português do Brasil, conversa (não leitura) e o jeito do personagem. */
 export function actingInstructions(voice: VoiceProfile): string {
   return [
-    "Fale em português do Brasil, com sotaque brasileiro natural, como numa conversa de verdade com um aluno, e não como quem lê um texto.",
+    TUTOR_SPOKEN_LANGUAGE,
     voice.acting ? `Personagem: ${voice.acting}.` : voice.style ? `Tom: ${voice.style}.` : "",
     "Respeite as pausas das reticências e das vírgulas. Palavrão, quando houver, é dito com naturalidade, sem censura e sem pausa.",
   ]
@@ -153,6 +162,38 @@ export class GeminiSpeech implements SpeechProvider {
   }
 }
 
+export class ElevenLabsSpeech implements SpeechProvider {
+  readonly name = "elevenlabs";
+  readonly isMock = false;
+  constructor(
+    private apiKey: string,
+    private defaultVoiceId: string,
+    readonly model: string,
+    readonly pricePerMinute: number,
+    private fetchImpl: typeof fetch = fetch,
+    private baseUrl = "https://api.elevenlabs.io",
+    private outputFormat = "mp3_44100_128",
+  ) {}
+
+  async synthesize(text: string, voice: VoiceProfile): Promise<SpeechAudio> {
+    const voiceId = (voice.elevenlabs || this.defaultVoiceId).trim();
+    if (!voiceId) throw new Error("ELEVENLABS_VOICE_ID ausente");
+    const query = new URLSearchParams({ output_format: this.outputFormat });
+    const res = await this.fetchImpl(`${this.baseUrl}/v1/text-to-speech/${encodeURIComponent(voiceId)}?${query}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "xi-api-key": this.apiKey },
+      body: JSON.stringify({
+        text: text.slice(0, MAX_SPEECH_CHARS),
+        model_id: this.model,
+        voice_settings: elevenLabsVoiceSettings(voice.direction),
+      }),
+      signal: AbortSignal.timeout(60_000),
+    });
+    if (!res.ok) throw new Error(`serviço de voz ElevenLabs respondeu ${res.status}: ${(await res.text()).replace(this.apiKey, "[chave]").slice(0, 200)}`);
+    return { audio: Buffer.from(await res.arrayBuffer()), mime: this.outputFormat.startsWith("mp3") ? "audio/mpeg" : "audio/octet-stream" };
+  }
+}
+
 /** Voz simulada para testes: um WAV curto de silêncio, com o tamanho proporcional ao texto. */
 export class MockSpeech implements SpeechProvider {
   readonly name = "mock";
@@ -166,29 +207,40 @@ export class MockSpeech implements SpeechProvider {
   }
 }
 
-const DEFAULT_MODEL: Record<string, string> = { openai: "gpt-4o-mini-tts", gemini: "gemini-3.8-flash-tts" };
-const DEFAULT_PRICE: Record<string, number> = { openai: 0.015, gemini: 0.0135 };
+const DEFAULT_MODEL: Record<string, string> = { openai: "gpt-4o-mini-tts", gemini: "gemini-3.8-flash-tts", elevenlabs: "eleven_v3" };
+const DEFAULT_PRICE: Record<string, number> = { openai: 0.015, gemini: 0.0135, elevenlabs: 0 };
 
 let mockSingleton: MockSpeech | null = null;
 export const mockSpeech = () => (mockSingleton ??= new MockSpeech());
 
 export function resolveSpeechProvider(env: NodeJS.ProcessEnv = process.env, fetchImpl: typeof fetch = fetch): { provider: SpeechProvider | null; status: SpeechStatus } {
   const kind = (env.TUTOR_VOICE_PROVIDER || "off").trim().toLowerCase();
-  const model = (env.TUTOR_VOICE_MODEL || DEFAULT_MODEL[kind] || "").trim() || null;
+  const model = (env.TUTOR_VOICE_MODEL || (kind === "elevenlabs" ? env.ELEVENLABS_MODEL_ID : "") || DEFAULT_MODEL[kind] || "").trim() || null;
   const pending = (why: string) => ({ provider: null, status: { ready: false, provider: kind, model, pending: why } });
-  if (kind === "off" || kind === "") return pending("Voz natural desligada: defina TUTOR_VOICE_PROVIDER (openai ou gemini) no servidor.");
+  if (kind === "off" || kind === "") return pending("Voz natural desligada: defina TUTOR_VOICE_PROVIDER (openai, gemini ou elevenlabs) no servidor.");
   if (kind === "mock") {
     if (env.NODE_ENV === "production") return pending("Voz simulada não é permitida em produção.");
     const p = mockSpeech();
     return { provider: p, status: { ready: true, provider: "mock", model: p.model, pending: null } };
   }
-  if (kind !== "openai" && kind !== "gemini") return pending(`Serviço de voz desconhecido: ${kind}. Use openai ou gemini.`);
+  if (kind !== "openai" && kind !== "gemini" && kind !== "elevenlabs") return pending(`Serviço de voz desconhecido: ${kind}. Use openai, gemini ou elevenlabs.`);
   if (env.TUTOR_VOICE_ALLOW_EXTERNAL !== "1") return pending("Envio do texto das respostas ao serviço de voz não autorizado: defina TUTOR_VOICE_ALLOW_EXTERNAL=1 no servidor depois de aprovar o uso.");
-  const keyName = kind === "openai" ? "OPENAI_API_KEY" : "GEMINI_API_KEY";
+  const keyName = kind === "openai" ? "OPENAI_API_KEY" : kind === "gemini" ? "GEMINI_API_KEY" : "ELEVENLABS_API_KEY";
   const key = realKey(env[keyName]);
   if (!key) return pending(`${keyName} ausente ou com o texto de exemplo no .env do servidor.`);
-  const price = Number(env.TUTOR_VOICE_PRICE_PER_MIN) > 0 ? Number(env.TUTOR_VOICE_PRICE_PER_MIN) : DEFAULT_PRICE[kind];
-  const provider = kind === "openai" ? new OpenAISpeech(key, model!, price, fetchImpl) : new GeminiSpeech(key, model!, price, fetchImpl);
+  if (kind === "elevenlabs") {
+    const readiness = elevenLabsReadiness(env);
+    if (!readiness.releaseReady) return pending(readiness.pending || "As vozes ElevenLabs ainda não foram liberadas.");
+    const provider = new OfficialElevenLabsSpeech(env, fetchImpl);
+    return { provider, status: { ready: true, provider: kind, model: provider.model, pending: null } };
+  }
+  const configuredPrice = Number(env.TUTOR_VOICE_PRICE_PER_MIN || env.ELEVENLABS_PRICE_PER_MIN);
+  const price = configuredPrice > 0 ? configuredPrice : DEFAULT_PRICE[kind];
+  const provider = kind === "openai"
+    ? new OpenAISpeech(key, model!, price, fetchImpl)
+    : kind === "gemini"
+      ? new GeminiSpeech(key, model!, price, fetchImpl)
+      : new ElevenLabsSpeech(key, "", model!, price, fetchImpl, env.ELEVENLABS_BASE_URL || "https://api.elevenlabs.io", env.ELEVENLABS_OUTPUT_FORMAT || "mp3_44100_128");
   return { provider, status: { ready: true, provider: kind, model, pending: null } };
 }
 
@@ -215,7 +267,7 @@ export class SpeechCache {
   private bytes = 0;
   constructor(private maxBytes = 32 * 1024 * 1024) {}
   static key(provider: SpeechProvider, voice: VoiceProfile, text: string) {
-    return createHash("sha256").update(JSON.stringify([provider.name, provider.model, voice.openai, voice.gemini, voice.acting, text])).digest("hex");
+    return createHash("sha256").update(JSON.stringify([provider.name, provider.model, provider.cacheIdentity ?? null, voice.openai, voice.gemini, voice.elevenlabs, voice.personality, voice.direction, actingInstructions(voice), text])).digest("hex");
   }
   get(key: string) {
     const hit = this.map.get(key);
@@ -258,6 +310,7 @@ interface SpeechSource {
   used_chars?: number;
   personality?: string;
   voice?: VoiceProfile;
+  emotion?: Record<string, unknown> | null;
   sample?: string | null;
   text?: string | null;
 }
@@ -292,7 +345,7 @@ export async function tutorSpeech(deps: TutorDeps, userId: string, req: SpeechRe
   const raw = req.kind === "phrase" ? phraseText(req.phrase ?? "", req.letter, src.sample ?? null) : src.text;
   if (!raw) throw new TutorError("Frase inválida.", 400);
   const text = speechInput(raw);
-  const voice = src.voice ?? {};
+  const voice: VoiceProfile = { ...(src.voice ?? {}), personality: src.personality, direction: speechDirectionFromState(src.emotion) };
   const key = SpeechCache.key(provider, voice, text);
   const hit = cache.get(key);
   if (hit) return { ...hit, cached: true };

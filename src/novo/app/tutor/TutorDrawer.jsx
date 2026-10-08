@@ -110,12 +110,12 @@ function TutorDrawer({ request, onClose }) {
     );
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Stazia Tutor" style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", justifyContent: "flex-end" }}>
+    <div role="dialog" aria-modal="true" aria-label="Nexus" style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", justifyContent: "flex-end" }}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "var(--overlay, rgba(15,23,42,.35))" }} aria-hidden="true" />
       <div style={{ position: "relative", width: "min(480px, 100vw)", height: "100%", background: "var(--surface-page, var(--surface-card))", boxShadow: "var(--shadow-lg, 0 10px 40px rgba(0,0,0,.25))", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderBottom: "1px solid var(--border-subtle)" }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ font: "600 16px var(--font-sans)" }}>Stazia Tutor</div>
+            <div style={{ font: "600 16px var(--font-sans)" }}>Nexus</div>
             <div style={{ font: "var(--type-caption)", color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{session?.title ?? request.title ?? "Seu professor particular para o Revalida."}</div>
           </div>
           <IconButton icon="x" label="Fechar o Tutor" variant="ghost" onClick={onClose} />

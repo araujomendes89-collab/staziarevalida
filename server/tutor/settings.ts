@@ -8,7 +8,7 @@ import type { TutorDeps } from "./engine";
 export interface TutorSettings {
   enabled: boolean;
   voice_enabled: boolean;
-  voice_provider: "auto" | "live" | "realtime";
+  voice_provider: "auto" | "gemini" | "live" | "realtime";
   voice_name: string | null;
   voice_session_max_seconds: number;
   save_transcripts: boolean;

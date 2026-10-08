@@ -240,7 +240,9 @@ sem ter passado pela conferência.
 
 | Peça | Onde |
 |---|---|
-| Serviços de voz (OpenAI `gpt-4o-mini-tts`, Gemini TTS, simulado para testes) | `server/tutor/speech.ts` |
+| Serviços de voz (OpenAI `gpt-4o-mini-tts`, Gemini TTS, ElevenLabs oficial, simulado para testes) | `server/tutor/speech.ts`, `server/tutor/elevenlabsTts.ts` |
+| Estado emocional → prosódia, sem tags vindas da IA | `server/tutor/speechDirector.ts` |
+| Audição interna das vozes do Nexus, com roteiros fixos e esfera reativa | `server/tutor/voicePreview.ts`, `/novo/admin?aba=vozes` |
 | Rota `POST /api/tutor/speech` e `neural_voice` no `GET /api/tutor/status` | `server/tutor/router.ts` |
 | Voz e direção de atuação de cada professor (`voice.openai`, `voice.gemini`, `voice.acting`) | `tutor_personalities.voice` |
 | O que pode virar voz, para quem; caracteres e custo do dia (`ai_usage.voice_chars`, sem contar como mensagem) | `ch_worker_tutor_speech`, `ch_worker_tutor_voice_charge` |
@@ -255,6 +257,11 @@ TUTOR_VOICE_ALLOW_EXTERNAL=1
 OPENAI_API_KEY=...                   # ou GEMINI_API_KEY=... (a do .env hoje é o texto de exemplo)
 ```
 
+Para o teste controlado do ElevenLabs, use `TUTOR_VOICE_PROVIDER=elevenlabs`, `TUTOR_VOICE_ALLOW_EXTERNAL=1`,
+`ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ACOLHEDOR`, `ELEVENLABS_VOICE_DIRETO`, `ELEVENLABS_VOICE_DURONA` e
+`ELEVENLABS_VOICE_TRANQUILO`. O painel **Vozes do Nexus** (`/novo/admin?aba=vozes`) só envia cenários fixos;
+cada voz precisa ser ouvida e aprovada antes de `releaseReady` liberar o áudio aos alunos.
+
 **Custo e limite.** Estimativa pela duração (uns 900 caracteres por minuto de fala): OpenAI cerca de US$ 0,015 por minuto; Gemini cerca de
 US$ 0,0135 por minuto até 31/12/2026 (o preço dobra em 2027). Uma resposta curta (300 caracteres) custa uns US$ 0,005. Teto por aluno:
 30.000 caracteres por dia (cerca de meia hora de fala); passou disso, o professor segue com a voz do aparelho. Repetir a mesma fala sai de um
@@ -267,4 +274,3 @@ existir texto para conferir. Isso desliga a regra "nada de número, dose ou dire
 **Limites de hoje.** O áudio vem inteiro (sem fluxo), então a fala começa depois de gerado; o reconhecimento da fala do aluno continua sendo
 o do navegador. Nenhuma das duas chaves disponíveis funciona: a `GEMINI_API_KEY` do `.env` é o texto de exemplo e a `OPENAI_API_KEY` do
 `revalida-reverse-engine/.env` foi recusada pela OpenAI (401, chave inválida) em 2026-10-05. Por isso o som real ainda não foi ouvido aqui.
-

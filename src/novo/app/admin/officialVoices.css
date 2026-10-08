@@ -1,0 +1,21 @@
+.official-voices { padding: 24px; margin: 24px 0; border: 1px solid var(--border-default); border-radius: 16px; background: var(--surface-card); color: var(--text-primary); }
+.official-voices h2 { margin: 8px 0 12px; font-size: 23px; }
+.official-voices h3 { margin: 0 0 4px; font-size: 16px; }
+.official-voices p { line-height: 1.55; color: var(--text-secondary); }
+.official-voices__eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--text-brand); }
+.official-voices__notice { border-left: 3px solid var(--text-brand); padding: 8px 12px; }
+.official-voices__scenario { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: 14px; }
+.official-voices select, .official-voices button { padding: 10px 14px; border: 1px solid var(--border-default); border-radius: 10px; background: var(--bg-app); color: var(--text-primary); font: inherit; }
+.official-voices button { cursor: pointer; white-space: nowrap; }
+.official-voices button:disabled { opacity: .5; cursor: not-allowed; }
+.official-voices button:focus-visible, .official-voices select:focus-visible { outline: 2px solid var(--text-brand); outline-offset: 3px; }
+.official-voices__row { display: flex; justify-content: space-between; align-items: center; gap: 18px; padding: 18px 0; border-bottom: 1px solid var(--border-default); }
+.official-voices__row p { margin: 4px 0; font-size: 13px; }
+.official-voices small, .official-voices__footnote { font-size: 12px; color: var(--text-tertiary); }
+.official-voices__player:not([hidden]) { display: grid; grid-template-columns: 180px minmax(0, 1fr); align-items: center; gap: 18px; margin: 18px 0; }
+.official-voices__orb { height: 180px; overflow: hidden; display: grid; place-items: center; }
+.official-voices__orb > * { width: 150px; height: 150px; }
+.official-voices audio { width: 100%; max-width: 480px; }
+.official-voices__error { color: var(--danger-text, #ef7777) !important; }
+.official-voices code { overflow-wrap: anywhere; font-size: 11px; }
+@media (max-width: 600px) { .official-voices { padding: 16px; } .official-voices__row { align-items: flex-start; flex-direction: column; gap: 12px; } .official-voices__player:not([hidden]) { grid-template-columns: minmax(0, 1fr); } .official-voices__orb { height: 140px; } .official-voices select { max-width: 100%; } }

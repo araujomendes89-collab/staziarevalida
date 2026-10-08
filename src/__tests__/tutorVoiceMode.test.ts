@@ -364,7 +364,7 @@ describe("Memória entre conversas, ferramentas novas e painel", () => {
     await config({ transcript_retention_days: 180 });
   });
 
-  it("painel: valida provedor, voz, nível e pronúncias (que chegam às instruções); professores: o Acolhedor não sai; aluno não mexe", async () => {
+  it("painel: valida provedor, voz, nível e pronúncias (que chegam às instruções); Tranquilo não sai; aluno não mexe", async () => {
     await config({ voice_provider: "auto" });
     resetLiveAvailability();
     await expect(config({ voice_provider: "outro" })).rejects.toThrow(/Provedor de voz inválido/);
@@ -382,8 +382,9 @@ describe("Memória entre conversas, ferramentas novas e painel", () => {
     await config({ durona_level: "forte", pronunciations: [] });
     // professores
     const list = await rpc(ADMIN, "app_admin_tutor_personalities");
-    expect(list.map((p: any) => p.id)).toEqual(["acolhedor", "direto", "durona"]);
-    await expect(rpc(ADMIN, "app_admin_tutor_set_personality", "acolhedor", false, "Tirando o padrão para testar.")).rejects.toThrow(/Acolhedor é o professor padrão/);
+    expect(list.map((p: any) => [p.id, p.name])).toEqual([["acolhedor", "Tranquilo"], ["durona", "Durona"], ["direto", "Direto"]]);
+    await expect(rpc(ADMIN, "app_admin_tutor_set_personality", "acolhedor", false, "Tirando o padrão para testar.")).rejects.toThrow(/Tranquilo é o professor padrão/);
+    await expect(rpc(ADMIN, "app_admin_tutor_set_personality", "questionador", false, "Removendo perfil antigo.")).rejects.toThrow(/Professor não encontrado/);
     const after = await rpc(ADMIN, "app_admin_tutor_set_personality", "direto", false, "Direto fora por um tempo para testar.");
     expect(after.find((p: any) => p.id === "direto").active).toBe(false);
     expect((await rpc(ALUNA, "app_tutor_status")).personalities.map((p: any) => p.id)).not.toContain("direto");
@@ -400,7 +401,7 @@ describe("Motor emocional: nível da Durona, painel e modo determinístico", () 
   it("o nível da Durona muda o teto (não os limites de respeito); determinístico não varia; acerto depois de erros não vira festa", () => {
     expect(engineFor("durona", {}, "moderada")).toMatchObject({ frustration_multiplier: 1.0, language_max: 3, sarcasm_max: 60 });
     expect(engineFor("durona", { frustration_multiplier: 1.25 }, "sem_filtro")).toMatchObject({ frustration_multiplier: 1.4, language_max: 5, sarcasm_max: 100 });
-    expect(engineFor("acolhedor", {}, "sem_filtro").frustration_multiplier).toBe(0.25); // só a Durona muda
+    expect(engineFor("acolhedor", {}, "sem_filtro").frustration_multiplier).toBe(0.45); // Tranquilo (jeito do Preguiçoso); só a Durona muda com o nível
     expect(DURONA_LEVELS.forte).toEqual({});
     process.env.DETERMINISTIC_TUTOR = "true";
     const e = engineFor("durona", {}, "forte");
