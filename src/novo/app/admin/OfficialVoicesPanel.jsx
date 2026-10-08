@@ -1,4 +1,8 @@
+// Vozes do Nexus (administração): ouvir cada cenário da versão atual de cada voz e, para quem está na lista de aprovação do
+// servidor, aprovar ou revogar aquela voz. O servidor registra as audições e confere tudo de novo; o navegador manda só o
+// professor e o cenário.
 import React from "react";
+import { Badge, Button } from "../../ds";
 import { useSession } from "../session.jsx";
 import { OFFICIAL_VOICES, VOICE_SCENARIOS } from "../../../shared/tutor/officialVoices";
 import { StaziaVoiceOrb, orbEmotion } from "../tutor/voice/StaziaVoiceOrb.jsx";
@@ -10,7 +14,7 @@ export function OfficialVoicesPanel({ endpoint = "/api/tutor/voices" }) {
   const [status, setStatus] = React.useState(null);
   const [error, setError] = React.useState("");
   const [busy, setBusy] = React.useState(null);
-  const [scenario, setScenario] = React.useState("apresentacao");
+  const [acting, setActing] = React.useState(null);
   const [selected, setSelected] = React.useState(null);
   const [speaking, setSpeaking] = React.useState(false);
   const [stream, setStream] = React.useState(null);
@@ -28,12 +32,12 @@ export function OfficialVoicesPanel({ endpoint = "/api/tutor/voices" }) {
     return response;
   }, [backend, endpoint]);
 
+  const reload = React.useCallback((signal) => request("", { signal }).then((response) => response.json()).then((value) => { if (!signal?.aborted) setStatus(value); }), [request]);
   React.useEffect(() => {
     const abort = new AbortController();
-    request("", { signal: abort.signal }).then((response) => response.json()).then((value) => { if (!abort.signal.aborted) setStatus(value); })
-      .catch((e) => { if (!abort.signal.aborted) setError(e.message); });
+    reload(abort.signal).catch((e) => { if (!abort.signal.aborted) setError(e.message); });
     return () => abort.abort();
-  }, [request]);
+  }, [reload]);
   React.useEffect(() => {
     const audio = player.current;
     return () => {
@@ -49,7 +53,7 @@ export function OfficialVoicesPanel({ endpoint = "/api/tutor/voices" }) {
     };
   }, []);
 
-  const test = async (id) => {
+  const test = async (id, scenario) => {
     const r = resources.current;
     const generation = ++r.generation;
     r.abort?.abort();
@@ -60,7 +64,7 @@ export function OfficialVoicesPanel({ endpoint = "/api/tutor/voices" }) {
     if (r.url) URL.revokeObjectURL(r.url);
     r.url = null;
     setSpeaking(false);
-    setBusy(id);
+    setBusy(`${id}:${scenario}`);
     setError("");
     setSelected({ id, scenario });
     // Um único player e sinal de áudio real para a esfera, sem alterar o avatar.
@@ -89,32 +93,61 @@ export function OfficialVoicesPanel({ endpoint = "/api/tutor/voices" }) {
       player.current.src = r.url;
       try { await player.current.play(); }
       catch { setError("O navegador bloqueou a reprodução automática. Use o botão de reprodução do áudio abaixo."); }
+      // a audição entrou no registro do servidor: o painel relê o que já foi ouvido
+      reload().catch(() => undefined);
     } catch (e) { if (!abort.signal.aborted && generation === r.generation) setError(e.message); }
     finally { if (generation === r.generation) setBusy(null); }
   };
+  const decide = async (id, action) => {
+    setActing(`${action}:${id}`);
+    setError("");
+    try {
+      const response = await request(`/${action}`, { method: "POST", body: JSON.stringify({ personality: id }) });
+      setStatus(await response.json());
+    } catch (e) { setError(e.message); }
+    finally { setActing(null); }
+  };
   const sample = selected ? VOICE_SCENARIOS[selected.scenario] : null;
   const emotion = orbEmotion(sample ? { emotion: sample.emotion, intensity: sample.intensity } : null);
+  const approver = Boolean(status?.approver);
   return (
     <section className="official-voices" aria-labelledby="official-voices-title">
       <header>
-        <span className="official-voices__eyebrow">NEXUS · AUDIÇÃO INTERNA</span>
-        <h2 id="official-voices-title">Vozes oficiais do Tutor Stazia</h2>
-        <p>ElevenLabs somente como TTS. Conteúdo, personalidade, memória e emoção continuam no Stazia Tutor Engine.</p>
+        <span className="official-voices__eyebrow">NEXUS · AUDIÇÃO E APROVAÇÃO</span>
+        <h2 id="official-voices-title">Vozes do Nexus</h2>
+        <p>Ouça todos os cenários da versão atual de uma voz; depois, quem está na lista de aprovação aprova. Cada voz vale sozinha: aprovada, ela já fala com os alunos (se "Voz do professor só para a equipe" estiver desligado no Tutor). Mudar a voz, o modelo ou a direção cria uma versão nova, que pede nova audição.</p>
       </header>
-      <p className="official-voices__notice" role="status">{status?.releaseReady ? "Tranquilo, Durona e Direto estão aprovadas. Nenhum deploy é realizado por este painel." : "Liberação aos alunos bloqueada até a aprovação de Tranquilo, Durona e Direto."} Os testes reais consomem créditos ElevenLabs.</p>
+      <p className="official-voices__notice" role="status">
+        {approver ? "Você está na lista de aprovação." : "Só quem está na lista de aprovação do servidor aprova ou revoga. Você pode ouvir."} As audições consomem créditos da ElevenLabs.
+      </p>
       {status?.pending && <p>{status.pending}</p>}
-      <label className="official-voices__scenario">Cenário de audição
-        <select value={scenario} onChange={(event) => setScenario(event.target.value)} disabled={Boolean(busy)}>
-          {Object.entries(VOICE_SCENARIOS).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}
-        </select>
-      </label>
       <div className="official-voices__rows">
         {Object.entries(OFFICIAL_VOICES).map(([id, voice]) => {
           const row = status?.rows?.find((item) => item.id === id);
-          return <div className="official-voices__row" key={id}>
-            <div><h3>{voice.label}</h3><p>{voice.description}</p><small>{row?.approved ? "Aprovada" : row?.configured ? "Aguardando audição e aprovação" : "Voice ID pendente"}</small>{row?.pending && row.pending !== status?.pending && <p>{row.pending}</p>}</div>
-            <button type="button" aria-label={`Testar voz ${voice.label}`} disabled={!row?.ready || Boolean(busy)} onClick={() => test(id)}>{busy === id ? "Gerando áudio…" : "▶ Testar voz"}</button>
-          </div>;
+          const label = row?.approved ? "Aprovada" : row?.configured ? "Aguardando audição e aprovação" : "Voice ID pendente";
+          return (
+            <div className="official-voices__row" role="group" aria-label={`Voz ${voice.label}`} key={id}>
+              <div className="official-voices__who">
+                <h3>{voice.label}</h3>
+                <p>{voice.description}</p>
+                <Badge tone={row?.approved ? "success" : row?.configured ? "warning" : "neutral"} size="sm">{label}</Badge>
+                {row?.pending && row.pending !== status?.pending && <p>{row.pending}</p>}
+              </div>
+              <div className="official-voices__scenarios">
+                {(row?.scenarios ?? []).map((sc) => (
+                  <button type="button" key={sc.id} className="official-voices__scenario" aria-pressed={sc.heard ? "true" : "false"} aria-label={`Ouvir ${voice.label}: ${sc.label}`}
+                    disabled={!row?.ready || Boolean(busy)} onClick={() => test(id, sc.id)}>
+                    {busy === `${id}:${sc.id}` ? "Gerando…" : `${sc.heard ? "✓ " : "▶ "}${sc.label}`}
+                  </button>
+                ))}
+              </div>
+              <div className="official-voices__actions">
+                {row?.approved
+                  ? approver && <Button variant="secondary" size="sm" aria-label={`Revogar: ${voice.label}`} loading={acting === `revoke:${id}`} disabled={Boolean(acting)} onClick={() => decide(id, "revoke")}>Revogar</Button>
+                  : <Button size="sm" aria-label={`Aprovar esta voz: ${voice.label}`} loading={acting === `approve:${id}`} disabled={!row?.can_approve || Boolean(acting)} onClick={() => decide(id, "approve")}>Aprovar esta voz</Button>}
+              </div>
+            </div>
+          );
         })}
       </div>
       <div className="official-voices__player" hidden={!selected}>
@@ -126,8 +159,7 @@ export function OfficialVoicesPanel({ endpoint = "/api/tutor/voices" }) {
         </div>
       </div>
       {error && <p role="alert" className="official-voices__error">{error}</p>}
-      <p className="official-voices__footnote">Tranquilo, Durona e Direto são as três vozes. Personalidade, memória, regras pedagógicas e respostas são definidas pelo Stazia Tutor Engine; a ElevenLabs somente sintetiza o áudio.</p>
-      {status?.rows?.some((row) => row.configured) && <details><summary>Identificadores de revisão para registrar a aprovação</summary>{status.rows.filter((row) => row.configured).map((row) => <p key={row.id}>{row.label}: <code>{row.fingerprint}</code></p>)}</details>}
+      <p className="official-voices__footnote">Personalidade, memória, regras pedagógicas e respostas vêm do motor do Tutor; a ElevenLabs só sintetiza o áudio.</p>
     </section>
   );
 }

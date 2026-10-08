@@ -364,6 +364,13 @@ export function AdminTutor() {
         inside_jokes: data.inside_jokes ?? true,
         durona_level: data.durona_level ?? "forte",
         pronunciations: pronText(data.pronunciations),
+        tts_team_only: data.tts_team_only ?? true,
+        tts_trial_daily_chars: String(data.tts_trial_daily_chars ?? 4500),
+        tts_paid_daily_chars: String(data.tts_paid_daily_chars ?? 4500),
+        tts_account_daily_chars: String(data.tts_account_daily_chars ?? 4500),
+        tts_account_monthly_chars: String(data.tts_account_monthly_chars ?? 30000),
+        tts_price_per_1k_chars_usd: String(data.tts_price_per_1k_chars_usd ?? 0),
+        stt_price_per_min_usd: String(data.stt_price_per_min_usd ?? 0),
       });
   }, [data]);
   const personas = useLoad(() => backend.rpc("app_admin_tutor_personalities"), [backend]);
@@ -402,6 +409,7 @@ export function AdminTutor() {
     try {
       const n = (x) => String(x ?? "").trim();
       const min = (x) => (n(x) === "" ? "" : String(Math.round(Number(n(x)) * 60)));
+      const price = (x) => n(x).replace(",", ".");
       const config = {
         enabled: form.enabled, requires_pro: form.requires_pro, max_profanity: form.max_profanity, voice_enabled: form.voice_enabled,
         daily_message_limit: n(form.daily_message_limit), trial_text_daily: n(form.trial_text_daily), trial_questions_daily: n(form.trial_questions_daily),
@@ -409,6 +417,9 @@ export function AdminTutor() {
         voice_provider: form.voice_provider, voice_name: form.voice_choice === "__outra" ? n(form.voice_other).toLowerCase() : form.voice_choice,
         voice_session_max_seconds: min(form.voice_session_max_min), save_transcripts: form.save_transcripts, transcript_retention_days: n(form.transcript_retention_days),
         emotion_engine: form.emotion_engine, inside_jokes: form.inside_jokes, durona_level: form.durona_level, pronunciations: pronList(form.pronunciations),
+        tts_team_only: form.tts_team_only, tts_trial_daily_chars: n(form.tts_trial_daily_chars), tts_paid_daily_chars: n(form.tts_paid_daily_chars),
+        tts_account_daily_chars: n(form.tts_account_daily_chars), tts_account_monthly_chars: n(form.tts_account_monthly_chars),
+        tts_price_per_1k_chars_usd: price(form.tts_price_per_1k_chars_usd), stt_price_per_min_usd: price(form.stt_price_per_min_usd),
       };
       setData(await backend.rpc("app_admin_tutor_save_config", { p_config: config, p_reason: reason }));
       setReason("");
@@ -438,12 +449,25 @@ export function AdminTutor() {
             </Banner>
           )}
           <Switch label="Planos pagos + teste grátis" description="Ligado: quem não assina tem o teste grátis do Tutor (começa no primeiro uso) e depois vê o convite para assinar. Desligado: o Tutor fica liberado para todos (só para testes internos)." checked={form.requires_pro} onChange={(e) => set({ requires_pro: e.target.checked })} />
-          <Switch label="Conversa por voz" description="Voz em tempo real pelo servidor (paga por minuto) quando configurada; senão, a voz do próprio aparelho." checked={form.voice_enabled} onChange={(e) => set({ voice_enabled: e.target.checked })} />
+          <Switch label="Conversa por voz" description="Desligada: só o Chat, por escrito (sem as vozes e sem o microfone)." checked={form.voice_enabled} onChange={(e) => set({ voice_enabled: e.target.checked })} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
             <TextField label="Interações de texto por dia (plano pago)" value={form.daily_message_limit} inputMode="numeric" maxLength={3} onChange={(e) => set({ daily_message_limit: e.target.value })} hint="De 1 a 500. É o teto de gasto por aluno." />
             <TextField label="Voz por dia (plano pago, minutos)" value={form.paid_voice_daily_min} inputMode="numeric" maxLength={4} onChange={(e) => set({ paid_voice_daily_min: e.target.value })} />
             <SelectField label="Palavrões (teto para a Durona)" value={form.max_profanity} onChange={(e) => set({ max_profanity: e.target.value })} options={PROFANITY_CAP} />
           </div>
+          <div className="sm-overline">Voz do professor (Nexus)</div>
+          <Switch label="Voz do professor só para a equipe" description="Ligado: só administrador e editor ouvem a voz do professor; alunos seguem na voz reserva." checked={form.tts_team_only} onChange={(e) => set({ tts_team_only: e.target.checked })} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+            <TextField label="Voz do professor por dia — teste grátis (caracteres)" value={form.tts_trial_daily_chars} inputMode="numeric" maxLength={6} onChange={(e) => set({ tts_trial_daily_chars: e.target.value })} hint="900 caracteres = 1 minuto de fala." />
+            <TextField label="Voz do professor por dia — plano pago (caracteres)" value={form.tts_paid_daily_chars} inputMode="numeric" maxLength={6} onChange={(e) => set({ tts_paid_daily_chars: e.target.value })} hint="900 caracteres = 1 minuto de fala." />
+            <TextField label="Teto da plataforma por dia (caracteres)" value={form.tts_account_daily_chars} inputMode="numeric" maxLength={8} onChange={(e) => set({ tts_account_daily_chars: e.target.value })} hint="900 caracteres = 1 minuto de fala." />
+            <TextField label="Teto da plataforma por mês (caracteres)" value={form.tts_account_monthly_chars} inputMode="numeric" maxLength={9} onChange={(e) => set({ tts_account_monthly_chars: e.target.value })} hint="900 caracteres = 1 minuto de fala." />
+            <TextField label="Preço da voz do professor (US$ por mil caracteres)" value={form.tts_price_per_1k_chars_usd} inputMode="decimal" maxLength={10} onChange={(e) => set({ tts_price_per_1k_chars_usd: e.target.value })} />
+            <TextField label="Preço da transcrição (US$ por minuto)" value={form.stt_price_per_min_usd} inputMode="decimal" maxLength={10} onChange={(e) => set({ stt_price_per_min_usd: e.target.value })} />
+          </div>
+          {(!(Number(String(form.tts_price_per_1k_chars_usd).replace(",", ".")) > 0) || !(Number(String(form.stt_price_per_min_usd).replace(",", ".")) > 0)) && (
+            <Banner tone="warning">Preço não preenchido: o custo da voz do professor e da transcrição fica zerado no registro de consumo.</Banner>
+          )}
           <div className="sm-overline">Teste grátis (7 dias, a partir do primeiro uso)</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>
             <TextField label="Interações de texto por dia" value={form.trial_text_daily} inputMode="numeric" maxLength={3} onChange={(e) => set({ trial_text_daily: e.target.value })} />

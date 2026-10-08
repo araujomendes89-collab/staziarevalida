@@ -281,6 +281,8 @@ describe("Painel de administração da voz", () => {
       enabled: true, requires_pro: true, daily_message_limit: 40, max_profanity: "moderate", voice_enabled: true, trial_text_daily: 40, trial_questions_daily: 30,
       trial_voice_daily_seconds: 600, trial_voice_total_seconds: 2400, paid_voice_daily_seconds: 3600, voice_provider: "auto", voice_name: null, voice_session_max_seconds: 1800,
       save_transcripts: true, transcript_retention_days: 180, emotion_engine: true, inside_jokes: true, durona_level: "forte", pronunciations: [],
+      tts_team_only: true, tts_trial_daily_chars: 4500, tts_paid_daily_chars: 4500, tts_account_daily_chars: 4500, tts_account_monthly_chars: 30000,
+      tts_price_per_1k_chars_usd: 0, stt_price_per_min_usd: 0,
       usage_30d: { students: 1, requests: 3, cost_usd: 0.1, voice_minutes: 4 }, cost_by_feature: {}, cost_by_persona: {}, trials: { started: 1, converted: 0 }, sessions: 2,
       voice_30d: { calls: 3, minutes: 4.5, avg_minutes: 1.5, connect_ms: 820, first_audio_ms: 1300, turn_ms: 900, reconnects: 1, by_provider: { live: 2, realtime: 1 }, ended_by: { student: 3 }, cost_usd: 0.3 },
     };
@@ -314,6 +316,50 @@ describe("Painel de administração da voz", () => {
     fireEvent.click(screen.getByText("Salvar Tutor"));
     await waitFor(() => expect(saved.length).toBe(1));
     expect(saved[0].p_config).toMatchObject({ voice_provider: "live", voice_name: "cedar", voice_session_max_seconds: "1200", durona_level: "moderada", inside_jokes: false, save_transcripts: true, pronunciations: [{ term: "INEP", say: "inépi" }] });
+    // a voz do professor: só equipe, limites em caracteres e preços vão juntos
+    expect(saved[0].p_config).toMatchObject({ tts_team_only: true, tts_trial_daily_chars: "4500", tts_paid_daily_chars: "4500", tts_account_daily_chars: "4500", tts_account_monthly_chars: "30000", tts_price_per_1k_chars_usd: "0", stt_price_per_min_usd: "0" });
     expect((screen.getByRole("switch", { name: /^Salvar o áudio/ }) as HTMLInputElement).disabled).toBe(true); // áudio nunca é gravado
+  });
+
+  it("painel do Tutor: só equipe, limites em caracteres e preços salvos com motivo; preço zerado mostra o aviso", async () => {
+    const CONFIG = {
+      enabled: true, requires_pro: true, daily_message_limit: 40, max_profanity: "moderate", voice_enabled: true, trial_text_daily: 40, trial_questions_daily: 30,
+      trial_voice_daily_seconds: 600, trial_voice_total_seconds: 2400, paid_voice_daily_seconds: 3600, voice_provider: "auto", voice_name: null, voice_session_max_seconds: 1800,
+      save_transcripts: true, transcript_retention_days: 180, emotion_engine: true, inside_jokes: true, durona_level: "forte", pronunciations: [],
+      tts_team_only: true, tts_trial_daily_chars: 4500, tts_paid_daily_chars: 4500, tts_account_daily_chars: 4500, tts_account_monthly_chars: 30000,
+      tts_price_per_1k_chars_usd: 0, stt_price_per_min_usd: 0.003,
+      usage_30d: { students: 0, requests: 0, cost_usd: 0, voice_minutes: 0 }, cost_by_feature: {}, cost_by_persona: {}, sessions: 0,
+    };
+    const saved: any[] = [];
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_tutor_config") return CONFIG;
+      if (fn === "app_admin_tutor_save_config") return (saved.push(args), { ...CONFIG, ...Object.fromEntries(Object.entries(args.p_config).map(([k, v]) => [k, typeof v === "string" && /^[\d.]+$/.test(v) ? Number(v) : v])) });
+      if (fn === "app_admin_tutor_personalities") return [];
+      throw new Error(`rpc inesperada: ${fn}`);
+    });
+    server["/api/tutor/status"] = () => ({ body: { ready: true } });
+    const { AdminTutor } = await import("../novo/app/admin/AdminPanels.jsx");
+    render(<AdminTutor />);
+    const teamOnly = (await screen.findByRole("switch", { name: /^Voz do professor só para a equipe/ })) as HTMLInputElement;
+    expect(teamOnly.checked).toBe(true);
+    expect(screen.getByText("Ligado: só administrador e editor ouvem a voz do professor; alunos seguem na voz reserva.")).toBeTruthy();
+    expect(screen.getByText("Desligada: só o Chat, por escrito (sem as vozes e sem o microfone).")).toBeTruthy();
+    expect(screen.getByText("Preço não preenchido: o custo da voz do professor e da transcrição fica zerado no registro de consumo.")).toBeTruthy();
+    expect(screen.getAllByText("900 caracteres = 1 minuto de fala.").length).toBeGreaterThan(0);
+    fireEvent.click(teamOnly);
+    fireEvent.change(screen.getByLabelText("Voz do professor por dia — teste grátis (caracteres)"), { target: { value: "2700" } });
+    fireEvent.change(screen.getByLabelText("Voz do professor por dia — plano pago (caracteres)"), { target: { value: "4500" } });
+    fireEvent.change(screen.getByLabelText("Teto da plataforma por dia (caracteres)"), { target: { value: "90000" } });
+    fireEvent.change(screen.getByLabelText("Teto da plataforma por mês (caracteres)"), { target: { value: "600000" } });
+    fireEvent.change(screen.getByLabelText("Preço da voz do professor (US$ por mil caracteres)"), { target: { value: "0,30" } });
+    fireEvent.change(screen.getByLabelText("Preço da transcrição (US$ por minuto)"), { target: { value: "0.003" } });
+    const save = screen.getByText("Salvar Tutor").closest("button") as HTMLButtonElement;
+    expect(save.disabled).toBe(true); // sem motivo, não salva
+    fireEvent.change(screen.getByLabelText(/Motivo da mudança/), { target: { value: "Liberar a voz do professor para os alunos." } });
+    fireEvent.click(save);
+    await waitFor(() => expect(saved.length).toBe(1));
+    expect(saved[0]).toMatchObject({ p_reason: "Liberar a voz do professor para os alunos." });
+    expect(saved[0].p_config).toMatchObject({ tts_team_only: false, tts_trial_daily_chars: "2700", tts_paid_daily_chars: "4500", tts_account_daily_chars: "90000", tts_account_monthly_chars: "600000", tts_price_per_1k_chars_usd: "0.30", stt_price_per_min_usd: "0.003" });
+    await waitFor(() => expect(screen.queryByText(/Preço não preenchido/)).toBeNull());
   });
 });
