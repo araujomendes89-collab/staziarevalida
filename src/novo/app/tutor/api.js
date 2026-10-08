@@ -74,3 +74,45 @@ export const voiceApi = {
   transcript: (backend, voiceCallId, role, text) => voicePost(backend, "transcript", { voice_call_id: voiceCallId, role, text }),
   tool: (backend, voiceCallId, name, args) => voicePost(backend, "tool", { voice_call_id: voiceCallId, name, arguments: args }),
 };
+
+/** Erro do servidor com status, código e direito de uso (o aplicativo age pelo código: tutor_consent, busy, voice_*…). */
+async function failure(res) {
+  let data = {};
+  try {
+    data = await res.json();
+  } catch {
+    // resposta sem corpo
+  }
+  const error = new Error(data.error ?? `Erro ${res.status}.`);
+  error.status = res.status;
+  error.code = data.code ?? null;
+  error.entitlement = data.entitlement ?? null;
+  return error;
+}
+
+/**
+ * Nexus: o estado por professor (voz do professor, reserva, minutos), a abertura (o jeito da conversa), o turno pela voz do
+ * professor, a transcrição da fala do aluno (o áudio vai cru, só para o servidor) e a amostra aprovada do "Ouvir".
+ */
+export const nexusApi = {
+  status: async (backend) => {
+    const res = await fetch(`${BASE}/nexus`, { headers: await headers(backend) });
+    if (!res.ok) throw await failure(res);
+    return res.json();
+  },
+  open: (backend, sessionId, force = false) => voicePost(backend, "open", force ? { session_id: sessionId, force: true } : { session_id: sessionId }),
+  say: (backend, body) => voicePost(backend, "say", body),
+  transcribe: async (backend, voiceCallId, blob, seconds) => {
+    const res = await fetch(`${BASE}/voice/transcribe`, {
+      method: "POST", body: blob,
+      headers: await headers(backend, { "Content-Type": blob.type || "audio/webm", "X-Voice-Call-Id": voiceCallId, "X-Audio-Seconds": String(Math.round(seconds * 10) / 10) }),
+    });
+    if (!res.ok) throw await failure(res);
+    return res.json();
+  },
+  sample: async (backend, personalityId) => {
+    const res = await fetch(`${BASE}/voice/sample/${encodeURIComponent(personalityId)}`, { headers: await headers(backend) });
+    if (!res.ok) throw await failure(res);
+    return res.blob();
+  },
+};

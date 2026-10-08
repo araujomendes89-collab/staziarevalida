@@ -48,7 +48,11 @@ export function voiceQuotaText(entitlement, remaining = null) {
 
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
 
-export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, entitlement = null, note = null, onClose, onTextFallback }) {
+/**
+ * jeitoLabel: como o professor fala nesta conversa ("Voz do professor", "Voz reserva", "Por escrito"), ao lado do selo dele.
+ * card: o que fica abaixo da esfera (o cartão da questão). onTextFallback: sem ele, "Continuar por texto" não aparece.
+ */
+export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, entitlement = null, note = null, onClose, onTextFallback = null, jeitoLabel = null, card = null }) {
   const [chatOpen, setChatOpen] = React.useState(false);
   const [showCaptions, setShowCaptionsState] = React.useState(() => readPref("smn-voice-captions", true));
   const [volume, setVolumeState] = React.useState(() => readPref("smn-voice-volume", 1));
@@ -123,6 +127,7 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
           <span aria-hidden="true">{persona?.emoji ?? "🎙️"}</span>
           {persona?.name ?? "Professor"}
         </span>
+        {jeitoLabel && <span className="svm__jeito">{jeitoLabel}</span>}
         {quota && <span className="svm__quota">{quota}</span>}
       </div>
       <div className="svm__head">
@@ -142,6 +147,7 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
           onFrame={(l) => mic.current?.style.setProperty("--mic-level", (rt.muted ? 0 : l.input).toFixed(3))}
         />
       </div>
+      {card && <div className="svm__card">{card}</div>}
 
       {err ? (
         <div role="alert" style={{ width: "100%" }}>
@@ -149,7 +155,7 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
           <div className="svm__actions">
             {err.kind === "busy" && <button type="button" className="svm__pill" onClick={() => rt.start(true)}>Assumir aqui</button>}
             {["network", "timeout", "server", "mic", "no_mic"].includes(err.kind) && <button type="button" className="svm__pill" onClick={() => rt.start()}>Tentar de novo</button>}
-            <button type="button" className="svm__pill" onClick={onTextFallback}>Continuar por texto</button>
+            {onTextFallback && <button type="button" className="svm__pill" onClick={onTextFallback}>Continuar por texto</button>}
           </div>
         </div>
       ) : rt.state === "ended" ? (
@@ -157,7 +163,7 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
           <p className="svm__hint" role="status">{note ?? "A conversa por voz foi encerrada."}</p>
           <div className="svm__actions">
             <button type="button" className="svm__pill" onClick={() => rt.start()}>Conversar de novo</button>
-            <button type="button" className="svm__pill" onClick={onTextFallback}>Continuar por texto</button>
+            {onTextFallback && <button type="button" className="svm__pill" onClick={onTextFallback}>Continuar por texto</button>}
           </div>
         </div>
       ) : connected && !hasCaption ? (

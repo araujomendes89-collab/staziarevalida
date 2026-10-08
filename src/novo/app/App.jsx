@@ -10,6 +10,7 @@ import { LegalPage } from "./legal/LegalPage.jsx";
 import { AcceptanceScreen } from "./legal/AcceptanceScreen.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
 import { TutorScreen } from "./tutor/TutorScreen.jsx";
+import { NexusScreen } from "./tutor/nexus/NexusScreen.jsx";
 import { TutorDockProvider } from "./tutor/TutorDrawer.jsx";
 import { LessonsScreen } from "./study/LessonsScreen.jsx";
 import { UpdatesScreen } from "./study/UpdatesScreen.jsx";
@@ -141,7 +142,7 @@ function Screen() {
   else if (route === "erros") body = <ErrorNotebook go={go} />;
   else if (route === "plano") body = <PlanningScreen go={go} />;
   else if (route === "desempenho") body = <PerformanceScreen go={go} />;
-  else if (route === "tutor") body = <TutorScreen go={go} />;
+  else if (route === "tutor") body = <NexusScreen go={go} />;
   // "Análise" (grupo Evolução): o relatório do Tutor (o que ele percebeu, erros que se repetem, evolução por área)
   else if (route === "analise") body = <TutorScreen key="analise" go={go} initialView="report" />;
   else if (route === "trilha") body = <TrailScreen go={go} />;
