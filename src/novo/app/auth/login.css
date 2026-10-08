@@ -187,3 +187,13 @@
   .lg-auth-aside { flex: 0 0 auto; padding: 20px 18px; border-left: 0; border-top: 1px solid var(--line-soft); border-radius: 0 0 20px 20px; }
   .lg-auth-mark { width: 72px; }
 }
+
+/* Cadastro: WhatsApp (país + número) e caixa de aceite do Termo */
+.lg-phone { display: flex; gap: 8px; }
+.lg-phone-country { flex: 0 0 150px; min-width: 0; }
+.lg-phone-code { flex: 0 0 84px; min-width: 0; }
+.lg-phone-number { flex: 1 1 0; min-width: 0; }
+.lg-accept { display: flex; align-items: flex-start; gap: 10px; font-size: 14px; line-height: 1.45; color: var(--text); cursor: pointer; padding: 6px 0; }
+.lg-accept .lg-check { flex: none; margin-top: 2px; }
+.lg-accept .lg-link-btn { min-height: 0; font-size: inherit; }
+@media (max-width: 480px) { .lg-phone { flex-wrap: wrap; } .lg-phone-country { flex-basis: 100%; } }

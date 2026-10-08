@@ -1,3 +1,9 @@
+// Contrato do código do país ("Outro"): `code` é um texto que ou é um dos códigos da lista ("+55", ...) ou, no modo "Outro", o que a
+// pessoa digitou ("+44", "44" ou "" enquanto vazio). O valor "outro" de COUNTRIES existe só como opção do <select>; normalizePhone e
+// phoneError tratam "outro" e "" como código não informado. Valor do select: COUNTRIES.some(c => c.code === code && c.code !== "outro")
+// ? code : "outro" (a tela guarda também um indicador de modo "Outro", para a caixa do código não sumir ao digitar um código da lista).
+// phoneError("outro", "") devolve "Informe seu WhatsApp." primeiro: com o número preenchido e o código vazio ou inválido, a tela
+// mostra o erro na caixa do código.
 // Regras do WhatsApp do cadastro, da tela de aceite e da Minha conta (spec 2026-10-07-termo-aceite-cadastro-design.md, seção 5).
 // País + número digitado viram o formato internacional que o banco aceita em profiles.phone: "+" e de 8 a 15 dígitos, o primeiro
 // de 1 a 9. Sem dependências: vale na tela, nos testes e em qualquer ambiente.

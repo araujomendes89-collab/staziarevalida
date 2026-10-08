@@ -28,7 +28,7 @@ function Secao({ bloco }) {
   );
 }
 
-function Privacidade() {
+export function Privacidade() {
   return (
     <>
       <header className="lgl-head">

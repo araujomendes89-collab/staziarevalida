@@ -9,6 +9,11 @@ import { PASSWORD_MIN_LENGTH } from "../data";
 import { useMobile } from "./Shell.jsx";
 import { useSession, rememberChoice } from "./session.jsx";
 import { LoginScreen } from "./auth/LoginScreen.jsx";
+import { PhoneField } from "./legal/PhoneField.jsx";
+import { DocumentModal } from "./legal/DocumentModal.jsx";
+import { COUNTRIES, normalizePhone, phoneError } from "./legal/phone.js";
+import { TERMO_VERSAO } from "./legal/versions.js";
+import { rememberGoogleAcceptance } from "./legal/googleAcceptance.js";
 import "./auth/login.css";
 
 const ERROR_TEXT = {
@@ -60,13 +65,6 @@ function AuthLayout({ children, aside }) {
   );
 }
 
-const legal = (
-  <p style={{ margin: 0, font: "var(--type-caption)", color: "var(--text-tertiary)", textAlign: "center" }}>
-    Ao continuar, você concorda com os <a href="/termos-de-uso">Termos de Uso</a> e a{" "}
-    <a href="/politica-de-privacidade">Política de Privacidade</a>.
-  </p>
-);
-
 const asideButtonStyle = { background: "transparent", color: "#fff", borderColor: "rgba(255,255,255,.4)" };
 
 function SecureField({ name, label, type = "text", autoComplete, hint, error }) {
@@ -87,7 +85,7 @@ function SecureField({ name, label, type = "text", autoComplete, hint, error }) 
   );
 }
 
-function SecureSignupLayout({ children, onLogin }) {
+function SecureSignupLayout({ children, onLogin, onDoc }) {
   return (
     <div className="lg-root">
       <div className="lg-shell lg-shell--auth">
@@ -107,11 +105,17 @@ function SecureSignupLayout({ children, onLogin }) {
           </aside>
         </section>
         <p className="lg-tagline">Foco no que cai <span className="lg-dot">•</span> Memória no que fica <span className="lg-dot">•</span> Confiança na prova</p>
-        <footer className="lg-footer"><span>© 2026 StaziaMed Revalida</span><a href="/termos-de-uso">Termos de uso</a><a href="/politica-de-privacidade">Privacidade</a></footer>
+        <footer className="lg-footer"><span>© 2026 StaziaMed Revalida</span><button type="button" className="lg-link-btn" onClick={() => onDoc("termos")}>Termos de uso</button><button type="button" className="lg-link-btn" onClick={() => onDoc("privacidade")}>Privacidade</button></footer>
       </div>
     </div>
   );
 }
+
+const COUNTRY_CODES = new Set(COUNTRIES.filter((c) => c.code !== "outro").map((c) => c.code));
+const ACCEPT_ERROR = "Para criar a conta, é preciso aceitar o Termo de Aceite e Uso e a Política de Privacidade.";
+const ACCEPT_TEXT = "Declaro que li e compreendi os Termos de Aceite e Uso e a Política de Privacidade do StaziaMed Revalida e concordo com suas condições.";
+// ids dos campos, na ordem da tela, para levar o foco ao primeiro com erro
+const FIELD_IDS = { name: "secure-name", email: "secure-email", code: "secure-phone-code", phone: "secure-phone-number", pw: "secure-pw", pw2: "secure-pw2", accept: "secure-accept" };
 
 function Signup({ go }) {
   const { backend } = useSession();
@@ -119,24 +123,49 @@ function Signup({ go }) {
   const [error, setError] = React.useState(null);
   const [confirmEmail, setConfirmEmail] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
+  const [phone, setPhone] = React.useState({ code: "+55", number: "" });
+  const [accepted, setAccepted] = React.useState(false);
+  const [doc, setDoc] = React.useState(null);
+  const closeDoc = React.useCallback(() => setDoc(null), []);
+
+  const focusFirst = (next) => {
+    const first = ["name", "email", "code", "phone", "pw", "pw2", "accept"].find((k) => next[k]);
+    if (first) document.getElementById(FIELD_IDS[first])?.focus();
+  };
 
   const submit = async (e) => {
     e.preventDefault();
-    const name = e.target.name.value.trim();
-    const email = e.target.email.value.trim();
-    const password = e.target.pw.value;
+    const field = (n) => e.target.elements.namedItem(n).value;
+    const name = field("name").trim();
+    const email = field("email").trim();
+    const password = field("pw");
     const next = {};
     if (name.length < 2) next.name = "Informe seu nome.";
     if (!isEmail(email)) next.email = "Informe um e-mail válido.";
+    const phoneMsg = phoneError(phone.code, phone.number);
+    if (phoneMsg) {
+      // Outro país com número preenchido, mas código vazio ou inválido: o erro vai para a caixa do código
+      if (phone.number.trim() && !/^\+?[1-9][0-9]{0,2}$/.test(phone.code.trim()) && !COUNTRY_CODES.has(phone.code)) next.code = phoneMsg;
+      else next.phone = phoneMsg;
+    }
     if (password.length < PASSWORD_MIN_LENGTH) next.pw = `Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`;
+    else if (password !== field("pw2")) next.pw2 = "As senhas não são iguais.";
+    if (!accepted) next.accept = ACCEPT_ERROR;
     setErrors(next);
     setError(null);
-    if (Object.keys(next).length) return;
+    if (Object.keys(next).length) {
+      focusFirst(next);
+      return;
+    }
 
     setLoading(true);
     try {
       rememberChoice(true);
-      const result = await backend.signUp(name, email, password);
+      const result = await backend.signUp(name, email, password, {
+        phone: normalizePhone(phone.code, phone.number),
+        termsVersion: TERMO_VERSAO,
+        userAgent: typeof navigator === "undefined" ? "" : navigator.userAgent,
+      });
       if (result.needsEmailConfirmation) setConfirmEmail(true);
     } catch (err) {
       setError(messageFor(err));
@@ -145,7 +174,15 @@ function Signup({ go }) {
   };
   const google = async () => {
     setError(null);
+    if (!accepted) {
+      const next = { accept: ACCEPT_ERROR };
+      setErrors(next);
+      focusFirst(next);
+      return;
+    }
+    setErrors({});
     try {
+      rememberGoogleAcceptance(TERMO_VERSAO);
       await backend.signInWithGoogle();
     } catch (err) {
       setError(messageFor(err));
@@ -153,19 +190,43 @@ function Signup({ go }) {
   };
 
   return (
-    <SecureSignupLayout onLogin={() => go("login")}>
+    <SecureSignupLayout onLogin={() => go("login")} onDoc={setDoc}>
       <form onSubmit={submit} className="lg-auth-fields" noValidate>
         <div><h2 className="lg-h2">Criar conta</h2><p className="lg-sub">Crie sua conta e comece sua jornada.</p></div>
         {error && <div className="lg-msg lg-msg--error" role="alert">{error}</div>}
         {confirmEmail && <div className="lg-msg lg-msg--success" role="status">Enviamos um link de confirmação. Depois de confirmar, é só entrar.</div>}
         <SecureField name="name" label="Nome completo" autoComplete="name" error={errors.name} />
         <SecureField name="email" label="E-mail" type="email" autoComplete="email" error={errors.email} />
+        <PhoneField code={phone.code} number={phone.number} onChange={setPhone} error={errors.phone} codeError={errors.code} />
         <SecureField name="pw" label="Senha" type="password" hint={`Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`} autoComplete="new-password" error={errors.pw} />
+        <SecureField name="pw2" label="Conferir senha" type="password" autoComplete="new-password" error={errors.pw2} />
+        <div className="lg-field">
+          <label className="lg-accept">
+            <input
+              id="secure-accept"
+              aria-label={ACCEPT_TEXT}
+              type="checkbox"
+              className="lg-check"
+              checked={accepted}
+              onChange={(e) => setAccepted(e.target.checked)}
+              aria-invalid={errors.accept ? "true" : "false"}
+              aria-describedby={errors.accept ? "secure-accept-error" : undefined}
+            />
+            <span>
+              Declaro que li e compreendi os{" "}
+              <button type="button" className="lg-link-btn" onClick={() => setDoc("termos")}>Termos de Aceite e Uso</button>
+              {" "}e a{" "}
+              <button type="button" className="lg-link-btn" onClick={() => setDoc("privacidade")}>Política de Privacidade</button>
+              {" "}do StaziaMed Revalida e concordo com suas condições.
+            </span>
+          </label>
+          {errors.accept ? <span id="secure-accept-error" className="lg-field-error">{errors.accept}</span> : null}
+        </div>
         <button type="submit" className="lg-btn lg-btn-primary" disabled={loading}>{loading ? <><span className="lg-spin" />CRIANDO CONTA…</> : "CRIAR CONTA"}</button>
         <div className="lg-or" aria-hidden="true"><span /><span>ou cadastre-se com</span><span /></div>
-        <button type="button" className="lg-btn lg-btn-ghost" onClick={google} disabled={loading}><img src="/novo-assets/google.svg" alt="" width="18" height="18" />Continuar com Google</button>
-        <p className="lg-auth-legal">Ao continuar, você concorda com os <a href="/termos-de-uso">Termos de Uso</a> e a <a href="/politica-de-privacidade">Política de Privacidade</a>.</p>
+        <button type="button" className="lg-btn lg-btn-ghost" onClick={google} disabled={loading}><img src="/novo-assets/google.svg" alt="" width="18" height="18" />Criar conta com Google</button>
       </form>
+      {doc && <DocumentModal doc={doc} onClose={closeDoc} />}
     </SecureSignupLayout>
   );
 }
