@@ -101,7 +101,7 @@ describe("Cadastro — banco local do navegador", () => {
 
     // o aceite veio do cadastro, não da tela de aceite
     const exported = await backend.rpc<any>("app_export_my_data");
-    expect(exported.acceptances).toEqual([{ document: "termo_uso", version: "1.0", accepted_at: expect.any(String), origin: "cadastro" }]);
+    expect(exported.acceptances).toEqual([{ document: "termo_uso", version: "1.0", accepted_at: expect.any(String), origin: "cadastro", user_agent: "T" }]);
   });
 
   it("cadastro sem versão do termo pede a tela de aceite", async () => {
@@ -135,7 +135,7 @@ describe("Cadastro — banco local do navegador", () => {
     await backend.rpc("app_accept_terms", { ...args, p_phone: null });
 
     expect((await backend.rpc<any>("app_export_my_data")).acceptances).toEqual([
-      { document: "termo_uso", version: "1.0", accepted_at: expect.any(String), origin: "tela_aceite" },
+      { document: "termo_uso", version: "1.0", accepted_at: expect.any(String), origin: "tela_aceite", user_agent: "UA/1" },
     ]);
   });
 
