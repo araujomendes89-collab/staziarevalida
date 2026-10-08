@@ -2,10 +2,11 @@
 // As telas ainda não ligadas aos dados usam as do protótipo (src/novo/prototype) no estado
 // "aluno novo" e mostram um aviso; cada etapa substitui um grupo por telas com dados reais.
 import React from "react";
-import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Banner, Button, EmptyState, SegmentedControl } from "../ds";
 import { AppShell, useMobile } from "./Shell.jsx";
 import { AuthFlow } from "./AuthScreens.jsx";
+import { LegalPage } from "./legal/LegalPage.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
 import { TutorScreen } from "./tutor/TutorScreen.jsx";
 import { TutorDockProvider } from "./tutor/TutorDrawer.jsx";
@@ -220,6 +221,12 @@ function Splash({ children }) {
 
 function Root() {
   const session = useSession();
+  const { pathname } = useLocation();
+
+  // Termo e Política são públicas: abrem com ou sem login, também carregando ou com erro.
+  const publicPath = pathname.replace(/\/+$/, "");
+  if (publicPath === "/termos") return <LegalPage doc="termos" />;
+  if (publicPath === "/privacidade") return <LegalPage doc="privacidade" />;
 
   if (session.status === "loading") {
     return (
