@@ -1,5 +1,27 @@
 # Stazia Voice Mode: Tutor por voz em tempo real (tela cheia)
 
+> **Tutor Nexus (2026-10-08) — estado atual; o resto deste documento é, em parte, histórico.**
+> - **Professores:** três — **Tranquilo** (id técnico `acolhedor`, com o jeito do antigo Preguiçoso, nunca xinga), **Durona** e **Direto**.
+>   Questionador e os demais ficam desligados. Conversas antigas do Acolhedor e de perfis desligados ficam só para leitura
+>   ("Este professor mudou. Comece uma conversa nova."). Uma conversa nunca troca de professor.
+> - **Tela:** `/tutor` é a Nexus (`src/novo/app/tutor/nexus/`): escolher o professor e o modo, "Começar", conversa em tela cheia (igual no
+>   computador e no celular), resumo e histórico. De outras telas, a Nexus abre por cima (`TutorDrawer.jsx`) com o modo travado. O relatório
+>   fica em `/analise` (`ReportScreen.jsx`). Saíram a tela antiga (`TutorScreen.jsx`), a voz do aparelho (`useVoice.js`) e os comandos de
+>   voz antigos (`voiceCommands.js`).
+> - **Jeitos da conversa:** **voz do professor** (ElevenLabs, uma voz por professor, só a versão aprovada no painel), **voz reserva** (a voz ao
+>   vivo: Gemini, GPT-Live ou Realtime) e **por escrito**. Rotas: `GET /api/tutor/nexus`, `POST /api/tutor/voice/open` (escolhe o jeito),
+>   `POST /api/tutor/voice/say` (o turno pelo motor, com trava de 60 s e `client_turn_id`), `POST /api/tutor/voice/transcribe` (áudio até
+>   4 MB e 45 s, só na memória), `POST /api/tutor/speech` (fala um texto já gravado) e `GET /api/tutor/voice/sample/:personality`.
+> - **Limites (painel do Tutor):** caracteres da voz do professor por dia (teste e pago; 900 caracteres ≈ 1 minuto), tetos da conta por dia e
+>   por mês (dia e mês de Brasília), preço por mil caracteres e por minuto de transcrição. Cada fala reserva os caracteres antes de gerar e
+>   devolve se a voz não sair; a voz do professor não gasta o tempo da voz ao vivo.
+> - **Aprovação das vozes:** painel "Vozes do Nexus" (`/api/tutor/voices`): ouvir todos os cenários daquela versão da voz nas últimas 24 h;
+>   aprovar e revogar só quem está em `TUTOR_VOICE_APPROVERS`; a "Apresentação" aprovada vai para o depósito `tutor-voice-samples` e toca
+>   no "Ouvir" do aluno. Mudar a voz, o modelo, o formato, os cenários ou a direção cria uma versão nova (a aprovação cai sozinha).
+> - **Variáveis:** novas `TUTOR_VOICE_APPROVERS`, `TUTOR_STT_ALLOW_EXTERNAL` e `TUTOR_STT_MODEL`. Saíram `TUTOR_VOICE_PROVIDER`,
+>   `TUTOR_VOICE_MODEL`, `TUTOR_VOICE_DAILY_CHARS`, `TUTOR_VOICE_PRICE_PER_MIN` e `ELEVENLABS_PRICE_PER_MIN` (preços no painel).
+> - **Banco:** migrações `20261003005500` a `20261003005800`. Desenho completo: `docs/superpowers/specs/2026-10-07-tutor-nexus-voz-design.md`.
+
 Data: 2026-10-06. Pedido: "Tutor IA por voz em tempo real… sem destruir nem duplicar funcionalidades" (itens 1–95), com o vídeo
 `gemini_generated_video_b0688b55.mp4` como referência visual. Base anterior: `STAZIA_TUTOR_V2.md` (Tutor v2, motor de personalidade
 2.2.0, voz OpenAI Realtime).

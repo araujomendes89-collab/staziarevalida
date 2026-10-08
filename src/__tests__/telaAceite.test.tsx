@@ -23,7 +23,8 @@ vi.mock("../novo/app/admin/AdminScreen.jsx", async () => ({
   AdminScreen: () => <div data-testid="tela-admin" />,
   isStaffRole: (await import("../novo/app/admin/common.jsx")).isStaffRole,
 }));
-vi.mock("../novo/app/tutor/TutorScreen.jsx", () => ({ TutorScreen: () => <div data-testid="tela-sessao" /> }));
+vi.mock("../novo/app/tutor/nexus/NexusScreen.jsx", () => ({ NexusScreen: () => <div data-testid="tela-sessao" /> }));
+vi.mock("../novo/app/tutor/ReportScreen.jsx", () => ({ ReportScreen: () => <div data-testid="tela-sessao" /> }));
 
 import { App } from "../novo/app/App.jsx";
 

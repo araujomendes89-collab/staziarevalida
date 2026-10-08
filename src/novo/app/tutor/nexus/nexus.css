@@ -351,6 +351,12 @@
   flex-direction: column;
   gap: 16px;
 }
+.nx-summary__close {
+  justify-content: flex-end;
+}
+.nx-history__close {
+  margin-left: auto;
+}
 .nx-summary__orb {
   --orb-size: 128px;
   display: grid;

@@ -83,7 +83,7 @@ export { base64ToFloat32 };
  */
 export async function openGeminiLive({ token, model, stream, volume = 1, handlers = {}, sdk = null, audioContext = null }) {
   const ctx = audioContext ?? getAudioContext();
-  if (!ctx) throw new Error("Este navegador não toca áudio para a voz do Gemini.");
+  if (!ctx) throw new Error("Este navegador não toca o áudio da voz.");
   if (ctx.state === "suspended") ctx.resume?.()?.catch?.(() => {});
   const { GoogleGenAI } = sdk ?? (await import("@google/genai/web"));
   const ai = new GoogleGenAI({ apiKey: token, httpOptions: { apiVersion: "v1alpha" } });
@@ -239,7 +239,7 @@ export async function openGeminiLive({ token, model, stream, volume = 1, handler
     state.current = 1;
     state.session = await connect(1);
     await startCapture();
-    if (state.closed) throw new Error("A conexão com o Gemini fechou ao abrir.");
+    if (state.closed) throw new Error("A conexão da voz fechou ao abrir.");
   } catch (error) {
     // não abriu por inteiro: nada fica ligado (nem a conexão com o Google, nem o alto-falante)
     shutdown();

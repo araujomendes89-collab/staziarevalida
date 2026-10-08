@@ -1,5 +1,27 @@
 # Stazia Tutor — desenho, o que foi feito e o que falta
 
+> **Tutor Nexus (2026-10-08) — estado atual; o resto deste documento é, em parte, histórico.**
+> - **Professores:** três — **Tranquilo** (id técnico `acolhedor`, com o jeito do antigo Preguiçoso, nunca xinga), **Durona** e **Direto**.
+>   Questionador e os demais ficam desligados. Conversas antigas do Acolhedor e de perfis desligados ficam só para leitura
+>   ("Este professor mudou. Comece uma conversa nova."). Uma conversa nunca troca de professor.
+> - **Tela:** `/tutor` é a Nexus (`src/novo/app/tutor/nexus/`): escolher o professor e o modo, "Começar", conversa em tela cheia (igual no
+>   computador e no celular), resumo e histórico. De outras telas, a Nexus abre por cima (`TutorDrawer.jsx`) com o modo travado. O relatório
+>   fica em `/analise` (`ReportScreen.jsx`). Saíram a tela antiga (`TutorScreen.jsx`), a voz do aparelho (`useVoice.js`) e os comandos de
+>   voz antigos (`voiceCommands.js`).
+> - **Jeitos da conversa:** **voz do professor** (ElevenLabs, uma voz por professor, só a versão aprovada no painel), **voz reserva** (a voz ao
+>   vivo: Gemini, GPT-Live ou Realtime) e **por escrito**. Rotas: `GET /api/tutor/nexus`, `POST /api/tutor/voice/open` (escolhe o jeito),
+>   `POST /api/tutor/voice/say` (o turno pelo motor, com trava de 60 s e `client_turn_id`), `POST /api/tutor/voice/transcribe` (áudio até
+>   4 MB e 45 s, só na memória), `POST /api/tutor/speech` (fala um texto já gravado) e `GET /api/tutor/voice/sample/:personality`.
+> - **Limites (painel do Tutor):** caracteres da voz do professor por dia (teste e pago; 900 caracteres ≈ 1 minuto), tetos da conta por dia e
+>   por mês (dia e mês de Brasília), preço por mil caracteres e por minuto de transcrição. Cada fala reserva os caracteres antes de gerar e
+>   devolve se a voz não sair; a voz do professor não gasta o tempo da voz ao vivo.
+> - **Aprovação das vozes:** painel "Vozes do Nexus" (`/api/tutor/voices`): ouvir todos os cenários daquela versão da voz nas últimas 24 h;
+>   aprovar e revogar só quem está em `TUTOR_VOICE_APPROVERS`; a "Apresentação" aprovada vai para o depósito `tutor-voice-samples` e toca
+>   no "Ouvir" do aluno. Mudar a voz, o modelo, o formato, os cenários ou a direção cria uma versão nova (a aprovação cai sozinha).
+> - **Variáveis:** novas `TUTOR_VOICE_APPROVERS`, `TUTOR_STT_ALLOW_EXTERNAL` e `TUTOR_STT_MODEL`. Saíram `TUTOR_VOICE_PROVIDER`,
+>   `TUTOR_VOICE_MODEL`, `TUTOR_VOICE_DAILY_CHARS`, `TUTOR_VOICE_PRICE_PER_MIN` e `ELEVENLABS_PRICE_PER_MIN` (preços no painel).
+> - **Banco:** migrações `20261003005500` a `20261003005800`. Desenho completo: `docs/superpowers/specs/2026-10-07-tutor-nexus-voz-design.md`.
+
 > **Versão 2 (2026-10-06):** três professores, quatro modos, teste grátis com cotas, voz em tempo real e registro de uso. Ver `STAZIA_TUTOR_V2.md`; este documento descreve a v1 e o histórico.
 
 > Escrito para: o dono do produto (decisões e custo) e quem for programar (mapa técnico).
@@ -246,26 +268,25 @@ sem ter passado pela conferência.
 | Rota `POST /api/tutor/speech` e `neural_voice` no `GET /api/tutor/status` | `server/tutor/router.ts` |
 | Voz e direção de atuação de cada professor (`voice.openai`, `voice.gemini`, `voice.acting`) | `tutor_personalities.voice` |
 | O que pode virar voz, para quem; caracteres e custo do dia (`ai_usage.voice_chars`, sem contar como mensagem) | `ch_worker_tutor_speech`, `ch_worker_tutor_voice_charge` |
-| Tocar o áudio, interromper (o trecho que estava tocando volta como contexto) e cair para a voz do aparelho se falhar | `src/novo/app/tutor/useVoice.js` |
-| Escolha "Voz natural do professor (recomendada)" ou uma voz do aparelho, com botão Ouvir | tela Escolha seu professor |
+| Tocar a voz do professor (mp3 pelo mesmo caminho que a esfera mede), interromper e passar para a voz reserva se faltar limite ou aprovação | `src/novo/app/tutor/nexus/useNexusVoice.js`, `voice/audioPlayer.js` |
 
-**Para ligar** (no `.env` do servidor, depois de aprovar o envio do texto das respostas ao serviço):
+**Para ligar a voz do professor** (no `.env` do servidor, depois de aprovar o envio do texto das respostas ao serviço):
 
 ```
-TUTOR_VOICE_PROVIDER=openai          # ou gemini
 TUTOR_VOICE_ALLOW_EXTERNAL=1
-OPENAI_API_KEY=...                   # ou GEMINI_API_KEY=... (a do .env hoje é o texto de exemplo)
+ELEVENLABS_API_KEY=...
+ELEVENLABS_VOICE_TRANQUILO=...       # voice_id salvo de cada professor
+ELEVENLABS_VOICE_DURONA=...
+ELEVENLABS_VOICE_DIRETO=...
+TUTOR_VOICE_APPROVERS=email@...      # quem aprova e revoga no painel "Vozes do Nexus"
+TUTOR_STT_ALLOW_EXTERNAL=1           # transcrição da fala do aluno (usa OPENAI_API_KEY)
 ```
 
-Para o teste controlado do ElevenLabs, use `TUTOR_VOICE_PROVIDER=elevenlabs`, `TUTOR_VOICE_ALLOW_EXTERNAL=1`,
-`ELEVENLABS_API_KEY`, `ELEVENLABS_VOICE_ACOLHEDOR`, `ELEVENLABS_VOICE_DIRETO`, `ELEVENLABS_VOICE_DURONA` e
-`ELEVENLABS_VOICE_TRANQUILO`. O painel **Vozes do Nexus** (`/novo/admin?aba=vozes`) só envia cenários fixos;
-cada voz precisa ser ouvida e aprovada antes de `releaseReady` liberar o áudio aos alunos.
+Cada voz só fala com alunos depois de ouvida (todos os cenários daquela versão) e aprovada no painel; "Voz do professor só para a equipe"
+começa ligado. Sem a voz do professor, a conversa segue pela voz reserva (a voz ao vivo) ou por escrito.
 
-**Custo e limite.** Estimativa pela duração (uns 900 caracteres por minuto de fala): OpenAI cerca de US$ 0,015 por minuto; Gemini cerca de
-US$ 0,0135 por minuto até 31/12/2026 (o preço dobra em 2027). Uma resposta curta (300 caracteres) custa uns US$ 0,005. Teto por aluno:
-30.000 caracteres por dia (cerca de meia hora de fala); passou disso, o professor segue com a voz do aparelho. Repetir a mesma fala sai de um
-cache em memória, sem gerar nem cobrar de novo.
+**Custo e limite.** Preços e limites ficam no painel do Tutor: caracteres por dia (teste e pago; 4.500 ≈ 5 minutos), tetos da conta por dia
+e por mês, preço por mil caracteres e por minuto de transcrição. Repetir a mesma fala sai de um cache em memória, sem gerar nem cobrar de novo.
 
 **Por que não o GPT Realtime (voz para voz).** No Realtime o modelo fala **enquanto gera**: a resposta chega ao ouvido do aluno antes de
 existir texto para conferir. Isso desliga a regra "nada de número, dose ou diretriz sem fonte" e a trava do gabarito. O caminho adotado

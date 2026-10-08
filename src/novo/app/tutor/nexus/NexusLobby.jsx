@@ -4,7 +4,7 @@
 import React from "react";
 import { StaziaVoiceOrb } from "../voice/StaziaVoiceOrb.jsx";
 import { modeLabel } from "../labels.js";
-import { TutorQuota } from "../TutorScreen.jsx";
+import { TutorQuota } from "../TutorQuota.jsx";
 
 /** Aviso antes do primeiro uso da voz (Política de 07/10, §3), sempre à vista na entrada. */
 export const NEXUS_POLICY_NOTICE =

@@ -32,7 +32,7 @@ vi.mock("../novo/app/play/PlayDashboard.jsx", () => ({
 
 import { AccountScreen } from "../novo/app/account/AccountScreen.jsx";
 import { HomeScreen } from "../novo/app/home/HomeScreen.jsx";
-import { TutorQuota } from "../novo/app/tutor/TutorScreen.jsx";
+import { TutorQuota } from "../novo/app/tutor/TutorQuota.jsx";
 
 const boot = (role: string) => ({
   role,

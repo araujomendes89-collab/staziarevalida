@@ -1,5 +1,5 @@
 /**
- * Voz do Gemini na tela do Tutor (jsdom; o módulo do Gemini e o servidor são simulados): o servidor indica o Gemini, o aplicativo
+ * Voz do Gemini como voz reserva da Nexus (jsdom; o módulo do Gemini e o servidor são simulados): o servidor indica o Gemini, o aplicativo
  * conecta com a chave temporária (nada vai para a OpenAI), o professor abre a conversa, fala com legenda, usa as ferramentas pelo
  * servidor e pode ser interrompido; a troca de conexão do Google não conta como queda; se o Gemini não abrir neste aparelho, a
  * reserva é liberada sem cobrar e a voz da OpenAI assume; se o servidor já tiver caído para a OpenAI, segue por ela.
@@ -92,6 +92,9 @@ beforeEach(async () => {
   });
   server = {
     "/api/tutor/status": () => ({ body: { ready: true, simulated: false, neural_voice: false, realtime_voice: true, live_voice: false, voice_hint: "gemini" } }),
+    // Nexus: sem voz do professor aprovada, a conversa abre na voz reserva (a voz ao vivo)
+    "/api/tutor/nexus": () => ({ body: { voice_enabled: true, stt: false, reserve: true, reserve_minutes: 10, minutes_today: 0, professors: PERSONALITIES.map((p) => ({ id: p.id, eleven: false, sample: false, reason: "not_approved" })) } }),
+    "/api/tutor/voice/open": () => ({ body: { jeito: "reserva", voice_call_id: null, mic: true, reason: "not_approved", minutes_today: 0, reserve_minutes: 10 } }),
     // o servidor abre o Gemini, a não ser que o aplicativo peça outra voz
     "/api/tutor/voice/start": (b) => ({ body: b?.avoid?.includes("gemini") ? realtimeStart : geminiStart }),
     "https://api.openai.com/v1/realtime/calls": () => ({ text: "v=0 answer", headers: { Location: "/v1/realtime/calls/rtc_123" } }),
@@ -112,15 +115,15 @@ beforeEach(async () => {
 });
 afterEach(cleanup);
 
-const load = async () => (await import("../novo/app/tutor/TutorScreen.jsx")).TutorScreen as any;
+const load = async () => (await import("../novo/app/tutor/nexus/NexusScreen.jsx")).NexusScreen as any;
 const urls = () => calls.map((c) => c.url);
 const bodies = (u: string) => calls.filter((c) => c.url === u).map((c) => c.body);
+/** A Nexus abre na voz reserva: "Começar com …" (o Gemini é a voz ao vivo indicada pelo servidor). */
 const openVoice = async () => {
-  const TutorScreen = await load();
-  render(<TutorScreen go={() => {}} />);
-  fireEvent.click(await screen.findByText("Começar"));
+  const NexusScreen = await load();
+  render(<NexusScreen go={() => {}} />);
   await waitFor(() => expect(urls()).toContain("/api/tutor/status"));
-  fireEvent.click(await screen.findByText("Conversar por voz"));
+  fireEvent.click(await screen.findByRole("button", { name: /^Começar com/ }));
 };
 
 describe("Voz do Gemini na tela", () => {

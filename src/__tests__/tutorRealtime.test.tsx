@@ -70,6 +70,9 @@ beforeEach(() => {
   });
   server = {
     "/api/tutor/status": () => ({ body: { ready: true, simulated: false, neural_voice: false, realtime_voice: true } }),
+    // Nexus: sem voz do professor aprovada, a conversa abre na voz reserva (a voz ao vivo)
+    "/api/tutor/nexus": () => ({ body: { voice_enabled: true, stt: false, reserve: true, reserve_minutes: 60, minutes_today: 0, professors: PERSONALITIES.map((p) => ({ id: p.id, eleven: false, sample: false, reason: "not_approved" })) } }),
+    "/api/tutor/voice/open": () => ({ body: { jeito: "reserva", voice_call_id: null, mic: true, reason: "not_approved", minutes_today: 0, reserve_minutes: 60 } }),
     "/api/tutor/voice/start": () => ({ body: { voice_call_id: "33333333-3333-4333-8333-333333333333", client_secret: "ek_temporario", model: "m", lease_seconds: 120, entitlement: { voice: { remaining_s: 540 } } } }),
     "https://api.openai.com/v1/realtime/calls": () => ({ text: "v=0 answer", headers: { Location: "/v1/realtime/calls/rtc_123" } }),
     "/api/tutor/voice/renew": () => ({ body: { stop: false, lease_seconds: 120, remaining_s: 500 } }),
@@ -91,17 +94,20 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-const load = async () => (await import("../novo/app/tutor/TutorScreen.jsx")).TutorScreen as any;
+const load = async () => (await import("../novo/app/tutor/nexus/NexusScreen.jsx")).NexusScreen as any;
 const urls = () => calls.map((c) => c.url);
+/** A Nexus abre na voz reserva (a voz ao vivo): "Começar com …". */
+const begin = async () => {
+  const NexusScreen = await load();
+  render(<NexusScreen go={() => {}} />);
+  await waitFor(() => expect(urls()).toContain("/api/tutor/status"));
+  fireEvent.click(await screen.findByRole("button", { name: /^Começar com/ }));
+};
 const emit = (ev: unknown) => dc.onmessage({ data: JSON.stringify(ev) });
 
 describe("Voz em tempo real na tela", () => {
   it("abre pelo servidor (segredo temporário), conecta direto na OpenAI, executa ferramentas pelo servidor, mostra a fala e permite interromper", async () => {
-    const TutorScreen = await load();
-    render(<TutorScreen go={() => {}} />);
-    fireEvent.click(await screen.findByText("Começar"));
-    await waitFor(() => expect(urls()).toContain("/api/tutor/status"));
-    fireEvent.click(await screen.findByText("Conversar por voz"));
+    await begin();
     await waitFor(() => expect(urls()).toContain("https://api.openai.com/v1/realtime/calls"));
     expect(calls.find((c) => c.url === "/api/tutor/voice/start")!.body).toEqual({ session_id: session().id, force: false });
     const sdp = calls.find((c) => c.url.startsWith("https://api.openai.com"))!;
@@ -136,10 +142,7 @@ describe("Voz em tempo real na tela", () => {
 
   it("o servidor achou algo errado no que foi dito: o professor recebe a correção na hora", async () => {
     server["/api/tutor/voice/transcript"] = () => ({ body: { correction: "CORREÇÃO OBRIGATÓRIA: você adiantou a resposta." } });
-    const TutorScreen = await load();
-    render(<TutorScreen go={() => {}} />);
-    fireEvent.click(await screen.findByText("Começar"));
-    fireEvent.click(await screen.findByText("Conversar por voz"));
+    await begin();
     await waitFor(() => expect(dc).not.toBeNull());
     await waitFor(() => expect(urls()).toContain("https://api.openai.com/v1/realtime/calls"));
     dc.onopen();
@@ -149,28 +152,21 @@ describe("Voz em tempo real na tela", () => {
   });
 
   it("microfone negado, voz aberta em outro aparelho e cota: sempre uma explicação e uma saída", async () => {
-    const TutorScreen = await load();
     micDenied = true;
-    render(<TutorScreen go={() => {}} />);
-    fireEvent.click(await screen.findByText("Começar"));
-    fireEvent.click(await screen.findByText("Conversar por voz"));
+    await begin();
     expect(await screen.findByText(/O navegador bloqueou o microfone/)).toBeTruthy();
     expect(calls.find((c) => c.url === "/api/tutor/voice/end")!.body).toMatchObject({ reason: "error" }); // não conectou: não cobra
     cleanup();
     micDenied = false;
     let starts = 0;
     server["/api/tutor/voice/start"] = (b) => (++starts === 1 ? { status: 409, body: { error: "Já existe uma conversa por voz aberta em outro aparelho ou aba.", code: "busy" } } : { body: { voice_call_id: "33333333-3333-4333-8333-333333333333", client_secret: "ek_temporario", lease_seconds: 120, force: b.force } });
-    render(<TutorScreen go={() => {}} />);
-    fireEvent.click(await screen.findByText("Começar"));
-    fireEvent.click(await screen.findByText("Conversar por voz"));
+    await begin();
     expect(await screen.findByText(/aberta em outro aparelho/)).toBeTruthy();
     fireEvent.click(screen.getByText("Assumir aqui"));
     await waitFor(() => expect(calls.filter((c) => c.url === "/api/tutor/voice/start").at(-1)!.body).toEqual({ session_id: session().id, force: true }));
     cleanup();
     server["/api/tutor/voice/start"] = () => ({ status: 429, body: { error: "Você atingiu seu limite de voz de hoje. O acesso é renovado amanhã.", code: "voice_quota" } });
-    render(<TutorScreen go={() => {}} />);
-    fireEvent.click(await screen.findByText("Começar"));
-    fireEvent.click(await screen.findByText("Conversar por voz"));
+    await begin();
     expect(await screen.findByText("Você atingiu seu limite de voz de hoje. O acesso é renovado amanhã.")).toBeTruthy();
   });
 });
@@ -194,7 +190,9 @@ describe("Tutor fora da tela do Tutor, resolução, encerramento e relatório", 
     fireEvent.click(within(overlay).getByRole("button", { name: /^Começar com/ }));
     await waitFor(() => expect(started).toHaveLength(1));
     expect(started[0]).toMatchObject({ p_mode: "livre", p_topic: null, p_question_id: "q1", p_context: { type: "question", id: "q1" } });
-    fireEvent.click(screen.getByLabelText("Fechar o Tutor"));
+    // a conversa abre por cima; encerrar mostra o resumo e "Fechar" volta para a tela de baixo
+    fireEvent.click(await screen.findByLabelText("Encerrar a conversa por voz"));
+    fireEvent.click(await screen.findByLabelText("Fechar o Tutor"));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
@@ -210,51 +208,34 @@ describe("Tutor fora da tela do Tutor, resolução, encerramento e relatório", 
     expect(await screen.findByText("Seu teste grátis do Tutor terminou")).toBeTruthy();
   });
 
-  it("'Ver resolução' pede a resolução; 'Encerrar sessão' fecha e mostra o resumo feito pelos dados", async () => {
+  it("cartão da questão na voz reserva: 'Ver resolução' pede pela voz; Encerrar fecha e mostra o resumo feito pelos dados", async () => {
     let current = session();
     rpcImpl.app_tutor_session = () => current;
     rpcImpl.app_tutor_close = () => {
       current = session({ status: "closed", question_state: "revealed", summary: { questions_answered: 3, correct: 2, concepts_mastered: ["Bronquiolite"], errors_detected: [{ error_type: "priority_of_management" }], recurrent_errors: ["priority_of_management"], needs_review: ["Asma"], next_recommended_topics: ["Sepse"] } });
       return true;
     };
-    server["/api/tutor/status"] = () => ({ body: { realtime_voice: false } });
-    const TutorScreen = await load();
-    render(<TutorScreen go={() => {}} />);
-    fireEvent.click(await screen.findByText("Começar"));
-    fireEvent.click(await screen.findByText("Ver resolução"));
-    await waitFor(() => expect(calls.find((c) => c.url === "/api/tutor/turn")!.body).toMatchObject({ action: "reveal" }));
-    expect(await screen.findByText("Me mostra a resolução.")).toBeTruthy();
-    fireEvent.click(screen.getByText("Encerrar sessão"));
-    expect(await screen.findByText("Resumo da sessão")).toBeTruthy();
-    expect(screen.getByText("2 de 3 questões certas.")).toBeTruthy();
+    await begin();
+    await waitFor(() => expect(urls()).toContain("https://api.openai.com/v1/realtime/calls"));
+    dc.onopen();
+    emit({ type: "session.created", session: { instructions: `${TUTOR_SPOKEN_LANGUAGE}\n\nRegras médicas e personalidade.\n\n${TUTOR_SPOKEN_REMINDER}` } });
+    const dialog = await screen.findByRole("dialog", { name: "Nexus" });
+    expect(within(dialog).getByText(/Lactente com sibilância/)).toBeTruthy(); // o enunciado fica na tela (e não é lido)
+    fireEvent.click(within(dialog).getByRole("button", { name: "Ver resolução" }));
+    await waitFor(() => expect(JSON.stringify(sent)).toContain("Me mostra a resolução."));
+    fireEvent.click(within(dialog).getByLabelText("Encerrar a conversa por voz"));
+    expect(await screen.findByText("2 de 3 questões certas.")).toBeTruthy();
     expect(screen.getByText("Erros que já se repetiram: Prioridade da conduta.")).toBeTruthy();
     expect(screen.getByText("Próximos temas sugeridos: Sepse.")).toBeTruthy();
   });
 
   it("trava do professor: depois de um erro repetido, a próxima questão só libera quando o aluno explica o raciocínio", async () => {
-    let current = session({ question_state: "answered", question: { ...QUESTION, state: "answered", correct_option: "A" }, last_answer: { selected: "B", is_correct: false } });
-    rpcImpl.app_tutor_session = () => current;
-    server["/api/tutor/status"] = () => ({ body: { realtime_voice: false } });
-    let gate: string | null = "explain";
-    server["/api/tutor/turn"] = (b) => {
-      if (b.action === "message") gate = null;
-      return { body: { message: { id: 30, role: "tutor", content: gate ? "Porra, de novo? Me explica o raciocínio." : "Agora sim.", spoken: "x", grounding: "question", sources: [], hint_level: null, suggested: [], notice: null, avatar: { emotion: "irritated" } }, gate, question_state: "answered", used_today: 1, daily_limit: 40 } };
-    };
-    const TutorScreen = await load();
-    render(<TutorScreen go={() => {}} />);
-    fireEvent.click(await screen.findByText("Começar"));
-    const input = await screen.findByLabelText("Mensagem");
-    fireEvent.change(input, { target: { value: "por que não é a B?" } });
-    fireEvent.submit(input.closest("form")!);
-    // a resposta do servidor veio com a trava: o botão some e o aviso aparece
-    gate = "explain";
-    await screen.findByText("Agora sim.");
-    expect((screen.getByText("Próxima questão").closest("button") as HTMLButtonElement).disabled).toBe(false);
-    server["/api/tutor/turn"] = () => ({ body: { message: { id: 31, role: "tutor", content: "Porra, de novo? Me explica o raciocínio.", spoken: "x", grounding: "question", sources: [], hint_level: null, suggested: [], notice: null }, gate: "explain", question_state: "answered", used_today: 2, daily_limit: 40 } });
-    fireEvent.change(input, { target: { value: "chutei" } });
-    fireEvent.submit(input.closest("form")!);
-    expect(await screen.findByText("Antes da próxima: explique ao professor o seu raciocínio nesta questão.")).toBeTruthy();
-    expect((screen.getByText("Próxima questão").closest("button") as HTMLButtonElement).disabled).toBe(true);
+    rpcImpl.app_tutor_start = () => session({ question_state: "answered", question: { ...QUESTION, state: "answered", correct_option: "A" }, last_answer: { selected: "B", is_correct: false }, gate: "explain" });
+    await begin();
+    const dialog = await screen.findByRole("dialog", { name: "Nexus" });
+    expect(within(dialog).getByText("Antes da próxima: explique ao professor o seu raciocínio nesta questão.")).toBeTruthy();
+    expect((within(dialog).getByText("Próxima").closest("button") as HTMLButtonElement).disabled).toBe(true);
+    expect(within(dialog).getByText("Você marcou B; a correta é A")).toBeTruthy();
   });
 
   it("relatório: 'O Tutor percebeu' com o número de casos; erros que se repetem; sessões", async () => {
@@ -267,9 +248,8 @@ describe("Tutor fora da tela do Tutor, resolução, encerramento e relatório", 
       recurrent_errors: [{ error_type: "priority_of_management", knowledge_gap: "estabilizar antes de investigar", times: 3 }],
       insights: [{ text: "Você identifica o diagnóstico, mas tem perdido questões quando o comando pede a conduta.", evidence: 5 }],
     });
-    const TutorScreen = await load();
-    render(<TutorScreen go={() => {}} />);
-    fireEvent.click(await screen.findByText("Meu relatório"));
+    const { ReportScreen } = await import("../novo/app/tutor/ReportScreen.jsx");
+    render(<ReportScreen go={() => {}} />); // o relatório fica em /analise
     expect(await screen.findByText("O Tutor percebeu")).toBeTruthy();
     expect(screen.getByText(/comando pede a conduta/)).toBeTruthy();
     expect(screen.getByText("(5 casos)")).toBeTruthy();

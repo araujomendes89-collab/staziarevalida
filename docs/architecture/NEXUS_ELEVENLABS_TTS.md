@@ -1,5 +1,27 @@
 # Nexus · ElevenLabs somente como TTS
 
+> **Tutor Nexus (2026-10-08) — estado atual; o resto deste documento é, em parte, histórico.**
+> - **Professores:** três — **Tranquilo** (id técnico `acolhedor`, com o jeito do antigo Preguiçoso, nunca xinga), **Durona** e **Direto**.
+>   Questionador e os demais ficam desligados. Conversas antigas do Acolhedor e de perfis desligados ficam só para leitura
+>   ("Este professor mudou. Comece uma conversa nova."). Uma conversa nunca troca de professor.
+> - **Tela:** `/tutor` é a Nexus (`src/novo/app/tutor/nexus/`): escolher o professor e o modo, "Começar", conversa em tela cheia (igual no
+>   computador e no celular), resumo e histórico. De outras telas, a Nexus abre por cima (`TutorDrawer.jsx`) com o modo travado. O relatório
+>   fica em `/analise` (`ReportScreen.jsx`). Saíram a tela antiga (`TutorScreen.jsx`), a voz do aparelho (`useVoice.js`) e os comandos de
+>   voz antigos (`voiceCommands.js`).
+> - **Jeitos da conversa:** **voz do professor** (ElevenLabs, uma voz por professor, só a versão aprovada no painel), **voz reserva** (a voz ao
+>   vivo: Gemini, GPT-Live ou Realtime) e **por escrito**. Rotas: `GET /api/tutor/nexus`, `POST /api/tutor/voice/open` (escolhe o jeito),
+>   `POST /api/tutor/voice/say` (o turno pelo motor, com trava de 60 s e `client_turn_id`), `POST /api/tutor/voice/transcribe` (áudio até
+>   4 MB e 45 s, só na memória), `POST /api/tutor/speech` (fala um texto já gravado) e `GET /api/tutor/voice/sample/:personality`.
+> - **Limites (painel do Tutor):** caracteres da voz do professor por dia (teste e pago; 900 caracteres ≈ 1 minuto), tetos da conta por dia e
+>   por mês (dia e mês de Brasília), preço por mil caracteres e por minuto de transcrição. Cada fala reserva os caracteres antes de gerar e
+>   devolve se a voz não sair; a voz do professor não gasta o tempo da voz ao vivo.
+> - **Aprovação das vozes:** painel "Vozes do Nexus" (`/api/tutor/voices`): ouvir todos os cenários daquela versão da voz nas últimas 24 h;
+>   aprovar e revogar só quem está em `TUTOR_VOICE_APPROVERS`; a "Apresentação" aprovada vai para o depósito `tutor-voice-samples` e toca
+>   no "Ouvir" do aluno. Mudar a voz, o modelo, o formato, os cenários ou a direção cria uma versão nova (a aprovação cai sozinha).
+> - **Variáveis:** novas `TUTOR_VOICE_APPROVERS`, `TUTOR_STT_ALLOW_EXTERNAL` e `TUTOR_STT_MODEL`. Saíram `TUTOR_VOICE_PROVIDER`,
+>   `TUTOR_VOICE_MODEL`, `TUTOR_VOICE_DAILY_CHARS`, `TUTOR_VOICE_PRICE_PER_MIN` e `ELEVENLABS_PRICE_PER_MIN` (preços no painel).
+> - **Banco:** migrações `20261003005500` a `20261003005800`. Desenho completo: `docs/superpowers/specs/2026-10-07-tutor-nexus-voz-design.md`.
+
 ## Situação desta implementação
 
 Atualização de 07/10/2026: o Stazia Tutor expõe somente três professores: **Tranquilo** (com o comportamento pedagógico do antigo Preguiçoso), **Durona** (antigo Durão) e **Direto**. O catálogo ElevenLabs tem somente essas três vozes; quaisquer outros perfis/vozes ficam fora do produto e não são apagados de registros históricos nem da conta do fornecedor. O áudio gerado pela ElevenLabs é apenas a camada de síntese: personalidade, memória, dados, regras pedagógicas, emoção e resposta continuam no StaziaMed. A chave local foi rejeitada em uma única tentativa com HTTP 401; não repetir a chamada até substituir a credencial por uma válida. Não houve aprovação auditiva, liberação aos alunos nem deploy.
@@ -19,7 +41,7 @@ O `voice_id` vai no caminho do endpoint. O corpo contém somente o texto final, 
 1. A conta do titular foi acessada em <https://elevenlabs.io/app>; o painel mostrou o plano Starter. Não houve contratação por esta implementação.
 2. Confirmar na assinatura e nos termos aplicáveis a licença comercial e o acesso de TTS e Voice Design pela API antes de uso real. A documentação oficial informa que o plano gratuito não concede licença comercial.
 3. O painel mostrou 40.000 créditos restantes e 0/10 vozes criadas antes das primeiras gerações. O saldo atual não foi reconsultado após as prévias.
-4. Definir limite de créditos e alertas. Os testes e o Voice Design também podem consumir créditos. O custo por minuto no Stazia é estimativo; não confundir `ELEVENLABS_PRICE_PER_MIN` vazio/zero com serviço gratuito.
+4. Definir limite de créditos e alertas. Os testes e o Voice Design também podem consumir créditos. O custo no Stazia é estimativo, pelo preço por mil caracteres do painel do Tutor; preço zero quer dizer não preenchido, não gratuidade.
 
 Fontes: [preços API](https://elevenlabs.io/pricing/api), [licença comercial](https://help.elevenlabs.io/hc/en-us/articles/13313564601361-Can-I-publish-the-content-I-generate-on-the-platform).
 
@@ -35,7 +57,7 @@ Fonte: [gestão e restrição de chaves](https://elevenlabs.io/docs/overview/adm
 
 ```dotenv
 ELEVENLABS_API_KEY=
-ELEVENLABS_VOICE_ACOLHEDOR=
+ELEVENLABS_VOICE_TRANQUILO=
 ELEVENLABS_VOICE_DIRETO=
 ELEVENLABS_VOICE_DURONA=
 ELEVENLABS_VOICE_TRANQUILO=
@@ -44,9 +66,9 @@ ELEVENLABS_OUTPUT_FORMAT=mp3_44100_128
 TUTOR_VOICE_ALLOW_EXTERNAL=1
 ```
 
-`TUTOR_VOICE_PROVIDER=elevenlabs` foi configurado somente em `.env.local`; o TTS permanece bloqueado para alunos sem aprovação auditiva. A chave configurada localmente recebeu HTTP 401 no primeiro teste e não foi repetida. Não copiar a configuração para produção antes de trocar a chave, homologar as três vozes e receber autorização. A integração oficial não usa `ELEVENLABS_VOICE_ID` genérico. O cérebro permanece no StaziaMed (`TUTOR_AI_PROVIDER` e Tutor Engine), dono de personalidade, memória, dados, regras e resposta.
+Desde 2026-10-08, `TUTOR_VOICE_PROVIDER` não decide mais a voz: a voz do professor é sempre a oficial (uma por professor), e quem libera cada voz para os alunos é a aprovação no painel "Vozes do Nexus", com a lista `TUTOR_VOICE_APPROVERS` do servidor. A integração oficial não usa `ELEVENLABS_VOICE_ID` genérico. O cérebro permanece no StaziaMed (`TUTOR_AI_PROVIDER` e Tutor Engine), dono de personalidade, memória, dados, regras e resposta.
 
-`server/tutor/officialVoices.ts` contém `VOICES` e resolve variáveis de ambiente dinamicamente. O ID técnico estável `acolhedor` agora apresenta Tranquilo e carrega o comportamento do antigo `preguicoso`, para não quebrar preferências e sessões; os aliases antigos encaminham para a voz Tranquilo. `durona` usa a voz Durona e `direto` usa Direto. As variáveis antigas `ELEVENLABS_VOICE_DURAO` e `ELEVENLABS_VOICE_PREGUICOSO` continuam aceitas como fallback de migração. Perfis retirados ficam inativos para novos alunos; registros e sessões antigos são preservados.
+`server/tutor/officialVoices.ts` resolve as variáveis de ambiente de cada voz e calcula a versão de cada uma (`voiceFingerprint`). O ID técnico estável `acolhedor` agora apresenta Tranquilo e carrega o comportamento do antigo `preguicoso`, para não quebrar preferências e sessões; os aliases antigos encaminham para a voz Tranquilo. `durona` usa a voz Durona e `direto` usa Direto. As variáveis antigas `ELEVENLABS_VOICE_DURAO` e `ELEVENLABS_VOICE_PREGUICOSO` continuam aceitas como fallback de migração. Perfis retirados ficam inativos para novos alunos; registros e sessões antigos são preservados.
 
 ## 4. Voice Design e escolha — três vozes vinculadas
 
@@ -74,7 +96,7 @@ Fontes: [gerar prévias](https://elevenlabs.io/docs/api-reference/text-to-voice/
 - Ouvir cada voz nos cinco cenários: apresentação, correção, erro repetido, acerto/recuperação e pronúncia. A rota aceita somente `{personality, scenario}`; não aceita texto livre, humor, prompts ou IDs de voz escolhidos pelo navegador.
 - Conferir sotaque pt-BR, ritmo, números, termos médicos, impaciência/ironia, clareza e ausência de insultos. Conferir se a voz lê exatamente o conteúdo esperado; TTS generativo pode produzir diferenças. V3 permite emoção mais expressiva; o comportamento das tags precisa de audição, não apenas teste automatizado. V2 continua disponível para comparar, mas sem tags.
 - Usar reprodução nativa se houver bloqueio de autoplay. Falha no preview não gera voz do aparelho nem finge sucesso. A esfera recebe o nível do áudio real.
-- Depois da aprovação explícita do titular para **cada** voz, registrar em `server/tutor/elevenlabsApprovals.ts` o fingerprint mostrado no painel, responsável e data ISO. Nunca preencher aprovação automaticamente, nem só porque um teste passou.
+- A aprovação é feita no painel "Vozes do Nexus": o servidor registra cada audição; com todos os cenários daquela versão ouvidos nas últimas 24 h, quem está em `TUTOR_VOICE_APPROVERS` aprova (a "Apresentação" vai para o depósito `tutor-voice-samples`) ou revoga. Nunca aprovar só porque um teste passou.
 
 Exemplo de registro (substituir somente após aprovação real):
 
@@ -118,5 +140,5 @@ Fontes: [TTS](https://elevenlabs.io/docs/api-reference/text-to-speech/convert), 
 - 55 testes do motor em `tutor.test.ts` passaram com `DETERMINISTIC_TUTOR=true`. Sem esse modo, a execução anterior apresentou uma falha na expectativa do humor inicial da Durona (`neutral` versus `impatient`); não foi alterada a lógica emocional para mascarar isso. Revisar o cenário aleatório antes de homologar produção.
 - `npm run build` passou, mantendo os avisos de bundles grandes e `crypto` de um serviço de PDF já existente.
 - A checagem TypeScript global ainda falha em outras áreas do projeto; a filtragem dos diagnósticos dos novos módulos e testes de vozes não retornou erros.
-- Endpoint real local `/api/nexus-lab/voices`: retorna HTTP 401 sem login, com `Cache-Control: no-store`.
+- O laboratório `/api/nexus-lab/voices` saiu (2026-10-08): a audição e a aprovação ficam em `/api/tutor/voices`, no servidor do Tutor (HTTP 401 sem login, `Cache-Control: no-store`).
 - `git diff --check` passou na verificação inicial. Os IDs das três vozes estão configurados localmente; a tentativa única de síntese recebeu HTTP 401 e não foi repetida. Audição real, aprovação e teste integrado com microfone continuam pendentes.

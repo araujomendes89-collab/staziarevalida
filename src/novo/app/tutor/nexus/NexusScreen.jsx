@@ -96,16 +96,22 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [backend, status.voice_enabled]);
 
-  // voz reserva: a voz ao vivo de antes (o servidor encerra a chamada da voz do professor ao abrir esta)
-  const live = useRealtimeVoice({ backend, sessionId: session?.id ?? null, live: server.live, hint: server.hint });
-  // voz do professor e por escrito: o turno pelo motor do Tutor
   const reload = async () => {
     const s = await backend.rpc("app_tutor_session", { p_session_id: sessionRef.current.id });
     setSession(s);
     return s;
   };
+  // as falas da conversa por voz aparecem no Chat (a mesma conversa; o servidor grava e confere)
   const appendMessage = (m) =>
-    setSession((s) => (s ? { ...s, messages: [...(s.messages ?? []), { id: m.id ?? `nx-${Date.now()}-${(s.messages ?? []).length}`, role: m.role, content: m.content }] } : s));
+    setSession((s) => (s ? { ...s, messages: [...(s.messages ?? []), { id: m.id ?? `nx-${Date.now()}-${(s.messages ?? []).length}`, role: m.role, content: m.content, voice: true }] } : s));
+  // voz reserva: a voz ao vivo de antes (o servidor encerra a chamada da voz do professor ao abrir esta)
+  const [liveAvatar, setLiveAvatar] = React.useState(null);
+  const [liveNote, setLiveNote] = React.useState(null);
+  const live = useRealtimeVoice({
+    backend, sessionId: session?.id ?? null, live: server.live, hint: server.hint,
+    onTranscript: (role, said) => appendMessage({ role, content: said }), onWarning: setLiveNote, onAvatar: setLiveAvatar,
+  });
+  // voz do professor e por escrito: o turno pelo motor do Tutor
   const ttsRef = React.useRef(null);
   const tts = useNexusVoice({
     backend, session, jeito: opened?.jeito ?? null, voiceCallId: opened?.voice_call_id ?? null, micStream,
@@ -161,6 +167,8 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
       setOpened(o);
       setFallback(null);
       setPicked(null);
+      setLiveNote(null);
+      setLiveAvatar(null);
       if (o.jeito === "reserva") releaseMic(); // a voz ao vivo pede o microfone por conta própria
       setMicStream(o.jeito === "reserva" ? null : mic.current);
       liveStarted.current = null;
@@ -223,15 +231,16 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
   const finish = async () => {
     const s = session;
     const o = opened;
-    await backend.rpc("app_tutor_close", { p_session_id: s.id }).catch(() => {});
-    if (o?.jeito === "reserva") await live.stop?.().catch?.(() => {});
-    else await tts.stop().catch(() => {}); // encerra a chamada com os tempos de cada etapa
-    releaseMic();
-    setMicStream(null);
-    const full = await backend.rpc("app_tutor_session", { p_session_id: s.id }).catch(() => s);
-    setSession(full ?? s);
+    // a tela de voz fecha na hora; o encerramento (voz, chamada e conversa) segue por trás e o resumo chega em seguida
+    const stopping = o?.jeito === "reserva" ? live.stop?.() : tts.stop();
     setOpened(null);
     setPhase("summary");
+    releaseMic();
+    setMicStream(null);
+    await backend.rpc("app_tutor_close", { p_session_id: s.id }).catch(() => {});
+    await Promise.resolve(stopping).catch(() => {});
+    const full = await backend.rpc("app_tutor_session", { p_session_id: s.id }).catch(() => s);
+    setSession(full ?? s);
   };
 
   const showHistory = async () => {
@@ -328,18 +337,18 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
         rt={rt}
         persona={session.personality}
         messages={session.messages ?? []}
-        avatar={reserve ? null : tts.avatar}
+        avatar={reserve ? liveAvatar : tts.avatar}
         entitlement={reserve ? status.entitlement : null}
-        note={reserve ? fallback?.note ?? null : null}
+        note={reserve ? fallback?.note ?? liveNote ?? null : null}
         jeitoLabel={JEITO_LABEL[opened.jeito]}
         card={card}
         onClose={finish}
       />
     );
   } else if (phase === "summary" || phase === "readonly") {
-    body = <SummaryView session={session} onAgain={session?.read_only ? null : () => begin(session.personality?.id, session.mode)} busy={busy} onLobby={toLobby} onHistory={showHistory} error={errorBox} />;
+    body = <SummaryView session={session} onAgain={session?.read_only ? null : () => begin(session.personality?.id, session.mode)} busy={busy} onLobby={toLobby} onHistory={showHistory} onClose={overlay ? onClose : null} error={errorBox} />;
   } else if (phase === "history") {
-    body = <HistoryView sessions={sessions} onBack={toLobby} onOpen={fromHistory} error={errorBox} />;
+    body = <HistoryView sessions={sessions} onBack={toLobby} onOpen={fromHistory} onClose={overlay ? onClose : null} error={errorBox} />;
   } else {
     body = <NexusLobby status={status} nexus={nexus} request={request} busy={busy} error={errorBox} onStart={begin} onHistory={showHistory} onListen={listen} onClose={overlay ? onClose : null} />;
   }
@@ -363,12 +372,17 @@ function SummaryBlock({ summary: s }) {
   return lines.map((l) => <span key={l}>{l}</span>);
 }
 
-function SummaryView({ session, onAgain, busy, onLobby, onHistory, error }) {
+function SummaryView({ session, onAgain, busy, onLobby, onHistory, onClose = null, error }) {
   const p = session?.personality ?? {};
   const readOnly = Boolean(session?.read_only);
   const closed = session?.status !== "active";
   return (
     <div className="nx-summary">
+      {onClose && (
+        <div className="nx-top__actions nx-summary__close">
+          <button type="button" className="nx-pill" aria-label="Fechar o Tutor" onClick={onClose}>Fechar</button>
+        </div>
+      )}
       <div className="nx-summary__orb" aria-hidden="true">
         <StaziaVoiceOrb conversationState="idle" emotion="neutral" emotionIntensity={0.3} />
       </div>
@@ -397,7 +411,7 @@ function SummaryView({ session, onAgain, busy, onLobby, onHistory, error }) {
 }
 
 // ---------------------------------------------------------------- histórico
-function HistoryView({ sessions, onBack, onOpen, error }) {
+function HistoryView({ sessions, onBack, onOpen, onClose = null, error }) {
   return (
     <div className="nx-history">
       <div className="nx-history__top">
@@ -406,6 +420,7 @@ function HistoryView({ sessions, onBack, onOpen, error }) {
           <span className="nx-top__eyebrow">Stazia Tutor</span>
           <h2 className="nx-top__name">Histórico</h2>
         </div>
+        {onClose && <button type="button" className="nx-pill nx-history__close" aria-label="Fechar o Tutor" onClick={onClose}>Fechar</button>}
       </div>
       {error}
       {sessions === null && <p className="nx-muted">Carregando…</p>}

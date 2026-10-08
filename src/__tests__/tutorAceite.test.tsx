@@ -1,4 +1,4 @@
-/** Cartão do aceite do Tutor (§34): tela e gaveta. Banco e servidor simulados, no padrão de tutorScreen.test.tsx. */
+/** Cartão do aceite do Tutor (§34): na Nexus (/tutor) e na Nexus aberta por cima de outra tela. Banco e servidor simulados. */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
@@ -39,35 +39,36 @@ beforeEach(() => {
     return rpcImpl[fn](args);
   });
   turnResponse = () => new Response(JSON.stringify({ message: { id: 9, role: "tutor", content: "ok", spoken: "ok", grounding: "general", sources: [], hint_level: null, suggested: null, notice: null }, question_state: null, used_today: 1, daily_limit: 40 }), { status: 200 });
-  (globalThis as any).fetch = vi.fn(async (url: string) => (String(url).endsWith("/turn") ? turnResponse() : new Response(JSON.stringify({ ready: true }), { status: 200 })));
+  (globalThis as any).fetch = vi.fn(async (url: string) => (String(url).endsWith("/turn") || String(url).endsWith("/voice/open") ? turnResponse() : new Response(JSON.stringify({ ready: true }), { status: 200 })));
 });
 afterEach(cleanup);
 
-const loadScreen = async () => (await import("../novo/app/tutor/TutorScreen.jsx")).TutorScreen as any;
+const loadScreen = async () => (await import("../novo/app/tutor/nexus/NexusScreen.jsx")).NexusScreen as any;
+const lobby = () => screen.queryByRole("heading", { name: "Escolha seu professor" });
 const loadDrawer = async () => (await import("../novo/app/tutor/TutorDrawer.jsx")) as any;
 
 describe("Aceite do Tutor", () => {
   it("aluno sem aceite vê o cartão do §34 na tela do Tutor, não o aviso de plano", async () => {
     rpcImpl.app_tutor_status = () => status({ available: false });
-    const TutorScreen = await loadScreen();
-    const { container } = render(<TutorScreen go={() => {}} />);
+    const NexusScreen = await loadScreen();
+    const { container } = render(<NexusScreen go={() => {}} />);
     expect(await screen.findByText("Continuar")).toBeTruthy();
     expect(container.textContent).toContain(SENTENCE);
     expect(screen.getByLabelText("Li e concordo")).toBeTruthy();
     expect(screen.queryByText("O Tutor faz parte dos planos pagos")).toBeNull();
-    expect(screen.queryByText("Seu professor particular para o Revalida.")).toBeNull();
+    expect(lobby()).toBeNull();
   });
 
   it("Continuar só com a caixa marcada; depois do aceite a tela recarrega e mostra o início", async () => {
-    const TutorScreen = await loadScreen();
-    render(<TutorScreen go={() => {}} />);
+    const NexusScreen = await loadScreen();
+    render(<NexusScreen go={() => {}} />);
     const button = (await screen.findByText("Continuar")).closest("button") as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     fireEvent.click(screen.getByLabelText("Li e concordo"));
     expect(button.disabled).toBe(false);
     fireEvent.click(button);
     await waitFor(() => expect(acceptTerms).toHaveBeenCalledWith({ document: "tutor_ia", version: "1.0", origin: "tutor" }));
-    expect(await screen.findByText("Seu professor particular para o Revalida.")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Escolha seu professor" })).toBeTruthy();
     expect(screen.queryByText("Continuar")).toBeNull();
   });
 
@@ -75,8 +76,8 @@ describe("Aceite do Tutor", () => {
     acceptTerms.mockRejectedValueOnce(new Error("Versão desatualizada do termo."));
     let version = "1.0";
     rpcImpl.app_tutor_status = () => status({ consent_version: version });
-    const TutorScreen = await loadScreen();
-    render(<TutorScreen go={() => {}} />);
+    const NexusScreen = await loadScreen();
+    render(<NexusScreen go={() => {}} />);
     fireEvent.click(await screen.findByLabelText("Li e concordo"));
     version = "1.1";
     fireEvent.click(screen.getByText("Continuar"));
@@ -86,27 +87,24 @@ describe("Aceite do Tutor", () => {
     await waitFor(() => expect(acceptTerms).toHaveBeenLastCalledWith({ document: "tutor_ia", version: "1.1", origin: "tutor" }));
   });
 
-  it("403 tutor_consent num turno mostra o cartão (não o aviso de plano)", async () => {
+  it("403 tutor_consent ao abrir a conversa mostra o cartão (não o aviso de plano)", async () => {
     consent = false;
-    const TutorScreen = await loadScreen();
-    render(<TutorScreen go={() => {}} />);
-    fireEvent.click(await screen.findByText("Perguntar ao Tutor"));
-    fireEvent.click(screen.getByText("Começar"));
-    const input = await screen.findByLabelText("Mensagem");
+    const NexusScreen = await loadScreen();
+    render(<NexusScreen go={() => {}} />);
+    const start = await screen.findByRole("button", { name: /^Começar com/ });
     turnResponse = () => new Response(JSON.stringify({ error: "Aceite o termo do Tutor.", code: "tutor_consent" }), { status: 403 });
-    fireEvent.change(input, { target: { value: "Oi" } });
     consent = true; // o servidor passa a pedir o aceite; a releitura do status traz consent_required
-    fireEvent.submit(input.closest("form") as HTMLFormElement);
+    fireEvent.click(start);
     expect(await screen.findByText("Continuar")).toBeTruthy();
     expect(screen.queryByText("O Tutor faz parte dos planos pagos")).toBeNull();
     expect(screen.queryByText("Aceite o termo do Tutor.")).toBeNull();
   });
 
-  it("status sem consent_required continua como hoje", async () => {
+  it("status sem consent_required: a Nexus abre na escolha do professor", async () => {
     consent = false;
-    const TutorScreen = await loadScreen();
-    render(<TutorScreen go={() => {}} />);
-    expect(await screen.findByText("Seu professor particular para o Revalida.")).toBeTruthy();
+    const NexusScreen = await loadScreen();
+    render(<NexusScreen go={() => {}} />);
+    expect(await screen.findByRole("heading", { name: "Escolha seu professor" })).toBeTruthy();
     expect(screen.queryByText("Continuar")).toBeNull();
   });
 });

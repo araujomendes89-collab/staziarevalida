@@ -28,7 +28,8 @@ vi.mock("../novo/app/Shell.jsx", async (importOriginal) => {
 });
 // Telas do corpo: cada uma vira uma marca, para ver qual abriu sem carregar dados.
 vi.mock("../novo/app/AuthScreens.jsx", () => ({ AuthFlow: () => null }));
-vi.mock("../novo/app/tutor/TutorScreen.jsx", () => ({ TutorScreen: () => null }));
+vi.mock("../novo/app/tutor/nexus/NexusScreen.jsx", () => ({ NexusScreen: () => null }));
+vi.mock("../novo/app/tutor/ReportScreen.jsx", () => ({ ReportScreen: () => null }));
 vi.mock("../novo/app/tutor/TutorDrawer.jsx", () => ({ TutorDockProvider: ({ children }: any) => <>{children}</> }));
 vi.mock("../novo/app/study/LessonsScreen.jsx", () => ({ LessonsScreen: () => null }));
 vi.mock("../novo/app/study/UpdatesScreen.jsx", () => ({ UpdatesScreen: () => null }));
