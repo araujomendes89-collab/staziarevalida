@@ -4,6 +4,7 @@ import React from "react";
 import { Banner, Button, IconButton } from "../../ds";
 import { useSession } from "../session.jsx";
 import { tutorAvailable, tutorServerStatus } from "./api.js";
+import { TutorConsentCard } from "./TutorConsentCard.jsx";
 import { Chat } from "./TutorScreen.jsx";
 
 const Dock = React.createContext(null);
@@ -45,6 +46,8 @@ function TutorDrawer({ request, onClose }) {
   const [server, setServer] = React.useState({ realtime: false, neural: false, live: false, hint: null });
   const [error, setError] = React.useState(null);
 
+  const [attempt, setAttempt] = React.useState(0); // sobe depois do aceite (ou quando o servidor pede o aceite): o efeito roda de novo
+
   React.useEffect(() => {
     let alive = true;
     (async () => {
@@ -52,6 +55,7 @@ function TutorDrawer({ request, onClose }) {
         const st = await backend.rpc("app_tutor_status");
         if (!alive) return;
         setStatus(st);
+        if (st.consent_required) return; // sem aceite não se cria sessão
         if (!st.enabled || !st.available) return;
         const s = await backend.rpc("app_tutor_start", {
           p_mode: request.mode, p_topic: request.topic ?? null, p_question_id: request.questionId ?? null, p_context: request.context ?? null,
@@ -67,7 +71,7 @@ function TutorDrawer({ request, onClose }) {
     return () => {
       alive = false;
     };
-  }, [backend, request]);
+  }, [backend, request, attempt]);
 
   React.useEffect(() => {
     const onKey = (e) => e.key === "Escape" && onClose();
@@ -78,7 +82,9 @@ function TutorDrawer({ request, onClose }) {
   let body;
   if (error) body = <Banner tone="danger">{error}</Banner>;
   else if (!status) body = <p style={{ margin: 0, color: "var(--text-tertiary)" }}>Abrindo o Tutor…</p>;
-  else if (!status.enabled) body = <Banner tone="info" title="O Tutor ainda não está ligado">Ele entra no ar quando a equipe StaziaMed ligar.</Banner>;
+  else if (status.consent_required) {
+    body = <TutorConsentCard version={status.consent_version} onAccepted={() => setAttempt((n) => n + 1)} onOutdated={() => backend.rpc("app_tutor_status").then(setStatus)} />;
+  } else if (!status.enabled) body = <Banner tone="info" title="O Tutor ainda não está ligado">Ele entra no ar quando a equipe StaziaMed ligar.</Banner>;
   else if (!status.available)
     body = (
       <Banner tone="warning" title={status.entitlement?.block_reason === "trial_expired" ? "Seu teste grátis do Tutor terminou" : "O Tutor faz parte dos planos pagos"}>
@@ -97,6 +103,7 @@ function TutorDrawer({ request, onClose }) {
         live={server.live}
         voiceHint={server.hint}
         onUsage={(used) => setStatus((s) => ({ ...s, used_today: used }))}
+        onConsent={() => (setSession(null), setAttempt((n) => n + 1))}
         mobile
         compact
       />

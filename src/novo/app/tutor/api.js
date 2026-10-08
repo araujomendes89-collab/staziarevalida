@@ -10,13 +10,17 @@ async function headers(backend, extra = {}) {
 async function parse(res) {
   if (res.ok) return res.json();
   let message = `Erro ${res.status}.`;
+  let code = null;
   try {
-    message = (await res.json()).error ?? message;
+    const data = await res.json();
+    message = data.error ?? message;
+    code = data.code ?? null; // "tutor_consent": falta o aceite do Tutor (a tela mostra o cartão)
   } catch {
     // resposta sem corpo
   }
   const error = new Error(message);
   error.status = res.status;
+  error.code = code;
   throw error;
 }
 

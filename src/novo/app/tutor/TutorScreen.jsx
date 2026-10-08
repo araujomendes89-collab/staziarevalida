@@ -8,6 +8,7 @@ import { AnswerOption, Badge, Banner, Button, Card, Chip, EmptyState, Icon, Icon
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { examLabel, splitStatement } from "../practice/format.js";
+import { TutorConsentCard } from "./TutorConsentCard.jsx";
 import { tutorAvailable, tutorServerStatus, tutorSpeech, tutorTurn } from "./api.js";
 import { AREA_OPTIONS, CONFIDENCE, ERROR_CLASS, GROUNDING, LEVEL, MODES, modeLabel } from "./labels.js";
 import { chooseNeural, chooseVoice, chosenVoiceName, neuralChosen, portugueseVoices, useVoice, voiceSupport } from "./useVoice.js";
@@ -89,6 +90,9 @@ export function TutorScreen({ go, initialView = "start" }) {
   if (!status.enabled) {
     return <EmptyState icon="sparkles" title="O Tutor ainda não está ligado" description="O professor de IA entra no ar quando a equipe StaziaMed ligar. Enquanto isso, as questões, o caderno de erros e a revisão seguem funcionando." />;
   }
+  if (status.consent_required) {
+    return <TutorConsentCard version={status.consent_version} onAccepted={() => refresh().catch(() => {})} onOutdated={() => refresh()} />;
+  }
   if (!status.available) {
     const expired = status.entitlement?.block_reason === "trial_expired";
     return (
@@ -136,7 +140,7 @@ export function TutorScreen({ go, initialView = "start" }) {
     body = (
       <Chat key={session.id} session={session} setSession={setSession} status={status} neural={server.neural} realtime={server.realtime} live={server.live} voiceHint={server.hint}
         onUsage={(used) => setStatus((s) => ({ ...s, used_today: used, entitlement: s.entitlement ? { ...s.entitlement, text: { ...s.entitlement.text, used, remaining: Math.max(0, (s.entitlement.text?.limit ?? 0) - used) } } : s.entitlement }))}
-        onChanged={() => refresh().catch(() => {})} mobile={mobile} />
+        onChanged={() => refresh().catch(() => {})} onConsent={() => refresh().catch(() => {})} mobile={mobile} />
     );
   else body = <StartPanel status={status} onStart={start} onChanged={() => refresh().catch(() => {})} realtime={server.realtime} neural={server.neural} />;
 
@@ -377,7 +381,7 @@ function StartPanel({ status, onStart, onChanged, realtime, neural }) {
 
 
 // ---------------------------------------------------------------- conversa
-export function Chat({ session, setSession, status, neural, realtime = false, live: liveVoice = false, voiceHint = null, onUsage, onChanged, mobile, compact = false }) {
+export function Chat({ session, setSession, status, neural, realtime = false, live: liveVoice = false, voiceHint = null, onUsage, onChanged, onConsent, mobile, compact = false }) {
   const { backend } = useSession();
   const [messages, setMessages] = React.useState(session.messages);
   const [text, setText] = React.useState("");
@@ -413,6 +417,11 @@ export function Chat({ session, setSession, status, neural, realtime = false, li
     onWarning: (w) => setVoiceNote(w),
     onAvatar: setVoiceAvatar,
   });
+  // o servidor recusou a voz por falta do aceite do Tutor (ex.: aceite retirado no meio da sessão): volta ao cartão
+  React.useEffect(() => {
+    if (rt.error?.code === "tutor_consent") onConsent?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rt.error]);
   // a voz chama de volta fora do ciclo de desenho: estas referências sempre apontam para o estado e as ações mais recentes
   const live = React.useRef({});
   const actions = React.useRef({});
@@ -444,7 +453,10 @@ export function Chat({ session, setSession, status, neural, realtime = false, li
   const listenAgain = () => live.current.voiceOn && support.listen && voice.listen();
   /** Voz natural: busca no servidor o áudio de um texto que ele já validou (nunca texto livre). Sem ela, a voz é a do aparelho. */
   const wantsNeural = () => Boolean(live.current.neural) && neuralChosen();
-  const neuralLoad = (body) => (body && wantsNeural() ? () => tutorSpeech(backend, body) : null);
+  const neuralLoad = (body) => (body && wantsNeural() ? () => tutorSpeech(backend, body).catch((e) => {
+    if (e?.code === "tutor_consent") onConsent?.();
+    throw e;
+  }) : null);
   const canSpeak = () => support.speak || wantsNeural();
 
   /** Fala algo do aplicativo (aviso ou leitura da questão), que não é resposta do professor, e volta a ouvir. */
@@ -498,8 +510,9 @@ export function Chat({ session, setSession, status, neural, realtime = false, li
         });
       } else if (spoken) listenAgain();
     } catch (e) {
-      setError(messageOf(e));
       if (mine) setMessages((m) => m.slice(0, -1));
+      if (e?.code === "tutor_consent" && onConsent) onConsent(); // falta o aceite: a tela relê o status e mostra o cartão
+      else setError(messageOf(e));
     } finally {
       setSending(false);
       live.current.sending = false;

@@ -579,7 +579,7 @@ export function useRealtimeVoice({ backend, sessionId, live = false, hint = null
     return { pc, dc };
   };
 
-  const startError = (e) => ({ kind: e.code === "busy" ? "busy" : e.status === 429 ? "quota" : "server", message: e.message });
+  const startError = (e) => ({ kind: e.code === "busy" ? "busy" : e.status === 429 ? "quota" : "server", code: e.code ?? null, message: e.message });
 
   /** Realtime: a reserva vem primeiro (segredo temporário); depois microfone e WebRTC direto com a OpenAI. */
   const startRealtime = async (force, given = null, avoid = null) => {
