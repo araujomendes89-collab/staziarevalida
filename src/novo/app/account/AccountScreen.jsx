@@ -10,10 +10,13 @@ import { PASSWORD_MIN_LENGTH } from "../../data";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { PlayProfileSection } from "../play/PlayProfile.jsx";
+import { PhoneField } from "../legal/PhoneField.jsx";
+import { COUNTRIES, normalizePhone, phoneError, splitPhone } from "../legal/phone.js";
+import "../auth/login.css";
 import "./account.css";
 
 const SECTIONS = [
-  { id: "conta", label: "Minha conta", sub: "Nome, e-mail e aparência", icon: "user" },
+  { id: "conta", label: "Minha conta", sub: "Nome, e-mail, WhatsApp e aparência", icon: "user" },
   { id: "play", label: "Minha Stazia Arena", sub: "Nível, score, ranking e visibilidade", icon: "trophy" },
   { id: "estudo", label: "Estudo e prova", sub: "Fase, prova-alvo e rotina", icon: "graduation-cap" },
   { id: "seg", label: "Segurança", sub: "Senha e sessão", icon: "shield-check" },
@@ -34,6 +37,16 @@ const MINUTES = [
 const PLAN_LABEL = { trial: "Teste grátis", pro: "Plano Pro", elite: "Plano Elite" };
 
 const dateBR = (iso) => new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso));
+
+// Data e hora do aceite sempre no fuso de Brasília, qualquer que seja o deslocamento do texto que o banco devolve.
+const dateTimeBR = (iso) => {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+      .formatToParts(new Date(iso))
+      .map((p) => [p.type, p.value]),
+  );
+  return `${parts.day}/${parts.month}/${parts.year} às ${parts.hour}:${parts.minute}`;
+};
 
 function planBadge(subscription, role) {
   if (isStaffRole(role)) return "Equipe · acesso completo";
@@ -92,14 +105,26 @@ function useProfileForm(fields, adjust) {
 }
 
 const ACCOUNT_FIELDS = ["name"];
+const COUNTRY_CODES = new Set(COUNTRIES.filter((c) => c.code !== "outro").map((c) => c.code));
 function AccountSection({ email }) {
   const { boot, updateProfile } = useSession();
-  const form = useProfileForm(ACCOUNT_FIELDS);
+  const savedPhone = React.useMemo(() => splitPhone(boot.profile.phone ?? null), [boot.profile.phone]);
+  const [phone, setPhone] = React.useState(savedPhone);
+  const phoneDirty = phone.code !== savedPhone.code || phone.number !== savedPhone.number;
+  const normalized = phoneDirty ? normalizePhone(phone.code, phone.number) : null;
+  // `extra` só leva o WhatsApp quando ele mudou e é válido; `adjust` precisa ser estável entre renderizações iguais
+  const adjust = React.useMemo(() => (normalized ? { extra: { phone: normalized } } : undefined), [normalized]);
+  const form = useProfileForm(ACCOUNT_FIELDS, adjust);
   const [nameError, setNameError] = React.useState(null);
+  const [showPhoneError, setShowPhoneError] = React.useState(false);
+  const msg = phoneDirty ? phoneError(phone.code, phone.number) : null;
+  const codeBad = msg && phone.number.trim() && !/^\+?[1-9][0-9]{0,2}$/.test(phone.code.trim()) && !COUNTRY_CODES.has(phone.code);
   const submit = (event) => {
     event.preventDefault();
     if (form.draft.name.trim().length < 2) return setNameError("Informe seu nome.");
     setNameError(null);
+    if (msg) return setShowPhoneError(true);
+    setShowPhoneError(false);
     form.save((_, value) => value.trim());
   };
   return (
@@ -109,13 +134,23 @@ function AccountSection({ email }) {
         <TextField label="Nome completo" value={form.draft.name} maxLength={120} onChange={(e) => form.set({ name: e.target.value })} error={nameError ?? undefined} autoComplete="name" />
         <TextField label="E-mail cadastrado" value={email ?? ""} hint="O e-mail é vinculado ao seu login e não pode ser alterado aqui." readOnly />
       </div>
+      <div className="lg-root acc-phone">
+        <PhoneField
+          code={phone.code}
+          number={phone.number}
+          onChange={(next) => (setPhone(next), form.setStatus(null), setShowPhoneError(false))}
+          error={showPhoneError && msg && !codeBad ? msg : undefined}
+          codeError={showPhoneError && codeBad ? msg : undefined}
+          id="conta-phone"
+        />
+      </div>
       <div style={{ paddingTop: 20, borderTop: "1px solid var(--border-subtle)" }}>
         <div className="sm-field__label" style={{ marginBottom: 10 }}>
           Aparência
         </div>
         <SegmentedControl label="Aparência" value={boot.profile.theme} onChange={(theme) => updateProfile({ theme }).catch(() => {})} options={THEMES} />
       </div>
-      <SaveBar saving={form.saving} status={form.status} dirty={form.dirty} onCancel={form.reset} />
+      <SaveBar saving={form.saving} status={form.status} dirty={form.dirty || phoneDirty} onCancel={() => (form.reset(), setPhone(savedPhone), setShowPhoneError(false))} />
     </form>
   );
 }
@@ -240,8 +275,18 @@ function SecuritySection() {
   );
 }
 
+function AcceptanceLine({ title, doc }) {
+  if (!doc) return null;
+  return (
+    <div style={{ font: "var(--type-body-sm)" }}>
+      {doc.accepted && doc.accepted_at ? `${title} v${doc.accepted} — aceito em ${dateTimeBR(doc.accepted_at)}` : `${title} — ainda não aceito`}
+    </div>
+  );
+}
+
 function PrivacySection() {
-  const { backend } = useSession();
+  const { backend, boot } = useSession();
+  const legal = boot.legal;
   const [exporting, setExporting] = React.useState(false);
   const [exportError, setExportError] = React.useState(null);
   const [confirm, setConfirm] = React.useState("");
@@ -292,6 +337,17 @@ function PrivacySection() {
         </Button>
       </div>
       {exportError && <Banner tone="danger">{exportError}</Banner>}
+      {legal && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 20, borderTop: "1px solid var(--border-subtle)" }}>
+          <div style={{ font: "var(--type-label)" }}>Meus aceites</div>
+          <AcceptanceLine title="Termo de Aceite e Uso" doc={legal.termo_uso} />
+          <AcceptanceLine title="Aceite dos Tutores de IA" doc={legal.tutor_ia} />
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", font: "var(--type-body-sm)" }}>
+            <a href="/novo/termos">Termo de Aceite e Uso</a>
+            <a href="/novo/privacidade">Política de Privacidade</a>
+          </div>
+        </div>
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: 12, padding: 20, borderRadius: 16, border: "1px solid var(--danger-border)", background: "var(--danger-bg)" }}>
         <div style={{ display: "flex", gap: 10, alignItems: "center", font: "var(--type-label)", color: "var(--danger-text)" }}>
           <Icon name="triangle-alert" size={18} /> Excluir conta

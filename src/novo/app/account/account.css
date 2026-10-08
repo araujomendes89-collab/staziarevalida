@@ -17,3 +17,6 @@
     line-height: 1.25;
   }
 }
+
+/* WhatsApp: o PhoneField usa as classes da tela de login (tema escuro); aqui fica numa caixa própria, sem mudar o resto da Minha conta. */
+.acc-phone { padding: 14px; border-radius: 12px; }
