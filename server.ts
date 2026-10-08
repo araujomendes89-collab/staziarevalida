@@ -42,6 +42,7 @@ import { getDevDatabase } from "./server/devDb/devDatabase";
 import { setupContentHub } from "./server/contentHub";
 import { createVisualRouter } from "./server/contentHub/visual/router";
 import { createAiRouter } from "./server/ai/router";
+import { requireAdmin } from "./server/auth/requireAdmin";
 import { createTutorRouter } from "./server/tutor/router";
 import { tutorMockRespond } from "./server/tutor/mock";
 import { startVoiceSweeper } from "./server/tutor/realtime";
@@ -100,6 +101,7 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   app.use("/api/checklist-bank", checklistBankRouter);
   // Central de Conteúdo: envio de PDFs, fila de processamento, arquivos finais (chaves só no servidor).
   const hub = await setupContentHub();
+  app.use("/api/gemini", requireAdmin(hub.deps)); // rotas antigas do Gemini: só administrador (a chave é para criação de conteúdo)
   // Materiais visuais (cards, A4, story e flashcards): rotas próprias, montadas antes das da Central
   app.use("/api/content-hub/visual", createVisualRouter(hub.deps, { pending: hub.pending }));
   app.use("/api/ai-central", createAiRouter(hub.deps, { pending: hub.pending })); // prefixo próprio: em /api/ai engoliria as rotas do app antigo
