@@ -1,11 +1,14 @@
 -- =============================================================================
 -- Termo de Aceite e Uso obrigatório: WhatsApp no perfil, versões vigentes dos documentos, tabela de aceites (a prova),
--- cadastro que já grava o aceite e a função de aceitar.
--- Spec: docs/superpowers/specs/2026-10-07-termo-aceite-cadastro-design.md (seção 9).
+-- cadastro que já grava o aceite, a função de aceitar, os dados de abertura do app e a exportação dos dados.
+-- Spec: docs/superpowers/specs/2026-10-07-termo-aceite-cadastro-design.md (seções 7 e 9).
 --
 --   cadastro com e-mail: o app manda nos metadados da conta o nome, o WhatsApp, a versão do termo e o navegador  →  o gatilho
 --     de criação da conta grava o WhatsApp e o aceite 'cadastro' (mesmo sem sessão, com a confirmação de e-mail ligada);
---   Google, tela de aceite e Tutor: o app chama app_accept_terms (login obrigatório).
+--   Google, tela de aceite e Tutor: o app chama app_accept_terms (login obrigatório);
+--   abertura do app: app_bootstrap ganha a chave "legal" (app_legal_state): para cada documento a versão vigente, a aceita e a data,
+--     se a pessoa é aluno, se falta o WhatsApp e se a tela de aceite é obrigatória;
+--   exportação dos dados (LGPD): app_export_my_data leva os aceites da pessoa.
 --
 -- Regras no banco (não só na tela):
 --   * a versão vigente de cada documento fica em legal_versions, num lugar só; só a versão vigente pode ser aceita;
@@ -215,8 +218,149 @@ begin
 end
 $$;
 
+-- ---------------------------------------------------------------- dados de abertura do app
+-- Estado do aceite de quem está logado. Para cada documento (termo_uso e tutor_ia): a versão vigente (current), a versão que a
+-- pessoa aceitou (accepted, nula se nunca aceitou) e quando (accepted_at). Mais: se ela é "aluno" (legal_is_student), se falta o
+-- WhatsApp (phone_missing) e se a tela de aceite é obrigatória:
+--   gate_required = aluno e (termo_uso.accepted diferente de termo_uso.current ou WhatsApp vazio).
+--   * "aceita" é a versão vigente, quando a pessoa a aceitou; senão, a mais recente que ela aceitou (versão velha: a tela volta).
+--     Assim, desfazer uma troca de versão vigente não deixa preso quem já tinha aceitado a que voltou a valer;
+--   * o aceite dos Tutores aparece aqui, mas não entra na obrigatoriedade (o Tutor tem cartão próprio);
+--   * sem login devolve nulo.
+-- SECURITY DEFINER porque app_bootstrap roda com os direitos de quem chama, e quem chama não lê legal_versions nem executa
+-- legal_is_student. Sem parâmetros e só com auth.uid(): mostra apenas o estado da própria pessoa, por isso fica aberta para quem
+-- entra (e para o visitante, que recebe nulo), ao contrário das funções de apoio.
+create function public.app_legal_state() returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  v_user constant uuid := (select auth.uid());
+  v_docs jsonb;
+  v_student boolean;
+  v_phone_missing boolean;
+begin
+  if v_user is null then
+    return null;
+  end if;
+
+  select jsonb_object_agg(v.document, jsonb_build_object('current', v.version, 'accepted', a.version, 'accepted_at', a.accepted_at))
+    into v_docs
+  from public.legal_versions v
+  left join lateral (
+    select x.version, x.accepted_at
+    from public.legal_acceptances x
+    where x.user_id = v_user and x.document = v.document
+    order by (x.version = v.version) desc, x.accepted_at desc, x.id desc
+    limit 1
+  ) a on true;
+
+  v_student := public.legal_is_student(v_user);
+  v_phone_missing := not exists (select 1 from public.profiles p where p.id = v_user and p.phone is not null);
+
+  return jsonb_build_object(
+    'termo_uso', v_docs -> 'termo_uso',
+    'tutor_ia', v_docs -> 'tutor_ia',
+    'student', v_student,
+    'phone_missing', v_phone_missing,
+    'gate_required', v_student and ((v_docs #>> '{termo_uso,accepted}') is distinct from (v_docs #>> '{termo_uso,current}') or v_phone_missing)
+  );
+end
+$$;
+
+-- Abertura do app: igual à de …3800_stazia_play (perfil, papel, áreas de revisão, plano, sequência, cartões e play) e, no fim, a
+-- chave nova "legal" (app_legal_state). Continua SECURITY INVOKER: só o estado do aceite vem da função do servidor.
+create or replace function public.app_bootstrap() returns jsonb
+  language sql stable set search_path = ''
+as $$
+  select jsonb_build_object(
+    'profile', (select to_jsonb(p) - 'onboarding' from public.profiles p where p.id = (select auth.uid())),
+    'role', public.current_app_role(),
+    'reviewer_areas', coalesce((select jsonb_agg(r.area_code order by r.area_code) from public.ch_reviewer_areas r where r.user_id = (select auth.uid())), '[]'::jsonb),
+    'subscription', (
+      select jsonb_build_object('plan', s.plan, 'status', s.status, 'trial_ends_at', s.trial_ends_at,
+                                'current_period_end', s.current_period_end)
+      from public.subscriptions s where s.user_id = (select auth.uid())
+    ),
+    'has_pro', public.has_pro(),
+    'streak_days', public.my_streak_days(),
+    'flashcards_due', (
+      select count(*)::int from public.flashcard_states f
+      where f.user_id = (select auth.uid()) and f.due <= now()
+    ),
+    'days_to_exam', (
+      select case when p.exam_date is null then null else greatest(p.exam_date - public.today_br(), 0) end
+      from public.profiles p where p.id = (select auth.uid())
+    ),
+    'totals', jsonb_build_object(
+      'questions', (select count(*)::int from public.questions),
+      'answered', (select count(distinct a.question_id)::int from public.question_attempts a
+                   where a.user_id = (select auth.uid()))
+    ),
+    'play', case when public.gam_flag('flags.gamification_enabled') then jsonb_build_object(
+      'enabled', true,
+      'flags', jsonb_build_object('leaderboard', public.gam_flag('flags.leaderboard_enabled'), 'leagues', public.gam_flag('flags.leagues_enabled'),
+                                  'coins', public.gam_flag('flags.coins_enabled'), 'trail', public.gam_flag('flags.trail_enabled')),
+      'names', jsonb_build_object('score', public.gam_text('names.score', 'Stazia Score'), 'coins', public.gam_text('names.coins', 'Stazia Coins')),
+      'streak', coalesce((select s.current_streak from public.user_gamification_stats s where s.user_id = (select auth.uid())), 0),
+      'score', (select s.stazia_score from public.user_gamification_stats s where s.user_id = (select auth.uid())),
+      'provisional', coalesce((select s.provisional from public.user_gamification_stats s where s.user_id = (select auth.uid())), true),
+      'level', coalesce((select s.current_level from public.user_gamification_stats s where s.user_id = (select auth.uid())), 'iniciante'),
+      'coins', coalesce((select s.coins from public.user_gamification_stats s where s.user_id = (select auth.uid())), 0))
+      else jsonb_build_object('enabled', false) end,
+    'legal', public.app_legal_state()
+  )
+$$;
+
+-- ---------------------------------------------------------------- exportação dos dados
+-- Igual à de …1200_account_api (tudo o que a pessoa gerou no app) e, no fim, os aceites dela: documento, versão, data e hora e origem,
+-- em ordem de data. SECURITY INVOKER: a política "aceites: ler os próprios" já limita às linhas da pessoa, como o RLS das demais
+-- tabelas. O navegador e o e-mail em código guardados na prova não saem na exportação.
+create or replace function public.app_export_my_data() returns jsonb
+  language sql stable set search_path = ''
+as $$
+  select jsonb_build_object(
+    'exported_at', now(),
+    'account', jsonb_build_object('id', (select auth.uid())),
+    'profile', (select to_jsonb(p) from public.profiles p where p.id = (select auth.uid())),
+    'role', public.current_app_role(),
+    'subscription', (select to_jsonb(s) - 'provider_customer_id' - 'provider_subscription_id'
+                     from public.subscriptions s where s.user_id = (select auth.uid())),
+    'practice_sessions', (select coalesce(jsonb_agg(to_jsonb(t) order by t.started_at), '[]'::jsonb)
+                          from public.practice_sessions t where t.user_id = (select auth.uid())),
+    'question_attempts', (select coalesce(jsonb_agg(to_jsonb(t) - 'seq' order by t.seq), '[]'::jsonb)
+                          from public.question_attempts t where t.user_id = (select auth.uid())),
+    'question_bookmarks', (select coalesce(jsonb_agg(to_jsonb(t) order by t.created_at), '[]'::jsonb)
+                           from public.question_bookmarks t where t.user_id = (select auth.uid())),
+    'error_notes', (select coalesce(jsonb_agg(to_jsonb(t) order by t.updated_at), '[]'::jsonb)
+                    from public.error_notes t where t.user_id = (select auth.uid())),
+    'plan_tasks', (select coalesce(jsonb_agg(to_jsonb(t) order by t.day, t.position), '[]'::jsonb)
+                   from public.plan_tasks t where t.user_id = (select auth.uid())),
+    'flashcards', (select coalesce(jsonb_agg(to_jsonb(t) order by t.created_at), '[]'::jsonb)
+                   from public.flashcards t where t.owner_id = (select auth.uid())),
+    'flashcard_states', (select coalesce(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
+                         from public.flashcard_states t where t.user_id = (select auth.uid())),
+    'flashcard_reviews', (select coalesce(jsonb_agg(to_jsonb(t) order by t.id), '[]'::jsonb)
+                          from public.flashcard_reviews t where t.user_id = (select auth.uid())),
+    'checklist_favorites', (select coalesce(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
+                            from public.checklist_favorites t where t.user_id = (select auth.uid())),
+    'checklist_station_reports', (select coalesce(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
+                                  from public.checklist_station_reports t where t.user_id = (select auth.uid())),
+    'checklist_event_confirmations', (select coalesce(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
+                                      from public.checklist_event_confirmations t where t.user_id = (select auth.uid())),
+    'checklist_study_sessions', (select coalesce(jsonb_agg(to_jsonb(t)), '[]'::jsonb)
+                                 from public.checklist_study_sessions t
+                                 where t.actor_id = (select auth.uid()) or t.doctor_id = (select auth.uid())),
+    'acceptances', (select coalesce(jsonb_agg(jsonb_build_object('document', t.document, 'version', t.version,
+                                                                  'accepted_at', t.accepted_at, 'origin', t.origin)
+                                              order by t.accepted_at, t.id), '[]'::jsonb)
+                    from public.legal_acceptances t where t.user_id = (select auth.uid()))
+  )
+  where (select auth.uid()) is not null
+$$;
+
 -- ---------------------------------------------------------------- permissões
 -- Funções novas nascem executáveis por todos: as de apoio só rodam dentro das funções do servidor (security definer).
+-- app_legal_state fica como nasceu, aberta para quem entra e para o visitante: não recebe parâmetros e só mostra o estado de quem chama.
 revoke execute on function public.legal_email_hash(text) from public, anon, authenticated;
 revoke execute on function public.legal_is_student(uuid) from public, anon, authenticated;
 revoke execute on function public.legal_record(uuid, text, text, text, text) from public, anon, authenticated;
