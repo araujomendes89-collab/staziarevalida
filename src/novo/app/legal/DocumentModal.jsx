@@ -1,5 +1,7 @@
 // Janela por cima do cadastro com o Termo ou a Política; o formulário por baixo continua como estava.
 import React from "react";
+import { createPortal } from "react-dom";
+import "../auth/login.css";
 import "./legal.css";
 import { LegalText } from "./LegalText.jsx";
 import { Privacidade } from "./LegalPage.jsx";
@@ -17,8 +19,9 @@ export function DocumentModal({ doc, onClose }) {
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
-  return (
-    <div className="lgm-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+  // Fora do cartão do cadastro: o backdrop-filter dele faria o "fixed" valer só dentro do cartão. lg-root traz as cores e fontes.
+  return createPortal(
+    <div className="lg-root lgm-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="lgm-box" role="dialog" aria-modal="true" aria-label={TITULO[doc]}>
         <div className="lgm-bar">
           <strong>{TITULO[doc]}</strong>
@@ -35,6 +38,7 @@ export function DocumentModal({ doc, onClose }) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

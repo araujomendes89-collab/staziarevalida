@@ -102,6 +102,10 @@ describe("Cadastro com Termo", () => {
     fillAll();
     fireEvent.click(screen.getByRole("button", { name: "Termos de Aceite e Uso" }));
     expect(screen.getByRole("dialog")).toBeTruthy();
+    // fora do cartão com backdrop-filter, direto no body: o "fixed" vale para a tela toda
+    const overlay = screen.getByRole("dialog").parentElement!;
+    expect(overlay.parentElement).toBe(document.body);
+    expect(overlay.closest(".lg-card")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect((screen.getByLabelText("Nome completo") as HTMLInputElement).value).toBe("Ana Lima");
