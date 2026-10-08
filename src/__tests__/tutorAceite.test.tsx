@@ -112,7 +112,7 @@ describe("Aceite do Tutor", () => {
 });
 
 describe("Aceite do Tutor na gaveta", () => {
-  it("o cartão aparece e nenhuma sessão é criada antes; depois do aceite a sessão começa", async () => {
+  it("o cartão aparece e nenhuma sessão é criada antes; depois do aceite a Nexus mostra a escolha do professor (a conversa só começa no Começar)", async () => {
     const { TutorDockProvider, TutorButton } = await loadDrawer();
     render(<TutorDockProvider><TutorButton request={{ mode: "livre" }} /></TutorDockProvider>);
     fireEvent.click(screen.getByText("Discutir com o Tutor"));
@@ -120,16 +120,16 @@ describe("Aceite do Tutor na gaveta", () => {
     expect(calls).not.toContain("app_tutor_start");
     fireEvent.click(screen.getByLabelText("Li e concordo"));
     fireEvent.click(screen.getByText("Continuar"));
-    await waitFor(() => expect(calls).toContain("app_tutor_start"));
-    expect(await screen.findByText("Pode perguntar.")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Escolha seu professor" })).toBeTruthy();
+    expect(calls).not.toContain("app_tutor_start");
   });
 
-  it("sem consent_required a gaveta abre a sessão como hoje", async () => {
+  it("sem consent_required a Nexus abre por cima na escolha do professor", async () => {
     consent = false;
     const { TutorDockProvider, TutorButton } = await loadDrawer();
     render(<TutorDockProvider><TutorButton request={{ mode: "livre" }} /></TutorDockProvider>);
     fireEvent.click(screen.getByText("Discutir com o Tutor"));
-    expect(await screen.findByText("Pode perguntar.")).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Escolha seu professor" })).toBeTruthy();
     expect(screen.queryByText("Continuar")).toBeNull();
   });
 });

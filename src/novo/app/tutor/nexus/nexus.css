@@ -20,13 +20,34 @@
     radial-gradient(50% 45% at 10% 95%, rgba(139, 108, 255, 0.22) 0%, transparent 60%),
     radial-gradient(120% 90% at 50% 25%, #16205a 0%, #0b1033 55%, #05071a 100%);
 }
-.nx--overlay {
+/* por cima de outra tela: a camada cobre a tela (que segue montada por baixo) */
+.nx-overlay {
   position: fixed;
   inset: 0;
   z-index: 60;
+  overflow-y: auto;
+  background: #05071a;
+}
+.nx--overlay {
   min-height: 100vh;
   border-radius: 0;
-  overflow-y: auto;
+}
+.nx-gate {
+  max-width: 680px;
+  margin: 48px auto;
+  padding: 24px;
+  border-radius: 24px;
+  background: var(--surface-page, var(--surface-card, #ffffff));
+  color: var(--text-primary, #151a21);
+}
+.nx-gate__top {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
+}
+.nx-pill--light {
+  border-color: var(--border-default, #dce1e8);
+  color: var(--text-primary, #151a21);
 }
 .nx *,
 .nx *::before,
@@ -534,6 +555,12 @@
 
 /* ---- celular */
 @media (max-width: 600px) {
+  .nx-gate {
+    margin: 0;
+    min-height: 100vh;
+    border-radius: 0;
+    padding: 16px;
+  }
   .nx {
     padding: 18px 16px 24px;
     border-radius: 0;

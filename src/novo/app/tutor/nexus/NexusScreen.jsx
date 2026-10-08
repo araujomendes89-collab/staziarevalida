@@ -26,8 +26,32 @@ export function startArgs(personalityId, mode, request = null) {
   return { p_mode: mode, p_topic: request?.topic ?? null, p_question_id: request?.questionId ?? null, p_context: context, p_personality: personalityId };
 }
 
+/**
+ * overlay: a Nexus aberta por outra tela (Correção, Caderno de erros, Flashcards, Temas, Desempenho), numa camada por cima que não
+ * desmonta a tela de baixo; `request` trava o modo (e a questão ou o tema) e só se escolhe o professor.
+ */
 export function NexusScreen({ go, overlay = false, request = null, onClose }) {
-  return <TutorGate go={go}>{(status, refresh) => <Nexus status={status} refresh={refresh} overlay={overlay} request={request} onClose={onClose} />}</TutorGate>;
+  const frame = overlay
+    ? (node) => (
+        <div className="nx-gate">
+          <div className="nx-gate__top">
+            <button type="button" className="nx-pill nx-pill--light" aria-label="Fechar o Tutor" onClick={onClose}>Fechar</button>
+          </div>
+          {node}
+        </div>
+      )
+    : undefined;
+  const gate = (
+    <TutorGate go={go} frame={frame}>
+      {(status, refresh) => <Nexus status={status} refresh={refresh} overlay={overlay} request={request} onClose={onClose} />}
+    </TutorGate>
+  );
+  if (!overlay) return gate;
+  return (
+    <div className="nx-overlay" role="dialog" aria-modal="true" aria-label="Nexus">
+      {gate}
+    </div>
+  );
 }
 
 function Nexus({ status, refresh, overlay, request, onClose }) {
@@ -53,6 +77,14 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
   sessionRef.current = session;
 
   const consentLost = (e) => e?.code === "tutor_consent" && (refresh().catch(() => {}), true);
+
+  // por cima de outra tela: Esc fecha (na conversa, o Esc é da tela de voz e encerra a conversa)
+  React.useEffect(() => {
+    if (!overlay || phase === "conversation") return undefined;
+    const onKey = (e) => e.key === "Escape" && onClose?.();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [overlay, phase, onClose]);
 
   React.useEffect(() => {
     let alive = true;

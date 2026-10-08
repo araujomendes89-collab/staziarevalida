@@ -82,13 +82,22 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
   const listen = (manual = false) => {
     const c = r.current;
     if (!c.alive || c.rec) return;
-    if (!c.micStream || c.muted || (c.tap && !manual)) {
+    if (!c.micStream || c.muted || c.noRecorder || (c.tap && !manual)) {
       setState("ready");
       return;
     }
     c.level ??= micLevel(c.micStream);
-    setState("listening");
-    c.rec = startRecording({ stream: c.micStream, auto: !c.tap, level: c.level, onDone: heard });
+    try {
+      c.rec = startRecording({ stream: c.micStream, auto: !c.tap, level: c.level, onDone: heard });
+      setState("listening");
+    } catch {
+      // navegador sem gravação de áudio: a conversa segue pelo Chat, com a resposta em voz
+      c.rec = null;
+      c.noRecorder = true;
+      setMicError("Este navegador não grava a sua voz. Escreva pelo Chat: o professor responde em voz.");
+      setChatRequest((n) => n + 1);
+      setState("ready");
+    }
   };
   const afterReply = () => {
     if (r.current.alive) listen(false);

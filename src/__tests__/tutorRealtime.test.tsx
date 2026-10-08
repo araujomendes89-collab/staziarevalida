@@ -4,7 +4,7 @@
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { TUTOR_SPOKEN_LANGUAGE, TUTOR_SPOKEN_REMINDER } from "../shared/tutor/voiceLanguage";
 
 const backend: any = { rpc: vi.fn(), accessToken: async () => "token-de-teste" };
@@ -176,7 +176,7 @@ describe("Voz em tempo real na tela", () => {
 });
 
 describe("Tutor fora da tela do Tutor, resolução, encerramento e relatório", () => {
-  it("o botão em outra tela abre o painel com a questão (o aluno não copia nada); fora do app, o botão não aparece", async () => {
+  it("o botão em outra tela abre a Nexus por cima com a questão (o aluno não copia nada; a conversa só começa no Começar); fora do app, o botão não aparece", async () => {
     const { TutorDockProvider, TutorButton } = await import("../novo/app/tutor/TutorDrawer.jsx");
     const started: any[] = [];
     rpcImpl.app_tutor_start = (a) => (started.push(a), session({ mode: "livre", question_state: "answered", question: { ...QUESTION, state: "answered", correct_option: "A" }, messages: [{ id: 1, role: "tutor", content: "A B, é? Me convence: por que essa?", grounding: "none" }] }));
@@ -188,9 +188,12 @@ describe("Tutor fora da tela do Tutor, resolução, encerramento e relatório", 
       </TutorDockProvider>
     );
     fireEvent.click(screen.getByText("Discutir com o Tutor"));
-    expect(await screen.findByRole("dialog", { name: "Nexus" })).toBeTruthy();
-    expect(await screen.findByText("A B, é? Me convence: por que essa?")).toBeTruthy();
-    expect(started[0]).toEqual({ p_mode: "livre", p_topic: null, p_question_id: "q1", p_context: { type: "question", id: "q1" } });
+    const overlay = await screen.findByRole("dialog", { name: "Nexus" });
+    expect(await within(overlay).findByRole("heading", { name: "Escolha seu professor" })).toBeTruthy();
+    expect(started).toEqual([]); // Nexus (2026-10-08): nada começa antes do "Começar", com o professor escolhido
+    fireEvent.click(within(overlay).getByRole("button", { name: /^Começar com/ }));
+    await waitFor(() => expect(started).toHaveLength(1));
+    expect(started[0]).toMatchObject({ p_mode: "livre", p_topic: null, p_question_id: "q1", p_context: { type: "question", id: "q1" } });
     fireEvent.click(screen.getByLabelText("Fechar o Tutor"));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });

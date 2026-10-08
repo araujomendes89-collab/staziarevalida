@@ -9,8 +9,8 @@ import { AuthFlow } from "./AuthScreens.jsx";
 import { LegalPage } from "./legal/LegalPage.jsx";
 import { AcceptanceScreen } from "./legal/AcceptanceScreen.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
-import { TutorScreen } from "./tutor/TutorScreen.jsx";
 import { NexusScreen } from "./tutor/nexus/NexusScreen.jsx";
+import { ReportScreen } from "./tutor/ReportScreen.jsx";
 import { TutorDockProvider } from "./tutor/TutorDrawer.jsx";
 import { LessonsScreen } from "./study/LessonsScreen.jsx";
 import { UpdatesScreen } from "./study/UpdatesScreen.jsx";
@@ -125,7 +125,7 @@ function Screen() {
   const setTheme = (next) => updateProfile({ theme: next }).catch(() => {});
 
   // o Tutor abre em qualquer tela de estudo, com o contexto que a tela já conhece
-  if (route === "sessao") return <TutorDockProvider><PracticeSession go={go} /></TutorDockProvider>;
+  if (route === "sessao") return <TutorDockProvider go={go}><PracticeSession go={go} /></TutorDockProvider>;
   if (route === "estacao") return <Station go={go} />;
 
   // Até cada tela ser ligada aos dados, usa o estado "aluno novo" do design (sem números inventados).
@@ -144,7 +144,7 @@ function Screen() {
   else if (route === "desempenho") body = <PerformanceScreen go={go} />;
   else if (route === "tutor") body = <NexusScreen go={go} />;
   // "Análise" (grupo Evolução): o relatório do Tutor (o que ele percebeu, erros que se repetem, evolução por área)
-  else if (route === "analise") body = <TutorScreen key="analise" go={go} initialView="report" />;
+  else if (route === "analise") body = <ReportScreen go={go} />;
   else if (route === "trilha") body = <TrailScreen go={go} />;
   else if (route === "classificacao") body = <LeaderboardScreen go={go} />;
   else if (route === "missoes") body = <MissionsScreen go={go} />;
@@ -179,7 +179,7 @@ function Screen() {
   );
 
   return (
-    <TutorDockProvider>
+    <TutorDockProvider go={go}>
     <AppShell
       route={route}
       go={go}

@@ -39,7 +39,7 @@ export function NexusLobby({ status, nexus, request = null, busy = false, error 
         </div>
         <div className="nx-top__actions">
           <button type="button" className="nx-pill" onClick={onHistory}>Histórico</button>
-          {onClose && <button type="button" className="nx-pill" onClick={onClose} aria-label="Fechar e voltar">Fechar</button>}
+          {onClose && <button type="button" className="nx-pill" onClick={onClose} aria-label="Fechar o Tutor">Fechar</button>}
         </div>
       </div>
 
