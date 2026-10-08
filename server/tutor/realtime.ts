@@ -23,7 +23,7 @@
  */
 import { createHash } from "crypto";
 import { engineFor, languageIntensity, normalize, profanityForIntensity, stateLayer, type PersonaEngine, type TutorState } from "./emotion";
-import { TRIAL_OVER, TutorError, consentError, type Entitlement, type TutorDeps } from "./engine";
+import { PROFESSOR_CHANGED, TRIAL_OVER, TutorError, consentError, type Entitlement, type TutorDeps } from "./engine";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings as SessionPrefs } from "./personality";
 import { composeLiveInstructions, composeRealtimeInstructions, type TutorMode } from "./prompts";
 import { safetyCheck, type BaseBlock } from "./safety";
@@ -106,7 +106,7 @@ interface VoiceContext {
   consent_pending?: boolean;
   entitlement: Entitlement & { voice: { remaining_s: number; remaining_today_s: number; remaining_total_s: number | null } };
   config: { max_profanity: ProfanityLevel };
-  session: { id: string; mode: TutorMode; title: string; topic: string | null; status: string; question_state: string; settings: SessionPrefs; emotion: (Partial<TutorState> & Record<string, unknown>) | null; context: { type: string | null; label: string | null } };
+  session: { id: string; mode: TutorMode; title: string; topic: string | null; status: string; question_state: string; settings: SessionPrefs; emotion: (Partial<TutorState> & Record<string, unknown>) | null; context: { type: string | null; label: string | null }; read_only?: boolean };
   personality: Personality & { voice?: { realtime?: string }; engine?: Partial<PersonaEngine> | null };
   student: { first_name: string | null; days_to_exam: number | null } | null;
   memory: { weak_subareas: { subarea: string; accuracy: number }[]; recurrent_errors: { error_type: string; knowledge_gap: string | null; times: number }[] } | null;
@@ -218,6 +218,7 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
   if (!ctx) throw new TutorError("Conversa não encontrada.", 404);
   // sem o aceite dos Tutores a voz não abre: antes de reservar o tempo (o banco não confere isso na reserva) e de falar com qualquer provedor
   if (ctx.consent_pending) throw consentError();
+  if (ctx.session.read_only) throw new TutorError(PROFESSOR_CHANGED, 409);
   const extras = await deps.db.service<VoiceExtras | null>("ch_worker_tutor_voice_context", { p_user: userId, p_session_id: sessionId }).catch(() => null);
 
   const engine = engineFor(ctx.personality.id, ctx.personality.engine, settings.durona_level);

@@ -18,11 +18,24 @@ export interface TutorSettings {
   durona_level: "moderada" | "forte" | "sem_filtro";
   pronunciations: { term: string; say: string }[];
   max_profanity: "off" | "mild" | "moderate";
+  /** Voz do professor (Nexus): só a equipe ouve enquanto estiver ligado. */
+  tts_team_only: boolean;
+  /** Caracteres de fala do professor por aluno por dia (900 = 1 minuto). */
+  tts_trial_daily_chars: number;
+  tts_paid_daily_chars: number;
+  /** Tetos da conta inteira (dia e mês de Brasília). */
+  tts_account_daily_chars: number;
+  tts_account_monthly_chars: number;
+  /** Preços do plano contratado (0 = ainda não preenchido: o painel avisa). */
+  tts_price_per_1k_chars_usd: number;
+  stt_price_per_min_usd: number;
 }
 
 export const DEFAULT_SETTINGS: TutorSettings = {
   enabled: false, voice_enabled: true, voice_provider: "auto", voice_name: null, voice_session_max_seconds: 1800, save_transcripts: true,
   transcript_retention_days: 180, emotion_engine: true, inside_jokes: true, durona_level: "forte", pronunciations: [], max_profanity: "moderate",
+  tts_team_only: true, tts_trial_daily_chars: 4500, tts_paid_daily_chars: 4500, tts_account_daily_chars: 4500, tts_account_monthly_chars: 30000,
+  tts_price_per_1k_chars_usd: 0, stt_price_per_min_usd: 0,
 };
 
 const cache = new WeakMap<object, { at: number; value: TutorSettings }>();
