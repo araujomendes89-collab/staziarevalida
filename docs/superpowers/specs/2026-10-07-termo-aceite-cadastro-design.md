@@ -1,6 +1,5 @@
 # Termo de Aceite e Uso obrigatório, cadastro novo e aceite dos Tutores — especificação
 
-Escrito para: o dono do produto (o que vai mudar) e quem for implementar e manter.
 Data: 2026-10-07. Estado: desenho aprovado em conversa; aguarda revisão desta especificação.
 
 ## 1. O pedido
@@ -45,7 +44,8 @@ no repositório na implementação (seção 4).
   linguagem informal, humor, ironia, cobrança e, quando selecionados por mim, podem utilizar expressões mais intensas ou
   palavrões dentro do contexto educacional." com a caixa "Li e concordo".
 - **Política de Privacidade**: a atual, sem mudanças (hoje em `src/components/legal/PrivacyPolicyView.tsx`, do app antigo,
-  com a data que ela já tem). O texto é trazido para o app novo como está.
+  com a data que ela já tem). O texto é trazido para o app novo como está. Decisão do dono (2026-10-07): sai assim nesta
+  etapa; o parágrafo do áudio (Termo §24) vem depois, antes da voz nova do Tutor.
 - **Frase de aceite do cadastro** (§33): "Declaro que li e compreendi os Termos de Aceite e Uso e a Política de
   Privacidade do StaziaMed Revalida e concordo com suas condições."
 - **Versão vigente num lugar só** (banco, seção 9). Quando sair uma versão nova (ex.: 1.1), troca-se ali e os alunos
