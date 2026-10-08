@@ -72,7 +72,7 @@ export function createVoicePreviewRouter(db: PreviewAuth | null, env: NodeJS.Pro
     busy.add(userId);
     try {
       const sample = VOICE_SCENARIOS[scenario];
-      const out = await new OfficialElevenLabsSpeech(env, fetchImpl, true).synthesize(sample.text ?? OFFICIAL_VOICES[id].sample, {
+      const out = await new OfficialElevenLabsSpeech(env, fetchImpl).synthesize(sample.text ?? OFFICIAL_VOICES[id].sample, {
         personality: id, direction: { emotion: sample.emotion, intensity: sample.intensity },
       });
       if (cache.size >= 20) cache.delete(cache.keys().next().value!);

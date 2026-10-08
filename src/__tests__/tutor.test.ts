@@ -19,7 +19,7 @@ import { resolveCreatorProvider } from "../../server/contentHub/ai/provider";
 import { NO_EVALUATION, TUTOR_CORE, TUTOR_PROMPT_LAYERS, type TutorOutput } from "../../server/tutor/prompts";
 import { tutorMockRespond } from "../../server/tutor/mock";
 import { createTutorRouter } from "../../server/tutor/router";
-import { ElevenLabsSpeech, GeminiSpeech, MockSpeech, OpenAISpeech, phraseText, resolveSpeechProvider, speechCost } from "../../server/tutor/speech";
+import { MockSpeech, phraseText, speechCost } from "../../server/tutor/speech";
 import { elevenLabsVoiceSettings, speechDirectionFromState } from "../../server/tutor/speechDirector";
 import { OfficialElevenLabsSpeech } from "../../server/tutor/elevenlabsTts";
 import express from "express";
@@ -315,69 +315,11 @@ describe("Validação de segurança (regras, sem IA)", () => {
 
 describe("Voz natural: serviços de voz (sem chamada externa)", () => {
   const KEY = "sk-" + "k".repeat(40);
-  it("fica desligada sem serviço escolhido, sem consentimento próprio ou com a chave de exemplo do .env", () => {
-    expect(resolveSpeechProvider({}).status).toMatchObject({ ready: false, pending: expect.stringMatching(/TUTOR_VOICE_PROVIDER/) });
-    expect(resolveSpeechProvider({ TUTOR_VOICE_PROVIDER: "openai", OPENAI_API_KEY: KEY, TUTOR_AI_ALLOW_EXTERNAL: "1" }).status.pending).toMatch(/TUTOR_VOICE_ALLOW_EXTERNAL=1/);
-    expect(resolveSpeechProvider({ TUTOR_VOICE_PROVIDER: "gemini", TUTOR_VOICE_ALLOW_EXTERNAL: "1", GEMINI_API_KEY: "MY_GEMINI_API_KEY" }).status.pending).toMatch(/texto de exemplo/);
-    expect(resolveSpeechProvider({ TUTOR_VOICE_PROVIDER: "mock", NODE_ENV: "production" }).provider).toBeNull();
-    expect(resolveSpeechProvider({ TUTOR_VOICE_PROVIDER: "eleven" }).status.pending).toMatch(/desconhecido/);
-    expect(resolveSpeechProvider({ TUTOR_VOICE_PROVIDER: "openai", TUTOR_VOICE_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: KEY }).status).toEqual({ ready: true, provider: "openai", model: "gpt-4o-mini-tts", pending: null });
-    expect(resolveSpeechProvider({ TUTOR_VOICE_PROVIDER: "gemini", TUTOR_VOICE_ALLOW_EXTERNAL: "1", GEMINI_API_KEY: "AIza" + "g".repeat(35) }).status).toMatchObject({ ready: true, model: "gemini-3.8-flash-tts" });
-    expect(resolveSpeechProvider({ TUTOR_VOICE_PROVIDER: "elevenlabs", TUTOR_VOICE_ALLOW_EXTERNAL: "1", ELEVENLABS_API_KEY: KEY }).status.pending).toMatch(/liberação|Configure ELEVENLABS_VOICE_/i);
-    expect(resolveSpeechProvider({ TUTOR_VOICE_PROVIDER: "elevenlabs", TUTOR_VOICE_ALLOW_EXTERNAL: "1", ELEVENLABS_API_KEY: KEY, ELEVENLABS_VOICE_TRANQUILO: "voice-tranquilo-1", ELEVENLABS_VOICE_DIRETO: "voice-direto-1", ELEVENLABS_VOICE_DURONA: "voice-durona-1" }).status.pending).toMatch(/liberada|aprov/i);
-  });
-
-  it("OpenAI: manda a voz e a atuação do personagem, devolve mp3 e não repete a chave no erro", async () => {
-    const sent: any[] = [];
-    const ok = (async (url: string, init: any) => (sent.push({ url, body: JSON.parse(init.body), auth: init.headers.Authorization }), new Response(new Uint8Array([1, 2, 3]), { status: 200 }))) as any;
-    const out = await new OpenAISpeech(KEY, "gpt-4o-mini-tts", 0.015, ok).synthesize("Porra, olha o caso de novo.", { openai: "verse", acting: "professor barulhento e escrachado" });
-    expect(out.mime).toBe("audio/mpeg");
-    expect([...out.audio]).toEqual([1, 2, 3]);
-    expect(sent[0]).toMatchObject({ url: "https://api.openai.com/v1/audio/speech", auth: `Bearer ${KEY}` });
-    expect(sent[0].body).toMatchObject({ model: "gpt-4o-mini-tts", voice: "verse", input: "Porra, olha o caso de novo.", response_format: "mp3" });
-    expect(sent[0].body.instructions).toMatch(/português brasileiro neutro.*Personagem: professor barulhento e escrachado\..*sem censura/s);
-    const bad = (async () => new Response(`chave inválida: ${KEY}`, { status: 401 })) as any;
-    const err = await new OpenAISpeech(KEY, "m", 0.015, bad).synthesize("oi", {}).catch((e) => e);
-    expect(err.message).toMatch(/401/);
-    expect(err.message).not.toContain(KEY);
-  });
-
-  it("Gemini: o áudio PCM em base64 vira um WAV que o navegador toca", async () => {
-    const pcm = Buffer.alloc(4800, 7);
-    let body: any;
-    const f = (async (_u: string, init: any) => ((body = JSON.parse(init.body)), new Response(JSON.stringify({ outputs: [{ type: "audio", data: pcm.toString("base64"), mime_type: "audio/L16;codec=pcm;rate=24000" }] }), { status: 200 }))) as any;
-    const out = await new GeminiSpeech("AIza" + "g".repeat(35), "gemini-3.8-flash-tts", 0.0135, f).synthesize("Que saco. Lê de novo.", { gemini: "Gacrux", acting: "entediado" });
-    expect(out.mime).toBe("audio/wav");
-    expect(out.audio.subarray(0, 4).toString("latin1")).toBe("RIFF");
-    expect(out.audio.length).toBe(44 + 4800);
-    expect(body.generation_config.speech_config[0].voice).toBe("Gacrux");
-    expect(body.input[0].content[0]).toMatchObject({ text: "Que saco. Lê de novo.", annotations: [{ type: "speech_metadata", style: expect.stringMatching(/Personagem: entediado/) }] });
-    const empty = (async () => new Response(JSON.stringify({ outputs: [] }), { status: 200 })) as any;
-    await expect(new GeminiSpeech("AIza" + "g".repeat(35), "m", 0.0135, empty).synthesize("oi", {})).rejects.toThrow(/sem áudio/);
-  });
-
+  // TUTOR_VOICE_PROVIDER não decide mais a voz: os serviços genéricos (OpenAI, Gemini, ElevenLabs avulso) saíram (Tarefa 6 do Nexus)
   it("Speech Director: estado emocional vira prosódia determinística, sem tags no texto", () => {
     expect(speechDirectionFromState({ mood: "angry", frustration: 70, speechRate: 1.04 })).toEqual({ emotion: "angry", intensity: 0.7, speed: 1.04 });
     expect(elevenLabsVoiceSettings({ emotion: "angry", intensity: 0.7, speed: 1.04 })).toMatchObject({ stability: 0.17, style: 0.78, speed: 1.1, use_speaker_boost: true });
     expect(elevenLabsVoiceSettings({ emotion: "unknown", intensity: 5 })).toMatchObject({ stability: 0.54, style: 0.36, speed: 1 });
-  });
-
-  it("ElevenLabs: recebe somente o texto validado e as configurações do Speech Director", async () => {
-    const sent: any[] = [];
-    const ok = (async (url: string, init: any) => (sent.push({ url, body: JSON.parse(init.body), key: init.headers["xi-api-key"] }), new Response(new Uint8Array([4, 5, 6]), { status: 200 }))) as any;
-    const out = await new ElevenLabsSpeech(KEY, "voice-default", "eleven_multilingual_v2", 0, ok, "https://eleven.test").synthesize(
-      "Você caiu na mesma pegadinha novamente.",
-      { elevenlabs: "voice/selected", direction: { emotion: "irritated", intensity: 0.65, speed: 1.02 } },
-    );
-    expect(out.mime).toBe("audio/mpeg");
-    expect([...out.audio]).toEqual([4, 5, 6]);
-    expect(sent[0]).toMatchObject({ url: "https://eleven.test/v1/text-to-speech/voice%2Fselected?output_format=mp3_44100_128", key: KEY });
-    expect(sent[0].body).toMatchObject({ text: "Você caiu na mesma pegadinha novamente.", model_id: "eleven_multilingual_v2", voice_settings: { use_speaker_boost: true } });
-    expect(sent[0].body.voice_settings.style).toBeGreaterThan(0.4);
-    const bad = (async (_url: string, init: any) => new Response(`chave inválida: ${init.headers["xi-api-key"]}`, { status: 401 })) as any;
-    const err = await new ElevenLabsSpeech(KEY, "voice-default", "m", 0, bad, "https://eleven.test").synthesize("oi", {}).catch((e) => e);
-    expect(err.message).toMatch(/401/);
-    expect(err.message).not.toContain(KEY);
   });
 
   it("ElevenLabs oficial: o painel usa somente voz e roteiro homologados", async () => {
@@ -392,7 +334,7 @@ describe("Voz natural: serviços de voz (sem chamada externa)", () => {
     };
     let sent: any;
     const f = (async (url: string, init: any) => ((sent = { url, body: JSON.parse(init.body) }), new Response(new Uint8Array([7, 8, 9]), { status: 200, headers: { "content-type": "audio/mpeg" } }))) as any;
-    const out = await new OfficialElevenLabsSpeech(env, f, true).synthesize("Você caiu de novo.", { personality: "durona", direction: { emotion: "irritated", intensity: 0.65 } });
+    const out = await new OfficialElevenLabsSpeech(env, f).synthesize("Você caiu de novo.", { personality: "durona", direction: { emotion: "irritated", intensity: 0.65 } });
     expect(out.mime).toBe("audio/mpeg");
     expect(sent.url).toContain("voice-durona-1");
     expect(sent.body).toMatchObject({ text: "Você caiu de novo.", model_id: "eleven_multilingual_v2" });

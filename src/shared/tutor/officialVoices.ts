@@ -27,5 +27,17 @@ export const VOICE_SCENARIOS = {
   repeticao: { label: "Erro repetido", emotion: "irritated", intensity: 0.65, text: "De novo o mesmo caminho? Para um instante. Você está repetindo a resposta sem conferir o dado principal. Explica essa escolha antes de seguir. Vamos corrigir o raciocínio, uma etapa de cada vez." },
   acerto: { label: "Acerto e recuperação", emotion: "encouraged", intensity: 0.6, text: "Agora sim, você explicou a escolha com clareza. Percebe a diferença? Dessa vez você usou a informação do enunciado para sustentar a resposta. Guarda esse caminho e tenta aplicar na próxima questão." },
   pronuncia: { label: "Pronúncia brasileira", emotion: "neutral", intensity: 0.2, text: "Vamos conferir a pronúncia: atenção básica, hipertensão arterial, raciocínio clínico, insuficiência cardíaca e saúde da família. Agora os números: vinte e cinco, cento e vinte e oitenta. Português do Brasil, em uma conversa natural." },
+  // só de uma voz (Nexus): a Durona firme no 1º erro e aliviada; o Direto comemorando
+  firme: { label: "1º erro firme", emotion: "firm", intensity: 0.3, only: "durona", text: "Sério isso? Você tinha o diagnóstico na mão e jogou fora na conduta." },
+  alivio: { label: "Alívio com palavrão", emotion: "relieved", intensity: 0.35, only: "durona", text: "Ufa, porra, até que enfim! Dessa vez você usou a informação do enunciado para sustentar a resposta." },
+  comemoracao: { label: "Comemoração com palavrão", emotion: "impressed", intensity: 0.7, only: "direto", text: "Isso, porra. Essa era difícil. Boa. Agora sim." },
 } as const;
 export type VoiceScenario = keyof typeof VOICE_SCENARIOS;
+
+/** Cenários de audição de uma voz: os cinco comuns, na ordem de sempre, e depois os só dela. */
+export function scenariosFor(id: OfficialVoice): VoiceScenario[] {
+  return (Object.keys(VOICE_SCENARIOS) as VoiceScenario[]).filter((k) => {
+    const only = (VOICE_SCENARIOS[k] as { only?: OfficialVoice }).only;
+    return !only || only === id;
+  });
+}

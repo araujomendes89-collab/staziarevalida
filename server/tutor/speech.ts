@@ -2,13 +2,10 @@
  * VOZ NATURAL do Stazia Tutor: transforma em áudio, no servidor, um texto que o servidor JÁ validou (fala gravada do professor,
  * a questão da conversa ou uma frase fixa do aplicativo). O navegador nunca manda texto livre para cá.
  *
- *   TUTOR_VOICE_PROVIDER          openai | gemini | elevenlabs | mock | off (padrão: off; mock só fora de produção)
+ * A voz do professor é sempre a oficial (ElevenLabs, uma voz por professor; TUTOR_VOICE_PROVIDER não decide mais):
  *   TUTOR_VOICE_ALLOW_EXTERNAL=1  consentimento próprio: o texto da resposta vai para o serviço de voz
- *   TUTOR_VOICE_MODEL             modelo do provedor; ElevenLabs usa eleven_multilingual_v2 por padrão
- *   OPENAI_API_KEY / GEMINI_API_KEY / ELEVENLABS_API_KEY
- *   ELEVENLABS_VOICE_ID           voz padrão do ElevenLabs; a personalidade pode sobrescrever com voice.elevenlabs
+ *   ELEVENLABS_API_KEY, ELEVENLABS_VOICE_TRANQUILO / _DURONA / _DIRETO, ELEVENLABS_MODEL_ID (eleven_v3), ELEVENLABS_OUTPUT_FORMAT
  *   TUTOR_VOICE_DAILY_CHARS       teto de caracteres falados por aluno por dia (padrão 30.000, cerca de meia hora de fala)
- *   TUTOR_VOICE_PRICE_PER_MIN     preço por minuto de fala, para a estimativa de custo (padrão: 0,015 OpenAI; 0,0135 Gemini até 31/12/2026)
  *
  * Sem voz natural pronta, o aplicativo usa a voz do aparelho, como antes. A voz é sempre a mesma resposta validada: só muda o som.
  */
@@ -16,8 +13,8 @@ import { createHash } from "crypto";
 import { TRIAL_OVER, TutorError, consentError, type TutorDeps } from "./engine";
 import { spokenText } from "./safety";
 import { TUTOR_SPOKEN_LANGUAGE } from "../../src/shared/tutor/voiceLanguage";
-import { elevenLabsVoiceSettings, speechDirectionFromState, type SpeechDirection } from "./speechDirector";
-import { OfficialElevenLabsSpeech } from "./elevenlabsTts";
+import { speechDirectionFromState, type SpeechDirection } from "./speechDirector";
+import { elevenSynth } from "./elevenlabsTts";
 import { elevenLabsReadiness } from "./officialVoices";
 
 export interface VoiceProfile {
@@ -40,8 +37,8 @@ export interface SpeechProvider {
   readonly name: string;
   readonly model: string;
   readonly isMock: boolean;
-  /** Preço estimado por minuto de fala (US$). */
-  readonly pricePerMinute: number;
+  /** Preço estimado por minuto de fala (US$), quando o provedor sabe; a voz oficial tem o preço no painel. */
+  readonly pricePerMinute?: number;
   readonly cacheIdentity?: string;
   synthesize(text: string, voice: VoiceProfile): Promise<SpeechAudio>;
 }
@@ -75,42 +72,7 @@ export function actingInstructions(voice: VoiceProfile): string {
     .join(" ");
 }
 
-export class OpenAISpeech implements SpeechProvider {
-  readonly name = "openai";
-  readonly isMock = false;
-  constructor(
-    private apiKey: string,
-    readonly model: string,
-    readonly pricePerMinute: number,
-    private fetchImpl: typeof fetch = fetch,
-    private baseUrl = "https://api.openai.com/v1",
-  ) {}
-
-  async synthesize(text: string, voice: VoiceProfile): Promise<SpeechAudio> {
-    const res = await this.fetchImpl(`${this.baseUrl}/audio/speech`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` },
-      body: JSON.stringify({ model: this.model, voice: voice.openai || "marin", input: text.slice(0, MAX_SPEECH_CHARS), instructions: actingInstructions(voice), response_format: "mp3" }),
-      signal: AbortSignal.timeout(60_000),
-    });
-    if (!res.ok) throw new Error(`serviço de voz OpenAI respondeu ${res.status}: ${(await res.text()).replace(this.apiKey, "[chave]").slice(0, 200)}`);
-    return { audio: Buffer.from(await res.arrayBuffer()), mime: "audio/mpeg" };
-  }
-}
-
-/** Procura o áudio em base64 na resposta do Gemini (o nome do campo varia entre versões da API). */
-function findAudio(node: unknown): { data: string; mime: string } | null {
-  if (!node || typeof node !== "object") return null;
-  const n = node as Record<string, unknown>;
-  if (typeof n.data === "string" && n.data.length > 200) return { data: n.data, mime: String(n.mime_type ?? n.mimeType ?? "audio/pcm") };
-  for (const v of Object.values(n)) {
-    const hit = findAudio(v);
-    if (hit) return hit;
-  }
-  return null;
-}
-
-/** Áudio PCM 16 bits mono (24 kHz, o padrão do Gemini) num arquivo WAV que o navegador toca. */
+/** Áudio PCM 16 bits mono (24 kHz) num arquivo WAV que o navegador toca. */
 export function wrapWav(pcm: Buffer, rate = 24000): Buffer {
   const h = Buffer.alloc(44);
   h.write("RIFF", 0, "latin1");
@@ -129,71 +91,6 @@ export function wrapWav(pcm: Buffer, rate = 24000): Buffer {
   return Buffer.concat([h, pcm]);
 }
 
-export class GeminiSpeech implements SpeechProvider {
-  readonly name = "gemini";
-  readonly isMock = false;
-  constructor(
-    private apiKey: string,
-    readonly model: string,
-    readonly pricePerMinute: number,
-    private fetchImpl: typeof fetch = fetch,
-    private endpoint = "https://generativelanguage.googleapis.com/v1beta/interactions",
-  ) {}
-
-  async synthesize(text: string, voice: VoiceProfile): Promise<SpeechAudio> {
-    const res = await this.fetchImpl(this.endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": this.apiKey },
-      body: JSON.stringify({
-        model: this.model,
-        input: [{ type: "user_input", content: [{ type: "text", text: text.slice(0, MAX_SPEECH_CHARS), annotations: [{ type: "speech_metadata", style: actingInstructions(voice) }] }] }],
-        response_format: { type: "audio" },
-        generation_config: { speech_config: [{ voice: voice.gemini || "Sulafat" }] },
-      }),
-      signal: AbortSignal.timeout(60_000),
-    });
-    if (!res.ok) throw new Error(`serviço de voz Gemini respondeu ${res.status}: ${(await res.text()).replace(this.apiKey, "[chave]").slice(0, 200)}`);
-    const found = findAudio(await res.json());
-    if (!found) throw new Error("serviço de voz Gemini respondeu sem áudio");
-    const buf = Buffer.from(found.data, "base64");
-    if (buf.subarray(0, 4).toString("latin1") === "RIFF") return { audio: buf, mime: "audio/wav" };
-    const rate = Number(/rate=(\d+)/.exec(found.mime)?.[1]) || 24000;
-    return { audio: wrapWav(buf, rate), mime: "audio/wav" };
-  }
-}
-
-export class ElevenLabsSpeech implements SpeechProvider {
-  readonly name = "elevenlabs";
-  readonly isMock = false;
-  constructor(
-    private apiKey: string,
-    private defaultVoiceId: string,
-    readonly model: string,
-    readonly pricePerMinute: number,
-    private fetchImpl: typeof fetch = fetch,
-    private baseUrl = "https://api.elevenlabs.io",
-    private outputFormat = "mp3_44100_128",
-  ) {}
-
-  async synthesize(text: string, voice: VoiceProfile): Promise<SpeechAudio> {
-    const voiceId = (voice.elevenlabs || this.defaultVoiceId).trim();
-    if (!voiceId) throw new Error("ELEVENLABS_VOICE_ID ausente");
-    const query = new URLSearchParams({ output_format: this.outputFormat });
-    const res = await this.fetchImpl(`${this.baseUrl}/v1/text-to-speech/${encodeURIComponent(voiceId)}?${query}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "xi-api-key": this.apiKey },
-      body: JSON.stringify({
-        text: text.slice(0, MAX_SPEECH_CHARS),
-        model_id: this.model,
-        voice_settings: elevenLabsVoiceSettings(voice.direction),
-      }),
-      signal: AbortSignal.timeout(60_000),
-    });
-    if (!res.ok) throw new Error(`serviço de voz ElevenLabs respondeu ${res.status}: ${(await res.text()).replace(this.apiKey, "[chave]").slice(0, 200)}`);
-    return { audio: Buffer.from(await res.arrayBuffer()), mime: this.outputFormat.startsWith("mp3") ? "audio/mpeg" : "audio/octet-stream" };
-  }
-}
-
 /** Voz simulada para testes: um WAV curto de silêncio, com o tamanho proporcional ao texto. */
 export class MockSpeech implements SpeechProvider {
   readonly name = "mock";
@@ -205,43 +102,6 @@ export class MockSpeech implements SpeechProvider {
     this.calls.push({ text, voice });
     return { audio: wrapWav(Buffer.alloc(Math.min(48_000, 200 + text.length * 2))), mime: "audio/wav" };
   }
-}
-
-const DEFAULT_MODEL: Record<string, string> = { openai: "gpt-4o-mini-tts", gemini: "gemini-3.8-flash-tts", elevenlabs: "eleven_v3" };
-const DEFAULT_PRICE: Record<string, number> = { openai: 0.015, gemini: 0.0135, elevenlabs: 0 };
-
-let mockSingleton: MockSpeech | null = null;
-export const mockSpeech = () => (mockSingleton ??= new MockSpeech());
-
-export function resolveSpeechProvider(env: NodeJS.ProcessEnv = process.env, fetchImpl: typeof fetch = fetch): { provider: SpeechProvider | null; status: SpeechStatus } {
-  const kind = (env.TUTOR_VOICE_PROVIDER || "off").trim().toLowerCase();
-  const model = (env.TUTOR_VOICE_MODEL || (kind === "elevenlabs" ? env.ELEVENLABS_MODEL_ID : "") || DEFAULT_MODEL[kind] || "").trim() || null;
-  const pending = (why: string) => ({ provider: null, status: { ready: false, provider: kind, model, pending: why } });
-  if (kind === "off" || kind === "") return pending("Voz natural desligada: defina TUTOR_VOICE_PROVIDER (openai, gemini ou elevenlabs) no servidor.");
-  if (kind === "mock") {
-    if (env.NODE_ENV === "production") return pending("Voz simulada não é permitida em produção.");
-    const p = mockSpeech();
-    return { provider: p, status: { ready: true, provider: "mock", model: p.model, pending: null } };
-  }
-  if (kind !== "openai" && kind !== "gemini" && kind !== "elevenlabs") return pending(`Serviço de voz desconhecido: ${kind}. Use openai, gemini ou elevenlabs.`);
-  if (env.TUTOR_VOICE_ALLOW_EXTERNAL !== "1") return pending("Envio do texto das respostas ao serviço de voz não autorizado: defina TUTOR_VOICE_ALLOW_EXTERNAL=1 no servidor depois de aprovar o uso.");
-  const keyName = kind === "openai" ? "OPENAI_API_KEY" : kind === "gemini" ? "GEMINI_API_KEY" : "ELEVENLABS_API_KEY";
-  const key = realKey(env[keyName]);
-  if (!key) return pending(`${keyName} ausente ou com o texto de exemplo no .env do servidor.`);
-  if (kind === "elevenlabs") {
-    const readiness = elevenLabsReadiness(env);
-    if (!readiness.releaseReady) return pending(readiness.pending || "As vozes ElevenLabs ainda não foram liberadas.");
-    const provider = new OfficialElevenLabsSpeech(env, fetchImpl);
-    return { provider, status: { ready: true, provider: kind, model: provider.model, pending: null } };
-  }
-  const configuredPrice = Number(env.TUTOR_VOICE_PRICE_PER_MIN || env.ELEVENLABS_PRICE_PER_MIN);
-  const price = configuredPrice > 0 ? configuredPrice : DEFAULT_PRICE[kind];
-  const provider = kind === "openai"
-    ? new OpenAISpeech(key, model!, price, fetchImpl)
-    : kind === "gemini"
-      ? new GeminiSpeech(key, model!, price, fetchImpl)
-      : new ElevenLabsSpeech(key, "", model!, price, fetchImpl, env.ELEVENLABS_BASE_URL || "https://api.elevenlabs.io", env.ELEVENLABS_OUTPUT_FORMAT || "mp3_44100_128");
-  return { provider, status: { ready: true, provider: kind, model, pending: null } };
 }
 
 /** Frases fixas do aplicativo que podem virar voz (o navegador manda só o nome e, quando é o caso, a letra). */
@@ -318,13 +178,16 @@ interface SpeechSource {
 const cache = new SpeechCache();
 const DAILY_CHARS = () => (Number(process.env.TUTOR_VOICE_DAILY_CHARS) > 0 ? Number(process.env.TUTOR_VOICE_DAILY_CHARS) : 30_000);
 
-/** Provedor de voz: o dos testes (deps.speech) ou o do .env. */
-export function speechProviderFor(deps: TutorDeps) {
+/** Voz do professor: a dos testes (deps.speech) ou a oficial, pronta quando ao menos uma voz está configurada. */
+export function speechProviderFor(deps: TutorDeps): { provider: SpeechProvider | null; status: SpeechStatus } {
   if (deps.speech !== undefined) {
     const p = deps.speech;
-    return { provider: p, status: { ready: Boolean(p), provider: p?.name ?? "off", model: p?.model ?? null, pending: p ? null : "Voz natural desligada." } as SpeechStatus };
+    return { provider: p, status: { ready: Boolean(p), provider: p?.name ?? "off", model: p?.model ?? null, pending: p ? null : "Voz natural desligada." } };
   }
-  return resolveSpeechProvider();
+  const r = elevenLabsReadiness(deps.elevenEnv ?? process.env);
+  const ready = !r.pending && r.rows.some((row) => row.ready);
+  const status: SpeechStatus = { ready, provider: "elevenlabs", model: r.model, pending: ready ? null : r.pending ?? r.rows.find((row) => row.pending)?.pending ?? "Voz oficial não configurada." };
+  return { provider: ready ? elevenSynth(deps) : null, status };
 }
 
 /** Gera a voz natural de um texto já validado, para o aluno dono dele. Conta os caracteres do dia e o custo estimado. */
@@ -357,7 +220,7 @@ export async function tutorSpeech(deps: TutorDeps, userId: string, req: SpeechRe
     deps.log?.(`[tutor] falha do serviço de voz: ${(error as Error).message.slice(0, 200)}`);
     throw new TutorError("A voz natural falhou agora. O professor fala com a voz do aparelho.", 502);
   }
-  await deps.db.service("ch_worker_tutor_voice_charge", { p_user: userId, p_chars: text.length, p_cost: speechCost(text.length, provider.pricePerMinute) });
+  await deps.db.service("ch_worker_tutor_voice_charge", { p_user: userId, p_chars: text.length, p_cost: speechCost(text.length, provider.pricePerMinute ?? 0) });
   cache.set(key, out);
   return { ...out, cached: false };
 }

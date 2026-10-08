@@ -1,6 +1,7 @@
 /** ElevenLabs oficial: transporte TTS, sem ferramentas, histórico, prompt médico ou geração de resposta. */
 import type { SpeechAudio, SpeechProvider, VoiceProfile } from "./speech";
-import { elevenLabsVoiceSettings, type SpeechDirection } from "./speechDirector";
+import type { TutorDeps } from "./engine";
+import { elevenLabsVoiceSettings, SPEED_RANGE, TAG_RULES, type SpeechDirection } from "./speechDirector";
 import { OFFICIAL_VOICES, type OfficialVoice } from "../../src/shared/tutor/officialVoices";
 import { elevenLabsConfiguration, elevenLabsReadiness, officialVoiceForPersonality, voiceFingerprint } from "./officialVoices";
 
@@ -10,39 +11,36 @@ export function officialSpeechDirection(id: OfficialVoice, direction: SpeechDire
   const intensity = Number.isFinite(direction.intensity) ? clamp(Number(direction.intensity), 0, 1) : 0;
   const base = OFFICIAL_VOICES[id];
   const settings = elevenLabsVoiceSettings({ ...direction, intensity, speed: base.speed });
-  settings.speed = clamp(settings.speed, 0.85, 1.12);
+  settings.speed = clamp(settings.speed, SPEED_RANGE[0], SPEED_RANGE[1]);
   let tag = "";
   if (model === "eleven_v3") {
     // v3 usa estabilidade discreta; não aceita os valores contínuos do diretor v2.
     settings.stability = 0.5;
-    const emotion = direction.emotion;
-    if (id === "durona" && intensity >= 0.4) {
-      tag = emotion === "angry" ? "[angry]" : ["irritated", "impatient"].includes(emotion ?? "") ? "[frustrated]" : "";
-    } else if (id === "tranquilo" && intensity >= 0.4 && ["irritated", "impatient", "disappointed"].includes(emotion ?? "")) {
-      tag = "[sighs]";
-    }
-    if (!tag && ["pleased", "encouraged", "impressed"].includes(emotion ?? "")) tag = "[encouraging]";
+    const emotion = direction.emotion ?? "";
+    const own: Record<string, string> = id === "durona" ? TAG_RULES.durona : id === "tranquilo" ? TAG_RULES.tranquilo : {};
+    if (intensity >= TAG_RULES.minIntensity && Object.hasOwn(own, emotion)) tag = own[emotion];
+    if (!tag && Object.hasOwn(TAG_RULES.good, emotion)) tag = TAG_RULES.good[emotion as keyof typeof TAG_RULES.good];
     const { use_speaker_boost: _unused, ...v3Settings } = settings;
     return { tag, settings: v3Settings };
   }
   return { tag, settings };
 }
 
+/**
+ * Voz do professor: o transporte só exige a voz configurada (chave, consentimento, voice_id próprio, modelo e formato).
+ * Quem decide se a voz já pode falar com alunos (aprovação no painel, "só equipe", limites) é o servidor, antes de chamar.
+ */
 export class OfficialElevenLabsSpeech implements SpeechProvider {
   readonly name = "elevenlabs";
   readonly isMock = false;
   readonly model: string;
   readonly cacheIdentity: string;
-  readonly pricePerMinute: number;
   private config: ReturnType<typeof elevenLabsConfiguration>;
-  constructor(private env: NodeJS.ProcessEnv = process.env, private fetchImpl: typeof fetch = fetch, private preview = false) {
+  constructor(private env: NodeJS.ProcessEnv = process.env, private fetchImpl: typeof fetch = fetch) {
     this.env = { ...env };
     this.config = elevenLabsConfiguration(env);
     this.model = this.config.model;
     this.cacheIdentity = Object.keys(OFFICIAL_VOICES).map((id) => voiceFingerprint(id as OfficialVoice, env)).join(":");
-    const price = Number(env.ELEVENLABS_PRICE_PER_MIN || env.TUTOR_VOICE_PRICE_PER_MIN);
-    // Zero significa não configurado, não gratuidade. Não inventar tarifa por minuto de plano por caracteres.
-    this.pricePerMinute = Number.isFinite(price) && price > 0 ? price : 0;
   }
 
   async synthesize(text: string, voice: VoiceProfile): Promise<SpeechAudio> {
@@ -50,7 +48,7 @@ export class OfficialElevenLabsSpeech implements SpeechProvider {
     if (!id) throw new Error("Esta personalidade ainda não tem voz oficial ElevenLabs associada.");
     const readiness = elevenLabsReadiness(this.env);
     const row = readiness.rows.find((item) => item.id === id)!;
-    if (!row.ready || (!this.preview && !readiness.releaseReady)) throw new Error(row.pending || readiness.pending || "Voz ainda não aprovada.");
+    if (!row.ready) throw new Error(row.pending || readiness.pending || "Voz oficial não configurada.");
     if (!text.trim() || text.length > 4000) throw new Error("Texto de voz vazio ou acima de 4.000 caracteres.");
     const { tag, settings } = officialSpeechDirection(id, voice.direction, this.model);
     // Colchetes vindos do texto não podem virar instruções de áudio do provedor. Preserva as palavras.
@@ -74,4 +72,10 @@ export class OfficialElevenLabsSpeech implements SpeechProvider {
     if (!audio.length || audio.length > 8 * 1024 * 1024) throw new Error("Áudio ElevenLabs vazio ou acima do limite.");
     return { audio, mime: "audio/mpeg" };
   }
+}
+
+/** A voz do professor no servidor: a dos testes (deps.speech; null = desligada) ou a oficial, com o ambiente do servidor. */
+export function elevenSynth(deps: Pick<TutorDeps, "speech" | "elevenEnv" | "fetch">): SpeechProvider | null {
+  if (deps.speech !== undefined) return deps.speech;
+  return new OfficialElevenLabsSpeech(deps.elevenEnv ?? process.env, deps.fetch ?? fetch);
 }

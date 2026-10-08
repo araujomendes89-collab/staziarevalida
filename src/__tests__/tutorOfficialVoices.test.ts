@@ -2,11 +2,12 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import express from "express";
 import type { Server } from "node:http";
-import { OFFICIAL_VOICES, VOICE_SCENARIOS } from "../shared/tutor/officialVoices";
-import { elevenLabsConfiguration, elevenLabsReadiness, officialVoiceForPersonality, voiceFingerprint } from "../../server/tutor/officialVoices";
-import { OfficialElevenLabsSpeech, officialSpeechDirection } from "../../server/tutor/elevenlabsTts";
+import { OFFICIAL_VOICES, VOICE_SCENARIOS, scenariosFor } from "../shared/tutor/officialVoices";
+import { elevenLabsConfiguration, elevenLabsReadiness, fingerprintOf, fingerprintParts, officialVoiceForPersonality, voiceFingerprint } from "../../server/tutor/officialVoices";
+import { OfficialElevenLabsSpeech, elevenSynth, officialSpeechDirection } from "../../server/tutor/elevenlabsTts";
+import { SPEECH_PROFILES, SPEED_RANGE, TAG_RULES, speechDirectionFromState } from "../../server/tutor/speechDirector";
 import { createVoicePreviewRouter } from "../../server/tutor/voicePreview";
-import { SpeechCache, tutorSpeech, MockSpeech } from "../../server/tutor/speech";
+import { SpeechCache, tutorSpeech, MockSpeech, speechProviderFor } from "../../server/tutor/speech";
 import { createTutorRouter } from "../../server/tutor/router";
 
 const ENV = {
@@ -14,6 +15,8 @@ const ENV = {
   ELEVENLABS_VOICE_DIRETO: "voiceDireto0001", ELEVENLABS_VOICE_DURONA: "voiceDurona00001",
   ELEVENLABS_VOICE_TRANQUILO: "voiceTranquilo001",
 };
+/** Intensidade que o Speech Director tira do estado salvo (os humores novos usam a frustração). */
+const speechDirectionFromStateIntensity = (mood: string) => speechDirectionFromState({ mood, frustration: 35, enthusiasm: 90 }).intensity;
 const audioResponse = () => new Response(new Uint8Array([73, 68, 51, 1]), { headers: { "Content-Type": "audio/mpeg" } });
 
 describe("vozes oficiais: configuração, revisão e fronteira TTS", () => {
@@ -44,27 +47,110 @@ describe("vozes oficiais: configuração, revisão e fronteira TTS", () => {
     const status = elevenLabsReadiness({});
     expect(status.keyConfigured).toBe(false);
     expect(status.rows.every((row) => !row.ready && !row.approved)).toBe(true);
-    expect(status.releaseReady).toBe(false);
     expect(JSON.stringify(status)).not.toContain(ENV.ELEVENLABS_API_KEY);
   });
-  it("somente audição interna fica pronta com chave, consentimento e IDs", () => {
+  it("com chave, consentimento e IDs as vozes ficam prontas; aprovadas, nenhuma, até a audição no painel", () => {
     const status = elevenLabsReadiness(ENV);
     expect(status.rows.every((row) => row.ready)).toBe(true);
-    expect(status.releaseReady).toBe(false);
-    expect(status.pending).toMatch(/três vozes/);
+    expect(status.rows.every((row) => !row.approved)).toBe(true);
+    expect(status.pending).toBeNull();
     expect(elevenLabsReadiness({ ...ENV, TUTOR_VOICE_ALLOW_EXTERNAL: "0" }).rows.every((row) => !row.ready)).toBe(true);
   });
   it("requer três IDs distintos, modelo suportado e formato conhecido", () => {
     expect(elevenLabsReadiness({ ...ENV, ELEVENLABS_VOICE_DIRETO: ENV.ELEVENLABS_VOICE_TRANQUILO }).rows.filter((row) => !row.unique)).toHaveLength(2);
     expect(elevenLabsReadiness({ ...ENV, ELEVENLABS_MODEL_ID: "inventado" }).rows.every((row) => !row.ready)).toBe(true);
-    expect(elevenLabsReadiness({ ...ENV, ELEVENLABS_OUTPUT_FORMAT: "pcm_44100" }).releaseReady).toBe(false);
+    expect(elevenLabsReadiness({ ...ENV, ELEVENLABS_OUTPUT_FORMAT: "pcm_44100" }).rows.every((row) => !row.ready)).toBe(true);
   });
   it("aprovação se invalida ao trocar voz, modelo ou parâmetros de saída", () => {
-    const approvals = Object.fromEntries(Object.keys(OFFICIAL_VOICES).map((id) => [id, { fingerprint: voiceFingerprint(id as any, ENV), approvedBy: "Responsável no teste", approvedAt: "2026-10-07T12:00:00Z" }]));
-    expect(elevenLabsReadiness(ENV, approvals).releaseReady).toBe(true);
-    expect(elevenLabsReadiness({ ...ENV, ELEVENLABS_VOICE_DURONA: "anotherVoice001" }, approvals).releaseReady).toBe(false);
-    expect(elevenLabsReadiness({ ...ENV, ELEVENLABS_MODEL_ID: "eleven_multilingual_v2" }, approvals).releaseReady).toBe(false);
-    expect(elevenLabsReadiness({ ...ENV, ELEVENLABS_OUTPUT_FORMAT: "mp3_22050_32" }, approvals).releaseReady).toBe(false);
+    const approvals = Object.fromEntries(Object.keys(OFFICIAL_VOICES).map((id) => [id, { fingerprint: voiceFingerprint(id as any, ENV), approved_at: "2026-10-07T12:00:00Z", sample_path: null }]));
+    const approved = (env: NodeJS.ProcessEnv) => elevenLabsReadiness(env, approvals).rows.find((r) => r.id === "durona")!.approved;
+    expect(approved(ENV)).toBe(true);
+    expect(approved({ ...ENV, ELEVENLABS_VOICE_DURONA: "anotherVoice001" })).toBe(false);
+    expect(approved({ ...ENV, ELEVENLABS_MODEL_ID: "eleven_multilingual_v2" })).toBe(false);
+    expect(approved({ ...ENV, ELEVENLABS_OUTPUT_FORMAT: "mp3_22050_32" })).toBe(false);
+  });
+
+  it("cenários por voz: os cinco de hoje para as três; 'firme' e 'alivio' só da Durona; 'comemoracao' só do Direto", () => {
+    const today = ["apresentacao", "erro", "repeticao", "acerto", "pronuncia"];
+    expect(scenariosFor("durona")).toEqual([...today, "firme", "alivio"]);
+    expect(scenariosFor("tranquilo")).toEqual(today);
+    expect(scenariosFor("direto")).toEqual([...today, "comemoracao"]);
+    expect(VOICE_SCENARIOS.firme).toMatchObject({ emotion: "firm", intensity: 0.3, only: "durona", text: "Sério isso? Você tinha o diagnóstico na mão e jogou fora na conduta." });
+    expect(VOICE_SCENARIOS.alivio).toMatchObject({ emotion: "relieved", intensity: 0.35, only: "durona", text: "Ufa, porra, até que enfim! Dessa vez você usou a informação do enunciado para sustentar a resposta." });
+    expect(VOICE_SCENARIOS.comemoracao).toMatchObject({ emotion: "impressed", intensity: 0.7, only: "direto", text: "Isso, porra. Essa era difícil. Boa. Agora sim." });
+  });
+
+  it("a versão da voz junta voz, modelo, formato, cenários dela e a direção do Speech Director; mudar qualquer um muda a versão", () => {
+    const parts = fingerprintParts("durona", ENV);
+    expect(parts).toMatchObject({ id: "durona", voiceId: ENV.ELEVENLABS_VOICE_DURONA, model: "eleven_v3", format: "mp3_44100_128", profile: OFFICIAL_VOICES.durona });
+    expect(parts.scenarios.map(([k]) => k)).toEqual(scenariosFor("durona"));
+    expect(parts.direction).toEqual({ profiles: SPEECH_PROFILES, tags: TAG_RULES, speed: SPEED_RANGE });
+    const v = fingerprintOf(parts);
+    expect(v).toMatch(/^[0-9a-f]{64}$/);
+    expect(voiceFingerprint("durona", ENV)).toBe(v);
+    const copy = JSON.parse(JSON.stringify(parts));
+    copy.direction.profiles.firm.style = 0.99;
+    expect(fingerprintOf(copy)).not.toBe(v);
+    expect(fingerprintOf({ ...parts, scenarios: parts.scenarios.slice(0, 5) })).not.toBe(v);
+    expect(voiceFingerprint("durona", { ...ENV, ELEVENLABS_VOICE_DURONA: "anotherVoice001" })).not.toBe(v);
+    expect(voiceFingerprint("durona", { ...ENV, ELEVENLABS_MODEL_ID: "eleven_multilingual_v2" })).not.toBe(v);
+    // a versão de uma voz não depende das outras
+    expect(voiceFingerprint("durona", { ...ENV, ELEVENLABS_VOICE_DIRETO: "anotherVoice002" })).toBe(v);
+  });
+
+  it("cada voz vale sozinha: aprovada a Durona, Tranquilo e Direto seguem sem aprovação; aprovação de outra versão não vale; não há 'releaseReady'", () => {
+    const status = elevenLabsReadiness(ENV, { durona: { fingerprint: voiceFingerprint("durona", ENV), approved_at: "2026-10-08T12:00:00Z", sample_path: "durona/abc.mp3" } });
+    expect(Object.fromEntries(status.rows.map((r) => [r.id, r.approved]))).toEqual({ tranquilo: false, durona: true, direto: false });
+    expect(status).not.toHaveProperty("releaseReady");
+    expect(status).not.toHaveProperty("allApproved");
+    expect(status.pending).toBeNull();
+    const old = elevenLabsReadiness(ENV, { durona: { fingerprint: "0".repeat(64), approved_at: "2026-10-08T12:00:00Z", sample_path: null } });
+    expect(old.rows.find((r) => r.id === "durona")!.approved).toBe(false);
+  });
+
+  it("firme e alívio: no v3 a estabilidade fica 0,5 e o alívio muda estilo e ritmo; no multilingual_v2 também a estabilidade; nenhuma marcação", () => {
+    expect(SPEECH_PROFILES.firm).toEqual({ stability: 0.6, style: 0.24, speed: 0.02 });
+    expect(SPEECH_PROFILES.relieved).toEqual({ stability: 0.62, style: 0.3, speed: -0.04 });
+    const relieved = officialSpeechDirection("durona", { emotion: "relieved", intensity: 0.35 });
+    const neutral = officialSpeechDirection("durona", { emotion: "neutral", intensity: 0.35 });
+    expect(relieved.tag).toBe("");
+    expect(relieved.settings.stability).toBe(0.5);
+    expect(relieved.settings.style).toBeGreaterThan(neutral.settings.style);
+    expect(relieved.settings.speed).toBeLessThan(OFFICIAL_VOICES.durona.speed);
+    const v2 = officialSpeechDirection("durona", { emotion: "relieved", intensity: 0.35 }, "eleven_multilingual_v2");
+    expect(v2.settings.stability).toBe(0.56);
+    expect(v2.tag).toBe("");
+    expect(officialSpeechDirection("durona", { emotion: "firm", intensity: 0.3 }).tag).toBe("");
+    // humores antigos: o mesmo de antes
+    expect(officialSpeechDirection("durona", { emotion: "irritated", intensity: 0.5 }).tag).toBe("[frustrated]");
+    expect(officialSpeechDirection("direto", { emotion: "pleased", intensity: 0.2 }).tag).toBe("[encouraging]");
+    expect(speechDirectionFromStateIntensity("relieved")).toBe(0.35);
+  });
+
+  it("o transporte só exige a voz configurada: quem decide aprovação é o servidor", async () => {
+    const fetcher = vi.fn(async () => audioResponse());
+    const out = await new OfficialElevenLabsSpeech(ENV, fetcher as any).synthesize("Olá", { personality: "direto" });
+    expect(out.mime).toBe("audio/mpeg");
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await expect(new OfficialElevenLabsSpeech({ ...ENV, ELEVENLABS_VOICE_DIRETO: "" }, fetcher as any).synthesize("Olá", { personality: "direto" })).rejects.toThrow(/ELEVENLABS_VOICE_DIRETO/);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(new OfficialElevenLabsSpeech(ENV, fetcher as any)).not.toHaveProperty("pricePerMinute");
+  });
+
+  it("TUTOR_VOICE_PROVIDER não decide mais: sem deps.speech o servidor usa a voz oficial", () => {
+    for (const provider of [undefined, "openai", "gemini", "off"]) {
+      const r = speechProviderFor({ db: {} as any, elevenEnv: { ...ENV, ...(provider ? { TUTOR_VOICE_PROVIDER: provider } : {}) } });
+      expect(r.provider, provider).toBeInstanceOf(OfficialElevenLabsSpeech);
+      expect(r.status, provider).toMatchObject({ ready: true, provider: "elevenlabs", pending: null });
+    }
+    const off = speechProviderFor({ db: {} as any, elevenEnv: {} });
+    expect(off.provider).toBeNull();
+    expect(off.status).toMatchObject({ ready: false, provider: "elevenlabs", pending: expect.stringMatching(/ELEVENLABS_API_KEY/) });
+    // nos testes, deps.speech decide (null = desligada)
+    const mock = new MockSpeech();
+    expect(elevenSynth({ speech: mock })).toBe(mock);
+    expect(elevenSynth({ speech: null })).toBeNull();
+    expect(elevenSynth({ elevenEnv: ENV })).toBeInstanceOf(OfficialElevenLabsSpeech);
   });
   it("direção emocional é local, limitada e compatível com estabilidade do v3", () => {
     const angry = officialSpeechDirection("durona", { emotion: "angry", intensity: 2, speed: 100 });
@@ -79,7 +165,7 @@ describe("vozes oficiais: configuração, revisão e fronteira TTS", () => {
   });
   it("envia somente texto final, ID, parâmetros e direção; nunca memória, regras ou credenciais no corpo", async () => {
     const fetcher = vi.fn(async () => audioResponse());
-    const provider = new OfficialElevenLabsSpeech(ENV, fetcher as any, true);
+    const provider = new OfficialElevenLabsSpeech(ENV, fetcher as any);
     const result = await provider.synthesize("Porra, confira o raciocínio. [shouting]", { personality: "durona", acting: "INSTRUÇÃO PRIVADA", direction: { emotion: "impatient", intensity: 0.5 } });
     expect(result.mime).toBe("audio/mpeg");
     const [url, init] = fetcher.mock.calls[0] as unknown as [string, RequestInit];
@@ -91,19 +177,19 @@ describe("vozes oficiais: configuração, revisão e fronteira TTS", () => {
     expect(init.body).not.toContain("INSTRUÇÃO PRIVADA");
     expect(init.body).not.toContain(ENV.ELEVENLABS_API_KEY);
   });
-  it("uso normal não consegue contornar aprovações e preview não aceita ID arbitrário", async () => {
+  it("professor sem voz oficial não fala e não aceita ID arbitrário", async () => {
     const fetcher = vi.fn(async () => audioResponse());
-    await expect(new OfficialElevenLabsSpeech(ENV, fetcher as any).synthesize("Olá", { personality: "questionador" })).rejects.toThrow(/bloqueada|não tem voz/);
-    await expect(new OfficialElevenLabsSpeech(ENV, fetcher as any, true).synthesize("Olá", { personality: "questionador", elevenlabs: ENV.ELEVENLABS_VOICE_DIRETO })).rejects.toThrow(/não tem voz/);
+    await expect(new OfficialElevenLabsSpeech(ENV, fetcher as any).synthesize("Olá", { personality: "questionador" })).rejects.toThrow(/não tem voz/);
+    await expect(new OfficialElevenLabsSpeech(ENV, fetcher as any).synthesize("Olá", { personality: "questionador", elevenlabs: ENV.ELEVENLABS_VOICE_DIRETO })).rejects.toThrow(/não tem voz/);
     expect(fetcher).not.toHaveBeenCalled();
   });
   it("não vaza segredo no erro, não aceita retorno sem áudio e não repete chamada automaticamente", async () => {
     const fetcher = vi.fn(async () => new Response(ENV.ELEVENLABS_API_KEY, { status: 401 }));
-    const error = await new OfficialElevenLabsSpeech(ENV, fetcher as any, true).synthesize("Olá", { personality: "direto" }).catch((e) => e);
+    const error = await new OfficialElevenLabsSpeech(ENV, fetcher as any).synthesize("Olá", { personality: "direto" }).catch((e) => e);
     expect(error.message).toMatch(/401/);
     expect(error.message).not.toContain(ENV.ELEVENLABS_API_KEY);
     expect(fetcher).toHaveBeenCalledTimes(1);
-    await expect(new OfficialElevenLabsSpeech(ENV, (async () => new Response("{}")) as any, true).synthesize("Olá", { personality: "direto" })).rejects.toThrow(/sem áudio/);
+    await expect(new OfficialElevenLabsSpeech(ENV, (async () => new Response("{}")) as any).synthesize("Olá", { personality: "direto" })).rejects.toThrow(/sem áudio/);
   });
   it("cache separa voz efetiva, personalidade e direção", () => {
     const a = new OfficialElevenLabsSpeech(ENV);
@@ -155,7 +241,7 @@ describe("audição interna autenticada (sem ElevenLabs real)", () => {
     const response = await fetch(base, { headers: { Authorization: "Bearer admin" } });
     const body = await response.text();
     expect(body).not.toContain(ENV.ELEVENLABS_API_KEY);
-    expect(JSON.parse(body).releaseReady).toBe(false);
+    expect(JSON.parse(body).rows.every((r: { approved: boolean }) => !r.approved)).toBe(true);
     expect(response.headers.get("cache-control")).toBe("no-store");
   });
   it("recusa texto livre, instruções, parâmetros, cenário desconhecido e prototype keys", async () => {

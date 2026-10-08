@@ -29,6 +29,8 @@ export interface TutorDeps {
   log?: (m: string) => void;
   /** Voz natural: nos testes, um provedor fixo (ou null = desligada); fora deles, vem do .env (speech.ts). */
   speech?: import("./speech").SpeechProvider | null;
+  /** Ambiente da voz do professor (ElevenLabs): nos testes, um ambiente falso; fora deles, process.env. */
+  elevenEnv?: NodeJS.ProcessEnv;
   /** Voz em tempo real: nos testes, configuração e fetch simulados; fora deles, .env e fetch de verdade (realtime.ts). */
   realtime?: import("./realtime").RealtimeConfig;
   /** GPT-Live: nos testes, configuração simulada; fora deles, .env (voiceProviders.ts). */
