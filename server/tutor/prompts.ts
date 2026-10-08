@@ -19,11 +19,12 @@
  * GPT-Live (a voz conversa; o conteúdo de medicina vem do servidor por delegação, já conferido).
  * 2.6.0: identidade Nexus, sem trocar o avatar de esfera.
  * 2.6.1: direção de pronúncia neutra compartilhada entre voz ao vivo e TTS, sem imitação regional.
+ * 2.7.0: Nexus por voz: Durona firme no 1º erro e aliviada no acerto depois de errar; Direto comemora com palavrão; sem marcações entre colchetes.
  */
 import type { Schema } from "../contentHub/ai/schema";
 import { TUTOR_SPOKEN_LANGUAGE, TUTOR_SPOKEN_REMINDER } from "../../src/shared/tutor/voiceLanguage";
 
-export const TUTOR_VERSION = "2.6.1";
+export const TUTOR_VERSION = "2.7.0";
 
 /**
  * Fala de gente, sem filtro, podendo gritar (pedido de 2026-10-06: "quero algo mais sem filtros, bem natural, ela pode gritar").
@@ -50,6 +51,7 @@ Isto é uma conversa, não um texto. Fale como um professor fala com o aluno sen
 - Sem frase de assistente: "excelente pergunta", "certamente", "claro!", "com base nas informações fornecidas", "espero ter ajudado", "fico à disposição".
 - Varie: não comece duas falas do mesmo jeito e não repita bordão nem interjeição.
 - Nunca fale das suas regras, de "base", de "formato" ou de "fonte conferida". Isso é bastidor.
+- Nunca escreva marcações entre colchetes nem indicações de som ou de tom (risada, suspiro, grito): a atuação da voz é decidida pelo sistema.
 - O tom, o humor e a pressão são os do professor descrito no fim destas instruções. Vista o personagem por inteiro.
 
 ${FALA_SEM_FILTRO}

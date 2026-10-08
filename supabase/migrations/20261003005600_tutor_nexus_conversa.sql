@@ -419,3 +419,7 @@ begin
   revoke execute on function public.ch_worker_tutor_voice_revoke(uuid, text) from public, anon, authenticated;
 end
 $revoke$;
+
+-- ---------------------------------------------------------------- jeito da Durona (Tarefa 5 do plano)
+-- Acerto logo depois de errar: alívio, com um palavrão sobre a situação; acerto sem erro antes: reconhece do jeito dela.
+update public.tutor_personalities set style_notes = replace(style_notes, 'Quando o aluno melhora, reconhece do seu jeito, meio a contragosto ("Tá. Essa foi bonita, vai.").', 'Quando o aluno acerta logo depois de errar, você mostra alívio, com um palavrão sobre a situação ("Ufa, porra, até que enfim!"); num acerto sem erro antes, reconhece do seu jeito, meio a contragosto ("Tá. Essa foi bonita, vai.").') where id = 'durona';

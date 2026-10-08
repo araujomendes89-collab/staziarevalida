@@ -226,7 +226,7 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
   const li = languageIntensity(state, engine);
   // na voz o estado muda pelas ferramentas ou pelo servidor (o "tom" volta junto); o teto de palavrão da sessão é o do professor
   const profanity = profanityLevel(ctx.personality.params, ctx.session.settings.profanity ?? "off", ctx.config.max_profanity);
-  const mood = { label: state.mood, text: stateLayer(ctx.personality.id, state, engine), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado (ela muda ao longo da conversa: siga o tom que o sistema devolver)", strong: li >= 3 };
+  const mood = { label: state.mood, text: stateLayer(ctx.personality.id, state, engine, profanity), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado (ela muda ao longo da conversa: siga o tom que o sistema devolver)", strong: li >= 3 };
   const persona = personalityLayer(ctx.personality, effectiveParams(ctx.personality.params, 3, ctx.session.settings), profanity, 3, null, mood);
   // continuidade em algumas aberturas, não em todas (sem sorteio no modo determinístico)
   const continuity = deterministicTutor() ? true : createHash("sha256").update(`${sessionId}:abertura`).digest()[0] % 2 === 0;

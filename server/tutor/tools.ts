@@ -16,6 +16,7 @@
 import { avatarOf, engineFor, normalize, stateLayer, step, type Happening, type PersonaEngine, type TutorState } from "./emotion";
 import { searchSources, sourceQuery, TutorError, type TutorDeps } from "./engine";
 import { tutorSettings } from "./settings";
+import { profanityLevel, type PersonalityParams, type ProfanityLevel } from "./personality";
 import { evaluateReasoning } from "./evaluation";
 import { ERROR_TYPES } from "./prompts";
 
@@ -94,15 +95,20 @@ interface ToolCtx {
  * esfera da tela de voz (calculada aqui, nunca deduzida do texto).
  */
 async function moodAfter(t: ToolCtx, h: Happening): Promise<{ tone: string; avatar: ReturnType<typeof avatarOf> }> {
-  const ctx = await t.deps.db.service<{ session: { emotion: Partial<TutorState> & Record<string, unknown> }; personality: { engine?: Partial<PersonaEngine> } } | null>(
-    "ch_worker_tutor_context", { p_user: t.userId, p_session_id: t.sessionId });
+  const ctx = await t.deps.db.service<{
+    session: { emotion: Partial<TutorState> & Record<string, unknown>; settings?: { profanity?: ProfanityLevel } };
+    personality: { engine?: Partial<PersonaEngine>; params?: PersonalityParams };
+    config?: { max_profanity: ProfanityLevel };
+  } | null>("ch_worker_tutor_context", { p_user: t.userId, p_session_id: t.sessionId });
   const settings = await tutorSettings(t.deps);
   const engine = engineFor(t.personaId, ctx?.personality.engine, settings.durona_level);
   const prev = normalize(ctx?.session.emotion, engine);
   // motor emocional desligado no painel: o tom fica o de base
   const next = settings.emotion_engine ? step(prev, engine, h).state : prev;
   if (settings.emotion_engine) await t.deps.db.service("ch_worker_tutor_set_emotion", { p_user: t.userId, p_session_id: t.sessionId, p_emotion: next });
-  return { tone: stateLayer(t.personaId, next, engine), avatar: avatarOf(t.personaId, next) };
+  // o teto de palavrão da conversa (painel e professor) vale também para o alívio e a comemoração pedidos no tom
+  const profanity = ctx?.personality.params && ctx.config ? profanityLevel(ctx.personality.params, ctx.session.settings?.profanity ?? "off", ctx.config.max_profanity) : "off";
+  return { tone: stateLayer(t.personaId, next, engine, profanity), avatar: avatarOf(t.personaId, next) };
 }
 
 /** Executa uma ferramenta pedida pela voz. Erros esperados voltam como { error } para o modelo dizer com naturalidade. */

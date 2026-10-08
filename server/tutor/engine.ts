@@ -46,6 +46,8 @@ export interface TutorAction {
   interrupted?: string | null;
   /** Turno pedido pela voz (GPT-Live delegou): a ligação já foi conferida pelo servidor; não usa a cota de texto. */
   voiceCallId?: string | null;
+  /** Gasta 1 interação de texto mesmo vindo pela voz (turno da Nexus pela voz do professor). Padrão: só fora da voz. */
+  chargeText?: boolean;
 }
 
 /** Erro que o aluno pode ler (com o código HTTP certo). */
@@ -236,6 +238,8 @@ export interface TurnResult {
     id: number; role: "tutor"; content: string; spoken: string; grounding: string; sources: { ref: string; label: string }[]; hint_level: number | null; suggested: string[]; notice: string | null;
     /** Para o mascote e a voz (o texto é o que se mostra). */
     avatar: ReturnType<typeof avatarOf>;
+    /** O estado com que o texto foi escrito (antes da avaliação): a voz e a esfera falam com ele. */
+    voice_avatar: ReturnType<typeof avatarOf>;
   };
   /** Estado do professor depois deste turno (a voz recebe como instrução de tom). */
   tone: string;
@@ -263,7 +267,9 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     if (ent.mode === "blocked") throw new TutorError(TRIAL_OVER, 403);
     if (ctx.session.status !== "active") throw new TutorError("Esta conversa foi encerrada. Abra uma nova.", 409);
     const voiceTurn = Boolean(action.voiceCallId);
-    if (!ent.can_text && !voiceTurn) throw new TutorError(textLimitMessage(ent), 429);
+    // a voz ao vivo é cobrada pelo tempo; o turno da Nexus (voz do professor) gasta 1 interação de texto
+    const charged = action.chargeText ?? !voiceTurn;
+    if (!ent.can_text && charged) throw new TutorError(textLimitMessage(ent), 429);
     const settings = await tutorSettings(deps);
     const allowed = await aiAllowed(deps.db);
     if (!allowed.ok) {
@@ -349,7 +355,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const profanity = RANK[byIntensity] < RANK[personaMax] ? byIntensity : personaMax;
     // a conferência aceita um degrau acima do pedido (a reação à gravidade real do erro pode subir o tom)
     const checkLevel = RANK[profanityForIntensity(Math.min(5, li + 1))] < RANK[personaMax] ? profanityForIntensity(Math.min(5, li + 1)) : personaMax;
-    const mood = { label: before.mood, text: stateLayer(ctx.personality.id, before, engine), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado", strong: li >= 3 };
+    const mood = { label: before.mood, text: stateLayer(ctx.personality.id, before, engine, profanity), swearing: "conforme a INTENSIDADE DE LINGUAGEM do estado", strong: li >= 3 };
     const system = composeSystem({ mode: ctx.session.mode, browserVoice: Boolean(action.voice), persona: personalityLayer(ctx.personality, eff, profanity, 3, null, mood) });
 
     const mem = ctx.memory;
@@ -392,9 +398,9 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     };
 
     // ---- reserva atômica de uma interação (dois aparelhos não passam do limite juntos); devolvida se a IA falhar.
-    // Turno da voz não reserva: a voz é cobrada pelo tempo autorizado na ligação.
+    // Turno da voz ao vivo não reserva: a voz é cobrada pelo tempo autorizado na ligação.
     let release: () => Promise<unknown> = async () => undefined;
-    if (!voiceTurn) {
+    if (charged) {
       const reserved = await deps.db.service<{ ok: boolean; reason?: string; reservation?: number; entitlement?: Entitlement }>("ch_worker_tutor_text_reserve", { p_user: userId, p_session_id: sessionId });
       if (!reserved.ok) {
         if (reserved.reason === "trial_expired") throw new TutorError(TRIAL_OVER, 403);
@@ -405,7 +411,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     }
 
     // ---- gerar e validar (uma nova tentativa com a correção)
-    const usage = { calls: 0, input_tokens: 0, output_tokens: 0, cost_usd: 0, provider: provider.name, model: provider.model, ...(voiceTurn ? { feature: "tutor_voice_backend" } : {}) };
+    const usage = { calls: 0, input_tokens: 0, output_tokens: 0, cost_usd: 0, provider: provider.name, model: provider.model, ...(voiceTurn && !charged ? { feature: "tutor_voice_backend" } : {}) };
     let out: TutorOutput | null = null;
     let check: SafetyResult | null = null;
     let violations: Violation[] = [];
@@ -492,7 +498,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       suggested: replaced ? [] : out!.suggested_replies,
       notice: replaced ? "Resposta substituída: a primeira versão trazia informação que não pôde ser conferida." : null,
       model, provider: providerName, prompt_version: TUTOR_VERSION, simulated: provider.isMock,
-      personality: { id: ctx.personality.id, profanity, mood: before.mood, language_intensity: li, frustration: before.frustration },
+      personality: { id: ctx.personality.id, profanity, mood: before.mood, language_intensity: li, frustration: before.frustration, enthusiasm: before.enthusiasm },
       avatar: avatarOf(ctx.personality.id, emotion),
       ...(task.type === "react" || task.type === "justify" ? { answer_reasoning_quality: ev.reasoning_quality } : {}),
       voice: Boolean(action.voice),
@@ -519,8 +525,9 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
       message: {
         id: saved.id, role: "tutor", content: reply, spoken: spokenText(reply), grounding: String(meta.grounding), sources: meta.sources as { ref: string; label: string }[], hint_level: hintLevel,
         suggested: meta.suggested as string[], notice: (meta.notice as string | null) ?? null, avatar: avatarOf(ctx.personality.id, emotion),
+        voice_avatar: avatarOf(ctx.personality.id, before),
       },
-      tone: stateLayer(ctx.personality.id, emotion, engine),
+      tone: stateLayer(ctx.personality.id, emotion, engine, profanity),
       gate: emotion.gate,
       question_state: reveals ? "revealed" : ctx.session.question_state,
       used_today: saved.used_today,

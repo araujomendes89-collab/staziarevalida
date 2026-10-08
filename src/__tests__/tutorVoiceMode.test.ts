@@ -398,7 +398,7 @@ describe("Memória entre conversas, ferramentas novas e painel", () => {
 });
 
 describe("Motor emocional: nível da Durona, painel e modo determinístico", () => {
-  it("o nível da Durona muda o teto (não os limites de respeito); determinístico não varia; acerto depois de erros não vira festa", () => {
+  it("o nível da Durona muda o teto (não os limites de respeito); determinístico não varia; acerto logo depois de errar vira alívio", () => {
     expect(engineFor("durona", {}, "moderada")).toMatchObject({ frustration_multiplier: 1.0, language_max: 3, sarcasm_max: 60 });
     expect(engineFor("durona", { frustration_multiplier: 1.25 }, "sem_filtro")).toMatchObject({ frustration_multiplier: 1.4, language_max: 5, sarcasm_max: 100 });
     expect(engineFor("acolhedor", {}, "sem_filtro").frustration_multiplier).toBe(0.45); // Tranquilo (jeito do Preguiçoso); só a Durona muda com o nível
@@ -415,8 +415,10 @@ describe("Motor emocional: nível da Durona, painel e modo determinístico", () 
     for (let i = 0; i < 4; i++) st = step(st, e, { kind: "answer", correct: false, severity: 4, repeated: i > 0 }).state;
     expect(["irritated", "angry"]).toContain(st.mood);
     const rec = step(st, e, { kind: "answer", correct: true });
-    expect(rec.events).toContain("recovering");
-    expect(["irritated", "angry", "impatient"]).toContain(rec.state.mood); // inércia: ainda brava depois de um acerto
+    // Nexus: a Durona mostra alívio no acerto logo depois de errar (a irritação cai para até 40)
+    expect(rec.events).toContain("relieved");
+    expect(rec.state.mood).toBe("relieved");
+    expect(rec.state.frustration).toBeLessThanOrEqual(40);
     delete process.env.DETERMINISTIC_TUTOR;
   });
 
