@@ -7,6 +7,7 @@ import { Banner, Button, EmptyState, SegmentedControl } from "../ds";
 import { AppShell, useMobile } from "./Shell.jsx";
 import { AuthFlow } from "./AuthScreens.jsx";
 import { LegalPage } from "./legal/LegalPage.jsx";
+import { AcceptanceScreen } from "./legal/AcceptanceScreen.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
 import { TutorScreen } from "./tutor/TutorScreen.jsx";
 import { TutorDockProvider } from "./tutor/TutorDrawer.jsx";
@@ -250,6 +251,8 @@ function Root() {
     );
   }
   if (session.status === "signed-out") return <AuthFlow />;
+  // Aluno sem aceite do Termo vigente ou sem WhatsApp: a tela de aceite vem antes de qualquer rota (o servidor decide em gate_required)
+  if (session.boot?.legal?.gate_required) return <AcceptanceScreen />;
 
   return (
     <Routes>
