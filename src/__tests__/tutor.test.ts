@@ -24,6 +24,8 @@ import { elevenLabsVoiceSettings, speechDirectionFromState } from "../../server/
 import { OfficialElevenLabsSpeech } from "../../server/tutor/elevenlabsTts";
 import express from "express";
 import { aceitarTermos } from "./helpers/aceites";
+import { voiceFingerprint } from "../../server/tutor/officialVoices";
+import { forgetTutorSettings } from "../../server/tutor/settings";
 
 const RABUGENTO: PersonalityParams = { humor: 65, sarcasm: 55, friendliness: 30, strictness: 80, profanity: 0, patience: 35, verbosity: 45, socratic_level: 70, motivation: 40, clinical_pressure: 60 };
 const XINGAO: PersonalityParams = { humor: 80, sarcasm: 65, friendliness: 55, strictness: 75, profanity: 65, patience: 45, verbosity: 45, socratic_level: 60, motivation: 65, clinical_pressure: 70 };
@@ -312,6 +314,14 @@ describe("Validação de segurança (regras, sem IA)", () => {
     expect(sourceQuery("Pré-eclâmpsia com sinais de gravidade", null, "qual a conduta")).toBe("eclampsia or sinais or gravidade or conduta");
   });
 });
+
+/** Voz do professor nos testes: ambiente falso (sem rede) e as três vozes aprovadas nesta versão. */
+const VOZ_ENV = {
+  ELEVENLABS_API_KEY: "chave-falsa-de-teste-" + "x".repeat(40), TUTOR_VOICE_ALLOW_EXTERNAL: "1",
+  ELEVENLABS_VOICE_TRANQUILO: "vozTranquiloTeste01", ELEVENLABS_VOICE_DURONA: "vozDuronaTeste0001", ELEVENLABS_VOICE_DIRETO: "vozDiretoTeste0001",
+};
+const aprovarVozes = (q: (s: string, p?: unknown[]) => Promise<unknown>) =>
+  Promise.all((["tranquilo", "durona", "direto"] as const).map((v) => q(`insert into public.tutor_voice_approvals (voice, fingerprint) values ($1, $2) on conflict (voice) do update set fingerprint = excluded.fingerprint, revoked_at = null`, [v, voiceFingerprint(v, VOZ_ENV)])));
 
 describe("Voz natural: serviços de voz (sem chamada externa)", () => {
   const KEY = "sk-" + "k".repeat(40);
@@ -899,7 +909,7 @@ describe("Banco e motor (IA simulada)", () => {
           fetch(base + pathName, { method: body ? "POST" : "GET", headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
         expect((await call("/status", null)).status).toBe(401);
         // o aluno vê só o que liga ou desliga botões (voz e GPT-Live) e o limite por conversa de voz; o motivo da pendência é do administrador
-        expect(await (await call("/status", student)).json()).toEqual({ ready: true, simulated: true, neural_voice: false, realtime_voice: false, live_voice: false, tts_only: false, voice_hint: null, voice_session_max_seconds: 1800 });
+        expect(await (await call("/status", student)).json()).toEqual({ ready: true, simulated: true, neural_voice: false, realtime_voice: false, live_voice: false, voice_hint: null, voice_session_max_seconds: 1800 });
         expect(await (await call("/status", admin)).json()).toMatchObject({ ready: true, simulated: true, provider: "mock" });
         expect((await call("/turn", student, { session_id: "x", action: "message", text: "oi" })).status).toBe(400);
         expect((await call("/turn", student, { session_id: session, action: "apagar", text: "oi" })).status).toBe(400);
@@ -956,9 +966,12 @@ describe("Banco e motor (IA simulada)", () => {
 
   describe("Voz natural (serviço de voz simulado)", () => {
     it("só vira voz o texto já validado do próprio aluno; conta caracteres e custo do dia sem contar mensagem; repetir sai do cache", async () => {
-      await sql(`update public.tutor_config set enabled = true, voice_enabled = true, requires_pro = false`);
+      // a voz do professor: vozes aprovadas, "só equipe" desligado e o preço por mil caracteres do painel
+      await sql(`update public.tutor_config set enabled = true, voice_enabled = true, requires_pro = false, tts_team_only = false, tts_price_per_1k_chars_usd = 0.3`);
+      await aprovarVozes(sql);
       const speech = new MockSpeech();
-      const deps: any = { db, speech, mockRespond: () => reply("Porra, olha o caso de novo.") };
+      const deps: any = { db, speech, elevenEnv: VOZ_ENV, mockRespond: () => reply("Porra, olha o caso de novo.") };
+      forgetTutorSettings(deps);
       const app = express();
       app.use(express.json());
       app.use("/api/tutor", createTutorRouter(deps));
@@ -1014,9 +1027,11 @@ describe("Banco e motor (IA simulada)", () => {
         expect(read).not.toMatch(/gabarito/i);
 
         // teto do dia, voz desligada, plano pago e servidor sem voz
-        process.env.TUTOR_VOICE_DAILY_CHARS = "10";
-        expect((await post({ kind: "phrase", phrase: "unmarked", personality_id: "direto" })).status).toBe(429);
-        delete process.env.TUTOR_VOICE_DAILY_CHARS;
+        await sql(`update public.tutor_config set tts_paid_daily_chars = 10`);
+        const limit = await post({ kind: "phrase", phrase: "unmarked", personality_id: "direto" });
+        expect(limit.status).toBe(429);
+        expect(await limit.json()).toEqual({ error: "Você usou sua voz de hoje", code: "voice_student_limit" });
+        await sql(`update public.tutor_config set tts_paid_daily_chars = 4500`);
         await sql(`update public.tutor_config set voice_enabled = false`);
         expect((await post({ kind: "phrase", phrase: "unmarked", personality_id: "direto" })).status).toBe(503);
         // a voz segue o direito do Tutor, não a regra antiga "só assinante": o aluno do teste grátis ouve

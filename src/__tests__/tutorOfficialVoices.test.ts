@@ -199,10 +199,14 @@ describe("vozes oficiais: configuração, revisão e fronteira TTS", () => {
     expect(SpeechCache.key(a, { personality: "direto" }, "Olá")).not.toBe(key);
     expect(SpeechCache.key(a, { personality: "acolhedor", direction: { emotion: "pleased" } }, "Olá")).not.toBe(key);
   });
-  it("a rota existente continua buscando o texto e a personalidade do dono no banco", async () => {
+  it("a rota busca no banco o texto, o professor e o estado com que a fala foi escrita", async () => {
     const speech = new MockSpeech();
-    const service = vi.fn(async (fn) => fn === "ch_worker_tutor_speech" ? { found: true, config: { enabled: true, voice_enabled: true, requires_pro: true }, is_pro: true, personality: "durona", text: "Texto validado do banco para integração oficial.", emotion: { mood: "irritated", frustration: 60 } } : null);
-    await tutorSpeech({ db: { service }, speech } as any, "student-owner", { kind: "message", sessionId: "session", messageId: 1, personalityId: null, phrase: null, letter: null });
+    const quota = { mode: "paid", voice_enabled: true, team_only: false, staff: false, remaining_today: 4500, account_day_left: 4500, account_month_left: 30000,
+      approvals: { durona: { fingerprint: voiceFingerprint("durona", ENV), approved_at: "2026-10-08T12:00:00Z", sample_path: null } } };
+    const service = vi.fn(async (fn) => fn === "ch_worker_tutor_speech"
+      ? { found: true, config: { enabled: true, voice_enabled: true }, quota, session_id: "session", personality: "durona", text: "Texto validado do banco para integração oficial.", direction: { mood: "irritated", frustration: 60 } }
+      : fn === "ch_worker_tutor_tts_reserve" ? { ok: true, reservation: 1 } : null);
+    await tutorSpeech({ db: { service }, speech, elevenEnv: ENV } as any, "student-owner", { kind: "message", sessionId: "session", messageId: 1, personalityId: null, phrase: null, letter: null });
     expect(service).toHaveBeenCalledWith("ch_worker_tutor_speech", expect.objectContaining({ p_user: "student-owner", p_session_id: "session", p_message_id: 1 }));
     expect(speech.calls[0]).toMatchObject({ text: "Texto validado do banco para integração oficial.", voice: { personality: "durona", direction: { emotion: "irritated", intensity: 0.6 } } });
   });
@@ -255,12 +259,12 @@ describe("audição interna autenticada (sem ElevenLabs real)", () => {
     const [, init] = provider.mock.calls[0] as unknown as [string, RequestInit];
     expect(JSON.parse(init.body as string).text).toContain(VOICE_SCENARIOS.repeticao.text);
   });
-  it("ao escolher TTS não anuncia Live/Realtime nem abre nova sessão nesses provedores", async () => {
+  it("TUTOR_VOICE_PROVIDER não desliga mais a voz ao vivo (reserva): o status não tem tts_only e a abertura não recusa por ele", async () => {
     vi.stubEnv("TUTOR_VOICE_PROVIDER", "elevenlabs");
     const status = await fetch(`${base.replace(/\/voices$/, "")}/tutor/status`, { headers: { Authorization: "Bearer admin" } }).then((r) => r.json());
-    expect(status).toMatchObject({ tts_only: true, realtime_voice: false, live_voice: false, voice_hint: null });
+    expect(status).not.toHaveProperty("tts_only");
+    expect(status.realtime_voice).toBe(true);
     const response = await fetch(`${base.replace(/\/voices$/, "")}/tutor/voice/start`, { method: "POST", headers: { Authorization: "Bearer admin", "Content-Type": "application/json" }, body: JSON.stringify({ session_id: "11111111-1111-4111-8111-111111111111" }) });
-    expect(response.status).toBe(409);
-    expect((await response.json()).error).toContain("Stazia Tutor Engine");
+    expect(JSON.stringify(await response.json())).not.toContain("Stazia Tutor Engine");
   });
 });

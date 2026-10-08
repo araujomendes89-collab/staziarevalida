@@ -7,7 +7,9 @@
  *   ELEVENLABS_API_KEY, ELEVENLABS_VOICE_TRANQUILO / _DURONA / _DIRETO, ELEVENLABS_MODEL_ID (eleven_v3), ELEVENLABS_OUTPUT_FORMAT
  *   TUTOR_VOICE_DAILY_CHARS       teto de caracteres falados por aluno por dia (padrão 30.000, cerca de meia hora de fala)
  *
- * Sem voz natural pronta, o aplicativo usa a voz do aparelho, como antes. A voz é sempre a mesma resposta validada: só muda o som.
+ * A voz é sempre a mesma resposta validada: só muda o som. Quem pode ouvir, quanto e com qual voz decide nexus.ts (direito do
+ * Tutor, caracteres por plano, tetos da conta, aprovação de cada voz); cada fala reserva os caracteres antes de gerar e
+ * devolve se a voz não sair.
  */
 import { createHash } from "crypto";
 import { TRIAL_OVER, TutorError, consentError, type TutorDeps } from "./engine";
@@ -15,7 +17,9 @@ import { spokenText } from "./safety";
 import { TUTOR_SPOKEN_LANGUAGE } from "../../src/shared/tutor/voiceLanguage";
 import { speechDirectionFromState, type SpeechDirection } from "./speechDirector";
 import { elevenSynth } from "./elevenlabsTts";
-import { elevenLabsReadiness } from "./officialVoices";
+import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
+import { elevenAccessOf, voiceBlockError, type ElevenBlock, type TtsQuota } from "./nexus";
+import { tutorSettings } from "./settings";
 
 export interface VoiceProfile {
   openai?: string;
@@ -152,6 +156,19 @@ export class SpeechCache {
 /** Texto que de fato vira voz: o mesmo da fala validada, sem marcação. */
 export const speechInput = (text: string) => spokenText(text).slice(0, MAX_SPEECH_CHARS);
 
+/**
+ * Pedaço da fala que vira voz (~450 caracteres): corta no último fim de frase depois da metade (com a pontuação); sem isso,
+ * no último espaço. O texto inteiro continua na legenda e no chat.
+ */
+export function speechCut(text: string, max = 450): string {
+  if (text.length <= max) return text;
+  const window = text.slice(0, max + 1);
+  const end = Math.max(...[". ", "? ", "! ", "… "].map((mark) => window.lastIndexOf(mark)));
+  if (end >= max / 2) return text.slice(0, end + 1);
+  const space = text.slice(0, max).lastIndexOf(" ");
+  return space > 0 ? text.slice(0, space) : text.slice(0, max);
+}
+
 export interface SpeechRequest {
   kind: "message" | "question" | "phrase";
   sessionId: string | null;
@@ -167,16 +184,18 @@ interface SpeechSource {
   consent_pending?: boolean;
   config?: { enabled: boolean; voice_enabled: boolean };
   /** Direito do Tutor e caracteres da voz do professor (tutor_tts_quota). */
-  quota?: { mode: "trial" | "paid" | "blocked"; used_today: number };
+  quota?: TtsQuota;
+  session_id?: string | null;
+  /** O estado com que a fala foi escrita (meta.personality); nulo em frase fixa e questão. */
+  direction?: Record<string, unknown> | null;
   personality?: string;
   voice?: VoiceProfile;
-  emotion?: Record<string, unknown> | null;
   sample?: string | null;
   text?: string | null;
 }
 
 const cache = new SpeechCache();
-const DAILY_CHARS = () => (Number(process.env.TUTOR_VOICE_DAILY_CHARS) > 0 ? Number(process.env.TUTOR_VOICE_DAILY_CHARS) : 30_000);
+const NEUTRAL: SpeechDirection = { emotion: "neutral", intensity: 0 };
 
 /** Voz do professor: a dos testes (deps.speech) ou a oficial, pronta quando ao menos uma voz está configurada. */
 export function speechProviderFor(deps: TutorDeps): { provider: SpeechProvider | null; status: SpeechStatus } {
@@ -190,7 +209,11 @@ export function speechProviderFor(deps: TutorDeps): { provider: SpeechProvider |
   return { provider: ready ? elevenSynth(deps) : null, status };
 }
 
-/** Gera a voz natural de um texto já validado, para o aluno dono dele. Conta os caracteres do dia e o custo estimado. */
+/**
+ * Gera a voz do professor para um texto já validado, do aluno dono dele. Ordem: aceite, fala existente, Tutor e voz ligados,
+ * teste grátis, texto, acesso à voz (nexus.ts), cache (ouvir de novo não reserva nem cobra), reserva dos caracteres, voz
+ * (falhou: estorno) e o gasto no registro de uso com o preço do painel.
+ */
 export async function tutorSpeech(deps: TutorDeps, userId: string, req: SpeechRequest): Promise<SpeechAudio & { cached: boolean }> {
   const { provider, status } = speechProviderFor(deps);
   if (!provider) {
@@ -204,23 +227,44 @@ export async function tutorSpeech(deps: TutorDeps, userId: string, req: SpeechRe
   if (src?.consent_pending) throw consentError();
   if (!src?.found) throw new TutorError(req.kind === "phrase" ? "Professor não encontrado." : "Fala não encontrada.", 404);
   if (!src.config!.enabled || !src.config!.voice_enabled) throw new TutorError("A voz do Tutor está desligada.", 503);
-  if (src.quota?.mode === "blocked") throw new TutorError(TRIAL_OVER, 403);
+  const quota = src.quota!;
+  if (quota.mode === "blocked") throw new TutorError(TRIAL_OVER, 403);
   const raw = req.kind === "phrase" ? phraseText(req.phrase ?? "", req.letter, src.sample ?? null) : src.text;
   if (!raw) throw new TutorError("Frase inválida.", 400);
-  const text = speechInput(raw);
-  const voice: VoiceProfile = { ...(src.voice ?? {}), personality: src.personality, direction: speechDirectionFromState(src.emotion) };
+  const text = req.kind === "message" ? speechCut(speechInput(raw)) : speechInput(raw);
+  if (!text) throw new TutorError("Frase inválida.", 400);
+
+  const id = officialVoiceForPersonality(src.personality);
+  const row = elevenLabsReadiness(deps.elevenEnv ?? process.env, quota.approvals).rows.find((r) => r.id === id) ?? null;
+  const access = elevenAccessOf({ quota, row, need: text.length });
+  if (!access.ok) throw voiceBlockError(access.reason!);
+
+  const voice: VoiceProfile = { ...(src.voice ?? {}), personality: src.personality, direction: req.kind === "message" ? speechDirectionFromState(src.direction) : NEUTRAL };
   const key = SpeechCache.key(provider, voice, text);
   const hit = cache.get(key);
   if (hit) return { ...hit, cached: true };
-  if ((src.quota?.used_today ?? 0) + text.length > DAILY_CHARS()) throw new TutorError("Você chegou ao limite de voz natural de hoje. O professor continua falando com a voz do aparelho.", 429);
+
+  const reserved = await deps.db.service<{ ok: boolean; reason?: string; reservation?: number }>("ch_worker_tutor_tts_reserve", {
+    p_user: userId, p_session_id: src.session_id ?? null, p_chars: text.length,
+  });
+  if (!reserved.ok) {
+    if (reserved.reason === "disabled") throw new TutorError("A voz do Tutor está desligada.", 503);
+    if (reserved.reason === "trial_expired") throw new TutorError(TRIAL_OVER, 403);
+    throw voiceBlockError(reserved.reason === "voice_disabled" ? "voice_off" : (reserved.reason as ElevenBlock));
+  }
+  const settle = (spent: boolean, entry: Record<string, unknown> = {}) =>
+    deps.db.service("ch_worker_tutor_tts_settle", { p_user: userId, p_reservation: reserved.reservation, p_spent: spent, p_entry: entry });
   let out: SpeechAudio;
   try {
     out = await provider.synthesize(text, voice);
   } catch (error) {
     deps.log?.(`[tutor] falha do serviço de voz: ${(error as Error).message.slice(0, 200)}`);
-    throw new TutorError("A voz natural falhou agora. O professor fala com a voz do aparelho.", 502);
+    await settle(false).catch(() => undefined);
+    throw Object.assign(new TutorError("A voz natural falhou agora.", 502), { code: "voice_failed" });
   }
-  await deps.db.service("ch_worker_tutor_voice_charge", { p_user: userId, p_chars: text.length, p_cost: speechCost(text.length, provider.pricePerMinute ?? 0) });
+  const settings = await tutorSettings(deps);
+  const cost = Math.round((text.length / 1000) * settings.tts_price_per_1k_chars_usd * 1e6) / 1e6;
+  await settle(true, { provider: provider.name, model: provider.model, estimated_cost_usd: cost, meta: { kind: req.kind, voice: id } });
   cache.set(key, out);
   return { ...out, cached: false };
 }

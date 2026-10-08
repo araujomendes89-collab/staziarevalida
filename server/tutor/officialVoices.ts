@@ -16,7 +16,6 @@ const LEGACY_ENV_NAMES: Partial<Record<OfficialVoice, string>> = {
 };
 export const OFFICIAL_VOICE_KEYS = Object.keys(OFFICIAL_VOICES) as OfficialVoice[];
 export const validVoiceId = (value: unknown): value is string => typeof value === "string" && /^[a-zA-Z0-9_-]{10,128}$/.test(value);
-export const elevenLabsSelected = (env: NodeJS.ProcessEnv = process.env) => env.TUTOR_VOICE_PROVIDER?.trim().toLowerCase() === "elevenlabs";
 
 /** Alias explícito: mantém o ID e o comportamento da Durona já existente no banco. */
 export function officialVoiceForPersonality(id: string | undefined): OfficialVoice | null {

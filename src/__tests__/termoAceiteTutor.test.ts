@@ -21,6 +21,7 @@ import { MockSpeech } from "../../server/tutor/speech";
 import type { RealtimeConfig } from "../../server/tutor/realtime";
 import { setLiveSidebandFactory, type GeminiVoiceConfig, type LiveConfig } from "../../server/tutor/voiceProviders";
 import { aceitarTermos } from "./helpers/aceites";
+import { voiceFingerprint } from "../../server/tutor/officialVoices";
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tutor-aceite-"));
 let dev: DevDatabase;
@@ -32,6 +33,13 @@ const SEM_LOGIN = "Entre na sua conta.";
 const SEM_ACEITE_CODE = "42501";
 
 const sql = async <T = any>(q: string, p: unknown[] = []) => (await dev.db.query<T>(q, p)).rows;
+/** Voz do professor nos testes: ambiente falso (sem rede) e as três vozes aprovadas nesta versão. */
+const VOZ_ENV = {
+  ELEVENLABS_API_KEY: "chave-falsa-de-teste-" + "x".repeat(40), TUTOR_VOICE_ALLOW_EXTERNAL: "1",
+  ELEVENLABS_VOICE_TRANQUILO: "vozTranquiloTeste01", ELEVENLABS_VOICE_DURONA: "vozDuronaTeste0001", ELEVENLABS_VOICE_DIRETO: "vozDiretoTeste0001",
+};
+const aprovarVozes = (q: (s: string, p?: unknown[]) => Promise<unknown>) =>
+  Promise.all((["tranquilo", "durona", "direto"] as const).map((v) => q(`insert into public.tutor_voice_approvals (voice, fingerprint) values ($1, $2) on conflict (voice) do update set fingerprint = excluded.fingerprint, revoked_at = null`, [v, voiceFingerprint(v, VOZ_ENV)])));
 /** Roda como o navegador (papel authenticated) de um aluno logado, ou sem sessão (uid nulo, como um token sem usuário). */
 const as = <T>(uid: string | null, fn: (q: (s: string, p?: unknown[]) => Promise<any[]>) => Promise<T>) =>
   dev.db.transaction(async (tx) => {
@@ -432,7 +440,7 @@ describe("Aceite dos Tutores — rotas do servidor (/api/tutor)", () => {
     return new Response("?", { status: 404 });
   }) as typeof fetch;
   const speech = new MockSpeech();
-  const deps: any = { mockRespond: () => reply("Por onde você começaria?"), speech, realtime: RT, live: LIVE, gemini: SEM_GEMINI, fetch: fakeFetch };
+  const deps: any = { mockRespond: () => reply("Por onde você começaria?"), speech, realtime: RT, live: LIVE, gemini: SEM_GEMINI, fetch: fakeFetch, elevenEnv: VOZ_ENV };
   let server: Server;
   let base: string;
 
@@ -520,6 +528,9 @@ describe("Aceite dos Tutores — rotas do servidor (/api/tutor)", () => {
     expect((await pedir(token, "/turn", { session_id: sid, action: "message", text: "oi" })).status).toBe(403);
 
     await rpc(aluno, "app_accept_terms", "tutor_ia", "1.0", "tutor");
+    // a voz do professor fala com alunos: vozes aprovadas e "só equipe" desligado
+    await aprovarVozes(sql);
+    await sql(`update public.tutor_config set tts_team_only = false`);
 
     const turno = await pedir(token, "/turn", { session_id: sid, action: "message", text: "oi" });
     expect(turno).toMatchObject({ status: 200, corpo: { message: { role: "tutor", content: "Por onde você começaria?" } } });
