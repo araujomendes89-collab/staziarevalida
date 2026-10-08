@@ -4,7 +4,7 @@
  */
 import express, { type NextFunction, type Request, type Response } from "express";
 import type { Identity } from "../contentHub/infra";
-import { TutorError, resolveTutorProvider, tutorTurn, type TutorDeps } from "./engine";
+import { TUTOR_CONSENT_PENDING, TutorError, consentError, resolveTutorProvider, tutorTurn, type TutorDeps } from "./engine";
 import { speechProviderFor, tutorSpeech } from "./speech";
 import { endVoice, purgeVoiceTranscripts, recordVoiceMetrics, recordVoiceUsage, rememberEvidence, renewVoice, startVoice, sweepVoice, voiceCall, voiceReady, voiceTranscript, type EndReason } from "./realtime";
 import { runTutorTool, TOOL_NAMES } from "./tools";
@@ -14,6 +14,11 @@ import { planProviders } from "./voiceProviders";
 
 type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
+/** Resposta para um erro do Tutor: a mensagem e, quando o erro traz, o código (o aplicativo age por ele, ex.: tutor_consent) e o direito de uso. */
+const failTutor = (res: Response, error: TutorError) => {
+  const extra = error as TutorError & { code?: string; entitlement?: unknown };
+  return res.status(error.status).json({ error: error.message, ...(extra.code ? { code: extra.code } : {}), ...(extra.entitlement ? { entitlement: extra.entitlement } : {}) });
+};
 
 export function createTutorRouter(deps: TutorDeps | null, pending: string | null = null) {
   const router = express.Router();
@@ -98,7 +103,7 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       res.setHeader("X-Tutor-Voice-Cache", out.cached ? "hit" : "miss");
       res.send(out.audio);
     } catch (error) {
-      if (error instanceof TutorError) return fail(res, error.status, error.message);
+      if (error instanceof TutorError) return failTutor(res, error);
       deps!.log?.(`[tutor] erro na voz: ${(error as Error).message}`);
       fail(res, 500, "A voz natural falhou agora.");
     }
@@ -120,7 +125,7 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       });
       res.json(result);
     } catch (error) {
-      if (error instanceof TutorError) return fail(res, error.status, error.message);
+      if (error instanceof TutorError) return failTutor(res, error);
       deps!.log?.(`[tutor] erro: ${(error as Error).message}`);
       fail(res, 500, "O Tutor não conseguiu responder agora.");
     }
@@ -138,10 +143,9 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       }
       res.json(await handler(req, req.body ?? {}));
     } catch (error) {
-      if (error instanceof TutorError) {
-        const extra = error as TutorError & { code?: string; entitlement?: unknown };
-        return res.status(error.status).json({ error: error.message, ...(extra.code ? { code: extra.code } : {}), ...(extra.entitlement ? { entitlement: extra.entitlement } : {}) });
-      }
+      // aceite perdido no meio da ligação: a letra dita e a próxima questão vão direto ao banco, que recusa com a mesma frase, sem código
+      const known = error instanceof Error && error.message === TUTOR_CONSENT_PENDING ? consentError() : error;
+      if (known instanceof TutorError) return failTutor(res, known);
       deps!.log?.(`[tutor] voz: erro: ${(error as Error).message}`);
       fail(res, 500, "A conversa por voz falhou agora.");
     }

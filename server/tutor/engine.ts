@@ -55,6 +55,15 @@ export class TutorError extends Error {
   }
 }
 
+/**
+ * Aluno sem o aceite dos Tutores de IA (§34 do Termo vigente). A frase é a mesma com que o banco recusa (42501). O 403 leva o código
+ * `tutor_consent`: o aplicativo mostra o cartão do aceite, nunca o aviso de plano pago.
+ */
+export const TUTOR_CONSENT_PENDING = "Aceite do Tutor pendente.";
+export function consentError(): TutorError & { code: "tutor_consent" } {
+  return Object.assign(new TutorError(TUTOR_CONSENT_PENDING, 403), { code: "tutor_consent" as const });
+}
+
 export interface Entitlement {
   enabled: boolean;
   mode: "paid" | "trial" | "blocked";
@@ -80,6 +89,8 @@ interface PlayContext {
 }
 
 interface Context {
+  /** O banco diz que o aluno ainda não aceitou os Tutores de IA (equipe e revisor médico nunca ficam pendentes). */
+  consent_pending?: boolean;
   config: { enabled: boolean; requires_pro: boolean; daily_limit: number; max_profanity: ProfanityLevel };
   entitlement: Entitlement;
   session: {
@@ -238,6 +249,8 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
   try {
     const ctx = await deps.db.service<Context | null>("ch_worker_tutor_context", { p_user: userId, p_session_id: sessionId });
     if (!ctx) throw new TutorError("Conversa não encontrada.", 404);
+    // o aceite vem antes de qualquer outra conferência (plano, limite, IA): sem ele a tela mostra o cartão do aceite, não o aviso de plano
+    if (ctx.consent_pending) throw consentError();
     // Stazia Play: só números agregados (ranking, liga, sequência, área mais fraca); a IA interpreta, nunca decide pontos
     const play = await deps.db.service<PlayContext | null>("ch_worker_tutor_play_context", { p_user: userId }).catch(() => null);
     const ent = ctx.entitlement;

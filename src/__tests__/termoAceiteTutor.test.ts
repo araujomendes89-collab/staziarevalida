@@ -3,15 +3,23 @@
  * Aceite dos Tutores de IA (§34 do Termo) no banco (supabase/migrations/…5400_tutor_aceite.sql): sem o aceite da versão vigente o
  * aluno não começa, não abre, não responde e não pede a próxima; a lista de conversas vem vazia; o status pede o aceite; e o servidor
  * recebe `consent_pending` no contexto da conversa e na leitura de voz. Administrador, editor e revisor médico usam sem aceitar.
+ * No servidor (/api/tutor): turno, voz (abrir e delegar) e voz natural recusam com 403 e o código tutor_consent, antes de gastar IA ou voz.
  * Spec: docs/superpowers/specs/2026-10-07-termo-aceite-cadastro-design.md (seção 8).
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import express from "express";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import type { Server } from "http";
 import { openDevDatabaseForTests, type DevDatabase } from "../../server/devDb/devDatabase";
 import { devContentDb, type ContentDb } from "../../server/contentHub/infra";
 import { buildEngineStatements } from "../../scripts/supabase/engine-seed";
+import { NO_EVALUATION, type TutorOutput } from "../../server/tutor/prompts";
+import { createTutorRouter } from "../../server/tutor/router";
+import { MockSpeech } from "../../server/tutor/speech";
+import type { RealtimeConfig } from "../../server/tutor/realtime";
+import { setLiveSidebandFactory, type GeminiVoiceConfig, type LiveConfig } from "../../server/tutor/voiceProviders";
 import { aceitarTermos } from "./helpers/aceites";
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tutor-aceite-"));
@@ -62,6 +70,8 @@ async function novoAluno(): Promise<string> {
 }
 /** Tira só o aceite dos Tutores (as conversas ficam): é o estado de quem aceitou antes e precisa aceitar de novo. */
 const perderAceiteTutor = (uid: string) => sql(`delete from public.legal_acceptances where user_id = $1 and document = 'tutor_ia'`, [uid]);
+/** Resposta da IA simulada no formato que o motor do Tutor espera. */
+const reply = (text: string, over: Partial<TutorOutput> = {}): TutorOutput => ({ reply: text, grounding: "GENERAL", citations: [], evaluation: NO_EVALUATION, justification: "NONE", reveals_answer: false, suggested_replies: [], ...over });
 
 beforeAll(async () => {
   dev = await openDevDatabaseForTests(path.join(tmp, "db"));
@@ -401,5 +411,177 @@ describe("Aceite dos Tutores — o que o servidor recebe", () => {
     const q = (s: string, p: unknown[]) => as(aluno, (run) => run(s, p));
     expect((await recusa(q(`select public.ch_worker_tutor_context($1, $2)`, [aluno, conversa.id]))).message).toMatch(/permission denied/i);
     expect((await recusa(q(`select public.ch_worker_tutor_speech($1, $2, 'phrase', null, 'acolhedor')`, [aluno, conversa.id]))).message).toMatch(/permission denied/i);
+  });
+});
+
+describe("Aceite dos Tutores — rotas do servidor (/api/tutor)", () => {
+  // O servidor de verdade (Express + createTutorRouter) sobre o mesmo banco. IA, voz natural e OpenAI SIMULADAS: nenhuma chamada externa.
+  const KEY = "sk-servidor-" + "z".repeat(40);
+  const RT: RealtimeConfig = { ready: true, model: "gpt-realtime-2.1", pending: null, key: KEY, transcribeModel: null };
+  const LIVE: LiveConfig = { ready: true, model: "gpt-live-1", key: KEY, pending: null };
+  const SEM_GEMINI: GeminiVoiceConfig = { ready: false, model: "gemini-teste", key: null, pending: "Gemini desligado no teste." };
+  const RECUSA = { error: PENDENTE, code: "tutor_consent" };
+  const SDP = "v=0 oferta-do-navegador";
+  const SEM_CONVERSA = "00000000-0000-4000-8000-00000000ffff";
+  const openai: string[] = [];
+  const fakeFetch = (async (url: string) => {
+    openai.push(url);
+    if (url.endsWith("/live/sessions")) return new Response(JSON.stringify({ session: { id: "live_teste" }, transport: { type: "webrtc", sdp: "v=0 resposta-live" } }), { status: 201 });
+    if (url.endsWith("/realtime/client_secrets")) return new Response(JSON.stringify({ value: "ek_temporario_teste", expires_at: 1_900_000_000 }), { status: 200 });
+    if (/\/realtime\/calls\/[^/]+\/hangup$/.test(url)) return new Response("", { status: 200 });
+    return new Response("?", { status: 404 });
+  }) as typeof fetch;
+  const speech = new MockSpeech();
+  const deps: any = { mockRespond: () => reply("Por onde você começaria?"), speech, realtime: RT, live: LIVE, gemini: SEM_GEMINI, fetch: fakeFetch };
+  let server: Server;
+  let base: string;
+
+  beforeAll(async () => {
+    deps.db = db;
+    const app = express();
+    app.use(express.json());
+    app.use("/api/tutor", createTutorRouter(deps));
+    server = await new Promise<Server>((resolve) => {
+      const srv = app.listen(0, "127.0.0.1", () => resolve(srv));
+    });
+    base = `http://127.0.0.1:${(server.address() as any).port}/api/tutor`;
+    // sem rede: se alguma ligação do GPT-Live precisar ser desligada, o canal lateral não abre
+    setLiveSidebandFactory(() => {
+      throw new Error("sem rede nos testes");
+    });
+  });
+  afterAll(async () => {
+    setLiveSidebandFactory(null);
+    await new Promise((r) => server?.close(r));
+  });
+
+  /** POST na rota do Tutor com o token do aluno: devolve o status e o corpo (JSON, ou os bytes do áudio). */
+  const pedir = async (token: string, rota: string, corpo: unknown) => {
+    const r = await fetch(`${base}${rota}`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify(corpo) });
+    const tipo = r.headers.get("content-type") ?? "";
+    return { status: r.status, tipo, corpo: tipo.includes("json") ? await r.json() : Buffer.from(await r.arrayBuffer()) };
+  };
+  /** Aluno que já usou o Tutor (aceitou, tem a conversa de questão e a fala de abertura do professor). O teste tira o aceite quando quiser. */
+  async function alunoComConversa(pago = true) {
+    const aluno = await novoAluno();
+    await aceitarTermos(dev.db, aluno);
+    // plano pago: nenhum aviso de plano pode aparecer no lugar do aceite (o teste de precedência usa quem não paga)
+    if (pago) await sql(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [aluno]);
+    const conversa = await rpc(aluno, "app_tutor_start", "questao", null, null);
+    const fala = (await sql<{ id: string }>(`select id from public.tutor_messages where session_id = $1 and role = 'tutor' order by id limit 1`, [conversa.id]))[0].id;
+    return { aluno, token: await dev.createSession(aluno), sid: conversa.id as string, fala: Number(fala) };
+  }
+  /** Tudo o que o aluno gasta ou muda no Tutor: IA, voz, ligações, falas, respostas e dicas. */
+  const uso = async (aluno: string, sid: string) => ({
+    ia: await contar(`select coalesce(sum(requests), 0) n from public.ai_usage where user_id = $1`, [aluno]),
+    voz: await contar(`select coalesce(sum(voice_chars), 0) n from public.ai_usage where user_id = $1`, [aluno]),
+    ligacoes: await contar(`select count(*) n from public.tutor_voice_calls where user_id = $1`, [aluno]),
+    falas: await contar(`select count(*) n from public.tutor_messages where session_id = $1`, [sid]),
+    respostas: await contar(`select count(*) n from public.tutor_answers where session_id = $1`, [sid]),
+    dicas: Number((await sql(`select hint_level n from public.tutor_sessions where id = $1`, [sid]))[0].n),
+  });
+  const zerar = () => {
+    openai.length = 0;
+    speech.calls.length = 0;
+  };
+
+  it("rotas do Tutor respondem 403 tutor_consent para aluno sem aceite", async () => {
+    zerar();
+    const { aluno, token, sid, fala } = await alunoComConversa();
+    await perderAceiteTutor(aluno);
+    const antes = await uso(aluno, sid);
+    const pedidos: [string, Record<string, unknown>][] = [
+      ["/turn", { session_id: sid, action: "message", text: "oi" }],
+      ["/turn", { session_id: sid, action: "hint" }],
+      ["/voice/start", { session_id: sid }], // Realtime
+      ["/voice/start", { session_id: sid, sdp: SDP }], // GPT-Live
+      ["/speech", { kind: "message", session_id: sid, message_id: fala }],
+      ["/speech", { kind: "question", session_id: sid }],
+      ["/speech", { kind: "phrase", phrase: "unmarked", personality_id: "acolhedor" }],
+      // a leitura traz o aviso mesmo quando não acha a fala: o aceite é conferido antes de procurar
+      ["/speech", { kind: "message", session_id: SEM_CONVERSA, message_id: 1 }],
+    ];
+    for (const [rota, corpo] of pedidos) {
+      const r = await pedir(token, rota, corpo);
+      expect({ status: r.status, corpo: r.corpo }, `${rota} ${JSON.stringify(corpo)}`).toEqual({ status: 403, corpo: RECUSA });
+    }
+    // recusou antes de gastar: nenhuma IA, nenhuma voz, nenhuma ligação, nenhuma fala nova, nenhuma dica; a OpenAI e o serviço de voz nem foram chamados
+    expect(await uso(aluno, sid)).toEqual(antes);
+    expect(openai).toEqual([]);
+    expect(speech.calls).toEqual([]);
+    // conversa que não existe continua sendo "não encontrada": não há o que recusar
+    expect(await pedir(token, "/turn", { session_id: SEM_CONVERSA, action: "message", text: "oi" })).toMatchObject({ status: 404, corpo: { error: "Conversa não encontrada." } });
+  });
+
+  it("depois do aceite as mesmas rotas voltam a funcionar", async () => {
+    zerar();
+    const { aluno, token, sid, fala } = await alunoComConversa();
+    await perderAceiteTutor(aluno);
+    expect((await pedir(token, "/turn", { session_id: sid, action: "message", text: "oi" })).status).toBe(403);
+
+    await rpc(aluno, "app_accept_terms", "tutor_ia", "1.0", "tutor");
+
+    const turno = await pedir(token, "/turn", { session_id: sid, action: "message", text: "oi" });
+    expect(turno).toMatchObject({ status: 200, corpo: { message: { role: "tutor", content: "Por onde você começaria?" } } });
+    expect((await pedir(token, "/turn", { session_id: sid, action: "hint" })).status).toBe(200);
+    for (const corpo of [{ kind: "message", session_id: sid, message_id: fala }, { kind: "question", session_id: sid }, { kind: "phrase", phrase: "unmarked", personality_id: "acolhedor" }]) {
+      const r = await pedir(token, "/speech", corpo);
+      expect({ status: r.status, tipo: r.tipo, riff: (r.corpo as Buffer).subarray(0, 4).toString("latin1") }, JSON.stringify(corpo)).toEqual({ status: 200, tipo: "audio/wav", riff: "RIFF" });
+    }
+    expect(speech.calls.length).toBe(3);
+    const voz = await pedir(token, "/voice/start", { session_id: sid });
+    expect(voz).toMatchObject({ status: 200, corpo: { provider: "realtime", client_secret: "ek_temporario_teste", model: "gpt-realtime-2.1" } });
+    expect((await pedir(token, "/voice/end", { voice_call_id: voz.corpo.voice_call_id })).status).toBe(200);
+  });
+
+  it("o aceite vem antes dos avisos de plano: o aluno vê o cartão do aceite, não a mensagem de teste terminado ou de plano pago", async () => {
+    zerar();
+    const { aluno, token, sid, fala } = await alunoComConversa(false);
+    await sql(`update public.subscriptions set tutor_trial_started_at = now() - interval '8 days' where user_id = $1`, [aluno]); // teste grátis terminado
+    await perderAceiteTutor(aluno);
+    const pedidos: [string, Record<string, unknown>][] = [
+      ["/turn", { session_id: sid, action: "message", text: "oi" }],
+      ["/voice/start", { session_id: sid }],
+      ["/speech", { kind: "message", session_id: sid, message_id: fala }],
+    ];
+    for (const [rota, corpo] of pedidos) {
+      const r = await pedir(token, rota, corpo);
+      expect({ status: r.status, corpo: r.corpo }, rota).toEqual({ status: 403, corpo: RECUSA });
+    }
+    // com o aceite valem as regras de plano de antes, sem o código (já não é pendência de aceite)
+    await rpc(aluno, "app_accept_terms", "tutor_ia", "1.0", "tutor");
+    for (const [rota, corpo, aviso] of [
+      ["/turn", pedidos[0][1], /teste grátis do Tutor terminou/],
+      ["/voice/start", pedidos[1][1], /teste grátis do Tutor terminou/],
+      ["/speech", pedidos[2][1], /planos pagos/],
+    ] as const) {
+      const r = await pedir(token, rota, corpo);
+      expect(r.status, rota).toBe(403);
+      expect(r.corpo, rota).toEqual({ error: expect.stringMatching(aviso) });
+    }
+    expect(openai).toEqual([]);
+    expect(speech.calls).toEqual([]);
+  });
+
+  it("ligação do GPT-Live aberta antes de o aceite acabar: delegar recusa com 403 tutor_consent (fala, dica e letra dita) e volta com o aceite", async () => {
+    zerar();
+    const { aluno, token, sid } = await alunoComConversa();
+    const aberta = await pedir(token, "/voice/start", { session_id: sid, sdp: SDP });
+    expect(aberta).toMatchObject({ status: 200, corpo: { provider: "live", sdp: "v=0 resposta-live" } });
+    const ligacao = aberta.corpo.voice_call_id;
+    const delegar = (fala: string) => pedir(token, "/voice/delegate", { voice_call_id: ligacao, transcript: [{ role: "student", text: fala }] });
+
+    await perderAceiteTutor(aluno);
+    const antes = await uso(aluno, sid);
+    for (const fala of ["oi, tudo bem?", "me dá uma dica", "acho que é a letra B"]) {
+      const r = await delegar(fala);
+      expect({ status: r.status, corpo: r.corpo }, fala).toEqual({ status: 403, corpo: RECUSA });
+    }
+    // nem a letra dita virou resposta, nem a dica foi contada, nem entrou fala nova
+    expect(await uso(aluno, sid)).toEqual(antes);
+
+    await rpc(aluno, "app_accept_terms", "tutor_ia", "1.0", "tutor");
+    const volta = await delegar("oi, tudo bem?");
+    expect(volta).toMatchObject({ status: 200, corpo: { intent: "message", say: [expect.stringMatching(/começaria/)] } });
   });
 });

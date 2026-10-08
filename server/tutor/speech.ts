@@ -12,7 +12,7 @@
  * Sem voz natural pronta, o aplicativo usa a voz do aparelho, como antes. A voz é sempre a mesma resposta validada: só muda o som.
  */
 import { createHash } from "crypto";
-import { TutorError, type TutorDeps } from "./engine";
+import { TutorError, consentError, type TutorDeps } from "./engine";
 import { spokenText } from "./safety";
 
 export interface VoiceProfile {
@@ -251,6 +251,8 @@ export interface SpeechRequest {
 
 interface SpeechSource {
   found: boolean;
+  /** O banco diz que o aluno ainda não aceitou os Tutores de IA (vem também quando não acha a fala). */
+  consent_pending?: boolean;
   config?: { enabled: boolean; voice_enabled: boolean; requires_pro: boolean };
   is_pro?: boolean;
   used_chars?: number;
@@ -282,6 +284,8 @@ export async function tutorSpeech(deps: TutorDeps, userId: string, req: SpeechRe
   const src = await deps.db.service<SpeechSource>("ch_worker_tutor_speech", {
     p_user: userId, p_session_id: req.sessionId, p_kind: req.kind, p_message_id: req.messageId, p_personality: req.personalityId,
   });
+  // o aceite vem primeiro, antes de "não encontrada" e do aviso de plano: sem ele nada é lido nem gerado
+  if (src?.consent_pending) throw consentError();
   if (!src?.found) throw new TutorError(req.kind === "phrase" ? "Professor não encontrado." : "Fala não encontrada.", 404);
   if (!src.config!.enabled || !src.config!.voice_enabled) throw new TutorError("A voz do Tutor está desligada.", 503);
   if (src.config!.requires_pro && !src.is_pro) throw new TutorError("O Tutor faz parte dos planos pagos.", 403);

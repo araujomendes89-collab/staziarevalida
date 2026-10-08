@@ -23,7 +23,7 @@
  */
 import { createHash } from "crypto";
 import { engineFor, languageIntensity, normalize, profanityForIntensity, stateLayer, type PersonaEngine, type TutorState } from "./emotion";
-import { TRIAL_OVER, TutorError, type Entitlement, type TutorDeps } from "./engine";
+import { TRIAL_OVER, TutorError, consentError, type Entitlement, type TutorDeps } from "./engine";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings as SessionPrefs } from "./personality";
 import { composeLiveInstructions, composeRealtimeInstructions, type TutorMode } from "./prompts";
 import { safetyCheck, type BaseBlock } from "./safety";
@@ -102,6 +102,8 @@ export async function hangup(callId: string | null | undefined, deps: Pick<Tutor
 }
 
 interface VoiceContext {
+  /** O banco diz que o aluno ainda não aceitou os Tutores de IA. */
+  consent_pending?: boolean;
   entitlement: Entitlement & { voice: { remaining_s: number; remaining_today_s: number; remaining_total_s: number | null } };
   config: { max_profanity: ProfanityLevel };
   session: { id: string; mode: TutorMode; title: string; topic: string | null; status: string; question_state: string; settings: SessionPrefs; emotion: (Partial<TutorState> & Record<string, unknown>) | null; context: { type: string | null; label: string | null } };
@@ -214,6 +216,8 @@ export async function startVoice(deps: TutorDeps, userId: string, sessionId: str
   const fetchImpl = deps.fetch ?? fetch;
   const ctx = await deps.db.service<VoiceContext | null>("ch_worker_tutor_context", { p_user: userId, p_session_id: sessionId });
   if (!ctx) throw new TutorError("Conversa não encontrada.", 404);
+  // sem o aceite dos Tutores a voz não abre: antes de reservar o tempo (o banco não confere isso na reserva) e de falar com qualquer provedor
+  if (ctx.consent_pending) throw consentError();
   const extras = await deps.db.service<VoiceExtras | null>("ch_worker_tutor_voice_context", { p_user: userId, p_session_id: sessionId }).catch(() => null);
 
   const engine = engineFor(ctx.personality.id, ctx.personality.engine, settings.durona_level);
