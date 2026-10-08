@@ -22,6 +22,7 @@ import {
 } from "../../server/tutor/voiceProviders";
 import { REALTIME_TOOLS } from "../../server/tutor/tools";
 import { voiceTimeCost } from "../../server/tutor/costs";
+import { aceitarTermos } from "./helpers/aceites";
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tutor-gemini-"));
 let dev: DevDatabase;
@@ -80,6 +81,7 @@ beforeAll(async () => {
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'adm@t.dev'), ($2, 'aluna@t.dev')`, [ADMIN, ALUNA]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [ALUNA]);
+  await aceitarTermos(dev.db, ALUNA); // a aluna já aceitou o §34 (o aceite em si é testado em termoAceiteTutor.test.ts)
   await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, requires_pro: true }, "Tutor ligado para os testes da voz do Gemini.");
   deps.db = db;
   const app = express();

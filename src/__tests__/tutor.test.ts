@@ -21,6 +21,7 @@ import { tutorMockRespond } from "../../server/tutor/mock";
 import { createTutorRouter } from "../../server/tutor/router";
 import { GeminiSpeech, MockSpeech, OpenAISpeech, phraseText, resolveSpeechProvider, speechCost } from "../../server/tutor/speech";
 import express from "express";
+import { aceitarTermos } from "./helpers/aceites";
 
 const RABUGENTO: PersonalityParams = { humor: 65, sarcasm: 55, friendliness: 30, strictness: 80, profanity: 0, patience: 35, verbosity: 45, socratic_level: 70, motivation: 40, clinical_pressure: 60 };
 const XINGAO: PersonalityParams = { humor: 80, sarcasm: 65, friendliness: 55, strictness: 75, profanity: 65, patience: 45, verbosity: 45, socratic_level: 60, motivation: 65, clinical_pressure: 70 };
@@ -385,6 +386,7 @@ describe("Banco e motor (IA simulada)", () => {
     await dev.db.query(`insert into auth.users (id, email) values ($1, 'a@t.dev'), ($2, 's1@t.dev'), ($3, 's2@t.dev')`, [ADMIN, S1, S2]);
     await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
     await dev.db.query(`update public.profiles set name = 'Maria Souza' where id = $1`, [S1]);
+    for (const uid of [S1, S2]) await aceitarTermos(dev.db, uid); // os alunos já aceitaram o §34 (o aceite em si é testado em termoAceiteTutor.test.ts)
     for (const r of await sql(`select id, correct_option from public.questions`)) off[r.id] = r.correct_option;
     process.env.TUTOR_AI_PROVIDER = "mock";
   }, 300_000);

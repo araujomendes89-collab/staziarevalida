@@ -57,6 +57,10 @@ try {
   for (const st of buildEngineStatements()) await dev.db.exec(st);
   await sql(`insert into auth.users (id, email) values ($1, 'teste@preflight.local')`, [USER]);
   await sql(`update public.profiles set name = 'Aluno de Teste' where id = $1`, [USER]);
+  // o aluno novo aceita o Termo e os Tutores de IA (§34) antes de usar o Tutor, pelo mesmo caminho do app, na versão vigente
+  for (const d of await sql<{ document: string; version: string }>(`select document, version from public.legal_versions order by document`)) {
+    await asUser(`select public.app_accept_terms($1, $2, $3) r`, [d.document, d.version, d.document === "tutor_ia" ? "tutor" : "tela_aceite"]);
+  }
   await sql(`update public.tutor_config set enabled = true, daily_message_limit = 20`);
   const professor = value("professor", "direto"); // acolhedor | direto | durona
   await asUser(`select public.app_tutor_save_preferences($1::jsonb) r`, [JSON.stringify({ personality_id: professor })]);

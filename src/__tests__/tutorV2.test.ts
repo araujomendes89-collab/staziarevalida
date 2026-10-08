@@ -17,6 +17,7 @@ import { createTutorRouter } from "../../server/tutor/router";
 import { realtimeConfig, startVoiceSweeper, type RealtimeConfig } from "../../server/tutor/realtime";
 import { estimateCost, priceFor } from "../../server/tutor/costs";
 import { REALTIME_TOOLS } from "../../server/tutor/tools";
+import { aceitarTermos } from "./helpers/aceites";
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tutor-v2-"));
 let dev: DevDatabase;
@@ -61,6 +62,7 @@ beforeAll(async () => {
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'a@t.dev'), ($2, 'b1@t.dev'), ($3, 'b2@t.dev'), ($4, 'b3@t.dev'), ($5, 'pago@t.dev')`, [ADMIN, S1, S2, S3, PAID]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [PAID]);
+  for (const uid of [S1, S2, S3, PAID]) await aceitarTermos(dev.db, uid); // os alunos já aceitaram o §34 (o aceite em si é testado em termoAceiteTutor.test.ts)
   for (const r of await sql(`select id, correct_option from public.questions`)) off[r.id] = r.correct_option;
   process.env.TUTOR_AI_PROVIDER = "mock";
   await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, requires_pro: true }, "Tutor ligado com teste grátis para os testes.");

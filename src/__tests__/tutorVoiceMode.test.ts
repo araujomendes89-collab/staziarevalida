@@ -22,6 +22,7 @@ import { liveConfig, planProviders, resetLiveAvailability, setLiveSidebandFactor
 import { chunks, studentTurnText, voiceIntent } from "../../server/tutor/delegate";
 import { DURONA_LEVELS, engineFor, normalize, step } from "../../server/tutor/emotion";
 import { voiceTimeCost } from "../../server/tutor/costs";
+import { aceitarTermos } from "./helpers/aceites";
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tutor-voz-"));
 let dev: DevDatabase;
@@ -102,6 +103,7 @@ beforeAll(async () => {
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'adm@t.dev'), ($2, 'aluna@t.dev'), ($3, 'outro@t.dev')`, [ADMIN, ALUNA, OUTRO]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id in ($1, $2)`, [ALUNA, OUTRO]);
+  for (const uid of [ALUNA, OUTRO]) await aceitarTermos(dev.db, uid); // os alunos já aceitaram o §34 (o aceite em si é testado em termoAceiteTutor.test.ts)
   for (const r of await sql(`select id, correct_option from public.questions`)) off[r.id] = r.correct_option;
   await config({ enabled: true, requires_pro: true }, "Tutor ligado para os testes do modo de voz.");
   deps.db = db;
