@@ -116,24 +116,28 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
   const tts = useNexusVoice({
     backend, session, jeito: opened?.jeito ?? null, voiceCallId: opened?.voice_call_id ?? null, micStream, canListen: Boolean(opened?.mic),
     onSession: reload, onMessage: appendMessage,
+    // a chamada acabou no servidor e o aluno tocou em "Conversar de novo" aqui: abre outra, assumindo esta aba
+    onReopen: () => void openSession(sessionRef.current, true),
     onFallback: (code, message, caption = null) => {
       if (code === "tutor_consent") return void refresh().catch(() => {});
-      // a voz do professor parou (limite, teto, aprovação, falha): a reserva assume com a mensagem e a legenda fica
+      // a voz do professor parou (limite, teto, aprovação, falha): a chamada dela fecha e o servidor escolhe o que sobra (a reserva,
+      // ou por escrito quando a reserva não roda), com a mensagem e a legenda mantidas
       setFallback({ note: message, caption: caption ?? ttsRef.current?.captions?.tutor ?? "" });
-      void ttsRef.current?.stop?.();
-      releaseMic();
-      setMicStream(null);
-      liveStarted.current = null;
-      setOpened((o) => (o ? { ...o, jeito: "reserva", voice_call_id: null } : o));
+      void (async () => {
+        await Promise.resolve(ttsRef.current?.stop?.({ keepState: true })).catch(() => {});
+        await switchJeito("eleven");
+      })();
     },
   });
   ttsRef.current = tts;
   React.useEffect(() => {
-    if (phase === "conversation" && (opened?.jeito === "eleven" || opened?.jeito === "escrito") && opened.voice_call_id && ttsStarted.current !== opened.voice_call_id) {
-      ttsStarted.current = opened.voice_call_id;
+    // sem chamada (voz desligada no painel), a conversa por escrito também começa
+    const key = opened?.voice_call_id ?? (opened?.jeito === "escrito" && session?.id ? `escrito:${session.id}` : null);
+    if (phase === "conversation" && (opened?.jeito === "eleven" || opened?.jeito === "escrito") && key && ttsStarted.current !== key) {
+      ttsStarted.current = key;
       tts.start();
     }
-  }, [phase, opened?.jeito, opened?.voice_call_id, tts]);
+  }, [phase, opened?.jeito, opened?.voice_call_id, session?.id, tts]);
   React.useEffect(() => {
     if (phase === "conversation" && opened?.jeito === "reserva" && session?.id && liveStarted.current !== session.id) {
       liveStarted.current = session.id;
@@ -144,6 +148,23 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
     if (live.error?.code === "tutor_consent") refresh().catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live.error]);
+
+  /** Troca o jeito no meio da conversa (esta aba assume): skip "eleven" sem a voz do professor; "voice" sem as duas vozes. */
+  const switchJeito = async (skip) => {
+    const s = sessionRef.current;
+    if (!s) return;
+    if (skip === "voice") void Promise.resolve(live.stop?.()).catch(() => {});
+    try {
+      const o = await nexusApi.open(backend, s.id, true, skip);
+      if (o.jeito === "reserva") releaseMic(); // a voz ao vivo pede o microfone por conta própria
+      setMicStream(o.jeito === "reserva" ? null : mic.current);
+      liveStarted.current = null;
+      ttsStarted.current = null;
+      setOpened(o);
+    } catch (e) {
+      if (!consentLost(e)) setFallback((f) => ({ caption: "", ...(f ?? {}), note: messageOf(e) }));
+    }
+  };
 
   const releaseMic = () => {
     mic.current?.getTracks?.().forEach((t) => t.stop());
@@ -339,9 +360,10 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
         messages={session.messages ?? []}
         avatar={reserve ? liveAvatar : tts.avatar}
         entitlement={reserve ? status.entitlement : null}
-        note={reserve ? fallback?.note ?? liveNote ?? null : null}
+        note={reserve ? fallback?.note ?? liveNote ?? null : error?.message ?? fallback?.note ?? null}
         jeitoLabel={JEITO_LABEL[opened.jeito]}
         card={card}
+        onWrite={reserve ? () => void switchJeito("voice") : undefined}
         onClose={finish}
       />
     );

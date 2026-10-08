@@ -126,9 +126,11 @@ const SPOKEN_LIMITS = new Set(["student_limit", "account_day", "account_month"])
 /**
  * Abre a conversa da Nexus e escolhe o jeito: voz do professor quando ela vale e há caracteres; senão a voz reserva ao vivo
  * (o aplicativo abre pela rota de sempre) quando houver tempo; senão por escrito. A chamada "tts" (trava de turno) abre na voz do
- * professor e no "por escrito" com a voz ligada no painel.
+ * professor e no "por escrito" com a voz ligada no painel. skip: no meio da conversa, "eleven" pula a voz do professor (ela
+ * parou) e "voice" pula as duas (a reserva não roda: microfone bloqueado ou sem tempo ao vivo).
  */
-export async function openNexus(deps: TutorDeps, userId: string, sessionId: string, force: boolean): Promise<NexusOpen> {
+export type NexusSkip = "eleven" | "voice";
+export async function openNexus(deps: TutorDeps, userId: string, sessionId: string, force: boolean, skip: NexusSkip | null = null): Promise<NexusOpen> {
   const ctx = await deps.db.service<{ consent_pending?: boolean; session: { read_only?: boolean }; personality: { id: string } } | null>(
     "ch_worker_tutor_context", { p_user: userId, p_session_id: sessionId });
   if (!ctx) throw new TutorError("Conversa não encontrada.", 404);
@@ -146,13 +148,13 @@ export async function openNexus(deps: TutorDeps, userId: string, sessionId: stri
   };
   const access = elevenAccessOf({ quota: q, row: rowFor(deps, q, ctx.personality.id) });
   let reason = access.reason;
-  if (access.ok) {
+  if (access.ok && !skip) {
     const r = await tts(true);
     if (r.ok) return { jeito: "eleven", voice_call_id: r.voice_call_id!, mic: sttReady(deps), reason: null, ...base };
     if (!SPOKEN_LIMITS.has(r.reason ?? "")) throw reasonError(r.reason, null);
     reason = r.reason as ElevenBlock;
   }
-  if (reserveOf(deps, q).reserve) return { jeito: "reserva", voice_call_id: null, mic: true, reason, ...base };
+  if (skip !== "voice" && reserveOf(deps, q).reserve) return { jeito: "reserva", voice_call_id: null, mic: true, reason, ...base };
   const r = await tts(false);
   if (!r.ok) throw reasonError(r.reason, null);
   return { jeito: "escrito", voice_call_id: r.voice_call_id!, mic: sttReady(deps), reason, ...base };

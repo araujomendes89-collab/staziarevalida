@@ -14,7 +14,7 @@ import { planProviders } from "./voiceProviders";
 import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
 import { samplePath } from "./voicePreview";
 import { nexusStatus, openNexus, type TtsQuota } from "./nexus";
-import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, sttConfig, transcribe } from "./stt";
+import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, STT_BUSY, STT_PER_MINUTE, audioFitsSeconds, sttConfig, transcribe } from "./stt";
 
 type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -141,6 +141,9 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
    * e X-Audio-Seconds. Ordem: conversa de voz do aluno, aceite, transcrição ligada, tamanho. Devolve só o texto.
    */
   const TOO_BIG = "Áudio acima de 45 segundos ou de 4 MB.";
+  // teto da transcrição por aluno nesta instância: uma por vez e até STT_PER_MINUTE por minuto
+  const sttRecent = new Map<string, number[]>();
+  const sttBusy = new Set<string>();
   router.post("/voice/transcribe", express.raw({ type: "audio/*", limit: MAX_AUDIO_BYTES }), async (req: Authed, res) => {
     try {
       const callId = String(req.headers["x-voice-call-id"] ?? "");
@@ -152,7 +155,19 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       const seconds = Number(req.headers["x-audio-seconds"]);
       const audio = Buffer.isBuffer(req.body) ? req.body : null;
       if (req.headers["x-audio-seconds"] == null || !Number.isFinite(seconds) || seconds <= 0 || seconds > MAX_AUDIO_SECONDS || !audio?.length) return fail(res, 413, TOO_BIG);
-      res.json(await transcribe(deps!, req.user!.id, callId, audio, String(req.headers["content-type"] ?? ""), seconds));
+      if (!audioFitsSeconds(audio.length, seconds)) return fail(res, 413, TOO_BIG);
+      const uid = req.user!.id;
+      const now = Date.now();
+      const recent = (sttRecent.get(uid) ?? []).filter((t) => now - t < 60_000);
+      if (sttBusy.has(uid) || recent.length >= STT_PER_MINUTE) return res.status(429).json({ error: STT_BUSY, code: "stt_busy" });
+      if (sttRecent.size > 5_000) for (const [k, ts] of sttRecent) if (!ts.some((t) => now - t < 60_000)) sttRecent.delete(k);
+      sttRecent.set(uid, [...recent, now]);
+      sttBusy.add(uid);
+      try {
+        res.json(await transcribe(deps!, uid, callId, audio, String(req.headers["content-type"] ?? ""), seconds));
+      } finally {
+        sttBusy.delete(uid);
+      }
     } catch (error) {
       if (error instanceof TutorError) return failTutor(res, error);
       deps!.log?.("[tutor] transcrição: erro inesperado");
@@ -247,7 +262,8 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
   });
   router.post("/voice/open", voiceRoute(async (req, b) => {
     if (!uuid.test(String(b.session_id ?? ""))) throw new TutorError("Conversa inválida.", 400);
-    return openNexus(deps!, req.user!.id, String(b.session_id), b.force === true);
+    if (b.skip != null && b.skip !== "eleven" && b.skip !== "voice") throw new TutorError("Pedido inválido.", 400);
+    return openNexus(deps!, req.user!.id, String(b.session_id), b.force === true, b.skip ?? null);
   }));
   const letterOf = (x: unknown): Letter | null => (typeof x === "string" && /^[A-D]$/.test(x.toUpperCase()) ? (x.toUpperCase() as Letter) : null);
   router.post("/voice/say", voiceRoute(async (req, b) => {

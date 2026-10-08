@@ -27,6 +27,15 @@ export const STT_DEFAULT_MODEL = "gpt-4o-mini-transcribe";
 export const MAX_AUDIO_BYTES = 4 * 1024 * 1024;
 export const MAX_AUDIO_SECONDS = 45;
 export const STT_FAILED = "Não entendi, pode repetir ou digitar?";
+/** Teto por aluno: uma transcrição por vez e até 20 por minuto (cada fala leva mais que 3 s entre gravar, responder e ouvir). */
+export const STT_PER_MINUTE = 20;
+export const STT_BUSY = "Espere um pouco antes de falar de novo.";
+/**
+ * O serviço cobra pelo tempo de verdade do áudio, e a duração vem do aparelho: o tamanho tem de caber nela. 64 kB por segundo
+ * (512 kbps) fica muito acima da gravação de voz dos navegadores; mais que isso é áudio longo espremido numa duração curta.
+ */
+export const STT_MAX_BYTES_PER_SECOND = 64_000;
+export const audioFitsSeconds = (bytes: number, seconds: number) => bytes <= 32_768 + seconds * STT_MAX_BYTES_PER_SECOND;
 
 /** Formatos que o serviço recebe: o do iPhone (mp4) e o do Chrome/Android (webm), e os comuns. */
 const EXTENSIONS: Record<string, string> = {

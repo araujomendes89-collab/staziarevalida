@@ -190,4 +190,30 @@ describe("Transcrição da Nexus", () => {
       expect(msg).not.toMatch(/openai|google|gemini|elevenlabs/i);
     }
   });
+
+  it("teto por aluno: uma transcrição por vez, até 20 por minuto, e o áudio do tamanho da duração declarada (o serviço cobra pelo tempo de verdade)", async () => {
+    const uid = "00000000-0000-4000-8000-0000000000c9";
+    await sql(`insert into auth.users (id, email) values ($1, 'teto@t.dev')`, [uid]);
+    await sql(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [uid]);
+    await aceitarTermos(dev.db, uid);
+    tokens[uid] = await dev.createSession(uid);
+    const call = await openCall(uid);
+    const busy = { status: 429, json: { error: "Espere um pouco antes de falar de novo.", code: "stt_busy" } };
+    // a duração declarada não cabe no tamanho: 200 kB em 1 s é áudio de muitos minutos espremido
+    expect(await send(uid, call, Buffer.alloc(200_000), "audio/webm", "1")).toEqual({ status: 413, json: { error: "Áudio acima de 45 segundos ou de 4 MB." } });
+    expect((await send(uid, call, Buffer.alloc(90_000), "audio/webm", "1")).status).toBe(200);
+    // uma por vez
+    let release!: () => void;
+    answer = () => new Promise<Response>((r) => (release = () => r(Response.json({ text: "Alternativa B" })))) as unknown as Response;
+    const first = send(uid, call, Buffer.from("fala"));
+    await new Promise((r) => setTimeout(r, 150));
+    expect(await send(uid, call, Buffer.from("fala"))).toEqual(busy);
+    release();
+    expect((await first).status).toBe(200);
+    answer = () => Response.json({ text: "Alternativa B" });
+    // até 20 por minuto (2 já foram)
+    for (let i = 0; i < 18; i++) expect((await send(uid, call, Buffer.from("fala"))).status).toBe(200);
+    expect(await send(uid, call, Buffer.from("fala"))).toEqual(busy);
+    expect(sent).toHaveLength(20);
+  });
 });

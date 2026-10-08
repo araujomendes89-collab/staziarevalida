@@ -166,6 +166,22 @@ describe("Nexus: os jeitos e a abertura", () => {
     ]);
   });
 
+  it("pular a voz do professor (ela parou no meio) ou as duas (a reserva não roda): reserva ou 'escrito' com chamada", async () => {
+    const s = await start(PAGO, "livre");
+    expect((await open(PAGO, s)).json.jeito).toBe("eleven");
+    const skip = (what: unknown) => api(PAGO, "POST", "/voice/open", { session_id: s, force: true, skip: what });
+    expect((await skip("eleven")).json).toMatchObject({ jeito: "reserva", voice_call_id: null });
+    deps.realtime = RT_OFF;
+    const escrito = await skip("eleven");
+    expect(escrito.json).toMatchObject({ jeito: "escrito", mic: true });
+    expect(escrito.json.voice_call_id).toBeTruthy();
+    deps.realtime = RT;
+    const semVoz = await skip("voice");
+    expect(semVoz.json).toMatchObject({ jeito: "escrito", mic: true });
+    expect((await sql(`select provider, status from public.tutor_voice_calls where id = $1`, [semVoz.json.voice_call_id]))[0]).toEqual({ provider: "tts", status: "active" });
+    expect((await skip("tudo")).status).toBe(400);
+  });
+
   it("segunda aba: abrir de novo responde 409 busy; com force assume", async () => {
     const s = await start(PAGO, "livre");
     const first = await open(PAGO, s);

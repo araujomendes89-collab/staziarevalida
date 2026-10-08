@@ -5,9 +5,10 @@
 // a emoção aparecem → a voz do professor (/speech) toca → o microfone volta a ouvir (computador e Android) ou mostra "Toque para
 // falar" (iPhone e iPad). O microfone fica fechado enquanto o professor fala. "Interromper" corta o som e o trecho vai no próximo
 // turno. A letra só marca; "confirmo" ou "Responder" responde. Sem voz do professor (limite, teto, aprovação revogada, falha), a
-// tela passa para a voz reserva pelo onFallback, com a legenda mantida. O enunciado nunca vai para a voz.
+// tela passa para a voz reserva pelo onFallback, com a legenda mantida. O enunciado nunca vai para a voz. Sem chamada (a conversa
+// por voz desligada no painel), o turno vai pela rota de texto do Tutor e a questão pelo banco, como no Chat de antes.
 import React from "react";
-import { nexusApi, tutorSpeech, voiceApi } from "../api.js";
+import { nexusApi, tutorSpeech, tutorTurn, voiceApi } from "../api.js";
 import { realtimeErrorMessage } from "../useRealtimeVoice.js";
 import { AudioPlayer } from "../voice/audioPlayer.js";
 import { getAudioContext } from "../voice/audioUnlock.js";
@@ -18,6 +19,8 @@ import { startRecording, tapToTalkDevice } from "./recorder.js";
 export const NEXUS_TIMING = { retryMs: 2_000, retryForMs: 30_000, renewMs: 60_000 };
 export const STT_FAILED = "Não entendi, pode repetir ou digitar?";
 export const ENGINE_FAILED = "O professor não conseguiu responder, tente de novo";
+export const CALL_ENDED = "A conversa por voz foi encerrada.";
+export const CALL_REPLACED = "A conversa continuou em outra aba ou aparelho.";
 /** Códigos da voz do professor que passam a conversa para a voz reserva. */
 export const VOICE_FALLBACK_CODES = new Set(["voice_student_limit", "voice_account_day", "voice_account_month", "voice_unavailable", "voice_failed"]);
 export const markedPhrase = (letter) => `Marquei a ${letter}. Diga confirmo para responder, ou fale outra alternativa.`;
@@ -33,19 +36,31 @@ function micLevel(stream) {
     if (!ctx?.createAnalyser || !ctx.createMediaStreamSource) return undefined;
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 1024;
-    ctx.createMediaStreamSource(stream).connect(analyser);
+    const source = ctx.createMediaStreamSource(stream);
+    source.connect(analyser);
     const data = new Uint8Array(analyser.fftSize);
-    return () => {
+    const read = () => {
       analyser.getByteTimeDomainData(data);
       return rmsLevel(data);
     };
+    read.close = () => {
+      try {
+        source.disconnect();
+      } catch {
+        // já desligado
+      }
+    };
+    return read;
   } catch {
     return undefined; // sem medição: a fala é presumida (para no "Enviar" ou em 45 s)
   }
 }
 
-/** canListen: o servidor transcreve a fala (opened.mic); sem isso, o aluno escreve pelo Chat e o professor responde (em voz, se houver). */
-export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream, canListen = true, onSession, onMessage, onFallback }) {
+/**
+ * canListen: o servidor transcreve a fala (opened.mic); sem isso, o aluno escreve pelo Chat e o professor responde (em voz, se houver).
+ * onReopen: a chamada acabou no servidor e o aluno tocou em "Conversar de novo"; a tela abre outra chamada para esta conversa.
+ */
+export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream, canListen = true, onSession, onMessage, onFallback, onReopen }) {
   const [state, setStateRaw] = React.useState("idle");
   const [captions, setCaptions] = React.useState({ tutor: "", student: "" });
   const [avatar, setAvatar] = React.useState(null);
@@ -58,7 +73,7 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
   const tap = React.useMemo(() => tapToTalkDevice(), []);
   const r = React.useRef({ metrics: { stt: [], engine: [], tts: [], play: [] } });
   // as funções chamadas de fora do ciclo de desenho sempre leem o estado mais novo
-  Object.assign(r.current, { backend, session, jeito, voiceCallId, micStream, canListen, onSession, onMessage, onFallback, muted, tap });
+  Object.assign(r.current, { backend, session, jeito, voiceCallId, micStream, canListen, onSession, onMessage, onFallback, onReopen, muted, tap });
 
   const setState = (s) => {
     r.current.state = s;
@@ -69,6 +84,16 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     setMarkedState(l);
   };
   const speaks = () => r.current.jeito === "eleven";
+  /** O som e o medidor do microfone valem para uma conversa: a tela de voz fecha o contexto de som ao sair. */
+  const releaseAudio = () => {
+    const c = r.current;
+    c.player?.stop?.();
+    c.player?.close?.();
+    c.player = null;
+    setOutput(null);
+    c.level?.close?.();
+    c.level = undefined;
+  };
   const player = () => {
     if (!r.current.player) {
       const ctx = getAudioContext();
@@ -79,7 +104,30 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     return r.current.player;
   };
 
+  /** A chamada acabou no servidor (aparelho dormiu, outra aba assumiu, prazo): para tudo e mostra "Conversar de novo". */
+  const closed = (message = CALL_ENDED) => {
+    const c = r.current;
+    if (!c.alive) return;
+    c.alive = false;
+    c.closedCall = c.voiceCallId;
+    cancelRec();
+    releaseAudio();
+    clearInterval(c.renew);
+    setNotice(message);
+    setState("ended");
+  };
+
   // ---- ouvir
+  /** Para a gravação sem mandar nada; o fim dela não volta a ouvir (quem cancelou decide o que vem depois). */
+  const cancelRec = () => {
+    const c = r.current;
+    const h = c.rec;
+    c.rec = null;
+    if (h) {
+      h.dropped = true;
+      h.cancel?.();
+    }
+  };
   const listen = (manual = false) => {
     const c = r.current;
     if (!c.alive || c.rec) return;
@@ -89,7 +137,9 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     }
     c.level ??= micLevel(c.micStream);
     try {
-      c.rec = startRecording({ stream: c.micStream, auto: !c.tap, level: c.level, onDone: heard });
+      let h = null;
+      h = startRecording({ stream: c.micStream, auto: !c.tap, level: c.level, onDone: (out) => heard(out, h) });
+      c.rec = h;
       setState("listening");
     } catch {
       // navegador sem gravação de áudio: a conversa segue pelo Chat, com a resposta em voz
@@ -105,9 +155,10 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
   };
 
   // ---- a fala do aluno chegou
-  const heard = async (out) => {
+  const heard = async (out, h) => {
     const c = r.current;
-    c.rec = null;
+    if (h?.dropped) return;
+    if (c.rec === h) c.rec = null;
     if (!c.alive) return;
     if (!out) return afterReply(); // só silêncio ou cancelada: volta a ouvir
     setState("thinking");
@@ -118,6 +169,7 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
       c.metrics.stt.push(Date.now() - t0);
     } catch (e) {
       if (e?.code === "tutor_consent") return c.onFallback?.("tutor_consent", e.message);
+      if (e?.status === 409) return closed(e.message || CALL_ENDED);
       text = "";
     }
     if (!text) {
@@ -142,11 +194,27 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     }
   };
 
+  /** Sem chamada (voz desligada no painel): o mesmo turno pela rota de texto, no formato da /voice/say. */
+  const textTurn = async (body) => {
+    const c = r.current;
+    const id = c.session?.id;
+    const fromTurn = (intent, t) => ({ intent, message: t?.message ?? null, phrase: null, marked: null, question_state: t?.question_state ?? null });
+    if (body.command === "next") {
+      const s = await c.backend.rpc("app_tutor_next_question", { p_session_id: id });
+      return { intent: "next", message: null, phrase: null, question_state: s?.question ? "open" : null };
+    }
+    if (body.command === "answer") {
+      await c.backend.rpc("app_tutor_answer", { p_session_id: id, p_option: body.option, p_confidence: null, p_response_ms: null, p_first_pick: null });
+      return fromTurn("answer", await tutorTurn(c.backend, { session_id: id, action: "react" }));
+    }
+    if (body.command) return fromTurn(body.command, await tutorTurn(c.backend, { session_id: id, action: body.command }));
+    return fromTurn("message", await tutorTurn(c.backend, { session_id: id, action: "message", text: body.text }));
+  };
+
   const turn = async (body) => {
     const c = r.current;
-    if (!c.alive || !c.voiceCallId) return;
-    c.rec?.cancel?.();
-    c.rec = null;
+    if (!c.alive) return;
+    cancelRec();
     setNotice(null);
     if (body.text) {
       setCaptions((x) => ({ ...x, student: body.text }));
@@ -158,10 +226,11 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     const t0 = Date.now();
     let res;
     try {
-      res = await say(payload);
+      res = c.voiceCallId ? await say(payload) : await textTurn(body);
       c.metrics.engine.push(Date.now() - t0);
     } catch (e) {
       if (e?.code === "tutor_consent") return c.onFallback?.("tutor_consent", e.message);
+      if (e?.status === 409 && c.voiceCallId) return closed(e.message || CALL_ENDED);
       setNotice(e?.status === 502 ? ENGINE_FAILED : e?.message || ENGINE_FAILED);
       return afterReply();
     }
@@ -203,6 +272,7 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
   const sayAloud = async (body, text) => {
     const c = r.current;
     if (!speaks() || !c.alive) return false;
+    cancelRec(); // o microfone fica fechado enquanto o professor fala (sem eco)
     const t0 = Date.now();
     let blob;
     try {
@@ -211,7 +281,7 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     } catch (e) {
       if (VOICE_FALLBACK_CODES.has(e?.code) || e?.code === "tutor_consent") {
         c.alive = false;
-        c.rec?.cancel?.();
+        cancelRec();
         c.onFallback?.(e.code, e.message, text);
         return "fallback";
       }
@@ -223,7 +293,14 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     c.speaking = text;
     setState("speaking");
     c.metrics.play.push(Date.now() - t0);
-    const finished = await p.playEncoded(await blob.arrayBuffer());
+    let finished;
+    try {
+      finished = await p.playEncoded(await blob.arrayBuffer());
+    } catch {
+      c.speaking = null;
+      setNotice("A voz do professor falhou agora.");
+      return false;
+    }
     c.speaking = null;
     if (!finished) return "cut";
     return true;
@@ -233,8 +310,18 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
   const start = React.useCallback(() => {
     const c = r.current;
     if (c.alive) return;
+    // "Conversar de novo" depois que a chamada acabou no servidor: a tela abre outra (a de agora não volta)
+    if (c.closedCall && c.closedCall === c.voiceCallId && c.onReopen) return void c.onReopen();
     c.alive = true;
     c.metrics = { stt: [], engine: [], tts: [], play: [] };
+    // conversa nova: nada da anterior (som, medidor, letra marcada, emoção, avisos e legenda)
+    releaseAudio();
+    c.interrupted = null;
+    c.speaking = null;
+    setMarked(null);
+    setAvatar(null);
+    setMicError(null);
+    setCaptions({ tutor: "", student: "" });
     setNotice(null);
     if (!c.canListen) setChatRequest((n) => n + 1); // sem transcrição no servidor: a conversa é pelo Chat
     else if (!c.micStream && c.jeito === "eleven") {
@@ -245,11 +332,7 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     c.renew = setInterval(() => {
       if (!r.current.alive || !r.current.voiceCallId) return;
       voiceApi.renew(r.current.backend, r.current.voiceCallId, null).then((x) => {
-        if (x?.stop) {
-          r.current.alive = false;
-          setNotice("A conversa por voz foi encerrada.");
-          setState("ended");
-        }
+        if (x?.stop) closed(x.reason === "replaced" ? CALL_REPLACED : x.message || CALL_ENDED);
       }, () => {});
     }, NEXUS_TIMING.renewMs);
     // o professor fala a abertura (a fala gravada mais recente) e depois o aluno
@@ -266,15 +349,19 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const stop = React.useCallback(async () => {
+  /** keepState: a tela troca de jeito (a voz do professor parou) e a conversa segue; sem "encerrada" no meio da troca. */
+  const stop = React.useCallback(async (opts) => {
     const c = r.current;
     const wasAlive = c.alive;
     c.alive = false;
-    c.rec?.cancel?.();
-    c.rec = null;
-    c.player?.stop();
+    cancelRec();
+    releaseAudio();
     clearInterval(c.renew);
-    setState("ended");
+    if (opts?.keepState !== true) {
+      setState("ended");
+      setAvatar(null);
+      setMarked(null);
+    }
     if (!c.voiceCallId || c.ended === c.voiceCallId) return;
     c.ended = c.voiceCallId;
     const avg = (xs) => (xs.length ? Math.round(xs.reduce((a, b) => a + b, 0) / xs.length) : undefined);
@@ -323,8 +410,7 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     c.muted = next;
     setMuted(next);
     if (next) {
-      c.rec?.cancel?.();
-      c.rec = null;
+      cancelRec();
       if (c.state === "listening") setState("ready");
     } else if (c.state === "ready") listen(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -338,7 +424,7 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
 
   React.useEffect(() => () => {
     r.current.alive = false;
-    r.current.rec?.cancel?.();
+    cancelRec();
     r.current.player?.close?.();
     clearInterval(r.current.renew);
   }, []);

@@ -100,7 +100,8 @@ export const nexusApi = {
     if (!res.ok) throw await failure(res);
     return res.json();
   },
-  open: (backend, sessionId, force = false) => voicePost(backend, "open", force ? { session_id: sessionId, force: true } : { session_id: sessionId }),
+  /** skip: no meio da conversa, "eleven" pula a voz do professor e "voice" pula as duas (o servidor escolhe o jeito que sobra). */
+  open: (backend, sessionId, force = false, skip = null) => voicePost(backend, "open", { session_id: sessionId, ...(force ? { force: true } : {}), ...(skip ? { skip } : {}) }),
   say: (backend, body) => voicePost(backend, "say", body),
   transcribe: async (backend, voiceCallId, blob, seconds) => {
     const res = await fetch(`${BASE}/voice/transcribe`, {

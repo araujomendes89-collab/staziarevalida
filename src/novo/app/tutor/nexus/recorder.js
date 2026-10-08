@@ -29,8 +29,8 @@ export function tapToTalkDevice(nav = typeof navigator !== "undefined" ? navigat
 
 /**
  * Começa a gravar. `auto`: para sozinha no silêncio (depois de ouvir fala). `level()`: nível do microfone agora (0..1); sem ele,
- * a fala é presumida. `onDone({ blob, mime, seconds })`, ou `onDone(null)` quando só houve silêncio, quando foi cancelada ou
- * acima de 4 MB. Devolve { stop, cancel }.
+ * a fala é presumida. Por toque (sem `auto`), o "Enviar" do aluno é o sinal: manda mesmo sem o medidor ouvir fala. `onDone({ blob,
+ * mime, seconds })`, ou `onDone(null)` quando só houve silêncio (sozinha), quando foi cancelada ou acima de 4 MB. Devolve { stop, cancel }.
  */
 export function startRecording({ stream, auto, level, MediaRecorderImpl = globalThis.MediaRecorder, onDone }) {
   const mime = pickMime(MediaRecorderImpl?.isTypeSupported?.bind(MediaRecorderImpl));
@@ -68,7 +68,7 @@ export function startRecording({ stream, auto, level, MediaRecorderImpl = global
     clearTimeout(cap);
     if (finished) return;
     finished = true;
-    if (cancelled || !heard) return onDone(null);
+    if (cancelled || (auto && !heard)) return onDone(null);
     const blob = new Blob(chunks, { type: rec.mimeType || mime || "audio/webm" });
     if (!blob.size || blob.size > MAX_AUDIO_BYTES) return onDone(null);
     onDone({ blob, mime: blob.type, seconds: Math.min(MAX_RECORD_MS, Date.now() - t0) / 1000 });

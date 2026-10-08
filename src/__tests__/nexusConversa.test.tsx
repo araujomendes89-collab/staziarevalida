@@ -13,16 +13,30 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 const backend: any = { rpc: vi.fn(), accessToken: async () => "token-de-teste" };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot: { role: "student" } }) }));
 vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
-vi.mock("../novo/app/tutor/voice/audioUnlock.js", () => ({ unlockAudio: () => null, releaseAudioContext: async () => {}, getAudioContext: () => ({}) }));
+// som do navegador como o de verdade: fechar a tela de voz fecha o contexto; o próximo toque cria outro
+const audio = vi.hoisted(() => {
+  const make = () => ({
+    state: "running", sources: [] as unknown[],
+    close() { this.state = "closed"; },
+    createAnalyser: () => ({ fftSize: 0, getByteTimeDomainData() {} }),
+    createMediaStreamSource(stream: unknown) { this.sources.push(stream); return { connect() {}, disconnect() {} }; },
+  });
+  const a = { ctx: null as any, get: () => (!a.ctx || a.ctx.state === "closed" ? (a.ctx = make()) : a.ctx) };
+  return a;
+});
+vi.mock("../novo/app/tutor/voice/audioUnlock.js", () => ({
+  unlockAudio: () => audio.get(), getAudioContext: () => audio.get(),
+  releaseAudioContext: async () => { audio.ctx?.close(); audio.ctx = null; },
+}));
 vi.mock("../novo/app/tutor/voice/StaziaVoiceOrb.jsx", () => ({
   StaziaVoiceOrb: (p: any) => <div data-testid="orb" data-emotion={p.emotion} data-state={p.conversationState} />,
   orbEmotion: (a: any) => ({ emotion: a ? ({ irritated: "annoyed", firm: "firm" } as any)[a.emotion] ?? a.emotion : "neutral", intensity: 0.5 }),
 }));
-const live = vi.hoisted(() => ({ starts: 0, sent: [] as string[] }));
+const live = vi.hoisted(() => ({ starts: 0, sent: [] as string[], error: null as any }));
 vi.mock("../novo/app/tutor/useRealtimeVoice.js", () => ({
   realtimeErrorMessage: (e: any) => (e?.kind === "mic" ? "O navegador bloqueou o microfone. Clique no cadeado ao lado do endereço, permita o microfone e tente de novo." : e?.message ?? "erro"),
   useRealtimeVoice: () => ({
-    state: "ready", error: null, captions: { tutor: "", student: "" }, streams: { input: null, output: null }, muted: false, provider: "realtime", remaining: null,
+    state: live.error ? "error" : "ready", error: live.error, captions: { tutor: "", student: "" }, streams: { input: null, output: null }, muted: false, provider: "realtime", remaining: null,
     start: () => { live.starts++; }, stop: async () => {}, interrupt() {}, sendText: (t: string) => live.sent.push(t), toggleMute() {}, setVolume() {}, active: true,
   }),
 }));
@@ -41,14 +55,17 @@ vi.mock("../novo/app/tutor/nexus/recorder.js", async () => {
   };
 });
 // som: o teste decide quando a fala do professor termina
-const player = vi.hoisted(() => ({ plays: [] as { resolve: (v: boolean) => void }[], stops: 0 }));
+const player = vi.hoisted(() => ({ plays: [] as { resolve: (v: boolean) => void }[], stops: 0, dead: 0 }));
 vi.mock("../novo/app/tutor/voice/audioPlayer.js", () => ({
   base64ToFloat32: () => new Float32Array(),
   AudioPlayer: class {
     stream = { id: "saida" };
     playing = false;
+    constructor(public ctx: any) {}
     play() {}
     playEncoded() {
+      // num contexto já fechado o som nunca termina (como no navegador)
+      if (this.ctx?.state === "closed") return (player.dead++, new Promise<boolean>(() => {}));
       return new Promise<boolean>((resolve) => player.plays.push({ resolve }));
     }
     stop() {
@@ -79,6 +96,7 @@ const session = (over: any = {}) => ({
   messages: [{ id: 1, role: "tutor", content: "Chegou. Bora.", grounding: "none" }], ...over,
 });
 const REPLY = "Pré-eclâmpsia é hipertensão depois de vinte semanas com lesão de órgão. Me diz qual é o próximo passo.";
+const STT_TEXT = "Não entendi, pode repetir ou digitar?";
 const sayResult = (over: any = {}) => ({ intent: "message", message: { id: 7, content: REPLY, voice_avatar: { emotion: "irritated", intensity: 70 } }, phrase: null, marked: null, tone: null, gate: null, question_state: "none", used_today: 1, daily_limit: 40, ...over });
 
 let rpcImpl: Record<string, (args: any) => any> = {};
@@ -92,11 +110,14 @@ beforeEach(async () => {
   calls.length = 0;
   live.starts = 0;
   live.sent.length = 0;
+  live.error = null;
   rec.tap = false;
   rec.calls = [];
   rec.next = { blob: new Blob(["fala"], { type: "audio/webm" }), mime: "audio/webm", seconds: 2.5 };
   player.plays = [];
   player.stops = 0;
+  player.dead = 0;
+  audio.ctx = null;
   speechGate = null;
   (navigator as any).mediaDevices = { getUserMedia: vi.fn(async () => ({ getTracks: () => [{ stop() {} }], getAudioTracks: () => [{ stop() {} }] })) };
   rpcImpl = { app_tutor_status: () => status(), app_tutor_sessions: () => [], app_tutor_start: () => session(), app_tutor_session: () => session(), app_tutor_close: () => true };
@@ -296,10 +317,14 @@ describe("Nexus: a conversa pela voz do professor", () => {
 
   it("limite do dia ou aprovação revogada no meio: passa para a reserva com a mensagem certa e a legenda fica", async () => {
     server["/api/tutor/speech"] = async (body: any) => (body.message_id === 7 ? { status: 429, body: { error: "Você usou sua voz de hoje", code: "voice_student_limit" } } : { audio: true });
+    const eleven = server["/api/tutor/voice/open"];
+    server["/api/tutor/voice/open"] = (body: any, init: any) => (body.skip === "eleven" ? { body: { jeito: "reserva", voice_call_id: null, mic: true, reason: "student_limit", minutes_today: 0, reserve_minutes: 10 } } : eleven(body, init));
     const dialog = await openConversation();
     await speak();
     expect(await screen.findByText("Você usou sua voz de hoje")).toBeInTheDocument();
     await waitFor(() => expect(live.starts).toBe(1));
+    expect(calls.filter((c) => c.url === "/api/tutor/voice/open")[1].body).toEqual({ session_id: SID, force: true, skip: "eleven" }); // o servidor escolhe o jeito
+    expect(calls.findIndex((c) => c.url === "/api/tutor/voice/end")).toBeLessThan(calls.map((c) => c.url).lastIndexOf("/api/tutor/voice/open")); // a chamada da voz do professor fecha antes
     const now = screen.getByRole("dialog");
     expect(within(now).getByText("Voz reserva")).toBeInTheDocument();
     expect(within(now).getByText(REPLY)).toBeInTheDocument();
@@ -328,6 +353,154 @@ describe("Nexus: a conversa pela voz do professor", () => {
     fireEvent.change(within(dialog).getByLabelText("Escrever para o Tutor"), { target: { value: "oi" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Enviar" }));
     expect(await within(dialog).findByText("O professor não conseguiu responder, tente de novo")).toBeInTheDocument();
+  });
+
+  it("Conversa por voz desligada no painel: sem chamada, o Chat manda ao motor pela rota de texto e o cartão responde", async () => {
+    rpcImpl.app_tutor_status = () => ({ ...status(), voice_enabled: false });
+    rpcImpl.app_tutor_start = () => session({ mode: "questao", question_state: "open", question: QUESTION, messages: [{ id: 1, role: "tutor", content: "Lê com calma.", grounding: "none" }] });
+    rpcImpl.app_tutor_answer = () => ({ ok: true });
+    rpcImpl.app_tutor_session = () => session({ mode: "questao", question_state: "answered", question: { ...QUESTION, state: "answered", correct_option: "C" }, last_answer: { selected: "B", is_correct: false } });
+    server["/api/tutor/nexus"] = () => ({ body: { ...nexus, voice_enabled: false, reserve: false, professors: nexus.professors.map((p) => ({ ...p, eleven: false, reason: "voice_disabled" })) } });
+    server["/api/tutor/voice/open"] = () => ({ body: { jeito: "escrito", voice_call_id: null, mic: false, reason: "voice_off", minutes_today: 0, reserve_minutes: 0 } });
+    server["/api/tutor/turn"] = (body: any) => ({ body: { message: { id: body.action === "react" ? 9 : 8, content: body.action === "react" ? "Errou. A pista estava no enunciado." : REPLY }, question_state: body.action === "react" ? "answered" : "open", gate: null, tone: null, used_today: 1, daily_limit: 40 } });
+    const { NexusScreen } = await import("../novo/app/tutor/nexus/NexusScreen.jsx");
+    render(<NexusScreen go={vi.fn()} />);
+    await screen.findByText("Professor por escrito hoje");
+    fireEvent.click(screen.getByRole("button", { name: /^Começar com/ }));
+    const dialog = await screen.findByRole("dialog");
+    const input = await within(dialog).findByLabelText("Escrever para o Tutor");
+    await waitFor(() => expect(input).not.toBeDisabled());
+    fireEvent.change(input, { target: { value: "me explica pré-eclâmpsia" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Enviar" }));
+    await waitFor(() => expect(calls.filter((c) => c.url === "/api/tutor/turn")).toHaveLength(1));
+    expect(calls.find((c) => c.url === "/api/tutor/turn")!.body).toEqual({ session_id: SID, action: "message", text: "me explica pré-eclâmpsia" });
+    expect((await within(dialog).findAllByText(REPLY)).length).toBeGreaterThan(0);
+    fireEvent.click(within(dialog).getAllByRole("button", { name: "Fechar o chat" }).at(-1)!);
+    fireEvent.click(within(dialog).getByRole("radio", { name: /B\s*Alternativa B do caso/ }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Responder" }));
+    await waitFor(() => expect(calls.filter((c) => c.url === "/api/tutor/turn")).toHaveLength(2));
+    expect(backend.rpc).toHaveBeenCalledWith("app_tutor_answer", { p_session_id: SID, p_option: "B", p_confidence: null, p_response_ms: null, p_first_pick: null });
+    expect(calls.filter((c) => c.url === "/api/tutor/turn")[1].body).toEqual({ session_id: SID, action: "react" });
+    expect((await within(dialog).findAllByText("Errou. A pista estava no enunciado.")).length).toBeGreaterThan(0);
+    await waitFor(() => expect(within(dialog).getByText(/a correta é C/)).toBeInTheDocument());
+    expect(sayCalls()).toHaveLength(0);
+    expect(speechCalls()).toHaveLength(0);
+    expect(rec.calls).toHaveLength(0);
+  });
+
+  it("tocar uma alternativa enquanto o microfone ouve: a gravação para antes do 'Marquei a B…' e só volta depois (sem eco)", async () => {
+    rpcImpl.app_tutor_start = () => session({ mode: "questao", question_state: "open", question: QUESTION, messages: [{ id: 1, role: "tutor", content: "Lê com calma.", grounding: "none" }] });
+    const dialog = await openConversation();
+    await waitFor(() => expect(rec.calls).toHaveLength(1)); // ouvindo sozinho
+    fireEvent.click(within(dialog).getByRole("radio", { name: /B\s*Alternativa B do caso/ }));
+    await waitFor(() => expect(player.plays.length).toBe(1)); // o professor diz "Marquei a B…"
+    expect(rec.calls[0].cancelled).toBe(true);
+    expect(rec.calls).toHaveLength(1); // nenhuma gravação nova enquanto ele fala
+    expect(calls.filter((c) => c.url === "/api/tutor/voice/transcribe")).toHaveLength(0);
+    await finishSpeaking();
+    await waitFor(() => expect(rec.calls).toHaveLength(2)); // depois volta a ouvir
+  });
+
+  it("escrever pelo Chat enquanto o microfone ouve: a gravação para e não volta antes da resposta do professor", async () => {
+    const dialog = await openConversation();
+    await waitFor(() => expect(rec.calls).toHaveLength(1));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Abrir o chat e a transcrição" }));
+    fireEvent.change(within(dialog).getByLabelText("Escrever para o Tutor"), { target: { value: "oi" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Enviar" }));
+    await waitFor(() => expect(player.plays.length).toBe(1)); // a resposta do professor tocando
+    expect(rec.calls[0].cancelled).toBe(true);
+    expect(rec.calls).toHaveLength(1);
+    await finishSpeaking();
+    await waitFor(() => expect(rec.calls).toHaveLength(2));
+  });
+
+  it("segunda conversa na mesma visita (Conversar de novo): a voz toca no som novo, o microfone novo é medido e nada da primeira fica", async () => {
+    const dialog = await openConversation();
+    await speak();
+    await finishSpeaking(); // a Durona respondeu irritada
+    await waitFor(() => expect(within(dialog).getByTestId("orb").dataset.emotion).toBe("annoyed"));
+    const firstCtx = audio.ctx;
+    rpcImpl.app_tutor_session = () => session({ status: "closed" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Encerrar a conversa por voz" }));
+    expect(await screen.findByText("Conversa encerrada")).toBeInTheDocument();
+    expect(firstCtx.state).toBe("closed"); // a tela de voz fechou o som ao sair
+    rpcImpl.app_tutor_session = () => session();
+    fireEvent.click(screen.getByRole("button", { name: /^Conversar de novo com/ }));
+    const second = await screen.findByRole("dialog");
+    expect(within(second).getByTestId("orb").dataset.emotion).toBe("neutral");
+    await waitFor(() => expect(player.plays.length).toBe(1)); // a abertura toca
+    expect(player.dead).toBe(0);
+    await act(async () => player.plays.shift()!.resolve(true));
+    await waitFor(() => expect(rec.calls.length).toBeGreaterThan(1)); // volta a ouvir
+    expect(audio.ctx).not.toBe(firstCtx);
+    expect(audio.ctx.sources).toHaveLength(1); // o microfone desta conversa é medido no som novo
+  });
+
+  it("a chamada acabou no servidor (aparelho dormiu): avisa sem 'Não entendi', e 'Conversar de novo' reabre outra chamada", async () => {
+    const dialog = await openConversation();
+    server["/api/tutor/voice/transcribe"] = () => ({ status: 409, body: { error: "A conversa por voz foi encerrada." } });
+    await waitFor(() => expect(rec.calls).toHaveLength(1));
+    await act(async () => {
+      void rec.calls[0].opts.onDone(rec.next);
+    });
+    expect(await within(dialog).findByText("A conversa por voz foi encerrada.")).toBeInTheDocument();
+    expect(within(dialog).queryByText(STT_TEXT)).toBeNull();
+    const NEW_CALL = "44444444-4444-4444-8444-444444444444";
+    server["/api/tutor/voice/open"] = () => ({ body: { jeito: "eleven", voice_call_id: NEW_CALL, mic: true, reason: null, minutes_today: 5, reserve_minutes: 10 } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Conversar de novo" }));
+    await waitFor(() => expect(calls.filter((c) => c.url === "/api/tutor/voice/open")).toHaveLength(2));
+    expect(calls.filter((c) => c.url === "/api/tutor/voice/open")[1].body).toEqual({ session_id: SID, force: true }); // o toque é "continuar aqui"
+    await finishSpeaking();
+    await speak("voltei");
+    await waitFor(() => expect(sayCalls()).toHaveLength(1));
+    expect(sayCalls()[0].body.voice_call_id).toBe(NEW_CALL);
+  });
+
+  it("outra aba assumiu a conversa: a renovação para e avisa; nada mais vai ao servidor por esta aba", async () => {
+    const { NEXUS_TIMING } = await import("../novo/app/tutor/nexus/useNexusVoice.js");
+    NEXUS_TIMING.renewMs = 20;
+    server["/api/tutor/voice/renew"] = () => ({ body: { stop: true, reason: "replaced", message: "A conversa por voz foi encerrada." } });
+    const dialog = await openConversation();
+    expect(await within(dialog).findByText("A conversa continuou em outra aba ou aparelho.")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Conversar de novo" })).toBeInTheDocument();
+    expect(rec.calls.every((h) => h.cancelled || h.stopped)).toBe(true);
+  });
+
+  it("a voz do professor parou e a reserva não roda: a conversa segue por escrito, com o aviso, e o Chat manda ao motor", async () => {
+    const ESC = "55555555-5555-4555-8555-555555555555";
+    server["/api/tutor/speech"] = async (body: any) => (body.message_id === 7 ? { status: 429, body: { error: "Você usou sua voz de hoje", code: "voice_student_limit" } } : { audio: true });
+    const eleven = server["/api/tutor/voice/open"];
+    server["/api/tutor/voice/open"] = (body: any, init: any) => (body.skip === "eleven" ? { body: { jeito: "escrito", voice_call_id: ESC, mic: true, reason: "student_limit", minutes_today: 0, reserve_minutes: 0 } } : eleven(body, init));
+    const dialog = await openConversation();
+    await speak();
+    expect(await within(dialog).findByText("Por escrito")).toBeInTheDocument();
+    expect(within(dialog).getByText("Você usou sua voz de hoje")).toBeInTheDocument();
+    expect(live.starts).toBe(0);
+    fireEvent.click(within(dialog).getByRole("button", { name: "Abrir o chat e a transcrição" }));
+    const input = within(dialog).getByLabelText("Escrever para o Tutor");
+    await waitFor(() => expect(input).not.toBeDisabled());
+    fireEvent.change(input, { target: { value: "segue por escrito" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Enviar" }));
+    await waitFor(() => expect(sayCalls().at(-1)!.body).toMatchObject({ voice_call_id: ESC, text: "segue por escrito" }));
+  });
+
+  it("na reserva sem microfone ou sem tempo ao vivo: 'Escrever pelo Chat' passa para por escrito e o Chat manda ao motor", async () => {
+    const ESC = "66666666-6666-4666-8666-666666666666";
+    server["/api/tutor/voice/open"] = (body: any) => (body.skip === "voice"
+      ? { body: { jeito: "escrito", voice_call_id: ESC, mic: true, reason: null, minutes_today: 0, reserve_minutes: 0 } }
+      : { body: { jeito: "reserva", voice_call_id: null, mic: true, reason: "not_approved", minutes_today: 5, reserve_minutes: 10 } });
+    live.error = { kind: "quota", message: "Você atingiu seu limite de voz de hoje." };
+    const dialog = await openConversation({ finishOpening: false });
+    expect(within(dialog).getByText("Você atingiu seu limite de voz de hoje.")).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole("button", { name: "Escrever pelo Chat" }));
+    await waitFor(() => expect(calls.filter((c) => c.url === "/api/tutor/voice/open")).toHaveLength(2));
+    expect(calls.filter((c) => c.url === "/api/tutor/voice/open")[1].body).toEqual({ session_id: SID, force: true, skip: "voice" });
+    expect(await within(dialog).findByText("Por escrito")).toBeInTheDocument();
+    const input = within(dialog).getByLabelText("Escrever para o Tutor");
+    await waitFor(() => expect(input).not.toBeDisabled());
+    fireEvent.change(input, { target: { value: "oi" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Enviar" }));
+    await waitFor(() => expect(sayCalls().at(-1)!.body).toMatchObject({ voice_call_id: ESC, text: "oi" }));
   });
 
   it("os tempos de cada etapa vão nas métricas ao encerrar", async () => {

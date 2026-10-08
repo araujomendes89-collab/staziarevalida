@@ -51,8 +51,9 @@ const FOCUSABLE = 'button:not([disabled]), input:not([disabled]), [href], [tabin
 /**
  * jeitoLabel: como o professor fala nesta conversa ("Voz do professor", "Voz reserva", "Por escrito"), ao lado do selo dele.
  * card: o que fica abaixo da esfera (o cartão da questão). Para escrever, o Chat abre por cima, na mesma conversa.
+ * onWrite: quando a voz não abriu, "Escrever pelo Chat" pede antes à tela um jeito em que o Chat manda (a Nexus passa para por escrito).
  */
-export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, entitlement = null, note = null, onClose, jeitoLabel = null, card = null }) {
+export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, entitlement = null, note = null, onClose, jeitoLabel = null, card = null, onWrite = null }) {
   const [chatOpen, setChatOpen] = React.useState(false);
   const [showCaptions, setShowCaptionsState] = React.useState(() => readPref("smn-voice-captions", true));
   const [volume, setVolumeState] = React.useState(() => readPref("smn-voice-volume", 1));
@@ -161,7 +162,7 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
           <div className="svm__actions">
             {err.kind === "busy" && <button type="button" className="svm__pill" onClick={() => rt.start(true)}>Assumir aqui</button>}
             {["network", "timeout", "server", "mic", "no_mic"].includes(err.kind) && <button type="button" className="svm__pill" onClick={() => rt.start()}>Tentar de novo</button>}
-            <button type="button" className="svm__pill" onClick={() => setChatOpen(true)}>Escrever pelo Chat</button>
+            <button type="button" className="svm__pill" onClick={() => (onWrite?.(), setChatOpen(true))}>Escrever pelo Chat</button>
           </div>
         </div>
       ) : rt.state === "ended" ? (

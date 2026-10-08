@@ -111,10 +111,16 @@ describe("Gravação da fala", () => {
     expect(c.done.mock.calls[0][0]).toMatchObject({ mime: "audio/webm;codecs=opus" });
   });
 
-  it("só silêncio, cancelada ou acima de 4 MB não é enviada", () => {
-    const quiet = record(false);
+  it("por toque (iPhone e iPad), o 'Enviar' manda mesmo quando o medidor não ouviu fala (o Safari mede mal o microfone)", () => {
+    const tap = record(false);
     tick(2000);
-    quiet.r.stop();
+    tap.r.stop();
+    expect(tap.done).toHaveBeenCalledWith(expect.objectContaining({ blob: expect.any(Blob), seconds: 2 }));
+  });
+
+  it("só silêncio, cancelada ou acima de 4 MB não é enviada", () => {
+    const quiet = record(true);
+    tick(MAX_RECORD_MS);
     expect(quiet.done).toHaveBeenCalledWith(null);
     level = 0.5;
     const cancelled = record(true);
