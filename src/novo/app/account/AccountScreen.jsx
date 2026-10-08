@@ -138,8 +138,12 @@ function AccountSection({ email }) {
   const { boot, updateProfile } = useSession();
   const savedPhone = React.useMemo(() => splitPhone(boot.profile.phone ?? null), [boot.profile.phone]);
   const [phone, setPhone] = React.useState(savedPhone);
-  const phoneDirty = phone.code !== savedPhone.code || phone.number !== savedPhone.number;
-  const normalized = phoneDirty ? normalizePhone(phone.code, phone.number) : null;
+  const typedNormalized = normalizePhone(phone.code, phone.number);
+  // alterado = diferente do salvo em valor normalizado (o mesmo número digitado com máscara depois de salvar não conta)
+  const phoneDirty = (phone.code !== savedPhone.code || phone.number !== savedPhone.number) && (typedNormalized == null || typedNormalized !== (boot.profile.phone ?? null));
+  const normalized = phoneDirty ? typedNormalized : null;
+  // muda ao cancelar: remonta o seletor de país, que volta ao estado do telefone salvo
+  const [phoneKey, setPhoneKey] = React.useState(0);
   // `extra` só leva o WhatsApp quando ele mudou e é válido; `adjust` precisa ser estável entre renderizações iguais
   const adjust = React.useMemo(() => (normalized ? { extra: { phone: normalized } } : undefined), [normalized]);
   const form = useProfileForm(ACCOUNT_FIELDS, adjust);
@@ -163,6 +167,7 @@ function AccountSection({ email }) {
         <TextField label="E-mail cadastrado" value={email ?? ""} hint="O e-mail é vinculado ao seu login e não pode ser alterado aqui." readOnly />
       </div>
       <PhoneInputs
+          key={phoneKey}
           code={phone.code}
           number={phone.number}
           onChange={(next) => (setPhone(next), form.setStatus(null), setShowPhoneError(false))}
@@ -176,7 +181,7 @@ function AccountSection({ email }) {
         </div>
         <SegmentedControl label="Aparência" value={boot.profile.theme} onChange={(theme) => updateProfile({ theme }).catch(() => {})} options={THEMES} />
       </div>
-      <SaveBar saving={form.saving} status={form.status} dirty={form.dirty || phoneDirty} onCancel={() => (form.reset(), setPhone(savedPhone), setShowPhoneError(false))} />
+      <SaveBar saving={form.saving} status={form.status} dirty={form.dirty || phoneDirty} onCancel={() => (form.reset(), setPhone(savedPhone), setPhoneKey((k) => k + 1), setShowPhoneError(false))} />
     </form>
   );
 }

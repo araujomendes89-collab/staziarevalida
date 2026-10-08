@@ -133,3 +133,18 @@ describe("Aceite do Tutor na gaveta", () => {
     expect(screen.queryByText("Continuar")).toBeNull();
   });
 });
+
+describe("Cartão do aceite: duplo clique", () => {
+  it("depois do aceite com sucesso o botão não reenvia enquanto o cartão não sai", async () => {
+    const { TutorConsentCard } = await import("../novo/app/tutor/TutorConsentCard.jsx");
+    const onAccepted = vi.fn();
+    render(<TutorConsentCard version="1.0" onAccepted={onAccepted} />);
+    fireEvent.click(screen.getByLabelText("Li e concordo"));
+    const button = screen.getByText("Continuar").closest("button") as HTMLButtonElement;
+    fireEvent.click(button);
+    await waitFor(() => expect(onAccepted).toHaveBeenCalledTimes(1));
+    fireEvent.click(button);
+    fireEvent.submit(button.closest("form") as HTMLFormElement);
+    expect(acceptTerms).toHaveBeenCalledTimes(1);
+  });
+});

@@ -712,7 +712,7 @@ describe("Termo — dados de abertura do app (app_bootstrap → legal)", () => {
 });
 
 describe("Termo — exportação dos dados (app_export_my_data → acceptances)", () => {
-  const acceptanceKeys = ["accepted_at", "document", "origin", "version"];
+  const acceptanceKeys = ["accepted_at", "document", "origin", "user_agent", "version"];
 
   it("exportação inclui os aceites da pessoa", async () => {
     const { id } = await signUp({ name: "Export", phone: PHONE, terms_version: "1.0", user_agent: "UA/Export" });
@@ -720,8 +720,8 @@ describe("Termo — exportação dos dados (app_export_my_data → acceptances)"
 
     const data = await rpc(id, "app_export_my_data");
     expect(data.acceptances).toEqual([
-      { document: "termo_uso", version: "1.0", accepted_at: expect.any(String), origin: "cadastro" },
-      { document: "tutor_ia", version: "1.0", accepted_at: expect.any(String), origin: "tutor" },
+      { document: "termo_uso", version: "1.0", accepted_at: expect.any(String), origin: "cadastro", user_agent: "UA/Export" },
+      { document: "tutor_ia", version: "1.0", accepted_at: expect.any(String), origin: "tutor", user_agent: "UA/Tutor" },
     ]);
     // a data exportada é a da prova gravada
     const provas = await acceptances(id);

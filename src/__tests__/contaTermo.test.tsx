@@ -60,6 +60,27 @@ describe("Minha conta: WhatsApp", () => {
     expect((screen.getByLabelText("WhatsApp") as HTMLInputElement).value).toBe("923456789");
   });
 
+  it("depois de salvar com máscara o formulário não fica alterado (não reenvia o mesmo telefone)", async () => {
+    const { rerender } = render(<AccountScreen go={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("WhatsApp"), { target: { value: "(41) 98888-7777" } });
+    fireEvent.click(screen.getByRole("button", { name: "Salvar alterações" }));
+    await waitFor(() => expect(session.updateProfile).toHaveBeenCalledTimes(1));
+    // o servidor devolve o perfil com o telefone salvo
+    session.boot = makeBoot({ profile: { ...makeBoot().profile, phone: "+5541988887777" } });
+    rerender(<AccountScreen go={vi.fn()} />);
+    await screen.findByText("Alterações salvas.");
+    expect((screen.getByRole("button", { name: "Salvar alterações" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("Cancelar volta o seletor ao estado do telefone salvo (sai do modo Outro)", () => {
+    render(<AccountScreen go={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("País do WhatsApp"), { target: { value: "outro" } });
+    expect(screen.getByLabelText("Código do país")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByLabelText("Código do país")).toBeNull();
+    expect((screen.getByLabelText("País do WhatsApp") as HTMLSelectElement).value).toBe("+55");
+  });
+
   it("o resumo da seção diz Nome, e-mail, WhatsApp e aparência", () => {
     render(<AccountScreen go={vi.fn()} />);
     expect(screen.getByText("Nome, e-mail, WhatsApp e aparência")).toBeTruthy();

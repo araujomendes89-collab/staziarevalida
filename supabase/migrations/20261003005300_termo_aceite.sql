@@ -351,7 +351,8 @@ as $$
                                  from public.checklist_study_sessions t
                                  where t.actor_id = (select auth.uid()) or t.doctor_id = (select auth.uid())),
     'acceptances', (select coalesce(jsonb_agg(jsonb_build_object('document', t.document, 'version', t.version,
-                                                                  'accepted_at', t.accepted_at, 'origin', t.origin)
+                                                                  'accepted_at', t.accepted_at, 'origin', t.origin,
+                                                                  'user_agent', t.user_agent)
                                               order by t.accepted_at, t.id), '[]'::jsonb)
                     from public.legal_acceptances t where t.user_id = (select auth.uid()))
   )

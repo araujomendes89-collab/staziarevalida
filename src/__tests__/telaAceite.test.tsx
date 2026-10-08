@@ -134,6 +134,20 @@ describe("tela de aceite", () => {
     expect(acceptTerms).not.toHaveBeenCalled();
   });
 
+  it("WhatsApp inválido leva o foco ao campo do número; no modo Outro com código inválido, ao do código", () => {
+    open("/", bootOf(legalOf({ phone_missing: true })));
+    type("WhatsApp", "99999-8888"); // Brasil sem DDD
+    fireEvent.click(checkbox());
+    fireEvent.click(accept());
+    expect(document.activeElement).toBe(screen.getByLabelText("WhatsApp"));
+
+    fireEvent.change(screen.getByLabelText("País do WhatsApp"), { target: { value: "outro" } });
+    type("WhatsApp", "923456789");
+    type("Código do país", "abc");
+    fireEvent.click(accept());
+    expect(document.activeElement).toBe(screen.getByLabelText("Código do país"));
+  });
+
   it("o botão fica desabilitado enquanto falta a caixa ou o número", () => {
     open("/", bootOf(legalOf({ phone_missing: true })));
     expect((accept() as HTMLButtonElement).disabled).toBe(true);

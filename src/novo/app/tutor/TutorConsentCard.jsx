@@ -21,7 +21,7 @@ export function TutorConsentCard({ version, onAccepted, onOutdated }) {
     setError(null);
     try {
       await session.acceptTerms({ document: "tutor_ia", version, origin: "tutor" });
-      setBusy(false);
+      // busy segue ligado: o cartão sai quando o status volta, e um segundo clique não pode aceitar de novo
       onAccepted?.();
     } catch (err) {
       setError(err?.message || "Não foi possível registrar o aceite agora. Tente de novo.");

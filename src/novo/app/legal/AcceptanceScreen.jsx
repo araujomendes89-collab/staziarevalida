@@ -59,6 +59,8 @@ export function AcceptanceScreen() {
     if (!filled) return;
     if (needsPhone && !normalized) {
       setShowErrors(true);
+      // foco no campo com erro: o do código (modo Outro com código inválido) ou o do número
+      document.getElementById(codeBad ? "aceite-phone-code" : "aceite-phone-number")?.focus();
       return;
     }
     setShowErrors(false);
