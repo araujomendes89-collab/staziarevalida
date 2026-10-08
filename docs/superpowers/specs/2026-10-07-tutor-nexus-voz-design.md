@@ -122,6 +122,12 @@ embaixo e os botões centralizados; no modo Questões, a esfera e a legenda à e
 (no celular, um embaixo do outro). Nunca uma gaveta pequena no canto. Referência visual aprovada: a prévia
 https://claude.ai/artifact/T7LWmnX7eDmNnzVr8y2Vuv (telas 1–5 celular, 7–9 computador).
 
+**Cor da esfera pela emoção (decisão do dono, 2026-10-08, depois da prévia):** a cor muda aos poucos com a irritação do
+professor: calma azul/ciano (como hoje) → firme roxo → irritada magenta → **com raiva vermelho** (o vídeo, o brilho e os anéis
+ficam vermelhos, mais fortes quanto maior a irritação); no **alívio** (acerto depois de erro) e nas comemorações, volta ao
+azul/verde-água. Muda o comportamento de hoje, que na raiva fica em roxo/magenta. Vale no celular e no computador, na voz
+do professor e na voz reserva. Referência: tela 8 da prévia.
+
 **Saem da tela do aluno:** a escolha de voz do aparelho (VoicePicker) e o modo de voz antigo do chat. A escolha entre
 Gemini, GPT-Live e Realtime continua onde sempre esteve, no painel do Tutor ("Provedor da voz"), decidindo qual voz ao vivo
 é a reserva.
