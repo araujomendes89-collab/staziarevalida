@@ -6,7 +6,7 @@
  */
 import { PGlite } from "@electric-sql/pglite";
 import bootstrapSql from "../../../supabase/tests/bootstrap.sql?raw";
-import { BackendError, type AuthUser, type Backend } from "./backend";
+import { BackendError, signUpMetadata, type AuthUser, type Backend } from "./backend";
 import { createLocalCore, migrateDatabase } from "./localCore";
 
 const migrations = import.meta.glob("../../../supabase/migrations/*.sql", {
@@ -101,8 +101,8 @@ export async function createLocalBackend(options: LocalBackendOptions = {}): Pro
     async signIn(email, password) {
       setUser(await core.verify(email, password));
     },
-    async signUp(name, email, password) {
-      setUser(await core.createAccount(name, email, password));
+    async signUp(name, email, password, extra) {
+      setUser(await core.createAccount(name, email, password, false, signUpMetadata(extra)));
       return { needsEmailConfirmation: false };
     },
     masterSetup: {

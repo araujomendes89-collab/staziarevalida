@@ -3,7 +3,7 @@
  * usado pelo painel e pelo processamento da Central de Conteúdo. A sessão é um token guardado
  * neste navegador. Nunca é usado em produção (ver ./index.ts).
  */
-import { BackendError, type AuthUser, type Backend, type BackendErrorCode, assertRpcCall } from "./backend";
+import { BackendError, type AuthUser, type Backend, type BackendErrorCode, assertRpcCall, signUpMetadata } from "./backend";
 
 const TOKEN_KEY = "smn-dev-token";
 
@@ -70,8 +70,9 @@ export function createDevServerBackend(base = "/api/dev-db"): Backend {
       const r = await call<{ user: AuthUser; token: string }>("/auth/signin", { email, password });
       setSession(r.user, r.token);
     },
-    async signUp(name, email, password) {
-      const r = await call<{ user: AuthUser; token: string }>("/auth/signup", { name, email, password });
+    async signUp(name, email, password, extra) {
+      // os dados extras seguem no corpo com os nomes dos metadados da conta (phone, terms_version, user_agent)
+      const r = await call<{ user: AuthUser; token: string }>("/auth/signup", { name, email, password, ...signUpMetadata(extra) });
       setSession(r.user, r.token);
       return { needsEmailConfirmation: false };
     },

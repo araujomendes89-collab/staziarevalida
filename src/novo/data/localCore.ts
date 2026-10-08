@@ -97,8 +97,12 @@ export const isEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emai
 
 export interface LocalCore {
   db: PGlite;
-  /** Cria a conta (sem sessão). `admin`: já nasce administradora, na mesma transação. */
-  createAccount(name: string, email: string, password: string, admin?: boolean): Promise<AuthUser>;
+  /**
+   * Cria a conta (sem sessão). `admin`: já nasce administradora, na mesma transação. `meta`: metadados extras da conta
+   * (ex.: phone, terms_version, user_agent), gravados em auth.users.raw_user_meta_data para o gatilho de criação da conta;
+   * o nome vem sempre do parâmetro `name`.
+   */
+  createAccount(name: string, email: string, password: string, admin?: boolean, meta?: Record<string, unknown>): Promise<AuthUser>;
   /** Confere e-mail e senha; devolve o usuário ou lança invalid_credentials. */
   verify(email: string, password: string): Promise<AuthUser>;
   setPassword(userId: string, password: string): Promise<void>;
@@ -111,7 +115,7 @@ export interface LocalCore {
 export function createLocalCore(db: PGlite, flush: () => Promise<void> = async () => {}): LocalCore {
   return {
     db,
-    async createAccount(name, email, password, admin = false) {
+    async createAccount(name, email, password, admin = false, meta = {}) {
       const mail = normalizeEmail(email);
       if (!isEmail(mail)) throw new BackendError("invalid_email", "E-mail inválido.");
       if (password.length < PASSWORD_MIN_LENGTH) throw new BackendError("weak_password", "Senha muito curta.");
@@ -121,7 +125,7 @@ export function createLocalCore(db: PGlite, flush: () => Promise<void> = async (
       const id = crypto.randomUUID();
       const hash = await sha256(password);
       await db.transaction(async (tx) => {
-        await tx.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)`, [id, mail, { name: name.trim() }]);
+        await tx.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)`, [id, mail, { ...meta, name: name.trim() }]);
         await tx.query(`insert into auth.local_credentials (user_id, email, password_sha256) values ($1, $2, $3)`, [id, mail, hash]);
         if (admin) await tx.query(`update public.user_roles set role = 'admin', updated_at = now() where user_id = $1`, [id]);
       });

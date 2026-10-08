@@ -82,6 +82,21 @@ export function SessionProvider({ children }) {
         const boot = await backend.rpc("app_update_profile", { p_patch: patch });
         setState((s) => ({ ...s, boot }));
       },
+      /**
+       * Registra o aceite de um documento (document: "termo_uso" ou "tutor_ia"; origin: "google", "tela_aceite" ou "tutor") e
+       * troca os dados de abertura pelos atualizados. `phone` (formato internacional) só vai quando a tela pediu o WhatsApp.
+       * Se o servidor recusar (ex.: versão desatualizada), o erro sobe para a tela e os dados de abertura não mudam.
+       */
+      async acceptTerms({ document, version, origin, phone }) {
+        const boot = await backend.rpc("app_accept_terms", {
+          p_document: document,
+          p_version: version,
+          p_origin: origin,
+          p_phone: phone ?? null,
+          p_user_agent: navigator.userAgent.slice(0, 300),
+        });
+        setState((s) => ({ ...s, boot }));
+      },
       async signOut() {
         await backend.signOut();
       },

@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import { assertRpcCall, BackendError, type AuthUser, type Backend, type BackendErrorCode } from "./backend";
+import { assertRpcCall, BackendError, signUpMetadata, type AuthUser, type Backend, type BackendErrorCode } from "./backend";
 
 function toBackendError(error: { message?: string; code?: string; status?: number } | null): BackendError {
   const message = error?.message ?? "";
@@ -40,11 +40,11 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
       const { error } = await client.auth.signInWithPassword({ email, password });
       if (error) throw toBackendError(error);
     },
-    async signUp(name, email, password) {
+    async signUp(name, email, password, extra) {
       const { data, error } = await client.auth.signUp({
         email,
         password,
-        options: { data: { name }, emailRedirectTo: redirectTo },
+        options: { data: { name, ...signUpMetadata(extra) }, emailRedirectTo: redirectTo },
       });
       if (error) throw toBackendError(error);
       return { needsEmailConfirmation: !data.session };

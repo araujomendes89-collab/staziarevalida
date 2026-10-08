@@ -12,14 +12,27 @@ export interface AuthUser {
   email: string | null;
 }
 
+/** Dados do cadastro com e-mail além de nome, e-mail e senha (Termo de Aceite e Uso, spec seções 5 e 9). Todos opcionais. */
+export interface SignUpExtra {
+  /** WhatsApp no formato internacional (ex.: +5541999998888). */
+  phone?: string;
+  /** Versão do termo marcada na tela; o gatilho de criação da conta só grava o aceite se for a vigente. */
+  termsVersion?: string;
+  /** Navegador da pessoa, guardado junto do aceite (até 300 caracteres). */
+  userAgent?: string;
+}
+
 export interface Backend {
   readonly mode: "supabase" | "local";
   getUser(): Promise<AuthUser | null>;
   /** Avisa quando alguém entra ou sai. Devolve a função para cancelar. */
   onAuthChange(callback: (user: AuthUser | null) => void): () => void;
   signIn(email: string, password: string): Promise<void>;
-  /** `needsEmailConfirmation`: a conta foi criada, mas o login depende de confirmar o e-mail. */
-  signUp(name: string, email: string, password: string): Promise<{ needsEmailConfirmation: boolean }>;
+  /**
+   * `extra` vai nos metadados da conta (`phone`, `terms_version`, `user_agent`), que o gatilho de criação da conta lê.
+   * `needsEmailConfirmation`: a conta foi criada, mas o login depende de confirmar o e-mail.
+   */
+  signUp(name: string, email: string, password: string, extra?: SignUpExtra): Promise<{ needsEmailConfirmation: boolean }>;
   signInWithGoogle(): Promise<void>;
   resetPassword(email: string): Promise<void>;
   /** Troca a senha de quem está logado. */
@@ -73,6 +86,21 @@ export class BackendError extends Error {
 }
 
 export const PASSWORD_MIN_LENGTH = 8;
+
+const USER_AGENT_MAX = 300;
+
+/**
+ * Metadados que o cadastro leva na conta (auth.users.raw_user_meta_data, lidos pelo gatilho handle_new_user), além do nome:
+ * só o que veio preenchido, com o navegador cortado em 300 caracteres. Um lugar só para o Supabase, o servidor de
+ * desenvolvimento e o banco local.
+ */
+export function signUpMetadata(extra: SignUpExtra = {}): Record<string, string> {
+  const meta: Record<string, string> = {};
+  if (extra.phone) meta.phone = extra.phone;
+  if (extra.termsVersion) meta.terms_version = extra.termsVersion;
+  if (extra.userAgent) meta.user_agent = extra.userAgent.slice(0, USER_AGENT_MAX);
+  return meta;
+}
 
 const RPC_NAME = /^app_[a-z0-9_]+$/;
 const ARG_NAME = /^p_[a-z0-9_]+$/;

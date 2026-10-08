@@ -3,10 +3,19 @@
  * Faz no servidor o mesmo papel que o Supabase faz em produção. Só existe fora de produção.
  */
 import express, { type Request, type Response, Router } from "express";
-import { BackendError } from "../../src/novo/data/backend";
+import { BackendError, signUpMetadata } from "../../src/novo/data/backend";
 import type { DevDatabase } from "./devDatabase";
 
 const tokenOf = (req: Request) => (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "").trim() || null;
+
+/**
+ * Metadados extras do cadastro que vêm no corpo (phone, terms_version, user_agent). Só texto passa; qualquer outro campo ou tipo
+ * é ignorado, e quem valida o conteúdo é o gatilho do banco (como no Supabase).
+ */
+function signupMetaFromBody(body: Record<string, unknown>): Record<string, string> {
+  const text = (value: unknown) => (typeof value === "string" ? value : undefined);
+  return signUpMetadata({ phone: text(body.phone), termsVersion: text(body.terms_version), userAgent: text(body.user_agent) });
+}
 
 function fail(res: Response, error: unknown) {
   const code = error instanceof BackendError ? error.code : "unknown";
@@ -29,8 +38,9 @@ export function createDevDbRouter(getDb: () => Promise<DevDatabase>): Router {
   router.post("/auth/signup", async (req, res) => {
     try {
       const db = await getDb();
-      const { name = "", email = "", password = "" } = req.body ?? {};
-      const user = await db.core.createAccount(String(name), String(email), String(password));
+      const body = req.body ?? {};
+      const { name = "", email = "", password = "" } = body;
+      const user = await db.core.createAccount(String(name), String(email), String(password), false, signupMetaFromBody(body));
       res.json({ user, token: await db.createSession(user.id) });
     } catch (error) {
       fail(res, error);
