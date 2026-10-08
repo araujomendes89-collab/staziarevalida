@@ -16,7 +16,6 @@ const COUNTRY_CODES = new Set(COUNTRIES.filter((c) => c.code !== "outro").map((c
 const OUTDATED = "Versão desatualizada do termo.";
 const OUTDATED_NOTICE = "O termo foi atualizado. Leia a nova versão e aceite de novo.";
 const FAILED_NOTICE = "Não foi possível registrar o aceite agora. Tente de novo.";
-const ACCEPT_ERROR = "Para continuar, é preciso aceitar o Termo de Aceite e Uso e a Política de Privacidade.";
 
 export function AcceptanceScreen() {
   const session = useSession();
@@ -50,15 +49,19 @@ export function AcceptanceScreen() {
   const normalized = needsPhone ? normalizePhone(phone.code, phone.number) : null;
   const msg = needsPhone ? phoneError(phone.code, phone.number) : null;
   const codeBad = msg && phone.number.trim() && !/^\+?[1-9][0-9]{0,2}$/.test(phone.code.trim()) && !COUNTRY_CODES.has(phone.code);
-  const ready = (!needsTerms || checked) && (!needsPhone || Boolean(normalized));
+  // "Preenchido" (não "válido"): o botão vale assim que cada campo exigido tem conteúdo; a validação aparece ao enviar
+  const phoneFilled = phone.number.trim() !== "" && (COUNTRY_CODES.has(phone.code) || phone.code.trim() !== "");
+  const filled = (!needsTerms || checked) && (!needsPhone || phoneFilled);
 
   const submit = async (e) => {
     e.preventDefault();
     if (busy) return;
-    if (!ready) {
+    if (!filled) return;
+    if (needsPhone && !normalized) {
       setShowErrors(true);
       return;
     }
+    setShowErrors(false);
     setBusy(true);
     setNotice(null);
     try {
@@ -113,8 +116,7 @@ export function AcceptanceScreen() {
                     className="lg-check"
                     checked={checked}
                     onChange={(e) => setChecked(e.target.checked)}
-                    aria-invalid={showErrors && !checked ? "true" : "false"}
-                    aria-describedby={showErrors && !checked ? "aceite-accept-error" : undefined}
+                    aria-invalid="false"
                   />
                   <span>
                     Declaro que li e compreendi os{" "}
@@ -124,10 +126,9 @@ export function AcceptanceScreen() {
                     {" "}do StaziaMed Revalida e concordo com suas condições.
                   </span>
                 </label>
-                {showErrors && !checked ? <span id="aceite-accept-error" className="lg-field-error">{ACCEPT_ERROR}</span> : null}
               </div>
             )}
-            <button type="submit" className="lg-btn lg-btn-primary" disabled={busy || !ready}>{busy ? <><span className="lg-spin" />SALVANDO…</> : "Aceitar e continuar"}</button>
+            <button type="submit" className="lg-btn lg-btn-primary" disabled={busy || !filled}>{busy ? <><span className="lg-spin" />SALVANDO…</> : "Aceitar e continuar"}</button>
             <button type="button" className="lg-btn lg-btn-ghost" onClick={() => session.signOut()}>Sair</button>
           </form>
         </section>

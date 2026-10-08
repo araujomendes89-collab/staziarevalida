@@ -115,7 +115,6 @@ describe("tela de aceite", () => {
 
   it("aceitar chama acceptTerms com termo_uso, 1.0, tela_aceite e o WhatsApp normalizado", async () => {
     const { acceptTerms } = open("/", bootOf(legalOf({ phone_missing: true })));
-    expect((accept() as HTMLButtonElement).disabled).toBe(true);
     type("WhatsApp", "(41) 99999-8888");
     expect((accept() as HTMLButtonElement).disabled).toBe(true); // falta a caixa
     fireEvent.click(checkbox());
@@ -123,6 +122,27 @@ describe("tela de aceite", () => {
     fireEvent.click(accept());
     await waitFor(() => expect(acceptTerms).toHaveBeenCalledTimes(1));
     expect(acceptTerms).toHaveBeenCalledWith({ document: "termo_uso", version: "1.0", origin: "tela_aceite", phone: "+5541999998888" });
+  });
+
+  it("WhatsApp preenchido mas inválido: botão habilitado, mostra o erro no campo e não envia", () => {
+    const { acceptTerms } = open("/", bootOf(legalOf({ phone_missing: true })));
+    type("WhatsApp", "99999-8888"); // Brasil sem DDD
+    fireEvent.click(checkbox());
+    expect((accept() as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(accept());
+    expect(screen.getByText("Informe o WhatsApp com DDD.")).toBeTruthy();
+    expect(acceptTerms).not.toHaveBeenCalled();
+  });
+
+  it("o botão fica desabilitado enquanto falta a caixa ou o número", () => {
+    open("/", bootOf(legalOf({ phone_missing: true })));
+    expect((accept() as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(checkbox());
+    expect((accept() as HTMLButtonElement).disabled).toBe(true); // sem número
+    type("WhatsApp", "41999998888");
+    expect((accept() as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(checkbox());
+    expect((accept() as HTMLButtonElement).disabled).toBe(true); // sem caixa
   });
 
   it("sem WhatsApp faltando, aceitar não manda telefone", async () => {
