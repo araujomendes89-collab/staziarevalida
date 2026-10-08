@@ -171,7 +171,7 @@ describe("Abrir a voz pela rota", () => {
     // as instruções travadas são as do professor, em português do Brasil e sem filtro
     const instr = google[0].config.liveConnectConstraints.config.systemInstruction as string;
     expect(instr.startsWith("IDIOMA E SOTAQUE")).toBe(true);
-    expect(instr).toContain("NADA DE SOTAQUE AMERICANO");
+    expect(instr).toContain("Não transfira a pronúncia do inglês"); // o bloco de pronúncia do pt-BR (voiceLanguage.ts) substituiu o "NADA DE SOTAQUE AMERICANO"
     expect(instr).toContain("FALA DE GENTE, SEM FILTRO");
     expect(instr).toContain("QUEM VOCÊ É NESTA CONVERSA: Durona");
     const call = (await sql(`select provider, model, status from public.tutor_voice_calls where id = $1`, [r.body.voice_call_id]))[0];
