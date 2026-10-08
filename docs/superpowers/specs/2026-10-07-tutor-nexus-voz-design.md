@@ -1,6 +1,6 @@
 # Tutor Nexus: tela única, escolha do professor e voz pelo motor Stazia (ElevenLabs só como voz) — especificação
 
-Data: 2026-10-07. Estado: decisões tomadas em conversa e conferidas contra o código; aguarda a revisão do dono (§15).
+Data: 2026-10-07. Estado: **aprovada pelo dono em 2026-10-08** ("continuar siga"), com as sugestões do §15 e as decisões de 2026-10-08 no §2.
 Base técnica: o estudo `.superpowers/tutor-nexus/design-recomendado.md` (3 desenhos, 2 juízes), a revisão do trabalho
 guardado no commit `25c079d` (ramo `trabalho-solto-2026-10-07`) e uma conferência desta especificação contra o código
 (47 apontamentos, todos tratados aqui). Onde o estudo e o dono discordam, vale o dono (ex.: a reserva com a voz atual e o
@@ -29,12 +29,14 @@ Pediu também: o Tutor mostra **só a tela Nexus**, e dentro dela o aluno **esco
 | Direto | Continua xingando também ao **comemorar**. |
 | Limite de voz | **5 minutos de fala do professor por aluno por dia** (~4.500 caracteres) no teste grátis de 7 dias. Passando disso, segue pelo Chat e pela voz que já existe. Terminado o teste, vale o bloqueio automático do Tutor (já existe). Pacotes e recarga de minutos: projeto próprio. |
 | Tela única | Antes de começar: o professor e, se quiser, um modo (padrão: a conversa livre, que no app se chama "Perguntar ao Tutor"). Conversas anteriores num botão "Histórico". O botão Chat continua. |
-| Transcrição | Pela **OpenAI**: o áudio não é guardado, fica só o texto. OpenAI e ElevenLabs entram como fornecedores no Termo/Privacidade. |
+| Transcrição | Pela **OpenAI**: o áudio não é guardado, fica só o texto. |
 | Reserva | Sem voz ElevenLabs aprovada ou sem créditos, a esfera usa **a voz atual** (Gemini/OpenAI ao vivo) como reserva. |
 | Aprovação das vozes | **Botão no painel** "Vozes do Nexus". Só o dono aprova; "Revogar" desliga na hora. |
 | Plano ElevenLabs | **Subir de plano antes** de abrir aos alunos. Até lá, a voz ElevenLabs fica só para a equipe. |
-| Nome do aluno na voz | O primeiro nome do aluno **pode ir** dentro do texto que vai para a ElevenLabs; a Política de Privacidade diz isso. |
-| Ordem | Depois do Termo de aceite e cadastro. |
+| Nome do aluno na voz | O primeiro nome do aluno **pode ir** dentro do texto que vai para a ElevenLabs. |
+| Ordem | Depois do Termo de aceite e cadastro (**publicado em 2026-10-08**, com o aceite do §34 antes do primeiro uso do Tutor). |
+| Fornecedores no texto (2026-10-08) | **Não nomear** OpenAI, Google nem ElevenLabs na Política nem nos avisos do app. Vale a Política de 07/10/2026, que fala de "IA e voz" de forma geral; nenhum texto jurídico novo é pré-requisito. |
+| Limites e créditos (2026-10-08) | Nesta etapa os limites seguem em minutos/caracteres, **todos editáveis no painel**. A conversão para "créditos de IA" (1 mensagem = 1, 1 min de voz = 4) vem no projeto de pagamentos (pausado). |
 
 ## 3. Fora desta etapa
 - Pacotes (entrada, intermediário, avançado), recarga avulsa de minutos e pagamento (projeto próprio). Aqui só deixamos o
@@ -201,26 +203,22 @@ A Nexus escolhe sozinha, a cada conversa, e mostra qual está valendo:
 - Modelo da voz: começa com `eleven_v3` (mais expressivo). A troca para `eleven_multilingual_v2` é decidida na audição.
 
 ## 10. Privacidade
-- **Voz ElevenLabs e por escrito:** a fala do aluno vai só para a OpenAI, para transcrever. O StaziaMed não guarda o áudio;
-  o que a OpenAI guarda segue a política dela (ainda a conferir). O texto fica, como no chat.
-- **Voz reserva:** a fala do aluno vai ao vivo para o Google (Gemini) ou para a OpenAI, como hoje.
+- **Voz ElevenLabs e por escrito:** a fala do aluno vai só para o serviço de transcrição. O StaziaMed não guarda o áudio.
+  O texto fica, como no chat.
+- **Voz reserva:** a fala do aluno vai ao vivo para o serviço de voz ao vivo escolhido no painel, como hoje.
 - **ElevenLabs:** recebe só o texto final do professor, sem e-mail, id ou outro dado de cadastro. O motor conhece o
   primeiro nome do aluno e pode usá-lo na resposta; quando isso acontece, o nome vai dentro do texto (aceito pelo dono).
 - Nenhuma chave de fornecedor vai para o navegador no caminho novo.
-- Aviso antes do primeiro uso da voz: "Sua fala é processada pela OpenAI ou, na voz reserva, pelo Google; a voz do
-  professor é gerada pela ElevenLabs ou por esses serviços."
-- O Termo v1.0 (§24) exige que as regras do áudio do aluno estejam na Política de Privacidade. O texto legal é do dono
-  (não escrevemos texto jurídico): **antes de abrir a voz aos alunos**, o dono entrega o texto novo da Política (OpenAI,
-  Google e ElevenLabs como fornecedores; áudio não guardado pelo StaziaMed; o primeiro nome pode ir no texto da voz) e ele
-  é publicado. Se o Termo também mudar,
-  vira versão nova e os alunos aceitam de novo.
+- **Aviso antes do primeiro uso da voz (decisão de 2026-10-08: sem nomes de fornecedores):** a frase da própria Política de
+  07/10/2026, seção 3, sem mudar nada: "Interações com recursos de IA e voz podem ser processadas para responder, sintetizar
+  áudio e adaptar a experiência. Fornecedores de IA recebem somente o necessário para executar a solicitação."
+- **Política:** continua a de 07/10/2026 (já publicada). Nenhum texto jurídico novo é pré-requisito desta etapa.
 
 ## 11. Liberação segura e medição
 1. Equipe primeiro, com as vozes ainda não aprovadas, medindo os tempos no iPhone e no Android.
 2. Audição e aprovação das três vozes no painel de produção.
 3. Plano da ElevenLabs maior, preços preenchidos e tetos conferidos.
-4. Política de Privacidade com as regras do áudio publicada (§10).
-5. Alunos.
+4. Alunos.
 
 ## 12. Testes
 - Motor: Durona firme no 1º erro (0,25 a 0,40, sem sorteio); alívio com palavrão no acerto logo depois de erro, mesmo com
@@ -250,7 +248,7 @@ A Nexus escolhe sozinha, a cada conversa, e mostra qual está valendo:
    amostras de voz.
 3. Vercel: o código (GitHub) e duas variáveis novas, `TUTOR_STT_ALLOW_EXTERNAL=1` e `TUTOR_VOICE_APPROVERS` (o e-mail do
    dono). As chaves da OpenAI e da ElevenLabs e os ids das vozes já estão lá. O Cloud Run não muda.
-4. Conferir no ar com a equipe; aprovar as vozes; preencher os preços; publicar a Política nova; depois liberar aos alunos.
+4. Conferir no ar com a equipe; aprovar as vozes; preencher os preços; depois liberar aos alunos.
 
 ## 14. Riscos
 - Créditos: com o plano atual, a voz ElevenLabs dura poucos minutos por mês para todos; a reserva vai ser comum até o plano
@@ -263,8 +261,7 @@ A Nexus escolhe sozinha, a cada conversa, e mostra qual está valendo:
 - Os testes de tela antigos do Tutor precisam ser reescritos junto.
 
 ## 15. Decisões finais e sugestões
-**Decidido pelo dono (2026-10-07):** o primeiro nome do aluno pode ir dentro do texto para a ElevenLabs, e a Política de
-Privacidade diz isso.
+**Decidido pelo dono (2026-10-07):** o primeiro nome do aluno pode ir dentro do texto para a ElevenLabs.
 
 **Sugestões minhas (valem se você não mudar):**
 - O alívio com palavrão da Durona vale no acerto logo depois de errar; num acerto sem erro antes, ela reconhece do jeito
