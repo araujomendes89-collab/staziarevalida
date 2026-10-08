@@ -1,0 +1,244 @@
+// @vitest-environment node
+/**
+ * Vozes do Nexus no servidor (spec §11 e §16 "Aprovação"): o painel de audição e aprovação roda sobre o mesmo servidor do
+ * Tutor. Aprovar exige que o servidor tenha registrado as audições de todos os cenários daquela versão da voz nas últimas
+ * 24 h, só quem está em TUTOR_VOICE_APPROVERS aprova ou revoga, cada voz vale sozinha, a aprovação cai quando a versão muda e
+ * a "Apresentação" aprovada fica guardada para o "Ouvir" do aluno. Audições ficam fora dos limites e dos tetos. Sem rede.
+ */
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import express from "express";
+import fs from "fs";
+import os from "os";
+import path from "path";
+import type { Server } from "http";
+import { openDevDatabaseForTests, type DevDatabase } from "../../server/devDb/devDatabase";
+import { devContentDb, localStorageDir, type ContentDb } from "../../server/contentHub/infra";
+import { buildEngineStatements } from "../../scripts/supabase/engine-seed";
+import { createTutorRouter } from "../../server/tutor/router";
+import { createVoicePreviewRouter, samplePath, voiceApprovers, SAMPLE_BUCKET } from "../../server/tutor/voicePreview";
+import { voiceFingerprint } from "../../server/tutor/officialVoices";
+import { OFFICIAL_VOICES, VOICE_SCENARIOS, scenariosFor } from "../shared/tutor/officialVoices";
+import { aceitarTermos } from "./helpers/aceites";
+
+const ENV = {
+  ELEVENLABS_API_KEY: "chave-falsa-de-teste-" + "x".repeat(40), TUTOR_VOICE_ALLOW_EXTERNAL: "1",
+  ELEVENLABS_VOICE_TRANQUILO: "vozTranquiloTeste01", ELEVENLABS_VOICE_DURONA: "vozDuronaTeste0001", ELEVENLABS_VOICE_DIRETO: "vozDiretoTeste0001",
+};
+const SERVER_ENV = { TUTOR_VOICE_APPROVERS: " Dono@T.dev, socia@t.dev " };
+const DONO = "00000000-0000-4000-8000-0000000000b1";
+const SOCIA = "00000000-0000-4000-8000-0000000000b2";
+const ADMIN2 = "00000000-0000-4000-8000-0000000000b3";
+const ALUNO = "00000000-0000-4000-8000-0000000000b4";
+const NOVO = "00000000-0000-4000-8000-0000000000b5";
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "tutor-vozes-"));
+let dev: DevDatabase;
+let db: ContentDb;
+let server: Server | null = null;
+let base: string;
+const tokens: Record<string, string> = {};
+let generated: { url: string; text: string }[] = [];
+const fakeFetch = (async (url: string, init: RequestInit) => {
+  const body = JSON.parse(String(init.body));
+  generated.push({ url, text: body.text });
+  // cada áudio leva o texto, para o teste saber qual foi guardado
+  return new Response(Buffer.from(`ID3:${body.text}`), { headers: { "Content-Type": "audio/mpeg" } });
+}) as typeof fetch;
+const deps: any = { mockRespond: () => ({}), fetch: fakeFetch, elevenEnv: ENV };
+
+const sql = async <T = any>(q: string, p: unknown[] = []) => (await dev.db.query<T>(q, p)).rows;
+const call = async (uid: string | null, method: "GET" | "POST", url: string, body?: unknown) => {
+  const r = await fetch(`${base}${url}`, {
+    method, headers: { ...(uid ? { Authorization: `Bearer ${tokens[uid]}` } : {}), ...(body ? { "Content-Type": "application/json" } : {}) },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const type = r.headers.get("content-type") ?? "";
+  return { status: r.status, type, json: type.includes("json") ? await r.json() : null, bytes: type.includes("audio") ? Buffer.from(await r.arrayBuffer()) : null, cache: r.headers.get("cache-control") };
+};
+const preview = (uid: string, personality: string, scenario: string) => call(uid, "POST", "/tutor/voices/preview", { personality, scenario });
+const panel = (uid: string) => call(uid, "GET", "/tutor/voices");
+const rowOf = (p: any, id: string) => p.rows.find((r: any) => r.id === id);
+/** Audições já registradas (sem passar pelo gerador): para os testes que não medem a audição em si. */
+const heardAll = async (uid: string, voice: "tranquilo" | "durona" | "direto", env = ENV) => {
+  for (const sc of scenariosFor(voice)) await sql(`select public.ch_worker_tutor_voice_listened($1, $2, $3, $4)`, [uid, voice, voiceFingerprint(voice, env), sc]);
+};
+
+/** Um servidor novo por teste: o limite de 12 audições por minuto e o cache de áudio começam do zero. */
+async function mount() {
+  if (server) await new Promise((r) => server!.close(r));
+  const app = express();
+  app.use(express.json());
+  app.use("/tutor/voices", createVoicePreviewRouter(deps, SERVER_ENV));
+  app.use("/tutor", createTutorRouter(deps));
+  server = await new Promise<Server>((resolve) => {
+    const srv = app.listen(0, "127.0.0.1", () => resolve(srv));
+  });
+  base = `http://127.0.0.1:${(server.address() as any).port}`;
+}
+
+beforeAll(async () => {
+  process.env.TUTOR_SETTINGS_TTL_MS = "0";
+  dev = await openDevDatabaseForTests(path.join(tmp, "db"));
+  db = devContentDb(async () => dev);
+  deps.db = db;
+  deps.storage = localStorageDir(path.join(tmp, "amostras"));
+  for (const st of buildEngineStatements()) await dev.db.exec(st);
+  await dev.db.query(`insert into auth.users (id, email) values ($1, 'dono@t.dev'), ($2, 'socia@t.dev'), ($3, 'outro.admin@t.dev'), ($4, 'aluno@t.dev'), ($5, 'novo@t.dev')`, [DONO, SOCIA, ADMIN2, ALUNO, NOVO]);
+  await dev.db.query(`update public.user_roles set role = 'admin' where user_id in ($1, $2, $3)`, [DONO, SOCIA, ADMIN2]);
+  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [ALUNO]);
+  for (const uid of [DONO, SOCIA, ADMIN2, ALUNO]) await aceitarTermos(dev.db, uid);
+  for (const uid of [DONO, SOCIA, ADMIN2, ALUNO, NOVO]) tokens[uid] = await dev.createSession(uid);
+  await sql(`update public.tutor_config set enabled = true, voice_enabled = true, tts_team_only = false, tts_price_per_1k_chars_usd = 0.3`);
+}, 300_000);
+afterAll(async () => {
+  delete process.env.TUTOR_SETTINGS_TTL_MS;
+  if (server) await new Promise((r) => server!.close(r));
+  await dev?.db.close();
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+beforeEach(async () => {
+  generated = [];
+  deps.elevenEnv = ENV;
+  await sql(`delete from public.tutor_voice_approvals`);
+  await sql(`delete from public.tutor_voice_listen_log`);
+  await sql(`delete from public.tutor_tts_usage`);
+  await mount();
+});
+
+describe("Vozes do Nexus: audição e aprovação no servidor", () => {
+  it("aprovar só depois de o servidor registrar todos os cenários daquela versão nas últimas 24 h; o navegador não manda a versão", async () => {
+    expect(voiceApprovers(SERVER_ENV)).toEqual(["dono@t.dev", "socia@t.dev"]);
+    expect(await call(DONO, "POST", "/tutor/voices/approve", { personality: "durona" })).toMatchObject({ status: 409, json: { error: "Ouça todos os cenários desta voz antes de aprovar." } });
+    const fp = voiceFingerprint("durona", ENV);
+    expect((await call(DONO, "POST", "/tutor/voices/approve", { personality: "durona", fingerprint: fp })).status).toBe(400);
+    for (const sc of scenariosFor("durona")) expect((await preview(DONO, "durona", sc)).status, sc).toBe(200);
+    let p = (await panel(DONO)).json;
+    expect(rowOf(p, "durona").scenarios.map((s: any) => [s.id, s.heard])).toEqual(scenariosFor("durona").map((id) => [id, true]));
+    expect(rowOf(p, "durona").can_approve).toBe(true);
+    // uma audição com mais de 24 h não vale: a aprovação recusa até ouvir de novo
+    await sql(`update public.tutor_voice_listen_log set heard_at = now() - interval '25 hours' where scenario = 'alivio'`);
+    expect(rowOf((await panel(DONO)).json, "durona").can_approve).toBe(false);
+    expect((await call(DONO, "POST", "/tutor/voices/approve", { personality: "durona" })).status).toBe(409);
+    expect((await preview(DONO, "durona", "alivio")).status).toBe(200);
+    const ok = await call(DONO, "POST", "/tutor/voices/approve", { personality: "durona" });
+    expect(ok.status).toBe(200);
+    expect(rowOf(ok.json, "durona")).toMatchObject({ approved: true, fingerprint: fp, can_approve: false });
+    expect(rowOf(ok.json, "durona").approved_at).toEqual(expect.any(String));
+    expect((await sql(`select voice, fingerprint, approved_by from public.tutor_voice_approvals`))).toEqual([{ voice: "durona", fingerprint: fp, approved_by: DONO }]);
+  });
+
+  it("só quem está em TUTOR_VOICE_APPROVERS aprova ou revoga; outro administrador ouve mas não aprova; aluno nem ouve", async () => {
+    expect((await preview(ADMIN2, "direto", "apresentacao")).status).toBe(200);
+    await heardAll(ADMIN2, "direto");
+    const p = (await panel(ADMIN2)).json;
+    expect(p.approver).toBe(false);
+    expect(rowOf(p, "direto").can_approve).toBe(false);
+    for (const action of ["approve", "revoke"]) {
+      expect(await call(ADMIN2, "POST", `/tutor/voices/${action}`, { personality: "direto" })).toMatchObject({ status: 403, json: { error: "Só quem está na lista de aprovação pode aprovar ou revogar." } });
+    }
+    expect((await sql(`select count(*)::int n from public.tutor_voice_approvals`))[0].n).toBe(0);
+    expect((await panel(DONO)).json.approver).toBe(true);
+    expect((await panel(ALUNO)).status).toBe(403);
+    expect((await preview(ALUNO, "direto", "apresentacao")).status).toBe(403);
+    expect((await call(null, "GET", "/tutor/voices")).status).toBe(401);
+    expect(generated).toHaveLength(1);
+  });
+
+  it("cada voz vale sozinha e na hora; revogar uma não mexe nas outras", async () => {
+    await heardAll(DONO, "durona");
+    await heardAll(SOCIA, "direto");
+    expect((await call(DONO, "POST", "/tutor/voices/approve", { personality: "durona" })).status).toBe(200);
+    // aprovada a Durona, ela já fala com o aluno; o Direto ainda não
+    const fala = (personality: string, letter: string) => call(ALUNO, "POST", "/tutor/speech", { kind: "phrase", phrase: "marked", letter, personality_id: personality });
+    expect((await fala("durona", "A")).status).toBe(200);
+    expect(await fala("direto", "A")).toMatchObject({ status: 409, json: { code: "voice_unavailable" } });
+    expect((await call(SOCIA, "POST", "/tutor/voices/approve", { personality: "direto" })).status).toBe(200);
+    expect((await fala("direto", "A")).status).toBe(200);
+    const revoked = await call(DONO, "POST", "/tutor/voices/revoke", { personality: "durona" });
+    expect(revoked.status).toBe(200);
+    expect(Object.fromEntries(revoked.json.rows.map((r: any) => [r.id, r.approved]))).toEqual({ tranquilo: false, durona: false, direto: true });
+    expect(await fala("durona", "B")).toMatchObject({ status: 409, json: { code: "voice_unavailable" } });
+    expect((await fala("direto", "B")).status).toBe(200);
+  });
+
+  it("a aprovação cai sozinha quando a versão muda (outro voice_id, modelo, formato ou cenário)", async () => {
+    await heardAll(DONO, "durona");
+    expect((await call(DONO, "POST", "/tutor/voices/approve", { personality: "durona" })).status).toBe(200);
+    expect(rowOf((await panel(DONO)).json, "durona").approved).toBe(true);
+    for (const change of [{ ELEVENLABS_VOICE_DURONA: "outraVozDurona0001" }, { ELEVENLABS_MODEL_ID: "eleven_multilingual_v2" }]) {
+      deps.elevenEnv = { ...ENV, ...change };
+      const row = rowOf((await panel(DONO)).json, "durona");
+      expect(row, JSON.stringify(change)).toMatchObject({ approved: false, approved_at: null, can_approve: false });
+      expect(row.scenarios.every((s: any) => !s.heard)).toBe(true); // a versão nova pede audição nova
+    }
+    // formato fora do homologado: a voz nem fica pronta
+    deps.elevenEnv = { ...ENV, ELEVENLABS_OUTPUT_FORMAT: "mp3_22050_32" };
+    expect(rowOf((await panel(DONO)).json, "durona")).toMatchObject({ ready: false, approved: false });
+    // o cenário entra na versão (conferido com a versão gravada pelo painel)
+    deps.elevenEnv = ENV;
+    expect(rowOf((await panel(DONO)).json, "durona").fingerprint).toBe(voiceFingerprint("durona", ENV));
+  });
+
+  it("ao aprovar, a Apresentação vai para tutor-voice-samples/<voz>/<versão>.mp3 e é ela que toca no Ouvir do aluno, sem gerar voz", async () => {
+    expect(SAMPLE_BUCKET).toBe("tutor-voice-samples");
+    const fp = voiceFingerprint("durona", ENV);
+    expect(samplePath("durona", fp)).toBe(`durona/${fp}.mp3`);
+    expect((await preview(DONO, "durona", "apresentacao")).status).toBe(200);
+    await heardAll(DONO, "durona");
+    const before = generated.length;
+    expect((await call(DONO, "POST", "/tutor/voices/approve", { personality: "durona" })).status).toBe(200);
+    expect(generated.length).toBe(before); // a Apresentação ouvida estava no cache
+    expect((await sql(`select sample_path from public.tutor_voice_approvals where voice = 'durona'`))[0].sample_path).toBe(samplePath("durona", fp));
+    const stored = await deps.storage.get(samplePath("durona", fp));
+    expect(stored.toString()).toBe(`ID3:${OFFICIAL_VOICES.durona.sample}`);
+    // o "Ouvir" do aluno toca o arquivo guardado, sem gerar voz
+    const n = generated.length;
+    const ouvir = await call(ALUNO, "GET", "/tutor/voice/sample/durona");
+    expect(ouvir).toMatchObject({ status: 200, type: "audio/mpeg", cache: "private, max-age=3600" });
+    expect(ouvir.bytes!.equals(stored)).toBe(true);
+    expect(generated.length).toBe(n);
+    // sem aprovação, com outra versão no ar ou sem o aceite: nada toca
+    expect(await call(ALUNO, "GET", "/tutor/voice/sample/direto")).toMatchObject({ status: 404, json: { error: "Amostra indisponível." } });
+    expect((await call(NOVO, "GET", "/tutor/voice/sample/durona")).json).toMatchObject({ code: "tutor_consent" });
+    deps.elevenEnv = { ...ENV, ELEVENLABS_VOICE_DURONA: "outraVozDurona0001" };
+    expect((await call(ALUNO, "GET", "/tutor/voice/sample/durona")).status).toBe(404);
+    // sem a Apresentação no cache, aprovar gera de novo (como audição)
+    deps.elevenEnv = ENV;
+    await mount();
+    await heardAll(SOCIA, "direto");
+    const m = generated.length;
+    expect((await call(SOCIA, "POST", "/tutor/voices/approve", { personality: "direto" })).status).toBe(200);
+    expect(generated.length).toBe(m + 1);
+    expect((await deps.storage.get(samplePath("direto", voiceFingerprint("direto", ENV)))).toString()).toBe(`ID3:${OFFICIAL_VOICES.direto.sample}`);
+  });
+
+  it("audições entram como tutor_tts_audicao e não contam no limite de quem ouviu nem nos tetos", async () => {
+    const ledger = async () => sql(`select feature, characters, estimated_cost_usd::float c, meta from public.ai_usage_ledger where user_id = $1 and feature = 'tutor_tts_audicao' order by id`, [DONO]);
+    const before = (await ledger()).length;
+    expect((await preview(DONO, "direto", "repeticao")).status).toBe(200);
+    expect((await preview(DONO, "direto", "repeticao")).status).toBe(200); // do cache: registra a audição, não gera nem cobra
+    const rows = (await ledger()).slice(before);
+    const text = VOICE_SCENARIOS.repeticao.text;
+    expect(rows).toEqual([{ feature: "tutor_tts_audicao", characters: text.length, c: Math.round((text.length / 1000) * 0.3 * 1e6) / 1e6, meta: expect.objectContaining({ voice: "direto", scenario: "repeticao" }) }]);
+    expect((await sql(`select count(*)::int n from public.tutor_voice_listen_log where user_id = $1 and scenario = 'repeticao'`, [DONO]))[0].n).toBe(2);
+    expect((await sql(`select count(*)::int n from public.tutor_tts_usage`))[0].n).toBe(0);
+    const q = (await sql(`select public.ch_worker_tutor_tts_quota($1) q`, [DONO]))[0].q;
+    expect(q).toMatchObject({ used_today: 0, account_day_left: 4500, account_month_left: 30000 });
+  });
+
+  it("o painel não escolhe a voz: só personalidade e cenário; nenhuma chave nas respostas", async () => {
+    for (const body of [
+      { personality: "direto", scenario: "apresentacao", text: "Fale outra coisa" },
+      { personality: "direto", scenario: "apresentacao", voice_id: "qualquerVoz000001" },
+      { personality: "direto", scenario: "__proto__" },
+      { personality: "__proto__", scenario: "apresentacao" },
+    ]) expect((await call(DONO, "POST", "/tutor/voices/preview", body)).status, JSON.stringify(body)).toBe(400);
+    // cenário de outra voz: o Direto não tem o alívio da Durona
+    expect(await preview(DONO, "direto", "alivio")).toMatchObject({ status: 400, json: { error: "Voz ou cenário de teste inválido." } });
+    expect(await preview(DONO, "durona", "comemoracao")).toMatchObject({ status: 400 });
+    expect(generated).toHaveLength(0);
+    expect((await preview(DONO, "durona", "apresentacao")).status).toBe(200);
+    expect(generated[0].url).toContain(ENV.ELEVENLABS_VOICE_DURONA);
+    const raw = JSON.stringify((await panel(DONO)).json);
+    for (const secret of [ENV.ELEVENLABS_API_KEY, ENV.ELEVENLABS_VOICE_DURONA, ENV.ELEVENLABS_VOICE_DIRETO, ENV.ELEVENLABS_VOICE_TRANQUILO]) expect(raw).not.toContain(secret);
+  });
+});

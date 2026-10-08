@@ -11,6 +11,9 @@ import { runTutorTool, TOOL_NAMES } from "./tools";
 import { delegateVoice } from "./delegate";
 import { tutorSettings } from "./settings";
 import { planProviders } from "./voiceProviders";
+import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
+import { samplePath } from "./voicePreview";
+import type { TtsQuota } from "./nexus";
 
 type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -106,6 +109,29 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       if (error instanceof TutorError) return failTutor(res, error);
       deps!.log?.(`[tutor] erro na voz: ${(error as Error).message}`);
       fail(res, 500, "A voz natural falhou agora.");
+    }
+  });
+
+  /**
+   * "Ouvir" do aluno: a Apresentação guardada quando a voz foi aprovada (a versão no ar precisa ser a aprovada). Não gera voz
+   * nem gasta caracteres.
+   */
+  router.get("/voice/sample/:personality", async (req: Authed, res) => {
+    try {
+      const quota = await deps!.db.service<TtsQuota>("ch_worker_tutor_tts_quota", { p_user: req.user!.id });
+      if (quota?.consent_pending) return failTutor(res, consentError());
+      const id = officialVoiceForPersonality(String(req.params.personality ?? ""));
+      const row = id ? elevenLabsReadiness(deps!.elevenEnv ?? process.env, quota?.approvals ?? {}).rows.find((r) => r.id === id) : null;
+      const approval = id ? quota?.approvals?.[id] : null;
+      if (!id || !row?.approved || !approval?.sample_path || approval.sample_path !== samplePath(id, row.fingerprint) || !deps!.storage) return fail(res, 404, "Amostra indisponível.");
+      const audio = await deps!.storage.get(approval.sample_path).catch(() => null);
+      if (!audio) return fail(res, 404, "Amostra indisponível.");
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Cache-Control", "private, max-age=3600");
+      res.send(audio);
+    } catch (error) {
+      deps!.log?.(`[tutor] amostra da voz: ${(error as Error).message.slice(0, 160)}`);
+      fail(res, 500, "Não foi possível tocar a amostra agora.");
     }
   });
 

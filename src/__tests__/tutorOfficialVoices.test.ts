@@ -219,10 +219,12 @@ describe("audição interna autenticada (sem ElevenLabs real)", () => {
   beforeAll(async () => {
     const app = express();
     const db = {
-      authenticate: async (req: any) => req.headers.authorization ? { id: req.headers.authorization } : null,
+      authenticate: async (req: any) => req.headers.authorization ? { id: req.headers.authorization, email: null } : null,
       asUser: async (user: any) => { if (user.id !== "Bearer admin") throw new Error("denied"); return {}; },
+      // o painel lê aprovações e audições no banco; a audição fica registrada pelo servidor
+      service: async (fn: string) => (fn === "ch_worker_tutor_voice_panel" ? { approvals: {}, heard: [] } : null),
     };
-    app.use("/voices", createVoicePreviewRouter(db as any, ENV, provider as any));
+    app.use("/voices", createVoicePreviewRouter({ db, elevenEnv: ENV, fetch: provider } as any, {}));
     app.use("/tutor", express.json(), createTutorRouter({
       db: { ...db, service: async (fn: string) => fn === "ch_worker_tutor_voice_sweep" ? [] : { voice_enabled: true } },
       mockRespond: () => ({}),
