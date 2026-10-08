@@ -45,9 +45,8 @@ export function AdminScreen() {
 
   return (
     <>
-      <div style={{ overflowX: "auto" }}>
-        <Tabs label="Administração" value={tab} onChange={(aba) => setParams({ aba }, { replace: true })} tabs={tabs.map(({ value, label, icon }) => ({ value, label, icon }))} />
-      </div>
+      {/* 13 abas não cabem numa linha: a barra quebra linha para todas aparecerem */}
+      <Tabs wrap label="Administração" value={tab} onChange={(aba) => setParams({ aba }, { replace: true })} tabs={tabs.map(({ value, label, icon }) => ({ value, label, icon }))} />
       {tab === "geral" && <AdminOverview isAdmin={isAdmin} />}
       {tab === "usuarios" && <AdminUsers />}
       {tab === "questoes" && <AdminQuestions />}

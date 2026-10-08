@@ -120,6 +120,7 @@
 .sm-overline{font:var(--type-overline);letter-spacing:var(--tracking-overline);text-transform:uppercase;color:var(--text-brand)}
 
 .sm-tabs{display:flex;gap:var(--space-1);border-bottom:1px solid var(--border-default);overflow-x:auto;overflow-y:hidden;scrollbar-width:none}.sm-tabs::-webkit-scrollbar{display:none}
+.sm-tabs--wrap{flex-wrap:wrap;overflow:visible}
 .sm-tab{display:inline-flex;align-items:center;gap:var(--space-2);height:44px;padding:0 var(--space-4);border:0;background:none;color:var(--text-secondary);font:600 var(--text-sm)/1 var(--font-sans);cursor:pointer;position:relative;white-space:nowrap;border-radius:var(--radius-sm) var(--radius-sm) 0 0}
 .sm-tab:hover{color:var(--text-primary);background:var(--action-ghost-hover)}
 .sm-tab:focus-visible{outline:none;box-shadow:var(--focus-ring)}
