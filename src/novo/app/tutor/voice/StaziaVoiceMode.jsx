@@ -115,13 +115,19 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
     }
   };
 
+  // a Nexus pede o Chat aberto (microfone negado, transcrição que não entendeu)
+  React.useEffect(() => {
+    if (rt.chatRequest) setChatOpen(true);
+  }, [rt.chatRequest]);
+
   const err = rt.state === "error" ? rt.error : null;
+  const shownNote = note ?? rt.notice ?? null;
   const connected = ["ready", "listening", "thinking", "speaking", "interrupted", "paused"].includes(rt.state);
   const quota = voiceQuotaText(entitlement, rt.remaining);
   const hasCaption = Boolean((rt.captions?.tutor ?? "").trim() || (rt.captions?.student ?? "").trim());
 
   return createPortal(
-    <div className="svm" role="dialog" aria-modal="true" aria-labelledby="svm-title" aria-describedby="svm-desc" ref={dialog} onKeyDown={onKey}>
+    <div className={`svm${card ? " svm--with-card" : ""}`} role="dialog" aria-modal="true" aria-labelledby="svm-title" aria-describedby="svm-desc" ref={dialog} onKeyDown={onKey}>
       <div className="svm__top">
         <span className="svm__persona">
           <span aria-hidden="true">{persona?.emoji ?? "🎙️"}</span>
@@ -160,7 +166,7 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
         </div>
       ) : rt.state === "ended" ? (
         <div style={{ width: "100%" }}>
-          <p className="svm__hint" role="status">{note ?? "A conversa por voz foi encerrada."}</p>
+          <p className="svm__hint" role="status">{shownNote ?? "A conversa por voz foi encerrada."}</p>
           <div className="svm__actions">
             <button type="button" className="svm__pill" onClick={() => rt.start()}>Conversar de novo</button>
             {onTextFallback && <button type="button" className="svm__pill" onClick={onTextFallback}>Continuar por texto</button>}
@@ -170,13 +176,27 @@ export function StaziaVoiceMode({ rt, persona, messages = [], avatar = null, ent
         <p className="svm__hint">
           <strong>Fale com o Nexus...</strong>
           Experimente: “me explica pré-eclâmpsia” ou “me faz uma pergunta de pediatria”.
-          {note && <span style={{ display: "block", marginTop: 6 }}>{note}</span>}
+          {shownNote && <span style={{ display: "block", marginTop: 6 }}>{shownNote}</span>}
         </p>
       ) : (
         <>
           <VoiceCaptions show={showCaptions} captions={rt.captions} />
-          {note && <p className="svm__hint" role="status" style={{ marginTop: 4 }}>{note}</p>}
+          {shownNote && <p className="svm__hint" role="status" style={{ marginTop: 4 }}>{shownNote}</p>}
         </>
+      )}
+
+      {rt.micError && <p className="svm__hint" role="status">{rt.micError}</p>}
+
+      {rt.tapToTalk && connected && rt.state === "ready" && !rt.muted && rt.streams?.input && (
+        <div className="svm__actions">
+          <p className="svm__hint" style={{ margin: 0 }}>Toque para falar</p>
+          <button type="button" className="svm__pill" onClick={rt.talk}>Falar</button>
+        </div>
+      )}
+      {rt.tapToTalk && rt.state === "listening" && (
+        <div className="svm__actions">
+          <button type="button" className="svm__pill" aria-label="Enviar a fala" onClick={rt.send}>Enviar</button>
+        </div>
       )}
 
       {rt.state === "speaking" && rt.provider !== "live" && (

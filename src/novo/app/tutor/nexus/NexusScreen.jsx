@@ -4,7 +4,7 @@
 // o professor escolhido e o servidor diz o jeito: voz do professor, voz reserva (a voz ao vivo de antes) ou por escrito.
 import React from "react";
 import { useSession } from "../../session.jsx";
-import { nexusApi, tutorServerStatus, voiceApi } from "../api.js";
+import { nexusApi, tutorServerStatus } from "../api.js";
 import { ERROR_CLASS, modeLabel } from "../labels.js";
 import { useRealtimeVoice } from "../useRealtimeVoice.js";
 import { StaziaVoiceMode } from "../voice/StaziaVoiceMode.jsx";
@@ -12,6 +12,8 @@ import { StaziaVoiceOrb } from "../voice/StaziaVoiceOrb.jsx";
 import { unlockAudio } from "../voice/audioUnlock.js";
 import { TutorGate } from "./TutorGate.jsx";
 import { NexusLobby, withArticle } from "./NexusLobby.jsx";
+import { QuestionCard } from "./QuestionCard.jsx";
+import { useNexusVoice } from "./useNexusVoice.js";
 import "./nexus.css";
 
 export const JEITO_LABEL = { eleven: "Voz do professor", reserva: "Voz reserva", escrito: "Por escrito" };
@@ -43,6 +45,12 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
   const pending = React.useRef(null); // conversa criada que esbarrou em outra aba aberta ("Assumir aqui")
   const sampleAudio = React.useRef(null);
   const liveStarted = React.useRef(null);
+  const ttsStarted = React.useRef(null);
+  const [micStream, setMicStream] = React.useState(null);
+  const [fallback, setFallback] = React.useState(null); // { note, caption }: a voz do professor parou e a reserva assumiu
+  const [picked, setPicked] = React.useState(null); // letra marcada na reserva (a voz do professor guarda a dela)
+  const sessionRef = React.useRef(null);
+  sessionRef.current = session;
 
   const consentLost = (e) => e?.code === "tutor_consent" && (refresh().catch(() => {}), true);
 
@@ -58,6 +66,36 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
 
   // voz reserva: a voz ao vivo de antes (o servidor encerra a chamada da voz do professor ao abrir esta)
   const live = useRealtimeVoice({ backend, sessionId: session?.id ?? null, live: server.live, hint: server.hint });
+  // voz do professor e por escrito: o turno pelo motor do Tutor
+  const reload = async () => {
+    const s = await backend.rpc("app_tutor_session", { p_session_id: sessionRef.current.id });
+    setSession(s);
+    return s;
+  };
+  const appendMessage = (m) =>
+    setSession((s) => (s ? { ...s, messages: [...(s.messages ?? []), { id: m.id ?? `nx-${Date.now()}-${(s.messages ?? []).length}`, role: m.role, content: m.content }] } : s));
+  const ttsRef = React.useRef(null);
+  const tts = useNexusVoice({
+    backend, session, jeito: opened?.jeito ?? null, voiceCallId: opened?.voice_call_id ?? null, micStream,
+    onSession: reload, onMessage: appendMessage,
+    onFallback: (code, message, caption = null) => {
+      if (code === "tutor_consent") return void refresh().catch(() => {});
+      // a voz do professor parou (limite, teto, aprovação, falha): a reserva assume com a mensagem e a legenda fica
+      setFallback({ note: message, caption: caption ?? ttsRef.current?.captions?.tutor ?? "" });
+      void ttsRef.current?.stop?.();
+      releaseMic();
+      setMicStream(null);
+      liveStarted.current = null;
+      setOpened((o) => (o ? { ...o, jeito: "reserva", voice_call_id: null } : o));
+    },
+  });
+  ttsRef.current = tts;
+  React.useEffect(() => {
+    if (phase === "conversation" && (opened?.jeito === "eleven" || opened?.jeito === "escrito") && opened.voice_call_id && ttsStarted.current !== opened.voice_call_id) {
+      ttsStarted.current = opened.voice_call_id;
+      tts.start();
+    }
+  }, [phase, opened?.jeito, opened?.voice_call_id, tts]);
   React.useEffect(() => {
     if (phase === "conversation" && opened?.jeito === "reserva" && session?.id && liveStarted.current !== session.id) {
       liveStarted.current = session.id;
@@ -89,8 +127,12 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
       setError(null);
       setSession(s);
       setOpened(o);
+      setFallback(null);
+      setPicked(null);
       if (o.jeito === "reserva") releaseMic(); // a voz ao vivo pede o microfone por conta própria
+      setMicStream(o.jeito === "reserva" ? null : mic.current);
       liveStarted.current = null;
+      ttsStarted.current = null;
       setPhase("conversation");
     } catch (e) {
       if (consentLost(e)) return;
@@ -151,8 +193,9 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
     const o = opened;
     await backend.rpc("app_tutor_close", { p_session_id: s.id }).catch(() => {});
     if (o?.jeito === "reserva") await live.stop?.().catch?.(() => {});
-    else if (o?.voice_call_id) await voiceApi.end(backend, o.voice_call_id, "student").catch(() => {});
+    else await tts.stop().catch(() => {}); // encerra a chamada com os tempos de cada etapa
     releaseMic();
+    setMicStream(null);
     const full = await backend.rpc("app_tutor_session", { p_session_id: s.id }).catch(() => s);
     setSession(full ?? s);
     setOpened(null);
@@ -215,17 +258,49 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
 
   let body;
   if (phase === "conversation" && session && opened) {
-    const placeholder = {
-      state: "ready", error: null, captions: { tutor: lastTutor(session), student: "" }, streams: { input: null, output: null }, muted: false, provider: "tts", remaining: null,
-      start() {}, stop: async () => {}, interrupt() {}, sendText() {}, toggleMute() {}, setVolume() {}, active: true,
-    };
+    const reserve = opened.jeito === "reserva";
+    // na reserva, a legenda da voz do professor fica até a voz ao vivo falar
+    const rt = reserve ? (fallback?.caption && !(live.captions?.tutor ?? "").trim() ? { ...live, captions: { ...live.captions, tutor: fallback.caption } } : live) : tts;
+    const card = session.question && ["questao", "erros"].includes(session.mode) ? (
+      reserve ? (
+        <QuestionCard
+          session={session} marked={picked} gate={session.gate}
+          onMark={(l) => setPicked(l)}
+          onAnswer={async (l) => {
+            try {
+              await backend.rpc("app_tutor_answer", { p_session_id: session.id, p_option: l, p_confidence: null, p_response_ms: null, p_first_pick: null });
+              await reload();
+              live.sendText(`Marquei a ${l}.`);
+            } catch (e) {
+              setFallback((f) => ({ ...(f ?? {}), note: messageOf(e) }));
+            }
+          }}
+          onHint={() => live.sendText("Me dá uma ajuda aqui.")}
+          onReveal={() => live.sendText("Me mostra a resolução.")}
+          onNext={async () => {
+            try {
+              setSession(await backend.rpc("app_tutor_next_question", { p_session_id: session.id }));
+              setPicked(null);
+              live.sendText("Vamos para a próxima.");
+            } catch (e) {
+              setFallback((f) => ({ ...(f ?? {}), note: messageOf(e) }));
+            }
+          }}
+        />
+      ) : (
+        <QuestionCard session={session} marked={tts.marked} gate={session.gate} onMark={tts.mark} onAnswer={tts.answer} onHint={() => tts.command("hint")} onReveal={() => tts.command("reveal")} onNext={() => tts.command("next")} />
+      )
+    ) : null;
     body = (
       <StaziaVoiceMode
-        rt={opened.jeito === "reserva" ? live : placeholder}
+        rt={rt}
         persona={session.personality}
         messages={session.messages ?? []}
-        entitlement={opened.jeito === "reserva" ? status.entitlement : null}
+        avatar={reserve ? null : tts.avatar}
+        entitlement={reserve ? status.entitlement : null}
+        note={reserve ? fallback?.note ?? null : null}
         jeitoLabel={JEITO_LABEL[opened.jeito]}
+        card={card}
         onClose={finish}
       />
     );
@@ -239,7 +314,6 @@ function Nexus({ status, refresh, overlay, request, onClose }) {
   return <div className={`nx${overlay ? " nx--overlay" : ""}`}>{body}</div>;
 }
 
-const lastTutor = (s) => [...(s?.messages ?? [])].reverse().find((m) => m.role === "tutor")?.content ?? "";
 
 // ---------------------------------------------------------------- resumo e só leitura
 function SummaryBlock({ summary: s }) {

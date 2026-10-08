@@ -471,6 +471,67 @@
   font-size: 12px;
 }
 
+/* ---- cartão da questão (na conversa, sobre o fundo escuro da esfera: um cartão claro, como a prévia) */
+.nx-q {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px;
+  border-radius: 22px;
+  background: var(--surface-card, #ffffff);
+  color: var(--text-primary, #151a21);
+  text-align: left;
+}
+.nx-q__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.nx-q__over {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-brand, #0b6f68);
+}
+.nx-q__ref {
+  font-family: var(--font-mono, "JetBrains Mono", monospace);
+  font-size: 12.5px;
+  color: var(--text-secondary, #3a4350);
+}
+.nx-q__stem,
+.nx-q__ask {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.55;
+}
+.nx-q__ask {
+  font-weight: 600;
+}
+.nx-q__alts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.nx-q__tip {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary, #3a4350);
+}
+.nx-q__actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.nx-q__result {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
 /* ---- celular */
 @media (max-width: 600px) {
   .nx {
@@ -549,5 +610,12 @@
   }
   .nx-voice-line__jeito::before {
     content: none;
+  }
+  .nx-q {
+    padding: 16px;
+    border-radius: 18px;
+  }
+  .nx-q__actions {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

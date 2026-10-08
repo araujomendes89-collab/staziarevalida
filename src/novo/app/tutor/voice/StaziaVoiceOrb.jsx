@@ -10,10 +10,15 @@ import "./voiceMode.css";
 export const ORB_VIDEO = "/novo-assets/tutor/stazia-voice-orb.mp4";
 export const ORB_POSTER = "/novo-assets/tutor/stazia-voice-orb.jpg";
 
-/** Humor do motor do servidor → emoção da esfera (neutral · curious · happy · proud · skeptical · annoyed · angry · impressed). */
+/**
+ * Humor do motor do servidor → emoção da esfera. A cor acompanha a irritação (decisão do dono, 2026-10-08): calma azul/ciano,
+ * firme roxo, irritada magenta, com raiva vermelho (mais forte quanto maior a intensidade); alívio e comemoração voltam ao
+ * azul/verde-água.
+ */
 export const ORB_EMOTION = {
   neutral: "neutral", pleased: "happy", encouraged: "proud", impressed: "impressed", impatient: "skeptical", irritated: "annoyed",
   angry: "angry", disappointed: "skeptical", curious: "curious", happy: "happy", proud: "proud", skeptical: "skeptical", annoyed: "annoyed",
+  firm: "firm", relieved: "relieved",
 };
 
 /** Avatar devolvido pelo servidor ({ emotion, intensity 0–100 }) → emoção e intensidade (0..1) da esfera. */
@@ -27,7 +32,7 @@ export function orbEmotion(avatar) {
 // Velocidade do vídeo por estado (a emoção e o som somam por cima).
 const BASE_RATE = { idle: 0.6, connecting: 0.5, ready: 0.7, listening: 0.85, thinking: 0.45, speaking: 0.95, interrupted: 1.1, paused: 0.3, reconnecting: 0.4, ended: 0.4, error: 0.3 };
 const HOT = new Set(["angry", "annoyed"]);
-const WARM = new Set(["happy", "proud", "impressed"]);
+const WARM = new Set(["happy", "proud", "impressed", "relieved"]);
 
 export function usePrefersReducedMotion() {
   const query = "(prefers-reduced-motion: reduce)";
