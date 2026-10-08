@@ -115,6 +115,13 @@ de um treino com cronômetro. Ela já vem com o modo e o contexto do botão, e o
 - Desempenho → Me teste nos pontos fracos.
 Para outro modo, o aluno abre a Nexus pelo menu. Nenhuma conversa é criada antes do "Começar".
 
+**No computador (web), a mesma experiência (decisão do dono, 2026-10-08, depois de ver a prévia):** a Nexus abre em tela cheia,
+com a mesma esfera (o vídeo do dono, `stazia-voice-orb.mp4`, com brilho, anéis e partículas) e os mesmos passos do celular,
+aproveitando o espaço: na entrada, os três professores lado a lado; na conversa, a esfera grande no centro com a legenda
+embaixo e os botões centralizados; no modo Questões, a esfera e a legenda à esquerda e o cartão da questão à direita
+(no celular, um embaixo do outro). Nunca uma gaveta pequena no canto. Referência visual aprovada: a prévia
+https://claude.ai/artifact/T7LWmnX7eDmNnzVr8y2Vuv (telas 1–5 celular, 7–9 computador).
+
 **Saem da tela do aluno:** a escolha de voz do aparelho (VoicePicker) e o modo de voz antigo do chat. A escolha entre
 Gemini, GPT-Live e Realtime continua onde sempre esteve, no painel do Tutor ("Provedor da voz"), decidindo qual voz ao vivo
 é a reserva.
