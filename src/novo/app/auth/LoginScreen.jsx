@@ -402,8 +402,8 @@ export function LoginScreen({ go }) {
 
         <footer className="lg-footer">
           <span>{LOGIN_TEXT.copyright}</span>
-          <a href="/termos-de-uso">Termos de uso</a>
-          <a href="/politica-de-privacidade">Privacidade</a>
+          <a href="/novo/termos">Termos de uso</a>
+          <a href="/novo/privacidade">Privacidade</a>
         </footer>
       </div>
     </div>

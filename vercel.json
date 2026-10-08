@@ -11,13 +11,28 @@
   },
   "redirects": [
     {
-      "source": "/",
-      "destination": "/novo",
+      "source": "/termos-de-uso",
+      "destination": "/novo/termos",
+      "permanent": false
+    },
+    {
+      "source": "/politica-de-privacidade",
+      "destination": "/novo/privacidade",
       "permanent": false
     },
     {
       "source": "/login",
       "destination": "/novo/login",
+      "permanent": false
+    },
+    {
+      "source": "/",
+      "destination": "/novo",
+      "permanent": false
+    },
+    {
+      "source": "/:path((?!api(?:/|$)|novo|assets/|ds-icons/|question-assets/|images/|\\.well-known/|_vercel/).+)",
+      "destination": "/novo",
       "permanent": false
     }
   ],

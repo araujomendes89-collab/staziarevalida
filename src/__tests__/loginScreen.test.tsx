@@ -39,8 +39,8 @@ describe("Login: textos oficiais e links", () => {
     }
     expect(document.querySelector(".lg-tagline")!.textContent!.replace(/\s+/g, " ").trim()).toBe("Foco no que cai • Memória no que fica • Confiança na prova");
     expect(screen.getByText("© 2026 StaziaMed Revalida")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Termos de uso" }).getAttribute("href")).toBe("/termos-de-uso");
-    expect(screen.getByRole("link", { name: "Privacidade" }).getAttribute("href")).toBe("/politica-de-privacidade");
+    expect(screen.getByRole("link", { name: "Termos de uso" }).getAttribute("href")).toBe("/novo/termos");
+    expect(screen.getByRole("link", { name: "Privacidade" }).getAttribute("href")).toBe("/novo/privacidade");
     expect((screen.getByRole("img", { name: "StaziaMed Revalida" }) as HTMLImageElement).getAttribute("src")).toBe("/novo-assets/logo-staziamed-revalida-v2-escuro.png");
     // o controle de demonstração do protótipo não entra na tela real
     expect(screen.queryByText("DEMO")).toBeNull();
