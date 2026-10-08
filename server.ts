@@ -102,6 +102,7 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   // Central de Conteúdo: envio de PDFs, fila de processamento, arquivos finais (chaves só no servidor).
   const hub = await setupContentHub();
   app.use("/api/gemini", requireAdmin(hub.deps)); // rotas antigas do Gemini: só administrador (a chave é para criação de conteúdo)
+  app.use("/api/ai", requireAdmin(hub.deps)); // rotas antigas /api/ai/* (Anthropic, OpenAI e Gemini): só administrador; não pega /api/ai-central
   // Materiais visuais (cards, A4, story e flashcards): rotas próprias, montadas antes das da Central
   app.use("/api/content-hub/visual", createVisualRouter(hub.deps, { pending: hub.pending }));
   app.use("/api/ai-central", createAiRouter(hub.deps, { pending: hub.pending })); // prefixo próprio: em /api/ai engoliria as rotas do app antigo

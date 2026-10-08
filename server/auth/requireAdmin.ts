@@ -1,6 +1,6 @@
 /**
- * Porteiro das rotas antigas do Gemini (/api/gemini/*, do app antigo): a chave do Gemini do servidor é só para a criação
- * de conteúdo, então só entra o administrador do app novo. É a mesma conferência da Central de IAs (server/ai/router.ts):
+ * Porteiro das rotas antigas de IA do app antigo (/api/gemini/* e /api/ai/*): as chaves de IA do servidor são só para a
+ * criação de conteúdo, então só entra o administrador do app novo. É a mesma conferência da Central de IAs (server/ai/router.ts):
  * o token do pedido diz quem é (authenticate) e o banco diz se é administrador (app_ch_whoami).
  *
  *   sem a Central configurada neste servidor  503  { error: "Recurso indisponível neste servidor." }
