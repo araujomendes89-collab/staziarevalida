@@ -1,0 +1,24 @@
+h1	POLÍTICA DE PRIVACIDADE
+p	STAZIAMED REVALIDA
+p	Última atualização: 07 de outubro de 2026
+h2	CONTROLADORA DOS DADOS
+p	STAZIA TECNOLOGIA E EDUCAÇÃO LTDA - CNPJ 64.964.213/0001-16
+p	Rua Visconde do Rio Branco, 1488, Conj. 909, Andar 09, Centro, Curitiba/PR, CEP 80.420-210.
+p	StaziaMed Revalida é um produto licenciado da Stazia.
+h2	1. Dados tratados
+p	Podemos tratar dados de cadastro e autenticação, perfil, plano, pagamentos, dispositivo, IP, registros de acesso, suporte e dados de aprendizagem, como respostas, desempenho, metas, histórico e interações com o tutor.
+h2	2. Como usamos os dados
+p	Usamos os dados para criar e proteger sua conta, prestar o serviço, personalizar estudos, processar pagamentos, atender solicitações, prevenir fraudes, cumprir obrigações legais e melhorar a plataforma. As bases legais incluem execução de contrato, consentimento quando aplicável, obrigação legal e legítimo interesse avaliado nos termos da Lei nº 13.709/2018 - Lei Geral de Proteção de Dados Pessoais (LGPD).
+h2	3. IA, voz e personalização
+p	Interações com recursos de IA e voz podem ser processadas para responder, sintetizar áudio e adaptar a experiência. Fornecedores de IA recebem somente o necessário para executar a solicitação. Não envie dados reais de pacientes, prontuários ou informações sujeitas a sigilo.
+h2	4. Compartilhamento
+p	Dados podem ser compartilhados com fornecedores de hospedagem, banco de dados, autenticação, pagamentos, análise, suporte, IA e voz, sob obrigações de segurança. Também poderá haver compartilhamento por exigência legal ou proteção de direitos. Alguns fornecedores podem processar dados fora do Brasil com salvaguardas adequadas.
+h2	5. Retenção e segurança
+p	Mantemos os dados pelo tempo necessário ao serviço e às obrigações legais, fiscais, contratuais e de segurança. Aplicamos controles técnicos e organizacionais, mas nenhum sistema é totalmente imune a incidentes.
+h2	6. Seus direitos
+p	Nos termos da LGPD, você pode solicitar confirmação, acesso, correção, portabilidade quando aplicável, informação sobre compartilhamento, revisão, oposição, anonimização ou exclusão. A exclusão pode preservar dados que a lei ou a defesa de direitos exijam manter.
+h2	7. Cookies
+p	Utilizamos armazenamento local, cookies essenciais e tecnologias semelhantes para sessão, segurança, preferências e funcionamento. Cookies não essenciais, quando usados, observarão as escolhas disponíveis ao usuário.
+h2	8. Alterações e contato
+p	Esta Política pode ser atualizada para refletir mudanças legais ou do produto. Solicitações de privacidade podem ser feitas pelos canais de suporte disponibilizados na plataforma. Aplicam-se a LGPD e as demais leis brasileiras.
+p	© 2026 Stazia. StaziaMed Revalida é um produto licenciado da Stazia. Todos os direitos reservados.

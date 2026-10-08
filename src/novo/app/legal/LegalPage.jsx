@@ -35,7 +35,6 @@ export function Privacidade() {
         <h1>POLÍTICA DE PRIVACIDADE</h1>
         <p className="lgl-sub">STAZIAMED REVALIDA</p>
         <p className="lgl-meta">Última atualização: {PRIVACIDADE.atualizada}</p>
-        <p className="lgl-meta">Vigente a partir de {PRIVACIDADE.vigente}</p>
       </header>
       <div data-testid="legal-texto" className="lgl-text">
         {PRIVACIDADE.blocos.map((b) =>
@@ -43,7 +42,6 @@ export function Privacidade() {
             <div key="controlador" className="lgl-controlador">
               <h2>{b.titulo}</h2>
               {b.linhas.map((l) => <p key={l}><Inline text={l} /></p>)}
-              <p><Inline text={b.texto} /></p>
             </div>
           ) : (
             <Secao key={b.id} bloco={b} />
@@ -51,7 +49,6 @@ export function Privacidade() {
         )}
       </div>
       <footer className="lgl-foot">
-        {PRIVACIDADE.assinatura.map((l) => <p key={l}>{l}</p>)}
         <p>{PRIVACIDADE.rodape}</p>
       </footer>
     </>

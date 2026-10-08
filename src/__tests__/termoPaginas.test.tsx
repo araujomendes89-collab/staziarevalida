@@ -1,6 +1,6 @@
 /**
  * Páginas públicas do Termo de Aceite e Uso v1.0 e da Política de Privacidade no app novo (/novo/termos e /novo/privacidade).
- * O texto do Termo é o do dono, sem nenhuma mudança; a Política nova tem as mesmas palavras da antiga.
+ * O texto do Termo é o do dono, sem nenhuma mudança; a Política é a versão de 07/10/2026 (fixture extraída do commit 88a2031).
  */
 import React from "react";
 import { createHash } from "node:crypto";
@@ -19,7 +19,6 @@ vi.mock("../novo/app/AuthScreens.jsx", () => ({ AuthFlow: () => <div data-testid
 
 import { App } from "../novo/app/App.jsx";
 import { LegalPage } from "../novo/app/legal/LegalPage.jsx";
-import { PrivacyPolicyView } from "../components/legal/PrivacyPolicyView";
 
 const TERMO_PATH = "src/novo/app/legal/termo-uso-v1.0.md";
 const words = (s: string | null) => (s ?? "").split(/\s+/).filter(Boolean);
@@ -53,21 +52,29 @@ describe("Termo e Política públicos", () => {
     expect(screen.getByRole("link", { name: /Voltar para o app/ })).toHaveAttribute("href", "/novo");
   });
 
-  it("a política nova tem as mesmas palavras da antiga", () => {
-    const antiga = render(<MemoryRouter><PrivacyPolicyView /></MemoryRouter>);
-    const palavrasAntigas = [...antiga.container.querySelectorAll("section[id]")].flatMap((s) => words(s.textContent));
-    expect(palavrasAntigas.length).toBeGreaterThan(1000);
-    cleanup();
-
-    render(<MemoryRouter><LegalPage doc="privacidade" /></MemoryRouter>);
-    const secoes = [...texto().querySelectorAll("section")];
-    expect(secoes).toHaveLength(21);
-    expect(secoes.flatMap((s) => words(s.textContent))).toEqual(palavrasAntigas);
-    expect(screen.getByText("Última atualização: 04 de setembro de 2026")).toBeInTheDocument();
-    expect(screen.getByText("Vigente a partir de 04/09/2026")).toBeInTheDocument();
-    expect(screen.getByText("Versão vigente a partir de 04 de setembro de 2026.")).toBeInTheDocument();
-    expect(texto().textContent).toContain("5C CONSULTORIA EM GESTÃO E DESENVOLVIMENTO LTDA");
-    expect(texto().textContent).toContain("64.964.213/0001-16");
+  it("a política nova é a de 07/10/2026, palavra por palavra", () => {
+    // Fixture extraída do commit 88a2031 por script: uma linha por elemento (tag, tab, texto).
+    const esperado = readFileSync("src/__tests__/fixtures/politica-2026-10-07.txt", "utf8")
+      .split("\n")
+      .filter(Boolean)
+      .map((l) => {
+        const [tag, ...resto] = l.split("\t");
+        return { tag, palavras: words(resto.join("\t")) };
+      });
+    expect(esperado).toHaveLength(24);
+    const { container } = render(<MemoryRouter><LegalPage doc="privacidade" /></MemoryRouter>);
+    const naPagina = [...container.querySelectorAll("h1, h2, h3, p, li")].map((el) => ({
+      tag: el.tagName.toLowerCase(),
+      palavras: words(el.textContent),
+    }));
+    expect(naPagina).toEqual(esperado);
+    expect(screen.getByText("Última atualização: 07 de outubro de 2026")).toBeInTheDocument();
+    expect(screen.getByText("STAZIA TECNOLOGIA E EDUCAÇÃO LTDA - CNPJ 64.964.213/0001-16")).toBeInTheDocument();
+    const tudo = container.textContent!;
+    expect(tudo).not.toContain("5C CONSULTORIA");
+    expect(tudo).not.toContain("04 de setembro de 2026");
+    expect(tudo).not.toContain("04/09/2026");
+    expect(tudo).not.toContain("Vigente a partir");
   });
 
   const SESSOES: Array<[string, any]> = [

@@ -30,6 +30,7 @@
 .lgl-head { padding-bottom: 8px; }
 .lgl-controlador { margin: 8px 0 8px; padding: 16px; border-radius: var(--radius); border: 1px solid var(--line-soft); background: rgba(255, 255, 255, .04); font-size: 16px; }
 .lgl-controlador h2 { margin: 0 0 10px; font-size: 18px; letter-spacing: .04em; }
+.lgl-text section h2 { text-transform: uppercase; }
 .lgl-controlador p { margin: 0 0 8px; }
 .lgl-caixa { padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--line-soft); background: rgba(255, 255, 255, .05); }
 .lgl-forte { font-weight: 600; color: #ffffff; }
