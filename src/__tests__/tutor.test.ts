@@ -1076,8 +1076,9 @@ describe("Banco e motor (IA simulada)", () => {
         delete process.env.TUTOR_VOICE_DAILY_CHARS;
         await sql(`update public.tutor_config set voice_enabled = false`);
         expect((await post({ kind: "phrase", phrase: "unmarked", personality_id: "direto" })).status).toBe(503);
+        // a voz segue o direito do Tutor, não a regra antiga "só assinante": o aluno do teste grátis ouve
         await sql(`update public.tutor_config set voice_enabled = true, requires_pro = true`);
-        expect((await post({ kind: "phrase", phrase: "unmarked", personality_id: "direto" })).status).toBe(403);
+        expect((await post({ kind: "phrase", phrase: "unmarked", personality_id: "direto" })).status).toBe(200);
         await sql(`update public.tutor_config set requires_pro = false`);
         deps.speech = null;
         const off = await post({ kind: "phrase", phrase: "unmarked", personality_id: "direto" });

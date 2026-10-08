@@ -13,7 +13,7 @@
  * Sem voz natural pronta, o aplicativo usa a voz do aparelho, como antes. A voz é sempre a mesma resposta validada: só muda o som.
  */
 import { createHash } from "crypto";
-import { TutorError, consentError, type TutorDeps } from "./engine";
+import { TRIAL_OVER, TutorError, consentError, type TutorDeps } from "./engine";
 import { spokenText } from "./safety";
 import { TUTOR_SPOKEN_LANGUAGE } from "../../src/shared/tutor/voiceLanguage";
 import { elevenLabsVoiceSettings, speechDirectionFromState, type SpeechDirection } from "./speechDirector";
@@ -305,9 +305,9 @@ interface SpeechSource {
   found: boolean;
   /** O banco diz que o aluno ainda não aceitou os Tutores de IA (vem também quando não acha a fala). */
   consent_pending?: boolean;
-  config?: { enabled: boolean; voice_enabled: boolean; requires_pro: boolean };
-  is_pro?: boolean;
-  used_chars?: number;
+  config?: { enabled: boolean; voice_enabled: boolean };
+  /** Direito do Tutor e caracteres da voz do professor (tutor_tts_quota). */
+  quota?: { mode: "trial" | "paid" | "blocked"; used_today: number };
   personality?: string;
   voice?: VoiceProfile;
   emotion?: Record<string, unknown> | null;
@@ -341,7 +341,7 @@ export async function tutorSpeech(deps: TutorDeps, userId: string, req: SpeechRe
   if (src?.consent_pending) throw consentError();
   if (!src?.found) throw new TutorError(req.kind === "phrase" ? "Professor não encontrado." : "Fala não encontrada.", 404);
   if (!src.config!.enabled || !src.config!.voice_enabled) throw new TutorError("A voz do Tutor está desligada.", 503);
-  if (src.config!.requires_pro && !src.is_pro) throw new TutorError("O Tutor faz parte dos planos pagos.", 403);
+  if (src.quota?.mode === "blocked") throw new TutorError(TRIAL_OVER, 403);
   const raw = req.kind === "phrase" ? phraseText(req.phrase ?? "", req.letter, src.sample ?? null) : src.text;
   if (!raw) throw new TutorError("Frase inválida.", 400);
   const text = speechInput(raw);
@@ -349,7 +349,7 @@ export async function tutorSpeech(deps: TutorDeps, userId: string, req: SpeechRe
   const key = SpeechCache.key(provider, voice, text);
   const hit = cache.get(key);
   if (hit) return { ...hit, cached: true };
-  if ((src.used_chars ?? 0) + text.length > DAILY_CHARS()) throw new TutorError("Você chegou ao limite de voz natural de hoje. O professor continua falando com a voz do aparelho.", 429);
+  if ((src.quota?.used_today ?? 0) + text.length > DAILY_CHARS()) throw new TutorError("Você chegou ao limite de voz natural de hoje. O professor continua falando com a voz do aparelho.", 429);
   let out: SpeechAudio;
   try {
     out = await provider.synthesize(text, voice);
