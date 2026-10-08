@@ -8,12 +8,12 @@ import { TUTOR_CONSENT_PENDING, TutorError, consentError, resolveTutorProvider, 
 import { speechProviderFor, tutorSpeech } from "./speech";
 import { endVoice, purgeVoiceTranscripts, recordVoiceMetrics, recordVoiceUsage, rememberEvidence, renewVoice, startVoice, sweepVoice, voiceCall, voiceReady, voiceTranscript, type EndReason } from "./realtime";
 import { runTutorTool, TOOL_NAMES } from "./tools";
-import { delegateVoice } from "./delegate";
+import { delegateVoice, sayVoice, type Letter } from "./delegate";
 import { tutorSettings } from "./settings";
 import { planProviders } from "./voiceProviders";
 import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
 import { samplePath } from "./voicePreview";
-import type { TtsQuota } from "./nexus";
+import { nexusStatus, openNexus, type TtsQuota } from "./nexus";
 import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, sttConfig, transcribe } from "./stt";
 
 type Authed = Request & { user?: Identity };
@@ -235,6 +235,32 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
    * GPT-Live delegou: o servidor responde com o motor do Tutor (conferido antes de falar). body: { voice_call_id, transcript:
    * [{ role, text }], typed?, interrupted? }. O aplicativo devolve "say" à voz (session.commentary.append) e "tone" como instrução.
    */
+  // ---- Nexus: estado por professor, abertura (o jeito da conversa) e o turno pela voz do professor
+  router.get("/nexus", async (req: Authed, res) => {
+    try {
+      res.json(await nexusStatus(deps!, req.user!.id));
+    } catch (error) {
+      if (error instanceof TutorError) return failTutor(res, error);
+      deps!.log?.(`[tutor] nexus: ${(error as Error).message.slice(0, 160)}`);
+      fail(res, 500, "Não foi possível abrir a Nexus agora.");
+    }
+  });
+  router.post("/voice/open", voiceRoute(async (req, b) => {
+    if (!uuid.test(String(b.session_id ?? ""))) throw new TutorError("Conversa inválida.", 400);
+    return openNexus(deps!, req.user!.id, String(b.session_id), b.force === true);
+  }));
+  const letterOf = (x: unknown): Letter | null => (typeof x === "string" && /^[A-D]$/.test(x.toUpperCase()) ? (x.toUpperCase() as Letter) : null);
+  router.post("/voice/say", voiceRoute(async (req, b) => {
+    const turnId = typeof b.client_turn_id === "string" ? b.client_turn_id : "";
+    if (!/^[A-Za-z0-9_-]{8,64}$/.test(turnId)) throw new TutorError("Turno inválido.", 400);
+    const command = ["answer", "hint", "reveal", "next"].includes(b.command) ? b.command : null;
+    if (b.command != null && !command) throw new TutorError("Pedido inválido.", 400);
+    return sayVoice(deps!, req.user!.id, callIdOf(b), {
+      clientTurnId: turnId, command, option: letterOf(b.option), marked: letterOf(b.marked),
+      text: typeof b.text === "string" ? b.text.slice(0, 2000) : null, interrupted: typeof b.interrupted === "string" ? b.interrupted.slice(0, 300) : null,
+    });
+  }));
+
   router.post("/voice/delegate", voiceRoute(async (req, b) => {
     const transcript = Array.isArray(b.transcript)
       ? b.transcript.slice(-24).filter((x: any) => x && (x.role === "student" || x.role === "tutor") && typeof x.text === "string").map((x: any) => ({ role: x.role, text: String(x.text).slice(0, 2000) }))

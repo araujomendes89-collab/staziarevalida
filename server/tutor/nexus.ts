@@ -6,9 +6,11 @@
  * da aprovação, para medir os tempos), "só equipe" está desligado (ou quem pede é da equipe) e ainda há caracteres do aluno no
  * dia e da conta no dia e no mês. As mensagens não nomeiam fornecedor.
  */
-import { TutorError } from "./engine";
+import { PROFESSOR_CHANGED, TutorError, consentError, type TutorDeps } from "./engine";
 import { CHARS_PER_MINUTE } from "./speech";
-import type { Approval, ReadinessRow } from "./officialVoices";
+import { elevenLabsReadiness, officialVoiceForPersonality, type Approval, type ReadinessRow } from "./officialVoices";
+import { hangup, reasonError, voiceReady } from "./realtime";
+import { sttConfig } from "./stt";
 import type { OfficialVoice } from "../../src/shared/tutor/officialVoices";
 
 export type ElevenBlock = "voice_off" | "not_configured" | "not_approved" | "team_only" | "student_limit" | "account_day" | "account_month";
@@ -64,3 +66,94 @@ export const voiceBlockError = (reason: ElevenBlock) => {
 
 /** Minutos inteiros de fala (900 caracteres = 1 minuto): o "Voz hoje: X min". */
 export const minutesOf = (chars: number) => Math.floor(Math.max(0, chars) / CHARS_PER_MINUTE);
+
+// ---------------------------------------------------------------- os jeitos da conversa
+/** Voz do professor (eleven), voz reserva ao vivo (reserva) ou por escrito (escrito): a tela mostra "Voz do professor",
+ * "Voz reserva" ou "Por escrito", sem nomear fornecedor. */
+export type Jeito = "eleven" | "reserva" | "escrito";
+
+/** Os três professores, na ordem dos cartões. */
+export const NEXUS_PROFESSORS = ["acolhedor", "durona", "direto"] as const;
+
+export interface NexusStatus {
+  voice_enabled: boolean;
+  stt: boolean;
+  reserve: boolean;
+  reserve_minutes: number;
+  minutes_today: number;
+  professors: { id: string; eleven: boolean; sample: boolean; reason: ElevenBlock | null }[];
+}
+
+export interface NexusOpen {
+  jeito: Jeito;
+  voice_call_id: string | null;
+  mic: boolean;
+  reason: ElevenBlock | null;
+  minutes_today: number;
+  reserve_minutes: number;
+}
+
+const quotaOf = (deps: TutorDeps, userId: string) => deps.db.service<TtsQuota>("ch_worker_tutor_tts_quota", { p_user: userId });
+const rowFor = (deps: TutorDeps, quota: TtsQuota, personality: string) => {
+  const id = officialVoiceForPersonality(personality);
+  return id ? elevenLabsReadiness(deps.elevenEnv ?? process.env, quota.approvals ?? {}).rows.find((r) => r.id === id) ?? null : null;
+};
+const minutesToday = (q: TtsQuota) => minutesOf(Math.min(q.remaining_today, q.account_day_left, q.account_month_left));
+const reserveOf = (deps: TutorDeps, q: TtsQuota) => ({
+  reserve: voiceReady(deps).ready && q.reserve_can && q.reserve_remaining_s >= 15,
+  reserve_minutes: Math.floor(Math.max(0, q.reserve_remaining_s) / 60),
+});
+const sttReady = (deps: TutorDeps) => (deps.stt ?? sttConfig()).ready;
+
+/** O que a entrada da Nexus mostra: por professor, se a voz do professor vale agora e se há amostra para o "Ouvir". */
+export async function nexusStatus(deps: TutorDeps, userId: string): Promise<NexusStatus> {
+  const q = await quotaOf(deps, userId);
+  if (q?.consent_pending) throw consentError();
+  const { reserve, reserve_minutes } = reserveOf(deps, q);
+  return {
+    voice_enabled: q.voice_enabled, stt: sttReady(deps), reserve, reserve_minutes, minutes_today: minutesToday(q),
+    professors: NEXUS_PROFESSORS.map((id) => {
+      const row = rowFor(deps, q, id);
+      const access = elevenAccessOf({ quota: q, row });
+      const approval = row ? q.approvals?.[row.id] : null;
+      return { id, eleven: access.ok, sample: Boolean(access.ok && row?.approved && approval?.sample_path), reason: access.reason };
+    }),
+  };
+}
+
+const SPOKEN_LIMITS = new Set(["student_limit", "account_day", "account_month"]);
+
+/**
+ * Abre a conversa da Nexus e escolhe o jeito: voz do professor quando ela vale e há caracteres; senão a voz reserva ao vivo
+ * (o aplicativo abre pela rota de sempre) quando houver tempo; senão por escrito. A chamada "tts" (trava de turno) abre na voz do
+ * professor e no "por escrito" com a voz ligada no painel.
+ */
+export async function openNexus(deps: TutorDeps, userId: string, sessionId: string, force: boolean): Promise<NexusOpen> {
+  const ctx = await deps.db.service<{ consent_pending?: boolean; session: { read_only?: boolean }; personality: { id: string } } | null>(
+    "ch_worker_tutor_context", { p_user: userId, p_session_id: sessionId });
+  if (!ctx) throw new TutorError("Conversa não encontrada.", 404);
+  if (ctx.consent_pending) throw consentError();
+  if (ctx.session.read_only) throw new TutorError(PROFESSOR_CHANGED, 409);
+  const q = await quotaOf(deps, userId);
+  const base = { minutes_today: minutesToday(q), reserve_minutes: reserveOf(deps, q).reserve_minutes };
+  if (!q.voice_enabled) return { jeito: "escrito", voice_call_id: null, mic: false, reason: "voice_off", ...base };
+  const tts = async (spoken: boolean) => {
+    const r = await deps.db.service<{ ok: boolean; reason?: string; voice_call_id?: string; replaced_call_id?: string | null; replaced_provider?: string | null }>(
+      "ch_worker_tutor_tts_open", { p_user: userId, p_session_id: sessionId, p_force: force, p_spoken: spoken });
+    // a ligação ao vivo que a Nexus assumiu (outra aba) é desligada pelo servidor
+    if (r.ok && r.replaced_call_id) void hangup(r.replaced_call_id, deps, r.replaced_provider ?? "realtime");
+    return r;
+  };
+  const access = elevenAccessOf({ quota: q, row: rowFor(deps, q, ctx.personality.id) });
+  let reason = access.reason;
+  if (access.ok) {
+    const r = await tts(true);
+    if (r.ok) return { jeito: "eleven", voice_call_id: r.voice_call_id!, mic: sttReady(deps), reason: null, ...base };
+    if (!SPOKEN_LIMITS.has(r.reason ?? "")) throw reasonError(r.reason, null);
+    reason = r.reason as ElevenBlock;
+  }
+  if (reserveOf(deps, q).reserve) return { jeito: "reserva", voice_call_id: null, mic: true, reason, ...base };
+  const r = await tts(false);
+  if (!r.ok) throw reasonError(r.reason, null);
+  return { jeito: "escrito", voice_call_id: r.voice_call_id!, mic: sttReady(deps), reason, ...base };
+}

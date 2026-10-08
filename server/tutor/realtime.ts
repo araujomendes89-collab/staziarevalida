@@ -168,7 +168,7 @@ export interface VoiceStart {
   entitlement: unknown;
 }
 
-const reasonError = (reason: string | undefined, e: unknown): TutorError => {
+export const reasonError = (reason: string | undefined, e: unknown): TutorError => {
   switch (reason) {
     case "busy":
       return Object.assign(new TutorError("Já existe uma conversa por voz aberta em outro aparelho ou aba. Encerre por lá ou assuma aqui.", 409), { code: "busy" });
@@ -386,7 +386,8 @@ interface VoiceCall {
   status: string;
   model: string | null;
   call_id: string | null;
-  provider?: VoiceProviderId;
+  /** "tts": a Nexus aberta com a voz do professor (sem ligação ao vivo). */
+  provider?: VoiceProviderId | "tts";
   closing_at?: string | null;
 }
 
