@@ -5,6 +5,10 @@ import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
 import { csvTemplate, jsonTemplate, markDuplicates, questionsFromFile } from "./questionImport.js";
+import { ASSIST_TEXTS } from "../../../shared/adminAssistant/types";
+import { QUESTOES_SPEC } from "../../../shared/adminAssistant/questoes";
+import { AssistantLayout } from "./assistant/AssistantLayout.jsx";
+import { TabAssistant } from "./assistant/TabAssistant.jsx";
 import { downloadText, ListRow, LoadError, Loading, messageOf, QUESTION_STATUS_LABEL, TextArea, useDebounced, useLoad } from "./common.jsx";
 
 const PAGE = 50;
@@ -58,11 +62,13 @@ function fromRow(q) {
   };
 }
 
-function QuestionEditor({ id, onClose, onSaved }) {
+export function QuestionEditor({ id, onClose, onSaved }) {
   const { backend } = useSession();
   const existing = useLoad(() => (id ? backend.rpc("app_admin_question", { p_id: id }) : Promise.resolve(null)), [backend, id]);
   const [form, setForm] = React.useState(id ? null : emptyQuestion());
   const [state, setState] = React.useState({ saving: false, error: null, done: false });
+  const [assistantOpen, setAssistantOpen] = React.useState(false);
+  const [aiUsed, setAiUsed] = React.useState(false);
   React.useEffect(() => {
     if (existing.data) setForm(fromRow(existing.data));
   }, [existing.data]);
@@ -73,6 +79,12 @@ function QuestionEditor({ id, onClose, onSaved }) {
   const set = (patch) => (setForm((f) => ({ ...f, ...patch })), setState((s) => ({ ...s, done: false })));
   const setOption = (letter, patch) => set({ options: form.options.map((o) => (o.id === letter ? { ...o, ...patch } : o)) });
   const isNew = !form.id;
+  const useSuggestion = (field, value) => {
+    setForm((f) => ({ ...f, ...QUESTOES_SPEC.patch(f, field, value) }));
+    setState((s) => ({ ...s, done: false }));
+    setAiUsed(true);
+  };
+  const { images: _images, attempts: _attempts, ...assistantForm } = form;
 
   const save = async (event) => {
     event.preventDefault();
@@ -96,8 +108,10 @@ function QuestionEditor({ id, onClose, onSaved }) {
           inep_intent: form.inep_intent,
           needs_image: form.needs_image,
         },
+        ...(aiUsed ? { p_reason: ASSIST_TEXTS.aiReason } : {}),
       });
       setForm(fromRow(saved));
+      setAiUsed(false);
       setState({ saving: false, error: null, done: true });
       onSaved();
     } catch (error) {
@@ -106,16 +120,25 @@ function QuestionEditor({ id, onClose, onSaved }) {
   };
 
   return (
+    <AssistantLayout
+      open={assistantOpen}
+      panel={<TabAssistant spec={QUESTOES_SPEC} title="Assistente" notice={ASSIST_TEXTS.questoesNotice} form={assistantForm} onUse={useSuggestion} onClose={() => setAssistantOpen(false)} />}
+    >
     <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 16 }} noValidate>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <Button variant="ghost" size="sm" icon="arrow-left" onClick={onClose}>
           Voltar à lista
         </Button>
-        {!isNew && (
-          <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
-            {form.code} · respondida {form.attempts} {form.attempts === 1 ? "vez" : "vezes"}
-          </span>
-        )}
+        <span style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          {!isNew && (
+            <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+              {form.code} · respondida {form.attempts} {form.attempts === 1 ? "vez" : "vezes"}
+            </span>
+          )}
+          <Button variant="secondary" size="sm" aria-pressed={assistantOpen} onClick={() => setAssistantOpen((o) => !o)}>
+            Assistente
+          </Button>
+        </span>
       </div>
       <Card>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -185,6 +208,7 @@ function QuestionEditor({ id, onClose, onSaved }) {
         </Button>
       </div>
     </form>
+    </AssistantLayout>
   );
 }
 

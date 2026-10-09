@@ -77,6 +77,7 @@ describe("Central de IAs (painel do administrador)", () => {
     expect(await screen.findByTestId("provider-anthropic")).toBeTruthy();
     for (const id of ["openai", "gemini", "ollama"]) expect(screen.getByTestId(`provider-${id}`)).toBeTruthy();
     expect(screen.getByText("roda só no Mac")).toBeTruthy();
+    expect(await screen.findByLabelText("Modo — Assistente: conversar e revisar")).toBeTruthy();
     const sw = within(screen.getByTestId("provider-anthropic")).getByRole("switch") as HTMLInputElement;
     expect(sw.checked).toBe(false);
     fireEvent.click(sw);

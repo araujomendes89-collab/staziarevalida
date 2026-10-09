@@ -15,7 +15,7 @@ const FUNCTIONS = [
   ["engenharia_reversa", "Engenharia reversa"],
   ["assistente_preencher", "Assistente: preencher"],
   ["assistente_conferir", "Assistente: conferir"],
-  ["assistente_revisar", "Assistente: revisar a redação"],
+  ["assistente_revisar", "Assistente: conversar e revisar"],
 ];
 const FUNCTION_NAME = Object.fromEntries(FUNCTIONS);
 const STATUS = { pronta: ["pronta", "success"], sem_chave: ["sem chave", "warning"], chave_recusada: ["chave recusada", "danger"], so_no_mac: ["roda só no Mac", "neutral"], erro: ["erro", "danger"] };
