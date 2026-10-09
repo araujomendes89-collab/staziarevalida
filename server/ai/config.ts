@@ -9,6 +9,7 @@ import { familyOfModel, resolveProviderKind, type AiProvider } from "../contentH
 import type { PromptKey } from "../contentHub/ai/prompts";
 import type { AiProviderId } from "./models";
 import type { ModelPrice } from "./prices";
+import { googleAiAccess, GOOGLE_KEY_MISSING } from "./googleKey";
 
 export type AiFunctionKey = "criacao" | "verificacao" | "engenharia_reversa" | "assistente_preencher" | "assistente_conferir" | "assistente_revisar";
 export type AiMode = "sozinha" | "linha" | "comite";
@@ -192,7 +193,7 @@ export function makeProvider(ref: ModelRef, cfg: AiConfig, env: NodeJS.ProcessEn
  */
 export function keyPending(id: AiProviderId, env: NodeJS.ProcessEnv = process.env): string | null {
   if (id === "anthropic") return (env.ANTHROPIC_API_KEY ?? "").trim() ? null : "ANTHROPIC_API_KEY vazia no servidor.";
-  if (id === "gemini") return (env.GEMINI_API_KEY || env.GOOGLE_GEMINI_API_KEY || "").trim().length < 30 ? "GEMINI_API_KEY (ou GOOGLE_GEMINI_API_KEY) ausente ou com formato inválido no servidor." : null;
+  if (id === "gemini") return googleAiAccess(env) ? null : GOOGLE_KEY_MISSING;
   if (id === "openai") return (env.OPENAI_API_KEY ?? "").trim() ? null : "OPENAI_API_KEY vazia no servidor.";
   return null;
 }

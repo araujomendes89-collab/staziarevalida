@@ -645,7 +645,8 @@ describe("Configuração", () => {
   describe("situação das funções salvas neste servidor", () => {
     afterEach(() => vi.unstubAllEnvs());
     const MAC = "Ollama roda só no Mac.";
-    const GEM = "GEMINI_API_KEY (ou GOOGLE_GEMINI_API_KEY) ausente ou com formato inválido no servidor.";
+    // chave do Google ausente: desde 2026-10-09 a mensagem fala da VERTEX_API_KEY (Vertex AI) e da GEMINI_API_KEY (AI Studio)
+    const GEM = "Chave do Google ausente no servidor: defina VERTEX_API_KEY (Vertex AI) ou GEMINI_API_KEY (AI Studio).";
     const O = ref("ollama", "qwen3");
     const C = ref("anthropic", "claude-sonnet-5-5");
     const G = ref("gemini", "gemini-2.5-pro");
@@ -770,9 +771,11 @@ describe("Configuração", () => {
         { GEMINI_API_KEY: "g".repeat(30) },
         { GOOGLE_GEMINI_API_KEY: "g".repeat(40) },
         { GEMINI_API_KEY: "  ", GOOGLE_GEMINI_API_KEY: "g".repeat(40) },
+        { VERTEX_API_KEY: "v".repeat(53) },
+        { VERTEX_API_KEY: "curta", GEMINI_API_KEY: "g".repeat(30) },
       ];
       for (const estado of estados) {
-        for (const nome of ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "GOOGLE_GEMINI_API_KEY"]) vi.stubEnv(nome, estado[nome] ?? "");
+        for (const nome of ["ANTHROPIC_API_KEY", "OPENAI_API_KEY", "GEMINI_API_KEY", "GOOGLE_GEMINI_API_KEY", "VERTEX_API_KEY"]) vi.stubEnv(nome, estado[nome] ?? "");
         for (const id of ["anthropic", "openai", "gemini"] as const) {
           expect(keyPending(id, process.env), `${id} ${JSON.stringify(estado)}`).toBe(resolveProviderKind(id, undefined, "modelo-x", { allowExternal: true }).status.pending);
         }
@@ -851,6 +854,20 @@ describe("Maestro", () => {
 
   beforeEach(resetAiState);
   const refresh = async () => (await import("../../server/ai/config")).invalidateAiConfig(db);
+
+  it("erro da IA com chave no formato novo do Google (com ponto, ex.: Vertex) não vaza no registro nem na mensagem", async () => {
+    await on("anthropic");
+    await saveFn("criacao", "sozinha", A);
+    await refresh();
+    const vertexKey = "AQ.Ab8RN6" + "k".repeat(44);
+    const f = fakes({ [key(A)]: () => { throw new Error(`recusado para ${vertexKey} no projeto`); } });
+    const r = await run(deps(f), "criacao");
+    const logged = await rows(r.runId);
+    expect(logged.length).toBeGreaterThan(0);
+    for (const l of logged) expect(l.error ?? "").not.toContain(vertexKey);
+    expect(logged[0].error).toContain("[chave]");
+    expect(r.message ?? "").not.toContain(vertexKey);
+  });
 
   it("sozinha: principal falha e a reserva responde; as duas chamadas ficam registradas", async () => {
     await on("anthropic", "openai");

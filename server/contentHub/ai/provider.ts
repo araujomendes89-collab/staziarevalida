@@ -7,13 +7,14 @@
  *   OPENAI_API_KEY / CONTENT_HUB_OPENAI_MODEL (modelo obrigatório)
  *   CONTENT_HUB_AI_ALLOW_EXTERNAL  1 = autoriza enviar trechos dos documentos ao provedor externo
  *   ANTHROPIC_API_KEY / CONTENT_HUB_ANTHROPIC_MODEL
- *   GEMINI_API_KEY / CONTENT_HUB_GEMINI_MODEL
+ *   VERTEX_API_KEY (Vertex AI, manda) ou GEMINI_API_KEY (AI Studio) / CONTENT_HUB_GEMINI_MODEL
  *   CONTENT_HUB_PRICE_INPUT_PER_MTOK / CONTENT_HUB_PRICE_OUTPUT_PER_MTOK   (custo; sem isso fica nulo)
  *
  * Sem configuração válida, as etapas de IA ficam como pendência real — nada é simulado em produção.
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { GoogleGenAI } from "@google/genai";
+import { googleAiAccess, googleGenAiOptions, GOOGLE_KEY_MISSING, type GoogleAiAccess } from "../../ai/googleKey";
 import { toProviderSchema, validate, type Schema } from "./schema";
 import { OpenAIProvider } from "./openai";
 import { FallbackProvider } from "./fallback";
@@ -106,8 +107,8 @@ class GeminiProvider implements AiProvider {
   readonly name = "gemini";
   readonly isMock = false;
   private client: GoogleGenAI;
-  constructor(apiKey: string, readonly model: string) {
-    this.client = new GoogleGenAI({ apiKey });
+  constructor(access: GoogleAiAccess, readonly model: string) {
+    this.client = new GoogleGenAI(googleGenAiOptions(access));
   }
   async generate<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
     const t0 = Date.now();
@@ -194,9 +195,10 @@ export function resolveProviderKind(kind: string, mockRespond?: (req: Structured
     return { provider: p, status: { ready: true, provider: p.name, model: p.model, isMock: false, pending: null } };
   }
   if (kind === "gemini") {
-    const key = (process.env.GEMINI_API_KEY || process.env.GOOGLE_GEMINI_API_KEY || "").trim();
-    if (key.length < 30) return pending("GEMINI_API_KEY (ou GOOGLE_GEMINI_API_KEY) ausente ou com formato inválido no servidor.");
-    const p = new GeminiProvider(key, modelOverride || process.env.CONTENT_HUB_GEMINI_MODEL || "gemini-2.5-pro");
+    // Vertex AI (VERTEX_API_KEY) quando houver; senão AI Studio (GEMINI_API_KEY)
+    const access = googleAiAccess();
+    if (!access) return pending(GOOGLE_KEY_MISSING);
+    const p = new GeminiProvider(access, modelOverride || process.env.CONTENT_HUB_GEMINI_MODEL || "gemini-2.5-pro");
     return { provider: p, status: { ready: true, provider: p.name, model: p.model, isMock: false, pending: null } };
   }
   if (kind === "openai") {

@@ -109,7 +109,7 @@ type Role = "principal" | "reserva" | "criadora" | "conferente" | "membro";
 
 const sameRef = (a: ModelRef | null, b: ModelRef | null) => !!a && !!b && a.provider === b.provider && a.model === b.model;
 const usd = (n: number) => String(Number(n.toFixed(4))).replace(".", ",");
-const errText = (e: unknown) => (e instanceof Error ? e.message : String(e)).replace(/\b(sk-|AIza)[\w-]{8,}|\bBearer\s+[\w.~+/-]+/g, "[chave]").replace(/(key=)[^&\s]+/gi, "$1[chave]").slice(0, 300);
+const errText = (e: unknown) => (e instanceof Error ? e.message : String(e)).replace(/\b(sk-|AIza)[\w-]{8,}|\bAQ\.[\w.-]{20,}|\bBearer\s+[\w.~+/-]+/g, "[chave]").replace(/(key=)[^&\s]+/gi, "$1[chave]").slice(0, 300);
 
 function withTimeout<T>(work: () => Promise<T>, ms = TIMEOUT_MS): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;

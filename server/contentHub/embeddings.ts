@@ -6,7 +6,7 @@
  *
  *   CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1   autoriza enviar os textos das fontes e as buscas ao Google (sem isso, só palavras)
  *   CONTENT_HUB_EMBEDDINGS_MODEL              padrão gemini-embedding-2; "off" desliga
- *   GEMINI_API_KEY ou GOOGLE_GEMINI_API_KEY
+ *   VERTEX_API_KEY (Vertex AI, manda) ou GEMINI_API_KEY / GOOGLE_GEMINI_API_KEY (AI Studio)
  *   CONTENT_LAB_ENABLED=false                 desliga também (como toda a Central)
  *   CONTENT_HUB_EMBEDDINGS_MIN_SIMILARITY     opcional (0 a 1): piso de semelhança para um trecho entrar só pelo significado
  *   AI_COST_CONFIG {"gemini-embedding-2":{"input":0.2}}   US$ por milhão de tokens (padrão 0,20)
@@ -17,6 +17,7 @@
 import crypto from "crypto";
 import type { ContentDb } from "./infra";
 import { aiAllowed } from "./ai/registry";
+import { googleAiAccess, googleGenAiOptions, type GoogleAiMode } from "../ai/googleKey";
 
 export const EMBEDDING_DIMS = 768;
 export const DEFAULT_EMBEDDING_MODEL = "gemini-embedding-2";
@@ -30,28 +31,27 @@ export interface EmbeddingsConfig {
   ready: boolean;
   model: string | null;
   key: string | null;
+  /** Vertex AI (VERTEX_API_KEY) ou AI Studio (GEMINI_API_KEY). */
+  mode: GoogleAiMode | null;
   pending: string | null;
 }
 
-const realKey = (v: string | undefined) => {
-  const s = (v ?? "").trim();
-  return s.length >= 30 && !/^(my_|your|changeme|xxx)/i.test(s) ? s : null;
-};
 
 export function embeddingsConfig(env: NodeJS.ProcessEnv = process.env): EmbeddingsConfig {
   const raw = (env.CONTENT_HUB_EMBEDDINGS_MODEL ?? "").trim();
   if (raw.toLowerCase() === "off" || /^(false|0|off)$/i.test((env.CONTENT_LAB_ENABLED ?? "").trim())) {
-    return { ready: false, model: null, key: null, pending: "Busca por significado desligada no servidor: a busca de evidências usa só palavras." };
+    return { ready: false, model: null, key: null, mode: null, pending: "Busca por significado desligada no servidor: a busca de evidências usa só palavras." };
   }
   const model = raw || DEFAULT_EMBEDDING_MODEL;
-  const key = realKey(env.GEMINI_API_KEY) ?? realKey(env.GOOGLE_GEMINI_API_KEY);
+  const access = googleAiAccess(env);
+  const key = access?.key ?? null;
   const pending =
     env.CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL !== "1"
       ? "Busca por significado ainda desligada: falta autorizar o envio dos textos das fontes ao Google (CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1 no servidor e no processamento). Enquanto isso, a busca de evidências usa palavras."
       : !key
-        ? "Busca por significado sem chave: defina GEMINI_API_KEY no servidor e no processamento. Enquanto isso, a busca de evidências usa palavras."
+        ? "Busca por significado sem chave: defina VERTEX_API_KEY (ou GEMINI_API_KEY) no servidor e no processamento. Enquanto isso, a busca de evidências usa palavras."
         : null;
-  return { ready: !pending, model, key: pending ? null : key, pending };
+  return { ready: !pending, model, key: pending ? null : key, mode: pending ? null : (access?.mode ?? null), pending };
 }
 
 /** Preço por milhão de tokens do modelo (AI_COST_CONFIG manda; senão a tabela daqui). */
@@ -102,7 +102,7 @@ export function createEmbedder(cfg: EmbeddingsConfig, client?: EmbedClient): Emb
   const getClient = async () => {
     if (!ai) {
       const { GoogleGenAI } = await import("@google/genai");
-      ai = new GoogleGenAI({ apiKey: cfg.key! }) as unknown as EmbedClient;
+      ai = new GoogleGenAI(googleGenAiOptions({ mode: cfg.mode ?? "studio", key: cfg.key! })) as unknown as EmbedClient;
     }
     return ai;
   };

@@ -29,7 +29,8 @@ Google, abril de 2026). Escolher o modelo autoriza enviar ao Google os textos da
 ## Como ligar (variáveis do servidor e do processamento)
 ```
 CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1   # autoriza o envio ao Google (Vercel e Cloud Run)
-GEMINI_API_KEY=…                          # já está na Vercel; no Cloud Run vai pelo Secret Manager (stazia-gemini-api-key)
+VERTEX_API_KEY=…                          # desde 2026-10-09 (Vertex AI; manda sobre a GEMINI_API_KEY); no Cloud Run: segredo stazia-vertex-api-key
+GEMINI_API_KEY=…                          # AI Studio: vale só sem a VERTEX_API_KEY; no Cloud Run: stazia-gemini-api-key
 CONTENT_HUB_EMBEDDINGS_MODEL=…            # opcional (padrão gemini-embedding-2; "off" desliga)
 CONTENT_HUB_EMBEDDINGS_MIN_SIMILARITY=…   # opcional (0 a 1): piso para um trecho entrar só pelo significado; sem piso por padrão
 ```

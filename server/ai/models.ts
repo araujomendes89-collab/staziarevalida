@@ -14,6 +14,8 @@ export interface ModelList {
   models: ModelEntry[];
 }
 
+import { googleAiAccess } from "./googleKey";
+import { PRICE_SEED } from "./prices";
 const TIMEOUT_MS = 10_000;
 const OPENAI_EXCLUDE = ["embedding", "tts", "whisper", "dall-e", "image", "audio", "realtime", "transcribe", "moderation", "search"];
 const GEMINI_EXCLUDE = ["embedding", "imagen", "veo", "tts", "live", "aqa"];
@@ -27,6 +29,12 @@ const byId = (a: ModelEntry, b: ModelEntry) => (a.id < b.id ? -1 : a.id > b.id ?
 const BAD_FORMAT = "Resposta da empresa em formato inesperado.";
 
 export async function listModels(id: AiProviderId, env: NodeJS.ProcessEnv = process.env, fetchImpl: typeof fetch = fetch): Promise<ModelList> {
+  // Vertex AI: a chave do Vertex não lista modelos; vale a lista dos modelos Gemini com preço cadastrado (todos conferidos no
+  // Vertex do projeto em 2026-10-09). Sem chamar a internet.
+  if (id === "gemini" && googleAiAccess(env)?.mode === "vertex") {
+    const models = PRICE_SEED.filter((p) => p.provider === "gemini").map((p) => ({ id: p.model, label: p.model }));
+    return { status: "pronta", detail: "Gemini pelo Vertex AI: lista dos modelos com preço cadastrado.", models: models.sort(byId) };
+  }
   let url: string;
   let headers: Record<string, string> = {};
   if (id === "ollama") {

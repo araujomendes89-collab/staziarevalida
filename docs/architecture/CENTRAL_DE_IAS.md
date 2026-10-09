@@ -139,6 +139,20 @@ feita na aba vale, desde que a IA esteja ligada e o modelo esteja na lista.
    2026-10-07 o `.env` tinha as do Claude e do Gemini; a da OpenAI não estava lá.
 3. **GitHub → Vercel:** `git push`. As chaves da Vercel continuam nas variáveis do projeto da Vercel.
 
+## Gemini pelo Vertex AI (2026-10-09)
+
+Decisão do dono: a chave do AI Studio é pré-paga e acabou (erro 402); o Gemini passa pelo **Vertex AI**, que cobra na conta
+do projeto `staziamed-revalida-prod`. Uma chave Vertex vale nos dois lugares (site na Vercel e processamento no Cloud Run):
+
+- `VERTEX_API_KEY` manda quando existe; sem ela, vale `GEMINI_API_KEY`/`GOOGLE_GEMINI_API_KEY` (AI Studio) como antes
+  (`server/ai/googleKey.ts`). Vale para a Central de IAs (provedor Gemini) e a busca por significado.
+- Lista de modelos do Gemini no modo Vertex: os modelos Gemini com preço cadastrado (conferidos no Vertex do projeto em
+  2026-10-09), sem chamar a internet.
+- Ficam no AI Studio: o áudio dos Podcasts (serviço `interactions`, que não existe no Vertex) e a voz Gemini do Tutor (a voz
+  em uso é a da ElevenLabs).
+- Mensagens de erro escondem também as chaves do Google no formato novo (`AQ.…`).
+- No Cloud Run a chave vai pelo segredo `stazia-vertex-api-key` (variável `VERTEX_API_KEY` da tarefa).
+
 ## Limites conhecidos
 - A estimativa é do pior caso. O custo gravado de uma chamada que falhou ou passou do tempo é zero, mesmo que a
   empresa tenha cobrado algo, então o gasto do mês pode ficar um pouco abaixo do real.

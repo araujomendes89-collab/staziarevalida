@@ -77,7 +77,7 @@ done
 # na Central de IAs (ligar e desligar continua sendo no painel). Uma chave tirada do .env sai da tarefa na próxima
 # implantação, porque o --set-secrets substitui a lista inteira.
 AI_SECRETS=""
-for NAME in ANTHROPIC_API_KEY GEMINI_API_KEY OPENAI_API_KEY; do
+for NAME in ANTHROPIC_API_KEY GEMINI_API_KEY VERTEX_API_KEY OPENAI_API_KEY; do
   VALUE="$(envvalue "$NAME")"
   if [ -z "$VALUE" ]; then
     echo "   $NAME: ausente no .env (a tarefa fica sem essa IA)"
@@ -87,13 +87,14 @@ for NAME in ANTHROPIC_API_KEY GEMINI_API_KEY OPENAI_API_KEY; do
   fi
 done
 
-# busca por significado: usa a mesma chave do Gemini das IAs (acima); sem ela, a tarefa segue só com palavras
+# busca por significado: usa a mesma chave do Google das IAs (acima: VERTEX_API_KEY, que manda, ou GEMINI_API_KEY); sem ela, a
+# tarefa segue só com palavras. Gemini pelo Vertex AI desde 2026-10-09 (decisão do dono): cobra na conta do projeto.
 EMB_ENV=""
-if [ "${EMBEDDINGS:-1}" = "1" ] && [[ "$AI_SECRETS" == *",GEMINI_API_KEY="* ]]; then
+if [ "${EMBEDDINGS:-1}" = "1" ] && { [[ "$AI_SECRETS" == *",GEMINI_API_KEY="* ]] || [[ "$AI_SECRETS" == *",VERTEX_API_KEY="* ]]; }; then
   EMB_ENV=",CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1"
   echo "   busca por significado: ligada na tarefa"
 else
-  echo "   busca por significado: sem GEMINI_API_KEY no .env; a tarefa segue só com palavras"
+  echo "   busca por significado: sem VERTEX_API_KEY nem GEMINI_API_KEY no .env; a tarefa segue só com palavras"
 fi
 
 echo "== 4/6 imagem (montada no Cloud Build, não no Mac)"
