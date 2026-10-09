@@ -169,7 +169,7 @@ describe("AssistantPanel", () => {
     const card = await screen.findByRole("region", { name: "Sugestão: Passos" });
     expect(card.querySelectorAll("del").length).toBe(0);
     expect(Array.from(card.querySelectorAll("ins")).map((e) => e.textContent)).toEqual(["2024: C"]);
-    expect(card.textContent).not.toContain("2017: A2020: B");
+    expect(Array.from(card.querySelectorAll("div > div")).map((e) => e.textContent)).toEqual(["2017: A", "2020: B", "2024: C"]);
     expect(container).toBeTruthy();
   });
 
