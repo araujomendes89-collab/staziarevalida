@@ -12,6 +12,8 @@ export interface MarkRef {
   kind: "item" | "material" | "oficial";
   label: string;
   text: string;
+  /** Marca `[I…]`: o campo do item que ela traz (ex.: "expected_conduct"). */
+  field?: string;
 }
 
 /** "[T1]", " t1 " e "T1" são a mesma marca. */

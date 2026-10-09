@@ -69,8 +69,11 @@ export function QuestionEditor({ id, onClose, onSaved }) {
   const [state, setState] = React.useState({ saving: false, error: null, done: false });
   const [assistantOpen, setAssistantOpen] = React.useState(false);
   const [aiUsed, setAiUsed] = React.useState(false);
-  const [stored, setStored] = React.useState("");
-  const storedKey = (row) => `${row?.id ?? ""}|${row?.correct_option ?? ""}|${row?.status ?? ""}`;
+  // gabarito e situação da questão gravada (null = questão nova, ainda não gravada). O painel do assistente só recomeça quando
+  // eles mudam numa questão já gravada; o primeiro salvamento de questão nova não o desmonta (decisão D3a)
+  const [stored, setStored] = React.useState(null);
+  const [panelKey, setPanelKey] = React.useState(0);
+  const storedKey = (row) => `${row?.correct_option ?? ""}|${row?.status ?? ""}`;
   React.useEffect(() => {
     if (existing.data) {
       setForm(fromRow(existing.data));
@@ -115,8 +118,10 @@ export function QuestionEditor({ id, onClose, onSaved }) {
         },
         ...(aiUsed ? { p_reason: ASSIST_TEXTS.aiReason } : {}),
       });
+      const next = storedKey(saved);
+      if (stored !== null && stored !== next) setPanelKey((k) => k + 1);
       setForm(fromRow(saved));
-      setStored(storedKey(saved));
+      setStored(next);
       setAiUsed(false);
       setState({ saving: false, error: null, done: true });
       onSaved();
@@ -128,7 +133,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
   return (
     <AssistantLayout
       open={assistantOpen}
-      panel={<TabAssistant key={stored} spec={QUESTOES_SPEC} title="Assistente" notice={ASSIST_TEXTS.questoesNotice} form={assistantForm} onUse={useSuggestion} onClose={() => setAssistantOpen(false)} />}
+      panel={<TabAssistant key={panelKey} spec={QUESTOES_SPEC} title="Assistente" notice={ASSIST_TEXTS.questoesNotice} form={assistantForm} onUse={useSuggestion} onClose={() => setAssistantOpen(false)} />}
     >
     <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 16 }} noValidate>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>

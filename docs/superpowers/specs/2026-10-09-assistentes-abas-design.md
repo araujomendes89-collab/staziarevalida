@@ -67,6 +67,8 @@ nesses campos; fechar essa porta é decisão à parte.
    material", sem sugestão. Se todos os campos pedidos caem nisso, a IA nem é chamada (sem custo).
 5. Cada sugestão traz o valor, as fontes, os avisos e "Usar". Texto: substitui o campo e mostra o antes quando já havia texto.
    Lista: acrescenta ao fim. "Usar tudo" aplica todas. O que a fonte não esclarece aparece em "A fonte não esclarece".
+   Campo de texto que a pessoa mudou depois do pedido não é trocado: "Usar" e "Usar tudo" avisam "O campo mudou depois da
+   proposta: peça de novo" (decisão D2 da revisão final).
 
 ### 4.2 Conferir
 Item inteiro ou um campo. Volta uma lista de achados com campo, tipo (erro, contradição, pouco claro, possivelmente
@@ -79,8 +81,14 @@ campo que o assistente não muda diz quem muda: "O gabarito só muda pelo regist
 Pedido de até 1.000 caracteres. Volta uma resposta curta e as mudanças: campo, depois, fontes, motivo. O **antes vem do
 formulário enviado**, não da IA. A tela mostra a diferença por palavra (texto) ou por item (listas). "Usar" troca o campo pelo
 "depois". Se o campo mudou desde a proposta, "Usar" não aplica e avisa "O campo mudou depois da proposta: peça de novo".
-Pedido de campo proibido: a resposta explica e não traz mudança. Nas abas médicas, mudança que cita só o próprio item vem
-marcada "Só redação: confira se nada novo entrou"; sem material e sem trecho oficial, só sai esse tipo de mudança.
+Pedido de campo proibido: a resposta explica e não traz mudança. Nas abas médicas, mudança em campo de base "fonte"
+(explicações, conduta esperada, o que a questão avalia) sem nenhum `[T]` ou `[F]` válido vai para "Sem fonte: cole um trecho da
+diretriz ou envie o material", **sem sugestão**, quando: o campo está vazio, ou a mudança não cita marca nenhuma, ou cita marca
+que não é o `[I]` do próprio campo (o `[I]` de outro campo do item ou uma marca inexistente). Só passa, marcada "Só redação:
+confira se nada novo entrou", a reescrita do texto que já existe naquele campo citando só o `[I]` dele (sem fato novo). Sem
+material e sem trecho oficial, só sai esse tipo de mudança nesses campos. "Propor correção" passa pela mesma regra. Cada mudança
+mostra o motivo no cartão. (Decisão D1 da revisão final: a regra do dono — texto médico só com fonte — vence o texto anterior,
+que deixava "Só redação" para qualquer mudança que citasse o item.)
 
 ## 5. Por aba
 ### 5.1 Questões (primeira)
@@ -93,7 +101,9 @@ Aviso fixo no topo do painel: **"O que você salvar aparece na hora para o aluno
 - **Nunca oferecidos:** gabarito, situação, prova, ano, edição, número, "cita figura". Gabarito e situação entram no contexto só
   para leitura; com "cita figura", o contexto diz "a questão cita uma figura que o assistente não vê".
 - Explicações seguem o **gabarito oficial gravado** (regra do pedido à IA). Se a fonte diverge dele, o campo volta em "A fonte
-  não esclarece" com "A fonte diverge do gabarito oficial: veja o Conferir". Questão anulada: sem explicação de gabarito.
+  não esclarece" com "A fonte diverge do gabarito oficial: veja o Conferir". Questão anulada: sem explicação de gabarito. Sem
+  gabarito gravado (questão nova ou vazio no banco), explicações, conduta esperada e "o que a questão avalia" não vão para a IA:
+  voltam em "A fonte não esclarece" com "Grave o gabarito antes de pedir as explicações." (decisões C2 e D3).
 - Busca oficial: tema, subtema, começo do enunciado e pedido. Permissão: equipe (editor ou administrador), como a aba.
 
 ### 5.2 Atualizações
@@ -155,11 +165,16 @@ português do Brasil, sem markdown.
 ### 6.5 Conferências depois da IA (sem confiar nela)
 1. Esquema JSON por modo (`schemas.ts`): Preencher `{ suggestions[{ field, value, sources }], missing[{ field, reason }] }`;
    Conferir `{ findings[{ field, kind, detail, sources }] }`; Conversar `{ reply, changes[{ field, after, sources, reason }] }`.
+   Os limites de tamanho e de quantidade não chegam ao provedor pelo esquema: o pedido os diz, e o servidor corta resposta,
+   motivo e detalhe longos, limita as listas e separa marcas juntas ("T1, T2, T3") antes da conferência estrita; o que não tem
+   conserto (texto do valor, nome de campo ou marca acima do limite) sai com aviso, sem derrubar o pedido (decisão D3).
 2. Campo fora da lista do adaptador, ou marcado "conferir"/"nunca", em sugestão ou mudança: descartado, com o aviso "Sugestão
    para campo que o assistente não muda foi descartada".
 3. Tipo e tamanho de cada campo (§5); fora do formato, descartado com aviso.
-4. Fonte inexistente: descartada. Campo de base "fonte" sem nenhum `[T]` ou `[F]` válido vira "Sem fonte…" (no Conversar, "Só
-   redação").
+4. Fonte inexistente: descartada. Campo de base "fonte" sem nenhum `[T]` ou `[F]` válido vira "Sem fonte…", sem sugestão. No
+   Conversar das abas médicas a única exceção é a reescrita do texto que já existe no campo citando só o `[I]` do próprio campo,
+   que sai marcada "Só redação"; campo vazio, mudança sem marca ou com marca que não seja esse `[I]` (de outro campo ou
+   inexistente) vira "Sem fonte…" (decisão D1, §4.3).
 5. `ungroundedNumbers` (`server/podcasts/script.ts`) contra os textos citados, item incluído: número com unidade fora deles vira
    aviso. Também: ano da linha do tempo; em Planos, qualquer número.
 6. Conversar: antes calculado do formulário; mudança igual ao antes, descartada.

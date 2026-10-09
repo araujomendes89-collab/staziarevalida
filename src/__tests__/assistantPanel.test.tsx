@@ -76,7 +76,7 @@ describe("AssistantPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Conferir agora" }));
     await screen.findByRole("region", { name: "Achado: Resumo" });
     expect(screen.queryByRole("button", { name: "Usar" })).toBeNull();
-    expect(screen.getByText("Possivelmente desatualizado")).toBeTruthy();
+    expect(screen.getByText("Resumo · Possivelmente desatualizado")).toBeTruthy();
     expect(screen.getByText("Suspeita sem fonte: confira antes de mudar")).toBeTruthy();
     expect(screen.getByText("A nota fica com a equipe.")).toBeTruthy();
     const propose = screen.getAllByRole("button", { name: "Propor correção" });
@@ -188,6 +188,83 @@ describe("AssistantPanel", () => {
     resolve(R({ mode: "conversar", suggestions: [S({ field: "resumo", value: "O lactente tem febre alta.", before: "O lactente tem febre." })] }));
     await new Promise((r) => setTimeout(r, 20));
     expect(screen.queryByRole("region", { name: "Sugestão: Resumo" })).toBeNull();
+    expect(onUse).not.toHaveBeenCalled();
+  });
+});
+
+/** O painel é JSX sem tipos: as props opcionais não marcadas fazem o TypeScript reclamar; aqui ele é usado como componente livre. */
+const Panel = AssistantPanel as any;
+
+describe("AssistantPanel — decisões da revisão final (D2, D3b)", () => {
+  const conferir = async (findings: any[]) => {
+    render(<Panel status={STATUS} fields={FIELDS} values={{ resumo: "x", nota: "y" }} run={async () => R({ mode: "conferir", findings })} onUse={vi.fn()} />);
+    fireEvent.click(within(screen.getByRole("radiogroup", { name: "Modo" })).getByRole("radio", { name: "Conferir" }));
+    fireEvent.click(screen.getByRole("button", { name: "Conferir agora" }));
+  };
+
+  it("D2a achado com suspeita mostra o aviso mesmo citando o item", async () => {
+    await conferir([{ id: "f1", field: "resumo", kind: "desatualizado", detail: "Pode ter mudado.", sources: [{ label: "Item: Resumo", kind: "item" }], suspeita: true, owner: null }]);
+    const card = await screen.findByRole("region", { name: "Achado: Resumo" });
+    expect(within(card).getByText("Fonte: Item: Resumo")).toBeTruthy();
+    expect(within(card).getByText("Suspeita sem fonte: confira antes de mudar")).toBeTruthy();
+  });
+
+  it("D2b o cartão do achado mostra o campo (ou Item inteiro) junto do tipo", async () => {
+    await conferir([
+      { id: "f1", field: "resumo", kind: "erro", detail: "Erro no resumo.", sources: [{ label: "p. 3", kind: "material" }], suspeita: false, owner: null },
+      { id: "f2", field: null, kind: "pouco_claro", detail: "Confuso.", sources: [{ label: "p. 3", kind: "material" }], suspeita: false, owner: null },
+    ]);
+    const card = await screen.findByRole("region", { name: "Achado: Resumo" });
+    expect(within(card).getByText("Resumo · Erro")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Achado: Item inteiro" })).getByText("Item inteiro · Pouco claro")).toBeTruthy();
+    expect(within(card).queryByText("Suspeita sem fonte: confira antes de mudar")).toBeNull();
+  });
+
+  it("D3b cada mudança do Conversar mostra o motivo", async () => {
+    const run = async () => R({ mode: "conversar", reply: "Feito.", suggestions: [S({ field: "resumo", before: "Velho.", value: "Novo.", reason: "Mais claro para o aluno." })] });
+    render(<Panel status={STATUS} fields={FIELDS} values={{ resumo: "Velho." }} run={run} onUse={vi.fn()} />);
+    fireEvent.click(within(screen.getByRole("radiogroup", { name: "Modo" })).getByRole("radio", { name: "Conversar" }));
+    fireEvent.change(screen.getByLabelText("Pedido"), { target: { value: "Deixe mais claro." } });
+    fireEvent.click(screen.getByRole("button", { name: "Enviar" }));
+    const card = await screen.findByRole("region", { name: "Sugestão: Resumo" });
+    expect(within(card).getByText("Motivo: Mais claro para o aluno.")).toBeTruthy();
+  });
+
+  const TWO = [{ name: "resumo", label: "Resumo", kind: "text", ai: "editar" }, { name: "conduta", label: "Conduta", kind: "text", ai: "editar" }, { name: "passos", label: "Passos", kind: "lines", ai: "editar" }];
+
+  it("D2c Usar e Usar tudo do Preencher recusam campo de texto mudado durante o pedido (nulo vale vazio)", async () => {
+    let resolve: (v: any) => void = () => {};
+    const run = () => new Promise<any>((r) => { resolve = r; });
+    const onUse = vi.fn();
+    const props = { status: STATUS, fields: TWO, run, onUse };
+    const { rerender } = render(<Panel {...props} values={{ resumo: "", conduta: null, passos: ["a"] }} />);
+    fireEvent.click(screen.getByLabelText("Passos"));
+    fireEvent.click(screen.getByRole("button", { name: "Preencher campos" }));
+    // a pessoa digita no resumo enquanto o pedido roda; a conduta vai de nulo a vazio (não é mudança); a lista ganha um item
+    rerender(<Panel {...props} values={{ resumo: "Digitei agora.", conduta: "", passos: ["a", "x"] }} />);
+    resolve(R({ suggestions: [S({ id: "s1", field: "resumo", value: "Novo resumo." }), S({ id: "s2", field: "conduta", value: "Nova conduta." }), S({ id: "s3", field: "passos", value: ["b"], append: true })] }));
+    fireEvent.click(await screen.findByRole("button", { name: "Usar tudo" }));
+    expect(onUse.mock.calls.map((c) => [c[0], c[1]])).toEqual([["conduta", "Nova conduta."], ["passos", ["a", "x", "b"]]]);
+    const card = screen.getByRole("region", { name: "Sugestão: Resumo" });
+    expect(within(card).getByText("O campo mudou depois da proposta: peça de novo")).toBeTruthy();
+    fireEvent.click(within(card).getByRole("button", { name: "Usar" }));
+    expect(onUse).toHaveBeenCalledTimes(2);
+  });
+
+  it("D2c Usar do Conversar recusa campo de texto mudado depois do pedido, mesmo sem o antes", async () => {
+    let resolve: (v: any) => void = () => {};
+    const run = () => new Promise<any>((r) => { resolve = r; });
+    const onUse = vi.fn();
+    const props = { status: STATUS, fields: TWO, run, onUse };
+    const { rerender } = render(<Panel {...props} values={{ resumo: "Velho.", conduta: "" }} />);
+    fireEvent.click(within(screen.getByRole("radiogroup", { name: "Modo" })).getByRole("radio", { name: "Conversar" }));
+    fireEvent.change(screen.getByLabelText("Pedido"), { target: { value: "Ajuste." } });
+    fireEvent.click(screen.getByRole("button", { name: "Enviar" }));
+    rerender(<Panel {...props} values={{ resumo: "Velho.", conduta: "Escrevi a conduta." }} />);
+    resolve(R({ mode: "conversar", reply: "Ok.", suggestions: [S({ id: "s1", field: "conduta", value: "Conduta nova.", before: null })] }));
+    const card = await screen.findByRole("region", { name: "Sugestão: Conduta" });
+    fireEvent.click(within(card).getByRole("button", { name: "Usar" }));
+    expect(within(card).getByText("O campo mudou depois da proposta: peça de novo")).toBeTruthy();
     expect(onUse).not.toHaveBeenCalled();
   });
 });

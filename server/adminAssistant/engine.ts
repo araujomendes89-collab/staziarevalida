@@ -3,9 +3,10 @@
  *
  * Recebe o formulário como está na tela, monta o pedido com marcas numeradas ([I…] campos do item, [T…] trechos do material,
  * [F…] trechos oficiais), chama a IA pelo maestro da Central de IAs (função pelo modo, origem "assistente", sem override) e
- * confere a resposta sem confiar nela: campo que o assistente não muda, marca inexistente, campo que exige fonte sem [T]/[F],
- * formato e tamanho, números e anos fora dos trechos citados e recursos novos. Nada é gravado: o único registro é o das
- * chamadas, que o maestro já faz em ai_calls.
+ * confere a resposta sem confiar nela: limites do esquema (o que passa é cortado ou sai com aviso, decisão D3d), campo que o
+ * assistente não muda, marca inexistente, campo que exige fonte sem [T]/[F] (no Conversar só passa a reescrita do texto do
+ * próprio campo citando o [I] dele, decisão D1), formato e tamanho, números e anos fora dos trechos citados e recursos novos.
+ * Nada é gravado: o único registro é o das chamadas, que o maestro já faz em ai_calls.
  *
  * Ordem: (a rota já conferiu a permissão e leu o material) campos → IA pronta (503) → busca oficial → "Sem fonte" → IA.
  */
@@ -13,10 +14,23 @@ import { AiCapReached, maestroProvider } from "../ai/maestro";
 import { PROVIDER_NAMES, type AiFunctionKey, type ModelRef } from "../ai/config";
 import { resolveProviderKind, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
 import type { ContentDb } from "../contentHub/infra";
+import { validate } from "../contentHub/ai/schema";
 import { embedderAllowed, queryEmbedding, type Embedder } from "../contentHub/embeddings";
 import { chunkPages, type ExtractedPage } from "../podcasts/extract";
 import { selectChunks, type SourceChunk } from "../podcasts/script";
-import { ADMIN_ASSIST_VERSION, pickValue, schemaFor, type RawConferir, type RawConversar, type RawPreencher, type RawValue } from "./schemas";
+import {
+  ADMIN_ASSIST_VERSION,
+  LIMITS,
+  fitOutput,
+  pickValue,
+  providerSchemaFor,
+  schemaFor,
+  thousands,
+  type RawConferir,
+  type RawConversar,
+  type RawPreencher,
+  type RawValue,
+} from "./schemas";
 import {
   checkValue,
   formatWarning,
@@ -168,8 +182,12 @@ export async function officialPassages(deps: EngineDeps, text: string): Promise<
 
 // ------------------------------------------------------------------ pedido
 
-/** Texto que imita uma das tags do pedido não abre nem fecha bloco: os sinais viram ‹ ›. */
-const asData = (text: string) => String(text ?? "").replace(/<\s*(\/?)\s*(item|material|fontes_oficiais|pedido)\s*>/gi, "‹$1$2›");
+/** Uma das tags do pedido no texto, também com atributos, fechada em si ou sem o ">" (`<pedido foo>`, `<pedido/>`, `</material x>`). */
+const RESERVED_TAG = /<(\s*\/?\s*)(item|material|fontes_oficiais|pedido)(?![\p{L}\p{N}_])([^<>]*)(>?)/giu;
+
+/** Texto que imita uma das tags do pedido não abre nem fecha bloco: os sinais viram ‹ › (decisão D3e). */
+const asData = (text: string) =>
+  String(text ?? "").replace(RESERVED_TAG, (_m, slash: string, name: string, rest: string, close: string) => `‹${slash.replace(/\s+/g, "")}${name}${rest}${close ? "›" : ""}`);
 
 function materialLabel(material: AssistMaterial | null, page: number | null): string {
   if (material?.origin === "link") return `Link: ${material.url ?? ""}${page != null ? ` (p. ${page})` : ""}`;
@@ -220,7 +238,14 @@ const MODE_RULES: Record<AssistMode, string> = {
 - Campo de texto: "after" traz o campo inteiro já mudado. Lista: só os itens a acrescentar (nada se apaga).
 - Pedido de campo fora dos campos permitidos: explique em "reply" que o assistente não muda esse campo e não traga mudança.
 - O que as marcas não esclarecem, ou o que uma regra desta aba manda não escrever, não vira mudança: diga em "reply", com o motivo, sem completar por conta própria.
-- Conteúdo médico novo só com trecho [T] ou [F] citado; reescrita só com o próprio item é só redação: não acrescente fato novo.`,
+- Campo que exige fonte (marcado "exige trecho [T] ou [F] citado" no formato): conteúdo só com trecho [T] ou [F] citado. Sem esse trecho, só a reescrita do texto que já está no próprio campo, citando só a marca [I] desse campo, sem fato novo (só redação); campo vazio não se escreve sem [T] ou [F].`,
+};
+
+/** Limites do esquema ditos no pedido (o provedor não os recebe pelo esquema; o que passar é cortado ou descartado, decisão D3d). */
+const LIMIT_RULES: Record<AssistMode, string> = {
+  preencher: `- Até ${LIMITS.suggestions} sugestões e até ${LIMITS.missing} campos em "missing"; "reason" até ${LIMITS.reason} caracteres.`,
+  conferir: `- Até ${LIMITS.findings} achados; "detail" até ${LIMITS.detail} caracteres.`,
+  conversar: `- "reply" até ${thousands(LIMITS.reply)} caracteres; até ${LIMITS.changes} mudanças; "reason" até ${LIMITS.reason} caracteres.`,
 };
 
 /** O pedido à IA: regras no sistema; dados na entrada, dentro das tags e com as marcas; tabela das marcas para conferir a resposta. */
@@ -236,11 +261,12 @@ export function buildPrompt(o: {
   today: string;
 }): { system: string; input: string; table: Map<string, MarkRef> } {
   const table = new Map<string, MarkRef>();
-  const mark = (code: string, kind: MarkRef["kind"], label: string, text: string) => table.set(code, { mark: code, kind, label, text });
+  const mark = (code: string, kind: MarkRef["kind"], label: string, text: string, field?: string) =>
+    table.set(code, field ? { mark: code, kind, label, text, field } : { mark: code, kind, label, text });
 
   const items = o.ctx.item.map((it, i) => {
     const text = asData(it.text);
-    mark(`I${i + 1}`, "item", `Item: ${it.label}`, text);
+    mark(`I${i + 1}`, "item", `Item: ${it.label}`, text, it.field);
     return `[I${i + 1}] ${it.field} (${it.label})\n${text}`;
   });
   const readOnly = o.ctx.readOnly.map((line) => `Somente leitura: ${asData(line)}`);
@@ -271,9 +297,12 @@ export function buildPrompt(o: {
       ? ""
       : `FORMATO DO VALOR
 - "${o.mode === "preencher" ? "value" : "after"}" tem text, items, timeline e flashcards: preencha só a parte do formato do campo e deixe as outras em null.
-${o.allowed.map((f) => `- ${f.name} (${f.label}): ${KIND_FORMAT[f.kind](f)}`).join("\n")}`;
+${o.allowed.map((f) => `- ${f.name} (${f.label}): ${KIND_FORMAT[f.kind](f)}${f.base === "fonte" ? "; exige trecho [T] ou [F] citado" : ""}`).join("\n")}`;
+  const limits = `LIMITES DA RESPOSTA (o que passar é cortado ou descartado)
+- "sources": até ${LIMITS.sources} marcas, uma marca por item da lista (ex.: ["T1", "T2"]), nunca várias marcas no mesmo texto.
+${LIMIT_RULES[o.mode]}`;
   const rules = o.adapter.rules.length ? `REGRAS DESTA ABA\n${o.adapter.rules.map((r) => `- ${r}`).join("\n")}` : "";
-  const system = [BASE_SYSTEM, MODE_RULES[o.mode], formats, rules].filter(Boolean).join("\n\n");
+  const system = [BASE_SYSTEM, MODE_RULES[o.mode], formats, limits, rules].filter(Boolean).join("\n\n");
   return { system, input, table };
 }
 
@@ -360,7 +389,7 @@ export async function runAssistant(deps: EngineDeps, o: RunInput): Promise<Assis
       promptVersion: ADMIN_ASSIST_VERSION,
       system,
       input,
-      schema: schemaFor(mode),
+      schema: providerSchemaFor(mode),
       schemaName: `staziamed_assistente_${mode}`,
       maxOutputTokens: 6000,
       effort: "medium",
@@ -379,10 +408,16 @@ export async function runAssistant(deps: EngineDeps, o: RunInput): Promise<Assis
     output_tokens: res.outputTokens ?? 0,
   };
 
-  // 6. conferências da resposta, sem confiar nela
+  // 6. conferências da resposta, sem confiar nela: primeiro os limites do esquema (corta, limita e separa marcas; o que não tem
+  // conserto sai com aviso) e a conferência estrita; depois campo a campo
+  const fitted = fitOutput(mode, res.output);
+  const invalid = validate(schemaFor(mode), fitted.output);
+  if (invalid.length) throw httpError(502, `O assistente falhou: Resposta fora do formato: ${invalid.slice(0, 5).join("; ")}`);
+  warnings.push(...fitted.warnings);
+  const output = fitted.output as RawPreencher | RawConferir | RawConversar;
   const byName = new Map(adapter.fields.map((f) => [f.name, f]));
   if (mode === "conferir") {
-    const findings: AssistFinding[] = (res.output as RawConferir).findings.map((raw, i) => {
+    const findings: AssistFinding[] = (output as RawConferir).findings.map((raw, i) => {
       const field = raw.field ? byName.get(raw.field) ?? null : null;
       const { refs, unknown } = resolveMarks(raw.sources, table);
       if (unknown.length) warnings.push(unknownSourceWarning(field?.label ?? "Achado", unknown));
@@ -428,13 +463,22 @@ export async function runAssistant(deps: EngineDeps, o: RunInput): Promise<Assis
     const { refs, unknown } = resolveMarks(raw.sources, table);
     if (unknown.length) own.push(unknownSourceWarning(field.label, unknown));
     const grounded = refs.some((r) => r.kind !== "item");
-    if (mode === "preencher" && field.base === "fonte" && !grounded) {
+    const current: FieldValue | null = values[field.name] ?? null;
+    // campo que exige fonte sem [T]/[F] válido: "Sem fonte". No Conversar só passa a reescrita do texto que já está no campo,
+    // citando só o [I] dele (Só redação); campo vazio, sem marca, com [I] de outro campo ou marca inexistente não (decisão D1)
+    const rewording =
+      mode === "conversar" &&
+      field.kind === "text" &&
+      !isEmptyValue(current) &&
+      refs.length > 0 &&
+      !unknown.length &&
+      refs.every((r) => r.kind === "item" && r.field === field.name);
+    if (field.base === "fonte" && !grounded && !rewording) {
       noSource.push(field.name);
       warnings.push(...own);
       return;
     }
     const append = field.kind !== "text";
-    const current: FieldValue | null = values[field.name] ?? null;
     const picked = pickValue(field.kind, raw.value);
     const checked = picked === null ? { value: null, warnings: [formatWarning(field.label)] } : checkValue(field, picked, current, append);
     own.push(...checked.warnings);
@@ -470,7 +514,7 @@ export async function runAssistant(deps: EngineDeps, o: RunInput): Promise<Assis
   };
 
   if (mode === "preencher") {
-    const out = res.output as RawPreencher;
+    const out = output as RawPreencher;
     for (const s of out.suggestions) review(s);
     for (const m of out.missing) {
       if (!allowedNames.has(m.field) || missing.some((x) => x.field === m.field)) continue;
@@ -478,7 +522,7 @@ export async function runAssistant(deps: EngineDeps, o: RunInput): Promise<Assis
     }
     return result({ suggestions, usage });
   }
-  const out = res.output as RawConversar;
+  const out = output as RawConversar;
   for (const c of out.changes) review({ field: c.field, value: c.after, sources: c.sources, reason: c.reason });
   return result({ suggestions, reply: String(out.reply ?? "").trim() || null, usage });
 }

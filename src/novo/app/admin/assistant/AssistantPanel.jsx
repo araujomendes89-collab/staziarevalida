@@ -15,6 +15,8 @@ const usd = (n) => `US$ ${Number(n ?? 0).toFixed(4).replace(".", ",")}`;
 const sourcesText = (sources) => (sources ?? []).map((s) => s.label).join("; ");
 const isList = (v) => Array.isArray(v);
 const itemLines = (v) => valueText(v).split("\n").filter((l) => l !== "");
+/** Texto do campo para comparar com o enviado no pedido: nulo e ausente valem "". */
+const fieldText = (v) => (v === null || v === undefined ? "" : valueText(v));
 
 const cardStyle = { display: "flex", flexDirection: "column", gap: 6, padding: 12, borderRadius: 12, border: "1px solid var(--border-subtle)", background: "var(--surface-default, #fff)" };
 const smallStyle = { font: "var(--type-caption)", color: "var(--text-tertiary)", margin: 0 };
@@ -54,6 +56,7 @@ function SuggestionCard({ item, field, label, mode, values, useLabel, used, stal
       </div>
       {shown}
       {showBefore && <p style={smallStyle}>{`Antes: ${item.before}`}</p>}
+      {item.reason && <p style={smallStyle}>{`Motivo: ${item.reason}`}</p>}
       {item.sources?.length > 0 && <p style={smallStyle}>{`Fonte: ${sourcesText(item.sources)}`}</p>}
       {item.warnings?.map((w, i) => <p key={i} style={{ ...smallStyle, color: "var(--warning-text)" }}>{w}</p>)}
       {stale && <p role="alert" style={{ ...smallStyle, color: "var(--danger-text)" }}>{ASSIST_TEXTS.stale}</p>}
@@ -65,11 +68,12 @@ function FindingCard({ finding, label, canPropose, onPropose }) {
   return (
     <section aria-label={`Achado: ${label}`} style={cardStyle}>
       <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
-        <span style={{ font: "var(--type-label)" }}>{KIND_LABEL[finding.kind] ?? finding.kind}</span>
+        <span style={{ font: "var(--type-label)" }}>{`${label} · ${KIND_LABEL[finding.kind] ?? finding.kind}`}</span>
         {canPropose && <Button size="sm" variant="secondary" onClick={onPropose}>Propor correção</Button>}
       </div>
       <p style={bodyStyle}>{finding.detail}</p>
-      {finding.sources?.length > 0 ? <p style={smallStyle}>{`Fonte: ${sourcesText(finding.sources)}`}</p> : finding.suspeita && <p style={smallStyle}>{ASSIST_TEXTS.suspeita}</p>}
+      {finding.sources?.length > 0 && <p style={smallStyle}>{`Fonte: ${sourcesText(finding.sources)}`}</p>}
+      {finding.suspeita && <p style={{ ...smallStyle, color: "var(--warning-text)" }}>{ASSIST_TEXTS.suspeita}</p>}
       {finding.owner && <p style={smallStyle}>{finding.owner}</p>}
     </section>
   );
@@ -95,6 +99,8 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
   const [pdfBusy, setPdfBusy] = React.useState(false);
   const fileRef = React.useRef(null);
   const seq = React.useRef(0);
+  // valores dos campos como foram no pedido: "Usar" não troca campo de texto que a pessoa mudou depois (decisão D2c)
+  const sent = React.useRef({});
 
   const editable = fields.filter((f) => f.ai === "editar");
   const checkable = fields.filter((f) => f.ai === "editar" || f.ai === "conferir");
@@ -136,6 +142,7 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
     const mat = materialPayload();
     if (mat) request.material = mat;
     reset();
+    sent.current = values;
     setBusy(true);
     const mine = seq.current;
     try {
@@ -166,7 +173,9 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
   const applyOne = (item) => {
     if (used[item.id]) return;
     const current = values[item.field];
-    if (mode === "conversar" && item.before !== null && item.before !== undefined && !sameValue(current, item.before)) {
+    const textChanged = !item.append && !isList(item.value) && fieldText(current) !== fieldText(sent.current?.[item.field]);
+    const beforeChanged = mode === "conversar" && item.before !== null && item.before !== undefined && !sameValue(current, item.before);
+    if (textChanged || beforeChanged) {
       setStale((s) => ({ ...s, [item.id]: true }));
       return;
     }

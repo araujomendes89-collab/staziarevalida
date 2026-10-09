@@ -2,7 +2,8 @@
  * Assistente das abas — adaptador de Questões (especificação §5.1 e §6.2).
  * Permissão: equipe (editor ou administrador), como a aba. O gabarito e a situação do contexto vêm da questão gravada
  * (`app_admin_question`, com o token da pessoa): as explicações seguem o gabarito oficial gravado, não o do formulário.
- * Sem gabarito gravado (questão nova ou vazio no banco), as explicações nem vão para a IA (decisão C2).
+ * Sem gabarito gravado (questão nova ou vazio no banco), as explicações, a conduta esperada e "o que a questão avalia" nem vão
+ * para a IA (decisões C2 e D3c).
  */
 import { QUESTOES_SPEC } from "../../../src/shared/adminAssistant/questoes";
 import { QUESTION_STATUS_LABEL } from "../../../src/shared/questions/status";
@@ -11,6 +12,8 @@ import { httpError, type ItemContext, type TabAdapter } from "../types";
 
 const LETTERS = ["A", "B", "C", "D"];
 const EXPLANATIONS = LETTERS.map((l) => `explanation_${l}`);
+/** Comentário que também depende do gabarito gravado (decisão D3c). */
+const ANSWER_BOUND = ["expected_conduct", "inep_intent"];
 /** Campos do item no pedido, nesta ordem (os vazios ficam de fora). */
 const ITEM_FIELDS = ["topic", "subtopic", "area", "statement", ...LETTERS.map((l) => `option_${l}`), ...EXPLANATIONS, "expected_conduct", "inep_intent"];
 const LABELS = new Map(QUESTOES_SPEC.fields.map((f) => [f.name, f.label]));
@@ -28,8 +31,13 @@ function context(form: AssistForm, stored: AssistForm | null): ItemContext {
   const answer = (stored ? storedAnswer : formAnswer) || "sem gabarito";
   const status = clean(stored ? stored.status : form.status) || "valid";
   const annulled = stored?.status === "annulled" || form.status === "annulled";
-  // sem gabarito gravado (questão nova ou vazio no banco) as explicações não vão para a IA: ela nunca escolhe a correta (decisão C2)
+  // sem gabarito gravado (questão nova ou vazio no banco) as explicações, a conduta esperada e "o que a questão avalia" não vão
+  // para a IA: ela nunca escolhe a correta (decisões C2 e D3c). Questão anulada: sem explicação de gabarito.
   const skipReason = annulled ? ASSIST_TEXTS.annulled : !storedAnswer ? ASSIST_TEXTS.noAnswer : null;
+  const skip = [
+    ...(skipReason ? EXPLANATIONS.map((field) => ({ field, reason: skipReason })) : []),
+    ...(!storedAnswer ? ANSWER_BOUND.map((field) => ({ field, reason: ASSIST_TEXTS.noAnswer })) : []),
+  ];
   const readOnly = [`Gabarito oficial gravado: ${answer}`, `Situação: ${QUESTION_STATUS_LABEL[status] ?? status}`];
   if (form.needs_image || stored?.needs_image) readOnly.push(ASSIST_TEXTS.figure);
   const warnings =
@@ -40,7 +48,7 @@ function context(form: AssistForm, stored: AssistForm | null): ItemContext {
     item,
     readOnly,
     query: [clean(form.topic), clean(form.subtopic), clean(form.statement).slice(0, 300)].filter(Boolean).join(" "),
-    skip: skipReason ? EXPLANATIONS.map((field) => ({ field, reason: skipReason })) : [],
+    skip,
     warnings,
   };
 }
@@ -49,7 +57,7 @@ export const questoesAdapter: TabAdapter = {
   ...QUESTOES_SPEC,
   rules: [
     'As explicações (explanation_A a explanation_D) seguem o gabarito oficial gravado (linha "Somente leitura: Gabarito oficial gravado"), nunca outro, nem a pedido.',
-    "Nunca escolha a alternativa correta: ela é só a do gabarito oficial gravado. Sem gabarito gravado, não escreva explicação das alternativas nem diga qual está certa.",
+    "Nunca escolha a alternativa correta: ela é só a do gabarito oficial gravado. Sem gabarito gravado, não escreva explicação das alternativas, conduta esperada nem o que a questão avalia, nem diga qual está certa.",
     "A explicação da alternativa correta diz por que ela é a certa; a de cada uma das outras, por que não é.",
     `Se a fonte diverge do gabarito oficial gravado, não escreva a explicação; o motivo é "${ASSIST_TEXTS.diverge}".`,
     "Enunciado, alternativas e grande área são o texto da prova oficial: só aponte problemas neles, nunca proponha texto.",

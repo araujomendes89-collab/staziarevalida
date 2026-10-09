@@ -166,4 +166,48 @@ describe("Questões: assistente", () => {
     await waitFor(() => expect(screen.queryByRole("region", { name: "Sugestão: Explicação da B" })).toBeNull());
     expect(screen.queryByRole("region", { name: "Sugestão: Conduta esperada" })).toBeNull();
   });
+
+  it("Usar tudo não apaga o que a pessoa digitou enquanto o Preencher rodava (decisão D2c)", async () => {
+    const plain = (globalThis as any).fetch;
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => { release = r; });
+    (globalThis as any).fetch = vi.fn(async (url: string, init?: any) => {
+      if (url === "/api/admin-assistant/run") await gate;
+      return plain(url, init);
+    });
+    render(<QuestionEditor id="q1" onClose={vi.fn()} onSaved={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Assistente" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Preencher campos" }));
+    await waitFor(() => expect(runCall()).toBeTruthy());
+    expect(JSON.parse(runCall()[1].body).form.options[0].explanation).toBe("");
+    fireEvent.change(textarea("Explicação da A (opcional)"), { target: { value: "Texto que eu digitei." } });
+    release();
+    fireEvent.click(await screen.findByRole("button", { name: "Usar tudo" }));
+    expect(textarea("Explicação da A (opcional)").value).toBe("Texto que eu digitei.");
+    expect(textarea("Explicação da B (opcional)").value).toBe("B é a certa.");
+    expect(textarea("Conduta esperada").value).toBe("Suporte com oxigênio.");
+    expect(within(screen.getByRole("region", { name: "Sugestão: Explicação da A" })).getByText("O campo mudou depois da proposta: peça de novo")).toBeTruthy();
+  });
+
+  it("o primeiro salvamento de questão nova não desmonta o painel: material, pedido e sugestões ficam (decisão D3a)", async () => {
+    render(<QuestionEditor id={undefined} onClose={vi.fn()} onSaved={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Assistente" }));
+    fireEvent.change(textarea("Texto"), { target: { value: "Trecho do material sobre bronquiolite." } });
+    fireEvent.change(textarea("Pedido (opcional)"), { target: { value: "Seja breve." } });
+    fireEvent.click(screen.getByRole("button", { name: "Preencher campos" }));
+    await screen.findByRole("region", { name: "Sugestão: Explicação da B" });
+    fireEvent.click(within(screen.getByRole("region", { name: "Sugestão: Conduta esperada" })).getByRole("button", { name: "Descartar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Criar questão" }));
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+    expect(await screen.findByRole("button", { name: "Salvar questão" })).toBeTruthy();
+    expect(textarea("Texto").value).toBe("Trecho do material sobre bronquiolite.");
+    expect(textarea("Pedido (opcional)").value).toBe("Seja breve.");
+    expect(screen.getByRole("region", { name: "Sugestão: Explicação da B" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Sugestão: Conduta esperada" })).toBeNull();
+    // já gravada, salvar de novo com o mesmo gabarito e a mesma situação também não desmonta
+    fireEvent.click(screen.getByRole("button", { name: "Salvar questão" }));
+    await waitFor(() => expect(saveCalls()).toHaveLength(2));
+    expect(textarea("Texto").value).toBe("Trecho do material sobre bronquiolite.");
+    expect(screen.getByRole("region", { name: "Sugestão: Explicação da B" })).toBeTruthy();
+  });
 });
