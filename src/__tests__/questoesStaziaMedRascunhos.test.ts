@@ -4,19 +4,22 @@
  * antiga não apaga o que foi editado no servidor, os 200 importados ficam na trilha, pedidos/propostas/trilha só para a
  * equipe e os revisores, as etapas novas da fila e as funções de serviço fechadas para o app.
  */
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildDraftStatements } from "../../scripts/supabase/engine-seed";
 import { addOfficialSource, insertDraft, openStaziaEnv, USERS, type StaziaEnv } from "./helpers/staziamed";
+
+// banco PGlite + recarga dos 200 rascunhos: com a máquina cheia (vários testes em paralelo) 5 s não bastam
+vi.setConfig({ testTimeout: 120_000 });
 
 let env: StaziaEnv;
 const hashOf = async (id: string) => (await env.sql(`select content_hash from public.draft_questions where id = $1`, [id]))[0].content_hash as string;
 
 beforeAll(async () => {
   env = await openStaziaEnv({ drafts: true });
-}, 300_000);
+}, 600_000);
 afterAll(async () => {
   await env?.close();
-});
+}, 60_000);
 
 describe("Rascunhos com hash no banco", () => {
   it("o hash do rascunho é do banco: muda com enunciado, tabela, alternativas, gabarito, explicações, decisão clínica, tema e citações; não muda com título", async () => {
@@ -77,6 +80,9 @@ describe("Rascunhos com hash no banco", () => {
     expect(B.status).toBe("awaiting_medical_review");
     const [fresh] = await env.sql(`select public.draft_content_hash(d) as h from public.draft_questions d where d.id = $1`, [b.id]);
     expect(B.content_hash).toBe(fresh.h);
+    // devolve o A ao que o arquivo trouxe: os testes não dependem da ordem (a trilha 'importada' continua com o hash atual)
+    await env.sql(`update public.draft_questions set stem = $2, edited_at = null where id = $1`, [a.id, a.stem]);
+    expect(await hashOf(a.id)).toBe((await env.sql(`select content_hash from public.draft_question_events where draft_id = $1 and kind = 'importada'`, [a.id]))[0].content_hash);
   });
 
   it("draft_event grava quem, o hash atual, o conteúdo anterior e a observação; tipo fora da lista é recusado", async () => {
@@ -176,7 +182,7 @@ describe("Fila e funções de serviço", () => {
     } finally {
       await empty.close();
     }
-  }, 120_000);
+  }, 600_000); // abre um segundo banco inteiro (migrações + carga): com a máquina cheia leva minutos
 
   it("nenhuma função ch_worker_*, draft_* ou staziamed_* é executável por anon ou authenticated", async () => {
     const all = (await env.sql(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace

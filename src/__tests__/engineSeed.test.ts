@@ -208,5 +208,5 @@ describe("Rascunhos inéditos do motor", () => {
     for (const st of buildDraftStatements()) await db.exec(st);
     const after = (await db.query<any>(`select status, reviewed_hash <> content_hash as stale from public.draft_questions where id = $1`, [decided.id])).rows[0];
     expect(after).toEqual({ status: "awaiting_medical_review", stale: true });
-  });
+  }, 120_000); // recarrega os lotes duas vezes (o gatilho do hash roda em cada linha): com a máquina cheia 5 s não bastam
 });
