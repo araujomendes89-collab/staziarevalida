@@ -187,9 +187,9 @@ describe("Camadas com banco e simulação de IA", () => {
     expect(Object.values(first[0].verdicts).reduce((a, b) => a + b, 0)).toBe(200);
     const again = await runDraftChecks({ db }, { layers: ["software"], limit: 500 });
     expect(again[0]).toMatchObject({ considered: 0, saved: 0 });
-    // conteúdo mudou: só aquele rascunho volta a ser conferido
+    // conteúdo mudou: só aquele rascunho volta a ser conferido (o hash é do banco: muda junto com o enunciado)
     const [d] = await sql(`select id from public.draft_questions limit 1`);
-    await sql(`update public.draft_questions set content_hash = 'novo-' || content_hash where id = $1`, [d.id]);
+    await sql(`update public.draft_questions set stem = stem || ' (alterado)' where id = $1`, [d.id]);
     expect((await runDraftChecks({ db }, { layers: ["software"] }))[0].considered).toBe(1);
   });
 
