@@ -9,7 +9,7 @@ import { stepVersions, type PipelineDeps } from "./pipeline";
 import { loadBrand } from "./render";
 import { compareSourceVersions } from "./sourceCompare";
 import { applyReferenceCleanup, previewReferenceCleanup, undoReferenceCleanup } from "./referenceCleanup";
-import type { Identity } from "./infra";
+import { CONTENT_HUB_BUCKET, type Identity } from "./infra";
 import type { ContentHubWorker } from "./worker";
 import type { ProcessingReport } from "./capabilities";
 import { functionChecks, loadAiConfig } from "../ai/config";
@@ -19,10 +19,15 @@ import { DEFAULT_EMBEDDING_MODEL, embedderAllowed, embeddingsConfig, queryEmbedd
 const PROCESSING_STALE_MIN = 30;
 
 const MAX_PDF_MB = Number(process.env.CONTENT_HUB_MAX_PDF_MB || 300);
+/** Caminho temporário do envio direto (o servidor sorteia; a confirmação só aceita este formato). */
+const TEMP_UPLOAD = /^uploads\/[0-9a-f]{32}\.pdf$/;
+/** Validade do endereço assinado do original (o visualizador recarrega a cada troca de página). */
+const LINK_SECONDS = 3600;
 
 type Authed = Request & { user?: Identity };
 
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
+const httpError = (status: number, text: string) => Object.assign(new Error(text), { status });
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 const forbidden = (error: unknown) => /restrito|sem acesso|administrador|42501|Acesso/i.test(message(error));
 
@@ -125,17 +130,18 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
     }
   });
 
-  /** Envio de PDF (corpo bruto). Idempotente pelo hash: o mesmo arquivo não é duplicado. */
-  const upload = express.raw({ type: ["application/pdf", "application/octet-stream"], limit: `${MAX_PDF_MB}mb` });
-  const receivePdf = async (req: Authed) => {
-    const body = req.body as Buffer;
-    if (!Buffer.isBuffer(body) || body.length === 0) throw Object.assign(new Error("Envie o arquivo PDF no corpo da requisição."), { status: 400 });
-    if (body.subarray(0, 5).toString("latin1") !== "%PDF-") throw Object.assign(new Error("O arquivo não é um PDF (assinatura %PDF- ausente)."), { status: 415 });
+  /**
+   * Guarda o PDF pelo hash e registra o documento. Idempotente pelo hash: o mesmo arquivo não é duplicado. Os metadados
+   * vêm da consulta (envio pelo servidor) ou do corpo JSON (confirmação do envio direto); só texto é aceito.
+   */
+  const storePdf = async (req: Authed, body: Buffer, fileName: string, meta: Record<string, unknown>) => {
+    if (!Buffer.isBuffer(body) || body.length === 0) throw httpError(400, "Envie o arquivo PDF no corpo da requisição.");
+    if (body.subarray(0, 5).toString("latin1") !== "%PDF-") throw httpError(415, "O arquivo não é um PDF (assinatura %PDF- ausente).");
     const sha256 = crypto.createHash("sha256").update(body).digest("hex");
     const key = `documents/${sha256}.pdf`;
     if (!(await deps!.storage.exists(key))) await deps!.storage.put(key, body, "application/pdf");
-    const name = decodeURIComponent(String(req.headers["x-file-name"] ?? "documento.pdf")).slice(0, 300);
-    const q = req.query as Record<string, string | undefined>;
+    const name = fileName.slice(0, 300);
+    const q = Object.fromEntries(Object.entries(meta).filter(([, v]) => typeof v === "string")) as Record<string, string | undefined>;
     const registered = await asUser<{ id: string; duplicate: boolean }>(req, "app_ch_register_document", {
       p_doc: {
         name,
@@ -152,31 +158,104 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
     });
     return { ...registered, sha256 };
   };
+  /** Envio pelo servidor (desenvolvimento): corpo bruto, nome em X-File-Name, metadados na consulta. */
+  const upload = express.raw({ type: ["application/pdf", "application/octet-stream"], limit: `${MAX_PDF_MB}mb` });
+  const receivePdf = (req: Authed) => storePdf(req, req.body as Buffer, decodeURIComponent(String(req.headers["x-file-name"] ?? "documento.pdf")), req.query as Record<string, unknown>);
+
+  /**
+   * 1) Prepara o envio direto do navegador ao depósito (Supabase), num caminho temporário: o arquivo não passa pelo limite
+   * de 4,5 MB do corpo das funções da Vercel. Sem envio assinado (desenvolvimento): { mode: "direct" }.
+   */
+  const prepareUpload = async (req: Authed) => {
+    await requireStaff(req);
+    const size = Number((req.body ?? {}).size_bytes);
+    if (!Number.isFinite(size) || size <= 0) throw httpError(400, "Arquivo vazio.");
+    if (size > MAX_PDF_MB * 1024 * 1024) throw httpError(413, `Arquivo acima de ${MAX_PDF_MB} MB.`);
+    if (!deps!.storage.signedUpload) return { mode: "direct" };
+    const key = `uploads/${crypto.randomBytes(16).toString("hex")}.pdf`;
+    const signed = await deps!.storage.signedUpload(key);
+    return { mode: "signed", bucket: CONTENT_HUB_BUCKET, key, path: signed.path, token: signed.token };
+  };
+  /** 2) Confirma o envio direto: confere o arquivo temporário, guarda pelo hash e registra; o temporário sempre sai. */
+  const receiveUpload = async (req: Authed) => {
+    await requireStaff(req);
+    const { key, name } = (req.body ?? {}) as Record<string, unknown>;
+    if (typeof key !== "string" || !TEMP_UPLOAD.test(key)) throw httpError(400, "Caminho de arquivo inválido.");
+    if (!(await deps!.storage.exists(key))) throw httpError(400, "O arquivo não chegou ao depósito. Envie de novo.");
+    try {
+      return await storePdf(req, await deps!.storage.get(key), typeof name === "string" && name.trim() ? name : "documento.pdf", req.body);
+    } finally {
+      await deps!.storage.remove?.([key]).catch(() => undefined);
+    }
+  };
   const enqueueExtract = (documentId: string) =>
     deps!.db.service<{ id: string; duplicate: boolean }>("ch_worker_enqueue", { p_document_id: documentId, p_step: "extract", p_scope_key: "", p_versions: stepVersions("extract", deps!), p_max_attempts: 3 });
+  const sendDocument = async (res: Response, doc: { id: string; duplicate: boolean; sha256: string }) => {
+    const job = await enqueueExtract(doc.id);
+    res.status(doc.duplicate ? 200 : 201).json({ ...doc, job });
+  };
+  /** PDF completo de uma fonte oficial (acervo de validação): vira trechos citáveis com página. */
+  const sendSourceDocument = async (req: Authed, res: Response, doc: { id: string; duplicate: boolean; sha256: string }) => {
+    await asUser(req, "app_ch_attach_source_document", { p_source_id: req.params.id, p_document_id: doc.id });
+    const job = await enqueueExtract(doc.id);
+    await deps!.db.service("ch_worker_unblock");
+    res.status(201).json({ ...doc, job });
+  };
+  const failUpload = (res: Response, error: any) => fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
 
   router.post("/documents", upload, async (req: Authed, res) => {
     try {
       await requireStaff(req);
-      const doc = await receivePdf(req);
-      const job = await enqueueExtract(doc.id);
-      res.status(doc.duplicate ? 200 : 201).json({ ...doc, job });
+      await sendDocument(res, await receivePdf(req));
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+      failUpload(res, error);
+    }
+  });
+  router.post("/documents/upload", async (req: Authed, res) => {
+    try {
+      res.json(await prepareUpload(req));
+    } catch (error: any) {
+      failUpload(res, error);
+    }
+  });
+  router.post("/documents/confirm", async (req: Authed, res) => {
+    try {
+      await sendDocument(res, await receiveUpload(req));
+    } catch (error: any) {
+      failUpload(res, error);
     }
   });
 
-  /** PDF completo de uma fonte oficial (acervo de validação): vira trechos citáveis com página. */
   router.post("/sources/:id/document", upload, async (req: Authed, res) => {
     try {
       await requireStaff(req);
-      const doc = await receivePdf(req);
-      await asUser(req, "app_ch_attach_source_document", { p_source_id: req.params.id, p_document_id: doc.id });
-      const job = await enqueueExtract(doc.id);
-      await deps!.db.service("ch_worker_unblock");
-      res.status(201).json({ ...doc, job });
+      await sendSourceDocument(req, res, await receivePdf(req));
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+      failUpload(res, error);
+    }
+  });
+  router.post("/sources/:id/document/upload", async (req: Authed, res) => {
+    try {
+      res.json(await prepareUpload(req));
+    } catch (error: any) {
+      failUpload(res, error);
+    }
+  });
+  router.post("/sources/:id/document/confirm", async (req: Authed, res) => {
+    try {
+      await sendSourceDocument(req, res, await receiveUpload(req));
+    } catch (error: any) {
+      failUpload(res, error);
+    }
+  });
+
+  /** Endereço para abrir o original: assinado (Supabase, direto do depósito, sem o limite da Vercel) ou nulo (baixa por /file). */
+  router.get("/documents/:id/link", async (req: Authed, res) => {
+    try {
+      const detail = await asUser<{ document: { storage_path: string } }>(req, "app_ch_document", { p_document_id: req.params.id });
+      res.json({ url: deps!.storage.signedUrl ? await deps!.storage.signedUrl(detail.document.storage_path, LINK_SECONDS) : null });
+    } catch (error) {
+      fail(res, forbidden(error) ? 403 : 404, message(error));
     }
   });
 

@@ -39,9 +39,20 @@ export async function hubUploadFile(backend, path, file) {
   return parse(await fetch(BASE + path, { method: "POST", headers: await headers(backend, { "Content-Type": file.type || "application/octet-stream" }), body: file }));
 }
 
-/** Envia um PDF (corpo bruto) com os metadados na consulta. */
+/**
+ * Envia um PDF (documento ou PDF completo de uma fonte). Com o Supabase, o arquivo vai direto ao depósito (envio
+ * assinado) e o servidor só confirma: sem o limite de 4,5 MB do corpo das funções da Vercel (erro 413). No banco local,
+ * o PDF segue pelo servidor (corpo bruto, metadados na consulta).
+ */
 export async function hubUploadPdf(backend, path, file, meta = {}) {
-  const query = new URLSearchParams(Object.entries(meta).filter(([, v]) => v != null && String(v).trim() !== ""));
+  const fields = Object.fromEntries(Object.entries(meta).filter(([, v]) => v != null && String(v).trim() !== ""));
+  const prep = await hubPost(backend, `${path}/upload`, { size_bytes: file.size });
+  if (prep.mode === "signed") {
+    if (!backend.uploadToSignedUrl) throw new Error("Envio direto indisponível neste ambiente.");
+    await backend.uploadToSignedUrl(prep.bucket, prep.path, prep.token, file, "application/pdf");
+    return hubPost(backend, `${path}/confirm`, { ...fields, key: prep.key, name: file.name });
+  }
+  const query = new URLSearchParams(fields);
   return parse(
     await fetch(`${BASE}${path}${query.size ? `?${query}` : ""}`, {
       method: "POST",
@@ -55,4 +66,10 @@ export async function hubUploadPdf(backend, path, file, meta = {}) {
 export async function hubBlobUrl(backend, path) {
   const res = await parse(await fetch(BASE + path, { headers: await headers(backend) }));
   return URL.createObjectURL(await res.blob());
+}
+
+/** Endereço do PDF original de um documento: assinado (Supabase, direto do depósito) ou, no banco local, uma cópia baixada (blob). */
+export async function hubDocumentUrl(backend, id) {
+  const link = await hubGet(backend, `/documents/${id}/link`);
+  return link.url || hubBlobUrl(backend, `/documents/${id}/file`);
 }

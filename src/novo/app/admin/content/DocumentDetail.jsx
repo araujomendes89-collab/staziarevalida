@@ -5,7 +5,7 @@ import { Badge, Banner, Button, Checkbox, SelectField } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { useMobile } from "../../Shell.jsx";
 import { LoadError, Loading, TextArea, useLoad } from "../common.jsx";
-import { hubAvailable, hubBlobUrl, hubPost } from "./api.js";
+import { hubAvailable, hubDocumentUrl, hubPost } from "./api.js";
 import { BLOCK_STATUS, BLOCK_TYPE, DOC_STATUS, JOB_STATUS, RIGHTS, STEP_LABEL } from "./labels.js";
 import { ClaimCard, KeyValue, Label, ModelBadge, Pre, Section, StatusBadge, useAction, when } from "./ui.jsx";
 
@@ -163,8 +163,8 @@ function Viewer({ doc, pages, page, setPage, onChanged }) {
   React.useEffect(() => {
     if (!hubAvailable(backend)) return undefined;
     let made = null;
-    hubBlobUrl(backend, `/documents/${doc.id}/file`).then((u) => setUrl((made = u)), (e) => setFileError(e.message));
-    return () => made && URL.revokeObjectURL(made);
+    hubDocumentUrl(backend, doc.id).then((u) => setUrl((made = u)), (e) => setFileError(e.message));
+    return () => made?.startsWith("blob:") && URL.revokeObjectURL(made);
   }, [backend, doc.id]);
   if (!pages.length) return null;
   const info = pages.find((p) => p.page_no === page);

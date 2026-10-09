@@ -122,7 +122,10 @@ export function localStorageDir(dir = process.env.CONTENT_HUB_STORAGE_DIR || pat
   };
 }
 
-export function supabaseStorage(bucket = "content-hub"): Storage {
+/** Depósito privado da Central de Conteúdo (PDFs enviados e arquivos finais). */
+export const CONTENT_HUB_BUCKET = "content-hub";
+
+export function supabaseStorage(bucket = CONTENT_HUB_BUCKET): Storage {
   const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) throw new Error("Armazenamento sem Supabase configurado no servidor.");
