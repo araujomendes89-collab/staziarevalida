@@ -110,6 +110,23 @@ describe("assistente das abas — formato e tamanho de cada campo", () => {
     expect(checkValue(FLASHCARDS, [{ front: "Nova?", back: "Sim." }], cards, true)).toEqual({ value: null, warnings: ["Flashcards: no máximo 40 itens; 1 ficaram de fora."] });
   });
 
+  it("ao acrescentar, entrada que já está no campo ou repetida sai calada e não ocupa vaga dos itens novos", () => {
+    // a IA repete os 30 flashcards do item (sem o `type` que os atuais guardam) e traz 2 novos: só os 2 novos ficam
+    const current = Array.from({ length: 30 }, (_, i) => ({ front: `Pergunta ${i}?`, back: `Resposta ${i}.`, type: "O_QUE_MUDOU" }));
+    const echoed = [...current.map(({ front, back }) => ({ front, back })), { front: "Nova 1?", back: "Sim." }, { front: "Nova 2?", back: "Não." }];
+    expect(checkValue(FLASHCARDS, echoed, current, true)).toEqual({ value: [{ front: "Nova 1?", back: "Sim." }, { front: "Nova 2?", back: "Não." }], warnings: [] });
+    expect(checkValue(FEATURES, ["Questões comentadas", "Questões comentadas"], ["Questões comentadas"], true)).toEqual({ value: null, warnings: [] });
+    expect(checkValue(FEATURES, ["Mentoria", "Simulados", "Mentoria"], ["Questões comentadas"], true)).toEqual({ value: ["Mentoria", "Simulados"], warnings: [] });
+    const year = [{ year: 2024, text: "Mudou." }];
+    expect(checkValue(TIMELINE, [{ year: 2024, text: "Mudou." }, { year: 2025, text: "Mudou de novo." }], year, true)).toEqual({
+      value: [{ year: 2025, text: "Mudou de novo." }],
+      warnings: [],
+    });
+    // repetidas saem antes de contar a vaga: 19 atuais + 1 repetida + 1 nova cabem sem aviso
+    const nineteen = Array.from({ length: 19 }, (_, i) => `R${i}`);
+    expect(checkValue(FEATURES, ["R3", "Novo"], nineteen, true)).toEqual({ value: ["Novo"], warnings: [] });
+  });
+
   it("valor de formato errado para o campo é descartado com aviso", () => {
     const r = checkValue({ name: "topic", label: "Tema", kind: "text", ai: "editar", base: "item", max: 200 }, ["a"], null, false);
     expect(r).toEqual({ value: null, warnings: ["Tema: fora do formato; sugestão descartada."] });
@@ -120,6 +137,18 @@ describe("assistente das abas — números, anos e recursos", () => {
   it("números: com unidade (abas médicas) e qualquer número (Planos)", () => {
     expect(unsupportedNumbers("Corticoide 2 mg/kg ajuda.", ["Oxigênio se saturação abaixo de 90%."], "unidade")).toEqual(["2 mg"]);
     expect(unsupportedNumbers("R$ 129,90 com 45 minutos", ["Preço R$ 129,90 e 30 minutos de voz"], "qualquer")).toEqual(["45"]);
+  });
+
+  it("corte em % e prazo no singular também contam, seguidos de espaço, pontuação ou fim do texto", () => {
+    const cited = ["Oxigênio se saturação abaixo de 90%."];
+    expect(unsupportedNumbers("Oxigênio se saturação abaixo de 92% e hidratação.", cited, "unidade")).toEqual(["92%"]);
+    expect(unsupportedNumbers("Oxigênio abaixo de 92%.", cited, "unidade")).toEqual(["92%"]);
+    expect(unsupportedNumbers("Corte novo (92%) na diretriz.", cited, "unidade")).toEqual(["92%"]);
+    expect(unsupportedNumbers("Oxigênio abaixo de 92%", cited, "unidade")).toEqual(["92%"]);
+    expect(unsupportedNumbers("Oxigênio abaixo de 90%.", cited, "unidade")).toEqual([]);
+    expect(unsupportedNumbers("Tratar por 1 ano e reavaliar em 1 mês.", ["Tratar por 2 anos."], "unidade")).toEqual(["1 ano", "1 mês"]);
+    // unidade só vale como palavra inteira: "2 gotas" e "3 hábitos" não são "2 g" e "3 h"
+    expect(unsupportedNumbers("Tomar 2 gotas e mudar 3 hábitos.", cited, "unidade")).toEqual([]);
   });
 
   it("número inteiro: 2 não vale por estar dentro de 20 ou de 1,25; repetido avisa uma vez", () => {

@@ -127,7 +127,8 @@ export function selectChunks(chunks: SourceChunk[], topic: string, budget = 120_
   return chunks.filter((_, i) => keep.has(i));
 }
 
-const NUMBER_WITH_UNIT = /\b\d+(?:[.,]\d+)?\s*(?:%|mg|g|mcg|µg|ml|mL|l|kg|mmhg|mmHg|mEq|meq|ui|UI|h|horas?|dias?|semanas?|meses|anos|min|minutos?|bpm|irpm|°c|graus)\b/gi;
+// a unidade termina onde não segue letra nem algarismo (com \b, "92%" seguido de espaço, pontuação ou fim do texto não contava)
+const NUMBER_WITH_UNIT = /\b\d+(?:[.,]\d+)?\s*(?:%|mg|g|mcg|µg|ml|mL|l|kg|mmhg|mmHg|mEq|meq|ui|UI|h|horas?|dias?|semanas?|m[eê]s|meses|anos?|min|minutos?|bpm|irpm|°c|graus)(?![\p{L}\p{N}])/giu;
 
 /** Números com unidade (dose, corte, prazo) de um texto que NÃO aparecem em nenhum dos trechos citados. */
 export function ungroundedNumbers(text: string, cited: string[]): string[] {

@@ -175,6 +175,7 @@ describe("Peças do servidor (sem rede)", () => {
   it("número com unidade precisa estar no trecho citado (vírgula e ponto valem igual)", () => {
     expect(ungroundedNumbers("Faça 4 g IV e repita em 1,5 h.", ["Sulfato de magnésio 4 g IV; reavaliar em 1.5 h"])).toEqual([]);
     expect(ungroundedNumbers("Faça 6 g IV.", ["Sulfato de magnésio 4 g IV"])).toEqual(["6 g"]);
+    expect(ungroundedNumbers("Saturação abaixo de 92%, por 1 ano ou 1 mês.", ["Saturação abaixo de 90%"])).toEqual(["92%", "1 ano", "1 mês"]);
     const chunks = new Map([[1, { id: 1, source: "PCDT", doc: 1, page: 2, text: "Sulfato de magnésio 4 g IV em 20 minutos" }]]);
     const script: PodcastScript = { missing: [], lines: [
       { speaker: "ANA", text: "Ataque com 4 g IV em 20 minutos.", style: "", sources: [1] },

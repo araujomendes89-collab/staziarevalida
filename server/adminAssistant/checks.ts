@@ -4,7 +4,7 @@
  * Funções puras: o motor (engine.ts) decide o que fazer com cada aviso.
  */
 import { ungroundedNumbers } from "../podcasts/script";
-import type { AdapterField, FieldValue, Flashcard, SourceRef, TimelineEntry } from "../../src/shared/adminAssistant/types";
+import { sameValue, type AdapterField, type FieldValue, type Flashcard, type SourceRef, type TimelineEntry } from "../../src/shared/adminAssistant/types";
 
 /** Uma marca do pedido: `[I…]` campo do item, `[T…]` trecho do material, `[F…]` trecho oficial. */
 export interface MarkRef {
@@ -102,9 +102,30 @@ function entryProblem(field: AdapterField, entry: unknown): string | null {
 }
 
 /**
+ * A parte da entrada que o assistente propõe, aparada: a linha; ano e texto; frente e verso. Chave a mais de um item atual
+ * (ex.: o `type` do flashcard, decisão A4) não conta na comparação.
+ */
+function entryKey(field: AdapterField, entry: unknown): unknown {
+  const text = (v: unknown) => String(v ?? "").trim();
+  const e = isObject(entry) ? entry : {};
+  switch (field.kind) {
+    case "lines":
+      return text(entry);
+    case "timeline":
+      return { year: Number(e.year), text: text(e.text) };
+    case "flashcards":
+      return { front: text(e.front), back: text(e.back) };
+    default:
+      return entry;
+  }
+}
+
+/**
  * Tamanho e formato de um valor para o campo. Texto acima de `max` é descartado inteiro. Lista: cada entrada fora do
  * formato sai com aviso (vazia sai calada) e o total fica em `max` — com `append`, contando as entradas atuais, porque a
- * lista só ganha itens novos e nada apaga os que existem (decisão A3). Lista que fica vazia vira null.
+ * lista só ganha itens novos e nada apaga os que existem (decisão A3). Com `append`, a entrada igual a uma atual ou a uma
+ * anterior do próprio valor sai calada antes da conta (já está no campo; a IA que repete a lista não tira a vaga dos
+ * itens novos). Lista que fica vazia vira null.
  */
 export function checkValue(field: AdapterField, value: FieldValue, current: FieldValue | null, append: boolean): { value: FieldValue | null; warnings: string[] } {
   if (field.kind === "text") {
@@ -117,7 +138,13 @@ export function checkValue(field: AdapterField, value: FieldValue, current: Fiel
   }
   const warnings: string[] = [];
   const kept: unknown[] = [];
+  const seen = append && Array.isArray(current) ? (current as unknown[]).map((entry) => entryKey(field, entry)) : [];
   for (const entry of value as unknown[]) {
+    if (append) {
+      const key = entryKey(field, entry);
+      if (seen.some((known) => sameValue(known, key))) continue;
+      seen.push(key);
+    }
     const problem = entryProblem(field, entry);
     if (problem === null) kept.push(entry);
     else if (problem) warnings.push(problem);
