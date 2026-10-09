@@ -135,6 +135,8 @@ export const ASSIST_TEXTS = {
   gabaritoOwner: "O gabarito só muda pelo registro do gabarito oficial (administrador).",
   aiDefined: "IA definida na Central de IAs: {IA} {modelo}",
   centralName: "Assistente: conversar e revisar",
+  /** Questão sem gabarito gravado (nova ou vazio no banco): as explicações não vão para a IA (decisão C2). */
+  noAnswer: "Grave o gabarito antes de pedir as explicações.",
 } as const;
 
 /** Linha "IA definida na Central de IAs: {IA} {modelo}" preenchida (sem modelo, só a IA). */

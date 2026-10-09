@@ -2,6 +2,7 @@
  * Assistente das abas — adaptador de Questões (especificação §5.1 e §6.2).
  * Permissão: equipe (editor ou administrador), como a aba. O gabarito e a situação do contexto vêm da questão gravada
  * (`app_admin_question`, com o token da pessoa): as explicações seguem o gabarito oficial gravado, não o do formulário.
+ * Sem gabarito gravado (questão nova ou vazio no banco), as explicações nem vão para a IA (decisão C2).
  */
 import { QUESTOES_SPEC } from "../../../src/shared/adminAssistant/questoes";
 import { QUESTION_STATUS_LABEL } from "../../../src/shared/questions/status";
@@ -27,6 +28,8 @@ function context(form: AssistForm, stored: AssistForm | null): ItemContext {
   const answer = (stored ? storedAnswer : formAnswer) || "sem gabarito";
   const status = clean(stored ? stored.status : form.status) || "valid";
   const annulled = stored?.status === "annulled" || form.status === "annulled";
+  // sem gabarito gravado (questão nova ou vazio no banco) as explicações não vão para a IA: ela nunca escolhe a correta (decisão C2)
+  const skipReason = annulled ? ASSIST_TEXTS.annulled : !storedAnswer ? ASSIST_TEXTS.noAnswer : null;
   const readOnly = [`Gabarito oficial gravado: ${answer}`, `Situação: ${QUESTION_STATUS_LABEL[status] ?? status}`];
   if (form.needs_image || stored?.needs_image) readOnly.push(ASSIST_TEXTS.figure);
   const warnings =
@@ -37,7 +40,7 @@ function context(form: AssistForm, stored: AssistForm | null): ItemContext {
     item,
     readOnly,
     query: [clean(form.topic), clean(form.subtopic), clean(form.statement).slice(0, 300)].filter(Boolean).join(" "),
-    skip: annulled ? EXPLANATIONS.map((field) => ({ field, reason: ASSIST_TEXTS.annulled })) : [],
+    skip: skipReason ? EXPLANATIONS.map((field) => ({ field, reason: skipReason })) : [],
     warnings,
   };
 }
@@ -45,9 +48,10 @@ function context(form: AssistForm, stored: AssistForm | null): ItemContext {
 export const questoesAdapter: TabAdapter = {
   ...QUESTOES_SPEC,
   rules: [
-    'As explicações (explanation_A a explanation_D) seguem o gabarito oficial gravado (linha "Somente leitura: Gabarito oficial gravado"), nunca outro.',
+    'As explicações (explanation_A a explanation_D) seguem o gabarito oficial gravado (linha "Somente leitura: Gabarito oficial gravado"), nunca outro, nem a pedido.',
+    "Nunca escolha a alternativa correta: ela é só a do gabarito oficial gravado. Sem gabarito gravado, não escreva explicação das alternativas nem diga qual está certa.",
     "A explicação da alternativa correta diz por que ela é a certa; a de cada uma das outras, por que não é.",
-    `Se a fonte diverge do gabarito oficial gravado, não escreva a explicação: ponha o campo em "missing" com o motivo "${ASSIST_TEXTS.diverge}".`,
+    `Se a fonte diverge do gabarito oficial gravado, não escreva a explicação; o motivo é "${ASSIST_TEXTS.diverge}".`,
     "Enunciado, alternativas e grande área são o texto da prova oficial: só aponte problemas neles, nunca proponha texto.",
     "Tema e subtema são rótulos curtos tirados do próprio item (tema até 200 e subtema até 300 caracteres).",
     "Gabarito, situação, prova, ano, edição, número e a marca de figura nunca mudam pelo assistente.",

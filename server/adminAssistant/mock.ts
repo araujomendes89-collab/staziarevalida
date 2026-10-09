@@ -16,11 +16,14 @@ function marks(input: string, letter: "I" | "T" | "F", tag: string): { code: str
   return [...block.matchAll(re)].map((m) => ({ code: m[1], head: m[2].trim(), text: m[3].trim() }));
 }
 
-/** Campos da linha "Campos permitidos" e, pelo sistema, quais são de texto (sem a linha de formato, todos contam como texto). */
+/**
+ * Campos da linha "Campos permitidos" e, pelo sistema, quais são de texto (sem a linha de formato, todos contam como texto).
+ * Nomes com maiúsculas também valem (explanation_A…explanation_D, decisão C3).
+ */
 function allowedTextFields(req: StructuredRequest): string[] {
   const line = /^Campos permitidos: (.*)$/m.exec(req.input ?? "")?.[1] ?? "";
-  const names = [...line.matchAll(/(?:^|, )([a-z][a-z0-9_]*) \(/g)].map((m) => m[1]);
-  const formats = new Map([...String(req.system ?? "").matchAll(/^- ([a-z][a-z0-9_]*) \([^\n]*?\): (texto|lista)/gm)].map((m) => [m[1], m[2]]));
+  const names = [...line.matchAll(/(?:^|, )([A-Za-z][A-Za-z0-9_]*) \(/g)].map((m) => m[1]);
+  const formats = new Map([...String(req.system ?? "").matchAll(/^- ([A-Za-z][A-Za-z0-9_]*) \([^\n]*?\): (texto|lista)/gm)].map((m) => [m[1], m[2]]));
   return names.filter((n) => (formats.get(n) ?? "texto") === "texto");
 }
 
@@ -37,7 +40,7 @@ export function mockAdminAssist(req: StructuredRequest): unknown {
   }
   if (mode === "conferir") {
     const i1 = item.find((m) => m.code === "I1");
-    const field = /^([a-z][a-z0-9_]*) \(/.exec(i1?.head ?? "")?.[1] ?? null;
+    const field = /^([A-Za-z][A-Za-z0-9_]*) \(/.exec(i1?.head ?? "")?.[1] ?? null;
     return { findings: [{ field, kind: "pouco_claro", detail: "Simulação (sem IA): confira se este campo está claro.", sources: i1 ? ["I1"] : [] }] };
   }
   if (mode === "conversar") {

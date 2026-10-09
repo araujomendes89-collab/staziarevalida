@@ -137,6 +137,7 @@ describe("assistente das abas — valores e textos comuns", () => {
       gabaritoOwner: "O gabarito só muda pelo registro do gabarito oficial (administrador).",
       aiDefined: "IA definida na Central de IAs: {IA} {modelo}",
       centralName: "Assistente: conversar e revisar",
+      noAnswer: "Grave o gabarito antes de pedir as explicações.",
     });
   });
 
