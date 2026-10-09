@@ -130,4 +130,40 @@ describe("Questões: assistente", () => {
       backend.accessToken = saved;
     }
   });
+
+  it("com 900 px ou mais, abrir o painel mantém o mesmo botão no documento e com o foco", async () => {
+    const OldRO = (globalThis as any).ResizeObserver;
+    (globalThis as any).ResizeObserver = class { cb: any; constructor(cb: any) { this.cb = cb; } observe() {} disconnect() {} };
+    const spy = vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({ width: 1000, height: 600, top: 0, left: 0, right: 1000, bottom: 600, x: 0, y: 0, toJSON: () => ({}) } as any);
+    try {
+      render(<QuestionEditor id="q1" onClose={vi.fn()} onSaved={vi.fn()} />);
+      const button = await screen.findByRole("button", { name: "Assistente" });
+      button.focus();
+      fireEvent.click(button);
+      await screen.findByText("O que você salvar aparece na hora para o aluno.");
+      const after = screen.getByRole("button", { name: "Assistente" });
+      expect(after).toBe(button);
+      expect(document.body.contains(button)).toBe(true);
+      expect(document.activeElement).toBe(button);
+      fireEvent.click(button);
+      expect(document.body.contains(button)).toBe(true);
+      expect(document.activeElement).toBe(button);
+    } finally {
+      spy.mockRestore();
+      (globalThis as any).ResizeObserver = OldRO;
+    }
+  });
+
+  it("salvar com outro gabarito descarta as sugestões antigas", async () => {
+    render(<QuestionEditor id="q1" onClose={vi.fn()} onSaved={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Assistente" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Preencher campos" }));
+    await screen.findByRole("region", { name: "Sugestão: Explicação da B" });
+    fireEvent.click(screen.getByRole("radio", { name: "C" }));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar questão" }));
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+    expect("p_reason" in saveCalls()[0][1]).toBe(false);
+    await waitFor(() => expect(screen.queryByRole("region", { name: "Sugestão: Explicação da B" })).toBeNull());
+    expect(screen.queryByRole("region", { name: "Sugestão: Conduta esperada" })).toBeNull();
+  });
 });

@@ -17,7 +17,7 @@ export function AssistantLayout({ open, panel, children }) {
     return () => observer.disconnect();
   }, []);
 
-  if (!open) return <div ref={ref}>{children}</div>;
+  if (!open) return <div ref={ref}><div style={{ minWidth: 0 }}>{children}</div></div>;
   if (wide) {
     return (
       <div ref={ref} style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) 380px", gap: 16, alignItems: "start" }}>
@@ -28,7 +28,7 @@ export function AssistantLayout({ open, panel, children }) {
   }
   return (
     <div ref={ref} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {children}
+      <div style={{ minWidth: 0 }}>{children}</div>
       <div>{panel}</div>
     </div>
   );

@@ -69,8 +69,13 @@ export function QuestionEditor({ id, onClose, onSaved }) {
   const [state, setState] = React.useState({ saving: false, error: null, done: false });
   const [assistantOpen, setAssistantOpen] = React.useState(false);
   const [aiUsed, setAiUsed] = React.useState(false);
+  const [stored, setStored] = React.useState("");
+  const storedKey = (row) => `${row?.id ?? ""}|${row?.correct_option ?? ""}|${row?.status ?? ""}`;
   React.useEffect(() => {
-    if (existing.data) setForm(fromRow(existing.data));
+    if (existing.data) {
+      setForm(fromRow(existing.data));
+      setStored(storedKey(existing.data));
+    }
   }, [existing.data]);
 
   if (existing.error) return <LoadError error={existing.error} retry={existing.reload} />;
@@ -111,6 +116,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
         ...(aiUsed ? { p_reason: ASSIST_TEXTS.aiReason } : {}),
       });
       setForm(fromRow(saved));
+      setStored(storedKey(saved));
       setAiUsed(false);
       setState({ saving: false, error: null, done: true });
       onSaved();
@@ -122,7 +128,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
   return (
     <AssistantLayout
       open={assistantOpen}
-      panel={<TabAssistant spec={QUESTOES_SPEC} title="Assistente" notice={ASSIST_TEXTS.questoesNotice} form={assistantForm} onUse={useSuggestion} onClose={() => setAssistantOpen(false)} />}
+      panel={<TabAssistant key={stored} spec={QUESTOES_SPEC} title="Assistente" notice={ASSIST_TEXTS.questoesNotice} form={assistantForm} onUse={useSuggestion} onClose={() => setAssistantOpen(false)} />}
     >
     <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 16 }} noValidate>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
