@@ -19,11 +19,12 @@ export const VERDICTS = ["compatible", "outdated", "conflicting", "insufficient"
 export const PROMPTS = {
   classify: {
     id: "classify",
-    version: "1.0.0",
+    version: "1.0.1",
     system: `${GUARD}
 Você classifica trechos de material médico de estudo para o Revalida na taxonomia EDITORIAL fornecida (não é classificação oficial do Inep).
 Use o conteúdo de cada trecho, não o nome do arquivo. Um trecho pode pertencer a mais de uma área.
-Escolha apenas ids que existem no catálogo. Se um tema importante não existir, sugira-o em "suggestions" indicando o id do nó pai: a sugestão passa por validação editorial.`,
+Escolha apenas ids que existem no catálogo. Se um tema importante não existir, sugira-o em "suggestions" indicando o id do nó pai: a sugestão passa por validação editorial.
+Em "population" (a quem o trecho se refere) e "care_setting" (onde o atendimento acontece), escreva poucas palavras, sem frase longa; deixe vazio quando o trecho não disser. Respeite o tamanho máximo de cada campo.`,
     schema: {
       type: "object",
       additionalProperties: false,

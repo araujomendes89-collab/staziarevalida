@@ -9,7 +9,7 @@
  * O valor é um objeto `{ text, items, timeline, flashcards }` porque o validador (contentHub/ai/schema.ts) não tem união: a
  * IA preenche a parte do tipo do campo e deixa as outras em null; `pickValue` lê só essa parte.
  *
- * Limites (decisão D3d): `toProviderSchema` não manda maxLength/maxItems ao provedor, então a IA só os conhece pelo pedido
+ * Limites (decisão D3d): o provedor não recebe maxLength/maxItems como regra, então a IA só os conhece pelo pedido
  * (LIMITS, ditos no sistema). O provedor confere a resposta com o esquema sem limites (`providerSchemaFor`); o motor ajusta a
  * resposta (`fitOutput`: corta textos livres, limita listas e separa marcas juntas) e só então confere com o esquema estrito.
  * O que não tem conserto sai com aviso, sem derrubar o pedido inteiro. Fonte que não é só marca fica como marca desconhecida
@@ -122,7 +122,7 @@ export function schemaFor(mode: AssistMode): Schema {
   }
 }
 
-/** O mesmo esquema sem maxLength/maxItems (o que o provedor recebe de fato, porque `toProviderSchema` não os manda). */
+/** O mesmo esquema sem maxLength/maxItems (os limites vão no pedido; a IA de conversa não é recusada por passar deles). */
 function relaxed(schema: Schema): Schema {
   const { maxLength: _maxLength, maxItems: _maxItems, ...rest } = schema;
   const out: Schema = { ...rest };

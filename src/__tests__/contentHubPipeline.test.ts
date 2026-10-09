@@ -18,6 +18,7 @@ import { buildPassages, checkDraft, searchQuery, softwareCriticalKinds, stepVers
 import { createContentHubWorker, publicationHash } from "../../server/contentHub/worker";
 import { comparePdfText, createRenderer, expectedTexts, type Renderer } from "../../server/contentHub/render";
 import type { AuthUser } from "../../src/novo/data/backend";
+import { PROMPTS } from "../../server/contentHub/ai/prompts";
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ch-pipeline-"));
 let dev: DevDatabase;
@@ -170,7 +171,9 @@ describe("Central de Conteúdo — processamento", () => {
     // registro de cada chamada (modelo, prompt, hash da entrada)
     const runs = await sql(`select step, provider, model, prompt_id, prompt_version, input_hash, status from public.ch_ai_runs`);
     expect(runs.length).toBeGreaterThanOrEqual(7);
-    expect(runs.every((r) => r.provider === "mock" && /^[0-9a-f]{64}$/.test(r.input_hash) && r.prompt_version === "1.0.0")).toBe(true);
+    // cada chamada registra a versão do pedido que usou (a classificação está na 1.0.1: instrução de escrever curto)
+    expect(runs.every((r) => r.provider === "mock" && /^[0-9a-f]{64}$/.test(r.input_hash) && r.prompt_version === PROMPTS[r.prompt_id as keyof typeof PROMPTS].version)).toBe(true);
+    expect(runs.find((r) => r.prompt_id === "classify").prompt_version).toBe("1.0.1");
     const [doc] = await sql(`select status, failure from public.ch_documents where id = $1`, [studyDoc]);
     expect(doc.failure).toBeNull();
     if (renderer) expect(doc.status).toBe("awaiting_review");

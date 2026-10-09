@@ -788,7 +788,9 @@ describe("assistente das abas — decisões da revisão final (D1, D3c, D3d, D3e
     expect(req.system).toContain('- "sources": até 8 marcas, uma marca por item da lista (ex.: ["T1", "T2"]), nunca várias marcas no mesmo texto.');
     expect(req.system).toContain('- Até 30 sugestões e até 20 campos em "missing"; "reason" até 300 caracteres.');
     expect(JSON.stringify(req.schema)).not.toMatch(/maxLength|maxItems/);
-    expect(toProviderSchema(req.schema)).toEqual(toProviderSchema(schemaFor("preencher")));
+    // o provedor recebe a mesma forma; no esquema completo cada limite vai escrito na descrição do campo, e o assistente os informa no pedido (acima)
+    const semLimites = (v: unknown): unknown => (Array.isArray(v) ? v.map(semLimites) : v && typeof v === "object" ? Object.fromEntries(Object.entries(v).filter(([k, x]) => !(k === "description" && typeof x === "string" && /^(Máximo de \d+ caracteres|No máximo \d+ itens)\.$/.test(x))).map(([k, x]) => [k, semLimites(x)])) : v);
+    expect(toProviderSchema(req.schema)).toEqual(semLimites(toProviderSchema(schemaFor("preencher"))));
     reply = () => ({ findings: [] });
     await run({ mode: "conferir" });
     expect(seen.at(-1)!.system).toContain('- Até 20 achados; "detail" até 600 caracteres.');

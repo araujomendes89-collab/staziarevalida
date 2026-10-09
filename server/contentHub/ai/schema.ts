@@ -65,10 +65,16 @@ export function validate(schema: Schema, value: unknown, path = "$"): string[] {
   return errors;
 }
 
-/** Converte para o formato aceito pelos provedores (sem as extensões próprias). */
+/**
+ * Converte para o formato aceito pelos provedores (sem as extensões próprias). Os provedores não recebem maxLength nem
+ * maxItems, mas a conferência recusa o que passa deles: por isso cada limite vai escrito na descrição do campo, para a IA
+ * saber dele antes de responder.
+ */
 export function toProviderSchema(schema: Schema): Record<string, unknown> {
   const out: Record<string, unknown> = { type: schema.type };
-  if (schema.description) out.description = schema.description;
+  const limit = schema.type === "string" && schema.maxLength !== undefined ? `Máximo de ${schema.maxLength} caracteres.` : schema.type === "array" && schema.maxItems !== undefined ? `No máximo ${schema.maxItems} itens.` : null;
+  const description = [schema.description, limit].filter(Boolean).join(" ");
+  if (description) out.description = description;
   if (schema.enum) out.enum = schema.enum;
   if (schema.properties) out.properties = Object.fromEntries(Object.entries(schema.properties).map(([k, v]) => [k, toProviderSchema(v)]));
   if (schema.required) out.required = schema.required;
