@@ -111,8 +111,14 @@ Aviso fixo no topo do painel: **"O que você salvar aparece na hora para o aluno
   "incorreta", "errada" ou "falsa" (ou "não é a correta"), ou a de outra alternativa começando por "correta", "certa" ou
   "verdadeira" — é recusada mesmo citando `[T]`/`[F]` e volta em "A fonte não esclarece" com "A explicação contradiz o gabarito
   gravado." O veredito é lido no começo do texto, sem diferença de maiúsculas e acentos, também depois de "Alternativa X", "A
-  alternativa", "Letra X" ou "X)"; com letra citada, vale a letra citada. "A correta é a B" nomeia a correta e não é veredito
-  (decisão D6; `explanationVerdict` em `adapters/questoes.ts`).
+  alternativa", "Letra X" ou "X)"; com letra citada, vale a letra citada. Quando o começo **nomeia** a alternativa correta
+  ("A alternativa correta é a C", "A correta é a C", "Correta é a alternativa C", "A alternativa certa seria a D", "Alternativa
+  correta: letra C", "A correta é a C, não a B"), o servidor lê a letra nomeada e a compara com o gabarito gravado: letra
+  diferente é recusada com o mesmo texto, letra igual ("A correta é a B" com gabarito B) segue. Vale para qualquer explicação
+  (A a D). Quem nomeia a incorreta com o verbo ("A errada é a B") é lido do mesmo jeito; com dois-pontos, "Incorreta: …"
+  continua julgando a própria alternativa. Nomear sem letra legível ("A correta é a conduta de suporte") não é veredito.
+  Outras formas raras (depois de outra frase, "Trata-se da…", "A resposta correta é…") ficam aceitas como risco menor: exigem
+  trecho `[T]`/`[F]` real e uma pessoa clicando em "Usar" (decisões D6 e D7; `explanationVerdict` em `adapters/questoes.ts`).
 - Busca oficial: tema, subtema, começo do enunciado e pedido. Permissão: equipe (editor ou administrador), como a aba.
 
 ### 5.2 Atualizações
@@ -190,8 +196,8 @@ português do Brasil, sem markdown.
    válido vira "Sem fonte…", sem sugestão, em qualquer modo (Preencher, Conversar e "Propor correção"): marca `[I]` não basta e
    não há "Só redação" (decisão D6, §4.3; a exceção da reescrita, conferida por `isRewording` nas decisões D1 e D5, saiu).
    Valor que a aba recusa para o item vai para "A fonte não esclarece" com o motivo (`ItemContext.refuse` do adaptador): em
-   Questões, a explicação cujo veredito no começo contradiz o gabarito gravado, "A explicação contradiz o gabarito gravado."
-   (§5.1).
+   Questões, a explicação cujo começo (veredito ou letra nomeada como a correta, decisões D6 e D7) contradiz o gabarito gravado,
+   "A explicação contradiz o gabarito gravado." (§5.1).
 5. `ungroundedNumbers` (`server/podcasts/script.ts`) contra os textos citados, item incluído: número com unidade fora deles vira
    aviso. Também: ano da linha do tempo; em Planos, qualquer número.
 6. Conversar: antes calculado do formulário; mudança igual ao antes, descartada.

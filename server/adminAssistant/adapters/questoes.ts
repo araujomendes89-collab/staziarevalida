@@ -3,7 +3,8 @@
  * Permissão: equipe (editor ou administrador), como a aba. O gabarito e a situação do contexto vêm da questão gravada
  * (`app_admin_question`, com o token da pessoa): as explicações seguem o gabarito oficial gravado, não o do formulário.
  * Sem gabarito gravado (questão nova ou vazio no banco), as explicações, a conduta esperada e "o que a questão avalia" nem vão
- * para a IA (decisões C2 e D3c). Explicação sugerida que começa dizendo o contrário do gabarito gravado é recusada (decisão D6).
+ * para a IA (decisões C2 e D3c). Explicação sugerida que começa dizendo o contrário do gabarito gravado, ou que nomeia outra letra
+ * como a correta, é recusada (decisões D6 e D7).
  */
 import { QUESTOES_SPEC } from "../../../src/shared/adminAssistant/questoes";
 import { QUESTION_STATUS_LABEL } from "../../../src/shared/questions/status";
@@ -47,13 +48,37 @@ const LETTER = /^\(?([a-d])\s*[).:\-–—]/u;
 const VERDICT =
   /^((?:\s|[:;,.)\-–—])*)(nao\s+)?((?:(?:esta|essa)\s+)?(?:eh|e|esta)\s+)?(a\s+)?(?:alternativa\s+)?(correta|certa|verdadeira|incorreta|errada|falsa)(?![\p{L}\p{N}])/u;
 const NEGATIVE = new Set(["incorreta", "errada", "falsa"]);
-/** "A correta é a B", "A alternativa correta seria a C": a palavra nomeia a correta, não julga esta alternativa. */
-const NAMES_THE_ANSWER = /^\s+(?:eh|seria|era|sera)(?![\p{L}\p{N}])/u;
+/**
+ * Decisão D7: "A correta é a C", "A alternativa certa seria a D", "Correta é a alternativa C": o veredito não julga esta
+ * alternativa, nomeia a certa. O verbo (é, seria, era, será) vem logo depois da palavra; a letra nomeada vem depois dele.
+ */
+const NAMES_THE_ANSWER = /^\s+(?:eh|seria|era|sera)(?![\p{L}\p{N}])\s*:?\s*/u;
+/** O mesmo com dois-pontos ou travessão no lugar do verbo, só para a correta: "Alternativa correta: letra C", "Correta – D". */
+const NAMES_BY_MARK = /^\s*[:\-–—]\s*/u;
+/** O "a" de "é a C" (só com espaço depois: "é A." e "é a, …" seguem como letra) e a palavra antes da letra ("letra C"). */
+const ARTICLE = /^a\s+/u;
+const KIND = /^(?:alternativa|letra|opcao)(?![\p{L}\p{N}])\s*/u;
+/** A letra nomeada, também entre parênteses, aspas ou asteriscos; "B12" e "D-dímero" não são letra. */
+const ANSWER_LETTER = /^[("'“‘*_]*([a-d])(?![\p{L}\p{N}]|-\p{L})/u;
+/** Depois dos dois-pontos e sem "letra"/"alternativa" antes, a letra tem de vir sozinha: "Correta: a conduta…" não nomeia a letra A. */
+const ANSWER_LETTER_ALONE = /^[("'“‘*_]*([a-d])[)"'”’*_]*(?=[^\S\r\n]*(?:[.,;:!?…–—\r\n]|$))/u;
+
+/** A letra nomeada logo depois do verbo ou dos dois-pontos (`tail`): "a C", "a letra C", "a alternativa (C)", "letra C", "C.". */
+function namedLetter(tail: string, alone: boolean): string | null {
+  let rest = tail.replace(ARTICLE, "");
+  const kind = KIND.exec(rest);
+  if (kind) rest = rest.slice(kind[0].length);
+  const found = (alone && !kind ? ANSWER_LETTER_ALONE : ANSWER_LETTER).exec(rest);
+  return found ? found[1].toUpperCase() : null;
+}
 
 /**
- * Veredito no começo da explicação (decisão D6), sem diferença de maiúsculas e acentos, também depois de "Alternativa X" / "A
- * alternativa" / "Letra X" / "X)": `correct` diz se o texto chama a alternativa de correta (correta, certa, verdadeira; "não é
- * a correta" conta como incorreta) e `letter` é a letra citada antes do veredito (null sem letra). Sem veredito no começo: null.
+ * Veredito no começo da explicação (decisões D6 e D7), sem diferença de maiúsculas e acentos, também depois de "Alternativa X" /
+ * "A alternativa" / "Letra X" / "X)": `correct` diz se o texto chama a alternativa de correta (correta, certa, verdadeira; "não é
+ * a correta" conta como incorreta) e `letter` é a letra citada antes do veredito (null sem letra). Quando o texto nomeia a
+ * alternativa em vez de julgar esta ("A correta é a C", "A alternativa certa seria a D", "Alternativa correta: letra C", "A
+ * correta é a C, não a B"), `letter` é a letra nomeada e `correct` é true; para quem nomeia a incorreta ("A errada é a B"), false.
+ * Nomear sem letra legível ("A correta é a conduta de suporte") não é veredito: null. Sem veredito no começo: null.
  */
 export function explanationVerdict(text: string): { letter: string | null; correct: boolean } | null {
   let s = plain(text).replace(/^[^\p{L}(]+/u, "");
@@ -73,8 +98,20 @@ export function explanationVerdict(text: string): { letter: string | null; corre
   const m = VERDICT.exec(s);
   if (!m) return null;
   const [all, gap, negated, verb, , word] = m;
-  if (!letter && !negated && !verb && !gap.trim() && NAMES_THE_ANSWER.test(s.slice(all.length))) return null;
   const negative = NEGATIVE.has(word);
+  if (!letter && !negated && !verb && !gap.trim()) {
+    // o veredito nomeia uma alternativa em vez de julgar esta: vale a letra nomeada (decisão D7)
+    const rest = s.slice(all.length);
+    const byVerb = NAMES_THE_ANSWER.exec(rest);
+    // com dois-pontos só vale para a correta: "Incorreta: a alternativa B é a correta" julga esta alternativa, não diz que a B é incorreta
+    const link = byVerb ?? (negative ? null : NAMES_BY_MARK.exec(rest));
+    if (link) {
+      const named = namedLetter(rest.slice(link[0].length), !byVerb);
+      if (named) return { letter: named, correct: !negative };
+      // "A correta é a conduta de suporte": nomeia sem letra, não é veredito; "Correta: o tratamento…" segue julgando esta
+      if (byVerb) return null;
+    }
+  }
   // "não é incorreta" fica sem veredito
   if (negated && negative) return null;
   return { letter: letter ? letter.toUpperCase() : null, correct: !negative && !negated };

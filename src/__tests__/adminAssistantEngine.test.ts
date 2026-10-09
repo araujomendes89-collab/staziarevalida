@@ -962,6 +962,7 @@ describe("assistente das abas — decisão D6: campo médico só com [T]/[F], ex
       ["explanation_C", "certa, já que trata.", true],
       ["explanation_B", "Correta: o tratamento é de suporte.", false],
       ["explanation_C", "Incorreta: o tratamento é de suporte.", false],
+      // nomeia a correta e a letra é a do gabarito gravado (decisão D7): segue
       ["explanation_C", "A alternativa correta é a B; a C não trata a bronquiolite.", false],
       ["explanation_C", "Corretamente, o tratamento é de suporte; a C não é.", false],
     ];
@@ -996,9 +997,7 @@ describe("assistente das abas — decisão D6: campo médico só com [T]/[F], ex
     // "e" (conjunção) não é o verbo "é"
     expect(explanationVerdict("Correta e completa: o tratamento é de suporte.")).toEqual({ letter: null, correct: true });
     expect(explanationVerdict("In\u00ADcor\u200Breta.")).toEqual({ letter: null, correct: false });
-    // sem veredito no começo
-    expect(explanationVerdict("A alternativa correta é a B.")).toBeNull();
-    expect(explanationVerdict("A correta é a B.")).toBeNull();
+    // sem veredito no começo ("A correta é a B" nomeia a correta e é lida pela decisão D7, no bloco abaixo)
     expect(explanationVerdict("Corretamente indicada.")).toBeNull();
     expect(explanationVerdict("Bronquiolite: o tratamento é de suporte; a alternativa é incorreta.")).toBeNull();
     expect(explanationVerdict("D-dímero não entra aqui.")).toBeNull();
@@ -1060,5 +1059,156 @@ describe("assistente das abas — decisão D6: campo médico só com [T]/[F], ex
     const p = await run({ fields: ["explanation_B"], material: MATERIAL });
     expect(p.suggestions.map((s) => [s.field, s.sources])).toEqual([["explanation_B", [{ label: "p. 3", kind: "material" }]]]);
     expect(p.missing).toEqual([]);
+  });
+});
+
+describe("assistente das abas — decisão D7: explicação que nomeia a alternativa correta é comparada com o gabarito gravado", () => {
+  // Gabarito gravado: B (STORED). Toda explicação cita um [T1] de verdade, com o material presente.
+  const FIELDS = ["explanation_A", "explanation_B", "explanation_C", "explanation_D"];
+  /** Nomeiam outra letra como a correta: recusadas em qualquer explicação. */
+  const OTHER = [
+    "A alternativa correta é a C, pois…",
+    "A correta é a C.",
+    "A alternativa correta é a letra C",
+    "Correta é a alternativa C.",
+    "A alternativa certa seria a D.",
+    "Alternativa correta: letra C",
+    "A correta é a C, não a B",
+  ];
+  /** Nomeiam a letra do gabarito gravado: seguem em qualquer explicação. */
+  const SAME = ["A correta é a B, pois…", "A alternativa correta é a letra B"];
+  const CONTRADICTS = "A explicação contradiz o gabarito gravado.";
+  const preencher = (field: string, text: string, o: Partial<RunInput> = {}) => {
+    reply = () => ({ suggestions: [{ field, value: V(text), sources: ["T1"] }], missing: [] });
+    return run({ fields: [field], material: MATERIAL, ...o });
+  };
+  const conversar = (field: string, text: string, o: Partial<RunInput> = {}) => {
+    reply = () => ({ reply: "Ok.", changes: [{ field, after: V(text), sources: ["T1"], reason: "Pedido." }] });
+    return run({ mode: "conversar", message: "Ajuste o texto.", material: MATERIAL, ...o });
+  };
+  const outcome = (r: Awaited<ReturnType<typeof run>>) => ({ fields: r.suggestions.map((s) => s.field), missing: r.missing, no_source: r.no_source });
+
+  it("D7 nomear outra letra como a correta é recusado em toda explicação, no Preencher e no Conversar", async () => {
+    expect(ASSIST_TEXTS.contradicts).toBe(CONTRADICTS);
+    for (const ask of [preencher, conversar]) {
+      for (const field of FIELDS) {
+        for (const text of OTHER) {
+          const r = await ask(field, text);
+          expect({ ask: ask.name, field, text, ...outcome(r) }).toEqual({
+            ask: ask.name,
+            field,
+            text,
+            fields: [],
+            missing: [{ field, reason: CONTRADICTS }],
+            no_source: [],
+          });
+        }
+      }
+    }
+  });
+
+  it("D7 nomear a letra do gabarito gravado segue: 'A correta é a B' vale em toda explicação", async () => {
+    for (const ask of [preencher, conversar]) {
+      for (const field of FIELDS) {
+        for (const text of SAME) {
+          const r = await ask(field, text);
+          expect({ ask: ask.name, field, text, ...outcome(r), values: r.suggestions.map((s) => s.value) }).toEqual({
+            ask: ask.name,
+            field,
+            text,
+            fields: [field],
+            missing: [],
+            no_source: [],
+            values: [text],
+          });
+        }
+      }
+    }
+  });
+
+  it("D7 a letra nomeada é comparada com o gabarito gravado, não com o do formulário", async () => {
+    const stored = { correct_option: "C", status: "valid" };
+    const form = { ...FORM, correct_option: "B" };
+    for (const ask of [preencher, conversar]) {
+      const same = await ask("explanation_A", "A correta é a C, pois…", { stored, form });
+      expect({ ask: ask.name, ...outcome(same) }).toEqual({ ask: ask.name, fields: ["explanation_A"], missing: [], no_source: [] });
+      const other = await ask("explanation_A", "A correta é a B, pois…", { stored, form });
+      expect({ ask: ask.name, ...outcome(other) }).toEqual({
+        ask: ask.name,
+        fields: [],
+        missing: [{ field: "explanation_A", reason: CONTRADICTS }],
+        no_source: [],
+      });
+    }
+  });
+
+  it("D7 o espelho: dizer que o gabarito gravado é a incorreta é recusado; apontar outra como incorreta segue", async () => {
+    for (const ask of [preencher, conversar]) {
+      for (const field of FIELDS) {
+        for (const text of ["A incorreta é a B, pois o suporte não basta.", "A alternativa errada seria a letra B"]) {
+          const r = await ask(field, text);
+          expect({ ask: ask.name, field, text, ...outcome(r) }).toEqual({ ask: ask.name, field, text, fields: [], missing: [{ field, reason: CONTRADICTS }], no_source: [] });
+        }
+        for (const text of ["A incorreta é a C, pois trata outra doença.", "A alternativa errada seria a letra D"]) {
+          const r = await ask(field, text);
+          expect({ ask: ask.name, field, text, ...outcome(r) }).toEqual({ ask: ask.name, field, text, fields: [field], missing: [], no_source: [] });
+        }
+      }
+    }
+  });
+
+  it("D7 com dois-pontos só vale nomear a correta: 'Incorreta: a alternativa B é a correta' julga esta alternativa, não a B", async () => {
+    const text = "Incorreta: a alternativa B é a correta, pois o suporte basta.";
+    for (const ask of [preencher, conversar]) {
+      for (const field of ["explanation_A", "explanation_C", "explanation_D"]) {
+        const r = await ask(field, text);
+        expect({ ask: ask.name, field, ...outcome(r) }).toEqual({ ask: ask.name, field, fields: [field], missing: [], no_source: [] });
+      }
+    }
+  });
+
+  it("D7 explanationVerdict devolve a letra nomeada como a correta", () => {
+    const right = (letter: string) => ({ letter, correct: true });
+    // os casos da decisão
+    expect(explanationVerdict("A alternativa correta é a C, pois…")).toEqual(right("C"));
+    expect(explanationVerdict("A correta é a C.")).toEqual(right("C"));
+    expect(explanationVerdict("A alternativa correta é a letra C")).toEqual(right("C"));
+    expect(explanationVerdict("Correta é a alternativa C.")).toEqual(right("C"));
+    expect(explanationVerdict("A alternativa certa seria a D.")).toEqual(right("D"));
+    expect(explanationVerdict("Alternativa correta: letra C")).toEqual(right("C"));
+    expect(explanationVerdict("A correta é a C, não a B")).toEqual(right("C"));
+    expect(explanationVerdict("A correta é a B, pois…")).toEqual(right("B"));
+    expect(explanationVerdict("A alternativa correta é a letra B")).toEqual(right("B"));
+    // as duas que a D6 deixava sem veredito
+    expect(explanationVerdict("A alternativa correta é a B.")).toEqual(right("B"));
+    expect(explanationVerdict("A correta é a B.")).toEqual(right("B"));
+    // maiúsculas, acentos, "opção", parênteses, negrito, "será", "verdadeira", sem artigo, travessão e letra sozinha depois dos dois-pontos
+    expect(explanationVerdict("A ALTERNATIVA CORRETA É A LETRA D")).toEqual(right("D"));
+    expect(explanationVerdict("  a opção certa será a (c).")).toEqual(right("C"));
+    expect(explanationVerdict("**A correta é a C**")).toEqual(right("C"));
+    expect(explanationVerdict("A correta é a **C**.")).toEqual(right("C"));
+    expect(explanationVerdict("A verdadeira é a D.")).toEqual(right("D"));
+    expect(explanationVerdict("Correta é C")).toEqual(right("C"));
+    expect(explanationVerdict("Alternativa correta – D")).toEqual(right("D"));
+    expect(explanationVerdict("Alternativa correta: B. O tratamento é de suporte.")).toEqual(right("B"));
+    expect(explanationVerdict("Letra correta: c, pois")).toEqual(right("C"));
+    expect(explanationVerdict("A correta é: letra C")).toEqual(right("C"));
+    // o espelho: quem nomeia a incorreta
+    expect(explanationVerdict("A incorreta é a B.")).toEqual({ letter: "B", correct: false });
+    expect(explanationVerdict("A alternativa errada seria a D.")).toEqual({ letter: "D", correct: false });
+    // com dois-pontos o espelho não vale: julga esta alternativa
+    expect(explanationVerdict("Incorreta: a alternativa B é a correta, pois…")).toEqual({ letter: null, correct: false });
+    expect(explanationVerdict("Errada: letra B")).toEqual({ letter: null, correct: false });
+    // nomear sem letra legível não é veredito ("A correta é a conduta…", "B12", "D-dímero")
+    expect(explanationVerdict("A correta é a conduta de suporte.")).toBeNull();
+    expect(explanationVerdict("A alternativa correta é a de suporte com oxigênio.")).toBeNull();
+    expect(explanationVerdict("A alternativa correta é a B12.")).toBeNull();
+    expect(explanationVerdict("A correta é D-dímero.")).toBeNull();
+    // depois dos dois-pontos sem letra legível, segue valendo para esta alternativa, como na D6
+    expect(explanationVerdict("Alternativa correta: a conduta é de suporte.")).toEqual({ letter: null, correct: true });
+    expect(explanationVerdict("Correta: D-dímero elevado.")).toEqual({ letter: null, correct: true });
+    expect(explanationVerdict("Incorreta: o tratamento é de suporte.")).toEqual({ letter: null, correct: false });
+    // a letra citada antes do veredito continua valendo
+    expect(explanationVerdict("A alternativa C é a correta")).toEqual(right("C"));
   });
 });
