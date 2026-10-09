@@ -7,7 +7,7 @@ import { ListRow, LoadError, Loading, TextArea, useLoad } from "../common.jsx";
 import { hubAvailable, hubUploadPdf } from "./api.js";
 import { DocumentDetail } from "./DocumentDetail.jsx";
 import { DOC_STATUS, JOB_STATUS, RIGHTS, STEP_LABEL, pick } from "./labels.js";
-import { Section, StatusBadge, useAction, when } from "./ui.jsx";
+import { Section, StatusBadge, useAction, useUploadProgress, when } from "./ui.jsx";
 
 const BUSY = new Set(["received", "extracting", "classifying", "verifying_sources", "drafting"]);
 
@@ -76,9 +76,10 @@ function UploadCard({ onUploaded }) {
   const [meta, setMeta] = React.useState({ author: "", publisher: "", edition_date: "", language: "pt-BR", rights_status: "unknown", rights_note: "", source_note: "" });
   const set = (patch) => setMeta((m) => ({ ...m, ...patch }));
   const act = useAction();
+  const up = useUploadProgress();
   const needsNote = meta.rights_status === "own" || meta.rights_status === "licensed_adaptation";
   const submit = async () => {
-    const r = await act.run(() => hubUploadPdf(backend, "/documents", file, meta), "Arquivo recebido. O processamento começou.");
+    const r = await act.run(() => up.track((opts) => hubUploadPdf(backend, "/documents", file, meta, opts)), "Arquivo recebido. O processamento começou.");
     if (r) {
       // arquivo repetido (mesmo hash): abre o documento que já existe, sem duplicar
       setFile(null);
@@ -110,6 +111,7 @@ function UploadCard({ onUploaded }) {
         <Banner tone="info" icon="scale">
           Compra, download ou acesso público não significam licença. Sem autorização, o material só serve de base para criação independente: o texto não é copiado e a marca de outra plataforma não é trocada.
         </Banner>
+        {up.bar}
         {act.feedback}
         <div>
           <Button icon="upload" disabled={!file || (needsNote && !meta.rights_note.trim())} loading={act.busy} onClick={submit}>

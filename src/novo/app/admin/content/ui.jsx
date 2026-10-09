@@ -1,6 +1,6 @@
 // Peças comuns do painel da Central de Conteúdo.
 import React from "react";
-import { Badge, Banner, Button, Card, SelectField } from "../../../ds";
+import { Badge, Banner, Button, Card, ProgressBar, SelectField } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { dateBR, messageOf, TextArea } from "../common.jsx";
 import { CLAIM_STATUS, CRITICAL, isMockModel, pick, VERDICTS } from "./labels.js";
@@ -80,6 +80,38 @@ export function useAction() {
   };
   const feedback = state.error ? <Banner tone="danger">{state.error}</Banner> : state.done ? <Banner tone="success">{state.done}</Banner> : null;
   return { ...state, run, feedback };
+}
+
+/**
+ * Andamento do envio de um PDF: `track(fn)` chama fn(opts) (opts vai a hubUploadPdf) e zera ao terminar, com ou sem erro.
+ * O banco local não informa porcentagem: aparece só o texto, sem número inventado.
+ */
+export function useUploadProgress() {
+  const [up, setUp] = React.useState({ stage: null, pct: 0 });
+  const opts = {
+    onStage: (stage) => setUp((u) => ({ ...u, stage })),
+    onProgress: (pct) => setUp((u) => ({ ...u, pct })),
+  };
+  const track = async (fn) => {
+    setUp({ stage: "enviando", pct: 0 });
+    try {
+      return await fn(opts);
+    } finally {
+      setUp({ stage: null, pct: 0 });
+    }
+  };
+  return { ...up, track, bar: <UploadProgress stage={up.stage} pct={up.pct} /> };
+}
+
+/** Barra de porcentagem do envio ("Enviando o arquivo… 45%"); depois "Conferindo o arquivo…" sem porcentagem. */
+export function UploadProgress({ stage, pct }) {
+  if (!stage) return null;
+  const sending = stage === "enviando";
+  return (
+    <div style={{ minWidth: 200, flex: 1 }}>
+      <ProgressBar value={sending ? pct : 100} label={sending ? `Enviando o arquivo… ${pct}%` : "Conferindo o arquivo…"} />
+    </div>
+  );
 }
 
 /** Uma afirmação clínica: o que o PDF afirma, o que a referência estabelece e a conferência. */

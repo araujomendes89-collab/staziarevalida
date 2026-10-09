@@ -27,7 +27,7 @@ describe("Importar PDF", () => {
     expect(r).toMatchObject({ id: "doc-1", duplicate: false });
     expect(calls.map((c) => c.url)).toEqual(["/api/content-hub/documents/upload", "/api/content-hub/documents/confirm"]);
     expect(JSON.parse(String(calls[0].init.body))).toEqual({ size_bytes: file.size });
-    expect(uploadToSignedUrl).toHaveBeenCalledWith("content-hub", "uploads/abc.pdf", "tk", file, "application/pdf");
+    expect(uploadToSignedUrl).toHaveBeenCalledWith("content-hub", "uploads/abc.pdf", "tk", file, "application/pdf", undefined);
     expect(JSON.parse(String(calls[1].init.body))).toEqual({ author: "Autor", rights_status: "unknown", key: "uploads/abc.pdf", name: "Diretriz grande.pdf" });
     for (const c of calls) expect(c.init.body).not.toBe(file);
   });
@@ -53,6 +53,33 @@ describe("Importar PDF", () => {
     expect(calls[1].url).toBe("/api/content-hub/documents?author=Autor");
     expect(calls[1].init.body).toBe(file);
     expect((calls[1].init.headers as Record<string, string>)["X-File-Name"]).toBe(encodeURIComponent("Diretriz grande.pdf"));
+  });
+
+  it("repassa o progresso ao envio ao depósito (6º argumento) e avisa a etapa 'conferindo' antes da confirmação", async () => {
+    const order: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      if (url.endsWith("/upload")) return json({ mode: "signed", bucket: "content-hub", key: "k.pdf", path: "k.pdf", token: "tk" });
+      order.push("confirm");
+      return json({ id: "d" }, 201);
+    });
+    const uploadToSignedUrl = vi.fn(async (...args: unknown[]) => {
+      order.push("enviando");
+      (args[5] as (n: number) => void)(45);
+    });
+    const onProgress = vi.fn();
+    const onStage = vi.fn((s: string) => order.push(`stage:${s}`));
+    const file = pdf();
+    await hubUploadPdf({ accessToken: async () => "s", uploadToSignedUrl }, "/documents", file, {}, { onProgress, onStage });
+    expect(uploadToSignedUrl).toHaveBeenCalledWith("content-hub", "k.pdf", "tk", file, "application/pdf", onProgress);
+    expect(onProgress).toHaveBeenCalledWith(45);
+    expect(order).toEqual(["stage:enviando", "enviando", "stage:conferindo", "confirm"]);
+  });
+
+  it("no banco local (modo direto) nunca chama onProgress: não inventa porcentagem", async () => {
+    vi.stubGlobal("fetch", async (url: string) => (url.endsWith("/upload") ? json({ mode: "direct" }) : json({ id: "d" }, 201)));
+    const onProgress = vi.fn();
+    await hubUploadPdf({ accessToken: async () => "s" }, "/documents", pdf(), {}, { onProgress, onStage: () => undefined });
+    expect(onProgress).not.toHaveBeenCalled();
   });
 
   it("erro do servidor no preparo chega à tela com a mensagem dele", async () => {

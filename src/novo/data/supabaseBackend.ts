@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { signedUploadWithProgress } from "./signedUploadXhr";
 import { assertRpcCall, BackendError, signUpMetadata, type AuthUser, type Backend, type BackendErrorCode } from "./backend";
 
 function toBackendError(error: { message?: string; code?: string; status?: number } | null): BackendError {
@@ -71,7 +72,24 @@ export function createSupabaseBackend(url: string, anonKey: string, redirectTo: 
       if (error) throw new BackendError(/fetch|network/i.test(error.message) ? "network" : "unknown", error.message);
       return data as T;
     },
-    async uploadToSignedUrl(bucket, path, token, file, contentType) {
+    async uploadToSignedUrl(bucket, path, token, file, contentType, onProgress) {
+      if (onProgress) {
+        // Mesma requisição do storage-js (ver signedUploadXhr), por XMLHttpRequest para ter a porcentagem.
+        const { data } = await client.auth.getSession();
+        const base = (client.storage.from(bucket) as unknown as { headers?: Record<string, string> }).headers ?? {};
+        const headers: Record<string, string> = { ...base };
+        if (!headers.apikey && !headers.Apikey) headers.apikey = anonKey;
+        if (!headers.Authorization && !headers.authorization) headers.Authorization = `Bearer ${data.session?.access_token ?? anonKey}`;
+        const target = new URL(`${url.replace(/\/+$/, "")}/storage/v1/object/upload/sign/${bucket}/${path.replace(/^\/|\/$/g, "").replace(/\/+/g, "/")}`);
+        target.searchParams.set("token", token);
+        try {
+          await signedUploadWithProgress({ url: target.toString(), headers, file, onProgress });
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          throw new BackendError(/conex/i.test(msg) ? "network" : "unknown", msg);
+        }
+        return;
+      }
       const { error } = await client.storage.from(bucket).uploadToSignedUrl(path, token, file, { contentType });
       if (error) throw new BackendError(/fetch|network/i.test(error.message) ? "network" : "unknown", error.message);
     },

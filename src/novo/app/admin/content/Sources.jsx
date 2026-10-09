@@ -8,7 +8,7 @@ import { useMobile } from "../../Shell.jsx";
 import { LoadError, Loading, useLoad } from "../common.jsx";
 import { hubAvailable, hubPost, hubUploadPdf } from "./api.js";
 import { AUTHORITY, DIFF_KIND, FRESHNESS, SOURCE_KIND, SOURCE_STATUS, SOURCE_TYPE } from "./labels.js";
-import { KeyValue, Label, Section, shortHash, StatusBadge, useAction, when } from "./ui.jsx";
+import { KeyValue, Label, Section, shortHash, StatusBadge, useAction, useUploadProgress, when } from "./ui.jsx";
 
 export function Sources({ isAdmin, go }) {
   const { backend } = useSession();
@@ -97,6 +97,7 @@ function SourceRow({ source: s, isAdmin, onChanged }) {
   const { backend } = useSession();
   const [open, setOpen] = React.useState(false);
   const [file, setFile] = React.useState(null);
+  const up = useUploadProgress();
   const [watchUrl, setWatchUrl] = React.useState(s.watch?.url ?? s.url ?? "");
   const [days, setDays] = React.useState(String(s.watch?.interval_days ?? 7));
   const [diffKey, setDiffKey] = React.useState(0);
@@ -153,9 +154,10 @@ function SourceRow({ source: s, isAdmin, onChanged }) {
           {isAdmin && hubAvailable(backend) && (
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <input type="file" accept="application/pdf,.pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} aria-label="PDF completo da fonte" />
-              <Button size="sm" icon="upload" disabled={!file} loading={act.busy} onClick={() => act.run(() => hubUploadPdf(backend, `/sources/${s.id}/document`, file), "PDF recebido: o documento completo será dividido em trechos citáveis com página.").then((r) => r && onChanged())}>
+              <Button size="sm" icon="upload" disabled={!file} loading={act.busy} onClick={() => act.run(() => up.track((opts) => hubUploadPdf(backend, `/sources/${s.id}/document`, file, {}, opts)), "PDF recebido: o documento completo será dividido em trechos citáveis com página.").then((r) => r && onChanged())}>
                 Enviar PDF completo
               </Button>
+              {up.bar}
             </div>
           )}
           {isAdmin && (

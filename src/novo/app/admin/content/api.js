@@ -44,12 +44,14 @@ export async function hubUploadFile(backend, path, file) {
  * assinado) e o servidor só confirma: sem o limite de 4,5 MB do corpo das funções da Vercel (erro 413). No banco local,
  * o PDF segue pelo servidor (corpo bruto, metadados na consulta).
  */
-export async function hubUploadPdf(backend, path, file, meta = {}) {
+export async function hubUploadPdf(backend, path, file, meta = {}, opts = {}) {
   const fields = Object.fromEntries(Object.entries(meta).filter(([, v]) => v != null && String(v).trim() !== ""));
   const prep = await hubPost(backend, `${path}/upload`, { size_bytes: file.size });
   if (prep.mode === "signed") {
     if (!backend.uploadToSignedUrl) throw new Error("Envio direto indisponível neste ambiente.");
-    await backend.uploadToSignedUrl(prep.bucket, prep.path, prep.token, file, "application/pdf");
+    opts.onStage?.("enviando");
+    await backend.uploadToSignedUrl(prep.bucket, prep.path, prep.token, file, "application/pdf", opts.onProgress);
+    opts.onStage?.("conferindo");
     return hubPost(backend, `${path}/confirm`, { ...fields, key: prep.key, name: file.name });
   }
   const query = new URLSearchParams(fields);

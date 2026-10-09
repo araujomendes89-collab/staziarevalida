@@ -47,9 +47,9 @@ export interface Backend {
   readonly subscribeStats?: (userId: string, onChange: () => void) => () => void;
   /**
    * Envio direto de um arquivo ao depósito do Supabase com o token de envio assinado que o servidor gerou
-   * (aulas: slides e áudios). Só existe no Supabase; no banco local o arquivo passa pelo servidor.
+   * (aulas: slides e áudios). Com onProgress (0 a 100) o envio é por XMLHttpRequest, para mostrar a porcentagem. Só existe no Supabase; no banco local o arquivo passa pelo servidor.
    */
-  readonly uploadToSignedUrl?: (bucket: string, path: string, token: string, file: Blob, contentType: string) => Promise<void>;
+  readonly uploadToSignedUrl?: (bucket: string, path: string, token: string, file: Blob, contentType: string, onProgress?: (pct: number) => void) => Promise<void>;
   /**
    * Token da sessão para as rotas do servidor (/api/content-hub): envio de PDF, arquivos.
    * Só existe quando há servidor; no banco local do navegador não há.
