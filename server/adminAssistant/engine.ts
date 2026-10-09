@@ -4,8 +4,9 @@
  * Recebe o formulário como está na tela, monta o pedido com marcas numeradas ([I…] campos do item, [T…] trechos do material,
  * [F…] trechos oficiais), chama a IA pelo maestro da Central de IAs (função pelo modo, origem "assistente", sem override) e
  * confere a resposta sem confiar nela: limites do esquema (o que passa é cortado ou sai com aviso, decisão D3d), campo que o
- * assistente não muda, marca inexistente, campo que exige fonte sem [T]/[F] (no Conversar só passa a reescrita do texto do
- * próprio campo citando o [I] dele, decisão D1), formato e tamanho, números e anos fora dos trechos citados e recursos novos.
+ * assistente não muda, marca inexistente (fonte em texto livre também, decisão D5), campo que exige fonte sem [T]/[F] (no
+ * Conversar só passa a reescrita do texto do próprio campo citando o [I] dele, decisões D1 e D5), formato e tamanho, números e
+ * anos fora dos trechos citados e recursos novos.
  * Nada é gravado: o único registro é o das chamadas, que o maestro já faz em ai_calls.
  *
  * Ordem: (a rota já conferiu a permissão e leu o material) campos → IA pronta (503) → busca oficial → "Sem fonte" → IA.
@@ -34,6 +35,7 @@ import {
 import {
   checkValue,
   formatWarning,
+  isRewording,
   newLines,
   numberWarning,
   resolveMarks,
@@ -238,7 +240,7 @@ const MODE_RULES: Record<AssistMode, string> = {
 - Campo de texto: "after" traz o campo inteiro já mudado. Lista: só os itens a acrescentar (nada se apaga).
 - Pedido de campo fora dos campos permitidos: explique em "reply" que o assistente não muda esse campo e não traga mudança.
 - O que as marcas não esclarecem, ou o que uma regra desta aba manda não escrever, não vira mudança: diga em "reply", com o motivo, sem completar por conta própria.
-- Campo que exige fonte (marcado "exige trecho [T] ou [F] citado" no formato): conteúdo só com trecho [T] ou [F] citado. Sem esse trecho, só a reescrita do texto que já está no próprio campo, citando só a marca [I] desse campo, sem fato novo (só redação); campo vazio não se escreve sem [T] ou [F].`,
+- Campo que exige fonte (marcado "exige trecho [T] ou [F] citado" no formato): conteúdo só com trecho [T] ou [F] citado. Sem esse trecho, só a reescrita do texto que já está no próprio campo, com as palavras que já estão nele e tamanho parecido, citando só a marca [I] desse campo, sem fato novo (só redação); campo vazio não se escreve sem [T] ou [F].`,
 };
 
 /** Limites do esquema ditos no pedido (o provedor não os recebe pelo esquema; o que passar é cortado ou descartado, decisão D3d). */
@@ -299,7 +301,7 @@ export function buildPrompt(o: {
 - "${o.mode === "preencher" ? "value" : "after"}" tem text, items, timeline e flashcards: preencha só a parte do formato do campo e deixe as outras em null.
 ${o.allowed.map((f) => `- ${f.name} (${f.label}): ${KIND_FORMAT[f.kind](f)}${f.base === "fonte" ? "; exige trecho [T] ou [F] citado" : ""}`).join("\n")}`;
   const limits = `LIMITES DA RESPOSTA (o que passar é cortado ou descartado)
-- "sources": até ${LIMITS.sources} marcas, uma marca por item da lista (ex.: ["T1", "T2"]), nunca várias marcas no mesmo texto.
+- "sources": até ${LIMITS.sources} marcas, uma marca por item da lista (ex.: ["T1", "T2"]), nunca várias marcas no mesmo texto. Texto que não é marca (ex.: nome de diretriz ou "conhecimento geral") conta como fonte inexistente.
 ${LIMIT_RULES[o.mode]}`;
   const rules = o.adapter.rules.length ? `REGRAS DESTA ABA\n${o.adapter.rules.map((r) => `- ${r}`).join("\n")}` : "";
   const system = [BASE_SYSTEM, MODE_RULES[o.mode], formats, limits, rules].filter(Boolean).join("\n\n");
@@ -464,22 +466,26 @@ export async function runAssistant(deps: EngineDeps, o: RunInput): Promise<Assis
     if (unknown.length) own.push(unknownSourceWarning(field.label, unknown));
     const grounded = refs.some((r) => r.kind !== "item");
     const current: FieldValue | null = values[field.name] ?? null;
-    // campo que exige fonte sem [T]/[F] válido: "Sem fonte". No Conversar só passa a reescrita do texto que já está no campo,
-    // citando só o [I] dele (Só redação); campo vazio, sem marca, com [I] de outro campo ou marca inexistente não (decisão D1)
+    const picked = pickValue(field.kind, raw.value);
+    // campo que exige fonte sem [T]/[F] válido: "Sem fonte". No Conversar só passa a reescrita do texto que já está no campo
+    // (Só redação): citando só o [I] dele, sem marca inexistente (decisão D1), e com o texto novo feito das palavras do atual e
+    // de tamanho parecido (decisão D5, `isRewording`). Campo vazio, sem marca, com [I] de outro campo, com fonte inexistente
+    // (texto livre incluído) ou com texto novo demais vai para "Sem fonte".
     const rewording =
       mode === "conversar" &&
       field.kind === "text" &&
       !isEmptyValue(current) &&
       refs.length > 0 &&
       !unknown.length &&
-      refs.every((r) => r.kind === "item" && r.field === field.name);
+      refs.every((r) => r.kind === "item" && r.field === field.name) &&
+      typeof picked === "string" &&
+      isRewording(picked, valueText(current));
     if (field.base === "fonte" && !grounded && !rewording) {
       noSource.push(field.name);
       warnings.push(...own);
       return;
     }
     const append = field.kind !== "text";
-    const picked = pickValue(field.kind, raw.value);
     const checked = picked === null ? { value: null, warnings: [formatWarning(field.label)] } : checkValue(field, picked, current, append);
     own.push(...checked.warnings);
     const value = checked.value;

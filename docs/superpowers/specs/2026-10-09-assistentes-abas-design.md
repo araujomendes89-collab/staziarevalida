@@ -84,11 +84,16 @@ formulário enviado**, não da IA. A tela mostra a diferença por palavra (texto
 Pedido de campo proibido: a resposta explica e não traz mudança. Nas abas médicas, mudança em campo de base "fonte"
 (explicações, conduta esperada, o que a questão avalia) sem nenhum `[T]` ou `[F]` válido vai para "Sem fonte: cole um trecho da
 diretriz ou envie o material", **sem sugestão**, quando: o campo está vazio, ou a mudança não cita marca nenhuma, ou cita marca
-que não é o `[I]` do próprio campo (o `[I]` de outro campo do item ou uma marca inexistente). Só passa, marcada "Só redação:
-confira se nada novo entrou", a reescrita do texto que já existe naquele campo citando só o `[I]` dele (sem fato novo). Sem
-material e sem trecho oficial, só sai esse tipo de mudança nesses campos. "Propor correção" passa pela mesma regra. Cada mudança
-mostra o motivo no cartão. (Decisão D1 da revisão final: a regra do dono — texto médico só com fonte — vence o texto anterior,
-que deixava "Só redação" para qualquer mudança que citasse o item.)
+que não é o `[I]` do próprio campo (o `[I]` de outro campo do item ou uma marca inexistente). Fonte citada em texto livre
+("Diretriz SBP 2023", "Conhecimento médico geral", "I9 e literatura", "sem trecho: T1 não cobre isso") conta como marca
+inexistente, mesmo com uma marca dentro do texto (§6.5.1). Só passa, marcada "Só redação: confira se nada novo entrou", a
+reescrita do texto que já existe naquele campo citando só o `[I]` dele (sem fato novo), e só quando o texto novo é mesmo uma
+reescrita do atual: **pelo menos 60% das palavras de 4 letras ou mais do texto novo** (sem repetir, minúsculas e sem acento)
+**estão no texto atual**, e o texto novo tem **no máximo 1,5 vez o tamanho do atual mais 40 caracteres** (sem os espaços das
+pontas); texto novo sem palavra de 4 letras ou mais não conta como reescrita. Fora disso, "Sem fonte" (ex.: campo com "S."
+reescrito numa frase médica nova). Sem material e sem trecho oficial, só sai esse tipo de mudança nesses campos. "Propor
+correção" passa pela mesma regra. Cada mudança mostra o motivo no cartão. (Decisões D1 e D5 da revisão final: a regra do dono —
+texto médico só com fonte — vence o texto anterior, que deixava "Só redação" para qualquer mudança que citasse o item.)
 
 ## 5. Por aba
 ### 5.1 Questões (primeira)
@@ -166,15 +171,20 @@ português do Brasil, sem markdown.
 1. Esquema JSON por modo (`schemas.ts`): Preencher `{ suggestions[{ field, value, sources }], missing[{ field, reason }] }`;
    Conferir `{ findings[{ field, kind, detail, sources }] }`; Conversar `{ reply, changes[{ field, after, sources, reason }] }`.
    Os limites de tamanho e de quantidade não chegam ao provedor pelo esquema: o pedido os diz, e o servidor corta resposta,
-   motivo e detalhe longos, limita as listas e separa marcas juntas ("T1, T2, T3") antes da conferência estrita; o que não tem
-   conserto (texto do valor, nome de campo ou marca acima do limite) sai com aviso, sem derrubar o pedido (decisão D3).
+   motivo e detalhe longos e limita as listas antes da conferência estrita; o que não tem conserto (texto do valor ou nome de
+   campo acima do limite) sai com aviso, sem derrubar o pedido (decisão D3). Nas fontes citadas, só a entrada feita apenas de
+   marcas e separadores ("T1, T2", "[I9]", "t3; F2") é separada em marcas; qualquer outra entrada ("Diretriz SBP 2023",
+   "I9 e literatura", "sem trecho: T1 não cobre isso") fica como marca inexistente, cortada com "…" se passar do limite, e
+   nunca vira a marca que está dentro do texto (decisão D5).
 2. Campo fora da lista do adaptador, ou marcado "conferir"/"nunca", em sugestão ou mudança: descartado, com o aviso "Sugestão
    para campo que o assistente não muda foi descartada".
 3. Tipo e tamanho de cada campo (§5); fora do formato, descartado com aviso.
-4. Fonte inexistente: descartada. Campo de base "fonte" sem nenhum `[T]` ou `[F]` válido vira "Sem fonte…", sem sugestão. No
-   Conversar das abas médicas a única exceção é a reescrita do texto que já existe no campo citando só o `[I]` do próprio campo,
-   que sai marcada "Só redação"; campo vazio, mudança sem marca ou com marca que não seja esse `[I]` (de outro campo ou
-   inexistente) vira "Sem fonte…" (decisão D1, §4.3).
+4. Fonte inexistente (texto livre incluído, item 1): descartada, com aviso. Campo de base "fonte" sem nenhum `[T]` ou `[F]`
+   válido vira "Sem fonte…", sem sugestão. No Conversar das abas médicas a única exceção é a reescrita do texto que já existe no
+   campo citando só o `[I]` do próprio campo, que sai marcada "Só redação"; campo vazio, mudança sem marca ou com marca que não
+   seja esse `[I]` (de outro campo ou inexistente) vira "Sem fonte…" (decisão D1, §4.3). A reescrita é conferida no servidor
+   (`isRewording` em `checks.ts`, decisão D5): pelo menos 60% das palavras de 4+ letras do texto novo (sem repetir, minúsculas e
+   sem acento) estão no texto atual e o texto novo tem no máximo 1,5 × o tamanho do atual + 40 caracteres; senão, "Sem fonte…".
 5. `ungroundedNumbers` (`server/podcasts/script.ts`) contra os textos citados, item incluído: número com unidade fora deles vira
    aviso. Também: ano da linha do tempo; em Planos, qualquer número.
 6. Conversar: antes calculado do formulário; mudança igual ao antes, descartada.

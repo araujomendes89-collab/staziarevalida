@@ -190,6 +190,28 @@ export function yearsNotCited(entries: TimelineEntry[], cited: string[]): number
 const normalizeText = (s: string) =>
   s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
 
+/** Regra da reescrita (decisão D5): parte das palavras do texto novo que já estão no atual e tamanho máximo do texto novo. */
+export const REWORDING = { percent: 60, factor: 1.5, extra: 40 } as const;
+
+/** Palavras de 4 letras ou mais, minúsculas e sem acento, sem repetir. */
+const longWords = (s: string) => new Set(normalizeText(s).split(/[^\p{L}]+/u).filter((w) => w.length >= 4));
+
+/**
+ * O texto novo é reescrita do atual (decisão D5): pelo menos 60% das palavras de 4+ letras do texto novo (sem repetir,
+ * minúsculas e sem acento) estão no atual, e o texto novo tem no máximo 1,5× o tamanho do atual + 40 caracteres (sem os
+ * espaços das pontas). Texto novo sem palavra de 4+ letras não tem como ser conferido e não conta como reescrita.
+ */
+export function isRewording(next: string, current: string): boolean {
+  const after = String(next ?? "").trim();
+  const before = String(current ?? "").trim();
+  if (after.length > before.length * REWORDING.factor + REWORDING.extra) return false;
+  const words = [...longWords(after)];
+  if (!words.length) return false;
+  const known = longWords(before);
+  // em inteiros, sem arredondamento de 0,6 × n
+  return words.filter((w) => known.has(w)).length * 100 >= REWORDING.percent * words.length;
+}
+
 /** Linhas que não estão contidas em nenhum texto conhecido (notas e recursos atuais): recurso possivelmente novo. */
 export function newLines(lines: string[], known: string[]): string[] {
   const knownTexts = known.map(normalizeText);

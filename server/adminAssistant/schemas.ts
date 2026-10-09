@@ -12,7 +12,8 @@
  * Limites (decisão D3d): `toProviderSchema` não manda maxLength/maxItems ao provedor, então a IA só os conhece pelo pedido
  * (LIMITS, ditos no sistema). O provedor confere a resposta com o esquema sem limites (`providerSchemaFor`); o motor ajusta a
  * resposta (`fitOutput`: corta textos livres, limita listas e separa marcas juntas) e só então confere com o esquema estrito.
- * O que não tem conserto sai com aviso, sem derrubar o pedido inteiro.
+ * O que não tem conserto sai com aviso, sem derrubar o pedido inteiro. Fonte que não é só marca fica como marca desconhecida
+ * (decisão D5), para o campo que exige fonte ir para "Sem fonte".
  */
 import type { Schema } from "../contentHub/ai/schema";
 import type { AssistMode, FieldKind, FieldValue, Flashcard, FindingKind, TimelineEntry } from "../../src/shared/adminAssistant/types";
@@ -181,10 +182,23 @@ class Dropped {
   constructor(readonly max: number) {}
 }
 
-/** Marcas dentro de um texto ("T1, T2", "[I1] [I2]", "t3"). */
-const MARK_IN_TEXT = /\b([ITF])\s*(\d{1,4})\b/gi;
+/** Uma marca na fonte citada, com colchetes opcionais ("T1", "[I9]", "t 3"). */
+const MARK_IN_TEXT = /\[?\s*\b([ITF])\s*(\d{1,4})\b\s*\]?/gi;
+/** O que pode sobrar entre as marcas de uma fonte feita só de marcas: espaços e pontuação de lista. */
+const ONLY_SEPARATORS = /^[\s,;\/|&+.-]*$/;
 
-/** Cada texto com marcas vira as marcas separadas (sem repetir); texto sem marca fica como veio (marca inexistente ou longa). */
+/**
+ * Fonte em texto livre que fica como marca desconhecida: cortada no limite com "…" no fim, que nenhuma marca do pedido tem,
+ * para nunca virar uma marca válida (ex.: "[T1]      x" não vira "[T1]").
+ */
+const unknownMark = (entry: string) => (entry.length > LIMITS.mark ? `${entry.slice(0, LIMITS.mark - 1).trimEnd()}…` : entry);
+
+/**
+ * Fontes citadas, uma marca por entrada, sem repetir (decisão D5). Só a fonte feita apenas de marcas e separadores ("T1, T2",
+ * "[I9]", "t3; F2") vira as marcas separadas. Qualquer outra ("Diretriz SBP 2023", "I9 e literatura", "sem trecho: T1 não
+ * cobre isso") fica como marca desconhecida, cortada se longa: `resolveMarks` a põe em `unknown` e o campo que exige fonte vai
+ * para "Sem fonte", em vez de a marca de dentro do texto livre valer como citação. Fonte em branco fica como veio (não cita nada).
+ */
 function splitMarks(list: unknown[]): unknown[] {
   const out: unknown[] = [];
   for (const entry of list) {
@@ -193,7 +207,8 @@ function splitMarks(list: unknown[]): unknown[] {
       continue;
     }
     const found = [...entry.matchAll(MARK_IN_TEXT)].map((m) => `${m[1].toUpperCase()}${m[2]}`);
-    for (const mark of found.length ? found : [entry]) if (!out.includes(mark)) out.push(mark);
+    const onlyMarks = found.length > 0 && ONLY_SEPARATORS.test(entry.replace(MARK_IN_TEXT, " "));
+    for (const mark of onlyMarks ? found : [unknownMark(entry)]) if (!out.includes(mark)) out.push(mark);
   }
   return out;
 }
@@ -239,8 +254,9 @@ function fit(schema: Schema, value: unknown, key: string, notes: Set<string>): u
 
 /**
  * A resposta da IA ajustada aos limites do esquema estrito, com os avisos: textos livres (resposta, motivo, detalhe) cortados;
- * listas acima do máximo limitadas; marcas juntas num texto ("T1, T2, T3") separadas; o que não tem conserto (texto de valor,
- * nome de campo ou marca acima do limite) sai da lista em que está. Tipo errado fica para a conferência estrita.
+ * listas acima do máximo limitadas; fonte feita só de marcas ("T1, T2, T3") separada e qualquer outra fonte mantida como marca
+ * desconhecida, cortada se longa (decisão D5); o que não tem conserto (texto de valor ou nome de campo acima do limite) sai da
+ * lista em que está. Tipo errado fica para a conferência estrita.
  */
 export function fitOutput(mode: AssistMode, raw: unknown): { output: unknown; warnings: string[] } {
   const notes = new Set<string>();
