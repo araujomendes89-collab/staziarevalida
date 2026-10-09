@@ -159,4 +159,35 @@ describe("AssistantPanel", () => {
     const src = fs.readFileSync(path.resolve(__dirname, "../novo/app/admin/assistant/AssistantPanel.jsx"), "utf8");
     expect(src).not.toMatch(/questoes|Questões|gabarito|atualizac|planos|app_admin/i);
   });
+
+  it("Conversar em lista: itens atuais ficam como estao, so os novos entram, um por linha", async () => {
+    const run = async () => R({ mode: "conversar", suggestions: [S({ field: "passos", value: ["2024: C"], before: ["2017: A", "2020: B"], append: true })] });
+    const { container } = render(<AssistantPanel status={STATUS} fields={FIELDS} values={{ resumo: "x", passos: ["2017: A", "2020: B"] }} run={run} onUse={vi.fn()} />);
+    fireEvent.click(within(screen.getByRole("radiogroup", { name: "Modo" })).getByRole("radio", { name: "Conversar" }));
+    fireEvent.change(screen.getByLabelText("Pedido"), { target: { value: "acrescente" } });
+    fireEvent.click(screen.getByRole("button", { name: "Enviar" }));
+    const card = await screen.findByRole("region", { name: "Sugestão: Passos" });
+    expect(card.querySelectorAll("del").length).toBe(0);
+    expect(Array.from(card.querySelectorAll("ins")).map((e) => e.textContent)).toEqual(["2024: C"]);
+    expect(card.textContent).not.toContain("2017: A2020: B");
+    expect(container).toBeTruthy();
+  });
+
+  it("resposta atrasada de outro modo e descartada e nao pula a checagem de campo mudado", async () => {
+    let resolve: (v: any) => void = () => {};
+    const run = () => new Promise<any>((r) => { resolve = r; });
+    const onUse = vi.fn();
+    const props = { status: STATUS, fields: FIELDS, run, onUse };
+    const { rerender } = render(<AssistantPanel {...props} values={{ resumo: "O lactente tem febre.", passos: ["a"] }} />);
+    const modes = within(screen.getByRole("radiogroup", { name: "Modo" }));
+    fireEvent.click(modes.getByRole("radio", { name: "Conversar" }));
+    fireEvent.change(screen.getByLabelText("Pedido"), { target: { value: "ajuste" } });
+    fireEvent.click(screen.getByRole("button", { name: "Enviar" }));
+    fireEvent.click(modes.getByRole("radio", { name: "Preencher" }));
+    rerender(<AssistantPanel {...props} values={{ resumo: "Texto novo.", passos: ["a"] }} />);
+    resolve(R({ mode: "conversar", suggestions: [S({ field: "resumo", value: "O lactente tem febre alta.", before: "O lactente tem febre." })] }));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.queryByRole("region", { name: "Sugestão: Resumo" })).toBeNull();
+    expect(onUse).not.toHaveBeenCalled();
+  });
 });

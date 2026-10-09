@@ -20,7 +20,14 @@ const cardStyle = { display: "flex", flexDirection: "column", gap: 6, padding: 1
 const smallStyle = { font: "var(--type-caption)", color: "var(--text-tertiary)", margin: 0 };
 const bodyStyle = { font: "var(--type-body-sm)", color: "var(--text-primary)", whiteSpace: "pre-wrap", margin: 0 };
 
-function Diff({ parts }) {
+function Diff({ parts, lines }) {
+  if (lines) {
+    return (
+      <div style={bodyStyle}>
+        {parts.map((p, i) => <div key={i}>{p.op === "del" ? <del>{p.text}</del> : p.op === "add" ? <ins>{p.text}</ins> : <span>{p.text}</span>}</div>)}
+      </div>
+    );
+  }
   return (
     <p style={bodyStyle}>
       {parts.map((p, i) => (p.op === "del" ? <del key={i}>{p.text}</del> : p.op === "add" ? <ins key={i}>{p.text}</ins> : <span key={i}>{p.text}</span>))}
@@ -32,7 +39,7 @@ function SuggestionCard({ item, field, label, mode, values, useLabel, used, stal
   const list = isList(item.value);
   let shown;
   if (mode === "conversar" && item.before !== null && item.before !== undefined) {
-    shown = list ? <Diff parts={itemDiff(itemLines(item.before), itemLines(item.value))} /> : <Diff parts={wordDiff(valueText(item.before), valueText(item.value))} />;
+    shown = list ? <Diff lines parts={itemDiff(itemLines(item.before), itemLines(item.append ? [...(isList(item.before) ? item.before : []), ...item.value] : item.value))} /> : <Diff parts={wordDiff(valueText(item.before), valueText(item.value))} />;
   } else shown = <p style={bodyStyle}>{valueText(item.value)}</p>;
   const showBefore = mode === "preencher" && !list && typeof item.before === "string" && item.before !== "";
   return (
@@ -87,6 +94,7 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
   const [pdf, setPdf] = React.useState(null);
   const [pdfBusy, setPdfBusy] = React.useState(false);
   const fileRef = React.useRef(null);
+  const seq = React.useRef(0);
 
   const editable = fields.filter((f) => f.ai === "editar");
   const checkable = fields.filter((f) => f.ai === "editar" || f.ai === "conferir");
@@ -96,6 +104,8 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
   const disabled = busy || status?.[mode]?.ready === false;
 
   const reset = () => {
+    seq.current += 1;
+    setBusy(false);
     setResult(null);
     setError(null);
     setUsed({});
@@ -125,14 +135,17 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
     } else request.message = chatMessage;
     const mat = materialPayload();
     if (mat) request.material = mat;
-    setBusy(true);
     reset();
+    setBusy(true);
+    const mine = seq.current;
     try {
-      setResult(await run(mode, request));
+      const res = await run(mode, request);
+      if (seq.current === mine) setResult(res);
     } catch (e) {
+      if (seq.current !== mine) return;
       setError(e?.status ? e.message : messageOf(e, "O assistente falhou. Tente de novo."));
     } finally {
-      setBusy(false);
+      if (seq.current === mine) setBusy(false);
     }
   };
 
