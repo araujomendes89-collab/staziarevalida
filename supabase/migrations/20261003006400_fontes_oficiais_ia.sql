@@ -18,6 +18,9 @@
 --   * sites oficiais: a equipe lê; só o administrador grava (app_ch_save_official_domain); endereço só ASCII, sem https://,
 --     pode ter caminho (gov.br/saude);
 --   * buscas e candidatos: só o administrador lê (RLS) e decide; escrita só pelas funções;
+--   * tarefa da busca que morre (tentativas esgotadas), inclusive quando a própria fila a encerra no SQL (ch_worker_claim),
+--     põe a busca ainda andando em "falhou" com o motivo (gatilho em ch_jobs); busca que falhou, ou cuja tarefa morreu, não
+--     impede repetir o mesmo pedido;
 --   * nível E nunca entra: nem da IA, nem na edição (A–D só);
 --   * repetido não volta: mesmo link normalizado (ch_url_norm: sem #…, sem utm_*, sem :443, host em minúsculas) ou mesmo
 --     SHA-256 de fonte cadastrada, endereço vigiado, documento da Central ou candidato (aguardando, aprovado ou rejeitado);
@@ -112,6 +115,7 @@ create table public.ch_source_searches (
   finished_at timestamptz
 );
 create index ch_source_searches_created_idx on public.ch_source_searches (created_at desc);
+create index ch_source_searches_job_idx on public.ch_source_searches (job_id);
 
 -- ---------------------------------------------------------------- candidatos ("aguardando sua conferência")
 create table public.ch_source_candidates (
@@ -179,9 +183,10 @@ create policy "fontes encontradas: administrador lê" on public.ch_source_candid
 
 -- ---------------------------------------------------------------- apoio
 -- Link normalizado para achar repetidos: esquema e host em minúsculas (usuário e senha, se houver, ficam como vieram),
--- sem "#…", sem parâmetros cujo nome começa por utm_ (sem caixa), sem ":443" e sem "?" vazio. O caminho e os outros
--- parâmetros ficam como vieram (nada é decodificado nem reordenado). Texto que não parece link volta só sem "#…" e sem
--- espaços nas pontas; vazio volta nulo. A versão do servidor (normalizeLink) segue esta mesma regra.
+-- sem "#…", sem parâmetros cujo nome começa por utm_ (sem caixa), sem ":443" e sem "?" vazio. Pedaços vazios entre "&"
+-- também saem (?a=1&&b=2 vira ?a=1&b=2 e ?a=1& vira ?a=1). O caminho e os outros parâmetros ficam como vieram (nada é
+-- decodificado nem reordenado, e nenhuma "/" é acrescentada). Texto que não parece link volta só sem "#…" e sem espaços
+-- nas pontas; vazio volta nulo. A versão do servidor (normalizeLink) segue esta mesma regra.
 create function public.ch_url_norm(p_url text) returns text
   language plpgsql immutable set search_path = ''
 as $$
@@ -346,6 +351,7 @@ $$;
 -- p_request = {area (nula = todas), theme, top_themes (1 a 10), free_text}: exatamente um entre tema e "temas mais cobrados"
 -- (JSON null conta como ausente). Uma busca por tema, cada uma com o seu trabalho na fila (sem documento). Busca igual
 -- (área, tema e texto livre, sem caixa) que ainda está andando não se repete: volta a existente com duplicate = true.
+-- "Andando" = estado não final E a tarefa da fila ainda viva: busca cuja tarefa morreu (dead/failed) não bloqueia o pedido.
 create function public.app_ch_source_search_start(p_request jsonb) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
@@ -400,7 +406,8 @@ begin
   end if;
 
   foreach v_item in array v_themes loop
-    select * into v_dup from public.ch_source_searches s
+    select s.* into v_dup from public.ch_source_searches s
+      join public.ch_jobs j on j.id = s.job_id and j.status not in ('dead', 'failed')
      where s.area is not distinct from v_area and lower(s.theme) = lower(v_item)
        and lower(coalesce(s.free_text, '')) = lower(coalesce(v_free, ''))
        and s.status in ('na_fila', 'buscando', 'conferindo', 'pendente')
@@ -615,6 +622,40 @@ begin
   end if;
 end
 $$;
+
+-- Tarefa da busca que morreu (tentativas esgotadas) sem o processamento fechar a busca. A fila encerra a tarefa sozinha,
+-- só no SQL, quando a execução cai nas 2 tentativas (ch_worker_claim: "Interrompido sem concluir."), ou no último erro
+-- (ch_worker_finish / ch_worker_fail). A busca ainda andando vai a "falhou" com o motivo da tarefa (finished_at e registro
+-- em nome de quem pediu, por ch_worker_source_search_update). Busca já em estado final (o processamento já gravou o motivo
+-- dele) fica como está. Gatilho em vez de refazer ch_worker_claim/ch_worker_finish, que outros ramos também redefinem
+-- (as estações trocam ch_worker_claim por outra versão). A fila acrescenta "Interrompido sem concluir." a cada recuperação
+-- ("Interrompido sem concluir. Falha anterior: Interrompido sem concluir."): a busca mostra essa frase uma vez só.
+-- Tentar de novo a tarefa morta (app_ch_retry_job) não reabre a busca: o caminho é pedir a mesma busca outra vez.
+create function public.ch_source_search_job_dead() returns trigger
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_id uuid;
+  v_message text;
+begin
+  v_message := coalesce(
+    nullif(regexp_replace(btrim(coalesce(new.error, '')),
+                          '^(Interrompido sem concluir\.)( Falha anterior: Interrompido sem concluir\.)+$', '\1'), ''),
+    'A tarefa parou sem concluir.');
+  for v_id in
+    select s.id from public.ch_source_searches s
+     where s.job_id = new.id and s.status not in ('concluida', 'nada_encontrado', 'falhou')
+  loop
+    perform public.ch_worker_source_search_update(v_id, jsonb_build_object('status', 'falhou', 'message', v_message));
+  end loop;
+  return null;
+end
+$$;
+create trigger ch_jobs_source_search_dead
+  after update of status on public.ch_jobs
+  for each row
+  when (new.step = 'source_search' and new.status in ('dead', 'failed') and old.status is distinct from new.status)
+  execute function public.ch_source_search_job_dead();
 
 -- Já conhecido? Nulo = novo. Pelo link normalizado e/ou pelo SHA-256 (qualquer um pode vir nulo), nesta ordem.
 create function public.ch_worker_source_known(p_url text, p_sha256 text) returns text
@@ -864,6 +905,7 @@ revoke execute on function public.ch_source_replacement(text, text, text, text, 
 revoke execute on function public.ch_source_candidate_item(uuid) from public, anon, authenticated;
 revoke execute on function public.ch_worker_source_search_get(uuid) from public, anon, authenticated;
 revoke execute on function public.ch_worker_source_search_update(uuid, jsonb) from public, anon, authenticated;
+revoke execute on function public.ch_source_search_job_dead() from public, anon, authenticated;
 revoke execute on function public.ch_worker_source_known(text, text) from public, anon, authenticated;
 revoke execute on function public.ch_worker_source_candidate_create(jsonb) from public, anon, authenticated;
 revoke execute on function public.ch_worker_ai_save_function(uuid, text, jsonb) from public, anon, authenticated;

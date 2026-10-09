@@ -20,10 +20,11 @@ beforeAll(async () => {
   t = await openFontesDb(path.join(tmp, "db"));
 }, 300_000);
 
+// o fechamento do banco pode passar dos 10 s do padrão quando a máquina está sobrecarregada (várias suítes ao mesmo tempo)
 afterAll(async () => {
   await t?.dev.db.close();
   fs.rmSync(tmp, { recursive: true, force: true });
-});
+}, 120_000);
 
 const RESTRITO = /Acesso restrito a administradores/;
 const sql = async (q: string, params: unknown[] = []) => (await t.dev.db.query<any>(q, params)).rows;
@@ -176,6 +177,86 @@ describe("Banco", () => {
     expect(await jobs()).toBe(before + 2);
   });
 
+  it("tarefa morta (pela fila ou no último erro) põe a busca em falhou com o motivo; o mesmo pedido volta a buscar", async () => {
+    const request = { area: "CLINICA_MEDICA", theme: "Dengue com sinais de alarme", free_text: "Ministério da Saúde" };
+    const start = async () => (await asAdmin("app_ch_source_search_start", { p_request: request })).searches as { id: string; duplicate: boolean }[];
+    const search = async (id: string) =>
+      (await sql(`select s.*, j.status as job_status from public.ch_source_searches s join public.ch_jobs j on j.id = s.job_id where s.id = $1`, [id]))[0];
+    const update = (id: string, p_patch: Record<string, unknown>) => t.db.service("ch_worker_source_search_update", { p_search_id: id, p_patch });
+    /** A tarefa da busca na última tentativa, em execução (como o processamento a deixa ao pegar da fila). */
+    const lastAttempt = (id: string, lockedAgo = "0 seconds") =>
+      sql(
+        `update public.ch_jobs set status = 'running', attempts = max_attempts, locked_at = now() - $2::interval
+          where id = (select job_id from public.ch_source_searches where id = $1) returning id`,
+        [id, lockedAgo]
+      ).then((r) => r[0].id as string);
+    const results = async (id: string) => sql(`select actor_id, details from public.ch_audit where action = 'source_search.result' and target = $1`, [id]);
+
+    // 1) a tarefa do Cloud Run caiu nas 2 tentativas: quem encerra é a própria fila (ch_worker_claim), só no SQL
+    const [first] = await start();
+    expect(first.duplicate).toBe(false);
+    await update(first.id, { status: "buscando" });
+    /** Recuperação da fila: tarefa em execução e parada há 1 hora volta à fila, ou morre se não sobrou tentativa. */
+    const recover = async () => {
+      const claimed = await t.db.service<any>("ch_worker_claim", { p_stale_seconds: 600 });
+      // devolve à fila o trabalho que a chamada pegou (outro teste o criou), sem gastar tentativa
+      if (claimed) await sql(`update public.ch_jobs set status = 'queued', attempts = attempts - 1, locked_at = null where id = $1`, [claimed.id]);
+    };
+    // 1ª queda: ainda sobra tentativa, o trabalho volta à fila e a busca segue andando
+    await sql(
+      `update public.ch_jobs set status = 'running', attempts = 1, locked_at = now() - interval '1 hour'
+        where id = (select job_id from public.ch_source_searches where id = $1)`,
+      [first.id]
+    );
+    await recover();
+    let s = await search(first.id);
+    expect(s).toMatchObject({ job_status: "queued", status: "buscando", message: null, finished_at: null });
+    expect(await results(first.id)).toEqual([]);
+    // 2ª queda: acabaram as tentativas e a fila encerra o trabalho. O motivo da fila repete a frase a cada recuperação;
+    // a busca mostra a frase uma vez só.
+    await lastAttempt(first.id, "1 hour");
+    await recover();
+    s = await search(first.id);
+    expect((await sql(`select error from public.ch_jobs where id = $1`, [s.job_id]))[0].error).toBe(
+      "Interrompido sem concluir. Falha anterior: Interrompido sem concluir."
+    );
+    expect(s).toMatchObject({ job_status: "dead", status: "falhou", message: "Interrompido sem concluir." });
+    expect(s.finished_at).toBeTruthy();
+    expect(await results(first.id)).toEqual([{ actor_id: t.ADMIN, details: expect.objectContaining({ status: "falhou", message: "Interrompido sem concluir." }) }]);
+    // o mesmo pedido não volta a busca morta: cria outra, com trabalho novo
+    const [second] = await start();
+    expect(second.duplicate).toBe(false);
+    expect(second.id).not.toBe(first.id);
+    expect((await search(second.id)).job_status).toBe("queued");
+
+    // 2) erro comum na última tentativa (ch_worker_finish → dead): a busca vai a falhou com o erro
+    await update(second.id, { status: "conferindo" });
+    const job2 = await lastAttempt(second.id);
+    expect(await t.db.service("ch_worker_finish", { p_job_id: job2, p_ok: false, p_error: "Falha ao gravar o arquivo.", p_metrics: {} })).toBe("dead");
+    s = await search(second.id);
+    expect(s).toMatchObject({ job_status: "dead", status: "falhou", message: "Falha ao gravar o arquivo." });
+    const [third] = await start();
+    expect(third.duplicate).toBe(false);
+
+    // 3) busca que o processamento já pôs em falhou, com o motivo dele, não é reescrita quando a tarefa morre
+    await update(third.id, { status: "falhou", message: "IA fora do ar e sem reserva." });
+    await t.db.service("ch_worker_fail", { p_job_id: await lastAttempt(third.id), p_error: "Falha definitiva." });
+    s = await search(third.id);
+    expect(s).toMatchObject({ job_status: "dead", status: "falhou", message: "IA fora do ar e sem reserva." });
+    expect(await results(third.id)).toHaveLength(1);
+
+    // 4) uma busca ainda "andando" cuja tarefa já morreu (estado anterior a esta regra) também não bloqueia o pedido
+    const [fourth] = await start();
+    expect(fourth.duplicate).toBe(false);
+    await sql(`update public.ch_jobs set status = 'dead', finished_at = now() where id = (select job_id from public.ch_source_searches where id = $1)`, [fourth.id]);
+    await sql(`update public.ch_source_searches set status = 'buscando', finished_at = null where id = $1`, [fourth.id]);
+    const [fifth] = await start();
+    expect(fifth.duplicate).toBe(false);
+    expect(fifth.id).not.toBe(fourth.id);
+    // e uma busca andando com a tarefa viva continua não repetindo
+    expect(await start()).toEqual([{ id: fifth.id, theme: request.theme, duplicate: true }]);
+  });
+
   it("temas mais cobrados: uma busca por tema, no máximo o que a área tem", async () => {
     const jobs = async () => Number((await sql(`select count(*) as n from public.ch_jobs where step = 'source_search'`))[0].n);
     const inc = await asAdmin("app_incidence", { p_dimension: "topic", p_area: "PEDIATRIA" });
@@ -304,6 +385,8 @@ describe("Banco", () => {
     expect(await norm("https://WWW.Gov.BR:443/Saude/X.pdf?utm_source=a&id=2#p3")).toBe("https://www.gov.br/Saude/X.pdf?id=2");
     expect(await norm("HTTPS://gov.br/a?utm_medium=x&UTM_Campaign=y")).toBe("https://gov.br/a");
     expect(await norm("https://gov.br/a?")).toBe("https://gov.br/a");
+    // pedaços vazios entre "&" saem junto com os utm_*; o resto da consulta fica na ordem e na forma em que veio
+    expect(await norm("https://gov.br/a?x=1&&utm_source=a&")).toBe("https://gov.br/a?x=1");
     expect(await norm("https://gov.br/A/B?x=1&Y=%20z")).toBe("https://gov.br/A/B?x=1&Y=%20z");
     expect(await norm("https://gov.br:8443/a")).toBe("https://gov.br:8443/a");
     expect(await norm("  https://who.int/x#")).toBe("https://who.int/x");
@@ -470,13 +553,13 @@ describe("Banco", () => {
     const fns = await sql(
       `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
         where n.nspname = 'public'
-          and (p.proname like 'ch\\_worker\\_source\\_%' or p.proname like 'ch\\_worker\\_ai\\_%' or p.proname in ('ch_url_norm', 'ch_source_replacement', 'ch_source_candidate_item'))`
+          and (p.proname like 'ch\\_worker\\_source\\_%' or p.proname like 'ch\\_worker\\_ai\\_%' or p.proname in ('ch_url_norm', 'ch_source_replacement', 'ch_source_candidate_item', 'ch_source_search_job_dead'))`
     );
-    expect(fns.map((f) => f.proname)).toEqual(expect.arrayContaining(["ch_url_norm", "ch_worker_source_known", "ch_worker_source_candidate_create", "ch_worker_source_search_get", "ch_worker_source_search_update", "ch_source_replacement", "ch_source_candidate_item"]));
+    expect(fns.map((f) => f.proname)).toEqual(expect.arrayContaining(["ch_url_norm", "ch_worker_source_known", "ch_worker_source_candidate_create", "ch_worker_source_search_get", "ch_worker_source_search_update", "ch_source_replacement", "ch_source_candidate_item", "ch_source_search_job_dead"]));
     const leaking = await sql(
       `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
         where n.nspname = 'public'
-          and (p.proname like 'ch\\_worker\\_source\\_%' or p.proname like 'ch\\_worker\\_ai\\_%' or p.proname in ('ch_url_norm', 'ch_source_replacement', 'ch_source_candidate_item'))
+          and (p.proname like 'ch\\_worker\\_source\\_%' or p.proname like 'ch\\_worker\\_ai\\_%' or p.proname in ('ch_url_norm', 'ch_source_replacement', 'ch_source_candidate_item', 'ch_source_search_job_dead'))
           and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))`
     );
     expect(leaking).toEqual([]);
