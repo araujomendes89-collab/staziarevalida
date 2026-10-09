@@ -51,7 +51,7 @@ export const numberWarning = (label: string, n: string) => `${label}: "${n}" nã
 export const yearWarning = (label: string, y: number) => `${label}: o ano ${y} não está no trecho citado.`;
 export const unknownSourceWarning = (label: string, marks: string[]) => `${label}: fonte inexistente descartada (${marks.join(", ")}).`;
 
-const formatWarning = (label: string) => `${label}: fora do formato; sugestão descartada.`;
+export const formatWarning = (label: string) => `${label}: fora do formato; sugestão descartada.`;
 const tooLongWarning = (label: string, max: number) => `${label}: passa de ${max} caracteres; sugestão descartada.`;
 const itemTooLongWarning = (label: string, itemMax: number) => `${label}: item com mais de ${itemMax} caracteres descartado.`;
 const tooManyWarning = (label: string, max: number, left: number) => `${label}: no máximo ${max} itens; ${left} ficaram de fora.`;

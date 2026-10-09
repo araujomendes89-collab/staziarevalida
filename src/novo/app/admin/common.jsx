@@ -9,7 +9,7 @@ export const isStaffRole = (role) => role === "admin" || role === "editor";
 export const isPhase2Locked = (role) => !isStaffRole(role);
 export const PLAN_LABEL = { trial: "Teste grátis", pro: "Pro", elite: "Elite" };
 export const SUB_STATUS_LABEL = { trialing: "Em teste", active: "Ativo", past_due: "Pagamento pendente", canceled: "Cancelado", expired: "Expirado" };
-export const QUESTION_STATUS_LABEL = { valid: "Válida", annulled: "Anulada", changed_after_appeal: "Alterada após recurso" };
+export { QUESTION_STATUS_LABEL } from "../../../shared/questions/status";
 
 export const dateBR = (iso) => (iso ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso)) : "—");
 export const dateTimeBR = (iso) =>
