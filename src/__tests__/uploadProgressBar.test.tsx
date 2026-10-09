@@ -32,6 +32,12 @@ describe("UploadProgress", () => {
     expect(h.textContent).toContain("Conferindo o arquivo…");
     expect(h.textContent).not.toContain("%");
   });
+  it("enviando sem porcentagem (caminho padrão de reserva): só o texto, sem barra e sem número", () => {
+    const h = show(<UploadProgress stage="enviando-sem-porcentagem" pct={30} />);
+    expect(h.textContent).toContain("Enviando o arquivo…");
+    expect(h.textContent).not.toContain("%");
+    expect(h.querySelector('[role="progressbar"]')).toBeNull();
+  });
   it("sem etapa: nada na tela", () => {
     expect(show(<UploadProgress stage={null} pct={0} />).querySelector('[role="progressbar"]')).toBeNull();
   });

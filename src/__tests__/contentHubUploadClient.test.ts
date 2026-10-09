@@ -75,6 +75,47 @@ describe("Importar PDF", () => {
     expect(order).toEqual(["stage:enviando", "enviando", "stage:conferindo", "confirm"]);
   });
 
+  it("se o envio com porcentagem falhar, tenta uma vez pelo caminho padrão (sem porcentagem) e segue para a confirmação", async () => {
+    const order: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      if (url.endsWith("/upload")) return json({ mode: "signed", bucket: "content-hub", key: "k.pdf", path: "k.pdf", token: "tk" });
+      order.push("confirm");
+      return json({ id: "d" }, 201);
+    });
+    const uploadToSignedUrl = vi.fn(async (...args: unknown[]) => {
+      order.push(args[5] ? "com porcentagem" : "padrão");
+      if (args[5]) throw new Error("Falha de conexão ao enviar o arquivo.");
+    });
+    const onStage = vi.fn((s: string) => order.push(`stage:${s}`));
+    const file = pdf();
+    const r = await hubUploadPdf({ accessToken: async () => "s", uploadToSignedUrl }, "/documents", file, {}, { onProgress: () => undefined, onStage });
+    expect(r).toMatchObject({ id: "d" });
+    expect(uploadToSignedUrl).toHaveBeenLastCalledWith("content-hub", "k.pdf", "tk", file, "application/pdf");
+    expect(order).toEqual(["stage:enviando", "com porcentagem", "stage:enviando-sem-porcentagem", "padrão", "stage:conferindo", "confirm"]);
+  });
+
+  it("se o caminho padrão também falhar, o erro dele chega à tela e não confirma", async () => {
+    const urls: string[] = [];
+    vi.stubGlobal("fetch", async (url: string) => {
+      urls.push(url);
+      return json({ mode: "signed", bucket: "content-hub", key: "k.pdf", path: "k.pdf", token: "tk" });
+    });
+    const uploadToSignedUrl = vi.fn(async (...args: unknown[]) => {
+      throw new Error(args[5] ? "falhou com porcentagem" : "The object exceeded the maximum allowed size");
+    });
+    await expect(hubUploadPdf({ accessToken: async () => "s", uploadToSignedUrl }, "/documents", pdf(), {}, { onProgress: () => undefined })).rejects.toThrow("The object exceeded the maximum allowed size");
+    expect(urls.some((u) => u.endsWith("/confirm"))).toBe(false);
+  });
+
+  it("sem acompanhamento de porcentagem, um erro no envio não é repetido", async () => {
+    vi.stubGlobal("fetch", async () => json({ mode: "signed", bucket: "content-hub", key: "k.pdf", path: "k.pdf", token: "tk" }));
+    const uploadToSignedUrl = vi.fn(async () => {
+      throw new Error("erro do depósito");
+    });
+    await expect(hubUploadPdf({ accessToken: async () => "s", uploadToSignedUrl }, "/documents", pdf())).rejects.toThrow("erro do depósito");
+    expect(uploadToSignedUrl).toHaveBeenCalledTimes(1);
+  });
+
   it("no banco local (modo direto) nunca chama onProgress: não inventa porcentagem", async () => {
     vi.stubGlobal("fetch", async (url: string) => (url.endsWith("/upload") ? json({ mode: "direct" }) : json({ id: "d" }, 201)));
     const onProgress = vi.fn();

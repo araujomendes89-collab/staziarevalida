@@ -106,6 +106,8 @@ export function useUploadProgress() {
 /** Barra de porcentagem do envio ("Enviando o arquivo… 45%"); depois "Conferindo o arquivo…" sem porcentagem. */
 export function UploadProgress({ stage, pct }) {
   if (!stage) return null;
+  // reserva sem porcentagem (o envio com porcentagem falhou e o caminho padrão não informa andamento): só o texto
+  if (stage === "enviando-sem-porcentagem") return <span role="status" style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Enviando o arquivo…</span>;
   const sending = stage === "enviando";
   return (
     <div style={{ minWidth: 200, flex: 1 }}>

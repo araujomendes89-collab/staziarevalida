@@ -50,7 +50,14 @@ export async function hubUploadPdf(backend, path, file, meta = {}, opts = {}) {
   if (prep.mode === "signed") {
     if (!backend.uploadToSignedUrl) throw new Error("Envio direto indisponível neste ambiente.");
     opts.onStage?.("enviando");
-    await backend.uploadToSignedUrl(prep.bucket, prep.path, prep.token, file, "application/pdf", opts.onProgress);
+    try {
+      await backend.uploadToSignedUrl(prep.bucket, prep.path, prep.token, file, "application/pdf", opts.onProgress);
+    } catch (error) {
+      if (!opts.onProgress) throw error;
+      // o envio com porcentagem falhou: tenta uma vez pelo caminho padrão do Supabase (sem porcentagem)
+      opts.onStage?.("enviando-sem-porcentagem");
+      await backend.uploadToSignedUrl(prep.bucket, prep.path, prep.token, file, "application/pdf");
+    }
     opts.onStage?.("conferindo");
     return hubPost(backend, `${path}/confirm`, { ...fields, key: prep.key, name: file.name });
   }
