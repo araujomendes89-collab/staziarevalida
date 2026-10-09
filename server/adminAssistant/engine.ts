@@ -3,10 +3,10 @@
  *
  * Recebe o formulário como está na tela, monta o pedido com marcas numeradas ([I…] campos do item, [T…] trechos do material,
  * [F…] trechos oficiais), chama a IA pelo maestro da Central de IAs (função pelo modo, origem "assistente", sem override) e
- * confere a resposta sem confiar nela: limites do esquema (o que passa é cortado ou sai com aviso, decisão D3d), campo que o
- * assistente não muda, marca inexistente (fonte em texto livre também, decisão D5), campo que exige fonte sem [T]/[F] (no
- * Conversar só passa a reescrita do texto do próprio campo citando o [I] dele, decisões D1 e D5), formato e tamanho, números e
- * anos fora dos trechos citados e recursos novos.
+ * confere a resposta sem confiar nela: caracteres invisíveis fora (decisão D6), limites do esquema (o que passa é cortado ou
+ * sai com aviso, decisão D3d), campo que o assistente não muda, marca inexistente (fonte em texto livre também, decisão D5),
+ * valor que a aba recusa (ex.: explicação que contradiz o gabarito gravado, decisão D6), campo que exige fonte sem [T]/[F] em
+ * qualquer modo (sem "Só redação", decisão D6), formato e tamanho, números e anos fora dos trechos citados e recursos novos.
  * Nada é gravado: o único registro é o das chamadas, que o maestro já faz em ai_calls.
  *
  * Ordem: (a rota já conferiu a permissão e leu o material) campos → IA pronta (503) → busca oficial → "Sem fonte" → IA.
@@ -35,10 +35,10 @@ import {
 import {
   checkValue,
   formatWarning,
-  isRewording,
   newLines,
   numberWarning,
   resolveMarks,
+  stripInvisible,
   toSourceRefs,
   unknownSourceWarning,
   unsupportedNumbers,
@@ -240,7 +240,7 @@ const MODE_RULES: Record<AssistMode, string> = {
 - Campo de texto: "after" traz o campo inteiro já mudado. Lista: só os itens a acrescentar (nada se apaga).
 - Pedido de campo fora dos campos permitidos: explique em "reply" que o assistente não muda esse campo e não traga mudança.
 - O que as marcas não esclarecem, ou o que uma regra desta aba manda não escrever, não vira mudança: diga em "reply", com o motivo, sem completar por conta própria.
-- Campo que exige fonte (marcado "exige trecho [T] ou [F] citado" no formato): conteúdo só com trecho [T] ou [F] citado. Sem esse trecho, só a reescrita do texto que já está no próprio campo, com as palavras que já estão nele e tamanho parecido, citando só a marca [I] desse campo, sem fato novo (só redação); campo vazio não se escreve sem [T] ou [F].`,
+- Campo que exige fonte (marcado "exige trecho [T] ou [F] citado" no formato): qualquer mudança, inclusive só melhorar a redação, só com trecho [T] ou [F] citado; marca [I] não basta. Sem esse trecho, não traga mudança nesse campo: diga em "reply" que é preciso colar o trecho da diretriz ou enviar o material.`,
 };
 
 /** Limites do esquema ditos no pedido (o provedor não os recebe pelo esquema; o que passar é cortado ou descartado, decisão D3d). */
@@ -263,12 +263,11 @@ export function buildPrompt(o: {
   today: string;
 }): { system: string; input: string; table: Map<string, MarkRef> } {
   const table = new Map<string, MarkRef>();
-  const mark = (code: string, kind: MarkRef["kind"], label: string, text: string, field?: string) =>
-    table.set(code, field ? { mark: code, kind, label, text, field } : { mark: code, kind, label, text });
+  const mark = (code: string, kind: MarkRef["kind"], label: string, text: string) => table.set(code, { mark: code, kind, label, text });
 
   const items = o.ctx.item.map((it, i) => {
     const text = asData(it.text);
-    mark(`I${i + 1}`, "item", `Item: ${it.label}`, text, it.field);
+    mark(`I${i + 1}`, "item", `Item: ${it.label}`, text);
     return `[I${i + 1}] ${it.field} (${it.label})\n${text}`;
   });
   const readOnly = o.ctx.readOnly.map((line) => `Somente leitura: ${asData(line)}`);
@@ -410,9 +409,10 @@ export async function runAssistant(deps: EngineDeps, o: RunInput): Promise<Assis
     output_tokens: res.outputTokens ?? 0,
   };
 
-  // 6. conferências da resposta, sem confiar nela: primeiro os limites do esquema (corta, limita e separa marcas; o que não tem
-  // conserto sai com aviso) e a conferência estrita; depois campo a campo
-  const fitted = fitOutput(mode, res.output);
+  // 6. conferências da resposta, sem confiar nela: primeiro tira os caracteres invisíveis de todo texto (decisão D6); depois os
+  // limites do esquema (corta, limita e separa marcas; o que não tem conserto sai com aviso) e a conferência estrita; depois
+  // campo a campo
+  const fitted = fitOutput(mode, stripInvisible(res.output));
   const invalid = validate(schemaFor(mode), fitted.output);
   if (invalid.length) throw httpError(502, `O assistente falhou: Resposta fora do formato: ${invalid.slice(0, 5).join("; ")}`);
   warnings.push(...fitted.warnings);
@@ -467,20 +467,17 @@ export async function runAssistant(deps: EngineDeps, o: RunInput): Promise<Assis
     const grounded = refs.some((r) => r.kind !== "item");
     const current: FieldValue | null = values[field.name] ?? null;
     const picked = pickValue(field.kind, raw.value);
-    // campo que exige fonte sem [T]/[F] válido: "Sem fonte". No Conversar só passa a reescrita do texto que já está no campo
-    // (Só redação): citando só o [I] dele, sem marca inexistente (decisão D1), e com o texto novo feito das palavras do atual e
-    // de tamanho parecido (decisão D5, `isRewording`). Campo vazio, sem marca, com [I] de outro campo, com fonte inexistente
-    // (texto livre incluído) ou com texto novo demais vai para "Sem fonte".
-    const rewording =
-      mode === "conversar" &&
-      field.kind === "text" &&
-      !isEmptyValue(current) &&
-      refs.length > 0 &&
-      !unknown.length &&
-      refs.every((r) => r.kind === "item" && r.field === field.name) &&
-      typeof picked === "string" &&
-      isRewording(picked, valueText(current));
-    if (field.base === "fonte" && !grounded && !rewording) {
+    // valor que a aba recusa para este item (ex.: explicação que contradiz o gabarito gravado, decisão D6): vai para "A fonte
+    // não esclarece", com ou sem fonte
+    const refused = picked === null ? null : ctx.refuse?.(field.name, picked) ?? null;
+    if (refused) {
+      missing.push({ field: field.name, reason: refused });
+      warnings.push(...own);
+      return;
+    }
+    // campo que exige fonte sem [T]/[F] válido: "Sem fonte", em qualquer modo (Preencher, Conferir → Propor correção e
+    // Conversar). Marca [I] não basta, nem para reescrever o texto do próprio campo: não há "Só redação" (decisão D6).
+    if (field.base === "fonte" && !grounded) {
       noSource.push(field.name);
       warnings.push(...own);
       return;
@@ -513,7 +510,6 @@ export async function runAssistant(deps: EngineDeps, o: RunInput): Promise<Assis
       before: mode === "conversar" ? current : !append && !isEmptyValue(current) ? current : null,
       sources: toSourceRefs(refs),
       warnings: own,
-      redacao: mode === "conversar" && adapter.medical && field.base === "fonte" && !grounded,
       append,
       reason: mode === "conversar" ? String(raw.reason ?? "").trim() || null : null,
     });

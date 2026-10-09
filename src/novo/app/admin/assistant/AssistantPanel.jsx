@@ -1,7 +1,7 @@
 // Painel do assistente de IA, igual em todas as abas: três modos (Preencher, Conferir, Conversar), material opcional e cartões de
 // resultado. O painel só conhece campos genéricos; quem o usa diz o que "Usar" faz. Nada é salvo aqui.
 import React from "react";
-import { Badge, Banner, Button, Checkbox, SegmentedControl, SelectField, TextField } from "../../../ds";
+import { Banner, Button, Checkbox, SegmentedControl, SelectField, TextField } from "../../../ds";
 import { ASSIST_TEXTS, aiDefinedText, isEmptyValue, sameValue, valueText } from "../../../../shared/adminAssistant/types";
 import { itemDiff, wordDiff } from "../../../../shared/textDiff";
 import { TextArea, messageOf } from "../common.jsx";
@@ -49,7 +49,6 @@ function SuggestionCard({ item, field, label, mode, values, useLabel, used, stal
       <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }}>
         <span style={{ font: "var(--type-label)" }}>{label}</span>
         <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
-          {item.redacao && <Badge tone="warning" size="sm">{ASSIST_TEXTS.redacao}</Badge>}
           <Button size="sm" variant={used ? "ghost" : "secondary"} disabled={used} onClick={onUse}>{used ? "Usado" : useLabel}</Button>
           {!used && <Button size="sm" variant="ghost" onClick={onDiscard}>Descartar</Button>}
         </span>

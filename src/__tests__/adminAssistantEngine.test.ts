@@ -18,7 +18,7 @@ import {
   type OfficialPassage,
   type RunInput,
 } from "../../server/adminAssistant/engine";
-import { questoesAdapter } from "../../server/adminAssistant/adapters/questoes";
+import { explanationVerdict, questoesAdapter } from "../../server/adminAssistant/adapters/questoes";
 import { mockAdminAssist } from "../../server/adminAssistant/mock";
 import { ASSIST_TEXTS } from "../shared/adminAssistant/types";
 import { QUESTION_STATUS_LABEL } from "../shared/questions/status";
@@ -234,7 +234,7 @@ describe("assistente das abas — Preencher", () => {
     expect(r.no_source).toEqual(["expected_conduct"]);
     expect(seen.at(-1)!.input).toContain("Campos permitidos: topic (Tema)\n");
     expect(r.suggestions).toEqual([
-      expect.objectContaining({ field: "topic", value: "Bronquiolite", before: "Bronquiolite viral aguda", sources: [{ label: "Item: Tema", kind: "item" }], append: false, redacao: false }),
+      expect.objectContaining({ field: "topic", value: "Bronquiolite", before: "Bronquiolite viral aguda", sources: [{ label: "Item: Tema", kind: "item" }], append: false }),
     ]);
   });
 
@@ -409,24 +409,24 @@ describe("assistente das abas — Preencher", () => {
 });
 
 describe("assistente das abas — Conferir e Conversar", () => {
-  it("Conversar: o antes vem do formulário; mudança igual ao antes cai; só o [I] do próprio campo = Só redação", async () => {
+  it("Conversar: o antes vem do formulário; mudança igual ao antes cai", async () => {
     reply = () => ({
       reply: "Deixei a conduta mais clara.",
       changes: [
-        // [I9] é a própria conduta esperada no pedido (decisão D1); "Suporte clínico." reescreve o texto do campo (decisão D5)
-        { field: "expected_conduct", after: V("Suporte clínico."), sources: ["I9"], reason: "Mais claro." },
+        // campo que exige fonte só muda citando [T]/[F] (decisão D6)
+        { field: "expected_conduct", after: V("Suporte clínico."), sources: ["T1"], reason: "Mais claro." },
         { field: "topic", after: V("Bronquiolite viral aguda"), sources: [], reason: "Igual." },
       ],
     });
-    const r = await run({ mode: "conversar", message: "Deixe a conduta mais clara.", form: { ...FORM, expected_conduct: "Suporte clínico ao lactente." } });
+    const r = await run({ mode: "conversar", message: "Deixe a conduta mais clara.", form: { ...FORM, expected_conduct: "Suporte clínico ao lactente." }, material: MATERIAL });
     expect(r.reply).toBe("Deixei a conduta mais clara.");
     expect(r.suggestions).toHaveLength(1);
-    expect(r.suggestions[0]).toMatchObject({ field: "expected_conduct", before: "Suporte clínico ao lactente.", value: "Suporte clínico.", redacao: true, append: false, reason: "Mais claro." });
+    expect(r.suggestions[0]).toMatchObject({ field: "expected_conduct", before: "Suporte clínico ao lactente.", value: "Suporte clínico.", append: false, reason: "Mais claro." });
     expect(seen.at(-1)!.input).toContain("<pedido>\nDeixe a conduta mais clara.\n</pedido>");
     expect(seen.at(-1)!.schemaName).toBe("staziamed_assistente_conversar");
   });
 
-  it("Conversar: com trecho do material a mudança não é só redação; campo proibido cai", async () => {
+  it("Conversar: com trecho do material a mudança vale; campo proibido cai", async () => {
     reply = () => ({
       reply: "Pronto.",
       changes: [
@@ -435,7 +435,7 @@ describe("assistente das abas — Conferir e Conversar", () => {
       ],
     });
     const r = await run({ mode: "conversar", message: "Use o material e troque o gabarito.", material: MATERIAL });
-    expect(r.suggestions.map((s) => [s.field, s.redacao])).toEqual([["expected_conduct", false]]);
+    expect(r.suggestions.map((s) => s.field)).toEqual(["expected_conduct"]);
     expect(r.warnings).toContain(ASSIST_TEXTS.discarded);
   });
 
@@ -661,30 +661,27 @@ describe("assistente das abas — decisões da revisão final (D1, D3c, D3d, D3e
     }
   });
 
-  it("D1 Conversar: reescrever o texto que já está no campo citando o próprio [I] continua como Só redação", async () => {
+  it("D1/D6 Conversar: reescrever o texto do próprio campo citando só o [I] dele também vai para Sem fonte; o tema segue", async () => {
     reply = () => ({
       reply: "Reescrevi.",
       changes: [
-        // reescrita do texto do campo (decisão D5: as palavras do texto novo já estão no campo)
+        // reescrita do texto do campo, com as mesmas palavras: sem [T]/[F] já não passa (decisão D6)
         { field: "expected_conduct", after: V("Tratamento de suporte com oxigênio e hidratação."), sources: ["I9"], reason: "Mais claro." },
         { field: "topic", after: V("Bronquiolite"), sources: [], reason: "Mais curto." },
       ],
     });
     const r = await talk({ message: "Deixe a conduta mais clara e o tema mais curto.", form: { ...FORM, expected_conduct: "Suporte: oxigênio e hidratação." } });
-    expect(r.no_source).toEqual([]);
-    expect(r.suggestions.map((s) => [s.field, s.value, s.redacao, s.reason])).toEqual([
-      ["expected_conduct", "Tratamento de suporte com oxigênio e hidratação.", true, "Mais claro."],
-      ["topic", "Bronquiolite", false, "Mais curto."],
-    ]);
-    expect(r.suggestions[0].sources).toEqual([{ label: "Item: Conduta esperada", kind: "item" }]);
-    // com trecho do material vale normalmente, sem a marca de só redação
+    expect(r.no_source).toEqual(["expected_conduct"]);
+    expect(r.suggestions.map((s) => [s.field, s.value, s.reason])).toEqual([["topic", "Bronquiolite", "Mais curto."]]);
+    // com trecho do material vale normalmente
     reply = () => ({ reply: "Ok.", changes: [{ field: "inep_intent", after: V("Avalia o tratamento de suporte."), sources: ["T1"], reason: "Do material." }] });
     const grounded = await talk({ material: MATERIAL });
-    expect(grounded.suggestions.map((s) => [s.field, s.redacao])).toEqual([["inep_intent", false]]);
+    expect(grounded.suggestions.map((s) => s.field)).toEqual(["inep_intent"]);
     expect(grounded.no_source).toEqual([]);
     // o pedido diz a regra à IA
     const system = seen.at(-1)!.system;
-    expect(system).toContain("campo vazio não se escreve");
+    expect(system).toContain("qualquer mudança, inclusive só melhorar a redação, só com trecho [T] ou [F] citado; marca [I] não basta");
+    expect(system).not.toMatch(/só redação/i);
     expect(system).toContain("- expected_conduct (Conduta esperada): texto em \"text\", até 4000 caracteres; exige trecho [T] ou [F] citado");
   });
 
@@ -820,9 +817,9 @@ describe("assistente das abas — decisões da revisão final (D1, D3c, D3d, D3e
   });
 });
 
-describe("assistente das abas — decisão D5: fonte que não é marca e Só redação só para reescrita", () => {
-  // [I9] é a própria conduta esperada no pedido. Com esta conduta, a mudança abaixo é uma reescrita (todas as palavras de 4+
-  // letras já estão no campo), então só a fonte citada decide o resultado.
+describe("assistente das abas — decisão D5: fonte que não é marca (com a D6, sem Só redação)", () => {
+  // [I9] é a própria conduta esperada no pedido. A mudança abaixo usa as palavras que já estão no campo, então só a fonte
+  // citada decide o resultado.
   const CONDUCT = "Suporte: oxigênio se a saturação cair e hidratação.";
   const RICH = { ...FORM, expected_conduct: CONDUCT };
   const talk = (o: Partial<RunInput> = {}) => run({ mode: "conversar", message: "Ajuste a conduta.", form: RICH, ...o });
@@ -835,10 +832,12 @@ describe("assistente das abas — decisão D5: fonte que não é marca e Só red
       expect({ sources, suggestions: r.suggestions, no_source: r.no_source }).toEqual({ sources, suggestions: [], no_source: ["expected_conduct"] });
       expect(r.warnings.filter((w) => w.startsWith("Conduta esperada: fonte inexistente descartada ("))).toHaveLength(1);
     }
-    // a mesma reescrita citando só o próprio [I] passa como Só redação
+    // só o próprio [I] também não basta (decisão D6); com [T1] a mesma mudança vale
     reply = change("Suporte com oxigênio e hidratação se a saturação cair.", ["I9"]);
-    const ok = await talk();
-    expect(ok.suggestions.map((s) => [s.field, s.redacao])).toEqual([["expected_conduct", true]]);
+    expect((await talk()).no_source).toEqual(["expected_conduct"]);
+    reply = change("Suporte com oxigênio e hidratação se a saturação cair.", ["T1"]);
+    const ok = await talk({ material: MATERIAL });
+    expect(ok.suggestions.map((s) => s.field)).toEqual(["expected_conduct"]);
     expect(ok.no_source).toEqual([]);
   });
 
@@ -850,37 +849,17 @@ describe("assistente das abas — decisão D5: fonte que não é marca e Só red
     expect(r.no_source).toEqual(["expected_conduct"]);
   });
 
-  it("D5 Conversar: texto novo com outras palavras ou longo demais para ser reescrita vai para Sem fonte", async () => {
-    // outras palavras: só "suporte" está no campo (1 de 4)
-    reply = change("Suporte com corticoide inalatório e adrenalina nebulizada.", ["I9"]);
-    expect((await talk()).no_source).toEqual(["expected_conduct"]);
-    // mesmas palavras, mas passa de 1,5× o tamanho atual + 40 caracteres
-    reply = change(`${CONDUCT} ${CONDUCT} ${CONDUCT}`, ["I9"]);
-    const long = await talk();
-    expect(long.suggestions).toEqual([]);
-    expect(long.no_source).toEqual(["expected_conduct"]);
-  });
-
-  it("D5 Conversar: reescrita de verdade do texto do campo, citando o próprio [I], continua Só redação", async () => {
+  it("D5/D6 Conversar: reescrita de verdade do texto do campo, citando o próprio [I], vai para Sem fonte", async () => {
     reply = () => ({
       reply: "Reescrevi.",
       changes: [{ field: "expected_conduct", after: V("Tratamento de suporte, com hidratação e oxigênio quando a saturação cair."), sources: ["[I9]"], reason: "Mais claro." }],
     });
     const r = await talk({ message: "Deixe a conduta mais clara." });
-    expect(r.no_source).toEqual([]);
-    expect(r.suggestions).toEqual([
-      expect.objectContaining({
-        field: "expected_conduct",
-        before: CONDUCT,
-        value: "Tratamento de suporte, com hidratação e oxigênio quando a saturação cair.",
-        sources: [{ label: "Item: Conduta esperada", kind: "item" }],
-        redacao: true,
-        reason: "Mais claro.",
-      }),
-    ]);
-    // o pedido diz à IA que fonte é só código de marca e que reescrita é com as palavras do campo
+    expect(r.suggestions).toEqual([]);
+    expect(r.no_source).toEqual(["expected_conduct"]);
+    // o pedido diz à IA que fonte é só código de marca e não fala mais em reescrita sem fonte
     expect(seen.at(-1)!.system).toContain("Texto que não é marca (ex.: nome de diretriz ou \"conhecimento geral\") conta como fonte inexistente.");
-    expect(seen.at(-1)!.system).toContain("com as palavras que já estão nele e tamanho parecido");
+    expect(seen.at(-1)!.system).not.toContain("com as palavras que já estão nele e tamanho parecido");
   });
 
   it("D5 Preencher e Conferir: fonte em texto livre com uma marca dentro não vira citação dessa marca", async () => {
@@ -900,5 +879,186 @@ describe("assistente das abas — decisão D5: fonte que não é marca e Só red
     reply = () => ({ findings: [{ field: "expected_conduct", kind: "desatualizado", detail: "Mudou.", sources: ["sem trecho: T1 não cobre isso"] }] });
     const c = await run({ mode: "conferir", material: MATERIAL });
     expect(c.findings.map((f) => [f.field, f.suspeita, f.sources])).toEqual([["expected_conduct", true, []]]);
+  });
+});
+
+describe("assistente das abas — decisão D6: campo médico só com [T]/[F], explicação não contradiz o gabarito, sem caracteres invisíveis", () => {
+  // No FORM, [I9] é a conduta esperada (as explicações estão vazias e ficam de fora do pedido). O gabarito gravado é B.
+  const change = (field: string, after: string, sources: string[]) => () => ({ reply: "Ok.", changes: [{ field, after: V(after), sources, reason: "Pedido." }] });
+  const talk = (form: Record<string, unknown>, o: Partial<RunInput> = {}) => run({ mode: "conversar", message: "Ajuste o texto.", form, ...o });
+  const withExplanation = (letter: string, explanation: string) => ({
+    ...FORM,
+    options: LETTERS.map((id) => ({ id, text: `Alternativa ${id} da prova.`, explanation: id === letter ? explanation : "" })),
+  });
+  const INVISIBLE = /[\p{Cf}\u00AD]/u;
+
+  it("D6 negação invertida citando só o próprio [I] vai para Sem fonte (conduta e explicação)", async () => {
+    const conduct = "Não usar corticoide na bronquiolite; suporte com oxigênio e hidratação.";
+    reply = change("expected_conduct", "Usar corticoide na bronquiolite; suporte com oxigênio e hidratação.", ["I9"]);
+    const r = await talk({ ...FORM, expected_conduct: conduct });
+    expect(seen.at(-1)!.input).toContain(`[I9] expected_conduct (Conduta esperada)\n${conduct}`);
+    expect(r.suggestions).toEqual([]);
+    expect(r.no_source).toEqual(["expected_conduct"]);
+    // explicação da A (errada): [I9] passa a ser a própria explicação
+    const before = "Não é a conduta indicada: corticoide não tem benefício na bronquiolite.";
+    reply = change("explanation_A", "É a conduta indicada: corticoide tem benefício na bronquiolite.", ["[I9]"]);
+    const e = await talk(withExplanation("A", before));
+    expect(seen.at(-1)!.input).toContain(`[I9] explanation_A (Explicação da A)\n${before}`);
+    expect(e.suggestions).toEqual([]);
+    expect(e.no_source).toEqual(["explanation_A"]);
+  });
+
+  it("D6 remédios acrescentados citando só o próprio [I] vão para Sem fonte", async () => {
+    const conduct = "Suporte com oxigênio, hidratação e aspiração nasal; observar sinais de gravidade.";
+    for (const sources of [["I9"], ["[I9]", "I9"], [" i9 "]]) {
+      reply = change("expected_conduct", `${conduct.slice(0, -1)}; salbutamol e adrenalina nebulizada.`, sources);
+      const r = await talk({ ...FORM, expected_conduct: conduct });
+      expect({ sources, suggestions: r.suggestions, no_source: r.no_source }).toEqual({ sources, suggestions: [], no_source: ["expected_conduct"] });
+    }
+  });
+
+  it("D6 Propor correção sem fonte: o achado vai para o Conversar e a mudança sem [T]/[F] vai para Sem fonte", async () => {
+    const form = { ...FORM, expected_conduct: "Suporte: oxigênio e hidratação." };
+    const detail = "A conduta não diz a ordem do suporte.";
+    reply = () => ({ findings: [{ field: "expected_conduct", kind: "pouco_claro", detail, sources: ["I9"] }] });
+    const found = await run({ mode: "conferir", form });
+    expect(found.findings.map((f) => [f.field, f.detail])).toEqual([["expected_conduct", detail]]);
+    // "Propor correção" leva ao Conversar o pedido "Conduta esperada: <detalhe>" (AssistantPanel, `propose`)
+    const message = `Conduta esperada: ${found.findings[0].detail}`;
+    for (const sources of [["I9"], [], ["I4"]]) {
+      reply = change("expected_conduct", "Hidratação e oxigênio: suporte.", sources);
+      const r = await talk(form, { message });
+      expect(seen.at(-1)!.input).toContain(`<pedido>\n${message}\n</pedido>`);
+      expect({ sources, suggestions: r.suggestions, no_source: r.no_source }).toEqual({ sources, suggestions: [], no_source: ["expected_conduct"] });
+    }
+  });
+
+  it("D6 explicação que contradiz o gabarito gravado é recusada mesmo citando [T]: vai para 'A fonte não esclarece'", async () => {
+    expect(ASSIST_TEXTS.contradicts).toBe("A explicação contradiz o gabarito gravado.");
+    reply = () => ({
+      suggestions: [
+        { field: "explanation_A", value: V("Incorreta, pois antibiótico não trata a bronquiolite."), sources: ["T1"] },
+        // B é o gabarito gravado
+        { field: "explanation_B", value: V("Incorreta: o tratamento da bronquiolite é de suporte."), sources: ["T1"] },
+        { field: "explanation_C", value: V("Correta. Oxigênio se saturação abaixo de 90%."), sources: ["T1"] },
+        { field: "explanation_D", value: V("Alternativa D: errada; o suporte é a base."), sources: ["T1"] },
+      ],
+      missing: [],
+    });
+    const r = await run({ fields: ["explanation_A", "explanation_B", "explanation_C", "explanation_D"], material: MATERIAL });
+    expect(r.suggestions.map((s) => s.field)).toEqual(["explanation_A", "explanation_D"]);
+    expect(r.missing).toEqual([
+      { field: "explanation_B", reason: ASSIST_TEXTS.contradicts },
+      { field: "explanation_C", reason: ASSIST_TEXTS.contradicts },
+    ]);
+    expect(r.no_source).toEqual([]);
+    // no Conversar também, com maiúsculas, acentos e o começo "A alternativa"/"Alternativa X"
+    const cases: [string, string, boolean][] = [
+      ["explanation_B", "A alternativa B está ERRADA porque o suporte não basta.", true],
+      ["explanation_B", "Alternativa B — falsa: a conduta é outra.", true],
+      ["explanation_B", "Não é a correta: falta oxigênio.", true],
+      ["explanation_C", "A ALTERNATIVA C É CORRETA, pois trata a bronquiolite.", true],
+      ["explanation_C", "Verdadeira: oxigênio resolve.", true],
+      ["explanation_C", "certa, já que trata.", true],
+      ["explanation_B", "Correta: o tratamento é de suporte.", false],
+      ["explanation_C", "Incorreta: o tratamento é de suporte.", false],
+      ["explanation_C", "A alternativa correta é a B; a C não trata a bronquiolite.", false],
+      ["explanation_C", "Corretamente, o tratamento é de suporte; a C não é.", false],
+    ];
+    for (const [field, after, refused] of cases) {
+      reply = change(field, after, ["T1"]);
+      const t = await talk(FORM, { material: MATERIAL });
+      expect({ after, missing: t.missing, fields: t.suggestions.map((s) => s.field) }).toEqual({
+        after,
+        missing: refused ? [{ field, reason: ASSIST_TEXTS.contradicts }] : [],
+        fields: refused ? [] : [field],
+      });
+    }
+  });
+
+  it("D6 veredito no começo da explicação: maiúsculas, acentos, 'Alternativa X', 'A alternativa' e letra", () => {
+    expect(explanationVerdict("Correta.")).toEqual({ letter: null, correct: true });
+    expect(explanationVerdict("  INCORRETA: o tratamento é outro.")).toEqual({ letter: null, correct: false });
+    expect(explanationVerdict("— Errada, pois")).toEqual({ letter: null, correct: false });
+    expect(explanationVerdict("Está correta.")).toEqual({ letter: null, correct: true });
+    expect(explanationVerdict("É falsa.")).toEqual({ letter: null, correct: false });
+    expect(explanationVerdict("Não está correta.")).toEqual({ letter: null, correct: false });
+    expect(explanationVerdict("Alternativa B: correta")).toEqual({ letter: "B", correct: true });
+    expect(explanationVerdict("A alternativa C é a correta")).toEqual({ letter: "C", correct: true });
+    expect(explanationVerdict("A alternativa está incorreta")).toEqual({ letter: null, correct: false });
+    expect(explanationVerdict("Alternativa incorreta: o tratamento é outro.")).toEqual({ letter: null, correct: false });
+    expect(explanationVerdict("Letra D — errada")).toEqual({ letter: "D", correct: false });
+    expect(explanationVerdict("(B) Verdadeira")).toEqual({ letter: "B", correct: true });
+    expect(explanationVerdict("c) Falsa")).toEqual({ letter: "C", correct: false });
+    expect(explanationVerdict("É a alternativa correta, pois trata a bronquiolite.")).toEqual({ letter: null, correct: true });
+    expect(explanationVerdict("Esta é a alternativa incorreta.")).toEqual({ letter: null, correct: false });
+    expect(explanationVerdict("Não é a alternativa correta.")).toEqual({ letter: null, correct: false });
+    // "e" (conjunção) não é o verbo "é"
+    expect(explanationVerdict("Correta e completa: o tratamento é de suporte.")).toEqual({ letter: null, correct: true });
+    expect(explanationVerdict("In\u00ADcor\u200Breta.")).toEqual({ letter: null, correct: false });
+    // sem veredito no começo
+    expect(explanationVerdict("A alternativa correta é a B.")).toBeNull();
+    expect(explanationVerdict("A correta é a B.")).toBeNull();
+    expect(explanationVerdict("Corretamente indicada.")).toBeNull();
+    expect(explanationVerdict("Bronquiolite: o tratamento é de suporte; a alternativa é incorreta.")).toBeNull();
+    expect(explanationVerdict("D-dímero não entra aqui.")).toBeNull();
+    expect(explanationVerdict("Não é incorreta.")).toBeNull();
+    expect(explanationVerdict("")).toBeNull();
+  });
+
+  it("D6 caracteres invisíveis e hífen suave saem de todo valor da IA antes das conferências e da tela", async () => {
+    reply = () => ({
+      suggestions: [
+        { field: "expected_conduct", value: V("Su\u200Bporte com oxi\u00ADgênio\u2060 se saturação abaixo de 90%.\uFEFF"), sources: ["T\u200B1"] },
+        { field: "topic", value: V("Bron\u00ADquiolite\u200D"), sources: ["I\u200C1"] },
+        // contradição escondida por caracteres invisíveis continua recusada
+        { field: "explanation_B", value: V("In\u200Bcor\u00ADreta: o tratamento é outro."), sources: ["T1"] },
+      ],
+      missing: [{ field: "inep_intent", reason: "Sem\u200B trecho\u00AD." }],
+    });
+    const r = await run({ fields: ["expected_conduct", "topic", "explanation_B", "inep_intent"], material: MATERIAL });
+    expect(r.suggestions.map((s) => [s.field, s.value, s.sources.map((x) => x.label), s.warnings])).toEqual([
+      ["expected_conduct", "Suporte com oxigênio se saturação abaixo de 90%.", ["p. 3"], []],
+      ["topic", "Bronquiolite", ["Item: Tema"], []],
+    ]);
+    expect(r.missing).toEqual([
+      { field: "explanation_B", reason: ASSIST_TEXTS.contradicts },
+      { field: "inep_intent", reason: "Sem trecho." },
+    ]);
+    expect(r.warnings.join(" ")).not.toContain("fonte inexistente");
+    expect(INVISIBLE.test(JSON.stringify(r))).toBe(false);
+    // Conversar: resposta, motivo e valor
+    reply = () => ({ reply: "Pron\u200Bto.", changes: [{ field: "expected_conduct", after: V("Su\u00ADporte com oxigênio."), sources: ["T1"], reason: "Mais\u2060 claro." }] });
+    const t = await talk(FORM, { material: MATERIAL });
+    expect(t.reply).toBe("Pronto.");
+    expect(t.suggestions.map((s) => [s.value, s.reason])).toEqual([["Suporte com oxigênio.", "Mais claro."]]);
+    expect(INVISIBLE.test(JSON.stringify(t))).toBe(false);
+    // Conferir: detalhe
+    reply = () => ({ findings: [{ field: "topic", kind: "pouco_claro", detail: "Te\u200Bma\u00AD longo.", sources: ["I\u200B1"] }] });
+    const c = await run({ mode: "conferir" });
+    expect(c.findings.map((f) => [f.detail, f.suspeita])).toEqual([["Tema longo.", false]]);
+    expect(INVISIBLE.test(JSON.stringify(c))).toBe(false);
+  });
+
+  it("D6 mudança válida citando [T1] continua virando sugestão (Conversar e Preencher), sem marca de só redação", async () => {
+    reply = change("expected_conduct", "Suporte com oxigênio se saturação abaixo de 90% e hidratação.", ["T1"]);
+    const r = await talk(FORM, { material: MATERIAL });
+    expect(r.no_source).toEqual([]);
+    expect(r.suggestions).toEqual([
+      {
+        id: "s1",
+        field: "expected_conduct",
+        value: "Suporte com oxigênio se saturação abaixo de 90% e hidratação.",
+        before: "Suporte.",
+        sources: [{ label: "p. 3", kind: "material" }],
+        warnings: [],
+        append: false,
+        reason: "Pedido.",
+      },
+    ]);
+    reply = () => ({ suggestions: [{ field: "explanation_B", value: V("Correta: o tratamento é de suporte, com oxigênio se saturação abaixo de 90%."), sources: ["T1"] }], missing: [] });
+    const p = await run({ fields: ["explanation_B"], material: MATERIAL });
+    expect(p.suggestions.map((s) => [s.field, s.sources])).toEqual([["explanation_B", [{ label: "p. 3", kind: "material" }]]]);
+    expect(p.missing).toEqual([]);
   });
 });

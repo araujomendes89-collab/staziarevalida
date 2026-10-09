@@ -5,10 +5,10 @@ import { validate } from "../../server/contentHub/ai/schema";
 import { ADMIN_ASSIST_VERSION, VALUE_SCHEMA, fitOutput, pickValue, schemaFor } from "../../server/adminAssistant/schemas";
 import {
   checkValue,
-  isRewording,
   newLines,
   numberWarning,
   resolveMarks,
+  stripInvisible,
   toSourceRefs,
   unknownSourceWarning,
   unsupportedNumbers,
@@ -215,7 +215,7 @@ describe("assistente das abas — esquemas por modo", () => {
   });
 });
 
-describe("assistente das abas — fontes que não são marca e Só redação (decisão D5)", () => {
+describe("assistente das abas — fontes que não são marca (decisão D5)", () => {
   it("fitOutput só separa marcas quando a fonte é só marcas e separadores; o resto fica como marca desconhecida, cortada se longa", () => {
     const sources = ["T1, T2", "[I9]", " t3 ; F2 ", "I9 e literatura", "Diretriz SBP 2023", "T1", "Livro", "[T1]      x"];
     const { output, warnings } = fitOutput("preencher", { suggestions: [{ field: "topic", value: V("Bronquiolite"), sources }], missing: [] }) as any;
@@ -231,27 +231,38 @@ describe("assistente das abas — fontes que não são marca e Só redação (de
     const marks = (fitOutput("conversar", { reply: "x", changes: [{ field: "topic", after: V("x"), sources: ["[T1] [F1]", "t1;F1", "T1 / F1."], reason: "x" }] }).output as any).changes[0].sources;
     expect(marks).toEqual(["T1", "F1"]);
   });
+});
 
-  it("reescrita: 60% das palavras de 4+ letras do texto novo (sem acento, sem repetir) estão no atual", () => {
-    const current = "Suporte com oxigênio e hidratação venosa.";
-    // 3 de 5 (60%): suporte, oxigenio, hidratacao estão; observar e sinais não
-    expect(isRewording("Suporte, OXIGENIO e hidratacao; observar sinais.", current)).toBe(true);
-    // 2 de 4 (50%)
-    expect(isRewording("Suporte com oxigênio, corticoide e nebulização.", current)).toBe(false);
-    // palavra repetida conta uma vez: suporte e corticoide (50%)
-    expect(isRewording("Suporte, suporte, suporte e corticoide.", "Suporte.")).toBe(false);
-    // sem palavra de 4+ letras no texto novo não há como conferir: não é reescrita
-    expect(isRewording("O2 e IV.", "Oxigênio e via venosa.")).toBe(false);
-    // campo com uma letra (ou vazio) reescrito em texto médico novo
-    expect(isRewording("Oxigênio se saturação abaixo de 92%.", "S.")).toBe(false);
-    expect(isRewording("Suporte.", "")).toBe(false);
-  });
-
-  it("reescrita: o texto novo tem no máximo 1,5× o tamanho do atual + 40 caracteres", () => {
-    // "Suporte." tem 8 caracteres: até 52
-    expect(isRewording(`Suporte${".".repeat(45)}`, "Suporte.")).toBe(true);
-    expect(isRewording(`Suporte${".".repeat(46)}`, "Suporte.")).toBe(false);
-    // espaços das pontas não contam
-    expect(isRewording(`  Suporte${".".repeat(45)}  `, "  Suporte.  ")).toBe(true);
+describe("assistente das abas — caracteres invisíveis na resposta da IA (decisão D6)", () => {
+  it("stripInvisible tira \\p{Cf} e o hífen suave de todo texto, em qualquer profundidade, sem mexer no resto", () => {
+    const raw = {
+      reply: "Pron\u200Bto\uFEFF.",
+      changes: [
+        {
+          field: "expected\u200C_conduct",
+          after: { text: "Su\u00ADporte\u2060 com oxi\u200Dgênio\u202E.", items: ["a\u200Bb", 3], timeline: null, flashcards: [{ front: "F\u00AD?", back: "V" }] },
+          sources: ["T\u200B1", "\u2066I9\u2069"],
+          reason: "Mais claro.",
+        },
+      ],
+      n: 2,
+      ok: true,
+    };
+    expect(stripInvisible(raw)).toEqual({
+      reply: "Pronto.",
+      changes: [
+        {
+          field: "expected_conduct",
+          after: { text: "Suporte com oxigênio.", items: ["ab", 3], timeline: null, flashcards: [{ front: "F?", back: "V" }] },
+          sources: ["T1", "I9"],
+          reason: "Mais claro.",
+        },
+      ],
+      n: 2,
+      ok: true,
+    });
+    // espaço, quebra de linha, acento e emoji simples ficam
+    expect(stripInvisible("Saturação  abaixo\nde 92% ✓")).toBe("Saturação  abaixo\nde 92% ✓");
+    expect(stripInvisible(null)).toBeNull();
   });
 });

@@ -125,7 +125,6 @@ describe("assistente das abas — valores e textos comuns", () => {
       noSource: "Sem fonte: cole um trecho da diretriz ou envie o material",
       discarded: "Sugestão para campo que o assistente não muda foi descartada",
       suspeita: "Suspeita sem fonte: confira antes de mudar",
-      redacao: "Só redação: confira se nada novo entrou",
       stale: "O campo mudou depois da proposta: peça de novo",
       diverge: "A fonte diverge do gabarito oficial: veja o Conferir",
       newFeature: "Recurso novo: confirme que o plano tem",
@@ -138,6 +137,7 @@ describe("assistente das abas — valores e textos comuns", () => {
       aiDefined: "IA definida na Central de IAs: {IA} {modelo}",
       centralName: "Assistente: conversar e revisar",
       noAnswer: "Grave o gabarito antes de pedir as explicações.",
+      contradicts: "A explicação contradiz o gabarito gravado.",
     });
   });
 

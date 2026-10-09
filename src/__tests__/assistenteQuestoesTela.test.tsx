@@ -13,7 +13,7 @@ vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => f
 import { QuestionEditor } from "../novo/app/admin/AdminQuestions.jsx";
 
 const LINE = { ready: true, label: "Gemini", model: "gemini-2.5-pro", pending: null };
-const S = (o: any) => ({ id: "s1", before: null, sources: [{ label: "p. 3", kind: "material" }], warnings: [], redacao: false, append: false, reason: null, ...o });
+const S = (o: any) => ({ id: "s1", before: null, sources: [{ label: "p. 3", kind: "material" }], warnings: [], append: false, reason: null, ...o });
 const R = (o: any) => ({ mode: "preencher", suggestions: [], findings: [], missing: [], reply: null, no_source: [], warnings: [], usage: null, ...o });
 const ROW = {
   id: "q1", code: "REV-2024-1-001", attempts: 3, exam: { kind: "REVALIDA", year: 2024, semester: 1 }, number: 1, area: "PEDIATRIA", topic: "Bronquiolite", subtopic: "",

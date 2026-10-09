@@ -8,7 +8,7 @@ import { AssistantPanel } from "../novo/app/admin/assistant/AssistantPanel.jsx";
 const FIELDS = [{ name: "resumo", label: "Resumo", kind: "text", ai: "editar" }, { name: "passos", label: "Passos", kind: "lines", ai: "editar" }, { name: "titulo", label: "Título", kind: "text", ai: "conferir" }, { name: "nota", label: "Nota", kind: "text", ai: "nunca" }];
 const LINE = { ready: true, label: "Gemini", model: "gemini-2.5-pro", pending: null };
 const STATUS = { preencher: LINE, conferir: LINE, conversar: LINE };
-const S = (o: any) => ({ id: "s1", before: null, sources: [{ label: "p. 3", kind: "material" }], warnings: [], redacao: false, append: false, reason: null, ...o });
+const S = (o: any) => ({ id: "s1", before: null, sources: [{ label: "p. 3", kind: "material" }], warnings: [], append: false, reason: null, ...o });
 const R = (o: any) => ({ mode: "preencher", suggestions: [], findings: [], missing: [], reply: null, no_source: [], warnings: [], usage: null, ...o });
 const modeRadios = () => within(screen.getByRole("radiogroup", { name: "Modo" })).getAllByRole("radio").map((r) => r.textContent);
 
@@ -266,5 +266,29 @@ describe("AssistantPanel — decisões da revisão final (D2, D3b)", () => {
     fireEvent.click(within(card).getByRole("button", { name: "Usar" }));
     expect(within(card).getByText("O campo mudou depois da proposta: peça de novo")).toBeTruthy();
     expect(onUse).not.toHaveBeenCalled();
+  });
+});
+
+describe("AssistantPanel — decisão D6", () => {
+  it("D6 não mostra Só redação (nem se a resposta trouxer a marca antiga); Sem fonte e a explicação que contradiz o gabarito aparecem", async () => {
+    const run = async () =>
+      R({
+        mode: "conversar",
+        reply: "Feito.",
+        suggestions: [S({ field: "resumo", before: "Velho.", value: "Novo.", redacao: true })],
+        no_source: ["passos"],
+        missing: [{ field: "titulo", reason: "A explicação contradiz o gabarito gravado." }],
+      });
+    render(<Panel status={STATUS} fields={FIELDS} values={{ resumo: "Velho." }} run={run} onUse={vi.fn()} />);
+    fireEvent.click(within(screen.getByRole("radiogroup", { name: "Modo" })).getByRole("radio", { name: "Conversar" }));
+    fireEvent.change(screen.getByLabelText("Pedido"), { target: { value: "Melhore a redação." } });
+    fireEvent.click(screen.getByRole("button", { name: "Enviar" }));
+    const card = await screen.findByRole("region", { name: "Sugestão: Resumo" });
+    expect(screen.queryByText(/Só redação/)).toBeNull();
+    expect(within(card).getByRole("button", { name: "Usar" })).toBeTruthy();
+    expect(screen.getByText("Passos: Sem fonte: cole um trecho da diretriz ou envie o material")).toBeTruthy();
+    expect(screen.getByText("Título: A explicação contradiz o gabarito gravado.")).toBeTruthy();
+    // o texto saiu dos textos exatos do painel
+    expect(fs.readFileSync(path.join(__dirname, "../novo/app/admin/assistant/AssistantPanel.jsx"), "utf8")).not.toMatch(/redacao/);
   });
 });

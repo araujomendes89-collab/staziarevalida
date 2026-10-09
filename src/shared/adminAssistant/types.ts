@@ -66,7 +66,6 @@ export interface AssistSuggestion {
   before: FieldValue | null;
   sources: SourceRef[];
   warnings: string[];
-  redacao: boolean;
   append: boolean;
   reason: string | null;
 }
@@ -123,7 +122,6 @@ export const ASSIST_TEXTS = {
   noSource: "Sem fonte: cole um trecho da diretriz ou envie o material",
   discarded: "Sugestão para campo que o assistente não muda foi descartada",
   suspeita: "Suspeita sem fonte: confira antes de mudar",
-  redacao: "Só redação: confira se nada novo entrou",
   stale: "O campo mudou depois da proposta: peça de novo",
   diverge: "A fonte diverge do gabarito oficial: veja o Conferir",
   newFeature: "Recurso novo: confirme que o plano tem",
@@ -137,6 +135,8 @@ export const ASSIST_TEXTS = {
   centralName: "Assistente: conversar e revisar",
   /** Questão sem gabarito gravado (nova ou vazio no banco): as explicações não vão para a IA (decisão C2). */
   noAnswer: "Grave o gabarito antes de pedir as explicações.",
+  /** Explicação sugerida que começa dizendo o contrário do gabarito gravado (decisão D6): vai para "A fonte não esclarece". */
+  contradicts: "A explicação contradiz o gabarito gravado.",
 } as const;
 
 /** Linha "IA definida na Central de IAs: {IA} {modelo}" preenchida (sem modelo, só a IA). */

@@ -81,19 +81,17 @@ campo que o assistente não muda diz quem muda: "O gabarito só muda pelo regist
 Pedido de até 1.000 caracteres. Volta uma resposta curta e as mudanças: campo, depois, fontes, motivo. O **antes vem do
 formulário enviado**, não da IA. A tela mostra a diferença por palavra (texto) ou por item (listas). "Usar" troca o campo pelo
 "depois". Se o campo mudou desde a proposta, "Usar" não aplica e avisa "O campo mudou depois da proposta: peça de novo".
-Pedido de campo proibido: a resposta explica e não traz mudança. Nas abas médicas, mudança em campo de base "fonte"
-(explicações, conduta esperada, o que a questão avalia) sem nenhum `[T]` ou `[F]` válido vai para "Sem fonte: cole um trecho da
-diretriz ou envie o material", **sem sugestão**, quando: o campo está vazio, ou a mudança não cita marca nenhuma, ou cita marca
-que não é o `[I]` do próprio campo (o `[I]` de outro campo do item ou uma marca inexistente). Fonte citada em texto livre
+Pedido de campo proibido: a resposta explica e não traz mudança. Nas abas médicas, campo de base "fonte" (explicações,
+conduta esperada, o que a questão avalia) **nunca** aceita "Só redação": qualquer mudança, inclusive só melhorar a redação,
+precisa de **pelo menos um `[T]` ou `[F]` válido**; sem isso vai para "Sem fonte: cole um trecho da diretriz ou envie o
+material", **sem sugestão**. Citar só marcas `[I]` (a do próprio campo ou a de outro) não basta, e fonte citada em texto livre
 ("Diretriz SBP 2023", "Conhecimento médico geral", "I9 e literatura", "sem trecho: T1 não cobre isso") conta como marca
-inexistente, mesmo com uma marca dentro do texto (§6.5.1). Só passa, marcada "Só redação: confira se nada novo entrou", a
-reescrita do texto que já existe naquele campo citando só o `[I]` dele (sem fato novo), e só quando o texto novo é mesmo uma
-reescrita do atual: **pelo menos 60% das palavras de 4 letras ou mais do texto novo** (sem repetir, minúsculas e sem acento)
-**estão no texto atual**, e o texto novo tem **no máximo 1,5 vez o tamanho do atual mais 40 caracteres** (sem os espaços das
-pontas); texto novo sem palavra de 4 letras ou mais não conta como reescrita. Fora disso, "Sem fonte" (ex.: campo com "S."
-reescrito numa frase médica nova). Sem material e sem trecho oficial, só sai esse tipo de mudança nesses campos. "Propor
-correção" passa pela mesma regra. Cada mudança mostra o motivo no cartão. (Decisões D1 e D5 da revisão final: a regra do dono —
-texto médico só com fonte — vence o texto anterior, que deixava "Só redação" para qualquer mudança que citasse o item.)
+inexistente, mesmo com uma marca dentro do texto (§6.5.1). Para melhorar a redação desses campos, a pessoa cola o trecho da
+diretriz (ou envia o material) e a IA reescreve citando esse trecho. Sem material e sem trecho oficial, esses campos não mudam
+pelo Conversar. "Propor correção" passa pela mesma regra, e o Preencher também. Cada mudança mostra o motivo no cartão.
+(Decisões D1, D5 e D6 da revisão final: a regra do dono — texto médico só com fonte — vence o texto anterior. A D6 tirou a
+exceção "Só redação", porque a reescrita conferida só contra o próprio texto do campo deixava passar negação invertida — "Não
+usar corticoide…" virando "Usar corticoide…" — e remédio acrescentado.)
 
 ## 5. Por aba
 ### 5.1 Questões (primeira)
@@ -109,6 +107,12 @@ Aviso fixo no topo do painel: **"O que você salvar aparece na hora para o aluno
   não esclarece" com "A fonte diverge do gabarito oficial: veja o Conferir". Questão anulada: sem explicação de gabarito. Sem
   gabarito gravado (questão nova ou vazio no banco), explicações, conduta esperada e "o que a questão avalia" não vão para a IA:
   voltam em "A fonte não esclarece" com "Grave o gabarito antes de pedir as explicações." (decisões C2 e D3).
+- Explicação sugerida que começa dizendo o contrário do gabarito gravado — a da alternativa correta começando por
+  "incorreta", "errada" ou "falsa" (ou "não é a correta"), ou a de outra alternativa começando por "correta", "certa" ou
+  "verdadeira" — é recusada mesmo citando `[T]`/`[F]` e volta em "A fonte não esclarece" com "A explicação contradiz o gabarito
+  gravado." O veredito é lido no começo do texto, sem diferença de maiúsculas e acentos, também depois de "Alternativa X", "A
+  alternativa", "Letra X" ou "X)"; com letra citada, vale a letra citada. "A correta é a B" nomeia a correta e não é veredito
+  (decisão D6; `explanationVerdict` em `adapters/questoes.ts`).
 - Busca oficial: tema, subtema, começo do enunciado e pedido. Permissão: equipe (editor ou administrador), como a aba.
 
 ### 5.2 Atualizações
@@ -168,8 +172,11 @@ dose, corte, prazo, critério, diretriz, estudo ou conduta; citar as marcas; o q
 português do Brasil, sem markdown.
 
 ### 6.5 Conferências depois da IA (sem confiar nela)
-1. Esquema JSON por modo (`schemas.ts`): Preencher `{ suggestions[{ field, value, sources }], missing[{ field, reason }] }`;
-   Conferir `{ findings[{ field, kind, detail, sources }] }`; Conversar `{ reply, changes[{ field, after, sources, reason }] }`.
+1. Antes de tudo, todo texto da resposta perde os caracteres invisíveis (`\p{Cf}`: largura zero, junções, marcas de direção,
+   BOM; e o hífen suave U+00AD), em qualquer profundidade (`stripInvisible` em `checks.ts`, decisão D6): as conferências e a
+   tela só veem o texto limpo, e "In\u200Bcorreta" ou "T\u200B1" não escapam delas. Esquema JSON por modo (`schemas.ts`):
+   Preencher `{ suggestions[{ field, value, sources }], missing[{ field, reason }] }`; Conferir `{ findings[{ field, kind,
+   detail, sources }] }`; Conversar `{ reply, changes[{ field, after, sources, reason }] }`.
    Os limites de tamanho e de quantidade não chegam ao provedor pelo esquema: o pedido os diz, e o servidor corta resposta,
    motivo e detalhe longos e limita as listas antes da conferência estrita; o que não tem conserto (texto do valor ou nome de
    campo acima do limite) sai com aviso, sem derrubar o pedido (decisão D3). Nas fontes citadas, só a entrada feita apenas de
@@ -180,11 +187,11 @@ português do Brasil, sem markdown.
    para campo que o assistente não muda foi descartada".
 3. Tipo e tamanho de cada campo (§5); fora do formato, descartado com aviso.
 4. Fonte inexistente (texto livre incluído, item 1): descartada, com aviso. Campo de base "fonte" sem nenhum `[T]` ou `[F]`
-   válido vira "Sem fonte…", sem sugestão. No Conversar das abas médicas a única exceção é a reescrita do texto que já existe no
-   campo citando só o `[I]` do próprio campo, que sai marcada "Só redação"; campo vazio, mudança sem marca ou com marca que não
-   seja esse `[I]` (de outro campo ou inexistente) vira "Sem fonte…" (decisão D1, §4.3). A reescrita é conferida no servidor
-   (`isRewording` em `checks.ts`, decisão D5): pelo menos 60% das palavras de 4+ letras do texto novo (sem repetir, minúsculas e
-   sem acento) estão no texto atual e o texto novo tem no máximo 1,5 × o tamanho do atual + 40 caracteres; senão, "Sem fonte…".
+   válido vira "Sem fonte…", sem sugestão, em qualquer modo (Preencher, Conversar e "Propor correção"): marca `[I]` não basta e
+   não há "Só redação" (decisão D6, §4.3; a exceção da reescrita, conferida por `isRewording` nas decisões D1 e D5, saiu).
+   Valor que a aba recusa para o item vai para "A fonte não esclarece" com o motivo (`ItemContext.refuse` do adaptador): em
+   Questões, a explicação cujo veredito no começo contradiz o gabarito gravado, "A explicação contradiz o gabarito gravado."
+   (§5.1).
 5. `ungroundedNumbers` (`server/podcasts/script.ts`) contra os textos citados, item incluído: número com unidade fora deles vira
    aviso. Também: ano da linha do tempo; em Planos, qualquer número.
 6. Conversar: antes calculado do formulário; mudança igual ao antes, descartada.
@@ -194,7 +201,7 @@ português do Brasil, sem markdown.
 `src/novo/app/admin/assistant/AssistantPanel.jsx`, sem nada de aba dentro: `AssistantPanel({ title = "Assistente", notice,
 fields, values, material = "material" | "notas" | null, materialLink, run, onUse, onDiscard, useLabel = "Usar", onClose })`.
 `fields` = `{ name, label, kind, ai }[]`; `run(mode, request)` com `request` = `{ fields | field | message, material }` devolve
-`{ suggestions[{ id, field, value, before, sources[{ label }], warnings, redacao }], findings[…], missing[…], reply, no_source,
+`{ suggestions[{ id, field, value, before, sources[{ label }], warnings, append, reason }], findings[…], missing[…], reply, no_source,
 warnings, usage }`; `onUse(field, value, item)`. `assistantApi.js` chama `/api/admin-assistant` com o token como o `call` das
 Aulas e reaproveita `pdfPages` e `capPages` de `lessonAssistApi.js` (já exportados; as Aulas não mudam). A diferença por palavra
 é escrita à mão em `src/shared/textDiff.ts`, sem dependência nova, no formato `{ op: same | del | add, text }` do `wordDiff` das

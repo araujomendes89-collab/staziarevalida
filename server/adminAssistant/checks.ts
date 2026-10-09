@@ -1,7 +1,7 @@
 /**
  * Assistente de IA nas abas da Administração: conferências da resposta da IA sem confiar nela (§6.5 da especificação).
- * Marcas citadas que existem, tamanho e formato de cada campo, números e anos fora dos trechos citados e recursos novos.
- * Funções puras: o motor (engine.ts) decide o que fazer com cada aviso.
+ * Caracteres invisíveis fora, marcas citadas que existem, tamanho e formato de cada campo, números e anos fora dos trechos
+ * citados e recursos novos. Funções puras: o motor (engine.ts) decide o que fazer com cada aviso.
  */
 import { ungroundedNumbers } from "../podcasts/script";
 import { sameValue, type AdapterField, type FieldValue, type Flashcard, type SourceRef, type TimelineEntry } from "../../src/shared/adminAssistant/types";
@@ -12,8 +12,23 @@ export interface MarkRef {
   kind: "item" | "material" | "oficial";
   label: string;
   text: string;
-  /** Marca `[I…]`: o campo do item que ela traz (ex.: "expected_conduct"). */
-  field?: string;
+}
+
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
+
+/** Caracteres de formatação invisíveis (\p{Cf}: espaço de largura zero, junções, marcas de direção, BOM…) e o hífen suave. */
+const INVISIBLE = /[\p{Cf}\u00AD]/gu;
+
+/**
+ * A resposta da IA sem caracteres invisíveis em nenhum texto, em qualquer profundidade (decisão D6): vem antes de qualquer
+ * conferência, para "In\u200Bcorreta" ou "T\u200B1" não escaparem dela, e nada invisível chega à tela. Chaves e o que não é
+ * texto ficam como estão.
+ */
+export function stripInvisible<T>(value: T): T {
+  if (typeof value === "string") return value.replace(INVISIBLE, "") as T;
+  if (Array.isArray(value)) return value.map((entry) => stripInvisible(entry)) as T;
+  if (isObject(value)) return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, stripInvisible(v)])) as T;
+  return value;
 }
 
 /** "[T1]", " t1 " e "T1" são a mesma marca. */
@@ -60,8 +75,6 @@ const tooManyWarning = (label: string, max: number, left: number) => `${label}: 
 const badYearWarning = (label: string, year: unknown) => `${label}: ano ${year} fora de 2000–2100; item descartado.`;
 const badCardWarning = (label: string) =>
   `${label}: flashcard fora do formato (frente de 3 a 2.000 e verso de 1 a 2.000 caracteres); descartado.`;
-
-const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 
 /** Entrada com a forma do tipo do campo (o conteúdo é conferido depois, entrada a entrada). */
 function hasShape(field: AdapterField, entry: unknown): boolean {
@@ -189,28 +202,6 @@ export function yearsNotCited(entries: TimelineEntry[], cited: string[]): number
 /** Minúsculas, sem acento e com espaços simples. */
 const normalizeText = (s: string) =>
   s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
-
-/** Regra da reescrita (decisão D5): parte das palavras do texto novo que já estão no atual e tamanho máximo do texto novo. */
-export const REWORDING = { percent: 60, factor: 1.5, extra: 40 } as const;
-
-/** Palavras de 4 letras ou mais, minúsculas e sem acento, sem repetir. */
-const longWords = (s: string) => new Set(normalizeText(s).split(/[^\p{L}]+/u).filter((w) => w.length >= 4));
-
-/**
- * O texto novo é reescrita do atual (decisão D5): pelo menos 60% das palavras de 4+ letras do texto novo (sem repetir,
- * minúsculas e sem acento) estão no atual, e o texto novo tem no máximo 1,5× o tamanho do atual + 40 caracteres (sem os
- * espaços das pontas). Texto novo sem palavra de 4+ letras não tem como ser conferido e não conta como reescrita.
- */
-export function isRewording(next: string, current: string): boolean {
-  const after = String(next ?? "").trim();
-  const before = String(current ?? "").trim();
-  if (after.length > before.length * REWORDING.factor + REWORDING.extra) return false;
-  const words = [...longWords(after)];
-  if (!words.length) return false;
-  const known = longWords(before);
-  // em inteiros, sem arredondamento de 0,6 × n
-  return words.filter((w) => known.has(w)).length * 100 >= REWORDING.percent * words.length;
-}
 
 /** Linhas que não estão contidas em nenhum texto conhecido (notas e recursos atuais): recurso possivelmente novo. */
 export function newLines(lines: string[], known: string[]): string[] {
