@@ -78,14 +78,6 @@ export const VERDICTS = [
   ["context_dependent", "Depende de contexto"],
 ];
 
-export const RIGHTS = {
-  unknown: "Não informado",
-  own: "Próprio (autoria StaziaMed)",
-  licensed_adaptation: "Adaptação licenciada",
-  reference_only: "Somente referência",
-  unauthorized: "Sem autorização de uso",
-};
-
 export const SOURCE_KIND = {
   final: "Documento final",
   public_consultation: "Consulta pública",

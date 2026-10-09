@@ -85,7 +85,6 @@ function UnitVersion({ id, go, isAdmin, isStaff, reviewerAreas }) {
         <StatusBadge map={UNIT_STATUS} value={v.status} size="md" />
         <Badge>versão {v.version}</Badge>
         {data.area_code && <Badge tone="brand">{AREA_LABEL[data.area_code] ?? data.area_code}</Badge>}
-        <Badge>{v.origin === "adaptation" ? "Adaptação licenciada" : "Criação independente"}</Badge>
         <ModelBadge model={v.generated_by_model} />
       </div>
       {isMockModel(v.generated_by_model) && <Banner tone="danger" title="Simulação de desenvolvimento">Esta versão foi produzida pela simulação (não é IA nem revisão). Serve para testar o fluxo e não pode ser publicada.</Banner>}

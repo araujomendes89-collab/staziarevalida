@@ -3,6 +3,7 @@
 > Escrito para: o dono do produto (decisões) e quem for programar (mapa técnico).
 > Origem: especificação "Stazia Content Lab" (2026-10-04). Cumpre o item 54: ler o projeto antes de mexer, reutilizar o que existe, não criar estrutura paralela.
 > Complementa `STAZIA_KNOWLEDGE_ENGINE.md` (a Central de Conteúdo) e `STAZIA_QUESTION_INTELLIGENCE_ENGINE.md` (questões).
+> **2026-10-09: por decisão do dono, as regras de licença foram retiradas — todo documento importado é tratado como material próprio; o cadastro de licenças e a limpeza de referências ficam sem tela (código e tabelas mantidos, sem uso).**
 
 ## 0. Conclusão em um parágrafo
 
@@ -162,6 +163,8 @@ Regras mantidas: IA não aprova nem publica; fonte nível E (apostila) não vale
 **Ligar a publicação** (quando você decidir): Configuração → Sinalizadores → desligar "Modo sombra" e ligar "Publicação", cada um com motivo.
 
 ## 10. Adaptação licenciada (migração 3000)
+
+> **2026-10-09: por decisão do dono, as regras de licença foram retiradas — todo documento importado é tratado como material próprio; o cadastro de licenças e a limpeza de referências ficam sem tela (código e tabelas mantidos, sem uso).** Vale para as linhas "direitos autorais" (§ de cobertura) e para a seção 10 abaixo.
 
 Para material de terceiros usado **com licença** (ex.: apostila licenciada), o caminho é:
 

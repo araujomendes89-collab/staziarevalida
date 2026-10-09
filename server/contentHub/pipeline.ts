@@ -564,10 +564,7 @@ async function stepDraft(ctx: Ctx): Promise<Step | null> {
   const claims = await svc<any[]>(ctx, "ch_worker_claims", { p_document_id: docId(ctx) });
   const blocks = await svc<Block[]>(ctx, "ch_worker_blocks", { p_document_id: docId(ctx) });
   const originalText = blocks.map((b) => b.original_text ?? "").join("\n");
-  // adaptação só vale com direitos próprios/licenciados; havendo licença registrada, ela precisa estar ativa, dentro do prazo e autorizar adaptar
-  const license = await svc<{ expired: boolean; allows_adaptation: boolean; allows_attribution_removal: boolean; reference_terms: string[] } | null>(ctx, "ch_worker_license", { p_document_id: docId(ctx) });
-  const adaptation = ["own", "licensed_adaptation"].includes(doc.rights_status) && (!license || (!license.expired && license.allows_adaptation));
-  const forbiddenTerms = license?.allows_attribution_removal && adaptation ? license.reference_terms : [];
+  // regras de licença retiradas por decisão do dono (2026-10-09): todo documento importado é tratado como material próprio, liberado para adaptar
 
   const byTheme = new Map<string, any[]>();
   for (const c of claims) if (c.theme_node_id) byTheme.set(c.theme_node_id, [...(byTheme.get(c.theme_node_id) ?? []), c]);
@@ -582,7 +579,7 @@ async function stepDraft(ctx: Ctx): Promise<Step | null> {
       const base = new Map(ready.map((c) => [c.id, c.proposed_text ?? c.statement]));
       const payload = { tema: pathOf.get(theme) ?? "", afirmacoes: ready.map((c) => ({ id: c.id, text: base.get(c.id), context: c.context })) };
       const { output, model: drafted } = await ai<any>(ctx, "draft", payload);
-      const checked = checkDraft(output.sections, base, { originalText, independent: !adaptation, forbiddenTerms });
+      const checked = checkDraft(output.sections, base, { originalText, independent: false, forbiddenTerms: [] });
       removed += checked.flags.length;
       if (checked.sections.some((s) => s.paragraphs.some((p) => p.clinical))) {
         const scope =
@@ -592,7 +589,7 @@ async function stepDraft(ctx: Ctx): Promise<Step | null> {
           p_theme_node_id: theme,
           p_title: output.title,
           p_content: { sections: checked.sections },
-          p_origin: adaptation ? "adaptation" : "independent",
+          p_origin: "adaptation",
           p_model: drafted,
           p_scope_note: scope,
         });

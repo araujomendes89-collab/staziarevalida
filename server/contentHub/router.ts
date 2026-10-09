@@ -134,7 +134,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
    * Guarda o PDF pelo hash e registra o documento. Idempotente pelo hash: o mesmo arquivo não é duplicado. Os metadados
    * vêm da consulta (envio pelo servidor) ou do corpo JSON (confirmação do envio direto); só texto é aceito.
    */
-  const storePdf = async (req: Authed, body: Buffer, fileName: string, meta: Record<string, unknown>) => {
+  const storePdf = async (req: Authed, body: Buffer, fileName: string, meta: Record<string, unknown>, kind: "study" | "source") => {
     if (!Buffer.isBuffer(body) || body.length === 0) throw httpError(400, "Envie o arquivo PDF no corpo da requisição.");
     if (body.subarray(0, 5).toString("latin1") !== "%PDF-") throw httpError(415, "O arquivo não é um PDF (assinatura %PDF- ausente).");
     const sha256 = crypto.createHash("sha256").update(body).digest("hex");
@@ -149,8 +149,9 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
         publisher: q.publisher,
         edition_date: q.edition_date,
         language: q.language,
-        rights_status: q.rights_status ?? "unknown",
-        rights_note: q.rights_note,
+        // decisão do dono (2026-10-09): documento de estudo é sempre material próprio, sem registro de autorização e ignorando o que o cliente enviar;
+        // PDF de fonte oficial segue "unknown" (o anexo da fonte o torna "somente referência")
+        rights_status: kind === "study" ? "own" : "unknown",
         sha256,
         storage_path: key,
         provenance: { uploaded_at: new Date().toISOString(), uploaded_by: req.user!.id, original_file_name: name, size_bytes: body.length, source: q.source_note ?? null },
@@ -160,7 +161,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
   };
   /** Envio pelo servidor (desenvolvimento): corpo bruto, nome em X-File-Name, metadados na consulta. */
   const upload = express.raw({ type: ["application/pdf", "application/octet-stream"], limit: `${MAX_PDF_MB}mb` });
-  const receivePdf = (req: Authed) => storePdf(req, req.body as Buffer, decodeURIComponent(String(req.headers["x-file-name"] ?? "documento.pdf")), req.query as Record<string, unknown>);
+  const receivePdf = (req: Authed, kind: "study" | "source") => storePdf(req, req.body as Buffer, decodeURIComponent(String(req.headers["x-file-name"] ?? "documento.pdf")), req.query as Record<string, unknown>, kind);
 
   /**
    * 1) Prepara o envio direto do navegador ao depósito (Supabase), num caminho temporário: o arquivo não passa pelo limite
@@ -177,13 +178,13 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
     return { mode: "signed", bucket: CONTENT_HUB_BUCKET, key, path: signed.path, token: signed.token };
   };
   /** 2) Confirma o envio direto: confere o arquivo temporário, guarda pelo hash e registra; o temporário sempre sai. */
-  const receiveUpload = async (req: Authed) => {
+  const receiveUpload = async (req: Authed, kind: "study" | "source") => {
     await requireStaff(req);
     const { key, name } = (req.body ?? {}) as Record<string, unknown>;
     if (typeof key !== "string" || !TEMP_UPLOAD.test(key)) throw httpError(400, "Caminho de arquivo inválido.");
     if (!(await deps!.storage.exists(key))) throw httpError(400, "O arquivo não chegou ao depósito. Envie de novo.");
     try {
-      return await storePdf(req, await deps!.storage.get(key), typeof name === "string" && name.trim() ? name : "documento.pdf", req.body);
+      return await storePdf(req, await deps!.storage.get(key), typeof name === "string" && name.trim() ? name : "documento.pdf", req.body, kind);
     } finally {
       await deps!.storage.remove?.([key]).catch(() => undefined);
     }
@@ -206,7 +207,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
   router.post("/documents", upload, async (req: Authed, res) => {
     try {
       await requireStaff(req);
-      await sendDocument(res, await receivePdf(req));
+      await sendDocument(res, await receivePdf(req, "study"));
     } catch (error: any) {
       failUpload(res, error);
     }
@@ -220,7 +221,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
   });
   router.post("/documents/confirm", async (req: Authed, res) => {
     try {
-      await sendDocument(res, await receiveUpload(req));
+      await sendDocument(res, await receiveUpload(req, "study"));
     } catch (error: any) {
       failUpload(res, error);
     }
@@ -229,7 +230,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
   router.post("/sources/:id/document", upload, async (req: Authed, res) => {
     try {
       await requireStaff(req);
-      await sendSourceDocument(req, res, await receivePdf(req));
+      await sendSourceDocument(req, res, await receivePdf(req, "source"));
     } catch (error: any) {
       failUpload(res, error);
     }
@@ -243,7 +244,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
   });
   router.post("/sources/:id/document/confirm", async (req: Authed, res) => {
     try {
-      await sendSourceDocument(req, res, await receiveUpload(req));
+      await sendSourceDocument(req, res, await receiveUpload(req, "source"));
     } catch (error: any) {
       failUpload(res, error);
     }

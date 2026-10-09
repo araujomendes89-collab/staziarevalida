@@ -146,7 +146,7 @@ describe("Central de Conteúdo — processamento", () => {
 
     // rascunho: só com as afirmações compatíveis, escopo explícito, marcado como simulação
     const [v] = await sql(`select v.id, v.status, v.origin, v.scope_note, v.generated_by_model, v.content from public.ch_unit_versions v`);
-    expect(v).toMatchObject({ status: "draft", origin: "independent" });
+    expect(v).toMatchObject({ status: "draft", origin: "adaptation" });
     expect(v.generated_by_model).toMatch(/^mock/);
     expect(v.scope_note).toMatch(/2 de 3 afirmações.*Não representa a transformação integral/);
     expect(JSON.stringify(v.content)).not.toContain("mg/kg/dose");

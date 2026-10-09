@@ -1,12 +1,11 @@
 // Detalhe de um documento: etapas, inventário, PDF ao lado da extração, afirmações e execuções de IA.
-import { LicensePanel } from "./License.jsx";
 import React from "react";
 import { Badge, Banner, Button, Checkbox, SelectField } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { useMobile } from "../../Shell.jsx";
 import { LoadError, Loading, TextArea, useLoad } from "../common.jsx";
 import { hubAvailable, hubDocumentUrl, hubPost } from "./api.js";
-import { BLOCK_STATUS, BLOCK_TYPE, DOC_STATUS, JOB_STATUS, RIGHTS, STEP_LABEL } from "./labels.js";
+import { BLOCK_STATUS, BLOCK_TYPE, DOC_STATUS, JOB_STATUS, STEP_LABEL } from "./labels.js";
 import { ClaimCard, KeyValue, Label, ModelBadge, Pre, Section, StatusBadge, useAction, when } from "./ui.jsx";
 
 const BUSY = new Set(["received", "extracting", "classifying", "verifying_sources", "drafting"]);
@@ -51,8 +50,6 @@ export function DocumentDetail({ id, go, isAdmin, params }) {
           <ClaimCard key={c.id} claim={c} onChanged={reload} canConfirm />
         ))}
       </Section>
-      <Rights doc={d} onChanged={reload} />
-      <LicensePanel doc={d} isAdmin={isAdmin} onChanged={reload} />
       <Section title="Procedência">
         <KeyValue
           items={[
@@ -316,30 +313,6 @@ function ClassifyForm({ block, onDone }) {
       </div>
       {act.feedback}
     </div>
-  );
-}
-
-function Rights({ doc, onChanged }) {
-  const { backend } = useSession();
-  const [status, setStatus] = React.useState(doc.rights_status);
-  const [note, setNote] = React.useState(doc.rights_note ?? "");
-  const act = useAction();
-  return (
-    <Section title="Direitos de uso">
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <SelectField label="Situação" value={status} onChange={(e) => setStatus(e.target.value)} options={Object.entries(RIGHTS).map(([value, label]) => ({ value, label }))} />
-        <TextArea label="Licença, autorização ou observação" value={note} onChange={setNote} rows={2} />
-        {status !== "own" && status !== "licensed_adaptation" && (
-          <Banner tone="info">Sem licença de adaptação, as unidades nascem como criação independente: o texto do original não é copiado (a conferência de cópia descarta trechos copiados).</Banner>
-        )}
-        <div>
-          <Button size="sm" loading={act.busy} onClick={() => act.run(() => backend.rpc("app_ch_set_rights", { p_document_id: doc.id, p_status: status, p_note: note }), "Direitos atualizados.").then((r) => r && onChanged())}>
-            Salvar
-          </Button>
-        </div>
-        {act.feedback}
-      </div>
-    </Section>
   );
 }
 

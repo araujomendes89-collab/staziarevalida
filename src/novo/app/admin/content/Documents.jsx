@@ -1,12 +1,12 @@
 // Documentos: envio de PDF, andamento das etapas e abertura do detalhe.
 import React from "react";
-import { Badge, Banner, Button, EmptyState, SelectField, TextField } from "../../../ds";
+import { Badge, Button, EmptyState, SelectField, TextField } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { useMobile } from "../../Shell.jsx";
-import { ListRow, LoadError, Loading, TextArea, useLoad } from "../common.jsx";
+import { ListRow, LoadError, Loading, useLoad } from "../common.jsx";
 import { hubAvailable, hubUploadPdf } from "./api.js";
 import { DocumentDetail } from "./DocumentDetail.jsx";
-import { DOC_STATUS, JOB_STATUS, RIGHTS, STEP_LABEL, pick } from "./labels.js";
+import { DOC_STATUS, JOB_STATUS, STEP_LABEL, pick } from "./labels.js";
 import { Section, StatusBadge, useAction, useUploadProgress, when } from "./ui.jsx";
 
 const BUSY = new Set(["received", "extracting", "classifying", "verifying_sources", "drafting"]);
@@ -44,9 +44,6 @@ function DocumentList({ go }) {
                   <StatusBadge map={DOC_STATUS} value={d.status} />
                   {d.text_kind && <Badge size="sm">{{ text: "PDF com texto", scanned: "Digitalizado", mixed: "Misto" }[d.text_kind]}</Badge>}
                   {d.page_count && <Badge size="sm">{d.page_count} p.</Badge>}
-                  <Badge size="sm" tone={d.rights_status === "unauthorized" ? "danger" : d.rights_status === "unknown" ? "warning" : "neutral"}>
-                    {RIGHTS[d.rights_status]}
-                  </Badge>
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {(d.jobs ?? []).map((j, i) => {
@@ -73,11 +70,10 @@ function UploadCard({ onUploaded }) {
   const { backend } = useSession();
   const mobile = useMobile();
   const [file, setFile] = React.useState(null);
-  const [meta, setMeta] = React.useState({ author: "", publisher: "", edition_date: "", language: "pt-BR", rights_status: "unknown", rights_note: "", source_note: "" });
+  const [meta, setMeta] = React.useState({ author: "", publisher: "", edition_date: "", language: "pt-BR", source_note: "" });
   const set = (patch) => setMeta((m) => ({ ...m, ...patch }));
   const act = useAction();
   const up = useUploadProgress();
-  const needsNote = meta.rights_status === "own" || meta.rights_status === "licensed_adaptation";
   const submit = async () => {
     const r = await act.run(() => up.track((opts) => hubUploadPdf(backend, "/documents", file, meta, opts)), "Arquivo recebido. O processamento começou.");
     if (r) {
@@ -102,19 +98,12 @@ function UploadCard({ onUploaded }) {
           <TextField label="Editora / plataforma" value={meta.publisher} onChange={(e) => set({ publisher: e.target.value })} />
           <TextField label="Data ou edição" value={meta.edition_date} onChange={(e) => set({ edition_date: e.target.value })} placeholder="ex.: 3ª ed., 2025" />
           <SelectField label="Idioma" value={meta.language} onChange={(e) => set({ language: e.target.value })} options={[{ value: "pt-BR", label: "Português" }, { value: "es", label: "Espanhol" }, { value: "en", label: "Inglês" }]} />
-          <SelectField label="Direitos de uso" value={meta.rights_status} onChange={(e) => set({ rights_status: e.target.value })} options={Object.entries(RIGHTS).map(([value, label]) => ({ value, label }))} />
           <TextField label="Procedência (onde foi obtido)" value={meta.source_note} onChange={(e) => set({ source_note: e.target.value })} />
         </div>
-        {(needsNote || meta.rights_status !== "unknown") && (
-          <TextArea label={needsNote ? "Licença ou autorização (obrigatório)" : "Observação sobre os direitos"} value={meta.rights_note} onChange={(v) => set({ rights_note: v })} rows={2} />
-        )}
-        <Banner tone="info" icon="scale">
-          Compra, download ou acesso público não significam licença. Sem autorização, o material só serve de base para criação independente: o texto não é copiado e a marca de outra plataforma não é trocada.
-        </Banner>
         {up.bar}
         {act.feedback}
         <div>
-          <Button icon="upload" disabled={!file || (needsNote && !meta.rights_note.trim())} loading={act.busy} onClick={submit}>
+          <Button icon="upload" disabled={!file} loading={act.busy} onClick={submit}>
             Enviar e processar
           </Button>
         </div>

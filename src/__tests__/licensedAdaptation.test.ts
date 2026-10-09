@@ -179,7 +179,7 @@ describe("Licença e retirada no banco", () => {
     expect(b[3].revised_text).toBe("Revisão humana posterior.");
   });
 
-  it("licença vencida ou revogada: nada é retirado, o documento deixa de ser adaptação e a publicação de adaptação é barrada", async () => {
+  it("licença vencida ou revogada: nada é retirado, o documento deixa de ser adaptação", async () => {
     await sql(`update public.ch_licenses set expires_on = current_date - 1, granted_on = current_date - 30 where document_id = $1 and status = 'active'`, [doc]);
     await expect(previewReferenceCleanup(db, doc)).rejects.toThrow(/vencida/);
     expect((await db.service<any>("ch_worker_license", { p_document_id: doc })).expired).toBe(true);
