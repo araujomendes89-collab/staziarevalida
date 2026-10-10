@@ -29,7 +29,8 @@ select null, 'guideline_update.unpublish', r.id::text,
                           'motivo', 'Estava publicada sem conferência médica aprovada: retirada do ar pela correção de 10/10/2026.')
   from retiradas r;
 
--- 2. A regra na própria tabela: publicada só com conferência aprovada.
+-- 2. A regra na própria tabela: publicada só com conferência aprovada (colar duas vezes no Supabase não dá erro).
+alter table public.guideline_updates drop constraint if exists guideline_updates_publicada_so_conferida;
 alter table public.guideline_updates
   add constraint guideline_updates_publicada_so_conferida check (not published or review_status = 'approved');
 
