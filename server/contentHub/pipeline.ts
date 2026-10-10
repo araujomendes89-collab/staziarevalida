@@ -2,7 +2,7 @@
  * Processamento da Central de Conteúdo, uma etapa por trabalho da fila (ch_jobs):
  *
  *   material de estudo:  extract → classify → claims → evidence → draft → materials → render → review_check
- *   fonte de referência: extract → source_index (e devolve à conferência os materiais com afirmação que estava sem trecho)
+ *   fonte de referência: extract → source_index (e devolve à conferência os materiais com afirmação que só a IA julgou insuficiente)
  *
  * Regras que valem para todas as etapas:
  *   - cada chamada de IA é separada, com prompt versionado, resposta validada por schema e
@@ -86,6 +86,8 @@ interface Ctx {
   deps: PipelineDeps;
   job: Job;
   metrics: Metrics;
+  /** Marca que a próxima etapa recebe ao entrar na fila (reconferência automática: só os temas que mudaram). */
+  carry?: Record<string, unknown>;
 }
 
 const sha256 = (data: Buffer | string) => crypto.createHash("sha256").update(data).digest("hex");
@@ -100,12 +102,45 @@ const setMeta = async (ctx: Ctx, meta: Record<string, unknown>) => {
   if (versionScope(ctx) || !ctx.job.document_id) return;
   await svc(ctx, "ch_worker_document_meta", { p_document_id: ctx.job.document_id, p_meta: meta });
 };
-/** Versões em rascunho a processar: as do documento ou, em trabalho de versão, só aquela. */
+/**
+ * Reconferência automática (CC01, rodada de correção 1): marca que passa de etapa em etapa (no checkpoint de cada trabalho) para
+ * o processamento mexer só no que mudou. Na etapa de rascunho: os temas e as afirmações que passaram a ser compatíveis. Nas
+ * seguintes (materiais, arquivos finais, revisão automática): só as versões que o rascunho criou. "Reprocessar" apaga a marca.
+ */
+interface AutoMark {
+  auto_recheck: true;
+  themes: string[];
+  claims: string[];
+  versions: string[];
+}
+function autoMark(ctx: Ctx): AutoMark | null {
+  const cp = ctx.job.checkpoint ?? {};
+  if (cp.auto_recheck !== true) return null;
+  const list = (x: unknown) => (Array.isArray(x) ? x.map(String) : []);
+  return { auto_recheck: true, themes: list(cp.themes), claims: list(cp.claims), versions: list(cp.versions) };
+}
+/** Marca das etapas depois do rascunho (só as versões criadas pela reconferência automática), ou nada fora dela. */
+const versionsMark = (ctx: Ctx) => {
+  const m = autoMark(ctx);
+  return m ? { auto_recheck: true, versions: m.versions } : null;
+};
+/** A próxima etapa recebe a mesma marca (materiais → arquivos finais → revisão automática). */
+const passMark = (ctx: Ctx) => {
+  const m = versionsMark(ctx);
+  if (m) ctx.carry = m;
+};
+/** Versões em rascunho a processar: as do documento ou, em trabalho de versão, só aquela (ou só as da reconferência automática). */
 async function targetVersions(ctx: Ctx): Promise<any[]> {
   const only = versionScope(ctx);
-  if (only) {
-    const v = await svc<any>(ctx, "ch_worker_unit_version", { p_version_id: only });
-    return v && v.status === "draft" ? [v] : [];
+  const auto = versionsMark(ctx);
+  const ids = only ? [only] : auto ? auto.versions : null;
+  if (ids) {
+    const out: any[] = [];
+    for (const id of ids) {
+      const v = await svc<any>(ctx, "ch_worker_unit_version", { p_version_id: id });
+      if (v && v.status === "draft") out.push(v);
+    }
+    return out;
   }
   return svc<any[]>(ctx, "ch_worker_unit_versions", { p_document_id: docId(ctx) });
 }
@@ -372,10 +407,13 @@ async function stepSourceIndex(ctx: Ctx): Promise<Step | null> {
   } catch (error) {
     Object.assign(ctx.metrics, { diff_error: (error as Error).message });
   }
-  // CC01: fonte nova com trechos: os materiais com afirmação "insuficiente" por falta de trecho voltam para a conferência
+  // CC01: fonte nova com trechos: os materiais com afirmação "insuficiente" que só a IA julgou voltam para a conferência (só se a
+  // fonte entra na busca de evidências; o banco confere e devolve o motivo quando não roda)
   if (n > 0) {
     try {
-      ctx.metrics.recheck_documents = await svc<number>(ctx, "ch_worker_recheck_insufficient", { p_versions: stepVersions("evidence", ctx.deps) });
+      const r = await svc<{ documents: number; skipped?: string }>(ctx, "ch_worker_recheck_insufficient", { p_source_id: source.id, p_versions: stepVersions("evidence", ctx.deps) });
+      ctx.metrics.recheck_documents = r.documents;
+      if (r.skipped) ctx.metrics.recheck_skipped = RECHECK_SKIPPED;
     } catch (error) {
       // banco sem a migração 8200: a indexação vale do mesmo jeito; a etapa anota o que falta
       const message = (error as Error).message;
@@ -493,26 +531,39 @@ function requireWriterField(rows: any[], field: "created_by_model" | "generated_
 }
 
 /**
- * CC01 (2026-10-10): afirmação "insuficiente" porque nenhuma fonte tinha trecho sobre ela (a conferência não achou com o que
- * comparar: nenhuma evidência vigente) volta a ser conferida ao reprocessar a conferência e quando entra fonte nova
- * (stepSourceIndex). A que a conferência já julgou com um trecho fica como está. Banco sem a migração 8200 (sem
- * evidence_count): segue como antes, só com as afirmações novas.
+ * CC01 (2026-10-10, revisto na rodada de correção 1): afirmação "insuficiente" que só a IA julgou volta a ser conferida ao
+ * reprocessar a conferência e quando entra fonte nova (stepSourceIndex). "Só a IA julgou": nenhuma evidência vigente (nenhum
+ * trecho achado) ou só evidência "insuficiente" dada pelo processamento — a busca por palavras acha trecho de outro assunto por
+ * termos comuns ("pacientes") e a IA, que precisa escolher um trecho da lista, julga "insuficiente" contra ele. A afirmação com
+ * evidência dada pela equipe fica como está. Na reconferência, a mesma resposta de antes não grava nada; a resposta nova
+ * substitui a evidência antiga da IA (ch_worker_link_evidence com "recheck"). Banco sem a migração 8200 (sem "recheckable"):
+ * segue como antes, só com as afirmações novas.
  */
-const withoutPassage = (c: any) => c.status === "insufficient" && c.evidence_count === 0;
+const recheckable = (c: any) => c.recheckable === true;
 const RECHECK_MISSING = "Falta aplicar no Supabase a atualização da reconferência das afirmações sem trecho (migração 8200).";
+const RECHECK_SKIPPED =
+  "A fonte não entra na busca de evidências (consulta pública, relatório preliminar, diretriz de sociedade sem aprovação editorial ou fonte substituída): nenhuma afirmação foi conferida de novo.";
 
 async function stepEvidence(ctx: Ctx): Promise<Step | null> {
-  await setMeta(ctx, { status: "verifying_sources" });
-  const claims = (await svc<any[]>(ctx, "ch_worker_claims", { p_document_id: docId(ctx) })).filter((c) => c.status === "extracted" || withoutPassage(c));
+  // reconferência automática (fonte nova indexada, marca posta pelo banco): roda sem mudar a situação do documento e só segue
+  // para o rascunho quando alguma afirmação passa a ser compatível, e só para o tema dela. "Reprocessar" recomeça a etapa sem a
+  // marca e segue sempre, com todos os temas.
+  const auto = ctx.job.checkpoint?.auto_recheck === true;
+  if (!auto) await setMeta(ctx, { status: "verifying_sources" });
+  const claims = (await svc<any[]>(ctx, "ch_worker_claims", { p_document_id: docId(ctx) })).filter((c) => c.status === "extracted" || recheckable(c));
   requireWriterField(claims, "created_by_model");
   const counts: Record<string, number> = {};
+  /** Temas (e afirmações) que passaram a ser compatíveis nesta conferência. */
+  const changedThemes = new Set<string>();
+  const changedClaims = new Set<string>();
   for (const c of claims) {
+    const again = recheckable(c);
     const text = c.proposed_text ?? c.statement;
     const meaning = await queryEmbedding(await embedderAllowed(ctx.deps.db, ctx.deps.embedder), text, ctx.deps.log);
     const passages = await svc<any[]>(ctx, "ch_worker_search_passages", { p_query: searchQuery(text), p_limit: 6, p_embedding: meaning });
     if (!passages.length) {
-      // conferida de novo e ainda sem trecho: continua insuficiente, sem repetir a anotação no histórico
-      if (withoutPassage(c)) {
+      // conferida de novo e ainda sem trecho: continua como está, sem repetir a anotação no histórico
+      if (again) {
         counts.still_no_passage = (counts.still_no_passage ?? 0) + 1;
         continue;
       }
@@ -545,11 +596,29 @@ async function stepEvidence(ctx: Ctx): Promise<Step | null> {
     const p = byId.get(output.passage_id);
     const r = await svc<any>(ctx, "ch_worker_link_evidence", {
       p_claim_id: c.id,
-      p_evidence: { source_id: p.source_id, passage_id: p.passage_id, section: p.section, page: p.page, quote: normalize(output.quote), verdict: output.verdict, model: answer },
+      p_evidence: {
+        source_id: p.source_id, passage_id: p.passage_id, section: p.section, page: p.page, quote: normalize(output.quote), verdict: output.verdict, model: answer,
+        ...(again ? { recheck: true } : {}),
+      },
     });
-    counts[r.verdict] = (counts[r.verdict] ?? 0) + 1;
+    // mesma resposta de antes (mesmo trecho, mesmo veredito): nada foi gravado
+    const key = r.unchanged ? "unchanged" : r.verdict;
+    counts[key] = (counts[key] ?? 0) + 1;
+    if (!r.unchanged && r.verdict === "compatible" && c.theme_node_id) {
+      changedThemes.add(c.theme_node_id);
+      changedClaims.add(c.id);
+    }
   }
-  Object.assign(ctx.metrics, { claims_checked: claims.length, rechecked: claims.filter(withoutPassage).length, verdicts: counts });
+  const becameCompatible = counts.compatible ?? 0;
+  Object.assign(ctx.metrics, { claims_checked: claims.length, rechecked: claims.filter(recheckable).length, verdicts: counts, became_compatible: becameCompatible });
+  if (auto) {
+    ctx.metrics.auto_recheck = true;
+    // nenhuma afirmação de um tema passou a compatível: o rascunho e os materiais continuariam iguais; o documento fica como estava
+    if (!changedThemes.size) return null;
+    // só o rascunho dos temas que mudaram: os outros temas (em revisão, aprovados, editados pela equipe) ficam como estão, mesmo
+    // que o dono tenha trocado a IA do rascunho na Central de IAs
+    ctx.carry = { auto_recheck: true, themes: [...changedThemes].sort(), claims: [...changedClaims].sort() };
+  }
   return "draft";
 }
 
@@ -598,26 +667,59 @@ export function checkDraft(
   return { sections: kept, flags };
 }
 
+/**
+ * Aviso na versão mais nova de um tema que já tem unidade, quando a reconferência automática acha evidência para uma afirmação:
+ * o texto não muda sozinho (a equipe pode estar revisando ou ter editado essa versão); quem decide fazer o rascunho novo é a
+ * equipe. O texto da afirmação vem do próprio documento.
+ */
+const recheckNotice = (c: any, docName: string) => ({
+  severity: "minor",
+  kind: "other",
+  where: "Reconferência nas fontes",
+  detail:
+    `A afirmação "${c.proposed_text ?? c.statement}" passou a ter evidência compatível depois desta versão (fonte nova indexada) e não está no texto dela. ` +
+    `Para fazer um rascunho novo com ela, use "Reprocessar" na etapa "Rascunho da unidade" do documento "${docName}".`,
+  claim_id: c.id,
+  by: "reconferencia",
+});
+
 async function stepDraft(ctx: Ctx): Promise<Step | null> {
-  await setMeta(ctx, { status: "drafting" });
+  // reconferência automática (marca vinda da etapa de evidências): só os temas em que alguma afirmação passou a ser compatível
+  const auto = autoMark(ctx);
+  if (!auto) await setMeta(ctx, { status: "drafting" });
   const doc = await svc<any>(ctx, "ch_worker_document", { p_document_id: docId(ctx) });
   const catalog = await svc<{ nodes: { id: string; path: string }[] }>(ctx, "ch_worker_catalog");
   const pathOf = new Map(catalog.nodes.map((n) => [n.id, n.path]));
   const claims = await svc<any[]>(ctx, "ch_worker_claims", { p_document_id: docId(ctx) });
+  // banco com a migração 8200: a versão guarda de que base saiu (ch_worker_save_draft recebe p_base_hash)
+  const withBase = claims.length > 0 && "recheckable" in claims[0];
   const blocks = await svc<Block[]>(ctx, "ch_worker_blocks", { p_document_id: docId(ctx) });
   const originalText = blocks.map((b) => b.original_text ?? "").join("\n");
   // regras de licença retiradas por decisão do dono (2026-10-09): todo documento importado é tratado como material próprio, liberado para adaptar
 
   const byTheme = new Map<string, any[]>();
   for (const c of claims) if (c.theme_node_id) byTheme.set(c.theme_node_id, [...(byTheme.get(c.theme_node_id) ?? []), c]);
-  const themes = [...byTheme.keys()].sort();
+  const themes = [...byTheme.keys()].filter((t) => !auto || auto.themes.includes(t)).sort();
+  // versões criadas pela reconferência automática (as etapas seguintes só mexem nelas); vem do checkpoint quando a etapa é retomada
+  const created = [...(auto?.versions ?? [])];
   let drafts = 0;
+  let kept = 0;
+  let held = 0;
   let removed = 0;
   for (let i = ctx.job.checkpoint?.theme ?? 0; i < themes.length; i++) {
     const theme = themes[i];
     const all = byTheme.get(theme)!;
     const ready = all.filter((c) => c.status === "compatible");
-    if (ready.length) {
+    // reconferência automática num tema que já tem unidade: não faz versão nova sozinha; a versão mais nova recebe o aviso
+    const notice = auto
+      ? await svc<{ version_id: string } | null>(ctx, "ch_worker_theme_notice", {
+          p_theme_node_id: theme,
+          p_notices: ready.filter((c) => auto.claims.includes(c.id)).map((c) => recheckNotice(c, doc.name)),
+        })
+      : null;
+    if (notice) {
+      held++;
+    } else if (ready.length) {
       const base = new Map(ready.map((c) => [c.id, c.proposed_text ?? c.statement]));
       const payload = { tema: pathOf.get(theme) ?? "", afirmacoes: ready.map((c) => ({ id: c.id, text: base.get(c.id), context: c.context })) };
       const { output, model: drafted } = await ai<any>(ctx, "draft", payload);
@@ -627,6 +729,9 @@ async function stepDraft(ctx: Ctx): Promise<Step | null> {
         const scope =
           `Rascunho a partir de ${ready.length} de ${all.length} afirmações deste tema no documento "${doc.name}"; ` +
           `as demais aguardam evidência ou revisão. Não representa a transformação integral do documento.`;
+        // base do rascunho: as afirmações compatíveis (texto e contexto), o modelo e a versão do prompt. A mesma base que já
+        // virou versão da unidade não cria versão nova, mesmo que a equipe tenha editado o texto (rodada de correção 1 do CC01)
+        const baseHash = sha256(JSON.stringify({ prompt: PROMPTS.draft.version, model: drafted, payload }));
         const saved = await svc<{ version_id: string }>(ctx, "ch_worker_save_draft", {
           p_theme_node_id: theme,
           p_title: output.title,
@@ -634,14 +739,36 @@ async function stepDraft(ctx: Ctx): Promise<Step | null> {
           p_origin: "adaptation",
           p_model: drafted,
           p_scope_note: scope,
+          ...(withBase ? { p_base_hash: baseHash } : {}),
         });
-        await svc(ctx, "ch_worker_review_flags", { p_version_id: saved.version_id, p_flags: checked.flags });
-        drafts++;
+        // versão fora do rascunho (em revisão, aprovada, publicada) não se mexe: os apontamentos da revisão automática ficam
+        const version = await svc<any>(ctx, "ch_worker_unit_version", { p_version_id: saved.version_id });
+        if (version && version.status !== "draft") {
+          kept++;
+        } else {
+          // rascunho: avisos do software desta resposta + os que já estavam (a etapa de revisão refaz os dela)
+          const others = (version?.review_flags ?? []).filter((f: any) => f.by !== "software");
+          await svc(ctx, "ch_worker_review_flags", { p_version_id: saved.version_id, p_flags: [...checked.flags, ...others] });
+          drafts++;
+          if (auto && !created.includes(saved.version_id)) created.push(saved.version_id);
+        }
       }
     }
-    await checkpoint(ctx, { theme: i + 1 });
+    await checkpoint(ctx, auto ? { auto_recheck: true, themes: auto.themes, claims: auto.claims, versions: created, theme: i + 1 } : { theme: i + 1 });
   }
-  Object.assign(ctx.metrics, { themes: themes.length, drafts, paragraphs_removed: removed, claims_without_theme: claims.filter((c) => !c.theme_node_id).length });
+  Object.assign(ctx.metrics, {
+    themes: themes.length,
+    drafts,
+    kept_versions: kept,
+    paragraphs_removed: removed,
+    claims_without_theme: claims.filter((c) => !c.theme_node_id).length,
+    ...(auto ? { auto_recheck: true, held_themes: held } : {}),
+  });
+  if (auto) {
+    // nenhum tema novo ganhou rascunho: materiais, arquivos e revisão continuariam iguais; o documento fica como estava
+    if (!created.length) return null;
+    ctx.carry = { auto_recheck: true, versions: created };
+  }
   return "materials";
 }
 
@@ -725,9 +852,10 @@ async function stepMaterials(ctx: Ctx): Promise<Step | null> {
       .map((q: any) => ({ ...q, author: "StaziaMed", official: false, label: "Questão inédita StaziaMed (não é questão oficial do Inep)" }));
     if (questions.length) await save(v.version_id, "questions", { title: v.title, items: questions }, qs.model);
 
-    await checkpoint(ctx, { version: i + 1 });
+    await checkpoint(ctx, { ...versionsMark(ctx), version: i + 1 });
   }
   Object.assign(ctx.metrics, { versions: versions.length, materials: counts });
+  passMark(ctx);
   return "render";
 }
 
@@ -753,6 +881,7 @@ async function stepRender(ctx: Ctx): Promise<Step | null> {
     }
   }
   Object.assign(ctx.metrics, { files: rendered, failed_checks: failed });
+  passMark(ctx);
   return "review_check";
 }
 
@@ -772,7 +901,7 @@ async function stepReviewCheck(ctx: Ctx): Promise<Step | null> {
     const found = output.issues.map((x: any) => ({ ...x, by: "ai_review", model: reviewed }));
     issues += found.length;
     await svc(ctx, "ch_worker_review_flags", { p_version_id: v.version_id, p_flags: [...kept, ...found] });
-    await checkpoint(ctx, { version: i + 1 });
+    await checkpoint(ctx, { ...versionsMark(ctx), version: i + 1 });
   }
   await setMeta(ctx, { status: "awaiting_review" });
   Object.assign(ctx.metrics, { versions: versions.length, review_issues: issues });
@@ -813,7 +942,12 @@ export async function runJob(deps: PipelineDeps, job: Job): Promise<{ status: st
     const next = await STEPS[job.step](ctx);
     ctx.metrics.ms = Date.now() - t0;
     await deps.db.service("ch_worker_finish", { p_job_id: job.id, p_ok: true, p_error: null, p_metrics: ctx.metrics });
-    if (next) await deps.db.service("ch_worker_next", { p_document_id: job.document_id, p_step: next, p_versions: stepVersions(next, deps), p_scope_key: job.scope_key });
+    if (next) {
+      const args = { p_document_id: job.document_id, p_step: next, p_versions: stepVersions(next, deps), p_scope_key: job.scope_key };
+      // a marca entra junto com o trabalho, no mesmo passo do banco (outro processamento não pega o trabalho sem ela)
+      if (ctx.carry) await deps.db.service("ch_worker_next_marked", { ...args, p_checkpoint: ctx.carry });
+      else await deps.db.service("ch_worker_next", args);
+    }
     deps.log?.(`[central] ${job.step} concluído (${ctx.metrics.ms} ms)`);
     return { status: "succeeded", next };
   } catch (error) {

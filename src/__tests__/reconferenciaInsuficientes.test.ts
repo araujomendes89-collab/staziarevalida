@@ -4,7 +4,13 @@
  * conferida
  *   - quando uma fonte nova é indexada (etapa "source_index" de um PDF de referência), sem ninguém precisar apertar nada;
  *   - quando a equipe manda reprocessar a conferência ("Reprocessar" na etapa de evidências).
- * Só voltam as que ficaram sem trecho (sem evidência vigente); as que a conferência já julgou com um trecho ficam como estão.
+ * Voltam as que só a IA julgou: sem evidência vigente (nenhum trecho achado) ou só com evidência "insuficiente" dada pelo
+ * processamento (a IA pode ter comparado com um trecho de outro assunto). A que tem evidência dada pela equipe fica como está.
+ *
+ * Rodada de correção 1: a reconferência automática só roda para fonte que entra na busca e só segue para o rascunho quando alguma
+ * afirmação passa a ser compatível, e só no tema dela: tema que já tem unidade não ganha versão nova sozinho (recebe um aviso);
+ * materiais e revisão automática só nas versões novas. O rascunho nunca mexe em versão fora do rascunho nem cria versão nova
+ * com o texto antigo da IA.
  *
  * Sem rede: simulação de IA (mock). Os textos são fictícios, feitos só para o teste (não são conteúdo médico).
  */
@@ -32,8 +38,11 @@ const sql = async <T = any>(q: string, params: unknown[] = []) => (await dev.db.
 /** Gerador de arquivos falso (nenhum arquivo): o processamento segue até o fim sem Chromium. */
 const renderer = { templateVersion: "t1", brandVersion: "b1", render: async () => [] } as any;
 let answer: (req: StructuredRequest) => unknown = mockRespond;
+/** Outro nome de modelo para a simulação (como se o dono trocasse a IA na Central de IAs); null = o de sempre. */
+let model: string | null = null;
 const deps = (): PipelineDeps => {
   const provider = new MockProvider((req) => answer(req));
+  if (model) Object.defineProperty(provider, "model", { value: model });
   return { db, storage, ai: { provider, status: { ready: true, provider: "mock", model: provider.model, isMock: true, pending: null } }, renderer };
 };
 const drain = () => createContentHubWorker(deps()).drain();
@@ -45,6 +54,24 @@ const S3 = "Epsilonteste deve ser repetido quando Zetateste mostrar 53 sinais.";
 // a fonte traz outro número (com unidade, que a conferência compara): a conferência julga "insuficiente" COM o trecho
 const S4 = "Kapateste deve ser medido quando Lambdateste ultrapassar 61%.";
 const S4_FONTE = "Kapateste deve ser medido quando Lambdateste ultrapassar 62%.";
+// julgada por uma pessoa da equipe
+const S5 = "Tauteste deve ser aferido quando Upsilonteste passar de 19 etiquetas.";
+// trecho de outro assunto que a busca por palavras acha por um termo comum ("pacientes")
+const OUTRO_ASSUNTO = "Pacientes fictícios recebem uma senha impressa.";
+// o número com unidade é comparado pela conferência: o trecho de outro assunto não o tem, então a IA julga "insuficiente"
+const S7 = "Fiteste deve ser trocado quando 29% dos pacientes reunirem cupons.";
+// rascunho e reconferência automática
+const SA1 = "Quiloteste deve ser girado quando Lambdateste marcar 47 voltas.";
+const SA2 = "Miteste deve ser dobrado quando Niteste alcançar 59 folhas.";
+const SEM_RELACAO = "Xiteste deve ser polido quando Omiteste exibir 67 brilhos.";
+const SB1 = "Piteste deve ser lixado quando Riteste completar 71 lascas.";
+const SB2 = "Siteste deve ser colado quando Titeste revelar 73 riscos.";
+const SB3 = "Uiteste deve ser pintado quando Viteste acumular 79 manchas.";
+const SB4 = "Wuteste deve ser regado quando Xuteste medir 89 gotas.";
+const SB5 = "Yuteste deve ser podado quando Zuteste somar 97 galhos.";
+const SC = "Ziteste deve ser varrido quando Ypsiteste tocar 83 sinos.";
+/** Parágrafo sem afirmação que separa as seções (a classificação simulada liga cada seção só ao tema do seu título). */
+const FILLER = "Texto fictício de preenchimento para separar as seções do teste. ".repeat(26).trim();
 
 async function registerDoc(name: string) {
   const bytes = Buffer.from(`%PDF-1.7 ${name}`);
@@ -72,7 +99,7 @@ async function studyDocument(name: string, sentence: string) {
 }
 
 /** PDF de referência com uma frase: fonte cadastrada, PDF vinculado e indexado (etapa source_index). */
-async function indexSource(name: string, sentence: string) {
+async function indexSource(name: string, sentence: string, kind = "final") {
   const id = await registerDoc(name);
   await sql(`update public.ch_documents set purpose = 'reference_source' where id = $1`, [id]);
   await db.service("ch_worker_save_extraction", {
@@ -84,19 +111,63 @@ async function indexSource(name: string, sentence: string) {
       { page_no: 1, idx: 1, type: "paragraph", text: `Texto fictício de teste. ${sentence}`, bbox: [0, 0, 1, 1] },
     ],
   });
-  const src = await db.asUser<{ id: string }>(admin, "app_ch_register_source", { p_source: { title: name, organ: "Órgão fictício", version: "1", published_on: "2026-01-01" } });
+  const src = await db.asUser<{ id: string }>(admin, "app_ch_register_source", { p_source: { title: name, organ: "Órgão fictício", kind, version: "1", published_on: "2026-01-01" } });
   await db.asUser(admin, "app_ch_attach_source_document", { p_source_id: src.id, p_document_id: id });
   await db.service("ch_worker_next", { p_document_id: id, p_step: "source_index", p_versions: {} });
   await drain();
   return { documentId: id, sourceId: src.id };
 }
 
+/** Trecho colado à mão na fonte manual (não é indexação de PDF: não dispara a reconferência). */
+const addPassage = (page: number, sentence: string) =>
+  db.asUser(admin, "app_ch_add_passage", { p_source_id: manualSource, p_passage: { section: "Fictícia", page, text: `Texto fictício de teste. ${sentence}` } });
+
+/** Tema fictício novo no catálogo publicado (a classificação simulada liga o bloco ao tema pelo nome do título). */
+async function fictitiousTheme(name: string) {
+  const [sub] = await sql(
+    `select n.id, n.version_id from public.ch_taxonomy_nodes n join public.ch_taxonomy_versions v on v.id = n.version_id
+      where v.status = 'published' and n.level = 'subarea' and n.status = 'active' order by n.name limit 1`
+  );
+  const [t] = await sql(`insert into public.ch_taxonomy_nodes (version_id, parent_id, level, name) values ($1, $2, 'theme', $3) returning id`, [sub.version_id, sub.id, name]);
+  return t.id as string;
+}
+
+/** Material de estudo com seções: cada seção tem o título (nome do tema fictício) e as frases dela. */
+async function themedDocument(name: string, sections: { heading: string; sentences: string[] }[]) {
+  const id = await registerDoc(name);
+  await db.service("ch_worker_save_extraction", {
+    p_document_id: id,
+    p_text_kind: "text",
+    p_pages: [{ page_no: 1, kind: "text", width: 595, height: 842 }],
+    p_blocks: sections.flatMap((s, k) => [
+      { page_no: 1, idx: 3 * k, type: "heading", text: s.heading, bbox: [0, 0, 1, 1] },
+      { page_no: 1, idx: 3 * k + 1, type: "paragraph", text: `Texto fictício de teste. ${s.sentences.join(" ")}`, bbox: [0, 0, 1, 1] },
+      { page_no: 1, idx: 3 * k + 2, type: "paragraph", text: FILLER, bbox: [0, 0, 1, 1] },
+    ]),
+  });
+  await db.service("ch_worker_next", { p_document_id: id, p_step: "classify", p_versions: stepVersions("classify", deps()) });
+  await drain();
+  return id;
+}
+
+/** A revisão automática (simulada) aponta um problema em cada versão que confere. */
+const REVIEW_ISSUE = { severity: "major", kind: "other", where: "Conceitos essenciais §1", detail: "Apontamento fictício da revisão automática (teste)." };
+const withReviewIssue = (req: StructuredRequest) => (req.promptId === "review" ? { issues: [REVIEW_ISSUE] } : mockRespond(req));
+
 const claimOf = async (doc: string) => {
   const [c] = await sql(`select id, statement, status from public.ch_claims where document_id = $1`, [doc]);
   return c;
 };
+const claimBy = async (doc: string, sentence: string) => (await sql(`select id, status from public.ch_claims where document_id = $1 and statement = $2`, [doc, sentence]))[0];
 const evidenceOf = async (claim: string) => sql(`select source_id, verdict, stale from public.ch_evidence where claim_id = $1 order by created_at`, [claim]);
-const evidenceJob = async (doc: string) => (await sql(`select id, status, metrics from public.ch_jobs where document_id = $1 and step = 'evidence'`, [doc]))[0];
+/** O trabalho mais novo da etapa (trocar o modelo cria outro trabalho da mesma etapa). */
+const stepJob = async (doc: string, step: string) =>
+  (await sql(`select id, status, finished_at, metrics from public.ch_jobs where document_id = $1 and step = $2 order by created_at desc limit 1`, [doc, step]))[0];
+const evidenceJob = async (doc: string) => stepJob(doc, "evidence");
+const versionsOf = async (theme: string) =>
+  sql(`select v.id, v.version, v.status, v.content, v.review_flags, v.generated_by_model from public.ch_unit_versions v join public.ch_units u on u.id = v.unit_id
+        where u.theme_node_id = $1 order by v.version`, [theme]);
+const aiFlags = (v: any) => (v.review_flags ?? []).filter((f: any) => f.by === "ai_review");
 
 beforeAll(async () => {
   dev = await openDevDatabaseForTests(path.join(tmp, "db"));
@@ -116,8 +187,8 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
   let judgedDoc: string;
   let judgedClaim: string;
 
-  it("julgada com um trecho (insuficiente com evidência) fica como está ao reprocessar", async () => {
-    await db.asUser(admin, "app_ch_add_passage", { p_source_id: manualSource, p_passage: { section: "Fictícia", page: 1, text: `Texto fictício de teste. ${S4_FONTE}` } });
+  it("julgada pela IA com um trecho: ao reprocessar é conferida de novo e, com a mesma resposta, nada se repete", async () => {
+    await addPassage(1, S4_FONTE);
     judgedDoc = await studyDocument("Apostila julgada", S4);
     const claim = await claimOf(judgedDoc);
     judgedClaim = claim.id;
@@ -129,7 +200,19 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
     await drain();
     expect((await claimOf(judgedDoc)).status).toBe("insufficient");
     expect(await evidenceOf(claim.id)).toHaveLength(1);
-    expect((await evidenceJob(judgedDoc)).metrics.claims_checked).toBe(0);
+    expect((await evidenceJob(judgedDoc)).metrics).toMatchObject({ claims_checked: 1, rechecked: 1, verdicts: { unchanged: 1 } });
+  }, 240_000);
+
+  it("julgada por uma pessoa da equipe (evidência dela) fica como está ao reprocessar", async () => {
+    const doc = await studyDocument("Apostila julgada pela equipe", S5);
+    const claim = await claimOf(doc);
+    expect(claim.status).toBe("insufficient");
+    await db.asUser(admin, "app_ch_link_evidence", { p_claim_id: claim.id, p_evidence: { source_id: manualSource, page: 1, quote: "Texto fictício de teste.", verdict: "insufficient" } });
+    await db.asUser(admin, "app_ch_retry_job", { p_job_id: (await evidenceJob(doc)).id });
+    await drain();
+    expect((await claimOf(doc)).status).toBe("insufficient");
+    expect(await evidenceOf(claim.id)).toEqual([{ source_id: manualSource, verdict: "insufficient", stale: false }]);
+    expect((await evidenceJob(doc)).metrics.claims_checked).toBe(0);
   }, 240_000);
 
   it("fonte nova indexada: a afirmação que estava sem trecho é conferida de novo sozinha", async () => {
@@ -142,15 +225,17 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
     const { documentId, sourceId } = await indexSource("Manual fictício novo", S1);
     const [index] = await sql(`select status, metrics from public.ch_jobs where document_id = $1 and step = 'source_index'`, [documentId]);
     expect(index.status).toBe("succeeded");
-    // só o documento com afirmação sem trecho volta para a conferência (a julgada com trecho, não)
-    expect(index.metrics.recheck_documents).toBe(1);
+    // voltam para a conferência a apostila sem trecho e a julgada pela IA; a julgada pela equipe, não
+    expect(index.metrics.recheck_documents).toBe(2);
 
     claim = await claimOf(doc);
     expect(claim.status).toBe("compatible");
     expect(await evidenceOf(claim.id)).toEqual([{ source_id: sourceId, verdict: "compatible", stale: false }]);
-    expect((await evidenceJob(doc)).metrics).toMatchObject({ claims_checked: 1, rechecked: 1 });
+    expect((await evidenceJob(doc)).metrics).toMatchObject({ claims_checked: 1, rechecked: 1, auto_recheck: true, became_compatible: 1 });
+    // a julgada pela IA foi conferida de novo, mas a fonte nova não trata dela: mesma resposta, nada muda
     expect((await claimOf(judgedDoc)).status).toBe("insufficient");
     expect(await evidenceOf(judgedClaim)).toHaveLength(1);
+    expect((await evidenceJob(judgedDoc)).metrics).toMatchObject({ rechecked: 1, verdicts: { unchanged: 1 }, became_compatible: 0 });
   }, 240_000);
 
   it("Reprocessar a conferência: a afirmação que estava sem trecho é conferida de novo", async () => {
@@ -218,12 +303,185 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
     expect(after).toEqual(before);
   }, 240_000);
 
+  it("julgada pela IA contra um trecho de outro assunto: volta a ser conferida quando a fonte certa é indexada", async () => {
+    // a biblioteca ainda não tem a fonte do assunto: a busca por palavras acha um trecho de outro assunto por "pacientes"
+    await addPassage(4, OUTRO_ASSUNTO);
+    const doc = await studyDocument("Apostila de outro assunto", S7);
+    let claim = await claimOf(doc);
+    expect(claim.status).toBe("insufficient");
+    expect(await evidenceOf(claim.id)).toEqual([{ source_id: manualSource, verdict: "insufficient", stale: false }]);
+
+    const { sourceId } = await indexSource("Manual fictício do assunto certo", S7);
+    claim = await claimOf(doc);
+    expect(claim.status).toBe("compatible");
+    // a resposta nova da IA substitui a "insuficiente" antiga dela, que fica registrada no histórico
+    expect(await evidenceOf(claim.id)).toEqual([{ source_id: sourceId, verdict: "compatible", stale: false }]);
+    const replaced = await sql(`select details from public.ch_claim_history where claim_id = $1 and event = 'evidence_replaced_by_ai'`, [claim.id]);
+    expect(replaced).toHaveLength(1);
+    expect(replaced[0].details.replaced).toMatchObject([{ source_id: manualSource, verdict: "insufficient" }]);
+    expect((await evidenceJob(doc)).metrics).toMatchObject({ rechecked: 1, verdicts: { compatible: 1 }, became_compatible: 1 });
+  }, 240_000);
+
+  describe("rascunho e reconferência automática", () => {
+    let quilo: string;
+    let docA: string;
+
+    it("fonte sem relação: nada muda, o rascunho não roda de novo e a versão em revisão fica com os apontamentos", async () => {
+      quilo = await fictitiousTheme("Quilotema");
+      await addPassage(5, SA1);
+      answer = withReviewIssue;
+      try {
+        docA = await themedDocument("Apostila com rascunho", [{ heading: "Quilotema", sentences: [SA1, SA2] }]);
+      } finally {
+        answer = mockRespond;
+      }
+      expect((await claimBy(docA, SA1)).status).toBe("compatible");
+      expect((await claimBy(docA, SA2)).status).toBe("insufficient");
+      const [v1] = await versionsOf(quilo);
+      expect(aiFlags(v1)).toHaveLength(1);
+      await db.asUser(admin, "app_ch_submit_for_review", { p_version_id: v1.id });
+      const draftBefore = await stepJob(docA, "draft");
+      const [docBefore] = await sql(`select status from public.ch_documents where id = $1`, [docA]);
+
+      const { documentId } = await indexSource("Manual fictício sem relação", SEM_RELACAO);
+      expect((await stepJob(documentId, "source_index")).metrics.recheck_documents).toBeGreaterThan(0);
+      const versions = await versionsOf(quilo);
+      expect(versions).toHaveLength(1);
+      expect(versions[0].status).toBe("awaiting_review");
+      expect(aiFlags(versions[0])).toEqual([expect.objectContaining({ detail: REVIEW_ISSUE.detail })]);
+      expect(await stepJob(docA, "draft")).toEqual(draftBefore);
+      // a afirmação sem trecho foi conferida de novo, continuou sem trecho e o processamento parou ali
+      expect((await evidenceJob(docA)).metrics).toMatchObject({ auto_recheck: true, rechecked: 1, verdicts: { still_no_passage: 1 }, became_compatible: 0 });
+      const [docAfter] = await sql(`select status from public.ch_documents where id = $1`, [docA]);
+      expect(docAfter.status).toBe(docBefore.status);
+    }, 300_000);
+
+    it("afirmações passam a compatíveis depois da troca da IA do rascunho: só o tema sem unidade ganha rascunho; os outros temas não mudam", async () => {
+      const rho = await fictitiousTheme("Rhotema");
+      const sigma = await fictitiousTheme("Sigmatema");
+      const tau = await fictitiousTheme("Tautema");
+      const upsilon = await fictitiousTheme("Upsilontema");
+      await addPassage(6, SB1);
+      await addPassage(7, SB3);
+      await addPassage(8, SB4);
+      answer = withReviewIssue;
+      let doc: string;
+      try {
+        doc = await themedDocument("Apostila com quatro temas", [
+          { heading: "Rhotema", sentences: [SB1] },
+          { heading: "Sigmatema", sentences: [SB2] },
+          { heading: "Tautema", sentences: [SB3] },
+          { heading: "Upsilontema", sentences: [SB4, SB5] },
+        ]);
+      } finally {
+        answer = mockRespond;
+      }
+      expect((await claimBy(doc, SB2)).status).toBe("insufficient");
+      expect((await claimBy(doc, SB5)).status).toBe("insufficient");
+      const [vr] = await versionsOf(rho);
+      const [vt] = await versionsOf(tau);
+      const [vu] = await versionsOf(upsilon);
+      expect(await versionsOf(sigma)).toEqual([]);
+      for (const v of [vr, vt, vu]) expect(aiFlags(v)).toHaveLength(1);
+      // a equipe edita o texto de uma versão e manda duas para revisão; a do Upsilontema fica em rascunho
+      const edited = { sections: vr.content.sections.map((s: any) => ({ ...s, heading: `${s.heading} (editado pela equipe)` })) };
+      await db.asUser(admin, "app_ch_save_unit_version", { p_version_id: vr.id, p_content: edited });
+      await db.asUser(admin, "app_ch_submit_for_review", { p_version_id: vr.id });
+      await db.asUser(admin, "app_ch_submit_for_review", { p_version_id: vt.id });
+
+      // o dono troca a IA (outro modelo, sem as respostas guardadas) e chega a fonte das duas afirmações que faltavam
+      model = "mock-outra (simulação de troca de modelo)";
+      try {
+        await indexSource("Manual fictício dos quatro temas", `${SB2} ${SB5}`);
+      } finally {
+        model = null;
+      }
+      expect((await claimBy(doc, SB2)).status).toBe("compatible");
+      expect((await claimBy(doc, SB5)).status).toBe("compatible");
+
+      // versão editada em revisão: continua sendo a única da unidade, com o texto da equipe e os apontamentos
+      const rhoVersions = await versionsOf(rho);
+      expect(rhoVersions.map((v: any) => v.id)).toEqual([vr.id]);
+      expect(rhoVersions[0].status).toBe("awaiting_review");
+      expect(rhoVersions[0].content).toEqual(edited);
+      expect(aiFlags(rhoVersions[0])).toHaveLength(1);
+      // versão sem edição em revisão: os apontamentos da revisão automática continuam
+      const tauVersions = await versionsOf(tau);
+      expect(tauVersions.map((v: any) => v.id)).toEqual([vt.id]);
+      expect(tauVersions[0].status).toBe("awaiting_review");
+      expect(aiFlags(tauVersions[0])).toEqual([expect.objectContaining({ detail: REVIEW_ISSUE.detail })]);
+      // tema que já tem unidade e ganhou afirmação compatível: nenhuma versão nova sozinha; a versão mais nova recebe o aviso
+      const upsilonVersions = await versionsOf(upsilon);
+      expect(upsilonVersions.map((v: any) => v.id)).toEqual([vu.id]);
+      expect(upsilonVersions[0].status).toBe("draft");
+      expect(upsilonVersions[0].content).toEqual(vu.content);
+      expect(aiFlags(upsilonVersions[0])).toHaveLength(1);
+      const notices = upsilonVersions[0].review_flags.filter((f: any) => f.by === "reconferencia");
+      expect(notices).toEqual([expect.objectContaining({ claim_id: (await claimBy(doc, SB5)).id, detail: expect.stringContaining(SB5) })]);
+      expect(notices[0].detail).toMatch(/Reprocessar/);
+      // o tema que ainda não tinha unidade ganha o primeiro rascunho, feito pela IA nova
+      const sigmaVersions = await versionsOf(sigma);
+      expect(sigmaVersions).toHaveLength(1);
+      expect(sigmaVersions[0].status).toBe("draft");
+      expect(sigmaVersions[0].generated_by_model).toBe("mock-outra (simulação de troca de modelo)");
+      expect((await evidenceJob(doc)).metrics).toMatchObject({ auto_recheck: true, became_compatible: 2 });
+      expect((await stepJob(doc, "draft")).metrics).toMatchObject({ auto_recheck: true, themes: 2, drafts: 1, held_themes: 1, kept_versions: 0 });
+      // materiais, arquivos e revisão automática só na versão nova (os materiais do rascunho do Upsilontema não são refeitos)
+      expect((await stepJob(doc, "materials")).metrics).toMatchObject({ versions: 1 });
+      expect((await stepJob(doc, "review_check")).metrics).toMatchObject({ versions: 1 });
+    }, 300_000);
+
+    it("Reprocessar o rascunho (pedido da equipe): o tema avisado ganha a versão nova; as versões em revisão ficam como estão", async () => {
+      const doc = (await sql(`select id from public.ch_documents where name = 'Apostila com quatro temas'`))[0].id;
+      const theme = async (name: string) => (await sql(`select id from public.ch_taxonomy_nodes where name = $1 and level = 'theme'`, [name]))[0].id;
+      const [rho, tau, upsilon] = [await theme("Rhotema"), await theme("Tautema"), await theme("Upsilontema")];
+      const [vr] = await versionsOf(rho);
+      const [vt] = await versionsOf(tau);
+      const [vu] = await versionsOf(upsilon);
+      await db.asUser(admin, "app_ch_retry_job", { p_job_id: (await stepJob(doc, "draft")).id });
+      await drain();
+      // versões em revisão (editada e sem edição): nenhuma versão nova, apontamentos da revisão automática mantidos
+      for (const [t, v] of [[rho, vr], [tau, vt]]) {
+        const after = await versionsOf(t);
+        expect(after.map((x: any) => x.id)).toEqual([v.id]);
+        expect(after[0].content).toEqual(v.content);
+        expect(aiFlags(after[0])).toHaveLength(1);
+      }
+      // o tema avisado ganha a versão nova, com a afirmação que passou a ter evidência
+      const upsilonVersions = await versionsOf(upsilon);
+      expect(upsilonVersions.map((v: any) => v.id)[0]).toBe(vu.id);
+      expect(upsilonVersions).toHaveLength(2);
+      expect(upsilonVersions[1].status).toBe("draft");
+      expect(JSON.stringify(upsilonVersions[1].content)).toContain((await claimBy(doc, SB5)).id);
+      expect((await stepJob(doc, "draft")).metrics).toMatchObject({ kept_versions: 2 });
+      expect((await stepJob(doc, "draft")).metrics.auto_recheck).toBeUndefined();
+    }, 300_000);
+
+    it("fonte que não entra na busca (consulta pública): não dispara a reconferência", async () => {
+      const doc = await studyDocument("Apostila da consulta", SC);
+      expect((await claimOf(doc)).status).toBe("insufficient");
+      const before = await evidenceJob(doc);
+      const { documentId } = await indexSource("Consulta pública fictícia", SC, "public_consultation");
+      const index = await stepJob(documentId, "source_index");
+      expect(index.status).toBe("succeeded");
+      expect(index.metrics.recheck_documents).toBe(0);
+      expect(index.metrics.recheck_skipped).toMatch(/não entra na busca/);
+      expect(await evidenceJob(doc)).toEqual(before);
+      expect((await claimOf(doc)).status).toBe("insufficient");
+    }, 240_000);
+  });
+
   it("as funções novas e redefinidas continuam só do servidor (nem a equipe chama direto)", async () => {
     const id = crypto.randomUUID();
     for (const call of [
-      `select public.ch_worker_recheck_insufficient('{}'::jsonb)`,
+      `select public.ch_worker_recheck_insufficient('${id}'::uuid, '{}'::jsonb)`,
       `select public.ch_worker_claims('${id}'::uuid)`,
       `select public.ch_worker_mark_claim('${id}'::uuid, 'insufficient', 'x')`,
+      `select public.ch_worker_link_evidence('${id}'::uuid, '{}'::jsonb)`,
+      `select public.ch_worker_save_draft('${id}'::uuid, 'x', '{}'::jsonb, 'adaptation', 'x', 'x', 'x')`,
+      `select public.ch_claim_recheckable('${id}'::uuid)`,
+      `select public.ch_worker_next_marked('${id}'::uuid, 'draft', '{}'::jsonb, '', '{}'::jsonb)`,
+      `select public.ch_worker_theme_notice('${id}'::uuid, '[]'::jsonb)`,
     ]) {
       for (const role of ["authenticated", "anon"]) {
         const attempt = dev.db.transaction(async (tx) => {
@@ -237,7 +495,7 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
 
   it("banco sem a atualização 8200: indexar a fonte continua funcionando e a etapa anota o que falta", async () => {
     const MIGRATION = fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261003008200_reconferir_insuficientes.sql"), "utf8");
-    await dev.db.exec(`drop function public.ch_worker_recheck_insufficient(jsonb)`);
+    await dev.db.exec(`drop function public.ch_worker_recheck_insufficient(uuid, jsonb)`);
     try {
       const { documentId } = await indexSource("Manual fictício banco antigo", "Rhotesteum deve ser guardado quando Sigmatesteum somar 97 caixas.");
       const [index] = await sql(`select status, metrics from public.ch_jobs where document_id = $1 and step = 'source_index'`, [documentId]);
