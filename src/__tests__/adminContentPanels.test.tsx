@@ -1,6 +1,8 @@
 /**
  * Painéis de administração de Aulas e de Atualizações & Diretrizes (jsdom, banco simulado): digitar nas caixas de texto
  * chega ao banco, o aviso do conteúdo do app anterior aparece, a conferência médica e a publicação chamam as funções certas.
+ * Atualizações (10/10/2026): só publica com conferência aprovada (AT03), recusar uma publicada avisa que sai do ar (AT01) e
+ * mudar o texto de uma publicada avisa antes de salvar que ela sai do ar até nova conferência (AT02).
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -21,6 +23,12 @@ const LEGACY = {
   reviewer: null, source_checked_at: null, origin: "legacy_app", position: 1, can_review: true,
   legacy: { status_label: "VALIDADO_OFICIAL_SUS", last_verification_claim: "2026-08-30", original_url: "https://site.test/antigo", original_url_check: { http_status: 404, checked_on: "2026-10-06" }, cited_questions: [{ exam_code: "REV-2021-GO-45", claimed_answer: "Alternativa C", matched_question_id: "q45", matched_topic: "Doenças hipertensivas da gestação" }] },
 };
+const PUBLISHED = {
+  ...LEGACY, id: "u2", slug: "prot-y", topic: "Atualização publicada de teste", origin: "manual", legacy: {}, source_url: "https://www.gov.br/teste",
+  review_status: "approved", reviewed: true, reviewer: "Dra. Revisora", reviewed_at: "2026-10-06T12:00:00Z", review_note: "Conferido no documento.",
+  source_checked_at: "2026-10-06T12:00:00Z", published: true,
+};
+const OFF_AIR_NOTE = "Conteúdo alterado depois da conferência: revisar de novo. Saiu do ar para os alunos até a nova conferência; depois dela, o administrador publica outra vez.";
 
 beforeEach(() => {
   backend.rpc.mockReset();
@@ -109,5 +117,69 @@ describe("Atualizações & Diretrizes (painel)", () => {
     expect(await screen.findByText(/Conferida por Dra\. Revisora/)).toBeTruthy();
     fireEvent.click(screen.getByLabelText(/Publicada para os alunos/));
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_publish_guideline_update", { p_id: "u1", p_published: true }));
+  });
+
+  it("sem conferência aprovada, a publicação fica travada e a tela diz por quê", async () => {
+    render(<AdminUpdates />);
+    fireEvent.click(await screen.findByRole("button", { name: /Atualização antiga de teste/ }));
+    const toggle = screen.getByLabelText(/Publicada para os alunos/) as HTMLInputElement;
+    expect(toggle.disabled).toBe(true);
+    expect(screen.getByText(/Só pode ser publicada depois que um revisor médico aprovar a conferência/)).toBeTruthy();
+    fireEvent.click(toggle);
+    expect(backend.rpc).not.toHaveBeenCalledWith("app_admin_publish_guideline_update", expect.anything());
+  });
+
+  it("publicada: avisa antes de salvar mudança no texto; cancelar não grava; confirmar grava e mostra que saiu do ar", async () => {
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_guideline_updates") return { is_admin: true, review_areas: ["GINECOLOGIA_OBSTETRICIA"], items: [PUBLISHED] };
+      if (fn === "app_admin_save_guideline_update") {
+        const textChanged = args.p_update.current_conduct !== PUBLISHED.current_conduct;
+        return textChanged
+          ? { ...PUBLISHED, ...args.p_update, published: false, reviewed: false, review_status: "pending", review_note: OFF_AIR_NOTE }
+          : { ...PUBLISHED, ...args.p_update };
+      }
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    try {
+      render(<AdminUpdates />);
+      fireEvent.click(await screen.findByRole("button", { name: /Atualização publicada de teste/ }));
+      // o aviso aparece antes de salvar
+      expect(screen.getByText(/Se você mudar o texto, ela sai do ar para os alunos/)).toBeTruthy();
+      // mudar só a posição não tira do ar: salva sem perguntar
+      fireEvent.change(screen.getByLabelText("Posição"), { target: { value: "5" } });
+      fireEvent.click(screen.getByRole("button", { name: "Salvar alterações" }));
+      await waitFor(() => expect(backend.rpc.mock.calls.filter((c: any[]) => c[0] === "app_admin_save_guideline_update").length).toBe(1));
+      expect(confirm).not.toHaveBeenCalled();
+      // mudar o texto pergunta antes; cancelar não grava
+      fireEvent.change(screen.getByLabelText("Conduta vigente"), { target: { value: "Agora, editado." } });
+      fireEvent.click(screen.getByRole("button", { name: "Salvar alterações" }));
+      expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/sai do ar/));
+      expect(backend.rpc.mock.calls.filter((c: any[]) => c[0] === "app_admin_save_guideline_update").length).toBe(1);
+      // confirmar grava e a tela mostra que saiu do ar
+      confirm.mockReturnValue(true);
+      fireEvent.click(screen.getByRole("button", { name: "Salvar alterações" }));
+      expect(await screen.findByText(OFF_AIR_NOTE)).toBeTruthy();
+      expect(screen.getByText("Não publicada")).toBeTruthy();
+      expect(screen.queryByText(/Se você mudar o texto, ela sai do ar para os alunos/)).toBeNull();
+    } finally {
+      confirm.mockRestore();
+    }
+  });
+
+  it("recusar uma publicada: a tela avisa que sai do ar e mostra que saiu", async () => {
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_guideline_updates") return { is_admin: true, review_areas: ["GINECOLOGIA_OBSTETRICIA"], items: [PUBLISHED] };
+      if (fn === "app_admin_review_guideline_update") return { is_admin: true, review_areas: ["GINECOLOGIA_OBSTETRICIA"], items: [{ ...PUBLISHED, review_status: "rejected", reviewed: false, published: false, review_note: args.p_note }] };
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    render(<AdminUpdates />);
+    fireEvent.click(await screen.findByRole("button", { name: /Atualização publicada de teste/ }));
+    expect(screen.getByText(/Recusar tira esta atualização do ar para os alunos na hora/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("O que foi conferido (documento, página, versão)"), { target: { value: "Conduta não confere com a versão vigente." } });
+    fireEvent.click(screen.getByRole("button", { name: "Recusar" }));
+    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_review_guideline_update", { p_id: "u2", p_decision: "reject", p_note: "Conduta não confere com a versão vigente." }));
+    expect(await screen.findByText("Não publicada")).toBeTruthy();
+    expect((screen.getByLabelText(/Publicada para os alunos/) as HTMLInputElement).disabled).toBe(true);
   });
 });
