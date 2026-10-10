@@ -5,6 +5,9 @@ import React from "react";
 import { Badge, Banner, Button, Card, SelectField, Switch, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
+import { ATUALIZACOES_SPEC } from "../../../shared/adminAssistant/atualizacoes";
+import { AssistantLayout } from "./assistant/AssistantLayout.jsx";
+import { TabAssistant } from "./assistant/TabAssistant.jsx";
 import { dateTimeBR, LoadError, Loading, messageOf, TextArea, useLoad } from "./common.jsx";
 
 const REVIEW = { pending: ["Conferência pendente", "warning"], approved: ["Conferida", "success"], rejected: ["Recusada", "danger"] };
@@ -113,7 +116,14 @@ function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
   const [current, setCurrent] = React.useState(item);
   const [state, setState] = React.useState({ busy: false, error: null, done: null });
   const [note, setNote] = React.useState("");
+  const [assistantOpen, setAssistantOpen] = React.useState(false);
   const set = (patch) => (setForm((f) => ({ ...f, ...patch })), setState((s) => ({ ...s, done: null })));
+  // "Usar" só muda o formulário (e apaga o aviso de salvo); quem grava é "Salvar alterações". Lista (linha do tempo, flashcards): o painel
+  // entrega a lista já com os itens novos ao fim, então o campo é trocado pelo valor final.
+  const applySuggestion = (field, value) => {
+    setForm((f) => ({ ...f, ...ATUALIZACOES_SPEC.patch(f, field, value) }));
+    setState((s) => ({ ...s, done: null }));
+  };
   const run = async (label, fn) => {
     setState({ busy: label, error: null, done: null });
     try {
@@ -163,84 +173,95 @@ function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
   // publicar só com conferência aprovada (o banco também recusa); tirar do ar fica sempre livre
   const publishLocked = Boolean(current) && !current.published && current.review_status !== "approved";
   const [label, tone] = REVIEW[current?.review_status] ?? REVIEW.pending;
+  // O servidor lê o formulário como está na tela. O id é o do item gravado (nulo se ainda é novo); o registro do app anterior e a
+  // questão de treino (com a resposta) não vão para a IA. O documento oficial só é oferecido como material se o endereço é https.
+  const assistantForm = { ...form, id: current?.id ?? null, legacy: undefined, practice_questions: undefined };
+  const officialUrl = String(form.source_url ?? "").trim();
+  const materialLink = officialUrl.startsWith("https://") ? officialUrl : null;
   return (
-    <Card>
-      <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 16 }} noValidate>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-          <h3 style={{ margin: 0, font: "var(--type-h4)" }}>{current ? "Editar atualização" : "Nova atualização"}</h3>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            {current && <Badge tone={tone}>{label}</Badge>}
-            {current && <Badge tone={current.published ? "success" : "neutral"}>{current.published ? "Publicada" : "Não publicada"}</Badge>}
-            {current && isAdmin && <Button variant="ghost" icon="trash-2" onClick={remove}>Apagar</Button>}
-            <Button variant="ghost" onClick={onClose}>Fechar</Button>
-          </div>
-        </div>
-        {state.error && <Banner tone="danger">{state.error}</Banner>}
-        {state.done === "save" && current?.review_status === "pending" && current?.review_note && <Banner tone="warning">{current.review_note}</Banner>}
-        {state.done === "save" && <Banner tone="success">Atualização salva.</Banner>}
-        {current?.published && <Banner tone="warning">Esta atualização está no ar. Se você mudar o texto, ela sai do ar para os alunos até um revisor médico conferir de novo e o administrador publicar outra vez. Mudar só a posição, a prioridade ou os termos do treino não tira do ar.</Banner>}
-        {current?.origin === "legacy_app" && <LegacyBox legacy={current.legacy} />}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
-          <SelectField label="Grande área" value={form.area} onChange={(e) => set({ area: e.target.value })} options={AREAS.map((a) => ({ value: a.id, label: a.label }))} />
-          <TextField label="Tema" value={form.topic} maxLength={200} onChange={(e) => set({ topic: e.target.value })} />
-          <TextField label="Subtema" value={form.subtopic} maxLength={200} onChange={(e) => set({ subtopic: e.target.value })} />
-          <SelectField label="Prioridade" value={String(form.priority)} onChange={(e) => set({ priority: Number(e.target.value) })} options={[{ value: "1", label: "Muito alta" }, { value: "2", label: "Alta" }, { value: "3", label: "Moderada" }, { value: "4", label: "Baixa" }]} />
-          <TextField label="Instituição" value={form.institution} maxLength={200} onChange={(e) => set({ institution: e.target.value })} />
-          <TextField label="Documento oficial" value={form.document_title} maxLength={300} onChange={(e) => set({ document_title: e.target.value })} />
-          <TextField label="Data de publicação (como no documento)" value={form.publication_label} maxLength={80} onChange={(e) => set({ publication_label: e.target.value })} hint="Ex.: 03/2025" />
-          <TextField label="Endereço do documento oficial (https)" value={form.source_url} onChange={(e) => set({ source_url: e.target.value })} hint="Obrigatório para a conferência médica." />
-          <TextField label="Termos para o treino" value={form.search_terms} maxLength={120} onChange={(e) => set({ search_terms: e.target.value })} hint="Palavras buscadas nas questões oficiais da área (ex.: pré-eclâmpsia)." />
-          <TextField label="Posição" type="number" value={form.position} onChange={(e) => set({ position: e.target.value })} />
-        </div>
-        <TextArea label="Antes (conduta anterior)" value={form.before_text} rows={3} maxLength={4000} onChange={(v) => set({ before_text: v })} />
-        <TimelineEditor value={form.timeline} onChange={(timeline) => set({ timeline })} />
-        <TextArea label="Conduta vigente" value={form.current_conduct} rows={4} maxLength={4000} onChange={(v) => set({ current_conduct: v })} />
-        <TextArea label="Como pode aparecer no Revalida" value={form.exam_impact} rows={3} maxLength={4000} onChange={(v) => set({ exam_impact: v })} />
-        <TextArea label="Pegadinha da banca" value={form.trap} rows={2} maxLength={2000} onChange={(v) => set({ trap: v })} />
-        <TextArea label="Impacto clínico" value={form.clinical_impact} rows={3} maxLength={4000} onChange={(v) => set({ clinical_impact: v })} />
-        <FlashcardsEditor value={form.flashcards} onChange={(flashcards) => set({ flashcards })} />
-        <TextArea label="Questão de treino (JSON: statement, options A–D com text e justification, answer, commentary)" value={questions} rows={6} onChange={(v) => setQuestions(v)} />
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button type="submit" loading={state.busy === "save"}>{current ? "Salvar alterações" : "Criar atualização"}</Button>
-        </div>
-      </form>
-
-      {current && (
-        <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--border-subtle)", display: "grid", gap: 16 }}>
-          <div>
-            <div style={{ font: "var(--type-label)", marginBottom: 6 }}>Conferência médica</div>
-            {current.review_status !== "pending" && (
-              <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
-                {label} {current.reviewer ? `por ${current.reviewer} ` : ""}em {dateTimeBR(current.reviewed_at)}{current.review_note ? `: "${current.review_note}"` : ""}
-              </p>
-            )}
-            {canReview ? (
-              <div style={{ display: "grid", gap: 8 }}>
-                <TextArea label="O que foi conferido (documento, página, versão)" value={note} rows={2} onChange={(v) => setNote(v)} />
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <Button icon="shield-check" loading={state.busy === "approve"} disabled={note.trim().length < 10} onClick={() => review("approve")}>Aprovar: confere com o documento oficial</Button>
-                  <Button variant="secondary" icon="x" loading={state.busy === "reject"} disabled={note.trim().length < 10} onClick={() => review("reject")}>Recusar</Button>
-                </div>
-                {current.published && <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Recusar tira esta atualização do ar para os alunos na hora.</p>}
-              </div>
-            ) : (
-              <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Só um revisor médico cadastrado em {areaLabel(current.area)} confere esta atualização (Central de Conteúdo › Configuração).</p>
-            )}
-          </div>
-          {isAdmin && (
-            <div>
-              <Switch
-                label="Publicada para os alunos"
-                description={current.review_status === "approved" ? "Conferida por revisor médico." : "Só pode ser publicada depois que um revisor médico aprovar a conferência no documento oficial."}
-                checked={Boolean(current.published)}
-                disabled={state.busy === "publish" || publishLocked}
-                onChange={(e) => !publishLocked && publish(e.target.checked)}
-              />
+    <AssistantLayout
+      open={assistantOpen}
+      panel={<TabAssistant spec={ATUALIZACOES_SPEC} title="Assistente" form={assistantForm} materialLink={materialLink} onUse={applySuggestion} onClose={() => setAssistantOpen(false)} />}
+    >
+      <Card>
+        <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 16 }} noValidate>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <h3 style={{ margin: 0, font: "var(--type-h4)" }}>{current ? "Editar atualização" : "Nova atualização"}</h3>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              {current && <Badge tone={tone}>{label}</Badge>}
+              {current && <Badge tone={current.published ? "success" : "neutral"}>{current.published ? "Publicada" : "Não publicada"}</Badge>}
+              {current && isAdmin && <Button variant="ghost" icon="trash-2" onClick={remove}>Apagar</Button>}
+              <Button variant="secondary" aria-pressed={assistantOpen} onClick={() => setAssistantOpen((open) => !open)}>Assistente</Button>
+              <Button variant="ghost" onClick={onClose}>Fechar</Button>
             </div>
-          )}
-        </div>
-      )}
-    </Card>
+          </div>
+          {state.error && <Banner tone="danger">{state.error}</Banner>}
+          {state.done === "save" && current?.review_status === "pending" && current?.review_note && <Banner tone="warning">{current.review_note}</Banner>}
+          {state.done === "save" && <Banner tone="success">Atualização salva.</Banner>}
+          {current?.published && <Banner tone="warning">Esta atualização está no ar. Se você mudar o texto, ela sai do ar para os alunos até um revisor médico conferir de novo e o administrador publicar outra vez. Mudar só a posição, a prioridade ou os termos do treino não tira do ar.</Banner>}
+          {current?.origin === "legacy_app" && <LegacyBox legacy={current.legacy} />}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
+            <SelectField label="Grande área" value={form.area} onChange={(e) => set({ area: e.target.value })} options={AREAS.map((a) => ({ value: a.id, label: a.label }))} />
+            <TextField label="Tema" value={form.topic} maxLength={200} onChange={(e) => set({ topic: e.target.value })} />
+            <TextField label="Subtema" value={form.subtopic} maxLength={200} onChange={(e) => set({ subtopic: e.target.value })} />
+            <SelectField label="Prioridade" value={String(form.priority)} onChange={(e) => set({ priority: Number(e.target.value) })} options={[{ value: "1", label: "Muito alta" }, { value: "2", label: "Alta" }, { value: "3", label: "Moderada" }, { value: "4", label: "Baixa" }]} />
+            <TextField label="Instituição" value={form.institution} maxLength={200} onChange={(e) => set({ institution: e.target.value })} />
+            <TextField label="Documento oficial" value={form.document_title} maxLength={300} onChange={(e) => set({ document_title: e.target.value })} />
+            <TextField label="Data de publicação (como no documento)" value={form.publication_label} maxLength={80} onChange={(e) => set({ publication_label: e.target.value })} hint="Ex.: 03/2025" />
+            <TextField label="Endereço do documento oficial (https)" value={form.source_url} onChange={(e) => set({ source_url: e.target.value })} hint="Obrigatório para a conferência médica." />
+            <TextField label="Termos para o treino" value={form.search_terms} maxLength={120} onChange={(e) => set({ search_terms: e.target.value })} hint="Palavras buscadas nas questões oficiais da área (ex.: pré-eclâmpsia)." />
+            <TextField label="Posição" type="number" value={form.position} onChange={(e) => set({ position: e.target.value })} />
+          </div>
+          <TextArea label="Antes (conduta anterior)" value={form.before_text} rows={3} maxLength={4000} onChange={(v) => set({ before_text: v })} />
+          <TimelineEditor value={form.timeline} onChange={(timeline) => set({ timeline })} />
+          <TextArea label="Conduta vigente" value={form.current_conduct} rows={4} maxLength={4000} onChange={(v) => set({ current_conduct: v })} />
+          <TextArea label="Como pode aparecer no Revalida" value={form.exam_impact} rows={3} maxLength={4000} onChange={(v) => set({ exam_impact: v })} />
+          <TextArea label="Pegadinha da banca" value={form.trap} rows={2} maxLength={2000} onChange={(v) => set({ trap: v })} />
+          <TextArea label="Impacto clínico" value={form.clinical_impact} rows={3} maxLength={4000} onChange={(v) => set({ clinical_impact: v })} />
+          <FlashcardsEditor value={form.flashcards} onChange={(flashcards) => set({ flashcards })} />
+          <TextArea label="Questão de treino (JSON: statement, options A–D com text e justification, answer, commentary)" value={questions} rows={6} onChange={(v) => setQuestions(v)} />
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <Button type="submit" loading={state.busy === "save"}>{current ? "Salvar alterações" : "Criar atualização"}</Button>
+          </div>
+        </form>
+
+        {current && (
+          <div style={{ marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--border-subtle)", display: "grid", gap: 16 }}>
+            <div>
+              <div style={{ font: "var(--type-label)", marginBottom: 6 }}>Conferência médica</div>
+              {current.review_status !== "pending" && (
+                <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+                  {label} {current.reviewer ? `por ${current.reviewer} ` : ""}em {dateTimeBR(current.reviewed_at)}{current.review_note ? `: "${current.review_note}"` : ""}
+                </p>
+              )}
+              {canReview ? (
+                <div style={{ display: "grid", gap: 8 }}>
+                  <TextArea label="O que foi conferido (documento, página, versão)" value={note} rows={2} onChange={(v) => setNote(v)} />
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <Button icon="shield-check" loading={state.busy === "approve"} disabled={note.trim().length < 10} onClick={() => review("approve")}>Aprovar: confere com o documento oficial</Button>
+                    <Button variant="secondary" icon="x" loading={state.busy === "reject"} disabled={note.trim().length < 10} onClick={() => review("reject")}>Recusar</Button>
+                  </div>
+                  {current.published && <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Recusar tira esta atualização do ar para os alunos na hora.</p>}
+                </div>
+              ) : (
+                <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Só um revisor médico cadastrado em {areaLabel(current.area)} confere esta atualização (Central de Conteúdo › Configuração).</p>
+              )}
+            </div>
+            {isAdmin && (
+              <div>
+                <Switch
+                  label="Publicada para os alunos"
+                  description={current.review_status === "approved" ? "Conferida por revisor médico." : "Só pode ser publicada depois que um revisor médico aprovar a conferência no documento oficial."}
+                  checked={Boolean(current.published)}
+                  disabled={state.busy === "publish" || publishLocked}
+                  onChange={(e) => !publishLocked && publish(e.target.checked)}
+                />
+              </div>
+            )}
+          </div>
+        )}
+      </Card>
+    </AssistantLayout>
   );
 }
 
