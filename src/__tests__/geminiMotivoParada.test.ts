@@ -168,9 +168,9 @@ describe("Gemini: folga de saída para o raciocínio", () => {
     expect(geminiOutputLimit("gemini-3.1-pro-preview", "rapido", 8192)).toBe(24576);
   });
 
-  it("2.5 Flash-Lite (sem raciocínio) e modelos de imagem: sem folga; nunca passa de 65.536", async () => {
+  it("2.5 Flash-Lite (pensa até 8.192 no Vertex AI) ganha a folga; modelos de imagem não; nunca passa de 65.536", async () => {
     await gemini("gemini-2.5-flash-lite").generate({ ...REQ, maxOutputTokens: 6000 });
-    expect(generated[0].config.maxOutputTokens).toBe(6000);
+    expect(generated[0].config.maxOutputTokens).toBe(6000 + 8192);
     expect(geminiOutputLimit("gemini-2.5-flash-image", "caprichado", 4000)).toBe(4000);
     expect(geminiOutputLimit("gemini-3.5-flash", "caprichado", 60000)).toBe(65536);
     // sem pedido: o padrão do provedor (4.096) mais a folga

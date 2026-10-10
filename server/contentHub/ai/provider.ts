@@ -117,15 +117,38 @@ export function anthropicOutputConfig(model: string, effort: string | undefined,
 }
 
 /**
- * Cuidado no Gemini (correção IA07, 2026-10-10; página oficial "Thinking"): Rápido reduz o raciocínio — orçamento de 1.024
- * tokens no 2.5 Pro e no 2.5 Flash, nível baixo nos Gemini 3 —; Caprichado usa o padrão do modelo. O 2.5 Flash-Lite já vem
- * sem raciocínio: mandar orçamento o ligaria e gastaria mais, então nada é mandado.
+ * Como o Gemini pensa, pela família do modelo (regra de prefixo, revisão rodada 3; páginas oficiais "Thinking" do Vertex AI e do
+ * AI Studio, conferidas em 10/10/2026). Vale também para os nomes com versão ou prévia (gemini-2.5-flash-preview-09-2025) e com
+ * o caminho na frente (models/...):
+ *   "orcamento": família 2.5 inteira (Pro, Flash e Flash-Lite). Pensa por padrão no Vertex AI ("Auto, até 8.192 tokens") e
+ *     aceita só thinking_budget (thinking_level dá erro no Vertex). Mínimos: Pro 128, Flash 1, Flash-Lite 512.
+ *   "nivel": Gemini 3 e seguintes. Pensa por nível (thinking_level; thinking_budget está obsoleto e pode dar erro 400); todos os
+ *     de texto aceitam LOW.
+ *   "apelido": gemini-flash-latest, gemini-flash-lite-latest, gemini-pro-latest (AI Studio). O Google troca o modelo por trás a
+ *     cada lançamento (pode ser um 2.5 ou um 3); no AI Studio, thinking_level vale para os dois.
+ *   null: modelos que não são de texto (imagem, voz, vetores, ao vivo) e os que não pensam (2.0, Gemma).
+ */
+type GeminiThinkingKind = "orcamento" | "nivel" | "apelido";
+
+function geminiThinkingKind(model: string): GeminiThinkingKind | null {
+  const m = String(model ?? "").trim().toLowerCase().replace(/^.*\//, "");
+  if (/(image|tts|audio|live|embedding|transcribe|translate)/.test(m)) return null;
+  if (/^gemini-2\.5-/.test(m)) return "orcamento";
+  if (/^gemini-(?:[3-9]|\d{2,})(?:\.\d+)?-/.test(m)) return "nivel";
+  if (/^gemini-[a-z-]+-latest$/.test(m)) return "apelido";
+  return null;
+}
+
+/**
+ * Cuidado no Gemini (correção IA07, 2026-10-10; revisão rodada 3): Rápido reduz o raciocínio de todos os Gemini que pensam —
+ * orçamento de 1.024 tokens na família 2.5 (inclusive o Flash-Lite, que no Vertex AI pensa até 8.192), nível baixo nos Gemini 3
+ * e nos apelidos "-latest" —; Caprichado usa o padrão do modelo.
  */
 export function geminiThinking(model: string, care: string | undefined): { thinkingBudget: number } | { thinkingLevel: "LOW" } | null {
   if (care !== "rapido") return null;
-  const m = String(model ?? "").trim().toLowerCase();
-  if (/^gemini-2\.5-(pro|flash)$/.test(m)) return { thinkingBudget: 1024 };
-  if (/^gemini-3/.test(m) && !m.includes("image")) return { thinkingLevel: "LOW" };
+  const kind = geminiThinkingKind(model);
+  if (kind === "orcamento") return { thinkingBudget: 1024 };
+  if (kind === "nivel" || kind === "apelido") return { thinkingLevel: "LOW" };
   return null;
 }
 
@@ -136,15 +159,15 @@ const GEMINI_MAX_OUTPUT = 65_536;
  * Folga para o raciocínio no limite de saída do Gemini (falha vista em produção, 2026-10-09). O raciocínio conta DENTRO do
  * maxOutputTokens (página oficial "Thinking": "including thought tokens"); batendo no limite, a resposta sai cortada ou vazia e
  * o raciocínio é cobrado mesmo assim. O Google cobra só o que foi gerado: a folga não encarece as respostas que dão certo.
- *   2.5 Pro e 2.5 Flash: o orçamento mandado no Rápido (1.024); senão o teto do raciocínio automático no Vertex AI (8.192).
- *   Gemini 3 (raciocínio por nível, sem orçamento fixo): 16.384.
- *   2.5 Flash-Lite (sem raciocínio) e modelos de imagem: nada.
+ *   Família 2.5 (Pro, Flash, Flash-Lite e nomes com versão): o orçamento mandado no Rápido (1.024); senão o teto do raciocínio
+ *     automático no Vertex AI (8.192).
+ *   Gemini 3 (raciocínio por nível, sem orçamento fixo) e apelidos "-latest" (podem ser 2.5 ou 3): 16.384.
+ *   Modelos que não são de texto ou não pensam: nada.
  */
 export function geminiThinkingReserve(model: string, care: string | undefined): number {
-  const m = String(model ?? "").trim().toLowerCase();
-  if (m.includes("image")) return 0;
-  if (/^gemini-2\.5-(pro|flash)$/.test(m)) return care === "rapido" ? 1024 : 8192;
-  if (/^gemini-3/.test(m)) return 16_384;
+  const kind = geminiThinkingKind(model);
+  if (kind === "orcamento") return care === "rapido" ? 1024 : 8192;
+  if (kind === "nivel" || kind === "apelido") return 16_384;
   return 0;
 }
 

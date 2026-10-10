@@ -349,8 +349,8 @@ describe("IA07: Cuidado no Gemini e na OpenAI", () => {
     expect(geminiThinking("gemini-2.5-pro", "rapido")).toEqual({ thinkingBudget: 1024 });
     expect(geminiThinking("gemini-2.5-flash", "rapido")).toEqual({ thinkingBudget: 1024 });
     expect(geminiThinking("gemini-3.1-pro-preview", "rapido")).toEqual({ thinkingLevel: "LOW" });
-    // Flash-Lite já vem sem raciocínio: mandar orçamento ligaria e gastaria mais
-    expect(geminiThinking("gemini-2.5-flash-lite", "rapido")).toBeNull();
+    // Flash-Lite também pensa no Vertex AI ("Auto, até 8.192", revisão rodada 3): o Rápido limita o raciocínio dele também
+    expect(geminiThinking("gemini-2.5-flash-lite", "rapido")).toEqual({ thinkingBudget: 1024 });
     expect(geminiThinking("gemini-2.5-pro", "caprichado")).toBeNull();
     expect(geminiThinking("gemini-2.5-pro", undefined)).toBeNull();
   });
