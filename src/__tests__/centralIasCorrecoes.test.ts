@@ -12,6 +12,7 @@ import os from "os";
 import path from "path";
 
 const counted: { model: string }[] = [];
+const generated: any[] = [];
 let countBehavior: () => Promise<unknown> = async () => ({ totalTokens: 1 });
 vi.mock("@google/genai", () => ({
   GoogleGenAI: class {
@@ -19,6 +20,10 @@ vi.mock("@google/genai", () => ({
       countTokens: async ({ model }: { model: string }) => {
         counted.push({ model });
         return countBehavior();
+      },
+      generateContent: async (args: any) => {
+        generated.push(args);
+        return { text: JSON.stringify({ ok: true }), usageMetadata: { promptTokenCount: 1, candidatesTokenCount: 1 } };
       },
     };
   },
@@ -121,10 +126,14 @@ describe("IA04: modos Linha de produção e Comitê avisam que os conferentes ai
     expect(validateFunctionConfig(fc("criacao", "sozinha", []), c).warnings.join(" ")).not.toMatch(/ainda não rodam/);
   });
 
-  it("Verificação em Linha de produção: diz onde os conferentes rodam de verdade", async () => {
+  it("Verificação (Linha ou Comitê): diz onde os conferentes rodam de verdade", async () => {
     const { validateFunctionConfig } = await import("../../server/ai/config");
-    expect(validateFunctionConfig(fc("verificacao", "linha", [O, G]), cfg(["anthropic", "openai", "gemini"])).warnings).toContain(
+    const c = cfg(["anthropic", "openai", "gemini"]);
+    expect(validateFunctionConfig(fc("verificacao", "linha", [O, G]), c).warnings).toContain(
       "No processamento a Verificação usa só a IA principal e a reserva (sempre de outra empresa); os conferentes da Linha de produção só rodam na conferência de rascunhos feita por comando."
+    );
+    expect(validateFunctionConfig(fc("verificacao", "comite", [O, G]), c).warnings).toContain(
+      "No processamento a Verificação usa só a IA principal e a reserva (sempre de outra empresa); os membros do Comitê só rodam na conferência de rascunhos feita por comando."
     );
   });
 });
@@ -155,9 +164,20 @@ describe("IA05: Gemini pelo Vertex (modo expresso)", () => {
     const list = await listModels("gemini", { VERTEX_API_KEY: VERTEX } as any, vi.fn() as any);
     expect(list).toMatchObject({ status: "chave_recusada", models: [] });
     countBehavior = async () => {
-      throw new Error("fetch failed");
+      throw httpError(400, '{"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"reason":"API_KEY_INVALID"}]}}');
     };
-    expect(await listModels("gemini", { VERTEX_API_KEY: VERTEX } as any, vi.fn() as any)).toMatchObject({ status: "erro", models: [] });
+    expect(await listModels("gemini", { VERTEX_API_KEY: VERTEX } as any, vi.fn() as any)).toMatchObject({ status: "chave_recusada", models: [] });
+  });
+
+  it("teste que não pôde rodar por outro motivo: a lista filtrada vale do mesmo jeito, com o aviso", async () => {
+    const { listModels } = await import("../../server/ai/models");
+    countBehavior = async () => {
+      throw httpError(429, "Resource has been exhausted");
+    };
+    const list = await listModels("gemini", { VERTEX_API_KEY: VERTEX } as any, vi.fn() as any);
+    expect(list.status).toBe("pronta");
+    expect(list.detail).toMatch(/não foi possível testar a chave agora \(o Google respondeu 429\)/);
+    expect(list.models.map((m) => m.id)).toEqual(["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.5-pro", "gemini-3.1-pro-preview"]);
   });
 });
 
@@ -188,7 +208,7 @@ describe("IA06 e IA10: quando repetir a mesma IA, prazo do pedido e registro na 
     await on("anthropic", "openai");
     await saveFn("criacao", "sozinha", A, [], O);
     await refresh();
-    for (const err of [httpError(429, "429 rate_limit_error: Number of requests has exceeded your rate limit"), httpError(529, "529 overloaded_error"), httpError(503, "503 Service Unavailable"), new Error("fetch failed"), new Error("OpenAI respondeu 500: erro interno")]) {
+    for (const err of [httpError(429, "429 rate_limit_error: Number of requests has exceeded your rate limit"), httpError(429, "Quota exceeded for quota metric 'Generate Content API requests per minute' and limit 'GenerateContent request limit per minute' (per_minute)"), httpError(529, "529 overloaded_error"), httpError(503, "503 Service Unavailable"), new Error("fetch failed"), new Error("OpenAI respondeu 500: erro interno")]) {
       const f = fakes({ [key(A)]: (_r, n) => { if (n === 1) throw err; return { ok: "A" }; }, [key(O)]: () => ({ ok: "O" }) });
       const out = await (await provider(deps(f))).generate<any>(REQ);
       expect(out.output, err.message).toEqual({ ok: "A" });
@@ -197,20 +217,79 @@ describe("IA06 e IA10: quando repetir a mesma IA, prazo do pedido e registro na 
     }
   });
 
-  it("prazo do pedido: sem tempo para a próxima chamada, ela nem acontece, e o motivo fica registrado", async () => {
+  it("prazo do pedido: nenhuma IA é chamada com menos de 30 s de folga, e o motivo fica registrado", async () => {
     await on("anthropic", "openai");
     await saveFn("criacao", "sozinha", A, [], O);
     await refresh();
-    // principal demora mais que o tempo que sobra: é cortada; a reserva já não cabe no prazo e não é chamada
-    const f = fakes({ [key(A)]: () => new Promise((r) => setTimeout(() => r({ ok: "A" }), 4000)), [key(O)]: () => ({ ok: "O" }) });
-    const err = await (await provider(deps(f, { deadlineAt: Date.now() + 15_000 + 1_500 }))).generate(REQ).catch((e: unknown) => e as Error);
+    // a principal cabe (30,5 s de folga), demora 1 s e cai com erro passageiro; a nova tentativa e a reserva já não cabem
+    const f = fakes({ [key(A)]: () => new Promise((_, rej) => setTimeout(() => rej(httpError(503, "503 Service Unavailable")), 1000)), [key(O)]: () => ({ ok: "O" }) });
+    const err = await (await provider(deps(f, { deadlineAt: Date.now() + 15_000 + 30_500 }))).generate(REQ).catch((e: unknown) => e as Error);
     expect(err).toBeInstanceOf(Error);
     expect(f.calls[key(A)]).toHaveLength(1);
     expect(f.calls[key(O)]).toBeUndefined();
     const rows = (await dev.db.query<any>(`select provider, outcome, error from public.ai_calls order by id`)).rows;
-    expect(rows.map((r) => `${r.provider}:${r.outcome}`)).toEqual(["anthropic:falha", "openai:bloqueada"]);
-    expect(rows[0].error).toMatch(/Tempo esgotado/);
-    expect(rows[1].error).toBe("Sem tempo para chamar esta IA dentro do limite do pedido.");
+    expect(rows.map((r) => `${r.provider}:${r.outcome}`)).toEqual(["anthropic:falha", "anthropic:bloqueada", "openai:bloqueada"]);
+    expect(rows[2].error).toBe("Sem tempo para chamar esta IA dentro do limite do pedido.");
+  });
+
+  it("o prazo vale para o pedido inteiro: a segunda chamada de IA do mesmo pedido usa o que sobrou", async () => {
+    const { withRequestDeadline } = await import("../../server/ai/requestDeadline");
+    await on("anthropic", "openai");
+    await saveFn("criacao", "sozinha", A, [], O);
+    await refresh();
+    const f = fakes({ [key(A)]: () => new Promise((r) => setTimeout(() => r({ ok: "A" }), 1000)), [key(O)]: () => ({ ok: "O" }) });
+    const outcome = await withRequestDeadline(Date.now() + 15_000 + 30_500, async () => {
+      const first = await (await provider(deps(f))).generate<any>(REQ);
+      const second = await (await provider(deps(f))).generate(REQ).catch((e: unknown) => e as Error);
+      return { first: first.output, second };
+    });
+    expect(outcome.first).toEqual({ ok: "A" });
+    expect(outcome.second).toBeInstanceOf(Error);
+    expect(f.calls[key(A)]).toHaveLength(1);
+  });
+
+  it("gravação do registro que falha só avisa: não repete linhas na gravação seguinte", async () => {
+    const { maestroProvider } = await import("../../server/ai/maestro");
+    await on("anthropic", "openai");
+    await saveFn("criacao", "sozinha", A, [], O);
+    await refresh();
+    let failNext = true;
+    const flaky = {
+      ...db,
+      service: async (fn: string, args: any) => {
+        if (fn === "ch_worker_ai_log_calls" && failNext) {
+          failNext = false;
+          throw new Error("banco fora");
+        }
+        return db.service(fn, args);
+      },
+    } as any;
+    const f = fakes({ [key(A)]: () => { throw httpError(400, "400 credit balance is too low"); }, [key(O)]: () => ({ ok: "O" }) });
+    await (await maestroProvider({ ...deps(f), db: flaky }, "criacao", origin)).provider!.generate(REQ);
+    const rows = (await dev.db.query<any>(`select provider, outcome from public.ai_calls order by id`)).rows;
+    expect(rows.map((r) => `${r.provider}:${r.outcome}`)).toEqual(["openai:ok"]);
+  });
+
+  it("no servidor, o prazo marcado na chegada chega até a rota, mesmo depois de ler o corpo e de esperar", async () => {
+    const express = (await import("express")).default;
+    const { requestDeadlineMiddleware, currentRequestDeadline } = await import("../../server/ai/requestDeadline");
+    const app = express();
+    app.use(express.json());
+    app.use(requestDeadlineMiddleware(5_000));
+    app.post("/t", async (_req, res) => {
+      await new Promise((r) => setTimeout(r, 20));
+      res.json({ deadline: currentRequestDeadline() });
+    });
+    const server = app.listen(0);
+    try {
+      const port = (server.address() as any).port;
+      const t0 = Date.now();
+      const out = await (await fetch(`http://127.0.0.1:${port}/t`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: "x".repeat(50_000) }) })).json();
+      expect(out.deadline).toBeGreaterThanOrEqual(t0 + 5_000);
+      expect(out.deadline).toBeLessThan(Date.now() + 5_000 + 100);
+    } finally {
+      server.close();
+    }
   });
 
   it("prazo padrão só no site (Vercel): 270 s; no processamento do Google não há prazo", async () => {
@@ -262,13 +341,45 @@ describe("IA11: esforço do Claude só nos modelos que aceitam; preço do Haiku 
 describe("IA07: Cuidado no Gemini e na OpenAI", () => {
   it("Gemini: Rápido reduz o raciocínio onde o modelo aceita; Caprichado usa o padrão do modelo", async () => {
     const { geminiThinking } = await import("../../server/contentHub/ai/provider");
-    expect(geminiThinking("gemini-2.5-pro", "low")).toEqual({ thinkingBudget: 1024 });
-    expect(geminiThinking("gemini-2.5-flash", "low")).toEqual({ thinkingBudget: 1024 });
-    expect(geminiThinking("gemini-3.1-pro-preview", "low")).toEqual({ thinkingLevel: "LOW" });
+    expect(geminiThinking("gemini-2.5-pro", "rapido")).toEqual({ thinkingBudget: 1024 });
+    expect(geminiThinking("gemini-2.5-flash", "rapido")).toEqual({ thinkingBudget: 1024 });
+    expect(geminiThinking("gemini-3.1-pro-preview", "rapido")).toEqual({ thinkingLevel: "LOW" });
     // Flash-Lite já vem sem raciocínio: mandar orçamento ligaria e gastaria mais
-    expect(geminiThinking("gemini-2.5-flash-lite", "low")).toBeNull();
-    expect(geminiThinking("gemini-2.5-pro", "high")).toBeNull();
+    expect(geminiThinking("gemini-2.5-flash-lite", "rapido")).toBeNull();
+    expect(geminiThinking("gemini-2.5-pro", "caprichado")).toBeNull();
     expect(geminiThinking("gemini-2.5-pro", undefined)).toBeNull();
+  });
+
+  it("o provedor do Gemini manda a redução só com o Cuidado Rápido da Central, não com o esforço baixo do Tutor", async () => {
+    const { resolveProviderKind } = await import("../../server/contentHub/ai/provider");
+    const saved = process.env.VERTEX_API_KEY;
+    process.env.VERTEX_API_KEY = VERTEX;
+    try {
+      const { provider } = resolveProviderKind("gemini", undefined, "gemini-2.5-flash", { allowExternal: true });
+      const req = { ...REQ, schema: { type: "object", properties: { ok: { type: "boolean" } } } as any };
+      generated.length = 0;
+      await provider!.generate({ ...req, care: "rapido" } as any);
+      await provider!.generate({ ...req, effort: "low" } as any);
+      expect(generated[0].config.thinkingConfig).toEqual({ thinkingBudget: 1024 });
+      expect(generated[1].config).not.toHaveProperty("thinkingConfig");
+    } finally {
+      if (saved === undefined) delete process.env.VERTEX_API_KEY;
+      else process.env.VERTEX_API_KEY = saved;
+    }
+  });
+
+  it("a Central manda o Cuidado da função em campo próprio, sem trocar o esforço que quem chamou pediu", async () => {
+    const { maestroProvider } = await import("../../server/ai/maestro");
+    await resetAiState();
+    await on("anthropic");
+    await saveFn("criacao", "sozinha", A, [], null, "rapido");
+    await refresh();
+    const f = fakes({ [key(A)]: () => ({ ok: "A" }) });
+    const p = (await maestroProvider(deps(f), "criacao", origin)).provider!;
+    await p.generate(REQ);
+    await p.generate({ ...REQ, effort: "medium" });
+    expect(f.calls[key(A)][0]).toMatchObject({ care: "rapido", effort: "low" });
+    expect(f.calls[key(A)][1]).toMatchObject({ care: "rapido", effort: "medium" });
   });
 
   it("OpenAI: Rápido manda reasoning_effort low nos modelos de raciocínio; Caprichado e outros modelos não mandam nada", async () => {
@@ -279,11 +390,16 @@ describe("IA07: Cuidado no Gemini e na OpenAI", () => {
       return new Response(JSON.stringify({ model: "m", choices: [{ message: { content: '{"ok":true}' }, finish_reason: "stop" }], usage: { prompt_tokens: 1, completion_tokens: 1 } }), { status: 200 });
     };
     const req = { ...REQ, schema: { type: "object", properties: { ok: { type: "boolean" } } } as any };
+    await new OpenAIProvider("k".repeat(40), "gpt-6.1-sol", fetchImpl as any).generate({ ...req, care: "rapido" } as any);
+    await new OpenAIProvider("k".repeat(40), "gpt-6.1-sol", fetchImpl as any).generate({ ...req, care: "caprichado" } as any);
+    await new OpenAIProvider("k".repeat(40), "gpt-4o", fetchImpl as any).generate({ ...req, care: "rapido" } as any);
+    await new OpenAIProvider("k".repeat(40), "gpt-5-chat-latest", fetchImpl as any).generate({ ...req, care: "rapido" } as any);
     await new OpenAIProvider("k".repeat(40), "gpt-6.1-sol", fetchImpl as any).generate({ ...req, effort: "low" });
-    await new OpenAIProvider("k".repeat(40), "gpt-6.1-sol", fetchImpl as any).generate({ ...req, effort: "high" });
-    await new OpenAIProvider("k".repeat(40), "gpt-4o", fetchImpl as any).generate({ ...req, effort: "low" });
     expect(bodies[0].reasoning_effort).toBe("low");
     expect(bodies[1]).not.toHaveProperty("reasoning_effort");
     expect(bodies[2]).not.toHaveProperty("reasoning_effort");
+    // modelo de conversa sem raciocínio e o esforço baixo do Tutor (sem Cuidado) não recebem nada
+    expect(bodies[3]).not.toHaveProperty("reasoning_effort");
+    expect(bodies[4]).not.toHaveProperty("reasoning_effort");
   });
 });

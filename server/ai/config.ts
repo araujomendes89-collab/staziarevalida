@@ -260,7 +260,7 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig): { pro
     const who = fc.mode === "linha" ? "os conferentes da Linha de produção" : "os membros do Comitê";
     warnings.push(
       fc.key === "verificacao"
-        ? `No processamento a Verificação usa só a IA principal e a reserva (sempre de outra empresa); ${who} ${fc.mode === "linha" ? "só rodam na conferência de rascunhos feita por comando" : "ainda não rodam"}.`
+        ? `No processamento a Verificação usa só a IA principal e a reserva (sempre de outra empresa); ${who} só rodam na conferência de rascunhos feita por comando.`
         : `Nesta etapa a função usa só a IA principal e a reserva: ${who} ainda não rodam.`
     );
   }

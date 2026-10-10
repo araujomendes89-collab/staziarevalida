@@ -27,6 +27,7 @@ import {
 } from "./config";
 import type { AiProviderId } from "./models";
 import { costUsd, estimateCostUsd, type ModelPrice } from "./prices";
+import { currentRequestDeadline } from "./requestDeadline";
 
 // ------------------------------------------------------------------ tipos públicos
 
@@ -103,8 +104,12 @@ Não reescreva a resposta, só aponte os problemas.`;
 // ------------------------------------------------------------------ constantes e utilitários
 
 const TIMEOUT_MS = 180_000;
-/** Folga antes da hora-limite do pedido: abaixo disso a próxima IA nem é chamada (sobra tempo para gravar e responder). */
+/** Folga antes da hora-limite do pedido (sobra tempo para gravar e responder). */
 const DEADLINE_SAFETY_MS = 15_000;
+/** Menos que isso de prazo útil e a IA nem é chamada: ela cobraria e quase certamente não terminaria a tempo. */
+const MIN_CALL_MS = 30_000;
+/** Tempo máximo para gravar uma linha do registro: um banco travado não pode gastar o prazo do pedido. */
+const LOG_TIMEOUT_MS = 10_000;
 const NO_TIME = "Sem tempo para chamar esta IA dentro do limite do pedido.";
 const DEFAULT_MAX_OUT = 8192;
 const REVIEW_MAX_OUT = 2048;
@@ -122,6 +127,8 @@ const errText = (e: unknown) => (e instanceof Error ? e.message : String(e)).rep
  * em 300 s); no processamento do Google (Cloud Run) não há limite. Com o limite, nenhuma chamada passa dele.
  */
 export function requestDeadline(env: NodeJS.ProcessEnv, now: number): number | null {
+  const marked = currentRequestDeadline();
+  if (marked !== null) return marked;
   const ms = Number((env.MAESTRO_DEADLINE_MS ?? "").trim());
   if (Number.isFinite(ms) && ms > 0) return now + ms;
   return env.VERCEL ? now + 270_000 : null;
@@ -135,10 +142,12 @@ export function requestDeadline(env: NodeJS.ProcessEnv, now: number): number | n
 export function shouldRetrySame(e: unknown): boolean {
   if (e instanceof AiInvalidOutput) return true;
   const msg = e instanceof Error ? e.message : String(e ?? "");
-  if (/tempo esgotado/i.test(msg)) return false;
-  if (/credit|billing|quota|prepay|insufficient|crédito|saldo/i.test(msg)) return false;
   const raw = (e as { status?: unknown } | null)?.status;
   const status = typeof raw === "number" ? raw : Number(/(?:^|respondeu\s+)(\d{3})\b/.exec(msg)?.[1] ?? NaN);
+  if (/tempo esgotado/i.test(msg)) return false;
+  // limite por minuto (o Google o chama de "quota ... per minute"): passageiro, vale tentar de novo
+  if (status === 429 && /per[_ ]?minute|rate[_ ]?limit/i.test(msg)) return true;
+  if (/credit|billing|quota|prepay|insufficient|crédito|saldo/i.test(msg)) return false;
   if (Number.isFinite(status) && status >= 400 && status < 500) return [408, 409, 425, 429].includes(status);
   return true;
 }
@@ -253,10 +262,8 @@ class Run {
   private monthBlockedMsg: string | null = null;
   /** O último erro lançado por uma IA nesta execução (o adaptador preserva AiInvalidOutput para quem registra a resposta). */
   lastError: unknown = null;
-  /** Quantas linhas de `rows` já foram gravadas (cada chamada é gravada na hora, correção IA10). */
+  /** Quantas linhas de `rows` já foram para a gravação (cada chamada é gravada na hora, correção IA10). */
   private written = 0;
-  /** Linhas cuja gravação falhou: vão na próxima. */
-  private unsaved: LogRow[] = [];
   /** Hora-limite do pedido, ou null. */
   private readonly deadline: number | null;
 
@@ -387,7 +394,7 @@ class Run {
     let limit = TIMEOUT_MS;
     if (this.deadline !== null) {
       const left = this.deadline - Date.now() - DEADLINE_SAFETY_MS;
-      if (left < 1_000) return this.refuse(slot, role, "bloqueada", NO_TIME);
+      if (left < MIN_CALL_MS) return this.refuse(slot, role, "bloqueada", NO_TIME);
       limit = Math.min(TIMEOUT_MS, left);
     }
     const t0 = Date.now();
@@ -422,18 +429,16 @@ class Run {
 
   /**
    * Grava as linhas ainda não gravadas. As linhas são separadas antes de esperar o banco: no comitê várias IAs terminam ao mesmo
-   * tempo, e duas gravações simultâneas não podem repetir nem pular linhas. Falha ao gravar só avisa; as linhas voltam para a
-   * próxima gravação.
+   * tempo, e duas gravações simultâneas não podem repetir nem pular linhas. Falha ou demora ao gravar só avisa (como antes): a
+   * linha não é mandada de novo, porque o banco pode ter gravado e só a resposta se perdido.
    */
   async flush(): Promise<void> {
-    if (this.written >= this.rows.length && this.unsaved.length === 0) return;
-    const pending = [...this.unsaved, ...this.rows.slice(this.written)];
-    this.unsaved = [];
+    if (this.written >= this.rows.length) return;
+    const pending = this.rows.slice(this.written);
     this.written = this.rows.length;
     try {
-      await this.deps.db.service("ch_worker_ai_log_calls", { p_calls: pending });
+      await withTimeout(() => this.deps.db.service("ch_worker_ai_log_calls", { p_calls: pending }), LOG_TIMEOUT_MS);
     } catch (e) {
-      this.unsaved.push(...pending);
       (this.deps.log ?? console.warn)(`[maestro] não foi possível gravar ai_calls: ${errText(e)}`);
     }
   }
@@ -459,9 +464,13 @@ async function finish<T>(run: Run, status: MaestroResult<T>["status"], fields: P
   return { ...emptyResult<T>(run.runId, status, null, Math.round(run.cost * 1e6) / 1e6), ...fields };
 }
 
+/**
+ * Cuidado da função: o esforço do Claude (quando quem chamou não pediu outro) e o campo próprio `care`, que o Gemini e a
+ * OpenAI usam (correção IA07). O Tutor e outros usos fora da Central não mandam `care` e não mudam.
+ */
 function withCare(req: StructuredRequest, fc: FunctionConfig | null): StructuredRequest {
-  if (!fc || req.effort) return req;
-  return { ...req, effort: fc.care === "rapido" ? "low" : "high" };
+  if (!fc) return req;
+  return { ...req, effort: req.effort ?? (fc.care === "rapido" ? "low" : "high"), care: fc.care };
 }
 
 // ------------------------------------------------------------------ modos

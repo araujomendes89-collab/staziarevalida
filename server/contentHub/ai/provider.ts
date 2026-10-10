@@ -29,6 +29,8 @@ export interface StructuredRequest {
   maxOutputTokens?: number;
   /** Quanto o modelo "pensa" antes de responder (Anthropic). Conversa pede resposta rápida; conferência pede cuidado. */
   effort?: "low" | "medium" | "high";
+  /** Cuidado da função na Central de IAs (só a Central manda): Rápido reduz o raciocínio do Gemini e da OpenAI. */
+  care?: "rapido" | "caprichado";
 }
 
 export interface StructuredResult<T> {
@@ -102,8 +104,8 @@ export function anthropicOutputConfig(model: string, effort: string | undefined,
  * tokens no 2.5 Pro e no 2.5 Flash, nível baixo nos Gemini 3 —; Caprichado usa o padrão do modelo. O 2.5 Flash-Lite já vem
  * sem raciocínio: mandar orçamento o ligaria e gastaria mais, então nada é mandado.
  */
-export function geminiThinking(model: string, effort: string | undefined): { thinkingBudget: number } | { thinkingLevel: "LOW" } | null {
-  if (effort !== "low") return null;
+export function geminiThinking(model: string, care: string | undefined): { thinkingBudget: number } | { thinkingLevel: "LOW" } | null {
+  if (care !== "rapido") return null;
   const m = String(model ?? "").trim().toLowerCase();
   if (/^gemini-2\.5-(pro|flash)$/.test(m)) return { thinkingBudget: 1024 };
   if (/^gemini-3/.test(m) && !m.includes("image")) return { thinkingLevel: "LOW" };
@@ -155,7 +157,7 @@ class GeminiProvider implements AiProvider {
   }
   async generate<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
     const t0 = Date.now();
-    const thinking = geminiThinking(this.model, req.effort);
+    const thinking = geminiThinking(this.model, req.care);
     const res = await this.client.models.generateContent({
       model: this.model,
       contents: req.input,

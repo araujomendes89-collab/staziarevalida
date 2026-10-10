@@ -1,5 +1,6 @@
 import express, { Request, Response } from "express";
 import path from "path";
+import { requestDeadlineMiddleware } from "./server/ai/requestDeadline";
 import fs from "fs";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
@@ -80,8 +81,11 @@ function getGenAI(): GoogleGenAI | null {
 export async function createApp(opts: { serverless?: boolean } = {}) {
   const app = express();
   if (opts.serverless) process.env.CONTENT_HUB_WORKER = "0";
-
   app.use(express.json({ limit: "50mb" }));
+  // site da Vercel (corta o pedido em 300 s): cada pedido ganha a hora-limite logo depois de lido o corpo, e todas as chamadas
+  // de IA dele a respeitam (correção IA10, server/ai/requestDeadline.ts). Depois do express.json, para o contexto não se perder
+  // nos eventos da leitura do corpo.
+  if (opts.serverless) app.use(requestDeadlineMiddleware());
   // Cobrança do app antigo (Firebase) desligada (RT01/RT02, 2026-10-10): /api/billing e /api/webhooks não são montadas.
   // Tinham simulação de aprovação sem login e aviso de pagamento sem conferência; nenhuma tela do app novo as usa.
   // Os arquivos ficam em server/routes; a cobrança nova será feita do zero, com conferência obrigatória da assinatura.

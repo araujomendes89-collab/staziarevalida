@@ -142,7 +142,9 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={subtle}>{draft.mode === "linha" ? "Conferentes (1 a 3)" : "Outros membros — a principal também participa; total de 2 a 4"}</div>
           <div style={subtle}>
-            {draft.mode === "linha" ? "Por enquanto os conferentes não são chamados" : "Por enquanto os membros não são chamados"}: a função usa só a IA principal e a reserva.
+            {fnKey === "verificacao"
+              ? `No processamento só a IA principal e a reserva rodam; ${draft.mode === "linha" ? "os conferentes" : "os membros"} só são usados na conferência de rascunhos feita por comando.`
+              : `${draft.mode === "linha" ? "Por enquanto os conferentes não são chamados" : "Por enquanto os membros não são chamados"}: a função usa só a IA principal e a reserva.`}
           </div>
           {others.map((o, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>

@@ -74,8 +74,9 @@ as IAs e salve as funções em seguida, antes de deixar o processamento trabalha
 - **Cuidado:** "Rápido" ou "Caprichado" (padrão). No Claude vira o esforço (baixo/alto), só nos modelos que aceitam a opção
   (lista da página oficial "Effort", `CLAUDE_EFFORT_MODELS`; o Haiku 4.5 não aceita). Desde 2026-10-10 (correção IA07) o
   "Rápido" também reduz o raciocínio no Gemini (orçamento de 1.024 tokens no 2.5 Pro e no 2.5 Flash, nível baixo nos Gemini 3)
-  e na OpenAI (`reasoning_effort: "low"` nos GPT-5/6 e na série o); "Caprichado" deixa o padrão desses modelos. O Gemini 2.5
-  Flash-Lite (que já vem sem raciocínio) e o Ollama não mudam.
+  e na OpenAI (`reasoning_effort: "low"` nos GPT-5/6 e na série o, menos as variantes "-chat"); "Caprichado" deixa o padrão
+  desses modelos. O Gemini 2.5 Flash-Lite (que já vem sem raciocínio) e o Ollama não mudam. O Cuidado vai num campo próprio
+  (`care`) que só a Central manda: o esforço baixo que o Tutor usa não mexe no Gemini nem na OpenAI.
 - **Independência:** na linha de produção, o conferente nunca é da mesma família da criadora (nem da reserva). Ex.:
   Sonnet cria e Opus confere **não** vale. No comitê, a mesma família é permitida com o aviso "não é independente".
 - **Conferência por outra empresa no processamento (decisão do dono, 2026-10-10):** a evidência de cada afirmação e a
@@ -98,10 +99,14 @@ Nada é aprovado pela IA: tudo continua rascunho até a decisão de uma pessoa.
 - **IA06:** a mesma IA só é tentada de novo em falha passageira (limite por minuto, sobrecarga, servidor fora, rede, resposta fora
   do formato). Sem crédito ou cota, chave recusada, modelo inexistente, pedido inválido e tempo esgotado vão direto para a
   reserva (`shouldRetrySame`).
-- **IA10:** no site (Vercel) cada execução tem hora-limite de 270 s (`requestDeadline`; `MAESTRO_DEADLINE_MS` muda; no Cloud
-  Run não há): a chamada é cortada antes do limite e a próxima IA não é chamada sem pelo menos 16 s de folga
-  ("Sem tempo para chamar esta IA dentro do limite do pedido."). Cada chamada é gravada em `ai_calls` na hora.
-- **IA11:** esforço só nos modelos do Claude que aceitam; preço do Claude Haiku 5.5 (0,10/0,50 até 100 mil tokens).
+- **IA10:** no site (Vercel) cada PEDIDO tem hora-limite de 270 s, marcada na chegada (`server/ai/requestDeadline.ts`, middleware
+  depois do `express.json`) e respeitada por todas as chamadas de IA dele (`MAESTRO_DEADLINE_MS` muda; no Cloud Run não há).
+  A chamada é cortada antes do limite e nenhuma IA é chamada com menos de 30 s de prazo útil (sobram 15 s para gravar e
+  responder): "Sem tempo para chamar esta IA dentro do limite do pedido.". Cada chamada é gravada em `ai_calls` na hora
+  (gravação com tempo-limite de 10 s; falha só avisa e não regrava, para não duplicar).
+- **IA11:** esforço só nos modelos do Claude que aceitam; preço do Claude Haiku 5.5 (0,10/0,50 até 100 mil tokens). Limite
+  conhecido: a tabela não tem preço por faixa; o Haiku 5.5 acima de 100 mil tokens (0,50/2,50) e o Gemini 2.5 Pro acima de
+  200 mil tokens ficam com o custo abaixo do real.
 
 Nesta etapa, os usos atuais gravam **um** resultado. Neles, a função usa a principal e a reserva. Os pareceres e o
 comitê mostrados para a equipe aparecem a partir da etapa 2.

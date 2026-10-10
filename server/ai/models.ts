@@ -36,17 +36,22 @@ export const VERTEX_EXPRESS_MODELS = [
 /** Modelo do teste real ao atualizar a lista: contar os tokens de uma palavra não gera texto nem custo. */
 const VERTEX_TEST_MODEL = "gemini-2.5-flash";
 
-/** Teste real da chave do Vertex: null quando passou, ou a lista com o motivo da falha. */
-async function vertexKeyCheck(access: GoogleAiAccess): Promise<ModelList | null> {
+/**
+ * Teste real da chave do Vertex: "ok", "recusada" (com o código) ou "sem_teste" (com o motivo): falha que não é da chave
+ * (rede, limite, o Google não aceitar o teste) não tira a lista, só avisa que a chave não foi testada.
+ */
+async function vertexKeyCheck(access: GoogleAiAccess): Promise<{ result: "ok" } | { result: "recusada" | "sem_teste"; why: string }> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const call = new GoogleGenAI(googleGenAiOptions(access)).models.countTokens({ model: VERTEX_TEST_MODEL, contents: "ok" });
     await Promise.race([call, new Promise((_, reject) => (timer = setTimeout(() => reject(new Error("tempo esgotado")), TIMEOUT_MS)))]);
-    return null;
+    return { result: "ok" };
   } catch (e) {
-    const status = Number((e as { status?: unknown })?.status ?? (e as { code?: unknown })?.code);
-    if (status === 401 || status === 403) return fail("chave_recusada", `O Google recusou a chave (${status}).`);
-    return fail("erro", "Não foi possível falar com o Google para testar a chave.");
+    const raw = (e as { status?: unknown })?.status ?? (e as { code?: unknown })?.code;
+    const status = typeof raw === "number" ? raw : Number(raw);
+    const text = e instanceof Error ? e.message : String(e);
+    if (status === 401 || status === 403 || /API_KEY_INVALID|API key not valid/i.test(text)) return { result: "recusada", why: `O Google recusou a chave (${Number.isFinite(status) ? status : "chave inválida"}).` };
+    return { result: "sem_teste", why: Number.isFinite(status) ? `o Google respondeu ${status}` : "o Google não respondeu" };
   } finally {
     clearTimeout(timer);
   }
@@ -67,12 +72,13 @@ export async function listModels(id: AiProviderId, env: NodeJS.ProcessEnv = proc
   // expresso aceita, e a chave é testada de verdade (contar tokens, sem custo) antes de dizer "pronta".
   const google = id === "gemini" ? googleAiAccess(env) : null;
   if (google?.mode === "vertex") {
-    const failed = await vertexKeyCheck(google);
-    if (failed) return failed;
+    const check = await vertexKeyCheck(google);
+    if (check.result === "recusada") return fail("chave_recusada", check.why);
     const models = PRICE_SEED.filter((p) => p.provider === "gemini" && VERTEX_EXPRESS_MODELS.includes(p.model)).map((p) => ({ id: p.model, label: p.model }));
+    const tested = check.result === "ok" ? "chave testada agora" : `não foi possível testar a chave agora (${check.why})`;
     return {
       status: "pronta",
-      detail: "Gemini pelo Vertex AI (modo expresso): chave testada agora; só os modelos que essa chave aceita, conforme a página oficial do Google (conferida em 10/10/2026).",
+      detail: `Gemini pelo Vertex AI (modo expresso): ${tested}; só os modelos que essa chave aceita, conforme a página oficial do Google (conferida em 10/10/2026).`,
       models: models.sort(byId),
     };
   }

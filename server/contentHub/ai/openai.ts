@@ -12,10 +12,12 @@ import { validate } from "./schema";
 
 /**
  * Cuidado na OpenAI (correção IA07, 2026-10-10; página oficial "Reasoning"): Rápido manda reasoning_effort "low" nos modelos de
- * raciocínio (GPT-5, GPT-6, série o); Caprichado usa o padrão do modelo (médio). Outros modelos não recebem nada.
+ * raciocínio (GPT-5, GPT-6, série o, menos as variantes de conversa "-chat"); Caprichado usa o padrão do modelo. Outros modelos
+ * e pedidos sem o Cuidado da Central (o Tutor, por exemplo) não recebem nada.
  */
-export function openAiReasoningEffort(model: string, effort: string | undefined): boolean {
-  return effort === "low" && /^(gpt-5|gpt-6|o\d)/i.test(String(model ?? "").trim());
+export function openAiReasoningEffort(model: string, care: string | undefined): boolean {
+  const m = String(model ?? "").trim().toLowerCase();
+  return care === "rapido" && /^(gpt-5|gpt-6|o\d)/.test(m) && !m.includes("-chat");
 }
 
 export class OpenAIProvider implements AiProvider {
@@ -42,7 +44,7 @@ export class OpenAIProvider implements AiProvider {
         ],
         response_format: { type: "json_schema", json_schema: { name: req.schemaName.slice(0, 60), schema: toProviderSchema(req.schema), strict: false } },
         max_completion_tokens: Math.max(req.maxOutputTokens ?? 8192, 4096),
-        ...(openAiReasoningEffort(this.model, req.effort) ? { reasoning_effort: "low" } : {}),
+        ...(openAiReasoningEffort(this.model, req.care) ? { reasoning_effort: "low" } : {}),
       }),
       signal: AbortSignal.timeout(180_000),
     });
