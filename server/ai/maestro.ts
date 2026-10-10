@@ -13,6 +13,7 @@ import {
   DEFAULT_MODELS,
   effectiveMaxOut,
   envFallbackRef,
+  envReserveRef,
   FUNCTION_KEYS,
   isProviderId,
   loadAiConfig,
@@ -228,13 +229,6 @@ interface Resolved {
   reviewers: ModelRef[];
 }
 
-function envReserve(primary: ModelRef | null, env: NodeJS.ProcessEnv): ModelRef | null {
-  const id = (env.CONTENT_HUB_AI_FALLBACK_PROVIDER ?? "").trim();
-  if (!isProviderId(id) || id === primary?.provider) return null;
-  const model = (env[`CONTENT_HUB_${id.toUpperCase()}_MODEL`] ?? "").trim() || DEFAULT_MODELS[id];
-  return model ? { provider: id, model } : null;
-}
-
 function resolveRefs(cfg: AiConfig, fn: AiFunctionKey, env: NodeJS.ProcessEnv, override?: MaestroOverride): Resolved {
   const fc = cfg.functions[fn] ?? null;
   if (fc) {
@@ -246,7 +240,7 @@ function resolveRefs(cfg: AiConfig, fn: AiFunctionKey, env: NodeJS.ProcessEnv, o
     return { fc, mode: fc.mode, primary, fallback: fc.fallback, reviewers: fc.reviewers };
   }
   const primary = override?.ref ?? envFallbackRef(fn, env, override?.uiKind);
-  return { fc: null, mode: "sozinha", primary, fallback: envReserve(primary, env), reviewers: [] };
+  return { fc: null, mode: "sozinha", primary, fallback: envReserveRef(primary, env), reviewers: [] };
 }
 
 function prepareSlot(deps: MaestroDeps, cfg: AiConfig, ref: ModelRef): Slot {
@@ -769,7 +763,7 @@ export async function maestroRoleProvider(deps: MaestroDeps, roleIndex: 0 | 1 | 
     const id = (env[`CONTENT_HUB_AI_PROVIDER_${role.key}`] || env.CONTENT_HUB_VERIFIER_PROVIDER || "anthropic").trim();
     const model = (env[`CONTENT_HUB_MODEL_${role.key}`] || (isProviderId(id) ? env[`CONTENT_HUB_${id.toUpperCase()}_MODEL`] : "") || (isProviderId(id) ? DEFAULT_MODELS[id] : "") || "").trim();
     ref = isProviderId(id) && model ? { provider: id, model } : null;
-    fallback = envReserve(ref, env);
+    fallback = envReserveRef(ref, env);
   }
   if (!ref) return notReady("Nenhuma IA definida para verificacao: configure na Central de IAs.");
   if (familyOfModel(ref.model) === familyOfModel(creatorModel)) {

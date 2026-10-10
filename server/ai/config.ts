@@ -92,13 +92,20 @@ export function typicalCallEstimate(ref: ModelRef, price: ModelPrice | null, cal
 }
 
 const usd = (n: number) => String(Number(n.toFixed(4))).replace(".", ",");
+/** Valor mínimo sugerido: arredondado para cima no centavo, com dois decimais (US$ 0,70). */
+const cents = (n: number) => (Math.ceil(Number((n * 100).toFixed(6))) / 100).toFixed(2).replace(".", ",");
 const listPt = (items: string[]) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}` : items.join(""));
 const ROLE_OF: Record<string, string> = { principal: "da principal", reserva: "da reserva", conferente: "do conferente", membro: "do membro" };
+const aiName = (ref: ModelRef) => `${PROVIDER_NAMES[ref.provider] ?? ref.provider} ${ref.model}`;
+const priceOf = (cfg: AiConfig, ref: ModelRef) => cfg.prices.find((p) => p.provider === ref.provider && p.model === ref.model) ?? null;
+const hasFolga = (ref: ModelRef, care: string | undefined) => ref.provider === "gemini" && geminiThinkingReserve(ref.model, care) > 0;
+const FOLGA = ", já com a folga do raciocínio do Gemini";
 
 /**
  * Aviso antes de parar (revisão rodada 3): com os tetos ligados, cada IA da função cuja chamada típica (já com a folga do
  * raciocínio do Gemini) passa do teto por execução. Sem o aviso, o dono só descobria pelos trabalhos parados e pelas linhas
- * "teto" do Histórico. Cada IA conta como uma chamada sozinha, que é como elas rodam hoje.
+ * "teto" do Histórico. Aqui cada IA conta como uma chamada sozinha; o "pelo menos" é o valor para essa chamada rodar, não para
+ * nada parar (rodada 4): depois de uma falha cobrada, a soma com a reserva e a nova tentativa vem de failureChainWarning.
  */
 function perRunCapWarnings(key: AiFunctionKey, members: { ref: ModelRef; role: keyof typeof ROLE_OF }[], care: string | undefined, cfg: AiConfig): string[] {
   const { caps_enabled, per_run_cap_usd: cap } = cfg.settings;
@@ -109,18 +116,57 @@ function perRunCapWarnings(key: AiFunctionKey, members: { ref: ModelRef; role: k
     const id = `${role}:${ref.provider}:${ref.model}`;
     if (seen.has(id)) continue;
     seen.add(id);
-    const price = cfg.prices.find((p) => p.provider === ref.provider && p.model === ref.model) ?? null;
+    const price = priceOf(cfg, ref);
     const over = (TYPICAL_CALLS[key] ?? []).map((call) => ({ call, est: typicalCallEstimate(ref, price, call, care) })).filter((x) => x.est > cap + 1e-9);
     if (!over.length) continue;
     const list = listPt(over.map((x) => `${x.call.use} (US$ ${usd(x.est)})`));
-    const need = Math.ceil(Number((Math.max(...over.map((x) => x.est)) * 100).toFixed(6))) / 100;
-    const folga = ref.provider === "gemini" && geminiThinkingReserve(ref.model, care) > 0 ? ", já com a folga do raciocínio do Gemini" : "";
+    const need = Math.max(...over.map((x) => x.est));
+    const folga = hasFolga(ref, care) ? FOLGA : "";
     const stops = over.length > 1 ? "essas chamadas param" : "essa chamada para";
     out.push(
-      `Teto por execução de US$ ${usd(cap)} abaixo da estimativa de uma chamada ${ROLE_OF[role]} ${PROVIDER_NAMES[ref.provider] ?? ref.provider} ${ref.model} em ${list}${folga}: ${stops} no teto sem chamar a IA. Para não parar, o teto por execução precisa ser de pelo menos US$ ${usd(need)}.`
+      `Teto por execução de US$ ${usd(cap)} abaixo da estimativa de uma chamada ${ROLE_OF[role]} ${aiName(ref)} em ${list}${folga}: ${stops} no teto sem chamar a IA. Para essa chamada rodar, o teto por execução precisa ser de pelo menos US$ ${cents(need)}.`
     );
   }
   return out;
+}
+
+/**
+ * Aviso da soma (revisão rodada 4): desde a rodada 3, a nova tentativa e a reserva passam pelo teto por execução com o gasto real
+ * da falha. Uma resposta cortada custa quase a estimativa inteira e o tempo esgotado grava a estimativa inteira; a resposta fora
+ * do formato também é cobrada e ainda tem uma nova tentativa antes da reserva. Por isso, por uso típico da função:
+ *   a reserva socorre um corte ou tempo esgotado só com o teto ≥ principal + reserva;
+ *   socorre também depois da nova tentativa só com o teto ≥ 2 × principal + reserva (sem reserva: 2 × principal).
+ * Conta só a principal e a reserva, que é o que roda hoje em todos os modos (a soma da Linha e do Comitê inteiros só vale pelo
+ * runFunction, que nenhuma tela nem tarefa usa). Reserva sem custo (Ollama) passa sempre pelo teto: sem aviso.
+ */
+function failureChainWarning(key: AiFunctionKey, primary: ModelRef | null, fallback: ModelRef | null, care: string | undefined, cfg: AiConfig): string | null {
+  const { caps_enabled, per_run_cap_usd: cap } = cfg.settings;
+  if (!caps_enabled || cap === null || !primary) return null;
+  const rows = (TYPICAL_CALLS[key] ?? []).map((call) => {
+    const p = typicalCallEstimate(primary, priceOf(cfg, primary), call, care);
+    const r = fallback ? typicalCallEstimate(fallback, priceOf(cfg, fallback), call, care) : 0;
+    return { use: call.use, p, r, rescue: p + r, full: 2 * p + r };
+  });
+  const paid = rows.filter((x) => x.p > 0);
+  if (!paid.length) return null;
+  const folga = hasFolga(primary, care) || (fallback && hasFolga(fallback, care)) ? FOLGA : "";
+  const fullNeed = Math.max(...paid.map((x) => x.full));
+  const list = (items: typeof paid, pick: (x: (typeof paid)[number]) => number) => listPt(items.map((x) => `${x.use} (US$ ${usd(pick(x))})`));
+  const head = `Teto por execução de US$ ${usd(cap)} abaixo`;
+  if (!fallback) {
+    const over = paid.filter((x) => x.full > cap + 1e-9);
+    if (!over.length) return null;
+    return `${head} de duas chamadas da principal ${aiName(primary)} em ${list(over, (x) => x.full)}${folga}: depois de uma falha cobrada da principal (resposta fora do formato), a nova tentativa não roda e o trabalho falha. Para não parar no teto por execução, o teto precisa ser de pelo menos US$ ${cents(fullNeed)}.`;
+  }
+  if (!paid.some((x) => x.r > 0)) return null;
+  const noRescue = paid.filter((x) => x.rescue > cap + 1e-9);
+  if (noRescue.length) {
+    const rescueNeed = Math.max(...noRescue.map((x) => x.rescue));
+    return `${head} da principal ${aiName(primary)} mais a reserva ${aiName(fallback)} em ${list(noRescue, (x) => x.rescue)}${folga}: depois de uma falha cobrada da principal (resposta cortada ou tempo esgotado), a reserva não socorre e o trabalho falha. Para a reserva socorrer, o teto por execução precisa ser de pelo menos US$ ${cents(rescueNeed)}; para socorrer também depois da nova tentativa (resposta fora do formato), pelo menos US$ ${cents(fullNeed)}.`;
+  }
+  const over = paid.filter((x) => x.full > cap + 1e-9);
+  if (!over.length) return null;
+  return `${head} de duas chamadas da principal ${aiName(primary)} mais a reserva ${aiName(fallback)} em ${list(over, (x) => x.full)}${folga}: depois de uma resposta fora do formato e da nova tentativa, a reserva não socorre e o trabalho falha. Para não parar no teto por execução, o teto precisa ser de pelo menos US$ ${cents(fullNeed)}.`;
 }
 const num = (v: unknown): number | null => {
   if (v === null || v === undefined || v === "") return null;
@@ -249,6 +295,14 @@ export function envFallbackRef(fn: AiFunctionKey, env: NodeJS.ProcessEnv = proce
   return model ? { provider: id, model } : null;
 }
 
+/** Reserva das variáveis de ambiente (CONTENT_HUB_AI_FALLBACK_PROVIDER), usada quando a função não tem configuração salva. */
+export function envReserveRef(primary: ModelRef | null, env: NodeJS.ProcessEnv = process.env): ModelRef | null {
+  const id = (env.CONTENT_HUB_AI_FALLBACK_PROVIDER ?? "").trim();
+  if (!isProviderId(id) || id === primary?.provider) return null;
+  const model = (env[`CONTENT_HUB_${id.toUpperCase()}_MODEL`] ?? "").trim() || DEFAULT_MODELS[id];
+  return model ? { provider: id, model } : null;
+}
+
 /** Motivo pelo qual a IA não pode ser chamada agora (desligada, Ollama fora do Mac), ou null. */
 export function providerPending(ref: ModelRef, cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): string | null {
   const name = PROVIDER_NAMES[ref.provider] ?? ref.provider;
@@ -352,6 +406,9 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig): { pro
     ...(others ? reviewers.map((ref) => ({ ref, role: others })) : []),
   ];
   for (const w of perRunCapWarnings(fc.key, members, fc.care, cfg)) if (!warnings.includes(w)) warnings.push(w);
+  // depois de uma falha cobrada da principal: a nova tentativa e a reserva com o gasto já feito (rodada 4)
+  const chain = failureChainWarning(fc.key, fc.primary, fc.fallback, fc.care, cfg);
+  if (chain && !warnings.includes(chain)) warnings.push(chain);
   return { problems, warnings };
 }
 
@@ -437,7 +494,11 @@ export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.e
       if (pending && !problems.includes(pending)) problems.push(pending);
       // chave ausente neste servidor (o site): só aviso, como nas funções salvas
       if (!pending && keyPending(ref.provider, env)) warnings.push(keyWarning(ref.provider));
-      warnings.push(...perRunCapWarnings(key, [{ ref, role: "principal" }], undefined, cfg));
+      // a reserva das variáveis (CONTENT_HUB_AI_FALLBACK_PROVIDER), a mesma que o maestro usa sem configuração salva
+      const reserve = envReserveRef(ref, env);
+      warnings.push(...perRunCapWarnings(key, [{ ref, role: "principal" }, ...(reserve ? [{ ref: reserve, role: "reserva" as const }] : [])], undefined, cfg));
+      const chain = failureChainWarning(key, ref, reserve, undefined, cfg);
+      if (chain) warnings.push(chain);
     }
     out[key] = { source: "variaveis", ready: problems.length === 0, ref, problems, warnings };
   }
