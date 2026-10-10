@@ -120,6 +120,11 @@ const DEADLINE_SAFETY_MS = 15_000;
 const MIN_CALL_MS = 30_000;
 /** Tempo máximo para gravar uma linha do registro: um banco travado não pode gastar o prazo do pedido. */
 const LOG_TIMEOUT_MS = 10_000;
+/**
+ * Tempo que a principal deixa para a reserva dentro do prazo do pedido (rodada final): o mínimo de uma chamada (MIN_CALL_MS) mais
+ * a gravação da linha da principal (LOG_TIMEOUT_MS), que acontece antes da reserva sair.
+ */
+const RESERVE_KEEP_MS = MIN_CALL_MS + LOG_TIMEOUT_MS;
 const NO_TIME = "Sem tempo para chamar esta IA dentro do limite do pedido.";
 const DEFAULT_MAX_OUT = 8192;
 const REVIEW_MAX_OUT = 2048;
@@ -204,7 +209,8 @@ function withTimeout<T>(work: () => Promise<T>, ms = TIMEOUT_MS, onTimeout?: () 
  * Tempo-limite de uma chamada (revisão rodada 3): 180 s; no Gemini, 30 s mais 10 ms por token da saída máxima mandada (pedido
  * + folga do raciocínio, ou seja, 100 tokens por segundo), entre 180 s e 290 s (rodada 4: o fetch do Node corta aos 300 s; ver
  * GEMINI_TIMEOUT_MAX_MS). Com a folga, o Gemini 3 pode gerar 24.576 tokens na Criação: com 180 s fixos, uma resposta longa e
- * correta seria cortada e paga duas vezes (ela e a reserva). O prazo do pedido (270 s no site) continua mandando.
+ * correta seria cortada e paga duas vezes (ela e a reserva). O prazo do pedido (270 s no site) continua mandando, e com reserva
+ * pronta a principal deixa o tempo da reserva (RESERVE_KEEP_MS; ver Run.call).
  */
 export function callTimeoutMs(ref: ModelRef, maxOut: number, care?: string): number {
   if (ref.provider !== "gemini") return TIMEOUT_MS;
@@ -446,13 +452,19 @@ class Run {
   }
 
   /** Uma chamada: recusa bloqueada ou acima do teto, ou chama com tempo-limite; tudo vai para o registro. */
-  async attempt<T>(slot: Slot, role: Role, req: StructuredRequest, chars: number, planned: boolean): Promise<Attempt<T>> {
-    const result = await this.call<T>(slot, role, req, chars, planned);
+  async attempt<T>(slot: Slot, role: Role, req: StructuredRequest, chars: number, planned: boolean, keepMs = 0): Promise<Attempt<T>> {
+    const result = await this.call<T>(slot, role, req, chars, planned, keepMs);
     await this.flush(); // gravada na hora: se o pedido for cortado depois, o gasto desta chamada já está no registro
     return result;
   }
 
-  private async call<T>(slot: Slot, role: Role, req: StructuredRequest, chars: number, planned: boolean): Promise<Attempt<T>> {
+  /**
+   * `keepMs`: tempo do prazo do pedido que esta chamada deixa para a próxima (a reserva). Rodada final: no site, o tempo-limite
+   * do Gemini 3 (que cresce com a saída pedida) podia ficar com todo o prazo, e a reserva nunca socorria um tempo esgotado.
+   * Quando não cabem as duas (a principal ficaria com menos que MIN_CALL_MS), a principal fica com o prazo todo, como sem reserva:
+   * não é recusada nem encurtada a ponto de cobrar sem terminar.
+   */
+  private async call<T>(slot: Slot, role: Role, req: StructuredRequest, chars: number, planned: boolean, keepMs = 0): Promise<Attempt<T>> {
     if (slot.blocked || !slot.instance) return this.refuse(slot, role, "bloqueada", slot.blocked ?? "Provedor indisponível.");
     const maxOut = req.maxOutputTokens ?? DEFAULT_MAX_OUT;
     const est = estimateCall(this.cfg, slot, chars, maxOut, req.care);
@@ -462,7 +474,8 @@ class Run {
     if (this.deadline !== null) {
       const left = this.deadline - Date.now() - DEADLINE_SAFETY_MS;
       if (left < MIN_CALL_MS) return this.refuse(slot, role, "bloqueada", NO_TIME);
-      limit = Math.min(limit, left);
+      const share = left - keepMs;
+      limit = Math.min(limit, share >= MIN_CALL_MS ? share : left);
     }
     const t0 = Date.now();
     const instance = slot.instance;
@@ -512,8 +525,10 @@ class Run {
   /** Principal, uma nova tentativa com o mesmo provedor e depois a reserva (uma vez). */
   async creator<T>(req: StructuredRequest, primary: Slot, fallback: Slot | null, roles: { first: Role; reserve: Role }): Promise<CreatorResult<T>> {
     const chars = req.system.length + req.input.length;
-    let a = await this.attempt<T>(primary, roles.first, req, chars, true);
-    if (a.ok === false && a.outcome === "falha" && a.retry !== false) a = await this.attempt<T>(primary, roles.first, req, chars, false);
+    // com reserva pronta, a principal (e a nova tentativa) deixa o tempo mínimo da reserva dentro do prazo do pedido
+    const keep = fallback && !fallback.blocked && fallback.instance ? RESERVE_KEEP_MS : 0;
+    let a = await this.attempt<T>(primary, roles.first, req, chars, true, keep);
+    if (a.ok === false && a.outcome === "falha" && a.retry !== false) a = await this.attempt<T>(primary, roles.first, req, chars, false, keep);
     if (a.ok) return { ...a, slot: primary, role: roles.first };
     if (fallback) {
       const b = await this.attempt<T>(fallback, roles.reserve, req, chars, !!primary.blocked);
