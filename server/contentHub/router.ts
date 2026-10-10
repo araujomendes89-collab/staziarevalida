@@ -31,6 +31,8 @@ const httpError = (status: number, text: string) => Object.assign(new Error(text
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 const forbidden = (error: unknown) => /restrito|sem acesso|administrador|42501|Acesso/i.test(message(error));
 
+const NO_FUNCTION_READY = "Nenhuma função da Central de IAs está pronta: ligue e configure as IAs em Administração › Central de IAs.";
+
 export function createContentHubRouter(deps: PipelineDeps | null, opts: { pending?: string | null; worker?: ContentHubWorker | null } = {}) {
   const router = express.Router();
 
@@ -67,7 +69,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       const pending: string[] = [];
       if (!deps!.ai.status.isMock) {
         const ready = await loadAiConfig(deps!.db).then((cfg) => Object.values(functionChecks(cfg, process.env)).some((c) => c.ready)).catch(() => false);
-        if (!ready) pending.push("Nenhuma função da Central de IAs está pronta: ligue e configure as IAs em Administração › Central de IAs.");
+        if (!ready) pending.push(NO_FUNCTION_READY);
       }
       let renderer: boolean;
       let brand: { version: string; pending: string[] };
@@ -91,7 +93,17 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
           const minutes = Math.max(0, Math.round((Date.now() - Date.parse(last.reported_at)) / 60_000));
           const stale = minutes > PROCESSING_STALE_MIN;
           if (stale) pending.push(`O processamento da Central não roda desde ${new Date(last.reported_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}: confira a tarefa no Google Cloud Run.`);
-          for (const p of last.report.pending ?? []) if (!p.startsWith("IA do processamento:") && !pending.includes(p)) pending.push(p);
+          // IA do processamento: o relato novo confere a Central de IAs com as chaves do processamento e vale; o relato antigo (sem
+          // ai.source) olhava a variável CONTENT_HUB_AI_PROVIDER, que as etapas não usam, e continua escondido. Com o motivo do
+          // relato, a linha geral de "nenhuma função pronta" (conferida com as chaves do site) não se repete.
+          const centralReport = last.report.ai?.source === "central";
+          const aiLines = (last.report.pending ?? []).filter((p) => p.startsWith("IA do processamento"));
+          const general = pending.indexOf(NO_FUNCTION_READY);
+          if (centralReport && aiLines.length && general >= 0) pending.splice(general, 1);
+          for (const p of last.report.pending ?? []) {
+            const oldAi = p.startsWith("IA do processamento") && (!centralReport || p.includes("CONTENT_HUB_AI_PROVIDER"));
+            if (!oldAi && !pending.includes(p)) pending.push(p);
+          }
           renderer = Boolean(last.report.renderer);
           brand = last.report.brand ?? { version: "", pending: [] };
           processing = { where: last.worker, reported_at: last.reported_at, minutes_ago: minutes, stale, python: Boolean(last.report.python), ocr_languages: last.report.ocr_languages ?? [], jobs: last.report.jobs ?? null };
