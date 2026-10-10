@@ -73,6 +73,13 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
     setDraft(init());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedKey]);
+  // conferência nova do servidor (recarregada depois de salvar os tetos, um preço ou uma função): ela manda nos avisos. Os avisos
+  // que vieram ao salvar a função ficavam presos na tela (ex.: o do teto por execução, depois de o dono subir o teto) até
+  // recarregar a página (rodada final)
+  const checkKey = JSON.stringify(check ?? null);
+  React.useEffect(() => {
+    setState((s) => (s.warnings ? { ...s, warnings: null } : s));
+  }, [checkKey]);
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
   const others = draft.mode === "sozinha" ? [] : draft.others.length ? draft.others : [{ ...EMPTY }];
