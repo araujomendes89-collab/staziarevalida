@@ -8,7 +8,9 @@ import { dateTimeBR, LoadError, Loading, messageOf, useLoad } from "./common.jsx
 import { EVENT_LABEL } from "../play/format.js";
 
 function RuleRow({ rule, onSave }) {
-  const isBool = typeof rule.value === "boolean";
+  // Interruptor pelo tipo da regra (flags.*), como o banco confere, e não pelo valor gravado: um valor do tipo errado
+  // gravado antes da conferência continua corrigível (o interruptor grava true/false; as outras têm campo de texto).
+  const isBool = rule.key.startsWith("flags.");
   const [text, setText] = React.useState(isBool ? "" : JSON.stringify(rule.value));
   const [state, setState] = React.useState({ saving: false, error: null });
   const save = async (value, enabled) => {
@@ -38,7 +40,7 @@ function RuleRow({ rule, onSave }) {
         {state.error && <div style={{ font: "var(--type-caption)", color: "var(--danger-text)" }}>{state.error}</div>}
       </div>
       {isBool ? (
-        <Switch checked={rule.value} label={rule.value ? "Ligado" : "Desligado"} onChange={(e) => save(e.target.checked, rule.enabled)} />
+        <Switch checked={rule.value === true} label={rule.value === true ? "Ligado" : "Desligado"} onChange={(e) => save(e.target.checked, rule.enabled)} />
       ) : (
         <TextField value={text} onChange={(e) => setText(e.target.value)} aria-label={rule.key} />
       )}

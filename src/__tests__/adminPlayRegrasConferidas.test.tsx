@@ -6,7 +6,7 @@
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const backend: any = { rpc: vi.fn() };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot: { role: "admin", profile: { name: "Adm" } }, user: { id: "a" } }) }));
@@ -86,4 +86,27 @@ describe("Stazia Arena na Administração: regras conferidas", () => {
     expect(backend.rpc).toHaveBeenCalledWith("app_admin_gamification_save_rule", { p_key: "xp.question_correct", p_value: "dez", p_enabled: true });
   });
 
+  it("regra gravada com o tipo errado antes da conferência: a aba Regras deixa corrigir", async () => {
+    data.rules = [
+      { key: "flags.coins_enabled", value: "sim", enabled: true, description: "Moedas e loja de recompensas." },
+      { key: "xp.question_correct", value: true, enabled: true, description: "Acertar questão." },
+    ];
+    backend.rpc = vi.fn(async (fn: string) => {
+      if (fn === "app_admin_gamification" || fn === "app_admin_gamification_save_rule") return data;
+      throw new Error(`rpc inesperada: ${fn}`);
+    });
+    render(<AdminPlay />);
+    fireEvent.click(await screen.findByText("Regras"));
+    // interruptor com texto gravado: aparece como interruptor desligado; ligar grava true
+    const sw = screen.getByRole("switch") as HTMLInputElement;
+    expect(sw.checked).toBe(false);
+    fireEvent.click(sw);
+    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_gamification_save_rule", { p_key: "flags.coins_enabled", p_value: true, p_enabled: true }));
+    // regra de número com true gravado: aparece o campo para digitar o número
+    fireEvent.click(screen.getByText("XP por evento"));
+    const field = screen.getByLabelText("xp.question_correct");
+    fireEvent.change(field, { target: { value: "8" } });
+    fireEvent.submit(field.closest("form")!);
+    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_gamification_save_rule", { p_key: "xp.question_correct", p_value: 8, p_enabled: true }));
+  });
 });
