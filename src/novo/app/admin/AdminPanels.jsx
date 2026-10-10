@@ -158,72 +158,199 @@ export function AdminPlans() {
 }
 
 // ---------------------------------------------------------------- estações
+// Aprovar é revisão médica: revisor cadastrado na área da estação ou administrador, com o registro do que foi conferido
+// (o banco confere tudo em app_admin_set_station_review, migração …8000). Voltar para revisão pede o motivo.
+const MIN_NOTE = 10;
+const pts = (n) => (n == null ? "—" : Number(n).toLocaleString("pt-BR"));
+
+function ContentBlock({ title, children }) {
+  return (
+    <div>
+      <div style={{ font: "var(--type-label)", marginBottom: 4 }}>{title}</div>
+      <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}>{children}</div>
+    </div>
+  );
+}
+
+/** Conteúdo completo da estação, só para ler e conferir. */
+function StationContent({ content }) {
+  if (!content) return <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Esta estação não tem roteiro, impressos nem checklist cadastrados.</p>;
+  const pressings = Array.isArray(content.pressings) ? content.pressings : [];
+  const items = (Array.isArray(content.checklist_items) ? content.checklist_items : []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {content.doctor_scene && <ContentBlock title="Cenário de atuação">{content.doctor_scene}</ContentBlock>}
+      {content.doctor_tasks && <ContentBlock title="Tarefas do participante">{content.doctor_tasks}</ContentBlock>}
+      {content.actor_script && <ContentBlock title="Roteiro do ator">{content.actor_script}</ContentBlock>}
+      {pressings.length > 0 && (
+        <div>
+          <div style={{ font: "var(--type-label)", marginBottom: 4 }}>Impressos</div>
+          {pressings.map((p, i) => (
+            <div key={p.id ?? i} style={{ marginTop: 6, font: "var(--type-body-sm)" }}>
+              <b>{p.name}</b>
+              {p.content && <div style={{ color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}>{p.content}</div>}
+              {p.image_url && <img src={p.image_url} alt={p.name ?? "Impresso"} loading="lazy" style={{ display: "block", maxWidth: "100%", marginTop: 6, borderRadius: 8 }} />}
+            </div>
+          ))}
+        </div>
+      )}
+      {items.length > 0 && (
+        <div>
+          <div style={{ font: "var(--type-label)", marginBottom: 4 }}>Checklist ({items.length} {items.length === 1 ? "item" : "itens"})</div>
+          <ol style={{ margin: 0, paddingLeft: 20, font: "var(--type-body-sm)", display: "grid", gap: 6 }}>
+            {items.map((it, i) => (
+              <li key={it.id ?? i}>
+                {it.phase && <span style={{ color: "var(--text-tertiary)" }}>{it.phase} · </span>}
+                {it.content}
+                <div style={{ color: "var(--text-tertiary)" }}>
+                  Adequado {pts(it.grades?.correct)} · Parcial {pts(it.grades?.partial)} · Inadequado {pts(it.grades?.incorrect)}
+                </div>
+                {Array.isArray(it.subitems) && it.subitems.length > 0 && (
+                  <ul style={{ margin: "2px 0 0", paddingLeft: 18, color: "var(--text-secondary)" }}>
+                    {it.subitems.map((sub, k) => <li key={sub.id ?? k}>{sub.text}</li>)}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function reviewRecord(s) {
+  if (s.reviewed_at) {
+    const what = s.medical_review === "approved" ? "Aprovada" : "Devolvida para revisão";
+    return `${what}${s.reviewer ? ` por ${s.reviewer}` : ""} em ${dateTimeBR(s.reviewed_at)}${s.review_note ? `: “${s.review_note}”` : ""}`;
+  }
+  if (s.medical_review === "approved") return "Aprovada antes de o app registrar quem conferiu: vale conferir de novo.";
+  return null;
+}
+
+function StationCard({ station: s, onSaved }) {
+  const { backend } = useSession();
+  const [open, setOpen] = React.useState(false);
+  const [content, setContent] = React.useState({ loading: false, data: undefined, error: null });
+  const [note, setNote] = React.useState("");
+  const [state, setState] = React.useState({ busy: false, error: null });
+  const approved = s.medical_review === "approved";
+  const record = reviewRecord(s);
+
+  const toggle = async () => {
+    const next = !open;
+    setOpen(next);
+    if (!next || content.data !== undefined || content.loading) return;
+    setContent({ loading: true, data: undefined, error: null });
+    try {
+      setContent({ loading: false, data: (await backend.rpc("app_admin_station_content", { p_station_id: s.id })) ?? null, error: null });
+    } catch (err) {
+      setContent({ loading: false, data: undefined, error: messageOf(err) });
+    }
+  };
+  const decide = async (status) => {
+    setState({ busy: true, error: null });
+    try {
+      onSaved(await backend.rpc("app_admin_set_station_review", { p_station_id: s.id, p_status: status, p_note: note.trim() }));
+      setNote("");
+      setState({ busy: false, error: null });
+    } catch (err) {
+      setState({ busy: false, error: messageOf(err) });
+    }
+  };
+  const short = note.trim().length < MIN_NOTE;
+
+  return (
+    <Card>
+      <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <Badge tone={approved ? "success" : "warning"} size="sm">
+              {approved ? "Aprovada" : "Aguardando revisão médica"}
+            </Badge>
+            <Badge size="sm">{s.area}</Badge>
+            {s.is_pro_only && (
+              <Badge tone="pro" size="sm">
+                Pro
+              </Badge>
+            )}
+            {s.institution === "INEP" && <Badge size="sm">INEP</Badge>}
+          </div>
+          <div style={{ font: "600 16px var(--font-sans)", marginTop: 8 }}>{s.name}</div>
+          <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{s.topic}</div>
+          {record && <div style={{ marginTop: 8, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{record}</div>}
+          {s.reports > 0 && (
+            <div style={{ marginTop: 10, font: "var(--type-body-sm)" }}>
+              <b>
+                {s.reports} {s.reports === 1 ? "relato de erro" : "relatos de erro"}
+              </b>
+              {s.last_reports.map((r) => (
+                <div key={r.created_at} style={{ color: "var(--text-secondary)", marginTop: 4 }}>
+                  “{r.message}” · {dateTimeBR(r.created_at)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <Button variant="secondary" size="sm" icon={open ? "chevron-up" : "chevron-down"} aria-expanded={open} onClick={toggle}>
+          {open ? "Fechar" : "Conferir"}
+        </Button>
+      </div>
+
+      {open && (
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--border-subtle)", display: "grid", gap: 16 }}>
+          {content.loading && <Loading />}
+          {content.error && <Banner tone="danger">{content.error}</Banner>}
+          {content.data !== undefined && <StationContent content={content.data} />}
+          <div style={{ display: "grid", gap: 8 }}>
+            <div style={{ font: "var(--type-label)" }}>Revisão médica</div>
+            {state.error && <Banner tone="danger">{state.error}</Banner>}
+            {approved ? (
+              <>
+                <TextArea label="Motivo para voltar à revisão" value={note} rows={2} maxLength={2000} onChange={setNote} hint="Pelo menos 10 caracteres. Fica registrado com seu nome e a data." />
+                <div>
+                  <Button variant="secondary" size="sm" icon="undo-2" disabled={short} loading={state.busy} onClick={() => decide("pending")}>
+                    Voltar para revisão
+                  </Button>
+                </div>
+              </>
+            ) : s.can_review ? (
+              <>
+                <TextArea label="O que foi conferido (roteiro, impressos e checklist)" value={note} rows={2} maxLength={2000} onChange={setNote} hint="Pelo menos 10 caracteres. Fica registrado com seu nome e a data." />
+                <div>
+                  <Button size="sm" icon="check" disabled={short} loading={state.busy} onClick={() => decide("approved")}>
+                    Aprovar
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>
+                Só um revisor médico cadastrado em {s.area} ou um administrador aprova esta estação. O administrador cadastra os revisores em Central de Conteúdo › Configuração e custos.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export function AdminStations() {
   const { backend } = useSession();
   const { data, error, reload, setData } = useLoad(() => backend.rpc("app_admin_stations"), [backend]);
-  const [busy, setBusy] = React.useState(null);
-  const [actionError, setActionError] = React.useState(null);
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
-  const setReview = async (id, status) => {
-    setBusy(id);
-    setActionError(null);
-    try {
-      setData(await backend.rpc("app_admin_set_station_review", { p_station_id: id, p_status: status }));
-    } catch (err) {
-      setActionError(messageOf(err));
-    }
-    setBusy(null);
-  };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Banner tone="warning" title="Aprovação depende de revisão médica">
-        Só aprove uma estação depois que um médico revisor conferir roteiro, impressos e checklist. Aprovada, ela aparece para todos os alunos.
+      <Banner tone="info" title="Telas de estações do aluno em construção">
+        As telas de estações do aluno ainda estão em construção e continuam escondidas: por enquanto, só a equipe vê as estações, aprovadas ou não. Aprovar agora deixa a estação pronta para quando essas telas forem ligadas.
       </Banner>
-      {actionError && <Banner tone="danger">{actionError}</Banner>}
+      <Banner tone="warning" title="Aprovação é revisão médica">
+        Só aprova o revisor médico cadastrado na área da estação, ou um administrador, depois de conferir roteiro, impressos e checklist. O que foi conferido fica registrado com o nome de quem aprovou e a data.
+      </Banner>
       {data.length === 0 && <EmptyState icon="clipboard-list" title="Nenhuma estação cadastrada" />}
       {data.map((s) => (
-        <Card key={s.id}>
-          <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
-            <div style={{ flex: "1 1 320px", minWidth: 0 }}>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                <Badge tone={s.medical_review === "approved" ? "success" : "warning"} size="sm">
-                  {s.medical_review === "approved" ? "Aprovada" : "Aguardando revisão médica"}
-                </Badge>
-                <Badge size="sm">{s.area}</Badge>
-                {s.is_pro_only && (
-                  <Badge tone="pro" size="sm">
-                    Pro
-                  </Badge>
-                )}
-                {s.institution === "INEP" && <Badge size="sm">INEP</Badge>}
-              </div>
-              <div style={{ font: "600 16px var(--font-sans)", marginTop: 8 }}>{s.name}</div>
-              <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{s.topic}</div>
-              {s.reports > 0 && (
-                <div style={{ marginTop: 10, font: "var(--type-body-sm)" }}>
-                  <b>
-                    {s.reports} {s.reports === 1 ? "relato de erro" : "relatos de erro"}
-                  </b>
-                  {s.last_reports.map((r) => (
-                    <div key={r.created_at} style={{ color: "var(--text-secondary)", marginTop: 4 }}>
-                      “{r.message}” · {dateTimeBR(r.created_at)}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            {s.medical_review === "approved" ? (
-              <Button variant="secondary" size="sm" onClick={() => setReview(s.id, "pending")} loading={busy === s.id}>
-                Voltar para revisão
-              </Button>
-            ) : (
-              <Button size="sm" icon="check" onClick={() => setReview(s.id, "approved")} loading={busy === s.id}>
-                Aprovar
-              </Button>
-            )}
-          </div>
-        </Card>
+        <StationCard key={s.id} station={s} onSaved={setData} />
       ))}
     </div>
   );
@@ -573,7 +700,7 @@ function summary(entry) {
   if (entry.action === "user.subscription") return `${PLAN_LABEL[d.to?.plan] ?? d.to?.plan} · ${SUB_STATUS_LABEL[d.to?.status] ?? d.to?.status}`;
   if (entry.action === "user.delete") return d.email;
   if (entry.action === "questions.import") return `${d.inserted} novas · ${d.updated} atualizadas · ${d.skipped} puladas`;
-  if (entry.action === "station.review") return `${entry.target}: ${d.to === "approved" ? "aprovada" : "voltou para revisão"}`;
+  if (entry.action === "station.review") return `${entry.target}: ${d.to === "approved" ? "aprovada" : "voltou para revisão"}${d.note ? ` · “${d.note}”` : ""}`;
   if (entry.action === "plan.save") return `${PLAN_LABEL[entry.target] ?? entry.target}${d.active ? " · à venda" : ""}`;
   if (entry.action.startsWith("question.")) return entry.target;
   // atualizações: o tema e, quando houver, o motivo (recusa, texto alterado, correção) e a nota do revisor
