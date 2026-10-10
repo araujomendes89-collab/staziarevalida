@@ -948,7 +948,9 @@ export async function runJob(deps: PipelineDeps, job: Job): Promise<{ status: st
     await deps.db.service("ch_worker_finish", { p_job_id: job.id, p_ok: true, p_error: null, p_metrics: ctx.metrics });
     if (next) {
       const args = { p_document_id: job.document_id, p_step: next, p_versions: stepVersions(next, deps), p_scope_key: job.scope_key };
-      // a marca entra junto com o trabalho, no mesmo passo do banco (outro processamento não pega o trabalho sem ela)
+      // a marca entra junto com o trabalho, no mesmo passo do banco (outro processamento não pega o trabalho sem ela); se a
+      // próxima etapa estiver rodando em outro processamento, o pedido fica guardado no banco e vale quando ela terminar
+      // (coluna requeue e gatilho ch_jobs_worker_exit, migração 8200, rodada de correção 3 do CC01)
       if (ctx.carry) await deps.db.service("ch_worker_next_marked", { ...args, p_checkpoint: ctx.carry });
       else await deps.db.service("ch_worker_next", args);
     }

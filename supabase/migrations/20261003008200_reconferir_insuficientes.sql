@@ -28,13 +28,68 @@
 --   - trabalho da reconferência automática que falha, fica pendente ou é interrompido não muda a situação do documento nem grava
 --     "Pendência" nele (ch_worker_finish, ch_worker_block, ch_worker_fail, ch_worker_claim); o erro fica só na etapa, avisando que
 --     o documento continua como estava. A reconferência que falhou volta a rodar na próxima fonte nova.
+-- Rodada de correção 3 (dois processamentos ao mesmo tempo: o agendador dispara a tarefa do Cloud Run a cada 10 minutos e cada
+-- execução pega trabalho por até 50, então execuções se sobrepõem):
+--   - pedido para uma etapa que está rodando em outro processamento não se perde mais: fica guardado no trabalho (coluna
+--     requeue) e vale quando ele termina, de qualquer jeito que termine (gatilho ch_jobs_worker_exit). O pedido da etapa inteira
+--     (ch_worker_next) faz a etapa rodar inteira de novo; a reconferência automática (ch_worker_next_marked) segue as mesmas regras
+--     de quando a etapa não está rodando. Sem isso, "Reprocessar" parava no meio com o documento em "Classificando";
+--   - fonte nova indexada enquanto a conferência roda em outro processamento: a reconferência fica guardada e roda depois;
+--   - o aviso da reconferência não aponta a afirmação que a versão mais nova já cita;
+--   - a proteção do trabalho interrompido (ch_worker_claim, rodada 2) passou para o gatilho: a 8200 não redefine mais
+--     ch_worker_claim (veja a nota abaixo).
 -- As funções redefinidas partem das versões mais novas (ch_worker_claims da 7600; ch_worker_mark_claim, ch_worker_link_evidence,
--- ch_worker_save_draft, ch_worker_block e ch_worker_fail da 1500; ch_worker_next da 1600; ch_worker_finish e ch_worker_claim da
--- 1400) e continuam só do servidor. Pode ser rodada mais de uma vez.
+-- ch_worker_save_draft, ch_worker_block e ch_worker_fail da 1500; ch_worker_next da 1600; ch_worker_finish da 1400) e continuam
+-- só do servidor. Pode ser rodada mais de uma vez.
+--
+-- NOTA PARA QUEM JUNTAR O RAMO montagem-estacoes (migração 20261003005900_estacoes_importacao.sql, ainda não publicada):
+--   A 5900 apaga ch_worker_claim(integer) e cria ch_worker_claim(integer, text[]). A 8200 NÃO mexe em ch_worker_claim (ela ficou
+--   como na 1400, ou como a 5900 deixar), então as duas convivem em qualquer ordem: colada no Supabase antes ou depois da 5900, e
+--   num banco novo (onde a 5900 roda antes, pela ordem dos arquivos). A proteção da reconferência automática está no gatilho
+--   ch_jobs_worker_exit, que a 5900 não recria. Para ela continuar valendo, a ch_worker_claim da 5900 (ou qualquer versão futura)
+--   precisa manter, nesta ordem, estes dois trechos da 1400, que ela já tem iguais:
+--     update public.ch_jobs set status = case when attempts >= max_attempts then 'dead' else 'queued' end,
+--            error = 'Interrompido sem concluir.' || coalesce(' Falha anterior: ' || error, ''), locked_at = null
+--      where status = 'running' and locked_at < now() - make_interval(secs => p_stale_seconds);
+--     update public.ch_documents d set status = 'failed', failure = left(j2.error, 500)
+--       from public.ch_jobs j2 where j2.document_id = d.id and j2.status = 'dead' and j2.finished_at is null;
+--   Ou seja: o trabalho interrompido sai de 'running' por um UPDATE em ch_jobs (é nele que o gatilho age: devolve à fila o que
+--   ficou pedido, preenche finished_at da reconferência automática que morreu ali e põe o aviso no erro) e o documento só vira
+--   "Falhou" por trabalho morto com "finished_at is null" (a reconferência automática morta já sai com finished_at preenchido).
+--   Não apague o gatilho ch_jobs_worker_exit nem a coluna ch_jobs.requeue; se for reescrever ch_worker_next, ch_worker_next_marked,
+--   ch_worker_finish, ch_worker_block ou ch_worker_fail, parta das versões desta migração.
 
 -- De que base (afirmações compatíveis, texto, modelo e versão do prompt) o processamento escreveu a versão. Edição da equipe não
 -- muda este campo.
 alter table public.ch_unit_versions add column if not exists base_hash text;
+
+-- Pedido guardado para um trabalho que está rodando em outro processamento (rodada de correção 3): '{}' = rodar a etapa inteira
+-- de novo (ch_worker_next); com "auto_recheck" = reconferência automática, com a marca (ch_worker_next_marked). Vale quando o
+-- trabalho termina (gatilho ch_jobs_worker_exit, no fim desta migração), que apaga o pedido.
+alter table public.ch_jobs add column if not exists requeue jsonb;
+
+-- Junta duas marcas da reconferência automática: temas, afirmações e versões das duas, sem repetir; o resto vem da nova (p_new).
+-- O ponto em que a etapa parou (theme, chunk...) não entra: ela recomeça do início.
+create or replace function public.ch_worker_merge_marks(p_old jsonb, p_new jsonb) returns jsonb
+  language plpgsql immutable security definer set search_path = ''
+as $$
+declare
+  v_old jsonb := coalesce(p_old, '{}'::jsonb);
+  v jsonb := coalesce(p_new, '{}'::jsonb);
+  k text;
+begin
+  foreach k in array array['themes', 'claims', 'versions'] loop
+    if v_old ? k or v ? k then
+      v := v || jsonb_build_object(k, (
+        select coalesce(jsonb_agg(distinct x order by x), '[]'::jsonb) from (
+          select jsonb_array_elements_text(case when jsonb_typeof(v_old -> k) = 'array' then v_old -> k else '[]'::jsonb end) as x
+          union
+          select jsonb_array_elements_text(case when jsonb_typeof(v -> k) = 'array' then v -> k else '[]'::jsonb end)) s));
+    end if;
+  end loop;
+  return v;
+end
+$$;
 
 -- A afirmação só tem evidência vigente "insuficiente" dada pelo processamento (ou nenhuma evidência vigente).
 create or replace function public.ch_claim_recheckable(p_claim_id uuid) returns boolean
@@ -126,10 +181,13 @@ $$;
 -- Fonte nova indexada: devolve para a fila a etapa de evidências dos materiais de estudo que têm afirmação "insuficiente" que só
 -- a IA julgou. Só quando a fonte entra na busca de evidências. Só documento que não está com falha (documento com falha a equipe
 -- olha antes) e cuja conferência já terminou (ou cuja reconferência automática anterior falhou). Fica de fora o documento com
--- Extração, Classificação, Afirmações ou Conferência na fila, rodando ou pendente: quem ainda vai rodar já pega a fonte nova, e a
--- reexecução pedida pela equipe (ou a conferência dela que ficou pendente) roda inteira, sem virar reconferência automática
--- (rodada de correção 2). O trabalho volta marcado como reconferência automática (ch_worker_next_marked). Devolve quantos
--- documentos voltaram e, quando nada roda, o motivo.
+-- Extração, Classificação ou Afirmações na fila, rodando ou pendente, ou com a Conferência na fila ou pendente: quem ainda vai
+-- rodar já pega a fonte nova, e a reexecução pedida pela equipe (ou a conferência dela que ficou pendente) roda inteira, sem virar
+-- reconferência automática (rodada de correção 2). O trabalho volta marcado como reconferência automática
+-- (ch_worker_next_marked). Rodada de correção 3: a conferência que está rodando em outro processamento pode já ter buscado os
+-- trechos antes desta fonte; o documento entra e a reconferência fica guardada para quando ela terminar (ch_worker_next_marked
+-- guarda o pedido; ela não entra no meio da que está rodando). Devolve quantos documentos voltaram (ou ficaram com a reconferência
+-- guardada) e, quando nada roda, o motivo.
 drop function if exists public.ch_worker_recheck_insufficient(jsonb);
 create or replace function public.ch_worker_recheck_insufficient(p_source_id uuid, p_versions jsonb) returns jsonb
   language plpgsql security definer set search_path = ''
@@ -146,11 +204,14 @@ begin
   for d in
     select doc.id from public.ch_documents doc
     where doc.purpose = 'study_material' and doc.status <> 'failed'
-      and exists (select 1 from public.ch_claims c where c.document_id = doc.id and c.status = 'insufficient' and public.ch_claim_recheckable(c.id))
+      and (exists (select 1 from public.ch_claims c where c.document_id = doc.id and c.status = 'insufficient' and public.ch_claim_recheckable(c.id))
+           -- conferindo agora: as afirmações dela ainda podem ficar "insuficientes"
+           or exists (select 1 from public.ch_jobs j where j.document_id = doc.id and j.step = 'evidence' and j.status = 'running'))
       and exists (select 1 from public.ch_jobs j where j.document_id = doc.id and j.step = 'evidence'
-                   and (j.status = 'succeeded' or (j.status in ('failed', 'dead') and coalesce(j.checkpoint ->> 'auto_recheck', '') = 'true')))
-      and not exists (select 1 from public.ch_jobs j where j.document_id = doc.id and j.step in ('extract', 'classify', 'claims', 'evidence')
+                   and (j.status in ('succeeded', 'running') or (j.status in ('failed', 'dead') and coalesce(j.checkpoint ->> 'auto_recheck', '') = 'true')))
+      and not exists (select 1 from public.ch_jobs j where j.document_id = doc.id and j.step in ('extract', 'classify', 'claims')
                        and j.status in ('queued', 'running', 'blocked'))
+      and not exists (select 1 from public.ch_jobs j where j.document_id = doc.id and j.step = 'evidence' and j.status in ('queued', 'blocked'))
     order by doc.created_at
   loop
     perform public.ch_worker_next_marked(d.id, 'evidence', coalesce(p_versions, '{}'::jsonb), '', jsonb_build_object('auto_recheck', true, 'source_id', p_source_id));
@@ -211,8 +272,10 @@ $$;
 --   - etapa normal pendente, na fila ou com falha roda inteira, do começo (o que ela já fez não se repete: rascunho, aviso e
 --     materiais iguais são reaproveitados); a marca não entra nela;
 --   - outra reconferência automática da mesma etapa ainda por fazer, pendente ou que falhou: as duas marcas se juntam e ela
---     recomeça do início (a pendente continua pendente);
---   - trabalho rodando fica como está.
+--     recomeça do início (a pendente continua pendente).
+-- Rodada de correção 3: trabalho rodando em outro processamento guarda o pedido (coluna requeue), que vale quando ele terminar
+-- (gatilho ch_jobs_worker_exit, pelas mesmas regras acima); dois pedidos guardados se juntam, e um pedido da etapa inteira
+-- (ch_worker_next) já guardado cobre este.
 create or replace function public.ch_worker_next_marked(p_document_id uuid, p_step text, p_versions jsonb, p_scope_key text, p_checkpoint jsonb) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
@@ -220,24 +283,17 @@ declare
   r jsonb;
   j public.ch_jobs;
   v_mark jsonb := coalesce(p_checkpoint, '{}'::jsonb);
-  k text;
 begin
   r := public.ch_worker_enqueue(p_document_id, p_step, coalesce(p_scope_key, ''), p_versions, 3);
   select * into j from public.ch_jobs where id = (r ->> 'id')::uuid for update;
   if not (r ->> 'duplicate')::boolean then
     update public.ch_jobs set checkpoint = v_mark where id = j.id and status = 'queued';
   elsif j.status = 'running' then
-    null;
+    if j.requeue is null or coalesce(j.requeue ->> 'auto_recheck', '') = 'true' then
+      update public.ch_jobs set requeue = public.ch_worker_merge_marks(j.requeue, v_mark) where id = j.id;
+    end if;
   elsif coalesce(j.checkpoint ->> 'auto_recheck', '') = 'true' and j.status in ('queued', 'blocked', 'failed', 'dead') then
-    foreach k in array array['themes', 'claims', 'versions'] loop
-      if j.checkpoint ? k or v_mark ? k then
-        v_mark := v_mark || jsonb_build_object(k, (
-          select coalesce(jsonb_agg(distinct x order by x), '[]'::jsonb) from (
-            select jsonb_array_elements_text(case when jsonb_typeof(j.checkpoint -> k) = 'array' then j.checkpoint -> k else '[]'::jsonb end) as x
-            union
-            select jsonb_array_elements_text(case when jsonb_typeof(v_mark -> k) = 'array' then v_mark -> k else '[]'::jsonb end)) s));
-      end if;
-    end loop;
+    v_mark := public.ch_worker_merge_marks(j.checkpoint, v_mark);
     if j.status = 'blocked' then
       update public.ch_jobs set checkpoint = v_mark where id = j.id;
     else
@@ -260,16 +316,24 @@ $$;
 -- Próxima etapa (o processamento segue de uma etapa para a outra; parte da versão da 1600). Rodada de correção 2: a etapa
 -- anterior que acha a reconferência automática da próxima ainda na fila tira a marca dela, para ela rodar inteira (sem isso, uma
 -- reexecução pedida pela equipe parava no meio quando uma fonte nova era indexada antes de ela chegar à conferência).
+-- Rodada de correção 3: a próxima etapa rodando em outro processamento (por exemplo, a reconferência automática) guarda o pedido
+-- (requeue = '{}'): quando ela termina, de qualquer jeito, volta para a fila e roda inteira (gatilho ch_jobs_worker_exit). Antes, o
+-- pedido se perdia e a reexecução parava ali, com o documento em "Classificando". O trabalho fica travado enquanto se decide,
+-- para o fim dele não passar no meio.
 create or replace function public.ch_worker_next(p_document_id uuid, p_step text, p_versions jsonb, p_scope_key text default '') returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
-declare r jsonb;
+declare r jsonb; j public.ch_jobs;
 begin
   r := public.ch_worker_enqueue(p_document_id, p_step, coalesce(p_scope_key, ''), p_versions, 3);
   if (r ->> 'duplicate')::boolean then
-    update public.ch_jobs set status = 'queued', attempts = 0, error = null, run_after = now(), finished_at = null, locked_at = null, checkpoint = '{}'::jsonb
-     where id = (r ->> 'id')::uuid
-       and (status in ('succeeded', 'failed', 'dead', 'blocked') or (status = 'queued' and coalesce(checkpoint ->> 'auto_recheck', '') = 'true'));
+    select * into j from public.ch_jobs where id = (r ->> 'id')::uuid for update;
+    if j.status = 'running' then
+      update public.ch_jobs set requeue = '{}'::jsonb where id = j.id;
+    elsif j.status in ('succeeded', 'failed', 'dead', 'blocked') or (j.status = 'queued' and coalesce(j.checkpoint ->> 'auto_recheck', '') = 'true') then
+      update public.ch_jobs set status = 'queued', attempts = 0, error = null, run_after = now(), finished_at = null, locked_at = null, checkpoint = '{}'::jsonb
+       where id = j.id;
+    end if;
   end if;
   return r;
 end
@@ -277,10 +341,12 @@ $$;
 
 -- Fim de um trabalho (parte da versão da 1400). Rodada de correção 2: o trabalho da reconferência automática que gasta as
 -- tentativas não muda a situação do documento; o erro fica só na etapa, avisando que o documento continua como estava.
+-- Rodada de correção 3: com um pedido guardado (coluna requeue), o gatilho ch_jobs_worker_exit pode devolver o trabalho para a
+-- fila em vez de deixá-lo morto; o documento só falha quando o trabalho termina morto mesmo. Devolve a situação final.
 create or replace function public.ch_worker_finish(p_job_id uuid, p_ok boolean, p_error text default null, p_metrics jsonb default '{}'::jsonb) returns text
   language plpgsql security definer set search_path = ''
 as $$
-declare j public.ch_jobs; v_status text; v_auto boolean;
+declare j public.ch_jobs; v_status text; v_auto boolean; v_final text;
 begin
   select * into j from public.ch_jobs where id = p_job_id and status = 'running';
   if not found then raise exception 'Trabalho não está em execução.' using errcode = 'P0002'; end if;
@@ -294,76 +360,124 @@ begin
                  else p_error end,
     locked_at = null, metrics = coalesce(p_metrics, '{}'::jsonb),
     finished_at = case when v_status in ('succeeded', 'dead') then now() end,
-    run_after = case when v_status = 'queued' then now() + make_interval(secs => 30 * attempts) else run_after end where id = p_job_id;
-  if v_status = 'dead' and j.document_id is not null and not v_auto then
+    run_after = case when v_status = 'queued' then now() + make_interval(secs => 30 * attempts) else run_after end where id = p_job_id
+  returning status into v_final;
+  if v_final = 'dead' and j.document_id is not null and not v_auto then
     update public.ch_documents set status = 'failed', failure = left(coalesce(p_error, 'Falha sem detalhe.'), 500) where id = j.document_id;
   end if;
-  return v_status;
+  return v_final;
 end
 $$;
 
 -- Trabalho pendente por falta de configuração (parte da versão da 1500). Rodada de correção 2: o da reconferência automática não
--- grava "Pendência" no documento; o motivo fica só na etapa.
+-- grava "Pendência" no documento; o motivo fica só na etapa. Rodada de correção 3: o trabalho que o gatilho ch_jobs_worker_exit
+-- devolveu para a fila (pedido guardado) também não grava.
 create or replace function public.ch_worker_block(p_job_id uuid, p_reason text) returns void
   language plpgsql security definer set search_path = ''
 as $$
-declare v_doc uuid; v_auto boolean;
+declare v_doc uuid; v_auto boolean; v_final text;
 begin
   update public.ch_jobs set status = 'blocked', attempts = greatest(attempts - 1, 0),
          error = case when coalesce(checkpoint ->> 'auto_recheck', '') = 'true'
                       then 'Reconferência automática (fonte nova): o documento continua como estava. ' || p_reason else p_reason end,
          locked_at = null
    where id = p_job_id and status = 'running'
-   returning document_id, coalesce(checkpoint ->> 'auto_recheck', '') = 'true' into v_doc, v_auto;
-  if v_doc is not null and not v_auto then
+   returning document_id, coalesce(checkpoint ->> 'auto_recheck', '') = 'true', status into v_doc, v_auto, v_final;
+  if v_doc is not null and not v_auto and v_final = 'blocked' then
     update public.ch_documents set failure = left('Pendência: ' || p_reason, 500) where id = v_doc;
   end if;
 end
 $$;
 
 -- Falha que nova tentativa não resolve (parte da versão da 1500). Rodada de correção 2: a da reconferência automática não muda a
--- situação do documento.
+-- situação do documento. Rodada de correção 3: o trabalho que o gatilho ch_jobs_worker_exit devolveu para a fila (pedido
+-- guardado da etapa inteira) também não.
 create or replace function public.ch_worker_fail(p_job_id uuid, p_error text) returns void
   language plpgsql security definer set search_path = ''
 as $$
-declare v_doc uuid; v_auto boolean;
+declare v_doc uuid; v_auto boolean; v_final text;
 begin
   update public.ch_jobs set status = 'dead',
          error = case when coalesce(checkpoint ->> 'auto_recheck', '') = 'true'
                       then 'Reconferência automática (fonte nova): o documento continua como estava. ' || p_error else p_error end,
          locked_at = null, finished_at = now()
    where id = p_job_id and status = 'running'
-   returning document_id, coalesce(checkpoint ->> 'auto_recheck', '') = 'true' into v_doc, v_auto;
-  if v_doc is not null and not v_auto then
+   returning document_id, coalesce(checkpoint ->> 'auto_recheck', '') = 'true', status into v_doc, v_auto, v_final;
+  if v_doc is not null and not v_auto and v_final = 'dead' then
     update public.ch_documents set status = 'failed', failure = left(p_error, 500) where id = v_doc;
   end if;
 end
 $$;
 
--- Próximo trabalho da fila (parte da versão da 1400). Rodada de correção 2: o trabalho da reconferência automática interrompido
--- sem tentativas sobrando não muda a situação do documento.
-create or replace function public.ch_worker_claim(p_stale_seconds integer default 600) returns jsonb
+-- Fim de um trabalho que estava rodando, por qualquer caminho (ch_worker_finish, ch_worker_block, ch_worker_fail, ou
+-- ch_worker_claim quando ele ficou parado sem sinal). Rodada de correção 3, num gatilho para valer com qualquer versão de
+-- ch_worker_claim (a 1400 ou a que o ramo montagem-estacoes cria na 5900):
+--   1) pedido guardado enquanto ele rodava (coluna requeue):
+--      - da etapa inteira (ch_worker_next): volta para a fila e roda inteira, do começo;
+--      - da reconferência automática (ch_worker_next_marked), como se tivesse chegado agora: trabalho que terminou inteiro roda de
+--        novo só para o que mudou; reconferência automática que não terminou junta as duas marcas e recomeça do início (a
+--        pendente continua pendente); etapa normal que vai tentar de novo ou ficou pendente recomeça inteira, sem a marca; etapa
+--        normal que falhou de vez fica com a falha para a equipe (o pedido automático não a faz rodar de novo sozinha);
+--   2) reconferência automática que termina sem concluir: o erro começa com o aviso de que o documento continua como estava e,
+--      se ela morreu ali, já sai com finished_at preenchido, para ch_worker_claim não marcar o documento como "Falhou" (ele só
+--      marca por trabalho morto com finished_at vazio). Esta parte era feita na ch_worker_claim da rodada de correção 2.
+create or replace function public.ch_jobs_worker_exit() returns trigger
   language plpgsql security definer set search_path = ''
 as $$
-declare j public.ch_jobs;
+declare
+  v_req jsonb := new.requeue;
+  v_fresh boolean := false;
+  c_note constant text := 'Reconferência automática (fonte nova): o documento continua como estava. ';
 begin
-  update public.ch_jobs set status = case when attempts >= max_attempts then 'dead' else 'queued' end,
-         error = 'Interrompido sem concluir.' || coalesce(' Falha anterior: ' || error, ''), locked_at = null
-   where status = 'running' and locked_at < now() - make_interval(secs => p_stale_seconds);
-  update public.ch_documents d set status = 'failed', failure = left(j2.error, 500)
-    from public.ch_jobs j2 where j2.document_id = d.id and j2.status = 'dead' and j2.finished_at is null
-     and coalesce(j2.checkpoint ->> 'auto_recheck', '') <> 'true';
-  update public.ch_jobs set finished_at = now() where status = 'dead' and finished_at is null;
-  select * into j from public.ch_jobs where status = 'queued' and run_after <= now() order by run_after, created_at for update skip locked limit 1;
-  if not found then return null; end if;
-  update public.ch_jobs set status = 'running', attempts = attempts + 1, locked_at = now(), started_at = coalesce(started_at, now()) where id = j.id returning * into j;
-  return to_jsonb(j);
+  if v_req is not null then
+    new.requeue := null;
+    if coalesce(v_req ->> 'auto_recheck', '') <> 'true' then
+      new.status := 'queued';
+      new.checkpoint := '{}'::jsonb;
+      v_fresh := true;
+    elsif new.status = 'succeeded' then
+      new.status := 'queued';
+      new.checkpoint := v_req;
+      v_fresh := true;
+    elsif coalesce(new.checkpoint ->> 'auto_recheck', '') = 'true' then
+      new.checkpoint := public.ch_worker_merge_marks(new.checkpoint, v_req);
+      if new.status <> 'blocked' then
+        new.status := 'queued';
+        v_fresh := true;
+      end if;
+    elsif new.status in ('queued', 'blocked') then
+      new.checkpoint := '{}'::jsonb;
+    end if;
+    if v_fresh then
+      new.attempts := 0;
+      new.error := null;
+      new.run_after := now();
+      new.finished_at := null;
+      new.locked_at := null;
+    end if;
+  end if;
+  if coalesce(new.checkpoint ->> 'auto_recheck', '') = 'true' and new.status in ('queued', 'blocked', 'failed', 'dead') then
+    if new.status in ('failed', 'dead') and new.finished_at is null then
+      new.finished_at := now();
+    end if;
+    if new.error is not null and left(new.error, length(c_note)) <> c_note then
+      new.error := c_note || new.error;
+    end if;
+  end if;
+  return new;
 end
 $$;
 
+drop trigger if exists ch_jobs_worker_exit on public.ch_jobs;
+create trigger ch_jobs_worker_exit before update on public.ch_jobs
+  for each row when (old.status = 'running' and new.status is distinct from 'running')
+  execute function public.ch_jobs_worker_exit();
+
 -- Reconferência automática num tema que já tem unidade: o processamento não faz versão nova sozinho (a equipe pode estar
 -- revisando ou ter editado o texto). A versão mais nova da unidade recebe os avisos (p_notices), sem apagar nenhum apontamento e
--- sem repetir o aviso da mesma afirmação. Devolve a versão, ou nada quando o tema ainda não tem unidade com versão.
+-- sem repetir o aviso da mesma afirmação. Devolve a versão, ou nada quando o tema ainda não tem unidade com versão. Rodada de
+-- correção 3: a afirmação que a versão mais nova já cita não ganha aviso (com dois processamentos, o rascunho de uma reexecução
+-- pode ter usado a afirmação antes de a reconferência pedida no meio rodar).
 create or replace function public.ch_worker_theme_notice(p_theme_node_id uuid, p_notices jsonb) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
@@ -379,7 +493,8 @@ begin
   select coalesce(jsonb_agg(n), '[]'::jsonb) into v_new
     from jsonb_array_elements(case when jsonb_typeof(p_notices) = 'array' then p_notices else '[]'::jsonb end) n
    where not exists (select 1 from jsonb_array_elements(coalesce(v.review_flags, '[]'::jsonb)) f
-                     where f ->> 'by' = n ->> 'by' and f ->> 'claim_id' = n ->> 'claim_id');
+                     where f ->> 'by' = n ->> 'by' and f ->> 'claim_id' = n ->> 'claim_id')
+     and not exists (select 1 from public.ch_unit_claims uc where uc.unit_version_id = v.id and uc.claim_id::text = n ->> 'claim_id');
   if jsonb_array_length(v_new) > 0 then
     update public.ch_unit_versions set review_flags = coalesce(review_flags, '[]'::jsonb) || v_new where id = v.id;
   end if;
@@ -400,4 +515,5 @@ revoke execute on function public.ch_worker_next(uuid, text, jsonb, text) from p
 revoke execute on function public.ch_worker_finish(uuid, boolean, text, jsonb) from public, anon, authenticated;
 revoke execute on function public.ch_worker_block(uuid, text) from public, anon, authenticated;
 revoke execute on function public.ch_worker_fail(uuid, text) from public, anon, authenticated;
-revoke execute on function public.ch_worker_claim(integer) from public, anon, authenticated;
+revoke execute on function public.ch_worker_merge_marks(jsonb, jsonb) from public, anon, authenticated;
+revoke execute on function public.ch_jobs_worker_exit() from public, anon, authenticated;

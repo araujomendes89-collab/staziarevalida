@@ -16,6 +16,11 @@
  * que acha a reconferência na fila tira a marca dela), só deixa parcial a etapa que já tinha terminado inteira, e a falha ou a
  * pendência dela não muda a situação do documento.
  *
+ * Rodada de correção 3: duas execuções do processamento ao mesmo tempo (o agendador dispara a tarefa do Cloud Run a cada 10
+ * minutos e cada execução pega trabalho por até 50). O pedido para uma etapa que está rodando em outro processamento fica
+ * guardado e vale quando ela termina; e a proteção da reconferência automática não depende mais de ch_worker_claim, que o ramo
+ * montagem-estacoes (5900) recria.
+ *
  * Sem rede: simulação de IA (mock). Os textos são fictícios, feitos só para o teste (não são conteúdo médico).
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -28,7 +33,7 @@ import { devContentDb, localStorageDir, type ContentDb, type Storage } from "../
 import { MockProvider, type StructuredRequest } from "../../server/contentHub/ai/provider";
 import { mockRespond } from "../../server/contentHub/ai/mock";
 import { AiCapReached } from "../../server/ai/maestro";
-import { stepVersions, type PipelineDeps } from "../../server/contentHub/pipeline";
+import { runJob, stepVersions, type Job, type PipelineDeps } from "../../server/contentHub/pipeline";
 import { createContentHubWorker } from "../../server/contentHub/worker";
 import type { AuthUser } from "../../src/novo/data/backend";
 
@@ -87,6 +92,11 @@ const SH2 = "Zayinteste deve ser dosado quando Lamedteste atingir 15%.";
 const SH2_FONTE = "Zayinteste deve ser dosado quando Lamedteste atingir 16%.";
 const SI1 = "Yodteste deve ser carimbado quando Hethteste juntar 3 selos.";
 const SJ1 = "Shinteste deve ser lacrado quando Tsadeteste encher 9 frascos.";
+// rodada de correção 3 (cada frase com palavras só dela)
+const SK1 = "Alefteste deve ser costurado quando Betteste prender 5 botoes.";
+const SL1 = "Kafteste deve ser ensacado quando Memteste empilhar 25 sacos.";
+const SN1 = "Nunteste deve ser rotulado quando Samekhteste contar 27 potes.";
+const SN2 = "Ainteste deve ser selado quando Peteste guardar 33 tampas.";
 /** Parágrafo sem afirmação que separa as seções (a classificação simulada liga cada seção só ao tema do seu título). */
 const FILLER = "Texto fictício de preenchimento para separar as seções do teste. ".repeat(26).trim();
 
@@ -746,6 +756,271 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
     }, 240_000);
   });
 
+  describe("rodada de correção 3: dois processamentos ao mesmo tempo (execuções da tarefa do Cloud Run que se sobrepõem)", () => {
+    const docState = async (doc: string) => (await sql(`select status, failure from public.ch_documents where id = $1`, [doc]))[0];
+    /** O trabalho como está no banco (sem depender das colunas que existem). */
+    const jobRow = async (id: string) => (await sql(`select to_jsonb(j) as j from public.ch_jobs j where j.id = $1`, [id]))[0].j;
+    /** Outro processamento pega ESTE trabalho (como ch_worker_claim faz, mas sem escolher outro da fila). */
+    const claimJob = async (id: string) =>
+      (
+        await sql(
+          `update public.ch_jobs as j set status = 'running', attempts = j.attempts + 1, locked_at = now(), started_at = coalesce(j.started_at, now())
+            where j.id = $1 and j.status = 'queued' returning to_jsonb(j) as job`,
+          [id]
+        )
+      )[0].job as Job;
+    /** Trabalho da reconferência automática interrompido (sem sinal há 2 horas) na última tentativa. */
+    const interruptedAuto = async (doc: string) =>
+      (
+        await sql(
+          `insert into public.ch_jobs (document_id, step, scope_key, idempotency_key, versions, status, attempts, max_attempts, checkpoint, locked_at, started_at)
+           values ($1, 'evidence', '', $2, '{}'::jsonb, 'running', 3, 3, $3::jsonb, now() - interval '2 hours', now()) returning id`,
+          [doc, `teste-${crypto.randomUUID()}`, JSON.stringify({ auto_recheck: true, source_id: crypto.randomUUID() })]
+        )
+      )[0].id as string;
+    const NOTE = /^Reconferência automática \(fonte nova\): o documento continua como estava\. /;
+
+    it("Reprocessar da Classificação enquanto a reconferência automática roda em outro processamento: a conferência roda inteira depois e o documento termina pronto", async () => {
+      const doc = await studyDocument("Apostila com dois processamentos", SK1);
+      expect((await claimOf(doc)).status).toBe("insufficient");
+      expect((await docState(doc)).status).toBe("awaiting_review");
+      // processamento 1: a fonte nova é indexada e ele pega a reconferência automática deste documento (ainda sem terminar)
+      await indexSource("Manual fictício de dois processamentos", SK1, "final", { drain: false });
+      await createContentHubWorker(deps()).tick();
+      const queued = await evidenceJob(doc);
+      expect(queued.status).toBe("queued");
+      const auto = await claimJob(queued.id);
+      expect(auto.checkpoint).toMatchObject({ auto_recheck: true });
+      // processamento 2: a equipe aperta "Reprocessar" na Classificação; Classificação e Afirmações rodam e pedem a conferência,
+      // que está rodando no processamento 1
+      await db.asUser(admin, "app_ch_retry_job", { p_job_id: (await stepJob(doc, "classify")).id });
+      await drain();
+      expect((await evidenceJob(doc)).status).toBe("running");
+      // o processamento 1 termina a reconferência automática; o que ficou pedido roda depois
+      await runJob(deps(), auto);
+      await drain();
+      const evidence = await evidenceJob(doc);
+      expect(evidence.status).toBe("succeeded");
+      expect(evidence.metrics.auto_recheck).toBeUndefined();
+      expect((await claimOf(doc)).status).toBe("compatible");
+      expect((await stepJob(doc, "review_check")).status).toBe("succeeded");
+      expect((await docState(doc)).status).toBe("awaiting_review");
+    }, 300_000);
+
+    it("fonte nova indexada enquanto a conferência roda em outro processamento: a reconferência fica guardada e roda quando ela termina", async () => {
+      const doc = await studyDocument("Apostila conferida em outro processamento", SL1);
+      expect((await claimOf(doc)).status).toBe("insufficient");
+      // processamento 1: a equipe reprocessa a conferência; ela roda inteira (ainda sem trecho para a afirmação) e para logo antes
+      // de registrar o fim
+      await db.asUser(admin, "app_ch_retry_job", { p_job_id: (await evidenceJob(doc)).id });
+      const job = await claimJob((await evidenceJob(doc)).id);
+      let reached!: () => void;
+      let release!: () => void;
+      const atFinish = new Promise<void>((r) => (reached = r));
+      const gate = new Promise<void>((r) => (release = r));
+      const slow: ContentDb = {
+        ...db,
+        service: async <T,>(fn: string, args?: Record<string, unknown>) => {
+          if (fn === "ch_worker_finish" && args?.p_job_id === job.id) {
+            reached();
+            await gate;
+          }
+          return db.service<T>(fn, args);
+        },
+      };
+      const first = runJob({ ...deps(), db: slow }, job);
+      await atFinish;
+      // processamento 2: a fonte nova é indexada enquanto isso
+      await indexSource("Manual fictício conferido em outro processamento", SL1);
+      expect((await claimOf(doc)).status).toBe("insufficient");
+      // o processamento 1 termina; a reconferência que ficou guardada roda depois, sem mudar a situação do documento
+      release();
+      expect((await first).status).toBe("succeeded");
+      await drain();
+      expect((await claimOf(doc)).status).toBe("compatible");
+      expect((await evidenceJob(doc)).metrics.auto_recheck).toBe(true);
+      expect((await docState(doc)).status).toBe("awaiting_review");
+    }, 300_000);
+
+    it("pedido para uma etapa que está rodando em outro processamento fica guardado e vale quando ela termina, de qualquer jeito que termine", async () => {
+      const mark = (...themes: string[]) => ({ auto_recheck: true, themes, claims: themes.map((t) => `c-${t}`) });
+      const docs: string[] = [];
+      /** Trabalho rodando em outro processamento (cada um com um documento só dele). */
+      const running = async (checkpoint: object, attempts = 1) => {
+        const doc = await registerDoc(`Documento da fila ${crypto.randomUUID()}`);
+        docs.push(doc);
+        const r = await db.service<{ id: string }>("ch_worker_enqueue", { p_document_id: doc, p_step: "draft", p_scope_key: "", p_versions: {} });
+        await sql(`update public.ch_jobs set status = 'running', attempts = $2, max_attempts = 3, checkpoint = $3::jsonb, locked_at = now(), started_at = now() where id = $1`, [
+          r.id,
+          attempts,
+          JSON.stringify(checkpoint),
+        ]);
+        return { doc, id: r.id };
+      };
+      const next = (doc: string) => db.service("ch_worker_next", { p_document_id: doc, p_step: "draft", p_versions: {}, p_scope_key: "" });
+      const nextMarked = (doc: string, m: object) =>
+        db.service("ch_worker_next_marked", { p_document_id: doc, p_step: "draft", p_versions: {}, p_scope_key: "", p_checkpoint: m });
+      const finish = (id: string, ok: boolean) => db.service("ch_worker_finish", { p_job_id: id, p_ok: ok, p_error: ok ? null : "Falha simulada.", p_metrics: {} });
+      const job = async (id: string) => {
+        const j = await jobRow(id);
+        return { status: j.status, checkpoint: j.checkpoint, attempts: j.attempts, requeue: j.requeue ?? null };
+      };
+      try {
+        // reconferência automática interrompida na última tentativa, com outra pedida no meio: volta do começo com as duas marcas
+        // (e é pega de novo na hora), sem mudar o documento
+        let r = await running({ ...mark("a"), theme: 1 }, 3);
+        const beforeStale = await docState(r.doc);
+        await nextMarked(r.doc, mark("b"));
+        expect((await job(r.id)).status).toBe("running");
+        await sql(`update public.ch_jobs set locked_at = now() - interval '2 hours' where id = $1`, [r.id]);
+        const again = await db.service<any>("ch_worker_claim", { p_stale_seconds: 600 });
+        expect(again).toMatchObject({ id: r.id, status: "running", attempts: 1, checkpoint: mark("a", "b") });
+        expect(await docState(r.doc)).toEqual(beforeStale);
+        await finish(r.id, true);
+
+        // a etapa anterior pede a etapa (inteira) que está rodando como reconferência automática: ela roda inteira depois
+        r = await running(mark("a"));
+        await next(r.doc);
+        expect((await job(r.id)).status).toBe("running");
+        await finish(r.id, true);
+        expect(await job(r.id)).toEqual({ status: "queued", checkpoint: {}, attempts: 0, requeue: null });
+        // ... também quando a reconferência falha na última tentativa (o documento continua como estava)
+        r = await running(mark("a"), 3);
+        const before = await docState(r.doc);
+        await next(r.doc);
+        expect(await finish(r.id, false)).toBe("queued");
+        expect(await job(r.id)).toEqual({ status: "queued", checkpoint: {}, attempts: 0, requeue: null });
+        expect(await docState(r.doc)).toEqual(before);
+        // ... e quando a etapa normal que rodava tem falha definitiva: volta para a fila sem marcar o documento como falho
+        r = await running({ theme: 2 });
+        await next(r.doc);
+        await db.service("ch_worker_fail", { p_job_id: r.id, p_error: "Falha definitiva simulada." });
+        expect(await job(r.id)).toEqual({ status: "queued", checkpoint: {}, attempts: 0, requeue: null });
+        expect((await docState(r.doc)).status).not.toBe("failed");
+        // um pedido da etapa inteira cobre as reconferências pedidas antes e depois dele
+        r = await running(mark("a"));
+        await nextMarked(r.doc, mark("b"));
+        await next(r.doc);
+        await nextMarked(r.doc, mark("c"));
+        await finish(r.id, true);
+        expect(await job(r.id)).toEqual({ status: "queued", checkpoint: {}, attempts: 0, requeue: null });
+
+        // reconferência automática pedida para a etapa normal que está rodando: depois que ela termina, roda só para o que mudou
+        r = await running({ theme: 2 });
+        await nextMarked(r.doc, mark("b"));
+        await finish(r.id, true);
+        expect(await job(r.id)).toEqual({ status: "queued", checkpoint: mark("b"), attempts: 0, requeue: null });
+        // ... se a etapa normal falha e vai tentar de novo, recomeça inteira, do começo (sem a marca)
+        r = await running({ theme: 2 });
+        await nextMarked(r.doc, mark("b"));
+        await finish(r.id, false);
+        expect(await job(r.id)).toEqual({ status: "queued", checkpoint: {}, attempts: 1, requeue: null });
+        // ... se ela falha de vez, a falha fica para a equipe (o pedido automático não faz a etapa rodar de novo sozinha)
+        r = await running({ theme: 2 }, 3);
+        await nextMarked(r.doc, mark("b"));
+        await finish(r.id, false);
+        expect(await job(r.id)).toMatchObject({ status: "dead", requeue: null });
+        expect((await docState(r.doc)).status).toBe("failed");
+        // duas reconferências automáticas: a que rodava fica pendente, as marcas se juntam e ela recomeça do início
+        r = await running({ ...mark("a"), theme: 1 });
+        await nextMarked(r.doc, mark("b"));
+        await db.service("ch_worker_block", { p_job_id: r.id, p_reason: "IA parada (simulação)." });
+        expect(await job(r.id)).toEqual({ status: "blocked", checkpoint: mark("a", "b"), attempts: 0, requeue: null });
+        expect((await docState(r.doc)).failure ?? "").not.toMatch(/Pendência/);
+      } finally {
+        await sql(`delete from public.ch_jobs where document_id = any($1::uuid[])`, [docs]);
+      }
+    }, 240_000);
+
+    it("aviso da reconferência: não aponta a afirmação que a versão mais nova já cita", async () => {
+      const theme = await fictitiousTheme("Nuntema");
+      const doc = await studyDocument("Apostila do aviso", `${SN1} ${SN2}`);
+      const cited = await claimBy(doc, SN1);
+      const missing = await claimBy(doc, SN2);
+      await db.service("ch_worker_save_draft", {
+        p_theme_node_id: theme,
+        p_title: "Unidade fictícia do aviso",
+        p_content: { sections: [{ heading: "Conceitos essenciais", paragraphs: [{ text: "Texto fictício.", clinical: true, claim_ids: [cited.id] }] }] },
+        p_origin: "adaptation",
+        p_model: "mock",
+        p_scope_note: "Teste.",
+      });
+      const notice = (id: string) => ({ severity: "minor", kind: "other", where: "Reconferência nas fontes", detail: `Aviso fictício ${id}.`, claim_id: id, by: "reconferencia" });
+      const r = await db.service<any>("ch_worker_theme_notice", { p_theme_node_id: theme, p_notices: [notice(cited.id), notice(missing.id)] });
+      expect(r.notices).toBe(1);
+      const [v] = await versionsOf(theme);
+      expect(v.review_flags.filter((f: any) => f.by === "reconferencia").map((f: any) => f.claim_id)).toEqual([missing.id]);
+    }, 240_000);
+
+    it("reconferência automática interrompida sem tentativas: fica com o aviso na etapa e não muda o documento", async () => {
+      const doc = await registerDoc("Documento da reconferência interrompida");
+      const before = await docState(doc);
+      const id = await interruptedAuto(doc);
+      expect(await db.service("ch_worker_claim", { p_stale_seconds: 600 })).toBeNull();
+      const j = await jobRow(id);
+      expect(j.status).toBe("dead");
+      expect(j.finished_at).not.toBeNull();
+      expect(j.error).toMatch(NOTE);
+      expect(j.error).toContain("Interrompido sem concluir.");
+      expect(await docState(doc)).toEqual(before);
+    }, 240_000);
+
+    it("junção com o ramo montagem-estacoes (a 5900 recria ch_worker_claim): a proteção continua nas duas ordens e a 8200 pode ser colada de novo", async () => {
+      const MIGRATION = fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261003008200_reconferir_insuficientes.sql"), "utf8");
+      const claimFunctions = async () =>
+        (await sql(`select count(*)::int as n from pg_proc where proname = 'ch_worker_claim' and pronamespace = 'public'::regnamespace`))[0].n as number;
+      expect(await claimFunctions()).toBe(1);
+      const [{ def }] = await sql(`select pg_get_functiondef('public.ch_worker_claim(integer)'::regprocedure) as def`);
+      // a 5900 como está no ramo montagem-estacoes (ainda não publicada): apaga ch_worker_claim(integer) e cria outra, a partir da 1400
+      const MONTAGEM_5900 = `
+        drop function public.ch_worker_claim(integer);
+        create function public.ch_worker_claim(p_stale_seconds integer default 600, p_steps text[] default null) returns jsonb
+          language plpgsql security definer set search_path = ''
+        as $f$
+        declare j public.ch_jobs;
+        begin
+          update public.ch_jobs set status = case when attempts >= max_attempts then 'dead' else 'queued' end,
+                 error = 'Interrompido sem concluir.' || coalesce(' Falha anterior: ' || error, ''), locked_at = null
+           where status = 'running' and locked_at < now() - make_interval(secs => p_stale_seconds);
+          update public.ch_documents d set status = 'failed', failure = left(j2.error, 500)
+            from public.ch_jobs j2 where j2.document_id = d.id and j2.status = 'dead' and j2.finished_at is null;
+          update public.ch_jobs set finished_at = now() where status = 'dead' and finished_at is null;
+          select * into j from public.ch_jobs
+           where status = 'queued' and run_after <= now() and (p_steps is null or step = any (p_steps))
+           order by run_after, created_at for update skip locked limit 1;
+          if not found then return null; end if;
+          update public.ch_jobs set status = 'running', attempts = attempts + 1, locked_at = now(), started_at = coalesce(started_at, now()) where id = j.id returning * into j;
+          return to_jsonb(j);
+        end
+        $f$;
+        revoke execute on function public.ch_worker_claim(integer, text[]) from public, anon, authenticated;`;
+      const doc = await registerDoc("Documento da junção com as estações");
+      const before = await docState(doc);
+      try {
+        // ordem da publicação: a 8200 já está no banco e a 5900 chega depois
+        await dev.db.exec(MONTAGEM_5900);
+        const a = await interruptedAuto(doc);
+        expect(await db.service("ch_worker_claim", { p_stale_seconds: 600 })).toBeNull();
+        expect((await jobRow(a)).status).toBe("dead");
+        expect(await docState(doc)).toEqual(before);
+        // ordem dos arquivos (banco novo): a 5900 roda antes e a 8200 depois; colada duas vezes, sem erro
+        await dev.db.exec(MIGRATION);
+        await dev.db.exec(MIGRATION);
+        expect(await claimFunctions()).toBe(1);
+        expect(await sql(`select public.ch_worker_claim(600) as r`)).toEqual([{ r: null }]);
+        const b = await interruptedAuto(doc);
+        expect(await db.service("ch_worker_claim", { p_stale_seconds: 600 })).toBeNull();
+        expect((await jobRow(b)).error).toMatch(NOTE);
+        expect(await docState(doc)).toEqual(before);
+      } finally {
+        // volta a ch_worker_claim deste ramo
+        await dev.db.exec(`drop function if exists public.ch_worker_claim(integer, text[]); drop function if exists public.ch_worker_claim(integer);`);
+        await dev.db.exec(def);
+        await dev.db.exec(`revoke execute on function public.ch_worker_claim(integer) from public, anon, authenticated;`);
+      }
+    }, 240_000);
+  });
+
   it("as funções novas e redefinidas continuam só do servidor (nem a equipe chama direto)", async () => {
     const id = crypto.randomUUID();
     for (const call of [
@@ -762,7 +1037,10 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
       `select public.ch_worker_finish('${id}'::uuid, false, 'x', '{}'::jsonb)`,
       `select public.ch_worker_block('${id}'::uuid, 'x')`,
       `select public.ch_worker_fail('${id}'::uuid, 'x')`,
+      // a 8200 não redefine mais ch_worker_claim (rodada de correção 3), mas ela continua só do servidor
       `select public.ch_worker_claim(600)`,
+      // nova na rodada de correção 3
+      `select public.ch_worker_merge_marks('{}'::jsonb, '{}'::jsonb)`,
     ]) {
       for (const role of ["authenticated", "anon"]) {
         const attempt = dev.db.transaction(async (tx) => {
@@ -772,6 +1050,12 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
         await expect(attempt, `${role}: ${call}`).rejects.toThrow(/permission denied/);
       }
     }
+    // a função do gatilho da fila (rodada de correção 3) também não fica liberada para ninguém de fora do servidor
+    const [grants] = await sql(
+      `select has_function_privilege('anon', 'public.ch_jobs_worker_exit()', 'execute') as anon,
+              has_function_privilege('authenticated', 'public.ch_jobs_worker_exit()', 'execute') as authenticated`
+    );
+    expect(grants).toEqual({ anon: false, authenticated: false });
   });
 
   it("banco sem a atualização 8200: indexar a fonte continua funcionando e a etapa anota o que falta", async () => {
