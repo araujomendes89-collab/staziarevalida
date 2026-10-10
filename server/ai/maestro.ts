@@ -106,8 +106,13 @@ Não reescreva a resposta, só aponte os problemas.`;
 // ------------------------------------------------------------------ constantes e utilitários
 
 const TIMEOUT_MS = 180_000;
-/** Maior tempo-limite de uma chamada ao Gemini (o tempo cresce com a saída máxima mandada; ver callTimeoutMs). */
-const GEMINI_TIMEOUT_MAX_MS = 600_000;
+/**
+ * Maior tempo-limite de uma chamada ao Gemini (o tempo cresce com a saída máxima mandada; ver callTimeoutMs). Fica abaixo dos
+ * 300 s com que o fetch do Node (undici) fecha a conexão sem resposta (revisão rodada 4): o Gemini sem streaming só manda o
+ * cabeçalho quando termina, e a biblioteca do Google não sobe esse limite (httpOptions.timeout procura o valor no Agent, e no
+ * undici 7 ele fica em cada conexão). Com 290 s, quem corta é o maestro: tempo esgotado, custo estimado e sem nova tentativa.
+ */
+const GEMINI_TIMEOUT_MAX_MS = 290_000;
 /** Folga antes da hora-limite do pedido (sobra tempo para gravar e responder). */
 const DEADLINE_SAFETY_MS = 15_000;
 /** Menos que isso de prazo útil e a IA nem é chamada: ela cobraria e quase certamente não terminaria a tempo. */
@@ -147,6 +152,8 @@ export function shouldRetrySame(e: unknown): boolean {
   // resposta cortada pelo limite de saída ou bloqueada pelo provedor se repete igual com a mesma entrada (falha vista em produção,
   // 2026-10-09: só ~9% das segundas tentativas do Gemini deram certo): vai direto para a reserva
   if (e instanceof AiInvalidOutput) return e.reason !== "cortada" && e.reason !== "bloqueada";
+  // o fetch do Node fechou a conexão por tempo: é tempo esgotado (o provedor pode ter cobrado), não falha de rede passageira
+  if (isConnectionTimeout(e)) return false;
   const msg = e instanceof Error ? e.message : String(e ?? "");
   const raw = (e as { status?: unknown } | null)?.status;
   const status = typeof raw === "number" ? raw : Number(/(?:^|respondeu\s+)(\d{3})\b/.exec(msg)?.[1] ?? NaN);
@@ -160,6 +167,25 @@ export function shouldRetrySame(e: unknown): boolean {
 
 /** O tempo-limite da chamada esgotou (o maestro cancelou o pedido). */
 class AiTimeout extends Error {}
+
+/** Códigos do undici (o fetch do Node) quando o cabeçalho ou o corpo da resposta não chega no limite (300 s por padrão). */
+const CONNECTION_TIMEOUT_CODES = new Set(["UND_ERR_HEADERS_TIMEOUT", "UND_ERR_BODY_TIMEOUT"]);
+const CONNECTION_TIMEOUT_NAMES = new Set(["HeadersTimeoutError", "BodyTimeoutError"]);
+
+/**
+ * O fetch do Node fechou a conexão por tempo (revisão rodada 4): TypeError "fetch failed" (cabeçalho) ou "terminated" (corpo), com
+ * o erro do undici na causa. Algumas bibliotecas embrulham o erro do fetch (a do Claude), por isso a causa é procurada em
+ * até 4 níveis.
+ */
+export function isConnectionTimeout(e: unknown): boolean {
+  let cur: unknown = e;
+  for (let i = 0; i < 5 && cur && typeof cur === "object"; i++) {
+    const { code, name } = cur as { code?: unknown; name?: unknown };
+    if ((typeof code === "string" && CONNECTION_TIMEOUT_CODES.has(code)) || (typeof name === "string" && CONNECTION_TIMEOUT_NAMES.has(name))) return true;
+    cur = (cur as { cause?: unknown }).cause;
+  }
+  return false;
+}
 
 /** Espera o trabalho até `ms`; ao esgotar, chama `onTimeout` (que cancela o pedido) e falha com "Tempo esgotado". */
 function withTimeout<T>(work: () => Promise<T>, ms = TIMEOUT_MS, onTimeout?: () => void): Promise<T> {
@@ -175,9 +201,9 @@ function withTimeout<T>(work: () => Promise<T>, ms = TIMEOUT_MS, onTimeout?: () 
 
 /**
  * Tempo-limite de uma chamada (revisão rodada 3): 180 s; no Gemini, 30 s mais 10 ms por token da saída máxima mandada (pedido
- * + folga do raciocínio, ou seja, 100 tokens por segundo), entre 180 s e 600 s. Com a folga, o Gemini 3 pode gerar 24.576
- * tokens na Criação: com 180 s fixos, uma resposta longa e correta seria cortada e paga duas vezes (ela e a reserva). O prazo
- * do pedido (270 s no site) continua mandando.
+ * + folga do raciocínio, ou seja, 100 tokens por segundo), entre 180 s e 290 s (rodada 4: o fetch do Node corta aos 300 s; ver
+ * GEMINI_TIMEOUT_MAX_MS). Com a folga, o Gemini 3 pode gerar 24.576 tokens na Criação: com 180 s fixos, uma resposta longa e
+ * correta seria cortada e paga duas vezes (ela e a reserva). O prazo do pedido (270 s no site) continua mandando.
  */
 export function callTimeoutMs(ref: ModelRef, maxOut: number, care?: string): number {
   if (ref.provider !== "gemini") return TIMEOUT_MS;
@@ -463,7 +489,10 @@ class Run {
       // do mês e para o teto desta execução (antes ficavam com custo 0)
       const used = e instanceof AiInvalidOutput ? e.usage : undefined;
       let cost = used ? this.costOf(slot, { inputTokens: used.inputTokens, outputTokens: used.outputTokens, costUsd: null }) : 0;
-      if (e instanceof AiTimeout && isPaid(slot.ref)) {
+      // o fetch do Node fechou a conexão por tempo (rodada 4): é tempo esgotado, dito em português (o erro cru é "fetch failed")
+      const connectionTimeout = !(e instanceof AiTimeout) && isConnectionTimeout(e);
+      if (connectionTimeout) error = "Tempo esgotado: o servidor encerrou a conexão com a IA, que demorou demais para responder.";
+      if ((e instanceof AiTimeout || connectionTimeout) && isPaid(slot.ref)) {
         // tempo esgotado: os tokens não chegam, mas o provedor pode cobrar o que gerou até o corte. Fica o pior caso da chamada,
         // dito no erro, para o gasto do mês e os tetos enxergarem (revisão rodada 3)
         cost = callEstimateUsd(slot.ref, slot.price, chars, maxOut, req.care);

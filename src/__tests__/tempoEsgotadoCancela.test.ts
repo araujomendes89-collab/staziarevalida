@@ -190,12 +190,12 @@ describe("maestro: tempo esgotado cancela o pedido e grava o custo estimado", ()
     expect(seenG[0].aborted).toBe(true);
   });
 
-  it("callTimeoutMs: 30 s + 10 ms por token de saída no Gemini, entre 180 s e 600 s; as outras IAs ficam com 180 s", async () => {
+  it("callTimeoutMs: 30 s + 10 ms por token de saída no Gemini, entre 180 s e 290 s (o fetch do Node corta aos 300 s); as outras IAs ficam com 180 s", async () => {
     const { callTimeoutMs } = await import("../../server/ai/maestro");
     expect(callTimeoutMs(G as any, 8192, "caprichado")).toBe(275_760);
-    expect(callTimeoutMs(G as any, 16_000, "caprichado")).toBe(353_840); // Podcasts
+    expect(callTimeoutMs(G as any, 16_000, "caprichado")).toBe(290_000); // Podcasts (32.384 tokens dariam 353,8 s)
     expect(callTimeoutMs({ provider: "gemini", model: "gemini-2.5-pro" } as any, 6000, "rapido")).toBe(180_000);
-    expect(callTimeoutMs(G as any, 60_000, "caprichado")).toBe(600_000);
+    expect(callTimeoutMs(G as any, 60_000, "caprichado")).toBe(290_000);
     expect(callTimeoutMs(A as any, 16_000, "caprichado")).toBe(180_000);
     expect(callTimeoutMs({ provider: "openai", model: "gpt-6.1-sol" } as any, 16_000, "caprichado")).toBe(180_000);
   });
