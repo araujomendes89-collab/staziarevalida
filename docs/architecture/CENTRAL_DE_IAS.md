@@ -76,12 +76,15 @@ as IAs e salve as funções em seguida, antes de deixar o processamento trabalha
   Sonnet cria e Opus confere **não** vale. No comitê, a mesma família é permitida com o aviso "não é independente".
 - **Conferência por outra empresa no processamento (decisão do dono, 2026-10-10):** a evidência de cada afirmação e a
   revisão automática do rascunho nunca são feitas pela empresa da IA que escreveu o texto (o banco guarda quem escreveu:
-  `ch_claims.created_by_model` e `ch_unit_versions.generated_by_model`, migração 7600). Vale a Verificação (principal,
-  depois reserva) pulando essa empresa; sem nenhuma, outra das três empresas pronta, na ordem **Gemini → Claude → OpenAI**,
-  com o modelo dela já escolhido na Central (Verificação primeiro, depois as outras funções; senão `CONTENT_HUB_<IA>_MODEL`
-  ou o padrão). Sem nenhuma pronta, a etapa espera (sem gastar tentativa) com o aviso "Falta uma IA de outra empresa para
-  conferir…". Texto escrito por uma pessoa segue a Verificação como antes. A Central avisa na Verificação quando ela e a
-  Criação são da mesma empresa. Código: `maestroCheckerProvider` (`server/ai/maestro.ts`).
+  `ch_claims.created_by_model` e `ch_unit_versions.generated_by_model`; a versão candidata criada por mudança de fonte herda
+  da versão de origem; migração 7600). Vale a Verificação (principal, depois reserva) pulando essa empresa. Só quando
+  nenhuma das duas serve, outra das três empresas pronta, na ordem **Gemini → Claude → OpenAI**, com o modelo dela já
+  escolhido na Central (Verificação primeiro, depois as outras funções; senão `CONTENT_HUB_<IA>_MODEL` ou o padrão): nada de
+  reserva escondida quando a Verificação já tem quem confira. A empresa vem da IA cadastrada (não do nome do modelo). Sem
+  nenhuma pronta, a etapa espera (sem gastar tentativa) com o aviso "Falta uma IA de outra empresa pronta para conferir…";
+  banco sem a migração 7600 também faz a etapa esperar, com aviso. Texto escrito por uma pessoa segue a Verificação como
+  antes. A Central avisa na Verificação quando ela é da empresa da Criação (principal ou reserva). Código:
+  `maestroCheckerProvider` (`server/ai/maestro.ts`).
 
 Nada é aprovado pela IA: tudo continua rascunho até a decisão de uma pessoa.
 

@@ -473,9 +473,19 @@ async function stepClaims(ctx: Ctx): Promise<Step | null> {
   return "evidence";
 }
 
+/**
+ * Conferência por outra empresa (decisão do dono, 2026-10-10): sem o campo de quem escreveu (banco sem a migração 7600), a
+ * etapa espera com aviso em vez de conferir sem saber quem escreveu.
+ */
+const WRITER_FIELD_MISSING = "Falta aplicar no Supabase a atualização da conferência por outra empresa (migração 7600).";
+function requireWriterField(rows: any[], field: "created_by_model" | "generated_by_model") {
+  if (rows.length && !(field in rows[0])) throw new Blocked(WRITER_FIELD_MISSING);
+}
+
 async function stepEvidence(ctx: Ctx): Promise<Step | null> {
   await setMeta(ctx, { status: "verifying_sources" });
   const claims = (await svc<any[]>(ctx, "ch_worker_claims", { p_document_id: docId(ctx) })).filter((c) => c.status === "extracted");
+  requireWriterField(claims, "created_by_model");
   const counts: Record<string, number> = {};
   for (const c of claims) {
     const text = c.proposed_text ?? c.statement;
@@ -722,6 +732,7 @@ async function stepRender(ctx: Ctx): Promise<Step | null> {
 
 async function stepReviewCheck(ctx: Ctx): Promise<Step | null> {
   const versions = await targetVersions(ctx);
+  requireWriterField(versions, "generated_by_model");
   let issues = 0;
   for (let i = ctx.job.checkpoint?.version ?? 0; i < versions.length; i++) {
     const v = versions[i];

@@ -63,9 +63,10 @@ const saveFn = async (k: string, primary: R | null, fallback: R | null = null) =
 const refresh = async () => (await import("../../server/ai/config")).invalidateAiConfig(db);
 
 /** Provedores falsos: só as refs listadas existem; cada chamada fica registrada; sem rede. */
-function fakes(refs: R[]) {
+function fakes(refs: R[], failing: R[] = []) {
   const calls: Record<string, number> = {};
   const known = new Set(refs.map(key));
+  const broken = new Set(failing.map(key));
   const makeProviderFor = (ref: R) =>
     known.has(key(ref))
       ? ({
@@ -74,6 +75,7 @@ function fakes(refs: R[]) {
           isMock: false,
           async generate() {
             calls[key(ref)] = (calls[key(ref)] ?? 0) + 1;
+            if (broken.has(key(ref))) throw new Error(`fora do ar: ${key(ref)}`);
             return { output: { ok: key(ref) }, provider: ref.provider, model: ref.model, inputTokens: 10, outputTokens: 20, latencyMs: 1, costUsd: null };
           },
         } as any)
@@ -148,7 +150,31 @@ describe("maestroCheckerProvider: quem confere nunca é da empresa de quem escre
     const r = await (await checker())(deps(fakes([A, O, G])), "verificacao", "claude-opus-5-5", origin);
     expect(r.provider).toBeNull();
     expect(r.status.ready).toBe(false);
-    expect(r.status.pending).toBe("Falta uma IA de outra empresa para conferir (quem escreveu foi Claude): ligue Gemini ou OpenAI na Central de IAs.");
+    expect(r.status.pending).toBe("Falta uma IA de outra empresa pronta para conferir (quem escreveu foi Claude): na Central de IAs, ligue Gemini ou OpenAI e escolha um modelo.");
+  });
+
+  it("Verificação de outra empresa que falha: nenhuma IA fora da Verificação é chamada como reserva escondida", async () => {
+    await on("anthropic", "gemini", "openai");
+    await saveFn("verificacao", O);
+    await refresh();
+    const f = fakes([A, O, G], [O]);
+    const r = await (await checker())(deps(f), "verificacao", A.model, origin);
+    expect(r.status).toMatchObject({ ready: true, provider: "openai", model: O.model });
+    await expect(r.provider!.generate(REQ)).rejects.toThrow(/fora do ar/);
+    expect(f.calls[key(G)]).toBeUndefined();
+    expect(f.calls[key(A)]).toBeUndefined();
+  });
+
+  it("a empresa vem da IA cadastrada, não do nome do modelo (modelo da OpenAI sem 'gpt' no nome)", async () => {
+    const CODEX: R = { provider: "openai", model: "codex-mini-latest" };
+    await on("gemini", "openai");
+    await db.service("ch_worker_ai_save_price", { p_actor: ADMIN, p_provider: "openai", p_model: CODEX.model, p_price: { input_per_mtok: 1, output_per_mtok: 2 } });
+    await saveFn("verificacao", CODEX);
+    await refresh();
+    const f = fakes([CODEX, G]);
+    // escrito pelo GPT; a Verificação é da OpenAI com um nome que não diz "gpt": continua sendo a mesma empresa
+    const r = await (await checker())(deps(f), "verificacao", O.model, origin);
+    expect(r.status).toMatchObject({ ready: true, provider: "gemini", model: G.model });
   });
 
   it("texto sem registro de quem escreveu (escrito por uma pessoa): segue a Verificação como hoje", async () => {
@@ -172,11 +198,22 @@ describe("Central de IAs: aviso quando Verificação e Criação são da mesma e
     await saveFn("criacao", A);
     await saveFn("verificacao", { provider: "anthropic", model: "claude-opus-5-5" });
     await refresh();
-    const AVISO = "Verificação e Criação são da mesma empresa (Claude): no processamento, a conferência troca sozinha para outra empresa pronta (Gemini, Claude ou OpenAI, nesta ordem).";
+    const AVISO = "Verificação e Criação são da mesma empresa (Claude): no processamento, a conferência usa a reserva da Verificação se ela for de outra empresa; senão troca sozinha para Gemini ou OpenAI (nesta ordem).";
     expect(functionChecks(await loadAiConfig(db), {} as any).verificacao.warnings).toContain(AVISO);
     await saveFn("verificacao", O);
     await refresh();
     expect(functionChecks(await loadAiConfig(db), {} as any).verificacao.warnings.join(" ")).not.toMatch(/mesma empresa/);
+  });
+
+  it("também avisa sem configuração salva (as duas no Claude pelas variáveis) e quando a reserva da Criação é da empresa da Verificação", async () => {
+    const { functionChecks, loadAiConfig } = await import("../../server/ai/config");
+    await on("anthropic", "openai");
+    await refresh();
+    expect(functionChecks(await loadAiConfig(db), {} as any).verificacao.warnings.join(" ")).toMatch(/mesma empresa \(Claude\)/);
+    await saveFn("criacao", A, O);
+    await saveFn("verificacao", { provider: "openai", model: "gpt-5.4" });
+    await refresh();
+    expect(functionChecks(await loadAiConfig(db), {} as any).verificacao.warnings.join(" ")).toMatch(/mesma empresa \(OpenAI\): .* senão troca sozinha para Gemini ou Claude/);
   });
 });
 
@@ -190,6 +227,7 @@ describe("processamento: evidência e revisão por outra empresa", () => {
   ];
   let storage: any;
   let docId: string;
+  let sourceId: string;
   const aiMaker = (ref: { provider: string; model: string }) =>
     ({
       name: ref.provider,
@@ -210,6 +248,7 @@ describe("processamento: evidência e revisão por outra empresa", () => {
     storage = localStorageDir(path.join(tmp, "files"));
     const src = await db.asUser<{ id: string }>(adminUser, "app_ch_register_source", { p_source: { title: "Fonte sintética", organ: "Órgão de teste", version: "1", published_on: "2026-01-01", url: "https://exemplo.invalid/f.pdf" } });
     await db.asUser(adminUser, "app_ch_add_passage", { p_source_id: src.id, p_passage: { section: "Tratamento", page: 12, text: PASSAGE } });
+    sourceId = src.id;
   }, 120_000);
   beforeEach(resetAiState);
 
@@ -248,6 +287,15 @@ describe("processamento: evidência e revisão por outra empresa", () => {
     expect(versions.every((v) => v.generated_by_model === A.model)).toBe(true);
     const one = await db.service<any>("ch_worker_unit_version", { p_version_id: versions[0].version_id });
     expect(one.generated_by_model).toBe(A.model);
+
+    // a fonte muda: a versão aprovada ganha uma candidata em rascunho, cópia do texto escrito pela IA; quem escreveu continua sabido
+    await dev.db.query(`update public.ch_unit_versions set status = 'approved' where id = $1`, [one.version_id]);
+    await dev.db.query(`select public.ch_flag_dependents_units($1, 'fonte nova')`, [sourceId]);
+    const candidate = (await dev.db.query<any>(`select id, generated_by_model from public.ch_unit_versions where candidate_of = $1`, [one.version_id])).rows[0];
+    expect(candidate.generated_by_model).toBeNull();
+    expect((await db.service<any>("ch_worker_unit_version", { p_version_id: candidate.id })).generated_by_model).toBe(A.model);
+    const drafts = await db.service<any[]>("ch_worker_unit_versions", { p_document_id: docId });
+    expect(drafts.find((v) => v.version_id === candidate.id)?.generated_by_model).toBe(A.model);
   });
 
   it("Criação e Verificação com o Claude: a evidência e a revisão automática saem pelo Gemini", async () => {
@@ -270,6 +318,27 @@ describe("processamento: evidência e revisão por outra empresa", () => {
     for (const f of flags) expect(f.model).toBe(G.model);
   });
 
+  it("banco sem a atualização 7600 (sem o campo de quem escreveu): a evidência espera com aviso, em vez de conferir sem saber", async () => {
+    const MIGRATION = fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261003007600_conferencia_outra_empresa.sql"), "utf8");
+    await dev.db.exec(`create or replace function public.ch_worker_claims(p_document_id uuid) returns jsonb language sql security definer set search_path = '' as $$
+      select coalesce(jsonb_agg(jsonb_build_object('id', c.id, 'statement', c.statement, 'proposed_text', c.proposed_text, 'status', c.status,
+        'critical_kinds', c.critical_kinds, 'context', c.context, 'theme_node_id', c.theme_node_id, 'block_id', c.block_id) order by c.created_at), '[]'::jsonb)
+      from public.ch_claims c where c.document_id = p_document_id $$;`);
+    try {
+      await on("anthropic", "gemini");
+      await saveFn("criacao", A);
+      await saveFn("verificacao", G);
+      await refresh();
+      await newDocument("Apostila banco antigo");
+      await process(centralDeps());
+      const job = (await dev.db.query<any>(`select status, attempts, error from public.ch_jobs where document_id = $1 and step = 'evidence'`, [docId])).rows[0];
+      expect(job).toMatchObject({ status: "blocked", attempts: 0 });
+      expect(job.error).toBe("Falta aplicar no Supabase a atualização da conferência por outra empresa (migração 7600).");
+    } finally {
+      await dev.db.exec(MIGRATION);
+    }
+  });
+
   it("só o Claude ligado: a evidência espera (sem gastar tentativa), com o aviso de qual IA ligar", async () => {
     await on("anthropic");
     await saveFn("criacao", A);
@@ -279,7 +348,7 @@ describe("processamento: evidência e revisão por outra empresa", () => {
     await process(centralDeps());
     const job = (await dev.db.query<any>(`select status, attempts, error from public.ch_jobs where document_id = $1 and step = 'evidence'`, [docId])).rows[0];
     expect(job).toMatchObject({ status: "blocked", attempts: 0 });
-    expect(job.error).toBe("Falta uma IA de outra empresa para conferir (quem escreveu foi Claude): ligue Gemini ou OpenAI na Central de IAs.");
+    expect(job.error).toBe("Falta uma IA de outra empresa pronta para conferir (quem escreveu foi Claude): na Central de IAs, ligue Gemini ou OpenAI e escolha um modelo.");
     expect(await runs("evidence")).toEqual([]);
   });
 });

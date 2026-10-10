@@ -349,13 +349,15 @@ export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.e
     }
     out[key] = { source: "variaveis", ready: problems.length === 0, ref, problems, warnings };
   }
-  // conferência por outra empresa (decisão do dono, 2026-10-10): o processamento troca sozinho (maestroCheckerProvider)
-  const creator = out.criacao?.ref;
+  // conferência por outra empresa (decisão do dono, 2026-10-10): o processamento troca sozinho (maestroCheckerProvider). A
+  // empresa vem da IA cadastrada; a Criação conta a principal e a reserva salvas
   const checker = out.verificacao?.ref;
-  if (creator && checker && familyOfModel(creator.model) === familyOfModel(checker.model)) {
+  const writers = [out.criacao?.ref, cfg.functions.criacao?.fallback].filter(Boolean) as ModelRef[];
+  if (checker && writers.some((w) => w.provider === checker.provider)) {
     const name = PROVIDER_NAMES[checker.provider] ?? checker.provider;
+    const others = (["gemini", "anthropic", "openai"] as AiProviderId[]).filter((id) => id !== checker.provider).map((id) => PROVIDER_NAMES[id]);
     out.verificacao.warnings.push(
-      `Verificação e Criação são da mesma empresa (${name}): no processamento, a conferência troca sozinha para outra empresa pronta (Gemini, Claude ou OpenAI, nesta ordem).`
+      `Verificação e Criação são da mesma empresa (${name}): no processamento, a conferência usa a reserva da Verificação se ela for de outra empresa; senão troca sozinha para ${others.join(" ou ")} (nesta ordem).`
     );
   }
   return out;

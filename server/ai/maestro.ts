@@ -610,8 +610,21 @@ export async function maestroRoleProvider(deps: MaestroDeps, roleIndex: 0 | 1 | 
 export const CHECKER_ORDER: AiProviderId[] = ["gemini", "anthropic", "openai"];
 
 const COMPANY_NAMES: Record<string, string> = { anthropic: "Claude", openai: "OpenAI", google: "Gemini" };
-const companyOf = (model: string) => COMPANY_NAMES[familyOfModel(model)] ?? familyOfModel(model);
+const PROVIDER_FAMILY: Partial<Record<AiProviderId, string>> = { anthropic: "anthropic", openai: "openai", gemini: "google" };
 const orList = (names: string[]) => (names.length > 1 ? `${names.slice(0, -1).join(", ")} ou ${names[names.length - 1]}` : names.join(""));
+
+/** A empresa de uma IA da Central: pela IA cadastrada (o nome do modelo pode não dizer, ex.: "codex-mini" é da OpenAI). */
+const refFamily = (ref: ModelRef) => PROVIDER_FAMILY[ref.provider] ?? familyOfModel(ref.model);
+
+/** A empresa de quem escreveu: pela IA em que o modelo está cadastrado na Central (preços ou lista de modelos), senão pelo nome. */
+function writerFamily(cfg: AiConfig, model: string): string {
+  const priced = cfg.prices.find((p) => p.model === model);
+  if (priced && PROVIDER_FAMILY[priced.provider as AiProviderId]) return PROVIDER_FAMILY[priced.provider as AiProviderId]!;
+  for (const [id, p] of Object.entries(cfg.providers) as [AiProviderId, AiConfig["providers"][AiProviderId]][]) {
+    if (PROVIDER_FAMILY[id] && (p?.models ?? []).some((m) => m.id === model)) return PROVIDER_FAMILY[id]!;
+  }
+  return familyOfModel(model);
+}
 
 /** O modelo da empresa já escolhido na Central (Verificação primeiro, depois as outras funções); senão o das variáveis ou o padrão. */
 function companyModel(cfg: AiConfig, id: AiProviderId, env: NodeJS.ProcessEnv): ModelRef | null {
@@ -626,8 +639,9 @@ function companyModel(cfg: AiConfig, id: AiProviderId, env: NodeJS.ProcessEnv): 
 
 /**
  * A IA que confere um texto escrito por `writerModel`, nunca da mesma empresa (evidência e revisão automática da Central de
- * Conteúdo). Vale a função (principal, depois reserva) pulando a empresa de quem escreveu; depois, outra das três empresas pronta,
- * na ordem de CHECKER_ORDER, com o modelo dela já escolhido na Central. Sem nenhuma pronta: pendência com o aviso de qual ligar.
+ * Conteúdo). Vale a função (principal, depois reserva) pulando a empresa de quem escreveu. Só quando nenhuma das duas serve
+ * (mesma empresa ou fora do ar), outra das três empresas pronta, na ordem de CHECKER_ORDER, com o modelo dela já escolhido na
+ * Central: nada de reserva escondida quando a função já tem quem confira. Sem nenhuma pronta: pendência com o aviso de qual ligar.
  * Sem registro de quem escreveu (texto de uma pessoa), é o maestroProvider de sempre.
  */
 export async function maestroCheckerProvider(
@@ -641,18 +655,18 @@ export async function maestroCheckerProvider(
   const env = deps.env ?? process.env;
   const cfg = await loadAiConfig(deps.db);
   const rs = resolveRefs(cfg, fn, env);
-  const family = familyOfModel(writer);
-  const candidates: ModelRef[] = [];
-  const add = (ref: ModelRef | null) => {
-    if (ref && familyOfModel(ref.model) !== family && !candidates.some((c) => sameRef(c, ref))) candidates.push(ref);
+  const family = writerFamily(cfg, writer);
+  const pick = (refs: (ModelRef | null)[]) => {
+    const out: ModelRef[] = [];
+    for (const ref of refs) if (ref && refFamily(ref) !== family && !out.some((c) => sameRef(c, ref))) out.push(ref);
+    return out.filter((ref) => !prepareSlot(deps, cfg, ref).blocked);
   };
-  add(rs.primary);
-  add(rs.fallback);
-  for (const id of CHECKER_ORDER) add(companyModel(cfg, id, env));
-  const ready = candidates.filter((ref) => !prepareSlot(deps, cfg, ref).blocked);
+  let ready = pick([rs.primary, rs.fallback]);
+  if (!ready.length) ready = pick(CHECKER_ORDER.map((id) => companyModel(cfg, id, env)));
   if (!ready.length) {
-    const others = CHECKER_ORDER.map((id) => PROVIDER_NAMES[id]).filter((name) => name !== companyOf(writer));
-    return notReady(`Falta uma IA de outra empresa para conferir (quem escreveu foi ${companyOf(writer)}): ligue ${orList(others)} na Central de IAs.`, rs.primary);
+    const writerName = COMPANY_NAMES[family] ?? family;
+    const others = CHECKER_ORDER.filter((id) => PROVIDER_FAMILY[id] !== family).map((id) => PROVIDER_NAMES[id]);
+    return notReady(`Falta uma IA de outra empresa pronta para conferir (quem escreveu foi ${writerName}): na Central de IAs, ligue ${orList(others)} e escolha um modelo.`, rs.primary);
   }
   return buildAdapter(deps, cfg, origin, { fn, mode: rs.mode, fc: rs.fc, primary: ready[0], fallback: ready[1] ?? null, roles: { first: "principal", reserve: "reserva" } });
 }
