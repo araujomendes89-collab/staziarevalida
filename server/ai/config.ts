@@ -349,6 +349,15 @@ export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.e
     }
     out[key] = { source: "variaveis", ready: problems.length === 0, ref, problems, warnings };
   }
+  // conferência por outra empresa (decisão do dono, 2026-10-10): o processamento troca sozinho (maestroCheckerProvider)
+  const creator = out.criacao?.ref;
+  const checker = out.verificacao?.ref;
+  if (creator && checker && familyOfModel(creator.model) === familyOfModel(checker.model)) {
+    const name = PROVIDER_NAMES[checker.provider] ?? checker.provider;
+    out.verificacao.warnings.push(
+      `Verificação e Criação são da mesma empresa (${name}): no processamento, a conferência troca sozinha para outra empresa pronta (Gemini, Claude ou OpenAI, nesta ordem).`
+    );
+  }
   return out;
 }
 
