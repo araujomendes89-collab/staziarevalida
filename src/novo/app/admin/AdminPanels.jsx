@@ -163,6 +163,34 @@ export function AdminPlans() {
 const MIN_NOTE = 10;
 const pts = (n) => (n == null ? "—" : Number(n).toLocaleString("pt-BR"));
 
+// Níveis do item do checklist (src/shared/checklistBank/types.ts: grades e criteria).
+const LEVELS = [
+  ["correct", "Adequado"],
+  ["partial", "Parcial"],
+  ["incorrect", "Inadequado"],
+];
+
+/** Critério e valor de cada nível do item: é o texto médico que o avaliador usa para dar a nota, e a aprovação vale para ele. */
+function ItemCriteria({ item }) {
+  return (
+    <ul style={{ margin: "2px 0 0", paddingLeft: 18, color: "var(--text-secondary)" }}>
+      {LEVELS.map(([key, label]) => {
+        const points = item.grades?.[key];
+        const text = typeof item.criteria?.[key] === "string" ? item.criteria[key].trim() : "";
+        if (key === "partial" && points == null && !text) return null; // item de 2 níveis
+        return (
+          <li key={key}>
+            <b>
+              {label} ({pts(points)}):
+            </b>{" "}
+            {text || <span style={{ color: "var(--text-tertiary)" }}>sem critério escrito</span>}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function ContentBlock({ title, children }) {
   return (
     <div>
@@ -172,11 +200,16 @@ function ContentBlock({ title, children }) {
   );
 }
 
-/** Conteúdo completo da estação, só para ler e conferir. */
+/** Conteúdo completo da estação, só para ler e conferir: tudo o que a aprovação cobre (checklist_station_contents). */
 function StationContent({ content }) {
   if (!content) return <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Esta estação não tem roteiro, impressos nem checklist cadastrados.</p>;
   const pressings = Array.isArray(content.pressings) ? content.pressings : [];
   const items = (Array.isArray(content.checklist_items) ? content.checklist_items : []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const summary = Array.isArray(content.summary)
+    ? content.summary.filter((t) => t && (t.topic || t.summary))
+    : typeof content.summary === "string" && content.summary.trim()
+      ? [{ topic: "", summary: content.summary }]
+      : [];
   return (
     <div style={{ display: "grid", gap: 12 }}>
       {content.doctor_scene && <ContentBlock title="Cenário de atuação">{content.doctor_scene}</ContentBlock>}
@@ -202,17 +235,31 @@ function StationContent({ content }) {
               <li key={it.id ?? i}>
                 {it.phase && <span style={{ color: "var(--text-tertiary)" }}>{it.phase} · </span>}
                 {it.content}
-                <div style={{ color: "var(--text-tertiary)" }}>
-                  Adequado {pts(it.grades?.correct)} · Parcial {pts(it.grades?.partial)} · Inadequado {pts(it.grades?.incorrect)}
-                </div>
+                <ItemCriteria item={it} />
                 {Array.isArray(it.subitems) && it.subitems.length > 0 && (
                   <ul style={{ margin: "2px 0 0", paddingLeft: 18, color: "var(--text-secondary)" }}>
                     {it.subitems.map((sub, k) => <li key={sub.id ?? k}>{sub.text}</li>)}
                   </ul>
                 )}
+                {typeof it.tip === "string" && it.tip.trim() && (
+                  <div style={{ marginTop: 2, color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}>
+                    <b>Saiba mais:</b> {it.tip.trim()}
+                  </div>
+                )}
               </li>
             ))}
           </ol>
+        </div>
+      )}
+      {summary.length > 0 && (
+        <div>
+          <div style={{ font: "var(--type-label)", marginBottom: 4 }}>Resumo dos temas</div>
+          {summary.map((t, i) => (
+            <div key={i} style={{ marginTop: 6, font: "var(--type-body-sm)" }}>
+              {t.topic && <b>{t.topic}</b>}
+              {t.summary && <div style={{ color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}>{t.summary}</div>}
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -224,7 +271,8 @@ function reviewRecord(s) {
     const what = s.medical_review === "approved" ? "Aprovada" : "Devolvida para revisão";
     return `${what}${s.reviewer ? ` por ${s.reviewer}` : ""} em ${dateTimeBR(s.reviewed_at)}${s.review_note ? `: “${s.review_note}”` : ""}`;
   }
-  if (s.medical_review === "approved") return "Aprovada antes de o app registrar quem conferiu: vale conferir de novo.";
+  // aprovada antes do registro existir, ou por comando direto no banco (a trava da migração …8000 apaga o registro)
+  if (s.medical_review === "approved") return "Aprovada sem registro de quem conferiu: vale conferir de novo.";
   return null;
 }
 

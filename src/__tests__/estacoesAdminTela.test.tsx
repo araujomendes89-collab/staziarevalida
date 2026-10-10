@@ -36,7 +36,20 @@ const CONTENT = {
   doctor_tasks: "Realizar anamnese dirigida.",
   actor_script: "Você tem DM1 há 10 anos.",
   pressings: [{ id: "p1", name: "Gasometria venosa", content: "pH 7,12", image_url: null }],
-  checklist_items: [{ id: "i1", order: 1, phase: "Apresentação", content: "Apresenta-se ao paciente.", grades: { correct: 0.3, partial: null, incorrect: 0 }, criteria: { correct: "Faz.", incorrect: "Não faz." }, subitems: [] }],
+  checklist_items: [
+    { id: "i1", order: 1, phase: "Apresentação", content: "Apresenta-se ao paciente.", tip: "", grades: { correct: 0.3, partial: null, incorrect: 0 }, criteria: { correct: "Faz.", incorrect: "Não faz." }, subitems: [] },
+    {
+      id: "i2",
+      order: 2,
+      phase: "Anamnese",
+      content: "Investiga sintomas de descompensação.",
+      tip: "Poliúria e polidipsia costumam preceder a cetoacidose.",
+      grades: { correct: 1, partial: 0.5, incorrect: 0 },
+      criteria: { correct: "Pergunta 3 ou mais sintomas.", partial: "Pergunta 1 ou 2 sintomas.", incorrect: "Não pergunta." },
+      subitems: [],
+    },
+  ],
+  summary: [{ topic: "Critérios diagnósticos", summary: "Glicemia acima de 250, pH abaixo de 7,3 e cetonemia." }],
 };
 let stations: any[] = [];
 
@@ -88,6 +101,27 @@ describe("Estações (ES03): aprovar é revisão médica registrada", () => {
     expect(screen.getByText(new RegExp(NOTA))).toBeTruthy();
   });
 
+  it("Conferir mostra tudo o que a aprovação cobre: critérios de cada nível, Saiba mais e resumo dos temas (rodada 1)", async () => {
+    render(<AdminStations />);
+    fireEvent.click(await screen.findByRole("button", { name: "Conferir" }));
+    await screen.findByText("Você tem DM1 há 10 anos.");
+    const item2 = screen.getByText(/Investiga sintomas de descompensação\./).closest("li") as HTMLElement;
+    const t2 = textOf(item2);
+    expect(t2).toMatch(/Adequado \(1\): Pergunta 3 ou mais sintomas\./);
+    expect(t2).toMatch(/Parcial \(0,5\): Pergunta 1 ou 2 sintomas\./);
+    expect(t2).toMatch(/Inadequado \(0\): Não pergunta\./);
+    expect(t2).toMatch(/Saiba mais: Poliúria e polidipsia costumam preceder a cetoacidose\./);
+    const item1 = screen.getByText(/Apresenta-se ao paciente\./).closest("li") as HTMLElement;
+    const t1 = textOf(item1);
+    expect(t1).toMatch(/Adequado \(0,3\): Faz\./);
+    expect(t1).toMatch(/Inadequado \(0\): Não faz\./);
+    expect(t1).not.toMatch(/Parcial/); // item de 2 níveis
+    expect(t1).not.toMatch(/Saiba mais/); // sem texto, não aparece
+    expect(screen.getByText("Resumo dos temas")).toBeTruthy();
+    expect(screen.getByText("Critérios diagnósticos")).toBeTruthy();
+    expect(screen.getByText(/Glicemia acima de 250, pH abaixo de 7,3 e cetonemia\./)).toBeTruthy();
+  });
+
   it("quem não é revisor da área nem administrador não vê o botão de aprovar, e sim quem pode aprovar", async () => {
     stations = [{ ...PENDING, area: "Cirurgia Geral", can_review: false }];
     render(<AdminStations />);
@@ -110,10 +144,10 @@ describe("Estações (ES03): aprovar é revisão médica registrada", () => {
     expect(await screen.findByText(/Devolvida para revisão por Dr\. Clínico em/)).toBeTruthy();
   });
 
-  it("estação aprovada antes do registro avisa que ninguém ficou registrado como revisor", async () => {
+  it("estação aprovada sem registro (antes desta mudança ou por comando direto no banco) avisa que ninguém ficou registrado como revisor", async () => {
     stations = [{ ...PENDING, medical_review: "approved" }];
     render(<AdminStations />);
-    expect(await screen.findByText(/Aprovada antes de o app registrar quem conferiu/)).toBeTruthy();
+    expect(await screen.findByText(/Aprovada sem registro de quem conferiu: vale conferir de novo\./)).toBeTruthy();
   });
 
   it("o Registro mostra o que foi conferido na revisão da estação", async () => {

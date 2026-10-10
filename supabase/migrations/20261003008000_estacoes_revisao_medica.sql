@@ -10,7 +10,11 @@
 --   * devolver para revisão = equipe ou revisor médico, com o motivo (10 caracteres ou mais); grava quem devolveu e quando;
 --   * o revisor médico abre a lista e o conteúdo das estações (roteiro, impressos, checklist) para conferir;
 --   * aluno e visitante continuam barrados; o que o aluno pode ler (RLS das tabelas) não muda;
---   * a aba continua funcionando com a Central de Conteúdo desligada (não depende de ch_flags).
+--   * a aba continua funcionando com a Central de Conteúdo desligada (não depende de ch_flags);
+--   * o registro (quem, quando, nota) só vale quando a situação muda pela função de revisão: qualquer outra mudança da
+--     situação (comando direto no banco, nova carga do seed) apaga o registro, para o cartão nunca atribuir a decisão nova a
+--     quem tomou a anterior (trava checklist_stations_review_guard);
+--   * as funções da aba ficam fechadas para visitante (anon), como a …6100 faz com app_admin_save_question.
 -- As estações aprovadas antes desta migração continuam aprovadas, sem revisor registrado (a tela avisa).
 -- =============================================================================
 
@@ -124,14 +128,44 @@ begin
   if char_length(v_note) > 2000 then
     raise exception 'A nota tem no máximo 2.000 caracteres.' using errcode = '22023';
   end if;
+  -- avisa a trava (checklist_stations_review_guard) que esta mudança é da revisão, só nesta estação e só neste update
+  perform set_config('staziamed.station_review', s.id, true);
   update public.checklist_stations
      set medical_review = p_status, review_note = v_note, reviewed_by = (select auth.uid()), reviewed_at = now()
    where id = s.id;
+  perform set_config('staziamed.station_review', '', true);
   perform public.admin_log('station.review', s.id, jsonb_build_object('from', s.medical_review, 'to', p_status, 'note', v_note, 'area', s.area));
   return public.app_admin_stations();
 end
 $$;
 
+-- Trava do registro da revisão: se a situação (medical_review) mudar fora de app_admin_set_station_review — o SQL direto que o
+-- README ensinava, ou a carga do seed colada de novo (on conflict … set medical_review = 'pending') —, o registro anterior
+-- (nota, quem, quando) é apagado. Sem isso, o cartão diria "Aprovada por <quem só devolveu>" ou "Devolvida por <quem aprovou>".
+-- Estação aprovada assim aparece como "Aprovada sem registro de quem conferiu" (a tela pede para conferir de novo).
+create function public.checklist_stations_review_guard() returns trigger
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  if new.medical_review is distinct from old.medical_review
+     and coalesce(current_setting('staziamed.station_review', true), '') is distinct from new.id then
+    new.review_note := null;
+    new.reviewed_by := null;
+    new.reviewed_at := null;
+  end if;
+  return new;
+end
+$$;
+create trigger checklist_stations_review_guard before update on public.checklist_stations
+  for each row execute function public.checklist_stations_review_guard();
+
+-- Funções da aba: só usuário logado (a checagem interna decide quem é da equipe ou revisor); visitante fica de fora.
+revoke execute on function public.app_admin_stations() from public, anon;
+revoke execute on function public.app_admin_station_content(text) from public, anon;
+revoke execute on function public.app_admin_set_station_review(text, text, text) from public, anon;
+
+-- Funções internas: ninguém chama de fora.
+revoke execute on function public.checklist_stations_review_guard() from public, anon, authenticated;
 revoke execute on function public.checklist_station_assert_staff() from public, anon, authenticated;
 revoke execute on function public.checklist_station_area_code(text) from public, anon, authenticated;
 revoke execute on function public.checklist_station_can_review(text) from public, anon, authenticated;

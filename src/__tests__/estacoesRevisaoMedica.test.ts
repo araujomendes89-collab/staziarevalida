@@ -164,3 +164,48 @@ describe("Estações — não dependem da Central de Conteúdo", () => {
     }
   });
 });
+
+describe("Estações — o registro da revisão não mente (rodada 1)", () => {
+  const record = async (id: string) => item(await rpc(ADMIN, "app_admin_stations"), id);
+
+  it("aprovar por comando direto no banco (fora da função) apaga o registro de quem devolveu", async () => {
+    await db.exec(`insert into public.checklist_stations (id, name, topic, area, medical_review) values ('st-ped', 'Bronquiolite', 'Lactente com sibilância', 'Pediatria', 'approved')`);
+    await rpc(EDITOR, "app_admin_set_station_review", { p_station_id: "st-ped", p_status: "pending", p_note: "Aluno relatou impresso trocado." });
+    expect(await record("st-ped")).toMatchObject({ medical_review: "pending", reviewer: "Editora", review_note: "Aluno relatou impresso trocado." });
+
+    // mudança que não mexe na situação mantém o registro
+    await db.exec(`update public.checklist_stations set topic = 'Lactente com sibilância e tiragem' where id = 'st-ped'`);
+    expect(await record("st-ped")).toMatchObject({ medical_review: "pending", reviewer: "Editora" });
+
+    // o SQL que o README ensinava: a Editora não pode aparecer como quem aprovou
+    await db.exec(`update public.checklist_stations set medical_review = 'approved' where id = 'st-ped'`);
+    expect(await row("st-ped")).toMatchObject({ medical_review: "approved", review_note: null, reviewed_by: null, reviewed_at: null });
+    expect(await record("st-ped")).toMatchObject({ medical_review: "approved", reviewer: null, review_note: null, reviewed_at: null });
+
+    // pela função, o registro continua sendo gravado
+    await rpc(REV_PED, "app_admin_set_station_review", { p_station_id: "st-ped", p_status: "pending", p_note: "Refazer a conferência do roteiro." });
+    expect(await row("st-ped")).toMatchObject({ medical_review: "pending", reviewed_by: REV_PED, review_note: "Refazer a conferência do roteiro." });
+  });
+
+  it("colar a carga (seed) de novo devolve a estação para revisão sem dizer que o revisor devolveu", async () => {
+    const { buildSeedStatements } = await import("../../scripts/supabase/seed-builder");
+    const stationsSql = buildSeedStatements().find((s) => s.startsWith("insert into public.checklist_stations "));
+    expect(stationsSql).toBeTruthy();
+    await db.exec(stationsSql!);
+    await rpc(REV_CM, "app_admin_set_station_review", { p_station_id: "seed-01", p_status: "approved", p_note: NOTA });
+    expect(await row("seed-01")).toMatchObject({ medical_review: "approved", reviewed_by: REV_CM, review_note: NOTA });
+
+    await db.exec(stationsSql!);
+    expect(await row("seed-01")).toMatchObject({ medical_review: "pending", review_note: null, reviewed_by: null, reviewed_at: null });
+    expect(await record("seed-01")).toMatchObject({ medical_review: "pending", reviewer: null, review_note: null });
+  }, 300_000);
+});
+
+describe("Estações — permissões das funções da aba (rodada 1)", () => {
+  it("visitante (anon) não tem permissão de executar as funções da aba; usuário logado tem (a checagem interna decide)", async () => {
+    for (const fn of ["public.app_admin_set_station_review(text, text, text)", "public.app_admin_station_content(text)", "public.app_admin_stations()"]) {
+      const r = (await db.query<any>(`select has_function_privilege('anon', $1, 'execute') as anon, has_function_privilege('authenticated', $1, 'execute') as auth`, [fn])).rows[0];
+      expect(r, fn).toEqual({ anon: false, auth: true });
+    }
+  });
+});
