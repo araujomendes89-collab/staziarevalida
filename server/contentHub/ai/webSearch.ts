@@ -6,7 +6,7 @@
  * texto, conferi-lo pelo esquema e, se não servir, fazer UMA chamada curta, sem busca, só para converter o texto. O texto
  * vem da internet: na conversão ele vai marcado como documento (`asDocument`), é dado, nunca ordem.
  */
-import { AiInvalidOutput, type StructuredRequest, type StructuredResult } from "./provider";
+import { AiInvalidOutput, withUsage, type StructuredRequest, type StructuredResult } from "./provider";
 import { asDocument } from "./prompts";
 import { validate } from "./schema";
 
@@ -74,7 +74,8 @@ export function sumTokens(a: number | null | undefined, b: number | null | undef
  * O resultado da busca a partir do texto final da IA: o JSON do fim do texto, se passa no esquema; senão UMA chamada curta,
  * sem busca (`convert`, o caminho estruturado do próprio provedor), só para converter o texto. Conversão que também não passa
  * no esquema é `AiInvalidOutput`, nunca "consertada". Texto em branco não tem o que converter: erro, sem gastar a chamada.
- * `extra` é a chamada de conversão (para somar os tokens), ou nulo quando o JSON do texto bastou.
+ * `extra` é a chamada de conversão (para somar os tokens), ou nulo quando o JSON do texto bastou. O erro da conversão leva o
+ * gasto dela (`withUsage`); quem chama soma o da busca.
  */
 export async function parseOrConvert<T>(
   req: StructuredRequest,
@@ -92,6 +93,10 @@ export async function parseOrConvert<T>(
     input: asDocument(text.slice(-CONVERT_MAX_CHARS)),
   });
   const errors = validate(req.schema, extra.output);
-  if (errors.length) throw new AiInvalidOutput(`Resposta fora do formato: ${errors.slice(0, 5).join("; ")}`, extra.output);
+  if (errors.length) {
+    // a conversão foi paga mesmo que não sirva: o erro leva o gasto dela (quem chamou soma o da busca)
+    const spent = { inputTokens: extra.inputTokens, outputTokens: extra.outputTokens, webSearches: extra.webSearches ?? 0 };
+    throw withUsage(new AiInvalidOutput(`Resposta fora do formato: ${errors.slice(0, 5).join("; ")}`, extra.output), spent);
+  }
   return { output: extra.output, extra };
 }

@@ -5,7 +5,7 @@
  * `fetch` falsos: nenhum teste chama IA real nem a internet.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AiInvalidOutput, AnthropicProvider, GeminiProvider, anthropicSearchTool, type StructuredRequest, type StructuredResult } from "../../server/contentHub/ai/provider";
+import { AiInvalidOutput, AnthropicProvider, GeminiProvider, anthropicSearchTool, partialUsageOf, withUsage, type StructuredRequest, type StructuredResult } from "../../server/contentHub/ai/provider";
 import { OpenAIProvider } from "../../server/contentHub/ai/openai";
 import { OllamaProvider } from "../../server/contentHub/ai/ollama";
 import { asDocument } from "../../server/contentHub/ai/prompts";
@@ -47,7 +47,7 @@ const req = (over: Partial<StructuredRequest> = {}): StructuredRequest => ({
 
 // ---------------------------------------------------------------- clientes falsos
 
-/** Cliente da Anthropic que guarda uma CÓPIA dos parâmetros de cada chamada e devolve as respostas na ordem. */
+/** Cliente da Anthropic que guarda uma CÓPIA dos parâmetros de cada chamada e devolve as respostas na ordem (um Error na lista é a chamada que falha). */
 function fakeAnthropic(replies: any[]) {
   const calls: any[] = [];
   const client = {
@@ -55,6 +55,7 @@ function fakeAnthropic(replies: any[]) {
       create: async (p: any) => {
         calls.push(JSON.parse(JSON.stringify(p)));
         if (!replies[calls.length - 1]) throw new Error(`resposta ${calls.length} não preparada no teste`);
+        if (replies[calls.length - 1] instanceof Error) throw replies[calls.length - 1];
         return replies[calls.length - 1];
       },
     },
@@ -132,6 +133,16 @@ const GROUNDING = {
   groundingChunks: [{ web: { uri: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/aaa", title: "gov.br" } }, { web: { uri: "https://vertexaisearch.cloud.google.com/grounding-api-redirect/bbb", title: "who.int" } }],
 };
 
+/** O erro de uma chamada que tem de falhar (o teste falha se ela der certo). */
+async function caught(call: Promise<unknown>): Promise<Error & { usage?: unknown }> {
+  try {
+    await call;
+  } catch (e) {
+    return e as Error;
+  }
+  throw new Error("a chamada devia ter falhado");
+}
+
 describe("Provedores", () => {
   // ---------------------------------------------------------------- Claude
 
@@ -176,15 +187,20 @@ describe("Provedores", () => {
     expect(await run(req({ effort: "low" }))).toEqual({ effort: "low" });
   });
 
-  it("Claude: pause_turn continua até 3 vezes e soma buscas e links", async () => {
+  it("Claude: pause_turn continua até 3 vezes; cada continuação leva só o que sobra do máximo do pedido", async () => {
     expect(MAX_CONTINUATIONS).toBe(3);
-    // 4 respostas pausadas (a primeira chamada + 3 continuações): no limite o servidor para de buscar e faz a conversão
-    // sem busca com o texto acumulado. Contagem real: 4 chamadas com busca + 1 de conversão = 5; as buscas são as 4 x 2.
+    // máximo 8 e duas buscas por resposta pausada: a primeira chamada + 3 continuações gastam 2+2+2+2 = 8, o máximo do pedido
+    // inteiro. No limite das continuações o servidor para de buscar e converte o texto acumulado, sem busca.
+    // Contagem real: 4 chamadas com busca + 1 de conversão = 5.
+    const search = { allowedDomains: ["gov.br/saude"], maxSearches: 8 };
     const replies = [paused(1), paused(2), paused(3), paused(4), claudeMsg({ content: [{ type: "text", text: JSON.stringify(RESULT) }], usage: { input_tokens: 300, output_tokens: 80 } })];
     const { client, calls } = fakeAnthropic(replies);
-    const r = await new AnthropicProvider("chave", "claude-sonnet-5-5", client).generate<typeof RESULT>(req());
+    const r = await new AnthropicProvider("chave", "claude-sonnet-5-5", client).generate<typeof RESULT>(req({ webSearch: search }));
     expect(calls).toHaveLength(5);
     expect(calls.slice(0, 4).every((c) => c.tools?.[0]?.name === "web_search")).toBe(true);
+    // o máximo é do pedido, não da chamada: cada continuação manda o máximo menos as buscas já feitas
+    expect(calls.slice(0, 4).map((c) => c.tools[0].max_uses)).toEqual([8, 6, 4, 2]);
+    expect(calls[3].tools).toEqual([{ type: "web_search_20260209", name: "web_search", allowed_domains: ["gov.br/saude"], max_uses: 2 }]);
     // cada continuação reenvia a pergunta e as respostas pausadas, na ordem
     const user = { role: "user", content: "pedido" };
     const assistant = (i: number) => ({ role: "assistant", content: replies[i].content });
@@ -203,9 +219,44 @@ describe("Provedores", () => {
     expect(calls[4].messages[0].content).not.toContain("a1.pdf");
     expect(r.output).toEqual(RESULT);
     expect(r.webSearches).toBe(8);
+    expect(r.webSearches).toBeLessThanOrEqual(search.maxSearches);
     expect(r.seenUrls).toEqual([1, 2, 3, 4].flatMap((n) => [`https://www.gov.br/saude/a${n}.pdf`, `https://bvsms.saude.gov.br/b${n}.pdf`]));
     expect(r.inputTokens).toBe(4 * 100 + 300);
     expect(r.outputTokens).toBe(4 * 10 + 80);
+  });
+
+  it("Claude: o máximo de buscas vale para o pedido inteiro; sem sobra, para de continuar e converte", async () => {
+    // máximo 4 e duas buscas por resposta pausada: a 1ª chamada leva max_uses 4, a continuação só o que sobra (2);
+    // gastas as 4, não há 3ª chamada com busca: o texto acumulado vai direto para a conversão
+    const final = claudeMsg({ content: [{ type: "text", text: JSON.stringify(RESULT) }], usage: { input_tokens: 300, output_tokens: 80 } });
+    const replies = [paused(1), paused(2), final];
+    const { client, calls } = fakeAnthropic(replies);
+    const r = await new AnthropicProvider("chave", "claude-sonnet-5-5", client).generate<typeof RESULT>(req());
+    expect(calls).toHaveLength(3);
+    expect(calls[0].tools[0].max_uses).toBe(4);
+    expect(calls[1].tools).toEqual([{ type: "web_search_20260209", name: "web_search", allowed_domains: ["gov.br/saude"], max_uses: 2 }]);
+    expect(calls[1].messages).toEqual([{ role: "user", content: "pedido" }, { role: "assistant", content: replies[0].content }]);
+    expect(calls[2].tools).toBeUndefined();
+    expect(calls[2].system).toBe(CONVERT_SYSTEM);
+    expect(calls[2].messages[0].content).toContain("<documento>");
+    expect(calls[2].messages[0].content).toContain("Buscando 1.");
+    expect(calls[2].messages[0].content).toContain("Buscando 2.");
+    expect(r.output).toEqual(RESULT);
+    expect(r.webSearches).toBe(4);
+    expect(r.webSearches).toBeLessThanOrEqual(SEARCH.maxSearches);
+    expect(r).toMatchObject({ inputTokens: 100 + 100 + 300, outputTokens: 10 + 10 + 80 });
+  });
+
+  it("Claude: se a resposta passa do máximo, não continua (e nunca manda max_uses negativo)", async () => {
+    const over = claudeMsg({ stop_reason: "pause_turn", content: [{ type: "text", text: "Buscando muito." }], usage: { input_tokens: 100, output_tokens: 10, server_tool_use: { web_search_requests: 5 } } });
+    const conv = claudeMsg({ content: [{ type: "text", text: JSON.stringify(RESULT) }], usage: { input_tokens: 30, output_tokens: 8 } });
+    const { client, calls } = fakeAnthropic([over, conv]);
+    const r = await new AnthropicProvider("chave", "claude-sonnet-5-5", client).generate<typeof RESULT>(req());
+    expect(calls).toHaveLength(2);
+    expect(calls[1].tools).toBeUndefined();
+    expect(calls.every((c) => (c.tools?.[0]?.max_uses ?? 0) >= 0)).toBe(true);
+    // a contagem é o que o provedor cobrou, mesmo acima do máximo
+    expect(r.webSearches).toBe(5);
   });
 
   it("Claude: pause_turn que termina antes do limite usa o JSON do texto, sem conversão", async () => {
@@ -214,16 +265,24 @@ describe("Provedores", () => {
     const r = await new AnthropicProvider("chave", "claude-sonnet-5-5", client).generate<typeof RESULT>(req());
     expect(calls).toHaveLength(2);
     expect(calls[1].messages).toEqual([{ role: "user", content: "pedido" }, { role: "assistant", content: replies[0].content }]);
-    expect(calls[1].tools).toBeDefined();
+    expect(calls[1].tools).toEqual([{ type: "web_search_20260209", name: "web_search", allowed_domains: ["gov.br/saude"], max_uses: 2 }]);
     expect(r.output).toEqual(RESULT);
     expect(r).toMatchObject({ webSearches: 3, inputTokens: 250, outputTokens: 40, seenUrls: ["https://www.gov.br/saude/a1.pdf", "https://bvsms.saude.gov.br/b1.pdf"] });
+    expect(r.webSearches).toBeLessThanOrEqual(SEARCH.maxSearches);
   });
 
   it("Claude: no limite do pause_turn sem nenhum texto não gasta uma conversão à toa", async () => {
-    const mute = () => claudeMsg({ stop_reason: "pause_turn", content: searchBlocks("m", ["https://www.gov.br/saude/m.pdf"]), usage: { input_tokens: 10, output_tokens: 1, server_tool_use: { web_search_requests: 1 } } });
-    const { client, calls } = fakeAnthropic([mute(), mute(), mute(), mute()]);
-    await expect(new AnthropicProvider("chave", "claude-sonnet-5-5", client).generate(req())).rejects.toBeInstanceOf(AiInvalidOutput);
-    expect(calls).toHaveLength(4);
+    const mute = (searches: number) => claudeMsg({ stop_reason: "pause_turn", content: searchBlocks("m", ["https://www.gov.br/saude/m.pdf"]), usage: { input_tokens: 10, output_tokens: 1, server_tool_use: { web_search_requests: searches } } });
+    // limite das continuações (4 chamadas, uma busca cada, máximo 10)
+    const byCount = fakeAnthropic([mute(1), mute(1), mute(1), mute(1)]);
+    const e1 = await caught(new AnthropicProvider("chave", "claude-sonnet-5-5", byCount.client).generate(req({ webSearch: { ...SEARCH, maxSearches: 10 } })));
+    expect(e1).toBeInstanceOf(AiInvalidOutput);
+    expect(byCount.calls).toHaveLength(4);
+    // máximo gasto antes disso (duas buscas por chamada, máximo 4): para na 2ª chamada
+    const byMax = fakeAnthropic([mute(2), mute(2), mute(2)]);
+    const e2 = await caught(new AnthropicProvider("chave", "claude-sonnet-5-5", byMax.client).generate(req()));
+    expect(e2).toBeInstanceOf(AiInvalidOutput);
+    expect(byMax.calls).toHaveLength(2);
   });
 
   it("Claude: links vistos só dos resultados em lista, sem repetir; erro da ferramenta não derruba", async () => {
@@ -269,11 +328,14 @@ describe("Provedores", () => {
     expect(calls[0].body.tools).toEqual([{ type: "web_search", filters: { allowed_domains: ["gov.br", "who.int"] } }]);
     expect(calls[0].body.include).toEqual(["web_search_call.action.sources"]);
     expect(calls[0].body.max_output_tokens).toBeGreaterThanOrEqual(4000);
+    // o máximo de buscas é do pedido inteiro: a OpenAI o impõe com max_tool_calls
+    expect(calls[0].body.max_tool_calls).toBe(5);
     // o JSON vem no texto: nada de resposta estruturada junto da busca
     expect(calls[0].body.response_format).toBeUndefined();
     expect(calls[0].body.text).toBeUndefined();
     expect(r.output).toEqual(RESULT);
     expect(r).toMatchObject({ provider: "openai", model: "modelo-x-2026-10", inputTokens: 500, outputTokens: 120, webSearches: 2 });
+    expect(r.webSearches).toBeLessThanOrEqual(search.maxSearches);
     expect(r.seenUrls).toEqual(["https://www.gov.br/saude/a.pdf", "https://www.who.int/b.pdf", "https://www.gov.br/conitec/c.pdf"]);
   });
 
@@ -480,5 +542,127 @@ describe("Provedores", () => {
     const blank = vi.fn();
     await expect(parseOrConvert(req(), "  \n ", blank)).rejects.toBeInstanceOf(AiInvalidOutput);
     expect(blank).not.toHaveBeenCalled();
+  });
+
+  // ---------------------------------------------------------------- uso parcial no erro
+
+  // Erro depois de buscas pagas leva o que já foi gasto (propriedade `usage`): quem registra a falha grava o custo e as
+  // buscas reais, e o teto mensal não fica abaixo do que o provedor cobrou.
+
+  it("Erro com uso (Claude): corte por limite de saída numa continuação leva buscas e tokens das duas chamadas", async () => {
+    const cut = claudeMsg({ stop_reason: "max_tokens", content: [{ type: "text", text: "cort" }], usage: { input_tokens: 50, output_tokens: 60, server_tool_use: { web_search_requests: 1 } } });
+    const { client } = fakeAnthropic([paused(1), cut]);
+    const e = await caught(new AnthropicProvider("chave", "claude-sonnet-5-5", client).generate(req({ webSearch: { ...SEARCH, maxSearches: 10 } })));
+    expect(e).toBeInstanceOf(AiInvalidOutput);
+    expect(e.message).toMatch(/Resposta cortada pelo limite de saída/);
+    expect(e.usage).toEqual({ inputTokens: 150, outputTokens: 70, webSearches: 3 });
+    expect(partialUsageOf(e)).toEqual({ inputTokens: 150, outputTokens: 70, webSearches: 3 });
+  });
+
+  it("Erro com uso (Claude): texto vazio depois das pausas, recusa e falha de rede numa continuação", async () => {
+    const mute = () => claudeMsg({ stop_reason: "pause_turn", content: searchBlocks("m", ["https://www.gov.br/saude/m.pdf"]), usage: { input_tokens: 10, output_tokens: 1, server_tool_use: { web_search_requests: 2 } } });
+    const empty = await caught(new AnthropicProvider("chave", "claude-sonnet-5-5", fakeAnthropic([mute(), mute()]).client).generate(req()));
+    expect(empty).toBeInstanceOf(AiInvalidOutput);
+    expect(empty.usage).toEqual({ inputTokens: 20, outputTokens: 2, webSearches: 4 });
+    const refusal = claudeMsg({ stop_reason: "refusal", stop_details: { category: "cyber" }, usage: { input_tokens: 50, output_tokens: 5 } });
+    const refused = await caught(new AnthropicProvider("chave", "claude-sonnet-5-5", fakeAnthropic([paused(1), refusal]).client).generate(req({ webSearch: { ...SEARCH, maxSearches: 10 } })));
+    expect(refused.message).toMatch(/recusou/);
+    expect(refused.usage).toEqual({ inputTokens: 150, outputTokens: 15, webSearches: 2 });
+    // a 1ª chamada pagou e a 2ª caiu: o que a 1ª gastou não se perde
+    const down = await caught(new AnthropicProvider("chave", "claude-sonnet-5-5", fakeAnthropic([paused(1), new Error("Anthropic respondeu 529")]).client).generate(req({ webSearch: { ...SEARCH, maxSearches: 10 } })));
+    expect(down.message).toBe("Anthropic respondeu 529");
+    expect(down.usage).toEqual({ inputTokens: 100, outputTokens: 10, webSearches: 2 });
+  });
+
+  it("Erro com uso (Claude): conversão fora do esquema soma a conversão ao que a busca gastou", async () => {
+    const first = claudeMsg({ content: [{ type: "text", text: "Encontrei o PCDT, mas esqueci o JSON." }], usage: { input_tokens: 1000, output_tokens: 200, server_tool_use: { web_search_requests: 1 } } });
+    const bad = claudeMsg({ content: [{ type: "text", text: '{"documentos":"nenhum"}' }], usage: { input_tokens: 300, output_tokens: 80 } });
+    const e = await caught(new AnthropicProvider("chave", "claude-sonnet-5-5", fakeAnthropic([first, bad]).client).generate(req()));
+    expect(e).toBeInstanceOf(AiInvalidOutput);
+    expect(e.usage).toEqual({ inputTokens: 1300, outputTokens: 280, webSearches: 1 });
+    // conversão que nem é JSON: o mesmo
+    const notJson = claudeMsg({ content: [{ type: "text", text: "sem json" }], usage: { input_tokens: 300, output_tokens: 80 } });
+    const n = await caught(new AnthropicProvider("chave", "claude-sonnet-5-5", fakeAnthropic([first, notJson]).client).generate(req()));
+    expect(n.usage).toEqual({ inputTokens: 1300, outputTokens: 280, webSearches: 1 });
+  });
+
+  it("Erro com uso: a 1ª chamada que cai não gastou nada, então não leva uso; sucesso também não", async () => {
+    const e = await caught(new AnthropicProvider("chave", "claude-sonnet-5-5", fakeAnthropic([new Error("Anthropic respondeu 401")]).client).generate(req()));
+    expect(e.usage).toBeUndefined();
+    expect(partialUsageOf(e)).toBeNull();
+    const f = await caught(new OpenAIProvider("k", "m", fakeFetch([{ body: { error: { message: "limite" } }, status: 429 }]).f).generate(req()));
+    expect(partialUsageOf(f)).toBeNull();
+    const { client } = fakeAnthropic([claudeMsg()]);
+    const ok = await new AnthropicProvider("chave", "claude-sonnet-5-5", client).generate(req());
+    expect((ok as any).usage).toBeUndefined();
+  });
+
+  it("Erro com uso (OpenAI): resposta incompleta, recusa e conversão fora do esquema", async () => {
+    const incomplete = await caught(new OpenAIProvider("k", "m", fakeFetch([{ body: openaiReply(FENCED, { status: "incomplete" }) }]).f).generate(req()));
+    expect(incomplete).toBeInstanceOf(AiInvalidOutput);
+    expect(incomplete.usage).toEqual({ inputTokens: 500, outputTokens: 120, webSearches: 2 });
+    const refused = { model: "m", status: "completed", output: [searchCall("ws_1", []), { type: "message", role: "assistant", content: [{ type: "refusal", refusal: "não posso" }] }], usage: { input_tokens: 7, output_tokens: 3 } };
+    const r = await caught(new OpenAIProvider("k", "m", fakeFetch([{ body: refused }]).f).generate(req()));
+    expect(r.message).toMatch(/recusou/);
+    expect(r.usage).toEqual({ inputTokens: 7, outputTokens: 3, webSearches: 1 });
+    const { f } = fakeFetch([{ body: openaiReply("Não achei como JSON.") }, { body: chatReply('{"documentos":3}') }]);
+    const bad = await caught(new OpenAIProvider("k", "m", f).generate(req()));
+    expect(bad).toBeInstanceOf(AiInvalidOutput);
+    expect(bad.usage).toEqual({ inputTokens: 580, outputTokens: 160, webSearches: 2 });
+  });
+
+  it("Erro com uso (Gemini): corte por limite de saída, texto vazio e conversão fora do esquema", async () => {
+    const cutReply = geminiReply(FENCED, GROUNDING, { candidates: [{ finishReason: "MAX_TOKENS", groundingMetadata: GROUNDING }] });
+    const cut = await caught(new GeminiProvider(ACCESS, "gemini-3.5-flash", fakeGemini([cutReply]).client).generate(req()));
+    expect(cut).toBeInstanceOf(AiInvalidOutput);
+    expect(cut.usage).toEqual({ inputTokens: 430, outputTokens: 150, webSearches: 3 });
+    const blank = await caught(new GeminiProvider(ACCESS, "gemini-2.5-pro", fakeGemini([geminiReply("", GROUNDING)]).client).generate(req()));
+    expect(blank.usage).toEqual({ inputTokens: 430, outputTokens: 150, webSearches: 1 });
+    const second = geminiReply('{"documentos":"x"}', null, { usageMetadata: { promptTokenCount: 60, candidatesTokenCount: 25 } });
+    const bad = await caught(new GeminiProvider(ACCESS, "gemini-3.5-flash", fakeGemini([geminiReply("Sem JSON.", GROUNDING), second]).client).generate(req()));
+    expect(bad).toBeInstanceOf(AiInvalidOutput);
+    expect(bad.usage).toEqual({ inputTokens: 430 + 60, outputTokens: 150 + 25, webSearches: 3 });
+  });
+
+  it("Erro com uso: o caminho sem busca também diz o que gastou (sem buscas)", async () => {
+    const claude = await caught(new AnthropicProvider("chave", "claude-sonnet-5-5", fakeAnthropic([claudeMsg({ content: [{ type: "text", text: "sem json" }] })]).client).generate(req({ webSearch: undefined })));
+    expect(claude.usage).toEqual({ inputTokens: 100, outputTokens: 20, webSearches: 0 });
+    const wrongShape = await caught(new AnthropicProvider("chave", "claude-sonnet-5-5", fakeAnthropic([claudeMsg({ content: [{ type: "text", text: '{"documentos":1}' }] })]).client).generate(req({ webSearch: undefined })));
+    expect(wrongShape.usage).toEqual({ inputTokens: 100, outputTokens: 20, webSearches: 0 });
+    const gemini = await caught(new GeminiProvider(ACCESS, "gemini-2.5-pro", fakeGemini([{ text: "sem json", usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, thoughtsTokenCount: 2 } }]).client).generate(req({ webSearch: undefined })));
+    expect(gemini.usage).toEqual({ inputTokens: 10, outputTokens: 7, webSearches: 0 });
+    const chat = { model: "m", choices: [{ finish_reason: "stop", message: { content: "sem json" } }], usage: { prompt_tokens: 80, completion_tokens: 40 } };
+    const openai = await caught(new OpenAIProvider("k", "m", fakeFetch([{ body: chat }]).f).generate(req({ webSearch: undefined })));
+    expect(openai.usage).toEqual({ inputTokens: 80, outputTokens: 40, webSearches: 0 });
+  });
+
+  it("Erro com uso: parseOrConvert leva o gasto da conversão que não serviu; OpenAI que não concluiu leva o da busca", async () => {
+    const converted = async () => ({ output: { documentos: 3 }, provider: "p", model: "m", inputTokens: 7, outputTokens: 9, latencyMs: 1, costUsd: null }) as StructuredResult<any>;
+    const e = await caught(parseOrConvert(req(), "sem json", converted));
+    expect(e).toBeInstanceOf(AiInvalidOutput);
+    expect(e.usage).toEqual({ inputTokens: 7, outputTokens: 9, webSearches: 0 });
+    // o texto em branco nem chama a conversão: nada gasto, nada a levar
+    expect(partialUsageOf(await caught(parseOrConvert(req(), "  ", converted)))).toBeNull();
+    const failed = { model: "m", status: "failed", error: { message: "queda" }, output: [searchCall("ws_1", [])], usage: { input_tokens: 40, output_tokens: 2 } };
+    const f = await caught(new OpenAIProvider("k", "m", fakeFetch([{ body: failed }]).f).generate(req()));
+    expect(f.message).toMatch(/OpenAI não concluiu a resposta: queda/);
+    expect(f.usage).toEqual({ inputTokens: 40, outputTokens: 2, webSearches: 1 });
+  });
+
+  it("withUsage e partialUsageOf: somam o uso, aceitam nulos e ignoram o que não é erro", () => {
+    const e = new Error("x");
+    expect(partialUsageOf(e)).toBeNull();
+    expect(withUsage(e, { inputTokens: 10, outputTokens: null, webSearches: 2 })).toBe(e);
+    expect(partialUsageOf(e)).toEqual({ inputTokens: 10, outputTokens: null, webSearches: 2 });
+    withUsage(e, { inputTokens: 5, outputTokens: 7, webSearches: 1 });
+    expect(partialUsageOf(e)).toEqual({ inputTokens: 15, outputTokens: 7, webSearches: 3 });
+    withUsage(e, { inputTokens: null, outputTokens: null, webSearches: 0 });
+    expect(partialUsageOf(e)).toEqual({ inputTokens: 15, outputTokens: 7, webSearches: 3 });
+    expect(withUsage("texto solto", { inputTokens: 1, outputTokens: 1, webSearches: 1 })).toBe("texto solto");
+    // propriedade `usage` que não tem o feitio do uso não conta
+    const odd = Object.assign(new Error("y"), { usage: "muito" });
+    expect(partialUsageOf(odd)).toBeNull();
+    expect(partialUsageOf(null)).toBeNull();
+    expect(partialUsageOf("erro")).toBeNull();
   });
 });

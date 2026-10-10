@@ -21,9 +21,11 @@ import { FallbackProvider } from "./fallback";
 import { MAX_CONTINUATIONS, parseOrConvert, sumTokens } from "./webSearch";
 
 /**
- * Busca na internet pedida ao provedor: só estes sites (endereços da lista, com ou sem caminho) e até este número de buscas.
- * Cada provedor impõe o que a sua API deixa: a Claude, os dois (por chamada); a OpenAI, só os sites (por host, sem caminho);
- * o Gemini, nenhum dos dois. O servidor confere cada link depois, então o que o provedor não impõe não abre brecha.
+ * Busca na internet pedida ao provedor: só estes sites (endereços da lista, com ou sem caminho) e até este número de buscas
+ * NO PEDIDO INTEIRO (não por chamada). Cada provedor impõe o que a sua API deixa: a Claude, os sites e o máximo (cada
+ * continuação de `pause_turn` leva só o que sobra do máximo; sem sobra, para de buscar); a OpenAI, os sites (por host, sem
+ * caminho) e o máximo (`max_tool_calls`); o Gemini, nenhum dos dois. O servidor confere cada link depois, então os sites
+ * que o provedor não impõe não abrem brecha; o que passar do máximo aparece em `webSearches` (o cobrado de verdade).
  */
 export interface WebSearchOptions {
   allowedDomains: string[];
@@ -66,6 +68,49 @@ export class AiInvalidOutput extends Error {
   constructor(message: string, readonly raw: unknown) {
     super(message);
   }
+}
+
+/** O que uma ou mais chamadas já gastaram: tokens (nulo = o provedor não disse) e buscas cobradas. */
+export interface PartialUsage {
+  inputTokens: number | null;
+  outputTokens: number | null;
+  webSearches: number;
+}
+
+const isTokenCount = (v: unknown): v is number | null => v === null || (typeof v === "number" && Number.isFinite(v));
+
+/**
+ * O gasto parcial que um erro leva (`error.usage`), ou nulo. Erro depois de buscas pagas (corte por limite de saída numa
+ * continuação, texto vazio depois das pausas, conversão fora do esquema, recusa...) não pode sumir com o que já foi cobrado:
+ * quem registra a falha grava esse gasto, e o teto mensal e o custo da Central não ficam abaixo do real.
+ */
+export function partialUsageOf(error: unknown): PartialUsage | null {
+  if (!error || typeof error !== "object") return null;
+  const u = (error as { usage?: unknown }).usage;
+  if (!u || typeof u !== "object") return null;
+  const { inputTokens, outputTokens, webSearches } = u as Record<string, unknown>;
+  if (!isTokenCount(inputTokens) || !isTokenCount(outputTokens) || typeof webSearches !== "number" || !Number.isFinite(webSearches)) return null;
+  return { inputTokens, outputTokens, webSearches };
+}
+
+/**
+ * Soma `usage` ao gasto que o erro já leva (cada camada acrescenta o seu: a conversão leva a dela, quem chamou soma a busca)
+ * e devolve o próprio erro, para `throw withUsage(e, ...)`. Gasto vazio (nada informado, nenhuma busca) não marca o erro: a
+ * chamada que cai antes de gastar não leva uso. O que não é objeto passa como está.
+ */
+export function withUsage<E>(error: E, usage: PartialUsage): E {
+  if (!error || typeof error !== "object") return error;
+  if (usage.inputTokens == null && usage.outputTokens == null && !(usage.webSearches > 0)) return error;
+  const before = partialUsageOf(error);
+  const total: PartialUsage = before
+    ? { inputTokens: sumTokens(before.inputTokens, usage.inputTokens), outputTokens: sumTokens(before.outputTokens, usage.outputTokens), webSearches: before.webSearches + usage.webSearches }
+    : { ...usage };
+  try {
+    (error as { usage?: PartialUsage }).usage = total;
+  } catch {
+    // erro congelado: segue sem o gasto, a mensagem original é o que importa
+  }
+  return error;
 }
 
 export interface AiProvider {
@@ -118,6 +163,17 @@ export class AnthropicProvider implements AiProvider {
       messages: [{ role: "user", content: req.input }],
     });
     const usage = res.usage as any;
+    const spent: PartialUsage = { inputTokens: usage?.input_tokens ?? null, outputTokens: usage?.output_tokens ?? null, webSearches: 0 };
+    try {
+      const output = this.parseStructured<T>(req, res);
+      return { output, provider: this.name, model: res.model ?? this.model, inputTokens: spent.inputTokens, outputTokens: spent.outputTokens, latencyMs: Date.now() - t0, costUsd: price(spent.inputTokens, spent.outputTokens) };
+    } catch (error) {
+      throw withUsage(error, spent); // a chamada foi paga mesmo que a resposta não sirva
+    }
+  }
+
+  /** A resposta estruturada de uma chamada sem busca; recusa, corte e fora do formato são erros. */
+  private parseStructured<T>(req: StructuredRequest, res: any): T {
     if (res.stop_reason === "refusal") {
       throw new Error(`O provedor recusou a solicitação (${res.stop_details?.category ?? "sem categoria"}).`);
     }
@@ -129,60 +185,69 @@ export class AnthropicProvider implements AiProvider {
     } catch {
       throw new AiInvalidOutput("Resposta não é JSON.", block?.text);
     }
-    const output = checked<T>(req.schema, raw);
-    return { output, provider: this.name, model: res.model ?? this.model, inputTokens: usage?.input_tokens ?? null, outputTokens: usage?.output_tokens ?? null, latencyMs: Date.now() - t0, costUsd: price(usage?.input_tokens ?? null, usage?.output_tokens ?? null) };
+    return checked<T>(req.schema, raw);
   }
 
   /**
    * Com busca na internet: a ferramenta `web_search` roda no servidor da Anthropic e a resposta termina com o JSON no texto
    * (sem `format`, ver webSearch.ts). `pause_turn` é o servidor pausando um turno longo: reenvia-se a pergunta com cada
-   * resposta pausada, até `MAX_CONTINUATIONS` vezes depois da primeira chamada. No limite, para de buscar: o texto acumulado
-   * vai para `parseOrConvert`, que usa o JSON dele ou faz a conversão curta, sem busca.
+   * resposta pausada, até `MAX_CONTINUATIONS` vezes depois da primeira chamada.
+   *
+   * O máximo de buscas vale para o PEDIDO inteiro, não para cada chamada (`max_uses` da Anthropic é por chamada): cada
+   * continuação manda o máximo menos as buscas já cobradas. Sem sobra, ou no limite das continuações, para de buscar: o
+   * texto acumulado vai para `parseOrConvert`, que usa o JSON dele ou faz a conversão curta, sem busca.
+   *
+   * Erro depois de buscas pagas leva o gasto parcial (`withUsage`): a chamada que falha não apaga o que já foi cobrado.
    */
   private async generateWithSearch<T>(req: StructuredRequest, search: WebSearchOptions): Promise<StructuredResult<T>> {
     const t0 = Date.now();
-    const base = {
-      model: this.model,
-      max_tokens: Math.max(req.maxOutputTokens ?? 8192, 8192),
-      system: req.system,
-      tools: [{ type: anthropicSearchTool(this.model), name: "web_search", allowed_domains: search.allowedDomains, max_uses: search.maxSearches }],
-      output_config: { effort: anthropicEffort(req) },
-    };
+    const toolType = anthropicSearchTool(this.model);
     const messages: any[] = [{ role: "user", content: req.input }];
     const texts: string[] = [];
     const seen = new Set<string>();
-    let webSearches = 0;
-    let inputTokens: number | null = null;
-    let outputTokens: number | null = null;
+    const spent: PartialUsage = { inputTokens: null, outputTokens: null, webSearches: 0 };
     let model = this.model;
-    for (let continuation = 0; ; continuation++) {
-      const res = await this.client.messages.create({ ...base, messages: [...messages] });
-      const usage = res.usage as any;
-      webSearches += usage?.server_tool_use?.web_search_requests ?? 0;
-      inputTokens = sumTokens(inputTokens, usage?.input_tokens);
-      outputTokens = sumTokens(outputTokens, usage?.output_tokens);
-      model = res.model ?? model;
-      const content: any[] = Array.isArray(res.content) ? res.content : [];
-      // o texto de uma resposta pode vir partido em vários blocos (citações): emendar sem separador
-      const text = content.filter((b) => b?.type === "text").map((b) => String(b.text ?? "")).join("");
-      if (text) texts.push(text);
-      for (const block of content) {
-        // resultado em lista = links vistos; resultado em erro (objeto) não tem links
-        if (block?.type === "web_search_tool_result" && Array.isArray(block.content)) {
-          for (const item of block.content) if (typeof item?.url === "string" && item.url) seen.add(item.url);
+    try {
+      for (let continuation = 0; ; continuation++) {
+        const res = await this.client.messages.create({
+          model: this.model,
+          max_tokens: Math.max(req.maxOutputTokens ?? 8192, 8192),
+          system: req.system,
+          tools: [{ type: toolType, name: "web_search", allowed_domains: search.allowedDomains, max_uses: search.maxSearches - spent.webSearches }],
+          output_config: { effort: anthropicEffort(req) },
+          messages: [...messages],
+        });
+        const usage = res.usage as any;
+        spent.webSearches += usage?.server_tool_use?.web_search_requests ?? 0;
+        spent.inputTokens = sumTokens(spent.inputTokens, usage?.input_tokens);
+        spent.outputTokens = sumTokens(spent.outputTokens, usage?.output_tokens);
+        model = res.model ?? model;
+        const content: any[] = Array.isArray(res.content) ? res.content : [];
+        // o texto de uma resposta pode vir partido em vários blocos (citações): emendar sem separador
+        const text = content.filter((b) => b?.type === "text").map((b) => String(b.text ?? "")).join("");
+        if (text) texts.push(text);
+        for (const block of content) {
+          // resultado em lista = links vistos; resultado em erro (objeto) não tem links
+          if (block?.type === "web_search_tool_result" && Array.isArray(block.content)) {
+            for (const item of block.content) if (typeof item?.url === "string" && item.url) seen.add(item.url);
+          }
         }
+        if (res.stop_reason === "refusal") {
+          throw new Error(`O provedor recusou a solicitação (${res.stop_details?.category ?? "sem categoria"}).`);
+        }
+        if (res.stop_reason === "max_tokens") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null);
+        // sem sobra do máximo do pedido, ou no limite das continuações: para de buscar e converte o que há
+        if (res.stop_reason !== "pause_turn" || continuation >= MAX_CONTINUATIONS || spent.webSearches >= search.maxSearches) break;
+        messages.push({ role: "assistant", content });
       }
-      if (res.stop_reason === "refusal") {
-        throw new Error(`O provedor recusou a solicitação (${res.stop_details?.category ?? "sem categoria"}).`);
-      }
-      if (res.stop_reason === "max_tokens") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null);
-      if (res.stop_reason !== "pause_turn" || continuation >= MAX_CONTINUATIONS) break;
-      messages.push({ role: "assistant", content });
+      const { output, extra } = await parseOrConvert<T>(req, texts.join("\n"), (r) => this.generate<T>(r));
+      const inTok = sumTokens(spent.inputTokens, extra?.inputTokens);
+      const outTok = sumTokens(spent.outputTokens, extra?.outputTokens);
+      return { output, provider: this.name, model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: price(inTok, outTok), webSearches: spent.webSearches, seenUrls: [...seen] };
+    } catch (error) {
+      // a conversão que falhou já leva o seu gasto; aqui entra o da busca
+      throw withUsage(error, spent);
     }
-    const { output, extra } = await parseOrConvert<T>(req, texts.join("\n"), (r) => this.generate<T>(r));
-    const inTok = sumTokens(inputTokens, extra?.inputTokens);
-    const outTok = sumTokens(outputTokens, extra?.outputTokens);
-    return { output, provider: this.name, model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: price(inTok, outTok), webSearches, seenUrls: [...seen] };
   }
 }
 
@@ -204,17 +269,22 @@ export class GeminiProvider implements AiProvider {
       contents: req.input,
       config: { systemInstruction: req.system, responseMimeType: "application/json", responseSchema: toProviderSchema(req.schema) as any, maxOutputTokens: req.maxOutputTokens ?? 4096 },
     });
-    let raw: unknown;
-    try {
-      raw = JSON.parse(res.text ?? "");
-    } catch {
-      throw new AiInvalidOutput("Resposta não é JSON.", res.text);
-    }
-    const output = checked<T>(req.schema, raw);
     const u = res.usageMetadata as any;
     // O raciocínio do modelo (thoughtsTokenCount) é cobrado como saída: entra na conta, senão o gasto e os tetos ficam abaixo do real.
     const outputTokens = u?.candidatesTokenCount == null && u?.thoughtsTokenCount == null ? null : (u?.candidatesTokenCount ?? 0) + (u?.thoughtsTokenCount ?? 0);
-    return { output, provider: this.name, model: this.model, inputTokens: u?.promptTokenCount ?? null, outputTokens, latencyMs: Date.now() - t0, costUsd: price(u?.promptTokenCount ?? null, outputTokens) };
+    const spent: PartialUsage = { inputTokens: u?.promptTokenCount ?? null, outputTokens, webSearches: 0 };
+    try {
+      let raw: unknown;
+      try {
+        raw = JSON.parse(res.text ?? "");
+      } catch {
+        throw new AiInvalidOutput("Resposta não é JSON.", res.text);
+      }
+      const output = checked<T>(req.schema, raw);
+      return { output, provider: this.name, model: this.model, inputTokens: spent.inputTokens, outputTokens, latencyMs: Date.now() - t0, costUsd: price(spent.inputTokens, outputTokens) };
+    } catch (error) {
+      throw withUsage(error, spent); // a chamada foi paga mesmo que a resposta não sirva
+    }
   }
 
   /**
@@ -231,18 +301,24 @@ export class GeminiProvider implements AiProvider {
       config: { systemInstruction: req.system, tools: [{ googleSearch: {} }], maxOutputTokens: req.maxOutputTokens ?? 4096 },
     });
     const candidate = res.candidates?.[0];
-    if (candidate?.finishReason === "MAX_TOKENS") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null);
     const grounding = candidate?.groundingMetadata;
     // Gemini 2.x cobra por pedido que usou a busca; do 3 em diante, por consulta feita
     const webSearches = /^gemini-2/.test(this.model) ? (grounding ? 1 : 0) : Array.isArray(grounding?.webSearchQueries) ? grounding.webSearchQueries.length : 0;
     const seen = new Set<string>();
     for (const chunk of Array.isArray(grounding?.groundingChunks) ? grounding.groundingChunks : []) if (typeof chunk?.web?.uri === "string" && chunk.web.uri) seen.add(chunk.web.uri);
-    const { output, extra } = await parseOrConvert<T>(req, String(res.text ?? ""), (r) => this.generate<T>(r));
     const u = res.usageMetadata as any;
     // o que a busca trouxe para o modelo ler (toolUsePromptTokenCount) é cobrado como entrada; o raciocínio, como saída
-    const inTok = sumTokens(sumTokens(u?.promptTokenCount, u?.toolUsePromptTokenCount), extra?.inputTokens);
-    const outTok = sumTokens(sumTokens(u?.candidatesTokenCount, u?.thoughtsTokenCount), extra?.outputTokens);
-    return { output, provider: this.name, model: this.model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: price(inTok, outTok), webSearches, seenUrls: [...seen] };
+    const spent: PartialUsage = { inputTokens: sumTokens(u?.promptTokenCount, u?.toolUsePromptTokenCount), outputTokens: sumTokens(u?.candidatesTokenCount, u?.thoughtsTokenCount), webSearches };
+    try {
+      if (candidate?.finishReason === "MAX_TOKENS") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null);
+      const { output, extra } = await parseOrConvert<T>(req, String(res.text ?? ""), (r) => this.generate<T>(r));
+      const inTok = sumTokens(spent.inputTokens, extra?.inputTokens);
+      const outTok = sumTokens(spent.outputTokens, extra?.outputTokens);
+      return { output, provider: this.name, model: this.model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: price(inTok, outTok), webSearches, seenUrls: [...seen] };
+    } catch (error) {
+      // a conversão que falhou já leva o seu gasto; aqui entra o da busca
+      throw withUsage(error, spent);
+    }
   }
 }
 

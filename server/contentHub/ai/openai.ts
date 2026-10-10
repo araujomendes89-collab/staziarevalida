@@ -8,7 +8,7 @@
  * A resposta é sempre validada pelo nosso validador de schema; fora do formato é recusada, nunca "consertada".
  */
 import { toProviderSchema } from "./schema";
-import { AiInvalidOutput, type AiProvider, type StructuredRequest, type StructuredResult, type WebSearchOptions } from "./provider";
+import { AiInvalidOutput, withUsage, type AiProvider, type PartialUsage, type StructuredRequest, type StructuredResult, type WebSearchOptions } from "./provider";
 import { validate } from "./schema";
 import { hostsOf, parseOrConvert, sumTokens } from "./webSearch";
 
@@ -45,26 +45,32 @@ export class OpenAIProvider implements AiProvider {
       throw new Error(`OpenAI respondeu ${res.status}${body ? `: ${body}` : ""}`);
     }
     const data = (await res.json()) as any;
-    const choice = data?.choices?.[0];
-    if (choice?.message?.refusal) throw new Error(`O provedor recusou a solicitação (${String(choice.message.refusal).slice(0, 120)}).`);
-    if (choice?.finish_reason === "length") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null);
-    let raw: unknown;
-    try {
-      raw = JSON.parse(choice?.message?.content ?? "");
-    } catch {
-      throw new AiInvalidOutput("Resposta não é JSON.", choice?.message?.content);
-    }
-    const errors = validate(req.schema, raw);
-    if (errors.length) throw new AiInvalidOutput(`Resposta fora do formato: ${errors.slice(0, 5).join("; ")}`, raw);
     const inTok = data?.usage?.prompt_tokens ?? null;
     const outTok = data?.usage?.completion_tokens ?? null;
-    return { output: raw as T, provider: this.name, model: data?.model ?? this.model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: this.price(inTok, outTok) };
+    try {
+      const choice = data?.choices?.[0];
+      if (choice?.message?.refusal) throw new Error(`O provedor recusou a solicitação (${String(choice.message.refusal).slice(0, 120)}).`);
+      if (choice?.finish_reason === "length") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null);
+      let raw: unknown;
+      try {
+        raw = JSON.parse(choice?.message?.content ?? "");
+      } catch {
+        throw new AiInvalidOutput("Resposta não é JSON.", choice?.message?.content);
+      }
+      const errors = validate(req.schema, raw);
+      if (errors.length) throw new AiInvalidOutput(`Resposta fora do formato: ${errors.slice(0, 5).join("; ")}`, raw);
+      return { output: raw as T, provider: this.name, model: data?.model ?? this.model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: this.price(inTok, outTok) };
+    } catch (error) {
+      throw withUsage(error, { inputTokens: inTok, outputTokens: outTok, webSearches: 0 }); // a chamada foi paga mesmo que a resposta não sirva
+    }
   }
 
   /**
    * Com busca na internet: API Responses, ferramenta `web_search` filtrada pelos sites da lista (o filtro só tem host, sem
-   * caminho) e pedindo as fontes de cada busca. Sem resposta estruturada: a IA termina o texto com o JSON (ver webSearch.ts).
-   * Se o JSON não servir, a conversão curta, sem busca, vai pelo `/chat/completions` de sempre.
+   * caminho) e pedindo as fontes de cada busca. O máximo de buscas vale para o pedido inteiro: `max_tool_calls` o impõe.
+   * Sem resposta estruturada: a IA termina o texto com o JSON (ver webSearch.ts). Se o JSON não servir, a conversão curta,
+   * sem busca, vai pelo `/chat/completions` de sempre. Erro depois da resposta (cortada, recusada, fora do esquema) leva o
+   * gasto parcial (`withUsage`): as buscas e os tokens já foram cobrados.
    */
   private async generateWithSearch<T>(req: StructuredRequest, search: WebSearchOptions): Promise<StructuredResult<T>> {
     const t0 = Date.now();
@@ -77,6 +83,7 @@ export class OpenAIProvider implements AiProvider {
         input: req.input,
         tools: [{ type: "web_search", filters: { allowed_domains: hostsOf(search.allowedDomains) } }],
         include: ["web_search_call.action.sources"],
+        max_tool_calls: search.maxSearches,
         max_output_tokens: Math.max(req.maxOutputTokens ?? 8192, 4096),
       }),
       signal: AbortSignal.timeout(180_000),
@@ -86,26 +93,32 @@ export class OpenAIProvider implements AiProvider {
       throw new Error(`OpenAI respondeu ${res.status}${body ? `: ${body}` : ""}`);
     }
     const data = (await res.json()) as any;
-    if (data?.status === "incomplete") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null);
-    if (data?.status === "failed") throw new Error(`OpenAI não concluiu a resposta${data?.error?.message ? `: ${String(data.error.message).slice(0, 300)}` : "."}`);
-    let webSearches = 0;
-    const seen = new Set<string>();
-    const texts: string[] = [];
-    for (const item of Array.isArray(data?.output) ? data.output : []) {
-      if (item?.type === "web_search_call") {
-        webSearches++;
-        for (const source of Array.isArray(item.action?.sources) ? item.action.sources : []) if (typeof source?.url === "string" && source.url) seen.add(source.url);
-      } else if (item?.type === "message") {
-        const parts: any[] = Array.isArray(item.content) ? item.content : [];
-        const refusal = parts.find((p) => p?.type === "refusal");
-        if (refusal) throw new Error(`O provedor recusou a solicitação (${String(refusal.refusal ?? "").slice(0, 120)}).`);
-        const text = parts.filter((p) => p?.type === "output_text").map((p) => String(p.text ?? "")).join("");
-        if (text) texts.push(text);
+    // o que a resposta gastou, contado antes de qualquer recusa: buscas = itens web_search_call
+    const items: any[] = Array.isArray(data?.output) ? data.output : [];
+    const spent: PartialUsage = { inputTokens: data?.usage?.input_tokens ?? null, outputTokens: data?.usage?.output_tokens ?? null, webSearches: items.filter((item) => item?.type === "web_search_call").length };
+    try {
+      if (data?.status === "incomplete") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null);
+      if (data?.status === "failed") throw new Error(`OpenAI não concluiu a resposta${data?.error?.message ? `: ${String(data.error.message).slice(0, 300)}` : "."}`);
+      const seen = new Set<string>();
+      const texts: string[] = [];
+      for (const item of items) {
+        if (item?.type === "web_search_call") {
+          for (const source of Array.isArray(item.action?.sources) ? item.action.sources : []) if (typeof source?.url === "string" && source.url) seen.add(source.url);
+        } else if (item?.type === "message") {
+          const parts: any[] = Array.isArray(item.content) ? item.content : [];
+          const refusal = parts.find((p) => p?.type === "refusal");
+          if (refusal) throw new Error(`O provedor recusou a solicitação (${String(refusal.refusal ?? "").slice(0, 120)}).`);
+          const text = parts.filter((p) => p?.type === "output_text").map((p) => String(p.text ?? "")).join("");
+          if (text) texts.push(text);
+        }
       }
+      const { output, extra } = await parseOrConvert<T>(req, texts.join("\n"), (r) => this.generate<T>(r));
+      const inTok = sumTokens(spent.inputTokens, extra?.inputTokens);
+      const outTok = sumTokens(spent.outputTokens, extra?.outputTokens);
+      return { output, provider: this.name, model: data?.model ?? this.model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: this.price(inTok, outTok), webSearches: spent.webSearches, seenUrls: [...seen] };
+    } catch (error) {
+      // a conversão que falhou já leva o seu gasto; aqui entra o da busca
+      throw withUsage(error, spent);
     }
-    const { output, extra } = await parseOrConvert<T>(req, texts.join("\n"), (r) => this.generate<T>(r));
-    const inTok = sumTokens(data?.usage?.input_tokens, extra?.inputTokens);
-    const outTok = sumTokens(data?.usage?.output_tokens, extra?.outputTokens);
-    return { output, provider: this.name, model: data?.model ?? this.model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: this.price(inTok, outTok), webSearches, seenUrls: [...seen] };
   }
 }
