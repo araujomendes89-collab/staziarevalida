@@ -38,8 +38,11 @@ export interface ProcessingReport {
 
 export interface AiFunctionReport {
   ready: boolean;
+  /** A IA que responde de fato: a principal ou, com ela bloqueada, a reserva. */
   provider: string | null;
   model: string | null;
+  /** Só quando a principal está bloqueada e a reserva responde por ela: a principal escolhida e o motivo do bloqueio. */
+  primary?: { provider: string | null; model: string | null; blocked: string };
 }
 
 /** As funções da Central de IAs que o processamento usa, na ordem das etapas. */
@@ -53,6 +56,9 @@ const AI_PREFIX = "IA do processamento";
  * Situação da IA do processamento pela Central de IAs, como as etapas a escolhem (pipeline.ts): Criação pelo maestroProvider e
  * Verificação pela IA de outra empresa que confere o texto da Criação. Só leitura: nada é chamado nem gravado em ai_calls.
  * Simulação (desenvolvimento): pronta.
+ *
+ * Principal bloqueada com a reserva funcionando: quem escreve é a reserva (a etapa grava o modelo que respondeu), então o relato
+ * mostra a reserva, avisa o motivo (toda chamada vai para a reserva) e confere a Verificação contra a empresa da reserva.
  */
 export async function processingAi(deps: PipelineDeps): Promise<{ ai: ProcessingReport["ai"]; pending: string[] }> {
   if (deps.ai.provider?.isMock) {
@@ -67,9 +73,22 @@ export async function processingAi(deps: PipelineDeps): Promise<{ ai: Processing
     for (const f of PROCESSING_FUNCTIONS) {
       const { provider, status } =
         f.key === "verificacao" ? await maestroCheckerProvider(maestroDeps, f.key, writer, origin) : await maestroProvider(maestroDeps, f.key, origin);
-      functions[f.key] = { ready: Boolean(provider), provider: status.provider ?? null, model: status.model ?? null };
-      if (f.key === "criacao" && provider) writer = status.model ?? null;
+      const reserve = provider ? (status.viaReserve ?? null) : null;
+      const model = reserve?.model ?? status.model ?? null;
+      functions[f.key] = {
+        ready: Boolean(provider),
+        provider: reserve?.provider ?? status.provider ?? null,
+        model,
+        ...(reserve ? { primary: { provider: status.provider ?? null, model: status.model ?? null, blocked: reserve.why } } : {}),
+      };
+      // quem escreve de fato (a reserva, quando a principal está bloqueada) é quem a Verificação confere
+      if (f.key === "criacao" && provider) writer = model;
       if (!provider) pending.push(`${AI_PREFIX} (${f.label}): ${status.pending ?? "indisponível."}`);
+      else if (reserve) {
+        pending.push(
+          `${AI_PREFIX} (${f.label}): a principal ${status.model ?? "?"} está indisponível (${reserve.why.replace(/\.\s*$/, "")}); todo pedido vai para a reserva ${reserve.model}.`
+        );
+      }
     }
     const allowed = await aiAllowed(deps.db);
     if (!allowed.ok) pending.push(`${AI_PREFIX}: ${allowed.why}`);
@@ -79,7 +98,10 @@ export async function processingAi(deps: PipelineDeps): Promise<{ ai: Processing
   return { ai: { ready: pending.length === 0, source: "central", functions, pending: pending.length ? pending.join(" ") : null }, pending };
 }
 
-/** Resumo da IA para a linha de início da tarefa (log técnico): "IA: Criação pronta (modelo) · Verificação pendente". */
+/**
+ * Resumo da IA para a linha de início da tarefa (log técnico): "IA: Criação pronta (modelo) · Verificação pendente"; com a
+ * principal bloqueada, "Criação pela reserva (reserva; principal X indisponível)".
+ */
 export function aiSummaryLine(ai: ProcessingReport["ai"]): string {
   if (ai.source !== "central") return `IA: ${ai.ready ? "pronta" : "pendente"}`;
   const fns = PROCESSING_FUNCTIONS.filter((f) => ai.functions?.[f.key]);
@@ -87,7 +109,9 @@ export function aiSummaryLine(ai: ProcessingReport["ai"]): string {
   return `IA: ${fns
     .map((f) => {
       const r = ai.functions![f.key];
-      return r.ready ? `${f.label} pronta (${r.model ?? "?"})` : `${f.label} pendente`;
+      if (!r.ready) return `${f.label} pendente`;
+      if (r.primary) return `${f.label} pela reserva (${r.model ?? "?"}; principal ${r.primary.model ?? "?"} indisponível)`;
+      return `${f.label} pronta (${r.model ?? "?"})`;
     })
     .join(" · ")}`;
 }

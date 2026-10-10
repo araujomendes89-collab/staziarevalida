@@ -152,6 +152,80 @@ describe("relato do processamento: IA da Central de IAs", () => {
   });
 });
 
+/**
+ * Principal da Criação bloqueada e só a reserva funcionando (revisão, rodada 1): o relato dizia "Criação pronta (gemini-3.5-flash)"
+ * e conferia a Verificação como se o Gemini escrevesse. Na prática toda Criação ia para a reserva (Claude Opus, a mais cara) e
+ * toda revisão parava em "Falta uma IA de outra empresa pronta para conferir (quem escreveu foi Claude)", sem nada no painel.
+ */
+describe("relato do processamento: principal bloqueada, só a reserva funciona", () => {
+  beforeEach(resetAiState);
+  afterEach(() => vi.unstubAllEnvs());
+
+  const G35 = { provider: "gemini", model: "gemini-3.5-flash" };
+  const G25 = { provider: "gemini", model: "gemini-2.5-pro" };
+  const OPUS = { provider: "anthropic", model: "claude-opus-5" };
+  const saveWithReserve = (k: string, primary: object, fallback: object) =>
+    db.service("ch_worker_ai_save_function", { p_actor: ADMIN, p_key: k, p_config: { mode: "sozinha", primary_ref: primary, fallback_ref: fallback, reviewers: [], care: "caprichado" } });
+
+  async function scenario() {
+    await on("gemini", "anthropic");
+    await saveWithReserve("criacao", G35, OPUS);
+    await saveWithReserve("verificacao", G25, OPUS);
+    await refresh();
+  }
+
+  function expectReserveReport(report: any, why: RegExp) {
+    const { criacao, verificacao } = report.ai.functions;
+    // quem responde de fato é a reserva; a principal fica registrada com o motivo
+    expect(criacao).toMatchObject({ ready: true, provider: "anthropic", model: OPUS.model, primary: { provider: "gemini", model: G35.model } });
+    expect(criacao.primary.blocked).toMatch(why);
+    const line = report.pending.find((p: string) => p.startsWith("IA do processamento (Criação):"));
+    expect(line).toBeDefined();
+    expect(line).toContain(G35.model);
+    expect(line).toContain(`reserva ${OPUS.model}`);
+    expect(line).toMatch(why);
+    // a Verificação é conferida contra quem escreve de fato (Claude): sem Gemini pronto, falta quem confira
+    expect(verificacao.ready).toBe(false);
+    expect(report.pending.some((p: string) => p.startsWith("IA do processamento (Verificação): Falta uma IA de outra empresa pronta para conferir (quem escreveu foi Claude)"))).toBe(true);
+    expect(report.ai.ready).toBe(false);
+  }
+
+  it("Cloud Run sem chave do Google: diz que a Criação vai pela reserva e que a Verificação não tem quem confira", async () => {
+    const { GOOGLE_KEY_MISSING } = await import("../../server/ai/googleKey");
+    for (const k of ["VERTEX_API_KEY", "GEMINI_API_KEY", "GOOGLE_GEMINI_API_KEY", "OPENAI_API_KEY"]) vi.stubEnv(k, "");
+    vi.stubEnv("ANTHROPIC_API_KEY", "sk-ant-teste-falsa-sem-rede");
+    await scenario();
+    const report = await probe(deps({ aiMaker: undefined }));
+    expectReserveReport(report, new RegExp(GOOGLE_KEY_MISSING.slice(0, 30)));
+    const { aiSummaryLine } = await import("../../server/contentHub/capabilities");
+    expect(aiSummaryLine(report.ai)).toBe(`IA: Criação pela reserva (${OPUS.model}; principal ${G35.model} indisponível) · Verificação pendente`);
+    expect((await dev.db.query<any>("select count(*)::int n from public.ai_calls")).rows[0].n).toBe(0);
+  });
+
+  it("modelo sem preço com os tetos ligados: o mesmo relato, com o motivo do bloqueio", async () => {
+    await scenario();
+    await dev.db.query(`update public.ai_settings set caps_enabled = true`);
+    await dev.db.query(`insert into public.ai_model_prices (provider, model, input_per_mtok, output_per_mtok) values ('anthropic', 'claude-opus-5', 5, 25)`);
+    await refresh();
+    expectReserveReport(await probe(deps()), /sem preço cadastrado/);
+  });
+
+  it("Verificação de outra empresa pronta: só o aviso da reserva da Criação", async () => {
+    await on("gemini", "anthropic", "openai");
+    await saveWithReserve("criacao", G35, OPUS);
+    await saveFn("verificacao", O);
+    await dev.db.query(`update public.ai_settings set caps_enabled = true`);
+    await dev.db.query(`insert into public.ai_model_prices (provider, model, input_per_mtok, output_per_mtok) values ('anthropic', 'claude-opus-5', 5, 25), ('openai', $1, 1, 1)`, [O.model]);
+    await refresh();
+    const report = await probe(deps());
+    expect(report.ai.functions.verificacao).toMatchObject({ ready: true, provider: "openai", model: O.model });
+    expect(iaLines(report.pending)).toHaveLength(1);
+    expect(iaLines(report.pending)[0]).toMatch(/^IA do processamento \(Criação\): .*reserva claude-opus-5/);
+    const { aiSummaryLine } = await import("../../server/contentHub/capabilities");
+    expect(aiSummaryLine(report.ai)).toBe(`IA: Criação pela reserva (${OPUS.model}; principal ${G35.model} indisponível) · Verificação pronta (${O.model})`);
+  });
+});
+
 describe("painel (/status): pendências de IA do relato", () => {
   beforeEach(resetAiState);
 

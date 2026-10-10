@@ -273,6 +273,11 @@ export interface AiStatus {
   model: string | null;
   isMock: boolean;
   pending: string | null;   // motivo, quando não está pronto
+  /**
+   * Só no maestro: a principal (provider/model acima) está bloqueada e todo pedido vai direto para a reserva. Quem responde de
+   * fato e o motivo do bloqueio da principal.
+   */
+  viaReserve?: { provider: string; model: string; why: string };
 }
 
 /** Família do modelo (quem o treinou): conferente e criador não podem ser da mesma família. */

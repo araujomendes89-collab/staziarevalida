@@ -656,7 +656,13 @@ async function buildAdapter(deps: MaestroDeps, cfg: AiConfig, origin: MaestroOri
       return { ...r.res, costUsd: r.cost };
     },
   };
-  return { provider, status: { ready: true, provider: plan.primary.provider, model: plan.primary.model, isMock: false, pending: null } };
+  // principal bloqueada (sem chave, fora da lista, sem preço com os tetos ligados...): quem responde é sempre a reserva, e quem lê o
+  // estado (relato do processamento) precisa saber, senão diz "pronta" com a principal e confere a Verificação contra a empresa errada
+  const viaReserve = primary.blocked && fallback ? { provider: fallback.ref.provider, model: fallback.ref.model, why: primary.blocked } : null;
+  return {
+    provider,
+    status: { ready: true, provider: plan.primary.provider, model: plan.primary.model, isMock: false, pending: null, ...(viaReserve ? { viaReserve } : {}) },
+  };
 }
 
 export async function maestroProvider(deps: MaestroDeps, fn: AiFunctionKey, origin: MaestroOrigin, override?: MaestroOverride): Promise<{ provider: AiProvider | null; status: AiStatus }> {
