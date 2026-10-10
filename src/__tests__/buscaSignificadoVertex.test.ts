@@ -8,6 +8,10 @@
  * AI Studio; só com a chave do modo expresso fica parada, com o motivo. Sem rede: fetch e autenticação simulados.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { spawnSync } from "child_process";
+import fs from "fs";
+import os from "os";
+import path from "path";
 import { GoogleGenAI } from "@google/genai";
 import { googleAiAccess, googleEmbeddingsAccess } from "../../server/ai/googleKey";
 import {
@@ -314,5 +318,91 @@ describe("motivo da busca parada: português simples no painel, mensagem crua do
     expect(problem).toMatch(/conta de serviço/);
     expect(problem).toMatch(/roles\/aiplatform\.user/);
     expect(problem).toMatch(/staziamed-revalida-prod/);
+  });
+});
+
+// revisão, rodada 2: o script do Cloud Run troca a lista inteira de variáveis da tarefa (--set-env-vars). Quem ligou a busca pelo
+// Vertex AI (EMBEDDINGS_VERTEX=1) e depois rodava o script sem ela perdia CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT sem aviso. Sem
+// rede: gcloud e git simulados, numa cópia do script numa pasta temporária, com um .env falso
+describe("script do Cloud Run: o próximo deploy não apaga o Vertex AI da busca por significado", () => {
+  const JOB_ON_VERTEX = {
+    apiVersion: "run.googleapis.com/v1",
+    kind: "Job",
+    metadata: { name: "stazia-pdf-worker" },
+    spec: { template: { spec: { template: { spec: { containers: [{ image: "x", env: [
+      { name: "NODE_ENV", value: "production" },
+      { name: "CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL", value: "1" },
+      { name: "CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT", value: "staziamed-revalida-prod" },
+      { name: "GEMINI_API_KEY", valueFrom: { secretKeyRef: { name: "stazia-gemini-api-key", key: "latest" } } },
+    ] }] } } } } },
+  };
+  const roots: string[] = [];
+  afterEach(() => {
+    for (const r of roots.splice(0)) fs.rmSync(r, { recursive: true, force: true });
+  });
+  const deploy = (job: unknown | null, extra: Record<string, string> = {}) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "deploy-worker-"));
+    roots.push(root);
+    fs.mkdirSync(path.join(root, "scripts/cloudrun"), { recursive: true });
+    fs.copyFileSync("scripts/cloudrun/deploy-pdf-worker.sh", path.join(root, "scripts/cloudrun/deploy-pdf-worker.sh"));
+    // .env falso (valores inventados): o mesmo formato do .env do Mac, com a chave do AI Studio, como em produção
+    fs.writeFileSync(path.join(root, ".env"), "SUPABASE_URL=https://exemplo.supabase.co\nVITE_SUPABASE_ANON_KEY=anon-falsa\nSUPABASE_SERVICE_ROLE_KEY=servico-falsa\nGEMINI_API_KEY=estudio-falsa\n");
+    const bin = path.join(root, "bin");
+    fs.mkdirSync(bin);
+    const log = path.join(root, "gcloud.log");
+    if (job) fs.writeFileSync(path.join(root, "job.json"), JSON.stringify(job));
+    fs.writeFileSync(
+      path.join(bin, "gcloud"),
+      [
+        "#!/usr/bin/env bash",
+        'printf "%s\\n" "$*" >> "$FAKE_LOG"',
+        'case "$*" in',
+        '  *"--data-file=-"*) cat >/dev/null ;;',
+        '  *"secrets versions access"*) exit 1 ;;',
+        '  *"run jobs describe"*) if [ -f "$FAKE_JOB" ]; then cat "$FAKE_JOB"; else echo "not found" >&2; exit 1; fi ;;',
+        "esac",
+        "exit 0",
+      ].join("\n"),
+      { mode: 0o755 }
+    );
+    fs.writeFileSync(path.join(bin, "git"), "#!/usr/bin/env bash\necho abc1234\n", { mode: 0o755 });
+    const r = spawnSync("bash", [path.join(root, "scripts/cloudrun/deploy-pdf-worker.sh")], {
+      encoding: "utf8",
+      env: { PATH: `${bin}:${process.env.PATH}`, HOME: root, TMPDIR: root, PROJECT: "staziamed-revalida-prod", FAKE_LOG: log, FAKE_JOB: path.join(root, "job.json"), ...extra },
+    });
+    const calls = fs.existsSync(log) ? fs.readFileSync(log, "utf8").split("\n") : [];
+    return { status: r.status, out: `${r.stdout}${r.stderr}`, calls, deployLine: calls.find((c) => c.includes("run jobs deploy")) ?? "" };
+  };
+
+  it("a tarefa já usa o Vertex AI e o deploy veio sem EMBEDDINGS_VERTEX: mantém a variável, o papel e a API", () => {
+    const r = deploy(JOB_ON_VERTEX);
+    expect(r.status).toBe(0);
+    expect(r.deployLine).toContain("CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT=staziamed-revalida-prod");
+    expect(r.deployLine).toContain("CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1");
+    expect(r.calls.some((c) => c.includes("services enable aiplatform.googleapis.com"))).toBe(true);
+    expect(r.calls.some((c) => c.includes("add-iam-policy-binding staziamed-revalida-prod") && c.includes("roles/aiplatform.user"))).toBe(true);
+    expect(r.out).toMatch(/já usa o Vertex AI/);
+    expect(r.out).not.toMatch(/estudio-falsa|servico-falsa|anon-falsa/);
+  });
+
+  it("EMBEDDINGS_VERTEX=0 tira de propósito; tarefa nova (sem Vertex) segue como antes", () => {
+    const off = deploy(JOB_ON_VERTEX, { EMBEDDINGS_VERTEX: "0" });
+    expect(off.status).toBe(0);
+    expect(off.deployLine).not.toContain("CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT");
+    expect(off.calls.some((c) => c.includes("roles/aiplatform.user"))).toBe(false);
+    const fresh = deploy(null);
+    expect(fresh.status).toBe(0);
+    expect(fresh.deployLine).not.toContain("CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT");
+    expect(fresh.deployLine).toContain("CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1"); // pela chave do AI Studio do .env
+    expect(fresh.calls.some((c) => c.includes("roles/aiplatform.user"))).toBe(false);
+    const on = deploy(null, { EMBEDDINGS_VERTEX: "1" });
+    expect(on.deployLine).toContain("CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT=staziamed-revalida-prod");
+    expect(on.calls.some((c) => c.includes("roles/aiplatform.user"))).toBe(true);
+  });
+
+  it("EMBEDDINGS=0 desliga tudo, mesmo com a tarefa no Vertex AI", () => {
+    const r = deploy(JOB_ON_VERTEX, { EMBEDDINGS: "0" });
+    expect(r.status).toBe(0);
+    expect(r.deployLine).not.toContain("CONTENT_HUB_EMBEDDINGS_");
   });
 });

@@ -53,7 +53,10 @@ neste ambiente". No site, a busca por significado das perguntas só liga com a `
 
 O script do Cloud Run (`scripts/cloudrun/deploy-pdf-worker.sh`) liga a busca na tarefa quando há `GEMINI_API_KEY` no `.env` do Mac
 ou quando é chamado com `EMBEDDINGS_VERTEX=1` (Vertex AI completo no próprio projeto, pela conta de serviço da tarefa, que precisa
-do papel `roles/aiplatform.user`). Sem nenhum dos dois, a tarefa segue só com palavras e o painel mostra a pendência.
+do papel `roles/aiplatform.user`; o script liga a API do Vertex AI e dá o papel). Sem nenhum dos dois, a tarefa segue só com
+palavras e o painel mostra a pendência. Ligue o Vertex AI pelo script, não com `gcloud run jobs update`: o comando avulso não dá o
+papel nem liga a API (a busca para com 403). Depois de ligado, os próximos deploys pelo script sem `EMBEDDINGS_VERTEX` mantêm o
+Vertex AI (o script confere a tarefa antes de trocar as variáveis); `EMBEDDINGS_VERTEX=0` tira de propósito.
 
 ## Custo
 - **Preço:** US$ 0,20 por milhão de tokens (a tabela do Google; `AI_COST_CONFIG` substitui).

@@ -11,6 +11,7 @@
 # no .env, a chave vai para o Secret Manager e a tarefa gera os vetores dos trechos das fontes. EMBEDDINGS_VERTEX=1 usa o Vertex AI
 # completo do próprio projeto, pela conta de serviço da tarefa (sem chave; só com a ordem do dono, porque cobra no projeto).
 # A VERTEX_API_KEY não serve para isso: é do modo expresso, sem modelo de busca por significado (404). EMBEDDINGS=0 desliga.
+# Depois de ligar o Vertex AI, os próximos deploys sem EMBEDDINGS_VERTEX o mantêm (o script confere a tarefa); EMBEDDINGS_VERTEX=0 tira.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -92,6 +93,33 @@ done
 # busca por significado: Vertex AI completo do projeto pela conta de serviço da tarefa (EMBEDDINGS_VERTEX=1, cobra no projeto) ou a
 # chave do AI Studio (GEMINI_API_KEY). A VERTEX_API_KEY das IAs é do modo expresso, que não tem modelo de busca por significado
 # (o Google respondia 404, 2026-10-09): sozinha, a tarefa segue só com palavras e o painel mostra o motivo.
+#
+# O --set-env-vars da etapa 5 troca a lista inteira de variáveis da tarefa. Se a tarefa já usa o Vertex AI e este deploy veio sem
+# EMBEDDINGS_VERTEX, ele continua (papel, API e variável refeitos), em vez de sumir sem aviso. EMBEDDINGS_VERTEX=0 tira de propósito.
+if [ "${EMBEDDINGS:-1}" = "1" ] && [ -z "${EMBEDDINGS_VERTEX+x}" ]; then
+  CURRENT_VERTEX="$( { "${G[@]}" run jobs describe "$JOB" --region="$REGION" --format=json 2>/dev/null || true; } | python3 -c '
+import json, sys
+def find(o):
+    if isinstance(o, dict):
+        if o.get("name") == "CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT" and o.get("value"):
+            return str(o["value"])
+        o = list(o.values())
+    if isinstance(o, list):
+        for x in o:
+            r = find(x)
+            if r:
+                return r
+    return ""
+try:
+    sys.stdout.write(find(json.load(sys.stdin)))
+except Exception:
+    pass
+' || true)"
+  if [ -n "$CURRENT_VERTEX" ]; then
+    EMBEDDINGS_VERTEX=1
+    echo "   busca por significado: a tarefa já usa o Vertex AI ($CURRENT_VERTEX); continua assim (EMBEDDINGS_VERTEX=0 tira)"
+  fi
+fi
 EMB_ENV=""
 if [ "${EMBEDDINGS:-1}" = "1" ] && [ "${EMBEDDINGS_VERTEX:-0}" = "1" ]; then
   "${G[@]}" services enable aiplatform.googleapis.com
