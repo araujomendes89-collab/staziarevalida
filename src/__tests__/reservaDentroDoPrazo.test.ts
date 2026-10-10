@@ -3,8 +3,11 @@
  * Rodada final, ponto 1: no site (Vercel), o pedido tem 270 s (requestDeadline). O tempo-limite do Gemini 3 cresce com a saída
  * pedida (275,8 s na Criação) e, sem cuidado, a principal ficava com todo o prazo útil (255 s): quando ela esgotava, não sobrava
  * tempo para a reserva, que era recusada ("Sem tempo para chamar esta IA dentro do limite do pedido"). Antes deste ramo, os 180 s
- * fixos deixavam ~75 s para ela. Agora, com reserva pronta e prazo do pedido, a principal deixa o tempo mínimo da reserva
- * (MIN_CALL_MS, 30 s) mais a gravação da linha da principal (até 10 s): 255 − 40 = 215 s. Sem reserva, a principal usa o prazo todo.
+ * fixos deixavam ~75 s para ela.
+ * Revisão da rodada final: guardar só o mínimo de uma chamada (40 s) dava à reserva um tempo em que ela quase nunca termina, e
+ * encurtava a principal até 30 s. Agora, com reserva pronta e prazo do pedido, a principal deixa 75 s para a reserva (255 − 75 =
+ * 180 s, como antes do ramo), e só divide o prazo quando ela própria fica com pelo menos 120 s. Senão, a principal fica com o
+ * prazo todo e a reserva só sai se sobrar tempo. Sem reserva, a principal usa o prazo todo.
  * Sem rede: provedores falsos, relógio falso (setTimeout e Date) e um banco falso que só guarda o registro.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -53,7 +56,7 @@ function fakeDb(fn: { primary_ref: R; fallback_ref?: R | null }) {
   return { db, logged };
 }
 
-/** O Gemini 3 lento: nunca responde, só termina quando o pedido é cancelado (como a biblioteca de verdade). */
+/** Uma IA lenta (o Gemini 3, ou o Claude): nunca responde, só termina quando o pedido é cancelado (como a biblioteca de verdade). */
 type Seen = { signal: AbortSignal; calledAt: number; abortedAt: number | null };
 function slowGemini(ref: R, seen: Seen[]) {
   return {
@@ -111,12 +114,13 @@ describe("maestro no site: a principal lenta não come o tempo da reserva", () =
     vi.useRealTimers();
   });
 
-  it("Gemini 3 lento + reserva: a principal é cancelada a tempo (215 s) e a reserva responde dentro do prazo do pedido", async () => {
+  it("Gemini 3 lento + reserva: a principal é cancelada aos 180 s e a reserva tem 75 s para responder dentro do prazo do pedido", async () => {
     const { runFunction } = await import("../../server/ai/maestro");
     const { db, logged } = fakeDb({ primary_ref: G, fallback_ref: A });
     const seen: Seen[] = [];
     const done: number[] = [];
-    const makeProviderFor = (ref: R) => (ref.provider === "gemini" ? slowGemini(ref, seen) : answeringAfter(ref, 25_000, done));
+    // a reserva leva 60 s: não caberia nos 30 a 40 s que sobravam com o mínimo de uma chamada
+    const makeProviderFor = (ref: R) => (ref.provider === "gemini" ? slowGemini(ref, seen) : answeringAfter(ref, 60_000, done));
     const start = Date.now();
     const deadlineAt = start + REQUEST_BUDGET_MS;
     // como no site: a hora-limite marcada na chegada do pedido (requestDeadlineMiddleware), lida pelo maestro
@@ -124,16 +128,68 @@ describe("maestro no site: a principal lenta não come o tempo da reserva", () =
 
     expect(seen).toHaveLength(1);
     expect(seen[0].signal.aborted).toBe(true);
-    // 270 − 15 (folga) − 30 (mínimo da reserva) − 10 (gravação da linha da principal) = 215 s
-    expect(seen[0].abortedAt! - seen[0].calledAt).toBe(215_000);
-    expect(seen[0].abortedAt).toBe(deadlineAt - 55_000);
+    // 270 − 15 (folga) − 75 (tempo da reserva, com a gravação da linha da principal) = 180 s, como antes do ramo
+    expect(seen[0].abortedAt! - seen[0].calledAt).toBe(180_000);
+    expect(seen[0].abortedAt).toBe(deadlineAt - 90_000);
     expect(logged.map((l) => `${l.role}:${l.provider}:${l.outcome}`)).toEqual(["principal:gemini:falha", "reserva:anthropic:ok"]);
-    expect(logged[0].error).toMatch(/^Tempo esgotado \(215 s\)/);
+    expect(logged[0].error).toMatch(/^Tempo esgotado \(180 s\)/);
     expect(r.status).toBe("ok");
     expect(r.output).toEqual({ ok: true });
     // a reserva terminou antes da hora-limite, com a folga para gravar e responder
     expect(done).toHaveLength(1);
     expect(done[0]).toBeLessThanOrEqual(deadlineAt - SAFETY);
+  });
+
+  it("no limite (195 s úteis), a principal fica com 120 s e a reserva com 75 s", async () => {
+    const { runFunction } = await import("../../server/ai/maestro");
+    const { db, logged } = fakeDb({ primary_ref: G, fallback_ref: A });
+    const seen: Seen[] = [];
+    const done: number[] = [];
+    const makeProviderFor = (ref: R) => (ref.provider === "gemini" ? slowGemini(ref, seen) : answeringAfter(ref, 60_000, done));
+    const start = Date.now();
+    const deadlineAt = start + 210_000;
+    const r = await settle(runFunction<any>({ db, env: {} as any, deadlineAt, makeProviderFor: makeProviderFor as any, log: () => {} }, "criacao", REQ, origin));
+    expect(seen[0].abortedAt! - seen[0].calledAt).toBe(120_000);
+    expect(logged.map((l) => `${l.role}:${l.provider}:${l.outcome}`)).toEqual(["principal:gemini:falha", "reserva:anthropic:ok"]);
+    expect(r.status).toBe("ok");
+    expect(done).toHaveLength(1);
+    expect(done[0]).toBeLessThanOrEqual(deadlineAt - SAFETY);
+  });
+
+  // segunda chamada de IA no mesmo pedido (ex.: Podcasts) ou nova tentativa depois de uma falha lenta: 70, 110 e 194 s úteis
+  it.each([85_000, 125_000, 209_000])(
+    "sem janela de verdade para as duas (prazo de %i ms), a principal não é encurtada: fica com o prazo todo e a reserva não é chamada nem cobrada",
+    async (budget) => {
+      const { runFunction } = await import("../../server/ai/maestro");
+      const { db, logged } = fakeDb({ primary_ref: G, fallback_ref: A });
+      const seen: Seen[] = [];
+      const done: number[] = [];
+      const makeProviderFor = (ref: R) => (ref.provider === "gemini" ? slowGemini(ref, seen) : answeringAfter(ref, 1_000, done));
+      const start = Date.now();
+      const r = await settle(runFunction<any>({ db, env: {} as any, deadlineAt: start + budget, makeProviderFor: makeProviderFor as any, log: () => {} }, "criacao", REQ, origin));
+      expect(seen).toHaveLength(1);
+      expect(seen[0].abortedAt! - seen[0].calledAt).toBe(budget - SAFETY);
+      expect(logged.map((l) => `${l.role}:${l.provider}:${l.outcome}`)).toEqual(["principal:gemini:falha", "reserva:anthropic:bloqueada"]);
+      expect(logged[1].error).toBe("Sem tempo para chamar esta IA dentro do limite do pedido.");
+      expect(logged[1].cost_usd).toBe(0);
+      expect(done).toEqual([]);
+      expect(r.status).toBe("falhou");
+    },
+  );
+
+  it("Claude como principal com 190 s úteis: fica com o tempo-limite próprio (180 s), sem ser encurtado para dar tempo à reserva", async () => {
+    const { runFunction } = await import("../../server/ai/maestro");
+    const { db, logged } = fakeDb({ primary_ref: A, fallback_ref: G });
+    const seen: Seen[] = [];
+    const done: number[] = [];
+    const makeProviderFor = (ref: R) => (ref.provider === "anthropic" ? slowGemini(ref, seen) : answeringAfter(ref, 1_000, done));
+    const start = Date.now();
+    const r = await settle(runFunction<any>({ db, env: {} as any, deadlineAt: start + 205_000, makeProviderFor: makeProviderFor as any, log: () => {} }, "criacao", REQ, origin));
+    expect(seen).toHaveLength(1);
+    expect(seen[0].abortedAt! - seen[0].calledAt).toBe(180_000);
+    expect(logged.map((l) => `${l.role}:${l.provider}:${l.outcome}`)).toEqual(["principal:anthropic:falha", "reserva:gemini:bloqueada"]);
+    expect(done).toEqual([]);
+    expect(r.status).toBe("falhou");
   });
 
   it("sem reserva, a principal usa o prazo todo do pedido (255 s)", async () => {

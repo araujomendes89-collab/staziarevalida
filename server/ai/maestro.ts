@@ -121,10 +121,19 @@ const MIN_CALL_MS = 30_000;
 /** Tempo máximo para gravar uma linha do registro: um banco travado não pode gastar o prazo do pedido. */
 const LOG_TIMEOUT_MS = 10_000;
 /**
- * Tempo que a principal deixa para a reserva dentro do prazo do pedido (rodada final): o mínimo de uma chamada (MIN_CALL_MS) mais
- * a gravação da linha da principal (LOG_TIMEOUT_MS), que acontece antes da reserva sair.
+ * Tempo que a principal deixa para a reserva dentro do prazo do pedido (rodada final, revisão): 75 s, o que a reserva tinha antes
+ * deste ramo (255 s úteis no site menos os 180 s fixos da principal). Inclui a gravação da linha da principal (até LOG_TIMEOUT_MS,
+ * em geral milissegundos), que acontece antes de a reserva sair. Guardar só o mínimo de uma chamada (MIN_CALL_MS) chamava a
+ * reserva com 30 a 40 s: ela quase sempre esgotava e era cobrada pelo pior caso, além da principal.
  */
-const RESERVE_KEEP_MS = MIN_CALL_MS + LOG_TIMEOUT_MS;
+const RESERVE_KEEP_MS = 75_000;
+/**
+ * Menor tempo da principal quando ela divide o prazo do pedido com a reserva. Abaixo disso não se divide: a principal fica com o
+ * prazo todo (até o tempo-limite próprio) e a reserva só sai se sobrar tempo. Como todo tempo-limite é de pelo menos 180 s
+ * (TIMEOUT_MS), sem divisão (menos de 195 s úteis) uma principal que esgota deixa menos de 15 s, e a reserva é recusada sem
+ * cobrança: ela nunca sai só com o mínimo depois de um tempo esgotado.
+ */
+const PRIMARY_SPLIT_MIN_MS = 120_000;
 const NO_TIME = "Sem tempo para chamar esta IA dentro do limite do pedido.";
 const DEFAULT_MAX_OUT = 8192;
 const REVIEW_MAX_OUT = 2048;
@@ -461,8 +470,9 @@ class Run {
   /**
    * `keepMs`: tempo do prazo do pedido que esta chamada deixa para a próxima (a reserva). Rodada final: no site, o tempo-limite
    * do Gemini 3 (que cresce com a saída pedida) podia ficar com todo o prazo, e a reserva nunca socorria um tempo esgotado.
-   * Quando não cabem as duas (a principal ficaria com menos que MIN_CALL_MS), a principal fica com o prazo todo, como sem reserva:
-   * não é recusada nem encurtada a ponto de cobrar sem terminar.
+   * O prazo só é dividido quando as duas ficam com uma janela de verdade: a principal com pelo menos PRIMARY_SPLIT_MIN_MS (120 s)
+   * e a reserva com `keepMs` (75 s). Quando não cabem as duas, a principal fica com o prazo todo, como sem reserva: não é recusada
+   * nem encurtada a ponto de cobrar sem terminar.
    */
   private async call<T>(slot: Slot, role: Role, req: StructuredRequest, chars: number, planned: boolean, keepMs = 0): Promise<Attempt<T>> {
     if (slot.blocked || !slot.instance) return this.refuse(slot, role, "bloqueada", slot.blocked ?? "Provedor indisponível.");
@@ -475,7 +485,7 @@ class Run {
       const left = this.deadline - Date.now() - DEADLINE_SAFETY_MS;
       if (left < MIN_CALL_MS) return this.refuse(slot, role, "bloqueada", NO_TIME);
       const share = left - keepMs;
-      limit = Math.min(limit, share >= MIN_CALL_MS ? share : left);
+      limit = Math.min(limit, share >= PRIMARY_SPLIT_MIN_MS ? share : left);
     }
     const t0 = Date.now();
     const instance = slot.instance;
@@ -525,7 +535,7 @@ class Run {
   /** Principal, uma nova tentativa com o mesmo provedor e depois a reserva (uma vez). */
   async creator<T>(req: StructuredRequest, primary: Slot, fallback: Slot | null, roles: { first: Role; reserve: Role }): Promise<CreatorResult<T>> {
     const chars = req.system.length + req.input.length;
-    // com reserva pronta, a principal (e a nova tentativa) deixa o tempo mínimo da reserva dentro do prazo do pedido
+    // com reserva pronta, a principal (e a nova tentativa) deixa o tempo da reserva dentro do prazo do pedido, quando cabem as duas
     const keep = fallback && !fallback.blocked && fallback.instance ? RESERVE_KEEP_MS : 0;
     let a = await this.attempt<T>(primary, roles.first, req, chars, true, keep);
     if (a.ok === false && a.outcome === "falha" && a.retry !== false) a = await this.attempt<T>(primary, roles.first, req, chars, false, keep);
