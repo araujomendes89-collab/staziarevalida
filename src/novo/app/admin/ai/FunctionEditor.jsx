@@ -169,8 +169,9 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
       )}
       <SelectField label="Cuidado" aria-label={`Cuidado — ${label}`} value={draft.care} onChange={(e) => set({ care: e.target.value })} options={CARES} />
       <div style={subtle}>
-        Rápido: menos raciocínio, mais rápido e barato (Claude, Gemini 2.5 e 3, inclusive o Flash-Lite, e GPT-5/6). Caprichado: Claude com
-        esforço alto; Gemini e OpenAI no padrão do modelo. Os modelos de imagem do Gemini e o Ollama não mudam.
+        Rápido: menos raciocínio, mais rápido e barato (Claude, Gemini 2.5 e 3 e GPT-5/6; o Gemini 2.5 Flash-Lite deixa de pensar).
+        Caprichado: Claude com esforço alto; Gemini e OpenAI no padrão do modelo. Os Gemini 3 Flash-Lite já pensam o mínimo por padrão
+        e não mudam; os modelos de imagem do Gemini e o Ollama também não.
       </div>
 
       {localProblem && <div style={subtle}>{localProblem}</div>}

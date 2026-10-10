@@ -72,10 +72,12 @@ as IAs e salve as funções em seguida, antes de deixar o processamento trabalha
   sistema compara os campos objetivos (gabarito, área…) e marca concordância ou divergência. Divergência = "precisa de
   revisão". Os textos não são fundidos: a equipe escolhe.
 - **Cuidado:** "Rápido" ou "Caprichado" (padrão). No Claude vira o esforço (baixo/alto), só nos modelos que aceitam a opção
-  (lista da página oficial "Effort", `CLAUDE_EFFORT_MODELS`; o Haiku 4.5 não aceita). Desde 2026-10-10 (correção IA07) o
-  "Rápido" também reduz o raciocínio no Gemini (orçamento de 1.024 tokens no 2.5 Pro e no 2.5 Flash, nível baixo nos Gemini 3)
-  e na OpenAI (`reasoning_effort: "low"` nos GPT-5/6 e na série o, menos as variantes "-chat"); "Caprichado" deixa o padrão
-  desses modelos. O Gemini 2.5 Flash-Lite (que já vem sem raciocínio) e o Ollama não mudam. O Cuidado vai num campo próprio
+  (lista da página oficial "Effort", `CLAUDE_EFFORT_MODELS`; o Haiku 4.5 não aceita). Desde 2026-10-10 (correção IA07;
+  revisões rodadas 3 e 5) o "Rápido" também reduz o raciocínio no Gemini (orçamento de 1.024 tokens no 2.5 Pro e no 2.5 Flash;
+  orçamento 0, sem raciocínio, no 2.5 Flash-Lite; nível baixo nos Gemini 3) e na OpenAI (`reasoning_effort: "low"` nos GPT-5/6
+  e na série o, menos as variantes "-chat"); "Caprichado" deixa o padrão desses modelos. O "Rápido" nunca pensa mais que o
+  padrão: os Gemini 3 Flash-Lite (padrão MINIMAL, o menor nível, pela página "Thinking" do Vertex AI) ficam no padrão, como os
+  modelos de imagem do Gemini e o Ollama. O Cuidado vai num campo próprio
   (`care`) que só a Central manda: o esforço baixo que o Tutor usa não mexe no Gemini nem na OpenAI.
 - **Independência:** na linha de produção, o conferente nunca é da mesma família da criadora (nem da reserva). Ex.:
   Sonnet cria e Opus confere **não** vale. No comitê, a mesma família é permitida com o aviso "não é independente".

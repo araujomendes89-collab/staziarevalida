@@ -160,16 +160,24 @@ function geminiThinkingKind(model: string): GeminiThinkingKind | null {
   return null;
 }
 
+/** Flash-Lite (pelo nome, também com versão, prévia ou caminho na frente): pensa o mínimo ou nada por padrão. */
+const isFlashLite = (model: string) => /flash-lite/.test(String(model ?? "").trim().toLowerCase());
+
 /**
- * Cuidado no Gemini (correção IA07, 2026-10-10; revisão rodada 3): Rápido reduz o raciocínio de todos os Gemini que pensam —
- * orçamento de 1.024 tokens na família 2.5 (inclusive o Flash-Lite, que no Vertex AI pensa até 8.192), nível baixo nos Gemini 3
- * e nos apelidos "-latest" —; Caprichado usa o padrão do modelo.
+ * Cuidado no Gemini (correção IA07, 2026-10-10; revisões rodadas 3 e 5): Rápido nunca pensa mais que o padrão do modelo;
+ * Caprichado usa o padrão do modelo.
+ *   Família 2.5: orçamento de 1.024 tokens (o padrão é "Auto, até 8.192"). O 2.5 Flash-Lite recebe orçamento 0 (raciocínio
+ *     desligado): pelo AI Studio ele não pensa por padrão, e 1.024 ligaria o raciocínio; no Vertex AI ele pensa até 8.192.
+ *     Página "Thinking" do Vertex AI: "0 turns off thinking" no 2.5 Flash e no Flash-Lite; biblioteca do Google: "0 is DISABLED".
+ *   Gemini 3 e apelidos "-latest": nível baixo (LOW). Os Flash-Lite (3.1, 3.5 e o apelido gemini-flash-lite-latest) ficam no
+ *     padrão: na tabela "Supported thinking levels by model" do Vertex AI (conferida em 10/10/2026) o padrão deles é MINIMAL, o
+ *     menor nível, e LOW aumentaria o raciocínio.
  */
 export function geminiThinking(model: string, care: string | undefined): { thinkingBudget: number } | { thinkingLevel: "LOW" } | null {
   if (care !== "rapido") return null;
   const kind = geminiThinkingKind(model);
-  if (kind === "orcamento") return { thinkingBudget: 1024 };
-  if (kind === "nivel" || kind === "apelido") return { thinkingLevel: "LOW" };
+  if (kind === "orcamento") return { thinkingBudget: isFlashLite(model) ? 0 : 1024 };
+  if ((kind === "nivel" || kind === "apelido") && !isFlashLite(model)) return { thinkingLevel: "LOW" };
   return null;
 }
 
@@ -180,14 +188,14 @@ const GEMINI_MAX_OUTPUT = 65_536;
  * Folga para o raciocínio no limite de saída do Gemini (falha vista em produção, 2026-10-09). O raciocínio conta DENTRO do
  * maxOutputTokens (página oficial "Thinking": "including thought tokens"); batendo no limite, a resposta sai cortada ou vazia e
  * o raciocínio é cobrado mesmo assim. O Google cobra só o que foi gerado: a folga não encarece as respostas que dão certo.
- *   Família 2.5 (Pro, Flash, Flash-Lite e nomes com versão): o orçamento mandado no Rápido (1.024); senão o teto do raciocínio
- *     automático no Vertex AI (8.192).
+ *   Família 2.5 (Pro, Flash, Flash-Lite e nomes com versão): o orçamento mandado no Rápido (1.024; 0 no Flash-Lite, que fica sem
+ *     raciocínio); senão o teto do raciocínio automático no Vertex AI (8.192).
  *   Gemini 3 (raciocínio por nível, sem orçamento fixo) e apelidos "-latest" (podem ser 2.5 ou 3): 16.384.
  *   Modelos que não são de texto ou não pensam: nada.
  */
 export function geminiThinkingReserve(model: string, care: string | undefined): number {
   const kind = geminiThinkingKind(model);
-  if (kind === "orcamento") return care === "rapido" ? 1024 : 8192;
+  if (kind === "orcamento") return care === "rapido" ? (isFlashLite(model) ? 0 : 1024) : 8192;
   if (kind === "nivel" || kind === "apelido") return 16_384;
   return 0;
 }
