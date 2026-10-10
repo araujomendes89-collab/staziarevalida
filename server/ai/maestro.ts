@@ -6,7 +6,7 @@
  */
 import crypto from "crypto";
 import type { ContentDb } from "../contentHub/infra";
-import { AiInvalidOutput, familyOfModel, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
+import { AiInvalidOutput, familyOfModel, geminiOutputLimit, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
 import type { Schema } from "../contentHub/ai/schema";
 import {
   DEFAULT_MODELS,
@@ -140,7 +140,9 @@ export function requestDeadline(env: NodeJS.ProcessEnv, now: number): number | n
  * cota, chave recusada, modelo inexistente, pedido inválido (4xx) e tempo esgotado: esses vão direto para a reserva.
  */
 export function shouldRetrySame(e: unknown): boolean {
-  if (e instanceof AiInvalidOutput) return true;
+  // resposta cortada pelo limite de saída ou bloqueada pelo provedor se repete igual com a mesma entrada (falha vista em produção,
+  // 2026-10-09: só ~9% das segundas tentativas do Gemini deram certo): vai direto para a reserva
+  if (e instanceof AiInvalidOutput) return e.reason !== "cortada" && e.reason !== "bloqueada";
   const msg = e instanceof Error ? e.message : String(e ?? "");
   const raw = (e as { status?: unknown } | null)?.status;
   const status = typeof raw === "number" ? raw : Number(/(?:^|respondeu\s+)(\d{3})\b/.exec(msg)?.[1] ?? NaN);
@@ -217,10 +219,15 @@ function prepareSlot(deps: MaestroDeps, cfg: AiConfig, ref: ModelRef): Slot {
 
 const isPaid = (ref: ModelRef) => ref.provider !== "ollama";
 
+/** O limite de saída que de fato vai para a IA: no Gemini, o pedido mais a folga do raciocínio (geminiOutputLimit). */
+function effectiveMaxOut(ref: ModelRef, maxOut: number, care: string | undefined): number {
+  return ref.provider === "gemini" ? geminiOutputLimit(ref.model, care, maxOut) : maxOut;
+}
+
 /** Pior caso de uma chamada: Ollama 0; sem preço (só com tetos desligados) 0. */
-function estimateCall(cfg: AiConfig, slot: Slot, chars: number, maxOut: number): number {
+function estimateCall(cfg: AiConfig, slot: Slot, chars: number, maxOut: number, care?: string): number {
   if (!cfg.settings.caps_enabled || !isPaid(slot.ref) || !slot.price) return 0;
-  return estimateCostUsd(slot.price, chars, maxOut) ?? 0;
+  return estimateCostUsd(slot.price, chars, effectiveMaxOut(slot.ref, maxOut, care)) ?? 0;
 }
 
 // ------------------------------------------------------------------ uma execução (registro, tetos, chamadas)
@@ -248,6 +255,8 @@ interface PlannedCall {
   role: Role;
   chars: number;
   maxOut: number;
+  /** Cuidado da função (o Gemini soma a folga do raciocínio conforme ele). */
+  care?: string;
 }
 
 type Attempt<T> = { ok: true; res: StructuredResult<T>; cost: number } | { ok: false; outcome: Exclude<Outcome, "ok">; error: string; retry?: boolean };
@@ -331,7 +340,7 @@ class Run {
     const s = this.cfg.settings;
     if (!s.caps_enabled) return null;
     const live = items.filter((i) => !i.slot.blocked);
-    const total = live.reduce((a, i) => a + estimateCall(this.cfg, i.slot, i.chars, i.maxOut), 0);
+    const total = live.reduce((a, i) => a + estimateCall(this.cfg, i.slot, i.chars, i.maxOut, i.care), 0);
     if (s.per_run_cap_usd !== null && total > s.per_run_cap_usd) {
       return `Estimativa de US$ ${usd(total)} passa do teto por execução de US$ ${usd(s.per_run_cap_usd)}.`;
     }
@@ -355,7 +364,7 @@ class Run {
   /** Chamada prevista da criadora: a principal, ou a reserva no lugar dela quando a principal está bloqueada. */
   creatorCall(req: StructuredRequest, primary: Slot, fallback: Slot | null, roles: { first: Role; reserve: Role }): PlannedCall {
     const useReserve = !!primary.blocked && !!fallback && !fallback.blocked;
-    return { slot: useReserve ? fallback! : primary, role: useReserve ? roles.reserve : roles.first, chars: req.system.length + req.input.length, maxOut: req.maxOutputTokens ?? DEFAULT_MAX_OUT };
+    return { slot: useReserve ? fallback! : primary, role: useReserve ? roles.reserve : roles.first, chars: req.system.length + req.input.length, maxOut: req.maxOutputTokens ?? DEFAULT_MAX_OUT, care: req.care };
   }
 
   /** Núcleo da execução sozinha (usado pela função e pelo adaptador): tetos e depois principal → nova tentativa → reserva. */
@@ -374,7 +383,7 @@ class Run {
     return null;
   }
 
-  private costOf(slot: Slot, res: StructuredResult<unknown>): number {
+  private costOf(slot: Slot, res: Pick<StructuredResult<unknown>, "inputTokens" | "outputTokens" | "costUsd">): number {
     if (slot.ref.provider === "ollama") return 0;
     const c = slot.price ? costUsd(slot.price, res.inputTokens, res.outputTokens) ?? 0 : res.costUsd ?? 0;
     return Number.isFinite(c) && c > 0 ? Math.round(c * 1e6) / 1e6 : 0;
@@ -389,7 +398,7 @@ class Run {
 
   private async call<T>(slot: Slot, role: Role, req: StructuredRequest, chars: number, planned: boolean): Promise<Attempt<T>> {
     if (slot.blocked || !slot.instance) return this.refuse(slot, role, "bloqueada", slot.blocked ?? "Provedor indisponível.");
-    const refusal = this.monthlyRefusal(estimateCall(this.cfg, slot, chars, req.maxOutputTokens ?? DEFAULT_MAX_OUT), planned);
+    const refusal = this.monthlyRefusal(estimateCall(this.cfg, slot, chars, req.maxOutputTokens ?? DEFAULT_MAX_OUT, req.care), planned);
     if (refusal) return this.refuse(slot, role, "teto", refusal);
     let limit = TIMEOUT_MS;
     if (this.deadline !== null) {
@@ -408,7 +417,18 @@ class Run {
     } catch (e) {
       this.lastError = e;
       const error = errText(e);
-      this.push(slot, role, "falha", { duration_ms: Date.now() - t0, error });
+      // a resposta que falhou também é cobrada (ex.: cortada pelo limite de saída): tokens e custo vão para o registro, para o gasto
+      // do mês e para o teto desta execução (antes ficavam com custo 0)
+      const used = e instanceof AiInvalidOutput ? e.usage : undefined;
+      const cost = used ? this.costOf(slot, { inputTokens: used.inputTokens, outputTokens: used.outputTokens, costUsd: null }) : 0;
+      this.spent += cost;
+      this.push(slot, role, "falha", {
+        duration_ms: Date.now() - t0,
+        error,
+        input_tokens: Math.max(0, Math.trunc(used?.inputTokens ?? 0)),
+        output_tokens: Math.max(0, Math.trunc(used?.outputTokens ?? 0)),
+        cost_usd: cost,
+      });
       this.reason(error);
       return { ok: false, outcome: "falha", error, retry: shouldRetrySame(e) };
     }
@@ -531,7 +551,7 @@ async function runLine<T>(run: Run, req: MaestroRequest, primary: Slot, fallback
 
 async function runCommittee<T>(run: Run, req: MaestroRequest, members: Slot[]): Promise<MaestroResult<T>> {
   const chars = req.system.length + req.input.length;
-  const planned: PlannedCall[] = members.map((slot) => ({ slot, role: "membro", chars, maxOut: req.maxOutputTokens ?? DEFAULT_MAX_OUT }));
+  const planned: PlannedCall[] = members.map((slot) => ({ slot, role: "membro", chars, maxOut: req.maxOutputTokens ?? DEFAULT_MAX_OUT, care: req.care }));
   const stop = run.checkCaps(planned);
   if (stop) return finish(run, "parou_no_teto", { message: stop });
   const attempts = await Promise.all(members.map((slot) => run.attempt<T>(slot, "membro", req, chars, true)));

@@ -44,9 +44,26 @@ export interface StructuredResult<T> {
 }
 
 export class AiNotConfigured extends Error {}
+
+/** Tokens de uma resposta (também da que falhou: o provedor cobra o que gerou). */
+export interface AiUsage {
+  inputTokens: number | null;
+  outputTokens: number | null;
+}
+
+/**
+ * Por que a resposta não serviu: cortada pelo limite de saída, interrompida ou bloqueada pelo provedor, vazia (só o raciocínio)
+ * ou fora do formato. Cortada e bloqueada se repetiriam iguais na mesma IA (o maestro vai direto para a reserva).
+ */
+export type AiInvalidReason = "cortada" | "bloqueada" | "vazia" | "formato";
+
 export class AiInvalidOutput extends Error {
-  constructor(message: string, readonly raw: unknown) {
+  readonly usage?: AiUsage;
+  readonly reason?: AiInvalidReason;
+  constructor(message: string, readonly raw: unknown, extra: { usage?: AiUsage; reason?: AiInvalidReason } = {}) {
     super(message);
+    this.usage = extra.usage;
+    this.reason = extra.reason;
   }
 }
 
@@ -64,9 +81,9 @@ function price(inputTokens: number | null, outputTokens: number | null): number 
   return Math.round(((inputTokens * pin + outputTokens * pout) / 1_000_000) * 100000) / 100000;
 }
 
-function checked<T>(schema: Schema, raw: unknown): T {
+function checked<T>(schema: Schema, raw: unknown, usage?: AiUsage): T {
   const errors = validate(schema, raw);
-  if (errors.length) throw new AiInvalidOutput(`Resposta fora do formato: ${errors.slice(0, 5).join("; ")}`, raw);
+  if (errors.length) throw new AiInvalidOutput(`Resposta fora do formato: ${errors.slice(0, 5).join("; ")}`, raw, { usage, reason: "formato" });
   return raw as T;
 }
 
@@ -112,6 +129,43 @@ export function geminiThinking(model: string, care: string | undefined): { think
   return null;
 }
 
+/** Maior saída que os modelos Gemini aceitam (65.536 tokens). */
+const GEMINI_MAX_OUTPUT = 65_536;
+
+/**
+ * Folga para o raciocínio no limite de saída do Gemini (falha vista em produção, 2026-10-09). O raciocínio conta DENTRO do
+ * maxOutputTokens (página oficial "Thinking": "including thought tokens"); batendo no limite, a resposta sai cortada ou vazia e
+ * o raciocínio é cobrado mesmo assim. O Google cobra só o que foi gerado: a folga não encarece as respostas que dão certo.
+ *   2.5 Pro e 2.5 Flash: o orçamento mandado no Rápido (1.024); senão o teto do raciocínio automático no Vertex AI (8.192).
+ *   Gemini 3 (raciocínio por nível, sem orçamento fixo): 16.384.
+ *   2.5 Flash-Lite (sem raciocínio) e modelos de imagem: nada.
+ */
+export function geminiThinkingReserve(model: string, care: string | undefined): number {
+  const m = String(model ?? "").trim().toLowerCase();
+  if (m.includes("image")) return 0;
+  if (/^gemini-2\.5-(pro|flash)$/.test(m)) return care === "rapido" ? 1024 : 8192;
+  if (/^gemini-3/.test(m)) return 16_384;
+  return 0;
+}
+
+/** O limite de saída mandado ao Gemini: o pedido (padrão 4.096) mais a folga do raciocínio, até 65.536. */
+export function geminiOutputLimit(model: string, care: string | undefined, requested?: number): number {
+  return Math.min(GEMINI_MAX_OUTPUT, (requested ?? 4096) + geminiThinkingReserve(model, care));
+}
+
+/** Motivos de parada do Gemini que interrompem a resposta (o texto some ou fica pela metade), em português simples. */
+const GEMINI_STOPPED: Record<string, string> = {
+  SAFETY: "barrada pelo filtro de segurança",
+  RECITATION: "parecida demais com texto já publicado",
+  BLOCKLIST: "termo de uma lista bloqueada",
+  PROHIBITED_CONTENT: "conteúdo proibido pelas regras do provedor",
+  SPII: "dados pessoais sensíveis",
+  LANGUAGE: "idioma não aceito",
+  IMAGE_SAFETY: "barrada pelo filtro de segurança",
+  IMAGE_PROHIBITED_CONTENT: "conteúdo proibido pelas regras do provedor",
+  OTHER: "motivo não informado pelo provedor",
+};
+
 class AnthropicProvider implements AiProvider {
   readonly name = "anthropic";
   readonly isMock = false;
@@ -135,15 +189,16 @@ class AnthropicProvider implements AiProvider {
     if (res.stop_reason === "refusal") {
       throw new Error(`O provedor recusou a solicitação (${res.stop_details?.category ?? "sem categoria"}).`);
     }
-    if (res.stop_reason === "max_tokens") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null);
+    const spent: AiUsage = { inputTokens: usage?.input_tokens ?? null, outputTokens: usage?.output_tokens ?? null };
+    if (res.stop_reason === "max_tokens") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null, { usage: spent, reason: "cortada" });
     const block = (res.content as any[]).find((c) => c.type === "text");
     let raw: unknown;
     try {
       raw = JSON.parse(block?.text ?? "");
     } catch {
-      throw new AiInvalidOutput("Resposta não é JSON.", block?.text);
+      throw new AiInvalidOutput("Resposta não é JSON.", block?.text, { usage: spent, reason: "formato" });
     }
-    const output = checked<T>(req.schema, raw);
+    const output = checked<T>(req.schema, raw, spent);
     return { output, provider: this.name, model: res.model ?? this.model, inputTokens: usage?.input_tokens ?? null, outputTokens: usage?.output_tokens ?? null, latencyMs: Date.now() - t0, costUsd: price(usage?.input_tokens ?? null, usage?.output_tokens ?? null) };
   }
 }
@@ -158,6 +213,8 @@ class GeminiProvider implements AiProvider {
   async generate<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
     const t0 = Date.now();
     const thinking = geminiThinking(this.model, req.care);
+    // o raciocínio conta dentro do limite de saída: o pedido ganha a folga do raciocínio (geminiOutputLimit)
+    const limit = geminiOutputLimit(this.model, req.care, req.maxOutputTokens);
     const res = await this.client.models.generateContent({
       model: this.model,
       contents: req.input,
@@ -165,21 +222,35 @@ class GeminiProvider implements AiProvider {
         systemInstruction: req.system,
         responseMimeType: "application/json",
         responseSchema: toProviderSchema(req.schema) as any,
-        maxOutputTokens: req.maxOutputTokens ?? 4096,
+        maxOutputTokens: limit,
         ...(thinking ? { thinkingConfig: thinking as any } : {}),
       },
     });
+    // tokens lidos antes de conferir a resposta: a que falha também é cobrada e entra no registro e nos tetos
+    const u = res.usageMetadata as any;
+    const thoughts = Number(u?.thoughtsTokenCount ?? 0) || 0;
+    // O raciocínio do modelo (thoughtsTokenCount) é cobrado como saída: entra na conta, senão o gasto e os tetos ficam abaixo do real.
+    const outputTokens = u?.candidatesTokenCount == null && u?.thoughtsTokenCount == null ? null : (u?.candidatesTokenCount ?? 0) + thoughts;
+    const usage: AiUsage = { inputTokens: u?.promptTokenCount ?? null, outputTokens };
+    const text = res.text;
+    // o motivo real quando a resposta não chega inteira (antes tudo virava "Resposta não é JSON.")
+    const blocked = (res as any).promptFeedback?.blockReason;
+    if (blocked) throw new AiInvalidOutput(`O provedor bloqueou o pedido (motivo ${blocked}).`, null, { usage, reason: "bloqueada" });
+    const finish = String((res as any).candidates?.[0]?.finishReason ?? "");
+    if (finish === "MAX_TOKENS") {
+      throw new AiInvalidOutput(`Resposta cortada pelo limite de saída (raciocínio usou ${thoughts} de ${limit} tokens).`, text ?? null, { usage, reason: "cortada" });
+    }
+    if (GEMINI_STOPPED[finish]) throw new AiInvalidOutput(`O provedor interrompeu a resposta: ${GEMINI_STOPPED[finish]} (${finish}).`, text ?? null, { usage, reason: "bloqueada" });
+    if (!text && thoughts > 0) throw new AiInvalidOutput("Resposta veio só com o raciocínio, sem o texto final.", null, { usage, reason: "vazia" });
     let raw: unknown;
     try {
-      raw = JSON.parse(res.text ?? "");
+      raw = JSON.parse(text ?? "");
     } catch {
-      throw new AiInvalidOutput("Resposta não é JSON.", res.text);
+      throw new AiInvalidOutput("Resposta não é JSON.", text, { usage, reason: "formato" });
     }
-    const output = checked<T>(req.schema, raw);
-    const u = res.usageMetadata as any;
-    // O raciocínio do modelo (thoughtsTokenCount) é cobrado como saída: entra na conta, senão o gasto e os tetos ficam abaixo do real.
-    const outputTokens = u?.candidatesTokenCount == null && u?.thoughtsTokenCount == null ? null : (u?.candidatesTokenCount ?? 0) + (u?.thoughtsTokenCount ?? 0);
-    return { output, provider: this.name, model: this.model, inputTokens: u?.promptTokenCount ?? null, outputTokens, latencyMs: Date.now() - t0, costUsd: price(u?.promptTokenCount ?? null, outputTokens) };
+    const output = checked<T>(req.schema, raw, usage);
+    // o modelo registrado é o pedido (this.model): as respostas guardadas (ch_worker_cached_run) são procuradas por ele
+    return { output, provider: this.name, model: this.model, inputTokens: usage.inputTokens, outputTokens, latencyMs: Date.now() - t0, costUsd: price(usage.inputTokens, outputTokens) };
   }
 }
 

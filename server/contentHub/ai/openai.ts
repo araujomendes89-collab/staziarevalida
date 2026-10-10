@@ -7,7 +7,7 @@
  * A resposta é sempre validada pelo nosso validador de schema; fora do formato é recusada, nunca "consertada".
  */
 import { toProviderSchema } from "./schema";
-import { AiInvalidOutput, type AiProvider, type StructuredRequest, type StructuredResult } from "./provider";
+import { AiInvalidOutput, type AiProvider, type AiUsage, type StructuredRequest, type StructuredResult } from "./provider";
 import { validate } from "./schema";
 
 /**
@@ -55,17 +55,19 @@ export class OpenAIProvider implements AiProvider {
     const data = (await res.json()) as any;
     const choice = data?.choices?.[0];
     if (choice?.message?.refusal) throw new Error(`O provedor recusou a solicitação (${String(choice.message.refusal).slice(0, 120)}).`);
-    if (choice?.finish_reason === "length") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null);
+    // tokens lidos antes de conferir a resposta: a que falha também é cobrada e entra no registro e nos tetos
+    const inTok = data?.usage?.prompt_tokens ?? null;
+    const outTok = data?.usage?.completion_tokens ?? null;
+    const usage: AiUsage = { inputTokens: inTok, outputTokens: outTok };
+    if (choice?.finish_reason === "length") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null, { usage, reason: "cortada" });
     let raw: unknown;
     try {
       raw = JSON.parse(choice?.message?.content ?? "");
     } catch {
-      throw new AiInvalidOutput("Resposta não é JSON.", choice?.message?.content);
+      throw new AiInvalidOutput("Resposta não é JSON.", choice?.message?.content, { usage, reason: "formato" });
     }
     const errors = validate(req.schema, raw);
-    if (errors.length) throw new AiInvalidOutput(`Resposta fora do formato: ${errors.slice(0, 5).join("; ")}`, raw);
-    const inTok = data?.usage?.prompt_tokens ?? null;
-    const outTok = data?.usage?.completion_tokens ?? null;
+    if (errors.length) throw new AiInvalidOutput(`Resposta fora do formato: ${errors.slice(0, 5).join("; ")}`, raw, { usage, reason: "formato" });
     return { output: raw as T, provider: this.name, model: data?.model ?? this.model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: this.price(inTok, outTok) };
   }
 }
