@@ -79,6 +79,9 @@ describe("Administração — acesso", () => {
       ["app_admin_questions", {}],
       ["app_admin_import_questions", { p_questions: [question(1)] }],
       ["app_admin_save_question", { p_question: question(1) }],
+      ["app_admin_import_preview", { p_questions: [question(1)] }],
+      ["app_admin_question_review_done", { p_question_id: "revalida_2026_2_q001" }],
+      ["app_admin_set_official_answer", { p_question_id: "revalida_2026_2_q001", p_answer: "A", p_status: "FINAL", p_source: "x", p_reason: "y" }],
       ["app_admin_stations", {}],
       ["app_admin_set_station_review", { p_station_id: "st-1", p_status: "approved" }],
       ["app_admin_plans", {}],
@@ -99,6 +102,8 @@ describe("Administração — acesso", () => {
       `select public.admin_upsert_question('{}'::jsonb, true)`,
       `select public.admin_user_row('${ANA}')`,
       `select public.admin_log('x', 'y', '{}')`,
+      `select public.admin_import_merge_question('x', '{}'::jsonb)`,
+      `select public.admin_import_merge_options('[]'::jsonb, '[]'::jsonb)`,
     ]) {
       await expect(
         db.transaction(async (tx) => {
@@ -192,7 +197,7 @@ describe("Administração — questões", () => {
     const result = await rpc(EDITOR, "app_admin_import_questions", {
       p_questions: [question(1), question(2, { status: "annulled", correct_option: null }), question(3, { kind: "ENAMED", year: 2025, semester: null })],
     });
-    expect(result).toEqual({ ok: true, inserted: 3, updated: 0, skipped: 0 });
+    expect(result).toEqual({ ok: true, inserted: 3, updated: 0, skipped: 0, answer_differs: 0 });
     const rows = (await db.query<any>(`select id, code, exam_id, status, correct_option from public.questions order by code`)).rows;
     expect(rows).toEqual([
       { id: "enamed_2025_q003", code: "ENAMED-2025-Q003", exam_id: "enamed-2025", status: "valid", correct_option: "C" },
@@ -210,8 +215,8 @@ describe("Administração — questões", () => {
 
   it("reimportar pula as existentes, ou atualiza se pedido", async () => {
     const changed = question(1, { topic: "Bronquiolite viral aguda" });
-    expect(await rpc(ADMIN, "app_admin_import_questions", { p_questions: [changed, question(4)] })).toEqual({ ok: true, inserted: 1, updated: 0, skipped: 1 });
-    expect(await rpc(ADMIN, "app_admin_import_questions", { p_questions: [changed], p_update_existing: true })).toEqual({ ok: true, inserted: 0, updated: 1, skipped: 0 });
+    expect(await rpc(ADMIN, "app_admin_import_questions", { p_questions: [changed, question(4)] })).toEqual({ ok: true, inserted: 1, updated: 0, skipped: 1, answer_differs: 0 });
+    expect(await rpc(ADMIN, "app_admin_import_questions", { p_questions: [changed], p_update_existing: true })).toEqual({ ok: true, inserted: 0, updated: 1, skipped: 0, answer_differs: 0 });
     expect((await rpc(ADMIN, "app_admin_question", { p_id: "revalida_2026_2_q001" })).topic).toBe("Bronquiolite viral aguda");
   });
 
@@ -223,9 +228,14 @@ describe("Administração — questões", () => {
     expect(list.exams.map((e: any) => e.id)).toEqual(["revalida-2026-2", "enamed-2025"]);
 
     const saved = await rpc(EDITOR, "app_admin_save_question", {
-      p_question: { ...question(1), id: "revalida_2026_2_q001", status: "annulled", correct_option: "C", needs_image: true },
+      p_question: { ...question(1), id: "revalida_2026_2_q001", needs_image: true },
     });
-    expect(saved).toMatchObject({ id: "revalida_2026_2_q001", status: "annulled", needs_image: true, attempts: 0 });
+    expect(saved).toMatchObject({ id: "revalida_2026_2_q001", status: "valid", needs_image: true, attempts: 0 });
+    // situação e gabarito de questão já gravada não mudam pelo editor (…7700, Q02): só pelo registro do gabarito oficial
+    await expect(rpc(EDITOR, "app_admin_save_question", { p_question: { ...question(1), id: "revalida_2026_2_q001", status: "annulled" } })).rejects.toThrow(/registro do gabarito oficial/);
+    await expect(rpc(EDITOR, "app_admin_set_official_answer", { p_question_id: "revalida_2026_2_q001", p_answer: null, p_status: "ANNULLED", p_source: "Gabarito definitivo (teste)", p_reason: "Banca anulou." })).rejects.toThrow(/restrito a administradores/);
+    expect(await rpc(ADMIN, "app_admin_set_official_answer", { p_question_id: "revalida_2026_2_q001", p_answer: null, p_status: "ANNULLED", p_source: "Gabarito definitivo (teste)", p_reason: "Banca anulou." })).toMatchObject({ version: 1, recorrected: 0 });
+    expect((await rpc(EDITOR, "app_admin_question", { p_id: "revalida_2026_2_q001" })).status).toBe("annulled");
     await expect(rpc(EDITOR, "app_admin_save_question", { p_question: { ...question(9), id: "revalida_2026_2_q001" } })).rejects.toThrow(/não podem ser alterados/);
     await expect(rpc(EDITOR, "app_admin_save_question", { p_question: question(9, { topic: " " }) })).rejects.toThrow(/Informe o tema/);
     // questão nova pelo editor

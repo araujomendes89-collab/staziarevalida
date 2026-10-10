@@ -53,7 +53,12 @@ async function recusa(p: Promise<unknown>): Promise<{ message: string; code?: st
 }
 
 const MOTIVO_INVALIDO = { message: "Motivo inválido.", code: "22023" };
-const GABARITO_SEM_ASSISTENTE = { message: "Gabarito e situação mudam sem o assistente: salve essa mudança à parte.", code: "22023" };
+// a regra B2 virou regra para todos na …7700 (Q02): gabarito e situação de questão já gravada só pelo registro do gabarito oficial
+const GABARITO_TRAVADO = {
+  message: "Gabarito e situação de questão já gravada só mudam pelo registro do gabarito oficial (administrador, com fonte e motivo).",
+  code: "22023",
+};
+const JA_EXISTE = { message: "Essa questão já existe: abra-a para editar.", code: "22023" };
 
 const q = (extra: Record<string, unknown> = {}) => ({
   kind: "REVALIDA", year: 2024, semester: 1, number: 7, area: "PEDIATRIA", topic: "Bronquiolite", subtopic: "Manejo",
@@ -164,26 +169,33 @@ describe("Assistente das abas — motivo ao salvar a questão (migração 6100)"
     expect(await trail(saved.id)).toEqual([{ reason: "assistente de IA", changes: { topic: { de: "Bronquiolite", para: "Asma" } } }]);
   });
 
-  it("B2: com o motivo, gabarito e situação não mudam (salvar à parte, sem o assistente)", async () => {
+  it("B2 (para todos desde a …7700): gabarito e situação da questão já gravada não mudam pelo salvar, com ou sem o motivo", async () => {
     const saved = await rpc(EDITOR, "app_admin_save_question", { p_question: q({ number: 15 }) });
     const tentativas = [
       { ...q({ number: 15, correct_option: "C", topic: "Asma" }), id: saved.id },
       { ...q({ number: 15, status: "annulled", topic: "Asma" }), id: saved.id },
       { ...q({ number: 15, status: "changed_after_appeal", correct_option: "D" }), id: saved.id },
-      q({ number: 15, correct_option: "A" }), // sem id: a mesma questão, achada por prova e número
     ];
     for (const p_question of tentativas) {
-      expect(await recusa(rpc(EDITOR, "app_admin_save_question", { p_question, p_reason: "assistente de IA" }))).toEqual(GABARITO_SEM_ASSISTENTE);
+      expect(await recusa(rpc(EDITOR, "app_admin_save_question", { p_question, p_reason: "assistente de IA" }))).toEqual(GABARITO_TRAVADO);
+      expect(await recusa(rpc(EDITOR, "app_admin_save_question", { p_question }))).toEqual(GABARITO_TRAVADO);
     }
+    // sem id, a mesma questão (achada por prova e número) é recusada como já existente (Q01), com ou sem o motivo
+    expect(await recusa(rpc(EDITOR, "app_admin_save_question", { p_question: q({ number: 15, correct_option: "A" }), p_reason: "assistente de IA" }))).toEqual(JA_EXISTE);
+    expect(await recusa(rpc(EDITOR, "app_admin_save_question", { p_question: q({ number: 15, correct_option: "A" }) }))).toEqual(JA_EXISTE);
     // nada mudou
     const row = (await db.query<any>(`select correct_option, status, topic from public.questions where id = $1`, [saved.id])).rows[0];
     expect(row).toEqual({ correct_option: "B", status: "valid", topic: "Bronquiolite" });
     expect(await trail(saved.id)).toEqual([]);
     expect((await lastLog(saved.id)).action).toBe("question.inserted");
 
-    // sem o motivo, a mesma troca de gabarito passa (e a trilha fica sem motivo)
-    await rpc(EDITOR, "app_admin_save_question", { p_question: { ...q({ number: 15, correct_option: "C" }), id: saved.id } });
-    expect(await trail(saved.id)).toEqual([{ reason: null, changes: { correct_option: { de: "B", para: "C" } } }]);
+    // o caminho é o registro do gabarito oficial (administrador, com fonte e motivo); a trilha fica com o motivo dele
+    await rpc(ADMIN, "app_admin_set_official_answer", {
+      p_question_id: saved.id, p_answer: "C", p_status: "FINAL", p_source: "Gabarito definitivo (teste)", p_reason: "Conferido no edital.",
+    });
+    expect(await trail(saved.id)).toEqual([
+      { reason: "Gabarito oficial: FINAL (Gabarito definitivo (teste)). Motivo: Conferido no edital.", changes: { correct_option: { de: "B", para: "C" } } },
+    ]);
   });
 
   it("B3: na mesma transação, o motivo de um salvamento não passa para o seguinte", async () => {
