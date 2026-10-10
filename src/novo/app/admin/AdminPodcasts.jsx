@@ -1,6 +1,6 @@
 // Administração › Podcasts (equipe). Fluxo pedido em 2026-10-06: fontes (PDF, DOCX, texto, link ou uma aula) → trechos com a
 // origem → roteiro com IA (Gemini, Claude ou OpenAI; Ana e Bruno, cada fala citando os trechos) → revisão e aprovação de uma
-// pessoa da equipe → áudio (Gemini com duas vozes, ou OpenAI) → publicação pelo administrador. A IA nunca aprova nem publica.
+// pessoa da equipe → áudio (OpenAI por enquanto; Gemini com duas vozes só se ligado no servidor) → publicação pelo administrador. A IA nunca aprova nem publica.
 // Servidor: server/podcasts/router.ts; banco: supabase/migrations/…4700_podcasts.sql.
 import React from "react";
 import { useSearchParams } from "react-router-dom";
@@ -370,7 +370,8 @@ function AudioStep({ podcast, providers, lessons, onChanged }) {
   const ready = (providers?.tts ?? []).filter((p) => p.ready);
   const [provider, setProvider] = React.useState("");
   React.useEffect(() => {
-    if (!ready.some((p) => p.kind === provider)) setProvider((ready.find((p) => p.kind === "gemini") ?? ready.find((p) => p.kind !== "mock") ?? ready[0])?.kind ?? "");
+    // abre na OpenAI (a voz que vale por enquanto), mesmo que a do Gemini esteja ligada no servidor
+    if (!ready.some((p) => p.kind === provider)) setProvider((ready.find((p) => p.kind === "openai") ?? ready.find((p) => p.kind !== "mock") ?? ready[0])?.kind ?? "");
   }, [providers]); // eslint-disable-line react-hooks/exhaustive-deps
   const voiceList = providers?.voices?.[provider] ?? [];
   // vozes: o padrão do provedor, trocado só no que a pessoa escolher (sem esperar outra renderização)
@@ -422,8 +423,14 @@ function AudioStep({ podcast, providers, lessons, onChanged }) {
     }
   };
   const meta = podcast.audio_meta ?? {};
-  const ttsOptions = ready.length ? ready.map((p) => ({ value: p.kind, label: `${p.label}${p.model && p.kind !== "mock" ? ` · ${p.model}` : ""}` })) : [{ value: "", label: providers ? "Nenhuma voz pronta no servidor" : "Carregando…" }];
   const unavailable = (providers?.tts ?? []).filter((p) => !p.ready && p.kind !== "mock");
+  // as vozes prontas são escolhíveis; as indisponíveis (ex.: Gemini desligado) aparecem travadas, com o motivo embaixo
+  const ttsOptions = [
+    ...(ready.length ? [] : [{ value: "", label: providers ? "Nenhuma voz pronta no servidor" : "Carregando…" }]),
+    ...(providers?.tts ?? []).filter((p) => p.ready || p.kind !== "mock").map((p) =>
+      p.ready ? { value: p.kind, label: `${p.label}${p.model && p.kind !== "mock" ? ` · ${p.model}` : ""}` } : { value: p.kind, label: `${String(p.label).split(" (")[0]} — indisponível por enquanto`, disabled: true }
+    ),
+  ];
 
   if (!podcast.approved_at) return <Muted>O áudio só é gerado depois que uma pessoa da equipe aprovar o roteiro.</Muted>;
   return (

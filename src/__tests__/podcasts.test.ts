@@ -16,7 +16,7 @@ import { devContentDb, localStorageDir, type ContentDb, type Storage } from "../
 import { createPodcastsRouter, type PodcastsDeps } from "../../server/podcasts/router";
 import { chunkPages, fetchLink, htmlToText, privateAddress } from "../../server/podcasts/extract";
 import { checkScript, mockScriptFromInput, buildScriptInput, ungroundedNumbers, type PodcastScript } from "../../server/podcasts/script";
-import { pcmToMp3, pickVoices, silence, splitParts, toPcm, SAMPLE_RATE } from "../../server/podcasts/audio";
+import { pcmToMp3, pickVoices, silence, splitParts, synthesizePart, toPcm, ttsStatus, SAMPLE_RATE } from "../../server/podcasts/audio";
 import { AiInvalidOutput } from "../../server/contentHub/ai/provider";
 
 // ler PDF e DOCX carrega bibliotecas grandes na primeira vez (lento no disco externo): mais tempo por teste
@@ -27,15 +27,18 @@ const ADMIN = "00000000-0000-4000-8000-0000000000ad";
 const EDITOR = "00000000-0000-4000-8000-0000000000e1";
 const STUDENT = "00000000-0000-4000-8000-0000000000b1";
 const GEMINI_KEY = "g".repeat(40);
+const OPENAI_KEY = "o".repeat(40);
 let dev: DevDatabase;
 let db: ContentDb;
 const servers: Server[] = [];
 let base: string; // voz simulada
-let gem: string; // Gemini com rede simulada
+let gem: string; // Gemini ligada (PODCAST_TTS_GEMINI_ENABLED=1) com rede simulada
+let oa: string; // padrão: OpenAI com rede simulada; Gemini com chave, mas desligada
 let admin: string, editor: string, student: string;
 let lessonId: string;
 let podcastId: string;
 const geminiCalls: any[] = [];
+const oaCalls: any[] = []; // tudo o que o servidor "oa" tentou chamar (OpenAI ou Gemini)
 
 const files = localStorageDir(path.join(tmp, "podcasts"));
 const lessonFiles = localStorageDir(path.join(tmp, "lessons"));
@@ -145,10 +148,23 @@ beforeAll(async () => {
     lessons: lessonFiles,
     mockScript,
     tts: {
-      env: { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", GEMINI_API_KEY: GEMINI_KEY },
+      env: { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", GEMINI_API_KEY: GEMINI_KEY, PODCAST_TTS_GEMINI_ENABLED: "1" },
       fetchImpl: (async (url: string, init: any) => {
         geminiCalls.push({ url, headers: init.headers, body: JSON.parse(init.body) });
         return new Response(JSON.stringify({ steps: [{ content: [{ type: "audio", data: wav(1500).toString("base64") }] }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }) as any,
+    },
+  });
+  oa = await listen({
+    db,
+    storage: files,
+    lessons: lessonFiles,
+    mockScript,
+    tts: {
+      env: { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", GEMINI_API_KEY: GEMINI_KEY, OPENAI_API_KEY: OPENAI_KEY },
+      fetchImpl: (async (url: string, init: any) => {
+        oaCalls.push({ url, headers: init.headers, body: JSON.parse(init.body) });
+        return new Response(silence(400), { status: 200, headers: { "Content-Type": "application/octet-stream" } });
       }) as any,
     },
   });
@@ -207,6 +223,27 @@ describe("Peças do servidor (sem rede)", () => {
     expect(mp3[1] & 0xe0).toBe(0xe0);
     expect(pickVoices("gemini", { ana: "Kore", bruno: "voz-inventada" })).toEqual({ ana: "Kore", bruno: "Puck" });
     expect(pickVoices("openai", null)).toEqual({ ana: "marin", bruno: "cedar" });
+  });
+
+  it("voz: a OpenAI é a que vale; a do Gemini só liga com PODCAST_TTS_GEMINI_ENABLED=1 e é recusada antes de qualquer chamada", async () => {
+    const env = { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", GEMINI_API_KEY: GEMINI_KEY, OPENAI_API_KEY: OPENAI_KEY };
+    // Gemini com chave e autorização, mas sem a variável: não fica pronta e o motivo é claro
+    const off = ttsStatus("gemini", env);
+    expect(off).toMatchObject({ ready: false, kind: "gemini" });
+    expect(off.pending).toMatch(/indisponível por enquanto/);
+    expect(off.pending).toContain("PODCAST_TTS_GEMINI_ENABLED=1");
+    expect(ttsStatus("gemini", { ...env, PODCAST_TTS_GEMINI_ENABLED: "0" }).ready).toBe(false);
+    expect(ttsStatus("gemini", { ...env, PODCAST_TTS_GEMINI_ENABLED: "true" }).ready).toBe(false);
+    // ligada: volta como antes (e, sem a chave, o motivo volta a ser a chave)
+    expect(ttsStatus("gemini", { ...env, PODCAST_TTS_GEMINI_ENABLED: "1" })).toEqual({ ready: true, kind: "gemini", model: "gemini-3.8-flash-tts", pending: null });
+    expect(ttsStatus("gemini", { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", PODCAST_TTS_GEMINI_ENABLED: "1" }).pending).toMatch(/Chave do Gemini ausente/);
+    // OpenAI segue pronta, com o modelo padrão
+    expect(ttsStatus("openai", env)).toEqual({ ready: true, kind: "openai", model: "gpt-4o-mini-tts", pending: null });
+    // a geração recusa a Gemini desligada sem chamar ninguém
+    const fetchImpl = vi.fn();
+    const lines = [{ speaker: "ANA" as const, text: "Olá!", style: "", sources: [] }];
+    await expect(synthesizePart("gemini", lines, pickVoices("gemini", null), { env, fetchImpl: fetchImpl as any })).rejects.toMatchObject({ status: 503, message: expect.stringContaining("PODCAST_TTS_GEMINI_ENABLED=1") });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it("links: só https, nada da rede interna, página vira texto sem menu nem script", async () => {
@@ -436,6 +473,43 @@ describe("Áudio em partes, publicação e Flashcast", () => {
     expect(c.body.input[0].content[1].annotations[0]).toMatchObject({ type: "speech_metadata", speaker: "Bruno" });
     expect(JSON.stringify(fin.body)).not.toContain(GEMINI_KEY);
     const ledger = await dev.db.query<any>(`select provider, model, duration_seconds, estimated_cost_usd from public.ai_usage_ledger where feature = 'podcast_tts'`);
+    expect(ledger.rows).toHaveLength(1);
+    expect(Number(ledger.rows[0].estimated_cost_usd)).toBeGreaterThan(0);
+    // o áudio anterior foi substituído e apagado
+    expect(await files.exists(before)).toBe(false);
+    expect(await files.exists(fin.body.audio_path)).toBe(true);
+  });
+
+  it("voz padrão é a OpenAI (rede simulada): sem 'provider' usa a OpenAI; a Gemini desligada é recusada sem chamar ninguém; ligada, aparece pronta", async () => {
+    const provs = (await call(`${oa}/providers`, editor)).body;
+    expect(provs.tts.map((p: any) => p.kind)).toEqual(["openai", "gemini", "mock"]);
+    expect(provs.tts.find((p: any) => p.kind === "openai")).toMatchObject({ ready: true, model: "gpt-4o-mini-tts", pending: null });
+    expect(provs.tts.find((p: any) => p.kind === "gemini")).toMatchObject({ ready: false, pending: expect.stringContaining("indisponível por enquanto") });
+    expect((await call(`${gem}/providers`, editor)).body.tts.find((p: any) => p.kind === "gemini")).toMatchObject({ ready: true, pending: null });
+
+    const refused = await post(`${oa}/${podcastId}/audio/start`, editor, { provider: "gemini" });
+    expect(refused.status).toBe(503);
+    expect(refused.body.error).toMatch(/Voz indisponível.*indisponível por enquanto/);
+    expect(oaCalls).toHaveLength(0);
+
+    const before = (await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId })).audio_path;
+    const start = await post(`${oa}/${podcastId}/audio/start`, editor, { voices: { ana: "coral", bruno: "voz-inventada" } });
+    expect(start.status).toBe(200);
+    expect(start.body).toMatchObject({ provider: "openai", model: "gpt-4o-mini-tts", voices: { ana: "coral", bruno: "cedar" }, lines: 5 });
+    for (let i = 0; i < start.body.parts; i++) expect((await post(`${oa}/${podcastId}/audio/part`, editor, { job: start.body.job, index: i })).status).toBe(200);
+    const fin = await post(`${oa}/${podcastId}/audio/finish`, editor, { job: start.body.job });
+    expect(fin.status).toBe(200);
+    expect(fin.body.audio_meta).toMatchObject({ provider: "openai", model: "gpt-4o-mini-tts", voices: { ana: "coral", bruno: "cedar" } });
+    expect(oaCalls).toHaveLength(5); // uma chamada por fala, todas na OpenAI
+    for (const c of oaCalls) {
+      expect(c.url).toBe("https://api.openai.com/v1/audio/speech");
+      expect(c.headers.Authorization).toBe(`Bearer ${OPENAI_KEY}`);
+      expect(c.body).toMatchObject({ model: "gpt-4o-mini-tts", response_format: "pcm" });
+      expect(JSON.stringify(c.body)).not.toContain(OPENAI_KEY);
+    }
+    expect(oaCalls.map((c) => c.body.voice)).toEqual(["coral", "cedar", "coral", "cedar", "coral"]);
+    expect(JSON.stringify(fin.body)).not.toContain(OPENAI_KEY);
+    const ledger = await dev.db.query<any>(`select provider, model, estimated_cost_usd from public.ai_usage_ledger where feature = 'podcast_tts' and provider = 'openai'`);
     expect(ledger.rows).toHaveLength(1);
     expect(Number(ledger.rows[0].estimated_cost_usd)).toBeGreaterThan(0);
     // o áudio anterior foi substituído e apagado

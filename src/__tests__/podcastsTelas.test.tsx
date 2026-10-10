@@ -32,7 +32,7 @@ const LOCKED_CHOICES = { ...SCRIPT_CHOICES, override_allowed: false, configured:
 const PROVIDERS = {
   script: SCRIPT_CHOICES,
   tts: [
-    { kind: "gemini", label: "Gemini (duas vozes na mesma conversa)", ready: false, model: "gemini-3.8-flash-tts", pending: "Chave do Gemini ausente no servidor." },
+    { kind: "gemini", label: "Gemini (duas vozes na mesma conversa)", ready: false, model: "gemini-3.8-flash-tts", pending: "indisponível por enquanto (desligada no servidor; PODCAST_TTS_GEMINI_ENABLED=1 liga)." },
     { kind: "openai", label: "OpenAI (uma voz por fala)", ready: true, model: "gpt-4o-mini-tts", pending: null },
   ],
   voices: { gemini: ["Sulafat", "Puck"], openai: ["marin", "cedar", "coral"] },
@@ -113,6 +113,30 @@ describe("Administração › Podcasts", () => {
     renderAdmin("editor", episode({ status: "draft", script: null, script_meta: {} }));
     expect(await screen.findByText(/IA definida na Central de IAs: Claude claude-sonnet-5-5/)).toBeTruthy();
     expect(screen.queryByLabelText("IA do roteiro")).toBeNull();
+  });
+
+  it("o seletor de voz abre na OpenAI, mesmo com o Gemini ligado; desligado, o Gemini aparece como indisponível por enquanto", async () => {
+    // Gemini ligado e pronto: a OpenAI continua sendo a escolhida na abertura
+    fetchMock.mockImplementation(async (url: string) =>
+      url.endsWith("/api/podcasts/providers")
+        ? new Response(JSON.stringify({ ...PROVIDERS, tts: PROVIDERS.tts.map((p) => ({ ...p, ready: true, pending: null })) }), { status: 200, headers: { "Content-Type": "application/json" } })
+        : new Response("{}", { status: 404 })
+    );
+    const { unmount } = renderAdmin("admin", episode({ status: "approved", approved_at: "2026-10-06T13:00:00Z", approved_by_name: "Editora", approval_note: "Conferido.", audio_path: null }));
+    await waitFor(() => expect((screen.getByLabelText("Voz") as HTMLSelectElement).value).toBe("openai"));
+    expect((screen.getByLabelText("Voz da Ana") as HTMLSelectElement).value).toBe("marin");
+    expect((screen.getByLabelText("Voz do Bruno") as HTMLSelectElement).value).toBe("cedar");
+    unmount();
+    cleanup();
+    // Gemini desligado: continua na OpenAI, a opção do Gemini fica travada e o motivo aparece embaixo
+    fetchMock.mockImplementation(async (url: string) => (url.endsWith("/api/podcasts/providers") ? new Response(JSON.stringify(PROVIDERS), { status: 200, headers: { "Content-Type": "application/json" } }) : new Response("{}", { status: 404 })));
+    renderAdmin("admin", episode({ status: "approved", approved_at: "2026-10-06T13:00:00Z", approved_by_name: "Editora", approval_note: "Conferido.", audio_path: null }));
+    await waitFor(() => expect((screen.getByLabelText("Voz") as HTMLSelectElement).value).toBe("openai"));
+    const gemini = Array.from((screen.getByLabelText("Voz") as HTMLSelectElement).options).find((o) => o.value === "gemini")!;
+    expect(gemini.disabled).toBe(true);
+    expect(gemini.textContent).toBe("Gemini — indisponível por enquanto");
+    expect(screen.getByText(/Gemini: indisponível por enquanto/)).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Gerar áudio" }) as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("aprovar exige escrever o que foi conferido; o editor não publica", async () => {
