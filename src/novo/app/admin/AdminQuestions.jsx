@@ -23,9 +23,14 @@ const OFFICIAL_STATUS = [
 ];
 const OFFICIAL_LABEL = { PRELIMINARY: "preliminar", FINAL: "definitivo", CHANGED_AFTER_APPEAL: "alterado após recurso", ANNULLED: "anulada pela banca", UNKNOWN: "sem informação" };
 const LOCKED_TEXT = "Gabarito e situação só mudam pelo registro do gabarito oficial (administrador, com fonte e motivo).";
-// campos marcados para revisão depois da troca de gabarito → nome na tela
-const REVIEW_LABEL = (campo) =>
-  /^explanation_[A-D]$/.test(campo) ? `Explicação da ${campo.slice(-1)}` : { expected_conduct: "Conduta esperada", analise: "Análise publicada (volta com nova análise aprovada)" }[campo] ?? campo;
+// campos marcados para revisão depois da troca de gabarito → nome na tela (em questão anulada a análise não volta: ela
+// aponta uma alternativa como a correta)
+const REVIEW_LABEL = (campo, annulled) =>
+  /^explanation_[A-D]$/.test(campo)
+    ? `Explicação da ${campo.slice(-1)}`
+    : { expected_conduct: "Conduta esperada", analise: annulled ? "Análise publicada (não aparece ao aluno em questão anulada)" : "Análise publicada (volta com nova análise aprovada)" }[campo] ?? campo;
+// gabarito da marca de revisão: a letra ou "ANULADA" (anular também muda o gabarito)
+const REVIEW_ANSWER = (value) => (value === "ANULADA" ? "anulada pela banca" : value ?? "sem gabarito");
 const codesText = (list, max = 20) => list.slice(0, max).join("; ") + (list.length > max ? ` e mais ${list.length - max}` : "");
 
 // ---------------------------------------------------------------- editor
@@ -282,7 +287,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
             </Button>
           }
         >
-          {`O gabarito mudou de ${review.de ?? "sem gabarito"} para ${review.para ?? "sem gabarito"}. Revise: ${(review.campos ?? []).map(REVIEW_LABEL).join(", ")}. Até lá, o aluno não vê esses textos.`}
+          {`O gabarito mudou de ${REVIEW_ANSWER(review.de)} para ${REVIEW_ANSWER(review.para)}. Revise: ${(review.campos ?? []).map((c) => REVIEW_LABEL(c, review.para === "ANULADA")).join(", ")}. Até lá, o aluno não vê esses textos.`}
         </Banner>
       )}
       {reviewState.error && <Banner tone="danger">{reviewState.error}</Banner>}

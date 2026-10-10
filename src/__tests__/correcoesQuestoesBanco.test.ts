@@ -4,7 +4,7 @@
  *   Q01: "Nova questão" com a mesma prova e número de uma já gravada é recusada (nunca grava por cima).
  *   Q02: gabarito e situação de questão já gravada não mudam pelo salvar; só pelo registro do gabarito oficial
  *        (administrador, com fonte e motivo), que recorrige as respostas antigas e sinaliza as explicações que
- *        contradizem o novo gabarito (o aluno não as vê até a revisão).
+ *        contradizem o novo gabarito, também ao anular (nem a correção do aluno nem o Tutor as recebem até a revisão).
  *   Q03: importar com "atualizar as que já existem" só troca o que veio preenchido, nunca gabarito nem situação, e a
  *        prévia diz antes quantas perderiam comentário.
  *   Q04: questão anulada sem gabarito numa sessão em andamento não trava o simulado nem o treino, e não conta como
@@ -76,6 +76,18 @@ const attempts = async (number: number) =>
 const official = (extra: Record<string, unknown>) => ({
   p_answer: null, p_status: "FINAL", p_source: "Gabarito oficial definitivo INEP 2024/1 (teste)", p_reason: "Conferido no edital.", ...extra,
 });
+
+/** Análise SQIE publicada, feita com o gabarito gravado agora (como o processamento anota). Devolve o id. */
+const analysis = async (number: number, core: string, version = 1) =>
+  (
+    await sql<any>(
+      `insert into public.question_analysis (question_id, version, question_core, basis_hash, status, official_answer_at_analysis)
+       select q.id, $2, $3, 'x', 'published', q.correct_option from public.questions q where q.id = $1 returning id`,
+      [idOf(number), version, core]
+    )
+  )[0].id as string;
+/** O que o Tutor do aluno recebe da questão (tutor_truth é interna: só o servidor a chama). */
+const truth = async (number: number, level = "full") => (await sql<any>(`select public.tutor_truth($1, $2) t`, [idOf(number), level]))[0].t;
 
 beforeAll(async () => {
   db = new PGlite();
@@ -209,14 +221,100 @@ describe("Q02 — gabarito e situação: só pelo registro do gabarito oficial",
     expect(q5.official).toMatchObject({ answer: "C", answer_status: "CHANGED_AFTER_APPEAL", version: 1, source: "Gabarito pós-recurso INEP 2024/1 (teste)" });
   });
 
-  it("anular pelo registro: a questão fica anulada e a resposta anterior não vira acerto nem erro", async () => {
-    await rpc(EDITOR, "app_admin_save_question", { p_question: q(6, { options: explanations({ B: "B é a correta." }) }) });
+  it("anular pelo registro: a questão fica anulada, a resposta anterior não vira acerto nem erro e as explicações saem do aluno e do Tutor até a revisão", async () => {
+    await rpc(EDITOR, "app_admin_save_question", { p_question: q(6, { options: explanations({ B: "B é a correta.", A: "A está errada." }) }) });
     const ana = await session(ANA, "questoes", [6]);
     await answer(ANA, ana, 6, "B");
+    await analysis(6, "Análise feita para a B.");
+    expect((await rpc(ANA, "app_question_commentary", { p_question_id: idOf(6) }))?.question_core).toBe("Análise feita para a B.");
+
     const done = await rpc(ADMIN, "app_admin_set_official_answer", { p_question_id: idOf(6), ...official({ p_status: "ANNULLED", p_reason: "Banca anulou a questão." }) });
-    expect(done).toMatchObject({ recorrected: 0, review: null });
-    expect(await row(6)).toMatchObject({ status: "annulled", explanations_review: null });
-    expect(await rpc(ANA, "practice_correction_view", { p_question_id: idOf(6), p_selected: "B" })).toMatchObject({ annulled: true, is_correct: null });
+    // anular guarda a letra antiga (decisão 7), mas toda explicação foi escrita supondo a B como a única correta
+    expect(done).toMatchObject({ recorrected: 0, review: { de: "B", para: "ANULADA", campos: ["analise", "expected_conduct", "explanation_A", "explanation_B"] } });
+    expect(await row(6)).toMatchObject({ status: "annulled", correct_option: "B" });
+    expect(await rpc(ANA, "practice_correction_view", { p_question_id: idOf(6), p_selected: "B" })).toMatchObject({
+      annulled: true, is_correct: null, explanation: null, option_notes: [], expected_conduct: null, in_review: true,
+    });
+    expect(await rpc(ANA, "app_question_commentary", { p_question_id: idOf(6) })).toBeNull();
+    const t = await truth(6);
+    expect(t.options.map((o: any) => o.explanation)).toEqual([null, null, null, null]);
+    expect(t).toMatchObject({ expected_conduct: null, analysis: null });
+
+    // revisadas: os textos reescritos voltam; a análise não volta (ela aponta uma alternativa como a correta, e o
+    // processamento não analisa questão anulada)
+    await rpc(EDITOR, "app_admin_save_question", {
+      p_question: { ...q(6, { status: "annulled", options: explanations({ A: "A e B são defensáveis: a banca anulou." }), expected_conduct: "Questão anulada." }), id: idOf(6) },
+    });
+    await rpc(EDITOR, "app_admin_question_review_done", { p_question_id: idOf(6) });
+    expect(await rpc(ANA, "practice_correction_view", { p_question_id: idOf(6), p_selected: "B" })).toMatchObject({
+      option_notes: [{ id: "A", text: "A e B são defensáveis: a banca anulou." }], expected_conduct: "Questão anulada.", in_review: false,
+    });
+    expect(await rpc(ANA, "app_question_commentary", { p_question_id: idOf(6) })).toBeNull();
+    expect((await truth(6)).analysis).toBeNull();
+    await sql(`update public.question_analysis set is_current = false where question_id = $1`, [idOf(6)]);
+    await analysis(6, "Análise nova, ainda apontando a B.", 2);
+    expect(await rpc(ANA, "app_question_commentary", { p_question_id: idOf(6) })).toBeNull();
+    expect((await truth(6)).analysis).toBeNull();
+  });
+
+  it("desfazer a anulação também marca todas as explicações e recorrige as respostas", async () => {
+    await rpc(EDITOR, "app_admin_save_question", {
+      p_question: q(9, { status: "annulled", correct_option: null, options: explanations({ A: "Anulada: A e C defensáveis.", C: "Anulada." }) }),
+    });
+    const ana = await session(ANA, "questoes", [9]);
+    await answer(ANA, ana, 9, "C");
+    const done = await rpc(ADMIN, "app_admin_set_official_answer", { p_question_id: idOf(9), ...official({ p_answer: "C", p_reason: "Banca reviu a anulação." }) });
+    expect(done).toMatchObject({ recorrected: 1, review: { de: "ANULADA", para: "C", campos: ["expected_conduct", "explanation_A", "explanation_C"] } });
+    expect(await row(9)).toMatchObject({ status: "valid", correct_option: "C" });
+    expect(await rpc(ANA, "practice_correction_view", { p_question_id: idOf(9), p_selected: "C" })).toMatchObject({
+      annulled: false, is_correct: true, explanation: null, option_notes: [], expected_conduct: null, in_review: true,
+    });
+  });
+
+  it("o Tutor do aluno recebe o mesmo que a correção: sem as explicações, a conduta e a análise feitas para o gabarito antigo, até a revisão", async () => {
+    await rpc(EDITOR, "app_admin_save_question", {
+      p_question: q(8, { options: explanations({ B: "B e a correta: suporte.", A: "A esta errada." }), expected_conduct: "Conduta da B." }),
+    });
+    const ana = await session(ANA, "questoes", [8]);
+    await answer(ANA, ana, 8, "A");
+    const a = await analysis(8, "Analise feita para B.");
+    await sql(
+      `insert into public.question_option_analysis (analysis_id, question_id, option_id, is_official_correct, distractor_kind, reasoning, why_wrong, trap)
+       values ($1, $2, 'A', false, 'WRONG', 'A nao trata a causa.', 'A nao e a conduta.', 'Armadilha da A.'),
+              ($1, $2, 'B', true, 'CORRECT', 'B e a conduta.', null, null)`,
+      [a, idOf(8)]
+    );
+    await sql(
+      `insert into public.question_update_cards (question_id, version, temporal_status, impact_level, official_answer, current_answer, what_changed, reviewed_by)
+       values ($1, 1, 'UPDATED_BUT_SAME_ANSWER', 'COMMENT_ONLY', 'B', 'B', 'A diretriz nova manteve a conduta da B.', $2)`,
+      [idOf(8), ADMIN]
+    );
+    const antes = await truth(8);
+    expect(antes.options.find((o: any) => o.id === "B").explanation).toBe("B e a correta: suporte.");
+    expect(antes).toMatchObject({ official_answer: "B", expected_conduct: "Conduta da B.", analysis: { question_core: "Analise feita para B." }, update_card: { official_answer: "B" } });
+    expect(await rpc(ANA, "app_attempt_diagnosis", { p_question_id: idOf(8) })).toMatchObject({ selected: "A", diagnosed: true, trap: "Armadilha da A." });
+
+    await rpc(ADMIN, "app_admin_set_official_answer", {
+      p_question_id: idOf(8), ...official({ p_answer: "C", p_status: "CHANGED_AFTER_APPEAL", p_reason: "Recurso aceito pela banca." }),
+    });
+    for (const level of ["hint", "full"]) {
+      const t = await truth(8, level);
+      expect(t.official_answer).toBe("C");
+      expect(t.options.map((o: any) => [o.id, o.explanation])).toEqual([["A", "A esta errada."], ["B", null], ["C", null], ["D", null]]);
+      expect(t.expected_conduct).toBeNull();
+    }
+    expect(await truth(8)).toMatchObject({ analysis: null, update_card: null });
+    // o diagnóstico do erro também vinha da análise feita para a B
+    expect(await rpc(ANA, "app_attempt_diagnosis", { p_question_id: idOf(8) })).toMatchObject({ selected: "A", diagnosed: false, trap: null });
+
+    // revisadas: as explicações e a conduta reescritas voltam; a análise e o cartão feitos para a B, não
+    await rpc(EDITOR, "app_admin_save_question", {
+      p_question: { ...q(8, { correct_option: "C", status: "changed_after_appeal", options: explanations({ C: "C e a correta depois do recurso.", A: "A esta errada." }), expected_conduct: "Conduta da C." }), id: idOf(8) },
+    });
+    await rpc(EDITOR, "app_admin_question_review_done", { p_question_id: idOf(8) });
+    const depois = await truth(8);
+    expect(depois.options.find((o: any) => o.id === "C").explanation).toBe("C e a correta depois do recurso.");
+    expect(depois).toMatchObject({ expected_conduct: "Conduta da C.", analysis: null, update_card: null });
   });
 
   it("a análise publicada feita para o gabarito antigo sai do aluno até haver nova análise", async () => {
@@ -294,6 +392,53 @@ describe("Q03 — importação: atualiza só o que veio preenchido, nunca gabari
     // importando de verdade, a explicação preenchida no arquivo troca a gravada
     await rpc(EDITOR, "app_admin_import_questions", { p_questions: [items[0]], p_update_existing: true });
     expect((await row(20)).options.find((o: any) => o.id === "B").explanation).toBe("Outra explicação da B.");
+  });
+
+  it("anulada pelo registro oficial e ANULADA no arquivo: não é gabarito diferente, e o texto corrigido é gravado", async () => {
+    await rpc(EDITOR, "app_admin_import_questions", { p_questions: [full(25)] });
+    await rpc(ADMIN, "app_admin_set_official_answer", { p_question_id: idOf(25), ...official({ p_status: "ANNULLED", p_reason: "Banca anulou a questão." }) });
+    expect(await row(25)).toMatchObject({ status: "annulled", correct_option: "B" }); // anular guarda a letra antiga
+    const file = bare(25, { status: "annulled", correct_option: null, topic: "Bronquiolite viral aguda" });
+    expect(await rpc(EDITOR, "app_admin_import_preview", { p_questions: [file] })).toEqual({ new: 0, existing: 1, lose_comment: [], answer_differs: [] });
+    expect(await rpc(EDITOR, "app_admin_import_questions", { p_questions: [file], p_update_existing: true })).toEqual({
+      ok: true, inserted: 0, updated: 1, skipped: 0, answer_differs: 0,
+    });
+    expect(await row(25)).toMatchObject({ topic: "Bronquiolite viral aguda", status: "annulled", correct_option: "B" });
+    // anulada de um lado só continua diferente
+    expect((await rpc(EDITOR, "app_admin_import_preview", { p_questions: [bare(25)] })).answer_differs).toEqual([
+      { index: 1, code: "REV-2024.1-Q025", stored: "ANULADA", file: "B" },
+    ]);
+  });
+
+  it("'cita figura' marcada ou desmarcada pela equipe só muda quando o arquivo trouxe a coluna imagem preenchida", async () => {
+    await rpc(EDITOR, "app_admin_import_questions", { p_questions: [full(27)] });
+    const mark = (value: boolean) => rpc(EDITOR, "app_admin_save_question", { p_question: { ...full(27, { needs_image: value }), id: idOf(27) } });
+    const update = (extra: Record<string, unknown>) =>
+      rpc(EDITOR, "app_admin_import_questions", { p_questions: [bare(27, extra)], p_update_existing: true });
+    // marcada à mão; sem a coluna imagem, a planilha manda o palpite tirado do enunciado (aqui, falso)
+    await mark(true);
+    expect(await update({ needs_image: false })).toMatchObject({ updated: 1 });
+    expect((await row(27)).needs_image).toBe(true);
+    // o inverso: desmarcada à mão, o palpite (verdadeiro) não a tira dos treinos
+    await mark(false);
+    await update({ needs_image: true });
+    expect((await row(27)).needs_image).toBe(false);
+    // com a coluna imagem preenchida, vale o arquivo
+    await update({ needs_image: true, needs_image_declared: true });
+    expect((await row(27)).needs_image).toBe(true);
+    await update({ needs_image: false, needs_image_declared: true });
+    expect((await row(27)).needs_image).toBe(false);
+  });
+
+  it("a prévia diz a situação quando ela difere (alterada após recurso com a mesma letra)", async () => {
+    await rpc(EDITOR, "app_admin_import_questions", { p_questions: [full(26)] });
+    await rpc(ADMIN, "app_admin_set_official_answer", {
+      p_question_id: idOf(26), ...official({ p_answer: "C", p_status: "CHANGED_AFTER_APPEAL", p_reason: "Recurso aceito pela banca." }),
+    });
+    const preview = await rpc(EDITOR, "app_admin_import_preview", {
+      p_questions: [bare(26, { correct_option: "C" }), bare(26, { correct_option: "C", status: "changed_after_appeal" })],
+    });
+    expect(preview.answer_differs).toEqual([{ index: 1, code: "REV-2024.1-Q026", stored: "C (alterada após recurso)", file: "C" }]);
   });
 });
 

@@ -104,6 +104,9 @@ describe("Administração — acesso", () => {
       `select public.admin_log('x', 'y', '{}')`,
       `select public.admin_import_merge_question('x', '{}'::jsonb)`,
       `select public.admin_import_merge_options('[]'::jsonb, '[]'::jsonb)`,
+      `select public.admin_import_answer_label('B', 'valid')`,
+      `select public.question_analysis_fits('x', 'B')`,
+      `select public.tutor_truth('x', 'full')`,
     ]) {
       await expect(
         db.transaction(async (tx) => {

@@ -6,13 +6,16 @@
 --        editar."); antes gravava por cima (texto, alternativas, gabarito e comentários).
 --   Q02  Gabarito e situação de questão já gravada não mudam pelo salvar nem pela importação, para ninguém. O caminho é
 --        o registro do gabarito oficial (app_admin_set_official_answer, só administrador), agora com fonte E motivo
---        obrigatórios. Quando a letra muda:
---          - as respostas antigas dos alunos daquela questão são recorrigidas (question_attempts.is_correct);
+--        obrigatórios. Quando a letra muda, as respostas antigas dos alunos daquela questão são recorrigidas
+--        (question_attempts.is_correct). Quando o gabarito muda (outra letra, ou a questão é anulada ou deixa de ser):
 --          - as explicações escritas para o gabarito antigo ficam marcadas para revisão (questions.explanations_review)
---            e o aluno não as vê até a equipe marcar como revisadas (app_admin_question_review_done);
---          - a análise publicada (SQIE) feita para o gabarito antigo sai do aluno até haver nova análise.
+--            e o aluno não as vê, nem na correção nem no Tutor, até a equipe marcar como revisadas
+--            (app_admin_question_review_done); anular marca todas as preenchidas;
+--          - a análise publicada (SQIE) e o cartão de atualização feitos para o gabarito antigo saem do aluno (correção,
+--            Tutor e diagnóstico do erro) até haver nova análise; em questão anulada, a análise não sai.
 --   Q03  Importar com "atualizar as que já existem" só troca os campos que vieram preenchidos; nunca gabarito nem
---        situação (a linha com gabarito ou situação diferente não muda nada e é contada à parte). A prévia
+--        situação (a linha com gabarito ou situação diferente não muda nada e é contada à parte; anulada dos dois lados
+--        não é diferença); "cita figura" só troca com a coluna imagem preenchida no arquivo. A prévia
 --        (app_admin_import_preview) diz antes quantas são novas, quantas perderiam comentário e quantas têm gabarito
 --        diferente, sem gravar nada.
 --   Q04  Questão anulada sem gabarito numa sessão em andamento não trava o simulado nem o treino: a resposta é aceita
@@ -23,9 +26,10 @@
 --   grade_question_attempt (…0300), practice_correction_view (…1900), practice_result e app_recent_sessions (…4300),
 --   app_admin_questions, app_admin_question e app_admin_import_questions (…1300), app_admin_save_question (…6100),
 --   app_admin_set_official_answer (…2200; ganha p_reason, por isso é apagada e criada de novo),
---   app_question_commentary (…2800).
--- Novas: admin_import_answer_differs, admin_import_comment_loss, admin_import_merge_options, admin_import_merge_question
---   (internas), app_admin_import_preview e app_admin_question_review_done (equipe).
+--   app_question_commentary (…2800), tutor_truth (…3500), student_chosen_option_analysis (…2700).
+-- Novas: question_analysis_fits, admin_import_answer_differs, admin_import_answer_label, admin_import_comment_loss,
+--   admin_import_merge_options, admin_import_merge_question (internas), app_admin_import_preview e
+--   app_admin_question_review_done (equipe).
 -- =============================================================================
 
 -- ---------------------------------------------------------------- marca "explicações a revisar" (Q02)
@@ -181,11 +185,26 @@ as $$
   ) x
 $$;
 
+-- ---------------------------------------------------------------- análise que ainda vale para o aluno (Q02)
+-- A análise publicada (e o cartão de atualização, que repete o gabarito oficial da prova) só chega ao aluno — correção,
+-- Tutor e diagnóstico do erro — quando:
+--   - foi feita para o gabarito gravado agora (p_answer = official_answer_at_analysis ou official_answer do cartão; nulo =
+--     registro antigo sem o gabarito anotado);
+--   - a questão não está anulada (a análise aponta uma alternativa como a correta; o processamento não analisa anulada);
+--   - a questão não está marcada com a análise a revisar depois de troca de gabarito (campo "analise").
+create function public.question_analysis_fits(p_question_id text, p_answer char(1)) returns boolean
+  language sql stable security definer set search_path = ''
+as $$
+  select exists (select 1 from public.questions q
+                 where q.id = p_question_id and q.status <> 'annulled'
+                   and (p_answer is null or q.correct_option is not distinct from p_answer)
+                   and not coalesce(q.explanations_review -> 'campos', '[]'::jsonb) ? 'analise')
+$$;
+revoke execute on function public.question_analysis_fits(text, char) from public, anon, authenticated;
+
 -- ---------------------------------------------------------------- análise publicada (Q02; corpo da …2800)
--- Mais duas condições: a análise feita para outro gabarito (official_answer_at_analysis diferente do gabarito atual) não
--- sai para o aluno, e volta quando houver nova análise aprovada para o gabarito atual; e, enquanto a questão estiver
--- marcada com a análise a revisar (troca de gabarito, campo "analise"), ela também não sai (cobre análise antiga sem o
--- gabarito anotado).
+-- Mais: só sai a análise que ainda vale para o gabarito atual (question_analysis_fits, acima); ela volta quando houver
+-- nova análise aprovada para o gabarito atual. O cartão de atualização feito para outro gabarito também não sai.
 create or replace function public.app_question_commentary(p_question_id text, p_level text default 'full') returns jsonb
   language sql stable security definer set search_path = ''
 as $$
@@ -214,13 +233,58 @@ as $$
     'update_card', (select jsonb_build_object('version', k.version, 'temporal_status', k.temporal_status, 'impact_level', k.impact_level, 'official_answer', k.official_answer, 'official_status', k.official_status,
                       'official_source', k.official_source, 'current_answer', k.current_answer, 'what_changed', k.what_changed, 'why_it_matters', k.why_it_matters, 'options_affected', k.options_affected,
                       'sources', k.sources, 'effective_date', k.effective_date, 'verified_at', k.verified_at)
-                    from public.question_update_cards k where k.question_id = a.question_id and k.status = 'published'))
+                    from public.question_update_cards k where k.question_id = a.question_id and k.status = 'published'
+                      and public.question_analysis_fits(k.question_id, k.official_answer)))
   from public.question_analysis a
   where a.question_id = p_question_id and a.is_current and a.status = 'published' and public.question_viewable(a.question_id)
-    and (a.official_answer_at_analysis is null
-         or exists (select 1 from public.questions q where q.id = a.question_id and q.correct_option is not distinct from a.official_answer_at_analysis))
-    and not exists (select 1 from public.questions q where q.id = a.question_id and coalesce(q.explanations_review -> 'campos', '[]'::jsonb) ? 'analise')
+    and public.question_analysis_fits(a.question_id, a.official_answer_at_analysis)
 $$;
+
+-- ---------------------------------------------------------------- o que o Tutor do aluno recebe da questão (Q02; corpo da …3500)
+-- O mesmo cuidado da correção: as explicações e a conduta esperada marcadas para revisão depois da troca de gabarito não
+-- vão para o Tutor, nem a análise e o cartão de atualização que não valem mais para o gabarito atual.
+create or replace function public.tutor_truth(p_question_id text, p_level text) returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select jsonb_build_object(
+    'id', q.id, 'area', q.area, 'topic', q.topic, 'subtopic', q.subtopic, 'statement', q.statement,
+    'exam', (select x.kind || ' ' || x.year from public.exams x where x.id = q.exam_id), 'number', q.number,
+    'options', (select jsonb_agg(jsonb_build_object('id', o ->> 'id', 'text', o ->> 'text',
+                  'explanation', case when p_level in ('hint', 'full') and not ('explanation_' || (o ->> 'id')) = any (h.campos)
+                                      then nullif(btrim(o ->> 'explanation'), '') end) order by o ->> 'id') from jsonb_array_elements(q.options) o),
+    'official_answer', case when p_level in ('hint', 'full') then q.correct_option end,
+    'expected_conduct', case when p_level in ('hint', 'full') and not 'expected_conduct' = any (h.campos) then q.expected_conduct end,
+    'inep_intent', case when p_level in ('hint', 'full') then q.inep_intent end,
+    'sources', case when p_level = 'full' and jsonb_array_length(q.sources) > 0 then q.sources end,
+    'analysis', case when p_level = 'full' then (select jsonb_build_object('question_core', a.question_core, 'trap', a.trap, 'golden_rule', a.golden_rule,
+                     'options', (select jsonb_agg(jsonb_build_object('option_id', o.option_id, 'reasoning', o.reasoning, 'why_wrong', o.why_wrong, 'trap', o.trap) order by o.option_id) from public.question_option_analysis o where o.analysis_id = a.id))
+                   from public.question_analysis a where a.question_id = q.id and a.is_current and a.status = 'published'
+                     and public.question_analysis_fits(q.id, a.official_answer_at_analysis)) end,
+    'update_card', case when p_level = 'full' then (select jsonb_build_object('official_answer', k.official_answer, 'current_answer', k.current_answer, 'what_changed', k.what_changed, 'effective_date', k.effective_date, 'sources', k.sources)
+                   from public.question_update_cards k where k.question_id = q.id and k.status = 'published'
+                     and public.question_analysis_fits(q.id, k.official_answer)) end)
+  from public.questions q
+  cross join lateral (
+    select coalesce(array(select jsonb_array_elements_text(coalesce(q.explanations_review -> 'campos', '[]'::jsonb))), '{}'::text[]) as campos
+  ) h
+  where q.id = p_question_id
+$$;
+revoke execute on function public.tutor_truth(text, text) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------- diagnóstico do erro do aluno (Q02; corpo da …2700)
+-- A alternativa marcada, segundo a análise publicada e atual: só a análise que ainda vale para o gabarito atual (a
+-- "Armadilha" de uma análise feita para o gabarito antigo não sai). Alimenta app_attempt_diagnosis e app_error_profile.
+create or replace function public.student_chosen_option_analysis(p_user uuid, p_question_id text, p_option char(1))
+  returns table (distractor_kind text, error_types text[], trap text, why_wrong text, concept_difference text)
+  language sql stable security definer set search_path = ''
+as $$
+  select o.distractor_kind, o.error_types, o.trap, o.why_wrong, o.concept_difference
+  from public.question_analysis a join public.question_option_analysis o on o.analysis_id = a.id
+  where a.question_id = p_question_id and a.is_current and a.status = 'published' and o.option_id = p_option
+    and public.question_analysis_fits(a.question_id, a.official_answer_at_analysis)
+    and exists (select 1 from public.question_attempts t where t.user_id = p_user and t.question_id = p_question_id)
+$$;
+revoke execute on function public.student_chosen_option_analysis(uuid, text, char) from public, anon, authenticated;
 
 -- ---------------------------------------------------------------- lista do admin (Q02; corpo da …1300)
 -- Mais: cada item diz se tem explicação a revisar, e o filtro "review" mostra só essas.
@@ -362,12 +426,25 @@ $$;
 revoke execute on function public.app_admin_save_question(jsonb, text) from public, anon;
 
 -- ---------------------------------------------------------------- importação: peças internas (Q03)
--- A linha do arquivo traz gabarito ou situação diferente do gravado (essa linha não muda nada).
+-- A linha do arquivo traz gabarito ou situação diferente do gravado (essa linha não muda nada). Anulada dos dois lados
+-- não é diferença quando o arquivo não traz outra letra: anular pelo registro oficial guarda a letra antiga, e o arquivo
+-- com "ANULADA" vem sem letra.
 create function public.admin_import_answer_differs(p_old public.questions, q jsonb) returns boolean
   language sql immutable set search_path = ''
 as $$
-  select p_old.correct_option::text is distinct from nullif(q ->> 'correct_option', '')
-      or p_old.status is distinct from coalesce(nullif(q ->> 'status', ''), 'valid')
+  select case when p_old.status = 'annulled' and coalesce(nullif(q ->> 'status', ''), 'valid') = 'annulled'
+              then nullif(q ->> 'correct_option', '') is not null and p_old.correct_option::text is distinct from nullif(q ->> 'correct_option', '')
+              else p_old.correct_option::text is distinct from nullif(q ->> 'correct_option', '')
+                   or p_old.status is distinct from coalesce(nullif(q ->> 'status', ''), 'valid') end
+$$;
+
+-- Gabarito e situação como a prévia mostra: "ANULADA", "C (alterada após recurso)" ou só a letra.
+create function public.admin_import_answer_label(p_answer text, p_status text) returns text
+  language sql immutable set search_path = ''
+as $$
+  select case when p_status = 'annulled' then 'ANULADA'
+              when p_status = 'changed_after_appeal' then coalesce(p_answer, 'sem gabarito') || ' (alterada após recurso)'
+              else p_answer end
 $$;
 
 -- Atualizar trocaria um comentário gravado (explicação de alternativa, conduta esperada ou o que a questão avalia) por
@@ -407,6 +484,8 @@ as $$
 $$;
 
 -- Atualiza uma questão que já existe com o que o arquivo trouxe preenchido. Nunca toca gabarito nem situação.
+-- "Cita figura" (needs_image) só troca quando o arquivo trouxe a coluna imagem preenchida (needs_image_declared): sem ela,
+-- o leitor da planilha manda um palpite tirado do enunciado, que desfaria a marca posta ou tirada à mão pela equipe.
 create function public.admin_import_merge_question(p_id text, q jsonb) returns void
   language plpgsql security definer set search_path = ''
 as $$
@@ -420,7 +499,7 @@ begin
     options = public.admin_import_merge_options(options, q -> 'options'),
     expected_conduct = coalesce(nullif(btrim(coalesce(q ->> 'expected_conduct', '')), ''), expected_conduct),
     inep_intent = coalesce(nullif(btrim(coalesce(q ->> 'inep_intent', '')), ''), inep_intent),
-    needs_image = coalesce((q ->> 'needs_image')::boolean, needs_image),
+    needs_image = case when q ->> 'needs_image_declared' = 'true' then coalesce((q ->> 'needs_image')::boolean, needs_image) else needs_image end,
     sources = case when jsonb_typeof(q -> 'sources') = 'array' and jsonb_array_length(q -> 'sources') > 0 then q -> 'sources' else sources end
   where id = p_id;
 end
@@ -531,8 +610,8 @@ begin
     v_existing := v_existing + 1;
     if public.admin_import_answer_differs(v_old, v_item) then
       v_differs := v_differs || jsonb_build_object('index', v_index, 'code', v_old.code,
-        'stored', case when v_old.status = 'annulled' then 'ANULADA' else v_old.correct_option::text end,
-        'file', case when coalesce(nullif(v_item ->> 'status', ''), 'valid') = 'annulled' then 'ANULADA' else nullif(v_item ->> 'correct_option', '') end);
+        'stored', public.admin_import_answer_label(v_old.correct_option::text, v_old.status),
+        'file', public.admin_import_answer_label(nullif(v_item ->> 'correct_option', ''), coalesce(nullif(v_item ->> 'status', ''), 'valid')));
     elsif public.admin_import_comment_loss(v_old, v_item) then
       v_loss := v_loss || jsonb_build_object('index', v_index, 'code', v_old.code);
     end if;
@@ -545,7 +624,10 @@ revoke execute on function public.app_admin_import_preview(jsonb) from public, a
 -- ---------------------------------------------------------------- registro do gabarito oficial (Q02; corpo da …2200)
 -- Muda a lista de parâmetros (ganha p_reason), então a função é apagada e criada de novo. Regras:
 --   só administrador; fonte e motivo obrigatórios; situação e letra conferidas;
---   a letra mudou: recorrige as respostas antigas e marca as explicações a revisar (o aluno não as vê até a revisão).
+--   a letra mudou: recorrige as respostas antigas;
+--   o gabarito mudou (outra letra, ou a questão foi anulada ou deixou de ser): marca as explicações a revisar, e o aluno
+--   (correção e Tutor) não as vê até a revisão. Anular guarda a letra antiga, mas muda o sentido de todas as explicações
+--   (cada uma foi escrita supondo uma única correta): por isso anular, ou desfazer a anulação, marca todas as preenchidas.
 drop function public.app_admin_set_official_answer(text, text, text, text, text, date);
 create function public.app_admin_set_official_answer(
   p_question_id text, p_answer text, p_status text, p_source text,
@@ -559,6 +641,8 @@ declare
   v_old record;
   v_answer constant text := nullif(upper(btrim(coalesce(p_answer, ''))), '');
   v_new_answer text;
+  v_old_key text;  -- o gabarito como o aluno o vê: a letra, ou 'ANULADA'
+  v_new_key text;
   v_recorrected integer := 0;
   v_fields text[] := '{}';
   v_review jsonb;
@@ -584,21 +668,34 @@ begin
     correct_option = case when p_status in ('FINAL', 'CHANGED_AFTER_APPEAL') then v_answer::char(1) else correct_option end,
     status = case p_status when 'ANNULLED' then 'annulled' when 'CHANGED_AFTER_APPEAL' then 'changed_after_appeal' when 'FINAL' then 'valid' else status end
   where id = p_question_id and p_status in ('FINAL', 'CHANGED_AFTER_APPEAL', 'ANNULLED');
-  select q.correct_option::text into v_new_answer from public.questions q where q.id = p_question_id;
+  select q.correct_option::text, case when q.status = 'annulled' then 'ANULADA' else q.correct_option::text end
+    into v_new_answer, v_new_key
+  from public.questions q where q.id = p_question_id;
+  v_old_key := case when v_old.status = 'annulled' then 'ANULADA' else v_old.correct_option end;
 
   if v_new_answer is distinct from v_old.correct_option then
     -- as respostas antigas dos alunos, corrigidas de novo pelo gabarito novo (mesma regra do grade_question_attempt)
     update public.question_attempts set is_correct = coalesce(selected_option::text = v_new_answer, false)
     where question_id = p_question_id and is_correct is distinct from coalesce(selected_option::text = v_new_answer, false);
     get diagnostics v_recorrected = row_count;
+  end if;
+
+  if v_new_key is distinct from v_old_key then
     -- o que foi escrito para o gabarito antigo e agora contradiz o novo
-    if v_old.correct_option is not null and exists (select 1 from jsonb_array_elements(v_old.options) o
-        where o ->> 'id' = v_old.correct_option and nullif(btrim(coalesce(o ->> 'explanation', '')), '') is not null) then
-      v_fields := v_fields || ('explanation_' || v_old.correct_option);
-    end if;
-    if v_new_answer is not null and exists (select 1 from jsonb_array_elements(v_old.options) o
-        where o ->> 'id' = v_new_answer and nullif(btrim(coalesce(o ->> 'explanation', '')), '') is not null) then
-      v_fields := v_fields || ('explanation_' || v_new_answer);
+    if 'ANULADA' in (v_old_key, v_new_key) then
+      -- anulada de um lado: todas as explicações preenchidas
+      v_fields := v_fields || array(select 'explanation_' || (o ->> 'id') from jsonb_array_elements(v_old.options) o
+                                    where nullif(btrim(coalesce(o ->> 'explanation', '')), '') is not null order by o ->> 'id');
+    else
+      -- outra letra: a explicação da antiga correta e a da nova
+      if exists (select 1 from jsonb_array_elements(v_old.options) o
+          where o ->> 'id' = v_old.correct_option and nullif(btrim(coalesce(o ->> 'explanation', '')), '') is not null) then
+        v_fields := v_fields || ('explanation_' || v_old.correct_option);
+      end if;
+      if exists (select 1 from jsonb_array_elements(v_old.options) o
+          where o ->> 'id' = v_new_answer and nullif(btrim(coalesce(o ->> 'explanation', '')), '') is not null) then
+        v_fields := v_fields || ('explanation_' || v_new_answer);
+      end if;
     end if;
     if nullif(btrim(coalesce(v_old.expected_conduct, '')), '') is not null then
       v_fields := v_fields || 'expected_conduct'::text;
@@ -609,8 +706,8 @@ begin
     if cardinality(v_fields) > 0 then
       -- outra troca antes da revisão: soma os campos e guarda o gabarito de antes da primeira troca
       update public.questions q set explanations_review = jsonb_build_object(
-          'de', coalesce(q.explanations_review -> 'de', to_jsonb(v_old.correct_option)),
-          'para', v_new_answer,
+          'de', coalesce(q.explanations_review -> 'de', to_jsonb(v_old_key)),
+          'para', v_new_key,
           'campos', (select jsonb_agg(c order by c) from (
                        select jsonb_array_elements_text(coalesce(q.explanations_review -> 'campos', '[]'::jsonb)) as c
                        union select unnest(v_fields)) x),
@@ -655,9 +752,10 @@ revoke execute on function public.app_admin_question_review_done(text) from publ
 
 -- funções internas: ninguém as chama pela API
 revoke execute on function public.admin_import_answer_differs(public.questions, jsonb) from public, anon, authenticated;
+revoke execute on function public.admin_import_answer_label(text, text) from public, anon, authenticated;
 revoke execute on function public.admin_import_comment_loss(public.questions, jsonb) from public, anon, authenticated;
 revoke execute on function public.admin_import_merge_options(jsonb, jsonb) from public, anon, authenticated;
 revoke execute on function public.admin_import_merge_question(text, jsonb) from public, anon, authenticated;
 
 -- Para desfazer: recriar as funções acima a partir das migrações citadas no topo (app_admin_set_official_answer: apagar a
--- de 7 parâmetros e recriar a de 6 da …2200), apagar as seis novas e a coluna questions.explanations_review.
+-- de 7 parâmetros e recriar a de 6 da …2200), apagar as oito novas e a coluna questions.explanations_review.

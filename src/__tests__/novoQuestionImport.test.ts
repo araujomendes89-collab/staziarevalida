@@ -101,6 +101,22 @@ describe("Importação de questões — planilha", () => {
     expect(items[0].question.needs_image).toBe(true);
     expect(items[1].problems).toEqual(["Repetida no arquivo (mesma prova e número da linha 2)."]);
   });
+
+  it("diz se a coluna imagem veio preenchida: sem ela, 'cita figura' é só um palpite e não troca a marca gravada", () => {
+    const withFigure = "Paciente com dor torácica. O ECG abaixo mostra o traçado da admissão. Qual o diagnóstico?";
+    const line = (number: string, text: string, image: string) =>
+      row(["Revalida 2026/2", number, "Clínica Médica", "IAM", "", text, "a", "b", "c", "d", "A", "", "", image]);
+    const csv = [`${header};imagem`, line("1", withFigure, ""), line("2", statement, ""), line("3", statement, "sim"), line("4", withFigure, "não")].join("\n");
+    const items = questionsFromCsv(csv).items.map((i) => i.question);
+    expect(items.map((q) => [q.needs_image, q.needs_image_declared])).toEqual([
+      [true, false],
+      [false, false],
+      [true, true],
+      [false, true],
+    ]);
+    expect(questionsFromCsv([header, row(["Revalida 2026/2", "5", "Pediatria", "Bronquiolite", "", statement, "a", "b", "c", "d", "A", "", ""])].join("\n")).items[0].question)
+      .toMatchObject({ needs_image: false, needs_image_declared: false });
+  });
 });
 
 describe("Importação de questões — JSON e modelos", () => {

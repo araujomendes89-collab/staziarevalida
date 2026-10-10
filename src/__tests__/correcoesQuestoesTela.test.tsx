@@ -134,6 +134,16 @@ describe("Q02 — gabarito e situação travados; registro do gabarito oficial",
     fireEvent.click(within(panel).getByRole("button", { name: "Registrar" }));
     await waitFor(() => expect(calls("app_admin_set_official_answer")[0][1]).toMatchObject({ p_answer: null, p_status: "ANNULLED" }));
   });
+
+  it("anulada pelo registro: a marca diz que o gabarito mudou para anulada e que a análise não volta", async () => {
+    routes({
+      ...ROW, status: "annulled", official: { ...ROW.official, answer: null, answer_status: "ANNULLED", version: 2 },
+      explanations_review: { de: "B", para: "ANULADA", campos: ["analise", "explanation_A", "explanation_B"] },
+    });
+    render(<QuestionEditor id="q1" onClose={vi.fn()} onSaved={vi.fn()} />);
+    const review = await screen.findByText(/O gabarito mudou de B para anulada pela banca\./);
+    expect(review.textContent).toContain("Revise: Análise publicada (não aparece ao aluno em questão anulada), Explicação da A, Explicação da B.");
+  });
 });
 
 describe("Q03 — prévia da importação", () => {
