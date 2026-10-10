@@ -3,6 +3,8 @@
  * Atualizações & Diretrizes (supabase/migrations/…4100_atualizacoes_diretrizes.sql) num Postgres real em memória:
  * o conteúdo do app anterior entra como rascunho, só revisor médico da área confere (com a fonte oficial registrada),
  * só o administrador publica, editar depois da conferência volta a revisão, e o aluno só vê o que foi publicado.
+ * Correções de 10/10/2026 (…7800_atualizacoes_publicar_so_conferida.sql): publicar exige conferência aprovada (AT03),
+ * recusar uma publicada tira do ar (AT01) e mudar o texto de uma publicada tira do ar até nova conferência (AT02).
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import fs from "fs";
@@ -17,6 +19,7 @@ const REVIEWER = "00000000-0000-4000-8000-0000000000f1"; // revisor médico de G
 const STUDENT = "00000000-0000-4000-8000-0000000000b1";
 const PE = "prot-go-preeclampsia-2025";
 const HAS = "prot-cm-has-sbc-2026";
+const FIX = "20261003007800"; // correção: publicar só com conferência aprovada
 let db: PGlite;
 
 async function rpc<T = any>(uid: string | null, fn: string, args: Record<string, unknown> = {}): Promise<T> {
@@ -40,7 +43,11 @@ const adminItem = async (slug: string) => (await rpc(ADMIN, "app_admin_guideline
 beforeAll(async () => {
   db = new PGlite();
   await db.exec(fs.readFileSync(path.join(ROOT, "supabase/tests/bootstrap.sql"), "utf8"));
-  for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort()) await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
+  const files = fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort();
+  for (const file of files.filter((f) => f < FIX)) await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
+  // como podia estar em produção antes da correção: uma atualização publicada sem conferência (o painel deixava)
+  await db.query(`update public.guideline_updates set published = true where slug = $1`, [HAS]);
+  for (const file of files.filter((f) => f >= FIX)) await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   await db.query(`insert into auth.users (id, email) values ($1, 'adm@t.dev'), ($2, 'ed@t.dev'), ($3, 'rev@t.dev'), ($4, 'al@t.dev')`, [ADMIN, EDITOR, REVIEWER, STUDENT]);
   await db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [EDITOR]);
@@ -73,6 +80,13 @@ describe("Conteúdo do app anterior", () => {
     expect(list).toMatchObject({ total: 0, items: [] });
     expect(await rpc(STUDENT, "app_guideline_update", { p_slug: PE })).toBeNull();
     expect(await rpc(null, "app_guideline_updates")).toBeNull(); // sem login: nada (como as demais funções do app)
+  });
+
+  it("a correção tira do ar o que estava publicado sem conferência aprovada e deixa registrado", async () => {
+    const has = await adminItem(HAS);
+    expect(has).toMatchObject({ published: false, review_status: "pending" });
+    const log = await rpc(ADMIN, "app_admin_audit", { p_limit: 50 });
+    expect(log.find((l: any) => l.action === "guideline_update.unpublish" && l.target === has.id)).toMatchObject({ details: { review_status: "pending" } });
   });
 });
 
@@ -116,26 +130,53 @@ describe("Conferência médica e publicação", () => {
     expect((await rpc(STUDENT, "app_guideline_updates", { p_search: "eclampsia" })).items.length).toBe(1);
   });
 
-  it("editar depois de conferida volta a revisão (o aluno passa a ver o aviso); recusada não publica", async () => {
+  it("mudar o texto de uma publicada tira do ar até nova conferência; quem publica de novo é o administrador", async () => {
     const pe = await adminItem(PE);
-    const saved = await rpc(ADMIN, "app_admin_save_guideline_update", { p_update: { ...pe, current_conduct: pe.current_conduct + " Texto alterado." } });
-    expect(saved).toMatchObject({ review_status: "pending", review_note: expect.stringMatching(/revisar de novo/) });
-    expect((await rpc(STUDENT, "app_guideline_update", { p_slug: PE })).reviewed).toBe(false);
-    // só mudar a ordem não invalida a conferência
+    expect(pe).toMatchObject({ published: true, review_status: "approved" });
+    const saved = await rpc(EDITOR, "app_admin_save_guideline_update", { p_update: { ...pe, current_conduct: pe.current_conduct + " Texto alterado." } });
+    expect(saved).toMatchObject({ review_status: "pending", published: false });
+    expect(saved.review_note).toMatch(/revisar de novo/);
+    expect(saved.review_note).toMatch(/saiu do ar/i);
+    expect(await rpc(STUDENT, "app_guideline_update", { p_slug: PE })).toBeNull();
+    expect((await rpc(STUDENT, "app_guideline_updates")).total).toBe(0);
+    const log = await rpc(ADMIN, "app_admin_audit", { p_limit: 20 });
+    expect(log.find((l: any) => l.action === "guideline_update.unpublish" && l.target === pe.id)?.details?.motivo).toMatch(/texto/i);
+    // a nova conferência não publica sozinha
     await rpc(REVIEWER, "app_admin_review_guideline_update", { p_id: pe.id, p_decision: "approve", p_note: "Conferido de novo no documento oficial." });
+    expect(await adminItem(PE)).toMatchObject({ review_status: "approved", published: false });
+    await rpc(ADMIN, "app_admin_publish_guideline_update", { p_id: pe.id, p_published: true });
+    // só mudar a ordem não invalida a conferência nem tira do ar
     const again = await adminItem(PE);
-    expect((await rpc(ADMIN, "app_admin_save_guideline_update", { p_update: { ...again, position: 99, priority: 2 } })).review_status).toBe("approved");
-    // recusada não pode ser publicada
+    expect(await rpc(ADMIN, "app_admin_save_guideline_update", { p_update: { ...again, position: 99, priority: 2 } })).toMatchObject({ review_status: "approved", published: true });
+    expect((await rpc(STUDENT, "app_guideline_update", { p_slug: PE })).reviewed).toBe(true);
+  });
+
+  it("recusar na conferência uma publicada tira do ar na hora (com registro); só volta com nova aprovação e nova publicação", async () => {
+    const id = await idOf(PE);
+    const after = await rpc(REVIEWER, "app_admin_review_guideline_update", { p_id: id, p_decision: "reject", p_note: "Conduta não confere com a versão vigente." });
+    expect(after.items.find((u: any) => u.slug === PE)).toMatchObject({ review_status: "rejected", published: false });
+    expect(await rpc(STUDENT, "app_guideline_update", { p_slug: PE })).toBeNull();
+    expect((await rpc(STUDENT, "app_guideline_updates")).total).toBe(0);
+    await expect(rpc(ADMIN, "app_admin_publish_guideline_update", { p_id: id, p_published: true })).rejects.toThrow(/recusada/);
+    const log = await rpc(ADMIN, "app_admin_audit", { p_limit: 20 });
+    expect(log.find((l: any) => l.action === "guideline_update.unpublish" && l.target === id)?.details?.motivo).toMatch(/recusada/i);
+    await rpc(REVIEWER, "app_admin_review_guideline_update", { p_id: id, p_decision: "approve", p_note: "Conferido de novo, versão vigente." });
+    await rpc(ADMIN, "app_admin_publish_guideline_update", { p_id: id, p_published: true });
+    expect((await rpc(STUDENT, "app_guideline_updates")).total).toBe(1);
+  });
+
+  it("publicar exige conferência médica aprovada: o banco recusa pendente e recusada com mensagem clara", async () => {
+    const has = await idOf(HAS);
+    await expect(rpc(ADMIN, "app_admin_publish_guideline_update", { p_id: has, p_published: true })).rejects.toThrow(/conferência médica precisa estar aprovada/);
+    expect(await rpc(STUDENT, "app_guideline_update", { p_slug: HAS })).toBeNull();
     const other = await idOf("prot-go-hpv-dna-2025");
     await rpc(REVIEWER, "app_admin_review_guideline_update", { p_id: other, p_decision: "reject", p_note: "Fonte não localizada no Ministério." });
     await expect(rpc(ADMIN, "app_admin_publish_guideline_update", { p_id: other, p_published: true })).rejects.toThrow(/recusada/);
-  });
-
-  it("publicar sem conferência é decisão do administrador e fica marcado para o aluno", async () => {
-    await rpc(ADMIN, "app_admin_publish_guideline_update", { p_id: await idOf(HAS), p_published: true });
-    const has = await rpc(STUDENT, "app_guideline_update", { p_slug: HAS });
-    expect(has).toMatchObject({ reviewed: false, reviewed_at: null, source_url: null });
-    const log = await rpc(ADMIN, "app_admin_audit", { p_limit: 20 });
+    // nenhum outro caminho grava "publicada" sem conferência aprovada: a própria tabela recusa
+    await expect(db.query(`update public.guideline_updates set published = true where id = $1`, [has])).rejects.toThrow(/guideline_updates_publicada_so_conferida/);
+    // tirar do ar continua livre para o administrador
+    await rpc(ADMIN, "app_admin_publish_guideline_update", { p_id: has, p_published: false });
+    const log = await rpc(ADMIN, "app_admin_audit", { p_limit: 30 });
     expect(JSON.stringify(log)).toMatch(/guideline_update\.publish/);
   });
 });
@@ -155,7 +196,7 @@ describe("Cadastro e segurança", () => {
   });
 
   it("aluno não lê rascunho direto na tabela, não escreve e não chama o painel", async () => {
-    expect((await asUser(STUDENT, `select slug from public.guideline_updates`)).rows.map((r: any) => r.slug).sort()).toEqual([HAS, PE].sort());
+    expect((await asUser(STUDENT, `select slug from public.guideline_updates`)).rows.map((r: any) => r.slug).sort()).toEqual([PE]);
     await expect(asUser(STUDENT, `update public.guideline_updates set published = true`)).resolves.toMatchObject({ affectedRows: 0 });
     await expect(asUser(STUDENT, `insert into public.guideline_updates (slug, area, topic) values ('x-y-z', 'PEDIATRIA', 'Invasão')`)).rejects.toThrow();
     await expect(rpc(STUDENT, "app_admin_guideline_updates")).rejects.toThrow(/equipe de conteúdo/);
