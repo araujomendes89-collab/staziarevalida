@@ -47,6 +47,33 @@ const NO_CREDENTIAL = /could not load the default credentials|unable to find cre
 const NO_CREDENTIAL_REASON =
   "sem credencial do Google neste ambiente. O Vertex AI por projeto (CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT) usa a conta de serviço, que só existe no processamento (Cloud Run); no site, tire essa variável e use a GEMINI_API_KEY (AI Studio), ou fique com a busca por palavras.";
 
+/**
+ * Motivo de um erro de configuração do Google (400, 401, 402, 403, 404) em português simples, pelo código. É o texto que o painel
+ * (/status) e o relato do processamento mostram ao dono; a mensagem crua da biblioteca do Google (inglês, JSON) fica só no log.
+ */
+export function googleRefusalReason(status: number, cfg: Pick<EmbeddingsConfig, "mode" | "model" | "project" | "location">): string {
+  const vertex = cfg.mode === "vertex_project";
+  const access = vertex ? `Vertex AI do projeto ${cfg.project ?? ""} (local ${cfg.location || "global"})` : "chave do AI Studio (GEMINI_API_KEY)";
+  const end = " O detalhe técnico fica no registro (log).";
+  switch (status) {
+    case 400:
+      return `o Google recusou o pedido (código 400). Confira o modelo escolhido (${cfg.model ?? "CONTENT_HUB_EMBEDDINGS_MODEL"}).${end}`;
+    case 401:
+    case 403:
+      return vertex
+        ? `sem permissão no Google (código ${status}): a conta de serviço da tarefa não pode usar o ${access}. Ela precisa do papel roles/aiplatform.user e da API do Vertex AI ligada no projeto (o script do Cloud Run faz isso com EMBEDDINGS_VERTEX=1).${end}`
+        : `chave recusada ou sem permissão no Google (código ${status}): confira a ${access}.${end}`;
+    case 402:
+      return vertex
+        ? `sem crédito no Google (código 402): o projeto ${cfg.project ?? ""} está sem crédito ou sem cobrança ativa.${end}`
+        : `sem crédito no Google (código 402): a conta da ${access} está sem crédito. Ponha crédito ou troque a chave.${end}`;
+    case 404:
+      return `o modelo ${cfg.model ?? ""} não foi encontrado nesse acesso ao Google (código 404, ${access}). Confira o modelo e o tipo de acesso.${end}`;
+    default:
+      return `o Google recusou o pedido (código ${status}).${end}`;
+  }
+}
+
 export interface EmbeddingsConfig {
   ready: boolean;
   model: string | null;
@@ -175,9 +202,11 @@ export function createEmbedder(cfg: EmbeddingsConfig, client?: EmbedClient): Emb
           await new Promise((r) => setTimeout(r, attempt * 1500));
           continue;
         }
+        // a mensagem do erro vai só para o log: leva o texto cru do Google (inglês, JSON), útil para investigar
         const failure = new EmbeddingsError(`Busca por significado: o Google recusou (${status}): ${msg}`, status);
-        // configuração: sem nova tentativa e a busca para (nada de dezenas de pedidos recusados na mesma rodada)
-        if (CONFIG_ERRORS.has(status)) problem = { message: failure.message, reason: `o Google recusou (${status}): ${msg}`, status, until: Date.now() + CONFIG_PAUSE_MS };
+        // configuração: sem nova tentativa e a busca para (nada de dezenas de pedidos recusados na mesma rodada); o motivo que o
+        // painel e o relato mostram é o texto simples, pelo código
+        if (CONFIG_ERRORS.has(status)) problem = { message: failure.message, reason: googleRefusalReason(status, cfg), status, until: Date.now() + CONFIG_PAUSE_MS };
         throw failure;
       }
     }

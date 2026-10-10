@@ -42,7 +42,9 @@ usando a `VERTEX_API_KEY` para o Gemini de texto.
 
 No Vertex AI completo, a biblioteca do Google aceita um texto por pedido: o processamento manda os trechos um a um, no máximo 4 ao
 mesmo tempo. No AI Studio continua o lote de 50. Um erro de configuração do Google (400, 401, 402, 403 ou 404) não é repetido: a
-busca por significado para por 10 minutos, segue por palavras e o relato do processamento mostra o motivo.
+busca por significado para por 10 minutos, segue por palavras e o relato do processamento mostra o motivo. O motivo do painel e do
+relato sai em português simples, pelo código (400 pedido recusado, 401/403 chave recusada ou sem permissão, 402 sem crédito, 404
+modelo não encontrado nesse acesso); a mensagem crua do Google (em inglês, em JSON) fica só no registro (log).
 
 **O projeto do Vertex AI vai só no Cloud Run** (correção de 2026-10-10, revisão). O Vertex AI completo usa a conta de serviço do
 Google, que existe na tarefa do Cloud Run e não existe no site (Vercel). Se a variável estiver no site, a biblioteca do Google não

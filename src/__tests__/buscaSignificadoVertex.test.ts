@@ -249,3 +249,70 @@ describe("erro de configuração (400, 402, 403, 404): sem nova tentativa e a bu
     expect(report.pending.some((p) => p.startsWith("Busca por significado no processamento:") && /404/.test(p))).toBe(true);
   });
 });
+
+// revisão, rodada 2: o motivo guardado em `problem` levava a mensagem crua da biblioteca do Google (inglês e JSON), e ele vai para
+// as pendências do painel (/status) e para o relato do processamento. Agora o painel mostra o motivo pelo código, em português
+// simples; a mensagem crua fica só no registro (log)
+describe("motivo da busca parada: português simples no painel, mensagem crua do Google só no log", () => {
+  const googleError = (status: number, body: unknown) => Object.assign(new Error(JSON.stringify(body)), { status });
+  const stopped = async (status: number, body: unknown, e: Record<string, string> = { GEMINI_API_KEY: STUDIO }) => {
+    const client: EmbedClient = { models: { embedContent: async () => { throw googleError(status, body); } } };
+    const embedder = createEmbedder(embeddingsConfig(env(e)), client)!;
+    const logs: string[] = [];
+    expect(await queryEmbedding(embedder, "dor torácica", (m) => logs.push(m))).toBeNull();
+    return { embedder, logs, problem: embedder.problem! };
+  };
+  const plain = (p: string) => {
+    expect(p).not.toMatch(/[{}"]/);
+    expect(p).not.toMatch(/\b(error|message|status|code|credits|depleted|prepayment|not found|permission|denied|invalid)\b/i);
+    expect(p).not.toContain(STUDIO);
+  };
+
+  it("402 (cenário deste ramo: chave do AI Studio sem crédito): 'sem crédito', sem o JSON em inglês", async () => {
+    const body = { error: { code: 402, message: "Your prepayment credits are depleted. Please go to AI Studio to manage your project and billing.", status: "FAILED_PRECONDITION" } };
+    const { problem, logs, embedder } = await stopped(402, body);
+    plain(problem);
+    expect(problem).toMatch(/sem crédito/);
+    expect(problem).toMatch(/402/);
+    expect(problem).toMatch(/GEMINI_API_KEY/);
+    // a mensagem crua continua no log (uma vez), para quem for investigar
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toMatch(/prepayment credits are depleted/);
+    // o relato do processamento (e o painel, que lê o mesmo `problem`) mostra o texto simples
+    const { probeProcessing } = await import("../../server/contentHub/capabilities");
+    const mock = { provider: { name: "mock", model: "mock-dev", isMock: true }, status: { ready: true, provider: "mock", model: "mock-dev", isMock: true, pending: null } };
+    const report = await probeProcessing({ db: null, ai: mock, embedder, renderer: null } as any);
+    expect(report.embeddings.pending).toBe(problem);
+    const line = report.pending.find((p) => p.startsWith("Busca por significado no processamento:"))!;
+    plain(line.replace("Busca por significado no processamento:", ""));
+  });
+
+  it("404 (o de produção, com a mensagem vazia): 'modelo não encontrado nesse acesso'", async () => {
+    const { problem } = await stopped(404, { error: { message: "", code: 404, status: "Not Found" } });
+    plain(problem);
+    expect(problem).toMatch(/404/);
+    expect(problem).toMatch(/modelo gemini-embedding-2 não foi encontrado/);
+  });
+
+  it("400, 401 e 403 também em português simples, cada um com o seu motivo", async () => {
+    const p400 = (await stopped(400, { error: { code: 400, message: "Invalid value at 'requests[0]'", status: "INVALID_ARGUMENT" } })).problem;
+    plain(p400);
+    expect(p400).toMatch(/recusou o pedido/);
+    const p401 = (await stopped(401, { error: { code: 401, message: "API key not valid. Please pass a valid API key.", status: "UNAUTHENTICATED" } })).problem;
+    plain(p401);
+    expect(p401).toMatch(/chave .*recusada|sem permissão/);
+    const p403 = (await stopped(403, { error: { code: 403, message: "Permission denied on resource project.", status: "PERMISSION_DENIED" } })).problem;
+    plain(p403);
+    expect(p403).toMatch(/sem permissão/);
+  });
+
+  it("Vertex AI pelo projeto: o 403 aponta a permissão da conta de serviço da tarefa", async () => {
+    const body = { error: { code: 403, message: "Permission 'aiplatform.endpoints.predict' denied on resource", status: "PERMISSION_DENIED" } };
+    const { problem } = await stopped(403, body, { CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT: "staziamed-revalida-prod" });
+    plain(problem);
+    expect(problem).toMatch(/sem permissão/);
+    expect(problem).toMatch(/conta de serviço/);
+    expect(problem).toMatch(/roles\/aiplatform\.user/);
+    expect(problem).toMatch(/staziamed-revalida-prod/);
+  });
+});
