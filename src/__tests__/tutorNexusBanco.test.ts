@@ -74,7 +74,7 @@ beforeAll(async () => {
   for (const st of buildEngineStatements()) await dev.db.exec(st);
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'adm@t.dev'), ($2, 'aluna@t.dev'), ($3, 'outro@t.dev'), ($4, 'nova@t.dev')`, [ADMIN, ALUNA, OUTRO, NOVA]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
-  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id in ($1, $2, $3)`, [ALUNA, OUTRO, NOVA]);
+  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id in ($1, $2, $3)`, [ALUNA, OUTRO, NOVA]);
   for (const uid of [ALUNA, OUTRO]) await aceitarTermos(dev.db, uid);
   await config({ enabled: true, requires_pro: true }, "Tutor ligado para os testes do Tutor Nexus.");
   deps.db = db;

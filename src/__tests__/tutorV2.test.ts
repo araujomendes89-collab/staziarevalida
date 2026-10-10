@@ -61,7 +61,7 @@ beforeAll(async () => {
   for (const st of buildEngineStatements()) await dev.db.exec(st);
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'a@t.dev'), ($2, 'b1@t.dev'), ($3, 'b2@t.dev'), ($4, 'b3@t.dev'), ($5, 'pago@t.dev')`, [ADMIN, S1, S2, S3, PAID]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
-  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [PAID]);
+  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id = $1`, [PAID]);
   for (const uid of [S1, S2, S3, PAID]) await aceitarTermos(dev.db, uid); // os alunos já aceitaram o §34 (o aceite em si é testado em termoAceiteTutor.test.ts)
   for (const r of await sql(`select id, correct_option from public.questions`)) off[r.id] = r.correct_option;
   process.env.TUTOR_AI_PROVIDER = "mock";
