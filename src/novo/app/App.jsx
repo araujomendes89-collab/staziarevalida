@@ -101,6 +101,12 @@ function Screen() {
 
   React.useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    // O novo.html aplica este tema antes da primeira pintura na próxima visita (sem a tela clara piscando até o perfil chegar).
+    try {
+      localStorage.setItem("smn-theme", theme);
+    } catch {
+      // armazenamento bloqueado (janela privada): o tema do perfil continua valendo
+    }
   }, [theme]);
 
   // "Materiais oficiais" virou "Atualizações": endereços antigos continuam funcionando

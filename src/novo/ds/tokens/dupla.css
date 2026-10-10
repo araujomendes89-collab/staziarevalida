@@ -1,0 +1,34 @@
+/* Treinamento em Dupla: cores novas do pacote de design (handoff-treino-dupla: tokens/colors.css linhas 18-32 e 53, e o README).
+   Os valores vão escritos por extenso porque os azuis e os outros tons do pacote não são os do app (o azul 600 do pacote difere do do app).
+   Nenhum token de colors.css ou semantic.css é redefinido: a cor base de cada área continua sendo a do app (--area-clinica etc.).
+   Hexadecimal só neste arquivo; componentes e telas usam apenas estes nomes. */
+:root{
+/* Áreas: fundo claro (-soft) e texto sobre ele (-ink) */
+--area-clinica-soft:#E5ECFF;--area-clinica-ink:#1D3FA6;
+--area-cirurgia-soft:#FFEAD8;--area-cirurgia-ink:#9A4100;
+--area-go-soft:#FDE2EC;--area-go-ink:#99194A;
+--area-pediatria-soft:#DAF5E5;--area-pediatria-ink:#0B6B34;
+--area-preventiva-soft:#EEE6FF;--area-preventiva-ink:#5A2CC0;
+/* Áreas: fundo de selo ou número com texto --surface-card (branco de dia). O branco sobre o laranja de Cirurgia (3,6:1) e sobre
+   o verde de Pediatria (4,4:1) não chega a 4,5:1; só nesses selos entra um tom mais escuro (4,9:1). As outras áreas usam a base do app. */
+--area-clinica-solid:var(--area-clinica);--area-cirurgia-solid:#B75508;--area-go-solid:var(--area-go);--area-pediatria-solid:#0D8159;--area-preventiva-solid:var(--area-preventiva);
+/* Papéis na sala */
+--role-candidate:#2E68A6;--role-candidate-soft:#EEF4FA;--role-candidate-ink:#24558A;
+--role-actor:#9A5631;--role-actor-soft:#F9F1EB;--role-actor-ink:#7E4524;
+/* Pontuação do PEP (iguais nos dois temas) */
+--score-full:#2C7F49;--score-partial:#D08C1A;--score-none:#BD4332;--score-pending:#BCC5C4;
+/* Azul do impresso do INEP e folha do PEP: branca nos dois temas, como o papel do INEP */
+--inep-blue-900:#1F3864;--inep-blue-700:#2F5496;--inep-blue-500:#4472C4;--inep-blue-300:#8EAADB;--inep-blue-200:#B4C7E7;--inep-blue-100:#D9E2F3;--inep-blue-50:#EEF3FA;
+--pep-sheet:#FFFFFF;--pep-sheet-text:#111111;
+}
+[data-theme="dark"]{
+--area-clinica-soft:#16223F;--area-clinica-ink:#A3BBFF;
+--area-cirurgia-soft:#36220F;--area-cirurgia-ink:#FFB57D;
+--area-go-soft:#371424;--area-go-ink:#FFA0C2;
+--area-pediatria-soft:#112D1D;--area-pediatria-ink:#86E3AB;
+--area-preventiva-soft:#241A42;--area-preventiva-ink:#C7AFFF;
+/* À noite a base do app é clara e o texto do selo é escuro (--surface-card): o selo usa a própria base */
+--area-clinica-solid:var(--area-clinica);--area-cirurgia-solid:var(--area-cirurgia);--area-go-solid:var(--area-go);--area-pediatria-solid:var(--area-pediatria);--area-preventiva-solid:var(--area-preventiva);
+--role-candidate-soft:#122136;--role-candidate-ink:#8EB8E8;
+--role-actor-soft:#2A1F18;--role-actor-ink:#E6B08C;
+}
