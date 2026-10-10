@@ -6,10 +6,12 @@
  */
 import crypto from "crypto";
 import type { ContentDb } from "../contentHub/infra";
-import { AiInvalidOutput, familyOfModel, geminiOutputLimit, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
+import { AiInvalidOutput, familyOfModel, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
 import type { Schema } from "../contentHub/ai/schema";
 import {
+  callEstimateUsd,
   DEFAULT_MODELS,
+  effectiveMaxOut,
   envFallbackRef,
   FUNCTION_KEYS,
   isProviderId,
@@ -26,7 +28,7 @@ import {
   type ModelRef,
 } from "./config";
 import type { AiProviderId } from "./models";
-import { costUsd, estimateCostUsd, type ModelPrice } from "./prices";
+import { costUsd, type ModelPrice } from "./prices";
 import { currentRequestDeadline } from "./requestDeadline";
 
 // ------------------------------------------------------------------ tipos públicos
@@ -104,6 +106,8 @@ Não reescreva a resposta, só aponte os problemas.`;
 // ------------------------------------------------------------------ constantes e utilitários
 
 const TIMEOUT_MS = 180_000;
+/** Maior tempo-limite de uma chamada ao Gemini (o tempo cresce com a saída máxima mandada; ver callTimeoutMs). */
+const GEMINI_TIMEOUT_MAX_MS = 600_000;
 /** Folga antes da hora-limite do pedido (sobra tempo para gravar e responder). */
 const DEADLINE_SAFETY_MS = 15_000;
 /** Menos que isso de prazo útil e a IA nem é chamada: ela cobraria e quase certamente não terminaria a tempo. */
@@ -154,12 +158,30 @@ export function shouldRetrySame(e: unknown): boolean {
   return true;
 }
 
-function withTimeout<T>(work: () => Promise<T>, ms = TIMEOUT_MS): Promise<T> {
+/** O tempo-limite da chamada esgotou (o maestro cancelou o pedido). */
+class AiTimeout extends Error {}
+
+/** Espera o trabalho até `ms`; ao esgotar, chama `onTimeout` (que cancela o pedido) e falha com "Tempo esgotado". */
+function withTimeout<T>(work: () => Promise<T>, ms = TIMEOUT_MS, onTimeout?: () => void): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const limit = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`Tempo esgotado (${Math.round(ms / 1000)} s).`)), ms);
+    timer = setTimeout(() => {
+      onTimeout?.();
+      reject(new AiTimeout(`Tempo esgotado (${Math.round(ms / 1000)} s)${onTimeout ? ": o pedido foi cancelado" : ""}.`));
+    }, ms);
   });
   return Promise.race([Promise.resolve().then(work), limit]).finally(() => clearTimeout(timer));
+}
+
+/**
+ * Tempo-limite de uma chamada (revisão rodada 3): 180 s; no Gemini, 30 s mais 10 ms por token da saída máxima mandada (pedido
+ * + folga do raciocínio, ou seja, 100 tokens por segundo), entre 180 s e 600 s. Com a folga, o Gemini 3 pode gerar 24.576
+ * tokens na Criação: com 180 s fixos, uma resposta longa e correta seria cortada e paga duas vezes (ela e a reserva). O prazo
+ * do pedido (270 s no site) continua mandando.
+ */
+export function callTimeoutMs(ref: ModelRef, maxOut: number, care?: string): number {
+  if (ref.provider !== "gemini") return TIMEOUT_MS;
+  return Math.min(GEMINI_TIMEOUT_MAX_MS, Math.max(TIMEOUT_MS, 30_000 + effectiveMaxOut(ref, maxOut, care) * 10));
 }
 
 // ------------------------------------------------------------------ resolução das refs
@@ -219,15 +241,10 @@ function prepareSlot(deps: MaestroDeps, cfg: AiConfig, ref: ModelRef): Slot {
 
 const isPaid = (ref: ModelRef) => ref.provider !== "ollama";
 
-/** O limite de saída que de fato vai para a IA: no Gemini, o pedido mais a folga do raciocínio (geminiOutputLimit). */
-function effectiveMaxOut(ref: ModelRef, maxOut: number, care: string | undefined): number {
-  return ref.provider === "gemini" ? geminiOutputLimit(ref.model, care, maxOut) : maxOut;
-}
-
-/** Pior caso de uma chamada: Ollama 0; sem preço (só com tetos desligados) 0. */
+/** Pior caso de uma chamada para os tetos (callEstimateUsd): tetos desligados, Ollama ou sem preço (só com tetos desligados) 0. */
 function estimateCall(cfg: AiConfig, slot: Slot, chars: number, maxOut: number, care?: string): number {
-  if (!cfg.settings.caps_enabled || !isPaid(slot.ref) || !slot.price) return 0;
-  return estimateCostUsd(slot.price, chars, effectiveMaxOut(slot.ref, maxOut, care)) ?? 0;
+  if (!cfg.settings.caps_enabled || !isPaid(slot.ref)) return 0;
+  return callEstimateUsd(slot.ref, slot.price, chars, maxOut, care);
 }
 
 // ------------------------------------------------------------------ uma execução (registro, tetos, chamadas)
@@ -417,32 +434,43 @@ class Run {
 
   private async call<T>(slot: Slot, role: Role, req: StructuredRequest, chars: number, planned: boolean): Promise<Attempt<T>> {
     if (slot.blocked || !slot.instance) return this.refuse(slot, role, "bloqueada", slot.blocked ?? "Provedor indisponível.");
-    const est = estimateCall(this.cfg, slot, chars, req.maxOutputTokens ?? DEFAULT_MAX_OUT, req.care);
+    const maxOut = req.maxOutputTokens ?? DEFAULT_MAX_OUT;
+    const est = estimateCall(this.cfg, slot, chars, maxOut, req.care);
     const refusal = this.perRunRefusal(est) ?? this.monthlyRefusal(est, planned);
     if (refusal) return this.refuse(slot, role, "teto", refusal);
-    let limit = TIMEOUT_MS;
+    let limit = callTimeoutMs(slot.ref, maxOut, req.care);
     if (this.deadline !== null) {
       const left = this.deadline - Date.now() - DEADLINE_SAFETY_MS;
       if (left < MIN_CALL_MS) return this.refuse(slot, role, "bloqueada", NO_TIME);
-      limit = Math.min(TIMEOUT_MS, left);
+      limit = Math.min(limit, left);
     }
     const t0 = Date.now();
     const instance = slot.instance;
     // reservada antes de esperar: as chamadas que saem juntas (conferentes, membros) enxergam umas às outras
     this.inFlight += est;
+    // tempo esgotado cancela o pedido de verdade (a biblioteca de cada IA fecha a conexão), em vez de só parar de esperar
+    const abort = new AbortController();
     try {
-      const res = await withTimeout(() => instance.generate<T>(req), limit);
+      const res = await withTimeout(() => instance.generate<T>({ ...req, signal: abort.signal }), limit, () => abort.abort());
       const cost = this.costOf(slot, res);
       this.spent += cost;
       this.push(slot, role, "ok", { input_tokens: Math.max(0, Math.trunc(res.inputTokens ?? 0)), output_tokens: Math.max(0, Math.trunc(res.outputTokens ?? 0)), cost_usd: cost, duration_ms: Date.now() - t0 });
       return { ok: true, res, cost };
     } catch (e) {
       this.lastError = e;
-      const error = errText(e);
+      let error = errText(e);
       // a resposta que falhou também é cobrada (ex.: cortada pelo limite de saída): tokens e custo vão para o registro, para o gasto
       // do mês e para o teto desta execução (antes ficavam com custo 0)
       const used = e instanceof AiInvalidOutput ? e.usage : undefined;
-      const cost = used ? this.costOf(slot, { inputTokens: used.inputTokens, outputTokens: used.outputTokens, costUsd: null }) : 0;
+      let cost = used ? this.costOf(slot, { inputTokens: used.inputTokens, outputTokens: used.outputTokens, costUsd: null }) : 0;
+      if (e instanceof AiTimeout && isPaid(slot.ref)) {
+        // tempo esgotado: os tokens não chegam, mas o provedor pode cobrar o que gerou até o corte. Fica o pior caso da chamada,
+        // dito no erro, para o gasto do mês e os tetos enxergarem (revisão rodada 3)
+        cost = callEstimateUsd(slot.ref, slot.price, chars, maxOut, req.care);
+        error = cost > 0
+          ? `${error} Custo estimado de US$ ${usd(cost)} (pior caso: o provedor pode cobrar o que gerou até o corte).`
+          : `${error} Sem preço cadastrado: o custo não pôde ser estimado.`;
+      }
       this.spent += cost;
       this.push(slot, role, "falha", {
         duration_ms: Date.now() - t0,

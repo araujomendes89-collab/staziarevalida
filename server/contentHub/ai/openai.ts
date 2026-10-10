@@ -7,7 +7,7 @@
  * A resposta é sempre validada pelo nosso validador de schema; fora do formato é recusada, nunca "consertada".
  */
 import { toProviderSchema } from "./schema";
-import { AiInvalidOutput, type AiProvider, type AiUsage, type StructuredRequest, type StructuredResult } from "./provider";
+import { AiInvalidOutput, fetchSignal, type AiProvider, type AiUsage, type StructuredRequest, type StructuredResult } from "./provider";
 import { validate } from "./schema";
 
 /**
@@ -46,7 +46,8 @@ export class OpenAIProvider implements AiProvider {
         max_completion_tokens: Math.max(req.maxOutputTokens ?? 8192, 4096),
         ...(openAiReasoningEffort(this.model, req.care) ? { reasoning_effort: "low" } : {}),
       }),
-      signal: AbortSignal.timeout(180_000),
+      // limite próprio de 180 s e o cancelamento do maestro (tempo esgotado)
+      signal: fetchSignal(req.signal),
     });
     if (!res.ok) {
       const body = (await res.text().catch(() => "")).slice(0, 300);

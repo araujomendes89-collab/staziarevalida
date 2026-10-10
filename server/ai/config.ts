@@ -5,10 +5,10 @@
  */
 import type { ContentDb } from "../contentHub/infra";
 import { OllamaProvider } from "../contentHub/ai/ollama";
-import { familyOfModel, resolveProviderKind, type AiProvider } from "../contentHub/ai/provider";
+import { familyOfModel, geminiOutputLimit, resolveProviderKind, type AiProvider } from "../contentHub/ai/provider";
 import type { PromptKey } from "../contentHub/ai/prompts";
 import type { AiProviderId } from "./models";
-import type { ModelPrice } from "./prices";
+import { estimateCostUsd, type ModelPrice } from "./prices";
 import { googleAiAccess, GOOGLE_KEY_MISSING } from "./googleKey";
 
 export type AiFunctionKey = "criacao" | "verificacao" | "engenharia_reversa" | "assistente_preencher" | "assistente_conferir" | "assistente_revisar";
@@ -42,6 +42,20 @@ export const DEFAULT_MODELS: Partial<Record<AiProviderId, string>> = { anthropic
 const CACHE_MS = 10_000;
 
 export const isProviderId = (v: unknown): v is AiProviderId => PROVIDER_IDS.includes(v as AiProviderId);
+
+/** O limite de saída que de fato vai para a IA: no Gemini, o pedido mais a folga do raciocínio (geminiOutputLimit). */
+export function effectiveMaxOut(ref: ModelRef, maxOut: number, care?: string): number {
+  return ref.provider === "gemini" ? geminiOutputLimit(ref.model, care, maxOut) : maxOut;
+}
+
+/**
+ * Pior caso de uma chamada pelo preço cadastrado (entrada em caracteres ÷ 4 e a saída máxima que de fato vai para a IA), a
+ * mesma conta dos tetos. Ollama e modelo sem preço: 0.
+ */
+export function callEstimateUsd(ref: ModelRef, price: ModelPrice | null, chars: number, maxOut: number, care?: string): number {
+  if (ref.provider === "ollama" || !price) return 0;
+  return estimateCostUsd(price, chars, effectiveMaxOut(ref, maxOut, care)) ?? 0;
+}
 const num = (v: unknown): number | null => {
   if (v === null || v === undefined || v === "") return null;
   const n = Number(v);

@@ -31,6 +31,27 @@ export interface StructuredRequest {
   effort?: "low" | "medium" | "high";
   /** Cuidado da função na Central de IAs (só a Central manda): Rápido reduz o raciocínio do Gemini e da OpenAI. */
   care?: "rapido" | "caprichado";
+  /**
+   * Cancelamento do pedido (o maestro cancela quando o tempo esgota). Cada provedor o entrega à sua biblioteca, que fecha a
+   * conexão em vez de deixar o pedido aberto.
+   */
+  signal?: AbortSignal;
+}
+
+/** Limite próprio dos provedores que usam fetch (OpenAI, Ollama): 180 s. */
+const FETCH_TIMEOUT_MS = 180_000;
+
+/** O sinal do fetch: o limite próprio de 180 s e, quando houver, o cancelamento de quem chamou (o maestro). */
+export function fetchSignal(outer: AbortSignal | undefined, ms = FETCH_TIMEOUT_MS): AbortSignal {
+  const own = AbortSignal.timeout(ms);
+  if (!outer) return own;
+  if (typeof AbortSignal.any === "function") return AbortSignal.any([outer, own]);
+  const ac = new AbortController();
+  for (const s of [outer, own]) {
+    if (s.aborted) ac.abort(s.reason);
+    else s.addEventListener("abort", () => ac.abort(s.reason), { once: true });
+  }
+  return ac.signal;
 }
 
 export interface StructuredResult<T> {
@@ -201,13 +222,17 @@ class AnthropicProvider implements AiProvider {
     // Saída estruturada (output_config.format): os modelos atuais recusam tool_choice forçado (400).
     // O esforço padrão é "medium": conferência exige cuidado, mas o raciocínio também consome o limite de saída. Só vai para os
     // modelos que aceitam (anthropicOutputConfig).
-    const res = await (this.client.messages.create as any)({
-      model: this.model,
-      max_tokens: Math.max(req.maxOutputTokens ?? 8192, 8192),
-      system: req.system,
-      output_config: anthropicOutputConfig(this.model, req.effort, req.schema),
-      messages: [{ role: "user", content: req.input }],
-    });
+    const res = await (this.client.messages.create as any)(
+      {
+        model: this.model,
+        max_tokens: Math.max(req.maxOutputTokens ?? 8192, 8192),
+        system: req.system,
+        output_config: anthropicOutputConfig(this.model, req.effort, req.schema),
+        messages: [{ role: "user", content: req.input }],
+      },
+      // tempo esgotado no maestro: a biblioteca fecha o pedido
+      req.signal ? { signal: req.signal } : undefined,
+    );
     const usage = res.usage as any;
     if (res.stop_reason === "refusal") {
       throw new Error(`O provedor recusou a solicitação (${res.stop_details?.category ?? "sem categoria"}).`);
@@ -247,6 +272,8 @@ class GeminiProvider implements AiProvider {
         responseSchema: toProviderSchema(req.schema) as any,
         maxOutputTokens: limit,
         ...(thinking ? { thinkingConfig: thinking as any } : {}),
+        // tempo esgotado no maestro: a biblioteca fecha o pedido (ela avisa que o Google pode cobrar o que já gerou)
+        ...(req.signal ? { abortSignal: req.signal } : {}),
       },
     });
     // tokens lidos antes de conferir a resposta: a que falha também é cobrada e entra no registro e nos tetos
