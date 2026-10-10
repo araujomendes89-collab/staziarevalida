@@ -336,6 +336,11 @@ describe("IA11: esforço do Claude só nos modelos que aceitam; preço do Haiku 
     const { PRICE_SEED } = await import("../../server/ai/prices");
     expect(PRICE_SEED.find((p) => p.provider === "anthropic" && p.model === "claude-haiku-5-5")).toMatchObject({ input_per_mtok: 0.1, output_per_mtok: 0.5, checked_on: "2026-10-10" });
   });
+
+  it("tabela de preços traz o Claude Opus 5 (US$ 5 entrada e US$ 25 saída por milhão): em produção ele é reserva e ficava sem preço", async () => {
+    const { PRICE_SEED } = await import("../../server/ai/prices");
+    expect(PRICE_SEED.find((p) => p.provider === "anthropic" && p.model === "claude-opus-5")).toMatchObject({ input_per_mtok: 5, output_per_mtok: 25, checked_on: "2026-10-10" });
+  });
 });
 
 describe("IA07: Cuidado no Gemini e na OpenAI", () => {
