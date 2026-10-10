@@ -18,6 +18,17 @@ import { googleAiAccess, googleGenAiOptions, GOOGLE_KEY_MISSING, type GoogleAiAc
 import { toProviderSchema, validate, type Schema } from "./schema";
 import { OpenAIProvider } from "./openai";
 import { FallbackProvider } from "./fallback";
+import { MAX_CONTINUATIONS, parseOrConvert, sumTokens } from "./webSearch";
+
+/**
+ * Busca na internet pedida ao provedor: só estes sites (endereços da lista, com ou sem caminho) e até este número de buscas.
+ * Cada provedor impõe o que a sua API deixa: a Claude, os dois (por chamada); a OpenAI, só os sites (por host, sem caminho);
+ * o Gemini, nenhum dos dois. O servidor confere cada link depois, então o que o provedor não impõe não abre brecha.
+ */
+export interface WebSearchOptions {
+  allowedDomains: string[];
+  maxSearches: number;
+}
 
 export interface StructuredRequest {
   promptId: string;
@@ -29,6 +40,11 @@ export interface StructuredRequest {
   maxOutputTokens?: number;
   /** Quanto o modelo "pensa" antes de responder (Anthropic). Conversa pede resposta rápida; conferência pede cuidado. */
   effort?: "low" | "medium" | "high";
+  /**
+   * Com busca na internet o provedor NÃO pede JSON estruturado junto da ferramenta: a IA termina o texto com o JSON, que
+   * é conferido pelo esquema (inválido → uma chamada curta, sem busca, só para converter). Ver webSearch.ts.
+   */
+  webSearch?: WebSearchOptions;
 }
 
 export interface StructuredResult<T> {
@@ -39,6 +55,10 @@ export interface StructuredResult<T> {
   outputTokens: number | null;
   latencyMs: number;
   costUsd: number | null;
+  /** Só nas chamadas com busca: quantas buscas o provedor cobra. */
+  webSearches?: number;
+  /** Só nas chamadas com busca: os links que a busca mostrou (sinal, não prova: quem prova é o servidor baixando o arquivo). */
+  seenUrls?: string[];
 }
 
 export class AiNotConfigured extends Error {}
@@ -68,22 +88,33 @@ function checked<T>(schema: Schema, raw: unknown): T {
   return raw as T;
 }
 
-class AnthropicProvider implements AiProvider {
+/** Versão da ferramenta de busca da Claude: a nova só nos modelos que a aceitam (Opus 5 e 4.6 a 4.8, Sonnet 5 e 4.6). */
+export function anthropicSearchTool(model: string): "web_search_20260209" | "web_search_20250305" {
+  return /^claude-(opus-(5|4-[678])|sonnet-(5|4-6))/.test(model) ? "web_search_20260209" : "web_search_20250305";
+}
+
+/** O esforço padrão é "medium": conferência exige cuidado, mas o raciocínio também consome o limite de saída. */
+const anthropicEffort = (req: StructuredRequest) => req.effort || process.env.CONTENT_HUB_ANTHROPIC_EFFORT || "medium";
+
+/** O que o provedor usa do cliente da Anthropic (o de verdade, ou um falso nos testes). */
+type MessagesClient = { messages: { create(params: any): Promise<any> } };
+
+export class AnthropicProvider implements AiProvider {
   readonly name = "anthropic";
   readonly isMock = false;
-  private client: Anthropic;
-  constructor(apiKey: string, readonly model: string) {
-    this.client = new Anthropic({ apiKey });
+  private client: MessagesClient;
+  constructor(apiKey: string, readonly model: string, client?: MessagesClient) {
+    this.client = client ?? new Anthropic({ apiKey });
   }
   async generate<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
+    if (req.webSearch) return this.generateWithSearch<T>(req, req.webSearch);
     const t0 = Date.now();
     // Saída estruturada (output_config.format): os modelos atuais recusam tool_choice forçado (400).
-    // O esforço padrão é "medium": conferência exige cuidado, mas o raciocínio também consome o limite de saída.
-    const res = await (this.client.messages.create as any)({
+    const res = await this.client.messages.create({
       model: this.model,
       max_tokens: Math.max(req.maxOutputTokens ?? 8192, 8192),
       system: req.system,
-      output_config: { effort: req.effort || process.env.CONTENT_HUB_ANTHROPIC_EFFORT || "medium", format: { type: "json_schema", schema: toProviderSchema(req.schema) } },
+      output_config: { effort: anthropicEffort(req), format: { type: "json_schema", schema: toProviderSchema(req.schema) } },
       messages: [{ role: "user", content: req.input }],
     });
     const usage = res.usage as any;
@@ -101,16 +132,72 @@ class AnthropicProvider implements AiProvider {
     const output = checked<T>(req.schema, raw);
     return { output, provider: this.name, model: res.model ?? this.model, inputTokens: usage?.input_tokens ?? null, outputTokens: usage?.output_tokens ?? null, latencyMs: Date.now() - t0, costUsd: price(usage?.input_tokens ?? null, usage?.output_tokens ?? null) };
   }
+
+  /**
+   * Com busca na internet: a ferramenta `web_search` roda no servidor da Anthropic e a resposta termina com o JSON no texto
+   * (sem `format`, ver webSearch.ts). `pause_turn` é o servidor pausando um turno longo: reenvia-se a pergunta com cada
+   * resposta pausada, até `MAX_CONTINUATIONS` vezes depois da primeira chamada. No limite, para de buscar: o texto acumulado
+   * vai para `parseOrConvert`, que usa o JSON dele ou faz a conversão curta, sem busca.
+   */
+  private async generateWithSearch<T>(req: StructuredRequest, search: WebSearchOptions): Promise<StructuredResult<T>> {
+    const t0 = Date.now();
+    const base = {
+      model: this.model,
+      max_tokens: Math.max(req.maxOutputTokens ?? 8192, 8192),
+      system: req.system,
+      tools: [{ type: anthropicSearchTool(this.model), name: "web_search", allowed_domains: search.allowedDomains, max_uses: search.maxSearches }],
+      output_config: { effort: anthropicEffort(req) },
+    };
+    const messages: any[] = [{ role: "user", content: req.input }];
+    const texts: string[] = [];
+    const seen = new Set<string>();
+    let webSearches = 0;
+    let inputTokens: number | null = null;
+    let outputTokens: number | null = null;
+    let model = this.model;
+    for (let continuation = 0; ; continuation++) {
+      const res = await this.client.messages.create({ ...base, messages: [...messages] });
+      const usage = res.usage as any;
+      webSearches += usage?.server_tool_use?.web_search_requests ?? 0;
+      inputTokens = sumTokens(inputTokens, usage?.input_tokens);
+      outputTokens = sumTokens(outputTokens, usage?.output_tokens);
+      model = res.model ?? model;
+      const content: any[] = Array.isArray(res.content) ? res.content : [];
+      // o texto de uma resposta pode vir partido em vários blocos (citações): emendar sem separador
+      const text = content.filter((b) => b?.type === "text").map((b) => String(b.text ?? "")).join("");
+      if (text) texts.push(text);
+      for (const block of content) {
+        // resultado em lista = links vistos; resultado em erro (objeto) não tem links
+        if (block?.type === "web_search_tool_result" && Array.isArray(block.content)) {
+          for (const item of block.content) if (typeof item?.url === "string" && item.url) seen.add(item.url);
+        }
+      }
+      if (res.stop_reason === "refusal") {
+        throw new Error(`O provedor recusou a solicitação (${res.stop_details?.category ?? "sem categoria"}).`);
+      }
+      if (res.stop_reason === "max_tokens") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null);
+      if (res.stop_reason !== "pause_turn" || continuation >= MAX_CONTINUATIONS) break;
+      messages.push({ role: "assistant", content });
+    }
+    const { output, extra } = await parseOrConvert<T>(req, texts.join("\n"), (r) => this.generate<T>(r));
+    const inTok = sumTokens(inputTokens, extra?.inputTokens);
+    const outTok = sumTokens(outputTokens, extra?.outputTokens);
+    return { output, provider: this.name, model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: price(inTok, outTok), webSearches, seenUrls: [...seen] };
+  }
 }
 
-class GeminiProvider implements AiProvider {
+/** O que o provedor usa do cliente do Google (o de verdade, ou um falso nos testes). */
+type GenerateClient = { models: { generateContent(params: any): Promise<any> } };
+
+export class GeminiProvider implements AiProvider {
   readonly name = "gemini";
   readonly isMock = false;
-  private client: GoogleGenAI;
-  constructor(access: GoogleAiAccess, readonly model: string) {
-    this.client = new GoogleGenAI(googleGenAiOptions(access));
+  private client: GenerateClient;
+  constructor(access: GoogleAiAccess, readonly model: string, client?: GenerateClient) {
+    this.client = client ?? new GoogleGenAI(googleGenAiOptions(access));
   }
   async generate<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
+    if (req.webSearch) return this.generateWithSearch<T>(req);
     const t0 = Date.now();
     const res = await this.client.models.generateContent({
       model: this.model,
@@ -128,6 +215,34 @@ class GeminiProvider implements AiProvider {
     // O raciocínio do modelo (thoughtsTokenCount) é cobrado como saída: entra na conta, senão o gasto e os tetos ficam abaixo do real.
     const outputTokens = u?.candidatesTokenCount == null && u?.thoughtsTokenCount == null ? null : (u?.candidatesTokenCount ?? 0) + (u?.thoughtsTokenCount ?? 0);
     return { output, provider: this.name, model: this.model, inputTokens: u?.promptTokenCount ?? null, outputTokens, latencyMs: Date.now() - t0, costUsd: price(u?.promptTokenCount ?? null, outputTokens) };
+  }
+
+  /**
+   * Com busca na internet: ferramenta `googleSearch`, sem `responseSchema` (o Gemini não mistura as duas coisas): a resposta
+   * termina com o JSON no texto (ver webSearch.ts). A API não filtra sites: `allowedDomains` não vai à API (a lista de sites
+   * vai escrita no texto do pedido, por quem o monta) e quem filtra é o servidor, ao conferir e baixar cada link. Os links
+   * vistos são os da busca (endereços de redirecionamento do Google).
+   */
+  private async generateWithSearch<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
+    const t0 = Date.now();
+    const res = await this.client.models.generateContent({
+      model: this.model,
+      contents: req.input,
+      config: { systemInstruction: req.system, tools: [{ googleSearch: {} }], maxOutputTokens: req.maxOutputTokens ?? 4096 },
+    });
+    const candidate = res.candidates?.[0];
+    if (candidate?.finishReason === "MAX_TOKENS") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null);
+    const grounding = candidate?.groundingMetadata;
+    // Gemini 2.x cobra por pedido que usou a busca; do 3 em diante, por consulta feita
+    const webSearches = /^gemini-2/.test(this.model) ? (grounding ? 1 : 0) : Array.isArray(grounding?.webSearchQueries) ? grounding.webSearchQueries.length : 0;
+    const seen = new Set<string>();
+    for (const chunk of Array.isArray(grounding?.groundingChunks) ? grounding.groundingChunks : []) if (typeof chunk?.web?.uri === "string" && chunk.web.uri) seen.add(chunk.web.uri);
+    const { output, extra } = await parseOrConvert<T>(req, String(res.text ?? ""), (r) => this.generate<T>(r));
+    const u = res.usageMetadata as any;
+    // o que a busca trouxe para o modelo ler (toolUsePromptTokenCount) é cobrado como entrada; o raciocínio, como saída
+    const inTok = sumTokens(sumTokens(u?.promptTokenCount, u?.toolUsePromptTokenCount), extra?.inputTokens);
+    const outTok = sumTokens(sumTokens(u?.candidatesTokenCount, u?.thoughtsTokenCount), extra?.outputTokens);
+    return { output, provider: this.name, model: this.model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: price(inTok, outTok), webSearches, seenUrls: [...seen] };
   }
 }
 

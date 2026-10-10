@@ -19,6 +19,8 @@ export class OllamaProvider implements AiProvider {
   ) {}
 
   async generate<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
+    // o Ollama roda no Mac e não tem ferramenta de busca: quem pede busca precisa de outra IA
+    if (req.webSearch) throw new Error("Ollama não busca na internet.");
     const t0 = Date.now();
     const res = await this.fetchImpl(`${this.baseUrl.replace(/\/+$/, "")}/api/chat`, {
       method: "POST",
