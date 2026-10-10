@@ -16,11 +16,13 @@ const G31: R = { provider: "gemini", model: "gemini-3.1-pro-preview" };
 const G35: R = { provider: "gemini", model: "gemini-3.5-flash" };
 const G25: R = { provider: "gemini", model: "gemini-2.5-pro" };
 const OPUS: R = { provider: "anthropic", model: "claude-opus-5" };
+const ASTRA: R = { provider: "openai", model: "gpt-6-astra" };
 const PRICES = [
   { ...G31, input_per_mtok: 2, output_per_mtok: 12 },
   { ...G35, input_per_mtok: 1.5, output_per_mtok: 9 },
   { ...G25, input_per_mtok: 1.25, output_per_mtok: 10 },
   { ...OPUS, input_per_mtok: 5, output_per_mtok: 25 },
+  { ...ASTRA, input_per_mtok: 10, output_per_mtok: 50 },
 ].map((p) => ({ ...p, source_url: "https://exemplo.com", checked_on: "2026-10-10" }));
 
 const cfg = (settings: Partial<AiConfig["settings"]>, functions: AiConfig["functions"] = {}): AiConfig =>
@@ -85,13 +87,36 @@ describe("aviso do teto por execução", () => {
     expect(single(validateFunctionConfig(fn("assistente_conferir", G25, null, "rapido"), c).warnings)).toEqual([]);
   });
 
-  it("conferentes da Linha e membros do Comitê também são conferidos, cada um como uma chamada", () => {
-    const c = cfg({ per_run_cap_usd: 0.3 });
-    const w = single(validateFunctionConfig(fn("verificacao", OPUS, null, "caprichado", "linha", [G31]), c).warnings);
-    expect(w).toHaveLength(1);
-    expect(w[0]).toContain("do conferente Gemini gemini-3.1-pro-preview em etapas da Central de Conteúdo");
-    const m = single(validateFunctionConfig(fn("criacao", G35, null, "caprichado", "comite", [OPUS]), cfg({ per_run_cap_usd: 0.4 })).warnings);
-    expect(m).toEqual([expect.stringContaining("do membro Claude claude-opus-5 em Podcasts (US$ 0,5563)")]);
+  // revisão rodada 5, ponto 2: conferentes e membros só rodam na conferência de rascunhos da Verificação (maestroRoleProvider);
+  // fora dela o uso real chama só a principal e a reserva, e o aviso mandava subir o teto por uma chamada que não existe
+  it("fora da Verificação, conferentes da Linha e membros do Comitê não entram no aviso (não são chamados)", () => {
+    // cenário da revisão: Criação em Linha, principal gemini-3.5-flash, conferente gpt-6-astra, teto de US$ 0,45
+    const w = validateFunctionConfig(fn("criacao", G35, null, "caprichado", "linha", [ASTRA]), cfg({ per_run_cap_usd: 0.45 })).warnings;
+    expect(w).toContain("Nesta etapa a função usa só a IA principal e a reserva: os conferentes da Linha de produção ainda não rodam.");
+    expect(capWarnings(w).filter((m) => m.includes("conferente"))).toEqual([]);
+    expect(capWarnings(w).some((m) => m.includes("1,12"))).toBe(false);
+    const m = validateFunctionConfig(fn("criacao", G35, null, "caprichado", "comite", [OPUS]), cfg({ per_run_cap_usd: 0.4 })).warnings;
+    expect(capWarnings(m).filter((x) => x.includes("membro"))).toEqual([]);
+    // a principal continua conferida, e cabe: gemini-3.5-flash nos Podcasts = 31.250 × 1,5 + 32.384 × 9 = 0,3383, abaixo de 0,40
+    expect(single(m)).toEqual([]);
+  });
+
+  it("na Verificação, conferentes da Linha usam o perfil da conferência de rascunhos: 4.096 de saída, sem o Cuidado da função", () => {
+    const at = (cap: number, reviewer: R, care: "rapido" | "caprichado" = "caprichado") =>
+      single(validateFunctionConfig(fn("verificacao", OPUS, null, care, "linha", [reviewer]), cfg({ per_run_cap_usd: cap })).warnings).filter((m) => m.includes("conferente"));
+    // gpt-6-astra: 20.000 caracteres = 5.000 tokens × 10 + 4.096 × 50 = 0,2548 (o perfil das etapas pedia 0,4846, quase o dobro)
+    expect(at(0.2, ASTRA)).toEqual([
+      "Teto por execução de US$ 0,2 abaixo da estimativa de uma chamada do conferente OpenAI gpt-6-astra em conferência de rascunhos (US$ 0,2548): essa chamada para no teto sem chamar a IA. Para essa chamada rodar, o teto por execução precisa ser de pelo menos US$ 0,26.",
+    ]);
+    expect(at(0.26, ASTRA)).toEqual([]);
+    // a conferência de rascunhos não leva o Cuidado: no Rápido, o gemini-2.5-pro conferente ainda tem a folga de 8.192
+    // (5.000 × 1,25 + 12.288 × 10 = 0,1291), não a de 1.024 do Rápido (que daria 0,1015 nas etapas)
+    expect(at(0.11, G25, "rapido")).toEqual([expect.stringContaining("do conferente Gemini gemini-2.5-pro em conferência de rascunhos (US$ 0,1291), já com a folga do raciocínio do Gemini")]);
+  });
+
+  it("na Verificação em Comitê, os membros também usam o perfil da conferência de rascunhos", () => {
+    const w = single(validateFunctionConfig(fn("verificacao", OPUS, null, "caprichado", "comite", [ASTRA]), cfg({ per_run_cap_usd: 0.2 })).warnings);
+    expect(w.filter((m) => m.includes("membro"))).toEqual([expect.stringContaining("do membro OpenAI gpt-6-astra em conferência de rascunhos (US$ 0,2548)")]);
   });
 
   it("teto que cabe, tetos desligados ou sem teto por execução: nenhum aviso", () => {

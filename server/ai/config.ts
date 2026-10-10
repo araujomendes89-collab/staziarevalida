@@ -96,6 +96,14 @@ export const TYPICAL_CALLS: Record<AiFunctionKey, TypicalCall[]> = {
   assistente_revisar: [{ use: "assistentes", inputChars: 70_000, maxOut: 6000 }],
 };
 
+/**
+ * Conferência de rascunhos da Verificação (por comando, draftChecks.ts; revisão rodada 5): é o único lugar em que os conferentes
+ * da Linha e os membros do Comitê rodam. Cada papel (fontes, atualidade, revisão clínica) é uma execução própria com o conferente
+ * do papel, 4.096 de saída e SEM o Cuidado da função (maestroRoleProvider não passa a configuração da função). Entrada: até 6
+ * trechos oficiais de 2.500 caracteres, a afirmação e as instruções (~20 mil caracteres).
+ */
+export const DRAFT_REVIEW_CALL: TypicalCall = { use: "conferência de rascunhos", inputChars: 20_000, maxOut: 4096 };
+
 /** Estimativa (pior caso, a mesma dos tetos) de uma chamada típica com esta IA. */
 export function typicalCallEstimate(ref: ModelRef, price: ModelPrice | null, call: TypicalCall, care?: string): number {
   return callEstimateUsd(ref, price, call.inputChars, call.maxOut, care);
@@ -111,23 +119,32 @@ const priceOf = (cfg: AiConfig, ref: ModelRef) => cfg.prices.find((p) => p.provi
 const hasFolga = (ref: ModelRef, care: string | undefined) => ref.provider === "gemini" && geminiThinkingReserve(ref.model, care) > 0;
 const FOLGA = ", já com a folga do raciocínio do Gemini";
 
+/** Uma IA que a função de fato chama, as chamadas típicas dela e o Cuidado que vai junto (undefined: sem o Cuidado da função). */
+interface CapMember {
+  ref: ModelRef;
+  role: keyof typeof ROLE_OF;
+  calls: TypicalCall[];
+  care: string | undefined;
+}
+
 /**
  * Aviso antes de parar (revisão rodada 3): com os tetos ligados, cada IA da função cuja chamada típica (já com a folga do
  * raciocínio do Gemini) passa do teto por execução. Sem o aviso, o dono só descobria pelos trabalhos parados e pelas linhas
  * "teto" do Histórico. Aqui cada IA conta como uma chamada sozinha; o "pelo menos" é o valor para essa chamada rodar, não para
  * nada parar (rodada 4): depois de uma falha cobrada, a soma com a reserva e a nova tentativa vem de failureChainWarning.
+ * Cada IA traz as próprias chamadas (rodada 5): conferentes e membros só na conferência de rascunhos da Verificação.
  */
-function perRunCapWarnings(key: AiFunctionKey, members: { ref: ModelRef; role: keyof typeof ROLE_OF }[], care: string | undefined, cfg: AiConfig): string[] {
+function perRunCapWarnings(members: CapMember[], cfg: AiConfig): string[] {
   const { caps_enabled, per_run_cap_usd: cap } = cfg.settings;
   if (!caps_enabled || cap === null) return [];
   const out: string[] = [];
   const seen = new Set<string>();
-  for (const { ref, role } of members) {
+  for (const { ref, role, calls, care } of members) {
     const id = `${role}:${ref.provider}:${ref.model}`;
     if (seen.has(id)) continue;
     seen.add(id);
     const price = priceOf(cfg, ref);
-    const over = (TYPICAL_CALLS[key] ?? []).map((call) => ({ call, est: typicalCallEstimate(ref, price, call, care) })).filter((x) => x.est > cap + 1e-9);
+    const over = calls.map((call) => ({ call, est: typicalCallEstimate(ref, price, call, care) })).filter((x) => x.est > cap + 1e-9);
     if (!over.length) continue;
     const list = listPt(over.map((x) => `${x.call.use} (US$ ${usd(x.est)})`));
     const need = Math.max(...over.map((x) => x.est));
@@ -408,14 +425,17 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig): { pro
         : `Nesta etapa a função usa só a IA principal e a reserva: ${who} ainda não rodam.`
     );
   }
-  // teto por execução abaixo de uma chamada típica: avisa antes, em vez de o trabalho parar sem explicação
-  const others = fc.mode === "linha" ? "conferente" : fc.mode === "comite" ? "membro" : null;
-  const members = [
-    ...(fc.primary ? [{ ref: fc.primary, role: "principal" as const }] : []),
-    ...(fc.fallback ? [{ ref: fc.fallback, role: "reserva" as const }] : []),
-    ...(others ? reviewers.map((ref) => ({ ref, role: others })) : []),
+  // teto por execução abaixo de uma chamada típica: avisa antes, em vez de o trabalho parar sem explicação. Conferentes e membros
+  // só rodam na conferência de rascunhos da Verificação (maestroRoleProvider), com o perfil dela; fora da Verificação o uso real
+  // chama só a principal e a reserva, e o aviso deles mandava subir o teto por uma chamada que não existe (revisão rodada 5)
+  const uses = TYPICAL_CALLS[fc.key] ?? [];
+  const others = fc.key !== "verificacao" ? null : fc.mode === "linha" ? "conferente" : fc.mode === "comite" ? "membro" : null;
+  const members: CapMember[] = [
+    ...(fc.primary ? [{ ref: fc.primary, role: "principal" as const, calls: uses, care: fc.care }] : []),
+    ...(fc.fallback ? [{ ref: fc.fallback, role: "reserva" as const, calls: uses, care: fc.care }] : []),
+    ...(others ? reviewers.map((ref) => ({ ref, role: others, calls: [DRAFT_REVIEW_CALL], care: undefined })) : []),
   ];
-  for (const w of perRunCapWarnings(fc.key, members, fc.care, cfg)) if (!warnings.includes(w)) warnings.push(w);
+  for (const w of perRunCapWarnings(members, cfg)) if (!warnings.includes(w)) warnings.push(w);
   // depois de uma falha cobrada da principal: a nova tentativa e a reserva com o gasto já feito (rodada 4)
   const chain = failureChainWarning(fc.key, fc.primary, fc.fallback, fc.care, cfg);
   if (chain && !warnings.includes(chain)) warnings.push(chain);
@@ -506,7 +526,8 @@ export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.e
       if (!pending && keyPending(ref.provider, env)) warnings.push(keyWarning(ref.provider));
       // a reserva das variáveis (CONTENT_HUB_AI_FALLBACK_PROVIDER), a mesma que o maestro usa sem configuração salva
       const reserve = envReserveRef(ref, env);
-      warnings.push(...perRunCapWarnings(key, [{ ref, role: "principal" }, ...(reserve ? [{ ref: reserve, role: "reserva" as const }] : [])], undefined, cfg));
+      const uses = TYPICAL_CALLS[key] ?? [];
+      warnings.push(...perRunCapWarnings([{ ref, role: "principal", calls: uses, care: undefined }, ...(reserve ? [{ ref: reserve, role: "reserva" as const, calls: uses, care: undefined }] : [])], cfg));
       const chain = failureChainWarning(key, ref, reserve, undefined, cfg);
       if (chain) warnings.push(chain);
     }
