@@ -33,8 +33,6 @@ import { adminContentPublicationRouter } from "./server/routes/adminContentPubli
 import { publishedContentRouter } from "./server/routes/publishedContent";
 import { adminUsersRouter } from "./server/routes/adminUsers";
 import { entitlementsRouter, adminEntitlementsRouter } from "./server/routes/entitlements";
-import { paymentWebhooksRouter } from "./server/routes/paymentWebhooks";
-import { billingRouter } from "./server/routes/billing";
 import { resolveServerPort } from "./server/config/serverPort";
 import { checklistBankRouter } from "./server/checklistBank/router";
 import { createDevDbRouter } from "./server/devDb/router";
@@ -84,10 +82,11 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   if (opts.serverless) process.env.CONTENT_HUB_WORKER = "0";
 
   app.use(express.json({ limit: "50mb" }));
-  app.use("/api/billing", billingRouter);
+  // Cobrança do app antigo (Firebase) desligada (RT01/RT02, 2026-10-10): /api/billing e /api/webhooks não são montadas.
+  // Tinham simulação de aprovação sem login e aviso de pagamento sem conferência; nenhuma tela do app novo as usa.
+  // Os arquivos ficam em server/routes; a cobrança nova será feita do zero, com conferência obrigatória da assinatura.
   app.use("/api/entitlements", entitlementsRouter);
   app.use("/api/admin/entitlements", adminEntitlementsRouter);
-  app.use("/api/webhooks", paymentWebhooksRouter);
   app.use("/api/admin/users", adminUsersRouter);
   app.use("/api/admin/flashcards/drafts", adminFlashcardDraftsRouter);
   app.use("/api/admin/design", adminDesignCloneRouter);
