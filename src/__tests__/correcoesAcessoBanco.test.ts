@@ -139,6 +139,10 @@ describe("US01 — 'Plano pago até' corta o acesso", () => {
   it("a regra do plano pago não fica exposta a quem usa o app", async () => {
     expect(await podeChamar("public.subscription_is_paid(public.plan_code, public.subscription_status, timestamptz)")).toEqual({ anon: false, authenticated: false });
   });
+
+  it("sem login, ninguém chama a função que muda o plano (revoke da correção 7900)", async () => {
+    expect(await podeChamar("public.app_admin_set_subscription(uuid, text, text, timestamptz, timestamptz)")).toEqual({ anon: false, authenticated: true });
+  });
 });
 
 describe("CF01 — Tutor ligado só com 'Planos pagos + teste grátis'", () => {

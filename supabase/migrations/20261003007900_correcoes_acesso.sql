@@ -154,6 +154,8 @@ begin
   return public.admin_user_row(p_user_id);
 end
 $$;
+-- Sem login, ninguém chama (como as demais funções da Administração); a equipe logada continua chamando.
+revoke execute on function public.app_admin_set_subscription(uuid, text, text, timestamptz, timestamptz) from public, anon;
 
 -- ---------------------------------------------------------------- CF01: Tutor ligado só com os planos pagos
 -- A chave nasce ligada (a linha única já existe; isto vale se ela for recriada).
