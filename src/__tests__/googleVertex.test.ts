@@ -12,6 +12,7 @@ vi.mock("@google/genai", () => ({
     models = {
       generateContent: async () => ({ text: JSON.stringify({ ok: true }), usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 2 } }),
       embedContent: async ({ contents }: { contents: unknown[] }) => ({ embeddings: contents.map(() => ({ values: Array.from({ length: 768 }, (_, i) => (i === 0 ? 1 : 0)) })) }),
+      countTokens: async () => ({ totalTokens: 1 }),
     };
     constructor(opts: Record<string, unknown>) {
       made.push(opts);
@@ -94,12 +95,13 @@ describe("busca por significado", () => {
 });
 
 describe("lista de modelos do Gemini no modo Vertex", () => {
-  it("devolve os modelos Gemini com preço cadastrado, sem chamar a internet", async () => {
+  it("devolve só os modelos Gemini com preço que o modo expresso aceita, depois do teste da chave (correção IA05)", async () => {
+    const { VERTEX_EXPRESS_MODELS } = await import("../../server/ai/models");
     const fetchImpl = vi.fn();
     const list = await listModels("gemini", { VERTEX_API_KEY: VERTEX } as NodeJS.ProcessEnv, fetchImpl as unknown as typeof fetch);
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(list.status).toBe("pronta");
     expect(list.detail).toMatch(/Vertex/);
-    expect(list.models.map((m) => m.id).sort()).toEqual(PRICE_SEED.filter((p) => p.provider === "gemini").map((p) => p.model).sort());
+    expect(list.models.map((m) => m.id).sort()).toEqual(PRICE_SEED.filter((p) => p.provider === "gemini" && VERTEX_EXPRESS_MODELS.includes(p.model)).map((p) => p.model).sort());
   });
 });

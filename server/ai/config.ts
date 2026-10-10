@@ -255,6 +255,15 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig): { pro
     const fams = members.map((m) => familyOfModel(m.model));
     if (new Set(fams).size < fams.length) warnings.push("Há membros da mesma família no comitê: não é independente.");
   }
+  // Linha de produção e Comitê ainda não chamam conferentes nem membros: o uso real é principal e reserva (correção IA04, 2026-10-10)
+  if (fc.mode === "linha" || fc.mode === "comite") {
+    const who = fc.mode === "linha" ? "os conferentes da Linha de produção" : "os membros do Comitê";
+    warnings.push(
+      fc.key === "verificacao"
+        ? `No processamento a Verificação usa só a IA principal e a reserva (sempre de outra empresa); ${who} ${fc.mode === "linha" ? "só rodam na conferência de rascunhos feita por comando" : "ainda não rodam"}.`
+        : `Nesta etapa a função usa só a IA principal e a reserva: ${who} ainda não rodam.`
+    );
+  }
   return { problems, warnings };
 }
 
@@ -273,7 +282,7 @@ export const FUNCTION_KEYS: AiFunctionKey[] = ["criacao", "verificacao", "engenh
  * roda em nenhum servidor publicado (Ollama no site publicado ou sem resposta). Nesta etapa todo uso real passa pelo
  * adaptador do maestro, que usa só a principal e a reserva, qualquer que seja o modo: nem a principal nem a reserva
  * rodando é problema; só a principal não rodando é aviso (a reserva responde). Conferente ou membro que não roda é aviso
- * (no comitê, a IA desligada também diz o motivo; menos de 2 membros rodando avisa que o comitê completo vem na etapa 2).
+ * (no comitê, a IA desligada também diz o motivo). O aviso fixo de que Linha e Comitê ainda não chamam conferentes vem de validateFunctionConfig.
  * Chave ausente neste servidor é só aviso (o processamento roda no Cloud Run com as chaves de lá). IA desligada já é
  * problema em validateFunctionConfig e não se repete como problema.
  */
@@ -312,12 +321,6 @@ function savedFunctionCheck(saved: FunctionConfig, cfg: AiConfig, env: NodeJS.Pr
   for (const o of others) {
     const reason = saved.mode === "comite" ? o.reason : o.why;
     if (reason) add(warnings, cannot(o, reason));
-  }
-  if (saved.mode === "comite") {
-    const members = primary ? [primary, ...others] : others;
-    if (members.length >= 2 && members.filter((m) => m.runs).length < 2) {
-      add(warnings, "O comitê completo entra em uso na etapa 2; hoje a função usa a principal e a reserva.");
-    }
   }
 
   // chave ausente neste servidor: só aviso, um por IA ligada que o servidor deixa chamar

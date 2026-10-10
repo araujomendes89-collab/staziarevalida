@@ -68,6 +68,48 @@ function checked<T>(schema: Schema, raw: unknown): T {
   return raw as T;
 }
 
+/**
+ * Modelos do Claude que aceitam a opção de esforço (página oficial "Effort", conferida em 2026-10-10). Correção IA11: o esforço
+ * ia para qualquer modelo; o Claude Haiku 4.5, por exemplo, não aceita.
+ */
+export const CLAUDE_EFFORT_MODELS = [
+  "claude-fable-5-1",
+  "claude-mythos-5-1",
+  "claude-fable-5",
+  "claude-mythos-5",
+  "claude-mythos-preview",
+  "claude-opus-5-5",
+  "claude-opus-5",
+  "claude-opus-4-8",
+  "claude-opus-4-7",
+  "claude-opus-4-6",
+  "claude-opus-4-5",
+  "claude-sonnet-5-5",
+  "claude-sonnet-5",
+  "claude-sonnet-4-6",
+  "claude-haiku-5-5",
+];
+
+/** output_config do Claude: o formato sempre; o esforço só nos modelos que aceitam (sem a data no fim do nome). */
+export function anthropicOutputConfig(model: string, effort: string | undefined, schema: Schema): { effort?: string; format: { type: "json_schema"; schema: unknown } } {
+  const format = { type: "json_schema" as const, schema: toProviderSchema(schema) };
+  const base = String(model ?? "").trim().toLowerCase().replace(/-\d{8}$/, "");
+  return CLAUDE_EFFORT_MODELS.includes(base) ? { effort: effort || process.env.CONTENT_HUB_ANTHROPIC_EFFORT || "medium", format } : { format };
+}
+
+/**
+ * Cuidado no Gemini (correção IA07, 2026-10-10; página oficial "Thinking"): Rápido reduz o raciocínio — orçamento de 1.024
+ * tokens no 2.5 Pro e no 2.5 Flash, nível baixo nos Gemini 3 —; Caprichado usa o padrão do modelo. O 2.5 Flash-Lite já vem
+ * sem raciocínio: mandar orçamento o ligaria e gastaria mais, então nada é mandado.
+ */
+export function geminiThinking(model: string, effort: string | undefined): { thinkingBudget: number } | { thinkingLevel: "LOW" } | null {
+  if (effort !== "low") return null;
+  const m = String(model ?? "").trim().toLowerCase();
+  if (/^gemini-2\.5-(pro|flash)$/.test(m)) return { thinkingBudget: 1024 };
+  if (/^gemini-3/.test(m) && !m.includes("image")) return { thinkingLevel: "LOW" };
+  return null;
+}
+
 class AnthropicProvider implements AiProvider {
   readonly name = "anthropic";
   readonly isMock = false;
@@ -78,12 +120,13 @@ class AnthropicProvider implements AiProvider {
   async generate<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
     const t0 = Date.now();
     // Saída estruturada (output_config.format): os modelos atuais recusam tool_choice forçado (400).
-    // O esforço padrão é "medium": conferência exige cuidado, mas o raciocínio também consome o limite de saída.
+    // O esforço padrão é "medium": conferência exige cuidado, mas o raciocínio também consome o limite de saída. Só vai para os
+    // modelos que aceitam (anthropicOutputConfig).
     const res = await (this.client.messages.create as any)({
       model: this.model,
       max_tokens: Math.max(req.maxOutputTokens ?? 8192, 8192),
       system: req.system,
-      output_config: { effort: req.effort || process.env.CONTENT_HUB_ANTHROPIC_EFFORT || "medium", format: { type: "json_schema", schema: toProviderSchema(req.schema) } },
+      output_config: anthropicOutputConfig(this.model, req.effort, req.schema),
       messages: [{ role: "user", content: req.input }],
     });
     const usage = res.usage as any;
@@ -112,10 +155,17 @@ class GeminiProvider implements AiProvider {
   }
   async generate<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
     const t0 = Date.now();
+    const thinking = geminiThinking(this.model, req.effort);
     const res = await this.client.models.generateContent({
       model: this.model,
       contents: req.input,
-      config: { systemInstruction: req.system, responseMimeType: "application/json", responseSchema: toProviderSchema(req.schema) as any, maxOutputTokens: req.maxOutputTokens ?? 4096 },
+      config: {
+        systemInstruction: req.system,
+        responseMimeType: "application/json",
+        responseSchema: toProviderSchema(req.schema) as any,
+        maxOutputTokens: req.maxOutputTokens ?? 4096,
+        ...(thinking ? { thinkingConfig: thinking as any } : {}),
+      },
     });
     let raw: unknown;
     try {

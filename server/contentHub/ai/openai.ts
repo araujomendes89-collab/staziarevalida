@@ -10,6 +10,14 @@ import { toProviderSchema } from "./schema";
 import { AiInvalidOutput, type AiProvider, type StructuredRequest, type StructuredResult } from "./provider";
 import { validate } from "./schema";
 
+/**
+ * Cuidado na OpenAI (correção IA07, 2026-10-10; página oficial "Reasoning"): Rápido manda reasoning_effort "low" nos modelos de
+ * raciocínio (GPT-5, GPT-6, série o); Caprichado usa o padrão do modelo (médio). Outros modelos não recebem nada.
+ */
+export function openAiReasoningEffort(model: string, effort: string | undefined): boolean {
+  return effort === "low" && /^(gpt-5|gpt-6|o\d)/i.test(String(model ?? "").trim());
+}
+
 export class OpenAIProvider implements AiProvider {
   readonly name = "openai";
   readonly isMock = false;
@@ -34,6 +42,7 @@ export class OpenAIProvider implements AiProvider {
         ],
         response_format: { type: "json_schema", json_schema: { name: req.schemaName.slice(0, 60), schema: toProviderSchema(req.schema), strict: false } },
         max_completion_tokens: Math.max(req.maxOutputTokens ?? 8192, 4096),
+        ...(openAiReasoningEffort(this.model, req.effort) ? { reasoning_effort: "low" } : {}),
       }),
       signal: AbortSignal.timeout(180_000),
     });

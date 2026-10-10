@@ -71,7 +71,11 @@ as IAs e salve as funções em seguida, antes de deixar o processamento trabalha
 - **Comitê:** a principal e os outros membros (de 2 a 4 IAs no total) recebem o mesmo pedido ao mesmo tempo. O
   sistema compara os campos objetivos (gabarito, área…) e marca concordância ou divergência. Divergência = "precisa de
   revisão". Os textos não são fundidos: a equipe escolhe.
-- **Cuidado:** "Rápido" ou "Caprichado" (padrão). Vira o esforço do Claude; as outras IAs ignoram.
+- **Cuidado:** "Rápido" ou "Caprichado" (padrão). No Claude vira o esforço (baixo/alto), só nos modelos que aceitam a opção
+  (lista da página oficial "Effort", `CLAUDE_EFFORT_MODELS`; o Haiku 4.5 não aceita). Desde 2026-10-10 (correção IA07) o
+  "Rápido" também reduz o raciocínio no Gemini (orçamento de 1.024 tokens no 2.5 Pro e no 2.5 Flash, nível baixo nos Gemini 3)
+  e na OpenAI (`reasoning_effort: "low"` nos GPT-5/6 e na série o); "Caprichado" deixa o padrão desses modelos. O Gemini 2.5
+  Flash-Lite (que já vem sem raciocínio) e o Ollama não mudam.
 - **Independência:** na linha de produção, o conferente nunca é da mesma família da criadora (nem da reserva). Ex.:
   Sonnet cria e Opus confere **não** vale. No comitê, a mesma família é permitida com o aviso "não é independente".
 - **Conferência por outra empresa no processamento (decisão do dono, 2026-10-10):** a evidência de cada afirmação e a
@@ -87,6 +91,17 @@ as IAs e salve as funções em seguida, antes de deixar o processamento trabalha
   `maestroCheckerProvider` (`server/ai/maestro.ts`).
 
 Nada é aprovado pela IA: tudo continua rascunho até a decisão de uma pessoa.
+
+**Correções de 2026-10-10 (página "Correções da Administração", decididas pelo dono):**
+- **IA04:** Linha de produção e Comitê mostram sempre o aviso de que, por enquanto, só a principal e a reserva rodam
+  (na Verificação, os conferentes só rodam na conferência de rascunhos feita por comando).
+- **IA06:** a mesma IA só é tentada de novo em falha passageira (limite por minuto, sobrecarga, servidor fora, rede, resposta fora
+  do formato). Sem crédito ou cota, chave recusada, modelo inexistente, pedido inválido e tempo esgotado vão direto para a
+  reserva (`shouldRetrySame`).
+- **IA10:** no site (Vercel) cada execução tem hora-limite de 270 s (`requestDeadline`; `MAESTRO_DEADLINE_MS` muda; no Cloud
+  Run não há): a chamada é cortada antes do limite e a próxima IA não é chamada sem pelo menos 16 s de folga
+  ("Sem tempo para chamar esta IA dentro do limite do pedido."). Cada chamada é gravada em `ai_calls` na hora.
+- **IA11:** esforço só nos modelos do Claude que aceitam; preço do Claude Haiku 5.5 (0,10/0,50 até 100 mil tokens).
 
 Nesta etapa, os usos atuais gravam **um** resultado. Neles, a função usa a principal e a reserva. Os pareceres e o
 comitê mostrados para a equipe aparecem a partir da etapa 2.
@@ -163,6 +178,11 @@ do projeto `staziamed-revalida-prod`. Uma chave Vertex vale nos dois lugares (si
   em uso é a da ElevenLabs).
 - Mensagens de erro escondem também as chaves do Google no formato novo (`AQ.…`).
 - No Cloud Run a chave vai pelo segredo `stazia-vertex-api-key` (variável `VERTEX_API_KEY` da tarefa).
+
+**Modo expresso (correção IA05, 2026-10-10):** a chave em uso é do modo expresso do Vertex, que só aceita os modelos da
+tabela oficial (`VERTEX_EXPRESS_MODELS`: Gemini 2.5 Pro, 2.5 Flash, 2.5 Flash-Lite, 3.1 Pro preview, 3 Flash preview e os de
+imagem). "Atualizar lista" faz um teste real da chave (contar os tokens de uma palavra, sem custo) e mostra só os modelos com
+preço que a chave aceita; função salva com outro modelo passa a mostrar "modelo não está mais na lista".
 
 ## Limites conhecidos
 - A estimativa é do pior caso. O custo gravado de uma chamada que falhou ou passou do tempo é zero, mesmo que a

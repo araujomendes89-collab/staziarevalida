@@ -44,6 +44,8 @@ export interface MaestroDeps {
   makeProviderFor?: (ref: ModelRef) => AiProvider | null;
   now?: () => Date;
   log?: (m: string) => void;
+  /** Hora-limite do pedido (ms desde 1970). Sem ela, vale requestDeadline (o site da Vercel corta o pedido em 5 minutos). */
+  deadlineAt?: number | null;
 }
 
 export interface MaestroOrigin {
@@ -101,6 +103,9 @@ Não reescreva a resposta, só aponte os problemas.`;
 // ------------------------------------------------------------------ constantes e utilitários
 
 const TIMEOUT_MS = 180_000;
+/** Folga antes da hora-limite do pedido: abaixo disso a próxima IA nem é chamada (sobra tempo para gravar e responder). */
+const DEADLINE_SAFETY_MS = 15_000;
+const NO_TIME = "Sem tempo para chamar esta IA dentro do limite do pedido.";
 const DEFAULT_MAX_OUT = 8192;
 const REVIEW_MAX_OUT = 2048;
 const ROLE_ENV: Record<0 | 1 | 2, { key: string; label: string }> = { 0: { key: "SOURCES", label: "sources" }, 1: { key: "CURRENCY", label: "currency" }, 2: { key: "REDTEAM", label: "redteam" } };
@@ -111,6 +116,32 @@ type Role = "principal" | "reserva" | "criadora" | "conferente" | "membro";
 const sameRef = (a: ModelRef | null, b: ModelRef | null) => !!a && !!b && a.provider === b.provider && a.model === b.model;
 const usd = (n: number) => String(Number(n.toFixed(4))).replace(".", ",");
 const errText = (e: unknown) => (e instanceof Error ? e.message : String(e)).replace(/\b(sk-|AIza)[\w-]{8,}|\bAQ\.[\w.-]{20,}|\bBearer\s+[\w.~+/-]+/g, "[chave]").replace(/(key=)[^&\s]+/gi, "$1[chave]").slice(0, 300);
+
+/**
+ * Hora-limite padrão do pedido (correção IA10, 2026-10-10): MAESTRO_DEADLINE_MS, ou 270 s no site da Vercel (que corta o pedido
+ * em 300 s); no processamento do Google (Cloud Run) não há limite. Com o limite, nenhuma chamada passa dele.
+ */
+export function requestDeadline(env: NodeJS.ProcessEnv, now: number): number | null {
+  const ms = Number((env.MAESTRO_DEADLINE_MS ?? "").trim());
+  if (Number.isFinite(ms) && ms > 0) return now + ms;
+  return env.VERCEL ? now + 270_000 : null;
+}
+
+/**
+ * Vale tentar a mesma IA mais uma vez? (correção IA06, 2026-10-10). Sim para falha passageira: limite por minuto, sobrecarga,
+ * servidor fora do ar, rede, resposta fora do formato, erro desconhecido. Não para o que se repetiria igual: sem crédito ou
+ * cota, chave recusada, modelo inexistente, pedido inválido (4xx) e tempo esgotado: esses vão direto para a reserva.
+ */
+export function shouldRetrySame(e: unknown): boolean {
+  if (e instanceof AiInvalidOutput) return true;
+  const msg = e instanceof Error ? e.message : String(e ?? "");
+  if (/tempo esgotado/i.test(msg)) return false;
+  if (/credit|billing|quota|prepay|insufficient|crédito|saldo/i.test(msg)) return false;
+  const raw = (e as { status?: unknown } | null)?.status;
+  const status = typeof raw === "number" ? raw : Number(/(?:^|respondeu\s+)(\d{3})\b/.exec(msg)?.[1] ?? NaN);
+  if (Number.isFinite(status) && status >= 400 && status < 500) return [408, 409, 425, 429].includes(status);
+  return true;
+}
 
 function withTimeout<T>(work: () => Promise<T>, ms = TIMEOUT_MS): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -210,7 +241,7 @@ interface PlannedCall {
   maxOut: number;
 }
 
-type Attempt<T> = { ok: true; res: StructuredResult<T>; cost: number } | { ok: false; outcome: Exclude<Outcome, "ok">; error: string };
+type Attempt<T> = { ok: true; res: StructuredResult<T>; cost: number } | { ok: false; outcome: Exclude<Outcome, "ok">; error: string; retry?: boolean };
 
 type CreatorResult<T> = { ok: true; res: StructuredResult<T>; cost: number; slot: Slot; role: Role } | { ok: false };
 
@@ -222,6 +253,12 @@ class Run {
   private monthBlockedMsg: string | null = null;
   /** O último erro lançado por uma IA nesta execução (o adaptador preserva AiInvalidOutput para quem registra a resposta). */
   lastError: unknown = null;
+  /** Quantas linhas de `rows` já foram gravadas (cada chamada é gravada na hora, correção IA10). */
+  private written = 0;
+  /** Linhas cuja gravação falhou: vão na próxima. */
+  private unsaved: LogRow[] = [];
+  /** Hora-limite do pedido, ou null. */
+  private readonly deadline: number | null;
 
   constructor(
     private deps: MaestroDeps,
@@ -230,7 +267,9 @@ class Run {
     private mode: AiMode,
     private origin: MaestroOrigin,
     private monthSpend: number,
-  ) {}
+  ) {
+    this.deadline = deps.deadlineAt !== undefined ? deps.deadlineAt : requestDeadline(deps.env ?? process.env, Date.now());
+  }
 
   static async start(deps: MaestroDeps, cfg: AiConfig, fn: AiFunctionKey, mode: AiMode, origin: MaestroOrigin): Promise<Run> {
     const s = cfg.settings;
@@ -336,13 +375,25 @@ class Run {
 
   /** Uma chamada: recusa bloqueada ou acima do teto, ou chama com tempo-limite; tudo vai para o registro. */
   async attempt<T>(slot: Slot, role: Role, req: StructuredRequest, chars: number, planned: boolean): Promise<Attempt<T>> {
+    const result = await this.call<T>(slot, role, req, chars, planned);
+    await this.flush(); // gravada na hora: se o pedido for cortado depois, o gasto desta chamada já está no registro
+    return result;
+  }
+
+  private async call<T>(slot: Slot, role: Role, req: StructuredRequest, chars: number, planned: boolean): Promise<Attempt<T>> {
     if (slot.blocked || !slot.instance) return this.refuse(slot, role, "bloqueada", slot.blocked ?? "Provedor indisponível.");
     const refusal = this.monthlyRefusal(estimateCall(this.cfg, slot, chars, req.maxOutputTokens ?? DEFAULT_MAX_OUT), planned);
     if (refusal) return this.refuse(slot, role, "teto", refusal);
+    let limit = TIMEOUT_MS;
+    if (this.deadline !== null) {
+      const left = this.deadline - Date.now() - DEADLINE_SAFETY_MS;
+      if (left < 1_000) return this.refuse(slot, role, "bloqueada", NO_TIME);
+      limit = Math.min(TIMEOUT_MS, left);
+    }
     const t0 = Date.now();
     const instance = slot.instance;
     try {
-      const res = await withTimeout(() => instance.generate<T>(req));
+      const res = await withTimeout(() => instance.generate<T>(req), limit);
       const cost = this.costOf(slot, res);
       this.spent += cost;
       this.push(slot, role, "ok", { input_tokens: Math.max(0, Math.trunc(res.inputTokens ?? 0)), output_tokens: Math.max(0, Math.trunc(res.outputTokens ?? 0)), cost_usd: cost, duration_ms: Date.now() - t0 });
@@ -352,7 +403,7 @@ class Run {
       const error = errText(e);
       this.push(slot, role, "falha", { duration_ms: Date.now() - t0, error });
       this.reason(error);
-      return { ok: false, outcome: "falha", error };
+      return { ok: false, outcome: "falha", error, retry: shouldRetrySame(e) };
     }
   }
 
@@ -360,7 +411,7 @@ class Run {
   async creator<T>(req: StructuredRequest, primary: Slot, fallback: Slot | null, roles: { first: Role; reserve: Role }): Promise<CreatorResult<T>> {
     const chars = req.system.length + req.input.length;
     let a = await this.attempt<T>(primary, roles.first, req, chars, true);
-    if (a.ok === false && a.outcome === "falha") a = await this.attempt<T>(primary, roles.first, req, chars, false);
+    if (a.ok === false && a.outcome === "falha" && a.retry !== false) a = await this.attempt<T>(primary, roles.first, req, chars, false);
     if (a.ok) return { ...a, slot: primary, role: roles.first };
     if (fallback) {
       const b = await this.attempt<T>(fallback, roles.reserve, req, chars, !!primary.blocked);
@@ -369,12 +420,20 @@ class Run {
     return { ok: false };
   }
 
-  /** Uma única gravação com todas as linhas; falha ao gravar só avisa. */
+  /**
+   * Grava as linhas ainda não gravadas. As linhas são separadas antes de esperar o banco: no comitê várias IAs terminam ao mesmo
+   * tempo, e duas gravações simultâneas não podem repetir nem pular linhas. Falha ao gravar só avisa; as linhas voltam para a
+   * próxima gravação.
+   */
   async flush(): Promise<void> {
-    if (this.rows.length === 0) return;
+    if (this.written >= this.rows.length && this.unsaved.length === 0) return;
+    const pending = [...this.unsaved, ...this.rows.slice(this.written)];
+    this.unsaved = [];
+    this.written = this.rows.length;
     try {
-      await this.deps.db.service("ch_worker_ai_log_calls", { p_calls: this.rows });
+      await this.deps.db.service("ch_worker_ai_log_calls", { p_calls: pending });
     } catch (e) {
+      this.unsaved.push(...pending);
       (this.deps.log ?? console.warn)(`[maestro] não foi possível gravar ai_calls: ${errText(e)}`);
     }
   }

@@ -141,6 +141,9 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
       {draft.mode !== "sozinha" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={subtle}>{draft.mode === "linha" ? "Conferentes (1 a 3)" : "Outros membros — a principal também participa; total de 2 a 4"}</div>
+          <div style={subtle}>
+            {draft.mode === "linha" ? "Por enquanto os conferentes não são chamados" : "Por enquanto os membros não são chamados"}: a função usa só a IA principal e a reserva.
+          </div>
           {others.map((o, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
               <div style={{ flex: "1 1 360px" }}>
@@ -163,6 +166,10 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
         </div>
       )}
       <SelectField label="Cuidado" aria-label={`Cuidado — ${label}`} value={draft.care} onChange={(e) => set({ care: e.target.value })} options={CARES} />
+      <div style={subtle}>
+        Rápido: menos raciocínio, mais rápido e barato (Claude, Gemini 2.5 Pro e Flash, Gemini 3 e GPT-5/6). Caprichado: Claude com esforço
+        alto; Gemini e OpenAI no padrão do modelo. O Gemini 2.5 Flash-Lite e o Ollama não mudam.
+      </div>
 
       {localProblem && <div style={subtle}>{localProblem}</div>}
       {state.error && (
