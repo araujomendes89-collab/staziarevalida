@@ -131,7 +131,11 @@ describe("Estações — quem vê", () => {
   });
 
   it("as funções internas da revisão não podem ser chamadas de fora", async () => {
-    for (const sql of [`select public.checklist_station_area_code('Pediatria')`, `select public.checklist_station_can_review('Pediatria')`]) {
+    for (const sql of [
+      `select public.checklist_station_area_code('Pediatria')`,
+      `select public.checklist_station_can_review('Pediatria')`,
+      `select public.checklist_station_assert_staff()`,
+    ]) {
       await expect(
         db.transaction(async (tx) => {
           await tx.exec("set local role authenticated");
@@ -139,6 +143,24 @@ describe("Estações — quem vê", () => {
           await tx.query(sql);
         })
       ).rejects.toThrow(/permission denied/);
+    }
+  });
+});
+
+describe("Estações — não dependem da Central de Conteúdo", () => {
+  it("com a Central de Conteúdo desligada, a aba Estações continua abrindo e a revisão médica continua valendo", async () => {
+    await db.query(`update public.ch_flags set value = false where key = 'enabled'`);
+    try {
+      expect((await rpc(EDITOR, "app_admin_stations")).map((s: any) => s.id).sort()).toEqual(["st-cir", "st-cm"]);
+      expect(await rpc(REV_PED, "app_admin_station_content", { p_station_id: "st-cm" })).toMatchObject({ actor_script: "Roteiro do ator." });
+      const back = await rpc(REV_CM, "app_admin_set_station_review", { p_station_id: "st-cm", p_status: "pending", p_note: "Refazer a conferência do impresso." });
+      expect(item(back, "st-cm")).toMatchObject({ medical_review: "pending", reviewer: "Dr. Clínico" });
+      await expect(rpc(EDITOR, "app_admin_set_station_review", { p_station_id: "st-cm", p_status: "approved", p_note: NOTA })).rejects.toThrow(/revisor médico/);
+      const again = await rpc(REV_CM, "app_admin_set_station_review", { p_station_id: "st-cm", p_status: "approved", p_note: NOTA });
+      expect(item(again, "st-cm")).toMatchObject({ medical_review: "approved", review_note: NOTA });
+      await expect(rpc(STUDENT, "app_admin_stations")).rejects.toThrow(/Acesso restrito/);
+    } finally {
+      await db.query(`update public.ch_flags set value = true where key = 'enabled'`);
     }
   });
 });

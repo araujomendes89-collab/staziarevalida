@@ -9,7 +9,8 @@
 --     conferido (10 caracteres ou mais); grava quem aprovou e quando;
 --   * devolver para revisão = equipe ou revisor médico, com o motivo (10 caracteres ou mais); grava quem devolveu e quando;
 --   * o revisor médico abre a lista e o conteúdo das estações (roteiro, impressos, checklist) para conferir;
---   * aluno e visitante continuam barrados; o que o aluno pode ler (RLS das tabelas) não muda.
+--   * aluno e visitante continuam barrados; o que o aluno pode ler (RLS das tabelas) não muda;
+--   * a aba continua funcionando com a Central de Conteúdo desligada (não depende de ch_flags).
 -- As estações aprovadas antes desta migração continuam aprovadas, sem revisor registrado (a tela avisa).
 -- =============================================================================
 
@@ -38,13 +39,26 @@ as $$
   )
 $$;
 
--- Lista da aba Estações: igual à anterior (…1300), mas também para o revisor médico (ch_assert_staff), com o registro da
+-- Quem abre a aba Estações: a equipe (editor ou administrador) ou um revisor médico cadastrado em alguma área.
+-- Não usa ch_assert_staff de propósito: aquela também exige a Central de Conteúdo ligada (ch_flags.enabled,
+-- …2900_content_lab_foundation.sql), e desligar a Central não pode travar a aba Estações, que antes não dependia dela.
+create function public.checklist_station_assert_staff() returns void
+  language plpgsql stable security definer set search_path = ''
+as $$
+begin
+  if (select auth.uid()) is null or not (public.is_staff() or public.ch_is_reviewer()) then
+    raise exception 'Acesso restrito à equipe e aos revisores médicos.' using errcode = '42501';
+  end if;
+end
+$$;
+
+-- Lista da aba Estações: igual à anterior (…1300), mas também para o revisor médico, com o registro da
 -- última decisão (nota, quem, quando) e se quem chama pode aprovar cada estação.
 create or replace function public.app_admin_stations() returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
 begin
-  perform public.ch_assert_staff();
+  perform public.checklist_station_assert_staff();
   return coalesce((
     select jsonb_agg(jsonb_build_object(
       'id', s.id, 'name', s.name, 'topic', s.topic, 'area', s.area, 'medical_review', s.medical_review,
@@ -66,7 +80,7 @@ create function public.app_admin_station_content(p_station_id text) returns json
   language plpgsql stable security definer set search_path = ''
 as $$
 begin
-  perform public.ch_assert_staff();
+  perform public.checklist_station_assert_staff();
   return (select c.content from public.checklist_station_contents c where c.station_id = p_station_id);
 end
 $$;
@@ -81,7 +95,7 @@ declare
   s public.checklist_stations;
   v_note text := btrim(coalesce(p_note, ''));
 begin
-  perform public.ch_assert_staff();
+  perform public.checklist_station_assert_staff();
   if p_status is null or p_status not in ('pending', 'approved') then
     raise exception 'Situação inválida.' using errcode = '22023';
   end if;
@@ -118,5 +132,6 @@ begin
 end
 $$;
 
+revoke execute on function public.checklist_station_assert_staff() from public, anon, authenticated;
 revoke execute on function public.checklist_station_area_code(text) from public, anon, authenticated;
 revoke execute on function public.checklist_station_can_review(text) from public, anon, authenticated;
