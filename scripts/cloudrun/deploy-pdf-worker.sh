@@ -8,7 +8,9 @@
 # As três chaves (SUPABASE_URL, VITE_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY) saem do .env direto para o Secret Manager,
 # sem aparecer na tela. A IA da Central continua desligada (nenhuma chave de IA de texto é enviada).
 # Busca por significado (Gemini Embedding 2, autorizada pelo dono em 2026-10-06): com GEMINI_API_KEY (ou GOOGLE_GEMINI_API_KEY)
-# no .env, a chave vai para o Secret Manager e a tarefa gera os vetores dos trechos das fontes. EMBEDDINGS=0 desliga.
+# no .env, a chave vai para o Secret Manager e a tarefa gera os vetores dos trechos das fontes. EMBEDDINGS_VERTEX=1 usa o Vertex AI
+# completo do próprio projeto, pela conta de serviço da tarefa (sem chave; só com a ordem do dono, porque cobra no projeto).
+# A VERTEX_API_KEY não serve para isso: é do modo expresso, sem modelo de busca por significado (404). EMBEDDINGS=0 desliga.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
@@ -87,14 +89,20 @@ for NAME in ANTHROPIC_API_KEY GEMINI_API_KEY VERTEX_API_KEY OPENAI_API_KEY; do
   fi
 done
 
-# busca por significado: usa a mesma chave do Google das IAs (acima: VERTEX_API_KEY, que manda, ou GEMINI_API_KEY); sem ela, a
-# tarefa segue só com palavras. Gemini pelo Vertex AI desde 2026-10-09 (decisão do dono): cobra na conta do projeto.
+# busca por significado: Vertex AI completo do projeto pela conta de serviço da tarefa (EMBEDDINGS_VERTEX=1, cobra no projeto) ou a
+# chave do AI Studio (GEMINI_API_KEY). A VERTEX_API_KEY das IAs é do modo expresso, que não tem modelo de busca por significado
+# (o Google respondia 404, 2026-10-09): sozinha, a tarefa segue só com palavras e o painel mostra o motivo.
 EMB_ENV=""
-if [ "${EMBEDDINGS:-1}" = "1" ] && { [[ "$AI_SECRETS" == *",GEMINI_API_KEY="* ]] || [[ "$AI_SECRETS" == *",VERTEX_API_KEY="* ]]; }; then
+if [ "${EMBEDDINGS:-1}" = "1" ] && [ "${EMBEDDINGS_VERTEX:-0}" = "1" ]; then
+  "${G[@]}" services enable aiplatform.googleapis.com
+  "${G[@]}" projects add-iam-policy-binding "$PROJECT" --member="serviceAccount:$RUN_SA" --role=roles/aiplatform.user --condition=None >/dev/null
+  EMB_ENV=",CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1,CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT=$PROJECT"
+  echo "   busca por significado: ligada na tarefa (Vertex AI do projeto $PROJECT, conta de serviço)"
+elif [ "${EMBEDDINGS:-1}" = "1" ] && [[ "$AI_SECRETS" == *",GEMINI_API_KEY="* ]]; then
   EMB_ENV=",CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1"
-  echo "   busca por significado: ligada na tarefa"
+  echo "   busca por significado: ligada na tarefa (chave do AI Studio)"
 else
-  echo "   busca por significado: sem VERTEX_API_KEY nem GEMINI_API_KEY no .env; a tarefa segue só com palavras"
+  echo "   busca por significado: sem EMBEDDINGS_VERTEX=1 nem GEMINI_API_KEY no .env; a tarefa segue só com palavras"
 fi
 
 echo "== 4/6 imagem (montada no Cloud Build, não no Mac)"

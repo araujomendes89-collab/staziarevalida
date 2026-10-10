@@ -111,11 +111,12 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       }
       // busca por significado: este servidor faz o vetor das perguntas; o processamento, o dos trechos das fontes
       if (!deps!.embedder) pending.push(embeddingsConfig().pending ?? "Busca por significado indisponível no servidor.");
+      else if (deps!.embedder.problem) pending.push(`Busca por significado parada no servidor: ${deps!.embedder.problem}`);
       const model = deps!.embedder?.model ?? (embeddingsConfig().model || DEFAULT_EMBEDDING_MODEL);
       const stats = await deps!.db
         .service<{ passages: number; embedded: number; vector_index: boolean } | null>("ch_worker_embedding_stats", { p_model: model })
         .catch(() => null);
-      const embeddings = { ready: Boolean(deps!.embedder), model, passages: stats?.passages ?? null, embedded: stats?.embedded ?? null, vector_index: stats?.vector_index ?? null };
+      const embeddings = { ready: Boolean(deps!.embedder) && !deps!.embedder?.problem, model, passages: stats?.passages ?? null, embedded: stats?.embedded ?? null, vector_index: stats?.vector_index ?? null };
       res.json({ me, storage: deps!.db.mode, ai: deps!.ai.status, ai_central: central, renderer, brand, worker: local, processing, embeddings, pending });
     } catch (error) {
       fail(res, forbidden(error) ? 403 : 500, message(error));

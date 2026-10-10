@@ -1,8 +1,9 @@
 // @vitest-environment node
 /**
  * Gemini pelo Vertex AI (decisão do dono, 2026-10-09): a chave do AI Studio é pré-paga e acabou; o Vertex cobra na conta do
- * projeto do Google Cloud. Com VERTEX_API_KEY, a Central de IAs e a busca por significado usam o Vertex com essa chave (no site
- * e no processamento); sem ela, seguem com GEMINI_API_KEY (AI Studio). Sem rede: a biblioteca do Google é simulada.
+ * projeto do Google Cloud. Com VERTEX_API_KEY, a Central de IAs usa o Vertex com essa chave (no site e no processamento); sem
+ * ela, segue com GEMINI_API_KEY (AI Studio). A busca por significado não usa a VERTEX_API_KEY (modo expresso, sem modelo de
+ * vetores; correção de 2026-10-10): ver buscaSignificadoVertex.test.ts. Sem rede: a biblioteca do Google é simulada.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -81,16 +82,25 @@ describe("Central de IAs: provedor Gemini", () => {
 });
 
 describe("busca por significado", () => {
-  it("com VERTEX_API_KEY a busca fica pronta e o cliente nasce no modo Vertex", async () => {
+  // correção de 2026-10-10: o modo expresso do Vertex AI (VERTEX_API_KEY) não tem modelo de busca por significado (o Google
+  // respondia 404); a busca usa o Vertex AI completo pela conta de serviço ou a chave do AI Studio
+  it("só com VERTEX_API_KEY a busca fica parada, com o motivo (modo expresso)", () => {
     const env = { CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL: "1", VERTEX_API_KEY: VERTEX } as NodeJS.ProcessEnv;
     const cfg = embeddingsConfig(env);
-    expect(cfg).toMatchObject({ ready: true, model: "gemini-embedding-2", key: VERTEX, mode: "vertex", pending: null });
-    const embedder = createEmbedder(cfg)!;
-    expect((await embedder.embedQuery("dor torácica")).length).toBe(768);
-    expect(made.at(-1)).toEqual({ vertexai: true, apiKey: VERTEX });
+    expect(cfg).toMatchObject({ ready: false, model: "gemini-embedding-2", key: null, mode: null });
+    expect(cfg.pending).toMatch(/modo expresso/);
+    expect(createEmbedder(cfg)).toBeNull();
   });
-  it("sem chave nenhuma: a pendência fala da VERTEX_API_KEY", () => {
-    expect(embeddingsConfig({ CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL: "1" } as NodeJS.ProcessEnv).pending).toMatch(/VERTEX_API_KEY/);
+  it("com o projeto do Vertex AI completo: o cliente nasce com projeto e local, sem chave", async () => {
+    const env = { CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL: "1", VERTEX_API_KEY: VERTEX, CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT: "staziamed-revalida-prod" } as NodeJS.ProcessEnv;
+    const embedder = createEmbedder(embeddingsConfig(env))!;
+    expect((await embedder.embedQuery("dor torácica")).length).toBe(768);
+    expect(made.at(-1)).toEqual({ vertexai: true, project: "staziamed-revalida-prod", location: "global" });
+  });
+  it("sem acesso nenhum: a pendência fala do projeto do Vertex AI e da GEMINI_API_KEY", () => {
+    const pending = embeddingsConfig({ CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL: "1" } as NodeJS.ProcessEnv).pending;
+    expect(pending).toMatch(/CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT/);
+    expect(pending).toMatch(/GEMINI_API_KEY/);
   });
 });
 

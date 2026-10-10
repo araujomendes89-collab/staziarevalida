@@ -6,7 +6,11 @@
  *
  *   CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1   autoriza enviar os textos das fontes e as buscas ao Google (sem isso, só palavras)
  *   CONTENT_HUB_EMBEDDINGS_MODEL              padrão gemini-embedding-2; "off" desliga
- *   VERTEX_API_KEY (Vertex AI, manda) ou GEMINI_API_KEY / GOOGLE_GEMINI_API_KEY (AI Studio)
+ *   CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT     projeto do Google Cloud: Vertex AI completo pela conta de serviço (manda; sem chave)
+ *   CONTENT_HUB_EMBEDDINGS_VERTEX_LOCATION    global (padrão), us ou eu
+ *   GEMINI_API_KEY / GOOGLE_GEMINI_API_KEY    chave do AI Studio (sem o projeto acima)
+ *   A VERTEX_API_KEY NÃO serve aqui: é do modo expresso do Vertex AI, que não tem modelo de busca por significado (o Google
+ *   respondia 404; falha vista em produção em 2026-10-09). Só com ela, a busca fica parada com o motivo e segue por palavras.
  *   CONTENT_LAB_ENABLED=false                 desliga também (como toda a Central)
  *   CONTENT_HUB_EMBEDDINGS_MIN_SIMILARITY     opcional (0 a 1): piso de semelhança para um trecho entrar só pelo significado
  *   AI_COST_CONFIG {"gemini-embedding-2":{"input":0.2}}   US$ por milhão de tokens (padrão 0,20)
@@ -17,7 +21,7 @@
 import crypto from "crypto";
 import type { ContentDb } from "./infra";
 import { aiAllowed } from "./ai/registry";
-import { googleAiAccess, googleGenAiOptions, type GoogleAiMode } from "../ai/googleKey";
+import { googleEmbeddingsAccess, realGoogleKey } from "../ai/googleKey";
 
 export const EMBEDDING_DIMS = 768;
 export const DEFAULT_EMBEDDING_MODEL = "gemini-embedding-2";
@@ -26,16 +30,30 @@ export const EMBEDDING_FORMAT_VERSION = "1";
 const BATCH = 50;
 const MAX_CHARS = 8_000;
 const PRICE_PER_MTOK: Record<string, number> = { "gemini-embedding-2": 0.2, "gemini-embedding-001": 0.15 };
+/** Vertex AI: pedidos de 1 texto (a biblioteca do Google não aceita mais no Vertex), no máximo estes ao mesmo tempo. */
+const VERTEX_PARALLEL = 4;
+/** Erro de configuração (pedido inválido, sem chave válida, sem crédito, sem permissão, modelo inexistente): repetir não resolve. */
+const CONFIG_ERRORS = new Set([400, 401, 402, 403, 404]);
+/** Depois de um erro de configuração, a busca por significado para por este tempo (nada vai ao Google) e segue por palavras. */
+const CONFIG_PAUSE_MS = 10 * 60_000;
 
 export interface EmbeddingsConfig {
   ready: boolean;
   model: string | null;
   key: string | null;
-  /** Vertex AI (VERTEX_API_KEY) ou AI Studio (GEMINI_API_KEY). */
-  mode: GoogleAiMode | null;
+  /** Vertex AI completo pela conta de serviço (projeto e local) ou AI Studio (GEMINI_API_KEY). */
+  mode: "vertex_project" | "studio" | null;
+  project?: string | null;
+  location?: string | null;
   pending: string | null;
 }
 
+const NOT_ALLOWED =
+  "Busca por significado ainda desligada: falta autorizar o envio dos textos das fontes ao Google (CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1 no servidor e no processamento). Enquanto isso, a busca de evidências usa palavras.";
+const EXPRESS_ONLY =
+  "Busca por significado parada: a chave do Vertex AI no modo expresso (VERTEX_API_KEY) não tem modelo de busca por significado. Para ligar, use o Vertex AI completo pela conta de serviço do processamento (CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT) ou a chave do AI Studio com crédito (GEMINI_API_KEY). Enquanto isso, a busca de evidências usa palavras.";
+const NO_ACCESS =
+  "Busca por significado sem acesso ao Google: defina CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT (Vertex AI pela conta de serviço) ou GEMINI_API_KEY (AI Studio) no servidor e no processamento. Enquanto isso, a busca de evidências usa palavras.";
 
 export function embeddingsConfig(env: NodeJS.ProcessEnv = process.env): EmbeddingsConfig {
   const raw = (env.CONTENT_HUB_EMBEDDINGS_MODEL ?? "").trim();
@@ -43,15 +61,18 @@ export function embeddingsConfig(env: NodeJS.ProcessEnv = process.env): Embeddin
     return { ready: false, model: null, key: null, mode: null, pending: "Busca por significado desligada no servidor: a busca de evidências usa só palavras." };
   }
   const model = raw || DEFAULT_EMBEDDING_MODEL;
-  const access = googleAiAccess(env);
-  const key = access?.key ?? null;
-  const pending =
-    env.CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL !== "1"
-      ? "Busca por significado ainda desligada: falta autorizar o envio dos textos das fontes ao Google (CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1 no servidor e no processamento). Enquanto isso, a busca de evidências usa palavras."
-      : !key
-        ? "Busca por significado sem chave: defina VERTEX_API_KEY (ou GEMINI_API_KEY) no servidor e no processamento. Enquanto isso, a busca de evidências usa palavras."
-        : null;
-  return { ready: !pending, model, key: pending ? null : key, mode: pending ? null : (access?.mode ?? null), pending };
+  const access = googleEmbeddingsAccess(env);
+  const pending = env.CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL !== "1" ? NOT_ALLOWED : !access ? (realGoogleKey(env.VERTEX_API_KEY) ? EXPRESS_ONLY : NO_ACCESS) : null;
+  if (pending || !access) return { ready: false, model, key: null, mode: null, project: null, location: null, pending };
+  return access.mode === "studio"
+    ? { ready: true, model, key: access.key, mode: "studio", project: null, location: null, pending: null }
+    : { ready: true, model, key: null, mode: "vertex_project", project: access.project, location: access.location, pending: null };
+}
+
+/** Opções da biblioteca do Google: Vertex AI completo (projeto e local; a credencial é a conta de serviço do ambiente) ou a chave do AI Studio. */
+export function embeddingsClientOptions(cfg: EmbeddingsConfig): { apiKey: string } | { vertexai: true; project: string; location: string } {
+  if (cfg.mode === "vertex_project") return { vertexai: true, project: cfg.project ?? "", location: cfg.location || "global" };
+  return { apiKey: cfg.key ?? "" };
 }
 
 /** Preço por milhão de tokens do modelo (AI_COST_CONFIG manda; senão a tabela daqui). */
@@ -74,7 +95,8 @@ export interface EmbedClient {
 }
 
 export class EmbeddingsError extends Error {
-  constructor(message: string, readonly status: number) {
+  /** `quiet`: a busca já estava parada por erro de configuração e nada foi ao Google (o aviso já saiu uma vez). */
+  constructor(message: string, readonly status: number, readonly quiet = false) {
     super(message);
   }
 }
@@ -85,6 +107,8 @@ export interface Embedder {
   embedDocuments(items: { title?: string | null; text: string }[]): Promise<{ vectors: number[][]; tokens: number; costUsd: number; latencyMs: number }>;
   /** A pergunta de uma busca. */
   embedQuery(text: string): Promise<number[]>;
+  /** Último erro de configuração do Google (ex.: 404), até um pedido seguinte dar certo; senão null (o relato mostra a busca parada). */
+  readonly problem?: string | null;
 }
 
 const normalize = (v: number[]) => {
@@ -98,15 +122,19 @@ const clip = (s: string) => s.replace(/\s+/g, " ").trim().slice(0, MAX_CHARS);
 export function createEmbedder(cfg: EmbeddingsConfig, client?: EmbedClient): Embedder | null {
   if (!cfg.ready || !cfg.model) return null;
   const model = cfg.model;
+  const vertex = cfg.mode === "vertex_project";
   let ai: EmbedClient | null = client ?? null;
+  // erro de configuração (ex.: 404): a busca por significado para por um tempo e o motivo fica guardado para o relato
+  let problem: { message: string; reason: string; status: number; until: number } | null = null;
   const getClient = async () => {
     if (!ai) {
       const { GoogleGenAI } = await import("@google/genai");
-      ai = new GoogleGenAI(googleGenAiOptions({ mode: cfg.mode ?? "studio", key: cfg.key! })) as unknown as EmbedClient;
+      ai = new GoogleGenAI(embeddingsClientOptions(cfg)) as unknown as EmbedClient;
     }
     return ai;
   };
   const call = async (texts: string[]): Promise<number[][]> => {
+    if (problem && Date.now() < problem.until) throw new EmbeddingsError(problem.message, problem.status, true);
     const c = await getClient();
     let attempt = 0;
     for (;;) {
@@ -117,6 +145,7 @@ export function createEmbedder(cfg: EmbeddingsConfig, client?: EmbedClient): Emb
         if (out.length !== texts.length || out.some((v) => v.length !== EMBEDDING_DIMS)) {
           throw new EmbeddingsError(`O Google devolveu ${out.length} vetor(es) para ${texts.length} texto(s) ou um vetor com tamanho diferente de ${EMBEDDING_DIMS}.`, 502);
         }
+        problem = null;
         return out.map(normalize);
       } catch (error: any) {
         if (error instanceof EmbeddingsError) throw error;
@@ -128,22 +157,51 @@ export function createEmbedder(cfg: EmbeddingsConfig, client?: EmbedClient): Emb
           await new Promise((r) => setTimeout(r, attempt * 1500));
           continue;
         }
-        throw new EmbeddingsError(`Busca por significado: o Google recusou (${status}): ${msg}`, status);
+        const failure = new EmbeddingsError(`Busca por significado: o Google recusou (${status}): ${msg}`, status);
+        // configuração: sem nova tentativa e a busca para (nada de dezenas de pedidos recusados na mesma rodada)
+        if (CONFIG_ERRORS.has(status)) problem = { message: failure.message, reason: `o Google recusou (${status}): ${msg}`, status, until: Date.now() + CONFIG_PAUSE_MS };
+        throw failure;
       }
     }
   };
+  /** Os vetores de vários textos, na ordem: AI Studio em lotes; Vertex AI um texto por pedido, poucos ao mesmo tempo. */
+  const embedTexts = async (texts: string[]): Promise<number[][]> => {
+    if (!vertex) {
+      const vectors: number[][] = [];
+      for (let i = 0; i < texts.length; i += BATCH) vectors.push(...(await call(texts.slice(i, i + BATCH))));
+      return vectors;
+    }
+    const vectors = new Array<number[]>(texts.length);
+    let next = 0;
+    let failed = false;
+    const worker = async () => {
+      while (!failed && next < texts.length) {
+        const i = next++;
+        try {
+          vectors[i] = (await call([texts[i]]))[0];
+        } catch (error) {
+          failed = true; // os outros param de pegar textos novos
+          throw error;
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(VERTEX_PARALLEL, texts.length) }, worker));
+    return vectors;
+  };
   return {
     model,
+    get problem() {
+      return problem?.reason ?? null;
+    },
     async embedDocuments(items) {
       const t0 = Date.now();
       const texts = items.map((it) => `title: ${clip(it.title ?? "") || "none"} | text: ${clip(it.text)}`);
-      const vectors: number[][] = [];
-      for (let i = 0; i < texts.length; i += BATCH) vectors.push(...(await call(texts.slice(i, i + BATCH))));
+      const vectors = await embedTexts(texts);
       const tokens = tokensOf(texts);
       return { vectors, tokens, costUsd: Math.round(((tokens * embeddingPrice(model)) / 1_000_000) * 1e6) / 1e6, latencyMs: Date.now() - t0 };
     },
     async embedQuery(text) {
-      return (await call([`task: search result | query: ${clip(text)}`]))[0];
+      return (await embedTexts([`task: search result | query: ${clip(text)}`]))[0];
     },
   };
 }
@@ -173,7 +231,8 @@ export async function queryEmbedding(
     const floor = Number(env.CONTENT_HUB_EMBEDDINGS_MIN_SIMILARITY);
     return { model: embedder.model, values: await embedder.embedQuery(text), ...(floor > 0 && floor < 1 ? { min_similarity: floor } : {}) };
   } catch (error) {
-    log?.(`[central] busca por significado indisponível agora (seguiu por palavras): ${(error as Error).message.slice(0, 200)}`);
+    // parada por erro de configuração já avisado: segue por palavras sem repetir o aviso a cada busca
+    if (!(error instanceof EmbeddingsError && error.quiet)) log?.(`[central] busca por significado indisponível agora (seguiu por palavras): ${(error as Error).message.slice(0, 200)}`);
     return null;
   }
 }

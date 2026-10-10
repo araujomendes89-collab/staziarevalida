@@ -110,10 +110,13 @@ export async function probeProcessing(deps: PipelineDeps): Promise<ProcessingRep
   }
   const brand = loadBrand();
   const emb = embeddingsConfig();
+  // a busca por significado pode estar ligada e ter parado na rodada (erro de configuração do Google, ex.: 404): conta como parada
+  const embProblem = deps.embedder?.problem ?? null;
+  const embReady = Boolean(deps.embedder) && !embProblem;
   const ai = await processingAi(deps);
   const pending = [
     ...ai.pending,
-    ...(deps.embedder ? [] : [`Busca por significado no processamento: ${emb.pending ?? "indisponível."}`]),
+    ...(embReady ? [] : [`Busca por significado no processamento: ${embProblem ?? emb.pending ?? "indisponível."}`]),
     ...(deps.renderer ? [] : ["Gerador de PDF (Playwright/Chromium) indisponível no processamento."]),
     ...(pythonOk ? [] : [`Leitor de PDF indisponível no processamento: "${python}" sem PyMuPDF.`]),
     ...(langs.includes("por") ? [] : ["OCR em português (Tesseract) indisponível no processamento: páginas escaneadas não são lidas."]),
@@ -126,7 +129,7 @@ export async function probeProcessing(deps: PipelineDeps): Promise<ProcessingRep
     ocr_languages: langs,
     brand: { version: brand.version, pending: brand.pending },
     ai: ai.ai,
-    embeddings: { ready: Boolean(deps.embedder), model: deps.embedder?.model ?? null, pending: deps.embedder ? null : emb.pending },
+    embeddings: { ready: embReady, model: deps.embedder?.model ?? null, pending: embReady ? null : (embProblem ?? emb.pending) },
     pending,
     checked_at: new Date().toISOString(),
   };

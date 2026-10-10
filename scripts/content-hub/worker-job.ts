@@ -43,7 +43,9 @@ async function main() {
     return { embedded: 0, tokens: 0, costUsd: 0, error: error.message.slice(0, 200) };
   });
   await deps.renderer?.close().catch(() => undefined);
-  await reportProcessing(deps, report, { started_at: new Date(t0).toISOString(), finished_at: new Date().toISOString(), jobs, sources, vectors });
+  // a busca por significado pode ter parado na rodada (erro de configuração do Google): o relato final mostra o motivo
+  const finalReport = deps.embedder?.problem ? await probeProcessing(deps) : report;
+  await reportProcessing(deps, finalReport, { started_at: new Date(t0).toISOString(), finished_at: new Date().toISOString(), jobs, sources, vectors });
   console.log(`[central] tarefa concluída: ${jobs} trabalho(s) da fila · fontes conferidas ${sources.checked} (mudaram ${sources.changed}, inacessíveis ${sources.unreachable}) · vetores novos ${vectors.embedded} · ${Math.round((Date.now() - t0) / 1000)} s`);
 }
 
