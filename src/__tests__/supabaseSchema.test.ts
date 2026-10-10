@@ -156,7 +156,7 @@ describe("Supabase — estações (2ª fase)", () => {
     const contents = await as(user(ids.ana), (tx) => rows(tx, `select station_id from public.checklist_station_contents order by 1`));
     expect(contents.map((x) => x.station_id)).toEqual(["st-free"]);
 
-    await db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [ids.carla]);
+    await db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id = $1`, [ids.carla]);
     const pro = await as(user(ids.carla), (tx) => rows(tx, `select station_id from public.checklist_station_contents order by 1`));
     expect(pro.map((x) => x.station_id)).toEqual(["st-free", "st-pro"]);
 
