@@ -5,7 +5,7 @@ import React from "react";
 import { AnswerOption, Badge, Banner, Button, Card, Chip, EmptyState, Icon, SelectField, StatCard, Tabs } from "../../ds";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
-import { Correction } from "../practice/Correction.jsx";
+import { Correction, answerState } from "../practice/Correction.jsx";
 import { AREAS, areaLabel, examLabel, formatWhen, splitStatement } from "../practice/format.js";
 
 const REASONS = [
@@ -134,7 +134,7 @@ function ErrorRow({ item, first, open, onToggle, onNote }) {
               {parts.ask && <p style={{ margin: 0, font: "600 16px/1.45 var(--font-sans)" }}>{parts.ask}</p>}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {detail.options.map((option) => (
-                  <AnswerOption key={option.id} letter={option.id} state={option.id === detail.correction.correct_option ? "correct" : option.id === detail.selected ? "incorrect" : "dimmed"}>
+                  <AnswerOption key={option.id} letter={option.id} state={answerState(option.id, detail.selected, detail.correction)}>
                     {option.text}
                   </AnswerOption>
                 ))}

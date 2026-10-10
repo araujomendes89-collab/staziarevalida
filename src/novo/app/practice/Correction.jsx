@@ -8,7 +8,25 @@ import { useSession } from "../session.jsx";
 import { ERROR_TYPE, KIND_LABEL } from "./diagnosisLabels.js";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
 
+/** Questão anulada pela banca (o banco diz "annulled"; sem gabarito também é anulada): não conta como acerto nem erro. */
+export const isAnnulled = (correction) => correction?.annulled === true || (correction != null && correction.correct_option == null);
+
+/** Estado de cada alternativa depois da correção. Anulada: nenhuma é "correta" nem "incorreta"; a marcada fica destacada. */
+export function answerState(id, selected, correction) {
+  if (isAnnulled(correction)) return id === selected ? "selected" : "dimmed";
+  if (id === correction?.correct_option) return "correct";
+  return id === selected ? "incorrect" : "dimmed";
+}
+
 export function Verdict({ selected, correction }) {
+  if (isAnnulled(correction)) {
+    return (
+      <div style={{ padding: 16, borderRadius: 16, background: "var(--info-bg)", border: "1px solid var(--info-border)", display: "flex", gap: 12, alignItems: "center" }}>
+        <Icon name="ban" size={22} style={{ color: "var(--info-text)", flex: "none" }} />
+        <div style={{ font: "600 15px var(--font-sans)" }}>Questão anulada pela banca. Não conta como acerto nem erro.</div>
+      </div>
+    );
+  }
   const blank = selected == null;
   const ok = correction.is_correct === true;
   const tone = blank ? "warning" : ok ? "success" : "danger";
@@ -98,13 +116,16 @@ export function Correction({ selected, correction, question, tutorContext = "que
           <TutorButton request={{ mode: "livre", questionId: question.id, context: { type: tutorContext, id: question.id } }} label={correction.is_correct === false ? "Discutir com o Tutor" : "Conversar com o Tutor"} />
         </div>
       )}
+      {correction.in_review && (
+        <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>A explicação desta questão está em revisão pela equipe.</div>
+      )}
       {correction.explanation && (
         <div>
           <div className="sm-overline">Explicação clínica</div>
           <p style={{ margin: "8px 0 0", fontSize: 15, lineHeight: 1.6 }}>{correction.explanation}</p>
         </div>
       )}
-      {question && correction.is_correct === false && selected != null && <ErrorDiagnosis questionId={question.id} />}
+      {question && correction.is_correct === false && selected != null && !isAnnulled(correction) && <ErrorDiagnosis questionId={question.id} />}
       <QuestionCommentary commentary={commentary} />
       {!commentary && correction.option_notes?.length > 0 && (
         <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", fontSize: 14, display: "flex", flexDirection: "column", gap: 8 }}>

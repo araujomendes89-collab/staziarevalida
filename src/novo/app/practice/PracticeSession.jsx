@@ -11,7 +11,7 @@ import { Navigate, useSearchParams } from "react-router-dom";
 import { AnswerOption, Badge, Banner, Button, Card, EmptyState, Icon, IconButton, IconTile } from "../../ds";
 import { useMQ } from "../Shell.jsx";
 import { useSession } from "../session.jsx";
-import { Correction } from "./Correction.jsx";
+import { Correction, answerState } from "./Correction.jsx";
 import { QuestionFigures } from "./QuestionFigures.jsx";
 import { SessionResult } from "./SessionResult.jsx";
 import { areaLabel, examLabel, formatClock, splitStatement } from "./format.js";
@@ -286,8 +286,7 @@ function Runner({ session, go, onFinished }) {
 
   const optionState = (id) => {
     if (!revealed) return selected === id ? "selected" : "idle";
-    if (id === question.correction.correct_option) return "correct";
-    return id === question.selected ? "incorrect" : "dimmed";
+    return answerState(id, question.selected, question.correction);
   };
   const tool = (icon, label, on, onClick, disabled) => (
     <button
