@@ -97,9 +97,13 @@ const docId = (ctx: Ctx) => {
   return ctx.job.document_id;
 };
 const versionScope = (ctx: Ctx) => (ctx.job.scope_key.startsWith("version:") ? ctx.job.scope_key.slice("version:".length) : null);
-/** Situação do documento: trabalho de uma versão só (edição manual) não mexe no documento. */
+/**
+ * Situação do documento: trabalho de uma versão só (edição manual) não mexe no documento. Trabalho da reconferência automática
+ * (marca no checkpoint) também não, em nenhuma etapa: o documento continua como estava, mesmo se a etapa falhar no meio (CC01,
+ * rodada de correção 2; no banco, ch_worker_finish/ch_worker_block/ch_worker_fail fazem o mesmo na falha e na pendência).
+ */
 const setMeta = async (ctx: Ctx, meta: Record<string, unknown>) => {
-  if (versionScope(ctx) || !ctx.job.document_id) return;
+  if (versionScope(ctx) || !ctx.job.document_id || ctx.job.checkpoint?.auto_recheck === true) return;
   await svc(ctx, "ch_worker_document_meta", { p_document_id: ctx.job.document_id, p_meta: meta });
 };
 /**

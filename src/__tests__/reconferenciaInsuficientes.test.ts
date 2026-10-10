@@ -12,6 +12,10 @@
  * materiais e revisão automática só nas versões novas. O rascunho nunca mexe em versão fora do rascunho nem cria versão nova
  * com o texto antigo da IA.
  *
+ * Rodada de correção 2: a reconferência automática não entra no meio de uma reexecução pedida pela equipe (e a etapa anterior
+ * que acha a reconferência na fila tira a marca dela), só deixa parcial a etapa que já tinha terminado inteira, e a falha ou a
+ * pendência dela não muda a situação do documento.
+ *
  * Sem rede: simulação de IA (mock). Os textos são fictícios, feitos só para o teste (não são conteúdo médico).
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -23,6 +27,7 @@ import { openDevDatabaseForTests, type DevDatabase } from "../../server/devDb/de
 import { devContentDb, localStorageDir, type ContentDb, type Storage } from "../../server/contentHub/infra";
 import { MockProvider, type StructuredRequest } from "../../server/contentHub/ai/provider";
 import { mockRespond } from "../../server/contentHub/ai/mock";
+import { AiCapReached } from "../../server/ai/maestro";
 import { stepVersions, type PipelineDeps } from "../../server/contentHub/pipeline";
 import { createContentHubWorker } from "../../server/contentHub/worker";
 import type { AuthUser } from "../../src/novo/data/backend";
@@ -70,6 +75,18 @@ const SB3 = "Uiteste deve ser pintado quando Viteste acumular 79 manchas.";
 const SB4 = "Wuteste deve ser regado quando Xuteste medir 89 gotas.";
 const SB5 = "Yuteste deve ser podado quando Zuteste somar 97 galhos.";
 const SC = "Ziteste deve ser varrido quando Ypsiteste tocar 83 sinos.";
+// rodada de correção 2 (cada frase com palavras só dela)
+const SD1 = "Etateste deve ser afinado quando Iotateste emitir 43 apitos.";
+const SD2 = "Psiteste deve ser escovado quando Chiteste soltar 31 faiscas.";
+const SE1 = "Hetateste deve ser afiado quando Joteste piscar 23 luzes.";
+const SF1 = "Qopateste deve ser amarrado quando Sampiteste vibrar 17 cordas.";
+const SG1 = "Digamateste deve ser coado quando Heteste ferver 13 bolhas.";
+const SG2 = "Stigmateste deve ser peneirado quando Koppateste reter 11 graos.";
+const SH1 = "Santeste deve ser enrolado quando Vauteste trancar 7 novelos.";
+const SH2 = "Zayinteste deve ser dosado quando Lamedteste atingir 15%.";
+const SH2_FONTE = "Zayinteste deve ser dosado quando Lamedteste atingir 16%.";
+const SI1 = "Yodteste deve ser carimbado quando Hethteste juntar 3 selos.";
+const SJ1 = "Shinteste deve ser lacrado quando Tsadeteste encher 9 frascos.";
 /** Parágrafo sem afirmação que separa as seções (a classificação simulada liga cada seção só ao tema do seu título). */
 const FILLER = "Texto fictício de preenchimento para separar as seções do teste. ".repeat(26).trim();
 
@@ -98,8 +115,8 @@ async function studyDocument(name: string, sentence: string) {
   return id;
 }
 
-/** PDF de referência com uma frase: fonte cadastrada, PDF vinculado e indexado (etapa source_index). */
-async function indexSource(name: string, sentence: string, kind = "final") {
+/** PDF de referência com uma frase: fonte cadastrada, PDF vinculado e indexado (etapa source_index). Sem `drain`, só entra na fila. */
+async function indexSource(name: string, sentence: string, kind = "final", opts: { drain?: boolean } = {}) {
   const id = await registerDoc(name);
   await sql(`update public.ch_documents set purpose = 'reference_source' where id = $1`, [id]);
   await db.service("ch_worker_save_extraction", {
@@ -114,7 +131,7 @@ async function indexSource(name: string, sentence: string, kind = "final") {
   const src = await db.asUser<{ id: string }>(admin, "app_ch_register_source", { p_source: { title: name, organ: "Órgão fictício", kind, version: "1", published_on: "2026-01-01" } });
   await db.asUser(admin, "app_ch_attach_source_document", { p_source_id: src.id, p_document_id: id });
   await db.service("ch_worker_next", { p_document_id: id, p_step: "source_index", p_versions: {} });
-  await drain();
+  if (opts.drain !== false) await drain();
   return { documentId: id, sourceId: src.id };
 }
 
@@ -471,6 +488,264 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
     }, 240_000);
   });
 
+  describe("rodada de correção 2: a reconferência automática não atrapalha o que está em andamento nem muda a situação do documento", () => {
+    const docState = async (doc: string) => (await sql(`select status, failure from public.ch_documents where id = $1`, [doc]))[0];
+    const jobsOf = (doc: string, step: string) =>
+      sql(`select id, status, checkpoint, error, metrics from public.ch_jobs where document_id = $1 and step = $2 order by created_at`, [doc, step]);
+    /** A IA simulada falha só no pedido (promptId) que traz a palavra; o resto responde normalmente. */
+    const failing = (promptId: string, word: string, error: () => Error) => (req: StructuredRequest) => {
+      if (req.promptId === promptId && req.input.includes(word)) throw error();
+      return mockRespond(req);
+    };
+    const capReached = () => new AiCapReached("Teto de gasto da IA atingido (simulação do teste).");
+    /** As tentativas seguintes de um trabalho que falhou (a fila espera entre uma e outra; aqui sem esperar). */
+    const exhaust = async (doc: string, step: string) => {
+      for (let k = 0; k < 5 && (await stepJob(doc, step)).status === "queued"; k++) {
+        await sql(`update public.ch_jobs set run_after = now() where document_id = $1 and status = 'queued'`, [doc]);
+        await drain();
+      }
+    };
+
+    it("Reprocessar a partir da Classificação com fonte nova indexada no meio: a reexecução roda inteira e o documento termina pronto", async () => {
+      const doc = await studyDocument("Apostila reprocessada com fonte no meio", SD1);
+      expect((await claimOf(doc)).status).toBe("insufficient");
+      expect((await docState(doc)).status).toBe("awaiting_review");
+      const draftBefore = await stepJob(doc, "draft");
+      // a equipe aperta "Reprocessar" na Classificação; antes de a reexecução chegar à conferência, entra uma fonte nova
+      await db.asUser(admin, "app_ch_retry_job", { p_job_id: (await stepJob(doc, "classify")).id });
+      const { sourceId } = await indexSource("Manual fictício indexado no meio", SD1);
+      const claim = await claimOf(doc);
+      expect(claim.status).toBe("compatible");
+      expect(await evidenceOf(claim.id)).toEqual([{ source_id: sourceId, verdict: "compatible", stale: false }]);
+      // a conferência rodou inteira (não como reconferência automática), e o resto do processamento também
+      const evidence = await evidenceJob(doc);
+      expect(evidence.status).toBe("succeeded");
+      expect(evidence.metrics.auto_recheck).toBeUndefined();
+      const draft = await stepJob(doc, "draft");
+      expect(new Date(draft.finished_at).getTime()).toBeGreaterThan(new Date(draftBefore.finished_at).getTime());
+      expect((await stepJob(doc, "review_check")).status).toBe("succeeded");
+      expect((await docState(doc)).status).toBe("awaiting_review");
+    }, 300_000);
+
+    it("a etapa anterior termina e acha a reconferência automática ainda na fila: tira a marca e a conferência roda inteira", async () => {
+      const doc = await studyDocument("Apostila com marca na fila", SD2);
+      expect((await claimOf(doc)).status).toBe("insufficient");
+      // a fonte nova é indexada e a reconferência automática entra na fila, sem rodar ainda
+      await indexSource("Manual fictício da marca na fila", SD2, "final", { drain: false });
+      await createContentHubWorker(deps()).tick();
+      const [queued] = await jobsOf(doc, "evidence");
+      expect(queued.status).toBe("queued");
+      expect(queued.checkpoint).toMatchObject({ auto_recheck: true });
+      // a etapa Afirmações de uma reexecução termina e põe a conferência na fila
+      await db.service("ch_worker_next", { p_document_id: doc, p_step: "evidence", p_versions: stepVersions("evidence", deps()) });
+      const [after] = await jobsOf(doc, "evidence");
+      expect(after.id).toBe(queued.id);
+      expect(after.status).toBe("queued");
+      expect(after.checkpoint).toEqual({});
+      await drain();
+      expect((await claimOf(doc)).status).toBe("compatible");
+      expect((await evidenceJob(doc)).metrics.auto_recheck).toBeUndefined();
+      expect((await docState(doc)).status).toBe("awaiting_review");
+    }, 300_000);
+
+    it("a IA falha em todas as tentativas da reconferência automática: o documento pronto continua pronto e volta a ser conferido na fonte seguinte", async () => {
+      const doc = await studyDocument("Apostila com IA fora do ar", SE1);
+      const before = await docState(doc);
+      expect(before.status).toBe("awaiting_review");
+      answer = failing("evidence", "Hetateste", () => new Error("Falha simulada do provedor de IA."));
+      try {
+        await indexSource("Manual fictício com IA fora do ar", SE1);
+        await exhaust(doc, "evidence");
+      } finally {
+        answer = mockRespond;
+      }
+      const [job] = await jobsOf(doc, "evidence");
+      expect(job.status).toBe("dead");
+      expect(await docState(doc)).toEqual(before);
+      // o erro fica só na etapa, dizendo que o documento continua como estava
+      expect(job.error).toMatch(/^Reconferência automática.*Falha simulada do provedor de IA\.$/);
+      // a fonte seguinte confere de novo (o documento não ficou de fora) e o documento continua pronto
+      await indexSource("Manual fictício com IA de volta", SE1);
+      expect((await claimOf(doc)).status).toBe("compatible");
+      expect(await docState(doc)).toEqual(before);
+    }, 300_000);
+
+    it("IA da conferência parada na reconferência automática: nenhuma pendência no documento pronto", async () => {
+      const doc = await studyDocument("Apostila com IA parada", SF1);
+      const before = await docState(doc);
+      expect(before.status).toBe("awaiting_review");
+      answer = failing("evidence", "Qopateste", capReached);
+      try {
+        await indexSource("Manual fictício com IA parada", SF1);
+      } finally {
+        answer = mockRespond;
+      }
+      const [job] = await jobsOf(doc, "evidence");
+      expect(job.status).toBe("blocked");
+      expect(job.checkpoint).toMatchObject({ auto_recheck: true });
+      expect(await docState(doc)).toEqual(before);
+      // a IA volta: a reconferência roda e o documento continua pronto
+      await db.service("ch_worker_unblock");
+      await drain();
+      expect((await claimOf(doc)).status).toBe("compatible");
+      expect(await docState(doc)).toEqual(before);
+    }, 300_000);
+
+    it("materiais da reconferência automática falham: o documento continua pronto (não fica em 'gerando' nem com falha)", async () => {
+      const shin = await fictitiousTheme("Shintema");
+      const doc = await themedDocument("Apostila dos materiais", [{ heading: "Shintema", sentences: [SJ1] }]);
+      expect((await claimBy(doc, SJ1)).status).toBe("insufficient");
+      expect(await versionsOf(shin)).toEqual([]);
+      const before = await docState(doc);
+      expect(before.status).toBe("awaiting_review");
+      answer = failing("summary", "Shinteste", () => new Error("Falha simulada do provedor de IA."));
+      try {
+        await indexSource("Manual fictício dos materiais", SJ1);
+        await exhaust(doc, "materials");
+      } finally {
+        answer = mockRespond;
+      }
+      expect((await claimBy(doc, SJ1)).status).toBe("compatible");
+      expect(await versionsOf(shin)).toHaveLength(1);
+      expect((await stepJob(doc, "materials")).status).toBe("dead");
+      expect(await docState(doc)).toEqual(before);
+    }, 300_000);
+
+    it("trabalho da reconferência automática com falha definitiva ou interrompido: o documento continua como estava", async () => {
+      const doc = await studyDocument("Apostila da falha definitiva", SI1);
+      const before = await docState(doc);
+      const running = async (lockedAgo: string) =>
+        (
+          await sql(
+            `insert into public.ch_jobs (document_id, step, scope_key, idempotency_key, versions, status, attempts, max_attempts, checkpoint, locked_at, started_at)
+             values ($1, 'evidence', '', $2, '{}'::jsonb, 'running', 3, 3, $3::jsonb, now() - $4::interval, now()) returning id`,
+            [doc, `teste-${crypto.randomUUID()}`, JSON.stringify({ auto_recheck: true, source_id: crypto.randomUUID() }), lockedAgo]
+          )
+        )[0].id as string;
+      const fatal = await running("0 seconds");
+      await db.service("ch_worker_fail", { p_job_id: fatal, p_error: "Falha definitiva simulada." });
+      const stale = await running("2 hours");
+      expect(await db.service("ch_worker_claim", { p_stale_seconds: 600 })).toBeNull();
+      const rows = await sql(`select status from public.ch_jobs where id = any($1::uuid[])`, [[fatal, stale]]);
+      expect(rows.map((r: any) => r.status)).toEqual(["dead", "dead"]);
+      expect(await docState(doc)).toEqual(before);
+    }, 240_000);
+
+    it("rascunho pendente (IA da criação parada) e fonte nova: o rascunho continua inteiro e, quando a IA volta, os dois temas ganham rascunho", async () => {
+      const digama = await fictitiousTheme("Digamatema");
+      const stigma = await fictitiousTheme("Stigmatema");
+      await addPassage(10, SG1);
+      answer = (req) => {
+        if (req.promptId === "draft" && /Digamateste|Stigmateste/.test(req.input)) throw capReached();
+        return mockRespond(req);
+      };
+      let doc = "";
+      try {
+        doc = await themedDocument("Apostila com rascunho pendente", [
+          { heading: "Digamatema", sentences: [SG1] },
+          { heading: "Stigmatema", sentences: [SG2] },
+        ]);
+        expect((await claimBy(doc, SG1)).status).toBe("compatible");
+        expect((await claimBy(doc, SG2)).status).toBe("insufficient");
+        const [pending] = await jobsOf(doc, "draft");
+        expect(pending.status).toBe("blocked");
+        expect(pending.checkpoint.auto_recheck).toBeUndefined();
+        // entra a fonte da afirmação que faltava; a IA da criação continua parada
+        await indexSource("Manual fictício do rascunho pendente", SG2);
+        expect((await claimBy(doc, SG2)).status).toBe("compatible");
+        const [still] = await jobsOf(doc, "draft");
+        expect(still.status).toBe("blocked");
+        expect(still.checkpoint.auto_recheck).toBeUndefined();
+      } finally {
+        answer = mockRespond;
+      }
+      // a IA volta: o rascunho roda inteiro, para os dois temas
+      await db.service("ch_worker_unblock");
+      await drain();
+      expect(await versionsOf(digama)).toHaveLength(1);
+      expect(await versionsOf(stigma)).toHaveLength(1);
+      const draft = await stepJob(doc, "draft");
+      expect(draft.metrics).toMatchObject({ themes: 2, drafts: 2 });
+      expect(draft.metrics.auto_recheck).toBeUndefined();
+      expect((await stepJob(doc, "review_check")).status).toBe("succeeded");
+      expect((await docState(doc)).status).toBe("awaiting_review");
+    }, 300_000);
+
+    it("conferência de uma reexecução pendente (IA nova) e fonte nova: a conferência pendente continua inteira", async () => {
+      // SH2 é julgada "insuficiente" pela IA com um trecho (número diferente): a conferência da reexecução chama a IA para ela
+      await addPassage(11, SH2_FONTE);
+      const doc = await studyDocument("Apostila com conferência pendente", `${SH1} ${SH2}`);
+      expect((await claimBy(doc, SH1)).status).toBe("insufficient");
+      expect((await claimBy(doc, SH2)).status).toBe("insufficient");
+      model = "mock-outra (simulação de troca de modelo)";
+      answer = failing("evidence", "Zayinteste", capReached);
+      try {
+        // a equipe reprocessa a partir da Classificação com a IA nova; a conferência da reexecução fica pendente
+        await db.asUser(admin, "app_ch_retry_job", { p_job_id: (await stepJob(doc, "classify")).id });
+        await drain();
+        expect((await jobsOf(doc, "evidence")).map((j: any) => j.status)).toEqual(["succeeded", "blocked"]);
+        await indexSource("Manual fictício da conferência pendente", SH1);
+        const after = await jobsOf(doc, "evidence");
+        expect(after.map((j: any) => j.status)).toEqual(["succeeded", "blocked"]);
+        expect(after[1].checkpoint.auto_recheck).toBeUndefined();
+      } finally {
+        model = null;
+        answer = mockRespond;
+      }
+      await db.service("ch_worker_unblock");
+      await drain();
+      const job = await evidenceJob(doc);
+      expect(job.status).toBe("succeeded");
+      expect(job.metrics.auto_recheck).toBeUndefined();
+      expect((await claimBy(doc, SH1)).status).toBe("compatible");
+      expect((await docState(doc)).status).toBe("awaiting_review");
+    }, 300_000);
+
+    it("próxima etapa com a marca: só a etapa concluída roda parcial; a pendente, na fila ou com falha roda inteira; duas reconferências se juntam", async () => {
+      const doc = await registerDoc("Documento só da fila");
+      const put = async (scope: string, status: string, checkpoint: object) => {
+        const r = await db.service<{ id: string }>("ch_worker_enqueue", { p_document_id: doc, p_step: "draft", p_scope_key: scope, p_versions: {} });
+        await sql(`update public.ch_jobs set status = $2, checkpoint = $3::jsonb, attempts = 1 where id = $1`, [r.id, status, JSON.stringify(checkpoint)]);
+        return r.id;
+      };
+      const next = (scope: string, mark: object) =>
+        db.service("ch_worker_next_marked", { p_document_id: doc, p_step: "draft", p_versions: {}, p_scope_key: scope, p_checkpoint: mark });
+      const job = async (id: string) => (await sql(`select status, checkpoint from public.ch_jobs where id = $1`, [id]))[0];
+      const mark = (...themes: string[]) => ({ auto_recheck: true, themes, claims: themes.map((t) => `c-${t}`) });
+      try {
+        // concluída inteira: roda de novo só para o que mudou
+        const done = await put("concluida", "succeeded", { theme: 3 });
+        await next("concluida", mark("b"));
+        expect(await job(done)).toEqual({ status: "queued", checkpoint: mark("b") });
+        // trabalho normal pendente, na fila ou com falha: roda inteiro, do começo
+        const blocked = await put("pendente", "blocked", { theme: 2 });
+        await next("pendente", mark("b"));
+        expect(await job(blocked)).toEqual({ status: "blocked", checkpoint: {} });
+        const queued = await put("na-fila", "queued", { theme: 1 });
+        await next("na-fila", mark("b"));
+        expect(await job(queued)).toEqual({ status: "queued", checkpoint: {} });
+        const dead = await put("falhou", "dead", { theme: 4 });
+        await next("falhou", mark("b"));
+        expect(await job(dead)).toEqual({ status: "queued", checkpoint: {} });
+        // outra reconferência automática ainda por fazer, parada ou que falhou: as marcas se juntam e ela recomeça do início
+        const autoQueued = await put("auto-fila", "queued", { ...mark("a"), theme: 1 });
+        await next("auto-fila", mark("b"));
+        expect(await job(autoQueued)).toEqual({ status: "queued", checkpoint: mark("a", "b") });
+        const autoBlocked = await put("auto-pendente", "blocked", mark("c"));
+        await next("auto-pendente", mark("a"));
+        expect(await job(autoBlocked)).toEqual({ status: "blocked", checkpoint: mark("a", "c") });
+        const autoDead = await put("auto-falhou", "dead", { ...mark("a"), versions: ["v1"], theme: 2 });
+        await next("auto-falhou", { ...mark("b"), versions: ["v2"] });
+        expect(await job(autoDead)).toEqual({ status: "queued", checkpoint: { ...mark("a", "b"), versions: ["v1", "v2"] } });
+        // nova: entra com a marca
+        const fresh = (await next("nova", mark("d"))) as { id: string };
+        expect(await job(fresh.id)).toEqual({ status: "queued", checkpoint: mark("d") });
+      } finally {
+        await sql(`delete from public.ch_jobs where document_id = $1`, [doc]);
+      }
+    }, 240_000);
+  });
+
   it("as funções novas e redefinidas continuam só do servidor (nem a equipe chama direto)", async () => {
     const id = crypto.randomUUID();
     for (const call of [
@@ -482,6 +757,12 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
       `select public.ch_claim_recheckable('${id}'::uuid)`,
       `select public.ch_worker_next_marked('${id}'::uuid, 'draft', '{}'::jsonb, '', '{}'::jsonb)`,
       `select public.ch_worker_theme_notice('${id}'::uuid, '[]'::jsonb)`,
+      // redefinidas na rodada de correção 2
+      `select public.ch_worker_next('${id}'::uuid, 'evidence', '{}'::jsonb, '')`,
+      `select public.ch_worker_finish('${id}'::uuid, false, 'x', '{}'::jsonb)`,
+      `select public.ch_worker_block('${id}'::uuid, 'x')`,
+      `select public.ch_worker_fail('${id}'::uuid, 'x')`,
+      `select public.ch_worker_claim(600)`,
     ]) {
       for (const role of ["authenticated", "anon"]) {
         const attempt = dev.db.transaction(async (tx) => {
