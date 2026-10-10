@@ -9,7 +9,7 @@ import { AiInvalidOutput, AnthropicProvider, GeminiProvider, anthropicSearchTool
 import { OpenAIProvider } from "../../server/contentHub/ai/openai";
 import { OllamaProvider } from "../../server/contentHub/ai/ollama";
 import { asDocument } from "../../server/contentHub/ai/prompts";
-import { CONVERT_SYSTEM, MAX_CONTINUATIONS, extractTrailingJson, hostsOf, parseOrConvert } from "../../server/contentHub/ai/webSearch";
+import { CONVERT_SYSTEM, MAX_CONTINUATIONS, extractTrailingJson, hostsOf, ownError, parseOrConvert } from "../../server/contentHub/ai/webSearch";
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -47,20 +47,49 @@ const req = (over: Partial<StructuredRequest> = {}): StructuredRequest => ({
 
 // ---------------------------------------------------------------- clientes falsos
 
-/** Cliente da Anthropic que guarda uma CÓPIA dos parâmetros de cada chamada e devolve as respostas na ordem (um Error na lista é a chamada que falha). */
+/**
+ * Cliente da Anthropic que guarda uma CÓPIA dos parâmetros de cada chamada (e o sinal de cancelamento que veio nas opções) e
+ * devolve as respostas na ordem (um Error na lista é a chamada que falha; uma função é uma resposta calculada na hora).
+ */
 function fakeAnthropic(replies: any[]) {
   const calls: any[] = [];
+  const signals: (AbortSignal | undefined)[] = [];
   const client = {
     messages: {
-      create: async (p: any) => {
+      create: async (p: any, opts?: { signal?: AbortSignal }) => {
         calls.push(JSON.parse(JSON.stringify(p)));
-        if (!replies[calls.length - 1]) throw new Error(`resposta ${calls.length} não preparada no teste`);
-        if (replies[calls.length - 1] instanceof Error) throw replies[calls.length - 1];
-        return replies[calls.length - 1];
+        signals.push(opts?.signal);
+        const reply = replies[calls.length - 1];
+        if (!reply) throw new Error(`resposta ${calls.length} não preparada no teste`);
+        if (reply instanceof Error) throw reply;
+        return typeof reply === "function" ? reply(p, opts) : reply;
       },
     },
   };
-  return { client, calls };
+  return { client, calls, signals };
+}
+
+/**
+ * Uma chamada que não termina: fica pendente até o sinal disparar e então falha como o `fetch` (com o motivo do sinal). Sem
+ * sinal na chamada falha na hora, e com sinal que nunca dispara falha em 300 ms: o teste mostra que o cancelamento não chegou.
+ */
+function hangUntilAborted(signal?: AbortSignal | null): Promise<never> {
+  if (!signal) return Promise.reject(new Error("a chamada não recebeu o sinal de cancelamento"));
+  return new Promise((_, reject) => {
+    if (signal.aborted) return reject(signal.reason);
+    const late = setTimeout(() => reject(new Error("o cancelamento não chegou à chamada")), 300);
+    signal.addEventListener("abort", () => { clearTimeout(late); reject(signal.reason); }, { once: true });
+  });
+}
+/** Resposta que dispara o cancelamento ao chegar: o tempo-limite de quem chamou estoura logo depois da chamada. */
+const thenAbort = (ac: AbortController, reply: unknown) => () => {
+  ac.abort(new Error("Tempo esgotado (teste)."));
+  return reply;
+};
+/** Espera a condição valer (a chamada em andamento aparecer nos registros). */
+async function until(cond: () => boolean): Promise<void> {
+  for (let i = 0; i < 200 && !cond(); i++) await new Promise((r) => setTimeout(r, 5));
+  if (!cond()) throw new Error("a condição do teste nunca valeu");
 }
 const claudeMsg = (over: Record<string, unknown> = {}) => ({
   model: "claude-sonnet-5-5",
@@ -82,13 +111,14 @@ const paused = (n: number) =>
     usage: { input_tokens: 100, output_tokens: 10, server_tool_use: { web_search_requests: 2 } },
   });
 
-/** `fetch` falso da OpenAI: guarda url, cabeçalhos e corpo de cada chamada e devolve as respostas na ordem. */
-function fakeFetch(replies: { body: unknown; status?: number }[]) {
-  const calls: { url: string; headers: any; body: any }[] = [];
+/** `fetch` falso da OpenAI: guarda url, cabeçalhos, corpo e sinal de cada chamada e devolve as respostas na ordem (uma função calcula a resposta na hora). */
+function fakeFetch(replies: ({ body: unknown; status?: number } | ((init: any) => Promise<Response> | Response))[]) {
+  const calls: { url: string; headers: any; body: any; signal: AbortSignal | undefined }[] = [];
   const f = (async (url: string, init: any) => {
-    calls.push({ url: String(url), headers: init.headers, body: JSON.parse(init.body) });
+    calls.push({ url: String(url), headers: init.headers, body: JSON.parse(init.body), signal: init.signal });
     const r = replies[calls.length - 1];
     if (!r) throw new Error(`resposta ${calls.length} não preparada no teste`);
+    if (typeof r === "function") return r(init);
     return new Response(JSON.stringify(r.body), { status: r.status ?? 200 });
   }) as unknown as typeof fetch;
   return { f, calls };
@@ -107,19 +137,22 @@ const openaiReply = (text: string, over: Record<string, unknown> = {}) => ({
 });
 const chatReply = (content: string) => ({ model: "modelo-x-2026-10", choices: [{ finish_reason: "stop", message: { content } }], usage: { prompt_tokens: 80, completion_tokens: 40 } });
 
-/** Cliente do Gemini que guarda uma cópia dos parâmetros de cada chamada. */
+/** Cliente do Gemini que guarda uma cópia dos parâmetros de cada chamada (e o sinal de cancelamento da configuração; uma função calcula a resposta na hora). */
 function fakeGemini(replies: any[]) {
   const calls: any[] = [];
+  const signals: (AbortSignal | undefined)[] = [];
   const client = {
     models: {
       generateContent: async (p: any) => {
         calls.push(JSON.parse(JSON.stringify(p)));
-        if (!replies[calls.length - 1]) throw new Error(`resposta ${calls.length} não preparada no teste`);
-        return replies[calls.length - 1];
+        signals.push(p.config?.abortSignal);
+        const reply = replies[calls.length - 1];
+        if (!reply) throw new Error(`resposta ${calls.length} não preparada no teste`);
+        return typeof reply === "function" ? reply(p) : reply;
       },
     },
   };
-  return { client, calls };
+  return { client, calls, signals };
 }
 const ACCESS = { mode: "studio" as const, key: "k".repeat(40) };
 const geminiReply = (text: string, grounding: unknown, over: Record<string, unknown> = {}) => ({
@@ -664,5 +697,175 @@ describe("Provedores", () => {
     expect(partialUsageOf(odd)).toBeNull();
     expect(partialUsageOf(null)).toBeNull();
     expect(partialUsageOf("erro")).toBeNull();
+  });
+
+  // ---------------------------------------------------------------- cancelamento (req.signal)
+  // O tempo-limite de quem chama (a Central) só corre contra a promessa: sem sinal, a busca de vários passos seguia em segundo
+  // plano, pagando continuações e conversão que ninguém registrava. Com `req.signal` o provedor para e diz o que já gastou.
+
+  const noJson = (over: Record<string, unknown> = {}) => claudeMsg({ content: [{ type: "text", text: "Achei, mas sem o JSON." }], ...over });
+
+  it("Cancelamento (Claude): o sinal vai em cada chamada; cancelar no meio da busca para na hora, sem continuação nem conversão, e o erro leva o gasto das chamadas feitas", async () => {
+    const ac = new AbortController();
+    const { client, calls, signals } = fakeAnthropic([paused(1), (_p: any, opts: any) => hangUntilAborted(opts?.signal), paused(3), claudeMsg()]);
+    const outcome = caught(new AnthropicProvider("k", "claude-sonnet-5-5", client).generate(req({ signal: ac.signal, webSearch: { allowedDomains: ["gov.br/saude"], maxSearches: 8 } })));
+    await until(() => calls.length === 2); // a 2ª chamada está em andamento (a 1ª já pausou com 2 buscas)
+    const reason = new Error("Tempo esgotado (teste).");
+    ac.abort(reason);
+    const error = await outcome;
+    expect(signals).toEqual([ac.signal, ac.signal]);
+    expect(error.message).toMatch(/cancelada/);
+    // o gasto das chamadas concluídas não se perde: a 1ª chamada pagou 2 buscas
+    expect(partialUsageOf(error)).toEqual({ inputTokens: 100, outputTokens: 10, webSearches: 2 });
+    // o motivo do sinal é um objeto só: o erro é outro, e o gasto não é gravado nele
+    expect(error).not.toBe(reason);
+    expect((reason as Error & { usage?: unknown }).usage).toBeUndefined();
+    // nada continua em segundo plano
+    await new Promise((r) => setTimeout(r, 30));
+    expect(calls).toHaveLength(2);
+  });
+
+  it("Cancelamento (Claude): se o sinal dispara entre uma chamada e a continuação, não há nova chamada", async () => {
+    const ac = new AbortController();
+    const { client, calls } = fakeAnthropic([thenAbort(ac, paused(1)), paused(2), claudeMsg()]);
+    const error = await caught(new AnthropicProvider("k", "claude-sonnet-5-5", client).generate(req({ signal: ac.signal, webSearch: { allowedDomains: ["gov.br/saude"], maxSearches: 8 } })));
+    expect(calls).toHaveLength(1);
+    expect(error.message).toMatch(/cancelada/);
+    expect(partialUsageOf(error)).toEqual({ inputTokens: 100, outputTokens: 10, webSearches: 2 });
+  });
+
+  it("Cancelamento (Claude): se o sinal dispara antes da conversão, a conversão paga não é feita; o erro leva só a busca", async () => {
+    const ac = new AbortController();
+    const { client, calls } = fakeAnthropic([thenAbort(ac, noJson()), claudeMsg({ content: [{ type: "text", text: JSON.stringify(RESULT) }] })]);
+    const error = await caught(new AnthropicProvider("k", "claude-sonnet-5-5", client).generate(req({ signal: ac.signal })));
+    expect(calls).toHaveLength(1);
+    expect(error.message).toMatch(/cancelada/);
+    expect(partialUsageOf(error)).toEqual({ inputTokens: 100, outputTokens: 20, webSearches: 1 });
+  });
+
+  it("Cancelamento (Claude): resposta que já trouxe o JSON válido é usada mesmo com o sinal disparado (já foi paga)", async () => {
+    const ac = new AbortController();
+    const { client } = fakeAnthropic([thenAbort(ac, claudeMsg())]);
+    const r = await new AnthropicProvider("k", "claude-sonnet-5-5", client).generate<typeof RESULT>(req({ signal: ac.signal }));
+    expect(r.output).toEqual(RESULT);
+    expect(r.webSearches).toBe(1);
+  });
+
+  it("Cancelamento (Claude): sem sinal nada muda (as opções da chamada vão vazias); a conversão sem busca leva o mesmo sinal", async () => {
+    const plain = fakeAnthropic([claudeMsg()]);
+    await new AnthropicProvider("k", "claude-sonnet-5-5", plain.client).generate(req());
+    expect(plain.signals).toEqual([undefined]);
+    const ac = new AbortController();
+    const withConversion = fakeAnthropic([noJson(), claudeMsg({ content: [{ type: "text", text: JSON.stringify(RESULT) }] })]);
+    await new AnthropicProvider("k", "claude-sonnet-5-5", withConversion.client).generate(req({ signal: ac.signal }));
+    expect(withConversion.calls).toHaveLength(2);
+    expect(withConversion.signals).toEqual([ac.signal, ac.signal]);
+  });
+
+  it("Cancelamento (OpenAI): o sinal vai nas duas chamadas junto do tempo-limite próprio; cancelar no meio da busca falha na hora", async () => {
+    const ac = new AbortController();
+    const both = fakeFetch([{ body: openaiReply("Não achei como JSON.") }, { body: chatReply(JSON.stringify(RESULT)) }]);
+    await new OpenAIProvider("k", "modelo-x", both.f).generate(req({ signal: ac.signal }));
+    expect(both.calls).toHaveLength(2);
+    expect(both.calls.map((c) => c.signal?.aborted)).toEqual([false, false]);
+    ac.abort(); // o sinal de cada chamada segue o de quem pediu
+    expect(both.calls.map((c) => c.signal?.aborted)).toEqual([true, true]);
+    // sem sinal de quem chama, a chamada ainda tem o seu tempo-limite
+    const alone = fakeFetch([{ body: openaiReply(FENCED) }]);
+    await new OpenAIProvider("k", "modelo-x", alone.f).generate(req());
+    expect(alone.calls[0].signal).toBeDefined();
+    expect(alone.calls[0].signal?.aborted).toBe(false);
+
+    const mid = new AbortController();
+    const hung = fakeFetch([(init: any) => hangUntilAborted(init.signal)]);
+    const outcome = caught(new OpenAIProvider("k", "modelo-x", hung.f).generate(req({ signal: mid.signal })));
+    await until(() => hung.calls.length === 1);
+    const reason = new Error("Tempo esgotado (teste).");
+    mid.abort(reason);
+    const error = await outcome;
+    expect(error.message).toMatch(/cancelada/);
+    expect(error).not.toBe(reason);
+    expect(hung.calls).toHaveLength(1);
+  });
+
+  it("Cancelamento (OpenAI): se o sinal dispara antes da conversão, ela não é feita; o erro leva a busca", async () => {
+    const ac = new AbortController();
+    const { f, calls } = fakeFetch([
+      (_init: any) => {
+        ac.abort(new Error("Tempo esgotado (teste)."));
+        return new Response(JSON.stringify(openaiReply("Não achei como JSON.")), { status: 200 });
+      },
+      { body: chatReply(JSON.stringify(RESULT)) },
+    ]);
+    const error = await caught(new OpenAIProvider("k", "modelo-x", f).generate(req({ signal: ac.signal })));
+    expect(calls).toHaveLength(1);
+    expect(error.message).toMatch(/cancelada/);
+    expect(partialUsageOf(error)).toEqual({ inputTokens: 500, outputTokens: 120, webSearches: 2 });
+  });
+
+  it("Cancelamento (Gemini): o sinal vai na busca e na conversão; se dispara antes da conversão, ela não é feita; o erro leva a busca", async () => {
+    const ac = new AbortController();
+    const both = fakeGemini([geminiReply("Sem JSON.", GROUNDING), geminiReply(JSON.stringify(RESULT), null)]);
+    await new GeminiProvider(ACCESS, "gemini-2.5-pro", both.client).generate(req({ signal: ac.signal }));
+    expect(both.calls).toHaveLength(2);
+    expect(both.signals).toEqual([ac.signal, ac.signal]);
+    // sem sinal, a configuração não leva abortSignal
+    const plain = fakeGemini([geminiReply(FENCED, GROUNDING)]);
+    await new GeminiProvider(ACCESS, "gemini-2.5-pro", plain.client).generate(req());
+    expect(plain.signals).toEqual([undefined]);
+
+    const stop = new AbortController();
+    const cut = fakeGemini([thenAbort(stop, geminiReply("Sem JSON.", GROUNDING)), geminiReply(JSON.stringify(RESULT), null)]);
+    const error = await caught(new GeminiProvider(ACCESS, "gemini-2.5-pro", cut.client).generate(req({ signal: stop.signal })));
+    expect(cut.calls).toHaveLength(1);
+    expect(error.message).toMatch(/cancelada/);
+    expect(partialUsageOf(error)).toEqual({ inputTokens: 430, outputTokens: 150, webSearches: 1 });
+  });
+
+  it("Cancelamento: sinal já disparado antes de começar não chama ninguém", async () => {
+    const ac = new AbortController();
+    ac.abort(new Error("Tempo esgotado (teste)."));
+    const claude = fakeAnthropic([claudeMsg()]);
+    const claudeError = await caught(new AnthropicProvider("k", "claude-sonnet-5-5", claude.client).generate(req({ signal: ac.signal })));
+    const openai = fakeFetch([{ body: openaiReply(FENCED) }]);
+    const openaiError = await caught(new OpenAIProvider("k", "modelo-x", openai.f).generate(req({ signal: ac.signal })));
+    const gemini = fakeGemini([geminiReply(FENCED, GROUNDING)]);
+    const geminiError = await caught(new GeminiProvider(ACCESS, "gemini-2.5-pro", gemini.client).generate(req({ signal: ac.signal })));
+    expect([claude.calls.length, openai.calls.length, gemini.calls.length]).toEqual([0, 0, 0]);
+    for (const e of [claudeError, openaiError, geminiError]) {
+      expect(e.message).toMatch(/cancelada/);
+      expect(partialUsageOf(e)).toBeNull(); // nada foi gasto
+    }
+  });
+
+  it("Cancelamento: só vira \"cancelada\" o erro de quem foi cancelado (o do próprio sinal, o da SDK, o AbortError); os outros passam como estão", () => {
+    const ac = new AbortController();
+    const sdk = new Error("Request was aborted.");
+    const domain = new AiInvalidOutput("Resposta fora do formato.", null);
+    // sinal que não disparou: nada é trocado, nem erro que fala em abortar
+    expect(ownError(sdk, ac.signal)).toBe(sdk);
+    expect(ownError(sdk, undefined)).toBe(sdk);
+    ac.abort(new Error("Tempo esgotado (teste)."));
+    expect(ownError(ac.signal.reason, ac.signal)).not.toBe(ac.signal.reason);
+    expect((ownError(sdk, ac.signal) as Error).message).toBe("Chamada cancelada.");
+    expect((ownError(Object.assign(new Error("x"), { name: "AbortError" }), ac.signal) as Error).message).toBe("Chamada cancelada.");
+    expect(((ownError(sdk, ac.signal) as Error).cause as Error).message).toBe("Tempo esgotado (teste).");
+    expect(ownError(domain, ac.signal)).toBe(domain);
+    // quem já leva o gasto de uma camada de baixo não é trocado (o gasto se perderia)
+    const paid = withUsage(new Error("Request was aborted."), { inputTokens: 1, outputTokens: 1, webSearches: 1 });
+    expect(ownError(paid, ac.signal)).toBe(paid);
+    expect(ownError("texto solto", ac.signal)).toBe("texto solto");
+  });
+
+  it("Cancelamento: parseOrConvert não faz a conversão com o sinal disparado, mas usa o JSON válido que já veio", async () => {
+    const ac = new AbortController();
+    ac.abort(new Error("Tempo esgotado (teste)."));
+    const convert = vi.fn(async () => ({ output: RESULT, provider: "p", model: "m", inputTokens: 1, outputTokens: 1, latencyMs: 1, costUsd: null }) as StructuredResult<any>);
+    const error = await caught(parseOrConvert(req({ signal: ac.signal }), "sem json", convert));
+    expect(error.message).toMatch(/cancelada/);
+    expect(convert).not.toHaveBeenCalled();
+    const ok = await parseOrConvert<typeof RESULT>(req({ signal: ac.signal }), FENCED, convert);
+    expect(ok.output).toEqual(RESULT);
+    expect(convert).not.toHaveBeenCalled();
   });
 });

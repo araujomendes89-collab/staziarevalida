@@ -6,7 +6,7 @@
  * texto, conferi-lo pelo esquema e, se não servir, fazer UMA chamada curta, sem busca, só para converter o texto. O texto
  * vem da internet: na conversão ele vai marcado como documento (`asDocument`), é dado, nunca ordem.
  */
-import { AiInvalidOutput, withUsage, type StructuredRequest, type StructuredResult } from "./provider";
+import { AiInvalidOutput, partialUsageOf, withUsage, type StructuredRequest, type StructuredResult } from "./provider";
 import { asDocument } from "./prompts";
 import { validate } from "./schema";
 
@@ -65,6 +65,38 @@ export function hostsOf(allowedDomains: string[]): string[] {
   return [...hosts].slice(0, MAX_HOSTS);
 }
 
+/**
+ * O erro de uma chamada cancelada por quem a pediu (`req.signal`). É sempre um erro NOVO (com o motivo do sinal em `cause`): o
+ * `reason` do sinal é um objeto só, e o gasto parcial (`withUsage`) não pode ser gravado nele, senão duas tentativas que
+ * dividem o mesmo sinal somariam o gasto uma na outra.
+ */
+export function cancelledError(signal: AbortSignal | null | undefined): Error {
+  return new Error("Chamada cancelada.", { cause: signal?.reason });
+}
+
+/** Antes de começar outra chamada (a continuação da busca, a conversão): se quem pediu já cancelou, para aqui, sem gastar mais. */
+export function throwIfCancelled(signal: AbortSignal | null | undefined): void {
+  if (signal?.aborted) throw cancelledError(signal);
+}
+
+/**
+ * O erro que o provedor deixa sair de uma chamada: com o sinal já disparado, o que a chamada lançou por ter sido cancelada (o
+ * `reason` do próprio sinal, que é o que o `fetch` lança; o "Request was aborted." da SDK da Anthropic; o AbortError) vira o
+ * `cancelledError`: um erro novo e com a mesma mensagem em qualquer provedor. Outros erros (recusa, resposta fora do formato...) passam como estão,
+ * e o que já leva gasto de uma camada de baixo (a conversão) também: trocá-lo apagaria esse gasto.
+ */
+export function ownError(error: unknown, signal: AbortSignal | null | undefined): unknown {
+  if (!signal?.aborted || partialUsageOf(error)) return error;
+  const text = error && typeof error === "object" ? `${(error as { name?: unknown }).name ?? ""} ${(error as { message?: unknown }).message ?? ""}` : "";
+  return error === signal.reason || /abort/i.test(text) ? cancelledError(signal) : error;
+}
+
+/** O sinal de uma chamada HTTP: o tempo-limite da própria chamada e, se houver, o cancelamento de quem pediu (o que vier primeiro). */
+export function callSignal(timeoutMs: number, outer?: AbortSignal | null): AbortSignal {
+  const timeout = AbortSignal.timeout(timeoutMs);
+  return outer ? AbortSignal.any([timeout, outer]) : timeout;
+}
+
 /** Soma de tokens de duas chamadas: nulo só quando nenhuma das duas informou. */
 export function sumTokens(a: number | null | undefined, b: number | null | undefined): number | null {
   return a == null && b == null ? null : (a ?? 0) + (b ?? 0);
@@ -85,6 +117,7 @@ export async function parseOrConvert<T>(
   const found = extractTrailingJson(text);
   if (found !== undefined && validate(req.schema, found).length === 0) return { output: found as T, extra: null };
   if (!text.trim()) throw new AiInvalidOutput("A IA não deixou texto para conferir.", text);
+  throwIfCancelled(req.signal); // a conversão é uma chamada paga: cancelado, não se começa
   const extra = await convert({
     ...req,
     webSearch: undefined,

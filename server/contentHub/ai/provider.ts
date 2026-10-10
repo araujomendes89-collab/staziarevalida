@@ -18,7 +18,7 @@ import { googleAiAccess, googleGenAiOptions, GOOGLE_KEY_MISSING, type GoogleAiAc
 import { toProviderSchema, validate, type Schema } from "./schema";
 import { OpenAIProvider } from "./openai";
 import { FallbackProvider } from "./fallback";
-import { MAX_CONTINUATIONS, parseOrConvert, sumTokens } from "./webSearch";
+import { MAX_CONTINUATIONS, ownError, parseOrConvert, sumTokens, throwIfCancelled } from "./webSearch";
 
 /**
  * Busca na internet pedida ao provedor: só estes sites (endereços da lista, com ou sem caminho) e até este número de buscas
@@ -47,6 +47,16 @@ export interface StructuredRequest {
    * é conferido pelo esquema (inválido → uma chamada curta, sem busca, só para converter). Ver webSearch.ts.
    */
   webSearch?: WebSearchOptions;
+  /**
+   * Cancelamento por quem chama (ex.: o tempo-limite da Central). Um tempo-limite que só corre contra a promessa NÃO cancela a
+   * chamada: a busca de vários passos seguia em segundo plano, pagando continuações e conversão que ninguém registrava. Com
+   * o sinal, o provedor o passa a CADA chamada que faz (a Claude: até 4 de busca e a conversão; a OpenAI: `/responses` e a
+   * conversão; o Gemini: a busca e a conversão), não começa outra depois de ele disparar, e o erro leva o gasto das chamadas
+   * já concluídas (`partialUsageOf`). A chamada em andamento no instante do cancelamento não devolve uso: o provedor pode
+   * cobrá-la mesmo assim (cancelar do lado do cliente não desfaz a cobrança). Quem cancela deve esperar o provedor terminar
+   * (ele termina na hora) antes de tentar de novo, para duas buscas não correrem juntas.
+   */
+  signal?: AbortSignal;
 }
 
 export interface StructuredResult<T> {
@@ -142,7 +152,10 @@ export function anthropicSearchTool(model: string): "web_search_20260209" | "web
 const anthropicEffort = (req: StructuredRequest) => req.effort || process.env.CONTENT_HUB_ANTHROPIC_EFFORT || "medium";
 
 /** O que o provedor usa do cliente da Anthropic (o de verdade, ou um falso nos testes). */
-type MessagesClient = { messages: { create(params: any): Promise<any> } };
+type MessagesClient = { messages: { create(params: any, options?: { signal?: AbortSignal }): Promise<any> } };
+
+/** As opções de cada chamada à Anthropic: só o cancelamento de quem pediu (sem ele, nada é passado, como sempre foi). */
+const callOptions = (req: StructuredRequest) => (req.signal ? { signal: req.signal } : undefined);
 
 export class AnthropicProvider implements AiProvider {
   readonly name = "anthropic";
@@ -161,7 +174,7 @@ export class AnthropicProvider implements AiProvider {
       system: req.system,
       output_config: { effort: anthropicEffort(req), format: { type: "json_schema", schema: toProviderSchema(req.schema) } },
       messages: [{ role: "user", content: req.input }],
-    });
+    }, callOptions(req));
     const usage = res.usage as any;
     const spent: PartialUsage = { inputTokens: usage?.input_tokens ?? null, outputTokens: usage?.output_tokens ?? null, webSearches: 0 };
     try {
@@ -198,6 +211,9 @@ export class AnthropicProvider implements AiProvider {
    * texto acumulado vai para `parseOrConvert`, que usa o JSON dele ou faz a conversão curta, sem busca.
    *
    * Erro depois de buscas pagas leva o gasto parcial (`withUsage`): a chamada que falha não apaga o que já foi cobrado.
+   *
+   * Cancelamento (`req.signal`): o sinal vai a cada chamada; antes de cada uma (a primeira e as continuações) e antes da
+   * conversão confere-se se já disparou, e então para sem gastar mais. O que as chamadas concluídas gastaram vai no erro.
    */
   private async generateWithSearch<T>(req: StructuredRequest, search: WebSearchOptions): Promise<StructuredResult<T>> {
     const t0 = Date.now();
@@ -209,6 +225,7 @@ export class AnthropicProvider implements AiProvider {
     let model = this.model;
     try {
       for (let continuation = 0; ; continuation++) {
+        throwIfCancelled(req.signal);
         const res = await this.client.messages.create({
           model: this.model,
           max_tokens: Math.max(req.maxOutputTokens ?? 8192, 8192),
@@ -216,7 +233,7 @@ export class AnthropicProvider implements AiProvider {
           tools: [{ type: toolType, name: "web_search", allowed_domains: search.allowedDomains, max_uses: search.maxSearches - spent.webSearches }],
           output_config: { effort: anthropicEffort(req) },
           messages: [...messages],
-        });
+        }, callOptions(req));
         const usage = res.usage as any;
         spent.webSearches += usage?.server_tool_use?.web_search_requests ?? 0;
         spent.inputTokens = sumTokens(spent.inputTokens, usage?.input_tokens);
@@ -246,13 +263,19 @@ export class AnthropicProvider implements AiProvider {
       return { output, provider: this.name, model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: price(inTok, outTok), webSearches: spent.webSearches, seenUrls: [...seen] };
     } catch (error) {
       // a conversão que falhou já leva o seu gasto; aqui entra o da busca
-      throw withUsage(error, spent);
+      throw withUsage(ownError(error, req.signal), spent);
     }
   }
 }
 
 /** O que o provedor usa do cliente do Google (o de verdade, ou um falso nos testes). */
 type GenerateClient = { models: { generateContent(params: any): Promise<any> } };
+
+/**
+ * O cancelamento de quem pediu, na configuração de cada chamada ao Google (só quando há). A SDK avisa: cancelar é do lado do
+ * cliente e não cancela o pedido no serviço, que ainda pode cobrar.
+ */
+const abortConfig = (req: StructuredRequest) => (req.signal ? { abortSignal: req.signal } : {});
 
 export class GeminiProvider implements AiProvider {
   readonly name = "gemini";
@@ -267,7 +290,7 @@ export class GeminiProvider implements AiProvider {
     const res = await this.client.models.generateContent({
       model: this.model,
       contents: req.input,
-      config: { systemInstruction: req.system, responseMimeType: "application/json", responseSchema: toProviderSchema(req.schema) as any, maxOutputTokens: req.maxOutputTokens ?? 4096 },
+      config: { systemInstruction: req.system, responseMimeType: "application/json", responseSchema: toProviderSchema(req.schema) as any, maxOutputTokens: req.maxOutputTokens ?? 4096, ...abortConfig(req) },
     });
     const u = res.usageMetadata as any;
     // O raciocínio do modelo (thoughtsTokenCount) é cobrado como saída: entra na conta, senão o gasto e os tetos ficam abaixo do real.
@@ -295,11 +318,17 @@ export class GeminiProvider implements AiProvider {
    */
   private async generateWithSearch<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
     const t0 = Date.now();
-    const res = await this.client.models.generateContent({
-      model: this.model,
-      contents: req.input,
-      config: { systemInstruction: req.system, tools: [{ googleSearch: {} }], maxOutputTokens: req.maxOutputTokens ?? 4096 },
-    });
+    throwIfCancelled(req.signal);
+    // erro de rede ou de cancelamento aqui não leva gasto (nada voltou); o `reason` do sinal vira um erro novo
+    const res = await this.client.models
+      .generateContent({
+        model: this.model,
+        contents: req.input,
+        config: { systemInstruction: req.system, tools: [{ googleSearch: {} }], maxOutputTokens: req.maxOutputTokens ?? 4096, ...abortConfig(req) },
+      })
+      .catch((error: unknown) => {
+        throw ownError(error, req.signal);
+      });
     const candidate = res.candidates?.[0];
     const grounding = candidate?.groundingMetadata;
     // Gemini 2.x cobra por pedido que usou a busca; do 3 em diante, por consulta feita
@@ -317,7 +346,7 @@ export class GeminiProvider implements AiProvider {
       return { output, provider: this.name, model: this.model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: price(inTok, outTok), webSearches, seenUrls: [...seen] };
     } catch (error) {
       // a conversão que falhou já leva o seu gasto; aqui entra o da busca
-      throw withUsage(error, spent);
+      throw withUsage(ownError(error, req.signal), spent);
     }
   }
 }

@@ -10,7 +10,7 @@
 import { toProviderSchema } from "./schema";
 import { AiInvalidOutput, withUsage, type AiProvider, type PartialUsage, type StructuredRequest, type StructuredResult, type WebSearchOptions } from "./provider";
 import { validate } from "./schema";
-import { hostsOf, parseOrConvert, sumTokens } from "./webSearch";
+import { callSignal, hostsOf, ownError, parseOrConvert, sumTokens, throwIfCancelled } from "./webSearch";
 
 export class OpenAIProvider implements AiProvider {
   readonly name = "openai";
@@ -38,7 +38,7 @@ export class OpenAIProvider implements AiProvider {
         response_format: { type: "json_schema", json_schema: { name: req.schemaName.slice(0, 60), schema: toProviderSchema(req.schema), strict: false } },
         max_completion_tokens: Math.max(req.maxOutputTokens ?? 8192, 4096),
       }),
-      signal: AbortSignal.timeout(180_000),
+      signal: callSignal(180_000, req.signal),
     });
     if (!res.ok) {
       const body = (await res.text().catch(() => "")).slice(0, 300);
@@ -70,29 +70,16 @@ export class OpenAIProvider implements AiProvider {
    * caminho) e pedindo as fontes de cada busca. O máximo de buscas vale para o pedido inteiro: `max_tool_calls` o impõe.
    * Sem resposta estruturada: a IA termina o texto com o JSON (ver webSearch.ts). Se o JSON não servir, a conversão curta,
    * sem busca, vai pelo `/chat/completions` de sempre. Erro depois da resposta (cortada, recusada, fora do esquema) leva o
-   * gasto parcial (`withUsage`): as buscas e os tokens já foram cobrados.
+   * gasto parcial (`withUsage`): as buscas e os tokens já foram cobrados. O cancelamento de quem pediu (`req.signal`) vale para as duas
+   * chamadas; a conversão não começa se ele já disparou.
    */
   private async generateWithSearch<T>(req: StructuredRequest, search: WebSearchOptions): Promise<StructuredResult<T>> {
     const t0 = Date.now();
-    const res = await this.fetchImpl(`${this.baseUrl}/responses`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` },
-      body: JSON.stringify({
-        model: this.model,
-        instructions: req.system,
-        input: req.input,
-        tools: [{ type: "web_search", filters: { allowed_domains: hostsOf(search.allowedDomains) } }],
-        include: ["web_search_call.action.sources"],
-        max_tool_calls: search.maxSearches,
-        max_output_tokens: Math.max(req.maxOutputTokens ?? 8192, 4096),
-      }),
-      signal: AbortSignal.timeout(180_000),
+    throwIfCancelled(req.signal);
+    // erro de rede ou de cancelamento aqui não leva gasto (nada voltou); o `reason` do sinal vira um erro novo
+    const data = await this.postResponses(req, search).catch((error) => {
+      throw ownError(error, req.signal);
     });
-    if (!res.ok) {
-      const body = (await res.text().catch(() => "")).slice(0, 300);
-      throw new Error(`OpenAI respondeu ${res.status}${body ? `: ${body}` : ""}`);
-    }
-    const data = (await res.json()) as any;
     // o que a resposta gastou, contado antes de qualquer recusa: buscas = itens web_search_call
     const items: any[] = Array.isArray(data?.output) ? data.output : [];
     const spent: PartialUsage = { inputTokens: data?.usage?.input_tokens ?? null, outputTokens: data?.usage?.output_tokens ?? null, webSearches: items.filter((item) => item?.type === "web_search_call").length };
@@ -118,7 +105,30 @@ export class OpenAIProvider implements AiProvider {
       return { output, provider: this.name, model: data?.model ?? this.model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: this.price(inTok, outTok), webSearches: spent.webSearches, seenUrls: [...seen] };
     } catch (error) {
       // a conversão que falhou já leva o seu gasto; aqui entra o da busca
-      throw withUsage(error, spent);
+      throw withUsage(ownError(error, req.signal), spent);
     }
+  }
+
+  /** A chamada à API Responses com a busca: o corpo da resposta, ou o erro de HTTP. */
+  private async postResponses(req: StructuredRequest, search: WebSearchOptions): Promise<any> {
+    const res = await this.fetchImpl(`${this.baseUrl}/responses`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` },
+      body: JSON.stringify({
+        model: this.model,
+        instructions: req.system,
+        input: req.input,
+        tools: [{ type: "web_search", filters: { allowed_domains: hostsOf(search.allowedDomains) } }],
+        include: ["web_search_call.action.sources"],
+        max_tool_calls: search.maxSearches,
+        max_output_tokens: Math.max(req.maxOutputTokens ?? 8192, 4096),
+      }),
+      signal: callSignal(180_000, req.signal),
+    });
+    if (!res.ok) {
+      const body = (await res.text().catch(() => "")).slice(0, 300);
+      throw new Error(`OpenAI respondeu ${res.status}${body ? `: ${body}` : ""}`);
+    }
+    return res.json();
   }
 }
