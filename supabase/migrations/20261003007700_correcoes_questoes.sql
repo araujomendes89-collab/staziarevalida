@@ -10,7 +10,10 @@
 --        (question_attempts.is_correct). Quando o gabarito muda (outra letra, ou a questão é anulada ou deixa de ser):
 --          - as explicações escritas para o gabarito antigo ficam marcadas para revisão (questions.explanations_review)
 --            e o aluno não as vê, nem na correção nem no Tutor, até a equipe marcar como revisadas
---            (app_admin_question_review_done); anular marca todas as preenchidas;
+--            (app_admin_question_review_done); deixar de ser anulada marca todas as preenchidas;
+--          - em questão anulada a explicação de cada alternativa nunca sai ao aluno (correção e Tutor), marcada ou não:
+--            a letra guardada não é a correta (anular pelo registro guarda a letra antiga; o editor antigo e a
+--            importação gravavam anulada com letra);
 --          - a análise publicada (SQIE) e o cartão de atualização feitos para o gabarito antigo saem do aluno (correção,
 --            Tutor e diagnóstico do erro) até haver nova análise; em questão anulada, a análise não sai.
 --   Q03  Importar com "atualizar as que já existem" só troca os campos que vieram preenchidos; nunca gabarito nem
@@ -20,7 +23,8 @@
 --        diferente, sem gravar nada.
 --   Q04  Questão anulada sem gabarito numa sessão em andamento não trava o simulado nem o treino: a resposta é aceita
 --        (is_correct falso, como a coluna exige) e a anulada não conta como acerto nem erro no resultado.
---   Q05  A correção diz que a questão foi anulada ('annulled'): a tela mostra "Questão anulada pela banca".
+--   Q05  A correção diz que a questão foi anulada ('annulled'): a tela mostra "Questão anulada pela banca", sem
+--        "Explicação clínica" nem "Por que não as outras?".
 --
 -- Funções redefinidas (cada uma a partir da versão mais nova):
 --   grade_question_attempt (…0300), practice_correction_view (…1900), practice_result e app_recent_sessions (…4300),
@@ -57,7 +61,9 @@ $$;
 -- Mais três coisas:
 --   annulled   a questão foi anulada pela banca; is_correct fica nulo (não é acerto nem erro);
 --   in_review  há explicação marcada para revisão depois da troca de gabarito;
---   as explicações marcadas (e a conduta esperada, se marcada) não saem até a revisão.
+--   as explicações marcadas (e a conduta esperada, se marcada) não saem até a revisão;
+--   anulada: nem 'explanation' nem 'option_notes' (a tela os mostra como "Explicação clínica" da correta e "Por que não
+--   as outras?"; a letra guardada numa anulada não é a correta), mesmo depois da revisão e mesmo sem marca.
 create or replace function public.practice_correction_view(p_question_id text, p_selected text) returns jsonb
   language sql stable security definer set search_path = ''
 as $$
@@ -70,11 +76,13 @@ as $$
     'subtopic', q.subtopic,
     'explanation', (select nullif(btrim(o ->> 'explanation'), '')
                     from jsonb_array_elements(q.options) o
-                    where o ->> 'id' = q.correct_option::text and not ('explanation_' || (o ->> 'id')) = any (h.campos)),
+                    where q.status <> 'annulled'
+                      and o ->> 'id' = q.correct_option::text and not ('explanation_' || (o ->> 'id')) = any (h.campos)),
     'option_notes', coalesce((
       select jsonb_agg(jsonb_build_object('id', o ->> 'id', 'text', btrim(o ->> 'explanation')) order by o ->> 'id')
       from jsonb_array_elements(q.options) o
-      where o ->> 'id' <> q.correct_option::text and nullif(btrim(o ->> 'explanation'), '') is not null
+      where q.status <> 'annulled'
+        and o ->> 'id' <> q.correct_option::text and nullif(btrim(o ->> 'explanation'), '') is not null
         and not ('explanation_' || (o ->> 'id')) = any (h.campos)
     ), '[]'::jsonb),
     'expected_conduct', case when 'expected_conduct' = any (h.campos) then null else q.expected_conduct end,
@@ -242,7 +250,8 @@ $$;
 
 -- ---------------------------------------------------------------- o que o Tutor do aluno recebe da questão (Q02; corpo da …3500)
 -- O mesmo cuidado da correção: as explicações e a conduta esperada marcadas para revisão depois da troca de gabarito não
--- vão para o Tutor, nem a análise e o cartão de atualização que não valem mais para o gabarito atual.
+-- vão para o Tutor, nem a análise e o cartão de atualização que não valem mais para o gabarito atual. Em questão anulada,
+-- nenhuma explicação de alternativa vai (a letra guardada não é a correta).
 create or replace function public.tutor_truth(p_question_id text, p_level text) returns jsonb
   language sql stable security definer set search_path = ''
 as $$
@@ -250,7 +259,8 @@ as $$
     'id', q.id, 'area', q.area, 'topic', q.topic, 'subtopic', q.subtopic, 'statement', q.statement,
     'exam', (select x.kind || ' ' || x.year from public.exams x where x.id = q.exam_id), 'number', q.number,
     'options', (select jsonb_agg(jsonb_build_object('id', o ->> 'id', 'text', o ->> 'text',
-                  'explanation', case when p_level in ('hint', 'full') and not ('explanation_' || (o ->> 'id')) = any (h.campos)
+                  'explanation', case when p_level in ('hint', 'full') and q.status <> 'annulled'
+                                       and not ('explanation_' || (o ->> 'id')) = any (h.campos)
                                       then nullif(btrim(o ->> 'explanation'), '') end) order by o ->> 'id') from jsonb_array_elements(q.options) o),
     'official_answer', case when p_level in ('hint', 'full') then q.correct_option end,
     'expected_conduct', case when p_level in ('hint', 'full') and not 'expected_conduct' = any (h.campos) then q.expected_conduct end,
@@ -625,9 +635,11 @@ revoke execute on function public.app_admin_import_preview(jsonb) from public, a
 -- Muda a lista de parâmetros (ganha p_reason), então a função é apagada e criada de novo. Regras:
 --   só administrador; fonte e motivo obrigatórios; situação e letra conferidas;
 --   a letra mudou: recorrige as respostas antigas;
---   o gabarito mudou (outra letra, ou a questão foi anulada ou deixou de ser): marca as explicações a revisar, e o aluno
---   (correção e Tutor) não as vê até a revisão. Anular guarda a letra antiga, mas muda o sentido de todas as explicações
---   (cada uma foi escrita supondo uma única correta): por isso anular, ou desfazer a anulação, marca todas as preenchidas.
+--   o gabarito mudou (outra letra, ou a questão foi anulada ou deixou de ser): marca o que revisar, e o aluno (correção e
+--   Tutor) não vê esses textos até a revisão. Anular guarda a letra antiga; em questão anulada a explicação de cada
+--   alternativa nunca sai ao aluno (practice_correction_view e tutor_truth), então anular marca só a conduta esperada e a
+--   análise. Desfazer a anulação marca todas as explicações preenchidas (foram escritas sem uma única correta, ou para a
+--   letra de antes da anulação).
 drop function public.app_admin_set_official_answer(text, text, text, text, text, date);
 create function public.app_admin_set_official_answer(
   p_question_id text, p_answer text, p_status text, p_source text,
@@ -682,10 +694,12 @@ begin
 
   if v_new_key is distinct from v_old_key then
     -- o que foi escrito para o gabarito antigo e agora contradiz o novo
-    if 'ANULADA' in (v_old_key, v_new_key) then
-      -- anulada de um lado: todas as explicações preenchidas
+    if v_old_key = 'ANULADA' then
+      -- deixou de ser anulada: todas as explicações preenchidas
       v_fields := v_fields || array(select 'explanation_' || (o ->> 'id') from jsonb_array_elements(v_old.options) o
                                     where nullif(btrim(coalesce(o ->> 'explanation', '')), '') is not null order by o ->> 'id');
+    elsif v_new_key = 'ANULADA' then
+      null;  -- anulada agora: as explicações de alternativa já não saem ao aluno (nada a marcar)
     else
       -- outra letra: a explicação da antiga correta e a da nova
       if exists (select 1 from jsonb_array_elements(v_old.options) o
@@ -731,7 +745,8 @@ revoke execute on function public.app_admin_set_official_answer(text, text, text
 
 -- ---------------------------------------------------------------- explicações revisadas (Q02)
 -- A equipe (quem cuida do conteúdo) confirma que revisou as explicações depois da troca de gabarito: a marca sai e o
--- aluno volta a ver as explicações e a conduta esperada. A análise publicada só volta com nova análise aprovada.
+-- aluno volta a ver as explicações e a conduta esperada GRAVADAS (em questão anulada, só a conduta). A análise publicada
+-- só volta com nova análise aprovada. A tela grava o formulário antes de chamar esta função.
 create function public.app_admin_question_review_done(p_question_id text) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$

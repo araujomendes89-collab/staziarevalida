@@ -9,7 +9,8 @@
  *        prévia diz antes quantas perderiam comentário.
  *   Q04: questão anulada sem gabarito numa sessão em andamento não trava o simulado nem o treino, e não conta como
  *        acerto nem erro.
- *   Q05: a correção diz que a questão foi anulada (a tela mostra "Questão anulada pela banca").
+ *   Q05: a correção diz que a questão foi anulada (a tela mostra "Questão anulada pela banca"); em anulada, nenhuma
+ *        explicação de alternativa sai ao aluno (correção e Tutor), com ou sem marca (rodada 2).
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import fs from "fs";
@@ -229,8 +230,9 @@ describe("Q02 — gabarito e situação: só pelo registro do gabarito oficial",
     expect((await rpc(ANA, "app_question_commentary", { p_question_id: idOf(6) }))?.question_core).toBe("Análise feita para a B.");
 
     const done = await rpc(ADMIN, "app_admin_set_official_answer", { p_question_id: idOf(6), ...official({ p_status: "ANNULLED", p_reason: "Banca anulou a questão." }) });
-    // anular guarda a letra antiga (decisão 7), mas toda explicação foi escrita supondo a B como a única correta
-    expect(done).toMatchObject({ recorrected: 0, review: { de: "B", para: "ANULADA", campos: ["analise", "expected_conduct", "explanation_A", "explanation_B"] } });
+    // anular guarda a letra antiga (decisão 7). Toda explicação de alternativa foi escrita supondo a B como a única
+    // correta, mas em questão anulada ela nunca sai ao aluno (rodada 2): só a conduta e a análise ficam marcadas
+    expect(done).toMatchObject({ recorrected: 0, review: { de: "B", para: "ANULADA", campos: ["analise", "expected_conduct"] } });
     expect(await row(6)).toMatchObject({ status: "annulled", correct_option: "B" });
     expect(await rpc(ANA, "practice_correction_view", { p_question_id: idOf(6), p_selected: "B" })).toMatchObject({
       annulled: true, is_correct: null, explanation: null, option_notes: [], expected_conduct: null, in_review: true,
@@ -240,14 +242,14 @@ describe("Q02 — gabarito e situação: só pelo registro do gabarito oficial",
     expect(t.options.map((o: any) => o.explanation)).toEqual([null, null, null, null]);
     expect(t).toMatchObject({ expected_conduct: null, analysis: null });
 
-    // revisadas: os textos reescritos voltam; a análise não volta (ela aponta uma alternativa como a correta, e o
-    // processamento não analisa questão anulada)
+    // revisadas: a conduta reescrita volta; a explicação de alternativa não sai em anulada (rodada 2), mesmo reescrita; a
+    // análise não volta (ela aponta uma alternativa como a correta, e o processamento não analisa questão anulada)
     await rpc(EDITOR, "app_admin_save_question", {
       p_question: { ...q(6, { status: "annulled", options: explanations({ A: "A e B são defensáveis: a banca anulou." }), expected_conduct: "Questão anulada." }), id: idOf(6) },
     });
     await rpc(EDITOR, "app_admin_question_review_done", { p_question_id: idOf(6) });
     expect(await rpc(ANA, "practice_correction_view", { p_question_id: idOf(6), p_selected: "B" })).toMatchObject({
-      option_notes: [{ id: "A", text: "A e B são defensáveis: a banca anulou." }], expected_conduct: "Questão anulada.", in_review: false,
+      explanation: null, option_notes: [], expected_conduct: "Questão anulada.", in_review: false,
     });
     expect(await rpc(ANA, "app_question_commentary", { p_question_id: idOf(6) })).toBeNull();
     expect((await truth(6)).analysis).toBeNull();
@@ -473,5 +475,36 @@ describe("Q04/Q05 — anulada sem gabarito numa sessão em andamento", () => {
     expect(await home()).toBe(before);
     const done = await rpc(BRUNO, "app_finish_session", { p_session_id: treino });
     expect(done.result).toMatchObject({ total: 0, answered: 0, correct: 0, annulled: 1 });
+  });
+});
+
+describe("Rodada 2 — anulada: a letra guardada não é a correta, então nenhuma explicação de alternativa sai ao aluno", () => {
+  const TEXTOS = { A: "A esta errada.", B: "B e a correta porque X.", C: "C esta errada.", D: "D esta errada." };
+  const semExplicacao = async (number: number) => (await truth(number)).options.map((o: any) => o.explanation);
+
+  it("anulada pelo registro e 'Marcar como revisadas' sem editar nada: nem 'Explicação clínica' nem 'Por que não as outras?'", async () => {
+    await rpc(EDITOR, "app_admin_save_question", { p_question: q(40, { options: explanations(TEXTOS) }) });
+    const ana = await session(ANA, "questoes", [40]);
+    await answer(ANA, ana, 40, "B");
+    const done = await rpc(ADMIN, "app_admin_set_official_answer", { p_question_id: idOf(40), ...official({ p_status: "ANNULLED", p_reason: "Banca anulou a questão." }) });
+    // a explicação de cada alternativa nunca sai em anulada, então só a conduta esperada fica marcada para revisão
+    expect(done.review).toMatchObject({ de: "B", para: "ANULADA", campos: ["expected_conduct"] });
+    await rpc(EDITOR, "app_admin_question_review_done", { p_question_id: idOf(40) });
+    expect(await row(40)).toMatchObject({ status: "annulled", correct_option: "B", explanations_review: null });
+    expect(await rpc(ANA, "practice_correction_view", { p_question_id: idOf(40), p_selected: "B" })).toMatchObject({
+      annulled: true, is_correct: null, explanation: null, option_notes: [], expected_conduct: "Suporte.", in_review: false,
+    });
+    expect(await semExplicacao(40)).toEqual([null, null, null, null]);
+  });
+
+  it("anulada com letra pelo editor antigo ou pela importação (sem marca nenhuma): também sem explicação de alternativa", async () => {
+    await rpc(EDITOR, "app_admin_save_question", { p_question: q(41, { options: explanations(TEXTOS) }) });
+    const ana = await session(ANA, "questoes", [41]);
+    await answer(ANA, ana, 41, "C");
+    await sql(`update public.questions set status = 'annulled', correct_option = 'C' where id = $1`, [idOf(41)]);
+    expect(await rpc(ANA, "practice_correction_view", { p_question_id: idOf(41), p_selected: "C" })).toMatchObject({
+      annulled: true, is_correct: null, correct_option: "C", explanation: null, option_notes: [], in_review: false,
+    });
+    expect(await semExplicacao(41)).toEqual([null, null, null, null]);
   });
 });

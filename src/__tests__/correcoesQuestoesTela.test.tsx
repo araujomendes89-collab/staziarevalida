@@ -2,9 +2,11 @@
  * Correções da aba Questões, nas telas (jsdom, banco simulado). As regras de verdade estão em correcoesQuestoesBanco.test.ts.
  *   Q01: a recusa "Essa questão já existe" aparece no editor de questão nova.
  *   Q02: gabarito e situação de questão já gravada ficam travados; o administrador muda pelo registro do gabarito oficial
- *        (fonte e motivo obrigatórios); a marca "explicações a revisar" aparece e sai com "Marcar como revisadas".
+ *        (fonte e motivo obrigatórios); a marca "explicações a revisar" aparece e sai com "Marcar como revisadas", que salva
+ *        antes o formulário mudado (rodada 2: tirar a marca nunca libera ao aluno o texto antigo).
  *   Q03: a importação mostra antes quantas são novas, quantas perderiam comentário e quantas têm gabarito diferente.
- *   Q04/Q05: questão anulada aparece como "Questão anulada pela banca", fora de acertos e erros.
+ *   Q04/Q05: questão anulada aparece como "Questão anulada pela banca", fora de acertos e erros, sem "Explicação clínica" nem
+ *        "Por que não as outras?" (rodada 2).
  *   Q14: Preencher sem fonte em todos os campos pedidos mostra o aviso da biblioteca de fontes.
  */
 import React from "react";
@@ -17,7 +19,7 @@ vi.mock("../novo/app/session.jsx", () => ({ useSession: () => session }));
 vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
 
 import { AdminQuestions, QuestionEditor } from "../novo/app/admin/AdminQuestions.jsx";
-import { Verdict, answerState } from "../novo/app/practice/Correction.jsx";
+import { Correction, Verdict, answerState } from "../novo/app/practice/Correction.jsx";
 import { SessionResult } from "../novo/app/practice/SessionResult.jsx";
 import { AssistantPanel } from "../novo/app/admin/assistant/AssistantPanel.jsx";
 
@@ -143,6 +145,63 @@ describe("Q02 — gabarito e situação travados; registro do gabarito oficial",
     render(<QuestionEditor id="q1" onClose={vi.fn()} onSaved={vi.fn()} />);
     const review = await screen.findByText(/O gabarito mudou de B para anulada pela banca\./);
     expect(review.textContent).toContain("Revise: Análise publicada (não aparece ao aluno em questão anulada), Explicação da A, Explicação da B.");
+    // rodada 2: em anulada, a explicação de cada alternativa nunca aparece ao aluno
+    expect(screen.getByText(/Questão anulada: o aluno não vê a explicação de cada alternativa/)).toBeTruthy();
+  });
+});
+
+describe("Rodada 2 — 'Marcar como revisadas' nunca libera ao aluno o texto antigo", () => {
+  const FLAGGED = {
+    ...ROW, correct_option: "C", status: "changed_after_appeal",
+    official: { ...ROW.official, answer: "C", answer_status: "CHANGED_AFTER_APPEAL", version: 2 },
+    explanations_review: { de: "B", para: "C", campos: ["expected_conduct", "explanation_B"] },
+  };
+  const routes = (saveError: Error | null = null) => {
+    let current: any = FLAGGED;
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_question") return current;
+      if (fn === "app_admin_save_question") {
+        if (saveError) throw saveError;
+        return (current = { ...current, ...args.p_question });
+      }
+      if (fn === "app_admin_question_review_done") return (current = { ...current, explanations_review: null });
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+  };
+  const rewrite = async () => {
+    await screen.findByText(/O gabarito mudou de B para C/);
+    fireEvent.change(screen.getByLabelText("Explicação da B (opcional)"), { target: { value: "B era a do gabarito preliminar." } });
+    fireEvent.change(screen.getByLabelText("Conduta esperada"), { target: { value: "Conduta da C." } });
+  };
+  const order = () => backend.rpc.mock.calls.map((c: any[]) => c[0]).filter((fn: string) => fn !== "app_admin_question");
+
+  it("com o formulário mudado, salva a questão antes de tirar a marca", async () => {
+    session.boot = { role: "editor", profile: { name: "Ed" } };
+    routes();
+    const onSaved = vi.fn();
+    render(<QuestionEditor id="q1" onClose={vi.fn()} onSaved={onSaved} />);
+    expect(await screen.findByRole("button", { name: "Marcar como revisadas" })).toBeTruthy();
+    await rewrite();
+    // com mudança não salva, o botão diz que salva antes
+    fireEvent.click(screen.getByRole("button", { name: "Salvar e marcar como revisadas" }));
+    await waitFor(() => expect(calls("app_admin_question_review_done")).toHaveLength(1));
+    expect(order()).toEqual(["app_admin_save_question", "app_admin_question_review_done"]);
+    const sent = calls("app_admin_save_question")[0][1].p_question;
+    expect(sent.expected_conduct).toBe("Conduta da C.");
+    expect(sent.options.find((o: any) => o.id === "B").explanation).toBe("B era a do gabarito preliminar.");
+    await waitFor(() => expect(screen.queryByText(/O gabarito mudou de B para C/)).toBeNull());
+    expect((screen.getByLabelText("Conduta esperada") as HTMLTextAreaElement).value).toBe("Conduta da C.");
+  });
+
+  it("se o salvar falhar, a marca fica e o aluno continua sem os textos antigos", async () => {
+    session.boot = { role: "editor", profile: { name: "Ed" } };
+    routes(Object.assign(new Error("Preencha o tema da questão."), { code: "22023" }));
+    render(<QuestionEditor id="q1" onClose={vi.fn()} onSaved={vi.fn()} />);
+    await rewrite();
+    fireEvent.click(screen.getByRole("button", { name: /marcar como revisadas/i }));
+    expect(await screen.findByText(/Preencha o tema da questão\./)).toBeTruthy();
+    expect(calls("app_admin_question_review_done")).toHaveLength(0);
+    expect(screen.getByText(/O gabarito mudou de B para C/)).toBeTruthy();
   });
 });
 
@@ -201,6 +260,19 @@ describe("Q04/Q05 — questão anulada para o aluno", () => {
   it("anulada: nenhuma alternativa aparece como correta ou incorreta", () => {
     expect(["A", "B", "C", "D"].map((id) => answerState(id, "B", ANNULLED))).toEqual(["dimmed", "selected", "dimmed", "dimmed"]);
     expect(["A", "B", "C", "D"].map((id) => answerState(id, "C", { correct_option: "B", is_correct: false }))).toEqual(["dimmed", "correct", "incorrect", "dimmed"]);
+  });
+
+  it("anulada com a letra guardada e textos antigos: sem 'Explicação clínica' nem 'Por que não as outras?' (rodada 2)", async () => {
+    backend.rpc.mockImplementation(async () => null); // comentário publicado: nenhum
+    const old = { ...ANNULLED, correct_option: "B", explanation: "B é a correta porque X.", option_notes: [{ id: "A", text: "A está errada." }, { id: "C", text: "C está errada." }], expected_conduct: "Suporte." };
+    const { container } = render(<Correction selected="B" correction={old} question={{ id: "q9", area: "PEDIATRIA" }} />);
+    expect(container.textContent).toContain("Questão anulada pela banca");
+    await waitFor(() => expect(calls("app_question_commentary")).toHaveLength(1));
+    expect(container.textContent).not.toContain("Explicação clínica");
+    expect(container.textContent).not.toContain("B é a correta");
+    expect(container.textContent).not.toContain("Por que não as outras?");
+    expect(container.textContent).not.toContain("A está errada.");
+    expect(container.textContent).toContain("Suporte.");
   });
 
   it("resultado: a anulada fica fora de acertos, erros e em branco, com o filtro 'Anuladas'", () => {

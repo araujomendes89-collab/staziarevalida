@@ -106,8 +106,12 @@ function SaveAsFlashcard({ question, correction }) {
 
 export function Correction({ selected, correction, question, tutorContext = "question" }) {
   const source = correction.sources?.[0];
+  // Anulada: nenhuma alternativa é "a correta" (a letra guardada não vale), então não há "Explicação clínica" da correta,
+  // "Por que não as outras?" nem análise publicada, mesmo que venham de um servidor antigo
+  const annulled = isAnnulled(correction);
   // Análise Stazia publicada (se houver): substitui "Por que não as outras?", que fica como reserva
-  const commentary = useCommentary(question?.id);
+  const fetched = useCommentary(question?.id);
+  const commentary = annulled ? null : fetched;
   return (
     <>
       <Verdict selected={selected} correction={correction} />
@@ -119,15 +123,15 @@ export function Correction({ selected, correction, question, tutorContext = "que
       {correction.in_review && (
         <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>A explicação desta questão está em revisão pela equipe.</div>
       )}
-      {correction.explanation && (
+      {correction.explanation && !annulled && (
         <div>
           <div className="sm-overline">Explicação clínica</div>
           <p style={{ margin: "8px 0 0", fontSize: 15, lineHeight: 1.6 }}>{correction.explanation}</p>
         </div>
       )}
-      {question && correction.is_correct === false && selected != null && !isAnnulled(correction) && <ErrorDiagnosis questionId={question.id} />}
+      {question && correction.is_correct === false && selected != null && !annulled && <ErrorDiagnosis questionId={question.id} />}
       <QuestionCommentary commentary={commentary} />
-      {!commentary && correction.option_notes?.length > 0 && (
+      {!commentary && !annulled && correction.option_notes?.length > 0 && (
         <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", fontSize: 14, display: "flex", flexDirection: "column", gap: 8 }}>
           <b>Por que não as outras?</b>
           {correction.option_notes.map((note) => (

@@ -81,6 +81,27 @@ function fromRow(q) {
   };
 }
 
+/** O que o "Salvar questão" grava. Também diz se há mudança não salva (comparando com o que veio do banco). */
+function payloadOf(form) {
+  return {
+    ...(form.id ? { id: form.id } : {}),
+    kind: form.kind,
+    year: form.year.trim(),
+    semester: form.kind === "ENAMED" ? "" : form.semester,
+    number: form.number.trim(),
+    area: form.area,
+    topic: form.topic,
+    subtopic: form.subtopic,
+    statement: form.statement,
+    options: form.options,
+    correct_option: form.correct_option || null,
+    status: form.status,
+    expected_conduct: form.expected_conduct,
+    inep_intent: form.inep_intent,
+    needs_image: form.needs_image,
+  };
+}
+
 /** Registro do gabarito oficial (só administrador): situação, letra, fonte e motivo. Fica dentro do formulário da questão, então
  * Enter num campo daqui não envia a questão. */
 function OfficialAnswerForm({ question, onCancel, onDone }) {
@@ -159,6 +180,8 @@ export function QuestionEditor({ id, onClose, onSaved }) {
   const [reviewState, setReviewState] = React.useState({ saving: false, error: null });
   const existing = useLoad(() => (id ? backend.rpc("app_admin_question", { p_id: id }) : Promise.resolve(null)), [backend, id]);
   const [form, setForm] = React.useState(id ? null : emptyQuestion());
+  // o formulário como está gravado no banco (para saber se há mudança não salva)
+  const [savedForm, setSavedForm] = React.useState(null);
   const [state, setState] = React.useState({ saving: false, error: null, done: false });
   const [assistantOpen, setAssistantOpen] = React.useState(false);
   const [aiUsed, setAiUsed] = React.useState(false);
@@ -170,6 +193,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
   React.useEffect(() => {
     if (existing.data) {
       setForm(fromRow(existing.data));
+      setSavedForm(fromRow(existing.data));
       setStored(storedKey(existing.data));
     }
   }, [existing.data]);
@@ -198,6 +222,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
     try {
       const fresh = await backend.rpc("app_admin_question", { p_id: form.id });
       setForm((f) => ({ ...f, correct_option: fresh.correct_option ?? "", status: fresh.status, official: fresh.official ?? null, explanations_review: fresh.explanations_review ?? null }));
+      setSavedForm((f) => f && { ...f, correct_option: fresh.correct_option ?? "", status: fresh.status });
       const next = storedKey(fresh);
       if (stored !== null && stored !== next) setPanelKey((k) => k + 1);
       setStored(next);
@@ -206,8 +231,52 @@ export function QuestionEditor({ id, onClose, onSaved }) {
     }
     onSaved();
   };
+  const review = form.explanations_review;
+  const official = form.official;
+  const unsaved = savedForm !== null && JSON.stringify(payloadOf(form)) !== JSON.stringify(payloadOf(savedForm));
+
+  /** Grava o formulário e devolve a questão gravada (ou lança a recusa do banco). */
+  const persist = async () => {
+    const saved = await backend.rpc("app_admin_save_question", {
+      p_question: payloadOf(form),
+      ...(aiUsed ? { p_reason: ASSIST_TEXTS.aiReason } : {}),
+    });
+    const next = storedKey(saved);
+    if (stored !== null && stored !== next) setPanelKey((k) => k + 1);
+    setForm(fromRow(saved));
+    setSavedForm(fromRow(saved));
+    setStored(next);
+    setAiUsed(false);
+    return saved;
+  };
+
+  const save = async (event) => {
+    event.preventDefault();
+    setState({ saving: true, error: null, done: false });
+    try {
+      await persist();
+      setState({ saving: false, error: null, done: true });
+      onSaved();
+    } catch (error) {
+      setState({ saving: false, error: messageOf(error), done: false });
+    }
+  };
+
+  // Tirar a marca libera ao aluno o que está GRAVADO. Por isso o texto reescrito no formulário é salvo antes; se o salvar
+  // falhar, a marca fica (o aluno continua sem os textos antigos) e nada mais é feito.
   const reviewDone = async () => {
+    if (reviewState.saving || state.saving) return;
     setReviewState({ saving: true, error: null });
+    const wasUnsaved = unsaved;
+    if (wasUnsaved) {
+      try {
+        await persist();
+        setState({ saving: false, error: null, done: true });
+      } catch (error) {
+        setReviewState({ saving: false, error: `A questão não foi salva e as explicações continuam marcadas para revisão. ${messageOf(error)}` });
+        return;
+      }
+    }
     try {
       const fresh = await backend.rpc("app_admin_question_review_done", { p_question_id: form.id });
       setForm((f) => ({ ...f, explanations_review: fresh?.explanations_review ?? null }));
@@ -215,44 +284,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
       onSaved();
     } catch (error) {
       setReviewState({ saving: false, error: messageOf(error) });
-    }
-  };
-  const review = form.explanations_review;
-  const official = form.official;
-
-  const save = async (event) => {
-    event.preventDefault();
-    setState({ saving: true, error: null, done: false });
-    try {
-      const saved = await backend.rpc("app_admin_save_question", {
-        p_question: {
-          ...(form.id ? { id: form.id } : {}),
-          kind: form.kind,
-          year: form.year.trim(),
-          semester: form.kind === "ENAMED" ? "" : form.semester,
-          number: form.number.trim(),
-          area: form.area,
-          topic: form.topic,
-          subtopic: form.subtopic,
-          statement: form.statement,
-          options: form.options,
-          correct_option: form.correct_option || null,
-          status: form.status,
-          expected_conduct: form.expected_conduct,
-          inep_intent: form.inep_intent,
-          needs_image: form.needs_image,
-        },
-        ...(aiUsed ? { p_reason: ASSIST_TEXTS.aiReason } : {}),
-      });
-      const next = storedKey(saved);
-      if (stored !== null && stored !== next) setPanelKey((k) => k + 1);
-      setForm(fromRow(saved));
-      setStored(next);
-      setAiUsed(false);
-      setState({ saving: false, error: null, done: true });
-      onSaved();
-    } catch (error) {
-      setState({ saving: false, error: messageOf(error), done: false });
+      if (wasUnsaved) onSaved();
     }
   };
 
@@ -282,8 +314,8 @@ export function QuestionEditor({ id, onClose, onSaved }) {
           tone="warning"
           title="Explicações a revisar"
           action={
-            <Button size="sm" variant="secondary" loading={reviewState.saving} onClick={reviewDone}>
-              Marcar como revisadas
+            <Button size="sm" variant="secondary" loading={reviewState.saving} disabled={state.saving} onClick={reviewDone}>
+              {unsaved ? "Salvar e marcar como revisadas" : "Marcar como revisadas"}
             </Button>
           }
         >
@@ -360,6 +392,11 @@ export function QuestionEditor({ id, onClose, onSaved }) {
                 </div>
               )}
               {isAdmin && officialOpen && <OfficialAnswerForm question={form} onCancel={() => setOfficialOpen(false)} onDone={officialDone} />}
+            </div>
+          )}
+          {form.status === "annulled" && (
+            <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
+              Questão anulada: o aluno não vê a explicação de cada alternativa (nenhuma é a correta).
             </div>
           )}
           <Checkbox
