@@ -95,9 +95,9 @@ function SecureSignupLayout({ children, onLogin, onDoc }) {
           <div className="lg-auth-form">{children}</div>
           <aside className="lg-auth-aside">
             <svg className="lg-auth-mark" aria-hidden="true" viewBox="0 0 120 120" fill="none">
-              <circle cx="60" cy="60" r="52" stroke="#7FE3DE" opacity=".2" />
-              <path d="M60 18 94 31v30c0 23-15 40-34 49-19-9-34-26-34-49V31Z" fill="rgba(31,166,160,.12)" stroke="#7FE3DE" strokeWidth="2" />
-              <path d="M43 60h34M60 43v34" stroke="#7FE3DE" strokeWidth="6" strokeLinecap="round" />
+              <circle cx="60" cy="60" r="52" stroke="#7FE7E2" opacity=".2" />
+              <path d="M60 18 94 31v30c0 23-15 40-34 49-19-9-34-26-34-49V31Z" fill="rgba(0,201,194,.12)" stroke="#7FE7E2" strokeWidth="2" />
+              <path d="M43 60h34M60 43v34" stroke="#7FE7E2" strokeWidth="6" strokeLinecap="round" />
             </svg>
             <h2 className="lg-h2">Já tem conta?</h2>
             <p className="lg-sub lg-auth-copy">Entre para continuar sua preparação para o Revalida.</p>

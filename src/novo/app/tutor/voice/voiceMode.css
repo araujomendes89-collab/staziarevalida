@@ -327,7 +327,7 @@
   padding: 0 16px;
   border-radius: 12px;
   border: 0;
-  background: linear-gradient(135deg, #2dd4bf, #6366f1);
+  background: linear-gradient(135deg, #00c9c2, #6366f1);
   color: #fff;
   font: 600 15px var(--font-sans, system-ui, sans-serif);
   cursor: pointer;
@@ -395,7 +395,7 @@
   background:
     radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.22) 0%, transparent 34%),
     radial-gradient(circle at 50% 50%, transparent 52%, rgba(110, 231, 249, 0.55) 58%, transparent 64%),
-    conic-gradient(from 210deg, #3ce0e6, #8b6cff, #2dd4bf, #6ea8ff, #3ce0e6);
+    conic-gradient(from 210deg, #3ce0e6, #8b6cff, #00c9c2, #6ea8ff, #3ce0e6);
   animation: svm-spin 16s linear infinite;
 }
 .svm-orb__rings span {

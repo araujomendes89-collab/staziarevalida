@@ -61,21 +61,21 @@ function Shield({ status, focused }) {
     >
       <defs>
         <linearGradient id="lg-sh" gradientUnits="userSpaceOnUse" x1="56" y1="36" x2="184" y2="206">
-          <stop offset="0" stopColor="#7FE3DE" />
-          <stop offset=".5" stopColor="#3A7BD5" />
-          <stop offset="1" stopColor="#7B5DB7" />
+          <stop offset="0" stopColor="#7FE7E2" />
+          <stop offset=".5" stopColor="#176BFF" />
+          <stop offset="1" stopColor="#176BFF" />
         </linearGradient>
         <linearGradient id="lg-sh-fill" gradientUnits="userSpaceOnUse" x1="120" y1="36" x2="120" y2="206">
-          <stop offset="0" stopColor="#1FA6A0" stopOpacity=".22" />
-          <stop offset="1" stopColor="#7B5DB7" stopOpacity=".10" />
+          <stop offset="0" stopColor="#00C9C2" stopOpacity=".22" />
+          <stop offset="1" stopColor="#176BFF" stopOpacity=".10" />
         </linearGradient>
       </defs>
-      <circle cx="120" cy="120" r="112" stroke="#7FE3DE" strokeWidth="1" opacity=".14" />
-      <circle cx="120" cy="120" r="96" stroke="#7B5DB7" strokeWidth="1" opacity=".3" strokeDasharray="2 8" />
+      <circle cx="120" cy="120" r="112" stroke="#7FE7E2" strokeWidth="1" opacity=".14" />
+      <circle cx="120" cy="120" r="96" stroke="#176BFF" strokeWidth="1" opacity=".3" strokeDasharray="2 8" />
       {loading && (
         <>
-          <circle className="lg-halo" cx="120" cy="120" r="104" stroke="#1FA6A0" strokeWidth="1.5" />
-          <circle className="lg-scan" cx="120" cy="120" r="104" stroke="#7FE3DE" strokeWidth="3" strokeDasharray="120 534" />
+          <circle className="lg-halo" cx="120" cy="120" r="104" stroke="#00C9C2" strokeWidth="1.5" />
+          <circle className="lg-scan" cx="120" cy="120" r="104" stroke="#7FE7E2" strokeWidth="3" strokeDasharray="120 534" />
         </>
       )}
       <path d="M120 36 L184 60 V118 C184 160 156 190 120 206 C84 190 56 160 56 118 V60 Z" fill="url(#lg-sh-fill)" stroke="url(#lg-sh)" strokeWidth="3" />
@@ -83,9 +83,9 @@ function Shield({ status, focused }) {
       <path d="M120 128 v10" stroke="#F2F6FA" strokeWidth="3" />
       {success ? (
         <>
-          <path d="M104 112 V88 a16 16 0 0 1 32 0 V94" stroke="#7FE3DE" strokeWidth="3" />
-          <circle cx="166" cy="72" r="15" fill="#1FA6A0" />
-          <path d="M159 72.5 l5 5 l9 -10" stroke="#07080D" strokeWidth="3" />
+          <path d="M104 112 V88 a16 16 0 0 1 32 0 V94" stroke="#7FE7E2" strokeWidth="3" />
+          <circle cx="166" cy="72" r="15" fill="#00C9C2" />
+          <path d="M159 72.5 l5 5 l9 -10" stroke="#050E1C" strokeWidth="3" />
         </>
       ) : (
         <path d="M104 112 V98 a16 16 0 0 1 32 0 V112" stroke="#F2F6FA" strokeWidth="3" />
@@ -98,26 +98,26 @@ function Shield({ status, focused }) {
 function Backdrop() {
   return (
     <svg className="lg-deco" aria-hidden="true" viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" fill="none" strokeLinecap="round" strokeLinejoin="round">
-      <g stroke="#7FE3DE" strokeWidth="1">
+      <g stroke="#7FE7E2" strokeWidth="1">
         <circle cx="170" cy="700" r="210" opacity=".10" />
         <circle cx="170" cy="700" r="130" opacity=".14" />
-        <circle cx="1290" cy="210" r="240" opacity=".08" stroke="#7B5DB7" />
-        <circle cx="1290" cy="210" r="150" opacity=".16" stroke="#7B5DB7" />
+        <circle cx="1290" cy="210" r="240" opacity=".08" stroke="#176BFF" />
+        <circle cx="1290" cy="210" r="150" opacity=".16" stroke="#176BFF" />
         <path d="M0 150 H250 l40 40 H420" opacity=".14" />
-        <path d="M1440 760 H1210 l-40 -40 H1060" opacity=".14" stroke="#3A7BD5" />
+        <path d="M1440 760 H1210 l-40 -40 H1060" opacity=".14" stroke="#176BFF" />
         <path d="M90 0 V90 l30 30 V220" opacity=".10" />
-        <path d="M1360 900 V800 l-30 -30 V690" opacity=".12" stroke="#7B5DB7" />
+        <path d="M1360 900 V800 l-30 -30 V690" opacity=".12" stroke="#176BFF" />
       </g>
-      <path d="M-10 470 H420 l14 -12 l12 12 h20 l12 40 l20 -110 l20 90 l10 -20 h24 l16 -16 l16 16 H1450" stroke="#1FA6A0" strokeWidth="1.5" opacity=".12" />
+      <path d="M-10 470 H420 l14 -12 l12 12 h20 l12 40 l20 -110 l20 90 l10 -20 h24 l16 -16 l16 16 H1450" stroke="#00C9C2" strokeWidth="1.5" opacity=".12" />
       <g stroke="none">
-        <circle cx="420" cy="190" r="3" fill="#7FE3DE" opacity=".6" />
-        <circle cx="1060" cy="720" r="3" fill="#3A7BD5" opacity=".7" />
-        <circle cx="120" cy="220" r="3" fill="#7FE3DE" opacity=".5" />
-        <circle cx="1330" cy="690" r="3" fill="#7B5DB7" opacity=".8" />
+        <circle cx="420" cy="190" r="3" fill="#7FE7E2" opacity=".6" />
+        <circle cx="1060" cy="720" r="3" fill="#176BFF" opacity=".7" />
+        <circle cx="120" cy="220" r="3" fill="#7FE7E2" opacity=".5" />
+        <circle cx="1330" cy="690" r="3" fill="#176BFF" opacity=".8" />
         <circle cx="300" cy="820" r="2" fill="#F5B041" opacity=".55" />
-        <circle cx="1150" cy="90" r="2" fill="#7FE3DE" opacity=".5" />
-        <circle cx="640" cy="60" r="2" fill="#3A7BD5" opacity=".6" />
-        <circle cx="860" cy="850" r="2" fill="#7FE3DE" opacity=".4" />
+        <circle cx="1150" cy="90" r="2" fill="#7FE7E2" opacity=".5" />
+        <circle cx="640" cy="60" r="2" fill="#176BFF" opacity=".6" />
+        <circle cx="860" cy="850" r="2" fill="#7FE7E2" opacity=".4" />
       </g>
     </svg>
   );
@@ -230,7 +230,7 @@ export function LoginScreen({ go }) {
                 )}
                 {success && (
                   <div className="lg-msg lg-msg--success" role="status">
-                    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7FE3DE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}>
+                    <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7FE7E2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: "none" }}>
                       <circle cx="12" cy="12" r="9" />
                       <path d="M8 12.5l2.8 2.8L16 9.8" />
                     </svg>
@@ -274,7 +274,7 @@ export function LoginScreen({ go }) {
                   onInput={(e) => setEmailOk(isEmail(e.currentTarget.value.trim()))}
                 />
                 {emailOk && (
-                  <svg className="lg-ok" role="img" aria-label="E-mail em formato válido" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7FE3DE" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <svg className="lg-ok" role="img" aria-label="E-mail em formato válido" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7FE7E2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="9" />
                     <path d="M8 12.5l2.8 2.8L16 9.8" />
                   </svg>

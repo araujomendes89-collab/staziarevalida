@@ -46,9 +46,9 @@ export function AreaTabs({ value, onChange, counts }) {
 }
 
 function Poster({ lesson, big, hideTitle = false }) {
-  const c = AREA_COLOR[lesson.area] ?? "#0B6F68";
+  const c = AREA_COLOR[lesson.area] ?? "#067A76";
   return (
-    <div style={{ position: "relative", height: "100%", borderRadius: 14, overflow: "hidden", background: `linear-gradient(160deg,${c} 0%,color-mix(in oklab,${c} 45%,#08122B) 100%)`, display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 14, color: "#fff" }}>
+    <div style={{ position: "relative", height: "100%", borderRadius: 14, overflow: "hidden", background: `linear-gradient(160deg,${c} 0%,color-mix(in oklab,${c} 45%,#050E1C) 100%)`, display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 14, color: "#fff" }}>
       <span style={{ alignSelf: "flex-start", font: "700 10px var(--font-sans)", letterSpacing: ".1em", textTransform: "uppercase", padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,.18)" }}>{areaLabel(lesson.area)}</span>
       <Icon name={AREA_ICON[lesson.area] ?? "tv"} size={big ? 64 : 44} style={{ alignSelf: "center", opacity: 0.35 }} />
       <span style={{ font: `700 ${big ? 15 : 12}px/1.25 var(--font-sans)`, textWrap: "balance", visibility: hideTitle ? "hidden" : "visible" }}>{lesson.title}</span>
@@ -74,7 +74,7 @@ function Carousel({ lessons, onOpen }) {
     addEventListener("keydown", k);
     return () => removeEventListener("keydown", k);
   }, []);
-  const c = cur ? AREA_COLOR[cur.area] : "#0B6F68";
+  const c = cur ? AREA_COLOR[cur.area] : "#067A76";
   const CW = mobile ? 180 : 220;
   const CH = mobile ? 250 : 300;
   const GAP = mobile ? 120 : 170;
@@ -84,7 +84,7 @@ function Carousel({ lessons, onOpen }) {
     </button>
   );
   return (
-    <section aria-roledescription="carrossel" aria-label="Aulas" style={{ position: "relative", borderRadius: 28, overflow: "hidden", background: `radial-gradient(120% 90% at 50% 40%,color-mix(in oklab,${c} 55%,#08122B) 0%,#08122B 70%)`, transition: "background 600ms var(--ease-standard)", padding: "36px 0 24px", color: "#fff" }}>
+    <section aria-roledescription="carrossel" aria-label="Aulas" style={{ position: "relative", borderRadius: 28, overflow: "hidden", background: `radial-gradient(120% 90% at 50% 40%,color-mix(in oklab,${c} 55%,#050E1C) 0%,#050E1C 70%)`, transition: "background 600ms var(--ease-standard)", padding: "36px 0 24px", color: "#fff" }}>
       <div style={{ position: "relative", height: CH + 70, perspective: 1200 }}>
         {lessons.map((x, k) => {
           let off = k - idx;
@@ -100,13 +100,13 @@ function Carousel({ lessons, onOpen }) {
                 {on && (
                   <>
                     <span style={{ position: "absolute", top: "50%", left: "50%", width: 44, height: 44, margin: "-22px 0 0 -22px", borderRadius: "50%", ...GLASS, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon name="play" size={18} /></span>
-                    <span style={{ position: "absolute", left: "50%", bottom: 12, transform: "translateX(-50%)", display: "inline-flex", alignItems: "center", gap: 6, height: 26, padding: "0 10px", borderRadius: 999, background: "rgba(8,18,43,.7)", font: "600 11px var(--font-sans)", whiteSpace: "nowrap" }}><Icon name="play" size={10} />Assistir aula</span>
+                    <span style={{ position: "absolute", left: "50%", bottom: 12, transform: "translateX(-50%)", display: "inline-flex", alignItems: "center", gap: 6, height: 26, padding: "0 10px", borderRadius: 999, background: "rgba(5,14,28,.7)", font: "600 11px var(--font-sans)", whiteSpace: "nowrap" }}><Icon name="play" size={10} />Assistir aula</span>
                   </>
                 )}
               </div>
               <div style={{ padding: "10px 4px 4px", textAlign: "center" }}>
                 <div style={{ font: "700 13px/1.3 var(--font-sans)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{x.title}</div>
-                <div style={{ font: "500 11px var(--font-sans)", color: "#C4D1EA", marginTop: 3 }}>{[durationLabel(x.duration_minutes), x.topic].filter(Boolean).join(" · ")}</div>
+                <div style={{ font: "500 11px var(--font-sans)", color: "#C5D0E2", marginTop: 3 }}>{[durationLabel(x.duration_minutes), x.topic].filter(Boolean).join(" · ")}</div>
               </div>
             </div>
           );
@@ -117,7 +117,7 @@ function Carousel({ lessons, onOpen }) {
         <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 10, height: 40, padding: "0 12px 0 4px", borderRadius: 999, background: "rgba(255,255,255,.08)" }}>
           <span style={{ width: 32, height: 32, flex: "none", borderRadius: 8, overflow: "hidden" }}><Poster lesson={cur} /></span>
           <span style={{ minWidth: 0, flex: 1, font: "600 12px var(--font-sans)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {cur.title}<span style={{ color: "#93A8D3", fontWeight: 500 }}> · {areaLabel(cur.area)}</span>
+            {cur.title}<span style={{ color: "#9FB0C9", fontWeight: 500 }}> · {areaLabel(cur.area)}</span>
           </span>
         </div>
         {round("skip-forward", "Próxima", () => setI(i + 1))}
@@ -218,7 +218,7 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState(null);
   const [play, setPlay] = React.useState(null);
-  const c = AREA_COLOR[lesson.area] ?? "#0B6F68";
+  const c = AREA_COLOR[lesson.area] ?? "#067A76";
   const done = Boolean(lesson.progress?.completed_at);
   const train = async () => {
     setBusy(true);
@@ -251,10 +251,10 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
       <div>
         <Button variant="ghost" size="sm" icon="arrow-left" onClick={onBack}>Voltar para as aulas</Button>
       </div>
-      <div style={{ borderRadius: 28, padding: mobile ? 12 : 16, color: "#fff", background: `radial-gradient(120% 120% at 50% 0%,color-mix(in oklab,${c} 40%,#0D1C42) 0%,#08122B 75%)`, border: "1px solid rgba(255,255,255,.18)" }}>
+      <div style={{ borderRadius: 28, padding: mobile ? 12 : 16, color: "#fff", background: `radial-gradient(120% 120% at 50% 0%,color-mix(in oklab,${c} 40%,#081426) 0%,#050E1C 75%)`, border: "1px solid rgba(255,255,255,.18)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "2px 6px 12px", gap: 8, flexWrap: "wrap" }}>
           <span style={{ display: "flex", alignItems: "center", gap: 8, font: "700 11px var(--font-sans)", letterSpacing: ".1em" }}><span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--danger-solid)" }} />MÓDULO AUDIOVISUAL STAZIAMED</span>
-          <span style={{ font: "600 12px var(--font-sans)", color: "#C4D1EA" }}>{areaLabel(lesson.area)} · {lesson.topic}{lesson.duration_minutes ? ` · ${durationLabel(lesson.duration_minutes)}` : ""}</span>
+          <span style={{ font: "600 12px var(--font-sans)", color: "#C5D0E2" }}>{areaLabel(lesson.area)} · {lesson.topic}{lesson.duration_minutes ? ` · ${durationLabel(lesson.duration_minutes)}` : ""}</span>
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 12, flexWrap: "wrap", padding: "4px 6px 16px" }}>
           <div style={{ minWidth: 0, flex: "1 1 320px" }}>

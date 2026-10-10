@@ -69,7 +69,7 @@ export function VisualPreview({ content, side = "front", guides = false, images 
     <div ref={box} style={{ width: "100%", maxWidth }}>
       {error && <Banner tone="danger">Prévia indisponível: {error}</Banner>}
       <div
-        style={{ width, height: Math.ceil(info.height * scale), overflow: "hidden", borderRadius: 12, boxShadow: "var(--shadow-md, 0 2px 10px rgba(13,28,66,.12))", background: "#fff", position: "relative" }}
+        style={{ width, height: Math.ceil(info.height * scale), overflow: "hidden", borderRadius: 12, boxShadow: "var(--shadow-md, 0 2px 10px rgba(8,20,38,.12))", background: "#fff", position: "relative" }}
         aria-label={`Prévia: ${info.label}${info.pair ? ` (${shown === "front" ? "frente" : "verso"})` : ""}`}
         role="img"
       >

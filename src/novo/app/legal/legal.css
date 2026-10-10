@@ -5,7 +5,7 @@
   min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; gap: 20px;
   padding: 20px 16px calc(32px + env(safe-area-inset-bottom, 0px));
   background:
-    radial-gradient(900px 600px at 10% -5%, rgba(14, 107, 116, .38), transparent 62%),
+    radial-gradient(900px 600px at 10% -5%, rgba(23, 107, 255, .38), transparent 62%),
     radial-gradient(820px 620px at 96% 12%, rgba(123, 93, 183, .30), transparent 62%),
     var(--bg);
 }
