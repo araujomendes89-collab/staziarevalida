@@ -167,6 +167,33 @@ describe("Atualizações & Diretrizes (painel)", () => {
     }
   });
 
+  it("publicada: a tela compara o texto como o banco (que só tira espaços das pontas, não quebras de linha)", async () => {
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_guideline_updates") return { is_admin: true, review_areas: ["GINECOLOGIA_OBSTETRICIA"], items: [PUBLISHED] };
+      // o banco grava o texto sem os espaços das pontas (btrim)
+      if (fn === "app_admin_save_guideline_update") return { ...PUBLISHED, ...args.p_update, current_conduct: String(args.p_update.current_conduct).replace(/^ +| +$/g, "") };
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    const saves = () => backend.rpc.mock.calls.filter((c: any[]) => c[0] === "app_admin_save_guideline_update").length;
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    try {
+      render(<AdminUpdates />);
+      fireEvent.click(await screen.findByRole("button", { name: /Atualização publicada de teste/ }));
+      // espaço sobrando no fim: o banco tira (btrim) e nada muda para o aluno, então salva sem perguntar
+      fireEvent.change(screen.getByLabelText("Conduta vigente"), { target: { value: "Agora.  " } });
+      fireEvent.click(screen.getByRole("button", { name: "Salvar alterações" }));
+      await waitFor(() => expect(saves()).toBe(1));
+      expect(confirm).not.toHaveBeenCalled();
+      // quebra de linha no fim: o banco guarda e conta como texto mudado (tira do ar), então a tela pergunta antes
+      fireEvent.change(screen.getByLabelText("Conduta vigente"), { target: { value: "Agora.\n" } });
+      fireEvent.click(screen.getByRole("button", { name: "Salvar alterações" }));
+      expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/sai do ar/));
+      expect(saves()).toBe(1);
+    } finally {
+      confirm.mockRestore();
+    }
+  });
+
   it("recusar uma publicada: a tela avisa que sai do ar e mostra que saiu", async () => {
     backend.rpc.mockImplementation(async (fn: string, args: any) => {
       if (fn === "app_admin_guideline_updates") return { is_admin: true, review_areas: ["GINECOLOGIA_OBSTETRICIA"], items: [PUBLISHED] };
