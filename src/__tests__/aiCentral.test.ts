@@ -1069,18 +1069,19 @@ describe("Maestro", () => {
     await on("anthropic");
     await saveFn("criacao", "sozinha", A);
     await price(A, 10, 10);
-    await settings({ caps_enabled: true, monthly_cap_usd: 0.05 });
+    // rodada 5: o Claude recebe no mínimo 8.192 de saída, e a estimativa usa isso (≈ US$ 0,083), não os 3.000 pedidos
+    await settings({ caps_enabled: true, monthly_cap_usd: 0.1 });
     await refresh();
-    const f = fakes({ [key(A)]: () => new Promise((res) => setTimeout(() => res({ ok: 1 }), 40)) }, { inTok: 100, outTok: 3000 });
+    const f = fakes({ [key(A)]: () => new Promise((res) => setTimeout(() => res({ ok: 1 }), 40)) }, { inTok: 100, outTok: 8000 });
     const d = deps(f);
     const req = { ...REQ, maxOutputTokens: 3000 };
     const [r1, r2] = await Promise.all([run(d, "criacao", req), run(d, "criacao", req)]);
     expect(r1.status).toBe("ok");
     expect(r2.status).toBe("ok");
-    const estimate = (Math.ceil((REQ.system.length + REQ.input.length) / 4) * 10 + 3000 * 10) / 1_000_000;
+    const estimate = (Math.ceil((REQ.system.length + REQ.input.length) / 4) * 10 + 8192 * 10) / 1_000_000;
     const spent = await monthSpend();
-    expect(spent).toBeGreaterThan(0.05);
-    expect(spent).toBeLessThanOrEqual(0.05 + estimate);
+    expect(spent).toBeGreaterThan(0.1);
+    expect(spent).toBeLessThanOrEqual(0.1 + estimate);
     await refresh();
     const r3 = await run(d, "criacao", req);
     expect(r3.status).toBe("parou_no_teto");
