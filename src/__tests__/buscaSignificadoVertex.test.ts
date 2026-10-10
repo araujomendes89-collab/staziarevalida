@@ -195,6 +195,48 @@ describe("erro de configuração (400, 402, 403, 404): sem nova tentativa e a bu
     expect(f.problem).toBeNull();
   });
 
+  // revisão, rodada 1: no site (Vercel) não há conta de serviço do Google. Com o Vertex AI por projeto, a biblioteca de autenticação
+  // lança um Error comum, sem status; o código tratava como instabilidade (502): 3 chamadas e 4,5 s de espera por busca, aviso no log
+  // a cada busca e a busca por significado aparecendo como pronta no painel
+  it("Vertex por projeto sem credencial do Google neste ambiente: sem nova tentativa, busca parada e o motivo no painel", async () => {
+    const NO_ADC = "Could not load the default credentials. Browse to https://cloud.google.com/docs/authentication/getting-started for more information.";
+    let n = 0;
+    const client: EmbedClient = {
+      models: {
+        embedContent: async () => {
+          n++;
+          throw new Error(NO_ADC);
+        },
+      },
+    };
+    const e = createEmbedder(embeddingsConfig(env({ CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT: "staziamed-revalida-prod" })), client)!;
+    const logs: string[] = [];
+    const t0 = Date.now();
+    expect(await queryEmbedding(e, "dor torácica", (m) => logs.push(m))).toBeNull();
+    expect(Date.now() - t0).toBeLessThan(1_000);
+    expect(n).toBe(1);
+    expect(e.problem).toMatch(/sem credencial do Google/);
+    expect(e.problem).toMatch(/GEMINI_API_KEY/);
+    // a seguinte nem sai e não repete o aviso
+    expect(await queryEmbedding(e, "febre", (m) => logs.push(m))).toBeNull();
+    expect(n).toBe(1);
+    expect(logs).toHaveLength(1);
+    expect(e.problem).toMatch(/sem credencial do Google/);
+    // o relato (e o painel, que lê embedder.problem) mostra a busca parada com o motivo
+    const { probeProcessing } = await import("../../server/contentHub/capabilities");
+    const mock = { provider: { name: "mock", model: "mock-dev", isMock: true }, status: { ready: true, provider: "mock", model: "mock-dev", isMock: true, pending: null } };
+    const report = await probeProcessing({ db: null, ai: mock, embedder: e, renderer: null } as any);
+    expect(report.embeddings.ready).toBe(false);
+    expect(report.embeddings.pending).toMatch(/sem credencial do Google/);
+  });
+
+  it("a pendência sem acesso não manda pôr o projeto do Vertex AI no site (lá não há conta de serviço)", () => {
+    const p = embeddingsConfig(env({})).pending!;
+    expect(p).not.toMatch(/servidor e no processamento/);
+    expect(p).toMatch(/no site, .*GEMINI_API_KEY/i);
+    expect(p).toMatch(/processamento \(Cloud Run\).*CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT/);
+  });
+
   it("o relato do processamento mostra a busca parada com o motivo", async () => {
     const { probeProcessing } = await import("../../server/contentHub/capabilities");
     const client: EmbedClient = { models: { embedContent: async () => { throw Object.assign(new Error("Not Found"), { status: 404 }); } } };

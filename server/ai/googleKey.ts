@@ -10,7 +10,8 @@
  * A busca por significado (vetores) tem caminho próprio (googleEmbeddingsAccess): a VERTEX_API_KEY é do modo expresso do Vertex
  * AI, que não tem nenhum modelo de busca por significado (o Google respondia 404, falha vista em produção em 2026-10-09).
  *
- *   CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT   projeto do Google Cloud: Vertex AI completo pela conta de serviço (sem chave)
+ *   CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT   projeto do Google Cloud: Vertex AI completo pela conta de serviço (sem chave); só no
+ *                                           processamento (Cloud Run), o site (Vercel) não tem conta de serviço do Google
  *   CONTENT_HUB_EMBEDDINGS_VERTEX_LOCATION  global (padrão), us ou eu
  */
 export type GoogleAiMode = "vertex" | "studio";

@@ -6,7 +6,9 @@
  *
  *   CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1   autoriza enviar os textos das fontes e as buscas ao Google (sem isso, só palavras)
  *   CONTENT_HUB_EMBEDDINGS_MODEL              padrão gemini-embedding-2; "off" desliga
- *   CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT     projeto do Google Cloud: Vertex AI completo pela conta de serviço (manda; sem chave)
+ *   CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT     projeto do Google Cloud: Vertex AI completo pela conta de serviço (manda; sem chave).
+ *                                             Só no processamento (Cloud Run): o site (Vercel) não tem conta de serviço do Google;
+ *                                             lá, sem credencial, a busca fica parada com o motivo, sem nova tentativa
  *   CONTENT_HUB_EMBEDDINGS_VERTEX_LOCATION    global (padrão), us ou eu
  *   GEMINI_API_KEY / GOOGLE_GEMINI_API_KEY    chave do AI Studio (sem o projeto acima)
  *   A VERTEX_API_KEY NÃO serve aqui: é do modo expresso do Vertex AI, que não tem modelo de busca por significado (o Google
@@ -36,6 +38,14 @@ const VERTEX_PARALLEL = 4;
 const CONFIG_ERRORS = new Set([400, 401, 402, 403, 404]);
 /** Depois de um erro de configuração, a busca por significado para por este tempo (nada vai ao Google) e segue por palavras. */
 const CONFIG_PAUSE_MS = 10 * 60_000;
+/**
+ * A biblioteca de autenticação do Google (google-auth-library) não achou credencial neste ambiente: lança um Error comum, sem status
+ * HTTP. Acontece com o Vertex AI por projeto onde não há conta de serviço do Google (o site na Vercel). É configuração: repetir não
+ * resolve, e cada tentativa ainda gasta o tempo da procura da credencial.
+ */
+const NO_CREDENTIAL = /could not load the default credentials|unable to find credentials in current environment|unable to detect a project id/i;
+const NO_CREDENTIAL_REASON =
+  "sem credencial do Google neste ambiente. O Vertex AI por projeto (CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT) usa a conta de serviço, que só existe no processamento (Cloud Run); no site, tire essa variável e use a GEMINI_API_KEY (AI Studio), ou fique com a busca por palavras.";
 
 export interface EmbeddingsConfig {
   ready: boolean;
@@ -50,10 +60,12 @@ export interface EmbeddingsConfig {
 
 const NOT_ALLOWED =
   "Busca por significado ainda desligada: falta autorizar o envio dos textos das fontes ao Google (CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1 no servidor e no processamento). Enquanto isso, a busca de evidências usa palavras.";
+// O Vertex AI por projeto usa a conta de serviço do Google, que só existe no processamento (Cloud Run): no site (Vercel), só a chave
+// do AI Studio serve. As mensagens não mandam pôr o projeto no site.
 const EXPRESS_ONLY =
-  "Busca por significado parada: a chave do Vertex AI no modo expresso (VERTEX_API_KEY) não tem modelo de busca por significado. Para ligar, use o Vertex AI completo pela conta de serviço do processamento (CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT) ou a chave do AI Studio com crédito (GEMINI_API_KEY). Enquanto isso, a busca de evidências usa palavras.";
+  "Busca por significado parada: a chave do Vertex AI no modo expresso (VERTEX_API_KEY) não tem modelo de busca por significado. Para ligar: no site, a chave do AI Studio com crédito (GEMINI_API_KEY); no processamento (Cloud Run), o Vertex AI completo pela conta de serviço da tarefa (CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT) ou a mesma GEMINI_API_KEY. Enquanto isso, a busca de evidências usa palavras.";
 const NO_ACCESS =
-  "Busca por significado sem acesso ao Google: defina CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT (Vertex AI pela conta de serviço) ou GEMINI_API_KEY (AI Studio) no servidor e no processamento. Enquanto isso, a busca de evidências usa palavras.";
+  "Busca por significado sem acesso ao Google: no site, defina GEMINI_API_KEY (AI Studio); no processamento (Cloud Run), CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT (Vertex AI pela conta de serviço da tarefa) ou GEMINI_API_KEY. Enquanto isso, a busca de evidências usa palavras.";
 
 export function embeddingsConfig(env: NodeJS.ProcessEnv = process.env): EmbeddingsConfig {
   const raw = (env.CONTENT_HUB_EMBEDDINGS_MODEL ?? "").trim();
@@ -149,6 +161,12 @@ export function createEmbedder(cfg: EmbeddingsConfig, client?: EmbedClient): Emb
         return out.map(normalize);
       } catch (error: any) {
         if (error instanceof EmbeddingsError) throw error;
+        // sem credencial do Google aqui (erro sem status): configuração, sem nova tentativa, e a busca para com o motivo
+        if (error?.status == null && NO_CREDENTIAL.test(String(error?.message ?? ""))) {
+          const failure = new EmbeddingsError(`Busca por significado: ${NO_CREDENTIAL_REASON}`, 401);
+          problem = { message: failure.message, reason: NO_CREDENTIAL_REASON, status: 401, until: Date.now() + CONFIG_PAUSE_MS };
+          throw failure;
+        }
         const status = Number(error?.status ?? error?.code ?? 502) || 502;
         const msg = String(error?.message ?? error).split(cfg.key ?? "\u0000").join("[chave]").slice(0, 240);
         // limite por minuto ou instabilidade: espera e tenta de novo (duas vezes)
