@@ -5,7 +5,8 @@
  */
 import type { ContentDb } from "../contentHub/infra";
 import { OllamaProvider } from "../contentHub/ai/ollama";
-import { familyOfModel, geminiOutputLimit, geminiThinkingReserve, resolveProviderKind, type AiProvider } from "../contentHub/ai/provider";
+import { anthropicMaxTokens, familyOfModel, geminiOutputLimit, geminiThinkingReserve, resolveProviderKind, type AiProvider } from "../contentHub/ai/provider";
+import { openAiMaxCompletionTokens } from "../contentHub/ai/openai";
 import type { PromptKey } from "../contentHub/ai/prompts";
 import type { AiProviderId } from "./models";
 import { estimateCostUsd, type ModelPrice } from "./prices";
@@ -43,9 +44,17 @@ const CACHE_MS = 10_000;
 
 export const isProviderId = (v: unknown): v is AiProviderId => PROVIDER_IDS.includes(v as AiProviderId);
 
-/** O limite de saída que de fato vai para a IA: no Gemini, o pedido mais a folga do raciocínio (geminiOutputLimit). */
+/**
+ * O limite de saída que de fato vai para a IA, pela mesma conta de cada provedor: no Gemini, o pedido mais a folga do raciocínio
+ * (geminiOutputLimit); no Claude, no mínimo 8.192 (anthropicMaxTokens); na OpenAI, no mínimo 4.096 (openAiMaxCompletionTokens);
+ * no Ollama, o pedido. Revisão rodada 5: antes só o Gemini contava, e um corte do Claude nas Aulas e nos assistentes (6.000
+ * pedidos, 8.192 mandados) custava mais que a estimativa: o valor que a tela sugeria não deixava a reserva socorrer.
+ */
 export function effectiveMaxOut(ref: ModelRef, maxOut: number, care?: string): number {
-  return ref.provider === "gemini" ? geminiOutputLimit(ref.model, care, maxOut) : maxOut;
+  if (ref.provider === "gemini") return geminiOutputLimit(ref.model, care, maxOut);
+  if (ref.provider === "anthropic") return anthropicMaxTokens(maxOut);
+  if (ref.provider === "openai") return openAiMaxCompletionTokens(maxOut);
+  return maxOut;
 }
 
 /**
@@ -65,8 +74,9 @@ export interface TypicalCall {
 }
 
 /**
- * Chamadas típicas de cada função, para o aviso do teto por execução (revisão rodada 3). A saída é a pedida no código; a
- * entrada é o material que costuma ir, com o texto de instruções:
+ * Chamadas típicas de cada função, para o aviso do teto por execução (revisão rodada 3). A saída é a pedida no código (a
+ * estimativa usa o que cada provedor de fato manda, effectiveMaxOut: no Claude, 6.000 viram 8.192); a entrada é o material que
+ * costuma ir, com o texto de instruções:
  *   etapas da Central de Conteúdo: 8.192 (pipeline.ts); trechos de até 6.000 caracteres mais o catálogo e as instruções (~30 mil).
  *   Aulas: 6.000 (lessons/assist.ts); até 80 mil caracteres de material.
  *   Podcasts: 16.000 (podcasts/script.ts); até 120 mil caracteres de material.

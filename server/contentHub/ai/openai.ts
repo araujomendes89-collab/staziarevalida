@@ -20,6 +20,14 @@ export function openAiReasoningEffort(model: string, care: string | undefined): 
   return care === "rapido" && /^(gpt-5|gpt-6|o\d)/.test(m) && !m.includes("-chat");
 }
 
+/**
+ * O max_completion_tokens que o provedor da OpenAI manda: o pedido (padrão 8.192), no mínimo 4.096. A estimativa dos tetos usa
+ * esta mesma conta (effectiveMaxOut, revisão rodada 5).
+ */
+export function openAiMaxCompletionTokens(requested?: number): number {
+  return Math.max(requested ?? 8192, 4096);
+}
+
 export class OpenAIProvider implements AiProvider {
   readonly name = "openai";
   readonly isMock = false;
@@ -43,7 +51,7 @@ export class OpenAIProvider implements AiProvider {
           { role: "user", content: req.input },
         ],
         response_format: { type: "json_schema", json_schema: { name: req.schemaName.slice(0, 60), schema: toProviderSchema(req.schema), strict: false } },
-        max_completion_tokens: Math.max(req.maxOutputTokens ?? 8192, 4096),
+        max_completion_tokens: openAiMaxCompletionTokens(req.maxOutputTokens),
         ...(openAiReasoningEffort(this.model, req.care) ? { reasoning_effort: "low" } : {}),
       }),
       // limite próprio de 180 s e o cancelamento do maestro (tempo esgotado)

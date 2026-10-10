@@ -161,8 +161,9 @@ describe("adaptador (Central de Conteúdo, Aulas, Podcasts, assistentes)", () =>
 
 describe("Linha de produção e Comitê (mesmo caminho de chamada)", () => {
   it("Linha: depois da principal cortada e da reserva, o conferente que não cabe no teto não é chamado", async () => {
-    // plano inicial cabe (criadora 0,2213 + conferente ≈ 0,037 ≤ 0,45); depois: 0,2227 (corte) + 0,2005 (reserva) = 0,4232;
-    // + conferente ≈ 0,037 > 0,45
+    // plano inicial cabe (criadora 0,2213 + conferente ≈ 0,058 ≤ 0,45); depois: 0,2227 (corte) + 0,2005 (reserva) = 0,4232;
+    // + conferente ≈ 0,058 > 0,45. Rodada 5: o conferente gpt-6.1-sol pede 2.048, mas o provedor da OpenAI manda no mínimo 4.096
+    // (8.432 tokens × 2 + 4.096 × 10 = 0,057824; antes a estimativa usava 2.048 e dava 0,037344)
     const f = fakes(
       { [key(G)]: () => { throw CUT(); }, [key(A)]: () => ({ gabarito: "A" }), [key(O)]: () => ({ verdict: "de_acordo", problems: [] }) },
       { [key(A)]: [100, 8000] }
@@ -170,7 +171,7 @@ describe("Linha de produção e Comitê (mesmo caminho de chamada)", () => {
     const { r, logged } = await run({ key: "criacao", mode: "linha", primary_ref: G, fallback_ref: A, reviewers: [O] }, { per_run_cap_usd: 0.45 }, f);
     expect(f.calls).toEqual({ [key(G)]: 1, [key(A)]: 1 });
     expect(summary(logged)).toEqual(["criadora:gemini:falha", "reserva:anthropic:ok", "conferente:openai:teto"]);
-    expect(logged[2].error).toMatch(/^Gasto desta execução de US\$ 0,4232 mais estimativa de US\$ 0,03\d+ passa do teto por execução de US\$ 0,45\.$/);
+    expect(logged[2].error).toMatch(/^Gasto desta execução de US\$ 0,4232 mais estimativa de US\$ 0,0578 passa do teto por execução de US\$ 0,45\.$/);
     expect(r.status).toBe("precisa_revisao");
     expect(r.output).toEqual({ gabarito: "A" });
     expect(r.message).toMatch(/conferência incompleta/);

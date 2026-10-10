@@ -210,6 +210,15 @@ const GEMINI_STOPPED: Record<string, string> = {
   OTHER: "motivo não informado pelo provedor",
 };
 
+/**
+ * O max_tokens que o provedor do Claude manda: o pedido, no mínimo 8.192 (o raciocínio do esforço também gasta saída). A
+ * estimativa dos tetos usa esta mesma conta (effectiveMaxOut): um corte do Claude custa até este limite, não só o pedido (revisão
+ * rodada 5: nas Aulas e nos assistentes, 6.000 pedidos viram 8.192).
+ */
+export function anthropicMaxTokens(requested?: number): number {
+  return Math.max(requested ?? 8192, 8192);
+}
+
 class AnthropicProvider implements AiProvider {
   readonly name = "anthropic";
   readonly isMock = false;
@@ -225,7 +234,7 @@ class AnthropicProvider implements AiProvider {
     const res = await (this.client.messages.create as any)(
       {
         model: this.model,
-        max_tokens: Math.max(req.maxOutputTokens ?? 8192, 8192),
+        max_tokens: anthropicMaxTokens(req.maxOutputTokens),
         system: req.system,
         output_config: anthropicOutputConfig(this.model, req.effort, req.schema),
         messages: [{ role: "user", content: req.input }],

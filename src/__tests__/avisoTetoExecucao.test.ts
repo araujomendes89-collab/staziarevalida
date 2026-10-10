@@ -70,7 +70,8 @@ describe("aviso do teto por execução", () => {
     const [w] = single(validateFunctionConfig(fn("criacao", OPUS), c).warnings);
     expect(w).toMatch(/^Teto por execução de US\$ 0,2 abaixo da estimativa de uma chamada da principal Claude claude-opus-5 em /);
     expect(w).toContain("etapas da Central de Conteúdo (US$ 0,2423)");
-    expect(w).toContain("Aulas (US$ 0,2562)");
+    // rodada 5: o Claude manda no mínimo 8.192 de saída; Aulas (6.000 pedidos) = 21.250 × 5 + 8.192 × 25 = 0,31105
+    expect(w).toContain("Aulas (US$ 0,311)");
     expect(w).toContain("Podcasts (US$ 0,5563)");
     expect(w).toMatch(/pelo menos US\$ 0,56\.$/);
   });
@@ -119,11 +120,12 @@ describe("aviso do teto por execução", () => {
  */
 describe("aviso do teto por execução: a soma da principal com a reserva (rodada 4)", () => {
   it("cenário da revisão: Conferir com gemini-3.5-flash e reserva claude-opus-5, teto de US$ 0,30: cada uma cabe sozinha, mas a reserva não socorre", () => {
-    // gemini-3.5-flash: 17.500 × 1,5 + (6.000 + 16.384) × 9 = 0,227706; claude-opus-5: 17.500 × 5 + 6.000 × 25 = 0,2375
+    // gemini-3.5-flash: 17.500 × 1,5 + (6.000 + 16.384) × 9 = 0,227706; claude-opus-5: 17.500 × 5 + 8.192 × 25 = 0,2923 (rodada 5:
+    // o provedor do Claude manda no mínimo 8.192 de saída, não os 6.000 pedidos)
     const w = validateFunctionConfig(fn("assistente_conferir", G35, OPUS), cfg({ per_run_cap_usd: 0.3 })).warnings;
     expect(single(w)).toEqual([]);
     expect(chain(w)).toEqual([
-      "Teto por execução de US$ 0,3 abaixo da principal Gemini gemini-3.5-flash mais a reserva Claude claude-opus-5 em assistentes (US$ 0,4652), já com a folga do raciocínio do Gemini: depois de uma falha cobrada da principal (resposta cortada ou tempo esgotado), a reserva não socorre e o trabalho falha. Para a reserva socorrer, o teto por execução precisa ser de pelo menos US$ 0,47; para socorrer também depois da nova tentativa (resposta fora do formato), pelo menos US$ 0,70.",
+      "Teto por execução de US$ 0,3 abaixo da principal Gemini gemini-3.5-flash mais a reserva Claude claude-opus-5 em assistentes (US$ 0,52), já com a folga do raciocínio do Gemini: depois de uma falha cobrada da principal (resposta cortada ou tempo esgotado), a reserva não socorre e o trabalho falha. Para a reserva socorrer, o teto por execução precisa ser de pelo menos US$ 0,53; para socorrer também depois da nova tentativa (resposta fora do formato), pelo menos US$ 0,75.",
     ]);
   });
 
@@ -132,7 +134,7 @@ describe("aviso do teto por execução: a soma da principal com a reserva (rodad
     // 0,40: a reserva sozinha não cabe nos Podcasts, e depois de uma falha a reserva não socorre em nenhum uso
     expect(single(at(0.4))).toEqual([expect.stringContaining("da reserva Claude claude-opus-5 em Podcasts (US$ 0,5563)")]);
     expect(chain(at(0.4))).toEqual([
-      "Teto por execução de US$ 0,4 abaixo da principal Gemini gemini-3.5-flash mais a reserva Claude claude-opus-5 em etapas da Central de Conteúdo (US$ 0,4747), Aulas (US$ 0,4896) e Podcasts (US$ 0,8946), já com a folga do raciocínio do Gemini: depois de uma falha cobrada da principal (resposta cortada ou tempo esgotado), a reserva não socorre e o trabalho falha. Para a reserva socorrer, o teto por execução precisa ser de pelo menos US$ 0,90; para socorrer também depois da nova tentativa (resposta fora do formato), pelo menos US$ 1,24.",
+      "Teto por execução de US$ 0,4 abaixo da principal Gemini gemini-3.5-flash mais a reserva Claude claude-opus-5 em etapas da Central de Conteúdo (US$ 0,4747), Aulas (US$ 0,5444) e Podcasts (US$ 0,8946), já com a folga do raciocínio do Gemini: depois de uma falha cobrada da principal (resposta cortada ou tempo esgotado), a reserva não socorre e o trabalho falha. Para a reserva socorrer, o teto por execução precisa ser de pelo menos US$ 0,90; para socorrer também depois da nova tentativa (resposta fora do formato), pelo menos US$ 1,24.",
     ]);
     // 0,56 (o valor que a tela sugeria): o aviso da chamada sozinha some, o da soma continua
     expect(single(at(0.56))).toEqual([]);
@@ -163,7 +165,7 @@ describe("aviso do teto por execução: a soma da principal com a reserva (rodad
       ANTHROPIC_API_KEY: "k".repeat(40),
     } as any;
     const checks = functionChecks(cfg({ per_run_cap_usd: 0.3 }), env);
-    expect(chain(checks.assistente_conferir.warnings)).toEqual([expect.stringContaining("abaixo da principal Gemini gemini-3.5-flash mais a reserva Claude claude-opus-5 em assistentes (US$ 0,4652)")]);
+    expect(chain(checks.assistente_conferir.warnings)).toEqual([expect.stringContaining("abaixo da principal Gemini gemini-3.5-flash mais a reserva Claude claude-opus-5 em assistentes (US$ 0,52)")]);
   });
 });
 
@@ -237,7 +239,7 @@ describe("o valor do aviso deixa a reserva socorrer de verdade (maestro)", () =>
   it("com o valor sugerido a reserva socorre o corte e a nova tentativa; um centavo abaixo, não", async () => {
     const [w] = chain(validateFunctionConfig(fn("assistente_conferir", G35, OPUS), cfg({ per_run_cap_usd: 0.3 })).warnings);
     const [rescue, full] = suggested(w);
-    expect([rescue, full]).toEqual([0.47, 0.7]);
+    expect([rescue, full]).toEqual([0.53, 0.75]);
 
     expect(await conferir(rescue, "cortada")).toEqual({ status: "ok", rows: ["principal:gemini:falha", "reserva:anthropic:ok"] });
     expect(await conferir(rescue - 0.01, "cortada")).toEqual({ status: "falhou", rows: ["principal:gemini:falha", "reserva:anthropic:teto"] });
