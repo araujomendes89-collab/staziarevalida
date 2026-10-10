@@ -2,7 +2,9 @@
  * Painéis de administração de Aulas e de Atualizações & Diretrizes (jsdom, banco simulado): digitar nas caixas de texto
  * chega ao banco, o aviso do conteúdo do app anterior aparece, a conferência médica e a publicação chamam as funções certas.
  * Atualizações (10/10/2026): só publica com conferência aprovada (AT03), recusar uma publicada avisa que sai do ar (AT01) e
- * mudar o texto de uma publicada avisa antes de salvar que ela sai do ar até nova conferência (AT02).
+ * mudar o texto de uma publicada avisa antes de salvar que ela sai do ar até nova conferência (AT02). O Registro mostra em
+ * português quando uma atualização é publicada ou tirada do ar, com o motivo, e a retirada feita pela própria correção
+ * aparece como "correção automática" (não como "conta excluída").
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -14,6 +16,7 @@ vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => f
 
 import { AdminLessons } from "../novo/app/admin/AdminLessons.jsx";
 import { AdminUpdates } from "../novo/app/admin/AdminUpdates.jsx";
+import { AdminAudit } from "../novo/app/admin/AdminPanels.jsx";
 
 const LEGACY = {
   id: "u1", slug: "prot-x", area: "GINECOLOGIA_OBSTETRICIA", topic: "Atualização antiga de teste", subtopic: null, years: [2025], priority: 1,
@@ -208,5 +211,34 @@ describe("Atualizações & Diretrizes (painel)", () => {
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_review_guideline_update", { p_id: "u2", p_decision: "reject", p_note: "Conduta não confere com a versão vigente." }));
     expect(await screen.findByText("Não publicada")).toBeTruthy();
     expect((screen.getByLabelText(/Publicada para os alunos/) as HTMLInputElement).disabled).toBe(true);
+  });
+});
+
+describe("Registro (Administração)", () => {
+  it("publicar e tirar do ar uma atualização aparecem em português, com o tema e o motivo; a retirada da correção aparece como correção automática", async () => {
+    const at = "2026-10-10T12:00:00Z";
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_admin_audit") return [
+        { id: 5, action: "guideline_update.unpublish", target: "u3", created_at: at, actor: null,
+          details: { topic: "Hipertensão arterial", review_status: "pending", automatica: true,
+                     motivo: "Estava publicada sem conferência médica aprovada: retirada do ar pela correção de 10/10/2026." } },
+        { id: 4, action: "guideline_update.unpublish", target: "u2", created_at: at, actor: "rev@t.dev",
+          details: { topic: "Pré-eclâmpsia", motivo: "Recusada na conferência médica: saiu do ar na hora.", note: "Conduta não confere com a versão vigente." } },
+        { id: 3, action: "guideline_update.publish", target: "u2", created_at: at, actor: "adm@t.dev", details: { topic: "Pré-eclâmpsia", review_status: "approved" } },
+        { id: 2, action: "guideline_update.delete", target: "u9", created_at: at, actor: "adm@t.dev", details: { topic: "Atualização de teste" } },
+        { id: 1, action: "user.delete", target: "x", created_at: at, actor: null, details: { email: "antigo@t.dev" } },
+      ];
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    const { container } = render(<AdminAudit />);
+    expect((await screen.findAllByText("Atualização tirada do ar")).length).toBe(2);
+    expect(screen.getByText("Atualização publicada")).toBeTruthy();
+    expect(screen.getByText("Atualização apagada")).toBeTruthy();
+    expect(container.textContent).not.toMatch(/guideline_update/);
+    expect(screen.getByText(/Hipertensão arterial · Estava publicada sem conferência médica aprovada: retirada do ar pela correção de 10\/10\/2026\./)).toBeTruthy();
+    expect(screen.getByText(/Pré-eclâmpsia · Recusada na conferência médica: saiu do ar na hora\. · Nota do revisor: Conduta não confere com a versão vigente\./)).toBeTruthy();
+    // sem autor: a da correção é "correção automática"; a de uma conta apagada continua "conta excluída"
+    expect(screen.getAllByText(/correção automática/).length).toBe(1);
+    expect(screen.getAllByText(/conta excluída/).length).toBe(1);
   });
 });

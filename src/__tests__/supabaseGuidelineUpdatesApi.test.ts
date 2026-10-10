@@ -16,6 +16,7 @@ const MIGRATIONS = path.join(ROOT, "supabase/migrations");
 const ADMIN = "00000000-0000-4000-8000-0000000000ad";
 const EDITOR = "00000000-0000-4000-8000-0000000000e1";
 const REVIEWER = "00000000-0000-4000-8000-0000000000f1"; // revisor médico de Gineco & Obstetrícia (papel de aluno)
+const REVIEWER_CM = "00000000-0000-4000-8000-0000000000f2"; // revisor médico de Clínica Médica (papel de aluno)
 const STUDENT = "00000000-0000-4000-8000-0000000000b1";
 const PE = "prot-go-preeclampsia-2025";
 const HAS = "prot-cm-has-sbc-2026";
@@ -86,7 +87,8 @@ describe("Conteúdo do app anterior", () => {
     const has = await adminItem(HAS);
     expect(has).toMatchObject({ published: false, review_status: "pending" });
     const log = await rpc(ADMIN, "app_admin_audit", { p_limit: 50 });
-    expect(log.find((l: any) => l.action === "guideline_update.unpublish" && l.target === has.id)).toMatchObject({ details: { review_status: "pending" } });
+    // sem autor (foi a própria correção): o registro marca "automatica" para a tela não dizer "conta excluída"
+    expect(log.find((l: any) => l.action === "guideline_update.unpublish" && l.target === has.id)).toMatchObject({ actor: null, details: { review_status: "pending", automatica: true } });
   });
 });
 
@@ -205,6 +207,28 @@ describe("Cadastro e segurança", () => {
     await expect(rpc(REVIEWER, "app_admin_save_guideline_update", { p_update: { area: "PEDIATRIA", topic: "Fora da área" } })).rejects.toThrow(/outra área/);
   });
 
+  it("revisor de outra área não edita uma atualização de outra área trocando a área dela (nem tira do ar, nem confere)", async () => {
+    await db.query(`insert into auth.users (id, email) values ($1, 'rev-cm@t.dev')`, [REVIEWER_CM]);
+    await db.query(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'CLINICA_MEDICA')`, [REVIEWER_CM]);
+    // a de Clínica Médica conferida pelo revisor da área e publicada pelo administrador
+    const has = await adminItem(HAS);
+    await rpc(REVIEWER_CM, "app_admin_save_guideline_update", { p_update: { ...has, source_url: "https://www.gov.br/saude/has-conferido" } });
+    await rpc(REVIEWER_CM, "app_admin_review_guideline_update", { p_id: has.id, p_decision: "approve", p_note: "Conferido no documento oficial da área." });
+    await rpc(ADMIN, "app_admin_publish_guideline_update", { p_id: has.id, p_published: true });
+    const before = await adminItem(HAS);
+    expect(before).toMatchObject({ area: "CLINICA_MEDICA", published: true, review_status: "approved" });
+    // a revisora de Gineco & Obstetrícia manda a área dela e um texto novo: o banco recusa pela área gravada
+    await expect(rpc(REVIEWER, "app_admin_save_guideline_update", {
+      p_update: { ...before, area: "GINECOLOGIA_OBSTETRICIA", current_conduct: `${before.current_conduct} Texto de outra área.` },
+    })).rejects.toThrow(/outra área: esta atualização é de Clínica Médica/);
+    expect(await adminItem(HAS)).toMatchObject({ area: "CLINICA_MEDICA", published: true, review_status: "approved", current_conduct: before.current_conduct, reviewer: before.reviewer });
+    expect((await rpc(STUDENT, "app_guideline_update", { p_slug: HAS }))?.reviewed).toBe(true);
+    await expect(rpc(REVIEWER, "app_admin_review_guideline_update", { p_id: has.id, p_decision: "approve", p_note: "Tentativa de conferir outra área." })).rejects.toThrow(/revisor cadastrado em Clínica Médica/);
+    // o revisor da área também não leva a atualização para uma área que não é a dele
+    await expect(rpc(REVIEWER_CM, "app_admin_save_guideline_update", { p_update: { ...before, area: "GINECOLOGIA_OBSTETRICIA" } })).rejects.toThrow(/outra área/);
+    expect(await adminItem(HAS)).toMatchObject({ area: "CLINICA_MEDICA", published: true, review_status: "approved" });
+  });
+
   it("sem login, as funções de salvar, conferir e publicar nem podem ser chamadas (revokes da correção 7800)", async () => {
     const id = await idOf(PE);
     await expect(rpc(null, "app_admin_save_guideline_update", { p_update: { area: "PEDIATRIA", topic: "Invasão" } })).rejects.toThrow(/permission denied/);
@@ -215,8 +239,13 @@ describe("Cadastro e segurança", () => {
 
   it("o SQL da correção pode ser colado de novo no Supabase sem erro e sem tirar do ar o que está conferido", async () => {
     const fix = fs.readdirSync(MIGRATIONS).find((f) => f.startsWith(FIX))!;
+    // como ficaria o registro se uma versão anterior deste SQL (sem a marca "automatica") já tivesse sido colada
+    await db.query(`insert into public.admin_audit_log (actor_id, action, target, details) values (null, 'guideline_update.unpublish', 'colada-antes',
+      jsonb_build_object('topic', 'Retirada antiga', 'motivo', 'Estava publicada sem conferência médica aprovada: retirada do ar pela correção de 10/10/2026.'))`);
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, fix), "utf8"));
     expect(await adminItem(PE)).toMatchObject({ published: true, review_status: "approved" });
+    const log = await rpc(ADMIN, "app_admin_audit", { p_limit: 100 });
+    expect(log.find((l: any) => l.target === "colada-antes")).toMatchObject({ actor: null, details: { automatica: true } });
     await expect(rpc(null, "app_admin_publish_guideline_update", { p_id: await idOf(PE), p_published: false })).rejects.toThrow(/permission denied/);
   });
 });

@@ -11,6 +11,9 @@
 --    oficial") passa a ser verdade.
 --  * O que estiver publicado hoje sem conferência aprovada sai do ar aqui, com registro em Administração › Registro.
 --    As 19 atualizações do app anterior continuam em rascunho.
+--  * Revisão (rodada 1): ao editar, quem não é da equipe precisa ser revisor da área GRAVADA da atualização, não só da
+--    área que mandou (antes, um revisor de outra área trocava a área para a dele e mudava, tirava do ar e conferia uma
+--    atualização que não era dele). As retiradas feitas por este SQL ficam marcadas como automáticas no registro.
 --
 -- Para ver, antes de aplicar, o que vai sair do ar:
 --   select slug, topic, review_status from public.guideline_updates where published and review_status <> 'approved';
@@ -18,7 +21,8 @@
 -- search_path vazio e os revokes no fim (só a equipe logada chama).
 -- =============================================================================
 
--- 1. O que está no ar sem conferência aprovada sai do ar (fica registrado; o autor aparece vazio: foi a correção).
+-- 1. O que está no ar sem conferência aprovada sai do ar (fica registrado; sem autor, marcado "automatica": foi a correção,
+--    e a tela do Registro mostra "correção automática" em vez de "conta excluída").
 with retiradas as (
   update public.guideline_updates set published = false
    where published and review_status <> 'approved'
@@ -26,9 +30,13 @@ with retiradas as (
 )
 insert into public.admin_audit_log (actor_id, action, target, details)
 select null, 'guideline_update.unpublish', r.id::text,
-       jsonb_build_object('topic', r.topic, 'review_status', r.review_status,
+       jsonb_build_object('topic', r.topic, 'review_status', r.review_status, 'automatica', true,
                           'motivo', 'Estava publicada sem conferência médica aprovada: retirada do ar pela correção de 10/10/2026.')
   from retiradas r;
+-- se uma versão anterior deste SQL já foi colada, as retiradas dela também ficam marcadas como automáticas
+update public.admin_audit_log set details = details || jsonb_build_object('automatica', true)
+ where action = 'guideline_update.unpublish' and actor_id is null and not (details ? 'automatica')
+   and details ->> 'motivo' = 'Estava publicada sem conferência médica aprovada: retirada do ar pela correção de 10/10/2026.';
 
 -- 2. A regra na própria tabela: publicada só com conferência aprovada (colar duas vezes no Supabase não dá erro).
 alter table public.guideline_updates drop constraint if exists guideline_updates_publicada_so_conferida;
@@ -73,6 +81,11 @@ begin
   if nullif(a ->> 'id', '') is not null then
     select * into v_old from public.guideline_updates where id = (a ->> 'id')::uuid for update;
     if not found then raise exception 'Atualização não encontrada.' using errcode = 'P0002'; end if;
+    -- a área gravada também precisa ser a do revisor (não só a que ele mandou): senão um revisor de outra área trocaria
+    -- a área para a dele e mudaria, tiraria do ar e conferiria uma atualização que não é dele
+    if not (public.is_staff() or public.ch_is_reviewer(public.guideline_area_code(v_old.area))) then
+      raise exception 'Você revisa outra área: esta atualização é de %.', public.area_label(v_old.area) using errcode = '42501';
+    end if;
     v_new := v_old;
   else
     v_new.id := gen_random_uuid();
