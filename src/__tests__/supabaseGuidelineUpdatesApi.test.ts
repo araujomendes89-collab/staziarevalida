@@ -204,4 +204,19 @@ describe("Cadastro e segurança", () => {
     // revisor de outra área edita só a própria área
     await expect(rpc(REVIEWER, "app_admin_save_guideline_update", { p_update: { area: "PEDIATRIA", topic: "Fora da área" } })).rejects.toThrow(/outra área/);
   });
+
+  it("sem login, as funções de salvar, conferir e publicar nem podem ser chamadas (revokes da correção 7800)", async () => {
+    const id = await idOf(PE);
+    await expect(rpc(null, "app_admin_save_guideline_update", { p_update: { area: "PEDIATRIA", topic: "Invasão" } })).rejects.toThrow(/permission denied/);
+    await expect(rpc(null, "app_admin_review_guideline_update", { p_id: id, p_decision: "reject", p_note: "Tentativa sem login." })).rejects.toThrow(/permission denied/);
+    await expect(rpc(null, "app_admin_publish_guideline_update", { p_id: id, p_published: false })).rejects.toThrow(/permission denied/);
+    expect(await adminItem(PE)).toMatchObject({ published: true, review_status: "approved" });
+  });
+
+  it("o SQL da correção pode ser colado de novo no Supabase sem erro e sem tirar do ar o que está conferido", async () => {
+    const fix = fs.readdirSync(MIGRATIONS).find((f) => f.startsWith(FIX))!;
+    await db.exec(fs.readFileSync(path.join(MIGRATIONS, fix), "utf8"));
+    expect(await adminItem(PE)).toMatchObject({ published: true, review_status: "approved" });
+    await expect(rpc(null, "app_admin_publish_guideline_update", { p_id: await idOf(PE), p_published: false })).rejects.toThrow(/permission denied/);
+  });
 });

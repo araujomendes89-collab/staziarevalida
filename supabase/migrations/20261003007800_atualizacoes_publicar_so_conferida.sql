@@ -14,7 +14,8 @@
 --
 -- Para ver, antes de aplicar, o que vai sair do ar:
 --   select slug, topic, review_status from public.guideline_updates where published and review_status <> 'approved';
--- As funções abaixo partem da versão de 20261003004100_atualizacoes_diretrizes.sql (a única até aqui).
+-- As funções abaixo partem da versão de 20261003004100_atualizacoes_diretrizes.sql (a única até aqui), com security definer,
+-- search_path vazio e os revokes no fim (só a equipe logada chama).
 -- =============================================================================
 
 -- 1. O que está no ar sem conferência aprovada sai do ar (fica registrado; o autor aparece vazio: foi a correção).
@@ -223,3 +224,8 @@ begin
   return public.app_admin_guideline_updates();
 end
 $$;
+
+-- 6. Sem login ninguém chama estas funções (como as demais funções da Administração); a equipe continua chamando.
+revoke execute on function public.app_admin_save_guideline_update(jsonb) from public, anon;
+revoke execute on function public.app_admin_review_guideline_update(uuid, text, text) from public, anon;
+revoke execute on function public.app_admin_publish_guideline_update(uuid, boolean) from public, anon;
