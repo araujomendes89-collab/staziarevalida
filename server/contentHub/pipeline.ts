@@ -2,7 +2,7 @@
  * Processamento da Central de Conteúdo, uma etapa por trabalho da fila (ch_jobs):
  *
  *   material de estudo:  extract → classify → claims → evidence → draft → materials → render → review_check
- *   fonte de referência: extract → source_index
+ *   fonte de referência: extract → source_index (e devolve à conferência os materiais com afirmação que estava sem trecho)
  *
  * Regras que valem para todas as etapas:
  *   - cada chamada de IA é separada, com prompt versionado, resposta validada por schema e
@@ -372,6 +372,16 @@ async function stepSourceIndex(ctx: Ctx): Promise<Step | null> {
   } catch (error) {
     Object.assign(ctx.metrics, { diff_error: (error as Error).message });
   }
+  // CC01: fonte nova com trechos: os materiais com afirmação "insuficiente" por falta de trecho voltam para a conferência
+  if (n > 0) {
+    try {
+      ctx.metrics.recheck_documents = await svc<number>(ctx, "ch_worker_recheck_insufficient", { p_versions: stepVersions("evidence", ctx.deps) });
+    } catch (error) {
+      // banco sem a migração 8200: a indexação vale do mesmo jeito; a etapa anota o que falta
+      const message = (error as Error).message;
+      ctx.metrics.recheck_error = /ch_worker_recheck_insufficient/.test(message) && /does not exist|could not find/i.test(message) ? RECHECK_MISSING : message;
+    }
+  }
   await setMeta(ctx, { status: "awaiting_review" });
   Object.assign(ctx.metrics, { passages: n, unresolved_blocks: blocks.filter((b) => b.status === "pending" || b.status === "illegible").length });
   return null;
@@ -482,9 +492,18 @@ function requireWriterField(rows: any[], field: "created_by_model" | "generated_
   if (rows.length && !(field in rows[0])) throw new Blocked(WRITER_FIELD_MISSING);
 }
 
+/**
+ * CC01 (2026-10-10): afirmação "insuficiente" porque nenhuma fonte tinha trecho sobre ela (a conferência não achou com o que
+ * comparar: nenhuma evidência vigente) volta a ser conferida ao reprocessar a conferência e quando entra fonte nova
+ * (stepSourceIndex). A que a conferência já julgou com um trecho fica como está. Banco sem a migração 8200 (sem
+ * evidence_count): segue como antes, só com as afirmações novas.
+ */
+const withoutPassage = (c: any) => c.status === "insufficient" && c.evidence_count === 0;
+const RECHECK_MISSING = "Falta aplicar no Supabase a atualização da reconferência das afirmações sem trecho (migração 8200).";
+
 async function stepEvidence(ctx: Ctx): Promise<Step | null> {
   await setMeta(ctx, { status: "verifying_sources" });
-  const claims = (await svc<any[]>(ctx, "ch_worker_claims", { p_document_id: docId(ctx) })).filter((c) => c.status === "extracted");
+  const claims = (await svc<any[]>(ctx, "ch_worker_claims", { p_document_id: docId(ctx) })).filter((c) => c.status === "extracted" || withoutPassage(c));
   requireWriterField(claims, "created_by_model");
   const counts: Record<string, number> = {};
   for (const c of claims) {
@@ -492,10 +511,17 @@ async function stepEvidence(ctx: Ctx): Promise<Step | null> {
     const meaning = await queryEmbedding(await embedderAllowed(ctx.deps.db, ctx.deps.embedder), text, ctx.deps.log);
     const passages = await svc<any[]>(ctx, "ch_worker_search_passages", { p_query: searchQuery(text), p_limit: 6, p_embedding: meaning });
     if (!passages.length) {
+      // conferida de novo e ainda sem trecho: continua insuficiente, sem repetir a anotação no histórico
+      if (withoutPassage(c)) {
+        counts.still_no_passage = (counts.still_no_passage ?? 0) + 1;
+        continue;
+      }
       await svc(ctx, "ch_worker_mark_claim", {
         p_claim_id: c.id,
         p_status: "insufficient",
-        p_note: `Nenhum trecho das fontes cadastradas trata desta afirmação (busca por ${meaning ? "palavras e significado" : "palavras"}). Cadastre a fonte oficial completa ou vincule a evidência manualmente.`,
+        p_note:
+          `Nenhum trecho das fontes cadastradas trata desta afirmação (busca por ${meaning ? "palavras e significado" : "palavras"}). ` +
+          "Ela volta a ser conferida quando uma fonte nova for indexada ou quando a equipe reprocessar a conferência; também dá para vincular a evidência manualmente.",
       });
       counts.no_passage = (counts.no_passage ?? 0) + 1;
       continue;
@@ -523,7 +549,7 @@ async function stepEvidence(ctx: Ctx): Promise<Step | null> {
     });
     counts[r.verdict] = (counts[r.verdict] ?? 0) + 1;
   }
-  Object.assign(ctx.metrics, { claims_checked: claims.length, verdicts: counts });
+  Object.assign(ctx.metrics, { claims_checked: claims.length, rechecked: claims.filter(withoutPassage).length, verdicts: counts });
   return "draft";
 }
 
