@@ -267,7 +267,10 @@ class Run {
   readonly runId = crypto.randomUUID();
   readonly rows: LogRow[] = [];
   readonly reasons: string[] = [];
+  /** Gasto real desta execução, com o custo das falhas (o provedor cobra o que gerou). */
   private spent = 0;
+  /** Estimativa das chamadas desta execução que ainda não terminaram (conferentes e membros rodam juntos). */
+  private inFlight = 0;
   private monthBlockedMsg: string | null = null;
   /** O último erro lançado por uma IA nesta execução (o adaptador preserva AiInvalidOutput para quem registra a resposta). */
   lastError: unknown = null;
@@ -374,12 +377,28 @@ class Run {
     return this.creator<T>(req, primary, fallback, roles);
   }
 
+  /**
+   * Teto por execução antes de cada chamada (revisão rodada 3): o plano inicial só via a primeira chamada; a nova tentativa, a
+   * reserva e os conferentes saíam sem conferência, mesmo depois de uma falha cobrada. Vale o gasto real já feito nesta execução
+   * (com o custo das falhas), mais a estimativa das chamadas em andamento, mais a estimativa desta. Chamada sem custo passa.
+   */
+  private perRunRefusal(est: number): string | null {
+    const s = this.cfg.settings;
+    if (!s.caps_enabled || s.per_run_cap_usd === null || est <= 0) return null;
+    const committed = this.spent + this.inFlight;
+    // folga de 1e-9: o plano já conferiu a mesma soma, só que noutra ordem (arredondamento do ponto flutuante)
+    if (committed + est > s.per_run_cap_usd + 1e-9) {
+      return `Gasto desta execução de US$ ${usd(committed)} mais estimativa de US$ ${usd(est)} passa do teto por execução de US$ ${usd(s.per_run_cap_usd)}.`;
+    }
+    return null;
+  }
+
   private monthlyRefusal(est: number, planned: boolean): string | null {
     const s = this.cfg.settings;
     if (!s.caps_enabled || s.monthly_cap_usd === null || est <= 0) return null;
     if (planned && this.monthBlockedMsg) return this.monthBlockedMsg;
-    const after = this.monthSpend + this.spent + est;
-    if (after > s.monthly_cap_usd) return `Gasto do mês de US$ ${usd(this.monthSpend + this.spent)} mais estimativa de US$ ${usd(est)} passa do teto mensal de US$ ${usd(s.monthly_cap_usd)}.`;
+    const after = this.monthSpend + this.spent + this.inFlight + est;
+    if (after > s.monthly_cap_usd) return `Gasto do mês de US$ ${usd(this.monthSpend + this.spent + this.inFlight)} mais estimativa de US$ ${usd(est)} passa do teto mensal de US$ ${usd(s.monthly_cap_usd)}.`;
     return null;
   }
 
@@ -398,7 +417,8 @@ class Run {
 
   private async call<T>(slot: Slot, role: Role, req: StructuredRequest, chars: number, planned: boolean): Promise<Attempt<T>> {
     if (slot.blocked || !slot.instance) return this.refuse(slot, role, "bloqueada", slot.blocked ?? "Provedor indisponível.");
-    const refusal = this.monthlyRefusal(estimateCall(this.cfg, slot, chars, req.maxOutputTokens ?? DEFAULT_MAX_OUT, req.care), planned);
+    const est = estimateCall(this.cfg, slot, chars, req.maxOutputTokens ?? DEFAULT_MAX_OUT, req.care);
+    const refusal = this.perRunRefusal(est) ?? this.monthlyRefusal(est, planned);
     if (refusal) return this.refuse(slot, role, "teto", refusal);
     let limit = TIMEOUT_MS;
     if (this.deadline !== null) {
@@ -408,6 +428,8 @@ class Run {
     }
     const t0 = Date.now();
     const instance = slot.instance;
+    // reservada antes de esperar: as chamadas que saem juntas (conferentes, membros) enxergam umas às outras
+    this.inFlight += est;
     try {
       const res = await withTimeout(() => instance.generate<T>(req), limit);
       const cost = this.costOf(slot, res);
@@ -431,6 +453,8 @@ class Run {
       });
       this.reason(error);
       return { ok: false, outcome: "falha", error, retry: shouldRetrySame(e) };
+    } finally {
+      this.inFlight -= est;
     }
   }
 
