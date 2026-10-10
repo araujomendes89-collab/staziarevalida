@@ -95,17 +95,18 @@ describe("Questões: assistente", () => {
     expect(saveCalls()).toHaveLength(0);
   });
 
-  it("mostra a recusa do servidor (gabarito e situação mudam sem o assistente)", async () => {
+  it("mostra a recusa do servidor (gabarito e situação só pelo registro do gabarito oficial)", async () => {
     render(<QuestionEditor id="q1" onClose={vi.fn()} onSaved={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: "Assistente" }));
     fireEvent.click(await screen.findByRole("button", { name: "Preencher campos" }));
     fireEvent.click(within(await screen.findByRole("region", { name: "Sugestão: Conduta esperada" })).getByRole("button", { name: "Usar" }));
     backend.rpc.mockImplementation(async (fn: string) => {
-      if (fn === "app_admin_save_question") throw Object.assign(new Error("Gabarito e situação mudam sem o assistente: salve essa mudança à parte."), { code: "22023" });
+      if (fn === "app_admin_save_question")
+        throw Object.assign(new Error("Gabarito e situação de questão já gravada só mudam pelo registro do gabarito oficial (administrador, com fonte e motivo)."), { code: "22023" });
       return ROW;
     });
     fireEvent.click(screen.getByRole("button", { name: "Salvar questão" }));
-    expect(await screen.findByText(/Gabarito e situação mudam sem o assistente/)).toBeTruthy();
+    expect(await screen.findByText(/Gabarito e situação de questão já gravada só mudam pelo registro do gabarito oficial/)).toBeTruthy();
   });
 
   it("fechar o painel desmonta o resultado", async () => {
@@ -154,17 +155,31 @@ describe("Questões: assistente", () => {
     }
   });
 
-  it("salvar com outro gabarito descarta as sugestões antigas", async () => {
+  it("registrar outro gabarito oficial descarta as sugestões antigas (o gabarito não muda mais pelo formulário, …7700)", async () => {
+    let row: any = ROW;
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_question") return row;
+      if (fn === "app_admin_set_official_answer") {
+        row = { ...ROW, correct_option: "C" };
+        return { id: "x", version: 2, recorrected: 0, review: null };
+      }
+      if (fn === "app_admin_save_question") return { ...row, ...args.p_question, exam: ROW.exam, number: 1 };
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
     render(<QuestionEditor id="q1" onClose={vi.fn()} onSaved={vi.fn()} />);
     fireEvent.click(await screen.findByRole("button", { name: "Assistente" }));
     fireEvent.click(await screen.findByRole("button", { name: "Preencher campos" }));
     await screen.findByRole("region", { name: "Sugestão: Explicação da B" });
-    fireEvent.click(screen.getByRole("radio", { name: "C" }));
-    fireEvent.click(screen.getByRole("button", { name: "Salvar questão" }));
-    await waitFor(() => expect(saveCalls()).toHaveLength(1));
-    expect("p_reason" in saveCalls()[0][1]).toBe(false);
+    expect((within(screen.getByRole("radiogroup", { name: "Gabarito" })).getByRole("radio", { name: "C" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Registrar gabarito oficial" }));
+    const panel = screen.getByRole("region", { name: "Registro do gabarito oficial" });
+    fireEvent.click(within(within(panel).getByRole("radiogroup", { name: "Letra do gabarito oficial" })).getByRole("radio", { name: "C" }));
+    fireEvent.change(within(panel).getByLabelText("Fonte (documento e data)"), { target: { value: "Gabarito definitivo (teste)" } });
+    fireEvent.change(within(panel).getByLabelText("Motivo da mudança"), { target: { value: "Conferido no edital." } });
+    fireEvent.click(within(panel).getByRole("button", { name: "Registrar" }));
     await waitFor(() => expect(screen.queryByRole("region", { name: "Sugestão: Explicação da B" })).toBeNull());
     expect(screen.queryByRole("region", { name: "Sugestão: Conduta esperada" })).toBeNull();
+    expect(saveCalls()).toHaveLength(0);
   });
 
   it("Usar tudo não apaga o que a pessoa digitou enquanto o Preencher rodava (decisão D2c)", async () => {
