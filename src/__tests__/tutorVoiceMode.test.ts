@@ -130,7 +130,9 @@ describe("Provedor da voz", () => {
   it("modelos só pelo ambiente; GPT-Live exige modelo, consentimento e chave; o painel escolhe e o automático prefere o GPT-Live", () => {
     expect(liveConfig({}).pending).toMatch(/OPENAI_LIVE_MODEL/);
     expect(liveConfig({ OPENAI_LIVE_MODEL: "gpt-live-1", OPENAI_API_KEY: KEY }).pending).toMatch(/TUTOR_VOICE_ALLOW_EXTERNAL=1/);
-    expect(liveConfig({ OPENAI_LIVE_MODEL: "gpt-live-1", TUTOR_VOICE_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: KEY })).toMatchObject({ ready: true, model: "gpt-live-1" });
+    // VZ01: a autorização da equipe sozinha não liga a voz ao vivo dos alunos; precisa também da trava própria
+    expect(liveConfig({ OPENAI_LIVE_MODEL: "gpt-live-1", TUTOR_VOICE_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: KEY }).pending).toMatch(/TUTOR_LIVE_VOICE_ALLOW_EXTERNAL=1/);
+    expect(liveConfig({ OPENAI_LIVE_MODEL: "gpt-live-1", TUTOR_VOICE_ALLOW_EXTERNAL: "1", TUTOR_LIVE_VOICE_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: KEY })).toMatchObject({ ready: true, model: "gpt-live-1" });
     expect(planProviders("auto", {}, LIVE, RT, true)).toMatchObject({ first: "live", fallback: "realtime" });
     expect(planProviders("auto", { OPENAI_VOICE_PROVIDER: "realtime" }, LIVE, RT, true)).toMatchObject({ first: "realtime", fallback: "live" });
     expect(planProviders("realtime", { OPENAI_VOICE_PROVIDER: "live" }, LIVE, RT, true).first).toBe("realtime"); // painel manda
