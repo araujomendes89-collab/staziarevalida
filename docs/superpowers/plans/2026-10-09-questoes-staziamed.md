@@ -37,6 +37,7 @@
 3. **Revisor aprova com a tela aberta enquanto alguém da equipe salvou outra versão:** a aprovação recusa ("O texto mudou depois que você abriu: confira de novo.") em vez de aprovar um texto que o médico não leu. Teste na Tarefa 10.
 4. **Rascunho editado (ou fonte aceita) enquanto a conferência ou a busca de fonte dele roda:** o resultado da versão antiga é descartado, as chamadas de IA restantes não acontecem e nada fica "conferido" no texto novo; proposta de versão antiga não pode ser usada. Testes nas Tarefas 6 e 8.
 5. **IA falha em todas as tentativas de uma vaga (erro, resposta fora do formato):** a vaga não fica presa em "gerando": vira "descartada" com "Falha da IA: …" e o pedido chega a "concluído". Teste na Tarefa 7.
+6. **Reaplicar a carga (`buildEngineStatements`, a do seed e a que roda a cada migração nova no banco de desenvolvimento) com Questões StaziaMed publicadas:** não quebra no gatilho do gabarito oficial e não grava gabarito oficial nelas (a primeira instrução da carga só lê `origin = 'official'`). Teste na Tarefa 3.
 
 ## Decisões do plano onde a spec não fixou (o dono pode mudar)
 
@@ -65,7 +66,7 @@
 |---|---|
 | `supabase/migrations/20261003006200_questoes_staziamed.sql` | rascunhos, hash, pedidos/vagas, propostas, trilha, fila, conferência, edição, trava, publicação |
 | `supabase/migrations/20261003006300_questoes_staziamed_aluno.sql` | origem, prova STAZIAMED, política, visões do aluno, coleção, consumidores só oficiais |
-| `scripts/supabase/engine-seed.ts` | carga antiga não sobrescreve rascunho editado |
+| `scripts/supabase/engine-seed.ts` | carga antiga não sobrescreve rascunho editado; gabarito oficial da carga só de questão oficial (T3) |
 | `server/contentHub/jobErrors.ts` | `Blocked`, `Fatal` (sem importação circular) |
 | `server/contentHub/questoes/{types,similarity,validate,shuffle}.ts` | validações sem IA, semelhança, embaralhamento |
 | `server/contentHub/questoes/{passages,check,generate,source,estimate,routes}.ts` | busca de trechos, as três etapas, custo, rotas |
@@ -173,7 +174,7 @@ it("assinatura vencida: a sessão StaziaMed antiga abre com locked e sem questõ
 ### Task 3: Consumidores só oficiais, recusas e catálogo
 
 **Files:**
-- Modify: `supabase/migrations/20261003006300_questoes_staziamed_aluno.sql`
+- Modify: `supabase/migrations/20261003006300_questoes_staziamed_aluno.sql`; `scripts/supabase/engine-seed.ts:186-190` (primeira instrução de `buildEngineStatements`: o gabarito oficial da carga só vai para `origin = 'official'`)
 - Test: Create `src/__tests__/questoesStaziaMedSoOficiais.test.ts`; Modify `src/__tests__/engineSeed.test.ts:44,130` (as 1.200 contadas com `origin = 'official'`)
 
 **Interfaces:**
@@ -182,6 +183,7 @@ it("assinatura vencida: a sessão StaziaMed antiga abre com locked e sem questõ
   - Leem só `origin = 'official'`: `app_incidence` (linhas e lista de provas), `app_bootstrap` (`totals.questions`), `app_home`, `app_lesson_topics`, `app_trail`, `app_start_trail_node`, `ch_worker_questions_for_analysis`, `app_question_analyses`, `app_question_updates_queue`, `ch_worker_updates_for_reanalysis`, `app_updated_questions`, `tutor_pick_question`, `tutor_truth`, `tutor_question_view`, `tutor_answer_for`, `app_tutor_start` (questão StaziaMed → a recusa que já existe, "Questão não encontrada."), `app_admin_questions`, `app_admin_question`.
   - Recusam StaziaMed: `app_admin_set_official_answer` e o gatilho `question_official_answers_guard` (inserção) → `'Questão StaziaMed não tem gabarito oficial.'` (`22023`); `app_admin_save_question` e `admin_upsert_question` (id de questão StaziaMed ou tipo de prova `STAZIAMED`) → `'Questões StaziaMed só mudam pelo rascunho na Central de Conteúdo.'` (`22023`).
   - `app_admin_overview`: `questions.total/annulled/needs_image` só oficiais + `questions.staziamed = { published, retired }`.
+- Produces (carga) — achado da revisão da T1, que não podia ser resolvido lá (a coluna `origin` só nasce na T2): a primeira instrução de `buildEngineStatements()` (`scripts/supabase/engine-seed.ts:186-190`, "gabarito oficial como versão 1") passa a ler `from public.questions q where q.origin = 'official' and not exists (…)`. Sem o filtro ela grava um gabarito `FINAL` (fonte = `sources[0].title`) em toda Questão StaziaMed publicada, que nunca tem gabarito oficial (spec §1 critério 11, §6 e §9); e, com o gatilho `question_official_answers_guard`, a instrução inteira quebra ('Questão StaziaMed não tem gabarito oficial.', `22023`): `migrateDatabase` (`src/novo/data/localCore.ts:84-86`) reaplica a carga a cada migração nova (o servidor de desenvolvimento e a Central não abrem) e `supabase db push --include-seed` falharia em produção. As outras instruções partem do pacote do motor, da classificação (`question_dna`) e dos arquivos de rascunho, e não tocam nas StaziaMed.
 - Produces (teste) — `CATALOGO: Record<string, { classe: "so_oficiais" | "as_duas"; como: "filtra" | "recusa" | "herda" | "historico" }>` com, hoje:
   - `so_oficiais/filtra`: as da primeira lista acima;
   - `so_oficiais/recusa`: `app_admin_set_official_answer`, `app_admin_save_question`, `admin_upsert_question`;
@@ -200,13 +202,17 @@ it("Tutor nunca escolhe nem comenta StaziaMed", ...)
   // tutor_pick_question com todas as oficiais de PEDIATRIA em p_exclude e 1 StaziaMed de PEDIATRIA → null; app_tutor_start com ela → 'Questão não encontrada.'
 it("SQIE: análise e fila de atualização sem StaziaMed", ...)     // ch_worker_questions_for_analysis e app_question_updates_queue
 it("gabarito oficial recusa StaziaMed (função e inserção direta)", ...)
+it("reaplicar a carga com Questões StaziaMed publicadas não quebra e não dá gabarito oficial a elas", ...)
+  // insertStaziaQuestion ×2; antes: count(*) e max(version) de question_official_answers; depois: for (const st of buildEngineStatements()) await env.dev.db.exec(st) NÃO lança
+  // (sem o filtro a carga quebra com 'Questão StaziaMed não tem gabarito oficial.'); gabaritos oficiais das StaziaMed === 0 (sem o gatilho, a mesma carga gravaria 'FINAL' nelas);
+  // count e max(version) iguais aos de antes (as oficiais não ganham versão 2); reaplicar uma segunda vez também passa; tempo de espera folgado (120 s), como o "reaplicar a carga" de engineSeed.test.ts
 it("administração: salvar questão recusa StaziaMed; visão geral conta separado", ...)  // app_admin_overview.questions.staziamed.published === 3
 ```
 
-- [ ] **Step 2: Run** `npx vitest run src/__tests__/questoesStaziaMedSoOficiais.test.ts --maxWorkers=1` — Expected: FAIL (números mudam com as StaziaMed; catálogo acusa `filtra` sem `origin`).
-- [ ] **Step 3: Implement** as redefinições e recusas na 6300; o `engineSeed.test.ts` passa a contar `origin = 'official'`.
+- [ ] **Step 2: Run** `npx vitest run src/__tests__/questoesStaziaMedSoOficiais.test.ts --maxWorkers=1` — Expected: FAIL (números mudam com as StaziaMed; catálogo acusa `filtra` sem `origin`; a carga reaplicada grava gabarito `FINAL` na StaziaMed).
+- [ ] **Step 3: Implement** as redefinições e recusas na 6300; a primeira instrução da carga (`engine-seed.ts:186-190`) ganha `q.origin = 'official' and` antes do `not exists`; o `engineSeed.test.ts` passa a contar `origin = 'official'`.
 - [ ] **Step 4: Run** `npx vitest run src/__tests__/questoesStaziaMedSoOficiais.test.ts src/__tests__/engineSeed.test.ts src/__tests__/questionKnowledge.test.ts --maxWorkers=1` — Expected: PASS.
-- [ ] **Step 5: Commit** `git add` da migração e dos dois testes; mensagem "Questoes StaziaMed: incidencia, temas, Tutor e SQIE so com oficiais; catalogo de leitores".
+- [ ] **Step 5: Commit** `git add` da migração, de `scripts/supabase/engine-seed.ts` e dos dois testes; mensagem "Questoes StaziaMed: incidencia, temas, Tutor e SQIE so com oficiais; catalogo de leitores".
 
 ### Task 4: Validações sem IA, semelhança e embaralhamento
 
