@@ -5,7 +5,7 @@
  */
 import type { ContentDb } from "../contentHub/infra";
 import { OllamaProvider } from "../contentHub/ai/ollama";
-import { familyOfModel, geminiOutputLimit, resolveProviderKind, type AiProvider } from "../contentHub/ai/provider";
+import { familyOfModel, geminiOutputLimit, geminiThinkingReserve, resolveProviderKind, type AiProvider } from "../contentHub/ai/provider";
 import type { PromptKey } from "../contentHub/ai/prompts";
 import type { AiProviderId } from "./models";
 import { estimateCostUsd, type ModelPrice } from "./prices";
@@ -55,6 +55,72 @@ export function effectiveMaxOut(ref: ModelRef, maxOut: number, care?: string): n
 export function callEstimateUsd(ref: ModelRef, price: ModelPrice | null, chars: number, maxOut: number, care?: string): number {
   if (ref.provider === "ollama" || !price) return 0;
   return estimateCostUsd(price, chars, effectiveMaxOut(ref, maxOut, care)) ?? 0;
+}
+
+/** Uma chamada típica de um uso da função: a saída pedida no código e a entrada que costuma ir (em caracteres). */
+export interface TypicalCall {
+  use: string;
+  inputChars: number;
+  maxOut: number;
+}
+
+/**
+ * Chamadas típicas de cada função, para o aviso do teto por execução (revisão rodada 3). A saída é a pedida no código; a
+ * entrada é o material que costuma ir, com o texto de instruções:
+ *   etapas da Central de Conteúdo: 8.192 (pipeline.ts); trechos de até 6.000 caracteres mais o catálogo e as instruções (~30 mil).
+ *   Aulas: 6.000 (lessons/assist.ts); até 80 mil caracteres de material.
+ *   Podcasts: 16.000 (podcasts/script.ts); até 120 mil caracteres de material.
+ *   Questões: 12.000 (questionAnalysis.ts); enunciado, alternativas e instruções (~8 mil).
+ *   assistentes: 6.000 (adminAssistant/engine.ts); até 60 mil caracteres de material mais os trechos oficiais.
+ */
+export const TYPICAL_CALLS: Record<AiFunctionKey, TypicalCall[]> = {
+  criacao: [
+    { use: "etapas da Central de Conteúdo", inputChars: 30_000, maxOut: 8192 },
+    { use: "Aulas", inputChars: 85_000, maxOut: 6000 },
+    { use: "Podcasts", inputChars: 125_000, maxOut: 16_000 },
+  ],
+  verificacao: [{ use: "etapas da Central de Conteúdo", inputChars: 30_000, maxOut: 8192 }],
+  engenharia_reversa: [{ use: "Questões", inputChars: 8_000, maxOut: 12_000 }],
+  assistente_preencher: [{ use: "assistentes", inputChars: 70_000, maxOut: 6000 }],
+  assistente_conferir: [{ use: "assistentes", inputChars: 70_000, maxOut: 6000 }],
+  assistente_revisar: [{ use: "assistentes", inputChars: 70_000, maxOut: 6000 }],
+};
+
+/** Estimativa (pior caso, a mesma dos tetos) de uma chamada típica com esta IA. */
+export function typicalCallEstimate(ref: ModelRef, price: ModelPrice | null, call: TypicalCall, care?: string): number {
+  return callEstimateUsd(ref, price, call.inputChars, call.maxOut, care);
+}
+
+const usd = (n: number) => String(Number(n.toFixed(4))).replace(".", ",");
+const listPt = (items: string[]) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}` : items.join(""));
+const ROLE_OF: Record<string, string> = { principal: "da principal", reserva: "da reserva", conferente: "do conferente", membro: "do membro" };
+
+/**
+ * Aviso antes de parar (revisão rodada 3): com os tetos ligados, cada IA da função cuja chamada típica (já com a folga do
+ * raciocínio do Gemini) passa do teto por execução. Sem o aviso, o dono só descobria pelos trabalhos parados e pelas linhas
+ * "teto" do Histórico. Cada IA conta como uma chamada sozinha, que é como elas rodam hoje.
+ */
+function perRunCapWarnings(key: AiFunctionKey, members: { ref: ModelRef; role: keyof typeof ROLE_OF }[], care: string | undefined, cfg: AiConfig): string[] {
+  const { caps_enabled, per_run_cap_usd: cap } = cfg.settings;
+  if (!caps_enabled || cap === null) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const { ref, role } of members) {
+    const id = `${role}:${ref.provider}:${ref.model}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const price = cfg.prices.find((p) => p.provider === ref.provider && p.model === ref.model) ?? null;
+    const over = (TYPICAL_CALLS[key] ?? []).map((call) => ({ call, est: typicalCallEstimate(ref, price, call, care) })).filter((x) => x.est > cap + 1e-9);
+    if (!over.length) continue;
+    const list = listPt(over.map((x) => `${x.call.use} (US$ ${usd(x.est)})`));
+    const need = Math.ceil(Number((Math.max(...over.map((x) => x.est)) * 100).toFixed(6))) / 100;
+    const folga = ref.provider === "gemini" && geminiThinkingReserve(ref.model, care) > 0 ? ", já com a folga do raciocínio do Gemini" : "";
+    const stops = over.length > 1 ? "essas chamadas param" : "essa chamada para";
+    out.push(
+      `Teto por execução de US$ ${usd(cap)} abaixo da estimativa de uma chamada ${ROLE_OF[role]} ${PROVIDER_NAMES[ref.provider] ?? ref.provider} ${ref.model} em ${list}${folga}: ${stops} no teto sem chamar a IA. Para não parar, o teto por execução precisa ser de pelo menos US$ ${usd(need)}.`
+    );
+  }
+  return out;
 }
 const num = (v: unknown): number | null => {
   if (v === null || v === undefined || v === "") return null;
@@ -278,6 +344,14 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig): { pro
         : `Nesta etapa a função usa só a IA principal e a reserva: ${who} ainda não rodam.`
     );
   }
+  // teto por execução abaixo de uma chamada típica: avisa antes, em vez de o trabalho parar sem explicação
+  const others = fc.mode === "linha" ? "conferente" : fc.mode === "comite" ? "membro" : null;
+  const members = [
+    ...(fc.primary ? [{ ref: fc.primary, role: "principal" as const }] : []),
+    ...(fc.fallback ? [{ ref: fc.fallback, role: "reserva" as const }] : []),
+    ...(others ? reviewers.map((ref) => ({ ref, role: others })) : []),
+  ];
+  for (const w of perRunCapWarnings(fc.key, members, fc.care, cfg)) if (!warnings.includes(w)) warnings.push(w);
   return { problems, warnings };
 }
 
@@ -363,6 +437,7 @@ export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.e
       if (pending && !problems.includes(pending)) problems.push(pending);
       // chave ausente neste servidor (o site): só aviso, como nas funções salvas
       if (!pending && keyPending(ref.provider, env)) warnings.push(keyWarning(ref.provider));
+      warnings.push(...perRunCapWarnings(key, [{ ref, role: "principal" }], undefined, cfg));
     }
     out[key] = { source: "variaveis", ready: problems.length === 0, ref, problems, warnings };
   }
