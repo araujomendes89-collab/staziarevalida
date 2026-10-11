@@ -173,14 +173,39 @@ function perRunCapWarnings(members: CapMember[], cfg: AiConfig): string[] {
  * Conta só a principal e a reserva, que é o que roda hoje em todos os modos (a soma da Linha e do Comitê inteiros só vale pelo
  * runFunction, que nenhuma tela nem tarefa usa). Reserva sem custo (Ollama) passa sempre pelo teto: sem aviso.
  */
-function failureChainWarning(key: AiFunctionKey, primary: ModelRef | null, fallback: ModelRef | null, care: string | undefined, cfg: AiConfig): string | null {
-  const { caps_enabled, per_run_cap_usd: cap } = cfg.settings;
-  if (!caps_enabled || cap === null || !primary) return null;
-  const rows = (TYPICAL_CALLS[key] ?? []).map((call) => {
+/** Por uso típico da função: a principal (p), a reserva (r), principal + reserva e duas da principal + reserva (a conta do aviso). */
+function chainRows(key: AiFunctionKey, primary: ModelRef, fallback: ModelRef | null, care: string | undefined, cfg: AiConfig) {
+  return (TYPICAL_CALLS[key] ?? []).map((call) => {
     const p = typicalCallEstimate(primary, priceOf(cfg, primary), call, care);
     const r = fallback ? typicalCallEstimate(fallback, priceOf(cfg, fallback), call, care) : 0;
     return { use: call.use, p, r, rescue: p + r, full: 2 * p + r };
   });
+}
+
+/**
+ * Guia para escolher o teto por chamada (IA01): o valor mínimo para nenhuma função parar no teto com as IAs de hoje, por função e o
+ * maior de todos. É a mesma conta do aviso da tela (duas tentativas da principal mais a reserva, no pior uso típico), pelo preço
+ * cadastrado, arredondada para cima no centavo: nada é inventado, e nada é ligado nem gravado por isso. Função sem configuração salva
+ * usa as variáveis do servidor (IA e reserva), como o maestro. Entram só as funções com custo conhecido (modelo pago com preço).
+ */
+export function capGuidance(cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): { per_call_min_usd: number | null; by_function: { key: AiFunctionKey; min_usd: number }[] } {
+  const by_function: { key: AiFunctionKey; min_usd: number }[] = [];
+  for (const key of FUNCTION_KEYS) {
+    const saved = cfg.functions[key];
+    const primary = saved ? saved.primary : envFallbackRef(key, env);
+    if (!primary) continue;
+    const fallback = saved ? saved.fallback : envReserveRef(primary, env);
+    const paid = chainRows(key, primary, fallback, saved?.care, cfg).filter((x) => x.p > 0);
+    if (!paid.length) continue;
+    by_function.push({ key, min_usd: Math.ceil(Number((Math.max(...paid.map((x) => x.full)) * 100).toFixed(6))) / 100 });
+  }
+  return { per_call_min_usd: by_function.length ? Math.max(...by_function.map((x) => x.min_usd)) : null, by_function };
+}
+
+function failureChainWarning(key: AiFunctionKey, primary: ModelRef | null, fallback: ModelRef | null, care: string | undefined, cfg: AiConfig): string | null {
+  const { caps_enabled, per_run_cap_usd: cap } = cfg.settings;
+  if (!caps_enabled || cap === null || !primary) return null;
+  const rows = chainRows(key, primary, fallback, care, cfg);
   const paid = rows.filter((x) => x.p > 0);
   if (!paid.length) return null;
   const folga = hasFolga(primary, care) || (fallback && hasFolga(fallback, care)) ? FOLGA : "";

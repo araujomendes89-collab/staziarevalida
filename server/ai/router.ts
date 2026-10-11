@@ -18,7 +18,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import type { ContentDb, Identity } from "../contentHub/infra";
 import { listModels } from "./models";
 import { PRICE_SEED } from "./prices";
-import { FUNCTION_KEYS, functionChecks, invalidateAiConfig, isProviderId, loadAiConfig, providerChecks, providerPending, validateFunctionConfig, type AiFunctionKey, type FunctionConfig, type ModelRef } from "./config";
+import { capGuidance, FUNCTION_KEYS, functionChecks, invalidateAiConfig, isProviderId, loadAiConfig, providerChecks, providerPending, validateFunctionConfig, type AiFunctionKey, type FunctionConfig, type ModelRef } from "./config";
 
 type Authed = Request & { user?: Identity; admin?: boolean };
 
@@ -70,7 +70,7 @@ export function createAiRouter(
     try {
       const overview = await db().asUser<Record<string, unknown>>(req.user!, "app_admin_ai_overview");
       const cfg = await fresh();
-      res.json({ ...overview, checks: functionChecks(cfg, env), provider_checks: providerChecks(cfg, env) });
+      res.json({ ...overview, checks: functionChecks(cfg, env), provider_checks: providerChecks(cfg, env), cap_guidance: capGuidance(cfg, env) });
     } catch (error) {
       fail(res, error);
     }

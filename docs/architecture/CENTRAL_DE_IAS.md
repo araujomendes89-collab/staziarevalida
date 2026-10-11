@@ -164,6 +164,13 @@ comitê mostrados para a equipe aparecem a partir da etapa 2.
   termina como falha comum e o trabalho gasta uma tentativa.
 - **Teto mensal:** gasto já registrado no mês (horário de Brasília) + o gasto desta chamada + a estimativa. Passou → as IAs
   pagas não são chamadas; o **Ollama continua**.
+- **Os tetos nascem desligados (IA01, 2026-10-11).** Enquanto os dois tetos não tiverem valor e estiverem ligados, **não existe limite
+  em dólares** para as IAs da Central. A tela mostra no alto da aba um aviso (`CapsNotice`) até isso mudar, com o botão "Escolher
+  os tetos", que leva ao campo; na seção "Gasto e tetos", um guia diz o que cada teto é, o gasto do mês até agora e o **valor mínimo
+  do teto por chamada** para nenhuma função parar com as IAs de hoje (duas tentativas da principal mais a reserva, no pior uso
+  típico, pelo preço cadastrado: `capGuidance`, devolvido por `GET /overview` em `cap_guidance`). **Nenhum valor é escolhido nem
+  ligado pelo sistema**, e a configuração gravada não é mexida: um teto por chamada abaixo do mínimo pararia as IAs do site. O
+  Tutor, as vozes e a busca por significado não passam pelo maestro e não entram nestes tetos (veja "Gasto do mês de tudo").
 - **Duas chamadas ao mesmo tempo** podem passar do teto em até o custo de uma chamada (a tela avisa).
 - Com os tetos ligados, **modelo pago sem preço fica bloqueado**. Ollama custa zero.
 - **Preço exigido com ou sem teto (IA09, 2026-10-11):** modelo pago sem preço cadastrado aparecia com gasto US$ 0 quando os tetos

@@ -135,6 +135,41 @@ const OUTSIDE_SWITCH = [
   "Rotas antigas de IA da Administração: Claude e Gemini, só para administrador.",
 ];
 
+/**
+ * Os tetos de gasto nascem desligados (IA01): desligados, nenhuma IA da Central tem limite em dólares. Este aviso fica no alto até os
+ * dois tetos terem valor e estarem ligados. A tela não escolhe nem liga valor nenhum: a decisão é do administrador.
+ */
+function capsState(settings) {
+  const s = settings ?? {};
+  const noMonthly = s.monthly_cap_usd == null;
+  const noPerRun = s.per_run_cap_usd == null;
+  return { off: s.caps_enabled !== true, noMonthly, noPerRun, ok: s.caps_enabled === true && !noMonthly && !noPerRun };
+}
+
+function goToCaps() {
+  const box = document.getElementById("gasto-e-tetos");
+  box?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  document.getElementById("teto-mensal")?.focus();
+}
+
+function CapsNotice({ settings }) {
+  const c = capsState(settings);
+  if (c.ok) return null;
+  const missing = [c.noMonthly && "O teto mensal está sem valor.", c.noPerRun && "O teto por chamada está sem valor."].filter(Boolean);
+  return (
+    <div data-testid="aviso-tetos-desligados">
+      <Banner tone="warning" title={c.off ? "Os tetos de gasto estão desligados" : "Falta valor em um dos tetos de gasto"} action={<Button size="sm" variant="secondary" icon="arrow-down" onClick={goToCaps}>Escolher os tetos</Button>}>
+        {c.off
+          ? "Hoje não há limite em dólares para as IAs da Central: um volume grande de trabalhos ou um erro pode gastar sem parar. "
+          : "Os tetos estão ligados, mas um limite sem valor não vale. "}
+        {!c.off && missing.join(" ") + " "}
+        {c.off && !c.noMonthly && !c.noPerRun ? "Os valores já estão preenchidos: falta ligar os tetos. " : ""}
+        O Tutor, as vozes e a busca por significado não entram nestes tetos.
+      </Banner>
+    </div>
+  );
+}
+
 function Providers({ data, backend, reload }) {
   const list = PROVIDER_ORDER.map((id) => data.providers.find((p) => p.id === id)).filter(Boolean);
   return (
@@ -231,6 +266,25 @@ function PriceRow({ row, backend, reload }) {
   );
 }
 
+/** O que escolher nos tetos e o que ajuda a escolher (IA01): o gasto do mês e o mínimo calculado pelos preços; nada vem preenchido. */
+function CapsGuide({ data }) {
+  const guide = data.cap_guidance;
+  const min = guide?.per_call_min_usd ?? null;
+  return (
+    <div data-testid="guia-de-tetos" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <p style={note}>Os valores são seus: a tela não escolhe nem liga nada sozinha. Os dois tetos ligados valem para as IAs da Central.</p>
+      <ul style={{ margin: 0, paddingLeft: 18, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+        <li>{`Teto mensal: o máximo que as IAs da Central podem gastar no mês (horário de Brasília). Gasto do mês até agora: ${usd(data.month_spend)}.`}</li>
+        <li>
+          {"Teto por chamada: o máximo de uma chamada à IA (principal, nova tentativa e reserva), não para um trabalho inteiro."}
+          {min !== null && ` Para nenhuma função parar com as IAs de hoje, pelo menos ${usd(min)} (${(guide.by_function ?? []).map((f) => `${FUNCTION_NAME[f.key] ?? f.key} ${usd(f.min_usd)}`).join(" · ")}). Abaixo desse valor, a função para no teto. A conta usa o pior caso; o gasto real costuma ser bem menor.`}
+          {guide && min === null && " Cadastre o preço dos modelos para ver o valor mínimo."}
+        </li>
+      </ul>
+    </div>
+  );
+}
+
 function Spend({ data, backend, reload }) {
   const s = data.settings ?? {};
   const [monthly, setMonthly] = React.useState(s.monthly_cap_usd == null ? "" : String(s.monthly_cap_usd));
@@ -259,9 +313,10 @@ function Spend({ data, backend, reload }) {
   const prices = data.prices ?? [];
   return (
     <Section title="Gasto e tetos">
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div id="gasto-e-tetos" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <CapsGuide data={data} />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-          <TextField label="Teto mensal (US$)" type="number" min="0" step="any" value={monthly} onChange={(e) => setMonthly(e.target.value)} />
+          <TextField id="teto-mensal" label="Teto mensal (US$)" type="number" min="0" step="any" value={monthly} onChange={(e) => setMonthly(e.target.value)} />
           <TextField label="Teto por chamada (US$)" type="number" min="0" step="any" value={perRun} onChange={(e) => setPerRun(e.target.value)} />
         </div>
         <Switch label="Tetos ligados" checked={on} onChange={(e) => setOn(e.target.checked)} />
@@ -377,6 +432,7 @@ export function AdminAI() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {error && <LoadFail error={error} retry={reload} />}
+      <CapsNotice settings={data.settings} />
       <Providers data={data} backend={backend} reload={refresh} />
       <Functions data={data} backend={backend} reload={refresh} />
       <Spend data={data} backend={backend} reload={refresh} />
