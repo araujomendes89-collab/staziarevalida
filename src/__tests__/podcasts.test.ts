@@ -532,6 +532,23 @@ describe("Nome da fonte", () => {
     // o roteiro não é mexido por causa do nome
     expect(ok.body.status).toBe((await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId })).status);
   });
+
+  it("nome de arquivo longo ou sem extensão também vira \"Documento N\" ao aluno; nome escolhido pela equipe vale, mesmo terminando em .pdf", async () => {
+    const created = await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Nomes", topic: "T", area: "CLINICA_MEDICA", target_minutes: 5 } });
+    const longo = `${"relatorio-confidencial-da-empresa-".repeat(8)}.pdf`; // > 200 caracteres: o corte tira o ".pdf"
+    expect((await postRaw(`${base}/${created.id}/sources/file`, editor, "application/pdf", makePdf(["Texto um sobre sulfato de magnesio 4 g IV no ataque, com conduta completa e todos os cuidados necessarios na enfermaria."]), longo)).status).toBe(201);
+    expect((await postRaw(`${base}/${created.id}/sources/file`, editor, "application/pdf", makePdf(["Texto dois sobre pre-eclampsia grave e criterios de gravidade conhecidos, com a conduta recomendada em cada situacao."]), "Marca-X-resumo")).status).toBe(201);
+    const view = await rpc(EDITOR, "app_admin_podcast", { p_id: created.id });
+    expect(view.sources[0].title).not.toMatch(/\.pdf$/); // cortado em 200
+    await dev.db.query(`update public.podcasts set status = 'published', published_at = now(), audio_path = 'x', approved_at = now(), script = $2::jsonb where id = $1`, [created.id, JSON.stringify({ lines: [{ speaker: "ANA", text: "oi", sources: [] }] })]);
+    const nomes = async () => (await rpc(STUDENT, "app_podcast", { p_id: created.id })).sources.map((x: any) => x.title);
+    expect(await nomes()).toEqual(["Documento 1", "Documento 2"]);
+    await dev.db.query(`update public.podcasts set status = 'draft' where id = $1`, [created.id]);
+    await rpc(EDITOR, "app_admin_podcast_rename_source", { p_source_id: view.sources[1].id, p_title: "PCDT.pdf" });
+    await dev.db.query(`update public.podcasts set status = 'published' where id = $1`, [created.id]);
+    expect(await nomes()).toEqual(["Documento 1", "PCDT.pdf"]);
+    await dev.db.query(`delete from public.podcasts where id = $1`, [created.id]);
+  });
 });
 
 describe("Roteiro com revisão humana", () => {
