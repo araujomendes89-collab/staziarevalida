@@ -232,7 +232,7 @@ describe("IA02: painel do gasto do mês de tudo (só leitura)", () => {
     expect(row(box, "Central de IAs (entra nos tetos)").textContent).toMatch(/US\$ 1,50/);
     expect(row(box, "Tutor: conversa e avaliação").textContent).toMatch(/US\$ 0,30/);
     expect(row(box, "Tutor: voz ao vivo").textContent).toMatch(/US\$ 0,50/);
-    expect(row(box, "Busca por significado (vetores dos trechos)").textContent).toMatch(/US\$ 0,001/);
+    expect(row(box, "Busca por significado").textContent).toMatch(/US\$ 0,001/);
     expect(row(box, "Podcasts: áudio").textContent).toMatch(/nenhum registro neste mês/);
     expect(within(box).getByTestId("soma-com-registro").textContent).toMatch(/US\$ 2,31/);
     expect(within(box).getByTestId("soma-com-registro").textContent).toMatch(/Não inclui o que está sem registro nem os registros sem preço/);
@@ -265,7 +265,8 @@ describe("IA02: painel do gasto do mês de tudo (só leitura)", () => {
     load({ tutor_month_spend: 0.5, all_spend: { available: false, month_start: null, groups: [], no_record: NO_RECORD } });
     render(<AdminAI />);
     const box = await screen.findByTestId("gasto-de-tudo");
-    expect(box.textContent).toMatch(/Falta colar no Supabase a atualização 20261003009520/);
+    expect(box.textContent).toMatch(/falta uma atualização do banco, que o Claude prepara para você colar/);
+    expect(box.textContent).not.toMatch(/Supabase|20261003009520/);
     expect(screen.getByText("Tutor (fora do teto, só informação)")).toBeTruthy();
   });
 

@@ -272,7 +272,7 @@ const SPEND_GROUPS = {
   tutor_transcricao: "Tutor: transcrição do microfone",
   tutor_voz_professor: "Tutor: voz do professor",
   podcasts_audio: "Podcasts: áudio",
-  busca_significado: "Busca por significado (vetores dos trechos)",
+  busca_significado: "Busca por significado",
 };
 const NO_RECORD_NAME = { rotas_antigas: "Rotas antigas de IA da Administração", perguntas_busca: "Perguntas da busca por significado" };
 
@@ -301,7 +301,7 @@ function AllSpend({ data }) {
       <h4 style={{ margin: "8px 0 0", font: "var(--type-label)" }}>Gasto do mês de tudo (só leitura)</h4>
       <p style={note}>Soma o que já fica registrado em cada lugar. Só a Central entra nos tetos: o Tutor, as vozes e a busca por significado não param por causa deles.</p>
       {!a.available ? (
-        <p style={note}>Falta colar no Supabase a atualização 20261003009520 para ver o gasto dos outros lugares.</p>
+        <p style={note}>O gasto dos outros lugares ainda não está disponível: falta uma atualização do banco, que o Claude prepara para você colar.</p>
       ) : (
         <Table heads={["Lugar", "Gasto do mês"]}>
           <tr>
