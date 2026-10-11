@@ -568,7 +568,7 @@ describe("ataque: comparação por nome é textual (brecha 2 do construtor)", ()
       expect(await fontesDaCorrecao([item]), JSON.stringify(item)).toEqual([]);
     }
   });
-  vazamento("VAZAMENTO: fonte digitada como 'Apostila SNO, p. 123' (sigla e palavra apostila) chega ao aluno", async () => {
+  it("CORRIGIDO: fonte digitada como 'Apostila SNO, p. 123' (sigla e palavra apostila) chega ao aluno", async () => {
     // causa: 20261003009620_fontes_complementares.sql:70-83 (ch_complementar_hit) só procura "sangue nos olhos" e o título/órgão da biblioteca;
     // não procura a palavra "apostila" (o servidor procura: complementarGuard.ts APOSTILA) nem a sigla SNO nem o nome do arquivo
     expect(await fontesDaCorrecao([{ title: "Apostila SNO, p. 123" }])).toEqual([]);

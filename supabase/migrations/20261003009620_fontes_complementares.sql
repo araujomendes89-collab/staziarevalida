@@ -34,6 +34,8 @@
 
 -- ---------------------------------------------------------------- 1. classe da fonte
 alter table public.ch_sources add column if not exists audience text not null default 'oficial';
+-- siglas e apelidos da fonte ("SNO"): o administrador cadastra; o aluno nunca pode ver texto que os cite
+alter table public.ch_sources add column if not exists aliases text[] not null default '{}';
 alter table public.ch_sources drop constraint if exists ch_sources_audience_check;
 alter table public.ch_sources add constraint ch_sources_audience_check check (audience in ('oficial', 'complementar'));
 -- complementar nunca tem nível A a D: assim nenhuma trava "fonte oficial" (selos, atualidade, evidência para publicar) a aceita
@@ -90,10 +92,38 @@ create trigger ch_sources_audience_log after insert or update on public.ch_sourc
   for each row execute function public.ch_sources_audience_log();
 
 -- ---------------------------------------------------------------- 2. comparação com a biblioteca (internas)
--- Texto sem acento, sem pontuação e sem caixa, com espaço simples.
+-- Texto normalizado para comparar: sem etiquetas HTML, sem entidades nem %20, NFKC, sem marcas combinantes (acento solto),
+-- sem caracteres de largura zero, com letras parecidas do cirílico e do grego trocadas pelas latinas, sem pontuação, sem caixa,
+-- com espaço simples. A mesma normalização vale no servidor (server/contentHub/complementarGuard.ts).
 create or replace function public.ch_text_key(p_text text) returns text
+  language sql stable set search_path = ''
+as $$
+  select btrim(regexp_replace(
+    translate(
+      lower(regexp_replace(
+        normalize(normalize(
+          regexp_replace(regexp_replace(regexp_replace(coalesce(p_text, ''), '<[^>]*>', '', 'g'),
+                         '&(#[0-9]+|#x[0-9a-fA-F]+|[a-zA-Z]+);', ' ', 'g'),
+                         '%[0-9a-fA-F]{2}', ' ', 'g'),
+          NFKC), NFD),
+        '[̀-ͯ​-‏‪-‮⁠-⁤﻿­]', '', 'g')),
+      'аеорсхуіјѕԁԛԝкмнтαεοιυκρτν',
+      'aeopcxyijsdqwkmhtaeoiukptv'),
+    '[^a-z0-9]+', ' ', 'g'))
+$$;
+
+-- A mesma chave sem espaços ("SangueNosOlhos", "S a n g u e").
+create or replace function public.ch_text_key_ns(p_text text) returns text
+  language sql stable set search_path = ''
+as $$ select replace(public.ch_text_key(p_text), ' ', '') $$;
+
+-- Endereço do site de um link (sem "www."), ou nulo se não for link. Sites genéricos de hospedagem não contam como "mesmo site".
+create or replace function public.ch_url_host(p_url text) returns text
   language sql immutable set search_path = ''
-as $$ select btrim(regexp_replace(public.fold_text(p_text), '[^a-z0-9]+', ' ', 'g')) $$;
+as $$
+  select case when h in ('drive.google.com', 'docs.google.com', 'dropbox.com', 'github.com', 'youtube.com', 'youtu.be', 'wikipedia.org', 'scribd.com', 'issuu.com', 'files.wordpress.com') then null else h end
+  from (select nullif(lower(regexp_replace(substring(coalesce(p_url, '') from '^[A-Za-z][A-Za-z0-9+.-]*://([^/?#:]+)'), '^www\.', '')), '') as h) x
+$$;
 
 -- Chaves de comparação das fontes complementares da biblioteca: título, órgão, nome do arquivo (com e sem extensão) e editora do
 -- documento ligado (ch_documents). Só as chaves "distintivas" (3 palavras ou mais e 20 letras ou mais) valem como pedaço de um
@@ -102,36 +132,60 @@ as $$ select btrim(regexp_replace(public.fold_text(p_text), '[^a-z0-9]+', ' ', '
 create or replace function public.ch_complementar_keys() returns table (chave text, distintiva boolean)
   language sql stable security definer set search_path = ''
 as $$
-  select distinct k.chave, char_length(k.chave) >= 20 and array_length(string_to_array(k.chave, ' '), 1) >= 3
-  from (select public.ch_text_key(v.x) as chave
-        from public.ch_sources s left join public.ch_documents d on d.id = s.document_id
-        cross join lateral (values (s.title), (s.organ), (d.name), (regexp_replace(d.name, '\.(pdf|docx?|pptx?|txt|epub)\s*$', '', 'i')), (d.publisher)) v (x)
-        where s.audience = 'complementar' and v.x is not null) k
-  where char_length(k.chave) >= 5
+  select distinct k.chave, k.dist or (char_length(k.chave) >= 20 and array_length(string_to_array(k.chave, ' '), 1) >= 3)
+  from (
+    select public.ch_text_key(v.x) as chave, false as dist
+    from public.ch_sources s left join public.ch_documents d on d.id = s.document_id
+    cross join lateral (values (s.title), (s.organ), (s.authors), (d.name), (regexp_replace(d.name, '\.(pdf|docx?|pptx?|txt|epub)\s*$', '', 'i')), (d.publisher), (d.author)) v (x)
+    where s.audience = 'complementar' and v.x is not null
+    union all
+    -- siglas e apelidos cadastrados pelo administrador: valem também como palavra dentro de um texto
+    select public.ch_text_key(a), true
+    from public.ch_sources s cross join lateral unnest(s.aliases) a
+    where s.audience = 'complementar'
+  ) k
+  where char_length(k.chave) >= 3 and (k.dist or char_length(k.chave) >= 5)
 $$;
 
 -- O texto (ou o link) identifica uma fonte complementar? Sim quando é IGUAL (normalizado) a uma chave da biblioteca, quando contém
--- uma chave distintiva, quando o link é o mesmo, ou quando cita "Sangue nos Olhos" (regra do dono, vale antes do cadastro).
+-- uma chave distintiva, quando usa a palavra "apostila", quando o link é o mesmo ou do mesmo site, ou quando cita "Sangue nos Olhos"
+-- (regra do dono, vale antes do cadastro; também sem espaços e com letras parecidas).
 create or replace function public.ch_complementar_hit(p_text text, p_url text default null) returns boolean
   language sql stable security definer set search_path = ''
 as $$
-  with k as (select public.ch_text_key(p_text) as t)
-  select coalesce((select k.t like '%sangue nos olhos%' from k), false)
+  with k as (select public.ch_text_key(p_text) as t, public.ch_text_key_ns(p_text) as n)
+  select coalesce((select k.t like '%sangue nos olhos%' or k.n like '%sanguenosolhos%' or ' ' || k.t || ' ' ~ '[^a-z]apostilas?[^a-z]' from k), false)
       or exists (
         select 1 from public.ch_complementar_keys() c, k
-        where k.t <> '' and (k.t = c.chave or (c.distintiva and ' ' || k.t || ' ' like '% ' || c.chave || ' %')))
+        where k.t <> '' and (k.t = c.chave
+          or (c.distintiva and (' ' || k.t || ' ' like '% ' || c.chave || ' %' or (char_length(replace(c.chave, ' ', '')) >= 12 and k.n like '%' || replace(c.chave, ' ', '') || '%')))))
       or (nullif(btrim(coalesce(p_url, '')), '') is not null
-          and exists (select 1 from public.ch_sources s where s.audience = 'complementar' and s.url is not null and public.ch_url_norm(p_url) = public.ch_url_norm(s.url)))
+          and exists (select 1 from public.ch_sources s
+                       where s.audience = 'complementar' and s.url is not null
+                         and (public.ch_url_norm(p_url) = public.ch_url_norm(s.url)
+                              or (public.ch_url_host(p_url) is not null and public.ch_url_host(p_url) = public.ch_url_host(s.url)))))
+$$;
+
+-- O arquivo (pelo SHA-256 ou pelo nome) é de um documento de fonte complementar?
+create or replace function public.ch_complementar_file(p_sha text, p_name text default null) returns boolean
+  language sql stable security definer set search_path = ''
+as $$
+  select (nullif(btrim(coalesce(p_sha, '')), '') is not null and exists (
+            select 1 from public.ch_sources s left join public.ch_documents d on d.id = s.document_id
+             where s.audience = 'complementar' and (s.sha256 = lower(btrim(p_sha)) or d.sha256 = lower(btrim(p_sha)))))
+      or (nullif(btrim(coalesce(p_name, '')), '') is not null and public.ch_complementar_hit(regexp_replace(p_name, '^.*/', ''), null))
 $$;
 
 -- Texto LIVRE já publicado que cita a apostila: "Sangue nos Olhos", a palavra "apostila" ou uma chave distintiva da biblioteca.
 -- (Texto livre não casa por igualdade: só por citação.) Ponto único para refinar o que conta como citação.
 create or replace function public.ch_text_cites(p_text text, p_keys text[]) returns boolean
-  language sql immutable set search_path = ''
+  language sql stable set search_path = ''
 as $$
   select ' ' || public.ch_text_key(p_text) || ' ' ~ '[^a-z]apostilas?[^a-z]'
       or public.ch_text_key(p_text) like '%sangue nos olhos%'
-      or exists (select 1 from unnest(p_keys) k where k <> '' and ' ' || public.ch_text_key(p_text) || ' ' like '% ' || k || ' %')
+      or public.ch_text_key_ns(p_text) like '%sanguenosolhos%'
+      or exists (select 1 from unnest(p_keys) k where k <> '' and (' ' || public.ch_text_key(p_text) || ' ' like '% ' || k || ' %'
+                                                                    or (char_length(replace(k, ' ', '')) >= 12 and public.ch_text_key_ns(p_text) like '%' || replace(k, ' ', '') || '%')))
 $$;
 
 -- Tira de um JSON (só para o aluno; nada é apagado no banco) todo texto que cita a apostila: o campo vira nulo e o item de lista some.
@@ -208,14 +262,13 @@ as $$
               else p_text end
 $$;
 
--- Cartão de atualização só vai ao aluno se pelo menos uma fonte OFICIAL o sustenta: cartão cujas fontes eram todas complementares
--- (ou passaram a ser) não mostra "Conduta atual conferida". Cartão sem fonte gravada (registro antigo) segue como estava.
+-- Cartão de atualização só vai ao aluno se pelo menos uma fonte OFICIAL o sustenta (regra do dono): cartão cujas fontes eram todas
+-- complementares, ou que não tem fonte nenhuma gravada, não mostra "Conduta atual conferida".
 create or replace function public.ch_card_shows(p_sources jsonb) returns boolean
   language sql stable security definer set search_path = ''
 as $$
   select public.is_staff() or public.ch_is_reviewer()
-      or jsonb_array_length(case when jsonb_typeof(p_sources) = 'array' then p_sources else '[]'::jsonb end) = 0
-      or jsonb_array_length(public.ch_student_sources(p_sources)) > 0
+      or jsonb_array_length(case when jsonb_typeof(public.ch_student_sources(p_sources)) = 'array' then public.ch_student_sources(p_sources) else '[]'::jsonb end) > 0
 $$;
 
 -- Termos que nenhum texto voltado ao aluno pode citar (o servidor confere a saída da IA contra esta lista).
@@ -234,6 +287,9 @@ alter table public.lessons add column if not exists guideline_hidden boolean not
 alter table public.lesson_materials add column if not exists hidden_from_student boolean not null default false;
 alter table public.guideline_updates add column if not exists source_hidden boolean not null default false;
 alter table public.podcast_sources add column if not exists complementar boolean not null default false;
+-- SHA-256 do arquivo enviado (o servidor grava por ch_worker_file_sha): reconhece a apostila mesmo com nome de arquivo neutro
+alter table public.lesson_materials add column if not exists sha256 text check (sha256 is null or sha256 ~ '^[0-9a-f]{64}$');
+alter table public.podcast_sources add column if not exists sha256 text check (sha256 is null or sha256 ~ '^[0-9a-f]{64}$');
 -- mesma coluna da 20261003009593 (o app_podcast abaixo depende dela; colar a 9620 antes da 9593 também funciona)
 alter table public.podcast_sources add column if not exists title_by_staff boolean not null default false;
 
@@ -253,12 +309,12 @@ create or replace function public.ch_lesson_materials_hidden_flag() returns trig
   language plpgsql security definer set search_path = ''
 as $$
 begin
-  new.hidden_from_student := public.ch_complementar_hit(new.title, new.url);
+  new.hidden_from_student := public.ch_complementar_hit(new.title, new.url) or public.ch_complementar_file(new.sha256, new.storage_path);
   return new;
 end
 $$;
 drop trigger if exists lesson_materials_hidden_flag on public.lesson_materials;
-create trigger lesson_materials_hidden_flag before insert or update of title, url on public.lesson_materials
+create trigger lesson_materials_hidden_flag before insert or update of title, url, storage_path, sha256 on public.lesson_materials
   for each row execute function public.ch_lesson_materials_hidden_flag();
 
 create or replace function public.ch_guideline_updates_hidden_flag() returns trigger
@@ -280,13 +336,44 @@ as $$
 begin
   update public.lessons set guideline_hidden = public.ch_complementar_hit(guideline_title, guideline_url)
    where guideline_hidden is distinct from public.ch_complementar_hit(guideline_title, guideline_url);
-  update public.lesson_materials set hidden_from_student = public.ch_complementar_hit(title, url)
-   where hidden_from_student is distinct from public.ch_complementar_hit(title, url);
+  update public.lesson_materials set hidden_from_student = (public.ch_complementar_hit(title, url) or public.ch_complementar_file(sha256, storage_path))
+   where hidden_from_student is distinct from (public.ch_complementar_hit(title, url) or public.ch_complementar_file(sha256, storage_path));
   update public.guideline_updates set source_hidden = public.ch_complementar_hit(coalesce(institution, '') || ' ' || coalesce(document_title, ''), source_url)
    where source_hidden is distinct from public.ch_complementar_hit(coalesce(institution, '') || ' ' || coalesce(document_title, ''), source_url);
 end
 $$;
 -- (a marca é recalculada com o gatilho acima; o UPDATE desta função só roda quando a marca muda)
+
+-- Recalcula as marcas quando uma fonte complementar é criada ou renomeada, ou quando o documento ligado a ela muda de nome.
+create or replace function public.ch_refresh_hidden_flags_trg() returns trigger
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  perform public.ch_refresh_hidden_flags();
+  return null;
+end
+$$;
+drop trigger if exists ch_sources_refresh_flags on public.ch_sources;
+create trigger ch_sources_refresh_flags after insert or update of title, organ, url, authors, aliases, sha256, document_id on public.ch_sources
+  for each row when (new.audience = 'complementar') execute function public.ch_refresh_hidden_flags_trg();
+drop trigger if exists ch_documents_refresh_flags on public.ch_documents;
+create trigger ch_documents_refresh_flags after update of name, author, publisher, sha256 on public.ch_documents
+  for each row execute function public.ch_refresh_hidden_flags_trg();
+
+-- O servidor (que tem os bytes do arquivo) grava o SHA-256 do arquivo enviado em aula ou podcast; a marca é recalculada.
+create or replace function public.ch_worker_file_sha(p_path text, p_sha text) returns integer
+  language plpgsql security definer set search_path = ''
+as $$
+declare n integer := 0; m integer;
+begin
+  if p_sha is null or p_sha !~ '^[0-9a-f]{64}$' or nullif(btrim(coalesce(p_path, '')), '') is null then return 0; end if;
+  update public.lesson_materials set sha256 = p_sha where storage_path = p_path and sha256 is distinct from p_sha;
+  get diagnostics m = row_count; n := n + m;
+  update public.podcast_sources set sha256 = p_sha where storage_path = p_path and sha256 is distinct from p_sha;
+  get diagnostics m = row_count; n := n + m;
+  return n;
+end
+$$;
 
 -- (A política de leitura de lesson_materials fica como a 20261003009580 deixou: só a equipe lê a tabela direto.)
 
@@ -304,6 +391,15 @@ begin
   end if;
   select * into s from public.ch_sources where id = p_source_id for update;
   if not found then raise exception 'Fonte não encontrada.' using errcode = 'P0002'; end if;
+  if p_audience = 'complementar' and s.audience <> 'complementar' then
+    -- título identificável: com menos de 3 palavras, ou igual ao rótulo de uma fonte oficial, esconderia fonte oficial do aluno
+    if array_length(string_to_array(public.ch_text_key(s.title), ' '), 1) < 3 then
+      raise exception 'O título desta fonte tem menos de 3 palavras (%): corrija o título para algo identificável antes de marcar como complementar.', s.title using errcode = '22023';
+    end if;
+    if exists (select 1 from public.ch_sources o where o.id <> s.id and o.audience = 'oficial' and public.ch_text_key(o.title) = public.ch_text_key(s.title)) then
+      raise exception 'Existe uma fonte oficial com o mesmo título (%): corrija o título desta antes de marcar como complementar.', s.title using errcode = '22023';
+    end if;
+  end if;
   if s.audience <> p_audience then
     -- o registro (ch_audit e Registro da Administração) é gravado pelo gatilho ch_sources_audience_log, que também pega as trocas
     -- automáticas (dar nível E a uma fonte oficial a torna complementar)
@@ -371,7 +467,9 @@ as $$
     'seal_checked_at', case when a.temporal_status in ('CURRENT', 'UPDATED_BUT_SAME_ANSWER') and (public.question_freshness(a.question_id) ->> 'score')::int >= 80 then a.last_source_check_at end,
     'freshness', public.question_freshness(a.question_id),
     -- nova atualização em revisão: a conduta mostrada segue a última versão revisada
-    'update_in_review', exists (select 1 from public.question_updates u where u.question_id = a.question_id and u.status in ('queued', 'analyzing', 'review_required')),
+    'update_in_review', exists (select 1 from public.question_updates u where u.question_id = a.question_id and u.status in ('queued', 'analyzing', 'review_required')
+                      and not exists (select 1 from public.ch_sources os where os.id = u.old_source_id and os.audience = 'complementar')
+                      and not exists (select 1 from public.ch_sources ns where ns.id = u.new_source_id and ns.audience = 'complementar')),
     'update_card', (select jsonb_build_object('version', k.version, 'temporal_status', k.temporal_status, 'impact_level', k.impact_level, 'official_answer', k.official_answer, 'official_status', k.official_status,
                       'official_source', public.ch_student_text(k.official_source), 'current_answer', k.current_answer, 'what_changed', k.what_changed, 'why_it_matters', k.why_it_matters, 'options_affected', k.options_affected,
                       'sources', public.ch_student_sources(k.sources), 'effective_date', k.effective_date, 'verified_at', k.verified_at)
@@ -527,7 +625,7 @@ as $$
                             and c.id in (select (jsonb_array_elements_text(l -> 'sources'))::bigint from jsonb_array_elements(p.script -> 'lines') l)))
                        order by s.n)
       from (select x.*, row_number() over (order by x.position, x.created_at) as n from public.podcast_sources x where x.podcast_id = p.id
-               and (public.is_staff() or public.ch_is_reviewer() or not (x.complementar or public.ch_complementar_hit(x.title, x.url)))) s), '[]'::jsonb),
+               and (public.is_staff() or public.ch_is_reviewer() or not (x.complementar or public.ch_complementar_hit(x.title, x.url) or public.ch_complementar_file(x.sha256, x.storage_path)))) s), '[]'::jsonb),
     'lesson', (select jsonb_build_object('id', l.id, 'title', l.title) from public.lessons l where l.id = p.lesson_id and l.published))
   from public.podcasts p
   where p.id = p_id and p.status = 'published' and (select auth.uid()) is not null
@@ -607,7 +705,7 @@ as $$
     'years', to_jsonb(u.years), 'priority', u.priority, 'publication_label', u.publication_label, 'institution', case when u.source_hidden and not public.is_staff() then null else u.institution end,
     'document_title', case when u.source_hidden and not public.is_staff() then null else u.document_title end,
     'source_url', case when u.source_hidden and not public.is_staff() then null else u.source_url end, 'before_text', u.before_text, 'current_conduct', u.current_conduct,
-    'reviewed', u.review_status = 'approved', 'reviewed_at', case when u.review_status = 'approved' then u.reviewed_at end,
+    'reviewed', u.review_status = 'approved' and not (u.source_hidden and not public.is_staff()), 'reviewed_at', case when u.review_status = 'approved' and not (u.source_hidden and not public.is_staff()) then u.reviewed_at end,
     'published', u.published, 'updated_at', u.updated_at)
   || case when p_full then jsonb_build_object(
     'timeline', u.timeline, 'clinical_impact', u.clinical_impact, 'exam_impact', u.exam_impact,
@@ -725,16 +823,127 @@ begin
   -- lessons e guideline_updates: o aluno lê direto só as colunas que não carregam fonte digitada pela equipe
   select string_agg(quote_ident(column_name), ', ' order by ordinal_position) into v_cols
     from information_schema.columns
-   where table_schema = 'public' and table_name = 'lessons' and column_name not in ('guideline_title', 'guideline_url', 'guideline_hidden');
+   where table_schema = 'public' and table_name = 'lessons' and column_name not in ('guideline_title', 'guideline_url', 'guideline_hidden', 'created_by');
   revoke select on table public.lessons from anon, authenticated;
   execute format('grant select (%s) on table public.lessons to anon, authenticated', v_cols);
   select string_agg(quote_ident(column_name), ', ' order by ordinal_position) into v_cols
     from information_schema.columns
-   where table_schema = 'public' and table_name = 'guideline_updates' and column_name not in ('institution', 'document_title', 'source_url', 'source_hidden');
+   where table_schema = 'public' and table_name = 'guideline_updates' and column_name not in ('institution', 'document_title', 'source_url', 'source_hidden', 'source_checked_at', 'review_note', 'reviewed_by', 'updated_by', 'legacy', 'origin');
   revoke select on table public.guideline_updates from anon, authenticated;
   execute format('grant select (%s) on table public.guideline_updates to anon, authenticated', v_cols);
 end
 $cols$;
+
+create or replace function public.ch_worker_claims_by_ids(p_ids uuid[]) returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object('id', c.id, 'statement', c.statement, 'proposed_text', c.proposed_text, 'status', c.status,
+           'critical_kinds', c.critical_kinds, 'context', c.context, 'document_id', c.document_id,
+           'evidence', (select coalesce(jsonb_agg(jsonb_build_object('source_id', s.id, 'source', s.title, 'organ', s.organ, 'version', e.source_version,
+                          'url', s.url, 'audience', s.audience, 'published_on', s.published_on, 'section', e.section, 'page', e.page, 'quote', e.quote, 'verdict', e.verdict,
+                          'simulated', coalesce((e.numeric_check ->> 'simulated')::boolean, false)) order by e.created_at), '[]'::jsonb)
+                        from public.ch_evidence e join public.ch_sources s on s.id = e.source_id where e.claim_id = c.id and not e.stale))), '[]'::jsonb)
+  from public.ch_claims c where c.id = any (p_ids)
+$$;
+revoke execute on function public.ch_worker_claims_by_ids(uuid[]) from public, anon, authenticated;
+
+-- Envolve funções existentes SEM copiar o corpo: a função antiga passa a se chamar ch_raw_<nome> (só uma vez; colar de novo não
+-- renomeia de novo) e o nome original fica com um invólucro que filtra a saída ao aluno ou confere a entrada da equipe.
+create or replace function public.ch_take_raw(p_name text, p_args text) returns void
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_oid oid := to_regprocedure('public.' || p_name || '(' || p_args || ')');
+begin
+  if v_oid is null then raise exception 'Função % não existe.', p_name; end if;
+  if position('ch_wrapper' in pg_get_functiondef(v_oid)) = 0 then
+    execute format('alter function public.%I(%s) rename to %I', p_name, p_args, 'ch_raw_' || p_name);
+    execute format('revoke execute on function public.%I(%s) from public, anon, authenticated', 'ch_raw_' || p_name, p_args);
+  end if;
+end
+$$;
+revoke execute on function public.ch_take_raw(text, text) from public, anon, authenticated;
+
+select public.ch_take_raw('app_tutor_session', 'uuid');
+select public.ch_take_raw('app_podcasts', 'text');
+select public.ch_take_raw('app_admin_podcast_approve', 'uuid, text');
+select public.ch_take_raw('app_admin_podcast_publish', 'uuid, boolean');
+select public.ch_take_raw('app_admin_review_guideline_update', 'uuid, text, text');
+select public.ch_take_raw('app_admin_publish_guideline_update', 'uuid, boolean');
+
+-- Conversa do Tutor e lista de podcasts: mesma retirada de texto que cita a apostila, só para o aluno (histórico antigo incluído).
+create or replace function public.app_tutor_session(p_session_id uuid) returns jsonb
+  language sql stable security definer set search_path = ''
+as $$ select public.ch_scrub_json(public.ch_raw_app_tutor_session(p_session_id)) /* ch_wrapper */ $$;
+create or replace function public.app_podcasts(p_area text default null) returns jsonb
+  language sql stable security definer set search_path = ''
+as $$ select public.ch_scrub_json(public.ch_raw_app_podcasts(p_area)) /* ch_wrapper */ $$;
+revoke execute on function public.app_tutor_session(uuid) from public, anon;
+revoke execute on function public.app_podcasts(text) from public, anon;
+
+-- Aprovar ou publicar roteiro de podcast que cita a apostila: recusado (o aviso cites_material não é só aviso).
+create or replace function public.ch_podcast_script_check(p_id uuid) returns void
+  language plpgsql stable security definer set search_path = ''
+as $$
+begin
+  if exists (select 1 from public.podcasts p
+              where p.id = p_id and public.ch_text_cites(concat_ws(' ', p.title, p.topic, (select string_agg(l ->> 'text', ' ') from jsonb_array_elements(coalesce(p.script -> 'lines', '[]'::jsonb)) l)),
+                    coalesce((select array_agg(c.chave) from public.ch_complementar_keys() c where c.distintiva), '{}'::text[]))) then
+    raise exception 'O roteiro cita apostila ou material de apoio (nome do material, da editora ou a palavra "apostila"). Tire a citação antes de aprovar ou publicar.' using errcode = '22023';
+  end if;
+end
+$$;
+revoke execute on function public.ch_podcast_script_check(uuid) from public, anon, authenticated;
+create or replace function public.app_admin_podcast_approve(p_id uuid, p_note text) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  perform public.assert_staff(); -- ch_wrapper
+  perform public.ch_podcast_script_check(p_id);
+  return public.ch_raw_app_admin_podcast_approve(p_id, p_note);
+end
+$$;
+create or replace function public.app_admin_podcast_publish(p_id uuid, p_published boolean) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  perform public.assert_staff(); -- ch_wrapper
+  if coalesce(p_published, false) then perform public.ch_podcast_script_check(p_id); end if;
+  return public.ch_raw_app_admin_podcast_publish(p_id, p_published);
+end
+$$;
+revoke execute on function public.app_admin_podcast_approve(uuid, text) from public, anon;
+revoke execute on function public.app_admin_podcast_publish(uuid, boolean) from public, anon;
+
+-- Atualização/diretriz: aprovar e publicar só com documento OFICIAL (o documento escondido é uma fonte complementar).
+create or replace function public.ch_guideline_official_check(p_id uuid) returns void
+  language plpgsql stable security definer set search_path = ''
+as $$
+begin
+  if exists (select 1 from public.guideline_updates u where u.id = p_id and u.source_hidden) then
+    raise exception 'O documento desta atualização é uma fonte complementar (apostila): o aluno não pode ver essa fonte. Para aprovar ou publicar, use um documento oficial.' using errcode = '22023';
+  end if;
+end
+$$;
+revoke execute on function public.ch_guideline_official_check(uuid) from public, anon, authenticated;
+create or replace function public.app_admin_review_guideline_update(p_id uuid, p_decision text, p_note text) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  if p_decision = 'approve' and (select auth.uid()) is not null and (public.is_staff() or public.ch_is_reviewer()) then perform public.ch_guideline_official_check(p_id); end if; -- ch_wrapper
+  return public.ch_raw_app_admin_review_guideline_update(p_id, p_decision, p_note);
+end
+$$;
+create or replace function public.app_admin_publish_guideline_update(p_id uuid, p_published boolean) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  if coalesce(p_published, false) and (select auth.uid()) is not null and (public.is_staff() or public.ch_is_reviewer()) then perform public.ch_guideline_official_check(p_id); end if; -- ch_wrapper
+  return public.ch_raw_app_admin_publish_guideline_update(p_id, p_published);
+end
+$$;
+revoke execute on function public.app_admin_review_guideline_update(uuid, text, text) from public, anon;
+revoke execute on function public.app_admin_publish_guideline_update(uuid, boolean) from public, anon;
 
 -- Marca guardada das linhas que já existem (só onde bate com a biblioteca ou com "Sangue nos Olhos").
 select public.ch_refresh_hidden_flags();
@@ -756,7 +965,7 @@ $$;
 -- Varredura para o administrador: texto JÁ publicado ao aluno que cita "Sangue nos Olhos", "apostila" ou o título/órgão de uma
 -- fonte complementar (a conferência da IA só vale para textos novos). Pode ter falso positivo: a equipe lê e decide.
 create or replace function public.ch_text_mentions(p_text text, p_terms text[]) returns boolean
-  language sql immutable set search_path = ''
+  language sql stable set search_path = ''
 as $$
   select ' ' || public.ch_text_key(p_text) || ' ' ~ '[^a-z]apostilas?[^a-z]'
       or exists (select 1 from unnest(p_terms) k where k <> '' and ' ' || public.ch_text_key(p_text) || ' ' like '% ' || k || ' %')
@@ -813,6 +1022,7 @@ begin
       ('app_question_commentary', 'ch_scrub_json'), ('practice_correction_view', 'ch_scrub_json'), ('tutor_truth', 'ch_scrub_json'),
       ('app_question_timeline', 'ch_scrub_json'), ('app_podcast', 'ch_scrub_json'), ('lesson_view', 'ch_scrub_json'),
       ('guideline_update_view', 'ch_scrub_json'), ('lesson_materials_json', 'hidden_from_student'), ('app_lesson_material', 'hidden_from_student'),
+      ('app_tutor_session', 'ch_wrapper'), ('app_podcasts', 'ch_wrapper'), ('app_admin_podcast_approve', 'ch_wrapper'), ('app_admin_podcast_publish', 'ch_wrapper'), ('app_admin_review_guideline_update', 'ch_wrapper'), ('app_admin_publish_guideline_update', 'ch_wrapper'),
       ('app_lessons', 'security definer'), ('app_lesson', 'security definer'), ('app_guideline_updates', 'security definer'), ('app_guideline_update', 'security definer')
     ) as x (nome, marca)
   loop
@@ -824,6 +1034,25 @@ begin
   return jsonb_build_object('ok', cardinality(v_falta) = 0, 'faltando', to_jsonb(v_falta));
 end
 $$;
+
+-- Siglas e apelidos da fonte ("SNO"): só administrador. Texto que cite um deles nunca chega ao aluno.
+create or replace function public.app_ch_set_source_aliases(p_source_id uuid, p_aliases text[]) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_list text[];
+begin
+  perform public.assert_admin();
+  select coalesce(array_agg(distinct btrim(a)), '{}') into v_list from unnest(coalesce(p_aliases, '{}')) a where char_length(public.ch_text_key(a)) >= 3;
+  update public.ch_sources set aliases = v_list where id = p_source_id;
+  if not found then raise exception 'Fonte não encontrada.' using errcode = 'P0002'; end if;
+  perform public.ch_log('source.aliases', p_source_id::text, jsonb_build_object('aliases', to_jsonb(v_list)));
+  return jsonb_build_object('id', p_source_id, 'aliases', to_jsonb(v_list));
+end
+$$;
+
+-- Evidências de uma afirmação para a IA e a equipe: agora com a classe da fonte (a seção "Referências" do material publicado só
+-- imprime fonte OFICIAL; corpo da 20261003001500, a única definição).
 
 -- ---------------------------------------------------------------- 99. permissões
 do $perm$
@@ -842,6 +1071,12 @@ begin
   revoke execute on function public.app_guideline_updates(text, integer, text) from anon;
   revoke execute on function public.app_guideline_update(text) from anon;
   revoke execute on function public.ch_text_key(text) from public, anon, authenticated;
+  revoke execute on function public.ch_text_key_ns(text) from public, anon, authenticated;
+  revoke execute on function public.ch_url_host(text) from public, anon, authenticated;
+  revoke execute on function public.ch_complementar_file(text, text) from public, anon, authenticated;
+  revoke execute on function public.ch_refresh_hidden_flags_trg() from public, anon, authenticated;
+  revoke execute on function public.ch_worker_file_sha(text, text) from public, anon, authenticated;
+  revoke execute on function public.app_ch_set_source_aliases(uuid, text[]) from public, anon;
   revoke execute on function public.ch_complementar_hit(text, text) from public, anon, authenticated;
   revoke execute on function public.ch_source_item_hit(jsonb) from public, anon, authenticated;
   revoke execute on function public.ch_student_sources(jsonb) from public, anon, authenticated;
