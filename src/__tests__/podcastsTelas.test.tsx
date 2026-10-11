@@ -32,7 +32,7 @@ const LOCKED_CHOICES = { ...SCRIPT_CHOICES, override_allowed: false, configured:
 const PROVIDERS = {
   script: SCRIPT_CHOICES,
   tts: [
-    { kind: "gemini", label: "Gemini (duas vozes na mesma conversa)", ready: false, model: "gemini-3.8-flash-tts", pending: "indisponível por enquanto (desligada no servidor; PODCAST_TTS_GEMINI_ENABLED=1 liga)." },
+    { kind: "gemini", label: "Gemini (duas vozes na mesma conversa)", ready: false, model: "gemini-3.8-flash-tts", pending: "indisponível por enquanto (desligada no servidor)." },
     { kind: "openai", label: "OpenAI (uma voz por fala)", ready: true, model: "gpt-4o-mini-tts", pending: null },
   ],
   voices: { gemini: ["Sulafat", "Puck"], openai: ["marin", "cedar", "coral"] },

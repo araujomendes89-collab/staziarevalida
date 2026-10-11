@@ -231,19 +231,55 @@ describe("Peças do servidor (sem rede)", () => {
     const off = ttsStatus("gemini", env);
     expect(off).toMatchObject({ ready: false, kind: "gemini" });
     expect(off.pending).toMatch(/indisponível por enquanto/);
-    expect(off.pending).toContain("PODCAST_TTS_GEMINI_ENABLED=1");
+    expect(off.pending).not.toMatch(/PODCAST_TTS|[A-Z]{3,}_[A-Z_]+/); // o nome da variável não vai para a tela
+    expect(off.technical).toContain("PODCAST_TTS_GEMINI_ENABLED=1"); // fica só para o registro interno
     expect(ttsStatus("gemini", { ...env, PODCAST_TTS_GEMINI_ENABLED: "0" }).ready).toBe(false);
     expect(ttsStatus("gemini", { ...env, PODCAST_TTS_GEMINI_ENABLED: "true" }).ready).toBe(false);
     // ligada: volta como antes (e, sem a chave, o motivo volta a ser a chave)
     expect(ttsStatus("gemini", { ...env, PODCAST_TTS_GEMINI_ENABLED: "1" })).toEqual({ ready: true, kind: "gemini", model: "gemini-3.8-flash-tts", pending: null });
-    expect(ttsStatus("gemini", { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", PODCAST_TTS_GEMINI_ENABLED: "1" }).pending).toMatch(/Chave do Gemini ausente/);
+    expect(ttsStatus("gemini", { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", PODCAST_TTS_GEMINI_ENABLED: "1" }).pending).toMatch(/chave da voz do Gemini não está configurada/);
     // OpenAI segue pronta, com o modelo padrão
     expect(ttsStatus("openai", env)).toEqual({ ready: true, kind: "openai", model: "gpt-4o-mini-tts", pending: null });
     // a geração recusa a Gemini desligada sem chamar ninguém
     const fetchImpl = vi.fn();
     const lines = [{ speaker: "ANA" as const, text: "Olá!", style: "", sources: [] }];
-    await expect(synthesizePart("gemini", lines, pickVoices("gemini", null), { env, fetchImpl: fetchImpl as any })).rejects.toMatchObject({ status: 503, message: expect.stringContaining("PODCAST_TTS_GEMINI_ENABLED=1") });
+    await expect(synthesizePart("gemini", lines, pickVoices("gemini", null), { env, fetchImpl: fetchImpl as any })).rejects.toMatchObject({ status: 503, message: expect.stringContaining("indisponível por enquanto") });
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("erros da voz: português simples na tela; o código do erro e o nome da variável só no detalhe interno", async () => {
+    const env = { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", GEMINI_API_KEY: GEMINI_KEY, OPENAI_API_KEY: OPENAI_KEY, PODCAST_TTS_GEMINI_ENABLED: "1" };
+    const lines = [{ speaker: "ANA" as const, text: "Olá!", style: "", sources: [] }];
+    const answer = (status: number, body = "rate limit exceeded: quota") => (async () => new Response(body, { status })) as any;
+    const tecnico = /\b(429|401|403|500|503)\b|respondeu|quota|rate limit|CONTENT_HUB|_API_KEY|PODCAST_TTS|fetch failed|aborted|timeout/i;
+    for (const kind of ["openai", "gemini"] as const) {
+      const casos: [number, RegExp][] = [[429, /muitas chamadas|Espere/], [401, /recusou|acesso|administrador/i], [403, /recusou|acesso|administrador/i], [400, /recusou/], [500, /problema|instável|Tente de novo/], [503, /problema|instável|Tente de novo/]];
+      for (const [status, esperado] of casos) {
+        const error: any = await synthesizePart(kind, lines, pickVoices(kind, null), { env, fetchImpl: answer(status) }).catch((e) => e);
+        expect(error).toBeInstanceOf(Error);
+        expect(error.message, `${kind} ${status}`).toMatch(esperado);
+        expect(error.message, `${kind} ${status}`).not.toMatch(tecnico);
+        expect(error.technical).toContain(String(status)); // o detalhe fica para o registro interno
+        expect(error.technical).not.toContain(kind === "gemini" ? GEMINI_KEY : OPENAI_KEY);
+      }
+    }
+    // sem rede / tempo esgotado: nada de mensagem em inglês
+    for (const raw of [new TypeError("fetch failed"), Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" })]) {
+      const error: any = await synthesizePart("openai", lines, pickVoices("openai", null), { env, fetchImpl: (async () => { throw raw; }) as any }).catch((e) => e);
+      expect(error.message).toMatch(/serviço de voz/);
+      expect(error.message).not.toMatch(tecnico);
+      expect(error.technical).toContain(raw.message);
+    }
+    // resposta do Gemini sem áudio
+    const semAudio: any = await synthesizePart("gemini", lines, pickVoices("gemini", null), { env, fetchImpl: (async () => new Response(JSON.stringify({ steps: [] }), { status: 200 })) as any }).catch((e) => e);
+    expect(semAudio.message).toMatch(/não devolveu áudio/);
+    // sem autorização de envio / sem chave: o motivo na tela não traz nome de variável
+    for (const [kind, e] of [["openai", { NODE_ENV: "test" }], ["openai", { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1" }], ["gemini", { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", PODCAST_TTS_GEMINI_ENABLED: "1" }]] as const) {
+      const st = ttsStatus(kind, e as any);
+      expect(st.ready).toBe(false);
+      expect(st.pending).not.toMatch(/[A-Z]{3,}_[A-Z_]+/);
+      expect(st.technical).toMatch(/[A-Z]{3,}_[A-Z_]+/);
+    }
   });
 
   it("links: só https, nada da rede interna, página vira texto sem menu nem script", async () => {
@@ -508,6 +544,8 @@ describe("Áudio em partes, publicação e Flashcast", () => {
     const refused = await post(`${oa}/${podcastId}/audio/start`, editor, { provider: "gemini" });
     expect(refused.status).toBe(503);
     expect(refused.body.error).toMatch(/Voz indisponível.*indisponível por enquanto/);
+    expect(refused.body.error).not.toMatch(/PODCAST_TTS/);
+    expect(JSON.stringify(provs.tts)).not.toMatch(/PODCAST_TTS|technical|_API_KEY|ALLOW_EXTERNAL/); // o detalhe técnico não sai do servidor
     expect(oaCalls).toHaveLength(0);
 
     const before = (await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId })).audio_path;

@@ -22,7 +22,7 @@ import type { ModelRef } from "../ai/config";
 import { aiChoices } from "../ai/maestro";
 import { chunkPages, extractDocx, extractPdf, fetchLink, isPdf, isZip, MAX_SOURCE_BYTES, type ExtractedPage } from "./extract";
 import { checkScript, generateScript, PODCAST_PROMPT_VERSION, type PodcastScript, type ScriptLine, type SourceChunk } from "./script";
-import { DEFAULT_VOICES, pcmToMp3, pickVoices, SAMPLE_RATE, silence, splitParts, synthesizePart, ttsCost, ttsStatus, VOICE_OPTIONS, type PodcastVoices, type TtsKind } from "./audio";
+import { DEFAULT_VOICES, geminiTtsEnabled, pcmToMp3, pickVoices, SAMPLE_RATE, silence, splitParts, synthesizePart, ttsCost, ttsStatus, VOICE_OPTIONS, type PodcastVoices, type TtsKind } from "./audio";
 
 export const PODCASTS_BUCKET = "podcasts";
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -151,7 +151,11 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     try {
       await asUser(req, "app_admin_podcasts");
       const env = deps!.tts?.env ?? process.env;
-      const tts = TTS_KINDS.filter((k) => k !== "mock" || env.NODE_ENV !== "production").map((k) => ({ label: TTS_LABEL[k], ...ttsStatus(k, env), kind: k }));
+      const tts = TTS_KINDS.filter((k) => k !== "mock" || env.NODE_ENV !== "production").map((k) => {
+        const { technical, ...status } = ttsStatus(k, env); // o detalhe técnico fica no registro do servidor, não vai para a tela
+        if (technical && k !== "mock" && (k !== "gemini" || geminiTtsEnabled(env))) log(`podcasts: voz ${k} indisponível: ${technical}`);
+        return { label: TTS_LABEL[k], ...status, kind: k };
+      });
       res.json({ script: await aiChoices(deps!.db), tts, voices: VOICE_OPTIONS, default_voices: DEFAULT_VOICES });
     } catch (error) {
       fail(res, statusOf(error, 500), message(error));
@@ -385,7 +389,10 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       if (!TTS_KINDS.includes(kind)) throw httpError(400, "Escolha a voz da OpenAI ou do Gemini.");
       await staffPodcast(req);
       const st = ttsStatus(kind, deps!.tts?.env);
-      if (!st.ready) throw httpError(503, `Voz indisponível: ${st.pending}`);
+      if (!st.ready) {
+        if (st.technical) log(`podcasts: voz ${kind} recusada: ${st.technical}`);
+        throw httpError(503, `Voz indisponível: ${st.pending}`);
+      }
       const job = await service<any>("ch_worker_podcast_audio_job", { p_user: req.user!.id, p_podcast: req.params.id });
       const lines = normalizeLines(job.lines);
       if (lines.length < 2) throw httpError(409, "O roteiro aprovado está vazio.");
@@ -421,6 +428,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       try {
         pcm = Buffer.concat([await synthesizePart(manifest.provider, partLines, manifest.voices, deps!.tts), silence(320)]);
       } catch (error: any) {
+        log(`podcasts: voz falhou na parte ${index + 1} do episódio ${req.params.id}: ${error?.technical ?? message(error)}`);
         throw httpError(error?.status ?? 502, `A voz falhou na parte ${index + 1}: ${message(error)}`);
       }
       const mp3 = await pcmToMp3(pcm);
