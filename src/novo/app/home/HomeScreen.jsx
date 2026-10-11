@@ -7,17 +7,23 @@ import { Banner, Button, Card, EmptyState, Icon, TopicRow } from "../../ds";
 import { useSession } from "../session.jsx";
 import { isStaffRole } from "../admin/AdminScreen.jsx";
 import { areaLabel, formatClock, percent } from "../practice/format.js";
-import { KIND_LABEL, reasonText, trialTitle } from "./plan.js";
+import { KIND_LABEL, reasonText, trialDaysLeft, trialTitle } from "./plan.js";
 import { PlayError, PlayHeader, PlayLoading, PlayLower, TrailPreview, usePlayHome } from "../play/PlayDashboard.jsx";
 
 const DIAGNOSTIC_SIZE = 10;
 const R = { borderRadius: 24 };
 
+/** O aviso do teste vira alerta nos 2 últimos dias e depois que o teste acaba. */
+const trialEnding = (trial) => {
+  const left = trialDaysLeft(trial);
+  return left === null || left <= 2;
+};
+
 function TrialBanner({ trial, attempts, go }) {
   return (
     <Banner
-      tone={trial.days_left <= 2 ? "warning" : "brand"}
-      title={trialTitle(trial.days_left)}
+      tone={trialEnding(trial) ? "warning" : "brand"}
+      title={trialTitle(trial)}
       action={
         <Button size="sm" variant="secondary" onClick={() => go("planos")}>
           Ver planos
@@ -124,7 +130,7 @@ function HomeActive({ go, mobile, home, plan, startTask, toggleTask, busy, play 
   const playOn = s.data?.enabled !== false;
   return (
     <>
-      {home.trial && home.trial.days_left <= 2 && <TrialBanner trial={home.trial} attempts={home.attempts} go={go} />}
+      {home.trial && trialEnding(home.trial) && <TrialBanner trial={home.trial} attempts={home.attempts} go={go} />}
       {playOn && (s.error ? <PlayError retry={s.reload} /> : !s.data ? <PlayLoading /> : <PlayHeader summary={s.data} mobile={mobile} go={go} />)}
       {play.error && <Banner tone="danger">{play.error}</Banner>}
       <Card style={{ borderRadius: 28 }} padding={mobile ? 24 : 36}>

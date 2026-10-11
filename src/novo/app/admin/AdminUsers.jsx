@@ -13,6 +13,7 @@ import {
   LoadError,
   Loading,
   messageOf,
+  paidPlanLapsed,
   PLAN_LABEL,
   ROLE_LABEL,
   SUB_STATUS_LABEL,
@@ -23,8 +24,17 @@ import {
 
 const PAGE = 50;
 const roleTone = { admin: "danger", editor: "info", student: "neutral" };
-/** Plano como aparece: a equipe tem acesso pelo papel (sem teste); os outros, pela assinatura. */
-const planText = (u) => (isStaffRole(u.role) ? "Equipe · acesso completo" : `${PLAN_LABEL[u.plan] ?? u.plan} · ${SUB_STATUS_LABEL[u.status] ?? u.status}`);
+/**
+ * Plano como aparece: a equipe tem acesso pelo papel (sem teste); os outros, pela assinatura. Plano pago depois de
+ * "Plano pago até" (ou sem essa data) já não dá acesso: aparece como vencido.
+ */
+const planText = (u) => {
+  if (isStaffRole(u.role)) return "Equipe · acesso completo";
+  const text = `${PLAN_LABEL[u.plan] ?? u.plan} · ${SUB_STATUS_LABEL[u.status] ?? u.status}`;
+  if (!paidPlanLapsed(u)) return text;
+  return u.current_period_end ? `${text} · venceu em ${dateBR(u.current_period_end)}` : `${text} · sem data de fim`;
+};
+const planTone = (u) => (isStaffRole(u.role) ? "success" : paidPlanLapsed(u) ? "warning" : u.status === "active" ? "success" : u.status === "trialing" ? "pro" : "neutral");
 
 function Fact({ label, value }) {
   return (
@@ -118,7 +128,7 @@ function PlanForm({ user, onSaved }) {
       <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
         {isStaffRole(user.role)
           ? "Administrador e editor têm acesso completo pelo papel, sem período de teste. Este plano só passa a valer se a pessoa sair da equipe."
-          : "Para liberar acesso de cortesia, escolha Pro ou Elite com situação Ativo. A cobrança automática ainda não está ligada."}
+          : "Para liberar acesso de cortesia, escolha Pro ou Elite com situação Ativo e informe até quando vai em “Plano pago até”. Depois dessa data o acesso pago acaba sozinho; com pagamento pendente, ele continua por até 3 dias. A cobrança automática ainda não está ligada."}
       </div>
       {state.error && <Banner tone="danger">{state.error}</Banner>}
       <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
@@ -272,7 +282,7 @@ export function AdminUsers() {
                           {ROLE_LABEL[u.role]}
                         </Badge>
                       )}
-                      <Badge tone={isStaffRole(u.role) || u.status === "active" ? "success" : u.status === "trialing" ? "pro" : "neutral"} size="sm">
+                      <Badge tone={planTone(u)} size="sm">
                         {planText(u)}
                       </Badge>
                     </div>

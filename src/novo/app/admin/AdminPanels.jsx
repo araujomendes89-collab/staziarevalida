@@ -118,7 +118,7 @@ function PlanEditor({ plan, onSaved }) {
       <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 16 }} noValidate>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <h3 style={{ margin: 0, font: "var(--type-h4)" }}>{PLAN_LABEL[plan.code]}</h3>
-          <Badge tone={plan.active ? "success" : "neutral"}>{plan.active ? (trial ? "Oferecido no cadastro" : "À venda") : "Fora de venda"}</Badge>
+          <Badge tone={plan.active ? "success" : "neutral"}>{plan.active ? (trial ? "Oferecido no cadastro" : "Marcado para venda") : "Fora de venda"}</Badge>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
           <TextField label="Nome exibido" value={form.name} maxLength={60} onChange={(e) => set({ name: e.target.value })} />
@@ -126,8 +126,8 @@ function PlanEditor({ plan, onSaved }) {
           {!trial && <SelectField label="Cobrança" value={form.billing_period} onChange={(e) => set({ billing_period: e.target.value })} options={PERIODS} />}
         </div>
         <TextArea label="Descrição" rows={2} maxLength={400} value={form.description} onChange={(description) => set({ description })} />
-        <TextArea label="Recursos incluídos (um por linha)" rows={4} value={form.features} onChange={(features) => set({ features })} hint="Aparecem na tela de planos do aluno. Até 20 itens." />
-        <Switch label={trial ? "Oferecer teste grátis no cadastro" : "Colocar à venda"} description={trial ? "Os dias de teste ficam em Configurações." : "Só com preço definido."} checked={form.active} onChange={(e) => set({ active: e.target.checked })} />
+        <TextArea label="Recursos incluídos (um por linha)" rows={4} value={form.features} onChange={(features) => set({ features })} hint="Até 20 itens. Ficam guardados para a futura tela de planos do aluno." />
+        <Switch label={trial ? "Oferecer teste grátis no cadastro" : "Marcar para venda"} description={trial ? "Os dias de teste ficam em Configurações." : "Só com preço definido. Ainda não aparece para os alunos."} checked={form.active} onChange={(e) => set({ active: e.target.checked })} />
         {state.error && <Banner tone="danger">{state.error}</Banner>}
         <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
           {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Plano salvo.</span>}
@@ -147,8 +147,8 @@ export function AdminPlans() {
   if (!data) return <Loading />;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Banner tone="info" title="Cobrança ainda não ligada">
-        Nome, preço e recursos definidos aqui aparecem para os alunos. O pagamento on-line depende da integração com o provedor (próxima etapa). Até lá, libere planos manualmente em Usuários.
+      <Banner tone="info" title="Os planos ainda não aparecem para os alunos">
+        O app ainda não tem a tela de planos do aluno: nome, preço e recursos definidos aqui ficam guardados para quando ela existir. A cobrança será pela Stripe, numa próxima etapa. Até lá, libere planos manualmente em Usuários, com a data em “Plano pago até”.
       </Banner>
       {data.map((plan) => (
         <PlanEditor key={plan.code} plan={plan} onSaved={setData} />
@@ -514,6 +514,9 @@ const PROFANITY_CAP = [
   { value: "moderate", label: "Até liberados (Durona: contra a resposta, nunca contra o aluno)" },
 ];
 
+/** Mesma mensagem da trava do banco (…7900_correcoes_acesso.sql): Tutor ligado exige "Planos pagos + teste grátis". */
+const TUTOR_NEEDS_PLANS = "Para ligar o Tutor, ligue também “Planos pagos + teste grátis”. Sem isso, todo aluno usaria o Tutor de graça, com os limites do plano pago.";
+
 /** Liga e desliga o Tutor, define o limite por aluno e mostra o consumo. Toda mudança pede motivo e vai para o registro. */
 export function AdminTutor() {
   const { backend } = useSession();
@@ -578,8 +581,11 @@ export function AdminTutor() {
   if (error) return <LoadError error={error} retry={reload} />;
   if (!form) return <Loading />;
   const set = (patch) => (setForm((f) => ({ ...f, ...patch })), setState((s) => ({ ...s, done: false })));
+  // o banco recusa o Tutor ligado sem os planos pagos: avisa e trava o salvar antes
+  const needsPlans = form.enabled && !form.requires_pro;
   const save = async (event) => {
     event.preventDefault();
+    if (needsPlans) return;
     setState({ saving: true, error: null, done: false });
     try {
       const n = (x) => String(x ?? "").trim();
@@ -623,7 +629,8 @@ export function AdminTutor() {
               {server.realtime_voice ? `Voz em tempo real pronta no servidor (${server.realtime_model}).` : `Voz em tempo real não configurada: ${server.realtime_pending ?? "sem detalhe"} Sem ela, não há voz reserva: a Nexus usa a voz do professor ou o Chat.`}
             </Banner>
           )}
-          <Switch label="Planos pagos + teste grátis" description="Ligado: quem não assina tem o teste grátis do Tutor (começa no primeiro uso) e depois vê o convite para assinar. Desligado: o Tutor fica liberado para todos (só para testes internos)." checked={form.requires_pro} onChange={(e) => set({ requires_pro: e.target.checked })} />
+          <Switch label="Planos pagos + teste grátis" description="Ligado: quem não assina tem o teste grátis do Tutor (começa no primeiro uso) e depois vê o convite para assinar. Precisa ficar ligado para o Tutor ficar ligado." checked={form.requires_pro} onChange={(e) => set({ requires_pro: e.target.checked })} />
+          {needsPlans && <Banner tone="warning">{TUTOR_NEEDS_PLANS}</Banner>}
           <Switch label="Conversa por voz" description="Desligada: só o Chat, por escrito (sem as vozes e sem o microfone)." checked={form.voice_enabled} onChange={(e) => set({ voice_enabled: e.target.checked })} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
             <TextField label="Interações de texto por dia (plano pago)" value={form.daily_message_limit} inputMode="numeric" maxLength={3} onChange={(e) => set({ daily_message_limit: e.target.value })} hint="De 1 a 500. É o teto de gasto por aluno." />
@@ -716,7 +723,7 @@ export function AdminTutor() {
           {state.error && <Banner tone="danger">{state.error}</Banner>}
           <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
             {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Tutor atualizado.</span>}
-            <Button type="submit" loading={state.saving} disabled={reason.trim().length < 10}>Salvar Tutor</Button>
+            <Button type="submit" loading={state.saving} disabled={reason.trim().length < 10 || needsPlans}>Salvar Tutor</Button>
           </div>
         </div>
       </Card>
@@ -749,7 +756,7 @@ function summary(entry) {
   if (entry.action === "user.delete") return d.email;
   if (entry.action === "questions.import") return `${d.inserted} novas · ${d.updated} atualizadas · ${d.skipped} puladas`;
   if (entry.action === "station.review") return `${entry.target}: ${d.to === "approved" ? "aprovada" : "voltou para revisão"}${d.note ? ` · “${d.note}”` : ""}`;
-  if (entry.action === "plan.save") return `${PLAN_LABEL[entry.target] ?? entry.target}${d.active ? " · à venda" : ""}`;
+  if (entry.action === "plan.save") return `${PLAN_LABEL[entry.target] ?? entry.target}${d.active ? " · marcado para venda" : ""}`;
   if (entry.action.startsWith("question.")) return entry.target;
   // atualizações: o tema e, quando houver, o motivo (recusa, texto alterado, correção) e a nota do revisor
   if (entry.action.startsWith("guideline_update.")) return [d.topic, d.motivo, d.note && `Nota do revisor: ${d.note}`].filter(Boolean).join(" · ");
