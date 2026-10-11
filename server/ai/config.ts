@@ -12,7 +12,7 @@ import type { AiProviderId } from "./models";
 import { estimateCostUsd, type ModelPrice } from "./prices";
 import { googleAiAccess, GOOGLE_KEY_MISSING } from "./googleKey";
 
-export type AiFunctionKey = "criacao" | "verificacao" | "engenharia_reversa" | "assistente_preencher" | "assistente_conferir" | "assistente_revisar";
+export type AiFunctionKey = "criacao" | "verificacao" | "engenharia_reversa" | "assistente_preencher" | "assistente_conferir" | "assistente_revisar" | "busca_fontes";
 export type AiMode = "sozinha" | "linha" | "comite";
 
 export interface ModelRef {
@@ -27,6 +27,8 @@ export interface FunctionConfig {
   fallback: ModelRef | null;
   reviewers: ModelRef[];
   care: "rapido" | "caprichado";
+  /** Máximo de buscas na internet por pedido (só `busca_fontes`; nulo: o padrão, DEFAULT_MAX_SEARCHES). */
+  max_searches: number | null;
 }
 
 export interface AiConfig {
@@ -41,6 +43,13 @@ export const PROVIDER_IDS: AiProviderId[] = ["anthropic", "openai", "gemini", "o
 export const PROVIDER_NAMES: Record<AiProviderId, string> = { anthropic: "Claude", openai: "OpenAI", gemini: "Gemini", ollama: "Ollama" };
 export const DEFAULT_MODELS: Partial<Record<AiProviderId, string>> = { anthropic: "claude-sonnet-5-5", gemini: "gemini-2.5-pro" };
 const CACHE_MS = 10_000;
+/** Máximo de buscas na internet por pedido quando a função de busca não tem um salvo. */
+export const DEFAULT_MAX_SEARCHES = 5;
+/** O que a função de busca diz quando não tem configuração salva (ela nunca usa as variáveis de ambiente). */
+export const SEARCH_OFF = "Desligada: configure esta função na Central de IAs.";
+
+/** Funções que buscam na internet: só modo sozinha, sem Ollama, com máximo de buscas e preço por busca. */
+export const isSearchFunction = (fn: AiFunctionKey): boolean => fn === "busca_fontes";
 
 export const isProviderId = (v: unknown): v is AiProviderId => PROVIDER_IDS.includes(v as AiProviderId);
 
@@ -58,12 +67,13 @@ export function effectiveMaxOut(ref: ModelRef, maxOut: number, care?: string): n
 }
 
 /**
- * Pior caso de uma chamada pelo preço cadastrado (entrada em caracteres ÷ 4 e a saída máxima que de fato vai para a IA), a
- * mesma conta dos tetos. Ollama e modelo sem preço: 0.
+ * Pior caso de uma chamada pelo preço cadastrado (entrada em caracteres ÷ 4 e a saída máxima que de fato vai para a IA, mais o
+ * máximo de buscas na internet vezes o preço por busca), a mesma conta dos tetos. Ollama e modelo sem preço: 0. Não conta os
+ * tokens das buscas (os resultados voltam como entrada e não se sabem de antemão); o gasto real é gravado como veio.
  */
-export function callEstimateUsd(ref: ModelRef, price: ModelPrice | null, chars: number, maxOut: number, care?: string): number {
+export function callEstimateUsd(ref: ModelRef, price: ModelPrice | null, chars: number, maxOut: number, care?: string, searches = 0): number {
   if (ref.provider === "ollama" || !price) return 0;
-  return estimateCostUsd(price, chars, effectiveMaxOut(ref, maxOut, care)) ?? 0;
+  return estimateCostUsd(price, chars, effectiveMaxOut(ref, maxOut, care), searches) ?? 0;
 }
 
 /** Uma chamada típica de um uso da função: a saída pedida no código e a entrada que costuma ir (em caracteres). */
@@ -71,6 +81,8 @@ export interface TypicalCall {
   use: string;
   inputChars: number;
   maxOut: number;
+  /** Máximo de buscas na internet da chamada (só a função de busca). */
+  searches?: number;
 }
 
 /**
@@ -94,7 +106,17 @@ export const TYPICAL_CALLS: Record<AiFunctionKey, TypicalCall[]> = {
   assistente_preencher: [{ use: "assistentes", inputChars: 70_000, maxOut: 6000 }],
   assistente_conferir: [{ use: "assistentes", inputChars: 70_000, maxOut: 6000 }],
   assistente_revisar: [{ use: "assistentes", inputChars: 70_000, maxOut: 6000 }],
+  // busca de fontes oficiais (sources/search.ts): o pedido, a lista de sites e as instruções (~6 mil caracteres), 8.192 de saída
+  // e o máximo de buscas (o salvo na função, senão DEFAULT_MAX_SEARCHES)
+  busca_fontes: [{ use: "busca de fontes oficiais", inputChars: 6_000, maxOut: 8192, searches: DEFAULT_MAX_SEARCHES }],
 };
+
+/** As chamadas típicas da função; a de busca usa o máximo de buscas salvo nela (senão o padrão). */
+export function typicalCallsOf(key: AiFunctionKey, maxSearches?: number | null): TypicalCall[] {
+  const calls = TYPICAL_CALLS[key] ?? [];
+  if (!isSearchFunction(key)) return calls;
+  return calls.map((c) => ({ ...c, searches: maxSearches ?? DEFAULT_MAX_SEARCHES }));
+}
 
 /**
  * Conferência de rascunhos da Verificação (por comando, draftChecks.ts; revisão rodada 5): é o único lugar em que os conferentes
@@ -106,7 +128,7 @@ export const DRAFT_REVIEW_CALL: TypicalCall = { use: "conferência de rascunhos"
 
 /** Estimativa (pior caso, a mesma dos tetos) de uma chamada típica com esta IA. */
 export function typicalCallEstimate(ref: ModelRef, price: ModelPrice | null, call: TypicalCall, care?: string): number {
-  return callEstimateUsd(ref, price, call.inputChars, call.maxOut, care);
+  return callEstimateUsd(ref, price, call.inputChars, call.maxOut, care, call.searches ?? 0);
 }
 
 const usd = (n: number) => String(Number(n.toFixed(4))).replace(".", ",");
@@ -174,8 +196,8 @@ function perRunCapWarnings(members: CapMember[], cfg: AiConfig): string[] {
  * runFunction, que nenhuma tela nem tarefa usa). Reserva sem custo (Ollama) passa sempre pelo teto: sem aviso.
  */
 /** Por uso típico da função: a principal (p), a reserva (r), principal + reserva e duas da principal + reserva (a conta do aviso). */
-function chainRows(key: AiFunctionKey, primary: ModelRef, fallback: ModelRef | null, care: string | undefined, cfg: AiConfig) {
-  return (TYPICAL_CALLS[key] ?? []).map((call) => {
+function chainRows(key: AiFunctionKey, primary: ModelRef, fallback: ModelRef | null, care: string | undefined, cfg: AiConfig, maxSearches?: number | null) {
+  return typicalCallsOf(key, maxSearches).map((call) => {
     const p = typicalCallEstimate(primary, priceOf(cfg, primary), call, care);
     const r = fallback ? typicalCallEstimate(fallback, priceOf(cfg, fallback), call, care) : 0;
     return { use: call.use, p, r, rescue: p + r, full: 2 * p + r };
@@ -195,17 +217,17 @@ export function capGuidance(cfg: AiConfig, env: NodeJS.ProcessEnv = process.env)
     const primary = saved ? saved.primary : envFallbackRef(key, env);
     if (!primary) continue;
     const fallback = saved ? saved.fallback : envReserveRef(primary, env);
-    const paid = chainRows(key, primary, fallback, saved?.care, cfg).filter((x) => x.p > 0);
+    const paid = chainRows(key, primary, fallback, saved?.care, cfg, saved?.max_searches).filter((x) => x.p > 0);
     if (!paid.length) continue;
     by_function.push({ key, min_usd: Math.ceil(Number((Math.max(...paid.map((x) => x.full)) * 100).toFixed(6))) / 100 });
   }
   return { per_call_min_usd: by_function.length ? Math.max(...by_function.map((x) => x.min_usd)) : null, by_function };
 }
 
-function failureChainWarning(key: AiFunctionKey, primary: ModelRef | null, fallback: ModelRef | null, care: string | undefined, cfg: AiConfig): string | null {
+function failureChainWarning(key: AiFunctionKey, primary: ModelRef | null, fallback: ModelRef | null, care: string | undefined, cfg: AiConfig, maxSearches?: number | null): string | null {
   const { caps_enabled, per_run_cap_usd: cap } = cfg.settings;
   if (!caps_enabled || cap === null || !primary) return null;
-  const rows = chainRows(key, primary, fallback, care, cfg);
+  const rows = chainRows(key, primary, fallback, care, cfg, maxSearches);
   const paid = rows.filter((x) => x.p > 0);
   if (!paid.length) return null;
   const folga = hasFolga(primary, care) || (fallback && hasFolga(fallback, care)) ? FOLGA : "";
@@ -254,6 +276,7 @@ function convert(raw: any): AiConfig {
       fallback: toRef(f.fallback_ref),
       reviewers: Array.isArray(f.reviewers) ? (f.reviewers.map(toRef).filter(Boolean) as ModelRef[]) : [],
       care: f.care === "rapido" ? "rapido" : "caprichado",
+      max_searches: num(f.max_searches),
     };
   }
   const s = raw?.settings ?? {};
@@ -262,6 +285,7 @@ function convert(raw: any): AiConfig {
     model: p.model,
     input_per_mtok: Number(p.input_per_mtok),
     output_per_mtok: Number(p.output_per_mtok),
+    per_search_usd: num(p.per_search_usd),
     source_url: p.source_url ?? "",
     checked_on: p.checked_on ? String(p.checked_on).slice(0, 10) : "",
   }));
@@ -320,8 +344,10 @@ export function functionForPrompt(key: PromptKey): AiFunctionKey {
  * uma das 4 IAs (ex.: "mock") é pulado na cadeia. CONTENT_HUB_MODEL_CREATE só vale junto da IA de
  * CONTENT_HUB_AI_PROVIDER_CREATE (ou do Claude padrão quando nenhuma variável de IA está definida, como fazia o
  * resolveCreatorProvider); se a IA veio de CONTENT_HUB_AI_PROVIDER, o modelo é CONTENT_HUB_<IA>_MODEL ou o padrão dela.
+ * A função de busca na internet (busca_fontes) não tem modelo nas variáveis: sem configuração salva fica desligada (null).
  */
 export function envFallbackRef(fn: AiFunctionKey, env: NodeJS.ProcessEnv = process.env, uiKind?: AiProviderId): ModelRef | null {
+  if (isSearchFunction(fn)) return null; // a busca na internet só roda com configuração salva; as variáveis nunca a definem
   const get = (k: string) => (env[k] ?? "").trim();
   const assistant = fn.startsWith("assistente_");
   const modelFor = (id: AiProviderId, ...first: string[]) => {
@@ -394,15 +420,26 @@ export function keyPending(id: AiProviderId, env: NodeJS.ProcessEnv = process.en
 /** Aviso de função: a IA está sem chave neste servidor (o site). */
 const keyWarning = (id: AiProviderId) => `${PROVIDER_NAMES[id]}: sem chave neste servidor (site). O processamento da Central (Cloud Run) usa as chaves de lá; Aulas e Podcasts rodam no site e precisam da chave aqui.`;
 
-/** Problemas de uma ref: IA desligada, modelo fora da lista (não vazia) e modelo pago sem preço com os tetos ligados. */
-export function refProblems(ref: ModelRef, cfg: AiConfig): string[] {
+/**
+ * Problemas de uma ref: IA desligada, modelo fora da lista (não vazia) e modelo pago sem preço com os tetos ligados.
+ * Para uma função de busca (`fn`): o Ollama não busca na internet e, com os tetos ligados, o modelo precisa de preço por busca
+ * (sem ele, o teto não enxergaria o custo das buscas).
+ */
+export function refProblems(ref: ModelRef, cfg: AiConfig, fn?: AiFunctionKey): string[] {
   const out: string[] = [];
   const name = PROVIDER_NAMES[ref.provider] ?? ref.provider;
   const p = cfg.providers[ref.provider];
+  const price = cfg.prices.find((x) => x.provider === ref.provider && x.model === ref.model);
   if (p?.enabled !== true) out.push(`${name} está desligada na Central de IAs.`);
   if (p && p.models.length > 0 && !p.models.some((m) => m.id === ref.model)) out.push(`${name} ${ref.model}: modelo não está mais na lista.`);
-  if (cfg.settings.caps_enabled && ref.provider !== "ollama" && !cfg.prices.some((x) => x.provider === ref.provider && x.model === ref.model)) {
+  if (cfg.settings.caps_enabled && ref.provider !== "ollama" && !price) {
     out.push(`${name} ${ref.model}: sem preço cadastrado, e os tetos estão ligados.`);
+  }
+  if (fn && isSearchFunction(fn)) {
+    if (ref.provider === "ollama") out.push("Ollama não busca na internet.");
+    else if (cfg.settings.caps_enabled && price && (price.per_search_usd ?? null) === null) {
+      out.push(`${name} ${ref.model}: sem preço por busca cadastrado, e os tetos estão ligados.`);
+    }
   }
   return out;
 }
@@ -415,7 +452,7 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig, opts: 
   };
 
   const checkRef = (ref: ModelRef) => {
-    for (const m of refProblems(ref, cfg)) add(m);
+    for (const m of refProblems(ref, cfg, fc.key)) add(m);
   };
 
   if (!fc.primary) add("Escolha a IA principal.");
@@ -435,6 +472,13 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig, opts: 
 
   for (const r of [fc.primary, fc.fallback, ...reviewers]) if (r) checkRef(r);
 
+  // busca na internet: só o modo sozinha (principal + reserva) e um máximo de buscas inteiro de 1 a 10 (nulo: o padrão)
+  if (isSearchFunction(fc.key)) {
+    if (fc.mode !== "sozinha") add("A busca de fontes oficiais só usa o modo sozinha.");
+    const max = fc.max_searches;
+    if (max !== null && max !== undefined && !(Number.isInteger(max) && max >= 1 && max <= 10)) add("Máximo de buscas por pedido: de 1 a 10.");
+  }
+
   // modelo pago sem preço (IA09). Com os tetos ligados, refProblems já bloqueia. Com os tetos desligados o gasto dele apareceria
   // como US$ 0: ao SALVAR a função (requirePrice, a rota) é problema, porque o preço é exigido para ligar o modelo; no que já está
   // salvo e rodando é só aviso, porque um problema aqui pararia uma função que hoje funciona (o maestro não olha este aviso)
@@ -445,6 +489,20 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig, opts: 
       seen.add(`${r.provider}:${r.model}`);
       if (opts.requirePrice) add(noPriceProblem(r));
       else warnings.push(noPriceWarning(r));
+    }
+  }
+
+  // busca sem preço por busca e com os tetos desligados: roda, mas as buscas aparecem como US$ 0 no gasto (com os tetos ligados
+  // isso já é problema, em refProblems)
+  if (isSearchFunction(fc.key) && !cfg.settings.caps_enabled) {
+    const seen = new Set<string>();
+    for (const r of [fc.primary, fc.fallback]) {
+      if (!r || r.provider === "ollama" || seen.has(`${r.provider}:${r.model}`)) continue;
+      seen.add(`${r.provider}:${r.model}`);
+      const pr = priceOf(cfg, r);
+      if (pr && (pr.per_search_usd ?? null) === null) {
+        warnings.push(`${aiName(r)}: sem preço por busca cadastrado. As buscas aparecem como US$ 0 no gasto até o preço ser cadastrado (${PRICE_WHERE}).`);
+      }
     }
   }
 
@@ -473,7 +531,7 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig, opts: 
   // teto por chamada abaixo de uma chamada típica: avisa antes, em vez de o trabalho parar sem explicação. Conferentes e membros
   // só rodam na conferência de rascunhos da Verificação (maestroRoleProvider), com o perfil dela; fora da Verificação o uso real
   // chama só a principal e a reserva, e o aviso deles mandava subir o teto por uma chamada que não existe (revisão rodada 5)
-  const uses = TYPICAL_CALLS[fc.key] ?? [];
+  const uses = typicalCallsOf(fc.key, fc.max_searches);
   const others = fc.key !== "verificacao" ? null : fc.mode === "linha" ? "conferente" : fc.mode === "comite" ? "membro" : null;
   const members: CapMember[] = [
     ...(fc.primary ? [{ ref: fc.primary, role: "principal" as const, calls: uses, care: fc.care }] : []),
@@ -482,7 +540,7 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig, opts: 
   ];
   for (const w of perRunCapWarnings(members, cfg)) if (!warnings.includes(w)) warnings.push(w);
   // depois de uma falha cobrada da principal: a nova tentativa e a reserva com o gasto já feito (rodada 4)
-  const chain = failureChainWarning(fc.key, fc.primary, fc.fallback, fc.care, cfg);
+  const chain = failureChainWarning(fc.key, fc.primary, fc.fallback, fc.care, cfg, fc.max_searches);
   if (chain && !warnings.includes(chain)) warnings.push(chain);
   return { problems, warnings };
 }
@@ -495,7 +553,7 @@ export interface FunctionCheck {
   warnings: string[];
 }
 
-export const FUNCTION_KEYS: AiFunctionKey[] = ["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar"];
+export const FUNCTION_KEYS: AiFunctionKey[] = ["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes"];
 
 /**
  * Função salva: além da validação da configuração, confere o que ESTE servidor consegue chamar. Bloqueia só o que não
@@ -550,13 +608,20 @@ function savedFunctionCheck(saved: FunctionConfig, cfg: AiConfig, env: NodeJS.Pr
   return { source: "banco", ready: problems.length === 0, ref: saved.primary, problems, warnings };
 }
 
-/** Situação de cada uma das 6 funções: pronta ou o motivo. Função sem configuração salva usa as variáveis de ambiente. */
+/**
+ * Situação de cada uma das 7 funções: pronta ou o motivo. Função sem configuração salva usa as variáveis de ambiente, menos a
+ * de busca na internet, que sem configuração fica desligada.
+ */
 export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): Record<AiFunctionKey, FunctionCheck> {
   const out = {} as Record<AiFunctionKey, FunctionCheck>;
   for (const key of FUNCTION_KEYS) {
     const saved = cfg.functions[key];
     if (saved) {
       out[key] = savedFunctionCheck(saved, cfg, env);
+      continue;
+    }
+    if (isSearchFunction(key)) {
+      out[key] = { source: "variaveis", ready: false, ref: null, problems: [SEARCH_OFF], warnings: [] };
       continue;
     }
     const ref = envFallbackRef(key, env);

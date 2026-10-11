@@ -1,15 +1,40 @@
 // @vitest-environment node
 /**
  * Fontes oficiais com IA, parte da IA. "Provedores": a busca na internet em cada provedor (Claude, OpenAI, Gemini; o Ollama
- * recusa), o JSON que a IA deixa no fim do texto e a conversão curta, sem busca, quando esse JSON não serve. Clientes e
- * `fetch` falsos: nenhum teste chama IA real nem a internet.
+ * recusa), o JSON que a IA deixa no fim do texto e a conversão curta, sem busca, quando esse JSON não serve. "Central": a
+ * função "Busca de fontes oficiais" (`busca_fontes`) da Central de IAs: desligada sem configuração, só modo sozinha e sem
+ * Ollama, preço por busca nas estimativas, nos tetos e no registro de chamadas. Clientes e `fetch` falsos: nenhum teste
+ * chama IA real nem a internet.
  */
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import express from "express";
+import fs from "fs";
+import type http from "http";
+import os from "os";
+import path from "path";
+import { openFontesDb, type FontesDb } from "./helpers/fontesDb";
+import { PRICE_SEED, costUsd, estimateCostUsd } from "../../server/ai/prices";
+import {
+  DEFAULT_MAX_SEARCHES,
+  FUNCTION_KEYS,
+  envFallbackRef,
+  functionChecks,
+  invalidateAiConfig,
+  isSearchFunction,
+  loadAiConfig,
+  refProblems,
+  validateFunctionConfig,
+  type ModelRef,
+} from "../../server/ai/config";
+import { runFunction } from "../../server/ai/maestro";
+import { createAiRouter } from "../../server/ai/router";
 import { AiInvalidOutput, AnthropicProvider, GeminiProvider, anthropicSearchTool, partialUsageOf, withUsage, type StructuredRequest, type StructuredResult } from "../../server/contentHub/ai/provider";
 import { OpenAIProvider } from "../../server/contentHub/ai/openai";
 import { OllamaProvider } from "../../server/contentHub/ai/ollama";
 import { asDocument } from "../../server/contentHub/ai/prompts";
 import { CONVERT_SYSTEM, MAX_CONTINUATIONS, extractTrailingJson, hostsOf, ownError, parseOrConvert } from "../../server/contentHub/ai/webSearch";
+
+vi.setConfig({ testTimeout: 120_000 });
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -881,5 +906,583 @@ describe("Provedores", () => {
     const ok = await parseOrConvert<typeof RESULT>(req({ signal: ac.signal }), FENCED, convert);
     expect(ok.output).toEqual(RESULT);
     expect(convert).not.toHaveBeenCalled();
+  });
+});
+
+// ================================================================ Central de IAs: função "Busca de fontes oficiais"
+
+describe("Central", () => {
+  type R = ModelRef;
+  const A: R = { provider: "anthropic", model: "claude-sonnet-5-5" };
+  const O: R = { provider: "openai", model: "gpt-5.4" };
+  const L: R = { provider: "ollama", model: "qwen3" };
+  const key = (r: R) => `${r.provider}:${r.model}`;
+  const SITES = ["gov.br/saude", "who.int"];
+  const origin = { source: "fontes" as const, itemId: "busca-1", actorId: null };
+  const SEARCH_REQ = {
+    promptId: "source_search",
+    promptVersion: "1.0.0",
+    system: "sistema",
+    input: "x".repeat(400),
+    schema: { type: "object" as const },
+    schemaName: "staziamed_source_search",
+    maxOutputTokens: 1000,
+    webSearch: { allowedDomains: SITES, maxSearches: 99 },
+  };
+  const PLAIN_REQ = { ...SEARCH_REQ, webSearch: undefined };
+
+  /** Preços do Claude como no seed: tokens por milhão e o preço de cada busca. */
+  const PRICED = { provider: "anthropic", model: "claude-sonnet-5-5", input_per_mtok: 2, output_per_mtok: 10, per_search_usd: 0.01 };
+  /** Configuração no feitio do que a tela lê, sem banco: as 4 IAs ligadas (ou as pedidas) e os preços dados. */
+  const mkCfg = (over: { enabled?: string[]; caps?: boolean; prices?: any[]; models?: Record<string, string[]> } = {}): any => {
+    const enabled = over.enabled ?? ["anthropic", "openai", "gemini", "ollama"];
+    const providers: any = {};
+    for (const id of ["anthropic", "openai", "gemini", "ollama"]) {
+      providers[id] = { enabled: enabled.includes(id), models: (over.models?.[id] ?? []).map((m) => ({ id: m, label: m })), status: null };
+    }
+    return { providers, functions: {}, settings: { monthly_cap_usd: null, per_run_cap_usd: null, caps_enabled: over.caps ?? false, tab_override_enabled: false }, prices: over.prices ?? [] };
+  };
+  const searchFc = (over: Record<string, unknown> = {}): any => ({ key: "busca_fontes", mode: "sozinha", primary: A, fallback: null, reviewers: [], care: "caprichado", max_searches: null, ...over });
+
+  // ---------------------------------------------------------------- sem banco
+
+  describe("preços e problemas (sem banco)", () => {
+    it("a função é a sétima e a última; só ela é função de busca; as variáveis de ambiente nunca a definem", () => {
+      expect(FUNCTION_KEYS).toEqual(["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes"]);
+      expect(DEFAULT_MAX_SEARCHES).toBe(5);
+      expect(FUNCTION_KEYS.filter((k) => isSearchFunction(k))).toEqual(["busca_fontes"]);
+      const env = { CONTENT_HUB_AI_PROVIDER: "anthropic", ANTHROPIC_API_KEY: "x", CONTENT_HUB_MODEL_CREATE: "claude-sonnet-5-5" } as NodeJS.ProcessEnv;
+      expect(envFallbackRef("criacao", env)).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" }); // as outras seguem as variáveis
+      expect(envFallbackRef("busca_fontes", env)).toBeNull();
+      for (const ui of ["anthropic", "openai", "gemini", "ollama"] as const) expect(envFallbackRef("busca_fontes", env, ui)).toBeNull();
+    });
+
+    it("estimateCostUsd e costUsd somam as buscas vezes o preço por busca; preço nulo conta 0; sem o argumento nada muda", () => {
+      // estimativa: 4000 caracteres = 1000 tokens de entrada; 1000 de saída; 5 buscas
+      expect(estimateCostUsd(PRICED, 4000, 1000, 5)).toBeCloseTo((1000 * 2 + 1000 * 10) / 1e6 + 5 * 0.01, 6);
+      expect(estimateCostUsd(PRICED, 4000, 1000)).toBeCloseTo((1000 * 2 + 1000 * 10) / 1e6, 6);
+      expect(estimateCostUsd({ ...PRICED, per_search_usd: null }, 4000, 1000, 5)).toBeCloseTo((1000 * 2 + 1000 * 10) / 1e6, 6);
+      expect(estimateCostUsd({ input_per_mtok: 2, output_per_mtok: 10 }, 4000, 1000, 5)).toBeCloseTo((1000 * 2 + 1000 * 10) / 1e6, 6);
+      expect(estimateCostUsd(null, 4000, 1000, 5)).toBeNull();
+      expect(costUsd(PRICED, 1000, 500, 4)).toBeCloseTo(0.047, 6);
+      expect(costUsd(PRICED, 1000, 500)).toBeCloseTo(0.007, 6);
+      expect(costUsd({ ...PRICED, per_search_usd: null }, 1000, 500, 4)).toBeCloseTo(0.007, 6);
+      expect(costUsd(PRICED, null, 500, 4)).toBeNull();
+      expect(costUsd(null, 1000, 500, 4)).toBeNull();
+    });
+
+    it("o seed põe US$ 10 por mil buscas nos modelos Claude e deixa OpenAI e Gemini sem preço por busca (o dono preenche)", () => {
+      const by = (p: string) => PRICE_SEED.filter((x) => x.provider === p);
+      expect(by("anthropic").length).toBeGreaterThan(0);
+      for (const x of by("anthropic")) expect(x.per_search_usd, x.model).toBe(0.01);
+      for (const x of [...by("openai"), ...by("gemini")]) expect(x.per_search_usd ?? null, x.model).toBeNull();
+    });
+
+    it("refProblems: Ollama não busca; com os tetos ligados, modelo sem preço por busca é problema; outras funções não mudam", () => {
+      const priced = mkCfg({ caps: true, prices: [PRICED] });
+      const noSearchPrice = mkCfg({ caps: true, prices: [{ ...PRICED, per_search_usd: null }] });
+      expect(refProblems(A, priced, "busca_fontes")).toEqual([]);
+      expect(refProblems(A, noSearchPrice, "busca_fontes")).toEqual(["anthropic claude-sonnet-5-5: sem preço por busca cadastrado, e os tetos estão ligados.".replace("anthropic", "Claude")]);
+      // sem os tetos ligados o preço por busca não é exigido
+      expect(refProblems(A, mkCfg({ caps: false, prices: [{ ...PRICED, per_search_usd: null }] }), "busca_fontes")).toEqual([]);
+      // outras funções (e sem função) não exigem preço por busca
+      expect(refProblems(A, noSearchPrice, "criacao")).toEqual([]);
+      expect(refProblems(A, noSearchPrice)).toEqual([]);
+      // Ollama
+      expect(refProblems(L, mkCfg(), "busca_fontes")).toEqual(["Ollama não busca na internet."]);
+      expect(refProblems(L, mkCfg({ caps: true }), "busca_fontes")).toEqual(["Ollama não busca na internet."]);
+      expect(refProblems(L, mkCfg())).toEqual([]);
+      expect(refProblems(L, mkCfg(), "criacao")).toEqual([]);
+      // a IA desligada continua sendo o primeiro problema
+      expect(refProblems(A, mkCfg({ enabled: [], caps: true, prices: [PRICED] }), "busca_fontes")).toEqual(["Claude está desligada na Central de IAs."]);
+    });
+
+    it("validateFunctionConfig: só o modo sozinha, sem Ollama e máximo de buscas de 1 a 10", () => {
+      const cfg = mkCfg({ caps: true, prices: [PRICED, { provider: "openai", model: "gpt-5.4", input_per_mtok: 1, output_per_mtok: 2, per_search_usd: 0.02 }] });
+      expect(validateFunctionConfig(searchFc(), cfg).problems).toEqual([]);
+      expect(validateFunctionConfig(searchFc({ fallback: O, max_searches: 1 }), cfg).problems).toEqual([]);
+      expect(validateFunctionConfig(searchFc({ max_searches: 10 }), cfg).problems).toEqual([]);
+
+      const wrongMode = validateFunctionConfig(searchFc({ mode: "linha", reviewers: [O], fallback: L }), cfg).problems;
+      expect(wrongMode).toContain("A busca de fontes oficiais só usa o modo sozinha.");
+      expect(wrongMode).toContain("Ollama não busca na internet.");
+      expect(validateFunctionConfig(searchFc({ mode: "comite", reviewers: [O] }), cfg).problems).toContain("A busca de fontes oficiais só usa o modo sozinha.");
+      // Ollama como principal
+      expect(validateFunctionConfig(searchFc({ primary: L }), mkCfg()).problems).toContain("Ollama não busca na internet.");
+
+      for (const bad of [0, 11, -1, 2.5, "3", Number.NaN]) {
+        expect(validateFunctionConfig(searchFc({ max_searches: bad }), cfg).problems, String(bad)).toContain("Máximo de buscas por pedido: de 1 a 10.");
+      }
+      // as outras funções não têm essas regras
+      const other = { ...searchFc({ primary: L, max_searches: 99 }), key: "criacao" };
+      expect(validateFunctionConfig(other, mkCfg()).problems).toEqual([]);
+    });
+  });
+
+  // ---------------------------------------------------------------- com banco
+
+  describe("com banco", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "fontes-central-"));
+    let t: FontesDb;
+    const servers: http.Server[] = [];
+    let token = "";
+    let base = "";
+    const KEY = "chave-de-teste";
+
+    const fetchImpl = (async (url: any) => {
+      if (String(url).includes("anthropic")) {
+        return new Response(JSON.stringify({ data: [{ id: "claude-sonnet-5-5", display_name: "Claude Sonnet 5.5" }, { id: "claude-x", display_name: "X" }] }), { status: 200 });
+      }
+      return new Response("{}", { status: 404 });
+    }) as unknown as typeof fetch;
+
+    beforeAll(async () => {
+      t = await openFontesDb(path.join(tmp, "db"));
+      token = await t.dev.createSession(t.ADMIN);
+      const app = express();
+      app.use("/api/ai-central", createAiRouter({ db: t.db }, { fetchImpl, env: { ANTHROPIC_API_KEY: KEY } as any }));
+      base = await new Promise<string>((resolve) => {
+        const srv = app.listen(0, "127.0.0.1", () => resolve(`http://127.0.0.1:${(srv.address() as any).port}/api/ai-central`));
+        servers.push(srv);
+      });
+    }, 300_000);
+    afterAll(async () => {
+      await Promise.all(servers.map((s) => new Promise((r) => s.close(r))));
+      await t?.dev.db.close();
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }, 120_000);
+
+    const sql = async (q: string, params: unknown[] = []) => (await t.dev.db.query<any>(q, params)).rows;
+    async function reset() {
+      for (const q of [
+        "delete from public.ai_calls",
+        "delete from public.ai_functions",
+        "delete from public.ai_model_prices",
+        "update public.ai_providers set enabled = false, models = '[]'::jsonb, last_status = null",
+        "update public.ai_settings set caps_enabled = false, monthly_cap_usd = null, per_run_cap_usd = null, tab_override_enabled = false",
+      ]) {
+        await t.dev.db.query(q);
+      }
+      invalidateAiConfig(t.db);
+    }
+    beforeEach(reset);
+
+    const on = async (...ids: string[]) => {
+      for (const id of ids) await t.db.service("ch_worker_ai_set_provider", { p_actor: t.ADMIN, p_provider: id, p_enabled: true });
+    };
+    const saveFn = async (k: string, primary: R | null, opts: { fallback?: R | null; max?: number | null; mode?: string } = {}) => {
+      const config: Record<string, unknown> = { mode: opts.mode ?? "sozinha", primary_ref: primary, fallback_ref: opts.fallback ?? null, reviewers: [], care: "caprichado" };
+      if (opts.max !== undefined) config.max_searches = opts.max;
+      await t.db.service("ch_worker_ai_save_function", { p_actor: t.ADMIN, p_key: k, p_config: config });
+    };
+    const price = async (r: R, inTok: number, outTok: number, perSearch?: number | null) => {
+      const p: Record<string, unknown> = { input_per_mtok: inTok, output_per_mtok: outTok, source_url: "https://exemplo.com", checked_on: "2026-10-07" };
+      if (perSearch !== undefined) p.per_search_usd = perSearch;
+      await t.db.service("ch_worker_ai_save_price", { p_actor: t.ADMIN, p_provider: r.provider, p_model: r.model, p_price: p });
+    };
+    const settings = (s: object) => t.db.service("ch_worker_ai_save_settings", { p_actor: t.ADMIN, p_settings: s });
+    const refresh = () => invalidateAiConfig(t.db);
+    const rows = async (runId: string) =>
+      sql(
+        `select role, provider, model, outcome, error, source, item_id, function_key, input_tokens, output_tokens, web_searches, cost_usd::float8 as cost
+           from public.ai_calls where run_id = $1 order by id`,
+        [runId],
+      );
+    const callCount = async () => Number((await sql("select count(*)::int as n from public.ai_calls"))[0].n);
+
+    type Handler = (req: any, n: number) => unknown | Promise<unknown>;
+    /** Provedores falsos por ref: cada chamada passa por `handler`; devolvem os tokens e as buscas pedidos. Sem rede. */
+    function fakes(handlers: Record<string, Handler>, use: { inTok?: number; outTok?: number; webSearches?: number; seenUrls?: string[] } = {}) {
+      const calls: Record<string, any[]> = {};
+      const makeProviderFor = (ref: R) => {
+        const h = handlers[key(ref)];
+        if (!h) return null;
+        return {
+          name: ref.provider,
+          model: ref.model,
+          isMock: false,
+          async generate(req: any) {
+            const list = (calls[key(ref)] ??= []);
+            list.push(req);
+            const output = await h(req, list.length);
+            return { output, provider: ref.provider, model: ref.model, inputTokens: use.inTok ?? 10, outputTokens: use.outTok ?? 20, latencyMs: 1, costUsd: null, webSearches: use.webSearches ?? 1, seenUrls: use.seenUrls ?? [] };
+          },
+        } as any;
+      };
+      return { makeProviderFor, calls, total: () => Object.values(calls).reduce((a, l) => a + l.length, 0) };
+    }
+    const deps = (f: ReturnType<typeof fakes> | null, env: any = {}, extra: any = {}) => ({ db: t.db, env, makeProviderFor: f?.makeProviderFor, log: () => {}, ...extra });
+    const run = (d: any, fn: any, req: any = SEARCH_REQ, o: any = origin, override?: any) => runFunction<any>(d, fn, req, o, override);
+    const OK = () => ({ documentos: [], observacao: null });
+
+    it("busca_fontes sem configuração não roda e não usa as variáveis de ambiente", async () => {
+      await on("anthropic");
+      refresh();
+      const env = { CONTENT_HUB_AI_PROVIDER: "anthropic", ANTHROPIC_API_KEY: "x" } as NodeJS.ProcessEnv;
+      const checks = functionChecks(await loadAiConfig(t.db), env);
+      expect(checks.busca_fontes).toMatchObject({ source: "variaveis", ready: false, ref: null, problems: ["Desligada: configure esta função na Central de IAs."] });
+      // as outras seis seguem usando as variáveis
+      expect(checks.criacao).toMatchObject({ source: "variaveis", ready: true });
+
+      const f = fakes({ [key(A)]: OK });
+      const r = await run(deps(f, env), "busca_fontes");
+      expect(r.status).toBe("falhou");
+      expect(r.message).toMatch(/Desligada/);
+      expect(r.output).toBeNull();
+      // nem a escolha de uma IA por quem chama (ref ou aba) contorna a função desligada
+      const r2 = await run(deps(f, env), "busca_fontes", SEARCH_REQ, origin, { ref: A, uiKind: "anthropic" });
+      expect(r2.status).toBe("falhou");
+      expect(f.total()).toBe(0);
+      expect(await callCount()).toBe(0);
+      // tirar a configuração (null) desliga de novo, sem voltar às variáveis
+      await saveFn("busca_fontes", A);
+      refresh();
+      expect(functionChecks(await loadAiConfig(t.db), env).busca_fontes).toMatchObject({ source: "banco", ready: true });
+      await t.db.service("ch_worker_ai_save_function", { p_actor: t.ADMIN, p_key: "busca_fontes", p_config: null });
+      refresh();
+      expect(functionChecks(await loadAiConfig(t.db), env).busca_fontes.ready).toBe(false);
+      expect((await run(deps(f, env), "busca_fontes")).status).toBe("falhou");
+      expect(f.total()).toBe(0);
+    });
+
+    it("só modo sozinha e sem Ollama: a validação e a rota recusam", async () => {
+      await on("anthropic", "openai", "ollama");
+      refresh();
+      const cfg = await loadAiConfig(t.db);
+      const problems = validateFunctionConfig(searchFc({ mode: "linha", reviewers: [O], fallback: L }), cfg).problems;
+      expect(problems).toContain("A busca de fontes oficiais só usa o modo sozinha.");
+      expect(problems).toContain("Ollama não busca na internet.");
+
+      const put = (fn: string, config: unknown) =>
+        fetch(`${base}/functions/${fn}`, { method: "PUT", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ config }) });
+      const withOllama = await put("busca_fontes", { mode: "sozinha", care: "caprichado", primary: A, fallback: L });
+      expect(withOllama.status).toBe(400);
+      expect((await withOllama.json()).error).toContain("Ollama não busca na internet.");
+      expect((await put("busca_fontes", { mode: "sozinha", care: "caprichado", primary: L })).status).toBe(400);
+      const linha = await put("busca_fontes", { mode: "linha", care: "caprichado", primary: A, reviewers: [O] });
+      expect(linha.status).toBe(400);
+      expect((await linha.json()).problems.join(" ")).toContain("só usa o modo sozinha");
+      expect(await sql("select 1 from public.ai_functions where key = 'busca_fontes'")).toHaveLength(0);
+      // o Ollama segue valendo nas outras funções
+      expect((await put("criacao", { mode: "sozinha", care: "caprichado", primary: L })).status).toBe(200);
+    });
+
+    it("estimativa e teto contam o máximo de buscas vezes o preço por busca", async () => {
+      await on("anthropic");
+      await price(A, 0, 0, 0.01);
+      await settings({ monthly_cap_usd: 100, per_run_cap_usd: 0.05, caps_enabled: true });
+      const f = fakes({ [key(A)]: OK }, { webSearches: 2 });
+
+      await saveFn("busca_fontes", A, { max: 10 });
+      refresh();
+      const stopped = await run(deps(f), "busca_fontes");
+      expect(stopped.status).toBe("parou_no_teto");
+      expect(stopped.message).toMatch(/passa do teto por chamada/);
+      expect(f.total()).toBe(0);
+      expect((await rows(stopped.runId)).map((x: any) => `${x.role}:${x.outcome}`)).toEqual(["principal:teto"]);
+
+      await saveFn("busca_fontes", A, { max: 3 });
+      refresh();
+      const ok = await run(deps(f), "busca_fontes");
+      expect(ok.status).toBe("ok");
+      expect(f.total()).toBe(1);
+      expect(ok.costUsd).toBeCloseTo(0.02, 6); // as buscas feitas de verdade (2), não o máximo (3)
+
+      // sem máximo salvo vale 5: a estimativa de 5 x 0,01 = 0,05 é igual ao teto, e só passar dele para
+      await saveFn("busca_fontes", A);
+      refresh();
+      expect((await run(deps(f), "busca_fontes")).status).toBe("ok");
+      await settings({ per_run_cap_usd: 0.04 });
+      refresh();
+      expect((await run(deps(f), "busca_fontes")).status).toBe("parou_no_teto");
+    });
+
+    it("o teto mensal conta a estimativa das buscas junto do gasto do mês", async () => {
+      await on("anthropic");
+      await price(A, 0, 0, 0.01);
+      await saveFn("busca_fontes", A, { max: 4 });
+      await settings({ monthly_cap_usd: 0.05, per_run_cap_usd: 1, caps_enabled: true });
+      refresh();
+      const f = fakes({ [key(A)]: OK }, { webSearches: 4 });
+      const first = await run(deps(f), "busca_fontes"); // estimativa 0,04 cabe em 0,05
+      expect(first.status).toBe("ok");
+      expect(first.costUsd).toBeCloseTo(0.04, 6);
+      const second = await run(deps(f), "busca_fontes"); // 0,04 gasto + 0,04 estimado passa de 0,05
+      expect(second.status).toBe("parou_no_teto");
+      expect(second.message).toMatch(/teto mensal/);
+      expect(f.total()).toBe(1);
+    });
+
+    it("modelo sem preço por busca com os tetos ligados fica bloqueado", async () => {
+      await on("anthropic");
+      await price(A, 1, 2); // sem a chave: sem preço por busca
+      await settings({ monthly_cap_usd: 100, per_run_cap_usd: 5, caps_enabled: true });
+      await saveFn("busca_fontes", A);
+      refresh();
+      const cfg = await loadAiConfig(t.db);
+      const check = functionChecks(cfg, {}).busca_fontes;
+      expect(check.ready).toBe(false);
+      expect(check.problems.join(" ")).toMatch(/sem preço por busca/);
+      const f = fakes({ [key(A)]: OK });
+      const r = await run(deps(f), "busca_fontes");
+      expect(r.status).toBe("falhou");
+      expect(r.message).toMatch(/sem preço por busca/);
+      expect(f.total()).toBe(0);
+      expect((await rows(r.runId)).map((x: any) => `${x.role}:${x.outcome}`)).toEqual(["principal:bloqueada"]);
+      // a rota também recusa salvar a função assim
+      const put = await fetch(`${base}/functions/busca_fontes`, { method: "PUT", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ config: { mode: "sozinha", primary: A } }) });
+      expect(put.status).toBe(400);
+      expect((await put.json()).error).toMatch(/sem preço por busca/);
+
+      // com o preço por busca cadastrado (mesmo 0), roda
+      await price(A, 1, 2, 0);
+      refresh();
+      expect(functionChecks(await loadAiConfig(t.db), {}).busca_fontes.ready).toBe(true);
+      expect((await run(deps(f), "busca_fontes")).status).toBe("ok");
+      expect(f.total()).toBe(1);
+    });
+
+    it("ai_calls registra as buscas e o custo inclui as buscas", async () => {
+      await on("anthropic");
+      await price(A, 2, 10, 0.01);
+      await saveFn("busca_fontes", A);
+      refresh();
+      const seen = ["https://www.gov.br/saude/a.pdf", "https://www.who.int/b.pdf"];
+      const f = fakes({ [key(A)]: OK }, { inTok: 1000, outTok: 500, webSearches: 4, seenUrls: seen });
+      const r = await run(deps(f), "busca_fontes");
+      expect(r.status).toBe("ok");
+      expect(r.webSearches).toBe(4);
+      expect(r.seenUrls).toEqual(seen);
+      expect(r.costUsd).toBeCloseTo(0.047, 6);
+      const logged = await rows(r.runId);
+      expect(logged).toHaveLength(1);
+      expect(logged[0]).toMatchObject({ role: "principal", outcome: "ok", provider: "anthropic", web_searches: 4, input_tokens: 1000, output_tokens: 500, source: "fontes", item_id: "busca-1", function_key: "busca_fontes" });
+      expect(logged[0].cost).toBeCloseTo(0.047, 6);
+      // o gasto do mês (que alimenta os tetos e o painel) inclui as buscas
+      expect(Number(await t.db.service<any>("ch_worker_ai_month_spend", { p_now: new Date().toISOString() }))).toBeCloseTo(0.047, 6);
+      // sem busca no pedido, nada de buscas no resultado
+      await saveFn("criacao", A);
+      refresh();
+      const plain = fakes({ [key(A)]: OK }, { webSearches: 0 });
+      const p = await run(deps(plain), "criacao", PLAIN_REQ);
+      expect(p.webSearches).toBe(0);
+      expect(p.seenUrls).toEqual([]);
+      expect((await rows(p.runId))[0].web_searches).toBe(0);
+    });
+
+    it("max_searches salvo vai no pedido; sem ele, 5; o que a função manda vale mais que o do pedido", async () => {
+      await on("anthropic");
+      const f = fakes({ [key(A)]: OK });
+      await saveFn("busca_fontes", A, { max: 3 });
+      refresh();
+      await run(deps(f), "busca_fontes");
+      await saveFn("busca_fontes", A); // sem máximo: o padrão
+      refresh();
+      await run(deps(f), "busca_fontes");
+      const sent = f.calls[key(A)];
+      expect(sent.map((c: any) => c.webSearch.maxSearches)).toEqual([3, 5]);
+      expect(sent[0].webSearch.allowedDomains).toEqual(SITES);
+      expect(SEARCH_REQ.webSearch.maxSearches).toBe(99); // o pedido do chamador não é alterado
+      // pedido sem busca: nada é inventado
+      await saveFn("criacao", A);
+      refresh();
+      await run(deps(f), "criacao", PLAIN_REQ);
+      expect(f.calls[key(A)][2].webSearch).toBeUndefined();
+    });
+
+    it("a configuração lê max_searches e per_search_usd do banco (nulos quando não há)", async () => {
+      await on("anthropic");
+      await saveFn("busca_fontes", A, { max: 7 });
+      await saveFn("criacao", A);
+      await price(A, 2, 10, 0.01);
+      await price(O, 1, 2);
+      refresh();
+      const cfg = await loadAiConfig(t.db);
+      expect(cfg.functions.busca_fontes?.max_searches).toBe(7);
+      expect(cfg.functions.criacao?.max_searches).toBeNull();
+      expect(cfg.prices.find((p) => p.model === A.model)?.per_search_usd).toBe(0.01);
+      expect(cfg.prices.find((p) => p.model === O.model)?.per_search_usd).toBeNull();
+    });
+
+    it("erro depois de buscas pagas grava o gasto parcial na linha de falha (tokens, buscas e custo)", async () => {
+      await on("anthropic", "openai");
+      await price(A, 2, 10, 0.01);
+      await price(O, 1, 2, 0.02);
+      await saveFn("busca_fontes", A, { fallback: O });
+      await settings({ monthly_cap_usd: 100, per_run_cap_usd: 5, caps_enabled: true });
+      refresh();
+      const paidFailure = (usage: any) => () => {
+        throw withUsage(new Error("Resposta cortada pelo limite de saída."), usage);
+      };
+      const f = fakes({
+        [key(A)]: paidFailure({ inputTokens: 300, outputTokens: 40, webSearches: 3 }),
+        [key(O)]: paidFailure({ inputTokens: null, outputTokens: null, webSearches: 2 }),
+      });
+      const r = await run(deps(f), "busca_fontes");
+      expect(r.status).toBe("falhou");
+      const logged = await rows(r.runId);
+      expect(logged.map((x: any) => `${x.role}:${x.outcome}`)).toEqual(["principal:falha", "principal:falha", "reserva:falha"]);
+      // as duas tentativas da principal: (300 x 2 + 40 x 10) / 1e6 + 3 x 0,01
+      for (const x of logged.slice(0, 2)) {
+        expect(x).toMatchObject({ input_tokens: 300, output_tokens: 40, web_searches: 3 });
+        expect(x.cost).toBeCloseTo(0.001 + 0.03, 6);
+      }
+      // a reserva não informou tokens: só as buscas contam (2 x 0,02)
+      expect(logged[2]).toMatchObject({ input_tokens: 0, output_tokens: 0, web_searches: 2 });
+      expect(logged[2].cost).toBeCloseTo(0.04, 6);
+      expect(r.costUsd).toBeCloseTo(2 * 0.031 + 0.04, 6);
+      expect(r.webSearches).toBe(3 + 3 + 2); // as buscas cobradas nas linhas de falha também contam (o custo já as inclui)
+      // o gasto das falhas conta no teto mensal e no painel
+      expect(Number(await t.db.service<any>("ch_worker_ai_month_spend", { p_now: new Date().toISOString() }))).toBeCloseTo(2 * 0.031 + 0.04, 6);
+      // erro comum (sem gasto) continua com custo e buscas zerados
+      const plain = fakes({ [key(A)]: () => { throw new Error("boom"); }, [key(O)]: OK });
+      const r2 = await run(deps(plain), "busca_fontes");
+      expect(r2.status).toBe("ok");
+      const rows2 = await rows(r2.runId);
+      expect(rows2.map((x: any) => `${x.role}:${x.outcome}`)).toEqual(["principal:falha", "principal:falha", "reserva:ok"]);
+      expect(rows2[0]).toMatchObject({ web_searches: 0, input_tokens: 0, output_tokens: 0, cost: 0 });
+    });
+
+    it("tempo-limite da busca: cancela a chamada, espera ela parar, grava o gasto e só então chama a reserva", async () => {
+      await on("anthropic", "openai");
+      await price(A, 2, 10, 0.01);
+      await price(O, 1, 2, 0.02);
+      await saveFn("busca_fontes", A, { fallback: O });
+      refresh();
+      let active = 0;
+      let maxActive = 0;
+      const signals: (AbortSignal | undefined)[] = [];
+      // a chamada fica pendente até o sinal disparar; então termina na hora, com o gasto das buscas já concluídas
+      const hang = (req: any) => {
+        signals.push(req.signal);
+        active++;
+        maxActive = Math.max(maxActive, active);
+        return new Promise((_, reject) => {
+          req.signal.addEventListener(
+            "abort",
+            () => {
+              active--;
+              reject(withUsage(new Error("Chamada cancelada."), { inputTokens: 100, outputTokens: 10, webSearches: 2 }));
+            },
+            { once: true },
+          );
+        });
+      };
+      const f = fakes({ [key(A)]: hang, [key(O)]: hang });
+      const r = await run(deps(f, {}, { timeouts: { searchMs: 40 } }), "busca_fontes");
+      expect(r.status).toBe("falhou");
+      // tempo esgotado não se repete na mesma IA (shouldRetrySame): vai direto para a reserva, depois que a principal parou
+      expect(f.calls[key(A)]).toHaveLength(1);
+      expect(f.calls[key(O)]).toHaveLength(1);
+      expect(maxActive).toBe(1);
+      expect(signals.every((s) => s instanceof AbortSignal && s.aborted)).toBe(true);
+      expect(signals[0]).not.toBe(signals[1]);
+      const logged = await rows(r.runId);
+      expect(logged.map((x: any) => `${x.role}:${x.outcome}`)).toEqual(["principal:falha", "reserva:falha"]);
+      for (const x of logged) {
+        expect(x.error).toMatch(/Tempo esgotado/);
+        expect(x).toMatchObject({ input_tokens: 100, output_tokens: 10, web_searches: 2 });
+      }
+      // o gasto das buscas concluídas conta; vale o maior entre ele e o pior caso estimado da chamada (as buscas máximas, 5)
+      expect(logged[0].cost).toBeGreaterThanOrEqual((100 * 2 + 10 * 10) / 1e6 + 0.02);
+      expect(r.message).toMatch(/Tempo esgotado/);
+    });
+
+    it("tempo-limite da busca: provedor que ignora o sinal não trava a execução", async () => {
+      await on("anthropic");
+      await saveFn("busca_fontes", A);
+      refresh();
+      const f = fakes({ [key(A)]: () => new Promise(() => {}) });
+      const r = await run(deps(f, {}, { timeouts: { searchMs: 30, graceMs: 30 } }), "busca_fontes");
+      expect(r.status).toBe("falhou");
+      expect(f.total()).toBe(1);
+      expect(r.message).toMatch(/Tempo esgotado/);
+      expect((await rows(r.runId)).map((x: any) => x.outcome)).toEqual(["falha"]);
+    });
+
+    it("tempo-limite da busca: a resposta que chega durante a espera vale (já foi paga)", async () => {
+      await on("anthropic");
+      await price(A, 2, 10, 0.01);
+      await saveFn("busca_fontes", A);
+      refresh();
+      const late = (req: any) => new Promise((resolve) => req.signal.addEventListener("abort", () => setTimeout(() => resolve({ documentos: [], observacao: null }), 5), { once: true }));
+      const f = fakes({ [key(A)]: late }, { webSearches: 2 });
+      const r = await run(deps(f, {}, { timeouts: { searchMs: 30, graceMs: 500 } }), "busca_fontes");
+      expect(r.status).toBe("ok");
+      expect(r.webSearches).toBe(2);
+    });
+
+    it("chamada sem busca segue como antes: tempo-limite de sempre, sem espera depois do cancelamento", async () => {
+      await on("anthropic");
+      await saveFn("criacao", A);
+      refresh();
+      const f = fakes({ [key(A)]: OK }, { webSearches: 0 });
+      await run(deps(f), "criacao", PLAIN_REQ);
+      // o sinal do cancelamento vai em toda chamada (o maestro cancela no tempo-limite); aqui não disparou
+      expect(f.calls[key(A)][0].signal).toBeInstanceOf(AbortSignal);
+      expect(f.calls[key(A)][0].signal.aborted).toBe(false);
+    });
+
+    it("rotas: o máximo de buscas da função, o preço por busca e a atualização da lista", async () => {
+      const call = (method: string, p: string, body?: unknown) =>
+        fetch(base + p, { method, headers: { Authorization: `Bearer ${token}`, ...(body !== undefined ? { "Content-Type": "application/json" } : {}) }, body: body !== undefined ? JSON.stringify(body) : undefined });
+      const putFn = (fn: string, config: unknown) => call("PUT", `/functions/${fn}`, { config });
+      const maxOf = async (fn: string) => (await sql("select max_searches from public.ai_functions where key = $1", [fn]))[0]?.max_searches;
+      expect((await call("POST", "/providers/anthropic/enabled", { enabled: true })).status).toBe(200);
+      // o modelo pago precisa de preço para a função ser salva (IA09)
+      await price(A, 2, 10, 0.01);
+      refresh();
+
+      // máximo de 1 a 10, inteiro
+      for (const bad of [0, 11, -3, 2.5, "3", true]) {
+        const r = await putFn("busca_fontes", { mode: "sozinha", primary: A, max_searches: bad });
+        expect(r.status, String(bad)).toBe(400);
+        expect((await r.json()).error, String(bad)).toContain("Máximo de buscas por pedido: de 1 a 10.");
+      }
+      expect(await sql("select 1 from public.ai_functions where key = 'busca_fontes'")).toHaveLength(0);
+      for (const good of [1, 7, 10]) {
+        expect((await putFn("busca_fontes", { mode: "sozinha", primary: A, max_searches: good })).status, String(good)).toBe(200);
+        expect(await maxOf("busca_fontes")).toBe(good);
+      }
+      expect((await putFn("busca_fontes", { mode: "sozinha", primary: A })).status).toBe(200);
+      expect(await maxOf("busca_fontes")).toBeNull();
+      expect((await putFn("busca_fontes", { mode: "sozinha", primary: A, max_searches: null })).status).toBe(200);
+      expect(await maxOf("busca_fontes")).toBeNull();
+      // nas outras funções o campo não vale
+      expect((await putFn("criacao", { mode: "sozinha", primary: A, max_searches: 4 })).status).toBe(200);
+      expect(await maxOf("criacao")).toBeNull();
+      // tirar a configuração desliga a busca
+      expect(await (await putFn("busca_fontes", null)).json()).toEqual({ ok: true, warnings: [] });
+      expect(await sql("select 1 from public.ai_functions where key = 'busca_fontes'")).toHaveLength(0);
+
+      // preço por busca: número >= 0 ou nulo; sem a chave o valor guardado fica
+      const putPrice = (body: object) => call("PUT", "/prices/anthropic/claude-sonnet-5-5", { input_per_mtok: 2, output_per_mtok: 10, ...body });
+      const perSearch = async () => (await sql("select per_search_usd::float8 as v from public.ai_model_prices where provider = 'anthropic' and model = 'claude-sonnet-5-5'"))[0]?.v;
+      expect((await putPrice({ per_search_usd: 0.01 })).status).toBe(200);
+      expect(await perSearch()).toBe(0.01);
+      expect((await putPrice({})).status).toBe(200);
+      expect(await perSearch()).toBe(0.01);
+      expect((await putPrice({ per_search_usd: 0 })).status).toBe(200);
+      expect(await perSearch()).toBe(0);
+      expect((await putPrice({ per_search_usd: null })).status).toBe(200);
+      expect(await perSearch()).toBeNull();
+      for (const bad of [-0.01, "0.01", true, [0.01]]) {
+        const r = await putPrice({ per_search_usd: bad });
+        expect(r.status, String(bad)).toBe(400);
+        expect((await r.json()).error, String(bad)).toContain("preço por busca");
+      }
+      expect(await perSearch()).toBeNull();
+
+      // atualizar a lista cadastra o preço por busca do seed (só para o modelo ainda sem preço)
+      await sql("delete from public.ai_model_prices");
+      refresh();
+      const refreshed = await (await call("POST", "/providers/anthropic/refresh", {})).json();
+      expect(refreshed.prices_added).toBe(1);
+      expect(await perSearch()).toBe(0.01);
+      // preço que o dono já ajustou não é sobrescrito pela atualização
+      expect((await putPrice({ per_search_usd: 0.02 })).status).toBe(200);
+      expect((await (await call("POST", "/providers/anthropic/refresh", {})).json()).prices_added).toBe(0);
+      expect(await perSearch()).toBe(0.02);
+    });
   });
 });

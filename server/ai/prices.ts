@@ -11,24 +11,28 @@ export interface ModelPrice {
   model: string;
   input_per_mtok: number;
   output_per_mtok: number;
+  /** Preço de cada busca na internet em dólares (nulo ou ausente: sem preço cadastrado; conta 0 nas contas). */
+  per_search_usd?: number | null;
   source_url: string;
   checked_on: string;
 }
 
 /**
+ * Preço por busca na internet (per_search_usd): o Claude cobra US$ 10 por 1.000 buscas (0,01 cada); OpenAI e Gemini ficam
+ * sem preço por busca e o dono preenche (a cobrança deles varia por modelo e por ferramenta).
  * Preços iniciais de todos os modelos. Conferidos em 2026-10-07.
  * Nota: gemini-3.6/3.7/3.8-flash custam 0.75/3.75 até 31/12/2026 e passam a 1.50/7.50 em 01/01/2027.
  */
 export const PRICE_SEED: ModelPrice[] = [
   // Claude
-  { provider: "anthropic", model: "claude-fable-5-1", input_per_mtok: 10, output_per_mtok: 50, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-07" },
-  { provider: "anthropic", model: "claude-opus-5-5", input_per_mtok: 4, output_per_mtok: 20, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-07" },
+  { provider: "anthropic", model: "claude-fable-5-1", input_per_mtok: 10, output_per_mtok: 50, per_search_usd: 0.01, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-07" },
+  { provider: "anthropic", model: "claude-opus-5-5", input_per_mtok: 4, output_per_mtok: 20, per_search_usd: 0.01, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-07" },
   // Opus 5: em produção é a reserva da Criação e da Verificação e a principal da Engenharia reversa (faltava o preço)
-  { provider: "anthropic", model: "claude-opus-5", input_per_mtok: 5, output_per_mtok: 25, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-10" },
-  { provider: "anthropic", model: "claude-sonnet-5-5", input_per_mtok: 2, output_per_mtok: 10, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-07" },
-  { provider: "anthropic", model: "claude-haiku-4-5-20251001", input_per_mtok: 1, output_per_mtok: 5, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-07" },
+  { provider: "anthropic", model: "claude-opus-5", input_per_mtok: 5, output_per_mtok: 25, per_search_usd: 0.01, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-10" },
+  { provider: "anthropic", model: "claude-sonnet-5-5", input_per_mtok: 2, output_per_mtok: 10, per_search_usd: 0.01, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-07" },
+  { provider: "anthropic", model: "claude-haiku-4-5-20251001", input_per_mtok: 1, output_per_mtok: 5, per_search_usd: 0.01, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-07" },
   // Haiku 5.5: preço para pedidos de até 100 mil tokens; acima disso custa 0.50/2.50 (página oficial, conferida em 2026-10-10)
-  { provider: "anthropic", model: "claude-haiku-5-5", input_per_mtok: 0.1, output_per_mtok: 0.5, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-10" },
+  { provider: "anthropic", model: "claude-haiku-5-5", input_per_mtok: 0.1, output_per_mtok: 0.5, per_search_usd: 0.01, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-10" },
 
   // OpenAI
   { provider: "openai", model: "gpt-6-astra", input_per_mtok: 10, output_per_mtok: 50, source_url: "https://developers.openai.com/api/docs/pricing", checked_on: "2026-10-07" },
@@ -64,38 +68,39 @@ function roundToSixDecimals(value: number): number {
   return Math.round(value * 1_000_000) / 1_000_000;
 }
 
+/** Preço dos tokens e, se houver, o de cada busca na internet. */
+type PriceTerms = Pick<ModelPrice, "input_per_mtok" | "output_per_mtok" | "per_search_usd">;
+
+/** O que as buscas custam: quantidade × preço por busca (sem preço por busca cadastrado, conta 0). */
+const searchCost = (price: PriceTerms, searches: number) => Math.max(0, searches || 0) * (price.per_search_usd ?? 0);
+
 /**
  * Estima o custo no pior caso antes de chamar a IA.
- * Fórmula: ceil(inputChars/4) × input_per_mtok + maxOutputTokens × output_per_mtok, por milhão de tokens.
- * @param price Um objeto com input_per_mtok e output_per_mtok, ou null se sem preço.
+ * Fórmula: ceil(inputChars/4) × input_per_mtok + maxOutputTokens × output_per_mtok, por milhão de tokens,
+ * mais searches × per_search_usd (nulo conta 0).
+ * @param price Um objeto com input_per_mtok e output_per_mtok (e per_search_usd), ou null se sem preço.
+ * @param searches Máximo de buscas na internet do pedido (0 sem busca).
  * @param inputChars Número de caracteres de entrada.
  * @param maxOutputTokens Número máximo de tokens de saída.
  * @returns Custo estimado em USD, ou null se sem preço.
  */
-export function estimateCostUsd(
-  price: Pick<ModelPrice, "input_per_mtok" | "output_per_mtok"> | null,
-  inputChars: number,
-  maxOutputTokens: number
-): number | null {
+export function estimateCostUsd(price: PriceTerms | null, inputChars: number, maxOutputTokens: number, searches = 0): number | null {
   if (price === null) return null;
   const inputTokens = Math.ceil(inputChars / 4);
-  const costUsd = (inputTokens * price.input_per_mtok + maxOutputTokens * price.output_per_mtok) / 1_000_000;
+  const costUsd = (inputTokens * price.input_per_mtok + maxOutputTokens * price.output_per_mtok) / 1_000_000 + searchCost(price, searches);
   return roundToSixDecimals(costUsd);
 }
 
 /**
- * Calcula o custo exato após a chamada de IA, com os tokens reais.
- * @param price Um objeto com input_per_mtok e output_per_mtok, ou null se sem preço.
+ * Calcula o custo exato após a chamada de IA, com os tokens reais e as buscas feitas.
+ * @param price Um objeto com input_per_mtok e output_per_mtok (e per_search_usd), ou null se sem preço.
+ * @param searches Buscas na internet cobradas (0 sem busca); cada uma custa per_search_usd (nulo conta 0).
  * @param inputTokens Número de tokens de entrada (ou null).
  * @param outputTokens Número de tokens de saída (ou null).
  * @returns Custo em USD, ou null se sem preço ou com token nulo.
  */
-export function costUsd(
-  price: Pick<ModelPrice, "input_per_mtok" | "output_per_mtok"> | null,
-  inputTokens: number | null,
-  outputTokens: number | null
-): number | null {
+export function costUsd(price: PriceTerms | null, inputTokens: number | null, outputTokens: number | null, searches = 0): number | null {
   if (price === null || inputTokens === null || outputTokens === null) return null;
-  const costValue = (inputTokens * price.input_per_mtok + outputTokens * price.output_per_mtok) / 1_000_000;
+  const costValue = (inputTokens * price.input_per_mtok + outputTokens * price.output_per_mtok) / 1_000_000 + searchCost(price, searches);
   return roundToSixDecimals(costValue);
 }

@@ -1490,13 +1490,15 @@ describe("Rotas", () => {
     expect((await call("admin", "PUT", "/settings", { per_run_cap_usd: null })).status).toBe(400);
   });
 
-  it("overview traz checks das 6 funções e nenhuma chave", async () => {
+  it("overview traz checks das 7 funções e nenhuma chave", async () => {
     const r = await call("admin", "GET", "/overview");
     const text = await r.text();
     expect(text).not.toContain(KEY);
     const j = JSON.parse(text);
-    expect(Object.keys(j.checks).sort()).toEqual(["assistente_conferir", "assistente_preencher", "assistente_revisar", "criacao", "engenharia_reversa", "verificacao"]);
+    expect(Object.keys(j.checks).sort()).toEqual(["assistente_conferir", "assistente_preencher", "assistente_revisar", "busca_fontes", "criacao", "engenharia_reversa", "verificacao"]);
     expect(j.checks.criacao).toMatchObject({ source: "variaveis", ready: false });
+    // a busca de fontes sem configuração fica desligada, nunca pelas variáveis de ambiente
+    expect(j.checks.busca_fontes).toMatchObject({ source: "variaveis", ready: false, ref: null, problems: ["Desligada: configure esta função na Central de IAs."] });
     expect(j.checks.criacao.problems.join(" ")).toMatch(/desligada/);
     await priceModels(A);
     await call("admin", "POST", "/providers/anthropic/enabled", { enabled: true });
