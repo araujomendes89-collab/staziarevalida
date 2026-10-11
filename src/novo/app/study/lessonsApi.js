@@ -35,7 +35,7 @@ export function uploadErrorText(error) {
   if (error?.status === 413 || /exceeded|maximum allowed|too large|payload|tamanho/i.test(text)) return "O arquivo é grande demais para o depósito. Envie um arquivo menor.";
   if (/mime|type|not allowed|unsupported|invalid.*(file|format)/i.test(text)) return "O depósito não aceitou este tipo de arquivo. Envie um PDF ou um MP3.";
   if (/expired|token|jwt|unauthori[sz]ed|forbidden|signature|permission/i.test(text)) return "O envio expirou ou não foi autorizado. Entre de novo e tente outra vez.";
-  const portuguese = Boolean(error?.status) || /[áàâãéêíóôõúç]/i.test(text) || /^(Envie|Envio|Os arquivos|Arquivo|O arquivo|Falha|Escolha|Informe|Entre|Aula|Caminho)\b/.test(text);
+  const portuguese = [400, 403, 404, 413, 415, 422].includes(error?.status) || /[áàâãéêíóôõúç]/i.test(text) || /^(Envie|Envio|Os arquivos|Arquivo|O arquivo|Falha|Escolha|Informe|Entre|Aula|Caminho)\b/.test(text);
   if (portuguese && /^[A-ZÁÉÍÓÚÂÊÔÃÕÇ].{3,240}[.!?]$/.test(text)) return text;
   return "Não foi possível enviar o arquivo. Tente de novo.";
 }

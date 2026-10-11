@@ -9,7 +9,7 @@
 --    ali sairia em /rest/v1/lessons?select=review_note,ai_notes. Só as funções app_admin_* (dono) leem e gravam.
 --  * A05: o título do material guarda o nome do arquivo de quem enviou. O aluno passa a receber só um rótulo neutro
 --    ("Material complementar", "Áudio Flashcast", "Material 2") em app_lessons, app_lesson e app_lesson_material; a equipe
---    recebe o nome real em "file_title". A leitura direta da tabela lesson_materials fica só para a equipe (nenhum código do
+--    recebe o nome real em "file_title" e o caminho em "storage_path" (o assistente da aula precisa para reconhecer o PDF salvo). A leitura direta da tabela lesson_materials fica só para a equipe (nenhum código do
 --    app ou do servidor lê essa tabela direto: tudo passa pelas funções).
 --  * Aulas já publicadas continuam no ar; nada é apagado.
 --
@@ -51,7 +51,7 @@ as $$
                              when 'guideline' then case when m.storage_path is null then m.title else 'Diretriz' end
                              else 'Material ' || row_number() over (partition by m.kind order by m.position, m.created_at) end,
         'has_file', m.storage_path is not null, 'content_type', m.content_type, 'size_bytes', m.size_bytes, 'url', m.url)
-      || case when public.is_staff() then jsonb_build_object('file_title', m.title) else '{}'::jsonb end as j
+      || case when public.is_staff() then jsonb_build_object('file_title', m.title, 'storage_path', m.storage_path) else '{}'::jsonb end as j
     from public.lesson_materials m
     where m.lesson_id = p_lesson
       and exists (select 1 from public.lessons l where l.id = p_lesson and (l.published or public.is_staff()))

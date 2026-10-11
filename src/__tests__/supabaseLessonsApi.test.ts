@@ -74,7 +74,8 @@ describe("Equipe cria e publica", () => {
     l = await rpc(EDITOR, "app_admin_lesson_material", { p_lesson_id: lessonId, p_material: { kind: "flashcast", title: "Flashcast", storage_path: `lessons/${lessonId}/flashcast-ccc.mp3`, content_type: "audio/mpeg", size_bytes: 99 } });
     l = await rpc(EDITOR, "app_admin_lesson_material", { p_lesson_id: lessonId, p_material: { kind: "guideline", title: "PCDT", url: "https://www.gov.br/x" } });
     expect(l.materials.map((m: any) => [m.kind, m.has_file])).toEqual([["slides", true], ["flashcast", true], ["guideline", false]]);
-    expect(JSON.stringify(l.materials)).not.toMatch(/storage_path/);
+    // a equipe recebe o caminho (o assistente da aula reconhece o PDF salvo); o aluno, nunca
+    expect(l.materials.find((m: any) => m.kind === "slides")).toMatchObject({ storage_path: `lessons/${lessonId}/slides-bbb.pdf`, file_title: "Slides v2" });
   });
 
   it("publicar: aluno vê o catálogo com contagem por área e o detalhe; busca sem acento", async () => {
@@ -216,7 +217,7 @@ describe("A01/A05 (correção do revisor) - nada de uso interno sai para o aluno
     expect(l.materials.map((m: any) => m.file_title)).toEqual(["CURSINHO-X apostila final v3.pdf", "Flashcast: Flashcast: Crupe.mp3", "segredo-do-cursinho.pdf"]);
     const aluno = [await rpc(ANA, "app_lessons", { p_search: "crupe" }), await rpc(ANA, "app_lesson", { p_id: id })];
     const json = JSON.stringify(aluno);
-    expect(json).not.toMatch(/CURSINHO|segredo-do-cursinho|Flashcast: Flashcast|file_title/);
+    expect(json).not.toMatch(/CURSINHO|segredo-do-cursinho|Flashcast: Flashcast|file_title|storage_path/);
     expect(aluno[1].materials.map((m: any) => [m.kind, m.title, m.size_bytes])).toEqual([["slides", "Material complementar", 123], ["flashcast", "Áudio Flashcast", 123], ["other", "Material 1", 123]]);
     const mid = aluno[1].materials[0].id;
     const direto = await rpc(ANA, "app_lesson_material", { p_id: mid });
