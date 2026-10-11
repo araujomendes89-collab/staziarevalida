@@ -332,6 +332,8 @@ export function functionForPrompt(key: PromptKey): AiFunctionKey {
     case "qanalysis":
     case "qreanalysis":
       return "engenharia_reversa";
+    case "source_search":
+      return "busca_fontes";
     default:
       return "criacao";
   }

@@ -33,6 +33,8 @@ import type { ContentDb, Storage } from "./infra";
 import { embedderAllowed, embedPendingPassages, queryEmbedding, type Embedder } from "./embeddings";
 import type { Renderer } from "./render";
 import { generateVisualVersion, visualVersionOf, VisualRenderUnavailable } from "./visual/service";
+import { runSourceSearch, SearchFailed, SearchPending } from "./sources/search";
+import { snapshotPassages } from "./sourceDiff";
 
 const run = promisify(execFile);
 
@@ -41,7 +43,7 @@ export const EXTRACTOR_VERSION = "staziamed-extract-1.0";
 export const MATERIALS_TEMPLATE = "materials-1.0";
 const PAGE_RANGE = 20;
 
-export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render";
+export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render" | "source_search";
 
 export interface Job {
   id: string;
@@ -67,6 +69,8 @@ export interface PipelineDeps {
   aiMaker?: (ref: ModelRef) => AiProvider | null;
   /** Busca por significado (embeddings.ts); sem ele, a busca de evidências usa só palavras. */
   embedder?: Embedder | null;
+  /** Busca de fontes oficiais (sources/search.ts): só para testes, o `fetch`, a checagem de endereço público e a hora. */
+  web?: { fetchImpl?: typeof fetch; checkHost?: (host: string) => Promise<void>; now?: () => Date };
 }
 
 /** Falta configuração: o trabalho fica pendente, sem gastar tentativa. */
@@ -351,12 +355,44 @@ export function softwareCriticalKinds(text: string): string[] {
 }
 
 // ---------------------------------------------------------------------------- etapas
+/** Documento de referência que é uma página web guardada (fonte oficial achada pela busca de fontes). */
+const isReferenceWebPage = (doc: { mime?: string | null; purpose?: string | null }) => doc.mime === "text/html" && doc.purpose === "reference_source";
+/** Cada trecho de página web tem no máximo isto de caracteres (como os do PDF). */
+const WEB_PASSAGE_MAX = 1500;
+/** Trechos de uma página web: os parágrafos legíveis, sem página nem seção, partidos em pedaços de até 1.500 caracteres. */
+function webPassages(html: string): { section: null; page: null; text: string }[] {
+  const out: { section: null; page: null; text: string }[] = [];
+  for (const p of snapshotPassages(html, "text/html")) {
+    let rest = p.text;
+    while (rest.length > WEB_PASSAGE_MAX) {
+      let cut = rest.lastIndexOf(" ", WEB_PASSAGE_MAX);
+      if (cut < WEB_PASSAGE_MAX / 2) cut = WEB_PASSAGE_MAX;
+      out.push({ section: null, page: null, text: rest.slice(0, cut).trim() });
+      rest = rest.slice(cut).trim();
+    }
+    if (rest) out.push({ section: null, page: null, text: rest });
+  }
+  return out;
+}
+
 async function stepExtract(ctx: Ctx): Promise<Step | null> {
   const doc = await svc<any>(ctx, "ch_worker_document", { p_document_id: docId(ctx) });
   if (!doc) throw new Fatal("Documento não encontrado.");
   if (!doc.storage_path || !(await ctx.deps.storage.exists(doc.storage_path))) throw new Fatal("O arquivo original não está no armazenamento.");
   const buf = await ctx.deps.storage.get(doc.storage_path);
   if (sha256(buf) !== doc.sha256) throw new Fatal("O arquivo armazenado não confere com o hash registrado no envio.");
+  // página web de fonte oficial achada pela busca (aprovada pelo administrador): não há PDF para ler; confere o hash e passa direto
+  // para os trechos (source_index lê o texto da página). Antes da conferência de %PDF-.
+  if (isReferenceWebPage(doc)) {
+    await setMeta(ctx, {
+      text_kind: "text",
+      status: "verifying_sources",
+      failure: "",
+      provenance: { extraction: { at: new Date().toISOString(), parser: "html" } },
+    });
+    Object.assign(ctx.metrics, { pages: 0, blocks: 0, page_kinds: { html: 1 } });
+    return "source_index";
+  }
   if (buf.subarray(0, 5).toString("latin1") !== "%PDF-") throw new Fatal("Formato ainda não suportado: por enquanto só PDF (os demais formatos entram por adaptadores).");
 
   await setMeta(ctx, { status: "extracting", failure: "" });
@@ -414,8 +450,12 @@ async function stepExtract(ctx: Ctx): Promise<Step | null> {
 async function stepSourceIndex(ctx: Ctx): Promise<Step | null> {
   const source = await svc<any>(ctx, "ch_worker_source_for_document", { p_document_id: docId(ctx) });
   if (!source) throw new Blocked("Documento de referência sem fonte cadastrada vinculada: cadastre a fonte (órgão, versão, vigência) e vincule este PDF.");
-  const blocks = await svc<Block[]>(ctx, "ch_worker_blocks", { p_document_id: docId(ctx) });
-  const passages = buildPassages(blocks);
+  // página web (fonte achada pela busca): os trechos vêm do texto da página guardada, sem página
+  const doc = await svc<any>(ctx, "ch_worker_document", { p_document_id: docId(ctx) });
+  const web = doc && isReferenceWebPage(doc);
+  if (web && !(doc.storage_path && (await ctx.deps.storage.exists(doc.storage_path)))) throw new Fatal("O arquivo original não está no armazenamento.");
+  const blocks: Block[] = web ? [] : await svc<Block[]>(ctx, "ch_worker_blocks", { p_document_id: docId(ctx) });
+  const passages: { section: string | null; page: number | null; text: string }[] = web ? webPassages((await ctx.deps.storage.get(doc.storage_path)).toString("utf8")) : buildPassages(blocks);
   const n = await svc<number>(ctx, "ch_worker_replace_passages", { p_source_id: source.id, p_passages: passages });
   // versão nova de uma fonte já cadastrada: compara o conteúdo com a anterior e tria as questões afetadas (falha aqui não derruba a leitura)
   try {
@@ -1049,6 +1089,22 @@ async function stepVisualRender(ctx: Ctx): Promise<Step | null> {
   return null;
 }
 
+/**
+ * Busca de fontes oficiais (sem documento): a IA procura, o servidor confere e baixa, os bons viram candidatos "aguardando
+ * sua conferência" (sources/search.ts). Função desligada ou teto atingido deixa o trabalho pendente, sem gastar tentativa;
+ * a IA que não respondeu mata o trabalho (nova tentativa repetiria a busca paga).
+ */
+async function stepSourceSearch(ctx: Ctx): Promise<Step | null> {
+  try {
+    await runSourceSearch(ctx.deps, ctx.job, { checkpoint: (data) => checkpoint(ctx, data), metrics: ctx.metrics });
+  } catch (error) {
+    if (error instanceof SearchPending) throw new Blocked(error.message);
+    if (error instanceof SearchFailed) throw new Fatal(error.message);
+    throw error;
+  }
+  return null;
+}
+
 const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   extract: stepExtract,
   source_index: stepSourceIndex,
@@ -1060,6 +1116,7 @@ const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   render: stepRender,
   review_check: stepReviewCheck,
   visual_render: stepVisualRender,
+  source_search: stepSourceSearch,
 };
 
 /**
