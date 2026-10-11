@@ -6,7 +6,7 @@ import { Badge, Banner, Button, Card, Icon, SelectField, Switch, TextField } fro
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
-import { lessonsAvailable, materialTitle, sizeLabel, uploadLessonFile } from "../study/lessonsApi.js";
+import { lessonsAvailable, materialTitle, sizeLabel, uploadErrorText, uploadLessonFile } from "../study/lessonsApi.js";
 import { dateTimeBR, LoadError, Loading, messageOf, TextArea, useLoad } from "./common.jsx";
 import { LessonAssistant } from "./LessonAssistant.jsx";
 
@@ -53,7 +53,7 @@ function MaterialsSection({ lesson, pending, setPending, onChanged, form, set })
       onChanged(await uploadLessonFile(backend, lesson.id, file, kind));
       setState({ busy: null, error: null });
     } catch (error) {
-      setState({ busy: null, error: error.message });
+      setState({ busy: null, error: uploadErrorText(error) });
     }
   };
   const remove = async (id) => {
@@ -121,7 +121,7 @@ function LessonEditor({ lesson, topics, onSaved, onClose, isAdmin }) {
           latest = await uploadLessonFile(backend, saved.id, file, slot.kind);
           setPending((p) => ({ ...p, [slot.kind]: null }));
         } catch (error) {
-          failed.push(`${slot.label}: ${error.message}`);
+          failed.push(`${slot.label}: ${uploadErrorText(error)}`);
         }
       }
       setCurrent(latest);

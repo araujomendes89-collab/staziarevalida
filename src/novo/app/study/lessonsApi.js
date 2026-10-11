@@ -24,6 +24,21 @@ const json = async (backend, path, body) =>
 
 export const lessonsAvailable = (backend) => Boolean(backend?.accessToken);
 
+/**
+ * Texto em português para um erro de envio. As frases do nosso servidor (com status) e as nossas próprias já vêm em português;
+ * o que vem do depósito de arquivos costuma vir em inglês e é traduzido por tipo de problema (A10).
+ */
+export function uploadErrorText(error) {
+  const text = String(error?.message ?? "").trim();
+  if (error?.code === "network" || /failed to fetch|network|networkerror|conex/i.test(text)) return "Sem conexão com o servidor. Confira a internet e tente de novo.";
+  if (error?.status === 413 || /exceeded|maximum allowed|too large|payload|tamanho/i.test(text)) return "O arquivo é grande demais para o depósito. Envie um arquivo menor.";
+  if (/mime|type|not allowed|unsupported|invalid.*(file|format)/i.test(text)) return "O depósito não aceitou este tipo de arquivo. Envie um PDF ou um MP3.";
+  if (/expired|token|jwt|unauthori[sz]ed|forbidden|signature|permission/i.test(text)) return "O envio expirou ou não foi autorizado. Entre de novo e tente outra vez.";
+  const portuguese = Boolean(error?.status) || /[áàâãéêíóôõúç]/i.test(text) || /^(Envie|Envio|Os arquivos|Arquivo|O arquivo|Falha|Escolha|Informe|Entre|Aula|Caminho)\b/.test(text);
+  if (portuguese && /^[A-ZÁÉÍÓÚÂÊÔÃÕÇ].{3,240}[.!?]$/.test(text)) return text;
+  return "Não foi possível enviar o arquivo. Tente de novo.";
+}
+
 /** Tipo aceito para o arquivo (PDF ou MP3), ou null. */
 export function lessonFileType(file) {
   if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) return "application/pdf";

@@ -79,3 +79,38 @@ describe("A06 - prefixo 'Flashcast:' repetido", () => {
     expect(document.body.textContent).not.toMatch(/Flashcast: Flashcast/);
   });
 });
+
+describe("A10 - erro de envio em português", () => {
+  const signedFetch = () =>
+    ((globalThis as any).fetch = vi.fn(async (url: string) => {
+      if (url === "/api/lessons/l9/upload") return new Response(JSON.stringify({ mode: "signed", bucket: "lessons", key: "lessons/l9/slides-aaaaaaaaaaaaaaaa.pdf", path: "p", token: "t" }), { status: 200, headers: { "content-type": "application/json" } });
+      return new Response("{}", { status: 404 });
+    }));
+
+  it("erro do depósito em inglês aparece traduzido, nunca como veio", async () => {
+    store.lessons = [withMaterials([])];
+    signedFetch();
+    backend.uploadToSignedUrl = vi.fn(async () => {
+      throw Object.assign(new Error("The object exceeded the maximum allowed size"), { code: "unknown" });
+    });
+    render(<AdminLessons />);
+    fireEvent.click(await screen.findByRole("button", { name: /Bronquiolite/ }));
+    fireEvent.change(screen.getByLabelText("Escolher PDF"), { target: { files: [new File(["%PDF-1.4"], "apostila.pdf", { type: "application/pdf" })] } });
+    await waitFor(() => expect(backend.uploadToSignedUrl).toHaveBeenCalled());
+    expect(await screen.findByText(/grande demais/)).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/exceeded/);
+  });
+
+  it("falha de rede e erro desconhecido também saem em português", async () => {
+    store.lessons = [withMaterials([])];
+    signedFetch();
+    backend.uploadToSignedUrl = vi.fn(async () => {
+      throw Object.assign(new Error("Failed to fetch"), { code: "network" });
+    });
+    render(<AdminLessons />);
+    fireEvent.click(await screen.findByRole("button", { name: /Bronquiolite/ }));
+    fireEvent.change(screen.getByLabelText("Escolher PDF"), { target: { files: [new File(["%PDF-1.4"], "apostila.pdf", { type: "application/pdf" })] } });
+    expect(await screen.findByText(/conexão/)).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/Failed to fetch/);
+  });
+});
