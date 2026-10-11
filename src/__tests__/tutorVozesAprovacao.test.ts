@@ -211,6 +211,27 @@ describe("Vozes do Nexus: audição e aprovação no servidor", () => {
     expect((await deps.storage.get(samplePath("direto", voiceFingerprint("direto", ENV)))).toString()).toBe(`ID3:${OFFICIAL_VOICES.direto.sample}`);
   });
 
+  it("VZ02: o Ouvir do aluno também confere só equipe e a voz ligada; pedido direto não toca a amostra; a equipe continua ouvindo", async () => {
+    expect((await preview(DONO, "durona", "apresentacao")).status).toBe(200);
+    await heardAll(DONO, "durona");
+    expect((await call(DONO, "POST", "/tutor/voices/approve", { personality: "durona" })).status).toBe(200);
+    const nego = { status: 404, json: { error: "Amostra indisponível." } };
+    try {
+      expect((await call(ALUNO, "GET", "/tutor/voice/sample/durona")).status).toBe(200);
+      // "só equipe" ligado: o aluno não ouve, nem pelo pedido direto; a equipe (administrador) ouve
+      await sql(`update public.tutor_config set tts_team_only = true`);
+      expect(await call(ALUNO, "GET", "/tutor/voice/sample/durona")).toMatchObject(nego);
+      expect((await call(SOCIA, "GET", "/tutor/voice/sample/durona")).status).toBe(200);
+      // voz do Tutor desligada no painel: o aluno não ouve; a equipe também não (a tela some com o botão)
+      await sql(`update public.tutor_config set tts_team_only = false, voice_enabled = false`);
+      expect(await call(ALUNO, "GET", "/tutor/voice/sample/durona")).toMatchObject(nego);
+    } finally {
+      await sql(`update public.tutor_config set tts_team_only = false, voice_enabled = true`);
+    }
+    // tudo ligado de novo: volta a tocar
+    expect((await call(ALUNO, "GET", "/tutor/voice/sample/durona")).status).toBe(200);
+  });
+
   it("audições entram como tutor_tts_audicao e não contam no limite de quem ouviu nem nos tetos", async () => {
     const ledger = async () => sql(`select feature, characters, estimated_cost_usd::float c, meta from public.ai_usage_ledger where user_id = $1 and feature = 'tutor_tts_audicao' order by id`, [DONO]);
     const before = (await ledger()).length;
