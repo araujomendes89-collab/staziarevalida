@@ -80,6 +80,22 @@ describe("Estações (ES02): o aviso da aba diz a verdade", () => {
   });
 });
 
+describe("Estações (ES05): relatos de erro dos alunos", () => {
+  it("avisa que o aluno ainda não tem como relatar erro, em vez de deixar a falta de relatos parecer estação sem problema", async () => {
+    const { container } = render(<AdminStations />);
+    await screen.findByText("Cetoacidose diabética");
+    expect(textOf(container)).toMatch(/os alunos ainda não conseguem relatar erro numa estação/i);
+  });
+
+  it("mostra os relatos que existirem e diz quando são só os mais recentes", async () => {
+    stations = [{ ...PENDING, reports: 5, last_reports: [{ message: "Impresso trocado.", created_at: "2026-10-10T10:00:00Z" }, { message: "Falta o item de lavar as mãos.", created_at: "2026-10-09T10:00:00Z" }, { message: "Valor errado.", created_at: "2026-10-08T10:00:00Z" }] }];
+    const { container } = render(<AdminStations />);
+    await screen.findByText("5 relatos de erro");
+    expect(screen.getByText(/Impresso trocado\./)).toBeTruthy();
+    expect(textOf(container)).toMatch(/mostrando os 3 mais recentes/i);
+  });
+});
+
 describe("Estações (ES03): aprovar é revisão médica registrada", () => {
   it("abre o conteúdo para conferir; aprovar só com o que foi conferido; depois mostra quem aprovou e quando", async () => {
     render(<AdminStations />);

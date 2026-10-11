@@ -370,6 +370,7 @@ function StationCard({ station: s, onSaved }) {
               <b>
                 {s.reports} {s.reports === 1 ? "relato de erro" : "relatos de erro"}
               </b>
+              {s.reports > s.last_reports.length && <span style={{ color: "var(--text-tertiary)" }}> (mostrando os {s.last_reports.length} mais recentes)</span>}
               {s.last_reports.map((r) => (
                 <div key={r.created_at} style={{ color: "var(--text-secondary)", marginTop: 4 }}>
                   “{r.message}” · {dateTimeBR(r.created_at)}
@@ -429,7 +430,7 @@ export function AdminStations() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Banner tone="info" title="Telas de estações do aluno em construção">
-        As telas de estações do aluno ainda estão em construção e continuam escondidas: por enquanto, só a equipe vê as estações, aprovadas ou não. Aprovar agora deixa a estação pronta para quando essas telas forem ligadas.
+        As telas de estações do aluno ainda estão em construção e continuam escondidas: por enquanto, só a equipe vê as estações, aprovadas ou não. Aprovar agora deixa a estação pronta para quando essas telas forem ligadas. Pelo mesmo motivo, os alunos ainda não conseguem relatar erro numa estação: os relatos só vão aparecer aqui depois que essas telas tiverem o botão de relatar.
       </Banner>
       <Banner tone="warning" title="Aprovação é revisão médica">
         Só aprova o revisor médico cadastrado na área da estação, ou um administrador, depois de conferir roteiro, impressos e checklist. O que foi conferido fica registrado com o nome de quem aprovou e a data.
