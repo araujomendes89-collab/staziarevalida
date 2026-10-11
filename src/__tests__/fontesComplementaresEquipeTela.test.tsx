@@ -84,11 +84,15 @@ describe("aba Fontes › Textos que citam fontes complementares", () => {
     backend.rpc.mockImplementation(async (fn: string) => {
       if (fn === "app_ch_sources") return [{ id: "s1", title: "PCDT de Bronquiolite", organ: "Ministério da Saúde", kind: "final", status: "current", version: "1", authority_level: "A", passages: 1, freshness: "FRESH", changes: 0, diffs: 0, url: null }];
       if (fn === "app_ch_source_audiences") return { s1: "oficial" };
+      // painéis da busca de fontes oficiais com IA (publicar-fontes-ia): carregam sem erro, para só a varredura falhar
+      if (["app_ch_official_domains", "app_ch_source_candidates", "app_ch_source_searches", "app_incidence"].includes(fn)) return [];
       throw new Error("fora do ar");
     });
     render(<MemoryRouter><Sources isAdmin go={() => {}} /></MemoryRouter>);
     expect(await screen.findByText("PCDT de Bronquiolite")).toBeTruthy();
-    expect(await screen.findByRole("button", { name: "Tentar de novo" })).toBeTruthy();
+    // (a aba também tem painéis novos da busca de fontes oficiais, que podem mostrar o próprio "Tentar de novo")
+    expect((await screen.findAllByRole("button", { name: "Tentar de novo" })).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("Textos que citam fontes complementares")).toBeTruthy();
   });
 
   it("quem não é administrador não vê a seção e a varredura nem é chamada", async () => {

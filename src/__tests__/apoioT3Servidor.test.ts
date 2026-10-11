@@ -188,7 +188,7 @@ beforeAll(async () => {
   const script = { lines: [
     { speaker: "ANA", text: "Vamos falar de hepatite B.", sources: [c1] },
     { speaker: "BRUNO", text: "E o macete?", sources: [c2, c3] },
-    { speaker: "ANA", text: "Como diz a Sangue nos Olhos, decore o tenofovir.", sources: [c4] },
+    { speaker: "ANA", text: `Como diz o ${COMP_TITLE}, decore o tenofovir.`, sources: [c4] },
   ] };
   await sql(`update public.podcasts set script = $2::jsonb, approved_at = now(), audio_path = $3, published_at = now(), status = 'published' where id = $1`, [ids.podcast, JSON.stringify(script), `podcasts/${ids.podcast}/audio.mp3`]);
   store.set(`podcasts/${ids.podcast}/audio.mp3`, Buffer.from("ID3"));
@@ -274,7 +274,7 @@ describe("Tutor por texto (/api/tutor/turn) e a releitura da conversa (app_tutor
    */
   it("CORRIGIDO T1: resposta limpa com SUGESTÕES que citam a apostila — as sugestões não chegam ao aluno", async () => {
     const sid = await sessaoLivre();
-    responder = () => out("Pensa no quadro: o que muda a conduta?", { suggested_replies: ["O que a Sangue nos Olhos diz disso?", `Abre o ${COMP_FILE} na página ${COMP_PAGE}`] });
+    responder = () => out("Pensa no quadro: o que muda a conduta?", { suggested_replies: [`O que o ${COMP_TITLE} diz disso?`, `Abre o ${COMP_FILE} na página ${COMP_PAGE}`] });
     const r = await turno(sid, "hepatite B crônica");
     expect(r.status).toBe(200);
     expect(marcasEm(r.body.message.suggested)).toEqual([]); // FALHA AQUI: as duas sugestões chegam como vieram do modelo
@@ -334,7 +334,7 @@ describe("Tutor por voz em tempo real (/api/tutor/voice/*): ferramentas, confer�
    */
   it("CORRIGIDO V1: explicação da alternativa que cita a apostila não sai na saída da ferramenta (que o navegador do aluno recebe)", async () => {
     const qid = (await releitura(sid)).question.id;
-    await sql(`update public.questions set options = (select jsonb_agg(o || jsonb_build_object('explanation', 'Conforme a Sangue nos Olhos p. 123, é a correta.') order by o ->> 'id') from jsonb_array_elements(options) o) where id = $1`, [qid]);
+    await sql(`update public.questions set options = (select jsonb_agg(o || jsonb_build_object('explanation', $2::text) order by o ->> 'id') from jsonb_array_elements(options) o) where id = $1`, [qid, `Conforme o ${COMP_TITLE} p. 123, é a correta.`]);
     const r = await tool("get_question_context");
     expect(r.status).toBe(200);
     expect(marcasEm(r.body)).toEqual([]); // FALHA AQUI: a explicação chega inteira
@@ -367,7 +367,7 @@ describe("Tutor por voz em tempo real (/api/tutor/voice/*): ferramentas, confer�
    * deixar de citar o material e tende a repetir.
    */
   it("CORRIGIDO V3: a correção da voz pede para não citar o material", async () => {
-    const r = await fala("Isso está na Sangue nos Olhos, viu?");
+    const r = await fala(`Isso está no ${COMP_TITLE}, viu?`);
     expect(r.body.correction).toMatch(/material|apostila|fonte/i); // FALHA AQUI: só "CORREÇÃO OBRIGATÓRIA, diga já..."
   });
 
@@ -379,8 +379,8 @@ describe("Tutor por voz em tempo real (/api/tutor/voice/*): ferramentas, confer�
    * mentionsSupportMaterial. As memórias também voltam ao modelo nas próximas ligações (realtime.ts sessionContext).
    */
   it("CORRIGIDO V4: memória e evento de aprendizagem gravados pela voz não guardam o nome da apostila para o aluno ler", async () => {
-    await tool("save_tutor_memory", { kind: "fact", concept: "Sangue nos Olhos", note: `Estuda pelo ${COMP_FILE}` });
-    await tool("register_learning_event", { kind: "error", error_type: "knowledge_gap", knowledge_gap: "revisar a Sangue nos Olhos p. 123" });
+    await tool("save_tutor_memory", { kind: "fact", concept: COMP_TITLE, note: `Estuda pelo ${COMP_FILE}` });
+    await tool("register_learning_event", { kind: "error", error_type: "knowledge_gap", knowledge_gap: `revisar o ${COMP_TITLE} p. 123` });
     const mem = await as(ALUNO, (q) => q(`select concept, note from public.tutor_memories`));
     const err = await as(ALUNO, (q) => q(`select knowledge_gap from public.student_error_events`));
     expect(marcasEm([mem, err])).toEqual([]); // FALHA AQUI: o aluno lê as duas gravações

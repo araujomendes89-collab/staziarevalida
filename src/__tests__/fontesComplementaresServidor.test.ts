@@ -21,11 +21,19 @@ const TERMOS = [TITULO, "Editora Alfa (teste)"];
 beforeEach(() => resetComplementarTermsCache());
 
 describe("conferência de menção ao material complementar", () => {
-  it("acha o nome do material, do órgão, 'Sangue nos Olhos' e a palavra apostila, sem acento nem caixa", () => {
-    expect(mentionsSupportMaterial("Segundo a apostila de clínica, faça suporte.")).toEqual(["apostila"]);
-    expect(mentionsSupportMaterial("como diz o SANGUE NOS OLHOS")).toEqual(["Sangue nos Olhos"]);
+  it("acha o título completo e o órgão cadastrados, sem acento nem caixa", () => {
     expect(mentionsSupportMaterial("Veja o manual da Editora Alfa (teste) para detalhes.", TERMOS)).toEqual(["Editora Alfa (teste)"]);
-    expect(mentionsSupportMaterial("Sangue nos olhos clinica medica", TERMOS)).toContain("Sangue nos Olhos");
+    expect(mentionsSupportMaterial("Sangue nos olhos clinica medica", TERMOS)).toEqual([TITULO]);
+    expect(mentionsSupportMaterial("como diz o SANGUE NOS OLHOS — CLÍNICA MÉDICA", TERMOS)).toEqual([TITULO]);
+  });
+
+  it("(decisão do dono, 2026-10-11) 'Sangue nos Olhos' solto e a palavra 'apostila' NÃO contam, nem sem biblioteca", () => {
+    expect(ALWAYS_TERMS).toEqual([]);
+    expect(mentionsSupportMaterial("Segundo a apostila de clínica, faça suporte.")).toEqual([]);
+    expect(mentionsSupportMaterial("como diz o SANGUE NOS OLHOS")).toEqual([]);
+    expect(mentionsSupportMaterial("Paciente refere sangue nos olhos após tosse: hemorragia subconjuntival.", TERMOS)).toEqual([]);
+    expect(labelIsSupportMaterial("Apostila de Clínica Médica", TERMOS)).toBe(false);
+    expect(labelIsSupportMaterial("Sangue nos Olhos", TERMOS)).toBe(false);
   });
 
   it("texto limpo passa; a palavra 'apostilar' dentro de outra não conta", () => {
@@ -67,8 +75,9 @@ describe("roteiro do podcast", () => {
   const script = (text: string): PodcastScript => ({ lines: [{ speaker: "ANA", text, style: "", sources: [1] }], missing: [] });
   const chunks = new Map([[1, { id: 1, source: "Material", doc: 1, page: 1, text: "Suporte clínico." }]]);
   it("fala que cita o material é avisada; fala limpa não", () => {
-    const avisos = checkScript(script("Como diz a apostila Sangue nos Olhos, o suporte basta."), chunks, undefined, TERMOS);
+    const avisos = checkScript(script(`Como diz o ${TITULO}, o suporte basta.`), chunks, undefined, TERMOS);
     expect(avisos.map((a) => a.kind)).toContain("cites_material");
+    expect(checkScript(script("Como diz a apostila, o suporte basta; queixa de sangue nos olhos."), chunks, undefined, TERMOS).map((a) => a.kind)).not.toContain("cites_material");
     expect(checkScript(script("O suporte basta."), chunks, undefined, TERMOS).map((a) => a.kind)).not.toContain("cites_material");
   });
 });
@@ -88,7 +97,7 @@ describe("análise da questão e atualização (saem para o aluno)", () => {
     })),
   } as Analysis) });
   it("análise que cita a apostila recebe falha crítica", () => {
-    const f = analysisChecks(q, analise("Cuidado: a apostila Sangue nos Olhos marca outra letra."), TERMOS);
+    const f = analysisChecks(q, analise(`Cuidado: o ${TITULO} marca outra letra.`), TERMOS);
     expect(f).toEqual(expect.arrayContaining([expect.objectContaining({ severity: "critical", code: "cites_support_material" })]));
     expect(analysisChecks(q, analise("Cuidado com a pegadinha do enunciado."), TERMOS).map((x) => x.code)).not.toContain("cites_support_material");
   });
@@ -105,9 +114,12 @@ describe("Tutor", () => {
     justification: "NONE", reveals_answer: false, suggested_replies: [],
   });
   const ctx = (extra: Partial<SafetyContext> = {}): SafetyContext => ({ blocks: [], conversationTexts: [], hintLevel: null, hasUpdateCard: false, profanity: "off", ...extra });
-  it("resposta que cita apostila ou 'Sangue nos Olhos' é barrada", () => {
-    for (const reply of ["Isso está na apostila, pode olhar.", "Pelo Sangue nos Olhos, a conduta é outra.", "No manual da Editora Alfa (teste) aparece."]) {
+  it("resposta que cita o título completo ou o órgão cadastrados é barrada; 'apostila' e 'sangue nos olhos' soltos passam", () => {
+    for (const reply of [`Isso está no ${TITULO}, pode olhar.`, "No manual da Editora Alfa (teste) aparece."]) {
       expect(safetyCheck(out(reply), ctx({ supportTerms: TERMOS })).violations.map((v) => v.code)).toContain("cites_support_material");
+    }
+    for (const reply of ["Isso está na apostila do curso, pode olhar.", "A queixa de sangue nos olhos é hemorragia subconjuntival."]) {
+      expect(safetyCheck(out(reply), ctx({ supportTerms: TERMOS })).violations.map((v) => v.code)).not.toContain("cites_support_material");
     }
     expect(safetyCheck(out("Pensa no quadro: o que muda a conduta?"), ctx({ supportTerms: TERMOS })).violations.map((v) => v.code)).not.toContain("cites_support_material");
   });

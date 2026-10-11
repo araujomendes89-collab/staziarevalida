@@ -173,17 +173,24 @@ describe("conferência dos textos de IA voltados ao aluno", () => {
   let termos: string[];
   beforeAll(async () => {
     resetComplementarTermsCache();
-    termos = await loadComplementarTerms(db); // do banco: título e órgão da apostila + "Sangue nos Olhos"
+    termos = await loadComplementarTerms(db); // do banco: título e órgão cadastrados da apostila (sem termo fixo)
     resetComplementarTermsCache();
   });
 
+  // (2026-10-11) citam o NOME CADASTRADO (título completo / editora): barrados
   const CITAM = [
-    "Segundo a apostila, a conduta é vacina e imunoglobulina.",
-    "Como ensina o Sangue nos Olhos, não espere o anti-HBs.",
+    `Como ensina o ${COMP_TITLE}, não espere o anti-HBs.`,
     `No ${COMP_TITLE} isso aparece na página 123.`,
     "Pela Editora Sangue nos Olhos, a dose é única.",
+    "SANGUE-NOS-OLHOS-CLÍNICA-MÉDICA: vacina e imunoglobulina.",
+  ];
+  // (2026-10-11) a expressão solta e a palavra "apostila" soltas NÃO são mais barradas (texto médico legítimo)
+  const SOLTOS = [
+    "Segundo a apostila, a conduta é vacina e imunoglobulina.",
+    "Como ensina o Sangue nos Olhos, não espere o anti-HBs.",
     "Nas apostilas de clínica isso cai muito.",
     "SANGUE-NOS-OLHOS: vacina e imunoglobulina.",
+    "Paciente com sangue nos olhos após tosse forte: hemorragia subconjuntival, conduta expectante.",
   ];
   const LIMPOS = [
     "Na hepatite B perinatal, o recém-nascido recebe vacina e imunoglobulina nas primeiras 12 horas.",
@@ -205,28 +212,27 @@ describe("conferência dos textos de IA voltados ao aluno", () => {
       expect(safetyCheck(reply(t), ctx).violations.map((v) => v.code), t).toContain("cites_support_material");
       expect(checkScript(roteiro(t), chunks, undefined, termos).map((w) => w.kind), t).toContain("cites_material");
     }
-    expect(analysisChecks(questao, analise(CITAM[1]), termos).map((f) => f.code)).toContain("cites_support_material");
-    expect(reanalysisChecks(entrada, proposta(CITAM[3]), termos).map((f) => f.code)).toContain("cites_support_material");
+    expect(analysisChecks(questao, analise(CITAM[0]), termos).map((f) => f.code)).toContain("cites_support_material");
+    expect(reanalysisChecks(entrada, proposta(CITAM[2]), termos).map((f) => f.code)).toContain("cites_support_material");
   });
 
   it("texto médico comum passa em todas as conferências (sem falso positivo)", () => {
     const ctx: SafetyContext = { blocks: [], conversationTexts: [], hintLevel: null, hasUpdateCard: false, profanity: "off", supportTerms: termos } as any;
-    for (const t of LIMPOS) {
+    for (const t of [...LIMPOS, ...SOLTOS]) {
       expect(mentionsSupportMaterial(t, termos), t).toEqual([]);
       expect(safetyCheck(reply(t), ctx).violations.map((v) => v.code), t).not.toContain("cites_support_material");
     }
     expect(analysisChecks(questao, analise(LIMPOS[0]), termos).map((f) => f.code)).not.toContain("cites_support_material");
   });
 
-  vazamento("FALSO POSITIVO: 'sangue nos olhos' como queixa clínica (hemorragia subconjuntival) é tratado como citação da apostila", () => {
-    // causa: complementarGuard.ts ALWAYS_TERMS ("Sangue nos Olhos") e 9620 ch_complementar_hit ('%sangue nos olhos%') casam a expressão leiga
+  it("CORRIGIDO (decisão do dono, 2026-10-11): 'sangue nos olhos' como queixa clínica (hemorragia subconjuntival) NÃO é mais tratado como citação da apostila", () => {
     expect(mentionsSupportMaterial("Paciente com sangue nos olhos após tosse forte: hemorragia subconjuntival, conduta expectante.", termos)).toEqual([]);
   });
 
   vazamento("VAZAMENTO (texto de IA): nome do arquivo, sigla, link sem a palavra apostila e paráfrase passam pela conferência", () => {
     // causa: complementarGuard.ts mentionsSupportMaterial só conhece título, órgão, "Sangue nos Olhos" e a palavra "apostila";
     // ch_worker_complementar_terms (9620:120-128) não inclui nome de arquivo (ch_documents.name), link nem sigla
-    for (const t of [`Veja o ${COMP_FILE}, página 123.`, "Isso está no SNO de clínica.", "Como diz o SangueNosOlhos.", "Fonte: https://cdn.exemplo/sno.pdf p. 123", "No livro do cursinho de clínica, página 123."]) {
+    for (const t of [`Veja o ${COMP_FILE}, página 123.`, "Isso está no SNO de clínica.", "Fonte: https://cdn.exemplo/sno.pdf p. 123", "No livro do cursinho de clínica, página 123."]) {
       expect(mentionsSupportMaterial(t, termos), t).not.toEqual([]);
     }
   });

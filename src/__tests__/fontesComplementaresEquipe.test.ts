@@ -2,7 +2,8 @@
 /**
  * Fontes complementares, parte da EQUIPE (supabase/migrations/…9621_fontes_complementares_equipe.sql), num Postgres real em memória
  * com TODAS as migrações (APOIO-B).
- *  1. Checagem ao salvar (gatilhos): o que a equipe digita e o aluno lê não pode citar a apostila nem o nome do material.
+ *  1. Checagem ao salvar (gatilhos): o que a equipe digita e o aluno lê não pode citar o NOME CADASTRADO de uma fonte complementar (título completo,
+ *     órgão distintivo, sigla). Desde 2026-10-11 "Sangue nos Olhos" e a palavra "apostila" SOLTAS passam (texto médico legítimo).
  *  2. Varredura ampliada (app_ch_complementar_mentions): tabela, id, campo e trecho; só o administrador.
  *  3. Fonte de podcast marcada como complementar (só o administrador), com registro.
  */
@@ -18,12 +19,12 @@ const ADMIN = "00000000-0000-4000-8000-0000000b00ad";
 const EDITOR = "00000000-0000-4000-8000-0000000b00ed";
 const ALUNA = "00000000-0000-4000-8000-0000000b000a";
 const REVISOR = "00000000-0000-4000-8000-0000000b00f1";
-const MENSAGEM = "Este texto cita uma fonte complementar (o aluno não pode ver). Reescreva sem citar a apostila nem o nome do material.";
+const MENSAGEM = "Este texto cita uma fonte complementar cadastrada (o aluno não pode ver). Reescreva sem citar o nome desse material.";
 
 const SNO_TITLE = "Sangue nos Olhos — Pediatria";
 const SNO_ORGAN = "Sangue nos Olhos";
 const GAMA_TITLE = "Manual de Pediatria Gama (teste)";
-const GAMA_ORGAN = "Editora Gama (teste)";
+const GAMA_ORGAN = "Editora Gama de Pediatria (teste)"; // órgão DISTINTIVO (3+ palavras e 20+ letras); um órgão curto não barra texto (2026-10-11)
 const GAMA_URL = "https://gama.invalid/pediatria-2026.pdf";
 const OFI_TITLE = "PCDT Bronquiolite (teste)";
 const OFI_ORGAN = "Ministério da Saúde (teste)";
@@ -97,19 +98,19 @@ beforeAll(async () => {
 
 // ------------------------------------------------------------------------------------------------- 1. checagem ao salvar
 describe("1. checagem ao salvar: aula", () => {
-  it("administrador e editor são barrados ao citar 'Sangue nos Olhos' (resumo)", async () => {
-    await barrado(rpc(ADMIN, "app_admin_save_lesson", { p_lesson: aula({ id: aulaId, summary: "Conforme o Sangue nos Olhos, o suporte basta." }) }));
-    await barrado(rpc(EDITOR, "app_admin_save_lesson", { p_lesson: aula({ id: aulaId, summary: "Segundo SANGUE NOS OLHOS: suporte." }) }));
+  it("administrador e editor são barrados ao citar o título cadastrado 'Sangue nos Olhos — Pediatria' (resumo)", async () => {
+    await barrado(rpc(ADMIN, "app_admin_save_lesson", { p_lesson: aula({ id: aulaId, summary: `Conforme o ${SNO_TITLE}, o suporte basta.` }) }));
+    await barrado(rpc(EDITOR, "app_admin_save_lesson", { p_lesson: aula({ id: aulaId, summary: `Segundo ${SNO_TITLE.toUpperCase()}: suporte.` }) }));
   });
 
   it("barra em cada campo de texto da aula: título, tema, professor, especialidade, pontos-chave e diretriz", async () => {
     for (const extra of [
-      { title: "Bronquiolite (apostila de pediatria)" },
-      { topic: "Bronquiolite do Sangue nos Olhos" },
-      { instructor: "Equipe Sangue nos Olhos" },
+      { title: `Bronquiolite (${GAMA_TITLE})` },
+      { topic: `Bronquiolite do ${SNO_TITLE}` },
+      { instructor: `Equipe ${GAMA_ORGAN}` },
       { specialty: `Pediatria ${GAMA_ORGAN}` },
       { key_points: ["Oxigênio se saturação baixa", `Ponto da ${GAMA_TITLE}`] },
-      { guideline_title: "Apostila do cursinho" },
+      { guideline_title: GAMA_TITLE },
       { guideline_url: GAMA_URL },
     ]) await barrado(rpc(ADMIN, "app_admin_save_lesson", { p_lesson: aula({ id: aulaId, ...extra }) }));
   });
@@ -130,16 +131,23 @@ describe("1. checagem ao salvar: aula", () => {
   });
 
   it("editar OUTRO campo de uma linha antiga que já cita não bloqueia; mudar o campo que cita para outro texto citando, sim", async () => {
-    await sql(`update public.lessons set summary = 'Resumo antigo: veja a apostila Sangue nos Olhos.' where id = $1`, [aulaId]); // dado antigo (sem usuário)
-    await rpc(ADMIN, "app_admin_save_lesson", { p_lesson: aula({ id: aulaId, title: "Bronquiolite no lactente (revisada)", summary: "Resumo antigo: veja a apostila Sangue nos Olhos." }) });
+    await sql(`update public.lessons set summary = $2 where id = $1`, [aulaId, `Resumo antigo: veja o ${SNO_TITLE}.`]); // dado antigo (sem usuário)
+    await rpc(ADMIN, "app_admin_save_lesson", { p_lesson: aula({ id: aulaId, title: "Bronquiolite no lactente (revisada)", summary: `Resumo antigo: veja o ${SNO_TITLE}.` }) });
     expect((await sql(`select title from public.lessons where id = $1`, [aulaId]))[0].title).toBe("Bronquiolite no lactente (revisada)");
-    await barrado(rpc(ADMIN, "app_admin_save_lesson", { p_lesson: aula({ id: aulaId, summary: "Outro resumo, ainda citando a apostila." }) }));
+    await barrado(rpc(ADMIN, "app_admin_save_lesson", { p_lesson: aula({ id: aulaId, summary: `Outro resumo, ainda citando o ${SNO_TITLE}.` }) }));
     // limpar o campo é permitido
     await rpc(ADMIN, "app_admin_save_lesson", { p_lesson: aula({ id: aulaId, summary: "Suporte clínico e oxigênio." }) });
   });
 
+  it("(2026-10-11) 'Sangue nos Olhos' solto e a palavra 'apostila' soltas SÃO salvos pela equipe: texto médico legítimo", async () => {
+    const livre = "Paciente refere sangue nos olhos após tosse (hemorragia subconjuntival). Veja a apostila do curso para revisar.";
+    await rpc(ADMIN, "app_admin_save_lesson", { p_lesson: aula({ id: aulaId, summary: livre, key_points: [livre], title: "Hemorragia subconjuntival", instructor: "Equipe Sangue nos Olhos" }) });
+    expect((await sql(`select summary from public.lessons where id = $1`, [aulaId]))[0].summary).toBe(livre);
+    await rpc(ADMIN, "app_admin_save_lesson", { p_lesson: aula({ id: aulaId, summary: "Suporte clínico e oxigênio.", key_points: [], title: "Bronquiolite no lactente (revisada)", instructor: null }) });
+  });
+
   it("gravação interna (servidor/worker, sem usuário logado) não é barrada: só aviso", async () => {
-    await sql(`update public.lessons set summary = 'Gerado pela IA: segundo a apostila X.' where id = $1`, [aulaId]);
+    await sql(`update public.lessons set summary = $2 where id = $1`, [aulaId, `Gerado pela IA: segundo o ${SNO_TITLE}.`]);
     await sql(`update public.lessons set summary = 'Suporte clínico e oxigênio.' where id = $1`, [aulaId]);
   });
 });
@@ -147,18 +155,18 @@ describe("1. checagem ao salvar: aula", () => {
 describe("1. checagem ao salvar: atualizações e diretrizes", () => {
   it("barra em subtema, rótulo, instituição, documento, link, antes, conduta, impactos, pegadinha, linha do tempo, flashcards e nota", async () => {
     for (const extra of [
-      { subtopic: "Manejo (Sangue nos Olhos)" },
+      { subtopic: `Manejo (${SNO_TITLE})` },
       { publication_label: `Edição ${GAMA_ORGAN}` },
       { institution: GAMA_ORGAN, document_title: "Guia", source_url: "https://exemplo.invalid/x" },
       { document_title: GAMA_TITLE },
       { source_url: GAMA_URL },
-      { before_text: "Antes, segundo a apostila: broncodilatador." },
-      { current_conduct: "Suporte, como no Sangue nos Olhos." },
-      { clinical_impact: "Menos internações (apostila)." },
+      { before_text: `Antes, segundo o ${GAMA_TITLE}: broncodilatador.` },
+      { current_conduct: `Suporte, como no ${SNO_TITLE}.` },
+      { clinical_impact: `Menos internações (${GAMA_TITLE}).` },
       { exam_impact: `Cai na prova: ${GAMA_TITLE}` },
-      { trap: "Pegadinha da apostila" },
-      { timeline: [{ year: 2026, text: "Mudou, diz a apostila." }] },
-      { flashcards: [{ front: "Conduta?", back: "Suporte (Sangue nos Olhos)." }] },
+      { trap: `Pegadinha do ${GAMA_TITLE}` },
+      { timeline: [{ year: 2026, text: `Mudou, diz o ${GAMA_TITLE}.` }] },
+      { flashcards: [{ front: "Conduta?", back: `Suporte (${SNO_TITLE}).` }] },
     ]) await barrado(rpc(ADMIN, "app_admin_save_guideline_update", { p_update: atualizacao({ id: atualizacaoId, ...extra }) }));
   });
 
@@ -169,18 +177,18 @@ describe("1. checagem ao salvar: atualizações e diretrizes", () => {
   });
 
   it("a nota da conferência médica (review_note) é conferida ao aprovar", async () => {
-    await barrado(rpc(REVISOR, "app_admin_review_guideline_update", { p_id: atualizacaoId, p_decision: "approve", p_note: "Conferido na apostila Sangue nos Olhos, p. 345." }));
+    await barrado(rpc(REVISOR, "app_admin_review_guideline_update", { p_id: atualizacaoId, p_decision: "approve", p_note: `Conferido no ${SNO_TITLE}, p. 345.` }));
   });
 });
 
 describe("1. checagem ao salvar: questões", () => {
   it("barra explicação de alternativa, conduta esperada, o que avalia, tema, subtema e fontes", async () => {
     for (const extra of [
-      { options: opcoes({ B: "B é a conduta. Veja o Sangue nos Olhos p. 345." }) },
-      { expected_conduct: "Suporte. Conforme a apostila." },
+      { options: opcoes({ B: `B é a conduta. Veja o ${SNO_TITLE} p. 345.` }) },
+      { expected_conduct: `Suporte. Conforme o ${GAMA_TITLE}.` },
       { inep_intent: `Avalia o manejo da ${GAMA_TITLE}.` },
-      { topic: "Bronquiolite (Sangue nos Olhos)" },
-      { subtopic: "Manejo — apostila" },
+      { topic: `Bronquiolite (${SNO_TITLE})` },
+      { subtopic: `Manejo — ${GAMA_TITLE}` },
       { sources: [{ title: SNO_TITLE, organization: SNO_ORGAN }] },
       { sources: [{ title: "Livro", organization: "Editora", url: GAMA_URL }] },
     ]) {
@@ -193,18 +201,19 @@ describe("1. checagem ao salvar: questões", () => {
   it("questão normal, com fonte oficial, passa; editar o enunciado de uma questão antiga que cita nas explicações não bloqueia", async () => {
     await rpc(ADMIN, "app_admin_save_question", { p_question: questao(1) });
     const qid = (await sql<{ id: string }>(`select id from public.questions order by created_at desc limit 1`))[0].id;
-    await sql(`update public.questions set options = $2::jsonb where id = $1`, [qid, JSON.stringify(opcoes({ B: "Antigo: Sangue nos Olhos." }))]);
-    await rpc(ADMIN, "app_admin_save_question", { p_question: questao(1, { id: qid, statement: "Lactente de 4 meses com sibilância e coriza. Qual a conduta?", options: opcoes({ B: "Antigo: Sangue nos Olhos." }) }) });
-    await barrado(rpc(ADMIN, "app_admin_save_question", { p_question: questao(1, { id: qid, options: opcoes({ B: "Novo texto citando a apostila." }) }) }));
+    await sql(`update public.questions set options = $2::jsonb where id = $1`, [qid, JSON.stringify(opcoes({ B: `Antigo: ${SNO_TITLE}.` }))]);
+    await rpc(ADMIN, "app_admin_save_question", { p_question: questao(1, { id: qid, statement: "Lactente de 4 meses com sibilância e coriza. Qual a conduta?", options: opcoes({ B: `Antigo: ${SNO_TITLE}.` }) }) });
+    await barrado(rpc(ADMIN, "app_admin_save_question", { p_question: questao(1, { id: qid, options: opcoes({ B: `Novo texto citando o ${SNO_TITLE}.` }) }) }));
   });
 });
 
 describe("1. checagem ao salvar: podcasts e aviso geral", () => {
   it("título, tema, roteiro e nome da fonte renomeada são conferidos", async () => {
-    await barrado(rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { id: podcastId, title: "Bronquiolite — Sangue nos Olhos", topic: "Bronquiolite", area: "PEDIATRIA" } }));
+    await barrado(rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { id: podcastId, title: `Bronquiolite — ${SNO_TITLE}`, topic: "Bronquiolite", area: "PEDIATRIA" } }));
     await barrado(rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { id: podcastId, title: "Bronquiolite em 8 minutos", topic: `Revisão ${GAMA_ORGAN}`, area: "PEDIATRIA" } }));
-    await barrado(rpc(EDITOR, "app_admin_podcast_save_script", { p_id: podcastId, p_script: { lines: [{ speaker: "ANA", text: "Oi. Segundo a apostila, suporte." }, { speaker: "BRUNO", text: "Certo." }] } }));
-    await barrado(rpc(EDITOR, "app_admin_podcast_rename_source", { p_source_id: fonteId, p_title: "Apostila do cursinho — Pediatria" }));
+    await barrado(rpc(EDITOR, "app_admin_podcast_save_script", { p_id: podcastId, p_script: { lines: [{ speaker: "ANA", text: `Oi. Segundo o ${SNO_TITLE}, suporte.` }, { speaker: "BRUNO", text: "Certo." }] } }));
+    await barrado(rpc(EDITOR, "app_admin_podcast_rename_source", { p_source_id: fonteId, p_title: `${GAMA_TITLE} (resumo)` }));
+    await rpc(EDITOR, "app_admin_podcast_rename_source", { p_source_id: fonteId, p_title: "Apostila do cursinho — Pediatria" }); // (2026-10-11) a palavra solta passa
     await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: podcastId, p_script: { lines: [{ speaker: "ANA", text: "Oi. Suporte clínico." }, { speaker: "BRUNO", text: "Certo." }] } });
     await rpc(EDITOR, "app_admin_podcast_rename_source", { p_source_id: fonteId, p_title: "Resumo da equipe" });
   });
@@ -215,10 +224,10 @@ describe("1. checagem ao salvar: podcasts e aviso geral", () => {
   });
 
   it("aviso geral: título e texto conferidos; ligar o aviso sem mexer no texto antigo não bloqueia", async () => {
-    await barrado(rpc(ADMIN, "app_admin_save_settings", { p_settings: { announcement: { active: true, tone: "info", title: "Novidade", text: "Material novo do Sangue nos Olhos." } } }));
-    await barrado(rpc(ADMIN, "app_admin_save_settings", { p_settings: { announcement: { active: true, tone: "info", title: "Nova apostila", text: "" } } }));
-    await sql(`update public.app_settings set value = '{"active": false, "tone": "info", "title": "Antigo", "text": "Veja a apostila Sangue nos Olhos."}'::jsonb where key = 'announcement'`);
-    await rpc(ADMIN, "app_admin_save_settings", { p_settings: { announcement: { active: true, tone: "info", title: "Antigo", text: "Veja a apostila Sangue nos Olhos." } } });
+    await barrado(rpc(ADMIN, "app_admin_save_settings", { p_settings: { announcement: { active: true, tone: "info", title: "Novidade", text: `Material novo: ${SNO_TITLE}.` } } }));
+    await barrado(rpc(ADMIN, "app_admin_save_settings", { p_settings: { announcement: { active: true, tone: "info", title: `Nova: ${GAMA_TITLE}`, text: "" } } }));
+    await sql(`update public.app_settings set value = '{"active": false, "tone": "info", "title": "Antigo", "text": "Veja o Sangue nos Olhos — Pediatria."}'::jsonb where key = 'announcement'`);
+    await rpc(ADMIN, "app_admin_save_settings", { p_settings: { announcement: { active: true, tone: "info", title: "Antigo", text: `Veja o ${SNO_TITLE}.` } } });
     await rpc(ADMIN, "app_admin_save_settings", { p_settings: { announcement: { active: true, tone: "info", title: "Novidade", text: "Aulas novas de pediatria." } } });
     await rpc(ADMIN, "app_admin_save_settings", { p_settings: { trial_days: 7 } }); // outra configuração não passa pela checagem do aviso
   });
@@ -234,22 +243,25 @@ describe("2. varredura ampliada", () => {
   beforeAll(async () => {
     qid = (await sql<{ id: string }>(`select id from public.questions order by created_at desc limit 1`))[0].id;
     // dados "antigos" (gravados sem passar pela checagem, como o servidor ou uma migração faria)
-    await sql(`update public.questions set expected_conduct = 'Suporte (Sangue nos Olhos p. 345).', inep_intent = 'Avalia o que diz a apostila.', subtopic = 'Manejo (Sangue nos Olhos)',
+    await sql(`update public.questions set expected_conduct = $4, inep_intent = $5, subtopic = $6,
                  options = $2::jsonb, sources = $3::jsonb where id = $1`,
-      [qid, JSON.stringify(opcoes({ B: "Explicação da apostila." })), JSON.stringify([{ title: SNO_TITLE, organization: SNO_ORGAN }])]);
-    await sql(`update public.lessons set instructor = 'Equipe Sangue nos Olhos', specialty = 'Pediatria (apostila)', summary = 'Resumo limpo.', key_points = '{}', guideline_title = $2 where id = $1`, [aulaId, GAMA_TITLE]);
-    await sql(`insert into public.lesson_materials (lesson_id, kind, title, url) values ($1, 'other', 'Apostila de pediatria do cursinho', 'https://cursinho.invalid/p.pdf')`, [aulaId]);
-    await sql(`update public.guideline_updates set subtopic = 'Subtema (apostila)', publication_label = 'Ed. Sangue nos Olhos', timeline = $2::jsonb, flashcards = $3::jsonb, review_note = 'Conferido na apostila.',
+      [qid, JSON.stringify(opcoes({ B: `Explicação do ${GAMA_TITLE}.` })), JSON.stringify([{ title: SNO_TITLE, organization: SNO_ORGAN }]),
+       `Suporte (${SNO_TITLE} p. 345).`, `Avalia o que diz o ${GAMA_TITLE}.`, `Manejo (${SNO_TITLE})`]);
+    await sql(`update public.lessons set instructor = $3, specialty = $4, summary = 'Resumo limpo.', key_points = '{}', guideline_title = $2 where id = $1`, [aulaId, GAMA_TITLE, `Equipe ${GAMA_ORGAN}`, `Pediatria (${GAMA_TITLE})`]);
+    // (2026-10-11) material cujo nome é o da apostila cadastrada já fica ESCONDIDO do aluno pela 9620 (hidden_from_student) e, por isso, não é listado
+    await sql(`insert into public.lesson_materials (lesson_id, kind, title, url) values ($1, 'other', $2, 'https://cursinho.invalid/p.pdf')`, [aulaId, `${GAMA_TITLE} (PDF)`]);
+    await sql(`update public.guideline_updates set subtopic = $5, publication_label = $6, timeline = $2::jsonb, flashcards = $3::jsonb, review_note = $7,
                  legacy = $4::jsonb, practice_questions = '[]'::jsonb, current_conduct = 'Suporte clínico.' where id = $1`,
-      [atualizacaoId, JSON.stringify([{ year: 2026, text: "Mudou, diz a apostila." }]), JSON.stringify([{ front: "Q", back: "Sangue nos Olhos" }]), JSON.stringify({ origem: "apostila antiga" })]);
-    await sql(`update public.podcast_sources set title = 'Sangue nos Olhos — resumo' where id = $1`, [fonteId]);
+      [atualizacaoId, JSON.stringify([{ year: 2026, text: `Mudou, diz o ${GAMA_TITLE}.` }]), JSON.stringify([{ front: "Q", back: SNO_TITLE }]), JSON.stringify({ origem: GAMA_TITLE }),
+       `Subtema (${GAMA_TITLE})`, `Ed. ${SNO_TITLE}`, `Conferido no ${GAMA_TITLE}.`]);
+    await sql(`update public.podcast_sources set title = $2 where id = $1`, [fonteId, `${SNO_TITLE} — resumo`]);
     const persona = (await sql(`select id from public.tutor_personalities order by id limit 1`))[0].id;
     sessaoId = (await sql(`insert into public.tutor_sessions (user_id, mode, title, personality_id, intensity, status, summary) values ($1, 'livre', 'Bronquiolite', $2, 3, 'closed', $3::jsonb) returning id`,
-      [ALUNA, persona, JSON.stringify({ concepts_mastered: ["Suporte (apostila Sangue nos Olhos p. 345)"] })]))[0].id;
-    await sql(`insert into public.tutor_messages (session_id, user_id, role, content, meta) values ($1, $2, 'tutor', 'Na bronquiolite, suporte. Conforme a apostila.', '{}'::jsonb)`, [sessaoId, ALUNA]);
+      [ALUNA, persona, JSON.stringify({ concepts_mastered: [`Suporte (${SNO_TITLE} p. 345)`] })]))[0].id;
+    await sql(`insert into public.tutor_messages (session_id, user_id, role, content, meta) values ($1, $2, 'tutor', $3, '{}'::jsonb)`, [sessaoId, ALUNA, `Na bronquiolite, suporte. Conforme o ${SNO_TITLE}.`]);
     await sql(`insert into public.checklist_stations (id, name, topic, area, medical_review) values ('b-est', 'Estação B', 'Bronquiolite', 'Pediatria', 'approved')`);
-    await sql(`insert into public.checklist_station_contents (station_id, content) values ('b-est', $1::jsonb)`, [JSON.stringify({ roteiro: "Roteiro do Sangue nos Olhos." })]);
-    await sql(`update public.app_settings set value = '{"active": true, "tone": "info", "title": "Aviso", "text": "Nova apostila no ar."}'::jsonb where key = 'announcement'`);
+    await sql(`insert into public.checklist_station_contents (station_id, content) values ('b-est', $1::jsonb)`, [JSON.stringify({ roteiro: `Roteiro do ${SNO_TITLE}.` })]);
+    await sql(`update public.app_settings set value = '{"active": true, "tone": "info", "title": "Aviso", "text": "Nova: Manual de Pediatria Gama (teste) no ar."}'::jsonb where key = 'announcement'`);
     achados = await rpc(ADMIN, "app_ch_complementar_mentions");
   });
 
@@ -264,11 +276,11 @@ describe("2. varredura ampliada", () => {
     expect(acha("questions", "Conduta esperada", qid).trecho).toContain("Sangue nos Olhos");
   });
 
-  it("acha professor e especialidade da aula e o material da aula; não lista a diretriz que o banco já esconde do aluno", () => {
+  it("acha professor e especialidade da aula; não lista a diretriz nem o material que o banco já esconde do aluno", () => {
     expect(acha("lessons", "Professor", aulaId)).toMatchObject({ kind: "aula", aba: "aulas", item: aulaId });
     expect(acha("lessons", "Especialidade", aulaId)).toBeTruthy();
     expect(acha("lessons", "Título da diretriz", aulaId)).toBeUndefined(); // bate com a biblioteca: já sai filtrado ao aluno
-    expect(achados.find((a) => a.tabela === "lesson_materials" && a.item === aulaId)).toMatchObject({ kind: "material_aula", campo: "Título do material" });
+    expect(achados.find((a) => a.tabela === "lesson_materials" && a.item === aulaId)).toBeUndefined(); // já escondido do aluno (hidden_from_student): não precisa de correção
   });
 
   it("acha os campos da atualização: subtema, rótulo, linha do tempo, flashcards, nota da conferência e dados do app antigo", () => {
@@ -330,6 +342,21 @@ describe("3. fonte de podcast: marcar como complementar e voltar a oficial", () 
   });
 });
 
+describe("sigla cadastrada (aliases)", () => {
+  it("a sigla SNO só barra o texto digitado DEPOIS de cadastrada em ch_sources.aliases; sem cadastro passa", async () => {
+    const sno = (await sql(`select id from public.ch_sources where title = $1`, [SNO_TITLE]))[0].id;
+    const comSigla = { id: aulaId, summary: "Conforme o resumo do SNO, o suporte basta." };
+    await rpc(ADMIN, "app_admin_save_lesson", { p_lesson: aula(comSigla) }); // sigla ainda não cadastrada: vazamento conhecido, passa
+    await rpc(ADMIN, "app_ch_set_source_aliases", { p_source_id: sno, p_aliases: "{SNO}" });
+    try {
+      await barrado(rpc(ADMIN, "app_admin_save_lesson", { p_lesson: aula({ id: aulaId, summary: "Conforme o resumo do SNO, o suporte basta (outra)." }) }));
+    } finally {
+      await rpc(ADMIN, "app_ch_set_source_aliases", { p_source_id: sno, p_aliases: "{}" });
+    }
+    await rpc(ADMIN, "app_admin_save_lesson", { p_lesson: aula({ id: aulaId, summary: "Suporte clínico e oxigênio." }) });
+  });
+});
+
 describe("lote: o gatilho em muitas linhas de uma vez", () => {
   it("500 aulas gravadas em um comando (texto normal) passam em poucos segundos (gravação interna, o gatilho confere cada linha)", async () => {
     const t0 = Date.now();
@@ -368,9 +395,11 @@ describe("a migração", () => {
     }
   });
 
-  it("o termo da expressão: 'Sangue nos Olhos', 'apostila' e os nomes das apostilas; nunca o nome de fonte oficial", async () => {
+  it("os termos da expressão: títulos cadastrados e órgãos DISTINTIVOS; nunca 'Sangue nos Olhos' solto (órgão curto), nem o nome de fonte oficial", async () => {
     const keys: string[] = (await sql(`select public.ch_complementar_terms_keys() as k`))[0].k;
-    expect(keys).toEqual(expect.arrayContaining(["sangue nos olhos", "manual de pediatria gama teste", "editora gama teste", "sangue nos olhos pediatria", "curso z"]));
+    expect(keys).toEqual(expect.arrayContaining(["manual de pediatria gama teste", "editora gama de pediatria teste", "sangue nos olhos pediatria"]));
+    expect(keys).not.toContain("sangue nos olhos"); // o órgão cadastrado é só "Sangue nos Olhos" (16 letras): não é distintivo
+    expect(keys).not.toContain("curso z"); // órgão curto
     expect(keys).not.toContain("diretriz compartilhada");
     expect(keys).not.toContain(await sql(`select public.ch_text_key('${OFI_TITLE}') as k`).then((r) => r[0].k));
   });

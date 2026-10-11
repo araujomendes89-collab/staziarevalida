@@ -566,14 +566,23 @@ describe("ataque: comparação por nome é textual (brecha 2 do construtor)", ()
     }
   }
   it("variações de grafia do nome somem: caixa, acento, hífen, só o link, só o órgão", async () => {
-    for (const item of [{ title: "SANGUE NOS OLHOS" }, { title: "sangue-nos-olhos clínica" }, { url: COMP_URL }, { organization: COMP_ORGAN }, "Sangue nos Olhos p. 123", { title: "Clínica Médica", organ: "Editora Sangue nos Olhos" }]) {
+    for (const item of [{ title: "SANGUE NOS OLHOS — CLÍNICA MÉDICA" }, { title: "sangue-nos-olhos clínica médica" }, { url: COMP_URL }, { organization: COMP_ORGAN }, `${COMP_TITLE} p. 123`, { title: "Clínica Médica", organ: "Editora Sangue nos Olhos" }]) {
       expect(await fontesDaCorrecao([item]), JSON.stringify(item)).toEqual([]);
     }
   });
-  it("CORRIGIDO: fonte digitada como 'Apostila SNO, p. 123' (sigla e palavra apostila) chega ao aluno", async () => {
-    // causa: 20261003009620_fontes_complementares.sql:70-83 (ch_complementar_hit) só procura "sangue nos olhos" e o título/órgão da biblioteca;
-    // não procura a palavra "apostila" (o servidor procura: complementarGuard.ts APOSTILA) nem a sigla SNO nem o nome do arquivo
-    expect(await fontesDaCorrecao([{ title: "Apostila SNO, p. 123" }])).toEqual([]);
+  it("(2026-10-11) 'Sangue nos Olhos' SOLTO e a palavra 'apostila' solta NÃO escondem a fonte do aluno", async () => {
+    for (const item of [{ title: "SANGUE NOS OLHOS" }, { title: "sangue-nos-olhos clínica" }, "Sangue nos Olhos p. 123", { title: "Apostila de Clínica Médica", organization: "Cursinho X" }]) {
+      expect(await fontesDaCorrecao([item]), JSON.stringify(item)).toHaveLength(1);
+    }
+  });
+  it("(2026-10-11) sigla SNO: a palavra 'apostila' sozinha não esconde; a sigla só esconde DEPOIS de cadastrada em aliases", async () => {
+    expect(await fontesDaCorrecao([{ title: "Apostila SNO, p. 123" }])).toHaveLength(1); // sigla ainda não cadastrada: vazamento conhecido
+    await grava(ADMIN, "app_ch_set_source_aliases", { p_source_id: sComp, p_aliases: "{SNO}" });
+    try {
+      expect(await fontesDaCorrecao([{ title: "Apostila SNO, p. 123" }])).toEqual([]);
+    } finally {
+      await grava(ADMIN, "app_ch_set_source_aliases", { p_source_id: sComp, p_aliases: "{}" });
+    }
   });
   it("CORRIGIDO: o NOME DO ARQUIVO da apostila na biblioteca (ch_documents.name) não é comparado: 'SNO-ClinicaMedica-2026.pdf' chega ao aluno", async () => {
     // causa: ch_complementar_hit compara só ch_sources.title/organ/url; o documento ligado (ch_sources.document_id → ch_documents.name) fica de fora
@@ -611,7 +620,7 @@ describe("ataque: podcast com arquivo da apostila de nome neutro (brecha 3)", ()
 
 describe("ataque: texto já publicado e mensagens antigas (brechas 4 e 5)", () => {
   it("texto de análise JÁ publicado que cita a apostila: o administrador acha na varredura de publicado", async () => {
-    await sql(`update public.question_analysis set trap = 'Segundo a apostila Sangue nos Olhos, cuidado.' where id = $1`, [analise]);
+    await sql(`update public.question_analysis set trap = 'Segundo o ${COMP_TITLE}, cuidado.' where id = $1`, [analise]);
     try {
       const achados = await rpc(ADMIN, "app_ch_complementar_mentions");
       expect(achados.map((a: any) => a.kind)).toContain("analise");
@@ -623,7 +632,7 @@ describe("ataque: texto já publicado e mensagens antigas (brechas 4 e 5)", () =
 
   it("CORRIGIDO: texto de análise JÁ publicado que cita a apostila continua chegando ao aluno (não há filtro de saída)", async () => {
     // causa: app_question_commentary (9620:248-281) devolve trap/golden_rule/reasoning como estão; só fontes passam por ch_student_*
-    await sql(`update public.question_analysis set trap = 'Segundo a apostila Sangue nos Olhos, cuidado.' where id = $1`, [analise]);
+    await sql(`update public.question_analysis set trap = 'Segundo o ${COMP_TITLE}, cuidado.' where id = $1`, [analise]);
     try {
       expect(marcasEm(JSON.stringify(await rpc(ALUNO, "app_question_commentary", { p_question_id: QID, p_level: "full" })))).toEqual([]);
     } finally {

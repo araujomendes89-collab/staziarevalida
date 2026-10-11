@@ -175,9 +175,9 @@ describe("classe da fonte", () => {
     expect((await sql(`select audience from public.ch_sources where id = $1`, [sComp]))[0].audience).toBe("oficial");
   });
 
-  it("ANTES de marcar: a fonte de nome neutro ainda aparece ao aluno; a que cita Sangue nos Olhos já fica escondida (regra do dono, vale antes do cadastro)", async () => {
+  it("ANTES de marcar: nenhuma fonte é escondida, nem a que traz 'Sangue nos Olhos' no nome (decisão do dono de 2026-10-11: só vale o que está CADASTRADO como complementar)", async () => {
     const c = await rpc(ALUNA, "app_question_commentary", { p_question_id: QID, p_level: "full" });
-    expect(c.sources.map((s: any) => s.title).sort()).toEqual([NEU_TITLE, OFI_TITLE].sort());
+    expect(c.sources.map((s: any) => s.title).sort()).toEqual([COMP_TITLE, NEU_TITLE, OFI_TITLE].sort());
   });
 
   it("marcar como complementar: nível vai para E, fica no registro (ch_audit e Registro da Administração) e vale duas vezes", async () => {
@@ -304,7 +304,8 @@ describe("administrador e equipe continuam vendo tudo", () => {
 
   it("a busca ampla traz a complementar para a IA e para a equipe (vale como fonte)", async () => {
     const termos = (await sql(`select public.ch_worker_complementar_terms() t`))[0].t as string[];
-    expect(termos).toEqual(expect.arrayContaining([COMP_TITLE, COMP_ORGAN, "Sangue nos Olhos"]));
+    expect(termos).toEqual(expect.arrayContaining([COMP_TITLE]));
+    expect(termos).not.toContain("Sangue nos Olhos"); // a expressão solta não é termo fixo (2026-10-11); só entra se for o órgão/título cadastrado
   });
 });
 
@@ -332,7 +333,9 @@ describe("selos honestos: só fonte oficial dá selo", () => {
 
 describe("varredura do que já está publicado", () => {
   it("o administrador vê as aulas e podcasts publicados que citam a apostila; a aluna e o editor são recusados", async () => {
-    await sql(`update public.lessons set summary = 'Como diz a apostila, o suporte basta.' where id = $1`, [aulaId]);
+    await sql(`update public.lessons set summary = 'Como diz a apostila, o suporte basta; paciente com sangue nos olhos.' where id = $1`, [aulaId]);
+    expect((await rpc(ADMIN, "app_ch_complementar_mentions")).find((a: any) => a.kind === "aula" && a.id === aulaId)).toBeUndefined(); // palavra solta não entra (2026-10-11)
+    await sql(`update public.lessons set summary = $2 where id = $1`, [aulaId, `Como diz o ${COMP_TITLE}, o suporte basta.`]);
     const achados = await rpc(ADMIN, "app_ch_complementar_mentions");
     expect(achados).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "aula", id: aulaId })]));
     expect(achados.find((a: any) => a.kind === "analise")).toBeUndefined();

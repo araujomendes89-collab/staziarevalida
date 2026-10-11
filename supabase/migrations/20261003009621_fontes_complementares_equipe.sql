@@ -36,11 +36,13 @@ as $$
   select coalesce(array_agg(distinct k.t), '{}'::text[])
   from (
     select x.t from (
-      select public.ch_text_key(s.title) as t from public.ch_sources s where s.audience = 'complementar'
+      select public.ch_text_key(s.title) as t, 'titulo' as kind from public.ch_sources s where s.audience = 'complementar'
       union
-      select public.ch_text_key(s.organ) from public.ch_sources s where s.audience = 'complementar'
+      select public.ch_text_key(s.organ), 'orgao' from public.ch_sources s where s.audience = 'complementar'
     ) x
     where char_length(x.t) >= case when position(' ' in x.t) > 0 then 5 else 7 end
+      -- órgão/editora só vale quando DISTINTIVO (3 palavras e 20 letras): um órgão chamado só "Sangue nos Olhos" não barra a queixa clínica
+      and (x.kind = 'titulo' or (array_length(string_to_array(x.t, ' '), 1) >= 3 and char_length(x.t) >= 20))
       -- nome que também é de fonte oficial não identifica a apostila (evita barrar texto médico legítimo)
       and x.t not in (select public.ch_text_key(o.title) from public.ch_sources o where o.audience = 'oficial'
                       union select public.ch_text_key(o.organ) from public.ch_sources o where o.audience = 'oficial')

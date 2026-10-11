@@ -24,6 +24,8 @@
 --   app_podcast: 20261003009593 · lesson_view, lesson_materials_json, app_lesson_material: 20261003009580 (com a conferência do áudio, review_status) · guideline_update_view: 20261003004100
 --   app_ch_set_source_authority: 20261003002100.
 -- Pode ser colada duas vezes sem erro e não apaga nenhum dado.
+-- PRECISA da 20261003009580 (conferência do áudio das aulas: review_status, lesson_can_release) já aplicada: lesson_materials_json e app_lesson_material
+-- partem dela e mantêm a conferência.
 --
 -- REGRA DO DONO (confirmada): conteúdo que chega ao aluno como conferido/sustentado exige pelo menos UMA fonte OFICIAL (nível A a D).
 -- A fonte complementar sozinha sustenta rascunho e análise da equipe, nunca dá selo, atualidade nem "conduta atual".
@@ -276,16 +278,21 @@ create or replace function public.ch_worker_complementar_terms() returns jsonb
 as $$
   select coalesce(jsonb_agg(distinct t.term), '[]'::jsonb)
   from (
-    select btrim(v.x) as term, false as alias
+    select btrim(v.x) as term, v.kind
     from public.ch_sources s left join public.ch_documents d on d.id = s.document_id
-    cross join lateral (values (s.title), (s.organ), (s.authors), (d.name), (regexp_replace(d.name, '\.(pdf|docx?|pptx?|txt|epub)\s*$', '', 'i')), (d.publisher), (d.author),
-                               (replace(public.ch_url_host(s.url), '.', ' '))) v (x)
+    cross join lateral (values ('titulo', s.title), ('outro', s.organ), ('outro', s.authors), ('outro', d.name),
+                               ('outro', regexp_replace(d.name, '\.(pdf|docx?|pptx?|txt|epub)\s*$', '', 'i')), ('outro', d.publisher), ('outro', d.author),
+                               ('outro', replace(public.ch_url_host(s.url), '.', ' '))) v (kind, x)
     where s.audience = 'complementar' and v.x is not null
-    union select btrim(a), true from public.ch_sources s cross join lateral unnest(s.aliases) a where s.audience = 'complementar'
+    union select btrim(a), 'sigla' from public.ch_sources s cross join lateral unnest(s.aliases) a where s.audience = 'complementar'
     ) t
-  where char_length(t.term) >= case when t.alias then 3 else 5 end
-    -- título genérico (2 palavras curtas) não vira termo de busca em texto livre: esconderia texto médico legítimo
-    and (t.alias or array_length(string_to_array(public.ch_text_key(t.term), ' '), 1) >= 3 or char_length(public.ch_text_key(t.term)) >= 20)
+  where char_length(t.term) >= case when t.kind = 'sigla' then 3 else 5 end
+    -- título genérico (2 palavras curtas) não vira termo de busca em texto livre: esconderia texto médico legítimo.
+    -- Órgão, editora, autor, arquivo e site só valem quando DISTINTIVOS (3 palavras e 20 letras): um órgão chamado só "Sangue nos Olhos"
+    -- não pode barrar a queixa clínica "sangue nos olhos" (decisão do dono, 2026-10-11).
+    and (t.kind = 'sigla'
+         or (t.kind = 'titulo' and (array_length(string_to_array(public.ch_text_key(t.term), ' '), 1) >= 3 or char_length(public.ch_text_key(t.term)) >= 20))
+         or (t.kind = 'outro' and array_length(string_to_array(public.ch_text_key(t.term), ' '), 1) >= 3 and char_length(public.ch_text_key(t.term)) >= 20))
 $$;
 
 -- ---------------------------------------------------------------- 3. campos de fonte digitados pela equipe: marca guardada
