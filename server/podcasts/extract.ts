@@ -96,32 +96,129 @@ export interface FetchedLink {
   kind: "pdf" | "html";
 }
 
+export interface FetchBytesOptions {
+  maxBytes: number;
+  timeoutMs: number;
+  userAgent: string;
+  /** Problema do endereço (texto) ou nulo se está certo; roda em CADA destino, inclusive nos redirecionamentos. */
+  checkUrl?: (u: URL) => string | null;
+  /** Confere o servidor de cada destino (sem isto, `assertPublicHost`: nada da rede interna). */
+  checkHost?: (host: string) => Promise<void>;
+  /** Todo status de erro vira "O link respondeu N." (sem as mensagens próprias do 403 e do 429). */
+  plainStatus?: boolean;
+}
+
+export interface FetchedBytes {
+  finalUrl: string;
+  body: Buffer;
+  contentType: string;
+  kind: "pdf" | "html" | "text";
+}
+
+const MAX_REDIRECTS = 3;
+
+function megabytes(bytes: number): string {
+  const mb = bytes / (1024 * 1024);
+  return String(mb >= 1 ? Math.round(mb) : Number(mb.toPrecision(2)));
+}
+
+/**
+ * Baixa um endereço https: até 3 redirecionamentos (cada destino conferido de novo), um só limite de tempo para tudo (saltos e
+ * corpo), corpo lido em pedaços e cortado ao passar de `maxBytes` (mesmo sem tamanho declarado). Devolve os bytes e o tipo
+ * (`pdf` pela assinatura `%PDF-`, `html`, ou `text`); outros tipos são recusados.
+ */
+export async function fetchBytes(url: string, fetchImpl: typeof fetch, opts: FetchBytesOptions): Promise<FetchedBytes> {
+  const checkHost = opts.checkHost ?? assertPublicHost;
+  const seconds = Math.max(1, Math.round(opts.timeoutMs / 1000));
+  const timeoutError = new Error(`Tempo esgotado ao baixar (${seconds} s).`);
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, opts.timeoutMs);
+  const aborted = new Promise<never>((_, reject) => controller.signal.addEventListener("abort", () => reject(timeoutError), { once: true }));
+  aborted.catch(() => {});
+  const within = <T>(work: Promise<T>): Promise<T> => Promise.race([work, aborted]);
+  try {
+    let current = url;
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      const u = new URL(current);
+      if (u.protocol !== "https:") throw new Error("Só links https são aceitos.");
+      const problem = opts.checkUrl?.(u);
+      if (problem) throw new Error(problem);
+      await within(checkHost(u.hostname));
+      const res = await within(
+        fetchImpl(current, { redirect: "manual", headers: { "User-Agent": opts.userAgent, Accept: "text/html,application/pdf;q=0.9,*/*;q=0.5" }, signal: controller.signal }),
+      );
+      if (res.status >= 300 && res.status < 400) {
+        res.body?.cancel().catch(() => {});
+        const next = res.headers.get("location");
+        if (!next) throw new Error("O link redireciona para lugar nenhum.");
+        current = new URL(next, current).toString();
+        continue;
+      }
+      if (!res.ok) {
+        res.body?.cancel().catch(() => {});
+        if (!opts.plainStatus && res.status === 429) throw new Error("O site pediu para esperar (429).");
+        if (!opts.plainStatus && res.status === 403) throw new Error("O site bloqueou o download (403).");
+        throw new Error(`O link respondeu ${res.status}.`);
+      }
+      const tooBig = () => new Error(`O conteúdo do link passa de ${megabytes(opts.maxBytes)} MB.`);
+      const declared = Number(res.headers.get("content-length") ?? 0);
+      if (declared > opts.maxBytes) {
+        res.body?.cancel().catch(() => {});
+        throw tooBig();
+      }
+      let body: Buffer;
+      const reader = res.body?.getReader?.();
+      if (reader) {
+        const parts: Buffer[] = [];
+        let total = 0;
+        for (;;) {
+          const { done, value } = await within(reader.read());
+          if (done) break;
+          total += value.byteLength;
+          if (total > opts.maxBytes) {
+            reader.cancel().catch(() => {});
+            throw tooBig();
+          }
+          parts.push(Buffer.from(value.buffer, value.byteOffset, value.byteLength));
+        }
+        body = Buffer.concat(parts);
+      } else {
+        body = Buffer.from(await within(res.arrayBuffer()));
+        if (body.length > opts.maxBytes) throw tooBig();
+      }
+      const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
+      if (isPdf(body)) return { finalUrl: u.toString(), body, contentType, kind: "pdf" };
+      if (contentType.includes("pdf")) throw new Error("O arquivo não é um PDF (assinatura %PDF- ausente).");
+      if (contentType.includes("html")) return { finalUrl: u.toString(), body, contentType, kind: "html" };
+      if (contentType.includes("text")) return { finalUrl: u.toString(), body, contentType, kind: "text" };
+      throw new Error("O link não é uma página nem um PDF.");
+    }
+    throw new Error("O link redireciona demais.");
+  } catch (error) {
+    if (timedOut) throw timeoutError;
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Busca um link (https), seguindo no máximo 3 redirecionamentos e conferindo cada destino. PDF ou página web. */
 export async function fetchLink(url: string, fetchImpl: typeof fetch = fetch, checkHost: (h: string) => Promise<void> = assertPublicHost): Promise<FetchedLink> {
-  let current = url;
-  for (let hop = 0; hop < 4; hop++) {
-    const u = new URL(current);
-    if (u.protocol !== "https:") throw new Error("Só links https são aceitos.");
-    await checkHost(u.hostname);
-    const res = await fetchImpl(current, { redirect: "manual", headers: { "User-Agent": "StaziaMed-Podcast/1.0 (+https://staziamed-revalida.vercel.app)", Accept: "text/html,application/pdf;q=0.9,*/*;q=0.5" }, signal: AbortSignal.timeout(20_000) });
-    if (res.status >= 300 && res.status < 400) {
-      const next = res.headers.get("location");
-      if (!next) throw new Error("O link redireciona para lugar nenhum.");
-      current = new URL(next, current).toString();
-      continue;
-    }
-    if (!res.ok) throw new Error(`O link respondeu ${res.status}.`);
-    const len = Number(res.headers.get("content-length") ?? 0);
-    if (len > MAX_LINK_BYTES) throw new Error("O conteúdo do link passa de 8 MB.");
-    const buf = Buffer.from(await res.arrayBuffer());
-    if (buf.length > MAX_LINK_BYTES) throw new Error("O conteúdo do link passa de 8 MB.");
-    const type = (res.headers.get("content-type") ?? "").toLowerCase();
-    if (type.includes("pdf") || isPdf(buf)) return { title: decodeURIComponent(u.pathname.split("/").pop() || u.hostname), pages: await extractPdf(buf), kind: "pdf" };
-    if (!type.includes("html") && !type.includes("text")) throw new Error("O link não é uma página nem um PDF.");
-    const { title, text } = htmlToText(buf.toString("utf8"));
-    return { title: title ?? u.hostname, pages: [{ page: null, text }], kind: "html" };
-  }
-  throw new Error("O link redireciona demais.");
+  const got = await fetchBytes(url, fetchImpl, {
+    maxBytes: MAX_LINK_BYTES,
+    timeoutMs: 20_000,
+    userAgent: "StaziaMed-Podcast/1.0 (+https://staziamed-revalida.vercel.app)",
+    checkHost,
+    plainStatus: true,
+  });
+  const u = new URL(got.finalUrl);
+  if (got.kind === "pdf") return { title: decodeURIComponent(u.pathname.split("/").pop() || u.hostname), pages: await extractPdf(got.body), kind: "pdf" };
+  const { title, text } = htmlToText(got.body.toString("utf8"));
+  return { title: title ?? u.hostname, pages: [{ page: null, text }], kind: "html" };
 }
 
 /**
