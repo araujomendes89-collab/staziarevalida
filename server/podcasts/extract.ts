@@ -129,6 +129,24 @@ export async function fetchLink(url: string, fetchImpl: typeof fetch = fetch, ch
  * Trechos muito curtos (cabeçalho, número de página) saem.
  */
 export function chunkPages(pages: ExtractedPage[], max = 1200, min = 40): Chunk[] {
+  return chunkPagesInfo(pages, max, min).chunks;
+}
+
+export interface ChunkInfo {
+  /** Os trechos que entram (no máximo MAX_CHUNKS_PER_SOURCE). */
+  chunks: Chunk[];
+  /** Quantos trechos o documento inteiro teria. */
+  total: number;
+  /** Houve corte: o resto do documento não entra. */
+  truncated: boolean;
+  /** Última página numerada que tem trecho entre os que entraram (null se a fonte não tem páginas). */
+  lastPage: number | null;
+  /** Quantas páginas numeradas o documento tem. */
+  pagesTotal: number;
+}
+
+/** Igual a chunkPages, mas diz se o limite de trechos cortou o documento e até que página ele chegou (para avisar a equipe). */
+export function chunkPagesInfo(pages: ExtractedPage[], max = 1200, min = 40): ChunkInfo {
   const out: Chunk[] = [];
   for (const p of pages) {
     const paras = p.text.split(/\n{2,}|\n(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9•\-–])/).map((x) => x.replace(/\s+/g, " ").trim()).filter(Boolean);
@@ -157,5 +175,13 @@ export function chunkPages(pages: ExtractedPage[], max = 1200, min = 40): Chunk[
     }
     flush();
   }
-  return out.slice(0, MAX_CHUNKS_PER_SOURCE);
+  const chunks = out.slice(0, MAX_CHUNKS_PER_SOURCE);
+  const numbered = chunks.filter((c) => c.page != null).map((c) => c.page as number);
+  return {
+    chunks,
+    total: out.length,
+    truncated: out.length > MAX_CHUNKS_PER_SOURCE,
+    lastPage: numbered.length ? Math.max(...numbered) : null,
+    pagesTotal: pages.filter((p) => p.page != null).length,
+  };
 }

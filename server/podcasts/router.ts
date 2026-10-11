@@ -20,9 +20,9 @@ import { localStorageDir, supabaseStorage, type ContentDb, type Identity, type S
 import type { AiProvider, StructuredRequest } from "../contentHub/ai/provider";
 import type { ModelRef } from "../ai/config";
 import { aiChoices } from "../ai/maestro";
-import { chunkPages, extractDocx, extractPdf, fetchLink, isPdf, isZip, MAX_SOURCE_BYTES, type ExtractedPage } from "./extract";
+import { chunkPagesInfo, extractDocx, extractPdf, fetchLink, isPdf, isZip, MAX_SOURCE_BYTES, type ExtractedPage } from "./extract";
 import { checkScript, generateScript, PODCAST_PROMPT_VERSION, type PodcastScript, type ScriptLine, type SourceChunk } from "./script";
-import { DEFAULT_VOICES, pcmToMp3, pickVoices, SAMPLE_RATE, silence, splitParts, synthesizePart, ttsCost, ttsStatus, VOICE_OPTIONS, type PodcastVoices, type TtsKind } from "./audio";
+import { DEFAULT_VOICES, geminiTtsEnabled, pcmToMp3, pickVoices, SAMPLE_RATE, silence, splitParts, synthesizePart, ttsCost, ttsStatus, VOICE_OPTIONS, type PodcastVoices, type TtsKind } from "./audio";
 
 export const PODCASTS_BUCKET = "podcasts";
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -127,22 +127,27 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     return asUser<any>(req, "app_admin_podcast", { p_id: req.params.id });
   };
 
-  /** Texto extraído → trechos com a origem → banco. */
+  /** Texto extraído → trechos com a origem → banco. Documento longo demais entra cortado e a equipe é avisada (campo `note`). */
   const ingest = async (req: Authed, source: Record<string, unknown>, pages: ExtractedPage[]) => {
-    const chunks = chunkPages(pages);
+    const info = chunkPagesInfo(pages);
+    const chunks = info.chunks;
     const chars = chunks.reduce((n, c) => n + c.text.length, 0);
     if (chars < 80) {
       throw httpError(422, source.kind === "pdf" ? "O PDF não tem texto aproveitável (pode ser escaneado). Cole o texto ou passe o PDF pela Central de Conteúdo (OCR)." : "A fonte não tem texto aproveitável.");
     }
-    const numbered = pages.filter((p) => p.page != null).length;
+    // a contagem de páginas da fonte é a do que entrou de fato (não o total do arquivo)
+    const numbered = info.truncated ? pages.filter((p) => p.page != null && p.page <= (info.lastPage ?? 0)).length : info.pagesTotal;
     const view = await service<any>("ch_worker_podcast_add_source", {
       p_user: req.user!.id,
       p_podcast: req.params.id,
       p_source: { ...source, pages: numbered || null },
       p_chunks: chunks,
     });
-    log(`podcasts: fonte ${source.kind} no episódio ${req.params.id} (${chunks.length} trechos)`);
-    return view;
+    log(`podcasts: fonte ${source.kind} no episódio ${req.params.id} (${chunks.length} trechos${info.truncated ? `, cortado de ${info.total}` : ""})`);
+    if (!info.truncated) return view;
+    const ate = info.lastPage != null ? ` (até a página ${info.lastPage} de ${info.pagesTotal})` : " (só o começo do texto)";
+    const note = `Documento longo: entraram só os primeiros ${chunks.length} de ${info.total} trechos${ate}. O resto não foi usado. Divida o documento em partes menores para o podcast cobrir tudo.`;
+    return { ...view, note };
   };
   const extractFile = (buf: Buffer, ext: "pdf" | "docx") => (ext === "pdf" ? extractPdf(buf) : extractDocx(buf));
 
@@ -151,7 +156,11 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     try {
       await asUser(req, "app_admin_podcasts");
       const env = deps!.tts?.env ?? process.env;
-      const tts = TTS_KINDS.filter((k) => k !== "mock" || env.NODE_ENV !== "production").map((k) => ({ label: TTS_LABEL[k], ...ttsStatus(k, env), kind: k }));
+      const tts = TTS_KINDS.filter((k) => k !== "mock" || env.NODE_ENV !== "production").map((k) => {
+        const { technical, ...status } = ttsStatus(k, env); // o detalhe técnico fica no registro do servidor, não vai para a tela
+        if (technical && k !== "mock" && (k !== "gemini" || geminiTtsEnabled(env))) log(`podcasts: voz ${k} indisponível: ${technical}`);
+        return { label: TTS_LABEL[k], ...status, kind: k };
+      });
       res.json({ script: await aiChoices(deps!.db), tts, voices: VOICE_OPTIONS, default_voices: DEFAULT_VOICES });
     } catch (error) {
       fail(res, statusOf(error, 500), message(error));
@@ -265,15 +274,25 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       ].filter(Boolean).join("\n\n");
       const pages: ExtractedPage[] = [{ page: null, text: head }];
       let note: string | null = null;
+      const limitMb = MAX_SOURCE_BYTES / 1024 / 1024;
+      const tooBig = (bytes: number) => `O PDF da aula (${Math.round(bytes / 1024 / 1024)} MB) passa do limite de ${limitMb} MB das fontes e não foi lido; entraram o resumo e os pontos-chave.`;
       if (lesson.slides && deps!.lessons) {
-        try {
-          pages.push(...(await extractPdf(await deps!.lessons.get(lesson.slides))));
-        } catch (error) {
-          note = `O PDF da aula não foi lido (${message(error)}); entraram o resumo e os pontos-chave.`;
+        const declared = Number(lesson.slides_bytes) || 0;
+        if (declared > MAX_SOURCE_BYTES) {
+          note = tooBig(declared); // nem baixa o arquivo
+        } else {
+          try {
+            const pdf = await deps!.lessons.get(lesson.slides);
+            if (pdf.length > MAX_SOURCE_BYTES) note = tooBig(pdf.length); // tamanho guardado errado ou ausente: confere o arquivo
+            else pages.push(...(await extractPdf(pdf)));
+          } catch (error) {
+            note = `O PDF da aula não foi lido (${message(error)}); entraram o resumo e os pontos-chave.`;
+          }
         }
       }
       const view = await ingest(req, { kind: "lesson", title: `Aula: ${lesson.title}`.slice(0, 200), lesson_id: lessonId }, pages);
-      res.status(201).json(note ? { ...view, note } : view);
+      const notes = [view?.note, note].filter(Boolean).join(" ");
+      res.status(201).json(notes ? { ...view, note: notes } : view);
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }
@@ -289,6 +308,20 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const view = await asUser(req, "app_admin_podcast_remove_source", { p_source_id: req.params.sourceId });
       await removeQuietly(deps!.storage, [source.storage_path]);
       res.json(view);
+    } catch (error) {
+      fail(res, statusOf(error), message(error));
+    }
+  });
+
+  /** Renomear a fonte: é o nome que o aluno lê na transcrição (nome de arquivo aparece a ele como "Documento N"). */
+  router.patch("/:id/sources/:sourceId", async (req: Authed, res) => {
+    try {
+      if (!ID.test(req.params.sourceId)) throw httpError(400, "Fonte inválida.");
+      const title = String(req.body?.title ?? "").trim();
+      if (!title || title.length > 200) throw httpError(400, "Dê um nome de 1 a 200 caracteres.");
+      const before = await staffPodcast(req);
+      if (!(before.sources ?? []).some((s: any) => s.id === req.params.sourceId)) throw httpError(404, "Fonte não encontrada.");
+      res.json(await asUser(req, "app_admin_podcast_rename_source", { p_source_id: req.params.sourceId, p_title: title }));
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }
@@ -371,7 +404,10 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       if (!TTS_KINDS.includes(kind)) throw httpError(400, "Escolha a voz da OpenAI ou do Gemini.");
       await staffPodcast(req);
       const st = ttsStatus(kind, deps!.tts?.env);
-      if (!st.ready) throw httpError(503, `Voz indisponível: ${st.pending}`);
+      if (!st.ready) {
+        if (st.technical) log(`podcasts: voz ${kind} recusada: ${st.technical}`);
+        throw httpError(503, `Voz indisponível: ${st.pending}`);
+      }
       const job = await service<any>("ch_worker_podcast_audio_job", { p_user: req.user!.id, p_podcast: req.params.id });
       const lines = normalizeLines(job.lines);
       if (lines.length < 2) throw httpError(409, "O roteiro aprovado está vazio.");
@@ -403,10 +439,25 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       if (!Number.isInteger(index) || index < 0 || index >= manifest.parts.length) throw httpError(400, "Parte inválida.");
       const partLines = manifest.parts[index].map((i) => lines[i]).filter(Boolean);
       if (partLines.length !== manifest.parts[index].length) throw httpError(409, "O roteiro mudou depois que o áudio começou. Gere o áudio de novo.");
+      // Parte já gerada neste trabalho (o navegador tentou de novo porque a resposta se perdeu): devolve a guardada, sem chamar a voz
+      // (e sem cobrar) outra vez. O registro .json é gravado por último; sem ele a parte conta como não terminada.
+      const doneKey = partKey(req.params.id, manifest.job, index, "json");
+      if ((await deps!.storage.exists(doneKey)) && (await deps!.storage.exists(partKey(req.params.id, manifest.job, index, "mp3")))) {
+        try {
+          const saved = JSON.parse((await deps!.storage.get(doneKey)).toString("utf8"));
+          if (Number.isFinite(Number(saved?.seconds))) {
+            log(`podcasts: parte ${index + 1} do episódio ${req.params.id} já estava pronta; não chamei a voz de novo`);
+            return res.json({ index, parts: manifest.parts.length, seconds: Math.round(Number(saved.seconds)) });
+          }
+        } catch {
+          // registro ilegível: gera a parte de novo
+        }
+      }
       let pcm: Buffer;
       try {
         pcm = Buffer.concat([await synthesizePart(manifest.provider, partLines, manifest.voices, deps!.tts), silence(320)]);
       } catch (error: any) {
+        log(`podcasts: voz falhou na parte ${index + 1} do episódio ${req.params.id}: ${error?.technical ?? message(error)}`);
         throw httpError(error?.status ?? 502, `A voz falhou na parte ${index + 1}: ${message(error)}`);
       }
       const mp3 = await pcmToMp3(pcm);
@@ -487,12 +538,15 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     }
   });
 
-  // ------------------------------------------------------------------ Flashcast da aula
+  // ------------------------------------------------------------------ Flashcast da aula (só administrador, confirmado, episódio publicado)
   router.post("/:id/flashcast", async (req: Authed, res) => {
     let copied: string | null = null;
     try {
       if (!deps!.lessons) throw httpError(503, "Depósito das aulas indisponível.");
-      await staffPodcast(req);
+      const before = await staffPodcast(req);
+      // Só o administrador (conferido no banco), com a confirmação dele, e só de episódio publicado: o aluno passa a ouvir a aula.
+      if (req.body?.confirm !== true) throw httpError(400, "Confirme (confirm: true) que o áudio vai virar o Flashcast da aula, trocando o que ela já tem.");
+      if (before?.status !== "published") throw httpError(409, "O Flashcast só pode ser copiado de um episódio publicado.");
       const f = await service<any>("ch_worker_podcast_flashcast", { p_user: req.user!.id, p_podcast: req.params.id });
       const lessonId = String(req.body?.lesson_id || f.lesson_id || "");
       if (!ID.test(lessonId)) throw httpError(400, "Ligue o episódio a uma aula antes.");
