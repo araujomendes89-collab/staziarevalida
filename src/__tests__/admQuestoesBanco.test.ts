@@ -286,3 +286,31 @@ describe("Q08 — apagar questão: só administrador, só sem resposta de aluno,
     await expect(rpc(null, "admin_question_problem", { q: {} })).rejects.toThrow(/permission denied/);
   });
 });
+
+describe("Q06 — a lista da aba pagina de verdade (o banco devolve no máximo 200 por chamada)", () => {
+  it("pedir 250 de uma vez devolve 200; as páginas por posição (p_offset) juntam todas, sem repetir nem pular", async () => {
+    // 230 questões de uma prova só delas (direto no banco: é mais rápido que 230 salvamentos)
+    await sql(`insert into public.exams (id, kind, year, semester, title) values ('revalida-2023-1', 'REVALIDA', 2023, 1, 'Revalida INEP 2023/1')`);
+    await sql(
+      `insert into public.questions (id, code, exam_id, number, area, topic, statement, options, correct_option, status)
+       select 'revalida_2023_1_q' || lpad(n::text, 3, '0'), 'REV-2023.1-Q' || lpad(n::text, 3, '0'), 'revalida-2023-1', n, 'PEDIATRIA', 'Tema ' || n,
+              'Enunciado da questão ' || n || ' com texto suficiente.',
+              '[{"id":"A","text":"a"},{"id":"B","text":"b"},{"id":"C","text":"c"},{"id":"D","text":"d"}]'::jsonb, 'B', 'valid'
+       from generate_series(1, 230) n`
+    );
+    const filters = { exam_id: "revalida-2023-1" };
+    const big = await rpc(EDITOR, "app_admin_questions", { p_filters: filters, p_limit: 250, p_offset: 0 });
+    expect(big.total).toBe(230);
+    expect(big.items).toHaveLength(200); // o teto: pedir 250, 300… nunca traz mais
+
+    const seen: string[] = [];
+    for (let offset = 0; offset < 230; offset += 50) {
+      const page = await rpc(EDITOR, "app_admin_questions", { p_filters: filters, p_limit: 50, p_offset: offset });
+      seen.push(...page.items.map((i: any) => i.id));
+    }
+    expect(seen).toHaveLength(230);
+    expect(new Set(seen).size).toBe(230);
+    expect(seen).toEqual(big.items.map((i: any) => i.id).concat(seen.slice(200)));
+    expect([seen[0], seen[229]]).toEqual(["revalida_2023_1_q001", "revalida_2023_1_q230"]); // na ordem da prova e do número
+  });
+});

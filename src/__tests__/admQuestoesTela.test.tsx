@@ -12,7 +12,7 @@ const session: any = { backend, boot: { role: "admin", profile: { name: "Adm" } 
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => session }));
 vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
 
-import { QuestionEditor } from "../novo/app/admin/AdminQuestions.jsx";
+import { AdminQuestions, QuestionEditor } from "../novo/app/admin/AdminQuestions.jsx";
 import { AdminAudit } from "../novo/app/admin/AdminPanels.jsx";
 
 const ROW = {
@@ -156,5 +156,75 @@ describe("Q08 e Q10 — o Registro de ações escreve em português", () => {
     expect(screen.getByText("REV-2024.1-Q130 · Bronquiolite")).toBeTruthy();
     expect(screen.getByText("Análise da questão tirada do ar")).toBeTruthy();
     expect(container.textContent).not.toMatch(/question\.(delete|analysis_unpublished)/);
+  });
+});
+
+describe("Q06 — a lista da aba pagina de verdade", () => {
+  const TOTAL = 230;
+  const item = (n: number) => ({
+    id: `q${n}`, code: `REV-2023.1-Q${String(n).padStart(3, "0")}`, exam_id: "revalida-2023-1", number: n, area: "PEDIATRIA", topic: `Tema ${n}`,
+    status: "valid", needs_image: false, images: 0, correct_option: "B", excerpt: `Enunciado ${n}`, explanations_review: false,
+  });
+  /** O banco de verdade: devolve no máximo 200 por chamada, na posição pedida. */
+  const serve = () => {
+    backend.rpc.mockReset();
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn !== "app_admin_questions") throw new Error(`rpc não simulada: ${fn}`);
+      const offset = args.p_offset ?? 0;
+      const limit = Math.min(args.p_limit ?? 50, 200);
+      return { total: TOTAL, exams: [], items: Array.from({ length: Math.max(Math.min(limit, TOTAL - offset), 0) }, (_, k) => item(offset + k + 1)) };
+    });
+  };
+  const rows = () => screen.queryAllByRole("button", { name: /^Editar REV-/ });
+  const more = () => screen.queryByRole("button", { name: "Carregar mais" });
+
+  it("'Carregar mais' junta as páginas até a última questão (passa de 200) e depois o botão some", async () => {
+    serve();
+    render(<AdminQuestions />);
+    expect(await screen.findByText("230 questões")).toBeTruthy();
+    expect(rows()).toHaveLength(50);
+    for (const expected of [100, 150, 200, 230]) {
+      fireEvent.click(more()!);
+      await waitFor(() => expect(rows()).toHaveLength(expected));
+    }
+    expect(more()).toBeNull();
+    // sem repetir: a última é a 230 e a lista segue a ordem
+    expect(rows().map((r) => r.getAttribute("aria-label"))).toEqual(Array.from({ length: TOTAL }, (_, k) => `Editar REV-2023.1-Q${String(k + 1).padStart(3, "0")}`));
+    // cada pedido ao banco traz só a página nova, a partir de onde a lista parou
+    const asked = backend.rpc.mock.calls.map((c: any[]) => [c[1].p_offset, c[1].p_limit]);
+    expect(asked).toEqual([[0, 50], [50, 50], [100, 50], [150, 50], [200, 50]]);
+  });
+
+  it("salvar uma questão recarrega a lista sem perder as páginas já abertas (as 100 de antes, não só as 50 primeiras)", async () => {
+    serve();
+    const listCalls = backend.rpc.getMockImplementation()!;
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_question") return { ...ROW, id: args.p_id, code: "REV-2023.1-Q004" };
+      if (fn === "app_admin_save_question") return { ...ROW, id: "q4", code: "REV-2023.1-Q004", ...args.p_question };
+      return listCalls(fn, args);
+    });
+    render(<AdminQuestions />);
+    await screen.findByText("230 questões");
+    fireEvent.click(more()!);
+    await waitFor(() => expect(rows()).toHaveLength(100));
+
+    fireEvent.click(rows()[3]);
+    fireEvent.click(await screen.findByRole("button", { name: "Salvar questão" }));
+    await screen.findByText("Questão salva.");
+    // o recarregamento pede as 100 de uma vez, desde a primeira
+    await waitFor(() => expect(backend.rpc.mock.calls.filter((c: any[]) => c[0] === "app_admin_questions").at(-1)![1]).toMatchObject({ p_offset: 0, p_limit: 100 }));
+    fireEvent.click(screen.getByRole("button", { name: "Voltar à lista" }));
+    await waitFor(() => expect(rows()).toHaveLength(100));
+  });
+
+  it("mudar o filtro de área recomeça na primeira página", async () => {
+    serve();
+    render(<AdminQuestions />);
+    await screen.findByText("230 questões");
+    fireEvent.click(more()!);
+    await waitFor(() => expect(rows()).toHaveLength(100));
+    fireEvent.change(screen.getByLabelText("Área"), { target: { value: "PEDIATRIA" } });
+    await waitFor(() => expect(rows()).toHaveLength(50));
+    expect(backend.rpc.mock.calls.at(-1)![1]).toMatchObject({ p_limit: 50, p_offset: 0, p_filters: { area: "PEDIATRIA" } });
   });
 });

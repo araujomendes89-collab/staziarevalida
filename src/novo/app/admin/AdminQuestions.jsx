@@ -12,6 +12,8 @@ import { TabAssistant } from "./assistant/TabAssistant.jsx";
 import { downloadText, ListRow, LoadError, Loading, messageOf, QUESTION_STATUS_LABEL, TextArea, useDebounced, useLoad } from "./common.jsx";
 
 const PAGE = 50;
+// o banco devolve no máximo 200 questões por chamada (app_admin_questions)
+const SERVER_MAX = 200;
 const LETTERS = ["A", "B", "C", "D"];
 const statusTone = { valid: "success", annulled: "danger", changed_after_appeal: "warning" };
 const AREA_OPTIONS = AREAS.map((a) => ({ value: a.id, label: a.label }));
@@ -734,18 +736,67 @@ function ImportPanel({ onClose, onImported }) {
 }
 
 // ---------------------------------------------------------------- lista
+/**
+ * A lista da aba, página por página (Q06). Cada "Carregar mais" pede só a página seguinte, a partir de onde a lista parou
+ * (p_offset), e junta ao que já está na tela; o banco devolve no máximo 200 por chamada, então pedir 250, 300… não trazia nada
+ * novo. Mudar a busca ou um filtro recomeça na primeira página; recarregar (depois de salvar) pede de novo as páginas já abertas.
+ */
+function useQuestionPages(backend, filters, deps) {
+  const [state, setState] = React.useState({ data: null, error: null, loading: true });
+  const [tick, setTick] = React.useState(0);
+  const wanted = React.useRef(PAGE); // quantas questões a tela quer mostrar
+  const filterKey = React.useRef(null);
+  const current = React.useRef(0); // número do pedido em andamento: resposta de pedido antigo é ignorada
+  const key = JSON.stringify(deps);
+
+  React.useEffect(() => {
+    if (filterKey.current !== key) {
+      filterKey.current = key;
+      wanted.current = PAGE;
+    }
+    const mine = ++current.current;
+    setState((s) => ({ ...s, loading: true, error: null }));
+    (async () => {
+      let items = [];
+      let page = null;
+      do {
+        page = await backend.rpc("app_admin_questions", { p_filters: filters, p_limit: Math.min(SERVER_MAX, wanted.current - items.length), p_offset: items.length });
+        items = items.concat(page.items);
+      } while (items.length < wanted.current && items.length < page.total && page.items.length > 0);
+      return { ...page, items };
+    })().then(
+      (data) => mine === current.current && setState({ data, error: null, loading: false }),
+      (error) => mine === current.current && setState((s) => ({ ...s, error, loading: false }))
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backend, key, tick]);
+
+  const more = async () => {
+    const mine = ++current.current;
+    const loaded = state.data?.items ?? [];
+    setState((s) => ({ ...s, loading: true, error: null }));
+    try {
+      const page = await backend.rpc("app_admin_questions", { p_filters: filters, p_limit: PAGE, p_offset: loaded.length });
+      if (mine !== current.current) return;
+      const seen = new Set(loaded.map((q) => q.id));
+      const items = loaded.concat(page.items.filter((q) => !seen.has(q.id)));
+      wanted.current = items.length;
+      setState({ data: { ...page, items }, error: null, loading: false });
+    } catch (error) {
+      if (mine === current.current) setState((s) => ({ ...s, error, loading: false }));
+    }
+  };
+  return { ...state, reload: () => setTick((n) => n + 1), more };
+}
+
 export function AdminQuestions() {
   const { backend } = useSession();
   const mobile = useMobile();
   const [view, setView] = React.useState({ mode: "list", id: null }); // list | edit | new | import
   const [filters, setFilters] = React.useState({ search: "", exam_id: "", area: "", status: "", needs_image: false, review: false });
-  const [limit, setLimit] = React.useState(PAGE);
   const search = useDebounced(filters.search.trim());
-  const list = useLoad(
-    () => backend.rpc("app_admin_questions", { p_filters: { ...filters, search }, p_limit: limit }),
-    [backend, search, filters.exam_id, filters.area, filters.status, filters.needs_image, filters.review, limit]
-  );
-  const set = (patch) => (setFilters((f) => ({ ...f, ...patch })), setLimit(PAGE));
+  const list = useQuestionPages(backend, { ...filters, search }, [search, filters.exam_id, filters.area, filters.status, filters.needs_image, filters.review]);
+  const set = (patch) => setFilters((f) => ({ ...f, ...patch }));
   const back = () => setView({ mode: "list", id: null });
 
   if (view.mode === "edit" || view.mode === "new") return <QuestionEditor key={view.id ?? "nova"} id={view.id} onClose={back} onSaved={list.reload} />;
@@ -818,7 +869,7 @@ export function AdminQuestions() {
           )}
           {list.data.items.length < list.data.total && (
             <div style={{ display: "flex", justifyContent: "center" }}>
-              <Button variant="secondary" onClick={() => setLimit((n) => n + PAGE)} loading={list.loading}>
+              <Button variant="secondary" onClick={list.more} loading={list.loading}>
                 Carregar mais
               </Button>
             </div>
