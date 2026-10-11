@@ -54,6 +54,8 @@ export const ACTION_LABEL = {
   "podcast.save": "Podcast salvo",
   "podcast.delete": "Podcast apagado",
   "podcast.source": "Fonte do podcast adicionada",
+  "podcast.source_rename": "Fonte do podcast renomeada",
+  "podcast.source_complementar": "Classe da fonte do podcast alterada",
   "podcast.script.ai": "Roteiro do podcast escrito pela IA",
   "podcast.script.edit": "Roteiro do podcast editado",
   "podcast.approve": "Roteiro do podcast aprovado",
@@ -292,6 +294,9 @@ const SUMMARY = {
   "podcast.publish": (d, entry) => entry.title,
   "podcast.unpublish": (d, entry) => entry.title,
   "podcast.source": (d, entry) => join([entry.title && `Episódio: ${entry.title}`, d.title && `Fonte: ${d.title}`]),
+  "podcast.source_rename": (d, entry) => join([entry.title && `Episódio: ${entry.title}`]),
+  "podcast.source_complementar": (d, entry) =>
+    join([entry.title && `Episódio: ${entry.title}`, d.title && `Fonte: ${d.title}`, d.to === "complementar" ? "Fonte complementar: o aluno não vê esta fonte" : "Fonte oficial: o aluno volta a ver esta fonte"]),
   "podcast.script.ai": (d, entry) =>
     join([
       entry.title,

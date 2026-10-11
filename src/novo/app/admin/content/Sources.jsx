@@ -7,6 +7,7 @@ import { useSession } from "../../session.jsx";
 import { useMobile } from "../../Shell.jsx";
 import { LoadError, Loading, useLoad } from "../common.jsx";
 import { hubAvailable, hubPost, hubUploadPdf } from "./api.js";
+import { ComplementarMentions } from "./ComplementarMentions.jsx";
 import { AUDIENCE, AUDIENCE_NOTE, AUTHORITY, DIFF_KIND, FRESHNESS, SOURCE_KIND, SOURCE_STATUS, SOURCE_TYPE } from "./labels.js";
 import { KeyValue, Label, Section, shortHash, StatusBadge, useAction, useUploadProgress, when } from "./ui.jsx";
 
@@ -48,6 +49,7 @@ export function Sources({ isAdmin, go }) {
           <SourceRow key={s.id} source={s} audience={classes.data?.[s.id] ?? "oficial"} isAdmin={isAdmin} onChanged={reloadAll} go={go} />
         ))}
       </Section>
+      {isAdmin && <ComplementarMentions isAdmin />}
     </div>
   );
 }

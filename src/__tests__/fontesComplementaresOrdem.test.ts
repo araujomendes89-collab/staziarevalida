@@ -18,7 +18,8 @@ const ADMIN = "00000000-0000-4000-8000-0000000000ad";
 const ALUNA = "00000000-0000-4000-8000-00000000000a";
 const NOVA = "20261003009620_fontes_complementares.sql";
 const DEPOIS = ["20261003009580", "20261003009590", "20261003009591", "20261003009592", "20261003009593"];
-const todas = () => fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort();
+// (APOIO-B) a 9621 (parte da equipe) vem depois da 9620 e redefine duas funções dela: este arquivo prova só a 9620, então a deixa de fora
+const todas = () => fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && !f.startsWith("20261003009621")).sort();
 const ler = (f: string) => fs.readFileSync(path.join(MIGRATIONS, f), "utf8");
 
 async function novoBanco(arquivos: string[]) {

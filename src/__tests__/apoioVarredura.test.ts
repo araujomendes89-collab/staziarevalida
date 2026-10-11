@@ -150,10 +150,12 @@ beforeAll(async () => {
     [sComp, COMP_PAGE, `${FRASE} hepatite B vacina imunoglobulina recém-nascido`, sOfi]);
 
   // ---- questão com as duas fontes: gabarito digitado na importação, evidência, análise publicada, comentário, cartão e gabarito oficial
-  await grava(ADMIN, "app_admin_save_question", { p_question: questao(1, [
+  // (APOIO-B) a checagem ao salvar barra a apostila digitada pela equipe: salva só a oficial e grava a antiga direto no banco
+  await grava(ADMIN, "app_admin_save_question", { p_question: questao(1, [{ title: "Gabarito definitivo INEP 2024/1", organization: "INEP" }]) });
+  await sql(`update public.questions set sources = $2::jsonb where id = $1`, [QID, JSON.stringify([
     { title: "Gabarito definitivo INEP 2024/1", organization: "INEP" },
     { title: COMP_TITLE, organization: COMP_ORGAN, url: COMP_URL, page: COMP_PAGE },
-  ]) });
+  ])]);
   claim = (await sql(`insert into public.ch_claims (statement) values ('Recém-nascido de mãe HBsAg reagente recebe vacina e imunoglobulina.') returning id`))[0].id;
   await sql(`insert into public.question_claims (question_id, claim_id, role) values ($1, $2, 'solves')`, [QID, claim]);
   await evidencia(claim, sOfi, 12, "vacina e imunoglobulina no recém-nascido");
