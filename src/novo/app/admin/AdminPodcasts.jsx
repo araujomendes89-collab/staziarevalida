@@ -109,6 +109,11 @@ function Sources({ podcast, lessons, onChanged }) {
   const addText = async () => (await run("text", () => api.addTextSource(backend, podcast.id, text.title, text.body))) && setText({ title: "", body: "" });
   const addLink = async () => (await run("link", () => api.addLinkSource(backend, podcast.id, url))) && setUrl("");
   const addLesson = () => run("lesson", () => api.addLessonSource(backend, podcast.id, lessonId));
+  const rename = (s) => {
+    const next = window.prompt("Nome da fonte que o aluno vai ver na transcrição:", s.title);
+    if (next == null || !next.trim() || next.trim() === s.title) return;
+    run(`rename-${s.id}`, () => api.renameSource(backend, podcast.id, s.id, next.trim()));
+  };
   const remove = (s) => {
     if (podcast.script && !window.confirm("Tirar esta fonte apaga o roteiro atual (ele pode citar trechos dela). Continuar?")) return;
     run(s.id, () => api.removeSource(backend, podcast.id, s.id));
@@ -131,6 +136,7 @@ function Sources({ podcast, lessons, onChanged }) {
                   {SOURCE_KIND[s.kind]} · {s.chunks} trechos{s.pages ? ` · ${s.pages} páginas` : ""}{s.url ? ` · ${s.url}` : ""}
                 </span>
               </span>
+              {!locked && <Button size="sm" variant="ghost" icon="pencil" loading={state.busy === `rename-${s.id}`} onClick={() => rename(s)}>Renomear</Button>}
               {!locked && <Button size="sm" variant="ghost" icon="trash-2" loading={state.busy === s.id} onClick={() => remove(s)}>Tirar</Button>}
             </div>
           ))}

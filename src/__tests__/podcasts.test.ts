@@ -318,6 +318,24 @@ describe("Episódio, fontes e permissões", () => {
   });
 });
 
+describe("Nome da fonte", () => {
+  it("equipe renomeia a fonte; aluno não; nome vazio ou fonte alheia é recusado", async () => {
+    const view = await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId });
+    const docx = view.sources.find((s: any) => s.kind === "docx");
+    const url = `${base}/${podcastId}/sources/${docx.id}`;
+    const patch = (token: string, body: unknown, u = url) => call(u, token, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    expect((await patch(student, { title: "Qualquer" })).status).toBe(403);
+    expect((await patch(editor, { title: "   " })).status).toBe(400);
+    expect((await patch(editor, { title: "x".repeat(201) })).status).toBe(400);
+    expect((await patch(editor, { title: "Nome" }, `${base}/${podcastId}/sources/00000000-0000-4000-8000-000000000001`)).status).toBe(404);
+    const ok = await patch(editor, { title: "  Resumo de eclâmpsia da equipe " });
+    expect(ok.status).toBe(200);
+    expect(ok.body.sources.find((s: any) => s.id === docx.id).title).toBe("Resumo de eclâmpsia da equipe");
+    // o roteiro não é mexido por causa do nome
+    expect(ok.body.status).toBe((await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId })).status);
+  });
+});
+
 describe("Roteiro com revisão humana", () => {
   let warnings: any[];
 
@@ -540,7 +558,10 @@ describe("Áudio em partes, publicação e Flashcast", () => {
     expect(await rpc(STUDENT, "app_podcasts", { p_area: "PEDIATRIA" })).toEqual([]);
     const ep = await rpc(STUDENT, "app_podcast", { p_id: podcastId });
     expect(ep.lines[0]).toEqual({ speaker: "ANA", text: "Hoje a conversa é sobre pré-eclâmpsia, só com o material da equipe." });
-    expect(ep.sources.find((s: any) => s.title === "PCDT pré-eclâmpsia.pdf")).toMatchObject({ kind: "pdf", pages: [1] });
+    // o aluno não lê o nome do arquivo enviado: PDF vira "Documento 1" (a posição da fonte); o DOCX foi renomeado pela equipe
+    expect(ep.sources.find((s: any) => s.kind === "pdf")).toMatchObject({ title: "Documento 1", pages: [1] });
+    expect(ep.sources.some((s: any) => /PCDT pré-eclâmpsia\.pdf|eclampsia\.docx/.test(s.title))).toBe(false);
+    expect(ep.sources.find((s: any) => s.kind === "docx")?.title).toBe("Resumo de eclâmpsia da equipe");
     expect((await call(`${base}/${podcastId}/audio/link`, student)).body).toEqual({ url: null });
     expect((await call(`${base}/${podcastId}/audio/file`, student)).status).toBe(200);
     // publicado não aceita mudança de fonte nem de roteiro

@@ -136,7 +136,7 @@ describe("Administração › Podcasts", () => {
     expect(gemini.disabled).toBe(true);
     expect(gemini.textContent).toBe("Gemini — indisponível por enquanto");
     expect(screen.getByText(/Gemini: indisponível por enquanto/)).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Gerar áudio" }) as HTMLButtonElement).disabled).toBe(false);
+    await waitFor(() => expect((screen.getByRole("button", { name: "Gerar áudio" }) as HTMLButtonElement).disabled).toBe(false));
   });
 
   it("aprovar exige escrever o que foi conferido; o editor não publica", async () => {
@@ -158,6 +158,35 @@ describe("Administração › Podcasts", () => {
     expect((screen.getByLabelText("Voz da Ana") as HTMLSelectElement).value).toBe("marin");
     expect((screen.getByLabelText("Voz do Bruno") as HTMLSelectElement).value).toBe("cedar");
     expect(screen.getByRole("button", { name: /Apagar episódio/ })).toBeTruthy();
+  });
+});
+
+describe("Administração › Podcasts › Nome da fonte", () => {
+  it("a equipe renomeia a fonte (é o nome que o aluno lê); cancelar não envia nada", async () => {
+    const prompt = vi.spyOn(window, "prompt").mockReturnValueOnce(null).mockReturnValueOnce("PCDT de pré-eclâmpsia");
+    const calls: any[] = [];
+    fetchMock.mockImplementation(async (url: string, init: any) => {
+      if (url.endsWith("/api/podcasts/providers")) return new Response(JSON.stringify(PROVIDERS), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/sources/s1") && init?.method === "PATCH") {
+        calls.push(JSON.parse(init.body));
+        return new Response(JSON.stringify(episode()), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response("{}", { status: 404 });
+    });
+    renderAdmin("editor", episode());
+    const button = await screen.findByRole("button", { name: /Renomear/ });
+    fireEvent.click(button);
+    expect(String(prompt.mock.calls[0][0])).toMatch(/aluno vai ver/);
+    expect(calls).toHaveLength(0);
+    fireEvent.click(button);
+    await waitFor(() => expect(calls).toEqual([{ title: "PCDT de pré-eclâmpsia" }]));
+    prompt.mockRestore();
+  });
+
+  it("episódio publicado: sem Renomear", async () => {
+    renderAdmin("admin", episode({ status: "published", approved_at: "2026-10-06T13:00:00Z", audio_path: "podcasts/x.mp3" }));
+    await screen.findByText(/Episódio publicado: despublique para mexer nas fontes/);
+    expect(screen.queryByRole("button", { name: /Renomear/ })).toBeNull();
   });
 });
 

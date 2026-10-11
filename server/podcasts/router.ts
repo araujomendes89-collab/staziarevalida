@@ -294,6 +294,20 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     }
   });
 
+  /** Renomear a fonte: é o nome que o aluno lê na transcrição (nome de arquivo aparece a ele como "Documento N"). */
+  router.patch("/:id/sources/:sourceId", async (req: Authed, res) => {
+    try {
+      if (!ID.test(req.params.sourceId)) throw httpError(400, "Fonte inválida.");
+      const title = String(req.body?.title ?? "").trim();
+      if (!title || title.length > 200) throw httpError(400, "Dê um nome de 1 a 200 caracteres.");
+      const before = await staffPodcast(req);
+      if (!(before.sources ?? []).some((s: any) => s.id === req.params.sourceId)) throw httpError(404, "Fonte não encontrada.");
+      res.json(await asUser(req, "app_admin_podcast_rename_source", { p_source_id: req.params.sourceId, p_title: title }));
+    } catch (error) {
+      fail(res, statusOf(error), message(error));
+    }
+  });
+
   // ------------------------------------------------------------------ roteiro
   const loadMaterial = async (req: Authed) => {
     const m = await service<any>("ch_worker_podcast_material", { p_user: req.user!.id, p_podcast: req.params.id });
