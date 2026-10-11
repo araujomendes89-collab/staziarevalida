@@ -6,7 +6,7 @@ import { Badge, Banner, Button, Card, Icon, SelectField, Switch, TextField } fro
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
-import { lessonsAvailable, sizeLabel, uploadLessonFile } from "../study/lessonsApi.js";
+import { lessonsAvailable, materialTitle, sizeLabel, uploadLessonFile } from "../study/lessonsApi.js";
 import { dateTimeBR, LoadError, Loading, messageOf, TextArea, useLoad } from "./common.jsx";
 import { LessonAssistant } from "./LessonAssistant.jsx";
 
@@ -75,7 +75,7 @@ function MaterialsSection({ lesson, pending, setPending, onChanged, form, set })
         const chosen = pending?.[slot.kind];
         const busy = state.busy === slot.kind;
         return (
-          <SlotRow key={slot.kind} icon={slot.icon} label={slot.label} available={m ? true : chosen ? "pending" : false} detail={m ? `${m.title}${m.size_bytes ? ` · ${sizeLabel(m.size_bytes)}` : ""}` : chosen ? `${chosen.name} · ${sizeLabel(chosen.size)}` : null}>
+          <SlotRow key={slot.kind} icon={slot.icon} label={slot.label} available={m ? true : chosen ? "pending" : false} detail={m ? `${materialTitle(m.title)}${m.size_bytes ? ` · ${sizeLabel(m.size_bytes)}` : ""}` : chosen ? `${chosen.name} · ${sizeLabel(chosen.size)}` : null}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <label className="sm-btn sm-btn--secondary sm-btn--sm" style={{ cursor: canUpload && !state.busy ? "pointer" : "not-allowed", opacity: canUpload ? 1 : 0.6 }}>
                 {busy ? "Enviando…" : m || chosen ? "Trocar arquivo" : slot.pick}

@@ -64,3 +64,18 @@ describe("A09 - lista logo depois de criar", () => {
   });
 });
 
+
+const withMaterials = (materials: any[]) => ({
+  id: "l9", area: "PEDIATRIA", topic: "Bronquiolite", title: "Bronquiolite", published: true, key_points: [], updated_at: SAVED_AT,
+  started_by: 2, completed_by: 1, materials,
+});
+
+describe("A06 - prefixo 'Flashcast:' repetido", () => {
+  it("o título do áudio da aula não repete o prefixo na lista da equipe", async () => {
+    store.lessons = [withMaterials([{ id: "m1", kind: "flashcast", title: "Flashcast: Flashcast: Bronquiolite", has_file: true, size_bytes: 2048, url: null }])];
+    render(<AdminLessons />);
+    fireEvent.click(await screen.findByRole("button", { name: /Bronquiolite/ }));
+    expect(screen.getByText(/Flashcast: Bronquiolite/)).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/Flashcast: Flashcast/);
+  });
+});

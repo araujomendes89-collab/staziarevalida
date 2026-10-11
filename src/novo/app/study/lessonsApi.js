@@ -89,6 +89,9 @@ export function durationLabel(minutes) {
   return `${Math.floor(minutes / 60)}h${rest ? String(rest).padStart(2, "0") : ""}`;
 }
 
+/** Título do material sem o prefixo "Flashcast:" repetido (o episódio já se chama "Flashcast: …" e o áudio da aula ganha outro). */
+export const materialTitle = (title) => String(title ?? "").replace(/^(?:\s*flashcast\s*:\s*)+/i, (m) => (m ? "Flashcast: " : ""));
+
 export function sizeLabel(bytes) {
   if (!bytes) return "";
   return bytes >= 1048576 ? `${(bytes / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
