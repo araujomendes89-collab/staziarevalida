@@ -270,11 +270,22 @@ describe("Q11 — ajuda da importação completa e número de linha certo", () =
     pick("questoes.csv", CSV);
     expect(await screen.findByText("3 novas · 0 já existem (mesma prova e número)")).toBeTruthy();
     expect(screen.getByText(/1 questão anulada tem explicação geral no arquivo/)).toBeTruthy();
-    expect(screen.getByText(/Linha 3 \(questão 21\)/)).toBeTruthy(); // a questão 21 está na linha 3 da planilha
+    expect(screen.getByText(/Linha 3 \(questão 21\): A explicação geral não é gravada/)).toBeTruthy(); // a questão 21 está na linha 3 da planilha
     fireEvent.click(screen.getByRole("button", { name: "Importar 3 questões" }));
     // posição 2 na lista = linha 3 da planilha (a linha 1 é o cabeçalho); posição 3 = linha 4
     expect(await screen.findByText(/Linha 3: Há alternativa sem texto\. · Linha 4: Questão repetida no arquivo\./)).toBeTruthy();
     expect(screen.queryByText(/Item 2/)).toBeNull();
+  });
+
+  it("com linha em branco na planilha, o erro do banco aponta a linha que a pessoa vê no Excel", async () => {
+    await open();
+    const [header, a, b, c] = CSV.split("\n");
+    // a linha 1 é o cabeçalho; a questão 20 está na 2; depois vêm uma linha só de ;;; e uma vazia; a 21 está na 5 e a 22 na 6
+    pick("questoes.csv", [header, a, ";;;;;;;;;;;;", "", b, c].join("\n"));
+    expect(await screen.findByText("3 novas · 0 já existem (mesma prova e número)")).toBeTruthy();
+    expect(screen.getByText(/Linha 5 \(questão 21\)/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Importar 3 questões" }));
+    expect(await screen.findByText(/Linha 5: Há alternativa sem texto\. · Linha 6: Questão repetida no arquivo\./)).toBeTruthy();
   });
 
   it("em JSON o número continua sendo o do item", async () => {

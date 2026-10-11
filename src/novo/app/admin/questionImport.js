@@ -13,17 +13,31 @@ const fold = (value) =>
     .trim();
 
 // ---------------------------------------------------------------- CSV
-/** CSV com separador ";" "," ou tab (detectado na 1ª linha), aspas e quebras de linha dentro de aspas. */
-export function parseCsv(text) {
+/**
+ * CSV com separador ";" "," ou tab (detectado na 1ª linha), aspas e quebras de linha dentro de aspas. Devolve as linhas com
+ * alguma coisa escrita e, ao lado, o número da linha da planilha onde cada uma começa (contando as linhas em branco que foram
+ * descartadas e as quebras de linha dentro de aspas), para as mensagens apontarem a linha que a pessoa vê no Excel.
+ */
+export function parseCsvWithLines(text) {
   const source = String(text ?? "").replace(/^﻿/, "");
   const firstLine = source.split(/\r?\n/, 1)[0] ?? "";
   const counts = [";", ",", "\t"].map((d) => [d, firstLine.split(d).length]);
   const delimiter = counts.sort((a, b) => b[1] - a[1])[0][0];
 
   const rows = [];
+  const starts = [];
   let row = [];
   let field = "";
   let quoted = false;
+  let line = 1; // linha do arquivo onde o caractere atual está
+  let rowStart = 1; // linha onde a linha de dados atual começou
+  const endRow = () => {
+    row.push(field);
+    rows.push(row);
+    starts.push(rowStart);
+    row = [];
+    field = "";
+  };
   for (let i = 0; i < source.length; i++) {
     const ch = source[i];
     if (quoted) {
@@ -31,24 +45,28 @@ export function parseCsv(text) {
         field += '"';
         i++;
       } else if (ch === '"') quoted = false;
-      else field += ch;
+      else {
+        if (ch === "\n" || (ch === "\r" && source[i + 1] !== "\n")) line++;
+        field += ch;
+      }
     } else if (ch === '"' && field === "") quoted = true;
     else if (ch === delimiter) {
       row.push(field);
       field = "";
     } else if (ch === "\n" || ch === "\r") {
       if (ch === "\r" && source[i + 1] === "\n") i++;
-      row.push(field);
-      rows.push(row);
-      row = [];
-      field = "";
+      endRow();
+      line++;
+      rowStart = line;
     } else field += ch;
   }
-  if (field !== "" || row.length) {
-    row.push(field);
-    rows.push(row);
-  }
-  return rows.filter((r) => r.some((cell) => cell.trim() !== ""));
+  if (field !== "" || row.length) endRow();
+  const kept = rows.map((r, k) => k).filter((k) => rows[k].some((cell) => cell.trim() !== ""));
+  return { rows: kept.map((k) => rows[k]), lines: kept.map((k) => starts[k]) };
+}
+
+export function parseCsv(text) {
+  return parseCsvWithLines(text).rows;
 }
 
 // Nomes de coluna aceitos (sem acento, minúsculas) → campo.
@@ -184,7 +202,12 @@ function toQuestion(cells) {
   }));
   // a explicação geral vai para a alternativa do gabarito; em questão anulada não há alternativa correta e ela não é gravada
   const notes = [];
-  if (status === "annulled" && explanation) notes.push("A explicação geral não é gravada em questão anulada (nenhuma alternativa é a correta).");
+  if (status === "annulled" && explanation)
+    notes.push(
+      correct
+        ? `A explicação geral fica gravada na alternativa ${correct}, mas o aluno não a vê enquanto a questão estiver anulada.`
+        : "A explicação geral não é gravada: questão anulada sem gabarito não tem alternativa correta."
+    );
   const declaredImage = parseYesNo(cells.imagem);
   const source = String(cells.fonte ?? "").trim();
   const filled = [cells.tema, cells.subtema, cells.enunciado, ...LETTERS.map((l) => cells[l]), cells.explicacao, ...LETTERS.map((l) => cells[`explicacao_${l}`]), cells.conduta, cells.avalia, cells.fonte];
@@ -214,7 +237,7 @@ function toQuestion(cells) {
 
 /** Linhas do CSV → questões. A 1ª linha é o cabeçalho. */
 export function questionsFromCsv(text) {
-  const rows = parseCsv(text);
+  const { rows, lines } = parseCsvWithLines(text);
   if (rows.length < 2) return { items: [], fileError: "A planilha precisa do cabeçalho e de pelo menos uma questão." };
   const header = rows[0].map(columnOf);
   const required = ["prova", "numero", "area", "tema", "enunciado", "A", "B", "C", "D", "gabarito"];
@@ -225,7 +248,7 @@ export function questionsFromCsv(text) {
     header.forEach((field, k) => {
       if (field) cells[field] = row[k];
     });
-    return { line: index + 2, ...toQuestion(cells) };
+    return { line: lines[index + 1], ...toQuestion(cells) };
   });
   return { items, fileError: null };
 }

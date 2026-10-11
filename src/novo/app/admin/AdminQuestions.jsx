@@ -688,9 +688,14 @@ function ImportPanel({ onClose, onImported }) {
                 )}
                 {withNotes.length > 0 && (
                   <Banner tone="warning" title={`${withNotes.length} ${withNotes.length === 1 ? "questão anulada tem explicação geral no arquivo" : "questões anuladas têm explicação geral no arquivo"}`}>
-                    {`A explicação geral não é gravada em questão anulada (nenhuma alternativa é a correta): ${codesText(
-                      withNotes.map((i) => `${lineLabel(i)}${i.question.number ? ` (questão ${i.question.number})` : ""}`)
-                    )}.`}
+                    <ul style={{ margin: 0, paddingLeft: 20 }}>
+                      {withNotes.slice(0, 20).map((item) => (
+                        <li key={item.line}>
+                          {`${lineLabel(item)}${item.question.number ? ` (questão ${item.question.number})` : ""}: ${item.notes.join(" ")}`}
+                        </li>
+                      ))}
+                    </ul>
+                    {withNotes.length > 20 && `e mais ${withNotes.length - 20}.`}
                   </Banner>
                 )}
                 {preview?.loading && <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Conferindo o arquivo com o banco…</div>}

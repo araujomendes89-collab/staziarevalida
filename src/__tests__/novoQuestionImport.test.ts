@@ -193,4 +193,41 @@ describe("Importação de questões — avisos que não travam (Q11)", () => {
     expect(json.items[0].notes).toEqual([]);
     expect(json.items[0].question.options[0].explanation).toBe("Só a A.");
   });
+
+  it("o aviso da anulada diz a verdade nos dois casos: sem letra a explicação não é gravada; com letra fica na alternativa e o aluno não a vê", () => {
+    const csv = [
+      header,
+      row(["Revalida 2026/2", "7", "Pediatria", "Bronquiolite", "", statement, "a", "b", "c", "d", "ANULADA", "Explicação geral.", ""]),
+      row(["Revalida 2026/2", "8", "Pediatria", "Bronquiolite", "", statement, "a", "b", "c", "d", "B", "Explicação geral.", "anulada"]),
+    ].join("\n");
+    const { items } = questionsFromCsv(csv);
+    expect(items[0].notes).toEqual([expect.stringMatching(/não é gravada/)]);
+    expect(items[0].question.options.map((o: any) => o.explanation)).toEqual(["", "", "", ""]);
+    expect(items[1].question).toMatchObject({ status: "annulled", correct_option: "B" });
+    expect(items[1].question.options[1].explanation).toBe("Explicação geral."); // continua indo ao banco
+    expect(items[1].notes).toEqual([expect.stringMatching(/fica gravada na alternativa B.*aluno não a vê/)]);
+  });
+});
+
+describe("Importação de questões — número da linha na planilha (Q11)", () => {
+  const ok = (n: number) => row(["Revalida 2026/2", String(n), "Pediatria", "Bronquiolite", "", statement, "a", "b", "c", "d", "B", "", ""]);
+  const bad = (n: number) => row(["Revalida 2026/2", String(n), "Pediatria", "Bronquiolite", "", statement, "a", "b", "c", "d", "X", "", ""]);
+  const linesOf = (csv: string) => questionsFromCsv(csv).items.map((i: any) => [i.question.number, i.line]);
+
+  it("linha vazia e linha só de separadores (como o Excel salva linha em branco) não deslocam o número", () => {
+    const csv = [header, ok(1), ";;;;;;;;;;;;", "", bad(2)].join("\n");
+    expect(linesOf(csv)).toEqual([[1, 2], [2, 5]]);
+    expect(questionsFromCsv(csv).items[1].problems[0]).toMatch(/Gabarito inválido/);
+  });
+
+  it("linha em branco antes do cabeçalho, final de linha do Windows e campo com quebra de linha dentro das aspas", () => {
+    const csv = ["", ";;;", header, ok(1), `Revalida 2026/2;2;Pediatria;Bronquiolite;;"${statement}\nsegunda linha do enunciado";a;b;c;d;B;;`, ok(3)].join("\r\n");
+    // cabeçalho na linha 3; questão 1 na 4; questão 2 na 5 (ocupa as linhas 5 e 6); questão 3 na 7
+    expect(linesOf(csv)).toEqual([[1, 4], [2, 5], [3, 7]]);
+  });
+
+  it("sem linha vazia continua igual a antes (a 1ª questão está na linha 2)", () => {
+    expect(linesOf([header, ok(1), ok(2)].join("\n"))).toEqual([[1, 2], [2, 3]]);
+    expect(parseCsv("a;b\n\n1;2\n")).toEqual([["a", "b"], ["1", "2"]]);
+  });
 });
