@@ -72,6 +72,16 @@ beforeAll(async () => {
   );
   await db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [EDITOR]);
+  await db.exec(`insert into public.exams (id, kind, year, semester, title, question_count)
+                 values ('revalida-2024-1', 'REVALIDA', 2024, 1, 'Revalida INEP 2024/1', 100)`);
+  const options = JSON.stringify(["A", "B", "C", "D"].map((id) => ({ id, text: `alternativa ${id}`, explanation: "" })));
+  for (let n = 1; n <= 3; n++) {
+    await db.query(
+      `insert into public.questions (id, code, exam_id, number, area, topic, statement, options, correct_option)
+       values ($1, $2, 'revalida-2024-1', $3, 'CLINICA_MEDICA'::public.med_area, 'tema de teste', $4, $5::jsonb, 'B')`,
+      [`q00${n}`, `REV-2024-Q00${n}`, n, `Enunciado de teste ${n}.`, options]
+    );
+  }
 }, 300_000);
 
 describe("AR02: a liga só promove quem estudou na semana", () => {
@@ -204,22 +214,40 @@ describe("AR06: Arena ou ligas desligadas não viram a semana", () => {
     }
   });
 
-  it("rotina diária com a Arena desligada: pula tudo, não quebra sequência e não registra o dia (roda quando ligar)", async () => {
+  it("rotina diária com a Arena desligada: pula tudo, não registra o dia e, ao religar, a sequência continua igual", async () => {
     await sql(`select public.gam_ensure($1)`, [CARLA]);
     await sql(`update public.user_gamification_stats set current_streak = 5, last_qualified_date = public.today_br() - 5 where user_id = $1`, [CARLA]);
+    // a última rotina que rodou foi há 5 dias (a Arena ficou desligada desde então)
     await sql(`delete from public.gamification_jobs where job = 'daily'`);
+    await sql(`insert into public.gamification_jobs (job, period_key) values ('daily', (public.today_br() - 5)::text)`);
+    const brokenBefore = (await eventsOf(CARLA, "STREAK_BROKEN")).length;
     await setRule("flags.gamification_enabled", false);
     try {
       const r = (await sql(`select public.ch_worker_gamification_daily() as r`))[0].r;
       expect(r).toMatchObject({ skipped: true });
       expect((await sql(`select current_streak from public.user_gamification_stats where user_id = $1`, [CARLA]))[0].current_streak).toBe(5);
-      expect((await sql(`select count(*)::int as n from public.gamification_jobs where job = 'daily'`))[0].n).toBe(0);
+      expect((await sql(`select count(*)::int as n from public.gamification_jobs where job = 'daily' and period_key = public.today_br()::text`))[0].n).toBe(0);
     } finally {
       await setRule("flags.gamification_enabled", true);
     }
     const ligado = (await sql(`select public.ch_worker_gamification_daily() as r`))[0].r;
     expect(ligado.skipped).toBeUndefined();
-    expect((await sql(`select count(*)::int as n from public.gamification_jobs where job = 'daily'`))[0].n).toBe(1);
+    expect((await sql(`select count(*)::int as n from public.gamification_jobs where job = 'daily' and period_key = public.today_br()::text`))[0].n).toBe(1);
+    // religou: a sequência continua igual, a data anda para ontem (nada diminui) e nada foi quebrado
+    const st = (await sql(`select current_streak, longest_streak, (last_qualified_date = public.today_br() - 1) as ontem from public.user_gamification_stats where user_id = $1`, [CARLA]))[0];
+    expect(st.current_streak).toBe(5);
+    expect(st.ontem).toBe(true);
+    expect((await eventsOf(CARLA, "STREAK_BROKEN")).length).toBe(brokenBefore);
+  });
+
+  it("rotina diária rodando todo dia continua quebrando a sequência de quem parou de estudar (sem perdão extra)", async () => {
+    await sql(`select public.gam_ensure($1)`, [EVA]);
+    await sql(`update public.user_gamification_stats set current_streak = 4, last_qualified_date = public.today_br() - 4 where user_id = $1`, [EVA]);
+    await sql(`delete from public.gamification_jobs where job = 'daily'`);
+    await sql(`insert into public.gamification_jobs (job, period_key) values ('daily', (public.today_br() - 1)::text)`);
+    await sql(`select public.ch_worker_gamification_daily()`);
+    expect((await sql(`select current_streak from public.user_gamification_stats where user_id = $1`, [EVA]))[0].current_streak).toBe(0);
+    expect((await eventsOf(EVA, "STREAK_BROKEN")).length).toBe(1);
   });
 
   it("ligas desligadas: a semana do ranking vira (XP semanal zera), mas ninguém sobe, desce, ganha moeda ou medalha", async () => {
@@ -280,13 +308,63 @@ describe("AR09: as regras só a equipe lê", () => {
     expect((await lerRegras(EDITOR)).length).toBeGreaterThan(40);
   });
 
-  it("o motor continua lendo as regras para o aluno (XP, antifraude, missões)", async () => {
-    const lido = await db.transaction(async (tx) => {
+  const comoAluno = <T,>(uid: string, q: string, p: unknown[] = []) =>
+    db.transaction(async (tx) => {
       await tx.exec("set local role authenticated");
-      await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: ANA })]);
-      return (await tx.query<{ n: number }>(`select public.gam_num('xp.question_correct', 0) as n`)).rows[0].n;
+      await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: uid })]);
+      return (await tx.query<T>(q, p)).rows;
     });
-    expect(Number(lido)).toBe(8);
+
+  it("aluno logado não chama as funções que leem as regras (gam_rule, gam_num, gam_flag, gam_text) pela API", async () => {
+    for (const q of [
+      `select public.gam_rule('fraud.rate_limit_per_minute')`,
+      `select public.gam_num('fraud.too_fast_ms', 0)`,
+      `select public.gam_flag('flags.coins_enabled')`,
+      `select public.gam_text('names.score', 'x')`,
+    ]) {
+      await expect(comoAluno(ANA, q), q).rejects.toThrow(/permission denied/);
+      await expect(db.transaction(async (tx) => {
+        await tx.exec("set local role anon");
+        return tx.query(q);
+      }), `anon: ${q}`).rejects.toThrow(/permission denied/);
+    }
+    // por dentro (motor, funções security definer) continuam funcionando
+    expect(Number((await sql(`select public.gam_num('xp.question_correct', 0) as n`))[0].n)).toBe(8);
+  });
+
+  it("o fluxo do aluno continua inteiro: abertura do app, resposta com resumo de XP, ranking, liga, missões, trilha e loja", async () => {
+    const boot = await rpc(ANA, "app_bootstrap");
+    expect(boot.play).toMatchObject({ enabled: true, flags: { leaderboard: true, leagues: true, coins: true, trail: true }, names: { score: "Stazia Score", coins: "Stazia Coins" } });
+    expect(boot.play.level).toBeTruthy();
+    // resposta: o resumo de XP (gam_turn_summary) vem preenchido
+    const started = await rpc(ANA, "app_start_session", { p_kind: "questoes", p_filters: { ids: ["q001"] }, p_count: 1 });
+    await sql(`update public.practice_sessions set question_ids = $2 where id = $1`, [started.session_id, ["q001"]]);
+    const answer = await rpc(ANA, "app_answer_question", { p_session_id: started.session_id, p_question_id: "q001", p_option: "B", p_active_ms: 20000 });
+    expect(answer.is_correct).toBe(true);
+    expect(answer.play).not.toBeNull();
+    expect(answer.play.xp).toMatchObject({ correct: 8, valid: true });
+    expect(answer.play.stats.total_xp).toBeGreaterThan(0);
+    // o resumo é só do próprio aluno: pedir o de outro devolve nulo
+    const attempt = (await sql(`select id from public.question_attempts where user_id = $1 and question_id = 'q001'`, [ANA]))[0];
+    expect(await rpc(BRUNO, "gam_turn_summary", { p_user: ANA, p_attempt: attempt.id })).toBeNull();
+    expect(await rpc(ANA, "gam_turn_summary", { p_user: ANA, p_attempt: attempt.id })).toMatchObject({ xp: { valid: true } });
+    expect(await rpc(ANA, "app_gamification_summary")).toBeTruthy();
+    await rpc(ANA, "app_leaderboard", { p_kind: "geral" });
+    await rpc(ANA, "app_leaderboard", { p_kind: "semana" });
+    await rpc(ANA, "app_league_current");
+    expect(await rpc(ANA, "app_gamification_missions")).toBeTruthy();
+    await rpc(ANA, "app_trail");
+    expect(await rpc(ANA, "app_gamification_rewards")).toBeTruthy();
+    await rpc(ANA, "app_gamification_history");
+    // abertura do app sem login continua respondendo, como antes
+    expect((await rpc(null, "app_bootstrap")).play.enabled).toBe(true);
+  });
+
+  it("a Administração continua lendo tudo", async () => {
+    const a = await rpc(ADMIN, "app_admin_gamification");
+    expect(a.rules.length).toBeGreaterThan(40);
+    expect(a.missions.length).toBeGreaterThan(0);
+    expect(Number((await sql(`select public.gam_num('fraud.too_fast_ms', 0) as n`))[0].n)).toBe(3000);
   });
 
   it("a migração pode ser colada duas vezes sem erro", async () => {

@@ -87,5 +87,8 @@ begin
 end
 $$;
 
-revoke execute on function public.app_admin_gamification_save_mission(jsonb) from anon;
-revoke execute on function public.app_admin_gamification() from anon;
+-- Só quem está logado chama (e a função ainda confere assert_admin()): sai de public e anon, e o authenticated fica explícito.
+revoke execute on function public.app_admin_gamification_save_mission(jsonb) from public, anon;
+revoke execute on function public.app_admin_gamification() from public, anon;
+grant execute on function public.app_admin_gamification_save_mission(jsonb) to authenticated;
+grant execute on function public.app_admin_gamification() to authenticated;
