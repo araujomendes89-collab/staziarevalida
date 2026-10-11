@@ -5,7 +5,7 @@
  *        Vale para o conteúdo Pro (has_pro) e para o Tutor (tutor_is_pro e tutor_entitlement). A administração não salva plano
  *        pago ativo ou pendente sem a data de fim.
  * CF01 — o banco recusa salvar "Tutor ligado" com "Planos pagos + teste grátis" desligado, com mensagem clara; a migração
- *        corrige o banco que já estiver assim.
+ *        não muda sozinha o banco que já estiver assim (o dono decide pelo painel).
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import fs from "fs";
@@ -173,17 +173,25 @@ describe("CF01 — Tutor ligado só com 'Planos pagos + teste grátis'", () => {
     expect(r.rows[0].d).toBe("true");
   });
 
-  it("a migração corrige o banco que já estava com o Tutor ligado sem os planos pagos, e deixa registrado", async () => {
-    // ajuste direto no banco, sem ninguém logado (como no editor SQL do Supabase)
+  it("a migração não liga sozinha os planos pagos do Tutor: com o Tutor ligado sem eles, a decisão fica com o dono pelo painel", async () => {
+    // como pode estar em produção: ajuste direto no banco, sem ninguém logado (como no editor SQL do Supabase)
     await db.exec(`update public.tutor_config set enabled = true, requires_pro = false`);
+    const registros = async () => (await db.query<{ n: number }>(`select count(*)::int n from public.admin_audit_log`)).rows[0].n;
+    const antes = await registros();
+    // colar a migração (duas vezes) não muda a configuração nem registra nada
     await db.exec(fs.readFileSync(MIGRATION, "utf8"));
+    await db.exec(fs.readFileSync(MIGRATION, "utf8"));
+    expect(await tutorConfig()).toEqual({ enabled: true, requires_pro: false });
+    expect(await registros()).toBe(antes);
+    // o painel não salva nada do Tutor enquanto ficar assim
+    await expect(salvarTutor({ daily_message_limit: 50 })).rejects.toThrow(MENSAGEM);
+    expect(await tutorConfig()).toEqual({ enabled: true, requires_pro: false });
+    // o dono decide: desligar o Tutor passa...
+    await salvarTutor({ enabled: false });
+    expect(await tutorConfig()).toEqual({ enabled: false, requires_pro: false });
+    // ...e ligar o Tutor com os planos pagos também
+    await salvarTutor({ enabled: true, requires_pro: true });
     expect(await tutorConfig()).toEqual({ enabled: true, requires_pro: true });
-    const log = await db.query<{ action: string; details: any }>(`select action, details from public.admin_audit_log order by id desc limit 1`);
-    expect(log.rows[0]).toMatchObject({ action: "tutor.config", details: { from: { requires_pro: false }, to: { requires_pro: true } } });
-    // rodar de novo não muda nada nem registra de novo
-    const before = (await db.query<{ n: number }>(`select count(*)::int n from public.admin_audit_log`)).rows[0].n;
-    await db.exec(fs.readFileSync(MIGRATION, "utf8"));
-    expect((await db.query<{ n: number }>(`select count(*)::int n from public.admin_audit_log`)).rows[0].n).toBe(before);
   });
 
   it("a trava não fica exposta a quem usa o app", async () => {

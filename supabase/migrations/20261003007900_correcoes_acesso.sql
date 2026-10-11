@@ -15,8 +15,16 @@
 --        e dê a data em Administração > Usuários (ou cole depois desta migração).
 -- CF01 — "Planos pagos + teste grátis" nascia desligado: com o Tutor ligado e essa chave desligada, todo aluno usava o
 --        Tutor de graça, com os limites do plano pago. Agora o banco recusa salvar o Tutor ligado com ela desligada (mensagem
---        clara na tela), a chave nasce ligada e, se o banco já estiver assim, esta migração liga a chave (fica no registro).
+--        clara na tela) e a chave nasce ligada. Esta migração NÃO muda a configuração atual do Tutor: a decisão é do dono.
 --        A equipe (administrador e editor) continua usando o Tutor como assinante, com a chave ligada ou não.
+--        ATENÇÃO antes de colar: veja como o Tutor está hoje:
+--          select enabled, requires_pro from public.tutor_config;
+--        Se vier enabled = true e requires_pro = false, hoje todo aluno usa o Tutor de graça, e continua assim depois de
+--        colar. Mas o painel do Tutor (Administração) passa a não salvar nenhuma mudança do Tutor até o dono escolher:
+--          - ligar "Planos pagos + teste grátis": quem não paga entra no teste grátis de 7 dias no próximo uso e, depois,
+--            vê "Seu teste grátis do Tutor terminou" sem ter onde assinar (a tela de planos e a Stripe ainda não existem);
+--          - ou desligar o Tutor.
+--        Peça o OK do dono antes de colar.
 -- =============================================================================
 
 -- ---------------------------------------------------------------- US01: a regra do plano pago
@@ -180,17 +188,8 @@ drop trigger if exists tutor_config_guard on public.tutor_config;
 create trigger tutor_config_guard before insert or update on public.tutor_config
   for each row execute function public.tutor_config_guard();
 
--- Se o Tutor já estiver ligado com a chave desligada, liga a chave e deixa registrado.
-do $fix$
-begin
-  if exists (select 1 from public.tutor_config where enabled and not requires_pro) then
-    update public.tutor_config set requires_pro = true, updated_at = now() where enabled and not requires_pro;
-    perform public.admin_log('tutor.config', 'tutor', jsonb_build_object(
-      'from', jsonb_build_object('requires_pro', false), 'to', jsonb_build_object('requires_pro', true),
-      'reason', 'Correção CF01 (migração 7900): Tutor ligado exige "Planos pagos + teste grátis" ligado.'));
-  end if;
-end
-$fix$;
+-- A configuração atual do Tutor não é mudada aqui (veja o ATENÇÃO do CF01 no cabeçalho): se o Tutor já estiver ligado com
+-- a chave desligada, o painel avisa e trava o salvar até o dono ligar a chave ou desligar o Tutor.
 
 -- Para desfazer: recriar has_pro, tutor_is_pro e tutor_entitlement de …4600 e app_admin_set_subscription de …1300; depois
 -- "drop function public.subscription_is_paid(public.plan_code, public.subscription_status, timestamptz)",
