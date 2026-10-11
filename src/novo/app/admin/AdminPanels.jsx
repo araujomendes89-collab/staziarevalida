@@ -68,12 +68,23 @@ const PERIODS = [
   { value: "one_time", label: "Pagamento único" },
 ];
 const toPrice = (cents) => (cents == null ? "" : (cents / 100).toFixed(2).replace(".", ","));
+/**
+ * Preço digitado → centavos. Aceita "129,90", "129.90" (ponto com 1 ou 2 casas é decimal), "1.299,90" e "1.299" (ponto de milhar).
+ * Vazio = sem preço (null); o que não dá para entender = NaN.
+ */
 function toCents(text) {
-  const clean = String(text).replace(/[R$\s.]/g, "").replace(",", ".");
-  if (!clean) return null;
-  const value = Number(clean);
-  return Number.isFinite(value) && value >= 0 ? Math.round(value * 100) : NaN;
+  const raw = String(text).replace(/R\$|\s/g, "");
+  if (!raw) return null;
+  let clean;
+  if (raw.includes(",")) clean = raw.replace(/\./g, "").replace(",", ".");
+  else if (/^\d+\.\d{1,2}$/.test(raw)) clean = raw;
+  else if (/^\d{1,3}(\.\d{3})+$/.test(raw)) clean = raw.replace(/\./g, "");
+  else clean = raw;
+  const value = /^\d+(\.\d+)?$/.test(clean) ? Number(clean) : NaN;
+  return Number.isFinite(value) ? Math.round(value * 100) : NaN;
 }
+/** Prévia do preço que vai ser salvo ("R$ 129,90"), para o erro de digitação aparecer antes de salvar. */
+const pricePreview = (cents) => (cents == null || Number.isNaN(cents) ? undefined : `Vai salvar: R$ ${(cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
 function PlanEditor({ plan, onSaved }) {
   const { backend } = useSession();
@@ -102,7 +113,7 @@ function PlanEditor({ plan, onSaved }) {
           description: form.description,
           price_cents: trial ? 0 : cents,
           billing_period: form.billing_period,
-          features: form.features.split("\n"),
+          features: form.features.split("\n").map((x) => x.trim()).filter(Boolean),
           active: form.active,
         },
       });
@@ -122,12 +133,12 @@ function PlanEditor({ plan, onSaved }) {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
           <TextField label="Nome exibido" value={form.name} maxLength={60} onChange={(e) => set({ name: e.target.value })} />
-          {!trial && <TextField label="Preço (R$)" value={form.price} inputMode="decimal" placeholder="49,90" onChange={(e) => set({ price: e.target.value })} />}
+          {!trial && <TextField label="Preço (R$)" value={form.price} inputMode="decimal" placeholder="49,90" hint={pricePreview(toCents(form.price))} onChange={(e) => set({ price: e.target.value })} />}
           {!trial && <SelectField label="Cobrança" value={form.billing_period} onChange={(e) => set({ billing_period: e.target.value })} options={PERIODS} />}
         </div>
         <TextArea label="Descrição" rows={2} maxLength={400} value={form.description} onChange={(description) => set({ description })} />
         <TextArea label="Recursos incluídos (um por linha)" rows={4} value={form.features} onChange={(features) => set({ features })} hint="Até 20 itens. Ficam guardados para a futura tela de planos do aluno." />
-        <Switch label={trial ? "Oferecer teste grátis no cadastro" : "Marcar para venda"} description={trial ? "Os dias de teste ficam em Configurações." : "Só com preço definido. Ainda não aparece para os alunos."} checked={form.active} onChange={(e) => set({ active: e.target.checked })} />
+        <Switch label={trial ? "Oferecer teste grátis no cadastro" : "Marcar para venda"} description={trial ? "Os dias de teste ficam em Configurações. Hoje todo cadastro novo recebe o teste, com esta chave ligada ou desligada." : "Só com preço definido. Ainda não aparece para os alunos."} checked={form.active} onChange={(e) => set({ active: e.target.checked })} />
         {state.error && <Banner tone="danger">{state.error}</Banner>}
         <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
           {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Plano salvo.</span>}

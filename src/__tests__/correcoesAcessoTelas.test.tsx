@@ -185,3 +185,103 @@ describe("US01 — plano pago com data de fim", () => {
     expect(screen.getByText("Plano Pro")).toBeTruthy();
   });
 });
+
+describe("PL03 (resto) — teste encerrado em Usuários e na Conta", () => {
+  const dia = (ms: number) => new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(ms));
+
+  it("Conta do aluno: teste que acabou aparece como encerrado; teste no prazo continua 'até a data'", () => {
+    const boot = (ends: number) => ({
+      role: "student",
+      profile: { name: "Ana", phase: 1, exam_type: "REVALIDA", target_edition: null, daily_minutes: null, exam_date: null, theme: "light" },
+      subscription: { plan: "trial", status: "trialing", trial_ends_at: iso(ends), current_period_end: null },
+      has_pro: false,
+    });
+    session.boot = boot(Date.now() - 3 * DAY);
+    const velho = render(<AccountScreen go={vi.fn()} />);
+    expect(screen.getByText("Teste grátis · encerrado")).toBeTruthy();
+    velho.unmount();
+    const fim = Date.now() + 5 * DAY;
+    session.boot = boot(fim);
+    render(<AccountScreen go={vi.fn()} />);
+    expect(screen.getByText(`Teste grátis até ${dia(fim)}`)).toBeTruthy();
+  });
+
+  it("Usuários: teste que acabou diz quando terminou", async () => {
+    const fim = Date.now() - 4 * DAY;
+    const aluno = {
+      id: "u1", email: "ana@teste.dev", name: "Ana Lima", role: "student", created_at: iso(Date.now() - 40 * DAY), answered: 0, correct: 0, last_activity: null,
+      plan: "trial", status: "trialing", trial_ends_at: iso(fim), current_period_end: null,
+    };
+    backend.rpc.mockImplementation(async (fn: string) => (fn === "app_admin_users" ? { total: 1, items: [aluno] } : null));
+    render(<AdminUsers />);
+    expect(await screen.findByText(`Teste grátis · Em teste · terminou em ${dia(fim)}`)).toBeTruthy();
+  });
+});
+
+describe("PL05, PL06 e PL08 — aba Planos", () => {
+  const PLANS = [
+    { code: "trial", name: "Teste grátis", description: null, price_cents: 0, billing_period: "monthly", features: [], active: true },
+    { code: "pro", name: "Pro", description: null, price_cents: null, billing_period: "monthly", features: [], active: false },
+  ];
+  const abrir = async (saved: any[]) => {
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_plans") return PLANS;
+      if (fn === "app_admin_save_plan") return (saved.push(args.p_plan), PLANS);
+      throw new Error(`rpc inesperada: ${fn}`);
+    });
+    render(<AdminPlans />);
+    return (await screen.findByLabelText("Preço (R$)")) as HTMLInputElement;
+  };
+
+  it("PL05: 129.90 vale R$ 129,90 (e não 12.990), com prévia antes de salvar", async () => {
+    const saved: any[] = [];
+    const preco = await abrir(saved);
+    fireEvent.change(preco, { target: { value: "129.90" } });
+    expect(screen.getByText("Vai salvar: R$ 129,90")).toBeTruthy();
+    fireEvent.click(screen.getAllByText("Salvar plano")[1]);
+    await waitFor(() => expect(saved).toHaveLength(1));
+    expect(saved[0].price_cents).toBe(12990);
+  });
+
+  it.each([
+    ["129,90", "Vai salvar: R$ 129,90", 12990],
+    ["R$ 129,90", "Vai salvar: R$ 129,90", 12990],
+    ["1.299,90", "Vai salvar: R$ 1.299,90", 129990],
+    ["1.299", "Vai salvar: R$ 1.299,00", 129900],
+    ["129,9", "Vai salvar: R$ 129,90", 12990],
+    ["129", "Vai salvar: R$ 129,00", 12900],
+  ])("PL05: %s", async (digitado, previa, centavos) => {
+    const saved: any[] = [];
+    const preco = await abrir(saved);
+    fireEvent.change(preco, { target: { value: digitado } });
+    expect(screen.getByText(previa as string)).toBeTruthy();
+    fireEvent.click(screen.getAllByText("Salvar plano")[1]);
+    await waitFor(() => expect(saved).toHaveLength(1));
+    expect(saved[0].price_cents).toBe(centavos);
+  });
+
+  it("PL05: preço que não dá para entender não salva e não mostra prévia", async () => {
+    const saved: any[] = [];
+    const preco = await abrir(saved);
+    fireEvent.change(preco, { target: { value: "12.5.0" } });
+    expect(screen.queryByText(/Vai salvar/)).toBeNull();
+    fireEvent.click(screen.getAllByText("Salvar plano")[1]);
+    expect(await screen.findByText("Preço inválido. Use, por exemplo, 49,90.")).toBeTruthy();
+    expect(saved).toHaveLength(0);
+  });
+
+  it("PL08: linhas em branco da lista de recursos não vão para o banco", async () => {
+    const saved: any[] = [];
+    await abrir(saved);
+    const recursos = screen.getAllByLabelText(/Recursos incluídos/)[1];
+    fireEvent.change(recursos, { target: { value: "Tutor\n\n   \n  Simulados  \n" } });
+    fireEvent.click(screen.getAllByText("Salvar plano")[1]);
+    await waitFor(() => expect(saved).toHaveLength(1));
+    expect(saved[0].features).toEqual(["Tutor", "Simulados"]);
+  });
+
+  it("PL06: a chave do teste grátis diz a verdade, enquanto o cadastro não a consulta", async () => {
+    await abrir([]);
+    expect(screen.getByText(/Hoje todo cadastro novo recebe o teste, com esta chave ligada ou desligada\./)).toBeTruthy();
+  });
+});
