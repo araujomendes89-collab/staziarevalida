@@ -28,6 +28,15 @@ const roleTone = { admin: "danger", editor: "info", student: "neutral" };
 /** Plano como aparece: a equipe tem acesso pelo papel (sem teste); os outros, pela assinatura. */
 /** Áreas em que a pessoa é revisora médica (a Central de Conteúdo guarda os códigos; aqui vão em português). Vazio = não é revisora. */
 const reviewerAreas = (u) => (u.reviewer_areas ?? []).map((code) => AREA_LABEL[code] ?? code);
+/**
+ * Combinação de plano e situação que o banco aceita mas não dá acesso Pro. O acesso Pro vem de Pro/Elite com situação
+ * Ativo ou Pagamento pendente (has_pro e tutor_entitlement, migração 20261003004600); o resto salva sem efeito.
+ */
+const planWarning = (plan, status) => {
+  if ((plan === "pro" || plan === "elite") && status === "trialing") return "Pro e Elite só dão acesso com a situação Ativo (ou Pagamento pendente). Com Em teste, a pessoa fica sem acesso Pro. Para liberar, escolha Ativo; para só estender o teste, escolha Teste grátis.";
+  if (plan === "trial" && (status === "active" || status === "past_due")) return "Teste grátis não dá acesso Pro, mesmo com a situação Ativo. Para liberar acesso de cortesia, escolha Pro ou Elite com situação Ativo.";
+  return null;
+};
 const planText = (u) => (isStaffRole(u.role) ? "Equipe · acesso completo" : `${PLAN_LABEL[u.plan] ?? u.plan} · ${SUB_STATUS_LABEL[u.status] ?? u.status}`);
 
 function Fact({ label, value }) {
@@ -95,7 +104,9 @@ function PlanForm({ user, onSaved }) {
   });
   const [state, setState] = React.useState({ saving: false, error: null, done: false });
   const set = (patch) => (setForm((f) => ({ ...f, ...patch })), setState((s) => ({ ...s, done: false })));
+  const warning = isStaffRole(user.role) ? null : planWarning(form.plan, form.status);
   const save = async () => {
+    if (warning && !window.confirm(`${warning}\n\nSalvar mesmo assim?`)) return;
     setState({ saving: true, error: null, done: false });
     try {
       onSaved(
@@ -126,6 +137,7 @@ function PlanForm({ user, onSaved }) {
           ? "Administrador e editor têm acesso completo pelo papel, sem período de teste. Este plano só passa a valer se a pessoa sair da equipe."
           : "Para liberar acesso de cortesia, escolha Pro ou Elite com situação Ativo. A cobrança automática ainda não está ligada."}
       </div>
+      {warning && <Banner tone="warning">{warning}</Banner>}
       {state.error && <Banner tone="danger">{state.error}</Banner>}
       <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
         {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Plano salvo.</span>}

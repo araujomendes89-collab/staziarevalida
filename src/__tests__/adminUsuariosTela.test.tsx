@@ -192,3 +192,70 @@ describe("US04 · texto do papel de Editor", () => {
     expect(texto).not.toMatch(/Editor cuida de questões e estações\./);
   });
 });
+
+describe("US06 · combinações do plano sem efeito", () => {
+  beforeEach(() => {
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_users") return { total: 1, items: [users[0]] };
+      if (fn === "app_admin_user") return users[0];
+      if (fn === "app_admin_set_subscription") return { ...users[0], plan: args.p_plan, status: args.p_status };
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+  });
+  afterEach(() => vi.restoreAllMocks());
+  const abrirPlano = async () => {
+    render(<AdminUsers />);
+    await open("Pessoa 1");
+    await screen.findByText("Salvar plano");
+  };
+  const escolher = (rotulo: string, valor: string) => fireEvent.change(screen.getByLabelText(rotulo), { target: { value: valor } });
+  const SEM_ACESSO = /não dá acesso Pro|fica sem acesso Pro/;
+
+  it("Elite + Em teste avisa antes de salvar e pede confirmação; desistindo, não salva", async () => {
+    const confirmar = vi.spyOn(window, "confirm").mockReturnValue(false);
+    await abrirPlano();
+    expect(screen.queryByText(SEM_ACESSO)).toBeNull(); // Teste grátis + Em teste é o normal
+    escolher("Plano", "elite");
+    expect(screen.getByText(/Pro e Elite só dão acesso com a situação Ativo/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Salvar plano" }));
+    expect(confirmar).toHaveBeenCalledTimes(1);
+    expect(backend.rpc.mock.calls.some((c: any[]) => c[0] === "app_admin_set_subscription")).toBe(false);
+  });
+
+  it("Teste grátis + Ativo avisa que não libera o Pro", async () => {
+    await abrirPlano();
+    escolher("Situação", "active");
+    expect(screen.getByText(/Teste grátis não dá acesso Pro/)).toBeTruthy();
+  });
+
+  it("combinações que valem não avisam nem perguntam (Pro ativo, Elite pagamento pendente, Pro cancelado, Teste expirado)", async () => {
+    const confirmar = vi.spyOn(window, "confirm").mockReturnValue(false);
+    await abrirPlano();
+    for (const [plano, situacao] of [["pro", "active"], ["elite", "past_due"], ["pro", "canceled"], ["trial", "expired"]]) {
+      escolher("Plano", plano);
+      escolher("Situação", situacao);
+      expect(screen.queryByText(SEM_ACESSO)).toBeNull();
+    }
+    escolher("Plano", "pro");
+    escolher("Situação", "active");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar plano" }));
+    expect(await screen.findByText("Plano salvo.")).toBeTruthy();
+    expect(confirmar).not.toHaveBeenCalled();
+    expect(backend.rpc).toHaveBeenCalledWith("app_admin_set_subscription", expect.objectContaining({ p_plan: "pro", p_status: "active" }));
+  });
+
+  it("confirmando, a combinação sem efeito é salva como o administrador pediu", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await abrirPlano();
+    escolher("Plano", "elite");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar plano" }));
+    expect(await screen.findByText("Plano salvo.")).toBeTruthy();
+    expect(backend.rpc).toHaveBeenCalledWith("app_admin_set_subscription", expect.objectContaining({ p_plan: "elite", p_status: "trialing" }));
+  });
+
+  it("equipe não ganha esse aviso (o acesso vem do papel)", async () => {
+    users = [person(1, { role: "editor", plan: "trial", status: "active" })];
+    await abrirPlano();
+    expect(screen.queryByText(SEM_ACESSO)).toBeNull();
+  });
+});
