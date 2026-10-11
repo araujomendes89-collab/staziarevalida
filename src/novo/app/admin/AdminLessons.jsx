@@ -190,7 +190,7 @@ export function AdminLessons() {
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
   const onSaved = (saved, removedId) => {
-    setData({ ...data, lessons: removedId ? data.lessons.filter((l) => l.id !== removedId) : data.lessons.some((l) => l.id === saved.id) ? data.lessons.map((l) => (l.id === saved.id ? { ...l, ...saved } : l)) : [...data.lessons, saved] });
+    setData({ ...data, lessons: removedId ? data.lessons.filter((l) => l.id !== removedId) : data.lessons.some((l) => l.id === saved.id) ? data.lessons.map((l) => (l.id === saved.id ? { ...l, ...saved } : l)) : [...data.lessons, { started_by: 0, completed_by: 0, ...saved }] }); // aula nova: ainda ninguém iniciou (A09)
   };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

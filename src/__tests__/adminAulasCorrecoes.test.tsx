@@ -53,3 +53,14 @@ describe("A03 - Nova aula abre formulário em branco", () => {
     expect(second.id).toBeUndefined(); // criou outra aula, não escreveu por cima da primeira
   });
 });
+describe("A09 - lista logo depois de criar", () => {
+  it("mostra 0 iniciaram e 0 concluíram (nunca 'undefined')", async () => {
+    render(<AdminLessons />);
+    await createLesson();
+    const row = await screen.findByText(/Aula de teste/, { selector: "span" });
+    expect(row).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/undefined/);
+    expect(document.body.textContent).toMatch(/0 iniciaram, 0 concluíram/);
+  });
+});
+
