@@ -7,32 +7,71 @@ import { dateTimeBR, LoadError, Loading, messageOf, PLAN_LABEL, ROLE_LABEL, SUB_
 import { auditActor, auditLabel, auditSummary } from "./auditLog.js";
 
 // ---------------------------------------------------------------- visão geral
+/** O que espera conferência, por aba (chaves de pending_review em app_admin_overview). */
+const PENDING_REVIEW = [
+  ["stations", "Estações"],
+  ["lessons_draft", "Aulas em rascunho"],
+  ["podcasts", "Podcasts com roteiro para aprovar"],
+  ["updates", "Atualizações pendentes"],
+  ["content", "Central de Conteúdo"],
+];
 export function AdminOverview({ isAdmin }) {
   const { backend } = useSession();
   const mobile = useMobile();
   const { data, error, reload } = useLoad(() => backend.rpc("app_admin_overview"), [backend]);
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
-  const plans = data.users.by_plan;
-  const paying = ["pro:active", "elite:active", "pro:past_due", "elite:past_due"].reduce((n, k) => n + (plans[k] ?? 0), 0);
+  // só o administrador recebe os números de usuários e planos (o banco não os envia ao editor)
+  const plans = data.users?.by_plan ?? {};
+  const paying = ["pro:active", "elite:active"].reduce((n, k) => n + (plans[k] ?? 0), 0);
+  const pastDue = ["pro:past_due", "elite:past_due"].reduce((n, k) => n + (plans[k] ?? 0), 0);
+  const pending = PENDING_REVIEW.filter(([key]) => data.pending_review?.[key] != null);
+  // sem nenhuma das duas somas (falha isolada no banco), o bloco some em vez de mostrar só o título
+  const ai = data.ai_month && (data.ai_month.central_usd != null || data.ai_month.tutor_usd != null) ? data.ai_month : null;
+  const usd = (v) => `US$ ${Number(v ?? 0).toFixed(2).replace(".", ",")}`;
   const grid = { display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(4,minmax(0,1fr))", gap: 16 };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {isAdmin && (
+      {isAdmin && data.users && (
         <div style={grid}>
           <StatCard label="Usuários" value={data.users.total} caption={`${data.users.new_7d} novos em 7 dias`} icon="users" />
-          <StatCard label="Ativos" value={data.users.active_7d} caption="estudaram nos últimos 7 dias" tone="success" icon="activity" />
-          <StatCard label="Em teste" value={plans["trial:trialing"] ?? 0} caption="teste grátis em andamento" tone="warning" icon="clock" />
-          <StatCard label="Planos pagos" value={paying} caption="Pro e Elite ativos" tone="info" icon="crown" />
+          <StatCard label="Ativos" value={data.users.active_7d} caption="alunos que estudaram nos últimos 7 dias (questões, flashcards, aulas ou Nexus)" tone="success" icon="activity" />
+          <StatCard label="Em teste" value={plans["trial:trialing"] ?? 0} caption="teste grátis dentro do prazo" tone="warning" icon="clock" />
+          <StatCard label="Planos pagos" value={paying} caption={pastDue > 0 ? `Pro e Elite ativos · ${pastDue} com pagamento pendente` : "Pro e Elite ativos"} tone="info" icon="crown" />
         </div>
       )}
       <div style={grid}>
         <StatCard label="Questões" value={data.questions.total} caption={`${data.questions.exams} provas · ${data.questions.annulled} anuladas`} icon="file-question" />
-        <StatCard label="Sem figura" value={data.questions.needs_image} caption="citam imagem não vinculada" tone="warning" icon="image" />
+        <StatCard label="Sem figura" value={data.questions.needs_image} caption="citam imagem não vinculada (o envio da imagem ainda não está na tela)" tone="warning" icon="image" />
         <StatCard label="Respostas" value={data.activity.attempts} caption={`${data.activity.attempts_7d} nos últimos 7 dias`} tone="success" icon="circle-check" />
         <StatCard label="Estações" value={data.stations.approved} caption={`${data.stations.pending} aguardando revisão médica`} tone="info" icon="clipboard-list" />
       </div>
-      {isAdmin && (
+      {(pending.length > 0 || ai) && (
+        <Card>
+          {pending.length > 0 && (
+            <>
+              <div style={{ font: "var(--type-label)", marginBottom: 12 }}>Esperando revisão</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {pending.map(([key, label]) => (
+                  <Badge key={key} tone={data.pending_review[key] > 0 ? "warning" : "neutral"}>
+                    {label}: {data.pending_review[key]}
+                  </Badge>
+                ))}
+              </div>
+            </>
+          )}
+          {ai && (
+            <>
+              <div style={{ font: "var(--type-label)", margin: pending.length ? "20px 0 12px" : "0 0 12px" }}>Gasto de IA neste mês (estimado)</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {ai.central_usd != null && <Badge>Central de IAs: {usd(ai.central_usd)}</Badge>}
+                {ai.tutor_usd != null && <Badge>Nexus: {usd(ai.tutor_usd)}</Badge>}
+              </div>
+            </>
+          )}
+        </Card>
+      )}
+      {isAdmin && data.users && (
         <Card>
           <div style={{ font: "var(--type-label)", marginBottom: 12 }}>Usuários por papel</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -344,6 +383,7 @@ function StationCard({ station: s, onSaved }) {
               <b>
                 {s.reports} {s.reports === 1 ? "relato de erro" : "relatos de erro"}
               </b>
+              {s.reports > s.last_reports.length && <span style={{ color: "var(--text-tertiary)" }}> (mostrando os {s.last_reports.length} mais recentes)</span>}
               {s.last_reports.map((r) => (
                 <div key={r.created_at} style={{ color: "var(--text-secondary)", marginTop: 4 }}>
                   “{r.message}” · {dateTimeBR(r.created_at)}
@@ -403,7 +443,7 @@ export function AdminStations() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Banner tone="info" title="Telas de estações do aluno em construção">
-        As telas de estações do aluno ainda estão em construção e continuam escondidas: por enquanto, só a equipe vê as estações, aprovadas ou não. Aprovar agora deixa a estação pronta para quando essas telas forem ligadas.
+        As telas de estações do aluno ainda estão em construção e continuam escondidas: por enquanto, só a equipe vê as estações, aprovadas ou não. Aprovar agora deixa a estação pronta para quando essas telas forem ligadas. Pelo mesmo motivo, os alunos ainda não conseguem relatar erro numa estação: os relatos só vão aparecer aqui depois que essas telas tiverem o botão de relatar.
       </Banner>
       <Banner tone="warning" title="Aprovação é revisão médica">
         Só aprova o revisor médico cadastrado na área da estação, ou um administrador, depois de conferir roteiro, impressos e checklist. O que foi conferido fica registrado com o nome de quem aprovou e a data.
@@ -505,6 +545,8 @@ const VOICE_NAMES = [
   { value: "cedar", label: "Cedar (OpenAI)" },
   { value: "__outra", label: "Outra (digite o nome)" },
 ];
+/** Vozes que a lista conhece; qualquer outro nome salvo volta em "Outra" (digite o nome). */
+const KNOWN_VOICES = VOICE_NAMES.map((v) => v.value).filter((v) => v && v !== "__outra");
 const DURONA_LEVELS = [
   { value: "moderada", label: "Moderada" },
   { value: "forte", label: "Forte" },
@@ -545,8 +587,8 @@ export function AdminTutor() {
         trial_voice_daily_min: String(Math.round((data.trial_voice_daily_seconds ?? 600) / 60)), trial_voice_total_min: String(Math.round((data.trial_voice_total_seconds ?? 2400) / 60)),
         paid_voice_daily_min: String(Math.round((data.paid_voice_daily_seconds ?? 3600) / 60)),
         voice_provider: data.voice_provider ?? "auto",
-        voice_choice: !data.voice_name ? "" : ["marin", "cedar"].includes(data.voice_name) ? data.voice_name : "__outra",
-        voice_other: data.voice_name && !["marin", "cedar"].includes(data.voice_name) ? data.voice_name : "",
+        voice_choice: !data.voice_name ? "" : KNOWN_VOICES.includes(data.voice_name) ? data.voice_name : "__outra",
+        voice_other: data.voice_name && !KNOWN_VOICES.includes(data.voice_name) ? data.voice_name : "",
         voice_session_max_min: String(Math.round((data.voice_session_max_seconds ?? 1800) / 60)),
         save_transcripts: data.save_transcripts ?? true,
         transcript_retention_days: String(data.transcript_retention_days ?? 180),
@@ -705,6 +747,11 @@ export function AdminTutor() {
           {personas.data && (
             <div>
               <div className="sm-field__label" style={{ marginBottom: 6 }}>Professores disponíveis para os alunos (usa o motivo abaixo)</div>
+              {reason.trim().length < 10 && (
+                <p style={{ margin: "0 0 8px", font: "var(--type-caption)", color: "var(--text-secondary)" }}>
+                  Para ligar ou desligar um professor, escreva primeiro o motivo da mudança (pelo menos 10 letras) no campo “Motivo da mudança”, mais abaixo.
+                </p>
+              )}
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                 {personas.data.map((p) => (
                   <Switch key={p.id} label={`${p.emoji} ${p.name}`} description={p.default ? "Padrão: fica sempre ligado." : p.voice ? `Voz: ${p.voice}` : p.tagline} checked={p.active} disabled={p.default || personaState.busy === p.id || reason.trim().length < 10} onChange={(e) => togglePersona(p.id, e.target.checked)} />
