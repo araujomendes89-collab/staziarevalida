@@ -127,7 +127,12 @@ describe("Q02 — gabarito e situação travados; registro do gabarito oficial",
     expect(review.textContent).toContain("Conduta esperada");
     expect(review.textContent).toContain("o aluno não vê esses textos");
     fireEvent.click(screen.getByRole("button", { name: "Marcar como revisadas" }));
-    await waitFor(() => expect(calls("app_admin_question_review_done")).toEqual([["app_admin_question_review_done", { p_question_id: "q1" }]]));
+    // o banco só tira a marca que a pessoa viu (se outra pessoa mudou a marca enquanto isso, ele recusa)
+    await waitFor(() =>
+      expect(calls("app_admin_question_review_done")).toEqual([
+        ["app_admin_question_review_done", { p_question_id: "q1", p_seen: { de: "B", para: "C", campos: ["expected_conduct", "explanation_B"], motivo: "Recurso aceito pela banca." } }],
+      ])
+    );
     await waitFor(() => expect(screen.queryByText(/O gabarito mudou de B para C/)).toBeNull());
   });
 
@@ -142,6 +147,13 @@ describe("Q02 — gabarito e situação travados; registro do gabarito oficial",
     fireEvent.change(within(panel).getByLabelText("Motivo da mudança"), { target: { value: "A banca anulou." } });
     fireEvent.click(within(panel).getByRole("button", { name: "Registrar" }));
     await waitFor(() => expect(calls("app_admin_set_official_answer")[0][1]).toMatchObject({ p_answer: null, p_status: "ANNULLED" }));
+  });
+
+  it("marca com a análise publicada: diz que ela só volta com nova análise aprovada, depois de marcar como revisadas", async () => {
+    routes({ ...ROW, correct_option: "C", status: "changed_after_appeal", explanations_review: { de: "B", para: "C", campos: ["analise", "explanation_B"] } });
+    render(<QuestionEditor id="q1" onClose={vi.fn()} onSaved={vi.fn()} />);
+    const review = await screen.findByText(/O gabarito mudou de B para C\./);
+    expect(review.textContent).toContain("Revise: Análise publicada (volta com nova análise aprovada, depois de marcar como revisadas), Explicação da B.");
   });
 
   it("anulada pelo registro: a marca diz que o gabarito mudou para anulada e que a análise não volta", async () => {
@@ -193,6 +205,8 @@ describe("Rodada 2 — 'Marcar como revisadas' nunca libera ao aluno o texto ant
     fireEvent.click(screen.getByRole("button", { name: "Salvar e marcar como revisadas" }));
     await waitFor(() => expect(calls("app_admin_question_review_done")).toHaveLength(1));
     expect(order()).toEqual(["app_admin_save_question", "app_admin_question_review_done"]);
+    // a marca que a pessoa viu na tela (e não a que o salvar devolveu): é ela que o banco confere
+    expect(calls("app_admin_question_review_done")[0][1]).toEqual({ p_question_id: "q1", p_seen: FLAGGED.explanations_review });
     const sent = calls("app_admin_save_question")[0][1].p_question;
     expect(sent.expected_conduct).toBe("Conduta da C.");
     expect(sent.options.find((o: any) => o.id === "B").explanation).toBe("B era a do gabarito preliminar.");
@@ -209,6 +223,31 @@ describe("Rodada 2 — 'Marcar como revisadas' nunca libera ao aluno o texto ant
     expect(await screen.findByText(/Preencha o tema da questão\./)).toBeTruthy();
     expect(calls("app_admin_question_review_done")).toHaveLength(0);
     expect(screen.getByText(/O gabarito mudou de B para C/)).toBeTruthy();
+  });
+});
+
+describe("Leva 2 — 'Marcar como revisadas' com a marca mudada por outra pessoa", () => {
+  it("o banco recusa, a tela mostra o motivo e a marca de agora (com o texto novo a revisar) e nada é liberado", async () => {
+    session.boot = { role: "editor", profile: { name: "Ed" } };
+    let current: any = {
+      ...ROW, correct_option: "C", status: "changed_after_appeal",
+      explanations_review: { de: "B", para: "C", campos: ["expected_conduct", "explanation_B"] },
+    };
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_admin_question") return current;
+      if (fn === "app_admin_question_review_done") {
+        // enquanto a pessoa revisava, outra registrou outra troca: a marca ganhou a explicação da D
+        current = { ...current, correct_option: "D", explanations_review: { de: "B", para: "D", campos: ["expected_conduct", "explanation_B", "explanation_D"] } };
+        throw Object.assign(new Error("A marca de revisão mudou enquanto você revisava: outra pessoa registrou uma troca de gabarito. Veja a marca de agora e revise o que mudou."), { code: "22023" });
+      }
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    render(<QuestionEditor id="q1" onClose={vi.fn()} onSaved={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Marcar como revisadas" }));
+    expect(await screen.findByText(/A marca de revisão mudou enquanto você revisava/)).toBeTruthy();
+    expect(await screen.findByText(/O gabarito mudou de B para D\. Revise: Conduta esperada, Explicação da B, Explicação da D\./)).toBeTruthy();
+    expect(calls("app_admin_question_review_done")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Marcar como revisadas" })).toBeTruthy();
   });
 });
 

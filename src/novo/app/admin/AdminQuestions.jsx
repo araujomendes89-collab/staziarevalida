@@ -28,7 +28,7 @@ const LOCKED_TEXT = "Gabarito e situação só mudam pelo registro do gabarito o
 const REVIEW_LABEL = (campo, annulled) =>
   /^explanation_[A-D]$/.test(campo)
     ? `Explicação da ${campo.slice(-1)}`
-    : { expected_conduct: "Conduta esperada", analise: annulled ? "Análise publicada (não aparece ao aluno em questão anulada)" : "Análise publicada (volta com nova análise aprovada)" }[campo] ?? campo;
+    : { expected_conduct: "Conduta esperada", analise: annulled ? "Análise publicada (não aparece ao aluno em questão anulada)" : "Análise publicada (volta com nova análise aprovada, depois de marcar como revisadas)" }[campo] ?? campo;
 // gabarito da marca de revisão: a letra ou "ANULADA" (anular também muda o gabarito)
 const REVIEW_ANSWER = (value) => (value === "ANULADA" ? "anulada pela banca" : value ?? "sem gabarito");
 // texto da marca "explicações a revisar". O gabarito pode ter voltado ao de antes da troca (…7710): aí só ficam marcados os
@@ -221,19 +221,21 @@ export function QuestionEditor({ id, onClose, onSaved }) {
   // questão já gravada: gabarito e situação só mudam pelo registro do gabarito oficial (Q02)
   const locked = !isNew;
 
-  // depois do registro do gabarito oficial: traz do banco só gabarito, situação, registro e marca de revisão (o resto do
-  // formulário, ainda não salvo, fica como está)
+  // traz do banco só gabarito, situação, registro e marca de revisão (o resto do formulário, ainda não salvo, fica como está)
+  const takeOfficial = (fresh) => {
+    setForm((f) => ({ ...f, correct_option: fresh.correct_option ?? "", status: fresh.status, official: fresh.official ?? null, explanations_review: fresh.explanations_review ?? null }));
+    setSavedForm((f) => f && { ...f, correct_option: fresh.correct_option ?? "", status: fresh.status });
+    const next = storedKey(fresh);
+    if (stored !== null && stored !== next) setPanelKey((k) => k + 1);
+    setStored(next);
+  };
+  // depois do registro do gabarito oficial
   const officialDone = async (result) => {
     setOfficialOpen(false);
     const n = result?.recorrected ?? 0;
     setOfficialNote(`Gabarito oficial registrado.${n ? ` ${n} ${n === 1 ? "resposta de aluno foi corrigida" : "respostas de alunos foram corrigidas"} de novo.` : ""}`);
     try {
-      const fresh = await backend.rpc("app_admin_question", { p_id: form.id });
-      setForm((f) => ({ ...f, correct_option: fresh.correct_option ?? "", status: fresh.status, official: fresh.official ?? null, explanations_review: fresh.explanations_review ?? null }));
-      setSavedForm((f) => f && { ...f, correct_option: fresh.correct_option ?? "", status: fresh.status });
-      const next = storedKey(fresh);
-      if (stored !== null && stored !== next) setPanelKey((k) => k + 1);
-      setStored(next);
+      takeOfficial(await backend.rpc("app_admin_question", { p_id: form.id }));
     } catch (error) {
       setState((s) => ({ ...s, error: messageOf(error) }));
     }
@@ -286,13 +288,20 @@ export function QuestionEditor({ id, onClose, onSaved }) {
       }
     }
     try {
-      const fresh = await backend.rpc("app_admin_question_review_done", { p_question_id: form.id });
+      // o banco só tira a marca que a pessoa viu: se outra pessoa registrou outra troca de gabarito enquanto ela revisava, ele recusa
+      const fresh = await backend.rpc("app_admin_question_review_done", { p_question_id: form.id, p_seen: review });
       setForm((f) => ({ ...f, explanations_review: fresh?.explanations_review ?? null }));
       setReviewState({ saving: false, error: null });
       onSaved();
     } catch (error) {
       setReviewState({ saving: false, error: messageOf(error) });
       if (wasUnsaved) onSaved();
+      // a marca (e o gabarito) podem ter mudado: mostra os de agora, para a pessoa revisar o que ela ainda não tinha visto
+      try {
+        takeOfficial(await backend.rpc("app_admin_question", { p_id: form.id }));
+      } catch {
+        /* segue com o que a tela já mostra */
+      }
     }
   };
 

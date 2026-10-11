@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Ajustes das correções da aba Questões (leva 2), por cima da …7700 (que precisa estar colada antes).
--- Pode ser colada duas vezes sem erro: só "create or replace" e "revoke".
+-- Pode ser colada duas vezes sem erro: só "create or replace", "drop function if exists", "revoke" e uma conta que dá o mesmo resultado.
 --
 --   1. Questão anulada pela banca fica fora de acerto e de erro em TODOS os números do aluno. Antes, mesmo com a …7700:
 --        - Desempenho: a média dos simulados dividia pelo total de questões com as anuladas e contava a anulada que
@@ -21,10 +21,13 @@
 --      uma vez, ao colar este arquivo, para quem respondeu questão anulada ou com gabarito registrado antes dele (anulada
 --      pelo editor antigo, trocas da leva 1). Sequência, última atividade, XP, moedas e medalhas não mudam; com o Stazia
 --      Play desligado nada é contado, como nos gatilhos do Play.
+--   7. "Marcar como revisadas" só tira a marca que a pessoa viu: se outra pessoa registrou outra troca de gabarito enquanto
+--      ela revisava, a marca ganhou textos que ela não viu; o banco recusa e a marca de agora fica (app_admin_question_review_done
+--      ganha o parâmetro p_seen; sem ele, tira como antes).
 --
 -- Funções redefinidas (cada uma a partir da versão mais nova): app_performance (…0900), app_error_reasons (…2800),
 --   app_attempt_diagnosis (…2700), admin_user_row e app_admin_user (…1300), app_admin_set_official_answer (…7700).
--- Novas (internas): question_review_snapshot e gam_recount_answers.
+-- Novas (internas): question_review_snapshot e gam_recount_answers. Mudou de assinatura: app_admin_question_review_done (…7700).
 -- =============================================================================
 
 -- A …7700 tem de estar colada antes (coluna questions.explanations_review e o registro do gabarito com motivo).
@@ -392,6 +395,33 @@ begin
 end
 $$;
 revoke execute on function public.app_admin_set_official_answer(text, text, text, text, text, date, text) from public, anon;
+
+-- ---------------------------------------------------------------- explicações revisadas, duas pessoas ao mesmo tempo (7; corpo da …7700)
+-- "Marcar como revisadas" tirava a marca inteira, mesmo a parte que a pessoa ainda não tinha visto (outra pessoa pode ter
+-- registrado outra troca de gabarito enquanto ela revisava, e a marca ganhou textos novos). Agora a tela diz qual marca
+-- viu (p_seen): se a marca de agora é outra, o banco recusa e a marca fica; se a marca já saiu, não há nada a fazer. Sem
+-- p_seen (tela antiga) tira como antes. A função de um parâmetro só é apagada: duas versões com o mesmo nome confundem a API.
+drop function if exists public.app_admin_question_review_done(text);
+create or replace function public.app_admin_question_review_done(p_question_id text, p_seen jsonb default null) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_flag jsonb;
+begin
+  perform public.assert_staff();
+  select q.explanations_review into v_flag from public.questions q where q.id = p_question_id for update;
+  if not found then raise exception 'Questão não encontrada.' using errcode = 'P0002'; end if;
+  if v_flag is not null and p_seen is not null and p_seen <> 'null'::jsonb and v_flag is distinct from p_seen then
+    raise exception 'A marca de revisão mudou enquanto você revisava: outra pessoa registrou uma troca de gabarito. Veja a marca de agora e revise o que mudou.' using errcode = '22023';
+  end if;
+  if v_flag is not null then
+    update public.questions set explanations_review = null where id = p_question_id;
+    perform public.admin_log('question.explanations_reviewed', p_question_id, jsonb_build_object('review', v_flag));
+  end if;
+  return public.app_admin_question(p_question_id);
+end
+$$;
+revoke execute on function public.app_admin_question_review_done(text, jsonb) from public, anon;
 
 -- ---------------------------------------------------------------- Stazia Play: conta feita uma vez (6)
 -- Quem respondeu questão anulada ou com gabarito registrado antes deste arquivo: a anulada pelo editor antigo e as trocas

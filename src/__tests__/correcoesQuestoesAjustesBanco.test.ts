@@ -319,6 +319,44 @@ describe("5 — gabarito que volta à letra de antes da troca, antes da revisão
   });
 });
 
+describe("7 — Marcar como revisadas: só tira a marca que a pessoa viu", () => {
+  it("se a marca mudou enquanto a pessoa revisava, o banco recusa e a marca de agora fica; com a marca de agora, tira", async () => {
+    await save(q(90, { options: explanations({ B: "B é a correta.", C: "C está errada.", D: "D está errada." }) }));
+    await setOfficial(90, { p_answer: "C", p_status: "CHANGED_AFTER_APPEAL", p_reason: "Recurso aceito." });
+    // a pessoa 1 abre a questão e vê a marca desta troca
+    const seen = (await rpc(EDITOR, "app_admin_question", { p_id: idOf(90) })).explanations_review;
+    expect(seen).toMatchObject({ de: "B", para: "C" });
+    // a pessoa 2 registra outra troca (C para D): a marca ganha a explicação da D, que a pessoa 1 ainda não viu
+    await setOfficial(90, { p_answer: "D", p_status: "CHANGED_AFTER_APPEAL", p_reason: "Segundo recurso." });
+    await expect(rpc(EDITOR, "app_admin_question_review_done", { p_question_id: idOf(90), p_seen: seen })).rejects.toThrow(
+      "A marca de revisão mudou enquanto você revisava"
+    );
+    const now = (await row(90)).explanations_review;
+    expect(now).toMatchObject({ de: "B", para: "D" });
+    expect(now.campos).toContain("explanation_D");
+
+    // vendo a marca de agora, tira (e o registro de ações guarda o que foi revisado)
+    const done = await rpc(EDITOR, "app_admin_question_review_done", { p_question_id: idOf(90), p_seen: now });
+    expect(done.explanations_review).toBeNull();
+    expect((await row(90)).explanations_review).toBeNull();
+    const log = (await sql<any>(`select details from public.admin_audit_log where target = $1 and action = 'question.explanations_reviewed' order by id desc limit 1`, [idOf(90)]))[0];
+    expect(log.details.review).toMatchObject({ para: "D" });
+  });
+
+  it("marca que já saiu (outra pessoa revisou antes): não é erro; tela antiga, sem dizer o que viu, tira como antes", async () => {
+    await save(q(91, { options: explanations({ B: "B é a correta.", C: "C está errada." }) }));
+    await setOfficial(91, { p_answer: "C", p_status: "CHANGED_AFTER_APPEAL", p_reason: "Recurso aceito." });
+    const seen = (await rpc(EDITOR, "app_admin_question", { p_id: idOf(91) })).explanations_review;
+    // tela antiga: só o código da questão
+    expect((await rpc(EDITOR, "app_admin_question_review_done", { p_question_id: idOf(91) })).explanations_review).toBeNull();
+    // a pessoa 1 clica depois: a marca já não existe e não há nada a recusar
+    expect((await rpc(EDITOR, "app_admin_question_review_done", { p_question_id: idOf(91), p_seen: seen })).explanations_review).toBeNull();
+    // aluno não chama
+    await expect(rpc(CARLA, "app_admin_question_review_done", { p_question_id: idOf(91), p_seen: seen })).rejects.toThrow("Acesso restrito à equipe.");
+    await expect(rpc(null, "app_admin_question_review_done", { p_question_id: idOf(91), p_seen: seen })).rejects.toThrow();
+  });
+});
+
 describe("4 — a …7710 pode ser colada de novo", () => {
   it("colada duas vezes: sem erro, e as funções continuam valendo", async () => {
     const text = fs.readFileSync(AJUSTES, "utf8");
