@@ -22,6 +22,7 @@ import {
 } from "./common.jsx";
 
 const PAGE = 50;
+const NO_MORE = { items: [], fetched: 0, total: null, done: false, loading: false, error: null };
 const roleTone = { admin: "danger", editor: "info", student: "neutral" };
 /** Plano como aparece: a equipe tem acesso pelo papel (sem teste); os outros, pela assinatura. */
 const planText = (u) => (isStaffRole(u.role) ? "Equipe · acesso completo" : `${PLAN_LABEL[u.plan] ?? u.plan} · ${SUB_STATUS_LABEL[u.status] ?? u.status}`);
@@ -236,10 +237,30 @@ export function AdminUsers() {
   const [search, setSearch] = React.useState("");
   const [role, setRole] = React.useState("");
   const [plan, setPlan] = React.useState("");
-  const [limit, setLimit] = React.useState(PAGE);
   const [selected, setSelected] = React.useState(null);
   const query = useDebounced(search.trim());
-  const list = useLoad(() => backend.rpc("app_admin_users", { p_search: query, p_role: role, p_plan: plan, p_limit: limit }), [backend, query, role, plan, limit]);
+  // Primeira página; as seguintes vêm de "Carregar mais", pedidas com o deslocamento (o banco devolve no máximo 200 por pedido).
+  const list = useLoad(() => backend.rpc("app_admin_users", { p_search: query, p_role: role, p_plan: plan, p_limit: PAGE, p_offset: 0 }), [backend, query, role, plan]);
+  const [more, setMore] = React.useState(NO_MORE);
+  const generation = React.useRef(0);
+  React.useEffect(() => {
+    generation.current += 1;
+    setMore(NO_MORE);
+  }, [list.data, query, role, plan]);
+  const loadMore = async () => {
+    const mine = generation.current;
+    setMore((m) => ({ ...m, loading: true, error: null }));
+    try {
+      const page = await backend.rpc("app_admin_users", { p_search: query, p_role: role, p_plan: plan, p_limit: PAGE, p_offset: list.data.items.length + more.fetched });
+      if (mine !== generation.current) return;
+      setMore((m) => ({ items: [...m.items, ...page.items], fetched: m.fetched + page.items.length, total: page.total, done: page.items.length === 0, loading: false, error: null }));
+    } catch (error) {
+      if (mine === generation.current) setMore((m) => ({ ...m, loading: false, error }));
+    }
+  };
+  const seen = new Set((list.data?.items ?? []).map((u) => u.id));
+  const items = list.data ? [...list.data.items, ...more.items.filter((u) => !seen.has(u.id))] : [];
+  const total = more.total ?? list.data?.total ?? 0;
 
   if (selected) return <UserDetail id={selected} onBack={() => setSelected(null)} onChanged={list.reload} />;
 
@@ -247,9 +268,9 @@ export function AdminUsers() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Card>
         <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "minmax(0,2fr) 1fr 1fr", gap: 12 }}>
-          <TextField label="Buscar" icon="search" placeholder="Nome ou e-mail" value={search} onChange={(e) => (setSearch(e.target.value), setLimit(PAGE))} />
-          <SelectField label="Papel" value={role} onChange={(e) => (setRole(e.target.value), setLimit(PAGE))} options={[{ value: "", label: "Todos" }, ...Object.entries(ROLE_LABEL).map(([value, label]) => ({ value, label }))]} />
-          <SelectField label="Plano" value={plan} onChange={(e) => (setPlan(e.target.value), setLimit(PAGE))} options={[{ value: "", label: "Todos" }, ...Object.entries(PLAN_LABEL).map(([value, label]) => ({ value, label }))]} />
+          <TextField label="Buscar" icon="search" placeholder="Nome ou e-mail" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <SelectField label="Papel" value={role} onChange={(e) => setRole(e.target.value)} options={[{ value: "", label: "Todos" }, ...Object.entries(ROLE_LABEL).map(([value, label]) => ({ value, label }))]} />
+          <SelectField label="Plano" value={plan} onChange={(e) => setPlan(e.target.value)} options={[{ value: "", label: "Todos" }, ...Object.entries(PLAN_LABEL).map(([value, label]) => ({ value, label }))]} />
         </div>
       </Card>
       {list.error && <LoadError error={list.error} retry={list.reload} />}
@@ -257,13 +278,13 @@ export function AdminUsers() {
       {list.data && (
         <>
           <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }} aria-live="polite">
-            {list.data.total} {list.data.total === 1 ? "usuário" : "usuários"}
+            {total} {total === 1 ? "usuário" : "usuários"}
           </div>
-          {list.data.items.length === 0 ? (
+          {items.length === 0 ? (
             <EmptyState icon="users" title="Nenhum usuário encontrado" description="Ajuste a busca ou os filtros." />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {list.data.items.map((u) => (
+              {items.map((u) => (
                 <ListRow key={u.id} onClick={() => setSelected(u.id)} label={`Abrir ${u.name || u.email}`}>
                   <Avatar name={u.name || u.email} size={40} />
                   <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
@@ -288,9 +309,10 @@ export function AdminUsers() {
               ))}
             </div>
           )}
-          {list.data.items.length < list.data.total && (
+          {more.error && <LoadError error={more.error} retry={loadMore} />}
+          {items.length < total && !more.done && (
             <div style={{ display: "flex", justifyContent: "center" }}>
-              <Button variant="secondary" onClick={() => setLimit((n) => n + PAGE)} loading={list.loading}>
+              <Button variant="secondary" onClick={loadMore} loading={list.loading || more.loading}>
                 Carregar mais
               </Button>
             </div>

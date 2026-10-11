@@ -54,3 +54,48 @@ describe("US02 · excluir usuário", () => {
     expect(screen.queryByText(/Não foi possível concluir/)).toBeNull();
   });
 });
+
+describe("US03 · Carregar mais pagina de verdade", () => {
+  it("pede a próxima página com o deslocamento, soma na lista e some o botão no fim (mesmo acima de 200)", async () => {
+    users = Array.from({ length: 260 }, (_, i) => person(i + 1));
+    render(<AdminUsers />);
+    expect(await screen.findByText("260 usuários")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /^Abrir / })).toHaveLength(50);
+    expect(backend.rpc).toHaveBeenCalledWith("app_admin_users", expect.objectContaining({ p_limit: 50, p_offset: 0 }));
+
+    for (let page = 1; page <= 5; page++) {
+      fireEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
+      await waitFor(() => expect(screen.getAllByRole("button", { name: /^Abrir / })).toHaveLength(Math.min(260, 50 * (page + 1))));
+      expect(backend.rpc).toHaveBeenCalledWith("app_admin_users", expect.objectContaining({ p_limit: 50, p_offset: 50 * page }));
+    }
+    expect(screen.queryByRole("button", { name: "Carregar mais" })).toBeNull();
+    const names = screen.getAllByRole("button", { name: /^Abrir / }).map((b) => b.getAttribute("aria-label") ?? b.textContent);
+    expect(new Set(names).size).toBe(260); // ninguém repetido
+  });
+
+  it("mudar a busca ou o filtro volta para a primeira página", async () => {
+    users = Array.from({ length: 120 }, (_, i) => person(i + 1));
+    render(<AdminUsers />);
+    await screen.findByText("120 usuários");
+    fireEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^Abrir / })).toHaveLength(100));
+    fireEvent.change(screen.getByLabelText("Papel"), { target: { value: "editor" } });
+    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_users", expect.objectContaining({ p_role: "editor", p_offset: 0 })));
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^Abrir / })).toHaveLength(50));
+  });
+
+  it("se uma página falhar, mostra o erro sem perder o que já estava na tela", async () => {
+    users = Array.from({ length: 120 }, (_, i) => person(i + 1));
+    render(<AdminUsers />);
+    await screen.findByText("120 usuários");
+    const original = backend.rpc.getMockImplementation();
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_users" && args.p_offset === 50) throw new Error("Falha de teste na página.");
+      return original(fn, args);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
+    expect(await screen.findByText("Falha de teste na página.")).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: /^Abrir / })).toHaveLength(50);
+    expect(screen.getByRole("button", { name: "Carregar mais" })).toBeTruthy();
+  });
+});
