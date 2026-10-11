@@ -5,6 +5,12 @@
 #   PROJECT=staziamed-revalida-prod scripts/cloudrun/deploy-pdf-worker.sh
 #
 # Opcionais: REGION (padrão southamerica-east1, São Paulo), SCHEDULE (padrão "*/10 * * * *").
+# Execuções podem rodar ao mesmo tempo: o agendador dispara a cada 10 minutos e cada execução pega trabalho por até 50
+# (CONTENT_HUB_JOB_BUDGET_MIN); o --tasks=1 vale para cada execução, não para a tarefa toda. A fila no banco conta com isso
+# (ch_worker_claim com "skip locked"; desde a migração 9540, o pedido para uma etapa que está rodando fica guardado e vale
+# quando ela termina). Trabalho "rodando" sem sinal de vida por CONTENT_HUB_STALE_SECONDS (1800) volta para a fila: as etapas
+# com IA dão sinal a cada parte (a conferência, a cada afirmação), e o trabalho tem dono (migração 9540): a execução que ficou
+# sem sinal e perdeu o trabalho para sem registrar o fim nem pedir a próxima etapa.
 # As três chaves (SUPABASE_URL, VITE_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY) saem do .env direto para o Secret Manager,
 # sem aparecer na tela. A IA da Central continua desligada (nenhuma chave de IA de texto é enviada).
 # Busca por significado (Gemini Embedding 2, autorizada pelo dono em 2026-10-06): com GEMINI_API_KEY (ou GOOGLE_GEMINI_API_KEY)
