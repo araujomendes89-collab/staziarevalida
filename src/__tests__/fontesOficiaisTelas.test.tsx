@@ -485,6 +485,19 @@ describe("Candidatos", () => {
     expect(screen.getByText("Extraindo")).toBeTruthy();
   });
 
+  it("monitoramento da fonte: a situação da última conferência aparece em português", async () => {
+    const watch = (last_status: string) => ({ url: "https://www.gov.br/saude/x", interval_days: 7, last_checked_at: null, next_check_at: null, last_status });
+    const src = (id: string, last_status: string) => ({ id, title: `Fonte ${last_status}`, organ: "Órgão", kind: "final", status: "current", authority_level: "A", passages: 0, freshness: "UNKNOWN", changes: 0, diffs: 0, watch: watch(last_status) });
+    backend.rpc.mockImplementation(async (fn: string) => (fn === "app_ch_sources" ? [src("w1", "changed"), src("w2", "unreachable"), src("w3", "ok")] : fn === "app_ch_source_candidates" ? candidates : []));
+    render(<Sources isAdmin go={() => {}} />);
+    for (const name of ["Fonte changed", "Fonte unreachable", "Fonte ok"]) fireEvent.click(await screen.findByText(name));
+    const text = document.body.textContent ?? "";
+    expect(text).toContain("(mudou)");
+    expect(text).toContain("(não abriu)");
+    expect(text).toContain("(igual)");
+    expect(text).not.toMatch(/\((changed|unreachable|ok)\)/);
+  });
+
   it("ordem para administrador com os candidatos entre as buscas recentes e os sites oficiais", async () => {
     render(<Sources isAdmin go={() => {}} />);
     await screen.findByTestId("official-domains");

@@ -13,6 +13,9 @@ import { SourceCandidates } from "./SourceCandidates.jsx";
 import { RecentSearches, SourceSearchPanel } from "./SourceSearch.jsx";
 import { KeyValue, Label, Section, shortHash, StatusBadge, useAction, useUploadProgress, when } from "./ui.jsx";
 
+// situação da última conferência do endereço vigiado (o banco guarda em inglês)
+const WATCH_STATUS = { ok: "igual", changed: "mudou", unreachable: "não abriu" };
+
 export function Sources({ isAdmin, go }) {
   const { backend } = useSession();
   const { data, error, reload } = useLoad(() => backend.rpc("app_ch_sources"), [backend]);
@@ -155,7 +158,7 @@ function SourceRow({ source: s, isAdmin, onChanged }) {
               ["Fonte primária", s.is_primary_source ? "sim" : undefined],
               ["Vigência a partir de", s.effective_date],
               ["Última revisão", s.revision_date],
-              ["Monitoramento", s.watch ? `${s.watch.url} · a cada ${s.watch.interval_days} dia(s) · última conferência ${when(s.watch.last_checked_at)} (${s.watch.last_status ?? "—"}) · próxima ${when(s.watch.next_check_at)}` : "não"],
+              ["Monitoramento", s.watch ? `${s.watch.url} · a cada ${s.watch.interval_days} dia(s) · última conferência ${when(s.watch.last_checked_at)} (${WATCH_STATUS[s.watch.last_status] ?? s.watch.last_status ?? "—"}) · próxima ${when(s.watch.next_check_at)}` : "não"],
             ]}
           />
           {isAdmin && (
