@@ -137,14 +137,40 @@ describe("Importação de questões — JSON e modelos", () => {
     expect(questionsFromJson("{}").fileError).toMatch(/lista de questões/);
   });
 
-  it("os modelos de planilha e de JSON são lidos sem erro", () => {
+  it("os modelos de planilha e de JSON são lidos, mas a linha de exemplo é recusada (Q08): não pode virar questão", () => {
     const fromCsv = questionsFromFile("modelo.csv", csvTemplate());
     const fromJson = questionsFromFile("modelo.json", jsonTemplate());
     for (const result of [fromCsv, fromJson]) {
       expect(result.fileError).toBeNull();
       expect(result.items).toHaveLength(1);
-      expect(result.items[0].problems).toEqual([]);
+      // a linha continua sendo lida (o banco recebe os mesmos campos), mas com o problema na lista: a importação não é liberada
       expect(result.items[0].question).toMatchObject({ kind: "REVALIDA", year: 2026, semester: 2, area: "CLINICA_MEDICA", correct_option: "B" });
+      expect(result.items[0].problems).toHaveLength(1);
+      expect(result.items[0].problems[0]).toMatch(/linha de exemplo do modelo/);
     }
+  });
+
+  it("recusa qualquer campo que ainda tenha o texto de exemplo do modelo, mesmo com o resto trocado; texto parecido não é recusado", () => {
+    const real = { prova: "Revalida 2026/2", numero: 7, area: "Pediatria", tema: "Bronquiolite", enunciado: statement, A: "a", B: "b", C: "c", D: "d", gabarito: "B" };
+    const withCell = (cell: Record<string, unknown>) => questionsFromJson(JSON.stringify([{ ...real, ...cell }])).items[0].problems;
+    expect(withCell({})).toEqual([]);
+    for (const cell of [
+      { tema: "Tema principal da questão" },
+      { enunciado: "Texto completo do enunciado, como está no caderno de prova." },
+      { enunciado: "  texto completo do enunciado,  como está no caderno de PROVA.  " },
+      { A: "Texto da alternativa A" },
+      { D: "Texto da alternativa D" },
+      { subtema: "Subtema (opcional)" },
+      { explicacao: "Por que a alternativa correta está certa (opcional)" },
+      { "conduta esperada": "Conduta esperada (opcional)" },
+      { fonte: "Gabarito oficial definitivo (opcional)" },
+    ]) {
+      const problems = withCell(cell);
+      expect(problems, JSON.stringify(cell)).toHaveLength(1);
+      expect(problems[0]).toMatch(/linha de exemplo do modelo/);
+    }
+    // só o campo inteiro igual ao exemplo conta: uma frase que apenas contém o texto, ou a prova e o número do exemplo, não
+    expect(withCell({ tema: "Tema principal da questão: bronquiolite" })).toEqual([]);
+    expect(withCell({ numero: 1, area: "Clínica Médica" })).toEqual([]);
   });
 });

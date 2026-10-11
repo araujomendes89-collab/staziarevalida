@@ -732,6 +732,8 @@ const ACTION_LABEL = {
   "questions.import": "Questões importadas",
   "question.inserted": "Questão criada",
   "question.updated": "Questão editada",
+  "question.delete": "Questão apagada",
+  "question.analysis_unpublished": "Análise da questão tirada do ar",
   "station.review": "Revisão de estação",
   "plan.save": "Plano editado",
   "settings.save": "Configurações salvas",
@@ -750,6 +752,8 @@ function summary(entry) {
   if (entry.action === "questions.import") return `${d.inserted} novas · ${d.updated} atualizadas · ${d.skipped} puladas`;
   if (entry.action === "station.review") return `${entry.target}: ${d.to === "approved" ? "aprovada" : "voltou para revisão"}${d.note ? ` · “${d.note}”` : ""}`;
   if (entry.action === "plan.save") return `${PLAN_LABEL[entry.target] ?? entry.target}${d.active ? " · à venda" : ""}`;
+  if (entry.action === "question.delete") return [d.code ?? entry.target, d.topic].filter(Boolean).join(" · ");
+  if (entry.action === "question.analysis_unpublished") return `${entry.target}: o enunciado ou o texto de uma alternativa mudou`;
   if (entry.action.startsWith("question.")) return entry.target;
   // atualizações: o tema e, quando houver, o motivo (recusa, texto alterado, correção) e a nota do revisor
   if (entry.action.startsWith("guideline_update.")) return [d.topic, d.motivo, d.note && `Nota do revisor: ${d.note}`].filter(Boolean).join(" · ");

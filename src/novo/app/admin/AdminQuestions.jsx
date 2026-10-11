@@ -185,6 +185,58 @@ function OfficialAnswerForm({ question, onCancel, onDone }) {
   );
 }
 
+/** Apagar questão (Q08): só administrador e só questão sem resposta de aluno. Pede para digitar o código da questão; o banco
+ * confere de novo (resposta, anotação, marcação, Tutor ou sessão de aluno) e guarda uma cópia no registro de ações. Fica dentro
+ * do formulário da questão, então Enter num campo daqui não envia a questão. */
+function DeleteQuestion({ question, onDeleted }) {
+  const { backend } = useSession();
+  const [confirm, setConfirm] = React.useState("");
+  const [state, setState] = React.useState({ deleting: false, error: null });
+  const answered = question.attempts > 0;
+  const remove = async () => {
+    setState({ deleting: true, error: null });
+    try {
+      await backend.rpc("app_admin_delete_question", { p_question_id: question.id });
+      onDeleted();
+    } catch (error) {
+      setState({ deleting: false, error: messageOf(error) });
+    }
+  };
+  return (
+    <section
+      aria-label="Apagar questão"
+      onKeyDown={(event) => {
+        if (event.key === "Enter" && event.target?.tagName === "INPUT") event.preventDefault();
+      }}
+      style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, borderRadius: 16, border: "1px solid var(--danger-border)", background: "var(--danger-bg)" }}
+    >
+      <div style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-label)", color: "var(--danger-text)" }}>
+        <Icon name="triangle-alert" size={18} /> Apagar questão
+      </div>
+      {answered ? (
+        <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+          {`Esta questão já tem ${question.attempts} ${question.attempts === 1 ? "resposta de aluno" : "respostas de alunos"} e não pode ser apagada. Se ela não deve mais valer, anule-a pelo registro do gabarito oficial.`}
+        </div>
+      ) : (
+        <>
+          <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+            Só dá para apagar questão que nenhum aluno respondeu, anotou, marcou ou recebeu num treino. Some também a análise dela. A cópia da questão fica no Registro de ações. Não dá para desfazer pela tela.
+          </div>
+          {state.error && <Banner tone="danger">{state.error}</Banner>}
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 240px" }}>
+              <TextField label={`Digite ${question.code} para confirmar`} value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" />
+            </div>
+            <Button variant="danger" icon="trash-2" onClick={remove} loading={state.deleting} disabled={confirm.trim().toLowerCase() !== String(question.code).toLowerCase()}>
+              Apagar questão
+            </Button>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 export function QuestionEditor({ id, onClose, onSaved }) {
   const { backend, boot } = useSession();
   const isAdmin = boot?.role === "admin";
@@ -452,6 +504,15 @@ export function QuestionEditor({ id, onClose, onSaved }) {
           {isNew ? "Criar questão" : "Salvar questão"}
         </Button>
       </div>
+      {isAdmin && !isNew && (
+        <DeleteQuestion
+          question={form}
+          onDeleted={() => {
+            onSaved();
+            onClose();
+          }}
+        />
+      )}
     </form>
     </AssistantLayout>
   );

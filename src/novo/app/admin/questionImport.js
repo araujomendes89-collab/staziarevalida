@@ -129,6 +129,28 @@ function parseYesNo(value) {
   return null;
 }
 
+// ---------------------------------------------------------------- linha de exemplo do modelo (Q08)
+// Os textos de exemplo da linha do modelo. Uma questão que ainda tenha um deles, inteiro, em algum campo é a linha de exemplo
+// (ou parte dela) e não pode virar questão (Q08). O banco confere a mesma lista (admin_example_texts, …9501).
+export const EXAMPLE_TEXTS = [
+  "Tema principal da questão",
+  "Subtema (opcional)",
+  "Texto completo do enunciado, como está no caderno de prova.",
+  "Texto da alternativa A",
+  "Texto da alternativa B",
+  "Texto da alternativa C",
+  "Texto da alternativa D",
+  "Por que a alternativa correta está certa (opcional)",
+  "Conduta esperada (opcional)",
+  "Gabarito oficial definitivo (opcional)",
+];
+// o texto sem acento, minúsculo e com espaços repetidos tratados como um só (a mesma regra do banco)
+const squashFold = (value) => fold(String(value ?? "").replace(/\s+/g, " "));
+const EXAMPLE_FOLDED = new Set(EXAMPLE_TEXTS.map(squashFold));
+const EXAMPLE_PROBLEM =
+  "Esta é a linha de exemplo do modelo de planilha: apague a linha ou troque o texto de exemplo pelos dados reais da questão.";
+const isExampleText = (value) => EXAMPLE_FOLDED.has(squashFold(value));
+
 // ---------------------------------------------------------------- conversão
 /** Linha (objeto campo → texto) → questão no formato do banco + problemas encontrados. */
 function toQuestion(cells) {
@@ -162,6 +184,8 @@ function toQuestion(cells) {
   }));
   const declaredImage = parseYesNo(cells.imagem);
   const source = String(cells.fonte ?? "").trim();
+  const filled = [cells.tema, cells.subtema, cells.enunciado, ...LETTERS.map((l) => cells[l]), cells.explicacao, ...LETTERS.map((l) => cells[`explicacao_${l}`]), cells.conduta, cells.avalia, cells.fonte];
+  if (filled.some(isExampleText)) problems.push(EXAMPLE_PROBLEM);
   const question = {
     kind: exam?.kind ?? null,
     year: exam?.year ?? null,
@@ -253,22 +277,23 @@ export function markDuplicates(items) {
 
 // ---------------------------------------------------------------- modelos
 const TEMPLATE_HEADER = ["prova", "numero", "area", "tema", "subtema", "enunciado", "A", "B", "C", "D", "gabarito", "explicacao", "conduta esperada", "situacao", "fonte"];
+const [EX_TOPIC, EX_SUBTOPIC, EX_STATEMENT, EX_A, EX_B, EX_C, EX_D, EX_EXPLANATION, EX_CONDUCT, EX_SOURCE] = EXAMPLE_TEXTS;
 const TEMPLATE_ROW = [
   "Revalida 2026/2",
   "1",
   "Clínica Médica",
-  "Tema principal da questão",
-  "Subtema (opcional)",
-  "Texto completo do enunciado, como está no caderno de prova.",
-  "Texto da alternativa A",
-  "Texto da alternativa B",
-  "Texto da alternativa C",
-  "Texto da alternativa D",
+  EX_TOPIC,
+  EX_SUBTOPIC,
+  EX_STATEMENT,
+  EX_A,
+  EX_B,
+  EX_C,
+  EX_D,
   "B",
-  "Por que a alternativa correta está certa (opcional)",
-  "Conduta esperada (opcional)",
+  EX_EXPLANATION,
+  EX_CONDUCT,
   "válida",
-  "Gabarito oficial definitivo (opcional)",
+  EX_SOURCE,
 ];
 
 const csvCell = (value) => (/[;"\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);

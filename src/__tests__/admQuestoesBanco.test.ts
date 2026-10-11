@@ -4,11 +4,14 @@
  * todas as migrações (supabase/migrations/…95NN_*.sql, por cima da …7700 e da …7710).
  *   Q10: a análise publicada sai do ar quando o enunciado ou o texto de uma alternativa muda ao salvar (pelo editor ou pela
  *        importação com "atualizar"); explicação, conduta, tema e espaços repetidos não derrubam a análise.
+ *   Q08: a linha de exemplo do modelo de planilha não vira questão (editor, importação e prévia); apagar questão só para
+ *        administrador e só sem resposta, anotação, marcação ou sessão de aluno, com registro de ações.
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
 import { PGlite } from "@electric-sql/pglite";
+import { csvTemplate, EXAMPLE_TEXTS, questionsFromCsv } from "../novo/app/admin/questionImport.js";
 
 const ROOT = path.resolve(__dirname, "../..");
 const MIGRATIONS = path.join(ROOT, "supabase/migrations");
@@ -46,6 +49,7 @@ const save = (question: Record<string, unknown>) => rpc(EDITOR, "app_admin_save_
 const edit = (number: number, extra: Record<string, unknown>) => save({ ...q(number), ...extra, id: idOf(number) });
 const session = async (uid: string, numbers: number[]) =>
   (await sql<any>(`insert into public.practice_sessions (user_id, kind, question_ids) values ($1, 'questoes', $2) returning id`, [uid, numbers.map(idOf)]))[0].id as string;
+const sessionOf = session;
 const answer = (uid: string, sessionId: string, number: number, option: string) =>
   rpc(uid, "app_answer_question", { p_session_id: sessionId, p_question_id: idOf(number), p_option: option, p_active_ms: 10_000 });
 
@@ -176,5 +180,109 @@ describe("Q10 — a migração pode ser colada de novo", () => {
     expect((await sql<any>(`select count(*)::int n from public.admin_audit_log where target = $1 and action = 'question.analysis_unpublished'`, [idOf(105)]))[0].n).toBe(1);
     // as funções internas não são chamadas por ninguém pela API
     await expect(rpc(EDITOR, "question_analysis_basis_text", { p_statement: "a", p_options: [] })).rejects.toThrow(/permission denied/);
+  });
+});
+
+const EXAMPLE = () => questionsFromCsv(csvTemplate()).items[0].question;
+
+describe("Q08 — a linha de exemplo do modelo de planilha não vira questão", () => {
+  it("a linha de exemplo, como o modelo a traz, é recusada pelo banco na importação, na prévia e no editor", async () => {
+    const example = EXAMPLE();
+    const imported = await rpc(EDITOR, "app_admin_import_questions", { p_questions: [example], p_update_existing: false });
+    expect(imported.ok).toBe(false);
+    expect(imported.errors[0].message).toMatch(/linha de exemplo do modelo/);
+    expect((await sql<any>(`select count(*)::int n from public.questions where exam_id = 'revalida-2026-2' and number = 1`))[0].n).toBe(0);
+    const preview = await rpc(EDITOR, "app_admin_import_preview", { p_questions: [example] });
+    expect(preview).toMatchObject({ new: 0, existing: 0 });
+    await expect(save({ ...example, id: undefined })).rejects.toThrow(/linha de exemplo do modelo/);
+  });
+
+  it("não sobrescreve a Q1 real da prova com a linha de exemplo, nem com 'atualizar'", async () => {
+    await save(q(1, { year: 2026, semester: 2, statement: "Enunciado real da questão 1 da prova 2026/2, com dados clínicos suficientes." }));
+    const before = await sql<any>(`select statement, topic, options from public.questions where id = 'revalida_2026_2_q001'`);
+    const result = await rpc(EDITOR, "app_admin_import_questions", { p_questions: [EXAMPLE()], p_update_existing: true });
+    expect(result.ok).toBe(false);
+    expect(await sql<any>(`select statement, topic, options from public.questions where id = 'revalida_2026_2_q001'`)).toEqual(before);
+  });
+
+  it("qualquer campo com o texto de exemplo é recusado (mesmo com o resto trocado); frase que só contém o texto passa", async () => {
+    const real = q(120);
+    const set = (patch: Record<string, unknown>) => ({ ...real, ...patch });
+    const withOption = (id: string, patch: Record<string, unknown>) => set({ options: real.options.map((o: any) => (o.id === id ? { ...o, ...patch } : o)) });
+    for (const bad of [
+      set({ topic: "Tema principal da questão" }),
+      set({ statement: "  Texto completo do enunciado,  como está no caderno de prova. " }),
+      set({ subtopic: "Subtema (opcional)" }),
+      set({ expected_conduct: "Conduta esperada (opcional)" }),
+      withOption("C", { text: "TEXTO DA ALTERNATIVA C" }),
+      withOption("B", { explanation: "Por que a alternativa correta está certa (opcional)" }),
+      set({ sources: [{ title: "Gabarito oficial definitivo (opcional)" }] }),
+    ]) {
+      await expect(save(bad)).rejects.toThrow(/linha de exemplo do modelo/);
+    }
+    // a lista do banco é a do modelo de planilha (o modelo é a fonte): cada texto de exemplo é recusado, em qualquer campo de texto
+    for (const text of EXAMPLE_TEXTS) {
+      await expect(save(set({ topic: text })), text).rejects.toThrow(/linha de exemplo do modelo/);
+    }
+    await save(set({ topic: "Tema principal da questão: bronquiolite", subtopic: "Subtema (opcional) do tema" }));
+    expect((await row(120)).topic).toBe("Tema principal da questão: bronquiolite");
+  });
+});
+
+describe("Q08 — apagar questão: só administrador, só sem resposta de aluno, com registro", () => {
+  it("administrador apaga questão sem resposta: some do banco, leva a análise junto e fica no registro de ações", async () => {
+    await save(q(130));
+    await publishAnalysis(130);
+    const count = async () => (await sql<any>(`select question_count from public.exams where id = 'revalida-2024-1'`))[0].question_count as number;
+    const before = await count();
+    const result = await rpc(ADMIN, "app_admin_delete_question", { p_question_id: idOf(130) });
+    expect(result).toMatchObject({ deleted: true, code: "REV-2024.1-Q130" });
+    expect(await row(130)).toBeUndefined();
+    expect((await sql<any>(`select count(*)::int n from public.question_analysis where question_id = $1`, [idOf(130)]))[0].n).toBe(0);
+    expect(await count()).toBe(before - 1);
+    const log = (await sql<any>(`select actor_id, details from public.admin_audit_log where target = $1 and action = 'question.delete'`, [idOf(130)]))[0];
+    expect(log.actor_id).toBe(ADMIN);
+    expect(log.details).toMatchObject({ code: "REV-2024.1-Q130", exam_id: "revalida-2024-1", number: 130, topic: "Bronquiolite", status: "valid" });
+    expect(log.details.excerpt).toContain("questão 130");
+  });
+
+  it("só administrador: equipe, aluno e visitante não apagam, e a questão fica", async () => {
+    await save(q(131));
+    await expect(rpc(EDITOR, "app_admin_delete_question", { p_question_id: idOf(131) })).rejects.toThrow("Acesso restrito a administradores.");
+    await expect(rpc(ANA, "app_admin_delete_question", { p_question_id: idOf(131) })).rejects.toThrow("Acesso restrito a administradores.");
+    await expect(rpc(null, "app_admin_delete_question", { p_question_id: idOf(131) })).rejects.toThrow(/permission denied/);
+    expect(await row(131)).toBeDefined();
+    await expect(rpc(ADMIN, "app_admin_delete_question", { p_question_id: "nao_existe" })).rejects.toThrow("Questão não encontrada.");
+  });
+
+  it("recusa quando um aluno já respondeu, anotou o erro, marcou a questão ou a recebeu numa sessão; nada é apagado", async () => {
+    for (const n of [132, 133, 134, 135]) await save(q(n));
+    // 132: respondida
+    await answer(ANA, await sessionOf(ANA, [132]), 132, "B");
+    // 133: anotação de erro
+    await sql(`insert into public.error_notes (user_id, question_id, note) values ($1, $2, 'anotei')`, [BIA, idOf(133)]);
+    // 134: marcada
+    await sql(`insert into public.question_bookmarks (user_id, question_id) values ($1, $2)`, [BIA, idOf(134)]);
+    // 135: só recebida numa sessão de treino, sem resposta
+    await sessionOf(BIA, [135]);
+    const reasons: Record<number, RegExp> = {
+      132: /1 resposta de aluno/, 133: /anotaç(ão|ões) de erro/, 134: /marcada por \d+ alunos?/, 135: /1 sessão de treino de aluno/,
+    };
+    for (const n of [132, 133, 134, 135]) {
+      await expect(rpc(ADMIN, "app_admin_delete_question", { p_question_id: idOf(n) }), String(n)).rejects.toThrow(reasons[n]);
+      expect(await row(n)).toBeDefined();
+    }
+    await expect(rpc(ADMIN, "app_admin_delete_question", { p_question_id: idOf(132) })).rejects.toThrow(/anule a questão pelo registro do gabarito oficial/);
+    expect((await sql<any>(`select count(*)::int n from public.admin_audit_log where action = 'question.delete' and target = any ($1)`, [[132, 133, 134, 135].map(idOf)]))[0].n).toBe(0);
+  });
+
+  it("colar a migração duas vezes não dá erro e a função continua barrando visitante", async () => {
+    const text = fs.readFileSync(path.join(MIGRATIONS, "20261003009501_questoes_apagar_e_exemplo.sql"), "utf8");
+    await db.exec(text);
+    await db.exec(text);
+    await save(q(136));
+    expect(await rpc(ADMIN, "app_admin_delete_question", { p_question_id: idOf(136) })).toMatchObject({ deleted: true });
+    await expect(rpc(null, "app_admin_delete_question", { p_question_id: idOf(130) })).rejects.toThrow(/permission denied/);
+    await expect(rpc(null, "admin_question_problem", { q: {} })).rejects.toThrow(/permission denied/);
   });
 });
