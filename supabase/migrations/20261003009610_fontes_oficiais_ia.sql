@@ -981,6 +981,7 @@ declare
   v_valid date;
   v_year text;
   v_rep public.ch_sources;
+  v_dup public.ch_sources;
   v_doc_name text;
   v_reg jsonb;
   v_source_id uuid;
@@ -1042,6 +1043,18 @@ begin
     raise exception 'Confirme a substituição: esta aprovação substitui a fonte vigente "%" (versão %).', v_rep.title, coalesce(v_rep.version, 'sem versão') using errcode = '22023';
   end if;
 
+  -- fonte vigente que já é este mesmo arquivo (SHA-256 e versão iguais) ou este mesmo endereço, ainda que sem documento na
+  -- Central: criar outra deixaria duas fontes vigentes iguais. Pede a mesma confirmação; confirmada, a anterior fica substituída.
+  select x.* into v_dup from public.ch_sources x
+   where x.status = 'current' and x.id is distinct from v_rep.id
+     and ((x.sha256 is not null and x.sha256 = c.sha256 and x.version is not distinct from v_version)
+          or (x.url is not null and public.ch_url_norm(x.url) in (public.ch_url_norm(c.final_url), public.ch_url_norm(c.requested_url))))
+   order by x.created_at desc
+   limit 1;
+  if v_dup.id is not null and f -> 'confirm_replace' is distinct from 'true'::jsonb then
+    raise exception 'Confirme a substituição: já existe a fonte vigente "%" (versão %) com o mesmo arquivo ou endereço; esta aprovação a substitui.', v_dup.title, coalesce(v_dup.version, 'sem versão') using errcode = '22023';
+  end if;
+
   select * into s from public.ch_source_searches where id = c.search_id;
   v_day := (c.created_at at time zone 'America/Sao_Paulo')::date;
 
@@ -1049,6 +1062,10 @@ begin
     'title', v_title, 'organ', v_organ, 'kind', v_kind, 'url', c.final_url, 'version', v_version,
     'published_on', v_published, 'valid_until', v_valid, 'accessed_on', v_day, 'sha256', c.sha256, 'editorial_approved', true));
   v_source_id := (v_reg ->> 'id')::uuid;
+  if v_dup.id is not null then
+    update public.ch_sources set status = 'superseded', superseded_by = v_source_id where id = v_dup.id and status = 'current';
+    perform public.ch_flag_dependents(v_dup.id, 'Fonte substituída: ' || coalesce(v_dup.version, 'versão anterior') || ' → ' || coalesce(v_version, 'nova versão'));
+  end if;
 
   insert into public.ch_documents (owner_id, name, publisher, edition_date, page_count, sha256, storage_path, mime, rights_status, purpose, provenance)
   values (auth.uid(), left(v_title, 300), v_organ, v_published::text, c.page_count, c.sha256, c.storage_path,

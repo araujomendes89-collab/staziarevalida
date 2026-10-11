@@ -716,6 +716,33 @@ describe("Aprovar e rejeitar", () => {
     await expect(approve(other.id, { ...OK, title: "PCDT Outro Assunto T7" })).resolves.toMatchObject({ superseded: null });
   });
 
+  it("fonte vigente igual (mesmo arquivo ou mesmo endereço) cadastrada à mão sem documento: pede confirmação em vez de duplicar", async () => {
+    // mesmo SHA-256 e mesma versão (nenhuma), título e órgão diferentes: a regra de substituição por título não pega
+    const a = await createCandidate();
+    const manual = await asAdmin("app_ch_register_source", { p_source: { title: "Outro nome do mesmo PDF", organ: "Outro órgão", sha256: (await sql(`select sha256 from public.ch_source_candidates where id = $1`, [a.id]))[0].sha256 } });
+    const before = await counts();
+    await expect(approve(a.id, OK)).rejects.toThrow(/^Confirme a substituição: já existe a fonte vigente "Outro nome do mesmo PDF" \(versão sem versão\) com o mesmo arquivo ou endereço/);
+    await expect(approve(a.id, { ...OK, confirm_replace: "true" })).rejects.toThrow(/Confirme a substituição/);
+    expect(await counts()).toEqual(before);
+    const r = await approve(a.id, { ...OK, confirm_replace: true });
+    expect((await sql(`select status, superseded_by from public.ch_sources where id = $1`, [manual.id]))[0]).toEqual({ status: "superseded", superseded_by: r.source_id });
+    expect((await sql(`select count(*)::int as n from public.ch_sources where status = 'current' and sha256 = (select sha256 from public.ch_source_candidates where id = $1)`, [a.id]))[0].n).toBe(1);
+
+    // mesma URL normalizada (sem #, sem utm_, host em minúsculas), arquivo e título diferentes
+    const b = await createCandidate({ requested_url: "https://www.gov.br/saude/pt-br/mesmo-endereco.pdf", final_url: "https://www.gov.br/saude/pt-br/mesmo-endereco.pdf" });
+    const byUrl = await asAdmin("app_ch_register_source", { p_source: { title: "Cadastro antigo pelo link", organ: "Outro órgão 2", url: "https://WWW.gov.br/saude/pt-br/mesmo-endereco.pdf?utm_source=x#topo", sha256: sha(0x9fff01) } });
+    await expect(approve(b.id, OK)).rejects.toThrow(/Confirme a substituição: já existe a fonte vigente "Cadastro antigo pelo link"/);
+    const rb = await approve(b.id, { ...OK, confirm_replace: true });
+    expect((await sql(`select status from public.ch_sources where id = $1`, [byUrl.id]))[0].status).toBe("superseded");
+    expect((await sql(`select status from public.ch_sources where id = $1`, [rb.source_id]))[0].status).toBe("current");
+
+    // fonte substituída (não vigente) não bloqueia
+    const c = await createCandidate();
+    await asAdmin("app_ch_register_source", { p_source: { title: "Antiga retirada", organ: "Órgão 3", sha256: (await sql(`select sha256 from public.ch_source_candidates where id = $1`, [c.id]))[0].sha256 } });
+    await sql(`update public.ch_sources set status = 'withdrawn' where title = 'Antiga retirada'`);
+    await expect(approve(c.id, OK)).resolves.toMatchObject({ superseded: null });
+  });
+
   it("site desativado ou fora da lista depois do achado: aprovação recusada, rejeição continua possível", async () => {
     const sbp = (await sql(`select id from public.ch_official_domains where address = 'sbp.com.br'`))[0].id;
     const link = "https://www.sbp.com.br/documentos/t7-consenso.pdf";
