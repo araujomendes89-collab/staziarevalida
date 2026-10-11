@@ -13,6 +13,11 @@
 --    atualização é de Gineco & Obstetrícia." (não era verdade: ela é de Clínica Médica). Agora: "Você não pode levar esta
 --    atualização de Clínica Médica para Gineco & Obstetrícia: você não revisa Gineco & Obstetrícia. Para mudar a área,
 --    peça a um administrador ou editor."
+--    Conferido de novo (AT06): o que mais poderia puxar uma atualização de outra área? Conferir é só do revisor da área
+--    gravada (…4100); publicar e apagar são só do administrador; a tabela não tem política de escrita para ninguém;
+--    mudar a área conta como mudar o conteúdo (a conferência da área antiga não vale para a nova e, se estava no ar,
+--    sai do ar). Faltava só o rastro: agora o registro da Central (ch_audit, "guideline_update.save") guarda a área de
+--    antes e a de depois sempre que a área muda.
 --
 -- Nada nos dados é mexido. Pode ser colada de novo no Supabase sem erro (create or replace e revoke).
 -- As funções partem da versão mais nova de cada uma (grep em todas as migrações): app_admin_save_guideline_update, de
@@ -183,8 +188,11 @@ begin
   when unique_violation then
     raise exception 'Já existe uma atualização com este identificador.' using errcode = '23505';
   end;
+  -- quando a área muda (só a equipe, ou o revisor das duas áreas), o registro diz quem levou de qual área para qual
   perform public.ch_log('guideline_update.save', v_new.id::text,
-                        jsonb_build_object('topic', v_new.topic, 'review_reset', v_reset, 'unpublished', v_unpublished));
+                        jsonb_build_object('topic', v_new.topic, 'review_reset', v_reset, 'unpublished', v_unpublished)
+                        || case when v_old.id is not null and v_old.area is distinct from v_new.area
+                                then jsonb_build_object('area_de', v_old.area, 'area_para', v_new.area) else '{}'::jsonb end);
   if v_unpublished then
     perform public.admin_log('guideline_update.unpublish', v_new.id::text,
                              jsonb_build_object('topic', v_new.topic, 'motivo', 'Texto alterado depois da conferência: saiu do ar até nova conferência.'));

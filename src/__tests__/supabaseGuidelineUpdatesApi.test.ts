@@ -246,6 +246,41 @@ describe("Cadastro e segurança", () => {
     expect(await rpc(REVIEWER_CM, "app_admin_save_guideline_update", { p_update: { ...before, position: 7 } })).toMatchObject({ area: "CLINICA_MEDICA", published: true, review_status: "approved" });
   });
 
+  it("mudar a área de uma atualização: a equipe pode, mas a conferência e a publicação da área antiga deixam de valer; o revisor só leva entre áreas que ele revisa; fica registrado (AT06)", async () => {
+    // uma atualização nova de Clínica Médica, conferida pelo revisor da área e publicada pelo administrador
+    const nova = await rpc(EDITOR, "app_admin_save_guideline_update", {
+      p_update: { area: "CLINICA_MEDICA", topic: "Tema que muda de área", source_url: "https://www.gov.br/saude/muda-de-area", current_conduct: "Conduta de teste." },
+    });
+    await rpc(REVIEWER_CM, "app_admin_review_guideline_update", { p_id: nova.id, p_decision: "approve", p_note: "Conferido no documento oficial da área." });
+    await rpc(ADMIN, "app_admin_publish_guideline_update", { p_id: nova.id, p_published: true });
+    expect(await rpc(STUDENT, "app_guideline_update", { p_slug: nova.slug })).toMatchObject({ reviewed: true });
+    // a equipe leva para Gineco & Obstetrícia: a conferência de Clínica Médica não vale para a outra área e ela sai do ar
+    const doEditor = await rpc(EDITOR, "app_admin_save_guideline_update", { p_update: { ...(await adminItem(nova.slug)), area: "GINECOLOGIA_OBSTETRICIA" } });
+    expect(doEditor).toMatchObject({ area: "GINECOLOGIA_OBSTETRICIA", review_status: "pending", published: false });
+    expect(await rpc(STUDENT, "app_guideline_update", { p_slug: nova.slug })).toBeNull();
+    // o revisor de Clínica Médica não mexe mais nela (a área gravada agora é outra) e não confere
+    await expect(rpc(REVIEWER_CM, "app_admin_save_guideline_update", { p_update: { ...doEditor, area: "CLINICA_MEDICA", topic: "Puxando de volta" } })).rejects.toThrow(/esta atualização é de Gineco & Obstetrícia/);
+    await expect(rpc(REVIEWER_CM, "app_admin_review_guideline_update", { p_id: nova.id, p_decision: "approve", p_note: "Tentativa de conferir outra área." })).rejects.toThrow(/revisor cadastrado em Gineco/);
+    expect(await adminItem(nova.slug)).toMatchObject({ area: "GINECOLOGIA_OBSTETRICIA", topic: "Tema que muda de área" });
+    // quem revisa as duas áreas leva de uma para a outra
+    await db.query(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'GINECOLOGIA_OBSTETRICIA')`, [REVIEWER_CM]);
+    try {
+      expect(await rpc(REVIEWER_CM, "app_admin_save_guideline_update", { p_update: { ...doEditor, area: "CLINICA_MEDICA" } })).toMatchObject({ area: "CLINICA_MEDICA" });
+    } finally {
+      await db.query(`delete from public.ch_reviewer_areas where user_id = $1 and area_code = 'GINECOLOGIA_OBSTETRICIA'`, [REVIEWER_CM]);
+    }
+    // cada mudança de área fica no registro da Central (quem, de qual área para qual); salvar sem trocar a área não grava isso
+    await rpc(EDITOR, "app_admin_save_guideline_update", { p_update: { ...(await adminItem(nova.slug)), position: 3 } });
+    const saves = (await db.query<any>(`select actor_id, details from public.ch_audit where action = 'guideline_update.save' and target = $1 order by id`, [nova.id])).rows;
+    const moves = saves.filter((r: any) => r.details.area_de);
+    expect(moves.map((r: any) => [r.actor_id, r.details.area_de, r.details.area_para])).toEqual([
+      [EDITOR, "CLINICA_MEDICA", "GINECOLOGIA_OBSTETRICIA"],
+      [REVIEWER_CM, "GINECOLOGIA_OBSTETRICIA", "CLINICA_MEDICA"],
+    ]);
+    expect(saves.length).toBeGreaterThanOrEqual(4);
+    expect(await rpc(ADMIN, "app_admin_delete_guideline_update", { p_id: nova.id })).toBe(true);
+  });
+
   it("com a Central de Conteúdo desligada, a aba Atualizações continua funcionando: as funções conferem só o papel da pessoa (AT08)", async () => {
     // antes: a lista e o salvar chamavam ch_assert_staff, que também exige a chave de liga e desliga da Central de Conteúdo
     // (ch_flags.enabled) e respondiam "Content Lab desligado pelo administrador." a todo mundo, inclusive ao administrador
