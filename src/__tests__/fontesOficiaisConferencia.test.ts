@@ -5,12 +5,28 @@
  * é de um site oficial e o trecho citado está mesmo nele). Nada usa a internet, DNS nem IA de verdade.
  */
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import crypto from "crypto";
 import fs from "fs";
 import os from "os";
 import path from "path";
 import { openFontesDb, type FontesDb } from "./helpers/fontesDb";
 import { chunkedStream, fakeWeb, makePdf } from "./helpers/fontesFixtures";
 import { fetchBytes, fetchLink } from "../../server/podcasts/extract";
+import { localStorageDir, type Storage } from "../../server/contentHub/infra";
+import {
+  candidateKey,
+  findQuote,
+  FINDING_SCHEMA,
+  foldForQuote,
+  LEVEL_BY_KIND,
+  natureToSourceType,
+  previewText,
+  readFileText,
+  verifyFinding,
+  type Finding,
+  type VerifyContext,
+} from "../../server/contentHub/sources/verify";
+import { validate } from "../../server/contentHub/ai/schema";
 import { downloadOfficial, linkProblem, matchDomain, normalizeLink, OFFICIAL_FETCH, type OfficialDomain } from "../../server/contentHub/sources/officialDomains";
 
 vi.setConfig({ testTimeout: 120_000 });
@@ -217,5 +233,276 @@ describe("Sites e download", () => {
     const page = await fetchLink("https://exemplo.gov.br/p", web, noDns);
     expect(page).toMatchObject({ title: "Página", kind: "html", pages: [{ page: null, text: "Olá mundo" }] });
     expect(web.calls.find((c) => c.url.endsWith("/p"))!.headers["User-Agent"]).toMatch(/^StaziaMed-Podcast\/1\.0/);
+  });
+});
+
+describe("Conferência", () => {
+  const storageDir = path.join(tmp, "storage");
+  const storage = localStorageDir(storageDir);
+  const sql = async (q: string, params: unknown[] = []) => (await t.dev.db.query<any>(q, params)).rows;
+  let seq = 0;
+  /** Texto de PDF de mentira com mais de 100 caracteres, sem acentos (a fonte do PDF de teste não os declara). */
+  // uma linha por frase: texto que passa da margem da página de teste é cortado na leitura
+  const LONG = "Gestantes com pre-eclampsia grave devem receber\nsulfato de magnesio no ataque e na manutencao,\ncom vigilancia da diurese.";
+  const QUOTE = "sulfato de magnesio no ataque e na manutencao";
+
+  async function newSearch(): Promise<string> {
+    const r = await t.db.asUser<any>(t.adminUser, "app_ch_source_search_start", { p_request: { area: "GINECOLOGIA_OBSTETRICIA", theme: `Tema da conferencia ${++seq}` } });
+    return r.searches[0].id;
+  }
+  const finding = (over: Partial<Finding> = {}): Finding => ({
+    titulo: "PCDT sintetico de pre-eclampsia",
+    instituicao: "Ministerio da Saude",
+    link: "https://www.gov.br/saude/pcdt.pdf",
+    data_publicacao: "2025-03-14",
+    natureza: "Protocolo Clinico e Diretrizes Terapeuticas",
+    tipo: "final",
+    nivel_sugerido: "A",
+    motivo: "Documento oficial sobre o tema.",
+    trecho: QUOTE,
+    ...over,
+  });
+  async function ctx(over: Partial<VerifyContext> = {}): Promise<VerifyContext> {
+    return { db: t.db, storage, searchId: await newSearch(), domains, seenUrls: [], fetchImpl: fakeWeb({}), checkHost: noDns, ...over };
+  }
+  const pdfRoute = (pdf: Buffer) => ({ body: pdf, headers: { "content-type": "application/pdf" } });
+
+  it("trecho normalizado: caixa, acentos, espaços e hífen de quebra de linha", () => {
+    const pages = [
+      { page: 1, text: "Outra página sem relação com o trecho procurado." },
+      { page: 2, text: "Gestantes com PRÉ-\neclâmpsia grave  devem" },
+    ];
+    expect(findQuote("gestantes com pre-eclampsia grave devem", pages)).toEqual({ found: true, page: 2 });
+    expect(foldForQuote("  Pré-eclâmpsia\u00A0GRAVE ")).toBe("preeclampsia grave");
+  });
+
+  it("trecho com tipografia de PDF continua conferido", () => {
+    const pages = [{ page: 1, text: "Cabeçalho do documento.\nA con\uFB01rmação “laboratorial”\u00A0– em até 48 h depois da coleta." }];
+    expect(findQuote('A confirmação "laboratorial" - em até 48 h', pages)).toEqual({ found: true, page: 1 });
+    // palavra com hífen de quebra de linha ('-', hífen U+2010 e hífen suave) e trecho que atravessa a quebra de página
+    expect(findQuote("anti-hipertensivo oral de primeira linha", [{ page: 3, text: "usa-se anti\u2010\nhipertensivo oral de pri\u00ADmeira linha" }])).toEqual({ found: true, page: 3 });
+    expect(findQuote("termina na pagina um e segue na dois", [{ page: 1, text: "Este trecho termina na pagina um" }, { page: 2, text: "e segue na dois." }])).toEqual({ found: true, page: 1 });
+  });
+
+  it("trecho curto ou ausente é recusado; página web devolve página nula", () => {
+    const pages = [{ page: 1, text: "Texto qualquer do documento oficial." }];
+    expect(findQuote("", pages)).toEqual({ found: false, page: null });
+    expect(findQuote("   ", pages)).toEqual({ found: false, page: null });
+    expect(findQuote("trecho que não existe neste documento", pages)).toEqual({ found: false, page: null });
+    expect(findQuote("documento oficial", [{ page: null, text: "Texto da página: documento oficial." }])).toEqual({ found: true, page: null });
+  });
+
+  it("título e data do arquivo", async () => {
+    const pdf = makePdf(["Primeira linha da pagina um.\n" + LONG], { title: "PCDT Sintético", creationDate: "D:20250314" });
+    expect(await readFileText("pdf", pdf)).toMatchObject({ title: "PCDT Sintético", date: "2025-03-14", pages: [{ page: 1 }] });
+    // sem metadados: a primeira linha da primeira página; data só com ano
+    const bare = await readFileText("pdf", makePdf(["Titulo na primeira linha\n" + LONG]));
+    expect(bare).toMatchObject({ title: "Titulo na primeira linha", date: null });
+    expect((await readFileText("pdf", makePdf([LONG], { creationDate: "D:2024" }))).date).toBe("2024");
+    expect((await readFileText("pdf", makePdf([LONG], { creationDate: "D:20251345" }))).date).toBeNull();
+
+    const html = `<html><head><title>Diretriz &amp; Cia</title><meta property="article:published_time" content="2024-11-02T10:00:00Z"></head><body><nav>Menu</nav><p>${LONG}</p></body></html>`;
+    expect(await readFileText("html", Buffer.from(html))).toMatchObject({ title: "Diretriz & Cia", date: "2024-11-02", pages: [{ page: null, text: expect.stringContaining("sulfato de magnesio") }] });
+    // sem <title>: o primeiro <h1>; outras datas aceitas, na ordem de prioridade
+    const h1 = `<html><head><meta name="DC.date" content="2023/05/09"><meta name="date" content="2020-01-01"></head><body><h1>Título <b>da página</b></h1><p>${LONG}</p></body></html>`;
+    expect(await readFileText("html", Buffer.from(h1))).toMatchObject({ title: "Título da página", date: "2023-05-09" });
+    // página antiga em Latin-1 com o charset declarado
+    const latin = Buffer.concat([Buffer.from('<html><head><meta charset="iso-8859-1"><title>', "latin1"), Buffer.from("Proteção", "latin1"), Buffer.from("</title></head><body>x</body></html>", "latin1")]);
+    expect((await readFileText("html", latin)).title).toBe("Proteção");
+  });
+
+  it("apoio: natureza, chave do arquivo, prévia e esquema", () => {
+    expect(natureToSourceType("Protocolo Clínico e Diretrizes Terapêuticas")).toBe("PCDT");
+    expect(natureToSourceType("PCDT")).toBe("PCDT");
+    expect(natureToSourceType("Diretriz brasileira")).toBe("GUIDELINE");
+    expect(natureToSourceType("Clinical Guideline")).toBe("GUIDELINE");
+    expect(natureToSourceType("Manual técnico")).toBe("MANUAL");
+    expect(natureToSourceType("Consenso de especialistas")).toBe("CONSENSUS");
+    expect(natureToSourceType("Portaria ministerial")).toBe("LAW");
+    expect(natureToSourceType("Nota informativa")).toBe("DOCUMENT");
+    expect(natureToSourceType("")).toBe("DOCUMENT");
+    expect(candidateKey("a".repeat(64), "pdf")).toBe(`source-candidates/${"a".repeat(64)}.pdf`);
+    expect(candidateKey("b".repeat(64), "html")).toBe(`source-candidates/${"b".repeat(64)}.html`);
+    expect(LEVEL_BY_KIND).toEqual({ governo: "A", sociedade: "B", internacional: "C" });
+    const pages = [1, 2, 3, 4].map((n) => ({ page: n, text: `P${n} ` + "x".repeat(2500) }));
+    expect(previewText(pages)).toHaveLength(6000);
+    expect(previewText(pages)).toContain("P3 ");
+    expect(previewText(pages)).not.toContain("P4 ");
+    // esquema: nível E nunca entra, tipo fora da lista, trecho curto, campo a mais
+    expect(validate(FINDING_SCHEMA, finding())).toEqual([]);
+    expect(validate(FINDING_SCHEMA, finding({ data_publicacao: null }))).toEqual([]);
+    expect(validate(FINDING_SCHEMA, { ...finding(), nivel_sugerido: "E" })).not.toEqual([]);
+    expect(validate(FINDING_SCHEMA, { ...finding(), tipo: "outro" })).not.toEqual([]);
+    expect(validate(FINDING_SCHEMA, { ...finding(), trecho: "curto" })).not.toEqual([]);
+    expect(validate(FINDING_SCHEMA, { ...finding(), extra: 1 })).not.toEqual([]);
+  });
+
+  it("achado bom vira candidato aguardando com arquivo guardado", async () => {
+    const pdf = makePdf([LONG, "Segunda pagina com outro assunto."], { title: "PCDT Sintetico", creationDate: "D:20250314" });
+    const web = fakeWeb({ "https://www.gov.br/saude/pcdt.pdf": pdfRoute(pdf) });
+    const c = await ctx({ fetchImpl: web, seenUrls: ["https://WWW.gov.br/saude/pcdt.pdf?utm_source=busca#x"] });
+    const out = await verifyFinding(finding(), c);
+    expect(out.ok).toBe(true);
+    const sha = crypto.createHash("sha256").update(pdf).digest("hex");
+    const [row] = await sql(`select * from public.ch_source_candidates where id = $1`, [(out as { candidateId: string }).candidateId]);
+    expect(row).toMatchObject({
+      status: "aguardando",
+      search_id: c.searchId,
+      domain_id: byAddress("gov.br/saude").id,
+      site_address: "gov.br/saude",
+      site_kind: "governo",
+      requested_url: "https://www.gov.br/saude/pcdt.pdf",
+      final_url: "https://www.gov.br/saude/pcdt.pdf",
+      ai_title: "PCDT sintetico de pre-eclampsia",
+      ai_published: "2025-03-14",
+      ai_kind: "final",
+      ai_level: "A",
+      file_title: "PCDT Sintetico",
+      file_date: "2025-03-14",
+      quote: QUOTE,
+      quote_page: 1,
+      seen_in_search: true,
+      file_kind: "pdf",
+      sha256: sha,
+      size_bytes: pdf.length,
+      page_count: 2,
+      storage_path: `source-candidates/${sha}.pdf`,
+      suggested_level: "A",
+      suggested_kind: "final",
+      suggested_nature: "PCDT",
+    });
+    expect(row.preview.length).toBeGreaterThan(50);
+    expect(row.preview.length).toBeLessThanOrEqual(6000);
+    expect(row.preview).toContain("sulfato de magnesio");
+    expect(await storage.exists(`source-candidates/${sha}.pdf`)).toBe(true);
+    expect((await storage.get(`source-candidates/${sha}.pdf`)).equals(pdf)).toBe(true);
+    // a segunda tentativa do mesmo achado é repetida
+    expect(await verifyFinding(finding(), await ctx({ fetchImpl: web }))).toEqual({ ok: false, motivo: "Repetido: candidato aguardando sua conferência." });
+  });
+
+  it("achado de página web e de site internacional: página nula, nível do tipo de site, link visto só pelo link final", async () => {
+    const html = `<html><head><title>Guia da OMS</title></head><body><p>${LONG}</p></body></html>`;
+    const web = fakeWeb({
+      "https://www.who.int/pt/guia": { status: 302, headers: { location: "https://www.who.int/pt/guia-final" } },
+      "https://www.who.int/pt/guia-final": { body: html, headers: { "content-type": "text/html; charset=utf-8" } },
+    });
+    const c = await ctx({ fetchImpl: web, seenUrls: ["https://www.who.int/pt/guia-final"] });
+    const out = await verifyFinding(finding({ link: "https://www.who.int/pt/guia", tipo: "society_guideline", natureza: "Guideline", nivel_sugerido: "B" }), c);
+    expect(out.ok).toBe(true);
+    const [row] = await sql(`select * from public.ch_source_candidates where id = $1`, [(out as { candidateId: string }).candidateId]);
+    expect(row).toMatchObject({
+      file_kind: "html",
+      quote_page: null,
+      page_count: null,
+      file_title: "Guia da OMS",
+      requested_url: "https://www.who.int/pt/guia",
+      final_url: "https://www.who.int/pt/guia-final",
+      seen_in_search: true,
+      site_kind: "internacional",
+      ai_level: "B",
+      suggested_level: "C",
+      suggested_kind: "society_guideline",
+      suggested_nature: "GUIDELINE",
+    });
+    expect(row.storage_path).toMatch(/^source-candidates\/[0-9a-f]{64}\.html$/);
+    // link que a IA não viu na busca: ainda vale (o que prova é o trecho), mas fica marcado
+    const unseen = await verifyFinding(
+      finding({ link: "https://www.who.int/pt/outro" }),
+      await ctx({ fetchImpl: fakeWeb({ "https://www.who.int/pt/outro": { body: html.replace("Guia da OMS", "Outro guia") + "<!-- outro -->", headers: { "content-type": "text/html" } } }), seenUrls: [] }),
+    );
+    expect(unseen.ok).toBe(true);
+    const [row2] = await sql(`select seen_in_search from public.ch_source_candidates where id = $1`, [(unseen as { candidateId: string }).candidateId]);
+    expect(row2.seen_in_search).toBe(false);
+  });
+
+  it("motivos de descarte", async () => {
+    const pdf = makePdf([LONG]);
+    const web = fakeWeb({
+      "https://www.gov.br/saude/ok.pdf": pdfRoute(pdf),
+      "https://www.gov.br/saude/vazio.pdf": pdfRoute(makePdf([""])),
+      "https://www.gov.br/saude/quebrado.pdf": { body: "%PDF-1.4\nlixo sem estrutura nenhuma", headers: { "content-type": "application/pdf" } },
+      "https://www.gov.br/saude/404.pdf": { status: 404 },
+      "https://www.gov.br/saude/vai.pdf": { status: 302, headers: { location: "https://exemplo.com/x.pdf" } },
+    });
+    const c = await ctx({ fetchImpl: web });
+    const descarte = async (item: unknown) => {
+      const r = await verifyFinding(item, c);
+      expect(r.ok).toBe(false);
+      return (r as { motivo: string }).motivo;
+    };
+    const motivo = (over: Partial<Finding>) => descarte(finding(over));
+    expect(await motivo({ titulo: "ab" })).toMatch(/^Fora do formato: \$\.titulo: .*\.$/);
+    expect(await descarte({ titulo: "Só isto" })).toMatch(/^Fora do formato: \$\.instituicao: obrigatório; \$\.link: obrigatório\.$/);
+    expect(await descarte({ ...finding(), nivel_sugerido: "E" })).toMatch(/^Fora do formato: /);
+    expect(await descarte("isto não é um objeto")).toMatch(/^Fora do formato: /);
+    expect((await descarte({ ...finding(), nivel_sugerido: "Z", tipo: "q", motivo: "m".repeat(400) })).split(";")).toHaveLength(2); // até 2 erros, de 3
+    expect(await motivo({ link: "http://www.gov.br/saude/ok.pdf" })).toBe("Link sem https.");
+    expect(await motivo({ link: "https://www.gov.br:8443/saude/ok.pdf" })).toBe("Porta diferente de 443.");
+    expect(await motivo({ link: "https://u:s@www.gov.br/saude/ok.pdf" })).toBe("Link com usuário ou senha.");
+    expect(await motivo({ link: "https://exemplo.com/x.pdf" })).toBe("Site fora da lista de sites oficiais.");
+    expect(await motivo({ link: "https://gov.br/saudemental/x.pdf" })).toBe("Site fora da lista de sites oficiais.");
+    expect(await motivo({ link: "https://www.gov.br/saude/vai.pdf" })).toBe("Download: Redirecionamento para fora da lista de sites oficiais.");
+    expect(await motivo({ link: "https://www.gov.br/saude/404.pdf" })).toBe("Download: O link respondeu 404.");
+    expect(await motivo({ link: "https://www.gov.br/saude/vazio.pdf" })).toMatch(/^Sem texto/);
+    expect(await motivo({ link: "https://www.gov.br/saude/quebrado.pdf" })).toBe("Arquivo PDF ilegível.");
+    expect(await motivo({ link: "https://www.gov.br/saude/ok.pdf", trecho: "este trecho a IA inventou e não está no documento" })).toBe("O trecho citado pela IA não está no arquivo.");
+    // trecho com 20 caracteres, mas curto demais depois de dobrado (Ruling F9)
+    expect(await motivo({ link: "https://www.gov.br/saude/ok.pdf", trecho: "Sulfato de magnesio!" })).toBe("Trecho curto demais para conferir.");
+    expect(web.calls.filter((x) => x.url.endsWith("/ok.pdf")).length).toBe(1); // o curto nem foi baixado
+  });
+
+  it("repetido pelo link (segunda vez) e pelo arquivo (outro link)", async () => {
+    const pdf = makePdf([LONG + "\nTexto exclusivo desta copia para o teste de repetidos."]);
+    const web = fakeWeb({
+      "https://www.gov.br/saude/copia-a.pdf": pdfRoute(pdf),
+      "https://bvsms.saude.gov.br/bvs/copia-b.pdf": pdfRoute(pdf),
+    });
+    const c = await ctx({ fetchImpl: web });
+    expect((await verifyFinding(finding({ link: "https://www.gov.br/saude/copia-a.pdf" }), c)).ok).toBe(true);
+    const again = await verifyFinding(finding({ link: "https://www.gov.br/saude/copia-a.pdf?utm_source=x" }), c);
+    expect(again).toEqual({ ok: false, motivo: "Repetido: candidato aguardando sua conferência." });
+    expect(web.calls.filter((x) => x.url.includes("copia-a")).length).toBe(1);
+    // o mesmo arquivo por outro link (espelho): baixa, vê que o SHA-256 já existe e descarta
+    const mirror = await verifyFinding(finding({ link: "https://bvsms.saude.gov.br/bvs/copia-b.pdf" }), c);
+    expect(mirror).toEqual({ ok: false, motivo: "Repetido: candidato aguardando sua conferência." });
+    expect(web.calls.filter((x) => x.url.includes("copia-b")).length).toBe(1);
+    const count = (await sql(`select count(*)::int as n from public.ch_source_candidates where sha256 = $1`, [crypto.createHash("sha256").update(pdf).digest("hex")]))[0].n;
+    expect(count).toBe(1);
+    // fonte já cadastrada pelo link
+    await t.db.asUser(t.adminUser, "app_ch_register_source", { p_source: { title: "Manual já cadastrado", organ: "Ministério da Saúde", url: "https://www.gov.br/saude/cadastrada.pdf" } });
+    expect(await verifyFinding(finding({ link: "https://www.gov.br/saude/cadastrada.pdf" }), c)).toEqual({ ok: false, motivo: "Repetido: fonte já cadastrada." });
+  });
+
+  it("data inválida da IA vira nula e não descarta", async () => {
+    const dates: [string | null, string | null][] = [
+      ["14/03/2025", null],
+      ["2025-13-45", null],
+      ["março de 2025", null],
+      ["2025-03-14T10:00:00Z", null],
+      ["2025", "2025"],
+      ["2025-03-14", "2025-03-14"],
+      [null, null],
+    ];
+    let n = 0;
+    for (const [given, saved] of dates) {
+      const pdf = makePdf([LONG + `\nVariante numero ${++n} do arquivo de teste de datas.`]);
+      const link = `https://www.gov.br/saude/data-${n}.pdf`;
+      const out = await verifyFinding(finding({ link, data_publicacao: given }), await ctx({ fetchImpl: fakeWeb({ [link]: pdfRoute(pdf) }) }));
+      expect(out.ok, String(given)).toBe(true);
+      const [row] = await sql(`select ai_published from public.ch_source_candidates where id = $1`, [(out as { candidateId: string }).candidateId]);
+      expect(row.ai_published, String(given)).toBe(saved);
+    }
+  });
+
+  it("erro de armazenamento sobe para a fila e não vira descarte nem candidato", async () => {
+    const pdf = makePdf([LONG + "\nArquivo do teste de falha de armazenamento."]);
+    const link = "https://www.gov.br/saude/falha-armazenamento.pdf";
+    const broken: Storage = { ...storage, put: async () => Promise.reject(new Error("depósito fora do ar")) };
+    const c = await ctx({ storage: broken, fetchImpl: fakeWeb({ [link]: pdfRoute(pdf) }) });
+    await expect(verifyFinding(finding({ link }), c)).rejects.toThrow("depósito fora do ar");
+    expect(await sql(`select 1 from public.ch_source_candidates where requested_url = $1`, [link])).toHaveLength(0);
+    // a nova rodada, com o depósito de volta, termina sem repetir nada
+    const ok = await verifyFinding(finding({ link }), { ...c, storage });
+    expect(ok.ok).toBe(true);
   });
 });
