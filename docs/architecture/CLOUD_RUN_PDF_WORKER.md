@@ -91,18 +91,33 @@ Primeira execução (2026-10-06 22h35):
 
 Esta parte só descreve o passo a passo para o dono; nada foi executado. A ordem importa:
 
-1. **SQL primeiro.** No Supabase, colar `supabase/migrations/20261003009540_reconferir_insuficientes.sql`, depois de tudo que já está
-   publicado (a última é a 8300). Pode ser colada duas vezes sem erro. O código novo funciona sem ela (a etapa só anota "falta aplicar
-   a migração 9540" no registro do trabalho), mas as funções novas só existem depois dela. O código antigo continua funcionando com
-   ela colada.
-2. **Imagem nova do Cloud Run, só pelo caminho curto (montar a imagem e trocar só a imagem da tarefa):**
-   - montar: `gcloud --project=staziamed-revalida-prod builds submit --region=southamerica-east1 --config=cloudrun/pdf-worker/cloudbuild.yaml --substitutions=_IMAGE=southamerica-east1-docker.pkg.dev/staziamed-revalida-prod/stazia/pdf-worker:<commit curto> --service-account=projects/staziamed-revalida-prod/serviceAccounts/stazia-pdf-builder@staziamed-revalida-prod.iam.gserviceaccount.com --gcs-source-staging-dir=gs://staziamed-revalida-prod-stazia-build/source .`
-   - trocar: `gcloud --project=staziamed-revalida-prod run jobs update stazia-pdf-worker --region=southamerica-east1 --image=<a mesma imagem>`
+1. **SQL primeiro (antes de qualquer coisa do Google).** No Supabase, colar `supabase/migrations/20261003009540_reconferir_insuficientes.sql`,
+   depois de tudo que já está publicado (a última é a 8300). Pode ser colada duas vezes sem erro. O código antigo continua funcionando com
+   ela colada; o código novo sem ela só anota "falta aplicar a migração 9540" no registro do trabalho.
+2. **Montar a imagem a partir de uma cópia limpa do commit publicado.** O `builds submit` monta a pasta onde o comando roda. Nunca
+   monte da pasta principal "StaziaMed Revalida" (o `main` local dela é resto antigo). Use uma pasta nova só com o commit publicado,
+   por exemplo (na pasta de trabalho do ramo, ou depois do commit estar no GitHub):
+   - `git worktree add ../montagem-<sha> <sha>` e entre nela; ou `mkdir ../montagem-<sha> && git archive <sha> | tar -x -C ../montagem-<sha>` e entre nela.
+   - dentro dessa pasta: `gcloud --project=staziamed-revalida-prod builds submit --region=southamerica-east1 --config=cloudrun/pdf-worker/cloudbuild.yaml --substitutions=_IMAGE=southamerica-east1-docker.pkg.dev/staziamed-revalida-prod/stazia/pdf-worker:<sha> --service-account=projects/staziamed-revalida-prod/serviceAccounts/stazia-pdf-builder@staziamed-revalida-prod.iam.gserviceaccount.com --gcs-source-staging-dir=gs://staziamed-revalida-prod-stazia-build/source .`
+   - `<sha>` é o commit curto publicado (a etiqueta da imagem é `pdf-worker:<sha>`).
+3. **Nenhuma execução antiga pode estar rodando na hora da troca.** Execuções que já começaram seguem com a imagem ANTIGA por até ~60
+   minutos. Uma execução antiga pode pegar um trabalho de conferência (`evidence`) que o código novo marcou como reconferência
+   automática (`auto_recheck`), que o código antigo não conhece: ela pode pôr um documento já pronto de volta em verificação e perder
+   apontamentos da revisão por IA. Por isso, antes de trocar a imagem, uma destas duas formas:
+   - **Esperar acabar:** `gcloud run jobs executions list --job=stazia-pdf-worker --region=southamerica-east1 --project=staziamed-revalida-prod`
+     e conferir que todas estão concluídas (nenhuma "Running"); o mesmo com filtro: `... --filter="status.runningCount>0"` tem de vir vazio.
+     O agendador dispara a cada 10 minutos, então confira de novo logo antes da troca; ou
+   - **Pausar o agendador durante a troca:** `gcloud scheduler jobs pause stazia-pdf-worker-agenda --location=southamerica-east1 --project=staziamed-revalida-prod`,
+     esperar a execução em andamento terminar (comando acima), trocar a imagem (passo 4) e religar com
+     `gcloud scheduler jobs resume stazia-pdf-worker-agenda --location=southamerica-east1 --project=staziamed-revalida-prod`.
+     Não esqueça de religar.
+4. **Trocar só a imagem da tarefa:** `gcloud --project=staziamed-revalida-prod run jobs update stazia-pdf-worker --region=southamerica-east1 --image=southamerica-east1-docker.pkg.dev/staziamed-revalida-prod/stazia/pdf-worker:<sha>`
    - **Nunca** rodar `scripts/cloudrun/deploy-pdf-worker.sh` para isso: ele usa `run jobs deploy` com `--set-env-vars` e `--set-secrets`, que
      trocam a lista inteira de variáveis e segredos da tarefa (e podem derrubar a busca por significado pelo Vertex e a chave da OpenAI
      que já estão ligadas). Com `jobs update --image`, as variáveis e os segredos ficam como estão.
-3. **Chave da OpenAI, uma vez só:** no Terminal, `bash "/Volumes/StaziaMed/STAZIAMED REVALIDA/StaziaMed Revalida/scripts/cloudrun/gravar-chave-openai.sh"`.
-   Ele lê a chave do `.env` sem mostrá-la, grava no Secret Manager (`stazia-openai-api-key`) e liga o segredo à tarefa com
+5. **Chave da OpenAI, uma vez só:** no Terminal, `bash "/Volumes/StaziaMed/STAZIAMED REVALIDA/StaziaMed Revalida/scripts/cloudrun/gravar-chave-openai.sh"`.
+   Ele confere que a tarefa existe, mostra o resumo (projeto, tarefa, segredo, tamanho da chave; nunca a chave) e só grava se você digitar
+   `sim`. Lê a chave do `.env` sem mostrá-la, grava no Secret Manager (`stazia-openai-api-key`) e liga o segredo à tarefa com
    `--update-secrets` (só a `OPENAI_API_KEY` muda). Vale a partir da próxima execução (a cada 10 minutos). Pode ser repetido sem dano.
    Precisa do `gcloud` com login feito. Não copie o script para outra pasta.
 
