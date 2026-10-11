@@ -9,6 +9,17 @@ import { StaziaVoiceOrb, orbEmotion } from "../tutor/voice/StaziaVoiceOrb.jsx";
 import { unlockAudio } from "../tutor/voice/audioUnlock.js";
 import "./officialVoices.css";
 
+/** O detalhe técnico do aviso (nome da variável do servidor etc.) fica escondido: quem só ouve e aprova não precisa dele. */
+function TechnicalDetail({ text }) {
+  if (!text) return null;
+  return (
+    <details className="official-voices__detail">
+      <summary>Detalhe técnico (para quem configura o servidor)</summary>
+      <p>{text}</p>
+    </details>
+  );
+}
+
 export function OfficialVoicesPanel({ endpoint = "/api/tutor/voices" }) {
   const { backend } = useSession();
   const [status, setStatus] = React.useState(null);
@@ -121,10 +132,11 @@ export function OfficialVoicesPanel({ endpoint = "/api/tutor/voices" }) {
         {approver ? "Você está na lista de aprovação." : "Só quem está na lista de aprovação do servidor aprova ou revoga. Você pode ouvir."} As audições consomem créditos da ElevenLabs.
       </p>
       {status?.pending && <p>{status.pending}</p>}
+      <TechnicalDetail text={status?.pending ? status.detail : null} />
       <div className="official-voices__rows">
         {Object.entries(OFFICIAL_VOICES).map(([id, voice]) => {
           const row = status?.rows?.find((item) => item.id === id);
-          const label = row?.approved ? "Aprovada" : row?.configured ? "Aguardando audição e aprovação" : "Voice ID pendente";
+          const label = row?.approved ? "Aprovada" : row?.configured ? "Aguardando audição e aprovação" : "Voz ainda não cadastrada";
           return (
             <div className="official-voices__row" role="group" aria-label={`Voz ${voice.label}`} key={id}>
               <div className="official-voices__who">
@@ -132,6 +144,7 @@ export function OfficialVoicesPanel({ endpoint = "/api/tutor/voices" }) {
                 <p>{voice.description}</p>
                 <Badge tone={row?.approved ? "success" : row?.configured ? "warning" : "neutral"} size="sm">{label}</Badge>
                 {row?.pending && row.pending !== status?.pending && <p>{row.pending}</p>}
+                {row?.pending && row.pending !== status?.pending && <TechnicalDetail text={row.detail} />}
               </div>
               <div className="official-voices__scenarios">
                 {(row?.scenarios ?? []).map((sc) => (

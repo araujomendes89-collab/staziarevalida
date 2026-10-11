@@ -52,6 +52,8 @@ export interface SpeechStatus {
   provider: string;
   model: string | null;
   pending: string | null;
+  /** Detalhe técnico do aviso (nome da variável do servidor): só para o registro do servidor, nunca para a tela do aluno. */
+  detail?: string | null;
 }
 
 /** Fala em português leva uns 900 caracteres por minuto: é a base da estimativa de custo (o serviço cobra pelo áudio gerado). */
@@ -205,7 +207,8 @@ export function speechProviderFor(deps: TutorDeps): { provider: SpeechProvider |
   }
   const r = elevenLabsReadiness(deps.elevenEnv ?? process.env);
   const ready = !r.pending && r.rows.some((row) => row.ready);
-  const status: SpeechStatus = { ready, provider: "elevenlabs", model: r.model, pending: ready ? null : r.pending ?? r.rows.find((row) => row.pending)?.pending ?? "Voz oficial não configurada." };
+  const status: SpeechStatus = { ready, provider: "elevenlabs", model: r.model, pending: ready ? null : r.pending ?? r.rows.find((row) => row.pending)?.pending ?? "Voz oficial não configurada.",
+    detail: ready ? null : r.pending ? r.detail : r.rows.find((row) => row.pending)?.detail ?? null };
   return { provider: ready ? elevenSynth(deps) : null, status };
 }
 
@@ -217,7 +220,7 @@ export function speechProviderFor(deps: TutorDeps): { provider: SpeechProvider |
 export async function tutorSpeech(deps: TutorDeps, userId: string, req: SpeechRequest): Promise<SpeechAudio & { cached: boolean }> {
   const { provider, status } = speechProviderFor(deps);
   if (!provider) {
-    deps.log?.(`[tutor] voz natural indisponível: ${status.pending}`);
+    deps.log?.(`[tutor] voz natural indisponível: ${status.pending}${status.detail ? ` (${status.detail})` : ""}`);
     throw new TutorError("A voz natural não está ligada no servidor.", 503);
   }
   const src = await deps.db.service<SpeechSource>("ch_worker_tutor_speech", {
