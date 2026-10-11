@@ -3,7 +3,7 @@ import React from "react";
 import { Badge, Banner, Button, Card, EmptyState, SelectField, StatCard, Switch, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
-import { dateTimeBR, LoadError, Loading, messageOf, PLAN_LABEL, ROLE_LABEL, SUB_STATUS_LABEL, TextArea, useLoad } from "./common.jsx";
+import { dateTimeBR, LoadError, Loading, messageOf, PLAN_LABEL, ROLE_LABEL, SUB_STATUS_LABEL, TextArea, useDebounced, useLoad } from "./common.jsx";
 import { auditActor, auditLabel, auditSummary } from "./auditLog.js";
 
 // ---------------------------------------------------------------- visão geral
@@ -727,27 +727,79 @@ export function AdminTutor() {
 
 // ---------------------------------------------------------------- registro
 // Nome de cada ação, resumo e quem fez: auditLog.js (em português, sem códigos internos).
+const AUDIT_PAGE = 50;
+const NO_FILTERS = { action: "", person: "", from: "", to: "" };
+
 export function AdminAudit() {
   const { backend } = useSession();
-  const { data, error, reload } = useLoad(() => backend.rpc("app_admin_audit", { p_limit: 200 }), [backend]);
-  if (error) return <LoadError error={error} retry={reload} />;
+  const mobile = useMobile();
+  const [filters, setFilters] = React.useState(NO_FILTERS);
+  const [page, setPage] = React.useState(0);
+  const person = useDebounced(filters.person.trim());
+  const set = (patch) => (setFilters((f) => ({ ...f, ...patch })), setPage(0));
+  const filtering = Boolean(filters.action || filters.person.trim() || filters.from || filters.to);
+  const { data, error, loading, reload } = useLoad(
+    () => backend.rpc("app_admin_audit_page", { p_filters: { action: filters.action, person, from: filters.from, to: filters.to }, p_limit: AUDIT_PAGE, p_offset: page * AUDIT_PAGE }),
+    [backend, filters.action, person, filters.from, filters.to, page]
+  );
+  if (error && !data) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
-  if (data.length === 0) return <EmptyState icon="history" title="Nenhuma ação registrada" description="Toda alteração feita na administração aparece aqui, com quem fez e quando." />;
+  const pages = Math.max(1, Math.ceil(data.total / AUDIT_PAGE));
+  // tipos de ação que existem, com o nome em português (o escolhido continua na lista mesmo se não houver mais nenhum)
+  const types = [...new Set([...(data.actions ?? []), ...(filters.action ? [filters.action] : [])])]
+    .map((action) => ({ value: action, label: auditLabel({ action, details: {} }) }))
+    .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+  if (!filtering && data.total === 0) return <EmptyState icon="history" title="Nenhuma ação registrada" description="Toda alteração feita na administração aparece aqui, com quem fez e quando." />;
+  const first = page * AUDIT_PAGE + 1;
+  const last = page * AUDIT_PAGE + data.items.length;
   return (
-    <Card padding={8}>
-      {data.map((entry, index) => (
-        <div key={entry.id} style={{ display: "flex", gap: 12, padding: "12px 16px", borderTop: index ? "1px solid var(--border-subtle)" : 0, flexWrap: "wrap" }}>
-          <div style={{ flex: "1 1 260px", minWidth: 0 }}>
-            <div style={{ font: "600 14px var(--font-sans)" }}>{auditLabel(entry)}</div>
-            <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", overflowWrap: "anywhere" }}>{auditSummary(entry)}</div>
-          </div>
-          <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", textAlign: "right" }}>
-            {dateTimeBR(entry.created_at)}
-            <br />
-            {auditActor(entry)}
-          </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card>
+        <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "minmax(0,1.4fr) minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr)", gap: 12, alignItems: "end" }}>
+          <SelectField label="Tipo de ação" value={filters.action} onChange={(e) => set({ action: e.target.value })} options={[{ value: "", label: "Todos os tipos" }, ...types]} />
+          <TextField label="Pessoa" icon="search" placeholder="E-mail de quem fez ou de quem foi afetado" value={filters.person} onChange={(e) => set({ person: e.target.value })} />
+          <TextField label="De" type="date" value={filters.from} max={filters.to || undefined} onChange={(e) => set({ from: e.target.value })} />
+          <TextField label="Até" type="date" value={filters.to} min={filters.from || undefined} onChange={(e) => set({ to: e.target.value })} />
         </div>
-      ))}
-    </Card>
+        {filtering && (
+          <div style={{ marginTop: 12 }}>
+            <Button variant="ghost" size="sm" icon="x" onClick={() => (setFilters(NO_FILTERS), setPage(0))}>Limpar filtros</Button>
+          </div>
+        )}
+      </Card>
+      {error && <LoadError error={error} retry={reload} />}
+      {data.items.length > 0 && (
+        <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }} aria-live="polite">
+          {`Mostrando ${first} a ${last} de ${data.total} ${data.total === 1 ? "ação" : "ações"}`}
+          {filtering ? " com esses filtros" : ""}
+        </div>
+      )}
+      {data.items.length === 0 ? (
+        <EmptyState icon="search" title="Nenhuma ação com esses filtros" description="Ajuste o tipo, a pessoa ou as datas." />
+      ) : (
+        <Card padding={8} role="list" aria-label="Ações registradas">
+          {data.items.map((entry, index) => (
+            <div key={entry.key ?? entry.id} role="listitem" style={{ display: "flex", gap: 12, padding: "12px 16px", borderTop: index ? "1px solid var(--border-subtle)" : 0, flexWrap: "wrap" }}>
+              <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+                <div style={{ font: "600 14px var(--font-sans)" }}>{auditLabel(entry)}</div>
+                <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", overflowWrap: "anywhere" }}>{auditSummary(entry)}</div>
+              </div>
+              <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", textAlign: "right" }}>
+                {dateTimeBR(entry.created_at)}
+                <br />
+                {auditActor(entry)}
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+      {pages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <Button variant="secondary" size="sm" icon="chevron-left" disabled={page === 0 || loading} onClick={() => setPage((n) => Math.max(0, n - 1))}>Anterior</Button>
+          <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Página {page + 1} de {pages}</span>
+          <Button variant="secondary" size="sm" iconRight="chevron-right" disabled={page >= pages - 1 || loading} onClick={() => setPage((n) => n + 1)}>Próxima</Button>
+        </div>
+      )}
+    </div>
   );
 }

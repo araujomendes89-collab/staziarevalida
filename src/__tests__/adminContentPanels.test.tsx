@@ -8,10 +8,11 @@
  * linhas sem a marca "automatica". As ações novas das Questões aparecem em português, com a questão (polimento 10/10/2026).
  * RG03 (11/10/2026): aulas, podcasts, Stazia Arena, Tutor e Central de IAs aparecem com nome e resumo em português (o
  * título da aula ou do episódio vem do banco), sem código técnico. RG02: papel e plano alterados dizem de quem foi.
+ * RG05: o Registro tem páginas de 50 ações e filtros por tipo, pessoa e data (app_admin_audit_page).
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 const backend: any = { rpc: vi.fn(), accessToken: async () => "t" };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot: { role: "admin", profile: { name: "Adm" } }, user: { id: "a" } }) }));
@@ -34,6 +35,8 @@ const PUBLISHED = {
   review_status: "approved", reviewed: true, reviewer: "Dra. Revisora", reviewed_at: "2026-10-06T12:00:00Z", review_note: "Conferido no documento.",
   source_checked_at: "2026-10-06T12:00:00Z", published: true,
 };
+// Uma página do Registro como o banco devolve (app_admin_audit_page, migração 9512).
+const auditPage = (items: any[], extra: Record<string, unknown> = {}) => ({ total: items.length, limit: 50, offset: 0, actions: [...new Set(items.map((i) => i.action))], items, ...extra });
 const OFF_AIR_NOTE = "Conteúdo alterado depois da conferência: revisar de novo. Saiu do ar para os alunos até a nova conferência; depois dela, o administrador publica outra vez.";
 
 beforeEach(() => {
@@ -224,7 +227,7 @@ describe("Registro (Administração)", () => {
 
   it("atualizações: tema e motivo em português; a retirada da regra nova aparece como automática (com ou sem a marca), não como conta excluída", async () => {
     backend.rpc.mockImplementation(async (fn: string) => {
-      if (fn === "app_admin_audit") return [
+      if (fn === "app_admin_audit_page") return auditPage([
         // gravada por uma versão anterior do SQL da 7800 (sem a marca "automatica"), como pode estar no banco do site
         { id: 6, action: "guideline_update.unpublish", target: ID, created_at: at, actor: null,
           details: { topic: "Rastreamento com DNA-HPV", review_status: "pending", motivo: AUTO } },
@@ -235,21 +238,22 @@ describe("Registro (Administração)", () => {
         { id: 3, action: "guideline_update.publish", target: ID, created_at: at, actor: "adm@t.dev", details: { topic: "Pré-eclâmpsia", review_status: "approved" } },
         { id: 2, action: "guideline_update.delete", target: ID, created_at: at, actor: "adm@t.dev", details: { topic: "Atualização de teste" } },
         { id: 1, action: "user.delete", target: "x", created_at: at, actor: null, details: { email: "antigo@t.dev" } },
-      ];
+      ]);
       throw new Error(`rpc não simulada: ${fn}`);
     });
     const { container } = render(<AdminAudit />);
-    expect((await screen.findAllByText("Retirada automática pela regra nova")).length).toBe(2);
-    expect(screen.getByText("Tema: Rastreamento com DNA-HPV · Motivo: estava publicada sem conferência médica aprovada; pela regra nova, só fica no ar o que um revisor médico conferiu")).toBeTruthy();
-    expect(screen.getByText("Tema: Hipertensão arterial · Motivo: estava publicada sem conferência médica aprovada; pela regra nova, só fica no ar o que um revisor médico conferiu")).toBeTruthy();
-    expect(screen.getAllByText("Atualização tirada do ar").length).toBe(1);
-    expect(screen.getByText("Tema: Pré-eclâmpsia · Motivo: recusada na conferência médica · Nota do revisor: Conduta não confere com a versão vigente.")).toBeTruthy();
-    expect(screen.getByText("Atualização publicada")).toBeTruthy();
-    expect(screen.getByText("Tema: Pré-eclâmpsia · Conferência médica aprovada")).toBeTruthy();
-    expect(screen.getByText("Atualização apagada")).toBeTruthy();
+    const list = within(await screen.findByRole("list", { name: "Ações registradas" }));
+    expect((await list.findAllByText("Retirada automática pela regra nova")).length).toBe(2);
+    expect(list.getByText("Tema: Rastreamento com DNA-HPV · Motivo: estava publicada sem conferência médica aprovada; pela regra nova, só fica no ar o que um revisor médico conferiu")).toBeTruthy();
+    expect(list.getByText("Tema: Hipertensão arterial · Motivo: estava publicada sem conferência médica aprovada; pela regra nova, só fica no ar o que um revisor médico conferiu")).toBeTruthy();
+    expect(list.getAllByText("Atualização tirada do ar").length).toBe(1);
+    expect(list.getByText("Tema: Pré-eclâmpsia · Motivo: recusada na conferência médica · Nota do revisor: Conduta não confere com a versão vigente.")).toBeTruthy();
+    expect(list.getByText("Atualização publicada")).toBeTruthy();
+    expect(list.getByText("Tema: Pré-eclâmpsia · Conferência médica aprovada")).toBeTruthy();
+    expect(list.getByText("Atualização apagada")).toBeTruthy();
     // sem autor: as duas da regra nova são "automático"; a de uma conta apagada continua "conta excluída"
-    expect(screen.getAllByText(/automático/).length).toBe(2);
-    expect(screen.getAllByText(/conta excluída/).length).toBe(1);
+    expect(list.getAllByText(/automático/).length).toBe(2);
+    expect(list.getAllByText(/conta excluída/).length).toBe(1);
     // nenhum código interno na tela
     expect(container.textContent).not.toMatch(/guideline_update|automatica|review_status|pending|approved|correção de 10\/10\/2026/);
     expect(container.textContent).not.toContain(ID);
@@ -257,19 +261,20 @@ describe("Registro (Administração)", () => {
 
   it("questões: gabarito oficial e explicações revisadas aparecem em português, com a prova e o número, sem código", async () => {
     backend.rpc.mockImplementation(async (fn: string) => {
-      if (fn === "app_admin_audit") return [
+      if (fn === "app_admin_audit_page") return auditPage([
         { id: 2, action: "question.explanations_reviewed", target: "revalida_2025_1_q045", created_at: at, actor: "ed@t.dev",
           details: { review: { de: "C", para: "B", campos: ["expected_conduct", "explanation_B", "explanation_C"], desde: at, por: ID, motivo: "Recurso aceito", fonte: "INEP" } } },
         { id: 1, action: "question.official_answer", target: "revalida_2025_1_q045", created_at: at, actor: "adm@t.dev",
           details: { status: "CHANGED_AFTER_APPEAL", answer: "B", from: "C", version: 2, source: "Gabarito definitivo do INEP", reason: "Recurso aceito", recorrected: 3 } },
-      ];
+      ]);
       throw new Error(`rpc não simulada: ${fn}`);
     });
     const { container } = render(<AdminAudit />);
-    expect(await screen.findByText("Gabarito oficial registrado")).toBeTruthy();
-    expect(screen.getByText("Explicações marcadas como revisadas")).toBeTruthy();
-    expect(screen.getByText("Revalida 2025/1, questão 45 · Gabarito B, alterado após recurso (antes era C) · Fonte: Gabarito definitivo do INEP · Motivo: Recurso aceito · 3 respostas de alunos corrigidas de novo")).toBeTruthy();
-    expect(screen.getByText("Revalida 2025/1, questão 45 · Gabarito mudou de C para B · Revisadas: conduta esperada, explicação da B, explicação da C")).toBeTruthy();
+    const list = within(await screen.findByRole("list", { name: "Ações registradas" }));
+    expect(await list.findByText("Gabarito oficial registrado")).toBeTruthy();
+    expect(list.getByText("Explicações marcadas como revisadas")).toBeTruthy();
+    expect(list.getByText("Revalida 2025/1, questão 45 · Gabarito B, alterado após recurso (antes era C) · Fonte: Gabarito definitivo do INEP · Motivo: Recurso aceito · 3 respostas de alunos corrigidas de novo")).toBeTruthy();
+    expect(list.getByText("Revalida 2025/1, questão 45 · Gabarito mudou de C para B · Revisadas: conduta esperada, explicação da B, explicação da C")).toBeTruthy();
     expect(container.textContent).not.toMatch(/question\.|official_answer|explanations_reviewed|CHANGED_AFTER_APPEAL|explanation_|expected_conduct|revalida_2025/);
     expect(container.textContent).not.toContain(ID);
   });
@@ -287,44 +292,121 @@ describe("Registro (Administração)", () => {
       { id: 3, action: "lesson.material.delete", target: ID, title: null, details: {} },
     ].map((r) => ({ created_at: at, actor: "adm@t.dev", ...r }));
     backend.rpc.mockImplementation(async (fn: string) => {
-      if (fn === "app_admin_audit") return rows;
+      if (fn === "app_admin_audit_page") return auditPage(rows);
       throw new Error(`rpc não simulada: ${fn}`);
     });
     const { container } = render(<AdminAudit />);
-    expect(await screen.findByText("Aula apagada")).toBeTruthy();
-    expect(screen.getByText("Bronquiolite viral aguda")).toBeTruthy();
-    expect(screen.getByText("Podcast tirado do ar")).toBeTruthy();
-    expect(screen.getByText("Roteiro do podcast escrito pela IA")).toBeTruthy();
-    expect(screen.getByText("Episódio 1: sepse · IA: Gemini (gemini-2.5-pro) · 12 de 20 trechos das fontes usados · custo US$ 0,0512")).toBeTruthy();
-    expect(screen.getByText("Regra da Stazia Arena alterada")).toBeTruthy();
-    expect(screen.getByText("Regra flags.gamification_enabled: desligada")).toBeTruthy();
-    expect(screen.getByText("Pontos de um aluno recalculados")).toBeTruthy();
-    expect(screen.getByText("Aluno: ana@t.dev")).toBeTruthy();
-    expect(screen.getByText("Voz do professor aprovada")).toBeTruthy();
-    expect(screen.getByText("Voz: Durona")).toBeTruthy();
-    expect(screen.getByText("IA ligada ou desligada")).toBeTruthy();
-    expect(screen.getByText("Gemini: ligada")).toBeTruthy();
-    expect(screen.getByText("Função de IA configurada")).toBeTruthy();
-    expect(screen.getByText("Assistente: preencher")).toBeTruthy();
-    expect(screen.getByText("Episódio 1: sepse · Duração: 8 min 20 s")).toBeTruthy();
-    expect(screen.getByText("Material de aula apagado")).toBeTruthy();
+    const list = within(await screen.findByRole("list", { name: "Ações registradas" }));
+    expect(await list.findByText("Aula apagada")).toBeTruthy();
+    expect(list.getByText("Bronquiolite viral aguda")).toBeTruthy();
+    expect(list.getByText("Podcast tirado do ar")).toBeTruthy();
+    expect(list.getByText("Roteiro do podcast escrito pela IA")).toBeTruthy();
+    expect(list.getByText("Episódio 1: sepse · IA: Gemini (gemini-2.5-pro) · 12 de 20 trechos das fontes usados · custo US$ 0,0512")).toBeTruthy();
+    expect(list.getByText("Regra da Stazia Arena alterada")).toBeTruthy();
+    expect(list.getByText("Regra flags.gamification_enabled: desligada")).toBeTruthy();
+    expect(list.getByText("Pontos de um aluno recalculados")).toBeTruthy();
+    expect(list.getByText("Aluno: ana@t.dev")).toBeTruthy();
+    expect(list.getByText("Voz do professor aprovada")).toBeTruthy();
+    expect(list.getByText("Voz: Durona")).toBeTruthy();
+    expect(list.getByText("IA ligada ou desligada")).toBeTruthy();
+    expect(list.getByText("Gemini: ligada")).toBeTruthy();
+    expect(list.getByText("Função de IA configurada")).toBeTruthy();
+    expect(list.getByText("Assistente: preencher")).toBeTruthy();
+    expect(list.getByText("Episódio 1: sepse · Duração: 8 min 20 s")).toBeTruthy();
+    expect(list.getByText("Material de aula apagado")).toBeTruthy();
     // nenhum nome técnico de ação (aula.delete, podcast.script.ai, ai.provider, tutor.voice.approve…) aparece na tela
     expect(container.textContent).not.toMatch(/\b(lesson|podcast|gamification|tutor|ai)\.[a-z_.]+/);
     expect(container.textContent).not.toContain(ID);
   });
   it("RG02: papel e plano alterados mostram o e-mail da pessoa afetada; conta apagada diz conta excluída", async () => {
     backend.rpc.mockImplementation(async (fn: string) => {
-      if (fn === "app_admin_audit") return [
+      if (fn === "app_admin_audit_page") return auditPage([
         { id: 3, action: "user.role", target: ID, created_at: at, actor: "adm@t.dev", subject: "ana@t.dev", details: { from: "student", to: "admin" } },
         { id: 2, action: "user.subscription", target: ID, created_at: at, actor: "adm@t.dev", subject: null, details: { to: { plan: "pro", status: "active" } } },
         { id: 1, action: "user.delete", target: ID, created_at: at, actor: "adm@t.dev", subject: null, details: { email: "antigo@t.dev" } },
-      ];
+      ]);
       throw new Error(`rpc não simulada: ${fn}`);
     });
     const { container } = render(<AdminAudit />);
-    expect(await screen.findByText("Pessoa: ana@t.dev · Aluno → Administrador")).toBeTruthy();
-    expect(screen.getByText("Pessoa: conta excluída · Pro · Ativo")).toBeTruthy();
-    expect(screen.getByText("antigo@t.dev")).toBeTruthy();
+    const list = within(await screen.findByRole("list", { name: "Ações registradas" }));
+    expect(await list.findByText("Pessoa: ana@t.dev · Aluno → Administrador")).toBeTruthy();
+    expect(list.getByText("Pessoa: conta excluída · Pro · Ativo")).toBeTruthy();
+    expect(list.getByText("antigo@t.dev")).toBeTruthy();
     expect(container.textContent).not.toContain(ID);
+  });
+  describe("RG05: páginas e filtros", () => {
+    const rows = (n: number, from = 0) => Array.from({ length: n }, (_, i) => ({ id: 1000 - from - i, action: "settings.save", target: null, created_at: at, actor: "adm@t.dev", details: { trial_days: from + i } }));
+    // banco simulado: 120 ações; o filtro de tipo "plan.save" acha 2; qualquer outro filtro não acha nada
+    const install = () =>
+      backend.rpc.mockImplementation(async (fn: string, args: any) => {
+        if (fn !== "app_admin_audit_page") throw new Error(`rpc não simulada: ${fn}`);
+        const f = args.p_filters;
+        const actions = ["plan.save", "settings.save", "user.role"];
+        if (f.action === "plan.save") return { total: 2, limit: 50, offset: 0, actions, items: [{ id: 7, action: "plan.save", target: "pro", created_at: at, actor: "adm@t.dev", details: { active: true } }, { id: 6, action: "plan.save", target: "elite", created_at: at, actor: "adm@t.dev", details: {} }] };
+        if (f.action || f.person || f.from || f.to) return { total: 0, limit: 50, offset: 0, actions, items: [] };
+        return { total: 120, limit: 50, offset: args.p_offset, actions, items: rows(Math.min(50, 120 - args.p_offset), args.p_offset) };
+      });
+    const callsWith = (match: (a: any) => boolean) => backend.rpc.mock.calls.filter(([fn, a]: any) => fn === "app_admin_audit_page" && match(a));
+
+    it("páginas de 50: quantas ações, página X de Y, anterior e próxima", async () => {
+      install();
+      render(<AdminAudit />);
+      expect(await screen.findByText("Mostrando 1 a 50 de 120 ações")).toBeTruthy();
+      expect(screen.getByText("Página 1 de 3")).toBeTruthy();
+      expect((screen.getByRole("button", { name: /Anterior/ }) as HTMLButtonElement).disabled).toBe(true);
+      expect(screen.getAllByRole("listitem").length).toBe(50);
+      fireEvent.click(screen.getByRole("button", { name: /Próxima/ }));
+      expect(await screen.findByText("Mostrando 51 a 100 de 120 ações")).toBeTruthy();
+      expect(callsWith((a) => a.p_offset === 50 && a.p_limit === 50).length).toBeGreaterThan(0);
+      fireEvent.click(screen.getByRole("button", { name: /Próxima/ }));
+      expect(await screen.findByText("Mostrando 101 a 120 de 120 ações")).toBeTruthy();
+      expect(screen.getAllByRole("listitem").length).toBe(20);
+      expect((screen.getByRole("button", { name: /Próxima/ }) as HTMLButtonElement).disabled).toBe(true);
+      fireEvent.click(screen.getByRole("button", { name: /Anterior/ }));
+      expect(await screen.findByText("Mostrando 51 a 100 de 120 ações")).toBeTruthy();
+    });
+
+    it("tipo: a lista traz o nome em português (sem código); escolher filtra e volta para a primeira página; limpar desfaz", async () => {
+      install();
+      render(<AdminAudit />);
+      await screen.findByText("Mostrando 1 a 50 de 120 ações");
+      fireEvent.click(screen.getByRole("button", { name: /Próxima/ }));
+      await screen.findByText("Mostrando 51 a 100 de 120 ações");
+      const select = screen.getByLabelText("Tipo de ação") as HTMLSelectElement;
+      expect([...select.options].map((o) => o.textContent)).toEqual(["Todos os tipos", "Configurações salvas", "Papel alterado", "Plano editado"]);
+      expect([...select.options].map((o) => o.textContent).join(" ")).not.toMatch(/\.save|\.role/);
+      fireEvent.change(select, { target: { value: "plan.save" } });
+      expect(await screen.findByText("Mostrando 1 a 2 de 2 ações com esses filtros")).toBeTruthy();
+      expect(callsWith((a) => a.p_filters.action === "plan.save" && a.p_offset === 0).length).toBeGreaterThan(0);
+      expect(screen.queryByText(/Página/)).toBeNull(); // uma página só: sem botões
+      fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+      expect(await screen.findByText("Mostrando 1 a 50 de 120 ações")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: "Limpar filtros" })).toBeNull();
+    });
+
+    it("pessoa e datas: mandam o filtro ao banco; sem resultado, diz que nada bate com os filtros", async () => {
+      install();
+      render(<AdminAudit />);
+      await screen.findByText("Mostrando 1 a 50 de 120 ações");
+      fireEvent.change(screen.getByLabelText("Pessoa"), { target: { value: " ana@t.dev " } });
+      await waitFor(() => expect(callsWith((a) => a.p_filters.person === "ana@t.dev").length).toBeGreaterThan(0)); // sem os espaços, depois de uma pausa na digitação
+      expect(await screen.findByText("Nenhuma ação com esses filtros")).toBeTruthy();
+      fireEvent.change(screen.getByLabelText("De"), { target: { value: "2026-03-01" } });
+      fireEvent.change(screen.getByLabelText("Até"), { target: { value: "2026-03-31" } });
+      await waitFor(() => expect(callsWith((a) => a.p_filters.from === "2026-03-01" && a.p_filters.to === "2026-03-31" && a.p_filters.person === "ana@t.dev").length).toBeGreaterThan(0));
+      fireEvent.click(screen.getByRole("button", { name: "Limpar filtros" }));
+      expect(await screen.findByText("Mostrando 1 a 50 de 120 ações")).toBeTruthy();
+      expect((screen.getByLabelText("Pessoa") as HTMLInputElement).value).toBe("");
+    });
+
+    it("sem nenhuma ação e sem filtro: mensagem de registro vazio; falha ao carregar oferece tentar de novo", async () => {
+      backend.rpc.mockImplementation(async () => ({ total: 0, limit: 50, offset: 0, actions: [], items: [] }));
+      render(<AdminAudit />);
+      expect(await screen.findByText("Nenhuma ação registrada")).toBeTruthy();
+      cleanup();
+      backend.rpc.mockImplementation(async () => { throw new Error("falha de rede"); });
+      render(<AdminAudit />);
+      expect(await screen.findByRole("button", { name: "Tentar de novo" })).toBeTruthy();
+    });
   });
 });
