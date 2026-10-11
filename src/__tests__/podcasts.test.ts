@@ -383,6 +383,49 @@ describe("Fonte longa demais", () => {
   });
 });
 
+describe("PDF da aula como fonte e o limite de tamanho", () => {
+  it("PDF da aula acima de 30 MB não é lido (nem baixado); o resumo e os pontos-chave entram e a equipe é avisada", async () => {
+    const created = await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Aula com PDF grande", topic: "Teste", area: "CLINICA_MEDICA", target_minutes: 5 } });
+    const key = `lessons/${lessonId}/slides-grande.pdf`;
+    await lessonFiles.put(key, makePdf(["Conteudo do PDF da aula: sulfato de magnesio 4 g IV no ataque."]), "application/pdf");
+    const mat = await dev.db.query<any>(`insert into public.lesson_materials (lesson_id, kind, title, storage_path, content_type, size_bytes) values ($1, 'slides', 'Slides', $2, 'application/pdf', $3) returning id`, [lessonId, key, 40 * 1024 * 1024]);
+    const spy = vi.spyOn(lessonFiles, "get");
+    try {
+      // tamanho declarado acima do limite: não baixa o arquivo
+      const big = await post(`${base}/${created.id}/sources/lesson`, editor, { lesson_id: lessonId });
+      expect(big.status).toBe(201);
+      expect(big.body.note).toMatch(/PDF da aula/);
+      expect(big.body.note).toMatch(/30 MB/);
+      expect(spy).not.toHaveBeenCalled();
+      expect(big.body.sources[0]).toMatchObject({ kind: "lesson" });
+      const texto = await dev.db.query<any>(`select string_agg(text, ' ') t from public.podcast_chunks where podcast_id = $1`, [created.id]);
+      expect(texto.rows[0].t).toContain("Sulfato de magnésio 4 g IV no ataque"); // resumo e pontos-chave
+      expect(texto.rows[0].t).not.toContain("Conteudo do PDF da aula");
+      // tamanho dentro do limite: o PDF entra
+      await dev.db.query(`update public.lesson_materials set size_bytes = 1000 where id = $1`, [mat.rows[0].id]);
+      await call(`${base}/${created.id}/sources/${big.body.sources[0].id}`, editor, { method: "DELETE" });
+      const ok = await post(`${base}/${created.id}/sources/lesson`, editor, { lesson_id: lessonId });
+      expect(ok.status).toBe(201);
+      expect(ok.body.note).toBeUndefined();
+      expect(spy).toHaveBeenCalledTimes(1);
+      const dentro = await dev.db.query<any>(`select string_agg(text, ' ') t from public.podcast_chunks where podcast_id = $1`, [created.id]);
+      expect(dentro.rows[0].t).toContain("Conteudo do PDF da aula");
+      // tamanho declarado errado (menor que o real): o arquivo baixado é conferido antes de ser lido
+      await call(`${base}/${created.id}/sources/${ok.body.sources[0].id}`, editor, { method: "DELETE" });
+      const huge = Buffer.alloc(31 * 1024 * 1024);
+      huge.write("%PDF-1.4\n", 0, "latin1");
+      await lessonFiles.put(key, huge, "application/pdf");
+      const lied = await post(`${base}/${created.id}/sources/lesson`, editor, { lesson_id: lessonId });
+      expect(lied.status).toBe(201);
+      expect(lied.body.note).toMatch(/30 MB/);
+    } finally {
+      spy.mockRestore();
+      await dev.db.query(`delete from public.lesson_materials where id = $1`, [mat.rows[0].id]);
+      await call(`${base}/${created.id}`, admin, { method: "DELETE" });
+    }
+  });
+});
+
 describe("Nome da fonte", () => {
   it("equipe renomeia a fonte; aluno não; nome vazio ou fonte alheia é recusado", async () => {
     const view = await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId });

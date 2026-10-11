@@ -274,11 +274,20 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       ].filter(Boolean).join("\n\n");
       const pages: ExtractedPage[] = [{ page: null, text: head }];
       let note: string | null = null;
+      const limitMb = MAX_SOURCE_BYTES / 1024 / 1024;
+      const tooBig = (bytes: number) => `O PDF da aula (${Math.round(bytes / 1024 / 1024)} MB) passa do limite de ${limitMb} MB das fontes e não foi lido; entraram o resumo e os pontos-chave.`;
       if (lesson.slides && deps!.lessons) {
-        try {
-          pages.push(...(await extractPdf(await deps!.lessons.get(lesson.slides))));
-        } catch (error) {
-          note = `O PDF da aula não foi lido (${message(error)}); entraram o resumo e os pontos-chave.`;
+        const declared = Number(lesson.slides_bytes) || 0;
+        if (declared > MAX_SOURCE_BYTES) {
+          note = tooBig(declared); // nem baixa o arquivo
+        } else {
+          try {
+            const pdf = await deps!.lessons.get(lesson.slides);
+            if (pdf.length > MAX_SOURCE_BYTES) note = tooBig(pdf.length); // tamanho guardado errado ou ausente: confere o arquivo
+            else pages.push(...(await extractPdf(pdf)));
+          } catch (error) {
+            note = `O PDF da aula não foi lido (${message(error)}); entraram o resumo e os pontos-chave.`;
+          }
         }
       }
       const view = await ingest(req, { kind: "lesson", title: `Aula: ${lesson.title}`.slice(0, 200), lesson_id: lessonId }, pages);
