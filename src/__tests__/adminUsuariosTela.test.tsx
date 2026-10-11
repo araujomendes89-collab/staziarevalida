@@ -3,6 +3,8 @@
  * confirmação ao promover a Administrador (US07), selo de revisor médico (US05), texto do editor (US04), combinações do plano (US06).
  */
 import React from "react";
+import fs from "fs";
+import path from "path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
@@ -172,5 +174,21 @@ describe("US05 · selo de revisor médico", () => {
     await screen.findByText("Cadastro");
     expect(screen.queryByText("Revisor médico")).toBeNull();
     expect(screen.queryByText("Áreas de revisão médica")).toBeNull();
+  });
+});
+
+describe("US04 · texto do papel de Editor", () => {
+  it("lista as abas que o editor realmente vê (as marcadas para a equipe em AdminScreen) e diz o que fica com o Administrador", async () => {
+    const fonte = fs.readFileSync(path.resolve(__dirname, "../novo/app/admin/AdminScreen.jsx"), "utf8");
+    const abasDoEditor = [...fonte.matchAll(/label: "([^"]+)"[^}]*\bstaff: true/g)].map((m) => m[1]);
+    expect(abasDoEditor).toEqual(["Visão geral", "Questões", "Aulas", "Podcasts", "Atualizações", "Estações", "Central de Conteúdo"]);
+
+    render(<AdminUsers />);
+    await open("Pessoa 1");
+    const texto = (await screen.findByText(/^Editor cuida/)).textContent ?? "";
+    for (const aba of abasDoEditor) expect(texto).toContain(aba);
+    expect(texto).toMatch(/publicar atualizações e podcasts é do Administrador/);
+    expect(texto).toMatch(/Administrador tem acesso a tudo, inclusive usuários, planos e configurações/);
+    expect(texto).not.toMatch(/Editor cuida de questões e estações\./);
   });
 });

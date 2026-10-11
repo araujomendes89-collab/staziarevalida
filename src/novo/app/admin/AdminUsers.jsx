@@ -71,7 +71,7 @@ function RoleForm({ user, onSaved }) {
         />
       </div>
       <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
-        Editor cuida de questões e estações. Administrador tem acesso a tudo, inclusive usuários e planos.
+        Editor cuida do conteúdo: Visão geral, Questões, Aulas, Podcasts, Atualizações, Estações e Central de Conteúdo (publicar atualizações e podcasts é do Administrador). Administrador tem acesso a tudo, inclusive usuários, planos e configurações.
         {self && " Você não pode tirar o próprio acesso de administrador."}
       </div>
       {state.error && <Banner tone="danger">{state.error}</Banner>}
