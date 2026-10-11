@@ -218,3 +218,29 @@ describe("A11 - aviso de vídeo que não toca dentro da aula", () => {
     expect(screen.queryByText(/não toca dentro da aula/)).toBeNull();
   });
 });
+
+describe("Erro 413 do servidor mantém o limite", () => {
+  it("'Arquivo acima de 200 MB.' aparece com o número", async () => {
+    const { uploadErrorText } = await import("../novo/app/study/lessonsApi.js");
+    expect(uploadErrorText(Object.assign(new Error("Arquivo acima de 200 MB."), { status: 413 }))).toBe("Arquivo acima de 200 MB.");
+    expect(uploadErrorText(Object.assign(new Error("The object exceeded the maximum allowed size"), { status: 413 }))).toMatch(/grande demais/);
+  });
+});
+
+describe("Assistente reconhece o PDF já salvo da aula", () => {
+  it("editando uma aula com PDF enviado, o assistente oferece 'PDF da aula'", async () => {
+    store.lessons = [withMaterials([{ id: "m1", kind: "slides", title: "Material complementar", file_title: "apostila.pdf", storage_path: "lessons/l9/slides-aaaaaaaaaaaaaaaa.pdf", has_file: true, size_bytes: 2048, url: null }])];
+    (globalThis as any).fetch = vi.fn(async () => new Response(JSON.stringify({ choices: [], override_allowed: true, current: null }), { status: 200, headers: { "content-type": "application/json" } }));
+    render(<AdminLessons />);
+    fireEvent.click(await screen.findByRole("button", { name: /Bronquiolite/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Abrir assistente" }));
+    expect(await screen.findByRole("radio", { name: "PDF da aula" })).toBeTruthy();
+  });
+
+  it("erro 500 em inglês não passa para a equipe; mensagens do próprio servidor (400/413) passam", async () => {
+    const { uploadErrorText } = await import("../novo/app/study/lessonsApi.js");
+    expect(uploadErrorText(Object.assign(new Error("Upload failed."), { status: 500 }))).toBe("Não foi possível enviar o arquivo. Tente de novo.");
+    expect(uploadErrorText(Object.assign(new Error("Envie um PDF (slides) ou um MP3 (áudio)."), { status: 415 }))).toBe("Envie um PDF (slides) ou um MP3 (áudio).");
+    expect(uploadErrorText(Object.assign(new Error("Aula não encontrada."), { status: 404 }))).toBe("Aula não encontrada.");
+  });
+});
