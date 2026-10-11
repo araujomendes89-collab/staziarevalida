@@ -248,7 +248,7 @@ describe("IA06 e IA10: quando repetir a mesma IA, prazo do pedido e registro na 
     expect(f.calls[key(A)]).toHaveLength(1);
   });
 
-  it("gravação do registro que falha só avisa: não repete linhas na gravação seguinte", async () => {
+  it("gravação do registro que falha só avisa: a linha fica pendente e vai na gravação seguinte, sem repetir nenhuma", async () => {
     const { maestroProvider } = await import("../../server/ai/maestro");
     await on("anthropic", "openai");
     await saveFn("criacao", "sozinha", A, [], O);
@@ -267,7 +267,8 @@ describe("IA06 e IA10: quando repetir a mesma IA, prazo do pedido e registro na 
     const f = fakes({ [key(A)]: () => { throw httpError(400, "400 credit balance is too low"); }, [key(O)]: () => ({ ok: "O" }) });
     await (await maestroProvider({ ...deps(f), db: flaky }, "criacao", origin)).provider!.generate(REQ);
     const rows = (await dev.db.query<any>(`select provider, outcome from public.ai_calls order by id`)).rows;
-    expect(rows.map((r) => `${r.provider}:${r.outcome}`)).toEqual(["openai:ok"]);
+    // a falha da principal não pode sumir de ai_calls (nem dos tetos) só porque a primeira gravação falhou
+    expect(rows.map((r) => `${r.provider}:${r.outcome}`)).toEqual(["anthropic:falha", "openai:ok"]);
   });
 
   it("no servidor, o prazo marcado na chegada chega até a rota, mesmo depois de ler o corpo e de esperar", async () => {

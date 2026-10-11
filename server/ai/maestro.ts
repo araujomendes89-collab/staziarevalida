@@ -625,19 +625,29 @@ class Run {
     return { ok: false };
   }
 
+  private flushing: Promise<void> = Promise.resolve();
+
   /**
-   * Grava as linhas ainda não gravadas. As linhas são separadas antes de esperar o banco: no comitê várias IAs terminam ao mesmo
-   * tempo, e duas gravações simultâneas não podem repetir nem pular linhas. Falha ou demora ao gravar só avisa (como antes): a
-   * linha não é mandada de novo, porque o banco pode ter gravado e só a resposta se perdido.
+   * Grava as linhas ainda não gravadas. As gravações andam uma de cada vez (no comitê várias IAs terminam ao mesmo tempo, e duas
+   * gravações simultâneas repetiriam linhas). A linha só conta como gravada DEPOIS que o banco confirma: se a gravação falhar,
+   * a linha continua pendente e vai na próxima (a seguinte chamada do mesmo pedido, ou o fim dele), para o gasto e a falha não
+   * sumirem de ai_calls nem dos tetos. Só em falha por demora a linha pode ir duas vezes (o banco pode ter gravado e só a
+   * resposta se perdido); isso é preferível a perder o gasto.
    */
-  async flush(): Promise<void> {
+  flush(): Promise<void> {
+    this.flushing = this.flushing.then(() => this.writePending());
+    return this.flushing;
+  }
+
+  private async writePending(): Promise<void> {
     if (this.written >= this.rows.length) return;
-    const pending = this.rows.slice(this.written);
-    this.written = this.rows.length;
+    const upto = this.rows.length;
+    const pending = this.rows.slice(this.written, upto);
     try {
       await withTimeout(() => this.deps.db.service("ch_worker_ai_log_calls", { p_calls: pending }), LOG_TIMEOUT_MS);
+      this.written = upto;
     } catch (e) {
-      (this.deps.log ?? console.warn)(`[maestro] não foi possível gravar ai_calls: ${errText(e)}`);
+      (this.deps.log ?? console.warn)(`[maestro] não foi possível gravar ai_calls (${pending.length} linha${pending.length === 1 ? "" : "s"} ficam para a próxima gravação): ${errText(e)}`);
     }
   }
 
