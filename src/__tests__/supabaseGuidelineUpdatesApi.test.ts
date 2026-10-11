@@ -5,11 +5,15 @@
  * só o administrador publica, editar depois da conferência volta a revisão, e o aluno só vê o que foi publicado.
  * Correções de 10/10/2026 (…7800_atualizacoes_publicar_so_conferida.sql): publicar exige conferência aprovada (AT03),
  * recusar uma publicada tira do ar (AT01) e mudar o texto de uma publicada tira do ar até nova conferência (AT02).
+ * Polimento do Registro (…7810_registro_atualizacoes.sql): o revisor que tenta levar uma atualização da área dele para
+ * outra área recebe uma mensagem que diz exatamente isso; o que o banco grava no registro aparece em português na tela.
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
 import { PGlite } from "@electric-sql/pglite";
+import { auditActor, auditLabel, auditSummary } from "../novo/app/admin/auditLog.js";
+import { messageOf } from "../novo/app/admin/common.jsx";
 
 const ROOT = path.resolve(__dirname, "../..");
 const MIGRATIONS = path.join(ROOT, "supabase/migrations");
@@ -88,7 +92,12 @@ describe("Conteúdo do app anterior", () => {
     expect(has).toMatchObject({ published: false, review_status: "pending" });
     const log = await rpc(ADMIN, "app_admin_audit", { p_limit: 50 });
     // sem autor (foi a própria correção): o registro marca "automatica" para a tela não dizer "conta excluída"
-    expect(log.find((l: any) => l.action === "guideline_update.unpublish" && l.target === has.id)).toMatchObject({ actor: null, details: { review_status: "pending", automatica: true } });
+    const entry = log.find((l: any) => l.action === "guideline_update.unpublish" && l.target === has.id);
+    expect(entry).toMatchObject({ actor: null, details: { review_status: "pending", automatica: true } });
+    // na tela do Registro: retirada automática pela regra nova, com o tema e o motivo em português
+    expect(auditLabel(entry)).toBe("Retirada automática pela regra nova");
+    expect(auditSummary(entry)).toBe(`Tema: ${has.topic} · Motivo: estava publicada sem conferência médica aprovada; pela regra nova, só fica no ar o que um revisor médico conferiu`);
+    expect(auditActor(entry)).toBe("automático");
   });
 });
 
@@ -224,9 +233,15 @@ describe("Cadastro e segurança", () => {
     expect(await adminItem(HAS)).toMatchObject({ area: "CLINICA_MEDICA", published: true, review_status: "approved", current_conduct: before.current_conduct, reviewer: before.reviewer });
     expect((await rpc(STUDENT, "app_guideline_update", { p_slug: HAS }))?.reviewed).toBe(true);
     await expect(rpc(REVIEWER, "app_admin_review_guideline_update", { p_id: has.id, p_decision: "approve", p_note: "Tentativa de conferir outra área." })).rejects.toThrow(/revisor cadastrado em Clínica Médica/);
-    // o revisor da área também não leva a atualização para uma área que não é a dele
-    await expect(rpc(REVIEWER_CM, "app_admin_save_guideline_update", { p_update: { ...before, area: "GINECOLOGIA_OBSTETRICIA" } })).rejects.toThrow(/outra área/);
+    // o revisor da área também não leva a atualização para uma área que não é a dele, e a mensagem diz exatamente isso
+    // (antes dizia "Você revisa outra área: esta atualização é de Gineco & Obstetrícia.", mas ela é de Clínica Médica)
+    const moved = await rpc(REVIEWER_CM, "app_admin_save_guideline_update", { p_update: { ...before, area: "GINECOLOGIA_OBSTETRICIA" } }).catch((e) => e);
+    expect(moved).toBeInstanceOf(Error);
+    expect(moved.message).toBe("Você não pode levar esta atualização de Clínica Médica para Gineco & Obstetrícia: você não revisa Gineco & Obstetrícia. Para mudar a área, peça a um administrador ou editor.");
+    expect(messageOf(moved)).toBe(moved.message); // a tela mostra a frase inteira (não troca pela mensagem genérica)
     expect(await adminItem(HAS)).toMatchObject({ area: "CLINICA_MEDICA", published: true, review_status: "approved" });
+    // na própria área (sem trocar a área) ele continua editando; a mudança só da posição não tira do ar
+    expect(await rpc(REVIEWER_CM, "app_admin_save_guideline_update", { p_update: { ...before, position: 7 } })).toMatchObject({ area: "CLINICA_MEDICA", published: true, review_status: "approved" });
   });
 
   it("sem login, as funções de salvar, conferir e publicar nem podem ser chamadas (revokes da correção 7800)", async () => {

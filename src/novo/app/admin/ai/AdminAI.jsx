@@ -5,19 +5,10 @@ import { Badge, Banner, Button, Switch, TextField } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { Loading, useLoad } from "../common.jsx";
 import { KeyValue, Section } from "../content/ui.jsx";
-import { aiGet, aiSend, PROVIDER_NAME, usd } from "./aiApi.js";
+import { AI_FUNCTION_NAME as FUNCTION_NAME, AI_FUNCTIONS as FUNCTIONS, aiGet, aiSend, PROVIDER_NAME, usd } from "./aiApi.js";
 import { FunctionEditor } from "./FunctionEditor.jsx";
 
 const PROVIDER_ORDER = ["anthropic", "openai", "gemini", "ollama"];
-const FUNCTIONS = [
-  ["criacao", "Criação"],
-  ["verificacao", "Verificação e checagem"],
-  ["engenharia_reversa", "Engenharia reversa"],
-  ["assistente_preencher", "Assistente: preencher"],
-  ["assistente_conferir", "Assistente: conferir"],
-  ["assistente_revisar", "Assistente: conversar e revisar"],
-];
-const FUNCTION_NAME = Object.fromEntries(FUNCTIONS);
 const STATUS = { pronta: ["pronta", "success"], sem_chave: ["sem chave", "warning"], chave_recusada: ["chave recusada", "danger"], so_no_mac: ["roda só no Mac", "neutral"], erro: ["erro", "danger"] };
 const OUTCOME = { ok: ["ok", "success"], falha: ["falha", "danger"], teto: ["teto", "warning"], bloqueada: ["bloqueada", "warning"] };
 const ACTION = { "ai.provider": "IA ligada/desligada", "ai.function": "função", "ai.settings": "tetos e seletor", "ai.price": "preço" };

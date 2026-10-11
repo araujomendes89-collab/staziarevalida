@@ -4,6 +4,7 @@ import { Badge, Banner, Button, Card, EmptyState, SelectField, StatCard, Switch,
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { dateTimeBR, LoadError, Loading, messageOf, PLAN_LABEL, ROLE_LABEL, SUB_STATUS_LABEL, TextArea, useLoad } from "./common.jsx";
+import { auditActor, auditLabel, auditSummary } from "./auditLog.js";
 
 // ---------------------------------------------------------------- visão geral
 export function AdminOverview({ isAdmin }) {
@@ -725,40 +726,7 @@ export function AdminTutor() {
 }
 
 // ---------------------------------------------------------------- registro
-const ACTION_LABEL = {
-  "user.role": "Papel alterado",
-  "user.subscription": "Plano alterado",
-  "user.delete": "Usuário excluído",
-  "questions.import": "Questões importadas",
-  "question.inserted": "Questão criada",
-  "question.updated": "Questão editada",
-  "station.review": "Revisão de estação",
-  "plan.save": "Plano editado",
-  "settings.save": "Configurações salvas",
-  "tutor.config": "Tutor configurado",
-  "tutor.personality": "Professor ligado ou desligado",
-  "guideline_update.publish": "Atualização publicada",
-  "guideline_update.unpublish": "Atualização tirada do ar",
-  "guideline_update.delete": "Atualização apagada",
-};
-
-function summary(entry) {
-  const d = entry.details ?? {};
-  if (entry.action === "user.role") return `${ROLE_LABEL[d.from] ?? d.from} → ${ROLE_LABEL[d.to] ?? d.to}`;
-  if (entry.action === "user.subscription") return `${PLAN_LABEL[d.to?.plan] ?? d.to?.plan} · ${SUB_STATUS_LABEL[d.to?.status] ?? d.to?.status}`;
-  if (entry.action === "user.delete") return d.email;
-  if (entry.action === "questions.import") return `${d.inserted} novas · ${d.updated} atualizadas · ${d.skipped} puladas`;
-  if (entry.action === "station.review") return `${entry.target}: ${d.to === "approved" ? "aprovada" : "voltou para revisão"}${d.note ? ` · “${d.note}”` : ""}`;
-  if (entry.action === "plan.save") return `${PLAN_LABEL[entry.target] ?? entry.target}${d.active ? " · à venda" : ""}`;
-  if (entry.action.startsWith("question.")) return entry.target;
-  // atualizações: o tema e, quando houver, o motivo (recusa, texto alterado, correção) e a nota do revisor
-  if (entry.action.startsWith("guideline_update.")) return [d.topic, d.motivo, d.note && `Nota do revisor: ${d.note}`].filter(Boolean).join(" · ");
-  return "";
-}
-
-// sem autor: a conta foi apagada, ou a ação foi feita pela própria correção do banco (marcada "automatica")
-const actorOf = (entry) => entry.actor ?? (entry.details?.automatica ? "correção automática" : "conta excluída");
-
+// Nome de cada ação, resumo e quem fez: auditLog.js (em português, sem códigos internos).
 export function AdminAudit() {
   const { backend } = useSession();
   const { data, error, reload } = useLoad(() => backend.rpc("app_admin_audit", { p_limit: 200 }), [backend]);
@@ -770,13 +738,13 @@ export function AdminAudit() {
       {data.map((entry, index) => (
         <div key={entry.id} style={{ display: "flex", gap: 12, padding: "12px 16px", borderTop: index ? "1px solid var(--border-subtle)" : 0, flexWrap: "wrap" }}>
           <div style={{ flex: "1 1 260px", minWidth: 0 }}>
-            <div style={{ font: "600 14px var(--font-sans)" }}>{ACTION_LABEL[entry.action] ?? entry.action}</div>
-            <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", overflowWrap: "anywhere" }}>{summary(entry)}</div>
+            <div style={{ font: "600 14px var(--font-sans)" }}>{auditLabel(entry)}</div>
+            <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", overflowWrap: "anywhere" }}>{auditSummary(entry)}</div>
           </div>
           <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", textAlign: "right" }}>
             {dateTimeBR(entry.created_at)}
             <br />
-            {actorOf(entry)}
+            {auditActor(entry)}
           </div>
         </div>
       ))}

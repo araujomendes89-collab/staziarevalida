@@ -3,8 +3,9 @@
  * chega ao banco, o aviso do conteúdo do app anterior aparece, a conferência médica e a publicação chamam as funções certas.
  * Atualizações (10/10/2026): só publica com conferência aprovada (AT03), recusar uma publicada avisa que sai do ar (AT01) e
  * mudar o texto de uma publicada avisa antes de salvar que ela sai do ar até nova conferência (AT02). O Registro mostra em
- * português quando uma atualização é publicada ou tirada do ar, com o motivo, e a retirada feita pela própria correção
- * aparece como "correção automática" (não como "conta excluída").
+ * português quando uma atualização é publicada ou tirada do ar, com o tema e o motivo em linguagem simples; a retirada
+ * feita pela migração 7800 aparece como "Retirada automática pela regra nova" (não como "conta excluída"), também nas
+ * linhas sem a marca "automatica". As ações novas das Questões aparecem em português, com a questão (polimento 10/10/2026).
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -215,30 +216,59 @@ describe("Atualizações & Diretrizes (painel)", () => {
 });
 
 describe("Registro (Administração)", () => {
-  it("publicar e tirar do ar uma atualização aparecem em português, com o tema e o motivo; a retirada da correção aparece como correção automática", async () => {
-    const at = "2026-10-10T12:00:00Z";
+  const at = "2026-10-10T12:00:00Z";
+  const ID = "6f1c2a9e-3b4d-4e5f-8a7b-9c0d1e2f3a4b";
+  const AUTO = "Estava publicada sem conferência médica aprovada: retirada do ar pela correção de 10/10/2026.";
+
+  it("atualizações: tema e motivo em português; a retirada da regra nova aparece como automática (com ou sem a marca), não como conta excluída", async () => {
     backend.rpc.mockImplementation(async (fn: string) => {
       if (fn === "app_admin_audit") return [
-        { id: 5, action: "guideline_update.unpublish", target: "u3", created_at: at, actor: null,
-          details: { topic: "Hipertensão arterial", review_status: "pending", automatica: true,
-                     motivo: "Estava publicada sem conferência médica aprovada: retirada do ar pela correção de 10/10/2026." } },
-        { id: 4, action: "guideline_update.unpublish", target: "u2", created_at: at, actor: "rev@t.dev",
+        // gravada por uma versão anterior do SQL da 7800 (sem a marca "automatica"), como pode estar no banco do site
+        { id: 6, action: "guideline_update.unpublish", target: ID, created_at: at, actor: null,
+          details: { topic: "Rastreamento com DNA-HPV", review_status: "pending", motivo: AUTO } },
+        { id: 5, action: "guideline_update.unpublish", target: ID, created_at: at, actor: null,
+          details: { topic: "Hipertensão arterial", review_status: "pending", automatica: true, motivo: AUTO } },
+        { id: 4, action: "guideline_update.unpublish", target: ID, created_at: at, actor: "rev@t.dev",
           details: { topic: "Pré-eclâmpsia", motivo: "Recusada na conferência médica: saiu do ar na hora.", note: "Conduta não confere com a versão vigente." } },
-        { id: 3, action: "guideline_update.publish", target: "u2", created_at: at, actor: "adm@t.dev", details: { topic: "Pré-eclâmpsia", review_status: "approved" } },
-        { id: 2, action: "guideline_update.delete", target: "u9", created_at: at, actor: "adm@t.dev", details: { topic: "Atualização de teste" } },
+        { id: 3, action: "guideline_update.publish", target: ID, created_at: at, actor: "adm@t.dev", details: { topic: "Pré-eclâmpsia", review_status: "approved" } },
+        { id: 2, action: "guideline_update.delete", target: ID, created_at: at, actor: "adm@t.dev", details: { topic: "Atualização de teste" } },
         { id: 1, action: "user.delete", target: "x", created_at: at, actor: null, details: { email: "antigo@t.dev" } },
       ];
       throw new Error(`rpc não simulada: ${fn}`);
     });
     const { container } = render(<AdminAudit />);
-    expect((await screen.findAllByText("Atualização tirada do ar")).length).toBe(2);
+    expect((await screen.findAllByText("Retirada automática pela regra nova")).length).toBe(2);
+    expect(screen.getByText("Tema: Rastreamento com DNA-HPV · Motivo: estava publicada sem conferência médica aprovada; pela regra nova, só fica no ar o que um revisor médico conferiu")).toBeTruthy();
+    expect(screen.getByText("Tema: Hipertensão arterial · Motivo: estava publicada sem conferência médica aprovada; pela regra nova, só fica no ar o que um revisor médico conferiu")).toBeTruthy();
+    expect(screen.getAllByText("Atualização tirada do ar").length).toBe(1);
+    expect(screen.getByText("Tema: Pré-eclâmpsia · Motivo: recusada na conferência médica · Nota do revisor: Conduta não confere com a versão vigente.")).toBeTruthy();
     expect(screen.getByText("Atualização publicada")).toBeTruthy();
+    expect(screen.getByText("Tema: Pré-eclâmpsia · Conferência médica aprovada")).toBeTruthy();
     expect(screen.getByText("Atualização apagada")).toBeTruthy();
-    expect(container.textContent).not.toMatch(/guideline_update/);
-    expect(screen.getByText(/Hipertensão arterial · Estava publicada sem conferência médica aprovada: retirada do ar pela correção de 10\/10\/2026\./)).toBeTruthy();
-    expect(screen.getByText(/Pré-eclâmpsia · Recusada na conferência médica: saiu do ar na hora\. · Nota do revisor: Conduta não confere com a versão vigente\./)).toBeTruthy();
-    // sem autor: a da correção é "correção automática"; a de uma conta apagada continua "conta excluída"
-    expect(screen.getAllByText(/correção automática/).length).toBe(1);
+    // sem autor: as duas da regra nova são "automático"; a de uma conta apagada continua "conta excluída"
+    expect(screen.getAllByText(/automático/).length).toBe(2);
     expect(screen.getAllByText(/conta excluída/).length).toBe(1);
+    // nenhum código interno na tela
+    expect(container.textContent).not.toMatch(/guideline_update|automatica|review_status|pending|approved|correção de 10\/10\/2026/);
+    expect(container.textContent).not.toContain(ID);
+  });
+
+  it("questões: gabarito oficial e explicações revisadas aparecem em português, com a prova e o número, sem código", async () => {
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_admin_audit") return [
+        { id: 2, action: "question.explanations_reviewed", target: "revalida_2025_1_q045", created_at: at, actor: "ed@t.dev",
+          details: { review: { de: "C", para: "B", campos: ["expected_conduct", "explanation_B", "explanation_C"], desde: at, por: ID, motivo: "Recurso aceito", fonte: "INEP" } } },
+        { id: 1, action: "question.official_answer", target: "revalida_2025_1_q045", created_at: at, actor: "adm@t.dev",
+          details: { status: "CHANGED_AFTER_APPEAL", answer: "B", from: "C", version: 2, source: "Gabarito definitivo do INEP", reason: "Recurso aceito", recorrected: 3 } },
+      ];
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    const { container } = render(<AdminAudit />);
+    expect(await screen.findByText("Gabarito oficial registrado")).toBeTruthy();
+    expect(screen.getByText("Explicações marcadas como revisadas")).toBeTruthy();
+    expect(screen.getByText("Revalida 2025/1, questão 45 · Gabarito B, alterado após recurso (antes era C) · Fonte: Gabarito definitivo do INEP · Motivo: Recurso aceito · 3 respostas de alunos corrigidas de novo")).toBeTruthy();
+    expect(screen.getByText("Revalida 2025/1, questão 45 · Gabarito mudou de C para B · Revisadas: conduta esperada, explicação da B, explicação da C")).toBeTruthy();
+    expect(container.textContent).not.toMatch(/question\.|official_answer|explanations_reviewed|CHANGED_AFTER_APPEAL|explanation_|expected_conduct|revalida_2025/);
+    expect(container.textContent).not.toContain(ID);
   });
 });
