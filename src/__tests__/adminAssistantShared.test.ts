@@ -141,6 +141,12 @@ describe("assistente das abas — valores e textos comuns", () => {
       centralName: "Assistente: conversar e revisar",
       noAnswer: "Grave o gabarito antes de pedir as explicações.",
       contradicts: "A explicação contradiz o gabarito gravado.",
+      // Q14 (correções da aba Questões): aviso quando nenhum campo pedido ficou com fonte, com o motivo (os três primeiros
+      // textos do aviso estão no começo da lista)
+      noSourceAllMaterial: "Nenhum campo pedido ficou apoiado no material enviado. Confira se ele fala deste tema ou envie outro trecho da diretriz.",
+      noSourceAllMaterialNotes: "Nenhum campo pedido ficou apoiado em Suas notas. Escreva nelas o trecho da diretriz sobre este tema.",
+      noSourceAllOfficial: "A biblioteca de fontes oficiais achou trechos, mas nenhum sustenta os campos pedidos. Cole o trecho da diretriz ou envie o PDF ou o link.",
+      noSourceAllOfficialNotes: "A biblioteca de fontes oficiais achou trechos, mas nenhum sustenta os campos pedidos. Escreva o trecho da diretriz em Suas notas.",
     });
   });
 
