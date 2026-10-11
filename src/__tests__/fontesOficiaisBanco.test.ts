@@ -572,6 +572,266 @@ describe("Banco", () => {
   });
 });
 
+// ---------------------------------------------------------------- Tarefa 7: aprovar e rejeitar
+describe("Aprovar e rejeitar", () => {
+  const approve = (id: string, fields: Record<string, unknown> | null = {}) => asAdmin("app_ch_source_candidate_approve", { p_candidate_id: id, p_fields: fields });
+  const reject = (id: string, reason: string) => asAdmin("app_ch_source_candidate_reject", { p_candidate_id: id, p_reason: reason });
+  const OK = { level: "B", checked: true };
+  const counts = async () => (await sql(`select (select count(*)::int from public.ch_sources) as s, (select count(*)::int from public.ch_documents) as d`))[0];
+  const status = async (id: string) => (await sql(`select status from public.ch_source_candidates where id = $1`, [id]))[0].status as string;
+
+  it("aprovar cria fonte vigente, aprovação editorial com quem e quando, documento de referência e o vínculo", async () => {
+    const c = await createCandidate();
+    const r = await approve(c.id, OK);
+    expect(r).toMatchObject({ superseded: null, candidate_versions: 0, file_kind: "pdf" });
+    const [cand] = await sql(`select * from public.ch_source_candidates where id = $1`, [c.id]);
+    expect(r.source_id).toBe(cand.source_id);
+    expect(r.document_id).toBe(cand.document_id);
+    expect(cand).toMatchObject({ status: "aprovado", decided_by: t.ADMIN });
+    expect(cand.decided_at).not.toBeNull();
+    expect(cand.edited).toMatchObject({ level: "B" });
+
+    const [src] = await sql(`select * from public.ch_sources where id = $1`, [r.source_id]);
+    expect(src).toMatchObject({
+      status: "current", authority_level: "B", editorial_approved: true, editorial_approved_by: t.ADMIN, document_id: r.document_id,
+      title: cand.ai_title, organ: "Ministério da Saúde", kind: "final", source_type: "PCDT", sha256: cand.sha256, url: cand.final_url,
+    });
+    expect(src.editorial_approved_at).not.toBeNull();
+    expect(String(src.published_on.toISOString?.() ?? src.published_on)).toContain("2025-03-14");
+    expect(src.specialty).toBeNull();
+    expect(src.theme).toBeNull();
+
+    const [doc] = await sql(`select * from public.ch_documents where id = $1`, [r.document_id]);
+    expect(doc).toMatchObject({
+      owner_id: t.ADMIN, name: cand.ai_title, publisher: "Ministério da Saúde", sha256: cand.sha256, storage_path: cand.storage_path,
+      mime: "application/pdf", purpose: "reference_source", rights_status: "reference_only", page_count: 12, status: "received",
+    });
+    expect(doc.provenance.found).toMatch(/^encontrado pela busca em \d{2}\/\d{2}\/\d{4}$/);
+    expect(doc.provenance).toMatchObject({
+      requested_url: cand.requested_url, final_url: cand.final_url, site: "gov.br/saude", institution: "Ministério da Saúde", sha256: cand.sha256,
+      size_bytes: 123456, file_kind: "pdf", search_id: cand.search_id, candidate_id: c.id,
+    });
+
+    const audit = await sql(`select actor_id from public.ch_audit where action = 'source_candidate.approve' and target = $1`, [c.id]);
+    expect(audit).toHaveLength(1);
+    expect(audit[0].actor_id).toBe(t.ADMIN);
+    const list = await asAdmin("app_ch_sources");
+    const mine = list.find((s: any) => s.id === r.source_id);
+    expect(mine).toMatchObject({ found_by_search: true, document_status: "received" });
+    // fonte cadastrada à mão não "foi achada pela busca"
+    const manual = await asAdmin("app_ch_register_source", { p_source: { title: "Cadastrada à mão T7", organ: "Anvisa" } });
+    expect(list.find((s: any) => s.id === manual.id)).toBeUndefined();
+    expect((await asAdmin("app_ch_sources")).find((s: any) => s.id === manual.id)).toMatchObject({ found_by_search: false, document_status: null });
+    // e o aprovado já não volta como repetido
+    expect(await known(cand.final_url, null)).toBe("Repetido: fonte já cadastrada.");
+  });
+
+  it("o que o administrador digitou vale mais que o salvo, que vale mais que o da IA; página web vira text/html", async () => {
+    const h = sha(0x7a7a7);
+    const c = await createCandidate({
+      file_kind: "html", sha256: h, storage_path: `source-candidates/${h}.html`, page_count: null, suggested_nature: null,
+      ai_published: "2025", file_date: null, ai_institution: "MS", ai_title: "Título da IA",
+    });
+    await asAdmin("app_ch_source_candidate_save", { p_candidate_id: c.id, p_fields: { title: "Título salvo", institution: "Órgão salvo", version: "salva" } });
+    const r = await approve(c.id, {
+      level: "c", checked: true, title: "Título final", kind: "society_guideline", nature: "GUIDELINE", area: "PEDIATRIA", theme: "Asma",
+      published_on: "2024-01-02", valid_until: "2027-01-01",
+    });
+    expect(r.file_kind).toBe("html");
+    const [src] = await sql(`select * from public.ch_sources where id = $1`, [r.source_id]);
+    expect(src).toMatchObject({ title: "Título final", organ: "Órgão salvo", version: "salva", kind: "society_guideline", source_type: "GUIDELINE", specialty: "PEDIATRIA", theme: "Asma", authority_level: "C" });
+    expect(String(src.published_on.toISOString?.() ?? src.published_on)).toContain("2024-01-02");
+    expect(String(src.valid_until.toISOString?.() ?? src.valid_until)).toContain("2027-01-01");
+    const [doc] = await sql(`select * from public.ch_documents where id = $1`, [r.document_id]);
+    expect(doc).toMatchObject({ mime: "text/html", name: "Título final", publisher: "Órgão salvo", page_count: null });
+    expect((await sql(`select edited from public.ch_source_candidates where id = $1`, [c.id]))[0].edited).toMatchObject({ title: "Título final", level: "C", institution: "Órgão salvo" });
+  });
+
+  it("sem nome do órgão da IA e só o ano: nada de inventar dia; o ano vira a versão; natureza nunca vem do texto livre da IA", async () => {
+    const c = await createCandidate({ ai_published: "2023", file_date: "2023", ai_nature: "Diretriz qualquer", suggested_nature: "MANUAL", ai_institution: null });
+    const r = await approve(c.id, OK);
+    const [src] = await sql(`select * from public.ch_sources where id = $1`, [r.source_id]);
+    expect(src.published_on).toBeNull();
+    expect(src).toMatchObject({ version: "2023", source_type: "MANUAL", organ: "Ministério da Saúde" });
+  });
+
+  it("nível E, sem nível, sem título ou sem a caixa: recusado, e nada é criado", async () => {
+    const semTitulo = await createCandidate({ ai_title: null });
+    const normal = await createCandidate();
+    const before = await counts();
+    await expect(approve(normal.id, { checked: true })).rejects.toThrow(/Escolha o nível de A a D\./);
+    await expect(approve(normal.id, { level: "E", checked: true })).rejects.toThrow(/Nível E não entra pela busca: escolha de A a D\./);
+    await expect(approve(normal.id, { level: "Z", checked: true })).rejects.toThrow(/Escolha o nível de A a D\./);
+    // o nível que a IA sugeriu não vale: quem escolhe é o administrador
+    await expect(approve(normal.id, { checked: true, level: "" })).rejects.toThrow(/Escolha o nível de A a D\./);
+    await expect(approve(semTitulo.id, OK)).rejects.toThrow(/Informe título e órgão da fonte\./);
+    await expect(approve(normal.id, { level: "B" })).rejects.toThrow(/Confirme que conferiu o documento no arquivo guardado\./);
+    await expect(approve(normal.id, { level: "B", checked: false })).rejects.toThrow(/Confirme que conferiu/);
+    await expect(approve(normal.id, { level: "B", checked: "true" })).rejects.toThrow(/Confirme que conferiu/);
+    await expect(approve(normal.id, null)).rejects.toThrow(/Confirme que conferiu/);
+    expect(await counts()).toEqual(before);
+    expect(await status(normal.id)).toBe("aguardando");
+    expect(await status(semTitulo.id)).toBe("aguardando");
+    // com título preenchido pelo administrador, passa
+    await expect(approve(semTitulo.id, { ...OK, title: "Título que o administrador escreveu" })).resolves.toMatchObject({ file_kind: "pdf" });
+    await expect(approve(normal.id, ["x"] as any)).rejects.toThrow(/Dados inválidos/);
+    await expect(approve("00000000-0000-4000-8000-000000000000", OK)).rejects.toThrow(/Candidato não encontrado/);
+  });
+
+  it("arquivo guardado que sumiu: recusa com o motivo", async () => {
+    const c = await createCandidate();
+    await sql(`update public.ch_source_candidates set storage_path = null where id = $1`, [c.id]);
+    await expect(approve(c.id, OK)).rejects.toThrow(/arquivo guardado não está mais disponível/);
+    expect(await status(c.id)).toBe("aguardando");
+  });
+
+  it("não aprova duas vezes, nem aprova o rejeitado, nem rejeita o aprovado", async () => {
+    const c = await createCandidate();
+    await approve(c.id, OK);
+    const before = await counts();
+    await expect(approve(c.id, OK)).rejects.toThrow(/já foi decidido/);
+    await expect(reject(c.id, "Motivo com mais de dez letras")).rejects.toThrow(/já foi decidido/);
+    const r = await createCandidate();
+    await reject(r.id, "Não é o documento certo para o tema.");
+    await expect(approve(r.id, OK)).rejects.toThrow(/já foi decidido/);
+    await expect(reject(r.id, "Motivo com mais de dez letras")).rejects.toThrow(/já foi decidido/);
+    expect(await counts()).toEqual(before);
+  });
+
+  it("substituição pede confirmação; confirmada, a anterior fica substituída", async () => {
+    const old = await asAdmin("app_ch_register_source", { p_source: { title: "PCDT Hanseníase T7", organ: "Ministério da Saúde", version: "2022", sha256: sha(0x7001) } });
+    const c = await createCandidate({ ai_title: "pcdt hanseníase t7" });
+    const before = await counts();
+    await expect(approve(c.id, OK)).rejects.toThrow(/Confirme a substituição: esta aprovação substitui a fonte vigente "PCDT Hanseníase T7" \(versão 2022\)\./);
+    await expect(approve(c.id, { ...OK, confirm_replace: "true" })).rejects.toThrow(/Confirme a substituição/);
+    expect(await counts()).toEqual(before);
+    expect((await sql(`select status from public.ch_sources where id = $1`, [old.id]))[0].status).toBe("current");
+    const r = await approve(c.id, { ...OK, confirm_replace: true });
+    expect(r.superseded).toBe(old.id);
+    expect(r.candidate_versions).toEqual(expect.any(Number));
+    expect((await sql(`select status, superseded_by from public.ch_sources where id = $1`, [old.id]))[0]).toEqual({ status: "superseded", superseded_by: r.source_id });
+    expect((await sql(`select status from public.ch_sources where id = $1`, [r.source_id]))[0].status).toBe("current");
+    // o administrador pode ter corrigido o título para não bater com nenhuma fonte: então não pede confirmação
+    const other = await createCandidate({ ai_title: "pcdt hanseníase t7" });
+    await expect(approve(other.id, { ...OK, title: "PCDT Outro Assunto T7" })).resolves.toMatchObject({ superseded: null });
+  });
+
+  it("site desativado ou fora da lista depois do achado: aprovação recusada, rejeição continua possível", async () => {
+    const sbp = (await sql(`select id from public.ch_official_domains where address = 'sbp.com.br'`))[0].id;
+    const link = "https://www.sbp.com.br/documentos/t7-consenso.pdf";
+    const c = await createCandidate({ domain_id: sbp, requested_url: link, final_url: link });
+    const setActive = (active: boolean) =>
+      asAdmin("app_ch_save_official_domain", { p_domain: { id: sbp, address: "sbp.com.br", institution: "Sociedade Brasileira de Pediatria", kind: "sociedade", active } });
+    await setActive(false);
+    try {
+      await expect(approve(c.id, OK)).rejects.toThrow(/O site sbp\.com\.br saiu da lista de sites oficiais ou foi desativado: reative-o ou rejeite este candidato\./);
+      expect(await status(c.id)).toBe("aguardando");
+      const rejected = await reject(c.id, "Site desativado; não vamos usar este documento.");
+      expect(rejected.storage_path).toMatch(/^source-candidates\//);
+    } finally {
+      await setActive(true);
+    }
+    // a lista continua valendo com o endereço real do arquivo: link de outro site ou de outro caminho não passa
+    const fora = await createCandidate({ requested_url: "https://www.gov.br/saude/pt-br/a.pdf", final_url: "https://exemplo.com.br/a.pdf" });
+    await expect(approve(fora.id, OK)).rejects.toThrow(/O site gov\.br\/saude saiu da lista/);
+    const caminho = await createCandidate({ requested_url: "https://www.gov.br/saude/pt-br/b.pdf", final_url: "https://www.gov.br/saudemental/b.pdf" });
+    await expect(approve(caminho.id, OK)).rejects.toThrow(/saiu da lista/);
+    const porta = await createCandidate({ requested_url: "https://www.gov.br/saude/pt-br/c.pdf", final_url: "https://www.gov.br:8443/saude/c.pdf" });
+    await expect(approve(porta.id, OK)).rejects.toThrow(/saiu da lista/);
+    const http = await createCandidate({ requested_url: "https://www.gov.br/saude/pt-br/d.pdf", final_url: "http://www.gov.br/saude/d.pdf" });
+    await expect(approve(http.id, OK)).rejects.toThrow(/saiu da lista/);
+    // subdomínio e a própria raiz do caminho passam
+    const sub = await createCandidate({ requested_url: "https://www.gov.br/saude/pt-br/e.pdf", final_url: "https://WWW.GOV.BR:443/Saude/e.pdf" });
+    await expect(approve(sub.id, OK)).resolves.toMatchObject({ file_kind: "pdf" });
+    const bvs = (await sql(`select id from public.ch_official_domains where address = 'bvsms.saude.gov.br'`))[0].id;
+    const sub2 = await createCandidate({ domain_id: bvs, requested_url: "https://x.bvsms.saude.gov.br/f.pdf", final_url: "https://x.bvsms.saude.gov.br/f.pdf" });
+    await expect(approve(sub2.id, OK)).resolves.toMatchObject({ file_kind: "pdf" });
+  });
+
+  it("arquivo já enviado à mão enquanto esperava: recusa com o nome do documento", async () => {
+    const S = sha(0x7777);
+    const c = await createCandidate({ sha256: S, storage_path: `source-candidates/${S}.pdf` });
+    await sql(`insert into public.ch_documents (owner_id, name, sha256) values ($1, 'Protocolo enviado à mão T7', $2)`, [t.EDITOR, S]);
+    const before = await counts();
+    await expect(approve(c.id, OK)).rejects.toThrow(/Este arquivo já está na Central como documento "Protocolo enviado à mão T7": vincule por lá ou rejeite este candidato\./);
+    expect(await counts()).toEqual(before);
+    await expect(reject(c.id, "Já existe na Central como documento.")).resolves.toBeDefined();
+  });
+
+  it("rejeitar exige 10 caracteres, guarda o motivo e o mesmo link ou arquivo não volta", async () => {
+    const S = sha(0x7788);
+    const link = "https://www.gov.br/saude/pt-br/t7-rejeitado.pdf";
+    const c = await createCandidate({ sha256: S, storage_path: `source-candidates/${S}.pdf`, requested_url: link, final_url: link });
+    await expect(reject(c.id, "curto")).rejects.toThrow(/Escreva o motivo \(pelo menos 10 caracteres\)\./);
+    await expect(reject(c.id, "   pouco   ")).rejects.toThrow(/Escreva o motivo/);
+    await expect(asAdmin("app_ch_source_candidate_reject", { p_candidate_id: c.id, p_reason: null })).rejects.toThrow(/Escreva o motivo/);
+    await expect(reject(c.id, "x".repeat(1001))).rejects.toThrow(/1000 caracteres/);
+    await expect(reject("00000000-0000-4000-8000-000000000000", "Motivo com mais de dez letras")).rejects.toThrow(/Candidato não encontrado/);
+    expect(await status(c.id)).toBe("aguardando");
+    const r = await reject(c.id, "  Documento antigo, já substituído pelo Ministério.  ");
+    expect(r).toEqual({ storage_path: `source-candidates/${S}.pdf` });
+    const [row] = await sql(`select status, decided_by, decided_at, decision_reason, storage_path, source_id, document_id from public.ch_source_candidates where id = $1`, [c.id]);
+    expect(row).toMatchObject({ status: "rejeitado", decided_by: t.ADMIN, decision_reason: "Documento antigo, já substituído pelo Ministério.", storage_path: null, source_id: null, document_id: null });
+    expect(row.decided_at).not.toBeNull();
+    expect(await known(link, null)).toBe("Repetido: rejeitado antes.");
+    expect(await known("https://outro.gov.br/y.pdf", S)).toBe("Repetido: rejeitado antes.");
+    expect(await createCandidate({ sha256: S })).toEqual({ id: c.id, duplicate: true });
+    const audit = await sql(`select actor_id from public.ch_audit where action = 'source_candidate.reject' and target = $1`, [c.id]);
+    expect(audit).toHaveLength(1);
+    expect(audit[0].actor_id).toBe(t.ADMIN);
+  });
+
+  it("só administrador aprova e rejeita: editor, aluno e visitante barrados", async () => {
+    const c = await createCandidate();
+    const before = await counts();
+    for (const user of [t.editorUser, t.studentUser]) {
+      await expect(t.db.asUser(user, "app_ch_source_candidate_approve", { p_candidate_id: c.id, p_fields: OK })).rejects.toThrow(RESTRITO);
+      await expect(t.db.asUser(user, "app_ch_source_candidate_reject", { p_candidate_id: c.id, p_reason: "Motivo com mais de dez letras" })).rejects.toThrow(RESTRITO);
+    }
+    expect(await counts()).toEqual(before);
+    expect(await status(c.id)).toBe("aguardando");
+    // visitante (papel anon) nem chega a executar; o papel público também não
+    const open = await sql(
+      `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname in ('app_ch_source_candidate_approve', 'app_ch_source_candidate_reject', 'app_ch_sources', 'ch_source_site_match', 'ch_source_iso_date')
+          and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('public', p.oid, 'execute'))`
+    );
+    expect(open).toEqual([]);
+    // todas as funções de administrador desta migração barram editor e aluno (as de leitura e as de gravação)
+    const ID = "00000000-0000-4000-8000-000000000000";
+    const adminOnly: [string, Record<string, unknown>][] = [
+      ["app_ch_save_official_domain", { p_domain: { address: "exemplo.gov.br", institution: "X", kind: "governo", active: true } }],
+      ["app_ch_source_search_start", { p_request: { area: "PEDIATRIA", theme: "Asma barrada" } }],
+      ["app_ch_source_searches", {}],
+      ["app_ch_source_candidates", {}],
+      ["app_ch_source_candidate", { p_candidate_id: c.id }],
+      ["app_ch_source_candidate_save", { p_candidate_id: c.id, p_fields: { title: "Título barrado" } }],
+      ["app_ch_register_source", { p_source: { title: "Fonte barrada", organ: "X" } }],
+    ];
+    for (const user of [t.editorUser, t.studentUser]) {
+      for (const [fn, args] of adminOnly) await expect(t.db.asUser(user, fn, args), `${fn} para ${user.email}`).rejects.toThrow(RESTRITO);
+    }
+    expect((await sql(`select count(*)::int as n from public.ch_source_searches where theme = 'Asma barrada'`))[0].n).toBe(0);
+    expect((await sql(`select ai_title from public.ch_source_candidates where id = $1`, [c.id]))[0].ai_title).not.toBe("Título barrado");
+    // a equipe (editor) lê a lista de sites, mas não a de fontes achadas
+    await expect(t.db.asUser(t.editorUser, "app_ch_official_domains")).resolves.toBeDefined();
+    await expect(t.db.asUser(t.studentUser, "app_ch_official_domains")).rejects.toThrow(/Acesso restrito à equipe/);
+    // visitante: nenhuma função da tela executa
+    const anonOpen = await sql(
+      `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname in ('app_ch_official_domains', 'app_ch_save_official_domain', 'app_ch_source_search_start', 'app_ch_source_searches', 'app_ch_source_candidates', 'app_ch_source_candidate', 'app_ch_source_candidate_save', 'app_ch_register_source', 'app_ch_sources')
+          and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('public', p.oid, 'execute'))`
+    );
+    expect(anonOpen).toEqual([]);
+    // as de apoio também ficam fechadas para quem entrou
+    const helpers = await sql(
+      `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname in ('ch_source_site_match', 'ch_source_iso_date') and has_function_privilege('authenticated', p.oid, 'execute')`
+    );
+    expect(helpers).toEqual([]);
+  });
+});
+
 // ---------------------------------------------------------------- a migração: número, ordem e colar duas vezes
 describe("Migração 9610", () => {
   const ROOT = path.resolve(__dirname, "../..");
@@ -591,7 +851,7 @@ describe("Migração 9610", () => {
     const mine = [...code(src()).matchAll(/create or replace function public\.(\w+)\(/g)].map((m) => m[1]);
     expect(mine.length).toBeGreaterThan(15);
     const others = fs.readdirSync(MIG_DIR).filter((f) => f.endsWith(".sql") && f !== NAME);
-    const redefined = ["ch_worker_ai_save_function", "app_ai_summary", "ch_worker_ai_log_calls", "ch_worker_ai_save_price", "app_ch_register_source"];
+    const redefined = ["ch_worker_ai_save_function", "app_ai_summary", "ch_worker_ai_log_calls", "ch_worker_ai_save_price", "app_ch_register_source", "app_ch_sources"];
     for (const fn of redefined) {
       expect(mine).toContain(fn);
       const where = others.filter((f) => new RegExp(`function public\\.${fn}\\(`).test(fs.readFileSync(path.join(MIG_DIR, f), "utf8"))).sort();
@@ -618,6 +878,9 @@ describe("Migração 9610", () => {
       // o site que o dono desativou continua desativado; o candidato continua lá
       expect((await sql(`select active from public.ch_official_domains where id = $1`, [domain.id]))[0].active).toBe(false);
       expect((await asAdmin("app_ch_source_candidate", { p_candidate_id: cand.id })).id).toBe(cand.id);
+      // aprovar depois de colar de novo ainda funciona, e só uma vez
+      await expect(asAdmin("app_ch_source_candidate_approve", { p_candidate_id: cand.id, p_fields: { level: "A", checked: true } })).resolves.toMatchObject({ file_kind: "pdf" });
+      await expect(asAdmin("app_ch_source_candidate_approve", { p_candidate_id: cand.id, p_fields: { level: "A", checked: true } })).rejects.toThrow(/já foi decidido/);
       // regras e gatilho continuam em um exemplar só
       expect((await sql(`select count(*)::int as n from pg_trigger where tgname = 'ch_jobs_source_search_dead' and not tgisinternal`))[0].n).toBe(1);
       expect((await sql(`select count(*)::int as n from pg_policies where tablename in ('ch_official_domains','ch_source_searches','ch_source_candidates')`))[0].n).toBe(3);
@@ -625,13 +888,13 @@ describe("Migração 9610", () => {
       // permissões: depois de colar de novo, visitante e papel público continuam sem executar
       const open = await sql(
         `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-          where n.nspname = 'public' and (p.proname like 'ch\\_worker\\_source\\_%' or p.proname in ('ch_url_norm', 'ch_worker_ai_save_function', 'ch_worker_ai_log_calls', 'ch_worker_ai_save_price', 'ch_source_replacement', 'ch_source_candidate_item', 'ch_source_search_job_dead'))
+          where n.nspname = 'public' and (p.proname like 'ch\\_worker\\_source\\_%' or p.proname in ('ch_url_norm', 'ch_worker_ai_save_function', 'ch_worker_ai_log_calls', 'ch_worker_ai_save_price', 'ch_source_replacement', 'ch_source_candidate_item', 'ch_source_search_job_dead', 'ch_source_site_match', 'ch_source_iso_date'))
             and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('public', p.oid, 'execute'))`
       );
       expect(open).toEqual([]);
       const openApp = await sql(
         `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-          where n.nspname = 'public' and (p.proname like 'app\\_ch\\_source\\_%' or p.proname in ('app_ch_official_domains', 'app_ch_save_official_domain', 'app_ai_summary'))
+          where n.nspname = 'public' and (p.proname like 'app\\_ch\\_source\\_%' or p.proname in ('app_ch_official_domains', 'app_ch_save_official_domain', 'app_ai_summary', 'app_ch_sources'))
             and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('public', p.oid, 'execute'))`
       );
       expect(openApp).toEqual([]);
