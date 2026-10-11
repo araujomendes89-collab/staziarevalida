@@ -260,11 +260,15 @@ describe("varredura: o que a aluna recebe NÃO identifica a fonte complementar",
     limpo(await rpc(ALUNA, "app_lessons"));
     const aula = await rpc(ALUNA, "app_lesson", { p_id: aulaId });
     limpo(aula);
-    expect(aula.materials.map((m: any) => m.title)).toEqual(["Slides da aula"]);
+    // rótulo neutro (9580) e só o material que não identifica a apostila
+    expect(aula.materials.map((m: any) => m.title)).toEqual(["Material complementar"]);
+    expect(aula.materials[0].file_title).toBeUndefined();
     expect(aula.guideline_title).toBeNull();
-    const direto = await comoAluno(`select title, url from public.lesson_materials`);
-    limpo(direto);
-    expect(direto.map((m: any) => m.title)).toEqual(["Slides da aula"]);
+    // a tabela de materiais não se lê direto (9580): nada chega ao aluno
+    expect(await comoAluno(`select title, url from public.lesson_materials`)).toEqual([]);
+    const matComp = (await sql(`select id from public.lesson_materials where title = $1`, [COMP_FILE]))[0].id;
+    expect(await rpc(ALUNA, "app_lesson_material", { p_id: matComp })).toBeNull();
+    expect((await rpc(ADMIN, "app_lesson_material", { p_id: matComp })).title).toBe(COMP_FILE);
   });
 
   it("Atualizações & Diretrizes: instituição, documento e link da apostila não saem", async () => {
@@ -289,7 +293,7 @@ describe("administrador e equipe continuam vendo tudo", () => {
       expect(JSON.stringify(corr)).toContain(COMP_TITLE);
       expect((await rpc(uid, "app_podcast", { p_id: podcastId })).sources.length).toBeGreaterThanOrEqual(3);
       const aula = await rpc(uid, "app_lesson", { p_id: aulaId });
-      expect(aula.materials.map((m: any) => m.title)).toContain(COMP_FILE);
+      expect(aula.materials.map((m: any) => m.file_title)).toContain(COMP_FILE);
       expect(JSON.stringify(await rpc(uid, "app_guideline_update", { p_slug: atualizacaoSlug }))).toContain(COMP_TITLE);
     }
     expect(JSON.stringify(await rpc(ADMIN, "app_question_timeline", { p_question_id: QID }))).toContain(COMP_TITLE);

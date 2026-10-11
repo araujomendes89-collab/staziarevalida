@@ -19,7 +19,7 @@
 --
 -- As funções redefinidas partem das versões mais novas de todas as migrações e dos ramos entregues:
 --   app_question_commentary, practice_correction_view, tutor_truth: 20261003007700 · app_question_timeline: 20261003002600
---   app_podcast: 20261003009591 · lesson_view: 20261003004000 · guideline_update_view: 20261003004100
+--   app_podcast: 20261003009593 · lesson_view, lesson_materials_json, app_lesson_material: 20261003009580 · guideline_update_view: 20261003004100
 --   app_ch_set_source_authority: 20261003002100.
 -- Pode ser colada duas vezes sem erro e não apaga nenhum dado.
 -- =============================================================================
@@ -132,6 +132,8 @@ alter table public.lessons add column if not exists guideline_hidden boolean not
 alter table public.lesson_materials add column if not exists hidden_from_student boolean not null default false;
 alter table public.guideline_updates add column if not exists source_hidden boolean not null default false;
 alter table public.podcast_sources add column if not exists complementar boolean not null default false;
+-- mesma coluna da 20261003009593 (o app_podcast abaixo depende dela; colar a 9620 antes da 9593 também funciona)
+alter table public.podcast_sources add column if not exists title_by_staff boolean not null default false;
 
 create or replace function public.ch_lessons_hidden_flag() returns trigger
   language plpgsql security definer set search_path = ''
@@ -184,11 +186,7 @@ end
 $$;
 -- (a marca é recalculada com o gatilho acima; o UPDATE desta função só roda quando a marca muda)
 
--- Material de aula marcado como complementar: o aluno não lê o título nem o endereço, nem pela tabela.
-drop policy if exists "materiais: da aula visível" on public.lesson_materials;
-create policy "materiais: da aula visível" on public.lesson_materials
-  for select to authenticated using (exists (select 1 from public.lessons l where l.id = lesson_id and (l.published or public.is_staff()))
-                                     and (not hidden_from_student or public.is_staff()));
+-- (A política de leitura de lesson_materials fica como a 20261003009580 deixou: só a equipe lê a tabela direto.)
 
 -- ---------------------------------------------------------------- 4. administrador: classe da fonte
 create or replace function public.app_ch_set_source_audience(p_source_id uuid, p_audience text, p_reason text default null) returns jsonb
@@ -378,7 +376,7 @@ begin
 end
 $$;
 
--- Podcast publicado (corpo da 20261003009591): fonte marcada como complementar, ou que bate com a biblioteca, não aparece (nem as páginas dela).
+-- Podcast publicado (corpo da 20261003009593, a mais nova): fonte marcada como complementar, ou que bate com a biblioteca, não aparece (nem as páginas dela).
 create or replace function public.app_podcast(p_id uuid) returns jsonb
   language sql stable security definer set search_path = ''
 as $$
@@ -386,7 +384,7 @@ as $$
     'lines', coalesce((select jsonb_agg(jsonb_build_object('speaker', l ->> 'speaker', 'text', l ->> 'text') order by o) from jsonb_array_elements(p.script -> 'lines') with ordinality as x (l, o)), '[]'::jsonb),
     'sources', coalesce((
       select jsonb_agg(jsonb_build_object(
-                         'title', case when s.kind in ('pdf', 'docx') and s.title ~* '\.(pdf|docx?)\s*$' then 'Documento ' || s.n::text else s.title end,
+                         'title', case when s.kind in ('pdf', 'docx') and not s.title_by_staff then 'Documento ' || s.n::text else s.title end,
                          'kind', s.kind, 'url', s.url, 'pages',
                          (select jsonb_agg(distinct c.page order by c.page) from public.podcast_chunks c
                           where c.source_id = s.id and c.page is not null
@@ -399,7 +397,28 @@ as $$
   where p.id = p_id and p.status = 'published' and (select auth.uid()) is not null
 $$;
 
--- Aula (corpo da 20261003004000): material e diretriz marcados como complementares não saem ao aluno.
+-- Aula (corpos da 20261003009580, a mais nova): material e diretriz marcados como complementares não saem ao aluno.
+create or replace function public.lesson_materials_json(p_lesson uuid) returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select coalesce(jsonb_agg(x.j order by x.position, x.created_at), '[]'::jsonb)
+  from (
+    select m.position, m.created_at,
+      jsonb_build_object(
+        'id', m.id, 'kind', m.kind,
+        'title', case m.kind when 'slides' then 'Material complementar' when 'flashcast' then 'Áudio Flashcast'
+                             when 'guideline' then case when m.storage_path is null then m.title else 'Diretriz' end
+                             else 'Material ' || row_number() over (partition by m.kind order by m.position, m.created_at) end,
+        'has_file', m.storage_path is not null, 'content_type', m.content_type, 'size_bytes', m.size_bytes, 'url', m.url)
+      || case when public.is_staff() then jsonb_build_object('file_title', m.title, 'storage_path', m.storage_path) else '{}'::jsonb end as j
+    from public.lesson_materials m
+    where m.lesson_id = p_lesson and (not m.hidden_from_student or public.is_staff())
+      and exists (select 1 from public.lessons l where l.id = p_lesson and (l.published or public.is_staff()))
+  ) x
+$$;
+revoke execute on function public.lesson_materials_json(uuid) from public, anon;
+grant execute on function public.lesson_materials_json(uuid) to authenticated;
+
 create or replace function public.lesson_view(l public.lessons) returns jsonb
   language sql stable set search_path = ''
 as $$
@@ -409,12 +428,23 @@ as $$
     'summary', l.summary, 'key_points', to_jsonb(l.key_points), 'guideline_title', case when l.guideline_hidden and not public.is_staff() then null else l.guideline_title end,
     'guideline_url', case when l.guideline_hidden and not public.is_staff() then null else l.guideline_url end,
     'published', l.published, 'position', l.position, 'updated_at', l.updated_at,
-    'materials', coalesce((select jsonb_agg(jsonb_build_object('id', m.id, 'kind', m.kind, 'title', m.title, 'has_file', m.storage_path is not null,
-                                                               'content_type', m.content_type, 'size_bytes', m.size_bytes, 'url', m.url) order by m.position, m.created_at)
-                           from public.lesson_materials m where m.lesson_id = l.id and (not m.hidden_from_student or public.is_staff())), '[]'::jsonb),
+    'materials', public.lesson_materials_json(l.id),
     'progress', (select jsonb_build_object('seconds_watched', p.seconds_watched, 'completed_at', p.completed_at, 'last_at', p.last_at)
                  from public.lesson_progress p where p.lesson_id = l.id and p.user_id = (select auth.uid())))
 $$;
+
+create or replace function public.app_lesson_material(p_id uuid) returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select jsonb_build_object('id', m.id, 'kind', m.kind,
+           'title', case when public.is_staff() then m.title else case m.kind when 'slides' then 'Material complementar' when 'flashcast' then 'Áudio Flashcast' else 'Material' end end,
+           'storage_path', m.storage_path, 'content_type', m.content_type, 'url', m.url)
+  from public.lesson_materials m join public.lessons l on l.id = m.lesson_id
+  where m.id = p_id and (select auth.uid()) is not null and (l.published or public.is_staff())
+    and (not m.hidden_from_student or public.is_staff())
+$$;
+revoke execute on function public.app_lesson_material(uuid) from public, anon;
+grant execute on function public.app_lesson_material(uuid) to authenticated;
 
 -- Atualização/diretriz (corpo da 20261003004100): instituição, título e link do documento somem quando identificam fonte complementar.
 create or replace function public.guideline_update_view(u public.guideline_updates, p_full boolean) returns jsonb
