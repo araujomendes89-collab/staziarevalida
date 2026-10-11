@@ -2,7 +2,8 @@
  * Processamento da Central de Conteúdo, uma etapa por trabalho da fila (ch_jobs):
  *
  *   material de estudo:  extract → classify → claims → evidence → draft → materials → render → review_check
- *   fonte de referência: extract → source_index
+ *   fonte de referência: extract → source_index (trechos, vetores da busca por significado e, depois, devolve à conferência os
+ *                        materiais com afirmação que só a IA julgou insuficiente)
  *
  * Regras que valem para todas as etapas:
  *   - cada chamada de IA é separada, com prompt versionado, resposta validada por schema e
@@ -29,7 +30,7 @@ import { functionForPrompt, type ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { copyRatio, flashcardProblems, isVerbatim, negations, negationsLost, normalize, numbers, numbersOutside } from "./checks";
 import type { ContentDb, Storage } from "./infra";
-import { embedderAllowed, queryEmbedding, type Embedder } from "./embeddings";
+import { embedderAllowed, embedPendingPassages, queryEmbedding, type Embedder } from "./embeddings";
 import type { Renderer } from "./render";
 import { generateVisualVersion, visualVersionOf, VisualRenderUnavailable } from "./visual/service";
 
@@ -51,6 +52,8 @@ export interface Job {
   attempts: number;
   max_attempts: number;
   checkpoint: Record<string, any>;
+  /** Dono do trabalho: novo cada vez que um processamento o pega (migração 9540, rodada de correção 4 do CC01). */
+  lease?: string | null;
 }
 
 export interface PipelineDeps {
@@ -70,6 +73,12 @@ export interface PipelineDeps {
 export class Blocked extends Error {}
 /** Falha que nova tentativa não resolve (arquivo protegido, corrompido, hash diferente). */
 export class Fatal extends Error {}
+/**
+ * Outro processamento pegou o trabalho: este ficou sem dar sinal de vida por mais de CONTENT_HUB_STALE_SECONDS. Ele para ali, sem
+ * gravar mais nada, sem registrar o fim e sem pedir a próxima etapa (quem pegou o trabalho termina).
+ */
+class Lost extends Error {}
+const LOST = "Outro processamento pegou este trabalho (este ficou sem dar sinal de vida): esta execução parou sem gravar o fim.";
 
 interface Metrics {
   ms?: number;
@@ -86,6 +95,8 @@ interface Ctx {
   deps: PipelineDeps;
   job: Job;
   metrics: Metrics;
+  /** Marca que a próxima etapa recebe ao entrar na fila (reconferência automática: só os temas que mudaram). */
+  carry?: Record<string, unknown>;
 }
 
 const sha256 = (data: Buffer | string) => crypto.createHash("sha256").update(data).digest("hex");
@@ -95,23 +106,67 @@ const docId = (ctx: Ctx) => {
   return ctx.job.document_id;
 };
 const versionScope = (ctx: Ctx) => (ctx.job.scope_key.startsWith("version:") ? ctx.job.scope_key.slice("version:".length) : null);
-/** Situação do documento: trabalho de uma versão só (edição manual) não mexe no documento. */
+/**
+ * Situação do documento: trabalho de uma versão só (edição manual) não mexe no documento. Trabalho da reconferência automática
+ * (marca no checkpoint) também não, em nenhuma etapa: o documento continua como estava, mesmo se a etapa falhar no meio (CC01,
+ * rodada de correção 2; no banco, ch_worker_finish/ch_worker_block/ch_worker_fail fazem o mesmo na falha e na pendência).
+ */
 const setMeta = async (ctx: Ctx, meta: Record<string, unknown>) => {
-  if (versionScope(ctx) || !ctx.job.document_id) return;
+  if (versionScope(ctx) || !ctx.job.document_id || ctx.job.checkpoint?.auto_recheck === true) return;
   await svc(ctx, "ch_worker_document_meta", { p_document_id: ctx.job.document_id, p_meta: meta });
 };
-/** Versões em rascunho a processar: as do documento ou, em trabalho de versão, só aquela. */
+/**
+ * Reconferência automática (CC01, rodada de correção 1): marca que passa de etapa em etapa (no checkpoint de cada trabalho) para
+ * o processamento mexer só no que mudou. Na etapa de rascunho: os temas e as afirmações que passaram a ser compatíveis. Nas
+ * seguintes (materiais, arquivos finais, revisão automática): só as versões que o rascunho criou. "Reprocessar" apaga a marca.
+ */
+interface AutoMark {
+  auto_recheck: true;
+  themes: string[];
+  claims: string[];
+  versions: string[];
+}
+function autoMark(ctx: Ctx): AutoMark | null {
+  const cp = ctx.job.checkpoint ?? {};
+  if (cp.auto_recheck !== true) return null;
+  const list = (x: unknown) => (Array.isArray(x) ? x.map(String) : []);
+  return { auto_recheck: true, themes: list(cp.themes), claims: list(cp.claims), versions: list(cp.versions) };
+}
+/** Marca das etapas depois do rascunho (só as versões criadas pela reconferência automática), ou nada fora dela. */
+const versionsMark = (ctx: Ctx) => {
+  const m = autoMark(ctx);
+  return m ? { auto_recheck: true, versions: m.versions } : null;
+};
+/** A próxima etapa recebe a mesma marca (materiais → arquivos finais → revisão automática). */
+const passMark = (ctx: Ctx) => {
+  const m = versionsMark(ctx);
+  if (m) ctx.carry = m;
+};
+/** Versões em rascunho a processar: as do documento ou, em trabalho de versão, só aquela (ou só as da reconferência automática). */
 async function targetVersions(ctx: Ctx): Promise<any[]> {
   const only = versionScope(ctx);
-  if (only) {
-    const v = await svc<any>(ctx, "ch_worker_unit_version", { p_version_id: only });
-    return v && v.status === "draft" ? [v] : [];
+  const auto = versionsMark(ctx);
+  const ids = only ? [only] : auto ? auto.versions : null;
+  if (ids) {
+    const out: any[] = [];
+    for (const id of ids) {
+      const v = await svc<any>(ctx, "ch_worker_unit_version", { p_version_id: id });
+      if (v && v.status === "draft") out.push(v);
+    }
+    return out;
   }
   return svc<any[]>(ctx, "ch_worker_unit_versions", { p_document_id: docId(ctx) });
 }
-const checkpoint = (ctx: Ctx, data: Record<string, unknown>) => {
+/** O dono do trabalho vai em tudo que grava no trabalho (sinal de vida e fim); banco sem a migração 9540: nada muda. */
+const owner = (job: Job) => (job.lease ? { p_lease: job.lease } : {});
+/**
+ * Ponto em que a etapa está (para retomar) e sinal de vida: o trabalho "rodando" sem sinal por mais de
+ * CONTENT_HUB_STALE_SECONDS volta para a fila. Se outro processamento já pegou o trabalho, para aqui (Lost).
+ */
+const checkpoint = async (ctx: Ctx, data: Record<string, unknown>) => {
   ctx.job.checkpoint = data;
-  return svc(ctx, "ch_worker_checkpoint", { p_job_id: ctx.job.id, p_checkpoint: data });
+  const ours = await svc<boolean | null>(ctx, "ch_worker_checkpoint", { p_job_id: ctx.job.id, p_checkpoint: data, ...owner(ctx.job) });
+  if (ours === false) throw new Lost(LOST);
 };
 
 export function stepVersions(step: Step, deps: PipelineDeps): Record<string, unknown> {
@@ -372,9 +427,113 @@ async function stepSourceIndex(ctx: Ctx): Promise<Step | null> {
   } catch (error) {
     Object.assign(ctx.metrics, { diff_error: (error as Error).message });
   }
+  // CC01: fonte nova com trechos: os materiais com afirmação "insuficiente" que só a IA julgou voltam para a conferência (só se a
+  // fonte entra na busca de evidências; o banco confere e devolve o motivo quando não roda)
+  if (n > 0) {
+    // a fonte nova ganha os vetores ANTES de a reconferência entrar na fila (senão ela só acha a fonte por palavras)
+    await embedNewSource(ctx, source.id, n);
+    try {
+      const r = await svc<{ documents: number; skipped?: string }>(ctx, "ch_worker_recheck_insufficient", { p_source_id: source.id, p_versions: stepVersions("evidence", ctx.deps) });
+      ctx.metrics.recheck_documents = r.documents;
+      if (r.skipped) ctx.metrics.recheck_skipped = RECHECK_SKIPPED;
+    } catch (error) {
+      // banco sem a migração 9540: a indexação vale do mesmo jeito; a etapa anota o que falta
+      const message = (error as Error).message;
+      ctx.metrics.recheck_error = /ch_worker_recheck_insufficient/.test(message) && /does not exist|could not find/i.test(message) ? RECHECK_MISSING : message;
+    }
+  }
   await setMeta(ctx, { status: "awaiting_review" });
   Object.assign(ctx.metrics, { passages: n, unresolved_blocks: blocks.filter((b) => b.status === "pending" || b.status === "illegible").length });
   return null;
+}
+
+// ------------------------------------------------- vetores da fonte nova (CC01, rodada de correção 5)
+/** Tempo da etapa para os vetores da fonte nova: 8 min (a execução pega trabalho até os 50 min e a tarefa tem 60). */
+const sourceEmbedMs = () => {
+  const s = Number(process.env.CONTENT_HUB_SOURCE_EMBED_SECONDS);
+  return (s > 0 ? Math.min(s, 1_200) : 480) * 1_000;
+};
+const SOURCE_EMBED_MAX = 5_000;
+/** Erro de configuração do Google (repetir não resolve); a Central de IAs guarda o motivo em português simples (embedder.problem). */
+const GOOGLE_CONFIG_STATUS = new Set([400, 401, 402, 403, 404]);
+const VECTORS_FAILED = "Busca por significado indisponível ao ler a fonte (a reconferência desta fonte foi só por palavras): ";
+const VECTORS_MISSING =
+  "Falta aplicar no Supabase a atualização da reconferência (migração 9540): os vetores da fonte nova ficaram para o fim da rodada e a reconferência desta fonte foi só por palavras.";
+const VECTORS_PENDING =
+  "Parte dos trechos ficou sem vetor no tempo da etapa (sai no fim da rodada): nesses, a reconferência desta fonte foi só por palavras.";
+
+/** O pedido que não volta até `until` é abandonado (o Google parado não trava a etapa nem a fila). */
+async function withinTime<T>(work: Promise<T>, until: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([work, new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error(message)), Math.max(0, until - Date.now()))))]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Vetores da fonte nova (busca por significado), feitos AQUI, antes de a reconferência automática entrar na fila. Antes, a
+ * reconferência rodava logo depois desta etapa, na mesma rodada, e só achava a fonte por palavras: os vetores eram feitos no fim
+ * da rodada (worker.embed()) e nada conferia de novo depois. São os mesmos vetores, só que antes (mesmo texto, mesma gravação): o
+ * fim da rodada acha a fonte pronta e não refaz nada, e cada trecho é pago uma vez só.
+ * - Busca por significado desligada (ou IA desligada no painel): não faz nada; a reconferência entra na hora, por palavras, como antes.
+ * - Busca parada por erro de configuração (Central de IAs: o vetorizador recusa na hora, sem ir ao Google), Google recusando ou
+ *   sem responder, banco sem a 9540 nova: a leitura da fonte não para (não gasta tentativa nem refaz os trechos), a reconferência
+ *   segue por palavras e a etapa anota o motivo (vectors_error). O pedido que não volta no tempo da etapa é abandonado.
+ * - Tempo da etapa (8 min) ou teto de trechos: o que faltou fica para o fim da rodada (vectors_pending).
+ * - Sinal de vida a cada lote (rodada de correção 4): se outro processamento pegou o trabalho, para aqui (Lost sobe) e a
+ *   reconferência não entra na fila por este processamento.
+ */
+async function embedNewSource(ctx: Ctx, sourceId: string, passages: number): Promise<void> {
+  const embedder = await embedderAllowed(ctx.deps.db, ctx.deps.embedder);
+  if (!embedder) return;
+  const budget = sourceEmbedMs();
+  const t0 = Date.now();
+  const deadline = t0 + budget;
+  // o lote que já começou tem uma folga para terminar (não joga fora o que já foi pago); depois dela, o pedido é abandonado
+  const hardStop = deadline + Math.min(budget, 30_000);
+  const slow = `o Google não respondeu em ${Math.round((hardStop - t0) / 1_000)} s (pedido abandonado; os trechos que faltam ganham o vetor no fim da rodada).`;
+  const guarded: Embedder = {
+    model: embedder.model,
+    embedDocuments: (items) => withinTime(embedder.embedDocuments(items), hardStop, slow),
+    embedQuery: (text) => embedder.embedQuery(text),
+  };
+  let done = 0;
+  try {
+    const r = await embedPendingPassages(ctx.deps.db, guarded, {
+      sourceId,
+      max: SOURCE_EMBED_MAX,
+      deadline,
+      log: ctx.deps.log,
+      run: { job_id: ctx.job.id, document_id: ctx.job.document_id },
+      onBatch: (n) => {
+        done = n;
+        return checkpoint(ctx, { ...(ctx.job.checkpoint ?? {}), vectors: n });
+      },
+    });
+    ctx.metrics.vectors = r.embedded;
+    if (r.costUsd) ctx.metrics.vectors_cost_usd = r.costUsd;
+    if (r.embedded < passages) {
+      const left = await svc<unknown[]>(ctx, "ch_worker_source_passages_to_embed", { p_source_id: sourceId, p_model: embedder.model, p_limit: 1 });
+      if (left?.length) ctx.metrics.vectors_pending = VECTORS_PENDING;
+    }
+  } catch (error) {
+    if (error instanceof Lost) throw error; // outro processamento pegou a etapa: para aqui, sem pôr a reconferência na fila
+    if (done) ctx.metrics.vectors = done;
+    const e = error as { message?: unknown; status?: unknown; quiet?: unknown } | null;
+    const message = String(e?.message ?? error);
+    if (/ch_worker_source_passages_to_embed/.test(message) && /does not exist|could not find/i.test(message)) {
+      ctx.metrics.vectors_error = VECTORS_MISSING;
+    } else {
+      // Central de IAs: com erro de configuração, o motivo em português simples (o texto cru do Google fica só no registro)
+      const problem = (embedder as { problem?: string | null }).problem;
+      const plain = problem && (e?.quiet === true || GOOGLE_CONFIG_STATUS.has(Number(e?.status)));
+      ctx.metrics.vectors_error = VECTORS_FAILED + (plain ? problem : message.slice(0, 300));
+    }
+    // busca parada com o aviso já dado nesta execução (erro "quiet"): não repete no registro
+    if (e?.quiet !== true) ctx.deps.log?.(`[central] vetores da fonte nova: ${message.slice(0, 200)}`);
+  }
 }
 
 async function stepClassify(ctx: Ctx): Promise<Step | null> {
@@ -482,20 +641,63 @@ function requireWriterField(rows: any[], field: "created_by_model" | "generated_
   if (rows.length && !(field in rows[0])) throw new Blocked(WRITER_FIELD_MISSING);
 }
 
+/**
+ * CC01 (2026-10-10, revisto na rodada de correção 1): afirmação "insuficiente" que só a IA julgou volta a ser conferida ao
+ * reprocessar a conferência e quando entra fonte nova (stepSourceIndex). "Só a IA julgou": nenhuma evidência vigente (nenhum
+ * trecho achado) ou só evidência "insuficiente" dada pelo processamento — a busca por palavras acha trecho de outro assunto por
+ * termos comuns ("pacientes") e a IA, que precisa escolher um trecho da lista, julga "insuficiente" contra ele. A afirmação com
+ * evidência dada pela equipe fica como está. Na reconferência, a mesma resposta de antes não grava nada; a resposta nova
+ * substitui a evidência antiga da IA (ch_worker_link_evidence com "recheck"). Banco sem a migração 9540 (sem "recheckable"):
+ * segue como antes, só com as afirmações novas.
+ */
+const recheckable = (c: any) => c.recheckable === true;
+const RECHECK_MISSING = "Falta aplicar no Supabase a atualização da reconferência das afirmações sem trecho (migração 9540).";
+const RECHECK_SKIPPED =
+  "A fonte não entra na busca de evidências (consulta pública, relatório preliminar, diretriz de sociedade sem aprovação editorial ou fonte substituída): nenhuma afirmação foi conferida de novo.";
+
 async function stepEvidence(ctx: Ctx): Promise<Step | null> {
-  await setMeta(ctx, { status: "verifying_sources" });
-  const claims = (await svc<any[]>(ctx, "ch_worker_claims", { p_document_id: docId(ctx) })).filter((c) => c.status === "extracted");
+  // reconferência automática (fonte nova indexada, marca posta pelo banco): roda sem mudar a situação do documento e só segue
+  // para o rascunho quando alguma afirmação passa a ser compatível, e só para o tema dela. "Reprocessar" recomeça a etapa sem a
+  // marca e segue sempre, com todos os temas.
+  const auto = ctx.job.checkpoint?.auto_recheck === true;
+  if (!auto) await setMeta(ctx, { status: "verifying_sources" });
+  const claims = (await svc<any[]>(ctx, "ch_worker_claims", { p_document_id: docId(ctx) })).filter((c) => c.status === "extracted" || recheckable(c));
   requireWriterField(claims, "created_by_model");
   const counts: Record<string, number> = {};
+  /**
+   * Temas (e afirmações) que passaram a ser compatíveis nesta conferência. Na reconferência automática retomada (falha, pendência
+   * ou trabalho pego por outro processamento), vêm do ponto salvo: a afirmação que já passou a compatível não é conferida de novo
+   * e o tema dela não pode ficar sem rascunho.
+   */
+  const saved = (x: unknown) => (auto && Array.isArray(x) ? x.map(String) : []);
+  const changedThemes = new Set<string>(saved(ctx.job.checkpoint?.themes));
+  const changedClaims = new Set<string>(saved(ctx.job.checkpoint?.claims));
+  /**
+   * Sinal de vida a cada afirmação, logo antes de gravar o resultado dela (CC01, rodada de correção 4). Cada afirmação faz busca e
+   * chamada de IA, e um material grande passa de 30 minutos nesta etapa: sem o sinal, a execução seguinte da tarefa achava o
+   * trabalho parado e o pegava de novo no meio. Também confere que o trabalho ainda é deste processamento (se não for, para sem
+   * gravar) e, na reconferência automática, guarda o que já mudou.
+   */
+  const alive = () =>
+    checkpoint(ctx, auto ? { ...ctx.job.checkpoint, themes: [...changedThemes].sort(), claims: [...changedClaims].sort() } : { ...ctx.job.checkpoint });
   for (const c of claims) {
+    const again = recheckable(c);
     const text = c.proposed_text ?? c.statement;
     const meaning = await queryEmbedding(await embedderAllowed(ctx.deps.db, ctx.deps.embedder), text, ctx.deps.log);
     const passages = await svc<any[]>(ctx, "ch_worker_search_passages", { p_query: searchQuery(text), p_limit: 6, p_embedding: meaning });
     if (!passages.length) {
+      await alive();
+      // conferida de novo e ainda sem trecho: continua como está, sem repetir a anotação no histórico
+      if (again) {
+        counts.still_no_passage = (counts.still_no_passage ?? 0) + 1;
+        continue;
+      }
       await svc(ctx, "ch_worker_mark_claim", {
         p_claim_id: c.id,
         p_status: "insufficient",
-        p_note: `Nenhum trecho das fontes cadastradas trata desta afirmação (busca por ${meaning ? "palavras e significado" : "palavras"}). Cadastre a fonte oficial completa ou vincule a evidência manualmente.`,
+        p_note:
+          `Nenhum trecho das fontes cadastradas trata desta afirmação (busca por ${meaning ? "palavras e significado" : "palavras"}). ` +
+          "Ela volta a ser conferida quando uma fonte nova for indexada ou quando a equipe reprocessar a conferência; também dá para vincular a evidência manualmente.",
       });
       counts.no_passage = (counts.no_passage ?? 0) + 1;
       continue;
@@ -511,6 +713,7 @@ async function stepEvidence(ctx: Ctx): Promise<Step | null> {
       if (!isVerbatim(o.quote, p.text)) return [{ where: "quote", reason: "a citação não é cópia literal do trecho da fonte" }];
       return [];
     }, c.created_by_model ?? null);
+    await alive();
     if (rejections.length) {
       await svc(ctx, "ch_worker_mark_claim", { p_claim_id: c.id, p_status: "needs_review", p_note: `Evidência proposta recusada pela conferência: ${rejections.map((r) => r.reason).join("; ")}` });
       counts.rejected = (counts.rejected ?? 0) + 1;
@@ -519,11 +722,31 @@ async function stepEvidence(ctx: Ctx): Promise<Step | null> {
     const p = byId.get(output.passage_id);
     const r = await svc<any>(ctx, "ch_worker_link_evidence", {
       p_claim_id: c.id,
-      p_evidence: { source_id: p.source_id, passage_id: p.passage_id, section: p.section, page: p.page, quote: normalize(output.quote), verdict: output.verdict, model: answer },
+      p_evidence: {
+        source_id: p.source_id, passage_id: p.passage_id, section: p.section, page: p.page, quote: normalize(output.quote), verdict: output.verdict, model: answer,
+        ...(again ? { recheck: true } : {}),
+      },
     });
-    counts[r.verdict] = (counts[r.verdict] ?? 0) + 1;
+    // mesma resposta de antes (mesmo trecho, mesmo veredito): nada foi gravado
+    const key = r.unchanged ? "unchanged" : r.verdict;
+    counts[key] = (counts[key] ?? 0) + 1;
+    if (!r.unchanged && r.verdict === "compatible" && c.theme_node_id) {
+      changedThemes.add(c.theme_node_id);
+      changedClaims.add(c.id);
+      // guarda já: se a etapa parar antes do fim, quem a retomar não perde este tema (a afirmação não volta a ser conferida)
+      if (auto) await alive();
+    }
   }
-  Object.assign(ctx.metrics, { claims_checked: claims.length, verdicts: counts });
+  const becameCompatible = counts.compatible ?? 0;
+  Object.assign(ctx.metrics, { claims_checked: claims.length, rechecked: claims.filter(recheckable).length, verdicts: counts, became_compatible: becameCompatible });
+  if (auto) {
+    ctx.metrics.auto_recheck = true;
+    // nenhuma afirmação de um tema passou a compatível: o rascunho e os materiais continuariam iguais; o documento fica como estava
+    if (!changedThemes.size) return null;
+    // só o rascunho dos temas que mudaram: os outros temas (em revisão, aprovados, editados pela equipe) ficam como estão, mesmo
+    // que o dono tenha trocado a IA do rascunho na Central de IAs
+    ctx.carry = { auto_recheck: true, themes: [...changedThemes].sort(), claims: [...changedClaims].sort() };
+  }
   return "draft";
 }
 
@@ -572,26 +795,59 @@ export function checkDraft(
   return { sections: kept, flags };
 }
 
+/**
+ * Aviso na versão mais nova de um tema que já tem unidade, quando a reconferência automática acha evidência para uma afirmação:
+ * o texto não muda sozinho (a equipe pode estar revisando ou ter editado essa versão); quem decide fazer o rascunho novo é a
+ * equipe. O texto da afirmação vem do próprio documento.
+ */
+const recheckNotice = (c: any, docName: string) => ({
+  severity: "minor",
+  kind: "other",
+  where: "Reconferência nas fontes",
+  detail:
+    `A afirmação "${c.proposed_text ?? c.statement}" passou a ter evidência compatível depois desta versão (fonte nova indexada) e não está no texto dela. ` +
+    `Para fazer um rascunho novo com ela, use "Reprocessar" na etapa "Rascunho da unidade" do documento "${docName}".`,
+  claim_id: c.id,
+  by: "reconferencia",
+});
+
 async function stepDraft(ctx: Ctx): Promise<Step | null> {
-  await setMeta(ctx, { status: "drafting" });
+  // reconferência automática (marca vinda da etapa de evidências): só os temas em que alguma afirmação passou a ser compatível
+  const auto = autoMark(ctx);
+  if (!auto) await setMeta(ctx, { status: "drafting" });
   const doc = await svc<any>(ctx, "ch_worker_document", { p_document_id: docId(ctx) });
   const catalog = await svc<{ nodes: { id: string; path: string }[] }>(ctx, "ch_worker_catalog");
   const pathOf = new Map(catalog.nodes.map((n) => [n.id, n.path]));
   const claims = await svc<any[]>(ctx, "ch_worker_claims", { p_document_id: docId(ctx) });
+  // banco com a migração 9540: a versão guarda de que base saiu (ch_worker_save_draft recebe p_base_hash)
+  const withBase = claims.length > 0 && "recheckable" in claims[0];
   const blocks = await svc<Block[]>(ctx, "ch_worker_blocks", { p_document_id: docId(ctx) });
   const originalText = blocks.map((b) => b.original_text ?? "").join("\n");
   // regras de licença retiradas por decisão do dono (2026-10-09): todo documento importado é tratado como material próprio, liberado para adaptar
 
   const byTheme = new Map<string, any[]>();
   for (const c of claims) if (c.theme_node_id) byTheme.set(c.theme_node_id, [...(byTheme.get(c.theme_node_id) ?? []), c]);
-  const themes = [...byTheme.keys()].sort();
+  const themes = [...byTheme.keys()].filter((t) => !auto || auto.themes.includes(t)).sort();
+  // versões criadas pela reconferência automática (as etapas seguintes só mexem nelas); vem do checkpoint quando a etapa é retomada
+  const created = [...(auto?.versions ?? [])];
   let drafts = 0;
+  let kept = 0;
+  let held = 0;
   let removed = 0;
   for (let i = ctx.job.checkpoint?.theme ?? 0; i < themes.length; i++) {
     const theme = themes[i];
     const all = byTheme.get(theme)!;
     const ready = all.filter((c) => c.status === "compatible");
-    if (ready.length) {
+    // reconferência automática num tema que já tem unidade: não faz versão nova sozinha; a versão mais nova recebe o aviso
+    const notice = auto
+      ? await svc<{ version_id: string } | null>(ctx, "ch_worker_theme_notice", {
+          p_theme_node_id: theme,
+          p_notices: ready.filter((c) => auto.claims.includes(c.id)).map((c) => recheckNotice(c, doc.name)),
+        })
+      : null;
+    if (notice) {
+      held++;
+    } else if (ready.length) {
       const base = new Map(ready.map((c) => [c.id, c.proposed_text ?? c.statement]));
       const payload = { tema: pathOf.get(theme) ?? "", afirmacoes: ready.map((c) => ({ id: c.id, text: base.get(c.id), context: c.context })) };
       const { output, model: drafted } = await ai<any>(ctx, "draft", payload);
@@ -601,6 +857,9 @@ async function stepDraft(ctx: Ctx): Promise<Step | null> {
         const scope =
           `Rascunho a partir de ${ready.length} de ${all.length} afirmações deste tema no documento "${doc.name}"; ` +
           `as demais aguardam evidência ou revisão. Não representa a transformação integral do documento.`;
+        // base do rascunho: as afirmações compatíveis (texto e contexto), o modelo e a versão do prompt. A mesma base que já
+        // virou versão da unidade não cria versão nova, mesmo que a equipe tenha editado o texto (rodada de correção 1 do CC01)
+        const baseHash = sha256(JSON.stringify({ prompt: PROMPTS.draft.version, model: drafted, payload }));
         const saved = await svc<{ version_id: string }>(ctx, "ch_worker_save_draft", {
           p_theme_node_id: theme,
           p_title: output.title,
@@ -608,14 +867,36 @@ async function stepDraft(ctx: Ctx): Promise<Step | null> {
           p_origin: "adaptation",
           p_model: drafted,
           p_scope_note: scope,
+          ...(withBase ? { p_base_hash: baseHash } : {}),
         });
-        await svc(ctx, "ch_worker_review_flags", { p_version_id: saved.version_id, p_flags: checked.flags });
-        drafts++;
+        // versão fora do rascunho (em revisão, aprovada, publicada) não se mexe: os apontamentos da revisão automática ficam
+        const version = await svc<any>(ctx, "ch_worker_unit_version", { p_version_id: saved.version_id });
+        if (version && version.status !== "draft") {
+          kept++;
+        } else {
+          // rascunho: avisos do software desta resposta + os que já estavam (a etapa de revisão refaz os dela)
+          const others = (version?.review_flags ?? []).filter((f: any) => f.by !== "software");
+          await svc(ctx, "ch_worker_review_flags", { p_version_id: saved.version_id, p_flags: [...checked.flags, ...others] });
+          drafts++;
+          if (auto && !created.includes(saved.version_id)) created.push(saved.version_id);
+        }
       }
     }
-    await checkpoint(ctx, { theme: i + 1 });
+    await checkpoint(ctx, auto ? { auto_recheck: true, themes: auto.themes, claims: auto.claims, versions: created, theme: i + 1 } : { theme: i + 1 });
   }
-  Object.assign(ctx.metrics, { themes: themes.length, drafts, paragraphs_removed: removed, claims_without_theme: claims.filter((c) => !c.theme_node_id).length });
+  Object.assign(ctx.metrics, {
+    themes: themes.length,
+    drafts,
+    kept_versions: kept,
+    paragraphs_removed: removed,
+    claims_without_theme: claims.filter((c) => !c.theme_node_id).length,
+    ...(auto ? { auto_recheck: true, held_themes: held } : {}),
+  });
+  if (auto) {
+    // nenhum tema novo ganhou rascunho: materiais, arquivos e revisão continuariam iguais; o documento fica como estava
+    if (!created.length) return null;
+    ctx.carry = { auto_recheck: true, versions: created };
+  }
   return "materials";
 }
 
@@ -699,9 +980,10 @@ async function stepMaterials(ctx: Ctx): Promise<Step | null> {
       .map((q: any) => ({ ...q, author: "StaziaMed", official: false, label: "Questão inédita StaziaMed (não é questão oficial do Inep)" }));
     if (questions.length) await save(v.version_id, "questions", { title: v.title, items: questions }, qs.model);
 
-    await checkpoint(ctx, { version: i + 1 });
+    await checkpoint(ctx, { ...versionsMark(ctx), version: i + 1 });
   }
   Object.assign(ctx.metrics, { versions: versions.length, materials: counts });
+  passMark(ctx);
   return "render";
 }
 
@@ -727,6 +1009,7 @@ async function stepRender(ctx: Ctx): Promise<Step | null> {
     }
   }
   Object.assign(ctx.metrics, { files: rendered, failed_checks: failed });
+  passMark(ctx);
   return "review_check";
 }
 
@@ -746,7 +1029,7 @@ async function stepReviewCheck(ctx: Ctx): Promise<Step | null> {
     const found = output.issues.map((x: any) => ({ ...x, by: "ai_review", model: reviewed }));
     issues += found.length;
     await svc(ctx, "ch_worker_review_flags", { p_version_id: v.version_id, p_flags: [...kept, ...found] });
-    await checkpoint(ctx, { version: i + 1 });
+    await checkpoint(ctx, { ...versionsMark(ctx), version: i + 1 });
   }
   await setMeta(ctx, { status: "awaiting_review" });
   Object.assign(ctx.metrics, { versions: versions.length, review_issues: issues });
@@ -779,31 +1062,51 @@ const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   visual_render: stepVisualRender,
 };
 
-/** Executa um trabalho já reservado (ch_worker_claim) e registra o resultado na fila. */
+/**
+ * Executa um trabalho já reservado (ch_worker_claim) e registra o resultado na fila. O fim vai com o dono do trabalho (rodada de
+ * correção 4 do CC01): se outro processamento pegou o trabalho enquanto este estava sem sinal, nada é registrado e a próxima etapa
+ * não é pedida (status "lost"); quem pegou o trabalho termina e pede.
+ */
 export async function runJob(deps: PipelineDeps, job: Job): Promise<{ status: string; next: Step | null; error?: string }> {
   const ctx: Ctx = { deps, job, metrics: { ai_calls: 0, cache_hits: 0, input_tokens: 0, output_tokens: 0, cost_usd: null, rejections: 0 } };
   const t0 = Date.now();
+  const lost = () => {
+    deps.log?.(`[central] ${job.step}: ${LOST}`);
+    return { status: "lost", next: null, error: LOST };
+  };
   try {
     const next = await STEPS[job.step](ctx);
     ctx.metrics.ms = Date.now() - t0;
-    await deps.db.service("ch_worker_finish", { p_job_id: job.id, p_ok: true, p_error: null, p_metrics: ctx.metrics });
-    if (next) await deps.db.service("ch_worker_next", { p_document_id: job.document_id, p_step: next, p_versions: stepVersions(next, deps), p_scope_key: job.scope_key });
+    const done = await deps.db.service<string | null>("ch_worker_finish", { p_job_id: job.id, p_ok: true, p_error: null, p_metrics: ctx.metrics, ...owner(job) });
+    if (done === "lost") return lost();
+    if (next) {
+      const args = { p_document_id: job.document_id, p_step: next, p_versions: stepVersions(next, deps), p_scope_key: job.scope_key };
+      // a marca entra junto com o trabalho, no mesmo passo do banco (outro processamento não pega o trabalho sem ela); se a
+      // próxima etapa estiver rodando em outro processamento, o pedido fica guardado no banco e vale quando ela terminar
+      // (coluna requeue e gatilho ch_jobs_worker_exit, migração 9540, rodada de correção 3 do CC01)
+      if (ctx.carry) await deps.db.service("ch_worker_next_marked", { ...args, p_checkpoint: ctx.carry });
+      else await deps.db.service("ch_worker_next", args);
+    }
     deps.log?.(`[central] ${job.step} concluído (${ctx.metrics.ms} ms)`);
     return { status: "succeeded", next };
   } catch (error) {
+    if (error instanceof Lost) return lost();
     const message = error instanceof Error ? error.message : String(error);
     if (error instanceof Blocked) {
-      await deps.db.service("ch_worker_block", { p_job_id: job.id, p_reason: message });
+      const status = await deps.db.service<string | null>("ch_worker_block", { p_job_id: job.id, p_reason: message, ...owner(job) });
+      if (status === "lost") return lost();
       deps.log?.(`[central] ${job.step} pendente: ${message}`);
       return { status: "blocked", next: null, error: message };
     }
     if (error instanceof Fatal) {
-      await deps.db.service("ch_worker_fail", { p_job_id: job.id, p_error: message });
+      const status = await deps.db.service<string | null>("ch_worker_fail", { p_job_id: job.id, p_error: message, ...owner(job) });
+      if (status === "lost") return lost();
       deps.log?.(`[central] ${job.step} falhou: ${message}`);
       return { status: "dead", next: null, error: message };
     }
     ctx.metrics.ms = Date.now() - t0;
-    const status = await deps.db.service<string>("ch_worker_finish", { p_job_id: job.id, p_ok: false, p_error: message.slice(0, 1000), p_metrics: ctx.metrics });
+    const status = await deps.db.service<string>("ch_worker_finish", { p_job_id: job.id, p_ok: false, p_error: message.slice(0, 1000), p_metrics: ctx.metrics, ...owner(job) });
+    if (status === "lost") return lost();
     deps.log?.(`[central] ${job.step} erro (${status}): ${message}`);
     return { status, next: null, error: message };
   }
