@@ -8,11 +8,12 @@
 --       Nenhum registro é apagado e a regra das chaves continua a mesma: o histórico de quem aprovou precisa ficar.
 --       Parte da única versão anterior: 20261003001300_admin.sql (app_admin_delete_user).
 -- US05  A lista e a ficha passam a trazer as áreas de revisão médica de cada pessoa (reviewer_areas), para a tela
---       mostrar o selo "Revisor médico". Parte da única versão anterior: 20261003001300_admin.sql (admin_user_row).
+--       mostrar o selo "Revisor médico". Parte da versão mais nova: 20261003007710_correcoes_questoes_ajustes.sql (admin_user_row).
 --       Só os administradores chegam aqui (app_admin_users/app_admin_user continuam com assert_admin; admin_user_row
 --       não é chamável por ninguém de fora).
 
 -- 1. US05 · admin_user_row ganha reviewer_areas (lista de códigos, vazia para quem não revisa)
+-- Parte da versão MAIS NOVA, a de 20261003007710_correcoes_questoes_ajustes.sql (respondidas e acertos sem as anuladas).
 create or replace function public.admin_user_row(p_user_id uuid) returns jsonb
   language sql stable security definer set search_path = ''
 as $$
@@ -21,8 +22,10 @@ as $$
     'name', p.name, 'phase', p.phase, 'exam_type', p.exam_type, 'target_edition', p.target_edition,
     'role', coalesce(r.role, 'student'),
     'plan', s.plan, 'status', s.status, 'trial_ends_at', s.trial_ends_at, 'current_period_end', s.current_period_end,
-    'answered', (select count(*)::int from public.question_attempts a where a.user_id = u.id),
-    'correct', (select count(*)::int from public.question_attempts a where a.user_id = u.id and a.is_correct),
+    'answered', (select count(*)::int from public.question_attempts a join public.questions q on q.id = a.question_id
+                 where a.user_id = u.id and q.status <> 'annulled'),
+    'correct', (select count(*)::int from public.question_attempts a join public.questions q on q.id = a.question_id
+                where a.user_id = u.id and a.is_correct and q.status <> 'annulled'),
     'last_activity', greatest(
       (select max(a.answered_at) from public.question_attempts a where a.user_id = u.id),
       (select max(f.reviewed_at) from public.flashcard_reviews f where f.user_id = u.id)),
