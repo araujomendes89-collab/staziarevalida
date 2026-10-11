@@ -31,6 +31,7 @@ export const lessonsAvailable = (backend) => Boolean(backend?.accessToken);
 export function uploadErrorText(error) {
   const text = String(error?.message ?? "").trim();
   if (error?.code === "network" || /failed to fetch|network|networkerror|conex/i.test(text)) return "Sem conexão com o servidor. Confira a internet e tente de novo.";
+  if (error?.status === 413 && /\d+\s*MB/.test(text)) return text; // "Arquivo acima de 200 MB.": o limite fica na mensagem
   if (error?.status === 413 || /exceeded|maximum allowed|too large|payload|tamanho/i.test(text)) return "O arquivo é grande demais para o depósito. Envie um arquivo menor.";
   if (/mime|type|not allowed|unsupported|invalid.*(file|format)/i.test(text)) return "O depósito não aceitou este tipo de arquivo. Envie um PDF ou um MP3.";
   if (/expired|token|jwt|unauthori[sz]ed|forbidden|signature|permission/i.test(text)) return "O envio expirou ou não foi autorizado. Entre de novo e tente outra vez.";

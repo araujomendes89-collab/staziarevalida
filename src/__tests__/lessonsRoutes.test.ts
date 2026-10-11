@@ -101,7 +101,7 @@ describe("Envio pelo servidor (banco local)", () => {
     expect((await postRaw(`${direct}/${lessonId}/materials?kind=flashcast`, editor, "application/pdf", PDF)).status).toBe(400);
     const r = await postRaw(`${direct}/${lessonId}/materials?kind=slides&title=Slides`, editor, "application/pdf", PDF);
     expect(r.status).toBe(201);
-    expect(r.body.materials).toEqual([expect.objectContaining({ kind: "slides", title: "Slides", has_file: true, size_bytes: PDF.length })]);
+    expect(r.body.materials).toEqual([expect.objectContaining({ kind: "slides", file_title: "Slides", title: "Material complementar", has_file: true, size_bytes: PDF.length })]);
   });
 
   it("aluno abre o material de aula publicada (sem endereço assinado, baixa pelo servidor); de rascunho, não", async () => {
@@ -133,7 +133,7 @@ describe("Envio direto ao depósito (Supabase)", () => {
     const done = await postJson(`${signed}/${lessonId}/materials/confirm`, editor, confirm);
     expect(done.status).toBe(201);
     const audio = done.body.materials.find((m: any) => m.kind === "flashcast");
-    expect(audio).toMatchObject({ title: "Flashcast", has_file: true });
+    expect(audio).toMatchObject({ file_title: "Flashcast", title: "Áudio Flashcast", has_file: true });
     const link = await call(`${signed}/materials/${audio.id}/link`, student);
     expect(link.body.url).toBe(`https://deposito.test/${prep.body.key}?expira=21600`); // A04: o áudio vale 6 horas, para ouvir a aula inteira
     // PDF continua com o endereço curto de 10 minutos

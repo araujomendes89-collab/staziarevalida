@@ -70,7 +70,7 @@ describe("Equipe cria e publica", () => {
     await expect(rpc(EDITOR, "app_admin_lesson_material", { p_lesson_id: lessonId, p_material: { kind: "slides", title: "Slides", storage_path: "documents/x.pdf" } })).rejects.toThrow(/Caminho/);
     await rpc(EDITOR, "app_admin_lesson_material", { p_lesson_id: lessonId, p_material: { kind: "slides", title: "Slides v1", storage_path: `lessons/${lessonId}/slides-aaa.pdf`, content_type: "application/pdf", size_bytes: 10 } });
     let l = await rpc(EDITOR, "app_admin_lesson_material", { p_lesson_id: lessonId, p_material: { kind: "slides", title: "Slides v2", storage_path: `lessons/${lessonId}/slides-bbb.pdf`, content_type: "application/pdf", size_bytes: 12 } });
-    expect(l.materials.filter((m: any) => m.kind === "slides").map((m: any) => m.title)).toEqual(["Slides v2"]);
+    expect(l.materials.filter((m: any) => m.kind === "slides").map((m: any) => m.file_title)).toEqual(["Slides v2"]);
     l = await rpc(EDITOR, "app_admin_lesson_material", { p_lesson_id: lessonId, p_material: { kind: "flashcast", title: "Flashcast", storage_path: `lessons/${lessonId}/flashcast-ccc.mp3`, content_type: "audio/mpeg", size_bytes: 99 } });
     l = await rpc(EDITOR, "app_admin_lesson_material", { p_lesson_id: lessonId, p_material: { kind: "guideline", title: "PCDT", url: "https://www.gov.br/x" } });
     expect(l.materials.map((m: any) => [m.kind, m.has_file])).toEqual([["slides", true], ["flashcast", true], ["guideline", false]]);
@@ -151,7 +151,7 @@ describe("A01 - conferência registrada antes de ir ao aluno", () => {
     const l = await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { ...base, id, published: true, review_note: "Conferi o resumo com a página 3 da apostila.", ai_notes: warn } });
     expect(l).toMatchObject({ published: true, reviewer: "ed@t.dev", review_note: "Conferi o resumo com a página 3 da apostila.", ai_notes: warn });
     expect(l.reviewed_at).toBeTruthy();
-    const row = (await db.query<any>(`select reviewed_by from public.lessons where id = $1`, [id])).rows[0];
+    const row = (await db.query<any>(`select reviewed_by from public.lesson_reviews where lesson_id = $1`, [id])).rows[0];
     expect(row.reviewed_by).toBe(EDITOR);
     const listed = (await rpc(EDITOR, "app_admin_lessons")).lessons.find((x: any) => x.id === id);
     expect(listed).toMatchObject({ reviewer: "ed@t.dev", ai_notes: warn });
@@ -177,5 +177,60 @@ describe("A01 - conferência registrada antes de ir ao aluno", () => {
     await expect(rpc(ANA, "app_admin_lessons")).rejects.toThrow(/equipe/);
     await expect(db.exec(fs.readFileSync(path.join(MIGRATIONS, "20261003009580_aulas_conferencia.sql"), "utf8"))).resolves.toBeDefined();
     expect((await rpc(EDITOR, "app_admin_lessons")).lessons.find((x: any) => x.id === id)).toMatchObject({ reviewer: "adm@t.dev" });
+  });
+});
+
+describe("A01/A05 (correção do revisor) - nada de uso interno sai para o aluno", () => {
+  let id: string;
+  const base = { area: "PEDIATRIA", topic: "Crupe", title: "Crupe viral", summary: "Resumo do crupe.", key_points: ["Dexametasona"] };
+
+  it("conferência e avisos da IA ficam em tabela própria: aluno não lê a tabela nem colunas na aula", async () => {
+    const l = await rpc(ADMIN, "app_admin_save_lesson", { p_lesson: { ...base, published: true, review_note: "Conferido com a diretriz da SBP.", ai_notes: ["Aviso da IA: dose fora do trecho."] } });
+    id = l.id;
+    expect(l).toMatchObject({ reviewer: "adm@t.dev", review_note: "Conferido com a diretriz da SBP.", ai_notes: ["Aviso da IA: dose fora do trecho."] });
+    await expect(asUser(ANA, `select ai_notes from public.lessons`)).rejects.toThrow(/column|coluna/i);
+    await expect(asUser(ANA, `select review_note from public.lessons`)).rejects.toThrow(/column|coluna/i);
+    await expect(asUser(ANA, `select reviewed_by from public.lessons`)).rejects.toThrow(/column|coluna/i);
+    await expect(asUser(ANA, `select * from public.lesson_reviews`)).rejects.toThrow(/permission|permiss/i);
+    await expect(asUser(EDITOR, `select * from public.lesson_reviews`)).rejects.toThrow(/permission|permiss/i);
+    const row = await asUser(ANA, `select * from public.lessons where id = $1`, [id]);
+    expect(JSON.stringify(row.rows)).not.toMatch(/Conferido com a diretriz|Aviso da IA|reviewed_by/);
+    expect((await rpc(ADMIN, "app_admin_lessons")).lessons.find((x: any) => x.id === id)).toMatchObject({ reviewer: "adm@t.dev", ai_notes: ["Aviso da IA: dose fora do trecho."] });
+  });
+
+  it("aula publicada antiga, sem registro: salvar com a nota preenchida registra, mesmo sem mudar o texto", async () => {
+    const old = (await db.query<any>(`insert into public.lessons (area, topic, title, published) values ('PEDIATRIA', 'Otite', 'Otite média', true) returning id`)).rows[0].id;
+    expect((await rpc(EDITOR, "app_admin_lessons")).lessons.find((x: any) => x.id === old).reviewed_at).toBeNull();
+    await expect(rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { id: old, area: "PEDIATRIA", topic: "Otite", title: "Otite média", review_note: "curto" } })).rejects.toThrow(/pelo menos 10/);
+    const saved = await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { id: old, area: "PEDIATRIA", topic: "Otite", title: "Otite média", review_note: "Reli o texto e conferi com o protocolo." } });
+    expect(saved).toMatchObject({ reviewer: "ed@t.dev", review_note: "Reli o texto e conferi com o protocolo." });
+    expect(saved.reviewed_at).toBeTruthy();
+  });
+
+  it("o aluno nunca recebe o nome do arquivo: só rótulo neutro e tamanho; a equipe recebe o nome real em file_title", async () => {
+    const mat = async (kind: string, title: string, ext: string, type: string) =>
+      rpc(ADMIN, "app_admin_lesson_material", { p_lesson_id: id, p_material: { kind, title, storage_path: `lessons/${id}/${kind}-${title.length}0000000000000.${ext}`, content_type: type, size_bytes: 123 } });
+    await mat("slides", "CURSINHO-X apostila final v3.pdf", "pdf", "application/pdf");
+    await mat("flashcast", "Flashcast: Flashcast: Crupe.mp3", "mp3", "audio/mpeg");
+    const l = await mat("other", "segredo-do-cursinho.pdf", "pdf", "application/pdf");
+    expect(l.materials.map((m: any) => m.file_title)).toEqual(["CURSINHO-X apostila final v3.pdf", "Flashcast: Flashcast: Crupe.mp3", "segredo-do-cursinho.pdf"]);
+    const aluno = [await rpc(ANA, "app_lessons", { p_search: "crupe" }), await rpc(ANA, "app_lesson", { p_id: id })];
+    const json = JSON.stringify(aluno);
+    expect(json).not.toMatch(/CURSINHO|segredo-do-cursinho|Flashcast: Flashcast|file_title/);
+    expect(aluno[1].materials.map((m: any) => [m.kind, m.title, m.size_bytes])).toEqual([["slides", "Material complementar", 123], ["flashcast", "Áudio Flashcast", 123], ["other", "Material 1", 123]]);
+    const mid = aluno[1].materials[0].id;
+    const direto = await rpc(ANA, "app_lesson_material", { p_id: mid });
+    expect(JSON.stringify(direto)).not.toMatch(/CURSINHO/);
+    expect((await rpc(EDITOR, "app_lesson_material", { p_id: mid })).title).toBe("CURSINHO-X apostila final v3.pdf");
+    // leitura direta da tabela: só equipe
+    expect((await asUser(ANA, `select * from public.lesson_materials`)).rows).toEqual([]);
+    expect((await asUser(EDITOR, `select * from public.lesson_materials`)).rows.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("aula em rascunho: aluno não vê material nem pela função", async () => {
+    const draft = await rpc(ADMIN, "app_admin_save_lesson", { p_lesson: { ...base, title: "Crupe rascunho" } });
+    const m = await rpc(ADMIN, "app_admin_lesson_material", { p_lesson_id: draft.id, p_material: { kind: "slides", title: "Rascunho.pdf", storage_path: `lessons/${draft.id}/slides-aaaaaaaaaaaaaaaa.pdf`, content_type: "application/pdf", size_bytes: 1 } });
+    expect(await rpc(ANA, "app_lesson_material", { p_id: m.materials[0].id })).toBeNull();
+    expect(await rpc(ANA, "app_lesson", { p_id: draft.id })).toBeNull();
   });
 });

@@ -552,7 +552,7 @@ describe("Áudio em partes, publicação e Flashcast", () => {
     const r = await post(`${base}/${podcastId}/flashcast`, editor, {});
     expect(r.status).toBe(201);
     const m = r.body.lesson.materials.find((x: any) => x.kind === "flashcast");
-    expect(m).toMatchObject({ title: "Flashcast: Pré-eclâmpsia em 5 minutos", content_type: "audio/mpeg", has_file: true });
+    expect(m).toMatchObject({ file_title: "Flashcast: Pré-eclâmpsia em 5 minutos", content_type: "audio/mpeg", has_file: true });
     const row = await dev.db.query<any>(`select storage_path from public.lesson_materials where id = $1`, [m.id]);
     expect(row.rows[0].storage_path).toMatch(new RegExp(`^lessons/${lessonId}/flashcast-[0-9a-f]{16}\\.mp3$`));
     expect(await lessonFiles.exists(row.rows[0].storage_path)).toBe(true);

@@ -218,3 +218,11 @@ describe("A11 - aviso de vídeo que não toca dentro da aula", () => {
     expect(screen.queryByText(/não toca dentro da aula/)).toBeNull();
   });
 });
+
+describe("Erro 413 do servidor mantém o limite", () => {
+  it("'Arquivo acima de 200 MB.' aparece com o número", async () => {
+    const { uploadErrorText } = await import("../novo/app/study/lessonsApi.js");
+    expect(uploadErrorText(Object.assign(new Error("Arquivo acima de 200 MB."), { status: 413 }))).toBe("Arquivo acima de 200 MB.");
+    expect(uploadErrorText(Object.assign(new Error("The object exceeded the maximum allowed size"), { status: 413 }))).toMatch(/grande demais/);
+  });
+});
