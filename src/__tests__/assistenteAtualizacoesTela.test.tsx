@@ -31,6 +31,8 @@ const ANSWER = () => R({ suggestions: [S({ id: "s1", field: "current_conduct", v
 
 let listed: any; // item que a lista devolve
 let answer: any; // resposta do /run
+let runFails: { status: number; error: string } | null; // o /run recusa assim
+let statusFails: { status: number; error: string } | null; // o /status recusa assim
 const textarea = (label: string) => screen.getAllByLabelText(label).find((el) => el.tagName === "TEXTAREA") as HTMLTextAreaElement;
 const saveCalls = () => backend.rpc.mock.calls.filter((c: any[]) => c[0] === "app_admin_save_guideline_update");
 const runCalls = () => (globalThis.fetch as any).mock.calls.filter((c: any[]) => c[0] === "/api/admin-assistant/run");
@@ -46,10 +48,13 @@ beforeEach(() => {
     if (fn === "app_admin_save_guideline_update") return { ...listed, ...args.p_update, id: args.p_update.id ?? "u9" };
     throw new Error(`rpc não simulada: ${fn}`);
   });
+  statusFails = null;
+  runFails = null;
   (globalThis as any).fetch = vi.fn(async (url: string) => {
     const json = (b: any) => ({ ok: true, status: 200, json: async () => b });
-    if (url === "/api/admin-assistant/status?tab=atualizacoes") return json({ tab: "atualizacoes", modes: { preencher: LINE, conferir: LINE, conversar: LINE } });
-    if (url === "/api/admin-assistant/run") return json(answer);
+    const refuse = (f: { status: number; error: string }) => ({ ok: false, status: f.status, json: async () => ({ error: f.error }) });
+    if (url === "/api/admin-assistant/status?tab=atualizacoes") return statusFails ? refuse(statusFails) : json({ tab: "atualizacoes", modes: { preencher: LINE, conferir: LINE, conversar: LINE } });
+    if (url === "/api/admin-assistant/run") return runFails ? refuse(runFails) : json(answer);
     throw new Error(`fetch não simulado: ${url}`);
   });
 });
@@ -205,6 +210,85 @@ describe("Atualizações: assistente", () => {
     await screen.findByRole("region", { name: "Sugestão: Conduta vigente" });
     expect(runCalls()).toHaveLength(2);
     expect(JSON.parse(runCalls()[1][1].body).form).toMatchObject({ id: "u9", topic: "Pré-eclâmpsia" });
+  });
+
+  it("revisor de outra área: a recusa do servidor aparece no painel, em português, e nada é preenchido", async () => {
+    runFails = { status: 403, error: "Você revisa outra área: o assistente vale só para as Atualizações da sua área." };
+    render(<AdminUpdates />);
+    await openItem();
+    fireEvent.click(screen.getByRole("button", { name: "Assistente" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Preencher campos" }));
+    expect(await screen.findByText("Você revisa outra área: o assistente vale só para as Atualizações da sua área.")).toBeTruthy();
+    expect(textarea("Conduta vigente").value).toBe("Agora.");
+    expect(saveCalls()).toHaveLength(0);
+  });
+
+  it("falha por dentro (502 com texto do provedor em inglês): o painel mostra a frase padrão e o formulário não muda (Q13)", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      runFails = { status: 502, error: "O assistente falhou: Gemini HTTP 503: The model is overloaded. Please try again later." };
+      render(<AdminUpdates />);
+      await openItem();
+      fireEvent.click(screen.getByRole("button", { name: "Assistente" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Preencher campos" }));
+      expect(await screen.findByText("O assistente não conseguiu responder agora. Tente de novo em instantes.")).toBeTruthy();
+      expect(screen.queryByText(/overloaded|Gemini HTTP/)).toBeNull();
+      expect(spy.mock.calls.flat().map((a) => String((a as any)?.message ?? a)).join("\n")).toContain("The model is overloaded");
+      expect(textarea("Conduta vigente").value).toBe("Agora.");
+      expect(saveCalls()).toHaveLength(0);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("não foi possível ler a situação das IAs: aviso curto em português, sem o texto do servidor (Q13)", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      statusFails = { status: 500, error: "Connection terminated unexpectedly." };
+      render(<AdminUpdates />);
+      await openItem();
+      fireEvent.click(screen.getByRole("button", { name: "Assistente" }));
+      expect(await screen.findByText("Não foi possível ler a situação do assistente.")).toBeTruthy();
+      expect(screen.queryByText(/Connection terminated/)).toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it("atualização no ar: Usar não grava; ao salvar a tela pergunta antes porque sai do ar (AT02), cancelar não grava e confirmar grava", async () => {
+    listed = { ...ITEM, published: true, review_status: "approved", reviewed: true, reviewer: "Dra. Revisora", reviewed_at: "2026-10-06T12:00:00Z" };
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_guideline_updates") return { is_admin: true, review_areas: ["GINECOLOGIA_OBSTETRICIA"], items: [listed] };
+      // como o banco: texto mudado numa publicada tira do ar e volta a conferência para pendente
+      if (fn === "app_admin_save_guideline_update") return { ...listed, ...args.p_update, published: false, reviewed: false, review_status: "pending", review_note: "Conteúdo alterado depois da conferência: revisar de novo." };
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    try {
+      render(<AdminUpdates />);
+      await openItem();
+      expect(screen.getByText(/Esta atualização está no ar/)).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Assistente" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Preencher campos" }));
+      fireEvent.click(within(await screen.findByRole("region", { name: "Sugestão: Conduta vigente" })).getByRole("button", { name: "Usar" }));
+      expect(textarea("Conduta vigente").value).toBe(CONDUCT);
+      expect(saveCalls()).toHaveLength(0);
+      expect(confirm).not.toHaveBeenCalled();
+      // o aviso de que sai do ar continua na tela com o painel aberto
+      expect(screen.getByText(/Esta atualização está no ar/)).toBeTruthy();
+      fireEvent.click(screen.getByRole("button", { name: "Salvar alterações" }));
+      expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/sai do ar/));
+      expect(saveCalls()).toHaveLength(0);
+      confirm.mockReturnValue(true);
+      fireEvent.click(screen.getByRole("button", { name: "Salvar alterações" }));
+      await waitFor(() => expect(saveCalls()).toHaveLength(1));
+      expect(saveCalls()[0][1].p_update).toMatchObject({ current_conduct: CONDUCT });
+      expect(await screen.findByText("Atualização salva.")).toBeTruthy();
+      expect(screen.queryByText(/Esta atualização está no ar/)).toBeNull();
+      expect(screen.getByRole("complementary", { name: "Assistente" })).toBeTruthy(); // o painel continua aberto
+    } finally {
+      confirm.mockRestore();
+    }
   });
 
   it("com 900 px ou mais, abrir o painel não refaz o editor: o texto digitado e o botão ficam no mesmo lugar", async () => {

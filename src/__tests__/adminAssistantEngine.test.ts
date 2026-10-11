@@ -499,7 +499,8 @@ describe("assistente das abas — IA indisponível, teto e falha", () => {
     };
     await expect(run({ fields: ["expected_conduct"], material: MATERIAL })).rejects.toMatchObject({ status: 429, message: "Teto de gasto atingido: Gasto do mês passa do teto." });
     reply = () => ({ suggestions: "não é lista" });
-    await expect(run({ fields: ["expected_conduct"], material: MATERIAL })).rejects.toMatchObject({ status: 502, message: expect.stringMatching(/^O assistente falhou: /) });
+    // o detalhe técnico não vai para a tela (Q13): a frase padrão em português; o detalhe vai para o registro do servidor
+    await expect(run({ fields: ["expected_conduct"], material: MATERIAL })).rejects.toMatchObject({ status: 502, message: "O assistente não conseguiu responder agora. Tente de novo em instantes." });
   });
 
   it("maestro: função de cada modo, origem assistente, item e quem pediu; custo e rótulo da IA", async () => {

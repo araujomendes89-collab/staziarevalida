@@ -3,9 +3,9 @@
 import React from "react";
 import { Banner } from "../../../ds";
 import { useSession } from "../../session.jsx";
-import { messageOf } from "../common.jsx";
 import { AssistantPanel } from "./AssistantPanel.jsx";
-import { assistantAvailable, fetchAssistantStatus, postAssistantRun } from "./assistantApi.js";
+import { assistantAvailable, assistantErrorText, fetchAssistantStatus, postAssistantRun } from "./assistantApi.js";
+import { ASSIST_ERRORS } from "../../../../shared/adminAssistant/errors";
 
 export function TabAssistant({ spec, title, notice, form, materialLink, onUse, onClose }) {
   const { backend } = useSession();
@@ -17,7 +17,7 @@ export function TabAssistant({ spec, title, notice, form, materialLink, onUse, o
     let alive = true;
     fetchAssistantStatus(backend, spec.tab).then(
       (s) => alive && setStatus(s),
-      (e) => alive && setError(messageOf(e, "Não foi possível ler a situação do assistente.")),
+      (e) => alive && setError(assistantErrorText(e, ASSIST_ERRORS.status)),
     );
     return () => {
       alive = false;

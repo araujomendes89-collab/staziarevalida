@@ -47,6 +47,7 @@ import {
   type MarkRef,
 } from "./checks";
 import { httpError, type ItemContext, type TabAdapter } from "./types";
+import { ASSIST_ERRORS } from "../../src/shared/adminAssistant/errors";
 import {
   ASSIST_TEXTS,
   isEmptyValue,
@@ -398,7 +399,9 @@ export async function runAssistant(deps: EngineDeps, o: RunInput): Promise<Assis
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     if (error instanceof AiCapReached) throw httpError(429, `Teto de gasto atingido: ${msg}`);
-    throw httpError(502, `O assistente falhou: ${msg}`);
+    // o texto do provedor (muitas vezes em inglês) vai só para o registro do servidor; a tela recebe a frase padrão (Q13)
+    deps.log?.(`[assistente] falha da IA (${mode}): ${msg}`.slice(0, 300));
+    throw httpError(502, ASSIST_ERRORS.failed);
   }
   const usage: AssistUsage = {
     provider: res.provider,
@@ -414,7 +417,10 @@ export async function runAssistant(deps: EngineDeps, o: RunInput): Promise<Assis
   // campo a campo
   const fitted = fitOutput(mode, stripInvisible(res.output));
   const invalid = validate(schemaFor(mode), fitted.output);
-  if (invalid.length) throw httpError(502, `O assistente falhou: Resposta fora do formato: ${invalid.slice(0, 5).join("; ")}`);
+  if (invalid.length) {
+    deps.log?.(`[assistente] resposta fora do formato (${mode}): ${invalid.slice(0, 5).join("; ")}`.slice(0, 300));
+    throw httpError(502, ASSIST_ERRORS.failed);
+  }
   warnings.push(...fitted.warnings);
   const output = fitted.output as RawPreencher | RawConferir | RawConversar;
   const byName = new Map(adapter.fields.map((f) => [f.name, f]));
