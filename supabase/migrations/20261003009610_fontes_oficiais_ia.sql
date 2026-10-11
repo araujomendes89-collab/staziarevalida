@@ -1148,6 +1148,44 @@ begin
 end
 $$;
 
+-- ---------------------------------------------------------------- preço por busca do catálogo (só onde está vazio)
+-- Preços oficiais por busca na internet, conferidos em 2026-10-11 (server/ai/prices.ts): Claude e OpenAI US$ 0,01 por busca;
+-- Gemini 3 em diante US$ 0,014 por consulta; Gemini 2.5 US$ 0,035 por prompt com busca. Preenche SÓ o que está nulo: o que o
+-- dono digitou nunca é sobrescrito, e rodar de novo não muda nada.
+update public.ai_model_prices p
+   set per_search_usd = v.usd
+  from (values
+  ('anthropic', 'claude-fable-5-1', 0.01),
+  ('anthropic', 'claude-opus-5-5', 0.01),
+  ('anthropic', 'claude-opus-5', 0.01),
+  ('anthropic', 'claude-sonnet-5-5', 0.01),
+  ('anthropic', 'claude-haiku-4-5-20251001', 0.01),
+  ('anthropic', 'claude-haiku-5-5', 0.01),
+  ('openai', 'gpt-6-astra', 0.01),
+  ('openai', 'gpt-6.1-sol', 0.01),
+  ('openai', 'gpt-6-sol', 0.01),
+  ('openai', 'gpt-6-luna', 0.01),
+  ('openai', 'gpt-5.6-sol', 0.01),
+  ('openai', 'gpt-5.6-terra', 0.01),
+  ('openai', 'gpt-5.6-luna', 0.01),
+  ('openai', 'gpt-5.5', 0.01),
+  ('openai', 'gpt-5.4', 0.01),
+  ('openai', 'gpt-5.4-mini', 0.01),
+  ('openai', 'gpt-5.4-nano', 0.01),
+  ('openai', 'gpt-5-mini', 0.01),
+  ('gemini', 'gemini-3.8-flash', 0.014),
+  ('gemini', 'gemini-3.7-flash', 0.014),
+  ('gemini', 'gemini-3.6-flash', 0.014),
+  ('gemini', 'gemini-3.5-flash', 0.014),
+  ('gemini', 'gemini-3.5-flash-lite', 0.014),
+  ('gemini', 'gemini-3.1-flash-lite', 0.014),
+  ('gemini', 'gemini-3.1-pro-preview', 0.014),
+  ('gemini', 'gemini-2.5-pro', 0.035),
+  ('gemini', 'gemini-2.5-flash', 0.035),
+  ('gemini', 'gemini-2.5-flash-lite', 0.035)
+  ) as v(provider, model, usd)
+ where p.provider = v.provider and p.model = v.model and p.per_search_usd is null;
+
 -- ---------------------------------------------------------------- permissões
 -- Funções do servidor e de apoio: fechadas para quem chama de fora (só o próprio banco e o serviço).
 revoke execute on function public.ch_url_norm(text) from public, anon, authenticated;

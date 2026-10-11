@@ -135,7 +135,20 @@ export function createAiRouter(
         const cfg = await fresh();
         const listed = new Set(list.models.map((m) => m.id));
         for (const seed of PRICE_SEED) {
-          if (seed.provider !== id || !listed.has(seed.model) || cfg.prices.some((p) => p.provider === id && p.model === seed.model)) continue;
+          if (seed.provider !== id || !listed.has(seed.model)) continue;
+          const existing = cfg.prices.find((p) => p.provider === id && p.model === seed.model);
+          if (existing) {
+            // preço que o dono já tem nunca é sobrescrito; só o preço por busca, quando está vazio, é preenchido com o do catálogo
+            if ((existing.per_search_usd ?? null) === null && typeof seed.per_search_usd === "number") {
+              await db().service("ch_worker_ai_save_price", {
+                p_actor: req.user!.id,
+                p_provider: id,
+                p_model: seed.model,
+                p_price: { input_per_mtok: existing.input_per_mtok, output_per_mtok: existing.output_per_mtok, per_search_usd: seed.per_search_usd, source_url: existing.source_url, checked_on: existing.checked_on },
+              });
+            }
+            continue;
+          }
           await db().service("ch_worker_ai_save_price", {
             p_actor: req.user!.id,
             p_provider: id,
@@ -143,7 +156,7 @@ export function createAiRouter(
             p_price: {
               input_per_mtok: seed.input_per_mtok,
               output_per_mtok: seed.output_per_mtok,
-              // o preço por busca só vai quando o seed tem um (Claude); OpenAI e Gemini ficam para o dono preencher
+              // o preço por busca vai quando o seed tem um (Claude, OpenAI e Gemini têm; modelo fora do catálogo fica para o dono)
               ...(typeof seed.per_search_usd === "number" ? { per_search_usd: seed.per_search_usd } : {}),
               source_url: seed.source_url,
               checked_on: seed.checked_on,

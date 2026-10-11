@@ -867,6 +867,30 @@ describe("Migração 9610", () => {
   const src = () => fs.readFileSync(path.join(MIG_DIR, NAME), "utf8");
   const code = (s: string) => s.replace(/--.*$/gm, "");
 
+  it("preço por busca do catálogo: preenche só o que está vazio, nunca sobrescreve o que o dono digitou e pode rodar de novo", async () => {
+    const text = src();
+    const update = text.slice(text.indexOf("update public.ai_model_prices p"), text.indexOf("-- ---------------------------------------------------------------- permissões")).trim();
+    const put = (provider: string, model: string, perSearch: number | null) =>
+      sql(`insert into public.ai_model_prices (provider, model, input_per_mtok, output_per_mtok, per_search_usd) values ($1, $2, 3, 4, $3)
+           on conflict (provider, model) do update set per_search_usd = excluded.per_search_usd, input_per_mtok = 3, output_per_mtok = 4`, [provider, model, perSearch]);
+    const get = async (model: string) => (await sql(`select per_search_usd::float8 as v, input_per_mtok::float8 as i from public.ai_model_prices where model = $1`, [model]))[0];
+    try {
+      await put("anthropic", "claude-sonnet-5-5", null);
+      await put("openai", "gpt-5.5", 0.5); // o dono digitou 0,50
+      await put("gemini", "gemini-3.5-flash", null);
+      await put("gemini", "gemini-2.5-flash", 0); // 0 também é um valor do dono
+      await put("anthropic", "modelo-fora-do-catalogo", null);
+      for (let i = 0; i < 2; i++) await t.dev.db.exec(update);
+      expect(await get("claude-sonnet-5-5")).toEqual({ v: 0.01, i: 3 });
+      expect(await get("gpt-5.5")).toEqual({ v: 0.5, i: 3 });
+      expect(await get("gemini-3.5-flash")).toEqual({ v: 0.014, i: 3 });
+      expect(await get("gemini-2.5-flash")).toEqual({ v: 0, i: 3 });
+      expect((await get("modelo-fora-do-catalogo")).v).toBeNull();
+    } finally {
+      await sql(`delete from public.ai_model_prices where model in ('claude-sonnet-5-5', 'gpt-5.5', 'gemini-3.5-flash', 'gemini-2.5-flash', 'modelo-fora-do-catalogo')`);
+    }
+  });
+
   it("tem o número 9610 (faixa 9610 a 9619), vem depois da 9540 e o nome antigo não existe mais", () => {
     const files = fs.readdirSync(MIG_DIR).filter((f) => f.endsWith(".sql")).sort();
     expect(files).toContain(NAME);

@@ -88,17 +88,33 @@ Colar o SQL de novo não apaga o que o dono mexeu (as sementes entram com `on co
 - A função usa a Central de IAs (Administração › Central de IAs): o dono escolhe a **IA principal** e a **reserva** entre as que
   buscam na internet (Claude, OpenAI, Gemini; **Ollama não busca** e fica fora), o **cuidado** e o **máximo de buscas por pedido**
   (de 1 a 10; vazio vale 5). Só o modo "sozinha" existe para ela (sem linha de produção, comitê ou conferentes).
-- **Preço por busca.** A tabela de preços da Central ganhou a coluna **Por busca (US$)**. O Claude vem preenchido (US$ 10 por 1.000
-  buscas = 0,01 cada, mais os tokens); OpenAI e Gemini ficam em branco para o dono preencher. Linha vazia na tela limpa o preço.
-- **Estimativa e teto.** A estimativa de uma busca é tokens + máximo de buscas × preço por busca, e entra nos tetos por chamada e
-  mensal da Central. Com os tetos ligados, modelo sem preço por busca **não roda**; com os tetos desligados a busca roda e aparece
-  como US$ 0 no gasto até o preço ser cadastrado (a tela avisa). Teto atingido: a busca fica **pendente** com o motivo.
+- **Preço por busca.** A tabela de preços da Central tem a coluna **Por busca (US$)**. O catálogo (`server/ai/prices.ts`) já traz o
+  preço de **todos** os modelos, conferido nas páginas oficiais em 2026-10-11:
+
+  | IA | Preço por busca | Como a empresa cobra | Fonte |
+  |---|---|---|---|
+  | Claude | US$ 0,01 | US$ 10 por 1.000 buscas; busca com erro não é cobrada; os resultados voltam como tokens de entrada (já contados pelo preço por token) | platform.claude.com/docs/en/about-claude/pricing |
+  | OpenAI (`web_search`) | US$ 0,01 | US$ 10 por 1.000 chamadas, mais os tokens do conteúdo buscado pelo preço do modelo (o `web_search_preview` antigo, US$ 25 por 1.000, não é usado) | developers.openai.com/api/docs/pricing |
+  | Gemini 3 em diante | US$ 0,014 | US$ 14 por 1.000 consultas de busca (um pedido pode fazer várias); 5.000 consultas grátis por mês, compartilhadas entre os modelos Gemini 3+ (a franquia não é descontada: a estimativa é o pior caso) | ai.google.dev/gemini-api/docs/pricing |
+  | Gemini 2.5 | US$ 0,035 | US$ 35 por 1.000 **prompts** com busca (por prompt, não por consulta; aqui conta por busca, então a estimativa de um pedido com várias buscas fica acima do que o Google cobra) | ai.google.dev/gemini-api/docs/pricing |
+
+  Como o preço chega ao banco: a migração 9610 preenche `per_search_usd` **só onde está vazio** (`update ... where per_search_usd is null`,
+  pode ser colada de novo) e **Atualizar lista** faz o mesmo para a IA atualizada e cadastra o preço dos modelos novos. Preço que o dono
+  digitou, inclusive 0, nunca é sobrescrito. Linha vazia na tela limpa o preço. Por isso modelo do catálogo não fica mais bloqueado com
+  os tetos ligados por falta de preço por busca; modelo fora do catálogo continua pedindo o preço.
+- **Estimativa e teto.** A estimativa de uma chamada (pior caso, usada pelo teto por chamada e pelo teto mensal) é: tokens de entrada e de
+  saída pelo preço do modelo + máximo de buscas × preço por busca + **folga fixa de 30.000 tokens de entrada por busca, ao preço de
+  entrada do modelo** (`SEARCH_RESULT_TOKENS` em `prices.ts`). A folga existe porque os resultados da busca voltam como tokens de entrada
+  que o pedido não mostra antes de chamar; sem ela o teto seria estourado de surpresa. Exemplo: Sonnet 5.5 (US$ 2 por milhão), 5 buscas =
+  5 × 0,01 + 5 × 30.000 × 2 / 1.000.000 = US$ 0,35 só da parte de busca. O gasto **registrado** usa os tokens e as buscas reais que a
+  IA devolve, sem folga. Com os tetos ligados, modelo sem preço por busca **não roda**; com os tetos desligados a busca roda e aparece
+  como US$ 0 até o preço ser cadastrado (a tela avisa). Teto atingido: a busca fica **pendente** com o motivo.
 - **Registro.** Cada chamada fica em `ai_calls` (com `web_searches`); cada busca mostra IA, modelo, buscas feitas e custo na lista
   "Buscas recentes"; pedido, resultado, edição, aprovação, rejeição e mudança de site vão para `ch_audit`.
 - A retomada não paga duas vezes: se o trabalho cai depois da resposta da IA, a nova rodada reaproveita a resposta guardada.
 
 ## Como ligar (primeiro uso)
-1. Central de IAs: ligar a IA escolhida; preencher o **preço por busca** do modelo; escolher teto baixo.
+1. Central de IAs: ligar a IA escolhida; conferir o **preço por busca** do modelo (já vem do catálogo; só preencha se o modelo for novo); escolher teto baixo.
 2. Central de IAs › Funções › **Busca de fontes oficiais**: IA principal, reserva (opcional), máximo de buscas e salvar. A tela de
    Fontes passa a mostrar "pronta" (rota `GET /api/content-hub/source-search/status`). Para desligar: **Desligar a função**.
 3. Fontes › **Buscar fontes com IA**. Primeiro teste sugerido: um tema só (ex.: dengue em Clínica Médica) e conferir cada cartão.

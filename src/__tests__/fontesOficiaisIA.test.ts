@@ -13,7 +13,7 @@ import type http from "http";
 import os from "os";
 import path from "path";
 import { openFontesDb, type FontesDb } from "./helpers/fontesDb";
-import { PRICE_SEED, costUsd, estimateCostUsd } from "../../server/ai/prices";
+import { PRICE_SEED, SEARCH_RESULT_TOKENS, costUsd, estimateCostUsd } from "../../server/ai/prices";
 import {
   DEFAULT_MAX_SEARCHES,
   FUNCTION_KEYS,
@@ -957,12 +957,16 @@ describe("Central", () => {
       for (const ui of ["anthropic", "openai", "gemini", "ollama"] as const) expect(envFallbackRef("busca_fontes", env, ui)).toBeNull();
     });
 
-    it("estimateCostUsd e costUsd somam as buscas vezes o preço por busca; preço nulo conta 0; sem o argumento nada muda", () => {
-      // estimativa: 4000 caracteres = 1000 tokens de entrada; 1000 de saída; 5 buscas
-      expect(estimateCostUsd(PRICED, 4000, 1000, 5)).toBeCloseTo((1000 * 2 + 1000 * 10) / 1e6 + 5 * 0.01, 6);
-      expect(estimateCostUsd(PRICED, 4000, 1000)).toBeCloseTo((1000 * 2 + 1000 * 10) / 1e6, 6);
-      expect(estimateCostUsd({ ...PRICED, per_search_usd: null }, 4000, 1000, 5)).toBeCloseTo((1000 * 2 + 1000 * 10) / 1e6, 6);
-      expect(estimateCostUsd({ input_per_mtok: 2, output_per_mtok: 10 }, 4000, 1000, 5)).toBeCloseTo((1000 * 2 + 1000 * 10) / 1e6, 6);
+    it("estimateCostUsd soma buscas × preço por busca MAIS a folga de 30.000 tokens de entrada por busca; costUsd (o gasto real) não tem folga", () => {
+      const base = (1000 * 2 + 1000 * 10) / 1e6; // 4000 caracteres = 1000 tokens de entrada; 1000 de saída
+      const headroom = (5 * SEARCH_RESULT_TOKENS * 2) / 1e6; // 5 buscas × 30.000 tokens × US$ 2 por milhão = US$ 0,30
+      expect(SEARCH_RESULT_TOKENS).toBe(30_000);
+      expect(headroom).toBeCloseTo(0.3, 6);
+      expect(estimateCostUsd(PRICED, 4000, 1000, 5)).toBeCloseTo(base + 5 * 0.01 + headroom, 6);
+      expect(estimateCostUsd(PRICED, 4000, 1000)).toBeCloseTo(base, 6);
+      // sem preço por busca a folga de tokens continua (o resultado da busca volta como entrada)
+      expect(estimateCostUsd({ ...PRICED, per_search_usd: null }, 4000, 1000, 5)).toBeCloseTo(base + headroom, 6);
+      expect(estimateCostUsd({ input_per_mtok: 2, output_per_mtok: 10 }, 4000, 1000, 5)).toBeCloseTo(base + headroom, 6);
       expect(estimateCostUsd(null, 4000, 1000, 5)).toBeNull();
       expect(costUsd(PRICED, 1000, 500, 4)).toBeCloseTo(0.047, 6);
       expect(costUsd(PRICED, 1000, 500)).toBeCloseTo(0.007, 6);
@@ -971,11 +975,32 @@ describe("Central", () => {
       expect(costUsd(null, 1000, 500, 4)).toBeNull();
     });
 
-    it("o seed põe US$ 10 por mil buscas nos modelos Claude e deixa OpenAI e Gemini sem preço por busca (o dono preenche)", () => {
+    it("o catálogo traz preço por busca de todos os modelos (Claude e OpenAI 0,01; Gemini 3+ 0,014; Gemini 2.5 0,035 por prompt)", () => {
       const by = (p: string) => PRICE_SEED.filter((x) => x.provider === p);
       expect(by("anthropic").length).toBeGreaterThan(0);
       for (const x of by("anthropic")) expect(x.per_search_usd, x.model).toBe(0.01);
-      for (const x of [...by("openai"), ...by("gemini")]) expect(x.per_search_usd ?? null, x.model).toBeNull();
+      expect(by("openai").length).toBeGreaterThan(0);
+      for (const x of by("openai")) expect(x.per_search_usd, x.model).toBe(0.01);
+      expect(by("gemini").length).toBeGreaterThan(0);
+      for (const x of by("gemini")) expect(x.per_search_usd, x.model).toBe(x.model.startsWith("gemini-3") ? 0.014 : 0.035);
+      for (const m of ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3.6-flash", "gemini-3.7-flash", "gemini-3.8-flash"]) expect(PRICE_SEED.find((x) => x.model === m)?.per_search_usd, m).toBe(0.014);
+      expect(PRICE_SEED.find((x) => x.model === "gemini-2.5-flash")?.per_search_usd).toBe(0.035);
+    });
+
+    it("a migração 9610 preenche o preço por busca com os mesmos valores do catálogo, só onde está vazio (e pode rodar de novo)", () => {
+      const sqlText = fs.readFileSync(path.join(__dirname, "../../supabase/migrations/20261003009610_fontes_oficiais_ia.sql"), "utf8");
+      const block = sqlText.slice(sqlText.indexOf("update public.ai_model_prices p"), sqlText.indexOf("-- ---------------------------------------------------------------- permissões"));
+      expect(block).toMatch(/per_search_usd is null/);
+      const fromSql = [...block.matchAll(/\('(\w+)', '([^']+)', ([0-9.]+)\)/g)].map((m) => `${m[1]}/${m[2]}=${m[3]}`).sort();
+      const fromSeed = PRICE_SEED.filter((x) => typeof x.per_search_usd === "number").map((x) => `${x.provider}/${x.model}=${x.per_search_usd}`).sort();
+      expect(fromSql).toEqual(fromSeed);
+    });
+
+    it("com os tetos ligados, todo modelo do catálogo (Claude, OpenAI e Gemini) já tem preço por busca: nenhum fica bloqueado por isso", () => {
+      for (const price of PRICE_SEED) {
+        const ref = { provider: price.provider, model: price.model } as any;
+        expect(refProblems(ref, mkCfg({ caps: true, enabled: [price.provider] as any, prices: [price] }), "busca_fontes"), `${price.provider}/${price.model}`).toEqual([]);
+      }
     });
 
     it("refProblems: Ollama não busca; com os tetos ligados, modelo sem preço por busca é problema; outras funções não mudam", () => {
@@ -1483,6 +1508,17 @@ describe("Central", () => {
       expect((await putPrice({ per_search_usd: 0.02 })).status).toBe(200);
       expect((await (await call("POST", "/providers/anthropic/refresh", {})).json()).prices_added).toBe(0);
       expect(await perSearch()).toBe(0.02);
+
+      // linha que já existe com o preço por busca VAZIO: a atualização preenche só esse campo (0,01 do catálogo) e não toca
+      // no preço por token que o dono digitou; depois de preenchido, nunca mais sobrescreve
+      expect((await call("PUT", "/prices/anthropic/claude-sonnet-5-5", { input_per_mtok: 7, output_per_mtok: 8, per_search_usd: null })).status).toBe(200);
+      const filled = await (await call("POST", "/providers/anthropic/refresh", {})).json();
+      expect(filled.prices_added).toBe(0);
+      expect(await perSearch()).toBe(0.01);
+      expect((await sql("select input_per_mtok::float8 as i, output_per_mtok::float8 as o from public.ai_model_prices where model = 'claude-sonnet-5-5'"))[0]).toEqual({ i: 7, o: 8 });
+      await call("PUT", "/prices/anthropic/claude-sonnet-5-5", { input_per_mtok: 7, output_per_mtok: 8, per_search_usd: 0.5 });
+      await call("POST", "/providers/anthropic/refresh", {});
+      expect(await perSearch()).toBe(0.5);
     });
   });
 });
