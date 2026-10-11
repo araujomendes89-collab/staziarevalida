@@ -56,7 +56,7 @@ as IAs e salve as funções em seguida, antes de deixar o processamento trabalha
   essas abas a mostram como não pronta.
 
 ## O que o interruptor liga e desliga (IA03, 2026-10-11)
-O interruptor **Ligada/Desligada** de cada IA vale para o que passa pelo maestro (`server/ai/maestro.ts`): as seis funções e todos os
+O interruptor **Ligada/Desligada** de cada IA vale para o que passa pelo maestro (`server/ai/maestro.ts`): as sete funções e todos os
 usos delas (etapas da Central de Conteúdo, conferência de rascunhos, Questões, assistentes das abas, assistente das Aulas e
 roteiro dos Podcasts). A frase antiga da tela, "Uma IA só é chamada se estiver ligada aqui", não era verdade para o resto. Os usos
 abaixo **não passam pelo interruptor**: usam a chave direto no servidor, cada um com a trava própria.
@@ -85,6 +85,7 @@ eles usam e só então fazê-los obedecer.
 | Verificação e checagem | Etapas de conferência da Central e os três conferentes dos rascunhos (na ordem: fontes, atualidade, advogado do diabo) |
 | Engenharia reversa | Análise e reanálise de questões |
 | Assistente: preencher / conferir / revisar a redação | Já configuráveis; entram em uso na etapa 2 |
+| Busca de fontes oficiais (`busca_fontes`) | Fontes › **Buscar fontes com IA**: procura documentos só nos sites oficiais da lista. **Começa desligada** (não usa as variáveis do servidor), só modo sozinha (principal e reserva), só IAs que buscam na internet (sem Ollama), com máximo de buscas por pedido (1 a 10; vazio vale 5) e **preço por busca** na tabela de preços. Detalhes, custos e a ordem do SQL: [FONTES_OFICIAIS_IA.md](FONTES_OFICIAIS_IA.md) |
 
 ## Os modos
 - **Sozinha:** uma IA principal e uma reserva opcional. Se a principal falhar, há uma nova tentativa (só em falha passageira;
