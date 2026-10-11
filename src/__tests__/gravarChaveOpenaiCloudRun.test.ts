@@ -1,7 +1,7 @@
 // @vitest-environment node
 /**
  * CC32 (2026-10-10): o processamento da Central (tarefa stazia-pdf-worker no Cloud Run) não tinha a chave da OpenAI. O script
- * scripts/cloudrun/gravar-chave-openai.sh (cópia em ~/Downloads/gravar-chave-openai-cloudrun.sh, que o dono roda no Terminal)
+ * scripts/cloudrun/gravar-chave-openai.sh (o dono roda no Terminal, direto da pasta do projeto)
  * lê OPENAI_API_KEY do .env SEM mostrar o valor, grava no Secret Manager (stazia-openai-api-key) e liga o segredo à tarefa com
  * --update-secrets (as outras chaves da tarefa ficam como estão).
  *
@@ -67,7 +67,7 @@ describe("CC32: script que grava a chave da OpenAI no processamento (Cloud Run)"
   it("o script existe, usa o projeto, a região, a tarefa e o segredo certos e lê o .env da StaziaMed", () => {
     const text = fs.readFileSync(SCRIPT, "utf8");
     expect(text).toMatch(/^#!\/bin\/bash\n/);
-    for (const s of ["staziamed-revalida-prod", "southamerica-east1", "stazia-pdf-worker", "stazia-openai-api-key", "/Volumes/Samsung/STAZIAMED REVALIDA/StaziaMed Revalida"]) expect(text).toContain(s);
+    for (const s of ["staziamed-revalida-prod", "southamerica-east1", "stazia-pdf-worker", "stazia-openai-api-key", "/Volumes/StaziaMed/STAZIAMED REVALIDA/StaziaMed Revalida", "/Volumes/Samsung/STAZIAMED REVALIDA/StaziaMed Revalida"]) expect(text).toContain(s);
     // nunca liga o modo que mostra os comandos (e a chave) na tela
     expect(text).not.toMatch(/set\s+-[a-z]*x/);
   });

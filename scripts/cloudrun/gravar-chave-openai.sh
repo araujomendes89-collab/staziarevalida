@@ -8,7 +8,7 @@
 #   4. confere na tarefa que a OPENAI_API_KEY vem do segredo.
 #
 # Como rodar (no Terminal do Mac, com o gcloud já com login feito):
-#   bash ~/Downloads/gravar-chave-openai-cloudrun.sh
+#   bash "/Volumes/StaziaMed/STAZIAMED REVALIDA/StaziaMed Revalida/scripts/cloudrun/gravar-chave-openai.sh"
 #
 # A chave vale a partir da próxima execução do processamento (o agendador roda a cada 10 minutos). Mesmas proteções de
 # scripts/cloudrun/deploy-pdf-worker.sh e dos outros scripts de chave: a chave entra no Google pela entrada padrão (nunca na
@@ -21,7 +21,9 @@ JOB=stazia-pdf-worker
 SECRET=stazia-openai-api-key
 SA="stazia-pdf-worker@${P}.iam.gserviceaccount.com"
 # STAZIA_DIR só existe para o teste automático (pasta temporária com um .env de mentira)
-DIR="${STAZIA_DIR:-/Volumes/Samsung/STAZIAMED REVALIDA/StaziaMed Revalida}"
+# o projeto fica no disco StaziaMed (SSD); a cópia do Samsung é só backup e serve de reserva se a pasta principal não tiver o .env
+DIR="${STAZIA_DIR:-/Volumes/StaziaMed/STAZIAMED REVALIDA/StaziaMed Revalida}"
+if [ -z "${STAZIA_DIR:-}" ] && [ ! -f "$DIR/.env" ]; then DIR="/Volumes/Samsung/STAZIAMED REVALIDA/StaziaMed Revalida"; fi
 G=(gcloud --project="$P" --quiet)
 K=""
 trap 'K=""; unset K' EXIT

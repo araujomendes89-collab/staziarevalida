@@ -86,3 +86,32 @@ Primeira execução (2026-10-06 22h35):
 - Banco Supabase, gerador de PDF, PyMuPDF e OCR prontos.
 - Fila vazia.
 - Única pendência: a IA do processamento, desligada até o dono autorizar provedor e gasto.
+
+## Publicar a reconferência automática e a chave da OpenAI (CC01 e CC32, ramo adm-conteudo)
+
+Esta parte só descreve o passo a passo para o dono; nada foi executado. A ordem importa:
+
+1. **SQL primeiro.** No Supabase, colar `supabase/migrations/20261003009540_reconferir_insuficientes.sql`, depois de tudo que já está
+   publicado (a última é a 8300). Pode ser colada duas vezes sem erro. O código novo funciona sem ela (a etapa só anota "falta aplicar
+   a migração 9540" no registro do trabalho), mas as funções novas só existem depois dela. O código antigo continua funcionando com
+   ela colada.
+2. **Imagem nova do Cloud Run, só pelo caminho curto (montar a imagem e trocar só a imagem da tarefa):**
+   - montar: `gcloud --project=staziamed-revalida-prod builds submit --region=southamerica-east1 --config=cloudrun/pdf-worker/cloudbuild.yaml --substitutions=_IMAGE=southamerica-east1-docker.pkg.dev/staziamed-revalida-prod/stazia/pdf-worker:<commit curto> --service-account=projects/staziamed-revalida-prod/serviceAccounts/stazia-pdf-builder@staziamed-revalida-prod.iam.gserviceaccount.com --gcs-source-staging-dir=gs://staziamed-revalida-prod-stazia-build/source .`
+   - trocar: `gcloud --project=staziamed-revalida-prod run jobs update stazia-pdf-worker --region=southamerica-east1 --image=<a mesma imagem>`
+   - **Nunca** rodar `scripts/cloudrun/deploy-pdf-worker.sh` para isso: ele usa `run jobs deploy` com `--set-env-vars` e `--set-secrets`, que
+     trocam a lista inteira de variáveis e segredos da tarefa (e podem derrubar a busca por significado pelo Vertex e a chave da OpenAI
+     que já estão ligadas). Com `jobs update --image`, as variáveis e os segredos ficam como estão.
+3. **Chave da OpenAI, uma vez só:** no Terminal, `bash "/Volumes/StaziaMed/STAZIAMED REVALIDA/StaziaMed Revalida/scripts/cloudrun/gravar-chave-openai.sh"`.
+   Ele lê a chave do `.env` sem mostrá-la, grava no Secret Manager (`stazia-openai-api-key`) e liga o segredo à tarefa com
+   `--update-secrets` (só a `OPENAI_API_KEY` muda). Vale a partir da próxima execução (a cada 10 minutos). Pode ser repetido sem dano.
+   Precisa do `gcloud` com login feito. Não copie o script para outra pasta.
+
+Depois de publicar, conferir numa fonte de teste: o registro da etapa "ler a fonte" mostra `vectors` (vetores feitos na própria
+leitura) e, se algo faltou, `vectors_error` ou `vectors_pending`; a reconferência entra na fila logo depois (`recheck_documents`).
+Esses avisos ficam só no registro do trabalho (a tela "Etapas do processamento" ainda não os mostra).
+
+Como a reconferência usa os vetores: a etapa de leitura da fonte gera os vetores dos trechos da fonte nova (até 8 minutos por etapa,
+no máximo 5.000 trechos; `CONTENT_HUB_SOURCE_EMBED_SECONDS` muda o tempo) antes de pôr a reconferência na fila. Se o Google estiver
+parado ou sem crédito, a leitura da fonte não falha: a reconferência desta fonte segue só por palavras e o aviso fica no registro.
+Os vetores que faltaram saem no fim da rodada, mas **a reconferência não se repete sozinha depois disso**; nesse caso, usar
+"Reprocessar" na conferência do material.
