@@ -47,6 +47,7 @@ export const ACTION_LABEL = {
   // aulas
   "lesson.save": "Aula salva",
   "lesson.review": "Aula conferida",
+  "lesson.audio.release": "Áudio Flashcast da aula liberado ao aluno",
   "lesson.delete": "Aula apagada",
   "lesson.material": "Material de aula adicionado",
   "lesson.material.delete": "Material de aula apagado",
@@ -286,9 +287,10 @@ const SUMMARY = {
   "guideline_update.delete": topic,
   // aulas e podcasts: o título vem do próprio registro (entry.title, buscado pelo banco; também quando o item já foi apagado)
   "lesson.save": (d, entry) => d.title ?? entry.title,
+  "lesson.audio.release": (d, entry) => entry.title,
   "lesson.review": (d, entry) => join([d.title ?? entry.title, d.note && `Conferido: ${d.note}`]),
   "lesson.delete": (d, entry) => entry.title,
-  "lesson.material": (d, entry) => join([entry.title && `Aula: ${entry.title}`, d.title && `Material: ${d.title}`]),
+  "lesson.material": (d, entry) => join([entry.title && `Aula: ${entry.title}`, d.title && `Material: ${d.title}`, d.aguardando_conferencia && "Áudio aguardando conferência"]),
   "podcast.save": (d, entry) => d.title ?? entry.title,
   "podcast.delete": (d, entry) => entry.title,
   "podcast.publish": (d, entry) => entry.title,
