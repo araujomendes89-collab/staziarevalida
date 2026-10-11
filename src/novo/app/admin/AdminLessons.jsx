@@ -6,7 +6,7 @@ import { Badge, Banner, Button, Card, Icon, SelectField, Switch, TextField } fro
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
-import { lessonsAvailable, materialTitle, sizeLabel, uploadErrorText, uploadLessonFile } from "../study/lessonsApi.js";
+import { lessonsAvailable, materialTitle, sizeLabel, uploadErrorText, uploadLessonFile, videoPlaysInside } from "../study/lessonsApi.js";
 import { dateTimeBR, LoadError, Loading, messageOf, TextArea, useLoad } from "./common.jsx";
 import { LessonAssistant } from "./LessonAssistant.jsx";
 
@@ -204,7 +204,12 @@ function LessonEditor({ lesson, topics, onSaved, onClose, isAdmin }) {
           <TextField label="Duração estimada (min)" type="number" min={1} max={600} value={form.duration_minutes} onChange={(e) => set({ duration_minutes: e.target.value })} />
           <TextField label="Professor / convidado" value={form.instructor} maxLength={160} onChange={(e) => set({ instructor: e.target.value })} />
           <TextField label="Especialidade" value={form.specialty} maxLength={120} onChange={(e) => set({ specialty: e.target.value })} />
-          <TextField label="Vídeo (YouTube, Vimeo ou MP4, https)" value={form.video_url} onChange={(e) => set({ video_url: e.target.value })} hint="O vídeo fica hospedado fora; aqui entra só o endereço." />
+          <div>
+            <TextField label="Vídeo (YouTube, Vimeo ou MP4, https)" value={form.video_url} onChange={(e) => set({ video_url: e.target.value })} hint="O vídeo fica hospedado fora; aqui entra só o endereço." />
+            {form.video_url.trim() && !videoPlaysInside(form.video_url.trim()) && (
+              <Banner tone="warning">Este endereço não toca dentro da aula: o aluno verá só um botão para abrir em outra aba. Para tocar na aula, use um link do YouTube, do Vimeo ou um arquivo MP4.</Banner>
+            )}
+          </div>
           <TextField label="Posição" type="number" value={form.position} onChange={(e) => set({ position: e.target.value })} hint="Ordem dentro da área." />
         </div>
         <TextArea label="Resumo & racionalidade clínica" value={form.summary} rows={6} maxLength={8000} onChange={(v) => set({ summary: v })} />

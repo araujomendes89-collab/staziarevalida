@@ -204,3 +204,17 @@ describe("A02 - trecho citado ao lado da página", () => {
     expect(screen.getAllByText(/Trecho citado \(p\. [34]\)/).length).toBe(2);
   });
 });
+
+describe("A11 - aviso de vídeo que não toca dentro da aula", () => {
+  it("avisa a equipe quando o endereço do vídeo só abre em outra aba; endereço bom não avisa", async () => {
+    render(<AdminLessons />);
+    fireEvent.click(await screen.findByRole("button", { name: "Nova aula" }));
+    const field = screen.getByLabelText(/Vídeo \(YouTube, Vimeo ou MP4/);
+    fireEvent.change(field, { target: { value: "https://www.youtube.com/watch?v=abc123" } });
+    expect(screen.queryByText(/não toca dentro da aula/)).toBeNull();
+    fireEvent.change(field, { target: { value: "https://cdn.test/aula.m3u8" } });
+    expect(screen.getByText(/não toca dentro da aula/)).toBeTruthy();
+    fireEvent.change(field, { target: { value: "https://cdn.test/aula.mp4" } });
+    expect(screen.queryByText(/não toca dentro da aula/)).toBeNull();
+  });
+});

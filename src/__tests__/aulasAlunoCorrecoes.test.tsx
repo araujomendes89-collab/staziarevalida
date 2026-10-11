@@ -84,3 +84,14 @@ describe("A04 - áudio Flashcast renova o endereço quando o player falha", () =
     expect(n).toBe(2);
   });
 });
+
+describe("A11 - vídeos que não tocam", () => {
+  it("m3u8 não toca no Chrome nem no Firefox: vira link para abrir fora; Vimeo não listado (com código) toca embutido", async () => {
+    const { videoEmbed } = await import("../novo/app/study/lessonsApi.js");
+    expect(videoEmbed("https://cdn.test/aula.m3u8")).toEqual({ kind: "link", src: "https://cdn.test/aula.m3u8" });
+    expect(videoEmbed("https://cdn.test/aula.mp4?x=1")).toEqual({ kind: "file", src: "https://cdn.test/aula.mp4?x=1" });
+    expect(videoEmbed("https://vimeo.com/123456/abcdef0123")).toEqual({ kind: "vimeo", src: "https://player.vimeo.com/video/123456?h=abcdef0123" });
+    expect(videoEmbed("https://vimeo.com/channels/staff/123456")).toEqual({ kind: "vimeo", src: "https://player.vimeo.com/video/123456" });
+    expect(videoEmbed("https://vimeo.com/showcase/abc")).toEqual({ kind: "link", src: "https://vimeo.com/showcase/abc" });
+  });
+});

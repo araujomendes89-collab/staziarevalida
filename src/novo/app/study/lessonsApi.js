@@ -74,6 +74,9 @@ export async function lessonFileUrl(backend, materialId) {
   return URL.createObjectURL(await res.blob());
 }
 
+/** Verdadeiro quando o vídeo toca dentro da aula (YouTube, Vimeo ou MP4/WebM); .m3u8 e outros endereços só abrem em outra aba (A11). */
+export const videoPlaysInside = (url) => Boolean(url) && videoEmbed(url)?.kind !== "link" && videoEmbed(url) !== null;
+
 /** Endereço de vídeo → como incorporar: {kind: "youtube"|"vimeo"|"file"|"link", src}. */
 export function videoEmbed(url) {
   if (!url) return null;
@@ -86,10 +89,14 @@ export function videoEmbed(url) {
       return id ? { kind: "youtube", src: `https://www.youtube-nocookie.com/embed/${id}` } : { kind: "link", src: url };
     }
     if (host === "vimeo.com" || host === "player.vimeo.com") {
-      const id = u.pathname.split("/").filter(Boolean).pop();
-      return /^\d+$/.test(id ?? "") ? { kind: "vimeo", src: `https://player.vimeo.com/video/${id}` } : { kind: "link", src: url };
+      const parts = u.pathname.split("/").filter(Boolean);
+      const last = parts[parts.length - 1] ?? "";
+      if (/^\d+$/.test(last)) return { kind: "vimeo", src: `https://player.vimeo.com/video/${last}${u.searchParams.get("h") ? `?h=${encodeURIComponent(u.searchParams.get("h"))}` : ""}` };
+      // vídeo não listado: vimeo.com/<id>/<código>
+      if (/^\d+$/.test(parts[parts.length - 2] ?? "") && /^[a-z0-9]+$/i.test(last)) return { kind: "vimeo", src: `https://player.vimeo.com/video/${parts[parts.length - 2]}?h=${last}` };
+      return { kind: "link", src: url };
     }
-    if (/\.(mp4|webm|m3u8)(\?|$)/i.test(u.pathname)) return { kind: "file", src: url };
+    if (/\.(mp4|webm)(\?|$)/i.test(u.pathname)) return { kind: "file", src: url };
     return { kind: "link", src: url };
   } catch {
     return null;
