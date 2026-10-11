@@ -56,6 +56,39 @@ describe("vozes oficiais: configuração, revisão e fronteira TTS", () => {
     expect(status.pending).toBeNull();
     expect(elevenLabsReadiness({ ...ENV, TUTOR_VOICE_ALLOW_EXTERNAL: "0" }).rows.every((row) => !row.ready)).toBe(true);
   });
+  it("VZ04: os avisos do painel vêm em português simples, sem nome de variável do servidor; o detalhe técnico vem à parte", () => {
+    const tecnico = /[A-Z]{3,}_[A-Z_]+|voice_?id|eleven_v3|mp3_|=1/i;
+    const semChave = elevenLabsReadiness({});
+    expect(semChave.pending).toBe("A chave de acesso da voz do professor ainda não foi configurada no servidor.");
+    expect(semChave.detail).toBe("Configure ELEVENLABS_API_KEY no servidor.");
+    const semAutorizacao = elevenLabsReadiness({ ...ENV, TUTOR_VOICE_ALLOW_EXTERNAL: "0" });
+    expect(semAutorizacao.pending).toBe("O envio do texto para gerar a voz ainda não foi autorizado no servidor.");
+    expect(semAutorizacao.detail).toBe("Defina TUTOR_VOICE_ALLOW_EXTERNAL=1 no servidor.");
+    const modelo = elevenLabsReadiness({ ...ENV, ELEVENLABS_MODEL_ID: "modelo_antigo" });
+    expect(modelo.pending).toBe("O modelo de voz configurado não foi homologado. Use um dos dois modelos aprovados e teste de novo.");
+    expect(modelo.detail).toBe("Use eleven_v3 ou eleven_multilingual_v2 (ELEVENLABS_MODEL_ID).");
+    const formato = elevenLabsReadiness({ ...ENV, ELEVENLABS_OUTPUT_FORMAT: "mp3_22050_32" });
+    expect(formato.pending).toBe("O formato de áudio configurado não é o homologado para a audição.");
+    expect(formato.detail).toBe("Use ELEVENLABS_OUTPUT_FORMAT=mp3_44100_128.");
+    for (const r of [semChave, semAutorizacao, modelo, formato]) {
+      expect(r.pending).not.toMatch(tecnico);
+      expect(r.rows.every((row) => row.pending === r.pending && row.detail === r.detail)).toBe(true);
+    }
+    // voz sem cadastro e vozes repetidas: por linha
+    const semVoz = elevenLabsReadiness({ ...ENV, ELEVENLABS_VOICE_DURONA: "" });
+    const durona = semVoz.rows.find((row) => row.id === "durona")!;
+    expect(durona.pending).toBe("A voz de Durona ainda não foi cadastrada no servidor.");
+    expect(durona.detail).toBe("Configure ELEVENLABS_VOICE_DURONA com o voice_id salvo.");
+    expect(durona.pending).not.toMatch(tecnico);
+    expect(semVoz.pending).toBeNull();
+    const repetida = elevenLabsReadiness({ ...ENV, ELEVENLABS_VOICE_DIRETO: ENV.ELEVENLABS_VOICE_TRANQUILO });
+    const rep = repetida.rows.find((row) => row.id === "direto")!;
+    expect(rep.pending).toBe("Cada professor precisa de uma voz própria: há vozes repetidas.");
+    expect(rep.detail).toBe("Os voice_id de ELEVENLABS_VOICE_TRANQUILO, ELEVENLABS_VOICE_DURONA e ELEVENLABS_VOICE_DIRETO devem ser diferentes entre si.");
+    // tudo certo: nada a avisar
+    expect(elevenLabsReadiness(ENV).detail).toBeNull();
+    expect(elevenLabsReadiness(ENV).rows.every((row) => row.detail === null)).toBe(true);
+  });
   it("requer três IDs distintos, modelo suportado e formato conhecido", () => {
     expect(elevenLabsReadiness({ ...ENV, ELEVENLABS_VOICE_DIRETO: ENV.ELEVENLABS_VOICE_TRANQUILO }).rows.filter((row) => !row.unique)).toHaveLength(2);
     expect(elevenLabsReadiness({ ...ENV, ELEVENLABS_MODEL_ID: "inventado" }).rows.every((row) => !row.ready)).toBe(true);
@@ -145,7 +178,7 @@ describe("vozes oficiais: configuração, revisão e fronteira TTS", () => {
     }
     const off = speechProviderFor({ db: {} as any, elevenEnv: {} });
     expect(off.provider).toBeNull();
-    expect(off.status).toMatchObject({ ready: false, provider: "elevenlabs", pending: expect.stringMatching(/ELEVENLABS_API_KEY/) });
+    expect(off.status).toMatchObject({ ready: false, provider: "elevenlabs", pending: expect.stringMatching(/chave de acesso/), detail: expect.stringMatching(/ELEVENLABS_API_KEY/) });
     // nos testes, deps.speech decide (null = desligada)
     const mock = new MockSpeech();
     expect(elevenSynth({ speech: mock })).toBe(mock);

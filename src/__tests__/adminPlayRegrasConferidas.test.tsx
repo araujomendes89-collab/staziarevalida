@@ -56,7 +56,8 @@ describe("Stazia Arena na Administração: regras conferidas", () => {
     data.metrics.xp_failures_recent = [{ created_at: "2026-10-10T12:00:00Z", step: "question_attempt", bad_rules: ["xp.question_correct"], detail: "x" }];
     render(<AdminPlay />);
     expect(await screen.findByText("Regra com valor inválido")).toBeTruthy();
-    expect(screen.getByText("A regra xp.question_correct precisa ser um número, sem aspas (por exemplo: 8).")).toBeTruthy();
+    // a regra aparece pelo nome (AR08), não pelo código
+    expect(screen.getByText('A regra "Acertar questão" precisa ser um número, sem aspas (por exemplo: 8).')).toBeTruthy();
     expect(screen.getByText(/3 cálculos de XP falharam nos últimos 7 dias/)).toBeTruthy();
     expect(screen.getByText(/O que os alunos fizeram foi gravado; só o XP dessas ações ficou de fora\./)).toBeTruthy();
     expect(screen.getByText(/Corrija na aba Regras\./)).toBeTruthy();
@@ -73,17 +74,18 @@ describe("Stazia Arena na Administração: regras conferidas", () => {
   it("valor recusado pelo banco: a mensagem em português aparece embaixo da regra", async () => {
     backend.rpc = vi.fn(async (fn: string) => {
       if (fn === "app_admin_gamification") return data;
-      if (fn === "app_admin_gamification_save_rule") throw new Error("A regra xp.question_correct precisa ser um número, sem aspas (por exemplo: 8).");
+      if (fn === "app_admin_gamification_save_rule") throw new Error("A regra xp.question_correct precisa ser um número entre 0 e 1.000.000.");
       throw new Error(`rpc inesperada: ${fn}`);
     });
     render(<AdminPlay />);
     fireEvent.click(await screen.findByText("Regras"));
     fireEvent.click(screen.getByText("XP por evento"));
-    const field = screen.getByLabelText("xp.question_correct");
-    fireEvent.change(field, { target: { value: '"dez"' } });
+    const field = screen.getByLabelText("Acertar questão.");
+    fireEvent.change(field, { target: { value: "5000000" } });
     fireEvent.submit(field.closest("form")!);
-    expect(await screen.findByText("A regra xp.question_correct precisa ser um número, sem aspas (por exemplo: 8).")).toBeTruthy();
-    expect(backend.rpc).toHaveBeenCalledWith("app_admin_gamification_save_rule", { p_key: "xp.question_correct", p_value: "dez", p_enabled: true });
+    // a mensagem do banco aparece em português, sem o código da regra
+    expect(await screen.findByText("Esta regra precisa ser um número entre 0 e 1.000.000.")).toBeTruthy();
+    expect(backend.rpc).toHaveBeenCalledWith("app_admin_gamification_save_rule", { p_key: "xp.question_correct", p_value: 5000000, p_enabled: true });
   });
 
   it("regra gravada com o tipo errado antes da conferência: a aba Regras deixa corrigir", async () => {
@@ -104,7 +106,7 @@ describe("Stazia Arena na Administração: regras conferidas", () => {
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_gamification_save_rule", { p_key: "flags.coins_enabled", p_value: true, p_enabled: true }));
     // regra de número com true gravado: aparece o campo para digitar o número
     fireEvent.click(screen.getByText("XP por evento"));
-    const field = screen.getByLabelText("xp.question_correct");
+    const field = screen.getByLabelText("Acertar questão.");
     fireEvent.change(field, { target: { value: "8" } });
     fireEvent.submit(field.closest("form")!);
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_gamification_save_rule", { p_key: "xp.question_correct", p_value: 8, p_enabled: true }));

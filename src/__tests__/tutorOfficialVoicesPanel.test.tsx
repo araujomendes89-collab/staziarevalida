@@ -18,11 +18,11 @@ vi.mock("../novo/app/tutor/voice/audioUnlock.js", () => ({ unlockAudio: () => nu
 const LABEL = { tranquilo: "Tranquilo", durona: "Durona", direto: "Direto" } as const;
 type Id = keyof typeof LABEL;
 const row = (id: Id, over: Record<string, unknown> = {}, heard: boolean | string[] = false) => ({
-  id, label: LABEL[id], configured: true, unique: true, ready: true, approved: false, approved_at: null, fingerprint: `${id}-versao`, pending: null, can_approve: false,
+  id, label: LABEL[id], configured: true, unique: true, ready: true, approved: false, approved_at: null, fingerprint: `${id}-versao`, pending: null, detail: null, can_approve: false,
   scenarios: scenariosFor(id).map((s) => ({ id: s, label: VOICE_SCENARIOS[s].label, heard: Array.isArray(heard) ? heard.includes(s) : heard })),
   ...over,
 });
-const panel = (rows: ReturnType<typeof row>[], approver = true) => ({ model: "eleven_v3", keyConfigured: true, pending: null, approver, rows });
+const panel = (rows: ReturnType<typeof row>[], approver = true) => ({ model: "eleven_v3", keyConfigured: true, pending: null, detail: null, approver, rows });
 let current: ReturnType<typeof panel>;
 let fetcher: ReturnType<typeof vi.fn>;
 let play: ReturnType<typeof vi.spyOn>;
@@ -107,11 +107,21 @@ describe("Vozes do Nexus", () => {
     expect(within(await rowOf("Direto")).getByText("Aprovada")).toBeInTheDocument();
   });
 
-  it("sem chave ou sem voice_id: cenários desativados e o motivo à vista, sem voz simulada", async () => {
-    current = { ...panel([row("tranquilo", { ready: false, configured: false, pending: "Configure ELEVENLABS_VOICE_TRANQUILO com o voice_id salvo." }), row("durona", { ready: false }), row("direto", { ready: false })]), pending: "ELEVENLABS_API_KEY não configurada no servidor." };
+  it("sem chave ou sem voz cadastrada: cenários desativados e o motivo à vista em português simples, sem voz simulada", async () => {
+    current = {
+      ...panel([row("tranquilo", { ready: false, configured: false, pending: "A voz de Tranquilo ainda não foi cadastrada no servidor.", detail: "Configure ELEVENLABS_VOICE_TRANQUILO com o voice_id salvo." }), row("durona", { ready: false }), row("direto", { ready: false })]),
+      pending: "A chave de acesso da voz do professor ainda não foi configurada no servidor.", detail: "Configure ELEVENLABS_API_KEY no servidor.",
+    };
     render(<OfficialVoicesPanel />);
-    expect(await screen.findByText("ELEVENLABS_API_KEY não configurada no servidor.")).toBeInTheDocument();
-    expect(within(await rowOf("Tranquilo")).getByText("Voice ID pendente")).toBeInTheDocument();
+    expect(await screen.findByText("A chave de acesso da voz do professor ainda não foi configurada no servidor.")).toBeInTheDocument();
+    expect(within(await rowOf("Tranquilo")).getByText("Voz ainda não cadastrada")).toBeInTheDocument();
+    expect(within(await rowOf("Tranquilo")).getByText("A voz de Tranquilo ainda não foi cadastrada no servidor.")).toBeInTheDocument();
+    // o nome da variável do servidor fica no detalhe técnico, escondido (a seção começa fechada)
+    const detalhes = screen.getAllByText("Detalhe técnico (para quem configura o servidor)");
+    expect(detalhes).toHaveLength(2);
+    for (const d of detalhes) expect(d.closest("details")).not.toHaveAttribute("open");
+    expect(screen.getByText("Configure ELEVENLABS_API_KEY no servidor.").closest("details")).not.toHaveAttribute("open");
+    expect(screen.queryByText("Voice ID pendente")).toBeNull();
     expect(screen.getAllByRole("button", { name: /^Ouvir / }).every((b) => b.hasAttribute("disabled"))).toBe(true);
     expect(play).not.toHaveBeenCalled();
   });

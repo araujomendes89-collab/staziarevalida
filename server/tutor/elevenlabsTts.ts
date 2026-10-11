@@ -48,7 +48,8 @@ export class OfficialElevenLabsSpeech implements SpeechProvider {
     if (!id) throw new Error("Esta personalidade ainda não tem voz oficial ElevenLabs associada.");
     const readiness = elevenLabsReadiness(this.env);
     const row = readiness.rows.find((item) => item.id === id)!;
-    if (!row.ready) throw new Error(row.pending || readiness.pending || "Voz oficial não configurada.");
+    // o aviso é em português simples; o detalhe técnico (nome da variável) segue no erro, que só vai para o registro do servidor
+    if (!row.ready) throw new Error([row.pending || readiness.pending || "Voz oficial não configurada.", row.detail || readiness.detail].filter(Boolean).join(" "));
     if (!text.trim() || text.length > 4000) throw new Error("Texto de voz vazio ou acima de 4.000 caracteres.");
     const { tag, settings } = officialSpeechDirection(id, voice.direction, this.model);
     // Colchetes vindos do texto não podem virar instruções de áudio do provedor. Preserva as palavras.
