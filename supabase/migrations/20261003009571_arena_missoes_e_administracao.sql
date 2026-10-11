@@ -43,7 +43,8 @@ begin
 end
 $$;
 
--- Administração (partida: a 20261003008100): igual, mas com o alvo real das missões.
+-- Administração (partida: a 20261003008100): igual, mas com o alvo real das missões (AR04) e o "XP de hoje" a partir da
+-- meia-noite de Brasília (AR03; antes contava desde as 21h do dia anterior, a meia-noite do horário universal).
 create or replace function public.app_admin_gamification() returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
@@ -65,7 +66,7 @@ begin
     'metrics', jsonb_build_object(
       'users_active', (select count(*) from public.user_gamification_stats where last_qualified_activity_at > now() - interval '7 days'),
       'users_total', (select count(*) from public.user_gamification_stats),
-      'xp_today', (select coalesce(sum(xp_awarded), 0) from public.gamification_events where created_at >= public.today_br()::timestamptz),
+      'xp_today', (select coalesce(sum(xp_awarded), 0) from public.gamification_events where created_at >= (public.today_br()::timestamp at time zone 'America/Sao_Paulo')),
       'xp_7d', (select coalesce(sum(xp_awarded), 0) from public.gamification_events where created_at > now() - interval '7 days'),
       'coins_issued', (select coalesce(sum(amount), 0) from public.coin_transactions where amount > 0),
       'missions_completed_7d', (select count(*) from public.user_missions where completed_at > now() - interval '7 days'),

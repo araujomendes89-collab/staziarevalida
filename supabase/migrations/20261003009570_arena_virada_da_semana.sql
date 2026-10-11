@@ -3,6 +3,8 @@
 --
 --  AR02: a liga só promove quem estudou na semana (XP semanal maior que zero). Antes, os 5 primeiros de cada grupo
 --        subiam e ganhavam 50 moedas mesmo com 0 XP (em grupos pequenos, todos subiam toda semana).
+--  AR03: o desempate da liga conta a semana pelo horário de Brasília. Antes, o dia começava à meia-noite do horário
+--        universal, que é 21h em Brasília.
 --
 -- Vale daqui para a frente: nada que o aluno já ganhou (XP, moedas, medalhas, subidas de liga) é apagado nem recalculado.
 -- Cole quantas vezes quiser: é "create or replace".
@@ -39,7 +41,10 @@ begin
       when x.n >= v_min_group and x.pos > x.n - v_relegate and l.position > 1 then 'relegated'
       else 'stayed' end
   from (select o.user_id, row_number() over (partition by o.league_slug, o.group_no order by o.weekly_xp desc,
-          (select count(*) from public.gamification_events e where e.user_id = o.user_id and e.event_type = 'QUESTION_CORRECT' and e.created_at >= se.starts_on::timestamptz) desc,
+          (select count(*) from public.gamification_events e where e.user_id = o.user_id and e.event_type = 'QUESTION_CORRECT'
+             -- AR03: a semana vai da meia-noite de segunda à meia-noite de domingo em Brasília (e não do horário universal)
+             and e.created_at >= (se.starts_on::timestamp at time zone 'America/Sao_Paulo')
+             and e.created_at < ((se.ends_on + 1)::timestamp at time zone 'America/Sao_Paulo')) desc,
           o.joined_at, o.user_id) as pos,
         count(*) over (partition by o.league_slug, o.group_no) as n
         from public.league_memberships o where o.season_id = se.id) x,
