@@ -15,6 +15,7 @@ import { AiCapReached, maestroProvider } from "../ai/maestro";
 import type { ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { normalize, numbers, numbersOutside } from "./checks";
+import { loadComplementarTerms, mentionsSupportMaterial } from "./complementarGuard";
 import type { ContentDb } from "./infra";
 import { aiAllowed, registerPrompts } from "./ai/registry";
 import { verdictOf, type Finding, type Spend } from "./draftChecks";
@@ -81,7 +82,7 @@ function analysisTexts(a: Analysis) {
   ].filter(Boolean) as string[];
 }
 
-export function analysisChecks(q: QuestionForAnalysis, a: Analysis): Finding[] {
+export function analysisChecks(q: QuestionForAnalysis, a: Analysis, terms: readonly string[] = []): Finding[] {
   const f: Finding[] = [];
   const add = (severity: Finding["severity"], code: string, detail: string, where?: string) => f.push({ severity, code, detail, where });
   const official = q.official?.answer ?? q.correct_option;
@@ -107,6 +108,10 @@ export function analysisChecks(q: QuestionForAnalysis, a: Analysis): Finding[] {
   }
   const all = analysisTexts(a).join("\n");
   if (LAZY.test(all)) add("major", "lazy_distractors", "A análise usa a fórmula 'as demais estão incorretas' em vez de analisar cada alternativa.");
+
+  // 2b. o texto vai ao aluno: não pode citar apostila nem material complementar (nem "Sangue nos Olhos")
+  const cited = mentionsSupportMaterial(all, terms);
+  if (cited.length) add("critical", "cites_support_material", `A análise cita material de apoio (${cited.map((c) => `"${c}"`).join(", ")}): o aluno não vê essas fontes. Tire a citação.`);
 
   // 3. gabarito intocável
   if (CHALLENGE.test(all)) add("critical", "challenges_official_answer", "A análise contesta o gabarito oficial ou diz que a questão está errada/desatualizada: isso não cabe nesta etapa.");
@@ -256,6 +261,7 @@ export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: Analys
     return report;
   }
   await registerPrompts(deps.db);
+  const supportTerms = await loadComplementarTerms(deps.db);
   const mockProvider = deps.mockRespond ? resolveProviderKind("mock", deps.mockRespond).provider : null;
   const aiDeps = { db: deps.db, mockProvider, makeProviderFor: deps.aiMaker, log: deps.log };
   for (const q of questions) {
@@ -268,7 +274,7 @@ export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: Analys
     try {
       const who = { provider: provider.name, model: provider.model };
       const analysis = await generateAnalysis(deps, provider, q, report.spend, who);
-      const findings = analysisChecks(q, analysis);
+      const findings = analysisChecks(q, analysis, supportTerms);
       const verdict = verdictOf(findings);
       const saved = await deps.db.service<{ analysis_id: string }>("ch_worker_save_question_analysis", {
         p_question_id: q.id,

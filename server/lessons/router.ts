@@ -17,6 +17,7 @@ import type { AiProvider, StructuredRequest } from "../contentHub/ai/provider";
 import { fetchLink, type ExtractedPage } from "../podcasts/extract";
 import { aiChoices } from "../ai/maestro";
 import type { ModelRef } from "../ai/config";
+import { loadComplementarTerms } from "../contentHub/complementarGuard";
 import { AREA_CODES, generateLessonAssist, MAX_ASSIST_CHARS, type AssistProvider } from "./assist";
 
 export const LESSONS_BUCKET = "lessons";
@@ -84,7 +85,21 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
     return spec;
   };
   const keyFor = (id: string, kind: string, ext: string) => `lessons/${id}/${kind}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
-  const register = (req: Authed, id: string, m: { kind: string; title: string; key: string; type: string; size: number }) =>
+  /** Grava o SHA-256 do arquivo enviado: a apostila é reconhecida mesmo com nome de arquivo neutro (fonte complementar). */
+  const markFile = async (key: string, bytes?: Buffer) => {
+    try {
+      const data = bytes ?? (await deps!.storage.get(key));
+      await deps!.db.service("ch_worker_file_sha", { p_path: key, p_sha: crypto.createHash("sha256").update(data).digest("hex") });
+    } catch (error) {
+      deps!.log?.(`[aulas] SHA-256 do arquivo não gravado: ${message(error)}`);
+    }
+  };
+  const register = async (req: Authed, id: string, m: { kind: string; title: string; key: string; type: string; size: number }, bytes?: Buffer) => {
+    const out = await registerRaw(req, id, m);
+    await markFile(m.key, bytes);
+    return out;
+  };
+  const registerRaw = (req: Authed, id: string, m: { kind: string; title: string; key: string; type: string; size: number }) =>
     asUser(req, "app_admin_lesson_material", {
       p_lesson_id: id,
       p_material: { kind: m.kind, title: m.title.slice(0, 200), storage_path: m.key, content_type: m.type, size_bytes: m.size },
@@ -135,7 +150,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       const name = decodeURIComponent(String(req.headers["x-file-name"] ?? "material")).slice(0, 200);
       const key = `lessons/${id}/${kind}-${crypto.createHash("sha256").update(body).digest("hex").slice(0, 16)}.${spec.ext}`;
       if (!(await deps!.storage.exists(key))) await deps!.storage.put(key, body, type);
-      res.status(201).json(await register(req, id, { kind, title: String(req.query.title ?? name), key, type, size: body.length }));
+      res.status(201).json(await register(req, id, { kind, title: String(req.query.title ?? name), key, type, size: body.length }, body));
     } catch (error: any) {
       fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
     }
@@ -219,6 +234,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       let r;
       try {
         r = await generateLessonAssist({
+          terms: await loadComplementarTerms(deps!.db),
           kind: kind as AssistProvider,
           db: deps!.db,
           actorId: req.user!.id,

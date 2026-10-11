@@ -53,6 +53,7 @@ export const ACTION_LABEL = {
   "lesson.material": "Material de aula adicionado",
   "lesson.material.delete": "Material de aula apagado",
   // podcasts
+  "source.audience": "Classe da fonte alterada",
   "podcast.save": "Podcast salvo",
   "podcast.delete": "Podcast apagado",
   "podcast.source": "Fonte do podcast adicionada",
@@ -289,6 +290,7 @@ const SUMMARY = {
     ]),
   "question.inserted": questionSaved,
   "question.updated": questionSaved,
+  "source.audience": (d) => join([d.title, d.to === "complementar" ? "Fonte complementar: o aluno não vê esta fonte" : "Fonte oficial", d.reason && `Motivo: ${d.reason}`]),
   // apagar: o código e o tema que o banco guardou (a questão já não existe); análise tirada do ar: o texto mudou
   "question.delete": (d, entry) => join([d.code ?? entry.target, d.topic]),
   "question.analysis_unpublished": (d, entry) => `${entry.target}: o enunciado ou o texto de uma alternativa mudou`,

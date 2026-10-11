@@ -20,6 +20,7 @@ import type { ContentDb } from "../contentHub/infra";
 import { avatarOf, engineFor, languageIntensity, normalize, profanityForIntensity, recentExpressions, stateLayer, step, type Happening, type PersonaEngine, type TutorState } from "./emotion";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings } from "./personality";
 import { NO_EVALUATION, TUTOR_PROMPT_LAYERS, TUTOR_SCHEMA, TUTOR_VERSION, composeSystem, taskInstruction, type TutorMode, type TutorOutput, type TutorTask } from "./prompts";
+import { labelIsSupportMaterial, loadComplementarTerms } from "../contentHub/complementarGuard";
 import { fallbackReply, safetyCheck, spokenText, type BaseBlock, type SafetyResult, type Violation } from "./safety";
 import { deterministicTutor, tutorSettings } from "./settings";
 
@@ -229,7 +230,10 @@ export function sourceQuery(...texts: (string | null | undefined)[]): string {
 export async function searchSources(deps: TutorDeps, query: string): Promise<Passage[]> {
   if (!query) return [];
   try {
-    return (await deps.db.service<Passage[]>("ch_worker_search_official_passages", { p_query: query, p_limit: 3 })) ?? [];
+    const rows = (await deps.db.service<Passage[]>("ch_worker_search_official_passages", { p_query: query, p_limit: 3 })) ?? [];
+    // fonte complementar (apostila) nunca vai ao aluno: o banco já só devolve fonte oficial, e aqui confere de novo pelo nome
+    const terms = await loadComplementarTerms(deps.db);
+    return rows.filter((p) => !labelIsSupportMaterial(`${p.source} ${p.organ}`, terms));
   } catch (error) {
     deps.log?.(`[tutor] busca nas fontes falhou: ${(error as Error).message}`);
     return [];
@@ -340,6 +344,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     // ---- base conferida
     const includeAnswer = Boolean(q) && (!open || task.type === "hint" || task.type === "reveal");
     const weak = ctx.session.context?.type === "weak_points" ? (ctx.memory?.weak_subareas ?? []).slice(0, 3).map((w) => w.subarea).join(" ") : "";
+    const supportTerms = await loadComplementarTerms(deps.db);
     const passages = await searchSources(deps, sourceQuery(q?.topic, q?.subtopic, ctx.session.topic, ctx.session.context?.label, weak, task.type === "message" && !q ? studentText : ""));
     const blocks = buildBlocks(ctx, passages, includeAnswer);
 
@@ -396,6 +401,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
 
     const safetyCtx = {
       blocks,
+      supportTerms,
       conversationTexts: [studentText, ...ctx.history.map((h) => h.content)],
       question: q ? { open, officialLetter: q.official_answer, officialText: q.options.find((o) => o.id === q.official_answer)?.text ?? null } : null,
       hintLevel,
