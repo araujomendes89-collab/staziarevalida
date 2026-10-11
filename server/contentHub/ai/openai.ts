@@ -8,7 +8,7 @@
  * A resposta é sempre validada pelo nosso validador de schema; fora do formato é recusada, nunca "consertada".
  */
 import { toProviderSchema } from "./schema";
-import { AiInvalidOutput, fetchSignal, withUsage, type AiProvider, type AiUsage, type PartialUsage, type StructuredRequest, type StructuredResult, type WebSearchOptions } from "./provider";
+import { AiInvalidOutput, AiRefused, fetchSignal, withUsage, type AiProvider, type AiUsage, type PartialUsage, type StructuredRequest, type StructuredResult, type WebSearchOptions } from "./provider";
 import { validate } from "./schema";
 import { hostsOf, ownError, parseOrConvert, sumTokens, throwIfCancelled } from "./webSearch";
 
@@ -66,11 +66,13 @@ export class OpenAIProvider implements AiProvider {
     }
     const data = (await res.json()) as any;
     const choice = data?.choices?.[0];
-    if (choice?.message?.refusal) throw new Error(`O provedor recusou a solicitação (${String(choice.message.refusal).slice(0, 120)}).`);
     // tokens lidos antes de conferir a resposta: a que falha também é cobrada e entra no registro e nos tetos
     const inTok = data?.usage?.prompt_tokens ?? null;
     const outTok = data?.usage?.completion_tokens ?? null;
     const usage: AiUsage = { inputTokens: inTok, outputTokens: outTok };
+    // recusa e filtro de conteúdo: cobrados, e repetir na mesma IA recusa igual (o maestro vai direto para a reserva)
+    if (choice?.message?.refusal) throw new AiRefused("O provedor recusou a solicitação.", usage);
+    if (choice?.finish_reason === "content_filter") throw new AiRefused("O provedor interrompeu a resposta: barrada pelo filtro de conteúdo.", usage);
     if (choice?.finish_reason === "length") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null, { usage, reason: "cortada" });
     let raw: unknown;
     try {

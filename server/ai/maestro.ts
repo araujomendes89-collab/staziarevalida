@@ -6,7 +6,7 @@
  */
 import crypto from "crypto";
 import type { ContentDb } from "../contentHub/infra";
-import { AiInvalidOutput, familyOfModel, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
+import { AiInvalidOutput, AiRefused, familyOfModel, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
 import type { Schema } from "../contentHub/ai/schema";
 import {
   callEstimateUsd,
@@ -35,7 +35,7 @@ import { currentRequestDeadline } from "./requestDeadline";
 // ------------------------------------------------------------------ tipos públicos
 
 /**
- * A execução parou no teto de gasto (por execução ou mensal) sem chamar IA nenhuma. Não é falha da IA: quem usa o
+ * A execução parou no teto de gasto (por chamada ou mensal) sem chamar IA nenhuma. Não é falha da IA: quem usa o
  * adaptador deixa o trabalho parado para voltar quando o teto permitir (a Central de Conteúdo converte em Blocked).
  */
 export class AiCapReached extends Error {}
@@ -167,6 +167,8 @@ export function shouldRetrySame(e: unknown): boolean {
   // resposta cortada pelo limite de saída ou bloqueada pelo provedor se repete igual com a mesma entrada (falha vista em produção,
   // 2026-10-09: só ~9% das segundas tentativas do Gemini deram certo): vai direto para a reserva
   if (e instanceof AiInvalidOutput) return e.reason !== "cortada" && e.reason !== "bloqueada";
+  // a IA recusou o pedido (Claude, OpenAI): recusa igual com a mesma entrada, e os tokens já foram cobrados
+  if (e instanceof AiRefused) return false;
   // o fetch do Node fechou a conexão por tempo: é tempo esgotado (o provedor pode ter cobrado), não falha de rede passageira
   if (isConnectionTimeout(e)) return false;
   const msg = e instanceof Error ? e.message : String(e ?? "");
@@ -389,7 +391,7 @@ class Run {
 
   /**
    * Confere os tetos das chamadas previstas (só com tetos ligados). Devolve a mensagem de parada quando a estimativa
-   * passa do teto por execução; o teto mensal só bloqueia as chamadas pagas (Ollama segue).
+   * passa do teto por chamada; o teto mensal só bloqueia as chamadas pagas (Ollama segue).
    */
   plan(items: PlannedCall[]): string | null {
     const s = this.cfg.settings;
@@ -397,7 +399,7 @@ class Run {
     const live = items.filter((i) => !i.slot.blocked);
     const total = live.reduce((a, i) => a + estimateCall(this.cfg, i.slot, i.chars, i.maxOut, i.care), 0);
     if (s.per_run_cap_usd !== null && total > s.per_run_cap_usd) {
-      return `Estimativa de US$ ${usd(total)} passa do teto por execução de US$ ${usd(s.per_run_cap_usd)}.`;
+      return `Estimativa de US$ ${usd(total)} passa do teto por chamada de US$ ${usd(s.per_run_cap_usd)}.`;
     }
     if (s.monthly_cap_usd !== null && total > 0 && this.monthSpend + total > s.monthly_cap_usd) {
       this.monthBlockedMsg = `Gasto do mês de US$ ${usd(this.monthSpend)} mais estimativa de US$ ${usd(total)} passa do teto mensal de US$ ${usd(s.monthly_cap_usd)}.`;
@@ -430,8 +432,8 @@ class Run {
   }
 
   /**
-   * Teto por execução antes de cada chamada (revisão rodada 3): o plano inicial só via a primeira chamada; a nova tentativa, a
-   * reserva e os conferentes saíam sem conferência, mesmo depois de uma falha cobrada. Vale o gasto real já feito nesta execução
+   * Teto por chamada, conferido antes de cada tentativa (revisão rodada 3): o plano inicial só via a primeira; a nova tentativa, a
+   * reserva e os conferentes saíam sem conferência, mesmo depois de uma falha cobrada. Vale o gasto real já feito nesta chamada
    * (com o custo das falhas), mais a estimativa das chamadas em andamento, mais a estimativa desta. Chamada sem custo passa.
    */
   private perRunRefusal(est: number): string | null {
@@ -440,7 +442,7 @@ class Run {
     const committed = this.spent + this.inFlight;
     // folga de 1e-9: o plano já conferiu a mesma soma, só que noutra ordem (arredondamento do ponto flutuante)
     if (committed + est > s.per_run_cap_usd + 1e-9) {
-      return `Gasto desta execução de US$ ${usd(committed)} mais estimativa de US$ ${usd(est)} passa do teto por execução de US$ ${usd(s.per_run_cap_usd)}.`;
+      return `Gasto desta chamada de US$ ${usd(committed)} mais estimativa de US$ ${usd(est)} passa do teto por chamada de US$ ${usd(s.per_run_cap_usd)}.`;
     }
     return null;
   }
@@ -503,8 +505,8 @@ class Run {
       this.lastError = e;
       let error = errText(e);
       // a resposta que falhou também é cobrada (ex.: cortada pelo limite de saída): tokens e custo vão para o registro, para o gasto
-      // do mês e para o teto desta execução (antes ficavam com custo 0)
-      const used = e instanceof AiInvalidOutput ? e.usage : undefined;
+      // do mês e para o teto desta chamada (antes ficavam com custo 0)
+      const used = e instanceof AiInvalidOutput || e instanceof AiRefused ? e.usage : undefined;
       let cost = used ? this.costOf(slot, { inputTokens: used.inputTokens, outputTokens: used.outputTokens, costUsd: null }) : 0;
       // o fetch do Node fechou a conexão por tempo (rodada 4): é tempo esgotado, dito em português (o erro cru é "fetch failed")
       const connectionTimeout = !(e instanceof AiTimeout) && isConnectionTimeout(e);

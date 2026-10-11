@@ -5,7 +5,7 @@
  *   1. o tempo esgotado cancela o pedido (AbortSignal até a biblioteca de cada IA: abortSignal no Gemini, signal no Claude,
  *      na OpenAI e no Ollama);
  *   2. a linha do tempo esgotado grava um custo ESTIMADO (pior caso da chamada), dito no texto do erro, e esse custo entra no
- *      teto por execução (a reserva passa pela conferência com ele);
+ *      teto por chamada (a reserva passa pela conferência com ele);
  *   3. o tempo-limite do Gemini cresce com a saída máxima mandada (pedido + folga do raciocínio), sem passar do prazo do pedido.
  * Sem rede: bibliotecas simuladas, provedores falsos, relógio falso e um banco falso que só guarda o registro.
  */
@@ -143,7 +143,7 @@ describe("maestro: tempo esgotado cancela o pedido e grava o custo estimado", ()
     expect(calls).toEqual([key(A)]);
   });
 
-  it("o custo estimado do tempo esgotado conta no teto por execução: a reserva que não cabe não sai", async () => {
+  it("o custo estimado do tempo esgotado conta no teto por chamada: a reserva que não cabe não sai", async () => {
     // 0,2213 (estimado, tempo esgotado) + 0,2053 (reserva) = 0,4266 > 0,40
     const { runFunction } = await import("../../server/ai/maestro");
     const { db, logged } = fakeDb({ primary_ref: G, fallback_ref: A }, { caps_enabled: true, monthly_cap_usd: 100, per_run_cap_usd: 0.4 });
@@ -153,7 +153,7 @@ describe("maestro: tempo esgotado cancela o pedido e grava o custo estimado", ()
     const r = await settle(runFunction<any>({ db, env: {} as any, makeProviderFor: makeProviderFor as any, log: () => {} }, "criacao", REQ, origin));
     expect(calls).toEqual([]);
     expect(logged.map((l) => `${l.role}:${l.provider}:${l.outcome}`)).toEqual(["principal:gemini:falha", "reserva:anthropic:teto"]);
-    expect(logged[1].error).toBe("Gasto desta execução de US$ 0,2213 mais estimativa de US$ 0,2053 passa do teto por execução de US$ 0,4.");
+    expect(logged[1].error).toBe("Gasto desta chamada de US$ 0,2213 mais estimativa de US$ 0,2053 passa do teto por chamada de US$ 0,4.");
     expect(r.status).toBe("falhou");
   });
 

@@ -169,8 +169,8 @@ describe("Central de IAs (painel do administrador)", () => {
     expect(within(box).getByText(aviso)).toBeTruthy();
   });
 
-  describe("aviso do teto por execução depois de subir o teto (rodada final)", () => {
-    const TETO = "Teto por execução de US$ 0,1 está abaixo da estimativa de uma chamada de Criação (Podcasts) com Claude claude-a.";
+  describe("aviso do teto por chamada depois de subir o teto (rodada final)", () => {
+    const TETO = "Teto por chamada de US$ 0,1 está abaixo da estimativa de uma tentativa de Criação (Podcasts) com Claude claude-a.";
     /** O servidor depois de salvar os tetos: o teto maior e a conferência das funções já sem o aviso. */
     const raiseCap = () => {
       handlers["PUT /api/ai-central/settings"] = (body) => {
@@ -194,7 +194,7 @@ describe("Central de IAs (painel do administrador)", () => {
       const box = await screen.findByTestId("function-criacao");
       expect(within(box).getByText(TETO)).toBeTruthy();
       const loads = overviewLoads();
-      fireEvent.change(screen.getByLabelText("Teto por execução (US$)"), { target: { value: "5" } });
+      fireEvent.change(screen.getByLabelText("Teto por chamada (US$)"), { target: { value: "5" } });
       fireEvent.click(screen.getByRole("button", { name: "Salvar tetos" }));
       await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai-central/settings")).toBe(true));
       await waitFor(() => expect(overviewLoads()).toBeGreaterThan(loads));
@@ -213,7 +213,7 @@ describe("Central de IAs (painel do administrador)", () => {
       await waitFor(() => expect(overviewLoads()).toBeGreaterThan(loads));
       expect(within(box).getByText(TETO)).toBeTruthy();
       const afterSave = overviewLoads();
-      fireEvent.change(screen.getByLabelText("Teto por execução (US$)"), { target: { value: "5" } });
+      fireEvent.change(screen.getByLabelText("Teto por chamada (US$)"), { target: { value: "5" } });
       fireEvent.click(screen.getByRole("button", { name: "Salvar tetos" }));
       await waitFor(() => expect(overviewLoads()).toBeGreaterThan(afterSave));
       await waitFor(() => expect(within(box).queryByText(TETO)).toBeNull());
@@ -333,7 +333,7 @@ describe("Central de IAs (painel do administrador)", () => {
   it("tetos: ligar exige os dois valores", async () => {
     render(<AdminAI />);
     await screen.findByTestId("provider-anthropic");
-    expect(screen.getByText("Duas execuções ao mesmo tempo podem passar do teto em até o custo de uma execução.")).toBeTruthy();
+    expect(screen.getByText(/Duas chamadas ao mesmo tempo podem passar do teto em até o custo de uma chamada\./)).toBeTruthy();
     expect(screen.getByText("Tutor (fora do teto, só informação)")).toBeTruthy();
     fireEvent.click(screen.getByRole("switch", { name: /Tetos ligados/ }));
     expect(screen.getByText("Preencha os dois tetos para ligar")).toBeTruthy();
@@ -341,7 +341,7 @@ describe("Central de IAs (painel do administrador)", () => {
     expect(save.disabled).toBe(true);
     fireEvent.change(screen.getByLabelText("Teto mensal (US$)"), { target: { value: "50" } });
     expect(save.disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText("Teto por execução (US$)"), { target: { value: "2" } });
+    fireEvent.change(screen.getByLabelText("Teto por chamada (US$)"), { target: { value: "2" } });
     expect(save.disabled).toBe(false);
     fireEvent.click(save);
     await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai-central/settings")).toBe(true));

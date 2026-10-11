@@ -23,6 +23,13 @@ const OUTCOME = { ok: ["ok", "success"], falha: ["falha", "danger"], teto: ["tet
 const ACTION = { "ai.provider": "IA ligada/desligada", "ai.function": "função", "ai.settings": "tetos e seletor", "ai.price": "preço" };
 const ROLE = { principal: "principal", reserva: "reserva", criadora: "criadora", conferente: "conferente", membro: "membro" };
 
+/**
+ * Custo de uma chamada na tabela (IA09): IA paga que gastou tokens e ficou com custo zero é modelo sem preço cadastrado. Mostrar
+ * "US$ 0" ali dizia que a chamada saiu de graça. O Ollama custa zero, e chamada sem tokens (teto, bloqueada, falha sem resposta)
+ * também fica em "US$ 0".
+ */
+const callCost = (c) => (Number(c.cost_usd) === 0 && c.provider !== "ollama" && Number(c.input_tokens ?? 0) + Number(c.output_tokens ?? 0) > 0 ? "sem preço" : usd(c.cost_usd));
+
 const when = (iso) => (iso ? new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "—");
 const day = (iso) => (iso ? new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso)) : "—");
 const statusOf = (s) => (s ? (STATUS[s] ?? [s, "neutral"]) : ["lista ainda não atualizada", "neutral"]);
@@ -118,11 +125,66 @@ function ProviderCard({ p, spend, pending, blocks, backend, reload }) {
   );
 }
 
+// Usos de IA que NÃO passam pelo interruptor de cada IA (IA03): usam a chave direto no servidor e têm a trava própria de cada um.
+// Fica de acordo com docs/architecture/CENTRAL_DE_IAS.md, seção "O que o interruptor liga e desliga".
+const OUTSIDE_SWITCH = [
+  "Tutor: conversa e avaliação (Claude, por padrão), transcrição do microfone (OpenAI) e voz ao vivo (Gemini ou OpenAI).",
+  "Voz do professor do Tutor: ElevenLabs, que não está nesta lista de IAs.",
+  "Áudio dos Podcasts: OpenAI (a voz do Gemini existe, mas fica desligada por padrão no servidor).",
+  "Busca por significado da Central de Conteúdo: Gemini.",
+  "Rotas antigas de IA da Administração: Claude e Gemini, só para administrador.",
+];
+
+/**
+ * Os tetos de gasto nascem desligados (IA01): desligados, nenhuma IA da Central tem limite em dólares. Este aviso fica no alto até os
+ * dois tetos terem valor e estarem ligados. A tela não escolhe nem liga valor nenhum: a decisão é do administrador.
+ */
+function capsState(settings) {
+  const s = settings ?? {};
+  const noMonthly = s.monthly_cap_usd == null;
+  const noPerRun = s.per_run_cap_usd == null;
+  return { off: s.caps_enabled !== true, noMonthly, noPerRun, ok: s.caps_enabled === true && !noMonthly && !noPerRun };
+}
+
+function goToCaps() {
+  const box = document.getElementById("gasto-e-tetos");
+  box?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+  document.getElementById("teto-mensal")?.focus();
+}
+
+function CapsNotice({ settings }) {
+  const c = capsState(settings);
+  if (c.ok) return null;
+  const missing = [c.noMonthly && "O teto mensal está sem valor.", c.noPerRun && "O teto por chamada está sem valor."].filter(Boolean);
+  return (
+    <div data-testid="aviso-tetos-desligados">
+      <Banner tone="warning" title={c.off ? "Os tetos de gasto estão desligados" : "Falta valor em um dos tetos de gasto"} action={<Button size="sm" variant="secondary" icon="arrow-down" onClick={goToCaps}>Escolher os tetos</Button>}>
+        {c.off
+          ? "Hoje não há limite em dólares para as IAs da Central: um volume grande de trabalhos ou um erro pode gastar sem parar. "
+          : "Os tetos estão ligados, mas um limite sem valor não vale. "}
+        {!c.off && missing.join(" ") + " "}
+        {c.off && !c.noMonthly && !c.noPerRun ? "Os valores já estão preenchidos: falta ligar os tetos. " : ""}
+        O Tutor, as vozes e a busca por significado não entram nestes tetos.
+      </Banner>
+    </div>
+  );
+}
+
 function Providers({ data, backend, reload }) {
   const list = PROVIDER_ORDER.map((id) => data.providers.find((p) => p.id === id)).filter(Boolean);
   return (
     <Section title="IAs">
-      <p style={note}>As chaves ficam só no servidor. Uma IA só é chamada se estiver ligada aqui.</p>
+      <div data-testid="providers-intro" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <p style={note}>
+          As chaves ficam só no servidor. Uma IA só é chamada pelas funções abaixo se estiver ligada aqui: isso vale para tudo o que passa por elas (etapas da Central de Conteúdo, Questões, Aulas e roteiro dos Podcasts, assistentes das abas).
+        </p>
+        <p style={note}>Desligar uma IA aqui não desliga estes usos: eles usam a chave direto no servidor e cada um tem a trava própria.</p>
+        <ul data-testid="fora-do-interruptor" style={{ margin: 0, paddingLeft: 18, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+          {OUTSIDE_SWITCH.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+      </div>
       {list.map((p) => (
         <ProviderCard key={p.id} p={p} spend={data.spend_by_provider?.find((s) => s.provider === p.id)} pending={data.provider_checks?.[p.id]?.pending} blocks={data.provider_checks?.[p.id]?.blocks} backend={backend} reload={reload} />
       ))}
@@ -204,6 +266,88 @@ function PriceRow({ row, backend, reload }) {
   );
 }
 
+const SPEND_GROUPS = {
+  tutor_conversa: "Tutor: conversa e avaliação",
+  tutor_voz_ao_vivo: "Tutor: voz ao vivo",
+  tutor_transcricao: "Tutor: transcrição do microfone",
+  tutor_voz_professor: "Tutor: voz do professor",
+  podcasts_audio: "Podcasts: áudio",
+  busca_significado: "Busca por significado (vetores dos trechos)",
+};
+const NO_RECORD_NAME = { rotas_antigas: "Rotas antigas de IA da Administração", perguntas_busca: "Perguntas da busca por significado" };
+
+/** Um lugar do painel de gasto de tudo: o valor registrado, ou o que falta saber (nunca um número inventado). */
+function spendCell(g) {
+  const cost = Number(g.cost_usd ?? 0);
+  const records = Number(g.records ?? 0);
+  const unpriced = Number(g.unpriced_records ?? 0);
+  if (records === 0) return "nenhum registro neste mês";
+  if (unpriced === records && cost === 0) return `sem preço definido (${records} ${records === 1 ? "registro" : "registros"} com uso e custo zero)`;
+  if (unpriced > 0) return `${usd(cost)} + ${unpriced} ${unpriced === 1 ? "registro sem preço" : "registros sem preço"}`;
+  return usd(cost);
+}
+
+/**
+ * Gasto do mês de tudo o que já fica registrado (IA02, só leitura): a Central (que entra nos tetos) e os usos que gravam em outros
+ * lugares. O que não grava nada aparece como "sem registro". Não é teto: nenhum destes usos para por causa dos tetos.
+ */
+function AllSpend({ data }) {
+  const a = data.all_spend;
+  if (!a) return null;
+  const groups = a.groups ?? [];
+  const withRecord = Number(data.month_spend ?? 0) + groups.reduce((t, g) => t + Number(g.cost_usd ?? 0), 0);
+  return (
+    <div data-testid="gasto-de-tudo" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <h4 style={{ margin: "8px 0 0", font: "var(--type-label)" }}>Gasto do mês de tudo (só leitura)</h4>
+      <p style={note}>Soma o que já fica registrado em cada lugar. Só a Central entra nos tetos: o Tutor, as vozes e a busca por significado não param por causa deles.</p>
+      {!a.available ? (
+        <p style={note}>Falta colar no Supabase a atualização 20261003009520 para ver o gasto dos outros lugares.</p>
+      ) : (
+        <Table heads={["Lugar", "Gasto do mês"]}>
+          <tr>
+            <td style={cell}>Central de IAs (entra nos tetos)</td>
+            <td style={cell}>{usd(data.month_spend)}</td>
+          </tr>
+          {groups.map((g) => (
+            <tr key={g.key}>
+              <td style={cell}>{SPEND_GROUPS[g.key] ?? g.key}</td>
+              <td style={cell}>{spendCell(g)}</td>
+            </tr>
+          ))}
+          {(a.no_record ?? []).map((n) => (
+            <tr key={n.key}>
+              <td style={cell}>{NO_RECORD_NAME[n.key] ?? n.key}</td>
+              <td style={cell}>{`sem registro. ${n.note ?? ""}`.trim()}</td>
+            </tr>
+          ))}
+        </Table>
+      )}
+      {a.available && (
+        <p data-testid="soma-com-registro" style={note}>{`Soma do que tem registro: ${usd(withRecord)}. Não inclui o que está sem registro nem os registros sem preço.`}</p>
+      )}
+    </div>
+  );
+}
+
+/** O que escolher nos tetos e o que ajuda a escolher (IA01): o gasto do mês e o mínimo calculado pelos preços; nada vem preenchido. */
+function CapsGuide({ data }) {
+  const guide = data.cap_guidance;
+  const min = guide?.per_call_min_usd ?? null;
+  return (
+    <div data-testid="guia-de-tetos" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <p style={note}>Os valores são seus: a tela não escolhe nem liga nada sozinha. Os dois tetos ligados valem para as IAs da Central.</p>
+      <ul style={{ margin: 0, paddingLeft: 18, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+        <li>{`Teto mensal: o máximo que as IAs da Central podem gastar no mês (horário de Brasília). Gasto do mês até agora: ${usd(data.month_spend)}.`}</li>
+        <li>
+          {"Teto por chamada: o máximo de uma chamada à IA (principal, nova tentativa e reserva), não para um trabalho inteiro."}
+          {min !== null && ` Para nenhuma função parar com as IAs de hoje, pelo menos ${usd(min)} (${(guide.by_function ?? []).map((f) => `${FUNCTION_NAME[f.key] ?? f.key} ${usd(f.min_usd)}`).join(" · ")}). Abaixo desse valor, a função para no teto. A conta usa o pior caso; o gasto real costuma ser bem menor.`}
+          {guide && min === null && " Cadastre o preço dos modelos para ver o valor mínimo."}
+        </li>
+      </ul>
+    </div>
+  );
+}
+
 function Spend({ data, backend, reload }) {
   const s = data.settings ?? {};
   const [monthly, setMonthly] = React.useState(s.monthly_cap_usd == null ? "" : String(s.monthly_cap_usd));
@@ -232,14 +376,17 @@ function Spend({ data, backend, reload }) {
   const prices = data.prices ?? [];
   return (
     <Section title="Gasto e tetos">
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div id="gasto-e-tetos" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <CapsGuide data={data} />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
-          <TextField label="Teto mensal (US$)" type="number" min="0" step="any" value={monthly} onChange={(e) => setMonthly(e.target.value)} />
-          <TextField label="Teto por execução (US$)" type="number" min="0" step="any" value={perRun} onChange={(e) => setPerRun(e.target.value)} />
+          <TextField id="teto-mensal" label="Teto mensal (US$)" type="number" min="0" step="any" value={monthly} onChange={(e) => setMonthly(e.target.value)} />
+          <TextField label="Teto por chamada (US$)" type="number" min="0" step="any" value={perRun} onChange={(e) => setPerRun(e.target.value)} />
         </div>
         <Switch label="Tetos ligados" checked={on} onChange={(e) => setOn(e.target.checked)} />
         {missing && <div style={subtle}>Preencha os dois tetos para ligar</div>}
-        <p style={note}>Duas execuções ao mesmo tempo podem passar do teto em até o custo de uma execução.</p>
+        <p data-testid="explicacao-tetos" style={note}>
+          O teto por chamada vale para cada chamada à IA (a principal, a nova tentativa e a reserva dela, somadas), não para um trabalho inteiro: um documento que faz várias chamadas pode gastar várias vezes esse valor. O teto mensal é o que limita o total. Duas chamadas ao mesmo tempo podem passar do teto em até o custo de uma chamada.
+        </p>
         {state.error && <Banner tone="danger">{state.error}</Banner>}
         {state.done && <Banner tone="success">Tetos salvos.</Banner>}
         <div>
@@ -253,9 +400,11 @@ function Spend({ data, backend, reload }) {
             ["Gasto do mês", usd(data.month_spend)],
             ["Por IA", (data.spend_by_provider ?? []).length ? (data.spend_by_provider ?? []).map((x) => `${PROVIDER_NAME[x.provider] ?? x.provider}: ${usd(x.cost_usd)}`).join(" · ") : "nenhuma chamada neste mês"],
             ["Por função", (data.spend_by_function ?? []).length ? (data.spend_by_function ?? []).map((x) => `${FUNCTION_NAME[x.function_key] ?? x.function_key}: ${usd(x.cost_usd)}`).join(" · ") : "nenhuma chamada neste mês"],
-            ["Tutor (fora do teto, só informação)", usd(data.tutor_month_spend)],
+            ...(data.all_spend?.available ? [] : [["Tutor (fora do teto, só informação)", usd(data.tutor_month_spend)]]),
           ]}
         />
+
+        <AllSpend data={data} />
 
         <h4 style={{ margin: "8px 0 0", font: "var(--type-label)" }}>Últimas chamadas</h4>
         {(data.recent_calls ?? []).length === 0 ? (
@@ -276,7 +425,7 @@ function Spend({ data, backend, reload }) {
                       {label}
                     </Badge>
                   </td>
-                  <td style={cell}>{usd(c.cost_usd)}</td>
+                  <td style={cell}>{callCost(c)}</td>
                 </tr>
               );
             })}
@@ -348,6 +497,7 @@ export function AdminAI() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {error && <LoadFail error={error} retry={reload} />}
+      <CapsNotice settings={data.settings} />
       <Providers data={data} backend={backend} reload={refresh} />
       <Functions data={data} backend={backend} reload={refresh} />
       <Spend data={data} backend={backend} reload={refresh} />
