@@ -8,7 +8,9 @@ import { dateTimeBR, LoadError, Loading, messageOf, useLoad } from "./common.jsx
 import { EVENT_LABEL } from "../play/format.js";
 
 function RuleRow({ rule, onSave }) {
-  const isBool = typeof rule.value === "boolean";
+  // Interruptor pelo tipo da regra (flags.*), como o banco confere, e não pelo valor gravado: um valor do tipo errado
+  // gravado antes da conferência continua corrigível (o interruptor grava true/false; as outras têm campo de texto).
+  const isBool = rule.key.startsWith("flags.");
   const [text, setText] = React.useState(isBool ? "" : JSON.stringify(rule.value));
   const [state, setState] = React.useState({ saving: false, error: null });
   const save = async (value, enabled) => {
@@ -38,7 +40,7 @@ function RuleRow({ rule, onSave }) {
         {state.error && <div style={{ font: "var(--type-caption)", color: "var(--danger-text)" }}>{state.error}</div>}
       </div>
       {isBool ? (
-        <Switch checked={rule.value} label={rule.value ? "Ligado" : "Desligado"} onChange={(e) => save(e.target.checked, rule.enabled)} />
+        <Switch checked={rule.value === true} label={rule.value === true ? "Ligado" : "Desligado"} onChange={(e) => save(e.target.checked, rule.enabled)} />
       ) : (
         <TextField value={text} onChange={(e) => setText(e.target.value)} aria-label={rule.key} />
       )}
@@ -46,6 +48,24 @@ function RuleRow({ rule, onSave }) {
         <Button size="sm" type="submit" loading={state.saving} disabled={text === JSON.stringify(rule.value)}>Salvar</Button>
       )}
     </form>
+  );
+}
+
+/** Aviso da conferência das regras: regra com valor inválido e cálculos de XP que falharam (o que o aluno fez foi gravado). */
+function RulesHealth({ problems = [], failures = 0, recent = [] }) {
+  if (problems.length === 0 && !(failures > 0)) return null;
+  const last = recent[0];
+  return (
+    <Banner tone="danger" title={problems.length > 0 ? "Regra com valor inválido" : "Cálculo de XP com falha"}>
+      {problems.map((p) => <div key={p.key}>{p.problem}</div>)}
+      {failures > 0 && (
+        <div>
+          {failures === 1 ? "1 cálculo de XP falhou" : `${failures} cálculos de XP falharam`} nos últimos 7 dias. O que os alunos fizeram foi gravado; só o XP dessas ações ficou de fora.
+          {last && (last.bad_rules ?? []).length === 0 ? " A última falha não veio de uma regra: avise o suporte técnico." : ""}
+        </div>
+      )}
+      {problems.length > 0 && <div>Corrija na aba Regras.</div>}
+    </Banner>
   );
 }
 
@@ -246,6 +266,7 @@ export function AdminPlay() {
   const TABS = [["metricas", "Métricas"], ["regras", "Regras"], ["medalhas", "Medalhas"], ["missoes", "Missões e loja"], ["auditoria", "Auditoria"]];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <RulesHealth problems={data.rule_problems ?? []} failures={m.xp_failures_7d ?? 0} recent={m.xp_failures_recent ?? []} />
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {TABS.map(([v, l]) => <button key={v} type="button" className="sm-chip" aria-pressed={tab === v} onClick={() => setTab(v)}>{l}</button>)}
       </div>

@@ -83,7 +83,7 @@ describe("Administração — acesso", () => {
       ["app_admin_question_review_done", { p_question_id: "revalida_2026_2_q001" }],
       ["app_admin_set_official_answer", { p_question_id: "revalida_2026_2_q001", p_answer: "A", p_status: "FINAL", p_source: "x", p_reason: "y" }],
       ["app_admin_stations", {}],
-      ["app_admin_set_station_review", { p_station_id: "st-1", p_status: "approved" }],
+      ["app_admin_set_station_review", { p_station_id: "st-1", p_status: "approved", p_note: "Conferi roteiro e checklist." }],
       ["app_admin_plans", {}],
       ["app_admin_save_plan", { p_plan: { code: "pro", name: "Pro" } }],
       ["app_admin_settings", {}],
@@ -247,7 +247,7 @@ describe("Administração — questões", () => {
 });
 
 describe("Administração — estações, planos e configurações", () => {
-  it("aprovar a estação libera para os alunos", async () => {
+  it("aprovar a estação (administrador, com o que foi conferido) libera para os alunos; editor comum não aprova", async () => {
     const asStudent = () =>
       db.transaction(async (tx) => {
         await tx.exec("set local role authenticated");
@@ -257,7 +257,9 @@ describe("Administração — estações, planos e configurações", () => {
       });
     await rpc(ADMIN, "app_admin_set_role", { p_user_id: ANA, p_role: "student" });
     expect(await asStudent()).toHaveLength(0);
-    const stations = await rpc(EDITOR, "app_admin_set_station_review", { p_station_id: "st-1", p_status: "approved" });
+    await expect(rpc(EDITOR, "app_admin_set_station_review", { p_station_id: "st-1", p_status: "approved", p_note: "Conferi roteiro e checklist." })).rejects.toThrow(/revisor médico/);
+    expect(await asStudent()).toHaveLength(0);
+    const stations = await rpc(ADMIN, "app_admin_set_station_review", { p_station_id: "st-1", p_status: "approved", p_note: "Conferi roteiro e checklist." });
     expect(stations[0]).toMatchObject({ id: "st-1", medical_review: "approved", reports: 0 });
     expect(await asStudent()).toHaveLength(1);
   });

@@ -72,15 +72,23 @@ A chave `anon` é pública; o que protege os dados são as políticas (RLS) e as
 
 - **Questões**: enunciado, área, tema e figuras. A resposta correta, a explicação das alternativas e a conduta esperada **não** são legíveis; a correção sai pelas funções `app_*`, só depois de responder a questão ou de finalizar a sessão (`…1900_answer_key_lockdown.sql`).
 - **Classificação detalhada, rascunhos inéditos, Central de Conteúdo**: só equipe e revisores.
+- **Estações**: o catálogo das estações aprovadas (`checklist_stations`) e o conteúdo delas (o das estações Pro, só com acesso Pro). O registro da revisão médica (nota do que foi conferido, quem e quando) **não** é legível: fica em `checklist_station_reviews`, sem permissão e sem política para aluno e visitante, e só sai pelas funções da aba Estações da Administração (`…8000_estacoes_revisao_medica.sql`). Não crie coluna interna em `checklist_stations`: o aluno lê todas as colunas dela.
 - **Dados de estudo** (sessões, respostas, flashcards, plano): cada aluno só os próprios.
 
-## Liberar estações para os alunos
+## Aprovar estações (revisão médica)
 
-As 10 estações do seed entram com `medical_review = 'pending'` e só aparecem para editor/admin. Depois da revisão médica:
+As 10 estações do seed entram com `medical_review = 'pending'` ("Aguardando revisão médica"). As telas de estações do aluno
+ainda estão em construção e continuam escondidas: por enquanto só a equipe e os revisores médicos veem as estações.
 
-```sql
-update public.checklist_stations set medical_review = 'approved' where id in ('seed-01', '...');
-```
+A aprovação é feita **só pela tela**: Administração › Estações › Conferir › Aprovar. Aprova o revisor médico cadastrado na área
+da estação (Central de Conteúdo › Configuração e custos) ou um administrador, com a nota do que foi conferido. Fica registrado
+quem aprovou, quando e a nota, também em Administração › Registro (`app_admin_set_station_review`, migração `…8000`). Esse
+registro é interno (tabela `checklist_station_reviews`): só a equipe e os revisores médicos o veem, pela aba; o aluno não.
+
+**Não aprove nem devolva por SQL direto.** Uma mudança de situação feita fora da tela não tem revisor nem nota: o banco apaga o
+registro anterior e a estação aparece como "Aprovada sem registro de quem conferiu". Colar a carga (seed) de novo também devolve
+todas as estações do seed para "Aguardando revisão médica", sem registro (o conteúdo delas pode ter mudado na carga): será
+preciso conferir e aprovar de novo.
 
 ## Primeiro administrador (conta master)
 

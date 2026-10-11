@@ -8,6 +8,8 @@
  *   OPENAI_REALTIME_MODEL   modelo do Realtime (reserva quando o GPT-Live não estiver disponível; ex.: gpt-realtime-2.1)
  *   OPENAI_REALTIME_VOICE   voz padrão quando o professor não tem uma e o painel não escolheu (ex.: marin)
  *   OPENAI_API_KEY e TUTOR_VOICE_ALLOW_EXTERNAL=1, como antes (realtime.ts)
+ *   TUTOR_LIVE_VOICE_ALLOW_EXTERNAL=1  trava própria da voz ao vivo dos alunos (fala pelo microfone); desligada por padrão.
+ *                                      Sem ela, nenhum dos três caminhos fica pronto (liveVoiceLockPending)
  *
  * O painel (tutor_config.voice_provider) escolhe entre automático, GPT-Live e Realtime e pode fixar uma voz para todos
  * (tutor_config.voice_name). Uma sessão de voz não troca de voz depois de começar a falar: trocar de voz ou de professor
@@ -35,17 +37,27 @@ export interface LiveConfig {
   pending: string | null;
 }
 
-/** GPT-Live pronto? Mesmas exigências da voz atual (chave, consentimento) mais o modelo do GPT-Live. */
+/**
+ * Travas da VOZ AO VIVO dos alunos (VZ01, 2026-10-10). TUTOR_VOICE_ALLOW_EXTERNAL=1 sozinha basta para a equipe ouvir e aprovar as
+ * vozes oficiais (officialVoices.ts); a voz ao vivo, em que a fala do aluno pelo microfone vai para o serviço de voz, exige também
+ * a trava própria TUTOR_LIVE_VOICE_ALLOW_EXTERNAL=1, desligada por padrão. Vale para os três caminhos (Gemini, GPT-Live e Realtime).
+ * Devolve o aviso para a equipe (só o que falta) ou null quando as duas estão ligadas.
+ */
+export const LIVE_VOICE_LOCK = "TUTOR_LIVE_VOICE_ALLOW_EXTERNAL";
+export function liveVoiceLockPending(env: NodeJS.ProcessEnv = process.env): string | null {
+  const missing = ["TUTOR_VOICE_ALLOW_EXTERNAL", LIVE_VOICE_LOCK].filter((name) => env[name] !== "1");
+  if (!missing.length) return null;
+  return "Voz ao vivo dos alunos desligada: a fala do aluno pelo microfone só vai para o serviço de voz depois de o uso ser aprovado. "
+    + `Para ligar, defina no servidor ${missing.map((name) => `${name}=1`).join(" e ")}.`;
+}
+
+/** GPT-Live pronto? Mesmas exigências da voz atual (chave, as duas travas da voz ao vivo) mais o modelo do GPT-Live. */
 export function liveConfig(env: NodeJS.ProcessEnv = process.env): LiveConfig {
   const model = (env.OPENAI_LIVE_MODEL ?? "").trim() || null;
   const key = realKey(env.OPENAI_API_KEY);
   const pending = !model
     ? "Defina OPENAI_LIVE_MODEL no servidor para usar o GPT-Live."
-    : env.TUTOR_VOICE_ALLOW_EXTERNAL !== "1"
-      ? "Envio da voz do aluno à OpenAI não autorizado: defina TUTOR_VOICE_ALLOW_EXTERNAL=1 no servidor depois de aprovar o uso."
-      : !key
-        ? "OPENAI_API_KEY ausente ou com o texto de exemplo no .env do servidor."
-        : null;
+    : liveVoiceLockPending(env) ?? (!key ? "OPENAI_API_KEY ausente ou com o texto de exemplo no .env do servidor." : null);
   return { ready: !pending, model, key: pending ? null : key, pending };
 }
 
@@ -62,12 +74,7 @@ export interface GeminiVoiceConfig {
 export function geminiVoiceConfig(env: NodeJS.ProcessEnv = process.env): GeminiVoiceConfig {
   const model = (env.GEMINI_LIVE_MODEL ?? "").trim() || "gemini-3.8-live";
   const key = realKey(env.GEMINI_API_KEY) ?? realKey(env.GOOGLE_GEMINI_API_KEY);
-  const pending =
-    env.TUTOR_VOICE_ALLOW_EXTERNAL !== "1"
-      ? "Envio da voz do aluno a provedor externo não autorizado: defina TUTOR_VOICE_ALLOW_EXTERNAL=1 no servidor."
-      : !key
-        ? "GEMINI_API_KEY ausente no servidor."
-        : null;
+  const pending = liveVoiceLockPending(env) ?? (!key ? "GEMINI_API_KEY ausente no servidor." : null);
   return { ready: !pending, model, key: pending ? null : key, pending };
 }
 

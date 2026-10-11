@@ -282,6 +282,10 @@ TUTOR_VOICE_APPROVERS=email@...      # quem aprova e revoga no painel "Vozes do 
 TUTOR_STT_ALLOW_EXTERNAL=1           # transcrição da fala do aluno (usa OPENAI_API_KEY)
 ```
 
+`TUTOR_VOICE_ALLOW_EXTERNAL=1` sozinha basta para a equipe ouvir e aprovar as vozes; ela **não** liga a voz ao vivo dos alunos.
+A voz ao vivo (voz reserva com microfone: a fala do aluno vai para o serviço de voz ao vivo) exige também a trava própria
+`TUTOR_LIVE_VOICE_ALLOW_EXTERNAL=1`, desligada por padrão (2026-10-10, VZ01). Sem ela, o painel mostra "Voz ao vivo dos alunos desligada".
+
 Cada voz só fala com alunos depois de ouvida (todos os cenários daquela versão) e aprovada no painel; "Voz do professor só para a equipe"
 começa ligado. Sem a voz do professor, a conversa segue pela voz reserva (a voz ao vivo) ou por escrito.
 
