@@ -16,6 +16,7 @@ const FUNCTIONS = [
   ["assistente_preencher", "Assistente: preencher"],
   ["assistente_conferir", "Assistente: conferir"],
   ["assistente_revisar", "Assistente: conversar e revisar"],
+  ["busca_fontes", "Busca de fontes oficiais"],
 ];
 const FUNCTION_NAME = Object.fromEntries(FUNCTIONS);
 const STATUS = { pronta: ["pronta", "success"], sem_chave: ["sem chave", "warning"], chave_recusada: ["chave recusada", "danger"], so_no_mac: ["roda só no Mac", "neutral"], erro: ["erro", "danger"] };
@@ -205,15 +206,15 @@ function Functions({ data, backend, reload }) {
 
 function PriceRow({ row, backend, reload }) {
   const fresh = !row;
-  const [v, setV] = React.useState({ provider: row?.provider ?? "", model: row?.model ?? "", input: String(row?.input_per_mtok ?? ""), output: String(row?.output_per_mtok ?? ""), source: row?.source_url ?? "" });
+  const [v, setV] = React.useState({ provider: row?.provider ?? "", model: row?.model ?? "", input: String(row?.input_per_mtok ?? ""), output: String(row?.output_per_mtok ?? ""), perSearch: row?.per_search_usd == null ? "" : String(row.per_search_usd), source: row?.source_url ?? "" });
   const [state, setState] = React.useState({ busy: false, error: null });
   const set = (k) => (e) => setV((s) => ({ ...s, [k]: e.target.value }));
   const ok = v.provider && v.model.trim() && v.input !== "" && v.output !== "";
   const save = async () => {
     setState({ busy: true, error: null });
     try {
-      await aiSend(backend, "PUT", `/prices/${v.provider}/${encodeURIComponent(v.model.trim())}`, { input_per_mtok: Number(v.input), output_per_mtok: Number(v.output), source_url: v.source.trim() || null });
-      if (fresh) setV({ provider: "", model: "", input: "", output: "", source: "" });
+      await aiSend(backend, "PUT", `/prices/${v.provider}/${encodeURIComponent(v.model.trim())}`, { input_per_mtok: Number(v.input), output_per_mtok: Number(v.output), per_search_usd: v.perSearch.trim() === "" ? null : Number(v.perSearch), source_url: v.source.trim() || null });
+      if (fresh) setV({ provider: "", model: "", input: "", output: "", perSearch: "", source: "" });
       setState({ busy: false, error: null });
       await reload();
     } catch (e) {
@@ -243,6 +244,9 @@ function PriceRow({ row, backend, reload }) {
       </td>
       <td style={cell}>
         <TextField aria-label={`${tag}: saída`} type="number" min="0" step="any" value={v.output} onChange={set("output")} />
+      </td>
+      <td style={cell}>
+        <TextField aria-label={`${tag}: por busca`} type="number" min="0" step="any" value={v.perSearch} onChange={set("perSearch")} />
       </td>
       <td style={cell}>
         {fresh ? (
@@ -433,9 +437,9 @@ function Spend({ data, backend, reload }) {
         )}
 
         <h4 style={{ margin: "8px 0 0", font: "var(--type-label)" }}>Preços por milhão de tokens (US$)</h4>
-        <Table heads={["IA", "Modelo", "Entrada", "Saída", "Fonte", "Conferido em", ""]}>
+        <Table heads={["IA", "Modelo", "Entrada", "Saída", "Por busca (US$)", "Fonte", "Conferido em", ""]}>
           {prices.map((r) => (
-            <PriceRow key={`${r.provider}/${r.model}/${r.input_per_mtok}/${r.output_per_mtok}/${r.source_url}`} row={r} backend={backend} reload={reload} />
+            <PriceRow key={`${r.provider}/${r.model}/${r.input_per_mtok}/${r.output_per_mtok}/${r.per_search_usd ?? ""}/${r.source_url}`} row={r} backend={backend} reload={reload} />
           ))}
           <PriceRow key="novo" row={null} backend={backend} reload={reload} />
         </Table>
