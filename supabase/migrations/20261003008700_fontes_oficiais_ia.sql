@@ -32,6 +32,11 @@
 --     do servidor, 5);
 --   * regras recriadas com a união de todos os ramos, para a ordem das migrações não apagar nada: etapas de ch_jobs
 --     (até materiais visuais, estações, Questões StaziaMed e source_search) e chaves de ai_functions (as 6 + busca_fontes).
+-- Numeração (2026-10-10): 20261003008700, antes 6400. Roda depois das 7100 a 8300 já aplicadas no banco publicado. As funções
+-- que ela recria (app_ai_summary, app_ch_register_source, ch_worker_ai_log_calls, ch_worker_ai_save_function e
+-- ch_worker_ai_save_price) partem da versão mais nova do main (5200 e 1400; nenhuma migração de 7100 a 8300 as recria).
+-- Migração aplicada antes desta que acrescente etapas de ch_jobs ou chaves de ai_functions (ex.: a 8400 da auditoria das
+-- questões) obriga esta a trazer esses valores também.
 -- Estados da busca: na_fila, buscando, conferindo, concluida, nada_encontrado, pendente, falhou.
 -- Estados do candidato: aguardando, aprovado, rejeitado. Tipos de site: governo, internacional, sociedade.
 -- =============================================================================

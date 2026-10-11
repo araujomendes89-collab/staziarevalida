@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Fontes oficiais com IA — banco (supabase/migrations/…6400_fontes_oficiais_ia.sql): lista de sites oficiais (a equipe lê, só o
+ * Fontes oficiais com IA — banco (supabase/migrations/…8700_fontes_oficiais_ia.sql): lista de sites oficiais (a equipe lê, só o
  * administrador grava), pedido de busca (uma busca por tema, na fila sem documento, sem repetir a que ainda está andando),
  * candidatos só para o administrador, repetidos por link normalizado e por SHA-256, a regra única de substituição e a função
  * "Busca de fontes oficiais" (`busca_fontes`) na Central de IAs.
