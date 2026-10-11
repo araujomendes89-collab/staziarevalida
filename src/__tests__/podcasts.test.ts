@@ -659,6 +659,32 @@ describe("Áudio em partes, publicação e Flashcast", () => {
     expect((await post(`${base}/${podcastId}/audio/finish`, editor, { job: again.body.job })).body.status).toBe("audio_ready");
   });
 
+  it("nova tentativa de uma parte já gerada não chama a voz de novo (não cobra duas vezes)", async () => {
+    const start = await post(`${oa}/${podcastId}/audio/start`, editor, {});
+    expect(start.status).toBe(200);
+    const before = oaCalls.length;
+    const first = await post(`${oa}/${podcastId}/audio/part`, editor, { job: start.body.job, index: 0 });
+    expect(first.status).toBe(200);
+    const gastas = oaCalls.length - before;
+    expect(gastas).toBeGreaterThan(0); // a primeira vez chama a voz
+    // a resposta "se perdeu" e o navegador tenta de novo: o servidor devolve a parte guardada
+    const again = await post(`${oa}/${podcastId}/audio/part`, editor, { job: start.body.job, index: 0 });
+    expect(again.status).toBe(200);
+    expect(again.body).toEqual(first.body);
+    expect(oaCalls.length - before).toBe(gastas);
+    // parte que ainda não existe continua sendo gerada normalmente
+    if (start.body.parts > 1) {
+      expect((await post(`${oa}/${podcastId}/audio/part`, editor, { job: start.body.job, index: 1 })).status).toBe(200);
+      expect(oaCalls.length - before).toBeGreaterThan(gastas);
+    }
+    // só o MP3 guardado (sem o registro de que a parte terminou) não conta como parte pronta
+    const key = `podcasts/${podcastId}/tmp/${start.body.job}`;
+    fs.rmSync(path.join(tmp, "podcasts", key, "part-0.json"));
+    const total = oaCalls.length;
+    expect((await post(`${oa}/${podcastId}/audio/part`, editor, { job: start.body.job, index: 0 })).status).toBe(200);
+    expect(oaCalls.length).toBeGreaterThan(total);
+  });
+
   it("só o administrador publica; o aluno ouve, lê a transcrição e vê as fontes com as páginas", async () => {
     await expect(rpc(EDITOR, "app_admin_podcast_publish", { p_id: podcastId, p_published: true })).rejects.toThrow();
     const pub = await rpc(ADMIN, "app_admin_podcast_publish", { p_id: podcastId, p_published: true });

@@ -439,6 +439,20 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       if (!Number.isInteger(index) || index < 0 || index >= manifest.parts.length) throw httpError(400, "Parte inválida.");
       const partLines = manifest.parts[index].map((i) => lines[i]).filter(Boolean);
       if (partLines.length !== manifest.parts[index].length) throw httpError(409, "O roteiro mudou depois que o áudio começou. Gere o áudio de novo.");
+      // Parte já gerada neste trabalho (o navegador tentou de novo porque a resposta se perdeu): devolve a guardada, sem chamar a voz
+      // (e sem cobrar) outra vez. O registro .json é gravado por último; sem ele a parte conta como não terminada.
+      const doneKey = partKey(req.params.id, manifest.job, index, "json");
+      if ((await deps!.storage.exists(doneKey)) && (await deps!.storage.exists(partKey(req.params.id, manifest.job, index, "mp3")))) {
+        try {
+          const saved = JSON.parse((await deps!.storage.get(doneKey)).toString("utf8"));
+          if (Number.isFinite(Number(saved?.seconds))) {
+            log(`podcasts: parte ${index + 1} do episódio ${req.params.id} já estava pronta; não chamei a voz de novo`);
+            return res.json({ index, parts: manifest.parts.length, seconds: Math.round(Number(saved.seconds)) });
+          }
+        } catch {
+          // registro ilegível: gera a parte de novo
+        }
+      }
       let pcm: Buffer;
       try {
         pcm = Buffer.concat([await synthesizePart(manifest.provider, partLines, manifest.voices, deps!.tts), silence(320)]);
