@@ -23,6 +23,8 @@
 -- As funções partem da versão mais nova de cada uma (grep em todas as migrações): app_admin_save_guideline_update, de
 -- …7800_atualizacoes_publicar_so_conferida.sql (única redefinição depois da …4100), e app_admin_guideline_updates, de
 -- …4100_atualizacoes_diretrizes.sql (a única). Todas com security definer e search_path vazio.
+-- Colar em ordem: 9510, 9511, 9512, 9513; para colar de novo, cole a faixa inteira em ordem (colar uma delas sozinha
+-- depois da seguinte desfaz parte da seguinte: por exemplo, a 9512 depois da 9513 tira a Central de Conteúdo do Registro).
 -- =============================================================================
 
 -- Quem abre a aba Atualizações: a equipe (editor ou administrador) ou um revisor médico cadastrado em alguma área.

@@ -15,6 +15,8 @@
 -- tabela ch_audit já era só dele). Pode ser colada de novo sem erro (create or replace e revoke).
 -- Partem da versão mais nova de cada função (grep em todas as migrações): admin_audit_title, admin_audit_subject e
 -- app_admin_audit_page, todas da faixa …9511 e …9512 deste mesmo grupo de correções. Colar depois da 9512.
+-- Colar em ordem: 9510, 9511, 9512, 9513; para colar de novo, cole a faixa inteira em ordem (colar uma delas sozinha
+-- depois da seguinte desfaz parte da seguinte: por exemplo, a 9512 depois da 9513 tira a Central de Conteúdo do Registro).
 -- =============================================================================
 
 create or replace function public.admin_audit_title(p_action text, p_target text) returns text

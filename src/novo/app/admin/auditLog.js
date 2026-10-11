@@ -236,6 +236,7 @@ const person = (entry, label = "Pessoa") => (entry.subject === undefined ? "" : 
 const AREA_NAME = {
   CLINICA_MEDICA: "Clínica Médica", CIRURGIA_GERAL: "Cirurgia Geral", CIRURGIA: "Cirurgia Geral", GINECOLOGIA_OBSTETRICIA: "Gineco & Obstetrícia",
   PEDIATRIA: "Pediatria", MEDICINA_FAMILIA_COMUNIDADE: "Medicina de Família e Comunidade", MFC: "Medicina de Família e Comunidade",
+  SAUDE_MENTAL: "Saúde Mental", SAUDE_COLETIVA: "Saúde Coletiva", // áreas só de revisor médico (taxonomia da Central, …1400)
 };
 // chaves da Central de Conteúdo (a tela de Configuração da Central usa estes nomes)
 const FLAG_NAME = { enabled: "Central de Conteúdo", ai_enabled: "IA da Central", shadow_mode: "Modo sombra", publish_enabled: "Publicação", auto_analysis_enabled: "Análise automática", notebook_provider_enabled: "Provedor NotebookLM" };

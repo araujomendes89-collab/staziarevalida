@@ -15,6 +15,8 @@
 -- Nada nos dados é mexido. Pode ser colada de novo no Supabase sem erro (create or replace e revoke).
 -- app_admin_audit parte da versão de …1300_admin.sql (a única; conferido com grep em todas as migrações), com
 -- security definer e search_path vazio. Os campos antigos continuam iguais: a tela antiga ignora os novos.
+-- Colar em ordem: 9510, 9511, 9512, 9513; para colar de novo, cole a faixa inteira em ordem (colar uma delas sozinha
+-- depois da seguinte desfaz parte da seguinte: por exemplo, a 9512 depois da 9513 tira a Central de Conteúdo do Registro).
 -- =============================================================================
 
 -- Título da aula ou do episódio de uma linha do Registro (vazio para as outras ações).

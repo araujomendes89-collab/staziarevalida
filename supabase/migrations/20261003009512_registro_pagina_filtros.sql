@@ -14,6 +14,8 @@
 -- Só o administrador chama (como o Registro sempre foi). Nada nos dados é mexido. Pode ser colada de novo sem erro
 -- (create or replace e revoke). Função nova: não há versão anterior; usa admin_audit_title e admin_audit_subject da …9511,
 -- que precisa ter sido colada antes (security definer e search_path vazio).
+-- Colar em ordem: 9510, 9511, 9512, 9513; para colar de novo, cole a faixa inteira em ordem (colar uma delas sozinha
+-- depois da seguinte desfaz parte da seguinte: por exemplo, a 9512 depois da 9513 tira a Central de Conteúdo do Registro).
 -- =============================================================================
 
 create or replace function public.app_admin_audit_page(p_filters jsonb default '{}'::jsonb, p_limit integer default 50, p_offset integer default 0) returns jsonb

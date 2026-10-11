@@ -346,6 +346,17 @@ describe("Registro: o que se faz na Central de Conteúdo (RG01)", () => {
     expect(auditSummary(e("reviewer.areas", { areas: ["XYZ_NOVA"] }, { subject: "ana@t.dev" }))).toBe("Pessoa: ana@t.dev · Áreas: XYZ_NOVA".replace("XYZ_NOVA", "outra área"));
   });
 
+  it("toda área de revisor médico que o banco aceita tem nome em português (a taxonomia semeada pela …1400)", () => {
+    const sql = fs.readFileSync(path.join(MIGRATIONS, "20261003001400_content_hub.sql"), "utf8");
+    const codes = [...sql.matchAll(/\{"code":"([A-Z_]+)","name":"[^"]+","subareas"/g)].map((m) => m[1]);
+    expect(codes).toEqual(expect.arrayContaining(["CLINICA_MEDICA", "SAUDE_MENTAL", "SAUDE_COLETIVA"]));
+    expect(codes.length).toBe(7);
+    const summary = auditSummary(e("reviewer.areas", { areas: codes }, { subject: "ana@t.dev" }));
+    expect(summary).not.toContain("outra área");
+    expect(summary).toContain("Saúde Mental, Saúde Coletiva");
+    expect(auditSummary(e("reviewer.areas", { areas: ["SAUDE_COLETIVA"] }, { subject: "ana@t.dev" }))).toBe("Pessoa: ana@t.dev · Áreas: Saúde Coletiva");
+  });
+
   it("gabarito oficial gravado só pela Central (versão antiga) também tem resumo; atualização salva, aprovada e recusada", () => {
     expect(auditSummary(e("question.official_answer", { status: "FINAL", answer: "B", version: 2 }, { target: "revalida_2025_1_q045" }))).toBe("Revalida 2025/1, questão 45 · Gabarito B, definitivo");
     expect(auditLabel(e("guideline_update.save"))).toBe("Atualização salva");
