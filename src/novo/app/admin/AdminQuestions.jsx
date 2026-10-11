@@ -40,6 +40,11 @@ const reviewText = (review) => {
     : `O gabarito mudou de ${REVIEW_ANSWER(review.de)} para ${REVIEW_ANSWER(review.para)}. Revise: ${fields}. Até lá, o aluno não vê esses textos.`;
 };
 const codesText = (list, max = 20) => list.slice(0, max).join("; ") + (list.length > max ? ` e mais ${list.length - max}` : "");
+// o que a Análise Stazia publicada explica: o enunciado e o texto de cada alternativa (a mesma comparação do banco: espaços
+// repetidos e nas pontas contam como um só; explicação, conduta, tema e subtema não entram)
+const squash = (text) => String(text ?? "").replace(/\s+/g, " ").trim();
+const analysisTextChanged = (now, saved) =>
+  squash(now.statement) !== squash(saved.statement) || LETTERS.some((id) => squash(now.options.find((o) => o.id === id)?.text) !== squash(saved.options.find((o) => o.id === id)?.text));
 
 // ---------------------------------------------------------------- editor
 function emptyQuestion() {
@@ -244,6 +249,8 @@ export function QuestionEditor({ id, onClose, onSaved }) {
   const review = form.explanations_review;
   const official = form.official;
   const unsaved = savedForm !== null && JSON.stringify(payloadOf(form)) !== JSON.stringify(payloadOf(savedForm));
+  // Q10: salvar com o enunciado ou o texto de uma alternativa mudado tira do ar a análise publicada da questão
+  const textChanged = !isNew && savedForm !== null && analysisTextChanged(form, savedForm);
 
   /** Grava o formulário e devolve a questão gravada (ou lança a recusa do banco). */
   const persist = async () => {
@@ -430,6 +437,11 @@ export function QuestionEditor({ id, onClose, onSaved }) {
           <TextArea label="O que a questão avalia" rows={3} value={form.inep_intent} onChange={(inep_intent) => set({ inep_intent })} />
         </div>
       </Card>
+      {textChanged && (
+        <Banner tone="warning" title="A análise publicada sai do ar">
+          Você mudou o enunciado ou o texto de uma alternativa. Ao salvar, a análise publicada desta questão (se houver) sai do ar para o aluno e só volta quando uma nova análise for aprovada por um revisor médico.
+        </Banner>
+      )}
       {state.error && <Banner tone="danger">{state.error}</Banner>}
       <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end", flexWrap: "wrap" }}>
         {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Questão salva.</span>}
