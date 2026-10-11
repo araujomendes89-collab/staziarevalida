@@ -409,7 +409,7 @@ describe("CC01, rodada de correção 5: a fonte nova ganha os vetores antes da r
     }
   }, 300_000);
 
-  it("banco sem a atualização nova da 8200: a leitura da fonte continua e a etapa diz o que falta", async () => {
+  it("banco sem a atualização nova da 9540: a leitura da fonte continua e a etapa diz o que falta", async () => {
     const doc = await studyDocument("Apostila com o banco antigo", C5, depsE(null));
     const { documentId } = await indexSource("Manual fictício banco antigo", [C5]);
     const seen: { fn: string; args: Record<string, unknown> }[] = [];
@@ -421,7 +421,7 @@ describe("CC01, rodada de correção 5: a fonte nova ganha os vetores antes da r
     await cloudRunRound(depsE(fakeEmbedder(), { db: oldDb }));
     const index = await stepJob(documentId, "source_index");
     expect(index.status).toBe("succeeded");
-    expect(index.metrics.vectors_error).toMatch(/migração 8200/);
+    expect(index.metrics.vectors_error).toMatch(/migração 9540/);
     expect(index.metrics.recheck_documents).toBeGreaterThanOrEqual(1);
     expect((await claimOf(doc)).status).toBe("compatible");
   }, 300_000);
@@ -484,7 +484,7 @@ describe("CC01, rodada de correção 5: a fonte nova ganha os vetores antes da r
     }, 300_000);
   });
 
-  it("a função nova é só do servidor (nem a equipe chama direto) e a 8200 pode ser colada de novo", async () => {
+  it("a função nova é só do servidor (nem a equipe chama direto) e a 9540 pode ser colada de novo", async () => {
     const id = crypto.randomUUID();
     for (const role of ["authenticated", "anon"]) {
       const attempt = dev.db.transaction(async (tx) => {
@@ -503,7 +503,7 @@ describe("CC01, rodada de correção 5: a fonte nova ganha os vetores antes da r
     );
     expect(def.definer).toBe(true);
     expect(def.config).toEqual(['search_path=""']);
-    const MIGRATION = fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261003008200_reconferir_insuficientes.sql"), "utf8");
+    const MIGRATION = fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261003009540_reconferir_insuficientes.sql"), "utf8");
     await dev.db.exec(MIGRATION);
     await dev.db.exec(MIGRATION);
     expect(await db.service("ch_worker_source_passages_to_embed", { p_source_id: id, p_model: "gemini-embedding-2", p_limit: 5 })).toEqual([]);

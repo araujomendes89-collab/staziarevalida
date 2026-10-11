@@ -36,7 +36,7 @@
 --     de quando a etapa não está rodando. Sem isso, "Reprocessar" parava no meio com o documento em "Classificando";
 --   - fonte nova indexada enquanto a conferência roda em outro processamento: a reconferência fica guardada e roda depois;
 --   - o aviso da reconferência não aponta a afirmação que a versão mais nova já cita;
---   - a proteção do trabalho interrompido (ch_worker_claim, rodada 2) passou para o gatilho: a 8200 não redefine mais
+--   - a proteção do trabalho interrompido (ch_worker_claim, rodada 2) passou para o gatilho: a 9540 não redefine mais
 --     ch_worker_claim (veja a nota abaixo).
 -- Rodada de correção 4 (conferência longa pega por outra execução enquanto ainda rodava):
 --   - o processamento dá sinal de vida (ch_worker_checkpoint) a cada afirmação da conferência; antes, só as outras etapas davam,
@@ -58,7 +58,7 @@
 -- da 1400) e continuam só do servidor. Pode ser rodada mais de uma vez.
 --
 -- NOTA PARA QUEM JUNTAR O RAMO montagem-estacoes (migração 20261003005900_estacoes_importacao.sql, ainda não publicada):
---   A 5900 apaga ch_worker_claim(integer) e cria ch_worker_claim(integer, text[]). A 8200 NÃO mexe em ch_worker_claim (ela ficou
+--   A 5900 apaga ch_worker_claim(integer) e cria ch_worker_claim(integer, text[]). A 9540 NÃO mexe em ch_worker_claim (ela ficou
 --   como na 1400, ou como a 5900 deixar), então as duas convivem em qualquer ordem: colada no Supabase antes ou depois da 5900, e
 --   num banco novo (onde a 5900 roda antes, pela ordem dos arquivos). A proteção da reconferência automática está no gatilho
 --   ch_jobs_worker_exit, que a 5900 não recria. Para ela continuar valendo, a ch_worker_claim da 5900 (ou qualquer versão futura)
@@ -529,7 +529,7 @@ create trigger ch_jobs_worker_exit before update on public.ch_jobs
 
 -- Trabalho que entra em "rodando" (rodada de correção 4): ganha um dono novo (coluna lease), por qualquer caminho que o pegue
 -- (ch_worker_claim da 1400 ou da 5900, ch_worker_visual_claim). Elas devolvem o trabalho já com o dono ("returning *"). Num
--- gatilho, para valer com qualquer versão de ch_worker_claim, sem a 8200 precisar redefini-la.
+-- gatilho, para valer com qualquer versão de ch_worker_claim, sem a 9540 precisar redefini-la.
 create or replace function public.ch_jobs_worker_enter() returns trigger
   language plpgsql security definer set search_path = ''
 as $$

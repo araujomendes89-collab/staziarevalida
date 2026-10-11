@@ -52,7 +52,7 @@ export interface Job {
   attempts: number;
   max_attempts: number;
   checkpoint: Record<string, any>;
-  /** Dono do trabalho: novo cada vez que um processamento o pega (migração 8200, rodada de correção 4 do CC01). */
+  /** Dono do trabalho: novo cada vez que um processamento o pega (migração 9540, rodada de correção 4 do CC01). */
   lease?: string | null;
 }
 
@@ -157,7 +157,7 @@ async function targetVersions(ctx: Ctx): Promise<any[]> {
   }
   return svc<any[]>(ctx, "ch_worker_unit_versions", { p_document_id: docId(ctx) });
 }
-/** O dono do trabalho vai em tudo que grava no trabalho (sinal de vida e fim); banco sem a migração 8200: nada muda. */
+/** O dono do trabalho vai em tudo que grava no trabalho (sinal de vida e fim); banco sem a migração 9540: nada muda. */
 const owner = (job: Job) => (job.lease ? { p_lease: job.lease } : {});
 /**
  * Ponto em que a etapa está (para retomar) e sinal de vida: o trabalho "rodando" sem sinal por mais de
@@ -437,7 +437,7 @@ async function stepSourceIndex(ctx: Ctx): Promise<Step | null> {
       ctx.metrics.recheck_documents = r.documents;
       if (r.skipped) ctx.metrics.recheck_skipped = RECHECK_SKIPPED;
     } catch (error) {
-      // banco sem a migração 8200: a indexação vale do mesmo jeito; a etapa anota o que falta
+      // banco sem a migração 9540: a indexação vale do mesmo jeito; a etapa anota o que falta
       const message = (error as Error).message;
       ctx.metrics.recheck_error = /ch_worker_recheck_insufficient/.test(message) && /does not exist|could not find/i.test(message) ? RECHECK_MISSING : message;
     }
@@ -458,7 +458,7 @@ const SOURCE_EMBED_MAX = 5_000;
 const GOOGLE_CONFIG_STATUS = new Set([400, 401, 402, 403, 404]);
 const VECTORS_FAILED = "Busca por significado indisponível ao ler a fonte (a reconferência desta fonte foi só por palavras): ";
 const VECTORS_MISSING =
-  "Falta aplicar no Supabase a atualização da reconferência (migração 8200): os vetores da fonte nova ficaram para o fim da rodada e a reconferência desta fonte foi só por palavras.";
+  "Falta aplicar no Supabase a atualização da reconferência (migração 9540): os vetores da fonte nova ficaram para o fim da rodada e a reconferência desta fonte foi só por palavras.";
 const VECTORS_PENDING =
   "Parte dos trechos ficou sem vetor no tempo da etapa (sai no fim da rodada): nesses, a reconferência desta fonte foi só por palavras.";
 
@@ -479,7 +479,7 @@ async function withinTime<T>(work: Promise<T>, until: number, message: string): 
  * fim da rodada acha a fonte pronta e não refaz nada, e cada trecho é pago uma vez só.
  * - Busca por significado desligada (ou IA desligada no painel): não faz nada; a reconferência entra na hora, por palavras, como antes.
  * - Busca parada por erro de configuração (Central de IAs: o vetorizador recusa na hora, sem ir ao Google), Google recusando ou
- *   sem responder, banco sem a 8200 nova: a leitura da fonte não para (não gasta tentativa nem refaz os trechos), a reconferência
+ *   sem responder, banco sem a 9540 nova: a leitura da fonte não para (não gasta tentativa nem refaz os trechos), a reconferência
  *   segue por palavras e a etapa anota o motivo (vectors_error). O pedido que não volta no tempo da etapa é abandonado.
  * - Tempo da etapa (8 min) ou teto de trechos: o que faltou fica para o fim da rodada (vectors_pending).
  * - Sinal de vida a cada lote (rodada de correção 4): se outro processamento pegou o trabalho, para aqui (Lost sobe) e a
@@ -647,11 +647,11 @@ function requireWriterField(rows: any[], field: "created_by_model" | "generated_
  * trecho achado) ou só evidência "insuficiente" dada pelo processamento — a busca por palavras acha trecho de outro assunto por
  * termos comuns ("pacientes") e a IA, que precisa escolher um trecho da lista, julga "insuficiente" contra ele. A afirmação com
  * evidência dada pela equipe fica como está. Na reconferência, a mesma resposta de antes não grava nada; a resposta nova
- * substitui a evidência antiga da IA (ch_worker_link_evidence com "recheck"). Banco sem a migração 8200 (sem "recheckable"):
+ * substitui a evidência antiga da IA (ch_worker_link_evidence com "recheck"). Banco sem a migração 9540 (sem "recheckable"):
  * segue como antes, só com as afirmações novas.
  */
 const recheckable = (c: any) => c.recheckable === true;
-const RECHECK_MISSING = "Falta aplicar no Supabase a atualização da reconferência das afirmações sem trecho (migração 8200).";
+const RECHECK_MISSING = "Falta aplicar no Supabase a atualização da reconferência das afirmações sem trecho (migração 9540).";
 const RECHECK_SKIPPED =
   "A fonte não entra na busca de evidências (consulta pública, relatório preliminar, diretriz de sociedade sem aprovação editorial ou fonte substituída): nenhuma afirmação foi conferida de novo.";
 
@@ -819,7 +819,7 @@ async function stepDraft(ctx: Ctx): Promise<Step | null> {
   const catalog = await svc<{ nodes: { id: string; path: string }[] }>(ctx, "ch_worker_catalog");
   const pathOf = new Map(catalog.nodes.map((n) => [n.id, n.path]));
   const claims = await svc<any[]>(ctx, "ch_worker_claims", { p_document_id: docId(ctx) });
-  // banco com a migração 8200: a versão guarda de que base saiu (ch_worker_save_draft recebe p_base_hash)
+  // banco com a migração 9540: a versão guarda de que base saiu (ch_worker_save_draft recebe p_base_hash)
   const withBase = claims.length > 0 && "recheckable" in claims[0];
   const blocks = await svc<Block[]>(ctx, "ch_worker_blocks", { p_document_id: docId(ctx) });
   const originalText = blocks.map((b) => b.original_text ?? "").join("\n");
@@ -1083,7 +1083,7 @@ export async function runJob(deps: PipelineDeps, job: Job): Promise<{ status: st
       const args = { p_document_id: job.document_id, p_step: next, p_versions: stepVersions(next, deps), p_scope_key: job.scope_key };
       // a marca entra junto com o trabalho, no mesmo passo do banco (outro processamento não pega o trabalho sem ela); se a
       // próxima etapa estiver rodando em outro processamento, o pedido fica guardado no banco e vale quando ela terminar
-      // (coluna requeue e gatilho ch_jobs_worker_exit, migração 8200, rodada de correção 3 do CC01)
+      // (coluna requeue e gatilho ch_jobs_worker_exit, migração 9540, rodada de correção 3 do CC01)
       if (ctx.carry) await deps.db.service("ch_worker_next_marked", { ...args, p_checkpoint: ctx.carry });
       else await deps.db.service("ch_worker_next", args);
     }

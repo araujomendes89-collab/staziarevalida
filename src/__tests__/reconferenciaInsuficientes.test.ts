@@ -975,8 +975,8 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
       expect(await docState(doc)).toEqual(before);
     }, 240_000);
 
-    it("junção com o ramo montagem-estacoes (a 5900 recria ch_worker_claim): a proteção continua nas duas ordens e a 8200 pode ser colada de novo", async () => {
-      const MIGRATION = fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261003008200_reconferir_insuficientes.sql"), "utf8");
+    it("junção com o ramo montagem-estacoes (a 5900 recria ch_worker_claim): a proteção continua nas duas ordens e a 9540 pode ser colada de novo", async () => {
+      const MIGRATION = fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261003009540_reconferir_insuficientes.sql"), "utf8");
       const claimFunctions = async () =>
         (await sql(`select count(*)::int as n from pg_proc where proname = 'ch_worker_claim' and pronamespace = 'public'::regnamespace`))[0].n as number;
       expect(await claimFunctions()).toBe(1);
@@ -1007,13 +1007,13 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
       const doc = await registerDoc("Documento da junção com as estações");
       const before = await docState(doc);
       try {
-        // ordem da publicação: a 8200 já está no banco e a 5900 chega depois
+        // ordem da publicação: a 9540 já está no banco e a 5900 chega depois
         await dev.db.exec(MONTAGEM_5900);
         const a = await interruptedAuto(doc);
         expect(await db.service("ch_worker_claim", { p_stale_seconds: 600 })).toBeNull();
         expect((await jobRow(a)).status).toBe("dead");
         expect(await docState(doc)).toEqual(before);
-        // ordem dos arquivos (banco novo): a 5900 roda antes e a 8200 depois; colada duas vezes, sem erro
+        // ordem dos arquivos (banco novo): a 5900 roda antes e a 9540 depois; colada duas vezes, sem erro
         await dev.db.exec(MIGRATION);
         await dev.db.exec(MIGRATION);
         expect(await claimFunctions()).toBe(1);
@@ -1168,7 +1168,7 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
       `select public.ch_worker_finish('${id}'::uuid, false, 'x', '{}'::jsonb)`,
       `select public.ch_worker_block('${id}'::uuid, 'x')`,
       `select public.ch_worker_fail('${id}'::uuid, 'x')`,
-      // a 8200 não redefine mais ch_worker_claim (rodada de correção 3), mas ela continua só do servidor
+      // a 9540 não redefine mais ch_worker_claim (rodada de correção 3), mas ela continua só do servidor
       `select public.ch_worker_claim(600)`,
       // nova na rodada de correção 3
       `select public.ch_worker_merge_marks('{}'::jsonb, '{}'::jsonb)`,
@@ -1193,14 +1193,14 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
     }
   });
 
-  it("banco sem a atualização 8200: indexar a fonte continua funcionando e a etapa anota o que falta", async () => {
-    const MIGRATION = fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261003008200_reconferir_insuficientes.sql"), "utf8");
+  it("banco sem a atualização 9540: indexar a fonte continua funcionando e a etapa anota o que falta", async () => {
+    const MIGRATION = fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261003009540_reconferir_insuficientes.sql"), "utf8");
     await dev.db.exec(`drop function public.ch_worker_recheck_insufficient(uuid, jsonb)`);
     try {
       const { documentId } = await indexSource("Manual fictício banco antigo", "Rhotesteum deve ser guardado quando Sigmatesteum somar 97 caixas.");
       const [index] = await sql(`select status, metrics from public.ch_jobs where document_id = $1 and step = 'source_index'`, [documentId]);
       expect(index.status).toBe("succeeded");
-      expect(index.metrics.recheck_error).toBe("Falta aplicar no Supabase a atualização da reconferência das afirmações sem trecho (migração 8200).");
+      expect(index.metrics.recheck_error).toBe("Falta aplicar no Supabase a atualização da reconferência das afirmações sem trecho (migração 9540).");
     } finally {
       await dev.db.exec(MIGRATION);
     }
