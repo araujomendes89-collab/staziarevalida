@@ -244,3 +244,40 @@ describe("Assistente reconhece o PDF já salvo da aula", () => {
     expect(uploadErrorText(Object.assign(new Error("Aula não encontrada."), { status: 404 }))).toBe("Aula não encontrada.");
   });
 });
+
+describe("Áudio aguardando conferência (tela da aula)", () => {
+  const approved = { id: "m1", kind: "flashcast", title: "Áudio Flashcast", file_title: "antigo.mp3", review_status: "approved", reviewer: "Dra. Rev", has_file: true, size_bytes: 2048, url: null };
+  const waiting = (can: boolean) => ({ id: "m2", kind: "flashcast", title: "Áudio Flashcast", file_title: "novo.mp3", review_status: "pending", can_release: can, has_file: true, size_bytes: 4096, url: null });
+  const json = (b: unknown) => new Response(JSON.stringify(b), { status: 200, headers: { "content-type": "application/json" } });
+
+  it("quem pode liberar vê o aviso, ouve e libera; o novo áudio substitui o antigo na tela", async () => {
+    store.lessons = [withMaterials([approved, waiting(true)])];
+    (globalThis as any).fetch = vi.fn(async (url: string) => (url.endsWith("/materials/m2/link") ? json({ url: "https://deposito.test/novo.mp3" }) : new Response("{}", { status: 404 })));
+    const base = backend.rpc.getMockImplementation()!;
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_release_lesson_audio") return withMaterials([{ ...waiting(true), review_status: "approved", reviewer: "Adm" }]);
+      return base(fn, args);
+    });
+    render(<AdminLessons />);
+    fireEvent.click(await screen.findByRole("button", { name: /Bronquiolite/ }));
+    expect(screen.getByText("Áudio aguardando conferência")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Liberar para os alunos" })).toBeNull(); // antes de ouvir, não libera
+    fireEvent.click(screen.getByRole("button", { name: "Ouvir e liberar" }));
+    const player = await screen.findByLabelText("Ouvir o áudio aguardando conferência");
+    expect(player.getAttribute("src")).toBe("https://deposito.test/novo.mp3");
+    fireEvent.click(screen.getByRole("button", { name: "Liberar para os alunos" }));
+    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_release_lesson_audio", { p_id: "m2" }));
+    await waitFor(() => expect(screen.queryByText("Áudio aguardando conferência")).toBeNull());
+    expect(screen.getByText(/novo\.mp3/)).toBeTruthy();
+  });
+
+  it("editor vê o estado, mas não tem o botão de liberar", async () => {
+    store.lessons = [withMaterials([approved, waiting(false)])];
+    render(<AdminLessons />);
+    fireEvent.click(await screen.findByRole("button", { name: /Bronquiolite/ }));
+    expect(screen.getByText("Áudio aguardando conferência")).toBeTruthy();
+    expect(screen.getByText(/Só o administrador ou o revisor médico/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Ouvir e liberar" })).toBeNull();
+    expect(screen.getByText(/antigo\.mp3/)).toBeTruthy(); // o conferido continua valendo para os alunos
+  });
+});

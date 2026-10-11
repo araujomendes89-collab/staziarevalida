@@ -6,7 +6,7 @@ import { Badge, Banner, Button, Card, Icon, SelectField, Switch, TextField } fro
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
-import { lessonsAvailable, materialTitle, sizeLabel, uploadErrorText, uploadLessonFile, videoPlaysInside } from "../study/lessonsApi.js";
+import { lessonFileUrl, lessonsAvailable, materialTitle, sizeLabel, uploadErrorText, uploadLessonFile, videoPlaysInside } from "../study/lessonsApi.js";
 import { dateTimeBR, LoadError, Loading, messageOf, TextArea, useLoad } from "./common.jsx";
 import { LessonAssistant } from "./LessonAssistant.jsx";
 
@@ -35,6 +35,58 @@ function SlotRow({ icon, label, available, detail, children }) {
       </div>
       {children}
     </div>
+  );
+}
+
+/**
+ * Áudio enviado que ainda não foi conferido: os alunos não o ouvem (continuam com o anterior, se houver). Só o administrador ou
+ * o revisor médico da área libera (o banco decide: can_release); o editor só vê o estado. "Ouvir e liberar" carrega o áudio e
+ * só então oferece "Liberar para os alunos".
+ */
+function PendingAudio({ material, hasPrevious, backend, onChanged, onRemove, busy }) {
+  const [state, setState] = React.useState({ url: null, loading: false, releasing: false, error: null });
+  const listen = async () => {
+    setState((s) => ({ ...s, url: null, loading: true, error: null }));
+    try {
+      const url = await lessonFileUrl(backend, material.id);
+      setState({ url, loading: false, releasing: false, error: null });
+    } catch (error) {
+      setState({ url: null, loading: false, releasing: false, error: messageOf(error) });
+    }
+  };
+  const release = async () => {
+    setState((s) => ({ ...s, releasing: true, error: null }));
+    try {
+      onChanged(await backend.rpc("app_admin_release_lesson_audio", { p_id: material.id }));
+    } catch (error) {
+      setState((s) => ({ ...s, releasing: false, error: messageOf(error) }));
+    }
+  };
+  return (
+    <Banner tone="warning" title="Áudio aguardando conferência">
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <span>
+          {material.file_title ?? material.title}{material.size_bytes ? ` · ${sizeLabel(material.size_bytes)}` : ""}.{" "}
+          {hasPrevious ? "Os alunos continuam ouvindo o áudio anterior até este ser liberado." : "Os alunos só ouvem depois que for liberado."}
+        </span>
+        {state.error && <span>{state.error}</span>}
+        {material.can_release ? (
+          <>
+            {state.url && <audio controls src={state.url} aria-label="Ouvir o áudio aguardando conferência" style={{ width: "100%" }} />}
+            <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Button size="sm" variant={state.url ? "ghost" : "secondary"} icon="headphones" loading={state.loading} onClick={listen}>Ouvir e liberar</Button>
+              {state.url && <Button size="sm" icon="check" loading={state.releasing} onClick={release}>Liberar para os alunos</Button>}
+              <Button size="sm" variant="ghost" icon="trash-2" loading={busy} onClick={onRemove}>Remover</Button>
+            </span>
+          </>
+        ) : (
+          <>
+            <span>Só o administrador ou o revisor médico da área pode ouvir e liberar este áudio.</span>
+            <span><Button size="sm" variant="ghost" icon="trash-2" loading={busy} onClick={onRemove}>Remover</Button></span>
+          </>
+        )}
+      </div>
+    </Banner>
   );
 }
 
@@ -72,7 +124,8 @@ function MaterialsSection({ lesson, pending, setPending, onChanged, form, set })
       {!canUpload && <Banner tone="warning">O envio de arquivos precisa do servidor (não funciona no banco local do navegador).</Banner>}
       {state.error && <Banner tone="danger">{state.error}</Banner>}
       {FILE_SLOTS.map((slot) => {
-        const m = lesson?.materials?.find((x) => x.kind === slot.kind);
+        const m = lesson?.materials?.find((x) => x.kind === slot.kind && x.review_status !== "pending"); // o que os alunos recebem
+        const waiting = lesson?.materials?.find((x) => x.kind === slot.kind && x.review_status === "pending");
         const chosen = pending?.[slot.kind];
         const busy = state.busy === slot.kind;
         return (
@@ -85,6 +138,7 @@ function MaterialsSection({ lesson, pending, setPending, onChanged, form, set })
               {m && <Button size="sm" variant="ghost" icon="trash-2" loading={state.busy === m.id} onClick={() => remove(m.id)}>Remover</Button>}
               {!m && chosen && <Button size="sm" variant="ghost" icon="x" onClick={() => setPending((p) => ({ ...p, [slot.kind]: null }))}>Tirar</Button>}
             </div>
+            {waiting && <PendingAudio key={waiting.id} material={waiting} hasPrevious={Boolean(m)} backend={backend} onChanged={onChanged} onRemove={() => remove(waiting.id)} busy={state.busy === waiting.id} />}
           </SlotRow>
         );
       })}
