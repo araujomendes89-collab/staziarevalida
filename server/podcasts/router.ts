@@ -20,7 +20,7 @@ import { localStorageDir, supabaseStorage, type ContentDb, type Identity, type S
 import type { AiProvider, StructuredRequest } from "../contentHub/ai/provider";
 import type { ModelRef } from "../ai/config";
 import { aiChoices } from "../ai/maestro";
-import { chunkPagesInfo, extractDocx, extractPdf, fetchLink, isPdf, isZip, MAX_SOURCE_BYTES, type ExtractedPage } from "./extract";
+import { chunkPagesInfo, extractDocx, extractPdf, fetchLink, isPdf, isZip, MAX_SOURCE_BYTES, readLimited, TooBigError, type ExtractedPage } from "./extract";
 import { checkScript, generateScript, PODCAST_PROMPT_VERSION, type PodcastScript, type ScriptLine, type SourceChunk } from "./script";
 import { DEFAULT_VOICES, geminiTtsEnabled, pcmToMp3, pickVoices, SAMPLE_RATE, silence, splitParts, synthesizePart, ttsCost, ttsStatus, VOICE_OPTIONS, type PodcastVoices, type TtsKind } from "./audio";
 
@@ -275,18 +275,17 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const pages: ExtractedPage[] = [{ page: null, text: head }];
       let note: string | null = null;
       const limitMb = MAX_SOURCE_BYTES / 1024 / 1024;
-      const tooBig = (bytes: number) => `O PDF da aula (${Math.round(bytes / 1024 / 1024)} MB) passa do limite de ${limitMb} MB das fontes e não foi lido; entraram o resumo e os pontos-chave.`;
+      const tooBig = (bytes?: number) => `O PDF da aula (${bytes ? `${Math.round(bytes / 1024 / 1024)} MB` : `mais de ${limitMb} MB`}) passa do limite de ${limitMb} MB das fontes e não foi lido; entraram o resumo e os pontos-chave.`;
       if (lesson.slides && deps!.lessons) {
+        // Não confia no tamanho informado no envio: o download para ao passar de 30 MB (e o tamanho guardado só evita baixar à toa).
         const declared = Number(lesson.slides_bytes) || 0;
         if (declared > MAX_SOURCE_BYTES) {
-          note = tooBig(declared); // nem baixa o arquivo
+          note = tooBig(declared);
         } else {
           try {
-            const pdf = await deps!.lessons.get(lesson.slides);
-            if (pdf.length > MAX_SOURCE_BYTES) note = tooBig(pdf.length); // tamanho guardado errado ou ausente: confere o arquivo
-            else pages.push(...(await extractPdf(pdf)));
+            pages.push(...(await extractPdf(await readLimited(deps!.lessons, lesson.slides, MAX_SOURCE_BYTES, deps!.fetchImpl ?? fetch))));
           } catch (error) {
-            note = `O PDF da aula não foi lido (${message(error)}); entraram o resumo e os pontos-chave.`;
+            note = error instanceof TooBigError ? tooBig() : `O PDF da aula não foi lido (${message(error)}); entraram o resumo e os pontos-chave.`;
           }
         }
       }
@@ -355,7 +354,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const simulated = kind === "mock";
       const meta = {
         provider: r.usage.provider, model: r.usage.model, prompt_version: PODCAST_PROMPT_VERSION, input_tokens: r.usage.input_tokens, output_tokens: r.usage.output_tokens,
-        cost_usd: r.usage.cost_usd, calls: r.usage.calls, used_chunks: r.used_chunks, total_chunks: chunks.length, warnings: r.warnings, notes, seconds: Math.round((Date.now() - started) / 1000), simulated,
+        cost_usd: r.usage.cost_usd, calls: r.usage.calls, used_chunks: r.used_chunks, sent_chunks: r.sent_ids, total_chunks: chunks.length, warnings: r.warnings, notes, seconds: Math.round((Date.now() - started) / 1000), simulated,
       };
       const view = await service<any>("ch_worker_podcast_set_script", { p_user: req.user!.id, p_podcast: req.params.id, p_script: r.script, p_meta: meta });
       if (!simulated) {
@@ -371,12 +370,17 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
   /** Confere de novo o roteiro atual (depois de editar): trecho citado existe e número com unidade está no trecho. Sem IA. */
   router.get("/:id/script/check", async (req: Authed, res) => {
     try {
-      await staffPodcast(req);
+      const view = await staffPodcast(req);
       const { m, chunks } = await loadMaterial(req);
       const lines = normalizeLines(m.script?.lines);
       if (!lines.length) return res.json({ warnings: [] });
       const script: PodcastScript = { lines, missing: m.script?.missing ?? [] };
-      res.json({ warnings: checkScript(script, new Map(chunks.map((c) => [c.id, c]))) });
+      const all = new Map(chunks.map((c) => [c.id, c]));
+      // roteiro gerado pela IA: só os trechos que ela recebeu valem como citação (guardados na geração e mantidos nas edições);
+      // roteiro antigo, sem essa lista, aceita todos os trechos do episódio
+      const sent: unknown = view?.script_meta?.sent_chunks;
+      const valid = Array.isArray(sent) ? new Map(chunks.filter((c) => (sent as unknown[]).map(Number).includes(c.id)).map((c) => [c.id, c])) : all;
+      res.json({ warnings: checkScript(script, valid, all) });
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }
@@ -384,7 +388,11 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
 
   // ------------------------------------------------------------------ áudio (em partes)
   const manifestKey = (podcast: string, job: string) => `podcasts/${podcast}/tmp/${job}/manifest.json`;
-  const partKey = (podcast: string, job: string, i: number, ext: "mp3" | "json") => `podcasts/${podcast}/tmp/${job}/part-${i}.${ext}`;
+  const partsInFlight = new Map<string, Promise<number>>();
+  const PART_LOCK_STALE_MS = 150_000; // marcador "em geração" mais velho que isso é de uma chamada que morreu
+  const PART_WAIT_MS_MAX = 100_000;
+  const PART_POLL_MS = Number(process.env.PODCASTS_PART_POLL_MS) || 1000;
+  const partKey = (podcast: string, job: string, i: number, ext: "mp3" | "json" | "lock") => `podcasts/${podcast}/tmp/${job}/part-${i}.${ext}`;
 
   /** A geração em andamento, conferida contra o roteiro aprovado de agora (se mudou, para). */
   const currentJob = async (req: Authed) => {
@@ -439,32 +447,74 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       if (!Number.isInteger(index) || index < 0 || index >= manifest.parts.length) throw httpError(400, "Parte inválida.");
       const partLines = manifest.parts[index].map((i) => lines[i]).filter(Boolean);
       if (partLines.length !== manifest.parts[index].length) throw httpError(409, "O roteiro mudou depois que o áudio começou. Gere o áudio de novo.");
+      const id = req.params.id;
+      const body = (seconds: number) => ({ index, parts: manifest.parts.length, seconds: Math.round(seconds) });
       // Parte já gerada neste trabalho (o navegador tentou de novo porque a resposta se perdeu): devolve a guardada, sem chamar a voz
-      // (e sem cobrar) outra vez. O registro .json é gravado por último; sem ele a parte conta como não terminada.
-      const doneKey = partKey(req.params.id, manifest.job, index, "json");
-      if ((await deps!.storage.exists(doneKey)) && (await deps!.storage.exists(partKey(req.params.id, manifest.job, index, "mp3")))) {
+      // (e sem cobrar) outra vez. O MP3 é gravado por último: se ele existe, o registro .json (segundos) já existe.
+      const saved = async (): Promise<number | null> => {
         try {
-          const saved = JSON.parse((await deps!.storage.get(doneKey)).toString("utf8"));
-          if (Number.isFinite(Number(saved?.seconds))) {
-            log(`podcasts: parte ${index + 1} do episódio ${req.params.id} já estava pronta; não chamei a voz de novo`);
-            return res.json({ index, parts: manifest.parts.length, seconds: Math.round(Number(saved.seconds)) });
-          }
+          if (!(await deps!.storage.exists(partKey(id, manifest.job, index, "mp3")))) return null;
+          const seconds = Number(JSON.parse((await deps!.storage.get(partKey(id, manifest.job, index, "json"))).toString("utf8"))?.seconds);
+          return Number.isFinite(seconds) ? seconds : null; // registro ilegível: gera a parte de novo
         } catch {
-          // registro ilegível: gera a parte de novo
+          return null;
         }
+      };
+      const ready = await saved();
+      if (ready != null) {
+        log(`podcasts: parte ${index + 1} do episódio ${id} já estava pronta; não chamei a voz de novo`);
+        return res.json(body(ready));
       }
-      let pcm: Buffer;
+      // Duas chamadas ao mesmo tempo para a mesma parte: a segunda espera a primeira (nesta instância, pela promessa em andamento;
+      // em outra instância, pelo marcador "em geração" gravado ANTES de chamar a voz) em vez de chamar e cobrar a voz de novo.
+      const flight = `${id}:${manifest.job}:${index}`;
+      const running = partsInFlight.get(flight);
+      if (running) return res.json(body(await running));
+      const lockKey = partKey(id, manifest.job, index, "lock");
+      const lockedBy = async () => {
+        if (!(await deps!.storage.exists(lockKey))) return false;
+        try {
+          return Date.now() - Number(JSON.parse((await deps!.storage.get(lockKey)).toString("utf8"))?.at) < PART_LOCK_STALE_MS;
+        } catch {
+          return false;
+        }
+      };
+      if (await lockedBy()) {
+        const limit = Date.now() + PART_WAIT_MS_MAX;
+        while (Date.now() < limit) {
+          await new Promise((r) => setTimeout(r, PART_POLL_MS));
+          const again = await saved();
+          if (again != null) return res.json(body(again));
+          if (!(await lockedBy())) break; // a outra chamada falhou ou parou: esta gera a parte
+        }
+        const late = await saved();
+        if (late != null) return res.json(body(late));
+      }
+      const work = (async () => {
+        await deps!.storage.put(lockKey, Buffer.from(JSON.stringify({ at: Date.now() })), "application/json");
+        try {
+          let pcm: Buffer;
+          try {
+            pcm = Buffer.concat([await synthesizePart(manifest.provider, partLines, manifest.voices, deps!.tts), silence(320)]);
+          } catch (error: any) {
+            log(`podcasts: voz falhou na parte ${index + 1} do episódio ${id}: ${error?.technical ?? message(error)}`);
+            throw httpError(error?.status ?? 502, `A voz falhou na parte ${index + 1}: ${message(error)}`);
+          }
+          const mp3 = await pcmToMp3(pcm);
+          const seconds = pcm.length / 2 / SAMPLE_RATE;
+          await deps!.storage.put(partKey(id, manifest.job, index, "json"), Buffer.from(JSON.stringify({ seconds, bytes: mp3.length })), "application/json");
+          await deps!.storage.put(partKey(id, manifest.job, index, "mp3"), mp3, "audio/mpeg"); // por último: marca a parte como pronta
+          return seconds;
+        } finally {
+          await removeQuietly(deps!.storage, [lockKey]);
+        }
+      })();
+      partsInFlight.set(flight, work);
       try {
-        pcm = Buffer.concat([await synthesizePart(manifest.provider, partLines, manifest.voices, deps!.tts), silence(320)]);
-      } catch (error: any) {
-        log(`podcasts: voz falhou na parte ${index + 1} do episódio ${req.params.id}: ${error?.technical ?? message(error)}`);
-        throw httpError(error?.status ?? 502, `A voz falhou na parte ${index + 1}: ${message(error)}`);
+        res.json(body(await work));
+      } finally {
+        partsInFlight.delete(flight);
       }
-      const mp3 = await pcmToMp3(pcm);
-      const seconds = pcm.length / 2 / SAMPLE_RATE;
-      await deps!.storage.put(partKey(req.params.id, manifest.job, index, "mp3"), mp3, "audio/mpeg");
-      await deps!.storage.put(partKey(req.params.id, manifest.job, index, "json"), Buffer.from(JSON.stringify({ seconds, bytes: mp3.length })), "application/json");
-      res.json({ index, parts: manifest.parts.length, seconds: Math.round(seconds) });
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }
@@ -498,7 +548,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       if (!simulated) {
         await ledger(req.user!.id, { feature: "podcast_tts", provider: manifest.provider, model: manifest.model, duration_seconds: Math.round(seconds), characters: manifest.chars, estimated_cost_usd: cost, meta: { podcast_id: id, job: manifest.job } });
       }
-      const tmp = manifest.parts.flatMap((_, i) => [partKey(id, manifest.job, i, "mp3"), partKey(id, manifest.job, i, "json")]);
+      const tmp = manifest.parts.flatMap((_, i) => [partKey(id, manifest.job, i, "mp3"), partKey(id, manifest.job, i, "json"), partKey(id, manifest.job, i, "lock")]);
       await removeQuietly(deps!.storage, [...tmp, manifestKey(id, manifest.job), oldAudio && oldAudio !== newKey ? oldAudio : null]);
       log(`podcasts: áudio pronto no episódio ${id} (${Math.round(seconds)} s, ${manifest.provider})`);
       res.json(view);

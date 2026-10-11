@@ -465,11 +465,76 @@ describe("PDF da aula como fonte e o limite de tamanho", () => {
       const lied = await post(`${base}/${created.id}/sources/lesson`, editor, { lesson_id: lessonId });
       expect(lied.status).toBe(201);
       expect(lied.body.note).toMatch(/30 MB/);
+      // com endereço assinado (Supabase): o download PARA ao passar de 30 MB, mesmo com tamanho informado falso e sem Content-Length
+      await call(`${base}/${created.id}/sources/${lied.body.sources[0].id}`, editor, { method: "DELETE" });
+      let servidos = 0;
+      const streaming = await listen({
+        db, storage: files, mockScript,
+        lessons: { ...lessonFiles, signedUrl: async () => "https://depósito.exemplo/slides.pdf" },
+        fetchImpl: (async () => {
+          const pedaco = Buffer.alloc(1024 * 1024);
+          let n = 0;
+          return new Response(new ReadableStream({
+            pull(controller) {
+              if (n++ >= 200) return controller.close(); // até 200 MB
+              servidos += pedaco.length;
+              controller.enqueue(new Uint8Array(pedaco));
+            },
+          }), { status: 200 });
+        }) as any,
+      });
+      const parou = await post(`${streaming}/${created.id}/sources/lesson`, editor, { lesson_id: lessonId });
+      expect(parou.status).toBe(201);
+      expect(parou.body.note).toMatch(/mais de 30 MB/);
+      expect(servidos).toBeLessThan(40 * 1024 * 1024);
     } finally {
       spy.mockRestore();
       await dev.db.query(`delete from public.lesson_materials where id = $1`, [mat.rows[0].id]);
       await call(`${base}/${created.id}`, admin, { method: "DELETE" });
     }
+  });
+});
+
+describe("Conferência do roteiro lembra o que foi enviado à IA", () => {
+  it("o aviso de trecho que a IA não recebeu volta em toda nova conferência, mesmo depois de editar outra fala", async () => {
+    const created = await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Muitas fontes", topic: "Pré-eclâmpsia", area: "CLINICA_MEDICA", target_minutes: 5 } });
+    const bloco = (n: number) => Array.from({ length: 150 }, (_, i) => `Fonte ${n} item ${i + 1}: ${"a".repeat(640)}`).join("\n\n");
+    expect((await post(`${base}/${created.id}/sources/text`, editor, { title: "Fonte A", text: bloco(1) })).status).toBe(201);
+    expect((await post(`${base}/${created.id}/sources/text`, editor, { title: "Fonte B", text: bloco(2) })).status).toBe(201);
+    const all = (await dev.db.query<any>(`select id from public.podcast_chunks where podcast_id = $1 order by id`, [created.id])).rows.map((r) => Number(r.id));
+    let naoEnviado = 0;
+    const url = await listen({
+      db, storage: files, lessons: lessonFiles,
+      mockScript: (req: any) => {
+        const sent = new Set([...req.input.matchAll(/\[T(\d+)\]/g)].map((m: RegExpMatchArray) => Number(m[1])));
+        naoEnviado = all.find((id) => !sent.has(id))!;
+        return { title_suggestion: "x", missing: [], lines: [
+          { speaker: "ANA", text: "Abertura.", style: "", sources: [] },
+          { speaker: "BRUNO", text: "Pergunta.", style: "", sources: [] },
+          { speaker: "ANA", text: "Resposta citando algo que a IA não recebeu.", style: "", sources: [naoEnviado] },
+          { speaker: "BRUNO", text: "Fim.", style: "", sources: [] },
+        ] };
+      },
+    });
+    const gen = await post(`${url}/${created.id}/script`, editor, { provider: "mock" });
+    expect(gen.status).toBe(200);
+    expect(naoEnviado).toBeGreaterThan(0);
+    expect(gen.body.warnings.some((w: any) => /não recebeu/.test(w.detail))).toBe(true);
+    // a equipe corrige outra fala e salva: o aviso apagado do banco volta pela conferência, que usa só o que foi enviado
+    const p = await rpc(EDITOR, "app_admin_podcast", { p_id: created.id });
+    expect(p.script_meta.sent_chunks).toEqual(expect.any(Array));
+    expect(p.script_meta.sent_chunks).not.toContain(naoEnviado);
+    const lines = p.script.lines.map((l: any, i: number) => (i === 0 ? { ...l, text: "Abertura, corrigida." } : l));
+    const saved = await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: created.id, p_script: { lines, missing: [] } });
+    expect(saved.script_meta.warnings).toBeUndefined();
+    expect(saved.script_meta.sent_chunks).toEqual(p.script_meta.sent_chunks);
+    const check = (await call(`${url}/${created.id}/script/check`, editor)).body;
+    expect(check.warnings).toEqual([expect.objectContaining({ line: 2, kind: "unknown_source", detail: `Trecho que a IA não recebeu: T${naoEnviado}` })]);
+    // tirando a citação inválida do texto, o aviso some
+    const limpo = lines.map((l: any, i: number) => (i === 2 ? { ...l, sources: [] } : l));
+    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: created.id, p_script: { lines: limpo, missing: [] } });
+    expect((await call(`${url}/${created.id}/script/check`, editor)).body.warnings.filter((w: any) => w.kind === "unknown_source")).toEqual([]);
+    await call(`${base}/${created.id}`, admin, { method: "DELETE" });
   });
 });
 
@@ -488,6 +553,23 @@ describe("Nome da fonte", () => {
     expect(ok.body.sources.find((s: any) => s.id === docx.id).title).toBe("Resumo de eclâmpsia da equipe");
     // o roteiro não é mexido por causa do nome
     expect(ok.body.status).toBe((await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId })).status);
+  });
+
+  it("nome de arquivo longo ou sem extensão também vira \"Documento N\" ao aluno; nome escolhido pela equipe vale, mesmo terminando em .pdf", async () => {
+    const created = await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Nomes", topic: "T", area: "CLINICA_MEDICA", target_minutes: 5 } });
+    const longo = `${"relatorio-confidencial-da-empresa-".repeat(8)}.pdf`; // > 200 caracteres: o corte tira o ".pdf"
+    expect((await postRaw(`${base}/${created.id}/sources/file`, editor, "application/pdf", makePdf(["Texto um sobre sulfato de magnesio 4 g IV no ataque, com conduta completa e todos os cuidados necessarios na enfermaria."]), longo)).status).toBe(201);
+    expect((await postRaw(`${base}/${created.id}/sources/file`, editor, "application/pdf", makePdf(["Texto dois sobre pre-eclampsia grave e criterios de gravidade conhecidos, com a conduta recomendada em cada situacao."]), "Marca-X-resumo")).status).toBe(201);
+    const view = await rpc(EDITOR, "app_admin_podcast", { p_id: created.id });
+    expect(view.sources[0].title).not.toMatch(/\.pdf$/); // cortado em 200
+    await dev.db.query(`update public.podcasts set status = 'published', published_at = now(), audio_path = 'x', approved_at = now(), script = $2::jsonb where id = $1`, [created.id, JSON.stringify({ lines: [{ speaker: "ANA", text: "oi", sources: [] }] })]);
+    const nomes = async () => (await rpc(STUDENT, "app_podcast", { p_id: created.id })).sources.map((x: any) => x.title);
+    expect(await nomes()).toEqual(["Documento 1", "Documento 2"]);
+    await dev.db.query(`update public.podcasts set status = 'draft' where id = $1`, [created.id]);
+    await rpc(EDITOR, "app_admin_podcast_rename_source", { p_source_id: view.sources[1].id, p_title: "PCDT.pdf" });
+    await dev.db.query(`update public.podcasts set status = 'published' where id = $1`, [created.id]);
+    expect(await nomes()).toEqual(["Documento 1", "PCDT.pdf"]);
+    await dev.db.query(`delete from public.podcasts where id = $1`, [created.id]);
   });
 });
 
@@ -730,6 +812,43 @@ describe("Áudio em partes, publicação e Flashcast", () => {
     const total = oaCalls.length;
     expect((await post(`${oa}/${podcastId}/audio/part`, editor, { job: start.body.job, index: 0 })).status).toBe(200);
     expect(oaCalls.length).toBeGreaterThan(total);
+  });
+
+  it("duas chamadas ao mesmo tempo para a mesma parte chamam a voz uma vez só; marcador de outra instância faz esperar", async () => {
+    process.env.PODCASTS_PART_POLL_MS = "100";
+    const rapido = await listen({ db, storage: files, lessons: lessonFiles, mockScript, tts: { env: { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: OPENAI_KEY }, fetchImpl: (async (url: string, init: any) => {
+      oaCalls.push({ url, headers: init.headers, body: JSON.parse(init.body) });
+      await new Promise((r) => setTimeout(r, 300)); // a voz demora: dá tempo da segunda chamada chegar
+      return new Response(silence(400), { status: 200 });
+    }) as any } });
+    delete process.env.PODCASTS_PART_POLL_MS;
+    const start = await post(`${rapido}/${podcastId}/audio/start`, editor, {});
+    const before = oaCalls.length;
+    const [a, b] = await Promise.all([1, 2].map(() => post(`${rapido}/${podcastId}/audio/part`, editor, { job: start.body.job, index: 0 })));
+    expect([a.status, b.status]).toEqual([200, 200]);
+    expect(a.body).toEqual(b.body);
+    const gastas = oaCalls.length - before;
+    const manifest = JSON.parse(fs.readFileSync(path.join(tmp, "podcasts", `podcasts/${podcastId}/tmp/${start.body.job}/manifest.json`), "utf8"));
+    expect(gastas).toBe(manifest.parts[0].length); // a OpenAI cobra uma chamada por fala: a parte foi paga uma vez só
+    // o marcador "em geração" não fica para trás
+    const dir = path.join(tmp, "podcasts", `podcasts/${podcastId}/tmp/${start.body.job}`);
+    expect(fs.existsSync(path.join(dir, "part-0.lock"))).toBe(false);
+    expect(fs.existsSync(path.join(dir, "part-0.mp3"))).toBe(true);
+    // outra instância está gerando a parte 0 (marcador recente, sem os arquivos): esta espera os arquivos aparecerem e não chama a voz
+    const mp3 = fs.readFileSync(path.join(dir, "part-0.mp3"));
+    const json = fs.readFileSync(path.join(dir, "part-0.json"));
+    fs.rmSync(path.join(dir, "part-0.mp3"));
+    fs.rmSync(path.join(dir, "part-0.json"));
+    fs.writeFileSync(path.join(dir, "part-0.lock"), JSON.stringify({ at: Date.now() }));
+    setTimeout(() => {
+      fs.writeFileSync(path.join(dir, "part-0.json"), json);
+      fs.writeFileSync(path.join(dir, "part-0.mp3"), mp3);
+    }, 700);
+    const total = oaCalls.length;
+    const esperou = await post(`${rapido}/${podcastId}/audio/part`, editor, { job: start.body.job, index: 0 });
+    expect(esperou.status).toBe(200);
+    expect(esperou.body).toEqual(a.body);
+    expect(oaCalls.length).toBe(total);
   });
 
   it("só o administrador publica; o aluno ouve, lê a transcrição e vê as fontes com as páginas", async () => {

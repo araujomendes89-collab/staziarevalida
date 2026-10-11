@@ -24,6 +24,51 @@ export const MAX_SOURCE_BYTES = 30 * 1024 * 1024;
 export const MAX_LINK_BYTES = 8 * 1024 * 1024;
 export const MAX_CHUNKS_PER_SOURCE = 600;
 
+export class TooBigError extends Error {
+  constructor(readonly bytes: number) {
+    super("Arquivo grande demais.");
+  }
+}
+
+/**
+ * Lê um arquivo do depósito SEM passar de `max` bytes, sem confiar no tamanho informado por quem enviou. Com endereço assinado
+ * (Supabase), baixa em pedaços e para ao passar do limite (ou pelo Content-Length); sem ele (desenvolvimento), lê o arquivo e confere.
+ * Passou do limite: TooBigError (com o tamanho conhecido até ali).
+ */
+export async function readLimited(storage: { get(key: string): Promise<Buffer>; signedUrl?(key: string, seconds: number): Promise<string> }, key: string, max: number, fetchImpl: typeof fetch = fetch): Promise<Buffer> {
+  if (!storage.signedUrl) {
+    const buf = await storage.get(key);
+    if (buf.length > max) throw new TooBigError(buf.length);
+    return buf;
+  }
+  const res = await fetchImpl(await storage.signedUrl(key, 120));
+  if (!res.ok) throw new Error(`Arquivo não encontrado (${res.status}).`);
+  const declared = Number(res.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > max) {
+    await res.body?.cancel().catch(() => {});
+    throw new TooBigError(declared);
+  }
+  if (!res.body) {
+    const buf = Buffer.from(await res.arrayBuffer());
+    if (buf.length > max) throw new TooBigError(buf.length);
+    return buf;
+  }
+  const reader = res.body.getReader();
+  const parts: Buffer[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.length;
+    if (total > max) {
+      await reader.cancel().catch(() => {});
+      throw new TooBigError(total);
+    }
+    parts.push(Buffer.from(value));
+  }
+  return Buffer.concat(parts);
+}
+
 const clean = (t: string) =>
   t
     .replace(/\u0000/g, "")
