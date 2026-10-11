@@ -186,6 +186,7 @@ export function AdminLessons() {
   const mobile = useMobile();
   const { data, error, reload, setData } = useLoad(() => Promise.all([backend.rpc("app_admin_lessons"), backend.rpc("app_lesson_topics", { p_area: null })]).then(([a, t]) => ({ ...a, topics: t })), [backend]);
   const [editing, setEditing] = React.useState(undefined); // undefined fechado · null nova · objeto edita
+  const [fresh, setFresh] = React.useState(0); // a cada clique em "Nova aula" o formulário recomeça em branco (A03)
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
   const onSaved = (saved, removedId) => {
@@ -195,9 +196,9 @@ export function AdminLessons() {
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{data.lessons.length} {data.lessons.length === 1 ? "aula" : "aulas"} · {data.lessons.filter((l) => l.published).length} publicadas</span>
-        <Button icon="plus" onClick={() => setEditing(null)}>Nova aula</Button>
+        <Button icon="plus" onClick={() => (setFresh((n) => n + 1), setEditing(null))}>Nova aula</Button>
       </div>
-      {editing !== undefined && <LessonEditor key={editing?.id ?? "nova"} lesson={editing} topics={data.topics} isAdmin={boot.role === "admin"} onSaved={onSaved} onClose={() => setEditing(undefined)} />}
+      {editing !== undefined && <LessonEditor key={editing?.id ?? `nova-${fresh}`} lesson={editing} topics={data.topics} isAdmin={boot.role === "admin"} onSaved={onSaved} onClose={() => setEditing(undefined)} />}
       <Card padding={8}>
         {data.lessons.length === 0 && <p style={{ margin: 0, padding: 16, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Nenhuma aula cadastrada. Crie a primeira com a estrutura padrão: área, tema, título, duração, professor, vídeo, materiais, resumo e pontos-chave.</p>}
         {data.lessons.map((l) => (
