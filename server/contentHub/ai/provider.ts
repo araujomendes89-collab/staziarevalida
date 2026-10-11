@@ -64,7 +64,20 @@ export interface StructuredRequest {
 }
 
 /** Limite próprio dos provedores que usam fetch (OpenAI, Ollama): 180 s. */
-const FETCH_TIMEOUT_MS = 180_000;
+export const FETCH_TIMEOUT_MS = 180_000;
+
+/**
+ * Tempo-limite de uma chamada com busca na internet: a do Claude faz até 4 chamadas de busca e a conversão, mais que os 180 s das
+ * chamadas simples, e menos que os 600 s em que a fila dá o trabalho por abandonado. O maestro o usa como prazo da chamada, e a
+ * OpenAI (que tem limite próprio no fetch) usa o mesmo na chamada com busca: um limite menor cortaria a busca antes do prazo.
+ */
+export const SEARCH_TIMEOUT_MS = 420_000;
+
+/**
+ * O tempo-limite da chamada esgotou. O maestro não repete a mesma IA (pagaria as buscas de novo) e grava o pior caso de custo
+ * da chamada. Lançado pelo maestro (ao cancelar) e pela OpenAI com busca (limite próprio do fetch).
+ */
+export class AiTimeout extends Error {}
 
 /** O sinal do fetch: o limite próprio de 180 s e, quando houver, o cancelamento de quem chamou (o maestro). */
 export function fetchSignal(outer: AbortSignal | undefined, ms = FETCH_TIMEOUT_MS): AbortSignal {
@@ -420,7 +433,10 @@ export class AnthropicProvider implements AiProvider {
           }
         }
         if (res.stop_reason === "refusal") {
-          throw new Error(`O provedor recusou a solicitação (${res.stop_details?.category ?? "sem categoria"}).`);
+          // como no caminho sem busca: a categoria (em inglês, da API) fica só no log do servidor; o erro é AiRefused (o maestro não
+          // repete a busca paga) e o gasto das chamadas feitas entra pelo `withUsage` do catch (sem repeti-lo aqui)
+          console.warn(`[central] Claude recusou a solicitação (categoria ${String(res.stop_details?.category ?? "sem categoria").slice(0, 40)}).`);
+          throw new AiRefused("O provedor recusou a solicitação.");
         }
         if (res.stop_reason === "max_tokens") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null, { reason: "cortada" });
         // sem sobra do máximo do pedido, ou no limite das continuações: para de buscar e converte o que há

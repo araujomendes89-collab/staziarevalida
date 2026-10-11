@@ -108,6 +108,7 @@ export const ACTION_LABEL = {
   "block.resolve": "Trecho do documento resolvido",
   "source.register": "Fonte oficial cadastrada",
   "source.authority": "Nível de autoridade da fonte definido",
+  "source.aliases": "Siglas da fonte alteradas",
   "source.registry": "Registro da fonte atualizado",
   "source.change_resolved": "Mudança de fonte resolvida",
   "conflict.detect": "Conflitos entre fontes detectados",
@@ -375,6 +376,7 @@ const SUMMARY = {
   "document.rights": (d, entry) => entry.title,
   "source.register": (d, entry) => entry.title ?? d.title,
   "source.authority": (d, entry) => entry.title,
+  "source.aliases": (d, entry) => join([entry.title, Array.isArray(d.aliases) && d.aliases.length ? `Siglas: ${d.aliases.join(", ")}` : "Sem siglas"]),
   "source.registry": (d, entry) => entry.title,
   "source.change_resolved": (d, entry) => join([entry.title, noteOf(d)]),
   "source_domain.save": (d) =>

@@ -8,9 +8,9 @@
  * A resposta é sempre validada pelo nosso validador de schema; fora do formato é recusada, nunca "consertada".
  */
 import { toProviderSchema } from "./schema";
-import { AiInvalidOutput, AiRefused, fetchSignal, withUsage, type AiProvider, type AiUsage, type PartialUsage, type StructuredRequest, type StructuredResult, type WebSearchOptions } from "./provider";
+import { AiInvalidOutput, AiRefused, FETCH_TIMEOUT_MS, SEARCH_TIMEOUT_MS, fetchSignal, withUsage, type AiProvider, type AiUsage, type PartialUsage, type StructuredRequest, type StructuredResult, type WebSearchOptions } from "./provider";
 import { validate } from "./schema";
-import { hostsOf, ownError, parseOrConvert, sumTokens, throwIfCancelled } from "./webSearch";
+import { hostsOf, ownError, parseOrConvert, sumTokens, throwIfCancelled, timeoutError } from "./webSearch";
 
 /**
  * Cuidado na OpenAI (correção IA07, 2026-10-10; página oficial "Reasoning"): Rápido manda reasoning_effort "low" nos modelos de
@@ -97,9 +97,10 @@ export class OpenAIProvider implements AiProvider {
   private async generateWithSearch<T>(req: StructuredRequest, search: WebSearchOptions): Promise<StructuredResult<T>> {
     const t0 = Date.now();
     throwIfCancelled(req.signal);
-    // erro de rede ou de cancelamento aqui não leva gasto (nada voltou); o `reason` do sinal vira um erro novo
+    // erro de rede ou de cancelamento aqui não leva gasto (nada voltou); o `reason` do sinal vira um erro novo. O limite próprio
+    // do fetch (o mesmo da Claude com busca) vira AiTimeout: o maestro não repete a busca paga e grava o pior caso de custo
     const data = await this.postResponses(req, search).catch((error) => {
-      throw ownError(error, req.signal);
+      throw timeoutError(ownError(error, req.signal), req.signal, SEARCH_TIMEOUT_MS);
     });
     // o que a resposta gastou, contado antes de qualquer recusa: buscas = itens web_search_call
     const items: any[] = Array.isArray(data?.output) ? data.output : [];
@@ -115,7 +116,8 @@ export class OpenAIProvider implements AiProvider {
         } else if (item?.type === "message") {
           const parts: any[] = Array.isArray(item.content) ? item.content : [];
           const refusal = parts.find((p) => p?.type === "refusal");
-          if (refusal) throw new Error(`O provedor recusou a solicitação (${String(refusal.refusal ?? "").slice(0, 120)}).`);
+          // como no caminho sem busca: AiRefused (o maestro não repete a busca paga); o gasto entra pelo `withUsage` do catch
+          if (refusal) throw new AiRefused("O provedor recusou a solicitação.");
           const text = parts.filter((p) => p?.type === "output_text").map((p) => String(p.text ?? "")).join("");
           if (text) texts.push(text);
         }
@@ -125,8 +127,9 @@ export class OpenAIProvider implements AiProvider {
       const outTok = sumTokens(spent.outputTokens, extra?.outputTokens);
       return { output, provider: this.name, model: data?.model ?? this.model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: this.price(inTok, outTok), webSearches: spent.webSearches, seenUrls: [...seen] };
     } catch (error) {
-      // a conversão que falhou já leva o seu gasto; aqui entra o da busca
-      throw withUsage(ownError(error, req.signal), spent);
+      // a conversão que falhou já leva o seu gasto; aqui entra o da busca. A conversão (sem busca) tem o limite de 180 s do fetch:
+      // se estourar, também é tempo esgotado em português, com o gasto da busca
+      throw withUsage(timeoutError(ownError(error, req.signal), req.signal, FETCH_TIMEOUT_MS), spent);
     }
   }
 
@@ -144,8 +147,8 @@ export class OpenAIProvider implements AiProvider {
         max_tool_calls: search.maxSearches,
         max_output_tokens: openAiMaxCompletionTokens(req.maxOutputTokens),
       }),
-      // limite próprio de 180 s e o cancelamento de quem pediu
-      signal: fetchSignal(req.signal),
+      // limite próprio da chamada com busca (o mesmo da Claude, SEARCH_TIMEOUT_MS) e o cancelamento de quem pediu
+      signal: fetchSignal(req.signal, SEARCH_TIMEOUT_MS),
     });
     if (!res.ok) {
       const body = (await res.text().catch(() => "")).slice(0, 300);

@@ -6,7 +6,7 @@
  * texto, conferi-lo pelo esquema e, se não servir, fazer UMA chamada curta, sem busca, só para converter o texto. O texto
  * vem da internet: na conversão ele vai marcado como documento (`asDocument`), é dado, nunca ordem.
  */
-import { AiInvalidOutput, partialUsageOf, withUsage, type StructuredRequest, type StructuredResult } from "./provider";
+import { AiInvalidOutput, AiTimeout, partialUsageOf, withUsage, type StructuredRequest, type StructuredResult } from "./provider";
 import { asDocument } from "./prompts";
 import { validate } from "./schema";
 
@@ -89,6 +89,19 @@ export function ownError(error: unknown, signal: AbortSignal | null | undefined)
   if (!signal?.aborted || partialUsageOf(error)) return error;
   const text = error && typeof error === "object" ? `${(error as { name?: unknown }).name ?? ""} ${(error as { message?: unknown }).message ?? ""}` : "";
   return error === signal.reason || /abort/i.test(text) ? cancelledError(signal) : error;
+}
+
+/**
+ * O tempo-limite PRÓPRIO do `fetch` (OpenAI) esgotou: o `fetch` falha com o `TimeoutError` (ou `AbortError`) do sinal, em inglês, e o
+ * maestro não o reconheceria como tempo esgotado e repetiria a mesma busca paga. Vira `AiTimeout` (em português, que o maestro não
+ * repete e para o qual grava o pior caso de custo da chamada), como o que o próprio maestro lança ao cancelar a Claude. Só vale
+ * quando quem pediu NÃO cancelou (`ownError` trata esse caso antes) e o erro ainda não leva gasto de uma camada de baixo.
+ */
+export function timeoutError(error: unknown, signal: AbortSignal | null | undefined, ms: number): unknown {
+  if (signal?.aborted || partialUsageOf(error)) return error;
+  const name = error && typeof error === "object" ? (error as { name?: unknown }).name : undefined;
+  if (name !== "TimeoutError" && name !== "AbortError") return error;
+  return Object.assign(new AiTimeout(`Tempo esgotado (${Math.round(ms / 1000)} s): o pedido foi cancelado.`), { cause: error });
 }
 
 /** Soma de tokens de duas chamadas: nulo só quando nenhuma das duas informou. */
