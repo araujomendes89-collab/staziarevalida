@@ -229,13 +229,14 @@ describe("AR06: Arena ou ligas desligadas não viram a semana", () => {
       { uid: CARLA, xp: 0 },
     ]);
     const coinsBefore = (await sql(`select coins from public.user_gamification_stats where user_id = $1`, [ANA]))[0].coins;
+    const subidasBefore = (await eventsOf(ANA, "LEAGUE_PROMOTED")).length;
     await setRule("flags.leagues_enabled", false);
     try {
       const r = await fechar();
       expect(r).toMatchObject({ closed: true, promoted: 0, relegated: 0 });
       expect(Object.values(await outcomes(s.id))).toEqual(["stayed", "stayed", "stayed"]);
       expect(await leagueOf(ANA)).toBe("bronze");
-      expect((await eventsOf(ANA, "LEAGUE_PROMOTED")).length).toBe(1); // só a do teste do AR02, nenhuma nova
+      expect((await eventsOf(ANA, "LEAGUE_PROMOTED")).length).toBe(subidasBefore); // nenhuma nova; as antigas ficam
       expect((await sql(`select coins from public.user_gamification_stats where user_id = $1`, [ANA]))[0].coins).toBe(coinsBefore);
       expect((await sql(`select weekly_xp from public.user_gamification_stats where user_id = $1`, [ANA]))[0].weekly_xp).toBe(0);
       expect((await sql(`select status from public.league_seasons where id = $1`, [s.id]))[0].status).toBe("closed");
