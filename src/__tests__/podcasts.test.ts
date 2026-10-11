@@ -775,6 +775,43 @@ describe("Áudio em partes, publicação e Flashcast", () => {
     expect(oaCalls.length).toBeGreaterThan(total);
   });
 
+  it("duas chamadas ao mesmo tempo para a mesma parte chamam a voz uma vez só; marcador de outra instância faz esperar", async () => {
+    process.env.PODCASTS_PART_POLL_MS = "100";
+    const rapido = await listen({ db, storage: files, lessons: lessonFiles, mockScript, tts: { env: { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: OPENAI_KEY }, fetchImpl: (async (url: string, init: any) => {
+      oaCalls.push({ url, headers: init.headers, body: JSON.parse(init.body) });
+      await new Promise((r) => setTimeout(r, 300)); // a voz demora: dá tempo da segunda chamada chegar
+      return new Response(silence(400), { status: 200 });
+    }) as any } });
+    delete process.env.PODCASTS_PART_POLL_MS;
+    const start = await post(`${rapido}/${podcastId}/audio/start`, editor, {});
+    const before = oaCalls.length;
+    const [a, b] = await Promise.all([1, 2].map(() => post(`${rapido}/${podcastId}/audio/part`, editor, { job: start.body.job, index: 0 })));
+    expect([a.status, b.status]).toEqual([200, 200]);
+    expect(a.body).toEqual(b.body);
+    const gastas = oaCalls.length - before;
+    const manifest = JSON.parse(fs.readFileSync(path.join(tmp, "podcasts", `podcasts/${podcastId}/tmp/${start.body.job}/manifest.json`), "utf8"));
+    expect(gastas).toBe(manifest.parts[0].length); // a OpenAI cobra uma chamada por fala: a parte foi paga uma vez só
+    // o marcador "em geração" não fica para trás
+    const dir = path.join(tmp, "podcasts", `podcasts/${podcastId}/tmp/${start.body.job}`);
+    expect(fs.existsSync(path.join(dir, "part-0.lock"))).toBe(false);
+    expect(fs.existsSync(path.join(dir, "part-0.mp3"))).toBe(true);
+    // outra instância está gerando a parte 0 (marcador recente, sem os arquivos): esta espera os arquivos aparecerem e não chama a voz
+    const mp3 = fs.readFileSync(path.join(dir, "part-0.mp3"));
+    const json = fs.readFileSync(path.join(dir, "part-0.json"));
+    fs.rmSync(path.join(dir, "part-0.mp3"));
+    fs.rmSync(path.join(dir, "part-0.json"));
+    fs.writeFileSync(path.join(dir, "part-0.lock"), JSON.stringify({ at: Date.now() }));
+    setTimeout(() => {
+      fs.writeFileSync(path.join(dir, "part-0.json"), json);
+      fs.writeFileSync(path.join(dir, "part-0.mp3"), mp3);
+    }, 700);
+    const total = oaCalls.length;
+    const esperou = await post(`${rapido}/${podcastId}/audio/part`, editor, { job: start.body.job, index: 0 });
+    expect(esperou.status).toBe(200);
+    expect(esperou.body).toEqual(a.body);
+    expect(oaCalls.length).toBe(total);
+  });
+
   it("só o administrador publica; o aluno ouve, lê a transcrição e vê as fontes com as páginas", async () => {
     await expect(rpc(EDITOR, "app_admin_podcast_publish", { p_id: podcastId, p_published: true })).rejects.toThrow();
     const pub = await rpc(ADMIN, "app_admin_podcast_publish", { p_id: podcastId, p_published: true });
