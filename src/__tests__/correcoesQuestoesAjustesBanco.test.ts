@@ -8,6 +8,9 @@
  *      a ver as explicações; só continua marcado o texto que mudou durante a troca (pode ter sido reescrito para o outro
  *      gabarito).
  *   4. A …7710 pode ser colada duas vezes sem erro e, colada antes da …7700, para com um aviso em português.
+ * Rodada de correção 1 (item 1, Stazia Play): anular, desfazer a anulação ou trocar a letra do gabarito conta de novo os
+ * números guardados do Play (questões, acertos, erros e precisão) de quem respondeu a questão; a …7710 faz essa conta uma
+ * vez para quem respondeu questão anulada ou com gabarito registrado antes dela.
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import fs from "fs";
@@ -22,6 +25,11 @@ const EDITOR = "00000000-0000-4000-8000-0000000000ed";
 const CARLA = "00000000-0000-4000-8000-00000000000c";
 const DANI = "00000000-0000-4000-8000-00000000000d";
 const EDU = "00000000-0000-4000-8000-00000000000e";
+const FLAVIA = "00000000-0000-4000-8000-00000000000f";
+const GUTO = "00000000-0000-4000-8000-000000000010";
+const HELO = "00000000-0000-4000-8000-000000000011";
+const IARA = "00000000-0000-4000-8000-000000000012";
+const KAIO = "00000000-0000-4000-8000-000000000013";
 
 let db: PGlite;
 
@@ -63,6 +71,8 @@ const annul = (number: number) => setOfficial(number, { p_status: "ANNULLED", p_
 /** Anulada sem gabarito (como gravava o editor antigo). */
 const annulNoKey = (number: number) => sql(`update public.questions set status = 'annulled', correct_option = null where id = $1`, [idOf(number)]);
 const view = (uid: string, number: number, selected: string) => rpc(uid, "practice_correction_view", { p_question_id: idOf(number), p_selected: selected });
+/** Os números guardados do Stazia Play do aluno (perfil, ranking, foto do dia e medalhas leem daqui). */
+const playStats = async (uid: string) => (await sql<any>(`select * from public.user_gamification_stats where user_id = $1`, [uid]))[0];
 
 beforeAll(async () => {
   db = new PGlite();
@@ -76,6 +86,11 @@ beforeAll(async () => {
     [CARLA, "carla@teste.dev", "Carla"],
     [DANI, "dani@teste.dev", "Dani"],
     [EDU, "edu@teste.dev", "Edu"],
+    [FLAVIA, "flavia@teste.dev", "Flávia"],
+    [GUTO, "guto@teste.dev", "Guto"],
+    [HELO, "helo@teste.dev", "Helô"],
+    [IARA, "iara@teste.dev", "Iara"],
+    [KAIO, "kaio@teste.dev", "Kaio"],
   ]) {
     await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)`, [id, email, { name }]);
   }
@@ -130,6 +145,101 @@ describe("1 — anulada fora de acerto e de erro em todos os números do aluno",
     expect(await rpc(ADMIN, "app_admin_user", { p_user_id: DANI })).toMatchObject({ answered: 1, correct: 0, pending_errors: 1 });
     const list = await rpc(ADMIN, "app_admin_users", {});
     expect(list.items.find((u: any) => u.id === DANI)).toMatchObject({ answered: 1, correct: 0 });
+  });
+});
+
+describe("1 (rodada de correção 1) — Stazia Play: mudar o gabarito conta de novo os números guardados de quem respondeu", () => {
+  it("anular as erradas: o perfil e o ranking do Play contam como o Início; desfazer a anulação devolve a questão", async () => {
+    for (const n of [80, 81, 82]) await save(q(n));
+    const s = await session(FLAVIA, "questoes", [80, 81, 82]);
+    await answer(FLAVIA, s, 80, "B"); // certa
+    await answer(FLAVIA, s, 81, "A"); // errada
+    await answer(FLAVIA, s, 82, "C"); // errada
+    expect(await rpc(FLAVIA, "app_gamification_summary")).toMatchObject({ questions: 3, accuracy: 33.33 });
+    // sequência guardada (por exemplo, mantida com uma proteção) e última atividade: contar de novo as respostas não mexe nelas
+    await sql(`update public.user_gamification_stats set current_streak = 4, longest_streak = 9 where user_id = $1`, [FLAVIA]);
+    const before = await playStats(FLAVIA);
+
+    await annul(81);
+    await annul(82);
+    expect(await rpc(FLAVIA, "app_home")).toMatchObject({ attempts: 1, correct: 1 });
+    expect(await rpc(FLAVIA, "app_gamification_summary")).toMatchObject({ questions: 1, accuracy: 100, streak: { current: 4, longest: 9 } });
+    expect(await playStats(FLAVIA)).toMatchObject({
+      questions_answered: 1, correct_answers: 1, wrong_answers: 0, accuracy: "100.00",
+      current_streak: 4, longest_streak: 9, last_qualified_activity_at: before.last_qualified_activity_at,
+    });
+    const board = await rpc(FLAVIA, "app_leaderboard", { p_kind: "questoes" });
+    expect(board.rows.find((r: any) => r.is_me)).toMatchObject({ questions: 1, accuracy: 100 });
+
+    // desfazer a anulação da 81 (mesma letra B): a resposta A volta a contar como erro
+    await setOfficial(81, { p_answer: "B", p_reason: "A anulação foi desfeita." });
+    expect(await playStats(FLAVIA)).toMatchObject({ questions_answered: 2, correct_answers: 1, wrong_answers: 1, accuracy: "50.00" });
+  });
+
+  it("trocar a letra do gabarito: o acerto vira erro e o erro vira acerto também nos números do Play", async () => {
+    await save(q(83));
+    await answer(GUTO, await session(GUTO, "questoes", [83]), 83, "B"); // certa pelo gabarito B
+    await answer(HELO, await session(HELO, "questoes", [83]), 83, "C"); // errada pelo gabarito B
+    expect(await playStats(GUTO)).toMatchObject({ questions_answered: 1, correct_answers: 1, wrong_answers: 0 });
+
+    const r = await setOfficial(83, { p_answer: "C", p_status: "CHANGED_AFTER_APPEAL", p_reason: "Recurso aceito." });
+    expect(r.recorrected).toBe(2);
+    expect(await playStats(GUTO)).toMatchObject({ questions_answered: 1, correct_answers: 0, wrong_answers: 1, accuracy: "0.00" });
+    expect(await playStats(HELO)).toMatchObject({ questions_answered: 1, correct_answers: 1, wrong_answers: 0, accuracy: "100.00" });
+  });
+
+  it("a …7710 conta de novo, uma vez, quem respondeu questão anulada ou com gabarito registrado antes dela", async () => {
+    for (const n of [84, 85]) await save(q(n));
+    const s = await session(IARA, "questoes", [84, 85]);
+    await answer(IARA, s, 84, "A"); // errada; depois anulada pelo editor antigo
+    await answer(IARA, s, 85, "B"); // certa; depois o gabarito vira C pelo registro da leva 1 (recorrigia sem contar o Play de novo)
+    await annulNoKey(84);
+    await sql(`update public.questions set correct_option = 'C', status = 'changed_after_appeal' where id = $1`, [idOf(85)]);
+    await sql(`update public.question_attempts set is_correct = false where question_id = $1`, [idOf(85)]);
+    await sql(`insert into public.question_official_answers (question_id, answer, answer_status, source) values ($1, 'C', 'CHANGED_AFTER_APPEAL', 'teste')`, [idOf(85)]);
+    expect(await playStats(IARA)).toMatchObject({ questions_answered: 2, correct_answers: 1, wrong_answers: 1 });
+
+    await db.exec(fs.readFileSync(AJUSTES, "utf8"));
+    expect(await playStats(IARA)).toMatchObject({ questions_answered: 1, correct_answers: 0, wrong_answers: 1, accuracy: "0.00" });
+  });
+});
+
+describe("1 (rodada de correção 1) — Stazia Play: o que a conta de novo respeita", () => {
+  it("resposta que o antifraude invalidou continua fora; o registro de ações guarda quantos alunos foram contados de novo", async () => {
+    for (const n of [86, 87]) await save(q(n));
+    const s = await session(KAIO, "questoes", [86, 87]);
+    // rápida demais (menos de 3 s): o Play a invalida e ela nunca entra nos números
+    await rpc(KAIO, "app_answer_question", { p_session_id: s, p_question_id: idOf(86), p_option: "B", p_active_ms: 1_000 });
+    await answer(KAIO, s, 87, "B");
+    expect(await playStats(KAIO)).toMatchObject({ questions_answered: 1, correct_answers: 1, wrong_answers: 0 });
+
+    await setOfficial(87, { p_answer: "C", p_status: "CHANGED_AFTER_APPEAL", p_reason: "Recurso aceito." });
+    expect(await playStats(KAIO)).toMatchObject({ questions_answered: 1, correct_answers: 0, wrong_answers: 1, accuracy: "0.00" });
+    await annul(86); // a 86 já estava fora: anular e desfazer não a trazem para a conta
+    await setOfficial(86, { p_answer: "B", p_reason: "A anulação foi desfeita." });
+    expect(await playStats(KAIO)).toMatchObject({ questions_answered: 1, correct_answers: 0, wrong_answers: 1 });
+    const log = (await sql<any>(`select details from public.admin_audit_log where target = $1 and action = 'question.official_answer' order by id desc limit 1`, [idOf(87)]))[0];
+    expect(log.details).toMatchObject({ answer: "C", recorrected: 1, play_recounted: 1 });
+  });
+
+  it("registro sem mudança no que conta (por exemplo só a fonte): não conta de novo; com o Play desligado nada muda", async () => {
+    await save(q(88));
+    await answer(GUTO, await session(GUTO, "questoes", [88]), 88, "B");
+    await sql(`update public.user_gamification_stats set questions_answered = 40 where user_id = $1`, [GUTO]); // marcador: só uma conta nova o apaga
+    // mesma letra, mesma situação: nada a contar de novo
+    expect((await setOfficial(88, { p_answer: "B", p_reason: "Só conferi a fonte." })).recorrected).toBe(0);
+    expect(await playStats(GUTO)).toMatchObject({ questions_answered: 40 });
+    // Play desligado: a troca de letra corrige as respostas, mas não escreve nos números do Play
+    await sql(`update public.gamification_rules set value = 'false'::jsonb where key = 'flags.gamification_enabled'`);
+    try {
+      expect((await setOfficial(88, { p_answer: "C", p_status: "CHANGED_AFTER_APPEAL", p_reason: "Recurso aceito." })).recorrected).toBe(1);
+      expect(await playStats(GUTO)).toMatchObject({ questions_answered: 40 });
+    } finally {
+      await sql(`update public.gamification_rules set value = 'true'::jsonb where key = 'flags.gamification_enabled'`);
+    }
+    // ligado de novo: a próxima mudança conta de verdade
+    await setOfficial(88, { p_answer: "B", p_status: "CHANGED_AFTER_APPEAL", p_reason: "A banca voltou atrás." });
+    expect(await playStats(GUTO)).toMatchObject({ questions_answered: 2 });
   });
 });
 

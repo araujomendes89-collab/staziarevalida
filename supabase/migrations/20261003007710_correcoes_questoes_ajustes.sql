@@ -15,10 +15,16 @@
 --      esperada). Na volta, só continua marcado o texto que mudou durante a troca (pode ter sido reescrito para o outro
 --      gabarito); sem nada mudado, a marca sai. Marca feita antes desta versão (sem a impressão) continua inteira, pelo
 --      lado seguro.
+--   6. Stazia Play: anular, desfazer a anulação ou trocar a letra do gabarito pelo registro oficial conta de novo os números
+--      guardados do Play (questões, acertos, erros e precisão: perfil, ranking, foto do dia e medalhas leem deles) de quem
+--      respondeu a questão. Antes eles ficavam como no dia da resposta e não batiam com o Início. Esta mesma conta é feita
+--      uma vez, ao colar este arquivo, para quem respondeu questão anulada ou com gabarito registrado antes dele (anulada
+--      pelo editor antigo, trocas da leva 1). Sequência, última atividade, XP, moedas e medalhas não mudam; com o Stazia
+--      Play desligado nada é contado, como nos gatilhos do Play.
 --
 -- Funções redefinidas (cada uma a partir da versão mais nova): app_performance (…0900), app_error_reasons (…2800),
 --   app_attempt_diagnosis (…2700), admin_user_row e app_admin_user (…1300), app_admin_set_official_answer (…7700).
--- Nova (interna): question_review_snapshot.
+-- Novas (internas): question_review_snapshot e gam_recount_answers.
 -- =============================================================================
 
 -- A …7700 tem de estar colada antes (coluna questions.explanations_review e o registro do gabarito com motivo).
@@ -210,8 +216,38 @@ as $$
 $$;
 revoke execute on function public.question_review_snapshot(jsonb, text) from public, anon, authenticated;
 
--- ---------------------------------------------------------------- registro do gabarito oficial (5; corpo da …7700)
+-- ---------------------------------------------------------------- Stazia Play: contar de novo as respostas (6)
+-- Conta de novo, para um aluno, os números guardados do Play que vêm das respostas: questões, acertos, erros e precisão.
+-- A regra é a do ch_worker_gamification_recalculate (…3800): todas as respostas válidas em questão que não está anulada
+-- (as invalidadas pelo antifraude ficam fora). Não mexe em sequência, última atividade, XP, moedas nem medalhas; o Stazia
+-- Score se refaz sozinho na próxima atividade (ele já lê as respostas direto). Com o Play desligado não faz nada, como os
+-- gatilhos. Usa a mesma trava dos gatilhos de resposta, para não contar ao mesmo tempo que uma resposta nova. Devolve 1
+-- quando contou de novo e 0 quando não havia nada a fazer (Play desligado, ou o aluno ainda não tem números do Play).
+create or replace function public.gam_recount_answers(p_user uuid) returns integer
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_rows integer;
+begin
+  if not public.gam_flag('flags.gamification_enabled') then return 0; end if;
+  perform pg_advisory_xact_lock(hashtextextended('gam:' || p_user::text, 0));
+  update public.user_gamification_stats s set
+    questions_answered = x.n, correct_answers = x.c, wrong_answers = x.n - x.c,
+    accuracy = case when x.n = 0 then 0 else round(100.0 * x.c / x.n, 2) end
+  from (select count(*)::int as n, count(*) filter (where a.is_correct)::int as c
+        from public.question_attempts a join public.questions q on q.id = a.question_id
+        where a.user_id = p_user and q.status <> 'annulled' and not public.gam_invalid_attempt(p_user, a.id)) x
+  where s.user_id = p_user;
+  get diagnostics v_rows = row_count;
+  return v_rows;
+end
+$$;
+revoke execute on function public.gam_recount_answers(uuid) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------- registro do gabarito oficial (5 e 6; corpo da …7700)
 -- Mais:
+--   Stazia Play (6): anular, desfazer a anulação ou trocar a letra conta de novo os números do Play de quem respondeu a
+--   questão (gam_recount_answers); o registro de ações guarda quantos alunos foram contados de novo (play_recounted);
 --   primeira troca (sem marca): a marca guarda em "textos" a impressão dos textos de antes (question_review_snapshot);
 --   outra troca antes da revisão: soma os campos como antes, e a impressão continua a da primeira troca;
 --   volta ao gabarito de antes da primeira troca ("de" da marca), antes da revisão: a marca fica só com os textos que
@@ -238,6 +274,8 @@ declare
   v_review jsonb;
   v_flag jsonb;  -- a marca como estava antes deste registro
   v_cleared boolean := false;
+  v_user uuid;
+  v_play integer := 0;  -- alunos cujos números do Play foram contados de novo
 begin
   perform public.assert_admin();
   if char_length(btrim(coalesce(p_source, ''))) = 0 then raise exception 'Informe a fonte do gabarito (documento e data).' using errcode = '22023'; end if;
@@ -338,14 +376,41 @@ begin
     select q.explanations_review into v_review from public.questions q where q.id = p_question_id;
   end if;
 
+  if v_new_answer is distinct from v_old.correct_option or v_new_key is distinct from v_old_key then
+    -- Stazia Play: a questão passou a contar de outro jeito (anulada, de volta, ou outra letra): conta de novo quem a respondeu
+    -- (em ordem de aluno, para duas trocas ao mesmo tempo não esperarem uma pela outra)
+    for v_user in select distinct a.user_id from public.question_attempts a where a.question_id = p_question_id order by 1 loop
+      v_play := v_play + public.gam_recount_answers(v_user);
+    end loop;
+  end if;
+
   perform public.ch_log('question.official_answer', p_question_id, jsonb_build_object('status', p_status, 'answer', v_answer, 'version', v_version, 'reason', btrim(p_reason)));
   perform public.admin_log('question.official_answer', p_question_id, jsonb_build_object(
     'status', p_status, 'answer', v_answer, 'from', v_old.correct_option, 'version', v_version, 'source', btrim(p_source),
-    'reason', btrim(p_reason), 'recorrected', v_recorrected, 'review_cleared', v_cleared));
+    'reason', btrim(p_reason), 'recorrected', v_recorrected, 'review_cleared', v_cleared, 'play_recounted', v_play));
   return jsonb_build_object('id', v_id, 'version', v_version, 'recorrected', v_recorrected, 'review', v_review);
 end
 $$;
 revoke execute on function public.app_admin_set_official_answer(text, text, text, text, text, date, text) from public, anon;
 
--- Para desfazer: recriar as funções acima a partir das migrações citadas no topo e apagar question_review_snapshot. As
--- marcas gravadas com "textos" continuam válidas para a …7700 (ela só lê de, para e campos).
+-- ---------------------------------------------------------------- Stazia Play: conta feita uma vez (6)
+-- Quem respondeu questão anulada ou com gabarito registrado antes deste arquivo: a anulada pelo editor antigo e as trocas
+-- da leva 1 mudaram as respostas sem contar o Play de novo. Colado de novo, dá o mesmo resultado.
+do $play$
+declare
+  v_user uuid;
+begin
+  for v_user in
+    select distinct a.user_id from public.question_attempts a
+    where exists (select 1 from public.questions q where q.id = a.question_id and q.status = 'annulled')
+       or exists (select 1 from public.question_official_answers o where o.question_id = a.question_id)
+    order by 1
+  loop
+    perform public.gam_recount_answers(v_user);
+  end loop;
+end
+$play$;
+
+-- Para desfazer: recriar as funções acima a partir das migrações citadas no topo e apagar question_review_snapshot e
+-- gam_recount_answers. As marcas gravadas com "textos" continuam válidas para a …7700 (ela só lê de, para e campos). Os
+-- números do Play contados de novo não têm volta: são os que o Início e o caderno de erros já mostravam.
