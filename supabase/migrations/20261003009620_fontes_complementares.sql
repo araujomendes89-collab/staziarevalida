@@ -15,11 +15,13 @@
 --   * Toda saída ao aluno que carrega fonte passa por ch_student_sources / ch_student_text (equipe e revisor continuam vendo tudo):
 --     correção, comentário da questão, cartão de atualização, linha do tempo, Tutor, podcast, aula e Atualizações & Diretrizes.
 --   * O que a equipe digita em campos de fonte (fontes de podcast, material de aula, diretriz da aula, documento da atualização) é
---     comparado com a biblioteca (título, órgão, link) e com o nome "Sangue nos Olhos"; quem bate some da resposta ao aluno.
+--     comparado com a biblioteca (título COMPLETO e exato, órgão distintivo, siglas, link, arquivo, SHA-256); quem bate some da resposta ao aluno.
+--   * REGRA DO DONO de 2026-10-11: a expressão "Sangue nos Olhos" e a palavra "apostila" SOLTAS não escondem nem barram nada (podem ser
+--     texto médico legítimo, como a queixa "sangue nos olhos"). Só vale o que está CADASTRADO como fonte complementar.
 --
 -- As funções redefinidas partem das versões mais novas de todas as migrações e dos ramos entregues:
 --   app_question_commentary, practice_correction_view, tutor_truth: 20261003007700 · app_question_timeline: 20261003002600
---   app_podcast: 20261003009593 · lesson_view, lesson_materials_json, app_lesson_material: 20261003009580 · guideline_update_view: 20261003004100
+--   app_podcast: 20261003009593 · lesson_view, lesson_materials_json, app_lesson_material: 20261003009580 (com a conferência do áudio, review_status) · guideline_update_view: 20261003004100
 --   app_ch_set_source_authority: 20261003002100.
 -- Pode ser colada duas vezes sem erro e não apaga nenhum dado.
 --
@@ -148,14 +150,13 @@ as $$
 $$;
 
 -- O texto (ou o link) identifica uma fonte complementar? Sim quando é IGUAL (normalizado) a uma chave da biblioteca, quando contém
--- uma chave distintiva, quando usa a palavra "apostila", quando o link é o mesmo ou do mesmo site, ou quando cita "Sangue nos Olhos"
--- (regra do dono, vale antes do cadastro; também sem espaços e com letras parecidas).
+-- uma chave distintiva (também sem espaços e com letras parecidas), ou quando o link é o mesmo ou do mesmo site.
+-- A palavra "apostila" e a expressão "Sangue nos Olhos" SOLTAS não contam (regra do dono de 2026-10-11): só o que está cadastrado.
 create or replace function public.ch_complementar_hit(p_text text, p_url text default null) returns boolean
   language sql stable security definer set search_path = ''
 as $$
   with k as (select public.ch_text_key(p_text) as t, public.ch_text_key_ns(p_text) as n)
-  select coalesce((select k.t like '%sangue nos olhos%' or k.n like '%sanguenosolhos%' or ' ' || k.t || ' ' ~ '[^a-z]apostilas?[^a-z]' from k), false)
-      or exists (
+  select exists (
         select 1 from public.ch_complementar_keys() c, k
         where k.t <> '' and (k.t = c.chave
           or (c.distintiva and (' ' || k.t || ' ' like '% ' || c.chave || ' %' or (char_length(replace(c.chave, ' ', '')) >= 12 and k.n like '%' || replace(c.chave, ' ', '') || '%')))))
@@ -176,15 +177,13 @@ as $$
       or (nullif(btrim(coalesce(p_name, '')), '') is not null and public.ch_complementar_hit(regexp_replace(p_name, '^.*/', ''), null))
 $$;
 
--- Texto LIVRE já publicado que cita a apostila: "Sangue nos Olhos", a palavra "apostila" ou uma chave distintiva da biblioteca.
+-- Texto LIVRE já publicado que cita uma chave distintiva (título completo, órgão distintivo ou sigla) de fonte complementar cadastrada.
+-- A palavra "apostila" e "Sangue nos Olhos" soltas não contam (regra do dono de 2026-10-11).
 -- (Texto livre não casa por igualdade: só por citação.) Ponto único para refinar o que conta como citação.
 create or replace function public.ch_text_cites(p_text text, p_keys text[]) returns boolean
   language sql stable set search_path = ''
 as $$
-  select ' ' || public.ch_text_key(p_text) || ' ' ~ '[^a-z]apostilas?[^a-z]'
-      or public.ch_text_key(p_text) like '%sangue nos olhos%'
-      or public.ch_text_key_ns(p_text) like '%sanguenosolhos%'
-      or exists (select 1 from unnest(p_keys) k where k <> '' and (' ' || public.ch_text_key(p_text) || ' ' like '% ' || k || ' %'
+  select exists (select 1 from unnest(p_keys) k where k <> '' and (' ' || public.ch_text_key(p_text) || ' ' like '% ' || k || ' %'
                                                                     or (char_length(replace(k, ' ', '')) >= 12 and public.ch_text_key_ns(p_text) like '%' || replace(k, ' ', '') || '%')))
 $$;
 
@@ -283,10 +282,10 @@ as $$
                                (replace(public.ch_url_host(s.url), '.', ' '))) v (x)
     where s.audience = 'complementar' and v.x is not null
     union select btrim(a), true from public.ch_sources s cross join lateral unnest(s.aliases) a where s.audience = 'complementar'
-    union select 'Sangue nos Olhos', false) t
+    ) t
   where char_length(t.term) >= case when t.alias then 3 else 5 end
     -- título genérico (2 palavras curtas) não vira termo de busca em texto livre: esconderia texto médico legítimo
-    and (t.alias or t.term = 'Sangue nos Olhos' or array_length(string_to_array(public.ch_text_key(t.term), ' '), 1) >= 3 or char_length(public.ch_text_key(t.term)) >= 20)
+    and (t.alias or array_length(string_to_array(public.ch_text_key(t.term), ' '), 1) >= 3 or char_length(public.ch_text_key(t.term)) >= 20)
 $$;
 
 -- ---------------------------------------------------------------- 3. campos de fonte digitados pela equipe: marca guardada
@@ -659,10 +658,16 @@ as $$
                              when 'guideline' then case when m.storage_path is null then m.title else 'Diretriz' end
                              else 'Material ' || row_number() over (partition by m.kind order by m.position, m.created_at) end,
         'has_file', m.storage_path is not null, 'content_type', m.content_type, 'size_bytes', m.size_bytes, 'url', m.url)
-      || case when public.is_staff() then jsonb_build_object('file_title', m.title, 'storage_path', m.storage_path) else '{}'::jsonb end as j
-    from public.lesson_materials m
-    where m.lesson_id = p_lesson and (not m.hidden_from_student or public.is_staff())
-      and exists (select 1 from public.lessons l where l.id = p_lesson and (l.published or public.is_staff()))
+      || case when public.is_staff() then jsonb_build_object('file_title', m.title, 'storage_path', m.storage_path, 'review_status', m.review_status,
+                                                            'reviewed_at', m.reviewed_at,
+                                                            'reviewer', (select coalesce(nullif(p.name, ''), u.email) from auth.users u left join public.profiles p on p.id = u.id where u.id = m.reviewed_by),
+                                                            'can_release', public.lesson_can_release(l.area))
+              else '{}'::jsonb end as j
+    from public.lesson_materials m join public.lessons l on l.id = m.lesson_id
+    where m.lesson_id = p_lesson
+      and (l.published or public.is_staff())
+      and (m.review_status = 'approved' or public.is_staff()) -- áudio aguardando conferência: o aluno não vê
+      and (not m.hidden_from_student or public.is_staff())    -- fonte complementar: o aluno não vê
   ) x
 $$;
 revoke execute on function public.lesson_materials_json(uuid) from public, anon;
@@ -698,7 +703,8 @@ as $$
            'storage_path', m.storage_path, 'content_type', m.content_type, 'url', m.url)
   from public.lesson_materials m join public.lessons l on l.id = m.lesson_id
   where m.id = p_id and (select auth.uid()) is not null and (l.published or public.is_staff())
-    and (not m.hidden_from_student or public.is_staff())
+    and (m.review_status = 'approved' or public.is_staff()) -- áudio aguardando conferência: nem o link assinado sai para o aluno
+    and (not m.hidden_from_student or public.is_staff())    -- fonte complementar: o aluno não vê
 $$;
 revoke execute on function public.app_lesson_material(uuid) from public, anon;
 grant execute on function public.app_lesson_material(uuid) to authenticated;
@@ -901,7 +907,7 @@ begin
   if exists (select 1 from public.podcasts p
               where p.id = p_id and public.ch_text_cites(concat_ws(' ', p.title, p.topic, (select string_agg(l ->> 'text', ' ') from jsonb_array_elements(coalesce(p.script -> 'lines', '[]'::jsonb)) l)),
                     coalesce((select array_agg(c.chave) from public.ch_complementar_keys() c where c.distintiva), '{}'::text[]))) then
-    raise exception 'O roteiro cita apostila ou material de apoio (nome do material, da editora ou a palavra "apostila"). Tire a citação antes de aprovar ou publicar.' using errcode = '22023';
+    raise exception 'O roteiro cita uma fonte complementar cadastrada (nome do material, da editora ou sigla). Tire a citação antes de aprovar ou publicar.' using errcode = '22023';
   end if;
 end
 $$;
@@ -957,7 +963,7 @@ $$;
 revoke execute on function public.app_admin_review_guideline_update(uuid, text, text) from public, anon;
 revoke execute on function public.app_admin_publish_guideline_update(uuid, boolean) from public, anon;
 
--- Marca guardada das linhas que já existem (só onde bate com a biblioteca ou com "Sangue nos Olhos").
+-- Marca guardada das linhas que já existem (só onde bate com a biblioteca).
 select public.ch_refresh_hidden_flags();
 
 -- Fonte de podcast: a equipe marca que é complementar (o aluno deixa de ver a fonte e as páginas dela).
@@ -974,13 +980,12 @@ begin
 end
 $$;
 
--- Varredura para o administrador: texto JÁ publicado ao aluno que cita "Sangue nos Olhos", "apostila" ou o título/órgão de uma
--- fonte complementar (a conferência da IA só vale para textos novos). Pode ter falso positivo: a equipe lê e decide.
+-- Varredura para o administrador: texto JÁ publicado ao aluno que cita o título completo, o órgão distintivo ou a sigla de uma
+-- fonte complementar cadastrada ("apostila" e "Sangue nos Olhos" soltos não entram, regra do dono de 2026-10-11) (a conferência da IA só vale para textos novos). Pode ter falso positivo: a equipe lê e decide.
 create or replace function public.ch_text_mentions(p_text text, p_terms text[]) returns boolean
   language sql stable set search_path = ''
 as $$
-  select ' ' || public.ch_text_key(p_text) || ' ' ~ '[^a-z]apostilas?[^a-z]'
-      or exists (select 1 from unnest(p_terms) k where k <> '' and ' ' || public.ch_text_key(p_text) || ' ' like '% ' || k || ' %')
+  select exists (select 1 from unnest(p_terms) k where k <> '' and ' ' || public.ch_text_key(p_text) || ' ' like '% ' || k || ' %')
 $$;
 
 create or replace function public.app_ch_complementar_mentions() returns jsonb
@@ -990,8 +995,7 @@ declare v_terms text[];
 begin
   perform public.assert_admin();
   select coalesce(array_agg(distinct x.t), '{}') into v_terms
-    from (select c.chave as t from public.ch_complementar_keys() c where c.distintiva
-          union select 'sangue nos olhos') x;
+    from (select c.chave as t from public.ch_complementar_keys() c where c.distintiva) x;
   return coalesce((select jsonb_agg(r.item order by r.kind, r.id) from (
     select 'analise' as kind, a.question_id as id, jsonb_build_object('kind', 'analise', 'id', a.question_id, 'onde', 'Análise publicada da questão') as item
       from public.question_analysis a

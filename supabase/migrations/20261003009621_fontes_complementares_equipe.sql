@@ -3,7 +3,7 @@
 --
 -- Regra do dono: as apostilas ("Sangue nos Olhos") valem como fonte para a IA e para a equipe, mas nada que as identifique
 -- chega ao aluno. A 9620 filtra o que sai para o aluno. Esta migração faz o lado da equipe:
---   1. CHECAGEM AO SALVAR (gatilhos): o que a equipe digita e o aluno lê não pode citar a apostila nem o nome do material.
+--   1. CHECAGEM AO SALVAR (gatilhos): o que a equipe digita e o aluno lê não pode citar o nome de uma fonte complementar CADASTRADA.
 --      Recusa com a mesma mensagem para todos, administrador inclusive. Só confere o campo que MUDOU (uma edição de outro
 --      campo de uma linha antiga que já cita não é barrada). Gravação interna do servidor/worker (sem usuário logado, como
 --      ch_worker_*) não é barrada: sai um aviso no log do banco e o texto de IA continua valendo pela conferência do servidor.
@@ -15,10 +15,12 @@
 --      grava o nome da fonte no Registro; podcast_admin_view mostra a marca a cada fonte.
 --
 -- Decisões:
+--   * REGRA DO DONO de 2026-10-11: "Sangue nos Olhos" e a palavra "apostila" SOLTAS não barram nada (podem ser texto médico legítimo,
+--     como a queixa "sangue nos olhos"). Vale só o que está CADASTRADO na biblioteca como fonte complementar.
 --   * A comparação do gatilho NÃO usa ch_complementar_hit: ela também acusa texto que é PARTE do título de uma fonte complementar
 --     (ex.: o tema "Pediatria" dentro de "Sangue nos Olhos — Pediatria"), o que barraria texto médico legítimo. O gatilho usa
---     ch_complementar_regex(): "Sangue nos Olhos", a palavra "apostila", e o título/órgão de cada fonte complementar da
---     biblioteca como expressão inteira (palavra por palavra), menos os nomes que também são de fonte OFICIAL. O link
+--     ch_complementar_regex(): o título/órgão de cada fonte complementar da biblioteca como expressão inteira (palavra por
+--     palavra) e as siglas cadastradas (ch_sources.aliases), menos os nomes que também são de fonte OFICIAL. O link
 --     (ch_url_norm) confere igual ao da biblioteca.
 --   * Parte das versões mais novas: app_admin_podcast_source_complementar (9620), podcast_admin_view (4700, ninguém mais redefiniu),
 --     app_ch_complementar_mentions (9620). Nenhuma função app_admin_* de salvar é redefinida: tudo por gatilho.
@@ -26,7 +28,8 @@
 -- =============================================================================
 
 -- ---------------------------------------------------------------- 1. termos e expressão
--- Termos (já sem acento nem pontuação) que o texto voltado ao aluno não pode citar.
+-- Termos (já sem acento nem pontuação) que o texto voltado ao aluno não pode citar: título e órgão das fontes complementares
+-- cadastradas e as siglas cadastradas (aliases). Nada fixo: "Sangue nos Olhos" só entra se for o título cadastrado.
 create or replace function public.ch_complementar_terms_keys() returns text[]
   language sql stable security definer set search_path = ''
 as $$
@@ -42,19 +45,24 @@ as $$
       and x.t not in (select public.ch_text_key(o.title) from public.ch_sources o where o.audience = 'oficial'
                       union select public.ch_text_key(o.organ) from public.ch_sources o where o.audience = 'oficial')
     union
-    select 'sangue nos olhos'
+    -- siglas e apelidos cadastrados pelo administrador (ch_sources.aliases); mesma proteção contra nome de fonte oficial
+    select x.t from (
+      select public.ch_text_key(a) as t from public.ch_sources s cross join lateral unnest(s.aliases) a where s.audience = 'complementar'
+    ) x
+    where char_length(x.t) >= 3
+      and x.t not in (select public.ch_text_key(o.title) from public.ch_sources o where o.audience = 'oficial'
+                      union select public.ch_text_key(o.organ) from public.ch_sources o where o.audience = 'oficial')
   ) k
 $$;
 
--- Expressão regular (sobre texto sem acento e em minúsculas, ver fold_text) que acha qualquer termo como palavra inteira, a palavra
--- "apostila" e o link de fonte complementar escrito no texto.
+-- Expressão regular (sobre texto sem acento e em minúsculas, ver fold_text) que acha qualquer termo cadastrado como palavra inteira
+-- e o link de fonte complementar escrito no texto. A palavra "apostila" solta NÃO entra.
 create or replace function public.ch_complementar_regex() returns text
   language sql stable security definer set search_path = ''
 as $$
   select '(?:^|[^a-z0-9])(?:' || string_agg(a.alt, '|') || ')(?:[^a-z0-9]|$)'
   from (
     select replace(k, ' ', '[^a-z0-9]+') as alt from unnest(public.ch_complementar_terms_keys()) k
-    union all select 'apostilas?'
     -- o endereço (link) de uma fonte complementar, escrito dentro do texto
     union all
     select regexp_replace(public.fold_text(btrim(s.url)), '([^a-z0-9])', '\\\1', 'g')
@@ -124,7 +132,7 @@ begin
         -- gravação interna (servidor/worker): não barra; o texto de IA já passa pela conferência do servidor
         raise warning 'Texto cita fonte complementar (gravação interna): %.%', tg_table_name, v_name;
       else
-        raise exception 'Este texto cita uma fonte complementar (o aluno não pode ver). Reescreva sem citar a apostila nem o nome do material.' using errcode = '22023';
+        raise exception 'Este texto cita uma fonte complementar cadastrada (o aluno não pode ver). Reescreva sem citar o nome desse material.' using errcode = '22023';
       end if;
     end if;
   end loop;
@@ -183,7 +191,7 @@ end
 $$;
 
 -- Episódio para a equipe: parte da 20261003004700; cada fonte ganha 'complementar' (a marca) e 'student_hidden' (o aluno não a vê:
--- marcada à mão ou com nome que bate com uma fonte complementar da biblioteca).
+-- marcada à mão ou com nome, arquivo ou SHA-256 que bate com uma fonte complementar da biblioteca).
 create or replace function public.podcast_admin_view(p_id uuid) returns jsonb
   language sql stable security definer set search_path = ''
 as $$
@@ -194,7 +202,7 @@ as $$
       select jsonb_agg(jsonb_build_object('id', s.id, 'kind', s.kind, 'title', s.title, 'url', s.url, 'lesson_id', s.lesson_id, 'pages', s.pages, 'chars', s.chars, 'storage_path', s.storage_path,
                                           'chunks', (select count(*)::int from public.podcast_chunks c where c.source_id = s.id), 'created_at', s.created_at,
                                           'complementar', s.complementar,
-                                          'student_hidden', (s.complementar or public.ch_complementar_hit(s.title, s.url)))
+                                          'student_hidden', (s.complementar or public.ch_complementar_hit(s.title, s.url) or public.ch_complementar_file(s.sha256, s.storage_path)))
                        order by s.position, s.created_at)
       from public.podcast_sources s where s.podcast_id = p.id), '[]'::jsonb),
     'chunks_total', (select count(*)::int from public.podcast_chunks c where c.podcast_id = p.id),
@@ -207,11 +215,11 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------- 4. varredura ampliada (só administrador)
--- Texto que JÁ está gravado e cita "Sangue nos Olhos", a palavra "apostila" ou o título/órgão de fonte complementar.
+-- Texto que JÁ está gravado e cita o título/órgão/sigla de fonte complementar cadastrada ("apostila" e "Sangue nos Olhos" soltos não entram).
 -- Cada item: kind (tipo), tabela, id, campo (nome em português), onde (descrição), aba (onde a equipe edita), item (qual abrir),
 -- trecho (uns 150 caracteres), publicado. Não lista o campo que a 9620 já esconde do aluno (diretriz/documento que bate com a biblioteca,
 -- material da aula escondido, fonte de podcast marcada como complementar).
--- Pode ter falso positivo (a palavra "apostila" em texto legítimo): a equipe lê e decide. No máximo 600 itens; mensagens do Tutor:
+-- Pode ter falso positivo (um órgão com nome comum, por exemplo): a equipe lê e decide. No máximo 600 itens; mensagens do Tutor:
 -- as 300 respostas mais recentes.
 create or replace function public.app_ch_complementar_mentions() returns jsonb
   language plpgsql stable security definer set search_path = ''

@@ -173,7 +173,7 @@ function SourceRow({ source: s, audience = "oficial", isAdmin, onChanged }) {
           {isAdmin && (
             <SelectField
               label="Classe da fonte"
-              hint="Fonte complementar (apostilas) vale como fonte para a IA e para a equipe, mas o aluno não vê título, órgão, link, arquivo, página nem quantas são. Só a fonte oficial dá os selos do aluno."
+              hint="Fonte complementar (apostilas) vale como fonte para a IA e para a equipe, mas o aluno não vê título, órgão, link, arquivo, página nem quantas são. Só a fonte oficial dá os selos do aluno. O sistema reconhece a fonte pelo título completo e exato, pela editora, pelas siglas cadastradas, pelo link e pelo arquivo; a palavra “apostila” sozinha não é barrada."
               value={audience}
               onChange={(e) => e.target.value !== audience && act.run(() => backend.rpc("app_ch_set_source_audience", { p_source_id: s.id, p_audience: e.target.value }), e.target.value === "complementar" ? "Fonte marcada como complementar: o aluno não a vê." : "Fonte marcada como oficial.").then((r) => r && onChanged())}
               options={Object.entries(AUDIENCE).map(([value, label]) => ({ value, label }))}

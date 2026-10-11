@@ -1,6 +1,7 @@
 // Aba Fontes › "Textos que citam fontes complementares" (só administrador).
 // Regra do dono: a apostila vale como fonte para a IA e para a equipe, mas nada que a identifique chega ao aluno. O banco barra o
-// texto NOVO que cita a apostila (ao salvar); esta lista mostra o texto que JÁ estava gravado, achado por app_ch_complementar_mentions
+// texto NOVO que cita o nome de uma fonte complementar CADASTRADA (ao salvar). A palavra "apostila" e a expressão "Sangue nos Olhos"
+// soltas não são barradas nem listadas (decisão do dono, 2026-10-11). Esta lista mostra o texto que JÁ estava gravado, achado por app_ch_complementar_mentions
 // (tabela, id, campo e um trecho), e diz em que aba editar. "Conferir de novo" roda a varredura outra vez depois de corrigir.
 import React from "react";
 import { Link, useInRouterContext } from "react-router-dom";
@@ -61,7 +62,7 @@ function Row({ item }) {
         {target ? (
           <EditLink target={target} />
         ) : (
-          <span style={{ font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Conversa de aluno com o Tutor: não há tela de edição; o Tutor deixa de citar a apostila nas respostas novas.</span>
+          <span style={{ font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Conversa de aluno com o Tutor: não há tela de edição; o Tutor deixa de citar o nome do material nas respostas novas.</span>
         )}
       </div>
     </li>
@@ -84,12 +85,12 @@ export function ComplementarMentions({ isAdmin }) {
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
-          O aluno não pode ver a apostila nem o nome do material. O sistema já barra texto novo que cita uma fonte complementar. Aqui estão os textos que já estavam
-          gravados antes da regra: abra cada um, reescreva sem citar a apostila e depois toque em “Conferir de novo”. Pode aparecer texto legítimo que só usa a palavra “apostila”: nesse caso, basta reescrever.
+          O aluno não pode ver o nome de uma fonte complementar cadastrada (título completo, editora ou sigla). O sistema já barra texto novo que cita esse nome. Aqui estão os textos que já estavam
+          gravados antes da regra: abra cada um, reescreva sem citar o nome do material e depois toque em “Conferir de novo”. A palavra “apostila” sozinha e a expressão “sangue nos olhos” sozinha (como queixa clínica) não entram nesta lista nem são barradas.
         </div>
         {error && <LoadError error={error} retry={reload} />}
         {!data && !error && <Loading />}
-        {data && items.length === 0 && <EmptyState icon="circle-check" title="Nenhum texto cita fonte complementar" description="Nada do que está gravado cita a apostila nem o nome do material." />}
+        {data && items.length === 0 && <EmptyState icon="circle-check" title="Nenhum texto cita fonte complementar" description="Nada do que está gravado cita o nome de uma fonte complementar cadastrada." />}
         {items.length >= LIMITE && <Banner tone="warning">A lista mostra os primeiros {LIMITE} textos. Corrija estes e toque em “Conferir de novo” para ver os próximos.</Banner>}
         {items.length > 0 && (
           <ul style={{ margin: 0, padding: 0 }} aria-label="Textos que citam fontes complementares">

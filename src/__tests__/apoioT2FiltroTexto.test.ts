@@ -3,8 +3,11 @@
  * APOIO-T2 (testador adversarial): o FILTRO DE TEXTO da fonte complementar ("Sangue nos Olhos").
  *
  * Regra do dono: a apostila vale como fonte para a IA e para a equipe, mas nada que a identifique chega ao aluno (título, órgão,
- * autor, link, arquivo, trecho, página, contagem). Os textos de IA voltados ao aluno nunca citam "Sangue nos Olhos", "apostila"
- * nem o título/órgão de uma fonte complementar.
+ * autor, link, arquivo, trecho, página, contagem). Os textos de IA voltados ao aluno nunca citam o título/órgão/sigla de uma fonte
+ * complementar CADASTRADA.
+ * DECISÃO NOVA DO DONO (2026-10-11): a expressão "Sangue nos Olhos" e a palavra "apostila" SOLTAS não bloqueiam nem escondem nada
+ * (texto médico legítimo, como a queixa "sangue nos olhos"). Por isso a tabela de ataque usa o TÍTULO COMPLETO cadastrado, e a seção
+ * "0b" prova que a expressão solta e a palavra "apostila" passam.
  *
  * O que está sendo atacado:
  *   - servidor: server/contentHub/complementarGuard.ts (mentionsSupportMaterial, labelIsSupportMaterial, loadComplementarTerms)
@@ -71,7 +74,7 @@ const contentDb = { service: async (fn: string) => (await sql(`select public.${f
 /** Termos da varredura, exatamente como app_ch_complementar_mentions os monta. */
 const TERMOS_VARREDURA = `(select coalesce(array_agg(distinct public.ch_text_key(x.t)), '{}') from (
   select s.title as t from public.ch_sources s where s.audience = 'complementar'
-  union select s.organ from public.ch_sources s where s.audience = 'complementar' union select 'Sangue nos Olhos') x
+  union select s.organ from public.ch_sources s where s.audience = 'complementar') x
   where char_length(public.ch_text_key(x.t)) >= 5)`;
 const varredura = async (texto: string) => (await sql(`select public.ch_text_mentions($1, ${TERMOS_VARREDURA}) as r`, [texto]))[0].r as boolean;
 const rotulo = async (texto: string) => (await sql(`select public.ch_complementar_hit($1, $1) as r`, [texto]))[0].r as boolean;
@@ -115,9 +118,6 @@ const ABERTOS = new Set<string>(
  "VAZA MENOR A37 varredura SQL: leetspeak",
  "VAZA MENOR A38 varredura SQL: letras espaçadas",
  "VAZA MENOR A39 varredura SQL: hifenização de linha",
- "VAZA IMPORTANTE A44 servidor: 'apostilinha' (diminutivo)",
- "VAZA IMPORTANTE A44 rótulo SQL: 'apostilinha' (diminutivo)",
- "VAZA IMPORTANTE A44 varredura SQL: 'apostilinha' (diminutivo)",
  "VAZA IMPORTANTE A47 servidor: 'material do cursinho X'",
  "VAZA IMPORTANTE A47 rótulo SQL: 'material do cursinho X'",
  "VAZA IMPORTANTE A47 varredura SQL: 'material do cursinho X'",
@@ -145,6 +145,8 @@ const ABERTOS = new Set<string>(
  "VAZA CRÍTICO A55 varredura SQL: link da apostila (cadastrado)",
  "VAZA CRÍTICO A56 varredura SQL: outro link do mesmo site",
  "VAZA CRÍTICO A60 varredura SQL: autor",
+ "VAZA CRÍTICO A57 rótulo SQL: domínio com hífens (não cadastrado)",
+ "VAZA CRÍTICO A57 varredura SQL: domínio com hífens (não cadastrado)",
  "VAZA IMPORTANTE A61 servidor: órgão abreviado",
  "VAZA IMPORTANTE A61 rótulo SQL: órgão abreviado",
  "VAZA IMPORTANTE A61 varredura SQL: órgão abreviado",
@@ -160,11 +162,6 @@ const ABERTOS = new Set<string>(
  "CRÍTICO: resposta que cita o NOME DO ARQUIVO não é barrada",
  "IMPORTANTE: 'Sangue nos Olhos' no começo de uma linha do roteiro (\\n no JSON) escapa da varredura",
  "IMPORTANTE: 'SangueNosOlhos' colado no resumo da aula escapa da varredura",
- "CRÍTICO: aula com instrutor 'Equipe Sangue nos Olhos' não é varrida (campo instructor fora da varredura)",
- "CRÍTICO: atualização com selo 'Sangue nos Olhos 2026' (publication_label) não é varrida",
- "CRÍTICO: flashcards da atualização não são varridos",
- "CRÍTICO: linha do tempo da atualização não é varrida",
- "CRÍTICO: explicação da alternativa e conduta esperada da QUESTÃO não são varridas (tabela questions fora da varredura)",
  "IMPORTANTE: comentário com 'Sangue nos Olhos' depois de quebra de linha escapa (o jsonb vira texto com \\n)"
 ]
 );
@@ -191,14 +188,53 @@ beforeAll(async () => {
 // 0. Os termos que o servidor recebe do banco
 // =====================================================================================================================
 describe("0. termos que o servidor confere", () => {
-  it("vêm do banco: título, órgão e 'Sangue nos Olhos'", () => {
-    expect(TERMOS).toEqual(expect.arrayContaining([TITULO, ORGAO, "Sangue nos Olhos"]));
+  it("vêm do banco: título e órgão cadastrados; 'Sangue nos Olhos' solto NÃO é termo fixo", () => {
+    expect(TERMOS).toEqual(expect.arrayContaining([TITULO, ORGAO]));
+    expect(TERMOS).not.toContain("Sangue nos Olhos");
   });
   vaza("CRÍTICO: o AUTOR da apostila (ch_sources.authors) não entra nos termos — 'segundo o Dr. Fulano Bezerra Tavares' passa", () => {
     expect(TERMOS).toContain(AUTOR);
   });
   vaza("CRÍTICO: o NOME DO ARQUIVO e o LINK da apostila não entram nos termos do servidor", () => {
     expect(TERMOS.some((t) => t.includes("SNO-ClinicaMedica") || t.includes("sanguenosolhos"))).toBe(true);
+  });
+});
+
+// =====================================================================================================================
+// 0b. DECISÃO DO DONO (2026-10-11): "Sangue nos Olhos" e "apostila" SOLTOS não bloqueiam nem escondem nada
+// =====================================================================================================================
+const LIVRES: Array<[string, string]> = [
+  ["L01", "Segundo o Sangue nos Olhos, a conduta é suporte."],
+  ["L02", "SEGUNDO O SANGUE NOS OLHOS, A CONDUTA É SUPORTE."],
+  ["L03", "como diz o sângue nós ólhos"],
+  ["L04", "como diz o Sangue-nos-Olhos"],
+  ["L05", "veja Sangue_nos_Olhos"],
+  ["L06", "veja [Sangue nos Olhos](https://exemplo.invalid/x)"],
+  ["L07", "Paciente refere sangue nos olhos depois de tossir muito: é hemorragia subconjuntival."],
+  ["L08", "conforme a apostila, suporte"],
+  ["L09", "Apostilas trazem isso"],
+  ["L10", "nas apostilas do cursinho aparece"],
+  ["L11", "Como ensina a apostila Sangue nos Olhos, o suporte clínico basta."],
+  ["L12", "Material da apostila de clínica: o suporte basta."],
+];
+describe("0b. expressão solta e a palavra 'apostila' NÃO bloqueiam (decisão do dono, 2026-10-11)", () => {
+  for (const [id, texto] of LIVRES) {
+    it(`${id} servidor: passa (${texto.slice(0, 40)}…)`, () => {
+      expect(mentionsSupportMaterial(texto, TERMOS)).toEqual([]);
+      expect(labelIsSupportMaterial(texto, TERMOS)).toBe(false);
+    });
+    it(`${id} banco: rótulo, varredura e lista de fontes do aluno deixam passar`, async () => {
+      expect(await rotulo(texto)).toBe(false);
+      expect(await varredura(texto)).toBe(false);
+      const fica = ((await comoAluna(`select public.ch_student_sources($1::jsonb) as r`, [JSON.stringify([{ title: texto }])]))[0].r as unknown[]).length === 1;
+      expect(fica).toBe(true);
+    });
+  }
+  it("o título COMPLETO cadastrado continua barrado em qualquer frase", async () => {
+    const t = `Segundo o ${TITULO}, a conduta é suporte.`;
+    expect(mentionsSupportMaterial(t, TERMOS).length).toBeGreaterThan(0);
+    expect(await varredura(t)).toBe(true);
+    expect(await rotulo(TITULO)).toBe(true);
   });
 });
 
@@ -214,53 +250,52 @@ type Sev = "CRÍTICO" | "IMPORTANTE" | "MENOR";
 interface Caso { id: string; nome: string; texto: string; sev: Sev; srv: R; rot: R; var: R }
 const C = (id: string, nome: string, texto: string, sev: Sev, srv: R, rot: R, vr: R): Caso => ({ id, nome, texto, sev, srv, rot, var: vr });
 
+/** O título COMPLETO cadastrado, sem o travessão (as variações abaixo são do jeito que alguém escreveria o nome inteiro). */
+const NOME_SEM_TRACO = "Sangue nos Olhos Clínica Médica";
 export const ATAQUES: Caso[] = [
-  C("A01", "nome exato", "Segundo o Sangue nos Olhos, a conduta é suporte.", "CRÍTICO", "B", "B", "B"),
-  C("A02", "caixa alta", "SEGUNDO O SANGUE NOS OLHOS, A CONDUTA É SUPORTE.", "CRÍTICO", "B", "B", "B"),
-  C("A03", "minúsculas sem acento", "segundo o sangue nos olhos, suporte", "CRÍTICO", "B", "B", "B"),
-  C("A04", "acentos trocados (minúsculos)", "como diz o sângue nós ólhos", "IMPORTANTE", "B", "B", "B"),
-  C("A05", "acentos trocados em MAIÚSCULA", "como diz o SÂNGUE NÓS ÔLHOS", "IMPORTANTE", "B", "B", "B"),
-  C("A06", "com hífens", "como diz o Sangue-nos-Olhos", "CRÍTICO", "B", "B", "B"),
-  C("A07", "colado (CamelCase)", "como diz o SangueNosOlhos", "IMPORTANTE", "P", "P", "P"),
-  C("A08", "hashtag", "#SangueNosOlhos resume bem", "IMPORTANTE", "P", "P", "P"),
-  C("A09", "espaços múltiplos", "como diz o sangue  nos   olhos", "CRÍTICO", "B", "B", "B"),
-  C("A10", "quebra de linha entre as palavras", "como diz o sangue\nnos\nolhos", "CRÍTICO", "B", "B", "B"),
-  C("A11", "tabulação", "como diz o Sangue\tnos\tOlhos", "CRÍTICO", "B", "B", "B"),
+  // (2026-10-11) As variações abaixo atacam o TÍTULO COMPLETO cadastrado. A expressão "Sangue nos Olhos" solta e a palavra
+  // "apostila" soltas passaram para a seção "0b" (não bloqueiam).
+  C("A01", "nome exato (título completo)", `Segundo o ${TITULO}, a conduta é suporte.`, "CRÍTICO", "B", "B", "B"),
+  C("A02", "caixa alta", `SEGUNDO O ${TITULO.toUpperCase()}, A CONDUTA É SUPORTE.`, "CRÍTICO", "B", "B", "B"),
+  C("A03", "minúsculas sem acento", "segundo o sangue nos olhos clinica medica, suporte", "CRÍTICO", "B", "B", "B"),
+  C("A04", "acentos trocados (minúsculos)", "como diz o sângue nós ólhos clínica médica", "IMPORTANTE", "B", "B", "B"),
+  C("A05", "acentos trocados em MAIÚSCULA", "como diz o SÂNGUE NÓS ÔLHOS CLÍNICA MÉDICA", "IMPORTANTE", "B", "B", "B"),
+  C("A06", "com hífens", "como diz o Sangue-nos-Olhos-Clínica-Médica", "CRÍTICO", "B", "B", "B"),
+  C("A07", "colado (CamelCase)", "como diz o SangueNosOlhosClínicaMédica", "IMPORTANTE", "P", "P", "P"),
+  C("A08", "hashtag", "#SangueNosOlhosClinicaMedica resume bem", "IMPORTANTE", "P", "P", "P"),
+  C("A09", "espaços múltiplos", "como diz o sangue  nos   olhos  clínica   médica", "CRÍTICO", "B", "B", "B"),
+  C("A10", "quebra de linha entre as palavras", "como diz o sangue\nnos\nolhos\nclínica\nmédica", "CRÍTICO", "B", "B", "B"),
+  C("A11", "tabulação", "como diz o Sangue\tnos\tOlhos\tClínica\tMédica", "CRÍTICO", "B", "B", "B"),
   C("A12", "sigla com pontos S.N.O.", "como ensina o S.N.O., suporte basta", "IMPORTANTE", "P", "P", "P"),
   C("A13", "sigla SNO", "no SNO isso aparece como suporte", "IMPORTANTE", "P", "P", "P"),
-  C("A14", "largura zero (U+200B) no meio", "como diz o San​gue nos Olhos", "MENOR", "P", "P", "P"),
-  C("A15", "hífen invisível (U+00AD)", "como diz o San­gue nos Olhos", "MENOR", "P", "P", "P"),
-  C("A16", "homóglifo cirílico (а U+0430)", "como diz o Sаngue nos Olhos", "IMPORTANTE", "P", "P", "P"),
-  C("A17", "homóglifo grego (ο U+03BF)", "como diz o Sangue nοs Olhοs", "IMPORTANTE", "P", "P", "P"),
-  C("A18", "largura total (fullwidth)", "como diz o Ｓａｎｇｕｅ ｎｏｓ Ｏｌｈｏｓ", "MENOR", "P", "P", "P"),
-  C("A19", "acento combinado (NFD, comum em PDF/macOS)", "como diz o Sángue nos Ólhos", "IMPORTANTE", "B", "P", "P"),
-  C("A20", "espaço não separável (U+00A0)", "como diz o Sangue nos Olhos", "CRÍTICO", "B", "B", "B"),
-  C("A21", "HTML &nbsp;", "como diz o Sangue&nbsp;nos&nbsp;Olhos", "IMPORTANTE", "P", "P", "P"),
-  C("A22", "HTML &#32;", "como diz o Sangue&#32;nos&#32;Olhos", "IMPORTANTE", "P", "P", "P"),
-  C("A23", "HTML com etiqueta no meio", "como diz o <b>Sangue</b> nos <i>Olhos</i>", "IMPORTANTE", "P", "P", "P"),
-  C("A24", "HTML com etiqueta em volta", "como diz o <strong>Sangue nos Olhos</strong>", "CRÍTICO", "B", "B", "B"),
-  C("A25", "markdown **negrito**", "como diz o **Sangue nos Olhos**", "CRÍTICO", "B", "B", "B"),
-  C("A26", "markdown [link](url)", "veja [Sangue nos Olhos](https://exemplo.invalid/x)", "CRÍTICO", "B", "B", "B"),
-  C("A27", "markdown _itálico_ palavra a palavra", "como diz o _Sangue_ _nos_ _Olhos_", "CRÍTICO", "B", "B", "B"),
-  C("A28", "codificado em URL (%20)", "veja Sangue%20nos%20Olhos", "IMPORTANTE", "P", "P", "P"),
-  C("A29", "sublinhado", "veja Sangue_nos_Olhos", "CRÍTICO", "B", "B", "B"),
+  C("A14", "largura zero (U+200B) no meio", "como diz o San\u200bgue nos Olhos Clínica Médica", "MENOR", "P", "P", "P"),
+  C("A15", "hífen invisível (U+00AD)", "como diz o San\u00adgue nos Olhos Clínica Médica", "MENOR", "P", "P", "P"),
+  C("A16", "homóglifo cirílico (а U+0430)", "como diz o S\u0430ngue nos Olhos Clínica Médica", "IMPORTANTE", "P", "P", "P"),
+  C("A17", "homóglifo grego (ο U+03BF)", "como diz o Sangue n\u03bfs Olh\u03bfs Clínica Médica", "IMPORTANTE", "P", "P", "P"),
+  C("A18", "largura total (fullwidth)", "como diz o Ｓａｎｇｕｅ ｎｏｓ Ｏｌｈｏｓ Ｃｌｉｎｉｃａ Ｍｅｄｉｃａ", "MENOR", "P", "P", "P"),
+  C("A19", "acento combinado (NFD, comum em PDF/macOS)", "como diz o Sángue nos Ólhos Clínica Médica".normalize("NFD"), "IMPORTANTE", "B", "P", "P"),
+  C("A20", "espaço não separável (U+00A0)", "como diz o Sangue\u00a0nos\u00a0Olhos\u00a0Clínica\u00a0Médica", "CRÍTICO", "B", "B", "B"),
+  C("A21", "HTML &nbsp;", "como diz o Sangue&nbsp;nos&nbsp;Olhos&nbsp;Clínica&nbsp;Médica", "IMPORTANTE", "P", "P", "P"),
+  C("A22", "HTML &#32;", "como diz o Sangue&#32;nos&#32;Olhos&#32;Clínica&#32;Médica", "IMPORTANTE", "P", "P", "P"),
+  C("A23", "HTML com etiqueta no meio", "como diz o <b>Sangue</b> nos <i>Olhos</i> Clínica Médica", "IMPORTANTE", "P", "P", "P"),
+  C("A24", "HTML com etiqueta em volta", `como diz o <strong>${TITULO}</strong>`, "CRÍTICO", "B", "B", "B"),
+  C("A25", "markdown **negrito**", `como diz o **${TITULO}**`, "CRÍTICO", "B", "B", "B"),
+  C("A26", "markdown [link](url)", `veja [${TITULO}](https://exemplo.invalid/x)`, "CRÍTICO", "B", "B", "B"),
+  C("A27", "markdown _itálico_ palavra a palavra", "como diz o _Sangue_ _nos_ _Olhos_ _Clínica_ _Médica_", "CRÍTICO", "B", "B", "B"),
+  C("A28", "codificado em URL (%20)", "veja Sangue%20nos%20Olhos%20Clínica%20Médica", "IMPORTANTE", "P", "P", "P"),
+  C("A29", "sublinhado", "veja Sangue_nos_Olhos_Clínica_Médica", "CRÍTICO", "B", "B", "B"),
   C("A30", "ordem trocada", "olhos, sangue nos: é assim que o material chama", "IMPORTANTE", "P", "P", "P"),
   C("A31", "título parcial dentro da frase", "como ensina o Sangue nos, o suporte basta", "IMPORTANTE", "P", "P", "P"),
   C("A32", "título parcial sozinho (rótulo)", "Sangue nos", "IMPORTANTE", "P", "P", "P"), // decisão: casar só por título COMPLETO e exato (um título genérico esconderia fonte oficial)
   C("A33", "só a primeira palavra", "a coleção Sangue de clínica traz isso", "IMPORTANTE", "P", "P", "P"),
   C("A34", "inglês", "as the Blood in the Eyes handout says", "IMPORTANTE", "P", "P", "P"),
   C("A35", "espanhol", "como dice Sangre en los Ojos", "IMPORTANTE", "P", "P", "P"),
-  C("A36", "erro de digitação", "como diz o Sangue nos Olho", "MENOR", "P", "P", "P"),
-  C("A37", "leetspeak", "como diz o S4ngue n0s 0lhos", "MENOR", "P", "P", "P"),
-  C("A38", "letras espaçadas", "como diz o S a n g u e  n o s  O l h o s", "MENOR", "P", "P", "P"),
-  C("A39", "hifenização de linha", "como diz o San-\ngue nos Olhos", "MENOR", "P", "P", "P"),
-  C("A40", "marca registrada", "como diz o Sangue nos Olhos®", "CRÍTICO", "B", "B", "B"),
-  C("A41", "apóstrofo tipográfico", "o ‘Sangue nos Olhos’ diz", "CRÍTICO", "B", "B", "B"),
-  C("A42", "'apostila'", "conforme a apostila, suporte", "CRÍTICO", "B", "P", "B"),
-  C("A43", "'Apostilas' plural/maiúscula", "Apostilas trazem isso", "CRÍTICO", "B", "P", "B"),
-  C("A44", "'apostilinha' (diminutivo)", "na apostilinha de clínica aparece", "IMPORTANTE", "P", "P", "P"),
-  C("A45", "'apostilas do cursinho'", "nas apostilas do cursinho aparece", "CRÍTICO", "B", "P", "B"),
-  C("A46", "'apostila' com largura zero", "conforme a apo​stila", "MENOR", "P", "P", "P"),
+  C("A36", "erro de digitação", "como diz o Sangue nos Olho Clínica Médica", "MENOR", "P", "P", "P"),
+  C("A37", "leetspeak", "como diz o S4ngue n0s 0lhos Clínica Médica", "MENOR", "P", "P", "P"),
+  C("A38", "letras espaçadas", `como diz o ${[...NOME_SEM_TRACO].join(" ")}`, "MENOR", "P", "P", "P"),
+  C("A39", "hifenização de linha", "como diz o San-\ngue nos Olhos Clínica Médica", "MENOR", "P", "P", "P"),
+  C("A40", "marca registrada", `como diz o ${TITULO}®`, "CRÍTICO", "B", "B", "B"),
+  C("A41", "apóstrofo tipográfico", `o ‘${TITULO}’ diz`, "CRÍTICO", "B", "B", "B"),
   C("A47", "'material do cursinho X'", "conforme o material do cursinho X", "IMPORTANTE", "P", "P", "P"),
   C("A48", "'segundo o livro'", "segundo o livro de clínica, suporte", "IMPORTANTE", "P", "P", "P"),
   C("A49", "'conforme o manual'", "conforme o manual que a gente usa", "IMPORTANTE", "P", "P", "P"),
@@ -271,7 +306,9 @@ export const ATAQUES: Caso[] = [
   C("A54", "nome do arquivo sem extensão", "veja o SNO-ClinicaMedica-2026", "CRÍTICO", "P", "P", "P"),
   C("A55", "link da apostila (cadastrado)", URL_SNO, "CRÍTICO", "P", "B", "P"),
   C("A56", "outro link do mesmo site", "https://sanguenosolhos.com.br/cm/outro-volume-2026.pdf", "CRÍTICO", "P", "P", "P"),
-  C("A57", "domínio com hífens", "veja sangue-nos-olhos.com.br", "CRÍTICO", "B", "B", "B"),
+  // 2026-10-11: antes era barrado pela expressão solta "sangue nos olhos". Agora o SERVIDOR ainda barra (o site cadastrado sanguenosolhos.com.br
+  // vira termo sem espaços), mas o rótulo SQL e a varredura SQL deixam passar (vazamento ABERTO novo, efeito da retirada da expressão solta)
+  C("A57", "domínio com hífens (não cadastrado)", "veja sangue-nos-olhos.com.br", "CRÍTICO", "B", "P", "P"),
   C("A58", "órgão completo", `publicado pela ${ORGAO}`, "CRÍTICO", "B", "B", "B"),
   C("A59", "título completo", `veja ${TITULO}`, "CRÍTICO", "B", "B", "B"),
   C("A60", "autor", `segundo o ${AUTOR}`, "CRÍTICO", "P", "P", "P"),
@@ -294,8 +331,8 @@ describe("1. tabela de ataque", () => {
 
   it("resumo: quantos passam em cada camada (para o relatório)", async () => {
     const passa = (k: "srv" | "rot" | "var") => ATAQUES.filter((c) => c[k] === "P").length;
-    expect(ATAQUES).toHaveLength(61);
-    expect({ srv: passa("srv"), rot: passa("rot"), var: passa("var") }).toEqual({ srv: 37, rot: 40, var: 38 });
+    expect(ATAQUES).toHaveLength(56);
+    expect({ srv: passa("srv"), rot: passa("rot"), var: passa("var") }).toEqual({ srv: 35, rot: 36, var: 37 });
   });
 });
 
@@ -318,22 +355,24 @@ describe("1b. lista de fontes que o aluno recebe (ch_student_sources)", () => {
   vaza("CRÍTICO: item com o AUTOR da apostila aparece ao aluno", async () => {
     expect(await fica({ title: "Livro de clínica", organization: AUTOR })).toBe(false);
   });
-  vaza("IMPORTANTE: item 'Apostila de Clínica Médica (cursinho)' aparece (o rótulo SQL não conhece a palavra apostila)", async () => {
-    expect(await fica({ title: "Apostila de Clínica Médica (cursinho)", organization: "Cursinho X" })).toBe(false);
+  it("(2026-10-11) item 'Apostila de Clínica Médica (cursinho)' APARECE: a palavra apostila solta não esconde fonte (só o nome cadastrado)", async () => {
+    expect(await fica({ title: "Apostila de Clínica Médica (cursinho)", organization: "Cursinho X" })).toBe(true);
   });
   vaza("IMPORTANTE: item 'SNO · Clínica Médica 2026' aparece", async () => {
     expect(await fica({ title: "SNO · Clínica Médica 2026", organization: "SNO" })).toBe(false);
   });
-  vaza("IMPORTANTE: gabarito com nota 'ver p. 345 da apostila' aparece", async () => {
-    expect(await fica({ title: "Gabarito INEP 2024/1", note: "ver p. 345 da apostila" })).toBe(false);
+  it("(2026-10-11) gabarito com nota 'ver p. 345 da apostila' APARECE: a palavra apostila solta não esconde fonte", async () => {
+    expect(await fica({ title: "Gabarito INEP 2024/1", note: "ver p. 345 da apostila" })).toBe(true);
+  });
+  it("gabarito com nota que cita o TÍTULO COMPLETO cadastrado some", async () => {
+    expect(await fica({ title: "Gabarito INEP 2024/1", note: `ver p. 345 do ${TITULO}` })).toBe(false);
   });
 });
 
 // =====================================================================================================================
 // 2. FALSOS POSITIVOS: 100 frases médicas comuns
-// Política proposta (registrada no relatório): "sangue nos olhos" como queixa leiga de hemorragia subconjuntival É barrado de
-// propósito — o nome coincide com a marca e a IA deve escrever "hemorragia subconjuntival" / "olho vermelho com sangue". As
-// duas frases com essa expressão (F099, F100) são as únicas barradas aceitas.
+// DECISÃO DO DONO (2026-10-11): "sangue nos olhos" como queixa leiga de hemorragia subconjuntival (F099, F100) e a palavra "apostila"
+// NÃO são mais barradas. Nenhuma das 100 frases é barrada.
 // =====================================================================================================================
 export const FRASES_MEDICAS: string[] = [
   "Na bronquiolite leve, o tratamento é de suporte com hidratação e oxigênio se necessário.",
@@ -441,15 +480,15 @@ export const FRASES_MEDICAS: string[] = [
 describe("2. falsos positivos", () => {
   it("são 100 frases", () => expect(FRASES_MEDICAS).toHaveLength(100));
 
-  it("servidor: só as 2 frases com a expressão leiga 'sangue nos olhos' são barradas (política: barrar de propósito)", () => {
+  it("servidor: nenhuma das 100 frases é barrada (inclusive as 2 com a queixa 'sangue nos olhos')", () => {
     const barradas = FRASES_MEDICAS.map((f, i) => [i + 1, mentionsSupportMaterial(f, TERMOS)] as const).filter(([, m]) => m.length).map(([n]) => n);
-    expect(barradas).toEqual([99, 100]);
+    expect(barradas).toEqual([]);
   });
 
-  it("varredura SQL: as mesmas 2", async () => {
+  it("varredura SQL e rótulo SQL: nenhuma das 100 frases é achada", async () => {
     const barradas: number[] = [];
-    for (let i = 0; i < FRASES_MEDICAS.length; i++) if (await varredura(FRASES_MEDICAS[i])) barradas.push(i + 1);
-    expect(barradas).toEqual([99, 100]);
+    for (let i = 0; i < FRASES_MEDICAS.length; i++) if ((await varredura(FRASES_MEDICAS[i])) || (await rotulo(FRASES_MEDICAS[i]))) barradas.push(i + 1);
+    expect(barradas).toEqual([]);
   });
 
   it("'material complementar', 'manual do PNI', 'livro de registro', 'resumo de alta' não são barrados", () => {
@@ -467,7 +506,7 @@ describe("2. falsos positivos", () => {
 // 3. PONTOS ONDE O FILTRO É APLICADO (com a IA simulada) e os que ficaram de fora
 // =====================================================================================================================
 const fakeDb = { service: async () => null } as any;
-const EXPLICITO = "Como ensina a apostila Sangue nos Olhos, o suporte clínico basta.";
+const EXPLICITO = `Como ensina o ${TITULO}, o suporte clínico basta.`; // cita o TÍTULO COMPLETO cadastrado
 const CONTORNO = `Como está no ${ARQUIVO}, o suporte clínico basta.`;
 
 describe("3a. roteiro de podcast (checkScript / generateScript)", () => {
@@ -519,11 +558,11 @@ describe("3b. assistente de aula (generateLessonAssist)", () => {
   const gerar = (o: Parameters<typeof resposta>[0]) => generateLessonAssist({ kind: "mock", pages, terms: TERMOS, db: fakeDb, mockRespond: resposta(o) } as any);
 
   it("resumo, ponto-chave e título que citam a apostila viram aviso para a equipe", async () => {
-    const r = await gerar({ title: "Bronquiolite pelo Sangue nos Olhos", summary: EXPLICITO, kp: "Na apostila: suporte." });
+    const r = await gerar({ title: `Bronquiolite pelo ${TITULO}`, summary: EXPLICITO, kp: `No ${TITULO}: suporte.` });
     expect(r.warnings.filter((w) => /cita material de apoio/.test(w))).toHaveLength(3);
   });
   vaza("IMPORTANTE: o TEMA (topic) sugerido pela IA não é conferido e vai ao aluno (lesson_view.topic)", async () => {
-    const r = await gerar({ topic: "Bronquiolite (Sangue nos Olhos)" });
+    const r = await gerar({ topic: `Bronquiolite (${TITULO})` });
     expect(r.warnings.some((w) => /cita material de apoio/.test(w))).toBe(true);
   });
   vaza("IMPORTANTE: aviso não bloqueia — a sugestão com a menção volta inteira para a equipe aplicar", async () => {
@@ -563,14 +602,14 @@ describe("3c. análise da questão e proposta de atualização", () => {
     expect(analysisChecks(q, analise("why_wrong", CONTORNO), TERMOS).map((x) => x.code)).toContain("cites_support_material");
   });
   vaza("IMPORTANTE: análise com homóglifo (Sаngue cirílico) passa sem falha", () => {
-    expect(analysisChecks(q, analise("trap", "Como diz o Sаngue nos Olhos, cuidado."), TERMOS).map((x) => x.code)).toContain("cites_support_material");
+    expect(analysisChecks(q, analise("trap", "Como diz o Sаngue nos Olhos Clínica Médica, cuidado."), TERMOS).map((x) => x.code)).toContain("cites_support_material");
   });
 
   const entrada: any = { question_id: "q1", statement: "x", options: [], changes: [], correct_option: "B", official: { answer: "B" } };
   const proposta = (what: string, note = ""): any => ({ assessment: "INCONCLUSIVE", impact_level: "NO_IMPACT", current_answer: "NONE", what_changed: what, why_it_matters: "", options_affected: note ? [{ option_id: "A", note }] : [], citations: [], confidence: 10 });
   it("proposta de atualização: menção em what_changed e na nota de alternativa = falha crítica", () => {
     expect(reanalysisChecks(entrada, proposta(EXPLICITO), TERMOS).map((x) => x.code)).toContain("cites_support_material");
-    expect(reanalysisChecks(entrada, proposta("A conduta foi mantida pela diretriz.", "Na apostila esta alternativa é marcada."), TERMOS).map((x) => x.code)).toContain("cites_support_material");
+    expect(reanalysisChecks(entrada, proposta("A conduta foi mantida pela diretriz.", `No ${TITULO} esta alternativa é marcada.`), TERMOS).map((x) => x.code)).toContain("cites_support_material");
   });
   vaza("IMPORTANTE: proposta 'conforme a página 345 do material' passa", () => {
     expect(reanalysisChecks(entrada, proposta("Conforme a página 345 do material, a conduta mudou."), TERMOS).map((x) => x.code)).toContain("cites_support_material");
@@ -590,7 +629,7 @@ describe("3d. Tutor em texto (safetyCheck)", () => {
     expect(mentionsSupportMaterial(fallbackReply([{ code: "cites_support_material", detail: "x" }]), TERMOS)).toEqual([]);
   });
   vaza("IMPORTANTE: as RESPOSTAS SUGERIDAS (botões que o aluno vê) não são conferidas", () => {
-    expect(codigos(out("Pensa no quadro clínico.", ["Isso tá na apostila Sangue nos Olhos?"]))).toContain("cites_support_material");
+    expect(codigos(out("Pensa no quadro clínico.", [`Isso tá no ${TITULO}?`]))).toContain("cites_support_material");
   });
   vaza("CRÍTICO: resposta que cita o NOME DO ARQUIVO não é barrada", () => {
     expect(codigos(out(CONTORNO))).toContain("cites_support_material");
@@ -602,7 +641,7 @@ describe("3d. Tutor em texto (safetyCheck)", () => {
     expect(labelIsSupportMaterial(`${TITULO} · p. 345`, TERMOS)).toBe(true);
   });
   vaza("IMPORTANTE: rótulo de passagem com homóglifo ('Sаngue nos Olhos') não é reconhecido pelo filtro do Tutor", () => {
-    expect(labelIsSupportMaterial("Sаngue nos Olhos · p. 345", TERMOS)).toBe(true);
+    expect(labelIsSupportMaterial("Sаngue nos Olhos Clínica Médica · p. 345", TERMOS)).toBe(true);
   });
 });
 
@@ -661,19 +700,22 @@ describe("4. varredura do publicado (app_ch_complementar_mentions)", () => {
       ids[nome] = (await sql(`insert into public.lessons (area, topic, title, summary, key_points, instructor, published) values ($1, $2, $3, $4, $5, $6, $7) returning id`,
         [base.area, base.topic, base.title, base.summary, base.key_points, base.instructor, published]))[0].id;
     };
-    await aula("L_resumo", { summary: "Conforme a apostila, o suporte basta." });
-    await aula("L_ponto", { key_points: ["O Sangue nos Olhos resume assim: suporte."] });
-    await aula("L_rascunho", { summary: "Conforme a apostila, o suporte basta." }, false);
+    await aula("L_resumo", { summary: `Conforme o ${TITULO}, o suporte basta.` });
+    await aula("L_ponto", { key_points: [`O ${TITULO} resume assim: suporte.`] });
+    await aula("L_rascunho", { summary: `Conforme o ${TITULO}, o suporte basta.` }, false);
     await aula("L_limpa", {});
-    await aula("L_instrutor", { instructor: "Equipe Sangue nos Olhos" });
-    await aula("L_camel", { summary: "Resumo feito a partir do SangueNosOlhos." });
+    await aula("L_instrutor", { instructor: `Equipe ${ORGAO}` });
+    await aula("L_camel", { summary: "Resumo feito a partir do SangueNosOlhosClínicaMédica." });
+    // texto médico legítimo com a expressão solta e a palavra apostila: NÃO entra na varredura (decisão do dono, 2026-10-11)
+    await aula("L_livre", { summary: "Paciente refere sangue nos olhos depois de tossir: hemorragia subconjuntival. A apostila do curso não é fonte citada aqui." });
 
     const podcast = (nome: string, falas: string[], status = "published") =>
       sql(`insert into public.podcasts (title, topic, area, status, script, approved_at, audio_path, published_at) values ('Bronquiolite em 8 minutos', 'Bronquiolite', 'PEDIATRIA', $1, $2::jsonb, now(), 'podcasts/x.mp3', now()) returning id`,
         [status, JSON.stringify({ lines: falas.map((text) => ({ speaker: "ANA", text, sources: [] })) })]).then((r) => (ids[nome] = r[0].id));
-    await podcast("P_fala", ["Como ensina o Sangue nos Olhos, suporte."]);
-    await podcast("P_quebra", ["Fonte:\nSangue nos Olhos, capítulo de pediatria."]);
-    await podcast("P_rascunho", ["Como ensina o Sangue nos Olhos, suporte."], "draft");
+    await podcast("P_fala", [`Como ensina o ${TITULO}, suporte.`]);
+    await podcast("P_quebra", [`Fonte:\n${TITULO}, capítulo de pediatria.`]);
+    await podcast("P_rascunho", [`Como ensina o ${TITULO}, suporte.`], "draft");
+    await podcast("P_livre", ["Paciente com sangue nos olhos após tosse: hemorragia subconjuntival. Siga a apostila do curso para revisar."]);
     await podcast("P_limpo", ["Na bronquiolite leve, suporte."]);
 
     const atualizacao = (nome: string, campos: Record<string, unknown>) =>
@@ -681,28 +723,33 @@ describe("4. varredura do publicado (app_ch_complementar_mentions)", () => {
            values ($1, 'PEDIATRIA', 'Bronquiolite leve', $2, $3, 'PCDT Bronquiolite', 'https://www.gov.br/saude/pcdt-t2', $4, $5::jsonb, $6::jsonb, true, 'approved', now(), $7, now()) returning id`,
         [`t2-${nome.toLowerCase().replace(/_/g, "-")}`, campos.label ?? "MS 2024", OFI_ORGAO, campos.trap ?? "Cuidado com broncodilatador.", JSON.stringify(campos.flashcards ?? []), JSON.stringify(campos.timeline ?? []), ADMIN])
         .then((r) => (ids[nome] = r[0].id));
-    await atualizacao("U_trap", { trap: "A apostila ainda traz a conduta antiga." });
-    await atualizacao("U_rotulo", { label: "Sangue nos Olhos 2026" });
-    await atualizacao("U_flash", { flashcards: [{ front: "Conduta?", back: "Suporte, como no Sangue nos Olhos." }] });
-    await atualizacao("U_linha", { timeline: [{ year: 2026, text: "Apostila Sangue nos Olhos muda a conduta." }] });
+    await atualizacao("U_trap", { trap: `O ${TITULO} ainda traz a conduta antiga.` });
+    await atualizacao("U_rotulo", { label: `${TITULO} 2026` });
+    await atualizacao("U_flash", { flashcards: [{ front: "Conduta?", back: `Suporte, como no ${TITULO}.` }] });
+    await atualizacao("U_linha", { timeline: [{ year: 2026, text: `${TITULO} muda a conduta.` }] });
 
     // questões: análise publicada que cita (coberta) e explicação/conduta esperada digitadas pela equipe (não cobertas)
-    await rpc(ADMIN, "app_admin_save_question", { p_question: questao(91, "Errada: veja o Sangue nos Olhos.", "Suporte.") });
-    await rpc(ADMIN, "app_admin_save_question", { p_question: questao(92, "Errada: conforme a apostila do cursinho.", "Suporte, como manda o Sangue nos Olhos.") });
+    // (2026-10-11) o banco BARRA salvar texto novo com o título cadastrado; o texto antigo entra por SQL direto (como se já estivesse gravado)
+    await rpc(ADMIN, "app_admin_save_question", { p_question: questao(91, "Errada.", "Suporte.") });
+    await rpc(ADMIN, "app_admin_save_question", { p_question: questao(92, "Errada.", "Suporte.") });
+    for (const [qid, num, expl, cond] of [[QA, 91, `Errada: veja o ${TITULO}.`, "Suporte."], [QB, 92, `Errada: conforme o ${TITULO}.`, `Suporte, como manda o ${TITULO}.`]] as const) {
+      const q = questao(num, expl, cond);
+      await sql(`update public.questions set options = $2::jsonb, expected_conduct = $3 where id = $1`, [qid, JSON.stringify(q.options), q.expected_conduct]);
+    }
     const analise = (await sql(`insert into public.question_analysis (question_id, version, question_core, basis_hash, status, official_answer_at_analysis, reviewed_at)
       values ($1, 1, 'Pede a conduta.', 'x', 'published', 'B', now()) returning id`, [QA]))[0].id;
     await sql(`insert into public.question_option_analysis (analysis_id, question_id, option_id, is_official_correct, distractor_kind, reasoning, why_wrong)
-      values ($1, $2, 'A', false, 'WRONG', 'Distrator.', 'Como diz o Sangue nos Olhos, não é isso.')`, [analise, QA]);
+      values ($1, $2, 'A', false, 'WRONG', 'Distrator.', $3)`, [analise, QA, `Como diz o ${TITULO}, não é isso.`]);
     ids.Q_analise = QA;
     const analiseB = (await sql(`insert into public.question_analysis (question_id, version, question_core, basis_hash, status, official_answer_at_analysis, reviewed_at)
       values ($1, 1, 'Pede a conduta.', 'y', 'published', 'B', now()) returning id`, [QB]))[0].id;
     ids.C_direto = analiseB;
     await sql(`insert into public.question_comments (question_id, analysis_id, version, level, content, content_hash, status) values ($1, $2, 1, 'full', $3::jsonb, 'h1', 'published')`,
-      [QB, analiseB, JSON.stringify({ texto: "Conforme a apostila, suporte." })]);
+      [QB, analiseB, JSON.stringify({ texto: `Conforme o ${TITULO}, suporte.` })]);
     await sql(`insert into public.question_comments (question_id, analysis_id, version, level, content, content_hash, status) values ($1, $2, 1, 'quick', $3::jsonb, 'h2', 'published')`,
-      [QB, analiseB, JSON.stringify({ texto: "Resumo do caso.\nSangue nos Olhos, capítulo 3." })]);
+      [QB, analiseB, JSON.stringify({ texto: `Resumo do caso.\n${TITULO}, capítulo 3.` })]);
     await sql(`insert into public.question_update_cards (question_id, version, temporal_status, impact_level, official_answer, current_answer, what_changed, reviewed_by)
-      values ($1, 1, 'UPDATED_BUT_SAME_ANSWER', 'COMMENT_ONLY', 'B', 'B', 'Segundo o Sangue nos Olhos, a conduta foi mantida.', $2)`, [QB, ADMIN]);
+      values ($1, 1, 'UPDATED_BUT_SAME_ANSWER', 'COMMENT_ONLY', 'B', 'B', $3, $2)`, [QB, ADMIN, `Segundo o ${TITULO}, a conduta foi mantida.`]);
     await sql(`insert into public.practice_sessions (user_id, kind, question_ids, finished_at) values ($1, 'questoes', $2, now())`, [ALUNA, [QA, QB]]);
 
     achados = await rpc(ADMIN, "app_ch_complementar_mentions");
@@ -717,11 +764,24 @@ describe("4. varredura do publicado (app_ch_complementar_mentions)", () => {
     expect(achou("cartao", QB)).toBe(true);
     expect(achou("comentario", ids.C_direto)).toBe(true);
   });
-  it("só eles: rascunho e conteúdo limpo não aparecem", () => {
-    expect(achou("aula", ids.L_rascunho)).toBe(false);
+  it("(2026-10-11) texto médico com 'sangue nos olhos' e a palavra 'apostila' soltos NÃO entra na varredura", () => {
+    expect(achou("aula", ids.L_livre)).toBe(false);
+    expect(achou("podcast", ids.P_livre)).toBe(false);
+  });
+  it("(2026-10-11) e a aluna lê esse texto inteiro, sem nada retirado", async () => {
+    const aula = await rpc(ALUNA, "app_lesson", { p_id: ids.L_livre });
+    expect(aula.summary).toContain("sangue nos olhos");
+    expect(aula.summary).toContain("apostila do curso");
+    const pod = await rpc(ALUNA, "app_podcast", { p_id: ids.P_livre });
+    expect(JSON.stringify(pod.lines)).toContain("sangue nos olhos");
+    expect(JSON.stringify(pod.lines)).toContain("apostila do curso");
+  });
+  it("conteúdo limpo não aparece; o rascunho aparece MARCADO como não publicado (APOIO-B: a varredura olha o que já está gravado, publicado ou não)", () => {
     expect(achou("aula", ids.L_limpa)).toBe(false);
-    expect(achou("podcast", ids.P_rascunho)).toBe(false);
     expect(achou("podcast", ids.P_limpo)).toBe(false);
+    expect(achados.find((a) => a.kind === "aula" && String(a.id) === String(ids.L_rascunho))?.publicado).toBe(false);
+    expect(achados.find((a) => a.kind === "podcast" && String(a.id) === String(ids.P_rascunho))?.publicado).toBe(false);
+    expect(achados.find((a) => a.kind === "aula" && String(a.id) === String(ids.L_resumo))?.publicado).toBe(true);
   });
   vaza("IMPORTANTE: 'Sangue nos Olhos' no começo de uma linha do roteiro (\\n no JSON) escapa da varredura", () => {
     expect(achou("podcast", ids.P_quebra)).toBe(true);
@@ -755,7 +815,7 @@ describe("4. varredura do publicado (app_ch_complementar_mentions)", () => {
     const atual = await rpc(ALUNA, "app_guideline_update", { p_slug: "t2-u-flash" });
     const pod = await rpc(ALUNA, "app_podcast", { p_id: ids.P_fala });
     // corrigido: a leitura do aluno retira o texto livre que cita a apostila (nada é apagado no banco)
-    expect(JSON.stringify(corr)).not.toMatch(/apostila do cursinho|Sangue nos Olhos/);
+    expect(JSON.stringify(corr)).not.toMatch(/Sangue nos Olhos/);
     expect(aula.instructor ?? null).toBeNull();
     expect(JSON.stringify(atual.flashcards)).not.toContain("Sangue nos Olhos");
     expect(JSON.stringify(pod.lines)).not.toContain("Sangue nos Olhos");
@@ -779,12 +839,11 @@ describe("5. marca guardada e título genérico", () => {
     resetComplementarTermsCache();
     const termos = await loadComplementarTerms(contentDb);
     const barradas = FRASES_MEDICAS.map((f, i) => [i + 1, mentionsSupportMaterial(f, termos)] as const).filter(([, m]) => m.length).map(([n]) => n);
-    // as 4 frases que falam da especialidade "Clínica Médica" + as 2 da expressão leiga
     expect(termos).not.toContain("Clínica Médica"); // título de 2 palavras curtas não vira termo de busca em texto livre
-    expect(barradas).toEqual([99, 100]); // só a expressão leiga (política segura: continua barrada)
+    expect(barradas).toEqual([]); // desde 2026-10-11 nem a expressão leiga é barrada
     let varridas = 0;
     for (const f of FRASES_MEDICAS) if (await varredura(f)) varridas++;
-    expect(varridas).toBeGreaterThanOrEqual(2); // a varredura do administrador é ampla de propósito (a equipe lê e decide)
+    expect(varridas).toBe(4); // as 4 frases da especialidade "Clínica Médica": a varredura do administrador é ampla de propósito (a equipe lê e decide)
     // fonte oficial com "Clínica Médica" no nome some da lista do aluno
     const fica = async (item: unknown) => ((await comoAluna(`select public.ch_student_sources($1::jsonb) as r`, [JSON.stringify([item])]))[0].r as unknown[]).length === 1;
     expect(await fica({ title: "Diretriz Brasileira de Hipertensão", organization: "Sociedade Brasileira de Clínica Médica" })).toBe(true); // corrigido
