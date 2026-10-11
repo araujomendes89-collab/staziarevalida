@@ -314,3 +314,32 @@ describe("Q06 — a lista da aba pagina de verdade (o banco devolve no máximo 2
     expect([seen[0], seen[229]]).toEqual(["revalida_2023_1_q001", "revalida_2023_1_q230"]); // na ordem da prova e do número
   });
 });
+
+describe("Q15 — o Início conta, no tema prioritário, só as questões que entram no treino", () => {
+  it("anulada e questão que cita figura sem imagem ficam fora da contagem; a que tem a imagem vinculada entra", async () => {
+    const topic = "Tema do Início Q15";
+    for (const n of [140, 141, 142, 143, 144]) await save(q(n, { topic }));
+    await sql(`update public.questions set needs_image = true where id = any ($1)`, [[142, 143].map(idOf)]); // cita figura
+    await sql(`update public.questions set images = '[{"path": "q143.png"}]'::jsonb where id = $1`, [idOf(143)]); // esta tem a imagem
+    await sql(`update public.questions set status = 'annulled' where id = $1`, [idOf(144)]);
+    // o aluno erra a 140 (a 141 fica sem resposta)
+    const s = await session(ANA, [140]);
+    await answer(ANA, s, 140, "A");
+
+    const home = await rpc(ANA, "app_home");
+    const t = home.priority_topics.find((x: any) => x.topic === topic);
+    // 140, 141 e 143 entram no treino; 142 (figura sem imagem) e 144 (anulada) não
+    expect(t).toMatchObject({ topic, pending: 1, questions: 3 });
+    // é a mesma conta do treino
+    const pool = await sql<any>(`select count(*)::int n from public.practice_pool('{}'::jsonb) p join public.questions q on q.id = p.question_id where q.topic = $1`, [topic]);
+    expect(pool[0].n).toBe(3);
+  });
+
+  it("a migração pode ser colada duas vezes e o Início continua igual", async () => {
+    const text = fs.readFileSync(path.join(MIGRATIONS, "20261003009502_inicio_questoes_do_treino.sql"), "utf8");
+    await db.exec(text);
+    await db.exec(text);
+    const t = (await rpc(ANA, "app_home")).priority_topics.find((x: any) => x.topic === "Tema do Início Q15");
+    expect(t.questions).toBe(3);
+  });
+});
