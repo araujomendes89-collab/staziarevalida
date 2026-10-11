@@ -9,7 +9,7 @@ import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
 import { XPToast } from "../play/PlayFeedback.jsx";
-import { durationLabel, lessonFileUrl, lessonsAvailable, sizeLabel, videoEmbed } from "./lessonsApi.js";
+import { durationLabel, lessonFileUrl, lessonsAvailable, materialTitle, sizeLabel, videoEmbed } from "./lessonsApi.js";
 import { PodcastsSection } from "../podcasts/PodcastsSection.jsx";
 
 const AREA_ICON = { CLINICA_MEDICA: "stethoscope", CIRURGIA_GERAL: "scissors", PEDIATRIA: "baby", GINECOLOGIA_OBSTETRICIA: "heart-pulse", MEDICINA_FAMILIA_COMUNIDADE: "shield-plus" };
@@ -149,6 +149,8 @@ function Video({ url, lesson }) {
   );
 }
 
+// PDF e MP3 enviados: o aluno nunca vê o nome do arquivo do computador de quem enviou (A05); só o rótulo e o tamanho
+const FILE_KINDS = new Set(["slides", "flashcast"]);
 const MATERIAL = { slides: ["file-text", "Material complementar", "PDF"], flashcast: ["headphones", "Áudio Flashcast", "MP3"], guideline: ["shield-check", "Diretriz SUS / PCDT", ""], other: ["paperclip", "Material", ""] };
 
 /** Linha fixa de material (como no app anterior): "Disponível" com o botão, ou "Não disponível". */
@@ -199,14 +201,14 @@ function Material({ m, backend }) {
             {label}{kind ? ` (${kind})` : ""}
             <Badge size="sm" tone="success" icon="check">Disponível</Badge>
           </div>
-          <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{[m.title, m.size_bytes ? sizeLabel(m.size_bytes) : null].filter(Boolean).join(" · ")}</div>
+          <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginTop: 2 }}>{[FILE_KINDS.has(m.kind) ? null : materialTitle(m.title), m.size_bytes ? sizeLabel(m.size_bytes) : null].filter(Boolean).join(" · ")}</div>
         </div>
         <Button size="sm" variant="secondary" icon={m.url ? "external-link" : m.kind === "flashcast" ? "play" : "download"} loading={state.busy} onClick={open} disabled={!m.url && (!m.has_file || !lessonsAvailable(backend))}>
           {m.url ? "Abrir" : m.kind === "flashcast" ? (state.url ? "Pronto" : "Ouvir") : "Abrir"}
         </Button>
       </div>
       {state.error && <span style={{ font: "var(--type-caption)", color: "var(--danger-text)" }}>{state.error}</span>}
-      {m.kind === "flashcast" && state.url && <audio controls autoPlay src={state.url} style={{ width: "100%" }} aria-label={`Áudio: ${m.title}`} />}
+      {m.kind === "flashcast" && state.url && <audio controls autoPlay src={state.url} style={{ width: "100%" }} aria-label="Áudio Flashcast" />}
     </div>
   );
 }
