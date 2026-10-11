@@ -259,3 +259,24 @@ describe("US06 · combinações do plano sem efeito", () => {
     expect(screen.queryByText(SEM_ACESSO)).toBeNull();
   });
 });
+
+describe("US03 · repetidos entre páginas", () => {
+  it("quem o banco devolve de novo em páginas posteriores aparece uma vez só (em todas as páginas somadas)", async () => {
+    users = Array.from({ length: 150 }, (_, i) => person(i + 1));
+    const original = backend.rpc.getMockImplementation();
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      // página 2 repete 3 da página 1; página 3 repete 10 da página 2 (empate de ordem ou cadastro novo no meio)
+      if (fn === "app_admin_users" && args.p_offset === 50) return { total: 150, items: users.slice(47, 97) };
+      if (fn === "app_admin_users" && args.p_offset === 100) return { total: 150, items: users.slice(87, 137) };
+      return original(fn, args);
+    });
+    render(<AdminUsers />);
+    await screen.findByText("150 usuários");
+    fireEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^Abrir / })).toHaveLength(97));
+    fireEvent.click(screen.getByRole("button", { name: "Carregar mais" }));
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^Abrir / })).toHaveLength(137));
+    const nomes = screen.getAllByRole("button", { name: /^Abrir / }).map((b) => b.getAttribute("aria-label"));
+    expect(new Set(nomes).size).toBe(nomes.length);
+  });
+});

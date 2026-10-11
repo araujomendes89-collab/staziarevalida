@@ -286,8 +286,10 @@ export function AdminUsers() {
       if (mine === generation.current) setMore((m) => ({ ...m, loading: false, error }));
     }
   };
-  const seen = new Set((list.data?.items ?? []).map((u) => u.id));
-  const items = list.data ? [...list.data.items, ...more.items.filter((u) => !seen.has(u.id))] : [];
+  // Sem repetir ninguém em nenhuma das páginas somadas (cadastro novo no meio ou empate de ordem podem trazer a mesma pessoa de novo).
+  const items = [];
+  const seen = new Set();
+  for (const u of list.data ? [...list.data.items, ...more.items] : []) if (!seen.has(u.id)) (seen.add(u.id), items.push(u));
   const total = more.total ?? list.data?.total ?? 0;
 
   if (selected) return <UserDetail id={selected} onBack={() => setSelected(null)} onChanged={list.reload} />;
