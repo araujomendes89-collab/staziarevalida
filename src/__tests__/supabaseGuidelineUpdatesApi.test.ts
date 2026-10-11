@@ -5,7 +5,7 @@
  * só o administrador publica, editar depois da conferência volta a revisão, e o aluno só vê o que foi publicado.
  * Correções de 10/10/2026 (…7800_atualizacoes_publicar_so_conferida.sql): publicar exige conferência aprovada (AT03),
  * recusar uma publicada tira do ar (AT01) e mudar o texto de uma publicada tira do ar até nova conferência (AT02).
- * Polimento do Registro (…7810_registro_atualizacoes.sql): o revisor que tenta levar uma atualização da área dele para
+ * Polimento do Registro (…9510_registro_atualizacoes.sql): o revisor que tenta levar uma atualização da área dele para
  * outra área recebe uma mensagem que diz exatamente isso; o que o banco grava no registro aparece em português na tela.
  */
 import { beforeAll, describe, expect, it } from "vitest";
