@@ -260,3 +260,23 @@ describe("Registro: os nomes de IA do Registro são os da Central de IAs", () =>
     expect(Object.fromEntries(pairs)).toEqual(AI_FUNCTION_NAME);
   });
 });
+
+describe("Registro: de quem foi o papel ou o plano alterado (RG02)", () => {
+  it("papel e plano mostram a pessoa afetada; conta apagada diz conta excluída; sem a informação do banco, só a mudança", () => {
+    const role = { action: "user.role", target: UUID, actor: "adm@t.dev", details: { from: "student", to: "admin" } };
+    expect(auditSummary({ ...role, subject: "ana@t.dev" })).toBe("Pessoa: ana@t.dev · Aluno → Administrador");
+    expect(auditSummary({ ...role, subject: null })).toBe("Pessoa: conta excluída · Aluno → Administrador");
+    // banco ainda sem a função nova: não dá para dizer quem era (nem que a conta foi apagada)
+    expect(auditSummary(role)).toBe("Aluno → Administrador");
+    const plan = { action: "user.subscription", target: UUID, actor: "adm@t.dev", details: { to: { plan: "pro", status: "active" } } };
+    expect(auditSummary({ ...plan, subject: "ana@t.dev" })).toBe("Pessoa: ana@t.dev · Pro · Ativo");
+    expect(auditSummary({ ...plan, subject: null })).toBe("Pessoa: conta excluída · Pro · Ativo");
+    expect(auditSummary(plan)).toBe("Pro · Ativo");
+    // a exclusão já guarda o e-mail; o recálculo de pontos diz de qual aluno
+    expect(auditSummary({ action: "user.delete", target: UUID, details: { email: "antigo@t.dev" } })).toBe("antigo@t.dev");
+    expect(auditSummary({ action: "gamification.recalculate", target: UUID, subject: "ana@t.dev", details: {} })).toBe("Aluno: ana@t.dev");
+    expect(auditSummary({ action: "gamification.recalculate", target: UUID, subject: null, details: {} })).toBe("Aluno: conta excluída");
+    expect(auditSummary({ action: "gamification.recalculate", target: UUID, details: {} })).toBe("");
+    for (const e of [{ ...role, subject: "ana@t.dev" }, { ...plan, subject: null }]) expect(auditSummary(e)).not.toContain(UUID);
+  });
+});

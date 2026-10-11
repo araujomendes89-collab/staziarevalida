@@ -7,7 +7,7 @@
  * feita pela migração 7800 aparece como "Retirada automática pela regra nova" (não como "conta excluída"), também nas
  * linhas sem a marca "automatica". As ações novas das Questões aparecem em português, com a questão (polimento 10/10/2026).
  * RG03 (11/10/2026): aulas, podcasts, Stazia Arena, Tutor e Central de IAs aparecem com nome e resumo em português (o
- * título da aula ou do episódio vem do banco), sem código técnico.
+ * título da aula ou do episódio vem do banco), sem código técnico. RG02: papel e plano alterados dizem de quem foi.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -310,6 +310,21 @@ describe("Registro (Administração)", () => {
     expect(screen.getByText("Material de aula apagado")).toBeTruthy();
     // nenhum nome técnico de ação (aula.delete, podcast.script.ai, ai.provider, tutor.voice.approve…) aparece na tela
     expect(container.textContent).not.toMatch(/\b(lesson|podcast|gamification|tutor|ai)\.[a-z_.]+/);
+    expect(container.textContent).not.toContain(ID);
+  });
+  it("RG02: papel e plano alterados mostram o e-mail da pessoa afetada; conta apagada diz conta excluída", async () => {
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_admin_audit") return [
+        { id: 3, action: "user.role", target: ID, created_at: at, actor: "adm@t.dev", subject: "ana@t.dev", details: { from: "student", to: "admin" } },
+        { id: 2, action: "user.subscription", target: ID, created_at: at, actor: "adm@t.dev", subject: null, details: { to: { plan: "pro", status: "active" } } },
+        { id: 1, action: "user.delete", target: ID, created_at: at, actor: "adm@t.dev", subject: null, details: { email: "antigo@t.dev" } },
+      ];
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    const { container } = render(<AdminAudit />);
+    expect(await screen.findByText("Pessoa: ana@t.dev · Aluno → Administrador")).toBeTruthy();
+    expect(screen.getByText("Pessoa: conta excluída · Pro · Ativo")).toBeTruthy();
+    expect(screen.getByText("antigo@t.dev")).toBeTruthy();
     expect(container.textContent).not.toContain(ID);
   });
 });

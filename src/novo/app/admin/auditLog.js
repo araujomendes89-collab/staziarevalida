@@ -172,9 +172,13 @@ const ruleValue = (value) => {
   return `valor ${text.length > 80 ? `${text.slice(0, 77)}…` : text}`;
 };
 
+// A pessoa afetada (e-mail buscado pelo banco ao mostrar o Registro: campo "subject"). null = a conta foi apagada;
+// sem o campo (banco ainda sem a função nova) não dá para dizer quem era.
+const person = (entry, label = "Pessoa") => (entry.subject === undefined ? "" : `${label}: ${entry.subject || "conta excluída"}`);
+
 const SUMMARY = {
-  "user.role": (d) => `${ROLE_LABEL[d.from] ?? d.from} → ${ROLE_LABEL[d.to] ?? d.to}`,
-  "user.subscription": (d) => `${PLAN_LABEL[d.to?.plan] ?? d.to?.plan} · ${SUB_STATUS_LABEL[d.to?.status] ?? d.to?.status}`,
+  "user.role": (d, entry) => join([person(entry), `${ROLE_LABEL[d.from] ?? d.from} → ${ROLE_LABEL[d.to] ?? d.to}`]),
+  "user.subscription": (d, entry) => join([person(entry), `${PLAN_LABEL[d.to?.plan] ?? d.to?.plan} · ${SUB_STATUS_LABEL[d.to?.status] ?? d.to?.status}`]),
   "user.delete": (d) => d.email,
   "plan.save": (d, entry) => `${PLAN_LABEL[entry.target] ?? entry.target}${d.active ? " · à venda" : ""}`,
   "settings.save": (d) =>
@@ -228,7 +232,7 @@ const SUMMARY = {
   "tutor.voice.approve": (d) => own(VOICE_NAME, d.voice) && `Voz: ${VOICE_NAME[d.voice]}`,
   "tutor.voice.revoke": (d) => own(VOICE_NAME, d.voice) && `Voz: ${VOICE_NAME[d.voice]}`,
   "gamification.rule": (d, entry) => join([`Regra ${entry.target}: ${ruleValue(d.value)}`, d.enabled === false && "regra desativada"]),
-  "gamification.recalculate": (d, entry) => `Aluno: ${entry.subject || "conta excluída"}`,
+  "gamification.recalculate": (d, entry) => person(entry, "Aluno"),
   "gamification.achievement": (d) => d.name,
   "gamification.mission": (d) => d.title,
   "gamification.reward": (d) => d.name,

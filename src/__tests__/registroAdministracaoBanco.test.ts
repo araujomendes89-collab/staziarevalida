@@ -39,6 +39,46 @@ beforeAll(async () => {
   await db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [EDITOR]);
 }, 300_000);
 
+describe("RG02: o Registro diz de quem foi o papel ou o plano alterado", () => {
+  it("papel e plano mostram o e-mail da pessoa afetada; as outras ações vêm sem pessoa", async () => {
+    const bruno = "00000000-0000-4000-8000-0000000000b2";
+    await db.query(`insert into auth.users (id, email) values ($1, 'bruno@t.dev')`, [bruno]);
+    await rpc(ADMIN, "app_admin_set_role", { p_user_id: bruno, p_role: "editor" });
+    await rpc(ADMIN, "app_admin_set_subscription", { p_user_id: bruno, p_plan: "pro", p_status: "active" });
+    await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { area: "PEDIATRIA", topic: "Asma", title: "Asma na infância" } });
+    const log = await rpc(ADMIN, "app_admin_audit", { p_limit: 30 });
+    const doBruno = (action: string) => log.find((l: any) => l.action === action && l.target === bruno);
+    expect(doBruno("user.role")).toMatchObject({ subject: "bruno@t.dev", actor: "adm@t.dev" });
+    expect(doBruno("user.subscription")).toMatchObject({ subject: "bruno@t.dev", actor: "adm@t.dev" });
+    // nada novo foi gravado no registro: o e-mail é buscado na hora de mostrar (sem copiar dado pessoal)
+    expect(doBruno("user.role").details).toEqual({ from: "student", to: "editor" });
+    expect(log.find((l: any) => l.action === "lesson.save").subject).toBeNull();
+    // a conta apagada: o registro continua, sem e-mail (a tela diz "conta excluída"); a exclusão guarda o e-mail no próprio registro
+    expect(await rpc(ADMIN, "app_admin_delete_user", { p_user_id: bruno, p_confirm_email: "bruno@t.dev" })).toBe(true);
+    const depois = await rpc(ADMIN, "app_admin_audit", { p_limit: 30 });
+    expect(depois.find((l: any) => l.action === "user.role" && l.target === bruno).subject).toBeNull();
+    expect(depois.find((l: any) => l.action === "user.delete")).toMatchObject({ target: bruno, subject: null, details: { email: "bruno@t.dev" } });
+  });
+
+  it("só o administrador vê o e-mail: editor, aluno e visitante não chamam o Registro nem as funções que buscam o e-mail", async () => {
+    await expect(rpc(EDITOR, "app_admin_audit", { p_limit: 5 })).rejects.toThrow(/administradores/);
+    await expect(rpc(ANA, "app_admin_audit", { p_limit: 5 })).rejects.toThrow(/administradores/);
+    await expect(rpc(null, "app_admin_audit", { p_limit: 5 })).rejects.toThrow(/permission denied/);
+    // as funções auxiliares são internas: nem o administrador logado as chama de fora
+    await expect(rpc(ADMIN, "admin_audit_subject", { p_action: "user.role", p_target: ANA })).rejects.toThrow(/permission denied/);
+    await expect(rpc(ADMIN, "admin_audit_title", { p_action: "lesson.save", p_target: ANA })).rejects.toThrow(/permission denied/);
+    // direto na tabela: o editor e o aluno não leem o registro
+    const leitura = async (uid: string) => db.transaction(async (tx) => {
+      await tx.exec("set local role authenticated");
+      await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: uid })]);
+      return (await tx.query<any>(`select count(*)::int n from public.admin_audit_log`)).rows[0].n;
+    });
+    expect(await leitura(EDITOR)).toBe(0);
+    expect(await leitura(ANA)).toBe(0);
+    expect(await leitura(ADMIN)).toBeGreaterThan(0);
+  });
+});
+
 describe("RG03: título de aulas e podcasts no Registro", () => {
   it("aula e podcast mostram o título, também depois de apagados; as outras ações vêm sem título", async () => {
     const aula = await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { area: "PEDIATRIA", topic: "Bronquiolite", title: "Bronquiolite viral aguda" } });
