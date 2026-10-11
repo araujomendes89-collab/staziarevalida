@@ -17,6 +17,7 @@ import type { AiProvider, StructuredRequest } from "../contentHub/ai/provider";
 import { fetchLink, type ExtractedPage } from "../podcasts/extract";
 import { aiChoices } from "../ai/maestro";
 import type { ModelRef } from "../ai/config";
+import { loadComplementarTerms } from "../contentHub/complementarGuard";
 import { AREA_CODES, generateLessonAssist, MAX_ASSIST_CHARS, type AssistProvider } from "./assist";
 
 export const LESSONS_BUCKET = "lessons";
@@ -219,6 +220,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       let r;
       try {
         r = await generateLessonAssist({
+          terms: await loadComplementarTerms(deps!.db),
           kind: kind as AssistProvider,
           db: deps!.db,
           actorId: req.user!.id,

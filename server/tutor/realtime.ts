@@ -28,6 +28,7 @@ import { engineFor, languageIntensity, normalize, profanityForIntensity, stateLa
 import { PROFESSOR_CHANGED, TRIAL_OVER, TutorError, consentError, type Entitlement, type TutorDeps } from "./engine";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings as SessionPrefs } from "./personality";
 import { composeLiveInstructions, composeRealtimeInstructions, type TutorMode } from "./prompts";
+import { loadComplementarTerms } from "../contentHub/complementarGuard";
 import { safetyCheck, type BaseBlock } from "./safety";
 import { realKey } from "./speech";
 import { REALTIME_TOOLS } from "./tools";
@@ -459,11 +460,11 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
   }
   const check = safetyCheck(
     { reply: clean, grounding: "GENERAL", citations: [], evaluation: { error_type: "none", knowledge_gap: "", severity: 1, unsafe: false, reasoning_quality: "na", recommended_action: "none", answer_correct: "na", self_corrected: false }, justification: "NONE", reveals_answer: false, suggested_replies: [] },
-    { blocks, conversationTexts: (ctx?.history ?? []).map((h) => h.content), question: q ? { open, officialLetter: q.official_answer ?? null, officialText: (q.options ?? []).find((o: any) => o.id === q.official_answer)?.text ?? null } : null, hintLevel: null, hasUpdateCard: Boolean(q?.update_card), profanity },
+    { blocks, conversationTexts: (ctx?.history ?? []).map((h) => h.content), question: q ? { open, officialLetter: q.official_answer ?? null, officialText: (q.options ?? []).find((o: any) => o.id === q.official_answer)?.text ?? null } : null, hintLevel: null, hasUpdateCard: Boolean(q?.update_card), profanity, supportTerms: await loadComplementarTerms(deps.db) },
   );
   // valores e documentos ditos sem ferramenta não são conferíveis aqui (as ferramentas trazem fontes): o que importa barrar na voz
   // é gabarito antes da hora, ataque pessoal, palavrão acima do liberado e contestar o gabarito
-  const serious = check.violations.filter((x) => ["answer_leak", "personal_attack", "profanity", "challenges_official_answer", "ungrounded_number", "invented_reference", "currency_claim"].includes(x.code));
+  const serious = check.violations.filter((x) => ["answer_leak", "personal_attack", "profanity", "challenges_official_answer", "ungrounded_number", "invented_reference", "currency_claim", "cites_support_material"].includes(x.code));
   await deps.db.service("ch_worker_tutor_append", {
     p_user: userId, p_session_id: v.session_id, p_student: null, p_tutor: clean,
     p_meta: { realtime: true, grounding: "general", ...(serious.length ? { violations: serious.map((x) => x.code) } : {}) }, p_usage: {},

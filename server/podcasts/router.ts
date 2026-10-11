@@ -21,6 +21,7 @@ import type { AiProvider, StructuredRequest } from "../contentHub/ai/provider";
 import type { ModelRef } from "../ai/config";
 import { aiChoices } from "../ai/maestro";
 import { chunkPagesInfo, extractDocx, extractPdf, fetchLink, isPdf, isZip, MAX_SOURCE_BYTES, type ExtractedPage } from "./extract";
+import { loadComplementarTerms } from "../contentHub/complementarGuard";
 import { checkScript, generateScript, PODCAST_PROMPT_VERSION, type PodcastScript, type ScriptLine, type SourceChunk } from "./script";
 import { DEFAULT_VOICES, geminiTtsEnabled, pcmToMp3, pickVoices, SAMPLE_RATE, silence, splitParts, synthesizePart, ttsCost, ttsStatus, VOICE_OPTIONS, type PodcastVoices, type TtsKind } from "./audio";
 
@@ -348,7 +349,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const started = Date.now();
       let r;
       try {
-        r = await generateScript({ kind: kind as any, topic: m.topic || m.title, minutes: Number(m.target_minutes) || 8, chunks, notes, mockRespond: kind === "mock" ? deps!.mockScript : undefined, db: deps!.db, actorId: req.user!.id, podcastId: req.params.id, aiMaker: deps!.aiMaker });
+        r = await generateScript({ terms: await loadComplementarTerms(deps!.db), kind: kind as any, topic: m.topic || m.title, minutes: Number(m.target_minutes) || 8, chunks, notes, mockRespond: kind === "mock" ? deps!.mockScript : undefined, db: deps!.db, actorId: req.user!.id, podcastId: req.params.id, aiMaker: deps!.aiMaker });
       } catch (error: any) {
         throw httpError(error?.status ?? 502, `A IA do roteiro falhou: ${message(error)}`);
       }
@@ -376,7 +377,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const lines = normalizeLines(m.script?.lines);
       if (!lines.length) return res.json({ warnings: [] });
       const script: PodcastScript = { lines, missing: m.script?.missing ?? [] };
-      res.json({ warnings: checkScript(script, new Map(chunks.map((c) => [c.id, c]))) });
+      res.json({ warnings: checkScript(script, new Map(chunks.map((c) => [c.id, c])), undefined, await loadComplementarTerms(deps!.db)) });
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }

@@ -1,3 +1,5 @@
+import { labelIsSupportMaterial, mentionsSupportMaterial } from "../contentHub/complementarGuard";
+
 /**
  * VALIDAÇÃO DE SEGURANÇA do Stazia Tutor (regras de software, sem IA). Roda DEPOIS de a resposta ser gerada e ANTES de o aluno
  * ver ou ouvir. É o que garante que a personalidade não mexe no núcleo científico:
@@ -28,6 +30,8 @@ export interface BaseBlock {
 }
 
 export interface SafetyContext {
+  /** Títulos e órgãos de fontes complementares da biblioteca: a resposta ao aluno não pode citá-los. */
+  supportTerms?: readonly string[];
   blocks: BaseBlock[];
   /** Textos de onde um número pode vir sem citação: a fala do aluno e a conversa até aqui. */
   conversationTexts: string[];
@@ -229,6 +233,10 @@ export function safetyCheck(out: TutorOutput, ctx: SafetyContext): SafetyResult 
   const cur = reply.match(CURRENCY_CLAIM);
   if (cur && !officialCited && !ctx.hasUpdateCard) add("currency_claim", `Afirma vigência ou mudança de conduta sem fonte na base: "${cur[0].trim()}".`);
 
+  // 3b. material complementar (apostila) nunca é citado ao aluno, nem o nome dele
+  const material = mentionsSupportMaterial(reply, ctx.supportTerms ?? []);
+  if (material.length) add("cites_support_material", `Cita material de apoio (${material.map((m) => `"${m}"`).join(", ")}).`);
+
   // 4. gabarito oficial é histórico
   if (CHALLENGE.test(reply)) add("challenges_official_answer", "Contesta o gabarito oficial da prova.");
 
@@ -262,7 +270,7 @@ export function safetyCheck(out: TutorOutput, ctx: SafetyContext): SafetyResult 
         : folded.includes(INSUFFICIENT) || out.grounding === "INSUFFICIENT"
           ? "insufficient"
           : "general";
-  return { violations: v, grounding, sources: valid.filter((b) => b.kind !== "question").map((b) => ({ ref: b.ref, label: b.label })) };
+  return { violations: v, grounding, sources: valid.filter((b) => b.kind !== "question" && !labelIsSupportMaterial(b.label, ctx.supportTerms ?? [])).map((b) => ({ ref: b.ref, label: b.label })) };
 }
 
 /** Resposta fixa quando a IA insiste em algo que a validação barra. Honesta, sem personagem e sem cara de aviso de sistema. */

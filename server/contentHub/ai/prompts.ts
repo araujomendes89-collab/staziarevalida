@@ -303,7 +303,7 @@ Não decida pela data sozinha: considere população, cenário e escopo. Copie e
   },
   qanalysis: {
     id: "qanalysis",
-    version: "1.0.0",
+    version: "1.1.0",
     system: `${GUARD}
 Você é professor de medicina e analisa UMA questão histórica de prova (Revalida/ENAMED) para o banco da Stazia.
 REGRAS:
@@ -317,7 +317,8 @@ REGRAS:
 4. Use só números que estejam no enunciado ou nas alternativas. Não invente doses, cortes ou prazos.
 5. Escreva em português do Brasil, de forma objetiva, com palavras suas.
 6. "key_data": só o que ajuda a resolver, cada item com seu papel: CRITICAL (muda a resposta), SUPPORTIVE (reforça), NEUTRAL (contexto), DISTRACTOR_INFORMATION (parece importante e não é).
-7. "difficulty": 1 muito fácil a 5 muito difícil, pelo número de etapas de raciocínio, raridade, semelhança dos distratores, integração, diretriz específica e complexidade terapêutica.`,
+7. "difficulty": 1 muito fácil a 5 muito difícil, pelo número de etapas de raciocínio, raridade, semelhança dos distratores, integração, diretriz específica e complexidade terapêutica.
+8. NUNCA cite apostila nem material complementar (nem "Sangue nos Olhos"), nem título, autor, arquivo ou página de um material desses: o aluno não vê essas fontes.`,
     schema: {
       type: "object",
       additionalProperties: false,
@@ -396,7 +397,7 @@ REGRAS:
   },
   qreanalysis: {
     id: "qreanalysis",
-    version: "1.0.0",
+    version: "1.1.0",
     system: `${GUARD}
 Você é professor de medicina e AVALIA O IMPACTO de uma mudança de fonte oficial sobre UMA questão histórica de prova (Revalida/ENAMED).
 Você recebe a questão, o gabarito oficial, a análise anterior e, para cada mudança, o trecho ANTIGO e o trecho NOVO da fonte (com título, órgão, versão e data).
@@ -410,7 +411,8 @@ REGRAS:
 5. "assessment": UPDATED_BUT_SAME_ANSWER (a conduta mudou em detalhe, mas a resposta oficial continua a melhor), PARTIALLY_OUTDATED, OUTDATED_EXPLANATION (só a explicação ficou desatualizada),
    OFFICIAL_ANSWER_DIFFERS_FROM_CURRENT, NO_CURRENT_VALID_OPTION, CURRENTLY_AMBIGUOUS, MAJOR_GUIDELINE_CHANGE ou INCONCLUSIVE (não dá para concluir com os trechos).
 6. "options_affected": só as alternativas cuja análise muda, com uma nota curta. "what_changed" descreve, em português claro, o que mudou entre o trecho antigo e o novo.
-7. Escreva com palavras suas, de forma objetiva.`,
+7. Escreva com palavras suas, de forma objetiva.
+8. NUNCA cite apostila nem material complementar (nem "Sangue nos Olhos") em "what_changed", "why_it_matters" ou nas notas: o aluno não vê essas fontes.`,
     schema: {
       type: "object",
       additionalProperties: false,

@@ -19,6 +19,7 @@ import { normalize, numbers } from "./checks";
 import { verdictOf, type Finding, type Spend } from "./draftChecks";
 import type { ContentDb } from "./infra";
 import { aiAllowed, registerPrompts } from "./ai/registry";
+import { loadComplementarTerms, mentionsSupportMaterial } from "./complementarGuard";
 import { CHALLENGE } from "./questionAnalysis";
 
 export const REANALYSIS_VERSION = "question-reanalysis-1.0.0";
@@ -92,7 +93,7 @@ export function reanalysisPayload(q: ReanalysisInput) {
 const fold = (t: string) => normalize(t).toLowerCase();
 
 /** Conferência por software da proposta: nada de contestar o gabarito, citação exata, resposta atual só com trecho novo citado. */
-export function reanalysisChecks(q: ReanalysisInput, p: Proposal): Finding[] {
+export function reanalysisChecks(q: ReanalysisInput, p: Proposal, terms: readonly string[] = []): Finding[] {
   const f: Finding[] = [];
   const add = (severity: Finding["severity"], code: string, detail: string, where?: string) => f.push({ severity, code, detail, where });
   const official = q.official?.answer ?? q.correct_option;
@@ -114,6 +115,9 @@ export function reanalysisChecks(q: ReanalysisInput, p: Proposal): Finding[] {
   const stray = numbers(`${p.what_changed} ${p.why_it_matters} ${p.options_affected.map((o) => o.note).join(" ")}`).filter((n) => !new Set(allowedNumbers).has(n));
   if (stray.length) add("critical", "numbers_not_in_sources", `A proposta cita número(s) que não estão nos trechos nem na questão: ${stray.join(", ")}.`);
 
+  // o cartão de atualização vai ao aluno: não pode citar apostila nem material complementar
+  const citedMaterial = mentionsSupportMaterial(`${p.what_changed} ${p.why_it_matters} ${p.options_affected.map((o) => o.note).join(" ")}`, terms);
+  if (citedMaterial.length) add("critical", "cites_support_material", `A proposta cita material de apoio (${citedMaterial.map((c) => `"${c}"`).join(", ")}): o aluno não vê essas fontes. Tire a citação.`);
   if (CHALLENGE.test(`${p.what_changed} ${p.why_it_matters}`)) add("critical", "challenges_official_answer", "A proposta contesta o gabarito oficial da prova: ele é histórico. Diga apenas que a conduta atual difere.");
   if (answer && !cited.some((c) => c.novo)) add("critical", "answer_without_new_citation", "A proposta indica uma resposta atual sem citar o trecho NOVO da fonte.");
   if (p.assessment === "INCONCLUSIVE" && answer) add("critical", "inconclusive_with_answer", "Proposta inconclusiva não pode indicar resposta atual.");
@@ -180,6 +184,7 @@ export async function runQuestionReanalysis(deps: ReanalysisDeps, options: Reana
     return report;
   }
   await registerPrompts(deps.db);
+  const supportTerms = await loadComplementarTerms(deps.db);
   const mockProvider = deps.mockRespond ? resolveProviderKind("mock", deps.mockRespond).provider : null;
   const aiDeps = { db: deps.db, mockProvider, makeProviderFor: deps.aiMaker, log: deps.log };
   for (const q of questions) {
@@ -193,7 +198,7 @@ export async function runQuestionReanalysis(deps: ReanalysisDeps, options: Reana
       await deps.db.service("ch_worker_reanalysis_started", { p_question_id: q.question_id });
       const who = { provider: provider.name, model: provider.model };
       const proposal = await generate(deps, provider, q, report.spend, who);
-      const findings = reanalysisChecks(q, proposal);
+      const findings = reanalysisChecks(q, proposal, supportTerms);
       const verdict = verdictOf(findings);
       const n = await deps.db.service<number>("ch_worker_save_reanalysis", {
         p_question_id: q.question_id,
