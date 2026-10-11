@@ -293,7 +293,7 @@ describe("Banco", () => {
     }
   });
 
-  it("busca_fontes na Central: só sozinha, sem Ollama, máximo de 1 a 10", async () => {
+  it("busca_fontes na Central: só sozinha, sem Ollama nem Gemini, máximo de 1 a 10", async () => {
     const C = { provider: "anthropic", model: "claude-x" };
     const save = (key: string, config: unknown) => t.db.service<any>("ch_worker_ai_save_function", { p_actor: t.ADMIN, p_key: key, p_config: config });
     try {
@@ -301,6 +301,13 @@ describe("Banco", () => {
       await expect(save("busca_fontes", { mode: "comite", primary_ref: C })).rejects.toThrow(/só usa o modo sozinha/);
       await expect(save("busca_fontes", { mode: "sozinha", primary_ref: { provider: "ollama", model: "llama-x" } })).rejects.toThrow(/Ollama não busca na internet/);
       await expect(save("busca_fontes", { mode: "sozinha", primary_ref: C, fallback_ref: { provider: "ollama", model: "llama-x" } })).rejects.toThrow(/Ollama não busca/);
+      // Gemini: recusado como principal e como reserva, com a mensagem pedida; Claude e OpenAI passam; as outras funções aceitam
+      const GEM = { provider: "gemini", model: "gemini-x" };
+      const noGemini = /A busca de fontes oficiais não funciona com o Gemini: ele não consegue limitar a pesquisa aos sites oficiais\. Escolha Claude ou OpenAI\./;
+      await expect(save("busca_fontes", { mode: "sozinha", primary_ref: GEM })).rejects.toThrow(noGemini);
+      await expect(save("busca_fontes", { mode: "sozinha", primary_ref: C, fallback_ref: GEM })).rejects.toThrow(noGemini);
+      await expect(save("busca_fontes", { mode: "sozinha", primary_ref: GEM, fallback_ref: C })).rejects.toThrow(noGemini);
+      await expect(save("busca_fontes", { mode: "sozinha", primary_ref: { provider: "ollama", model: "llama-x" }, fallback_ref: GEM })).rejects.toThrow(/Ollama não busca/);
       await expect(save("busca_fontes", { mode: "sozinha", primary_ref: C, reviewers: [{ provider: "openai", model: "gpt-x" }] })).rejects.toThrow(/conferentes/);
       await expect(save("busca_fontes", { mode: "sozinha", primary_ref: C, max_searches: 11 })).rejects.toThrow(/de 1 a 10/);
       await expect(save("busca_fontes", { mode: "sozinha", primary_ref: C, max_searches: 0 })).rejects.toThrow(/de 1 a 10/);
@@ -920,12 +927,20 @@ describe("Migração 9610", () => {
     const domain = (await sql(`select id from public.ch_official_domains where address = 'who.int'`))[0];
     await asAdmin("app_ch_save_official_domain", { p_domain: { id: domain.id, address: "who.int", institution: "Organização Mundial da Saúde", kind: "internacional", active: false } });
     const cand = await createCandidate();
+    const defOf = async () => (await sql(`select pg_get_functiondef('public.ch_worker_ai_save_function(uuid,text,jsonb)'::regprocedure) as d`))[0].d as string;
+    const defBefore = await defOf();
     const before = (await sql(`select (select count(*)::int from public.ch_official_domains) as domains, (select count(*)::int from public.ch_source_candidates) as cands, (select count(*)::int from public.ch_source_searches) as searches`))[0];
     try {
       await t.dev.db.exec(src());
       await t.dev.db.exec(src());
       const after = (await sql(`select (select count(*)::int from public.ch_official_domains) as domains, (select count(*)::int from public.ch_source_candidates) as cands, (select count(*)::int from public.ch_source_searches) as searches`))[0];
       expect(after).toEqual(before);
+      // a regra do Gemini é a mesma depois de colar de novo (a função do banco não muda)
+      expect(await defOf()).toBe(defBefore);
+      expect(defBefore).toContain("não funciona com o Gemini");
+      await expect(
+        t.db.service("ch_worker_ai_save_function", { p_actor: t.ADMIN, p_key: "busca_fontes", p_config: { mode: "sozinha", primary_ref: { provider: "gemini", model: "gemini-x" } } })
+      ).rejects.toThrow(/não funciona com o Gemini/);
       // o site que o dono desativou continua desativado; o candidato continua lá
       expect((await sql(`select active from public.ch_official_domains where id = $1`, [domain.id]))[0].active).toBe(false);
       expect((await asAdmin("app_ch_source_candidate", { p_candidate_id: cand.id })).id).toBe(cand.id);

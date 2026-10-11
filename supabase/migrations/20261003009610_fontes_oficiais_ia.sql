@@ -28,7 +28,7 @@
 --     E arquivo ou versão diferente), usada pelo aviso da tela (replaces), pela confirmação da aprovação e por
 --     app_ch_register_source;
 --   * função busca_fontes da Central de IAs: sem configuração salva fica DESLIGADA (não usa as variáveis de ambiente);
---     só modo sozinha (principal + reserva), sem conferentes, Ollama recusado; de 1 a 10 buscas por pedido (nulo = padrão
+--     só modo sozinha (principal + reserva), sem conferentes, Ollama e Gemini recusados; de 1 a 10 buscas por pedido (nulo = padrão
 --     do servidor, 5);
 --   * regras recriadas com a união de todos os ramos, para a ordem das migrações não apagar nada: etapas de ch_jobs
 --     (até materiais visuais, estações, Questões StaziaMed e source_search) e chaves de ai_functions (as 6 + busca_fontes).
@@ -786,7 +786,7 @@ $$;
 -- (corpos de 20261003005200_central_de_ias.sql; nenhuma migração posterior as redefiniu)
 
 -- p_config = null apaga a linha: as outras funções voltam às variáveis de ambiente; busca_fontes fica desligada.
--- busca_fontes: só modo sozinha, sem conferentes, sem Ollama, max_searches nulo ou de 1 a 10. Nas outras, max_searches nulo.
+-- busca_fontes: só modo sozinha, sem conferentes, sem Ollama e sem Gemini (não limita a pesquisa aos sites oficiais), max_searches nulo ou de 1 a 10. Nas outras, max_searches nulo.
 create or replace function public.ch_worker_ai_save_function(p_actor uuid, p_key text, p_config jsonb) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
@@ -834,6 +834,9 @@ begin
     end if;
     if (p_config #>> '{primary_ref,provider}') = 'ollama' or (p_config #>> '{fallback_ref,provider}') = 'ollama' then
       raise exception 'Ollama não busca na internet.' using errcode = '22023';
+    end if;
+    if (p_config #>> '{primary_ref,provider}') = 'gemini' or (p_config #>> '{fallback_ref,provider}') = 'gemini' then
+      raise exception 'A busca de fontes oficiais não funciona com o Gemini: ele não consegue limitar a pesquisa aos sites oficiais. Escolha Claude ou OpenAI.' using errcode = '22023';
     end if;
     if jsonb_typeof(p_config -> 'max_searches') = 'number' then
       v_max_n := (p_config ->> 'max_searches')::numeric;

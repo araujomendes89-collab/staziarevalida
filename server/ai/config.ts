@@ -47,6 +47,8 @@ const CACHE_MS = 10_000;
 export const DEFAULT_MAX_SEARCHES = 5;
 /** O que a função de busca diz quando não tem configuração salva (ela nunca usa as variáveis de ambiente). */
 export const SEARCH_OFF = "Desligada: configure esta função na Central de IAs.";
+/** A busca de fontes oficiais recusa o Gemini (principal e reserva): a API dele não limita a pesquisa aos sites oficiais nem o número de buscas. */
+export const SEARCH_NO_GEMINI = "A busca de fontes oficiais não funciona com o Gemini: ele não consegue limitar a pesquisa aos sites oficiais. Escolha Claude ou OpenAI.";
 
 /** Funções que buscam na internet: só modo sozinha, sem Ollama, com máximo de buscas e preço por busca. */
 export const isSearchFunction = (fn: AiFunctionKey): boolean => fn === "busca_fontes";
@@ -424,7 +426,7 @@ const keyWarning = (id: AiProviderId) => `${PROVIDER_NAMES[id]}: sem chave neste
 
 /**
  * Problemas de uma ref: IA desligada, modelo fora da lista (não vazia) e modelo pago sem preço com os tetos ligados.
- * Para uma função de busca (`fn`): o Ollama não busca na internet e, com os tetos ligados, o modelo precisa de preço por busca
+ * Para uma função de busca (`fn`): o Ollama não busca na internet, o Gemini não limita a busca aos sites oficiais e, com os tetos ligados, o modelo precisa de preço por busca
  * (sem ele, o teto não enxergaria o custo das buscas).
  */
 export function refProblems(ref: ModelRef, cfg: AiConfig, fn?: AiFunctionKey): string[] {
@@ -439,6 +441,7 @@ export function refProblems(ref: ModelRef, cfg: AiConfig, fn?: AiFunctionKey): s
   }
   if (fn && isSearchFunction(fn)) {
     if (ref.provider === "ollama") out.push("Ollama não busca na internet.");
+    else if (ref.provider === "gemini") out.push(SEARCH_NO_GEMINI);
     else if (cfg.settings.caps_enabled && price && (price.per_search_usd ?? null) === null) {
       out.push(`${name} ${ref.model}: sem preço por busca cadastrado, e os tetos estão ligados.`);
     }

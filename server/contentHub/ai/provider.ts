@@ -507,6 +507,8 @@ export class GeminiProvider implements AiProvider {
    * vistos são os da busca (endereços de redirecionamento do Google). Resposta cortada pelo limite de saída é "cortada": o
    * maestro não repete a mesma IA (pagaria a busca de novo).
    */
+  // A função busca_fontes (Central de IAs) RECUSA o Gemini, principal ou reserva: ele não limita a pesquisa aos sites oficiais nem o
+  // número de buscas. Este código fica para outras funções que venham a usar busca; a trava está em server/ai/config.ts (refProblems).
   private async generateWithSearch<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
     const t0 = Date.now();
     throwIfCancelled(req.signal);

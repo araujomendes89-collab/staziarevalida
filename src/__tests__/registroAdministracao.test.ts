@@ -393,6 +393,14 @@ describe("Registro: o que se faz na Central de Conteúdo (RG01)", () => {
       ["question.confirm_currency", { note: "Ainda vale" }, { target: "revalida_2025_1_q045" }, "Questão confirmada como atual", "Revalida 2025/1, questão 45 · Nota: Ainda vale"],
       ["job.retry", {}, {}, "Processamento tentado de novo", ""],
       ["visual.regenerate", { version: 2 }, {}, "Material visual gerado de novo", ""],
+      // busca de fontes oficiais com IA (migração 9610)
+      ["source_domain.save", { address: "who.int", institution: "Organização Mundial da Saúde", kind: "internacional", active: true, created: true }, {}, "Site oficial salvo", "who.int · Organização Mundial da Saúde · Tipo: organização internacional · Site novo · ativo na busca"],
+      ["source_domain.save", { address: "who.int", institution: "OMS", kind: "governo", active: false, created: false }, {}, "Site oficial salvo", "who.int · OMS · Tipo: governo · Site alterado · fora da busca"],
+      ["source_search.request", { area: "PEDIATRIA", theme: "Asma", free_text: "só 2024", origin: "tema", job_id: UUID }, {}, "Busca de fontes pedida", "Tema: Asma · Área: Pediatria · Pedido: só 2024 · Tema escrito pelo administrador"],
+      ["source_search.result", { status: "concluida", message: null, found_count: 5, verified_count: 3, discarded_count: 2, web_searches: 4, cost_usd: 0.05, provider: "anthropic", model: "claude-x", run_id: UUID }, {}, "Busca de fontes concluída", "Busca concluída · 5 links achados, 3 conferidos, 2 descartados · 4 buscas na internet · custo US$ 0,05 · IA: Claude (claude-x)"],
+      ["source_candidate.edit", { fields: { title: "Novo título", level: "B" } }, {}, "Candidato a fonte editado", "Dados ajustados: título, nível"],
+      ["source_candidate.approve", { source_id: UUID, document_id: UUID, level: "A", site: "who.int", superseded: UUID }, {}, "Candidato a fonte aprovado", "Site: who.int · Nível A · Substituiu uma versão anterior da fonte"],
+      ["source_candidate.reject", { reason: "Não é oficial", site: "who.int" }, {}, "Candidato a fonte rejeitado", "Site: who.int · Motivo: Não é oficial"],
     ];
     for (const [action, details, extra, label, summary] of cases) {
       const entry = e(action, details, extra);
@@ -407,5 +415,6 @@ describe("Registro: o que se faz na Central de Conteúdo (RG01)", () => {
     expect(auditLabel(e("taxonomy.coisa_nova"))).toBe("Outra ação na Central de Conteúdo");
     expect(auditLabel(e("publish_tudo"))).toBe("Outra ação da administração");
     expect(auditLabel(e("source.coisa_nova"))).toBe("Outra ação na Central de Conteúdo");
+    for (const p of ["source_domain", "source_search", "source_candidate"]) expect(auditLabel(e(`${p}.coisa_nova`))).toBe("Outra ação na Central de Conteúdo");
   });
 });

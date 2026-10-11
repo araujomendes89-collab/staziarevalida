@@ -65,7 +65,7 @@ const subtle = { font: "var(--type-caption)", color: "var(--text-tertiary)" };
 
 export function FunctionEditor({ fnKey, label, saved, check, providers: allProviders, providerChecks, backend, onSaved }) {
   const search = fnKey === SEARCH_FN;
-  const providers = search ? allProviders.filter((p) => p.id !== "ollama") : allProviders; // o Ollama não busca na internet
+  const providers = search ? allProviders.filter((p) => p.id !== "ollama" && p.id !== "gemini") : allProviders; // o Ollama não busca na internet e o Gemini não limita a busca aos sites oficiais
   const init = () => ({
     mode: search ? "sozinha" : (saved?.mode ?? "sozinha"),
     maxSearches: saved?.max_searches == null ? "" : String(saved.max_searches),
@@ -199,7 +199,7 @@ export function FunctionEditor({ fnKey, label, saved, check, providers: allProvi
       )}
       {search && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={subtle}>Só IAs que buscam na internet (Claude, OpenAI, Gemini). Cada busca é cobrada à parte: preencha o preço por busca na tabela de preços.</div>
+          <div style={subtle}>Só IAs que buscam na internet e limitam a pesquisa aos sites oficiais (Claude e OpenAI). Cada busca é cobrada à parte: preencha o preço por busca na tabela de preços.</div>
           <div style={{ maxWidth: 280 }}>
             <TextField
               label="Máximo de buscas por pedido"

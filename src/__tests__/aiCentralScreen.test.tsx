@@ -425,9 +425,11 @@ describe("Central de IAs: Busca de fontes oficiais", () => {
     for (const title of ["Principal", "Reserva"]) {
       const select = within(box).getByLabelText(`${title}: IA — ${BF}`) as HTMLSelectElement;
       expect(Array.from(select.options).some((o) => /Ollama/.test(o.textContent ?? ""))).toBe(false);
+      expect(Array.from(select.options).some((o) => /Gemini/.test(o.textContent ?? ""))).toBe(false);
+      expect(Array.from(select.options).some((o) => /OpenAI/.test(o.textContent ?? ""))).toBe(true);
       expect(Array.from(select.options).some((o) => /Claude/.test(o.textContent ?? ""))).toBe(true);
     }
-    expect(within(box).getByText("Só IAs que buscam na internet (Claude, OpenAI, Gemini). Cada busca é cobrada à parte: preencha o preço por busca na tabela de preços.")).toBeTruthy();
+    expect(within(box).getByText("Só IAs que buscam na internet e limitam a pesquisa aos sites oficiais (Claude e OpenAI). Cada busca é cobrada à parte: preencha o preço por busca na tabela de preços.")).toBeTruthy();
     expect(within(box).getByText("Desligada: configure esta função na Central de IAs.")).toBeTruthy();
     fireEvent.change(within(box).getByLabelText(`Principal: IA — ${BF}`), { target: { value: "anthropic" } });
     fireEvent.change(within(box).getByLabelText(`Principal: modelo — ${BF}`), { target: { value: "claude-a" } });
@@ -436,6 +438,16 @@ describe("Central de IAs: Busca de fontes oficiais", () => {
     fireEvent.click(within(box).getByRole("button", { name: "Salvar" }));
     await waitFor(() => expect(putBf()).toBeTruthy());
     expect(putBf()!.body).toEqual({ config: { mode: "sozinha", care: "caprichado", primary: { provider: "anthropic", model: "claude-a" }, fallback: null, reviewers: [], max_searches: 3 } });
+  });
+
+  it("o Gemini sai da lista só na busca de fontes; as outras funções continuam com ele", async () => {
+    overview.checks.busca_fontes = { source: "variaveis", ready: false, ref: null, problems: ["Desligada: configure esta função na Central de IAs."], warnings: [] };
+    render(<AdminAI />);
+    const box = await screen.findByTestId("function-busca_fontes");
+    const names = (el: HTMLElement) => Array.from((el as HTMLSelectElement).options).map((o) => o.textContent ?? "");
+    expect(names(within(box).getByLabelText(`Principal: IA — ${BF}`)).some((n) => /Gemini/.test(n))).toBe(false);
+    const other = await screen.findByTestId("function-criacao");
+    expect(names(within(other).getByLabelText(/^Principal: IA — /)).some((n) => /Gemini/.test(n))).toBe(true);
   });
 
   it("máximo de buscas vazio envia 5 (o padrão)", async () => {

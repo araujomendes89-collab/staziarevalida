@@ -16,6 +16,7 @@ export const AI_FUNCTION_NAME = {
   assistente_preencher: "Assistente: preencher",
   assistente_conferir: "Assistente: conferir",
   assistente_revisar: "Assistente: conversar e revisar",
+  busca_fontes: "Busca de fontes oficiais",
 };
 /** Dólar em pt-BR: "US$ 0,0123" (até 4 casas); zero vira "US$ 0" (igual ao da Central de IAs). */
 const usd = (n) => {
@@ -126,6 +127,13 @@ export const ACTION_LABEL = {
   "visual.version": "Nova versão de material visual",
   "visual.duplicate": "Material visual duplicado",
   "visual.regenerate": "Material visual gerado de novo",
+  // busca de fontes oficiais com IA (migração 20261003009610: sites oficiais, buscas e candidatos a fonte)
+  "source_domain.save": "Site oficial salvo",
+  "source_search.request": "Busca de fontes pedida",
+  "source_search.result": "Busca de fontes concluída",
+  "source_candidate.edit": "Candidato a fonte editado",
+  "source_candidate.approve": "Candidato a fonte aprovado",
+  "source_candidate.reject": "Candidato a fonte rejeitado",
 };
 
 // começo do nome técnico → parte da Administração (para uma ação nova que ainda não ganhou nome acima)
@@ -135,7 +143,7 @@ const PART = {
 };
 
 // começo do nome técnico → ação da Central de Conteúdo (ch_audit)
-const CENTRAL_PART = new Set(["approve", "approval", "publish", "retire", "unit", "reviewer", "flag", "taxonomy", "document", "license", "block", "source", "conflict", "draft_question", "question_analysis", "question_update", "job", "visual"]);
+const CENTRAL_PART = new Set(["approve", "approval", "publish", "retire", "unit", "reviewer", "flag", "taxonomy", "document", "license", "block", "source", "source_domain", "source_search", "source_candidate", "conflict", "draft_question", "question_analysis", "question_update", "job", "visual"]);
 
 const own = (map, key) => (Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined);
 const join = (parts) => parts.filter(Boolean).join(" · ");
@@ -250,6 +258,18 @@ const whyOf = (d) => (typeof (d.reason ?? d.why) === "string" && String(d.reason
 const versionOf = (entry) => (entry.target && /^\d+$/.test(String(entry.target)) ? `Versão ${entry.target}` : "");
 const guidelineDecision = (d) => join([topic(d), noteOf(d, "Nota do revisor"), d.unpublished && "Saiu do ar"]);
 
+// busca de fontes oficiais: nomes em português dos valores que a migração 9610 grava
+const DOMAIN_KIND = { governo: "governo", internacional: "organização internacional", sociedade: "sociedade médica" };
+const SEARCH_ORIGIN = { tema: "Tema escrito pelo administrador", incidencia: "Tema mais cobrado nas provas" };
+const SEARCH_STATUS = {
+  na_fila: "Na fila", buscando: "Buscando", conferindo: "Conferindo os links", concluida: "Busca concluída",
+  nada_encontrado: "Nada encontrado", pendente: "Busca pendente", falhou: "Busca falhou",
+};
+const CANDIDATE_FIELD = {
+  institution: "instituição", title: "título", version: "versão", published_on: "data de publicação", kind: "tipo",
+  nature: "natureza", level: "nível", area: "área", theme: "tema", valid_until: "vigência",
+};
+
 const SUMMARY = {
   "user.role": (d, entry) => join([person(entry), `${ROLE_LABEL[d.from] ?? d.from} → ${ROLE_LABEL[d.to] ?? d.to}`]),
   "user.subscription": (d, entry) => join([person(entry), `${PLAN_LABEL[d.to?.plan] ?? d.to?.plan} · ${SUB_STATUS_LABEL[d.to?.status] ?? d.to?.status}`]),
@@ -352,6 +372,37 @@ const SUMMARY = {
   "source.authority": (d, entry) => entry.title,
   "source.registry": (d, entry) => entry.title,
   "source.change_resolved": (d, entry) => join([entry.title, noteOf(d)]),
+  "source_domain.save": (d) =>
+    join([
+      d.address,
+      d.institution,
+      own(DOMAIN_KIND, d.kind) && `Tipo: ${DOMAIN_KIND[d.kind]}`,
+      d.created === true ? "Site novo" : d.created === false && "Site alterado",
+      d.active === true ? "ativo na busca" : d.active === false && "fora da busca",
+    ]),
+  "source_search.request": (d) =>
+    join([
+      d.theme && `Tema: ${d.theme}`,
+      `Área: ${d.area ? (own(AREA_NAME, d.area) ?? "outra área") : "todas as áreas"}`,
+      d.free_text && `Pedido: ${d.free_text}`,
+      own(SEARCH_ORIGIN, d.origin),
+    ]),
+  "source_search.result": (d) =>
+    join([
+      own(SEARCH_STATUS, d.status),
+      d.found_count != null && `${count(d.found_count, "link achado", "links achados")}, ${count(d.verified_count, "conferido", "conferidos")}, ${count(d.discarded_count, "descartado", "descartados")}`,
+      d.web_searches != null && count(d.web_searches, "busca na internet", "buscas na internet"),
+      d.cost_usd != null && `custo ${usd(d.cost_usd)}`,
+      own(PROVIDER_NAME, d.provider) && `IA: ${PROVIDER_NAME[d.provider]}${d.model ? ` (${d.model})` : ""}`,
+      typeof d.message === "string" && d.message.trim() && `Aviso: ${d.message.trim()}`,
+    ]),
+  "source_candidate.edit": (d) => {
+    const fields = Object.keys(d.fields && typeof d.fields === "object" ? d.fields : {}).map((k) => own(CANDIDATE_FIELD, k)).filter(Boolean);
+    return fields.length ? `Dados ajustados: ${fields.join(", ")}` : "";
+  },
+  "source_candidate.approve": (d) =>
+    join([d.site && `Site: ${d.site}`, d.level && `Nível ${d.level}`, d.superseded && "Substituiu uma versão anterior da fonte"]),
+  "source_candidate.reject": (d) => join([d.site && `Site: ${d.site}`, whyOf(d)]),
   "block.resolve": () => "",
   "conflict.detect": (d) => d.new != null && count(d.new, "novo", "novos"),
   "conflict.resolved": (d) => noteOf(d, "Motivo"),

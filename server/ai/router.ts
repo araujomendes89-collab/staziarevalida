@@ -11,7 +11,7 @@
  *   POST /providers/:id/refresh         atualiza a lista de modelos e cadastra preços do seed que faltarem
  *   PUT  /functions/:key                { config: FunctionConfig | null }  modo, IAs e cuidado de uma função (recusa
  *                                       o que este servidor não chama: Ollama no site publicado). A busca de fontes
- *                                       oficiais (busca_fontes) só aceita o modo sozinha, sem Ollama, e leva também
+ *                                       oficiais (busca_fontes) só aceita o modo sozinha, sem Ollama e sem Gemini, e leva também
  *                                       max_searches (inteiro de 1 a 10 ou nulo = 5)
  *   PUT  /settings                      { monthly_cap_usd, per_run_cap_usd, caps_enabled, tab_override_enabled }
  *   PUT  /prices/:provider/:model       { input_per_mtok, output_per_mtok, source_url, per_search_usd? }  o preço por

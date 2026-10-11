@@ -23,6 +23,7 @@ import {
   isSearchFunction,
   loadAiConfig,
   refProblems,
+  SEARCH_NO_GEMINI,
   validateFunctionConfig,
   type ModelRef,
 } from "../../server/ai/config";
@@ -999,7 +1000,9 @@ describe("Central", () => {
     it("com os tetos ligados, todo modelo do catálogo (Claude, OpenAI e Gemini) já tem preço por busca: nenhum fica bloqueado por isso", () => {
       for (const price of PRICE_SEED) {
         const ref = { provider: price.provider, model: price.model } as any;
-        expect(refProblems(ref, mkCfg({ caps: true, enabled: [price.provider] as any, prices: [price] }), "busca_fontes"), `${price.provider}/${price.model}`).toEqual([]);
+        // o Gemini tem preço, mas a busca de fontes não o aceita (SEARCH_NO_GEMINI): o único problema dele é esse, nunca o preço
+        const expected = price.provider === "gemini" ? [SEARCH_NO_GEMINI] : [];
+        expect(refProblems(ref, mkCfg({ caps: true, enabled: [price.provider] as any, prices: [price] }), "busca_fontes"), `${price.provider}/${price.model}`).toEqual(expected);
       }
     });
 
@@ -1018,6 +1021,14 @@ describe("Central", () => {
       expect(refProblems(L, mkCfg({ caps: true }), "busca_fontes")).toEqual(["Ollama não busca na internet."]);
       expect(refProblems(L, mkCfg())).toEqual([]);
       expect(refProblems(L, mkCfg(), "criacao")).toEqual([]);
+      // Gemini: recusado na busca de fontes, com ou sem tetos; Claude e OpenAI aceitos; outras funções não mudam
+      const G = { provider: "gemini", model: "gemini-3.5-flash" } as any;
+      expect(refProblems(G, mkCfg(), "busca_fontes")).toEqual([SEARCH_NO_GEMINI]);
+      expect(refProblems(G, mkCfg({ caps: true }), "busca_fontes")).toEqual([`Gemini gemini-3.5-flash: sem preço cadastrado, e os tetos estão ligados.`, SEARCH_NO_GEMINI]);
+      expect(refProblems(G, mkCfg(), "criacao")).toEqual([]);
+      expect(refProblems(G, mkCfg())).toEqual([]);
+      expect(refProblems(O, mkCfg(), "busca_fontes")).toEqual([]);
+      expect(SEARCH_NO_GEMINI).toBe("A busca de fontes oficiais não funciona com o Gemini: ele não consegue limitar a pesquisa aos sites oficiais. Escolha Claude ou OpenAI.");
       // a IA desligada continua sendo o primeiro problema
       expect(refProblems(A, mkCfg({ enabled: [], caps: true, prices: [PRICED] }), "busca_fontes")).toEqual(["Claude está desligada na Central de IAs."]);
     });
@@ -1034,6 +1045,12 @@ describe("Central", () => {
       expect(validateFunctionConfig(searchFc({ mode: "comite", reviewers: [O] }), cfg).problems).toContain("A busca de fontes oficiais só usa o modo sozinha.");
       // Ollama como principal
       expect(validateFunctionConfig(searchFc({ primary: L }), mkCfg()).problems).toContain("Ollama não busca na internet.");
+      // Gemini como principal ou como reserva; Claude e OpenAI passam
+      const G = { provider: "gemini", model: "gemini-3.5-flash" } as any;
+      expect(validateFunctionConfig(searchFc({ primary: G }), mkCfg()).problems).toContain(SEARCH_NO_GEMINI);
+      expect(validateFunctionConfig(searchFc({ fallback: G }), mkCfg()).problems).toContain(SEARCH_NO_GEMINI);
+      expect(validateFunctionConfig(searchFc({ primary: A, fallback: O }), mkCfg()).problems).toEqual([]);
+      expect(validateFunctionConfig({ ...searchFc({ primary: G }), key: "criacao" }, mkCfg()).problems).toEqual([]);
 
       for (const bad of [0, 11, -1, 2.5, "3", Number.NaN]) {
         expect(validateFunctionConfig(searchFc({ max_searches: bad }), cfg).problems, String(bad)).toContain("Máximo de buscas por pedido: de 1 a 10.");
@@ -1168,6 +1185,43 @@ describe("Central", () => {
       expect(functionChecks(await loadAiConfig(t.db), env).busca_fontes.ready).toBe(false);
       expect((await run(deps(f, env), "busca_fontes")).status).toBe("falhou");
       expect(f.total()).toBe(0);
+    });
+
+    it("Gemini na busca de fontes: a rota recusa (principal e reserva), Claude e OpenAI passam, e um Gemini já salvo fica desligado e nunca busca", async () => {
+      await on("anthropic", "openai", "gemini");
+      refresh();
+      const G: R = { provider: "gemini", model: "gemini-3.5-flash" };
+      for (const r of [A, O, G]) await price(r, 1, 2, 0.01); // com preço: o único problema do Gemini é a regra da busca
+      refresh();
+      const put = (fn: string, config: unknown) =>
+        fetch(`${base}/functions/${fn}`, { method: "PUT", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ config }) });
+      for (const config of [{ mode: "sozinha", care: "caprichado", primary: G }, { mode: "sozinha", care: "caprichado", primary: A, fallback: G }]) {
+        const r = await put("busca_fontes", config);
+        expect(r.status).toBe(400);
+        expect((await r.json()).error).toContain(SEARCH_NO_GEMINI);
+      }
+      expect(await sql("select 1 from public.ai_functions where key = 'busca_fontes'")).toHaveLength(0);
+      expect((await put("busca_fontes", { mode: "sozinha", care: "caprichado", primary: A, fallback: O })).status).toBe(200);
+      expect((await put("busca_fontes", { mode: "sozinha", care: "caprichado", primary: O })).status).toBe(200);
+      // o Gemini segue valendo nas outras funções
+      expect((await put("criacao", { mode: "sozinha", care: "caprichado", primary: G })).status).toBe(200);
+
+      // configuração antiga já gravada com Gemini (por fora da função do banco): desligada com aviso, sem chamar ninguém
+      for (const [primary, fallback] of [[G, null], [A, G], [G, A]] as const) {
+        await sql("delete from public.ai_functions where key = 'busca_fontes'");
+        await sql("insert into public.ai_functions (key, mode, primary_ref, fallback_ref, reviewers, care) values ('busca_fontes', 'sozinha', $1::jsonb, $2::jsonb, '[]'::jsonb, 'caprichado')", [JSON.stringify(primary), fallback ? JSON.stringify(fallback) : null]);
+        refresh();
+        const check = functionChecks(await loadAiConfig(t.db), {} as NodeJS.ProcessEnv).busca_fontes;
+        expect(check.ready).toBe(false);
+        expect(check.problems).toContain(SEARCH_NO_GEMINI);
+        const f = fakes({ [key(A)]: OK, [key(G)]: OK, [key(O)]: OK });
+        const r = await run(deps(f, {}), "busca_fontes");
+        expect(r.status).toBe("falhou");
+        expect(r.message).toContain("Gemini");
+        expect(r.output).toBeNull();
+        expect(f.total()).toBe(0);
+      }
+      expect(await callCount()).toBe(0);
     });
 
     it("só modo sozinha e sem Ollama: a validação e a rota recusam", async () => {

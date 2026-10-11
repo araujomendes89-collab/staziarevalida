@@ -24,6 +24,7 @@ import {
   providerPending,
   refProblems,
   SEARCH_OFF,
+  SEARCH_NO_GEMINI,
   validateFunctionConfig,
   type AiConfig,
   type AiFunctionKey,
@@ -777,6 +778,9 @@ export async function runFunction<T>(deps: MaestroDeps, fn: AiFunctionKey, req: 
   const rs = resolveRefs(cfg, fn, env, override);
   const early = (message: string) => emptyResult<T>(crypto.randomUUID(), "falhou", message);
   if (!rs.primary) return early(isSearchFunction(fn) ? SEARCH_OFF : `Nenhuma IA definida para ${fn}: configure na Central de IAs.`);
+
+  // busca de fontes oficiais com o Gemini salvo (principal ou reserva): fica desligada, nunca busca (nem na reserva)
+  if (isSearchFunction(fn) && [rs.primary, rs.fallback].some((r) => r?.provider === "gemini")) return early(`Desligada: ${SEARCH_NO_GEMINI}`);
 
   if (rs.fc) {
     const refs = [rs.primary, rs.fallback, ...rs.reviewers].filter(Boolean) as ModelRef[];
