@@ -124,3 +124,24 @@ describe("US05 · revisor médico aparece na lista e na ficha", () => {
     await expect(rpc(null, "app_admin_users")).rejects.toThrow();
   });
 });
+
+describe("US03 · páginas da lista sem repetir nem sumir (empate no created_at)", () => {
+  it("120 pessoas com o MESMO created_at: páginas de 50 cobrem todas, uma vez cada", async () => {
+    const before = ((await db.query(`select count(*)::int as n from auth.users`)).rows[0] as any).n;
+    await db.exec(`
+      insert into auth.users (id, email, created_at)
+      select ('00000000-0000-4000-8000-' || lpad(to_hex(1000 + g), 12, '0'))::uuid, 'lote' || g || '@teste.dev', timestamptz '2026-01-01 12:00:00+00'
+      from generate_series(1, 120) g`);
+    const total = before + 120;
+    const vistos: string[] = [];
+    for (let offset = 0; offset < total; offset += 50) {
+      const page = await rpc(ADMIN, "app_admin_users", { p_limit: 50, p_offset: offset });
+      expect(page.total).toBe(total);
+      vistos.push(...page.items.map((u: any) => u.id));
+    }
+    expect(vistos).toHaveLength(total);
+    expect(new Set(vistos).size).toBe(total);
+    const todos = (await db.query(`select id from auth.users`)).rows.map((r: any) => r.id);
+    expect([...vistos].sort()).toEqual([...todos].sort());
+  });
+});

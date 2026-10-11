@@ -77,3 +77,42 @@ begin
 end
 $$;
 revoke execute on function public.app_admin_delete_user(uuid, text) from public, anon;
+
+-- 3. US03 · app_admin_users: desempate por id na ordem da lista
+-- Antes só havia "order by created_at desc": pessoas com o mesmo created_at (carga em lote, importação) podiam repetir ou
+-- sumir entre as páginas pedidas com deslocamento. Agora a ordem é created_at desc, id desc, em todos os pontos.
+-- Parte da única versão anterior (20261003001300_admin.sql); o resto é igual (assert_admin, busca, filtros, limite de 200).
+create or replace function public.app_admin_users(
+  p_search text default null, p_role text default null, p_plan text default null,
+  p_limit integer default 50, p_offset integer default 0
+) returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  v_search constant text := nullif(btrim(coalesce(p_search, '')), '');
+begin
+  perform public.assert_admin();
+  return (
+    with matched as (
+      select u.id, u.created_at
+      from auth.users u
+      left join public.profiles p on p.id = u.id
+      left join public.user_roles r on r.user_id = u.id
+      left join public.subscriptions s on s.user_id = u.id
+      where (v_search is null
+             or public.fold_text(coalesce(p.name, '') || ' ' || coalesce(u.email, '')) like '%' || public.fold_text(v_search) || '%')
+        and (nullif(p_role, '') is null or coalesce(r.role, 'student')::text = p_role)
+        and (nullif(p_plan, '') is null or s.plan::text = p_plan)
+    )
+    select jsonb_build_object(
+      'total', (select count(*)::int from matched),
+      'items', coalesce((
+        select jsonb_agg(public.admin_user_row(m.id) order by m.created_at desc, m.id desc)
+        from (select * from matched order by created_at desc, id desc
+              limit least(greatest(coalesce(p_limit, 50), 1), 200) offset greatest(coalesce(p_offset, 0), 0)) m
+      ), '[]'::jsonb)
+    )
+  );
+end
+$$;
+revoke execute on function public.app_admin_users(text, text, text, integer, integer) from public, anon;
