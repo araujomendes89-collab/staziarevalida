@@ -23,12 +23,14 @@ const LINE = { ready: true, label: "Gemini", model: "gemini-2.5-pro", pending: n
 const STATUS = { preencher: LINE, conferir: LINE, conversar: LINE };
 const FIELDS = [{ name: "resumo", label: "Resumo", kind: "text", ai: "editar" }];
 
+// o painel é JSX sem tipos: as props saem como `any` para o tsc não exigir as opcionais
+const panel = (o: Record<string, unknown>): any => ({ status: STATUS, fields: FIELDS, values: { resumo: "" }, onUse: vi.fn(), ...o });
 const failing = (error: unknown) => async () => {
   throw error;
 };
 const withStatus = (message: string, status: number) => Object.assign(new Error(message), { status });
 const preencher = async (run: () => Promise<unknown>) => {
-  render(<AssistantPanel status={STATUS} fields={FIELDS} values={{ resumo: "" }} run={run as any} onUse={vi.fn()} />);
+  render(<AssistantPanel {...panel({ run })} />);
   fireEvent.click(screen.getByRole("button", { name: "Preencher campos" }));
 };
 const consoleText = (spy: { mock: { calls: unknown[][] } }) => spy.mock.calls.flat().map((a) => String((a as any)?.message ?? a)).join("\n");
@@ -86,7 +88,7 @@ describe("Q13: erro do assistente no painel comum", () => {
   });
 
   it("PDF que o navegador não consegue abrir: mensagem em português, sem o texto do leitor de PDF", async () => {
-    const { container } = render(<AssistantPanel status={STATUS} fields={FIELDS} values={{ resumo: "" }} run={vi.fn()} onUse={vi.fn()} />);
+    const { container } = render(<AssistantPanel {...panel({ run: vi.fn() })} />);
     fireEvent.click(within(screen.getByRole("radiogroup", { name: "Material" })).getByRole("radio", { name: "PDF" }));
     const input = container.querySelector('input[type="file"]') as HTMLInputElement;
     const file = new File(["não é um pdf"], "x.pdf", { type: "application/pdf" });
