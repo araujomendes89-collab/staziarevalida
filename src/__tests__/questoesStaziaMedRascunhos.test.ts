@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Questões StaziaMed — rascunhos no banco (migração 6200, parte 1): o hash do conteúdo é calculado pelo banco, a carga
+ * Questões StaziaMed — rascunhos no banco (migração 8800, antiga 6200; parte 1): o hash do conteúdo é calculado pelo banco, a carga
  * antiga não apaga o que foi editado no servidor, os 200 importados ficam na trilha, pedidos/propostas/trilha só para a
  * equipe e os revisores, as etapas novas da fila e as funções de serviço fechadas para o app.
  */
