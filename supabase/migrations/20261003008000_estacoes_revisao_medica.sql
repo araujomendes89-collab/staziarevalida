@@ -9,19 +9,32 @@
 --     conferido (10 caracteres ou mais); grava quem aprovou e quando;
 --   * devolver para revisão = equipe ou revisor médico, com o motivo (10 caracteres ou mais); grava quem devolveu e quando;
 --   * o revisor médico abre a lista e o conteúdo das estações (roteiro, impressos, checklist) para conferir;
---   * aluno e visitante continuam barrados; o que o aluno pode ler (RLS das tabelas) não muda;
+--   * aluno e visitante continuam barrados; o que o aluno pode ler não muda: checklist_stations fica como estava, e o
+--     registro da revisão (nota, quem, quando) é interno, numa tabela própria (checklist_station_reviews) que só as funções
+--     da aba leem e gravam. Aluno e visitante não a leem nem direto pelo banco (sem permissão e sem política de acesso);
 --   * a aba continua funcionando com a Central de Conteúdo desligada (não depende de ch_flags);
 --   * o registro (quem, quando, nota) só vale quando a situação muda pela função de revisão: qualquer outra mudança da
 --     situação (comando direto no banco, nova carga do seed) apaga o registro, para o cartão nunca atribuir a decisão nova a
 --     quem tomou a anterior (trava checklist_stations_review_guard);
 --   * as funções da aba ficam fechadas para visitante (anon), como a …6100 faz com app_admin_save_question.
 -- As estações aprovadas antes desta migração continuam aprovadas, sem revisor registrado (a tela avisa).
+-- Esta migração é colada uma vez só. Colada de novo por engano, para no primeiro comando ("already exists") e não muda nada.
 -- =============================================================================
 
-alter table public.checklist_stations
-  add column review_note text check (char_length(review_note) <= 2000),
-  add column reviewed_by uuid references auth.users (id) on delete set null,
-  add column reviewed_at timestamptz;
+-- Registro interno da última decisão da revisão de cada estação: o que foi conferido (ou o motivo da devolução), quem e
+-- quando. Fica FORA de checklist_stations de propósito: aquela tabela é o catálogo que o aluno lê (política de
+-- …0400_checklist_bank.sql e permissão padrão do Supabase em todas as colunas); uma coluna ali sairia para qualquer aluno
+-- em /rest/v1/checklist_stations?select=review_note,reviewed_by,reviewed_at.
+create table public.checklist_station_reviews (
+  station_id text primary key references public.checklist_stations (id) on delete cascade,
+  review_note text not null check (char_length(review_note) <= 2000),
+  reviewed_by uuid references auth.users (id) on delete set null,
+  reviewed_at timestamptz not null default now()
+);
+-- Duas trancas: acesso por linha ligado sem nenhuma política, e nenhuma permissão para aluno e visitante.
+-- Só as funções da aba (abaixo, que rodam como o dono) e o servidor leem e gravam.
+alter table public.checklist_station_reviews enable row level security;
+revoke all on table public.checklist_station_reviews from public, anon, authenticated;
 
 -- Código da área do revisor médico (ch_reviewer_areas.area_code, mesma regra de guideline_area_code) a partir da área da estação.
 create function public.checklist_station_area_code(p_area text) returns text
@@ -67,14 +80,15 @@ begin
     select jsonb_agg(jsonb_build_object(
       'id', s.id, 'name', s.name, 'topic', s.topic, 'area', s.area, 'medical_review', s.medical_review,
       'is_pro_only', s.is_pro_only, 'institution', s.institution,
-      'review_note', s.review_note, 'reviewed_at', s.reviewed_at,
-      'reviewer', (select nullif(p.name, '') from public.profiles p where p.id = s.reviewed_by),
+      'review_note', v.review_note, 'reviewed_at', v.reviewed_at,
+      'reviewer', (select nullif(p.name, '') from public.profiles p where p.id = v.reviewed_by),
       'can_review', public.checklist_station_can_review(s.area),
       'reports', (select count(*)::int from public.checklist_station_reports r where r.station_id = s.id),
       'last_reports', (select coalesce(jsonb_agg(jsonb_build_object('message', r.message, 'created_at', r.created_at) order by r.created_at desc), '[]'::jsonb)
                        from (select * from public.checklist_station_reports r where r.station_id = s.id order by r.created_at desc limit 3) r)
     ) order by s.medical_review desc, s.area, s.name)
     from public.checklist_stations s
+    left join public.checklist_station_reviews v on v.station_id = s.id
   ), '[]'::jsonb);
 end
 $$;
@@ -128,36 +142,34 @@ begin
   if char_length(v_note) > 2000 then
     raise exception 'A nota tem no máximo 2.000 caracteres.' using errcode = '22023';
   end if;
-  -- avisa a trava (checklist_stations_review_guard) que esta mudança é da revisão, só nesta estação e só neste update
-  perform set_config('staziamed.station_review', s.id, true);
-  update public.checklist_stations
-     set medical_review = p_status, review_note = v_note, reviewed_by = (select auth.uid()), reviewed_at = now()
-   where id = s.id;
-  perform set_config('staziamed.station_review', '', true);
+  -- A mudança da situação dispara a trava (checklist_stations_review_guard), que apaga o registro da decisão anterior;
+  -- o registro desta decisão é gravado logo em seguida, na mesma transação.
+  update public.checklist_stations set medical_review = p_status where id = s.id;
+  insert into public.checklist_station_reviews (station_id, review_note, reviewed_by, reviewed_at)
+  values (s.id, v_note, (select auth.uid()), now())
+  on conflict (station_id) do update
+    set review_note = excluded.review_note, reviewed_by = excluded.reviewed_by, reviewed_at = excluded.reviewed_at;
   perform public.admin_log('station.review', s.id, jsonb_build_object('from', s.medical_review, 'to', p_status, 'note', v_note, 'area', s.area));
   return public.app_admin_stations();
 end
 $$;
 
--- Trava do registro da revisão: se a situação (medical_review) mudar fora de app_admin_set_station_review — o SQL direto que o
--- README ensinava, ou a carga do seed colada de novo (on conflict … set medical_review = 'pending') —, o registro anterior
--- (nota, quem, quando) é apagado. Sem isso, o cartão diria "Aprovada por <quem só devolveu>" ou "Devolvida por <quem aprovou>".
+-- Trava do registro da revisão: toda vez que a situação (medical_review) muda, o registro da decisão anterior (nota, quem,
+-- quando) é apagado. Pela função de revisão, o registro novo entra logo depois; por fora dela — o SQL direto que o README
+-- ensinava, ou a carga do seed colada de novo (on conflict … set medical_review = 'pending') — a estação fica sem registro.
+-- Sem isso, o cartão diria "Aprovada por <quem só devolveu>" ou "Devolvida por <quem aprovou>".
 -- Estação aprovada assim aparece como "Aprovada sem registro de quem conferiu" (a tela pede para conferir de novo).
 create function public.checklist_stations_review_guard() returns trigger
   language plpgsql security definer set search_path = ''
 as $$
 begin
-  if new.medical_review is distinct from old.medical_review
-     and coalesce(current_setting('staziamed.station_review', true), '') is distinct from new.id then
-    new.review_note := null;
-    new.reviewed_by := null;
-    new.reviewed_at := null;
-  end if;
-  return new;
+  delete from public.checklist_station_reviews where station_id = new.id;
+  return null;
 end
 $$;
-create trigger checklist_stations_review_guard before update on public.checklist_stations
-  for each row execute function public.checklist_stations_review_guard();
+create trigger checklist_stations_review_guard after update on public.checklist_stations
+  for each row when (new.medical_review is distinct from old.medical_review)
+  execute function public.checklist_stations_review_guard();
 
 -- Funções da aba: só usuário logado (a checagem interna decide quem é da equipe ou revisor); visitante fica de fora.
 revoke execute on function public.app_admin_stations() from public, anon;

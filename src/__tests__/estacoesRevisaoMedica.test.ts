@@ -5,7 +5,8 @@
  *   - só aprova o revisor médico cadastrado na área da estação, ou um administrador (editor comum não);
  *   - aprovar exige registrar o que foi conferido (10 caracteres ou mais); fica gravado quem aprovou e quando;
  *   - devolver para revisão pede o motivo, e também fica gravado quem devolveu e quando;
- *   - o revisor médico que não é da equipe abre a lista e o conteúdo da estação (para conferir); o aluno não.
+ *   - o revisor médico que não é da equipe abre a lista e o conteúdo da estação (para conferir); o aluno não;
+ *   - o registro (nota, quem, quando) é interno: fica em checklist_station_reviews, fora do catálogo que o aluno lê.
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import fs from "fs";
@@ -37,7 +38,14 @@ const visibleTo = (uid: string) =>
     await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: uid })]);
     return (await tx.query<{ id: string }>(`select id from public.checklist_stations order by id`)).rows.map((r) => r.id);
   });
-const row = async (id: string) => (await db.query<any>(`select medical_review, review_note, reviewed_by, reviewed_at from public.checklist_stations where id = $1`, [id])).rows[0];
+// Situação da estação (checklist_stations) + o registro interno da revisão (checklist_station_reviews; nulo quando não há).
+const row = async (id: string) =>
+  (await db.query<any>(
+    `select s.medical_review, v.review_note, v.reviewed_by, v.reviewed_at
+       from public.checklist_stations s left join public.checklist_station_reviews v on v.station_id = s.id
+      where s.id = $1`,
+    [id]
+  )).rows[0];
 const item = (list: any[], id: string) => list.find((s) => s.id === id);
 
 beforeAll(async () => {
@@ -207,5 +215,143 @@ describe("Estações — permissões das funções da aba (rodada 1)", () => {
       const r = (await db.query<any>(`select has_function_privilege('anon', $1, 'execute') as anon, has_function_privilege('authenticated', $1, 'execute') as auth`, [fn])).rows[0];
       expect(r, fn).toEqual({ anon: false, auth: true });
     }
+  });
+});
+
+// Leva 2 (revisor do conjunto): o registro interno da revisão (o que foi conferido, quem e quando) ficava em colunas de
+// checklist_stations, a tabela do catálogo que todo usuário logado lê (política de …0400_checklist_bank.sql e a permissão
+// padrão do Supabase em todas as colunas): /rest/v1/checklist_stations?select=id,review_note,reviewed_by entregava o registro
+// a qualquer aluno. Agora o registro fica em checklist_station_reviews, que só as funções da aba leem e gravam.
+const CATALOGO = ["id", "name", "topic", "area", "setting", "taxonomy_path", "goal", "institution", "year", "styles", "is_pro_only",
+  "medical_review", "max_score", "duration_ms", "created_at"];
+const REGISTRO = ["review_note", "reviewed_by", "reviewed_at"];
+const NOTA_MFC = "Conferi roteiro, impressos e PEP da estação de MFC.";
+const FORA_DA_ABA = "Nota escrita por fora da aba.";
+const comoUsuario = (uid: string | null, sql: string) =>
+  db.transaction(async (tx) => {
+    await tx.exec(`set local role ${uid ? "authenticated" : "anon"}`);
+    await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify(uid ? { sub: uid } : {})]);
+    return (await tx.query<any>(sql)).rows;
+  });
+const registroGravado = async (id: string) =>
+  (await db.query<any>(`select review_note, reviewed_by from public.checklist_station_reviews where station_id = $1`, [id])).rows;
+const permissoesNaTabelaDoRegistro = async () =>
+  (await db.query<any>(
+    `select papel, permissao from unnest(array['anon', 'authenticated']) papel,
+            unnest(array['select', 'insert', 'update', 'delete', 'truncate', 'references', 'trigger']) permissao
+      where has_table_privilege(papel, 'public.checklist_station_reviews', permissao)`
+  )).rows;
+
+describe("Estações — o aluno não lê o registro da revisão (leva 2)", () => {
+  beforeAll(async () => {
+    await db.query(`update public.profiles set name = 'Administradora' where id = $1`, [ADMIN]);
+    await db.exec(`
+      insert into public.checklist_stations (id, name, topic, area, medical_review) values
+        ('st-mfc', 'Hipertensão na UBS', 'Primeira consulta', 'Medicina de Família e Comunidade', 'pending');
+      insert into public.checklist_station_contents (station_id, content) values ('st-mfc', '{"id": "st-mfc", "actor_script": "Roteiro MFC."}');
+    `);
+    await rpc(ADMIN, "app_admin_set_station_review", { p_station_id: "st-mfc", p_status: "approved", p_note: NOTA_MFC });
+  });
+
+  it("o catálogo que o aluno lê (checklist_stations) não tem coluna do registro (coluna nova obriga a decidir aqui)", async () => {
+    const colunas = (await db.query<{ column_name: string }>(
+      `select column_name from information_schema.columns where table_schema = 'public' and table_name = 'checklist_stations'`
+    )).rows.map((r) => r.column_name);
+    expect(colunas.sort()).toEqual([...CATALOGO].sort());
+  });
+
+  it("o aluno lê a estação aprovada com select * e o conteúdo dela, sem a nota, sem quem aprovou e sem quando", async () => {
+    const estacoes = await comoUsuario(STUDENT, `select * from public.checklist_stations where id = 'st-mfc'`);
+    expect(estacoes).toHaveLength(1);
+    expect(estacoes[0]).toMatchObject({ id: "st-mfc", name: "Hipertensão na UBS", area: "Medicina de Família e Comunidade", medical_review: "approved", is_pro_only: false });
+    expect(Object.keys(estacoes[0]).sort()).toEqual([...CATALOGO].sort());
+
+    const inteira = JSON.stringify(await comoUsuario(STUDENT, `select to_jsonb(s) as estacao from public.checklist_stations s where id = 'st-mfc'`));
+    expect(inteira).toContain("Hipertensão na UBS");
+    expect(inteira).not.toContain(NOTA_MFC);
+    expect(inteira).not.toContain(ADMIN);
+
+    expect(await comoUsuario(STUDENT, `select station_id from public.checklist_station_contents where station_id = 'st-mfc'`)).toEqual([{ station_id: "st-mfc" }]);
+    for (const c of REGISTRO) {
+      await expect(comoUsuario(STUDENT, `select id, ${c} from public.checklist_stations`), c).rejects.toThrow(/does not exist/);
+    }
+  });
+
+  it("aluno, revisor, equipe e visitante não leem nem mexem direto na tabela do registro (só as funções da aba)", async () => {
+    for (const uid of [STUDENT, REV_CM, EDITOR, ADMIN, null]) {
+      for (const sql of [
+        `select * from public.checklist_station_reviews`,
+        `select review_note from public.checklist_station_reviews where station_id = 'st-mfc'`,
+        `insert into public.checklist_station_reviews (station_id, review_note) values ('st-cm', '${FORA_DA_ABA}')`,
+        `update public.checklist_station_reviews set review_note = '${FORA_DA_ABA}'`,
+        `delete from public.checklist_station_reviews`,
+      ]) {
+        await expect(comoUsuario(uid, sql), `${uid ?? "visitante"}: ${sql}`).rejects.toThrow(/permission denied/);
+      }
+    }
+    expect(await permissoesNaTabelaDoRegistro()).toEqual([]);
+    expect(await registroGravado("st-mfc")).toEqual([{ review_note: NOTA_MFC, reviewed_by: ADMIN }]);
+  });
+
+  it("se alguém devolver a permissão da tabela por engano, o aluno continua sem ler nem gravar (acesso por linha ligado, sem política)", async () => {
+    const DESFAZER = new Error("desfaz a permissão dada só para este teste");
+    await expect(
+      db.transaction(async (tx) => {
+        await tx.exec(`grant select, insert, update, delete on public.checklist_station_reviews to anon, authenticated`);
+        await tx.exec(`set local role authenticated`);
+        await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: STUDENT })]);
+        expect((await tx.query(`select * from public.checklist_station_reviews`)).rows).toEqual([]);
+        expect((await tx.query(`update public.checklist_station_reviews set review_note = '${FORA_DA_ABA}' returning station_id`)).rows).toEqual([]);
+        expect((await tx.query(`delete from public.checklist_station_reviews returning station_id`)).rows).toEqual([]);
+        await expect(tx.query(`insert into public.checklist_station_reviews (station_id, review_note) values ('st-cm', '${FORA_DA_ABA}')`)).rejects.toThrow(/row-level security/);
+        throw DESFAZER;
+      })
+    ).rejects.toBe(DESFAZER);
+    expect(await permissoesNaTabelaDoRegistro()).toEqual([]);
+    expect(await registroGravado("st-mfc")).toEqual([{ review_note: NOTA_MFC, reviewed_by: ADMIN }]);
+  });
+
+  it("a equipe e o revisor médico continuam vendo nota, quem e quando pela função da aba; o aluno não", async () => {
+    const daEquipe = item(await rpc(EDITOR, "app_admin_stations"), "st-mfc");
+    expect(daEquipe).toMatchObject({ medical_review: "approved", review_note: NOTA_MFC, reviewer: "Administradora" });
+    expect(daEquipe.reviewed_at).toBeTruthy();
+    expect(item(await rpc(REV_CM, "app_admin_stations"), "st-mfc")).toMatchObject({ review_note: NOTA_MFC, reviewer: "Administradora" });
+    await expect(rpc(STUDENT, "app_admin_stations")).rejects.toThrow(/Acesso restrito/);
+  });
+
+  it("apagar a estação apaga o registro dela", async () => {
+    await db.exec(`insert into public.checklist_stations (id, name, topic, area, medical_review) values ('st-go', 'Pré-natal', 'Primeira consulta', 'Ginecologia e Obstetrícia', 'pending')`);
+    await rpc(ADMIN, "app_admin_set_station_review", { p_station_id: "st-go", p_status: "approved", p_note: NOTA });
+    expect(await registroGravado("st-go")).toEqual([{ review_note: NOTA, reviewed_by: ADMIN }]);
+    await db.exec(`delete from public.checklist_stations where id = 'st-go'`);
+    expect(await registroGravado("st-go")).toEqual([]);
+  });
+});
+
+describe("Estações — colar a migração de novo por engano (leva 2)", () => {
+  it("colar a …8000 pela segunda vez dá erro e não muda nada: registro, trava, permissões e funções continuam", async () => {
+    const antes = await row("st-mfc");
+    expect(antes).toMatchObject({ medical_review: "approved", review_note: NOTA_MFC, reviewed_by: ADMIN });
+    await expect(db.exec(fs.readFileSync(path.join(MIGRATIONS, "20261003008000_estacoes_revisao_medica.sql"), "utf8"))).rejects.toThrow(/already exists/);
+    expect(await row("st-mfc")).toEqual(antes);
+
+    const contagem = (await db.query<any>(`select
+        (select count(*)::int from pg_trigger where tgrelid = 'public.checklist_stations'::regclass and tgname = 'checklist_stations_review_guard') as trava,
+        (select count(*)::int from pg_proc where pronamespace = 'public'::regnamespace and proname = 'app_admin_set_station_review') as funcoes_de_revisao`)).rows[0];
+    expect(contagem).toEqual({ trava: 1, funcoes_de_revisao: 1 });
+    for (const fn of ["public.app_admin_set_station_review(text, text, text)", "public.app_admin_station_content(text)", "public.app_admin_stations()"]) {
+      const r = (await db.query<any>(`select has_function_privilege('anon', $1, 'execute') as anon, has_function_privilege('authenticated', $1, 'execute') as auth`, [fn])).rows[0];
+      expect(r, fn).toEqual({ anon: false, auth: true });
+    }
+    for (const fn of ["public.checklist_stations_review_guard()", "public.checklist_station_assert_staff()", "public.checklist_station_area_code(text)", "public.checklist_station_can_review(text)"]) {
+      const r = (await db.query<any>(`select has_function_privilege('anon', $1, 'execute') as anon, has_function_privilege('authenticated', $1, 'execute') as auth`, [fn])).rows[0];
+      expect(r, fn).toEqual({ anon: false, auth: false });
+    }
+
+    // a revisão e a trava continuam valendo
+    const devolvida = await rpc(EDITOR, "app_admin_set_station_review", { p_station_id: "st-mfc", p_status: "pending", p_note: "Aluno relatou impresso trocado." });
+    expect(item(devolvida, "st-mfc")).toMatchObject({ medical_review: "pending", reviewer: "Editora", review_note: "Aluno relatou impresso trocado." });
+    await db.exec(`update public.checklist_stations set medical_review = 'approved' where id = 'st-mfc'`);
+    expect(await row("st-mfc")).toMatchObject({ medical_review: "approved", review_note: null, reviewed_by: null, reviewed_at: null });
   });
 });
