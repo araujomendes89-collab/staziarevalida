@@ -145,6 +145,42 @@ describe("US01 — 'Plano pago até' corta o acesso", () => {
   });
 });
 
+describe("Revisão (ACREV) — tentando quebrar a regra do plano pago", () => {
+  it("administração: plano pago ATIVO com data de fim que já passou é recusado (data errada deixaria o aluno sem acesso, marcado como Ativo)", async () => {
+    const ontem = new Date(Date.now() - 86_400_000).toISOString();
+    await expect(rpc(ADMIN, "app_admin_set_subscription", { p_user_id: BRUNO, p_plan: "elite", p_status: "active", p_current_period_end: ontem })).rejects.toThrow(
+      "A data de “Plano pago até” já passou. Escolha uma data futura."
+    );
+    // pagamento pendente com o fim dentro da tolerância de 3 dias continua permitido (é o caso real de cartão recusado)
+    const antes = new Date(Date.now() - 86_400_000).toISOString();
+    expect(await rpc(ADMIN, "app_admin_set_subscription", { p_user_id: BRUNO, p_plan: "elite", p_status: "past_due", p_current_period_end: antes })).toMatchObject({ status: "past_due" });
+    expect(await acesso(BRUNO)).toEqual(PAGO);
+  });
+
+  it("visitante sem login não consegue nem chamar a função que muda o plano, e as de acesso não ficam abertas a ninguém", async () => {
+    await expect(
+      db.transaction(async (tx) => {
+        await tx.exec(`set local role anon`);
+        await tx.query(`select public.app_admin_set_subscription($1::uuid, 'pro', 'active', null, now() + interval '30 days')`, [BRUNO]);
+      })
+    ).rejects.toThrow(/permission denied/);
+    expect(await podeChamar("public.tutor_is_pro(uuid)")).toEqual({ anon: false, authenticated: false });
+    expect(await podeChamar("public.tutor_entitlement(uuid)")).toEqual({ anon: false, authenticated: false });
+  });
+
+  it("colar a migração de novo não reabre nenhuma função para o visitante", async () => {
+    await db.exec(fs.readFileSync(MIGRATION, "utf8"));
+    expect(await podeChamar("public.app_admin_set_subscription(uuid, text, text, timestamptz, timestamptz)")).toEqual({ anon: false, authenticated: true });
+    expect(await podeChamar("public.subscription_is_paid(public.plan_code, public.subscription_status, timestamptz)")).toEqual({ anon: false, authenticated: false });
+    expect(await podeChamar("public.tutor_config_guard()")).toEqual({ anon: false, authenticated: false });
+  });
+
+  it("teste grátis vencido não vira acesso pago: só o Tutor muda de modo (teste do Tutor), o resto da regra não confunde teste com plano pago", async () => {
+    await db.query(`update public.subscriptions set plan = 'trial', status = 'trialing', trial_ends_at = now() - interval '5 days', current_period_end = now() + interval '30 days' where user_id = $1`, [ANA]);
+    expect(await acesso(ANA)).toEqual(SEM_PAGO);
+  });
+});
+
 describe("CF01 — Tutor ligado só com 'Planos pagos + teste grátis'", () => {
   const MENSAGEM = "Para ligar o Tutor, ligue também “Planos pagos + teste grátis”. Sem isso, todo aluno usaria o Tutor de graça, com os limites do plano pago.";
 

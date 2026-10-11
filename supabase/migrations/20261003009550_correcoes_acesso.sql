@@ -1,5 +1,5 @@
 -- =============================================================================
--- Correções da Administração (pedido do dono de 2026-10-10, "Fazer agora"): acesso pago com data de fim e Tutor só com
+-- Correções da Administração (número 9550, depois das publicadas até 8300; pedido do dono de 2026-10-10, "Fazer agora"): acesso pago com data de fim e Tutor só com
 -- os planos pagos ligados. Pode ser colada de novo no Supabase sem estragar nada (tudo é "create or replace" ou conferido).
 --
 -- US01 — "Plano pago até" não cortava o acesso: has_pro, tutor_is_pro e tutor_entitlement só olhavam plano e situação, e
@@ -7,6 +7,7 @@
 --        pendente, até 3 dias depois do fim (tolerância para o cartão ser cobrado de novo). Sem data de fim, não vale.
 --        A regra fica numa função só (subscription_is_paid), usada pelas três. A administração passa a recusar plano pago
 --        ativo ou pendente sem a data de fim (antes, sem data, o aluno ficava com o plano para sempre).
+--        Plano ativo com data de fim que já passou também é recusado (quase sempre é data errada); o pendente aceita fim recente.
 --        ATENÇÃO antes de colar: quem hoje tem Pro ou Elite sem "Plano pago até" perde o acesso pago na hora. Para ver quem é:
 --          select s.user_id, u.email, s.plan, s.status, s.current_period_end from public.subscriptions s
 --          join auth.users u on u.id = s.user_id
@@ -124,7 +125,8 @@ end
 $$;
 revoke execute on function public.tutor_entitlement(uuid) from public, anon, authenticated;
 
--- Plano atribuído à mão: igual ao de …1300_admin, mas plano pago ativo ou com pagamento pendente exige a data de fim.
+-- Plano atribuído à mão: igual ao de …1300_admin, mas plano pago ativo ou com pagamento pendente exige a data de fim (e, no
+-- plano ativo, uma data que ainda não passou).
 create or replace function public.app_admin_set_subscription(
   p_user_id uuid, p_plan text, p_status text,
   p_trial_ends_at timestamptz default null, p_current_period_end timestamptz default null
@@ -146,6 +148,11 @@ begin
   end if;
   if p_plan in ('pro', 'elite') and p_status in ('active', 'past_due') and p_current_period_end is null then
     raise exception 'Informe até quando vai o plano pago (campo “Plano pago até”). Sem essa data, o aluno fica sem o acesso pago.' using errcode = '22023';
+  end if;
+  -- plano ativo com a data de fim já vencida não dá acesso: quase sempre é data errada (ano, mês). Pagamento pendente pode ter
+  -- o fim recente (tolerância de 3 dias), então só o plano ativo é recusado.
+  if p_plan in ('pro', 'elite') and p_status = 'active' and p_current_period_end <= now() then
+    raise exception 'A data de “Plano pago até” já passou. Escolha uma data futura.' using errcode = '22023';
   end if;
   select to_jsonb(s) - 'user_id' - 'updated_at' into v_before from public.subscriptions s where s.user_id = p_user_id;
   if v_before is null then
