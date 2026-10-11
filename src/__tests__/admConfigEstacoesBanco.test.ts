@@ -107,10 +107,10 @@ describe("Visão geral (GE01 a GE05)", () => {
     expect(o.users.by_plan["elite:past_due"]).toBe(1);
   });
 
-  it("GE03: o editor não recebe os números de usuários e planos; o administrador recebe", async () => {
+  it("GE03: o editor não recebe os números de usuários e planos (mas vê o gasto de IA); o administrador recebe tudo", async () => {
     const editor = await rpc(EDITOR, "app_admin_overview");
     expect(editor).not.toHaveProperty("users");
-    expect(editor).not.toHaveProperty("ai_month");
+    expect(editor.ai_month).toHaveProperty("central_usd"); // gasto de IA: administrador e editor (decisão do dono)
     expect(editor.questions).toBeTruthy();
     expect(editor.stations).toBeTruthy();
     const admin = await rpc(ADMIN, "app_admin_overview");
@@ -150,5 +150,7 @@ describe("Visão geral (GE01 a GE05)", () => {
     expect(Number((await rpc(ADMIN, "app_admin_overview")).ai_month.tutor_usd)).toBeCloseTo(0.5, 4);
     const editor = await rpc(EDITOR, "app_admin_overview");
     expect(editor.pending_review.podcasts).toBe(1);
+    expect(Number(editor.ai_month.central_usd)).toBeCloseTo(1.25, 4);
+    expect(await rpc(ANA, "app_admin_overview").catch((e) => e.message)).toMatch(/restrito|acesso/i); // aluno nunca
   });
 });

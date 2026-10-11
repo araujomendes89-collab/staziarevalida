@@ -1,9 +1,9 @@
 -- Visão geral da Administração mais honesta (GE01, GE03, GE04, GE05).
 -- Parte da versão mais nova de app_admin_overview (…4600_equipe_acesso_completo.sql). Mudanças:
 --  GE01  teste que já passou do prazo aparece como "expirado" (antes ficava "em teste" para sempre);
---  GE03  os números de usuários, planos e gasto de IA só vão para o administrador (o editor não os recebe);
+--  GE03  os números de usuários e planos só vão para o administrador (o editor não os recebe);
 --  GE04  "ativos" inclui quem viu aula ou conversou com o Nexus, e não conta a equipe;
---  GE05  novo bloco "pending_review" (o que espera revisão por aba) e "ai_month" (gasto de IA do mês, só administrador).
+--  GE05  novo bloco "pending_review" (o que espera revisão por aba) e "ai_month" (gasto de IA do mês, para administrador e editor: decisão do dono).
 -- PUBLICAR O SITE ANTES de colar a 9601 (o site antigo quebra a aba Geral para o editor se a 9601 entrar antes; o contrário é seguro).
 -- Cada contagem nova é isolada: se uma tabela de outra aba mudar de forma, só aquele número some, a Visão geral não quebra.
 -- Pode ser colada duas vezes. Nenhum dado é alterado.
@@ -58,20 +58,22 @@ begin
     ))
   );
 
-  if v_admin then
-    begin
-      select coalesce(sum(c.cost_usd), 0) into v_central from public.ai_calls c
-      where c.created_at >= date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo';
-    exception when others then v_central := null; end;
-    begin
-      -- só o Tutor/Nexus (feature tutor_*): roteiro e áudio do podcast e o assistente da aula também gravam no ledger,
-      -- mas esse custo já entra em ai_calls (Central de IAs) e apareceria em dobro
-      select coalesce(sum(l.estimated_cost_usd), 0) into v_tutor from public.ai_usage_ledger l
-      where left(l.feature, 6) = 'tutor_' and l.created_at >= date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo';
-    exception when others then v_tutor := null; end;
+  begin
+    select coalesce(sum(c.cost_usd), 0) into v_central from public.ai_calls c
+    where c.created_at >= date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo';
+  exception when others then v_central := null; end;
+  begin
+    -- só o Tutor/Nexus (feature tutor_*): roteiro e áudio do podcast e o assistente da aula também gravam no ledger,
+    -- mas esse custo já entra em ai_calls (Central de IAs) e apareceria em dobro
+    select coalesce(sum(l.estimated_cost_usd), 0) into v_tutor from public.ai_usage_ledger l
+    where left(l.feature, 6) = 'tutor_' and l.created_at >= date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo';
+  exception when others then v_tutor := null; end;
 
+  -- gasto de IA do mês: administrador e editor (decisão do dono)
+  v_result := v_result || jsonb_build_object('ai_month', jsonb_strip_nulls(jsonb_build_object('central_usd', v_central, 'tutor_usd', v_tutor)));
+
+  if v_admin then
     v_result := v_result || jsonb_build_object(
-      'ai_month', jsonb_strip_nulls(jsonb_build_object('central_usd', v_central, 'tutor_usd', v_tutor)),
       'users', jsonb_build_object(
         'total', (select count(*)::int from auth.users),
         'new_7d', (select count(*)::int from auth.users where created_at > now() - interval '7 days'),
