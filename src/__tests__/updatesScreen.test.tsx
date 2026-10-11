@@ -2,6 +2,8 @@
  * Atualizações & Diretrizes (jsdom) com o banco simulado: estado vazio honesto, lista com destaque e filtros, tabela
  * comparativa, detalhe com antes × agora, aviso quando não há conferência médica, fonte só com endereço, flashcard,
  * questão de treino e "Treinar questões deste tema". As regras estão em supabaseGuidelineUpdatesApi.test.ts.
+ * AT04 (10/10/2026): o selo "Sem conferência médica" aparece também no cartão da lista e na tabela comparativa (no
+ * computador e no celular), não só dentro do detalhe.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,7 +11,8 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 
 const backend: any = { rpc: vi.fn() };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot: { profile: { name: "Ana" } }, user: { id: "u1" } }) }));
-vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
+const env = vi.hoisted(() => ({ mobile: false }));
+vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => env.mobile, useMQ: () => false }));
 
 import { UpdatesScreen } from "../novo/app/study/UpdatesScreen.jsx";
 
@@ -24,6 +27,7 @@ let list: any;
 let detail: any;
 
 beforeEach(() => {
+  env.mobile = false;
   list = { total: 2, by_area: { GINECOLOGIA_OBSTETRICIA: 1, CLINICA_MEDICA: 1 }, years: [2025, 2026], items: [ITEM, OTHER] };
   detail = {
     ...ITEM, timeline: [{ year: 2025, text: "Mudança de 2025 de teste." }], clinical_impact: "Impacto de teste.", exam_impact: "Como cai de teste.", trap: "Pegadinha de teste.",
@@ -68,6 +72,51 @@ describe("Lista", () => {
     const table = await screen.findByRole("table");
     expect(within(table).getAllByText("Conduta antiga de teste.").length).toBe(2);
     expect(within(table).getAllByText("Conduta vigente de teste.").length).toBeGreaterThan(0);
+  });
+});
+
+describe("Selo de conferência (AT04)", () => {
+  const SEAL = "Sem conferência médica";
+  const card = async (topic: string, nth = 0) => (await screen.findAllByRole("button", { name: new RegExp(`Ver o que mudou: ${topic}`) }))[nth];
+
+  it("lista: o cartão sem conferência mostra o selo; o conferido não (nem no destaque)", async () => {
+    render(<UpdatesScreen go={vi.fn()} />);
+    const sem = await card("Hipertensão arterial");
+    expect(within(sem).getByText(SEAL)).toBeTruthy();
+    // o conferido aparece no destaque e na lista: nenhum dos dois tem o selo
+    expect((await screen.findAllByRole("button", { name: /Ver o que mudou: Prevenção da pré-eclâmpsia/ })).length).toBe(2);
+    for (const c of screen.getAllByRole("button", { name: /Ver o que mudou: Prevenção da pré-eclâmpsia/ })) expect(within(c).queryByText(SEAL)).toBeNull();
+    expect(screen.getAllByText(SEAL).length).toBe(1);
+  });
+
+  it("destaque: uma atualização sem conferência de prioridade muito alta também mostra o selo", async () => {
+    list.items = [ITEM, { ...OTHER, id: "3", slug: "x", topic: "Tema sem conferência em destaque", priority: 1 }, { ...ITEM, id: "4", slug: "y", topic: "Outro tema conferido", priority: 2 }];
+    list.total = 3;
+    render(<UpdatesScreen go={vi.fn()} />);
+    const featured = (await screen.findAllByRole("button", { name: /Ver o que mudou: Tema sem conferência em destaque/ }))[0];
+    expect(within(featured).getByText(SEAL)).toBeTruthy();
+  });
+
+  it("tabela comparativa (computador): a linha sem conferência mostra o selo; a conferida não", async () => {
+    render(<UpdatesScreen go={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("radio", { name: "Tabela comparativa" }));
+    const table = await screen.findByRole("table");
+    const rows = within(table).getAllByRole("row").slice(1); // sem o cabeçalho
+    expect(rows.length).toBe(2);
+    const rowOf = (topic: string) => rows.find((r) => within(r).queryByText(topic))!;
+    expect(within(rowOf("Hipertensão arterial")).getByText(SEAL)).toBeTruthy();
+    expect(within(rowOf("Prevenção da pré-eclâmpsia")).queryByText(SEAL)).toBeNull();
+  });
+
+  it("tabela comparativa (celular): o cartão sem conferência mostra o selo; o conferido não", async () => {
+    env.mobile = true;
+    render(<UpdatesScreen go={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("radio", { name: "Tabela comparativa" }));
+    const sem = (await screen.findByText("Hipertensão arterial")).closest("div")!.parentElement!;
+    expect(within(sem).getByText(SEAL)).toBeTruthy();
+    const com = screen.getByText("Prevenção da pré-eclâmpsia").closest("div")!.parentElement!;
+    expect(within(com).queryByText(SEAL)).toBeNull();
+    expect(screen.queryByRole("table")).toBeNull();
   });
 });
 

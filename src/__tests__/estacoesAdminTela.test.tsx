@@ -152,13 +152,14 @@ describe("Estações (ES03): aprovar é revisão médica registrada", () => {
 
   it("o Registro mostra o que foi conferido na revisão da estação", async () => {
     backend.rpc.mockImplementation(async (fn: string) =>
-      fn === "app_admin_audit"
-        ? [{ id: 1, action: "station.review", target: "st-cm", details: { from: "pending", to: "approved", note: NOTA, area: "Clínica Médica" }, created_at: "2026-10-10T12:00:00Z", actor: "Dr. Clínico" }]
+      fn === "app_admin_audit_page"
+        ? { total: 1, limit: 50, offset: 0, actions: ["station.review"], items: [{ id: 1, action: "station.review", target: "st-cm", details: { from: "pending", to: "approved", note: NOTA, area: "Clínica Médica" }, created_at: "2026-10-10T12:00:00Z", actor: "Dr. Clínico" }] }
         : [],
     );
     render(<AdminAudit />);
-    expect(await screen.findByText(`st-cm: aprovada · “${NOTA}”`)).toBeTruthy();
-    expect(screen.getByText("Revisão de estação")).toBeTruthy();
+    const lista = within(await screen.findByRole("list", { name: "Ações registradas" }));
+    expect(lista.getByText(`st-cm: aprovada · “${NOTA}”`)).toBeTruthy();
+    expect(lista.getByText("Revisão de estação")).toBeTruthy();
   });
 
   it("o revisor médico que não é da equipe vê a aba Estações", async () => {
