@@ -21,6 +21,10 @@
  * guardado e vale quando ela termina; e a proteção da reconferência automática não depende mais de ch_worker_claim, que o ramo
  * montagem-estacoes (5900) recria.
  *
+ * Rodada de correção 4: a conferência dá sinal de vida a cada afirmação (uma conferência longa não é pega de novo por outra
+ * execução da tarefa enquanto ainda roda), e o trabalho tem dono: o processamento que ficou sem sinal e perdeu o trabalho para
+ * sem gravar e sem registrar o fim; quem pegou o trabalho continua do ponto salvo.
+ *
  * Sem rede: simulação de IA (mock). Os textos são fictícios, feitos só para o teste (não são conteúdo médico).
  */
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -97,6 +101,12 @@ const SK1 = "Alefteste deve ser costurado quando Betteste prender 5 botoes.";
 const SL1 = "Kafteste deve ser ensacado quando Memteste empilhar 25 sacos.";
 const SN1 = "Nunteste deve ser rotulado quando Samekhteste contar 27 potes.";
 const SN2 = "Ainteste deve ser selado quando Peteste guardar 33 tampas.";
+// rodada de correção 4 (cada frase com palavras só dela)
+const SP1 = "Orvateste deve ser esticado quando Pinheteste projetar 103 nuvens.";
+const SP2 = "Quartzteste deve ser embrulhado quando Rubiteste farejar 107 trilhas.";
+const SP3 = "Safirteste deve ser lustrado quando Topazteste rodear 109 postes.";
+const SQ1 = "Turmalinateste deve ser soprado quando Jadeteste pescar 113 peixes.";
+const SQ2 = "Onixteste deve ser tingido quando Opalateste quebrar 127 nozes.";
 /** Parágrafo sem afirmação que separa as seções (a classificação simulada liga cada seção só ao tema do seu título). */
 const FILLER = "Texto fictício de preenchimento para separar as seções do teste. ".repeat(26).trim();
 
@@ -195,6 +205,17 @@ const versionsOf = async (theme: string) =>
   sql(`select v.id, v.version, v.status, v.content, v.review_flags, v.generated_by_model from public.ch_unit_versions v join public.ch_units u on u.id = v.unit_id
         where u.theme_node_id = $1 order by v.version`, [theme]);
 const aiFlags = (v: any) => (v.review_flags ?? []).filter((f: any) => f.by === "ai_review");
+/** O trabalho como está no banco (sem depender das colunas que existem). */
+const jobRow = async (id: string) => (await sql(`select to_jsonb(j) as j from public.ch_jobs j where j.id = $1`, [id]))[0].j;
+/** Outro processamento pega ESTE trabalho (como ch_worker_claim faz, mas sem escolher outro da fila). */
+const claimJob = async (id: string) =>
+  (
+    await sql(
+      `update public.ch_jobs as j set status = 'running', attempts = j.attempts + 1, locked_at = now(), started_at = coalesce(j.started_at, now())
+        where j.id = $1 and j.status = 'queued' returning to_jsonb(j) as job`,
+      [id]
+    )
+  )[0].job as Job;
 
 beforeAll(async () => {
   dev = await openDevDatabaseForTests(path.join(tmp, "db"));
@@ -758,17 +779,6 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
 
   describe("rodada de correção 3: dois processamentos ao mesmo tempo (execuções da tarefa do Cloud Run que se sobrepõem)", () => {
     const docState = async (doc: string) => (await sql(`select status, failure from public.ch_documents where id = $1`, [doc]))[0];
-    /** O trabalho como está no banco (sem depender das colunas que existem). */
-    const jobRow = async (id: string) => (await sql(`select to_jsonb(j) as j from public.ch_jobs j where j.id = $1`, [id]))[0].j;
-    /** Outro processamento pega ESTE trabalho (como ch_worker_claim faz, mas sem escolher outro da fila). */
-    const claimJob = async (id: string) =>
-      (
-        await sql(
-          `update public.ch_jobs as j set status = 'running', attempts = j.attempts + 1, locked_at = now(), started_at = coalesce(j.started_at, now())
-            where j.id = $1 and j.status = 'queued' returning to_jsonb(j) as job`,
-          [id]
-        )
-      )[0].job as Job;
     /** Trabalho da reconferência automática interrompido (sem sinal há 2 horas) na última tentativa. */
     const interruptedAuto = async (doc: string) =>
       (
@@ -1021,6 +1031,127 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
     }, 240_000);
   });
 
+  describe("rodada de correção 4: conferência longa dá sinal de vida e o trabalho tem dono", () => {
+    const docState = async (doc: string) => (await sql(`select status, failure from public.ch_documents where id = $1`, [doc]))[0];
+    const claimStatus = async (id: string) => (await sql(`select status from public.ch_claims where id = $1`, [id]))[0].status as string;
+    /** CONTENT_HUB_STALE_SECONDS da tarefa do Cloud Run: sem sinal por mais que isso, o trabalho "rodando" volta para a fila. */
+    const STALE = 1800;
+    /** Os outros trabalhos da fila esperam: a execução nova do teste só pode pegar o trabalho da conferência. Devolve quem os solta. */
+    const parkQueue = async (except: string) => {
+      const parked = (await sql(`update public.ch_jobs set run_after = now() + interval '1 day' where status = 'queued' and id <> $1 returning id`, [except])).map((r: any) => r.id);
+      return async () => {
+        await sql(`update public.ch_jobs set run_after = now() where id = any($1::uuid[])`, [parked]);
+      };
+    };
+    /** Banco visto pelo processamento 1: antes de cada busca de trechos (uma por afirmação), roda `before(n)`, n = 1, 2, ... */
+    const onSearch = (before: (n: number) => Promise<void>): ContentDb => {
+      let n = 0;
+      return {
+        ...db,
+        service: async <T,>(fn: string, args?: Record<string, unknown>) => {
+          if (fn === "ch_worker_search_passages") await before(++n);
+          return db.service<T>(fn, args);
+        },
+      };
+    };
+    type Run = Awaited<ReturnType<typeof runJob>>;
+
+    it("conferência longa: dá sinal de vida a cada afirmação e uma execução nova da tarefa não pega o trabalho no meio", async () => {
+      const doc = await studyDocument("Apostila da conferência longa", `${SP1} ${SP2} ${SP3}`);
+      const claims = await sql(`select id, status from public.ch_claims where document_id = $1`, [doc]);
+      expect(claims.map((c) => c.status)).toEqual(["insufficient", "insufficient", "insufficient"]);
+      await addPassage(11, SP1);
+      await addPassage(12, SP2);
+      await addPassage(13, SP3);
+      // a equipe reprocessa a conferência e o processamento 1 pega o trabalho
+      await db.asUser(admin, "app_ch_retry_job", { p_job_id: (await evidenceJob(doc)).id });
+      const id = (await evidenceJob(doc)).id as string;
+      const release = await parkQueue(id);
+      const taken: (string | null)[] = [];
+      let result!: Run;
+      try {
+        // cada afirmação leva 20 minutos (busca e IA); a cada uma, uma execução nova da tarefa chama ch_worker_claim
+        const slow = onSearch(async () => {
+          await sql(`update public.ch_jobs set locked_at = locked_at - interval '20 minutes' where id = $1`, [id]);
+          taken.push((await db.service<Job | null>("ch_worker_claim", { p_stale_seconds: STALE }))?.id ?? null);
+        });
+        result = await runJob({ ...deps(), db: slow }, await claimJob(id));
+      } finally {
+        await release();
+      }
+      // 60 minutos no total, mas nunca 30 sem sinal: ninguém pegou o trabalho, e cada afirmação tem uma evidência só
+      expect(taken).toEqual([null, null, null]);
+      expect(result.status).toBe("succeeded");
+      for (const c of claims) {
+        expect(await claimStatus(c.id)).toBe("compatible");
+        expect(await evidenceOf(c.id)).toEqual([{ source_id: manualSource, verdict: "compatible", stale: false }]);
+      }
+      await drain();
+      expect((await docState(doc)).status).toBe("awaiting_review");
+    }, 300_000);
+
+    it("processamento que ficou sem sinal e perdeu o trabalho para sem gravar nem registrar o fim; o outro termina com o que os dois conferiram", async () => {
+      const turmalina = await fictitiousTheme("Turmalinatema");
+      const onix = await fictitiousTheme("Onixtema");
+      const doc = await themedDocument("Apostila retomada por outro processamento", [
+        { heading: "Turmalinatema", sentences: [SQ1] },
+        { heading: "Onixtema", sentences: [SQ2] },
+      ]);
+      const c1 = await claimBy(doc, SQ1);
+      const c2 = await claimBy(doc, SQ2);
+      expect([c1.status, c2.status]).toEqual(["insufficient", "insufficient"]);
+      expect(await versionsOf(turmalina)).toEqual([]);
+      expect(await versionsOf(onix)).toEqual([]);
+      const before = await docState(doc);
+      await addPassage(14, SQ1);
+      await addPassage(15, SQ2);
+      // reconferência automática (como a de uma fonte nova indexada); o processamento 1 pega o trabalho
+      await db.service("ch_worker_next_marked", {
+        p_document_id: doc,
+        p_step: "evidence",
+        p_versions: stepVersions("evidence", deps()),
+        p_scope_key: "",
+        p_checkpoint: { auto_recheck: true, source_id: manualSource },
+      });
+      const id = (await evidenceJob(doc)).id as string;
+      expect((await jobRow(id)).status).toBe("queued");
+      const release = await parkQueue(id);
+      const seen: { other: Job | null } = { other: null };
+      let first!: Run;
+      try {
+        // na segunda afirmação, o processamento 1 fica 2 horas sem sinal (a chamada travou) e uma execução nova pega o trabalho
+        const stuck = onSearch(async (n) => {
+          if (n !== 2) return;
+          await sql(`update public.ch_jobs set locked_at = locked_at - interval '2 hours' where id = $1`, [id]);
+          seen.other = await db.service<Job | null>("ch_worker_claim", { p_stale_seconds: STALE });
+        });
+        first = await runJob({ ...deps(), db: stuck }, await claimJob(id));
+      } finally {
+        await release();
+      }
+      const other = seen.other!;
+      expect(other.id).toBe(id);
+      // o processamento 1 para: não grava a afirmação que conferia e não registra o fim no trabalho que agora é do outro
+      expect(first.status).toBe("lost");
+      expect((await jobRow(id)).status).toBe("running");
+      const done = (await claimStatus(c1.id)) === "compatible" ? c1 : c2;
+      const pending = done === c1 ? c2 : c1;
+      expect(await claimStatus(pending.id)).toBe("insufficient");
+      // o outro recebe o que o primeiro já tinha achado (o tema da afirmação que passou a compatível) e confere só o resto
+      expect(other.checkpoint).toMatchObject({ auto_recheck: true, themes: [done === c1 ? turmalina : onix], claims: [done.id] });
+      expect(await runJob(deps(), other)).toMatchObject({ status: "succeeded", next: "draft" });
+      await drain();
+      for (const c of [c1, c2]) {
+        expect(await claimStatus(c.id)).toBe("compatible");
+        expect(await evidenceOf(c.id)).toEqual([{ source_id: manualSource, verdict: "compatible", stale: false }]);
+      }
+      // os dois temas (sem unidade antes) ganham rascunho; o documento continua como estava
+      expect(await versionsOf(turmalina)).toHaveLength(1);
+      expect(await versionsOf(onix)).toHaveLength(1);
+      expect(await docState(doc)).toEqual(before);
+    }, 300_000);
+  });
+
   it("as funções novas e redefinidas continuam só do servidor (nem a equipe chama direto)", async () => {
     const id = crypto.randomUUID();
     for (const call of [
@@ -1041,6 +1172,8 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
       `select public.ch_worker_claim(600)`,
       // nova na rodada de correção 3
       `select public.ch_worker_merge_marks('{}'::jsonb, '{}'::jsonb)`,
+      // redefinida na rodada de correção 4 (confere o dono do trabalho)
+      `select public.ch_worker_checkpoint('${id}'::uuid, '{}'::jsonb)`,
     ]) {
       for (const role of ["authenticated", "anon"]) {
         const attempt = dev.db.transaction(async (tx) => {
@@ -1050,12 +1183,14 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
         await expect(attempt, `${role}: ${call}`).rejects.toThrow(/permission denied/);
       }
     }
-    // a função do gatilho da fila (rodada de correção 3) também não fica liberada para ninguém de fora do servidor
-    const [grants] = await sql(
-      `select has_function_privilege('anon', 'public.ch_jobs_worker_exit()', 'execute') as anon,
-              has_function_privilege('authenticated', 'public.ch_jobs_worker_exit()', 'execute') as authenticated`
-    );
-    expect(grants).toEqual({ anon: false, authenticated: false });
+    // as funções dos gatilhos da fila (rodadas de correção 3 e 4) também não ficam liberadas para ninguém de fora do servidor
+    for (const fn of ["public.ch_jobs_worker_exit()", "public.ch_jobs_worker_enter()"]) {
+      const [grants] = await sql(
+        `select has_function_privilege('anon', $1, 'execute') as anon, has_function_privilege('authenticated', $1, 'execute') as authenticated`,
+        [fn]
+      );
+      expect(grants, fn).toEqual({ anon: false, authenticated: false });
+    }
   });
 
   it("banco sem a atualização 8200: indexar a fonte continua funcionando e a etapa anota o que falta", async () => {

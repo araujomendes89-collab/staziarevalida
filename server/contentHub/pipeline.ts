@@ -51,6 +51,8 @@ export interface Job {
   attempts: number;
   max_attempts: number;
   checkpoint: Record<string, any>;
+  /** Dono do trabalho: novo cada vez que um processamento o pega (migração 8200, rodada de correção 4 do CC01). */
+  lease?: string | null;
 }
 
 export interface PipelineDeps {
@@ -70,6 +72,12 @@ export interface PipelineDeps {
 export class Blocked extends Error {}
 /** Falha que nova tentativa não resolve (arquivo protegido, corrompido, hash diferente). */
 export class Fatal extends Error {}
+/**
+ * Outro processamento pegou o trabalho: este ficou sem dar sinal de vida por mais de CONTENT_HUB_STALE_SECONDS. Ele para ali, sem
+ * gravar mais nada, sem registrar o fim e sem pedir a próxima etapa (quem pegou o trabalho termina).
+ */
+class Lost extends Error {}
+const LOST = "Outro processamento pegou este trabalho (este ficou sem dar sinal de vida): esta execução parou sem gravar o fim.";
 
 interface Metrics {
   ms?: number;
@@ -148,9 +156,16 @@ async function targetVersions(ctx: Ctx): Promise<any[]> {
   }
   return svc<any[]>(ctx, "ch_worker_unit_versions", { p_document_id: docId(ctx) });
 }
-const checkpoint = (ctx: Ctx, data: Record<string, unknown>) => {
+/** O dono do trabalho vai em tudo que grava no trabalho (sinal de vida e fim); banco sem a migração 8200: nada muda. */
+const owner = (job: Job) => (job.lease ? { p_lease: job.lease } : {});
+/**
+ * Ponto em que a etapa está (para retomar) e sinal de vida: o trabalho "rodando" sem sinal por mais de
+ * CONTENT_HUB_STALE_SECONDS volta para a fila. Se outro processamento já pegou o trabalho, para aqui (Lost).
+ */
+const checkpoint = async (ctx: Ctx, data: Record<string, unknown>) => {
   ctx.job.checkpoint = data;
-  return svc(ctx, "ch_worker_checkpoint", { p_job_id: ctx.job.id, p_checkpoint: data });
+  const ours = await svc<boolean | null>(ctx, "ch_worker_checkpoint", { p_job_id: ctx.job.id, p_checkpoint: data, ...owner(ctx.job) });
+  if (ours === false) throw new Lost(LOST);
 };
 
 export function stepVersions(step: Step, deps: PipelineDeps): Record<string, unknown> {
@@ -557,15 +572,29 @@ async function stepEvidence(ctx: Ctx): Promise<Step | null> {
   const claims = (await svc<any[]>(ctx, "ch_worker_claims", { p_document_id: docId(ctx) })).filter((c) => c.status === "extracted" || recheckable(c));
   requireWriterField(claims, "created_by_model");
   const counts: Record<string, number> = {};
-  /** Temas (e afirmações) que passaram a ser compatíveis nesta conferência. */
-  const changedThemes = new Set<string>();
-  const changedClaims = new Set<string>();
+  /**
+   * Temas (e afirmações) que passaram a ser compatíveis nesta conferência. Na reconferência automática retomada (falha, pendência
+   * ou trabalho pego por outro processamento), vêm do ponto salvo: a afirmação que já passou a compatível não é conferida de novo
+   * e o tema dela não pode ficar sem rascunho.
+   */
+  const saved = (x: unknown) => (auto && Array.isArray(x) ? x.map(String) : []);
+  const changedThemes = new Set<string>(saved(ctx.job.checkpoint?.themes));
+  const changedClaims = new Set<string>(saved(ctx.job.checkpoint?.claims));
+  /**
+   * Sinal de vida a cada afirmação, logo antes de gravar o resultado dela (CC01, rodada de correção 4). Cada afirmação faz busca e
+   * chamada de IA, e um material grande passa de 30 minutos nesta etapa: sem o sinal, a execução seguinte da tarefa achava o
+   * trabalho parado e o pegava de novo no meio. Também confere que o trabalho ainda é deste processamento (se não for, para sem
+   * gravar) e, na reconferência automática, guarda o que já mudou.
+   */
+  const alive = () =>
+    checkpoint(ctx, auto ? { ...ctx.job.checkpoint, themes: [...changedThemes].sort(), claims: [...changedClaims].sort() } : { ...ctx.job.checkpoint });
   for (const c of claims) {
     const again = recheckable(c);
     const text = c.proposed_text ?? c.statement;
     const meaning = await queryEmbedding(await embedderAllowed(ctx.deps.db, ctx.deps.embedder), text, ctx.deps.log);
     const passages = await svc<any[]>(ctx, "ch_worker_search_passages", { p_query: searchQuery(text), p_limit: 6, p_embedding: meaning });
     if (!passages.length) {
+      await alive();
       // conferida de novo e ainda sem trecho: continua como está, sem repetir a anotação no histórico
       if (again) {
         counts.still_no_passage = (counts.still_no_passage ?? 0) + 1;
@@ -592,6 +621,7 @@ async function stepEvidence(ctx: Ctx): Promise<Step | null> {
       if (!isVerbatim(o.quote, p.text)) return [{ where: "quote", reason: "a citação não é cópia literal do trecho da fonte" }];
       return [];
     }, c.created_by_model ?? null);
+    await alive();
     if (rejections.length) {
       await svc(ctx, "ch_worker_mark_claim", { p_claim_id: c.id, p_status: "needs_review", p_note: `Evidência proposta recusada pela conferência: ${rejections.map((r) => r.reason).join("; ")}` });
       counts.rejected = (counts.rejected ?? 0) + 1;
@@ -611,6 +641,8 @@ async function stepEvidence(ctx: Ctx): Promise<Step | null> {
     if (!r.unchanged && r.verdict === "compatible" && c.theme_node_id) {
       changedThemes.add(c.theme_node_id);
       changedClaims.add(c.id);
+      // guarda já: se a etapa parar antes do fim, quem a retomar não perde este tema (a afirmação não volta a ser conferida)
+      if (auto) await alive();
     }
   }
   const becameCompatible = counts.compatible ?? 0;
@@ -938,14 +970,23 @@ const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   visual_render: stepVisualRender,
 };
 
-/** Executa um trabalho já reservado (ch_worker_claim) e registra o resultado na fila. */
+/**
+ * Executa um trabalho já reservado (ch_worker_claim) e registra o resultado na fila. O fim vai com o dono do trabalho (rodada de
+ * correção 4 do CC01): se outro processamento pegou o trabalho enquanto este estava sem sinal, nada é registrado e a próxima etapa
+ * não é pedida (status "lost"); quem pegou o trabalho termina e pede.
+ */
 export async function runJob(deps: PipelineDeps, job: Job): Promise<{ status: string; next: Step | null; error?: string }> {
   const ctx: Ctx = { deps, job, metrics: { ai_calls: 0, cache_hits: 0, input_tokens: 0, output_tokens: 0, cost_usd: null, rejections: 0 } };
   const t0 = Date.now();
+  const lost = () => {
+    deps.log?.(`[central] ${job.step}: ${LOST}`);
+    return { status: "lost", next: null, error: LOST };
+  };
   try {
     const next = await STEPS[job.step](ctx);
     ctx.metrics.ms = Date.now() - t0;
-    await deps.db.service("ch_worker_finish", { p_job_id: job.id, p_ok: true, p_error: null, p_metrics: ctx.metrics });
+    const done = await deps.db.service<string | null>("ch_worker_finish", { p_job_id: job.id, p_ok: true, p_error: null, p_metrics: ctx.metrics, ...owner(job) });
+    if (done === "lost") return lost();
     if (next) {
       const args = { p_document_id: job.document_id, p_step: next, p_versions: stepVersions(next, deps), p_scope_key: job.scope_key };
       // a marca entra junto com o trabalho, no mesmo passo do banco (outro processamento não pega o trabalho sem ela); se a
@@ -957,19 +998,23 @@ export async function runJob(deps: PipelineDeps, job: Job): Promise<{ status: st
     deps.log?.(`[central] ${job.step} concluído (${ctx.metrics.ms} ms)`);
     return { status: "succeeded", next };
   } catch (error) {
+    if (error instanceof Lost) return lost();
     const message = error instanceof Error ? error.message : String(error);
     if (error instanceof Blocked) {
-      await deps.db.service("ch_worker_block", { p_job_id: job.id, p_reason: message });
+      const status = await deps.db.service<string | null>("ch_worker_block", { p_job_id: job.id, p_reason: message, ...owner(job) });
+      if (status === "lost") return lost();
       deps.log?.(`[central] ${job.step} pendente: ${message}`);
       return { status: "blocked", next: null, error: message };
     }
     if (error instanceof Fatal) {
-      await deps.db.service("ch_worker_fail", { p_job_id: job.id, p_error: message });
+      const status = await deps.db.service<string | null>("ch_worker_fail", { p_job_id: job.id, p_error: message, ...owner(job) });
+      if (status === "lost") return lost();
       deps.log?.(`[central] ${job.step} falhou: ${message}`);
       return { status: "dead", next: null, error: message };
     }
     ctx.metrics.ms = Date.now() - t0;
-    const status = await deps.db.service<string>("ch_worker_finish", { p_job_id: job.id, p_ok: false, p_error: message.slice(0, 1000), p_metrics: ctx.metrics });
+    const status = await deps.db.service<string>("ch_worker_finish", { p_job_id: job.id, p_ok: false, p_error: message.slice(0, 1000), p_metrics: ctx.metrics, ...owner(job) });
+    if (status === "lost") return lost();
     deps.log?.(`[central] ${job.step} erro (${status}): ${message}`);
     return { status, next: null, error: message };
   }

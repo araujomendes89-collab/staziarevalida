@@ -38,9 +38,19 @@
 --   - o aviso da reconferência não aponta a afirmação que a versão mais nova já cita;
 --   - a proteção do trabalho interrompido (ch_worker_claim, rodada 2) passou para o gatilho: a 8200 não redefine mais
 --     ch_worker_claim (veja a nota abaixo).
+-- Rodada de correção 4 (conferência longa pega por outra execução enquanto ainda rodava):
+--   - o processamento dá sinal de vida (ch_worker_checkpoint) a cada afirmação da conferência; antes, só as outras etapas davam,
+--     e um material grande passava de CONTENT_HUB_STALE_SECONDS (30 minutos) sem sinal: a execução seguinte da tarefa achava o
+--     trabalho parado e o pegava de novo no meio;
+--   - o trabalho tem dono (coluna lease, nova a cada vez que é pego; gatilho ch_jobs_worker_enter). ch_worker_checkpoint,
+--     ch_worker_finish, ch_worker_block e ch_worker_fail recebem o dono (p_lease) e não mexem no trabalho que outro processamento
+--     pegou: o checkpoint devolve falso e o fim devolve 'lost', e o processamento que perdeu o trabalho para sem gravar nada e sem
+--     pedir a próxima etapa. Antes, ele registrava o fim do trabalho do outro, e o outro, ao terminar, recebia "Trabalho não está
+--     em execução." e derrubava a execução da tarefa;
+--   - p_lease é opcional: o código de antes (sem ele) continua funcionando como antes.
 -- As funções redefinidas partem das versões mais novas (ch_worker_claims da 7600; ch_worker_mark_claim, ch_worker_link_evidence,
--- ch_worker_save_draft, ch_worker_block e ch_worker_fail da 1500; ch_worker_next da 1600; ch_worker_finish da 1400) e continuam
--- só do servidor. Pode ser rodada mais de uma vez.
+-- ch_worker_save_draft, ch_worker_block e ch_worker_fail da 1500; ch_worker_next da 1600; ch_worker_finish e ch_worker_checkpoint
+-- da 1400) e continuam só do servidor. Pode ser rodada mais de uma vez.
 --
 -- NOTA PARA QUEM JUNTAR O RAMO montagem-estacoes (migração 20261003005900_estacoes_importacao.sql, ainda não publicada):
 --   A 5900 apaga ch_worker_claim(integer) e cria ch_worker_claim(integer, text[]). A 8200 NÃO mexe em ch_worker_claim (ela ficou
@@ -56,8 +66,10 @@
 --   Ou seja: o trabalho interrompido sai de 'running' por um UPDATE em ch_jobs (é nele que o gatilho age: devolve à fila o que
 --   ficou pedido, preenche finished_at da reconferência automática que morreu ali e põe o aviso no erro) e o documento só vira
 --   "Falhou" por trabalho morto com "finished_at is null" (a reconferência automática morta já sai com finished_at preenchido).
---   Não apague o gatilho ch_jobs_worker_exit nem a coluna ch_jobs.requeue; se for reescrever ch_worker_next, ch_worker_next_marked,
---   ch_worker_finish, ch_worker_block ou ch_worker_fail, parta das versões desta migração.
+--   Não apague os gatilhos ch_jobs_worker_exit e ch_jobs_worker_enter nem as colunas ch_jobs.requeue e ch_jobs.lease; se for
+--   reescrever ch_worker_next, ch_worker_next_marked, ch_worker_finish, ch_worker_block, ch_worker_fail ou ch_worker_checkpoint,
+--   parta das versões desta migração. A ch_worker_claim precisa pôr o trabalho em 'running' por um UPDATE (é nele que o gatilho
+--   ch_jobs_worker_enter dá o dono) e devolver a linha depois dele ("returning *"), como a 1400 e a 5900 já fazem.
 
 -- De que base (afirmações compatíveis, texto, modelo e versão do prompt) o processamento escreveu a versão. Edição da equipe não
 -- muda este campo.
@@ -67,6 +79,11 @@ alter table public.ch_unit_versions add column if not exists base_hash text;
 -- de novo (ch_worker_next); com "auto_recheck" = reconferência automática, com a marca (ch_worker_next_marked). Vale quando o
 -- trabalho termina (gatilho ch_jobs_worker_exit, no fim desta migração), que apaga o pedido.
 alter table public.ch_jobs add column if not exists requeue jsonb;
+
+-- Dono do trabalho (rodada de correção 4): um número novo cada vez que um processamento pega o trabalho (gatilho
+-- ch_jobs_worker_enter, no fim desta migração). O processamento manda esse número no sinal de vida (ch_worker_checkpoint) e no
+-- fim (ch_worker_finish, ch_worker_block, ch_worker_fail); se outro processamento pegou o trabalho, nada é gravado.
+alter table public.ch_jobs add column if not exists lease uuid;
 
 -- Junta duas marcas da reconferência automática: temas, afirmações e versões das duas, sem repetir; o resto vem da nova (p_new).
 -- O ponto em que a etapa parou (theme, chunk...) não entra: ela recomeça do início.
@@ -343,13 +360,22 @@ $$;
 -- tentativas não muda a situação do documento; o erro fica só na etapa, avisando que o documento continua como estava.
 -- Rodada de correção 3: com um pedido guardado (coluna requeue), o gatilho ch_jobs_worker_exit pode devolver o trabalho para a
 -- fila em vez de deixá-lo morto; o documento só falha quando o trabalho termina morto mesmo. Devolve a situação final.
-create or replace function public.ch_worker_finish(p_job_id uuid, p_ok boolean, p_error text default null, p_metrics jsonb default '{}'::jsonb) returns text
+-- Rodada de correção 4: com o dono (p_lease), o fim só vale para quem ainda tem o trabalho. Se outro processamento o pegou (este
+-- ficou sem sinal por mais de CONTENT_HUB_STALE_SECONDS), nada muda e a função devolve 'lost', sem erro: o processamento não
+-- registra o fim do trabalho do outro nem pede a próxima etapa. Sem p_lease (código de antes), o trabalho que não está rodando dá
+-- erro, como antes.
+drop function if exists public.ch_worker_finish(uuid, boolean, text, jsonb);
+create or replace function public.ch_worker_finish(p_job_id uuid, p_ok boolean, p_error text default null, p_metrics jsonb default '{}'::jsonb,
+                                                   p_lease uuid default null) returns text
   language plpgsql security definer set search_path = ''
 as $$
 declare j public.ch_jobs; v_status text; v_auto boolean; v_final text;
 begin
-  select * into j from public.ch_jobs where id = p_job_id and status = 'running';
-  if not found then raise exception 'Trabalho não está em execução.' using errcode = 'P0002'; end if;
+  select * into j from public.ch_jobs where id = p_job_id and status = 'running' and (p_lease is null or lease = p_lease) for update;
+  if not found then
+    if p_lease is not null then return 'lost'; end if;
+    raise exception 'Trabalho não está em execução.' using errcode = 'P0002';
+  end if;
   v_auto := coalesce(j.checkpoint ->> 'auto_recheck', '') = 'true';
   if p_ok then v_status := 'succeeded';
   elsif j.attempts >= j.max_attempts then v_status := 'dead';
@@ -371,8 +397,10 @@ $$;
 
 -- Trabalho pendente por falta de configuração (parte da versão da 1500). Rodada de correção 2: o da reconferência automática não
 -- grava "Pendência" no documento; o motivo fica só na etapa. Rodada de correção 3: o trabalho que o gatilho ch_jobs_worker_exit
--- devolveu para a fila (pedido guardado) também não grava.
-create or replace function public.ch_worker_block(p_job_id uuid, p_reason text) returns void
+-- devolveu para a fila (pedido guardado) também não grava. Rodada de correção 4: com o dono (p_lease), só vale para quem ainda
+-- tem o trabalho; devolve a situação final, ou 'lost' quando outro processamento o pegou.
+drop function if exists public.ch_worker_block(uuid, text);
+create or replace function public.ch_worker_block(p_job_id uuid, p_reason text, p_lease uuid default null) returns text
   language plpgsql security definer set search_path = ''
 as $$
 declare v_doc uuid; v_auto boolean; v_final text;
@@ -381,18 +409,22 @@ begin
          error = case when coalesce(checkpoint ->> 'auto_recheck', '') = 'true'
                       then 'Reconferência automática (fonte nova): o documento continua como estava. ' || p_reason else p_reason end,
          locked_at = null
-   where id = p_job_id and status = 'running'
+   where id = p_job_id and status = 'running' and (p_lease is null or lease = p_lease)
    returning document_id, coalesce(checkpoint ->> 'auto_recheck', '') = 'true', status into v_doc, v_auto, v_final;
+  if not found then return case when p_lease is not null then 'lost' end; end if;
   if v_doc is not null and not v_auto and v_final = 'blocked' then
     update public.ch_documents set failure = left('Pendência: ' || p_reason, 500) where id = v_doc;
   end if;
+  return v_final;
 end
 $$;
 
 -- Falha que nova tentativa não resolve (parte da versão da 1500). Rodada de correção 2: a da reconferência automática não muda a
 -- situação do documento. Rodada de correção 3: o trabalho que o gatilho ch_jobs_worker_exit devolveu para a fila (pedido
--- guardado da etapa inteira) também não.
-create or replace function public.ch_worker_fail(p_job_id uuid, p_error text) returns void
+-- guardado da etapa inteira) também não. Rodada de correção 4: com o dono (p_lease), só vale para quem ainda tem o trabalho;
+-- devolve a situação final, ou 'lost' quando outro processamento o pegou.
+drop function if exists public.ch_worker_fail(uuid, text);
+create or replace function public.ch_worker_fail(p_job_id uuid, p_error text, p_lease uuid default null) returns text
   language plpgsql security definer set search_path = ''
 as $$
 declare v_doc uuid; v_auto boolean; v_final text;
@@ -401,11 +433,28 @@ begin
          error = case when coalesce(checkpoint ->> 'auto_recheck', '') = 'true'
                       then 'Reconferência automática (fonte nova): o documento continua como estava. ' || p_error else p_error end,
          locked_at = null, finished_at = now()
-   where id = p_job_id and status = 'running'
+   where id = p_job_id and status = 'running' and (p_lease is null or lease = p_lease)
    returning document_id, coalesce(checkpoint ->> 'auto_recheck', '') = 'true', status into v_doc, v_auto, v_final;
+  if not found then return case when p_lease is not null then 'lost' end; end if;
   if v_doc is not null and not v_auto and v_final = 'dead' then
     update public.ch_documents set status = 'failed', failure = left(p_error, 500) where id = v_doc;
   end if;
+  return v_final;
+end
+$$;
+
+-- Sinal de vida e passo salvo de um trabalho (parte da versão da 1400). Rodada de correção 4: com o dono (p_lease, que o
+-- processamento recebe ao pegar o trabalho), só grava se o trabalho ainda for dele, e devolve se gravou. Falso quer dizer que
+-- outro processamento pegou o trabalho (este ficou sem dar sinal por mais de CONTENT_HUB_STALE_SECONDS): o processamento para
+-- ali, sem gravar mais nada. Sem p_lease (código de antes), grava como antes.
+drop function if exists public.ch_worker_checkpoint(uuid, jsonb);
+create or replace function public.ch_worker_checkpoint(p_job_id uuid, p_checkpoint jsonb, p_lease uuid default null) returns boolean
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  update public.ch_jobs set checkpoint = p_checkpoint, locked_at = now()
+   where id = p_job_id and status = 'running' and (p_lease is null or lease = p_lease);
+  return found;
 end
 $$;
 
@@ -473,6 +522,23 @@ create trigger ch_jobs_worker_exit before update on public.ch_jobs
   for each row when (old.status = 'running' and new.status is distinct from 'running')
   execute function public.ch_jobs_worker_exit();
 
+-- Trabalho que entra em "rodando" (rodada de correção 4): ganha um dono novo (coluna lease), por qualquer caminho que o pegue
+-- (ch_worker_claim da 1400 ou da 5900, ch_worker_visual_claim). Elas devolvem o trabalho já com o dono ("returning *"). Num
+-- gatilho, para valer com qualquer versão de ch_worker_claim, sem a 8200 precisar redefini-la.
+create or replace function public.ch_jobs_worker_enter() returns trigger
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  new.lease := gen_random_uuid();
+  return new;
+end
+$$;
+
+drop trigger if exists ch_jobs_worker_enter on public.ch_jobs;
+create trigger ch_jobs_worker_enter before update on public.ch_jobs
+  for each row when (old.status is distinct from 'running' and new.status = 'running')
+  execute function public.ch_jobs_worker_enter();
+
 -- Reconferência automática num tema que já tem unidade: o processamento não faz versão nova sozinho (a equipe pode estar
 -- revisando ou ter editado o texto). A versão mais nova da unidade recebe os avisos (p_notices), sem apagar nenhum apontamento e
 -- sem repetir o aviso da mesma afirmação. Devolve a versão, ou nada quando o tema ainda não tem unidade com versão. Rodada de
@@ -512,8 +578,10 @@ revoke execute on function public.ch_worker_save_draft(uuid, text, jsonb, text, 
 revoke execute on function public.ch_worker_next_marked(uuid, text, jsonb, text, jsonb) from public, anon, authenticated;
 revoke execute on function public.ch_worker_theme_notice(uuid, jsonb) from public, anon, authenticated;
 revoke execute on function public.ch_worker_next(uuid, text, jsonb, text) from public, anon, authenticated;
-revoke execute on function public.ch_worker_finish(uuid, boolean, text, jsonb) from public, anon, authenticated;
-revoke execute on function public.ch_worker_block(uuid, text) from public, anon, authenticated;
-revoke execute on function public.ch_worker_fail(uuid, text) from public, anon, authenticated;
+revoke execute on function public.ch_worker_finish(uuid, boolean, text, jsonb, uuid) from public, anon, authenticated;
+revoke execute on function public.ch_worker_block(uuid, text, uuid) from public, anon, authenticated;
+revoke execute on function public.ch_worker_fail(uuid, text, uuid) from public, anon, authenticated;
 revoke execute on function public.ch_worker_merge_marks(jsonb, jsonb) from public, anon, authenticated;
 revoke execute on function public.ch_jobs_worker_exit() from public, anon, authenticated;
+revoke execute on function public.ch_worker_checkpoint(uuid, jsonb, uuid) from public, anon, authenticated;
+revoke execute on function public.ch_jobs_worker_enter() from public, anon, authenticated;
