@@ -388,7 +388,7 @@ describe("Banco e motor (IA simulada)", () => {
     await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
     await dev.db.query(`update public.profiles set name = 'Maria Souza' where id = $1`, [S1]);
     for (const uid of [S1, S2]) await aceitarTermos(dev.db, uid); // os alunos já aceitaram o §34 (o aceite em si é testado em termoAceiteTutor.test.ts)
-    // os alunos destes testes assinam (plano pago no prazo): o Tutor ligado exige "Planos pagos + teste grátis" (…7900)
+    // os alunos destes testes assinam (plano pago no prazo): o Tutor ligado exige "Planos pagos + teste grátis" (…9550)
     await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id in ($1, $2)`, [S1, S2]);
     for (const r of await sql(`select id, correct_option from public.questions`)) off[r.id] = r.correct_option;
     process.env.TUTOR_AI_PROVIDER = "mock";

@@ -9,7 +9,7 @@ export const isStaffRole = (role) => role === "admin" || role === "editor";
 export const isPhase2Locked = (role) => !isStaffRole(role);
 export const PLAN_LABEL = { trial: "Teste grátis", pro: "Pro", elite: "Elite" };
 export const SUB_STATUS_LABEL = { trialing: "Em teste", active: "Ativo", past_due: "Pagamento pendente", canceled: "Cancelado", expired: "Expirado" };
-/** Com pagamento pendente, o acesso pago continua por estes dias depois de "Plano pago até" (igual ao banco: …7900, subscription_is_paid). */
+/** Com pagamento pendente, o acesso pago continua por estes dias depois de "Plano pago até" (igual ao banco: …9550, subscription_is_paid). */
 export const PAID_GRACE_DAYS = 3;
 /**
  * Plano pago (Pro ou Elite) ativo ou com pagamento pendente que já não dá o acesso pago: sem "Plano pago até", ou depois

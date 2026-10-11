@@ -514,7 +514,7 @@ const PROFANITY_CAP = [
   { value: "moderate", label: "Até liberados (Durona: contra a resposta, nunca contra o aluno)" },
 ];
 
-/** Mesma mensagem da trava do banco (…7900_correcoes_acesso.sql): Tutor ligado exige "Planos pagos + teste grátis". */
+/** Mesma mensagem da trava do banco (…9550_correcoes_acesso.sql): Tutor ligado exige "Planos pagos + teste grátis". */
 const TUTOR_NEEDS_PLANS = "Para ligar o Tutor, ligue também “Planos pagos + teste grátis”. Sem isso, todo aluno usaria o Tutor de graça, com os limites do plano pago.";
 
 /** Liga e desliga o Tutor, define o limite por aluno e mostra o consumo. Toda mudança pede motivo e vai para o registro. */

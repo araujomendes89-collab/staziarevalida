@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Correções da Administração no banco (supabase/migrations/…7900_correcoes_acesso.sql):
+ * Correções da Administração no banco (supabase/migrations/…9550_correcoes_acesso.sql):
  * US01 — plano pago (Pro/Elite) só dá acesso com "Plano pago até" no futuro; com pagamento pendente, até 3 dias depois do fim.
  *        Vale para o conteúdo Pro (has_pro) e para o Tutor (tutor_is_pro e tutor_entitlement). A administração não salva plano
  *        pago ativo ou pendente sem a data de fim.
@@ -14,7 +14,7 @@ import { PGlite } from "@electric-sql/pglite";
 
 const ROOT = path.resolve(__dirname, "../..");
 const MIGRATIONS = path.join(ROOT, "supabase/migrations");
-const MIGRATION = path.join(MIGRATIONS, "20261003007900_correcoes_acesso.sql");
+const MIGRATION = path.join(MIGRATIONS, "20261003009550_correcoes_acesso.sql");
 const ADMIN = "00000000-0000-4000-8000-0000000000ad";
 const ANA = "00000000-0000-4000-8000-00000000000a";
 const BRUNO = "00000000-0000-4000-8000-00000000000b";
@@ -140,7 +140,7 @@ describe("US01 — 'Plano pago até' corta o acesso", () => {
     expect(await podeChamar("public.subscription_is_paid(public.plan_code, public.subscription_status, timestamptz)")).toEqual({ anon: false, authenticated: false });
   });
 
-  it("sem login, ninguém chama a função que muda o plano (revoke da correção 7900)", async () => {
+  it("sem login, ninguém chama a função que muda o plano (revoke da correção 9550)", async () => {
     expect(await podeChamar("public.app_admin_set_subscription(uuid, text, text, timestamptz, timestamptz)")).toEqual({ anon: false, authenticated: true });
   });
 });
