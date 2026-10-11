@@ -142,3 +142,35 @@ describe("US07 · promover a Administrador pede confirmação", () => {
     expect(confirmar).not.toHaveBeenCalled();
   });
 });
+
+describe("US05 · selo de revisor médico", () => {
+  const revisora = () => person(7, { name: "Dra. Revisora", reviewer_areas: ["CIRURGIA", "PEDIATRIA"] });
+
+  it("a lista mostra o selo e as áreas só de quem revisa", async () => {
+    users = [revisora(), person(8, { name: "Aluno Comum" })];
+    render(<AdminUsers />);
+    const linha = (await screen.findByRole("button", { name: "Abrir Dra. Revisora" })) as HTMLElement;
+    expect(within(linha).getByText("Revisor médico")).toBeTruthy();
+    expect(within(linha).getByText(/Cirurgia, Pediatria/)).toBeTruthy();
+    expect(within(screen.getByRole("button", { name: "Abrir Aluno Comum" })).queryByText("Revisor médico")).toBeNull();
+  });
+
+  it("a ficha mostra o selo, as áreas e onde mudá-las", async () => {
+    users = [revisora()];
+    render(<AdminUsers />);
+    await open("Dra. Revisora");
+    expect(await screen.findByText("Áreas de revisão médica")).toBeTruthy();
+    expect(screen.getAllByText("Revisor médico").length).toBeGreaterThan(0);
+    expect(screen.getByText("Cirurgia, Pediatria")).toBeTruthy();
+    expect(screen.getByText(/Central de Conteúdo › Configurações/)).toBeTruthy();
+  });
+
+  it("ficha de quem não revisa não ganha selo nem bloco", async () => {
+    users = [person(8, { name: "Aluno Comum" })];
+    render(<AdminUsers />);
+    await open("Aluno Comum");
+    await screen.findByText("Cadastro");
+    expect(screen.queryByText("Revisor médico")).toBeNull();
+    expect(screen.queryByText("Áreas de revisão médica")).toBeNull();
+  });
+});

@@ -4,6 +4,7 @@ import { Avatar, Badge, Banner, Button, Card, EmptyState, Icon, SegmentedControl
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { percent } from "../practice/format.js";
+import { AREA_LABEL } from "./content/labels.js";
 import {
   dateBR,
   dateTimeBR,
@@ -25,6 +26,8 @@ const PAGE = 50;
 const NO_MORE = { items: [], fetched: 0, total: null, done: false, loading: false, error: null };
 const roleTone = { admin: "danger", editor: "info", student: "neutral" };
 /** Plano como aparece: a equipe tem acesso pelo papel (sem teste); os outros, pela assinatura. */
+/** Áreas em que a pessoa é revisora médica (a Central de Conteúdo guarda os códigos; aqui vão em português). Vazio = não é revisora. */
+const reviewerAreas = (u) => (u.reviewer_areas ?? []).map((code) => AREA_LABEL[code] ?? code);
 const planText = (u) => (isStaffRole(u.role) ? "Equipe · acesso completo" : `${PLAN_LABEL[u.plan] ?? u.plan} · ${SUB_STATUS_LABEL[u.status] ?? u.status}`);
 
 function Fact({ label, value }) {
@@ -197,6 +200,11 @@ function UserDetail({ id, onBack, onChanged }) {
                   <Badge tone={roleTone[user.role]} size="sm">
                     {ROLE_LABEL[user.role]}
                   </Badge>
+                  {reviewerAreas(user).length > 0 && (
+                    <Badge tone="brand" size="sm">
+                      Revisor médico
+                    </Badge>
+                  )}
                   <Badge tone="pro" size="sm">
                     {planText(user)}
                   </Badge>
@@ -212,7 +220,13 @@ function UserDetail({ id, onBack, onChanged }) {
               <Fact label="Erros para revisar" value={user.pending_errors} />
               <Fact label="Meta" value={user.target_edition ? `${user.exam_type === "ENAMED" ? "ENAMED" : "Revalida"} ${user.target_edition}` : "—"} />
               <Fact label="Teste grátis até" value={isStaffRole(user.role) ? "Não se aplica (equipe)" : dateBR(user.trial_ends_at)} />
+              {reviewerAreas(user).length > 0 && <Fact label="Áreas de revisão médica" value={reviewerAreas(user).join(", ")} />}
             </div>
+            {reviewerAreas(user).length > 0 && (
+              <div style={{ marginTop: 12, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+                Revisor médico é um acesso à parte do papel acima. As áreas se mudam em Central de Conteúdo › Configurações.
+              </div>
+            )}
           </Card>
           <Card>
             <RoleForm key={`r-${user.id}`} user={user} onSaved={saved} />
@@ -297,11 +311,17 @@ export function AdminUsers() {
                           {ROLE_LABEL[u.role]}
                         </Badge>
                       )}
+                      {reviewerAreas(u).length > 0 && (
+                        <Badge tone="brand" size="sm">
+                          Revisor médico
+                        </Badge>
+                      )}
                       <Badge tone={isStaffRole(u.role) || u.status === "active" ? "success" : u.status === "trialing" ? "pro" : "neutral"} size="sm">
                         {planText(u)}
                       </Badge>
                     </div>
                     <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", overflowWrap: "anywhere" }}>{u.email}</span>
+                    {reviewerAreas(u).length > 0 && <span style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>Revisa: {reviewerAreas(u).join(", ")}</span>}
                     <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
                       Cadastro {dateBR(u.created_at)} · {u.answered} respostas · última atividade {u.last_activity ? dateBR(u.last_activity) : "—"}
                     </span>
