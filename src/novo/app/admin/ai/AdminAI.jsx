@@ -118,11 +118,31 @@ function ProviderCard({ p, spend, pending, blocks, backend, reload }) {
   );
 }
 
+// Usos de IA que NÃO passam pelo interruptor de cada IA (IA03): usam a chave direto no servidor e têm a trava própria de cada um.
+// Fica de acordo com docs/architecture/CENTRAL_DE_IAS.md, seção "O que o interruptor liga e desliga".
+const OUTSIDE_SWITCH = [
+  "Tutor: conversa e avaliação (Claude, por padrão), transcrição do microfone (OpenAI) e voz ao vivo (Gemini ou OpenAI).",
+  "Voz do professor do Tutor: ElevenLabs, que não está nesta lista de IAs.",
+  "Áudio dos Podcasts: OpenAI (a voz do Gemini existe, mas fica desligada por padrão no servidor).",
+  "Busca por significado da Central de Conteúdo: Gemini.",
+  "Rotas antigas de IA da Administração: Claude e Gemini, só para administrador.",
+];
+
 function Providers({ data, backend, reload }) {
   const list = PROVIDER_ORDER.map((id) => data.providers.find((p) => p.id === id)).filter(Boolean);
   return (
     <Section title="IAs">
-      <p style={note}>As chaves ficam só no servidor. Uma IA só é chamada se estiver ligada aqui.</p>
+      <div data-testid="providers-intro" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <p style={note}>
+          As chaves ficam só no servidor. Uma IA só é chamada pelas funções abaixo se estiver ligada aqui: isso vale para tudo o que passa por elas (etapas da Central de Conteúdo, Questões, Aulas e roteiro dos Podcasts, assistentes das abas).
+        </p>
+        <p style={note}>Desligar uma IA aqui não desliga estes usos: eles usam a chave direto no servidor e cada um tem a trava própria.</p>
+        <ul data-testid="fora-do-interruptor" style={{ margin: 0, paddingLeft: 18, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+          {OUTSIDE_SWITCH.map((t) => (
+            <li key={t}>{t}</li>
+          ))}
+        </ul>
+      </div>
       {list.map((p) => (
         <ProviderCard key={p.id} p={p} spend={data.spend_by_provider?.find((s) => s.provider === p.id)} pending={data.provider_checks?.[p.id]?.pending} blocks={data.provider_checks?.[p.id]?.blocks} backend={backend} reload={reload} />
       ))}

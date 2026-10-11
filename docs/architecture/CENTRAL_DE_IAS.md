@@ -55,6 +55,29 @@ as IAs e salve as funções em seguida, antes de deixar o processamento trabalha
   Vercel (produção) tinha as chaves de Claude, OpenAI e Gemini; uma IA sem chave lá aparece como "sem chave no site" e
   essas abas a mostram como não pronta.
 
+## O que o interruptor liga e desliga (IA03, 2026-10-11)
+O interruptor **Ligada/Desligada** de cada IA vale para o que passa pelo maestro (`server/ai/maestro.ts`): as seis funções e todos os
+usos delas (etapas da Central de Conteúdo, conferência de rascunhos, Questões, assistentes das abas, assistente das Aulas e
+roteiro dos Podcasts). A frase antiga da tela, "Uma IA só é chamada se estiver ligada aqui", não era verdade para o resto. Os usos
+abaixo **não passam pelo interruptor**: usam a chave direto no servidor, cada um com a trava própria.
+
+| Uso | IA | Trava que vale no servidor | Código |
+|---|---|---|---|
+| Tutor: conversa e avaliação | Claude por padrão (`TUTOR_AI_PROVIDER`, `TUTOR_MODEL`) | `TUTOR_AI_ALLOW_EXTERNAL=1`, os sinalizadores gerais da Central de Conteúdo (`enabled`, `ai_enabled`) e o "Tutor ligado" do painel do Tutor | `server/tutor/engine.ts` (`resolveTutorProvider`) |
+| Tutor: transcrição do microfone | OpenAI | `TUTOR_STT_ALLOW_EXTERNAL=1` | `server/tutor/stt.ts` |
+| Tutor: voz ao vivo | Gemini, GPT-Live ou OpenAI Realtime | `TUTOR_VOICE_ALLOW_EXTERNAL=1` e `TUTOR_LIVE_VOICE_ALLOW_EXTERNAL=1` | `server/tutor/voiceProviders.ts`, `realtime.ts` |
+| Tutor: voz do professor | ElevenLabs (não é uma das IAs da Central) | `ELEVENLABS_API_KEY` e o painel do Tutor | `server/tutor/elevenlabsTts.ts`, `officialVoices.ts` |
+| Podcasts: áudio | OpenAI; a voz do Gemini só liga com `PODCAST_TTS_GEMINI_ENABLED=1` | `CONTENT_HUB_AI_ALLOW_EXTERNAL=1` | `server/podcasts/audio.ts` |
+| Busca por significado | Gemini (AI Studio ou Vertex AI) | `CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1` e o sinalizador geral "IA ligada" da Central de Conteúdo | `server/contentHub/embeddings.ts` |
+| Rotas antigas `/api/ai/*` e `/api/gemini/*` | Claude e Gemini | só administrador (`requireAdmin`) | `server.ts`, `server/ai/modelRouter.ts`, `functionCalling.ts` |
+
+"Atualizar lista" também consulta a lista de modelos da empresa com a chave, mesmo com a IA desligada: não gera texto e não tem custo.
+
+**Decisão:** a tela passou a dizer a verdade, com a lista acima. Fazer esses usos obedecerem ao interruptor **não foi feito**: eles
+param no ato se a IA que usam estiver desligada na Central (hoje o áudio dos Podcasts, a transcrição e a voz do Tutor dependem
+da OpenAI, que pode estar desligada aqui sem ninguém ter percebido). Se o dono quiser, o passo certo é ligar antes as IAs que
+eles usam e só então fazê-los obedecer.
+
 ## As funções
 | Função na tela | Onde é usada hoje |
 |---|---|
