@@ -17,6 +17,8 @@ const BRUNO = "00000000-0000-4000-8000-00000000000b";
 const CARLA = "00000000-0000-4000-8000-00000000000c";
 const ADMIN = "00000000-0000-4000-8000-0000000000ad";
 const DIEGO = "00000000-0000-4000-8000-00000000000d";
+// AR05: a equipe (ADMIN) não entra no ranking; o 4º participante do ranking é um aluno comum.
+const EVA = "00000000-0000-4000-8000-00000000000e";
 const TOPICS_PER_AREA = 4;
 const PER_TOPIC = 5;
 
@@ -81,7 +83,7 @@ beforeAll(async () => {
   for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   }
-  await db.query(`insert into auth.users (id, email) values ($1, 'ana@teste.dev'), ($2, 'bruno@teste.dev'), ($3, 'carla@teste.dev'), ($4, 'admin@teste.dev'), ($5, 'diego@teste.dev')`, [ANA, BRUNO, CARLA, ADMIN, DIEGO]);
+  await db.query(`insert into auth.users (id, email) values ($1, 'ana@teste.dev'), ($2, 'bruno@teste.dev'), ($3, 'carla@teste.dev'), ($4, 'admin@teste.dev'), ($5, 'diego@teste.dev'), ($6, 'eva@teste.dev')`, [ANA, BRUNO, CARLA, ADMIN, DIEGO, EVA]);
   await db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await db.query(`update public.profiles set name = 'Ana Maria Souza' where id = $1`, [ANA]);
   await db.query(`update public.profiles set name = 'Bruno Lima' where id = $1`, [BRUNO]);
@@ -303,8 +305,8 @@ describe("Ranking sanitizado e posição própria", () => {
     for (const [uid, score, q] of [[ANA, 700, 70], [BRUNO, 650, 65], [CARLA, 820, 80]] as const) {
       await sql(`update public.user_gamification_stats set stazia_score = $2, provisional = false, questions_answered = $3 where user_id = $1`, [uid, score, q]);
     }
-    await sql(`insert into public.user_gamification_stats (user_id, stazia_score, provisional, questions_answered, accuracy) values ($1, 700, false, 60, 50) on conflict (user_id) do update set stazia_score = 700, provisional = false, questions_answered = 60, accuracy = 50`, [ADMIN]);
-    await sql(`insert into public.gamification_preferences (user_id) values ($1) on conflict do nothing`, [ADMIN]);
+    await sql(`insert into public.user_gamification_stats (user_id, stazia_score, provisional, questions_answered, accuracy) values ($1, 700, false, 60, 50) on conflict (user_id) do update set stazia_score = 700, provisional = false, questions_answered = 60, accuracy = 50`, [EVA]);
+    await sql(`insert into public.gamification_preferences (user_id) values ($1) on conflict do nothing`, [EVA]);
   });
 
   it("top da classificação, sem e-mail nem UUID, nome abreviado; empate desempata pela precisão", async () => {

@@ -233,11 +233,12 @@ const SUSPECT_LABEL = {
   duplicate_event: "resposta repetida", invalid_attempt: "tentativa inválida",
 };
 const suspectLabel = (reason) => SUSPECT_LABEL[reason] ?? "não contou";
-const JOB_LABEL = { daily: "Rotina diária", close_week: "Fechamento da semana", close_month: "Fechamento do mês" };
+const JOB_LABEL = { daily: "Rotina diária", close_week: "Fechamento da semana", close_month: "Fechamento do mês", arena_sem_equipe: "Equipe fora das ligas" };
 function jobSummary(job) {
   const r = job.result ?? {};
   if (r.skipped) return "não rodou (Arena desligada)";
   if (job.job === "close_week") return r.closed === false ? "nada a fechar" : `${r.promoted ?? 0} subiram de liga, ${r.relegated ?? 0} desceram`;
+  if (job.job === "arena_sem_equipe") return `${r.removed ?? 0} inscrição(ões) da equipe retirada(s) da liga`;
   if (job.job === "daily") return `${r.scores ?? 0} notas atualizadas, ${r.streaks_broken ?? 0} sequências interrompidas`;
   return "concluída";
 }
@@ -368,7 +369,7 @@ export function AdminPlay() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: 12 }}>
             <Card>
-              <div style={{ font: "var(--type-label)", marginBottom: 8 }}>Top 10 (geral)</div>
+              <div style={{ font: "var(--type-label)", marginBottom: 8 }}>Top 10 (geral, só alunos)</div>
               {m.top10.length === 0 && <span style={{ color: "var(--text-tertiary)", font: "var(--type-body-sm)" }}>Ninguém fora da calibração ainda.</span>}
               {m.top10.map((r) => (
                 <div key={r.user_id} style={{ display: "flex", gap: 8, font: "var(--type-body-sm)", padding: "4px 0" }}>
@@ -377,7 +378,7 @@ export function AdminPlay() {
               ))}
             </Card>
             <Card>
-              <div style={{ font: "var(--type-label)", marginBottom: 8 }}>Por liga</div>
+              <div style={{ font: "var(--type-label)", marginBottom: 8 }}>Por liga (só alunos)</div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {Object.entries(m.by_league ?? {}).map(([k, n]) => <Badge key={k}>{leagueLabel(k)}: {n}</Badge>)}
               </div>
