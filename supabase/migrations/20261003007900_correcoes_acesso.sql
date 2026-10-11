@@ -165,7 +165,7 @@ alter table public.tutor_config alter column requires_pro set default true;
 -- (alguém logado, como o painel do Tutor). Ajuste direto no editor SQL do Supabase, sem ninguém logado, não passa por esta
 -- trava: fica para testes internos de quem tem acesso ao banco.
 create or replace function public.tutor_config_guard() returns trigger
-  language plpgsql set search_path = ''
+  language plpgsql security definer set search_path = ''
 as $$
 begin
   if new.enabled and not new.requires_pro and (select auth.uid()) is not null then
