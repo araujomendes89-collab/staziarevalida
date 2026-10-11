@@ -157,6 +157,9 @@ const topic = (d) => d.topic && `Tema: ${d.topic}`;
 
 // ---------------------------------------------------------------- outras partes
 const VOICE_NAME = { tranquilo: "Tranquilo", durona: "Durona", direto: "Direto" };
+// código do professor (tutor_personalities.id) → nome que a tela do Tutor mostra
+const PROFESSOR_NAME = { acolhedor: "Tranquilo", direto: "Direto", durona: "Durona" };
+const reasonOf = (d) => (typeof d.reason === "string" && d.reason.trim() ? `Motivo: ${d.reason.trim()}` : "");
 const duration = (seconds) => {
   const s = Math.round(Number(seconds) || 0);
   const m = Math.floor(s / 60);
@@ -227,8 +230,14 @@ const SUMMARY = {
   "podcast.script.edit": (d, entry) => join([entry.title, d.lines != null && count(d.lines, "fala", "falas")]),
   "podcast.approve": (d, entry) => join([entry.title, d.note && `Nota: ${d.note}`]),
   "podcast.audio": (d, entry) => join([entry.title, d.seconds && `Duração: ${duration(d.seconds)}`, d.simulated && "áudio de teste, sem voz de verdade"]),
-  "tutor.config": (d) => d.reason && `Motivo: ${d.reason}`,
-  "tutor.personality": (d) => join([d.active === true ? "Ligado" : d.active === false ? "Desligado" : "", d.reason && `Motivo: ${d.reason}`]),
+  // O motivo é obrigatório na tela do Tutor ("fica no registro"): aparece inteiro. O "de → para" da configuração é um objeto
+  // técnico e não vira texto.
+  "tutor.config": (d) => reasonOf(d),
+  "tutor.personality": (d) =>
+    join([
+      own(PROFESSOR_NAME, d.id) ? `Professor ${PROFESSOR_NAME[d.id]}: ${d.active === true ? "ligado" : d.active === false ? "desligado" : "alterado"}` : d.active === true ? "Ligado" : d.active === false ? "Desligado" : "",
+      reasonOf(d),
+    ]),
   "tutor.voice.approve": (d) => own(VOICE_NAME, d.voice) && `Voz: ${VOICE_NAME[d.voice]}`,
   "tutor.voice.revoke": (d) => own(VOICE_NAME, d.voice) && `Voz: ${VOICE_NAME[d.voice]}`,
   "gamification.rule": (d, entry) => join([`Regra ${entry.target}: ${ruleValue(d.value)}`, d.enabled === false && "regra desativada"]),

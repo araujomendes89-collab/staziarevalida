@@ -171,7 +171,7 @@ describe("Registro: outras ações mostram o que tem nome (título, tema, nota),
       [{ action: "gamification.mission", target: "m1", details: { slug: "m1", title: "Responder 20 questões" } }, "Responder 20 questões"],
       [{ action: "gamification.reward", target: "r1", details: { slug: "r1", name: "Moldura dourada" } }, "Moldura dourada"],
       [{ action: "tutor.config", target: "tutor", details: { reason: "Ajuste do limite diário" } }, "Motivo: Ajuste do limite diário"],
-      [{ action: "tutor.personality", target: "tutor", details: { id: "acolhedor", active: false, reason: "Teste interno" } }, "Desligado · Motivo: Teste interno"],
+      [{ action: "tutor.personality", target: "tutor", details: { id: "acolhedor", active: false, reason: "Teste interno" } }, "Professor Tranquilo: desligado · Motivo: Teste interno"],
       [{ action: "tutor.voice.approve", target: "tutor", details: { voice: "durona", fingerprint: "f".repeat(64), scenarios: ["a"] } }, "Voz: Durona"],
       [{ action: "tutor.voice.revoke", target: "tutor", details: { voice: "tranquilo" } }, "Voz: Tranquilo"],
       [{ action: "ai.provider", target: "gemini", details: { enabled: true } }, "Gemini: ligada"],
@@ -278,5 +278,29 @@ describe("Registro: de quem foi o papel ou o plano alterado (RG02)", () => {
     expect(auditSummary({ action: "gamification.recalculate", target: UUID, subject: null, details: {} })).toBe("Aluno: conta excluída");
     expect(auditSummary({ action: "gamification.recalculate", target: UUID, details: {} })).toBe("");
     for (const e of [{ ...role, subject: "ana@t.dev" }, { ...plan, subject: null }]) expect(auditSummary(e)).not.toContain(UUID);
+  });
+});
+
+describe("Registro: o motivo das mudanças do Tutor aparece no resumo (RG04)", () => {
+  const REASON = "Ajuste do limite diário depois de reclamações de alunos de teste";
+  it("configuração do Tutor: o motivo (obrigatório na tela, mínimo de 10 caracteres) aparece inteiro", () => {
+    const entry = { action: "tutor.config", target: "tutor", actor: "adm@t.dev", details: { from: { daily_limit: 20 }, to: { daily_limit: 30 }, reason: REASON } };
+    expect(auditLabel(entry)).toBe("Tutor configurado");
+    expect(auditSummary(entry)).toBe(`Motivo: ${REASON}`);
+    // o objeto "de → para" da configuração não vira texto na tela
+    expect(auditSummary(entry)).not.toMatch(/daily_limit|\{|\[object/);
+  });
+
+  it("professor ligado ou desligado: qual professor, a situação nova e o motivo", () => {
+    const base = { action: "tutor.personality", target: "tutor", actor: "adm@t.dev" };
+    expect(auditSummary({ ...base, details: { id: "durona", active: true, reason: "Voltou a ficar disponível" } })).toBe("Professor Durona: ligado · Motivo: Voltou a ficar disponível");
+    expect(auditSummary({ ...base, details: { id: "direto", active: false, reason: REASON } })).toBe(`Professor Direto: desligado · Motivo: ${REASON}`);
+    // professor desconhecido (futuro): só a situação e o motivo, sem inventar nome
+    expect(auditSummary({ ...base, details: { id: "novo", active: false, reason: REASON } })).toBe(`Desligado · Motivo: ${REASON}`);
+  });
+
+  it("registro antigo sem motivo gravado não mostra 'Motivo:' vazio", () => {
+    expect(auditSummary({ action: "tutor.config", target: "tutor", details: { from: {}, to: {} } })).toBe("");
+    expect(auditSummary({ action: "tutor.config", target: "tutor", details: { reason: "   " } })).toBe("");
   });
 });
