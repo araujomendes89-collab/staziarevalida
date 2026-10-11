@@ -99,3 +99,46 @@ describe("US03 · Carregar mais pagina de verdade", () => {
     expect(screen.getByRole("button", { name: "Carregar mais" })).toBeTruthy();
   });
 });
+
+describe("US07 · promover a Administrador pede confirmação", () => {
+  beforeEach(() => {
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_users") return { total: 1, items: [users[0]] };
+      if (fn === "app_admin_user") return users[0];
+      if (fn === "app_admin_set_role") return { ...users[0], role: args.p_role };
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+  });
+  afterEach(() => vi.restoreAllMocks());
+  const salvarComoAdmin = async () => {
+    render(<AdminUsers />);
+    await open("Pessoa 1");
+    fireEvent.click(await screen.findByRole("radio", { name: "Administrador" }));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar papel" }));
+  };
+
+  it("se a pessoa desistir, nada é salvo", async () => {
+    const confirmar = vi.spyOn(window, "confirm").mockReturnValue(false);
+    await salvarComoAdmin();
+    expect(confirmar).toHaveBeenCalledTimes(1);
+    expect(String(confirmar.mock.calls[0][0])).toMatch(/Pessoa 1.*Administrador.*acesso a tudo/s);
+    expect(backend.rpc.mock.calls.some((c: any[]) => c[0] === "app_admin_set_role")).toBe(false);
+  });
+
+  it("se confirmar, salva o papel", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    await salvarComoAdmin();
+    expect(await screen.findByText("Papel salvo.")).toBeTruthy();
+    expect(backend.rpc).toHaveBeenCalledWith("app_admin_set_role", { p_user_id: "u1", p_role: "admin" });
+  });
+
+  it("Editor continua sem pergunta", async () => {
+    const confirmar = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<AdminUsers />);
+    await open("Pessoa 1");
+    fireEvent.click(await screen.findByRole("radio", { name: "Editor" }));
+    fireEvent.click(screen.getByRole("button", { name: "Salvar papel" }));
+    expect(await screen.findByText("Papel salvo.")).toBeTruthy();
+    expect(confirmar).not.toHaveBeenCalled();
+  });
+});

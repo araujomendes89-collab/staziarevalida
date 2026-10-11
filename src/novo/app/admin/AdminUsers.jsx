@@ -41,6 +41,8 @@ function RoleForm({ user, onSaved }) {
   const [role, setRole] = React.useState(user.role);
   const [state, setState] = React.useState({ saving: false, error: null, done: false });
   const save = async () => {
+    // Administrador tem acesso a tudo (usuários, planos, configurações): não se promove por engano.
+    if (role === "admin" && user.role !== "admin" && !window.confirm(`Tornar ${user.name || user.email} Administrador? Essa pessoa passa a ter acesso a tudo, inclusive usuários, planos e configurações.`)) return;
     setState({ saving: true, error: null, done: false });
     try {
       onSaved(await backend.rpc("app_admin_set_role", { p_user_id: user.id, p_role: role }));
