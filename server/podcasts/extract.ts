@@ -263,6 +263,13 @@ export interface FetchBytesOptions {
   connect?: (url: string, init: RequestInit, ips: string[]) => Promise<Response>;
   /** Todo status de erro vira "O link respondeu N." (sem as mensagens próprias do 403 e do 429). */
   plainStatus?: boolean;
+  /** Texto próprio do erro para qualquer status de erro (ex.: o monitor de fontes escreve "HTTP 404"); tem prioridade sobre `plainStatus`. */
+  statusMessage?: (status: number) => string;
+  /**
+   * Aceita qualquer tipo de conteúdo (o monitor de fontes só compara impressões digitais): nada de recusar tipo desconhecido nem
+   * PDF sem assinatura; o tipo volta como "pdf" (assinatura), "html" ou "text" (todo o resto).
+   */
+  acceptAnyType?: boolean;
 }
 
 export interface FetchedBytes {
@@ -322,6 +329,7 @@ export async function fetchBytes(url: string, fetchImpl: typeof fetch, opts: Fet
       }
       if (!res.ok) {
         res.body?.cancel().catch(() => {});
+        if (opts.statusMessage) throw new Error(opts.statusMessage(res.status));
         if (!opts.plainStatus && res.status === 429) throw new Error("O site pediu para esperar (429).");
         if (!opts.plainStatus && res.status === 403) throw new Error("O site bloqueou o download (403).");
         throw new Error(`O link respondeu ${res.status}.`);
@@ -354,6 +362,7 @@ export async function fetchBytes(url: string, fetchImpl: typeof fetch, opts: Fet
       }
       const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
       if (isPdf(body)) return { finalUrl: u.toString(), body, contentType, kind: "pdf" };
+      if (opts.acceptAnyType) return { finalUrl: u.toString(), body, contentType, kind: contentType.includes("html") ? "html" : "text" };
       if (contentType.includes("pdf")) throw new Error("O arquivo não é um PDF (assinatura %PDF- ausente).");
       if (contentType.includes("html")) return { finalUrl: u.toString(), body, contentType, kind: "html" };
       if (contentType.includes("text")) return { finalUrl: u.toString(), body, contentType, kind: "text" };

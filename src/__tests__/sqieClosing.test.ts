@@ -111,7 +111,7 @@ describe("Frescor, verificar ao servir, eventos, conflito, painel (fontes sinté
     expect((await sql(`select public.ch_worker_watch_requested() n`))[0].n).toBe(1);
     // quem não respondeu a questão não dispara verificação
     expect(await rpc(REVIEWER, "app_question_verify_on_serve", q1)).toBe(0);
-    const worker = createContentHubWorker(deps(), { fetchImpl: (async () => new Response("%PDF-1.7 igual", { status: 200, headers: { "content-type": "application/pdf" } })) as unknown as typeof fetch });
+    const worker = createContentHubWorker(deps(), { resolver: async () => ["93.184.216.34"], fetchImpl: (async () => new Response("%PDF-1.7 igual", { status: 200, headers: { "content-type": "application/pdf" } })) as unknown as typeof fetch });
     await sql(`update public.ch_source_watch set requested_at = now(), last_hash = $2 where source_id = $1`, [v1, (await import("../../server/contentHub/worker")).publicationHash(Buffer.from("%PDF-1.7 igual"), "application/pdf")]);
     expect(await worker.checkSources()).toMatchObject({ checked: 1, changed: 0 });
     expect((await sql(`select requested_at from public.ch_source_watch where source_id = $1`, [v1]))[0].requested_at).toBeNull();
