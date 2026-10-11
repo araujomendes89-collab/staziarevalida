@@ -161,6 +161,46 @@ describe("Administração › Podcasts", () => {
   });
 });
 
+describe("Administração › Podcasts › Flashcast da aula", () => {
+  const published = (extra: Record<string, unknown> = {}) =>
+    episode({ status: "published", lesson_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", approved_at: "2026-10-06T13:00:00Z", approved_by_name: "Editora", approval_note: "Conferido.", audio_path: "podcasts/x.mp3", audio_seconds: 300, ...extra });
+
+  it("o editor não vê o botão e lê que só o administrador usa o áudio como Flashcast", async () => {
+    renderAdmin("editor", published());
+    expect(await screen.findByText(/só ele pode usar o áudio como Flashcast da aula/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Usar como Flashcast/ })).toBeNull();
+  });
+
+  it("episódio ainda não publicado: nem o administrador vê o botão", async () => {
+    renderAdmin("admin", published({ status: "audio_ready" }));
+    expect(await screen.findByText(/só ele pode usar o áudio como Flashcast da aula/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Usar como Flashcast/ })).toBeNull();
+  });
+
+  it("administrador, episódio publicado: pede confirmação antes e envia a confirmação ao servidor", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValueOnce(false).mockReturnValueOnce(true);
+    const calls: any[] = [];
+    fetchMock.mockImplementation(async (url: string, init: any) => {
+      if (url.endsWith("/api/podcasts/providers")) return new Response(JSON.stringify(PROVIDERS), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/flashcast")) {
+        calls.push(JSON.parse(init.body));
+        return new Response(JSON.stringify({ lesson: {} }), { status: 201, headers: { "Content-Type": "application/json" } });
+      }
+      return new Response("{}", { status: 404 });
+    });
+    renderAdmin("admin", published());
+    const button = await screen.findByRole("button", { name: /Usar como Flashcast da aula/ });
+    fireEvent.click(button);
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(String(confirm.mock.calls[0][0])).toMatch(/trocado/);
+    expect(calls).toHaveLength(0);
+    fireEvent.click(button);
+    await waitFor(() => expect(calls).toHaveLength(1));
+    expect(calls[0]).toMatchObject({ confirm: true });
+    confirm.mockRestore();
+  });
+});
+
 describe("Assistente de IA da aula", () => {
   const RESULT = {
     suggestion: {

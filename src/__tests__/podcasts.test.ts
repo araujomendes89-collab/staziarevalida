@@ -548,8 +548,26 @@ describe("Áudio em partes, publicação e Flashcast", () => {
     await expect(rpc(EDITOR, "app_admin_podcast_save_script", { p_id: podcastId, p_script: { lines: ep.lines } })).rejects.toThrow(/Despublique/);
   });
 
-  it("Flashcast: o MP3 aprovado vira o áudio da aula ligada", async () => {
-    const r = await post(`${base}/${podcastId}/flashcast`, editor, {});
+  it("Flashcast: só o administrador, com confirmação e com o episódio publicado; o MP3 vira o áudio da aula ligada", async () => {
+    const lessonMaterials = async () => (await dev.db.query<any>(`select count(*)::int n from public.lesson_materials where lesson_id = $1 and kind = 'flashcast'`, [lessonId])).rows[0].n;
+    // editor não copia áudio para a aula (nem com confirmação); aluno também não
+    expect((await post(`${base}/${podcastId}/flashcast`, editor, { confirm: true })).status).toBe(403);
+    expect((await post(`${base}/${podcastId}/flashcast`, student, { confirm: true })).status).toBe(403);
+    expect(await lessonMaterials()).toBe(0);
+    // administrador sem confirmar: nada acontece
+    const semConfirmar = await post(`${base}/${podcastId}/flashcast`, admin, {});
+    expect(semConfirmar.status).toBe(400);
+    expect(semConfirmar.body.error).toMatch(/confirm/i);
+    expect(await lessonMaterials()).toBe(0);
+    // episódio não publicado: recusa, mesmo para o administrador
+    await rpc(ADMIN, "app_admin_podcast_publish", { p_id: podcastId, p_published: false });
+    const naoPublicado = await post(`${base}/${podcastId}/flashcast`, admin, { confirm: true });
+    expect(naoPublicado.status).toBe(409);
+    expect(naoPublicado.body.error).toMatch(/publicado/);
+    expect(await lessonMaterials()).toBe(0);
+    await rpc(ADMIN, "app_admin_podcast_publish", { p_id: podcastId, p_published: true });
+    // administrador, confirmado e publicado: copia
+    const r = await post(`${base}/${podcastId}/flashcast`, admin, { confirm: true });
     expect(r.status).toBe(201);
     const m = r.body.lesson.materials.find((x: any) => x.kind === "flashcast");
     expect(m).toMatchObject({ title: "Flashcast: Pré-eclâmpsia em 5 minutos", content_type: "audio/mpeg", has_file: true });

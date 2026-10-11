@@ -55,7 +55,7 @@ export async function addFileSource(backend, id, file) {
 
 export const addTextSource = (backend, id, title, text) => call(backend, `/${id}/sources/text`, { method: "POST", body: { title, text } });
 export const addLinkSource = (backend, id, url) => call(backend, `/${id}/sources/link`, { method: "POST", body: { url } });
-export const addLessonSource = (backend, id, lessonId) => call(backend, `/${id}/sources/lesson`, { method: "POST", body: { lesson_id: lessonId } });
+export const addLessonSource = (backend, id, lessonId) => call(backend, `/${id}/sources/lesson`, { method: "POST", body: { lesson_id: lessonId, confirm: true } });
 export const removeSource = (backend, id, sourceId) => call(backend, `/${id}/sources/${sourceId}`, { method: "DELETE" });
 
 /** Roteiro com a IA escolhida: entra para revisão (nunca aprovado). Devolve { podcast, warnings }. */
@@ -90,7 +90,7 @@ export async function podcastAudioUrl(backend, id) {
   return URL.createObjectURL(await res.blob());
 }
 
-export const attachFlashcast = (backend, id, lessonId) => call(backend, `/${id}/flashcast`, { method: "POST", body: { lesson_id: lessonId } });
+export const attachFlashcast = (backend, id, lessonId) => call(backend, `/${id}/flashcast`, { method: "POST", body: { lesson_id: lessonId, confirm: true } });
 export const deletePodcast = (backend, id) => call(backend, `/${id}`, { method: "DELETE" });
 
 /** IAs ou vozes indisponíveis, juntando as que têm o mesmo motivo: "Gemini, Claude e OpenAI: motivo". */

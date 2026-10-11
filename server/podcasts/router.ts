@@ -487,12 +487,15 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     }
   });
 
-  // ------------------------------------------------------------------ Flashcast da aula
+  // ------------------------------------------------------------------ Flashcast da aula (só administrador, confirmado, episódio publicado)
   router.post("/:id/flashcast", async (req: Authed, res) => {
     let copied: string | null = null;
     try {
       if (!deps!.lessons) throw httpError(503, "Depósito das aulas indisponível.");
-      await staffPodcast(req);
+      const before = await staffPodcast(req);
+      // Só o administrador (conferido no banco), com a confirmação dele, e só de episódio publicado: o aluno passa a ouvir a aula.
+      if (req.body?.confirm !== true) throw httpError(400, "Confirme (confirm: true) que o áudio vai virar o Flashcast da aula, trocando o que ela já tem.");
+      if (before?.status !== "published") throw httpError(409, "O Flashcast só pode ser copiado de um episódio publicado.");
       const f = await service<any>("ch_worker_podcast_flashcast", { p_user: req.user!.id, p_podcast: req.params.id });
       const lessonId = String(req.body?.lesson_id || f.lesson_id || "");
       if (!ID.test(lessonId)) throw httpError(400, "Ligue o episódio a uma aula antes.");
