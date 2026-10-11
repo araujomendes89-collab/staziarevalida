@@ -4,6 +4,7 @@
 --  GE03  os números de usuários, planos e gasto de IA só vão para o administrador (o editor não os recebe);
 --  GE04  "ativos" inclui quem viu aula ou conversou com o Nexus, e não conta a equipe;
 --  GE05  novo bloco "pending_review" (o que espera revisão por aba) e "ai_month" (gasto de IA do mês, só administrador).
+-- PUBLICAR O SITE ANTES de colar a 9601 (o site antigo quebra a aba Geral para o editor se a 9601 entrar antes; o contrário é seguro).
 -- Cada contagem nova é isolada: se uma tabela de outra aba mudar de forma, só aquele número some, a Visão geral não quebra.
 -- Pode ser colada duas vezes. Nenhum dado é alterado.
 create or replace function public.app_admin_overview() returns jsonb
@@ -63,8 +64,10 @@ begin
       where c.created_at >= date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo';
     exception when others then v_central := null; end;
     begin
+      -- só o Tutor/Nexus (feature tutor_*): roteiro e áudio do podcast e o assistente da aula também gravam no ledger,
+      -- mas esse custo já entra em ai_calls (Central de IAs) e apareceria em dobro
       select coalesce(sum(l.estimated_cost_usd), 0) into v_tutor from public.ai_usage_ledger l
-      where l.created_at >= date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo';
+      where left(l.feature, 6) = 'tutor_' and l.created_at >= date_trunc('month', now() at time zone 'America/Sao_Paulo') at time zone 'America/Sao_Paulo';
     exception when others then v_tutor := null; end;
 
     v_result := v_result || jsonb_build_object(

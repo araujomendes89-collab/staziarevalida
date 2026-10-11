@@ -25,8 +25,9 @@ export function AdminOverview({ isAdmin }) {
   const paying = ["pro:active", "elite:active"].reduce((n, k) => n + (plans[k] ?? 0), 0);
   const pastDue = ["pro:past_due", "elite:past_due"].reduce((n, k) => n + (plans[k] ?? 0), 0);
   const pending = PENDING_REVIEW.filter(([key]) => data.pending_review?.[key] != null);
-  const ai = data.ai_month;
-  const usd = (v) => `US$ ${Number(v ?? 0).toFixed(2)}`;
+  // sem nenhuma das duas somas (falha isolada no banco), o bloco some em vez de mostrar só o título
+  const ai = data.ai_month && (data.ai_month.central_usd != null || data.ai_month.tutor_usd != null) ? data.ai_month : null;
+  const usd = (v) => `US$ ${Number(v ?? 0).toFixed(2).replace(".", ",")}`;
   const grid = { display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(4,minmax(0,1fr))", gap: 16 };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>

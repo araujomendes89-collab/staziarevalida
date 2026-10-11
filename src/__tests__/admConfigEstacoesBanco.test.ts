@@ -141,8 +141,13 @@ describe("Visão geral (GE01 a GE05)", () => {
     const o = await rpc(ADMIN, "app_admin_overview");
     const updates = Number((await db.query<{ n: number }>(`select count(*)::int n from public.guideline_updates where review_status = 'pending'`)).rows[0].n);
     expect(o.pending_review).toMatchObject({ podcasts: 1, lessons_draft: 1, updates, stations: o.stations.pending });
-    expect(o.pending_review.content ?? 0).toBe(0);
+    expect(o.pending_review.content).toBe(0); // exige o número: se a contagem da Central de Conteúdo falhar, some e o teste acusa
     expect(Number(o.ai_month.central_usd)).toBeCloseTo(1.25, 4);
+    // roteiro de podcast e assistente da aula gravam no ledger, mas já entram em ai_calls: não são Nexus
+    await db.query(`insert into public.ai_usage_ledger (user_id, feature, estimated_cost_usd) values ($1, 'podcast_script', 0.40), ($1, 'lesson_assist', 0.10)`, [ADMIN]);
+    expect(Number((await rpc(ADMIN, "app_admin_overview")).ai_month.tutor_usd)).toBe(0);
+    await db.query(`insert into public.ai_usage_ledger (user_id, feature, estimated_cost_usd) values ($1, 'tutor_tts', 0.30), ($1, 'tutor_voice_live', 0.20)`, [ANA]);
+    expect(Number((await rpc(ADMIN, "app_admin_overview")).ai_month.tutor_usd)).toBeCloseTo(0.5, 4);
     const editor = await rpc(EDITOR, "app_admin_overview");
     expect(editor.pending_review.podcasts).toBe(1);
   });

@@ -112,8 +112,15 @@ describe("Visão geral (GE01, GE02, GE04, GE05, GE06)", () => {
     render(<AdminOverview isAdmin />);
     await screen.findByText("Esperando revisão");
     for (const t of ["Estações: 3", "Aulas em rascunho: 2", "Podcasts com roteiro para aprovar: 1", "Atualizações pendentes: 19", "Central de Conteúdo: 0"]) expect(screen.getByText(t)).toBeTruthy();
-    expect(screen.getByText("Central de IAs: US$ 12.50")).toBeTruthy();
-    expect(screen.getByText("Nexus: US$ 3.20")).toBeTruthy();
+    expect(screen.getByText("Central de IAs: US$ 12,50")).toBeTruthy();
+    expect(screen.getByText("Nexus: US$ 3,20")).toBeTruthy();
+  });
+
+  it("GE05: sem nenhuma das somas de gasto, o bloco some em vez de ficar só com o título", async () => {
+    backend.rpc.mockImplementation(async () => ({ ...OVERVIEW, ai_month: {} }));
+    render(<AdminOverview isAdmin />);
+    await screen.findByText("Esperando revisão");
+    expect(screen.queryByText(/Gasto de IA/)).toBeNull();
   });
 
   it("GE03: o editor recebe só questões, atividade e estações; a tela não quebra sem os números de usuários", async () => {
