@@ -312,6 +312,10 @@ export async function embedPendingPassages(
     );
     if (!batch?.length) break;
     const r = await embedder.embedDocuments(batch.map((p) => ({ title: [p.title, p.section].filter(Boolean).join(" — ") || null, text: p.text })));
+    // resposta incompleta ou torta: não grava nada deste lote (um vetor vazio ou faltando contaria como "feito" e o trecho nunca seria refeito)
+    if (r.vectors.length !== batch.length || r.vectors.some((v) => !Array.isArray(v) || v.length !== EMBEDDING_DIMS)) {
+      throw new EmbeddingsError(`Busca por significado: o Google devolveu ${r.vectors.length} vetor(es) para ${batch.length} trecho(s) ou um vetor com tamanho diferente de ${EMBEDDING_DIMS}.`, 502);
+    }
     const saved = await db.service<number>("ch_worker_save_embeddings", {
       p_model: embedder.model, p_items: batch.map((p, i) => ({ passage_id: p.id, embedding: r.vectors[i] })),
     });

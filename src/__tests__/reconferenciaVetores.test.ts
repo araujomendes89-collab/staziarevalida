@@ -57,6 +57,8 @@ const C2 = "Ambarteste deve ser girado quando Cobreteste tocar 41%.";
 const C3 = "Anilteste deve ser dobrado quando Bronzeteste marcar 43%.";
 const C4 = "Cianoteste deve ser lavado quando Douradoteste somar 47%.";
 const C5 = "Ebanoteste deve ser medido quando Ferroteste passar 53%.";
+const C8 = "Opalaceteste deve ser selado quando Quartzoteste cair 67%.";
+const C9 = "Safiraceteste deve ser trocado quando Topazioteste subir 71%.";
 const C6 = "Grafiteteste deve ser cortado quando Indigoteste atingir 59%.";
 const C7 = "Jaspeteste deve ser lixado quando Limaoteste baixar 61%.";
 
@@ -424,6 +426,41 @@ describe("CC01, rodada de correção 5: a fonte nova ganha os vetores antes da r
     expect(index.metrics.vectors_error).toMatch(/migração 9540/);
     expect(index.metrics.recheck_documents).toBeGreaterThanOrEqual(1);
     expect((await claimOf(doc)).status).toBe("compatible");
+  }, 300_000);
+
+  it("o Google devolve menos vetores que trechos (ou um vetor torto): nada é gravado pela metade e o trecho continua sem vetor", async () => {
+    const short: Embedder = {
+      ...fakeEmbedder(),
+      async embedDocuments(items) {
+        const r = await fakeEmbedder().embedDocuments(items);
+        return { ...r, vectors: r.vectors.slice(0, -1) }; // falta o último
+      },
+    };
+    const crooked: Embedder = {
+      ...fakeEmbedder(),
+      async embedDocuments(items) {
+        const r = await fakeEmbedder().embedDocuments(items);
+        return { ...r, vectors: r.vectors.map((v) => v.slice(0, 10)) }; // tamanho errado
+      },
+    };
+    for (const [label, embedder, sentence] of [["faltando um", short, C8], ["tamanho errado", crooked, C9]] as const) {
+      const doc = await studyDocument(`Apostila com vetores ${label}`, sentence, depsE(null));
+      const { documentId, sourceId } = await indexSource(`Manual fictício vetores ${label}`, [sentence, ...fillerPages(1, label.replace(/ /g, ""))]);
+      await cloudRunRound(depsE(embedder), { embed: false });
+      const index = await stepJob(documentId, "source_index");
+      expect(index.status, label).toBe("succeeded");
+      expect(index.metrics.vectors_error, label).toMatch(FAILED);
+      // nenhum vetor ruim entra (um vetor vazio contaria como "feito" e o trecho nunca seria refeito)
+      const bad = await sql(
+        `select count(*)::int as n from public.ch_passage_embeddings e join public.ch_source_passages p on p.id = e.passage_id
+          where p.source_id = $1 and coalesce(array_length(e.embedding, 1), 0) <> 768`,
+        [sourceId]
+      );
+      expect(bad[0].n, label).toBe(0);
+      // e a leitura da fonte não parou: a reconferência entrou e achou o trecho por palavras
+      expect(index.metrics.recheck_documents, label).toBeGreaterThanOrEqual(1);
+      expect((await claimOf(doc)).status, label).toBe("compatible");
+    }
   }, 300_000);
 
   describe("sinal de vida a cada lote e trabalho perdido (rodada de correção 4)", () => {
