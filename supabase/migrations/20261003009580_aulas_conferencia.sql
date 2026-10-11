@@ -1,30 +1,95 @@
 -- =============================================================================
--- Aulas: registro de quem conferiu o texto antes de ir ao aluno (correção A01, 11/10/2026).
+-- Aulas: conferência registrada antes de ir ao aluno (A01) e nome de arquivo fora do que o aluno lê (A05) - 11/10/2026.
 --
---  * Publicar uma aula (ou mudar título, tema, resumo ou pontos-chave de uma aula publicada) exige dizer o que foi conferido
---    (pelo menos 10 caracteres). O banco grava QUEM conferiu (a pessoa logada, não um nome digitado) e QUANDO.
---  * Os avisos que a IA deu ao gerar o texto (número fora dos trechos citados, "o material não esclarece") ficam guardados
---    na aula (ai_notes) e aparecem para a equipe; o aluno nunca vê nada disso (lesson_view não mudou).
---  * Aulas que já estão publicadas continuam no ar, sem registro de conferência ("sem registro" na tela da equipe):
---    nada é apagado nem tirado do ar por este SQL.
+--  * A01: publicar uma aula (ou mudar título, tema, resumo ou pontos-chave de uma publicada) exige dizer o que foi conferido
+--    (pelo menos 10 caracteres). Sempre que o campo vem preenchido, o banco grava QUEM conferiu (a conta logada) e QUANDO, mesmo
+--    sem mudar o texto: é assim que as aulas antigas ("sem registro de conferência") passam a ter registro.
+--  * O registro (nota, quem, quando) e os avisos da IA ficam numa tabela PRÓPRIA (lesson_reviews), com acesso por linha ligado
+--    sem política e sem permissão para aluno e visitante: a tabela lessons é lida por qualquer aluno logado, então uma coluna
+--    ali sairia em /rest/v1/lessons?select=review_note,ai_notes. Só as funções app_admin_* (dono) leem e gravam.
+--  * A05: o título do material guarda o nome do arquivo de quem enviou. O aluno passa a receber só um rótulo neutro
+--    ("Material complementar", "Áudio Flashcast", "Material 2") em app_lessons, app_lesson e app_lesson_material; a equipe
+--    recebe o nome real em "file_title" e o caminho em "storage_path" (o assistente da aula precisa para reconhecer o PDF salvo). A leitura direta da tabela lesson_materials fica só para a equipe (nenhum código do
+--    app ou do servidor lê essa tabela direto: tudo passa pelas funções).
+--  * Aulas já publicadas continuam no ar; nada é apagado.
 --
--- As funções redefinidas partem da versão de 20261003004000_aulas.sql (a única até aqui). Pode ser colado duas vezes.
+-- As funções partem das versões de 20261003004000_aulas.sql (a única até aqui). Pode ser colado duas vezes.
 -- =============================================================================
 
-alter table public.lessons add column if not exists reviewed_by uuid references auth.users (id) on delete set null;
-alter table public.lessons add column if not exists reviewed_at timestamptz;
-alter table public.lessons add column if not exists review_note text check (review_note is null or char_length(review_note) <= 1000);
-alter table public.lessons add column if not exists ai_notes jsonb not null default '[]'::jsonb check (jsonb_typeof(ai_notes) = 'array');
+create table if not exists public.lesson_reviews (
+  lesson_id uuid primary key references public.lessons (id) on delete cascade,
+  reviewed_by uuid references auth.users (id) on delete set null,
+  reviewed_at timestamptz,
+  review_note text check (review_note is null or char_length(review_note) <= 1000),
+  ai_notes jsonb not null default '[]'::jsonb check (jsonb_typeof(ai_notes) = 'array')
+);
+alter table public.lesson_reviews enable row level security;
+revoke all on table public.lesson_reviews from public, anon, authenticated;
 
 -- Só para a equipe (as funções app_admin_* abaixo): quem conferiu, quando, o que foi conferido e os avisos da IA.
 create or replace function public.lesson_review_view(l public.lessons) returns jsonb
   language sql stable security definer set search_path = ''
 as $$
   select jsonb_build_object(
-    'reviewer', coalesce((select nullif(p.name, '') from public.profiles p where p.id = l.reviewed_by), (select u.email from auth.users u where u.id = l.reviewed_by)),
-    'reviewed_at', l.reviewed_at, 'review_note', l.review_note, 'ai_notes', l.ai_notes)
+    'reviewer', (select coalesce(nullif(p.name, ''), u.email) from auth.users u left join public.profiles p on p.id = u.id where u.id = r.reviewed_by),
+    'reviewed_at', r.reviewed_at, 'review_note', r.review_note, 'ai_notes', coalesce(r.ai_notes, '[]'::jsonb))
+  from (select 1) one left join public.lesson_reviews r on r.lesson_id = l.id
 $$;
 revoke execute on function public.lesson_review_view(public.lessons) from public, anon, authenticated;
+
+-- Materiais da aula como o app lê: o aluno só vê aula publicada e recebe um título neutro (nunca o nome do arquivo);
+-- a equipe recebe também o nome real em file_title.
+create or replace function public.lesson_materials_json(p_lesson uuid) returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select coalesce(jsonb_agg(x.j order by x.position, x.created_at), '[]'::jsonb)
+  from (
+    select m.position, m.created_at,
+      jsonb_build_object(
+        'id', m.id, 'kind', m.kind,
+        'title', case m.kind when 'slides' then 'Material complementar' when 'flashcast' then 'Áudio Flashcast'
+                             when 'guideline' then case when m.storage_path is null then m.title else 'Diretriz' end
+                             else 'Material ' || row_number() over (partition by m.kind order by m.position, m.created_at) end,
+        'has_file', m.storage_path is not null, 'content_type', m.content_type, 'size_bytes', m.size_bytes, 'url', m.url)
+      || case when public.is_staff() then jsonb_build_object('file_title', m.title, 'storage_path', m.storage_path) else '{}'::jsonb end as j
+    from public.lesson_materials m
+    where m.lesson_id = p_lesson
+      and exists (select 1 from public.lessons l where l.id = p_lesson and (l.published or public.is_staff()))
+  ) x
+$$;
+revoke execute on function public.lesson_materials_json(uuid) from public, anon;
+grant execute on function public.lesson_materials_json(uuid) to authenticated;
+
+create or replace function public.lesson_view(l public.lessons) returns jsonb
+  language sql stable set search_path = ''
+as $$
+  select jsonb_build_object(
+    'id', l.id, 'area', l.area, 'area_label', public.area_label(l.area), 'topic', l.topic, 'title', l.title,
+    'duration_minutes', l.duration_minutes, 'instructor', l.instructor, 'specialty', l.specialty, 'video_url', l.video_url,
+    'summary', l.summary, 'key_points', to_jsonb(l.key_points), 'guideline_title', l.guideline_title, 'guideline_url', l.guideline_url,
+    'published', l.published, 'position', l.position, 'updated_at', l.updated_at,
+    'materials', public.lesson_materials_json(l.id),
+    'progress', (select jsonb_build_object('seconds_watched', p.seconds_watched, 'completed_at', p.completed_at, 'last_at', p.last_at)
+                 from public.lesson_progress p where p.lesson_id = l.id and p.user_id = (select auth.uid())))
+$$;
+
+-- Material de uma aula visível (o servidor usa para servir o arquivo). Aluno: título neutro e só aula publicada.
+create or replace function public.app_lesson_material(p_id uuid) returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select jsonb_build_object('id', m.id, 'kind', m.kind,
+           'title', case when public.is_staff() then m.title else case m.kind when 'slides' then 'Material complementar' when 'flashcast' then 'Áudio Flashcast' else 'Material' end end,
+           'storage_path', m.storage_path, 'content_type', m.content_type, 'url', m.url)
+  from public.lesson_materials m join public.lessons l on l.id = m.lesson_id
+  where m.id = p_id and (select auth.uid()) is not null and (l.published or public.is_staff())
+$$;
+revoke execute on function public.app_lesson_material(uuid) from public, anon;
+grant execute on function public.app_lesson_material(uuid) to authenticated;
+
+-- Leitura direta da tabela de materiais: só a equipe (o aluno passa pelas funções acima).
+drop policy if exists "materiais: da aula visível" on public.lesson_materials;
+drop policy if exists "materiais: só a equipe" on public.lesson_materials;
+create policy "materiais: só a equipe" on public.lesson_materials for select to authenticated using (public.is_staff());
 
 create or replace function public.app_admin_lessons() returns jsonb
   language plpgsql stable security definer set search_path = ''
@@ -49,7 +114,8 @@ declare
   v_old public.lessons;
   v_note text := btrim(coalesce(a ->> 'review_note', ''));
   v_publica boolean;
-  v_confere boolean := false;
+  v_exige boolean := false;
+  v_confere boolean := v_note <> '';
   v_ai jsonb;
 begin
   perform public.assert_staff();
@@ -71,24 +137,26 @@ begin
   -- vai ficar publicada? Então precisa de conferência registrada quando acabou de ser publicada ou quando o texto do aluno mudou.
   v_publica := coalesce((a ->> 'published')::boolean, coalesce(v_old.published, false));
   if v_publica then
-    v_confere := v_old.id is null or not v_old.published
+    v_exige := v_old.id is null or not v_old.published
       or btrim(a ->> 'title') is distinct from v_old.title
       or btrim(a ->> 'topic') is distinct from v_old.topic
       or (a ? 'summary' and nullif(btrim(coalesce(a ->> 'summary', '')), '') is distinct from v_old.summary)
       or (a ? 'key_points' and coalesce(v_points, '{}') is distinct from v_old.key_points);
-    if v_confere and char_length(v_note) < 10 then
+    if v_exige and char_length(v_note) < 10 then
       raise exception 'Antes de publicar, registre o que foi conferido no texto da aula (pelo menos 10 caracteres).' using errcode = '22023';
     end if;
   end if;
+  -- nota preenchida vale sempre (inclusive em aula antiga sem registro), mas precisa dizer algo
+  if v_confere and char_length(v_note) < 10 then
+    raise exception 'Registre o que foi conferido no texto da aula (pelo menos 10 caracteres).' using errcode = '22023';
+  end if;
   begin
     if v_old.id is null then
-      insert into public.lessons (area, topic, title, duration_minutes, instructor, specialty, video_url, summary, key_points, guideline_title, guideline_url, published, position, created_by,
-                                  reviewed_by, reviewed_at, review_note, ai_notes)
+      insert into public.lessons (area, topic, title, duration_minutes, instructor, specialty, video_url, summary, key_points, guideline_title, guideline_url, published, position, created_by)
       values ((a ->> 'area')::public.med_area, btrim(a ->> 'topic'), btrim(a ->> 'title'), (a ->> 'duration_minutes')::int, nullif(btrim(coalesce(a ->> 'instructor', '')), ''),
               nullif(btrim(coalesce(a ->> 'specialty', '')), ''), nullif(btrim(coalesce(a ->> 'video_url', '')), ''), nullif(btrim(coalesce(a ->> 'summary', '')), ''),
               coalesce(v_points, '{}'), nullif(btrim(coalesce(a ->> 'guideline_title', '')), ''), nullif(btrim(coalesce(a ->> 'guideline_url', '')), ''),
-              v_publica, coalesce((a ->> 'position')::int, 0), (select auth.uid()),
-              case when v_confere then (select auth.uid()) end, case when v_confere then now() end, case when v_confere then v_note end, coalesce(v_ai, '[]'::jsonb))
+              v_publica, coalesce((a ->> 'position')::int, 0), (select auth.uid()))
       returning id into v_id;
     else
       v_id := v_old.id;
@@ -103,16 +171,21 @@ begin
         guideline_title = case when a ? 'guideline_title' then nullif(btrim(a ->> 'guideline_title'), '') else guideline_title end,
         guideline_url = case when a ? 'guideline_url' then nullif(btrim(a ->> 'guideline_url'), '') else guideline_url end,
         published = v_publica,
-        position = coalesce((a ->> 'position')::int, position),
-        reviewed_by = case when v_confere then (select auth.uid()) else reviewed_by end,
-        reviewed_at = case when v_confere then now() else reviewed_at end,
-        review_note = case when v_confere then v_note else review_note end,
-        ai_notes = coalesce(v_ai, ai_notes)
+        position = coalesce((a ->> 'position')::int, position)
         where id = v_id;
     end if;
   exception when check_violation then
     raise exception 'Dados da aula inválidos: confira duração (1 a 600 min), endereços (https) e tamanhos dos textos.' using errcode = '22023';
   end;
+  if v_confere or v_ai is not null then
+    insert into public.lesson_reviews as r (lesson_id, reviewed_by, reviewed_at, review_note, ai_notes)
+    values (v_id, case when v_confere then (select auth.uid()) end, case when v_confere then now() end, case when v_confere then v_note end, coalesce(v_ai, '[]'::jsonb))
+    on conflict (lesson_id) do update set
+      reviewed_by = case when v_confere then (select auth.uid()) else r.reviewed_by end,
+      reviewed_at = case when v_confere then now() else r.reviewed_at end,
+      review_note = case when v_confere then v_note else r.review_note end,
+      ai_notes = coalesce(v_ai, r.ai_notes);
+  end if;
   perform public.admin_log('lesson.save', v_id::text, a - 'summary');
   if v_confere then
     perform public.admin_log('lesson.review', v_id::text, jsonb_build_object('title', btrim(a ->> 'title'), 'note', v_note));

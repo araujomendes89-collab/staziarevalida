@@ -79,7 +79,7 @@ export function LessonAssistant({ form, set, lesson, pending }) {
   const [providers, setProviders] = React.useState(null);
   const [central, setCentral] = React.useState({ override_allowed: true, current: null });
   const [picked, setProvider] = React.useState("");
-  const slides = lesson?.materials?.find((m) => m.kind === "slides" && m.storage_path);
+  const slides = lesson?.materials?.find((m) => m.kind === "slides" && (m.has_file || m.storage_path));
   const lessonPdf = pending?.slides ?? (slides ? "saved" : null);
   const [source, setSource] = React.useState(lessonPdf ? "lesson" : "text");
   const [file, setFile] = React.useState(null);
