@@ -137,14 +137,97 @@ describe("Importação de questões — JSON e modelos", () => {
     expect(questionsFromJson("{}").fileError).toMatch(/lista de questões/);
   });
 
-  it("os modelos de planilha e de JSON são lidos sem erro", () => {
+  it("os modelos de planilha e de JSON são lidos, mas a linha de exemplo é recusada (Q08): não pode virar questão", () => {
     const fromCsv = questionsFromFile("modelo.csv", csvTemplate());
     const fromJson = questionsFromFile("modelo.json", jsonTemplate());
     for (const result of [fromCsv, fromJson]) {
       expect(result.fileError).toBeNull();
       expect(result.items).toHaveLength(1);
-      expect(result.items[0].problems).toEqual([]);
+      // a linha continua sendo lida (o banco recebe os mesmos campos), mas com o problema na lista: a importação não é liberada
       expect(result.items[0].question).toMatchObject({ kind: "REVALIDA", year: 2026, semester: 2, area: "CLINICA_MEDICA", correct_option: "B" });
+      expect(result.items[0].problems).toHaveLength(1);
+      expect(result.items[0].problems[0]).toMatch(/linha de exemplo do modelo/);
     }
+  });
+
+  it("recusa qualquer campo que ainda tenha o texto de exemplo do modelo, mesmo com o resto trocado; texto parecido não é recusado", () => {
+    const real = { prova: "Revalida 2026/2", numero: 7, area: "Pediatria", tema: "Bronquiolite", enunciado: statement, A: "a", B: "b", C: "c", D: "d", gabarito: "B" };
+    const withCell = (cell: Record<string, unknown>) => questionsFromJson(JSON.stringify([{ ...real, ...cell }])).items[0].problems;
+    expect(withCell({})).toEqual([]);
+    for (const cell of [
+      { tema: "Tema principal da questão" },
+      { enunciado: "Texto completo do enunciado, como está no caderno de prova." },
+      { enunciado: "  texto completo do enunciado,  como está no caderno de PROVA.  " },
+      { A: "Texto da alternativa A" },
+      { D: "Texto da alternativa D" },
+      { subtema: "Subtema (opcional)" },
+      { explicacao: "Por que a alternativa correta está certa (opcional)" },
+      { "conduta esperada": "Conduta esperada (opcional)" },
+      { fonte: "Gabarito oficial definitivo (opcional)" },
+    ]) {
+      const problems = withCell(cell);
+      expect(problems, JSON.stringify(cell)).toHaveLength(1);
+      expect(problems[0]).toMatch(/linha de exemplo do modelo/);
+    }
+    // só o campo inteiro igual ao exemplo conta: uma frase que apenas contém o texto, ou a prova e o número do exemplo, não
+    expect(withCell({ tema: "Tema principal da questão: bronquiolite" })).toEqual([]);
+    expect(withCell({ numero: 1, area: "Clínica Médica" })).toEqual([]);
+  });
+});
+
+describe("Importação de questões — avisos que não travam (Q11)", () => {
+  it("explicação geral em questão ANULADA não é gravada: a linha avisa, sem virar problema", () => {
+    const csv = [
+      header,
+      row(["Revalida 2026/2", "7", "Pediatria", "Bronquiolite", "", statement, "a", "b", "c", "d", "ANULADA", "Explicação geral.", ""]),
+      row(["Revalida 2026/2", "8", "Pediatria", "Bronquiolite", "", statement, "a", "b", "c", "d", "B", "Explicação geral.", ""]),
+      row(["Revalida 2026/2", "9", "Pediatria", "Bronquiolite", "", statement, "a", "b", "c", "d", "ANULADA", "", ""]),
+    ].join("\n");
+    const { items } = questionsFromCsv(csv);
+    expect(items.map((i: any) => i.problems)).toEqual([[], [], []]);
+    expect(items[0].notes).toEqual([expect.stringMatching(/explicação geral.*anulada/i)]);
+    expect(items[1].notes).toEqual([]);
+    expect(items[2].notes).toEqual([]);
+    // a explicação de cada alternativa, quando vem, é gravada mesmo na anulada
+    const json = questionsFromJson(JSON.stringify([{ prova: "ENAMED 2025", numero: 3, area: "Cirurgia", tema: "Trauma", enunciado: statement, gabarito: "anulada", A: "1", B: "2", C: "3", D: "4", "explicacao a": "Só a A." }]));
+    expect(json.items[0].notes).toEqual([]);
+    expect(json.items[0].question.options[0].explanation).toBe("Só a A.");
+  });
+
+  it("o aviso da anulada diz a verdade nos dois casos: sem letra a explicação não é gravada; com letra fica na alternativa e o aluno não a vê", () => {
+    const csv = [
+      header,
+      row(["Revalida 2026/2", "7", "Pediatria", "Bronquiolite", "", statement, "a", "b", "c", "d", "ANULADA", "Explicação geral.", ""]),
+      row(["Revalida 2026/2", "8", "Pediatria", "Bronquiolite", "", statement, "a", "b", "c", "d", "B", "Explicação geral.", "anulada"]),
+    ].join("\n");
+    const { items } = questionsFromCsv(csv);
+    expect(items[0].notes).toEqual([expect.stringMatching(/não é gravada/)]);
+    expect(items[0].question.options.map((o: any) => o.explanation)).toEqual(["", "", "", ""]);
+    expect(items[1].question).toMatchObject({ status: "annulled", correct_option: "B" });
+    expect(items[1].question.options[1].explanation).toBe("Explicação geral."); // continua indo ao banco
+    expect(items[1].notes).toEqual([expect.stringMatching(/fica gravada na alternativa B.*aluno não a vê/)]);
+  });
+});
+
+describe("Importação de questões — número da linha na planilha (Q11)", () => {
+  const ok = (n: number) => row(["Revalida 2026/2", String(n), "Pediatria", "Bronquiolite", "", statement, "a", "b", "c", "d", "B", "", ""]);
+  const bad = (n: number) => row(["Revalida 2026/2", String(n), "Pediatria", "Bronquiolite", "", statement, "a", "b", "c", "d", "X", "", ""]);
+  const linesOf = (csv: string) => questionsFromCsv(csv).items.map((i: any) => [i.question.number, i.line]);
+
+  it("linha vazia e linha só de separadores (como o Excel salva linha em branco) não deslocam o número", () => {
+    const csv = [header, ok(1), ";;;;;;;;;;;;", "", bad(2)].join("\n");
+    expect(linesOf(csv)).toEqual([[1, 2], [2, 5]]);
+    expect(questionsFromCsv(csv).items[1].problems[0]).toMatch(/Gabarito inválido/);
+  });
+
+  it("linha em branco antes do cabeçalho, final de linha do Windows e campo com quebra de linha dentro das aspas", () => {
+    const csv = ["", ";;;", header, ok(1), `Revalida 2026/2;2;Pediatria;Bronquiolite;;"${statement}\nsegunda linha do enunciado";a;b;c;d;B;;`, ok(3)].join("\r\n");
+    // cabeçalho na linha 3; questão 1 na 4; questão 2 na 5 (ocupa as linhas 5 e 6); questão 3 na 7
+    expect(linesOf(csv)).toEqual([[1, 4], [2, 5], [3, 7]]);
+  });
+
+  it("sem linha vazia continua igual a antes (a 1ª questão está na linha 2)", () => {
+    expect(linesOf([header, ok(1), ok(2)].join("\n"))).toEqual([[1, 2], [2, 3]]);
+    expect(parseCsv("a;b\n\n1;2\n")).toEqual([["a", "b"], ["1", "2"]]);
   });
 });

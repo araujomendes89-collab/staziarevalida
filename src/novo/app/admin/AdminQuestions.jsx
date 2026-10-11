@@ -12,6 +12,8 @@ import { TabAssistant } from "./assistant/TabAssistant.jsx";
 import { downloadText, ListRow, LoadError, Loading, messageOf, QUESTION_STATUS_LABEL, TextArea, useDebounced, useLoad } from "./common.jsx";
 
 const PAGE = 50;
+// o banco devolve no máximo 200 questões por chamada (app_admin_questions)
+const SERVER_MAX = 200;
 const LETTERS = ["A", "B", "C", "D"];
 const statusTone = { valid: "success", annulled: "danger", changed_after_appeal: "warning" };
 const AREA_OPTIONS = AREAS.map((a) => ({ value: a.id, label: a.label }));
@@ -28,10 +30,28 @@ const LOCKED_TEXT = "Gabarito e situação só mudam pelo registro do gabarito o
 const REVIEW_LABEL = (campo, annulled) =>
   /^explanation_[A-D]$/.test(campo)
     ? `Explicação da ${campo.slice(-1)}`
-    : { expected_conduct: "Conduta esperada", analise: annulled ? "Análise publicada (não aparece ao aluno em questão anulada)" : "Análise publicada (volta com nova análise aprovada)" }[campo] ?? campo;
+    : { expected_conduct: "Conduta esperada", analise: annulled ? "Análise publicada (não aparece ao aluno em questão anulada)" : "Análise publicada (volta com nova análise aprovada, depois de marcar como revisadas)" }[campo] ?? campo;
 // gabarito da marca de revisão: a letra ou "ANULADA" (anular também muda o gabarito)
 const REVIEW_ANSWER = (value) => (value === "ANULADA" ? "anulada pela banca" : value ?? "sem gabarito");
+// texto da marca "explicações a revisar". O gabarito pode ter voltado ao de antes da troca (…7710): aí só ficam marcados os
+// textos que mudaram durante a troca (podem ter sido escritos para o outro gabarito), e a marca não diz "mudou de B para B"
+const reviewText = (review) => {
+  const fields = (review.campos ?? []).map((c) => REVIEW_LABEL(c, review.para === "ANULADA")).join(", ");
+  return review.de === review.para
+    ? `O gabarito voltou para ${REVIEW_ANSWER(review.para)}, o mesmo de antes da troca. Revise o que mudou durante a troca: ${fields}. Até lá, o aluno não vê esses textos.`
+    : `O gabarito mudou de ${REVIEW_ANSWER(review.de)} para ${REVIEW_ANSWER(review.para)}. Revise: ${fields}. Até lá, o aluno não vê esses textos.`;
+};
+// os textos que a marca de revisão pode esconder, como a pessoa os vê no formulário (o banco compara com o que está gravado)
+const reviewTexts = (f) => ({
+  ...Object.fromEntries(LETTERS.map((id) => [`explanation_${id}`, f.options.find((o) => o.id === id)?.explanation ?? ""])),
+  expected_conduct: f.expected_conduct ?? "",
+});
 const codesText = (list, max = 20) => list.slice(0, max).join("; ") + (list.length > max ? ` e mais ${list.length - max}` : "");
+// o que a Análise Stazia publicada explica: o enunciado e o texto de cada alternativa (a mesma comparação do banco: espaços
+// repetidos e nas pontas contam como um só; explicação, conduta, tema e subtema não entram)
+const squash = (text) => String(text ?? "").replace(/\s+/g, " ").trim();
+const analysisTextChanged = (now, saved) =>
+  squash(now.statement) !== squash(saved.statement) || LETTERS.some((id) => squash(now.options.find((o) => o.id === id)?.text) !== squash(saved.options.find((o) => o.id === id)?.text));
 
 // ---------------------------------------------------------------- editor
 function emptyQuestion() {
@@ -172,6 +192,58 @@ function OfficialAnswerForm({ question, onCancel, onDone }) {
   );
 }
 
+/** Apagar questão (Q08): só administrador e só questão sem resposta de aluno. Pede para digitar o código da questão; o banco
+ * confere de novo (resposta, anotação, marcação, Tutor ou sessão de aluno) e guarda uma cópia no registro de ações. Fica dentro
+ * do formulário da questão, então Enter num campo daqui não envia a questão. */
+function DeleteQuestion({ question, onDeleted }) {
+  const { backend } = useSession();
+  const [confirm, setConfirm] = React.useState("");
+  const [state, setState] = React.useState({ deleting: false, error: null });
+  const answered = question.attempts > 0;
+  const remove = async () => {
+    setState({ deleting: true, error: null });
+    try {
+      await backend.rpc("app_admin_delete_question", { p_question_id: question.id });
+      onDeleted();
+    } catch (error) {
+      setState({ deleting: false, error: messageOf(error) });
+    }
+  };
+  return (
+    <section
+      aria-label="Apagar questão"
+      onKeyDown={(event) => {
+        if (event.key === "Enter" && event.target?.tagName === "INPUT") event.preventDefault();
+      }}
+      style={{ display: "flex", flexDirection: "column", gap: 12, padding: 16, borderRadius: 16, border: "1px solid var(--danger-border)", background: "var(--danger-bg)" }}
+    >
+      <div style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-label)", color: "var(--danger-text)" }}>
+        <Icon name="triangle-alert" size={18} /> Apagar questão
+      </div>
+      {answered ? (
+        <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+          {`Esta questão já tem ${question.attempts} ${question.attempts === 1 ? "resposta de aluno" : "respostas de alunos"} e não pode ser apagada. Se ela não deve mais valer, anule-a pelo registro do gabarito oficial.`}
+        </div>
+      ) : (
+        <>
+          <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+            Só dá para apagar questão que nenhum aluno respondeu, anotou, marcou ou recebeu num treino. Some também a análise dela. A cópia da questão fica no Registro de ações. Não dá para desfazer pela tela.
+          </div>
+          {state.error && <Banner tone="danger">{state.error}</Banner>}
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 240px" }}>
+              <TextField label={`Digite ${question.code} para confirmar`} value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" />
+            </div>
+            <Button variant="danger" icon="trash-2" onClick={remove} loading={state.deleting} disabled={confirm.trim().toLowerCase() !== String(question.code).toLowerCase()}>
+              Apagar questão
+            </Button>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
 export function QuestionEditor({ id, onClose, onSaved }) {
   const { backend, boot } = useSession();
   const isAdmin = boot?.role === "admin";
@@ -213,19 +285,21 @@ export function QuestionEditor({ id, onClose, onSaved }) {
   // questão já gravada: gabarito e situação só mudam pelo registro do gabarito oficial (Q02)
   const locked = !isNew;
 
-  // depois do registro do gabarito oficial: traz do banco só gabarito, situação, registro e marca de revisão (o resto do
-  // formulário, ainda não salvo, fica como está)
+  // traz do banco só gabarito, situação, registro e marca de revisão (o resto do formulário, ainda não salvo, fica como está)
+  const takeOfficial = (fresh) => {
+    setForm((f) => ({ ...f, correct_option: fresh.correct_option ?? "", status: fresh.status, official: fresh.official ?? null, explanations_review: fresh.explanations_review ?? null }));
+    setSavedForm((f) => f && { ...f, correct_option: fresh.correct_option ?? "", status: fresh.status });
+    const next = storedKey(fresh);
+    if (stored !== null && stored !== next) setPanelKey((k) => k + 1);
+    setStored(next);
+  };
+  // depois do registro do gabarito oficial
   const officialDone = async (result) => {
     setOfficialOpen(false);
     const n = result?.recorrected ?? 0;
     setOfficialNote(`Gabarito oficial registrado.${n ? ` ${n} ${n === 1 ? "resposta de aluno foi corrigida" : "respostas de alunos foram corrigidas"} de novo.` : ""}`);
     try {
-      const fresh = await backend.rpc("app_admin_question", { p_id: form.id });
-      setForm((f) => ({ ...f, correct_option: fresh.correct_option ?? "", status: fresh.status, official: fresh.official ?? null, explanations_review: fresh.explanations_review ?? null }));
-      setSavedForm((f) => f && { ...f, correct_option: fresh.correct_option ?? "", status: fresh.status });
-      const next = storedKey(fresh);
-      if (stored !== null && stored !== next) setPanelKey((k) => k + 1);
-      setStored(next);
+      takeOfficial(await backend.rpc("app_admin_question", { p_id: form.id }));
     } catch (error) {
       setState((s) => ({ ...s, error: messageOf(error) }));
     }
@@ -234,6 +308,8 @@ export function QuestionEditor({ id, onClose, onSaved }) {
   const review = form.explanations_review;
   const official = form.official;
   const unsaved = savedForm !== null && JSON.stringify(payloadOf(form)) !== JSON.stringify(payloadOf(savedForm));
+  // Q10: salvar com o enunciado ou o texto de uma alternativa mudado tira do ar a análise publicada da questão
+  const textChanged = !isNew && savedForm !== null && analysisTextChanged(form, savedForm);
 
   /** Grava o formulário e devolve a questão gravada (ou lança a recusa do banco). */
   const persist = async () => {
@@ -268,9 +344,11 @@ export function QuestionEditor({ id, onClose, onSaved }) {
     if (reviewState.saving || state.saving) return;
     setReviewState({ saving: true, error: null });
     const wasUnsaved = unsaved;
+    // os textos que a pessoa viu: os do formulário gravado (ou, se ela salvou agora, os que acabou de gravar)
+    let seenTexts = reviewTexts(savedForm ?? form);
     if (wasUnsaved) {
       try {
-        await persist();
+        seenTexts = reviewTexts(fromRow(await persist()));
         setState({ saving: false, error: null, done: true });
       } catch (error) {
         setReviewState({ saving: false, error: `A questão não foi salva e as explicações continuam marcadas para revisão. ${messageOf(error)}` });
@@ -278,13 +356,27 @@ export function QuestionEditor({ id, onClose, onSaved }) {
       }
     }
     try {
-      const fresh = await backend.rpc("app_admin_question_review_done", { p_question_id: form.id });
+      // o banco só tira a marca que a pessoa viu: se outra pessoa registrou outra troca de gabarito enquanto ela revisava, ele recusa
+      const fresh = await backend.rpc("app_admin_question_review_done", { p_question_id: form.id, p_seen: review, p_seen_texts: seenTexts });
       setForm((f) => ({ ...f, explanations_review: fresh?.explanations_review ?? null }));
       setReviewState({ saving: false, error: null });
       onSaved();
     } catch (error) {
       setReviewState({ saving: false, error: messageOf(error) });
       if (wasUnsaved) onSaved();
+      // a marca (e o gabarito) podem ter mudado: mostra os de agora, para a pessoa revisar o que ela ainda não tinha visto
+      try {
+        const fresh = await backend.rpc("app_admin_question", { p_id: form.id });
+        takeOfficial(fresh);
+        // se outra pessoa mudou um texto marcado, a pessoa precisa ver o texto de agora
+        const now = fromRow(fresh);
+        if (JSON.stringify(reviewTexts(now)) !== JSON.stringify(seenTexts)) {
+          setForm(now);
+          setSavedForm(now);
+        }
+      } catch {
+        /* segue com o que a tela já mostra */
+      }
     }
   };
 
@@ -319,7 +411,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
             </Button>
           }
         >
-          {`O gabarito mudou de ${REVIEW_ANSWER(review.de)} para ${REVIEW_ANSWER(review.para)}. Revise: ${(review.campos ?? []).map((c) => REVIEW_LABEL(c, review.para === "ANULADA")).join(", ")}. Até lá, o aluno não vê esses textos.`}
+          {reviewText(review)}
         </Banner>
       )}
       {reviewState.error && <Banner tone="danger">{reviewState.error}</Banner>}
@@ -413,6 +505,11 @@ export function QuestionEditor({ id, onClose, onSaved }) {
           <TextArea label="O que a questão avalia" rows={3} value={form.inep_intent} onChange={(inep_intent) => set({ inep_intent })} />
         </div>
       </Card>
+      {textChanged && (
+        <Banner tone="warning" title="A análise publicada sai do ar">
+          Você mudou o enunciado ou o texto de uma alternativa. Ao salvar, a análise publicada desta questão (se houver) sai do ar para o aluno e só volta quando uma nova análise for aprovada por um revisor médico.
+        </Banner>
+      )}
       {state.error && <Banner tone="danger">{state.error}</Banner>}
       <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end", flexWrap: "wrap" }}>
         {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Questão salva.</span>}
@@ -423,6 +520,15 @@ export function QuestionEditor({ id, onClose, onSaved }) {
           {isNew ? "Criar questão" : "Salvar questão"}
         </Button>
       </div>
+      {isAdmin && !isNew && (
+        <DeleteQuestion
+          question={form}
+          onDeleted={() => {
+            onSaved();
+            onClose();
+          }}
+        />
+      )}
     </form>
     </AssistantLayout>
   );
@@ -435,6 +541,7 @@ function ImportPanel({ onClose, onImported }) {
   const [update, setUpdate] = React.useState(false);
   const [state, setState] = React.useState({ importing: false, result: null, error: null });
   const [preview, setPreview] = React.useState(null); // { data } | { error } | { loading }
+  const [previewTry, setPreviewTry] = React.useState(0); // "Conferir de novo" depois de uma prévia que falhou
 
   const pick = async (event) => {
     const chosen = event.target.files?.[0];
@@ -448,6 +555,10 @@ function ImportPanel({ onClose, onImported }) {
 
   const items = file?.items ?? [];
   const withProblems = items.filter((i) => i.problems.length);
+  // "Linha 3" na planilha (a 1ª é o cabeçalho) e "Item 2" no JSON; o banco conta a posição na lista, então traduzimos (Q11)
+  const isJson = /\.json$/i.test(file?.name ?? "");
+  const lineLabel = (item) => (isJson ? `Item ${item.line}` : `Linha ${item.line}`);
+  const withNotes = items.filter((i) => !i.problems.length && i.notes?.length);
   const byExam = items.reduce((acc, { question: q }) => {
     if (!q.kind || !q.year) return acc;
     const key = `${q.kind === "ENAMED" ? "ENAMED" : "Revalida"} ${q.year}${q.semester ? `/${q.semester}` : ""}`;
@@ -474,7 +585,7 @@ function ImportPanel({ onClose, onImported }) {
     return () => {
       alive = false;
     };
-  }, [file, backend]);
+  }, [file, backend, previewTry]);
   const p = preview?.data;
   const lose = p?.lose_comment ?? [];
   const differs = p?.answer_differs ?? [];
@@ -511,8 +622,14 @@ function ImportPanel({ onClose, onImported }) {
               Modelo JSON
             </Button>
           </div>
-          <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
-            Colunas obrigatórias: prova (ex.: Revalida 2026/2), numero, area, tema, enunciado, A, B, C, D e gabarito (A a D, ou ANULADA). Opcionais: subtema, explicacao, conduta esperada, situacao e fonte.
+          <div data-testid="ajuda-importacao" style={{ display: "flex", flexDirection: "column", gap: 6, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+            <div>
+              Colunas obrigatórias: prova (ex.: Revalida 2026/2), numero, area, tema, enunciado, A, B, C, D e gabarito (A a D, ou ANULADA).
+            </div>
+            <div>
+              Opcionais: subtema; explicacao (explicação geral, que vai para a alternativa do gabarito) ou explicacao A, explicacao B, explicacao C e explicacao D (uma por alternativa); conduta esperada; o que avalia; situacao (válida, anulada ou alterada); fonte; imagem (sim ou não: a questão cita uma figura; sem a coluna, o app deduz pelo enunciado).
+            </div>
+            <div>Com gabarito ANULADA, a explicação geral não é gravada. O modelo traz uma linha de exemplo: apague-a ou troque pelos dados reais, senão a importação é recusada.</div>
           </div>
           <label className="sm-btn sm-btn--primary" style={{ alignSelf: "flex-start", cursor: "pointer" }}>
             <Icon name="upload" size={18} /> Escolher arquivo
@@ -561,7 +678,7 @@ function ImportPanel({ onClose, onImported }) {
                     <ul style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6, font: "var(--type-body-sm)" }}>
                       {withProblems.slice(0, 50).map((item) => (
                         <li key={item.line}>
-                          <b>{/\.json$/i.test(file.name) ? `Item ${item.line}` : `Linha ${item.line}`}</b>
+                          <b>{lineLabel(item)}</b>
                           {item.question.number ? ` (questão ${item.question.number})` : ""}: {item.problems.join(" ")}
                         </li>
                       ))}
@@ -569,7 +686,31 @@ function ImportPanel({ onClose, onImported }) {
                     {withProblems.length > 50 && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>e mais {withProblems.length - 50} linhas com problema.</span>}
                   </div>
                 )}
-                {preview?.error && <Banner tone="danger">{preview.error}</Banner>}
+                {withNotes.length > 0 && (
+                  <Banner tone="warning" title={`${withNotes.length} ${withNotes.length === 1 ? "questão anulada tem explicação geral no arquivo" : "questões anuladas têm explicação geral no arquivo"}`}>
+                    <ul style={{ margin: 0, paddingLeft: 20 }}>
+                      {withNotes.slice(0, 20).map((item) => (
+                        <li key={item.line}>
+                          {`${lineLabel(item)}${item.question.number ? ` (questão ${item.question.number})` : ""}: ${item.notes.join(" ")}`}
+                        </li>
+                      ))}
+                    </ul>
+                    {withNotes.length > 20 && `e mais ${withNotes.length - 20}.`}
+                  </Banner>
+                )}
+                {preview?.loading && <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Conferindo o arquivo com o banco…</div>}
+                {preview?.error && (
+                  <Banner
+                    tone="danger"
+                    action={
+                      <Button size="sm" variant="secondary" onClick={() => setPreviewTry((n) => n + 1)}>
+                        Conferir de novo
+                      </Button>
+                    }
+                  >
+                    {`${preview.error} A importação só fica liberada depois dessa conferência.`}
+                  </Banner>
+                )}
                 {p && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <div style={{ font: "var(--type-body-sm)" }}>
@@ -612,11 +753,12 @@ function ImportPanel({ onClose, onImported }) {
                 )}
                 {state.result && !state.result.ok && (
                   <Banner tone="danger" title="O banco recusou o arquivo">
-                    {state.result.errors.slice(0, 10).map((e) => `Item ${e.index}: ${e.message}`).join(" · ")}
+                    {state.result.errors.slice(0, 10).map((e) => `${items[e.index - 1] ? lineLabel(items[e.index - 1]) : `Item ${e.index}`}: ${e.message}`).join(" · ")}
                   </Banner>
                 )}
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <Button icon="upload" onClick={run} loading={state.importing} disabled={!items.length || withProblems.length > 0 || tooMany || state.result?.ok}>
+                  {/* só depois da prévia (Q03): antes de gravar, a pessoa vê quantas perderiam comentário */}
+                  <Button icon="upload" onClick={run} loading={state.importing} disabled={!items.length || withProblems.length > 0 || tooMany || !p || state.result?.ok}>
                     Importar {items.length} {items.length === 1 ? "questão" : "questões"}
                   </Button>
                 </div>
@@ -630,18 +772,67 @@ function ImportPanel({ onClose, onImported }) {
 }
 
 // ---------------------------------------------------------------- lista
+/**
+ * A lista da aba, página por página (Q06). Cada "Carregar mais" pede só a página seguinte, a partir de onde a lista parou
+ * (p_offset), e junta ao que já está na tela; o banco devolve no máximo 200 por chamada, então pedir 250, 300… não trazia nada
+ * novo. Mudar a busca ou um filtro recomeça na primeira página; recarregar (depois de salvar) pede de novo as páginas já abertas.
+ */
+function useQuestionPages(backend, filters, deps) {
+  const [state, setState] = React.useState({ data: null, error: null, loading: true });
+  const [tick, setTick] = React.useState(0);
+  const wanted = React.useRef(PAGE); // quantas questões a tela quer mostrar
+  const filterKey = React.useRef(null);
+  const current = React.useRef(0); // número do pedido em andamento: resposta de pedido antigo é ignorada
+  const key = JSON.stringify(deps);
+
+  React.useEffect(() => {
+    if (filterKey.current !== key) {
+      filterKey.current = key;
+      wanted.current = PAGE;
+    }
+    const mine = ++current.current;
+    setState((s) => ({ ...s, loading: true, error: null }));
+    (async () => {
+      let items = [];
+      let page = null;
+      do {
+        page = await backend.rpc("app_admin_questions", { p_filters: filters, p_limit: Math.min(SERVER_MAX, wanted.current - items.length), p_offset: items.length });
+        items = items.concat(page.items);
+      } while (items.length < wanted.current && items.length < page.total && page.items.length > 0);
+      return { ...page, items };
+    })().then(
+      (data) => mine === current.current && setState({ data, error: null, loading: false }),
+      (error) => mine === current.current && setState((s) => ({ ...s, error, loading: false }))
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [backend, key, tick]);
+
+  const more = async () => {
+    const mine = ++current.current;
+    const loaded = state.data?.items ?? [];
+    setState((s) => ({ ...s, loading: true, error: null }));
+    try {
+      const page = await backend.rpc("app_admin_questions", { p_filters: filters, p_limit: PAGE, p_offset: loaded.length });
+      if (mine !== current.current) return;
+      const seen = new Set(loaded.map((q) => q.id));
+      const items = loaded.concat(page.items.filter((q) => !seen.has(q.id)));
+      wanted.current = items.length;
+      setState({ data: { ...page, items }, error: null, loading: false });
+    } catch (error) {
+      if (mine === current.current) setState((s) => ({ ...s, error, loading: false }));
+    }
+  };
+  return { ...state, reload: () => setTick((n) => n + 1), more };
+}
+
 export function AdminQuestions() {
   const { backend } = useSession();
   const mobile = useMobile();
   const [view, setView] = React.useState({ mode: "list", id: null }); // list | edit | new | import
   const [filters, setFilters] = React.useState({ search: "", exam_id: "", area: "", status: "", needs_image: false, review: false });
-  const [limit, setLimit] = React.useState(PAGE);
   const search = useDebounced(filters.search.trim());
-  const list = useLoad(
-    () => backend.rpc("app_admin_questions", { p_filters: { ...filters, search }, p_limit: limit }),
-    [backend, search, filters.exam_id, filters.area, filters.status, filters.needs_image, filters.review, limit]
-  );
-  const set = (patch) => (setFilters((f) => ({ ...f, ...patch })), setLimit(PAGE));
+  const list = useQuestionPages(backend, { ...filters, search }, [search, filters.exam_id, filters.area, filters.status, filters.needs_image, filters.review]);
+  const set = (patch) => setFilters((f) => ({ ...f, ...patch }));
   const back = () => setView({ mode: "list", id: null });
 
   if (view.mode === "edit" || view.mode === "new") return <QuestionEditor key={view.id ?? "nova"} id={view.id} onClose={back} onSaved={list.reload} />;
@@ -714,7 +905,7 @@ export function AdminQuestions() {
           )}
           {list.data.items.length < list.data.total && (
             <div style={{ display: "flex", justifyContent: "center" }}>
-              <Button variant="secondary" onClick={() => setLimit((n) => n + PAGE)} loading={list.loading}>
+              <Button variant="secondary" onClick={list.more} loading={list.loading}>
                 Carregar mais
               </Button>
             </div>
