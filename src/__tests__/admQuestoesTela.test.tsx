@@ -290,3 +290,26 @@ describe("Q11 — ajuda da importação completa e número de linha certo", () =
     expect(await screen.findByText(/Item 2: Há alternativa sem texto\. · Item 3: Questão repetida no arquivo\./)).toBeTruthy();
   });
 });
+
+describe("Leva 2 — 'Marcar como revisadas' quando outra pessoa reescreveu um texto marcado", () => {
+  it("o banco recusa, a tela mostra o motivo e já traz o texto de agora para a pessoa ler", async () => {
+    session.boot = { role: "editor", profile: { name: "Ed" } };
+    const flagged = { ...ROW, correct_option: "C", status: "changed_after_appeal", explanations_review: { de: "B", para: "C", campos: ["expected_conduct"] } };
+    let current: any = flagged;
+    backend.rpc.mockReset();
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_admin_question") return current;
+      if (fn === "app_admin_question_review_done") {
+        current = { ...current, expected_conduct: "Conduta reescrita pela outra pessoa." }; // a outra pessoa salvou enquanto esta revisava
+        throw Object.assign(new Error("O texto desta questão mudou enquanto você revisava: outra pessoa salvou uma explicação ou a conduta esperada. Veja o texto de agora e revise de novo."), { code: "22023" });
+      }
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    render(<QuestionEditor id="q1" onClose={vi.fn()} onSaved={vi.fn()} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Marcar como revisadas" }));
+    expect(await screen.findByText(/O texto desta questão mudou enquanto você revisava/)).toBeTruthy();
+    await waitFor(() => expect((screen.getByLabelText("Conduta esperada") as HTMLTextAreaElement).value).toBe("Conduta reescrita pela outra pessoa."));
+    // a marca continua e o botão não pede para salvar (o formulário é o gravado)
+    expect(screen.getByRole("button", { name: "Marcar como revisadas" })).toBeTruthy();
+  });
+});

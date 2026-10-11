@@ -127,10 +127,11 @@ describe("Q02 — gabarito e situação travados; registro do gabarito oficial",
     expect(review.textContent).toContain("Conduta esperada");
     expect(review.textContent).toContain("o aluno não vê esses textos");
     fireEvent.click(screen.getByRole("button", { name: "Marcar como revisadas" }));
-    // o banco só tira a marca que a pessoa viu (se outra pessoa mudou a marca enquanto isso, ele recusa)
+    // o banco só tira a marca que a pessoa viu (se outra pessoa mudou a marca ou um texto marcado enquanto isso, ele recusa)
+    const SEEN = { explanation_A: "", explanation_B: "B é a correta.", explanation_C: "", explanation_D: "", expected_conduct: "Suporte." };
     await waitFor(() =>
       expect(calls("app_admin_question_review_done")).toEqual([
-        ["app_admin_question_review_done", { p_question_id: "q1", p_seen: { de: "B", para: "C", campos: ["expected_conduct", "explanation_B"], motivo: "Recurso aceito pela banca." } }],
+        ["app_admin_question_review_done", { p_question_id: "q1", p_seen: { de: "B", para: "C", campos: ["expected_conduct", "explanation_B"], motivo: "Recurso aceito pela banca." }, p_seen_texts: SEEN }],
       ])
     );
     await waitFor(() => expect(screen.queryByText(/O gabarito mudou de B para C/)).toBeNull());
@@ -206,7 +207,10 @@ describe("Rodada 2 — 'Marcar como revisadas' nunca libera ao aluno o texto ant
     await waitFor(() => expect(calls("app_admin_question_review_done")).toHaveLength(1));
     expect(order()).toEqual(["app_admin_save_question", "app_admin_question_review_done"]);
     // a marca que a pessoa viu na tela (e não a que o salvar devolveu): é ela que o banco confere
-    expect(calls("app_admin_question_review_done")[0][1]).toEqual({ p_question_id: "q1", p_seen: FLAGGED.explanations_review });
+    expect(calls("app_admin_question_review_done")[0][1]).toEqual({
+      p_question_id: "q1", p_seen: FLAGGED.explanations_review,
+      p_seen_texts: { explanation_A: "", explanation_B: "B era a do gabarito preliminar.", explanation_C: "", explanation_D: "", expected_conduct: "Conduta da C." },
+    });
     const sent = calls("app_admin_save_question")[0][1].p_question;
     expect(sent.expected_conduct).toBe("Conduta da C.");
     expect(sent.options.find((o: any) => o.id === "B").explanation).toBe("B era a do gabarito preliminar.");

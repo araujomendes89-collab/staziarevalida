@@ -19,11 +19,13 @@
 --      guardados do Play (questões, acertos, erros e precisão: perfil, ranking, foto do dia e medalhas leem deles) de quem
 --      respondeu a questão. Antes eles ficavam como no dia da resposta e não batiam com o Início. Esta mesma conta é feita
 --      uma vez, ao colar este arquivo, para quem respondeu questão anulada ou com gabarito registrado antes dele (anulada
---      pelo editor antigo, trocas da leva 1). Sequência, última atividade, XP, moedas e medalhas não mudam; com o Stazia
---      Play desligado nada é contado, como nos gatilhos do Play.
+--      pelo editor antigo, trocas da leva 1). Sequência, última atividade e o XP e as moedas já ganhos não mudam; as medalhas
+--      são conferidas de novo (pode conceder uma que os números certos alcançam, com a recompensa dela; nenhuma é retirada);
+--      com o Stazia Play desligado nada é contado, como nos gatilhos do Play.
 --   7. "Marcar como revisadas" só tira a marca que a pessoa viu: se outra pessoa registrou outra troca de gabarito enquanto
---      ela revisava, a marca ganhou textos que ela não viu; o banco recusa e a marca de agora fica (app_admin_question_review_done
---      ganha o parâmetro p_seen; sem ele, tira como antes).
+--      ela revisava, a marca ganhou textos que ela não viu; ou outra pessoa reescreveu e salvou um dos textos marcados, com a
+--      marca igual. O banco recusa e a marca de agora fica (app_admin_question_review_done ganha p_seen, a marca que a tela
+--      mostrava, e p_seen_texts, os textos marcados como a tela os mostrava; sem eles, tira como antes).
 --
 -- Funções redefinidas (cada uma a partir da versão mais nova): app_performance (…0900), app_error_reasons (…2800),
 --   app_attempt_diagnosis (…2700), admin_user_row e app_admin_user (…1300), app_admin_set_official_answer (…7700).
@@ -222,8 +224,10 @@ revoke execute on function public.question_review_snapshot(jsonb, text) from pub
 -- ---------------------------------------------------------------- Stazia Play: contar de novo as respostas (6)
 -- Conta de novo, para um aluno, os números guardados do Play que vêm das respostas: questões, acertos, erros e precisão.
 -- A regra é a do ch_worker_gamification_recalculate (…3800): todas as respostas válidas em questão que não está anulada
--- (as invalidadas pelo antifraude ficam fora). Não mexe em sequência, última atividade, XP, moedas nem medalhas; o Stazia
--- Score se refaz sozinho na próxima atividade (ele já lê as respostas direto). Com o Play desligado não faz nada, como os
+-- (as invalidadas pelo antifraude ficam fora). Não mexe em sequência, última atividade, nem no XP e nas moedas já ganhos; o Stazia
+-- Score se refaz sozinho na próxima atividade (ele já lê as respostas direto). As medalhas que leem esses números são conferidas
+-- de novo (pode conceder uma que os números certos alcançam, com a recompensa dela; nunca retira uma já conquistada). Com o Play
+-- desligado não faz nada, como os
 -- gatilhos. Usa a mesma trava dos gatilhos de resposta, para não contar ao mesmo tempo que uma resposta nova. Devolve 1
 -- quando contou de novo e 0 quando não havia nada a fazer (Play desligado, ou o aluno ainda não tem números do Play).
 create or replace function public.gam_recount_answers(p_user uuid) returns integer
@@ -242,6 +246,16 @@ begin
         where a.user_id = p_user and q.status <> 'annulled' and not public.gam_invalid_attempt(p_user, a.id)) x
   where s.user_id = p_user;
   get diagnostics v_rows = row_count;
+  -- as medalhas que leem esses números (questões respondidas e precisão) são conferidas de novo: pode completar uma que os
+  -- números certos alcançam; nenhuma já conquistada é retirada. Se a conferência falhar, a conta acima fica e o registro do
+  -- gabarito não é desfeito.
+  if v_rows > 0 then
+    begin
+      perform public.gam_check_achievements(p_user);
+    exception when others then
+      raise warning 'Stazia Play: medalhas não conferidas depois da nova conta (aluno %): %', p_user, sqlerrm;
+    end;
+  end if;
   return v_rows;
 end
 $$;
@@ -397,22 +411,32 @@ $$;
 revoke execute on function public.app_admin_set_official_answer(text, text, text, text, text, date, text) from public, anon;
 
 -- ---------------------------------------------------------------- explicações revisadas, duas pessoas ao mesmo tempo (7; corpo da …7700)
--- "Marcar como revisadas" tirava a marca inteira, mesmo a parte que a pessoa ainda não tinha visto (outra pessoa pode ter
--- registrado outra troca de gabarito enquanto ela revisava, e a marca ganhou textos novos). Agora a tela diz qual marca
--- viu (p_seen): se a marca de agora é outra, o banco recusa e a marca fica; se a marca já saiu, não há nada a fazer. Sem
--- p_seen (tela antiga) tira como antes. A função de um parâmetro só é apagada: duas versões com o mesmo nome confundem a API.
+-- "Marcar como revisadas" tirava a marca inteira, mesmo o que a pessoa não tinha visto. Duas coisas podem mudar enquanto ela
+-- revisa: (1) outra pessoa registrou outra troca de gabarito e a marca ganhou textos (p_seen: a marca que a tela mostrava);
+-- (2) outra pessoa reescreveu e salvou um dos textos marcados, com a marca igual (p_seen_texts: os textos marcados como a tela
+-- os mostrava). Se a marca de agora é outra, ou algum texto marcado já não é o que a pessoa viu, o banco recusa e a marca fica.
+-- Se a marca já saiu, não há nada a fazer. Sem p_seen e p_seen_texts (tela antiga), tira como antes. As versões antigas (de 1 e de
+-- 2 parâmetros) são apagadas: duas versões com o mesmo nome confundem a API.
 drop function if exists public.app_admin_question_review_done(text);
-create or replace function public.app_admin_question_review_done(p_question_id text, p_seen jsonb default null) returns jsonb
+drop function if exists public.app_admin_question_review_done(text, jsonb);
+create or replace function public.app_admin_question_review_done(p_question_id text, p_seen jsonb default null, p_seen_texts jsonb default null) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
   v_flag jsonb;
+  v_now jsonb;
 begin
   perform public.assert_staff();
-  select q.explanations_review into v_flag from public.questions q where q.id = p_question_id for update;
+  select q.explanations_review, public.question_review_snapshot(q.options, q.expected_conduct) into v_flag, v_now
+  from public.questions q where q.id = p_question_id for update;
   if not found then raise exception 'Questão não encontrada.' using errcode = 'P0002'; end if;
   if v_flag is not null and p_seen is not null and p_seen <> 'null'::jsonb and v_flag is distinct from p_seen then
     raise exception 'A marca de revisão mudou enquanto você revisava: outra pessoa registrou uma troca de gabarito. Veja a marca de agora e revise o que mudou.' using errcode = '22023';
+  end if;
+  if v_flag is not null and jsonb_typeof(p_seen_texts) = 'object'
+     and exists (select 1 from jsonb_array_elements_text(coalesce(v_flag -> 'campos', '[]'::jsonb)) c
+                 where c <> 'analise' and (v_now ->> c) is distinct from md5(btrim(coalesce(p_seen_texts ->> c, '')))) then
+    raise exception 'O texto desta questão mudou enquanto você revisava: outra pessoa salvou uma explicação ou a conduta esperada. Veja o texto de agora e revise de novo.' using errcode = '22023';
   end if;
   if v_flag is not null then
     update public.questions set explanations_review = null where id = p_question_id;
@@ -421,7 +445,7 @@ begin
   return public.app_admin_question(p_question_id);
 end
 $$;
-revoke execute on function public.app_admin_question_review_done(text, jsonb) from public, anon;
+revoke execute on function public.app_admin_question_review_done(text, jsonb, jsonb) from public, anon;
 
 -- ---------------------------------------------------------------- Stazia Play: conta feita uma vez (6)
 -- Quem respondeu questão anulada ou com gabarito registrado antes deste arquivo: a anulada pelo editor antigo e as trocas

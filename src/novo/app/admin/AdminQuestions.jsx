@@ -41,6 +41,11 @@ const reviewText = (review) => {
     ? `O gabarito voltou para ${REVIEW_ANSWER(review.para)}, o mesmo de antes da troca. Revise o que mudou durante a troca: ${fields}. Até lá, o aluno não vê esses textos.`
     : `O gabarito mudou de ${REVIEW_ANSWER(review.de)} para ${REVIEW_ANSWER(review.para)}. Revise: ${fields}. Até lá, o aluno não vê esses textos.`;
 };
+// os textos que a marca de revisão pode esconder, como a pessoa os vê no formulário (o banco compara com o que está gravado)
+const reviewTexts = (f) => ({
+  ...Object.fromEntries(LETTERS.map((id) => [`explanation_${id}`, f.options.find((o) => o.id === id)?.explanation ?? ""])),
+  expected_conduct: f.expected_conduct ?? "",
+});
 const codesText = (list, max = 20) => list.slice(0, max).join("; ") + (list.length > max ? ` e mais ${list.length - max}` : "");
 // o que a Análise Stazia publicada explica: o enunciado e o texto de cada alternativa (a mesma comparação do banco: espaços
 // repetidos e nas pontas contam como um só; explicação, conduta, tema e subtema não entram)
@@ -339,9 +344,11 @@ export function QuestionEditor({ id, onClose, onSaved }) {
     if (reviewState.saving || state.saving) return;
     setReviewState({ saving: true, error: null });
     const wasUnsaved = unsaved;
+    // os textos que a pessoa viu: os do formulário gravado (ou, se ela salvou agora, os que acabou de gravar)
+    let seenTexts = reviewTexts(savedForm ?? form);
     if (wasUnsaved) {
       try {
-        await persist();
+        seenTexts = reviewTexts(fromRow(await persist()));
         setState({ saving: false, error: null, done: true });
       } catch (error) {
         setReviewState({ saving: false, error: `A questão não foi salva e as explicações continuam marcadas para revisão. ${messageOf(error)}` });
@@ -350,7 +357,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
     }
     try {
       // o banco só tira a marca que a pessoa viu: se outra pessoa registrou outra troca de gabarito enquanto ela revisava, ele recusa
-      const fresh = await backend.rpc("app_admin_question_review_done", { p_question_id: form.id, p_seen: review });
+      const fresh = await backend.rpc("app_admin_question_review_done", { p_question_id: form.id, p_seen: review, p_seen_texts: seenTexts });
       setForm((f) => ({ ...f, explanations_review: fresh?.explanations_review ?? null }));
       setReviewState({ saving: false, error: null });
       onSaved();
@@ -359,7 +366,14 @@ export function QuestionEditor({ id, onClose, onSaved }) {
       if (wasUnsaved) onSaved();
       // a marca (e o gabarito) podem ter mudado: mostra os de agora, para a pessoa revisar o que ela ainda não tinha visto
       try {
-        takeOfficial(await backend.rpc("app_admin_question", { p_id: form.id }));
+        const fresh = await backend.rpc("app_admin_question", { p_id: form.id });
+        takeOfficial(fresh);
+        // se outra pessoa mudou um texto marcado, a pessoa precisa ver o texto de agora
+        const now = fromRow(fresh);
+        if (JSON.stringify(reviewTexts(now)) !== JSON.stringify(seenTexts)) {
+          setForm(now);
+          setSavedForm(now);
+        }
       } catch {
         /* segue com o que a tela já mostra */
       }

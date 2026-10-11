@@ -30,6 +30,7 @@ const GUTO = "00000000-0000-4000-8000-000000000010";
 const HELO = "00000000-0000-4000-8000-000000000011";
 const IARA = "00000000-0000-4000-8000-000000000012";
 const KAIO = "00000000-0000-4000-8000-000000000013";
+const LUIZ = "00000000-0000-4000-8000-000000000014";
 
 let db: PGlite;
 
@@ -91,6 +92,7 @@ beforeAll(async () => {
     [HELO, "helo@teste.dev", "Helô"],
     [IARA, "iara@teste.dev", "Iara"],
     [KAIO, "kaio@teste.dev", "Kaio"],
+    [LUIZ, "luiz@teste.dev", "Luiz"],
   ]) {
     await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)`, [id, email, { name }]);
   }
@@ -222,6 +224,26 @@ describe("1 (rodada de correção 1) — Stazia Play: o que a conta de novo resp
     expect(log.details).toMatchObject({ answer: "C", recorrected: 1, play_recounted: 1 });
   });
 
+  it("as medalhas que leem esses números são conferidas de novo: desfazer a anulação pode completar a medalha de 10 questões; nenhuma é retirada", async () => {
+    const numbers = [150, 151, 152, 153, 154, 155, 156, 157, 158, 159];
+    for (const n of numbers) await save(q(n));
+    await annulNoKey(159); // anulada antes de responder: a resposta não conta no Play
+    const s = await session(LUIZ, "questoes", numbers);
+    for (const n of numbers) await answer(LUIZ, s, n, "B");
+    const medals = async () => (await sql<any>(`select achievement_slug from public.user_achievements where user_id = $1`, [LUIZ])).map((r) => r.achievement_slug);
+    expect(await playStats(LUIZ)).toMatchObject({ questions_answered: 9 });
+    expect(await medals()).not.toContain("primeiros_passos"); // 9 de 10
+
+    await setOfficial(159, { p_answer: "B", p_reason: "A anulação foi desfeita." });
+    expect(await playStats(LUIZ)).toMatchObject({ questions_answered: 10 });
+    expect(await medals()).toContain("primeiros_passos");
+
+    // anular de novo baixa o número, mas a medalha já conquistada fica
+    await annul(159);
+    expect(await playStats(LUIZ)).toMatchObject({ questions_answered: 9 });
+    expect(await medals()).toContain("primeiros_passos");
+  });
+
   it("registro sem mudança no que conta (por exemplo só a fonte): não conta de novo; com o Play desligado nada muda", async () => {
     await save(q(88));
     await answer(GUTO, await session(GUTO, "questoes", [88]), 88, "B");
@@ -341,6 +363,24 @@ describe("7 — Marcar como revisadas: só tira a marca que a pessoa viu", () =>
     expect((await row(90)).explanations_review).toBeNull();
     const log = (await sql<any>(`select details from public.admin_audit_log where target = $1 and action = 'question.explanations_reviewed' order by id desc limit 1`, [idOf(90)]))[0];
     expect(log.details.review).toMatchObject({ para: "D" });
+  });
+
+  it("o texto marcado foi reescrito por outra pessoa enquanto a marca seguia a mesma: o banco recusa e a marca fica", async () => {
+    await save(q(92, { options: explanations({ B: "B é a correta.", C: "C está errada." }), expected_conduct: "Suporte." }));
+    await setOfficial(92, { p_answer: "C", p_status: "CHANGED_AFTER_APPEAL", p_reason: "Recurso aceito." });
+    const seen = (await rpc(EDITOR, "app_admin_question", { p_id: idOf(92) })).explanations_review;
+    const seenTexts = { explanation_A: "", explanation_B: "B é a correta.", explanation_C: "C está errada.", explanation_D: "", expected_conduct: "Suporte." };
+    // a pessoa 2 reescreve a explicação da C e salva: a marca é a mesma, mas o texto que a pessoa 1 viu não vale mais
+    await save({ ...q(92, { correct_option: "C", status: "changed_after_appeal", expected_conduct: "Suporte.", options: explanations({ B: "B é a correta.", C: "C é a correta depois do recurso." }) }), id: idOf(92) });
+    expect((await row(92)).explanations_review).toEqual(seen);
+    await expect(rpc(EDITOR, "app_admin_question_review_done", { p_question_id: idOf(92), p_seen: seen, p_seen_texts: seenTexts })).rejects.toThrow(
+      "O texto desta questão mudou enquanto você revisava"
+    );
+    expect((await row(92)).explanations_review).toEqual(seen);
+    // vendo o texto de agora, tira; texto que não está na marca (a explicação da A) mudando não atrapalha
+    await save({ ...q(92, { correct_option: "C", status: "changed_after_appeal", expected_conduct: "Suporte.", options: explanations({ A: "A errada.", B: "B é a correta.", C: "C é a correta depois do recurso." }) }), id: idOf(92) });
+    const nowTexts = { ...seenTexts, explanation_A: "A errada.", explanation_C: "C é a correta depois do recurso." };
+    expect((await rpc(EDITOR, "app_admin_question_review_done", { p_question_id: idOf(92), p_seen: seen, p_seen_texts: nowTexts })).explanations_review).toBeNull();
   });
 
   it("marca que já saiu (outra pessoa revisou antes): não é erro; tela antiga, sem dizer o que viu, tira como antes", async () => {

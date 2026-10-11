@@ -148,6 +148,23 @@ describe("Q10 — a análise publicada sai do ar quando o enunciado ou o texto d
     expect((await commentOf(draft)).status).toBe("ai_draft");
   });
 
+  it("reimportar com 'atualizar' sem mudar o texto (alternativas em outra ordem e com outras chaves) NÃO tira a análise", async () => {
+    await save(q(106, { options: explanations({ B: "B é a correta." }) }));
+    const analysis = await publishAnalysis(106);
+    const s = await session(ANA, [106]);
+    await answer(ANA, s, 106, "B");
+    const reordered = [...q(106).options].reverse().map((o: any) => ({ ...o, text: `  ${o.text}  `, extra: "chave a mais", explanation: "" }));
+    const result = await rpc(EDITOR, "app_admin_import_questions", {
+      p_questions: [{ ...q(106), statement: `${q(106).statement}\n`, options: reordered }],
+      p_update_existing: true,
+    });
+    expect(result).toMatchObject({ ok: true, updated: 1 });
+    expect((await analysisOf(analysis)).status).toBe("published");
+    expect((await commentOf(analysis)).status).toBe("published");
+    expect(await studentSees(ANA, 106)).toBe("Análise feita para esta redação.");
+    expect((await sql<any>(`select count(*)::int n from public.admin_audit_log where target = $1 and action = 'question.analysis_unpublished'`, [idOf(106)]))[0].n).toBe(0);
+  });
+
   it("depois de sair do ar, salvar de novo a questão continua funcionando e a análise nova (aprovada depois) aparece", async () => {
     await save(q(104));
     await publishAnalysis(104);
