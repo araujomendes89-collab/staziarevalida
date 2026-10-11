@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Revisão rodada 3, ponto 2: o teto por execução enxerga o gasto real desta execução. Antes, o teto por execução só conferia a
+ * Revisão rodada 3, ponto 2: o teto por chamada enxerga o gasto real desta execução. Antes, o teto por chamada só conferia a
  * estimativa da primeira chamada (plan()); a nova tentativa e a reserva saíam sem conferência, mesmo depois de uma falha cobrada
  * (resposta cortada do Gemini, com o raciocínio pago). Agora, antes de cada nova chamada, vale: gasto real já feito nesta
  * execução (com o custo das falhas) + estimativa das chamadas em andamento + estimativa da próxima. Passou do teto: a chamada
@@ -97,7 +97,7 @@ async function run(fn: Fn, settings: Record<string, unknown>, f: ReturnType<type
   return { r, logged };
 }
 
-describe("Sozinha: a reserva e a nova tentativa passam pelo teto por execução", () => {
+describe("Sozinha: a reserva e a nova tentativa passam pelo teto por chamada", () => {
   it("resposta cortada (cobrada) + estimativa da reserva acima do teto: a reserva não sai, linha 'teto' com a mensagem", async () => {
     // a primeira chamada cabe (0,2213 ≤ 0,40); depois do corte, gasto real 0,2227 + reserva 0,2053 = 0,4280 > 0,40
     const f = fakes({ [key(G)]: () => { throw CUT(); }, [key(A)]: () => ({ ok: "A" }) });
@@ -106,10 +106,10 @@ describe("Sozinha: a reserva e a nova tentativa passam pelo teto por execução"
     expect(summary(logged)).toEqual(["principal:gemini:falha", "reserva:anthropic:teto"]);
     expect(logged[0].cost_usd).toBeCloseTo(0.222684, 6);
     expect(logged[1].cost_usd).toBe(0);
-    expect(logged[1].error).toBe("Gasto desta execução de US$ 0,2227 mais estimativa de US$ 0,2053 passa do teto por execução de US$ 0,4.");
+    expect(logged[1].error).toBe("Gasto desta chamada de US$ 0,2227 mais estimativa de US$ 0,2053 passa do teto por chamada de US$ 0,4.");
     expect(r.status).toBe("falhou");
     expect(r.message).toMatch(/cortada pelo limite de saída/);
-    expect(r.message).toMatch(/passa do teto por execução de US\$ 0,4\./);
+    expect(r.message).toMatch(/passa do teto por chamada de US\$ 0,4\./);
     expect(r.costUsd).toBeCloseTo(0.222684, 6);
   });
 
@@ -123,7 +123,7 @@ describe("Sozinha: a reserva e a nova tentativa passam pelo teto por execução"
     const { r, logged } = await run({ key: "criacao", mode: "sozinha", primary_ref: G, fallback_ref: A }, { per_run_cap_usd: 0.4 }, f);
     expect(f.calls).toEqual({ [key(G)]: 1, [key(A)]: 1 });
     expect(summary(logged)).toEqual(["principal:gemini:falha", "principal:gemini:teto", "reserva:anthropic:ok"]);
-    expect(logged[1].error).toMatch(/^Gasto desta execução de US\$ 0,1815 mais estimativa de US\$ 0,2213 passa do teto por execução de US\$ 0,4\.$/);
+    expect(logged[1].error).toMatch(/^Gasto desta chamada de US\$ 0,1815 mais estimativa de US\$ 0,2213 passa do teto por chamada de US\$ 0,4\.$/);
     expect(r.status).toBe("ok");
     expect(r.output).toEqual({ ok: "A" });
   });
@@ -153,7 +153,7 @@ describe("adaptador (Central de Conteúdo, Aulas, Podcasts, assistentes)", () =>
     const e = await p.generate(REQ).catch((x: unknown) => x as Error);
     expect(e).toBeInstanceOf(Error);
     expect(e).not.toBeInstanceOf(AiCapReached);
-    expect((e as Error).message).toMatch(/passa do teto por execução de US\$ 0,4\./);
+    expect((e as Error).message).toMatch(/passa do teto por chamada de US\$ 0,4\./);
     expect(f.calls).toEqual({ [key(G)]: 1 });
     expect(summary(logged)).toEqual(["principal:gemini:falha", "reserva:anthropic:teto"]);
   });
@@ -171,11 +171,11 @@ describe("Linha de produção e Comitê (mesmo caminho de chamada)", () => {
     const { r, logged } = await run({ key: "criacao", mode: "linha", primary_ref: G, fallback_ref: A, reviewers: [O] }, { per_run_cap_usd: 0.45 }, f);
     expect(f.calls).toEqual({ [key(G)]: 1, [key(A)]: 1 });
     expect(summary(logged)).toEqual(["criadora:gemini:falha", "reserva:anthropic:ok", "conferente:openai:teto"]);
-    expect(logged[2].error).toMatch(/^Gasto desta execução de US\$ 0,4232 mais estimativa de US\$ 0,0578 passa do teto por execução de US\$ 0,45\.$/);
+    expect(logged[2].error).toMatch(/^Gasto desta chamada de US\$ 0,4232 mais estimativa de US\$ 0,0578 passa do teto por chamada de US\$ 0,45\.$/);
     expect(r.status).toBe("precisa_revisao");
     expect(r.output).toEqual({ gabarito: "A" });
     expect(r.message).toMatch(/conferência incompleta/);
-    expect(r.message).toMatch(/teto por execução de US\$ 0,45/);
+    expect(r.message).toMatch(/teto por chamada de US\$ 0,45/);
   });
 
   it("Linha: a reserva da criadora também passa pelo teto", async () => {

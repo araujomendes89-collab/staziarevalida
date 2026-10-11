@@ -5,6 +5,8 @@
  *    do professor, o áudio dos Podcasts, a busca por significado e as rotas antigas usam a chave direto no servidor, cada um com a
  *    trava própria. A tela passa a dizer isso, com a lista.
  *  - IA09: chamada de modelo pago sem preço cadastrado não aparece com gasto US$ 0.
+ *  - IA08: o "teto por execução" valia por chamada à IA (cada pedido ao maestro), não por trabalho: um documento com 50 chamadas podia
+ *    gastar 50 vezes o teto. O nome passa a ser "Teto por chamada", com a explicação na tela.
  * Textos de teste, sem conteúdo clínico.
  */
 import React from "react";
@@ -91,5 +93,21 @@ describe("IA09: chamada de modelo pago sem preço não aparece com gasto US$ 0",
     expect(within(row("claude-com-preco")).getByText("US$ 0,0123")).toBeTruthy();
     expect(within(row("qwen3")).getByText("US$ 0")).toBeTruthy();
     expect(within(row("claude-teto")).getByText("US$ 0")).toBeTruthy();
+  });
+});
+
+describe("IA08: o teto vale por chamada, e a tela diz isso", () => {
+  it("o campo se chama Teto por chamada e a explicação diz que não é o limite de um trabalho inteiro", async () => {
+    render(<AdminAI />);
+    await screen.findByTestId("provider-anthropic");
+    expect(screen.getByLabelText("Teto por chamada (US$)")).toBeTruthy();
+    expect(screen.queryByLabelText("Teto por execução (US$)")).toBeNull();
+    const nota = screen.getByTestId("explicacao-tetos").textContent ?? "";
+    expect(nota).toMatch(/O teto por chamada vale para cada chamada à IA/);
+    expect(nota).toMatch(/principal, a nova tentativa e a reserva/);
+    expect(nota).toMatch(/não para um trabalho inteiro/);
+    expect(nota).toMatch(/várias vezes esse valor/);
+    expect(nota).toMatch(/O teto mensal é o que limita o total/);
+    expect(document.body.textContent).not.toMatch(/teto por execução/i);
   });
 });

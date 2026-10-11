@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Revisão rodada 3, ponto 4: a Central de IAs avisa ANTES quando o teto por execução salvo é menor que a estimativa de uma
+ * Revisão rodada 3, ponto 4: a Central de IAs avisa ANTES quando o teto por chamada salvo é menor que a estimativa de uma
  * chamada típica da função (já com a folga do raciocínio do Gemini), para o dono não descobrir só quando o Podcast para.
  * A estimativa é a mesma que o maestro usa para barrar a chamada (pior caso: entrada em caracteres ÷ 4 e a saída máxima
  * mandada). Chamadas típicas, pelo código de cada uso: etapas da Central de Conteúdo (8.192 de saída), Aulas (6.000; até
@@ -34,11 +34,11 @@ const cfg = (settings: Partial<AiConfig["settings"]>, functions: AiConfig["funct
   }) as any;
 const fn = (key: string, primary: R, fallback: R | null = null, care: "rapido" | "caprichado" = "caprichado", mode = "sozinha", reviewers: R[] = []): FunctionConfig =>
   ({ key, mode, primary, fallback, reviewers, care }) as any;
-const capWarnings = (w: string[]) => w.filter((m) => m.startsWith("Teto por execução"));
+const capWarnings = (w: string[]) => w.filter((m) => m.startsWith("Teto por chamada"));
 /** Avisos de uma chamada sozinha (cada IA). */
-const single = (w: string[]) => capWarnings(w).filter((m) => m.includes("abaixo da estimativa de uma chamada"));
+const single = (w: string[]) => capWarnings(w).filter((m) => m.includes("abaixo da estimativa de uma tentativa"));
 /** Avisos da soma: a reserva ou a nova tentativa depois de uma falha cobrada da principal (revisão rodada 4). */
-const chain = (w: string[]) => capWarnings(w).filter((m) => !m.includes("abaixo da estimativa de uma chamada"));
+const chain = (w: string[]) => capWarnings(w).filter((m) => !m.includes("abaixo da estimativa de uma tentativa"));
 
 describe("chamadas típicas", () => {
   it("cada função tem os usos de verdade, com a saída pedida no código", () => {
@@ -56,21 +56,21 @@ describe("chamadas típicas", () => {
   });
 });
 
-describe("aviso do teto por execução", () => {
+describe("aviso do teto por chamada", () => {
   it("Podcasts acima do teto: aviso da principal e da reserva, com a estimativa e o valor para essa chamada rodar", () => {
     const c = cfg({ per_run_cap_usd: 0.4 });
     const w = single(validateFunctionConfig(fn("criacao", G31, OPUS), c).warnings);
     // rodada 4: o valor de uma chamada sozinha não promete mais "para não parar" (a soma vem no aviso da reserva)
     expect(w).toEqual([
-      "Teto por execução de US$ 0,4 abaixo da estimativa de uma chamada da principal Gemini gemini-3.1-pro-preview em Podcasts (US$ 0,4511), já com a folga do raciocínio do Gemini: essa chamada para no teto sem chamar a IA. Para essa chamada rodar, o teto por execução precisa ser de pelo menos US$ 0,46.",
-      "Teto por execução de US$ 0,4 abaixo da estimativa de uma chamada da reserva Claude claude-opus-5 em Podcasts (US$ 0,5563): essa chamada para no teto sem chamar a IA. Para essa chamada rodar, o teto por execução precisa ser de pelo menos US$ 0,56.",
+      "Teto por chamada de US$ 0,4 abaixo da estimativa de uma tentativa da principal Gemini gemini-3.1-pro-preview em Podcasts (US$ 0,4511), já com a folga do raciocínio do Gemini: essa tentativa para no teto sem chamar a IA. Para essa tentativa rodar, o teto por chamada precisa ser de pelo menos US$ 0,46.",
+      "Teto por chamada de US$ 0,4 abaixo da estimativa de uma tentativa da reserva Claude claude-opus-5 em Podcasts (US$ 0,5563): essa tentativa para no teto sem chamar a IA. Para essa tentativa rodar, o teto por chamada precisa ser de pelo menos US$ 0,56.",
     ]);
   });
 
   it("vários usos acima do teto: um aviso por IA, com cada uso e o maior valor", () => {
     const c = cfg({ per_run_cap_usd: 0.2 });
     const [w] = single(validateFunctionConfig(fn("criacao", OPUS), c).warnings);
-    expect(w).toMatch(/^Teto por execução de US\$ 0,2 abaixo da estimativa de uma chamada da principal Claude claude-opus-5 em /);
+    expect(w).toMatch(/^Teto por chamada de US\$ 0,2 abaixo da estimativa de uma tentativa da principal Claude claude-opus-5 em /);
     expect(w).toContain("etapas da Central de Conteúdo (US$ 0,2423)");
     // rodada 5: o Claude manda no mínimo 8.192 de saída; Aulas (6.000 pedidos) = 21.250 × 5 + 8.192 × 25 = 0,31105
     expect(w).toContain("Aulas (US$ 0,311)");
@@ -106,7 +106,7 @@ describe("aviso do teto por execução", () => {
       single(validateFunctionConfig(fn("verificacao", OPUS, null, care, "linha", [reviewer]), cfg({ per_run_cap_usd: cap })).warnings).filter((m) => m.includes("conferente"));
     // gpt-6-astra: 20.000 caracteres = 5.000 tokens × 10 + 4.096 × 50 = 0,2548 (o perfil das etapas pedia 0,4846, quase o dobro)
     expect(at(0.2, ASTRA)).toEqual([
-      "Teto por execução de US$ 0,2 abaixo da estimativa de uma chamada do conferente OpenAI gpt-6-astra em conferência de rascunhos (US$ 0,2548): essa chamada para no teto sem chamar a IA. Para essa chamada rodar, o teto por execução precisa ser de pelo menos US$ 0,26.",
+      "Teto por chamada de US$ 0,2 abaixo da estimativa de uma tentativa do conferente OpenAI gpt-6-astra em conferência de rascunhos (US$ 0,2548): essa tentativa para no teto sem chamar a IA. Para essa tentativa rodar, o teto por chamada precisa ser de pelo menos US$ 0,26.",
     ]);
     expect(at(0.26, ASTRA)).toEqual([]);
     // a conferência de rascunhos não leva o Cuidado: no Rápido, o gemini-2.5-pro conferente ainda tem a folga de 8.192
@@ -119,7 +119,7 @@ describe("aviso do teto por execução", () => {
     expect(w.filter((m) => m.includes("membro"))).toEqual([expect.stringContaining("do membro OpenAI gpt-6-astra em conferência de rascunhos (US$ 0,2548)")]);
   });
 
-  it("teto que cabe, tetos desligados ou sem teto por execução: nenhum aviso", () => {
+  it("teto que cabe, tetos desligados ou sem teto por chamada: nenhum aviso", () => {
     // 1,46 cabe também a nova tentativa e a reserva nos Podcasts: 2 × 0,4511 + 0,5563 = 1,4585
     for (const settings of [{ per_run_cap_usd: 1.46 }, { per_run_cap_usd: 0.1, caps_enabled: false }, { per_run_cap_usd: null }]) {
       expect(capWarnings(validateFunctionConfig(fn("criacao", G31, OPUS), cfg(settings)).warnings)).toEqual([]);
@@ -138,19 +138,19 @@ describe("aviso do teto por execução", () => {
 // ------------------------------------------------------------------ revisão rodada 4: a soma da principal com a reserva
 
 /**
- * Revisão rodada 4, pontos 2 e 4: desde a rodada 3 a nova tentativa e a reserva passam pelo teto por execução com o gasto real
+ * Revisão rodada 4, pontos 2 e 4: desde a rodada 3 a nova tentativa e a reserva passam pelo teto por chamada com o gasto real
  * da falha. Uma resposta cortada custa quase a estimativa inteira, e um tempo esgotado grava a estimativa inteira. O aviso
  * conferia cada IA sozinha: com cada chamada cabendo, a reserva era barrada sem aviso; e o "pelo menos" da reserva (a chamada
  * sozinha) não deixava a reserva socorrer. Agora o aviso soma a principal e a reserva (e a nova tentativa).
  */
-describe("aviso do teto por execução: a soma da principal com a reserva (rodada 4)", () => {
+describe("aviso do teto por chamada: a soma da principal com a reserva (rodada 4)", () => {
   it("cenário da revisão: Conferir com gemini-3.5-flash e reserva claude-opus-5, teto de US$ 0,30: cada uma cabe sozinha, mas a reserva não socorre", () => {
     // gemini-3.5-flash: 17.500 × 1,5 + (6.000 + 16.384) × 9 = 0,227706; claude-opus-5: 17.500 × 5 + 8.192 × 25 = 0,2923 (rodada 5:
     // o provedor do Claude manda no mínimo 8.192 de saída, não os 6.000 pedidos)
     const w = validateFunctionConfig(fn("assistente_conferir", G35, OPUS), cfg({ per_run_cap_usd: 0.3 })).warnings;
     expect(single(w)).toEqual([]);
     expect(chain(w)).toEqual([
-      "Teto por execução de US$ 0,3 abaixo da principal Gemini gemini-3.5-flash mais a reserva Claude claude-opus-5 em assistentes (US$ 0,52), já com a folga do raciocínio do Gemini: depois de uma falha cobrada da principal (resposta cortada ou tempo esgotado), a reserva não socorre e o trabalho falha. Para a reserva socorrer, o teto por execução precisa ser de pelo menos US$ 0,53; para socorrer também depois da nova tentativa (resposta fora do formato), pelo menos US$ 0,75.",
+      "Teto por chamada de US$ 0,3 abaixo da principal Gemini gemini-3.5-flash mais a reserva Claude claude-opus-5 em assistentes (US$ 0,52), já com a folga do raciocínio do Gemini: depois de uma falha cobrada da principal (resposta cortada ou tempo esgotado), a reserva não socorre e o trabalho falha. Para a reserva socorrer, o teto por chamada precisa ser de pelo menos US$ 0,53; para socorrer também depois da nova tentativa (resposta fora do formato), pelo menos US$ 0,75.",
     ]);
   });
 
@@ -159,14 +159,14 @@ describe("aviso do teto por execução: a soma da principal com a reserva (rodad
     // 0,40: a reserva sozinha não cabe nos Podcasts, e depois de uma falha a reserva não socorre em nenhum uso
     expect(single(at(0.4))).toEqual([expect.stringContaining("da reserva Claude claude-opus-5 em Podcasts (US$ 0,5563)")]);
     expect(chain(at(0.4))).toEqual([
-      "Teto por execução de US$ 0,4 abaixo da principal Gemini gemini-3.5-flash mais a reserva Claude claude-opus-5 em etapas da Central de Conteúdo (US$ 0,4747), Aulas (US$ 0,5444) e Podcasts (US$ 0,8946), já com a folga do raciocínio do Gemini: depois de uma falha cobrada da principal (resposta cortada ou tempo esgotado), a reserva não socorre e o trabalho falha. Para a reserva socorrer, o teto por execução precisa ser de pelo menos US$ 0,90; para socorrer também depois da nova tentativa (resposta fora do formato), pelo menos US$ 1,24.",
+      "Teto por chamada de US$ 0,4 abaixo da principal Gemini gemini-3.5-flash mais a reserva Claude claude-opus-5 em etapas da Central de Conteúdo (US$ 0,4747), Aulas (US$ 0,5444) e Podcasts (US$ 0,8946), já com a folga do raciocínio do Gemini: depois de uma falha cobrada da principal (resposta cortada ou tempo esgotado), a reserva não socorre e o trabalho falha. Para a reserva socorrer, o teto por chamada precisa ser de pelo menos US$ 0,90; para socorrer também depois da nova tentativa (resposta fora do formato), pelo menos US$ 1,24.",
     ]);
     // 0,56 (o valor que a tela sugeria): o aviso da chamada sozinha some, o da soma continua
     expect(single(at(0.56))).toEqual([]);
-    expect(chain(at(0.56))).toEqual([expect.stringMatching(/^Teto por execução de US\$ 0,56 abaixo da principal .* em Podcasts \(US\$ 0,8946\).*pelo menos US\$ 0,90;.*pelo menos US\$ 1,24\.$/)]);
+    expect(chain(at(0.56))).toEqual([expect.stringMatching(/^Teto por chamada de US\$ 0,56 abaixo da principal .* em Podcasts \(US\$ 0,8946\).*pelo menos US\$ 0,90;.*pelo menos US\$ 1,24\.$/)]);
     // 0,90: a reserva socorre um corte; a nova tentativa antes dela ainda não cabe nos Podcasts
     expect(chain(at(0.9))).toEqual([
-      "Teto por execução de US$ 0,9 abaixo de duas chamadas da principal Gemini gemini-3.5-flash mais a reserva Claude claude-opus-5 em Podcasts (US$ 1,2329), já com a folga do raciocínio do Gemini: depois de uma resposta fora do formato e da nova tentativa, a reserva não socorre e o trabalho falha. Para não parar no teto por execução, o teto precisa ser de pelo menos US$ 1,24.",
+      "Teto por chamada de US$ 0,9 abaixo de duas tentativas da principal Gemini gemini-3.5-flash mais a reserva Claude claude-opus-5 em Podcasts (US$ 1,2329), já com a folga do raciocínio do Gemini: depois de uma resposta fora do formato e da nova tentativa, a reserva não socorre e o trabalho falha. Para não parar no teto por chamada, o teto precisa ser de pelo menos US$ 1,24.",
     ]);
     expect(capWarnings(at(1.24))).toEqual([]);
   });
@@ -175,7 +175,7 @@ describe("aviso do teto por execução: a soma da principal com a reserva (rodad
     // Questões com o claude-opus-5: 2.000 × 5 + 12.000 × 25 = 0,31 por chamada
     const at = (cap: number) => validateFunctionConfig(fn("engenharia_reversa", OPUS), cfg({ per_run_cap_usd: cap })).warnings;
     expect(chain(at(0.4))).toEqual([
-      "Teto por execução de US$ 0,4 abaixo de duas chamadas da principal Claude claude-opus-5 em Questões (US$ 0,62): depois de uma falha cobrada da principal (resposta fora do formato), a nova tentativa não roda e o trabalho falha. Para não parar no teto por execução, o teto precisa ser de pelo menos US$ 0,62.",
+      "Teto por chamada de US$ 0,4 abaixo de duas tentativas da principal Claude claude-opus-5 em Questões (US$ 0,62): depois de uma falha cobrada da principal (resposta fora do formato), a nova tentativa não roda e o trabalho falha. Para não parar no teto por chamada, o teto precisa ser de pelo menos US$ 0,62.",
     ]);
     expect(capWarnings(at(0.62))).toEqual([]);
   });

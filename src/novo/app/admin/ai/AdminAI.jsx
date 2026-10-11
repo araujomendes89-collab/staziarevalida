@@ -262,11 +262,13 @@ function Spend({ data, backend, reload }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
           <TextField label="Teto mensal (US$)" type="number" min="0" step="any" value={monthly} onChange={(e) => setMonthly(e.target.value)} />
-          <TextField label="Teto por execução (US$)" type="number" min="0" step="any" value={perRun} onChange={(e) => setPerRun(e.target.value)} />
+          <TextField label="Teto por chamada (US$)" type="number" min="0" step="any" value={perRun} onChange={(e) => setPerRun(e.target.value)} />
         </div>
         <Switch label="Tetos ligados" checked={on} onChange={(e) => setOn(e.target.checked)} />
         {missing && <div style={subtle}>Preencha os dois tetos para ligar</div>}
-        <p style={note}>Duas execuções ao mesmo tempo podem passar do teto em até o custo de uma execução.</p>
+        <p data-testid="explicacao-tetos" style={note}>
+          O teto por chamada vale para cada chamada à IA (a principal, a nova tentativa e a reserva dela, somadas), não para um trabalho inteiro: um documento que faz várias chamadas pode gastar várias vezes esse valor. O teto mensal é o que limita o total. Duas chamadas ao mesmo tempo podem passar do teto em até o custo de uma chamada.
+        </p>
         {state.error && <Banner tone="danger">{state.error}</Banner>}
         {state.done && <Banner tone="success">Tetos salvos.</Banner>}
         <div>

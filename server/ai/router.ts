@@ -193,7 +193,7 @@ export function createAiRouter(
       }
       const cur = (await fresh()).settings;
       const eff = { ...cur, ...patch } as typeof cur;
-      if (eff.caps_enabled && (eff.monthly_cap_usd === null || eff.per_run_cap_usd === null)) throw bad("Para ligar os tetos, preencha o teto mensal e o teto por execução.");
+      if (eff.caps_enabled && (eff.monthly_cap_usd === null || eff.per_run_cap_usd === null)) throw bad("Para ligar os tetos, preencha o teto mensal e o teto por chamada.");
       const out = await db().service("ch_worker_ai_save_settings", { p_actor: req.user!.id, p_settings: patch });
       invalidateAiConfig(db());
       res.json(out);

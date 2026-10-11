@@ -74,7 +74,7 @@ export interface TypicalCall {
 }
 
 /**
- * Chamadas típicas de cada função, para o aviso do teto por execução (revisão rodada 3). A saída é a pedida no código (a
+ * Chamadas típicas de cada função, para o aviso do teto por chamada (revisão rodada 3). A saída é a pedida no código (a
  * estimativa usa o que cada provedor de fato manda, effectiveMaxOut: no Claude, 6.000 viram 8.192); a entrada é o material que
  * costuma ir, com o texto de instruções:
  *   etapas da Central de Conteúdo: 8.192 (pipeline.ts); trechos de até 6.000 caracteres mais o catálogo e as instruções (~30 mil).
@@ -136,7 +136,7 @@ interface CapMember {
 
 /**
  * Aviso antes de parar (revisão rodada 3): com os tetos ligados, cada IA da função cuja chamada típica (já com a folga do
- * raciocínio do Gemini) passa do teto por execução. Sem o aviso, o dono só descobria pelos trabalhos parados e pelas linhas
+ * raciocínio do Gemini) passa do teto por chamada. Sem o aviso, o dono só descobria pelos trabalhos parados e pelas linhas
  * "teto" do Histórico. Aqui cada IA conta como uma chamada sozinha; o "pelo menos" é o valor para essa chamada rodar, não para
  * nada parar (rodada 4): depois de uma falha cobrada, a soma com a reserva e a nova tentativa vem de failureChainWarning.
  * Cada IA traz as próprias chamadas (rodada 5): conferentes e membros só na conferência de rascunhos da Verificação.
@@ -156,16 +156,16 @@ function perRunCapWarnings(members: CapMember[], cfg: AiConfig): string[] {
     const list = listPt(over.map((x) => `${x.call.use} (US$ ${usd(x.est)})`));
     const need = Math.max(...over.map((x) => x.est));
     const folga = hasFolga(ref, care) ? FOLGA : "";
-    const stops = over.length > 1 ? "essas chamadas param" : "essa chamada para";
+    const stops = over.length > 1 ? "essas tentativas param" : "essa tentativa para";
     out.push(
-      `Teto por execução de US$ ${usd(cap)} abaixo da estimativa de uma chamada ${ROLE_OF[role]} ${aiName(ref)} em ${list}${folga}: ${stops} no teto sem chamar a IA. Para essa chamada rodar, o teto por execução precisa ser de pelo menos US$ ${cents(need)}.`
+      `Teto por chamada de US$ ${usd(cap)} abaixo da estimativa de uma tentativa ${ROLE_OF[role]} ${aiName(ref)} em ${list}${folga}: ${stops} no teto sem chamar a IA. Para essa tentativa rodar, o teto por chamada precisa ser de pelo menos US$ ${cents(need)}.`
     );
   }
   return out;
 }
 
 /**
- * Aviso da soma (revisão rodada 4): desde a rodada 3, a nova tentativa e a reserva passam pelo teto por execução com o gasto real
+ * Aviso da soma (revisão rodada 4): desde a rodada 3, a nova tentativa e a reserva passam pelo teto por chamada com o gasto real
  * da falha. Uma resposta cortada custa quase a estimativa inteira e o tempo esgotado grava a estimativa inteira; a resposta fora
  * do formato também é cobrada e ainda tem uma nova tentativa antes da reserva. Por isso, por uso típico da função:
  *   a reserva socorre um corte ou tempo esgotado só com o teto ≥ principal + reserva;
@@ -186,21 +186,21 @@ function failureChainWarning(key: AiFunctionKey, primary: ModelRef | null, fallb
   const folga = hasFolga(primary, care) || (fallback && hasFolga(fallback, care)) ? FOLGA : "";
   const fullNeed = Math.max(...paid.map((x) => x.full));
   const list = (items: typeof paid, pick: (x: (typeof paid)[number]) => number) => listPt(items.map((x) => `${x.use} (US$ ${usd(pick(x))})`));
-  const head = `Teto por execução de US$ ${usd(cap)} abaixo`;
+  const head = `Teto por chamada de US$ ${usd(cap)} abaixo`;
   if (!fallback) {
     const over = paid.filter((x) => x.full > cap + 1e-9);
     if (!over.length) return null;
-    return `${head} de duas chamadas da principal ${aiName(primary)} em ${list(over, (x) => x.full)}${folga}: depois de uma falha cobrada da principal (resposta fora do formato), a nova tentativa não roda e o trabalho falha. Para não parar no teto por execução, o teto precisa ser de pelo menos US$ ${cents(fullNeed)}.`;
+    return `${head} de duas tentativas da principal ${aiName(primary)} em ${list(over, (x) => x.full)}${folga}: depois de uma falha cobrada da principal (resposta fora do formato), a nova tentativa não roda e o trabalho falha. Para não parar no teto por chamada, o teto precisa ser de pelo menos US$ ${cents(fullNeed)}.`;
   }
   if (!paid.some((x) => x.r > 0)) return null;
   const noRescue = paid.filter((x) => x.rescue > cap + 1e-9);
   if (noRescue.length) {
     const rescueNeed = Math.max(...noRescue.map((x) => x.rescue));
-    return `${head} da principal ${aiName(primary)} mais a reserva ${aiName(fallback)} em ${list(noRescue, (x) => x.rescue)}${folga}: depois de uma falha cobrada da principal (resposta cortada ou tempo esgotado), a reserva não socorre e o trabalho falha. Para a reserva socorrer, o teto por execução precisa ser de pelo menos US$ ${cents(rescueNeed)}; para socorrer também depois da nova tentativa (resposta fora do formato), pelo menos US$ ${cents(fullNeed)}.`;
+    return `${head} da principal ${aiName(primary)} mais a reserva ${aiName(fallback)} em ${list(noRescue, (x) => x.rescue)}${folga}: depois de uma falha cobrada da principal (resposta cortada ou tempo esgotado), a reserva não socorre e o trabalho falha. Para a reserva socorrer, o teto por chamada precisa ser de pelo menos US$ ${cents(rescueNeed)}; para socorrer também depois da nova tentativa (resposta fora do formato), pelo menos US$ ${cents(fullNeed)}.`;
   }
   const over = paid.filter((x) => x.full > cap + 1e-9);
   if (!over.length) return null;
-  return `${head} de duas chamadas da principal ${aiName(primary)} mais a reserva ${aiName(fallback)} em ${list(over, (x) => x.full)}${folga}: depois de uma resposta fora do formato e da nova tentativa, a reserva não socorre e o trabalho falha. Para não parar no teto por execução, o teto precisa ser de pelo menos US$ ${cents(fullNeed)}.`;
+  return `${head} de duas tentativas da principal ${aiName(primary)} mais a reserva ${aiName(fallback)} em ${list(over, (x) => x.full)}${folga}: depois de uma resposta fora do formato e da nova tentativa, a reserva não socorre e o trabalho falha. Para não parar no teto por chamada, o teto precisa ser de pelo menos US$ ${cents(fullNeed)}.`;
 }
 const num = (v: unknown): number | null => {
   if (v === null || v === undefined || v === "") return null;
@@ -445,7 +445,7 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig, opts: 
         : `Nesta etapa a função usa só a IA principal e a reserva: ${who} ainda não rodam.`
     );
   }
-  // teto por execução abaixo de uma chamada típica: avisa antes, em vez de o trabalho parar sem explicação. Conferentes e membros
+  // teto por chamada abaixo de uma chamada típica: avisa antes, em vez de o trabalho parar sem explicação. Conferentes e membros
   // só rodam na conferência de rascunhos da Verificação (maestroRoleProvider), com o perfil dela; fora da Verificação o uso real
   // chama só a principal e a reserva, e o aviso deles mandava subir o teto por uma chamada que não existe (revisão rodada 5)
   const uses = TYPICAL_CALLS[fc.key] ?? [];

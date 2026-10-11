@@ -43,7 +43,7 @@ as IAs e salve as funções em seguida, antes de deixar o processamento trabalha
    **não está pronta** quando a IA escolhida não pode rodar (IA desligada, ou Ollama no site publicado); se só a principal
    não roda e há reserva que roda, a tela avisa que a reserva vai responder. Chave que falta no site é só aviso (veja
    "Chaves das IAs: o site e o processamento").
-3. **Gasto e tetos:** se quiser, preencha o teto mensal e o teto por execução e ligue os tetos.
+3. **Gasto e tetos:** se quiser, preencha o teto mensal e o teto por chamada e ligue os tetos.
 
 ## Chaves das IAs: o site e o processamento
 - O site (Vercel) e o processamento da Central (Cloud Run) são servidores diferentes, cada um com as suas chaves. A tela só
@@ -151,16 +151,20 @@ Nesta etapa, os usos atuais gravam **um** resultado. Neles, a função usa a pri
 comitê mostrados para a equipe aparecem a partir da etapa 2.
 
 ## Tetos de gasto
-- **Teto por execução:** uma execução é um pedido ao maestro, com todas as IAs que ele chamar (principal, nova tentativa e
-  reserva). Antes de **cada** chamada, o sistema soma o gasto real já feito nesta execução (com o custo das tentativas que
-  falharam), a estimativa das chamadas em andamento e a estimativa desta chamada. A estimativa é o pior caso: caracteres ÷ 4 ×
+- **Teto por chamada** (IA08, 2026-10-11; antes "teto por execução"): uma chamada é um pedido ao maestro, com todas as IAs que ele
+  chamar (principal, nova tentativa e reserva). **Vale para cada chamada, não para um trabalho inteiro:** um documento da Central
+  de Conteúdo faz várias chamadas (uma por etapa e por pedaço), e cada uma tem o seu teto, então um trabalho de 50 chamadas pode
+  gastar até 50 vezes o valor. O que limita o total é o teto mensal. Somar por trabalho **não foi feito** (exigiria guardar o gasto
+  de cada trabalho entre as etapas e decidir o que fazer com o trabalho que passa do valor no meio; veja as perguntas ao dono). Antes
+  de **cada tentativa**, o sistema soma o gasto real já feito nesta chamada (com o custo das tentativas que falharam), a estimativa
+  das tentativas em andamento e a estimativa desta tentativa. A estimativa é o pior caso: caracteres ÷ 4 ×
   preço de entrada, mais a saída máxima que vai de fato para a IA × preço de saída (no Gemini, o pedido mais a folga do
-  raciocínio; no Claude, no mínimo 8.192 tokens; na OpenAI, no mínimo 4.096). Passou do teto → essa chamada não sai (linha
-  "teto" no registro). Se nada foi chamado ainda, o trabalho fica parado (veja abaixo); depois de uma falha cobrada, a execução
+  raciocínio; no Claude, no mínimo 8.192 tokens; na OpenAI, no mínimo 4.096). Passou do teto → essa tentativa não sai (linha
+  "teto" no registro). Se nada foi chamado ainda, o trabalho fica parado (veja abaixo); depois de uma falha cobrada, a chamada
   termina como falha comum e o trabalho gasta uma tentativa.
-- **Teto mensal:** gasto já registrado no mês (horário de Brasília) + o gasto desta execução + a estimativa. Passou → as IAs
+- **Teto mensal:** gasto já registrado no mês (horário de Brasília) + o gasto desta chamada + a estimativa. Passou → as IAs
   pagas não são chamadas; o **Ollama continua**.
-- **Duas execuções ao mesmo tempo** podem passar do teto em até o custo de uma execução (a tela avisa).
+- **Duas chamadas ao mesmo tempo** podem passar do teto em até o custo de uma chamada (a tela avisa).
 - Com os tetos ligados, **modelo pago sem preço fica bloqueado**. Ollama custa zero.
 - **Preço exigido com ou sem teto (IA09, 2026-10-11):** modelo pago sem preço cadastrado aparecia com gasto US$ 0 quando os tetos
   estavam desligados. Agora, ao **salvar** uma função (a rota `PUT /functions/:key`), cada IA paga dela precisa de preço, com os
@@ -172,8 +176,8 @@ comitê mostrados para a equipe aparecem a partir da etapa 2.
   ficou com custo zero aparece como "sem preço", e não como "US$ 0".
 - **Quando o teto é atingido**, os documentos da Central ficam **parados** (pendência) e voltam sozinhos quando o teto
   permitir; ninguém precisa reenviar o documento.
-  - Teto **por execução** (o pedido estimado passa do teto): a cada rodada do processamento os parados voltam para a fila
-    e, se o teto ainda não deixa, param de novo sem gastar tentativa. Suba o teto por execução.
+  - Teto **por chamada** (o pedido estimado passa do teto): a cada rodada do processamento os parados voltam para a fila
+    e, se o teto ainda não deixa, param de novo sem gastar tentativa. Suba o teto por chamada.
   - Teto **mensal** atingido: a fila não é destravada até o mês virar (horário de Brasília) ou o teto mensal subir; aí os
     parados voltam na rodada seguinte.
 - O gasto do Tutor (texto e voz) aparece à parte, só como informação, e não entra no teto. As chamadas das Aulas e do
@@ -187,9 +191,9 @@ comitê mostrados para a equipe aparecem a partir da etapa 2.
   folga sobe a estimativa dos tetos (o pior caso), não o gasto real.
 - **Custo das falhas:** a resposta que não serve também é cobrada. A resposta cortada, bloqueada, recusada ou fora do formato
   grava os tokens que vieram, com o custo pelo preço cadastrado; o tempo esgotado (o pedido é cancelado e não traz tokens) grava
-  o pior caso estimado, dito no erro. Esse custo entra no gasto da execução (teto por execução) e no gasto do mês (`ai_calls`).
+  o pior caso estimado, dito no erro. Esse custo entra no gasto da chamada (teto por chamada) e no gasto do mês (`ai_calls`).
   Falha sem resposta (rede, servidor fora do ar, chave recusada) fica com custo 0.
-- **Aviso na tela:** com os tetos ligados, o editor de cada função avisa quando o teto por execução não cabe uma chamada típica de
+- **Aviso na tela:** com os tetos ligados, o editor de cada função avisa quando o teto por chamada não cabe uma tentativa típica de
   uma IA da função, e quando não cabe a principal mais a reserva (para a reserva socorrer depois de uma falha cobrada) ou duas
   chamadas da principal mais a reserva (nova tentativa), sempre com o valor mínimo. Chamadas típicas (saída pedida no código e
   entrada que costuma ir): etapas da Central de Conteúdo, 8.192 tokens e ~30 mil caracteres; Aulas, 6.000 e 85 mil; Podcasts,
@@ -261,7 +265,7 @@ preço que a chave aceita; função salva com outro modelo passa a mostrar "mode
 - No custo de cada documento da Central de Conteúdo ("Execuções de IA", `ch_ai_runs`), entra só a resposta que deu certo (ou a
   última falha, sem tokens): a tentativa que falhou antes da reserva responder está no gasto do mês (`ai_calls`), mas não aparece
   no custo do documento. Fazer isso mexe no processamento da Central de Conteúdo e não foi pedido.
-- Com o teto por execução entre 2 × principal e 2 × principal + reserva, depois de uma resposta fora do formato a nova tentativa
+- Com o teto por chamada entre 2 × principal e 2 × principal + reserva, depois de uma resposta fora do formato a nova tentativa
   ainda sai e pode deixar a reserva sem espaço (o aviso da tela diz o valor que cobre as duas). Mudar essa regra é decisão do dono.
 - A simulação (`mock`) só existe no desenvolvimento e nos testes; em produção, pedir simulação é recusado.
 - O Tutor não usa a Central nesta etapa.
