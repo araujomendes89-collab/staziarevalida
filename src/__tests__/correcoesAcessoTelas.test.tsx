@@ -174,6 +174,19 @@ describe("US01 — plano pago com data de fim", () => {
     expect(screen.getByText("Plano Pro · encerrado")).toBeTruthy();
   });
 
+  it("Conta do revisor médico: acesso completo pelo papel, mesmo com o plano vencido", () => {
+    session.boot = {
+      role: "student",
+      reviewer_areas: ["clinica_medica"],
+      profile: { name: "Ana", phase: 1, exam_type: "REVALIDA", target_edition: null, daily_minutes: null, exam_date: null, theme: "light" },
+      subscription: { plan: "pro", status: "active", trial_ends_at: null, current_period_end: iso(Date.now() - 2 * DAY) },
+      has_pro: true,
+    };
+    render(<AccountScreen go={vi.fn()} />);
+    expect(screen.getByText("Revisor médico · acesso completo")).toBeTruthy();
+    expect(screen.queryByText("Plano Pro · encerrado")).toBeNull();
+  });
+
   it("Conta do aluno: plano pago no prazo continua como antes", () => {
     session.boot = {
       role: "student",

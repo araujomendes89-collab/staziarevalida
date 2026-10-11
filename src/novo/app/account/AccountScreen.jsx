@@ -46,8 +46,9 @@ const dateTimeBR = (iso) => {
   return `${parts.day}/${parts.month}/${parts.year} às ${parts.hour}:${parts.minute}`;
 };
 
-function planBadge(subscription, role) {
+function planBadge(subscription, role, reviewer = false) {
   if (isStaffRole(role)) return "Equipe · acesso completo";
+  if (reviewer) return "Revisor médico · acesso completo";
   if (!subscription) return null;
   const label = PLAN_LABEL[subscription.plan] ?? subscription.plan;
   if (trialLapsed(subscription)) return `${label} · encerrado`;
@@ -407,7 +408,7 @@ export function AccountScreen({ go }) {
   const mobile = useMobile();
   const [section, setSection] = React.useState("conta");
   const profile = boot.profile;
-  const plan = planBadge(boot.subscription, boot.role);
+  const plan = planBadge(boot.subscription, boot.role, Boolean(boot.reviewer_areas?.length));
   const phase2Locked = isPhase2Locked(boot.role); // 2ª fase "em breve" para o aluno: o selo mostra a 1ª mesmo se a 2ª estiver gravada
   const goal = profile.target_edition ? `Meta: ${profile.exam_type === "ENAMED" ? "ENAMED" : "Revalida INEP"} ${profile.target_edition}` : null;
 
