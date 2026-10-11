@@ -85,6 +85,12 @@ interface RawAssist {
   missing: string[];
 }
 
+export interface Excerpt {
+  id: number;
+  page: number | null;
+  text: string;
+}
+
 export interface AssistResult {
   suggestion: {
     title: string;
@@ -92,7 +98,9 @@ export interface AssistResult {
     area: string | null;
     summary: string;
     summary_pages: number[];
-    key_points: { text: string; sources: number[]; pages: number[] }[];
+    /** Início de cada trecho citado no resumo, com a página, para a equipe conferir ao lado do texto. */
+    summary_excerpts: Excerpt[];
+    key_points: { text: string; sources: number[]; pages: number[]; excerpts: Excerpt[] }[];
     missing: string[];
   };
   warnings: string[];
@@ -142,13 +150,18 @@ async function assistProvider(o: AssistInput) {
 
 const pagesOf = (ids: number[], byId: Map<number, SourceChunk>) => [...new Set(ids.map((i) => byId.get(i)?.page).filter((p): p is number => typeof p === "number"))].sort((a, b) => a - b);
 
+const EXCERPT_CHARS = 300;
+const excerptsOf = (ids: number[], byId: Map<number, SourceChunk>): Excerpt[] =>
+  ids.map((i) => byId.get(i)!).map((c) => ({ id: c.id, page: c.page ?? null, text: c.text.length > EXCERPT_CHARS ? `${c.text.slice(0, EXCERPT_CHARS)}…` : c.text }));
+
 export async function generateLessonAssist(o: AssistInput): Promise<AssistResult> {
   const { provider, status } = await assistProvider(o);
   if (!provider) throw Object.assign(new Error(`IA indisponível: ${status.pending}`), { status: 503 });
   const all: SourceChunk[] = chunkPages(o.pages).map((c, i) => ({ id: i + 1, source: "Material", doc: 1, page: c.page, text: c.text }));
   if (!all.length) throw Object.assign(new Error("O material não tem texto aproveitável (PDF escaneado?). Cole o texto."), { status: 422 });
   const chosen = selectChunks(all, [o.topic, o.title].filter(Boolean).join(" ") || all[0].text.slice(0, 200), 80_000);
-  const byId = new Map(all.map((c) => [c.id, c]));
+  // só vale citar o que foi enviado à IA: com material grande só uma parte vai, e a IA não pode "ter lido" o resto (A02)
+  const byId = new Map(chosen.map((c) => [c.id, c]));
   const input = buildAssistInput({ chunks: chosen, title: o.title, topic: o.topic, area: o.area, instructions: o.instructions });
   const usage = { provider: provider.name, model: provider.model, input_tokens: 0, output_tokens: 0, cost_usd: 0, calls: 0 };
   let r;
@@ -189,7 +202,8 @@ export async function generateLessonAssist(o: AssistInput): Promise<AssistResult
       area,
       summary: summary.slice(0, 8000),
       summary_pages: pagesOf(summarySources, byId),
-      key_points: keyPoints.map((k) => ({ ...k, pages: pagesOf(k.sources, byId) })),
+      summary_excerpts: excerptsOf(summarySources, byId),
+      key_points: keyPoints.map((k) => ({ ...k, pages: pagesOf(k.sources, byId), excerpts: excerptsOf(k.sources, byId) })),
       missing: (out.missing ?? []).map((m) => String(m).slice(0, 240)),
     },
     warnings,
