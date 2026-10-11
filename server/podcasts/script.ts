@@ -165,6 +165,8 @@ export interface ScriptResult {
   warnings: ScriptWarning[];
   usage: { provider: string; model: string; input_tokens: number; output_tokens: number; cost_usd: number; calls: number };
   used_chunks: number;
+  /** Ids dos trechos que foram ENVIADOS à IA (só estes valem como citação do roteiro dela, também nas conferências seguintes). */
+  sent_ids: number[];
 }
 
 /**
@@ -234,5 +236,5 @@ export async function generateScript(o: { kind: ScriptProvider | "mock"; topic: 
     if (!warnings.some((w) => w.kind !== "no_source")) break; // limpo: não precisa de segunda tentativa
   }
   if (!last) throw new Error("A IA não devolveu um roteiro válido. Tente de novo.");
-  return { script: last.script, warnings: last.warnings, usage, used_chunks: chosen.length };
+  return { script: last.script, warnings: last.warnings, usage, used_chunks: chosen.length, sent_ids: chosen.map((c) => c.id) };
 }

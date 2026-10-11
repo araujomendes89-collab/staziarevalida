@@ -355,7 +355,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const simulated = kind === "mock";
       const meta = {
         provider: r.usage.provider, model: r.usage.model, prompt_version: PODCAST_PROMPT_VERSION, input_tokens: r.usage.input_tokens, output_tokens: r.usage.output_tokens,
-        cost_usd: r.usage.cost_usd, calls: r.usage.calls, used_chunks: r.used_chunks, total_chunks: chunks.length, warnings: r.warnings, notes, seconds: Math.round((Date.now() - started) / 1000), simulated,
+        cost_usd: r.usage.cost_usd, calls: r.usage.calls, used_chunks: r.used_chunks, sent_chunks: r.sent_ids, total_chunks: chunks.length, warnings: r.warnings, notes, seconds: Math.round((Date.now() - started) / 1000), simulated,
       };
       const view = await service<any>("ch_worker_podcast_set_script", { p_user: req.user!.id, p_podcast: req.params.id, p_script: r.script, p_meta: meta });
       if (!simulated) {
@@ -371,12 +371,17 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
   /** Confere de novo o roteiro atual (depois de editar): trecho citado existe e número com unidade está no trecho. Sem IA. */
   router.get("/:id/script/check", async (req: Authed, res) => {
     try {
-      await staffPodcast(req);
+      const view = await staffPodcast(req);
       const { m, chunks } = await loadMaterial(req);
       const lines = normalizeLines(m.script?.lines);
       if (!lines.length) return res.json({ warnings: [] });
       const script: PodcastScript = { lines, missing: m.script?.missing ?? [] };
-      res.json({ warnings: checkScript(script, new Map(chunks.map((c) => [c.id, c]))) });
+      const all = new Map(chunks.map((c) => [c.id, c]));
+      // roteiro gerado pela IA: só os trechos que ela recebeu valem como citação (guardados na geração e mantidos nas edições);
+      // roteiro antigo, sem essa lista, aceita todos os trechos do episódio
+      const sent: unknown = view?.script_meta?.sent_chunks;
+      const valid = Array.isArray(sent) ? new Map(chunks.filter((c) => (sent as unknown[]).map(Number).includes(c.id)).map((c) => [c.id, c])) : all;
+      res.json({ warnings: checkScript(script, valid, all) });
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }

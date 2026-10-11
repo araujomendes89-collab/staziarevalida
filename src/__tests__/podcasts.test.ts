@@ -473,6 +473,49 @@ describe("PDF da aula como fonte e o limite de tamanho", () => {
   });
 });
 
+describe("Conferência do roteiro lembra o que foi enviado à IA", () => {
+  it("o aviso de trecho que a IA não recebeu volta em toda nova conferência, mesmo depois de editar outra fala", async () => {
+    const created = await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Muitas fontes", topic: "Pré-eclâmpsia", area: "CLINICA_MEDICA", target_minutes: 5 } });
+    const bloco = (n: number) => Array.from({ length: 150 }, (_, i) => `Fonte ${n} item ${i + 1}: ${"a".repeat(640)}`).join("\n\n");
+    expect((await post(`${base}/${created.id}/sources/text`, editor, { title: "Fonte A", text: bloco(1) })).status).toBe(201);
+    expect((await post(`${base}/${created.id}/sources/text`, editor, { title: "Fonte B", text: bloco(2) })).status).toBe(201);
+    const all = (await dev.db.query<any>(`select id from public.podcast_chunks where podcast_id = $1 order by id`, [created.id])).rows.map((r) => Number(r.id));
+    let naoEnviado = 0;
+    const url = await listen({
+      db, storage: files, lessons: lessonFiles,
+      mockScript: (req: any) => {
+        const sent = new Set([...req.input.matchAll(/\[T(\d+)\]/g)].map((m: RegExpMatchArray) => Number(m[1])));
+        naoEnviado = all.find((id) => !sent.has(id))!;
+        return { title_suggestion: "x", missing: [], lines: [
+          { speaker: "ANA", text: "Abertura.", style: "", sources: [] },
+          { speaker: "BRUNO", text: "Pergunta.", style: "", sources: [] },
+          { speaker: "ANA", text: "Resposta citando algo que a IA não recebeu.", style: "", sources: [naoEnviado] },
+          { speaker: "BRUNO", text: "Fim.", style: "", sources: [] },
+        ] };
+      },
+    });
+    const gen = await post(`${url}/${created.id}/script`, editor, { provider: "mock" });
+    expect(gen.status).toBe(200);
+    expect(naoEnviado).toBeGreaterThan(0);
+    expect(gen.body.warnings.some((w: any) => /não recebeu/.test(w.detail))).toBe(true);
+    // a equipe corrige outra fala e salva: o aviso apagado do banco volta pela conferência, que usa só o que foi enviado
+    const p = await rpc(EDITOR, "app_admin_podcast", { p_id: created.id });
+    expect(p.script_meta.sent_chunks).toEqual(expect.any(Array));
+    expect(p.script_meta.sent_chunks).not.toContain(naoEnviado);
+    const lines = p.script.lines.map((l: any, i: number) => (i === 0 ? { ...l, text: "Abertura, corrigida." } : l));
+    const saved = await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: created.id, p_script: { lines, missing: [] } });
+    expect(saved.script_meta.warnings).toBeUndefined();
+    expect(saved.script_meta.sent_chunks).toEqual(p.script_meta.sent_chunks);
+    const check = (await call(`${url}/${created.id}/script/check`, editor)).body;
+    expect(check.warnings).toEqual([expect.objectContaining({ line: 2, kind: "unknown_source", detail: `Trecho que a IA não recebeu: T${naoEnviado}` })]);
+    // tirando a citação inválida do texto, o aviso some
+    const limpo = lines.map((l: any, i: number) => (i === 2 ? { ...l, sources: [] } : l));
+    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: created.id, p_script: { lines: limpo, missing: [] } });
+    expect((await call(`${url}/${created.id}/script/check`, editor)).body.warnings.filter((w: any) => w.kind === "unknown_source")).toEqual([]);
+    await call(`${base}/${created.id}`, admin, { method: "DELETE" });
+  });
+});
+
 describe("Nome da fonte", () => {
   it("equipe renomeia a fonte; aluno não; nome vazio ou fonte alheia é recusado", async () => {
     const view = await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId });
