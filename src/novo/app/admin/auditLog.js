@@ -34,6 +34,8 @@ export const ACTION_LABEL = {
   "questions.import": "Questões importadas",
   "question.inserted": "Questão criada",
   "question.updated": "Questão editada",
+  "question.delete": "Questão apagada",
+  "question.analysis_unpublished": "Análise da questão tirada do ar",
   "question.official_answer": "Gabarito oficial registrado",
   "question.explanations_reviewed": "Explicações marcadas como revisadas",
   // estações
@@ -264,6 +266,9 @@ const SUMMARY = {
     ]),
   "question.inserted": questionSaved,
   "question.updated": questionSaved,
+  // apagar: o código e o tema que o banco guardou (a questão já não existe); análise tirada do ar: o texto mudou
+  "question.delete": (d, entry) => join([d.code ?? entry.target, d.topic]),
+  "question.analysis_unpublished": (d, entry) => `${entry.target}: o enunciado ou o texto de uma alternativa mudou`,
   "question.official_answer": (d, entry) =>
     join([
       questionName(entry.target),

@@ -1215,3 +1215,26 @@ describe("assistente das abas — decisão D7: explicação que nomeia a alterna
     expect(explanationVerdict("A alternativa C é a correta")).toEqual(right("C"));
   });
 });
+
+describe("assistente das abas — Q14: o resultado diz se havia trecho para a IA (leva 2)", () => {
+  it("sem material e sem trecho oficial: nenhum trecho (a biblioteca não tem o tema)", async () => {
+    const r = await run({ fields: ["expected_conduct", "subtopic"] });
+    expect(r.no_source).toEqual(["expected_conduct"]);
+    expect(r.source_passages).toEqual({ material: 0, official: 0 });
+  });
+
+  it("com material enviado, mesmo que a IA não cite nada: o painel não diz que falta material", async () => {
+    reply = () => ({ suggestions: [{ field: "expected_conduct", value: V("Suporte."), sources: ["I1"] }], missing: [] });
+    const r = await run({ fields: ["expected_conduct"], material: MATERIAL });
+    expect(r.no_source).toEqual(["expected_conduct"]);
+    expect(r.source_passages).toEqual({ material: 1, official: 0 });
+  });
+
+  it("com trecho oficial encontrado, mesmo que a IA não cite nada", async () => {
+    OFFICIAL = [PCDT];
+    reply = () => ({ suggestions: [{ field: "expected_conduct", value: V("Suporte."), sources: ["I1"] }], missing: [] });
+    const r = await run({ fields: ["expected_conduct"] });
+    expect(r.no_source).toEqual(["expected_conduct"]);
+    expect(r.source_passages).toEqual({ material: 0, official: 1 });
+  });
+});
