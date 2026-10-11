@@ -90,21 +90,23 @@ describe("o provedor devolve a recusa com os tokens que vieram, e ela não se re
     claudeMode = "recusa";
     const e: any = await realClaude().generate(REQ).catch((x) => x);
     expect(e).toBeInstanceOf(Error);
-    expect(e.message).toMatch(/recusou a solicitação \(cyber\)/);
+    expect(e.message).toBe("O provedor recusou a solicitação.");
+    expect(e.message).not.toMatch(/cyber/);
     expect(e.usage).toEqual({ inputTokens: 1200, outputTokens: 40 });
     expect(shouldRetrySame(e)).toBe(false);
   });
 
   it("OpenAI: message.refusal", async () => {
     const e: any = await openAi("recusa").provider.generate(REQ).catch((x) => x);
-    expect(e.message).toMatch(/recusou a solicitação/);
+    expect(e.message).toBe("O provedor recusou a solicitação.");
+    expect(e.message).not.toMatch(/Desculpe/);
     expect(e.usage).toEqual({ inputTokens: 900, outputTokens: 12 });
     expect(shouldRetrySame(e)).toBe(false);
   });
 
   it("OpenAI: finish_reason content_filter (antes virava \"Resposta não é JSON.\" e se repetia)", async () => {
     const e: any = await openAi("filtro").provider.generate(REQ).catch((x) => x);
-    expect(e.message).toMatch(/filtro de conteúdo \(content_filter\)/);
+    expect(e.message).toBe("O provedor interrompeu a resposta: barrada pelo filtro de conteúdo.");
     expect(e.usage).toEqual({ inputTokens: 900, outputTokens: 30 });
     expect(shouldRetrySame(e)).toBe(false);
   });
@@ -163,7 +165,7 @@ describe("maestro: a recusa grava o custo real e vai direto para a reserva", () 
     // 1.200 × 5 + 40 × 25, por milhão
     expect(logged[0]).toMatchObject({ input_tokens: 1200, output_tokens: 40 });
     expect(Number(logged[0].cost_usd)).toBeCloseTo(0.007, 9);
-    expect(logged[0].error).toMatch(/recusou a solicitação/);
+    expect(logged[0].error).toBe("O provedor recusou a solicitação.");
     // o custo da recusa entra no custo da execução
     expect(r.costUsd).toBeCloseTo(0.007 + (900 * 1.5 + 10 * 9) / 1e6, 9);
   });

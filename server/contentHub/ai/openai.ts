@@ -68,8 +68,8 @@ export class OpenAIProvider implements AiProvider {
     const outTok = data?.usage?.completion_tokens ?? null;
     const usage: AiUsage = { inputTokens: inTok, outputTokens: outTok };
     // recusa e filtro de conteúdo: cobrados, e repetir na mesma IA recusa igual (o maestro vai direto para a reserva)
-    if (choice?.message?.refusal) throw new AiRefused(`O provedor recusou a solicitação (${String(choice.message.refusal).slice(0, 120)}).`, usage);
-    if (choice?.finish_reason === "content_filter") throw new AiRefused("O provedor interrompeu a resposta: barrada pelo filtro de conteúdo (content_filter).", usage);
+    if (choice?.message?.refusal) throw new AiRefused("O provedor recusou a solicitação.", usage);
+    if (choice?.finish_reason === "content_filter") throw new AiRefused("O provedor interrompeu a resposta: barrada pelo filtro de conteúdo.", usage);
     if (choice?.finish_reason === "length") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null, { usage, reason: "cortada" });
     let raw: unknown;
     try {
