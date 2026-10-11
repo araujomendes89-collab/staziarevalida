@@ -541,6 +541,10 @@ function ImportPanel({ onClose, onImported }) {
 
   const items = file?.items ?? [];
   const withProblems = items.filter((i) => i.problems.length);
+  // "Linha 3" na planilha (a 1ª é o cabeçalho) e "Item 2" no JSON; o banco conta a posição na lista, então traduzimos (Q11)
+  const isJson = /\.json$/i.test(file?.name ?? "");
+  const lineLabel = (item) => (isJson ? `Item ${item.line}` : `Linha ${item.line}`);
+  const withNotes = items.filter((i) => !i.problems.length && i.notes?.length);
   const byExam = items.reduce((acc, { question: q }) => {
     if (!q.kind || !q.year) return acc;
     const key = `${q.kind === "ENAMED" ? "ENAMED" : "Revalida"} ${q.year}${q.semester ? `/${q.semester}` : ""}`;
@@ -604,8 +608,14 @@ function ImportPanel({ onClose, onImported }) {
               Modelo JSON
             </Button>
           </div>
-          <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
-            Colunas obrigatórias: prova (ex.: Revalida 2026/2), numero, area, tema, enunciado, A, B, C, D e gabarito (A a D, ou ANULADA). Opcionais: subtema, explicacao, conduta esperada, situacao e fonte.
+          <div data-testid="ajuda-importacao" style={{ display: "flex", flexDirection: "column", gap: 6, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+            <div>
+              Colunas obrigatórias: prova (ex.: Revalida 2026/2), numero, area, tema, enunciado, A, B, C, D e gabarito (A a D, ou ANULADA).
+            </div>
+            <div>
+              Opcionais: subtema; explicacao (explicação geral, que vai para a alternativa do gabarito) ou explicacao A, explicacao B, explicacao C e explicacao D (uma por alternativa); conduta esperada; o que avalia; situacao (válida, anulada ou alterada); fonte; imagem (sim ou não: a questão cita uma figura; sem a coluna, o app deduz pelo enunciado).
+            </div>
+            <div>Com gabarito ANULADA, a explicação geral não é gravada. O modelo traz uma linha de exemplo: apague-a ou troque pelos dados reais, senão a importação é recusada.</div>
           </div>
           <label className="sm-btn sm-btn--primary" style={{ alignSelf: "flex-start", cursor: "pointer" }}>
             <Icon name="upload" size={18} /> Escolher arquivo
@@ -654,13 +664,20 @@ function ImportPanel({ onClose, onImported }) {
                     <ul style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 6, font: "var(--type-body-sm)" }}>
                       {withProblems.slice(0, 50).map((item) => (
                         <li key={item.line}>
-                          <b>{/\.json$/i.test(file.name) ? `Item ${item.line}` : `Linha ${item.line}`}</b>
+                          <b>{lineLabel(item)}</b>
                           {item.question.number ? ` (questão ${item.question.number})` : ""}: {item.problems.join(" ")}
                         </li>
                       ))}
                     </ul>
                     {withProblems.length > 50 && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>e mais {withProblems.length - 50} linhas com problema.</span>}
                   </div>
+                )}
+                {withNotes.length > 0 && (
+                  <Banner tone="warning" title={`${withNotes.length} ${withNotes.length === 1 ? "questão anulada tem explicação geral no arquivo" : "questões anuladas têm explicação geral no arquivo"}`}>
+                    {`A explicação geral não é gravada em questão anulada (nenhuma alternativa é a correta): ${codesText(
+                      withNotes.map((i) => `${lineLabel(i)}${i.question.number ? ` (questão ${i.question.number})` : ""}`)
+                    )}.`}
+                  </Banner>
                 )}
                 {preview?.loading && <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Conferindo o arquivo com o banco…</div>}
                 {preview?.error && (
@@ -717,7 +734,7 @@ function ImportPanel({ onClose, onImported }) {
                 )}
                 {state.result && !state.result.ok && (
                   <Banner tone="danger" title="O banco recusou o arquivo">
-                    {state.result.errors.slice(0, 10).map((e) => `Item ${e.index}: ${e.message}`).join(" · ")}
+                    {state.result.errors.slice(0, 10).map((e) => `${items[e.index - 1] ? lineLabel(items[e.index - 1]) : `Item ${e.index}`}: ${e.message}`).join(" · ")}
                   </Banner>
                 )}
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>

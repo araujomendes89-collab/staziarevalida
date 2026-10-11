@@ -174,3 +174,23 @@ describe("Importação de questões — JSON e modelos", () => {
     expect(withCell({ numero: 1, area: "Clínica Médica" })).toEqual([]);
   });
 });
+
+describe("Importação de questões — avisos que não travam (Q11)", () => {
+  it("explicação geral em questão ANULADA não é gravada: a linha avisa, sem virar problema", () => {
+    const csv = [
+      header,
+      row(["Revalida 2026/2", "7", "Pediatria", "Bronquiolite", "", statement, "a", "b", "c", "d", "ANULADA", "Explicação geral.", ""]),
+      row(["Revalida 2026/2", "8", "Pediatria", "Bronquiolite", "", statement, "a", "b", "c", "d", "B", "Explicação geral.", ""]),
+      row(["Revalida 2026/2", "9", "Pediatria", "Bronquiolite", "", statement, "a", "b", "c", "d", "ANULADA", "", ""]),
+    ].join("\n");
+    const { items } = questionsFromCsv(csv);
+    expect(items.map((i: any) => i.problems)).toEqual([[], [], []]);
+    expect(items[0].notes).toEqual([expect.stringMatching(/explicação geral.*anulada/i)]);
+    expect(items[1].notes).toEqual([]);
+    expect(items[2].notes).toEqual([]);
+    // a explicação de cada alternativa, quando vem, é gravada mesmo na anulada
+    const json = questionsFromJson(JSON.stringify([{ prova: "ENAMED 2025", numero: 3, area: "Cirurgia", tema: "Trauma", enunciado: statement, gabarito: "anulada", A: "1", B: "2", C: "3", D: "4", "explicacao a": "Só a A." }]));
+    expect(json.items[0].notes).toEqual([]);
+    expect(json.items[0].question.options[0].explanation).toBe("Só a A.");
+  });
+});

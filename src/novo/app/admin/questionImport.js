@@ -182,6 +182,9 @@ function toQuestion(cells) {
     text: String(cells[id] ?? "").trim(),
     explanation: String(cells[`explicacao_${id}`] ?? (id === correct ? explanation : "")).trim(),
   }));
+  // a explicação geral vai para a alternativa do gabarito; em questão anulada não há alternativa correta e ela não é gravada
+  const notes = [];
+  if (status === "annulled" && explanation) notes.push("A explicação geral não é gravada em questão anulada (nenhuma alternativa é a correta).");
   const declaredImage = parseYesNo(cells.imagem);
   const source = String(cells.fonte ?? "").trim();
   const filled = [cells.tema, cells.subtema, cells.enunciado, ...LETTERS.map((l) => cells[l]), cells.explicacao, ...LETTERS.map((l) => cells[`explicacao_${l}`]), cells.conduta, cells.avalia, cells.fonte];
@@ -206,7 +209,7 @@ function toQuestion(cells) {
     needs_image_declared: declaredImage !== null,
     sources: source ? [{ title: source }] : [],
   };
-  return { question, problems };
+  return { question, problems, notes };
 }
 
 /** Linhas do CSV → questões. A 1ª linha é o cabeçalho. */

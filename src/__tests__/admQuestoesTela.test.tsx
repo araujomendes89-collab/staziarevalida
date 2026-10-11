@@ -228,3 +228,65 @@ describe("Q06 — a lista da aba pagina de verdade", () => {
     expect(backend.rpc.mock.calls.at(-1)![1]).toMatchObject({ p_limit: 50, p_offset: 0, p_filters: { area: "PEDIATRIA" } });
   });
 });
+
+describe("Q11 — ajuda da importação completa e número de linha certo", () => {
+  const CSV = [
+    "prova;numero;area;tema;enunciado;A;B;C;D;gabarito;explicacao;situacao",
+    "Revalida 2024/1;20;Pediatria;Bronquiolite;Lactente de 4 meses com coriza e sibilância há 2 dias. Qual a conduta?;a;b;c;d;B;;",
+    "Revalida 2024/1;21;Pediatria;Bronquiolite;Lactente de 4 meses com coriza e sibilância há 2 dias. Qual a conduta?;a;b;c;d;ANULADA;Explicação geral.;",
+    "Revalida 2024/1;22;Pediatria;Bronquiolite;Lactente de 4 meses com coriza e sibilância há 2 dias. Qual a conduta?;a;b;c;d;C;;",
+  ].join("\n");
+  const open = async () => {
+    backend.rpc.mockReset();
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_admin_questions") return { total: 0, exams: [], items: [] };
+      if (fn === "app_admin_import_preview") return { new: 3, existing: 0, lose_comment: [], answer_differs: [] };
+      if (fn === "app_admin_import_questions")
+        return { ok: false, errors: [{ index: 2, number: "21", message: "Há alternativa sem texto." }, { index: 3, number: "22", message: "Questão repetida no arquivo." }] };
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    render(<AdminQuestions />);
+    fireEvent.click(await screen.findByRole("button", { name: "Carregar questões" }));
+  };
+  const pick = (name: string, text: string) => {
+    const file = new File([text], name, { type: "text/plain" });
+    Object.defineProperty(file, "text", { value: async () => text });
+    fireEvent.change(screen.getByLabelText("Arquivo de questões"), { target: { files: [file] } });
+  };
+
+  it("a ajuda lista todas as colunas que o importador aceita e avisa da linha de exemplo", async () => {
+    await open();
+    const help = screen.getByTestId("ajuda-importacao").textContent ?? "";
+    for (const column of ["prova", "numero", "area", "tema", "enunciado", "A, B, C, D", "gabarito", "subtema", "explicacao", "explicacao A", "conduta esperada", "o que avalia", "situacao", "fonte", "imagem"]) {
+      expect(help, column).toContain(column);
+    }
+    expect(help).toMatch(/linha de exemplo/);
+    expect(help).toMatch(/ANULADA/);
+    expect(help).toMatch(/explicação geral/);
+  });
+
+  it("o erro do banco diz a linha do arquivo (não a posição na lista) e o aviso da anulada aparece sem travar", async () => {
+    await open();
+    pick("questoes.csv", CSV);
+    expect(await screen.findByText("3 novas · 0 já existem (mesma prova e número)")).toBeTruthy();
+    expect(screen.getByText(/1 questão anulada tem explicação geral no arquivo/)).toBeTruthy();
+    expect(screen.getByText(/Linha 3 \(questão 21\)/)).toBeTruthy(); // a questão 21 está na linha 3 da planilha
+    fireEvent.click(screen.getByRole("button", { name: "Importar 3 questões" }));
+    // posição 2 na lista = linha 3 da planilha (a linha 1 é o cabeçalho); posição 3 = linha 4
+    expect(await screen.findByText(/Linha 3: Há alternativa sem texto\. · Linha 4: Questão repetida no arquivo\./)).toBeTruthy();
+    expect(screen.queryByText(/Item 2/)).toBeNull();
+  });
+
+  it("em JSON o número continua sendo o do item", async () => {
+    await open();
+    const json = JSON.stringify([
+      { prova: "Revalida 2024/1", numero: 20, area: "Pediatria", tema: "T", enunciado: "Lactente de 4 meses com coriza e sibilância há 2 dias.", A: "a", B: "b", C: "c", D: "d", gabarito: "B" },
+      { prova: "Revalida 2024/1", numero: 21, area: "Pediatria", tema: "T", enunciado: "Lactente de 4 meses com coriza e sibilância há 2 dias.", A: "a", B: "b", C: "c", D: "d", gabarito: "B" },
+      { prova: "Revalida 2024/1", numero: 22, area: "Pediatria", tema: "T", enunciado: "Lactente de 4 meses com coriza e sibilância há 2 dias.", A: "a", B: "b", C: "c", D: "d", gabarito: "B" },
+    ]);
+    pick("questoes.json", json);
+    await screen.findByText("3 novas · 0 já existem (mesma prova e número)");
+    fireEvent.click(screen.getByRole("button", { name: "Importar 3 questões" }));
+    expect(await screen.findByText(/Item 2: Há alternativa sem texto\. · Item 3: Questão repetida no arquivo\./)).toBeTruthy();
+  });
+});
