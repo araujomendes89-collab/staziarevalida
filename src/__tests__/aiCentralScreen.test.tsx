@@ -390,13 +390,13 @@ describe("Central de IAs (painel do administrador)", () => {
 
   it("Central de Conteúdo mostra o resumo das IAs e o botão só para administrador", async () => {
     backend.rpc.mockImplementation(async (fn: string) => (fn === "app_ch_flags" ? {} : fn === "app_ch_ai_usage" ? { by_step: [], jobs: {} } : []));
-    handlers["GET /api/ai-central/summary"] = () => json({ functions: [{ key: "criacao", configured: true }, { key: "verificacao", configured: false }], providers_enabled: ["anthropic"], month_spend: 1.5 });
+    handlers["GET /api/ai-central/summary"] = () => json({ functions: [{ key: "criacao", configured: true }, ...["verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes"].map((key) => ({ key, configured: false }))], providers_enabled: ["anthropic"], month_spend: 1.5 });
     const a = render(
       <MemoryRouter>
         <HubSettings isAdmin={true} status={{}} />
       </MemoryRouter>,
     );
-    expect(await screen.findByText("Funções configuradas: 1 de 6 · IAs ligadas: Claude · Gasto do mês: US$ 1,50")).toBeTruthy();
+    expect(await screen.findByText("Funções configuradas: 1 de 7 · IAs ligadas: Claude · Gasto do mês: US$ 1,50")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Abrir a Central de IAs" })).toBeTruthy();
     a.unmount();
     render(
@@ -404,7 +404,7 @@ describe("Central de IAs (painel do administrador)", () => {
         <HubSettings isAdmin={false} status={{}} />
       </MemoryRouter>,
     );
-    expect(await screen.findByText(/Funções configuradas: 1 de 6/)).toBeTruthy();
+    expect(await screen.findByText(/Funções configuradas: 1 de 7/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Abrir a Central de IAs" })).toBeNull();
   });
 });
