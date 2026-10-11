@@ -65,6 +65,8 @@ Por tentativa: `too_fast` (tempo medido < 3 s), `rate_limit` (≥ 30 respostas n
 
 Privacidade: `gam_board_row` só devolve `public_id` (10 caracteres), nome como o aluno escolheu (abreviado "Ana M." por padrão, `@usuario` ou "Aluno anônimo"), nível, score, XP, precisão e sequência se autorizados. Nunca e-mail, UUID ou dados pessoais. "Oculto" tira o aluno de todos os rankings sem apagar nada. Perfil público: `app_public_profile(public_id)`.
 
+Equipe (administrador e editor, `public.user_is_staff`) não entra em ranking nem em liga (migração …9630, AR05): `gam_board` a filtra na hora, `gam_join_league` e o fechamento da semana não a inscrevem. A Administração continua vendo os dados dela (auditoria, XP, moedas).
+
 ### Sequência diária
 
 O dia conta com 10 questões válidas, 20 minutos reais (soma de `active_ms`) ou 1 missão do dia concluída, no fuso de `profiles.timezone` (padrão America/Sao_Paulo; validado pelo Postgres). Proteção a cada 7 dias (máximo 3), comprável na loja; consumida sozinha quando falta um dia. A rotina diária zera quem passou dois dias sem estudar (ou gasta a proteção).
