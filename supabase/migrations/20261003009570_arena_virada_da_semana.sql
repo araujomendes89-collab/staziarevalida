@@ -6,7 +6,9 @@
 --  AR03: o desempate da liga conta a semana pelo horário de Brasília. Antes, o dia começava à meia-noite do horário
 --        universal, que é 21h em Brasília.
 --  AR06: a rotina diária e o fechamento da semana passam a olhar os interruptores. Arena desligada: nada fecha, nada
---        promove nem rebaixa, nenhuma sequência quebra (a rotina nem registra o dia: roda quando ligar). Só as ligas
+--        promove nem rebaixa, nenhuma sequência quebra (a rotina nem registra o dia: roda quando ligar, e então
+--        os dias parados não contam contra a sequência de ninguém: a data da última atividade de quem tem sequência
+--        anda esses dias para a frente, até ontem). Só as ligas
 --        desligadas: a semana do ranking continua virando (XP semanal zera, foto da semana), mas ninguém sobe, desce,
 --        ganha moeda ou medalha de liga e a próxima temporada não inscreve ninguém sozinha.
 --
@@ -119,13 +121,26 @@ declare
   r record;
   v_month jsonb := null;
   v_week jsonb;
+  v_gap int;
 begin
   -- AR06: Arena desligada, a rotina não faz nada (nem quebra sequência) e não registra o dia: roda quando ligar
   if not public.gam_flag('flags.gamification_enabled') then
     return jsonb_build_object('skipped', true, 'reason', 'arena_desligada', 'day', v_key);
   end if;
+  -- Dias que a rotina ficou sem rodar (Arena desligada, ou a rotina parada): ninguém perde a sequência por isso. A
+  -- última data qualificada de quem tem sequência anda esses dias para a frente (até ontem, no fuso de cada aluno).
+  -- Só adianta a data; nada é diminuído. Com a rotina rodando todo dia, o intervalo é 0 e nada muda.
+  select (public.today_br() - 1) - max(j.period_key::date) into v_gap
+    from public.gamification_jobs j
+    where j.job = 'daily' and j.period_key ~ '^\d{4}-\d{2}-\d{2}$' and j.period_key::date < public.today_br();
+  v_gap := greatest(coalesce(v_gap, 0), 0);
   insert into public.gamification_jobs (job, period_key) values ('daily', v_key) on conflict do nothing;
   if not found then return jsonb_build_object('skipped', true, 'day', v_key); end if;
+  if v_gap > 0 then
+    update public.user_gamification_stats s
+      set last_qualified_date = least(s.last_qualified_date + v_gap, public.gam_today(s.user_id) - 1)
+      where s.current_streak > 0 and s.last_qualified_date is not null and s.last_qualified_date < public.gam_today(s.user_id) - 1;
+  end if;
 
   -- dificuldade real das questões
   insert into public.question_difficulty (question_id, attempts, correct, difficulty, updated_at)
