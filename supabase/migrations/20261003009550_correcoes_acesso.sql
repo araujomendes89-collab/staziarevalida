@@ -7,14 +7,16 @@
 --        pendente, até 3 dias depois do fim (tolerância para o cartão ser cobrado de novo). Sem data de fim, não vale.
 --        A regra fica numa função só (subscription_is_paid), usada pelas três. A administração passa a recusar plano pago
 --        ativo ou pendente sem a data de fim (antes, sem data, o aluno ficava com o plano para sempre).
+--        Revisor médico (quem tem área de revisão) tem acesso completo como a equipe (decisão do dono): nada disto vale para ele.
 --        Plano ativo com data de fim que já passou também é recusado (quase sempre é data errada); o pendente aceita fim recente.
 --        ATENÇÃO antes de colar: quem hoje tem Pro ou Elite e perde o acesso pago na hora é quem aparece nesta consulta
 --        (plano ativo sem data de fim ou com o fim vencido; pagamento pendente sem data ou já fora dos 3 dias de tolerância;
---        administrador e editor ficam de fora, porque o acesso deles vem do papel). Cada linha mostra e-mail, plano, situação e fim:
+--        administrador, editor e revisor médico ficam de fora, porque o acesso deles vem do papel). Cada linha mostra e-mail, plano, situação e fim:
 --          select u.email as "E-mail", s.plan as "Plano", s.status as "Situação", s.current_period_end as "Plano pago até"
 --          from public.subscriptions s join auth.users u on u.id = s.user_id
 --          where s.plan in ('pro', 'elite') and s.status in ('active', 'past_due')
 --            and not exists (select 1 from public.user_roles r where r.user_id = s.user_id and r.role in ('admin', 'editor'))
+--            and not exists (select 1 from public.ch_reviewer_areas a where a.user_id = s.user_id)
 --            and (s.current_period_end is null
 --                 or s.current_period_end + case when s.status = 'past_due' then interval '3 days' else interval '0' end <= now())
 --          order by u.email;
@@ -47,11 +49,22 @@ as $$
 $$;
 revoke execute on function public.subscription_is_paid(public.plan_code, public.subscription_status, timestamptz) from public, anon, authenticated;
 
+-- Acesso completo sem depender de plano: equipe (administrador e editor) e revisor médico (quem tem área em ch_reviewer_areas,
+-- de qualquer área). Decisão do dono (2026-10-11): o revisor médico tem o mesmo acesso pago completo da equipe. Interna: só as
+-- funções abaixo (security definer) a chamam.
+create or replace function public.user_has_full_access(p_user uuid) returns boolean
+  language sql stable security definer set search_path = ''
+as $$
+  select public.user_is_staff(p_user)
+      or exists (select 1 from public.ch_reviewer_areas a where a.user_id = p_user)
+$$;
+revoke execute on function public.user_has_full_access(uuid) from public, anon, authenticated;
+
 -- Conteúdo marcado como Pro (estações): igual ao de …4600 (equipe ou plano pago), com a regra do plano pago acima.
 create or replace function public.has_pro() returns boolean
   language sql stable security definer set search_path = ''
 as $$
-  select public.is_staff() or exists (
+  select public.user_has_full_access((select auth.uid())) or exists (
     select 1 from public.subscriptions s
     where s.user_id = (select auth.uid())
       and public.subscription_is_paid(s.plan, s.status, s.current_period_end)
@@ -62,12 +75,13 @@ $$;
 create or replace function public.tutor_is_pro(p_user uuid) returns boolean
   language sql stable security definer set search_path = ''
 as $$
-  select public.user_is_staff(p_user)
+  select public.user_has_full_access(p_user)
       or exists (select 1 from public.subscriptions s where s.user_id = p_user and public.subscription_is_paid(s.plan, s.status, s.current_period_end))
 $$;
 revoke execute on function public.tutor_is_pro(uuid) from public, anon, authenticated;
 
--- Tutor: igual ao de …4600_equipe_acesso_completo; só a linha de v_paid usa a regra do plano pago acima.
+-- Tutor: igual ao de …4600_equipe_acesso_completo; v_staff vale também para o revisor médico e a linha de v_paid usa a regra do
+-- plano pago acima.
 create or replace function public.tutor_entitlement(p_user uuid) returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
@@ -88,7 +102,7 @@ declare
 begin
   select * into c from public.tutor_config;
   select * into s from public.subscriptions where user_id = p_user;
-  v_staff := public.user_is_staff(p_user);
+  v_staff := public.user_has_full_access(p_user); -- equipe ou revisor médico: acesso completo, sem teste
   v_paid := v_staff or public.subscription_is_paid(s.plan, s.status, s.current_period_end);
   if v_paid or not c.requires_pro then
     v_mode := 'paid';
@@ -140,6 +154,8 @@ create or replace function public.app_admin_set_subscription(
 as $$
 declare
   v_before jsonb;
+  -- revisor médico tem acesso completo pelo papel: as regras de data do plano pago não se aplicam a ele
+  v_reviewer boolean := exists (select 1 from public.ch_reviewer_areas a where a.user_id = p_user_id);
 begin
   perform public.assert_admin();
   if p_plan is null or p_plan not in ('trial', 'pro', 'elite') then
@@ -151,12 +167,12 @@ begin
   if p_plan = 'trial' and p_status = 'trialing' and p_trial_ends_at is null then
     raise exception 'Informe até quando vai o teste.' using errcode = '22023';
   end if;
-  if p_plan in ('pro', 'elite') and p_status in ('active', 'past_due') and p_current_period_end is null then
+  if not v_reviewer and p_plan in ('pro', 'elite') and p_status in ('active', 'past_due') and p_current_period_end is null then
     raise exception 'Informe até quando vai o plano pago (campo “Plano pago até”). Sem essa data, o aluno fica sem o acesso pago.' using errcode = '22023';
   end if;
   -- plano ativo com a data de fim já vencida não dá acesso: quase sempre é data errada (ano, mês). Pagamento pendente pode ter
   -- o fim recente (tolerância de 3 dias), então só o plano ativo é recusado.
-  if p_plan in ('pro', 'elite') and p_status = 'active' and p_current_period_end <= now() then
+  if not v_reviewer and p_plan in ('pro', 'elite') and p_status = 'active' and p_current_period_end <= now() then
     raise exception 'A data de “Plano pago até” já passou. Escolha uma data futura.' using errcode = '22023';
   end if;
   select to_jsonb(s) - 'user_id' - 'updated_at' into v_before from public.subscriptions s where s.user_id = p_user_id;

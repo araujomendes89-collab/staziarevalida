@@ -193,17 +193,49 @@ describe("Revisão (ACREV) — tentando quebrar a regra do plano pago", () => {
     expect(await acesso(ANA)).toEqual({ ...SEM_PAGO, mode: "trial" });
   });
 
-  it("revisor médico (área em ch_reviewer_areas) nunca teve acesso pago pelo papel: continua como aluno, igual ao comportamento de antes", async () => {
+  it("revisor médico (qualquer área em ch_reviewer_areas) tem acesso completo como a equipe, sem plano nem data; aluno comum perde como antes", async () => {
     const REV = "00000000-0000-4000-8000-0000000000e1";
     await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'revisor@teste.dev', '{"name":"Revisora"}')`, [REV]);
     await db.query(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'clinica_medica')`, [REV]);
+    // Pro vencido
     await plano(REV, "pro", "active", "now() - interval '1 day'");
-    expect(await acesso(REV)).toEqual(SEM_PAGO);
-    await plano(REV, "pro", "active", "now() + interval '10 days'");
+    await plano(ANA, "pro", "active", "now() - interval '1 day'");
     expect(await acesso(REV)).toEqual(PAGO);
+    expect(await acesso(ANA)).toEqual(SEM_PAGO);
+    // plano nenhum (cancelado, sem data)
+    await plano(REV, "pro", "canceled", null);
+    await plano(ANA, "pro", "canceled", null);
+    expect(await acesso(REV)).toEqual(PAGO);
+    expect(await acesso(ANA)).toEqual(SEM_PAGO);
+    // teste grátis vencido, inclusive o teste do Tutor
+    const teste = (uid: string) =>
+      db.query(
+        `update public.subscriptions set plan = 'trial', status = 'trialing', trial_ends_at = now() - interval '5 days', current_period_end = null,
+                tutor_trial_started_at = now() - interval '10 days' where user_id = $1`,
+        [uid]
+      );
+    await teste(REV);
+    await teste(ANA);
+    expect(await acesso(REV)).toEqual(PAGO);
+    expect(await acesso(ANA)).toEqual({ ...SEM_PAGO, mode: "blocked" });
+    // a função de apoio não fica aberta a ninguém
+    expect(await podeChamar("public.user_has_full_access(uuid)")).toEqual({ anon: false, authenticated: false });
+    // quando deixa de ser revisor, volta a valer o plano
+    await db.query(`delete from public.ch_reviewer_areas where user_id = $1`, [REV]);
+    expect(await acesso(REV)).toEqual({ ...SEM_PAGO, mode: "blocked" });
   });
 
-  it("consulta de conferência do cabeçalho: lista exatamente quem perde o acesso pago (sem equipe, sem quem está na tolerância)", async () => {
+  it("administração: as regras de data do plano pago não se aplicam ao revisor médico", async () => {
+    const REV2 = "00000000-0000-4000-8000-0000000000e2";
+    await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, 'revisor2@teste.dev', '{}')`, [REV2]);
+    await db.query(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'pediatria')`, [REV2]);
+    expect(await rpc(ADMIN, "app_admin_set_subscription", { p_user_id: REV2, p_plan: "pro", p_status: "active" })).toMatchObject({ plan: "pro", status: "active" });
+    const ontem = new Date(Date.now() - 86_400_000).toISOString();
+    expect(await rpc(ADMIN, "app_admin_set_subscription", { p_user_id: REV2, p_plan: "elite", p_status: "active", p_current_period_end: ontem })).toMatchObject({ plan: "elite" });
+    expect(await acesso(REV2)).toEqual(PAGO);
+  });
+
+  it("consulta de conferência do cabeçalho: lista exatamente quem perde o acesso pago (sem equipe, sem revisor médico, sem quem está na tolerância)", async () => {
     const header = fs.readFileSync(MIGRATION, "utf8").split("\n").filter((l) => l.startsWith("--"));
     const ini = header.findIndex((l) => l.includes('select u.email as "E-mail"'));
     const fim = header.findIndex((l, i) => i >= ini && l.trimEnd().endsWith(";"));
@@ -219,6 +251,7 @@ describe("Revisão (ACREV) — tentando quebrar a regra do plano pago", () => {
       "hugo@teste.dev": ["pro", "active", null], // editor: fica (acesso pelo papel)
       "iris@teste.dev": ["pro", "canceled", null], // cancelado: não tinha acesso antes
       "jose@teste.dev": ["pro", "past_due", null], // perde: pendente sem data
+      "lia@teste.dev": ["pro", "active", null], // revisora médica: fica (acesso pelo papel)
     };
     const ids: Record<string, string> = {};
     let n = 0x10;
@@ -229,6 +262,7 @@ describe("Revisão (ACREV) — tentando quebrar a regra do plano pago", () => {
       await plano(id, plan, status, end);
     }
     await db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [ids["hugo@teste.dev"]]);
+    await db.query(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'cirurgia')`, [ids["lia@teste.dev"]]);
 
     const lista = await db.query<Record<string, any>>(consulta);
     expect(lista.fields.map((f) => f.name)).toEqual(["E-mail", "Plano", "Situação", "Plano pago até"]);
