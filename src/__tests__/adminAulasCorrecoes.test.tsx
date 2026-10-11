@@ -178,3 +178,29 @@ describe("A01 - avisos da IA ficam guardados na aula", () => {
     expect(sent.ai_notes).toEqual(['Resumo: "40 mg" não está nos trechos citados.', "O material não esclarece: Dose do corticoide"]);
   });
 });
+
+describe("A02 - trecho citado ao lado da página", () => {
+  it("a sugestão mostra o começo de cada trecho citado, não só o número da página", async () => {
+    const json = (b: unknown) => new Response(JSON.stringify(b), { status: 200, headers: { "content-type": "application/json" } });
+    (globalThis as any).fetch = vi.fn(async (url: string) => {
+      if (url === "/api/lessons/assist/providers") return json({ choices: [{ kind: "gemini", label: "Gemini", model: "m", ready: true }], override_allowed: true, current: null });
+      if (url === "/api/lessons/assist")
+        return json({
+          suggestion: {
+            title: "Asma", topic: "Asma", area: "PEDIATRIA", summary: "Resumo.", summary_pages: [3], summary_excerpts: [{ id: 1, page: 3, text: "Trecho do resumo na página três." }],
+            key_points: [{ text: "Ponto", sources: [2], pages: [4], excerpts: [{ id: 2, page: 4, text: "Trecho do ponto na página quatro." }] }], missing: [],
+          },
+          warnings: [], usage: { provider: "gemini", model: "m", input_tokens: 1, output_tokens: 1, cost_usd: 0, calls: 1 }, used_chunks: 2, total_chunks: 2,
+        });
+      return new Response("{}", { status: 404 });
+    });
+    render(<AdminLessons />);
+    fireEvent.click(await screen.findByRole("button", { name: "Nova aula" }));
+    fireEvent.click(screen.getByRole("button", { name: "Abrir assistente" }));
+    fireEvent.change(await screen.findByLabelText(/Texto \(transcrição/), { target: { value: "Texto de apoio da aula ".repeat(8) } });
+    fireEvent.click(screen.getByRole("button", { name: "Gerar sugestões" }));
+    expect(await screen.findByText("Trecho do resumo na página três.")).toBeTruthy();
+    expect(screen.getByText("Trecho do ponto na página quatro.")).toBeTruthy();
+    expect(screen.getAllByText(/Trecho citado \(p\. [34]\)/).length).toBe(2);
+  });
+});

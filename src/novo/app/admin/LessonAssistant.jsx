@@ -14,6 +14,21 @@ import { assistAvailable, assistProviders, capPages, pdfPages, runLessonAssist }
 const pagesText = (pages) => (pages?.length ? `p. ${pages.join(", ")}` : "sem página");
 const usd = (n) => `US$ ${Number(n ?? 0).toFixed(4).replace(".", ",")}`;
 
+/** Início de cada trecho do material em que a sugestão se apoia, com a página: a equipe confere sem abrir o PDF (A02). */
+function Excerpts({ items }) {
+  if (!items?.length) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+      {items.map((e) => (
+        <blockquote key={e.id} style={{ margin: 0, padding: "6px 10px", borderLeft: "3px solid var(--border-default)", font: "var(--type-caption)", color: "var(--text-secondary)" }}>
+          <span style={{ display: "block", fontWeight: 600 }}>Trecho citado ({pagesText(e.page != null ? [e.page] : [])})</span>
+          {e.text}
+        </blockquote>
+      ))}
+    </div>
+  );
+}
+
 function Suggestion({ label, children, onUse, used, meta }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: 12, borderRadius: 12, border: "1px solid var(--border-subtle)", background: "var(--surface-default, #fff)" }}>
@@ -200,13 +215,14 @@ export function LessonAssistant({ form, set, lesson, pending }) {
               {s.title && <Suggestion label="Título" used={used.title} onUse={() => use("title", { title: s.title })}>{s.title}</Suggestion>}
               {s.topic && <Suggestion label="Tema" used={used.topic} onUse={() => use("topic", { topic: s.topic })}>{s.topic}</Suggestion>}
               {s.area && <Suggestion label="Grande área" used={used.area} onUse={() => use("area", { area: s.area })}>{areaLabel(s.area)}</Suggestion>}
-              {s.summary && <Suggestion label="Resumo & racionalidade clínica" meta={pagesText(s.summary_pages)} used={used.summary} onUse={() => use("summary", { summary: s.summary })}>{s.summary}</Suggestion>}
+              {s.summary && <Suggestion label="Resumo & racionalidade clínica" meta={pagesText(s.summary_pages)} used={used.summary} onUse={() => use("summary", { summary: s.summary })}>{s.summary}<Excerpts items={s.summary_excerpts} /></Suggestion>}
               {s.key_points.length > 0 && (
                 <Suggestion label="Pontos-chave" used={used.key_points} onUse={() => use("key_points", { key_points: s.key_points.map((k) => k.text).join("\n") })}>
                   <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4 }}>
                     {s.key_points.map((k, i) => (
                       <li key={i}>
                         {k.text} <Badge size="sm">{pagesText(k.pages)}</Badge>
+                        <Excerpts items={k.excerpts} />
                       </li>
                     ))}
                   </ul>
