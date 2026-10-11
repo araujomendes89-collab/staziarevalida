@@ -449,6 +449,50 @@ begin
 end
 $$;
 
+-- Varredura para o administrador: texto JÁ publicado ao aluno que cita "Sangue nos Olhos", "apostila" ou o título/órgão de uma
+-- fonte complementar (a conferência da IA só vale para textos novos). Pode ter falso positivo: a equipe lê e decide.
+create or replace function public.ch_text_mentions(p_text text, p_terms text[]) returns boolean
+  language sql immutable set search_path = ''
+as $$
+  select ' ' || public.ch_text_key(p_text) || ' ' ~ '[^a-z]apostilas?[^a-z]'
+      or exists (select 1 from unnest(p_terms) k where k <> '' and ' ' || public.ch_text_key(p_text) || ' ' like '% ' || k || ' %')
+$$;
+
+create or replace function public.app_ch_complementar_mentions() returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare v_terms text[];
+begin
+  perform public.assert_admin();
+  select coalesce(array_agg(distinct public.ch_text_key(x.t)), '{}') into v_terms
+    from (select s.title as t from public.ch_sources s where s.audience = 'complementar'
+          union select s.organ from public.ch_sources s where s.audience = 'complementar'
+          union select 'Sangue nos Olhos') x
+   where char_length(public.ch_text_key(x.t)) >= 5;
+  return coalesce((select jsonb_agg(r.item order by r.kind, r.id) from (
+    select 'analise' as kind, a.question_id as id, jsonb_build_object('kind', 'analise', 'id', a.question_id, 'onde', 'Análise publicada da questão') as item
+      from public.question_analysis a
+     where a.is_current and a.status = 'published'
+       and public.ch_text_mentions(concat_ws(' ', a.question_core, a.trap, a.golden_rule, a.key_data::text, (select string_agg(concat_ws(' ', o.reasoning, o.why_plausible, o.why_wrong, o.when_correct, o.concept_difference, o.trap), ' ') from public.question_option_analysis o where o.analysis_id = a.id)), v_terms)
+    union all
+    select 'comentario', c.analysis_id::text, jsonb_build_object('kind', 'comentario', 'id', c.analysis_id::text, 'onde', 'Comentário publicado da questão')
+      from public.question_comments c where c.status = 'published' and public.ch_text_mentions(c.content::text, v_terms)
+    union all
+    select 'cartao', k.question_id, jsonb_build_object('kind', 'cartao', 'id', k.question_id, 'onde', 'Cartão de atualização publicado')
+      from public.question_update_cards k where k.status = 'published' and public.ch_text_mentions(concat_ws(' ', k.what_changed, k.why_it_matters, k.options_affected::text), v_terms)
+    union all
+    select 'aula', l.id::text, jsonb_build_object('kind', 'aula', 'id', l.id::text, 'onde', 'Aula publicada: ' || l.title)
+      from public.lessons l where l.published and public.ch_text_mentions(concat_ws(' ', l.title, l.topic, l.summary, array_to_string(l.key_points, ' ')), v_terms)
+    union all
+    select 'podcast', p.id::text, jsonb_build_object('kind', 'podcast', 'id', p.id::text, 'onde', 'Podcast publicado: ' || p.title)
+      from public.podcasts p where p.status = 'published' and public.ch_text_mentions(concat_ws(' ', p.title, p.topic, p.script::text), v_terms)
+    union all
+    select 'atualizacao', u.id::text, jsonb_build_object('kind', 'atualizacao', 'id', u.id::text, 'onde', 'Atualização publicada: ' || u.topic)
+      from public.guideline_updates u where u.published and public.ch_text_mentions(concat_ws(' ', u.before_text, u.current_conduct, u.clinical_impact, u.exam_impact, u.trap), v_terms)
+  ) r), '[]'::jsonb);
+end
+$$;
+
 -- ---------------------------------------------------------------- 99. permissões
 do $perm$
 begin
@@ -466,6 +510,8 @@ begin
   revoke execute on function public.ch_refresh_hidden_flags() from public, anon, authenticated;
   -- telas
   revoke execute on function public.app_ch_set_source_audience(uuid, text, text) from public, anon;
+  revoke execute on function public.ch_text_mentions(text, text[]) from public, anon, authenticated;
+  revoke execute on function public.app_ch_complementar_mentions() from public, anon;
   revoke execute on function public.app_ch_source_audiences() from public, anon;
   revoke execute on function public.app_admin_podcast_source_complementar(uuid, boolean) from public, anon;
   revoke execute on function public.app_ch_set_source_authority(uuid, text) from public, anon;

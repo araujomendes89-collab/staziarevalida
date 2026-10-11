@@ -323,6 +323,19 @@ describe("selos honestos: só fonte oficial dá selo", () => {
   });
 });
 
+describe("varredura do que já está publicado", () => {
+  it("o administrador vê as aulas e podcasts publicados que citam a apostila; a aluna e o editor são recusados", async () => {
+    await sql(`update public.lessons set summary = 'Como diz a apostila, o suporte basta.' where id = $1`, [aulaId]);
+    const achados = await rpc(ADMIN, "app_ch_complementar_mentions");
+    expect(achados).toEqual(expect.arrayContaining([expect.objectContaining({ kind: "aula", id: aulaId })]));
+    expect(achados.find((a: any) => a.kind === "analise")).toBeUndefined();
+    await recusa(rpc(ALUNA, "app_ch_complementar_mentions"));
+    await recusa(rpc(EDITOR, "app_ch_complementar_mentions"));
+    await sql(`update public.lessons set summary = 'Suporte clínico.' where id = $1`, [aulaId]);
+    expect((await rpc(ADMIN, "app_ch_complementar_mentions")).find((a: any) => a.kind === "aula")).toBeUndefined();
+  });
+});
+
 describe("a migração", () => {
   it("pode ser colada duas vezes sem erro e sem mudar nada", async () => {
     const antes = await sql(`select id, audience, authority_level from public.ch_sources order by id`);
