@@ -25,6 +25,8 @@ const STUDENT = "00000000-0000-4000-8000-0000000000b1";
 const PE = "prot-go-preeclampsia-2025";
 const HAS = "prot-cm-has-sbc-2026";
 const FIX = "20261003007800"; // correção: publicar só com conferência aprovada
+// migrações desta frente (faixa reservada 9510 a 9519), em ordem
+const MINE = fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f >= "20261003009510" && f < "20261003009520").sort();
 let db: PGlite;
 
 async function rpc<T = any>(uid: string | null, fn: string, args: Record<string, unknown> = {}): Promise<T> {
@@ -244,6 +246,44 @@ describe("Cadastro e segurança", () => {
     expect(await rpc(REVIEWER_CM, "app_admin_save_guideline_update", { p_update: { ...before, position: 7 } })).toMatchObject({ area: "CLINICA_MEDICA", published: true, review_status: "approved" });
   });
 
+  it("com a Central de Conteúdo desligada, a aba Atualizações continua funcionando: as funções conferem só o papel da pessoa (AT08)", async () => {
+    // antes: a lista e o salvar chamavam ch_assert_staff, que também exige a chave de liga e desliga da Central de Conteúdo
+    // (ch_flags.enabled) e respondiam "Content Lab desligado pelo administrador." a todo mundo, inclusive ao administrador
+    await db.query(`update public.ch_flags set value = false where key = 'enabled'`);
+    try {
+      // sanidade do teste: a Central de Conteúdo em si continua travada com a chave desligada
+      await expect(rpc(ADMIN, "app_ch_taxonomy")).rejects.toThrow(/Content Lab desligado/);
+      // administrador, editor e revisor médico (papel de aluno) abrem a lista, e o revisor vê só as áreas dele
+      for (const uid of [ADMIN, EDITOR, REVIEWER]) expect((await rpc(uid, "app_admin_guideline_updates")).items.length).toBeGreaterThan(0);
+      expect((await rpc(REVIEWER, "app_admin_guideline_updates")).review_areas).toEqual(["GINECOLOGIA_OBSTETRICIA"]);
+      // salvar: a equipe qualquer área; o revisor só a área dele (a regra de área não depende da chave)
+      const novo = await rpc(EDITOR, "app_admin_save_guideline_update", { p_update: { area: "PEDIATRIA", topic: "Tema criado com a Central desligada" } });
+      expect(novo).toMatchObject({ published: false, review_status: "pending" });
+      const doRevisor = await rpc(REVIEWER, "app_admin_save_guideline_update", {
+        p_update: { area: "GINECOLOGIA_OBSTETRICIA", topic: "Tema do revisor com a Central desligada", source_url: "https://www.gov.br/saude/teste", current_conduct: "Conduta de teste." },
+      });
+      await expect(rpc(REVIEWER, "app_admin_save_guideline_update", { p_update: { area: "PEDIATRIA", topic: "Fora da área do revisor" } })).rejects.toThrow(/outra área/);
+      // conferir, publicar, tirar do ar e apagar também funcionam (nunca dependeram da chave)
+      await rpc(REVIEWER, "app_admin_review_guideline_update", { p_id: doRevisor.id, p_decision: "approve", p_note: "Conferido no documento oficial, com a Central desligada." });
+      await rpc(ADMIN, "app_admin_publish_guideline_update", { p_id: doRevisor.id, p_published: true });
+      expect((await rpc(STUDENT, "app_guideline_update", { p_slug: doRevisor.slug }))?.reviewed).toBe(true);
+      await rpc(ADMIN, "app_admin_publish_guideline_update", { p_id: doRevisor.id, p_published: false });
+      expect(await rpc(ADMIN, "app_admin_delete_guideline_update", { p_id: doRevisor.id })).toBe(true);
+      expect(await rpc(ADMIN, "app_admin_delete_guideline_update", { p_id: novo.id })).toBe(true);
+      // quem não é da equipe nem revisor continua barrado, com a mesma mensagem de sempre
+      await expect(rpc(STUDENT, "app_admin_guideline_updates")).rejects.toThrow(/equipe de conteúdo/);
+      await expect(rpc(STUDENT, "app_admin_save_guideline_update", { p_update: { area: "PEDIATRIA", topic: "Invasão" } })).rejects.toThrow(/equipe de conteúdo/);
+      // visitante (sem login): nem a lista nem o salvar podem ser chamados
+      await expect(rpc(null, "app_admin_guideline_updates")).rejects.toThrow(/permission denied/);
+      await expect(rpc(null, "app_admin_save_guideline_update", { p_update: { area: "PEDIATRIA", topic: "Invasão" } })).rejects.toThrow(/permission denied/);
+    } finally {
+      await db.query(`update public.ch_flags set value = true where key = 'enabled'`);
+    }
+    // com a chave ligada de novo, tudo como antes
+    expect((await rpc(ADMIN, "app_admin_guideline_updates")).items.length).toBeGreaterThan(0);
+    await expect(rpc(ADMIN, "app_ch_taxonomy")).resolves.toBeDefined();
+  });
+
   it("sem login, as funções de salvar, conferir e publicar nem podem ser chamadas (revokes da correção 7800)", async () => {
     const id = await idOf(PE);
     await expect(rpc(null, "app_admin_save_guideline_update", { p_update: { area: "PEDIATRIA", topic: "Invasão" } })).rejects.toThrow(/permission denied/);
@@ -252,15 +292,27 @@ describe("Cadastro e segurança", () => {
     expect(await adminItem(PE)).toMatchObject({ published: true, review_status: "approved" });
   });
 
-  it("o SQL da correção pode ser colado de novo no Supabase sem erro e sem tirar do ar o que está conferido", async () => {
+  it("o SQL das correções pode ser colado de novo no Supabase (a 7800 e as da faixa 9510 a 9519) sem erro e sem tirar do ar o que está conferido", async () => {
     const fix = fs.readdirSync(MIGRATIONS).find((f) => f.startsWith(FIX))!;
     // como ficaria o registro se uma versão anterior deste SQL (sem a marca "automatica") já tivesse sido colada
     await db.query(`insert into public.admin_audit_log (actor_id, action, target, details) values (null, 'guideline_update.unpublish', 'colada-antes',
       jsonb_build_object('topic', 'Retirada antiga', 'motivo', 'Estava publicada sem conferência médica aprovada: retirada do ar pela correção de 10/10/2026.'))`);
-    await db.exec(fs.readFileSync(path.join(MIGRATIONS, fix), "utf8"));
+    // o dono cola na ordem: primeiro a 7800, depois as da faixa 9510 a 9519; e pode colar tudo duas vezes
+    for (let vez = 0; vez < 2; vez++) {
+      await db.exec(fs.readFileSync(path.join(MIGRATIONS, fix), "utf8"));
+      for (const file of MINE) await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
+    }
     expect(await adminItem(PE)).toMatchObject({ published: true, review_status: "approved" });
     const log = await rpc(ADMIN, "app_admin_audit", { p_limit: 100 });
     expect(log.find((l: any) => l.target === "colada-antes")).toMatchObject({ actor: null, details: { automatica: true } });
     await expect(rpc(null, "app_admin_publish_guideline_update", { p_id: await idOf(PE), p_published: false })).rejects.toThrow(/permission denied/);
+    await expect(rpc(null, "app_admin_guideline_updates")).rejects.toThrow(/permission denied/);
+    // depois de colar tudo de novo, a aba continua sem depender da chave da Central de Conteúdo (AT08)
+    await db.query(`update public.ch_flags set value = false where key = 'enabled'`);
+    try {
+      expect((await rpc(ADMIN, "app_admin_guideline_updates")).items.length).toBeGreaterThan(0);
+    } finally {
+      await db.query(`update public.ch_flags set value = true where key = 'enabled'`);
+    }
   });
 });

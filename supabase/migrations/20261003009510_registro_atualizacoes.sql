@@ -1,18 +1,55 @@
 -- =============================================================================
--- Atualizações: mensagem certa quando o revisor tenta levar uma atualização da área dele para outra área (polimento do
--- Registro e das Atualizações, 10/10/2026).
+-- Atualizações (Administração), correções AT08 e AT06 (11/10/2026).
 --
--- Antes: um revisor de Clínica Médica que trocava a área de uma atualização de Clínica Médica para Gineco & Obstetrícia
--- recebia "Você revisa outra área: esta atualização é de Gineco & Obstetrícia." (não era verdade: ela é de Clínica Médica).
--- Agora: "Você não pode levar esta atualização de Clínica Médica para Gineco & Obstetrícia: você não revisa Gineco &
--- Obstetrícia. Para mudar a área, peça a um administrador ou editor."
+--  * AT08: a aba Atualizações não trava mais quando a Central de Conteúdo (Content Lab) é desligada. Antes, a lista e o
+--    salvar chamavam ch_assert_staff, que além do papel da pessoa também exige a chave de liga e desliga ch_flags.enabled
+--    (…2900_content_lab_foundation.sql), e respondiam "Content Lab desligado pelo administrador." a todo mundo, até ao
+--    administrador. Agora conferem só o papel (equipe ou revisor médico), como a …8000 fez nas Estações com
+--    checklist_station_assert_staff. Conferir, publicar e apagar já não dependiam da chave. A Central de Conteúdo em si
+--    continua travada com a chave desligada (nada muda nela).
+--  * AT06: mensagem certa quando o revisor tenta levar uma atualização da área dele para outra área. A regra não muda
+--    (quem não é da equipe edita só a área que revisa, conferindo a área GRAVADA e depois a MANDADA, desde a …7800):
+--    só a ordem das duas conferências muda, para a mensagem dizer o que aconteceu. Antes: "Você revisa outra área: esta
+--    atualização é de Gineco & Obstetrícia." (não era verdade: ela é de Clínica Médica). Agora: "Você não pode levar esta
+--    atualização de Clínica Médica para Gineco & Obstetrícia: você não revisa Gineco & Obstetrícia. Para mudar a área,
+--    peça a um administrador ou editor."
 --
--- As regras não mudam: quem não é da equipe (administrador ou editor) só edita a área que revisa, conferindo primeiro a
--- área GRAVADA e depois a área MANDADA. Só a ordem das duas conferências muda, para a mensagem dizer o que aconteceu.
 -- Nada nos dados é mexido. Pode ser colada de novo no Supabase sem erro (create or replace e revoke).
--- A função parte da versão de 20261003007800_atualizacoes_publicar_so_conferida.sql (a mais nova; conferido com grep em
--- todas as migrações), com security definer e search_path vazio.
+-- As funções partem da versão mais nova de cada uma (grep em todas as migrações): app_admin_save_guideline_update, de
+-- …7800_atualizacoes_publicar_so_conferida.sql (única redefinição depois da …4100), e app_admin_guideline_updates, de
+-- …4100_atualizacoes_diretrizes.sql (a única). Todas com security definer e search_path vazio.
 -- =============================================================================
+
+-- Quem abre a aba Atualizações: a equipe (editor ou administrador) ou um revisor médico cadastrado em alguma área.
+-- Não usa ch_assert_staff de propósito (ver AT08 acima). Mesma mensagem de antes para quem não é da equipe.
+create or replace function public.guideline_update_assert_staff() returns void
+  language plpgsql stable security definer set search_path = ''
+as $$
+begin
+  if (select auth.uid()) is null or not (public.is_staff() or public.ch_is_reviewer()) then
+    raise exception 'Acesso restrito à equipe de conteúdo.' using errcode = '42501';
+  end if;
+end
+$$;
+
+-- Lista da aba (igual à da …4100; só muda a conferência de quem chama).
+create or replace function public.app_admin_guideline_updates() returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+begin
+  perform public.guideline_update_assert_staff();
+  return jsonb_build_object(
+    'is_admin', public.is_admin(),
+    'review_areas', (select coalesce(jsonb_agg(e.area), '[]'::jsonb) from unnest(enum_range(null::public.med_area)) as e (area)
+                     where public.ch_is_reviewer(public.guideline_area_code(e.area))),
+    'items', coalesce((select jsonb_agg(public.guideline_update_view(u, true) || jsonb_build_object(
+        'review_status', u.review_status, 'review_note', u.review_note, 'reviewed_at', u.reviewed_at,
+        'reviewer', (select nullif(p.name, '') from public.profiles p where p.id = u.reviewed_by),
+        'source_checked_at', u.source_checked_at, 'origin', u.origin, 'legacy', u.legacy, 'position', u.position,
+        'can_review', public.ch_is_reviewer(public.guideline_area_code(u.area)))
+      order by u.published desc, u.priority, u.position, u.topic) from public.guideline_updates u), '[]'::jsonb));
+end
+$$;
 
 create or replace function public.app_admin_save_guideline_update(p_update jsonb) returns jsonb
   language plpgsql security definer set search_path = ''
@@ -29,7 +66,7 @@ declare
   v_skip constant text[] := array['updated_at', 'updated_by', 'position', 'priority', 'search_terms', 'review_status', 'review_note',
                                   'reviewed_by', 'reviewed_at', 'source_checked_at', 'published', 'legacy', 'created_at'];
 begin
-  perform public.ch_assert_staff();
+  perform public.guideline_update_assert_staff();
   if a ->> 'area' is null or not (a ->> 'area' = any (enum_range(null::public.med_area)::text[])) then raise exception 'Escolha a grande área.' using errcode = '22023'; end if;
   v_area := (a ->> 'area')::public.med_area;
   -- quem não é da equipe edita só a área que revisa. Primeiro a área GRAVADA (revisão rodada 1 da …7800: senão um revisor
@@ -160,3 +197,6 @@ $$;
 -- Sem login ninguém chama (como as demais funções da Administração); a equipe e os revisores logados continuam chamando.
 -- (create or replace mantém os privilégios; repetido para quem ler só esta migração)
 revoke execute on function public.app_admin_save_guideline_update(jsonb) from public, anon;
+revoke execute on function public.app_admin_guideline_updates() from public, anon;
+-- Função interna: ninguém a chama de fora (as funções acima rodam como o dono e a chamam por dentro).
+revoke execute on function public.guideline_update_assert_staff() from public, anon, authenticated;
