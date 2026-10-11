@@ -109,15 +109,74 @@ function FlashcardsEditor({ value, onChange }) {
   );
 }
 
+// Questão de treino (AT07): formulário no lugar do código. Guarda no formato que o banco já usa
+// ({ statement, options: [{ id, text, justification }], answer, commentary }); o que o formulário não mostra
+// (ex.: dificuldade) fica como está, e questão que ninguém mexeu é gravada exatamente como veio.
+const LETTERS = ["A", "B", "C", "D"];
+const blankQuestion = () => ({ statement: "", options: LETTERS.map((id) => ({ id, text: "", justification: "" })), answer: "", commentary: "" });
+const optionOf = (q, id) => (q.options ?? []).find((o) => o.id === id) ?? { id, text: "", justification: "" };
+const withOption = (q, id, patch) => ({ ...q, options: LETTERS.map((l) => (l === id ? { ...optionOf(q, l), ...patch } : optionOf(q, l))) });
+const listLetters = (l) => (l.length <= 1 ? l.join("") : `${l.slice(0, -1).join(", ")} e ${l[l.length - 1]}`);
+// Primeiro problema que o banco recusaria (app_admin_save_guideline_update), dito em português; null se está tudo certo.
+const practiceProblem = (list) => {
+  for (let i = 0; i < list.length; i += 1) {
+    const q = list[i];
+    const at = `Questão de treino ${i + 1}`;
+    if (String(q.statement ?? "").trim().length < 20) return `${at}: o enunciado precisa ter pelo menos 20 caracteres.`;
+    const empty = LETTERS.filter((l) => !String(optionOf(q, l).text ?? "").trim());
+    if (empty.length) return `${at}: escreva o texto ${empty.length === 1 ? "da alternativa" : "das alternativas"} ${listLetters(empty)}.`;
+    if (!LETTERS.includes(q.answer)) return `${at}: escolha o gabarito (a alternativa correta).`;
+  }
+  return null;
+};
+
+function PracticeQuestionsEditor({ value, onChange }) {
+  const rows = value ?? [];
+  const set = (i, q) => onChange(rows.map((r, k) => (k === i ? q : r)));
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div className="sm-field__label">Questões de treino (escritas pela equipe; não são questões oficiais do INEP)</div>
+      {rows.map((q, i) => (
+        <div key={i} role="group" aria-label={`Questão de treino ${i + 1}`} style={{ display: "flex", flexDirection: "column", gap: 12, padding: 12, borderRadius: 12, border: "1px solid var(--border-subtle)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+            <strong style={{ font: "var(--type-label)" }}>{`Questão de treino ${i + 1}`}</strong>
+            <Button variant="ghost" size="sm" icon="trash-2" aria-label={`Remover questão de treino ${i + 1}`} onClick={() => onChange(rows.filter((_, k) => k !== i))} />
+          </div>
+          <TextArea label="Enunciado" value={q.statement ?? ""} rows={3} onChange={(v) => set(i, { ...q, statement: v })} hint="Pelo menos 20 caracteres." />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 12 }}>
+            {LETTERS.map((l) => (
+              <div key={l} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <TextArea label={`Alternativa ${l}`} value={optionOf(q, l).text ?? ""} rows={2} onChange={(v) => set(i, withOption(q, l, { text: v }))} />
+                <TextArea label={`Justificativa da ${l} (por que está certa ou errada)`} value={optionOf(q, l).justification ?? ""} rows={2} onChange={(v) => set(i, withOption(q, l, { justification: v }))} />
+              </div>
+            ))}
+          </div>
+          <SelectField
+            label="Gabarito (alternativa correta)"
+            value={q.answer ?? ""}
+            onChange={(e) => set(i, { ...q, answer: e.target.value })}
+            options={[{ value: "", label: "Escolha a alternativa correta" }, ...LETTERS.map((l) => ({ value: l, label: `Alternativa ${l}` }))]}
+          />
+          <TextArea label="Comentário (o aluno lê depois de confirmar)" value={q.commentary ?? ""} rows={3} onChange={(v) => set(i, { ...q, commentary: v })} />
+        </div>
+      ))}
+      <div>
+        <Button variant="secondary" size="sm" icon="plus" onClick={() => onChange([...rows, blankQuestion()])}>Acrescentar questão de treino</Button>
+      </div>
+    </div>
+  );
+}
+
 function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
   const { backend } = useSession();
   const [form, setForm] = React.useState(() => (item ? toForm(item) : blank));
-  const [questions, setQuestions] = React.useState(() => JSON.stringify(item?.practice_questions ?? [], null, 2));
+  const [questions, setQuestions] = React.useState(() => (Array.isArray(item?.practice_questions) ? item.practice_questions : []));
   const [current, setCurrent] = React.useState(item);
   const [state, setState] = React.useState({ busy: false, error: null, done: null });
   const [note, setNote] = React.useState("");
   const [assistantOpen, setAssistantOpen] = React.useState(false);
   const set = (patch) => (setForm((f) => ({ ...f, ...patch })), setState((s) => ({ ...s, done: null })));
+  const changeQuestions = (next) => (setQuestions(next), setState((s) => ({ ...s, done: null })));
   // "Usar" só muda o formulário (e apaga o aviso de salvo); quem grava é "Salvar alterações". Lista (linha do tempo, flashcards): o painel
   // entrega a lista já com os itens novos ao fim, então o campo é trocado pelo valor final.
   const applySuggestion = (field, value) => {
@@ -135,12 +194,9 @@ function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
   };
   const save = (event) => {
     event.preventDefault();
-    let practice;
-    try {
-      practice = JSON.parse(questions || "[]");
-    } catch {
-      return setState({ busy: false, error: "A questão de treino precisa estar em JSON válido.", done: null });
-    }
+    const practice = questions;
+    const problem = practiceProblem(practice);
+    if (problem) return setState({ busy: false, error: problem, done: null });
     if (current?.published && asSaved(form, practice) !== asStored(current) && !window.confirm(OFF_AIR_CONFIRM)) return;
     run("save", async () => {
       const saved = await backend.rpc("app_admin_save_guideline_update", {
@@ -219,7 +275,7 @@ function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
           <TextArea label="Pegadinha da banca" value={form.trap} rows={2} maxLength={2000} onChange={(v) => set({ trap: v })} />
           <TextArea label="Impacto clínico" value={form.clinical_impact} rows={3} maxLength={4000} onChange={(v) => set({ clinical_impact: v })} />
           <FlashcardsEditor value={form.flashcards} onChange={(flashcards) => set({ flashcards })} />
-          <TextArea label="Questão de treino (JSON: statement, options A–D com text e justification, answer, commentary)" value={questions} rows={6} onChange={(v) => setQuestions(v)} />
+          <PracticeQuestionsEditor value={questions} onChange={changeQuestions} />
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
             <Button type="submit" loading={state.busy === "save"}>{current ? "Salvar alterações" : "Criar atualização"}</Button>
           </div>

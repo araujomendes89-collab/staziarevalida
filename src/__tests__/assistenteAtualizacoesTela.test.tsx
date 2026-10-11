@@ -16,11 +16,13 @@ import { AdminUpdates } from "../novo/app/admin/AdminUpdates.jsx";
 const LINE = { ready: true, label: "Gemini", model: "gemini-2.5-pro", pending: null };
 const S = (o: any) => ({ id: "s1", before: null, sources: [{ label: "p. 3", kind: "material" }], warnings: [], append: false, reason: null, ...o });
 const R = (o: any) => ({ mode: "preencher", suggestions: [], findings: [], missing: [], reply: null, no_source: [], warnings: [], usage: null, ...o });
+// questão de treino válida para o banco (enunciado com 20+ caracteres, alternativas A a D com texto e o gabarito)
+const PRACTICE = { statement: "Gestante com pressão alta e proteinúria. Qual é a conduta?", options: ["A", "B", "C", "D"].map((id) => ({ id, text: `Conduta ${id}.`, justification: "" })), answer: "B", commentary: "" };
 const LEGACY = {
   id: "u1", slug: "prot-x", area: "GINECOLOGIA_OBSTETRICIA", topic: "Atualização antiga de teste", subtopic: null, years: [2025], priority: 1,
   publication_label: "05/2025", institution: "Instituição", document_title: "Documento", source_url: null, before_text: "Antes.",
   timeline: [{ year: 2025, text: "Mudou." }], current_conduct: "Agora.", clinical_impact: null, exam_impact: null, trap: null, search_terms: "teste",
-  flashcards: [], practice_questions: [{ statement: "Gestante com pressão alta.", answer: "B" }], reviewed: false, reviewed_at: null, published: false,
+  flashcards: [], practice_questions: [PRACTICE], reviewed: false, reviewed_at: null, published: false,
   review_status: "pending", review_note: null, reviewer: null, source_checked_at: null, origin: "legacy_app", position: 1, can_review: true,
   legacy: { status_label: "VALIDADO_OFICIAL_SUS", last_verification_claim: "2026-08-30", original_url: "https://site.test/antigo", original_url_check: { http_status: 404, checked_on: "2026-10-06" }, cited_questions: [] },
 };
