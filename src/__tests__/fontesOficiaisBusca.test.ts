@@ -133,7 +133,7 @@ describe("Busca na fila", () => {
     await saveSearchFn();
     const { id, job } = await startSearch();
     // repetido: já existe candidato com este link
-    const site = (await sql("select id from public.ch_official_domains where address = 'gov.br/saude'"))[0];
+    const site = (await sql("select id from public.ch_official_domains where address = 'www.gov.br/saude'"))[0];
     const dupLink = "https://www.gov.br/saude/repetido.pdf";
     await t.db.service("ch_worker_source_candidate_create", {
       p_candidate: {

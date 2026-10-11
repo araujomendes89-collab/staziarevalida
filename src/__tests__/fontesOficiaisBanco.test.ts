@@ -52,7 +52,7 @@ async function newSearch(area: string | null = "CLINICA_MEDICA"): Promise<string
 
 /** Candidato criado como o processamento cria (ch_worker_source_candidate_create), no site gov.br/saude por padrão. */
 async function createCandidate(over: Record<string, unknown> = {}) {
-  const site = (await sql(`select id from public.ch_official_domains where address = 'gov.br/saude'`))[0];
+  const site = (await sql(`select id from public.ch_official_domains where address = 'www.gov.br/saude'`))[0];
   const searchId = await newSearch();
   const n = ++themeSeq;
   const link = `https://www.gov.br/saude/pt-br/documento-${n}.pdf`;
@@ -95,10 +95,10 @@ describe("Banco", () => {
     // governo, internacional, sociedade; dentro de cada tipo, pelo endereço
     expect(list.map((d) => [d.kind, d.address])).toEqual([
       ["governo", "bvsms.saude.gov.br"],
-      ["governo", "gov.br/anvisa"],
-      ["governo", "gov.br/conitec"],
-      ["governo", "gov.br/inca"],
-      ["governo", "gov.br/saude"],
+      ["governo", "www.gov.br/anvisa"],
+      ["governo", "www.gov.br/conitec"],
+      ["governo", "www.gov.br/inca"],
+      ["governo", "www.gov.br/saude"],
       ["internacional", "iris.paho.org"],
       ["internacional", "paho.org"],
       ["internacional", "who.int"],
@@ -106,7 +106,7 @@ describe("Banco", () => {
       ["sociedade", "portal.cardiol.br"],
       ["sociedade", "sbp.com.br"],
     ]);
-    expect(list.find((d) => d.address === "gov.br/saude")).toMatchObject({ institution: "Ministério da Saúde", active: true });
+    expect(list.find((d) => d.address === "www.gov.br/saude")).toMatchObject({ institution: "Ministério da Saúde", active: true });
     expect(list.find((d) => d.address === "iris.paho.org")).toMatchObject({ institution: "Repositório IRIS da OPAS" });
     expect(list.find((d) => d.address === "portal.cardiol.br")).toMatchObject({ institution: "Sociedade Brasileira de Cardiologia" });
     await expect(t.db.asUser(t.studentUser, "app_ch_official_domains")).rejects.toThrow(/restrito/);
@@ -615,7 +615,7 @@ describe("Aprovar e rejeitar", () => {
     });
     expect(doc.provenance.found).toMatch(/^encontrado pela busca em \d{2}\/\d{2}\/\d{4}$/);
     expect(doc.provenance).toMatchObject({
-      requested_url: cand.requested_url, final_url: cand.final_url, site: "gov.br/saude", institution: "Ministério da Saúde", sha256: cand.sha256,
+      requested_url: cand.requested_url, final_url: cand.final_url, site: "www.gov.br/saude", institution: "Ministério da Saúde", sha256: cand.sha256,
       size_bytes: 123456, file_kind: "pdf", search_id: cand.search_id, candidate_id: c.id,
     });
 
@@ -767,7 +767,7 @@ describe("Aprovar e rejeitar", () => {
     }
     // a lista continua valendo com o endereço real do arquivo: link de outro site ou de outro caminho não passa
     const fora = await createCandidate({ requested_url: "https://www.gov.br/saude/pt-br/a.pdf", final_url: "https://exemplo.com.br/a.pdf" });
-    await expect(approve(fora.id, OK)).rejects.toThrow(/O site gov\.br\/saude saiu da lista/);
+    await expect(approve(fora.id, OK)).rejects.toThrow(/O site www\.gov\.br\/saude saiu da lista/);
     const caminho = await createCandidate({ requested_url: "https://www.gov.br/saude/pt-br/b.pdf", final_url: "https://www.gov.br/saudemental/b.pdf" });
     await expect(approve(caminho.id, OK)).rejects.toThrow(/saiu da lista/);
     const porta = await createCandidate({ requested_url: "https://www.gov.br/saude/pt-br/c.pdf", final_url: "https://www.gov.br:8443/saude/c.pdf" });

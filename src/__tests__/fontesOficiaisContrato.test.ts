@@ -103,7 +103,7 @@ async function candidate(s: Storage, over: Record<string, unknown> = {}, kind: "
   const hash = sha(bytes);
   const key = `source-candidates/${hash}.${kind}`;
   await s.put(key, bytes, kind === "pdf" ? "application/pdf" : "text/html");
-  const site = (await sql(`select id from public.ch_official_domains where address = 'gov.br/saude'`))[0];
+  const site = (await sql(`select id from public.ch_official_domains where address = 'www.gov.br/saude'`))[0];
   const started = await asAdmin("app_ch_source_search_start", { p_request: { area: "PEDIATRIA", theme: `Tema do contrato ${n}`, top_themes: null, free_text: null } });
   const link = `https://www.gov.br/saude/contrato-${n}.${kind}`;
   const r = await t.db.service<{ id: string }>("ch_worker_source_candidate_create", {

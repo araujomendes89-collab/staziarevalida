@@ -95,7 +95,7 @@ async function candidate(s: Storage, kind: "pdf" | "html" = "pdf") {
   const hash = sha(bytes);
   const key = `source-candidates/${hash}.${kind}`;
   await s.put(key, bytes, kind === "pdf" ? "application/pdf" : "text/html");
-  const site = (await sql(`select id from public.ch_official_domains where address = 'gov.br/saude'`))[0];
+  const site = (await sql(`select id from public.ch_official_domains where address = 'www.gov.br/saude'`))[0];
   const link = `https://www.gov.br/saude/doc-${n}.${kind === "pdf" ? "pdf" : "html"}`;
   const r = await t.db.service<{ id: string }>("ch_worker_source_candidate_create", {
     p_candidate: {

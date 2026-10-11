@@ -85,11 +85,11 @@ create table if not exists public.ch_official_domains (
 );
 
 insert into public.ch_official_domains (address, institution, kind) values
-  ('gov.br/saude', 'Ministério da Saúde', 'governo'),
+  ('www.gov.br/saude', 'Ministério da Saúde', 'governo'),
   ('bvsms.saude.gov.br', 'Biblioteca Virtual em Saúde do Ministério da Saúde', 'governo'),
-  ('gov.br/conitec', 'Conitec', 'governo'),
-  ('gov.br/inca', 'INCA', 'governo'),
-  ('gov.br/anvisa', 'Anvisa', 'governo'),
+  ('www.gov.br/conitec', 'Conitec', 'governo'),
+  ('www.gov.br/inca', 'INCA', 'governo'),
+  ('www.gov.br/anvisa', 'Anvisa', 'governo'),
   ('who.int', 'Organização Mundial da Saúde', 'internacional'),
   ('paho.org', 'Organização Pan-Americana da Saúde', 'internacional'),
   ('iris.paho.org', 'Repositório IRIS da OPAS', 'internacional'),

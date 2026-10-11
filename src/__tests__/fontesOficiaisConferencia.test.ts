@@ -54,7 +54,10 @@ describe("Sites e download", () => {
   it("encaixe na lista: subdomínio, caminho inteiro, falsos e não ASCII", () => {
     expect(domains).toHaveLength(11);
     expect(matchDomain("https://www.gov.br/saude/x.pdf", domains)?.institution).toBe("Ministério da Saúde");
-    expect(matchDomain("https://gov.br/saude", domains)?.address).toBe("gov.br/saude");
+    expect(matchDomain("https://www.gov.br/saude", domains)?.address).toBe("www.gov.br/saude");
+    // o site do ministério é o www.gov.br: prefeitura e estado (qualquer *.gov.br com /saude) NÃO são o Ministério da Saúde
+    expect(matchDomain("https://prefeitura.sp.gov.br/saude/x.pdf", domains)).toBeNull();
+    expect(matchDomain("https://saude.sp.gov.br/saude", domains)).toBeNull();
     expect(matchDomain("https://gov.br/saudemental/x", domains)).toBeNull();
     expect(matchDomain("https://gov.br/", domains)).toBeNull();
     expect(matchDomain("https://gov.br.exemplo.com/saude", domains)).toBeNull();
@@ -348,8 +351,8 @@ describe("Conferência", () => {
     expect(row).toMatchObject({
       status: "aguardando",
       search_id: c.searchId,
-      domain_id: byAddress("gov.br/saude").id,
-      site_address: "gov.br/saude",
+      domain_id: byAddress("www.gov.br/saude").id,
+      site_address: "www.gov.br/saude",
       site_kind: "governo",
       requested_url: "https://www.gov.br/saude/pcdt.pdf",
       final_url: "https://www.gov.br/saude/pcdt.pdf",
