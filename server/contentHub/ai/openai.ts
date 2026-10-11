@@ -8,9 +8,27 @@
  * A resposta é sempre validada pelo nosso validador de schema; fora do formato é recusada, nunca "consertada".
  */
 import { toProviderSchema } from "./schema";
-import { AiInvalidOutput, withUsage, type AiProvider, type PartialUsage, type StructuredRequest, type StructuredResult, type WebSearchOptions } from "./provider";
+import { AiInvalidOutput, fetchSignal, withUsage, type AiProvider, type AiUsage, type PartialUsage, type StructuredRequest, type StructuredResult, type WebSearchOptions } from "./provider";
 import { validate } from "./schema";
-import { callSignal, hostsOf, ownError, parseOrConvert, sumTokens, throwIfCancelled } from "./webSearch";
+import { hostsOf, ownError, parseOrConvert, sumTokens, throwIfCancelled } from "./webSearch";
+
+/**
+ * Cuidado na OpenAI (correção IA07, 2026-10-10; página oficial "Reasoning"): Rápido manda reasoning_effort "low" nos modelos de
+ * raciocínio (GPT-5, GPT-6, série o, menos as variantes de conversa "-chat"); Caprichado usa o padrão do modelo. Outros modelos
+ * e pedidos sem o Cuidado da Central (o Tutor, por exemplo) não recebem nada.
+ */
+export function openAiReasoningEffort(model: string, care: string | undefined): boolean {
+  const m = String(model ?? "").trim().toLowerCase();
+  return care === "rapido" && /^(gpt-5|gpt-6|o\d)/.test(m) && !m.includes("-chat");
+}
+
+/**
+ * O max_completion_tokens que o provedor da OpenAI manda: o pedido (padrão 8.192), no mínimo 4.096. A estimativa dos tetos usa
+ * esta mesma conta (effectiveMaxOut, revisão rodada 5).
+ */
+export function openAiMaxCompletionTokens(requested?: number): number {
+  return Math.max(requested ?? 8192, 4096);
+}
 
 export class OpenAIProvider implements AiProvider {
   readonly name = "openai";
@@ -36,33 +54,33 @@ export class OpenAIProvider implements AiProvider {
           { role: "user", content: req.input },
         ],
         response_format: { type: "json_schema", json_schema: { name: req.schemaName.slice(0, 60), schema: toProviderSchema(req.schema), strict: false } },
-        max_completion_tokens: Math.max(req.maxOutputTokens ?? 8192, 4096),
+        max_completion_tokens: openAiMaxCompletionTokens(req.maxOutputTokens),
+        ...(openAiReasoningEffort(this.model, req.care) ? { reasoning_effort: "low" } : {}),
       }),
-      signal: callSignal(180_000, req.signal),
+      // limite próprio de 180 s e o cancelamento do maestro (tempo esgotado)
+      signal: fetchSignal(req.signal),
     });
     if (!res.ok) {
       const body = (await res.text().catch(() => "")).slice(0, 300);
       throw new Error(`OpenAI respondeu ${res.status}${body ? `: ${body}` : ""}`);
     }
     const data = (await res.json()) as any;
+    const choice = data?.choices?.[0];
+    if (choice?.message?.refusal) throw new Error(`O provedor recusou a solicitação (${String(choice.message.refusal).slice(0, 120)}).`);
+    // tokens lidos antes de conferir a resposta: a que falha também é cobrada e entra no registro e nos tetos
     const inTok = data?.usage?.prompt_tokens ?? null;
     const outTok = data?.usage?.completion_tokens ?? null;
+    const usage: AiUsage = { inputTokens: inTok, outputTokens: outTok };
+    if (choice?.finish_reason === "length") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null, { usage, reason: "cortada" });
+    let raw: unknown;
     try {
-      const choice = data?.choices?.[0];
-      if (choice?.message?.refusal) throw new Error(`O provedor recusou a solicitação (${String(choice.message.refusal).slice(0, 120)}).`);
-      if (choice?.finish_reason === "length") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null);
-      let raw: unknown;
-      try {
-        raw = JSON.parse(choice?.message?.content ?? "");
-      } catch {
-        throw new AiInvalidOutput("Resposta não é JSON.", choice?.message?.content);
-      }
-      const errors = validate(req.schema, raw);
-      if (errors.length) throw new AiInvalidOutput(`Resposta fora do formato: ${errors.slice(0, 5).join("; ")}`, raw);
-      return { output: raw as T, provider: this.name, model: data?.model ?? this.model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: this.price(inTok, outTok) };
-    } catch (error) {
-      throw withUsage(error, { inputTokens: inTok, outputTokens: outTok, webSearches: 0 }); // a chamada foi paga mesmo que a resposta não sirva
+      raw = JSON.parse(choice?.message?.content ?? "");
+    } catch {
+      throw new AiInvalidOutput("Resposta não é JSON.", choice?.message?.content, { usage, reason: "formato" });
     }
+    const errors = validate(req.schema, raw);
+    if (errors.length) throw new AiInvalidOutput(`Resposta fora do formato: ${errors.slice(0, 5).join("; ")}`, raw, { usage, reason: "formato" });
+    return { output: raw as T, provider: this.name, model: data?.model ?? this.model, inputTokens: inTok, outputTokens: outTok, latencyMs: Date.now() - t0, costUsd: this.price(inTok, outTok) };
   }
 
   /**
@@ -71,7 +89,8 @@ export class OpenAIProvider implements AiProvider {
    * Sem resposta estruturada: a IA termina o texto com o JSON (ver webSearch.ts). Se o JSON não servir, a conversão curta,
    * sem busca, vai pelo `/chat/completions` de sempre. Erro depois da resposta (cortada, recusada, fora do esquema) leva o
    * gasto parcial (`withUsage`): as buscas e os tokens já foram cobrados. O cancelamento de quem pediu (`req.signal`) vale para as duas
-   * chamadas; a conversão não começa se ele já disparou.
+   * chamadas; a conversão não começa se ele já disparou. Resposta cortada pelo limite de saída é "cortada": o maestro não repete a
+   * mesma IA (pagaria as buscas de novo). O limite de saída segue a conta da chamada sem busca (openAiMaxCompletionTokens).
    */
   private async generateWithSearch<T>(req: StructuredRequest, search: WebSearchOptions): Promise<StructuredResult<T>> {
     const t0 = Date.now();
@@ -84,7 +103,7 @@ export class OpenAIProvider implements AiProvider {
     const items: any[] = Array.isArray(data?.output) ? data.output : [];
     const spent: PartialUsage = { inputTokens: data?.usage?.input_tokens ?? null, outputTokens: data?.usage?.output_tokens ?? null, webSearches: items.filter((item) => item?.type === "web_search_call").length };
     try {
-      if (data?.status === "incomplete") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null);
+      if (data?.status === "incomplete") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null, { reason: "cortada" });
       if (data?.status === "failed") throw new Error(`OpenAI não concluiu a resposta${data?.error?.message ? `: ${String(data.error.message).slice(0, 300)}` : "."}`);
       const seen = new Set<string>();
       const texts: string[] = [];
@@ -121,9 +140,10 @@ export class OpenAIProvider implements AiProvider {
         tools: [{ type: "web_search", filters: { allowed_domains: hostsOf(search.allowedDomains) } }],
         include: ["web_search_call.action.sources"],
         max_tool_calls: search.maxSearches,
-        max_output_tokens: Math.max(req.maxOutputTokens ?? 8192, 4096),
+        max_output_tokens: openAiMaxCompletionTokens(req.maxOutputTokens),
       }),
-      signal: callSignal(180_000, req.signal),
+      // limite próprio de 180 s e o cancelamento de quem pediu
+      signal: fetchSignal(req.signal),
     });
     if (!res.ok) {
       const body = (await res.text().catch(() => "")).slice(0, 300);

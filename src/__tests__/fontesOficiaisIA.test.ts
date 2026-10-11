@@ -196,6 +196,8 @@ describe("Provedores", () => {
     const { client, calls } = fakeAnthropic([claudeMsg({ model: "claude-haiku-4-5-20251001" })]);
     await new AnthropicProvider("chave", "claude-haiku-4-5-20251001", client).generate(req());
     expect(calls[0].tools).toEqual([{ type: "web_search_20250305", name: "web_search", allowed_domains: ["gov.br/saude"], max_uses: 4 }]);
+    // o Haiku 4.5 não aceita a opção de esforço (correção IA11 do main): a busca segue a mesma regra da resposta estruturada
+    expect(calls[0].output_config).toBeUndefined();
   });
 
   it("Claude: a versão da ferramenta vem do modelo (Opus 5 e 4.6 a 4.8, Sonnet 5 e 4.6 usam a nova)", () => {
@@ -336,6 +338,7 @@ describe("Provedores", () => {
     await expect(make({ stop_reason: "refusal", stop_details: { category: "cyber" } }).generate(req())).rejects.toThrow(/O provedor recusou a solicitação \(cyber\)/);
     await expect(make({ stop_reason: "max_tokens" }).generate(req())).rejects.toBeInstanceOf(AiInvalidOutput);
     await expect(make({ stop_reason: "max_tokens" }).generate(req())).rejects.toThrow(/Resposta cortada pelo limite de saída/);
+    await expect(make({ stop_reason: "max_tokens" }).generate(req())).rejects.toMatchObject({ reason: "cortada" });
   });
 
   it("Claude: sem busca o caminho é o de sempre (saída estruturada, sem ferramenta e sem contagem de buscas)", async () => {
@@ -401,6 +404,7 @@ describe("Provedores", () => {
     const make = (body: unknown, status = 200) => new OpenAIProvider("k", "m", fakeFetch([{ body, status }]).f);
     await expect(make(openaiReply(FENCED, { status: "incomplete", incomplete_details: { reason: "max_output_tokens" } })).generate(req())).rejects.toBeInstanceOf(AiInvalidOutput);
     await expect(make(openaiReply(FENCED, { status: "incomplete" })).generate(req())).rejects.toThrow(/Resposta cortada pelo limite de saída/);
+    await expect(make(openaiReply(FENCED, { status: "incomplete" })).generate(req())).rejects.toMatchObject({ reason: "cortada" });
     const refused = { model: "m", status: "completed", output: [{ type: "message", role: "assistant", content: [{ type: "refusal", refusal: "não posso" }] }], usage: { input_tokens: 1, output_tokens: 1 } };
     await expect(make(refused).generate(req())).rejects.toThrow(/recusou/);
     await expect(make({ error: { message: "limite" } }, 429).generate(req())).rejects.toThrow(/OpenAI respondeu 429/);
@@ -452,6 +456,8 @@ describe("Provedores", () => {
     const cut = fakeGemini([geminiReply(FENCED, GROUNDING, { candidates: [{ finishReason: "MAX_TOKENS", groundingMetadata: GROUNDING }] })]);
     await expect(new GeminiProvider(ACCESS, "gemini-3.5-flash", cut.client).generate(req())).rejects.toThrow(/Resposta cortada pelo limite de saída/);
     expect(cut.calls).toHaveLength(1);
+    const cutAgain = fakeGemini([geminiReply(FENCED, GROUNDING, { candidates: [{ finishReason: "MAX_TOKENS", groundingMetadata: GROUNDING }] })]);
+    await expect(new GeminiProvider(ACCESS, "gemini-3.5-flash", cutAgain.client).generate(req())).rejects.toMatchObject({ reason: "cortada" });
   });
 
   it("Gemini: sem busca o caminho é o de sempre (JSON estruturado, sem ferramenta)", async () => {
@@ -658,15 +664,17 @@ describe("Provedores", () => {
   });
 
   it("Erro com uso: o caminho sem busca também diz o que gastou (sem buscas)", async () => {
+    // o caminho sem busca é o do main: o AiInvalidOutput leva só os tokens (AiUsage), e partialUsageOf o lê com 0 buscas
     const claude = await caught(new AnthropicProvider("chave", "claude-sonnet-5-5", fakeAnthropic([claudeMsg({ content: [{ type: "text", text: "sem json" }] })]).client).generate(req({ webSearch: undefined })));
-    expect(claude.usage).toEqual({ inputTokens: 100, outputTokens: 20, webSearches: 0 });
+    expect(claude.usage).toEqual({ inputTokens: 100, outputTokens: 20 });
+    expect(partialUsageOf(claude)).toEqual({ inputTokens: 100, outputTokens: 20, webSearches: 0 });
     const wrongShape = await caught(new AnthropicProvider("chave", "claude-sonnet-5-5", fakeAnthropic([claudeMsg({ content: [{ type: "text", text: '{"documentos":1}' }] })]).client).generate(req({ webSearch: undefined })));
-    expect(wrongShape.usage).toEqual({ inputTokens: 100, outputTokens: 20, webSearches: 0 });
+    expect(partialUsageOf(wrongShape)).toEqual({ inputTokens: 100, outputTokens: 20, webSearches: 0 });
     const gemini = await caught(new GeminiProvider(ACCESS, "gemini-2.5-pro", fakeGemini([{ text: "sem json", usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 5, thoughtsTokenCount: 2 } }]).client).generate(req({ webSearch: undefined })));
-    expect(gemini.usage).toEqual({ inputTokens: 10, outputTokens: 7, webSearches: 0 });
+    expect(partialUsageOf(gemini)).toEqual({ inputTokens: 10, outputTokens: 7, webSearches: 0 });
     const chat = { model: "m", choices: [{ finish_reason: "stop", message: { content: "sem json" } }], usage: { prompt_tokens: 80, completion_tokens: 40 } };
     const openai = await caught(new OpenAIProvider("k", "m", fakeFetch([{ body: chat }]).f).generate(req({ webSearch: undefined })));
-    expect(openai.usage).toEqual({ inputTokens: 80, outputTokens: 40, webSearches: 0 });
+    expect(partialUsageOf(openai)).toEqual({ inputTokens: 80, outputTokens: 40, webSearches: 0 });
   });
 
   it("Erro com uso: parseOrConvert leva o gasto da conversão que não serviu; OpenAI que não concluiu leva o da busca", async () => {
@@ -697,6 +705,12 @@ describe("Provedores", () => {
     expect(partialUsageOf(odd)).toBeNull();
     expect(partialUsageOf(null)).toBeNull();
     expect(partialUsageOf("erro")).toBeNull();
+    // o uso que o AiInvalidOutput do caminho sem busca leva (do main: só tokens) conta como 0 buscas, e a busca soma por cima
+    const conv = new AiInvalidOutput("fora do formato", null, { usage: { inputTokens: 3, outputTokens: 4 }, reason: "formato" });
+    expect(partialUsageOf(conv)).toEqual({ inputTokens: 3, outputTokens: 4, webSearches: 0 });
+    withUsage(conv, { inputTokens: 10, outputTokens: 1, webSearches: 2 });
+    expect(partialUsageOf(conv)).toEqual({ inputTokens: 13, outputTokens: 5, webSearches: 2 });
+    expect(partialUsageOf(Object.assign(new Error("z"), { usage: { inputTokens: 1, outputTokens: 1, webSearches: null } }))).toBeNull();
   });
 
   // ---------------------------------------------------------------- cancelamento (req.signal)

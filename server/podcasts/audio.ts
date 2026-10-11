@@ -1,10 +1,12 @@
 /**
  * ÁUDIO DO PODCAST: o roteiro APROVADO vira voz de dois apresentadores e depois um MP3.
  *
- *   Gemini TTS (padrão): dois locutores na MESMA chamada (Interactions API, speech_config.speakers), um estilo por fala
- *     (speech_metadata) — ANA e BRUNO soam como uma conversa. Modelo: PODCAST_TTS_GEMINI_MODEL (padrão gemini-3.8-flash-tts).
- *   OpenAI (reserva): uma chamada por fala, uma voz para cada apresentador (com a instrução de estilo), e as falas emendadas com uma
- *     pausa curta. Modelo: PODCAST_TTS_OPENAI_MODEL (padrão gpt-4o-mini-tts).
+ *   OpenAI (padrão por enquanto): uma chamada por fala, uma voz para cada apresentador (com a instrução de estilo), e as falas
+ *     emendadas com uma pausa curta. Modelo: PODCAST_TTS_OPENAI_MODEL (padrão gpt-4o-mini-tts).
+ *   Gemini TTS (DESLIGADO por padrão): dois locutores na MESMA chamada (Interactions API, speech_config.speakers), um estilo por fala
+ *     (speech_metadata) — ANA e BRUNO soam como uma conversa. Só volta com PODCAST_TTS_GEMINI_ENABLED=1 no servidor (decisão de
+ *     2026-10-09: "usar só a OpenAI por enquanto"); desligado, fica "indisponível" e a geração o recusa antes de qualquer chamada.
+ *     Modelo: PODCAST_TTS_GEMINI_MODEL (padrão gemini-3.8-flash-tts).
  *
  * O roteiro vai em PARTES (cada uma com poucas falas, para cada chamada caber no tempo de uma função da Vercel); cada parte vira
  * PCM 16 bits, 24 kHz, mono; no fim, as partes viram um MP3 (64 kbps, mono) com lamejs. Chaves só no servidor.
@@ -51,11 +53,15 @@ const realKey = (v: string | undefined) => {
   const k = (v ?? "").trim();
   return k.length >= 30 && !/^(my_|your|changeme|xxx)/i.test(k) ? k : null;
 };
+/** A voz do Gemini fica desligada até a variável valer exatamente "1" (o código dela continua aqui). */
+export const geminiTtsEnabled = (env: NodeJS.ProcessEnv = process.env) => (env.PODCAST_TTS_GEMINI_ENABLED ?? "").trim() === "1";
+export const GEMINI_TTS_OFF = "indisponível por enquanto (desligada no servidor; PODCAST_TTS_GEMINI_ENABLED=1 liga).";
 export const geminiKey = (env: NodeJS.ProcessEnv = process.env) => realKey(env.GOOGLE_GEMINI_API_KEY) ?? realKey(env.GEMINI_API_KEY) ?? realKey(env.GOOGLE_TTS_API_KEY);
 
-/** Qual voz está pronta no servidor (precisa da autorização de envio de conteúdo a provedor externo). */
+/** Qual voz está pronta no servidor (precisa da autorização de envio de conteúdo a provedor externo; a do Gemini também precisa estar ligada). */
 export function ttsStatus(kind: TtsKind, env: NodeJS.ProcessEnv = process.env): TtsStatus {
   if (kind === "mock") return env.NODE_ENV === "production" ? { ready: false, kind, model: null, pending: "Voz simulada não existe em produção." } : { ready: true, kind, model: "voz-simulada", pending: null };
+  if (kind === "gemini" && !geminiTtsEnabled(env)) return { ready: false, kind, model: (env.PODCAST_TTS_GEMINI_MODEL ?? "").trim() || "gemini-3.8-flash-tts", pending: GEMINI_TTS_OFF };
   if (env.CONTENT_HUB_AI_ALLOW_EXTERNAL !== "1") return { ready: false, kind, model: null, pending: "Envio de conteúdo a provedor externo não autorizado (CONTENT_HUB_AI_ALLOW_EXTERNAL=1)." };
   if (kind === "gemini") {
     const model = (env.PODCAST_TTS_GEMINI_MODEL ?? "").trim() || "gemini-3.8-flash-tts";

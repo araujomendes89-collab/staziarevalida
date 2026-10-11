@@ -47,6 +47,8 @@ describe("Lista", () => {
     const go = vi.fn();
     render(<UpdatesScreen go={go} />);
     expect(await screen.findByText("As atualizações estão em conferência médica")).toBeTruthy();
+    // verdade desde 10/10/2026: o banco só deixa publicar o que um revisor médico aprovou (AT03, AT05)
+    expect(screen.getByText(/Cada atualização só aparece aqui depois de conferida no documento oficial/)).toBeTruthy();
     expect(screen.queryByText("Fontes aceitas")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Montar um treino" }));
     expect(go).toHaveBeenCalledWith("questoes");

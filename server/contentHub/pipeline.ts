@@ -24,7 +24,7 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import { PROMPTS, asDocument, CRITICAL_KINDS, type PromptKey } from "./ai/prompts";
 import { AiInvalidOutput, type AiProvider, type AiStatus } from "./ai/provider";
-import { AiCapReached, maestroProvider } from "../ai/maestro";
+import { AiCapReached, maestroCheckerProvider, maestroProvider } from "../ai/maestro";
 import { functionForPrompt, type ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { copyRatio, flashcardProblems, isVerbatim, negations, negationsLost, normalize, numbers, numbersOutside } from "./checks";
@@ -135,13 +135,19 @@ export function stepVersions(step: Step, deps: PipelineDeps): Record<string, unk
 // ---------------------------------------------------------------------------- IA
 type Rejection = { where: string; reason: string };
 
-async function ai<T>(ctx: Ctx, key: PromptKey, payload: unknown, check?: (output: T) => Rejection[]): Promise<{ output: T; rejections: Rejection[]; model: string | null }> {
-  // a IA vem da Central de IAs (maestro): liga/desliga, modelo por função, tetos e registro de chamadas
-  const { provider, status } = await maestroProvider(
-    { db: ctx.deps.db, mockProvider: ctx.deps.ai.provider?.isMock ? ctx.deps.ai.provider : null, makeProviderFor: ctx.deps.aiMaker },
-    functionForPrompt(key),
-    { source: "central", itemId: ctx.job.document_id }
-  );
+async function ai<T>(
+  ctx: Ctx,
+  key: PromptKey,
+  payload: unknown,
+  check?: (output: T) => Rejection[],
+  writer?: string | null
+): Promise<{ output: T; rejections: Rejection[]; model: string | null }> {
+  // a IA vem da Central de IAs (maestro): liga/desliga, modelo por função, tetos e registro de chamadas. Conferência de um texto
+  // escrito por IA (`writer`): a IA que confere é de outra empresa (decisão do dono, 2026-10-10)
+  const maestroDeps = { db: ctx.deps.db, mockProvider: ctx.deps.ai.provider?.isMock ? ctx.deps.ai.provider : null, makeProviderFor: ctx.deps.aiMaker };
+  const origin = { source: "central" as const, itemId: ctx.job.document_id };
+  const fn = functionForPrompt(key);
+  const { provider, status } = writer !== undefined ? await maestroCheckerProvider(maestroDeps, fn, writer, origin) : await maestroProvider(maestroDeps, fn, origin);
   if (!provider) throw new Blocked(status.pending ?? "IA não configurada.");
   const allowed = await aiAllowed(ctx.deps.db);
   if (!allowed.ok) throw new Blocked(allowed.why);
@@ -467,9 +473,19 @@ async function stepClaims(ctx: Ctx): Promise<Step | null> {
   return "evidence";
 }
 
+/**
+ * Conferência por outra empresa (decisão do dono, 2026-10-10): sem o campo de quem escreveu (banco sem a migração 7600), a
+ * etapa espera com aviso em vez de conferir sem saber quem escreveu.
+ */
+const WRITER_FIELD_MISSING = "Falta aplicar no Supabase a atualização da conferência por outra empresa (migração 7600).";
+function requireWriterField(rows: any[], field: "created_by_model" | "generated_by_model") {
+  if (rows.length && !(field in rows[0])) throw new Blocked(WRITER_FIELD_MISSING);
+}
+
 async function stepEvidence(ctx: Ctx): Promise<Step | null> {
   await setMeta(ctx, { status: "verifying_sources" });
   const claims = (await svc<any[]>(ctx, "ch_worker_claims", { p_document_id: docId(ctx) })).filter((c) => c.status === "extracted");
+  requireWriterField(claims, "created_by_model");
   const counts: Record<string, number> = {};
   for (const c of claims) {
     const text = c.proposed_text ?? c.statement;
@@ -494,7 +510,7 @@ async function stepEvidence(ctx: Ctx): Promise<Step | null> {
       if (!p) return [{ where: "passage_id", reason: "trecho fora da lista fornecida" }];
       if (!isVerbatim(o.quote, p.text)) return [{ where: "quote", reason: "a citação não é cópia literal do trecho da fonte" }];
       return [];
-    });
+    }, c.created_by_model ?? null);
     if (rejections.length) {
       await svc(ctx, "ch_worker_mark_claim", { p_claim_id: c.id, p_status: "needs_review", p_note: `Evidência proposta recusada pela conferência: ${rejections.map((r) => r.reason).join("; ")}` });
       counts.rejected = (counts.rejected ?? 0) + 1;
@@ -716,6 +732,7 @@ async function stepRender(ctx: Ctx): Promise<Step | null> {
 
 async function stepReviewCheck(ctx: Ctx): Promise<Step | null> {
   const versions = await targetVersions(ctx);
+  requireWriterField(versions, "generated_by_model");
   let issues = 0;
   for (let i = ctx.job.checkpoint?.version ?? 0; i < versions.length; i++) {
     const v = versions[i];
@@ -724,7 +741,7 @@ async function stepReviewCheck(ctx: Ctx): Promise<Step | null> {
       texto: v.content.sections,
       afirmacoes: claims.map((c) => ({ id: c.id, text: c.proposed_text ?? c.statement, context: c.context, evidencias: (c.evidence ?? []).map((e: any) => ({ verdict: e.verdict, quote: e.quote, source: e.source, page: e.page })) })),
     };
-    const { output, model: reviewed } = await ai<any>(ctx, "review", payload);
+    const { output, model: reviewed } = await ai<any>(ctx, "review", payload, undefined, v.generated_by_model ?? null);
     const kept = (v.review_flags ?? []).filter((f: any) => f.by !== "ai_review");
     const found = output.issues.map((x: any) => ({ ...x, by: "ai_review", model: reviewed }));
     issues += found.length;

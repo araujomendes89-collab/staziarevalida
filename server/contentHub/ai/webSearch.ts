@@ -91,12 +91,6 @@ export function ownError(error: unknown, signal: AbortSignal | null | undefined)
   return error === signal.reason || /abort/i.test(text) ? cancelledError(signal) : error;
 }
 
-/** O sinal de uma chamada HTTP: o tempo-limite da própria chamada e, se houver, o cancelamento de quem pediu (o que vier primeiro). */
-export function callSignal(timeoutMs: number, outer?: AbortSignal | null): AbortSignal {
-  const timeout = AbortSignal.timeout(timeoutMs);
-  return outer ? AbortSignal.any([timeout, outer]) : timeout;
-}
-
 /** Soma de tokens de duas chamadas: nulo só quando nenhuma das duas informou. */
 export function sumTokens(a: number | null | undefined, b: number | null | undefined): number | null {
   return a == null && b == null ? null : (a ?? 0) + (b ?? 0);

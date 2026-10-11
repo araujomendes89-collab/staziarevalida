@@ -1,8 +1,9 @@
 // Atualizações com dados do banco (app_guideline_updates, app_guideline_update, app_start_guideline_questions).
 // Mesma estrutura do app anterior (o que mudou: antes × agora; o que lembrar para o Revalida; fonte; flashcards; questão de
 // treino; tabela comparativa) com o layout de "Materiais oficiais" do novo design (prototype/Study1.jsx).
-// Só aparece ao aluno o que o administrador publicou; o selo de conferência só existe quando um revisor médico conferiu
-// no documento oficial (o banco registra quem e quando).
+// Só aparece ao aluno o que o administrador publicou, e o banco só deixa publicar o que um revisor médico aprovou no
+// documento oficial (registra quem e quando); recusar ou mudar o texto tira do ar. O aviso "Ainda sem conferência médica"
+// fica só como proteção, caso algum dia chegue ao aluno algo sem conferência.
 import React from "react";
 import { AnswerOption, Badge, Banner, Button, Card, Chip, EmptyState, Flashcard, Icon, SegmentedControl, TextField } from "../../ds";
 import { IconTile } from "../../prototype/RealIcons.jsx";

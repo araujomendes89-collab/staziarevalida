@@ -5,6 +5,8 @@
  *   Desenvolvimento: banco do servidor (server/devDb) e pasta .data/content-hub.
  *   Produção: Supabase — funções ch_worker_* com a chave de serviço (só no servidor),
  *             funções app_* com o token do próprio usuário, arquivos no bucket privado "content-hub".
+ *
+ * Toda chamada ao banco passa os argumentos por safeForDb (o Postgres recusa o caractere nulo e metade solta de par substituto).
  */
 import fs from "fs";
 import path from "path";
@@ -39,6 +41,28 @@ export interface Storage {
 }
 
 const FN = /^(ch_worker_[a-z_]+|app_[a-z0-9_]+)$/;
+
+/** Metade de par substituto (UTF-16) sem a outra metade: o Postgres recusa em jsonb. Sem a marca "u": olha cada unidade. */
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+
+/**
+ * Texto que o Postgres aceita (falha vista em produção, 2026-10-09: "unsupported Unicode escape sequence"). O Postgres recusa o
+ * caractere nulo (U+0000) em text e jsonb, e metade solta de par substituto em jsonb; uma resposta de IA ou o texto de um PDF com
+ * um deles derrubava a gravação da etapa inteira, e cada nova tentativa pagava a IA de novo. Tira o nulo e troca a metade solta
+ * pelo sinal de substituição (U+FFFD), em qualquer profundidade (chaves dos objetos inclusive). Pares válidos (emoji, letras
+ * matemáticas) e acentos ficam como estão; Date, Buffer e outros objetos que não são simples passam sem mudança. Não muda o valor
+ * recebido: devolve uma cópia.
+ */
+export function safeForDb<T>(value: T): T {
+  if (typeof value === "string") return value.replace(/\u0000/g, "").replace(LONE_SURROGATE, "\uFFFD") as T;
+  if (Array.isArray(value)) return value.map((v) => safeForDb(v)) as T;
+  if (value !== null && typeof value === "object") {
+    const proto = Object.getPrototypeOf(value);
+    if (proto !== Object.prototype && proto !== null) return value;
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [safeForDb(k), safeForDb(v)])) as T;
+  }
+  return value;
+}
 const bearer = (req: Request) => (req.headers.authorization ?? "").replace(/^Bearer\s+/i, "").trim() || null;
 
 export function devContentDb(getDb: () => Promise<DevDatabase>): ContentDb {
@@ -49,11 +73,11 @@ export function devContentDb(getDb: () => Promise<DevDatabase>): ContentDb {
       const db = await getDb();
       const keys = Object.keys(args);
       if (keys.some((k) => !/^p_[a-z0-9_]+$/.test(k))) throw new Error("Argumento inválido.");
-      const r = await db.db.query<{ result: T }>(`select public.${fn}(${keys.map((k, i) => `${k} => $${i + 1}`).join(", ")}) as result`, keys.map((k) => args[k]));
+      const r = await db.db.query<{ result: T }>(`select public.${fn}(${keys.map((k, i) => `${k} => $${i + 1}`).join(", ")}) as result`, keys.map((k) => safeForDb(args[k])));
       return r.rows[0]?.result as T;
     },
     async asUser<T>(user: Identity, fn: string, args: Record<string, unknown> = {}) {
-      return (await getDb()).core.rpc<T>(user, fn, args);
+      return (await getDb()).core.rpc<T>(user, fn, safeForDb(args));
     },
     async authenticate(req) {
       return (await getDb()).userForToken(bearer(req));
@@ -77,11 +101,11 @@ export function supabaseContentDb(): ContentDb {
     mode: "supabase",
     async service<T>(fn: string, args: Record<string, unknown> = {}) {
       if (!FN.test(fn)) throw new Error(`Função não permitida: ${fn}`);
-      return unwrap<T>(await admin.rpc(fn, args));
+      return unwrap<T>(await admin.rpc(fn, safeForDb(args)));
     },
     async asUser<T>(user: Identity, fn: string, args: Record<string, unknown> = {}) {
       const client = createClient(url, anonKey, { global: { headers: { Authorization: `Bearer ${user.jwt}` } }, auth: { persistSession: false } });
-      return unwrap<T>(await client.rpc(fn, args));
+      return unwrap<T>(await client.rpc(fn, safeForDb(args)));
     },
     async authenticate(req) {
       const jwt = bearer(req);

@@ -169,6 +169,57 @@ describe("Central de IAs (painel do administrador)", () => {
     expect(within(box).getByText(aviso)).toBeTruthy();
   });
 
+  describe("aviso do teto por execução depois de subir o teto (rodada final)", () => {
+    const TETO = "Teto por execução de US$ 0,1 está abaixo da estimativa de uma chamada de Criação (Podcasts) com Claude claude-a.";
+    /** O servidor depois de salvar os tetos: o teto maior e a conferência das funções já sem o aviso. */
+    const raiseCap = () => {
+      handlers["PUT /api/ai-central/settings"] = (body) => {
+        overview = structuredClone(overview);
+        overview.settings = { ...overview.settings, ...body };
+        overview.checks.criacao = { ...overview.checks.criacao, warnings: [] };
+        return json({ ok: true });
+      };
+    };
+    const overviewLoads = () => calls.filter((c) => c.method === "GET" && c.url === "/api/ai-central/overview").length;
+
+    beforeEach(() => {
+      overview.functions = [savedFn()];
+      overview.settings = { ...overview.settings, monthly_cap_usd: 50, per_run_cap_usd: 0.1, caps_enabled: true };
+      overview.checks.criacao = { ...savedCheck, warnings: [TETO] };
+    });
+
+    it("salvar os tetos recarrega a conferência das funções: o aviso some sem recarregar a página", async () => {
+      raiseCap();
+      render(<AdminAI />);
+      const box = await screen.findByTestId("function-criacao");
+      expect(within(box).getByText(TETO)).toBeTruthy();
+      const loads = overviewLoads();
+      fireEvent.change(screen.getByLabelText("Teto por execução (US$)"), { target: { value: "5" } });
+      fireEvent.click(screen.getByRole("button", { name: "Salvar tetos" }));
+      await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai-central/settings")).toBe(true));
+      await waitFor(() => expect(overviewLoads()).toBeGreaterThan(loads));
+      await waitFor(() => expect(within(box).queryByText(TETO)).toBeNull());
+    });
+
+    it("o aviso que veio ao salvar a função também some depois de subir o teto", async () => {
+      handlers["PUT /api/ai-central/functions/criacao"] = () => json({ ok: true, warnings: [TETO] });
+      raiseCap();
+      render(<AdminAI />);
+      const box = await screen.findByTestId("function-criacao");
+      const loads = overviewLoads();
+      fireEvent.click(within(box).getByRole("button", { name: "Salvar" }));
+      await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai-central/functions/criacao")).toBe(true));
+      // salvar a função também recarrega a conferência (o aviso continua: o teto ainda é baixo)
+      await waitFor(() => expect(overviewLoads()).toBeGreaterThan(loads));
+      expect(within(box).getByText(TETO)).toBeTruthy();
+      const afterSave = overviewLoads();
+      fireEvent.change(screen.getByLabelText("Teto por execução (US$)"), { target: { value: "5" } });
+      fireEvent.click(screen.getByRole("button", { name: "Salvar tetos" }));
+      await waitFor(() => expect(overviewLoads()).toBeGreaterThan(afterSave));
+      await waitFor(() => expect(within(box).queryByText(TETO)).toBeNull());
+    });
+  });
+
   it("voltar às variáveis pede confirmação e manda config null", async () => {
     overview.functions = [savedFn()];
     overview.checks.criacao = savedCheck;

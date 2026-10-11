@@ -73,6 +73,13 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
     setDraft(init());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [savedKey]);
+  // conferência nova do servidor (recarregada depois de salvar os tetos, um preço ou uma função): ela manda nos avisos. Os avisos
+  // que vieram ao salvar a função ficavam presos na tela (ex.: o do teto por execução, depois de o dono subir o teto) até
+  // recarregar a página (rodada final)
+  const checkKey = JSON.stringify(check ?? null);
+  React.useEffect(() => {
+    setState((s) => (s.warnings ? { ...s, warnings: null } : s));
+  }, [checkKey]);
 
   const set = (patch) => setDraft((d) => ({ ...d, ...patch }));
   const others = draft.mode === "sozinha" ? [] : draft.others.length ? draft.others : [{ ...EMPTY }];
@@ -141,6 +148,11 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
       {draft.mode !== "sozinha" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={subtle}>{draft.mode === "linha" ? "Conferentes (1 a 3)" : "Outros membros — a principal também participa; total de 2 a 4"}</div>
+          <div style={subtle}>
+            {fnKey === "verificacao"
+              ? `No processamento só a IA principal e a reserva rodam; ${draft.mode === "linha" ? "os conferentes" : "os membros"} só são usados na conferência de rascunhos feita por comando.`
+              : `${draft.mode === "linha" ? "Por enquanto os conferentes não são chamados" : "Por enquanto os membros não são chamados"}: a função usa só a IA principal e a reserva.`}
+          </div>
           {others.map((o, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
               <div style={{ flex: "1 1 360px" }}>
@@ -163,6 +175,11 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
         </div>
       )}
       <SelectField label="Cuidado" aria-label={`Cuidado — ${label}`} value={draft.care} onChange={(e) => set({ care: e.target.value })} options={CARES} />
+      <div style={subtle}>
+        Rápido: menos raciocínio, mais rápido e barato (Claude, Gemini 2.5 e 3 e GPT-5/6; o Gemini 2.5 Flash-Lite deixa de pensar).
+        Caprichado: Claude com esforço alto; Gemini e OpenAI no padrão do modelo. Os Gemini 3 Flash-Lite já pensam o mínimo por padrão
+        e não mudam; os modelos de imagem do Gemini e o Ollama também não.
+      </div>
 
       {localProblem && <div style={subtle}>{localProblem}</div>}
       {state.error && (
