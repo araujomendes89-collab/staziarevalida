@@ -150,7 +150,9 @@ function DeleteUser({ user, onDeleted }) {
       <div style={{ display: "flex", gap: 8, alignItems: "center", font: "var(--type-label)", color: "var(--danger-text)" }}>
         <Icon name="triangle-alert" size={18} /> Excluir usuário
       </div>
-      <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Apaga a conta e todo o histórico dessa pessoa. Não dá para desfazer.</div>
+      <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+        Apaga a conta e todo o histórico dessa pessoa. Não dá para desfazer. Quem já aprovou ou publicou conteúdo na Central de Conteúdo, ou conferiu atualizações de questões, não pode ser excluído, porque esse registro precisa ficar: nesse caso, mude o papel para Aluno e o plano para Expirado.
+      </div>
       {state.error && <Banner tone="danger">{state.error}</Banner>}
       <div style={{ display: "flex", gap: 12, alignItems: "flex-end", flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 240px" }}>
