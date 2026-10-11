@@ -493,6 +493,8 @@ const VOICE_NAMES = [
   { value: "cedar", label: "Cedar (OpenAI)" },
   { value: "__outra", label: "Outra (digite o nome)" },
 ];
+/** Vozes que a lista conhece; qualquer outro nome salvo volta em "Outra" (digite o nome). */
+const KNOWN_VOICES = VOICE_NAMES.map((v) => v.value).filter((v) => v && v !== "__outra");
 const DURONA_LEVELS = [
   { value: "moderada", label: "Moderada" },
   { value: "forte", label: "Forte" },
@@ -530,8 +532,8 @@ export function AdminTutor() {
         trial_voice_daily_min: String(Math.round((data.trial_voice_daily_seconds ?? 600) / 60)), trial_voice_total_min: String(Math.round((data.trial_voice_total_seconds ?? 2400) / 60)),
         paid_voice_daily_min: String(Math.round((data.paid_voice_daily_seconds ?? 3600) / 60)),
         voice_provider: data.voice_provider ?? "auto",
-        voice_choice: !data.voice_name ? "" : ["marin", "cedar"].includes(data.voice_name) ? data.voice_name : "__outra",
-        voice_other: data.voice_name && !["marin", "cedar"].includes(data.voice_name) ? data.voice_name : "",
+        voice_choice: !data.voice_name ? "" : KNOWN_VOICES.includes(data.voice_name) ? data.voice_name : "__outra",
+        voice_other: data.voice_name && !KNOWN_VOICES.includes(data.voice_name) ? data.voice_name : "",
         voice_session_max_min: String(Math.round((data.voice_session_max_seconds ?? 1800) / 60)),
         save_transcripts: data.save_transcripts ?? true,
         transcript_retention_days: String(data.transcript_retention_days ?? 180),
@@ -686,6 +688,11 @@ export function AdminTutor() {
           {personas.data && (
             <div>
               <div className="sm-field__label" style={{ marginBottom: 6 }}>Professores disponíveis para os alunos (usa o motivo abaixo)</div>
+              {reason.trim().length < 10 && (
+                <p style={{ margin: "0 0 8px", font: "var(--type-caption)", color: "var(--text-secondary)" }}>
+                  Para ligar ou desligar um professor, escreva primeiro o motivo da mudança (pelo menos 10 letras) no campo “Motivo da mudança”, mais abaixo.
+                </p>
+              )}
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                 {personas.data.map((p) => (
                   <Switch key={p.id} label={`${p.emoji} ${p.name}`} description={p.default ? "Padrão: fica sempre ligado." : p.voice ? `Voz: ${p.voice}` : p.tagline} checked={p.active} disabled={p.default || personaState.busy === p.id || reason.trim().length < 10} onChange={(e) => togglePersona(p.id, e.target.checked)} />
