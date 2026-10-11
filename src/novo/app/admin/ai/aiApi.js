@@ -32,16 +32,6 @@ export async function aiSend(backend, method, path, body) {
 }
 
 export const PROVIDER_NAME = { anthropic: "Claude", openai: "OpenAI", gemini: "Gemini", ollama: "Ollama" };
-/** Funções de IA e o nome na tela (Central de IAs e Administração › Registro). */
-export const AI_FUNCTIONS = [
-  ["criacao", "Criação"],
-  ["verificacao", "Verificação e checagem"],
-  ["engenharia_reversa", "Engenharia reversa"],
-  ["assistente_preencher", "Assistente: preencher"],
-  ["assistente_conferir", "Assistente: conferir"],
-  ["assistente_revisar", "Assistente: conversar e revisar"],
-];
-export const AI_FUNCTION_NAME = Object.fromEntries(AI_FUNCTIONS);
 
 /** Dólar em pt-BR: "US$ 0,0123" (até 4 casas); zero vira "US$ 0". */
 export const usd = (n) => {

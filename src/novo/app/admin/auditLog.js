@@ -3,8 +3,25 @@
 // identificador). Toda ação que alguma migração grava no registro tem nome aqui: src/__tests__/registroAdministracao.test.ts
 // lê as migrações e confere.
 import { PLAN_LABEL, ROLE_LABEL, SUB_STATUS_LABEL } from "./common.jsx";
-import { AI_FUNCTION_NAME, PROVIDER_NAME, usd } from "./ai/aiApi.js";
 import { QUESTION_STATUS_LABEL } from "../../../shared/questions/status";
+
+// Nomes que a tela da Central de IAs mostra (ai/AdminAI.jsx e ai/aiApi.js). Ficam aqui, copiados, para o Registro não
+// depender da pasta ai/ (outra frente de trabalho); o teste registroAdministracao.test.ts compara as duas listas e avisa
+// se a Central ganhar uma IA ou uma função nova.
+export const PROVIDER_NAME = { anthropic: "Claude", openai: "OpenAI", gemini: "Gemini", ollama: "Ollama" };
+export const AI_FUNCTION_NAME = {
+  criacao: "Criação",
+  verificacao: "Verificação e checagem",
+  engenharia_reversa: "Engenharia reversa",
+  assistente_preencher: "Assistente: preencher",
+  assistente_conferir: "Assistente: conferir",
+  assistente_revisar: "Assistente: conversar e revisar",
+};
+/** Dólar em pt-BR: "US$ 0,0123" (até 4 casas); zero vira "US$ 0" (igual ao da Central de IAs). */
+const usd = (n) => {
+  const v = Number(n ?? 0);
+  return v === 0 ? "US$ 0" : `US$ ${new Intl.NumberFormat("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 4 }).format(v)}`;
+};
 
 export const ACTION_LABEL = {
   // usuários, planos e configurações
@@ -45,8 +62,8 @@ export const ACTION_LABEL = {
   "tutor.personality": "Professor ligado ou desligado",
   "tutor.voice.approve": "Voz do professor aprovada",
   "tutor.voice.revoke": "Aprovação da voz do professor retirada",
-  // stazia play
-  "gamification.rule": "Regra do Stazia Play alterada",
+  // Stazia Arena (gamificação)
+  "gamification.rule": "Regra da Stazia Arena alterada",
   "gamification.achievement": "Medalha salva",
   "gamification.mission": "Missão salva",
   "gamification.reward": "Recompensa salva",
@@ -61,7 +78,7 @@ export const ACTION_LABEL = {
 // começo do nome técnico → parte da Administração (para uma ação nova que ainda não ganhou nome acima)
 const PART = {
   user: "Usuários", plan: "Planos", settings: "Configurações", questions: "Questões", question: "Questões", station: "Estações",
-  guideline_update: "Atualizações", lesson: "Aulas", podcast: "Podcasts", tutor: "Tutor", gamification: "Stazia Play", ai: "Central de IAs",
+  guideline_update: "Atualizações", lesson: "Aulas", podcast: "Podcasts", tutor: "Tutor", gamification: "Stazia Arena", ai: "Central de IAs",
 };
 
 const own = (map, key) => (Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined);
@@ -146,6 +163,14 @@ const duration = (seconds) => {
   return m ? `${m} min${s % 60 ? ` ${s % 60} s` : ""}` : `${s} s`;
 };
 const cap = (v) => (v == null || v === "" ? "sem teto" : usd(v));
+// valor de uma regra da Stazia Arena: interruptor (flags.*) ligado/desligado; número ou texto como está; objeto compacto
+const ruleValue = (value) => {
+  if (value === true) return "ligada";
+  if (value === false) return "desligada";
+  if (value == null) return "sem valor";
+  const text = typeof value === "object" ? JSON.stringify(value) : String(value);
+  return `valor ${text.length > 80 ? `${text.slice(0, 77)}…` : text}`;
+};
 
 const SUMMARY = {
   "user.role": (d) => `${ROLE_LABEL[d.from] ?? d.from} → ${ROLE_LABEL[d.to] ?? d.to}`,
@@ -179,17 +204,31 @@ const SUMMARY = {
   "guideline_update.publish": (d) => join([topic(d), d.review_status === "approved" ? "Conferência médica aprovada" : d.review_status && "Publicada sem conferência médica aprovada"]),
   "guideline_update.unpublish": (d, entry) => join([topic(d), `Motivo: ${retirementReason(entry)}`, d.note && `Nota do revisor: ${d.note}`]),
   "guideline_update.delete": topic,
-  "lesson.save": (d) => d.title,
-  "lesson.material": (d) => d.title,
-  "podcast.save": (d) => d.title,
-  "podcast.source": (d) => d.title,
-  "podcast.script.edit": (d) => d.lines != null && count(d.lines, "fala", "falas"),
-  "podcast.approve": (d) => d.note && `Nota: ${d.note}`,
-  "podcast.audio": (d) => d.seconds && `Duração: ${duration(d.seconds)}`,
+  // aulas e podcasts: o título vem do próprio registro (entry.title, buscado pelo banco; também quando o item já foi apagado)
+  "lesson.save": (d, entry) => d.title ?? entry.title,
+  "lesson.delete": (d, entry) => entry.title,
+  "lesson.material": (d, entry) => join([entry.title && `Aula: ${entry.title}`, d.title && `Material: ${d.title}`]),
+  "podcast.save": (d, entry) => d.title ?? entry.title,
+  "podcast.delete": (d, entry) => entry.title,
+  "podcast.publish": (d, entry) => entry.title,
+  "podcast.unpublish": (d, entry) => entry.title,
+  "podcast.source": (d, entry) => join([entry.title && `Episódio: ${entry.title}`, d.title && `Fonte: ${d.title}`]),
+  "podcast.script.ai": (d, entry) =>
+    join([
+      entry.title,
+      d.simulated ? "Roteiro de teste, sem IA de verdade" : own(PROVIDER_NAME, d.provider) && `IA: ${PROVIDER_NAME[d.provider]}${d.model ? ` (${d.model})` : ""}`,
+      d.total_chunks != null && `${Number(d.used_chunks) || 0} de ${d.total_chunks} trechos das fontes usados`,
+      !d.simulated && d.cost_usd != null && `custo ${usd(d.cost_usd)}`,
+    ]),
+  "podcast.script.edit": (d, entry) => join([entry.title, d.lines != null && count(d.lines, "fala", "falas")]),
+  "podcast.approve": (d, entry) => join([entry.title, d.note && `Nota: ${d.note}`]),
+  "podcast.audio": (d, entry) => join([entry.title, d.seconds && `Duração: ${duration(d.seconds)}`, d.simulated && "áudio de teste, sem voz de verdade"]),
   "tutor.config": (d) => d.reason && `Motivo: ${d.reason}`,
   "tutor.personality": (d) => join([d.active === true ? "Ligado" : d.active === false ? "Desligado" : "", d.reason && `Motivo: ${d.reason}`]),
   "tutor.voice.approve": (d) => own(VOICE_NAME, d.voice) && `Voz: ${VOICE_NAME[d.voice]}`,
   "tutor.voice.revoke": (d) => own(VOICE_NAME, d.voice) && `Voz: ${VOICE_NAME[d.voice]}`,
+  "gamification.rule": (d, entry) => join([`Regra ${entry.target}: ${ruleValue(d.value)}`, d.enabled === false && "regra desativada"]),
+  "gamification.recalculate": (d, entry) => `Aluno: ${entry.subject || "conta excluída"}`,
   "gamification.achievement": (d) => d.name,
   "gamification.mission": (d) => d.title,
   "gamification.reward": (d) => d.name,

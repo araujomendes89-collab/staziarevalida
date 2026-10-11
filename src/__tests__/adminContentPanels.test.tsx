@@ -6,6 +6,8 @@
  * português quando uma atualização é publicada ou tirada do ar, com o tema e o motivo em linguagem simples; a retirada
  * feita pela migração 7800 aparece como "Retirada automática pela regra nova" (não como "conta excluída"), também nas
  * linhas sem a marca "automatica". As ações novas das Questões aparecem em português, com a questão (polimento 10/10/2026).
+ * RG03 (11/10/2026): aulas, podcasts, Stazia Arena, Tutor e Central de IAs aparecem com nome e resumo em português (o
+ * título da aula ou do episódio vem do banco), sem código técnico.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -269,6 +271,45 @@ describe("Registro (Administração)", () => {
     expect(screen.getByText("Revalida 2025/1, questão 45 · Gabarito B, alterado após recurso (antes era C) · Fonte: Gabarito definitivo do INEP · Motivo: Recurso aceito · 3 respostas de alunos corrigidas de novo")).toBeTruthy();
     expect(screen.getByText("Revalida 2025/1, questão 45 · Gabarito mudou de C para B · Revisadas: conduta esperada, explicação da B, explicação da C")).toBeTruthy();
     expect(container.textContent).not.toMatch(/question\.|official_answer|explanations_reviewed|CHANGED_AFTER_APPEAL|explanation_|expected_conduct|revalida_2025/);
+    expect(container.textContent).not.toContain(ID);
+  });
+  it("RG03: aulas, podcasts, Stazia Arena, Tutor e Central de IAs aparecem com nome e resumo em português, sem código técnico", async () => {
+    const rows = [
+      { id: 12, action: "lesson.delete", target: ID, title: "Bronquiolite viral aguda", details: {} },
+      { id: 11, action: "podcast.unpublish", target: ID, title: "Episódio 1: sepse", details: {} },
+      { id: 10, action: "podcast.script.ai", target: ID, title: "Episódio 1: sepse", details: { provider: "gemini", model: "gemini-2.5-pro", used_chunks: 12, total_chunks: 20, cost_usd: 0.0512, simulated: false } },
+      { id: 9, action: "gamification.rule", target: "flags.gamification_enabled", details: { value: false, enabled: true } },
+      { id: 8, action: "gamification.recalculate", target: ID, subject: "ana@t.dev", details: {} },
+      { id: 7, action: "tutor.voice.approve", target: "tutor", details: { voice: "durona", fingerprint: "f".repeat(64), scenarios: ["a"] } },
+      { id: 6, action: "ai.provider", target: "gemini", details: { enabled: true } },
+      { id: 5, action: "ai.function", target: "assistente_preencher", details: { mode: "comite" } },
+      { id: 4, action: "podcast.audio", target: ID, title: "Episódio 1: sepse", details: { seconds: "500", provider: "openai" } },
+      { id: 3, action: "lesson.material.delete", target: ID, title: null, details: {} },
+    ].map((r) => ({ created_at: at, actor: "adm@t.dev", ...r }));
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_admin_audit") return rows;
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    const { container } = render(<AdminAudit />);
+    expect(await screen.findByText("Aula apagada")).toBeTruthy();
+    expect(screen.getByText("Bronquiolite viral aguda")).toBeTruthy();
+    expect(screen.getByText("Podcast tirado do ar")).toBeTruthy();
+    expect(screen.getByText("Roteiro do podcast escrito pela IA")).toBeTruthy();
+    expect(screen.getByText("Episódio 1: sepse · IA: Gemini (gemini-2.5-pro) · 12 de 20 trechos das fontes usados · custo US$ 0,0512")).toBeTruthy();
+    expect(screen.getByText("Regra da Stazia Arena alterada")).toBeTruthy();
+    expect(screen.getByText("Regra flags.gamification_enabled: desligada")).toBeTruthy();
+    expect(screen.getByText("Pontos de um aluno recalculados")).toBeTruthy();
+    expect(screen.getByText("Aluno: ana@t.dev")).toBeTruthy();
+    expect(screen.getByText("Voz do professor aprovada")).toBeTruthy();
+    expect(screen.getByText("Voz: Durona")).toBeTruthy();
+    expect(screen.getByText("IA ligada ou desligada")).toBeTruthy();
+    expect(screen.getByText("Gemini: ligada")).toBeTruthy();
+    expect(screen.getByText("Função de IA configurada")).toBeTruthy();
+    expect(screen.getByText("Assistente: preencher")).toBeTruthy();
+    expect(screen.getByText("Episódio 1: sepse · Duração: 8 min 20 s")).toBeTruthy();
+    expect(screen.getByText("Material de aula apagado")).toBeTruthy();
+    // nenhum nome técnico de ação (aula.delete, podcast.script.ai, ai.provider, tutor.voice.approve…) aparece na tela
+    expect(container.textContent).not.toMatch(/\b(lesson|podcast|gamification|tutor|ai)\.[a-z_.]+/);
     expect(container.textContent).not.toContain(ID);
   });
 });

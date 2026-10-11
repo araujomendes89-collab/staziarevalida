@@ -12,7 +12,8 @@
 import { describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
-import { ACTION_LABEL, auditActor, auditLabel, auditSummary } from "../novo/app/admin/auditLog.js";
+import { ACTION_LABEL, AI_FUNCTION_NAME, auditActor, auditLabel, auditSummary, PROVIDER_NAME } from "../novo/app/admin/auditLog.js";
+import { PROVIDER_NAME as CENTRAL_PROVIDER_NAME } from "../novo/app/admin/ai/aiApi.js";
 
 const MIGRATIONS = path.resolve(__dirname, "../../supabase/migrations");
 const UUID = "6f1c2a9e-3b4d-4e5f-8a7b-9c0d1e2f3a4b";
@@ -157,12 +158,12 @@ describe("Registro: retiradas de atualizações (tema e motivo em linguagem simp
 });
 
 describe("Registro: outras ações mostram o que tem nome (título, tema, nota), sem identificadores", () => {
-  it("aulas, podcasts, Stazia Play, Tutor, Central de IAs e configurações", () => {
+  it("aulas, podcasts, Stazia Arena, Tutor, Central de IAs e configurações", () => {
     const cases: [any, string][] = [
       [{ action: "lesson.save", target: UUID, details: { title: "Bronquiolite viral aguda", area: "PEDIATRIA" } }, "Bronquiolite viral aguda"],
-      [{ action: "lesson.material", target: UUID, details: { title: "Diretriz da SBP", kind: "pdf" } }, "Diretriz da SBP"],
+      [{ action: "lesson.material", target: UUID, details: { title: "Diretriz da SBP", kind: "pdf" } }, "Material: Diretriz da SBP"],
       [{ action: "podcast.save", target: UUID, details: { title: "Episódio 1: sepse" } }, "Episódio 1: sepse"],
-      [{ action: "podcast.source", target: UUID, details: { kind: "pdf", title: "Manual de sepse" } }, "Manual de sepse"],
+      [{ action: "podcast.source", target: UUID, details: { kind: "pdf", title: "Manual de sepse" } }, "Fonte: Manual de sepse"],
       [{ action: "podcast.approve", target: UUID, details: { note: "Roteiro conferido." } }, "Nota: Roteiro conferido."],
       [{ action: "podcast.script.edit", target: UUID, details: { lines: 24 } }, "24 falas"],
       [{ action: "podcast.audio", target: UUID, details: { seconds: "500", voice: "x" } }, "Duração: 8 min 20 s"],
@@ -185,5 +186,77 @@ describe("Registro: outras ações mostram o que tem nome (título, tema, nota),
       expect(auditSummary(entry), entry.action).toBe(expected);
       expect(auditSummary(entry)).not.toContain(UUID);
     }
+  });
+});
+
+describe("Registro: toda ação tem resumo em linguagem simples (RG03)", () => {
+  it("Stazia Arena: a regra mostra o nome como na aba e o valor; o recálculo diz de quem foi", () => {
+    // o nome que o administrador vê na Administração é "Stazia Arena" (aba) e a regra aparece com a chave, como na aba Regras
+    expect(auditLabel({ action: "gamification.rule", details: {} })).toBe("Regra da Stazia Arena alterada");
+    expect(auditLabel({ action: "gamification.recalculate", details: {} })).toBe("Pontos de um aluno recalculados");
+    expect(auditLabel({ action: "gamification.nova_coisa", details: {} })).toBe("Outra ação em Stazia Arena");
+    expect(auditSummary({ action: "gamification.rule", target: "xp.question_correct", details: { value: 10, enabled: true } })).toBe("Regra xp.question_correct: valor 10");
+    expect(auditSummary({ action: "gamification.rule", target: "flags.gamification_enabled", details: { value: false, enabled: true } })).toBe("Regra flags.gamification_enabled: desligada");
+    expect(auditSummary({ action: "gamification.rule", target: "flags.gamification_enabled", details: { value: true, enabled: true } })).toBe("Regra flags.gamification_enabled: ligada");
+    expect(auditSummary({ action: "gamification.rule", target: "limits.daily_xp", details: { value: { max: 500 }, enabled: false } })).toBe('Regra limits.daily_xp: valor {"max":500} · regra desativada');
+    expect(auditSummary({ action: "gamification.recalculate", target: UUID, subject: "ana@t.dev", details: {} })).toBe("Aluno: ana@t.dev");
+    expect(auditSummary({ action: "gamification.recalculate", target: UUID, subject: null, details: {} })).toBe("Aluno: conta excluída");
+  });
+
+  it("aulas e podcasts: o título vem do registro, também quando o item já foi apagado", () => {
+    const aula = (action: string, extra: Record<string, unknown> = {}, details: Record<string, unknown> = {}) => ({ action, target: UUID, title: "Bronquiolite viral aguda", details, ...extra });
+    expect(auditSummary(aula("lesson.save", { title: undefined }, { title: "Bronquiolite viral aguda", area: "PEDIATRIA" }))).toBe("Bronquiolite viral aguda");
+    expect(auditSummary(aula("lesson.delete"))).toBe("Bronquiolite viral aguda");
+    expect(auditSummary(aula("lesson.material", {}, { title: "Slides da aula", kind: "slides" }))).toBe("Aula: Bronquiolite viral aguda · Material: Slides da aula");
+    // o material apagado só deixa o código dele no registro: não há o que mostrar além do nome da ação
+    expect(auditSummary({ action: "lesson.material.delete", target: UUID, title: null, details: {} })).toBe("");
+    const ep = (action: string, details: Record<string, unknown> = {}) => ({ action, target: UUID, title: "Episódio 1: sepse", details });
+    expect(auditSummary(ep("podcast.delete"))).toBe("Episódio 1: sepse");
+    expect(auditSummary(ep("podcast.publish"))).toBe("Episódio 1: sepse");
+    expect(auditSummary(ep("podcast.unpublish"))).toBe("Episódio 1: sepse");
+    expect(auditSummary(ep("podcast.source", { kind: "pdf", title: "Manual de sepse" }))).toBe("Episódio: Episódio 1: sepse · Fonte: Manual de sepse");
+    expect(auditSummary(ep("podcast.script.edit", { lines: 24 }))).toBe("Episódio 1: sepse · 24 falas");
+    expect(auditSummary(ep("podcast.approve", { note: "Roteiro conferido." }))).toBe("Episódio 1: sepse · Nota: Roteiro conferido.");
+    expect(auditSummary(ep("podcast.audio", { seconds: "500", provider: "openai" }))).toBe("Episódio 1: sepse · Duração: 8 min 20 s");
+    expect(auditSummary(ep("podcast.audio", { seconds: "90", simulated: true }))).toBe("Episódio 1: sepse · Duração: 1 min 30 s · áudio de teste, sem voz de verdade");
+    // sem título (item apagado antes de o registro guardar o título): só o nome da ação
+    expect(auditSummary({ action: "podcast.delete", target: UUID, title: null, details: {} })).toBe("");
+  });
+
+  it("roteiro do podcast escrito pela IA: quem escreveu, quantos trechos das fontes e o custo; roteiro de teste é dito como teste", () => {
+    const meta = { provider: "gemini", model: "gemini-2.5-pro", prompt_version: "v3", input_tokens: 9000, output_tokens: 3000, cost_usd: 0.0512, calls: 2, used_chunks: 12, total_chunks: 20, warnings: [], notes: null, seconds: 14, simulated: false };
+    expect(auditSummary({ action: "podcast.script.ai", target: UUID, title: "Episódio 1: sepse", details: meta }))
+      .toBe("Episódio 1: sepse · IA: Gemini (gemini-2.5-pro) · 12 de 20 trechos das fontes usados · custo US$ 0,0512");
+    expect(auditSummary({ action: "podcast.script.ai", target: UUID, title: "Episódio 1: sepse", details: { ...meta, provider: "mock", simulated: true, cost_usd: 0 } }))
+      .toBe("Episódio 1: sepse · Roteiro de teste, sem IA de verdade · 12 de 20 trechos das fontes usados");
+    expect(auditSummary({ action: "podcast.script.ai", target: UUID, title: null, details: {} })).toBe("");
+  });
+
+  it("nenhuma ação deixa o resumo vazio por falta de tradução: só quando não há nenhum dado para mostrar", () => {
+    // cada ação do SUMMARY mostra algo com os dados que o banco grava; o que depende de campo do registro (título, pessoa) mostra quando ele vem
+    const withData: [string, any][] = [
+      ["user.role", { target: UUID, details: { from: "student", to: "admin" } }],
+      ["user.subscription", { target: UUID, details: { to: { plan: "pro", status: "active" } } }],
+      ["tutor.config", { target: "tutor", details: { reason: "Ajuste do limite diário" } }],
+      ["tutor.personality", { target: "tutor", details: { id: "durona", active: true, reason: "Voltou ao ar" } }],
+      ["tutor.voice.approve", { target: "tutor", details: { voice: "direto" } }],
+      ["gamification.rule", { target: "xp.question_correct", details: { value: 10, enabled: true } }],
+      ["ai.provider", { target: "openai", details: { enabled: false } }],
+    ];
+    for (const [action, rest] of withData) expect(auditSummary({ action, ...rest }), action).not.toBe("");
+  });
+});
+
+describe("Registro: os nomes de IA do Registro são os da Central de IAs", () => {
+  it("as IAs (Claude, OpenAI, Gemini, Ollama) têm o mesmo nome da Central de IAs", () => {
+    expect(PROVIDER_NAME).toEqual(CENTRAL_PROVIDER_NAME);
+  });
+
+  it("as funções de IA têm o mesmo nome da lista de AdminAI.jsx (se a Central ganhar uma função nova, o Registro precisa do nome dela)", () => {
+    const source = fs.readFileSync(path.resolve(__dirname, "../novo/app/admin/ai/AdminAI.jsx"), "utf8");
+    const block = source.match(/const FUNCTIONS = \[([\s\S]*?)\];/)?.[1] ?? "";
+    const pairs = [...block.matchAll(/\["([a-z_]+)",\s*"([^"]+)"\]/g)].map((m) => [m[1], m[2]]);
+    expect(pairs.length).toBeGreaterThanOrEqual(6);
+    expect(Object.fromEntries(pairs)).toEqual(AI_FUNCTION_NAME);
   });
 });
