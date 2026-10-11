@@ -162,6 +162,14 @@ comitê mostrados para a equipe aparecem a partir da etapa 2.
   pagas não são chamadas; o **Ollama continua**.
 - **Duas execuções ao mesmo tempo** podem passar do teto em até o custo de uma execução (a tela avisa).
 - Com os tetos ligados, **modelo pago sem preço fica bloqueado**. Ollama custa zero.
+- **Preço exigido com ou sem teto (IA09, 2026-10-11):** modelo pago sem preço cadastrado aparecia com gasto US$ 0 quando os tetos
+  estavam desligados. Agora, ao **salvar** uma função (a rota `PUT /functions/:key`), cada IA paga dela precisa de preço, com os
+  tetos ligados ou não: sem o preço, a função não salva e o motivo diz onde cadastrá-lo (tabela "Preços por milhão de tokens" ou
+  "Atualizar lista" da IA, que preenche os preços oficiais conhecidos). O que **já está salvo e rodando não para**: com os tetos
+  desligados, o modelo sem preço continua sendo chamado, e a função só mostra o aviso "sem preço cadastrado" (funções sem
+  configuração salva também, para a IA e a reserva das variáveis do servidor). Parar a chamada pararia o que funciona hoje em
+  produção, onde o preço pode faltar até alguém usar "Atualizar lista". Na tabela "Últimas chamadas", IA paga que gastou tokens e
+  ficou com custo zero aparece como "sem preço", e não como "US$ 0".
 - **Quando o teto é atingido**, os documentos da Central ficam **parados** (pendência) e voltam sozinhos quando o teto
   permitir; ninguém precisa reenviar o documento.
   - Teto **por execução** (o pedido estimado passa do teto): a cada rodada do processamento os parados voltam para a fila

@@ -655,9 +655,12 @@ describe("Configuração", () => {
     const PROD = { ...KEYS, NODE_ENV: "production" } as any;
     const LOCAL = { ...KEYS } as any;
     const SEM_CHAVE = (nome: string) => `${nome}: sem chave neste servidor (site). O processamento da Central (Cloud Run) usa as chaves de lá; Aulas e Podcasts rodam no site e precisam da chave aqui.`;
+    // IA09: modelo pago sem preço ganha um aviso próprio (precoObrigatorioModeloPago.test.ts); aqui os modelos têm preço, para estes
+    // testes (de outra regra) continuarem comparando a lista exata de avisos
+    const PRICED = [["anthropic", "claude-sonnet-5-5"], ["gemini", "gemini-2.5-pro"], ["openai", "gpt-x"], ["gemini", "gemini-flash"]].map(([provider, model]) => ({ provider, model, input_per_mtok: 1, output_per_mtok: 2, source_url: "https://exemplo.com", checked_on: "2026-10-11" }));
     const check = async (fn: any, env: any = PROD, over: Parameters<typeof mkCfg>[0] = {}) => {
       const { functionChecks } = await import("../../server/ai/config");
-      const cfg = mkCfg(over);
+      const cfg = mkCfg({ prices: PRICED, ...over });
       cfg.functions.criacao = fn;
       return functionChecks(cfg, env).criacao;
     };
@@ -744,10 +747,10 @@ describe("Configuração", () => {
 
     it("função sem configuração salva: chave ausente também é só aviso", async () => {
       const { functionChecks } = await import("../../server/ai/config");
-      const r = functionChecks(mkCfg(), { CONTENT_HUB_AI_PROVIDER: "gemini" } as any).criacao;
+      const r = functionChecks(mkCfg({ prices: PRICED }), { CONTENT_HUB_AI_PROVIDER: "gemini" } as any).criacao;
       expect(r).toMatchObject({ source: "variaveis", ready: true, problems: [] });
       expect(r.warnings).toEqual([SEM_CHAVE("Gemini")]);
-      expect(functionChecks(mkCfg(), { CONTENT_HUB_AI_PROVIDER: "gemini", GEMINI_API_KEY: "g".repeat(40) } as any).criacao.warnings).toEqual([]);
+      expect(functionChecks(mkCfg({ prices: PRICED }), { CONTENT_HUB_AI_PROVIDER: "gemini", GEMINI_API_KEY: "g".repeat(40) } as any).criacao.warnings).toEqual([]);
     });
 
     it("keyPending: confere as chaves pelo env recebido, com as regras e as mensagens do resolveProviderKind", async () => {
@@ -1402,6 +1405,12 @@ describe("Rotas", () => {
     fetch(root + p, { method, headers: { ...(who ? { Authorization: `Bearer ${tokens[who]}` } : {}), ...(body !== undefined ? { "Content-Type": "application/json" } : {}) }, body: body !== undefined ? JSON.stringify(body) : undefined });
   const call = (who: string | null, method: string, p: string, body?: unknown) => callAt(base, who, method, p, body);
   const A = { provider: "anthropic", model: "claude-sonnet-5-5" };
+  /** IA09: salvar uma função com modelo pago exige o preço cadastrado, com ou sem tetos. */
+  const priceModels = async (...refs: { provider: string; model: string }[]) => {
+    for (const r of refs) await dev.db.query("insert into public.ai_model_prices (provider, model, input_per_mtok, output_per_mtok) values ($1, $2, 2, 10) on conflict do nothing", [r.provider, r.model]);
+    const { invalidateAiConfig } = await import("../../server/ai/config");
+    invalidateAiConfig(db);
+  };
 
   it("sem login volta 401; aluno recebe 403 até no resumo", async () => {
     expect((await call(null, "GET", "/summary")).status).toBe(401);
@@ -1451,6 +1460,7 @@ describe("Rotas", () => {
   });
 
   it("função inválida volta 400 com os problemas (mesma família)", async () => {
+    await priceModels(A, { provider: "anthropic", model: "claude-opus-5-5" });
     await call("admin", "POST", "/providers/anthropic/enabled", { enabled: true });
     expect((await call("admin", "PUT", "/functions/nada", { config: null })).status).toBe(404);
     const bad = await call("admin", "PUT", "/functions/criacao", { config: { mode: "linha", care: "caprichado", primary: A, reviewers: [{ provider: "anthropic", model: "claude-opus-5-5" }] } });
@@ -1488,6 +1498,7 @@ describe("Rotas", () => {
     expect(Object.keys(j.checks).sort()).toEqual(["assistente_conferir", "assistente_preencher", "assistente_revisar", "criacao", "engenharia_reversa", "verificacao"]);
     expect(j.checks.criacao).toMatchObject({ source: "variaveis", ready: false });
     expect(j.checks.criacao.problems.join(" ")).toMatch(/desligada/);
+    await priceModels(A);
     await call("admin", "POST", "/providers/anthropic/enabled", { enabled: true });
     await call("admin", "PUT", "/functions/verificacao", { config: { mode: "sozinha", primary: A } });
     const j2 = await (await call("admin", "GET", "/overview")).json();
@@ -1523,6 +1534,7 @@ describe("Rotas", () => {
   it("PUT /functions recusa Ollama onde ele não roda (site publicado ou sem resposta) e aceita no Mac", async () => {
     const ollama = { provider: "ollama", model: "qwen3" };
     const MAC = "Ollama roda só no Mac.";
+    await priceModels(A);
     for (const id of ["anthropic", "ollama"]) await call("admin", "POST", `/providers/${id}/enabled`, { enabled: true });
     const saved = async () => (await dev.db.query("select 1 from public.ai_functions where key = 'criacao'")).rows.length;
     const put = (root: string, config: unknown) => callAt(root, "admin", "PUT", "/functions/criacao", { config });
@@ -1574,6 +1586,7 @@ describe("Rotas", () => {
     expect(site.provider_checks.anthropic).toEqual({ pending: null, blocks: false });
 
     // função salva no Mac com Ollama: pronta no Mac, não pronta no site publicado (com o motivo)
+    await priceModels({ provider: "gemini", model: "gemini-2.5-pro" });
     await call("admin", "POST", "/providers/ollama/enabled", { enabled: true });
     expect((await call("admin", "PUT", "/functions/criacao", { config: { mode: "sozinha", primary: { provider: "ollama", model: "qwen3" } } })).status).toBe(200);
     const mac = (await (await call("admin", "GET", "/overview")).json()).checks.criacao;

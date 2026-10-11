@@ -1,9 +1,11 @@
 /**
- * IA03 (Administração › Central de IAs): a frase "Uma IA só é chamada se estiver ligada aqui" não era verdade para todos os
- * usos. O interruptor de cada IA vale para as funções da Central (e para o que passa por elas); o Tutor (conversa, avaliação,
- * voz ao vivo, transcrição do microfone), a voz do professor, o áudio dos Podcasts, a busca por significado e as rotas antigas
- * usam a chave direto no servidor, cada um com a trava própria. A tela passa a dizer isso, com a lista. Textos de teste, sem
- * conteúdo clínico; servidor simulado.
+ * Administração › Central de IAs (jsdom, servidor simulado): textos e avisos desta rodada de correções.
+ *  - IA03: a frase "Uma IA só é chamada se estiver ligada aqui" não era verdade para todos os usos. O interruptor de cada IA vale para
+ *    as funções da Central (e para o que passa por elas); o Tutor (conversa, avaliação, voz ao vivo, transcrição do microfone), a voz
+ *    do professor, o áudio dos Podcasts, a busca por significado e as rotas antigas usam a chave direto no servidor, cada um com a
+ *    trava própria. A tela passa a dizer isso, com a lista.
+ *  - IA09: chamada de modelo pago sem preço cadastrado não aparece com gasto US$ 0.
+ * Textos de teste, sem conteúdo clínico.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -61,5 +63,33 @@ describe("IA03: o texto do interruptor diz a verdade", () => {
     expect(itens[2]).toMatch(/^Áudio dos Podcasts: OpenAI \(a voz do Gemini existe, mas fica desligada por padrão no servidor\)/);
     expect(itens[3]).toMatch(/^Busca por significado da Central de Conteúdo: Gemini/);
     expect(itens[4]).toMatch(/^Rotas antigas de IA da Administração: Claude e Gemini/);
+  });
+});
+
+describe("IA09: chamada de modelo pago sem preço não aparece com gasto US$ 0", () => {
+  const call = (id: number, extra: any = {}) => ({ id, created_at: "2026-10-11T12:00:00Z", function_key: "criacao", role: "principal", provider: "anthropic", model: "claude-opus-5", input_tokens: 1000, output_tokens: 50, cost_usd: 0, outcome: "ok", ...extra });
+
+  it("tokens gastos e custo zero em IA paga vira \"sem preço\"; com custo mostra o valor; Ollama e chamada sem tokens seguem US$ 0", async () => {
+    (globalThis as any).fetch = vi.fn(async (url: string) =>
+      url === "/api/ai-central/overview"
+        ? json({
+            ...structuredClone(OVERVIEW),
+            recent_calls: [
+              call(1, { model: "claude-sem-preco" }),
+              call(2, { model: "claude-com-preco", cost_usd: 0.0123 }),
+              call(3, { provider: "ollama", model: "qwen3" }),
+              call(4, { model: "claude-teto", input_tokens: 0, output_tokens: 0, outcome: "teto" }),
+            ],
+          })
+        : json({ ok: true }),
+    );
+    render(<AdminAI />);
+    await screen.findByTestId("provider-anthropic");
+    const row = (model: string) => screen.getByText(model).closest("tr") as HTMLElement;
+    expect(within(row("claude-sem-preco")).getByText("sem preço")).toBeTruthy();
+    expect(within(row("claude-sem-preco")).queryByText("US$ 0")).toBeNull();
+    expect(within(row("claude-com-preco")).getByText("US$ 0,0123")).toBeTruthy();
+    expect(within(row("qwen3")).getByText("US$ 0")).toBeTruthy();
+    expect(within(row("claude-teto")).getByText("US$ 0")).toBeTruthy();
   });
 });

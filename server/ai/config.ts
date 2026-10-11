@@ -116,6 +116,13 @@ const listPt = (items: string[]) => (items.length > 1 ? `${items.slice(0, -1).jo
 const ROLE_OF: Record<string, string> = { principal: "da principal", reserva: "da reserva", conferente: "do conferente", membro: "do membro" };
 const aiName = (ref: ModelRef) => `${PROVIDER_NAMES[ref.provider] ?? ref.provider} ${ref.model}`;
 const priceOf = (cfg: AiConfig, ref: ModelRef) => cfg.prices.find((p) => p.provider === ref.provider && p.model === ref.model) ?? null;
+/** Modelo pago (tudo menos o Ollama, que custa zero) sem preço cadastrado: o gasto dele apareceria como US$ 0 (IA09). */
+const lacksPrice = (ref: ModelRef, cfg: AiConfig) => ref.provider !== "ollama" && !priceOf(cfg, ref);
+const PRICE_WHERE = `tabela "Preços por milhão de tokens" ou "Atualizar lista" da IA`;
+/** Aviso, no que já está salvo e rodando: nada para, mas o dono vê o que falta. */
+const noPriceWarning = (ref: ModelRef) => `${aiName(ref)}: sem preço cadastrado. O gasto dele aparece como US$ 0 até o preço ser cadastrado (${PRICE_WHERE}).`;
+/** Problema, ao salvar a função: o preço é exigido para ligar um modelo pago, com ou sem teto. */
+const noPriceProblem = (ref: ModelRef) => `${aiName(ref)}: sem preço cadastrado. Cadastre o preço antes de usar este modelo (${PRICE_WHERE}); sem ele o gasto aparece como US$ 0.`;
 const hasFolga = (ref: ModelRef, care: string | undefined) => ref.provider === "gemini" && geminiThinkingReserve(ref.model, care) > 0;
 const FOLGA = ", já com a folga do raciocínio do Gemini";
 
@@ -375,7 +382,7 @@ export function refProblems(ref: ModelRef, cfg: AiConfig): string[] {
   return out;
 }
 
-export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig): { problems: string[]; warnings: string[] } {
+export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig, opts: { requirePrice?: boolean } = {}): { problems: string[]; warnings: string[] } {
   const problems: string[] = [];
   const warnings: string[] = [];
   const add = (m: string) => {
@@ -402,6 +409,19 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig): { pro
   }
 
   for (const r of [fc.primary, fc.fallback, ...reviewers]) if (r) checkRef(r);
+
+  // modelo pago sem preço (IA09). Com os tetos ligados, refProblems já bloqueia. Com os tetos desligados o gasto dele apareceria
+  // como US$ 0: ao SALVAR a função (requirePrice, a rota) é problema, porque o preço é exigido para ligar o modelo; no que já está
+  // salvo e rodando é só aviso, porque um problema aqui pararia uma função que hoje funciona (o maestro não olha este aviso)
+  if (!cfg.settings.caps_enabled) {
+    const seen = new Set<string>();
+    for (const r of [fc.primary, fc.fallback, ...reviewers]) {
+      if (!r || !lacksPrice(r, cfg) || seen.has(`${r.provider}:${r.model}`)) continue;
+      seen.add(`${r.provider}:${r.model}`);
+      if (opts.requirePrice) add(noPriceProblem(r));
+      else warnings.push(noPriceWarning(r));
+    }
+  }
 
   if (fc.mode === "linha") {
     for (const rv of reviewers) {
@@ -526,6 +546,8 @@ export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.e
       if (!pending && keyPending(ref.provider, env)) warnings.push(keyWarning(ref.provider));
       // a reserva das variáveis (CONTENT_HUB_AI_FALLBACK_PROVIDER), a mesma que o maestro usa sem configuração salva
       const reserve = envReserveRef(ref, env);
+      // modelo pago sem preço, com os tetos desligados (com eles ligados é problema, acima): o gasto aparece como US$ 0 (IA09)
+      if (!cfg.settings.caps_enabled) for (const r of [ref, reserve]) if (r && lacksPrice(r, cfg)) warnings.push(noPriceWarning(r));
       const uses = TYPICAL_CALLS[key] ?? [];
       warnings.push(...perRunCapWarnings([{ ref, role: "principal", calls: uses, care: undefined }, ...(reserve ? [{ ref: reserve, role: "reserva" as const, calls: uses, care: undefined }] : [])], cfg));
       const chain = failureChainWarning(key, ref, reserve, undefined, cfg);

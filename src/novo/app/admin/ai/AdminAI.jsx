@@ -23,6 +23,13 @@ const OUTCOME = { ok: ["ok", "success"], falha: ["falha", "danger"], teto: ["tet
 const ACTION = { "ai.provider": "IA ligada/desligada", "ai.function": "função", "ai.settings": "tetos e seletor", "ai.price": "preço" };
 const ROLE = { principal: "principal", reserva: "reserva", criadora: "criadora", conferente: "conferente", membro: "membro" };
 
+/**
+ * Custo de uma chamada na tabela (IA09): IA paga que gastou tokens e ficou com custo zero é modelo sem preço cadastrado. Mostrar
+ * "US$ 0" ali dizia que a chamada saiu de graça. O Ollama custa zero, e chamada sem tokens (teto, bloqueada, falha sem resposta)
+ * também fica em "US$ 0".
+ */
+const callCost = (c) => (Number(c.cost_usd) === 0 && c.provider !== "ollama" && Number(c.input_tokens ?? 0) + Number(c.output_tokens ?? 0) > 0 ? "sem preço" : usd(c.cost_usd));
+
 const when = (iso) => (iso ? new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(iso)) : "—");
 const day = (iso) => (iso ? new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso)) : "—");
 const statusOf = (s) => (s ? (STATUS[s] ?? [s, "neutral"]) : ["lista ainda não atualizada", "neutral"]);
@@ -296,7 +303,7 @@ function Spend({ data, backend, reload }) {
                       {label}
                     </Badge>
                   </td>
-                  <td style={cell}>{usd(c.cost_usd)}</td>
+                  <td style={cell}>{callCost(c)}</td>
                 </tr>
               );
             })}

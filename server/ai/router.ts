@@ -157,7 +157,8 @@ export function createAiRouter(
         reviewers: reviewers.map(refOf),
       };
       const cfg = await fresh();
-      const { problems, warnings } = validateFunctionConfig(config, cfg);
+      // ao salvar, o modelo pago sem preço é problema, com ou sem tetos (IA09); o que já está salvo e rodando só avisa
+      const { problems, warnings } = validateFunctionConfig(config, cfg, { requirePrice: true });
       // IA que este servidor não consegue chamar (Ollama no site publicado ou sem resposta) não pode ser escolhida
       for (const ref of [config.primary, config.fallback, ...config.reviewers]) {
         const why = ref && providerPending(ref, cfg, env);
