@@ -234,7 +234,7 @@ export function safetyCheck(out: TutorOutput, ctx: SafetyContext): SafetyResult 
   if (cur && !officialCited && !ctx.hasUpdateCard) add("currency_claim", `Afirma vigência ou mudança de conduta sem fonte na base: "${cur[0].trim()}".`);
 
   // 3b. material complementar (apostila) nunca é citado ao aluno, nem o nome dele
-  const material = mentionsSupportMaterial(reply, ctx.supportTerms ?? []);
+  const material = mentionsSupportMaterial([reply, ...(out.suggested_replies ?? [])].join(" \n "), ctx.supportTerms ?? []);
   if (material.length) add("cites_support_material", `Cita material de apoio (${material.map((m) => `"${m}"`).join(", ")}).`);
 
   // 4. gabarito oficial é histórico

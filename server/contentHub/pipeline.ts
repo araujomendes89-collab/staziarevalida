@@ -915,7 +915,7 @@ export function lessonReferences(claims: any[]) {
   const seen = new Map<string, any>();
   for (const c of claims)
     for (const e of c.evidence ?? [])
-      if (e.verdict === "compatible") {
+      if (e.verdict === "compatible" && e.audience !== "complementar") { // fonte complementar (apostila) nunca entra nas referências impressas
         const key = `${e.source_id}|${e.version ?? ""}|${e.page ?? ""}`;
         if (!seen.has(key))
           seen.set(key, { source: e.source, organ: e.organ, version: e.version, published_on: e.published_on, url: e.url, section: e.section, page: e.page, simulated: e.simulated || undefined });

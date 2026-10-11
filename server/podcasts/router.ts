@@ -150,6 +150,14 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     const note = `Documento longo: entraram só os primeiros ${chunks.length} de ${info.total} trechos${ate}. O resto não foi usado. Divida o documento em partes menores para o podcast cobrir tudo.`;
     return { ...view, note };
   };
+  /** Grava o SHA-256 do arquivo enviado: a apostila é reconhecida mesmo com nome de arquivo neutro (fonte complementar). */
+  const markFile = async (key: string, bytes: Buffer) => {
+    try {
+      await service("ch_worker_file_sha", { p_path: key, p_sha: crypto.createHash("sha256").update(bytes).digest("hex") });
+    } catch (error) {
+      log(`podcasts: SHA-256 do arquivo não gravado: ${message(error)}`);
+    }
+  };
   const extractFile = (buf: Buffer, ext: "pdf" | "docx") => (ext === "pdf" ? extractPdf(buf) : extractDocx(buf));
 
   /** O que está pronto no servidor: IA do roteiro, vozes e as opções de voz. */
@@ -200,7 +208,9 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const buf = await deps!.storage.get(key);
       if (!spec.magic(buf)) throw httpError(415, "O conteúdo não corresponde ao tipo informado.");
       const pages = await extractFile(buf, spec.ext);
-      res.status(201).json(await ingest(req, { kind: spec.ext, title: String(title || "Documento").slice(0, 200), storage_path: key }, pages));
+      const view = await ingest(req, { kind: spec.ext, title: String(title || "Documento").slice(0, 200), storage_path: key }, pages);
+      await markFile(key, buf);
+      res.status(201).json(view);
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }
@@ -221,7 +231,9 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       if (!(await deps!.storage.exists(key))) await deps!.storage.put(key, body, type);
       const pages = await extractFile(body, spec.ext);
       const name = decodeURIComponent(String(req.headers["x-file-name"] ?? "Documento")).slice(0, 200) || "Documento";
-      res.status(201).json(await ingest(req, { kind: spec.ext, title: name, storage_path: key }, pages));
+      const view = await ingest(req, { kind: spec.ext, title: name, storage_path: key }, pages);
+      await markFile(key, body);
+      res.status(201).json(view);
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }

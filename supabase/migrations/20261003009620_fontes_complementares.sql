@@ -276,10 +276,17 @@ create or replace function public.ch_worker_complementar_terms() returns jsonb
   language sql stable security definer set search_path = ''
 as $$
   select coalesce(jsonb_agg(distinct t.term), '[]'::jsonb)
-  from (select btrim(s.title) as term from public.ch_sources s where s.audience = 'complementar'
-        union select btrim(s.organ) from public.ch_sources s where s.audience = 'complementar'
-        union select 'Sangue nos Olhos') t
-  where char_length(t.term) >= 5
+  from (
+    select btrim(v.x) as term, false as alias
+    from public.ch_sources s left join public.ch_documents d on d.id = s.document_id
+    cross join lateral (values (s.title), (s.organ), (s.authors), (d.name), (regexp_replace(d.name, '\.(pdf|docx?|pptx?|txt|epub)\s*$', '', 'i')), (d.publisher), (d.author),
+                               (replace(public.ch_url_host(s.url), '.', ' '))) v (x)
+    where s.audience = 'complementar' and v.x is not null
+    union select btrim(a), true from public.ch_sources s cross join lateral unnest(s.aliases) a where s.audience = 'complementar'
+    union select 'Sangue nos Olhos', false) t
+  where char_length(t.term) >= case when t.alias then 3 else 5 end
+    -- título genérico (2 palavras curtas) não vira termo de busca em texto livre: esconderia texto médico legítimo
+    and (t.alias or t.term = 'Sangue nos Olhos' or array_length(string_to_array(public.ch_text_key(t.term), ' '), 1) >= 3 or char_length(public.ch_text_key(t.term)) >= 20)
 $$;
 
 -- ---------------------------------------------------------------- 3. campos de fonte digitados pela equipe: marca guardada
@@ -866,6 +873,7 @@ revoke execute on function public.ch_take_raw(text, text) from public, anon, aut
 
 select public.ch_take_raw('app_tutor_session', 'uuid');
 select public.ch_take_raw('app_podcasts', 'text');
+select public.ch_take_raw('app_announcement', '');
 select public.ch_take_raw('app_admin_podcast_approve', 'uuid, text');
 select public.ch_take_raw('app_admin_podcast_publish', 'uuid, boolean');
 select public.ch_take_raw('app_admin_review_guideline_update', 'uuid, text, text');
@@ -878,6 +886,10 @@ as $$ select public.ch_scrub_json(public.ch_raw_app_tutor_session(p_session_id))
 create or replace function public.app_podcasts(p_area text default null) returns jsonb
   language sql stable security definer set search_path = ''
 as $$ select public.ch_scrub_json(public.ch_raw_app_podcasts(p_area)) /* ch_wrapper */ $$;
+create or replace function public.app_announcement() returns jsonb
+  language sql stable security definer set search_path = ''
+as $$ select public.ch_scrub_json(public.ch_raw_app_announcement()) /* ch_wrapper */ $$;
+revoke execute on function public.app_announcement() from public, anon;
 revoke execute on function public.app_tutor_session(uuid) from public, anon;
 revoke execute on function public.app_podcasts(text) from public, anon;
 
@@ -977,11 +989,9 @@ as $$
 declare v_terms text[];
 begin
   perform public.assert_admin();
-  select coalesce(array_agg(distinct public.ch_text_key(x.t)), '{}') into v_terms
-    from (select s.title as t from public.ch_sources s where s.audience = 'complementar'
-          union select s.organ from public.ch_sources s where s.audience = 'complementar'
-          union select 'Sangue nos Olhos') x
-   where char_length(public.ch_text_key(x.t)) >= 5;
+  select coalesce(array_agg(distinct x.t), '{}') into v_terms
+    from (select c.chave as t from public.ch_complementar_keys() c where c.distintiva
+          union select 'sangue nos olhos') x;
   return coalesce((select jsonb_agg(r.item order by r.kind, r.id) from (
     select 'analise' as kind, a.question_id as id, jsonb_build_object('kind', 'analise', 'id', a.question_id, 'onde', 'Análise publicada da questão') as item
       from public.question_analysis a
@@ -1022,7 +1032,7 @@ begin
       ('app_question_commentary', 'ch_scrub_json'), ('practice_correction_view', 'ch_scrub_json'), ('tutor_truth', 'ch_scrub_json'),
       ('app_question_timeline', 'ch_scrub_json'), ('app_podcast', 'ch_scrub_json'), ('lesson_view', 'ch_scrub_json'),
       ('guideline_update_view', 'ch_scrub_json'), ('lesson_materials_json', 'hidden_from_student'), ('app_lesson_material', 'hidden_from_student'),
-      ('app_tutor_session', 'ch_wrapper'), ('app_podcasts', 'ch_wrapper'), ('app_admin_podcast_approve', 'ch_wrapper'), ('app_admin_podcast_publish', 'ch_wrapper'), ('app_admin_review_guideline_update', 'ch_wrapper'), ('app_admin_publish_guideline_update', 'ch_wrapper'),
+      ('app_tutor_session', 'ch_wrapper'), ('app_announcement', 'ch_wrapper'), ('app_podcasts', 'ch_wrapper'), ('app_admin_podcast_approve', 'ch_wrapper'), ('app_admin_podcast_publish', 'ch_wrapper'), ('app_admin_review_guideline_update', 'ch_wrapper'), ('app_admin_publish_guideline_update', 'ch_wrapper'),
       ('app_lessons', 'security definer'), ('app_lesson', 'security definer'), ('app_guideline_updates', 'security definer'), ('app_guideline_update', 'security definer')
     ) as x (nome, marca)
   loop

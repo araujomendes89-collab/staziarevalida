@@ -10,7 +10,7 @@ import type { ContentDb } from "../contentHub/infra";
 import type { ModelRef } from "../ai/config";
 import { maestroProvider } from "../ai/maestro";
 import type { Schema } from "../contentHub/ai/schema";
-import { mentionsSupportMaterial, NEVER_CITE_SUPPORT_MATERIAL } from "../contentHub/complementarGuard";
+import { mentionsSupportMaterial, NEVER_CITE_SUPPORT_MATERIAL, referencesSupportMaterial } from "../contentHub/complementarGuard";
 
 export const PODCAST_PROMPT_VERSION = "1.1.0";
 export type ScriptProvider = "gemini" | "anthropic" | "openai" | "ollama";
@@ -94,7 +94,7 @@ export const WORDS_PER_MINUTE = 150;
 export function buildScriptInput(o: { topic: string; minutes: number; chunks: SourceChunk[]; notes?: string | null }): string {
   const words = o.minutes * WORDS_PER_MINUTE;
   const fontes = o.chunks
-    .map((c) => `[T${c.id}] (Documento ${c.doc} – ${c.source}${c.page != null ? `, página ${c.page}` : ""})\n${c.text}`)
+    .map((c) => `[T${c.id}] (Documento ${c.doc})\n${c.text}`) // sem nome do arquivo nem página: a IA não tem o que citar
     .join("\n\n");
   return [
     `Tema do episódio: ${o.topic}`,
@@ -153,7 +153,7 @@ export function checkScript(script: PodcastScript, chunks: Map<number, SourceChu
   const warnings: ScriptWarning[] = [];
   script.lines.forEach((l, i) => {
     // texto voltado ao aluno: não pode citar apostila nem material complementar (nem o título ou o órgão dele)
-    const cites = mentionsSupportMaterial(l.text, terms);
+    const cites = [...mentionsSupportMaterial(l.text, terms), ...(terms.length > 1 ? referencesSupportMaterial(l.text) : [])];
     if (cites.length) warnings.push({ line: i, kind: "cites_material", detail: `Cita material de apoio (${cites.map((c) => `"${c}"`).join(", ")}); tire o nome e diga só o conteúdo` });
     const bad = l.sources.filter((s) => !chunks.has(s));
     const notSent = bad.filter((s) => all?.has(s));

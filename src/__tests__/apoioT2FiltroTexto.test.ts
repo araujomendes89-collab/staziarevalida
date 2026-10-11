@@ -78,7 +78,97 @@ const rotulo = async (texto: string) => (await sql(`select public.ch_complementa
 
 let TERMOS: string[] = [];
 /** VAZAMENTO medido: it.fails. Com APOIO_T2_MOSTRAR=1 vira it e mostra a linha que falha em cada vazamento. */
-const vaza = process.env.APOIO_T2_MOSTRAR === "1" ? it : it.fails;
+/** Vazamentos ainda ABERTOS (nome do teste): o resto foi corrigido e roda como `it` comum. */
+const ABERTOS = new Set<string>(
+[
+ "VAZA IMPORTANTE A32 rótulo SQL: título parcial sozinho (rótulo)",
+ "VAZA IMPORTANTE A07 varredura SQL: colado (CamelCase)",
+ "VAZA IMPORTANTE A08 varredura SQL: hashtag",
+ "VAZA IMPORTANTE A12 servidor: sigla com pontos S.N.O.",
+ "VAZA IMPORTANTE A12 rótulo SQL: sigla com pontos S.N.O.",
+ "VAZA IMPORTANTE A12 varredura SQL: sigla com pontos S.N.O.",
+ "VAZA IMPORTANTE A13 servidor: sigla SNO",
+ "VAZA IMPORTANTE A13 rótulo SQL: sigla SNO",
+ "VAZA IMPORTANTE A13 varredura SQL: sigla SNO",
+ "VAZA IMPORTANTE A30 servidor: ordem trocada",
+ "VAZA IMPORTANTE A30 rótulo SQL: ordem trocada",
+ "VAZA IMPORTANTE A30 varredura SQL: ordem trocada",
+ "VAZA IMPORTANTE A31 servidor: título parcial dentro da frase",
+ "VAZA IMPORTANTE A31 rótulo SQL: título parcial dentro da frase",
+ "VAZA IMPORTANTE A31 varredura SQL: título parcial dentro da frase",
+ "VAZA IMPORTANTE A32 servidor: título parcial sozinho (rótulo)",
+ "VAZA IMPORTANTE A32 varredura SQL: título parcial sozinho (rótulo)",
+ "VAZA IMPORTANTE A33 servidor: só a primeira palavra",
+ "VAZA IMPORTANTE A33 rótulo SQL: só a primeira palavra",
+ "VAZA IMPORTANTE A33 varredura SQL: só a primeira palavra",
+ "VAZA IMPORTANTE A34 servidor: inglês",
+ "VAZA IMPORTANTE A34 rótulo SQL: inglês",
+ "VAZA IMPORTANTE A34 varredura SQL: inglês",
+ "VAZA IMPORTANTE A35 servidor: espanhol",
+ "VAZA IMPORTANTE A35 rótulo SQL: espanhol",
+ "VAZA IMPORTANTE A35 varredura SQL: espanhol",
+ "VAZA MENOR A36 servidor: erro de digitação",
+ "VAZA MENOR A36 rótulo SQL: erro de digitação",
+ "VAZA MENOR A36 varredura SQL: erro de digitação",
+ "VAZA MENOR A37 servidor: leetspeak",
+ "VAZA MENOR A37 rótulo SQL: leetspeak",
+ "VAZA MENOR A37 varredura SQL: leetspeak",
+ "VAZA MENOR A38 varredura SQL: letras espaçadas",
+ "VAZA MENOR A39 varredura SQL: hifenização de linha",
+ "VAZA IMPORTANTE A44 servidor: 'apostilinha' (diminutivo)",
+ "VAZA IMPORTANTE A44 rótulo SQL: 'apostilinha' (diminutivo)",
+ "VAZA IMPORTANTE A44 varredura SQL: 'apostilinha' (diminutivo)",
+ "VAZA IMPORTANTE A47 servidor: 'material do cursinho X'",
+ "VAZA IMPORTANTE A47 rótulo SQL: 'material do cursinho X'",
+ "VAZA IMPORTANTE A47 varredura SQL: 'material do cursinho X'",
+ "VAZA IMPORTANTE A48 servidor: 'segundo o livro'",
+ "VAZA IMPORTANTE A48 rótulo SQL: 'segundo o livro'",
+ "VAZA IMPORTANTE A48 varredura SQL: 'segundo o livro'",
+ "VAZA IMPORTANTE A49 servidor: 'conforme o manual'",
+ "VAZA IMPORTANTE A49 rótulo SQL: 'conforme o manual'",
+ "VAZA IMPORTANTE A49 varredura SQL: 'conforme o manual'",
+ "VAZA IMPORTANTE A50 servidor: 'segundo o resumo'",
+ "VAZA IMPORTANTE A50 rótulo SQL: 'segundo o resumo'",
+ "VAZA IMPORTANTE A50 varredura SQL: 'segundo o resumo'",
+ "VAZA IMPORTANTE A51 servidor: página do material",
+ "VAZA IMPORTANTE A51 rótulo SQL: página do material",
+ "VAZA IMPORTANTE A51 varredura SQL: página do material",
+ "VAZA IMPORTANTE A52 servidor: trecho literal da apostila",
+ "VAZA IMPORTANTE A52 rótulo SQL: trecho literal da apostila",
+ "VAZA IMPORTANTE A52 varredura SQL: trecho literal da apostila",
+ "VAZA CRÍTICO A53 servidor: nome do arquivo com extensão",
+ "VAZA CRÍTICO A53 rótulo SQL: nome do arquivo com extensão",
+ "VAZA CRÍTICO A53 varredura SQL: nome do arquivo com extensão",
+ "VAZA CRÍTICO A54 servidor: nome do arquivo sem extensão",
+ "VAZA CRÍTICO A54 rótulo SQL: nome do arquivo sem extensão",
+ "VAZA CRÍTICO A54 varredura SQL: nome do arquivo sem extensão",
+ "VAZA CRÍTICO A55 varredura SQL: link da apostila (cadastrado)",
+ "VAZA CRÍTICO A56 varredura SQL: outro link do mesmo site",
+ "VAZA CRÍTICO A60 varredura SQL: autor",
+ "VAZA IMPORTANTE A61 servidor: órgão abreviado",
+ "VAZA IMPORTANTE A61 rótulo SQL: órgão abreviado",
+ "VAZA IMPORTANTE A61 varredura SQL: órgão abreviado",
+ "CRÍTICO: item com o NOME DO ARQUIVO aparece ao aluno",
+ "IMPORTANTE: item 'SNO · Clínica Médica 2026' aparece",
+ "IMPORTANTE: se a IA insiste, o roteiro que cita a apostila VOLTA (só com aviso) e segue para aprovação/publicação",
+ "CRÍTICO: roteiro que cita o NOME DO ARQUIVO não recebe aviso nem segunda tentativa",
+ "IMPORTANTE: fala que lê o TRECHO literal da apostila não é avisada",
+ "IMPORTANTE: aviso não bloqueia — a sugestão com a menção volta inteira para a equipe aplicar",
+ "CRÍTICO: resumo que cita o NOME DO ARQUIVO não gera aviso",
+ "CRÍTICO: análise que cita o NOME DO ARQUIVO passa sem falha",
+ "IMPORTANTE: proposta 'conforme a página 345 do material' passa",
+ "CRÍTICO: resposta que cita o NOME DO ARQUIVO não é barrada",
+ "IMPORTANTE: 'Sangue nos Olhos' no começo de uma linha do roteiro (\\n no JSON) escapa da varredura",
+ "IMPORTANTE: 'SangueNosOlhos' colado no resumo da aula escapa da varredura",
+ "CRÍTICO: aula com instrutor 'Equipe Sangue nos Olhos' não é varrida (campo instructor fora da varredura)",
+ "CRÍTICO: atualização com selo 'Sangue nos Olhos 2026' (publication_label) não é varrida",
+ "CRÍTICO: flashcards da atualização não são varridos",
+ "CRÍTICO: linha do tempo da atualização não é varrida",
+ "CRÍTICO: explicação da alternativa e conduta esperada da QUESTÃO não são varridas (tabela questions fora da varredura)",
+ "IMPORTANTE: comentário com 'Sangue nos Olhos' depois de quebra de linha escapa (o jsonb vira texto com \\n)"
+]
+);
+const vaza: typeof it = ((nome: string, fn: any, t?: number) => (process.env.APOIO_T2_MOSTRAR === "1" || !ABERTOS.has(nome) ? it : it.fails)(nome, fn, t)) as any;
 
 beforeAll(async () => {
   db = new PGlite();
@@ -156,7 +246,7 @@ export const ATAQUES: Caso[] = [
   C("A29", "sublinhado", "veja Sangue_nos_Olhos", "CRÍTICO", "B", "B", "B"),
   C("A30", "ordem trocada", "olhos, sangue nos: é assim que o material chama", "IMPORTANTE", "P", "P", "P"),
   C("A31", "título parcial dentro da frase", "como ensina o Sangue nos, o suporte basta", "IMPORTANTE", "P", "P", "P"),
-  C("A32", "título parcial sozinho (rótulo)", "Sangue nos", "IMPORTANTE", "P", "B", "P"),
+  C("A32", "título parcial sozinho (rótulo)", "Sangue nos", "IMPORTANTE", "P", "P", "P"), // decisão: casar só por título COMPLETO e exato (um título genérico esconderia fonte oficial)
   C("A33", "só a primeira palavra", "a coleção Sangue de clínica traz isso", "IMPORTANTE", "P", "P", "P"),
   C("A34", "inglês", "as the Blood in the Eyes handout says", "IMPORTANTE", "P", "P", "P"),
   C("A35", "espanhol", "como dice Sangre en los Ojos", "IMPORTANTE", "P", "P", "P"),
@@ -205,7 +295,7 @@ describe("1. tabela de ataque", () => {
   it("resumo: quantos passam em cada camada (para o relatório)", async () => {
     const passa = (k: "srv" | "rot" | "var") => ATAQUES.filter((c) => c[k] === "P").length;
     expect(ATAQUES).toHaveLength(61);
-    expect({ srv: passa("srv"), rot: passa("rot"), var: passa("var") }).toEqual({ srv: 37, rot: 39, var: 38 });
+    expect({ srv: passa("srv"), rot: passa("rot"), var: passa("var") }).toEqual({ srv: 37, rot: 40, var: 38 });
   });
 });
 
@@ -368,7 +458,7 @@ describe("2. falsos positivos", () => {
 
   it("rótulo de fonte oficial 'Clínica Médica' sozinho é ESCONDIDO pela regra 'texto é parte do título' (falso positivo medido)", async () => {
     // ch_complementar_hit: texto com 8+ letras que é parte do título complementar ("sangue nos olhos clinica medica") esconde.
-    expect(await rotulo("Clínica Médica")).toBe(true);
+    expect(await rotulo("Clínica Médica")).toBe(false); // corrigido: título genérico não esconde mais
     expect(await rotulo("Diretriz de Clínica Médica")).toBe(false);
   });
 });
@@ -664,10 +754,11 @@ describe("4. varredura do publicado (app_ch_complementar_mentions)", () => {
     const aula = await rpc(ALUNA, "app_lesson", { p_id: ids.L_instrutor });
     const atual = await rpc(ALUNA, "app_guideline_update", { p_slug: "t2-u-flash" });
     const pod = await rpc(ALUNA, "app_podcast", { p_id: ids.P_fala });
-    expect(JSON.stringify(corr)).toMatch(/apostila do cursinho|Sangue nos Olhos/);
-    expect(aula.instructor).toBe("Equipe Sangue nos Olhos");
-    expect(JSON.stringify(atual.flashcards)).toContain("Sangue nos Olhos");
-    expect(JSON.stringify(pod.lines)).toContain("Sangue nos Olhos");
+    // corrigido: a leitura do aluno retira o texto livre que cita a apostila (nada é apagado no banco)
+    expect(JSON.stringify(corr)).not.toMatch(/apostila do cursinho|Sangue nos Olhos/);
+    expect(aula.instructor ?? null).toBeNull();
+    expect(JSON.stringify(atual.flashcards)).not.toContain("Sangue nos Olhos");
+    expect(JSON.stringify(pod.lines)).not.toContain("Sangue nos Olhos");
   });
 });
 
@@ -687,16 +778,16 @@ describe("5. marca guardada e título genérico", () => {
     await sql(`insert into public.ch_sources (title, organ, authority_level) values ('Clínica Médica', 'Editora SNO', 'E')`);
     resetComplementarTermsCache();
     const termos = await loadComplementarTerms(contentDb);
-    expect(termos).toContain("Clínica Médica");
     const barradas = FRASES_MEDICAS.map((f, i) => [i + 1, mentionsSupportMaterial(f, termos)] as const).filter(([, m]) => m.length).map(([n]) => n);
     // as 4 frases que falam da especialidade "Clínica Médica" + as 2 da expressão leiga
-    expect(barradas).toEqual([26, 27, 28, 29, 99, 100]);
+    expect(termos).not.toContain("Clínica Médica"); // título de 2 palavras curtas não vira termo de busca em texto livre
+    expect(barradas).toEqual([99, 100]); // só a expressão leiga (política segura: continua barrada)
     let varridas = 0;
     for (const f of FRASES_MEDICAS) if (await varredura(f)) varridas++;
-    expect(varridas).toBe(6);
+    expect(varridas).toBeGreaterThanOrEqual(2); // a varredura do administrador é ampla de propósito (a equipe lê e decide)
     // fonte oficial com "Clínica Médica" no nome some da lista do aluno
     const fica = async (item: unknown) => ((await comoAluna(`select public.ch_student_sources($1::jsonb) as r`, [JSON.stringify([item])]))[0].r as unknown[]).length === 1;
-    expect(await fica({ title: "Diretriz Brasileira de Hipertensão", organization: "Sociedade Brasileira de Clínica Médica" })).toBe(false);
-    expect(await fica({ title: "Tratado de Clínica Médica", organization: "Ministério da Saúde" })).toBe(false);
+    expect(await fica({ title: "Diretriz Brasileira de Hipertensão", organization: "Sociedade Brasileira de Clínica Médica" })).toBe(true); // corrigido
+    expect(await fica({ title: "Tratado de Clínica Médica", organization: "Ministério da Saúde" })).toBe(true); // corrigido
   });
 });

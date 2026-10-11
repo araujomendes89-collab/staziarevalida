@@ -272,7 +272,7 @@ describe("Tutor por texto (/api/tutor/turn) e a releitura da conversa (app_tutor
    * `out.suggested_replies` para a resposta e para o histórico (server/tutor/engine.ts:452 `suggested: ... out!.suggested_replies`;
    * app_tutor_session devolve meta->'suggested', 20261003005600_tutor_nexus_conversa.sql).
    */
-  vaza("T1: resposta limpa com SUGESTÕES que citam a apostila — as sugestões não chegam ao aluno", async () => {
+  it("CORRIGIDO T1: resposta limpa com SUGESTÕES que citam a apostila — as sugestões não chegam ao aluno", async () => {
     const sid = await sessaoLivre();
     responder = () => out("Pensa no quadro: o que muda a conduta?", { suggested_replies: ["O que a Sangue nos Olhos diz disso?", `Abre o ${COMP_FILE} na página ${COMP_PAGE}`] });
     const r = await turno(sid, "hepatite B crônica");
@@ -287,7 +287,7 @@ describe("Tutor por texto (/api/tutor/turn) e a releitura da conversa (app_tutor
    * (ch_worker_complementar_terms, 20261003009620_fontes_complementares.sql:120-129; complementarGuard.ts:33-41). Nome do arquivo
    * (ch_documents.name), autor (ch_sources.authors) e página não são termos.
    */
-  vaza("T2: resposta que cita só o NOME DO ARQUIVO, o autor e a página da apostila é barrada", async () => {
+  it("CORRIGIDO T2: resposta que cita só o NOME DO ARQUIVO, o autor e a página da apostila é barrada", async () => {
     const sid = await sessaoLivre();
     responder = () => out(`Isso está no ${COMP_FILE}, do Dr. Fulano de Tal, página ${COMP_PAGE}. Pensa no quadro.`);
     const r = await turno(sid, "hepatite B crônica");
@@ -332,7 +332,7 @@ describe("Tutor por voz em tempo real (/api/tutor/voice/*): ferramentas, confer�
    * (ch_student_sources); explicação/análise/what_changed saem cruas, e a ferramenta devolve tudo ao navegador
    * (server/tutor/tools.ts:121-122 → server/tutor/router.ts:309).
    */
-  vaza("V1: explicação da alternativa que cita a apostila não sai na saída da ferramenta (que o navegador do aluno recebe)", async () => {
+  it("CORRIGIDO V1: explicação da alternativa que cita a apostila não sai na saída da ferramenta (que o navegador do aluno recebe)", async () => {
     const qid = (await releitura(sid)).question.id;
     await sql(`update public.questions set options = (select jsonb_agg(o || jsonb_build_object('explanation', 'Conforme a Sangue nos Olhos p. 123, é a correta.') order by o ->> 'id') from jsonb_array_elements(options) o) where id = $1`, [qid]);
     const r = await tool("get_question_context");
@@ -355,7 +355,7 @@ describe("Tutor por voz em tempo real (/api/tutor/voice/*): ferramentas, confer�
    * `m.content` cru (20261003005600_tutor_nexus_conversa.sql, campo messages) e o aluno relê o nome da apostila na conversa
    * (e o "Ouvir" da mensagem — /api/tutor/speech, ch_worker_tutor_speech — fala de novo o texto gravado).
    */
-  vaza("V2: a fala barrada não fica gravada com o nome para o aluno reler", async () => {
+  it("CORRIGIDO V2: a fala barrada não fica gravada com o nome para o aluno reler", async () => {
     await fala(`Segundo a ${COMP_TITLE}, ${COMP_ORGAN}, isso cai sempre.`);
     const s = await releitura(sid);
     expect(marcasEm(s.messages)).toEqual([]); // FALHA AQUI: a fala aparece inteira na releitura
@@ -366,7 +366,7 @@ describe("Tutor por voz em tempo real (/api/tutor/voice/*): ferramentas, confer�
    * genérico (server/tutor/realtime.ts:476-484 não tem linha para "cites_support_material"), então a voz não sabe que deve
    * deixar de citar o material e tende a repetir.
    */
-  vaza("V3: a correção da voz pede para não citar o material", async () => {
+  it("CORRIGIDO V3: a correção da voz pede para não citar o material", async () => {
     const r = await fala("Isso está na Sangue nos Olhos, viu?");
     expect(r.body.correction).toMatch(/material|apostila|fonte/i); // FALHA AQUI: só "CORREÇÃO OBRIGATÓRIA, diga já..."
   });
@@ -378,7 +378,7 @@ describe("Tutor por voz em tempo real (/api/tutor/voice/*): ferramentas, confer�
    * "erros do aluno: ler os próprios", 20261003003500_tutor_v2.sql:151). Causa: server/tutor/tools.ts:170-180 sem
    * mentionsSupportMaterial. As memórias também voltam ao modelo nas próximas ligações (realtime.ts sessionContext).
    */
-  vaza("V4: memória e evento de aprendizagem gravados pela voz não guardam o nome da apostila para o aluno ler", async () => {
+  it("CORRIGIDO V4: memória e evento de aprendizagem gravados pela voz não guardam o nome da apostila para o aluno ler", async () => {
     await tool("save_tutor_memory", { kind: "fact", concept: "Sangue nos Olhos", note: `Estuda pelo ${COMP_FILE}` });
     await tool("register_learning_event", { kind: "error", error_type: "knowledge_gap", knowledge_gap: "revisar a Sangue nos Olhos p. 123" });
     const mem = await as(ALUNO, (q) => q(`select concept, note from public.tutor_memories`));
@@ -436,7 +436,7 @@ describe("Aulas (/api/lessons/materials/:id/link e /file)", () => {
    * 20261003009620:70-83), e não o nome do arquivo do documento da fonte (ch_documents.name) nem o sha256. O aluno baixa a
    * apostila inteira por /api/lessons/materials/:id/link (router.ts:153-160) e /file.
    */
-  vaza("L1: material com o NOME DO ARQUIVO da apostila (que a biblioteca conhece) não é entregue ao aluno", async () => {
+  it("CORRIGIDO L1: material com o NOME DO ARQUIVO da apostila (que a biblioteca conhece) não é entregue ao aluno", async () => {
     const r = await get(`/api/lessons/materials/${ids.mFile}/link`, tk.aluno);
     expect(r.status).toBe(404); // FALHA AQUI: 200 com o link assinado do PDF da apostila
   });
@@ -490,7 +490,7 @@ describe("Podcasts (/api/podcasts) e o episódio que o aluno lê (app_podcast)",
    * como "Documento 2" COM A PÁGINA 123 da apostila (e conta na lista). Causa: app_podcast (20261003009620:380-398) usa
    * ch_complementar_hit(título, link), que não conhece o nome do arquivo da biblioteca (ch_documents.name) nem o sha256.
    */
-  vaza("P1: PDF da apostila (nome de arquivo conhecido pela biblioteca) não aparece ao aluno nem com a página", async () => {
+  it("CORRIGIDO P1: PDF da apostila (nome de arquivo conhecido pela biblioteca) não aparece ao aluno nem com a página", async () => {
     const ep = await rpc(ALUNO, "app_podcast", ids.podcast);
     expect(ep.sources.flatMap((s: any) => s.pages ?? [])).not.toContain(COMP_PAGE); // FALHA AQUI: pages [123]
   });
@@ -501,7 +501,7 @@ describe("Podcasts (/api/podcasts) e o episódio que o aluno lê (app_podcast)",
    * "cites_material": app_admin_podcast_approve (20261003004700_podcasts.sql) não olha os avisos e app_podcast não filtra o
    * texto. O mesmo texto vira o MP3 que o aluno ouve.
    */
-  vaza("P2: a transcrição do episódio publicado não traz o nome da apostila", async () => {
+  it("CORRIGIDO P2: a transcrição do episódio publicado não traz o nome da apostila", async () => {
     const ep = await rpc(ALUNO, "app_podcast", ids.podcast);
     expect(marcasEm(ep.lines)).toEqual([]); // FALHA AQUI: "Como diz a Sangue nos Olhos, decore o tenofovir."
   });
@@ -513,7 +513,7 @@ describe("Podcasts (/api/podcasts) e o episódio que o aluno lê (app_podcast)",
    * Fala que cita "SNO-ClinicaMedica-2026.pdf, página 123" ou a fonte do episódio marcada como complementar passa SEM aviso,
    * vai para aprovação limpa e chega ao aluno (texto e áudio).
    */
-  vaza("P3: roteiro que cita o nome do arquivo e a página da apostila recebe o aviso cites_material", async () => {
+  it("CORRIGIDO P3: roteiro que cita o nome do arquivo e a página da apostila recebe o aviso cites_material", async () => {
     const terms = await loadComplementarTerms(db);
     const chunks = new Map<number, SourceChunk>([[1, { id: 1, source: COMP_FILE, doc: 2, page: COMP_PAGE, text: "Macete." } as SourceChunk]]);
     const script: PodcastScript = { lines: [{ speaker: "ANA", text: `Lá no ${COMP_FILE}, página ${COMP_PAGE}, tem o macete.`, style: "", sources: [1] }], missing: [] };
@@ -549,7 +549,7 @@ describe("Central de Conteúdo (/api/content-hub) e o material renderizado", () 
    * é publicável. O aluno baixa o arquivo publicado por GET /api/content-hub/renders/:id (app_ch_render libera render corrente de
    * publicação ativa a qualquer usuário logado, 20261003001500_content_hub_worker.sql).
    */
-  vaza("R1: as Referências do material renderizado não citam a apostila (só a oficial)", async () => {
+  it("CORRIGIDO R1: as Referências do material renderizado não citam a apostila (só a oficial)", async () => {
     const claim = (await sql(`insert into public.ch_claims (statement) values ('Tenofovir trata hepatite B crônica.') returning id`))[0].id;
     for (const [src, page] of [[ids.sOfi, 12], [ids.sComp, COMP_PAGE]] as const) {
       await sql(`insert into public.ch_evidence (claim_id, source_id, section, page, source_version, quote, verdict, checked_by) values ($1, $2, 'Tratamento', $3, '1', $4, 'compatible', $5)`, [claim, src, page, src === ids.sComp ? COMP_TRECHO : "tenofovir", ADMIN]);

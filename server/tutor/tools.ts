@@ -19,6 +19,7 @@ import { tutorSettings } from "./settings";
 import { profanityLevel, type PersonalityParams, type ProfanityLevel } from "./personality";
 import { evaluateReasoning } from "./evaluation";
 import { ERROR_TYPES } from "./prompts";
+import { loadComplementarTerms, redactSupportMaterial } from "../contentHub/complementarGuard";
 
 const obj = (properties: Record<string, unknown>, required: string[] = []) => ({ type: "object", properties, required, additionalProperties: false });
 
@@ -168,14 +169,14 @@ export async function runTutorTool(t: ToolCtx, name: string, args: Record<string
         const kind = str(args.kind, 20);
         if (!["error", "correct", "self_correction"].includes(kind)) return { error: "Tipo de evento inválido." };
         const r = await svc<{ times: number }>("ch_worker_tutor_learning_event", {
-          p_session_id: t.sessionId, p_event: { kind, error_type: str(args.error_type, 40) || "unknown", knowledge_gap: str(args.knowledge_gap, 160) || null, source: "tutor_voice" },
+          p_session_id: t.sessionId, p_event: { kind, error_type: str(args.error_type, 40) || "unknown", knowledge_gap: redactSupportMaterial(str(args.knowledge_gap, 160), await loadComplementarTerms(t.deps.db)) || null, source: "tutor_voice" },
         });
         const mood = await moodAfter(t, kind === "self_correction" ? { kind: "message", selfCorrected: true } : kind === "correct" ? { kind: "message", seriousAttempt: true } : { kind: "message", correct: null, adjust: { repeated: r.times >= 2 } });
         return { ok: true, times_seen: r.times, tone: mood.tone, avatar: mood.avatar };
       }
       case "save_tutor_memory": {
         const r = await svc<{ saved: boolean; strength?: number; reason?: string }>("ch_worker_tutor_save_memory", {
-          p_session_id: t.sessionId, p_memory: { kind: str(args.kind, 20), concept: str(args.concept, 120), note: str(args.note, 400) || null },
+          p_session_id: t.sessionId, p_memory: { kind: str(args.kind, 20), concept: redactSupportMaterial(str(args.concept, 120), await loadComplementarTerms(t.deps.db)), note: redactSupportMaterial(str(args.note, 400), await loadComplementarTerms(t.deps.db)) || null },
         });
         return r.saved ? { ok: true, strength: r.strength } : { ok: false, note: r.reason ?? "Não guardei." };
       }
