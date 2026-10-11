@@ -266,6 +266,69 @@ function PriceRow({ row, backend, reload }) {
   );
 }
 
+const SPEND_GROUPS = {
+  tutor_conversa: "Tutor: conversa e avaliação",
+  tutor_voz_ao_vivo: "Tutor: voz ao vivo",
+  tutor_transcricao: "Tutor: transcrição do microfone",
+  tutor_voz_professor: "Tutor: voz do professor",
+  podcasts_audio: "Podcasts: áudio",
+  busca_significado: "Busca por significado (vetores dos trechos)",
+};
+const NO_RECORD_NAME = { rotas_antigas: "Rotas antigas de IA da Administração", perguntas_busca: "Perguntas da busca por significado" };
+
+/** Um lugar do painel de gasto de tudo: o valor registrado, ou o que falta saber (nunca um número inventado). */
+function spendCell(g) {
+  const cost = Number(g.cost_usd ?? 0);
+  const records = Number(g.records ?? 0);
+  const unpriced = Number(g.unpriced_records ?? 0);
+  if (records === 0) return "nenhum registro neste mês";
+  if (unpriced === records && cost === 0) return `sem preço definido (${records} ${records === 1 ? "registro" : "registros"} com uso e custo zero)`;
+  if (unpriced > 0) return `${usd(cost)} + ${unpriced} ${unpriced === 1 ? "registro sem preço" : "registros sem preço"}`;
+  return usd(cost);
+}
+
+/**
+ * Gasto do mês de tudo o que já fica registrado (IA02, só leitura): a Central (que entra nos tetos) e os usos que gravam em outros
+ * lugares. O que não grava nada aparece como "sem registro". Não é teto: nenhum destes usos para por causa dos tetos.
+ */
+function AllSpend({ data }) {
+  const a = data.all_spend;
+  if (!a) return null;
+  const groups = a.groups ?? [];
+  const withRecord = Number(data.month_spend ?? 0) + groups.reduce((t, g) => t + Number(g.cost_usd ?? 0), 0);
+  return (
+    <div data-testid="gasto-de-tudo" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <h4 style={{ margin: "8px 0 0", font: "var(--type-label)" }}>Gasto do mês de tudo (só leitura)</h4>
+      <p style={note}>Soma o que já fica registrado em cada lugar. Só a Central entra nos tetos: o Tutor, as vozes e a busca por significado não param por causa deles.</p>
+      {!a.available ? (
+        <p style={note}>Falta colar no Supabase a atualização 20261003009520 para ver o gasto dos outros lugares.</p>
+      ) : (
+        <Table heads={["Lugar", "Gasto do mês"]}>
+          <tr>
+            <td style={cell}>Central de IAs (entra nos tetos)</td>
+            <td style={cell}>{usd(data.month_spend)}</td>
+          </tr>
+          {groups.map((g) => (
+            <tr key={g.key}>
+              <td style={cell}>{SPEND_GROUPS[g.key] ?? g.key}</td>
+              <td style={cell}>{spendCell(g)}</td>
+            </tr>
+          ))}
+          {(a.no_record ?? []).map((n) => (
+            <tr key={n.key}>
+              <td style={cell}>{NO_RECORD_NAME[n.key] ?? n.key}</td>
+              <td style={cell}>{`sem registro. ${n.note ?? ""}`.trim()}</td>
+            </tr>
+          ))}
+        </Table>
+      )}
+      {a.available && (
+        <p data-testid="soma-com-registro" style={note}>{`Soma do que tem registro: ${usd(withRecord)}. Não inclui o que está sem registro nem os registros sem preço.`}</p>
+      )}
+    </div>
+  );
+}
+
 /** O que escolher nos tetos e o que ajuda a escolher (IA01): o gasto do mês e o mínimo calculado pelos preços; nada vem preenchido. */
 function CapsGuide({ data }) {
   const guide = data.cap_guidance;
@@ -337,9 +400,11 @@ function Spend({ data, backend, reload }) {
             ["Gasto do mês", usd(data.month_spend)],
             ["Por IA", (data.spend_by_provider ?? []).length ? (data.spend_by_provider ?? []).map((x) => `${PROVIDER_NAME[x.provider] ?? x.provider}: ${usd(x.cost_usd)}`).join(" · ") : "nenhuma chamada neste mês"],
             ["Por função", (data.spend_by_function ?? []).length ? (data.spend_by_function ?? []).map((x) => `${FUNCTION_NAME[x.function_key] ?? x.function_key}: ${usd(x.cost_usd)}`).join(" · ") : "nenhuma chamada neste mês"],
-            ["Tutor (fora do teto, só informação)", usd(data.tutor_month_spend)],
+            ...(data.all_spend?.available ? [] : [["Tutor (fora do teto, só informação)", usd(data.tutor_month_spend)]]),
           ]}
         />
+
+        <AllSpend data={data} />
 
         <h4 style={{ margin: "8px 0 0", font: "var(--type-label)" }}>Últimas chamadas</h4>
         {(data.recent_calls ?? []).length === 0 ? (

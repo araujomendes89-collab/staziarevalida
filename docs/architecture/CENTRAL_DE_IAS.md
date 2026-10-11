@@ -207,6 +207,41 @@ comitê mostrados para a equipe aparecem a partir da etapa 2.
   16.000 e 125 mil; Questões, 12.000 e 8 mil; assistentes, 6.000 e 70 mil. Na Verificação, conferentes e membros são conferidos
   com a conferência de rascunhos (4.096 de saída, ~20 mil caracteres, **sem** o Cuidado da função).
 
+## Gasto do mês de tudo (IA02, só leitura, 2026-10-11)
+O teto e o "gasto do mês" da Central só enxergam o que passa pelo maestro (`ai_calls`). O Tutor, a voz ao vivo, a transcrição do
+microfone, a voz do professor, o áudio dos Podcasts e a busca por significado gravam o gasto em outros lugares. O painel **Gasto
+do mês de tudo** (seção "Gasto e tetos") soma o que já fica registrado, sem estimar nada:
+
+| Lugar no painel | Onde o gasto é gravado | Observação |
+|---|---|---|
+| Central de IAs (entra nos tetos) | `ai_calls` | é o gasto de sempre; as Aulas e o roteiro dos Podcasts estão aqui (o `ai_usage_ledger` repete essas duas linhas, por isso elas não são somadas de novo) |
+| Tutor: conversa e avaliação | `ai_usage_ledger`, `tutor_text` e `tutor_eval` | a reserva da cota (sem tokens) não conta como uso |
+| Tutor: voz ao vivo | `ai_usage_ledger`, `tutor_voice_live`, `tutor_voice_gemini`, `tutor_voice_tokens`, `tutor_voice_backend` | `tutor_voice` é só o tempo da cota: o custo está nas outras linhas |
+| Tutor: transcrição do microfone | `ai_usage_ledger`, `tutor_stt` | custo = minutos × `stt_price_per_min_usd` do painel do Tutor (padrão 0) |
+| Tutor: voz do professor | `ai_usage_ledger`, `tutor_tts` e `tutor_tts_audicao` | custo = caracteres × `tts_price_per_1k_chars_usd` do painel do Tutor (padrão 0) |
+| Podcasts: áudio | `ai_usage_ledger`, `podcast_tts` | |
+| Busca por significado | `ch_ai_runs`, etapa `embeddings` | só a indexação dos trechos; as outras etapas já estão em `ai_calls` |
+| Rotas antigas de IA | **sem registro** | o contador fica só na memória do servidor (`quotaMiddleware.ts`) e some ao reiniciar |
+| Perguntas da busca por significado | **sem registro** | frações de centavo por pergunta, não gravadas |
+
+Regras do painel: uso com custo zero (por exemplo, a voz do professor e a transcrição enquanto o preço não foi definido no painel do
+Tutor) aparece como **"sem preço"**, não como US$ 0; o que não tem registro aparece como **"sem registro"**; a soma é "do que tem
+registro" e diz que não inclui o resto. Código: `app_admin_ai_spend_month()` (migração `20261003009520_central_gasto_do_mes.sql`,
+só cria uma função de leitura, só administrador, pode ser colada de novo), devolvida por `GET /overview` em `all_spend`. Se a
+migração ainda não foi colada no Supabase, o painel diz o que falta e o resto da aba funciona como antes.
+
+### Proposta (não construída): teto geral que inclua o Tutor e as vozes
+Hoje cada lugar tem a sua trava (cota do aluno no Tutor, caracteres da voz, limite de minutos), e o teto mensal da Central só vale
+para o maestro. Um **teto geral do mês** seria:
+1. um novo valor em `ai_settings` (teto geral, em US$) e o interruptor dele;
+2. uma conta única do mês = `ai_calls` + as linhas do painel acima (a mesma função de leitura), guardada por cerca de 1 minuto;
+3. a conferência nos pontos de entrada: turno do Tutor, abertura da voz ao vivo, transcrição, voz do professor, áudio dos Podcasts
+   e indexação da busca;
+4. avisos antes de chegar lá (por exemplo, a 80%) e uma mensagem clara quando parar.
+Não foi construído porque parar o Tutor dos alunos é decisão de produto e porque a voz do professor e a transcrição ainda estão com
+preço 0 (o gasto delas hoje nem aparece). Perguntas ao dono estão no relatório da frente (valor do teto, o que para quando
+chegar, aviso a 80%, preços da voz e da transcrição).
+
 ## Preços
 Os preços iniciais foram conferidos em **2026-10-07** nas páginas oficiais, e cada um guarda a fonte e a data:
 - Claude: `platform.claude.com/docs/en/about-claude/pricing`;

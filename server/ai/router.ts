@@ -70,7 +70,29 @@ export function createAiRouter(
     try {
       const overview = await db().asUser<Record<string, unknown>>(req.user!, "app_admin_ai_overview");
       const cfg = await fresh();
-      res.json({ ...overview, checks: functionChecks(cfg, env), provider_checks: providerChecks(cfg, env), cap_guidance: capGuidance(cfg, env) });
+      // gasto do mês de tudo o que já fica registrado fora do maestro (IA02, só leitura). Banco sem a migração 9520 (ainda não colada
+      // no Supabase): o painel de sempre continua e o gasto de tudo vem como indisponível
+      let groups: unknown[] | null = null;
+      let monthStart: string | null = null;
+      try {
+        const spend = await db().asUser<{ month_start: string; groups: unknown[] }>(req.user!, "app_admin_ai_spend_month");
+        groups = Array.isArray(spend?.groups) ? spend.groups : null;
+        monthStart = spend?.month_start ?? null;
+      } catch (error) {
+        console.warn(`[central] gasto do mês de tudo indisponível: ${message(error).slice(0, 120)}`);
+      }
+      // usos que não gravam o gasto em lugar nenhum: aparecem como "sem registro", nunca com número inventado
+      const noRecord = [
+        { key: "rotas_antigas", note: "O contador das rotas antigas de IA fica só na memória do servidor e some quando ele reinicia." },
+        { key: "perguntas_busca", note: "Cada pergunta da busca por significado custa frações de centavo e não é registrada." },
+      ];
+      res.json({
+        ...overview,
+        checks: functionChecks(cfg, env),
+        provider_checks: providerChecks(cfg, env),
+        cap_guidance: capGuidance(cfg, env),
+        all_spend: { available: groups !== null, month_start: monthStart, groups: groups ?? [], no_record: noRecord },
+      });
     } catch (error) {
       fail(res, error);
     }
