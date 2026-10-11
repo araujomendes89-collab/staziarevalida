@@ -84,7 +84,7 @@ beforeAll(async () => {
   for (const st of buildEngineStatements()) await dev.db.exec(st);
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'dono@t.dev'), ($2, 'socia@t.dev'), ($3, 'outro.admin@t.dev'), ($4, 'aluno@t.dev'), ($5, 'novo@t.dev')`, [DONO, SOCIA, ADMIN2, ALUNO, NOVO]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id in ($1, $2, $3)`, [DONO, SOCIA, ADMIN2]);
-  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [ALUNO]);
+  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id = $1`, [ALUNO]);
   for (const uid of [DONO, SOCIA, ADMIN2, ALUNO]) await aceitarTermos(dev.db, uid);
   for (const uid of [DONO, SOCIA, ADMIN2, ALUNO, NOVO]) tokens[uid] = await dev.createSession(uid);
   await sql(`update public.tutor_config set enabled = true, voice_enabled = true, tts_team_only = false, tts_price_per_1k_chars_usd = 0.3`);

@@ -10,7 +10,8 @@ import { cleanup, render, screen } from "@testing-library/react";
 const session: { boot: any } = { boot: null };
 const backend = {
   rpc: vi.fn(async (fn: string) => {
-    if (fn === "app_home") return { attempts: 0, correct: 0, open_session: null, trial: { ends_at: "2026-10-13T12:00:00Z", days_left: 5 } };
+    // o título conta os dias pela data de fim (calendário de Brasília): a data vai relativa a hoje
+    if (fn === "app_home") return { attempts: 0, correct: 0, open_session: null, trial: { ends_at: new Date(Date.now() + 5 * 86_400_000).toISOString(), days_left: 5 } };
     if (fn === "app_today") return { tasks: [] };
     return null;
   }),

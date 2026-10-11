@@ -251,7 +251,7 @@ const SUMMARY = {
   "user.role": (d, entry) => join([person(entry), `${ROLE_LABEL[d.from] ?? d.from} → ${ROLE_LABEL[d.to] ?? d.to}`]),
   "user.subscription": (d, entry) => join([person(entry), `${PLAN_LABEL[d.to?.plan] ?? d.to?.plan} · ${SUB_STATUS_LABEL[d.to?.status] ?? d.to?.status}`]),
   "user.delete": (d) => d.email,
-  "plan.save": (d, entry) => `${PLAN_LABEL[entry.target] ?? entry.target}${d.active ? " · à venda" : ""}`,
+  "plan.save": (d, entry) => `${PLAN_LABEL[entry.target] ?? entry.target}${d.active ? " · marcado para venda" : ""}`,
   "settings.save": (d) =>
     join([
       d.trial_days != null && `Dias de teste grátis: ${d.trial_days}`,

@@ -43,7 +43,7 @@ beforeAll(async () => {
   for (const st of buildEngineStatements()) await dev.db.exec(st);
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'adm@t.dev'), ($2, 'pago@t.dev'), ($3, 'outro@t.dev'), ($4, 'teste@t.dev'), ($5, 'bloq@t.dev')`, [ADMIN, PAGO, OUTRO, TESTE, BLOQ]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
-  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id in ($1, $2)`, [PAGO, OUTRO]);
+  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id in ($1, $2)`, [PAGO, OUTRO]);
   await dev.db.query(`update public.subscriptions set tutor_trial_started_at = now() - interval '1 day' where user_id = $1`, [TESTE]);
   await dev.db.query(`update public.subscriptions set tutor_trial_started_at = now() - interval '30 days' where user_id = $1`, [BLOQ]);
   for (const uid of [PAGO, OUTRO, TESTE, BLOQ]) await aceitarTermos(dev.db, uid);
