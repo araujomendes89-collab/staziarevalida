@@ -27,9 +27,9 @@ import {
   validateFunctionConfig,
   type ModelRef,
 } from "../../server/ai/config";
-import { runFunction } from "../../server/ai/maestro";
+import { runFunction, shouldRetrySame } from "../../server/ai/maestro";
 import { createAiRouter } from "../../server/ai/router";
-import { AiInvalidOutput, AnthropicProvider, GeminiProvider, anthropicSearchTool, partialUsageOf, withUsage, type StructuredRequest, type StructuredResult } from "../../server/contentHub/ai/provider";
+import { AiInvalidOutput, AiRefused, AiTimeout, AnthropicProvider, FETCH_TIMEOUT_MS, GeminiProvider, SEARCH_TIMEOUT_MS, anthropicSearchTool, partialUsageOf, withUsage, type StructuredRequest, type StructuredResult } from "../../server/contentHub/ai/provider";
 import { OpenAIProvider } from "../../server/contentHub/ai/openai";
 import { OllamaProvider } from "../../server/contentHub/ai/ollama";
 import { asDocument } from "../../server/contentHub/ai/prompts";
@@ -361,7 +361,11 @@ describe("Provedores", () => {
 
   it("Claude: recusa e corte por limite de saída seguem como no caminho sem busca", async () => {
     const make = (over: Record<string, unknown>) => new AnthropicProvider("chave", "claude-sonnet-5-5", fakeAnthropic([claudeMsg(over)]).client);
-    await expect(make({ stop_reason: "refusal", stop_details: { category: "cyber" } }).generate(req())).rejects.toThrow(/O provedor recusou a solicitação \(cyber\)/);
+    // a recusa na busca é AiRefused, como sem busca: frase fixa em português (a categoria fica só no log) e nunca repetida pelo maestro
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    await expect(make({ stop_reason: "refusal", stop_details: { category: "cyber" } }).generate(req())).rejects.toBeInstanceOf(AiRefused);
+    await expect(make({ stop_reason: "refusal", stop_details: { category: "cyber" } }).generate(req())).rejects.toThrow(/^O provedor recusou a solicitação\.$/);
+    warn.mockRestore();
     await expect(make({ stop_reason: "max_tokens" }).generate(req())).rejects.toBeInstanceOf(AiInvalidOutput);
     await expect(make({ stop_reason: "max_tokens" }).generate(req())).rejects.toThrow(/Resposta cortada pelo limite de saída/);
     await expect(make({ stop_reason: "max_tokens" }).generate(req())).rejects.toMatchObject({ reason: "cortada" });
@@ -674,6 +678,97 @@ describe("Provedores", () => {
     const bad = await caught(new OpenAIProvider("k", "m", f).generate(req()));
     expect(bad).toBeInstanceOf(AiInvalidOutput);
     expect(bad.usage).toEqual({ inputTokens: 580, outputTokens: 160, webSearches: 2 });
+  });
+
+  it("Recusa na busca (Claude e OpenAI): AiRefused com o gasto da busca, que o maestro não repete", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    // Claude: uma pausa com 2 buscas e depois a recusa na continuação; o gasto das duas chamadas entra uma vez só
+    const refusing = claudeMsg({ stop_reason: "refusal", stop_details: { category: "cyber" }, content: [], usage: { input_tokens: 40, output_tokens: 5, server_tool_use: { web_search_requests: 1 } } });
+    const claude = await caught(new AnthropicProvider("k", "claude-sonnet-5-5", fakeAnthropic([paused(1), refusing]).client).generate(req()));
+    expect(claude).toBeInstanceOf(AiRefused);
+    expect(claude.message).toBe("O provedor recusou a solicitação.");
+    expect(claude.message).not.toMatch(/cyber/);
+    expect(partialUsageOf(claude)).toEqual({ inputTokens: 140, outputTokens: 15, webSearches: 3 });
+    expect(shouldRetrySame(claude)).toBe(false);
+    // recusa já na primeira chamada
+    const first = await caught(new AnthropicProvider("k", "claude-sonnet-5-5", fakeAnthropic([refusing]).client).generate(req()));
+    expect(first).toBeInstanceOf(AiRefused);
+    expect(partialUsageOf(first)).toEqual({ inputTokens: 40, outputTokens: 5, webSearches: 1 });
+    warn.mockRestore();
+    // OpenAI: recusa dentro da mensagem da busca
+    const refused = { model: "m", status: "completed", output: [searchCall("ws_1", []), searchCall("ws_2", []), { type: "message", role: "assistant", content: [{ type: "refusal", refusal: "não posso" }] }], usage: { input_tokens: 7, output_tokens: 3 } };
+    const openai = await caught(new OpenAIProvider("k", "m", fakeFetch([{ body: refused }]).f).generate(req()));
+    expect(openai).toBeInstanceOf(AiRefused);
+    expect(openai.message).toBe("O provedor recusou a solicitação.");
+    expect(openai.message).not.toMatch(/não posso/);
+    expect(partialUsageOf(openai)).toEqual({ inputTokens: 7, outputTokens: 3, webSearches: 2 });
+    expect(shouldRetrySame(openai)).toBe(false);
+  });
+
+  it("Sem busca a recusa segue igual (AiRefused só com os tokens, sem buscas)", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const plain = req({ webSearch: undefined });
+    const refusing = { model: "claude-sonnet-5-5", stop_reason: "refusal", stop_details: { category: "cyber" }, content: [], usage: { input_tokens: 9, output_tokens: 2 } };
+    const claude = await caught(new AnthropicProvider("k", "claude-sonnet-5-5", fakeAnthropic([refusing]).client).generate(plain));
+    warn.mockRestore();
+    expect(claude).toBeInstanceOf(AiRefused);
+    expect(claude.usage).toEqual({ inputTokens: 9, outputTokens: 2 });
+    const body = { model: "m", choices: [{ finish_reason: "stop", message: { refusal: "não posso", content: null } }], usage: { prompt_tokens: 4, completion_tokens: 1 } };
+    const openai = await caught(new OpenAIProvider("k", "m", fakeFetch([{ body }]).f).generate(plain));
+    expect(openai).toBeInstanceOf(AiRefused);
+    expect(openai.usage).toEqual({ inputTokens: 4, outputTokens: 1 });
+  });
+
+  it("Tempo esgotado (OpenAI com busca): o fetch da busca usa o limite da Claude com busca e o estouro vira AiTimeout, sem gasto inventado", async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    const stall = () => Promise.reject(new DOMException("The operation was aborted due to timeout", "TimeoutError"));
+    const { f, calls } = fakeFetch([stall]);
+    const error = await caught(new OpenAIProvider("k", "m", f).generate(req()));
+    expect(timeoutSpy).toHaveBeenCalledWith(SEARCH_TIMEOUT_MS);
+    expect(SEARCH_TIMEOUT_MS).toBe(420_000);
+    timeoutSpy.mockRestore();
+    expect(calls).toHaveLength(1);
+    expect(error).toBeInstanceOf(AiTimeout);
+    expect(error.name).not.toBe("TimeoutError");
+    expect(error.message).toMatch(/^Tempo esgotado \(420 s\)/);
+    expect(partialUsageOf(error)).toBeNull(); // nada voltou: o pior caso é o maestro quem estima
+    expect(shouldRetrySame(error)).toBe(false);
+    // AbortError (o fetch de outras versões do Node) vale igual
+    const abort = await caught(new OpenAIProvider("k", "m", fakeFetch([() => Promise.reject(new DOMException("aborted", "AbortError"))]).f).generate(req()));
+    expect(abort).toBeInstanceOf(AiTimeout);
+    // erro de rede comum e erro HTTP continuam como eram
+    const net = await caught(new OpenAIProvider("k", "m", fakeFetch([() => Promise.reject(new TypeError("fetch failed"))]).f).generate(req()));
+    expect(net).not.toBeInstanceOf(AiTimeout);
+    expect(net.message).toBe("fetch failed");
+  });
+
+  it("Tempo esgotado (OpenAI com busca): a conversão que estoura é AiTimeout e leva o gasto da busca; o cancelamento de quem pediu não vira tempo esgotado", async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    const { f, calls } = fakeFetch([{ body: openaiReply("Não achei como JSON.") }, () => Promise.reject(new DOMException("The operation was aborted due to timeout", "TimeoutError"))]);
+    const error = await caught(new OpenAIProvider("k", "m", f).generate(req()));
+    expect(timeoutSpy.mock.calls.map((c) => c[0])).toEqual([SEARCH_TIMEOUT_MS, FETCH_TIMEOUT_MS]);
+    timeoutSpy.mockRestore();
+    expect(calls.map((c) => c.url.split("/").pop())).toEqual(["responses", "chat/completions".split("/").pop()]);
+    expect(error).toBeInstanceOf(AiTimeout);
+    expect(error.message).toMatch(/Tempo esgotado \(180 s\)/);
+    expect(partialUsageOf(error)).toEqual({ inputTokens: 500, outputTokens: 120, webSearches: 2 });
+    expect(shouldRetrySame(error)).toBe(false);
+    // cancelado por quem pediu (o maestro): continua "cancelada", nunca AiTimeout daqui
+    const ac = new AbortController();
+    const hung = fakeFetch([(init: any) => hangUntilAborted(init.signal)]);
+    const outcome = caught(new OpenAIProvider("k", "m", hung.f).generate(req({ signal: ac.signal })));
+    await until(() => hung.calls.length === 1);
+    ac.abort(new DOMException("x", "TimeoutError"));
+    const cancelled = await outcome;
+    expect(cancelled).not.toBeInstanceOf(AiTimeout);
+    expect(cancelled.message).toMatch(/cancelada/);
+  });
+
+  it("Sem busca o limite do fetch segue 180 s (a chamada simples não muda)", async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    await new OpenAIProvider("k", "m", fakeFetch([{ body: chatReply(JSON.stringify(RESULT)) }]).f).generate(req({ webSearch: undefined }));
+    expect(timeoutSpy.mock.calls.map((c) => c[0])).toEqual([180_000]);
+    timeoutSpy.mockRestore();
   });
 
   it("Erro com uso (Gemini): corte por limite de saída, texto vazio e conversão fora do esquema", async () => {
@@ -1489,6 +1584,80 @@ describe("Central", () => {
       const r = await run(deps(f, {}, { timeouts: { searchMs: 30, graceMs: 500 } }), "busca_fontes");
       expect(r.status).toBe("ok");
       expect(r.webSearches).toBe(2);
+    });
+
+    it("OpenAI com busca estoura o limite do fetch: o maestro NÃO repete a busca paga, grava o pior caso de custo e vai para a reserva", async () => {
+      await on("anthropic", "openai");
+      await price(A, 2, 10, 0.01);
+      await price(O, 1, 2, 0.02);
+      await saveFn("busca_fontes", O, { fallback: A });
+      refresh();
+      const stall = fakeFetch([() => Promise.reject(new DOMException("The operation was aborted due to timeout", "TimeoutError"))]);
+      const reserve = fakes({ [key(A)]: OK });
+      const makeProviderFor = (ref: R) => (key(ref) === key(O) ? new OpenAIProvider("k", O.model, stall.f) : reserve.makeProviderFor(ref));
+      const r = await run({ db: t.db, env: {}, makeProviderFor, log: () => {} }, "busca_fontes");
+      expect(r.status).toBe("ok");
+      expect(stall.calls).toHaveLength(1); // a mesma busca paga não é repetida
+      expect(reserve.total()).toBe(1);
+      const logged = await rows(r.runId);
+      expect(logged.map((x: any) => `${x.role}:${x.outcome}`)).toEqual(["principal:falha", "reserva:ok"]);
+      expect(logged[0].error).toMatch(/Tempo esgotado \(420 s\)/);
+      expect(logged[0].error).not.toMatch(/TimeoutError|aborted/);
+      expect(logged[0].error).toMatch(/Custo estimado de US\$/);
+      expect(logged[0].cost).toBeGreaterThan(0); // o pior caso, não US$ 0
+    });
+
+    it("OpenAI: a conversão que estoura depois da busca paga não repete e grava o gasto da busca", async () => {
+      await on("openai");
+      await price(O, 1, 2, 0.02);
+      await saveFn("busca_fontes", O);
+      refresh();
+      const { f, calls } = fakeFetch([{ body: openaiReply("Não achei como JSON.") }, () => Promise.reject(new DOMException("The operation was aborted due to timeout", "TimeoutError"))]);
+      const r = await run({ db: t.db, env: {}, makeProviderFor: () => new OpenAIProvider("k", O.model, f), log: () => {} }, "busca_fontes");
+      expect(r.status).toBe("falhou");
+      expect(calls).toHaveLength(2); // a busca e a conversão, uma vez só
+      const logged = await rows(r.runId);
+      expect(logged.map((x: any) => x.outcome)).toEqual(["falha"]);
+      expect(logged[0].error).toMatch(/Tempo esgotado/);
+      expect(logged[0]).toMatchObject({ input_tokens: 500, output_tokens: 120, web_searches: 2 });
+      expect(logged[0].cost).toBeGreaterThanOrEqual((500 * 1 + 120 * 2) / 1e6 + 2 * 0.02);
+    });
+
+    it("recusa na busca (Claude e OpenAI): não repete a mesma IA, vai à reserva e grava o gasto parcial", async () => {
+      await on("anthropic", "openai");
+      await price(A, 2, 10, 0.01);
+      await price(O, 1, 2, 0.02);
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const claudeRefusal = { model: "claude-sonnet-5-5", stop_reason: "refusal", stop_details: { category: "cyber" }, content: [], usage: { input_tokens: 300, output_tokens: 40, server_tool_use: { web_search_requests: 2 } } };
+      const openaiRefusal = { model: "m", status: "completed", output: [searchCall("ws_1", []), { type: "message", role: "assistant", content: [{ type: "refusal", refusal: "não posso" }] }], usage: { input_tokens: 70, output_tokens: 30 } };
+      // Claude recusa, OpenAI (reserva) responde
+      await saveFn("busca_fontes", A, { fallback: O });
+      refresh();
+      const claude = fakeAnthropic([claudeRefusal, claudeRefusal]);
+      const okOpenai = fakeFetch([{ body: openaiReply(FENCED) }]);
+      const make1 = (ref: R) => (key(ref) === key(A) ? new AnthropicProvider("k", A.model, claude.client) : new OpenAIProvider("k", O.model, okOpenai.f));
+      const r1 = await run({ db: t.db, env: {}, makeProviderFor: make1, log: () => {} }, "busca_fontes");
+      expect(r1.status).toBe("ok");
+      expect(claude.calls).toHaveLength(1);
+      const rows1 = await rows(r1.runId);
+      expect(rows1.map((x: any) => `${x.role}:${x.outcome}`)).toEqual(["principal:falha", "reserva:ok"]);
+      expect(rows1[0].error).toBe("O provedor recusou a solicitação.");
+      expect(rows1[0]).toMatchObject({ input_tokens: 300, output_tokens: 40, web_searches: 2 });
+      expect(rows1[0].cost).toBeCloseTo((300 * 2 + 40 * 10) / 1e6 + 2 * 0.01, 6);
+      // OpenAI recusa (principal), Claude (reserva) responde
+      await saveFn("busca_fontes", O, { fallback: A });
+      refresh();
+      const refusingOpenai = fakeFetch([{ body: openaiRefusal }, { body: openaiRefusal }]);
+      const okClaude = fakeAnthropic([claudeMsg()]);
+      const make2 = (ref: R) => (key(ref) === key(O) ? new OpenAIProvider("k", O.model, refusingOpenai.f) : new AnthropicProvider("k", A.model, okClaude.client));
+      const r2 = await run({ db: t.db, env: {}, makeProviderFor: make2, log: () => {} }, "busca_fontes");
+      warn.mockRestore();
+      expect(r2.status).toBe("ok");
+      expect(refusingOpenai.calls).toHaveLength(1);
+      const rows2 = await rows(r2.runId);
+      expect(rows2.map((x: any) => `${x.role}:${x.outcome}`)).toEqual(["principal:falha", "reserva:ok"]);
+      expect(rows2[0]).toMatchObject({ input_tokens: 70, output_tokens: 30, web_searches: 1 });
+      expect(rows2[0].cost).toBeCloseTo((70 * 1 + 30 * 2) / 1e6 + 0.02, 6);
     });
 
     it("chamada sem busca segue como antes: tempo-limite de sempre, sem espera depois do cancelamento", async () => {

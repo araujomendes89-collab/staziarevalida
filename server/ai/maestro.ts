@@ -6,7 +6,7 @@
  */
 import crypto from "crypto";
 import type { ContentDb } from "../contentHub/infra";
-import { AiInvalidOutput, AiRefused, familyOfModel, partialUsageOf, withUsage, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
+import { AiInvalidOutput, AiRefused, AiTimeout, SEARCH_TIMEOUT_MS, familyOfModel, partialUsageOf, withUsage, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
 import type { Schema } from "../contentHub/ai/schema";
 import {
   callEstimateUsd,
@@ -117,11 +117,7 @@ Não reescreva a resposta, só aponte os problemas.`;
 // ------------------------------------------------------------------ constantes e utilitários
 
 const TIMEOUT_MS = 180_000;
-/**
- * Tempo-limite de uma chamada com busca na internet: a do Claude faz até 4 chamadas de busca e a conversão, mais que os 180 s das
- * chamadas simples, e menos que os 600 s em que a fila dá o trabalho por abandonado.
- */
-const SEARCH_TIMEOUT_MS = 420_000;
+// SEARCH_TIMEOUT_MS (tempo-limite da chamada com busca na internet) vem de contentHub/ai/provider: a OpenAI usa o mesmo no fetch.
 /**
  * Depois de cancelar uma chamada com busca, quanto esperar o provedor parar e devolver o gasto das chamadas já pagas antes de
  * desistir dele. O provedor para na hora; a espera deixa o erro levar o gasto e evita duas buscas correndo juntas.
@@ -201,9 +197,6 @@ export function shouldRetrySame(e: unknown): boolean {
   if (Number.isFinite(status) && status >= 400 && status < 500) return [408, 409, 425, 429].includes(status);
   return true;
 }
-
-/** O tempo-limite da chamada esgotou (o maestro cancelou o pedido). */
-class AiTimeout extends Error {}
 
 /** Códigos do undici (o fetch do Node) quando o cabeçalho ou o corpo da resposta não chega no limite (300 s por padrão). */
 const CONNECTION_TIMEOUT_CODES = new Set(["UND_ERR_HEADERS_TIMEOUT", "UND_ERR_BODY_TIMEOUT"]);
