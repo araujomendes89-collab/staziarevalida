@@ -27,10 +27,6 @@ const ABERTOS = new Set<string>(
  "VAZAMENTO [CRÍTICO] Tutor antigo: mensagem e meta.sources gravados (leitura direta e app_tutor_session)",
  "VAZAMENTO [CRÍTICO] Tutor antigo: resumo da conversa",
  "VAZAMENTO [CRÍTICO] estação aprovada: roteiro/impressos",
- "VAZAMENTO [IMPORTANTE] podcast antigo: o PDF da apostila com nome abreviado ('sno-pediatria-2026.pdf') continua na lista como 'Documento 1' (contagem)",
- "LACUNA [CRÍTICO] a varredura não olha a tabela questions (explicações, conduta esperada, o que avalia, subtema, fontes)",
- "LACUNA [CRÍTICO] a varredura não olha professor/especialidade da aula nem a atualização antiga só pelo subtema/linha do tempo/flashcard/nota",
- "LACUNA [CRÍTICO] a varredura não olha Tutor (mensagens, resumos), estações, aviso geral nem material de aula"
 ]
 );
 const vazaT4: typeof it = ((nome: string, fn: any, t?: number) => (ABERTOS.has(nome) ? it.fails : it)(nome, fn, t)) as any;
@@ -52,16 +48,17 @@ const REVISOR = "00000000-0000-4000-8000-0000000004f1"; // revisor médico de Pe
 const ALUNA = "00000000-0000-4000-8000-00000000040a";
 
 const COMP_TITLE = "Sangue nos Olhos — Pediatria";
-const COMP_ORGAN = "Sangue nos Olhos";
+const COMP_ORGAN = "Editora Sangue nos Olhos Ltda"; // órgão DISTINTIVO (3+ palavras e 20+ letras): vale como nome cadastrado
 const COMP_URL = "https://apostilas.sno-exemplo.invalid/pediatria-2026.pdf";
 const COMP_FILE = "sno-pediatria-2026.pdf";
 const NEU_TITLE = "Manual de Pediatria Beta (teste)"; // apostila de nome neutro, marcada na biblioteca
 const OFI_TITLE = "PCDT Bronquiolite T4 (teste)";
 const OFI_URL = "https://www.gov.br/saude/pcdt-bronquiolite-t4";
 const TRECHO = "FRASE-SECRETA-SNO";
-const CITA = `Segundo a apostila Sangue nos Olhos (p. 345): ${TRECHO}.`;
+// (2026-10-11) só o NOME CADASTRADO (título completo / órgão distintivo) identifica a apostila: "Sangue nos Olhos" e "apostila" soltos são texto livre
+const CITA = `Segundo o ${COMP_TITLE} (p. 345): ${TRECHO}.`;
 /** Nada disto pode chegar ao aluno. */
-const PROIBIDOS = ["Sangue", "sangue", "apostila", "Apostila", TRECHO, "sno-exemplo", COMP_FILE, NEU_TITLE, "p. 345", "cursinho"];
+const PROIBIDOS = ["Sangue nos Olhos", COMP_ORGAN, COMP_TITLE, TRECHO, "sno-exemplo", COMP_FILE, NEU_TITLE, "p. 345"];
 
 let db: PGlite;
 const sql = async <T = any>(text: string, params: unknown[] = []) => (await db.query<T>(text, params)).rows;
@@ -101,8 +98,12 @@ let conversaAntiga: string;
 let materialAntigo: string;
 let salvar: Record<string, { ok: boolean; erro?: string; avisos: unknown }> = {};
 
-/** Salva como equipe e anota se o banco barrou ou avisou (procura qualquer chave de aviso na resposta). */
-async function salvaEAnota(nome: string, uid: string, fn: string, args: Record<string, unknown>) {
+/**
+ * Salva como equipe e anota se o banco barrou ou avisou (procura qualquer chave de aviso na resposta).
+ * (APOIO-B) Desde a 9621 o banco BARRA o texto novo que cita a apostila. Para os testes de leitura do aluno continuarem a ter o texto
+ * (que pode ter entrado por outro caminho: servidor, importação, dado antigo), `plano_b` grava o mesmo conteúdo direto no banco.
+ */
+async function salvaEAnota(nome: string, uid: string, fn: string, args: Record<string, unknown>, plano_b?: () => Promise<any>) {
   try {
     const r: any = await rpc(uid, fn, args);
     const texto = JSON.stringify(r ?? {});
@@ -110,7 +111,7 @@ async function salvaEAnota(nome: string, uid: string, fn: string, args: Record<s
     return r;
   } catch (e: any) {
     salvar[nome] = { ok: false, erro: e.message, avisos: null };
-    return null;
+    return plano_b ? await plano_b() : null;
   }
 }
 
@@ -160,7 +161,7 @@ beforeAll(async () => {
     `insert into public.lessons (area, topic, title, instructor, specialty, summary, key_points, guideline_title, guideline_url, published)
      values ('PEDIATRIA', 'Bronquiolite', 'Bronquiolite (aula antiga)', $1, $2, $3, $4, $5, $6, true) returning id`,
     [`Equipe ${COMP_ORGAN}`, `Pediatria ${COMP_ORGAN}`, `Resumo. ${CITA}`, [`Ponto: ${CITA}`], COMP_TITLE, COMP_URL]))[0].id;
-  materialAntigo = (await sql(`insert into public.lesson_materials (lesson_id, kind, title, url) values ($1, 'guideline', 'Apostila de Pediatria do cursinho (PDF)', 'https://cursinho.invalid/ped.pdf') returning id`, [aulaAntiga]))[0].id;
+  materialAntigo = (await sql(`insert into public.lesson_materials (lesson_id, kind, title, url) values ($1, 'guideline', $2, 'https://cursinho.invalid/ped.pdf') returning id`, [aulaAntiga, `${COMP_TITLE} (PDF)`]))[0].id;
 
   // atualização antiga publicada e conferida com a apostila como "documento"
   await sql(
@@ -198,57 +199,98 @@ beforeAll(async () => {
   void sOfi;
 
   // ================= CONTEÚDO NOVO salvo pela equipe DEPOIS da regra, com o nome da apostila nos campos de texto
-  await salvaEAnota("questão (explicações, conduta, o que avalia, subtema, fontes)", ADMIN, "app_admin_save_question", { p_question: {
+  const questaoNova = (extra: Record<string, unknown> = {}) => ({
     kind: "REVALIDA", year: 2023, semester: 1, number: 2, area: "PEDIATRIA", topic: "Bronquiolite", subtopic: `Manejo (${COMP_ORGAN})`,
     statement: "Lactente de 5 meses com sibilância. Qual a conduta inicial?",
     options: opcoes({ B: `B é a conduta. ${CITA}`, C: `C está errada; ${NEU_TITLE}.` }), correct_option: "B", status: "valid",
     expected_conduct: `Suporte. ${CITA}`, inep_intent: `Avalia como ensina a apostila ${COMP_ORGAN}.`, needs_image: false,
-    sources: [{ title: COMP_TITLE, organization: COMP_ORGAN, url: COMP_URL }],
-  } });
+    sources: [{ title: COMP_TITLE, organization: COMP_ORGAN, url: COMP_URL }], ...extra,
+  });
+  await salvaEAnota("questão (explicações, conduta, o que avalia, subtema, fontes)", ADMIN, "app_admin_save_question", { p_question: questaoNova() }, async () => {
+    await rpc(ADMIN, "app_admin_save_question", { p_question: questaoNova({ subtopic: "Manejo", options: opcoes({ B: "B é a conduta." }), expected_conduct: "Suporte.", inep_intent: "", sources: [] }) });
+    const n = questaoNova();
+    await sql(`update public.questions set subtopic = $2, options = $3::jsonb, expected_conduct = $4, inep_intent = $5, sources = $6::jsonb where id = $1`,
+      [Q_NEW, n.subtopic, JSON.stringify(n.options), n.expected_conduct, n.inep_intent, JSON.stringify(n.sources)]);
+  });
   await sql(`insert into public.practice_sessions (user_id, kind, question_ids, finished_at) values ($1, 'questoes', $2, now())`, [ALUNA, [Q_NEW]]);
 
-  const aula: any = await salvaEAnota("aula (título, professor, especialidade, resumo, pontos-chave, diretriz)", EDITOR, "app_admin_save_lesson", { p_lesson: {
+  // (APOIO-B) cada salvamento abaixo é BARRADO pela 9621; o plano B grava o mesmo conteúdo direto no banco (como entraria por outro caminho)
+  await salvaEAnota("aula (título, professor, especialidade, resumo, pontos-chave, diretriz)", EDITOR, "app_admin_save_lesson", { p_lesson: {
     area: "PEDIATRIA", topic: "Bronquiolite", title: `Bronquiolite — revisão ${COMP_ORGAN}`, instructor: `Equipe ${COMP_ORGAN}`, specialty: `Pediatria ${COMP_ORGAN}`,
     summary: `Resumo novo. ${CITA}`, key_points: [`Ponto novo: ${CITA}`], guideline_title: "Apostila de Pediatria do cursinho", guideline_url: "https://cursinho.invalid/ped-2026.pdf",
     published: true, review_note: "Conferido o texto da aula com a equipe médica.",
-  } });
-  aulaNova = aula?.id;
+  } }, async () => {
+    aulaNova = (await sql(
+      `insert into public.lessons (area, topic, title, instructor, specialty, summary, key_points, guideline_title, guideline_url, published)
+       values ('PEDIATRIA', 'Bronquiolite', $1, $2, $3, $4, $5, 'Apostila de Pediatria do cursinho', 'https://cursinho.invalid/ped-2026.pdf', true) returning id`,
+      [`Bronquiolite — revisão ${COMP_ORGAN}`, `Equipe ${COMP_ORGAN}`, `Pediatria ${COMP_ORGAN}`, `Resumo novo. ${CITA}`, [`Ponto novo: ${CITA}`]]))[0].id;
+  });
 
-  const upd: any = await salvaEAnota("atualização (subtema, rótulo, antes, conduta, impactos, pegadinha, linha do tempo, flashcard, fonte)", EDITOR, "app_admin_save_guideline_update", { p_update: {
+  await salvaEAnota("atualização (subtema, rótulo, antes, conduta, impactos, pegadinha, linha do tempo, flashcard, fonte)", EDITOR, "app_admin_save_guideline_update", { p_update: {
     area: "PEDIATRIA", topic: "Bronquiolite nova T4", subtopic: `Subtema (${COMP_ORGAN})`, publication_label: `Ed. ${COMP_ORGAN} 2026`,
     institution: COMP_ORGAN, document_title: COMP_TITLE, source_url: COMP_URL,
     before_text: `Antes. ${CITA}`, current_conduct: `Suporte. ${CITA}`, clinical_impact: `Impacto. ${CITA}`, exam_impact: `Prova. ${CITA}`, trap: `Pegadinha. ${CITA}`,
     timeline: [{ year: 2026, text: `Mudou. ${CITA}` }], flashcards: [{ front: "Conduta?", back: `Suporte. ${CITA}` }],
-  } });
-  atualizacaoNova = upd?.items?.find((u: any) => u.topic === "Bronquiolite nova T4")?.id ?? (await sql(`select id from public.guideline_updates where topic = 'Bronquiolite nova T4'`))[0]?.id;
-  await salvaEAnota("atualização: conferência médica aprovando com a apostila como documento", REVISOR, "app_admin_review_guideline_update",
-    { p_id: atualizacaoNova, p_decision: "approve", p_note: `Conferido na ${COMP_TITLE}, p. 345.` });
-  await salvaEAnota("atualização: publicar", ADMIN, "app_admin_publish_guideline_update", { p_id: atualizacaoNova, p_published: true });
+  } }, async () => {
+    atualizacaoNova = (await sql(
+      `insert into public.guideline_updates (slug, area, topic, subtopic, publication_label, institution, document_title, source_url, before_text, current_conduct, clinical_impact, exam_impact, trap,
+                                             timeline, flashcards, review_status, review_note, published, source_checked_at, reviewed_by, reviewed_at)
+       values ('t4-nova', 'PEDIATRIA', 'Bronquiolite nova T4', $1, $2, $3, $4, $5, $6, $6, $6, $6, $6, $7::jsonb, $8::jsonb, 'approved', $9, true, now(), $10, now()) returning id`,
+      [`Subtema (${COMP_ORGAN})`, `Ed. ${COMP_ORGAN} 2026`, COMP_ORGAN, COMP_TITLE, COMP_URL, CITA, JSON.stringify([{ year: 2026, text: `Mudou. ${CITA}` }]),
+       JSON.stringify([{ front: "Conduta?", back: `Suporte. ${CITA}` }]), `Conferido na ${COMP_TITLE}, p. 345.`, REVISOR]))[0].id;
+  });
+  // a conferência médica com a apostila na nota também é barrada (a atualização do plano B já está conferida e publicada)
+  const pendente = (await sql(`insert into public.guideline_updates (slug, area, topic, source_url, current_conduct) values ('t4-pendente', 'PEDIATRIA', 'Bronquiolite pendente T4', 'https://exemplo.invalid/doc-t4', 'Suporte clínico.') returning id`))[0].id;
+  await salvaEAnota("atualização: conferência médica com a apostila na nota", REVISOR, "app_admin_review_guideline_update", { p_id: pendente, p_decision: "approve", p_note: `Conferido na ${COMP_TITLE}, p. 345.` });
 
-  const pod: any = await salvaEAnota("podcast (título, tema)", EDITOR, "app_admin_save_podcast", { p_podcast: { title: `Bronquiolite — ${COMP_ORGAN}`, topic: `Revisão ${COMP_ORGAN}`, area: "PEDIATRIA" } });
-  podcastNovo = pod?.id ?? (await sql(`select id from public.podcasts where title like 'Bronquiolite — %'`))[0]?.id;
+  await salvaEAnota("podcast (título, tema)", EDITOR, "app_admin_save_podcast", { p_podcast: { title: `Bronquiolite — ${COMP_ORGAN}`, topic: `Revisão ${COMP_ORGAN}`, area: "PEDIATRIA" } }, async () => {
+    podcastNovo = (await sql(`insert into public.podcasts (title, topic, area) values ($1, $2, 'PEDIATRIA') returning id`, [`Bronquiolite — ${COMP_ORGAN}`, `Revisão ${COMP_ORGAN}`]))[0].id;
+  });
   const fontePod = (await sql(`insert into public.podcast_sources (podcast_id, kind, title, storage_path, position) values ($1, 'pdf', 'Resumo.pdf', 'podcasts/t4-r.pdf', 1) returning id`, [podcastNovo]))[0].id;
-  await salvaEAnota("podcast: nome da fonte dado pela equipe", EDITOR, "app_admin_podcast_rename_source", { p_source_id: fontePod, p_title: "Apostila do cursinho — Pediatria" });
-  await salvaEAnota("podcast: roteiro editado à mão", EDITOR, "app_admin_podcast_save_script", { p_id: podcastNovo, p_script: { lines: [{ speaker: "ANA", text: `Oi. ${CITA}` }, { speaker: "BRUNO", text: "Certo." }] } });
-  await salvaEAnota("podcast: aprovar roteiro", EDITOR, "app_admin_podcast_approve", { p_id: podcastNovo, p_note: "Roteiro conferido pela equipe." });
-  await sql(`update public.podcasts set audio_path = 'podcasts/t4-novo.mp3', status = 'audio_ready' where id = $1`, [podcastNovo]); // o áudio que o servidor faria
-  await salvaEAnota("podcast: publicar", ADMIN, "app_admin_podcast_publish", { p_id: podcastNovo, p_published: true });
+  await salvaEAnota("podcast: nome da fonte dado pela equipe", EDITOR, "app_admin_podcast_rename_source", { p_source_id: fontePod, p_title: "Apostila do cursinho — Pediatria" }, async () => {
+    await sql(`update public.podcast_sources set title = 'Apostila do cursinho — Pediatria', title_by_staff = true where id = $1`, [fontePod]);
+  });
+  await salvaEAnota("podcast: roteiro editado à mão", EDITOR, "app_admin_podcast_save_script", { p_id: podcastNovo, p_script: { lines: [{ speaker: "ANA", text: `Oi. ${CITA}` }, { speaker: "BRUNO", text: "Certo." }] } }, async () => {
+    await sql(`update public.podcasts set script = $2::jsonb where id = $1`, [podcastNovo, JSON.stringify({ lines: [{ speaker: "ANA", text: `Oi. ${CITA}` }, { speaker: "BRUNO", text: "Certo." }] })]);
+  });
+  // o resto do caminho (aprovar, áudio e publicar) não tem texto novo: gravado direto
+  await sql(`update public.podcasts set status = 'published', approved_at = now(), audio_path = 'podcasts/t4-novo.mp3', published_at = now() where id = $1`, [podcastNovo]);
 
-  await salvaEAnota("aviso geral (título, texto)", ADMIN, "app_admin_save_settings", { p_settings: { announcement: { active: true, tone: "info", title: `Nova apostila ${COMP_ORGAN}`, text: `Material: ${CITA}` } } });
+  await salvaEAnota("aviso geral (título, texto)", ADMIN, "app_admin_save_settings", { p_settings: { announcement: { active: true, tone: "info", title: `Nova apostila ${COMP_ORGAN}`, text: `Material: ${CITA}` } } }, async () => {
+    await sql(`update public.app_settings set value = $1::jsonb where key = 'announcement'`, [JSON.stringify({ active: true, tone: "info", title: `Nova apostila ${COMP_ORGAN}`, text: `Material: ${CITA}` })]);
+  });
 }, 180_000);
 
 // ------------------------------------------------------------------------------------------------- 2. campos digitados
 describe("2. campos digitados pela equipe: o salvamento avisa ou barra a apostila?", () => {
-  it.skip("NENHUMA função de salvar da equipe barra nem avisa: todas aceitaram o texto com o nome da apostila", () => {
-    // registro do que aconteceu em cada salvamento (fato conferido hoje)
+  it("(APOIO-B) o banco BARRA o salvamento de texto novo que cita a apostila, com a mesma mensagem para todos", () => {
+    const MENSAGEM = "Este texto cita uma fonte complementar cadastrada (o aluno não pode ver). Reescreva sem citar o nome desse material.";
+    // (2026-10-11) renomear a fonte do podcast para "Apostila do cursinho — Pediatria" é ACEITO: a palavra "apostila" solta não é barrada
+    const ACEITOS = ["podcast: nome da fonte dado pela equipe"];
     for (const [nome, r] of Object.entries(salvar)) {
-      expect(r.ok, `${nome}: ${r.erro ?? ""}`).toBe(true);
-      expect(r.avisos, `${nome} devolveu aviso`).toBeNull();
+      if (ACEITOS.includes(nome)) {
+        expect(r.ok, `${nome} deve ser aceito (palavra apostila solta)`).toBe(true);
+        continue;
+      }
+      expect(r.ok, `${nome} foi aceito`).toBe(false);
+      expect(r.erro, nome).toBe(MENSAGEM);
     }
-    expect(Object.keys(salvar)).toHaveLength(11);
+    expect(Object.keys(salvar)).toHaveLength(8);
+    expect(Object.entries(salvar).filter(([, r]) => !r.ok)).toHaveLength(7);
   });
 
-  it.skip("o banco só ESCONDE (na leitura) os campos de FONTE da aula e da atualização; não há marca para os demais campos", async () => {
+  it("(2026-10-11) texto médico com 'sangue nos olhos' e 'apostila' soltos é SALVO pelo editor e a aluna o lê inteiro", async () => {
+    const livre = "Paciente refere sangue nos olhos após tosse (hemorragia subconjuntival). Consulte a apostila do curso para revisar.";
+    const aula: any = await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: {
+      area: "PEDIATRIA", topic: "Hemorragia subconjuntival", title: "Hemorragia subconjuntival na prática", summary: livre, key_points: [livre], published: true,
+      review_note: "Conferido o texto da aula com a equipe médica.",
+    } });
+    const lida: any = await rpc(ALUNA, "app_lesson", { p_id: aula.id });
+    expect(lida.summary).toBe(livre);
+    expect(lida.key_points).toEqual([livre]);
+  });
+
+  it("o banco só ESCONDE (na leitura) os campos de FONTE da aula e da atualização; não há marca para os demais campos", async () => {
     const aula = (await sql(`select guideline_hidden from public.lessons where id = $1`, [aulaNova]))[0];
     expect(aula.guideline_hidden).toBe(false); // "Apostila de Pediatria do cursinho" não bate com a biblioteca nem com "Sangue nos Olhos"
     const upd = (await sql(`select source_hidden from public.guideline_updates where id = $1`, [atualizacaoNova]))[0];
@@ -292,7 +334,7 @@ const CASOS_NOVOS: Caso[] = [
 describe("2. campos digitados pela equipe: a aluna recebe o texto de volta?", () => {
   for (const c of CASOS_NOVOS) vazaT4(`VAZAMENTO [${c.sev}] ${c.nome}`, async () => limpo(await lerTolerante(c), c.nome));
 
-  it.skip("a fonte DIGITADA da aula/atualização some nas funções (o que o construtor cobriu)", async () => {
+  it("a fonte DIGITADA da aula/atualização some nas funções (o que o construtor cobriu)", async () => {
     const u: any = await rpc(ALUNA, "app_guideline_updates");
     const item = u.items.find((x: any) => x.id === atualizacaoNova);
     expect(item).toMatchObject({ institution: null, document_title: null, source_url: null });
@@ -314,8 +356,11 @@ describe("selos e indícios na tela do aluno", () => {
   vazaT4("VAZAMENTO [IMPORTANTE] a busca da aluna acha a atualização pelo TÍTULO do documento escondido (oráculo: revela que existe)", async () => {
     // causa: 20261003004100_atualizacoes_diretrizes.sql:88-90 (busca em institution e document_title mesmo com source_hidden).
     // "Pediatria" só existe no título do documento escondido ("Sangue nos Olhos — Pediatria"); tela: UpdatesScreen.jsx:364
+    // (uma atualização só com instituição e documento escondidos: os outros campos não trazem a palavra buscada)
+    const id = (await sql(`insert into public.guideline_updates (slug, area, topic, institution, document_title, source_url, current_conduct, review_status, review_note, published, source_checked_at, reviewed_by, reviewed_at)
+      values ('t4-busca', 'PEDIATRIA', 'Bronquiolite busca T4', $1, $2, $3, 'Suporte clínico.', 'approved', 'ok', true, now(), $4, now()) returning id`, [COMP_ORGAN, COMP_TITLE, COMP_URL, REVISOR]))[0].id;
     const r: any = await rpc(ALUNA, "app_guideline_updates", { p_search: "Pediatria" });
-    expect(r.items.map((x: any) => x.id)).not.toContain(atualizacaoNova);
+    expect(r.items.map((x: any) => x.id)).not.toContain(id);
   });
 
   it("CORRIGIDO [IMPORTANTE] as marcas guideline_hidden/source_hidden não são legíveis pela aluna (permissão por coluna)", async () => {
@@ -368,11 +413,15 @@ describe("3. dados antigos (publicados antes da regra)", () => {
     expect([u.institution, u.document_title, u.source_url]).toEqual([null, null, null]);
   });
 
-  vazaT4("VAZAMENTO [IMPORTANTE] podcast antigo: o PDF da apostila com nome abreviado ('sno-pediatria-2026.pdf') continua na lista como 'Documento 1' (contagem)", async () => {
-    // causa: 20261003009620:394 (só some se o nome bater com a biblioteca ou com 'Sangue nos Olhos', ou se alguém marcar à mão, e não há botão
-    // para marcar: app_admin_podcast_source_complementar não é chamada por nenhuma tela). Tela: PodcastsSection.jsx:61-72
-    const p: any = await rpc(ALUNA, "app_podcast", { p_id: podcastAntigo });
-    expect(p.sources).toEqual([]);
+  it("(APOIO-B, corrigido) podcast antigo: o PDF da apostila com nome abreviado ('sno-pediatria-2026.pdf') some do aluno quando o administrador o marca como complementar (botão)", async () => {
+    const fonte = (await sql(`select id from public.podcast_sources where podcast_id = $1`, [podcastAntigo]))[0].id;
+    await rpc(ADMIN, "app_admin_podcast_source_complementar", { p_source_id: fonte, p_complementar: true });
+    try {
+      const p: any = await rpc(ALUNA, "app_podcast", { p_id: podcastAntigo });
+      expect(p.sources).toEqual([]);
+    } finally {
+      await rpc(ADMIN, "app_admin_podcast_source_complementar", { p_source_id: fonte, p_complementar: false });
+    }
   });
 
   vazaT4("VAZAMENTO [IMPORTANTE] cartão antigo conferido SÓ na apostila continua dizendo 'Conduta atual conferida' (sem fonte nenhuma)", async () => {
@@ -381,7 +430,7 @@ describe("3. dados antigos (publicados antes da regra)", () => {
     expect(c.update_card).toBeNull();
   });
 
-  it.skip("a varredura app_ch_complementar_mentions acha: análise, comentário, aula (resumo/pontos), podcast e atualização (antes/conduta)", async () => {
+  it("a varredura app_ch_complementar_mentions acha: análise, comentário, aula (resumo/pontos), podcast e atualização (antes/conduta)", async () => {
     const achados: any[] = await rpc(ADMIN, "app_ch_complementar_mentions");
     const tipos = new Set(achados.map((a) => `${a.kind}:${a.id}`));
     expect(tipos.has(`aula:${aulaAntiga}`)).toBe(true);
@@ -393,7 +442,7 @@ describe("3. dados antigos (publicados antes da regra)", () => {
 
   /** O que a varredura NÃO enxerga (cada um é um lugar onde o texto antigo fica sem ninguém achar). */
   const lista = async () => JSON.stringify(await rpc(ADMIN, "app_ch_complementar_mentions"));
-  vazaT4("LACUNA [CRÍTICO] a varredura não olha a tabela questions (explicações, conduta esperada, o que avalia, subtema, fontes)", async () => {
+  it("(APOIO-B, corrigido) a varredura não olha a tabela questions (explicações, conduta esperada, o que avalia, subtema, fontes)", async () => {
     // causa: 20261003009620:502-522 (nenhum 'select ... from public.questions'). Com a análise, o comentário e o cartão limpos,
     // a questão antiga continua citando a apostila nas explicações e na conduta esperada, e some da lista.
     await sql(`update public.question_analysis set golden_rule = 'Limpo.' where question_id = $1`, [Q_OLD]);
@@ -405,7 +454,7 @@ describe("3. dados antigos (publicados antes da regra)", () => {
       await sql(`update public.question_comments set content = $2::jsonb where question_id = $1`, [Q_OLD, JSON.stringify({ texto: `Comentário: ${CITA}` })]);
     }
   });
-  vazaT4("LACUNA [CRÍTICO] a varredura não olha professor/especialidade da aula nem a atualização antiga só pelo subtema/linha do tempo/flashcard/nota", async () => {
+  it("(APOIO-B, corrigido) a varredura não olha professor/especialidade da aula nem a atualização antiga só pelo subtema/linha do tempo/flashcard/nota", async () => {
     // causa: 20261003009620:515 (aula: só title, topic, summary, key_points) e :521 (atualização: só before_text, current_conduct, clinical_impact, exam_impact, trap)
     await sql(`update public.lessons set summary = 'Resumo limpo.', key_points = '{}' where id = $1`, [aulaAntiga]);
     try {
@@ -416,19 +465,22 @@ describe("3. dados antigos (publicados antes da regra)", () => {
       await sql(`update public.lessons set summary = $2, key_points = $3 where id = $1`, [aulaAntiga, `Resumo. ${CITA}`, [`Ponto: ${CITA}`]]);
     }
   });
-  vazaT4("LACUNA [CRÍTICO] a varredura não olha Tutor (mensagens, resumos), estações, aviso geral nem material de aula", async () => {
+  it("(APOIO-B, corrigido) a varredura não olha Tutor (mensagens, resumos), estações, aviso geral nem material de aula", async () => {
     // causa: 20261003009620:502-522 (só análise, comentário, cartão, aula, podcast e atualização)
     const texto = await lista();
-    for (const [onde, id] of [["Tutor", conversaAntiga], ["estação", "t4-est"], ["material da aula", materialAntigo], ["aviso geral", "announcement"]]) expect(texto, onde).toContain(id);
+    for (const [onde, id] of [["Tutor", conversaAntiga], ["estação", "t4-est"], ["aviso geral", "announcement"]]) expect(texto, onde).toContain(id);
+    // o material da aula que cita o título cadastrado já fica ESCONDIDO do aluno pela 9620 (hidden_from_student), então a varredura não o lista
+    expect((await sql(`select hidden_from_student from public.lesson_materials where id = $1`, [materialAntigo]))[0].hidden_from_student).toBe(true);
   });
 
-  it("a varredura é só do administrador e NENHUMA tela a chama (a equipe não tem onde ver a lista)", async () => {
+  it("(APOIO-B, corrigido) a varredura tem tela e a marca de fonte de podcast tem botão", async () => {
     const telas = (dir: string): string[] => fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? telas(path.join(dir, e.name)) : [path.join(dir, e.name)]));
     const usam = telas(path.join(ROOT, "src/novo")).filter((f) => /\.(jsx?|tsx?)$/.test(f) && fs.readFileSync(f, "utf8").includes("app_ch_complementar_mentions"));
-    expect(usam).toEqual([]);
+    expect(usam.map((f) => path.basename(f))).toEqual(["ComplementarMentions.jsx"]);
     const marcaPodcast = telas(path.join(ROOT, "src/novo")).filter((f) => /\.(jsx?|tsx?)$/.test(f) && fs.readFileSync(f, "utf8").includes("app_admin_podcast_source_complementar"));
-    expect(marcaPodcast).toEqual([]); // marcar fonte de podcast como complementar também não tem botão
+    expect(marcaPodcast.map((f) => path.basename(f))).toEqual(["AdminPodcasts.jsx"]);
   });
+
 });
 
 // ------------------------------------------------------------------------------------------------- prova positiva
