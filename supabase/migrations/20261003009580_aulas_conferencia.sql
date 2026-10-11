@@ -11,6 +11,11 @@
 --    ("Material complementar", "Áudio Flashcast", "Material 2") em app_lessons, app_lesson e app_lesson_material; a equipe
 --    recebe o nome real em "file_title" e o caminho em "storage_path" (o assistente da aula precisa para reconhecer o PDF salvo). A leitura direta da tabela lesson_materials fica só para a equipe (nenhum código do
 --    app ou do servidor lê essa tabela direto: tudo passa pelas funções).
+--  * Áudio Flashcast (decisão do dono, 11/10/2026: "quando é checado vai para todos os alunos"): o MP3 enviado por EDITOR nasce
+--    "aguardando conferência" (review_status = 'pending') e o aluno não o vê nem o ouve. Se a aula já tem um áudio conferido,
+--    ele continua valendo até o novo ser liberado. O que ADMINISTRADOR ou REVISOR MÉDICO da área da aula envia nasce conferido.
+--    Só esses dois liberam (app_admin_release_lesson_audio): grava quem e quando e o novo áudio substitui o anterior. Os materiais
+--    que já existem ficam como conferidos ('approved' é o padrão da coluna). PDF/slides, diretriz e vídeo não mudam.
 --  * Aulas já publicadas continuam no ar; nada é apagado.
 --
 -- As funções partem das versões de 20261003004000_aulas.sql (a única até aqui). Pode ser colado duas vezes.
@@ -25,6 +30,19 @@ create table if not exists public.lesson_reviews (
 );
 alter table public.lesson_reviews enable row level security;
 revoke all on table public.lesson_reviews from public, anon, authenticated;
+
+-- Conferência do áudio: o estado fica no próprio material (a tabela só é lida pela equipe; o aluno passa pelas funções).
+alter table public.lesson_materials add column if not exists review_status text not null default 'approved';
+alter table public.lesson_materials drop constraint if exists lesson_materials_review_status_check;
+alter table public.lesson_materials add constraint lesson_materials_review_status_check check (review_status in ('approved', 'pending'));
+alter table public.lesson_materials add column if not exists reviewed_by uuid references auth.users (id) on delete set null;
+alter table public.lesson_materials add column if not exists reviewed_at timestamptz;
+
+-- Quem libera o áudio: administrador ou revisor médico cadastrado na área da aula (a mesma regra das Atualizações).
+create or replace function public.lesson_can_release(p_area public.med_area) returns boolean
+  language sql stable security definer set search_path = ''
+as $$ select public.is_admin() or public.ch_is_reviewer(public.guideline_area_code(p_area)) $$;
+revoke execute on function public.lesson_can_release(public.med_area) from public, anon, authenticated;
 
 -- Só para a equipe (as funções app_admin_* abaixo): quem conferiu, quando, o que foi conferido e os avisos da IA.
 create or replace function public.lesson_review_view(l public.lessons) returns jsonb
@@ -51,10 +69,15 @@ as $$
                              when 'guideline' then case when m.storage_path is null then m.title else 'Diretriz' end
                              else 'Material ' || row_number() over (partition by m.kind order by m.position, m.created_at) end,
         'has_file', m.storage_path is not null, 'content_type', m.content_type, 'size_bytes', m.size_bytes, 'url', m.url)
-      || case when public.is_staff() then jsonb_build_object('file_title', m.title, 'storage_path', m.storage_path) else '{}'::jsonb end as j
-    from public.lesson_materials m
+      || case when public.is_staff() then jsonb_build_object('file_title', m.title, 'storage_path', m.storage_path, 'review_status', m.review_status,
+                                                            'reviewed_at', m.reviewed_at,
+                                                            'reviewer', (select coalesce(nullif(p.name, ''), u.email) from auth.users u left join public.profiles p on p.id = u.id where u.id = m.reviewed_by),
+                                                            'can_release', public.lesson_can_release(l.area))
+              else '{}'::jsonb end as j
+    from public.lesson_materials m join public.lessons l on l.id = m.lesson_id
     where m.lesson_id = p_lesson
-      and exists (select 1 from public.lessons l where l.id = p_lesson and (l.published or public.is_staff()))
+      and (l.published or public.is_staff())
+      and (m.review_status = 'approved' or public.is_staff()) -- áudio aguardando conferência: o aluno não vê
   ) x
 $$;
 revoke execute on function public.lesson_materials_json(uuid) from public, anon;
@@ -82,6 +105,7 @@ as $$
            'storage_path', m.storage_path, 'content_type', m.content_type, 'url', m.url)
   from public.lesson_materials m join public.lessons l on l.id = m.lesson_id
   where m.id = p_id and (select auth.uid()) is not null and (l.published or public.is_staff())
+    and (m.review_status = 'approved' or public.is_staff()) -- áudio aguardando conferência: nem o link assinado sai para o aluno
 $$;
 revoke execute on function public.app_lesson_material(uuid) from public, anon;
 grant execute on function public.app_lesson_material(uuid) to authenticated;
@@ -194,8 +218,73 @@ begin
 end
 $$;
 
+-- Registra um material (versão de 20261003004000_aulas.sql). Áudio Flashcast: EDITOR envia como "aguardando conferência" e o
+-- anterior conferido continua valendo; ADMINISTRADOR ou REVISOR MÉDICO da área envia já conferido e substitui o anterior.
+create or replace function public.app_admin_lesson_material(p_lesson_id uuid, p_material jsonb) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  m jsonb := coalesce(p_material, '{}'::jsonb);
+  v_kind constant text := coalesce(m ->> 'kind', 'other');
+  v_area public.med_area;
+  v_libera boolean;
+begin
+  perform public.assert_staff();
+  select area into v_area from public.lessons where id = p_lesson_id;
+  if not found then raise exception 'Aula não encontrada.' using errcode = 'P0002'; end if;
+  if v_kind not in ('slides', 'flashcast', 'guideline', 'other') then raise exception 'Tipo de material inválido.' using errcode = '22023'; end if;
+  if nullif(btrim(coalesce(m ->> 'title', '')), '') is null then raise exception 'Informe o título do material.' using errcode = '22023'; end if;
+  if nullif(m ->> 'storage_path', '') is null and nullif(m ->> 'url', '') is null then raise exception 'Informe o arquivo ou o endereço do material.' using errcode = '22023'; end if;
+  if nullif(m ->> 'storage_path', '') is not null and not (m ->> 'storage_path' ~ ('^lessons/' || p_lesson_id::text || '/')) then
+    raise exception 'Caminho de arquivo inválido.' using errcode = '22023';
+  end if;
+  v_libera := v_kind = 'flashcast' and public.lesson_can_release(v_area);
+  if v_kind = 'slides' then
+    delete from public.lesson_materials where lesson_id = p_lesson_id and kind = 'slides'; -- um por aula (o novo substitui)
+  elsif v_kind = 'flashcast' and v_libera then
+    delete from public.lesson_materials where lesson_id = p_lesson_id and kind = 'flashcast'; -- quem confere: substitui na hora
+  elsif v_kind = 'flashcast' then
+    delete from public.lesson_materials where lesson_id = p_lesson_id and kind = 'flashcast' and review_status = 'pending'; -- só um pendente por aula; o conferido fica
+  end if;
+  insert into public.lesson_materials (lesson_id, kind, title, storage_path, content_type, size_bytes, url, position, review_status, reviewed_by, reviewed_at)
+  values (p_lesson_id, v_kind, btrim(m ->> 'title'), nullif(m ->> 'storage_path', ''), m ->> 'content_type', (m ->> 'size_bytes')::bigint, nullif(btrim(coalesce(m ->> 'url', '')), ''),
+          case v_kind when 'slides' then 1 when 'flashcast' then 2 when 'guideline' then 3 else 9 end,
+          case when v_kind = 'flashcast' and not v_libera then 'pending' else 'approved' end,
+          case when v_libera then (select auth.uid()) end, case when v_libera then now() end);
+  perform public.admin_log('lesson.material', p_lesson_id::text, m || jsonb_build_object('aguardando_conferencia', v_kind = 'flashcast' and not v_libera));
+  return public.app_lesson(p_lesson_id);
+end
+$$;
+
+-- Libera o áudio que aguarda conferência: só administrador ou revisor médico da área. Grava quem e quando; o novo áudio
+-- substitui o anterior para os alunos.
+create or replace function public.app_admin_release_lesson_audio(p_id uuid) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_lesson uuid;
+  v_area public.med_area;
+begin
+  perform public.assert_staff();
+  select m.lesson_id, l.area into v_lesson, v_area from public.lesson_materials m join public.lessons l on l.id = m.lesson_id
+   where m.id = p_id and m.kind = 'flashcast' and m.review_status = 'pending' for update of m;
+  if not found then raise exception 'Este áudio não está aguardando conferência.' using errcode = 'P0002'; end if;
+  if not public.lesson_can_release(v_area) then
+    raise exception 'Só o administrador ou o revisor médico da área libera o áudio para os alunos.' using errcode = '42501';
+  end if;
+  delete from public.lesson_materials where lesson_id = v_lesson and kind = 'flashcast' and id <> p_id;
+  update public.lesson_materials set review_status = 'approved', reviewed_by = (select auth.uid()), reviewed_at = now() where id = p_id;
+  perform public.admin_log('lesson.audio.release', v_lesson::text, jsonb_build_object('material', p_id));
+  return public.app_lesson(v_lesson);
+end
+$$;
+
 -- Sem login ninguém chama estas funções (a equipe logada continua chamando).
 revoke execute on function public.app_admin_lessons() from public, anon;
 revoke execute on function public.app_admin_save_lesson(jsonb) from public, anon;
+revoke execute on function public.app_admin_lesson_material(uuid, jsonb) from public, anon;
+revoke execute on function public.app_admin_release_lesson_audio(uuid) from public, anon;
+grant execute on function public.app_admin_lesson_material(uuid, jsonb) to authenticated;
+grant execute on function public.app_admin_release_lesson_audio(uuid) to authenticated;
 grant execute on function public.app_admin_lessons() to authenticated;
 grant execute on function public.app_admin_save_lesson(jsonb) to authenticated;

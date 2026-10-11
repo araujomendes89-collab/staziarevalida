@@ -85,7 +85,8 @@ describe("Equipe cria e publica", () => {
     expect(c.lessons[0].title).toBe("Bronquiolite viral aguda");
     expect((await rpc(ANA, "app_lessons", { p_area: "CIRURGIA_GERAL" })).lessons).toEqual([]);
     const d = await rpc(ANA, "app_lesson", { p_id: lessonId });
-    expect(d.materials.length).toBe(3);
+    expect(d.materials.length).toBe(2); // o áudio enviado pelo editor ainda aguarda conferência
+    expect(d.materials.map((m: any) => m.kind)).toEqual(["slides", "guideline"]);
     expect(d.progress).toBeNull();
     // o material é servido pelo servidor: o aluno lê o caminho só de aula publicada
     const m = await rpc(ANA, "app_lesson_material", { p_id: d.materials[0].id });
@@ -233,5 +234,86 @@ describe("A01/A05 (correção do revisor) - nada de uso interno sai para o aluno
     const m = await rpc(ADMIN, "app_admin_lesson_material", { p_lesson_id: draft.id, p_material: { kind: "slides", title: "Rascunho.pdf", storage_path: `lessons/${draft.id}/slides-aaaaaaaaaaaaaaaa.pdf`, content_type: "application/pdf", size_bytes: 1 } });
     expect(await rpc(ANA, "app_lesson_material", { p_id: m.materials[0].id })).toBeNull();
     expect(await rpc(ANA, "app_lesson", { p_id: draft.id })).toBeNull();
+  });
+});
+
+describe("Áudio Flashcast só chega ao aluno depois de conferido (decisão do dono, 11/10/2026)", () => {
+  const REVISOR = "00000000-0000-4000-8000-0000000000f1"; // editor e revisor médico de Pediatria
+  const OUTRA = "00000000-0000-4000-8000-0000000000f2"; // editor e revisor médico de Cirurgia (não de Pediatria)
+  let id: string;
+  const audio = (uid: string, n: string, title = `audio-${n}.mp3`) =>
+    rpc(uid, "app_admin_lesson_material", { p_lesson_id: id, p_material: { kind: "flashcast", title, storage_path: `lessons/${id}/flashcast-${n.padEnd(16, "0")}.mp3`, content_type: "audio/mpeg", size_bytes: 500 } });
+  const flash = (l: any) => l.materials.filter((m: any) => m.kind === "flashcast");
+
+  beforeAll(async () => {
+    await db.query(`insert into auth.users (id, email) values ($1, 'rev@t.dev'), ($2, 'outra@t.dev')`, [REVISOR, OUTRA]);
+    await db.query(`update public.user_roles set role = 'editor' where user_id in ($1, $2)`, [REVISOR, OUTRA]);
+    await db.query(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'PEDIATRIA'), ($2, 'CIRURGIA')`, [REVISOR, OUTRA]);
+    id = (await rpc(ADMIN, "app_admin_save_lesson", { p_lesson: { area: "PEDIATRIA", topic: "Sepse", title: "Sepse pediátrica", published: true, review_note: "Conferido com a diretriz." } })).id;
+  });
+
+  it("áudio do administrador nasce conferido (quem e quando); o do editor nasce aguardando e o aluno não vê nem recebe o caminho", async () => {
+    let l = await audio(ADMIN, "aaaa");
+    expect(flash(l)).toMatchObject([{ review_status: "approved", reviewer: "adm@t.dev" }]);
+    expect(flash(l)[0].reviewed_at).toBeTruthy();
+    expect(flash(await rpc(ANA, "app_lesson", { p_id: id })).length).toBe(1);
+    l = await audio(EDITOR, "bbbb");
+    expect(flash(l).map((m: any) => m.review_status).sort()).toEqual(["approved", "pending"]); // o novo fica ao lado do conferido
+    expect(flash(l).find((m: any) => m.review_status === "pending")).toMatchObject({ file_title: "audio-bbbb.mp3", can_release: false });
+  });
+
+  it("o aluno continua com o áudio conferido antigo; o pendente não aparece em lugar nenhum para ele", async () => {
+    const staff = await rpc(EDITOR, "app_lesson", { p_id: id });
+    const pend = flash(staff).find((m: any) => m.review_status === "pending");
+    const old = flash(staff).find((m: any) => m.review_status === "approved");
+    const aluno = await rpc(ANA, "app_lesson", { p_id: id });
+    expect(flash(aluno).map((m: any) => m.id)).toEqual([old.id]);
+    expect(JSON.stringify([aluno, await rpc(ANA, "app_lessons", { p_search: "sepse" })])).not.toContain(pend.id);
+    expect(JSON.stringify(aluno)).not.toMatch(/review_status|audio-bbbb|can_release/);
+    expect(await rpc(ANA, "app_lesson_material", { p_id: pend.id })).toBeNull(); // nem o link assinado do servidor
+    expect((await rpc(ANA, "app_lesson_material", { p_id: old.id })).id).toBe(old.id);
+    expect((await rpc(EDITOR, "app_lesson_material", { p_id: pend.id })).id).toBe(pend.id); // a equipe ouve
+    expect((await asUser(ANA, `select * from public.lesson_materials`)).rows).toEqual([]);
+  });
+
+  it("editor e revisor de outra área não liberam; aluno e visitante também não", async () => {
+    const pend = flash(await rpc(EDITOR, "app_lesson", { p_id: id })).find((m: any) => m.review_status === "pending");
+    await expect(rpc(EDITOR, "app_admin_release_lesson_audio", { p_id: pend.id })).rejects.toThrow(/administrador ou o revisor médico/);
+    await expect(rpc(OUTRA, "app_admin_release_lesson_audio", { p_id: pend.id })).rejects.toThrow(/administrador ou o revisor médico/);
+    await expect(rpc(ANA, "app_admin_release_lesson_audio", { p_id: pend.id })).rejects.toThrow(/equipe/);
+    await expect(rpc(null, "app_admin_release_lesson_audio", { p_id: pend.id })).rejects.toThrow();
+  });
+
+  it("outro envio do editor troca só o pendente; o administrador libera: grava quem e quando e o novo substitui o antigo para os alunos", async () => {
+    let l = await audio(EDITOR, "cccc");
+    expect(flash(l).length).toBe(2);
+    const pend = flash(l).find((m: any) => m.review_status === "pending");
+    expect(pend.file_title).toBe("audio-cccc.mp3");
+    expect(flash(l).find((m: any) => m.review_status === "approved").file_title).toBe("audio-aaaa.mp3");
+    l = await rpc(ADMIN, "app_admin_release_lesson_audio", { p_id: pend.id });
+    expect(flash(l)).toMatchObject([{ id: pend.id, review_status: "approved", reviewer: "adm@t.dev" }]);
+    expect(flash(await rpc(ANA, "app_lesson", { p_id: id })).map((m: any) => m.id)).toEqual([pend.id]);
+    await expect(rpc(ADMIN, "app_admin_release_lesson_audio", { p_id: pend.id })).rejects.toThrow(/não está aguardando/);
+    expect(JSON.stringify(await rpc(ADMIN, "app_admin_audit", { p_limit: 50 }))).toMatch(/lesson\.audio\.release/);
+  });
+
+  it("revisor médico da área: o que ele envia já nasce conferido e ele libera o do editor", async () => {
+    let l = await audio(REVISOR, "dddd");
+    expect(flash(l)).toMatchObject([{ review_status: "approved", reviewer: "rev@t.dev" }]);
+    l = await audio(EDITOR, "eeee");
+    const pend = flash(l).find((m: any) => m.review_status === "pending");
+    expect(pend.can_release).toBe(false);
+    expect(flash(await rpc(REVISOR, "app_lesson", { p_id: id })).find((m: any) => m.review_status === "pending").can_release).toBe(true);
+    l = await rpc(REVISOR, "app_admin_release_lesson_audio", { p_id: pend.id });
+    expect(flash(l)).toMatchObject([{ id: pend.id, review_status: "approved", reviewer: "rev@t.dev" }]);
+  });
+
+  it("PDF (slides) do editor continua valendo na hora; aula sem áudio conferido: aluno não vê o pendente", async () => {
+    const l = await rpc(EDITOR, "app_admin_lesson_material", { p_lesson_id: id, p_material: { kind: "slides", title: "s.pdf", storage_path: `lessons/${id}/slides-ffffffffffffffff.pdf`, content_type: "application/pdf", size_bytes: 9 } });
+    expect(l.materials.find((m: any) => m.kind === "slides").review_status).toBe("approved");
+    expect((await rpc(ANA, "app_lesson", { p_id: id })).materials.some((m: any) => m.kind === "slides")).toBe(true);
+    const novo = (await rpc(ADMIN, "app_admin_save_lesson", { p_lesson: { area: "PEDIATRIA", topic: "Sepse", title: "Sepse 2", published: true, review_note: "Conferido com a diretriz." } })).id;
+    await rpc(EDITOR, "app_admin_lesson_material", { p_lesson_id: novo, p_material: { kind: "flashcast", title: "x.mp3", storage_path: `lessons/${novo}/flashcast-gggggggggggggggg.mp3`, content_type: "audio/mpeg", size_bytes: 9 } });
+    expect(flash(await rpc(ANA, "app_lesson", { p_id: novo }))).toEqual([]);
   });
 });
