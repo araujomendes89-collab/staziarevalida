@@ -46,6 +46,7 @@ export const ACTION_LABEL = {
   "guideline_update.delete": "Atualização apagada",
   // aulas
   "lesson.save": "Aula salva",
+  "lesson.review": "Aula conferida",
   "lesson.delete": "Aula apagada",
   "lesson.material": "Material de aula adicionado",
   "lesson.material.delete": "Material de aula apagado",
@@ -53,6 +54,7 @@ export const ACTION_LABEL = {
   "podcast.save": "Podcast salvo",
   "podcast.delete": "Podcast apagado",
   "podcast.source": "Fonte do podcast adicionada",
+  "podcast.source_rename": "Fonte do podcast renomeada",
   "podcast.script.ai": "Roteiro do podcast escrito pela IA",
   "podcast.script.edit": "Roteiro do podcast editado",
   "podcast.approve": "Roteiro do podcast aprovado",
@@ -284,12 +286,14 @@ const SUMMARY = {
   "guideline_update.delete": topic,
   // aulas e podcasts: o título vem do próprio registro (entry.title, buscado pelo banco; também quando o item já foi apagado)
   "lesson.save": (d, entry) => d.title ?? entry.title,
+  "lesson.review": (d, entry) => join([d.title ?? entry.title, d.note && `Conferido: ${d.note}`]),
   "lesson.delete": (d, entry) => entry.title,
   "lesson.material": (d, entry) => join([entry.title && `Aula: ${entry.title}`, d.title && `Material: ${d.title}`]),
   "podcast.save": (d, entry) => d.title ?? entry.title,
   "podcast.delete": (d, entry) => entry.title,
   "podcast.publish": (d, entry) => entry.title,
   "podcast.unpublish": (d, entry) => entry.title,
+  "podcast.source_rename": (d, entry) => entry.title,
   "podcast.source": (d, entry) => join([entry.title && `Episódio: ${entry.title}`, d.title && `Fonte: ${d.title}`]),
   "podcast.script.ai": (d, entry) =>
     join([

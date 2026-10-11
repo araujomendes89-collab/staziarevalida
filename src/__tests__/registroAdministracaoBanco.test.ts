@@ -45,7 +45,7 @@ describe("RG02: o Registro diz de quem foi o papel ou o plano alterado", () => {
     const bruno = "00000000-0000-4000-8000-0000000000b2";
     await db.query(`insert into auth.users (id, email) values ($1, 'bruno@t.dev')`, [bruno]);
     await rpc(ADMIN, "app_admin_set_role", { p_user_id: bruno, p_role: "editor" });
-    await rpc(ADMIN, "app_admin_set_subscription", { p_user_id: bruno, p_plan: "pro", p_status: "active" });
+    await rpc(ADMIN, "app_admin_set_subscription", { p_user_id: bruno, p_plan: "pro", p_status: "active", p_current_period_end: "2099-01-01T00:00:00Z" }); // (INT) plano pago exige "Plano pago até" (correcoes_acesso, 9550)
     await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { area: "PEDIATRIA", topic: "Asma", title: "Asma na infância" } });
     const log = await rpc(ADMIN, "app_admin_audit", { p_limit: 30 });
     const doBruno = (action: string) => log.find((l: any) => l.action === action && l.target === bruno);

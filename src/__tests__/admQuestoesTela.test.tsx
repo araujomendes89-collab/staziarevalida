@@ -144,17 +144,22 @@ describe("Q08 e Q10 — o Registro de ações escreve em português", () => {
     const at = "2026-10-11T12:00:00Z";
     backend.rpc.mockReset();
     backend.rpc.mockImplementation(async (fn: string) => {
-      if (fn === "app_admin_audit")
-        return [
+      // (INT) o Registro agora lê app_admin_audit_page (adm-atualizacoes, migração 9512), uma página por vez
+      if (fn === "app_admin_audit_page") {
+        const items = [
           { id: 2, action: "question.delete", target: "revalida_2024_1_q130", created_at: at, actor: "adm@t.dev", details: { code: "REV-2024.1-Q130", topic: "Bronquiolite", snapshot: {} } },
           { id: 1, action: "question.analysis_unpublished", target: "revalida_2024_1_q100", created_at: at, actor: "ed@t.dev", details: { analysis_ids: ["a1"] } },
         ];
+        return { total: items.length, limit: 50, offset: 0, actions: items.map((i) => i.action), items };
+      }
       throw new Error(`rpc não simulada: ${fn}`);
     });
     const { container } = render(<AdminAudit />);
-    expect(await screen.findByText("Questão apagada")).toBeTruthy();
-    expect(screen.getByText("REV-2024.1-Q130 · Bronquiolite")).toBeTruthy();
-    expect(screen.getByText("Análise da questão tirada do ar")).toBeTruthy();
+    // (INT) os nomes também estão na lista "Tipo de ação" (filtro do Registro): a conferência é só na lista de ações
+    const list = await screen.findByRole("list", { name: "Ações registradas" });
+    expect(within(list).getByText("Questão apagada")).toBeTruthy();
+    expect(within(list).getByText("REV-2024.1-Q130 · Bronquiolite")).toBeTruthy();
+    expect(within(list).getByText("Análise da questão tirada do ar")).toBeTruthy();
     expect(container.textContent).not.toMatch(/question\.(delete|analysis_unpublished)/);
   });
 });
