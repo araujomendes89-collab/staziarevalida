@@ -130,9 +130,11 @@ Aviso fixo no topo do painel: **"O que você salvar aparece na hora para o aluno
   a pessoa.
 - Linha do tempo: ano entre 2000 e 2100 e presente no trecho citado, senão aviso. Flashcards: frente 3–2.000 e verso 1–2.000
   caracteres (regras do banco).
-- Revisão e publicação **não mudam**: o revisor da área confere, o administrador publica. Salvar mudança de conteúdo de item já
-  conferido volta a conferência para pendente (regra que já existe); se publicado, o aluno vê "Ainda sem conferência médica"
-  até a nova conferência.
+- Revisão e publicação **não mudam**: o revisor da área confere, o administrador publica. Salvar mudança do texto que o aluno lê
+  volta a conferência para pendente (regra que já existe); se estava publicado, **sai do ar** até um revisor conferir de novo e o
+  administrador publicar outra vez (correção AT02 de 10/10/2026, já publicada: o banco faz isso e a tela pergunta antes de
+  salvar). "Usar" nunca salva: a pergunta aparece quando a pessoa clica em "Salvar alterações", e o aviso "Esta atualização está
+  no ar…" fica na tela com o painel aberto.
 - Permissão: equipe, ou revisor médico da área do item (com id, vale a área gravada, não a do formulário).
 
 ### 5.3 Planos

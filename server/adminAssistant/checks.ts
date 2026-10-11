@@ -71,7 +71,7 @@ export const unknownSourceWarning = (label: string, marks: string[]) => `${label
 export const formatWarning = (label: string) => `${label}: fora do formato; sugestão descartada.`;
 const tooLongWarning = (label: string, max: number) => `${label}: passa de ${max} caracteres; sugestão descartada.`;
 const itemTooLongWarning = (label: string, itemMax: number) => `${label}: item com mais de ${itemMax} caracteres descartado.`;
-const tooManyWarning = (label: string, max: number, left: number) => `${label}: no máximo ${max} itens; ${left} ficaram de fora.`;
+const tooManyWarning = (label: string, max: number, left: number) => `${label}: no máximo ${max} itens; ${left} ${left === 1 ? "ficou" : "ficaram"} de fora.`;
 const badYearWarning = (label: string, year: unknown) => `${label}: ano ${year} fora de 2000–2100; item descartado.`;
 const badCardWarning = (label: string) =>
   `${label}: flashcard fora do formato (frente de 3 a 2.000 e verso de 1 a 2.000 caracteres); descartado.`;

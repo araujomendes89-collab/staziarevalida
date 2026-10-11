@@ -84,6 +84,82 @@ describe("Assistente de Atualizações", () => {
     expect(atualizacoesAdapter.itemId({})).toBe("atualizacoes:novo");
   });
 
+  it("o pedido à IA leva o item preenchido e as regras da aba; a questão de treino, a situação e a publicação não vão", async () => {
+    let seen: any;
+    const url = await h.listen({ mockRespond: (req) => ((seen = req), { suggestions: [], missing: [] }) });
+    const f = {
+      ...form(GO, "GINECOLOGIA_OBSTETRICIA"),
+      subtopic: "Síndromes hipertensivas",
+      institution: "Ministério da Saúde",
+      document_title: "Protocolo de prevenção com AAS",
+      publication_label: "05/2025",
+      source_url: "https://www.gov.br/saude/pcdt.pdf",
+      before_text: "Antes: sem AAS.",
+      current_conduct: "Conduta X.",
+      practice_questions: [{ statement: "Gestante de 28 anos com pressão 150x100 mmHg e proteinúria.", answer: "B", options: [] }],
+      review_status: "approved",
+      published: true,
+      priority: 1,
+      position: 7,
+      search_terms: "aas pre-eclampsia",
+    };
+    const r = await h.call(`${url}/run`, h.tokens.editor, { tab: "atualizacoes", mode: "preencher", form: f, fields: ["exam_impact"], material: { text: MATERIAL } });
+    expect(r.status).toBe(200);
+    // só o campo pedido é permitido; os preenchidos vão como dado, com marca, na ordem da aba
+    expect(seen.input).toContain("Campos permitidos: exam_impact (Como pode aparecer no Revalida)\n");
+    const marks = [...seen.input.matchAll(/\[I\d+\] (\w+) \(/g)].map((m) => m[1]);
+    expect(marks).toEqual(["topic", "subtopic", "area", "institution", "document_title", "publication_label", "source_url", "before_text", "current_conduct"]);
+    for (const text of ["Pré-eclâmpsia", "Síndromes hipertensivas", "Ministério da Saúde", "Protocolo de prevenção com AAS", "05/2025", "https://www.gov.br/saude/pcdt.pdf", "Antes: sem AAS.", "Conduta X."]) expect(seen.input).toContain(text);
+    // a questão de treino (tem a resposta), a conferência, a publicação e os números da lista não vão para a IA
+    for (const text of ["Gestante de 28 anos", "approved", "review_status", "published", "search_terms", "aas pre-eclampsia", "Somente leitura"]) expect(seen.input).not.toContain(text);
+    expect(seen.system).toContain("REGRAS DESTA ABA");
+    for (const rule of atualizacoesAdapter.rules) expect(seen.system).toContain(rule);
+    expect(seen.system).toContain('- exam_impact (Como pode aparecer no Revalida): texto em "text", até 4000 caracteres; exige trecho [T] ou [F] citado');
+  });
+
+  it("Conferir: achado em campo que o assistente não muda diz quem muda (fonte, conferência e publicação)", async () => {
+    const url = await h.listen({
+      mockRespond: () => ({
+        findings: [
+          { field: "source_url", kind: "erro", detail: "O endereço parece não abrir.", sources: ["I1"] },
+          { field: "review_status", kind: "pouco_claro", detail: "A conferência não registra o documento.", sources: ["I1"] },
+          { field: "published", kind: "desatualizado", detail: "Pode estar no ar com texto antigo.", sources: ["I1"] },
+          { field: "current_conduct", kind: "erro", detail: "Dose sem unidade.", sources: ["I1"] },
+        ],
+      }),
+    });
+    const f = { ...form(GO, "GINECOLOGIA_OBSTETRICIA"), source_url: "https://www.gov.br/saude/pcdt.pdf", current_conduct: "AAS 150." };
+    const r = (await h.call(`${url}/run`, h.tokens.editor, { tab: "atualizacoes", mode: "conferir", form: f })).body;
+    const owner = (field: string) => r.findings.find((x: any) => x.field === field)?.owner;
+    expect(owner("source_url")).toBe("A fonte é o que o revisor confere: fica com a pessoa.");
+    expect(owner("review_status")).toBe("A conferência médica é do revisor da área.");
+    expect(owner("published")).toBe("Só o administrador publica.");
+    expect(owner("current_conduct")).toBeNull(); // esse o assistente muda: tem "Propor correção"
+  });
+
+  it("Conversar: a linha do tempo só recebe itens novos, o antes vem do formulário e o total para em 30", async () => {
+    const existing = Array.from({ length: 29 }, (_, i) => ({ year: 2000 + i, text: `Marco ${i}.` }));
+    const url = await h.listen({
+      mockRespond: () => ({
+        reply: "Feito.",
+        changes: [
+          {
+            field: "timeline",
+            after: V({ timeline: [{ year: 2000, text: "Marco 0." }, { year: 2024, text: "Protocolo recomenda AAS 150 mg." }, { year: 2025, text: "Outra mudança." }] }),
+            sources: ["T1"],
+            reason: "Vem do trecho.",
+          },
+        ],
+      }),
+    });
+    const body = { tab: "atualizacoes", mode: "conversar", form: { ...form(GO, "GINECOLOGIA_OBSTETRICIA"), timeline: existing }, message: "Acrescente as mudanças do trecho.", material: { text: MATERIAL } };
+    const tl = (await h.call(`${url}/run`, h.tokens.editor, body)).body.suggestions.find((s: any) => s.field === "timeline");
+    expect(tl.append).toBe(true);
+    expect(tl.before).toEqual(existing);
+    expect(tl.value).toEqual([{ year: 2024, text: "Protocolo recomenda AAS 150 mg." }]); // 2000 já existe; 2025 não cabe nos 30
+    expect(tl.warnings).toEqual(["Linha do tempo: no máximo 30 itens; 1 ficou de fora."]);
+  });
+
   it("busca oficial com tema, subtema e documento", async () => {
     const queries: any[] = [];
     const db = {
