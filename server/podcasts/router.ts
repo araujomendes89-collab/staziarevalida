@@ -20,7 +20,7 @@ import { localStorageDir, supabaseStorage, type ContentDb, type Identity, type S
 import type { AiProvider, StructuredRequest } from "../contentHub/ai/provider";
 import type { ModelRef } from "../ai/config";
 import { aiChoices } from "../ai/maestro";
-import { chunkPages, extractDocx, extractPdf, fetchLink, isPdf, isZip, MAX_SOURCE_BYTES, type ExtractedPage } from "./extract";
+import { chunkPagesInfo, extractDocx, extractPdf, fetchLink, isPdf, isZip, MAX_SOURCE_BYTES, type ExtractedPage } from "./extract";
 import { checkScript, generateScript, PODCAST_PROMPT_VERSION, type PodcastScript, type ScriptLine, type SourceChunk } from "./script";
 import { DEFAULT_VOICES, geminiTtsEnabled, pcmToMp3, pickVoices, SAMPLE_RATE, silence, splitParts, synthesizePart, ttsCost, ttsStatus, VOICE_OPTIONS, type PodcastVoices, type TtsKind } from "./audio";
 
@@ -127,22 +127,27 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     return asUser<any>(req, "app_admin_podcast", { p_id: req.params.id });
   };
 
-  /** Texto extraído → trechos com a origem → banco. */
+  /** Texto extraído → trechos com a origem → banco. Documento longo demais entra cortado e a equipe é avisada (campo `note`). */
   const ingest = async (req: Authed, source: Record<string, unknown>, pages: ExtractedPage[]) => {
-    const chunks = chunkPages(pages);
+    const info = chunkPagesInfo(pages);
+    const chunks = info.chunks;
     const chars = chunks.reduce((n, c) => n + c.text.length, 0);
     if (chars < 80) {
       throw httpError(422, source.kind === "pdf" ? "O PDF não tem texto aproveitável (pode ser escaneado). Cole o texto ou passe o PDF pela Central de Conteúdo (OCR)." : "A fonte não tem texto aproveitável.");
     }
-    const numbered = pages.filter((p) => p.page != null).length;
+    // a contagem de páginas da fonte é a do que entrou de fato (não o total do arquivo)
+    const numbered = info.truncated ? pages.filter((p) => p.page != null && p.page <= (info.lastPage ?? 0)).length : info.pagesTotal;
     const view = await service<any>("ch_worker_podcast_add_source", {
       p_user: req.user!.id,
       p_podcast: req.params.id,
       p_source: { ...source, pages: numbered || null },
       p_chunks: chunks,
     });
-    log(`podcasts: fonte ${source.kind} no episódio ${req.params.id} (${chunks.length} trechos)`);
-    return view;
+    log(`podcasts: fonte ${source.kind} no episódio ${req.params.id} (${chunks.length} trechos${info.truncated ? `, cortado de ${info.total}` : ""})`);
+    if (!info.truncated) return view;
+    const ate = info.lastPage != null ? ` (até a página ${info.lastPage} de ${info.pagesTotal})` : " (só o começo do texto)";
+    const note = `Documento longo: entraram só os primeiros ${chunks.length} de ${info.total} trechos${ate}. O resto não foi usado. Divida o documento em partes menores para o podcast cobrir tudo.`;
+    return { ...view, note };
   };
   const extractFile = (buf: Buffer, ext: "pdf" | "docx") => (ext === "pdf" ? extractPdf(buf) : extractDocx(buf));
 
@@ -277,7 +282,8 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
         }
       }
       const view = await ingest(req, { kind: "lesson", title: `Aula: ${lesson.title}`.slice(0, 200), lesson_id: lessonId }, pages);
-      res.status(201).json(note ? { ...view, note } : view);
+      const notes = [view?.note, note].filter(Boolean).join(" ");
+      res.status(201).json(notes ? { ...view, note: notes } : view);
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }

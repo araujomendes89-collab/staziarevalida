@@ -14,7 +14,7 @@ import type { Server } from "http";
 import { openDevDatabaseForTests, type DevDatabase } from "../../server/devDb/devDatabase";
 import { devContentDb, localStorageDir, type ContentDb, type Storage } from "../../server/contentHub/infra";
 import { createPodcastsRouter, type PodcastsDeps } from "../../server/podcasts/router";
-import { chunkPages, fetchLink, htmlToText, privateAddress } from "../../server/podcasts/extract";
+import { chunkPages, chunkPagesInfo, fetchLink, htmlToText, privateAddress } from "../../server/podcasts/extract";
 import { checkScript, mockScriptFromInput, buildScriptInput, ungroundedNumbers, type PodcastScript } from "../../server/podcasts/script";
 import { pcmToMp3, pickVoices, silence, splitParts, synthesizePart, toPcm, ttsStatus, SAMPLE_RATE } from "../../server/podcasts/audio";
 import { AiInvalidOutput } from "../../server/contentHub/ai/provider";
@@ -188,6 +188,16 @@ describe("Peças do servidor (sem rede)", () => {
     expect(chunks.some((c) => c.text === "Cabeçalho")).toBe(false);
   });
 
+  it("documento longo: o corte em 600 trechos é avisado, com a última página que entrou", () => {
+    const pages = Array.from({ length: 700 }, (_, i) => ({ page: i + 1, text: `Página ${i + 1}: ${"Conduta clínica detalhada. ".repeat(10)}` }));
+    const info = chunkPagesInfo(pages);
+    expect(info.chunks).toHaveLength(600);
+    expect(info).toMatchObject({ total: 700, truncated: true, lastPage: 600, pagesTotal: 700 });
+    expect(chunkPages(pages)).toEqual(info.chunks); // quem já usava chunkPages não muda
+    const curto = chunkPagesInfo(pages.slice(0, 3));
+    expect(curto).toMatchObject({ total: 3, truncated: false, lastPage: 3 });
+  });
+
   it("número com unidade precisa estar no trecho citado (vírgula e ponto valem igual)", () => {
     expect(ungroundedNumbers("Faça 4 g IV e repita em 1,5 h.", ["Sulfato de magnésio 4 g IV; reavaliar em 1.5 h"])).toEqual([]);
     expect(ungroundedNumbers("Faça 6 g IV.", ["Sulfato de magnésio 4 g IV"])).toEqual(["6 g"]);
@@ -351,6 +361,25 @@ describe("Episódio, fontes e permissões", () => {
     expect(b.status).toBe(422);
     expect(b.body.error).toMatch(/escaneado|OCR/);
     expect((await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId })).sources).toHaveLength(4);
+  });
+});
+
+describe("Fonte longa demais", () => {
+  it("texto que passa de 600 trechos entra cortado e a equipe é avisada de quanto entrou", async () => {
+    const created = await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Fonte longa", topic: "Teste", area: "CLINICA_MEDICA", target_minutes: 5 } });
+    const paragraphs = Array.from({ length: 612 }, (_, i) => `Item ${i + 1}: ${"x".repeat(630)}`.replace(/x/g, "a"));
+    const text = paragraphs.join("\n\n");
+    expect(text.length).toBeLessThan(400_000);
+    const r = await post(`${base}/${created.id}/sources/text`, editor, { title: "Texto enorme", text });
+    expect(r.status).toBe(201);
+    expect(r.body.note).toMatch(/entraram só os primeiros 600 de 612 trechos/);
+    expect(r.body.note).toMatch(/o resto não foi usado/i);
+    expect(r.body.sources[0].chunks).toBe(600);
+    // fonte curta não leva aviso
+    const ok = await post(`${base}/${created.id}/sources/text`, editor, { title: "Curto", text: "Um parágrafo curto com mais de oitenta caracteres para a fonte entrar inteira, sem nenhum aviso. ".repeat(2) });
+    expect(ok.status).toBe(201);
+    expect(ok.body.note).toBeUndefined();
+    await call(`${base}/${created.id}`, admin, { method: "DELETE" });
   });
 });
 
