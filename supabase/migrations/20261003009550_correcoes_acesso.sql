@@ -8,12 +8,17 @@
 --        A regra fica numa função só (subscription_is_paid), usada pelas três. A administração passa a recusar plano pago
 --        ativo ou pendente sem a data de fim (antes, sem data, o aluno ficava com o plano para sempre).
 --        Plano ativo com data de fim que já passou também é recusado (quase sempre é data errada); o pendente aceita fim recente.
---        ATENÇÃO antes de colar: quem hoje tem Pro ou Elite sem "Plano pago até" perde o acesso pago na hora. Para ver quem é:
---          select s.user_id, u.email, s.plan, s.status, s.current_period_end from public.subscriptions s
---          join auth.users u on u.id = s.user_id
+--        ATENÇÃO antes de colar: quem hoje tem Pro ou Elite e perde o acesso pago na hora é quem aparece nesta consulta
+--        (plano ativo sem data de fim ou com o fim vencido; pagamento pendente sem data ou já fora dos 3 dias de tolerância;
+--        administrador e editor ficam de fora, porque o acesso deles vem do papel). Cada linha mostra e-mail, plano, situação e fim:
+--          select u.email as "E-mail", s.plan as "Plano", s.status as "Situação", s.current_period_end as "Plano pago até"
+--          from public.subscriptions s join auth.users u on u.id = s.user_id
 --          where s.plan in ('pro', 'elite') and s.status in ('active', 'past_due')
---            and (s.current_period_end is null or s.current_period_end <= now());
---        e dê a data em Administração > Usuários (ou cole depois desta migração).
+--            and not exists (select 1 from public.user_roles r where r.user_id = s.user_id and r.role in ('admin', 'editor'))
+--            and (s.current_period_end is null
+--                 or s.current_period_end + case when s.status = 'past_due' then interval '3 days' else interval '0' end <= now())
+--          order by u.email;
+--        Se a lista vier vazia, ninguém perde nada. Para quem deve continuar pago, dê a data em Administração > Usuários (ou cole depois desta migração).
 -- CF01 — "Planos pagos + teste grátis" nascia desligado: com o Tutor ligado e essa chave desligada, todo aluno usava o
 --        Tutor de graça, com os limites do plano pago. Agora o banco recusa salvar o Tutor ligado com ela desligada (mensagem
 --        clara na tela) e a chave nasce ligada. Esta migração NÃO muda a configuração atual do Tutor: a decisão é do dono.
