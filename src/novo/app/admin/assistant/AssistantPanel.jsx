@@ -4,8 +4,9 @@ import React from "react";
 import { Banner, Button, Checkbox, SegmentedControl, SelectField, TextField } from "../../../ds";
 import { ASSIST_TEXTS, aiDefinedText, isEmptyValue, sameValue, valueText } from "../../../../shared/adminAssistant/types";
 import { itemDiff, wordDiff } from "../../../../shared/textDiff";
-import { TextArea, messageOf } from "../common.jsx";
-import { readPdfMaterial } from "./assistantApi.js";
+import { TextArea } from "../common.jsx";
+import { assistantErrorText, readPdfMaterial } from "./assistantApi.js";
+import { ASSIST_ERRORS } from "../../../../shared/adminAssistant/errors";
 
 const MODES = [{ value: "preencher", label: "Preencher" }, { value: "conferir", label: "Conferir" }, { value: "conversar", label: "Conversar" }];
 const MATERIALS = [{ value: "text", label: "Colar texto" }, { value: "pdf", label: "PDF" }, { value: "link", label: "Link" }];
@@ -152,7 +153,7 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
       if (seq.current === mine) setResult(res);
     } catch (e) {
       if (seq.current !== mine) return;
-      setError(e?.status ? e.message : messageOf(e, "O assistente falhou. Tente de novo."));
+      setError(assistantErrorText(e));
     } finally {
       if (seq.current === mine) setBusy(false);
     }
@@ -166,7 +167,7 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
       setPdf(await readPdfMaterial(file));
     } catch (e) {
       setPdf(null);
-      setError(e?.message ?? "Não foi possível ler o PDF.");
+      setError(assistantErrorText(e, ASSIST_ERRORS.pdf));
     } finally {
       setPdfBusy(false);
     }
