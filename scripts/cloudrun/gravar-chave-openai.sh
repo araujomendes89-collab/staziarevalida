@@ -6,6 +6,7 @@
 #      do processamento ler esse segredo;
 #   3. liga o segredo à tarefa com --update-secrets: só a OPENAI_API_KEY entra; as outras chaves da tarefa ficam como estão;
 #   4. confere na tarefa que a OPENAI_API_KEY vem do segredo.
+# Antes de gravar, confere que a tarefa existe e pede para digitar "sim" (resumo sem a chave); STAZIA_SEM_PERGUNTA=1 pula a pergunta.
 #
 # Como rodar (no Terminal do Mac, com o gcloud já com login feito):
 #   bash "/Volumes/StaziaMed/STAZIAMED REVALIDA/StaziaMed Revalida/scripts/cloudrun/gravar-chave-openai.sh"
@@ -77,6 +78,30 @@ if [ $(( ${#K} % 2 )) -eq 0 ] && [ "${K:0:$H}" = "${K:$H}" ]; then
 fi
 echo "   chave encontrada: ${#K} caracteres, formato de chave da OpenAI"
 
+# a tarefa precisa existir ANTES de qualquer coisa ser gravada
+if ! "${G[@]}" run jobs describe "$JOB" --region="$REGION" --format=json >/dev/null 2>&1; then
+  echo "Não achei a tarefa $JOB no projeto $P ($REGION). Nada foi mudado."
+  exit 1
+fi
+echo "   tarefa $JOB encontrada"
+
+# confirmação antes de gravar (resumo sem a chave); STAZIA_SEM_PERGUNTA=1 pula (só o teste automático usa)
+if [ "${STAZIA_SEM_PERGUNTA:-}" != "1" ]; then
+  echo
+  echo "Vou gravar a chave da OpenAI no processamento:"
+  echo "  projeto: $P"
+  echo "  tarefa:  $JOB ($REGION)"
+  echo "  segredo: $SECRET"
+  echo "  chave:   ${#K} caracteres (não é mostrada)"
+  printf 'Digite sim para continuar (qualquer outra coisa cancela): '
+  RESP=""
+  read -r RESP || RESP=""
+  if [ "$RESP" != "sim" ]; then
+    echo "Cancelado. Nada foi mudado."
+    exit 1
+  fi
+fi
+
 echo "== 2/4 segredo $SECRET no Google (Secret Manager)"
 "${G[@]}" secrets describe "$SECRET" >/dev/null 2>&1 || "${G[@]}" secrets create "$SECRET" --replication-policy=automatic >/dev/null
 # versão nova só quando a chave mudou (comparado aqui, sem mostrar)
@@ -91,10 +116,6 @@ echo "   a conta do processamento ($SA) pode ler o segredo"
 K=""
 
 echo "== 3/4 tarefa $JOB no Cloud Run ($REGION)"
-if ! "${G[@]}" run jobs describe "$JOB" --region="$REGION" --format=json >/dev/null 2>&1; then
-  echo "Não achei a tarefa $JOB no projeto $P ($REGION). A chave ficou guardada no segredo $SECRET, mas a tarefa não foi mudada."
-  exit 1
-fi
 "${G[@]}" run jobs update "$JOB" --region="$REGION" --update-secrets="OPENAI_API_KEY=${SECRET}:latest" >/dev/null
 echo "   tarefa atualizada (as outras chaves da tarefa ficaram como estavam)"
 

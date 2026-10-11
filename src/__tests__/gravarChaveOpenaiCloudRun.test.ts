@@ -53,8 +53,13 @@ function setup(env: string, flags: string[] = []) {
   fs.writeFileSync(path.join(app, ".env"), env);
   fs.writeFileSync(path.join(bin, "gcloud"), FAKE_GCLOUD, { mode: 0o755 });
   for (const f of flags) fs.writeFileSync(path.join(fake, f), "");
-  const run = () => {
-    const r = spawnSync("/bin/bash", [SCRIPT], { encoding: "utf8", env: { PATH: `${bin}:${process.env.PATH}`, HOME: root, STAZIA_DIR: app, FAKE_DIR: fake } });
+  // semPergunta: o teste automático pula a confirmação (STAZIA_SEM_PERGUNTA=1); com `input`, a pergunta é feita e respondida
+  const run = (opts: { input?: string } = {}) => {
+    const r = spawnSync("/bin/bash", [SCRIPT], {
+      encoding: "utf8",
+      input: opts.input ?? "",
+      env: { PATH: `${bin}:${process.env.PATH}`, HOME: root, STAZIA_DIR: app, FAKE_DIR: fake, ...(opts.input === undefined ? { STAZIA_SEM_PERGUNTA: "1" } : {}) },
+    });
     return { status: r.status, out: `${r.stdout}${r.stderr}` };
   };
   const read = (f: string) => (fs.existsSync(path.join(fake, f)) ? fs.readFileSync(path.join(fake, f), "utf8") : "");
@@ -132,11 +137,37 @@ describe("CC32: script que grava a chave da OpenAI no processamento (Cloud Run)"
     expect(t.calls()).not.toMatch(/secrets|run jobs/);
   });
 
-  it("tarefa não encontrada: avisa que a chave ficou guardada, mas a tarefa não mudou", () => {
+  it("tarefa não encontrada: para ANTES de criar o segredo ou gravar a chave, e diz que nada foi mudado", () => {
     const t = setup(ENV_OK, ["sem-tarefa"]);
     const r = t.run();
     expect(r.status).toBe(1);
-    expect(r.out).toMatch(/Não achei a tarefa stazia-pdf-worker/);
-    expect(t.calls()).not.toMatch(/run jobs update/);
+    expect(r.out).toMatch(/Não achei a tarefa stazia-pdf-worker.*Nada foi mudado/);
+    expect(t.calls()).not.toMatch(/secrets (create|versions add|add-iam-policy-binding)|run jobs update/);
+    expect(t.secretIsKey()).toBe(false);
+  });
+
+  describe("confirmação antes de gravar", () => {
+    it("sem STAZIA_SEM_PERGUNTA, mostra o resumo (sem a chave) e só grava com a resposta sim", () => {
+      const t = setup(ENV_OK);
+      const r = t.run({ input: "sim\n" });
+      expect(r.status, r.out).toBe(0);
+      expect(r.out).toMatch(/projeto: staziamed-revalida-prod/);
+      expect(r.out).toMatch(/tarefa:\s+stazia-pdf-worker/);
+      expect(r.out).toMatch(/segredo: stazia-openai-api-key/);
+      expect(r.out).toContain(`${KEY.length} caracteres (não é mostrada)`);
+      expect(r.out).toMatch(/Digite sim/);
+      expect(r.out.includes(KEY)).toBe(false);
+      expect(t.secretIsKey()).toBe(true);
+    });
+    for (const [name, input] of [["resposta não", "não\n"], ["Enter vazio", "\n"], ["sem resposta", ""], ["S maiúsculo", "Sim\n"]] as const) {
+      it(`${name}: cancela sem mudar nada`, () => {
+        const t = setup(ENV_OK);
+        const r = t.run({ input });
+        expect(r.status).toBe(1);
+        expect(r.out).toMatch(/Cancelado\. Nada foi mudado/);
+        expect(t.calls()).not.toMatch(/secrets (create|versions add|add-iam-policy-binding)|run jobs update/);
+        expect(t.secretIsKey()).toBe(false);
+      });
+    }
   });
 });
