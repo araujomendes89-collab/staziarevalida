@@ -3,7 +3,7 @@
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const backend: any = { rpc: vi.fn(), accessToken: async () => "token-de-teste" };
 const boot: any = { profile: { name: "Ana" }, play: { enabled: true } };
@@ -52,5 +52,35 @@ describe("A05 - o nome do arquivo enviado não aparece para o aluno", () => {
     expect(document.body.textContent).not.toMatch(/CURSINHO-X|apostila final/);
     expect(document.body.textContent).not.toMatch(/Flashcast: Flashcast/);
     expect(screen.getByText("2,3 MB")).toBeTruthy();
+  });
+});
+
+describe("A04 - áudio Flashcast renova o endereço quando o player falha", () => {
+  const audioLesson = () => baseLesson({ materials: [{ id: "m2", kind: "flashcast", title: "Flashcast", has_file: true, content_type: "audio/mpeg", size_bytes: 31_000_000, url: null }] });
+
+  it("endereço vencido: pede outro uma vez e continua do mesmo ponto; se falhar de novo, avisa em português", async () => {
+    lesson = audioLesson();
+    let n = 0;
+    (globalThis as any).fetch = vi.fn(async (url: string) => {
+      if (String(url).endsWith("/materials/m2/link")) {
+        n++;
+        return new Response(JSON.stringify({ url: `https://deposito.test/flashcast-${n}.mp3` }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response("{}", { status: 404 });
+    });
+    await openLesson();
+    fireEvent.click(screen.getByRole("button", { name: "Ouvir" }));
+    const audio = (await screen.findByLabelText("Áudio Flashcast")) as HTMLAudioElement;
+    expect(audio.getAttribute("src")).toBe("https://deposito.test/flashcast-1.mp3");
+    Object.defineProperty(audio, "currentTime", { value: 1500, writable: true, configurable: true });
+    fireEvent.error(audio); // o endereço venceu no meio da aula
+    await waitFor(() => expect((screen.getByLabelText("Áudio Flashcast") as HTMLAudioElement).getAttribute("src")).toBe("https://deposito.test/flashcast-2.mp3"));
+    const renewed = screen.getByLabelText("Áudio Flashcast") as HTMLAudioElement;
+    renewed.currentTime = 0;
+    fireEvent.loadedMetadata(renewed);
+    expect(renewed.currentTime).toBe(1500);
+    fireEvent.error(renewed); // falhou de novo sem tocar: não fica em ciclo
+    expect(await screen.findByText(/Não foi possível tocar o áudio/)).toBeTruthy();
+    expect(n).toBe(2);
   });
 });

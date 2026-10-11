@@ -169,6 +169,20 @@ function MaterialSlot({ kind, m, backend }) {
 function Material({ m, backend }) {
   const [icon, label, kind] = MATERIAL[m.kind] ?? MATERIAL.other;
   const [state, setState] = React.useState({ url: null, busy: false, error: null });
+  const renewed = React.useRef(false); // já pediu outro endereço sem o áudio chegar a tocar
+  const resumeAt = React.useRef(0);
+  // O endereço do áudio vence (6 horas): se o player falhar, pede outro uma vez e continua do mesmo ponto (A04).
+  const renew = async (event) => {
+    if (renewed.current) return setState((s) => ({ ...s, error: "Não foi possível tocar o áudio. Atualize a página e tente de novo." }));
+    renewed.current = true;
+    resumeAt.current = event.currentTarget.currentTime || 0;
+    try {
+      const url = await lessonFileUrl(backend, m.id);
+      setState({ url, busy: false, error: null });
+    } catch {
+      setState((s) => ({ ...s, error: "Não foi possível tocar o áudio. Atualize a página e tente de novo." }));
+    }
+  };
   const fetchUrl = async () => {
     if (state.url) return state.url;
     setState({ url: null, busy: true, error: null });
@@ -208,7 +222,18 @@ function Material({ m, backend }) {
         </Button>
       </div>
       {state.error && <span style={{ font: "var(--type-caption)", color: "var(--danger-text)" }}>{state.error}</span>}
-      {m.kind === "flashcast" && state.url && <audio controls autoPlay src={state.url} style={{ width: "100%" }} aria-label="Áudio Flashcast" />}
+      {m.kind === "flashcast" && state.url && <audio
+          controls
+          autoPlay
+          src={state.url}
+          style={{ width: "100%" }}
+          aria-label="Áudio Flashcast"
+          onError={renew}
+          onPlaying={() => (renewed.current = false)}
+          onLoadedMetadata={(e) => {
+            if (resumeAt.current) (e.currentTarget.currentTime = resumeAt.current), (resumeAt.current = 0);
+          }}
+        />}
     </div>
   );
 }

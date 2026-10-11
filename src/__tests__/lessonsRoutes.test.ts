@@ -135,7 +135,13 @@ describe("Envio direto ao depósito (Supabase)", () => {
     const audio = done.body.materials.find((m: any) => m.kind === "flashcast");
     expect(audio).toMatchObject({ title: "Flashcast", has_file: true });
     const link = await call(`${signed}/materials/${audio.id}/link`, student);
-    expect(link.body.url).toBe(`https://deposito.test/${prep.body.key}?expira=600`);
+    expect(link.body.url).toBe(`https://deposito.test/${prep.body.key}?expira=21600`); // A04: o áudio vale 6 horas, para ouvir a aula inteira
+    // PDF continua com o endereço curto de 10 minutos
+    const pdfKey = `lessons/${lessonId}/slides-0123456789abcdef.pdf`;
+    store.set(pdfKey, Buffer.from("%PDF-1.4"));
+    const withPdf = await postJson(`${signed}/${lessonId}/materials/confirm`, editor, { kind: "slides", key: pdfKey, title: "x", content_type: "application/pdf", size_bytes: 8 });
+    const pdf = withPdf.body.materials.find((m: any) => m.kind === "slides");
+    expect((await call(`${signed}/materials/${pdf.id}/link`, student)).body.url).toBe(`https://deposito.test/${pdfKey}?expira=600`);
     expect((await call(`${signed}/materials/abc/link`, student)).status).toBe(400);
   });
 });
