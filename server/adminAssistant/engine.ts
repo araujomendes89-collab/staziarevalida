@@ -340,6 +340,8 @@ export async function runAssistant(deps: EngineDeps, o: RunInput): Promise<Assis
   const warnings = [...ctx.warnings];
   const missing: AssistMissing[] = [];
   const noSource: string[] = [];
+  // trechos que foram à IA (passo 3): o painel diz por que faltou fonte, a biblioteca sem o tema ou trecho que não sustentou (Q14)
+  const passages = { material: 0, official: 0 };
   const result = (extra: Partial<AssistResult>): AssistResult => ({
     mode,
     suggestions: [],
@@ -349,6 +351,7 @@ export async function runAssistant(deps: EngineDeps, o: RunInput): Promise<Assis
     no_source: noSource,
     warnings,
     usage: null,
+    source_passages: { ...passages },
     ...extra,
   });
 
@@ -370,6 +373,8 @@ export async function runAssistant(deps: EngineDeps, o: RunInput): Promise<Assis
   const searchText = [ctx.query, message].filter(Boolean).join(" ");
   const chunks = all.length ? selectChunks(all, searchText, MATERIAL_BUDGET) : [];
   const official = adapter.medical ? await officialPassages(deps, searchText) : [];
+  passages.material = chunks.length;
+  passages.official = official.length;
 
   // 4. Sem fonte: campo que exige fonte sem nenhum trecho; sem campo sobrando, a IA nem é chamada
   if (mode === "preencher") {

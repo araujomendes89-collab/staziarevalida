@@ -8,6 +8,9 @@
  *   Q04/Q05: questão anulada aparece como "Questão anulada pela banca", fora de acertos e erros, sem "Explicação clínica" nem
  *        "Por que não as outras?" (rodada 2).
  *   Q14: Preencher sem fonte em todos os campos pedidos mostra o aviso da biblioteca de fontes.
+ *   Leva 2: anulada sem o botão do Tutor e com o texto certo no lugar das explicações; a marca de gabarito que voltou à
+ *        letra de antes da troca; o aviso do Q14 no caso comum (Subtema ou Tema pedidos) e com material já enviado;
+ *        importar só depois da prévia.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,11 +20,15 @@ const backend: any = { rpc: vi.fn(), accessToken: async () => "t" };
 const session: any = { backend, boot: { role: "admin", profile: { name: "Adm" } }, user: { id: "a" }, refresh: async () => {} };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => session }));
 vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
+// o botão do Tutor como aparece dentro do app (fora do app, sem o provedor, ele não aparece)
+vi.mock("../novo/app/tutor/TutorDrawer.jsx", () => ({ TutorButton: ({ label }: any) => <button type="button">{label}</button> }));
 
 import { AdminQuestions, QuestionEditor } from "../novo/app/admin/AdminQuestions.jsx";
 import { Correction, Verdict, answerState } from "../novo/app/practice/Correction.jsx";
 import { SessionResult } from "../novo/app/practice/SessionResult.jsx";
 import { AssistantPanel } from "../novo/app/admin/assistant/AssistantPanel.jsx";
+import { QUESTOES_SPEC } from "../shared/adminAssistant/questoes";
+import { ASSIST_TEXTS } from "../shared/adminAssistant/types";
 
 const ROW = {
   id: "q1", code: "REV-2024.1-Q001", attempts: 3, exam: { kind: "REVALIDA", year: 2024, semester: 1 }, number: 1, area: "PEDIATRIA", topic: "Bronquiolite", subtopic: "",
@@ -305,9 +312,11 @@ describe("Q14 — Preencher sem fonte em todos os campos pedidos", () => {
   const STATUS = { preencher: LINE, conferir: LINE, conversar: LINE };
   const R = (o: any) => ({ mode: "preencher", suggestions: [], findings: [], missing: [], reply: null, no_source: [], warnings: [], usage: null, ...o });
   const AVISO = "A biblioteca de fontes oficiais ainda não tem trecho sobre este tema. Cole o trecho da diretriz ou envie o PDF ou o link.";
+  // o painel pede essas propriedades (sem valor padrão); aqui não há aviso da aba, link do documento, descarte nem fechar
+  const PANEL = { notice: undefined, materialLink: undefined, onDiscard: vi.fn(), onClose: undefined };
 
   it("todos os campos pedidos voltaram 'Sem fonte': aviso claro no painel", async () => {
-    render(<AssistantPanel status={STATUS} fields={FIELDS} values={{ resumo: "", passos: "" }} run={async () => R({ no_source: ["resumo", "passos"] })} onUse={vi.fn()} />);
+    render(<AssistantPanel {...PANEL} status={STATUS} fields={FIELDS} values={{ resumo: "", passos: "" }} run={async () => R({ no_source: ["resumo", "passos"] })} onUse={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Preencher campos" }));
     expect(await screen.findByText(AVISO)).toBeTruthy();
     expect(screen.getByText("Faltou fonte para este tema")).toBeTruthy();
@@ -315,9 +324,156 @@ describe("Q14 — Preencher sem fonte em todos os campos pedidos", () => {
 
   it("só parte dos campos sem fonte: sem o aviso geral (cada campo diz o seu)", async () => {
     const S = { id: "s1", field: "passos", value: "Texto.", before: null, sources: [{ label: "p. 3", kind: "material" }], warnings: [], append: false, reason: null };
-    render(<AssistantPanel status={STATUS} fields={FIELDS} values={{ resumo: "", passos: "" }} run={async () => R({ no_source: ["resumo"], suggestions: [S] })} onUse={vi.fn()} />);
+    render(<AssistantPanel {...PANEL} status={STATUS} fields={FIELDS} values={{ resumo: "", passos: "" }} run={async () => R({ no_source: ["resumo"], suggestions: [S] })} onUse={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Preencher campos" }));
     await screen.findByRole("region", { name: "Sugestão: Passos" });
     expect(screen.queryByText(AVISO)).toBeNull();
+  });
+});
+
+describe("Leva 2 — anulada na correção do aluno", () => {
+  const ANNULLED = { is_correct: null, correct_option: "B", annulled: true, explanation: null, option_notes: [], expected_conduct: null, sources: [] };
+
+  it("anulada: sem o botão do Tutor (ele não abre questão anulada) e com o texto certo no lugar das explicações", async () => {
+    backend.rpc.mockImplementation(async () => null);
+    const { container } = render(<Correction selected="B" correction={ANNULLED} question={{ id: "q9", area: "PEDIATRIA" }} />);
+    expect(container.textContent).toContain("Questão anulada pela banca. Não conta como acerto nem erro.");
+    expect(screen.getByText("Nenhuma alternativa conta como correta, por isso não há explicação de cada alternativa.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Tutor/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Criar flashcard" })).toBeTruthy();
+  });
+
+  it("questão que vale: o botão do Tutor continua, sem o texto da anulada", async () => {
+    backend.rpc.mockImplementation(async () => null);
+    render(<Correction selected="C" correction={{ is_correct: false, correct_option: "B", annulled: false, option_notes: [], sources: [] }} question={{ id: "q8", area: "PEDIATRIA" }} />);
+    expect(screen.getByRole("button", { name: "Discutir com o Tutor" })).toBeTruthy();
+    expect(screen.queryByText(/Nenhuma alternativa conta como correta/)).toBeNull();
+    await waitFor(() => expect(calls("app_attempt_diagnosis")).toHaveLength(1));
+  });
+});
+
+describe("Leva 2 — gabarito que voltou à letra de antes da troca", () => {
+  it("a marca não diz 'mudou de B para B': diz que voltou e o que mudou durante a troca", async () => {
+    session.boot = { role: "editor", profile: { name: "Ed" } };
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_admin_question") return { ...ROW, explanations_review: { de: "B", para: "B", campos: ["explanation_A", "explanation_C"] } };
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    render(<QuestionEditor id="q1" onClose={vi.fn()} onSaved={vi.fn()} />);
+    const review = await screen.findByText(/O gabarito voltou para B/);
+    expect(review.textContent).toBe(
+      "O gabarito voltou para B, o mesmo de antes da troca. Revise o que mudou durante a troca: Explicação da A, Explicação da C. Até lá, o aluno não vê esses textos."
+    );
+    expect(screen.queryByText(/mudou de B para B/)).toBeNull();
+  });
+});
+
+describe("Leva 2 — Q14: aviso de falta de fonte no caso comum e quando já há material", () => {
+  const LINE = { ready: true, label: "IA", model: "m", pending: null };
+  const STATUS = { preencher: LINE, conferir: LINE, conversar: LINE };
+  const R = (o: any) => ({ mode: "preencher", suggestions: [], findings: [], missing: [], reply: null, no_source: [], warnings: [], usage: null, ...o });
+  const PANEL = { notice: undefined, materialLink: undefined, onDiscard: vi.fn(), onClose: undefined };
+  // questão importada sem subtema e sem explicações (a conduta já está escrita): o Preencher já vem com as explicações, "O
+  // que a questão avalia" e o Subtema marcados
+  const VALUES = QUESTOES_SPEC.values({ ...ROW, options: ROW.options.map((o) => ({ ...o, explanation: "" })) });
+  const FONTE = ["explanation_A", "explanation_B", "explanation_C", "explanation_D", "inep_intent"];
+  const SUBTEMA = { id: "s1", field: "subtopic", value: "Manejo", before: null, sources: [{ label: "Item: Tema", kind: "item" }], warnings: [], append: false, reason: null };
+  const panel = (result: any) => {
+    const run = vi.fn(async () => R(result));
+    render(<AssistantPanel {...PANEL} status={STATUS} fields={QUESTOES_SPEC.fields} values={VALUES} material="material" run={run} onUse={vi.fn()} />);
+    return run;
+  };
+
+  it("questão sem subtema: o Subtema vai para a IA, as explicações voltam 'Sem fonte' e o aviso aparece", async () => {
+    const run = panel({ no_source: FONTE, suggestions: [SUBTEMA], source_passages: { material: 0, official: 0 } });
+    fireEvent.click(screen.getByRole("button", { name: "Preencher campos" }));
+    expect(await screen.findByText(ASSIST_TEXTS.noSourceAll)).toBeTruthy();
+    expect(screen.getByText(ASSIST_TEXTS.noSourceAllTitle)).toBeTruthy();
+    expect((run.mock.calls[0] as any[])[1].fields).toEqual([...FONTE.slice(0, 4), "inep_intent", "subtopic"]);
+  });
+
+  it("Tema pedido de propósito também não esconde o aviso", async () => {
+    panel({ no_source: FONTE, suggestions: [SUBTEMA], source_passages: { material: 0, official: 0 } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Tema" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preencher campos" }));
+    expect(await screen.findByText(ASSIST_TEXTS.noSourceAll)).toBeTruthy();
+  });
+
+  it("com material enviado: diz que o material não sustentou os campos, não que a biblioteca não tem trecho", async () => {
+    panel({ no_source: FONTE, suggestions: [SUBTEMA], source_passages: { material: 2, official: 0 } });
+    fireEvent.change(screen.getByLabelText("Texto"), { target: { value: "Trecho da diretriz sobre outro assunto." } });
+    fireEvent.click(screen.getByRole("button", { name: "Preencher campos" }));
+    expect(await screen.findByText(ASSIST_TEXTS.noSourceAllMaterial)).toBeTruthy();
+    expect(screen.queryByText(ASSIST_TEXTS.noSourceAll)).toBeNull();
+  });
+
+  it("com trecho oficial encontrado e sem material: diz que os trechos da biblioteca não sustentam os campos", async () => {
+    panel({ no_source: FONTE, suggestions: [SUBTEMA], source_passages: { material: 0, official: 3 } });
+    fireEvent.click(screen.getByRole("button", { name: "Preencher campos" }));
+    expect(await screen.findByText(ASSIST_TEXTS.noSourceAllOfficial)).toBeTruthy();
+    expect(screen.queryByText(ASSIST_TEXTS.noSourceAll)).toBeNull();
+  });
+
+  it("servidor sem a contagem de trechos: com material colado, também não diz que a biblioteca não tem trecho", async () => {
+    panel({ no_source: FONTE, suggestions: [SUBTEMA] });
+    fireEvent.change(screen.getByLabelText("Texto"), { target: { value: "Trecho da diretriz sobre outro assunto." } });
+    fireEvent.click(screen.getByRole("button", { name: "Preencher campos" }));
+    expect(await screen.findByText(ASSIST_TEXTS.noSourceAllMaterial)).toBeTruthy();
+  });
+
+  it("explicação recusada pela aba (questão anulada) não conta: o aviso sai pelos campos que ficaram sem fonte", async () => {
+    const missing = FONTE.slice(0, 4).map((field) => ({ field, reason: ASSIST_TEXTS.annulled }));
+    panel({ no_source: ["inep_intent"], missing, suggestions: [SUBTEMA], source_passages: { material: 0, official: 0 } });
+    fireEvent.click(screen.getByRole("button", { name: "Preencher campos" }));
+    expect(await screen.findByText(ASSIST_TEXTS.noSourceAll)).toBeTruthy();
+  });
+});
+
+describe("Leva 2 — Importar só depois da prévia", () => {
+  const CSV = [
+    "prova;numero;area;tema;enunciado;A;B;C;D;gabarito;explicacao",
+    "Revalida 2024/1;20;Pediatria;Bronquiolite;Lactente de 4 meses com sibilância e coriza há 2 dias.;a;b;c;d;B;Nova explicação da B.",
+  ].join("\n");
+
+  it("o botão de importar fica travado enquanto a prévia carrega ou se ela falhar; 'Conferir de novo' tenta outra vez", async () => {
+    let tries = 0;
+    let finish: (value: unknown) => void = () => {};
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_admin_questions") return { total: 0, exams: [], items: [] };
+      if (fn === "app_admin_import_preview") {
+        tries += 1;
+        if (tries === 1) throw new Error("Falha de conexão.");
+        return new Promise((resolve) => (finish = resolve));
+      }
+      if (fn === "app_admin_import_questions") return { ok: true, inserted: 0, updated: 1, skipped: 0, answer_differs: 0 };
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    render(<AdminQuestions />);
+    fireEvent.click(await screen.findByRole("button", { name: "Carregar questões" }));
+    const file = new File([CSV], "questoes.csv", { type: "text/csv" });
+    Object.defineProperty(file, "text", { value: async () => CSV });
+    fireEvent.change(screen.getByLabelText("Arquivo de questões"), { target: { files: [file] } });
+    const importButton = () => screen.getByRole("button", { name: "Importar 1 questão" }) as HTMLButtonElement;
+
+    // a prévia falhou: não dá para gravar sem ela
+    expect(await screen.findByText(/Falha de conexão\./)).toBeTruthy();
+    expect(screen.getByText(/A importação só fica liberada depois dessa conferência\./)).toBeTruthy();
+    expect(importButton().disabled).toBe(true);
+
+    // de novo: enquanto confere, continua travado
+    fireEvent.click(screen.getByRole("button", { name: "Conferir de novo" }));
+    expect(await screen.findByText("Conferindo o arquivo com o banco…")).toBeTruthy();
+    expect(importButton().disabled).toBe(true);
+    fireEvent.click(importButton());
+    expect(calls("app_admin_import_questions")).toHaveLength(0);
+
+    // com a prévia na tela, libera
+    finish({ new: 0, existing: 1, lose_comment: [{ index: 1, code: "REV-2024.1-Q020" }], answer_differs: [] });
+    expect(await screen.findByText("0 novas · 1 já existe (mesma prova e número)")).toBeTruthy();
+    await waitFor(() => expect(importButton().disabled).toBe(false));
+    fireEvent.click(screen.getByLabelText(/Atualizar as questões que já existem/));
+    expect(screen.getByText("1 perderia o comentário gravado")).toBeTruthy();
+    fireEvent.click(importButton());
+    await waitFor(() => expect(calls("app_admin_import_questions")).toHaveLength(1));
   });
 });

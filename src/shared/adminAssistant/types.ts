@@ -103,6 +103,11 @@ export interface AssistResult {
   no_source: string[];
   warnings: string[];
   usage: AssistUsage | null;
+  /**
+   * Quantos trechos foram à IA: do material enviado e da biblioteca de fontes oficiais. O painel usa para dizer por que
+   * faltou fonte (Q14): a biblioteca não tem o tema, ou havia trecho e nenhum sustentou os campos. Opcional: servidor antigo.
+   */
+  source_passages?: { material: number; official: number };
 }
 
 /** IA de um modo: pronta (com rótulo e modelo) ou o motivo de não estar. */
@@ -124,6 +129,12 @@ export const ASSIST_TEXTS = {
   noSourceAllTitle: "Faltou fonte para este tema",
   noSourceAll: "A biblioteca de fontes oficiais ainda não tem trecho sobre este tema. Cole o trecho da diretriz ou envie o PDF ou o link.",
   noSourceAllNotes: "A biblioteca de fontes oficiais ainda não tem trecho sobre este tema. Escreva o trecho da diretriz em Suas notas.",
+  /** O mesmo, quando havia material enviado: a biblioteca não é o motivo (leva 2). */
+  noSourceAllMaterial: "Nenhum campo pedido ficou apoiado no material enviado. Confira se ele fala deste tema ou envie outro trecho da diretriz.",
+  noSourceAllMaterialNotes: "Nenhum campo pedido ficou apoiado em Suas notas. Escreva nelas o trecho da diretriz sobre este tema.",
+  /** O mesmo, quando a biblioteca achou trechos, mas nenhum sustentou os campos (leva 2). */
+  noSourceAllOfficial: "A biblioteca de fontes oficiais achou trechos, mas nenhum sustenta os campos pedidos. Cole o trecho da diretriz ou envie o PDF ou o link.",
+  noSourceAllOfficialNotes: "A biblioteca de fontes oficiais achou trechos, mas nenhum sustenta os campos pedidos. Escreva o trecho da diretriz em Suas notas.",
   discarded: "Sugestão para campo que o assistente não muda foi descartada",
   suspeita: "Suspeita sem fonte: confira antes de mudar",
   stale: "O campo mudou depois da proposta: peça de novo",

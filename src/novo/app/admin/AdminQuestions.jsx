@@ -31,6 +31,14 @@ const REVIEW_LABEL = (campo, annulled) =>
     : { expected_conduct: "Conduta esperada", analise: annulled ? "Análise publicada (não aparece ao aluno em questão anulada)" : "Análise publicada (volta com nova análise aprovada)" }[campo] ?? campo;
 // gabarito da marca de revisão: a letra ou "ANULADA" (anular também muda o gabarito)
 const REVIEW_ANSWER = (value) => (value === "ANULADA" ? "anulada pela banca" : value ?? "sem gabarito");
+// texto da marca "explicações a revisar". O gabarito pode ter voltado ao de antes da troca (…7710): aí só ficam marcados os
+// textos que mudaram durante a troca (podem ter sido escritos para o outro gabarito), e a marca não diz "mudou de B para B"
+const reviewText = (review) => {
+  const fields = (review.campos ?? []).map((c) => REVIEW_LABEL(c, review.para === "ANULADA")).join(", ");
+  return review.de === review.para
+    ? `O gabarito voltou para ${REVIEW_ANSWER(review.para)}, o mesmo de antes da troca. Revise o que mudou durante a troca: ${fields}. Até lá, o aluno não vê esses textos.`
+    : `O gabarito mudou de ${REVIEW_ANSWER(review.de)} para ${REVIEW_ANSWER(review.para)}. Revise: ${fields}. Até lá, o aluno não vê esses textos.`;
+};
 const codesText = (list, max = 20) => list.slice(0, max).join("; ") + (list.length > max ? ` e mais ${list.length - max}` : "");
 
 // ---------------------------------------------------------------- editor
@@ -319,7 +327,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
             </Button>
           }
         >
-          {`O gabarito mudou de ${REVIEW_ANSWER(review.de)} para ${REVIEW_ANSWER(review.para)}. Revise: ${(review.campos ?? []).map((c) => REVIEW_LABEL(c, review.para === "ANULADA")).join(", ")}. Até lá, o aluno não vê esses textos.`}
+          {reviewText(review)}
         </Banner>
       )}
       {reviewState.error && <Banner tone="danger">{reviewState.error}</Banner>}
@@ -435,6 +443,7 @@ function ImportPanel({ onClose, onImported }) {
   const [update, setUpdate] = React.useState(false);
   const [state, setState] = React.useState({ importing: false, result: null, error: null });
   const [preview, setPreview] = React.useState(null); // { data } | { error } | { loading }
+  const [previewTry, setPreviewTry] = React.useState(0); // "Conferir de novo" depois de uma prévia que falhou
 
   const pick = async (event) => {
     const chosen = event.target.files?.[0];
@@ -474,7 +483,7 @@ function ImportPanel({ onClose, onImported }) {
     return () => {
       alive = false;
     };
-  }, [file, backend]);
+  }, [file, backend, previewTry]);
   const p = preview?.data;
   const lose = p?.lose_comment ?? [];
   const differs = p?.answer_differs ?? [];
@@ -569,7 +578,19 @@ function ImportPanel({ onClose, onImported }) {
                     {withProblems.length > 50 && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>e mais {withProblems.length - 50} linhas com problema.</span>}
                   </div>
                 )}
-                {preview?.error && <Banner tone="danger">{preview.error}</Banner>}
+                {preview?.loading && <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Conferindo o arquivo com o banco…</div>}
+                {preview?.error && (
+                  <Banner
+                    tone="danger"
+                    action={
+                      <Button size="sm" variant="secondary" onClick={() => setPreviewTry((n) => n + 1)}>
+                        Conferir de novo
+                      </Button>
+                    }
+                  >
+                    {`${preview.error} A importação só fica liberada depois dessa conferência.`}
+                  </Banner>
+                )}
                 {p && (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     <div style={{ font: "var(--type-body-sm)" }}>
@@ -616,7 +637,8 @@ function ImportPanel({ onClose, onImported }) {
                   </Banner>
                 )}
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <Button icon="upload" onClick={run} loading={state.importing} disabled={!items.length || withProblems.length > 0 || tooMany || state.result?.ok}>
+                  {/* só depois da prévia (Q03): antes de gravar, a pessoa vê quantas perderiam comentário */}
+                  <Button icon="upload" onClick={run} loading={state.importing} disabled={!items.length || withProblems.length > 0 || tooMany || !p || state.result?.ok}>
                     Importar {items.length} {items.length === 1 ? "questão" : "questões"}
                   </Button>
                 </div>
