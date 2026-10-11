@@ -13,7 +13,7 @@ import * as api from "../podcasts/podcastsApi.js";
 const DURATIONS = [3, 5, 8, 10, 15, 20, 30].map((m) => ({ value: String(m), label: `${m} minutos` }));
 const SOURCE_ICON = { pdf: "file-text", docx: "file-text", text: "text", link: "link", lesson: "tv" };
 const SOURCE_KIND = { pdf: "PDF", docx: "DOCX", text: "Texto", link: "Link", lesson: "Aula" };
-const WARNING_TEXT = { unknown_source: "Cita trecho que não existe", ungrounded_number: "Número fora dos trechos citados", no_source: "Fala longa sem trecho citado" };
+const WARNING_TEXT = { unknown_source: "Cita trecho que não vale", ungrounded_number: "Número fora dos trechos citados", no_source: "Fala longa sem trecho citado" };
 const SPEAKERS = [
   { value: "ANA", label: "Ana (professora)" },
   { value: "BRUNO", label: "Bruno (estudante)" },
@@ -345,7 +345,7 @@ function ScriptStep({ podcast, providers, onChanged }) {
             {meta.edited_at ? `Editado pela equipe em ${dateTimeBR(meta.edited_at)}. ` : ""}
             {podcast.script.lines.length} falas · cerca de {Math.max(1, Math.round(podcast.script.lines.reduce((n, l) => n + l.text.split(/\s+/).length, 0) / 150))} min falados.
           </Muted>
-          {warnings?.length > 0 && <Banner tone="warning" title={`${warnings.length} ponto(s) para conferir`}>As falas marcadas citam trecho inexistente ou trazem número que não está nos trechos citados. Confira na fonte e corrija antes de aprovar.</Banner>}
+          {warnings?.length > 0 && <Banner tone="warning" title={`${warnings.length} ponto(s) para conferir`}>As falas marcadas citam trecho inexistente (ou que a IA não recebeu) ou trazem número que não está nos trechos citados. Confira na fonte e corrija antes de aprovar.</Banner>}
           {(podcast.script.missing ?? []).length > 0 && (
             <Banner tone="info" title="O que as fontes não esclarecem">
               <ul style={{ margin: 0, paddingLeft: 18 }}>{podcast.script.missing.map((m, i) => <li key={i}>{m}</li>)}</ul>

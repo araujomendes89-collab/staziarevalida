@@ -15,7 +15,7 @@ import { openDevDatabaseForTests, type DevDatabase } from "../../server/devDb/de
 import { devContentDb, localStorageDir, type ContentDb, type Storage } from "../../server/contentHub/infra";
 import { createPodcastsRouter, type PodcastsDeps } from "../../server/podcasts/router";
 import { chunkPages, chunkPagesInfo, fetchLink, htmlToText, privateAddress } from "../../server/podcasts/extract";
-import { checkScript, mockScriptFromInput, buildScriptInput, ungroundedNumbers, type PodcastScript } from "../../server/podcasts/script";
+import { checkScript, generateScript, mockScriptFromInput, buildScriptInput, ungroundedNumbers, type PodcastScript } from "../../server/podcasts/script";
 import { pcmToMp3, pickVoices, silence, splitParts, synthesizePart, toPcm, ttsStatus, SAMPLE_RATE } from "../../server/podcasts/audio";
 import { AiInvalidOutput } from "../../server/contentHub/ai/provider";
 
@@ -212,6 +212,53 @@ describe("Peças do servidor (sem rede)", () => {
       { line: 1, kind: "ungrounded_number", detail: '"2 g" não está nos trechos citados' },
       { line: 2, kind: "unknown_source", detail: "Trecho inexistente: T7" },
     ]);
+  });
+
+  it("conferência: trecho que existe no episódio mas não foi enviado à IA é recusado como citação", () => {
+    const sent = new Map([[1, { id: 1, source: "PCDT", doc: 1, page: 2, text: "Sulfato de magnésio 4 g IV em 20 minutos" }]]);
+    const all = new Map([...sent, [2, { id: 2, source: "PCDT", doc: 1, page: 9, text: "Dose de manutenção 2 g por hora" }]]);
+    const script: PodcastScript = { missing: [], lines: [
+      { speaker: "ANA", text: "Manutenção de 2 g por hora.", style: "", sources: [2] },
+      { speaker: "BRUNO", text: "E o ataque?", style: "", sources: [1] },
+      { speaker: "ANA", text: "Foi citado outro.", style: "", sources: [9] },
+    ] };
+    expect(checkScript(script, sent, all)).toEqual([
+      { line: 0, kind: "unknown_source", detail: "Trecho que a IA não recebeu: T2" },
+      { line: 0, kind: "ungrounded_number", detail: '"2 g" não está nos trechos citados' },
+      { line: 2, kind: "unknown_source", detail: "Trecho inexistente: T9" },
+    ]);
+    // sem o terceiro argumento, tudo o que existe vale (a revisão da equipe confere o roteiro editado com todos os trechos)
+    expect(checkScript(script, all).map((w) => w.detail)).toEqual(["Trecho inexistente: T9"]);
+  });
+
+  it("roteiro da IA que cita trecho que ela não recebeu volta com aviso (e a correção é pedida na segunda tentativa)", async () => {
+    const big = (id: number) => ({ id, source: "Livro", doc: 1, page: id, text: `Trecho ${id} sobre pré-eclâmpsia. ${"conteúdo clínico ".repeat(3500)}` });
+    const chunks = [big(1), big(2), big(3)]; // ~60 mil caracteres cada: só dois cabem nos 120 mil enviados
+    const sentIds: number[] = [];
+    const inputs: string[] = [];
+    const r = await generateScript({
+      kind: "mock",
+      topic: "pré-eclâmpsia",
+      minutes: 3,
+      chunks,
+      db,
+      mockRespond: (req: any) => {
+        inputs.push(req.input);
+        const ids = [...req.input.matchAll(/\[T(\d+)\]/g)].map((m: RegExpMatchArray) => Number(m[1]));
+        if (!sentIds.length) sentIds.push(...ids);
+        const notSent = [1, 2, 3].find((i) => !ids.includes(i))!;
+        return { title_suggestion: "x", missing: [], lines: [
+          { speaker: "ANA", text: "Abertura.", style: "", sources: [] },
+          { speaker: "BRUNO", text: "Pergunta.", style: "", sources: [] },
+          { speaker: "ANA", text: "Resposta citando algo que não recebi.", style: "", sources: [notSent] },
+          { speaker: "BRUNO", text: "Fim.", style: "", sources: [] },
+        ] };
+      },
+    });
+    expect(sentIds).toHaveLength(2);
+    expect(r.warnings.some((w) => w.kind === "unknown_source" && /não recebeu/.test(w.detail))).toBe(true);
+    expect(inputs).toHaveLength(2);
+    expect(inputs[1]).toContain("Trecho que a IA não recebeu");
   });
 
   it("simulação do roteiro só usa frases dos trechos e cita de onde vieram", () => {
