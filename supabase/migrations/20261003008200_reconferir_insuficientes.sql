@@ -48,6 +48,11 @@
 --     pedir a próxima etapa. Antes, ele registrava o fim do trabalho do outro, e o outro, ao terminar, recebia "Trabalho não está
 --     em execução." e derrubava a execução da tarefa;
 --   - p_lease é opcional: o código de antes (sem ele) continua funcionando como antes.
+-- Rodada de correção 5 (vetores da fonte nova): a etapa source_index faz os vetores da busca por significado da fonte que acabou
+-- de ler ANTES de pôr a reconferência automática na fila (ch_worker_source_passages_to_embed, no fim desta migração). Antes, a
+-- reconferência rodava na mesma rodada, logo depois, e só achava a fonte nova por palavras, porque os vetores só eram feitos no
+-- fim da rodada; o que só se acharia pelo significado continuava "insuficiente" e nada mandava conferir de novo. São os mesmos
+-- vetores, só que antes: o fim da rodada (ch_worker_passages_to_embed) acha a fonte pronta e não refaz nada.
 -- As funções redefinidas partem das versões mais novas (ch_worker_claims da 7600; ch_worker_mark_claim, ch_worker_link_evidence,
 -- ch_worker_save_draft, ch_worker_block e ch_worker_fail da 1500; ch_worker_next da 1600; ch_worker_finish e ch_worker_checkpoint
 -- da 1400) e continuam só do servidor. Pode ser rodada mais de uma vez.
@@ -568,6 +573,23 @@ begin
 end
 $$;
 
+-- Vetores da fonte nova (rodada de correção 5): os trechos de UMA fonte ainda sem vetor do modelo, no mesmo formato de
+-- ch_worker_passages_to_embed (5000). A etapa source_index faz os vetores da fonte que acabou de ler antes de pôr a reconferência
+-- automática na fila. Antes, a reconferência rodava na mesma rodada, logo depois, e só achava a fonte por palavras, porque os
+-- vetores só eram feitos no fim da rodada.
+create or replace function public.ch_worker_source_passages_to_embed(p_source_id uuid, p_model text, p_limit integer default 50) returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object('id', x.id, 'title', x.title, 'section', x.section, 'text', x.text) order by x.ord), '[]'::jsonb)
+  from (
+    select p.id, s.title, p.section, p.text, row_number() over (order by p.page nulls last, p.id) as ord
+    from public.ch_source_passages p join public.ch_sources s on s.id = p.source_id
+    left join public.ch_passage_embeddings e on e.passage_id = p.id and e.model = p_model
+    where p.source_id = p_source_id and e.passage_id is null and s.status <> 'withdrawn'
+    order by p.page nulls last, p.id
+    limit least(greatest(coalesce(p_limit, 50), 1), 500)) x
+$$;
+
 -- continuam só do servidor (o "create or replace" mantém as permissões; repetido aqui por segurança)
 revoke execute on function public.ch_claim_recheckable(uuid) from public, anon, authenticated;
 revoke execute on function public.ch_worker_claims(uuid) from public, anon, authenticated;
@@ -585,3 +607,4 @@ revoke execute on function public.ch_worker_merge_marks(jsonb, jsonb) from publi
 revoke execute on function public.ch_jobs_worker_exit() from public, anon, authenticated;
 revoke execute on function public.ch_worker_checkpoint(uuid, jsonb, uuid) from public, anon, authenticated;
 revoke execute on function public.ch_jobs_worker_enter() from public, anon, authenticated;
+revoke execute on function public.ch_worker_source_passages_to_embed(uuid, text, integer) from public, anon, authenticated;

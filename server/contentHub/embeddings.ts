@@ -289,16 +289,27 @@ export async function queryEmbedding(
  * prazo. Cada lote fica registrado em ch_ai_runs (etapa "embeddings", tokens estimados e custo).
  */
 export async function embedPendingPassages(
-  db: ContentDb, embedder: Embedder, opts: { max?: number; deadline?: number; log?: (m: string) => void } = {}
+  db: ContentDb, embedder: Embedder,
+  opts: {
+    max?: number; deadline?: number; log?: (m: string) => void;
+    /** Só os trechos desta fonte (etapa source_index: a fonte nova ganha os vetores antes da reconferência). Sem ele, todos os que faltam. */
+    sourceId?: string;
+    /** Depois de cada lote gravado (sinal de vida do trabalho). Se lançar erro, o erro sobe e a geração para ali. */
+    onBatch?: (embedded: number) => Promise<unknown>;
+    /** Campos a mais no registro de ch_ai_runs (ex.: job_id e document_id da etapa que pediu). */
+    run?: Record<string, unknown>;
+  } = {}
 ): Promise<{ embedded: number; tokens: number; costUsd: number }> {
   const max = opts.max ?? 2_000;
   let embedded = 0;
   let tokens = 0;
   let costUsd = 0;
   while (embedded < max && (!opts.deadline || Date.now() < opts.deadline)) {
-    const batch = await db.service<{ id: string; title: string | null; section: string | null; text: string }[]>("ch_worker_passages_to_embed", {
-      p_model: embedder.model, p_limit: Math.min(BATCH, max - embedded),
-    });
+    const limit = Math.min(BATCH, max - embedded);
+    const batch = await db.service<{ id: string; title: string | null; section: string | null; text: string }[]>(
+      opts.sourceId ? "ch_worker_source_passages_to_embed" : "ch_worker_passages_to_embed",
+      opts.sourceId ? { p_source_id: opts.sourceId, p_model: embedder.model, p_limit: limit } : { p_model: embedder.model, p_limit: limit }
+    );
     if (!batch?.length) break;
     const r = await embedder.embedDocuments(batch.map((p) => ({ title: [p.title, p.section].filter(Boolean).join(" — ") || null, text: p.text })));
     const saved = await db.service<number>("ch_worker_save_embeddings", {
@@ -307,6 +318,7 @@ export async function embedPendingPassages(
     await db
       .service("ch_worker_log_ai_run", {
         p_run: {
+          ...opts.run,
           step: "embeddings", provider: "gemini", model: embedder.model, prompt_id: "passage_embedding", prompt_version: EMBEDDING_FORMAT_VERSION,
           schema_version: `${EMBEDDING_DIMS}d`, input_hash: crypto.createHash("sha256").update(batch.map((p) => p.id).join(",")).digest("hex"),
           status: "ok", output: { passages: batch.length, saved }, input_tokens: r.tokens, output_tokens: 0, cost_usd: r.costUsd, latency_ms: r.latencyMs,
@@ -317,6 +329,7 @@ export async function embedPendingPassages(
     tokens += r.tokens;
     costUsd += r.costUsd;
     if (!saved) break; // nada gravado (trechos apagados no meio do caminho): não insiste no mesmo lote
+    await opts.onBatch?.(embedded);
   }
   if (embedded) opts.log?.(`[central] busca por significado: ${embedded} trecho(s) com vetor novo (~${tokens} tokens, US$ ${costUsd.toFixed(4)})`);
   return { embedded, tokens, costUsd: Math.round(costUsd * 1e6) / 1e6 };

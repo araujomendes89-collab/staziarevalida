@@ -2,7 +2,8 @@
  * Processamento da Central de Conteúdo, uma etapa por trabalho da fila (ch_jobs):
  *
  *   material de estudo:  extract → classify → claims → evidence → draft → materials → render → review_check
- *   fonte de referência: extract → source_index (e devolve à conferência os materiais com afirmação que só a IA julgou insuficiente)
+ *   fonte de referência: extract → source_index (trechos, vetores da busca por significado e, depois, devolve à conferência os
+ *                        materiais com afirmação que só a IA julgou insuficiente)
  *
  * Regras que valem para todas as etapas:
  *   - cada chamada de IA é separada, com prompt versionado, resposta validada por schema e
@@ -29,7 +30,7 @@ import { functionForPrompt, type ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { copyRatio, flashcardProblems, isVerbatim, negations, negationsLost, normalize, numbers, numbersOutside } from "./checks";
 import type { ContentDb, Storage } from "./infra";
-import { embedderAllowed, queryEmbedding, type Embedder } from "./embeddings";
+import { embedderAllowed, embedPendingPassages, queryEmbedding, type Embedder } from "./embeddings";
 import type { Renderer } from "./render";
 import { generateVisualVersion, visualVersionOf, VisualRenderUnavailable } from "./visual/service";
 
@@ -429,6 +430,8 @@ async function stepSourceIndex(ctx: Ctx): Promise<Step | null> {
   // CC01: fonte nova com trechos: os materiais com afirmação "insuficiente" que só a IA julgou voltam para a conferência (só se a
   // fonte entra na busca de evidências; o banco confere e devolve o motivo quando não roda)
   if (n > 0) {
+    // a fonte nova ganha os vetores ANTES de a reconferência entrar na fila (senão ela só acha a fonte por palavras)
+    await embedNewSource(ctx, source.id, n);
     try {
       const r = await svc<{ documents: number; skipped?: string }>(ctx, "ch_worker_recheck_insufficient", { p_source_id: source.id, p_versions: stepVersions("evidence", ctx.deps) });
       ctx.metrics.recheck_documents = r.documents;
@@ -442,6 +445,95 @@ async function stepSourceIndex(ctx: Ctx): Promise<Step | null> {
   await setMeta(ctx, { status: "awaiting_review" });
   Object.assign(ctx.metrics, { passages: n, unresolved_blocks: blocks.filter((b) => b.status === "pending" || b.status === "illegible").length });
   return null;
+}
+
+// ------------------------------------------------- vetores da fonte nova (CC01, rodada de correção 5)
+/** Tempo da etapa para os vetores da fonte nova: 8 min (a execução pega trabalho até os 50 min e a tarefa tem 60). */
+const sourceEmbedMs = () => {
+  const s = Number(process.env.CONTENT_HUB_SOURCE_EMBED_SECONDS);
+  return (s > 0 ? Math.min(s, 1_200) : 480) * 1_000;
+};
+const SOURCE_EMBED_MAX = 5_000;
+/** Erro de configuração do Google (repetir não resolve); a Central de IAs guarda o motivo em português simples (embedder.problem). */
+const GOOGLE_CONFIG_STATUS = new Set([400, 401, 402, 403, 404]);
+const VECTORS_FAILED = "Busca por significado indisponível ao ler a fonte (a reconferência desta fonte foi só por palavras): ";
+const VECTORS_MISSING =
+  "Falta aplicar no Supabase a atualização da reconferência (migração 8200): os vetores da fonte nova ficaram para o fim da rodada e a reconferência desta fonte foi só por palavras.";
+const VECTORS_PENDING =
+  "Parte dos trechos ficou sem vetor no tempo da etapa (sai no fim da rodada): nesses, a reconferência desta fonte foi só por palavras.";
+
+/** O pedido que não volta até `until` é abandonado (o Google parado não trava a etapa nem a fila). */
+async function withinTime<T>(work: Promise<T>, until: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([work, new Promise<never>((_, reject) => (timer = setTimeout(() => reject(new Error(message)), Math.max(0, until - Date.now()))))]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Vetores da fonte nova (busca por significado), feitos AQUI, antes de a reconferência automática entrar na fila. Antes, a
+ * reconferência rodava logo depois desta etapa, na mesma rodada, e só achava a fonte por palavras: os vetores eram feitos no fim
+ * da rodada (worker.embed()) e nada conferia de novo depois. São os mesmos vetores, só que antes (mesmo texto, mesma gravação): o
+ * fim da rodada acha a fonte pronta e não refaz nada, e cada trecho é pago uma vez só.
+ * - Busca por significado desligada (ou IA desligada no painel): não faz nada; a reconferência entra na hora, por palavras, como antes.
+ * - Busca parada por erro de configuração (Central de IAs: o vetorizador recusa na hora, sem ir ao Google), Google recusando ou
+ *   sem responder, banco sem a 8200 nova: a leitura da fonte não para (não gasta tentativa nem refaz os trechos), a reconferência
+ *   segue por palavras e a etapa anota o motivo (vectors_error). O pedido que não volta no tempo da etapa é abandonado.
+ * - Tempo da etapa (8 min) ou teto de trechos: o que faltou fica para o fim da rodada (vectors_pending).
+ * - Sinal de vida a cada lote (rodada de correção 4): se outro processamento pegou o trabalho, para aqui (Lost sobe) e a
+ *   reconferência não entra na fila por este processamento.
+ */
+async function embedNewSource(ctx: Ctx, sourceId: string, passages: number): Promise<void> {
+  const embedder = await embedderAllowed(ctx.deps.db, ctx.deps.embedder);
+  if (!embedder) return;
+  const budget = sourceEmbedMs();
+  const t0 = Date.now();
+  const deadline = t0 + budget;
+  // o lote que já começou tem uma folga para terminar (não joga fora o que já foi pago); depois dela, o pedido é abandonado
+  const hardStop = deadline + Math.min(budget, 30_000);
+  const slow = `o Google não respondeu em ${Math.round((hardStop - t0) / 1_000)} s (pedido abandonado; os trechos que faltam ganham o vetor no fim da rodada).`;
+  const guarded: Embedder = {
+    model: embedder.model,
+    embedDocuments: (items) => withinTime(embedder.embedDocuments(items), hardStop, slow),
+    embedQuery: (text) => embedder.embedQuery(text),
+  };
+  let done = 0;
+  try {
+    const r = await embedPendingPassages(ctx.deps.db, guarded, {
+      sourceId,
+      max: SOURCE_EMBED_MAX,
+      deadline,
+      log: ctx.deps.log,
+      run: { job_id: ctx.job.id, document_id: ctx.job.document_id },
+      onBatch: (n) => {
+        done = n;
+        return checkpoint(ctx, { ...(ctx.job.checkpoint ?? {}), vectors: n });
+      },
+    });
+    ctx.metrics.vectors = r.embedded;
+    if (r.costUsd) ctx.metrics.vectors_cost_usd = r.costUsd;
+    if (r.embedded < passages) {
+      const left = await svc<unknown[]>(ctx, "ch_worker_source_passages_to_embed", { p_source_id: sourceId, p_model: embedder.model, p_limit: 1 });
+      if (left?.length) ctx.metrics.vectors_pending = VECTORS_PENDING;
+    }
+  } catch (error) {
+    if (error instanceof Lost) throw error; // outro processamento pegou a etapa: para aqui, sem pôr a reconferência na fila
+    if (done) ctx.metrics.vectors = done;
+    const e = error as { message?: unknown; status?: unknown; quiet?: unknown } | null;
+    const message = String(e?.message ?? error);
+    if (/ch_worker_source_passages_to_embed/.test(message) && /does not exist|could not find/i.test(message)) {
+      ctx.metrics.vectors_error = VECTORS_MISSING;
+    } else {
+      // Central de IAs: com erro de configuração, o motivo em português simples (o texto cru do Google fica só no registro)
+      const problem = (embedder as { problem?: string | null }).problem;
+      const plain = problem && (e?.quiet === true || GOOGLE_CONFIG_STATUS.has(Number(e?.status)));
+      ctx.metrics.vectors_error = VECTORS_FAILED + (plain ? problem : message.slice(0, 300));
+    }
+    // busca parada com o aviso já dado nesta execução (erro "quiet"): não repete no registro
+    if (e?.quiet !== true) ctx.deps.log?.(`[central] vetores da fonte nova: ${message.slice(0, 200)}`);
+  }
 }
 
 async function stepClassify(ctx: Ctx): Promise<Step | null> {
