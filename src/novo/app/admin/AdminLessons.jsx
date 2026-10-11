@@ -6,12 +6,13 @@ import { Badge, Banner, Button, Card, Icon, SelectField, Switch, TextField } fro
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
-import { lessonsAvailable, sizeLabel, uploadLessonFile } from "../study/lessonsApi.js";
+import { lessonsAvailable, materialTitle, sizeLabel, uploadErrorText, uploadLessonFile, videoPlaysInside } from "../study/lessonsApi.js";
 import { dateTimeBR, LoadError, Loading, messageOf, TextArea, useLoad } from "./common.jsx";
 import { LessonAssistant } from "./LessonAssistant.jsx";
 
-const EMPTY = { area: "CLINICA_MEDICA", topic: "", title: "", duration_minutes: "", instructor: "", specialty: "", video_url: "", summary: "", key_points: "", guideline_title: "", guideline_url: "", published: false, position: 0 };
-const toForm = (l) => ({ ...EMPTY, ...l, duration_minutes: l.duration_minutes ?? "", key_points: (l.key_points ?? []).join("\n"), instructor: l.instructor ?? "", specialty: l.specialty ?? "", video_url: l.video_url ?? "", summary: l.summary ?? "", guideline_title: l.guideline_title ?? "", guideline_url: l.guideline_url ?? "" });
+const EMPTY = { area: "CLINICA_MEDICA", topic: "", title: "", duration_minutes: "", instructor: "", specialty: "", video_url: "", summary: "", key_points: "", guideline_title: "", guideline_url: "", published: false, position: 0, review_note: "" };
+// Quem conferiu, quando e os avisos guardados da IA vêm da aula, mas não entram no formulário: a conferência é sempre nova (A01).
+const toForm = ({ ai_notes, reviewer, reviewed_at, ...l }) => ({ ...EMPTY, ...l, review_note: "", duration_minutes: l.duration_minutes ?? "", key_points: (l.key_points ?? []).join("\n"), instructor: l.instructor ?? "", specialty: l.specialty ?? "", video_url: l.video_url ?? "", summary: l.summary ?? "", guideline_title: l.guideline_title ?? "", guideline_url: l.guideline_url ?? "" });
 
 // Os três materiais da aula, como no app anterior: PDF complementar, áudio Flashcast e a diretriz SUS/PCDT (link).
 const FILE_SLOTS = [
@@ -53,7 +54,7 @@ function MaterialsSection({ lesson, pending, setPending, onChanged, form, set })
       onChanged(await uploadLessonFile(backend, lesson.id, file, kind));
       setState({ busy: null, error: null });
     } catch (error) {
-      setState({ busy: null, error: error.message });
+      setState({ busy: null, error: uploadErrorText(error) });
     }
   };
   const remove = async (id) => {
@@ -75,7 +76,7 @@ function MaterialsSection({ lesson, pending, setPending, onChanged, form, set })
         const chosen = pending?.[slot.kind];
         const busy = state.busy === slot.kind;
         return (
-          <SlotRow key={slot.kind} icon={slot.icon} label={slot.label} available={m ? true : chosen ? "pending" : false} detail={m ? `${m.title}${m.size_bytes ? ` · ${sizeLabel(m.size_bytes)}` : ""}` : chosen ? `${chosen.name} · ${sizeLabel(chosen.size)}` : null}>
+          <SlotRow key={slot.kind} icon={slot.icon} label={slot.label} available={m ? true : chosen ? "pending" : false} detail={m ? `${materialTitle(m.title)}${m.size_bytes ? ` · ${sizeLabel(m.size_bytes)}` : ""}` : chosen ? `${chosen.name} · ${sizeLabel(chosen.size)}` : null}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <label className="sm-btn sm-btn--secondary sm-btn--sm" style={{ cursor: canUpload && !state.busy ? "pointer" : "not-allowed", opacity: canUpload ? 1 : 0.6 }}>
                 {busy ? "Enviando…" : m || chosen ? "Trocar arquivo" : slot.pick}
@@ -93,6 +94,43 @@ function MaterialsSection({ lesson, pending, setPending, onChanged, form, set })
           <TextField label="Endereço oficial (https)" value={form.guideline_url} onChange={(e) => set({ guideline_url: e.target.value })} hint="Link do documento no gov.br ou na fonte oficial." />
         </div>
       </SlotRow>
+    </div>
+  );
+}
+
+/**
+ * Conferência do texto antes de ir ao aluno (A01): mostra quem conferiu a última vez e os avisos que a IA deu, e pede o que foi
+ * conferido quando a aula vai ficar publicada. O nome e a data são gravados pelo banco, a partir da conta de quem salva.
+ */
+function ReviewSection({ form, current, set }) {
+  const notes = form.ai_notes ?? current?.ai_notes ?? [];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 14px", borderRadius: 14, border: "1px solid var(--border-subtle)", background: "var(--surface-subtle)" }}>
+      <div style={{ font: "var(--type-label)" }}>Conferência do texto</div>
+      {current?.reviewed_at ? (
+        <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+          Última conferência: {current.reviewer || "pessoa da equipe"} em {dateTimeBR(current.reviewed_at)}. {current.review_note}
+        </span>
+      ) : current?.published ? (
+        <Banner tone="warning">Esta aula está publicada sem registro de conferência. Ao salvar com o campo abaixo preenchido, a conferência fica registrada.</Banner>
+      ) : (
+        <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Ainda sem conferência registrada.</span>
+      )}
+      {notes.length > 0 && (
+        <Banner tone="warning" title="Avisos da IA ao gerar o texto">
+          <ul style={{ margin: 0, paddingLeft: 18 }}>{notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+        </Banner>
+      )}
+      {form.published && (
+        <TextArea
+          label="O que você conferiu antes de publicar"
+          value={form.review_note}
+          rows={2}
+          maxLength={1000}
+          onChange={(v) => set({ review_note: v })}
+          hint="Fica registrado com o seu nome e a data. Obrigatório ao publicar e ao mudar título, tema, resumo ou pontos-chave de uma aula publicada."
+        />
+      )}
     </div>
   );
 }
@@ -118,10 +156,10 @@ function LessonEditor({ lesson, topics, onSaved, onClose, isAdmin }) {
         const file = pending[slot.kind];
         if (!file) continue;
         try {
-          latest = await uploadLessonFile(backend, saved.id, file, slot.kind);
+          latest = { ...latest, ...(await uploadLessonFile(backend, saved.id, file, slot.kind)) }; // a resposta do envio não traz os dados de conferência
           setPending((p) => ({ ...p, [slot.kind]: null }));
         } catch (error) {
-          failed.push(`${slot.label}: ${error.message}`);
+          failed.push(`${slot.label}: ${uploadErrorText(error)}`);
         }
       }
       setCurrent(latest);
@@ -166,12 +204,18 @@ function LessonEditor({ lesson, topics, onSaved, onClose, isAdmin }) {
           <TextField label="Duração estimada (min)" type="number" min={1} max={600} value={form.duration_minutes} onChange={(e) => set({ duration_minutes: e.target.value })} />
           <TextField label="Professor / convidado" value={form.instructor} maxLength={160} onChange={(e) => set({ instructor: e.target.value })} />
           <TextField label="Especialidade" value={form.specialty} maxLength={120} onChange={(e) => set({ specialty: e.target.value })} />
-          <TextField label="Vídeo (YouTube, Vimeo ou MP4, https)" value={form.video_url} onChange={(e) => set({ video_url: e.target.value })} hint="O vídeo fica hospedado fora; aqui entra só o endereço." />
+          <div>
+            <TextField label="Vídeo (YouTube, Vimeo ou MP4, https)" value={form.video_url} onChange={(e) => set({ video_url: e.target.value })} hint="O vídeo fica hospedado fora; aqui entra só o endereço." />
+            {form.video_url.trim() && !videoPlaysInside(form.video_url.trim()) && (
+              <Banner tone="warning">Este endereço não toca dentro da aula: o aluno verá só um botão para abrir em outra aba. Para tocar na aula, use um link do YouTube, do Vimeo ou um arquivo MP4.</Banner>
+            )}
+          </div>
           <TextField label="Posição" type="number" value={form.position} onChange={(e) => set({ position: e.target.value })} hint="Ordem dentro da área." />
         </div>
         <TextArea label="Resumo & racionalidade clínica" value={form.summary} rows={6} maxLength={8000} onChange={(v) => set({ summary: v })} />
         <TextArea label="Pontos-chave para o Revalida (um por linha)" value={form.key_points} rows={5} onChange={(v) => set({ key_points: v })} />
-        <MaterialsSection lesson={current} pending={pending} setPending={setPending} onChanged={(l) => (setCurrent(l), onSaved(l))} form={form} set={set} />
+        <MaterialsSection lesson={current} pending={pending} setPending={setPending} onChanged={(l) => (setCurrent((c) => ({ ...c, ...l })), onSaved(l))} form={form} set={set} />
+        <ReviewSection form={form} current={current} set={set} />
         <Switch label="Publicada" description="Só aulas publicadas aparecem para os alunos." checked={Boolean(form.published)} onChange={(e) => set({ published: e.target.checked })} />
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
           <Button type="submit" loading={state.saving}>{current ? "Salvar alterações" : "Criar aula"}</Button>
@@ -186,18 +230,19 @@ export function AdminLessons() {
   const mobile = useMobile();
   const { data, error, reload, setData } = useLoad(() => Promise.all([backend.rpc("app_admin_lessons"), backend.rpc("app_lesson_topics", { p_area: null })]).then(([a, t]) => ({ ...a, topics: t })), [backend]);
   const [editing, setEditing] = React.useState(undefined); // undefined fechado · null nova · objeto edita
+  const [fresh, setFresh] = React.useState(0); // a cada clique em "Nova aula" o formulário recomeça em branco (A03)
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
   const onSaved = (saved, removedId) => {
-    setData({ ...data, lessons: removedId ? data.lessons.filter((l) => l.id !== removedId) : data.lessons.some((l) => l.id === saved.id) ? data.lessons.map((l) => (l.id === saved.id ? { ...l, ...saved } : l)) : [...data.lessons, saved] });
+    setData({ ...data, lessons: removedId ? data.lessons.filter((l) => l.id !== removedId) : data.lessons.some((l) => l.id === saved.id) ? data.lessons.map((l) => (l.id === saved.id ? { ...l, ...saved } : l)) : [...data.lessons, { started_by: 0, completed_by: 0, ...saved }] }); // aula nova: ainda ninguém iniciou (A09)
   };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{data.lessons.length} {data.lessons.length === 1 ? "aula" : "aulas"} · {data.lessons.filter((l) => l.published).length} publicadas</span>
-        <Button icon="plus" onClick={() => setEditing(null)}>Nova aula</Button>
+        <Button icon="plus" onClick={() => (setFresh((n) => n + 1), setEditing(null))}>Nova aula</Button>
       </div>
-      {editing !== undefined && <LessonEditor key={editing?.id ?? "nova"} lesson={editing} topics={data.topics} isAdmin={boot.role === "admin"} onSaved={onSaved} onClose={() => setEditing(undefined)} />}
+      {editing !== undefined && <LessonEditor key={editing?.id ?? `nova-${fresh}`} lesson={editing} topics={data.topics} isAdmin={boot.role === "admin"} onSaved={onSaved} onClose={() => setEditing(undefined)} />}
       <Card padding={8}>
         {data.lessons.length === 0 && <p style={{ margin: 0, padding: 16, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Nenhuma aula cadastrada. Crie a primeira com a estrutura padrão: área, tema, título, duração, professor, vídeo, materiais, resumo e pontos-chave.</p>}
         {data.lessons.map((l) => (

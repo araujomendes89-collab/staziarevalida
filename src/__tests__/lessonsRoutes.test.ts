@@ -79,7 +79,7 @@ beforeAll(async () => {
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'ed@t.dev'), ($2, 'al@t.dev')`, [EDITOR, STUDENT]);
   await dev.db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [EDITOR]);
   const save = async (lesson: Record<string, unknown>) => (await sqlAs(EDITOR, `select public.app_admin_save_lesson($1::jsonb) r`, [JSON.stringify(lesson)]))[0].r;
-  lessonId = (await save({ area: "PEDIATRIA", topic: "Bronquiolite", title: "Bronquiolite viral aguda", published: true })).id;
+  lessonId = (await save({ area: "PEDIATRIA", topic: "Bronquiolite", title: "Bronquiolite viral aguda", published: true, review_note: "Conferido no material da aula pela equipe." })).id;
   draftId = (await save({ area: "PEDIATRIA", topic: "Bronquiolite", title: "Rascunho" })).id;
   direct = await listen(localStorageDir(path.join(tmp, "files")));
   signed = await listen(signedStorage);
@@ -135,7 +135,13 @@ describe("Envio direto ao depósito (Supabase)", () => {
     const audio = done.body.materials.find((m: any) => m.kind === "flashcast");
     expect(audio).toMatchObject({ title: "Flashcast", has_file: true });
     const link = await call(`${signed}/materials/${audio.id}/link`, student);
-    expect(link.body.url).toBe(`https://deposito.test/${prep.body.key}?expira=600`);
+    expect(link.body.url).toBe(`https://deposito.test/${prep.body.key}?expira=21600`); // A04: o áudio vale 6 horas, para ouvir a aula inteira
+    // PDF continua com o endereço curto de 10 minutos
+    const pdfKey = `lessons/${lessonId}/slides-0123456789abcdef.pdf`;
+    store.set(pdfKey, Buffer.from("%PDF-1.4"));
+    const withPdf = await postJson(`${signed}/${lessonId}/materials/confirm`, editor, { kind: "slides", key: pdfKey, title: "x", content_type: "application/pdf", size_bytes: 8 });
+    const pdf = withPdf.body.materials.find((m: any) => m.kind === "slides");
+    expect((await call(`${signed}/materials/${pdf.id}/link`, student)).body.url).toBe(`https://deposito.test/${pdfKey}?expira=600`);
     expect((await call(`${signed}/materials/abc/link`, student)).status).toBe(400);
   });
 });

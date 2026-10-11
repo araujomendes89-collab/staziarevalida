@@ -6,7 +6,7 @@
  * Na Vercel o corpo de cada requisição vai até 4,5 MB, então com o Supabase os arquivos não passam por aqui:
  *   envio  → POST /:id/upload (prepara um envio assinado) → o navegador envia direto ao depósito "lessons"
  *            → POST /:id/materials/confirm (confere que o arquivo chegou e registra o material);
- *   leitura → GET /materials/:id/link (endereço assinado de 10 minutos).
+ *   leitura → GET /materials/:id/link (endereço assinado: 10 minutos para PDF e 6 horas para o áudio).
  * No banco de desenvolvimento (sem Supabase) o arquivo passa pelo servidor: POST /:id/materials e GET /materials/:id/file.
  */
 import crypto from "crypto";
@@ -21,7 +21,8 @@ import { AREA_CODES, generateLessonAssist, MAX_ASSIST_CHARS, type AssistProvider
 
 export const LESSONS_BUCKET = "lessons";
 const MAX_MB = Number(process.env.LESSONS_MAX_FILE_MB || 200);
-const LINK_SECONDS = 600;
+const LINK_SECONDS = 600; // PDF: abre na hora
+const AUDIO_LINK_SECONDS = 6 * 3600; // áudio Flashcast: dá para ouvir a aula inteira e voltar trechos com o mesmo endereço (A04)
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TYPES: Record<string, { kinds: string[]; ext: string; magic: (b: Buffer) => boolean }> = {
   "application/pdf": { kinds: ["slides", "other"], ext: "pdf", magic: (b) => b.subarray(0, 5).toString("latin1") === "%PDF-" },
@@ -142,7 +143,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
 
   const materialFor = async (req: Authed) => {
     if (!ID.test(req.params.id)) throw httpError(400, "Material inválido.");
-    const m = await asUser<{ storage_path: string | null; content_type: string | null; title: string; url: string | null } | null>(req, "app_lesson_material", { p_id: req.params.id });
+    const m = await asUser<{ kind: string; storage_path: string | null; content_type: string | null; title: string; url: string | null } | null>(req, "app_lesson_material", { p_id: req.params.id });
     if (!m) throw httpError(404, "Material não encontrado.");
     return m;
   };
@@ -153,7 +154,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       const m = await materialFor(req);
       if (m.url) return res.json({ url: m.url });
       if (!m.storage_path) throw httpError(404, "Material sem arquivo.");
-      res.json({ url: deps!.storage.signedUrl ? await deps!.storage.signedUrl(m.storage_path, LINK_SECONDS) : null });
+      res.json({ url: deps!.storage.signedUrl ? await deps!.storage.signedUrl(m.storage_path, m.kind === "flashcast" ? AUDIO_LINK_SECONDS : LINK_SECONDS) : null });
     } catch (error: any) {
       fail(res, error?.status ?? (forbidden(error) ? 403 : 404), message(error));
     }

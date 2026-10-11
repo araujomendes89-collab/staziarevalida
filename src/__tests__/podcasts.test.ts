@@ -140,7 +140,7 @@ beforeAll(async () => {
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'adm@t.dev'), ($2, 'ed@t.dev'), ($3, 'al@t.dev')`, [ADMIN, EDITOR, STUDENT]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await dev.db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [EDITOR]);
-  lessonId = (await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { area: "GINECOLOGIA_OBSTETRICIA", topic: "Pré-eclâmpsia", title: "Pré-eclâmpsia grave", summary: "Pré-eclâmpsia é hipertensão após 20 semanas com proteinúria ou lesão de órgão-alvo. Sulfato de magnésio previne eclâmpsia.", key_points: ["Sulfato de magnésio 4 g IV no ataque", "Parto é o tratamento definitivo"], published: true } })).id;
+  lessonId = (await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { area: "GINECOLOGIA_OBSTETRICIA", topic: "Pré-eclâmpsia", title: "Pré-eclâmpsia grave", summary: "Pré-eclâmpsia é hipertensão após 20 semanas com proteinúria ou lesão de órgão-alvo. Sulfato de magnésio previne eclâmpsia.", key_points: ["Sulfato de magnésio 4 g IV no ataque", "Parto é o tratamento definitivo"], published: true, review_note: "Conferido no material da aula pela equipe." } })).id;
   base = await listen({ db, storage: files, lessons: lessonFiles, mockScript });
   gem = await listen({
     db,

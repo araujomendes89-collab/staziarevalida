@@ -87,7 +87,7 @@ describe("Aula aberta", () => {
     expect(screen.getByText("5 questões do tema")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Ouvir" }));
-    const audio = await screen.findByLabelText("Áudio: Flashcast");
+    const audio = await screen.findByLabelText("Áudio Flashcast");
     expect(audio.getAttribute("src")).toBe("https://deposito.test/flashcast.mp3");
 
     fireEvent.click(screen.getByRole("button", { name: /Marcar como concluída/ }));
