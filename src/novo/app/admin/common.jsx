@@ -21,6 +21,12 @@ export function paidPlanLapsed(sub, now = Date.now()) {
   if (Number.isNaN(end)) return true;
   return end + (sub.status === "past_due" ? PAID_GRACE_DAYS * 86_400_000 : 0) <= now;
 }
+/** Teste grátis cuja data de fim já passou (o banco não muda a situação sozinho; quem avisa é a tela). */
+export function trialLapsed(sub, now = Date.now()) {
+  if (!sub || sub.plan !== "trial" || sub.status !== "trialing" || !sub.trial_ends_at) return false;
+  const end = Date.parse(sub.trial_ends_at);
+  return !Number.isNaN(end) && end <= now;
+}
 export { QUESTION_STATUS_LABEL } from "../../../shared/questions/status";
 
 export const dateBR = (iso) => (iso ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso)) : "—");

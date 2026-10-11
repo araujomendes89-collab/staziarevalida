@@ -5,7 +5,7 @@
 import React from "react";
 import { Avatar, Badge, Banner, Button, Card, Icon, SectionHeader, SegmentedControl, SelectField, TextField } from "../../ds";
 import { isStaffRole } from "../admin/AdminScreen.jsx";
-import { isPhase2Locked, paidPlanLapsed } from "../admin/common.jsx";
+import { isPhase2Locked, paidPlanLapsed, trialLapsed } from "../admin/common.jsx";
 import { PASSWORD_MIN_LENGTH } from "../../data";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
@@ -50,6 +50,7 @@ function planBadge(subscription, role) {
   if (isStaffRole(role)) return "Equipe · acesso completo";
   if (!subscription) return null;
   const label = PLAN_LABEL[subscription.plan] ?? subscription.plan;
+  if (trialLapsed(subscription)) return `${label} · encerrado`;
   if (subscription.status === "trialing" && subscription.trial_ends_at) return `${label} até ${dateBR(subscription.trial_ends_at)}`;
   // plano pago depois de "Plano pago até" (com pagamento pendente, depois dos 3 dias de tolerância) já não dá acesso
   if (subscription.status === "canceled" || subscription.status === "expired" || paidPlanLapsed(subscription)) return `${label} · encerrado`;

@@ -18,6 +18,7 @@ import {
   ROLE_LABEL,
   SUB_STATUS_LABEL,
   toDateInput,
+  trialLapsed,
   useDebounced,
   useLoad,
 } from "./common.jsx";
@@ -31,10 +32,11 @@ const roleTone = { admin: "danger", editor: "info", student: "neutral" };
 const planText = (u) => {
   if (isStaffRole(u.role)) return "Equipe · acesso completo";
   const text = `${PLAN_LABEL[u.plan] ?? u.plan} · ${SUB_STATUS_LABEL[u.status] ?? u.status}`;
+  if (trialLapsed(u)) return `${text} · terminou em ${dateBR(u.trial_ends_at)}`;
   if (!paidPlanLapsed(u)) return text;
   return u.current_period_end ? `${text} · venceu em ${dateBR(u.current_period_end)}` : `${text} · sem data de fim`;
 };
-const planTone = (u) => (isStaffRole(u.role) ? "success" : paidPlanLapsed(u) ? "warning" : u.status === "active" ? "success" : u.status === "trialing" ? "pro" : "neutral");
+const planTone = (u) => (isStaffRole(u.role) ? "success" : paidPlanLapsed(u) || trialLapsed(u) ? "warning" : u.status === "active" ? "success" : u.status === "trialing" ? "pro" : "neutral");
 
 function Fact({ label, value }) {
   return (
