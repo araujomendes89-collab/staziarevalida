@@ -124,12 +124,13 @@ describe("Visão geral (GE01, GE02, GE04, GE05, GE06)", () => {
   });
 
   it("GE03: o editor recebe só questões, atividade e estações; a tela não quebra sem os números de usuários", async () => {
-    const { users: _u, ai_month: _a, ...paraEditor } = OVERVIEW;
+    const { users: _u, ...paraEditor } = OVERVIEW;
     backend.rpc.mockImplementation(async () => paraEditor);
     render(<AdminOverview isAdmin={false} />);
     expect(await screen.findByText("Questões")).toBeTruthy();
     expect(screen.queryByText("Usuários")).toBeNull();
-    expect(screen.queryByText(/Gasto de IA/)).toBeNull();
+    expect(screen.getByText("Gasto de IA neste mês (estimado)")).toBeTruthy(); // o editor vê o gasto de IA
+    expect(screen.getByText("Central de IAs: US$ 12,50")).toBeTruthy();
     expect(screen.getByText("Aulas em rascunho: 2")).toBeTruthy();
   });
 
