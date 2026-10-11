@@ -10,8 +10,9 @@ import { lessonsAvailable, materialTitle, sizeLabel, uploadErrorText, uploadLess
 import { dateTimeBR, LoadError, Loading, messageOf, TextArea, useLoad } from "./common.jsx";
 import { LessonAssistant } from "./LessonAssistant.jsx";
 
-const EMPTY = { area: "CLINICA_MEDICA", topic: "", title: "", duration_minutes: "", instructor: "", specialty: "", video_url: "", summary: "", key_points: "", guideline_title: "", guideline_url: "", published: false, position: 0 };
-const toForm = (l) => ({ ...EMPTY, ...l, duration_minutes: l.duration_minutes ?? "", key_points: (l.key_points ?? []).join("\n"), instructor: l.instructor ?? "", specialty: l.specialty ?? "", video_url: l.video_url ?? "", summary: l.summary ?? "", guideline_title: l.guideline_title ?? "", guideline_url: l.guideline_url ?? "" });
+const EMPTY = { area: "CLINICA_MEDICA", topic: "", title: "", duration_minutes: "", instructor: "", specialty: "", video_url: "", summary: "", key_points: "", guideline_title: "", guideline_url: "", published: false, position: 0, review_note: "" };
+// Quem conferiu, quando e os avisos guardados da IA vêm da aula, mas não entram no formulário: a conferência é sempre nova (A01).
+const toForm = ({ ai_notes, reviewer, reviewed_at, ...l }) => ({ ...EMPTY, ...l, review_note: "", duration_minutes: l.duration_minutes ?? "", key_points: (l.key_points ?? []).join("\n"), instructor: l.instructor ?? "", specialty: l.specialty ?? "", video_url: l.video_url ?? "", summary: l.summary ?? "", guideline_title: l.guideline_title ?? "", guideline_url: l.guideline_url ?? "" });
 
 // Os três materiais da aula, como no app anterior: PDF complementar, áudio Flashcast e a diretriz SUS/PCDT (link).
 const FILE_SLOTS = [
@@ -97,6 +98,43 @@ function MaterialsSection({ lesson, pending, setPending, onChanged, form, set })
   );
 }
 
+/**
+ * Conferência do texto antes de ir ao aluno (A01): mostra quem conferiu a última vez e os avisos que a IA deu, e pede o que foi
+ * conferido quando a aula vai ficar publicada. O nome e a data são gravados pelo banco, a partir da conta de quem salva.
+ */
+function ReviewSection({ form, current, set }) {
+  const notes = form.ai_notes ?? current?.ai_notes ?? [];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10, padding: "12px 14px", borderRadius: 14, border: "1px solid var(--border-subtle)", background: "var(--surface-subtle)" }}>
+      <div style={{ font: "var(--type-label)" }}>Conferência do texto</div>
+      {current?.reviewed_at ? (
+        <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+          Última conferência: {current.reviewer || "pessoa da equipe"} em {dateTimeBR(current.reviewed_at)}. {current.review_note}
+        </span>
+      ) : current?.published ? (
+        <Banner tone="warning">Esta aula está publicada sem registro de conferência. Ao salvar com o campo abaixo preenchido, a conferência fica registrada.</Banner>
+      ) : (
+        <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Ainda sem conferência registrada.</span>
+      )}
+      {notes.length > 0 && (
+        <Banner tone="warning" title="Avisos da IA ao gerar o texto">
+          <ul style={{ margin: 0, paddingLeft: 18 }}>{notes.map((n, i) => <li key={i}>{n}</li>)}</ul>
+        </Banner>
+      )}
+      {form.published && (
+        <TextArea
+          label="O que você conferiu antes de publicar"
+          value={form.review_note}
+          rows={2}
+          maxLength={1000}
+          onChange={(v) => set({ review_note: v })}
+          hint="Fica registrado com o seu nome e a data. Obrigatório ao publicar e ao mudar título, tema, resumo ou pontos-chave de uma aula publicada."
+        />
+      )}
+    </div>
+  );
+}
+
 function LessonEditor({ lesson, topics, onSaved, onClose, isAdmin }) {
   const { backend } = useSession();
   const [form, setForm] = React.useState(() => (lesson ? toForm(lesson) : EMPTY));
@@ -118,7 +156,7 @@ function LessonEditor({ lesson, topics, onSaved, onClose, isAdmin }) {
         const file = pending[slot.kind];
         if (!file) continue;
         try {
-          latest = await uploadLessonFile(backend, saved.id, file, slot.kind);
+          latest = { ...latest, ...(await uploadLessonFile(backend, saved.id, file, slot.kind)) }; // a resposta do envio não traz os dados de conferência
           setPending((p) => ({ ...p, [slot.kind]: null }));
         } catch (error) {
           failed.push(`${slot.label}: ${uploadErrorText(error)}`);
@@ -171,7 +209,8 @@ function LessonEditor({ lesson, topics, onSaved, onClose, isAdmin }) {
         </div>
         <TextArea label="Resumo & racionalidade clínica" value={form.summary} rows={6} maxLength={8000} onChange={(v) => set({ summary: v })} />
         <TextArea label="Pontos-chave para o Revalida (um por linha)" value={form.key_points} rows={5} onChange={(v) => set({ key_points: v })} />
-        <MaterialsSection lesson={current} pending={pending} setPending={setPending} onChanged={(l) => (setCurrent(l), onSaved(l))} form={form} set={set} />
+        <MaterialsSection lesson={current} pending={pending} setPending={setPending} onChanged={(l) => (setCurrent((c) => ({ ...c, ...l })), onSaved(l))} form={form} set={set} />
+        <ReviewSection form={form} current={current} set={set} />
         <Switch label="Publicada" description="Só aulas publicadas aparecem para os alunos." checked={Boolean(form.published)} onChange={(e) => set({ published: e.target.checked })} />
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
           <Button type="submit" loading={state.saving}>{current ? "Salvar alterações" : "Criar aula"}</Button>

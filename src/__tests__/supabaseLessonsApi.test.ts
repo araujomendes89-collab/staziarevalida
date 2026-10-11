@@ -78,7 +78,7 @@ describe("Equipe cria e publica", () => {
   });
 
   it("publicar: aluno vê o catálogo com contagem por área e o detalhe; busca sem acento", async () => {
-    await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { id: lessonId, area: "PEDIATRIA", topic: "Bronquiolite", title: "Bronquiolite viral aguda", published: true } });
+    await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { id: lessonId, area: "PEDIATRIA", topic: "Bronquiolite", title: "Bronquiolite viral aguda", published: true, review_note: "Conferido no material da aula pela equipe." } });
     const c = await rpc(ANA, "app_lessons", { p_area: null, p_search: "bronquiolite" });
     expect(c).toMatchObject({ total: 1, by_area: { PEDIATRIA: 1 }, completed: 0 });
     expect(c.lessons[0].title).toBe("Bronquiolite viral aguda");
@@ -114,7 +114,7 @@ describe("Aluno", () => {
     const s = await rpc(ANA, "app_start_lesson_questions", { p_id: lessonId, p_count: 10 });
     expect(s.filters).toEqual({ area: "PEDIATRIA", topic: "Bronquiolite" });
     expect(s.count).toBe(5);
-    const other = await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { area: "PEDIATRIA", topic: "Tema sem questões", title: "Outra aula", published: true } });
+    const other = await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { area: "PEDIATRIA", topic: "Tema sem questões", title: "Outra aula", published: true, review_note: "Conferido no material da aula pela equipe." } });
     const s2 = await rpc(ANA, "app_start_lesson_questions", { p_id: other.id, p_count: 10 });
     expect(s2.filters).toEqual({ area: "PEDIATRIA" });
     expect(s2.count).toBe(8);
@@ -128,5 +128,54 @@ describe("Aluno", () => {
     expect((await db.query<any>(`select count(*)::int n from public.lesson_materials`)).rows[0].n).toBe(0);
     const log = await rpc(ADMIN, "app_admin_audit", { p_limit: 20 });
     expect(JSON.stringify(log)).toMatch(/lesson\.delete/);
+  });
+});
+
+describe("A01 - conferência registrada antes de ir ao aluno", () => {
+  let id: string;
+  const base = { area: "PEDIATRIA", topic: "Asma", title: "Asma na infância", summary: "Resumo sugerido pela IA.", key_points: ["Ponto A"] };
+
+  it("publicar sem dizer o que foi conferido é recusado; rascunho continua livre", async () => {
+    const draft = await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: base });
+    id = draft.id;
+    expect(draft.published).toBe(false);
+    expect(draft.reviewer).toBeNull();
+    await expect(rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { ...base, id, published: true } })).rejects.toThrow(/registre o que foi conferido/);
+    await expect(rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { ...base, id, published: true, review_note: "curto" } })).rejects.toThrow(/registre o que foi conferido/);
+    await expect(rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { ...base, title: "Nova direto publicada", published: true } })).rejects.toThrow(/registre o que foi conferido/);
+    expect((await rpc(ANA, "app_lessons", { p_search: "asma" })).lessons).toEqual([]);
+  });
+
+  it("publicando com a conferência: grava quem (a pessoa logada), quando, o quê e os avisos da IA; o aluno não vê nada disso", async () => {
+    const warn = ['Resumo: "40 mg" não está nos trechos citados.', "Ponto-chave 2 sem trecho citado."];
+    const l = await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { ...base, id, published: true, review_note: "Conferi o resumo com a página 3 da apostila.", ai_notes: warn } });
+    expect(l).toMatchObject({ published: true, reviewer: "ed@t.dev", review_note: "Conferi o resumo com a página 3 da apostila.", ai_notes: warn });
+    expect(l.reviewed_at).toBeTruthy();
+    const row = (await db.query<any>(`select reviewed_by from public.lessons where id = $1`, [id])).rows[0];
+    expect(row.reviewed_by).toBe(EDITOR);
+    const listed = (await rpc(EDITOR, "app_admin_lessons")).lessons.find((x: any) => x.id === id);
+    expect(listed).toMatchObject({ reviewer: "ed@t.dev", ai_notes: warn });
+    const aluno = JSON.stringify([await rpc(ANA, "app_lessons", { p_search: "asma" }), await rpc(ANA, "app_lesson", { p_id: id })]);
+    expect(aluno).toContain("Asma na infância");
+    expect(aluno).not.toMatch(/reviewer|review_note|ai_notes|reviewed_at|ed@t\.dev|Conferi o resumo/);
+    const log = JSON.stringify(await rpc(ADMIN, "app_admin_audit", { p_limit: 50 }));
+    expect(log).toMatch(/lesson\.review/);
+  });
+
+  it("mudar só a posição não pede nova conferência; mudar o resumo de uma aula publicada pede (e atualiza quem conferiu)", async () => {
+    const same = await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { ...base, id, position: 3 } });
+    expect(same).toMatchObject({ published: true, position: 3, reviewer: "ed@t.dev", review_note: "Conferi o resumo com a página 3 da apostila." });
+    await expect(rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { ...base, id, summary: "Resumo mudado depois." } })).rejects.toThrow(/registre o que foi conferido/);
+    const again = await rpc(ADMIN, "app_admin_save_lesson", { p_lesson: { ...base, id, summary: "Resumo mudado depois.", review_note: "Reli e conferi com a diretriz oficial." } });
+    expect(again).toMatchObject({ summary: "Resumo mudado depois.", reviewer: "adm@t.dev", review_note: "Reli e conferi com a diretriz oficial." });
+  });
+
+  it("tirar do ar não pede conferência; visitante não chama; o SQL pode ser colado duas vezes", async () => {
+    expect((await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { ...base, id, summary: "Resumo mudado depois.", published: false } })).published).toBe(false);
+    await expect(rpc(null, "app_admin_save_lesson", { p_lesson: base })).rejects.toThrow();
+    await expect(rpc(null, "app_admin_lessons")).rejects.toThrow();
+    await expect(rpc(ANA, "app_admin_lessons")).rejects.toThrow(/equipe/);
+    await expect(db.exec(fs.readFileSync(path.join(MIGRATIONS, "20261003009580_aulas_conferencia.sql"), "utf8"))).resolves.toBeDefined();
+    expect((await rpc(EDITOR, "app_admin_lessons")).lessons.find((x: any) => x.id === id)).toMatchObject({ reviewer: "adm@t.dev" });
   });
 });

@@ -114,3 +114,67 @@ describe("A10 - erro de envio em português", () => {
     expect(document.body.textContent).not.toMatch(/Failed to fetch/);
   });
 });
+
+describe("A01 - conferência do texto antes de publicar", () => {
+  it("ao ligar Publicada aparece o campo de conferência e ele vai ao banco junto com os avisos da IA", async () => {
+    render(<AdminLessons />);
+    fireEvent.click(await screen.findByRole("button", { name: "Nova aula" }));
+    fireEvent.change(screen.getByLabelText("Tema"), { target: { value: "Asma" } });
+    fireEvent.change(screen.getByLabelText("Título da aula"), { target: { value: "Asma na infância" } });
+    expect(screen.queryByLabelText(/O que você conferiu/)).toBeNull(); // rascunho não pede
+    fireEvent.click(screen.getByRole("switch", { name: /Publicada/ }));
+    fireEvent.change(await screen.findByLabelText(/O que você conferiu/), { target: { value: "Conferi com a apostila, página 3." } });
+    fireEvent.click(screen.getByRole("button", { name: "Criar aula" }));
+    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_save_lesson", expect.anything()));
+    const sent = backend.rpc.mock.calls.find((c: any[]) => c[0] === "app_admin_save_lesson")[1].p_lesson;
+    expect(sent).toMatchObject({ published: true, review_note: "Conferi com a apostila, página 3." });
+    expect("ai_notes" in sent).toBe(false); // sem assistente nesta sessão: não mexe nos avisos guardados
+  });
+
+  it("aula já conferida mostra quem conferiu e quando; o campo recomeça vazio e os avisos guardados aparecem", async () => {
+    store.lessons = [{ ...withMaterials([]), reviewer: "Dra. Ana", reviewed_at: "2026-10-06T12:00:00Z", review_note: "Conferi tudo com a diretriz.", ai_notes: ['Resumo: "40 mg" não está nos trechos citados.'] }];
+    render(<AdminLessons />);
+    fireEvent.click(await screen.findByRole("button", { name: /Bronquiolite/ }));
+    expect(screen.getByText(/Dra\. Ana/)).toBeTruthy();
+    expect(screen.getByText(/Conferi tudo com a diretriz/)).toBeTruthy();
+    expect(screen.getByText(/"40 mg" não está nos trechos citados/)).toBeTruthy();
+    expect((screen.getByLabelText(/O que você conferiu/) as HTMLTextAreaElement).value).toBe("");
+    fireEvent.click(screen.getByRole("button", { name: "Salvar alterações" }));
+    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_save_lesson", expect.anything()));
+    const sent = backend.rpc.mock.calls.find((c: any[]) => c[0] === "app_admin_save_lesson")[1].p_lesson;
+    expect(sent.review_note).toBe("");
+    expect("ai_notes" in sent).toBe(false);
+  });
+
+  it("aula publicada sem registro de conferência avisa isso", async () => {
+    store.lessons = [withMaterials([])];
+    render(<AdminLessons />);
+    fireEvent.click(await screen.findByRole("button", { name: /Bronquiolite/ }));
+    expect(screen.getByText(/sem registro de conferência/i)).toBeTruthy();
+  });
+});
+
+describe("A01 - avisos da IA ficam guardados na aula", () => {
+  it("usar a sugestão leva os avisos e o 'o material não esclarece' para a aula salva", async () => {
+    const json = (b: unknown) => new Response(JSON.stringify(b), { status: 200, headers: { "content-type": "application/json" } });
+    (globalThis as any).fetch = vi.fn(async (url: string) => {
+      if (url === "/api/lessons/assist/providers") return json({ choices: [{ kind: "gemini", label: "Gemini", model: "m", ready: true }], override_allowed: true, current: null });
+      if (url === "/api/lessons/assist")
+        return json({
+          suggestion: { title: "Asma", topic: "Asma", area: "PEDIATRIA", summary: "Resumo.", summary_pages: [1], key_points: [{ text: "Ponto", sources: [1], pages: [1] }], missing: ["Dose do corticoide"] },
+          warnings: ['Resumo: "40 mg" não está nos trechos citados.'], usage: { provider: "gemini", model: "m", input_tokens: 1, output_tokens: 1, cost_usd: 0, calls: 1 }, used_chunks: 1, total_chunks: 1,
+        });
+      return new Response("{}", { status: 404 });
+    });
+    render(<AdminLessons />);
+    fireEvent.click(await screen.findByRole("button", { name: "Nova aula" }));
+    fireEvent.click(screen.getByRole("button", { name: "Abrir assistente" }));
+    fireEvent.change(await screen.findByLabelText(/Texto \(transcrição/), { target: { value: "Texto de apoio da aula ".repeat(8) } });
+    fireEvent.click(screen.getByRole("button", { name: "Gerar sugestões" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Usar tudo no formulário" }));
+    fireEvent.click(screen.getByRole("button", { name: "Criar aula" }));
+    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_save_lesson", expect.anything()));
+    const sent = backend.rpc.mock.calls.find((c: any[]) => c[0] === "app_admin_save_lesson")[1].p_lesson;
+    expect(sent.ai_notes).toEqual(['Resumo: "40 mg" não está nos trechos citados.', "O material não esclarece: Dose do corticoide"]);
+  });
+});

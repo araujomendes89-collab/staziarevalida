@@ -79,7 +79,7 @@ beforeAll(async () => {
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'ed@t.dev'), ($2, 'al@t.dev')`, [EDITOR, STUDENT]);
   await dev.db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [EDITOR]);
   const save = async (lesson: Record<string, unknown>) => (await sqlAs(EDITOR, `select public.app_admin_save_lesson($1::jsonb) r`, [JSON.stringify(lesson)]))[0].r;
-  lessonId = (await save({ area: "PEDIATRIA", topic: "Bronquiolite", title: "Bronquiolite viral aguda", published: true })).id;
+  lessonId = (await save({ area: "PEDIATRIA", topic: "Bronquiolite", title: "Bronquiolite viral aguda", published: true, review_note: "Conferido no material da aula pela equipe." })).id;
   draftId = (await save({ area: "PEDIATRIA", topic: "Bronquiolite", title: "Rascunho" })).id;
   direct = await listen(localStorageDir(path.join(tmp, "files")));
   signed = await listen(signedStorage);

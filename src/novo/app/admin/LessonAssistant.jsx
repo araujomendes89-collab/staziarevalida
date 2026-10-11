@@ -118,11 +118,13 @@ export function LessonAssistant({ form, set, lesson, pending }) {
     }
   };
 
-  const use = (key, patch) => (set(patch), setUsed((u) => ({ ...u, [key]: true })));
+  // os avisos da IA (e o que o material não esclarece) ficam guardados na aula quando alguma sugestão é usada (A01)
+  const aiNotes = () => [...(result?.warnings ?? []), ...(result?.suggestion?.missing ?? []).map((m) => `O material não esclarece: ${m}`)];
+  const use = (key, patch) => (set({ ...patch, ai_notes: aiNotes() }), setUsed((u) => ({ ...u, [key]: true })));
   const s = result?.suggestion;
   const useAll = () => {
     if (!s) return;
-    set({ ...(s.title ? { title: s.title } : {}), ...(s.topic ? { topic: s.topic } : {}), ...(s.area ? { area: s.area } : {}), ...(s.summary ? { summary: s.summary } : {}), ...(s.key_points.length ? { key_points: s.key_points.map((k) => k.text).join("\n") } : {}) });
+    set({ ...(s.title ? { title: s.title } : {}), ...(s.topic ? { topic: s.topic } : {}), ...(s.area ? { area: s.area } : {}), ...(s.summary ? { summary: s.summary } : {}), ...(s.key_points.length ? { key_points: s.key_points.map((k) => k.text).join("\n") } : {}), ai_notes: aiNotes() });
     setUsed({ title: true, topic: true, area: true, summary: true, key_points: true });
   };
 
