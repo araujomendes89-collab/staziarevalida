@@ -27,7 +27,7 @@ Duas opções novas e opcionais em `FetchBytesOptions`; sem elas o comportamento
 ## Arquivos
 - server/contentHub/worker.ts
 - server/podcasts/extract.ts
-- src/__tests__/monitorFontesRede.test.ts (novo, 46 testes)
+- src/__tests__/monitorFontesRede.test.ts (novo, 37 testes)
 - src/__tests__/contentHubPipeline.test.ts, sourceDiff.test.ts, sqieClosing.test.ts (só passam `resolver` falso)
 
 ## Testes
