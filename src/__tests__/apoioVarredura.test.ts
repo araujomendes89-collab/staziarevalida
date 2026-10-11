@@ -366,7 +366,7 @@ describe("varredura sistemática como ALUNO", () => {
     expect(resumo(tabAluno.achados.filter((a) => !conhecido(a)))).toEqual([]);
   }, 120_000);
 
-  vazamento("VAZAMENTO: nenhuma tabela legível pelo aluno traz marca da apostila (falha hoje: lessons, guideline_updates, questions)", async () => {
+  it("CORRIGIDO: nenhuma tabela legível pelo aluno traz marca da apostila (falha hoje: lessons, guideline_updates, questions)", async () => {
     const t = tabAluno ?? (await varrerTabelas(ALUNO));
     expect(resumo(t.achados)).toEqual([]);
   }, 120_000);
@@ -488,7 +488,7 @@ describe("selos: só fonte oficial dá 'Fontes oficiais conferidas', 'Atualizada
     expect(c.freshness.sources).toBe(1);
   });
 
-  vazamento("VAZAMENTO DE SELO: cartão publicado quando a fonte era oficial continua mostrando 'Conduta atual conferida' depois que a ÚNICA fonte vira complementar", async () => {
+  it("CORRIGIDO: VAZAMENTO DE SELO: cartão publicado quando a fonte era oficial continua mostrando 'Conduta atual conferida' depois que a ÚNICA fonte vira complementar", async () => {
     // fonte que era oficial (nível A) sustenta o cartão; depois o administrador descobre que é apostila e marca como complementar
     const sx = (await sql(`insert into public.ch_sources (title, organ, kind, version, authority_level) values ('Resumo de Hepatite (cadastrado como oficial)', 'Curso X', 'final', '1', 'A') returning id`))[0].id;
     await grava(ADMIN, "app_admin_save_question", { p_question: questao(3, []) });
@@ -511,22 +511,25 @@ describe("selos: só fonte oficial dá 'Fontes oficiais conferidas', 'Atualizada
 // 5. ataques: brechas e caminhos laterais
 // =====================================================================================================================
 describe("ataque: leitura direta das tabelas pela API REST (PostgREST)", () => {
-  vazamento("VAZAMENTO: aluno lê questions.sources direto (GET /rest/v1/questions?select=sources) e vê título, órgão, link e página da apostila", async () => {
-    // causa: 20261003001900_answer_key_lockdown.sql:17-19 concede select na COLUNA sources a anon/authenticated; a política de leitura é `true`
-    const linhas = await como(ALUNO, (q) => q(`select id, sources from public.questions where id = $1`, [QID]));
-    expect(marcasEm(JSON.stringify(linhas))).toEqual([]);
+  it("CORRIGIDO: aluno não lê questions.sources direto (permissão por coluna); a fonte oficial chega pela correção", async () => {
+    await expect(como(ALUNO, (q) => q(`select id, sources from public.questions where id = $1`, [QID]))).rejects.toThrow(/permission denied/);
+    expect((await como(ALUNO, (q) => q(`select id, topic from public.questions where id = $1`, [QID]))).length).toBe(1);
+    expect((await rpc(ALUNO, "practice_correction_view", { p_question_id: QID, p_selected: "A" })).sources.length).toBeGreaterThan(0);
   });
 
-  vazamento("VAZAMENTO: aluno lê lessons.guideline_title/guideline_url direto (GET /rest/v1/lessons)", async () => {
-    // causa: política "aulas: publicadas para logados" (20261003004000_aulas.sql) + select na tabela inteira; o filtro está só em lesson_view
-    const linhas = await como(ALUNO, (q) => q(`select guideline_title, guideline_url, guideline_hidden from public.lessons where id = $1`, [aulaId]));
-    expect(marcasEm(JSON.stringify(linhas))).toEqual([]);
+  it("CORRIGIDO: aluno não lê lessons.guideline_title/guideline_url/guideline_hidden direto; lê o resto", async () => {
+    await expect(como(ALUNO, (q) => q(`select guideline_title from public.lessons where id = $1`, [aulaId]))).rejects.toThrow(/permission denied/);
+    await expect(como(ALUNO, (q) => q(`select guideline_url from public.lessons where id = $1`, [aulaId]))).rejects.toThrow(/permission denied/);
+    await expect(como(ALUNO, (q) => q(`select guideline_hidden from public.lessons where id = $1`, [aulaId]))).rejects.toThrow(/permission denied/);
+    await expect(como(ALUNO, (q) => q(`select * from public.lessons`))).rejects.toThrow(/permission denied/);
+    expect((await como(ALUNO, (q) => q(`select id, title, topic, summary from public.lessons where id = $1`, [aulaId]))).length).toBe(1);
   });
 
-  vazamento("VAZAMENTO: aluno lê guideline_updates.institution/document_title/source_url direto (GET /rest/v1/guideline_updates)", async () => {
-    // causa: política "atualizações: publicadas para logados" (20261003004100) + select na tabela inteira; o filtro está só em guideline_update_view
-    const linhas = await como(ALUNO, (q) => q(`select institution, document_title, source_url, source_hidden from public.guideline_updates where id = $1`, [atualizacaoId]));
-    expect(marcasEm(JSON.stringify(linhas))).toEqual([]);
+  it("CORRIGIDO: aluno não lê guideline_updates.institution/document_title/source_url/source_hidden direto; lê o resto", async () => {
+    for (const col of ["institution", "document_title", "source_url", "source_hidden"]) {
+      await expect(como(ALUNO, (q) => q(`select ${col} from public.guideline_updates where id = $1`, [atualizacaoId])), col).rejects.toThrow(/permission denied/);
+    }
+    expect((await como(ALUNO, (q) => q(`select id, topic, current_conduct from public.guideline_updates where id = $1`, [atualizacaoId]))).length).toBe(1);
   });
 
   it("as demais tabelas de fonte (ch_sources, ch_documents, ch_source_passages, ch_evidence, question_*, podcast_*, lesson_materials, lesson_reviews) não devolvem linha ao aluno", async () => {
@@ -538,7 +541,7 @@ describe("ataque: leitura direta das tabelas pela API REST (PostgREST)", () => {
 });
 
 describe("ataque: canal lateral pela busca (a contagem revela que existe)", () => {
-  vazamento("VAZAMENTO: buscar 'Sangue nos Olhos' em Atualizações & Diretrizes devolve a atualização (a busca olha institution e document_title escondidos)", async () => {
+  it("CORRIGIDO: buscar 'Sangue nos Olhos' em Atualizações & Diretrizes devolve a atualização (a busca olha institution e document_title escondidos)", async () => {
     // causa: 20261003004100_atualizacoes_diretrizes.sql, app_guideline_updates: o filtro p_search usa u.institution e u.document_title sem olhar source_hidden
     const nada = await rpc(ALUNO, "app_guideline_updates", { p_search: "termo-que-nao-existe-xyz" });
     const sno = await rpc(ALUNO, "app_guideline_updates", { p_search: "Sangue nos Olhos" });
@@ -570,11 +573,11 @@ describe("ataque: comparação por nome é textual (brecha 2 do construtor)", ()
     // não procura a palavra "apostila" (o servidor procura: complementarGuard.ts APOSTILA) nem a sigla SNO nem o nome do arquivo
     expect(await fontesDaCorrecao([{ title: "Apostila SNO, p. 123" }])).toEqual([]);
   });
-  vazamento("VAZAMENTO: o NOME DO ARQUIVO da apostila na biblioteca (ch_documents.name) não é comparado: 'SNO-ClinicaMedica-2026.pdf' chega ao aluno", async () => {
+  it("CORRIGIDO: o NOME DO ARQUIVO da apostila na biblioteca (ch_documents.name) não é comparado: 'SNO-ClinicaMedica-2026.pdf' chega ao aluno", async () => {
     // causa: ch_complementar_hit compara só ch_sources.title/organ/url; o documento ligado (ch_sources.document_id → ch_documents.name) fica de fora
     expect(await fontesDaCorrecao([{ title: COMP_FILE }])).toEqual([]);
   });
-  vazamento("EXCESSO (fonte OFICIAL some do aluno): apostila com título genérico esconde a oficial de mesmo tema", async () => {
+  it("CORRIGIDO: EXCESSO (fonte OFICIAL some do aluno): apostila com título genérico esconde a oficial de mesmo tema", async () => {
     // causa: ch_complementar_hit, regra "texto inteiro é parte do título" (9620:80): valor 'PCDT Hepatite B' (>= 8 letras) dentro do título de uma apostila
     const extra = (await sql(`insert into public.ch_sources (title, organ, kind, authority_level) values ('Sangue nos Olhos — Resumo do PCDT Hepatite B', 'Editora Sangue nos Olhos', 'final', 'E') returning id`))[0].id;
     try {
@@ -587,7 +590,7 @@ describe("ataque: comparação por nome é textual (brecha 2 do construtor)", ()
 });
 
 describe("ataque: podcast com arquivo da apostila de nome neutro (brecha 3)", () => {
-  vazamento("VAZAMENTO: PDF da apostila enviado com o MESMO nome do arquivo da biblioteca e não marcado à mão aparece como 'Documento N' com a página 123", async () => {
+  it("CORRIGIDO: PDF da apostila enviado com o MESMO nome do arquivo da biblioteca e não marcado à mão aparece como 'Documento N' com a página 123", async () => {
     // causa: app_podcast (9620:382-400) só esconde por podcast_sources.complementar ou ch_complementar_hit(título, url); não compara com ch_documents.name nem sha256
     const s = (await sql(`insert into public.podcast_sources (podcast_id, kind, title, storage_path, position) values ($1, 'pdf', $2, 'podcasts/b.pdf', 4) returning id`, [podcastId, COMP_FILE]))[0].id;
     const c = (await sql(`insert into public.podcast_chunks (podcast_id, source_id, ord, page, text) values ($1, $2, 0, $3, 'trecho') returning id`, [podcastId, s, COMP_PAGE]))[0].id;
@@ -616,7 +619,7 @@ describe("ataque: texto já publicado e mensagens antigas (brechas 4 e 5)", () =
     }
   });
 
-  vazamento("VAZAMENTO: texto de análise JÁ publicado que cita a apostila continua chegando ao aluno (não há filtro de saída)", async () => {
+  it("CORRIGIDO: texto de análise JÁ publicado que cita a apostila continua chegando ao aluno (não há filtro de saída)", async () => {
     // causa: app_question_commentary (9620:248-281) devolve trap/golden_rule/reasoning como estão; só fontes passam por ch_student_*
     await sql(`update public.question_analysis set trap = 'Segundo a apostila Sangue nos Olhos, cuidado.' where id = $1`, [analise]);
     try {
@@ -662,14 +665,17 @@ describe("ataque: classe da fonte (gatilho, permissões, travas)", () => {
     expect((await sql(`select audience, authority_level from public.ch_sources where id = $1`, [r.id]))[0]).toEqual({ audience: "complementar", authority_level: "E" });
   });
 
-  it("RISCO (sem vazamento): baixar uma fonte OFICIAL para nível E a transforma em complementar sem querer e sem registro de classe", async () => {
+  it("CORRIGIDO: baixar uma fonte OFICIAL para nível E a transforma em complementar (lado seguro) e a troca fica registrada", async () => {
     const s = (await sql(`insert into public.ch_sources (title, organ, kind, authority_level) values ('Manual oficial qualquer (teste)', 'Ministério da Saúde', 'final', 'C') returning id`))[0].id;
     await grava(ADMIN, "app_ch_set_source_authority", { p_source_id: s, p_level: "E" });
     const r = (await sql(`select audience from public.ch_sources where id = $1`, [s]))[0];
     const log = (await sql(`select count(*)::int n from public.ch_audit where action = 'source.audience' and target = $1`, [s]))[0].n;
     console.log(`[APOIO-T] oficial C → E pela função de nível: classe = ${r.audience}; registros de classe = ${log}`);
-    expect(r.audience).toBe("complementar"); // documenta o comportamento (lado seguro), sem registro 'source.audience'
-    expect(log).toBe(0);
+    expect(r.audience).toBe("complementar"); // lado seguro
+    expect(log).toBe(1); // e a troca fica registrada (gatilho), com o nível de antes
+    const d = (await sql(`select details from public.ch_audit where action = 'source.audience' and target = $1`, [s]))[0].details;
+    expect(d).toMatchObject({ from: "oficial", to: "complementar", level_before: "C", level_after: "E", auto: true });
+    expect((await sql(`select count(*)::int n from public.admin_audit_log where action = 'source.audience' and target = $1`, [s]))[0].n).toBe(1);
   });
 });
 
@@ -693,12 +699,24 @@ describe("ataque: ordem de colagem com outras frentes", () => {
       await db.exec(fs.readFileSync(path.join(MIGRATIONS, "20261003009620_fontes_complementares.sql"), "utf8"));
     }
   }
-  vazamento("RISCO DE COLAGEM: recolar a 9593 (podcasts) DEPOIS da 9620 devolve ao aluno a fonte da apostila e a página 123 no podcast", async () => {
-    // causa: 20261003009593_podcasts_nome_da_fonte_marca.sql redefine app_podcast sem o filtro (where x.podcast_id = p.id, sem complementar/hit)
-    await recolar("20261003009593_podcasts_nome_da_fonte_marca.sql", () => rpc(ALUNO, "app_podcast", { p_id: podcastId }));
+  /** Colar a 9593/9580 de novo desfaz o filtro: não dá para impedir (elas redefinem as funções com o mesmo nome). O que existe: o cabeçalho da 9620
+   *  manda colar "até a última, na ordem", e app_ch_complementar_check() acusa o que perdeu o filtro. */
+  async function recolarEAcusar(arquivo: string, funcao: string, checa: () => Promise<unknown>) {
+    await db.exec(fs.readFileSync(path.join(MIGRATIONS, arquivo), "utf8"));
+    try {
+      const c = await rpc(ADMIN, "app_ch_complementar_check");
+      expect(c.ok).toBe(false);
+      expect(c.faltando).toContain(funcao);
+    } finally {
+      await db.exec(fs.readFileSync(path.join(MIGRATIONS, "20261003009620_fontes_complementares.sql"), "utf8"));
+    }
+    expect((await rpc(ADMIN, "app_ch_complementar_check")).ok).toBe(true);
+    expect(marcasEm(JSON.stringify(await checa()))).toEqual([]);
+  }
+  it("COLAGEM: recolar a 9593 depois da 9620 desfaz o filtro do podcast, a conferência do administrador acusa, e colar a 9620 de novo corrige", async () => {
+    await recolarEAcusar("20261003009593_podcasts_nome_da_fonte_marca.sql", "app_podcast", () => rpc(ALUNO, "app_podcast", { p_id: podcastId }));
   });
-  vazamento("RISCO DE COLAGEM: recolar a 9580 (aulas) DEPOIS da 9620 devolve ao aluno a diretriz da apostila na aula", async () => {
-    // causa: 20261003009580_aulas_conferencia.sql redefine lesson_view (guideline_title/url crus) e lesson_materials_json sem hidden_from_student
-    await recolar("20261003009580_aulas_conferencia.sql", () => rpc(ALUNO, "app_lesson", { p_id: aulaId }));
+  it("COLAGEM: recolar a 9580 depois da 9620 desfaz o filtro da aula, a conferência acusa, e colar a 9620 de novo corrige", async () => {
+    await recolarEAcusar("20261003009580_aulas_conferencia.sql", "lesson_materials_json", () => rpc(ALUNO, "app_lesson", { p_id: aulaId }));
   });
 });

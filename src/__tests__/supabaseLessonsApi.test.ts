@@ -194,7 +194,8 @@ describe("A01/A05 (correção do revisor) - nada de uso interno sai para o aluno
     await expect(asUser(ANA, `select reviewed_by from public.lessons`)).rejects.toThrow(/column|coluna/i);
     await expect(asUser(ANA, `select * from public.lesson_reviews`)).rejects.toThrow(/permission|permiss/i);
     await expect(asUser(EDITOR, `select * from public.lesson_reviews`)).rejects.toThrow(/permission|permiss/i);
-    const row = await asUser(ANA, `select * from public.lessons where id = $1`, [id]);
+    await expect(asUser(ANA, `select * from public.lessons where id = $1`, [id])).rejects.toThrow(/permission/i); // fontes (9620): o aluno lê só as colunas sem referência
+    const row = await asUser(ANA, `select id, area, topic, title, summary, key_points, published from public.lessons where id = $1`, [id]);
     expect(JSON.stringify(row.rows)).not.toMatch(/Conferido com a diretriz|Aviso da IA|reviewed_by/);
     expect((await rpc(ADMIN, "app_admin_lessons")).lessons.find((x: any) => x.id === id)).toMatchObject({ reviewer: "adm@t.dev", ai_notes: ["Aviso da IA: dose fora do trecho."] });
   });
