@@ -32,9 +32,15 @@
 --     do servidor, 5);
 --   * regras recriadas com a união de todos os ramos, para a ordem das migrações não apagar nada: etapas de ch_jobs
 --     (até materiais visuais, estações, Questões StaziaMed e source_search) e chaves de ai_functions (as 6 + busca_fontes).
--- Numeração (2026-10-10): 20261003008700, antes 6400. Roda depois das 7100 a 8300 já aplicadas no banco publicado. As funções
--- que ela recria (app_ai_summary, app_ch_register_source, ch_worker_ai_log_calls, ch_worker_ai_save_function e
--- ch_worker_ai_save_price) partem da versão mais nova do main (5200 e 1400; nenhuma migração de 7100 a 8300 as recria).
+-- Numeração (2026-10-11): 20261003009610 (antes 6400, depois 8700). Roda DEPOIS da 9540 (Central de Conteúdo), que redefine
+-- ch_worker_finish, ch_worker_block, ch_worker_fail, ch_worker_checkpoint, ch_worker_next e cria os gatilhos
+-- ch_jobs_worker_exit e ch_jobs_worker_enter (colunas requeue e lease). Esta migração NÃO redefine nenhuma delas: o gatilho
+-- ch_jobs_source_search_dead é AFTER UPDATE e vê o status final, depois do gatilho da 9540. As funções que ela recria
+-- (app_ai_summary, app_ch_register_source, ch_worker_ai_log_calls, ch_worker_ai_save_function e ch_worker_ai_save_price)
+-- partem da versão mais nova que existe (5200 e 1400): nenhuma migração, até a 9540, as recria de novo. Quem criar outra
+-- migração depois desta que mexa nelas parte do corpo desta.
+-- Pode ser colada mais de uma vez no Supabase (create ... if not exists, create or replace, drop ... if exists, sites
+-- da lista com on conflict do nothing): colar de novo não apaga busca, candidato nem site que o dono já mexeu.
 -- Migração aplicada antes desta que acrescente etapas de ch_jobs ou chaves de ai_functions (ex.: a 8400 da auditoria das
 -- questões) obriga esta a trazer esses valores também.
 -- Estados da busca: na_fila, buscando, conferindo, concluida, nada_encontrado, pendente, falhou.
@@ -42,7 +48,7 @@
 -- =============================================================================
 
 -- ---------------------------------------------------------------- fila: etapa nova (união com os outros ramos)
-alter table public.ch_jobs drop constraint ch_jobs_step_check;
+alter table public.ch_jobs drop constraint if exists ch_jobs_step_check;
 alter table public.ch_jobs add constraint ch_jobs_step_check
   check (step in ('extract', 'classify', 'claims', 'evidence', 'draft', 'materials', 'render', 'review_check', 'source_index', 'visual_render',
                   'station_pages', 'station_segment', 'station_draft',
@@ -50,21 +56,21 @@ alter table public.ch_jobs add constraint ch_jobs_step_check
                   'source_search'));
 
 -- ---------------------------------------------------------------- Central de IAs: função nova, buscas e preço por busca
-alter table public.ai_functions drop constraint ai_functions_key_check;
+alter table public.ai_functions drop constraint if exists ai_functions_key_check;
 alter table public.ai_functions add constraint ai_functions_key_check
   check (key in ('criacao', 'verificacao', 'engenharia_reversa', 'assistente_preencher', 'assistente_conferir', 'assistente_revisar', 'busca_fontes'));
 -- máximo de buscas na internet por pedido (só busca_fontes; nulo = padrão do servidor)
-alter table public.ai_functions add column max_searches smallint check (max_searches is null or max_searches between 1 and 10);
+alter table public.ai_functions add column if not exists max_searches smallint check (max_searches is null or max_searches between 1 and 10);
 -- preço por busca na internet (dólares por busca), além do preço por token
-alter table public.ai_model_prices add column per_search_usd numeric(12, 6) check (per_search_usd is null or per_search_usd >= 0);
-alter table public.ai_calls add column web_searches integer not null default 0 check (web_searches >= 0);
+alter table public.ai_model_prices add column if not exists per_search_usd numeric(12, 6) check (per_search_usd is null or per_search_usd >= 0);
+alter table public.ai_calls add column if not exists web_searches integer not null default 0 check (web_searches >= 0);
 
 -- ---------------------------------------------------------------- fontes: aprovação editorial com quem e quando
-alter table public.ch_sources add column editorial_approved_by uuid references auth.users (id) on delete set null;
-alter table public.ch_sources add column editorial_approved_at timestamptz;
+alter table public.ch_sources add column if not exists editorial_approved_by uuid references auth.users (id) on delete set null;
+alter table public.ch_sources add column if not exists editorial_approved_at timestamptz;
 
 -- ---------------------------------------------------------------- sites oficiais
-create table public.ch_official_domains (
+create table if not exists public.ch_official_domains (
   id uuid primary key default gen_random_uuid(),
   -- sem https://, minúsculas, só ASCII; host (subdomínios valem) e, se houver, o começo do caminho
   address text not null unique check (char_length(address) <= 200
@@ -89,10 +95,11 @@ insert into public.ch_official_domains (address, institution, kind) values
   ('iris.paho.org', 'Repositório IRIS da OPAS', 'internacional'),
   ('febrasgo.org.br', 'Febrasgo', 'sociedade'),
   ('sbp.com.br', 'Sociedade Brasileira de Pediatria', 'sociedade'),
-  ('portal.cardiol.br', 'Sociedade Brasileira de Cardiologia', 'sociedade');
+  ('portal.cardiol.br', 'Sociedade Brasileira de Cardiologia', 'sociedade')
+on conflict (address) do nothing;
 
 -- ---------------------------------------------------------------- buscas (uma por tema)
-create table public.ch_source_searches (
+create table if not exists public.ch_source_searches (
   id uuid primary key default gen_random_uuid(),
   requested_by uuid not null references auth.users (id) on delete cascade,
   -- nulo = todas as áreas
@@ -119,11 +126,11 @@ create table public.ch_source_searches (
   created_at timestamptz not null default now(),
   finished_at timestamptz
 );
-create index ch_source_searches_created_idx on public.ch_source_searches (created_at desc);
-create index ch_source_searches_job_idx on public.ch_source_searches (job_id);
+create index if not exists ch_source_searches_created_idx on public.ch_source_searches (created_at desc);
+create index if not exists ch_source_searches_job_idx on public.ch_source_searches (job_id);
 
 -- ---------------------------------------------------------------- candidatos ("aguardando sua conferência")
-create table public.ch_source_candidates (
+create table if not exists public.ch_source_candidates (
   id uuid primary key default gen_random_uuid(),
   -- a busca pode sair; o candidato (e o "não volta" do rejeitado) fica
   search_id uuid references public.ch_source_searches (id) on delete set null,
@@ -173,16 +180,19 @@ create table public.ch_source_candidates (
   document_id uuid references public.ch_documents (id) on delete set null,
   created_at timestamptz not null default now()
 );
-create index ch_source_candidates_status_idx on public.ch_source_candidates (status, created_at desc);
-create index ch_source_candidates_final_url_idx on public.ch_source_candidates (final_url_norm);
-create index ch_source_candidates_search_idx on public.ch_source_candidates (search_id);
+create index if not exists ch_source_candidates_status_idx on public.ch_source_candidates (status, created_at desc);
+create index if not exists ch_source_candidates_final_url_idx on public.ch_source_candidates (final_url_norm);
+create index if not exists ch_source_candidates_search_idx on public.ch_source_candidates (search_id);
 
 -- ---------------------------------------------------------------- RLS: sites para a equipe; buscas e candidatos só administrador
 alter table public.ch_official_domains enable row level security;
 alter table public.ch_source_searches enable row level security;
 alter table public.ch_source_candidates enable row level security;
+drop policy if exists "sites oficiais: equipe lê" on public.ch_official_domains;
 create policy "sites oficiais: equipe lê" on public.ch_official_domains for select to authenticated using (public.is_staff());
+drop policy if exists "buscas de fontes: administrador lê" on public.ch_source_searches;
 create policy "buscas de fontes: administrador lê" on public.ch_source_searches for select to authenticated using (public.is_admin());
+drop policy if exists "fontes encontradas: administrador lê" on public.ch_source_candidates;
 create policy "fontes encontradas: administrador lê" on public.ch_source_candidates for select to authenticated using (public.is_admin());
 -- escrita só pelas funções abaixo
 
@@ -192,7 +202,7 @@ create policy "fontes encontradas: administrador lê" on public.ch_source_candid
 -- também saem (?a=1&&b=2 vira ?a=1&b=2 e ?a=1& vira ?a=1). O caminho e os outros parâmetros ficam como vieram (nada é
 -- decodificado nem reordenado, e nenhuma "/" é acrescentada). Texto que não parece link volta só sem "#…" e sem espaços
 -- nas pontas; vazio volta nulo. A versão do servidor (normalizeLink) segue esta mesma regra.
-create function public.ch_url_norm(p_url text) returns text
+create or replace function public.ch_url_norm(p_url text) returns text
   language plpgsql immutable set search_path = ''
 as $$
 declare
@@ -218,7 +228,7 @@ $$;
 -- Regra ÚNICA de substituição de fonte (aviso da tela, confirmação da aprovação e app_ch_register_source): a fonte vigente
 -- mais recente com o mesmo título e o mesmo órgão (sem caixa) é substituída quando o arquivo (SHA-256) ou a versão é
 -- diferente. Devolve o id da fonte que seria substituída, ou nulo. p_exclude: a própria fonte recém-gravada.
-create function public.ch_source_replacement(p_title text, p_organ text, p_sha256 text, p_version text, p_exclude uuid default null)
+create or replace function public.ch_source_replacement(p_title text, p_organ text, p_sha256 text, p_version text, p_exclude uuid default null)
   returns uuid
   language sql stable security definer set search_path = ''
 as $$
@@ -234,7 +244,7 @@ $$;
 
 -- Um candidato como a tela mostra: as colunas, a busca de onde veio e a fonte vigente que a aprovação substituiria
 -- (com o que o dono editou antes do que a IA disse; só enquanto aguarda).
-create function public.ch_source_candidate_item(p_id uuid) returns jsonb
+create or replace function public.ch_source_candidate_item(p_id uuid) returns jsonb
   language sql stable security definer set search_path = ''
 as $$
   select to_jsonb(c) || jsonb_build_object(
@@ -289,7 +299,7 @@ end
 $$;
 
 -- ---------------------------------------------------------------- tela: sites oficiais
-create function public.app_ch_official_domains() returns jsonb
+create or replace function public.app_ch_official_domains() returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
 begin
@@ -300,7 +310,7 @@ end
 $$;
 
 -- p_domain = {id?, address, institution, kind, active}. Sem id cria; com id altera (active omitido mantém o atual).
-create function public.app_ch_save_official_domain(p_domain jsonb) returns jsonb
+create or replace function public.app_ch_save_official_domain(p_domain jsonb) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
@@ -357,7 +367,7 @@ $$;
 -- (JSON null conta como ausente). Uma busca por tema, cada uma com o seu trabalho na fila (sem documento). Busca igual
 -- (área, tema e texto livre, sem caixa) que ainda está andando não se repete: volta a existente com duplicate = true.
 -- "Andando" = estado não final E a tarefa da fila ainda viva: busca cuja tarefa morreu (dead/failed) não bloqueia o pedido.
-create function public.app_ch_source_search_start(p_request jsonb) returns jsonb
+create or replace function public.app_ch_source_search_start(p_request jsonb) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
@@ -438,7 +448,7 @@ end
 $$;
 
 -- Buscas recentes, com a situação do trabalho na fila.
-create function public.app_ch_source_searches(p_limit integer default 20) returns jsonb
+create or replace function public.app_ch_source_searches(p_limit integer default 20) returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
 begin
@@ -456,7 +466,7 @@ $$;
 -- ---------------------------------------------------------------- tela: candidatos
 -- Ordem: governo brasileiro primeiro, depois a data mais recente (a editada, a que a IA disse, a achada no arquivo), depois
 -- os mais novos. Até 200 por situação; os contadores contam todos.
-create function public.app_ch_source_candidates(p_status text default 'aguardando') returns jsonb
+create or replace function public.app_ch_source_candidates(p_status text default 'aguardando') returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
 declare v_status text := coalesce(nullif(btrim(p_status), ''), 'aguardando');
@@ -481,7 +491,7 @@ begin
 end
 $$;
 
-create function public.app_ch_source_candidate(p_candidate_id uuid) returns jsonb
+create or replace function public.app_ch_source_candidate(p_candidate_id uuid) returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
 declare r jsonb;
@@ -495,7 +505,7 @@ $$;
 
 -- Ajustes do dono antes de decidir: só as chaves da conferência entram em "edited" (as outras são ignoradas); valor vazio
 -- ou nulo tira a chave. Datas inteiras (AAAA-MM-DD): ano sozinho não vira data. Nível E nunca.
-create function public.app_ch_source_candidate_save(p_candidate_id uuid, p_fields jsonb) returns jsonb
+create or replace function public.app_ch_source_candidate_save(p_candidate_id uuid, p_fields jsonb) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
@@ -566,7 +576,7 @@ $$;
 
 -- ---------------------------------------------------------------- processamento (servidor)
 -- A busca e os sites ATIVOS da lista (a IA só procura neles; o servidor confere cada link de novo).
-create function public.ch_worker_source_search_get(p_search_id uuid) returns jsonb
+create or replace function public.ch_worker_source_search_get(p_search_id uuid) returns jsonb
   language sql stable security definer set search_path = ''
 as $$
   select to_jsonb(s) || jsonb_build_object('domains', coalesce((
@@ -581,7 +591,7 @@ $$;
 -- Só as chaves presentes em p_patch mudam: status, message, provider, model, run_id, web_searches, cost_usd, found_count,
 -- verified_count, discarded ([{link, titulo, motivo}]; discarded_count = tamanho da lista). Ao chegar a um estado final
 -- (concluida, nada_encontrado, falhou) grava finished_at e o resultado no registro (ch_audit, em nome de quem pediu).
-create function public.ch_worker_source_search_update(p_search_id uuid, p_patch jsonb) returns void
+create or replace function public.ch_worker_source_search_update(p_search_id uuid, p_patch jsonb) returns void
   language plpgsql security definer set search_path = ''
 as $$
 declare
@@ -636,7 +646,7 @@ $$;
 -- (as estações trocam ch_worker_claim por outra versão). A fila acrescenta "Interrompido sem concluir." a cada recuperação
 -- ("Interrompido sem concluir. Falha anterior: Interrompido sem concluir."): a busca mostra essa frase uma vez só.
 -- Tentar de novo a tarefa morta (app_ch_retry_job) não reabre a busca: o caminho é pedir a mesma busca outra vez.
-create function public.ch_source_search_job_dead() returns trigger
+create or replace function public.ch_source_search_job_dead() returns trigger
   language plpgsql security definer set search_path = ''
 as $$
 declare
@@ -656,6 +666,7 @@ begin
   return null;
 end
 $$;
+drop trigger if exists ch_jobs_source_search_dead on public.ch_jobs;
 create trigger ch_jobs_source_search_dead
   after update of status on public.ch_jobs
   for each row
@@ -663,7 +674,7 @@ create trigger ch_jobs_source_search_dead
   execute function public.ch_source_search_job_dead();
 
 -- Já conhecido? Nulo = novo. Pelo link normalizado e/ou pelo SHA-256 (qualquer um pode vir nulo), nesta ordem.
-create function public.ch_worker_source_known(p_url text, p_sha256 text) returns text
+create or replace function public.ch_worker_source_known(p_url text, p_sha256 text) returns text
   language plpgsql stable security definer set search_path = ''
 as $$
 declare
@@ -699,7 +710,7 @@ $$;
 
 -- Candidato novo, "aguardando". O link (pedido e final) é normalizado aqui; o site vem da lista (domain_id) quando os
 -- campos site_* não vêm. Mesmo link ou mesmo SHA-256 de outro candidato → {id do existente, duplicate: true}.
-create function public.ch_worker_source_candidate_create(p_candidate jsonb) returns jsonb
+create or replace function public.ch_worker_source_candidate_create(p_candidate jsonb) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
@@ -924,3 +935,4 @@ revoke execute on function public.app_ch_source_searches(integer) from public, a
 revoke execute on function public.app_ch_source_candidates(text) from public, anon;
 revoke execute on function public.app_ch_source_candidate(uuid) from public, anon;
 revoke execute on function public.app_ch_source_candidate_save(uuid, jsonb) from public, anon;
+revoke execute on function public.app_ai_summary() from public, anon;

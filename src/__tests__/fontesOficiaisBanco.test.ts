@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * Fontes oficiais com IA — banco (supabase/migrations/…8700_fontes_oficiais_ia.sql): lista de sites oficiais (a equipe lê, só o
+ * Fontes oficiais com IA — banco (supabase/migrations/…9610_fontes_oficiais_ia.sql): lista de sites oficiais (a equipe lê, só o
  * administrador grava), pedido de busca (uma busca por tema, na fila sem documento, sem repetir a que ainda está andando),
  * candidatos só para o administrador, repetidos por link normalizado e por SHA-256, a regra única de substituição e a função
  * "Busca de fontes oficiais" (`busca_fontes`) na Central de IAs.
@@ -569,5 +569,83 @@ describe("Banco", () => {
           and has_function_privilege('anon', p.oid, 'execute')`
     );
     expect(anon).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------- a migração: número, ordem e colar duas vezes
+describe("Migração 9610", () => {
+  const ROOT = path.resolve(__dirname, "../..");
+  const MIG_DIR = path.join(ROOT, "supabase/migrations");
+  const NAME = "20261003009610_fontes_oficiais_ia.sql";
+  const src = () => fs.readFileSync(path.join(MIG_DIR, NAME), "utf8");
+  const code = (s: string) => s.replace(/--.*$/gm, "");
+
+  it("tem o número 9610 (faixa 9610 a 9619), vem depois da 9540 e o nome antigo não existe mais", () => {
+    const files = fs.readdirSync(MIG_DIR).filter((f) => f.endsWith(".sql")).sort();
+    expect(files).toContain(NAME);
+    expect(files.filter((f) => /fontes_oficiais_ia/.test(f))).toEqual([NAME]);
+    expect(files.indexOf(NAME)).toBeGreaterThan(files.indexOf("20261003009540_reconferir_insuficientes.sql"));
+  });
+
+  it("as funções que ela redefine não são redefinidas por nenhuma migração depois da 9540 (parte da versão mais nova)", () => {
+    const mine = [...code(src()).matchAll(/create or replace function public\.(\w+)\(/g)].map((m) => m[1]);
+    expect(mine.length).toBeGreaterThan(15);
+    const others = fs.readdirSync(MIG_DIR).filter((f) => f.endsWith(".sql") && f !== NAME);
+    const redefined = ["ch_worker_ai_save_function", "app_ai_summary", "ch_worker_ai_log_calls", "ch_worker_ai_save_price", "app_ch_register_source"];
+    for (const fn of redefined) {
+      expect(mine).toContain(fn);
+      const where = others.filter((f) => new RegExp(`function public\\.${fn}\\(`).test(fs.readFileSync(path.join(MIG_DIR, f), "utf8"))).sort();
+      // todas as outras definições vêm antes desta (a 9540 e as de depois dela não as recriam)
+      for (const f of where) expect(f < NAME).toBe(true);
+    }
+    // nada do que a 9540 trouxe (fila com dono, pedido guardado) é redefinido aqui
+    for (const fn of ["ch_worker_finish", "ch_worker_block", "ch_worker_fail", "ch_worker_checkpoint", "ch_worker_next", "ch_worker_next_marked", "ch_jobs_worker_exit", "ch_jobs_worker_enter"]) {
+      expect(mine).not.toContain(fn);
+    }
+    expect(code(src())).not.toMatch(/drop trigger if exists ch_jobs_worker_(exit|enter)/);
+  });
+
+  it("colada duas vezes não dá erro, não apaga o que já existe e deixa tudo fechado para visitante", async () => {
+    const domain = (await sql(`select id from public.ch_official_domains where address = 'who.int'`))[0];
+    await asAdmin("app_ch_save_official_domain", { p_domain: { id: domain.id, address: "who.int", institution: "Organização Mundial da Saúde", kind: "internacional", active: false } });
+    const cand = await createCandidate();
+    const before = (await sql(`select (select count(*)::int from public.ch_official_domains) as domains, (select count(*)::int from public.ch_source_candidates) as cands, (select count(*)::int from public.ch_source_searches) as searches`))[0];
+    try {
+      await t.dev.db.exec(src());
+      await t.dev.db.exec(src());
+      const after = (await sql(`select (select count(*)::int from public.ch_official_domains) as domains, (select count(*)::int from public.ch_source_candidates) as cands, (select count(*)::int from public.ch_source_searches) as searches`))[0];
+      expect(after).toEqual(before);
+      // o site que o dono desativou continua desativado; o candidato continua lá
+      expect((await sql(`select active from public.ch_official_domains where id = $1`, [domain.id]))[0].active).toBe(false);
+      expect((await asAdmin("app_ch_source_candidate", { p_candidate_id: cand.id })).id).toBe(cand.id);
+      // regras e gatilho continuam em um exemplar só
+      expect((await sql(`select count(*)::int as n from pg_trigger where tgname = 'ch_jobs_source_search_dead' and not tgisinternal`))[0].n).toBe(1);
+      expect((await sql(`select count(*)::int as n from pg_policies where tablename in ('ch_official_domains','ch_source_searches','ch_source_candidates')`))[0].n).toBe(3);
+      await sql(`insert into public.ch_jobs (step, scope_key, idempotency_key) values ('source_search', 'teste', 'teste-9610:ok')`);
+      // permissões: depois de colar de novo, visitante e papel público continuam sem executar
+      const open = await sql(
+        `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname = 'public' and (p.proname like 'ch\\_worker\\_source\\_%' or p.proname in ('ch_url_norm', 'ch_worker_ai_save_function', 'ch_worker_ai_log_calls', 'ch_worker_ai_save_price', 'ch_source_replacement', 'ch_source_candidate_item', 'ch_source_search_job_dead'))
+            and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute') or has_function_privilege('public', p.oid, 'execute'))`
+      );
+      expect(open).toEqual([]);
+      const openApp = await sql(
+        `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+          where n.nspname = 'public' and (p.proname like 'app\\_ch\\_source\\_%' or p.proname in ('app_ch_official_domains', 'app_ch_save_official_domain', 'app_ai_summary'))
+            and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('public', p.oid, 'execute'))`
+      );
+      expect(openApp).toEqual([]);
+    } finally {
+      await sql(`delete from public.ch_jobs where idempotency_key = 'teste-9610:ok'`);
+      await asAdmin("app_ch_save_official_domain", { p_domain: { id: domain.id, address: "who.int", institution: "Organização Mundial da Saúde", kind: "internacional", active: true } });
+    }
+  });
+
+  it("as sete chaves da Central e as etapas da fila continuam aceitas depois de colar de novo", async () => {
+    const keys = ["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes"];
+    const cons = (await sql(`select pg_get_constraintdef(oid) as d from pg_constraint where conname = 'ai_functions_key_check'`))[0].d as string;
+    for (const k of keys) expect(cons).toContain(`'${k}'`);
+    const summary = await t.db.asUser<any>(t.editorUser, "app_ai_summary");
+    expect(summary.functions.map((f: any) => f.key)).toEqual(keys);
   });
 });
