@@ -30,8 +30,10 @@ sem tirar nada do que existe, e criar na "Nova aula" um agente de IA (Gemini, Op
 4. **Revisão humana**: a equipe vê cada fala com os trechos citados (documento, página e o texto do trecho), corrige, tira ou
    acrescenta falas. Editar tira a aprovação e o áudio; a conferência roda de novo no servidor. **Aprovar** exige escrever o que
    foi conferido (mínimo 10 caracteres) e registra quem aprovou e quando.
-5. **Áudio** (só de roteiro aprovado): Gemini TTS com as duas vozes na mesma chamada (estilo por fala) ou OpenAI (uma voz por
-   fala). O roteiro vai em partes de até ~1.400 caracteres, uma chamada por parte (cabe nos 300 s da função da Vercel); cada parte
+5. **Áudio** (só de roteiro aprovado): **OpenAI** (uma voz por fala) é a voz padrão. A voz do Gemini (duas vozes na mesma
+   chamada, estilo por fala) fica **desligada** até `PODCAST_TTS_GEMINI_ENABLED=1` ser definida no servidor (decisão de 2026-10-09:
+   "usar só a OpenAI por enquanto"); desligada, aparece como "indisponível por enquanto" e a geração a recusa antes de qualquer
+   chamada. Áudio já gerado não muda. O roteiro vai em partes de até ~1.400 caracteres, uma chamada por parte (cabe nos 300 s da função da Vercel); cada parte
    vira MP3 (64 kbps, mono, 24 kHz) e o final junta as partes. Se o roteiro mudar durante a geração, ela para (409).
 6. **Publicação**: só o administrador, e só com roteiro aprovado e áudio pronto (também garantido por restrição no banco).
    Despublicar volta para "Áudio pronto".
@@ -53,7 +55,7 @@ sem tirar nada do que existe, e criar na "Nova aula" um agente de IA (Gemini, Op
 ## 4. Servidor
 
 `server/podcasts/` — `extract.ts` (PDF, DOCX, HTML, links seguros, trechos), `script.ts` (prompt, esquema, seleção de trechos,
-conferência, simulação), `audio.ts` (Gemini e OpenAI, WAV→PCM→MP3, vozes permitidas, custo) e `router.ts` (`/api/podcasts`):
+conferência, simulação), `audio.ts` (OpenAI e Gemini, este desligado por variável; WAV→PCM→MP3, vozes permitidas, custo) e `router.ts` (`/api/podcasts`):
 
 | Rota | Para quê |
 |---|---|
@@ -87,7 +89,8 @@ Em Administração › Aulas › Nova aula (e ao editar), o painel "Assistente d
 | `ANTHROPIC_API_KEY` | Claude no roteiro e no assistente (já configurada na Vercel) |
 | `OPENAI_API_KEY` + `CONTENT_HUB_OPENAI_MODEL` | OpenAI no roteiro e no assistente (o modelo de texto precisa ser escolhido) |
 | `OPENAI_API_KEY` | voz da OpenAI (`PODCAST_TTS_OPENAI_MODEL`, padrão `gpt-4o-mini-tts`) |
-| `GEMINI_API_KEY` ou `GOOGLE_GEMINI_API_KEY` | Gemini no roteiro, no assistente e na voz (**ainda não configurada na Vercel nem no `.env` local**) |
+| `GEMINI_API_KEY` ou `GOOGLE_GEMINI_API_KEY` | Gemini no roteiro, no assistente e (só com `PODCAST_TTS_GEMINI_ENABLED=1`) na voz (**ainda não configurada na Vercel nem no `.env` local**) |
+| `PODCAST_TTS_GEMINI_ENABLED=1` | liga a voz do Gemini (sem esta variável ela fica desligada, mesmo com chave; só a OpenAI fala) |
 | `PODCAST_TTS_GEMINI_MODEL` | modelo de voz do Gemini (padrão `gemini-3.8-flash-tts`) |
 | `PODCAST_GEMINI_MODEL`, `PODCAST_ANTHROPIC_MODEL`, `PODCAST_OPENAI_MODEL` | modelo do roteiro por provedor (opcional) |
 | `LESSON_ASSIST_<PROVEDOR>_MODEL` | modelo do assistente por provedor (opcional; senão usa o do podcast) |
@@ -108,12 +111,13 @@ tema dentro de um limite de tamanho, suficiente para os materiais de uma aula.
 
 ## 8. Testes
 
-`podcasts.test.ts` (fluxo inteiro com banco de desenvolvimento, IA e voz simuladas, Gemini com rede simulada, permissões,
+`podcasts.test.ts` (fluxo inteiro com banco de desenvolvimento, IA e voz simuladas, OpenAI e Gemini (ligado por variável) com rede simulada, permissões,
 isolamento), `lessonAssist.test.ts` (assistente), `podcastsTelas.test.tsx` (telas da equipe, do assistente e do aluno).
 
 ## 9. Pendências
 
-- Configurar a chave do Gemini no servidor para usar Gemini no roteiro, no assistente e na voz de dois locutores (hoje, com as
-  chaves da Vercel, funcionam Claude no roteiro e no assistente; a voz precisa do Gemini ou de `OPENAI_API_KEY`, que existe).
+- Configurar a chave do Gemini no servidor para usar Gemini no roteiro e no assistente (hoje, com as chaves da Vercel, funcionam
+  Claude no roteiro e no assistente). A voz de dois locutores do Gemini só volta com `PODCAST_TTS_GEMINI_ENABLED=1` (por enquanto
+  a voz é a da OpenAI, com `OPENAI_API_KEY`, que existe).
 - Para usar OpenAI no texto, definir `CONTENT_HUB_OPENAI_MODEL`.
 - Aplicar as migrações …4300 a …4700 no Supabase antes de publicar o código (o depósito "podcasts" é criado pela …4700).

@@ -1,5 +1,6 @@
 // Administração de Atualizações: editar (equipe ou revisor da área), conferir no documento oficial
-// (só revisor médico cadastrado na área) e publicar para o aluno (só administrador). O banco confere cada papel.
+// (só revisor médico cadastrado na área) e publicar para o aluno (só administrador, e só depois da conferência aprovada).
+// Recusar ou mudar o texto de uma publicada tira do ar até nova conferência. O banco confere cada papel e cada regra.
 import React from "react";
 import { Badge, Banner, Button, Card, SelectField, Switch, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
@@ -16,6 +17,32 @@ const FILTERS = [
 ];
 const blank = { area: "CLINICA_MEDICA", topic: "", subtopic: "", priority: 2, publication_label: "", institution: "", document_title: "", source_url: "", before_text: "", timeline: [], current_conduct: "", clinical_impact: "", exam_impact: "", trap: "", search_terms: "", position: 0, flashcards: [], practice_questions: [] };
 const toForm = (u) => ({ ...blank, ...Object.fromEntries(Object.entries(u).map(([k, v]) => [k, v ?? (typeof blank[k] === "string" ? "" : blank[k])])) });
+// O que o aluno lê (os mesmos campos que o banco compara): mudar algo daqui numa publicada tira do ar até nova conferência.
+// Posição, prioridade e termos do treino ficam de fora, como no banco. A tela compara do mesmo jeito que o banco
+// (app_admin_save_guideline_update): o que seria gravado a partir do formulário contra o que está gravado.
+const TEXT_FIELDS = ["area", "topic", "subtopic", "publication_label", "institution", "document_title", "source_url", "before_text", "current_conduct", "clinical_impact", "exam_impact", "trap"];
+// btrim do banco: tira só os espaços das pontas (quebra de linha fica e conta como mudança)
+const btrim = (v) => String(v ?? "").replace(/^ +| +$/g, "");
+// o banco compara jsonb pelo valor, sem ligar para a ordem das chaves
+const canon = (v) => JSON.stringify(v, (_, x) => (x && typeof x === "object" && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]])) : x));
+const asSaved = (f, practice) => {
+  const timeline = (f.timeline ?? [])
+    .map((t) => ({ year: Number(t.year), text: btrim(t.text) }))
+    .filter((t) => Number.isInteger(t.year) && t.year >= 2000 && t.year <= 2100 && t.text)
+    .sort((a, b) => a.year - b.year);
+  return canon({
+    ...Object.fromEntries(TEXT_FIELDS.map((k) => [k, btrim(f[k])])),
+    years: [...new Set(timeline.map((t) => t.year))].sort((a, b) => a - b),
+    timeline,
+    flashcards: (f.flashcards ?? []).map((c) => ({ ...(c.type == null ? {} : { type: String(c.type) }), front: btrim(c.front), back: btrim(c.back) })),
+    practice_questions: practice ?? [],
+  });
+};
+const asStored = (u) => canon({
+  ...Object.fromEntries(TEXT_FIELDS.map((k) => [k, u[k] ?? ""])),
+  years: u.years ?? [], timeline: u.timeline ?? [], flashcards: u.flashcards ?? [], practice_questions: u.practice_questions ?? [],
+});
+const OFF_AIR_CONFIRM = "Esta atualização está no ar para os alunos. Com a mudança no texto, ela sai do ar até um revisor médico conferir de novo e o administrador publicar outra vez. Salvar mesmo assim?";
 
 function LegacyBox({ legacy }) {
   if (!legacy?.original_url && !legacy?.cited_questions?.length) return null;
@@ -104,6 +131,7 @@ function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
     } catch {
       return setState({ busy: false, error: "A questão de treino precisa estar em JSON válido.", done: null });
     }
+    if (current?.published && asSaved(form, practice) !== asStored(current) && !window.confirm(OFF_AIR_CONFIRM)) return;
     run("save", async () => {
       const saved = await backend.rpc("app_admin_save_guideline_update", {
         p_update: { ...form, id: current?.id, priority: Number(form.priority) || 2, position: Number(form.position) || 0, timeline: form.timeline.map((t) => ({ year: Number(t.year), text: t.text })), practice_questions: practice },
@@ -132,6 +160,8 @@ function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
     });
   };
   const canReview = current && (current.can_review ?? reviewAreas.includes(current.area));
+  // publicar só com conferência aprovada (o banco também recusa); tirar do ar fica sempre livre
+  const publishLocked = Boolean(current) && !current.published && current.review_status !== "approved";
   const [label, tone] = REVIEW[current?.review_status] ?? REVIEW.pending;
   return (
     <Card>
@@ -148,6 +178,7 @@ function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
         {state.error && <Banner tone="danger">{state.error}</Banner>}
         {state.done === "save" && current?.review_status === "pending" && current?.review_note && <Banner tone="warning">{current.review_note}</Banner>}
         {state.done === "save" && <Banner tone="success">Atualização salva.</Banner>}
+        {current?.published && <Banner tone="warning">Esta atualização está no ar. Se você mudar o texto, ela sai do ar para os alunos até um revisor médico conferir de novo e o administrador publicar outra vez. Mudar só a posição, a prioridade ou os termos do treino não tira do ar.</Banner>}
         {current?.origin === "legacy_app" && <LegacyBox legacy={current.legacy} />}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
           <SelectField label="Grande área" value={form.area} onChange={(e) => set({ area: e.target.value })} options={AREAS.map((a) => ({ value: a.id, label: a.label }))} />
@@ -190,6 +221,7 @@ function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
                   <Button icon="shield-check" loading={state.busy === "approve"} disabled={note.trim().length < 10} onClick={() => review("approve")}>Aprovar: confere com o documento oficial</Button>
                   <Button variant="secondary" icon="x" loading={state.busy === "reject"} disabled={note.trim().length < 10} onClick={() => review("reject")}>Recusar</Button>
                 </div>
+                {current.published && <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Recusar tira esta atualização do ar para os alunos na hora.</p>}
               </div>
             ) : (
               <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Só um revisor médico cadastrado em {areaLabel(current.area)} confere esta atualização (Central de Conteúdo › Configuração).</p>
@@ -199,10 +231,10 @@ function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
             <div>
               <Switch
                 label="Publicada para os alunos"
-                description={current.review_status === "approved" ? "Conferida por revisor médico." : "Sem conferência médica: a tela do aluno mostra um aviso."}
+                description={current.review_status === "approved" ? "Conferida por revisor médico." : "Só pode ser publicada depois que um revisor médico aprovar a conferência no documento oficial."}
                 checked={Boolean(current.published)}
-                disabled={state.busy === "publish"}
-                onChange={(e) => publish(e.target.checked)}
+                disabled={state.busy === "publish" || publishLocked}
+                onChange={(e) => !publishLocked && publish(e.target.checked)}
               />
             </div>
           )}

@@ -100,6 +100,8 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
   const seq = React.useRef(0);
   // valores dos campos como foram no pedido: "Usar" não troca campo de texto que a pessoa mudou depois (decisão D2c)
   const sent = React.useRef({});
+  // campos pedidos no último Preencher (para saber se TODOS voltaram "Sem fonte", Q14)
+  const requested = React.useRef([]);
 
   const editable = fields.filter((f) => f.ai === "editar");
   const checkable = fields.filter((f) => f.ai === "editar" || f.ai === "conferir");
@@ -142,6 +144,7 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
     if (mat) request.material = mat;
     reset();
     sent.current = values;
+    requested.current = mode === "preencher" ? request.fields : [];
     setBusy(true);
     const mine = seq.current;
     try {
@@ -195,6 +198,8 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
 
   const suggestions = (result?.suggestions ?? []).filter((s) => !gone[s.id]);
   const pending = suggestions.filter((s) => !used[s.id]);
+  // Preencher sem nenhum trecho para todos os campos pedidos: parece que o assistente não fez nada; o aviso diz por quê
+  const noSourceAll = mode === "preencher" && !!result && requested.current.length > 0 && requested.current.every((name) => (result.no_source ?? []).includes(name));
   const cost = result?.usage ? (result.usage.provider === "mock" ? ASSIST_TEXTS.mockLabel : `${usd(result.usage.cost_usd)} · ${result.usage.label} ${result.usage.model}`) : null;
 
   return (
@@ -260,6 +265,11 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
             const field = f.field ? fields.find((x) => x.name === f.field) : null;
             return <FindingCard key={f.id} finding={f} label={f.field ? labelOf(f.field) : "Item inteiro"} canPropose={!f.field || field?.ai === "editar"} onPropose={() => propose(f)} />;
           })}
+          {noSourceAll && (
+            <Banner tone="warning" title={ASSIST_TEXTS.noSourceAllTitle}>
+              {material === "notas" ? ASSIST_TEXTS.noSourceAllNotes : ASSIST_TEXTS.noSourceAll}
+            </Banner>
+          )}
           {result.no_source?.map((name) => <p key={name} style={smallStyle}>{`${labelOf(name)}: ${ASSIST_TEXTS.noSource}`}</p>)}
           {result.missing?.length > 0 && (
             <Banner tone="info" title="A fonte não esclarece">

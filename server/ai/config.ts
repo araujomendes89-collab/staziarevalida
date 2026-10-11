@@ -5,10 +5,11 @@
  */
 import type { ContentDb } from "../contentHub/infra";
 import { OllamaProvider } from "../contentHub/ai/ollama";
-import { familyOfModel, resolveProviderKind, type AiProvider } from "../contentHub/ai/provider";
+import { anthropicMaxTokens, familyOfModel, geminiOutputLimit, geminiThinkingReserve, resolveProviderKind, type AiProvider } from "../contentHub/ai/provider";
+import { openAiMaxCompletionTokens } from "../contentHub/ai/openai";
 import type { PromptKey } from "../contentHub/ai/prompts";
 import type { AiProviderId } from "./models";
-import type { ModelPrice } from "./prices";
+import { estimateCostUsd, type ModelPrice } from "./prices";
 import { googleAiAccess, GOOGLE_KEY_MISSING } from "./googleKey";
 
 export type AiFunctionKey = "criacao" | "verificacao" | "engenharia_reversa" | "assistente_preencher" | "assistente_conferir" | "assistente_revisar";
@@ -42,6 +43,158 @@ export const DEFAULT_MODELS: Partial<Record<AiProviderId, string>> = { anthropic
 const CACHE_MS = 10_000;
 
 export const isProviderId = (v: unknown): v is AiProviderId => PROVIDER_IDS.includes(v as AiProviderId);
+
+/**
+ * O limite de saída que de fato vai para a IA, pela mesma conta de cada provedor: no Gemini, o pedido mais a folga do raciocínio
+ * (geminiOutputLimit); no Claude, no mínimo 8.192 (anthropicMaxTokens); na OpenAI, no mínimo 4.096 (openAiMaxCompletionTokens);
+ * no Ollama, o pedido. Revisão rodada 5: antes só o Gemini contava, e um corte do Claude nas Aulas e nos assistentes (6.000
+ * pedidos, 8.192 mandados) custava mais que a estimativa: o valor que a tela sugeria não deixava a reserva socorrer.
+ */
+export function effectiveMaxOut(ref: ModelRef, maxOut: number, care?: string): number {
+  if (ref.provider === "gemini") return geminiOutputLimit(ref.model, care, maxOut);
+  if (ref.provider === "anthropic") return anthropicMaxTokens(maxOut);
+  if (ref.provider === "openai") return openAiMaxCompletionTokens(maxOut);
+  return maxOut;
+}
+
+/**
+ * Pior caso de uma chamada pelo preço cadastrado (entrada em caracteres ÷ 4 e a saída máxima que de fato vai para a IA), a
+ * mesma conta dos tetos. Ollama e modelo sem preço: 0.
+ */
+export function callEstimateUsd(ref: ModelRef, price: ModelPrice | null, chars: number, maxOut: number, care?: string): number {
+  if (ref.provider === "ollama" || !price) return 0;
+  return estimateCostUsd(price, chars, effectiveMaxOut(ref, maxOut, care)) ?? 0;
+}
+
+/** Uma chamada típica de um uso da função: a saída pedida no código e a entrada que costuma ir (em caracteres). */
+export interface TypicalCall {
+  use: string;
+  inputChars: number;
+  maxOut: number;
+}
+
+/**
+ * Chamadas típicas de cada função, para o aviso do teto por execução (revisão rodada 3). A saída é a pedida no código (a
+ * estimativa usa o que cada provedor de fato manda, effectiveMaxOut: no Claude, 6.000 viram 8.192); a entrada é o material que
+ * costuma ir, com o texto de instruções:
+ *   etapas da Central de Conteúdo: 8.192 (pipeline.ts); trechos de até 6.000 caracteres mais o catálogo e as instruções (~30 mil).
+ *   Aulas: 6.000 (lessons/assist.ts); até 80 mil caracteres de material.
+ *   Podcasts: 16.000 (podcasts/script.ts); até 120 mil caracteres de material.
+ *   Questões: 12.000 (questionAnalysis.ts); enunciado, alternativas e instruções (~8 mil).
+ *   assistentes: 6.000 (adminAssistant/engine.ts); até 60 mil caracteres de material mais os trechos oficiais.
+ */
+export const TYPICAL_CALLS: Record<AiFunctionKey, TypicalCall[]> = {
+  criacao: [
+    { use: "etapas da Central de Conteúdo", inputChars: 30_000, maxOut: 8192 },
+    { use: "Aulas", inputChars: 85_000, maxOut: 6000 },
+    { use: "Podcasts", inputChars: 125_000, maxOut: 16_000 },
+  ],
+  verificacao: [{ use: "etapas da Central de Conteúdo", inputChars: 30_000, maxOut: 8192 }],
+  engenharia_reversa: [{ use: "Questões", inputChars: 8_000, maxOut: 12_000 }],
+  assistente_preencher: [{ use: "assistentes", inputChars: 70_000, maxOut: 6000 }],
+  assistente_conferir: [{ use: "assistentes", inputChars: 70_000, maxOut: 6000 }],
+  assistente_revisar: [{ use: "assistentes", inputChars: 70_000, maxOut: 6000 }],
+};
+
+/**
+ * Conferência de rascunhos da Verificação (por comando, draftChecks.ts; revisão rodada 5): é o único lugar em que os conferentes
+ * da Linha e os membros do Comitê rodam. Cada papel (fontes, atualidade, revisão clínica) é uma execução própria com o conferente
+ * do papel, 4.096 de saída e SEM o Cuidado da função (maestroRoleProvider não passa a configuração da função). Entrada: até 6
+ * trechos oficiais de 2.500 caracteres, a afirmação e as instruções (~20 mil caracteres).
+ */
+export const DRAFT_REVIEW_CALL: TypicalCall = { use: "conferência de rascunhos", inputChars: 20_000, maxOut: 4096 };
+
+/** Estimativa (pior caso, a mesma dos tetos) de uma chamada típica com esta IA. */
+export function typicalCallEstimate(ref: ModelRef, price: ModelPrice | null, call: TypicalCall, care?: string): number {
+  return callEstimateUsd(ref, price, call.inputChars, call.maxOut, care);
+}
+
+const usd = (n: number) => String(Number(n.toFixed(4))).replace(".", ",");
+/** Valor mínimo sugerido: arredondado para cima no centavo, com dois decimais (US$ 0,70). */
+const cents = (n: number) => (Math.ceil(Number((n * 100).toFixed(6))) / 100).toFixed(2).replace(".", ",");
+const listPt = (items: string[]) => (items.length > 1 ? `${items.slice(0, -1).join(", ")} e ${items[items.length - 1]}` : items.join(""));
+const ROLE_OF: Record<string, string> = { principal: "da principal", reserva: "da reserva", conferente: "do conferente", membro: "do membro" };
+const aiName = (ref: ModelRef) => `${PROVIDER_NAMES[ref.provider] ?? ref.provider} ${ref.model}`;
+const priceOf = (cfg: AiConfig, ref: ModelRef) => cfg.prices.find((p) => p.provider === ref.provider && p.model === ref.model) ?? null;
+const hasFolga = (ref: ModelRef, care: string | undefined) => ref.provider === "gemini" && geminiThinkingReserve(ref.model, care) > 0;
+const FOLGA = ", já com a folga do raciocínio do Gemini";
+
+/** Uma IA que a função de fato chama, as chamadas típicas dela e o Cuidado que vai junto (undefined: sem o Cuidado da função). */
+interface CapMember {
+  ref: ModelRef;
+  role: keyof typeof ROLE_OF;
+  calls: TypicalCall[];
+  care: string | undefined;
+}
+
+/**
+ * Aviso antes de parar (revisão rodada 3): com os tetos ligados, cada IA da função cuja chamada típica (já com a folga do
+ * raciocínio do Gemini) passa do teto por execução. Sem o aviso, o dono só descobria pelos trabalhos parados e pelas linhas
+ * "teto" do Histórico. Aqui cada IA conta como uma chamada sozinha; o "pelo menos" é o valor para essa chamada rodar, não para
+ * nada parar (rodada 4): depois de uma falha cobrada, a soma com a reserva e a nova tentativa vem de failureChainWarning.
+ * Cada IA traz as próprias chamadas (rodada 5): conferentes e membros só na conferência de rascunhos da Verificação.
+ */
+function perRunCapWarnings(members: CapMember[], cfg: AiConfig): string[] {
+  const { caps_enabled, per_run_cap_usd: cap } = cfg.settings;
+  if (!caps_enabled || cap === null) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const { ref, role, calls, care } of members) {
+    const id = `${role}:${ref.provider}:${ref.model}`;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const price = priceOf(cfg, ref);
+    const over = calls.map((call) => ({ call, est: typicalCallEstimate(ref, price, call, care) })).filter((x) => x.est > cap + 1e-9);
+    if (!over.length) continue;
+    const list = listPt(over.map((x) => `${x.call.use} (US$ ${usd(x.est)})`));
+    const need = Math.max(...over.map((x) => x.est));
+    const folga = hasFolga(ref, care) ? FOLGA : "";
+    const stops = over.length > 1 ? "essas chamadas param" : "essa chamada para";
+    out.push(
+      `Teto por execução de US$ ${usd(cap)} abaixo da estimativa de uma chamada ${ROLE_OF[role]} ${aiName(ref)} em ${list}${folga}: ${stops} no teto sem chamar a IA. Para essa chamada rodar, o teto por execução precisa ser de pelo menos US$ ${cents(need)}.`
+    );
+  }
+  return out;
+}
+
+/**
+ * Aviso da soma (revisão rodada 4): desde a rodada 3, a nova tentativa e a reserva passam pelo teto por execução com o gasto real
+ * da falha. Uma resposta cortada custa quase a estimativa inteira e o tempo esgotado grava a estimativa inteira; a resposta fora
+ * do formato também é cobrada e ainda tem uma nova tentativa antes da reserva. Por isso, por uso típico da função:
+ *   a reserva socorre um corte ou tempo esgotado só com o teto ≥ principal + reserva;
+ *   socorre também depois da nova tentativa só com o teto ≥ 2 × principal + reserva (sem reserva: 2 × principal).
+ * Conta só a principal e a reserva, que é o que roda hoje em todos os modos (a soma da Linha e do Comitê inteiros só vale pelo
+ * runFunction, que nenhuma tela nem tarefa usa). Reserva sem custo (Ollama) passa sempre pelo teto: sem aviso.
+ */
+function failureChainWarning(key: AiFunctionKey, primary: ModelRef | null, fallback: ModelRef | null, care: string | undefined, cfg: AiConfig): string | null {
+  const { caps_enabled, per_run_cap_usd: cap } = cfg.settings;
+  if (!caps_enabled || cap === null || !primary) return null;
+  const rows = (TYPICAL_CALLS[key] ?? []).map((call) => {
+    const p = typicalCallEstimate(primary, priceOf(cfg, primary), call, care);
+    const r = fallback ? typicalCallEstimate(fallback, priceOf(cfg, fallback), call, care) : 0;
+    return { use: call.use, p, r, rescue: p + r, full: 2 * p + r };
+  });
+  const paid = rows.filter((x) => x.p > 0);
+  if (!paid.length) return null;
+  const folga = hasFolga(primary, care) || (fallback && hasFolga(fallback, care)) ? FOLGA : "";
+  const fullNeed = Math.max(...paid.map((x) => x.full));
+  const list = (items: typeof paid, pick: (x: (typeof paid)[number]) => number) => listPt(items.map((x) => `${x.use} (US$ ${usd(pick(x))})`));
+  const head = `Teto por execução de US$ ${usd(cap)} abaixo`;
+  if (!fallback) {
+    const over = paid.filter((x) => x.full > cap + 1e-9);
+    if (!over.length) return null;
+    return `${head} de duas chamadas da principal ${aiName(primary)} em ${list(over, (x) => x.full)}${folga}: depois de uma falha cobrada da principal (resposta fora do formato), a nova tentativa não roda e o trabalho falha. Para não parar no teto por execução, o teto precisa ser de pelo menos US$ ${cents(fullNeed)}.`;
+  }
+  if (!paid.some((x) => x.r > 0)) return null;
+  const noRescue = paid.filter((x) => x.rescue > cap + 1e-9);
+  if (noRescue.length) {
+    const rescueNeed = Math.max(...noRescue.map((x) => x.rescue));
+    return `${head} da principal ${aiName(primary)} mais a reserva ${aiName(fallback)} em ${list(noRescue, (x) => x.rescue)}${folga}: depois de uma falha cobrada da principal (resposta cortada ou tempo esgotado), a reserva não socorre e o trabalho falha. Para a reserva socorrer, o teto por execução precisa ser de pelo menos US$ ${cents(rescueNeed)}; para socorrer também depois da nova tentativa (resposta fora do formato), pelo menos US$ ${cents(fullNeed)}.`;
+  }
+  const over = paid.filter((x) => x.full > cap + 1e-9);
+  if (!over.length) return null;
+  return `${head} de duas chamadas da principal ${aiName(primary)} mais a reserva ${aiName(fallback)} em ${list(over, (x) => x.full)}${folga}: depois de uma resposta fora do formato e da nova tentativa, a reserva não socorre e o trabalho falha. Para não parar no teto por execução, o teto precisa ser de pelo menos US$ ${cents(fullNeed)}.`;
+}
 const num = (v: unknown): number | null => {
   if (v === null || v === undefined || v === "") return null;
   const n = Number(v);
@@ -169,6 +322,14 @@ export function envFallbackRef(fn: AiFunctionKey, env: NodeJS.ProcessEnv = proce
   return model ? { provider: id, model } : null;
 }
 
+/** Reserva das variáveis de ambiente (CONTENT_HUB_AI_FALLBACK_PROVIDER), usada quando a função não tem configuração salva. */
+export function envReserveRef(primary: ModelRef | null, env: NodeJS.ProcessEnv = process.env): ModelRef | null {
+  const id = (env.CONTENT_HUB_AI_FALLBACK_PROVIDER ?? "").trim();
+  if (!isProviderId(id) || id === primary?.provider) return null;
+  const model = (env[`CONTENT_HUB_${id.toUpperCase()}_MODEL`] ?? "").trim() || DEFAULT_MODELS[id];
+  return model ? { provider: id, model } : null;
+}
+
 /** Motivo pelo qual a IA não pode ser chamada agora (desligada, Ollama fora do Mac), ou null. */
 export function providerPending(ref: ModelRef, cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): string | null {
   const name = PROVIDER_NAMES[ref.provider] ?? ref.provider;
@@ -255,6 +416,29 @@ export function validateFunctionConfig(fc: FunctionConfig, cfg: AiConfig): { pro
     const fams = members.map((m) => familyOfModel(m.model));
     if (new Set(fams).size < fams.length) warnings.push("Há membros da mesma família no comitê: não é independente.");
   }
+  // Linha de produção e Comitê ainda não chamam conferentes nem membros: o uso real é principal e reserva (correção IA04, 2026-10-10)
+  if (fc.mode === "linha" || fc.mode === "comite") {
+    const who = fc.mode === "linha" ? "os conferentes da Linha de produção" : "os membros do Comitê";
+    warnings.push(
+      fc.key === "verificacao"
+        ? `No processamento a Verificação usa só a IA principal e a reserva (sempre de outra empresa); ${who} só rodam na conferência de rascunhos feita por comando.`
+        : `Nesta etapa a função usa só a IA principal e a reserva: ${who} ainda não rodam.`
+    );
+  }
+  // teto por execução abaixo de uma chamada típica: avisa antes, em vez de o trabalho parar sem explicação. Conferentes e membros
+  // só rodam na conferência de rascunhos da Verificação (maestroRoleProvider), com o perfil dela; fora da Verificação o uso real
+  // chama só a principal e a reserva, e o aviso deles mandava subir o teto por uma chamada que não existe (revisão rodada 5)
+  const uses = TYPICAL_CALLS[fc.key] ?? [];
+  const others = fc.key !== "verificacao" ? null : fc.mode === "linha" ? "conferente" : fc.mode === "comite" ? "membro" : null;
+  const members: CapMember[] = [
+    ...(fc.primary ? [{ ref: fc.primary, role: "principal" as const, calls: uses, care: fc.care }] : []),
+    ...(fc.fallback ? [{ ref: fc.fallback, role: "reserva" as const, calls: uses, care: fc.care }] : []),
+    ...(others ? reviewers.map((ref) => ({ ref, role: others, calls: [DRAFT_REVIEW_CALL], care: undefined })) : []),
+  ];
+  for (const w of perRunCapWarnings(members, cfg)) if (!warnings.includes(w)) warnings.push(w);
+  // depois de uma falha cobrada da principal: a nova tentativa e a reserva com o gasto já feito (rodada 4)
+  const chain = failureChainWarning(fc.key, fc.primary, fc.fallback, fc.care, cfg);
+  if (chain && !warnings.includes(chain)) warnings.push(chain);
   return { problems, warnings };
 }
 
@@ -273,7 +457,7 @@ export const FUNCTION_KEYS: AiFunctionKey[] = ["criacao", "verificacao", "engenh
  * roda em nenhum servidor publicado (Ollama no site publicado ou sem resposta). Nesta etapa todo uso real passa pelo
  * adaptador do maestro, que usa só a principal e a reserva, qualquer que seja o modo: nem a principal nem a reserva
  * rodando é problema; só a principal não rodando é aviso (a reserva responde). Conferente ou membro que não roda é aviso
- * (no comitê, a IA desligada também diz o motivo; menos de 2 membros rodando avisa que o comitê completo vem na etapa 2).
+ * (no comitê, a IA desligada também diz o motivo). O aviso fixo de que Linha e Comitê ainda não chamam conferentes vem de validateFunctionConfig.
  * Chave ausente neste servidor é só aviso (o processamento roda no Cloud Run com as chaves de lá). IA desligada já é
  * problema em validateFunctionConfig e não se repete como problema.
  */
@@ -313,12 +497,6 @@ function savedFunctionCheck(saved: FunctionConfig, cfg: AiConfig, env: NodeJS.Pr
     const reason = saved.mode === "comite" ? o.reason : o.why;
     if (reason) add(warnings, cannot(o, reason));
   }
-  if (saved.mode === "comite") {
-    const members = primary ? [primary, ...others] : others;
-    if (members.length >= 2 && members.filter((m) => m.runs).length < 2) {
-      add(warnings, "O comitê completo entra em uso na etapa 2; hoje a função usa a principal e a reserva.");
-    }
-  }
 
   // chave ausente neste servidor: só aviso, um por IA ligada que o servidor deixa chamar
   for (const s of [primary, fallback, ...others]) {
@@ -346,8 +524,25 @@ export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.e
       if (pending && !problems.includes(pending)) problems.push(pending);
       // chave ausente neste servidor (o site): só aviso, como nas funções salvas
       if (!pending && keyPending(ref.provider, env)) warnings.push(keyWarning(ref.provider));
+      // a reserva das variáveis (CONTENT_HUB_AI_FALLBACK_PROVIDER), a mesma que o maestro usa sem configuração salva
+      const reserve = envReserveRef(ref, env);
+      const uses = TYPICAL_CALLS[key] ?? [];
+      warnings.push(...perRunCapWarnings([{ ref, role: "principal", calls: uses, care: undefined }, ...(reserve ? [{ ref: reserve, role: "reserva" as const, calls: uses, care: undefined }] : [])], cfg));
+      const chain = failureChainWarning(key, ref, reserve, undefined, cfg);
+      if (chain) warnings.push(chain);
     }
     out[key] = { source: "variaveis", ready: problems.length === 0, ref, problems, warnings };
+  }
+  // conferência por outra empresa (decisão do dono, 2026-10-10): o processamento troca sozinho (maestroCheckerProvider). A
+  // empresa vem da IA cadastrada; a Criação conta a principal e a reserva salvas
+  const checker = out.verificacao?.ref;
+  const writers = [out.criacao?.ref, cfg.functions.criacao?.fallback].filter(Boolean) as ModelRef[];
+  if (checker && writers.some((w) => w.provider === checker.provider)) {
+    const name = PROVIDER_NAMES[checker.provider] ?? checker.provider;
+    const others = (["gemini", "anthropic", "openai"] as AiProviderId[]).filter((id) => id !== checker.provider).map((id) => PROVIDER_NAMES[id]);
+    out.verificacao.warnings.push(
+      `Verificação e Criação são da mesma empresa (${name}): no processamento, a conferência usa a reserva da Verificação se ela for de outra empresa; senão troca sozinha para ${others.join(" ou ")} (nesta ordem).`
+    );
   }
   return out;
 }

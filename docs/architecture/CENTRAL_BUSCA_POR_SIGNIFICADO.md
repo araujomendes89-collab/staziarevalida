@@ -29,13 +29,34 @@ Google, abril de 2026). Escolher o modelo autoriza enviar ao Google os textos da
 ## Como ligar (variáveis do servidor e do processamento)
 ```
 CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1   # autoriza o envio ao Google (Vercel e Cloud Run)
-VERTEX_API_KEY=…                          # desde 2026-10-09 (Vertex AI; manda sobre a GEMINI_API_KEY); no Cloud Run: segredo stazia-vertex-api-key
-GEMINI_API_KEY=…                          # AI Studio: vale só sem a VERTEX_API_KEY; no Cloud Run: stazia-gemini-api-key
+CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT=…   # SÓ no Cloud Run: Vertex AI completo pela conta de serviço da tarefa (manda; sem chave)
+CONTENT_HUB_EMBEDDINGS_VERTEX_LOCATION=…  # opcional: global (padrão), us ou eu
+GEMINI_API_KEY=…                          # AI Studio: o único caminho no site (Vercel); no Cloud Run: stazia-gemini-api-key
 CONTENT_HUB_EMBEDDINGS_MODEL=…            # opcional (padrão gemini-embedding-2; "off" desliga)
 CONTENT_HUB_EMBEDDINGS_MIN_SIMILARITY=…   # opcional (0 a 1): piso para um trecho entrar só pelo significado; sem piso por padrão
 ```
-O script do Cloud Run (`scripts/cloudrun/deploy-pdf-worker.sh`) leva a chave quando ela está no `.env` do Mac e liga a variável na
-tarefa. Sem a chave, a tarefa segue só com palavras e o painel mostra a pendência.
+**A `VERTEX_API_KEY` não serve para a busca por significado** (correção de 2026-10-10). Ela é do modo expresso do Vertex AI, que
+aceita só 8 modelos de texto e imagem e nenhum de busca por significado: o Google respondia 404 (falha vista em produção em
+2026-10-09). Só com ela, a busca fica parada, o painel mostra o motivo e a busca segue por palavras. A Central de IAs continua
+usando a `VERTEX_API_KEY` para o Gemini de texto.
+
+No Vertex AI completo, a biblioteca do Google aceita um texto por pedido: o processamento manda os trechos um a um, no máximo 4 ao
+mesmo tempo. No AI Studio continua o lote de 50. Um erro de configuração do Google (400, 401, 402, 403 ou 404) não é repetido: a
+busca por significado para por 10 minutos, segue por palavras e o relato do processamento mostra o motivo. O motivo do painel e do
+relato sai em português simples, pelo código (400 pedido recusado, 401/403 chave recusada ou sem permissão, 402 sem crédito, 404
+modelo não encontrado nesse acesso); a mensagem crua do Google (em inglês, em JSON) fica só no registro (log).
+
+**O projeto do Vertex AI vai só no Cloud Run** (correção de 2026-10-10, revisão). O Vertex AI completo usa a conta de serviço do
+Google, que existe na tarefa do Cloud Run e não existe no site (Vercel). Se a variável estiver no site, a biblioteca do Google não
+acha credencial: a busca não repete o pedido, para por 10 minutos, segue por palavras e o painel mostra "sem credencial do Google
+neste ambiente". No site, a busca por significado das perguntas só liga com a `GEMINI_API_KEY` (AI Studio, com crédito).
+
+O script do Cloud Run (`scripts/cloudrun/deploy-pdf-worker.sh`) liga a busca na tarefa quando há `GEMINI_API_KEY` no `.env` do Mac
+ou quando é chamado com `EMBEDDINGS_VERTEX=1` (Vertex AI completo no próprio projeto, pela conta de serviço da tarefa, que precisa
+do papel `roles/aiplatform.user`; o script liga a API do Vertex AI e dá o papel). Sem nenhum dos dois, a tarefa segue só com
+palavras e o painel mostra a pendência. Ligue o Vertex AI pelo script, não com `gcloud run jobs update`: o comando avulso não dá o
+papel nem liga a API (a busca para com 403). Depois de ligado, os próximos deploys pelo script sem `EMBEDDINGS_VERTEX` mantêm o
+Vertex AI (o script confere a tarefa antes de trocar as variáveis); `EMBEDDINGS_VERTEX=0` tira de propósito.
 
 ## Custo
 - **Preço:** US$ 0,20 por milhão de tokens (a tabela do Google; `AI_COST_CONFIG` substitui).

@@ -7,7 +7,7 @@
  * recusada, nunca "consertada". Modelo local não custa nada: costUsd = 0.
  */
 import { toProviderSchema, validate } from "./schema";
-import { AiInvalidOutput, type AiProvider, type StructuredRequest, type StructuredResult } from "./provider";
+import { AiInvalidOutput, fetchSignal, type AiProvider, type StructuredRequest, type StructuredResult } from "./provider";
 
 export class OllamaProvider implements AiProvider {
   readonly name = "ollama";
@@ -33,7 +33,8 @@ export class OllamaProvider implements AiProvider {
         stream: false,
         options: { num_predict: req.maxOutputTokens ?? 8192 },
       }),
-      signal: AbortSignal.timeout(180_000),
+      // limite próprio de 180 s e o cancelamento do maestro (tempo esgotado)
+      signal: fetchSignal(req.signal),
     });
     if (!res.ok) throw new Error(`Ollama respondeu ${res.status}.`);
     const data = (await res.json().catch(() => null)) as any;

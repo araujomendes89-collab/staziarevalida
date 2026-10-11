@@ -1,8 +1,9 @@
 // @vitest-environment node
 /**
  * Gemini pelo Vertex AI (decisão do dono, 2026-10-09): a chave do AI Studio é pré-paga e acabou; o Vertex cobra na conta do
- * projeto do Google Cloud. Com VERTEX_API_KEY, a Central de IAs e a busca por significado usam o Vertex com essa chave (no site
- * e no processamento); sem ela, seguem com GEMINI_API_KEY (AI Studio). Sem rede: a biblioteca do Google é simulada.
+ * projeto do Google Cloud. Com VERTEX_API_KEY, a Central de IAs usa o Vertex com essa chave (no site e no processamento); sem
+ * ela, segue com GEMINI_API_KEY (AI Studio). A busca por significado não usa a VERTEX_API_KEY (modo expresso, sem modelo de
+ * vetores; correção de 2026-10-10): ver buscaSignificadoVertex.test.ts. Sem rede: a biblioteca do Google é simulada.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -12,6 +13,7 @@ vi.mock("@google/genai", () => ({
     models = {
       generateContent: async () => ({ text: JSON.stringify({ ok: true }), usageMetadata: { promptTokenCount: 10, candidatesTokenCount: 2 } }),
       embedContent: async ({ contents }: { contents: unknown[] }) => ({ embeddings: contents.map(() => ({ values: Array.from({ length: 768 }, (_, i) => (i === 0 ? 1 : 0)) })) }),
+      countTokens: async () => ({ totalTokens: 1 }),
     };
     constructor(opts: Record<string, unknown>) {
       made.push(opts);
@@ -80,26 +82,36 @@ describe("Central de IAs: provedor Gemini", () => {
 });
 
 describe("busca por significado", () => {
-  it("com VERTEX_API_KEY a busca fica pronta e o cliente nasce no modo Vertex", async () => {
+  // correção de 2026-10-10: o modo expresso do Vertex AI (VERTEX_API_KEY) não tem modelo de busca por significado (o Google
+  // respondia 404); a busca usa o Vertex AI completo pela conta de serviço ou a chave do AI Studio
+  it("só com VERTEX_API_KEY a busca fica parada, com o motivo (modo expresso)", () => {
     const env = { CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL: "1", VERTEX_API_KEY: VERTEX } as NodeJS.ProcessEnv;
     const cfg = embeddingsConfig(env);
-    expect(cfg).toMatchObject({ ready: true, model: "gemini-embedding-2", key: VERTEX, mode: "vertex", pending: null });
-    const embedder = createEmbedder(cfg)!;
-    expect((await embedder.embedQuery("dor torácica")).length).toBe(768);
-    expect(made.at(-1)).toEqual({ vertexai: true, apiKey: VERTEX });
+    expect(cfg).toMatchObject({ ready: false, model: "gemini-embedding-2", key: null, mode: null });
+    expect(cfg.pending).toMatch(/modo expresso/);
+    expect(createEmbedder(cfg)).toBeNull();
   });
-  it("sem chave nenhuma: a pendência fala da VERTEX_API_KEY", () => {
-    expect(embeddingsConfig({ CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL: "1" } as NodeJS.ProcessEnv).pending).toMatch(/VERTEX_API_KEY/);
+  it("com o projeto do Vertex AI completo: o cliente nasce com projeto e local, sem chave", async () => {
+    const env = { CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL: "1", VERTEX_API_KEY: VERTEX, CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT: "staziamed-revalida-prod" } as NodeJS.ProcessEnv;
+    const embedder = createEmbedder(embeddingsConfig(env))!;
+    expect((await embedder.embedQuery("dor torácica")).length).toBe(768);
+    expect(made.at(-1)).toEqual({ vertexai: true, project: "staziamed-revalida-prod", location: "global" });
+  });
+  it("sem acesso nenhum: a pendência fala do projeto do Vertex AI e da GEMINI_API_KEY", () => {
+    const pending = embeddingsConfig({ CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL: "1" } as NodeJS.ProcessEnv).pending;
+    expect(pending).toMatch(/CONTENT_HUB_EMBEDDINGS_VERTEX_PROJECT/);
+    expect(pending).toMatch(/GEMINI_API_KEY/);
   });
 });
 
 describe("lista de modelos do Gemini no modo Vertex", () => {
-  it("devolve os modelos Gemini com preço cadastrado, sem chamar a internet", async () => {
+  it("devolve só os modelos Gemini com preço que o modo expresso aceita, depois do teste da chave (correção IA05)", async () => {
+    const { VERTEX_EXPRESS_MODELS } = await import("../../server/ai/models");
     const fetchImpl = vi.fn();
     const list = await listModels("gemini", { VERTEX_API_KEY: VERTEX } as NodeJS.ProcessEnv, fetchImpl as unknown as typeof fetch);
     expect(fetchImpl).not.toHaveBeenCalled();
     expect(list.status).toBe("pronta");
     expect(list.detail).toMatch(/Vertex/);
-    expect(list.models.map((m) => m.id).sort()).toEqual(PRICE_SEED.filter((p) => p.provider === "gemini").map((p) => p.model).sort());
+    expect(list.models.map((m) => m.id).sort()).toEqual(PRICE_SEED.filter((p) => p.provider === "gemini" && VERTEX_EXPRESS_MODELS.includes(p.model)).map((p) => p.model).sort());
   });
 });

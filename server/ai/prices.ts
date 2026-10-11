@@ -23,8 +23,12 @@ export const PRICE_SEED: ModelPrice[] = [
   // Claude
   { provider: "anthropic", model: "claude-fable-5-1", input_per_mtok: 10, output_per_mtok: 50, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-07" },
   { provider: "anthropic", model: "claude-opus-5-5", input_per_mtok: 4, output_per_mtok: 20, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-07" },
+  // Opus 5: em produção é a reserva da Criação e da Verificação e a principal da Engenharia reversa (faltava o preço)
+  { provider: "anthropic", model: "claude-opus-5", input_per_mtok: 5, output_per_mtok: 25, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-10" },
   { provider: "anthropic", model: "claude-sonnet-5-5", input_per_mtok: 2, output_per_mtok: 10, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-07" },
   { provider: "anthropic", model: "claude-haiku-4-5-20251001", input_per_mtok: 1, output_per_mtok: 5, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-07" },
+  // Haiku 5.5: preço para pedidos de até 100 mil tokens; acima disso custa 0.50/2.50 (página oficial, conferida em 2026-10-10)
+  { provider: "anthropic", model: "claude-haiku-5-5", input_per_mtok: 0.1, output_per_mtok: 0.5, source_url: "https://platform.claude.com/docs/en/about-claude/pricing", checked_on: "2026-10-10" },
 
   // OpenAI
   { provider: "openai", model: "gpt-6-astra", input_per_mtok: 10, output_per_mtok: 50, source_url: "https://developers.openai.com/api/docs/pricing", checked_on: "2026-10-07" },

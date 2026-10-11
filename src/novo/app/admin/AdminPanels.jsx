@@ -562,6 +562,9 @@ const ACTION_LABEL = {
   "settings.save": "Configurações salvas",
   "tutor.config": "Tutor configurado",
   "tutor.personality": "Professor ligado ou desligado",
+  "guideline_update.publish": "Atualização publicada",
+  "guideline_update.unpublish": "Atualização tirada do ar",
+  "guideline_update.delete": "Atualização apagada",
 };
 
 function summary(entry) {
@@ -573,8 +576,13 @@ function summary(entry) {
   if (entry.action === "station.review") return `${entry.target}: ${d.to === "approved" ? "aprovada" : "voltou para revisão"}`;
   if (entry.action === "plan.save") return `${PLAN_LABEL[entry.target] ?? entry.target}${d.active ? " · à venda" : ""}`;
   if (entry.action.startsWith("question.")) return entry.target;
+  // atualizações: o tema e, quando houver, o motivo (recusa, texto alterado, correção) e a nota do revisor
+  if (entry.action.startsWith("guideline_update.")) return [d.topic, d.motivo, d.note && `Nota do revisor: ${d.note}`].filter(Boolean).join(" · ");
   return "";
 }
+
+// sem autor: a conta foi apagada, ou a ação foi feita pela própria correção do banco (marcada "automatica")
+const actorOf = (entry) => entry.actor ?? (entry.details?.automatica ? "correção automática" : "conta excluída");
 
 export function AdminAudit() {
   const { backend } = useSession();
@@ -593,7 +601,7 @@ export function AdminAudit() {
           <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", textAlign: "right" }}>
             {dateTimeBR(entry.created_at)}
             <br />
-            {entry.actor ?? "conta excluída"}
+            {actorOf(entry)}
           </div>
         </div>
       ))}
