@@ -13,7 +13,7 @@ import * as api from "../podcasts/podcastsApi.js";
 const DURATIONS = [3, 5, 8, 10, 15, 20, 30].map((m) => ({ value: String(m), label: `${m} minutos` }));
 const SOURCE_ICON = { pdf: "file-text", docx: "file-text", text: "text", link: "link", lesson: "tv" };
 const SOURCE_KIND = { pdf: "PDF", docx: "DOCX", text: "Texto", link: "Link", lesson: "Aula" };
-const WARNING_TEXT = { unknown_source: "Cita trecho que não existe", ungrounded_number: "Número fora dos trechos citados", no_source: "Fala longa sem trecho citado" };
+const WARNING_TEXT = { unknown_source: "Cita trecho que não vale", ungrounded_number: "Número fora dos trechos citados", no_source: "Fala longa sem trecho citado" };
 const SPEAKERS = [
   { value: "ANA", label: "Ana (professora)" },
   { value: "BRUNO", label: "Bruno (estudante)" },
@@ -109,6 +109,11 @@ function Sources({ podcast, lessons, onChanged }) {
   const addText = async () => (await run("text", () => api.addTextSource(backend, podcast.id, text.title, text.body))) && setText({ title: "", body: "" });
   const addLink = async () => (await run("link", () => api.addLinkSource(backend, podcast.id, url))) && setUrl("");
   const addLesson = () => run("lesson", () => api.addLessonSource(backend, podcast.id, lessonId));
+  const rename = (s) => {
+    const next = window.prompt("Nome da fonte que o aluno vai ver na transcrição:", s.title);
+    if (next == null || !next.trim() || next.trim() === s.title) return;
+    run(`rename-${s.id}`, () => api.renameSource(backend, podcast.id, s.id, next.trim()));
+  };
   const remove = (s) => {
     if (podcast.script && !window.confirm("Tirar esta fonte apaga o roteiro atual (ele pode citar trechos dela). Continuar?")) return;
     run(s.id, () => api.removeSource(backend, podcast.id, s.id));
@@ -131,6 +136,7 @@ function Sources({ podcast, lessons, onChanged }) {
                   {SOURCE_KIND[s.kind]} · {s.chunks} trechos{s.pages ? ` · ${s.pages} páginas` : ""}{s.url ? ` · ${s.url}` : ""}
                 </span>
               </span>
+              {!locked && <Button size="sm" variant="ghost" icon="pencil" loading={state.busy === `rename-${s.id}`} onClick={() => rename(s)}>Renomear</Button>}
               {!locked && <Button size="sm" variant="ghost" icon="trash-2" loading={state.busy === s.id} onClick={() => remove(s)}>Tirar</Button>}
             </div>
           ))}
@@ -339,7 +345,7 @@ function ScriptStep({ podcast, providers, onChanged }) {
             {meta.edited_at ? `Editado pela equipe em ${dateTimeBR(meta.edited_at)}. ` : ""}
             {podcast.script.lines.length} falas · cerca de {Math.max(1, Math.round(podcast.script.lines.reduce((n, l) => n + l.text.split(/\s+/).length, 0) / 150))} min falados.
           </Muted>
-          {warnings?.length > 0 && <Banner tone="warning" title={`${warnings.length} ponto(s) para conferir`}>As falas marcadas citam trecho inexistente ou trazem número que não está nos trechos citados. Confira na fonte e corrija antes de aprovar.</Banner>}
+          {warnings?.length > 0 && <Banner tone="warning" title={`${warnings.length} ponto(s) para conferir`}>As falas marcadas citam trecho inexistente (ou que a IA não recebeu) ou trazem número que não está nos trechos citados. Confira na fonte e corrija antes de aprovar.</Banner>}
           {(podcast.script.missing ?? []).length > 0 && (
             <Banner tone="info" title="O que as fontes não esclarecem">
               <ul style={{ margin: 0, paddingLeft: 18 }}>{podcast.script.missing.map((m, i) => <li key={i}>{m}</li>)}</ul>
@@ -365,7 +371,7 @@ function ScriptStep({ podcast, providers, onChanged }) {
 }
 
 // ---------------------------------------------------------------- 4. áudio
-function AudioStep({ podcast, providers, lessons, onChanged }) {
+function AudioStep({ podcast, providers, lessons, isAdmin, onChanged }) {
   const { backend } = useSession();
   const ready = (providers?.tts ?? []).filter((p) => p.ready);
   const [provider, setProvider] = React.useState("");
@@ -414,6 +420,8 @@ function AudioStep({ podcast, providers, lessons, onChanged }) {
     }
   };
   const flashcast = async () => {
+    const aula = lesson?.title ? `"${lesson.title}"` : "ligada ao episódio";
+    if (!window.confirm(`Copiar este áudio para a aula ${aula} como Flashcast?\n\nOs alunos passam a ouvir na aula, e o Flashcast que ela já tem é trocado. Se você despublicar ou apagar o episódio depois, a cópia continua na aula e precisa ser tirada lá.`)) return;
     setState({ busy: "flashcast", error: null, done: null });
     try {
       await api.attachFlashcast(backend, podcast.id, podcast.lesson_id);
@@ -459,11 +467,12 @@ function AudioStep({ podcast, providers, lessons, onChanged }) {
           <Muted>
             {api.durationText(podcast.audio_seconds)} · {meta.simulated ? "voz simulada (silêncio)" : `${meta.provider ?? ""} ${meta.model ?? ""} · Ana: ${meta.voices?.ana ?? "—"}, Bruno: ${meta.voices?.bruno ?? "—"} · custo estimado ${usd(meta.cost_usd)}`}
           </Muted>
-          {podcast.lesson_id && (
+          {isAdmin && podcast.lesson_id && podcast.status === "published" && (
             <Button variant="secondary" icon="headphones" style={{ alignSelf: "flex-start" }} loading={state.busy === "flashcast"} onClick={flashcast}>
               Usar como Flashcast da aula{lesson ? ` "${lesson.title}"` : ""}
             </Button>
           )}
+          {podcast.lesson_id && !(isAdmin && podcast.status === "published") && <Muted>Depois que o administrador publicar o episódio, só ele pode usar o áudio como Flashcast da aula.</Muted>}
         </div>
       )}
     </div>
@@ -560,7 +569,7 @@ function PodcastEditor({ id, isAdmin, lessons, providers, providersError, onClos
               <ScriptStep podcast={podcast} providers={providers} onChanged={changed} />
             </Section>
             <Section step={4} title="Áudio" done={Boolean(podcast.audio_path)}>
-              <AudioStep podcast={podcast} providers={providers} lessons={lessons} onChanged={changed} />
+              <AudioStep podcast={podcast} providers={providers} lessons={lessons} isAdmin={isAdmin} onChanged={changed} />
             </Section>
             <Section step={5} title="Publicação" done={status === "published"}>
               <PublishStep podcast={podcast} isAdmin={isAdmin} onChanged={changed} onDeleted={onDeleted} />
