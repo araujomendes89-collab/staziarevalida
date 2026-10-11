@@ -20,7 +20,7 @@ import { localStorageDir, supabaseStorage, type ContentDb, type Identity, type S
 import type { AiProvider, StructuredRequest } from "../contentHub/ai/provider";
 import type { ModelRef } from "../ai/config";
 import { aiChoices } from "../ai/maestro";
-import { chunkPagesInfo, extractDocx, extractPdf, fetchLink, isPdf, isZip, MAX_SOURCE_BYTES, type ExtractedPage } from "./extract";
+import { chunkPagesInfo, extractDocx, extractPdf, fetchLink, isPdf, isZip, MAX_SOURCE_BYTES, readLimited, TooBigError, type ExtractedPage } from "./extract";
 import { checkScript, generateScript, PODCAST_PROMPT_VERSION, type PodcastScript, type ScriptLine, type SourceChunk } from "./script";
 import { DEFAULT_VOICES, geminiTtsEnabled, pcmToMp3, pickVoices, SAMPLE_RATE, silence, splitParts, synthesizePart, ttsCost, ttsStatus, VOICE_OPTIONS, type PodcastVoices, type TtsKind } from "./audio";
 
@@ -275,18 +275,17 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const pages: ExtractedPage[] = [{ page: null, text: head }];
       let note: string | null = null;
       const limitMb = MAX_SOURCE_BYTES / 1024 / 1024;
-      const tooBig = (bytes: number) => `O PDF da aula (${Math.round(bytes / 1024 / 1024)} MB) passa do limite de ${limitMb} MB das fontes e não foi lido; entraram o resumo e os pontos-chave.`;
+      const tooBig = (bytes?: number) => `O PDF da aula (${bytes ? `${Math.round(bytes / 1024 / 1024)} MB` : `mais de ${limitMb} MB`}) passa do limite de ${limitMb} MB das fontes e não foi lido; entraram o resumo e os pontos-chave.`;
       if (lesson.slides && deps!.lessons) {
+        // Não confia no tamanho informado no envio: o download para ao passar de 30 MB (e o tamanho guardado só evita baixar à toa).
         const declared = Number(lesson.slides_bytes) || 0;
         if (declared > MAX_SOURCE_BYTES) {
-          note = tooBig(declared); // nem baixa o arquivo
+          note = tooBig(declared);
         } else {
           try {
-            const pdf = await deps!.lessons.get(lesson.slides);
-            if (pdf.length > MAX_SOURCE_BYTES) note = tooBig(pdf.length); // tamanho guardado errado ou ausente: confere o arquivo
-            else pages.push(...(await extractPdf(pdf)));
+            pages.push(...(await extractPdf(await readLimited(deps!.lessons, lesson.slides, MAX_SOURCE_BYTES, deps!.fetchImpl ?? fetch))));
           } catch (error) {
-            note = `O PDF da aula não foi lido (${message(error)}); entraram o resumo e os pontos-chave.`;
+            note = error instanceof TooBigError ? tooBig() : `O PDF da aula não foi lido (${message(error)}); entraram o resumo e os pontos-chave.`;
           }
         }
       }

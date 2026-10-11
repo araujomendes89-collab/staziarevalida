@@ -465,6 +465,28 @@ describe("PDF da aula como fonte e o limite de tamanho", () => {
       const lied = await post(`${base}/${created.id}/sources/lesson`, editor, { lesson_id: lessonId });
       expect(lied.status).toBe(201);
       expect(lied.body.note).toMatch(/30 MB/);
+      // com endereço assinado (Supabase): o download PARA ao passar de 30 MB, mesmo com tamanho informado falso e sem Content-Length
+      await call(`${base}/${created.id}/sources/${lied.body.sources[0].id}`, editor, { method: "DELETE" });
+      let servidos = 0;
+      const streaming = await listen({
+        db, storage: files, mockScript,
+        lessons: { ...lessonFiles, signedUrl: async () => "https://depósito.exemplo/slides.pdf" },
+        fetchImpl: (async () => {
+          const pedaco = Buffer.alloc(1024 * 1024);
+          let n = 0;
+          return new Response(new ReadableStream({
+            pull(controller) {
+              if (n++ >= 200) return controller.close(); // até 200 MB
+              servidos += pedaco.length;
+              controller.enqueue(new Uint8Array(pedaco));
+            },
+          }), { status: 200 });
+        }) as any,
+      });
+      const parou = await post(`${streaming}/${created.id}/sources/lesson`, editor, { lesson_id: lessonId });
+      expect(parou.status).toBe(201);
+      expect(parou.body.note).toMatch(/mais de 30 MB/);
+      expect(servidos).toBeLessThan(40 * 1024 * 1024);
     } finally {
       spy.mockRestore();
       await dev.db.query(`delete from public.lesson_materials where id = $1`, [mat.rows[0].id]);
