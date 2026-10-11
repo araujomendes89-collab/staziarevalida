@@ -914,11 +914,219 @@ begin
 end
 $$;
 
+-- ---------------------------------------------------------------- aprovar e rejeitar (só administrador)
+-- Aprovar é a ÚNICA porta pela qual um achado vira fonte. Quem decide é o administrador (assert_admin); o banco confere de
+-- novo que o candidato ainda aguarda, que o administrador marcou "conferi o documento no arquivo guardado", que escolheu o
+-- nível (A a D; o nível sugerido pela IA ou pelo tipo de site NÃO vale sozinho), que o link final do arquivo continua dentro
+-- de um site ATIVO da lista, que o arquivo não entrou na Central por outro caminho e, se a fonte vigente seria substituída,
+-- que o administrador confirmou. Tudo numa transação só: ou cria a fonte, o documento e o vínculo, ou não cria nada.
+
+-- Primeiro site ATIVO da lista que contém o link: https, porta 443 (ou sem porta), host igual ao do site ou subdomínio dele
+-- e, se o site tem caminho, o caminho do link começa por ele inteiro (/saude e /saude/x passam, /saudemental não). Sem
+-- caixa. Nenhum site → nulo.
+create or replace function public.ch_source_site_match(p_url text) returns uuid
+  language sql stable security definer set search_path = ''
+as $$
+  with u as (
+    select m[1] as host, coalesce(m[2], '') as path
+      from (select regexp_match(lower(btrim(coalesce(p_url, ''))), '^https://([^/?#:@\s]+)(?::443)?(?=[/?#]|$)(/[^?#]*)?') as m) x
+     where m is not null
+  )
+  select d.id
+    from public.ch_official_domains d, u
+   where d.active
+     and (u.host = split_part(d.address, '/', 1)
+          or right(u.host, char_length(split_part(d.address, '/', 1)) + 1) = '.' || split_part(d.address, '/', 1))
+     and (position('/' in d.address) = 0
+          or u.path = substr(d.address, position('/' in d.address))
+          or left(u.path, char_length(substr(d.address, position('/' in d.address))) + 1) = substr(d.address, position('/' in d.address)) || '/')
+   order by d.created_at, d.id
+   limit 1
+$$;
+
+-- Data inteira AAAA-MM-DD válida → a data; qualquer outra coisa (ano sozinho, texto, dia que não existe) → nulo. Nada de
+-- inventar o dia.
+create or replace function public.ch_source_iso_date(p_text text) returns date
+  language plpgsql immutable set search_path = ''
+as $$
+begin
+  if p_text is null or btrim(p_text) !~ '^\d{4}-\d{2}-\d{2}$' then return null; end if;
+  if to_char(btrim(p_text)::date, 'YYYY-MM-DD') <> btrim(p_text) then return null; end if;
+  return btrim(p_text)::date;
+exception when others then
+  return null;
+end
+$$;
+
+-- p_fields: as chaves de edição (institution, title, version, published_on, kind, nature, level, area, theme, valid_until),
+-- que passam pelas mesmas regras de app_ch_source_candidate_save e ficam guardadas no candidato, mais checked (verdadeiro,
+-- booleano) e confirm_replace (verdadeiro, booleano). Vale o que o administrador mandou, depois o que ele já tinha salvo,
+-- depois o que a IA disse (título e órgão) ou o servidor achou (data inteira no arquivo). Tipo: o salvo ou o sugerido.
+-- Natureza: a salva ou a sugerida (nunca o texto livre da IA). Nível, área e tema: só os que o administrador escolheu.
+create or replace function public.app_ch_source_candidate_approve(p_candidate_id uuid, p_fields jsonb) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  c public.ch_source_candidates;
+  s public.ch_source_searches;
+  f jsonb := coalesce(p_fields, '{}'::jsonb);
+  e jsonb;
+  v_title text;
+  v_organ text;
+  v_kind text;
+  v_nature text;
+  v_level text;
+  v_version text;
+  v_published date;
+  v_valid date;
+  v_year text;
+  v_rep public.ch_sources;
+  v_doc_name text;
+  v_reg jsonb;
+  v_source_id uuid;
+  v_document_id uuid;
+  v_day date;
+begin
+  perform public.assert_admin();
+  if jsonb_typeof(f) <> 'object' then raise exception 'Dados inválidos.' using errcode = '22023'; end if;
+  select * into c from public.ch_source_candidates where id = p_candidate_id for update;
+  if not found then raise exception 'Candidato não encontrado.' using errcode = 'P0002'; end if;
+  if c.status <> 'aguardando' then raise exception 'Este candidato já foi decidido.' using errcode = '22023'; end if;
+  if f -> 'checked' is distinct from 'true'::jsonb then
+    raise exception 'Confirme que conferiu o documento no arquivo guardado.' using errcode = '22023';
+  end if;
+
+  -- os ajustes do formulário passam pelas regras da edição (nível E, datas, tipos...) e ficam no candidato
+  perform public.app_ch_source_candidate_save(c.id, f);
+  select * into c from public.ch_source_candidates where id = c.id;
+  e := c.edited;
+
+  v_level := e ->> 'level';
+  if v_level is null then raise exception 'Escolha o nível de A a D.' using errcode = '22023'; end if;
+  if v_level = 'E' then raise exception 'Nível E não entra pela busca: escolha de A a D.' using errcode = '22023'; end if;
+  if v_level not in ('A', 'B', 'C', 'D') then raise exception 'Escolha o nível de A a D.' using errcode = '22023'; end if;
+
+  v_title := coalesce(nullif(btrim(e ->> 'title'), ''), nullif(btrim(c.ai_title), ''));
+  v_organ := coalesce(nullif(btrim(e ->> 'institution'), ''), nullif(btrim(c.ai_institution), ''), nullif(btrim(c.site_institution), ''));
+  if v_title is null or v_organ is null then raise exception 'Informe título e órgão da fonte.' using errcode = '22023'; end if;
+
+  -- o site continua na lista, ativo, e o endereço final do arquivo continua dentro dele
+  if public.ch_source_site_match(c.final_url) is null then
+    raise exception 'O site % saiu da lista de sites oficiais ou foi desativado: reative-o ou rejeite este candidato.', c.site_address using errcode = '22023';
+  end if;
+  if c.storage_path is null then
+    raise exception 'O arquivo guardado não está mais disponível: rejeite este candidato e peça a busca de novo.' using errcode = '22023';
+  end if;
+
+  select d.name into v_doc_name from public.ch_documents d where d.sha256 = c.sha256 order by d.created_at limit 1;
+  if found then
+    raise exception 'Este arquivo já está na Central como documento "%": vincule por lá ou rejeite este candidato.', v_doc_name using errcode = '22023';
+  end if;
+
+  v_kind := coalesce(nullif(e ->> 'kind', ''), c.suggested_kind);
+  v_nature := coalesce(nullif(e ->> 'nature', ''), c.suggested_nature);
+  v_valid := public.ch_source_iso_date(e ->> 'valid_until');
+  -- data de publicação: a do administrador; senão uma data INTEIRA achada no arquivo ou dita pela IA; ano sozinho não vira data
+  v_published := coalesce(public.ch_source_iso_date(e ->> 'published_on'), public.ch_source_iso_date(c.file_date), public.ch_source_iso_date(c.ai_published));
+  v_version := nullif(btrim(e ->> 'version'), '');
+  if v_version is null and v_published is null then
+    v_year := coalesce((regexp_match(btrim(coalesce(c.file_date, '')), '^(\d{4})$'))[1], (regexp_match(btrim(coalesce(c.ai_published, '')), '^(\d{4})$'))[1]);
+    v_version := v_year;
+  end if;
+
+  -- substituição da fonte vigente: só com a confirmação do administrador (mesma regra do aviso da tela)
+  v_rep := null;
+  select x.* into v_rep from public.ch_sources x
+   where x.id = public.ch_source_replacement(v_title, v_organ, c.sha256, v_version);
+  if v_rep.id is not null and f -> 'confirm_replace' is distinct from 'true'::jsonb then
+    raise exception 'Confirme a substituição: esta aprovação substitui a fonte vigente "%" (versão %).', v_rep.title, coalesce(v_rep.version, 'sem versão') using errcode = '22023';
+  end if;
+
+  select * into s from public.ch_source_searches where id = c.search_id;
+  v_day := (c.created_at at time zone 'America/Sao_Paulo')::date;
+
+  v_reg := public.app_ch_register_source(jsonb_build_object(
+    'title', v_title, 'organ', v_organ, 'kind', v_kind, 'url', c.final_url, 'version', v_version,
+    'published_on', v_published, 'valid_until', v_valid, 'accessed_on', v_day, 'sha256', c.sha256, 'editorial_approved', true));
+  v_source_id := (v_reg ->> 'id')::uuid;
+
+  insert into public.ch_documents (owner_id, name, publisher, edition_date, page_count, sha256, storage_path, mime, rights_status, purpose, provenance)
+  values (auth.uid(), left(v_title, 300), v_organ, v_published::text, c.page_count, c.sha256, c.storage_path,
+          case c.file_kind when 'html' then 'text/html' else 'application/pdf' end, 'reference_only', 'reference_source',
+          jsonb_build_object(
+            'requested_url', c.requested_url, 'final_url', c.final_url, 'site', c.site_address, 'institution', c.site_institution,
+            'sha256', c.sha256, 'size_bytes', c.size_bytes, 'file_kind', c.file_kind,
+            'found', 'encontrado pela busca em ' || to_char(c.created_at at time zone 'America/Sao_Paulo', 'DD/MM/YYYY'),
+            'search_id', c.search_id, 'provider', s.provider, 'model', s.model, 'run_id', s.run_id, 'candidate_id', c.id))
+  returning id into v_document_id;
+
+  update public.ch_sources
+     set authority_level = v_level, source_type = v_nature, specialty = nullif(e ->> 'area', ''), theme = nullif(e ->> 'theme', ''),
+         editorial_approved_by = auth.uid(), editorial_approved_at = now(), document_id = v_document_id
+   where id = v_source_id;
+
+  update public.ch_source_candidates
+     set status = 'aprovado', decided_by = auth.uid(), decided_at = now(), source_id = v_source_id, document_id = v_document_id
+   where id = c.id;
+
+  perform public.ch_log('source_candidate.approve', c.id::text,
+    jsonb_build_object('source_id', v_source_id, 'document_id', v_document_id, 'level', v_level, 'site', c.site_address, 'superseded', v_reg -> 'superseded'));
+  return jsonb_build_object('source_id', v_source_id, 'document_id', v_document_id, 'superseded', v_reg -> 'superseded',
+                            'candidate_versions', coalesce((v_reg ->> 'candidate_versions')::int, 0), 'file_kind', c.file_kind);
+end
+$$;
+
+-- Rejeitar: guarda o motivo e solta o caminho do arquivo (o servidor apaga o arquivo do depósito com o caminho devolvido);
+-- o SHA-256 e o link continuam, então o mesmo achado não volta.
+create or replace function public.app_ch_source_candidate_reject(p_candidate_id uuid, p_reason text) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  c public.ch_source_candidates;
+  v_reason text := btrim(coalesce(p_reason, ''));
+begin
+  perform public.assert_admin();
+  if char_length(v_reason) < 10 then raise exception 'Escreva o motivo (pelo menos 10 caracteres).' using errcode = '22023'; end if;
+  if char_length(v_reason) > 1000 then raise exception 'O motivo pode ter até 1000 caracteres.' using errcode = '22023'; end if;
+  select * into c from public.ch_source_candidates where id = p_candidate_id for update;
+  if not found then raise exception 'Candidato não encontrado.' using errcode = 'P0002'; end if;
+  if c.status <> 'aguardando' then raise exception 'Este candidato já foi decidido.' using errcode = '22023'; end if;
+  update public.ch_source_candidates
+     set status = 'rejeitado', decided_by = auth.uid(), decided_at = now(), decision_reason = v_reason, storage_path = null
+   where id = c.id;
+  perform public.ch_log('source_candidate.reject', c.id::text, jsonb_build_object('reason', v_reason, 'site', c.site_address));
+  return jsonb_build_object('storage_path', c.storage_path);
+end
+$$;
+
+-- Lista de fontes (corpo de 20261003002500_sqie_source_diff.sql; nenhuma migração posterior a redefiniu) com duas
+-- informações novas: se a fonte foi achada pela busca (existe candidato aprovado ligado a ela) e a situação do documento de
+-- referência dela.
+create or replace function public.app_ch_sources() returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+begin
+  perform public.ch_assert_staff();
+  return coalesce((select jsonb_agg(to_jsonb(s) || jsonb_build_object(
+      'passages', (select count(*)::int from public.ch_source_passages p where p.source_id = s.id),
+      'watch', (select to_jsonb(w) - 'source_id' - 'snapshot' from public.ch_source_watch w where w.source_id = s.id),
+      'changes', (select count(*)::int from public.ch_source_changes c where c.source_id = s.id and c.resolved_at is null),
+      'freshness', public.ch_source_freshness(s.id),
+      'diffs', (select count(*)::int from public.ch_source_diffs d where d.source_id = s.id or d.new_source_id = s.id),
+      'successor_passages', (select count(*)::int from public.ch_source_passages p where p.source_id = s.superseded_by),
+      'found_by_search', exists (select 1 from public.ch_source_candidates k where k.source_id = s.id),
+      'document_status', (select d.status from public.ch_documents d where d.id = s.document_id)) order by s.organ, s.title, s.created_at desc)
+    from public.ch_sources s), '[]'::jsonb);
+end
+$$;
+
 -- ---------------------------------------------------------------- permissões
 -- Funções do servidor e de apoio: fechadas para quem chama de fora (só o próprio banco e o serviço).
 revoke execute on function public.ch_url_norm(text) from public, anon, authenticated;
 revoke execute on function public.ch_source_replacement(text, text, text, text, uuid) from public, anon, authenticated;
 revoke execute on function public.ch_source_candidate_item(uuid) from public, anon, authenticated;
+revoke execute on function public.ch_source_site_match(text) from public, anon, authenticated;
+revoke execute on function public.ch_source_iso_date(text) from public, anon, authenticated;
 revoke execute on function public.ch_worker_source_search_get(uuid) from public, anon, authenticated;
 revoke execute on function public.ch_worker_source_search_update(uuid, jsonb) from public, anon, authenticated;
 revoke execute on function public.ch_source_search_job_dead() from public, anon, authenticated;
@@ -936,3 +1144,7 @@ revoke execute on function public.app_ch_source_candidates(text) from public, an
 revoke execute on function public.app_ch_source_candidate(uuid) from public, anon;
 revoke execute on function public.app_ch_source_candidate_save(uuid, jsonb) from public, anon;
 revoke execute on function public.app_ai_summary() from public, anon;
+revoke execute on function public.app_ch_source_candidate_approve(uuid, jsonb) from public, anon;
+revoke execute on function public.app_ch_source_candidate_reject(uuid, text) from public, anon;
+revoke execute on function public.app_ch_sources() from public, anon;
+revoke execute on function public.app_ch_register_source(jsonb) from public, anon;
