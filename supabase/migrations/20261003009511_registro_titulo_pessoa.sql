@@ -9,7 +9,7 @@
 --  * RG02 (pessoa): papel e plano alterados só guardam o código da conta. O banco devolve o e-mail da pessoa afetada
 --    (campo "subject"), buscado na hora de mostrar: nada é copiado para o registro (sem novo dado pessoal guardado) e as
 --    linhas que já existem também passam a mostrar a pessoa. Se a conta foi apagada, vem vazio e a tela diz "conta
---    excluída" (a exclusão guarda o e-mail no próprio registro). Só o administrador chama a função (como sempre): o
+--    excluída" (a exclusão guarda o e-mail no próprio registro, e é esse e-mail que o filtro por pessoa e o campo "subject" da linha "Usuário excluído" usam). Só o administrador chama a função (como sempre): o
 --    e-mail não sai para mais ninguém.
 --
 -- Nada nos dados é mexido. Pode ser colada de novo no Supabase sem erro (create or replace e revoke).
@@ -49,6 +49,11 @@ as $$
 declare
   v_email text;
 begin
+  -- a exclusão da conta já guardou o e-mail dela no próprio registro: serve de pessoa (e o filtro por pessoa a encontra)
+  if p_action = 'user.delete' then
+    return (select nullif(btrim(g.details ->> 'email'), '') from public.admin_audit_log g
+             where g.action = 'user.delete' and g.target = p_target order by g.id desc limit 1);
+  end if;
   if p_action not in ('user.role', 'user.subscription', 'gamification.recalculate')
      or p_target is null or p_target !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
     return null;

@@ -9,6 +9,7 @@
  * RG03 (11/10/2026): aulas, podcasts, Stazia Arena, Tutor e Central de IAs aparecem com nome e resumo em português (o
  * título da aula ou do episódio vem do banco), sem código técnico. RG02: papel e plano alterados dizem de quem foi.
  * RG05: o Registro tem páginas de 50 ações e filtros por tipo, pessoa e data (app_admin_audit_page).
+ * RG01: o que se faz na Central de Conteúdo aparece no mesmo Registro, com o selo de origem, em português.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -334,6 +335,37 @@ describe("Registro (Administração)", () => {
     expect(list.getByText("antigo@t.dev")).toBeTruthy();
     expect(container.textContent).not.toContain(ID);
   });
+  it("RG01: ações da Central de Conteúdo aparecem junto das da Administração, com o selo de origem e sem código", async () => {
+    const rows = [
+      { id: 9, key: "c:9", source: "central", action: "publish", target: ID, title: "Sepse no adulto (versão 2)", details: { hash: "f".repeat(64) }, actor: "adm@t.dev" },
+      { id: 9, key: "a:9", source: "administracao", action: "user.role", target: ID, subject: "ana@t.dev", details: { from: "student", to: "editor" }, actor: "adm@t.dev" },
+      { id: 8, key: "c:8", source: "central", action: "reviewer.areas", target: ID, subject: "ana@t.dev", details: { areas: ["CLINICA_MEDICA"] }, actor: "adm@t.dev" },
+      { id: 7, key: "c:7", source: "central", action: "retire", target: ID, title: "Sepse no adulto (versão 2)", details: { reason: "Diretriz nova" }, actor: "adm@t.dev" },
+      { id: 6, key: "c:6", source: "central", action: "guideline_update.save", target: ID, details: { topic: "Pré-eclâmpsia", review_reset: true, unpublished: true }, actor: "ed@t.dev" },
+      { id: 5, key: "c:5", source: "central", action: "question.official_answer", target: "revalida_2025_1_q045", details: { status: "FINAL", answer: "B", version: 2 }, actor: "adm@t.dev" },
+    ].map((r) => ({ created_at: at, ...r }));
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_admin_audit_page") return auditPage(rows);
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    const { container } = render(<AdminAudit />);
+    const list = within(await screen.findByRole("list", { name: "Ações registradas" }));
+    expect(list.getByText("Conteúdo publicado para os alunos")).toBeTruthy();
+    expect(list.getByText("Sepse no adulto (versão 2)")).toBeTruthy();
+    expect(list.getByText("Sepse no adulto (versão 2) · Motivo: Diretriz nova")).toBeTruthy();
+    expect(list.getByText("Conteúdo retirado do ar")).toBeTruthy();
+    expect(list.getByText("Pessoa: ana@t.dev · Áreas: Clínica Médica")).toBeTruthy();
+    expect(list.getByText("Tema: Pré-eclâmpsia · Conferência voltou para pendente · Saiu do ar")).toBeTruthy();
+    expect(list.getByText("Revalida 2025/1, questão 45 · Gabarito B, definitivo")).toBeTruthy();
+    // selo de origem só nas da Central (5); a da Administração não leva
+    expect(list.getAllByText("Central de Conteúdo").length).toBe(5);
+    expect(list.getByText("Papel alterado").parentElement!.textContent).not.toContain("Central de Conteúdo");
+    // dois ids iguais (9) das duas tabelas convivem na lista
+    expect(list.getAllByRole("listitem").length).toBe(6);
+    expect(container.textContent).not.toMatch(/\b(reviewer|guideline_update|approve|flag|taxonomy)\.[a-z_.]+|\bretire\b|official_answer/);
+    expect(container.textContent).not.toContain(ID);
+  });
+
   describe("RG05: páginas e filtros", () => {
     const rows = (n: number, from = 0) => Array.from({ length: n }, (_, i) => ({ id: 1000 - from - i, action: "settings.save", target: null, created_at: at, actor: "adm@t.dev", details: { trial_days: from + i } }));
     // banco simulado: 120 ações; o filtro de tipo "plan.save" acha 2; qualquer outro filtro não acha nada

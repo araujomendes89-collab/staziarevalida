@@ -73,6 +73,54 @@ export const ACTION_LABEL = {
   "ai.function": "Função de IA configurada",
   "ai.settings": "Ajustes da Central de IAs salvos",
   "ai.price": "Preço de modelo de IA salvo",
+  // Central de Conteúdo (tabela ch_audit, que o Registro passou a juntar: RG01)
+  "approve.medical": "Conteúdo aprovado pelo revisor médico",
+  "approve.editorial": "Conteúdo aprovado na revisão editorial",
+  publish: "Conteúdo publicado para os alunos",
+  retire: "Conteúdo retirado do ar",
+  "approval.invalidate": "Aprovação do conteúdo desfeita",
+  "unit.regenerate": "Conteúdo gerado de novo",
+  "reviewer.areas": "Áreas do revisor médico definidas",
+  "flag.set": "Chave da Central de Conteúdo alterada",
+  "guideline_update.save": "Atualização salva",
+  "guideline_update.approve": "Atualização aprovada na conferência médica",
+  "guideline_update.reject": "Atualização recusada na conferência médica",
+  "taxonomy.draft": "Rascunho da taxonomia criado",
+  "taxonomy.node": "Item da taxonomia salvo",
+  "taxonomy.decide": "Sugestão de item da taxonomia decidida",
+  "taxonomy.publish": "Taxonomia publicada",
+  "taxonomy.alias_add": "Apelido de tema adicionado",
+  "taxonomy.alias_remove": "Apelido de tema removido",
+  "document.register": "Documento registrado",
+  "document.rights": "Documento atualizado",
+  "license.register": "Registro de uso do documento",
+  "license.revoke": "Registro de uso do documento retirado",
+  "license.clean_references": "Referências do documento limpas",
+  "license.undo_clean_references": "Limpeza de referências desfeita",
+  "block.resolve": "Trecho do documento resolvido",
+  "source.register": "Fonte oficial cadastrada",
+  "source.authority": "Nível de autoridade da fonte definido",
+  "source.registry": "Registro da fonte atualizado",
+  "source.change_resolved": "Mudança de fonte resolvida",
+  "conflict.detect": "Conflitos entre fontes detectados",
+  "conflict.resolved": "Conflito entre fontes resolvido",
+  "conflict.deferred": "Conflito entre fontes adiado",
+  "conflict.open": "Conflito entre fontes reaberto",
+  "draft_question.approved": "Questão inédita aprovada",
+  "draft_question.needs_changes": "Questão inédita devolvida para ajustes",
+  "draft_question.rejected": "Questão inédita recusada",
+  "question_analysis.approved": "Análise da questão aprovada",
+  "question_analysis.rejected": "Análise da questão recusada",
+  "question_update.no_change": "Atualização de questão: sem mudança",
+  "question_update.publish_update": "Atualização de questão publicada",
+  "question_update.reject_proposal": "Proposta de atualização de questão recusada",
+  "question.confirm_currency": "Questão confirmada como atual",
+  "job.retry": "Processamento tentado de novo",
+  "visual.create": "Material visual criado",
+  "visual.keep": "Material visual mantido",
+  "visual.version": "Nova versão de material visual",
+  "visual.duplicate": "Material visual duplicado",
+  "visual.regenerate": "Material visual gerado de novo",
 };
 
 // começo do nome técnico → parte da Administração (para uma ação nova que ainda não ganhou nome acima)
@@ -80,6 +128,9 @@ const PART = {
   user: "Usuários", plan: "Planos", settings: "Configurações", questions: "Questões", question: "Questões", station: "Estações",
   guideline_update: "Atualizações", lesson: "Aulas", podcast: "Podcasts", tutor: "Tutor", gamification: "Stazia Arena", ai: "Central de IAs",
 };
+
+// começo do nome técnico → ação da Central de Conteúdo (ch_audit)
+const CENTRAL_PART = new Set(["approve", "approval", "publish", "retire", "unit", "reviewer", "flag", "taxonomy", "document", "license", "block", "source", "conflict", "draft_question", "question_analysis", "question_update", "job", "visual"]);
 
 const own = (map, key) => (Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined);
 const join = (parts) => parts.filter(Boolean).join(" · ");
@@ -97,8 +148,10 @@ export function auditLabel(entry) {
   if (isAutomaticRetirement(entry)) return "Retirada automática pela regra nova";
   const label = own(ACTION_LABEL, entry.action);
   if (label) return label;
-  const part = own(PART, String(entry.action ?? "").split(".")[0]);
-  return part ? `Outra ação em ${part}` : "Outra ação da administração";
+  const head = String(entry.action ?? "").split(".")[0];
+  const part = own(PART, head);
+  if (part) return `Outra ação em ${part}`;
+  return CENTRAL_PART.has(head) ? "Outra ação na Central de Conteúdo" : "Outra ação da administração";
 }
 
 /** Quem fez. Sem autor: a ação automática da regra nova, ou uma conta apagada depois. */
@@ -179,6 +232,18 @@ const ruleValue = (value) => {
 // sem o campo (banco ainda sem a função nova) não dá para dizer quem era.
 const person = (entry, label = "Pessoa") => (entry.subject === undefined ? "" : `${label}: ${entry.subject || "conta excluída"}`);
 
+// nomes das áreas: do cadastro de atualizações (CLINICA_MEDICA…) e do cadastro de revisores (CIRURGIA, MFC)
+const AREA_NAME = {
+  CLINICA_MEDICA: "Clínica Médica", CIRURGIA_GERAL: "Cirurgia Geral", CIRURGIA: "Cirurgia Geral", GINECOLOGIA_OBSTETRICIA: "Gineco & Obstetrícia",
+  PEDIATRIA: "Pediatria", MEDICINA_FAMILIA_COMUNIDADE: "Medicina de Família e Comunidade", MFC: "Medicina de Família e Comunidade",
+};
+// chaves da Central de Conteúdo (a tela de Configuração da Central usa estes nomes)
+const FLAG_NAME = { enabled: "Central de Conteúdo", ai_enabled: "IA da Central", shadow_mode: "Modo sombra", publish_enabled: "Publicação", auto_analysis_enabled: "Análise automática", notebook_provider_enabled: "Provedor NotebookLM" };
+const noteOf = (d, label = "Nota") => (typeof d.note === "string" && d.note.trim() ? `${label}: ${d.note.trim()}` : "");
+const whyOf = (d) => (typeof (d.reason ?? d.why) === "string" && String(d.reason ?? d.why).trim() ? `Motivo: ${String(d.reason ?? d.why).trim()}` : "");
+const versionOf = (entry) => (entry.target && /^\d+$/.test(String(entry.target)) ? `Versão ${entry.target}` : "");
+const guidelineDecision = (d) => join([topic(d), noteOf(d, "Nota do revisor"), d.unpublished && "Saiu do ar"]);
+
 const SUMMARY = {
   "user.role": (d, entry) => join([person(entry), `${ROLE_LABEL[d.from] ?? d.from} → ${ROLE_LABEL[d.to] ?? d.to}`]),
   "user.subscription": (d, entry) => join([person(entry), `${PLAN_LABEL[d.to?.plan] ?? d.to?.plan} · ${SUB_STATUS_LABEL[d.to?.status] ?? d.to?.status}`]),
@@ -242,6 +307,50 @@ const SUMMARY = {
   "tutor.voice.revoke": (d) => own(VOICE_NAME, d.voice) && `Voz: ${VOICE_NAME[d.voice]}`,
   "gamification.rule": (d, entry) => join([`Regra ${entry.target}: ${ruleValue(d.value)}`, d.enabled === false && "regra desativada"]),
   "gamification.recalculate": (d, entry) => person(entry, "Aluno"),
+  // Central de Conteúdo: o título do conteúdo, do documento e da fonte vem do banco (entry.title)
+  "approve.medical": (d, entry) => entry.title,
+  "approve.editorial": (d, entry) => entry.title,
+  publish: (d, entry) => entry.title,
+  retire: (d, entry) => join([entry.title, whyOf(d)]),
+  "approval.invalidate": (d, entry) => join([entry.title, whyOf(d)]),
+  "unit.regenerate": (d, entry) => entry.title,
+  "reviewer.areas": (d, entry) => {
+    const areas = (Array.isArray(d.areas) ? d.areas : []).map((code) => own(AREA_NAME, code) ?? "outra área");
+    return join([person(entry), areas.length ? `Áreas: ${areas.join(", ")}` : "Deixou de ser revisora ou revisor médico"]);
+  },
+  "flag.set": (d, entry) => join([own(FLAG_NAME, entry.target) ? `${FLAG_NAME[entry.target]}: ${d.to ? "ligada" : "desligada"}` : d.to ? "Ligada" : "Desligada", whyOf(d)]),
+  "guideline_update.save": (d) =>
+    join([
+      topic(d),
+      d.area_de && d.area_para && `Área: ${own(AREA_NAME, d.area_de) ?? "outra área"} → ${own(AREA_NAME, d.area_para) ?? "outra área"}`,
+      d.review_reset && "Conferência voltou para pendente",
+      d.unpublished && "Saiu do ar",
+    ]),
+  "guideline_update.approve": guidelineDecision,
+  "guideline_update.reject": guidelineDecision,
+  "taxonomy.draft": (d, entry) => versionOf(entry),
+  "taxonomy.publish": (d, entry) => versionOf(entry),
+  "taxonomy.node": (d) => d.name,
+  "taxonomy.decide": (d) => (d.approved === true ? "Aprovado" : d.approved === false ? "Recusado" : ""),
+  "taxonomy.alias_add": (d) => d.alias && `Apelido: ${d.alias}`,
+  "taxonomy.alias_remove": (d) => d.alias && `Apelido: ${d.alias}`,
+  "document.register": (d, entry) => entry.title,
+  "document.rights": (d, entry) => entry.title,
+  "source.register": (d, entry) => entry.title ?? d.title,
+  "source.authority": (d, entry) => entry.title,
+  "source.registry": (d, entry) => entry.title,
+  "source.change_resolved": (d, entry) => join([entry.title, noteOf(d)]),
+  "block.resolve": () => "",
+  "conflict.detect": (d) => d.new != null && count(d.new, "novo", "novos"),
+  "conflict.resolved": (d) => noteOf(d, "Motivo"),
+  "conflict.deferred": (d) => noteOf(d, "Motivo"),
+  "conflict.open": (d) => noteOf(d, "Motivo"),
+  "question_analysis.approved": (d) => d.question && questionName(d.question),
+  "question_analysis.rejected": (d) => d.question && questionName(d.question),
+  "question_update.no_change": (d) => join([d.question && questionName(d.question), noteOf(d)]),
+  "question_update.publish_update": (d) => join([d.question && questionName(d.question), noteOf(d)]),
+  "question_update.reject_proposal": (d) => join([d.question && questionName(d.question), noteOf(d)]),
+  "question.confirm_currency": (d, entry) => join([questionName(entry.target), noteOf(d)]),
   "gamification.achievement": (d) => d.name,
   "gamification.mission": (d) => d.title,
   "gamification.reward": (d) => d.name,

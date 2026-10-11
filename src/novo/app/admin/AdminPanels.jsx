@@ -749,7 +749,7 @@ export function AdminAudit() {
   const types = [...new Set([...(data.actions ?? []), ...(filters.action ? [filters.action] : [])])]
     .map((action) => ({ value: action, label: auditLabel({ action, details: {} }) }))
     .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
-  if (!filtering && data.total === 0) return <EmptyState icon="history" title="Nenhuma ação registrada" description="Toda alteração feita na administração aparece aqui, com quem fez e quando." />;
+  if (!filtering && data.total === 0) return <EmptyState icon="history" title="Nenhuma ação registrada" description="Toda alteração feita na administração e na Central de Conteúdo aparece aqui, com quem fez e quando." />;
   const first = page * AUDIT_PAGE + 1;
   const last = page * AUDIT_PAGE + data.items.length;
   return (
@@ -781,7 +781,10 @@ export function AdminAudit() {
           {data.items.map((entry, index) => (
             <div key={entry.key ?? entry.id} role="listitem" style={{ display: "flex", gap: 12, padding: "12px 16px", borderTop: index ? "1px solid var(--border-subtle)" : 0, flexWrap: "wrap" }}>
               <div style={{ flex: "1 1 260px", minWidth: 0 }}>
-                <div style={{ font: "600 14px var(--font-sans)" }}>{auditLabel(entry)}</div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ font: "600 14px var(--font-sans)" }}>{auditLabel(entry)}</span>
+                  {entry.source === "central" && <Badge size="sm">Central de Conteúdo</Badge>}
+                </div>
                 <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", overflowWrap: "anywhere" }}>{auditSummary(entry)}</div>
               </div>
               <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", textAlign: "right" }}>

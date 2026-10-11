@@ -30,10 +30,16 @@ function actionsInMigrations() {
     const bodies = [
       ...[...sql.matchAll(/(?<!function )public\.admin_log\(([\s\S]*?)\);/g)].map((m) => m[1]),
       ...[...sql.matchAll(/insert\s+into\s+public\.admin_audit_log\s*\(actor_id,\s*action,\s*target,\s*details\)([\s\S]*?);/g)].map((m) => m[1]),
+      // o que a Central de Conteúdo grava (ch_audit) também aparece no Registro (RG01, migração 9513)
+      ...[...sql.matchAll(/(?<!function )public\.ch_log\(([\s\S]*?)\);/g)].map((m) => m[1]),
+      ...[...sql.matchAll(/insert\s+into\s+public\.ch_audit\s*\(actor_id,\s*action,\s*target,\s*details\)([\s\S]*?);/g)].map((m) => m[1]),
     ];
     for (const body of bodies) {
       if (/\bp_action\b/.test(body)) continue; // a própria public.admin_log (grava a ação que recebe)
       const literal = [...body.matchAll(/'([a-z_]+(?:\.[a-z_]+)+)'/g)].map((m) => m[1]);
+      // ação sem ponto no nome ('publish', 'retire'): é o primeiro argumento da chamada
+      const plain = /^\s*'([a-z_]+)'\s*,/.exec(body);
+      if (plain) literal.push(plain[1]);
       const built = [...body.matchAll(/'[a-z_]+\.'\s*\|\|\s*\w+/g)].map((m) => m[0]);
       for (const action of literal) if (!found.has(action)) found.set(action, file);
       dynamic.push(...built);
@@ -47,15 +53,25 @@ describe("Registro: nome em português para toda ação gravada", () => {
   it("cada ação que alguma migração grava no registro tem nome em português (sem o código)", () => {
     const { found, dynamic, unreadable } = actionsInMigrations();
     expect(unreadable).toEqual([]);
-    // 'question.' || v_result: v_result vem de admin_upsert_question chamada com p_update = true ('inserted' ou 'updated')
-    expect(new Set(dynamic)).toEqual(new Set(["'question.' || v_result"]));
-    const actions = [...found.keys(), "question.inserted", "question.updated"];
+    // ações montadas na hora: o nome é "parte." + valor, e os valores possíveis vêm das conferências das próprias funções
+    const DYNAMIC: Record<string, string[]> = {
+      "'question.' || v_result": ["question.inserted", "question.updated"], // admin_upsert_question chamada com p_update = true
+      "'approve.' || p_kind": ["approve.medical", "approve.editorial"],
+      "'draft_question.' || p_decision": ["draft_question.approved", "draft_question.needs_changes", "draft_question.rejected"],
+      "'question_analysis.' || p_decision": ["question_analysis.approved", "question_analysis.rejected"],
+      "'question_update.' || p_decision": ["question_update.no_change", "question_update.publish_update", "question_update.reject_proposal"],
+      "'conflict.' || p_status": ["conflict.resolved", "conflict.deferred", "conflict.open"],
+      "'guideline_update.' || p_decision": ["guideline_update.approve", "guideline_update.reject"],
+    };
+    expect(new Set(dynamic)).toEqual(new Set(Object.keys(DYNAMIC)));
+    const actions = [...new Set([...found.keys(), ...Object.values(DYNAMIC).flat()])];
     // o leitor das migrações acha as ações (se ele quebrar, o teste não pode passar sem conferir nada)
     expect(actions).toEqual(expect.arrayContaining([
       "question.official_answer", "question.explanations_reviewed", "questions.import", "guideline_update.unpublish",
       "ai.provider", "ai.price", "tutor.voice.approve", "podcast.audio", "lesson.material.delete", "gamification.recalculate",
+      "publish", "retire", "reviewer.areas", "flag.set", "guideline_update.save", "visual.regenerate", "conflict.detect",
     ]));
-    expect(found.size).toBeGreaterThanOrEqual(38); // 38 escritas no SQL em 10/10/2026, mais as 2 montadas acima
+    expect(found.size).toBeGreaterThanOrEqual(70); // 38 da Administração e mais de 30 da Central de Conteúdo, em 11/10/2026
     const missing = actions.filter((a) => !(ACTION_LABEL as Record<string, string>)[a]).map((a) => `${a} (${found.get(a) ?? "dinâmica"})`);
     expect(missing).toEqual([]);
     for (const action of actions) {
@@ -302,5 +318,83 @@ describe("Registro: o motivo das mudanças do Tutor aparece no resumo (RG04)", (
   it("registro antigo sem motivo gravado não mostra 'Motivo:' vazio", () => {
     expect(auditSummary({ action: "tutor.config", target: "tutor", details: { from: {}, to: {} } })).toBe("");
     expect(auditSummary({ action: "tutor.config", target: "tutor", details: { reason: "   " } })).toBe("");
+  });
+});
+
+describe("Registro: o que se faz na Central de Conteúdo (RG01)", () => {
+  const e = (action: string, details: Record<string, unknown> = {}, extra: Record<string, unknown> = {}) => ({ action, target: UUID, source: "central", actor: "ed@t.dev", details, ...extra });
+
+  it("conteúdo para o aluno: aprovar, publicar e retirar dizem qual conteúdo, em português", () => {
+    expect(auditLabel(e("approve.medical"))).toBe("Conteúdo aprovado pelo revisor médico");
+    expect(auditLabel(e("approve.editorial"))).toBe("Conteúdo aprovado na revisão editorial");
+    expect(auditLabel(e("publish"))).toBe("Conteúdo publicado para os alunos");
+    expect(auditLabel(e("retire"))).toBe("Conteúdo retirado do ar");
+    expect(auditSummary(e("publish", { hash: "f".repeat(64) }, { title: "Sepse no adulto (versão 2)" }))).toBe("Sepse no adulto (versão 2)");
+    expect(auditSummary(e("approve.medical", { hash: "abc" }, { title: "Sepse no adulto (versão 2)" }))).toBe("Sepse no adulto (versão 2)");
+    expect(auditSummary(e("retire", { reason: "Diretriz nova do Ministério" }, { title: "Sepse no adulto (versão 2)" }))).toBe("Sepse no adulto (versão 2) · Motivo: Diretriz nova do Ministério");
+    expect(auditSummary(e("approval.invalidate", { why: "conteúdo alterado" }, { title: "Sepse no adulto (versão 2)" }))).toBe("Sepse no adulto (versão 2) · Motivo: conteúdo alterado");
+    // sem título (conteúdo apagado): só o nome da ação, nunca o código da versão
+    expect(auditSummary(e("publish", { hash: "x" }, { title: null }))).toBe("");
+    for (const a of ["approve.medical", "publish", "retire"]) expect(auditSummary(e(a, { hash: "f".repeat(64) }, { title: null }))).not.toContain(UUID);
+  });
+
+  it("revisor médico: de quem foi e quais áreas; lista vazia = deixou de ser revisor", () => {
+    expect(auditLabel(e("reviewer.areas"))).toBe("Áreas do revisor médico definidas");
+    expect(auditSummary(e("reviewer.areas", { areas: ["CLINICA_MEDICA", "GINECOLOGIA_OBSTETRICIA"] }, { subject: "ana@t.dev" }))).toBe("Pessoa: ana@t.dev · Áreas: Clínica Médica, Gineco & Obstetrícia");
+    expect(auditSummary(e("reviewer.areas", { areas: [] }, { subject: "ana@t.dev" }))).toBe("Pessoa: ana@t.dev · Deixou de ser revisora ou revisor médico");
+    expect(auditSummary(e("reviewer.areas", { areas: null }, { subject: null }))).toBe("Pessoa: conta excluída · Deixou de ser revisora ou revisor médico");
+    expect(auditSummary(e("reviewer.areas", { areas: ["XYZ_NOVA"] }, { subject: "ana@t.dev" }))).toBe("Pessoa: ana@t.dev · Áreas: XYZ_NOVA".replace("XYZ_NOVA", "outra área"));
+  });
+
+  it("gabarito oficial gravado só pela Central (versão antiga) também tem resumo; atualização salva, aprovada e recusada", () => {
+    expect(auditSummary(e("question.official_answer", { status: "FINAL", answer: "B", version: 2 }, { target: "revalida_2025_1_q045" }))).toBe("Revalida 2025/1, questão 45 · Gabarito B, definitivo");
+    expect(auditLabel(e("guideline_update.save"))).toBe("Atualização salva");
+    expect(auditSummary(e("guideline_update.save", { topic: "Pré-eclâmpsia", review_reset: false, unpublished: false }))).toBe("Tema: Pré-eclâmpsia");
+    expect(auditSummary(e("guideline_update.save", { topic: "Pré-eclâmpsia", review_reset: true, unpublished: true, area_de: "CLINICA_MEDICA", area_para: "GINECOLOGIA_OBSTETRICIA" })))
+      .toBe("Tema: Pré-eclâmpsia · Área: Clínica Médica → Gineco & Obstetrícia · Conferência voltou para pendente · Saiu do ar");
+    expect(auditLabel(e("guideline_update.approve"))).toBe("Atualização aprovada na conferência médica");
+    expect(auditLabel(e("guideline_update.reject"))).toBe("Atualização recusada na conferência médica");
+    expect(auditSummary(e("guideline_update.reject", { topic: "Pré-eclâmpsia", note: "Não confere com o documento.", unpublished: true }))).toBe("Tema: Pré-eclâmpsia · Nota do revisor: Não confere com o documento. · Saiu do ar");
+    expect(auditSummary(e("guideline_update.approve", { topic: "Pré-eclâmpsia", note: "Conferido, página 12." }))).toBe("Tema: Pré-eclâmpsia · Nota do revisor: Conferido, página 12.");
+  });
+
+  it("chaves da Central: qual chave, ligada ou desligada, e o motivo", () => {
+    expect(auditLabel(e("flag.set"))).toBe("Chave da Central de Conteúdo alterada");
+    expect(auditSummary(e("flag.set", { from: true, to: false, reason: "Pausa para conferir o conteúdo" }, { target: "publish_enabled" }))).toBe("Publicação: desligada · Motivo: Pausa para conferir o conteúdo");
+    expect(auditSummary(e("flag.set", { from: false, to: true, reason: "Voltando ao normal" }, { target: "shadow_mode" }))).toBe("Modo sombra: ligada · Motivo: Voltando ao normal");
+    expect(auditSummary(e("flag.set", { from: false, to: true, reason: "Teste de chave nova" }, { target: "chave_futura" }))).toBe("Ligada · Motivo: Teste de chave nova");
+  });
+
+  it("o resto da Central tem nome em português e não mostra identificador nem código", () => {
+    const cases: [string, Record<string, unknown>, Record<string, unknown>, string, string][] = [
+      ["taxonomy.publish", {}, { target: "3" }, "Taxonomia publicada", "Versão 3"],
+      ["taxonomy.draft", {}, { target: "4" }, "Rascunho da taxonomia criado", "Versão 4"],
+      ["taxonomy.alias_add", { path: "Clínica Médica > Cardiologia", alias: "coração" }, {}, "Apelido de tema adicionado", "Apelido: coração"],
+      ["document.register", { sha256: "a".repeat(64) }, { title: "Apostila de Clínica.pdf" }, "Documento registrado", "Apostila de Clínica.pdf"],
+      ["source.register", { title: "Diretriz de Sepse", candidates: 2 }, { title: "Diretriz de Sepse" }, "Fonte oficial cadastrada", "Diretriz de Sepse"],
+      ["source.change_resolved", { changes: 2, note: "Texto novo conferido" }, { title: "Diretriz de Sepse" }, "Mudança de fonte resolvida", "Diretriz de Sepse · Nota: Texto novo conferido"],
+      ["conflict.resolved", { note: "A fonte mais nova vale" }, {}, "Conflito entre fontes resolvido", "Motivo: A fonte mais nova vale"],
+      ["conflict.detect", { new: 3 }, { target: null }, "Conflitos entre fontes detectados", "3 novos"],
+      ["draft_question.approved", { hash: "h" }, {}, "Questão inédita aprovada", ""],
+      ["draft_question.needs_changes", { hash: "h" }, {}, "Questão inédita devolvida para ajustes", ""],
+      ["question_analysis.rejected", { question: "revalida_2025_1_q045" }, {}, "Análise da questão recusada", "Revalida 2025/1, questão 45"],
+      ["question_update.publish_update", { question: "revalida_2025_1_q045", temporal: "x", card: {}, note: "Atualizada" }, {}, "Atualização de questão publicada", "Revalida 2025/1, questão 45 · Nota: Atualizada"],
+      ["question.confirm_currency", { note: "Ainda vale" }, { target: "revalida_2025_1_q045" }, "Questão confirmada como atual", "Revalida 2025/1, questão 45 · Nota: Ainda vale"],
+      ["job.retry", {}, {}, "Processamento tentado de novo", ""],
+      ["visual.regenerate", { version: 2 }, {}, "Material visual gerado de novo", ""],
+    ];
+    for (const [action, details, extra, label, summary] of cases) {
+      const entry = e(action, details, extra);
+      expect(auditLabel(entry), action).toBe(label);
+      expect(auditSummary(entry), action).toBe(summary);
+      expect(`${auditLabel(entry)} ${auditSummary(entry)}`, action).not.toMatch(INTERNAL);
+      expect(auditSummary(entry), action).not.toContain(UUID);
+    }
+  });
+
+  it("ação nova da Central ainda sem nome aparece em português", () => {
+    expect(auditLabel(e("taxonomy.coisa_nova"))).toBe("Outra ação na Central de Conteúdo");
+    expect(auditLabel(e("publish_tudo"))).toBe("Outra ação da administração");
+    expect(auditLabel(e("source.coisa_nova"))).toBe("Outra ação na Central de Conteúdo");
   });
 });
