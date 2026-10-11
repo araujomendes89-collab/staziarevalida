@@ -256,6 +256,16 @@ describe("AR06: Arena ou ligas desligadas não viram a semana", () => {
   });
 });
 
+describe("AR07: regra que nada usa não aparece para editar", () => {
+  it("a Administração não lista o feed social (a regra existe no banco, mas nada a usa)", async () => {
+    const a = await rpc(ADMIN, "app_admin_gamification");
+    expect(a.rules.some((r: any) => r.key === "flags.social_feed_enabled")).toBe(false);
+    expect(a.rules.some((r: any) => r.key === "flags.leaderboard_enabled")).toBe(true);
+    // a linha continua no banco: nada é apagado
+    expect((await sql(`select count(*)::int as n from public.gamification_rules where key = 'flags.social_feed_enabled'`))[0].n).toBe(1);
+  });
+});
+
 describe("AR09: as regras só a equipe lê", () => {
   const lerRegras = (uid: string) =>
     db.transaction(async (tx) => {

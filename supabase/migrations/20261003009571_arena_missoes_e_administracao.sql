@@ -43,7 +43,7 @@ begin
 end
 $$;
 
--- Administração (partida: a 20261003008100): igual, mas com o alvo real das missões (AR04) e o "XP de hoje" a partir da
+-- Administração (partida: a 20261003008100): igual, mas sem a regra do feed social (AR07), com o alvo real das missões (AR04) e o "XP de hoje" a partir da
 -- meia-noite de Brasília (AR03; antes contava desde as 21h do dia anterior, a meia-noite do horário universal).
 create or replace function public.app_admin_gamification() returns jsonb
   language plpgsql stable security definer set search_path = ''
@@ -51,7 +51,8 @@ as $$
 begin
   perform public.assert_admin();
   return jsonb_build_object(
-    'rules', (select jsonb_agg(to_jsonb(r) order by r.key) from public.gamification_rules r),
+    -- AR07: o feed social (fase futura) existe no banco, mas nada o usa: não aparece para editar
+    'rules', (select jsonb_agg(to_jsonb(r) order by r.key) from public.gamification_rules r where r.key <> 'flags.social_feed_enabled'),
     'rule_problems', coalesce((select jsonb_agg(jsonb_build_object('key', r.key, 'problem', public.gam_rule_problem(r.key, r.value)) order by r.key)
                                from public.gamification_rules r where public.gam_rule_problem(r.key, r.value) is not null), '[]'::jsonb),
     'levels', (select jsonb_agg(to_jsonb(l) order by l.position) from public.levels l),

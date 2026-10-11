@@ -69,7 +69,11 @@ function RulesHealth({ problems = [], failures = 0, recent = [] }) {
   );
 }
 
-function RulesPanel({ rules, onSave }) {
+// Regras que existem no banco mas nada usa ainda: não aparecem para editar (AR07).
+const HIDDEN_RULES = new Set(["flags.social_feed_enabled"]);
+
+function RulesPanel({ rules: allRules, onSave }) {
+  const rules = allRules.filter((r) => !HIDDEN_RULES.has(r.key));
   const [filter, setFilter] = React.useState("flags");
   const groups = [...new Set(rules.map((r) => r.key.split(".")[0]))];
   const LABEL = { flags: "Ligar e desligar", names: "Nomes", xp: "XP por evento", coins: "Moedas", repeat: "Repetição", fraud: "Antifraude", score: "Stazia Score", ranking: "Ranking", streak: "Sequência", league: "Ligas", missions: "Missões", trail: "Trilha" };
