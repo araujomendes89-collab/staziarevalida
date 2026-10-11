@@ -88,6 +88,17 @@ export class AiInvalidOutput extends Error {
   }
 }
 
+/**
+ * A IA recusou o pedido: Claude com stop_reason "refusal"; OpenAI com message.refusal ou finish_reason "content_filter". Os tokens
+ * que vieram são cobrados, e repetir o mesmo pedido na mesma IA recusa igual (o maestro vai direto para a reserva). Não é
+ * AiInvalidOutput de propósito: quem repete ao receber resposta fora do formato (Tutor, Aulas, Podcasts) não repete uma recusa.
+ */
+export class AiRefused extends Error {
+  constructor(message: string, readonly usage?: AiUsage) {
+    super(message);
+  }
+}
+
 export interface AiProvider {
   readonly name: string;
   readonly model: string;
@@ -251,10 +262,13 @@ class AnthropicProvider implements AiProvider {
       req.signal ? { signal: req.signal } : undefined,
     );
     const usage = res.usage as any;
-    if (res.stop_reason === "refusal") {
-      throw new Error(`O provedor recusou a solicitação (${res.stop_details?.category ?? "sem categoria"}).`);
-    }
     const spent: AiUsage = { inputTokens: usage?.input_tokens ?? null, outputTokens: usage?.output_tokens ?? null };
+    // a recusa também é cobrada: os tokens vão junto, para o registro e os tetos
+    if (res.stop_reason === "refusal") {
+      // a categoria (em inglês, da API) fica só no log do servidor; quem lê o erro na tela vê uma frase fixa em português
+      console.warn(`[central] Claude recusou a solicitação (categoria ${String(res.stop_details?.category ?? "sem categoria").slice(0, 40)}).`);
+      throw new AiRefused("O provedor recusou a solicitação.", spent);
+    }
     if (res.stop_reason === "max_tokens") throw new AiInvalidOutput("Resposta cortada pelo limite de saída.", null, { usage: spent, reason: "cortada" });
     const block = (res.content as any[]).find((c) => c.type === "text");
     let raw: unknown;

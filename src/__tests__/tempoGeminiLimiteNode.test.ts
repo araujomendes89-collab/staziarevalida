@@ -173,7 +173,7 @@ describe("maestro: o corte do Node conta como tempo esgotado", () => {
     });
   }
 
-  it("o custo estimado do corte conta no teto por execução: a reserva que não cabe não sai", async () => {
+  it("o custo estimado do corte conta no teto por chamada: a reserva que não cabe não sai", async () => {
     // 0,2213 (estimado) + 0,2053 (reserva) = 0,4266 > 0,40
     const { runFunction } = await import("../../server/ai/maestro");
     const { db, logged } = fakeDb({ primary_ref: G, fallback_ref: A }, { caps_enabled: true, monthly_cap_usd: 100, per_run_cap_usd: 0.4 });
@@ -181,7 +181,7 @@ describe("maestro: o corte do Node conta como tempo esgotado", () => {
     const r = await runFunction<any>({ db, env: {} as any, makeProviderFor: providers(real.headers, calls) as any, log: () => {} }, "criacao", REQ, origin);
     expect(calls).toEqual([key(G)]);
     expect(logged.map((l) => `${l.role}:${l.provider}:${l.outcome}`)).toEqual(["principal:gemini:falha", "reserva:anthropic:teto"]);
-    expect(logged[1].error).toBe("Gasto desta execução de US$ 0,2213 mais estimativa de US$ 0,2053 passa do teto por execução de US$ 0,4.");
+    expect(logged[1].error).toBe("Gasto desta chamada de US$ 0,2213 mais estimativa de US$ 0,2053 passa do teto por chamada de US$ 0,4.");
     expect(r.status).toBe("falhou");
   });
 });

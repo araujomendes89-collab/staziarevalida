@@ -43,7 +43,7 @@ as IAs e salve as funções em seguida, antes de deixar o processamento trabalha
    **não está pronta** quando a IA escolhida não pode rodar (IA desligada, ou Ollama no site publicado); se só a principal
    não roda e há reserva que roda, a tela avisa que a reserva vai responder. Chave que falta no site é só aviso (veja
    "Chaves das IAs: o site e o processamento").
-3. **Gasto e tetos:** se quiser, preencha o teto mensal e o teto por execução e ligue os tetos.
+3. **Gasto e tetos:** se quiser, preencha o teto mensal e o teto por chamada e ligue os tetos.
 
 ## Chaves das IAs: o site e o processamento
 - O site (Vercel) e o processamento da Central (Cloud Run) são servidores diferentes, cada um com as suas chaves. A tela só
@@ -55,6 +55,29 @@ as IAs e salve as funções em seguida, antes de deixar o processamento trabalha
   Vercel (produção) tinha as chaves de Claude, OpenAI e Gemini; uma IA sem chave lá aparece como "sem chave no site" e
   essas abas a mostram como não pronta.
 
+## O que o interruptor liga e desliga (IA03, 2026-10-11)
+O interruptor **Ligada/Desligada** de cada IA vale para o que passa pelo maestro (`server/ai/maestro.ts`): as seis funções e todos os
+usos delas (etapas da Central de Conteúdo, conferência de rascunhos, Questões, assistentes das abas, assistente das Aulas e
+roteiro dos Podcasts). A frase antiga da tela, "Uma IA só é chamada se estiver ligada aqui", não era verdade para o resto. Os usos
+abaixo **não passam pelo interruptor**: usam a chave direto no servidor, cada um com a trava própria.
+
+| Uso | IA | Trava que vale no servidor | Código |
+|---|---|---|---|
+| Tutor: conversa e avaliação | Claude por padrão (`TUTOR_AI_PROVIDER`, `TUTOR_MODEL`) | `TUTOR_AI_ALLOW_EXTERNAL=1`, os sinalizadores gerais da Central de Conteúdo (`enabled`, `ai_enabled`) e o "Tutor ligado" do painel do Tutor | `server/tutor/engine.ts` (`resolveTutorProvider`) |
+| Tutor: transcrição do microfone | OpenAI | `TUTOR_STT_ALLOW_EXTERNAL=1` | `server/tutor/stt.ts` |
+| Tutor: voz ao vivo | Gemini, GPT-Live ou OpenAI Realtime | `TUTOR_VOICE_ALLOW_EXTERNAL=1` e `TUTOR_LIVE_VOICE_ALLOW_EXTERNAL=1` | `server/tutor/voiceProviders.ts`, `realtime.ts` |
+| Tutor: voz do professor | ElevenLabs (não é uma das IAs da Central) | `ELEVENLABS_API_KEY` e o painel do Tutor | `server/tutor/elevenlabsTts.ts`, `officialVoices.ts` |
+| Podcasts: áudio | OpenAI; a voz do Gemini só liga com `PODCAST_TTS_GEMINI_ENABLED=1` | `CONTENT_HUB_AI_ALLOW_EXTERNAL=1` | `server/podcasts/audio.ts` |
+| Busca por significado | Gemini (AI Studio ou Vertex AI) | `CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1` e o sinalizador geral "IA ligada" da Central de Conteúdo | `server/contentHub/embeddings.ts` |
+| Rotas antigas `/api/ai/*` e `/api/gemini/*` | Claude e Gemini | só administrador (`requireAdmin`) | `server.ts`, `server/ai/modelRouter.ts`, `functionCalling.ts` |
+
+"Atualizar lista" também consulta a lista de modelos da empresa com a chave, mesmo com a IA desligada: não gera texto e não tem custo.
+
+**Decisão:** a tela passou a dizer a verdade, com a lista acima. Fazer esses usos obedecerem ao interruptor **não foi feito**: eles
+param no ato se a IA que usam estiver desligada na Central (hoje o áudio dos Podcasts, a transcrição e a voz do Tutor dependem
+da OpenAI, que pode estar desligada aqui sem ninguém ter percebido). Se o dono quiser, o passo certo é ligar antes as IAs que
+eles usam e só então fazê-los obedecer.
+
 ## As funções
 | Função na tela | Onde é usada hoje |
 |---|---|
@@ -64,7 +87,8 @@ as IAs e salve as funções em seguida, antes de deixar o processamento trabalha
 | Assistente: preencher / conferir / revisar a redação | Já configuráveis; entram em uso na etapa 2 |
 
 ## Os modos
-- **Sozinha:** uma IA principal e uma reserva opcional. Se a principal falhar, há uma nova tentativa e depois a reserva.
+- **Sozinha:** uma IA principal e uma reserva opcional. Se a principal falhar, há uma nova tentativa (só em falha passageira;
+  veja IA06) e depois a reserva.
 - **Linha de produção:** a principal cria e de 1 a 3 conferentes devolvem um parecer ("de acordo" ou a lista de
   problemas com gravidade). Problema de gravidade alta, ou conferente que não respondeu, marca o resultado como
   "precisa de revisão".
@@ -77,7 +101,8 @@ as IAs e salve as funções em seguida, antes de deixar o processamento trabalha
   orçamento 0, sem raciocínio, no 2.5 Flash-Lite; nível baixo nos Gemini 3) e na OpenAI (`reasoning_effort: "low"` nos GPT-5/6
   e na série o, menos as variantes "-chat"); "Caprichado" deixa o padrão desses modelos. O "Rápido" nunca pensa mais que o
   padrão: os Gemini 3 Flash-Lite (padrão MINIMAL, o menor nível, pela página "Thinking" do Vertex AI) ficam no padrão, como os
-  modelos de imagem do Gemini e o Ollama. O Cuidado vai num campo próprio
+  modelos de imagem do Gemini e o Ollama. No 2.5 Flash-Lite, o orçamento 0 também não liga o raciocínio pelo AI Studio (onde ele
+  já não pensa por padrão); pelo Vertex AI, que é o caminho de produção, ele pensa até 8.192 no padrão. O Cuidado vai num campo próprio
   (`care`) que só a Central manda: o esforço baixo que o Tutor usa não mexe no Gemini nem na OpenAI.
 - **Independência:** na linha de produção, o conferente nunca é da mesma família da criadora (nem da reserva). Ex.:
   Sonnet cria e Opus confere **não** vale. No comitê, a mesma família é permitida com o aviso "não é independente".
@@ -100,12 +125,24 @@ Nada é aprovado pela IA: tudo continua rascunho até a decisão de uma pessoa.
   (na Verificação, os conferentes só rodam na conferência de rascunhos feita por comando).
 - **IA06:** a mesma IA só é tentada de novo em falha passageira (limite por minuto, sobrecarga, servidor fora, rede, resposta fora
   do formato). Sem crédito ou cota, chave recusada, modelo inexistente, pedido inválido e tempo esgotado vão direto para a
-  reserva (`shouldRetrySame`).
+  reserva (`shouldRetrySame`). Também vão direto para a reserva, porque se repetiriam iguais com a mesma entrada: a resposta
+  cortada pelo limite de saída, a resposta bloqueada pelo filtro do provedor (Gemini) e a recusa da IA (Claude com
+  `stop_reason: "refusal"`; OpenAI com `message.refusal` ou `finish_reason: "content_filter"`, `AiRefused`). Desde o polimento de
+  2026-10-10, a recusa do Claude e a recusa e o filtro da OpenAI gravam os tokens que vieram, com o custo, e não são repetidos na
+  mesma IA (antes ficavam com custo 0 e eram repetidos).
 - **IA10:** no site (Vercel) cada PEDIDO tem hora-limite de 270 s, marcada na chegada (`server/ai/requestDeadline.ts`, middleware
   depois do `express.json`) e respeitada por todas as chamadas de IA dele (`MAESTRO_DEADLINE_MS` muda; no Cloud Run não há).
   A chamada é cortada antes do limite e nenhuma IA é chamada com menos de 30 s de prazo útil (sobram 15 s para gravar e
   responder): "Sem tempo para chamar esta IA dentro do limite do pedido.". Cada chamada é gravada em `ai_calls` na hora
   (gravação com tempo-limite de 10 s; falha só avisa e não regrava, para não duplicar).
+  - **Prazo da reserva no site:** com reserva pronta, a principal (e a nova tentativa) deixa 75 s do prazo para a reserva
+    (`RESERVE_KEEP_MS`), mas só divide o prazo quando cabem as duas: a principal com pelo menos 120 s (`PRIMARY_SPLIT_MIN_MS`),
+    ou seja, com pelo menos 195 s úteis. Na primeira chamada do site (255 s úteis), a principal fica com 180 s e a reserva com até
+    75 s. Com menos tempo útil, a principal fica com o prazo todo e, se ela esgotar, a reserva é recusada sem custo. Sem reserva,
+    com a reserva desligada, ou no Cloud Run (sem prazo do pedido), nada muda.
+  - **Tempo-limite de cada chamada:** 180 s; no Gemini cresce com a saída máxima mandada (30 s mais 10 ms por token, entre 180 s e
+    290 s, abaixo dos 300 s em que o Node fecha a conexão sem resposta). Tempo esgotado cancela o pedido, não é repetido na mesma IA
+    e grava o custo estimado (veja "Custo das falhas").
 - **IA11:** esforço só nos modelos do Claude que aceitam; preço do Claude Haiku 5.5 (0,10/0,50 até 100 mil tokens). Limite
   conhecido: a tabela não tem preço por faixa; o Haiku 5.5 acima de 100 mil tokens (0,50/2,50) e o Gemini 2.5 Pro acima de
   200 mil tokens ficam com o custo abaixo do real.
@@ -114,23 +151,96 @@ Nesta etapa, os usos atuais gravam **um** resultado. Neles, a função usa a pri
 comitê mostrados para a equipe aparecem a partir da etapa 2.
 
 ## Tetos de gasto
-- **Teto por execução:** uma execução é um pedido ao maestro, com todas as IAs que ele chamar. Antes de chamar, o
-  sistema estima o pior caso: caracteres ÷ 4 × preço de entrada, mais o limite de saída × preço de saída. Passou do
-  teto → nenhuma IA é chamada.
-- **Teto mensal:** gasto já registrado no mês (horário de Brasília) + a estimativa. Passou → as IAs pagas não são
-  chamadas; o **Ollama continua**.
-- **Duas execuções ao mesmo tempo** podem passar do teto em até o custo de uma execução (a tela avisa).
+- **Teto por chamada** (IA08, 2026-10-11; antes "teto por execução"): uma chamada é um pedido ao maestro, com todas as IAs que ele
+  chamar (principal, nova tentativa e reserva). **Vale para cada chamada, não para um trabalho inteiro:** um documento da Central
+  de Conteúdo faz várias chamadas (uma por etapa e por pedaço), e cada uma tem o seu teto, então um trabalho de 50 chamadas pode
+  gastar até 50 vezes o valor. O que limita o total é o teto mensal. Somar por trabalho **não foi feito** (exigiria guardar o gasto
+  de cada trabalho entre as etapas e decidir o que fazer com o trabalho que passa do valor no meio; veja as perguntas ao dono). Antes
+  de **cada tentativa**, o sistema soma o gasto real já feito nesta chamada (com o custo das tentativas que falharam), a estimativa
+  das tentativas em andamento e a estimativa desta tentativa. A estimativa é o pior caso: caracteres ÷ 4 ×
+  preço de entrada, mais a saída máxima que vai de fato para a IA × preço de saída (no Gemini, o pedido mais a folga do
+  raciocínio; no Claude, no mínimo 8.192 tokens; na OpenAI, no mínimo 4.096). Passou do teto → essa tentativa não sai (linha
+  "teto" no registro). Se nada foi chamado ainda, o trabalho fica parado (veja abaixo); depois de uma falha cobrada, a chamada
+  termina como falha comum e o trabalho gasta uma tentativa.
+- **Teto mensal:** gasto já registrado no mês (horário de Brasília) + o gasto desta chamada + a estimativa. Passou → as IAs
+  pagas não são chamadas; o **Ollama continua**.
+- **Os tetos nascem desligados (IA01, 2026-10-11).** Enquanto os dois tetos não tiverem valor e estiverem ligados, **não existe limite
+  em dólares** para as IAs da Central. A tela mostra no alto da aba um aviso (`CapsNotice`) até isso mudar, com o botão "Escolher
+  os tetos", que leva ao campo; na seção "Gasto e tetos", um guia diz o que cada teto é, o gasto do mês até agora e o **valor mínimo
+  do teto por chamada** para nenhuma função parar com as IAs de hoje (duas tentativas da principal mais a reserva, no pior uso
+  típico, pelo preço cadastrado: `capGuidance`, devolvido por `GET /overview` em `cap_guidance`). **Nenhum valor é escolhido nem
+  ligado pelo sistema**, e a configuração gravada não é mexida: um teto por chamada abaixo do mínimo pararia as IAs do site. O
+  Tutor, as vozes e a busca por significado não passam pelo maestro e não entram nestes tetos (veja "Gasto do mês de tudo").
+- **Duas chamadas ao mesmo tempo** podem passar do teto em até o custo de uma chamada (a tela avisa).
 - Com os tetos ligados, **modelo pago sem preço fica bloqueado**. Ollama custa zero.
+- **Preço exigido com ou sem teto (IA09, 2026-10-11):** modelo pago sem preço cadastrado aparecia com gasto US$ 0 quando os tetos
+  estavam desligados. Agora, ao **salvar** uma função (a rota `PUT /functions/:key`), cada IA paga dela precisa de preço, com os
+  tetos ligados ou não: sem o preço, a função não salva e o motivo diz onde cadastrá-lo (tabela "Preços por milhão de tokens" ou
+  "Atualizar lista" da IA, que preenche os preços oficiais conhecidos). O que **já está salvo e rodando não para**: com os tetos
+  desligados, o modelo sem preço continua sendo chamado, e a função só mostra o aviso "sem preço cadastrado" (funções sem
+  configuração salva também, para a IA e a reserva das variáveis do servidor). Parar a chamada pararia o que funciona hoje em
+  produção, onde o preço pode faltar até alguém usar "Atualizar lista". Na tabela "Últimas chamadas", IA paga que gastou tokens e
+  ficou com custo zero aparece como "sem preço", e não como "US$ 0".
 - **Quando o teto é atingido**, os documentos da Central ficam **parados** (pendência) e voltam sozinhos quando o teto
   permitir; ninguém precisa reenviar o documento.
-  - Teto **por execução** (o pedido estimado passa do teto): a cada rodada do processamento os parados voltam para a fila
-    e, se o teto ainda não deixa, param de novo sem gastar tentativa. Suba o teto por execução.
+  - Teto **por chamada** (o pedido estimado passa do teto): a cada rodada do processamento os parados voltam para a fila
+    e, se o teto ainda não deixa, param de novo sem gastar tentativa. Suba o teto por chamada.
   - Teto **mensal** atingido: a fila não é destravada até o mês virar (horário de Brasília) ou o teto mensal subir; aí os
     parados voltam na rodada seguinte.
 - O gasto do Tutor (texto e voz) aparece à parte, só como informação, e não entra no teto. As chamadas das Aulas e do
   roteiro dos Podcasts passam pelo maestro e contam no gasto da Central. A voz dos Podcasts (a geração do áudio) não passa
   pelo maestro: o gasto dela aparece no painel do Tutor (custos por recurso), não na Central.
 - No Gemini, o raciocínio do modelo é cobrado como saída e entra na conta.
+- **Folga do Gemini:** o raciocínio conta dentro do limite de saída do Gemini; batendo no limite, a resposta sai cortada e o
+  raciocínio é cobrado mesmo assim. Por isso o pedido ao Gemini ganha uma folga: + 8.192 tokens na família 2.5 (Pro, Flash e
+  Flash-Lite) no Caprichado; + 1.024 no Rápido (nada no 2.5 Flash-Lite, que no Rápido não pensa); + 16.384 nos Gemini 3 e nos
+  apelidos "-latest"; nada nos modelos de imagem, voz e vetores; no máximo 65.536 no total. O Google cobra só o que foi gerado: a
+  folga sobe a estimativa dos tetos (o pior caso), não o gasto real.
+- **Custo das falhas:** a resposta que não serve também é cobrada. A resposta cortada, bloqueada, recusada ou fora do formato
+  grava os tokens que vieram, com o custo pelo preço cadastrado; o tempo esgotado (o pedido é cancelado e não traz tokens) grava
+  o pior caso estimado, dito no erro. Esse custo entra no gasto da chamada (teto por chamada) e no gasto do mês (`ai_calls`).
+  Falha sem resposta (rede, servidor fora do ar, chave recusada) fica com custo 0.
+- **Aviso na tela:** com os tetos ligados, o editor de cada função avisa quando o teto por chamada não cabe uma tentativa típica de
+  uma IA da função, e quando não cabe a principal mais a reserva (para a reserva socorrer depois de uma falha cobrada) ou duas
+  chamadas da principal mais a reserva (nova tentativa), sempre com o valor mínimo. Chamadas típicas (saída pedida no código e
+  entrada que costuma ir): etapas da Central de Conteúdo, 8.192 tokens e ~30 mil caracteres; Aulas, 6.000 e 85 mil; Podcasts,
+  16.000 e 125 mil; Questões, 12.000 e 8 mil; assistentes, 6.000 e 70 mil. Na Verificação, conferentes e membros são conferidos
+  com a conferência de rascunhos (4.096 de saída, ~20 mil caracteres, **sem** o Cuidado da função).
+
+## Gasto do mês de tudo (IA02, só leitura, 2026-10-11)
+O teto e o "gasto do mês" da Central só enxergam o que passa pelo maestro (`ai_calls`). O Tutor, a voz ao vivo, a transcrição do
+microfone, a voz do professor, o áudio dos Podcasts e a busca por significado gravam o gasto em outros lugares. O painel **Gasto
+do mês de tudo** (seção "Gasto e tetos") soma o que já fica registrado, sem estimar nada:
+
+| Lugar no painel | Onde o gasto é gravado | Observação |
+|---|---|---|
+| Central de IAs (entra nos tetos) | `ai_calls` | é o gasto de sempre; as Aulas e o roteiro dos Podcasts estão aqui (o `ai_usage_ledger` repete essas duas linhas, por isso elas não são somadas de novo) |
+| Tutor: conversa e avaliação | `ai_usage_ledger`, `tutor_text` e `tutor_eval` | a reserva da cota (sem tokens) não conta como uso |
+| Tutor: voz ao vivo | `ai_usage_ledger`, `tutor_voice_live`, `tutor_voice_gemini`, `tutor_voice_tokens`, `tutor_voice_backend` | `tutor_voice` é só o tempo da cota: o custo está nas outras linhas |
+| Tutor: transcrição do microfone | `ai_usage_ledger`, `tutor_stt` | custo = minutos × `stt_price_per_min_usd` do painel do Tutor (padrão 0) |
+| Tutor: voz do professor | `ai_usage_ledger`, `tutor_tts` e `tutor_tts_audicao` | custo = caracteres × `tts_price_per_1k_chars_usd` do painel do Tutor (padrão 0) |
+| Podcasts: áudio | `ai_usage_ledger`, `podcast_tts` | |
+| Busca por significado | `ch_ai_runs`, etapa `embeddings` | só a indexação dos trechos; as outras etapas já estão em `ai_calls` |
+| Rotas antigas de IA | **sem registro** | o contador fica só na memória do servidor (`quotaMiddleware.ts`) e some ao reiniciar |
+| Perguntas da busca por significado | **sem registro** | frações de centavo por pergunta, não gravadas |
+
+Regras do painel: uso com custo zero (por exemplo, a voz do professor e a transcrição enquanto o preço não foi definido no painel do
+Tutor) aparece como **"sem preço"**, não como US$ 0; o que não tem registro aparece como **"sem registro"**; a soma é "do que tem
+registro" e diz que não inclui o resto. Código: `app_admin_ai_spend_month()` (migração `20261003009520_central_gasto_do_mes.sql`,
+só cria uma função de leitura, só administrador, pode ser colada de novo), devolvida por `GET /overview` em `all_spend`. Se a
+migração ainda não foi colada no Supabase, o painel diz o que falta e o resto da aba funciona como antes.
+
+### Proposta (não construída): teto geral que inclua o Tutor e as vozes
+Hoje cada lugar tem a sua trava (cota do aluno no Tutor, caracteres da voz, limite de minutos), e o teto mensal da Central só vale
+para o maestro. Um **teto geral do mês** seria:
+1. um novo valor em `ai_settings` (teto geral, em US$) e o interruptor dele;
+2. uma conta única do mês = `ai_calls` + as linhas do painel acima (a mesma função de leitura), guardada por cerca de 1 minuto;
+3. a conferência nos pontos de entrada: turno do Tutor, abertura da voz ao vivo, transcrição, voz do professor, áudio dos Podcasts
+   e indexação da busca;
+4. avisos antes de chegar lá (por exemplo, a 80%) e uma mensagem clara quando parar.
+Não foi construído porque parar o Tutor dos alunos é decisão de produto e porque a voz do professor e a transcrição ainda estão com
+preço 0 (o gasto delas hoje nem aparece). Perguntas ao dono estão no relatório da frente (valor do teto, o que para quando
+chegar, aviso a 80%, preços da voz e da transcrição).
 
 ## Preços
 Os preços iniciais foram conferidos em **2026-10-07** nas páginas oficiais, e cada um guarda a fonte e a data:
@@ -192,9 +302,13 @@ imagem). "Atualizar lista" faz um teste real da chave (contar os tokens de uma p
 preço que a chave aceita; função salva com outro modelo passa a mostrar "modelo não está mais na lista".
 
 ## Limites conhecidos
-- A estimativa é do pior caso. O custo gravado de uma chamada que falhou ou passou do tempo é zero, mesmo que a
-  empresa tenha cobrado algo, então o gasto do mês pode ficar um pouco abaixo do real.
-- A reserva que entra depois de uma falha da principal confere só o teto mensal, não de novo o teto por execução.
+- A estimativa é do pior caso. No tempo esgotado, o custo gravado é esse pior caso (a empresa pode ter cobrado menos); numa
+  falha sem resposta (rede, servidor fora do ar), o custo gravado é 0.
+- No custo de cada documento da Central de Conteúdo ("Execuções de IA", `ch_ai_runs`), entra só a resposta que deu certo (ou a
+  última falha, sem tokens): a tentativa que falhou antes da reserva responder está no gasto do mês (`ai_calls`), mas não aparece
+  no custo do documento. Fazer isso mexe no processamento da Central de Conteúdo e não foi pedido.
+- Com o teto por chamada entre 2 × principal e 2 × principal + reserva, depois de uma resposta fora do formato a nova tentativa
+  ainda sai e pode deixar a reserva sem espaço (o aviso da tela diz o valor que cobre as duas). Mudar essa regra é decisão do dono.
 - A simulação (`mock`) só existe no desenvolvimento e nos testes; em produção, pedir simulação é recusado.
 - O Tutor não usa a Central nesta etapa.
 
@@ -210,7 +324,7 @@ preço que a chave aceita; função salva com outro modelo passa a mostrar "mode
 | Rotas `/api/ai-central` (o prefixo `/api/ai` é do app antigo e não pode ser usado) | `server/ai/router.ts` (montadas em `server.ts`) |
 | Usos | `server/contentHub/pipeline.ts`, `worker.ts`, `router.ts`, `questionAnalysis.ts`, `questionReanalysis.ts`, `draftChecks.ts`, `server/lessons/assist.ts`, `server/podcasts/script.ts` |
 | Tela | `src/novo/app/admin/ai/` (`AdminAI.jsx`, `FunctionEditor.jsx`, `aiApi.js`), aba em `AdminScreen.jsx`, resumo em `content/HubSettings.jsx` |
-| Testes | `src/__tests__/aiCentral.test.ts`, `aiCentralScreen.test.tsx` e os ajustes nos testes de cada uso |
+| Testes | `src/__tests__/aiCentral.test.ts`, `aiCentralScreen.test.tsx` e os ajustes nos testes de cada uso; correções de 2026-10-10: `centralIasCorrecoes`, `geminiMotivoParada`, `geminiFolgaTodosModelos`, `tetoExecucaoGastoReal`, `avisoTetoExecucao`, `reservaDentroDoPrazo`, `tempoEsgotadoCancela`, `tempoGeminiLimiteNode`, `tetoSaidaMinimaProvedor`; polimento: `recusaVaiParaReserva` |
 
 Regra da fila: os trabalhos parados por falta de IA voltam para a fila quando alguma IA está ligada na Central (ou na
 simulação), no servidor (`worker.start()`) e na tarefa do Cloud Run (`scripts/content-hub/worker-job.ts`).
