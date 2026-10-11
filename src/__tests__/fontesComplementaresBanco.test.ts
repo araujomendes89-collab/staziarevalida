@@ -107,7 +107,10 @@ beforeAll(async () => {
   sNeutra = (await sql(`insert into public.ch_sources (title, organ, kind, url, version, authority_level) values ($1, $2, 'final', $3, '3', 'B') returning id`, [NEU_TITLE, NEU_ORGAN, NEU_URL]))[0].id;
 
   // questão com análise publicada, evidência das duas fontes e cartão de atualização que cita as duas
-  await rpc(ADMIN, "app_admin_save_question", { p_question: questao });
+  // (APOIO-B) a checagem ao salvar barra a equipe de digitar a apostila: salva só com a fonte oficial e grava a fonte antiga direto
+  // no banco (como um dado antigo), que é o que este teste quer provar que o aluno não recebe.
+  await rpc(ADMIN, "app_admin_save_question", { p_question: { ...questao, sources: questao.sources.slice(0, 1) } });
+  await sql(`update public.questions set sources = $2::jsonb where id = $1`, [QID, JSON.stringify(questao.sources)]);
   const claim = (await sql(`insert into public.ch_claims (statement) values ('Suporte é a conduta na bronquiolite leve.') returning id`))[0].id;
   await sql(`insert into public.question_claims (question_id, claim_id, role) values ($1, $2, 'solves')`, [QID, claim]);
   for (const [src, page] of [[sOficial, 12], [sComp, 345], [sNeutra, 77]] as const) {
