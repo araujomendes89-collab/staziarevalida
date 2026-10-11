@@ -13,7 +13,7 @@
  */
 import { buildContentHubDeps } from "../../server/contentHub/index";
 import { aiAvailable, createContentHubWorker } from "../../server/contentHub/worker";
-import { probeProcessing, reportProcessing } from "../../server/contentHub/capabilities";
+import { aiSummaryLine, probeProcessing, reportProcessing } from "../../server/contentHub/capabilities";
 
 const budgetMs = (Number(process.env.CONTENT_HUB_JOB_BUDGET_MIN) > 0 ? Number(process.env.CONTENT_HUB_JOB_BUDGET_MIN) : 50) * 60_000;
 const staleSeconds = Number(process.env.CONTENT_HUB_STALE_SECONDS) > 0 ? Number(process.env.CONTENT_HUB_STALE_SECONDS) : 1800;
@@ -26,9 +26,9 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  console.log(`[central] tarefa: banco ${deps.db.mode === "supabase" ? "Supabase" : "desenvolvimento"} · IA definida na Central de IAs · gerador de PDF ${deps.renderer ? "pronto" : "indisponível"}`);
-  // o painel da Central mostra este relato (o servidor do site não processa)
+  // o painel da Central mostra este relato (o servidor do site não processa); a IA é conferida na Central de IAs, com as chaves daqui
   const report = await probeProcessing(deps);
+  console.log(`[central] tarefa: banco ${deps.db.mode === "supabase" ? "Supabase" : "desenvolvimento"} · ${aiSummaryLine(report.ai)} · gerador de PDF ${deps.renderer ? "pronto" : "indisponível"}`);
   if (report.pending.length) console.log(`[central] pendências do processamento: ${report.pending.join(" | ")}`);
   await reportProcessing(deps, report, { started_at: new Date(t0).toISOString() });
   const worker = createContentHubWorker(deps, { staleSeconds });
@@ -43,7 +43,9 @@ async function main() {
     return { embedded: 0, tokens: 0, costUsd: 0, error: error.message.slice(0, 200) };
   });
   await deps.renderer?.close().catch(() => undefined);
-  await reportProcessing(deps, report, { started_at: new Date(t0).toISOString(), finished_at: new Date().toISOString(), jobs, sources, vectors });
+  // a busca por significado pode ter parado na rodada (erro de configuração do Google): o relato final mostra o motivo
+  const finalReport = deps.embedder?.problem ? await probeProcessing(deps) : report;
+  await reportProcessing(deps, finalReport, { started_at: new Date(t0).toISOString(), finished_at: new Date().toISOString(), jobs, sources, vectors });
   console.log(`[central] tarefa concluída: ${jobs} trabalho(s) da fila · fontes conferidas ${sources.checked} (mudaram ${sources.changed}, inacessíveis ${sources.unreachable}) · vetores novos ${vectors.embedded} · ${Math.round((Date.now() - t0) / 1000)} s`);
 }
 

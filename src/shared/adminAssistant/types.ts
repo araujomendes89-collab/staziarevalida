@@ -120,6 +120,10 @@ export interface AssistStatus {
 /** Textos exatos da especificação, usados pelo servidor e pela tela. */
 export const ASSIST_TEXTS = {
   noSource: "Sem fonte: cole um trecho da diretriz ou envie o material",
+  /** Preencher devolveu "Sem fonte" em todos os campos pedidos: a biblioteca de fontes oficiais não tem trecho do tema (Q14). */
+  noSourceAllTitle: "Faltou fonte para este tema",
+  noSourceAll: "A biblioteca de fontes oficiais ainda não tem trecho sobre este tema. Cole o trecho da diretriz ou envie o PDF ou o link.",
+  noSourceAllNotes: "A biblioteca de fontes oficiais ainda não tem trecho sobre este tema. Escreva o trecho da diretriz em Suas notas.",
   discarded: "Sugestão para campo que o assistente não muda foi descartada",
   suspeita: "Suspeita sem fonte: confira antes de mudar",
   stale: "O campo mudou depois da proposta: peça de novo",

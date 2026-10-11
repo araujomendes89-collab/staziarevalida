@@ -177,6 +177,9 @@ function toQuestion(cells) {
     expected_conduct: String(cells.conduta ?? "").trim() || null,
     inep_intent: String(cells.avalia ?? "").trim() || null,
     needs_image: declaredImage ?? citesFigure(statement),
+    // a coluna imagem veio preenchida? Sem ela, needs_image é palpite tirado do enunciado: vale para questão nova, mas
+    // "atualizar as que já existem" não troca a marca gravada (a equipe pode tê-la posto ou tirado à mão)
+    needs_image_declared: declaredImage !== null,
     sources: source ? [{ title: source }] : [],
   };
   return { question, problems };

@@ -3,15 +3,18 @@
 import React from "react";
 import { AnswerOption, Badge, Banner, Button, Card, Icon, ProgressBar, StatCard, Tabs } from "../../ds";
 import { useMQ } from "../Shell.jsx";
-import { Correction } from "./Correction.jsx";
+import { Correction, answerState, isAnnulled } from "./Correction.jsx";
 import { areaLabel, areaOf, examLabel, formatClock, formatWhen, percent, splitStatement } from "./format.js";
 import { QuestionFigures } from "./QuestionFigures.jsx";
 
-const stateOf = (question) => (question.selected == null ? "blank" : question.correction.is_correct ? "right" : "wrong");
+// Anulada pela banca: fora de certas, erradas e em branco (não conta como acerto nem erro).
+const stateOf = (question) =>
+  isAnnulled(question.correction) ? "annulled" : question.selected == null ? "blank" : question.correction.is_correct ? "right" : "wrong";
 const STATE = {
   right: { icon: "circle-check", color: "var(--success-text)", label: "Certa" },
   wrong: { icon: "circle-x", color: "var(--danger-text)", label: "Errada" },
   blank: { icon: "circle-minus", color: "var(--text-tertiary)", label: "Em branco" },
+  annulled: { icon: "ban", color: "var(--text-tertiary)", label: "Anulada" },
 };
 
 function ReviewRow({ question, position, first, open, onToggle }) {
@@ -47,7 +50,7 @@ function ReviewRow({ question, position, first, open, onToggle }) {
               <AnswerOption
                 key={option.id}
                 letter={option.id}
-                state={option.id === question.correction.correct_option ? "correct" : option.id === question.selected ? "incorrect" : "dimmed"}
+                state={answerState(option.id, question.selected, question.correction)}
               >
                 {option.text}
               </AnswerOption>
@@ -66,8 +69,10 @@ export function SessionResult({ session, go, timeUp = false }) {
   const result = session.result;
   // No simulado, em branco conta como erro; no treino, só entram as respondidas.
   const base = sim ? result.total : result.answered;
+  // o placar já vem sem as anuladas (…7700); elas aparecem à parte no filtro "Anuladas"
   const wrong = result.answered - result.correct;
   const blank = result.total - result.answered;
+  const annulled = session.questions.filter((question) => stateOf(question) === "annulled").length;
   const score = percent(result.correct, base);
 
   const [filter, setFilter] = React.useState("all");
@@ -163,10 +168,11 @@ export function SessionResult({ session, go, timeUp = false }) {
                 setOpenId(null);
               }}
               tabs={[
-                { value: "all", label: "Todas", count: result.total },
+                { value: "all", label: "Todas", count: session.questions.length },
                 { value: "wrong", label: "Erradas", count: wrong },
                 { value: "blank", label: "Em branco", count: blank },
                 { value: "right", label: "Certas", count: result.correct },
+                ...(annulled ? [{ value: "annulled", label: "Anuladas", count: annulled }] : []),
               ]}
             />
           </div>

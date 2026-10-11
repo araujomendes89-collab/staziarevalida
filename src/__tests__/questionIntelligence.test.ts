@@ -164,9 +164,9 @@ describe("SQIE com banco e simulação de IA", () => {
   it("histórico: nova versão mantém a anterior; preliminar não substitui definitivo; nada se edita nem se apaga", async () => {
     const id = (await sql(`select id from public.questions where status = 'valid' order by id limit 1`))[0].id;
     const current = (await sql(`select answer from public.question_official_answers where question_id = $1 and is_current`, [id]))[0].answer;
-    await expect(as(ADMIN, (q) => q(`select public.app_admin_set_official_answer($1, 'A', 'PRELIMINARY', 'Gabarito preliminar (teste)')`, [id]))).rejects.toThrow(/gabarito definitivo/);
+    await expect(as(ADMIN, (q) => q(`select public.app_admin_set_official_answer($1, 'A', 'PRELIMINARY', 'Gabarito preliminar (teste)', null, null, 'Teste do preliminar.')`, [id]))).rejects.toThrow(/gabarito definitivo/);
     const other = ["A", "B", "C", "D"].find((l) => l !== current)!;
-    await as(ADMIN, (q) => q(`select public.app_admin_set_official_answer($1, $2, 'CHANGED_AFTER_APPEAL', 'Gabarito pós-recurso (teste)', null, '2026-09-30')`, [id, other]));
+    await as(ADMIN, (q) => q(`select public.app_admin_set_official_answer($1, $2, 'CHANGED_AFTER_APPEAL', 'Gabarito pós-recurso (teste)', null, '2026-09-30', 'Recurso aceito (teste).')`, [id, other]));
     const h = await sql(`select version, answer, answer_status, is_current from public.question_official_answers where question_id = $1 order by version`, [id]);
     expect(h).toEqual([
       { version: 1, answer: current, answer_status: "FINAL", is_current: false },
@@ -175,13 +175,16 @@ describe("SQIE com banco e simulação de IA", () => {
     expect((await sql(`select correct_option, status from public.questions where id = $1`, [id]))[0]).toEqual({ correct_option: other, status: "changed_after_appeal" });
     await expect(sql(`update public.question_official_answers set answer = 'A' where question_id = $1`, [id])).rejects.toThrow(/não se altera/);
     await expect(sql(`delete from public.question_official_answers where question_id = $1`, [id])).rejects.toThrow(/não se altera/);
-    await expect(as(REVIEWER, (q) => q(`select public.app_admin_set_official_answer($1, 'A', 'FINAL', 'x')`, [id]))).rejects.toThrow(/administradores/);
+    await expect(as(REVIEWER, (q) => q(`select public.app_admin_set_official_answer($1, 'A', 'FINAL', 'x', null, null, 'y')`, [id]))).rejects.toThrow(/administradores/);
+    // fonte e motivo obrigatórios (…7700)
+    await expect(as(ADMIN, (q) => q(`select public.app_admin_set_official_answer($1, 'A', 'FINAL', 'Gabarito definitivo (teste)')`, [id]))).rejects.toThrow(/motivo/);
     // a mudança ficou na trilha, com motivo
     const log = (await sql(`select reason, changes from public.question_change_log where question_id = $1`, [id]))[0];
     expect(log.reason).toMatch(/CHANGED_AFTER_APPEAL/);
     expect(log.changes.correct_option).toEqual({ de: current, para: other });
     // devolve ao estado original para os demais testes
-    await as(ADMIN, (q) => q(`select public.app_admin_set_official_answer($1, $2, 'FINAL', 'Gabarito definitivo (teste)')`, [id, current]));
+    await as(ADMIN, (q) => q(`select public.app_admin_set_official_answer($1, $2, 'FINAL', 'Gabarito definitivo (teste)', null, null, 'Volta ao estado original (teste).')`, [id, current]));
+    await as(ADMIN, (q) => q(`select public.app_admin_question_review_done($1)`, [id]));
   });
 
   it("trilha de mudanças: editar enunciado ou alternativas deixa registro (antes e depois); reaplicar igual não registra", async () => {

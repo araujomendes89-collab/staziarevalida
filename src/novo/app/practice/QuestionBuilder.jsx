@@ -44,7 +44,8 @@ function RecentSessions({ sessions, go, sim }) {
       <div style={{ display: "flex", flexDirection: "column", marginTop: 8 }}>
         {sessions.map((s, index) => {
           const open = !s.finished_at;
-          const base = sim ? s.total : s.answered;
+          // anuladas pela banca não contam como acerto nem erro (o banco já as tira de respondidas e acertos)
+          const base = sim ? s.total - (s.annulled ?? 0) : s.answered;
           return (
             <button
               key={s.id}

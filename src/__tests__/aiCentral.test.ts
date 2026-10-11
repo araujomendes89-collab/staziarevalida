@@ -693,7 +693,8 @@ describe("Configuração", () => {
     it("conferente que não roda vira aviso e não tira a função de pronta", async () => {
       const r = await check(fc("linha", C, [O]));
       expect(r).toMatchObject({ ready: true, problems: [] });
-      expect(r.warnings).toEqual([`Ollama qwen3 não pode rodar aqui (${MAC})`]);
+      // aviso fixo da Linha de produção (correção IA04, 2026-10-10) e o conferente que não roda
+      expect(r.warnings).toEqual(["Nesta etapa a função usa só a IA principal e a reserva: os conferentes da Linha de produção ainda não rodam.", `Ollama qwen3 não pode rodar aqui (${MAC})`]);
       // reserva que não roda, com a principal rodando, também só avisa
       const reserva = await check(fc("sozinha", C, [], O));
       expect(reserva).toMatchObject({ ready: true, problems: [] });
@@ -701,27 +702,28 @@ describe("Configuração", () => {
     });
 
     it("comitê: vale a regra de principal e reserva (o uso real só chama as duas); membro que não roda avisa", async () => {
-      const NOTA = "O comitê completo entra em uso na etapa 2; hoje a função usa a principal e a reserva.";
+      // aviso fixo do Comitê (correção IA04, 2026-10-10): sempre, não só com menos de 2 membros rodando
+      const NOTA = "Nesta etapa a função usa só a IA principal e a reserva: os membros do Comitê ainda não rodam.";
       // principal Ollama fora do Mac e 2 membros que rodam, sem reserva: nada responderia → não está pronta
       const sem = await check(fc("comite", O, [C, G]));
       expect(sem).toMatchObject({ ready: false, problems: [MAC] });
       // com reserva que roda, vale: a reserva responde
       const com = await check(fc("comite", O, [ref("openai", "gpt-x"), G], C));
       expect(com).toMatchObject({ ready: true, problems: [] });
-      expect(com.warnings).toEqual([`A principal não pode rodar aqui (${MAC}); a reserva vai responder.`]);
+      expect(com.warnings).toEqual([NOTA, `A principal não pode rodar aqui (${MAC}); a reserva vai responder.`]);
       // membro que não roda: aviso por membro, com o motivo
       const membro = await check(fc("comite", C, [O, G]));
       expect(membro).toMatchObject({ ready: true, problems: [] });
-      expect(membro.warnings).toEqual([`Ollama qwen3 não pode rodar aqui (${MAC})`]);
-      // menos de 2 membros rodam: só aviso de que o comitê completo vem na etapa 2
+      expect(membro.warnings).toEqual([NOTA, `Ollama qwen3 não pode rodar aqui (${MAC})`]);
+      // menos de 2 membros rodam: o mesmo aviso fixo
       const poucos = await check(fc("comite", C, [O]));
       expect(poucos).toMatchObject({ ready: true, problems: [] });
-      expect(poucos.warnings).toEqual([`Ollama qwen3 não pode rodar aqui (${MAC})`, NOTA]);
+      expect(poucos.warnings).toEqual([NOTA, `Ollama qwen3 não pode rodar aqui (${MAC})`]);
       // membro com a IA desligada também diz o motivo (a função segue com o problema da IA desligada)
       const off = await check(fc("comite", C, [G, O]), PROD, { enabled: ["anthropic", "gemini"] });
       expect(off.ready).toBe(false);
       expect(off.problems).toEqual(["Ollama está desligada na Central de IAs."]);
-      expect(off.warnings).toEqual(["Ollama qwen3 não pode rodar aqui (Ollama está desligada na Central de IAs.)"]);
+      expect(off.warnings).toEqual([NOTA, "Ollama qwen3 não pode rodar aqui (Ollama está desligada na Central de IAs.)"]);
     });
 
     it("chave ausente neste servidor (site) é só aviso: a função continua pronta", async () => {
@@ -1067,18 +1069,19 @@ describe("Maestro", () => {
     await on("anthropic");
     await saveFn("criacao", "sozinha", A);
     await price(A, 10, 10);
-    await settings({ caps_enabled: true, monthly_cap_usd: 0.05 });
+    // rodada 5: o Claude recebe no mínimo 8.192 de saída, e a estimativa usa isso (≈ US$ 0,083), não os 3.000 pedidos
+    await settings({ caps_enabled: true, monthly_cap_usd: 0.1 });
     await refresh();
-    const f = fakes({ [key(A)]: () => new Promise((res) => setTimeout(() => res({ ok: 1 }), 40)) }, { inTok: 100, outTok: 3000 });
+    const f = fakes({ [key(A)]: () => new Promise((res) => setTimeout(() => res({ ok: 1 }), 40)) }, { inTok: 100, outTok: 8000 });
     const d = deps(f);
     const req = { ...REQ, maxOutputTokens: 3000 };
     const [r1, r2] = await Promise.all([run(d, "criacao", req), run(d, "criacao", req)]);
     expect(r1.status).toBe("ok");
     expect(r2.status).toBe("ok");
-    const estimate = (Math.ceil((REQ.system.length + REQ.input.length) / 4) * 10 + 3000 * 10) / 1_000_000;
+    const estimate = (Math.ceil((REQ.system.length + REQ.input.length) / 4) * 10 + 8192 * 10) / 1_000_000;
     const spent = await monthSpend();
-    expect(spent).toBeGreaterThan(0.05);
-    expect(spent).toBeLessThanOrEqual(0.05 + estimate);
+    expect(spent).toBeGreaterThan(0.1);
+    expect(spent).toBeLessThanOrEqual(0.1 + estimate);
     await refresh();
     const r3 = await run(d, "criacao", req);
     expect(r3.status).toBe("parou_no_teto");

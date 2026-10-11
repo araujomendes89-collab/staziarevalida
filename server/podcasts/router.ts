@@ -35,7 +35,7 @@ const FILE_TYPES: Record<string, { ext: "pdf" | "docx"; magic: (b: Buffer) => bo
   [DOCX]: { ext: "docx", magic: isZip },
 };
 const SCRIPT_KINDS = ["gemini", "anthropic", "openai", "ollama", "mock"];
-const TTS_KINDS: TtsKind[] = ["gemini", "openai", "mock"];
+const TTS_KINDS: TtsKind[] = ["openai", "gemini", "mock"]; // a OpenAI vem primeiro: é a voz padrão por enquanto (a do Gemini fica desligada por variável)
 const TTS_LABEL: Record<TtsKind, string> = { gemini: "Gemini (duas vozes na mesma conversa)", openai: "OpenAI (uma voz por fala)", mock: "Simulação (silêncio, sem IA)" };
 
 type Authed = Request & { user?: Identity };
@@ -367,8 +367,8 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
 
   router.post("/:id/audio/start", async (req: Authed, res) => {
     try {
-      const kind = String(req.body?.provider ?? "gemini") as TtsKind;
-      if (!TTS_KINDS.includes(kind)) throw httpError(400, "Escolha a voz do Gemini ou da OpenAI.");
+      const kind = String(req.body?.provider ?? "openai") as TtsKind;
+      if (!TTS_KINDS.includes(kind)) throw httpError(400, "Escolha a voz da OpenAI ou do Gemini.");
       await staffPodcast(req);
       const st = ttsStatus(kind, deps!.tts?.env);
       if (!st.ready) throw httpError(503, `Voz indisponível: ${st.pending}`);

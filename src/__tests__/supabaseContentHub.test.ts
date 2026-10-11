@@ -258,7 +258,8 @@ describe("Unidade didática, materiais, aprovação e publicação", () => {
     await expect(rpc(EDITOR, "app_ch_publish", { p_version_id: version })).rejects.toThrow(/restrito a administradores/);
     const pub = await rpc(ADMIN, "app_ch_publish", { p_version_id: version });
     expect(pub.content_hash).toMatch(/^[0-9a-f]{64}$/);
-    const visible = await rpc(STUDENT, "app_ch_published_units");
+    await expect(rpc(STUDENT, "app_ch_published_units")).rejects.toThrow(/restrito à equipe/);
+    const visible = await rpc(EDITOR, "app_ch_published_units");
     expect(visible).toHaveLength(1);
     expect(visible[0]).toMatchObject({ title: "Pré-eclâmpsia grave", version: 1 });
     expect(Object.keys(visible[0].materials).sort()).toEqual(["flashcards", "lesson"]);
@@ -273,8 +274,8 @@ describe("Unidade didática, materiais, aprovação e publicação", () => {
       { version: 1, status: "needs_update", candidate_reason: "Fonte substituída: 2022 → 2025" },
       { version: 2, status: "draft", candidate_reason: "Fonte substituída: 2022 → 2025" },
     ]);
-    // continua visível ao aluno (não foi substituída automaticamente)
-    expect(await rpc(STUDENT, "app_ch_published_units")).toHaveLength(1);
+    // continua publicada (não foi substituída automaticamente); a lista com o conteúdo inteiro é só da equipe
+    expect(await rpc(EDITOR, "app_ch_published_units")).toHaveLength(1);
     // a candidata herda materiais e afirmações, e não publica sem nova evidência e nova revisão
     const candidate = (await one(`select id from public.ch_unit_versions where unit_id = $1 and version = 2`, [unit])).id;
     expect((await one(`select count(*)::int as n from public.ch_materials where unit_version_id = $1`, [candidate])).n).toBe(2);

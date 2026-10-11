@@ -123,6 +123,9 @@ describe("assistente das abas — valores e textos comuns", () => {
   it("todos os textos exatos das regras globais (com os três da decisão A9)", () => {
     expect(ASSIST_TEXTS).toEqual({
       noSource: "Sem fonte: cole um trecho da diretriz ou envie o material",
+      noSourceAllTitle: "Faltou fonte para este tema",
+      noSourceAll: "A biblioteca de fontes oficiais ainda não tem trecho sobre este tema. Cole o trecho da diretriz ou envie o PDF ou o link.",
+      noSourceAllNotes: "A biblioteca de fontes oficiais ainda não tem trecho sobre este tema. Escreva o trecho da diretriz em Suas notas.",
       discarded: "Sugestão para campo que o assistente não muda foi descartada",
       suspeita: "Suspeita sem fonte: confira antes de mudar",
       stale: "O campo mudou depois da proposta: peça de novo",
