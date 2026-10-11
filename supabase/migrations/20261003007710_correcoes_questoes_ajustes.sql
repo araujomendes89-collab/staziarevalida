@@ -167,7 +167,9 @@ as $$
                 where a.user_id = u.id and a.is_correct and q.status <> 'annulled'),
     'last_activity', greatest(
       (select max(a.answered_at) from public.question_attempts a where a.user_id = u.id),
-      (select max(f.reviewed_at) from public.flashcard_reviews f where f.user_id = u.id))
+      (select max(f.reviewed_at) from public.flashcard_reviews f where f.user_id = u.id)),
+    -- áreas de revisão médica (Administração › Usuários mostra o selo "Revisor médico"; mesma linha da …9560)
+    'reviewer_areas', coalesce((select jsonb_agg(ra.area_code order by ra.area_code) from public.ch_reviewer_areas ra where ra.user_id = u.id), '[]'::jsonb)
   )
   from auth.users u
   left join public.profiles p on p.id = u.id
