@@ -99,15 +99,14 @@ Nada é aprovado pela IA: tudo continua rascunho até a decisão de uma pessoa.
 
 **Correções de 2026-10-10 (página "Correções da Administração", decididas pelo dono):**
 - **IA04:** Linha de produção e Comitê mostram sempre o aviso de que, por enquanto, só a principal e a reserva rodam
-  (na Verificação, os conferentes só rodam na conferência de rascunhos feita por comando). Por isso, na Verificação, a tela não
-  avisa "não pode rodar aqui" nem "sem chave neste servidor" sobre conferentes e membros: eles não rodam no site nem no
-  processamento (polimento, 2026-10-10). Nas outras funções esses avisos continuam.
+  (na Verificação, os conferentes só rodam na conferência de rascunhos feita por comando).
 - **IA06:** a mesma IA só é tentada de novo em falha passageira (limite por minuto, sobrecarga, servidor fora, rede, resposta fora
   do formato). Sem crédito ou cota, chave recusada, modelo inexistente, pedido inválido e tempo esgotado vão direto para a
   reserva (`shouldRetrySame`). Também vão direto para a reserva, porque se repetiriam iguais com a mesma entrada: a resposta
-  cortada pelo limite de saída, a resposta bloqueada pelo filtro do provedor (Gemini; OpenAI com `finish_reason: "content_filter"`)
-  e a recusa da IA (Claude com `stop_reason: "refusal"`; OpenAI com `message.refusal`). Desde o polimento de 2026-10-10, a recusa
-  e o filtro da OpenAI também gravam os tokens que vieram, com o custo (antes ficavam com custo 0 e eram repetidos na mesma IA).
+  cortada pelo limite de saída, a resposta bloqueada pelo filtro do provedor (Gemini) e a recusa da IA (Claude com
+  `stop_reason: "refusal"`; OpenAI com `message.refusal` ou `finish_reason: "content_filter"`, `AiRefused`). Desde o polimento de
+  2026-10-10, a recusa do Claude e a recusa e o filtro da OpenAI gravam os tokens que vieram, com o custo, e não são repetidos na
+  mesma IA (antes ficavam com custo 0 e eram repetidos).
 - **IA10:** no site (Vercel) cada PEDIDO tem hora-limite de 270 s, marcada na chegada (`server/ai/requestDeadline.ts`, middleware
   depois do `express.json`) e respeitada por todas as chamadas de IA dele (`MAESTRO_DEADLINE_MS` muda; no Cloud Run não há).
   A chamada é cortada antes do limite e nenhuma IA é chamada com menos de 30 s de prazo útil (sobram 15 s para gravar e
@@ -157,17 +156,14 @@ comitê mostrados para a equipe aparecem a partir da etapa 2.
   folga sobe a estimativa dos tetos (o pior caso), não o gasto real.
 - **Custo das falhas:** a resposta que não serve também é cobrada. A resposta cortada, bloqueada, recusada ou fora do formato
   grava os tokens que vieram, com o custo pelo preço cadastrado; o tempo esgotado (o pedido é cancelado e não traz tokens) grava
-  o pior caso estimado, dito no erro. Esse custo entra no gasto da execução (teto por execução), no gasto do mês e, na Central de
-  Conteúdo, no custo do documento: cada tentativa que falhou vira uma linha em "Execuções de IA" do documento, com a IA, os
-  tokens e o custo, e soma nas métricas da etapa (polimento, 2026-10-10; antes só a resposta que deu certo contava). Falha sem
-  resposta (rede, servidor fora do ar, chave recusada) fica com custo 0.
+  o pior caso estimado, dito no erro. Esse custo entra no gasto da execução (teto por execução) e no gasto do mês (`ai_calls`).
+  Falha sem resposta (rede, servidor fora do ar, chave recusada) fica com custo 0.
 - **Aviso na tela:** com os tetos ligados, o editor de cada função avisa quando o teto por execução não cabe uma chamada típica de
   uma IA da função, e quando não cabe a principal mais a reserva (para a reserva socorrer depois de uma falha cobrada) ou duas
   chamadas da principal mais a reserva (nova tentativa), sempre com o valor mínimo. Chamadas típicas (saída pedida no código e
   entrada que costuma ir): etapas da Central de Conteúdo, 8.192 tokens e ~30 mil caracteres; Aulas, 6.000 e 85 mil; Podcasts,
   16.000 e 125 mil; Questões, 12.000 e 8 mil; assistentes, 6.000 e 70 mil. Na Verificação, conferentes e membros são conferidos
-  com a conferência de rascunhos (4.096 de saída, ~20 mil caracteres, **sem** o Cuidado da função); desde o polimento, a
-  principal (quando algum papel não tem conferente) e a reserva também, além das etapas.
+  com a conferência de rascunhos (4.096 de saída, ~20 mil caracteres, **sem** o Cuidado da função).
 
 ## Preços
 Os preços iniciais foram conferidos em **2026-10-07** nas páginas oficiais, e cada um guarda a fonte e a data:
@@ -198,8 +194,6 @@ feita na aba vale, desde que a IA esteja ligada e o modelo esteja na lista.
 ## Registro
 - Cada chamada fica em `ai_calls`: quem pediu, função, modo, papel, IA, modelo, tokens, custo estimado, duração,
   resultado (ok, falha, teto, bloqueada) e de onde veio. As últimas aparecem na tela.
-- Na Central de Conteúdo, cada chamada de uma etapa aparece também em "Execuções de IA" do documento (`ch_ai_runs`), inclusive
-  as tentativas que falharam, cada uma com a IA que falhou, os tokens e o custo (polimento, 2026-10-10).
 - Cada mudança de configuração fica no registro de ações (`admin_audit_log`), com o e-mail de quem mudou. A seção
   **Histórico** da tela mostra as últimas.
 
@@ -233,6 +227,9 @@ preço que a chave aceita; função salva com outro modelo passa a mostrar "mode
 ## Limites conhecidos
 - A estimativa é do pior caso. No tempo esgotado, o custo gravado é esse pior caso (a empresa pode ter cobrado menos); numa
   falha sem resposta (rede, servidor fora do ar), o custo gravado é 0.
+- No custo de cada documento da Central de Conteúdo ("Execuções de IA", `ch_ai_runs`), entra só a resposta que deu certo (ou a
+  última falha, sem tokens): a tentativa que falhou antes da reserva responder está no gasto do mês (`ai_calls`), mas não aparece
+  no custo do documento. Fazer isso mexe no processamento da Central de Conteúdo e não foi pedido.
 - Com o teto por execução entre 2 × principal e 2 × principal + reserva, depois de uma resposta fora do formato a nova tentativa
   ainda sai e pode deixar a reserva sem espaço (o aviso da tela diz o valor que cobre as duas). Mudar essa regra é decisão do dono.
 - A simulação (`mock`) só existe no desenvolvimento e nos testes; em produção, pedir simulação é recusado.
@@ -250,7 +247,7 @@ preço que a chave aceita; função salva com outro modelo passa a mostrar "mode
 | Rotas `/api/ai-central` (o prefixo `/api/ai` é do app antigo e não pode ser usado) | `server/ai/router.ts` (montadas em `server.ts`) |
 | Usos | `server/contentHub/pipeline.ts`, `worker.ts`, `router.ts`, `questionAnalysis.ts`, `questionReanalysis.ts`, `draftChecks.ts`, `server/lessons/assist.ts`, `server/podcasts/script.ts` |
 | Tela | `src/novo/app/admin/ai/` (`AdminAI.jsx`, `FunctionEditor.jsx`, `aiApi.js`), aba em `AdminScreen.jsx`, resumo em `content/HubSettings.jsx` |
-| Testes | `src/__tests__/aiCentral.test.ts`, `aiCentralScreen.test.tsx` e os ajustes nos testes de cada uso; correções de 2026-10-10: `centralIasCorrecoes`, `geminiMotivoParada`, `geminiFolgaTodosModelos`, `tetoExecucaoGastoReal`, `avisoTetoExecucao`, `reservaDentroDoPrazo`, `tempoEsgotadoCancela`, `tempoGeminiLimiteNode`, `tetoSaidaMinimaProvedor`; polimento: `recusaVaiParaReserva`, `custoFalhasDocumento`, `vetoresLoteParcial`, `avisosVerificacaoRascunhos` |
+| Testes | `src/__tests__/aiCentral.test.ts`, `aiCentralScreen.test.tsx` e os ajustes nos testes de cada uso; correções de 2026-10-10: `centralIasCorrecoes`, `geminiMotivoParada`, `geminiFolgaTodosModelos`, `tetoExecucaoGastoReal`, `avisoTetoExecucao`, `reservaDentroDoPrazo`, `tempoEsgotadoCancela`, `tempoGeminiLimiteNode`, `tetoSaidaMinimaProvedor`; polimento: `recusaVaiParaReserva` |
 
 Regra da fila: os trabalhos parados por falta de IA voltam para a fila quando alguma IA está ligada na Central (ou na
 simulação), no servidor (`worker.start()`) e na tarefa do Cloud Run (`scripts/content-hub/worker-job.ts`).

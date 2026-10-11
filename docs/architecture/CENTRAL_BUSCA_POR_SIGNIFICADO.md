@@ -62,10 +62,6 @@ Vertex AI (o script confere a tarefa antes de trocar as variáveis); `EMBEDDINGS
 - **Preço:** US$ 0,20 por milhão de tokens (a tabela do Google; `AI_COST_CONFIG` substitui).
 - **Indexar:** umas 5 mil páginas de fontes custam cerca de US$ 0,60, uma vez. Cada lote fica em `ch_ai_runs` (etapa
   `embeddings`), com tokens estimados (4 caracteres por token) e custo.
-- **Falha no meio de um lote** (polimento da Central de IAs, 2026-10-10): pelo Vertex AI, um texto por pedido, os vetores que já
-  voltaram (e que o Google já cobrou) ficam gravados, e o custo deles vai para `ch_ai_runs` (etapa `embeddings`, situação
-  "failed", com o erro). O erro continua aparecendo como antes, e os trechos que ficaram sem vetor entram de novo na rodada
-  seguinte. Antes, o lote inteiro era descartado, sem registro do custo, e os mesmos trechos eram pagos de novo.
 - **Buscar:** cada busca envia só a pergunta, um custo de frações de centavo, que não é registrado chamada a chamada.
 
 ## Situação no painel
@@ -86,8 +82,7 @@ O processamento também relata se gera os vetores.
 - rota da equipe e situação no painel;
 - permissões.
 
-Ajustado: `contentHubProcessing.test.ts`. Vertex AI e caminho do Google: `buscaSignificadoVertex.test.ts`; lote que falha no meio:
-`vetoresLoteParcial.test.ts`.
+Ajustado: `contentHubProcessing.test.ts`.
 
 ## Limites conhecidos
 - **Acervo vazio:** em 2026-10-06 a produção não tinha nenhuma fonte cadastrada. A busca por significado fica pronta, mas só acha

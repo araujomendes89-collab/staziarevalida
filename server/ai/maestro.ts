@@ -6,7 +6,7 @@
  */
 import crypto from "crypto";
 import type { ContentDb } from "../contentHub/infra";
-import { AiInvalidOutput, familyOfModel, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
+import { AiInvalidOutput, AiRefused, familyOfModel, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
 import type { Schema } from "../contentHub/ai/schema";
 import {
   callEstimateUsd,
@@ -167,6 +167,8 @@ export function shouldRetrySame(e: unknown): boolean {
   // resposta cortada pelo limite de saída ou bloqueada pelo provedor se repete igual com a mesma entrada (falha vista em produção,
   // 2026-10-09: só ~9% das segundas tentativas do Gemini deram certo): vai direto para a reserva
   if (e instanceof AiInvalidOutput) return e.reason !== "cortada" && e.reason !== "bloqueada";
+  // a IA recusou o pedido (Claude, OpenAI): recusa igual com a mesma entrada, e os tokens já foram cobrados
+  if (e instanceof AiRefused) return false;
   // o fetch do Node fechou a conexão por tempo: é tempo esgotado (o provedor pode ter cobrado), não falha de rede passageira
   if (isConnectionTimeout(e)) return false;
   const msg = e instanceof Error ? e.message : String(e ?? "");
@@ -504,7 +506,7 @@ class Run {
       let error = errText(e);
       // a resposta que falhou também é cobrada (ex.: cortada pelo limite de saída): tokens e custo vão para o registro, para o gasto
       // do mês e para o teto desta execução (antes ficavam com custo 0)
-      const used = e instanceof AiInvalidOutput ? e.usage : undefined;
+      const used = e instanceof AiInvalidOutput || e instanceof AiRefused ? e.usage : undefined;
       let cost = used ? this.costOf(slot, { inputTokens: used.inputTokens, outputTokens: used.outputTokens, costUsd: null }) : 0;
       // o fetch do Node fechou a conexão por tempo (rodada 4): é tempo esgotado, dito em português (o erro cru é "fetch failed")
       const connectionTimeout = !(e instanceof AiTimeout) && isConnectionTimeout(e);
