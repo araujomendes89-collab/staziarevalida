@@ -71,6 +71,8 @@ export interface PipelineDeps {
   embedder?: Embedder | null;
   /** Busca de fontes oficiais (sources/search.ts): só para testes, o `fetch`, a checagem de endereço público e a hora. */
   web?: { fetchImpl?: typeof fetch; checkHost?: (host: string) => Promise<void>; now?: () => Date };
+  /** Espera entre as tentativas de gravar o ponto da etapa (padrão: `setTimeout`); os testes passam uma espera vazia. */
+  sleep?: (ms: number) => Promise<void>;
 }
 
 /** Falta configuração: o trabalho fica pendente, sem gastar tentativa. */
@@ -167,10 +169,23 @@ const owner = (job: Job) => (job.lease ? { p_lease: job.lease } : {});
  * Ponto em que a etapa está (para retomar) e sinal de vida: o trabalho "rodando" sem sinal por mais de
  * CONTENT_HUB_STALE_SECONDS volta para a fila. Se outro processamento já pegou o trabalho, para aqui (Lost).
  */
+const CHECKPOINT_WAITS_MS = [500, 1000, 2000, 4000];
 const checkpoint = async (ctx: Ctx, data: Record<string, unknown>) => {
   ctx.job.checkpoint = data;
-  const ours = await svc<boolean | null>(ctx, "ch_worker_checkpoint", { p_job_id: ctx.job.id, p_checkpoint: data, ...owner(ctx.job) });
-  if (ours === false) throw new Lost(LOST);
+  // Falha ao gravar o ponto, depois de um trabalho pago (resposta da IA) ou de um candidato criado, não pode devolver o trabalho
+  // à fila sem ele: a gravação é tentada de novo, com o dado ainda na memória, antes de desistir.
+  const sleep = ctx.deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  for (let attempt = 0; ; attempt++) {
+    try {
+      const ours = await svc<boolean | null>(ctx, "ch_worker_checkpoint", { p_job_id: ctx.job.id, p_checkpoint: data, ...owner(ctx.job) });
+      if (ours === false) throw new Lost(LOST);
+      return;
+    } catch (error) {
+      if (error instanceof Lost || attempt >= CHECKPOINT_WAITS_MS.length) throw error;
+      ctx.deps.log?.(`[central] ${ctx.job.step}: ponto não gravado (${error instanceof Error ? error.message.slice(0, 120) : String(error)}); tentando de novo`);
+      await sleep(CHECKPOINT_WAITS_MS[attempt]);
+    }
+  }
 };
 
 export function stepVersions(step: Step, deps: PipelineDeps): Record<string, unknown> {

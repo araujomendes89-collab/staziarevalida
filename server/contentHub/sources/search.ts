@@ -163,8 +163,19 @@ export async function runSourceSearch(
   let done = Math.max(0, Math.min(Number(cp.done ?? 0) || 0, found));
   let verified = Number(cp.verified ?? 0) || 0;
   const discarded: Discard[] = Array.isArray(cp.discarded) ? cp.discarded : [];
+  const resumedAt = done;
   for (let i = done; i < found; i++) {
     const item = saved.documentos[i] as Record<string, unknown> | null;
+    // retomada: o achado em que a rodada anterior parou pode já ter virado candidato desta busca (o ponto não chegou a ser
+    // guardado); conta como conferido, não como "Repetido" dele mesmo
+    const link = text(item?.link, 2000);
+    if (cp.ai && i === resumedAt && link && (await db.service<boolean>("ch_worker_source_search_has_candidate", { p_search_id: searchId, p_url: link }))) {
+      verified++;
+      done = i + 1;
+      await io.checkpoint({ ai: saved, done, verified, discarded });
+      await update({ verified_count: verified, discarded });
+      continue;
+    }
     const outcome = await verifyFinding(item, {
       db,
       storage: deps.storage,

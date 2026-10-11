@@ -309,6 +309,65 @@ describe("Busca na fila", () => {
     expect((await sql("select count(*)::int as n from public.ai_calls where item_id = $1", [id]))[0].n).toBe(1);
   });
 
+  /** Banco que falha ao gravar o ponto da etapa quando `fail(n)` manda (n = quantas gravações já houve), sem apagar nada. */
+  const flakyCheckpoints = (fail: (n: number, point: any) => boolean) => {
+    const seen = { writes: 0, failed: 0 };
+    const db = {
+      ...t.db,
+      service: async (fn: string, args?: Record<string, unknown>) => {
+        if (fn === "ch_worker_checkpoint") {
+          seen.writes++;
+          if (fail(seen.writes, args?.p_checkpoint)) {
+            seen.failed++;
+            throw new Error("Falha de rede ao gravar o ponto.");
+          }
+        }
+        return t.db.service(fn, args);
+      },
+    };
+    return { db, seen };
+  };
+
+  it("falha ao gravar o ponto depois da resposta paga da IA: a gravação é tentada de novo e a IA não é chamada outra vez", async () => {
+    await turnOn();
+    await saveSearchFn();
+    const { id, job } = await startSearch();
+    const web = fakeWeb({ "https://www.gov.br/saude/ponto-a.pdf": pdfRoute("ponto a") });
+    const ai = fakeAi(() => ({ documentos: [finding("https://www.gov.br/saude/ponto-a.pdf", "ponto a")], observacao: null }));
+    let aiWrites = 0;
+    const flaky = flakyCheckpoints((_n, point) => point?.ai && point.done === 0 && ++aiWrites <= 2); // a gravação da resposta da IA falha duas vezes
+    await createContentHubWorker(depsOf(ai, web, { db: flaky.db, sleep: async () => {} })).drain();
+    expect(flaky.seen.failed).toBe(2);
+    expect(ai.calls).toHaveLength(1);
+    expect((await jobOf(job.id)).status).toBe("succeeded");
+    expect(await searchRow(id)).toMatchObject({ status: "concluida", verified_count: 1, discarded_count: 0 });
+    expect((await candidates(id)).length).toBe(1);
+  });
+
+  it("gravação do ponto que não volta depois de criar o candidato: a retomada conta o achado como conferido, não como Repetido", async () => {
+    await turnOn();
+    await saveSearchFn();
+    const { id, job } = await startSearch();
+    const web = fakeWeb({ "https://www.gov.br/saude/ponto-c.pdf": pdfRoute("ponto c"), "https://www.gov.br/saude/ponto-d.pdf": pdfRoute("ponto d") });
+    const ai = fakeAi(() => ({ documentos: [finding("https://www.gov.br/saude/ponto-c.pdf", "ponto c"), finding("https://www.gov.br/saude/ponto-d.pdf", "ponto d")], observacao: null }));
+    // a gravação da resposta da IA passa; as que guardam o andamento da conferência (done >= 1) falham na primeira rodada
+    let phase = 1;
+    const flaky = flakyCheckpoints((_n, point) => phase === 1 && Number(point?.done ?? 0) >= 1);
+    const worker = createContentHubWorker(depsOf(ai, web, { db: flaky.db, sleep: async () => {} }));
+    await worker.drain();
+    expect((await jobOf(job.id)).status).toBe("queued");
+    expect((await candidates(id)).length).toBe(1);
+    expect(ai.calls).toHaveLength(1);
+    // segunda rodada, banco saudável: termina com a resposta guardada e sem pagar de novo
+    phase = 2;
+    await sql("update public.ch_jobs set run_after = now() where id = $1", [job.id]);
+    await worker.drain();
+    expect(ai.calls).toHaveLength(1);
+    expect((await candidates(id)).length).toBe(2);
+    const s = await searchRow(id);
+    expect(s).toMatchObject({ status: "concluida", verified_count: 2, discarded_count: 0 });
+  });
+
   it("mesmo arquivo por dois links na mesma busca: um candidato, o outro vira descarte Repetido", async () => {
     await turnOn();
     await saveSearchFn();

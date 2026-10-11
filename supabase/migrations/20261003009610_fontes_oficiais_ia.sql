@@ -771,6 +771,17 @@ begin
 end
 $$;
 
+-- A busca já gravou candidato para este link? (retomada: o candidato foi criado, mas o ponto da conferência não chegou a ser
+-- guardado; sem isto o achado voltaria como "Repetido" de si mesmo.) Só candidato desta busca conta.
+create or replace function public.ch_worker_source_search_has_candidate(p_search_id uuid, p_url text) returns boolean
+  language sql stable security definer set search_path = ''
+as $$
+  select exists (select 1 from public.ch_source_candidates c
+                  where c.search_id = p_search_id
+                    and public.ch_url_norm(p_url) is not null
+                    and (c.url_norm = public.ch_url_norm(p_url) or c.final_url_norm = public.ch_url_norm(p_url)))
+$$;
+
 -- ---------------------------------------------------------------- Central de IAs: funções recriadas com busca_fontes
 -- (corpos de 20261003005200_central_de_ias.sql; nenhuma migração posterior as redefiniu)
 
@@ -1149,6 +1160,7 @@ revoke execute on function public.ch_worker_source_search_update(uuid, jsonb) fr
 revoke execute on function public.ch_source_search_job_dead() from public, anon, authenticated;
 revoke execute on function public.ch_worker_source_known(text, text) from public, anon, authenticated;
 revoke execute on function public.ch_worker_source_candidate_create(jsonb) from public, anon, authenticated;
+revoke execute on function public.ch_worker_source_search_has_candidate(uuid, text) from public, anon, authenticated;
 revoke execute on function public.ch_worker_ai_save_function(uuid, text, jsonb) from public, anon, authenticated;
 revoke execute on function public.ch_worker_ai_log_calls(jsonb) from public, anon, authenticated;
 revoke execute on function public.ch_worker_ai_save_price(uuid, text, text, jsonb) from public, anon, authenticated;
