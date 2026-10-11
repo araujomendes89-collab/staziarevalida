@@ -6,21 +6,24 @@
  */
 import crypto from "crypto";
 import type { ContentDb } from "../contentHub/infra";
-import { AiInvalidOutput, AiRefused, familyOfModel, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
+import { AiInvalidOutput, AiRefused, familyOfModel, partialUsageOf, withUsage, type AiProvider, type AiStatus, type StructuredRequest, type StructuredResult } from "../contentHub/ai/provider";
 import type { Schema } from "../contentHub/ai/schema";
 import {
   callEstimateUsd,
+  DEFAULT_MAX_SEARCHES,
   DEFAULT_MODELS,
   effectiveMaxOut,
   envFallbackRef,
   envReserveRef,
   FUNCTION_KEYS,
   isProviderId,
+  isSearchFunction,
   loadAiConfig,
   makeProvider,
   PROVIDER_NAMES,
   providerPending,
   refProblems,
+  SEARCH_OFF,
   validateFunctionConfig,
   type AiConfig,
   type AiFunctionKey,
@@ -50,10 +53,12 @@ export interface MaestroDeps {
   log?: (m: string) => void;
   /** Hora-limite do pedido (ms desde 1970). Sem ela, vale requestDeadline (o site da Vercel corta o pedido em 5 minutos). */
   deadlineAt?: number | null;
+  /** Só para testes: tempos-limite menores da chamada com busca na internet (padrões em SEARCH_TIMEOUT_MS e SEARCH_GRACE_MS). */
+  timeouts?: { searchMs?: number; graceMs?: number };
 }
 
 export interface MaestroOrigin {
-  source: "central" | "analise" | "conferencia" | "aula" | "podcast" | "assistente";
+  source: "central" | "analise" | "conferencia" | "aula" | "podcast" | "assistente" | "fontes";
   itemId?: string | null;
   actorId?: string | null;
 }
@@ -69,6 +74,10 @@ export interface MaestroResult<T> {
   reviews: { ref: ModelRef; verdict: string; problems: unknown[] }[];
   agreement: { field: string; values: unknown[]; agree: boolean }[];
   costUsd: number;
+  /** Buscas na internet cobradas nesta execução (todas as linhas do registro, também as das chamadas que falharam depois de buscar). */
+  webSearches: number;
+  /** Os links que a busca mostrou, da resposta usada (sinal, não prova: quem prova é o servidor baixando o arquivo). */
+  seenUrls: string[];
   message: string | null;
   runId: string;
 }
@@ -107,6 +116,16 @@ Não reescreva a resposta, só aponte os problemas.`;
 // ------------------------------------------------------------------ constantes e utilitários
 
 const TIMEOUT_MS = 180_000;
+/**
+ * Tempo-limite de uma chamada com busca na internet: a do Claude faz até 4 chamadas de busca e a conversão, mais que os 180 s das
+ * chamadas simples, e menos que os 600 s em que a fila dá o trabalho por abandonado.
+ */
+const SEARCH_TIMEOUT_MS = 420_000;
+/**
+ * Depois de cancelar uma chamada com busca, quanto esperar o provedor parar e devolver o gasto das chamadas já pagas antes de
+ * desistir dele. O provedor para na hora; a espera deixa o erro levar o gasto e evita duas buscas correndo juntas.
+ */
+const SEARCH_GRACE_MS = 15_000;
 /**
  * Maior tempo-limite de uma chamada ao Gemini (o tempo cresce com a saída máxima mandada; ver callTimeoutMs). Fica abaixo dos
  * 300 s com que o fetch do Node (undici) fecha a conexão sem resposta (revisão rodada 4): o Gemini sem streaming só manda o
@@ -204,16 +223,37 @@ export function isConnectionTimeout(e: unknown): boolean {
   return false;
 }
 
-/** Espera o trabalho até `ms`; ao esgotar, chama `onTimeout` (que cancela o pedido) e falha com "Tempo esgotado". */
-function withTimeout<T>(work: () => Promise<T>, ms = TIMEOUT_MS, onTimeout?: () => void): Promise<T> {
+/**
+ * Espera o trabalho até `ms`; ao esgotar, chama `onTimeout` (que cancela o pedido) e falha com "Tempo esgotado".
+ * `graceMs` (chamadas com busca na internet): depois de cancelar, espera até esse tempo o provedor parar. Ele para na hora e o
+ * erro dele leva o gasto das chamadas já pagas (`partialUsageOf`), que passa para o "Tempo esgotado"; se ele devolver a resposta
+ * nesse intervalo, ela vale (já foi paga). Passada a tolerância, desiste dele e falha sem gasto a registrar. Sem `graceMs` (as
+ * chamadas simples) rejeita na hora, como sempre.
+ */
+function withTimeout<T>(work: () => Promise<T>, ms = TIMEOUT_MS, onTimeout?: () => void, graceMs = 0): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let grace: ReturnType<typeof setTimeout> | undefined;
+  let timedOut = false;
+  const timeout = new AiTimeout(`Tempo esgotado (${Math.round(ms / 1000)} s)${onTimeout ? ": o pedido foi cancelado" : ""}.`);
+  const started = Promise.resolve()
+    .then(work)
+    .catch((e) => {
+      if (!timedOut || graceMs <= 0) throw e;
+      const usage = partialUsageOf(e);
+      throw usage ? withUsage(timeout, usage) : timeout;
+    });
   const limit = new Promise<never>((_, reject) => {
     timer = setTimeout(() => {
+      timedOut = true;
       onTimeout?.();
-      reject(new AiTimeout(`Tempo esgotado (${Math.round(ms / 1000)} s)${onTimeout ? ": o pedido foi cancelado" : ""}.`));
+      if (graceMs <= 0) reject(timeout);
+      else grace = setTimeout(() => reject(timeout), graceMs);
     }, ms);
   });
-  return Promise.race([Promise.resolve().then(work), limit]).finally(() => clearTimeout(timer));
+  return Promise.race([started, limit]).finally(() => {
+    clearTimeout(timer);
+    clearTimeout(grace);
+  });
 }
 
 /**
@@ -223,7 +263,9 @@ function withTimeout<T>(work: () => Promise<T>, ms = TIMEOUT_MS, onTimeout?: () 
  * correta seria cortada e paga duas vezes (ela e a reserva). O prazo do pedido (270 s no site) continua mandando, e com reserva
  * pronta a principal deixa o tempo da reserva (RESERVE_KEEP_MS; ver Run.call).
  */
-export function callTimeoutMs(ref: ModelRef, maxOut: number, care?: string): number {
+export function callTimeoutMs(ref: ModelRef, maxOut: number, care?: string, search = false): number {
+  // busca na internet: várias chamadas seguidas do provedor (busca, continuações, conversão), com tempo-limite próprio
+  if (search) return SEARCH_TIMEOUT_MS;
   if (ref.provider !== "gemini") return TIMEOUT_MS;
   return Math.min(GEMINI_TIMEOUT_MAX_MS, Math.max(TIMEOUT_MS, 30_000 + effectiveMaxOut(ref, maxOut, care) * 10));
 }
@@ -248,6 +290,11 @@ interface Resolved {
 
 function resolveRefs(cfg: AiConfig, fn: AiFunctionKey, env: NodeJS.ProcessEnv, override?: MaestroOverride): Resolved {
   const fc = cfg.functions[fn] ?? null;
+  // busca na internet: só roda com a configuração salva, e a escolha da aba ou de quem chama não troca a IA dela (nem as
+  // variáveis de ambiente a definem); sem configuração, desligada
+  if (isSearchFunction(fn)) {
+    return fc ? { fc, mode: fc.mode, primary: fc.primary, fallback: fc.fallback, reviewers: fc.reviewers } : { fc: null, mode: "sozinha", primary: null, fallback: null, reviewers: [] };
+  }
   if (fc) {
     let primary = fc.primary;
     if (cfg.settings.tab_override_enabled) {
@@ -260,11 +307,11 @@ function resolveRefs(cfg: AiConfig, fn: AiFunctionKey, env: NodeJS.ProcessEnv, o
   return { fc: null, mode: "sozinha", primary, fallback: envReserveRef(primary, env), reviewers: [] };
 }
 
-function prepareSlot(deps: MaestroDeps, cfg: AiConfig, ref: ModelRef): Slot {
+function prepareSlot(deps: MaestroDeps, cfg: AiConfig, ref: ModelRef, fn?: AiFunctionKey): Slot {
   const env = deps.env ?? process.env;
   const price = cfg.prices.find((p) => p.provider === ref.provider && p.model === ref.model) ?? null;
   const blocked = (a: string | null | undefined) => ({ ref, blocked: a ?? "Provedor indisponível.", instance: null, price });
-  const pending = refProblems(ref, cfg)[0] ?? providerPending(ref, cfg, env);
+  const pending = refProblems(ref, cfg, fn)[0] ?? providerPending(ref, cfg, env);
   if (pending) return blocked(pending);
   if (deps.makeProviderFor) {
     const instance = deps.makeProviderFor(ref);
@@ -278,11 +325,17 @@ function prepareSlot(deps: MaestroDeps, cfg: AiConfig, ref: ModelRef): Slot {
 
 const isPaid = (ref: ModelRef) => ref.provider !== "ollama";
 
-/** Pior caso de uma chamada para os tetos (callEstimateUsd): tetos desligados, Ollama ou sem preço (só com tetos desligados) 0. */
-function estimateCall(cfg: AiConfig, slot: Slot, chars: number, maxOut: number, care?: string): number {
+/**
+ * Pior caso de uma chamada para os tetos (callEstimateUsd), com o máximo de buscas na internet vezes o preço por busca: tetos
+ * desligados, Ollama ou sem preço (só com tetos desligados) 0.
+ */
+function estimateCall(cfg: AiConfig, slot: Slot, chars: number, maxOut: number, care?: string, searches = 0): number {
   if (!cfg.settings.caps_enabled || !isPaid(slot.ref)) return 0;
-  return callEstimateUsd(slot.ref, slot.price, chars, maxOut, care);
+  return callEstimateUsd(slot.ref, slot.price, chars, maxOut, care, searches);
 }
+
+/** Máximo de buscas na internet que o pedido pode fazer (0 sem busca). */
+const searchesOf = (req: StructuredRequest) => req.webSearch?.maxSearches ?? 0;
 
 // ------------------------------------------------------------------ uma execução (registro, tetos, chamadas)
 
@@ -302,6 +355,8 @@ interface LogRow {
   source: string;
   item_id: string | null;
   error: string | null;
+  /** Buscas na internet cobradas nesta chamada. */
+  web_searches: number;
 }
 
 interface PlannedCall {
@@ -311,6 +366,8 @@ interface PlannedCall {
   maxOut: number;
   /** Cuidado da função (o Gemini soma a folga do raciocínio conforme ele). */
   care?: string;
+  /** Máximo de buscas na internet da chamada (0 sem busca). */
+  searches?: number;
 }
 
 type Attempt<T> = { ok: true; res: StructuredResult<T>; cost: number } | { ok: false; outcome: Exclude<Outcome, "ok">; error: string; retry?: boolean };
@@ -358,6 +415,11 @@ class Run {
     return this.rows.reduce((a, r) => a + r.cost_usd, 0);
   }
 
+  /** Buscas na internet cobradas nesta execução: as das chamadas que responderam e as das que falharam depois de buscar. */
+  get webSearches() {
+    return this.rows.reduce((a, r) => a + r.web_searches, 0);
+  }
+
   private reason(m: string) {
     if (!this.reasons.includes(m)) this.reasons.push(m);
   }
@@ -379,6 +441,7 @@ class Run {
       source: String(this.origin.source).slice(0, 60),
       item_id: this.origin.itemId ? String(this.origin.itemId).slice(0, 120) : null,
       error: null,
+      web_searches: 0,
       ...extra,
     });
   }
@@ -397,7 +460,7 @@ class Run {
     const s = this.cfg.settings;
     if (!s.caps_enabled) return null;
     const live = items.filter((i) => !i.slot.blocked);
-    const total = live.reduce((a, i) => a + estimateCall(this.cfg, i.slot, i.chars, i.maxOut, i.care), 0);
+    const total = live.reduce((a, i) => a + estimateCall(this.cfg, i.slot, i.chars, i.maxOut, i.care, i.searches), 0);
     if (s.per_run_cap_usd !== null && total > s.per_run_cap_usd) {
       return `Estimativa de US$ ${usd(total)} passa do teto por chamada de US$ ${usd(s.per_run_cap_usd)}.`;
     }
@@ -421,7 +484,7 @@ class Run {
   /** Chamada prevista da criadora: a principal, ou a reserva no lugar dela quando a principal está bloqueada. */
   creatorCall(req: StructuredRequest, primary: Slot, fallback: Slot | null, roles: { first: Role; reserve: Role }): PlannedCall {
     const useReserve = !!primary.blocked && !!fallback && !fallback.blocked;
-    return { slot: useReserve ? fallback! : primary, role: useReserve ? roles.reserve : roles.first, chars: req.system.length + req.input.length, maxOut: req.maxOutputTokens ?? DEFAULT_MAX_OUT, care: req.care };
+    return { slot: useReserve ? fallback! : primary, role: useReserve ? roles.reserve : roles.first, chars: req.system.length + req.input.length, maxOut: req.maxOutputTokens ?? DEFAULT_MAX_OUT, care: req.care, searches: searchesOf(req) };
   }
 
   /** Núcleo da execução sozinha (usado pela função e pelo adaptador): tetos e depois principal → nova tentativa → reserva. */
@@ -456,9 +519,9 @@ class Run {
     return null;
   }
 
-  private costOf(slot: Slot, res: Pick<StructuredResult<unknown>, "inputTokens" | "outputTokens" | "costUsd">): number {
+  private costOf(slot: Slot, res: Pick<StructuredResult<unknown>, "inputTokens" | "outputTokens" | "costUsd">, searches = 0): number {
     if (slot.ref.provider === "ollama") return 0;
-    const c = slot.price ? costUsd(slot.price, res.inputTokens, res.outputTokens) ?? 0 : res.costUsd ?? 0;
+    const c = slot.price ? costUsd(slot.price, res.inputTokens, res.outputTokens, searches) ?? 0 : res.costUsd ?? 0;
     return Number.isFinite(c) && c > 0 ? Math.round(c * 1e6) / 1e6 : 0;
   }
 
@@ -479,10 +542,11 @@ class Run {
   private async call<T>(slot: Slot, role: Role, req: StructuredRequest, chars: number, planned: boolean, keepMs = 0): Promise<Attempt<T>> {
     if (slot.blocked || !slot.instance) return this.refuse(slot, role, "bloqueada", slot.blocked ?? "Provedor indisponível.");
     const maxOut = req.maxOutputTokens ?? DEFAULT_MAX_OUT;
-    const est = estimateCall(this.cfg, slot, chars, maxOut, req.care);
+    const searches = searchesOf(req);
+    const est = estimateCall(this.cfg, slot, chars, maxOut, req.care, searches);
     const refusal = this.perRunRefusal(est) ?? this.monthlyRefusal(est, planned);
     if (refusal) return this.refuse(slot, role, "teto", refusal);
-    let limit = callTimeoutMs(slot.ref, maxOut, req.care);
+    let limit = searches > 0 ? this.deps.timeouts?.searchMs ?? callTimeoutMs(slot.ref, maxOut, req.care, true) : callTimeoutMs(slot.ref, maxOut, req.care);
     if (this.deadline !== null) {
       const left = this.deadline - Date.now() - DEADLINE_SAFETY_MS;
       if (left < MIN_CALL_MS) return this.refuse(slot, role, "bloqueada", NO_TIME);
@@ -496,25 +560,36 @@ class Run {
     // tempo esgotado cancela o pedido de verdade (a biblioteca de cada IA fecha a conexão), em vez de só parar de esperar
     const abort = new AbortController();
     try {
-      const res = await withTimeout(() => instance.generate<T>({ ...req, signal: abort.signal }), limit, () => abort.abort());
-      const cost = this.costOf(slot, res);
+      const res = await withTimeout(() => instance.generate<T>({ ...req, signal: abort.signal }), limit, () => abort.abort(), searches > 0 ? this.deps.timeouts?.graceMs ?? SEARCH_GRACE_MS : 0);
+      const done = Math.max(0, Math.trunc(res.webSearches ?? 0));
+      const cost = this.costOf(slot, res, done);
       this.spent += cost;
-      this.push(slot, role, "ok", { input_tokens: Math.max(0, Math.trunc(res.inputTokens ?? 0)), output_tokens: Math.max(0, Math.trunc(res.outputTokens ?? 0)), cost_usd: cost, duration_ms: Date.now() - t0 });
+      this.push(slot, role, "ok", {
+        input_tokens: Math.max(0, Math.trunc(res.inputTokens ?? 0)),
+        output_tokens: Math.max(0, Math.trunc(res.outputTokens ?? 0)),
+        web_searches: done,
+        cost_usd: cost,
+        duration_ms: Date.now() - t0,
+      });
       return { ok: true, res, cost };
     } catch (e) {
       this.lastError = e;
       let error = errText(e);
       // a resposta que falhou também é cobrada (ex.: cortada pelo limite de saída): tokens e custo vão para o registro, para o gasto
       // do mês e para o teto desta chamada (antes ficavam com custo 0)
-      const used = e instanceof AiInvalidOutput || e instanceof AiRefused ? e.usage : undefined;
-      let cost = used ? this.costOf(slot, { inputTokens: used.inputTokens, outputTokens: used.outputTokens, costUsd: null }) : 0;
+      // (partialUsageOf lê o gasto de qualquer erro que o leve: resposta fora do formato, recusa, e o erro depois de buscas pagas,
+      // com as buscas; tokens que o provedor não informou contam 0, as buscas contam)
+      const used = partialUsageOf(e);
+      const searchesUsed = Math.max(0, Math.trunc(used?.webSearches ?? 0));
+      let cost = used ? this.costOf(slot, { inputTokens: used.inputTokens ?? 0, outputTokens: used.outputTokens ?? 0, costUsd: null }, searchesUsed) : 0;
       // o fetch do Node fechou a conexão por tempo (rodada 4): é tempo esgotado, dito em português (o erro cru é "fetch failed")
       const connectionTimeout = !(e instanceof AiTimeout) && isConnectionTimeout(e);
       if (connectionTimeout) error = "Tempo esgotado: o servidor encerrou a conexão com a IA, que demorou demais para responder.";
       if ((e instanceof AiTimeout || connectionTimeout) && isPaid(slot.ref)) {
         // tempo esgotado: os tokens não chegam, mas o provedor pode cobrar o que gerou até o corte. Fica o pior caso da chamada,
         // dito no erro, para o gasto do mês e os tetos enxergarem (revisão rodada 3)
-        cost = callEstimateUsd(slot.ref, slot.price, chars, maxOut, req.care);
+        // (com busca, também o máximo de buscas; o gasto já sabido das chamadas concluídas vale se for maior)
+        cost = Math.max(cost, callEstimateUsd(slot.ref, slot.price, chars, maxOut, req.care, searches));
         error = cost > 0
           ? `${error} Custo estimado de US$ ${usd(cost)} (pior caso: o provedor pode cobrar o que gerou até o corte).`
           : `${error} Sem preço cadastrado: o custo não pôde ser estimado.`;
@@ -525,6 +600,7 @@ class Run {
         error,
         input_tokens: Math.max(0, Math.trunc(used?.inputTokens ?? 0)),
         output_tokens: Math.max(0, Math.trunc(used?.outputTokens ?? 0)),
+        web_searches: searchesUsed,
         cost_usd: cost,
       });
       this.reason(error);
@@ -549,19 +625,29 @@ class Run {
     return { ok: false };
   }
 
+  private flushing: Promise<void> = Promise.resolve();
+
   /**
-   * Grava as linhas ainda não gravadas. As linhas são separadas antes de esperar o banco: no comitê várias IAs terminam ao mesmo
-   * tempo, e duas gravações simultâneas não podem repetir nem pular linhas. Falha ou demora ao gravar só avisa (como antes): a
-   * linha não é mandada de novo, porque o banco pode ter gravado e só a resposta se perdido.
+   * Grava as linhas ainda não gravadas. As gravações andam uma de cada vez (no comitê várias IAs terminam ao mesmo tempo, e duas
+   * gravações simultâneas repetiriam linhas). A linha só conta como gravada DEPOIS que o banco confirma: se a gravação falhar,
+   * a linha continua pendente e vai na próxima (a seguinte chamada do mesmo pedido, ou o fim dele), para o gasto e a falha não
+   * sumirem de ai_calls nem dos tetos. Só em falha por demora a linha pode ir duas vezes (o banco pode ter gravado e só a
+   * resposta se perdido); isso é preferível a perder o gasto.
    */
-  async flush(): Promise<void> {
+  flush(): Promise<void> {
+    this.flushing = this.flushing.then(() => this.writePending());
+    return this.flushing;
+  }
+
+  private async writePending(): Promise<void> {
     if (this.written >= this.rows.length) return;
-    const pending = this.rows.slice(this.written);
-    this.written = this.rows.length;
+    const upto = this.rows.length;
+    const pending = this.rows.slice(this.written, upto);
     try {
       await withTimeout(() => this.deps.db.service("ch_worker_ai_log_calls", { p_calls: pending }), LOG_TIMEOUT_MS);
+      this.written = upto;
     } catch (e) {
-      (this.deps.log ?? console.warn)(`[maestro] não foi possível gravar ai_calls: ${errText(e)}`);
+      (this.deps.log ?? console.warn)(`[maestro] não foi possível gravar ai_calls (${pending.length} linha${pending.length === 1 ? "" : "s"} ficam para a próxima gravação): ${errText(e)}`);
     }
   }
 
@@ -578,12 +664,12 @@ class Run {
 // ------------------------------------------------------------------ resultados
 
 function emptyResult<T>(runId: string, status: MaestroResult<T>["status"], message: string | null, cost = 0): MaestroResult<T> {
-  return { status, output: null, outputs: [], reviews: [], agreement: [], costUsd: cost, message, runId };
+  return { status, output: null, outputs: [], reviews: [], agreement: [], costUsd: cost, webSearches: 0, seenUrls: [], message, runId };
 }
 
 async function finish<T>(run: Run, status: MaestroResult<T>["status"], fields: Partial<MaestroResult<T>> = {}): Promise<MaestroResult<T>> {
   await run.flush();
-  return { ...emptyResult<T>(run.runId, status, null, Math.round(run.cost * 1e6) / 1e6), ...fields };
+  return { ...emptyResult<T>(run.runId, status, null, Math.round(run.cost * 1e6) / 1e6), webSearches: run.webSearches, ...fields };
 }
 
 /**
@@ -595,13 +681,22 @@ function withCare(req: StructuredRequest, fc: FunctionConfig | null): Structured
   return { ...req, effort: req.effort ?? (fc.care === "rapido" ? "low" : "high"), care: fc.care };
 }
 
+/**
+ * Função de busca na internet: o máximo de buscas do pedido é o salvo na função (de 1 a 10), senão o padrão (5), qualquer que
+ * seja o que quem chamou pediu: o dono manda no que a busca pode gastar.
+ */
+function withSearchLimit(req: StructuredRequest, fn: AiFunctionKey, fc: FunctionConfig | null): StructuredRequest {
+  if (!isSearchFunction(fn) || !req.webSearch) return req;
+  return { ...req, webSearch: { ...req.webSearch, maxSearches: fc?.max_searches ?? DEFAULT_MAX_SEARCHES } };
+}
+
 // ------------------------------------------------------------------ modos
 
 async function runSolo<T>(run: Run, req: StructuredRequest, primary: Slot, fallback: Slot | null): Promise<MaestroResult<T>> {
   const r = await run.solo<T>(req, primary, fallback, { first: "principal", reserve: "reserva" });
   if ("stop" in r) return finish(run, "parou_no_teto", { message: r.stop });
   if (!r.ok) return finish(run, run.failureStatus(), { message: run.message() });
-  return finish(run, "ok", { output: r.res.output, outputs: [{ ref: r.slot.ref, role: r.role, output: r.res.output, error: null }] });
+  return finish(run, "ok", { output: r.res.output, outputs: [{ ref: r.slot.ref, role: r.role, output: r.res.output, error: null }], seenUrls: r.res.seenUrls ?? [] });
 }
 
 async function runLine<T>(run: Run, req: MaestroRequest, primary: Slot, fallback: Slot | null, reviewers: Slot[]): Promise<MaestroResult<T>> {
@@ -610,7 +705,7 @@ async function runLine<T>(run: Run, req: MaestroRequest, primary: Slot, fallback
   const roles = { first: "criadora", reserve: "reserva" } as const;
   const stop = run.checkCaps([
     run.creatorCall(req, primary, fallback, roles),
-    ...reviewers.map((slot): PlannedCall => ({ slot, role: "conferente", chars: reviewChars, maxOut: REVIEW_MAX_OUT })),
+    ...reviewers.map((slot): PlannedCall => ({ slot, role: "conferente", chars: reviewChars, maxOut: REVIEW_MAX_OUT, searches: 0 })),
   ]);
   if (stop) return finish(run, "parou_no_teto", { message: stop });
   const made = await run.creator<T>(req, primary, fallback, roles);
@@ -646,14 +741,14 @@ async function runLine<T>(run: Run, req: MaestroRequest, primary: Slot, fallback
     const parts: string[] = [];
     if (alta) parts.push("Um conferente apontou problema de gravidade alta.");
     if (missing > 0) parts.push(`Revisão humana necessária: conferência incompleta, ${missing} de ${attempts.length} conferentes não responderam. ${run.message() ?? ""}`.trim());
-    return finish(run, "precisa_revisao", { output, outputs, reviews, message: parts.join(" ") });
+    return finish(run, "precisa_revisao", { output, outputs, reviews, message: parts.join(" "), seenUrls: made.res.seenUrls ?? [] });
   }
-  return finish(run, "ok", { output, outputs, reviews });
+  return finish(run, "ok", { output, outputs, reviews, seenUrls: made.res.seenUrls ?? [] });
 }
 
 async function runCommittee<T>(run: Run, req: MaestroRequest, members: Slot[]): Promise<MaestroResult<T>> {
   const chars = req.system.length + req.input.length;
-  const planned: PlannedCall[] = members.map((slot) => ({ slot, role: "membro", chars, maxOut: req.maxOutputTokens ?? DEFAULT_MAX_OUT, care: req.care }));
+  const planned: PlannedCall[] = members.map((slot) => ({ slot, role: "membro", chars, maxOut: req.maxOutputTokens ?? DEFAULT_MAX_OUT, care: req.care, searches: searchesOf(req) }));
   const stop = run.checkCaps(planned);
   if (stop) return finish(run, "parou_no_teto", { message: stop });
   const attempts = await Promise.all(members.map((slot) => run.attempt<T>(slot, "membro", req, chars, true)));
@@ -668,8 +763,9 @@ async function runCommittee<T>(run: Run, req: MaestroRequest, members: Slot[]): 
   });
   const diverge = agreement.filter((a) => !a.agree).map((a) => a.field);
   const output = answered[0].output;
-  if (diverge.length) return finish(run, "precisa_revisao", { output, outputs, agreement, message: `Divergência entre as IAs em: ${diverge.join(", ")}.` });
-  return finish(run, "ok", { output, outputs, agreement });
+  const seenUrls = attempts.flatMap((a) => (a.ok ? [a.res.seenUrls ?? []] : []))[0] ?? [];
+  if (diverge.length) return finish(run, "precisa_revisao", { output, outputs, agreement, message: `Divergência entre as IAs em: ${diverge.join(", ")}.`, seenUrls });
+  return finish(run, "ok", { output, outputs, agreement, seenUrls });
 }
 
 // ------------------------------------------------------------------ entradas públicas
@@ -680,11 +776,11 @@ export async function runFunction<T>(deps: MaestroDeps, fn: AiFunctionKey, req: 
   const cfg = await loadAiConfig(deps.db);
   const rs = resolveRefs(cfg, fn, env, override);
   const early = (message: string) => emptyResult<T>(crypto.randomUUID(), "falhou", message);
-  if (!rs.primary) return early(`Nenhuma IA definida para ${fn}: configure na Central de IAs.`);
+  if (!rs.primary) return early(isSearchFunction(fn) ? SEARCH_OFF : `Nenhuma IA definida para ${fn}: configure na Central de IAs.`);
 
   if (rs.fc) {
     const refs = [rs.primary, rs.fallback, ...rs.reviewers].filter(Boolean) as ModelRef[];
-    const refSet = new Set(refs.flatMap((r) => refProblems(r, cfg)));
+    const refSet = new Set(refs.flatMap((r) => refProblems(r, cfg, fn)));
     const effective = { ...rs.fc, primary: rs.primary };
     const structural = validateFunctionConfig(effective, cfg).problems.filter((p) => !refSet.has(p));
     if (structural.length) return early(structural.join(" "));
@@ -692,11 +788,11 @@ export async function runFunction<T>(deps: MaestroDeps, fn: AiFunctionKey, req: 
 
   const run = await Run.start(deps, cfg, fn, rs.mode, origin);
 
-  const primary = prepareSlot(deps, cfg, rs.primary);
-  const fallback = rs.fallback && !sameRef(rs.fallback, rs.primary) ? prepareSlot(deps, cfg, rs.fallback) : null;
-  const request = withCare(req, rs.fc) as MaestroRequest;
-  if (rs.mode === "linha") return runLine<T>(run, request, primary, fallback, rs.reviewers.map((r) => prepareSlot(deps, cfg, r)));
-  if (rs.mode === "comite") return runCommittee<T>(run, request, [primary, ...rs.reviewers.map((r) => prepareSlot(deps, cfg, r))]);
+  const primary = prepareSlot(deps, cfg, rs.primary, fn);
+  const fallback = rs.fallback && !sameRef(rs.fallback, rs.primary) ? prepareSlot(deps, cfg, rs.fallback, fn) : null;
+  const request = withSearchLimit(withCare(req, rs.fc), fn, rs.fc) as MaestroRequest;
+  if (rs.mode === "linha") return runLine<T>(run, request, primary, fallback, rs.reviewers.map((r) => prepareSlot(deps, cfg, r, fn)));
+  if (rs.mode === "comite") return runCommittee<T>(run, request, [primary, ...rs.reviewers.map((r) => prepareSlot(deps, cfg, r, fn))]);
   return runSolo<T>(run, request, primary, fallback);
 }
 
@@ -705,7 +801,7 @@ async function runMock<T>(mock: AiProvider, req: StructuredRequest): Promise<Mae
   const ref = { provider: mock.name as AiProviderId, model: mock.model };
   try {
     const res = await mock.generate<T>(req);
-    return { ...emptyResult<T>(runId, "ok", null), output: res.output, outputs: [{ ref, role: "principal", output: res.output, error: null }] };
+    return { ...emptyResult<T>(runId, "ok", null), output: res.output, outputs: [{ ref, role: "principal", output: res.output, error: null }], webSearches: res.webSearches ?? 0, seenUrls: res.seenUrls ?? [] };
   } catch (e) {
     return emptyResult<T>(runId, "falhou", errText(e));
   }
@@ -733,8 +829,8 @@ const notReady = (pending: string, ref?: ModelRef | null): { provider: null; sta
 
 /** Um AiProvider cujo generate executa principal → nova tentativa → reserva, com tetos e registro. */
 async function buildAdapter(deps: MaestroDeps, cfg: AiConfig, origin: MaestroOrigin, plan: AdapterPlan): Promise<{ provider: AiProvider | null; status: AiStatus }> {
-  const primary = prepareSlot(deps, cfg, plan.primary);
-  const fallback = plan.fallback && !sameRef(plan.fallback, plan.primary) ? prepareSlot(deps, cfg, plan.fallback) : null;
+  const primary = prepareSlot(deps, cfg, plan.primary, plan.fn);
+  const fallback = plan.fallback && !sameRef(plan.fallback, plan.primary) ? prepareSlot(deps, cfg, plan.fallback, plan.fn) : null;
   if (primary.blocked && (!fallback || fallback.blocked)) return notReady(primary.blocked, plan.primary);
   const provider: AiProvider = {
     name: plan.primary.provider,
@@ -742,7 +838,7 @@ async function buildAdapter(deps: MaestroDeps, cfg: AiConfig, origin: MaestroOri
     isMock: false,
     async generate<T>(req: StructuredRequest): Promise<StructuredResult<T>> {
       const run = await Run.start(deps, cfg, plan.fn, plan.mode, origin);
-      const request = withCare(req, plan.fc);
+      const request = withSearchLimit(withCare(req, plan.fc), plan.fn, plan.fc);
       const r = await run.solo<T>(request, primary, fallback, plan.roles);
       await run.flush();
       if ("stop" in r) throw new AiCapReached(r.stop);
@@ -755,7 +851,7 @@ async function buildAdapter(deps: MaestroDeps, cfg: AiConfig, origin: MaestroOri
         if (origin.source === "central" && run.lastError instanceof AiInvalidOutput) throw new AiInvalidOutput(message ?? run.lastError.message, run.lastError.raw);
         throw new Error(message ?? "A IA não respondeu.");
       }
-      return { ...r.res, costUsd: r.cost };
+      return { ...r.res, costUsd: r.cost, ...(run.webSearches > 0 ? { webSearches: run.webSearches } : {}) };
     },
   };
   // principal bloqueada (sem chave, fora da lista, sem preço com os tetos ligados...): quem responde é sempre a reserva, e quem lê o
@@ -824,7 +920,8 @@ function writerFamily(cfg: AiConfig, model: string): string {
 
 /** O modelo da empresa já escolhido na Central (Verificação primeiro, depois as outras funções); senão o das variáveis ou o padrão. */
 function companyModel(cfg: AiConfig, id: AiProviderId, env: NodeJS.ProcessEnv): ModelRef | null {
-  for (const k of ["verificacao", ...FUNCTION_KEYS.filter((f) => f !== "verificacao")] as AiFunctionKey[]) {
+  // (a função de busca na internet fica de fora: o modelo dela é escolhido para buscar, não para conferir)
+  for (const k of ["verificacao", ...FUNCTION_KEYS.filter((f) => f !== "verificacao" && !isSearchFunction(f))] as AiFunctionKey[]) {
     const fc = cfg.functions[k];
     const found = fc ? [fc.primary, fc.fallback, ...(fc.reviewers ?? [])].find((r) => r?.provider === id) : null;
     if (found) return found;

@@ -10,15 +10,18 @@
  *   POST /providers/:id/enabled         { enabled }  liga ou desliga uma IA
  *   POST /providers/:id/refresh         atualiza a lista de modelos e cadastra preços do seed que faltarem
  *   PUT  /functions/:key                { config: FunctionConfig | null }  modo, IAs e cuidado de uma função (recusa
- *                                       o que este servidor não chama: Ollama no site publicado)
+ *                                       o que este servidor não chama: Ollama no site publicado). A busca de fontes
+ *                                       oficiais (busca_fontes) só aceita o modo sozinha, sem Ollama, e leva também
+ *                                       max_searches (inteiro de 1 a 10 ou nulo = 5)
  *   PUT  /settings                      { monthly_cap_usd, per_run_cap_usd, caps_enabled, tab_override_enabled }
- *   PUT  /prices/:provider/:model       { input_per_mtok, output_per_mtok, source_url }
+ *   PUT  /prices/:provider/:model       { input_per_mtok, output_per_mtok, source_url, per_search_usd? }  o preço por
+ *                                       busca na internet (número >= 0 ou null) só muda quando vem no pedido
  */
 import express, { type NextFunction, type Request, type Response } from "express";
 import type { ContentDb, Identity } from "../contentHub/infra";
 import { listModels } from "./models";
 import { PRICE_SEED } from "./prices";
-import { capGuidance, FUNCTION_KEYS, functionChecks, invalidateAiConfig, isProviderId, loadAiConfig, providerChecks, providerPending, validateFunctionConfig, type AiFunctionKey, type FunctionConfig, type ModelRef } from "./config";
+import { capGuidance, FUNCTION_KEYS, functionChecks, invalidateAiConfig, isProviderId, loadAiConfig, isSearchFunction, providerChecks, providerPending, validateFunctionConfig, type AiFunctionKey, type FunctionConfig, type ModelRef } from "./config";
 
 type Authed = Request & { user?: Identity; admin?: boolean };
 
@@ -132,12 +135,32 @@ export function createAiRouter(
         const cfg = await fresh();
         const listed = new Set(list.models.map((m) => m.id));
         for (const seed of PRICE_SEED) {
-          if (seed.provider !== id || !listed.has(seed.model) || cfg.prices.some((p) => p.provider === id && p.model === seed.model)) continue;
+          if (seed.provider !== id || !listed.has(seed.model)) continue;
+          const existing = cfg.prices.find((p) => p.provider === id && p.model === seed.model);
+          if (existing) {
+            // preço que o dono já tem nunca é sobrescrito; só o preço por busca, quando está vazio, é preenchido com o do catálogo
+            if ((existing.per_search_usd ?? null) === null && typeof seed.per_search_usd === "number") {
+              await db().service("ch_worker_ai_save_price", {
+                p_actor: req.user!.id,
+                p_provider: id,
+                p_model: seed.model,
+                p_price: { input_per_mtok: existing.input_per_mtok, output_per_mtok: existing.output_per_mtok, per_search_usd: seed.per_search_usd, source_url: existing.source_url, checked_on: existing.checked_on },
+              });
+            }
+            continue;
+          }
           await db().service("ch_worker_ai_save_price", {
             p_actor: req.user!.id,
             p_provider: id,
             p_model: seed.model,
-            p_price: { input_per_mtok: seed.input_per_mtok, output_per_mtok: seed.output_per_mtok, source_url: seed.source_url, checked_on: seed.checked_on },
+            p_price: {
+              input_per_mtok: seed.input_per_mtok,
+              output_per_mtok: seed.output_per_mtok,
+              // o preço por busca vai quando o seed tem um (Claude, OpenAI e Gemini têm; modelo fora do catálogo fica para o dono)
+              ...(typeof seed.per_search_usd === "number" ? { per_search_usd: seed.per_search_usd } : {}),
+              source_url: seed.source_url,
+              checked_on: seed.checked_on,
+            },
           });
           added++;
         }
@@ -170,6 +193,14 @@ export function createAiRouter(
       if (primary !== null && !isRef(primary)) throw bad("IA ou modelo principal inválido.");
       if (fallback !== null && !isRef(fallback)) throw bad("IA ou modelo da reserva inválido.");
       if (!Array.isArray(reviewers) || !reviewers.every(isRef)) throw bad("IA ou modelo de conferente inválido.");
+      // máximo de buscas na internet por pedido: só a função de busca (inteiro de 1 a 10; vazio = o padrão do servidor)
+      let maxSearches: number | null = null;
+      if (isSearchFunction(key) && raw.max_searches !== undefined && raw.max_searches !== null) {
+        if (typeof raw.max_searches !== "number" || !Number.isInteger(raw.max_searches) || raw.max_searches < 1 || raw.max_searches > 10) {
+          throw bad("Máximo de buscas por pedido: de 1 a 10.");
+        }
+        maxSearches = raw.max_searches;
+      }
       const config: FunctionConfig = {
         key,
         mode: raw.mode,
@@ -177,6 +208,7 @@ export function createAiRouter(
         primary: primary && refOf(primary),
         fallback: fallback && refOf(fallback),
         reviewers: reviewers.map(refOf),
+        max_searches: maxSearches,
       };
       const cfg = await fresh();
       // ao salvar, o modelo pago sem preço é problema, com ou sem tetos (IA09); o que já está salvo e rodando só avisa
@@ -190,7 +222,14 @@ export function createAiRouter(
       await db().service("ch_worker_ai_save_function", {
         p_actor: req.user!.id,
         p_key: key,
-        p_config: { mode: config.mode, primary_ref: config.primary, fallback_ref: config.fallback, reviewers: config.reviewers, care },
+        p_config: {
+          mode: config.mode,
+          primary_ref: config.primary,
+          fallback_ref: config.fallback,
+          reviewers: config.reviewers,
+          care,
+          ...(isSearchFunction(key) ? { max_searches: config.max_searches } : {}),
+        },
       });
       invalidateAiConfig(db());
       res.json({ ok: true, warnings });
@@ -232,13 +271,22 @@ export function createAiRouter(
       const b = body(req);
       if (!isNum(b.input_per_mtok) || !isNum(b.output_per_mtok)) throw bad("Os preços precisam ser números maiores ou iguais a zero.");
       if (b.source_url != null && typeof b.source_url !== "string") throw bad("Fonte inválida.");
+      // preço por busca na internet: só muda quando a chave vem no pedido (null tira o preço)
+      const hasSearchPrice = "per_search_usd" in b;
+      if (hasSearchPrice && b.per_search_usd !== null && !isNum(b.per_search_usd)) throw bad("O preço por busca precisa ser um número maior ou igual a zero, ou vazio.");
       const url = typeof b.source_url === "string" ? b.source_url.trim() : "";
       if (url && !url.startsWith("https://")) throw bad("A fonte precisa começar com https://.");
       const out = await db().service("ch_worker_ai_save_price", {
         p_actor: req.user!.id,
         p_provider: provider,
         p_model: model,
-        p_price: { input_per_mtok: b.input_per_mtok, output_per_mtok: b.output_per_mtok, source_url: url || null, checked_on: today() },
+        p_price: {
+          input_per_mtok: b.input_per_mtok,
+          output_per_mtok: b.output_per_mtok,
+          ...(hasSearchPrice ? { per_search_usd: b.per_search_usd } : {}),
+          source_url: url || null,
+          checked_on: today(),
+        },
       });
       invalidateAiConfig(db());
       res.json(out);
