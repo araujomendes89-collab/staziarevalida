@@ -28,7 +28,7 @@ let db: PGlite;
 
 async function rpc<T = any>(uid: string | null, fn: string, args: Record<string, unknown> = {}): Promise<T> {
   const keys = Object.keys(args);
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     await tx.exec(`set local role ${uid ? "authenticated" : "anon"}`);
     await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify(uid ? { sub: uid } : {})]);
     const r = await tx.query<{ result: T }>(
@@ -37,6 +37,11 @@ async function rpc<T = any>(uid: string | null, fn: string, args: Record<string,
     );
     return r.rows[0].result;
   });
+  // Leva 3 (Q09): comentário salvo ou importado por uma pessoa espera o revisor médico. Estes testes montam questões cujo comentário
+  // "já está no ar" (é o que as regras de gabarito daqui protegem), então o comentário é dado como aprovado logo depois de gravar.
+  // A regra nova está provada em leva3QComentarioBanco.test.ts.
+  if (fn === "app_admin_save_question" || fn === "app_admin_import_questions") await db.query(`update public.questions set comment_review = null where comment_review is not null`);
+  return result;
 }
 
 async function recusa(p: Promise<unknown>): Promise<{ message: string; code?: string }> {

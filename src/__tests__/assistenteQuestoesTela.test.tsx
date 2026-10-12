@@ -48,7 +48,7 @@ describe("Questões: assistente", () => {
     expect(button.getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(button);
     expect(button.getAttribute("aria-pressed")).toBe("true");
-    expect(await screen.findByText("O que você salvar aparece na hora para o aluno.")).toBeTruthy();
+    expect(await screen.findByText("Enunciado e alternativas aparecem na hora para o aluno. Explicações, conduta e “o que avalia” esperam a aprovação do revisor médico.")).toBeTruthy();
     fireEvent.click(await screen.findByRole("button", { name: "Preencher campos" }));
     const card = await screen.findByRole("region", { name: "Sugestão: Conduta esperada" });
     const body = JSON.parse(runCall()[1].body);
@@ -141,7 +141,7 @@ describe("Questões: assistente", () => {
       const button = await screen.findByRole("button", { name: "Assistente" });
       button.focus();
       fireEvent.click(button);
-      await screen.findByText("O que você salvar aparece na hora para o aluno.");
+      await screen.findByText("Enunciado e alternativas aparecem na hora para o aluno. Explicações, conduta e “o que avalia” esperam a aprovação do revisor médico.");
       const after = screen.getByRole("button", { name: "Assistente" });
       expect(after).toBe(button);
       expect(document.body.contains(button)).toBe(true);

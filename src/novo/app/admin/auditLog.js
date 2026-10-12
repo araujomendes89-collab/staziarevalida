@@ -39,6 +39,8 @@ export const ACTION_LABEL = {
   "question.analysis_unpublished": "Análise da questão tirada do ar",
   "question.figure_set": "Figura da questão enviada",
   "question.figure_removed": "Figura da questão retirada",
+  "question.comment_approved": "Comentário da questão aprovado pelo revisor",
+  "question.comment_returned": "Comentário da questão devolvido pelo revisor",
   "question.official_answer": "Gabarito oficial registrado",
   "question.explanations_reviewed": "Explicações marcadas como revisadas",
   // estações
@@ -211,6 +213,13 @@ function explanationsReviewed(d, entry) {
   ]);
 }
 
+// comentário da questão decidido pelo revisor médico (Q09): a questão, o que foi decidido e a nota
+const commentField = (c) => (/^explanation_[A-D]$/.test(c) ? `explicação da ${c.slice(-1)}` : own({ expected_conduct: "conduta esperada", inep_intent: "o que a questão avalia" }, c));
+function commentDecided(d, entry) {
+  const fields = (Array.isArray(d.campos) ? d.campos : []).map(commentField).filter(Boolean);
+  return join([questionName(entry.target), fields.length > 0 && `${entry.action === "question.comment_approved" ? "Liberado ao aluno" : "Continua escondido do aluno"}: ${fields.join(", ")}`, d.note && `Nota: ${d.note}`]);
+}
+
 const questionSaved = (d, entry) =>
   join([questionName(entry.target), d.status && d.status !== "valid" && own(QUESTION_STATUS_LABEL, d.status) && `Situação: ${QUESTION_STATUS_LABEL[d.status]}`, d.reason && `Motivo: ${d.reason}`]);
 
@@ -300,6 +309,8 @@ const SUMMARY = {
   "question.analysis_unpublished": (d, entry) => `${entry.target}: o enunciado ou o texto de uma alternativa mudou`,
   "question.figure_set": (d, entry) => join([d.code ?? questionName(entry.target), d.replaced ? "Figura trocada" : "Figura nova", d.alt && `Texto alternativo: ${d.alt}`]),
   "question.figure_removed": (d, entry) => join([d.code ?? questionName(entry.target), d.needs_image ? "A questão cita uma figura: saiu dos treinos até uma nova figura ser enviada" : "A questão continua nos treinos, sem figura"]),
+  "question.comment_approved": commentDecided,
+  "question.comment_returned": commentDecided,
   "question.official_answer": (d, entry) =>
     join([
       questionName(entry.target),

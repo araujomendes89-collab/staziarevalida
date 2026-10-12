@@ -10,7 +10,8 @@ import { QUESTOES_SPEC } from "../../../shared/adminAssistant/questoes";
 import { AssistantLayout } from "./assistant/AssistantLayout.jsx";
 import { TabAssistant } from "./assistant/TabAssistant.jsx";
 import { QuestionFigureCard } from "./QuestionFigureCard.jsx";
-import { downloadText, ListRow, LoadError, Loading, messageOf, QUESTION_STATUS_LABEL, TextArea, useDebounced, useLoad } from "./common.jsx";
+import { changedCommentFields, CommentReviewBanner, CommentReviewQueue, commentFieldsText } from "./QuestionCommentReview.jsx";
+import { downloadText, isStaffRole, ListRow, LoadError, Loading, messageOf, QUESTION_STATUS_LABEL, TextArea, useDebounced, useLoad } from "./common.jsx";
 
 const PAGE = 50;
 // o banco devolve no máximo 200 questões por chamada (app_admin_questions)
@@ -99,6 +100,11 @@ function fromRow(q) {
     images: q.images ?? [],
     official: q.official ?? null,
     explanations_review: q.explanations_review ?? null,
+    // Q09: comentário em revisão (quem mexeu, quem pode decidir e a última decisão do revisor)
+    comment_review: q.comment_review ?? null,
+    comment_can_review: Boolean(q.comment_can_review),
+    comment_review_by: q.comment_review_by ?? null,
+    comment_decision: q.comment_decision ?? null,
   };
 }
 
@@ -251,6 +257,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
   const [officialOpen, setOfficialOpen] = React.useState(false);
   const [officialNote, setOfficialNote] = React.useState(null);
   const [reviewState, setReviewState] = React.useState({ saving: false, error: null });
+  const [decisionNote, setDecisionNote] = React.useState(null); // Q09: "Comentário aprovado…" depois da decisão do revisor
   const existing = useLoad(() => (id ? backend.rpc("app_admin_question", { p_id: id }) : Promise.resolve(null)), [backend, id]);
   const [form, setForm] = React.useState(id ? null : emptyQuestion());
   // o formulário como está gravado no banco (para saber se há mudança não salva)
@@ -282,7 +289,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
     setState((s) => ({ ...s, done: false }));
     setAiUsed(true);
   };
-  const { images: _images, attempts: _attempts, official: _official, explanations_review: _review, ...assistantForm } = form;
+  const { images: _images, attempts: _attempts, official: _official, explanations_review: _review, comment_review: _cr, comment_can_review: _ccr, comment_review_by: _crb, comment_decision: _cd, ...assistantForm } = form;
   // questão já gravada: gabarito e situação só mudam pelo registro do gabarito oficial (Q02)
   const locked = !isNew;
 
@@ -317,6 +324,24 @@ export function QuestionEditor({ id, onClose, onSaved }) {
     onSaved();
   };
   const unsaved = savedForm !== null && JSON.stringify(payloadOf(form)) !== JSON.stringify(payloadOf(savedForm));
+  // Q09: texto de comentário novo ou diferente vai para revisão ao salvar (o aluno deixa de ver esse texto até o revisor aprovar)
+  const commentChanged = changedCommentFields(form, isNew ? null : savedForm);
+  // depois da decisão do revisor (aprovar ou devolver): a marca de agora vem do banco; o resto do formulário fica como está
+  const commentDecided = (decision, fresh) => {
+    setForm((f) => ({ ...f, comment_review: fresh?.comment_review ?? null, comment_decision: fresh?.comment_decision ?? null, comment_review_by: fresh?.comment_review_by ?? f.comment_review_by }));
+    setDecisionNote(decision === "approve" ? "Comentário aprovado: o aluno já pode ver." : "Comentário devolvido ao editor.");
+    onSaved();
+  };
+  // a decisão foi recusada (o texto mudou enquanto o revisor lia): traz a questão de agora, para ele ler de novo
+  const commentStale = async () => {
+    try {
+      const fresh = fromRow(await backend.rpc("app_admin_question", { p_id: form.id }));
+      setForm(fresh);
+      setSavedForm(fresh);
+    } catch {
+      /* segue com o que a tela já mostra */
+    }
+  };
   // Q10: salvar com o enunciado ou o texto de uma alternativa mudado tira do ar a análise publicada da questão
   const textChanged = !isNew && savedForm !== null && analysisTextChanged(form, savedForm);
 
@@ -424,6 +449,12 @@ export function QuestionEditor({ id, onClose, onSaved }) {
         </Banner>
       )}
       {reviewState.error && <Banner tone="danger">{reviewState.error}</Banner>}
+      <CommentReviewBanner question={form} savedForm={savedForm} unsaved={unsaved} onDecided={commentDecided} onStale={commentStale} />
+      {decisionNote && (
+        <div role="status" style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>
+          {decisionNote}
+        </div>
+      )}
       <Card>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <h3 style={{ margin: 0, font: "var(--type-h4)" }}>{isNew ? "Nova questão" : "Editar questão"}</h3>
@@ -521,6 +552,11 @@ export function QuestionEditor({ id, onClose, onSaved }) {
           <TextArea label="O que a questão avalia" rows={3} value={form.inep_intent} onChange={(inep_intent) => set({ inep_intent })} />
         </div>
       </Card>
+      {commentChanged.length > 0 && (
+        <Banner tone="warning" title="O comentário vai para revisão">
+          {`Você mudou: ${commentFieldsText(commentChanged)}. Ao salvar, o aluno deixa de ver esse texto até um revisor médico da área aprovar. O texto que está no ar hoje continua visível até você salvar.`}
+        </Banner>
+      )}
       {textChanged && (
         <Banner tone="warning" title="A análise publicada sai do ar">
           Você mudou o enunciado ou o texto de uma alternativa. Ao salvar, a análise publicada desta questão (se houver) sai do ar para o aluno e só volta quando uma nova análise for aprovada por um revisor médico.
@@ -841,13 +877,19 @@ function useQuestionPages(backend, filters, deps) {
   return { ...state, reload: () => setTick((n) => n + 1), more };
 }
 
+/** A aba: a equipe vê a lista; o revisor médico sem papel de equipe vê só a fila de comentários a revisar (Q09). */
 export function AdminQuestions() {
+  const { boot } = useSession();
+  return isStaffRole(boot?.role) ? <StaffQuestions /> : <CommentReviewQueue />;
+}
+
+function StaffQuestions() {
   const { backend } = useSession();
   const mobile = useMobile();
   const [view, setView] = React.useState({ mode: "list", id: null }); // list | edit | new | import
-  const [filters, setFilters] = React.useState({ search: "", exam_id: "", area: "", status: "", needs_image: false, review: false });
+  const [filters, setFilters] = React.useState({ search: "", exam_id: "", area: "", status: "", needs_image: false, review: false, comment_review: false });
   const search = useDebounced(filters.search.trim());
-  const list = useQuestionPages(backend, { ...filters, search }, [search, filters.exam_id, filters.area, filters.status, filters.needs_image, filters.review]);
+  const list = useQuestionPages(backend, { ...filters, search }, [search, filters.exam_id, filters.area, filters.status, filters.needs_image, filters.review, filters.comment_review]);
   const set = (patch) => setFilters((f) => ({ ...f, ...patch }));
   const back = () => setView({ mode: "list", id: null });
 
@@ -874,6 +916,7 @@ export function AdminQuestions() {
           </div>
           <Checkbox label="Só as que citam figura sem imagem vinculada" checked={filters.needs_image} onChange={(e) => set({ needs_image: e.target.checked })} />
           <Checkbox label="Só as com explicações a revisar (o gabarito mudou)" checked={filters.review} onChange={(e) => set({ review: e.target.checked })} />
+          <Checkbox label="Só as com comentário em revisão (esperando o revisor médico)" checked={filters.comment_review} onChange={(e) => set({ comment_review: e.target.checked })} />
         </div>
       </Card>
       {list.error && <LoadError error={list.error} retry={list.reload} />}
@@ -903,6 +946,11 @@ export function AdminQuestions() {
                       {q.explanations_review && (
                         <Badge tone="warning" size="sm">
                           Revisar explicações
+                        </Badge>
+                      )}
+                      {q.comment_review && (
+                        <Badge tone="warning" size="sm">
+                          Comentário em revisão
                         </Badge>
                       )}
                       {q.needs_image && !q.images && (
