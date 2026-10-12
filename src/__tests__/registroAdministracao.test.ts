@@ -62,6 +62,7 @@ describe("Registro: nome em português para toda ação gravada", () => {
       "'question_update.' || p_decision": ["question_update.no_change", "question_update.publish_update", "question_update.reject_proposal"],
       "'conflict.' || p_status": ["conflict.resolved", "conflict.deferred", "conflict.open"],
       "'guideline_update.' || p_decision": ["guideline_update.approve", "guideline_update.reject"],
+      "'staziamed.' || v_action": ["staziamed.publicada", "staziamed.republicada"], // app_staziamed_publish
     };
     expect(new Set(dynamic)).toEqual(new Set(Object.keys(DYNAMIC)));
     const actions = [...new Set([...found.keys(), ...Object.values(DYNAMIC).flat()])];

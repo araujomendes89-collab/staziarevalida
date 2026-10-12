@@ -118,6 +118,14 @@ export const ACTION_LABEL = {
   "draft_question.approved": "Questão inédita aprovada",
   "draft_question.needs_changes": "Questão inédita devolvida para ajustes",
   "draft_question.rejected": "Questão inédita recusada",
+  "staziamed.request": "Questões StaziaMed pedidas",
+  "staziamed.check": "Conferência de Questões StaziaMed pedida",
+  "staziamed.source": "Busca de fonte oficial para uma Questão StaziaMed pedida",
+  "staziamed.source_accept": "Fontes oficiais aplicadas a uma Questão StaziaMed",
+  "staziamed.source_discard": "Proposta de fonte oficial descartada",
+  "staziamed.publicada": "Questão StaziaMed publicada",
+  "staziamed.republicada": "Questão StaziaMed republicada",
+  "staziamed.retired": "Questão StaziaMed recolhida",
   "question_analysis.approved": "Análise da questão aprovada",
   "question_analysis.rejected": "Análise da questão recusada",
   "question_update.no_change": "Atualização de questão: sem mudança",
@@ -146,7 +154,7 @@ const PART = {
 };
 
 // começo do nome técnico → ação da Central de Conteúdo (ch_audit)
-const CENTRAL_PART = new Set(["approve", "approval", "publish", "retire", "unit", "reviewer", "flag", "taxonomy", "document", "license", "block", "source", "source_domain", "source_search", "source_candidate", "conflict", "draft_question", "question_analysis", "question_update", "job", "visual"]);
+const CENTRAL_PART = new Set(["approve", "approval", "publish", "retire", "unit", "reviewer", "flag", "taxonomy", "document", "license", "block", "source", "source_domain", "source_search", "source_candidate", "conflict", "draft_question", "staziamed", "question_analysis", "question_update", "job", "visual"]);
 
 const own = (map, key) => (Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined);
 const join = (parts) => parts.filter(Boolean).join(" · ");

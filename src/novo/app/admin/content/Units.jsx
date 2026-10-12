@@ -427,7 +427,7 @@ function MaterialPreview({ kind, content }) {
         {(content.items ?? []).map((q, i) => (
           <div key={i}>
             <Badge size="sm" tone="brand">
-              {q.label ?? "Questão inédita StaziaMed"}
+              {q.label ?? "Questão StaziaMed"}
             </Badge>
             <p style={{ margin: "6px 0" }}>{q.stem}</p>
             {q.options.map((o) => (

@@ -1033,7 +1033,7 @@ async function stepMaterials(ctx: Ctx): Promise<Step | null> {
     const rejectedQ = new Set(qs.rejections.map((r) => r.where));
     const questions = qs.output.items
       .filter((_: any, k: number) => !rejectedQ.has(`items[${k}]`))
-      .map((q: any) => ({ ...q, author: "StaziaMed", official: false, label: "Questão inédita StaziaMed (não é questão oficial do Inep)" }));
+      .map((q: any) => ({ ...q, author: "StaziaMed", official: false, label: "Questão StaziaMed (não é questão oficial do Inep)" }));
     if (questions.length) await save(v.version_id, "questions", { title: v.title, items: questions }, qs.model);
 
     await checkpoint(ctx, { ...versionsMark(ctx), version: i + 1 });
