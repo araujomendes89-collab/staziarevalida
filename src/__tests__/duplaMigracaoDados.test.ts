@@ -103,7 +103,8 @@ describe("Migração 9750 sobre o estado de produção", () => {
     for (const n of ["20261003008000", "20261003009550", "20261003009600", "20261003009610", "20261003009630"]) {
       expect(antesDaNossa.some((f) => f.startsWith(n)), n).toBe(true);
     }
-    expect(migrationFiles().filter((f) => f.includes("treino_dupla"))).toEqual([MIGRACAO]);
+    // A 9750 é a primeira do módulo; as das etapas seguintes (9760 e adiante) vêm depois dela.
+    expect(migrationFiles().filter((f) => f.includes("treino_dupla"))[0]).toBe(MIGRACAO);
     expect(antesDaNossa.every((f) => f < MIGRACAO)).toBe(true);
   });
 
