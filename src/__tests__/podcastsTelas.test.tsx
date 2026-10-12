@@ -76,9 +76,10 @@ beforeEach(() => {
 });
 afterEach(() => cleanup());
 
-const renderAdmin = (role: string, view: any) => {
+const renderAdmin = (role: string, view: any, approval?: { can_approve: boolean; reason: string | null }) => {
   session.role = role;
   backend.rpc.mockImplementation(async (fn: string) => {
+    if (fn === "app_admin_podcast_approval" && approval) return approval;
     if (fn === "app_admin_podcasts") return [{ id: ID, title: view.title, status: view.status, sources: 1, lines: 3, updated_at: "2026-10-06T12:00:00Z" }];
     if (fn === "app_admin_lessons") return { lessons: [] };
     if (fn === "app_admin_podcast") return view;
@@ -146,7 +147,26 @@ describe("Administração › Podcasts", () => {
     fireEvent.change(screen.getByLabelText(/O que você conferiu/), { target: { value: "Conferi a dose na página 1." } });
     expect((approve as HTMLButtonElement).disabled).toBe(false);
     expect(screen.getByText("Só o administrador publica e apaga episódios.")).toBeTruthy();
-    expect(screen.getByText(/O áudio só é gerado depois que uma pessoa da equipe aprovar o roteiro./)).toBeTruthy();
+    expect(screen.getByText(/O áudio só é gerado depois que o administrador ou o revisor médico da área aprovar o roteiro./)).toBeTruthy();
+  });
+
+  it("P07: quem não pode aprovar vê o botão desligado e o motivo em português; revisor da área e administrador aprovam", async () => {
+    const motivo = "Só o administrador ou o revisor médico da área Gineco & Obstetrícia aprova o roteiro. Peça a um deles para conferir e aprovar.";
+    const { unmount } = renderAdmin("editor", episode(), { can_approve: false, reason: motivo });
+    expect(await screen.findByText("Você não pode aprovar este roteiro")).toBeTruthy();
+    expect(screen.getByText(motivo)).toBeTruthy();
+    const approve = screen.getByRole("button", { name: /Aprovar roteiro/ }) as HTMLButtonElement;
+    expect(approve.disabled).toBe(true);
+    expect((screen.getByLabelText(/O que você conferiu/) as HTMLTextAreaElement).disabled).toBe(true);
+    expect(backend.rpc).toHaveBeenCalledWith("app_admin_podcast_approval", { p_id: ID });
+    expect(backend.rpc).not.toHaveBeenCalledWith("app_admin_podcast_approve", expect.anything());
+    unmount();
+    cleanup();
+    renderAdmin("editor", episode(), { can_approve: true, reason: null }); // editor que também é revisor médico da área
+    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_podcast_approval", { p_id: ID }));
+    fireEvent.change(await screen.findByLabelText(/O que você conferiu/), { target: { value: "Conferi a dose na página 1." } });
+    expect((screen.getByRole("button", { name: /Aprovar roteiro/ }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByText("Você não pode aprovar este roteiro")).toBeNull();
   });
 
   it("administrador: com roteiro aprovado e áudio pronto, aparece Publicar; vozes da OpenAI quando o Gemini falta", async () => {

@@ -21,7 +21,8 @@ const NOVA = "20261003009620_fontes_complementares.sql";
 // 2026-10-11: a 9620 parte da 9580 (conferência do áudio das aulas: review_status, lesson_can_release), então a 9580 precisa vir antes
 const DEPOIS = ["20261003009590", "20261003009591", "20261003009592", "20261003009593"];
 // (APOIO-B) a 9621 (parte da equipe) vem depois da 9620 e redefine duas funções dela: este arquivo prova só a 9620, então a deixa de fora
-const todas = () => fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && !f.startsWith("20261003009621")).sort();
+// (leva3-p) as 9720 a 9729 (Podcasts: aprovação por revisor, limpeza de áudios) também vêm depois da 9620 e partem dela; ficam de fora pelo mesmo motivo
+const todas = () => fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && !f.startsWith("20261003009621") && !/^2026100300972\d_/.test(f)).sort();
 const ler = (f: string) => fs.readFileSync(path.join(MIGRATIONS, f), "utf8");
 
 async function novoBanco(arquivos: string[]) {

@@ -302,6 +302,19 @@ function ScriptStep({ podcast, providers, onChanged }) {
   const hasScript = Boolean(podcast.script?.lines?.length);
   const meta = podcast.script_meta ?? {};
 
+  // Quem aprova o roteiro: administrador ou revisor médico da área do episódio (o banco decide; a tela só explica). Se a pergunta
+  // falhar (banco ainda sem a função), o botão fica ligado e o banco recusa quem não pode.
+  const [approval, setApproval] = React.useState(null);
+  React.useEffect(() => {
+    let alive = true;
+    setApproval(null);
+    backend.rpc("app_admin_podcast_approval", { p_id: podcast.id }).then((r) => alive && setApproval(r)).catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [backend, podcast.id, podcast.area, podcast.approved_by]);
+  const cannotApprove = approval?.can_approve === false;
+
   // roteiro editado (sem avisos guardados): o servidor confere de novo
   React.useEffect(() => {
     let alive = true;
@@ -377,8 +390,13 @@ function ScriptStep({ podcast, providers, onChanged }) {
           ) : (
             !locked && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, padding: 12, borderRadius: 14, background: "var(--surface-subtle)" }}>
-                <TextArea label="O que você conferiu (obrigatório para aprovar)" value={note} rows={2} maxLength={600} onChange={setNote} placeholder="Ex.: conferi doses e critérios nas páginas citadas do PCDT; corrigi a fala 12." />
-                <Button icon="shield-check" style={{ alignSelf: "flex-start" }} loading={state.busy === "approve"} disabled={note.trim().length < 10} onClick={approve}>Aprovar roteiro</Button>
+                {cannotApprove && (
+                  <Banner tone="info" icon="lock" title="Você não pode aprovar este roteiro">
+                    {approval.reason}
+                  </Banner>
+                )}
+                <TextArea label="O que você conferiu (obrigatório para aprovar)" value={note} rows={2} maxLength={600} disabled={cannotApprove} onChange={setNote} placeholder="Ex.: conferi doses e critérios nas páginas citadas do PCDT; corrigi a fala 12." />
+                <Button icon="shield-check" style={{ alignSelf: "flex-start" }} loading={state.busy === "approve"} disabled={cannotApprove || note.trim().length < 10} onClick={approve}>Aprovar roteiro</Button>
               </div>
             )
           )}
@@ -458,7 +476,7 @@ function AudioStep({ podcast, providers, lessons, isAdmin, onChanged }) {
     ),
   ];
 
-  if (!podcast.approved_at) return <Muted>O áudio só é gerado depois que uma pessoa da equipe aprovar o roteiro.</Muted>;
+  if (!podcast.approved_at) return <Muted>O áudio só é gerado depois que o administrador ou o revisor médico da área aprovar o roteiro.</Muted>;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {state.error && <Banner tone="danger">{state.error}</Banner>}
@@ -626,7 +644,7 @@ export function AdminPodcasts() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <Banner tone="info" icon="headphones" title="Podcasts a partir dos materiais">
-        Fontes → roteiro com IA (só com o que está nas fontes, citando documento e página) → revisão e aprovação da equipe → áudio com duas vozes → publicação pelo administrador. A IA nunca aprova nem publica.
+        Fontes → roteiro com IA (só com o que está nas fontes, citando documento e página) → revisão da equipe e aprovação do administrador ou do revisor médico da área → áudio com duas vozes → publicação pelo administrador. A IA nunca aprova nem publica.
       </Banner>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
         <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
