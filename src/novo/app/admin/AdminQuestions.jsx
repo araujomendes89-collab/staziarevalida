@@ -10,6 +10,7 @@ import { QUESTOES_SPEC } from "../../../shared/adminAssistant/questoes";
 import { AssistantLayout } from "./assistant/AssistantLayout.jsx";
 import { TabAssistant } from "./assistant/TabAssistant.jsx";
 import { QuestionFigureCard } from "./QuestionFigureCard.jsx";
+import { QuestionHistory } from "./QuestionHistory.jsx";
 import { changedCommentFields, CommentReviewBanner, CommentReviewQueue, commentFieldsText } from "./QuestionCommentReview.jsx";
 import { downloadText, isStaffRole, ListRow, LoadError, Loading, messageOf, QUESTION_STATUS_LABEL, TextArea, useDebounced, useLoad } from "./common.jsx";
 
@@ -342,6 +343,8 @@ export function QuestionEditor({ id, onClose, onSaved }) {
       /* segue com o que a tela já mostra */
     }
   };
+  // Q12: "Voltar para este texto" do histórico só copia o texto de antes para o formulário (não salva)
+  const restoreText = (target, value) => (target.option ? setOption(target.option, { [target.field]: value }) : set({ [target.field]: value }));
   // Q10: salvar com o enunciado ou o texto de uma alternativa mudado tira do ar a análise publicada da questão
   const textChanged = !isNew && savedForm !== null && analysisTextChanged(form, savedForm);
 
@@ -572,6 +575,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
           {isNew ? "Criar questão" : "Salvar questão"}
         </Button>
       </div>
+      {!isNew && <QuestionHistory questionId={form.id} onRestore={restoreText} />}
       {isAdmin && !isNew && (
         <DeleteQuestion
           question={form}
