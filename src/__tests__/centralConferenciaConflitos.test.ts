@@ -119,8 +119,11 @@ describe("CC13: conflito decidido ou evidência corrigida destrava a publicaçã
     const r = await rpc(ADMIN, "app_ch_discard_evidence", { p_evidence_id: u.evidencia, p_reason: "Ligada à fonte errada." });
     expect(r.claim_status).toBe("compatible");
     expect(temConflito(await problemas(u.versao))).toBe(false);
-    const [e] = await sql(`select discarded_by, discard_reason from public.ch_evidence where id = $1`, [u.evidencia]);
-    expect(e).toEqual({ discarded_by: ADMIN, discard_reason: "Ligada à fonte errada." });
+    const [e] = await sql(`select discarded_by, discard_reason, stale from public.ch_evidence where id = $1`, [u.evidencia]);
+    expect(e).toEqual({ discarded_by: ADMIN, discard_reason: "Ligada à fonte errada.", stale: true });
+    const lista = await rpc(EDITOR, "app_ch_claim_evidence", { p_claim_id: u.afirmacao });
+    expect(lista.find((x: any) => x.id === u.evidencia)).toMatchObject({ discarded: true, discard_reason: "Ligada à fonte errada.", verdict: "conflicting" });
+    await expect(rpc(ALUNO, "app_ch_claim_evidence", { p_claim_id: u.afirmacao })).rejects.toThrow(/restrito à equipe/);
     await expect(rpc(ADMIN, "app_ch_discard_evidence", { p_evidence_id: u.evidencia, p_reason: "Ligada à fonte errada." })).rejects.toThrow(/já foi descartada/);
     expect((await sql(`select event from public.ch_claim_history where claim_id = $1 and event = 'evidence_discarded'`, [u.afirmacao])).length).toBe(1);
   });

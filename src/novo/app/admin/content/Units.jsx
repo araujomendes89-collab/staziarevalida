@@ -6,6 +6,8 @@ import { useSession } from "../../session.jsx";
 import { ListRow, LoadError, Loading, TextArea, useLoad } from "../common.jsx";
 import { hubAvailable, hubBlobUrl } from "./api.js";
 import { AREA_LABEL, isMockModel, MATERIAL_KIND, UNIT_STATUS } from "./labels.js";
+import { openFileInTab } from "./openFile.js";
+import { PublishPanel } from "./PublishPanel.jsx";
 import { ClaimCard, Label, ModelBadge, Pre, Section, shortHash, StatusBadge, useAction, when } from "./ui.jsx";
 
 const ORDER = ["awaiting_review", "needs_update", "draft", "approved", "published", "retired"];
@@ -42,7 +44,7 @@ function UnitList({ go, reviewerAreas, isStaff }) {
         />
       }
     >
-      {rows.length === 0 && <EmptyState icon="stamp" title="Nenhuma unidade aqui" description="As unidades nascem do processamento dos documentos (rascunho) ou são criadas pela equipe." />}
+      {rows.length === 0 && <EmptyState icon="stamp" title="Nenhuma unidade aqui" description="As unidades nascem do processamento dos documentos: cada documento enviado gera um rascunho por tema, que aparece aqui para revisão." />}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {rows.map((u) => {
           const v = latest(u);
@@ -69,6 +71,8 @@ function UnitList({ go, reviewerAreas, isStaff }) {
 function UnitVersion({ id, go, isAdmin, isStaff, reviewerAreas }) {
   const { backend } = useSession();
   const { data, error, reload } = useLoad(() => backend.rpc("app_ch_unit_version", { p_version_id: id }), [backend, id]);
+  const [publishing, setPublishing] = React.useState(false);
+  const [notice, setNotice] = React.useState(null);
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
   const v = data.version;
@@ -90,14 +94,16 @@ function UnitVersion({ id, go, isAdmin, isStaff, reviewerAreas }) {
       {isMockModel(v.generated_by_model) && <Banner tone="danger" title="Simulação de desenvolvimento">Esta versão foi produzida pela simulação (não é IA nem revisão). Serve para testar o fluxo e não pode ser publicada.</Banner>}
       {v.candidate_reason && <Banner tone="warning" title="Versão candidata">{v.candidate_reason}</Banner>}
       {v.scope_note && <Banner tone="info" title="Escopo">{v.scope_note}</Banner>}
-      <Problems problems={data.problems} />
+      {notice && <Banner tone="success" icon="globe">{notice}</Banner>}
+      <Problems problems={data.problems} status={v.status} isAdmin={isAdmin} />
       <ReviewFlags flags={v.review_flags} />
-      <Decisions data={data} isAdmin={isAdmin} isStaff={isStaff} reviewerAreas={reviewerAreas} onChanged={reload} />
+      <Decisions data={data} isAdmin={isAdmin} isStaff={isStaff} reviewerAreas={reviewerAreas} onChanged={reload} onPublish={() => setPublishing(true)} />
+      {publishing && isAdmin && v.status === "approved" && <PublishPanel version={v} onClose={() => setPublishing(false)} onPublished={(msg) => (setPublishing(false), setNotice(msg), reload())} />}
       <Editor key={v.content_hash} version={v} claims={data.claims} editable={editable} onSaved={reload} />
       <Materials data={data} canRegenerate={editable} onChanged={reload} />
       <Section title={`Afirmações e evidências (${data.claims.length})`}>
         {data.claims.map((c) => (
-          <ClaimCard key={c.id} claim={c} onChanged={reload} canConfirm={isStaff || reviewerAreas.includes(data.area_code)} />
+          <ClaimCard key={c.id} claim={c} onChanged={reload} canConfirm={reviewerAreas.includes(data.area_code)} />
         ))}
       </Section>
       <Section title="Aprovações e publicações">
@@ -125,13 +131,24 @@ function UnitVersion({ id, go, isAdmin, isStaff, reviewerAreas }) {
   );
 }
 
-function Problems({ problems }) {
-  if (!problems?.length)
+/** O que o banco achou de bloqueio de CONTEÚDO, e o que ainda falta para a publicação em si (aprovação, administrador, chaves da Configuração). */
+const NEXT_STEP = {
+  draft: "Falta enviar a versão para revisão: só uma versão aprovada pela revisão médica da área e pela editorial pode ser publicada.",
+  awaiting_review: "Falta a aprovação: a revisão médica (revisor da área) e a editorial. Só depois a versão pode ser publicada.",
+  needs_update: "A versão continua no ar, mas a fonte mudou: revise a versão candidata e retire esta se for preciso.",
+  published: "Esta versão está no ar para os alunos.",
+  retired: "Esta versão foi retirada e não volta ao ar. Para publicar de novo, é preciso uma versão nova.",
+};
+
+function Problems({ problems, status, isAdmin }) {
+  if (!problems?.length) {
+    const next = status === "approved" ? (isAdmin ? "A versão está aprovada: clique em Publicar para ver a prévia. A publicação também precisa estar ligada e o modo sombra desligado em Configuração e custos." : "A versão está aprovada. A publicação é feita por um administrador.") : NEXT_STEP[status];
     return (
-      <Banner tone="success" icon="badge-check">
-        Nenhum bloqueio de publicação encontrado pelo banco para esta versão exata.
+      <Banner tone={status === "approved" || status === "published" ? "success" : "info"} icon="badge-check" title="Nenhum bloqueio de conteúdo encontrado">
+        {next}
       </Banner>
     );
+  }
   return (
     <Banner tone="warning" icon="triangle-alert" title={`O que falta para publicar (${problems.length})`}>
       <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
@@ -170,7 +187,7 @@ function ReviewFlags({ flags }) {
   );
 }
 
-function Decisions({ data, isAdmin, isStaff, reviewerAreas, onChanged }) {
+function Decisions({ data, isAdmin, isStaff, reviewerAreas, onChanged, onPublish }) {
   const { backend } = useSession();
   const v = data.version;
   const [note, setNote] = React.useState("");
@@ -199,8 +216,8 @@ function Decisions({ data, isAdmin, isStaff, reviewerAreas, onChanged }) {
             </>
           )}
           {isAdmin && v.status === "approved" && (
-            <Button icon="globe" disabled={data.problems.length > 0} loading={act.busy} onClick={() => call("app_ch_publish", { p_version_id: v.id }, "Publicada.")}>
-              Publicar
+            <Button icon="globe" onClick={onPublish}>
+              Publicar para os alunos…
             </Button>
           )}
         </div>
@@ -212,7 +229,7 @@ function Decisions({ data, isAdmin, isStaff, reviewerAreas, onChanged }) {
             <div style={{ flex: 1, minWidth: 220 }}>
               <TextField label="Motivo da retirada" value={reason} onChange={(e) => setReason(e.target.value)} />
             </div>
-            <Button variant="secondary" icon="archive" disabled={!reason.trim()} loading={act.busy} onClick={() => call("app_ch_retire", { p_version_id: v.id, p_reason: reason }, "Retirada do ar.")}>
+            <Button variant="secondary" icon="archive" disabled={!reason.trim()} loading={act.busy} onClick={() => call("app_ch_retire", { p_version_id: v.id, p_reason: reason }, "Retirada do ar. A aula e os flashcards saem da lista do aluno; nada do que os alunos já fizeram é apagado.")}>
               Retirar
             </Button>
           </div>
@@ -327,7 +344,12 @@ function Materials({ data, canRegenerate, onChanged }) {
   const [kind, setKind] = React.useState(data.materials[0]?.kind ?? null);
   const act = useAction();
   const m = data.materials.find((x) => x.kind === kind);
-  const open = (r) => act.run(async () => window.open(await hubBlobUrl(backend, `/renders/${r.id}`), "_blank", "noopener"), null);
+  // a aba abre já no clique (senão o navegador barra como pop-up); se mesmo assim não abrir, o arquivo é baixado e a tela avisa
+  const [downloaded, setDownloaded] = React.useState(false);
+  const open = (r) => {
+    setDownloaded(false);
+    return act.run(async () => setDownloaded((await openFileInTab(() => hubBlobUrl(backend, `/renders/${r.id}`), `arquivo-final.${r.format}`)) === "baixado"), null);
+  };
   return (
     <Section
       title="Materiais"
@@ -340,6 +362,7 @@ function Materials({ data, canRegenerate, onChanged }) {
       }
     >
       {act.feedback}
+      {downloaded && <Banner tone="info">O navegador não abriu a aba nova, então o arquivo foi baixado.</Banner>}
       {data.materials.length === 0 && <p style={{ margin: 0, color: "var(--text-tertiary)" }}>Nenhum material gerado.</p>}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
         {data.materials.map((x) => (

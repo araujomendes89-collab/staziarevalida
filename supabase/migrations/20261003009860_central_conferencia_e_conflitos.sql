@@ -183,7 +183,7 @@ end
 $$;
 
 -- Descartar uma evidência ligada errado (a equipe, com motivo). Evidência que aponta conflito ou desatualização só o administrador descarta.
--- Nada é apagado: a evidência fica guardada com quem descartou, quando e por quê, e sai do cálculo da afirmação.
+-- Nada é apagado: a evidência fica guardada com quem descartou, quando e por quê, e sai do cálculo da afirmação (e de todo o sistema).
 create or replace function public.app_ch_discard_evidence(p_evidence_id uuid, p_reason text) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
@@ -199,12 +199,26 @@ begin
   if e.verdict in ('conflicting', 'outdated') and not public.is_admin() then
     raise exception 'Descartar evidência de conflito ou de desatualização é decisão de um administrador.' using errcode = '42501';
   end if;
-  update public.ch_evidence set discarded_at = now(), discarded_by = (select auth.uid()), discard_reason = btrim(p_reason) where id = p_evidence_id;
+  -- stale = true: o resto do sistema (confiança, perguntas, atualizações) também deixa de contar esta evidência
+  update public.ch_evidence set discarded_at = now(), discarded_by = (select auth.uid()), discard_reason = btrim(p_reason), stale = true where id = p_evidence_id;
   v_status := public.ch_claim_recompute_status(e.claim_id);
   insert into public.ch_claim_history (claim_id, actor_id, event, details)
   values (e.claim_id, (select auth.uid()), 'evidence_discarded', jsonb_build_object('evidence_id', e.id, 'verdict', e.verdict, 'reason', btrim(p_reason)));
   perform public.ch_log('evidence.discard', e.id::text, jsonb_build_object('claim', e.claim_id, 'reason', btrim(p_reason)));
   return jsonb_build_object('claim_status', v_status);
+end
+$$;
+
+-- Evidências de uma afirmação com o que a tela precisa para corrigir (a lista comum não traz o número da evidência).
+create or replace function public.app_ch_claim_evidence(p_claim_id uuid) returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+begin
+  perform public.ch_assert_staff();
+  return coalesce((select jsonb_agg(jsonb_build_object('id', e.id, 'source', s.title, 'organ', s.organ, 'version', e.source_version, 'page', e.page,
+           'quote', e.quote, 'verdict', e.verdict, 'stale', e.stale, 'discarded', e.discarded_at is not null, 'discard_reason', e.discard_reason,
+           'settled', public.ch_evidence_settled(e.id)) order by e.created_at)
+         from public.ch_evidence e join public.ch_sources s on s.id = e.source_id where e.claim_id = p_claim_id), '[]'::jsonb);
 end
 $$;
 
@@ -297,10 +311,12 @@ revoke execute on function public.ch_publish_problems_base(uuid) from public, an
 revoke execute on function public.app_ch_claim_can_confirm(uuid) from public, anon;
 revoke execute on function public.app_ch_confirm_critical(uuid) from public, anon;
 revoke execute on function public.app_ch_link_evidence(uuid, jsonb) from public, anon;
+revoke execute on function public.app_ch_claim_evidence(uuid) from public, anon;
 revoke execute on function public.app_ch_discard_evidence(uuid, text) from public, anon;
 revoke execute on function public.app_ch_conflict_decide(uuid, text, uuid, text) from public, anon;
 grant execute on function public.app_ch_claim_can_confirm(uuid) to authenticated;
 grant execute on function public.app_ch_confirm_critical(uuid) to authenticated;
 grant execute on function public.app_ch_link_evidence(uuid, jsonb) to authenticated;
+grant execute on function public.app_ch_claim_evidence(uuid) to authenticated;
 grant execute on function public.app_ch_discard_evidence(uuid, text) to authenticated;
 grant execute on function public.app_ch_conflict_decide(uuid, text, uuid, text) to authenticated;
