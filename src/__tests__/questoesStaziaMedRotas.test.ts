@@ -15,7 +15,7 @@ import { addOfficialSource, insertDraft, openStaziaEnv, USERS, type StaziaEnv } 
 
 vi.setConfig({ testTimeout: 300_000 });
 
-const price = (provider: string, model: string, i: number, o: number) => ({ provider, model, input_per_mtok: i, output_per_mtok: o, per_search_usd: null, source_url: "", checked_on: "2026-10-11" });
+const price = (provider: string, model: string, i: number, o: number) => ({ provider, model, input_per_mtok: i, output_per_mtok: o, per_search_usd: null, source_url: "", checked_on: "2026-10-11" }) as any;
 const cfg = (over: Partial<AiConfig> = {}): AiConfig =>
   ({
     providers: {} as any,

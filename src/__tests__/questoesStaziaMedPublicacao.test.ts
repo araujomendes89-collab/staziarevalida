@@ -22,7 +22,7 @@ const approve = async (id: string) => {
   await env.rpc(USERS.REVISOR_PED, "app_draft_question_decide", { p_id: id, p_decision: "approved", p_note: "Conferi.", p_hash: d.content_hash, p_sources_checked: true });
   return (await row(id)).content_hash as string;
 };
-const publish = (id: string, hash: string, uid = USERS.ADMIN) => env.rpc<{ question_id: string; code: string; number: number; action: string }>(uid, "app_staziamed_publish", { p_id: id, p_hash: hash });
+const publish = (id: string, hash: string, uid: string = USERS.ADMIN) => env.rpc<{ question_id: string; code: string; number: number; action: string }>(uid, "app_staziamed_publish", { p_id: id, p_hash: hash });
 const q = async (id: string) => (await env.sql(`select * from public.questions where id = $1`, [id]))[0];
 /** Edita, confere e aprova de novo (nova versão aprovada). */
 async function newApprovedVersion(id: string, change: Record<string, unknown>) {

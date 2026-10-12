@@ -99,7 +99,7 @@ async function runSlot(provider: AiProvider, requestId: string, slot = 1) {
   const key = `qgen:${requestId}:${slot}`;
   await env.sql(`update public.ch_jobs set status = 'blocked' where status = 'queued' and idempotency_key <> $1`, [key]);
   const job = await env.db.service<Job | null>("ch_worker_claim", { p_stale_seconds: 900 });
-  expect(job?.idempotency_key ?? (job as any)?.scope_key).toBeTruthy();
+  expect(job).toBeTruthy();
   expect(job!.scope_key).toBe(`staziamed:${requestId}:${slot}`);
   return { job: job!, out: await runJob(depsWith(provider), job!) };
 }

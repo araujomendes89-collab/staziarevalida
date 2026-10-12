@@ -217,7 +217,7 @@ describe("Lista e detalhe", () => {
   it("filtros de origem, pedido/lote, área, tema, situação, bloqueadas e semelhança; contagens; detalhe com trilha, proposta e oficial mais parecida", async () => {
     const env3 = await openStaziaEnv({ drafts: true });
     try {
-      const list = (filters: Record<string, unknown> = {}, uid = USERS.EDITOR) =>
+      const list = (filters: Record<string, unknown> = {}, uid: string = USERS.EDITOR) =>
         env3.rpc<any>(uid, "app_draft_questions", { p_limit: 100, ...filters });
       const all = await list();
       expect(all.total).toBe(200);

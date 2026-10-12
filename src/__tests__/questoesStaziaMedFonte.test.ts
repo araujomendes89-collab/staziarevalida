@@ -44,7 +44,7 @@ async function run(provider: AiProvider, draftId: string) {
   expect(job.scope_key.startsWith(`qsource:${draftId}:`)).toBe(true);
   return runJob(depsWith(provider), job);
 }
-const enqueue = (id: string, uid = USERS.EDITOR) => env.rpc<{ job_id: string; ja_na_fila: boolean }>(uid, "app_staziamed_source_enqueue", { p_draft_id: id, p_estimate: {} });
+const enqueue = (id: string, uid: string = USERS.EDITOR) => env.rpc<{ job_id: string; ja_na_fila: boolean }>(uid, "app_staziamed_source_enqueue", { p_draft_id: id, p_estimate: {} });
 const latestProposal = async (id: string) => (await env.sql(`select * from public.draft_source_proposals where draft_id = $1 order by created_at desc, id limit 1`, [id]))[0];
 
 beforeAll(async () => {
