@@ -35,6 +35,8 @@ import type { Renderer } from "./render";
 import { generateVisualVersion, visualVersionOf, VisualRenderUnavailable } from "./visual/service";
 import { runSourceSearch, SearchFailed, SearchPending } from "./sources/search";
 import { snapshotPassages } from "./sourceDiff";
+import { Blocked, Fatal } from "./jobErrors";
+import { stepQuestionCheck } from "./questoes/check";
 
 const run = promisify(execFile);
 
@@ -43,7 +45,7 @@ export const EXTRACTOR_VERSION = "staziamed-extract-1.0";
 export const MATERIALS_TEMPLATE = "materials-1.0";
 const PAGE_RANGE = 20;
 
-export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render" | "source_search";
+export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render" | "source_search" | "question_generate" | "question_check" | "question_source";
 
 export interface Job {
   id: string;
@@ -75,10 +77,7 @@ export interface PipelineDeps {
   sleep?: (ms: number) => Promise<void>;
 }
 
-/** Falta configuração: o trabalho fica pendente, sem gastar tentativa. */
-export class Blocked extends Error {}
-/** Falha que nova tentativa não resolve (arquivo protegido, corrompido, hash diferente). */
-export class Fatal extends Error {}
+export { Blocked, Fatal };
 /**
  * Outro processamento pegou o trabalho: este ficou sem dar sinal de vida por mais de CONTENT_HUB_STALE_SECONDS. Ele para ali, sem
  * gravar mais nada, sem registrar o fim e sem pedir a próxima etapa (quem pegou o trabalho termina).
@@ -1120,6 +1119,11 @@ async function stepSourceSearch(ctx: Ctx): Promise<Step | null> {
   return null;
 }
 
+/** Etapas das Questões StaziaMed que ainda não foram instaladas neste servidor: o trabalho espera, sem gastar tentativa. */
+async function stepQuestionNotInstalled(): Promise<Step | null> {
+  throw new Blocked("Etapa de Questões StaziaMed ainda não instalada neste servidor.");
+}
+
 const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   extract: stepExtract,
   source_index: stepSourceIndex,
@@ -1132,6 +1136,9 @@ const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   review_check: stepReviewCheck,
   visual_render: stepVisualRender,
   source_search: stepSourceSearch,
+  question_generate: stepQuestionNotInstalled,
+  question_check: (ctx) => stepQuestionCheck(ctx.deps, ctx.job, ctx.metrics),
+  question_source: stepQuestionNotInstalled,
 };
 
 /**

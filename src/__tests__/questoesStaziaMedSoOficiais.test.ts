@@ -91,6 +91,7 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   app_question_figure: { classe: "as_duas", como: "historico" }, // exige acesso às inéditas
   staziamed_topic_weights: { classe: "so_oficiais", como: "filtra" },
   staziamed_plan_slots: { classe: "as_duas", como: "historico" }, // oficiais para temas e peso; StaziaMed publicadas só para as letras-alvo
+  draft_situation: { classe: "as_duas", como: "historico" }, // rascunho publicado: lê a questão para saber se foi recolhida
   ch_worker_similarity_corpus: { classe: "so_oficiais", como: "filtra" }, // corpus oficial = origin 'official'; as StaziaMed vêm dos rascunhos
   // as duas, ferramentas da equipe que agem pelo id da questão
   app_admin_comment_review: { classe: "as_duas", como: "equipe" },

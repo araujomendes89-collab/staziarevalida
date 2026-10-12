@@ -330,6 +330,7 @@ export function functionForPrompt(key: PromptKey): AiFunctionKey {
     case "solve":
     case "currency":
     case "redteam":
+    case "staziamed_pedagogia":
       return "verificacao";
     case "qanalysis":
     case "qreanalysis":

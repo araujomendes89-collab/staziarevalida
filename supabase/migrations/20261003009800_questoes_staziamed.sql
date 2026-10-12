@@ -431,6 +431,202 @@ grant execute on function public.app_staziamed_request_create(text, text, text, 
 revoke execute on function public.app_staziamed_requests(integer) from public, anon;
 grant execute on function public.app_staziamed_requests(integer) to authenticated;
 
+-- ---------------------------------------------------------------- conferência como tarefa (question_check)
+-- Igual a …2100 (a mais nova); muda só: com `content_hash` em p_meta diferente do atual, NÃO grava e devolve nulo (o rascunho foi
+-- editado enquanto a conferência rodava). Sem `content_hash` em p_meta (a linha de comando), grava no conteúdo atual como sempre.
+create or replace function public.ch_worker_save_draft_check(p_draft_id uuid, p_layer text, p_verdict text, p_findings jsonb, p_meta jsonb default '{}'::jsonb) returns uuid
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_id uuid;
+  v_hash text := (select content_hash from public.draft_questions where id = p_draft_id);
+begin
+  if nullif(p_meta ->> 'content_hash', '') is not null and p_meta ->> 'content_hash' is distinct from v_hash then
+    return null;
+  end if;
+  insert into public.draft_checks (draft_id, layer, verdict, findings, provider, model, prompt_version, input_hash, content_hash, cost_usd)
+  values (p_draft_id, p_layer, p_verdict, coalesce(p_findings, '[]'::jsonb), p_meta ->> 'provider', p_meta ->> 'model', p_meta ->> 'prompt_version',
+          p_meta ->> 'input_hash', v_hash, nullif(p_meta ->> 'cost_usd', '')::numeric)
+  on conflict (draft_id, layer) do update set verdict = excluded.verdict, findings = excluded.findings, provider = excluded.provider, model = excluded.model,
+    prompt_version = excluded.prompt_version, input_hash = excluded.input_hash, content_hash = excluded.content_hash, cost_usd = excluded.cost_usd, checked_at = now()
+  returning id into v_id;
+  return v_id;
+end
+$$;
+
+-- O rascunho como a tarefa precisa (os campos de ch_worker_drafts_for_check, mais tema, origem e situação). Nulo se não existe.
+create or replace function public.ch_worker_draft_for_job(p_draft_id uuid) returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select to_jsonb(x) from (
+    select d.id, d.batch, d.source_id, d.slot, d.area, d.subarea, d.competency, d.title, d.stem, d.alternatives, d.correct_answer,
+           d.explanation, d.alternative_explanations, d.source_citations, d.update_application, d.similarity_to_official,
+           d.support_type, d.support_title, d.support_rows, d.clinical_decision, d.key_concepts, d.model, d.content_hash,
+           d.topic, d.generated_by, d.status
+    from public.draft_questions d where d.id = p_draft_id) x
+$$;
+
+-- Trechos pelos ids, com `official` = fonte oficial vigente (nível A a D, versão final, em vigor, validade não vencida).
+create or replace function public.ch_worker_passages_by_ids(p_ids uuid[]) returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'passage_id', p.id, 'source_id', s.id, 'source', s.title, 'organ', s.organ, 'version', s.version, 'authority_level', s.authority_level,
+    'kind', s.kind, 'status', s.status, 'published_on', s.published_on, 'valid_until', s.valid_until, 'section', p.section, 'page', p.page, 'text', p.text,
+    'official', s.status = 'current' and s.authority_level in ('A', 'B', 'C', 'D') and s.kind = 'final' and (s.valid_until is null or s.valid_until >= current_date)
+  ) order by p.id), '[]'::jsonb)
+  from public.ch_source_passages p join public.ch_sources s on s.id = p.source_id
+  where p.id = any (coalesce(p_ids, '{}'::uuid[]))
+$$;
+
+-- Revisão pedagógica da IA (opinião, nunca aprovação): entra em ai_review junto do que já havia, só no texto que foi lido.
+create or replace function public.ch_worker_save_pedagogy(p_draft_id uuid, p_hash text, p_review jsonb) returns boolean
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  update public.draft_questions set ai_review = coalesce(ai_review, '{}'::jsonb) || jsonb_build_object('pedagogia', coalesce(p_review, '{}'::jsonb))
+  where id = p_draft_id and content_hash = p_hash;
+  return found;
+end
+$$;
+
+-- Semelhança calculada no servidor (maior nota contra as questões oficiais) e a questão oficial mais parecida.
+create or replace function public.ch_worker_set_draft_similarity(p_draft_id uuid, p_hash text, p_score numeric, p_question_id text) returns boolean
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  update public.draft_questions
+     set similarity_to_official = least(round(coalesce(p_score, 0), 1), 999.9), similar_question_id = p_question_id
+   where id = p_draft_id and content_hash = p_hash;
+  return found;
+end
+$$;
+
+-- Trilha: a conferência terminou (um resumo dos veredictos), no texto que foi lido.
+create or replace function public.ch_worker_draft_checked(p_draft_id uuid, p_hash text, p_summary jsonb) returns void
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  if exists (select 1 from public.draft_questions where id = p_draft_id and content_hash = p_hash) then
+    perform public.draft_event(p_draft_id, 'conferida', null, null, coalesce(p_summary, '{}'::jsonb));
+  end if;
+end
+$$;
+
+-- "Bloqueada: sem fonte oficial": o rascunho tem pelo menos uma citação, todas no formato novo, cada uma apontando para um trecho
+-- de fonte oficial vigente (a mesma regra de ch_worker_passages_by_ids) e com a citação literal nesse trecho (espaços normalizados).
+create or replace function public.draft_has_official_sources(d public.draft_questions) returns boolean
+  language sql stable security definer set search_path = ''
+as $$
+  select jsonb_typeof(d.source_citations) = 'array' and jsonb_array_length(d.source_citations) >= 1
+     and not exists (
+       select 1 from jsonb_array_elements(d.source_citations) c
+       where jsonb_typeof(c) <> 'object' or not (c ? 'passage_id')
+          or not exists (
+            select 1 from public.ch_source_passages p join public.ch_sources s on s.id = p.source_id
+            where p.id::text = c ->> 'passage_id'
+              and s.status = 'current' and s.authority_level in ('A', 'B', 'C', 'D') and s.kind = 'final'
+              and (s.valid_until is null or s.valid_until >= current_date)
+              and length(btrim(regexp_replace(coalesce(c ->> 'quote', ''), '\s+', ' ', 'g'))) > 0
+              and strpos(regexp_replace(p.text, '\s+', ' ', 'g'), btrim(regexp_replace(c ->> 'quote', '\s+', ' ', 'g'))) > 0))
+$$;
+
+-- Situação do rascunho para a lista: 'retired' (questão recolhida), 'published' (aprovado e publicado), senão a situação dele.
+-- plpgsql porque lê questions.retired_at, coluna da …9801 (o corpo só é conferido ao rodar).
+create or replace function public.draft_situation(d public.draft_questions) returns text
+  language plpgsql stable security definer set search_path = ''
+as $$
+begin
+  if d.question_id is not null and exists (select 1 from public.questions q where q.id = d.question_id and q.retired_at is not null) then return 'retired'; end if;
+  if d.question_id is not null and d.status = 'approved' then return 'published'; end if;
+  return d.status;
+end
+$$;
+
+-- O rascunho passa nos filtros da lista? Chaves de p_filters: batch, status (os 4 de hoje, published e retired), area, origin
+-- (gerador_antigo | servidor), topic ('' = sem tema), blocked (true = sem fonte oficial), min_similarity.
+create or replace function public.draft_matches_filters(d public.draft_questions, p_filters jsonb) returns boolean
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  f constant jsonb := coalesce(p_filters, '{}'::jsonb);
+begin
+  if nullif(f ->> 'batch', '') is not null and d.batch is distinct from f ->> 'batch' then return false; end if;
+  if nullif(f ->> 'area', '') is not null and d.area is distinct from f ->> 'area' then return false; end if;
+  if nullif(f ->> 'origin', '') is not null and d.generated_by is distinct from f ->> 'origin' then return false; end if;
+  if f ? 'topic' and f ->> 'topic' is not null then
+    if f ->> 'topic' = '' then
+      if nullif(btrim(coalesce(d.topic, '')), '') is not null then return false; end if;
+    elsif d.topic is distinct from f ->> 'topic' then return false; end if;
+  end if;
+  if nullif(f ->> 'status', '') is not null and public.draft_situation(d) is distinct from f ->> 'status' then return false; end if;
+  if f ? 'blocked' and jsonb_typeof(f -> 'blocked') = 'boolean' and (f -> 'blocked')::boolean is distinct from not public.draft_has_official_sources(d) then return false; end if;
+  if nullif(f ->> 'min_similarity', '') is not null and coalesce(d.similarity_to_official, 0) < (f ->> 'min_similarity')::numeric then return false; end if;
+  return true;
+end
+$$;
+
+-- Camadas que valem para o texto atual do rascunho (as quatro de sempre).
+create or replace function public.draft_checks_current(d public.draft_questions) returns integer
+  language sql stable security definer set search_path = ''
+as $$
+  select count(distinct c.layer)::int from public.draft_checks c where c.draft_id = d.id and c.content_hash = d.content_hash
+$$;
+
+-- "Conferir": uma tarefa por rascunho e versão (chave qcheck:<rascunho>:<hash>); pedir de novo não duplica. Equipe.
+create or replace function public.app_staziamed_check_enqueue(p_draft_ids uuid[], p_estimate jsonb default '{}'::jsonb) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  d public.draft_questions;
+  v_key text;
+  v_new integer := 0;
+  v_old integer := 0;
+  v_id uuid;
+begin
+  if (select auth.uid()) is null or not public.is_staff() then
+    raise exception 'Conferir é da equipe (administrador ou editor).' using errcode = '42501';
+  end if;
+  for d in select * from public.draft_questions where id = any (coalesce(p_draft_ids, '{}'::uuid[])) order by batch, slot loop
+    v_key := 'qcheck:' || d.id || ':' || d.content_hash;
+    insert into public.ch_jobs (document_id, step, scope_key, idempotency_key, max_attempts)
+    values (null, 'question_check', v_key, v_key, 3)
+    on conflict (idempotency_key) do nothing returning id into v_id;
+    if v_id is null then
+      -- já existe: se terminou mal (morta), volta para a fila; senão conta como "já na fila"
+      update public.ch_jobs set status = 'queued', attempts = 0, error = null, run_after = now()
+       where idempotency_key = v_key and status in ('dead', 'failed') returning id into v_id;
+      if v_id is null then v_old := v_old + 1; else v_new := v_new + 1; end if;
+    else
+      v_new := v_new + 1;
+    end if;
+    v_id := null;
+  end loop;
+  perform public.ch_log('staziamed.check', null, jsonb_build_object('na_fila', v_new, 'ja_na_fila', v_old, 'estimate', coalesce(p_estimate, '{}'::jsonb)));
+  return jsonb_build_object('na_fila', v_new, 'ja_na_fila', v_old);
+end
+$$;
+
+-- Os rascunhos do filtro que ainda não têm as quatro camadas no texto atual (até 200; recusados ficam de fora). Equipe.
+create or replace function public.app_staziamed_pending_checks(p_filters jsonb default '{}'::jsonb) returns uuid[]
+  language plpgsql stable security definer set search_path = ''
+as $$
+begin
+  if (select auth.uid()) is null or not public.is_staff() then
+    raise exception 'Conferir é da equipe (administrador ou editor).' using errcode = '42501';
+  end if;
+  return coalesce((
+    select array_agg(x.id order by x.batch, x.slot) from (
+      select d.id, d.batch, d.slot from public.draft_questions d
+      where d.status <> 'rejected' and public.draft_matches_filters(d, p_filters) and public.draft_checks_current(d) < 4
+      order by d.batch, d.slot limit 200) x), '{}'::uuid[]);
+end
+$$;
+revoke execute on function public.app_staziamed_check_enqueue(uuid[], jsonb) from public, anon;
+grant execute on function public.app_staziamed_check_enqueue(uuid[], jsonb) to authenticated;
+revoke execute on function public.app_staziamed_pending_checks(jsonb) from public, anon;
+grant execute on function public.app_staziamed_pending_checks(jsonb) to authenticated;
+
 -- ---------------------------------------------------------------- funções de serviço e de apoio: fechadas para o app
 do $revoke$
 declare f text;

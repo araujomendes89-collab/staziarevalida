@@ -153,6 +153,11 @@ export function mockRespond(req: StructuredRequest): unknown {
         ],
       };
     }
+    case "staziamed_pedagogia":
+      return {
+        verdict: "revisar", single_best_answer: false, stem_clear_and_sufficient: false, distractors_plausible: false, no_unintended_clues: false, competency_aligned: false,
+        issues: [{ severity: "minor", where: "questão", detail: "Simulação: sem revisão pedagógica real." }],
+      };
     case "review":
       return { issues: [] };
     default:
