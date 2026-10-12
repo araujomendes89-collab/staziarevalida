@@ -92,11 +92,13 @@ describe("PL02 — Início", () => {
     return render(<HomeScreen go={vi.fn()} mobile={false} />);
   };
 
-  it("teste vencido: 'Seu teste grátis terminou', o que fica aberto e fechado, e sem botão 'Ver planos'", async () => {
+  it("teste vencido: 'Seu teste grátis terminou', o que fica aberto e fechado, e 'Ver planos' abre a tela informativa (sem assinar)", async () => {
     await abrir(bootOf(TESTE_ACABOU), { ends_at: TESTE_ACABOU.trial_ends_at, days_left: 0 }, ACESSO.teste_acabou);
     expect(await screen.findByText(AVISO)).toBeTruthy();
     expect(screen.getByText("Seu teste grátis terminou")).toBeTruthy();
-    expect(screen.queryByText("Ver planos")).toBeNull();
+    // PL01: a tela de planos é só informativa; o botão leva a ela e não existe botão de assinar
+    expect(screen.getByText("Ver planos")).toBeTruthy();
+    expect(screen.queryByText(/assinar/i, { selector: "button" })).toBeNull();
   });
 
   it("teste dentro do prazo: segue como antes (dias, questões respondidas e 'Ver planos')", async () => {
@@ -194,11 +196,12 @@ describe("PL02 — Tutor", () => {
     return render(<TutorGate go={vi.fn()}>{() => <div>conteúdo do Tutor</div>}</TutorGate>);
   };
 
-  it("conta sem teste valendo: 'Seu teste grátis terminou' e o que fica aberto, sem botão de assinar", async () => {
+  it("conta sem teste valendo: 'Seu teste grátis terminou' e o que fica aberto, com 'Ver planos' (informativo) e sem botão de assinar", async () => {
     abrir(bootOf(TESTE_ACABOU), status({ block_reason: "trial_expired", plan_locked: true }), ACESSO.teste_acabou);
     expect(await screen.findByText("Seu teste grátis terminou")).toBeTruthy();
     expect(screen.getByText(/as questões e os flashcards continuam abertos\. A assinatura pelo app ainda não está disponível\./)).toBeTruthy();
-    expect(screen.queryByText("Ver planos")).toBeNull();
+    expect(screen.getByText("Ver planos")).toBeTruthy();
+    expect(screen.queryByText(/assinar/i, { selector: "button" })).toBeNull();
   });
 
   it("cadastro sem teste: o título não diz que um teste terminou", async () => {

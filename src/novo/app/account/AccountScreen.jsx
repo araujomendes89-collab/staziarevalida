@@ -5,10 +5,10 @@
 import React from "react";
 import { Avatar, Badge, Banner, Button, Card, Icon, SectionHeader, SegmentedControl, SelectField, TextField } from "../../ds";
 import { isStaffRole } from "../admin/AdminScreen.jsx";
-import { isPhase2Locked, paidPlanLapsed, trialLapsed } from "../admin/common.jsx";
+import { isPhase2Locked } from "../admin/common.jsx";
 import { PASSWORD_MIN_LENGTH } from "../../data";
 import { useSession } from "../session.jsx";
-import { usePlanLock } from "../plan/planAccess.js";
+import { planStatusLabel as planBadge, usePlanLock } from "../plan/planAccess.js";
 import { useMobile } from "../Shell.jsx";
 import { PlayProfileSection } from "../play/PlayProfile.jsx";
 import { COUNTRIES, normalizePhone, phoneError, splitPhone } from "../legal/phone.js";
@@ -33,10 +33,6 @@ const MINUTES = [
   { value: "120", label: "2 h por dia" },
   { value: "180", label: "3 h ou mais por dia" },
 ];
-const PLAN_LABEL = { trial: "Teste grátis", pro: "Plano Pro", elite: "Plano Elite" };
-
-const dateBR = (iso) => new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso));
-
 // Data e hora do aceite sempre no fuso de Brasília, qualquer que seja o deslocamento do texto que o banco devolve.
 const dateTimeBR = (iso) => {
   const parts = Object.fromEntries(
@@ -46,21 +42,6 @@ const dateTimeBR = (iso) => {
   );
   return `${parts.day}/${parts.month}/${parts.year} às ${parts.hour}:${parts.minute}`;
 };
-
-function planBadge(subscription, role, reviewer = false) {
-  if (isStaffRole(role)) return "Equipe · acesso completo";
-  if (reviewer) return "Revisor médico · acesso completo";
-  if (!subscription) return null;
-  const label = PLAN_LABEL[subscription.plan] ?? subscription.plan;
-  // cadastro sem teste grátis (PL06): conta gratuita, sem plano pago
-  if (subscription.plan === "trial" && subscription.status === "expired" && !subscription.trial_ends_at) return "Acesso gratuito";
-  if (trialLapsed(subscription)) return `${label} · encerrado`;
-  if (subscription.status === "trialing" && subscription.trial_ends_at) return `${label} até ${dateBR(subscription.trial_ends_at)}`;
-  // plano pago depois de "Plano pago até" (com pagamento pendente, depois dos 3 dias de tolerância) já não dá acesso
-  if (subscription.status === "canceled" || subscription.status === "expired" || paidPlanLapsed(subscription)) return `${label} · encerrado`;
-  if (subscription.status === "past_due") return `${label} · pagamento pendente`;
-  return label;
-}
 
 function SaveBar({ saving, status, onCancel, dirty }) {
   return (
@@ -493,10 +474,13 @@ export function AccountScreen({ go }) {
               <Badge size="sm">{profile.phase === 2 && !phase2Locked ? "2ª fase" : "1ª fase"}</Badge>
             </div>
           </div>
+          <Button size="sm" variant="secondary" icon="crown" onClick={() => go("planos")}>
+            Ver os planos
+          </Button>
         </div>
       </Card>
       {lock && (
-        <Banner tone="warning" icon="lock" title={lock.title}>
+        <Banner tone="warning" icon="lock" title={lock.title} action={<Button size="sm" variant="secondary" onClick={() => go("planos")}>Ver planos</Button>}>
           {lock.text}
         </Banner>
       )}

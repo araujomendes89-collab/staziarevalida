@@ -44,13 +44,14 @@ export function TutorGate({ go, children, frame = (node) => node }) {
   }
   if (!status.available) {
     const expired = status.entitlement?.block_reason === "trial_expired";
-    // conta sem plano pago e sem teste grátis valendo (PL02): diz o que fica aberto; ainda não há tela de assinatura
+    // conta sem plano pago e sem teste grátis valendo (PL02): diz o que fica aberto; "Ver planos" abre a tela informativa (não há assinatura pelo app)
     if (status.entitlement?.plan_locked) {
       return frame(
         <EmptyState
           icon="lock"
           title={planLock?.title ?? "O Tutor faz parte dos planos pagos"}
           description="O Tutor faz parte dos planos pagos; as questões e os flashcards continuam abertos. A assinatura pelo app ainda não está disponível."
+          action={<Button iconRight="arrow-right" onClick={() => go?.("planos")}>Ver planos</Button>}
         />
       );
     }
@@ -59,7 +60,7 @@ export function TutorGate({ go, children, frame = (node) => node }) {
         icon="lock"
         title={expired ? "Seu teste grátis do Tutor terminou" : "O Tutor faz parte dos planos pagos"}
         description="Com um plano ativo você conversa com o professor por texto ou por voz, com as suas questões, os seus erros e os seus temas."
-        action={<Button iconRight="arrow-right" onClick={() => go?.("perfil")}>Ver planos</Button>}
+        action={<Button iconRight="arrow-right" onClick={() => go?.("planos")}>Ver planos</Button>}
       />
     );
   }

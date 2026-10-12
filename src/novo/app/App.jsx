@@ -24,6 +24,7 @@ import { ErrorNotebook } from "./review/ErrorNotebook.jsx";
 import { PerformanceScreen } from "./review/PerformanceScreen.jsx";
 import { FlashcardsScreen } from "./review/FlashcardsScreen.jsx";
 import { AccountScreen } from "./account/AccountScreen.jsx";
+import { PlansScreen } from "./plan/PlansScreen.jsx";
 import { AdminScreen, isStaffRole } from "./admin/AdminScreen.jsx";
 import { isPhase2Locked } from "./admin/common.jsx";
 import { ThemesScreen } from "./study/ThemesScreen.jsx";
@@ -53,6 +54,7 @@ const TITLES = {
   missoes: ["Missões", "Stazia Arena · metas de hoje e da semana"],
   conquistas: ["Conquistas", "Stazia Arena · medalhas e recompensas"],
   perfil: ["Conta", "Dados, segurança e privacidade"],
+  planos: ["Planos", "Conta · o que cada plano inclui"],
   teoria2: ["Teoria para a prática", "Esqueletos, documentos médicos e protocolos aplicados às estações"],
   estacoes: ["Banco de estações", "Estações nas 5 grandes áreas"],
   dupla: ["Praticar", "Treine em dupla com outro aluno"],
@@ -65,7 +67,7 @@ const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes"]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", "planos"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -111,7 +113,7 @@ function Screen() {
   if (phase2Locked && PHASE2_ROUTES.includes(route)) return <Navigate to="/" replace />;
 
   const go = (next, query) => {
-    const target = next === "planos" ? "perfil" : next;
+    const target = next;
     navigate((target === defaultRoute ? "/" : `/${target}`) + (query ? `?${new URLSearchParams(query)}` : ""));
     window.scrollTo(0, 0);
   };
@@ -165,6 +167,7 @@ function Screen() {
   else if (route === "peps") body = <Peps go={go} />;
   else if (route === "paciente") body = <SimPatient go={go} />;
   else if (route === "desempenho2") body = <Perf2 go={go} data={data} />;
+  else if (route === "planos") body = <PlansScreen go={go} />;
   else if (route === "admin") body = <AdminScreen />;
   else body = <AccountScreen go={go} />;
 

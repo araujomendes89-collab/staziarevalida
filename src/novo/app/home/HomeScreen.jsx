@@ -21,7 +21,7 @@ const trialEnding = (trial) => {
 
 function TrialBanner({ trial, attempts, go }) {
   // Teste que acabou E o banco confirmou que a conta está sem acesso pago: avisa o que fica nos planos pagos e o que segue aberto (PL02).
-  // Sem botão: ainda não há tela de assinatura. Sem a confirmação do banco (regra ainda não aplicada), fica como antes.
+  // O botão "Ver planos" leva à tela informativa de planos (sem preço e sem assinatura: a Stripe está parada). Sem a confirmação do banco, fica como antes.
   const lock = usePlanLock();
   const over = Boolean(lock) && trialDaysLeft(trial) === null;
   return (
@@ -29,11 +29,9 @@ function TrialBanner({ trial, attempts, go }) {
       tone={trialEnding(trial) ? "warning" : "brand"}
       title={trialTitle(trial)}
       action={
-        over ? undefined : (
-          <Button size="sm" variant="secondary" onClick={() => go("planos")}>
-            Ver planos
-          </Button>
-        )
+        <Button size="sm" variant="secondary" onClick={() => go("planos")}>
+          Ver planos
+        </Button>
       }
     >
       {over

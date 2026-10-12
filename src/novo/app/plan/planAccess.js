@@ -4,6 +4,7 @@
 // cobrança (a Stripe está parada): os avisos não têm botão de assinar.
 import React from "react";
 import { useSession } from "../session.jsx";
+import { isStaffRole, paidPlanLapsed, trialLapsed } from "../admin/common.jsx";
 
 /** Equipe (administrador e editor) e revisor médico: acesso completo, sem teste nem plano. */
 export const hasFullAccess = (boot) => boot?.role === "admin" || boot?.role === "editor" || Boolean(boot?.reviewer_areas?.length);
@@ -52,3 +53,31 @@ export function usePlanLock() {
 
 /** O banco recusou por falta de plano pago (mensagem de simulado_gate)? */
 export const isPlanLockMessage = (message) => /planos pagos/.test(String(message ?? ""));
+
+const PLAN_LABEL = { trial: "Teste grátis", pro: "Plano Pro", elite: "Plano Elite" };
+const dateBR = (iso) => new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso));
+
+/** A situação do plano da pessoa em uma frase curta (Conta e tela de Planos). null quando não há assinatura registrada. */
+export function planStatusLabel(subscription, role, reviewer = false) {
+  if (isStaffRole(role)) return "Equipe · acesso completo";
+  if (reviewer) return "Revisor médico · acesso completo";
+  if (!subscription) return null;
+  const label = PLAN_LABEL[subscription.plan] ?? subscription.plan;
+  // cadastro sem teste grátis (PL06): conta gratuita, sem plano pago
+  if (subscription.plan === "trial" && subscription.status === "expired" && !subscription.trial_ends_at) return "Acesso gratuito";
+  if (trialLapsed(subscription)) return `${label} · encerrado`;
+  if (subscription.status === "trialing" && subscription.trial_ends_at) return `${label} até ${dateBR(subscription.trial_ends_at)}`;
+  // plano pago depois de "Plano pago até" (com pagamento pendente, depois dos 3 dias de tolerância) já não dá acesso
+  if (subscription.status === "canceled" || subscription.status === "expired" || paidPlanLapsed(subscription)) return `${label} · encerrado`;
+  if (subscription.status === "past_due") return `${label} · pagamento pendente`;
+  return label;
+}
+
+/** O plano da pessoa vale agora (teste dentro do prazo ou plano pago em dia)? É só para destacar o cartão do plano: quem decide o acesso é o banco. */
+export function currentPlanCode(subscription, role, reviewer = false) {
+  if (!subscription || isStaffRole(role) || reviewer) return null;
+  if (subscription.plan === "trial" && subscription.status === "expired") return null;
+  if (trialLapsed(subscription)) return null;
+  if (subscription.status === "canceled" || subscription.status === "expired" || paidPlanLapsed(subscription)) return null;
+  return subscription.plan;
+}
