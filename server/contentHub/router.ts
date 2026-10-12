@@ -14,6 +14,7 @@ import type { ContentHubWorker } from "./worker";
 import type { ProcessingReport } from "./capabilities";
 import { DEFAULT_MAX_SEARCHES, functionChecks, invalidateAiConfig, loadAiConfig } from "../ai/config";
 import { aiAllowed } from "./ai/registry";
+import { mountQuestoesStaziaMed } from "./questoes/routes";
 import { DEFAULT_EMBEDDING_MODEL, embedderAllowed, embeddingsConfig, queryEmbedding } from "./embeddings";
 
 /** A tarefa no Cloud Run roda a cada 10 minutos: sem relato há mais de 30, ela parou. */
@@ -50,6 +51,8 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
   });
 
   const asUser = <T>(req: Authed, fn: string, args: Record<string, unknown> = {}) => deps!.db.asUser<T>(req.user!, fn, args);
+  // Questões StaziaMed: estimativa de custo e fila de Gerar, Conferir e Buscar fonte oficial (só a equipe)
+  mountQuestoesStaziaMed(router, deps!, asUser);
   const requireStaff = async (req: Authed) => {
     const me = await asUser<{ staff: boolean; admin: boolean; reviewer_areas: string[] } | null>(req, "app_ch_whoami");
     if (!me || !(me.staff || me.reviewer_areas.length)) throw new Error("Acesso restrito à equipe de conteúdo.");
