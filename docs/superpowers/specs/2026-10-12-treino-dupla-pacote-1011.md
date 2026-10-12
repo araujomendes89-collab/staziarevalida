@@ -334,3 +334,5 @@ arquivo do pacote foi executado ou copiado.
 | D12 | Compra **parada**, tela só informativa; o dono enviará o método de engenharia do match e da cobrança |
 
 **Atualização (2026-10-12, noite):** o documento de engenharia "Stazia Match" que o dono enviou foi analisado em `docs/superpowers/specs/2026-10-12-stazia-match-engenharia.md`. Efeito sobre este texto: a **Etapa Q (cota, 9950) é substituída** por um livro de créditos único (match e IA do aluno), D7 e D12 passam a depender da pergunta "quando o crédito sai" (aceite do match ou início confirmado) e de "o que é uma unidade" (match ou sessão iniciada). Nada mais aqui muda.
+
+**Atualização 2 (2026-10-12, noite):** a especificação completa do dono (pasta "Engenharia Match", 19 partes) está analisada em `docs/superpowers/specs/2026-10-12-stazia-match-engenharia.md` §12. Ela fecha D7/D12 no que diz respeito a **quando** cobrar (no início confirmado, os dois) e à **unidade** (sala que começa); o que ainda é do dono (números, rodada 2, bloqueio, denúncia e guarda das mensagens, convite que cria ou não conexão) está na lista curta do §12.7.
