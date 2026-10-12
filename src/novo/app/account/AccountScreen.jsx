@@ -8,6 +8,7 @@ import { isStaffRole } from "../admin/AdminScreen.jsx";
 import { isPhase2Locked, paidPlanLapsed, trialLapsed } from "../admin/common.jsx";
 import { PASSWORD_MIN_LENGTH } from "../../data";
 import { useSession } from "../session.jsx";
+import { lockNotice, planAccess } from "../plan/planAccess.js";
 import { useMobile } from "../Shell.jsx";
 import { PlayProfileSection } from "../play/PlayProfile.jsx";
 import { COUNTRIES, normalizePhone, phoneError, splitPhone } from "../legal/phone.js";
@@ -51,6 +52,8 @@ function planBadge(subscription, role, reviewer = false) {
   if (reviewer) return "Revisor médico · acesso completo";
   if (!subscription) return null;
   const label = PLAN_LABEL[subscription.plan] ?? subscription.plan;
+  // cadastro sem teste grátis (PL06): conta gratuita, sem plano pago
+  if (subscription.plan === "trial" && subscription.status === "expired" && !subscription.trial_ends_at) return "Acesso gratuito";
   if (trialLapsed(subscription)) return `${label} · encerrado`;
   if (subscription.status === "trialing" && subscription.trial_ends_at) return `${label} até ${dateBR(subscription.trial_ends_at)}`;
   // plano pago depois de "Plano pago até" (com pagamento pendente, depois dos 3 dias de tolerância) já não dá acesso
@@ -409,6 +412,7 @@ export function AccountScreen({ go }) {
   const [section, setSection] = React.useState("conta");
   const profile = boot.profile;
   const plan = planBadge(boot.subscription, boot.role, Boolean(boot.reviewer_areas?.length));
+  const lock = lockNotice(planAccess(boot)); // teste grátis terminado ou sem plano pago: o que fica nos planos pagos (PL02)
   const phase2Locked = isPhase2Locked(boot.role); // 2ª fase "em breve" para o aluno: o selo mostra a 1ª mesmo se a 2ª estiver gravada
   const goal = profile.target_edition ? `Meta: ${profile.exam_type === "ENAMED" ? "ENAMED" : "Revalida INEP"} ${profile.target_edition}` : null;
 
@@ -432,6 +436,11 @@ export function AccountScreen({ go }) {
           </div>
         </div>
       </Card>
+      {lock && (
+        <Banner tone="warning" icon="lock" title={lock.title}>
+          {lock.text}
+        </Banner>
+      )}
       {isStaffRole(boot.role) && (
         <Banner
           tone="brand"

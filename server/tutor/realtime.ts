@@ -25,7 +25,7 @@
  */
 import { createHash } from "crypto";
 import { engineFor, languageIntensity, normalize, profanityForIntensity, stateLayer, type PersonaEngine, type TutorState } from "./emotion";
-import { PROFESSOR_CHANGED, TRIAL_OVER, TutorError, consentError, termsOrFail, type Entitlement, type TutorDeps } from "./engine";
+import { PROFESSOR_CHANGED, trialOverMessage, TutorError, consentError, termsOrFail, type Entitlement, type TutorDeps } from "./engine";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings as SessionPrefs } from "./personality";
 import { composeLiveInstructions, composeRealtimeInstructions, type TutorMode } from "./prompts";
 import { redactSupportMaterial } from "../contentHub/complementarGuard";
@@ -172,7 +172,7 @@ export const reasonError = (reason: string | undefined, e: unknown): TutorError 
     case "busy":
       return Object.assign(new TutorError("Já existe uma conversa por voz aberta em outro aparelho ou aba. Encerre por lá ou assuma aqui.", 409), { code: "busy" });
     case "trial_expired":
-      return new TutorError(TRIAL_OVER, 403);
+      return new TutorError(trialOverMessage(e as { plan_locked?: boolean } | null), 403);
     case "disabled":
       return new TutorError("O Tutor ainda não está ligado.", 503);
     case "voice_disabled":
