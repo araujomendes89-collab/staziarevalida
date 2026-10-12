@@ -117,7 +117,7 @@ describe("Tirar marcas de terceiros (CC09)", () => {
   });
 
   it("a recusa do servidor aparece em português na própria tela", async () => {
-    (globalThis as any).fetch = vi.fn(async () => json({ error: '"ab" é curto demais (mínimo de 3 letras): tiraria palavras comuns do texto.' }, 400));
+    (globalThis as any).fetch = vi.fn(async () => json({ error: 'O termo "ab" é curto demais (mínimo de 3 letras): tiraria palavras comuns do texto.' }, 400));
     detail();
     fireEvent.change(await screen.findByLabelText("Nomes, marcas e endereços a tirar"), { target: { value: "ab" } });
     fireEvent.click(screen.getByRole("button", { name: /Ver prévia/ }));

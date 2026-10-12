@@ -27,6 +27,10 @@ alter table public.lessons add column if not exists central_updated_at timestamp
 alter table public.lessons drop constraint if exists lessons_central_check;
 alter table public.lessons add constraint lessons_central_check check ((origin = 'central') = (ch_unit_id is not null));
 create unique index if not exists lessons_ch_unit_uidx on public.lessons (ch_unit_id) where ch_unit_id is not null;
+-- As colunas novas são de uso interno: o aluno lê a aula pelas funções (lesson_view etc.), não pela tabela. A 9620 concede leitura de TODAS as
+-- colunas da tabela (menos as de fonte digitada) toda vez que é colada; este revoke (inofensivo se já não houver concessão) tira as quatro
+-- colunas novas de novo, para que colar a 9620 antes desta migração, ou de novo depois, não as abra ao aluno ou ao visitante.
+revoke select (origin, ch_unit_id, ch_version_id, central_updated_at) on table public.lessons from anon, authenticated;
 
 -- O resumo da aula da Central leva o texto inteiro revisado: o limite de 8.000 caracteres vale só para aula feita à mão.
 do $$

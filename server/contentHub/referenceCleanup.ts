@@ -153,7 +153,7 @@ export function cleanTerms(raw: unknown): string[] {
     if (typeof item !== "string") throw new Error("Cada nome a tirar precisa ser um texto.");
     const term = item.replace(/\s+/g, " ").trim();
     if (!term) continue;
-    if (term.length < TERM_MIN) throw new Error(`"${term}" é curto demais (mínimo de ${TERM_MIN} letras): tiraria palavras comuns do texto.`);
+    if (term.length < TERM_MIN) throw new Error(`O termo "${term}" é curto demais (mínimo de ${TERM_MIN} letras): tiraria palavras comuns do texto.`);
     if (term.length > TERM_MAX) throw new Error(`"${term.slice(0, 30)}…" é longo demais (máximo de ${TERM_MAX} letras).`);
     const key = strip(term).toLowerCase();
     if (seen.has(key)) continue;

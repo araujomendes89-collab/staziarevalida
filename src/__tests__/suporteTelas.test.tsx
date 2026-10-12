@@ -107,13 +107,13 @@ describe("Avisos de acesso bloqueado (B4)", () => {
     expect(withSupport("Nenhuma questão encontrada.")).toBe("Nenhuma questão encontrada.");
   });
 
-  it("Tutor bloqueado: a tela mostra o contato da configuração, sem 'assinatura pelo app' nem 'Ver planos'", async () => {
+  it("Tutor bloqueado: a tela mostra o contato da configuração, sem 'assinatura pelo app'; 'Ver planos' abre a tela informativa (leva 5: junção com o grupo E)", async () => {
     session.boot = bootOf(TESTE_ACABOU);
     banco({ contato: "ajuda@staziamed.com.br", acesso: { locked: true, state: "teste_acabou", tutor_closed: true }, resto: (fn) => (fn === "app_tutor_status" ? { enabled: true, consent_required: false, available: false, entitlement: { plan_locked: true, block_reason: "trial_expired" } } : null) });
     render(<TutorGate go={vi.fn()}>{() => <div>conteúdo</div>}</TutorGate>);
     expect(await screen.findByText(/fale com o suporte: ajuda@staziamed\.com\.br\./)).toBeTruthy();
     expect(document.body.textContent).not.toMatch(SEM);
-    expect(screen.queryByText("Ver planos")).toBeNull();
+    expect(screen.getByText("Ver planos")).toBeTruthy();
   });
 
   it("Simulados: o aviso do botão desligado traz o contato", async () => {
