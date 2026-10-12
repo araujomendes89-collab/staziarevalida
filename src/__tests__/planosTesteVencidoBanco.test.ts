@@ -132,6 +132,27 @@ describe("PL02 — simulados completos", () => {
     await expect(treino(null)).rejects.toThrow("Entre na sua conta para treinar.");
   });
 
+  it("não dá para furar a trava criando a sessão de simulado direto na tabela (a API do banco deixa o aluno inserir a própria sessão)", async () => {
+    const [{ id: questao }] = (await db.query<{ id: string }>(`select id from public.questions limit 1`)).rows;
+    const inserir = (uid: string, kind: string) =>
+      db.transaction(async (tx) => {
+        await tx.exec(`set local role authenticated`);
+        await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: uid })]);
+        const r = await tx.query<{ id: string }>(
+          `insert into public.practice_sessions (user_id, kind, config, question_ids) values ($1, $2, '{}'::jsonb, array[$3]) returning id`,
+          [uid, kind, questao]
+        );
+        return r.rows[0].id;
+      });
+    await expect(inserir(VENCIDO, "simulado")).rejects.toThrow(TESTE_ACABOU);
+    await expect(inserir(PRO_VENCIDO, "simulado")).rejects.toThrow(PLANO_ACABOU);
+    // quem tem acesso, a equipe e as questões de treino seguem como antes
+    expect(await inserir(VENCIDO, "questoes")).toBeTruthy();
+    expect(await inserir(VALIDO, "simulado")).toBeTruthy();
+    expect(await inserir(PRO, "simulado")).toBeTruthy();
+    expect(await inserir(ADMIN, "simulado")).toBeTruthy();
+  });
+
   it("virar plano pago ou renovar o teste abre de novo na hora", async () => {
     await sub(VENCIDO, "trial", "trialing", "now() + interval '2 days'");
     expect(await simulado(VENCIDO)).toMatchObject({ count: 3 });

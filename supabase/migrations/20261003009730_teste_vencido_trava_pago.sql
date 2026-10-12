@@ -7,7 +7,8 @@
 --                    um (ele segue o "Seu teste grátis terminou" do Tutor). Quem já começou o teste do Tutor segue até o prazo
 --                    PRÓPRIO dele (prazo do teste do Tutor é o CF03, ainda a definir pelo dono: não muda aqui).
 --   * Simulados    - app_start_session('simulado', ...) recusa com mensagem em português (simulado_gate). Quem já abriu um simulado
---                    termina o que está aberto.
+--                    termina o que está aberto. A mesma regra vale para quem tentar criar a sessão de simulado direto na tabela
+--                    (a política "sessões: criar as próprias" deixa o aluno inserir a própria linha): gatilho practice_sessions_simulado_gate.
 --   * Estações Pro - has_pro (9550) já exige plano pago válido ou acesso completo; teste (vencido ou não) nunca abriu Pro. Nada muda.
 --   Seguem abertos: questões e flashcards (e o resto que hoje já é aberto).
 -- Quem NÃO é afetado: equipe (administrador e editor), revisor médico (user_has_full_access) e quem tem plano pago válido
@@ -188,6 +189,26 @@ begin
 end
 $$;
 
+-- A política "sessões: criar as próprias" (…0300/…0700) deixa o aluno inserir a PRÓPRIA sessão direto na tabela, sem passar por
+-- app_start_session. Sem isto, o simulado completo ficaria aberto a quem chamasse a API do banco por fora do app. O gatilho aplica
+-- a mesma regra (simulado_gate) a qualquer inserção de sessão "simulado" feita por uma pessoa logada; sem pessoa logada (servidor,
+-- SQL do dono) a regra não se aplica, como em todo o resto. Sessões de treino ("questoes") não são tocadas.
+create or replace function public.practice_sessions_simulado_gate() returns trigger
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_gate text;
+begin
+  v_gate := public.simulado_gate();
+  if v_gate is not null then raise exception '%', v_gate using errcode = '42501'; end if;
+  return new;
+end
+$$;
+revoke execute on function public.practice_sessions_simulado_gate() from public, anon, authenticated;
+drop trigger if exists practice_sessions_simulado_gate on public.practice_sessions;
+create trigger practice_sessions_simulado_gate before insert on public.practice_sessions
+  for each row when (new.kind = 'simulado') execute function public.practice_sessions_simulado_gate();
+
 -- ---------------------------------------------------------------- Tutor
 -- Tabela dos benefícios do Elite (PL04, configurada pela 9731). Fica AQUI porque o tutor_entitlement abaixo lê os minutos de voz do Elite:
 -- assim esta é a versão FINAL do tutor_entitlement e colar a 9730 de novo, depois da 9731, não tira a voz do Elite. Vazio = igual ao Pro.
@@ -289,4 +310,5 @@ revoke execute on function public.tutor_entitlement(uuid) from public, anon, aut
 -- Para desfazer (depois de desfazer a 9731): recriar app_start_session de …1700 e tutor_entitlement de …9550; depois "drop table public.plan_benefits",
 -- "drop function public.app_my_access()", "drop function public.user_plan_lock(uuid)", "drop function public.simulado_gate()",
 -- "drop function public.user_without_paid_access(uuid)" e
--- "drop function public.subscription_trial_is_valid(public.subscription_status, timestamptz)".
+-- "drop function public.subscription_trial_is_valid(public.subscription_status, timestamptz)"; antes delas, "drop trigger practice_sessions_simulado_gate
+-- on public.practice_sessions" e "drop function public.practice_sessions_simulado_gate()".
