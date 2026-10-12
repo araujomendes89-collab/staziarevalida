@@ -323,7 +323,7 @@ function Runner({ session, go, onFinished }) {
       aria-live="polite"
     >
       {question.play && <XPToast play={question.play} />}
-      <Correction selected={question.selected} correction={question.correction} question={question} />
+      <Correction selected={question.selected} correction={question.correction} question={question} go={go} inSession />
     </aside>
   );
 

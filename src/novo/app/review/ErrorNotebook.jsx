@@ -81,7 +81,7 @@ function NoteEditor({ questionId, initial, onSaved }) {
   );
 }
 
-function ErrorRow({ item, first, open, onToggle, onNote }) {
+function ErrorRow({ item, first, open, onToggle, onNote, go }) {
   const { backend } = useSession();
   const [detail, setDetail] = React.useState(null);
   const [failed, setFailed] = React.useState(false);
@@ -141,7 +141,7 @@ function ErrorRow({ item, first, open, onToggle, onNote }) {
                   </AnswerOption>
                 ))}
               </div>
-              <Correction selected={detail.selected} correction={detail.correction} question={detail} tutorContext="error" />
+              <Correction selected={detail.selected} correction={detail.correction} question={detail} tutorContext="error" go={go} />
               <NoteEditor
                 questionId={item.question_id}
                 initial={detail}
@@ -283,6 +283,7 @@ export function ErrorNotebook({ go }) {
                   open={openId === item.question_id}
                   onToggle={() => setOpenId(openId === item.question_id ? null : item.question_id)}
                   onNote={markNote}
+                  go={go}
                 />
               ))}
             </div>

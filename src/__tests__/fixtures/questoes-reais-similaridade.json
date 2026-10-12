@@ -1,0 +1,212 @@
+[
+ {
+  "id": "revalida_2021_1_q045",
+  "code": "REV-2021-Q045",
+  "exam_id": "revalida-2021",
+  "number": 45,
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "topic": "Doenças hipertensivas da gestação",
+  "subtopic": "Pré-eclâmpsia com sinais de gravidade e profilaxia de eclâmpsia com sulfato de magnésio",
+  "statement": "Primigesta de 18 anos de idade, com 37 semanas de idade gestacional, chega ao pronto atendimento com queixa de cefaleia intensa. Refere também visualização de pontos pretos. Nega outras queixas. Pré-natal até o momento sem intercorrências. Ao exame encontra-se lúcida e orientada, com muita dor. A pressão arterial é de 160/100 mmHg, mantida após repouso em decúbito lateral esquerdo, a frequência cardíaca é de 90 batimentos por minuto. Sem dinâmica uterina, feto com movimentação normal. Batimentos cardíacos fetais = 144 bpm com variabilidade. Edema em membros inferiores de 3 cruzes em 4. Traz um exame de urina, coletado há 2 dias que mostra proteinúria 2 cruzes em 4, sem outras alterações significativas. Foi prescrita hidralazina endovenosa para controle de pressão arterial (PA). Que outra conduta seria necessária no momento e para quê?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Prescrever sulfato de magnésio para prevenir convulsões.",
+    "explanation": "O sulfato de magnésio está indicado para prevenir convulsões em pré-eclâmpsia com sinais de gravidade; não é utilizado como fármaco para controle da pressão arterial."
+   },
+   {
+    "id": "B",
+    "text": "Prescrever sulfato de magnésio para controle de pressão arterial e dos sintomas maternos.",
+    "explanation": ""
+   },
+   {
+    "id": "C",
+    "text": "Prescrever analgésicos e benzodiazepínicos para controle dos sintomas e prevenção de convulsões.",
+    "explanation": ""
+   },
+   {
+    "id": "D",
+    "text": "Prescrever analgésicos e aguardar efeito do anti-hipertensivo.",
+    "explanation": ""
+   }
+  ],
+  "correct_option": "A",
+  "expected_conduct": "Administrar sulfato de magnésio, além da hidralazina, para profilaxia de convulsões em gestante com pré-eclâmpsia com sinais de gravidade.",
+  "inep_intent": "Avaliar o reconhecimento de pré-eclâmpsia com sinais de gravidade e a indicação imediata de sulfato de magnésio para profilaxia de eclâmpsia."
+ },
+ {
+  "id": "revalida_2021_1_q001",
+  "code": "REV-2021-Q001",
+  "exam_id": "revalida-2021",
+  "number": 1,
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "topic": "Doenças hipertensivas da gestação",
+  "subtopic": "Toxicidade por sulfato de magnésio no tratamento da pré-eclâmpsia grave",
+  "statement": "Primigesta, de 25 anos de idade, com 34 semanas de gestação. Vinha em uso de metildopa 1 g/dia e deu entrada na maternidade, com quadro de iminência de eclâmpsia e níveis pressóricos de 170 x 120 mmHg. Foi iniciado tratamento com sulfato de magnésio (dose de ataque de 6 g) e está em uso de infusão intravenosa contínua na dose de 1 g/hora. Cerca de 4 horas após início da medicação, a paciente referiu mal-estar e tonturas. Ao exame físico: regular estado geral, sonolenta, PA = 140 x 90 mmHg, frequência respiratória = 14 irpm, frequência cardíaca = 90 bpm, reflexo patelar ausente. Nas últimas 4 horas apresentou diurese total de 70 mL. Nesse caso, é indicado",
+  "options": [
+   {
+    "id": "A",
+    "text": "aumentar dose de infusão do sulfato de magnésio para 2 g/hora.",
+    "explanation": ""
+   },
+   {
+    "id": "B",
+    "text": "administrar gluconato de cálcio, 1 g, via intravenosa, lentamente",
+    "explanation": "Administração intravenosa lenta de 1 g de gluconato de cálcio para reverter a toxicidade por sulfato de magnésio, evidenciada por arreflexia patelar e oligúria."
+   },
+   {
+    "id": "C",
+    "text": "aumentar infusão de cristaloides e associar furosemida, por via intravenosa.",
+    "explanation": ""
+   },
+   {
+    "id": "D",
+    "text": "administrar hidralazina, 5 mg, por via intravenosa.",
+    "explanation": ""
+   }
+  ],
+  "correct_option": "B",
+  "expected_conduct": "Reconhecer toxicidade por sulfato de magnésio e administrar gluconato de cálcio intravenoso como antídoto.",
+  "inep_intent": "Avaliar o reconhecimento clínico da intoxicação por sulfato de magnésio durante a profilaxia ou tratamento de eclâmpsia e a instituição imediata do antídoto apropriado."
+ },
+ {
+  "id": "revalida_2022_2_q074",
+  "code": "REV-2022.2-Q074",
+  "exam_id": "revalida-2022-2",
+  "number": 74,
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "topic": "Doenças hipertensivas da gestação",
+  "subtopic": "Critérios de gravidade da pré-eclâmpsia e indicação de internação hospitalar",
+  "statement": "Primigesta de 17 anos de idade, na 32ª semana de gestação, com quadro de pré-eclâmpsia leve, foi encaminhada do ambulatório de pré-natal de alto risco diretamente para a maternidade. Qual situação clínica determinou acertadamente essa conduta?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Proteinúria de 5 g.",
+    "explanation": ""
+   },
+   {
+    "id": "B",
+    "text": "Creatinina sérica de 0,9 mg/dL.",
+    "explanation": ""
+   },
+   {
+    "id": "C",
+    "text": "Desidrogenase láctica de 490 UI.",
+    "explanation": ""
+   },
+   {
+    "id": "D",
+    "text": "Nível tensional de 150 × 110 mmHg, mantido por 4 horas.",
+    "explanation": "Pressão arterial de 150 × 110 mmHg mantida por 4 horas caracteriza hipertensão grave persistente, um sinal de gravidade da pré-eclâmpsia que justifica encaminhamento imediato à maternidade."
+   }
+  ],
+  "correct_option": "D",
+  "expected_conduct": "Indicar encaminhamento imediato para maternidade diante de hipertensão arterial grave persistente em gestante com pré-eclâmpsia.",
+  "inep_intent": "Avaliar o reconhecimento de hipertensão arterial grave persistente como critério de gravidade da pré-eclâmpsia e indicação de manejo hospitalar."
+ },
+ {
+  "id": "revalida_2023_1_q039",
+  "code": "REV-2023.1-Q039",
+  "exam_id": "revalida-2023-1",
+  "number": 39,
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "topic": "Doenças hipertensivas da gestação",
+  "subtopic": "Profilaxia de pré-eclâmpsia recorrente com ácido acetilsalicílico em gestante de alto risco",
+  "statement": "Uma paciente secundigesta, com 27 anos, foi encaminhada pela atenção primária de saúde ao ambulatório de gestação de alto risco para iniciar pré-natal, devido à história obstétrica anterior de pré-eclâmpsia leve e descolamento prematuro de placenta intraparto. Durante a consulta, evidenciou-se que a gestante se encontrava com 16 semanas de gestação, apresentando pressão arterial de 135 × 83 mmHg. Foi realizada a avaliação de proteinúria com fita, cujo resultado foi negativo. A conduta a ser imediatamente adotada, a fim de melhorar o prognóstico materno e perinatal dessa gestação, é a prescrição de",
+  "options": [
+   {
+    "id": "A",
+    "text": "hidralazina 25 mg, duas vezes ao dia, via oral.",
+    "explanation": ""
+   },
+   {
+    "id": "B",
+    "text": "metildopa 250 mg, duas vezes ao dia, via oral.",
+    "explanation": ""
+   },
+   {
+    "id": "C",
+    "text": "ácido acetilsalicílico 100 mg, uma vez ao dia, via oral.",
+    "explanation": "Uso de ácido acetilsalicílico em baixa dose, iniciado no segundo trimestre em gestante com antecedente de pré-eclâmpsia, para reduzir o risco de recorrência e de complicações relacionadas à insuficiência placentária."
+   },
+   {
+    "id": "D",
+    "text": "enoxparina 1 mg/kg, duas vezes ao dia, via subcutânea.",
+    "explanation": ""
+   }
+  ],
+  "correct_option": "C",
+  "expected_conduct": "Iniciar ácido acetilsalicílico em baixa dose para prevenção de recorrência de pré-eclâmpsia e de desfechos placentários adversos em gestante com antecedente obstétrico de alto risco.",
+  "inep_intent": "Avaliar a indicação de profilaxia farmacológica da pré-eclâmpsia em gestante com antecedente obstétrico de alto risco, sem hipertensão ou proteinúria atuais que justifiquem tratamento anti-hipertensivo."
+ },
+ {
+  "id": "revalida_2023_2_q059",
+  "code": "REV-2023.2-Q059",
+  "exam_id": "revalida-2023-2",
+  "number": 59,
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "topic": "Doenças hipertensivas da gestação",
+  "subtopic": "Pré-eclâmpsia com sintoma neurológico persistente e indicação de internação e interrupção gestacional",
+  "statement": "Uma gestante primigesta de 18 anos, com idade gestacional de 35 semanas, comparece ao pronto-socorro do hospital após ser encaminhada pelo médico da unidade básica de saúde (UBS). A carta de encaminhamento solicita avaliação e conduta, devido ao aumento da pressão arterial da paciente e esclarece que ela estava fazendo pré-natal na UBS sem nenhuma intercorrência até o momento, sem comorbidades previas. A paciente refere estar ansiosa, com dor de cabeça intensa e afirma ganho de peso de 3 Kg na última semana. Relata boa movimentação fetal e nega perdas vaginais de líquido ou de sangue. Apresenta pressão arterial de 140 × 90 mmHg, frequência cardíaca de 90 batimentos por minuto e o restante do exame clínico está normal. A altura uterina é de 33 cm, os batimentos cardíacos fetais estão normais com boa variabilidade e constata-se dinâmica uterina ausente. A gestante, diante desse quadro, é medicada com analgésicos, mas permanece sem melhora importante e os níveis pressóricos se mantêm de 140 × 90 mmHg. Considerando o quadro clínico apresentado, deve-se",
+  "options": [
+   {
+    "id": "A",
+    "text": "otimizar analgesia, liberar a paciente para continuidade do pré-natal na UBS e orientar retorno ao pronto-socorro, caso apresente piora dos sintomas.",
+    "explanation": ""
+   },
+   {
+    "id": "B",
+    "text": "realizar prescrição de medicação sintomática, solicitar exames complementares de urgência e internar a paciente pela necessidade de interrupção desta gestação.",
+    "explanation": "Gestante com hipertensão após 20 semanas e cefaleia intensa persistente apresenta quadro sugestivo de pré-eclâmpsia com sinal de gravidade, devendo ser internada, investigada urgentemente e ter a gestação interrompida por indicação materna."
+   },
+   {
+    "id": "C",
+    "text": "realizar prescrição de medicação sintomática e metildopa, solicitar exames complementares de urgência e liberar a paciente para seguimento em pré-natal de alto risco.",
+    "explanation": ""
+   },
+   {
+    "id": "D",
+    "text": "otimizar a analgesia da paciente e mantê-la em observação para acompanhamento da sintomatologia e dos níveis pressóricos, até exclusão de alterações em seus exames complementares.",
+    "explanation": ""
+   }
+  ],
+  "correct_option": "B",
+  "expected_conduct": "Internar a gestante, realizar investigação laboratorial urgente de pré-eclâmpsia e indicar interrupção da gestação diante de cefaleia intensa persistente, sugestiva de gravidade materna.",
+  "inep_intent": "Avaliar o reconhecimento de manifestação neurológica persistente como critério de gravidade em doença hipertensiva da gestação e a adoção de conduta hospitalar com investigação urgente e interrupção gestacional."
+ },
+ {
+  "id": "revalida_2024_1_q024",
+  "code": "REV-2024.1-Q024",
+  "exam_id": "revalida-2024-1",
+  "number": 24,
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "topic": "Doenças hipertensivas da gestação",
+  "subtopic": "Investigação de pré-eclâmpsia diante de hipertensão de início após 20 semanas",
+  "statement": "Uma paciente secundigesta com 28 anos, idade gestacional de 35 semanas, obesa, não apresenta outras comorbidades prévias. No acompanhamento de pré-natal que realizou na unidade básica de saúde, não houve intercorrências até o momento. Os resultados dos exames de rotina de pré-natal apresentam-se normais, assim como as medidas de pressão arterial anteriores, e a altura uterina é compatível com a idade gestacional. Ela comparece a uma consulta no serviço de pronto atendimento encaminhada pela unidade básica de saúde por aumento da pressão arterial. Nega queixas. Refere estar se alimentando bem e relata que engordou 3 quilos nas últimas duas semanas. A pressão arterial é de 140 x 95 mmHg, confirmada após quinze minutos de repouso. A paciente apresenta edema importante em membros inferiores. A movimentação fetal está presente, os batimentos cardíacos fetais são de 144 bpm, e altura uterina é compatível com idade gestacional. Considerando-se o quadro clínico descrito, quais são, respectivamente, o provável diagnóstico e a conduta adequada?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Pré-eclâmpsia; internar a paciente para controle pressórico e interromper a gestação se comprovada a maturidade fetal.",
+    "explanation": ""
+   },
+   {
+    "id": "B",
+    "text": "Pré-eclâmpsia; solicitar exames e verificar se há a presença de proteinúria significativa e/ou se é acusada a disfunção de órgão-alvo, para confirmar o diagnóstico.",
+    "explanation": "Na hipertensão arterial diagnosticada após 20 semanas, sem critérios clínicos de gravidade, deve-se investigar proteinúria significativa e/ou disfunção de órgão-alvo para confirmar o diagnóstico de pré-eclâmpsia."
+   },
+   {
+    "id": "C",
+    "text": "Hipertensão arterial crônica; aguardar a evolução no puerpério e, se ocorrer a normalização dos níveis pressóricos em até 12 semanas pós-parto, o diagnóstico estará confirmado.",
+    "explanation": ""
+   },
+   {
+    "id": "D",
+    "text": "Emergência hipertensiva; internar a paciente para prescrição de sulfato de magnésio e anti-hipertensivos de ação rápida e interromper a gestação assim que o quadro clínico for estabilizado",
+    "explanation": ""
+   }
+  ],
+  "correct_option": "B",
+  "expected_conduct": "Investigar proteinúria significativa e disfunção de órgão-alvo para confirmar pré-eclâmpsia em gestante com hipertensão nova após 20 semanas.",
+  "inep_intent": "Avaliar o reconhecimento de que edema e ganho ponderal associados à hipertensão após 20 semanas sugerem doença hipertensiva gestacional, mas não confirmam pré-eclâmpsia sem pesquisa de proteinúria ou lesão de órgão-alvo."
+ }
+]

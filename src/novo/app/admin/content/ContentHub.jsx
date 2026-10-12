@@ -14,6 +14,7 @@ import { Sources } from "./Sources.jsx";
 import { Taxonomy } from "./Taxonomy.jsx";
 import { QuestoesStaziaMed } from "./questoes/QuestoesStaziaMed.jsx";
 import { QuestionAnalyses } from "./QuestionAnalyses.jsx";
+import { SimilarQuestions } from "./SimilarQuestions.jsx";
 import { HubSettings } from "./HubSettings.jsx";
 import { VisualMaterials } from "./visual/VisualMaterials.jsx";
 import { explainError } from "../../../../shared/errors/explicarErro";
@@ -24,6 +25,7 @@ const SECTIONS = [
   { value: "unidades", label: "Unidades e revisão", icon: "stamp", who: "reviewer" },
   { value: "analises", label: "Análise de questões", icon: "brain", who: "reviewer" },
   { value: "ineditas", label: "Questões inéditas", icon: "file-question", who: "reviewer" },
+  { value: "parecidas", label: "Questões parecidas", icon: "git-compare", who: "staff" },
   { value: "fontes", label: "Fontes oficiais", icon: "library", who: "staff" },
   { value: "conflitos", label: "Conflitos", icon: "scale", who: "staff" },
   { value: "taxonomia", label: "Taxonomia", icon: "list-tree", who: "staff" },
@@ -88,6 +90,7 @@ export function ContentHub({ isAdmin, isStaff }) {
       {section === "unidades" && <Units {...ctx} />}
       {section === "analises" && <QuestionAnalyses {...ctx} />}
       {section === "ineditas" && <QuestoesStaziaMed {...ctx} />}
+      {section === "parecidas" && <SimilarQuestions {...ctx} />}
       {section === "fontes" && <Sources {...ctx} />}
       {section === "conflitos" && <Conflicts {...ctx} />}
       {section === "taxonomia" && <Taxonomy {...ctx} />}

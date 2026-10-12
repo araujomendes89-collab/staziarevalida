@@ -18,7 +18,7 @@ const STATE = {
   annulled: { icon: "ban", color: "var(--text-tertiary)", label: "Anulada" },
 };
 
-function ReviewRow({ question, position, first, open, onToggle }) {
+function ReviewRow({ question, position, first, open, onToggle, go }) {
   const state = STATE[stateOf(question)];
   const { stem, ask } = splitStatement(question.statement);
   return (
@@ -57,7 +57,7 @@ function ReviewRow({ question, position, first, open, onToggle }) {
               </AnswerOption>
             ))}
           </div>
-          <Correction selected={question.selected} correction={question.correction} question={question} />
+          <Correction selected={question.selected} correction={question.correction} question={question} go={go} />
         </div>
       )}
     </div>
@@ -187,6 +187,7 @@ export function SessionResult({ session, go, timeUp = false }) {
                 open={openId === row.question.id}
                 onToggle={() => setOpenId(openId === row.question.id ? null : row.question.id)}
                 first={index === 0}
+                go={go}
               />
             ))}
           </div>
