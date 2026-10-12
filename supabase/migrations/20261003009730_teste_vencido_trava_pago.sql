@@ -15,6 +15,18 @@
 -- "Teste valendo" = situação "Em teste" com a data de fim no futuro (ou sem data de fim registrada; a Administração sempre pede a data).
 -- "Sem acesso pago" vale também para plano pago vencido/cancelado/expirado e para conta sem assinatura (cadastro sem teste, PL06).
 -- Nenhum dado é alterado; o fim do teste é calculado na hora (a situação no banco segue "Em teste").
+--
+-- ATENÇÃO antes de colar: quem aparece nesta consulta perde os simulados completos na hora e não consegue mais começar o teste do Tutor
+-- (teste grátis vencido, plano pago vencido/cancelado/expirado ou cadastro sem teste; administrador, editor e revisor médico ficam de fora):
+--   select u.email as "E-mail", s.plan as "Plano", s.status as "Situação", s.trial_ends_at as "Teste até", s.current_period_end as "Plano pago até"
+--   from public.subscriptions s join auth.users u on u.id = s.user_id
+--   where not exists (select 1 from public.user_roles r where r.user_id = s.user_id and r.role in ('admin', 'editor'))
+--     and not exists (select 1 from public.ch_reviewer_areas a where a.user_id = s.user_id)
+--     and not (s.plan in ('pro', 'elite') and ((s.status = 'active' and s.current_period_end > now())
+--                                              or (s.status = 'past_due' and s.current_period_end + interval '3 days' > now())))
+--     and not (s.status = 'trialing' and (s.trial_ends_at is null or s.trial_ends_at > now()))
+--   order by u.email;
+-- Se a lista vier vazia, ninguém perde nada. Para quem deve continuar com acesso, dê um plano ou um teste em Administração > Usuários.
 -- =============================================================================
 
 -- ---------------------------------------------------------------- teste valendo

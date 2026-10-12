@@ -1036,12 +1036,13 @@ describe("Banco e motor (IA simulada)", () => {
         await sql(`update public.tutor_config set tts_paid_daily_chars = 4500`);
         await sql(`update public.tutor_config set voice_enabled = false`);
         expect((await post({ kind: "phrase", phrase: "unmarked", personality_id: "direto" })).status).toBe(503);
-        // a voz segue o direito do Tutor, não a regra antiga "só assinante": o aluno do teste grátis ouve (o plano de S1 vence por um momento)
-        await sql(`update public.subscriptions set current_period_end = now() - interval '1 day' where user_id = $1`, [S1]);
+        // a voz segue o direito do Tutor, não a regra antiga "só assinante": o aluno do teste grátis ouve (S1 vira aluno em teste grátis por um
+        // momento; desde a …9730 (PL02) só quem tem teste valendo começa o teste do Tutor, plano pago vencido já não começa)
+        await sql(`update public.subscriptions set plan = 'trial', status = 'trialing', trial_ends_at = now() + interval '7 days', current_period_end = null where user_id = $1`, [S1]);
         await sql(`update public.tutor_config set voice_enabled = true, requires_pro = true`);
         expect((await rpc(S1, "app_tutor_status")).entitlement).toMatchObject({ mode: "trial", is_paid: false });
         expect((await post({ kind: "phrase", phrase: "unmarked", personality_id: "direto" })).status).toBe(200);
-        await sql(`update public.subscriptions set current_period_end = now() + interval '30 days' where user_id = $1`, [S1]);
+        await sql(`update public.subscriptions set plan = 'pro', status = 'active', trial_ends_at = null, current_period_end = now() + interval '30 days' where user_id = $1`, [S1]);
         await sql(`update public.tutor_config set requires_pro = false`);
         deps.speech = null;
         const off = await post({ kind: "phrase", phrase: "unmarked", personality_id: "direto" });

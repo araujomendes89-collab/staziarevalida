@@ -207,6 +207,20 @@ describe("PL02 — permissões das funções novas", () => {
   });
 });
 
+describe("PL02 — consulta de conferência do cabeçalho", () => {
+  it("lista exatamente quem perde os simulados e o Tutor novo (sem equipe, sem revisor médico, sem pago válido, sem teste valendo)", async () => {
+    const cabecalho = fs.readFileSync(MIGRATION, "utf8");
+    const consulta = /select u\.email as "E-mail"[\s\S]*?order by u\.email;/.exec(cabecalho)![0].replace(/^--\s?/gm, "");
+    const lista = await db.query<Record<string, any>>(consulta);
+    expect(lista.fields.map((f) => f.name)).toEqual(["E-mail", "Plano", "Situação", "Teste até", "Plano pago até"]);
+    const emails = lista.rows.map((r) => r["E-mail"]);
+    expect(emails).toEqual(["comecado@teste.dev", "provencido@teste.dev", "vencido@teste.dev"]);
+    // a lista bate com o que o banco decide: cada um deles está sem acesso pago e nenhum dos outros está
+    for (const uid of [VENCIDO, PRO_VENCIDO, TUTOR_COMECADO]) expect(await rpc(uid, "simulado_gate"), uid).not.toBeNull();
+    for (const uid of [ADMIN, EDITOR, REVISOR, VALIDO, PRO, ELITE]) expect(await rpc(uid, "simulado_gate"), uid).toBeNull();
+  });
+});
+
 describe("PL02 — colar a migração de novo", () => {
   it("colar de novo não dá erro nem muda o resultado", async () => {
     const sql = fs.readFileSync(MIGRATION, "utf8");
