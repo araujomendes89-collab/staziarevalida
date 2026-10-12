@@ -53,6 +53,18 @@ export const VAGA = {
 /** Situação da tarefa da fila de uma vaga. */
 export const TAREFA = { queued: "na fila", running: "rodando", blocked: "parada (falta configurar a IA ou o teto)", succeeded: "concluída", failed: "falhou, vai tentar de novo", dead: "falhou" };
 
+/** Selo de triagem (ch_draft_triage): só triagem das conferências, nunca aprovação. [texto, tom] */
+export const TRIAGE = {
+  reprovada: ["Reprovada pela IA ou pelas regras", "danger"],
+  sem_fonte: ["Sem fonte oficial: bloqueada", "danger"],
+  com_apontamentos: ["Com apontamentos", "warning"],
+  so_regras: ["Só regras conferidas", "neutral"],
+  nao_conferida: ["Ainda não conferida", "neutral"],
+  sem_apontamentos: ["Sem apontamentos", "success"],
+};
+export const TRIAGE_ORDER = ["reprovada", "sem_fonte", "com_apontamentos", "so_regras", "nao_conferida", "sem_apontamentos"];
+export const TRIAGE_NOTE = "A IA não aprova: quem decide é o revisor médico.";
+
 export const AREAS = ["CLINICA_MEDICA", "CIRURGIA", "GINECOLOGIA_OBSTETRICIA", "PEDIATRIA", "MFC"];
 
 export const REVIEW_VERDICT = { APPROVED: "sem problemas apontados", REVISION_REQUIRED: "pede revisão", REJECTED: "recusa" };

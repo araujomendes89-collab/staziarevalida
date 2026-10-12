@@ -533,7 +533,9 @@ export async function runDraftChecks(deps: RunDeps, options: RunOptions): Promis
         }
         meta = { provider: report.spend.calls > before ? who.provider : (provider?.name ?? "software"), model: report.spend.calls > before ? who.model : "sem chamada de IA", prompt_version: CHECKS_VERSION };
       }
-      await deps.db.service("ch_worker_save_draft_check", { p_draft_id: d.id, p_layer: layer, p_verdict: result.verdict, p_findings: result.findings, p_meta: meta });
+      // com o hash do texto lido: se alguém editou o rascunho no meio (Questões StaziaMed), o banco descarta o resultado (devolve nulo)
+      const savedId = await deps.db.service("ch_worker_save_draft_check", { p_draft_id: d.id, p_layer: layer, p_verdict: result.verdict, p_findings: result.findings, p_meta: { ...meta, content_hash: d.content_hash } });
+      if (savedId === null) continue;
       report.saved++;
       report.savedIds.push(d.id);
       report.verdicts[result.verdict] = (report.verdicts[result.verdict] ?? 0) + 1;

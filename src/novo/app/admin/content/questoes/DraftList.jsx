@@ -6,15 +6,16 @@ import { LoadError, Loading, useLoad } from "../../common.jsx";
 import { hubPost } from "../api.js";
 import { AREA_LABEL } from "../labels.js";
 import { Section, useAction } from "../ui.jsx";
+import { CheckDrafts, isMissingFunction } from "../AiRequests.jsx";
 import { CostBox } from "./CostBox.jsx";
 import { DraftDetail } from "./DraftDetail.jsx";
-import { AREAS, LAYER, ORIGEM, SITUACAO_FILTRO, VERDICT, batchName } from "./labels.js";
+import { AREAS, LAYER, ORIGEM, SITUACAO_FILTRO, TRIAGE, TRIAGE_NOTE, TRIAGE_ORDER, VERDICT, batchName } from "./labels.js";
 
 const PAGE = 20;
 
 export function DraftList({ isAdmin, isStaff, reviewerAreas }) {
   const { backend } = useSession();
-  const [f, setF] = React.useState({ batch: "", status: "awaiting_medical_review", area: "", origin: "", topic: "", noTopic: false, blocked: false, minSimilarity: "" });
+  const [f, setF] = React.useState({ batch: "", status: "awaiting_medical_review", area: "", origin: "", topic: "", noTopic: false, blocked: false, minSimilarity: "", triage: "", order: "" });
   const [page, setPage] = React.useState(0);
   const set = (patch) => (setPage(0), setPending(null), setF((v) => ({ ...v, ...patch })));
   const [pending, setPending] = React.useState(null);
@@ -28,11 +29,25 @@ export function DraftList({ isAdmin, isStaff, reviewerAreas }) {
     p_topic: topic,
     p_blocked: f.blocked ? true : null,
     p_min_similarity: f.minSimilarity.trim() && Number.isFinite(Number(f.minSimilarity)) ? Number(f.minSimilarity) : null,
+    // selo e ordem da triagem só vão quando escolhidos (a chamada sem eles continua valendo)
+    ...(f.triage ? { p_triage: f.triage } : {}),
+    ...(f.order ? { p_order: f.order } : {}),
   };
-  const { data, error, reload } = useLoad(() => backend.rpc("app_draft_questions", { ...filters, p_limit: PAGE, p_offset: page * PAGE }), [backend, JSON.stringify(filters), page]);
+  const { data, error, reload } = useLoad(async () => {
+    const base = { ...filters, p_limit: PAGE, p_offset: page * PAGE };
+    try {
+      return await backend.rpc("app_draft_questions", base);
+    } catch (e) {
+      // site novo + SQL antigo: a função ainda não tem os filtros de triagem; mostra a lista sem eles
+      if (!isMissingFunction(e) || !("p_triage" in base || "p_order" in base)) throw e;
+      const { p_triage, p_order, ...rest } = base;
+      return { ...(await backend.rpc("app_draft_questions", rest)), legacy_sql: true };
+    }
+  }, [backend, JSON.stringify(filters), page]);
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
   const pages = Math.max(Math.ceil(data.total / PAGE), 1);
+  const legacy = Boolean(data.legacy_sql) || data.triage_counts === undefined; // sem o selo de triagem no banco
   const c = data.counts ?? {};
   // o filtro que "Conferir pendentes" usa: o mesmo da lista
   const filtro = Object.fromEntries(Object.entries({ batch: filters.p_batch, status: filters.p_status, area: filters.p_area, origin: filters.p_origin, topic: filters.p_topic, blocked: filters.p_blocked, min_similarity: filters.p_min_similarity }).filter(([, v]) => v !== null));
@@ -65,6 +80,29 @@ export function DraftList({ isAdmin, isStaff, reviewerAreas }) {
           ))}
         </div>
       </Section>
+      {legacy && (
+        <Banner tone="warning" icon="triangle-alert" title="Selo de triagem indisponível">
+          O selo de triagem e o bloqueio de aprovação sem fonte oficial ainda não estão disponíveis: o sistema está aguardando uma atualização. Avise quem cuida do sistema. A lista abaixo funciona como antes.
+        </Banner>
+      )}
+      {!legacy && <Section title="Triagem">
+        <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+          {TRIAGE_NOTE} O selo resume as conferências que valem para o texto atual de cada rascunho, para você começar pelos mais problemáticos ou pelos limpos. Rascunho sem fonte oficial (nível A a D) não pode ser aprovado.
+        </p>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {TRIAGE_ORDER.map((k) => (
+            <Badge key={k} size="sm" tone={TRIAGE[k][1]}>
+              {TRIAGE[k][0]}: {data.triage_counts?.[k] ?? 0}
+            </Badge>
+          ))}
+        </div>
+      </Section>}
+      <CheckDrafts
+        batches={data.batches}
+        batchName={batchName}
+        areaOptions={AREAS.map((value) => ({ value, label: AREA_LABEL[value] ?? value }))}
+        onSettled={reload}
+      />
       <Section title="Conferência independente">
         <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
           Cada camada é separada e nenhuma aprova nada. "Fonte insuficiente" e "não foi possível conferir" significam que falta o documento oficial no acervo, e não que o conteúdo esteja certo.
@@ -104,6 +142,14 @@ export function DraftList({ isAdmin, isStaff, reviewerAreas }) {
         <div style={{ width: 200 }}>
           <SelectField aria-label="Filtrar por origem" value={f.origin} onChange={(e) => set({ origin: e.target.value })} options={[{ value: "", label: "Todas as origens" }, ...Object.entries(ORIGEM).map(([value, label]) => ({ value, label }))]} />
         </div>
+        {!legacy && (<>
+        <div style={{ width: 230 }}>
+          <SelectField aria-label="Triagem" value={f.triage} onChange={(e) => set({ triage: e.target.value })} options={[{ value: "", label: "Toda triagem" }, ...TRIAGE_ORDER.map((k) => ({ value: k, label: TRIAGE[k][0] }))]} />
+        </div>
+        <div style={{ width: 230 }}>
+          <SelectField aria-label="Ordem" value={f.order} onChange={(e) => set({ order: e.target.value })} options={[{ value: "", label: "Ordem do lote" }, { value: "problematicos", label: "Mais problemáticos primeiro" }, { value: "limpos", label: "Sem apontamentos primeiro" }]} />
+        </div>
+        </>)}
         <div style={{ width: 240 }}>
           <SelectField aria-label="Filtrar por pedido ou lote" value={f.batch} onChange={(e) => set({ batch: e.target.value })} options={[{ value: "", label: "Todos os pedidos e lotes" }, ...data.batches.map((b) => ({ value: b.batch, label: batchName(b.batch) }))]} />
         </div>

@@ -11,7 +11,7 @@ import { CostBox } from "./CostBox.jsx";
 import { DraftEditor } from "./DraftEditor.jsx";
 import { PublishBox } from "./PublishBox.jsx";
 import { SourceProposal } from "./SourceProposal.jsx";
-import { LAYER, PEDAGOGY_VERDICT, REVIEW_VERDICT, SEVERITY, SITUACAO, VERDICT, batchName } from "./labels.js";
+import { LAYER, PEDAGOGY_VERDICT, REVIEW_VERDICT, SEVERITY, SITUACAO, TRIAGE, TRIAGE_NOTE, VERDICT, batchName } from "./labels.js";
 
 const EVENT = {
   importada: "Importada do gerador antigo",
@@ -76,6 +76,7 @@ export function DraftDetail({ item, isAdmin, isStaff, onChanged }) {
     <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", padding: 12 }}>
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} style={{ all: "unset", cursor: "pointer", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", width: "100%" }}>
         <Badge size="sm" tone={tone}>{label}</Badge>
+        {item.triage && <Badge size="sm" tone={TRIAGE[item.triage]?.[1]}>{TRIAGE[item.triage]?.[0] ?? item.triage}</Badge>}
         <Badge size="sm" tone="brand">{AREA_LABEL[item.area] ?? item.area}</Badge>
         <Badge size="sm">{batchName(item.batch)} · nº {item.slot}</Badge>
         {item.topic ? <Badge size="sm" tone="neutral">{item.topic}</Badge> : <Badge size="sm" tone="warning">sem tema</Badge>}
@@ -98,6 +99,11 @@ export function DraftDetail({ item, isAdmin, isStaff, onChanged }) {
             <Banner tone="danger" title="Bloqueada: sem fonte oficial">
               {item.generated_by === "gerador_antigo" ? "As citações deste rascunho são de apostila, que não é fonte oficial. " : ""}Use "Buscar fonte oficial" para propor trechos de fontes oficiais; sem isso ele não pode ser aprovado.
             </Banner>
+          )}
+          {item.triage && (
+            <div style={{ font: "var(--type-body-sm)", marginBottom: 8 }}>
+              <Badge size="sm" tone={TRIAGE[item.triage]?.[1]}>{TRIAGE[item.triage]?.[0] ?? item.triage}</Badge> <span style={{ color: "var(--text-tertiary)" }}>{TRIAGE_NOTE}</span>
+            </div>
           )}
           {editing ? (
             <DraftEditor

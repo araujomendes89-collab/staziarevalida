@@ -13,7 +13,8 @@ vi.mock("../novo/app/admin/content/UpdateQueue.jsx", () => ({ UpdateQueue: () =>
 vi.mock("../novo/app/admin/content/UpdatedQuestions.jsx", () => ({ UpdatedQuestions: () => null }));
 
 import { QuestionAnalyses } from "../novo/app/admin/content/QuestionAnalyses.jsx";
-import { DraftQuestions } from "../novo/app/admin/content/DraftQuestions.jsx";
+import { DraftList } from "../novo/app/admin/content/questoes/DraftList.jsx";
+const DraftQuestions = ({ reviewerAreas }: { reviewerAreas: string[] }) => <DraftList isAdmin isStaff reviewerAreas={reviewerAreas} />; // a lista de rascunhos da leva 4 (Questões StaziaMed)
 import { ACTION_LABEL, auditLabel, auditSummary } from "../novo/app/admin/auditLog.js";
 
 const EXAMS = [{ id: "revalida-2021", title: "Revalida 2021" }, { id: "revalida-2022-1", title: "Revalida 2022/1" }];
@@ -153,7 +154,7 @@ describe("Análise de questões › Gerar análises com IA", () => {
 const DRAFT = (over: any) => ({
   id: "d1", batch: "simulado_preditivo_2026_2_001", slot: 1, area: "PEDIATRIA", status: "awaiting_medical_review", title: "Rascunho A", stem: "Enunciado.",
   alternatives: { A: "a", B: "b", C: "c", D: "d" }, correct_answer: "A", alternative_explanations: {}, source_citations: [], checks: {}, can_review: true,
-  triage: "nao_conferida", triage_rank: 5, blocked_no_source: false, blocked_reason: null, support_rows: [], similarity_to_official: 10, ...over,
+  triage: "nao_conferida", triage_rank: 5, blocked_no_source: false, blocked_reason: null, approval_blockers: [], content_hash: "h1", can_edit: true, support_rows: [], similarity_to_official: 10, ...over,
 });
 const DPREVIEW = {
   kind: "draft_check", layers: ["software"], limits: { per_request: 20, per_day: 60, default: 10 }, available: 200, will_check: 10, used_today: 0, remaining_today: 60,
@@ -167,13 +168,14 @@ function draftsRpc() {
     if (fn === "app_ch_draft_check_preview") return args.p_layers.includes("redteam") ? { ...DPREVIEW, layers: args.p_layers, estimate: { calls: 30, typical_usd: 0.4, max_usd: 1.2, by_layer: {}, note: null }, ai: { ready: true, reason: null, needed: true } } : DPREVIEW;
     if (fn === "app_ch_draft_check_request") return { id: "c1", duplicate: false, status: "na_fila", items: args.p_count, estimate_usd: 0 };
     if (fn === "app_ch_ai_requests") return [];
+    if (fn === "app_draft_question_detail") return { draft: drafts.find((d) => d.id === args.p_id), events: [], proposals: [], similar_question: null, request: null };
     throw new Error(`rpc não simulada: ${fn}`);
   });
 }
 
 describe("Questões inéditas › Conferir com IA e selo de triagem", () => {
   beforeEach(() => {
-    drafts = [DRAFT({ id: "d1", triage: "sem_fonte", blocked_no_source: true, blocked_reason: "Sem fonte oficial (nível A a D) para a afirmação central: a aprovação fica bloqueada até haver o documento oficial cadastrado." }), DRAFT({ id: "d2", slot: 2, title: "Rascunho B", triage: "sem_apontamentos" })];
+    drafts = [DRAFT({ id: "d1", triage: "sem_fonte", blocked_no_source: true, approval_blockers: ["Bloqueada: sem fonte oficial."], blocked_reason: "Sem fonte oficial (nível A a D) para a afirmação central: a aprovação fica bloqueada até haver o documento oficial cadastrado." }), DRAFT({ id: "d2", slot: 2, title: "Rascunho B", triage: "sem_apontamentos" })];
     draftsRpc();
   });
 
@@ -215,7 +217,7 @@ describe("Questões inéditas › Conferir com IA e selo de triagem", () => {
     fireEvent.click(blocked);
     const approve = screen.getByRole("button", { name: "Aprovar" }) as HTMLButtonElement;
     expect(approve.disabled).toBe(true);
-    expect(screen.getByText(/a aprovação fica bloqueada até haver o documento oficial/)).toBeTruthy();
+    expect(screen.getAllByText(/Bloqueada: sem fonte oficial/).length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Pedir ajustes" })).toBeTruthy();
     fireEvent.click(approve);
     expect(backend.rpc).not.toHaveBeenCalledWith("app_draft_question_decide", expect.anything());
