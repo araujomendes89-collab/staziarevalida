@@ -12,6 +12,9 @@ import { devContentDb, type ContentDb } from "../../server/contentHub/infra";
 import { buildEngineStatements } from "../../scripts/supabase/engine-seed";
 
 const MIGRATION = fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261003009810_analise_ia_pedidos.sql"), "utf8");
+// Leva 4: a 9810 convive com a 9800 (Questões StaziaMed); o corpo final de app_draft_questions / app_draft_question_decide está na 9830.
+// Quem cola de novo a 9810 cola também a 9830 logo depois (ordem 9810 > 9820 > 9830).
+const FECHAMENTO = fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261003009830_fechamento_leva4.sql"), "utf8");
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "analise-ia-"));
 let dev: DevDatabase;
 let db: ContentDb;
@@ -32,6 +35,27 @@ const rpc = async (uid: string, fn: string, args: Record<string, unknown> = {}) 
   const params = keys.map((k) => (args[k] !== null && typeof args[k] === "object" && !Array.isArray(args[k]) ? JSON.stringify(args[k]) : args[k]));
   return (await as(uid, (q) => q(`select public.${fn}(${keys.map((k, i) => `${k} => $${i + 1}`).join(", ")}) r`, params)))[0].r;
 };
+
+/** Decide como o app: com o texto que a pessoa viu (hash) e "conferi as fontes" marcado. */
+const decideAs = async (uid: string, id: string, decision: string, note?: string) => {
+  const hash = (await sql(`select content_hash h from public.draft_questions where id = $1`, [id]))[0].h;
+  return rpc(uid, "app_draft_question_decide", { p_id: id, p_decision: decision, p_note: note ?? null, p_hash: hash, p_sources_checked: true });
+};
+const PASSAGE = "Em lactentes com otite média aguda, indica-se amoxicilina 90 mg/kg/dia por 10 dias como primeira escolha no tratamento.";
+const QUOTE = "indica-se amoxicilina 90 mg/kg/dia por 10 dias";
+const DECISION = "Tratar otite média aguda do lactente com amoxicilina 90 mg/kg/dia por 10 dias.";
+/**
+ * Deixa o rascunho do jeito que a Questões StaziaMed (9800) exige para aprovar: tema, decisão clínica citada com trecho de fonte
+ * oficial vigente. `title` entra também como source_file (a regra de evidência da 9810 casa o título). Camadas de conferência: `layers`.
+ */
+async function makeCitable(id: string, title: string, layers: string[] = []) {
+  const [src] = await sql(`insert into public.ch_sources (title, organ, kind, status, version, published_on, authority_level) values ($1, 'Ministério da Saúde (teste)', 'final', 'current', '2026', '2026-01-01', 'A') returning id`, [title]);
+  const [pas] = await sql(`insert into public.ch_source_passages (source_id, section, page, text) values ($1, 'Tratamento', 7, $2) returning id`, [src.id, PASSAGE]);
+  const [{ topic }] = await sql(`select topic from public.staziamed_topic_weights('PEDIATRIA') limit 1`);
+  const cit = { passage_id: pas.id, source_id: src.id, source: title, source_file: title, organ: "Ministério da Saúde (teste)", version: "2026", page: 7, quote: QUOTE, supports: DECISION };
+  await sql(`update public.draft_questions set topic = $2, clinical_decision = $3, source_citations = $4::jsonb where id = $1`, [id, topic, DECISION, JSON.stringify([cit])]);
+  for (const layer of layers) await db.service("ch_worker_save_draft_check", { p_draft_id: id, p_layer: layer, p_verdict: "pass", p_findings: [], p_meta: { provider: "software", model: "regras" } });
+}
 
 async function configureAi() {
   for (const id of ["anthropic", "openai"]) await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: id, p_enabled: true });
@@ -61,7 +85,9 @@ afterAll(async () => {
 describe("Migração 9810", () => {
   it("colar de novo (2x) não dá erro e a restrição de etapas guarda a união + as duas etapas novas", async () => {
     await dev.db.exec(MIGRATION);
+    await dev.db.exec(FECHAMENTO);
     await dev.db.exec(MIGRATION);
+    await dev.db.exec(FECHAMENTO);
     for (const step of ["extract", "source_search", "visual_render", "station_draft", "question_check", "question_analysis", "draft_check"]) {
       await sql(`insert into public.ch_jobs (step, scope_key, idempotency_key) values ($1, 't', $2)`, [step, `teste-etapa:${step}`]);
     }
@@ -309,24 +335,25 @@ describe("Conferência de rascunhos inéditos: pedido pela tela, triagem e aprov
     await check(ids[3], "software", "pass");
     await check(ids[3], "sources", "insufficient", [{ severity: "major", code: "no_official_source", detail: "d" }]);
     expect(await t(ids[3])).toMatchObject({ code: "sem_fonte", blocked: true });
+    await makeCitable(ids[4], "Documento Oficial E4 (teste)");
     await check(ids[4], "software", "pass");
     await check(ids[4], "sources", "pass");
     await check(ids[4], "redteam", "issues", [{ severity: "minor", code: "y", detail: "d" }]);
     expect(await t(ids[4])).toMatchObject({ code: "com_apontamentos", blocked: false });
     await check(ids[5], "software", "pass");
     expect(await t(ids[5])).toMatchObject({ code: "sem_fonte", blocked: true }); // só regras e nada que prove fonte oficial
-    // cita um documento cadastrado como fonte oficial vigente (nível A a D): há evidência positiva
-    await sql(`insert into public.ch_sources (title, organ, kind, version, authority_level) values ('Documento Oficial A (teste)', 'Órgão', 'final', '1', 'A')`);
-    await sql(`update public.draft_questions set source_citations = '[{"source_file":"Documento Oficial A (teste)","supported_claim":"x"}]'::jsonb where id = $1`, [ids[5]]);
+    // cita trecho de documento cadastrado como fonte oficial vigente (nível A a D): há evidência positiva (o texto mudou: confere de novo)
+    await makeCitable(ids[5], "Documento Oficial A (teste)");
+    expect(await t(ids[5])).toMatchObject({ code: "nao_conferida", blocked: false });
+    await check(ids[5], "software", "pass");
     expect(await t(ids[5])).toMatchObject({ code: "so_regras", blocked: false });
-    await check(ids[6], "software", "pass");
-    await check(ids[6], "sources", "pass");
+    await makeCitable(ids[6], "Documento Oficial G (teste)", ["software", "sources", "currency", "redteam"]);
     expect(await t(ids[6])).toMatchObject({ code: "sem_apontamentos" });
-    // conteúdo mudou: a conferência deixa de valer
-    const hash7 = (await sql(`select content_hash h from public.draft_questions where id = $1`, [ids[6]]))[0].h;
-    await sql(`update public.draft_questions set content_hash = 'novo' where id = $1`, [ids[6]]);
+    // conteúdo mudou: a conferência deixa de valer (o hash sai do texto, não se escolhe)
+    const stem6 = (await sql(`select stem s from public.draft_questions where id = $1`, [ids[6]]))[0].s;
+    await sql(`update public.draft_questions set stem = $2 where id = $1`, [ids[6], stem6 + " (editado)"]);
     expect(await t(ids[6])).toMatchObject({ code: "nao_conferida" });
-    await sql(`update public.draft_questions set content_hash = $2 where id = $1`, [ids[6], hash7]);
+    await sql(`update public.draft_questions set stem = $2 where id = $1`, [ids[6], stem6]);
     expect(await t(ids[6])).toMatchObject({ code: "sem_apontamentos" });
 
     const list = await rpc(ADMIN, "app_draft_questions", { p_batch: "lote_teste", p_status: "awaiting_medical_review", p_limit: 30, p_order: "problematicos" });
@@ -337,18 +364,18 @@ describe("Conferência de rascunhos inéditos: pedido pela tela, triagem e aprov
     expect(clean.items[0].triage).toBe("sem_apontamentos");
     const filtered = await rpc(ADMIN, "app_draft_questions", { p_batch: "lote_teste", p_triage: "sem_fonte" });
     expect(filtered.total).toBe(2);
-    expect(filtered.items.every((i: any) => i.blocked_no_source && /nível A a D/.test(i.blocked_reason))).toBe(true);
+    expect(filtered.items.every((i: any) => i.triage_blocked && /nível A a D/.test(i.blocked_reason))).toBe(true);
     await expect(rpc(ADMIN, "app_draft_questions", { p_triage: "xyz" })).rejects.toThrow(/Selo de triagem inválido/);
   });
 
   it("aprovação bloqueada sem fonte oficial; pedir ajustes e recusar continuam livres; com fonte aprovar ainda é decisão do revisor; a triagem não aprova nada", async () => {
-    await expect(rpc(REV_PED, "app_draft_question_decide", { p_id: ids[2], p_decision: "approved" })).rejects.toThrow(/Aprovação bloqueada.*fonte oficial/);
-    await expect(rpc(REV_PED, "app_draft_question_decide", { p_id: ids[3], p_decision: "approved" })).rejects.toThrow(/Aprovação bloqueada/);
-    expect(await rpc(REV_PED, "app_draft_question_decide", { p_id: ids[2], p_decision: "needs_changes", p_note: "Cadastrar a fonte." })).toBe(true);
+    await expect(decideAs(REV_PED, ids[2], "approved")).rejects.toThrow(/Aprovação bloqueada.*fonte oficial/);
+    await expect(decideAs(REV_PED, ids[3], "approved")).rejects.toThrow(/Aprovação bloqueada/);
+    expect(await decideAs(REV_PED, ids[2], "needs_changes", "Cadastrar a fonte.")).toBe(true);
     // limpo continua aguardando: só pessoa aprova
     expect((await sql(`select status from public.draft_questions where id = $1`, [ids[6]]))[0].status).toBe("awaiting_medical_review");
-    await expect(rpc(STUDENT, "app_draft_question_decide", { p_id: ids[6], p_decision: "approved" })).rejects.toThrow(/revisor cadastrado/);
-    expect(await rpc(REV_PED, "app_draft_question_decide", { p_id: ids[6], p_decision: "approved" })).toBe(true);
+    await expect(decideAs(STUDENT, ids[6], "approved")).rejects.toThrow(/revisor cadastrado/);
+    expect(await decideAs(REV_PED, ids[6], "approved")).toBe(true);
     expect((await sql(`select count(*)::int n from public.draft_questions where status = 'approved'`))[0].n).toBe(1);
   });
 });
@@ -359,7 +386,7 @@ describe("Revisão independente 1: correções (achados 1 a 12 do relatório da 
   const drequest = (uid: string, a: Record<string, unknown> = {}) => rpc(uid, "app_ch_draft_check_request", { p_batch: "lote_rev1", ...a });
   const check = (id: string, layer: string, verdict: string, findings: unknown[] = []) =>
     db.service("ch_worker_save_draft_check", { p_draft_id: id, p_layer: layer, p_verdict: verdict, p_findings: findings, p_meta: { provider: "software", model: "regras" } });
-  const decide = (uid: string, id: string, decision: string, note?: string) => rpc(uid, "app_draft_question_decide", { p_id: id, p_decision: decision, p_note: note ?? null });
+  const decide = (uid: string, id: string, decision: string, note?: string) => decideAs(uid, id, decision, note);
   const cleanRequests = async () => {
     await sql(`delete from public.ch_jobs where step in ('draft_check', 'question_analysis')`);
     await sql(`delete from public.ch_ai_requests`);
@@ -386,6 +413,9 @@ describe("Revisão independente 1: correções (achados 1 a 12 do relatório da 
     await sql(`update public.draft_questions set source_citations = '[{"source_file":"Apostila de curso (teste)"}]'::jsonb where id = $1`, [id]);
     await expect(decide(REV_PED, id, "approved")).rejects.toThrow(/Aprovação bloqueada/); // só material de terceiros (nível E)
     await sql(`update public.draft_questions set source_citations = '[{"source_file":"Diretriz Oficial B (teste)"}]'::jsonb where id = $1`, [id]);
+    await expect(decide(REV_PED, id, "approved")).rejects.toThrow(/Aprovação bloqueada/); // citação antiga (só o nome do arquivo): na Leva 4 não basta
+    // citação nova (trecho de fonte oficial vigente) e as quatro camadas sem problema, menos a de fontes:
+    await makeCitable(id, "Diretriz Oficial B2 (teste)", ["software", "currency", "redteam"]);
     await check(id, "sources", "insufficient"); // a conferência disse que falta trecho: continua bloqueado
     await expect(decide(REV_PED, id, "approved")).rejects.toThrow(/Aprovação bloqueada/);
     await check(id, "sources", "issues");
@@ -396,22 +426,24 @@ describe("Revisão independente 1: correções (achados 1 a 12 do relatório da 
     expect(row).toEqual({ status: "approved", same: true });
   });
 
-  it("1. citação de documento oficial vigente cadastrado vale como evidência quando ainda não há conferência; conferência velha (texto mudou) não vale", async () => {
+  it("1. citação nova de fonte oficial vigente vale como evidência quando ainda não há conferência de fontes; conferência velha (texto mudou) não vale", async () => {
     const id = dids[1];
-    await sql(`update public.draft_questions set source_citations = '[{"source_file":"Diretriz Oficial B (teste)"}]'::jsonb where id = $1`, [id]);
-    await check(id, "sources", "insufficient");
-    await sql(`update public.draft_questions set content_hash = content_hash || 'v2' where id = $1`, [id]); // o texto mudou: a conferência antiga não conta
+    await makeCitable(id, "Diretriz Oficial C (teste)", ["software", "sources", "currency", "redteam"]);
+    await sql(`update public.draft_questions set stem = stem || ' Revisado.' where id = $1`, [id]); // o texto mudou: as conferências antigas não contam
+    await expect(decide(REV_PED, id, "approved")).rejects.toThrow(/Não aprova: .*Conferência pendente/);
+    for (const layer of ["software", "sources", "currency", "redteam"]) await check(id, layer, "pass");
     expect(await decide(REV_PED, id, "approved")).toBe(true);
     // fonte retirada de vigência: a citação deixa de ser evidência
     const id2 = dids[2];
-    await sql(`update public.draft_questions set source_citations = '[{"source_file":"Diretriz Oficial B (teste)"}]'::jsonb where id = $1`, [id2]);
-    await sql(`update public.ch_sources set status = 'superseded' where title = 'Diretriz Oficial B (teste)'`);
+    await makeCitable(id2, "Diretriz Oficial D (teste)", ["software", "sources", "currency", "redteam"]);
+    await sql(`update public.ch_sources set status = 'superseded' where title = 'Diretriz Oficial D (teste)'`);
     await expect(decide(REV_PED, id2, "approved")).rejects.toThrow(/Aprovação bloqueada/);
-    await sql(`update public.ch_sources set status = 'current' where title = 'Diretriz Oficial B (teste)'`);
+    await sql(`update public.ch_sources set status = 'current' where title = 'Diretriz Oficial D (teste)'`);
+    expect(await decide(REV_PED, id2, "approved")).toBe(true);
   });
 
   it("1. a decisão trava a linha (for update), para a verificação e a gravação valerem para o mesmo texto", async () => {
-    const def = (await sql(`select pg_get_functiondef('public.app_draft_question_decide(uuid, text, text)'::regprocedure) d`))[0].d as string;
+    const def = (await sql(`select pg_get_functiondef('public.app_draft_question_decide(uuid, text, text, text, boolean)'::regprocedure) d`))[0].d as string;
     expect(def).toMatch(/from public\.draft_questions where id = p_id for update/);
     // o triage da lista e o bloqueio da decisão usam a MESMA regra de evidência
     const t = (await sql(`select public.ch_draft_triage($1) r`, [dids[3]]))[0].r;
@@ -433,10 +465,10 @@ describe("Revisão independente 1: correções (achados 1 a 12 do relatório da 
     expect(outra.items).toEqual([]);
     expect(outra.total).toBe(0);
     // as conferências de outras áreas não entram nas contagens por camada
-    expect(ped.checks.software ?? {}).not.toHaveProperty("pass", expect.anything());
+    expect(ped.checks.software.pass).toBe(3); // os 3 de Pediatria já conferidos acima; o de Cirurgia não entra na conta dele
     const adm = await rpc(ADMIN, "app_draft_questions", { p_batch: "lote_rev1", p_limit: 100 });
     expect(adm.total).toBe(40);
-    expect(adm.checks.software.pass).toBe(1);
+    expect(adm.checks.software.pass).toBe(4);
     expect((await rpc(EDITOR, "app_draft_questions", { p_batch: "lote_rev1", p_limit: 100 })).total).toBe(40);
     // revisor sem nenhuma área não vê nada (não é equipe)
     await sql(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'CIRURGIA') on conflict do nothing`, [REV_CIR]);

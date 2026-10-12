@@ -224,7 +224,8 @@ describe("Worker: conferência dos rascunhos pedida pela tela", () => {
     // triagem: sem fonte oficial => aprovação bloqueada; o 4º ainda não foi conferido
     const list = await rpc("app_draft_questions", { p_batch: "lote_w", p_limit: 10 });
     const by = Object.fromEntries(list.items.map((i: any) => [i.source_id, i]));
-    expect(by.w1).toMatchObject({ triage: "sem_fonte", blocked_no_source: true });
+    // as regras da Leva 4 reprovam o rascunho de teste (cita só apostila e é quase igual aos outros): "reprovada" vem antes de "sem fonte"
+    expect(by.w1).toMatchObject({ triage: "reprovada", blocked_no_source: true });
     expect(by.w4).toMatchObject({ triage: "nao_conferida", blocked_no_source: true }); // sem conferência nem citação oficial: sem evidência, aprovação bloqueada
     // nada aprovado nem publicado, e a revisão automática antiga do motor não foi tocada
     expect((await sql(`select count(*)::int n from public.draft_questions where status <> 'awaiting_medical_review' or reviewed_by is not null`))[0].n).toBe(0);

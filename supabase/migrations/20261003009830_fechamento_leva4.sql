@@ -112,11 +112,13 @@ begin
   end if;
   if p_decision = 'approved' then
     v_block := public.draft_approval_blockers(d.id);
-    if cardinality(v_block) > 0 then raise exception 'Não aprova: %', array_to_string(v_block, ' · ') using errcode = '22023'; end if;
     v_ev := public.ch_draft_official_evidence(d.id);
     if not (v_ev ->> 'ok')::boolean then
-      raise exception 'Aprovação bloqueada: este rascunho não tem fonte oficial (nível A a D) comprovada para a afirmação central. Cadastre o documento oficial em Fontes oficiais e peça a conferência de novo, ou peça ajustes.' using errcode = '22023';
+      -- sem fonte oficial comprovada: diz isso primeiro e, se houver, acrescenta a lista de pendências da revisão
+      raise exception 'Aprovação bloqueada: este rascunho não tem fonte oficial (nível A a D) comprovada para a afirmação central. Cadastre o documento oficial em Fontes oficiais e peça a conferência de novo, ou peça ajustes.%',
+        case when cardinality(v_block) > 0 then ' Não aprova: ' || array_to_string(v_block, ' · ') else '' end using errcode = '22023';
     end if;
+    if cardinality(v_block) > 0 then raise exception 'Não aprova: %', array_to_string(v_block, ' · ') using errcode = '22023'; end if;
     if not coalesce(p_sources_checked, false) then raise exception 'Marque "Conferi as fontes citadas".' using errcode = '22023'; end if;
     select verdict into v_redteam from public.draft_checks where draft_id = d.id and layer = 'redteam' and content_hash = d.content_hash;
     select verdict into v_currency from public.draft_checks where draft_id = d.id and layer = 'currency' and content_hash = d.content_hash;
@@ -206,8 +208,8 @@ begin
         'blocked_no_source', not public.draft_has_official_sources(d),
         'triage', tr ->> 'code',
         'triage_rank', (tr ->> 'rank')::int,
-        'triage_blocked', (tr ->> 'blocked')::boolean,
-        'triage_reason', tr ->> 'reason',
+        'triage_blocked', (tr ->> 'blocked')::boolean, -- (blocked_no_source é a regra da 9800: sem citação de trecho oficial; triage_blocked inclui a falta de conferência das fontes)
+        'blocked_reason', tr ->> 'reason',
         'stale_sources', to_jsonb(public.draft_stale_sources(d)),
         'approval_blockers', to_jsonb(public.draft_approval_blockers(d.id)),
         'question', (select jsonb_build_object('id', q.id, 'code', q.code, 'number', q.number, 'retired_at', q.retired_at) from public.questions q where q.id = d.question_id),

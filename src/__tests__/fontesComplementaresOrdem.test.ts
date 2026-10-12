@@ -22,9 +22,9 @@ const NOVA = "20261003009620_fontes_complementares.sql";
 const DEPOIS = ["20261003009590", "20261003009591", "20261003009592", "20261003009593"];
 // (APOIO-B) a 9621 (parte da equipe) vem depois da 9620 e redefine duas funções dela: este arquivo prova só a 9620, então a deixa de fora
 // Este arquivo prova só a 9620 (e cola a 9620 de novo no fim): as migrações da LEVA 3 que vêm DEPOIS dela e redefinem funções suas
-// (9621 equipe; 9700-9702 Questões; 9710-9719 Aulas; 9720-9729 Podcasts; 9730-9739 Planos) ficam de fora. A ordem com cada uma
+// (9621 equipe; 9700-9702 Questões; 9710-9719 Aulas; 9720-9729 Podcasts; 9730-9739 Planos; 9800-9839 Questões StaziaMed, Análise, Atualidade das fontes e o fechamento da Leva 4) ficam de fora. A ordem com cada uma
 // está nos testes das próprias frentes (leva3Q*, aulas*, podcasts*, planos*).
-const todas = () => fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && !/^2026100300(9621|970\d|971\d|972\d|973\d)_/.test(f)).sort();
+const todas = () => fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && !/^2026100300(9621|970\d|971\d|972\d|973\d|980\d|981\d|982\d|983\d)_/.test(f)).sort();
 const ler = (f: string) => fs.readFileSync(path.join(MIGRATIONS, f), "utf8");
 
 async function novoBanco(arquivos: string[]) {
