@@ -366,9 +366,19 @@ begin
   return null;
 end
 $$;
+-- Dispara quando a fonte É complementar (criada ou editada), quando MUDA de nível ou de classe (inclusive o nível E que a torna
+-- complementar sozinha, e a saída da classe complementar, para a marca voltar) e quando uma fonte complementar é apagada.
+-- Em UPDATE a coluna listada vale se o comando a cita (authority_level é citada por app_ch_set_source_authority; a troca de classe
+-- feita pelo gatilho ch_sources_audience_guard acontece no mesmo comando).
 drop trigger if exists ch_sources_refresh_flags on public.ch_sources;
-create trigger ch_sources_refresh_flags after insert or update of title, organ, url, authors, aliases, sha256, document_id on public.ch_sources
+drop trigger if exists ch_sources_refresh_flags_ins on public.ch_sources;
+drop trigger if exists ch_sources_refresh_flags_del on public.ch_sources;
+create trigger ch_sources_refresh_flags after update of title, organ, url, authors, aliases, sha256, document_id, authority_level, audience on public.ch_sources
+  for each row when (new.audience = 'complementar' or old.audience = 'complementar') execute function public.ch_refresh_hidden_flags_trg();
+create trigger ch_sources_refresh_flags_ins after insert on public.ch_sources
   for each row when (new.audience = 'complementar') execute function public.ch_refresh_hidden_flags_trg();
+create trigger ch_sources_refresh_flags_del after delete on public.ch_sources
+  for each row when (old.audience = 'complementar') execute function public.ch_refresh_hidden_flags_trg();
 drop trigger if exists ch_documents_refresh_flags on public.ch_documents;
 create trigger ch_documents_refresh_flags after update of name, author, publisher, sha256 on public.ch_documents
   for each row execute function public.ch_refresh_hidden_flags_trg();
