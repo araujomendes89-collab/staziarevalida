@@ -114,6 +114,32 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       log(`podcasts: não consegui apagar ${list.length} arquivo(s): ${message(error)}`);
     }
   };
+  /**
+   * Apaga do depósito os arquivos que um evento deixou sem uso (áudio que deixou de valer, fonte tirada, episódio apagado). O banco
+   * anota o caminho (podcast_files_released) e só devolve o que nenhuma linha usa mais (outro episódio, material de aula,
+   * retenção de arquivo); o que apagou vai para o Registro. NUNCA lança: falha ao apagar não desfaz a operação principal (o
+   * arquivo fica pendente e é tentado de novo no próximo evento do mesmo episódio). Não há varredura de arquivos antigos.
+   */
+  const releaseFiles = async (user: string, podcast: string) => {
+    try {
+      if (!deps!.storage.remove) return;
+      const pending = await service<Array<{ id: number; path: string }>>("ch_worker_podcast_files_pending", { p_user: user, p_podcast: podcast });
+      if (!Array.isArray(pending) || !pending.length) return;
+      const results: Array<{ id: number; ok: boolean; error?: string }> = [];
+      for (const file of pending) {
+        try {
+          await deps!.storage.remove([file.path]);
+          results.push({ id: file.id, ok: true });
+        } catch (error) {
+          log(`podcasts: não consegui apagar ${file.path}: ${message(error)}`);
+          results.push({ id: file.id, ok: false, error: message(error) });
+        }
+      }
+      await service("ch_worker_podcast_files_done", { p_user: user, p_results: results });
+    } catch (error) {
+      log(`podcasts: limpeza de arquivos antigos não terminou (fica para o próximo evento): ${message(error)}`);
+    }
+  };
   /** Custo de IA no mesmo livro-caixa do Tutor (sem contar como interação do aluno). */
   const ledger = async (user: string, entry: Record<string, unknown>) => {
     try {
@@ -326,7 +352,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const source = (before.sources ?? []).find((s: any) => s.id === req.params.sourceId);
       if (!source) throw httpError(404, "Fonte não encontrada.");
       const view = await asUser(req, "app_admin_podcast_remove_source", { p_source_id: req.params.sourceId });
-      await removeQuietly(deps!.storage, [source.storage_path]);
+      await releaseFiles(req.user!.id, req.params.id); // o arquivo da fonte (se nenhuma outra fonte o usa) e o áudio que deixou de valer
       res.json(view);
     } catch (error) {
       fail(res, statusOf(error), message(error));
@@ -384,6 +410,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
         await ledger(req.user!.id, { feature: "podcast_script", provider: r.usage.provider, model: r.usage.model, input_text_tokens: r.usage.input_tokens, output_text_tokens: r.usage.output_tokens, estimated_cost_usd: r.usage.cost_usd, meta: { podcast_id: req.params.id, calls: r.usage.calls } });
       }
       log(`podcasts: roteiro ${simulated ? "simulado" : r.usage.model} no episódio ${req.params.id} (${r.script.lines.length} falas, ${r.warnings.length} avisos)`);
+      await releaseFiles(req.user!.id, req.params.id); // o áudio do roteiro anterior deixou de valer
       res.json({ podcast: view, warnings: r.warnings });
     } catch (error) {
       fail(res, statusOf(error), message(error));
@@ -548,7 +575,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     let newKey: string | null = null;
     try {
       await staffPodcast(req);
-      const { manifest, oldAudio } = await currentJob(req);
+      const { manifest } = await currentJob(req);
       const id = req.params.id;
       const pieces: Buffer[] = [];
       let seconds = 0;
@@ -572,11 +599,23 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
         await ledger(req.user!.id, { feature: "podcast_tts", provider: manifest.provider, model: manifest.model, duration_seconds: Math.round(seconds), characters: manifest.chars, estimated_cost_usd: cost, meta: { podcast_id: id, job: manifest.job } });
       }
       const tmp = manifest.parts.flatMap((_, i) => [partKey(id, manifest.job, i, "mp3"), partKey(id, manifest.job, i, "json"), partKey(id, manifest.job, i, "lock")]);
-      await removeQuietly(deps!.storage, [...tmp, manifestKey(id, manifest.job), oldAudio && oldAudio !== newKey ? oldAudio : null]);
+      await removeQuietly(deps!.storage, [...tmp, manifestKey(id, manifest.job)]);
+      await releaseFiles(req.user!.id, id); // o áudio anterior (a fila só o apaga se nenhuma linha do banco o usa)
       log(`podcasts: áudio pronto no episódio ${id} (${Math.round(seconds)} s, ${manifest.provider})`);
       res.json(view);
     } catch (error) {
       if (newKey) await removeQuietly(deps?.storage, [newKey]);
+      fail(res, statusOf(error), message(error));
+    }
+  });
+
+  /** A tela chama depois de editar o roteiro (a edição é feita direto no banco): apaga o áudio que deixou de valer. */
+  router.post("/:id/files/cleanup", async (req: Authed, res) => {
+    try {
+      await staffPodcast(req);
+      await releaseFiles(req.user!.id, req.params.id);
+      res.json({ ok: true });
+    } catch (error) {
       fail(res, statusOf(error), message(error));
     }
   });
@@ -641,8 +680,8 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
   router.delete("/:id", async (req: Authed, res) => {
     try {
       if (!ID.test(req.params.id)) throw httpError(400, "Episódio inválido.");
-      const r = await asUser<{ paths?: string[] }>(req, "app_admin_delete_podcast", { p_id: req.params.id });
-      await removeQuietly(deps!.storage, r?.paths ?? []);
+      await asUser(req, "app_admin_delete_podcast", { p_id: req.params.id });
+      await releaseFiles(req.user!.id, req.params.id); // áudio e arquivos das fontes do episódio apagado
       res.json({ deleted: true });
     } catch (error) {
       fail(res, statusOf(error), message(error));

@@ -239,6 +239,16 @@ describe("Registro: toda ação tem resumo em linguagem simples (RG03)", () => {
     expect(auditSummary({ action: "podcast.delete", target: UUID, title: null, details: {} })).toBe("");
   });
 
+  it("P08: arquivos antigos do podcast apagados do depósito: quantos, de que tipo e quais, sem código interno", () => {
+    expect(auditLabel({ action: "podcast.files.cleanup", details: {} })).toBe("Arquivos antigos do podcast apagados do depósito");
+    const ep = (details: Record<string, unknown>) => ({ action: "podcast.files.cleanup", target: UUID, title: "Episódio 1: sepse", details });
+    expect(auditSummary(ep({ audios: 1, fontes: 0, falhas: 0, arquivos: ["audio-1a2b3c.mp3"] }))).toBe("Episódio 1: sepse · 1 áudio antigo apagado · Arquivos: audio-1a2b3c.mp3");
+    expect(auditSummary(ep({ audios: 2, fontes: 1, falhas: 0, arquivos: ["audio-a.mp3", "audio-b.mp3", "src-c.pdf"] })))
+      .toBe("Episódio 1: sepse · 2 áudios antigos apagados · 1 arquivo de fonte apagado · Arquivos: audio-a.mp3, audio-b.mp3, src-c.pdf");
+    expect(auditSummary(ep({ audios: 1, fontes: 0, falhas: 2, arquivos: ["audio-a.mp3"] }))).toBe("Episódio 1: sepse · 1 áudio antigo apagado · Arquivos: audio-a.mp3 · 2 arquivos não puderam ser apagados agora (nova tentativa na próxima ação do episódio)");
+    expect(auditSummary(ep({ audios: 1, fontes: 0, falhas: 0, arquivos: ["audio-a.mp3"] }))).not.toMatch(INTERNAL);
+  });
+
   it("roteiro do podcast escrito pela IA: quem escreveu, quantos trechos das fontes e o custo; roteiro de teste é dito como teste", () => {
     const meta = { provider: "gemini", model: "gemini-2.5-pro", prompt_version: "v3", input_tokens: 9000, output_tokens: 3000, cost_usd: 0.0512, calls: 2, used_chunks: 12, total_chunks: 20, warnings: [], notes: null, seconds: 14, simulated: false };
     expect(auditSummary({ action: "podcast.script.ai", target: UUID, title: "Episódio 1: sepse", details: meta }))

@@ -1,0 +1,342 @@
+// @vitest-environment node
+/**
+ * Podcasts, P08 (supabase/migrations/…9721_podcasts_arquivos_esquecidos.sql + server/podcasts/router.ts): arquivos antigos do
+ * depósito saem POR EVENTO (roteiro editado, roteiro novo, áudio refeito, fonte tirada, episódio apagado), só se nenhuma linha do
+ * banco os usa (outro episódio, material de aula, retenção de arquivo), sem varredura de arquivos que já existiam, sem desfazer a
+ * operação principal quando apagar falha, e com o que foi apagado no Registro. A rotina de leitura da lista de esquecidos também.
+ */
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import express from "express";
+import fs from "fs";
+import os from "os";
+import path from "path";
+import type { Server } from "http";
+import { openDevDatabaseForTests, type DevDatabase } from "../../server/devDb/devDatabase";
+import { devContentDb, localStorageDir, type ContentDb, type Storage } from "../../server/contentHub/infra";
+import { createPodcastsRouter, type PodcastsDeps } from "../../server/podcasts/router";
+import { auditSummary } from "../novo/app/admin/auditLog.js";
+
+vi.setConfig({ testTimeout: 60_000 });
+
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "podcasts-arquivos-"));
+const ADMIN = "00000000-0000-4000-8000-0000000000ad";
+const EDITOR = "00000000-0000-4000-8000-0000000000e1";
+const STUDENT = "00000000-0000-4000-8000-0000000000b1";
+let dev: DevDatabase;
+let db: ContentDb;
+const servers: Server[] = [];
+let base: string;
+let flaky: string; // depósito que falha ao apagar quando `falhaAoApagar` está ligado
+let admin: string, editor: string, student: string;
+let falhaAoApagar = false;
+
+const files = localStorageDir(path.join(tmp, "podcasts"));
+const flakyFiles: Storage = { ...files, remove: async (keys) => (falhaAoApagar ? Promise.reject(new Error("depósito fora do ar")) : files.remove!(keys)) };
+const lessonFiles = localStorageDir(path.join(tmp, "lessons"));
+
+const mockScript = (req: { input: string }) => {
+  const ids = [...req.input.matchAll(/\[T(\d+)\]/g)].map((m) => Number(m[1]));
+  return {
+    title_suggestion: "Pré-eclâmpsia",
+    lines: [
+      { speaker: "ANA", text: "Hoje a conversa é sobre pré-eclâmpsia, só com o material da equipe.", style: "acolhedora", sources: [] },
+      { speaker: "BRUNO", text: "Boa! O que define o quadro?", style: "curioso", sources: [] },
+      { speaker: "ANA", text: "Hipertensão depois de 20 semanas com proteinúria, como está no material.", style: "didática", sources: [ids[0]] },
+      { speaker: "BRUNO", text: "Anotado, obrigado!", style: "animado", sources: [] },
+    ],
+    missing: [],
+  };
+};
+
+const sqlAs = (uid: string, q: string, p: unknown[] = []) =>
+  dev.db.transaction(async (tx) => {
+    await tx.exec("set local role authenticated");
+    await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify({ sub: uid })]);
+    return (await tx.query<any>(q, p)).rows;
+  });
+const rpc = async (uid: string, fn: string, args: Record<string, unknown> = {}) => {
+  const keys = Object.keys(args);
+  return (await sqlAs(uid, `select public.${fn}(${keys.map((k, i) => `${k} => $${i + 1}`).join(", ")}) as r`, keys.map((k) => args[k])))[0].r;
+};
+const sql = async (q: string, p: unknown[] = []) => (await dev.db.query<any>(q, p)).rows;
+const listen = (deps: PodcastsDeps) =>
+  new Promise<string>((resolve) => {
+    const app = express();
+    app.use(express.json({ limit: "50mb" }));
+    app.use("/api/podcasts", createPodcastsRouter(deps));
+    const srv = app.listen(0, () => resolve(`http://127.0.0.1:${(srv.address() as any).port}/api/podcasts`));
+    servers.push(srv);
+  });
+const call = async (url: string, token: string, init: RequestInit = {}) => {
+  const r = await fetch(url, { ...init, headers: { Authorization: `Bearer ${token}`, ...(init.headers ?? {}) } });
+  const type = r.headers.get("content-type") ?? "";
+  return { status: r.status, body: type.includes("json") ? await r.json() : Buffer.from(await r.arrayBuffer()) };
+};
+const post = (url: string, token: string, body: unknown = {}) => call(url, token, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+const del = (url: string, token: string) => call(url, token, { method: "DELETE" });
+
+const TEXTO = "Na prova, a pegadinha é tratar a pressão sem pensar no sulfato de magnésio para prevenir convulsão. Hipertensão após 20 semanas com proteinúria define o quadro. ";
+
+/** Episódio pronto até o áudio: fonte de texto, roteiro, aprovação do administrador e áudio simulado. Devolve o caminho do áudio. */
+async function episodioComAudio(url = base) {
+  const ep = await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: `Episódio ${Math.random().toString(36).slice(2, 7)}`, topic: "Pré-eclâmpsia", area: "GINECOLOGIA_OBSTETRICIA", target_minutes: 5 } });
+  const id = ep.id as string;
+  expect((await post(`${url}/${id}/sources/text`, editor, { title: "Anotações", text: TEXTO.repeat(2) })).status).toBe(201);
+  expect((await post(`${url}/${id}/script`, editor, { provider: "mock" })).status).toBe(200);
+  await rpc(ADMIN, "app_admin_podcast_approve", { p_id: id, p_note: "Conferi o roteiro com a fonte." });
+  const audio = await refazAudio(id, url);
+  return { id, audio };
+}
+async function refazAudio(id: string, url = base) {
+  const start = await post(`${url}/${id}/audio/start`, editor, { provider: "mock" });
+  expect(start.status).toBe(200);
+  for (let i = 0; i < start.body.parts; i++) expect((await post(`${url}/${id}/audio/part`, editor, { job: start.body.job, index: i })).status).toBe(200);
+  const fin = await post(`${url}/${id}/audio/finish`, editor, { job: start.body.job });
+  expect(fin.status).toBe(200);
+  return fin.body.audio_path as string;
+}
+const registro = (id: string) => sql(`select actor_id, details from public.admin_audit_log where action = 'podcast.files.cleanup' and target = $1 order by id`, [id]);
+const fila = (id: string) => sql(`select storage_path, reason, status, attempts, last_error from public.podcast_files_released where podcast_id = $1 order by id`, [id]);
+
+beforeAll(async () => {
+  dev = await openDevDatabaseForTests(path.join(tmp, "db"));
+  db = devContentDb(async () => dev);
+  await dev.db.query(`insert into auth.users (id, email) values ($1, 'adm@t.dev'), ($2, 'ed@t.dev'), ($3, 'al@t.dev')`, [ADMIN, EDITOR, STUDENT]);
+  await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
+  await dev.db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [EDITOR]);
+  base = await listen({ db, storage: files, lessons: lessonFiles, mockScript });
+  flaky = await listen({ db, storage: flakyFiles, lessons: lessonFiles, mockScript });
+  admin = await dev.createSession(ADMIN);
+  editor = await dev.createSession(EDITOR);
+  student = await dev.createSession(STUDENT);
+}, 300_000);
+afterAll(async () => {
+  await Promise.all(servers.map((s) => new Promise((r) => s.close(r))));
+  await dev?.db.close();
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+
+describe("P08: o áudio que deixou de valer é apagado no evento", () => {
+  it("editar o roteiro: o áudio some do episódio na hora, o arquivo sai quando a tela avisa o servidor, e o Registro diz o que saiu", async () => {
+    const { id, audio } = await episodioComAudio();
+    expect(await files.exists(audio)).toBe(true);
+    const lines = (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines;
+    const edited = await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines, missing: [] } });
+    expect(edited).toMatchObject({ status: "script_ready", audio_path: null });
+    expect((await fila(id))[0]).toMatchObject({ storage_path: audio, reason: "audio_invalidado", status: "pendente" });
+    expect(await files.exists(audio)).toBe(true); // a edição é no banco: o arquivo espera o aviso do servidor
+    expect((await post(`${base}/${id}/files/cleanup`, editor)).status).toBe(200);
+    expect(await files.exists(audio)).toBe(false);
+    expect((await fila(id))[0]).toMatchObject({ status: "apagado", attempts: 0 });
+    const log = await registro(id);
+    expect(log).toHaveLength(1);
+    expect(log[0]).toMatchObject({ actor_id: EDITOR, details: { audios: 1, fontes: 0, falhas: 0, arquivos: [path.basename(audio)] } });
+    // aparece no Registro da Administração, em português
+    const linhas = await rpc(ADMIN, "app_admin_audit", { p_limit: 20 });
+    const entrada = linhas.find((l: any) => l.action === "podcast.files.cleanup" && l.target === id);
+    expect(entrada).toBeTruthy();
+    expect(auditSummary(entrada)).toBe(`${entrada.title} · 1 áudio antigo apagado · Arquivos: ${path.basename(audio)}`);
+    // chamar de novo não apaga nem registra nada a mais
+    expect((await post(`${base}/${id}/files/cleanup`, editor)).status).toBe(200);
+    expect(await registro(id)).toHaveLength(1);
+  });
+
+  it("gerar outro roteiro (evento do servidor) apaga o áudio anterior sem esperar", async () => {
+    const { id, audio } = await episodioComAudio();
+    expect((await post(`${base}/${id}/script`, editor, { provider: "mock" })).status).toBe(200);
+    expect(await files.exists(audio)).toBe(false);
+    expect((await registro(id))[0].details).toMatchObject({ audios: 1, arquivos: [path.basename(audio)] });
+  });
+
+  it("refazer o áudio apaga o anterior e registra; o novo fica", async () => {
+    const { id, audio } = await episodioComAudio();
+    const novo = await refazAudio(id);
+    expect(novo).not.toBe(audio);
+    expect(await files.exists(audio)).toBe(false);
+    expect(await files.exists(novo)).toBe(true);
+    expect((await fila(id)).map((r) => [r.storage_path, r.reason, r.status])).toEqual([[audio, "audio_refeito", "apagado"]]);
+    expect(await registro(id)).toHaveLength(1);
+  });
+
+  it("apagar o episódio apaga o áudio e o arquivo das fontes; só o administrador apaga", async () => {
+    const { id, audio } = await episodioComAudio();
+    const arq = `podcasts/${id}/src-aaaaaaaaaaaaaaaa.pdf`;
+    await files.put(arq, Buffer.from("%PDF-1.4 teste"), "application/pdf");
+    await sql(`insert into public.podcast_sources (podcast_id, kind, title, storage_path, position) values ($1, 'pdf', 'Fonte em arquivo', $2, 9)`, [id, arq]);
+    expect((await del(`${base}/${id}`, editor)).status).toBe(403);
+    expect(await files.exists(audio)).toBe(true);
+    expect((await del(`${base}/${id}`, admin)).status).toBe(200);
+    expect(await files.exists(audio)).toBe(false);
+    expect(await files.exists(arq)).toBe(false);
+    const log = await registro(id);
+    expect(log).toHaveLength(1);
+    expect(log[0].details).toMatchObject({ audios: 1, fontes: 1 });
+    expect((await fila(id)).map((r) => r.reason).sort()).toEqual(["episodio_apagado", "episodio_apagado"]);
+    // o Registro ainda mostra o título do episódio apagado (guardado pelo podcast.save)
+    const entrada = (await rpc(ADMIN, "app_admin_audit", { p_limit: 50 })).find((l: any) => l.action === "podcast.files.cleanup" && l.target === id);
+    expect(entrada.title).toBeTruthy();
+  });
+});
+
+describe("P08: tirar uma fonte", () => {
+  it("o arquivo da fonte e o áudio que deixou de valer saem; arquivo igual usado por outra fonte do mesmo episódio fica", async () => {
+    const { id, audio } = await episodioComAudio();
+    const arq = `podcasts/${id}/src-bbbbbbbbbbbbbbbb.pdf`;
+    await files.put(arq, Buffer.from("%PDF-1.4 teste"), "application/pdf");
+    // dois cadastros do mesmo arquivo (o envio pelo servidor usa o SHA-256 como nome, então o mesmo arquivo repetido cai no mesmo caminho)
+    const [a, b] = [(await sql(`insert into public.podcast_sources (podcast_id, kind, title, storage_path, position) values ($1, 'pdf', 'Cópia 1', $2, 8) returning id`, [id, arq]))[0].id, (await sql(`insert into public.podcast_sources (podcast_id, kind, title, storage_path, position) values ($1, 'pdf', 'Cópia 2', $2, 9) returning id`, [id, arq]))[0].id];
+    expect((await del(`${base}/${id}/sources/${a}`, editor)).status).toBe(200);
+    expect(await files.exists(audio)).toBe(false); // sem fonte o roteiro cai, e o áudio com ele
+    expect(await files.exists(arq)).toBe(true); // a Cópia 2 ainda usa o arquivo
+    expect((await fila(id)).find((r) => r.storage_path === arq)).toMatchObject({ status: "mantido" });
+    expect((await del(`${base}/${id}/sources/${b}`, editor)).status).toBe(200);
+    expect(await files.exists(arq)).toBe(false); // agora ninguém o usa: o segundo evento enfileira o caminho de novo e ele sai
+    expect((await fila(id)).filter((r) => r.storage_path === arq).map((r) => [r.reason, r.status])).toEqual([["fonte_tirada", "mantido"], ["fonte_tirada", "apagado"]]);
+    expect((await registro(id)).at(-1)!.details).toMatchObject({ fontes: 1, arquivos: [path.basename(arq)] });
+  });
+});
+
+describe("P08: só apaga o que ninguém mais usa", () => {
+  it("áudio usado por outro episódio, por material de aula ou retido pela Fonte complementar NÃO é apagado", async () => {
+    const { id, audio } = await episodioComAudio();
+    const outro = (await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Outro episódio", topic: "T", area: "CLINICA_MEDICA", target_minutes: 5 } })).id;
+    const lines = (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines;
+    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines, missing: [] } }); // o áudio deste episódio deixa de valer: caminho na fila
+    const aula = (await sql(`insert into public.lessons (area, topic, title) values ('PEDIATRIA', 'Asma', 'Asma') returning id`))[0].id;
+    const usos: Array<[string, string, string]> = [
+      ["outro episódio", `update public.podcasts set audio_path = '${audio}' where id = '${outro}'`, `update public.podcasts set audio_path = null where id = '${outro}'`],
+      ["retenção da Fonte complementar", `insert into public.ch_file_holds (storage_path) values ('${audio}')`, `delete from public.ch_file_holds where storage_path = '${audio}'`],
+      ["material de aula", `insert into public.lesson_materials (lesson_id, kind, title, storage_path) values ('${aula}', 'flashcast', 'Flashcast', '${audio}')`, `delete from public.lesson_materials where lesson_id = '${aula}'`],
+    ];
+    let esperadas = 1; // a primeira linha da fila veio do gatilho da edição
+    for (const [nome, poe, tira] of usos) {
+      if (esperadas > 1) await sql(`insert into public.podcast_files_released (podcast_id, storage_path, reason) values ($1, $2, 'audio_invalidado')`, [id, audio]);
+      await sql(poe);
+      expect((await post(`${base}/${id}/files/cleanup`, editor)).status, nome).toBe(200);
+      expect(await files.exists(audio), nome).toBe(true);
+      expect((await fila(id)).at(-1), nome).toMatchObject({ storage_path: audio, status: "mantido" });
+      expect((await fila(id)).length).toBe(esperadas++);
+      await sql(tira);
+      await sql(`update public.podcast_files_released set status = 'mantido' where podcast_id = $1 and status = 'pendente'`, [outro]); // o outro episódio soltar o caminho enfileira para ELE (outro evento); aqui só nos interessa o episódio em teste
+    }
+    expect(await registro(id)).toHaveLength(0); // nada foi apagado: nada no Registro
+  });
+
+  it("o Flashcast já copiado para a aula continua tocando depois que o episódio perde o áudio", async () => {
+    const { id, audio } = await episodioComAudio();
+    await sql(`update public.podcasts set status = 'published', published_by = $2, published_at = now() where id = $1`, [id, ADMIN]);
+    const aula = (await sql(`insert into public.lessons (area, topic, title, published) values ('PEDIATRIA', 'Asma', 'Asma na infância', true) returning id`))[0].id;
+    expect((await post(`${base}/${id}/flashcast`, admin, { lesson_id: aula, confirm: true })).status).toBe(201);
+    const copia = (await sql(`select storage_path from public.lesson_materials where lesson_id = $1 and kind = 'flashcast'`, [aula]))[0].storage_path;
+    expect(await lessonFiles.exists(copia)).toBe(true);
+    await rpc(ADMIN, "app_admin_podcast_publish", { p_id: id, p_published: false });
+    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines, missing: [] } });
+    expect((await post(`${base}/${id}/files/cleanup`, editor)).status).toBe(200);
+    expect(await lessonFiles.exists(copia)).toBe(true); // o depósito das aulas não é tocado
+    expect(await files.exists(audio)).toBe(false); // o áudio do episódio saiu, a cópia da aula ficou
+  });
+
+  it("só caminhos no formato podcasts/<episódio>/<arquivo> são apagados; qualquer outro vira 'mantido'", async () => {
+    const ep = (await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Caminhos estranhos", topic: "T", area: "CLINICA_MEDICA", target_minutes: 5 } })).id;
+    const outroId = "00000000-0000-4000-8000-0000000000ff";
+    for (const p of ["x", "audio.mp3", `podcasts/${outroId}/audio-a.mp3`, `podcasts/${ep}/../outro.mp3`, `lessons/${ep}/x.mp3`]) {
+      await sql(`insert into public.podcast_files_released (podcast_id, storage_path, reason) values ($1, $2, 'audio_invalidado')`, [ep, p]);
+    }
+    const pending = await db.service<any[]>("ch_worker_podcast_files_pending", { p_user: EDITOR, p_podcast: ep });
+    expect(pending).toEqual([]);
+    expect((await fila(ep)).map((r) => r.status)).toEqual(Array(5).fill("mantido"));
+  });
+});
+
+describe("P08: falhar ao apagar não desfaz a operação principal", () => {
+  it("a edição, a fonte tirada e o episódio apagado terminam; o arquivo fica pendente com o erro e sai no evento seguinte", async () => {
+    const { id, audio } = await episodioComAudio(flaky);
+    falhaAoApagar = true;
+    try {
+      expect((await post(`${flaky}/${id}/script`, editor, { provider: "mock" })).status).toBe(200); // a geração do roteiro não falha por causa do depósito
+      expect(await files.exists(audio)).toBe(true);
+      expect((await fila(id))[0]).toMatchObject({ status: "pendente", attempts: 1, last_error: "depósito fora do ar" });
+      expect(await registro(id)).toHaveLength(0); // não apagou: não registra
+    } finally {
+      falhaAoApagar = false;
+    }
+    expect((await post(`${flaky}/${id}/files/cleanup`, editor)).status).toBe(200);
+    expect(await files.exists(audio)).toBe(false);
+    expect((await fila(id))[0]).toMatchObject({ status: "apagado", attempts: 1 });
+    expect(await registro(id)).toHaveLength(1);
+  });
+
+  it("apagar o episódio com o depósito fora do ar: o episódio é apagado e os arquivos ficam na fila", async () => {
+    const { id, audio } = await episodioComAudio(flaky);
+    falhaAoApagar = true;
+    try {
+      expect((await del(`${flaky}/${id}`, admin)).status).toBe(200);
+    } finally {
+      falhaAoApagar = false;
+    }
+    expect((await sql(`select 1 from public.podcasts where id = $1`, [id]))).toHaveLength(0);
+    expect(await files.exists(audio)).toBe(true);
+    expect((await fila(id))[0]).toMatchObject({ status: "pendente", reason: "episodio_apagado", attempts: 1 });
+  });
+});
+
+describe("P08: nada é apagado por varredura e as permissões valem", () => {
+  it("arquivo antigo que já estava esquecido, sem linha na fila, continua lá depois de qualquer evento", async () => {
+    const { id } = await episodioComAudio();
+    const velho = `podcasts/${id}/audio-esquecido0000.mp3`;
+    await files.put(velho, Buffer.from("mp3 antigo"), "audio/mpeg");
+    expect((await post(`${base}/${id}/script`, editor, { provider: "mock" })).status).toBe(200);
+    expect((await post(`${base}/${id}/files/cleanup`, editor)).status).toBe(200);
+    expect(await files.exists(velho)).toBe(true);
+    expect((await fila(id)).some((r) => r.storage_path === velho)).toBe(false);
+  });
+
+  it("a limpeza é só da equipe; aluno e visitante não chamam, e as funções do banco não são chamáveis por login", async () => {
+    const { id } = await episodioComAudio();
+    expect((await post(`${base}/${id}/files/cleanup`, student)).status).toBe(403);
+    expect((await call(`${base}/${id}/files/cleanup`, "token-invalido", { method: "POST" })).status).toBe(401);
+    for (const [fn, args] of [["ch_worker_podcast_files_pending", { p_user: EDITOR, p_podcast: id }], ["ch_worker_podcast_files_done", { p_user: EDITOR, p_results: "[]" }]] as const) {
+      for (const uid of [ADMIN, EDITOR, STUDENT]) await expect(rpc(uid, fn, args as any), `${fn} ${uid}`).rejects.toThrow(/permission denied/);
+    }
+    await expect(sqlAs(EDITOR, `select * from public.podcast_files_released`)).rejects.toThrow(/permission denied/);
+    // as funções do servidor também conferem a equipe pela conta informada
+    await expect(db.service("ch_worker_podcast_files_pending", { p_user: STUDENT, p_podcast: id })).rejects.toThrow(/Acesso restrito/);
+    await expect(db.service("ch_worker_podcast_files_done", { p_user: STUDENT, p_results: [] })).rejects.toThrow(/Acesso restrito/);
+  });
+});
+
+describe("P08: lista de arquivos esquecidos (rotina só de leitura)", () => {
+  const ROTINA = path.resolve(__dirname, "../../supabase/rotinas/lista-podcasts-arquivos-esquecidos.sql");
+
+  it("lista, sem apagar nada, o que está no depósito e nenhuma linha do banco usa; dá a conta no começo", async () => {
+    const { id, audio } = await episodioComAudio();
+    // depósito simulado do Supabase (storage.objects): o usado, o esquecido, a fonte esquecida, o temporário velho e o recente
+    await sql(`create schema if not exists storage`);
+    await sql(`create table if not exists storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text, created_at timestamptz default now(), metadata jsonb)`);
+    await sql(`delete from storage.objects`);
+    const velho = "now() - interval '3 days'";
+    const obj = (name: string, bytes: number, quando = "now()") => sql(`insert into storage.objects (bucket_id, name, created_at, metadata) values ('podcasts', $1, ${quando}, $2::jsonb)`, [name, JSON.stringify({ size: bytes })]);
+    await obj(audio, 1_000_000); // usado pelo episódio
+    await obj(`podcasts/${id}/audio-esquecido1111.mp3`, 2_000_000, velho);
+    await obj(`podcasts/${id}/src-esquecida2222.pdf`, 3_000_000, velho);
+    await obj(`podcasts/${id}/tmp/aaaaaaaaaaaaaaaa/part-0.mp3`, 500_000, velho);
+    await obj(`podcasts/${id}/tmp/bbbbbbbbbbbbbbbb/part-0.mp3`, 500_000); // geração em andamento: não é esquecido
+    await sql(`insert into storage.objects (bucket_id, name, created_at, metadata) values ('lessons', 'lessons/x/slides.pdf', now(), '{"size":10}')`); // outro depósito: fora
+    const before = (await sql(`select count(*)::int n from storage.objects`))[0].n;
+    const rows = await sql(fs.readFileSync(ROTINA, "utf8"));
+    expect((await sql(`select count(*)::int n from storage.objects`))[0].n).toBe(before); // só leitura
+    expect(rows[0]).toMatchObject({ tipo: "RESUMO" });
+    expect(rows[0].arquivo).toMatch(/3 arquivos/);
+    const nomes = rows.slice(1).map((r: any) => r.arquivo).sort();
+    expect(nomes).toEqual([`podcasts/${id}/audio-esquecido1111.mp3`, `podcasts/${id}/src-esquecida2222.pdf`, `podcasts/${id}/tmp/aaaaaaaaaaaaaaaa/part-0.mp3`].sort());
+    expect(rows.slice(1).map((r: any) => r.tipo).sort()).toEqual(["Áudio que nenhum episódio usa", "Arquivo de fonte que nenhuma fonte usa", "Partes temporárias de um áudio que não terminou"].sort());
+    expect(rows.slice(1).every((r: any) => typeof r.tamanho_mb === "string" || typeof r.tamanho_mb === "number")).toBe(true);
+    // a retenção da Fonte complementar protege: o que está retido não entra na lista
+    await sql(`insert into public.ch_file_holds (storage_path) values ($1)`, [`podcasts/${id}/src-esquecida2222.pdf`]);
+    const retido = await sql(fs.readFileSync(ROTINA, "utf8"));
+    expect(retido.slice(1).map((r: any) => r.arquivo)).not.toContain(`podcasts/${id}/src-esquecida2222.pdf`);
+    await sql(`delete from storage.objects`);
+    await sql(`drop table storage.objects`);
+    await sql(`drop schema storage`);
+  });
+});

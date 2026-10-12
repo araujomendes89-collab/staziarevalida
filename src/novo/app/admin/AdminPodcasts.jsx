@@ -242,6 +242,7 @@ function ScriptEditor({ podcast, warnings, onSaved, locked }) {
       const view = await backend.rpc("app_admin_podcast_save_script", { p_id: podcast.id, p_script: { lines: lines.map((l) => ({ ...l, text: l.text.trim() })), missing: podcast.script?.missing ?? [] } });
       setState({ saving: false, error: null });
       onSaved(view, true);
+      api.cleanupPodcastFiles(backend, podcast.id).catch(() => {}); // o áudio antigo deixou de valer: o servidor apaga o arquivo (melhor esforço)
     } catch (error) {
       setState({ saving: false, error: messageOf(error) });
     }
