@@ -396,3 +396,23 @@ Além disso: aprovar a **prévia clicável** (S0) antes de construir as telas e 
 - Convites: `study_invites` com `room_id` obrigatório (…`0400`); `app_dupla_swipe/invites/answer_invite/leave` (…`9770`).
 - Elite: `plan_benefits.elite_station_feedback` e `station_feedback_allowed()` em `…9731` (**só no ramo `leva3`, não publicado**).
 - Pacote de design lido em `~/Downloads/templates/handoff-treino-dupla` (somente leitura; nada executado nem copiado).
+
+## Decisões do dono (2026-10-12) — valem sobre qualquer texto acima que as contrarie
+
+| # | Pergunta | Resposta do dono |
+|---|---|---|
+| D1 | Sozinho é narração escrita agora, Paciente simulado conversando depois? | SIM |
+| D2 | Avaliação por IA aparece ao aluno (como o Tutor), configurada só na Administração? | A IA **simula um avaliador/ator** (não é só uma nota depois) |
+| D3 | Só vale com conferência por IA de outra empresa? | **NÃO** (a conferência obrigatória por outra empresa não vale para esta função) |
+| D4 | Se as duas IAs divergirem, vale o nível menor? | SIM |
+| D5 | É o benefício "correção de estação só Elite"? | SIM |
+| D6 | Planos e limites por dia/mês | **Ainda vai entrar no cálculo** (depois do app pronto; sem números agora, campo vazio deixa a IA bloqueada) |
+| D7 | Média geral e cartão público contam treinos sozinhos? | **CONTAM** |
+| D8 | Radar só para quem também aparece nele, com bloqueio? | **Para todos, sem bloqueio** |
+| D9 | Limites de convite como ponto de partida? | **NÃO** (definir depois) |
+| D10 | Praticar sem estação escolhida abre com o baralho? | **Praticar estação com baralho** ("vamos experimentar") |
+| D11 | Voz no sozinho só depois do teto da transcrição? | **AO VIVO** (voz ao vivo é o destino; a narração escrita vem primeiro) |
+| D12 | Lista de tentativas por estação? | NÃO |
+| D13 | Aceite próprio do uso de IA no treino? | NÃO (usa o aceite do Tutor) |
+
+Consequências a refletir no plano antes de construir: (a) D3 revoga, só para esta função, a conferência cruzada obrigatória; o comitê de duas IAs continua opcional; (b) D7 troca "fora da média geral/cartão público" por "dentro", mantendo a marca "Sozinho" e continuando FORA de ranking e de "Uso do mês em dupla"; (c) D8 e D9 tiram bloqueio de pessoas e fixam os limites de convite como "a definir"; (d) D11 pede voz ao vivo (ver Tutor Nexus/ElevenLabs e o teto diário de transcrição ainda inexistente) numa fase posterior à narração escrita.
