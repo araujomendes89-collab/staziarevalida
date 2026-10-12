@@ -9,7 +9,7 @@ import { useSession } from "../session.jsx";
 import { isPlanLockMessage, usePlanLock, withSupport } from "../plan/planAccess.js";
 import { useSupportEmail } from "../support/supportContact.jsx";
 import "./practice.css";
-import { AREAS, SIM_MAX_MINUTES, areaLabel, examLabel, formatClock, formatMinutes, formatWhen, paceLabel, parseDuration, percent } from "./format.js";
+import { AREAS, SIM_MAX_MINUTES, STAZIAMED_NOTICE, areaLabel, examLabel, formatClock, formatMinutes, formatWhen, paceLabel, parseDuration, percent } from "./format.js";
 
 const STATUS_OPTIONS = [
   { value: "unanswered", label: "Não resolvidas" },
@@ -100,7 +100,7 @@ export function QuestionBuilder({ go, mode }) {
     return {
       area: AREAS.some((a) => a.id === area) ? area : "",
       search: params.get("tema") ?? "",
-      exam: "",
+      exam: params.get("prova") === "staziamed" ? "staziamed" : "",
       status: sim ? "all" : STATUS_OPTIONS.some((o) => o.value === status) ? status : "unanswered",
       count: sim ? "30" : "20",
       timer: "prova",
@@ -171,6 +171,11 @@ export function QuestionBuilder({ go, mode }) {
   };
   const setDuration = (minutes) => set({ hours: String(Math.floor(minutes / 60)), minutes: String(minutes % 60) });
 
+  // Questões Inéditas (a prova "staziamed" da lista): aberta a quem tem plano pago ou teste grátis em dia; para os outros, cadeado e convite
+  const ineditas = (options?.exams ?? []).find((e) => e.id === "staziamed") ?? null;
+  const onIneditas = form.exam === "staziamed";
+  const lockedIneditas = onIneditas && (ineditas?.locked === true || !ineditas);
+  const lockMessage = ineditas?.lock_message || "As Questões Inéditas são abertas a quem tem plano pago ou teste grátis em dia. As questões das provas oficiais continuam abertas.";
   const topics = (options?.topics ?? []).filter((t) => !form.area || t.area === form.area).slice(0, 6);
   const start = async () => {
     setStarting(true);
@@ -257,7 +262,7 @@ export function QuestionBuilder({ go, mode }) {
               label="Prova / edição"
               value={form.exam}
               onChange={(e) => edit({ exam: e.target.value })}
-              options={[{ value: "", label: "Todas as provas oficiais" }, ...(options?.exams ?? []).map((e) => ({ value: e.id, label: examLabel(e) }))]}
+              options={[{ value: "", label: "Todas as provas oficiais" }, ...(options?.exams ?? []).map((e) => ({ value: e.id, label: e.id === "staziamed" && e.locked ? `${examLabel(e)} (indisponível no seu plano agora)` : examLabel(e) }))]}
             />
             {sim ? (
               <SelectField
@@ -275,6 +280,25 @@ export function QuestionBuilder({ go, mode }) {
               <SelectField label="Status" value={form.status} onChange={(e) => edit({ status: e.target.value })} options={STATUS_OPTIONS} />
             )}
           </div>
+          {onIneditas && !lockedIneditas && (
+            <Banner tone="info" icon="shield-check" title="Questões Inéditas">
+              {STAZIAMED_NOTICE} Aqui "inéditas" quer dizer escritas pela StaziaMed; não é o mesmo que "ainda não respondidas" (isso é o filtro Status).
+            </Banner>
+          )}
+          {lockedIneditas && (
+            <Banner
+              tone="warning"
+              icon="lock"
+              title="Questões Inéditas indisponíveis agora"
+              action={
+                <Button size="sm" variant="secondary" onClick={() => go("planos")}>
+                  Ver planos
+                </Button>
+              }
+            >
+              {lockMessage}
+            </Banner>
+          )}
           {sim && form.timer === "custom" && (
             <div role="group" aria-labelledby="sim-duracao">
               <div id="sim-duracao" className="sm-field__label" style={{ marginBottom: 10 }}>
@@ -322,7 +346,9 @@ export function QuestionBuilder({ go, mode }) {
           <div style={{ color: "var(--text-secondary)", marginTop: 4 }}>{summary.join(" · ")}</div>
           {available !== null && (
             <div style={{ font: "var(--type-body-sm)", color: available < requested ? "var(--warning-text)" : "var(--text-tertiary)", marginTop: 8 }} aria-live="polite">
-              {available === 0
+              {lockedIneditas
+                ? "Disponível nos planos pagos e no teste grátis em dia."
+                : available === 0
                 ? "Nenhuma questão com esses filtros."
                 : available < requested
                   ? `Só há ${available} com esses filtros.`
@@ -335,7 +361,7 @@ export function QuestionBuilder({ go, mode }) {
             </div>
           )}
           <div style={{ marginTop: 20 }}>
-            <Button size="lg" fullWidth iconRight="arrow-right" onClick={start} loading={starting} disabled={!available || customInvalid || Boolean(lock)}>
+            <Button size="lg" fullWidth iconRight="arrow-right" onClick={start} loading={starting} disabled={!available || customInvalid || Boolean(lock) || lockedIneditas}>
               {sim ? "Iniciar simulado" : "Começar treino"}
             </Button>
           </div>

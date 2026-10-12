@@ -16,6 +16,7 @@ import type { ProcessingReport } from "./capabilities";
 import { DEFAULT_MAX_SEARCHES, functionChecks, invalidateAiConfig, loadAiConfig } from "../ai/config";
 import { aiAllowed } from "./ai/registry";
 import { runScheduledReanalysis } from "./reanalysisRun";
+import { mountQuestoesStaziaMed } from "./questoes/routes";
 import { DEFAULT_EMBEDDING_MODEL, embedderAllowed, embeddingsConfig, queryEmbedding } from "./embeddings";
 import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 
@@ -58,6 +59,8 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
   });
 
   const asUser = <T>(req: Authed, fn: string, args: Record<string, unknown> = {}) => deps!.db.asUser<T>(req.user!, fn, args);
+  // Questões StaziaMed: estimativa de custo e fila de Gerar, Conferir e Buscar fonte oficial (só a equipe)
+  mountQuestoesStaziaMed(router, deps!, asUser);
   const requireStaff = async (req: Authed) => {
     const me = await asUser<{ staff: boolean; admin: boolean; reviewer_areas: string[] } | null>(req, "app_ch_whoami");
     if (!me || !(me.staff || me.reviewer_areas.length)) throw new Error("Acesso restrito à equipe de conteúdo.");
@@ -474,7 +477,18 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       const problems = [...check.problems];
       const allowed = await aiAllowed(deps!.db);
       if (!allowed.ok && !problems.includes(allowed.why)) problems.push(allowed.why);
-      res.json({ ready: check.ready && allowed.ok, problems, warnings: check.warnings, max_searches: cfg.functions.busca_fontes?.max_searches ?? DEFAULT_MAX_SEARCHES });
+      // a IA e o preço por busca que valem agora (tabela de preços da Central de IAs): a tela das abas estima o custo com eles
+      const primary = cfg.functions.busca_fontes?.primary ?? null;
+      const price = primary ? cfg.prices.find((p) => p.provider === primary.provider && p.model === primary.model) : null;
+      res.json({
+        ready: check.ready && allowed.ok,
+        problems,
+        warnings: check.warnings,
+        max_searches: cfg.functions.busca_fontes?.max_searches ?? DEFAULT_MAX_SEARCHES,
+        provider: primary?.provider ?? null,
+        model: primary?.model ?? null,
+        per_search_usd: price?.per_search_usd ?? null,
+      });
     } catch (error) {
       adminError(res, error);
     }

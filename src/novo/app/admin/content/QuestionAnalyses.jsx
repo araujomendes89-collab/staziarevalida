@@ -5,6 +5,8 @@ import { Badge, Banner, Button, EmptyState, SegmentedControl, SelectField } from
 import { useSession } from "../../session.jsx";
 import { LoadError, Loading, TextArea, useLoad } from "../common.jsx";
 import { AREA_LABEL } from "./labels.js";
+import { GenerateAnalyses } from "./AiRequests.jsx";
+import { SearchSourcesButton, OPEN_CONTEXT } from "../assistant/SearchSourcesButton.jsx";
 import { UpdateQueue } from "./UpdateQueue.jsx";
 import { ReleaseNotice } from "./ReleaseNotice.jsx";
 import { UpdatedQuestions } from "./UpdatedQuestions.jsx";
@@ -44,6 +46,7 @@ export function QuestionAnalyses({ reviewerAreas }) {
         O gabarito de cada prova é registro histórico e não é alterado aqui. A análise explica as quatro alternativas e só chega ao aluno depois que um revisor médico da área a aprova e o administrador libera a publicação (modo sombra desligado e publicação ligada). "Atualidade" depende de fonte oficial vigente conferida por pessoa e fica como "não conferida" até existir acervo.
       </Banner>
       <ReleaseNotice />
+      <GenerateAnalyses exams={data.exams} onSettled={reload} />
       <UpdateAlerts />
       <UpdateQueue reviewerAreas={reviewerAreas} />
       <UpdatedQuestions />
@@ -65,7 +68,7 @@ export function QuestionAnalyses({ reviewerAreas }) {
         </div>
       </div>
       <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{data.total} análises</div>
-      {data.items.length === 0 && <EmptyState icon="file-question" title="Nenhuma análise aqui" description="As análises são geradas pelo comando de análise de questões, com autorização de envio do texto ao provedor de IA." />}
+      {data.items.length === 0 && <EmptyState icon="file-question" title="Nenhuma análise aqui" description='Use "Gerar análises com IA", no alto desta aba, para pedir a análise de algumas questões.' />}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {data.items.map((a) => (
           <Analysis key={a.analysis_id} item={a} onChanged={reload} />
@@ -109,6 +112,7 @@ function UpdateAlerts() {
       {data.claims_with_official_evidence === 0 && (
         <p style={{ margin: "8px 0 0", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Sem fonte oficial cadastrada e conferida, o sistema não consegue dizer se uma conduta mudou desde a prova. Cadastre o documento completo na aba "Fontes oficiais".</p>
       )}
+      {data.claims_with_official_evidence === 0 && <SearchSourcesButton tab="analises" context={OPEN_CONTEXT} />}
     </Section>
   );
 }

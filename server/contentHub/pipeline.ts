@@ -35,6 +35,11 @@ import type { Renderer } from "./render";
 import { generateVisualVersion, visualVersionOf, VisualRenderUnavailable } from "./visual/service";
 import { runSourceSearch, SearchFailed, SearchPending } from "./sources/search";
 import { snapshotPassages } from "./sourceDiff";
+import { Blocked, Fatal } from "./jobErrors";
+import { stepQuestionCheck } from "./questoes/check";
+import { stepQuestionGenerate } from "./questoes/generate";
+import { stepQuestionSource } from "./questoes/source";
+import { AiRequestFailed, AiRequestPending, runAiRequest } from "./aiRequests";
 
 const run = promisify(execFile);
 
@@ -43,7 +48,7 @@ export const EXTRACTOR_VERSION = "staziamed-extract-1.0";
 export const MATERIALS_TEMPLATE = "materials-1.0";
 const PAGE_RANGE = 20;
 
-export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render" | "source_search";
+export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render" | "source_search" | "question_generate" | "question_check" | "question_source" | "question_analysis" | "draft_check";
 
 export interface Job {
   id: string;
@@ -75,10 +80,7 @@ export interface PipelineDeps {
   sleep?: (ms: number) => Promise<void>;
 }
 
-/** Falta configuração: o trabalho fica pendente, sem gastar tentativa. */
-export class Blocked extends Error {}
-/** Falha que nova tentativa não resolve (arquivo protegido, corrompido, hash diferente). */
-export class Fatal extends Error {}
+export { Blocked, Fatal };
 /**
  * Outro processamento pegou o trabalho: este ficou sem dar sinal de vida por mais de CONTENT_HUB_STALE_SECONDS. Ele para ali, sem
  * gravar mais nada, sem registrar o fim e sem pedir a próxima etapa (quem pegou o trabalho termina).
@@ -1129,7 +1131,7 @@ async function stepMaterials(ctx: Ctx): Promise<Step | null> {
     const rejectedQ = new Set(qs.rejections.map((r) => r.where));
     const questions = qs.output.items
       .filter((_: any, k: number) => !rejectedQ.has(`items[${k}]`))
-      .map((q: any) => ({ ...q, author: "StaziaMed", official: false, label: "Questão inédita StaziaMed (não é questão oficial do Inep)" }));
+      .map((q: any) => ({ ...q, author: "StaziaMed", official: false, label: "Questão StaziaMed (não é questão oficial do Inep)" }));
     if (questions.length) await save(v.version_id, "questions", { title: v.title, items: questions }, qs.model);
 
     await checkpoint(ctx, { ...versionsMark(ctx), version: i + 1 });
@@ -1225,6 +1227,22 @@ async function stepSourceSearch(ctx: Ctx): Promise<Step | null> {
   return null;
 }
 
+/**
+ * Pedido de IA feito pela tela (análise de questões ou conferência de rascunhos, aiRequests.ts): sem documento. IA desligada ou
+ * teto atingido deixam o trabalho pendente, sem gastar tentativa; falha que nova tentativa não resolve mata o trabalho (repetir
+ * repetiria a chamada paga).
+ */
+async function stepAiRequest(ctx: Ctx): Promise<Step | null> {
+  try {
+    await runAiRequest(ctx.deps, ctx.job, { checkpoint: (data) => checkpoint(ctx, data), metrics: ctx.metrics });
+  } catch (error) {
+    if (error instanceof AiRequestPending) throw new Blocked(error.message);
+    if (error instanceof AiRequestFailed) throw new Fatal(error.message);
+    throw error;
+  }
+  return null;
+}
+
 const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   extract: stepExtract,
   source_index: stepSourceIndex,
@@ -1237,6 +1255,11 @@ const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   review_check: stepReviewCheck,
   visual_render: stepVisualRender,
   source_search: stepSourceSearch,
+  question_generate: (ctx) => stepQuestionGenerate(ctx.deps, ctx.job, ctx.metrics),
+  question_check: (ctx) => stepQuestionCheck(ctx.deps, ctx.job, ctx.metrics),
+  question_source: (ctx) => stepQuestionSource(ctx.deps, ctx.job, ctx.metrics),
+  question_analysis: stepAiRequest,
+  draft_check: stepAiRequest,
 };
 
 /**

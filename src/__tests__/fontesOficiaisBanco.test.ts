@@ -604,7 +604,8 @@ describe("Aprovar e rejeitar", () => {
       title: cand.ai_title, organ: "Ministério da Saúde", kind: "final", source_type: "PCDT", sha256: cand.sha256, url: cand.final_url,
     });
     expect(src.editorial_approved_at).not.toBeNull();
-    expect(String(src.published_on.toISOString?.() ?? src.published_on)).toContain("2025-03-14");
+    // a data que só a IA e o arquivo disseram NÃO vira data da fonte (revisão independente 1): sem comprovação, fica nula
+    expect(src.published_on).toBeNull();
     expect(src.specialty).toBeNull();
     expect(src.theme).toBeNull();
 
@@ -655,7 +656,7 @@ describe("Aprovar e rejeitar", () => {
   });
 
   it("sem nome do órgão da IA e só o ano: nada de inventar dia; o ano vira a versão; natureza nunca vem do texto livre da IA", async () => {
-    const c = await createCandidate({ ai_published: "2023", file_date: "2023", ai_nature: "Diretriz qualquer", suggested_nature: "MANUAL", ai_institution: null });
+    const c = await createCandidate({ ai_published: "2023", file_date: "2023", currency_date: "2023", ai_nature: "Diretriz qualquer", suggested_nature: "MANUAL", ai_institution: null });
     const r = await approve(c.id, OK);
     const [src] = await sql(`select * from public.ch_sources where id = $1`, [r.source_id]);
     expect(src.published_on).toBeNull();
@@ -706,8 +707,8 @@ describe("Aprovar e rejeitar", () => {
   });
 
   it("substituição pede confirmação; confirmada, a anterior fica substituída", async () => {
-    const old = await asAdmin("app_ch_register_source", { p_source: { title: "PCDT Hanseníase T7", organ: "Ministério da Saúde", version: "2022", sha256: sha(0x7001) } });
-    const c = await createCandidate({ ai_title: "pcdt hanseníase t7" });
+    const old = await asAdmin("app_ch_register_source", { p_source: { title: "PCDT Hanseníase T7", organ: "Ministério da Saúde", version: "2022", published_on: "2022-05-01", sha256: sha(0x7001) } });
+    const c = await createCandidate({ ai_title: "pcdt hanseníase t7", currency_date: "2025-03-14" });
     const before = await counts();
     await expect(approve(c.id, OK)).rejects.toThrow(/Confirme a substituição: esta aprovação substitui a fonte vigente "PCDT Hanseníase T7" \(versão 2022\)\./);
     await expect(approve(c.id, { ...OK, confirm_replace: "true" })).rejects.toThrow(/Confirme a substituição/);
@@ -719,14 +720,14 @@ describe("Aprovar e rejeitar", () => {
     expect((await sql(`select status, superseded_by from public.ch_sources where id = $1`, [old.id]))[0]).toEqual({ status: "superseded", superseded_by: r.source_id });
     expect((await sql(`select status from public.ch_sources where id = $1`, [r.source_id]))[0].status).toBe("current");
     // o administrador pode ter corrigido o título para não bater com nenhuma fonte: então não pede confirmação
-    const other = await createCandidate({ ai_title: "pcdt hanseníase t7" });
+    const other = await createCandidate({ ai_title: "pcdt hanseníase t7", currency_date: "2025-03-14" });
     await expect(approve(other.id, { ...OK, title: "PCDT Outro Assunto T7" })).resolves.toMatchObject({ superseded: null });
   });
 
   it("fonte vigente igual (mesmo arquivo ou mesmo endereço) cadastrada à mão sem documento: pede confirmação em vez de duplicar", async () => {
     // mesmo SHA-256 e mesma versão (nenhuma), título e órgão diferentes: a regra de substituição por título não pega
-    const a = await createCandidate();
-    const manual = await asAdmin("app_ch_register_source", { p_source: { title: "Outro nome do mesmo PDF", organ: "Outro órgão", sha256: (await sql(`select sha256 from public.ch_source_candidates where id = $1`, [a.id]))[0].sha256 } });
+    const a = await createCandidate({ currency_date: "2025-03-14" });
+    const manual = await asAdmin("app_ch_register_source", { p_source: { title: "Outro nome do mesmo PDF", organ: "Outro órgão", published_on: "2020-01-01", sha256: (await sql(`select sha256 from public.ch_source_candidates where id = $1`, [a.id]))[0].sha256 } });
     const before = await counts();
     await expect(approve(a.id, OK)).rejects.toThrow(/^Confirme a substituição: já existe a fonte vigente "Outro nome do mesmo PDF" \(versão sem versão\) com o mesmo arquivo ou endereço/);
     await expect(approve(a.id, { ...OK, confirm_replace: "true" })).rejects.toThrow(/Confirme a substituição/);
@@ -736,8 +737,8 @@ describe("Aprovar e rejeitar", () => {
     expect((await sql(`select count(*)::int as n from public.ch_sources where status = 'current' and sha256 = (select sha256 from public.ch_source_candidates where id = $1)`, [a.id]))[0].n).toBe(1);
 
     // mesma URL normalizada (sem #, sem utm_, host em minúsculas), arquivo e título diferentes
-    const b = await createCandidate({ requested_url: "https://www.gov.br/saude/pt-br/mesmo-endereco.pdf", final_url: "https://www.gov.br/saude/pt-br/mesmo-endereco.pdf" });
-    const byUrl = await asAdmin("app_ch_register_source", { p_source: { title: "Cadastro antigo pelo link", organ: "Outro órgão 2", url: "https://WWW.gov.br/saude/pt-br/mesmo-endereco.pdf?utm_source=x#topo", sha256: sha(0x9fff01) } });
+    const b = await createCandidate({ requested_url: "https://www.gov.br/saude/pt-br/mesmo-endereco.pdf", final_url: "https://www.gov.br/saude/pt-br/mesmo-endereco.pdf", currency_date: "2025-03-14" });
+    const byUrl = await asAdmin("app_ch_register_source", { p_source: { title: "Cadastro antigo pelo link", organ: "Outro órgão 2", published_on: "2020-01-01", url: "https://WWW.gov.br/saude/pt-br/mesmo-endereco.pdf?utm_source=x#topo", sha256: sha(0x9fff01) } });
     await expect(approve(b.id, OK)).rejects.toThrow(/Confirme a substituição: já existe a fonte vigente "Cadastro antigo pelo link"/);
     const rb = await approve(b.id, { ...OK, confirm_replace: true });
     expect((await sql(`select status from public.ch_sources where id = $1`, [byUrl.id]))[0].status).toBe("superseded");

@@ -47,6 +47,8 @@ export const STEP_LABEL = {
   render: "Arquivos finais",
   review_check: "Revisão automática",
   source_search: "Busca de fontes",
+  question_analysis: "Análise de questões por IA",
+  draft_check: "Conferência de rascunhos por IA",
 };
 
 export const BLOCK_STATUS = {
@@ -180,7 +182,7 @@ export const MATERIAL_KIND = {
   visual_cards: "Cards visuais",
   flashcards: "Flashcards",
   table: "Tabela",
-  questions: "Questões inéditas StaziaMed",
+  questions: "Questões StaziaMed",
   station: "Roteiro de estação",
 };
 

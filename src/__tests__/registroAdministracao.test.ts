@@ -62,6 +62,7 @@ describe("Registro: nome em português para toda ação gravada", () => {
       "'question_update.' || p_decision": ["question_update.no_change", "question_update.publish_update", "question_update.reject_proposal"],
       "'conflict.' || p_status": ["conflict.resolved", "conflict.deferred", "conflict.open"],
       "'guideline_update.' || p_decision": ["guideline_update.approve", "guideline_update.reject"],
+      "'staziamed.' || v_action": ["staziamed.publicada", "staziamed.republicada"], // app_staziamed_publish
     };
     expect(new Set(dynamic)).toEqual(new Set(Object.keys(DYNAMIC)));
     const actions = [...new Set([...found.keys(), ...Object.values(DYNAMIC).flat()])];
@@ -410,6 +411,8 @@ describe("Registro: o que se faz na Central de Conteúdo (RG01)", () => {
       ["source_search.result", { status: "concluida", message: null, found_count: 5, verified_count: 3, discarded_count: 2, web_searches: 4, cost_usd: 0.05, provider: "anthropic", model: "claude-x", run_id: UUID }, {}, "Busca de fontes concluída", "Busca concluída · 5 links achados, 3 conferidos, 2 descartados · 4 buscas na internet · custo US$ 0,05 · IA: Claude (claude-x)"],
       ["source_candidate.edit", { fields: { title: "Novo título", level: "B" } }, {}, "Candidato a fonte editado", "Dados ajustados: título, nível"],
       ["source_candidate.approve", { source_id: UUID, document_id: UUID, level: "A", site: "who.int", superseded: UUID }, {}, "Candidato a fonte aprovado", "Site: who.int · Nível A · Substituiu uma versão anterior da fonte"],
+      ["source_candidate.approve", { source_id: UUID, document_id: UUID, level: "B", site: "who.int", superseded: UUID, currency: "versao_mais_antiga", confirmed_older: true }, {}, "Candidato a fonte aprovado", "Site: who.int · Nível B · Substituiu uma versão anterior da fonte · Atualidade: mais antiga que a da biblioteca · Versão mais antiga aprovada com confirmação"],
+      ["source_candidate.approve", { source_id: UUID, document_id: UUID, level: "A", site: "who.int", currency: "versao_mais_nova", confirmed_older: false }, {}, "Candidato a fonte aprovado", "Site: who.int · Nível A · Atualidade: versão mais nova que a da biblioteca"],
       ["source_candidate.reject", { reason: "Não é oficial", site: "who.int" }, {}, "Candidato a fonte rejeitado", "Site: who.int · Motivo: Não é oficial"],
     ];
     for (const [action, details, extra, label, summary] of cases) {

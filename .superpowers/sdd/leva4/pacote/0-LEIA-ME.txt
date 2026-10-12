@@ -1,0 +1,96 @@
+STAZIAMED REVALIDA - LEVA 4 (SQL para colar no Supabase) - feito em 12/10/2026
+
+O QUE É ESTA PASTA
+Quatro partes de SQL (1 a 4) e uma conferência (0). Elas juntam três frentes que estavam prontas e revisadas: Questões StaziaMed (as "Questões
+Inéditas" do aluno), Análise de questões e conferência de rascunhos pedidas pela tela (com limites de uso e custo à vista) e Atualidade das
+fontes oficiais achadas pela IA. As três mexiam nas mesmas funções do banco; por isso a parte 3 traz também um "fechamento" que deixa UMA
+versão só de cada função, com as regras das três frentes juntas (nenhuma regra se perde).
+Tudo foi ensaiado numa cópia do banco de produção (com as partes 1 a 7 de 11/10, a Arena, as Fontes oficiais, a Fonte complementar e a
+LEVA 3 inteira já coladas): colou duas vezes sem erro e uma terceira colagem não muda nada. NADA foi colado no banco de verdade.
+A LEVA 3 (migrações 9700 a 9732) já está em produção e NÃO é refeita aqui. A parte 2 recusa com aviso se ela faltar.
+
+ORDEM (siga assim)
+  0. Rode o arquivo 0-CONFERIR-primeiro-nao-altera-nada.sql. Ele SÓ LÊ. Mostre o resultado ao Claude antes de seguir.
+  1. 1-colar-ANTES-do-site-parte-1-Questoes-StaziaMed-rascunhos.sql
+  2. 2-colar-ANTES-do-site-parte-2-Questoes-StaziaMed-aluno.sql
+  3. 3-colar-ANTES-do-site-parte-3-Analise-e-conferencia-pela-tela.sql
+  4. 4-colar-ANTES-do-site-parte-4-Atualidade-das-fontes.sql
+  Depois do SQL, o Claude publica a IMAGEM do Cloud Run e, por último, o SITE. (SQL primeiro, imagem depois, site por último.)
+  A parte 3 só cola depois das partes 1 e 2 (senão recusa com o aviso "Cole antes a migração ..."). A parte 4 pode vir em qualquer ordem.
+
+COMO COLAR CADA PARTE
+  Abra o editor SQL do Supabase, cole o arquivo INTEIRO sem selecionar nada e clique em Run. No fim aparece uma linha "OK: <parte> colada"
+  e uma lista de conferências: todas têm de estar "true". Se alguma estiver "false" ou der erro, pare e mostre ao Claude.
+  Para colar de novo: cole DESTA parte até a última, na ordem. Pode colar duas vezes sem estragar nada. (Colar uma parte sozinha pode
+  desfazer a seguinte: por exemplo, colar só a parte 1 de novo volta duas funções ao desenho da parte 1 até colar a parte 3.)
+  Se o editor perguntar sobre "operação destrutiva" (aparece porque o arquivo recria as próprias peças com "drop ... if exists"), pode confirmar.
+
+O QUE CADA PARTE MUDA
+  Partes 1 e 2 - Questões StaziaMed (migrações 9800, rascunhos e Administração, e 9801, lado do aluno)
+    Equipe: nova seção "Questões StaziaMed" na Central de Conteúdo. O administrador ou o editor pede questões (o custo aparece ANTES de gastar),
+            confere, busca fonte oficial, edita e equilibra o gabarito. O revisor médico da área aprova. SÓ o administrador publica e recolhe.
+            Nada é publicado sozinho; tudo fica numa trilha (quem, quando, antes e depois).
+    Aluno:  nada aparece enquanto não houver questão publicada. Depois de publicada, a opção "Questões Inéditas" aparece na lista de provas, com
+            o aviso de que NÃO é questão oficial do Inep. Treinam: equipe, revisor médico, plano pago válido e teste grátis valendo. Teste
+            vencido, plano vencido ou cancelado e conta sem assinatura veem fechado, com convite em português. Incidência, Temas, trilhas, Tutor
+            e a análise de questões continuam só com as 1.200 oficiais.
+  Parte 3 - Análise e conferência pedidas pela tela, com o fechamento (migrações 9810 e 9830)
+    Equipe: "Gerar análises com IA" (aba Análise de questões: no máximo 50 questões por pedido e 100 por dia por pessoa) e "Conferir com IA"
+            (seção de rascunhos: no máximo 20 por pedido e 60 por dia por pessoa). A tela mostra antes quantas entram e o custo estimado.
+            Só o administrador e o revisor médico (nas áreas dele) pedem. Cada rascunho ganha um selo de triagem (reprovada, sem fonte, com
+            apontamentos, só regras, ainda não conferida, sem apontamentos) e dá para filtrar e ordenar por ele. A IA NÃO aprova: quem decide é o
+            revisor médico. O revisor médico passa a ver só os rascunhos, as conferências e a trilha das áreas dele.
+    Aluno:  nada que apareça.
+  Parte 4 - Atualidade das fontes oficiais (migração 9820)
+    Equipe: a lista de candidatos a fonte oficial mostra se a versão achada é a mais nova, a mesma ou mais antiga que a da biblioteca, com os mais
+            atuais primeiro. Aprovar uma versão mais antiga exige uma confirmação própria. Antes de pedir uma busca a partir de uma aba (Questões,
+            Atualizações...), o administrador vê se já existe busca do mesmo tema nos últimos 7 dias. Nada vira fonte sozinho.
+    Aluno:  nada que apareça.
+
+EFEITOS QUE VOCÊ VAI VER (leia antes de colar)
+  - OS RASCUNHOS ANTIGOS FICAM SEM PODER APROVAR. Os rascunhos que existem hoje (bloco 1 da conferência) citam apostila, que não é fonte oficial.
+    Depois das partes 1 e 3, aprovar exige citação de trecho de fonte OFICIAL vigente (nível A a D), as 4 conferências sem problema no texto
+    atual, o texto que o revisor viu e a marcação "Conferi as fontes citadas".
+    Os que JÁ estão aprovados continuam aprovados, MAS o banco recalcula o "selo do texto" de todos os rascunhos (a parte 1 faz isso): a
+    aprovação antiga fica marcada "texto mudou depois da revisão" e o revisor precisa aprovar de novo antes de publicar.
+    Os que aguardam só aprovam depois deste caminho, um por um: cadastrar a fonte oficial > Buscar fonte oficial > Usar estas fontes >
+    (Equilibrar gabarito) > Conferir > revisão do médico. Pedir ajustes e recusar continuam livres.
+    Se o bloco 2 da conferência mostrar ZERO fontes oficiais com trechos, "Gerar" e "Buscar fonte oficial" não produzem nada (e não gastam
+    nada) até alguém cadastrar uma fonte oficial.
+  - O QUE NASCE DESLIGADO OU VAZIO: nenhuma Questão StaziaMed publicada (a opção do aluno só aparece depois da primeira publicação); nenhuma IA é
+    ligada por esta leva (o bloco 4 mostra o que já está ligado na Central de IAs; pedido de análise, de conferência e de geração é recusado em
+    português se a IA da função ou o preço dela não estiver cadastrado); nada é aprovado nem publicado sozinho. As ferramentas de IA são só da
+    Administração: o aluno nunca as vê.
+  - Quem treina as Questões Inéditas e quem vê fechado: veja o bloco 5 da conferência (equipe, revisor, plano pago válido e teste valendo
+    treinam; teste vencido, plano vencido e conta sem assinatura veem fechado com convite). Não perde ninguém nada que já tem hoje: a prova é nova.
+  - Revisor médico: depois da parte 3 ele lê só os rascunhos da área dele. Áreas SEM revisor cadastrado (bloco 6): nelas ninguém aprova.
+  - A IMAGEM DO CLOUD RUN TEM DE SER PUBLICADA: as tarefas novas (gerar questão, conferir, buscar fonte, analisar, conferir pelo pedido, atualidade
+    da fonte) só rodam na imagem nova. Sem ela, os pedidos ficam parados na fila, sem gastar nada.
+  - DOIS JEITOS DE CONFERIR RASCUNHOS (decisão sua): "Conferir pendentes" (seção Questões StaziaMed: as 4 camadas e a revisão pedagógica, por
+    rascunho) e "Conferir com IA" (por pedido, com limite de 20 por pedido e 60 por dia, e o selo de triagem). Os dois funcionam e se
+    complementam; se preferir um só, é só avisar que o outro é escondido.
+  - Janelas: ver abaixo.
+
+JANELA CURTA ENTRE COLAR E PUBLICAR O SITE
+  Entre colar o SQL e publicar a imagem e o site, o site antigo continua funcionando, com estas diferenças (curtas e aceitas):
+  - Administração, aba antiga de rascunhos: ver, pedir ajustes e recusar funcionam; APROVAR é recusado pelo banco ("O texto mudou depois que você
+    abriu"), porque o site antigo não manda o texto que o revisor viu. Ninguém aprova nessa janela, que é o lado seguro.
+  - Aluno: nada muda para quem treina as provas oficiais. A opção "Questões Inéditas" só aparece quando o site novo estiver no ar.
+  Por isso a ordem é SQL, imagem do Cloud Run e site em seguida, sem pausa longa. O contrário (site novo antes do SQL) deve ser EVITADO: as telas
+  novas da Administração mostrariam erro em português na seção, sem estragar nada.
+
+SE FOR PRECISO COLAR DE NOVO ALGO ANTIGO
+  Depois desta leva, NÃO cole de novo as partes 1, 5 e 6 do pacote de 11/10: elas voltam funções de usuários, da Arena, das aulas e dos
+  podcasts a versões antigas, e nem colar as levas de novo conserta tudo isso.
+  Estes arquivos antigos também voltam funções ao desenho de antes das Questões Inéditas ou da leva 3, mas é CONSERTÁVEL: se colar algum deles,
+  cole depois, na ordem, as partes 1 a 4 da LEVA 3 e as partes 1 a 4 desta LEVA 4:
+    - parte 4 do pacote de 11/10 (volta o Tutor ao desenho antigo)
+    - COLAR-fontes-oficiais-9610.sql e COLAR-fonte-complementar-9620-9621.sql
+    - as partes 1 e 4 da leva 3
+  Podem ser colados de novo sem mexer em nada desta leva: partes 2, 3 e 7 de 11/10, a Arena, o DESLIGAR os tetos e as partes 2 e 3 da leva 3.
+
+LIMITES (honestos)
+  - O ensaio foi numa cópia do banco feita em PGlite (Postgres 18), não no Supabase de verdade. Nada nestes arquivos usa recurso novo do Postgres.
+  - Nenhuma IA real foi chamada: a geração, a conferência e a busca de fonte foram provadas com IA de mentira. O primeiro teste de verdade (uma fonte
+    oficial, 2 questões do tema, custo à vista, revisão, publicação) é depois de publicar, e SÓ com ordem sua.
+  - Conferir os 200 rascunhos antigos pelas regras leva alguns minutos no computador de testes (a semelhança é calculada contra as 1.200 oficiais).

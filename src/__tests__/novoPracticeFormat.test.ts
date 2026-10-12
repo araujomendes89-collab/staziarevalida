@@ -1,7 +1,7 @@
 // @vitest-environment node
 /** Formatação das telas de treino do app novo. */
 import { describe, expect, it } from "vitest";
-import { areaLabel, examLabel, formatClock, formatMinutes, formatWhen, percent, splitStatement } from "../novo/app/practice/format.js";
+import { areaLabel, examLabel, formatClock, questionRef, formatMinutes, formatWhen, percent, splitStatement } from "../novo/app/practice/format.js";
 
 describe("App novo — formatação do treino", () => {
   it("separa o comando da questão sem perder nem reordenar texto", () => {
@@ -31,6 +31,9 @@ describe("App novo — formatação do treino", () => {
     expect(examLabel({ kind: "REVALIDA", year: 2024, semester: 1 })).toBe("Revalida 2024/1");
     expect(examLabel({ kind: "REVALIDA", year: 2021, semester: null })).toBe("Revalida 2021");
     expect(examLabel({ kind: "ENAMED", year: 2025, semester: null })).toBe("ENAMED 2025");
+    expect(examLabel({ kind: "STAZIAMED", year: 2026, semester: null })).toBe("Questões Inéditas");
+    expect(questionRef({ number: 12, exam: { kind: "STAZIAMED", year: 2026 } })).toBe("Questão StaziaMed · nº 12");
+    expect(questionRef({ number: 51, exam: { kind: "REVALIDA", year: 2024, semester: 1 } })).toBe("Revalida 2024/1 · Q51");
     expect(areaLabel("GINECOLOGIA_OBSTETRICIA")).toBe("Gineco & Obstetrícia");
     expect(areaLabel("")).toBe("Todas as áreas");
   });
