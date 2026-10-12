@@ -2,6 +2,7 @@ import {
   STATION_AREAS,
   type ChecklistEvent,
   type ChecklistItem,
+  type Pressing,
   type Station,
   type StationArea,
   type StationLite,
@@ -80,17 +81,40 @@ export function normalizeStation(raw: any): Station {
     actor_script: asString(raw?.actor_script),
     doctor_scene: asString(raw?.doctor_scene),
     doctor_tasks: asString(raw?.doctor_tasks),
-    pressings: (Array.isArray(raw?.pressings) ? raw.pressings : []).map((p: any) => ({
-      id: asString(p?.id),
-      name: asString(p?.name),
-      content: asString(p?.content),
-      image_url: asString(p?.image_url) || null,
-    })),
+    pressings: (Array.isArray(raw?.pressings) ? raw.pressings : []).map((p: any): Pressing => {
+      const pressing: Pressing = {
+        id: asString(p?.id),
+        name: asString(p?.name),
+        content: asString(p?.content),
+        image_url: asString(p?.image_url) || null,
+      };
+      // Treino em Dupla: os três campos só são gravados quando existem (o que já foi publicado não ganha chave nova).
+      // Número que não é número fica de fora aqui; o valor inválido (0, negativo, fracionado) é mantido e recusado em validateStation.
+      if (typeof p?.source_number === "number") pressing.source_number = p.source_number;
+      if (typeof p?.display_number === "number") pressing.display_number = p.display_number;
+      if (typeof p?.initially_visible === "boolean") pressing.initially_visible = p.initially_visible;
+      return pressing;
+    }),
     checklist_items,
     summary: (Array.isArray(raw?.summary) ? raw.summary : []).map((s: any) => ({
       topic: asString(s?.topic),
       summary: asString(s?.summary),
     })),
+  };
+}
+
+/**
+ * Números do impresso para o Treino em Dupla, com o padrão de quem não tem os campos: origem = tela = posição (1, 2, 3…)
+ * e não é inicial. `index` é a posição de 0 em diante na lista de impressos da estação.
+ */
+export function pressingNumbers(
+  pressing: Pick<Pressing, "source_number" | "display_number" | "initially_visible">,
+  index: number
+): { source_number: number; display_number: number; initially_visible: boolean } {
+  return {
+    source_number: typeof pressing.source_number === "number" ? pressing.source_number : index + 1,
+    display_number: typeof pressing.display_number === "number" ? pressing.display_number : index + 1,
+    initially_visible: pressing.initially_visible === true,
   };
 }
 
@@ -119,6 +143,25 @@ export function validateStation(station: Station): string[] {
   }
   for (const id of duplicates(station.pressings.map((p) => p.id))) {
     problems.push(`${where}: impresso duplicado "${id}"`);
+  }
+  const isPositiveInteger = (n: unknown) => typeof n === "number" && Number.isInteger(n) && n >= 1;
+  station.pressings.forEach((p, i) => {
+    if (p.display_number !== undefined && p.display_number !== null && !isPositiveInteger(p.display_number)) {
+      problems.push(`${where}: impresso ${i + 1}: display_number inválido (${p.display_number})`);
+    }
+    if (p.source_number !== undefined && p.source_number !== null && !isPositiveInteger(p.source_number)) {
+      problems.push(`${where}: impresso ${i + 1}: source_number inválido (${p.source_number})`);
+    }
+  });
+  {
+    const numbers = station.pressings.map((p, i) => pressingNumbers(p, i));
+    // o número da tela vale dentro do grupo (iniciais de um lado, liberáveis do outro): o relato inicial não entra na lista numerada
+    for (const key of duplicates(numbers.map((n) => `${n.initially_visible ? "inicial" : "liberável"}:${n.display_number}`))) {
+      problems.push(`${where}: número na tela repetido (${key.replace(":", " ")})`);
+    }
+    for (const n of duplicates(numbers.map((x) => String(x.source_number)))) {
+      problems.push(`${where}: número de origem repetido (${n})`);
+    }
   }
 
   for (const item of station.checklist_items) {

@@ -48,6 +48,16 @@ export interface Pressing {
   name: string;
   content: string;
   image_url: string | null;
+  /**
+   * Treino em Dupla (pacote de 11/10), todos opcionais. Sem eles: `source_number` = `display_number` = posição na lista
+   * (1, 2, 3…) e `initially_visible` = false (ver `pressingNumbers`).
+   * `source_number`: número do impresso no documento oficial da prova (só o avaliador o vê).
+   */
+  source_number?: number | null;
+  /** Número que a pessoa vê na tela ("Impresso 1"); pode diferir do `source_number`. */
+  display_number?: number | null;
+  /** Impresso visível desde o início da estação (ex.: o relato do caso); não depende de liberação do avaliador. */
+  initially_visible?: boolean;
 }
 
 export interface SummaryTopic {
