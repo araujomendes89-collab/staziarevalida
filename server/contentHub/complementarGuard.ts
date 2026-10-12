@@ -131,6 +131,8 @@ export async function loadComplementarTerms(db: Pick<ContentDb, "service"> | nul
     } catch (error) {
       last = error;
       if (attempt === 1) await sleep(RETRY_MS);
+      // outra chamada pode ter renovado a lista enquanto esta esperava: uma lista renovada depois do início desta chamada vale
+      if (cache && cache.at >= now) return cache.terms;
     }
   }
   warn(`[fontes complementares] lista de termos indisponível depois de 2 tentativas (${reason(last)}): a conferência foi suspensa por segurança, a lista vencida não é usada e o pedido foi recusado.`);
