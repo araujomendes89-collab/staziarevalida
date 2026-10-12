@@ -1,0 +1,3065 @@
+[
+  {
+    "id": "teste-inep2020-e01",
+    "name": "Leucemia aguda: palpação de fígado e baço",
+    "topic": "Leucemia aguda: palpação de fígado e baço",
+    "area": "Clínica Médica",
+    "setting": null,
+    "taxonomy_path": [
+      "Clínica Médica",
+      "Leucemia aguda: palpação de fígado e baço"
+    ],
+    "goal": "Revalida",
+    "institution": "INEP",
+    "year": "2020",
+    "styles": [
+      "Cansaço",
+      "Febre",
+      "Sangramento gengival"
+    ],
+    "is_pro_only": false,
+    "medical_review": "approved",
+    "max_score": 10,
+    "duration_ms": 600000,
+    "created_at": "2026-10-01T00:00:00.000Z",
+    "actor_script": "",
+    "doctor_scene": "Você fará atendimento ambulatorial, em hospital de Atenção Secundária, de um jovem com 30 anos de idade, previamente hígido, com queixas de cansaço, fraqueza, febre e sangramento gengival há 10 dias.",
+    "doctor_tasks": "1. ler o impresso 1 (relato do caso clínico presente sobre a mesa do consultório);\n2. receber o paciente;\n3. realizar exame físico específico, conforme orientação do impresso 1;\n4. responder aos questionamentos do paciente simulado.",
+    "pressings": [
+      {
+        "id": "teste-inep2020-e01-p1",
+        "name": "Relato do caso clínico",
+        "content": "Homem, 30 anos, previamente hígido, procura atendimento hospitalar por cansaço, fraqueza, febre e sangramento gengival há 10 dias. No momento, apresenta-se em regular estado geral, descorado, anictérico, taquicárdico e febril (38 °C). Na pele, equimoses nos membros inferiores. Presença de linfonodos axilares e inguinais com cerca de 2 cm de diâmetro e levemente dolorosos à palpação. O abdômen é plano, com ruídos hidroaéreos presentes, normotenso e indolor à palpação. Fígado palpável a 3 cm abaixo do rebordo costal direito, superfície lisa, bordo rombo, consistência macia e com hepatimetria de 12 cm de extensão. Baço palpável. Demais aspectos do exame físico sem alterações. ATENÇÃO: Nesse momento, dirija-se ao paciente simulado e demonstre a técnica semiológica de palpação do fígado, apesar de não haver necessariamente hepatomegalia nesse paciente simulado. A seguir, demonstre duas técnicas semiológicas de palpação do baço no paciente simulado, apesar de não haver necessariamente esplenomegalia nesse paciente simulado.",
+        "image_url": null
+      },
+      {
+        "id": "teste-inep2020-e01-p2",
+        "name": "Imagem do esfregaço de sangue periférico",
+        "content": "Imagem disponível no documento original (página 3 do caderno de prova).",
+        "image_url": null
+      }
+    ],
+    "checklist_items": [
+      {
+        "id": "teste-inep2020-e01-i1",
+        "order": 1,
+        "phase": "PEP",
+        "content": "Cumprimenta o paciente simulado.",
+        "tip": "",
+        "grades": {
+          "correct": 0.25,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e01-i2",
+        "order": 2,
+        "phase": "PEP",
+        "content": "Exame abdominal: posiciona o paciente simulado com os braços ao longo do corpo e ergue a camiseta para o exame abdominal.",
+        "tip": "É necessária a execução dos 2 procedimentos para a obtenção do ponto.",
+        "grades": {
+          "correct": 0.75,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e01-i3",
+        "order": 3,
+        "phase": "PEP",
+        "content": "Palpação do fígado: realiza a palpação bimanual (posiciona a mão no gradeado costal direito e palpa, com a outra mão, o bordo hepático, solicitando que o paciente simulado inspire profundamente) em decúbito dorsal.",
+        "tip": "",
+        "grades": {
+          "correct": 1.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e01-i4",
+        "order": 4,
+        "phase": "PEP",
+        "content": "Palpação do baço: realiza, em uma das técnicas, palpação bimanual (fixa o gradeado costal esquerdo com uma mão e palpa com a outra) com o paciente simulado em decúbito dorsal e em inspiração profunda.",
+        "tip": "",
+        "grades": {
+          "correct": 1.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e01-i5",
+        "order": 5,
+        "phase": "PEP",
+        "content": "Palpação do baço: realiza, em uma das técnicas, palpação bimanual do baço com o paciente simulado em decúbito lateral direito, coloca o braço esquerdo dele atrás da cabeça, flexiona a perna esquerda dele e solicita inspiração profunda.",
+        "tip": "",
+        "grades": {
+          "correct": 1.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e01-i6",
+        "order": 6,
+        "phase": "PEP",
+        "content": "Hipótese diagnóstica: faz o diagnóstico de leucemia aguda ou leucose aguda.",
+        "tip": "",
+        "grades": {
+          "correct": 1.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e01-i7",
+        "order": 7,
+        "phase": "PEP",
+        "content": "Solicitação do procedimento: solicita aspirado de medula e/ou biópsia de medula óssea e/ou imunofenotipagem (citometria de fluxo) de sangue periférico.",
+        "tip": "",
+        "grades": {
+          "correct": 1.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e01-i8",
+        "order": 8,
+        "phase": "PEP",
+        "content": "Orientação sobre o procedimento ao paciente simulado: explica que o aspirado e a biópsia são feitos no osso/na medula óssea (sem necessidade de especificar local) e/ou que a imunofenotipagem (citometria de fluxo) é feita com coleta de sangue periférico.",
+        "tip": "",
+        "grades": {
+          "correct": 1.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      }
+    ],
+    "summary": [],
+    "version": "teste"
+  },
+  {
+    "id": "teste-inep2020-e02",
+    "name": "Trauma: fratura exposta de tíbia",
+    "topic": "Trauma: fratura exposta de tíbia",
+    "area": "Cirurgia Geral",
+    "setting": null,
+    "taxonomy_path": [
+      "Cirurgia Geral",
+      "Trauma: fratura exposta de tíbia"
+    ],
+    "goal": "Revalida",
+    "institution": "INEP",
+    "year": "2020",
+    "styles": [
+      "Trauma",
+      "Dor em membro inferior"
+    ],
+    "is_pro_only": false,
+    "medical_review": "approved",
+    "max_score": 10,
+    "duration_ms": 600000,
+    "created_at": "2026-10-01T00:00:00.000Z",
+    "actor_script": "",
+    "doctor_scene": "Você é o(a) médico(a) que está de plantão em um pronto-socorro hospitalar e vai atender um paciente, do sexo masculino, vítima de colisão entre a moto que ele conduzia e um carro, ocorrida há 60 minutos. O paciente foi socorrido pela equipe de suporte básico do SAMU. Os sinais vitais estão normais e estáveis. O paciente queixa-se de dor moderada em perna direita e está muito preocupado com sua situação. O diagnóstico presuntivo é de fratura da tíbia direita. Foram dados os primeiros cuidados, com imobilização do membro, punção venosa periférica calibrosa e instalação de 500 mL de soro fisiológico.",
+    "doctor_tasks": "1. realizar avaliação primária (ABCDE) do paciente traumatizado e verbalizar os achados e as necessidades em cada etapa do atendimento;\n2. realizar o exame físico dos membros inferiores, com atenção especial ao membro acometido;\n3. definir a conduta diagnóstica;\n4. adotar a conduta terapêutica necessária;\n5. demonstrar a realização de procedimentos médicos, se indicado.",
+    "pressings": [
+      {
+        "id": "teste-inep2020-e02-p1",
+        "name": "Dados de exame físico e sinais vitais",
+        "content": "Pressão arterial = 150 × 90 mmHg · Frequência cardíaca = 98 bpm · Frequência respiratória = 16 irpm · Saturação de oxigênio = 98% (com uso de máscara de oxigênio a 6 litros por minuto) · Escore da escala de coma de Glasgow: 15 pontos · Inspeção, palpação e percussão torácica sem alterações · Ausculta cardíaca e pulmonar sem alterações.",
+        "image_url": null
+      },
+      {
+        "id": "teste-inep2020-e02-p2",
+        "name": "Exame físico",
+        "content": "Pulsos tibiais posteriores e pediosos presentes e simétricos. Exame neurológico normal nos membros inferiores.",
+        "image_url": null
+      },
+      {
+        "id": "teste-inep2020-e02-p3",
+        "name": "Pergunta do chefe de plantão",
+        "content": "O médico chefe do plantão pergunta qual a conduta e se há necessidade de internação do paciente. Verbalize as respostas ao chefe de estação.",
+        "image_url": null
+      }
+    ],
+    "checklist_items": [
+      {
+        "id": "teste-inep2020-e02-i1",
+        "order": 1,
+        "phase": "PEP",
+        "content": "Identificou-se adequadamente ao paciente e utiliza, pelo menos, luva de procedimento.",
+        "tip": "",
+        "grades": {
+          "correct": 0.2,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i2",
+        "order": 2,
+        "phase": "PEP",
+        "content": "(A) Reconheceu que o paciente está com via aérea pérvia.",
+        "tip": "",
+        "grades": {
+          "correct": 0.3,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i3",
+        "order": 3,
+        "phase": "PEP",
+        "content": "Indicou a manutenção de máscara com oxigênio.",
+        "tip": "",
+        "grades": {
+          "correct": 0.1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i4",
+        "order": 4,
+        "phase": "PEP",
+        "content": "Identificou a necessidade inicial de manter o colar cervical.",
+        "tip": "",
+        "grades": {
+          "correct": 0.1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i5",
+        "order": 5,
+        "phase": "PEP",
+        "content": "(B) Demonstrou ou verbalizou o exame físico torácico relatando a adequada ventilação do paciente.",
+        "tip": "",
+        "grades": {
+          "correct": 0.3,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i6",
+        "order": 6,
+        "phase": "PEP",
+        "content": "(C) Indicou monitorização multiparamétrica (ritmo cardíaco, FC, PA não invasiva, FR, SpO₂ e temperatura).",
+        "tip": "",
+        "grades": {
+          "correct": 0.3,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i7",
+        "order": 7,
+        "phase": "PEP",
+        "content": "Avaliou presença de sangramento externo.",
+        "tip": "",
+        "grades": {
+          "correct": 0.1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i8",
+        "order": 8,
+        "phase": "PEP",
+        "content": "Avaliou o estado hemodinâmico da vítima e notou sua estabilidade.",
+        "tip": "",
+        "grades": {
+          "correct": 0.2,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i9",
+        "order": 9,
+        "phase": "PEP",
+        "content": "Indicou manter o acesso venoso periférico de grosso calibre.",
+        "tip": "",
+        "grades": {
+          "correct": 0.2,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i10",
+        "order": 10,
+        "phase": "PEP",
+        "content": "Indicou a necessidade de restrição da reposição volêmica com solução cristaloide.",
+        "tip": "",
+        "grades": {
+          "correct": 0.2,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i11",
+        "order": 11,
+        "phase": "PEP",
+        "content": "Fez menção à coleta de exames bioquímicos.",
+        "tip": "",
+        "grades": {
+          "correct": 0.2,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i12",
+        "order": 12,
+        "phase": "PEP",
+        "content": "Indicou os exames a serem colhidos (Hb/Ht/plaquetas, tipo sanguíneo e contraprova).",
+        "tip": "",
+        "grades": {
+          "correct": 0.2,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i13",
+        "order": 13,
+        "phase": "PEP",
+        "content": "Indicou a administração de ácido tranexâmico (1 g EV em bolus até 3 h do trauma e 1 g EV em 8 h).",
+        "tip": "",
+        "grades": {
+          "correct": 0.2,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i14",
+        "order": 14,
+        "phase": "PEP",
+        "content": "(D) Realizou a quantificação do escore de coma de Glasgow e verbalizou sua normalidade (15).",
+        "tip": "",
+        "grades": {
+          "correct": 0.3,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i15",
+        "order": 15,
+        "phase": "PEP",
+        "content": "(E) Preocupou-se e agiu na exposição do paciente devido ao risco de hipotermia.",
+        "tip": "",
+        "grades": {
+          "correct": 0.3,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i16",
+        "order": 16,
+        "phase": "PEP",
+        "content": "Identificou o atraso na vacina antitetânica.",
+        "tip": "",
+        "grades": {
+          "correct": 0.3,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i17",
+        "order": 17,
+        "phase": "PEP",
+        "content": "Fez uso de paramentação (gorro, máscara, óculos de proteção e luvas estéreis).",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i18",
+        "order": 18,
+        "phase": "PEP",
+        "content": "Descobriu o curativo e notou/verbalizou a presença de fratura exposta de tíbia.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i19",
+        "order": 19,
+        "phase": "PEP",
+        "content": "Manteve cobertura estéril e imobilização com tala aramada (uma articulação acima e uma abaixo do local da fratura).",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i20",
+        "order": 20,
+        "phase": "PEP",
+        "content": "Indicou analgesia endovenosa.",
+        "tip": "",
+        "grades": {
+          "correct": 0.7,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i21",
+        "order": 21,
+        "phase": "PEP",
+        "content": "Removeu colar cervical, após exame físico local.",
+        "tip": "",
+        "grades": {
+          "correct": 0.7,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i22",
+        "order": 22,
+        "phase": "PEP",
+        "content": "Indicou a remoção da prancha rígida, após exame do dorso com palpação da coluna.",
+        "tip": "",
+        "grades": {
+          "correct": 0.6,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i23",
+        "order": 23,
+        "phase": "PEP",
+        "content": "Orientou realização de raio X para planejamento cirúrgico.",
+        "tip": "",
+        "grades": {
+          "correct": 0.2,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i24",
+        "order": 24,
+        "phase": "PEP",
+        "content": "Indicou o procedimento cirúrgico.",
+        "tip": "",
+        "grades": {
+          "correct": 0.3,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i25",
+        "order": 25,
+        "phase": "PEP",
+        "content": "Informou o que seria feito na sala de trauma.",
+        "tip": "",
+        "grades": {
+          "correct": 0.3,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i26",
+        "order": 26,
+        "phase": "PEP",
+        "content": "Informou que deve iniciar antibiótico venoso.",
+        "tip": "",
+        "grades": {
+          "correct": 0.3,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i27",
+        "order": 27,
+        "phase": "PEP",
+        "content": "Informou que será necessário cirurgia (lavagem e fixação externa).",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e02-i28",
+        "order": 28,
+        "phase": "PEP",
+        "content": "Informou que o paciente ficará internado.",
+        "tip": "",
+        "grades": {
+          "correct": 0.4,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      }
+    ],
+    "summary": [],
+    "version": "teste"
+  },
+  {
+    "id": "teste-inep2020-e03",
+    "name": "Coqueluche no lactente",
+    "topic": "Coqueluche no lactente",
+    "area": "Pediatria",
+    "setting": null,
+    "taxonomy_path": [
+      "Pediatria",
+      "Coqueluche no lactente"
+    ],
+    "goal": "Revalida",
+    "institution": "INEP",
+    "year": "2020",
+    "styles": [
+      "Tosse",
+      "Febre"
+    ],
+    "is_pro_only": false,
+    "medical_review": "approved",
+    "max_score": 10,
+    "duration_ms": 600000,
+    "created_at": "2026-10-01T00:00:00.000Z",
+    "actor_script": "",
+    "doctor_scene": "Você está em um pronto-socorro e realiza o atendimento de uma criança com 8 meses de idade. A mãe refere que, há 20 dias, seu filho iniciou quadro de febre e tosse. A febre melhorou depois de 2 dias, mas a tosse piorou. Ontem, ela levou o filho à Unidade de Saúde da Família perto de sua casa. A médica solicitou exame de sangue e radiografia de tórax e pediu que retornassem hoje para reavaliar a criança, junto com os exames. Mas a mãe decidiu levar a criança ao pronto-socorro, pois seu filho apresenta dificuldade para respirar por causa da tosse.",
+    "doctor_tasks": "1. realizar anamnese dirigida para a queixa relatada pela mãe;\n2. interpretar e verbalizar para o(a) chefe de estação os resultados dos exames complementares;\n3. explicar para a mãe o diagnóstico;\n4. orientar a mãe sobre o plano de cuidados.",
+    "pressings": [
+      {
+        "id": "teste-inep2020-e03-p1",
+        "name": "Descrição do exame físico",
+        "content": "Exame físico geral: lactente em bom estado geral, corado, hidratado e acianótico. Sinais vitais: FC: 110 bpm; FR: 35 irpm; SatO₂: 98% (ar ambiente). Peso: 8,5 kg. Aparelho cardiovascular: RCR 2T, com bulhas normofonéticas, sem sopro. Aparelho respiratório: sem esforço respiratório. Murmúrio vesicular fisiológico, sem ruídos adventícios. Abdome: plano, normotenso, sem visceromegalias, não doloroso à palpação, sem sinais de irritação peritoneal, ruídos hidroaéreos presentes e normais.",
+        "image_url": null
+      },
+      {
+        "id": "teste-inep2020-e03-p2",
+        "name": "Resultado do hemograma",
+        "content": "Hemoglobina: 12 g/dL (VR 11 a 13 g/dL) · Hematócrito: 38% (VR 37% a 41%) · Leucócitos: 40 mil/mm³ (VR 7 a 9 mil/mm³) · Linfócitos: 80% (VR 10% a 20%).",
+        "image_url": null
+      },
+      {
+        "id": "teste-inep2020-e03-p3",
+        "name": "Resultado da radiografia de tórax",
+        "content": "Imagem disponível no documento original (página 11 do caderno de prova).",
+        "image_url": null
+      }
+    ],
+    "checklist_items": [
+      {
+        "id": "teste-inep2020-e03-i1",
+        "order": 1,
+        "phase": "PEP",
+        "content": "Identifica-se e cumprimenta a mãe de maneira adequada.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e03-i2",
+        "order": 2,
+        "phase": "PEP",
+        "content": "Pergunta sobre as características da tosse paroxística.",
+        "tip": "",
+        "grades": {
+          "correct": 2,
+          "partial": 1,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Investiga as três características da tosse.",
+          "partial": "Investiga até duas características da tosse.",
+          "incorrect": "Não caracteriza a tosse."
+        },
+        "subitems": [
+          {
+            "id": "teste-inep2020-e03-i2-s1",
+            "text": "Duração — acima de 20 dias"
+          },
+          {
+            "id": "teste-inep2020-e03-i2-s2",
+            "text": "Relação com o ciclo respiratório — tossidas rápidas e curtas (de cinco a dez) em uma única expiração"
+          },
+          {
+            "id": "teste-inep2020-e03-i2-s3",
+            "text": "Frequência — 30 a 40 episódios/dia"
+          }
+        ],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e03-i3",
+        "order": 3,
+        "phase": "PEP",
+        "content": "Pergunta sobre a presença do guincho inspiratório, que ocorre logo após o acesso de tosse, durante uma inspiração profunda através da glote estreitada, podendo originar um som.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e03-i4",
+        "order": 4,
+        "phase": "PEP",
+        "content": "Verbaliza o resultado do hemograma: leucocitose com linfocitose.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e03-i5",
+        "order": 5,
+        "phase": "PEP",
+        "content": "Verbaliza a interpretação da radiografia de tórax: imagem de “coração borrado”, “felpudo” ou “franjado”, porque as bordas da imagem cardíaca não são nítidas, em decorrência dos infiltrados pulmonares.",
+        "tip": "",
+        "grades": {
+          "correct": 1.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e03-i6",
+        "order": 6,
+        "phase": "PEP",
+        "content": "Explica, com linguagem simples, o diagnóstico de coqueluche.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e03-i7",
+        "order": 7,
+        "phase": "PEP",
+        "content": "Explica sobre a necessidade de internação.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e03-i8",
+        "order": 8,
+        "phase": "PEP",
+        "content": "Orienta a mãe sobre a necessidade de uso de antibiótico.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e03-i9",
+        "order": 9,
+        "phase": "PEP",
+        "content": "Indica a notificação do caso de coqueluche.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e03-i10",
+        "order": 10,
+        "phase": "PEP",
+        "content": "Investiga os comunicantes ou contatos íntimos e indica quimioprofilaxia com azitromicina ou claritromicina.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": 0.5,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Indica a quimioprofilaxia com azitromicina ou claritromicina para comunicantes ou contatos.",
+          "partial": "Indica a quimioprofilaxia para comunicantes ou contatos sem especificar as opções de antibióticos.",
+          "incorrect": "Não investiga os comunicantes ou contatos nem indica a quimioprofilaxia."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e03-i11",
+        "order": 11,
+        "phase": "PEP",
+        "content": "Pergunta se a mãe possui alguma dúvida.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      }
+    ],
+    "summary": [],
+    "version": "teste"
+  },
+  {
+    "id": "teste-inep2020-e04",
+    "name": "Sangramento uterino anormal",
+    "topic": "Sangramento uterino anormal",
+    "area": "Ginecologia e Obstetrícia",
+    "setting": null,
+    "taxonomy_path": [
+      "Ginecologia e Obstetrícia",
+      "Sangramento uterino anormal"
+    ],
+    "goal": "Revalida",
+    "institution": "INEP",
+    "year": "2020",
+    "styles": [
+      "Sangramento vaginal"
+    ],
+    "is_pro_only": false,
+    "medical_review": "approved",
+    "max_score": 10,
+    "duration_ms": 600000,
+    "created_at": "2026-10-01T00:00:00.000Z",
+    "actor_script": "",
+    "doctor_scene": "Você está de plantão em uma Unidade de Pronto Atendimento e deverá conduzir o atendimento de paciente com quadro de sangramento vaginal.",
+    "doctor_tasks": "1. realizar o atendimento da paciente e analisar, verbalmente, as possíveis causas do sangramento;\n2. realizar exame ginecológico no manequim e verbalizar achados;\n3. solicitar, se necessário, exames complementares, verbalmente;\n4. prescrever, verbalmente, o tratamento inicial a ser realizado na própria unidade de atendimento e o tratamento de manutenção a ser feito após o atendimento;\n5. solicitar, se necessário, exames a serem agendados posteriormente e programar o acompanhamento médico eletivo.",
+    "pressings": [
+      {
+        "id": "teste-inep2020-e04-p1",
+        "name": "Exame físico",
+        "content": "PA = 90 × 60 mmHg · Pulso = 98 bpm · FR = 15 irpm · Temperatura axilar = 36,5 °C · Mucosas descoradas = ++/4.",
+        "image_url": null
+      },
+      {
+        "id": "teste-inep2020-e04-p2",
+        "name": "Exame laboratorial — hemograma",
+        "content": "Hematócrito = 26,6% (ref. 42% a 50%) · Hemoglobina = 9,2 g/dL (ref. 12 a 14,5 g/dL) · Leucócitos = 5.080/mm³ (ref. 4.000 a 11.000/mm³) · Plaquetas = 196.000/mm³ (ref. 172.000 a 450.000/mm³).",
+        "image_url": null
+      },
+      {
+        "id": "teste-inep2020-e04-p3",
+        "name": "Exame laboratorial — beta-hCG",
+        "content": "Dosagem de beta-hCG = menor que 5 mUI/mL (valor de referência: menor que 5 mUI/mL).",
+        "image_url": null
+      },
+      {
+        "id": "teste-inep2020-e04-p4",
+        "name": "Ecografia",
+        "content": "Esta Unidade de Pronto Atendimento não dispõe de exames de ecografia (ultrassonografia) ginecológica.",
+        "image_url": null
+      }
+    ],
+    "checklist_items": [
+      {
+        "id": "teste-inep2020-e04-i1",
+        "order": 1,
+        "phase": "PEP",
+        "content": "Apresenta-se e pergunta o nome da paciente.",
+        "tip": "",
+        "grades": {
+          "correct": 0.3,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e04-i2",
+        "order": 2,
+        "phase": "PEP",
+        "content": "Realiza anamnese.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e04-i3",
+        "order": 3,
+        "phase": "PEP",
+        "content": "Analisa as causas do sangramento uterino anormal (sistema PALM-COEIN).",
+        "tip": "Não será atribuída pontuação à causa “gestação”. PALM-COEIN: pólipo; adenomiose; leiomioma; malignancy (câncer de endométrio); coagulação; distúrbio de ovulação; distúrbio de endométrio; iatrogenia; não determinado.",
+        "grades": {
+          "correct": 1.2,
+          "partial": 0.6,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Cita pelo menos 5 causas do sistema PALM-COEIN.",
+          "partial": "Cita 4 causas do sistema PALM-COEIN.",
+          "incorrect": "Cita menos de 4 causas do sistema PALM-COEIN."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e04-i4",
+        "order": 4,
+        "phase": "PEP",
+        "content": "Realiza exame ginecológico com espéculo e identifica o colo uterino e a origem do sangramento.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": 0.5,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Introduz o espéculo em posição diagonal, girando para horizontal, abre o espéculo, expõe o colo uterino e identifica que o sangramento provém do colo. Retira o espéculo fazendo o movimento inverso.",
+          "partial": "Introduz e/ou retira o espéculo em posição horizontal ou aberto, mas identifica que o sangramento provém do colo uterino.",
+          "incorrect": "Não realiza o exame ginecológico ou não identifica que o sangramento provém do colo uterino."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e04-i5",
+        "order": 5,
+        "phase": "PEP",
+        "content": "Realiza toque vaginal.",
+        "tip": "",
+        "grades": {
+          "correct": 0.4,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e04-i6",
+        "order": 6,
+        "phase": "PEP",
+        "content": "Solicita beta-hCG.",
+        "tip": "",
+        "grades": {
+          "correct": 1.2,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e04-i7",
+        "order": 7,
+        "phase": "PEP",
+        "content": "Solicita hemograma.",
+        "tip": "",
+        "grades": {
+          "correct": 1.2,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e04-i8",
+        "order": 8,
+        "phase": "PEP",
+        "content": "Prescreve anti-inflamatório.",
+        "tip": "",
+        "grades": {
+          "correct": 0.4,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e04-i9",
+        "order": 9,
+        "phase": "PEP",
+        "content": "Prescreve ácido tranexâmico.",
+        "tip": "",
+        "grades": {
+          "correct": 0.4,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e04-i10",
+        "order": 10,
+        "phase": "PEP",
+        "content": "Prescreve hidratação venosa.",
+        "tip": "",
+        "grades": {
+          "correct": 0.4,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e04-i11",
+        "order": 11,
+        "phase": "PEP",
+        "content": "Prescreve reposição de ferro.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e04-i12",
+        "order": 12,
+        "phase": "PEP",
+        "content": "Solicita ecografia transvaginal.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Solicita ecografia transvaginal e nenhum outro exame de imagem da pelve.",
+          "incorrect": "Não solicita ecografia transvaginal ou também solicita outro exame de imagem da pelve."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e04-i13",
+        "order": 13,
+        "phase": "PEP",
+        "content": "Não interna a paciente e a referencia ao ginecologista.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      }
+    ],
+    "summary": [],
+    "version": "teste"
+  },
+  {
+    "id": "teste-inep2020-e05",
+    "name": "Tuberculose: transferência de cuidado e TDO",
+    "topic": "Tuberculose: transferência de cuidado e TDO",
+    "area": "Medicina de Família e Comunidade",
+    "setting": null,
+    "taxonomy_path": [
+      "Medicina de Família e Comunidade",
+      "Tuberculose: transferência de cuidado e TDO"
+    ],
+    "goal": "Revalida",
+    "institution": "INEP",
+    "year": "2020",
+    "styles": [
+      "Tuberculose",
+      "TDO"
+    ],
+    "is_pro_only": false,
+    "medical_review": "approved",
+    "max_score": 10,
+    "duration_ms": 600000,
+    "created_at": "2026-10-01T00:00:00.000Z",
+    "actor_script": "",
+    "doctor_scene": "A Equipe de Saúde da Família (ESF) da Unidade Básica de Saúde (UBS) em que você trabalha recebeu de outra UBS uma transferência de cuidado de um paciente morador de outro bairro. O paciente recebeu diagnóstico de tuberculose pulmonar na Atenção Primária à Saúde, foi notificado e iniciou tratamento há 1 semana. Ele foi encaminhado à sua ESF, para dar continuidade ao tratamento diretamente observado (TDO). O paciente é um homem de 53 anos, pesando 75 kg, em bom estado geral, que reside sozinho e recentemente se mudou para o território de sua UBS, por ter encerrado o contrato de aluguel da casa onde residia anteriormente. Trabalha como vigia noturno, sem contactantes. Na referência, constam a medicação prescrita (esquema básico para adultos com mais de 50 kg), o histórico de HIV negativo, ausência de comorbidades, consumo leve de álcool, insuficiência familiar e social e o atestado médico de 15 dias de afastamento do trabalho. A consulta de hoje foi agendada pela agente comunitária de saúde, com os objetivos de programar o tratamento, dar continuidade ao TDO e orientar o paciente.",
+    "doctor_tasks": "1. acolher o paciente;\n2. citar as medicações e explicar o tratamento completo da tuberculose;\n3. orientar como será feito o TDO na UBS; e\n4. orientar sobre o afastamento do trabalho.\nObservação: não será necessária a realização de exame físico. Estão disponíveis no consultório todos os materiais de registro de saúde.",
+    "pressings": [],
+    "checklist_items": [
+      {
+        "id": "teste-inep2020-e05-i1",
+        "order": 1,
+        "phase": "PEP",
+        "content": "Cumprimenta e identifica-se ao paciente.",
+        "tip": "",
+        "grades": {
+          "correct": 0.25,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e05-i2",
+        "order": 2,
+        "phase": "PEP",
+        "content": "Pergunta ao paciente o motivo da consulta.",
+        "tip": "",
+        "grades": {
+          "correct": 0.25,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e05-i3",
+        "order": 3,
+        "phase": "PEP",
+        "content": "Esclarece ao paciente que ele está com tuberculose e onde ela se instala.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e05-i4",
+        "order": 4,
+        "phase": "PEP",
+        "content": "Pergunta se o paciente está fazendo uso das medicações e em que horário (adesão).",
+        "tip": "",
+        "grades": {
+          "correct": 0.75,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e05-i5",
+        "order": 5,
+        "phase": "PEP",
+        "content": "Pergunta quantos medicamentos o paciente está tomando e quantas vezes por dia.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e05-i6",
+        "order": 6,
+        "phase": "PEP",
+        "content": "Pergunta o estado do paciente, ou como ele está se sentindo, ou se houve algum efeito colateral da medicação.",
+        "tip": "",
+        "grades": {
+          "correct": 0.75,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e05-i7",
+        "order": 7,
+        "phase": "PEP",
+        "content": "Cita os nomes dos quatro medicamentos, na forma de dois tipos de comprimidos: Rifampicina, Isoniazida, Pirazinamida e Etambutol (RHZE) e Rifampicina e Isoniazida (RH).",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e05-i8",
+        "order": 8,
+        "phase": "PEP",
+        "content": "Explica o tratamento completo para TB 2RHZE/4RH: 2 meses de tratamento diário com RHZE, 4 comprimidos/dia; 4 meses de tratamento diário de RH, 4 comprimidos/dia.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e05-i9",
+        "order": 9,
+        "phase": "PEP",
+        "content": "Explica efeitos colaterais menores das medicações.",
+        "tip": "",
+        "grades": {
+          "correct": 1.5,
+          "partial": 0.5,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Explica dois ou mais efeitos colaterais.",
+          "partial": "Explica apenas um dos efeitos colaterais menores.",
+          "incorrect": "Não explica efeitos."
+        },
+        "subitems": [
+          {
+            "id": "teste-inep2020-e05-i9-s1",
+            "text": "Gástricos (epigastralgia, dor abdominal, náuseas e vômitos)"
+          },
+          {
+            "id": "teste-inep2020-e05-i9-s2",
+            "text": "Cutâneos (edema, irritação, acne e prurido)"
+          },
+          {
+            "id": "teste-inep2020-e05-i9-s3",
+            "text": "Outros (cefaleia, vertigem, insônia, ansiedade e artralgia)"
+          }
+        ],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e05-i10",
+        "order": 10,
+        "phase": "PEP",
+        "content": "Pergunta se há alguma dúvida e explica que os efeitos costumam passar sem precisar suspender a medicação.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": 0.5,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Cumpre todas as tarefas.",
+          "partial": "Cumpre apenas uma das tarefas.",
+          "incorrect": "Não faz nenhuma pergunta."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e05-i11",
+        "order": 11,
+        "phase": "PEP",
+        "content": "Orienta a ingestão com água dos 4 comprimidos de RHZE na UBS.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e05-i12",
+        "order": 12,
+        "phase": "PEP",
+        "content": "Explica que o paciente não deve ingerir a medicação com álcool, pelo risco de agressão ao fígado e piora dos sintomas adversos.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e05-i13",
+        "order": 13,
+        "phase": "PEP",
+        "content": "Orienta como será o TDO.",
+        "tip": "",
+        "grades": {
+          "correct": 1.5,
+          "partial": 0.5,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Faz as três orientações.",
+          "partial": "Faz até duas orientações das três listadas.",
+          "incorrect": "Não orienta."
+        },
+        "subitems": [
+          {
+            "id": "teste-inep2020-e05-i13-s1",
+            "text": "(quem) membro da Estratégia da Saúde da Família (ACS, enfermeiro, técnico de enfermagem ou médico)"
+          },
+          {
+            "id": "teste-inep2020-e05-i13-s2",
+            "text": "(como) horário de ida à UBS ou visita domiciliar"
+          },
+          {
+            "id": "teste-inep2020-e05-i13-s3",
+            "text": "(especificidade) como se dará a tomada da medicação nos fins de semana e feriados"
+          }
+        ],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e05-i14",
+        "order": 14,
+        "phase": "PEP",
+        "content": "Orienta o paciente a não retornar ao trabalho.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      }
+    ],
+    "summary": [],
+    "version": "teste"
+  },
+  {
+    "id": "teste-inep2020-e06",
+    "name": "Pneumonia adquirida na comunidade",
+    "topic": "Pneumonia adquirida na comunidade",
+    "area": "Clínica Médica",
+    "setting": null,
+    "taxonomy_path": [
+      "Clínica Médica",
+      "Pneumonia adquirida na comunidade"
+    ],
+    "goal": "Revalida",
+    "institution": "INEP",
+    "year": "2020",
+    "styles": [
+      "Febre",
+      "Tosse"
+    ],
+    "is_pro_only": false,
+    "medical_review": "approved",
+    "max_score": 10,
+    "duration_ms": 600000,
+    "created_at": "2026-10-01T00:00:00.000Z",
+    "actor_script": "",
+    "doctor_scene": "Você está em um consultório da Atenção Secundária e vai atender um paciente do sexo masculino com 40 anos de idade.",
+    "doctor_tasks": "1. realizar anamnese;\n2. analisar, interpretar e verbalizar os resultados dos exames apresentados pelo paciente simulado;\n3. estabelecer o diagnóstico;\n4. definir se há ou não necessidade de internação hospitalar.",
+    "pressings": [
+      {
+        "id": "teste-inep2020-e06-p1",
+        "name": "Exames apresentados pelo paciente",
+        "content": "O caderno de prova não traz o conteúdo destes impressos (hemograma e radiografia de tórax). Pelo PEP: hemograma com leucocitose e desvio à esquerda; radiografia com padrão alveolar/consolidação em terço inferior do hemitórax direito.",
+        "image_url": null
+      }
+    ],
+    "checklist_items": [
+      {
+        "id": "teste-inep2020-e06-i1",
+        "order": 1,
+        "phase": "PEP",
+        "content": "Cumprimenta o paciente e se apresenta.",
+        "tip": "",
+        "grades": {
+          "correct": 0.25,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e06-i2",
+        "order": 2,
+        "phase": "PEP",
+        "content": "Pergunta sobre o uso de medicação, atual ou anterior.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e06-i3",
+        "order": 3,
+        "phase": "PEP",
+        "content": "Pergunta sobre hospitalização prévia.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e06-i4",
+        "order": 4,
+        "phase": "PEP",
+        "content": "Pergunta sobre doenças crônicas.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e06-i5",
+        "order": 5,
+        "phase": "PEP",
+        "content": "Solicita exames laboratoriais e radiografia de tórax.",
+        "tip": "",
+        "grades": {
+          "correct": 1.25,
+          "partial": 0.5,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Solicita exames laboratoriais e radiografia de tórax.",
+          "partial": "Solicita apenas um exame (impresso 2 ou 3).",
+          "incorrect": "Não pede exames espontaneamente."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e06-i6",
+        "order": 6,
+        "phase": "PEP",
+        "content": "Interpreta o hemograma, que apresenta leucocitose com desvio à esquerda.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e06-i7",
+        "order": 7,
+        "phase": "PEP",
+        "content": "Interpreta a radiografia de tórax, que demonstra uma imagem com padrão alveolar ou consolidação em terço inferior do hemitórax direito.",
+        "tip": "",
+        "grades": {
+          "correct": 1.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e06-i8",
+        "order": 8,
+        "phase": "PEP",
+        "content": "Informa ao paciente o diagnóstico de pneumonia.",
+        "tip": "",
+        "grades": {
+          "correct": 1.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e06-i9",
+        "order": 9,
+        "phase": "PEP",
+        "content": "Informa que o tratamento será ambulatorial.",
+        "tip": "",
+        "grades": {
+          "correct": 1.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      }
+    ],
+    "summary": [],
+    "version": "teste"
+  },
+  {
+    "id": "teste-inep2020-e07",
+    "name": "Apendicite aguda",
+    "topic": "Apendicite aguda",
+    "area": "Cirurgia Geral",
+    "setting": null,
+    "taxonomy_path": [
+      "Cirurgia Geral",
+      "Apendicite aguda"
+    ],
+    "goal": "Revalida",
+    "institution": "INEP",
+    "year": "2020",
+    "styles": [
+      "Dor abdominal",
+      "Febre"
+    ],
+    "is_pro_only": false,
+    "medical_review": "approved",
+    "max_score": 10,
+    "duration_ms": 600000,
+    "created_at": "2026-10-01T00:00:00.000Z",
+    "actor_script": "",
+    "doctor_scene": "Você está de plantão em um pronto-socorro de hospital secundário de urgência e vai atender uma paciente de 22 anos, sexo feminino, com dor forte em andar inferior do abdome, com piora progressiva, iniciada há 2 dias. Ela relata distensão abdominal, anorexia, náuseas e vômitos em pequena quantidade no início do quadro. O hospital possui radiologia convencional e ultrassonografia, laboratório, centro cirúrgico e leitos de internação (enfermaria e UTI); não possui tomografia, ressonância nem banco de sangue.",
+    "doctor_tasks": "1. realizar o atendimento da paciente, explicando cada achado para ela;\n2. definir o diagnóstico;\n3. adotar a conduta terapêutica necessária;\n4. demonstrar a realização de procedimentos médicos, caso necessário.",
+    "pressings": [
+      {
+        "id": "teste-inep2020-e07-p1",
+        "name": "Sinais vitais",
+        "content": "PA: 100 × 60 mmHg · FC: 110 bpm · FR: 20 irpm · Temperatura: 38,2 °C · Escore de coma de Glasgow = 15.",
+        "image_url": null
+      },
+      {
+        "id": "teste-inep2020-e07-p2",
+        "name": "Exame ginecológico",
+        "content": "Pequenos e grandes lábios sem alterações, pelos bem implantados, ausência de lesões na vulva. Ausência de alterações na região perineal. Toque: ausência de dor à mobilização do colo uterino e fundo de saco de Douglas. Exame especular: secreção vaginal normal e sem alterações.",
+        "image_url": null
+      },
+      {
+        "id": "teste-inep2020-e07-p3",
+        "name": "Resultado de exames bioquímicos",
+        "content": "Hb: 13,2 (VR 12–16) · Ht: 45,1% (VR 35–45) · Leucócitos: 17.110 (VR 4.500–11.000) · Segmentados: 68,1% · Bastões: 11,5% · Linfócitos: 8,1% · Monócitos: 7,4% · Plaquetas: 251.000 · PCR: 76,22 mg/L (VR 5) · Ureia: 21 · Creatinina: 1,08 · Na: 135 · K: 3,4 · β-HCG: negativo.",
+        "image_url": null
+      },
+      {
+        "id": "teste-inep2020-e07-p4",
+        "name": "Resultado de ultrassonografia abdominal",
+        "content": "Apêndice cecal de dimensões aumentadas e espessadas, não compressível.",
+        "image_url": null
+      }
+    ],
+    "checklist_items": [
+      {
+        "id": "teste-inep2020-e07-i1",
+        "order": 1,
+        "phase": "PEP",
+        "content": "Identifica-se adequadamente para a paciente.",
+        "tip": "",
+        "grades": {
+          "correct": 0.2,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e07-i2",
+        "order": 2,
+        "phase": "PEP",
+        "content": "Realiza anamnese, perguntando sobre sinais de risco para anexite/salpingite.",
+        "tip": "",
+        "grades": {
+          "correct": 0.4,
+          "partial": 0.2,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Pergunta corretamente todas as possibilidades.",
+          "partial": "Pergunta somente um dos itens.",
+          "incorrect": "Não pergunta sobre os assuntos."
+        },
+        "subitems": [
+          {
+            "id": "teste-inep2020-e07-i2-s1",
+            "text": "Corrimento vaginal"
+          },
+          {
+            "id": "teste-inep2020-e07-i2-s2",
+            "text": "Vida sexual ativa"
+          },
+          {
+            "id": "teste-inep2020-e07-i2-s3",
+            "text": "História prévia de IST"
+          }
+        ],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e07-i3",
+        "order": 3,
+        "phase": "PEP",
+        "content": "Realiza anamnese, perguntando sobre possibilidade de gestação/gravidez ectópica/rota.",
+        "tip": "",
+        "grades": {
+          "correct": 0.4,
+          "partial": 0.2,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Pergunta corretamente todas as possibilidades.",
+          "partial": "Pergunta somente um dos itens.",
+          "incorrect": "Não pergunta sobre os assuntos."
+        },
+        "subitems": [
+          {
+            "id": "teste-inep2020-e07-i3-s1",
+            "text": "Data da última menstruação"
+          },
+          {
+            "id": "teste-inep2020-e07-i3-s2",
+            "text": "Uso de anticoncepção"
+          },
+          {
+            "id": "teste-inep2020-e07-i3-s3",
+            "text": "Atividade sexual recente"
+          }
+        ],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e07-i4",
+        "order": 4,
+        "phase": "PEP",
+        "content": "Exame físico com dor à palpação superficial e profunda, com descompressão brusca positiva (Blumberg).",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e07-i5",
+        "order": 5,
+        "phase": "PEP",
+        "content": "Explica adequadamente hipóteses diagnósticas para a paciente simulada (anexite/salpingite aguda versus apendicite aguda; torção/ruptura de cisto ovariano).",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e07-i6",
+        "order": 6,
+        "phase": "PEP",
+        "content": "Solicita a realização de exame ginecológico (especular e toque vaginal).",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e07-i7",
+        "order": 7,
+        "phase": "PEP",
+        "content": "Solicita os exames complementares (bioquímicos e de imagem) como plano diagnóstico.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": 0.25,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Solicita pelo menos dois exames.",
+          "partial": "Solicita somente um exame.",
+          "incorrect": "Não solicita β-HCG, hemograma nem ultrassonografia."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e07-i8",
+        "order": 8,
+        "phase": "PEP",
+        "content": "Interpreta de maneira adequada os exames bioquímicos.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": 0.25,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Interpreta HMG com leucocitose, com desvio à esquerda, e PCR aumentados.",
+          "partial": "Interpreta o HMG como normal ou o PCR como normal.",
+          "incorrect": "Interpreta todos como normais ou não interpreta."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e07-i9",
+        "order": 9,
+        "phase": "PEP",
+        "content": "Interpreta de maneira adequada o ultrassom, definindo o diagnóstico de apendicite aguda.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e07-i10",
+        "order": 10,
+        "phase": "PEP",
+        "content": "Solicita autorização (termo de consentimento informado) à paciente simulada para internação e realização de procedimento cirúrgico de emergência (apendicectomia).",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e07-i11",
+        "order": 11,
+        "phase": "PEP",
+        "content": "Inicia medidas de suporte adequadamente (jejum, repouso no leito, hidratação endovenosa, analgesia).",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": 0.5,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Orienta pelo menos três medidas.",
+          "partial": "Orienta uma ou duas medidas.",
+          "incorrect": "Não orienta nenhuma dessas medidas."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e07-i12",
+        "order": 12,
+        "phase": "PEP",
+        "content": "Responde adequadamente sobre o apêndice, sua localização e sua função.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": 0.5,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Responde corretamente as três perguntas.",
+          "partial": "Responde corretamente até duas perguntas.",
+          "incorrect": "Não responde corretamente nenhuma pergunta."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e07-i13",
+        "order": 13,
+        "phase": "PEP",
+        "content": "Esclarece se a via de acesso pode ser laparoscópica e/ou aberta.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": 0.5,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Esclarece que pode ser por qualquer uma das vias, com preferência pelo vídeo, se possível.",
+          "partial": "Define somente uma via: aberta ou por vídeo.",
+          "incorrect": "Não esclarece."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e07-i14",
+        "order": 14,
+        "phase": "PEP",
+        "content": "Responde sobre o uso de antibiótico para cobertura de gram-negativo (aminoglicosídeo ou cefalosporina de 2ª ou 3ª geração) e anaeróbio (metronidazol ou clindamicina).",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": 0.5,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Responde corretamente sobre os antibióticos e os tipos.",
+          "partial": "Responde de forma incompleta ou parcialmente correta.",
+          "incorrect": "Não responde sobre os antibióticos e os tipos."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      }
+    ],
+    "summary": [],
+    "version": "teste"
+  },
+  {
+    "id": "teste-inep2020-e08",
+    "name": "Crise álgica na anemia falciforme",
+    "topic": "Crise álgica na anemia falciforme",
+    "area": "Pediatria",
+    "setting": null,
+    "taxonomy_path": [
+      "Pediatria",
+      "Crise álgica na anemia falciforme"
+    ],
+    "goal": "Revalida",
+    "institution": "INEP",
+    "year": "2020",
+    "styles": [
+      "Dor em membro inferior",
+      "Anemia falciforme"
+    ],
+    "is_pro_only": false,
+    "medical_review": "approved",
+    "max_score": 10,
+    "duration_ms": 600000,
+    "created_at": "2026-10-01T00:00:00.000Z",
+    "actor_script": "",
+    "doctor_scene": "Você está em um pronto-socorro e realizará o atendimento junto à mãe de um escolar com 7 anos de idade. O menino foi trazido no colo de sua mãe, pois estava com dor na perna, e no momento, encontra-se no leito de observação. A mãe refere que seu filho tem anemia falciforme. Na noite anterior, a dor piorou, apesar de o menino estar em uso de 2 remédios para dor e estar aplicando compressas mornas na perna. A criança não para de chorar e pede remédio para dor. Na triagem, a dor foi graduada entre 6 e 7, pela Escala Analógica de Dor.",
+    "doctor_tasks": "1. realizar anamnese dirigida para a queixa relatada pela mãe;\n2. explicar para a mãe o diagnóstico do evento agudo;\n3. orientar a mãe sobre o plano de cuidados do paciente.",
+    "pressings": [
+      {
+        "id": "teste-inep2020-e08-p1",
+        "name": "Receituário",
+        "content": "Nome: José da Silva. EM CASO DE DOR: 1) Dipirona (gotas) — dar 25 gotas via oral, de 4/4 horas. 2) Diclofenaco (25 mg) — dar 1 comprimido via oral, de 8/8 horas. USO CONTÍNUO: 3) Ácido fólico (5 mg) — dar 1 comprimido via oral, 1 vez ao dia. Dr(ª) Maria das Dores · CRM 00000 · 10/06/2021.",
+        "image_url": null
+      },
+      {
+        "id": "teste-inep2020-e08-p2",
+        "name": "Resultado do exame físico",
+        "content": "Criança em regular estado geral, com fácies de dor, hipocorada (+2/4+), hidratada, com enchimento capilar normal. FC: 110 bpm · FR: 24 irpm · PA: 100 × 60 mmHg · SatO₂: 96% (ar ambiente). Aparelho cardiovascular: bulhas rítmicas e normofonéticas, sem sopro. Aparelho respiratório: eupneica. Murmúrio vesicular fisiológico, sem ruídos adventícios. Abdome: plano, normotenso, sem visceromegalias, não doloroso, sem irritação peritoneal, RHA presentes e normais.",
+        "image_url": null
+      }
+    ],
+    "checklist_items": [
+      {
+        "id": "teste-inep2020-e08-i1",
+        "order": 1,
+        "phase": "PEP",
+        "content": "Identifica-se e cumprimenta a paciente simulada de maneira adequada.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i2",
+        "order": 2,
+        "phase": "PEP",
+        "content": "Realiza abordagem da dor.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": 0.5,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Pergunta sobre os dois parâmetros.",
+          "partial": "Pergunta apenas um dos parâmetros.",
+          "incorrect": "Não faz abordagem de nenhum dos parâmetros."
+        },
+        "subitems": [
+          {
+            "id": "teste-inep2020-e08-i2-s1",
+            "text": "(a) Quando começou"
+          },
+          {
+            "id": "teste-inep2020-e08-i2-s2",
+            "text": "(b) O que foi feito para melhorar"
+          }
+        ],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i3",
+        "order": 3,
+        "phase": "PEP",
+        "content": "Pergunta se o paciente teve febre.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i4",
+        "order": 4,
+        "phase": "PEP",
+        "content": "Pergunta se o paciente teve outros sintomas.",
+        "tip": "",
+        "grades": {
+          "correct": 0.25,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i5",
+        "order": 5,
+        "phase": "PEP",
+        "content": "Pergunta desde quando o paciente tem o diagnóstico de anemia falciforme.",
+        "tip": "",
+        "grades": {
+          "correct": 0.25,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i6",
+        "order": 6,
+        "phase": "PEP",
+        "content": "Pergunta se o paciente faz acompanhamento com especialista (hematologista).",
+        "tip": "",
+        "grades": {
+          "correct": 0.25,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i7",
+        "order": 7,
+        "phase": "PEP",
+        "content": "Pergunta se o paciente teve outras crises.",
+        "tip": "",
+        "grades": {
+          "correct": 0.25,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i8",
+        "order": 8,
+        "phase": "PEP",
+        "content": "Pergunta sobre a frequência das crises.",
+        "tip": "",
+        "grades": {
+          "correct": 0.25,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i9",
+        "order": 9,
+        "phase": "PEP",
+        "content": "Pergunta se o paciente precisou de atendimento de emergência por conta das crises.",
+        "tip": "",
+        "grades": {
+          "correct": 0.25,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i10",
+        "order": 10,
+        "phase": "PEP",
+        "content": "Pergunta se o paciente tem alergia a algum medicamento.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i11",
+        "order": 11,
+        "phase": "PEP",
+        "content": "Pergunta sobre o nível de hemoglobina basal.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i12",
+        "order": 12,
+        "phase": "PEP",
+        "content": "Pergunta se o paciente já recebeu hemotransfusão.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i13",
+        "order": 13,
+        "phase": "PEP",
+        "content": "Pergunta se o paciente foi esplenectomizado.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i14",
+        "order": 14,
+        "phase": "PEP",
+        "content": "Informa à paciente simulada que o diagnóstico é de crise álgica ou de dor, devido à anemia falciforme.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i15",
+        "order": 15,
+        "phase": "PEP",
+        "content": "Informa a necessidade de internação e o motivo (o paciente não melhorou ou não vai melhorar com o tratamento domiciliar).",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": 0.5,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Indica a internação e informa o motivo.",
+          "partial": "Indica a internação e não informa o motivo.",
+          "incorrect": "Não indica internação."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i16",
+        "order": 16,
+        "phase": "PEP",
+        "content": "Orienta a paciente simulada sobre a necessidade de hidratação oral ou venosa.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i17",
+        "order": 17,
+        "phase": "PEP",
+        "content": "Informa que administrará dipirona e diclofenaco (via parenteral) associado à codeína (via oral) ou morfina (via endovenosa).",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e08-i18",
+        "order": 18,
+        "phase": "PEP",
+        "content": "Pergunta se a paciente simulada possui alguma dúvida.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      }
+    ],
+    "summary": [],
+    "version": "teste"
+  },
+  {
+    "id": "teste-inep2020-e09",
+    "name": "Lipotimia no puerpério",
+    "topic": "Lipotimia no puerpério",
+    "area": "Ginecologia e Obstetrícia",
+    "setting": null,
+    "taxonomy_path": [
+      "Ginecologia e Obstetrícia",
+      "Lipotimia no puerpério"
+    ],
+    "goal": "Revalida",
+    "institution": "INEP",
+    "year": "2020",
+    "styles": [
+      "Puerpério",
+      "Lipotimia"
+    ],
+    "is_pro_only": false,
+    "medical_review": "approved",
+    "max_score": 10,
+    "duration_ms": 600000,
+    "created_at": "2026-10-01T00:00:00.000Z",
+    "actor_script": "",
+    "doctor_scene": "Você está de plantão nas enfermarias de alojamento conjunto e irá atender uma puérpera que teve parto normal há cerca de 20 horas. A paciente foi avaliada no puerpério imediato e encontrava-se, então, em boas condições.",
+    "doctor_tasks": "1. realizar o atendimento da puérpera;\n2. demonstrar a realização de procedimentos médicos, caso necessário;\n3. solicitar exames complementares, caso necessário;\n4. orientar a puérpera sobre como proceder.",
+    "pressings": [
+      {
+        "id": "teste-inep2020-e09-p1",
+        "name": "Frequência de pulso",
+        "content": "Pulso = 100 bpm.",
+        "image_url": null
+      },
+      {
+        "id": "teste-inep2020-e09-p2",
+        "name": "Mucosas",
+        "content": "Mucosas coradas.",
+        "image_url": null
+      },
+      {
+        "id": "teste-inep2020-e09-p3",
+        "name": "Pressão arterial",
+        "content": "Pressão arterial = 90 × 60 mmHg.",
+        "image_url": null
+      },
+      {
+        "id": "teste-inep2020-e09-p4",
+        "name": "Glicemia",
+        "content": "Glicemia capilar = 80 mg/dL (valor de referência < 100 mg/dL).",
+        "image_url": null
+      }
+    ],
+    "checklist_items": [
+      {
+        "id": "teste-inep2020-e09-i1",
+        "order": 1,
+        "phase": "PEP",
+        "content": "Apresenta-se e cumprimenta a paciente.",
+        "tip": "",
+        "grades": {
+          "correct": 0.3,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e09-i2",
+        "order": 2,
+        "phase": "PEP",
+        "content": "Avalia o nível de consciência da paciente.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e09-i3",
+        "order": 3,
+        "phase": "PEP",
+        "content": "Acomoda a paciente no leito e a coloca com as pernas elevadas.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": 0.2,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Faz os dois procedimentos mencionados.",
+          "partial": "Somente acomoda a paciente no leito.",
+          "incorrect": "Não faz nenhum desses procedimentos."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e09-i4",
+        "order": 4,
+        "phase": "PEP",
+        "content": "Checa pulsos: carotídeo e periféricos.",
+        "tip": "",
+        "grades": {
+          "correct": 0.4,
+          "partial": 0.2,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Checa os pulsos periféricos e o carotídeo.",
+          "partial": "Checa somente os pulsos periféricos ou o carotídeo.",
+          "incorrect": "Não checa os pulsos da paciente."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e09-i5",
+        "order": 5,
+        "phase": "PEP",
+        "content": "Checa a perfusão periférica.",
+        "tip": "",
+        "grades": {
+          "correct": 0.4,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e09-i6",
+        "order": 6,
+        "phase": "PEP",
+        "content": "Avalia a coloração das mucosas.",
+        "tip": "",
+        "grades": {
+          "correct": 0.4,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e09-i7",
+        "order": 7,
+        "phase": "PEP",
+        "content": "Avalia a involução uterina.",
+        "tip": "",
+        "grades": {
+          "correct": 1.6,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Palpa o útero.",
+          "incorrect": "Não palpa o útero."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e09-i8",
+        "order": 8,
+        "phase": "PEP",
+        "content": "Avalia os lóquios.",
+        "tip": "",
+        "grades": {
+          "correct": 1.6,
+          "partial": 0.5,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Verifica os lóquios.",
+          "partial": "Somente pergunta, sem verificar.",
+          "incorrect": "Não pergunta nem verifica."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e09-i9",
+        "order": 9,
+        "phase": "PEP",
+        "content": "Refere que deve aferir a pressão arterial.",
+        "tip": "",
+        "grades": {
+          "correct": 0.8,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e09-i10",
+        "order": 10,
+        "phase": "PEP",
+        "content": "Indica exame de glicemia imediato.",
+        "tip": "",
+        "grades": {
+          "correct": 1,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e09-i11",
+        "order": 11,
+        "phase": "PEP",
+        "content": "Não solicita outros exames.",
+        "tip": "",
+        "grades": {
+          "correct": 0.4,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Não solicita outros exames.",
+          "incorrect": "Solicita outros exames."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e09-i12",
+        "order": 12,
+        "phase": "PEP",
+        "content": "Explica para a puérpera o quadro clínico e as causas do episódio de lipotimia.",
+        "tip": "",
+        "grades": {
+          "correct": 1.2,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Explica que houve queda temporária da pressão e que não há sinais de hemorragia ou qualquer complicação.",
+          "incorrect": "Não explica ou dá outro diagnóstico."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e09-i13",
+        "order": 13,
+        "phase": "PEP",
+        "content": "Orienta como deve ser a mobilização da paciente para sair do leito.",
+        "tip": "",
+        "grades": {
+          "correct": 0.4,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Diz que a paciente PODE se levantar, mas deve primeiro sentar-se e não se levantar de forma abrupta.",
+          "incorrect": "Diz que a paciente NÃO pode se levantar ou não orienta."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      }
+    ],
+    "summary": [],
+    "version": "teste"
+  },
+  {
+    "id": "teste-inep2020-e10",
+    "name": "Adolescente em situação de violência",
+    "topic": "Adolescente em situação de violência",
+    "area": "Medicina de Família e Comunidade",
+    "setting": null,
+    "taxonomy_path": [
+      "Medicina de Família e Comunidade",
+      "Adolescente em situação de violência"
+    ],
+    "goal": "Revalida",
+    "institution": "INEP",
+    "year": "2020",
+    "styles": [
+      "Insônia",
+      "Violência"
+    ],
+    "is_pro_only": false,
+    "medical_review": "approved",
+    "max_score": 10,
+    "duration_ms": 600000,
+    "created_at": "2026-10-01T00:00:00.000Z",
+    "actor_script": "",
+    "doctor_scene": "Você compõe uma equipe de Estratégia da Saúde da Família em uma área de alta vulnerabilidade social e atenderá um adolescente desacompanhado de 17 anos de idade, acolhido pela enfermagem. A ficha de acolhimento da enfermagem relata: sinais vitais: PA = 130 × 80 mmHg; FC = 110 bpm; temperatura axilar = 36,5 °C; SO₂ = 98%. O adolescente relata dificuldade para dormir há mais de 1 semana e quer algum medicamento para melhorar o sono. Ele apresenta ferimentos nos braços. Relata ter caído de bicicleta há mais de 1 semana. O adolescente encontra-se emagrecido, agitado e ansioso.",
+    "doctor_tasks": "1. estabelecer o diagnóstico; e\n2. dar seguimento ao cuidado do adolescente.\nObservação: não será necessária a realização de exame físico. Caso precise de algum formulário específico, basta verbalizar o que deseja.",
+    "pressings": [
+      {
+        "id": "teste-inep2020-e10-p1",
+        "name": "Rede de apoio disponível",
+        "content": "Caso identifique a necessidade de abordagem multi/interprofissional, incluída a rede de atenção à saúde, esta UBS conta com uma equipe do Núcleo de Apoio à Saúde da Família (NASF), que dispõe de assistente social e psicólogo em tempo integral. A regional ou o distrito sanitário onde essa UBS se localiza conta com um Centro de Referência da Assistência Social (CRAS), dois Centros de Apoio Psicossocial (CAPS Álcool e Drogas e CAPS Infantil), além de algumas iniciativas públicas e privadas para jovens e adultos em vulnerabilidade social.",
+        "image_url": null
+      }
+    ],
+    "checklist_items": [
+      {
+        "id": "teste-inep2020-e10-i1",
+        "order": 1,
+        "phase": "PEP",
+        "content": "Cumprimenta e apresenta-se ao adolescente.",
+        "tip": "",
+        "grades": {
+          "correct": 0.25,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e10-i2",
+        "order": 2,
+        "phase": "PEP",
+        "content": "Questiona sobre insônia.",
+        "tip": "",
+        "grades": {
+          "correct": 0.25,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e10-i3",
+        "order": 3,
+        "phase": "PEP",
+        "content": "Questiona sobre necessidades ampliadas de saúde para além da insônia, entendendo a possibilidade de quadro de violência.",
+        "tip": "",
+        "grades": {
+          "correct": 2,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e10-i4",
+        "order": 4,
+        "phase": "PEP",
+        "content": "Realiza abordagem centrada no paciente, incluindo escuta ativa, e estabelece relação de confiança com o paciente.",
+        "tip": "",
+        "grades": {
+          "correct": 1.5,
+          "partial": 0.75,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Realiza escuta ativa e estabelece vínculo (inclina-se para frente, olha nos olhos do paciente e indaga as causas dos problemas ampliados de saúde do paciente).",
+          "partial": "Realiza escuta ativa, mas não avança no estabelecimento de vínculo com o paciente.",
+          "incorrect": "Interrompe frequentemente o paciente."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e10-i5",
+        "order": 5,
+        "phase": "PEP",
+        "content": "Identifica e notifica a violência física.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": 0.25,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Identifica e notifica.",
+          "partial": "Somente identifica ou notifica.",
+          "incorrect": "Não identifica e não notifica."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e10-i6",
+        "order": 6,
+        "phase": "PEP",
+        "content": "Identifica e notifica a violência financeira.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": 0.25,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "Identifica e notifica.",
+          "partial": "Somente identifica ou notifica.",
+          "incorrect": "Não identifica e não notifica."
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e10-i7",
+        "order": 7,
+        "phase": "PEP",
+        "content": "Busca auxílio com equipe multi/interprofissional (assistência social e psicologia) para realizar os encaminhamentos para a rede de apoio.",
+        "tip": "",
+        "grades": {
+          "correct": 2,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e10-i8",
+        "order": 8,
+        "phase": "PEP",
+        "content": "Explica as atribuições da assistência social.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e10-i9",
+        "order": 9,
+        "phase": "PEP",
+        "content": "Explica as atribuições da psicologia.",
+        "tip": "",
+        "grades": {
+          "correct": 0.5,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e10-i10",
+        "order": 10,
+        "phase": "PEP",
+        "content": "Explica sobre a rede de apoio (CRAS e CAPS) para acolher o paciente.",
+        "tip": "",
+        "grades": {
+          "correct": 1.25,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      },
+      {
+        "id": "teste-inep2020-e10-i11",
+        "order": 11,
+        "phase": "PEP",
+        "content": "Relata sobre o sigilo do caso para o paciente.",
+        "tip": "",
+        "grades": {
+          "correct": 0.75,
+          "partial": null,
+          "incorrect": 0
+        },
+        "criteria": {
+          "correct": "",
+          "incorrect": ""
+        },
+        "subitems": [],
+        "auto_grade_rule": null
+      }
+    ],
+    "summary": [],
+    "version": "teste"
+  }
+]
