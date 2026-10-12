@@ -42,10 +42,10 @@ function ReviewRow({ question, position, first, open, onToggle }) {
             <Badge>{questionRef(question)}</Badge>
             {isStaziamed(question) && <Badge tone="warning">não é questão oficial do Inep</Badge>}
           </div>
-          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, textWrap: "pretty" }}>{stem}</p>
+          <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, textWrap: "pretty", textAlign: "justify", hyphens: "auto" }} lang="pt-BR">{stem}</p>
           <QuestionFigures images={question.images} questionId={question.id} />
           <SupportTable support={question.support} />
-          {ask && <p style={{ margin: 0, font: "600 16px/1.45 var(--font-sans)" }}>{ask}</p>}
+          {ask && <p style={{ margin: 0, font: "600 16px/1.45 var(--font-sans)", textAlign: "justify", hyphens: "auto" }} lang="pt-BR">{ask}</p>}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {question.options.map((option) => (
               <AnswerOption

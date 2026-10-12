@@ -474,10 +474,10 @@ function Runner({ session, go, onFinished }) {
                 <Banner tone="danger">{error}</Banner>
               </div>
             )}
-            <p style={{ font: `400 ${mobile ? 17 : 19}px/1.65 var(--font-sans)`, margin: "22px 0 0", textWrap: "pretty" }}>{stem}</p>
+            <p style={{ font: `400 ${mobile ? 17 : 19}px/1.65 var(--font-sans)`, margin: "22px 0 0", textWrap: "pretty", textAlign: "justify", hyphens: "auto" }} lang="pt-BR">{stem}</p>
             <QuestionFigures images={question.images} questionId={question.id} />
             <SupportTable support={question.support} />
-            {ask && <p style={{ font: "600 18px/1.4 var(--font-sans)", margin: "28px 0 0" }}>{ask}</p>}
+            {ask && <p style={{ font: "600 18px/1.4 var(--font-sans)", margin: "28px 0 0", textAlign: "justify", hyphens: "auto" }} lang="pt-BR">{ask}</p>}
             <div role="radiogroup" aria-label="Alternativas" style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: ask ? 20 : 28 }}>
               {question.options.map((option) => {
                 const out = struck.includes(option.id) && !revealed;
