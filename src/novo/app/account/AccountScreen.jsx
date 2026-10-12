@@ -193,10 +193,10 @@ const STUDY_FIELDS = ["phase", "exam_type", "target_edition", "exam_date", "dail
 // Aluno com a 2ª fase gravada (de antes de ela ficar "em breve"): o campo mostra a 1ª e o salvamento grava 1.
 const SECOND_PHASE_BECOMES_FIRST = { shown: { phase: "1" }, extra: { phase: 1 } };
 function StudySection() {
-  const { boot } = useSession();
+  const { boot, dupla } = useSession();
   const mobile = useMobile();
   // 2ª fase · prática "em breve" para o aluno (a equipe segue com a opção livre)
-  const phase2Locked = isPhase2Locked(boot.role);
+  const phase2Locked = isPhase2Locked(boot.role, dupla);
   const form = useProfileForm(STUDY_FIELDS, phase2Locked && boot.profile.phase === 2 ? SECOND_PHASE_BECOMES_FIRST : undefined);
   const [errors, setErrors] = React.useState({});
   const { draft, set } = form;
@@ -404,12 +404,12 @@ function PrivacySection() {
 }
 
 export function AccountScreen({ go }) {
-  const { boot, user, signOut } = useSession();
+  const { boot, user, signOut, dupla } = useSession();
   const mobile = useMobile();
   const [section, setSection] = React.useState("conta");
   const profile = boot.profile;
   const plan = planBadge(boot.subscription, boot.role, Boolean(boot.reviewer_areas?.length));
-  const phase2Locked = isPhase2Locked(boot.role); // 2ª fase "em breve" para o aluno: o selo mostra a 1ª mesmo se a 2ª estiver gravada
+  const phase2Locked = isPhase2Locked(boot.role, dupla); // 2ª fase "em breve" para o aluno: o selo mostra a 1ª mesmo se a 2ª estiver gravada
   const goal = profile.target_edition ? `Meta: ${profile.exam_type === "ENAMED" ? "ENAMED" : "Revalida INEP"} ${profile.target_edition}` : null;
 
   return (

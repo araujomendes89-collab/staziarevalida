@@ -50,13 +50,14 @@ vi.mock("../novo/app/admin/AdminScreen.jsx", async () => ({
 }));
 vi.mock("../novo/prototype/Phase2.jsx", () => ({
   Home2: () => <div data-testid="tela-home2" />,
-  Stations: () => <div data-testid="tela-estacoes" />,
   Station: () => <div data-testid="tela-estacao" />,
   Peps: () => <div data-testid="tela-peps" />,
   Perf2: () => <div data-testid="tela-desempenho2" />,
   SimPatient: () => <div data-testid="tela-paciente" />,
 }));
-vi.mock("../novo/prototype/Match.jsx", () => ({ Pair: () => <div data-testid="tela-dupla" /> }));
+// Treinamento em Dupla: o Banco de estações e o Praticar são telas reais (Tarefas 7 e 8), sem o aviso de exemplo
+vi.mock("../novo/app/dupla/StationsScreen.jsx", () => ({ StationsScreen: () => <div data-testid="tela-estacoes" /> }));
+vi.mock("../novo/app/dupla/PracticeScreen.jsx", () => ({ PracticeScreen: () => <div data-testid="tela-dupla" /> }));
 vi.mock("../novo/prototype/Theory2.jsx", () => ({ Theory2: () => <div data-testid="tela-teoria2" /> }));
 
 import { App } from "../novo/app/App.jsx";
@@ -96,8 +97,18 @@ describe("Tela em reconstrução (ES06)", () => {
     expect(screen.getByText(/Os itens e números abaixo são exemplos do novo design/)).toBeTruthy();
   });
 
-  it("o banco de estações (que já tinha o aviso) continua com ele, uma vez só", () => {
+  it("o Banco de estações e o Praticar em dupla agora são telas com dados reais: sem o aviso", () => {
     renderApp("/estacoes", "admin");
+    expect(screen.getByTestId("tela-estacoes")).toBeTruthy();
+    expect(screen.queryByText("Tela em reconstrução")).toBeNull();
+    cleanup();
+    renderApp("/dupla", "admin");
+    expect(screen.getByTestId("tela-dupla")).toBeTruthy();
+    expect(screen.queryByText("Tela em reconstrução")).toBeNull();
+  });
+
+  it("as telas da 2ª fase que ainda são de exemplo (Início da 2ª fase, PEPs) seguem com o aviso", () => {
+    renderApp("/peps", "admin");
     expect(screen.getAllByText("Tela em reconstrução")).toHaveLength(1);
   });
 

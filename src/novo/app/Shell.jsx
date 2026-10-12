@@ -8,11 +8,15 @@ import { AppRealIcon } from "./AppIcons.jsx";
 function useMQ(q){const [m,setM]=React.useState(()=>matchMedia(q).matches);React.useEffect(()=>{const mq=matchMedia(q);const f=()=>setM(mq.matches);mq.addEventListener('change',f);return ()=>mq.removeEventListener('change',f);},[q]);return m;}
 function useMobile(){const q='(max-width: 860px)';const [m,setM]=React.useState(()=>matchMedia(q).matches);React.useEffect(()=>{const mq=matchMedia(q);const f=()=>setM(mq.matches);mq.addEventListener('change',f);return ()=>mq.removeEventListener('change',f);},[]);return m;}
 const RAILS={1:[['home','house','Início'],['trilha','route','Trilha'],['questoes','file-question','Questões'],['simulados','timer','Simulados'],['flash','layers','Revisar'],['classificacao','trophy','Ranking'],['desempenho','chart-column','Dados'],['tutor','sparkles','Tutor']],2:[['home2','house','Início'],['teoria2','book-open','Teoria'],['estacoes','clipboard-list','Estações'],['dupla','users','Praticar'],['peps','list-checks','PEPs'],['paciente','message-circle-heart','Paciente IA'],['desempenho2','chart-column','Dados']]};
-const GROUP={erros:'flash',missoes:'trilha',conquistas:'perfil',classificacao:'classificacao'};
+const GROUP={erros:'flash',missoes:'trilha',conquistas:'perfil',classificacao:'classificacao','dupla-perfil':'dupla','dupla-sala':'dupla'};
 const FULL=['sessao','estacao'];
+// A sala do Treinamento em Dupla ocupa a tela toda: sem cabeçalho (bare), sem barra de atalhos e sem menu do celular.
+const NO_DOCK=['dupla-sala'];
+// Telas que pertencem a um item do menu lateral (o item fica marcado).
+const RAIL_ACTIVE={'dupla-perfil':'dupla','dupla-sala':'dupla'};
 const GROUPS={1:[['Início',[['home','house','Início'],['hoje','list-checks','Plano de hoje'],['trilha','route','Trilha']]],['Estudar',[['aulas','tv','Aulas'],['temas','book-open','Grandes Temas'],['atualizacoes','newspaper','Atualizações']]],['Praticar',[['questoes','file-question','Questões'],['simulados','timer','Simulados']]],['Revisar',[['flash','layers','Flashcards'],['erros','notebook-pen','Caderno de erros']]],['Stazia Arena',[['missoes','target','Missões'],['classificacao','trophy','Classificação'],['conquistas','award','Conquistas']]],['Evolução',[['desempenho','chart-column','Desempenho'],['analise','chart-pie','Análise'],['plano','calendar-days','Planejamento']]],['Tutor IA',[['tutor','sparkles','Nexus']]]],
 2:[['Menu',[['home2','house','Início'],['teoria2','book-open','Teoria'],['estacoes','clipboard-list','Estações'],['dupla','users','Praticar'],['peps','list-checks','Meus PEPs']]],['Treino com IA',[['paciente','message-circle-heart','Paciente simulado']]],['Análise',[['desempenho2','chart-column','Desempenho']]]]};
-function Rail({route,go,phase,collapsed,setCollapsed,info,theme}){
+function Rail({route,go,phase,collapsed,setCollapsed,info,theme,soon=[]}){
   const badgeOf={flash:info.flashcardsDue||null};
   const G=GROUPS[phase];const W=collapsed?76:264;
   const [txt,setTxt]=React.useState(!collapsed);const [hov,setHov]=React.useState(false);
@@ -20,19 +24,20 @@ function Rail({route,go,phase,collapsed,setCollapsed,info,theme}){
   const sub=['aulas','temas','atualizacoes'];const [openSub,setOpenSub]=React.useState(sub.includes(route));
   React.useEffect(()=>{if(sub.includes(route))setOpenSub(true);},[route]);
   const listRef=React.useRef(null);const [ind,setInd]=React.useState(null);
-  const activeKey=route; // sem submenu: Aulas, Grandes Temas e Atualizações são itens do grupo Estudar
+  const activeKey=RAIL_ACTIVE[route]??route; // sem submenu: Aulas, Grandes Temas e Atualizações são itens do grupo Estudar
   React.useLayoutEffect(()=>{const el=listRef.current&&listRef.current.querySelector('[data-key="'+activeKey+'"]');if(!el){setInd(null);return;}const m=()=>{const L=listRef.current;if(!L)return;setInd({top:el.getBoundingClientRect().top-L.getBoundingClientRect().top+L.scrollTop,h:el.offsetHeight});};m();const t=setTimeout(m,340);return ()=>clearTimeout(t);},[activeKey,collapsed,openSub,txt,phase]);
   const fade={opacity:txt?1:0,transition:'opacity 180ms ease',whiteSpace:'nowrap'};
-  const row=(key,ic,l,{badge,onClick,small,chev,open}={})=>{const on=key===activeKey;return <button key={key} data-key={key} type="button" onClick={onClick||(()=>go(key))} aria-current={on?'page':undefined} title={collapsed?l:undefined} aria-label={collapsed?l:undefined}
-    className="smr-row" style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',gap:12,width:'100%',height:small?36:40,flex:'none',padding:collapsed?0:(small?'0 16px 0 48px':'0 20px'),justifyContent:collapsed?'center':'flex-start',border:0,background:'transparent',color:on?'var(--action-on-primary)':'var(--text-secondary)',font:(on?'700':'500')+' '+(small?13.5:14)+'px var(--font-sans)',cursor:'pointer',transition:'color 250ms'}}>
+  const row=(key,ic,l,{badge,onClick,small,chev,open}={})=>{const on=key===activeKey;const off=soon.includes(key);return <button key={key} data-key={key} type="button" onClick={off?undefined:(onClick||(()=>go(key)))} aria-current={on?'page':undefined} aria-disabled={off?'true':undefined} title={off?l+' · Em breve':(collapsed?l:undefined)} aria-label={collapsed?(off?l+', em breve':l):undefined}
+    className={off?'smr-row smr-off':'smr-row'} style={{position:'relative',zIndex:1,display:'flex',alignItems:'center',gap:12,width:'100%',height:small?36:40,flex:'none',padding:collapsed?0:(small?'0 16px 0 48px':'0 20px'),justifyContent:collapsed?'center':'flex-start',border:0,background:'transparent',color:on?'var(--action-on-primary)':'var(--text-secondary)',font:(on?'700':'500')+' '+(small?13.5:14)+'px var(--font-sans)',cursor:off?'not-allowed':'pointer',opacity:off?0.55:1,transition:'color 250ms'}}>
     {!small&&<span className="smr-ic"><span className="o" style={{display:'inline-flex'}}><Icon name={ic} size={19}/></span><span className="c">{AppRealIcon({name:ic})||<Icon name={ic} size={19}/>}</span></span>}
     {!collapsed&&<span style={{...fade,flex:1,textAlign:'left',overflow:'hidden'}}>{l}</span>}
+    {off&&!collapsed&&<span style={{...fade,flex:'none',font:'600 11px var(--font-sans)',color:'var(--text-tertiary)'}}>Em breve</span>}
     {chev&&!collapsed&&<Icon name="chevron-down" size={16} style={{...fade,transform:open?'rotate(180deg)':'none',transition:'transform 250ms,opacity 180ms'}}/>}
     {badge!=null&&(collapsed?<span style={{position:'absolute',top:8,right:18,width:8,height:8,borderRadius:'50%',background:on?'#fff':'var(--danger-solid)'}}/>:<span style={{...fade,minWidth:20,height:20,padding:'0 6px',borderRadius:999,background:on?'rgba(255,255,255,.25)':'var(--danger-solid)',color:'#fff',font:'700 11px/20px var(--font-sans)',textAlign:'center'}}>{badge}</span>)}
   </button>;};
   const SHORT={'Stazia Arena':'Arena'};const label=t=><div style={{padding:collapsed?'14px 0 6px':'14px 20px 6px',textAlign:collapsed?'center':'left',fontWeight:700,fontSize:collapsed?8.5:10.5,fontFamily:'var(--font-sans)',lineHeight:1.2,letterSpacing:'.1em',textTransform:'uppercase',color:'var(--text-tertiary)',whiteSpace:'nowrap',overflow:'hidden',transition:'font-size 250ms'}}>{collapsed?(SHORT[t]??t):t}</div>;
   return <nav aria-label="Navegação principal" onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)} style={{position:'fixed',left:16,top:16,bottom:16,width:W,zIndex:20,display:'flex',flexDirection:'column',borderRadius:24,background:'color-mix(in oklab,var(--surface-card) 88%,transparent)',backdropFilter:'blur(20px) saturate(1.4)',border:'1px solid var(--border-default)',boxShadow:'var(--shadow-lg)',transition:'width 380ms cubic-bezier(.4,0,.2,1)'}}>
-    <style>{'.smr-row:hover:not([aria-current]){color:var(--text-primary)!important;background:var(--action-ghost-hover)!important}.smr-row:active .smr-ic{transform:scale(.9)}'+RI_CSS+'.smr-ic .o{opacity:0!important}.smr-ic .c{opacity:1!important;transform:none!important}.smr-row:hover .smr-ic .c{transform:scale(1.12)!important}'}</style>
+    <style>{'.smr-row:hover:not([aria-current]):not(.smr-off){color:var(--text-primary)!important;background:var(--action-ghost-hover)!important}.smr-row:not(.smr-off):active .smr-ic{transform:scale(.9)}'+RI_CSS+'.smr-ic .o{opacity:0!important}.smr-ic .c{opacity:1!important;transform:none!important}.smr-row:not(.smr-off):hover .smr-ic .c{transform:scale(1.12)!important}'}</style>
     <div style={{display:'flex',alignItems:'center',gap:8,padding:collapsed?'18px 0 10px':'18px 16px 10px 20px',justifyContent:collapsed?'center':'space-between',minHeight:64}}>
       <button type="button" onClick={()=>go(phase===2?'home2':'home')} aria-label="StaziaMed, início" style={{border:0,background:'none',padding:0,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',minWidth:0,flex:collapsed?'0 0 auto':'1 1 auto'}}>{collapsed?<img src="/novo-assets/logo-mark.png" alt="" style={{height:30}}/>:<img src={theme==='dark'?'/novo-assets/logo-staziamed-revalida-v2-escuro.png':'/novo-assets/logo-staziamed-revalida-v2.png'} alt="StaziaMed Revalida" style={{display:'block',width:'100%',height:'auto',maxWidth:196,...fade}}/>}</button>
       {!collapsed&&<span style={{...fade,position:'relative',display:'inline-flex',color:'var(--text-secondary)'}}><Icon name="bell" size={19}/></span>}
@@ -55,22 +60,23 @@ function Rail({route,go,phase,collapsed,setCollapsed,info,theme}){
 }
 function useNarrowRail(){const q='(max-width: 1200px)';const [m,setM]=React.useState(()=>matchMedia(q).matches);React.useEffect(()=>{const mq=matchMedia(q);const f=()=>setM(mq.matches);mq.addEventListener('change',f);return ()=>mq.removeEventListener('change',f);},[]);return m;}
 function useNarrow(){const q='(max-width: 1180px)';const [m,setM]=React.useState(()=>matchMedia(q).matches);React.useEffect(()=>{const mq=matchMedia(q);const f=()=>setM(mq.matches);mq.addEventListener('change',f);return ()=>mq.removeEventListener('change',f);},[]);return m;}
-function Dock({go,route,phase,info}){
+function Dock({go,route,phase,info,studentPhase2}){
   const narrow=useNarrow();
-  if(FULL.includes(route))return null;
-  const it=phase===2?[['estacao','play','Treinar estação'],['dupla','users','Praticar'],['peps','list-checks','PEPs']]:[['questoes','file-question','Questões'],['flash','layers','Flashcards',info.flashcardsDue?String(info.flashcardsDue):null],['simulados','timer','Simulado']];
+  if(FULL.includes(route)||NO_DOCK.includes(route))return null;
+  // 2ª fase: Treinar estação abre o Banco de estações; PEPs e Paciente simulado ainda são só da equipe
+  const it=phase===2?[['estacoes','play','Treinar estação'],['dupla','users','Praticar'],...(studentPhase2?[]:[['peps','list-checks','PEPs']])]:[['questoes','file-question','Questões'],['flash','layers','Flashcards',info.flashcardsDue?String(info.flashcardsDue):null],['simulados','timer','Simulado']];
   return <div role="toolbar" aria-label="Ações rápidas" style={{position:'fixed',left:0,right:0,marginLeft:'auto',marginRight:'auto',width:'max-content',maxWidth:'calc(100vw - 32px)',bottom:24,display:'flex',whiteSpace:'nowrap',alignItems:'center',gap:2,padding:6,borderRadius:999,background:'var(--navy-900)',boxShadow:'0 18px 40px -12px rgba(13,28,66,.55)',zIndex:30}}>
     {it.map(([id,ic,l,c])=><button key={id} type="button" onClick={()=>go(id)} aria-label={l} title={l} style={{flex:'none',display:'flex',alignItems:'center',gap:8,height:44,padding:narrow?'0 13px':'0 16px',whiteSpace:'nowrap',border:0,borderRadius:999,background:'transparent',color:'#E2E9F5',font:'600 14px var(--font-sans)',cursor:'pointer'}} onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,.1)'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}>{AppRealIcon({name:ic,size:22})||<Icon name={ic} size={18}/>}{!narrow&&l}{c&&<span style={{font:'600 11px var(--font-mono)',background:'rgba(255,255,255,.16)',padding:'2px 7px',borderRadius:9}}>{c}</span>}</button>)}
-    <span style={{width:1,height:24,background:'rgba(255,255,255,.18)',margin:'0 4px'}}/>
-    <button type="button" onClick={()=>go(phase===2?'paciente':'tutor')} style={{flex:'none',display:'flex',alignItems:'center',gap:8,height:44,padding:'0 18px',whiteSpace:'nowrap',border:0,borderRadius:999,background:'var(--teal-400)',color:'var(--navy-950)',font:'700 14px var(--font-sans)',cursor:'pointer'}}>{AppRealIcon({name:'sparkles',size:22})}{phase===2?'Paciente simulado':'Perguntar ao tutor'}</button>
+    {!(phase===2&&studentPhase2)&&<span style={{width:1,height:24,background:'rgba(255,255,255,.18)',margin:'0 4px'}}/>}
+    {!(phase===2&&studentPhase2)&&<button type="button" onClick={()=>go(phase===2?'paciente':'tutor')} style={{flex:'none',display:'flex',alignItems:'center',gap:8,height:44,padding:'0 18px',whiteSpace:'nowrap',border:0,borderRadius:999,background:'var(--teal-400)',color:'var(--navy-950)',font:'700 14px var(--font-sans)',cursor:'pointer'}}>{AppRealIcon({name:'sparkles',size:22})}{phase===2?'Paciente simulado':'Perguntar ao tutor'}</button>}
   </div>;
 }
-function MobileNav({route,go,phase}){
-  if(FULL.includes(route))return null;
-  const it=phase===2?[['home2','house','Início'],['estacoes','clipboard-list','Estações'],['peps','list-checks','PEPs'],['desempenho2','chart-column','Dados']]:[['home','house','Início'],['trilha','route','Trilha'],['classificacao','trophy','Ranking'],['perfil','user','Perfil']];
+function MobileNav({route,go,phase,studentPhase2}){
+  if(FULL.includes(route)||NO_DOCK.includes(route))return null;
+  const it=phase===2?(studentPhase2?[['estacoes','clipboard-list','Estações'],['dupla','users','Praticar']]:[['home2','house','Início'],['estacoes','clipboard-list','Estações'],['peps','list-checks','PEPs'],['desempenho2','chart-column','Dados']]):[['home','house','Início'],['trilha','route','Trilha'],['classificacao','trophy','Ranking'],['perfil','user','Perfil']];
   return <nav aria-label="Navegação principal" style={{position:'fixed',left:14,right:14,bottom:'calc(16px + env(safe-area-inset-bottom))',height:68,borderRadius:999,background:'var(--navy-900)',display:'flex',alignItems:'center',justifyContent:'space-around',padding:'0 8px',boxShadow:'0 18px 40px -12px rgba(13,28,66,.55)',zIndex:30}}>
     {it.map(([id,ic,l],i)=>{const on=route===id||GROUP[route]===id;return <React.Fragment key={id}>{phase===1&&i===2&&<button type="button" onClick={()=>go('questoes')} aria-label="Estudar" style={{width:56,height:56,border:0,borderRadius:'50%',background:'var(--teal-400)',color:'var(--navy-950)',display:'inline-flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Icon name="play" size={24}/></button>}<button type="button" onClick={()=>go(id)} aria-label={l} aria-current={on?'page':undefined} style={{width:52,height:52,border:0,borderRadius:'50%',background:on?'rgba(255,255,255,.1)':'transparent',color:on?'var(--teal-300)':'#93A8D3',display:'inline-flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}>{AppRealIcon({name:ic,size:26})||<Icon name={ic} size={22}/>}</button></React.Fragment>;})}
-    {phase===2&&<button type="button" onClick={()=>go('paciente')} aria-label="Paciente simulado" style={{width:56,height:56,border:0,borderRadius:'50%',background:'var(--teal-400)',color:'var(--navy-950)',display:'inline-flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Icon name="sparkles" size={24}/></button>}
+    {phase===2&&!studentPhase2&&<button type="button" onClick={()=>go('paciente')} aria-label="Paciente simulado" style={{width:56,height:56,border:0,borderRadius:'50%',background:'var(--teal-400)',color:'var(--navy-950)',display:'inline-flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Icon name="sparkles" size={24}/></button>}
   </nav>;
 }
 // phase2Locked: a 2ª fase está "em breve" para o aluno (a equipe segue com acesso): opção apagada, sem clique e com "Em breve" até no celular,
@@ -93,15 +99,16 @@ function Header({title,sub,theme,setTheme,go,mobile,phase,setPhase,phase2Locked,
     </div>
   </header>;
 }
-function AppShell({route,go,theme,setTheme,title,sub,children,bare,phase=1,setPhase,phase2Locked=false,info}){
+// soon: telas que aparecem no menu lateral apagadas, sem clique e com "Em breve"; studentPhase2: aluno com a 2ª fase aberta (atalhos reduzidos)
+function AppShell({route,go,theme,setTheme,title,sub,children,bare,phase=1,setPhase,phase2Locked=false,soon=[],studentPhase2=false,info}){
   const mobile=useMobile();const narrowRail=useNarrowRail();const [pref,setC]=React.useState(()=>localStorage.getItem('smf-col'));const collapsed=pref==null?narrowRail:pref==='1';const setCollapsed=v=>{const x=v?'1':'0';setC(x);localStorage.setItem('smf-col',x);};
   return <div style={{minHeight:'100vh',background:'var(--bg-app)'}}>
-    {!mobile&&!FULL.includes(route)&&<Rail route={route} go={go} phase={phase} collapsed={collapsed} setCollapsed={setCollapsed} info={info} theme={theme}/>}
+    {!mobile&&!FULL.includes(route)&&<Rail route={route} go={go} phase={phase} collapsed={collapsed} setCollapsed={setCollapsed} info={info} theme={theme} soon={phase===2?soon:[]}/>}
     <main style={{marginLeft:mobile||FULL.includes(route)?0:(collapsed?100:288),transition:'margin-left var(--dur-slow) var(--ease-standard)',padding:bare?0:(mobile?'24px 18px 112px':'36px 48px 128px')}}>
       {bare?children:<div style={{maxWidth:1200,margin:'0 auto',display:'flex',flexDirection:'column',gap:24}}>
         <Header title={title} sub={sub} theme={theme} setTheme={setTheme} go={go} mobile={mobile} phase={phase} setPhase={setPhase} phase2Locked={phase2Locked} info={info}/>{children}</div>}
     </main>
-    {mobile?<MobileNav route={route} go={go} phase={phase}/>:<Dock go={go} route={route} phase={phase} info={info}/>}
+    {mobile?<MobileNav route={route} go={go} phase={phase} studentPhase2={studentPhase2}/>:<Dock go={go} route={route} phase={phase} info={info} studentPhase2={studentPhase2}/>}
   </div>;
 }
 export { AppShell, useMobile, useMQ };

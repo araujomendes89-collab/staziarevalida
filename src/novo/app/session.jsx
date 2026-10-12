@@ -31,7 +31,8 @@ function sessionExpiredOnBrowserClose() {
 
 export function SessionProvider({ children }) {
   // status: loading | signed-out | ready | error
-  const [state, setState] = React.useState({ status: "loading", backend: null, user: null, boot: null, error: null });
+  // dupla: o que o Treinamento em Dupla diz sobre o acesso ({ aberto, permitido, planos, equipe }), ou null se não foi possível ler
+  const [state, setState] = React.useState({ status: "loading", backend: null, user: null, boot: null, dupla: null, error: null });
 
   React.useEffect(() => {
     let alive = true;
@@ -43,14 +44,21 @@ export function SessionProvider({ children }) {
         const load = async (user) => {
           if (!alive) return;
           if (!user) {
-            setState({ status: "signed-out", backend, user: null, boot: null, error: null });
+            setState({ status: "signed-out", backend, user: null, boot: null, dupla: null, error: null });
             return;
           }
           try {
-            const boot = await backend.rpc("app_bootstrap");
-            if (alive) setState({ status: "ready", backend, user, boot, error: null });
+            // Os dados de abertura vêm primeiro; o acesso ao Treinamento em Dupla é lido junto e, se falhar (ou não responder),
+            // vira null: o módulo fica fechado, mas o app abre do mesmo jeito.
+            const [boot, dupla] = await Promise.all([
+              backend.rpc("app_bootstrap"),
+              Promise.resolve()
+                .then(() => backend.rpc("app_dupla_access"))
+                .catch(() => null),
+            ]);
+            if (alive) setState({ status: "ready", backend, user, boot, dupla: dupla ?? null, error: null });
           } catch (error) {
-            if (alive) setState({ status: "error", backend, user, boot: null, error });
+            if (alive) setState({ status: "error", backend, user, boot: null, dupla: null, error });
           }
         };
 
