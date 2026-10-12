@@ -28,7 +28,7 @@ let db: PGlite;
 
 async function rpc<T = any>(uid: string | null, fn: string, args: Record<string, unknown> = {}): Promise<T> {
   const keys = Object.keys(args);
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     await tx.exec(`set local role ${uid ? "authenticated" : "anon"}`);
     await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify(uid ? { sub: uid } : {})]);
     const r = await tx.query<{ result: T }>(
@@ -37,6 +37,11 @@ async function rpc<T = any>(uid: string | null, fn: string, args: Record<string,
     );
     return r.rows[0].result;
   });
+  // Leva 3 (Q09): comentário salvo ou importado por uma pessoa espera o revisor médico. Estes testes montam questões cujo comentário
+  // "já está no ar" (é o que as regras de gabarito daqui protegem), então o comentário é dado como aprovado logo depois de gravar.
+  // A regra nova está provada em leva3QComentarioBanco.test.ts.
+  if (fn === "app_admin_save_question" || fn === "app_admin_import_questions") await db.query(`update public.questions set comment_review = null where comment_review is not null`);
+  return result;
 }
 
 async function recusa(p: Promise<unknown>): Promise<{ message: string; code?: string }> {
@@ -421,7 +426,10 @@ describe("Q03 — importação: atualiza só o que veio preenchido, nunca gabari
     await mark(true);
     expect(await update({ needs_image: false })).toMatchObject({ updated: 1 });
     expect((await row(27)).needs_image).toBe(true);
-    // o inverso: desmarcada à mão, o palpite (verdadeiro) não a tira dos treinos
+    // o inverso: desmarcada à mão, o palpite (verdadeiro) não a tira dos treinos. Desde a Q07 (leva 3) só dá para desmarcar
+    // com a figura vinculada: sem ela, desmarcar liberaria a questão sem a imagem
+    await sql(`select public.ch_worker_question_figure_confirm($1, 'image/png', 1000)`, [`questoes/${"b".repeat(32)}.png`]); // o servidor conferiu o arquivo
+    await rpc(EDITOR, "app_admin_set_question_image", { p_question_id: idOf(27), p_image: { path: `questoes/${"b".repeat(32)}.png`, alt: "Eletrocardiograma de 12 derivações em repouso" } });
     await mark(false);
     await update({ needs_image: true });
     expect((await row(27)).needs_image).toBe(false);

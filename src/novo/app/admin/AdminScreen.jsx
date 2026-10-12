@@ -20,7 +20,7 @@ import { isStaffRole } from "./common.jsx";
 const TABS = [
   { value: "geral", label: "Visão geral", icon: "layout-dashboard", staff: true },
   { value: "usuarios", label: "Usuários", icon: "users" },
-  { value: "questoes", label: "Questões", icon: "file-question", staff: true },
+  { value: "questoes", label: "Questões", icon: "file-question", staff: true, reviewer: true },
   { value: "aulas", label: "Aulas", icon: "tv", staff: true },
   { value: "podcasts", label: "Podcasts", icon: "headphones", staff: true },
   { value: "atualizacoes", label: "Atualizações", icon: "refresh-cw", staff: true, reviewer: true },
@@ -40,7 +40,7 @@ export function AdminScreen() {
   const { boot } = useSession();
   const isAdmin = boot.role === "admin";
   const isStaff = isStaffRole(boot.role);
-  // revisor médico sem papel de equipe: só o que tem revisão médica (Atualizações, Estações e Central de Conteúdo)
+  // revisor médico sem papel de equipe: só o que tem revisão médica (Questões: fila de comentários a revisar, Atualizações, Estações e Central de Conteúdo)
   const tabs = TABS.filter((t) => t.admin ? isAdmin : isAdmin || (isStaff && t.staff) || (!isStaff && t.reviewer));
   const [params, setParams] = useSearchParams();
   const tab = tabs.some((t) => t.value === params.get("aba")) ? params.get("aba") : tabs[0].value;
