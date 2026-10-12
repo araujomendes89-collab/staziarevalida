@@ -17,7 +17,7 @@ linhas as (
          'aguardando revisão: ' || count(*) filter (where status = 'awaiting_medical_review')::text as d2,
          'já aprovados: ' || count(*) filter (where status = 'approved')::text as d3,
          'com ajustes: ' || count(*) filter (where status = 'needs_changes')::text || ' · recusados: ' || count(*) filter (where status = 'rejected')::text as d4,
-         'Os já aprovados continuam como estão (nada é retroativo). Os que aguardam FICAM SEM PODER APROVAR até ter fonte oficial: Buscar fonte oficial > Usar > Conferir > revisão médica.' as d5
+         'Os já aprovados continuam aprovados, mas o banco recalcula o selo do texto: eles aparecem como "texto mudou depois da revisão" e precisam de nova revisão antes de publicar. Os que aguardam FICAM SEM PODER APROVAR até ter fonte oficial: Buscar fonte oficial > Usar > Conferir > revisão médica.' as d5
   from public.draft_questions
   union all
   select 11, '1. Rascunhos por área', d.area, count(*)::text, null, null, null from public.draft_questions d group by d.area

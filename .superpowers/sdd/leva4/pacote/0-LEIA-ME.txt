@@ -49,11 +49,14 @@ O QUE CADA PARTE MUDA
 
 EFEITOS QUE VOCÊ VAI VER (leia antes de colar)
   - OS RASCUNHOS ANTIGOS FICAM SEM PODER APROVAR. Os rascunhos que existem hoje (bloco 1 da conferência) citam apostila, que não é fonte oficial.
-    Depois da parte 1 (e do fechamento da parte 3), aprovar exige citação de trecho de fonte OFICIAL vigente (nível A a D), as 4 conferências sem problema no texto atual,
-    o texto que o revisor viu e a marcação "Conferi as fontes citadas". Os que JÁ estão aprovados não mudam (nada é retroativo). Os que aguardam
-    só aprovam depois deste caminho, um por um: cadastrar a fonte oficial > Buscar fonte oficial > Usar estas fontes > (Equilibrar gabarito) >
-    Conferir > revisão do médico. Pedir ajustes e recusar continuam livres. Se o bloco 2 da conferência mostrar ZERO fontes oficiais com trechos,
-    "Gerar" e "Buscar fonte oficial" não produzem nada (e não gastam nada) até alguém cadastrar uma fonte oficial.
+    Depois das partes 1 e 3, aprovar exige citação de trecho de fonte OFICIAL vigente (nível A a D), as 4 conferências sem problema no texto
+    atual, o texto que o revisor viu e a marcação "Conferi as fontes citadas".
+    Os que JÁ estão aprovados continuam aprovados, MAS o banco recalcula o "selo do texto" de todos os rascunhos (a parte 1 faz isso): a
+    aprovação antiga fica marcada "texto mudou depois da revisão" e o revisor precisa aprovar de novo antes de publicar.
+    Os que aguardam só aprovam depois deste caminho, um por um: cadastrar a fonte oficial > Buscar fonte oficial > Usar estas fontes >
+    (Equilibrar gabarito) > Conferir > revisão do médico. Pedir ajustes e recusar continuam livres.
+    Se o bloco 2 da conferência mostrar ZERO fontes oficiais com trechos, "Gerar" e "Buscar fonte oficial" não produzem nada (e não gastam
+    nada) até alguém cadastrar uma fonte oficial.
   - O QUE NASCE DESLIGADO OU VAZIO: nenhuma Questão StaziaMed publicada (a opção do aluno só aparece depois da primeira publicação); nenhuma IA é
     ligada por esta leva (o bloco 4 mostra o que já está ligado na Central de IAs; pedido de análise, de conferência e de geração é recusado em
     português se a IA da função ou o preço dela não estiver cadastrado); nada é aprovado nem publicado sozinho. As ferramentas de IA são só da
