@@ -733,6 +733,124 @@ begin
 end
 $$;
 
+-- ---------------------------------------------------------------- buscar fonte oficial (question_source)
+-- "Buscar fonte oficial": uma tarefa por rascunho e versão (chave qsource:<rascunho>:<hash>). Equipe. Sem decisão clínica ou sem
+-- acervo de fontes oficiais, nada é enfileirado.
+create or replace function public.app_staziamed_source_enqueue(p_draft_id uuid, p_estimate jsonb default '{}'::jsonb) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  d public.draft_questions;
+  v_key text;
+  v_id uuid;
+  v_existing boolean := false;
+begin
+  if (select auth.uid()) is null or not public.is_staff() then
+    raise exception 'Buscar fonte oficial é da equipe (administrador ou editor).' using errcode = '42501';
+  end if;
+  select * into d from public.draft_questions where id = p_draft_id;
+  if not found then raise exception 'Questão não encontrada.' using errcode = 'P0002'; end if;
+  if char_length(btrim(coalesce(d.clinical_decision, ''))) = 0 then raise exception 'Preencha a decisão clínica central' using errcode = '22023'; end if;
+  if public.staziamed_acervo() = 0 then raise exception 'Cadastre fontes oficiais na Central de Conteúdo' using errcode = '55000'; end if;
+  v_key := 'qsource:' || d.id || ':' || d.content_hash;
+  insert into public.ch_jobs (document_id, step, scope_key, idempotency_key, max_attempts)
+  values (null, 'question_source', v_key, v_key, 3)
+  on conflict (idempotency_key) do nothing returning id into v_id;
+  if v_id is null then
+    v_existing := true;
+    update public.ch_jobs set status = 'queued', attempts = 0, error = null, run_after = now()
+     where idempotency_key = v_key and status in ('dead', 'failed') returning id into v_id;
+    if v_id is not null then v_existing := false; else select id into v_id from public.ch_jobs where idempotency_key = v_key; end if;
+  end if;
+  perform public.ch_log('staziamed.source', d.id::text, jsonb_build_object('ja_na_fila', v_existing, 'estimate', coalesce(p_estimate, '{}'::jsonb)));
+  return jsonb_build_object('job_id', v_id, 'ja_na_fila', v_existing);
+end
+$$;
+
+-- A proposta da tarefa (uma por afirmação, com a citação ou "não encontrada"). Hash diferente do atual: não grava e devolve nulo.
+-- As propostas pendentes anteriores deste rascunho ficam obsoletas.
+create or replace function public.ch_worker_save_source_proposal(p_draft_id uuid, p_hash text, p_claims jsonb, p_complete boolean, p_meta jsonb) returns uuid
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  v_id uuid;
+begin
+  if not exists (select 1 from public.draft_questions where id = p_draft_id and content_hash = p_hash) then return null; end if;
+  update public.draft_source_proposals set state = 'obsoleta' where draft_id = p_draft_id and state = 'pendente';
+  insert into public.draft_source_proposals (draft_id, content_hash, claims, complete, meta)
+  values (p_draft_id, p_hash, coalesce(p_claims, '[]'::jsonb), coalesce(p_complete, false), coalesce(p_meta, '{}'::jsonb))
+  returning id into v_id;
+  perform public.draft_event(p_draft_id, 'fonte_proposta', null, null, jsonb_build_object('proposta', v_id, 'completa', coalesce(p_complete, false)));
+  return v_id;
+end
+$$;
+
+-- "Usar estas fontes": só proposta pendente, completa e feita para o texto atual. Troca as citações pelas encontradas (as da
+-- apostila saem do rascunho e ficam só na trilha), volta a "aguardando revisão médica" e zera conferências e revisão.
+create or replace function public.app_draft_source_accept(p_proposal_id uuid) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  p public.draft_source_proposals;
+  d public.draft_questions;
+  v_new jsonb;
+  v_hash text;
+begin
+  if (select auth.uid()) is null or not public.is_staff() then
+    raise exception 'Usar fontes é da equipe (administrador ou editor).' using errcode = '42501';
+  end if;
+  select * into p from public.draft_source_proposals where id = p_proposal_id for update;
+  if not found then raise exception 'Proposta não encontrada.' using errcode = 'P0002'; end if;
+  select * into d from public.draft_questions where id = p.draft_id for update;
+  if p.state <> 'pendente' then raise exception 'Esta proposta já foi decidida ou ficou obsoleta.' using errcode = '22023'; end if;
+  if not p.complete then
+    raise exception 'Proposta incompleta: falta fonte oficial para a decisão clínica ou para algum número.' using errcode = '22023';
+  end if;
+  if p.content_hash is distinct from d.content_hash then
+    raise exception 'O rascunho mudou depois da busca: busque a fonte de novo.' using errcode = '22023';
+  end if;
+  select coalesce(jsonb_agg(c -> 'citation' order by o), '[]'::jsonb) into v_new
+  from jsonb_array_elements(p.claims) with ordinality as e (c, o) where c ->> 'status' = 'encontrada' and jsonb_typeof(c -> 'citation') = 'object';
+  if jsonb_array_length(v_new) = 0 then raise exception 'Proposta sem nenhuma citação.' using errcode = '22023'; end if;
+  perform public.draft_event(d.id, 'fonte_aceita', null, jsonb_build_object('source_citations', d.source_citations), jsonb_build_object('proposta', p.id));
+  update public.draft_questions
+     set source_citations = v_new, status = 'awaiting_medical_review', reviewed_by = null, reviewed_at = null, review_note = null, reviewed_hash = null,
+         similarity_to_official = null, similar_question_id = null, ai_review = case when ai_review is null then null else ai_review - 'pedagogia' end,
+         edited_by = (select auth.uid()), edited_at = now()
+   where id = d.id returning content_hash into v_hash;
+  delete from public.draft_checks where draft_id = d.id;
+  update public.draft_source_proposals set state = 'aceita', decided_by = (select auth.uid()), decided_at = now() where id = p.id;
+  update public.draft_source_proposals set state = 'obsoleta' where draft_id = d.id and state = 'pendente';
+  perform public.ch_log('staziamed.source_accept', d.id::text, jsonb_build_object('proposta', p.id));
+  return jsonb_build_object('draft_id', d.id, 'content_hash', v_hash,
+    'revisar_aplicacao', coalesce(d.update_application ~* 'apostila|curso|sangue nos olhos|atualiza[çc][õo]es 2025-2026', false));
+end
+$$;
+
+create or replace function public.app_draft_source_discard(p_proposal_id uuid) returns boolean
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  p public.draft_source_proposals;
+begin
+  if (select auth.uid()) is null or not public.is_staff() then
+    raise exception 'Descartar proposta é da equipe (administrador ou editor).' using errcode = '42501';
+  end if;
+  select * into p from public.draft_source_proposals where id = p_proposal_id for update;
+  if not found then raise exception 'Proposta não encontrada.' using errcode = 'P0002'; end if;
+  if p.state <> 'pendente' then return false; end if;
+  update public.draft_source_proposals set state = 'descartada', decided_by = (select auth.uid()), decided_at = now() where id = p.id;
+  perform public.ch_log('staziamed.source_discard', p.draft_id::text, jsonb_build_object('proposta', p.id));
+  return true;
+end
+$$;
+revoke execute on function public.app_staziamed_source_enqueue(uuid, jsonb) from public, anon;
+grant execute on function public.app_staziamed_source_enqueue(uuid, jsonb) to authenticated;
+revoke execute on function public.app_draft_source_accept(uuid) from public, anon;
+grant execute on function public.app_draft_source_accept(uuid) to authenticated;
+revoke execute on function public.app_draft_source_discard(uuid) from public, anon;
+grant execute on function public.app_draft_source_discard(uuid) to authenticated;
+
 -- ---------------------------------------------------------------- funções de serviço e de apoio: fechadas para o app
 do $revoke$
 declare f text;

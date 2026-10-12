@@ -38,6 +38,7 @@ import { snapshotPassages } from "./sourceDiff";
 import { Blocked, Fatal } from "./jobErrors";
 import { stepQuestionCheck } from "./questoes/check";
 import { stepQuestionGenerate } from "./questoes/generate";
+import { stepQuestionSource } from "./questoes/source";
 
 const run = promisify(execFile);
 
@@ -1120,11 +1121,6 @@ async function stepSourceSearch(ctx: Ctx): Promise<Step | null> {
   return null;
 }
 
-/** Etapas das Questões StaziaMed que ainda não foram instaladas neste servidor: o trabalho espera, sem gastar tentativa. */
-async function stepQuestionNotInstalled(): Promise<Step | null> {
-  throw new Blocked("Etapa de Questões StaziaMed ainda não instalada neste servidor.");
-}
-
 const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   extract: stepExtract,
   source_index: stepSourceIndex,
@@ -1139,7 +1135,7 @@ const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   source_search: stepSourceSearch,
   question_generate: (ctx) => stepQuestionGenerate(ctx.deps, ctx.job, ctx.metrics),
   question_check: (ctx) => stepQuestionCheck(ctx.deps, ctx.job, ctx.metrics),
-  question_source: stepQuestionNotInstalled,
+  question_source: (ctx) => stepQuestionSource(ctx.deps, ctx.job, ctx.metrics),
 };
 
 /**
