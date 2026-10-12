@@ -9,6 +9,7 @@ import { ASSIST_TEXTS } from "../../../shared/adminAssistant/types";
 import { QUESTOES_SPEC } from "../../../shared/adminAssistant/questoes";
 import { AssistantLayout } from "./assistant/AssistantLayout.jsx";
 import { TabAssistant } from "./assistant/TabAssistant.jsx";
+import { QuestionFigureCard } from "./QuestionFigureCard.jsx";
 import { downloadText, ListRow, LoadError, Loading, messageOf, QUESTION_STATUS_LABEL, TextArea, useDebounced, useLoad } from "./common.jsx";
 
 const PAGE = 50;
@@ -307,6 +308,14 @@ export function QuestionEditor({ id, onClose, onSaved }) {
   };
   const review = form.explanations_review;
   const official = form.official;
+  // Q07: a marca "Cita figura" de uma questão gravada sem figura não pode ser tirada (o banco também recusa): liberaria a questão sem a imagem
+  const figureLocked = !isNew && Boolean(savedForm?.needs_image) && !(form.images?.length > 0);
+  // depois de enviar, trocar ou tirar a figura: só as figuras mudam no formulário (o resto, ainda não salvo, fica como está)
+  const figureChanged = (fresh) => {
+    setForm((f) => ({ ...f, images: fresh?.images ?? [] }));
+    setSavedForm((f) => f && { ...f, images: fresh?.images ?? [] });
+    onSaved();
+  };
   const unsaved = savedForm !== null && JSON.stringify(payloadOf(form)) !== JSON.stringify(payloadOf(savedForm));
   // Q10: salvar com o enunciado ou o texto de uma alternativa mudado tira do ar a análise publicada da questão
   const textChanged = !isNew && savedForm !== null && analysisTextChanged(form, savedForm);
@@ -494,10 +503,17 @@ export function QuestionEditor({ id, onClose, onSaved }) {
           <Checkbox
             label={form.images?.length ? "Cita figura (a imagem está vinculada)" : "Cita uma figura que não está vinculada (fica fora dos treinos)"}
             checked={form.needs_image}
+            disabled={figureLocked}
             onChange={(e) => set({ needs_image: e.target.checked })}
           />
+          {figureLocked && (
+            <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
+              Para tirar esta marca, envie a figura (bloco “Figura da questão”, logo abaixo). Sem a imagem, a questão não vai para os treinos.
+            </div>
+          )}
         </div>
       </Card>
+      <QuestionFigureCard question={form} isNew={isNew} onChanged={figureChanged} />
       <Card>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Comentário</h3>

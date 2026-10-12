@@ -37,6 +37,8 @@ export const ACTION_LABEL = {
   "question.updated": "Questão editada",
   "question.delete": "Questão apagada",
   "question.analysis_unpublished": "Análise da questão tirada do ar",
+  "question.figure_set": "Figura da questão enviada",
+  "question.figure_removed": "Figura da questão retirada",
   "question.official_answer": "Gabarito oficial registrado",
   "question.explanations_reviewed": "Explicações marcadas como revisadas",
   // estações
@@ -296,6 +298,8 @@ const SUMMARY = {
   // apagar: o código e o tema que o banco guardou (a questão já não existe); análise tirada do ar: o texto mudou
   "question.delete": (d, entry) => join([d.code ?? entry.target, d.topic]),
   "question.analysis_unpublished": (d, entry) => `${entry.target}: o enunciado ou o texto de uma alternativa mudou`,
+  "question.figure_set": (d, entry) => join([d.code ?? questionName(entry.target), d.replaced ? "Figura trocada" : "Figura nova", d.alt && `Texto alternativo: ${d.alt}`]),
+  "question.figure_removed": (d, entry) => join([d.code ?? questionName(entry.target), d.needs_image ? "A questão cita uma figura: saiu dos treinos até uma nova figura ser enviada" : "A questão continua nos treinos, sem figura"]),
   "question.official_answer": (d, entry) =>
     join([
       questionName(entry.target),

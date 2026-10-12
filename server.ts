@@ -48,6 +48,7 @@ import { tutorMockRespond } from "./server/tutor/mock";
 import { startVoiceSweeper } from "./server/tutor/realtime";
 import { createPlayRouter, startPlayScheduler } from "./server/play/router";
 import { createLessonsRouter, lessonsStorage } from "./server/lessons/router";
+import { createQuestionFiguresRouter, questionFiguresStorage } from "./server/questions/figures";
 import { createAdminAssistantRouter } from "./server/adminAssistant/router";
 import { mockAdminAssist } from "./server/adminAssistant/mock";
 import { createPodcastsRouter, podcastsStorage } from "./server/podcasts/router";
@@ -122,6 +123,8 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   app.use("/api/play", createPlayRouter(hub.deps ? { db: hub.deps.db, log: (m: string) => console.log(m) } : null));
   // Aulas: slides e áudios ficam no depósito privado; o banco decide quem vê
   app.use("/api/lessons", createLessonsRouter(hub.deps ? { db: hub.deps.db, storage: lessonsStorage(hub.deps.db.mode), log: (m: string) => console.log(m) } : null, hub.pending));
+  // Figuras das questões (PNG/JPG, até 5 MB, uma por questão): depósito privado; o banco decide quem envia (equipe) e quem vê
+  app.use("/api/question-figures", createQuestionFiguresRouter(hub.deps ? { db: hub.deps.db, storage: questionFiguresStorage(hub.deps.db.mode), log: (m: string) => console.log(m) } : null, hub.pending));
   // Assistente de IA das abas da Administração: IA pelo maestro; a simulação só existe com o banco de desenvolvimento
   app.use("/api/admin-assistant", createAdminAssistantRouter(hub.deps ? { db: hub.deps.db, embedder: hub.deps.embedder ?? null, log: (m: string) => console.log(m), mockRespond: hub.deps.db.mode === "dev" ? mockAdminAssist : undefined } : null, hub.pending));
   // Podcasts (Ana e Bruno) a partir dos materiais: fontes, roteiro com IA, revisão humana, áudio e publicação
