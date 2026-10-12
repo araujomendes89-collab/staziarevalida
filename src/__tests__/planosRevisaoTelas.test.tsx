@@ -8,7 +8,7 @@
 import React from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 
 const session: { boot: any } = { boot: null };
 const backend: any = { rpc: vi.fn() };
@@ -67,6 +67,29 @@ describe("Achado 5 — Conta: benefícios do Elite acompanham o plano", () => {
     expect(await screen.findByText("Voz do Tutor: até 90 minutos por dia")).toBeTruthy();
     session.boot = bootOf(ELITE_CANCELADO);
     r.rerender(<AccountScreen go={vi.fn()} />);
+    await waitFor(() => expect(screen.queryByText("Benefícios do seu plano Elite")).toBeNull());
+  });
+
+  it("Elite que vence com a tela aberta: no instante do vencimento a consulta é refeita e o benefício sai", async () => {
+    const end = Date.now() + 400;
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn !== "app_my_benefits") return null;
+      return Date.now() < end ? { elite: true, voice_daily_minutes: 90, station_feedback: false } : { elite: false, voice_daily_minutes: null, station_feedback: false };
+    });
+    session.boot = bootOf({ ...ELITE, current_period_end: iso(end) }, { has_pro: true });
+    render(<AccountScreen go={vi.fn()} />);
+    expect(await screen.findByText("Voz do Tutor: até 90 minutos por dia")).toBeTruthy();
+    await waitFor(() => expect(screen.queryByText("Benefícios do seu plano Elite")).toBeNull(), { timeout: 3000 });
+  });
+
+  it("Elite: ao voltar para a aba a consulta é refeita", async () => {
+    let elite = true;
+    backend.rpc.mockImplementation(async (fn: string) => (fn === "app_my_benefits" ? { elite, voice_daily_minutes: elite ? 90 : null, station_feedback: false } : null));
+    session.boot = bootOf(ELITE, { has_pro: true });
+    render(<AccountScreen go={vi.fn()} />);
+    expect(await screen.findByText("Voz do Tutor: até 90 minutos por dia")).toBeTruthy();
+    elite = false;
+    fireEvent.focus(window);
     await waitFor(() => expect(screen.queryByText("Benefícios do seu plano Elite")).toBeNull());
   });
 
@@ -133,6 +156,31 @@ describe("Achado 6 — site novo + SQL antigo: as telas não prometem o que o ba
     expect(await screen.findByText(/Hoje todo cadastro novo recebe o teste, com esta chave ligada ou desligada\./)).toBeTruthy();
     expect(screen.queryByText("Cadastro sem teste")).toBeNull();
     expect(screen.queryByText(/entra sem teste/)).toBeNull();
+  });
+
+  it("Planos: banco que não respondeu por outro motivo (rede) não afirma nem a regra nova nem a antiga", async () => {
+    let release: (v?: unknown) => void = () => {};
+    const gate = new Promise((r) => (release = r));
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_admin_signup_trial_rule") {
+        await gate; // enquanto confere
+        throw new Error("Failed to fetch");
+      }
+      if (fn === "app_admin_plans") return [{ code: "trial", name: "Teste grátis", description: null, price_cents: 0, billing_period: "monthly", features: [], active: false }];
+      return null;
+    });
+    render(<AdminPlans />);
+    expect(await screen.findByText("Conferindo…")).toBeTruthy(); // ainda conferindo
+    expect(screen.queryByText(/Hoje todo cadastro novo recebe o teste/)).toBeNull();
+    expect(screen.queryByText(/entra sem teste/)).toBeNull();
+    expect(screen.queryByText("Cadastro sem teste")).toBeNull();
+    release();
+    await waitFor(() => expect(backend.rpc.mock.calls.some((c: any[]) => c[0] === "app_admin_signup_trial_rule")).toBe(true));
+    await new Promise((r) => setTimeout(r, 30)); // a falha chegou: continua sem afirmar nada
+    expect(screen.getByText("Conferindo…")).toBeTruthy();
+    expect(screen.queryByText(/Hoje todo cadastro novo recebe o teste/)).toBeNull();
+    expect(screen.queryByText(/entra sem teste/)).toBeNull();
+    expect(screen.queryByText("Cadastro sem teste")).toBeNull();
   });
 
   it("Planos: com a regra no banco, a chave desligada diz 'Cadastro sem teste'", async () => {

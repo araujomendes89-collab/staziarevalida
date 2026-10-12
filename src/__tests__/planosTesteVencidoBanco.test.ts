@@ -201,6 +201,13 @@ describe("PL02 — permissões das funções novas", () => {
     expect(await podeChamar("public.simulado_gate()")).toEqual({ anon: false, authenticated: true });
   });
 
+  it("app_start_session segue rodando como a própria pessoa (sem security definer), como a versão que já está em produção", async () => {
+    const r = await db.query<{ definer: boolean }>(`select prosecdef as definer from pg_proc where oid = 'public.app_start_session(text, jsonb, integer, integer)'::regprocedure`);
+    expect(r.rows[0].definer).toBe(false);
+    const antes = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/20261003001700_question_engine.sql"), "utf8");
+    expect(/create or replace function public\.app_start_session[\s\S]*?security definer[\s\S]*?as \$\$/.test(antes.slice(antes.indexOf("function public.app_start_session"), antes.indexOf("as $$", antes.indexOf("function public.app_start_session"))))).toBe(false);
+  });
+
   it("a trava do simulado só fala da própria pessoa: sem texto para quem tem acesso", async () => {
     expect(await rpc(PRO, "simulado_gate")).toBeNull();
     expect(await rpc(VENCIDO, "simulado_gate")).toBe(TESTE_ACABOU);

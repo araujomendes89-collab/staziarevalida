@@ -126,25 +126,29 @@ function toCents(text) {
 /** Prévia do preço que vai ser salvo ("R$ 129,90"), para o erro de digitação aparecer antes de salvar. */
 const pricePreview = (cents) => (cents == null || Number.isNaN(cents) ? undefined : `Vai salvar: R$ ${(cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
-// O banco já tem a regra "Oferecer teste grátis no cadastro vale de verdade" (migração 9732)? Enquanto não responde ou se a função não
-// existe (banco ainda sem a 9732), a tela mantém o texto de antes e NÃO promete o que o banco não faz.
+// O banco já tem a regra "Oferecer teste grátis no cadastro vale de verdade" (migração 9732)? Três respostas possíveis:
+//   "nova"        - o banco confirmou que a chave vale de verdade;
+//   "antiga"      - o banco comprovadamente NÃO tem a regra (a função não existe, ou ela diz que não vale): comportamento de antes;
+//   "desconhecida" - ainda conferindo, ou a pergunta falhou por outro motivo (rede, sessão): a tela NÃO afirma nenhum dos dois comportamentos.
+const MISSING_FUNCTION = /could not find the function|schema cache|does not exist|PGRST202|42883/i;
 function useSignupTrialRule() {
   const { backend } = useSession();
-  const [applies, setApplies] = React.useState(false);
+  const [rule, setRule] = React.useState("desconhecida");
   React.useEffect(() => {
     let alive = true;
+    setRule("desconhecida");
     Promise.resolve()
       .then(() => backend.rpc("app_admin_signup_trial_rule"))
-      .then((r) => alive && setApplies(r?.applies === true))
-      .catch(() => alive && setApplies(false));
+      .then((r) => alive && setRule(r?.applies === true ? "nova" : r && typeof r === "object" ? "antiga" : "desconhecida"))
+      .catch((error) => alive && setRule(MISSING_FUNCTION.test(String(error?.message ?? error)) ? "antiga" : "desconhecida"));
     return () => {
       alive = false;
     };
   }, [backend]);
-  return applies;
+  return rule;
 }
 
-function PlanEditor({ plan, onSaved, signupRule = false }) {
+function PlanEditor({ plan, onSaved, signupRule = "desconhecida" }) {
   const { backend } = useSession();
   const [form, setForm] = React.useState({
     name: plan.name,
@@ -187,7 +191,7 @@ function PlanEditor({ plan, onSaved, signupRule = false }) {
       <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 16 }} noValidate>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <h3 style={{ margin: 0, font: "var(--type-h4)" }}>{PLAN_LABEL[plan.code]}</h3>
-          <Badge tone={plan.active ? "success" : "neutral"}>{plan.active ? (trial ? "Oferecido no cadastro" : "Marcado para venda") : trial && signupRule ? "Cadastro sem teste" : "Fora de venda"}</Badge>
+          <Badge tone={plan.active ? "success" : "neutral"}>{plan.active ? (trial ? "Oferecido no cadastro" : "Marcado para venda") : trial && signupRule === "nova" ? "Cadastro sem teste" : trial && signupRule === "desconhecida" ? "Conferindo…" : "Fora de venda"}</Badge>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
           <TextField label="Nome exibido" value={form.name} maxLength={60} onChange={(e) => set({ name: e.target.value })} />
@@ -196,7 +200,7 @@ function PlanEditor({ plan, onSaved, signupRule = false }) {
         </div>
         <TextArea label="Descrição" rows={2} maxLength={400} value={form.description} onChange={(description) => set({ description })} />
         <TextArea label="Recursos incluídos (um por linha)" rows={4} value={form.features} onChange={(features) => set({ features })} hint="Até 20 itens. Ficam guardados para a futura tela de planos do aluno." />
-        <Switch label={trial ? "Oferecer teste grátis no cadastro" : "Marcar para venda"} description={trial ? (signupRule ? "Ligado: quem se cadastrar ganha o teste grátis pelos dias de Configurações. Desligado: quem se cadastrar depois entra sem teste, só com questões e flashcards, até a equipe liberar um plano ou um teste em Usuários. Quem já está em teste não muda." : "Os dias de teste ficam em Configurações. Hoje todo cadastro novo recebe o teste, com esta chave ligada ou desligada.") : "Só com preço definido. Ainda não aparece para os alunos."} checked={form.active} onChange={(e) => set({ active: e.target.checked })} />
+        <Switch label={trial ? "Oferecer teste grátis no cadastro" : "Marcar para venda"} description={trial ? (signupRule === "nova" ? "Ligado: quem se cadastrar ganha o teste grátis pelos dias de Configurações. Desligado: quem se cadastrar depois entra sem teste, só com questões e flashcards, até a equipe liberar um plano ou um teste em Usuários. Quem já está em teste não muda." : signupRule === "antiga" ? "Os dias de teste ficam em Configurações. Hoje todo cadastro novo recebe o teste, com esta chave ligada ou desligada." : "Os dias de teste ficam em Configurações. Conferindo como esta chave funciona hoje…") : "Só com preço definido. Ainda não aparece para os alunos."} checked={form.active} onChange={(e) => set({ active: e.target.checked })} />
         {state.error && <Banner tone="danger">{state.error}</Banner>}
         <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
           {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Plano salvo.</span>}

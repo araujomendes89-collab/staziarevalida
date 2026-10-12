@@ -84,8 +84,10 @@ describe("PL06 — Registro", () => {
   const entry = (active: boolean) => ({ action: "plan.save", target: "trial", actor: "master@teste.dev", details: { code: "trial", active } });
   it("diz em português se o cadastro passou a oferecer ou não o teste grátis", () => {
     expect(auditLabel(entry(false))).toBe("Plano editado");
-    expect(auditSummary(entry(true))).toBe("Teste grátis · oferecido no cadastro");
-    expect(auditSummary(entry(false))).toBe("Teste grátis · NÃO oferecido no cadastro (cadastro novo sem teste)");
+    expect(auditSummary(entry(true))).toBe("Teste grátis · oferta de teste no cadastro ligada");
+    // o resumo é de um registro antigo: diz só o que foi feito, sem afirmar o que o cadastro faz hoje
+    expect(auditSummary(entry(false))).toBe("Teste grátis · oferta de teste no cadastro desligada");
+    expect(auditSummary(entry(false))).not.toMatch(/sem teste/);
     // os outros planos seguem como antes
     expect(auditSummary({ action: "plan.save", target: "pro", details: { active: true } })).toBe("Pro · marcado para venda");
   });

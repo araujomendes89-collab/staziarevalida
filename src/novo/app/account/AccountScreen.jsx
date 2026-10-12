@@ -432,17 +432,41 @@ export function AccountScreen({ go }) {
   const isElite = boot.subscription?.plan === "elite";
   // refaz a consulta quando o plano, a situação ou a data do plano pagão mudam (ex.: Elite cancelado ou vencido), e apaga o que estava na tela
   const eliteKey = [boot.subscription?.plan, boot.subscription?.status, boot.subscription?.current_period_end].join("|");
+  // o plano mudou: o que estava na tela sai até o banco responder de novo
   React.useEffect(() => {
     setBenefits(null);
+  }, [eliteKey]);
+  // "tick" pede uma nova consulta sem mudar o plano: no instante em que o plano pago vence (pelo relógio) e ao voltar para a aba
+  const [tick, setTick] = React.useState(0);
+  const periodEnd = boot.subscription?.current_period_end;
+  React.useEffect(() => {
+    if (!isElite) return undefined;
+    const again = () => setTick((n) => n + 1);
+    const onVisible = () => {
+      if (document.visibilityState !== "hidden") again();
+    };
+    window.addEventListener("focus", again);
+    document.addEventListener("visibilitychange", onVisible);
+    // o temporizador do navegador aceita no máximo ~24,8 dias: se o vencimento é mais longe, acorda antes e agenda de novo
+    const end = periodEnd ? new Date(periodEnd).getTime() : NaN;
+    const wait = end - Date.now() + 1000;
+    const timer = Number.isFinite(wait) && wait > 0 ? window.setTimeout(again, Math.min(wait, 2_000_000_000)) : null;
+    return () => {
+      window.removeEventListener("focus", again);
+      document.removeEventListener("visibilitychange", onVisible);
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [isElite, periodEnd, tick]);
+  React.useEffect(() => {
     if (!isElite || !backend) return undefined;
     let alive = true;
     Promise.resolve(backend.rpc("app_my_benefits"))
       .then((result) => alive && setBenefits(result ?? null))
-      .catch(() => {}); // sem o aviso dos benefícios a Conta funciona igual
+      .catch(() => alive && setBenefits(null)); // sem o aviso dos benefícios a Conta funciona igual
     return () => {
       alive = false;
     };
-  }, [backend, isElite, eliteKey]);
+  }, [backend, isElite, eliteKey, tick]);
   const mobile = useMobile();
   const [section, setSection] = React.useState("conta");
   const profile = boot.profile;

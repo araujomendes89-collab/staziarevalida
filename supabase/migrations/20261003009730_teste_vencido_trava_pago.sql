@@ -123,6 +123,10 @@ revoke execute on function public.simulado_gate() from public, anon;
 grant execute on function public.simulado_gate() to authenticated;
 
 -- Igual ao de …1700_question_engine (a mais nova); só ganha a trava do simulado logo depois de conferir o tipo.
+-- SEM "security definer" DE PROPÓSITO: a versão em produção (…1700_question_engine, antes dela …0700_practice_api) também roda como a
+-- própria pessoa (security invoker, o padrão). Assim as regras de leitura do banco (practice_pool, question_equivalents) e de gravação
+-- (practice_sessions, só da própria pessoa) continuam valendo como hoje; mudar para definer as contornaria. Por isso a trava do simulado
+-- fica numa função separada (simulado_gate, definer), que esta chama.
 create or replace function public.app_start_session(
   p_kind text,
   p_filters jsonb,

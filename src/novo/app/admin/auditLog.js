@@ -280,7 +280,7 @@ const SUMMARY = {
   "user.delete": (d) => d.email,
   "plan.save": (d, entry) =>
     entry.target === "trial"
-      ? `${PLAN_LABEL.trial} · ${d.active ? "oferecido no cadastro" : "NÃO oferecido no cadastro (cadastro novo sem teste)"}`
+      ? `${PLAN_LABEL.trial} · ${d.active ? "oferta de teste no cadastro ligada" : "oferta de teste no cadastro desligada"}`
       : `${PLAN_LABEL[entry.target] ?? entry.target}${d.active ? " · marcado para venda" : ""}`,
   "plan.benefits": (d) => {
     const to = d.to ?? {};
