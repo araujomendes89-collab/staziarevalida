@@ -82,6 +82,8 @@ export interface Entitlement {
   can_use: boolean;
   can_text: boolean;
   block_reason: string | null;
+  /** Bloqueado porque a conta não tem plano pago nem teste grátis valendo e nunca começou o teste do Tutor (PL02, …9730). */
+  plan_locked?: boolean;
 }
 
 interface Memory {
@@ -167,6 +169,10 @@ export function seededRandom(seed: string) {
 const STATE_PT: Record<string, string> = { open: "aberta", answered: "respondida", revealed: "revelada", none: "sem questão" };
 
 export const TRIAL_OVER = "Seu teste grátis do Tutor terminou. O Tutor continua nos planos pagos.";
+/** Conta sem plano pago e sem teste grátis valendo (PL02): o Tutor faz parte dos planos pagos; questões e flashcards seguem abertos. */
+export const PLAN_LOCKED = "Seu teste grátis terminou. O Tutor faz parte dos planos pagos; as questões e os flashcards continuam abertos. A assinatura pelo app ainda não está disponível.";
+/** Aviso de Tutor bloqueado: o da conta sem teste (PL02) quando o banco avisa `plan_locked`, senão o do fim do teste do Tutor. */
+export const trialOverMessage = (e?: { plan_locked?: boolean } | null) => (e?.plan_locked ? PLAN_LOCKED : TRIAL_OVER);
 export const textLimitMessage = (e: Pick<Entitlement, "mode" | "text">) =>
   `Você chegou ao limite de ${e.text.limit} interações de hoje${e.mode === "trial" ? " no teste grátis" : ""}. Amanhã tem mais.`;
 
@@ -284,7 +290,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     const play = await deps.db.service<PlayContext | null>("ch_worker_tutor_play_context", { p_user: userId }).catch(() => null);
     const ent = ctx.entitlement;
     if (!ent.enabled) throw new TutorError("O Tutor ainda não está ligado.", 503);
-    if (ent.mode === "blocked") throw new TutorError(TRIAL_OVER, 403);
+    if (ent.mode === "blocked") throw new TutorError(trialOverMessage(ent), 403);
     if (ctx.session.status !== "active") throw new TutorError("Esta conversa foi encerrada. Abra uma nova.", 409);
     const voiceTurn = Boolean(action.voiceCallId);
     // a voz ao vivo é cobrada pelo tempo; o turno da Nexus (voz do professor) gasta 1 interação de texto
@@ -426,7 +432,7 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     if (charged) {
       const reserved = await deps.db.service<{ ok: boolean; reason?: string; reservation?: number; entitlement?: Entitlement }>("ch_worker_tutor_text_reserve", { p_user: userId, p_session_id: sessionId });
       if (!reserved.ok) {
-        if (reserved.reason === "trial_expired") throw new TutorError(TRIAL_OVER, 403);
+        if (reserved.reason === "trial_expired") throw new TutorError(trialOverMessage(reserved.entitlement ?? ent), 403);
         if (reserved.reason === "disabled") throw new TutorError("O Tutor ainda não está ligado.", 503);
         throw new TutorError(textLimitMessage(reserved.entitlement ?? ent), 429);
       }

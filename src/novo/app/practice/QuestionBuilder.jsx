@@ -6,6 +6,7 @@ import { Badge, Banner, Button, Card, Chip, EmptyState, Icon, SegmentedControl, 
 import { IconTile } from "../../prototype/RealIcons.jsx";
 import { useMobile } from "../Shell.jsx";
 import { useSession } from "../session.jsx";
+import { isPlanLockMessage, usePlanLock } from "../plan/planAccess.js";
 import "./practice.css";
 import { AREAS, SIM_MAX_MINUTES, areaLabel, examLabel, formatClock, formatMinutes, formatWhen, paceLabel, parseDuration, percent } from "./format.js";
 
@@ -84,6 +85,9 @@ export function QuestionBuilder({ go, mode }) {
   const { backend } = useSession();
   const mobile = useMobile();
   const sim = mode === "sim";
+  // Teste grátis terminado (ou sem plano pago): simulado completo fica nos planos pagos; o treino de questões segue aberto (PL02).
+  const planLock = usePlanLock();
+  const lock = sim ? planLock : null;
   const kind = sim ? "simulado" : "questoes";
 
   // O endereço pode trazer um ponto de partida (ex.: tema prioritário escolhido no Início).
@@ -177,8 +181,8 @@ export function QuestionBuilder({ go, mode }) {
         p_time_limit_seconds: limitSeconds,
       });
       go("sessao", { s: started.session_id });
-    } catch {
-      setError("Não foi possível iniciar. Ajuste os filtros e tente de novo.");
+    } catch (e) {
+      setError(isPlanLockMessage(e?.message) ? String(e.message) : "Não foi possível iniciar. Ajuste os filtros e tente de novo.");
       setStarting(false);
     }
   };
@@ -196,6 +200,13 @@ export function QuestionBuilder({ go, mode }) {
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: mobile ? "minmax(0,1fr)" : "minmax(0,1fr) 340px", gap: 24, alignItems: "start" }}>
+      {lock && (
+        <div style={{ gridColumn: "1 / -1" }}>
+          <Banner tone="warning" icon="lock" title={lock.title}>
+            {lock.text}
+          </Banner>
+        </div>
+      )}
       <Card style={{ borderRadius: 24 }} padding={mobile ? 22 : 32}>
         <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
           {sim && (
@@ -322,7 +333,7 @@ export function QuestionBuilder({ go, mode }) {
             </div>
           )}
           <div style={{ marginTop: 20 }}>
-            <Button size="lg" fullWidth iconRight="arrow-right" onClick={start} loading={starting} disabled={!available || customInvalid}>
+            <Button size="lg" fullWidth iconRight="arrow-right" onClick={start} loading={starting} disabled={!available || customInvalid || Boolean(lock)}>
               {sim ? "Iniciar simulado" : "Começar treino"}
             </Button>
           </div>

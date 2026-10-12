@@ -5,9 +5,9 @@
 import React from "react";
 import { Banner, Button, Card, EmptyState, Icon, TopicRow } from "../../ds";
 import { useSession } from "../session.jsx";
-import { isStaffRole } from "../admin/AdminScreen.jsx";
 import { areaLabel, formatClock, percent } from "../practice/format.js";
 import { KIND_LABEL, reasonText, trialDaysLeft, trialTitle } from "./plan.js";
+import { hasFullAccess, usePlanLock } from "../plan/planAccess.js";
 import { PlayError, PlayHeader, PlayLoading, PlayLower, TrailPreview, usePlayHome } from "../play/PlayDashboard.jsx";
 
 const DIAGNOSTIC_SIZE = 10;
@@ -20,17 +20,27 @@ const trialEnding = (trial) => {
 };
 
 function TrialBanner({ trial, attempts, go }) {
+  // Teste que acabou E o banco confirmou que a conta está sem acesso pago: avisa o que fica nos planos pagos e o que segue aberto (PL02).
+  // Sem botão: ainda não há tela de assinatura. Sem a confirmação do banco (regra ainda não aplicada), fica como antes.
+  const lock = usePlanLock();
+  const over = Boolean(lock) && trialDaysLeft(trial) === null;
   return (
     <Banner
       tone={trialEnding(trial) ? "warning" : "brand"}
       title={trialTitle(trial)}
       action={
-        <Button size="sm" variant="secondary" onClick={() => go("planos")}>
-          Ver planos
-        </Button>
+        over ? undefined : (
+          <Button size="sm" variant="secondary" onClick={() => go("planos")}>
+            Ver planos
+          </Button>
+        )
       }
     >
-      {attempts === 0 ? "Você ainda não respondeu nenhuma questão." : `Você respondeu ${attempts} ${attempts === 1 ? "questão" : "questões"} até agora.`}
+      {over
+        ? lock.text
+        : attempts === 0
+          ? "Você ainda não respondeu nenhuma questão."
+          : `Você respondeu ${attempts} ${attempts === 1 ? "questão" : "questões"} até agora.`}
     </Banner>
   );
 }
@@ -262,8 +272,8 @@ export function HomeScreen({ go, mobile }) {
   }
 
   const { plan } = data;
-  // equipe (administrador ou editor) tem acesso completo: sem aviso de teste grátis
-  const home = isStaffRole(boot.role) ? { ...data.home, trial: null } : data.home;
+  // equipe (administrador ou editor) e revisor médico têm acesso completo: sem aviso de teste grátis
+  const home = hasFullAccess(boot) ? { ...data.home, trial: null } : data.home;
   const startDiagnostic = () => {
     if (home.open_session) return go("sessao", { s: home.open_session.id });
     const task = plan.tasks.find((t) => t.ref?.reason === "diagnostic");

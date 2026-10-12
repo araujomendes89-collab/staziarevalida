@@ -8,6 +8,7 @@ import { isStaffRole } from "../admin/AdminScreen.jsx";
 import { isPhase2Locked, paidPlanLapsed, trialLapsed } from "../admin/common.jsx";
 import { PASSWORD_MIN_LENGTH } from "../../data";
 import { useSession } from "../session.jsx";
+import { usePlanLock } from "../plan/planAccess.js";
 import { useMobile } from "../Shell.jsx";
 import { PlayProfileSection } from "../play/PlayProfile.jsx";
 import { COUNTRIES, normalizePhone, phoneError, splitPhone } from "../legal/phone.js";
@@ -51,6 +52,8 @@ function planBadge(subscription, role, reviewer = false) {
   if (reviewer) return "Revisor médico · acesso completo";
   if (!subscription) return null;
   const label = PLAN_LABEL[subscription.plan] ?? subscription.plan;
+  // cadastro sem teste grátis (PL06): conta gratuita, sem plano pago
+  if (subscription.plan === "trial" && subscription.status === "expired" && !subscription.trial_ends_at) return "Acesso gratuito";
   if (trialLapsed(subscription)) return `${label} · encerrado`;
   if (subscription.status === "trialing" && subscription.trial_ends_at) return `${label} até ${dateBR(subscription.trial_ends_at)}`;
   // plano pago depois de "Plano pago até" (com pagamento pendente, depois dos 3 dias de tolerância) já não dá acesso
@@ -403,12 +406,72 @@ function PrivacySection() {
   );
 }
 
+/**
+ * Benefícios do plano Elite (PL04). Só aparecem para quem tem Elite pago e dentro da data, e só os que o dono ligou/preencheu em
+ * Administração > Configurações: sem valor definido, nada é mostrado (e nada é inventado).
+ */
+function EliteBenefits({ benefits }) {
+  const items = [];
+  if (benefits?.voice_daily_minutes != null) items.push(`Voz do Tutor: até ${benefits.voice_daily_minutes} minutos por dia`);
+  if (benefits?.station_feedback) items.push("Correção de estação com devolutiva");
+  if (!benefits?.elite || items.length === 0) return null;
+  return (
+    <Banner tone="brand" icon="crown" title="Benefícios do seu plano Elite">
+      <ul style={{ margin: 0, paddingLeft: 18 }}>
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </Banner>
+  );
+}
+
 export function AccountScreen({ go }) {
-  const { boot, user, signOut } = useSession();
+  const { boot, user, signOut, backend } = useSession();
+  const [benefits, setBenefits] = React.useState(null);
+  const isElite = boot.subscription?.plan === "elite";
+  // refaz a consulta quando o plano, a situação ou a data do plano pagão mudam (ex.: Elite cancelado ou vencido), e apaga o que estava na tela
+  const eliteKey = [boot.subscription?.plan, boot.subscription?.status, boot.subscription?.current_period_end].join("|");
+  // o plano mudou: o que estava na tela sai até o banco responder de novo
+  React.useEffect(() => {
+    setBenefits(null);
+  }, [eliteKey]);
+  // "tick" pede uma nova consulta sem mudar o plano: no instante em que o plano pago vence (pelo relógio) e ao voltar para a aba
+  const [tick, setTick] = React.useState(0);
+  const periodEnd = boot.subscription?.current_period_end;
+  React.useEffect(() => {
+    if (!isElite) return undefined;
+    const again = () => setTick((n) => n + 1);
+    const onVisible = () => {
+      if (document.visibilityState !== "hidden") again();
+    };
+    window.addEventListener("focus", again);
+    document.addEventListener("visibilitychange", onVisible);
+    // o temporizador do navegador aceita no máximo ~24,8 dias: se o vencimento é mais longe, acorda antes e agenda de novo
+    const end = periodEnd ? new Date(periodEnd).getTime() : NaN;
+    const wait = end - Date.now() + 1000;
+    const timer = Number.isFinite(wait) && wait > 0 ? window.setTimeout(again, Math.min(wait, 2_000_000_000)) : null;
+    return () => {
+      window.removeEventListener("focus", again);
+      document.removeEventListener("visibilitychange", onVisible);
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, [isElite, periodEnd, tick]);
+  React.useEffect(() => {
+    if (!isElite || !backend) return undefined;
+    let alive = true;
+    Promise.resolve(backend.rpc("app_my_benefits"))
+      .then((result) => alive && setBenefits(result ?? null))
+      .catch(() => alive && setBenefits(null)); // sem o aviso dos benefícios a Conta funciona igual
+    return () => {
+      alive = false;
+    };
+  }, [backend, isElite, eliteKey, tick]);
   const mobile = useMobile();
   const [section, setSection] = React.useState("conta");
   const profile = boot.profile;
   const plan = planBadge(boot.subscription, boot.role, Boolean(boot.reviewer_areas?.length));
+  const lock = usePlanLock(); // teste grátis terminado ou sem plano pago: o que fica nos planos pagos (PL02); o banco decide
   const phase2Locked = isPhase2Locked(boot.role); // 2ª fase "em breve" para o aluno: o selo mostra a 1ª mesmo se a 2ª estiver gravada
   const goal = profile.target_edition ? `Meta: ${profile.exam_type === "ENAMED" ? "ENAMED" : "Revalida INEP"} ${profile.target_edition}` : null;
 
@@ -432,6 +495,12 @@ export function AccountScreen({ go }) {
           </div>
         </div>
       </Card>
+      {lock && (
+        <Banner tone="warning" icon="lock" title={lock.title}>
+          {lock.text}
+        </Banner>
+      )}
+      <EliteBenefits benefits={benefits} />
       {isStaffRole(boot.role) && (
         <Banner
           tone="brand"

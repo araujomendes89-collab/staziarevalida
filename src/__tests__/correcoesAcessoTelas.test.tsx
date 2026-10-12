@@ -236,8 +236,12 @@ describe("PL05, PL06 e PL08 — aba Planos", () => {
     { code: "trial", name: "Teste grátis", description: null, price_cents: 0, billing_period: "monthly", features: [], active: true },
     { code: "pro", name: "Pro", description: null, price_cents: null, billing_period: "monthly", features: [], active: false },
   ];
-  const abrir = async (saved: any[]) => {
+  const abrir = async (saved: any[], regraNoBanco = true) => {
     backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_signup_trial_rule") {
+        if (!regraNoBanco) throw new Error("function public.app_admin_signup_trial_rule() does not exist");
+        return { applies: true };
+      }
       if (fn === "app_admin_plans") return PLANS;
       if (fn === "app_admin_save_plan") return (saved.push(args.p_plan), PLANS);
       throw new Error(`rpc inesperada: ${fn}`);
@@ -293,8 +297,16 @@ describe("PL05, PL06 e PL08 — aba Planos", () => {
     expect(saved[0].features).toEqual(["Tutor", "Simulados"]);
   });
 
-  it("PL06: a chave do teste grátis diz a verdade, enquanto o cadastro não a consulta", async () => {
+  it("PL06: a chave do teste grátis diz a verdade (o cadastro agora a consulta, migração 9732)", async () => {
     await abrir([]);
+    expect(await screen.findByText(/Desligado: quem se cadastrar depois entra sem teste, só com questões e flashcards/)).toBeTruthy();
+    expect(screen.queryByText(/Hoje todo cadastro novo recebe o teste/)).toBeNull();
+  });
+
+  it("PL06: com o banco ainda sem a 9732 (site novo + SQL antigo) a chave mantém o texto de antes, sem prometer o que o banco não faz", async () => {
+    await abrir([], false);
+    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_signup_trial_rule"));
     expect(screen.getByText(/Hoje todo cadastro novo recebe o teste, com esta chave ligada ou desligada\./)).toBeTruthy();
+    expect(screen.queryByText(/entra sem teste/)).toBeNull();
   });
 });
