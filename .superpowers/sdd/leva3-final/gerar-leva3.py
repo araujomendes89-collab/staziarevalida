@@ -21,7 +21,7 @@ def tabela_fechada(t): return f"(select c.relrowsecurity and not has_table_privi
 TELAS_Q = ["app_admin_set_question_image", "app_admin_remove_question_image", "app_question_figure", "app_admin_comment_review_queue", "app_admin_comment_review", "app_admin_question_comment_decide", "app_question_comment_check", "app_admin_question_history"]
 INT_Q = ["ch_worker_question_figure_confirm", "ch_worker_question_figure_drop", "questions_images_guard", "questions_keep_figure_flag", "questions_comment_review_mark", "question_comment_fields", "question_hidden_fields", "question_can_review_comment", "question_comment_assert_access", "question_person_name", "question_comment_review_missing"]
 TELAS_A = ["app_lesson_watch", "app_lesson_watch_state"]
-INT_A = ["ch_worker_lesson_files_reserve", "ch_worker_lesson_files_renew", "ch_worker_lesson_files_done", "ch_worker_lesson_files_release", "lesson_material_file_queue", "lesson_file_in_use", "lesson_file_reference_guard"]
+INT_A = ["ch_worker_lesson_files_reserve", "ch_worker_lesson_files_renew", "ch_worker_lesson_files_done", "ch_worker_lesson_files_release", "ch_worker_lesson_files_audit", "lesson_material_file_queue", "lesson_file_in_use", "lesson_file_reference_guard"]
 TELAS_P = ["app_admin_podcast_approval"]
 INT_P = ["podcast_can_approve", "podcast_approve_block_text", "ch_raw_app_admin_podcast_approve", "ch_worker_podcast_files_pending", "ch_worker_podcast_files_renew", "ch_worker_podcast_files_done", "podcast_files_queue_audio", "podcast_files_queue_audio_del", "podcast_files_queue_source", "podcast_files_guard_ref", "podcast_files_blocked"]
 TELAS_PL = ["simulado_gate", "app_my_access", "app_my_benefits", "station_feedback_allowed", "app_admin_plan_benefits", "app_admin_save_plan_benefits", "app_admin_signup_trial_rule"]
@@ -73,7 +73,7 @@ def conferencias(p):
              ("historico_registra_a_figura", usa("questions_change_trail()", "figura"))]
     elif r == "2-Aulas":
         c = [("fila_de_arquivos_de_aula", "to_regclass('public.lesson_files_pending_delete') is not null"),
-             ("quatro_funcoes_do_servidor", cont_funcs(["ch_worker_lesson_files_reserve", "ch_worker_lesson_files_renew", "ch_worker_lesson_files_done", "ch_worker_lesson_files_release"]) + " = 4"),
+             ("cinco_funcoes_do_servidor", cont_funcs(["ch_worker_lesson_files_reserve", "ch_worker_lesson_files_renew", "ch_worker_lesson_files_done", "ch_worker_lesson_files_release", "ch_worker_lesson_files_audit"]) + " = 5"),
              ("cinco_gatilhos_de_arquivo", cont_gat(["lesson_materials_file_queue_del", "lesson_materials_file_queue_upd", "lesson_materials_file_reference_guard", "podcast_sources_file_reference_guard", "ch_file_holds_file_reference_guard"]) + " = 5"),
              ("coluna_assistiu_ate_o_fim", col("lesson_progress", "watched_to_end_at")),
              ("funcao_de_assistir", "to_regprocedure('public.app_lesson_watch(uuid, integer, boolean, integer)') is not null"),

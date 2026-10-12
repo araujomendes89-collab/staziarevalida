@@ -1,3 +1,39 @@
+# Leva 3 final 3: 3ª revisão independente (Aulas e Podcasts)
+
+Ramo `leva3-final3` = `leva3-final2` (b443a92) + merge de `leva3-a` abf08ce e `leva3-p` ce6007f (sem conflito; `leva3-q` 7dd08f9 e `leva3-pl` 54dab4d iguais). Escolhi avançar a final2 por merge porque guarda, sem refazer, o gate 9a662ec, os ajustes de dado de teste, os scripts e o gerador. Nada empurrado, nada publicado, nenhum serviço real.
+
+## 00. O que mudou desde a final2
+- 9710 (Aulas): prazos com `clock_timestamp()` lido depois do trava; ordem de travas igual (caminho, depois linha); 5ª função de serviço `ch_worker_lesson_files_audit(jsonb, uuid)` (só anota no Registro um apagamento cuja confirmação foi recusada por código velho). Servidor confere o número devolvido por `done`.
+- 9721 (Podcasts): `ch_worker_podcast_files_renew` agora devolve TEXTO (`ok`, `em_uso`, `resolvida`, `incompleta`, `outra`); a migração faz `drop function if exists` da versão booleana antes de criar (em produção essa versão nunca foi colada). Limpeza incompleta nunca termina em sucesso silencioso (resposta `ok:false` + aviso em português).
+- Scripts: `matriz-e-cenarios.mjs` (audit nas internas) e `gerar-leva3.py` (audit; "cinco funções do servidor" na parte 2). LEIA-ME: avisos de limpeza incompleta e do Registro com possível anotação dupla; continua correto no restante (ordem SQL, imagem do Cloud Run, site; 9710 exige 9620; quem perde acesso).
+
+## 00.1 Resultados
+| Verificação | Resultado |
+|---|---|
+| Testes pela fila (`--pool=threads --maxWorkers=2`, lotes de 8) | 89 arquivos distintos (mesma lista da final2; nenhum teste novo nos ramos a e p), 12 lotes, todos passaram |
+| `npm run build` | ok |
+| `tsc --noEmit` | 1831 erros, igual à base, nenhum novo |
+| Produção simulada + 10 migrações coladas 3x | 30 colagens sem erro; 1ª x 2ª e 2ª x 3ª sem nenhuma diferença (funções, gatilhos, políticas, permissões, colunas, restrições, índices, dados) |
+| Funções antes x depois | 588 -> 640: 52 novas, 0 removidas, 12 existentes mudam (as mesmas), nenhuma ACL existente mudou; 16 gatilhos novos, 1 alterado; 7 tabelas novas (5 com RLS fechado + 2 sequências) |
+| Quadro pessoa x função | idêntico ao anterior |
+| Cenários e permissões | 101 de 101 ok |
+| 24 ordens das 4 frentes | as 24 colam e dão a mesma estrutura |
+| Recolar arquivos antigos depois da leva | igual à final2 (seção 5) |
+| Pacote do dono colado 2x | 8 colagens `OK: ... colada`, todas as conferências true, nenhuma tabela existente muda dados, pacote = migrações coladas direto |
+
+## 00.2 Pacote do dono (`/Users/joaopaulomendes/Downloads/publicacao-staziamed-2026-10-12-leva3/`), SHA-256
+```
+ca2d66751caaa47872e89464d222ed6ae495b9b29fa7eda4be19eaffa6a94bfb  0-CONFERIR-primeiro-nao-altera-nada.sql
+a1476931cd66766bc02de7c39a6cf2518c8060d88787bd081e2fc921dc6ce664  0-LEIA-ME.txt
+b32550c9318c920b59a46a2ad9176bfed15efde27334478570410fd15538e93c  1-colar-ANTES-do-site-parte-1-Questoes.sql
+55c395b53c4e70687477a02b83c811d11c2b2a67beffa361db18d3510d11b22a  2-colar-ANTES-do-site-parte-2-Aulas.sql
+a11565a558a4d81bc2eb477667c3d2e2a6e35dd5c843ab1f9f3806d4e1ea644d  3-colar-ANTES-do-site-parte-3-Podcasts.sql
+277d53a0ae687e433daf0637f3e9342e3e2de0be769fd55c206b6b0dc6a8ee10  4-colar-ANTES-do-site-parte-4-Planos.sql
+5161ee04115452885bb2a4cbd4b6c74ca9ff7a9560eda60d1a73ed884015e26b  OPCIONAL-lista-dos-arquivos-esquecidos-de-podcast-so-leitura.sql
+```
+
+---
+
 # Leva 3 final 2: ordem junta com as correções da 2ª revisão independente
 
 Ramo `leva3-final2`, criado de `8bd82fb` (o que está em produção: site, Cloud Run e SQL 9620/9621) com merge dos quatro ramos corrigidos na mesma ordem de antes: `leva3-q` 7dd08f9, `leva3-a` 090dff1, `leva3-p` 3753473, `leva3-pl` 54dab4d. Nada empurrado, nada colado em produção, nenhuma rede. (A seção 1 em diante é do relatório da primeira versão `leva3-final`, que continua valendo no que não é contrariado por esta seção.)
