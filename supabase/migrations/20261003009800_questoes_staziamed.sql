@@ -6,6 +6,10 @@
 --   →  rascunho em draft_questions (origem "servidor")  →  conferências (question_check) e busca de fonte oficial
 --      (question_source → draft_source_proposals)  →  revisor médico da área aprova  →  administrador publica.
 --
+-- Pode ser colada de novo no Supabase sem estragar nada (create ... if not exists, create or replace, drop ... if exists antes
+-- de criar política/gatilho/restrição, linhas de dados só quando faltam). Depende das migrações já publicadas (…1800 e …2100 dos
+-- rascunhos, …1500 da fila, …9610 que já traz as etapas da fila); não depende da leva 3.
+--
 -- Regras no banco (não só na tela):
 --   * o hash do conteúdo do rascunho é calculado AQUI (gatilho draft_questions_hash): conferência, proposta de fonte e
 --     revisão valem só para o conteúdo exato que viram;
@@ -15,7 +19,7 @@
 -- =============================================================================
 
 -- ---------------------------------------------------------------- pedidos de geração
-create table public.staziamed_requests (
+create table if not exists public.staziamed_requests (
   id uuid primary key default gen_random_uuid(),
   created_by uuid not null,                    -- quem pediu (sem chave estrangeira: o pedido fica no histórico)
   created_at timestamptz not null default now(),
@@ -29,29 +33,30 @@ create table public.staziamed_requests (
   cost_usd numeric(10, 5) not null default 0,
   finished_at timestamptz
 );
-create index staziamed_requests_created_idx on public.staziamed_requests (created_at desc);
+create index if not exists staziamed_requests_created_idx on public.staziamed_requests (created_at desc);
 alter table public.staziamed_requests enable row level security;
+drop policy if exists "pedidos StaziaMed: equipe e revisores leem" on public.staziamed_requests;
 create policy "pedidos StaziaMed: equipe e revisores leem" on public.staziamed_requests for select to authenticated
   using (public.is_staff() or public.ch_is_reviewer());
 
 -- ---------------------------------------------------------------- rascunhos: origem, edição, geração e publicação
 alter table public.draft_questions
-  add column generated_by text not null default 'gerador_antigo' check (generated_by in ('gerador_antigo', 'servidor')),
-  add column topic text,                                       -- tema da lista de temas das provas oficiais
-  add column request_id uuid references public.staziamed_requests (id) on delete set null,
-  add column edited_by uuid references auth.users (id) on delete set null,
-  add column edited_at timestamptz,                            -- editado no servidor: a carga antiga não sobrescreve
-  add column similar_question_id text references public.questions (id) on delete set null,
-  add column generation jsonb not null default '{}'::jsonb,   -- trilha da geração: modelos, prompts, trechos, reescrita, custo
-  add column question_id text references public.questions (id),
-  add column published_hash text,
-  add column published_at timestamptz,
-  add column published_by uuid references auth.users (id) on delete set null;
-create index draft_questions_request_idx on public.draft_questions (request_id) where request_id is not null;
+  add column if not exists generated_by text not null default 'gerador_antigo' check (generated_by in ('gerador_antigo', 'servidor')),
+  add column if not exists topic text,                                       -- tema da lista de temas das provas oficiais
+  add column if not exists request_id uuid references public.staziamed_requests (id) on delete set null,
+  add column if not exists edited_by uuid references auth.users (id) on delete set null,
+  add column if not exists edited_at timestamptz,                            -- editado no servidor: a carga antiga não sobrescreve
+  add column if not exists similar_question_id text references public.questions (id) on delete set null,
+  add column if not exists generation jsonb not null default '{}'::jsonb,   -- trilha da geração: modelos, prompts, trechos, reescrita, custo
+  add column if not exists question_id text references public.questions (id),
+  add column if not exists published_hash text,
+  add column if not exists published_at timestamptz,
+  add column if not exists published_by uuid references auth.users (id) on delete set null;
+create index if not exists draft_questions_request_idx on public.draft_questions (request_id) where request_id is not null;
 
 -- Hash do conteúdo: enunciado, tabela de apoio, alternativas, gabarito, explicações, decisão clínica, tema e citações.
 -- Título, situação, revisão e trilha ficam de fora (não mudam o que o médico leu).
-create function public.draft_content_hash(d public.draft_questions) returns text
+create or replace function public.draft_content_hash(d public.draft_questions) returns text
   language sql immutable security definer set search_path = ''
 as $$
   select public.ch_hash(jsonb_build_object(
@@ -66,7 +71,7 @@ as $$
     'citations', d.source_citations))
 $$;
 
-create function public.draft_questions_set_hash() returns trigger
+create or replace function public.draft_questions_set_hash() returns trigger
   language plpgsql security definer set search_path = ''
 as $$
 begin
@@ -74,6 +79,7 @@ begin
   return new;
 end
 $$;
+drop trigger if exists draft_questions_hash on public.draft_questions;
 create trigger draft_questions_hash before insert or update on public.draft_questions
   for each row execute function public.draft_questions_set_hash();
 
@@ -82,7 +88,7 @@ create trigger draft_questions_hash before insert or update on public.draft_ques
 update public.draft_questions set content_hash = content_hash;
 
 -- ---------------------------------------------------------------- propostas de fonte oficial ("Buscar fonte oficial")
-create table public.draft_source_proposals (
+create table if not exists public.draft_source_proposals (
   id uuid primary key default gen_random_uuid(),
   draft_id uuid not null references public.draft_questions (id) on delete cascade,
   content_hash text not null,                  -- versão do rascunho para a qual a proposta foi feita
@@ -94,13 +100,14 @@ create table public.draft_source_proposals (
   decided_by uuid,
   decided_at timestamptz
 );
-create index draft_source_proposals_draft_idx on public.draft_source_proposals (draft_id, created_at desc);
+create index if not exists draft_source_proposals_draft_idx on public.draft_source_proposals (draft_id, created_at desc);
 alter table public.draft_source_proposals enable row level security;
+drop policy if exists "propostas de fonte: equipe e revisores leem" on public.draft_source_proposals;
 create policy "propostas de fonte: equipe e revisores leem" on public.draft_source_proposals for select to authenticated
   using (public.is_staff() or public.ch_is_reviewer());
 
 -- ---------------------------------------------------------------- trilha de cada rascunho
-create table public.draft_question_events (
+create table if not exists public.draft_question_events (
   id bigint generated always as identity primary key,
   draft_id uuid not null references public.draft_questions (id) on delete cascade,
   kind text not null check (kind in ('importada', 'gerada', 'editada', 'fonte_proposta', 'fonte_aceita', 'conferida', 'decisao',
@@ -112,13 +119,14 @@ create table public.draft_question_events (
   note text,
   details jsonb not null default '{}'::jsonb
 );
-create index draft_question_events_draft_idx on public.draft_question_events (draft_id, at);
+create index if not exists draft_question_events_draft_idx on public.draft_question_events (draft_id, at);
 alter table public.draft_question_events enable row level security;
+drop policy if exists "trilha dos rascunhos: equipe e revisores leem" on public.draft_question_events;
 create policy "trilha dos rascunhos: equipe e revisores leem" on public.draft_question_events for select to authenticated
   using (public.is_staff() or public.ch_is_reviewer());
 
 -- Registra um passo na trilha com o hash ATUAL do rascunho. Ator: o informado ou quem está logado.
-create function public.draft_event(p_draft_id uuid, p_kind text, p_note text default null, p_previous jsonb default null,
+create or replace function public.draft_event(p_draft_id uuid, p_kind text, p_note text default null, p_previous jsonb default null,
                                    p_details jsonb default '{}'::jsonb, p_actor uuid default null) returns void
   language sql security definer set search_path = ''
 as $$
@@ -128,7 +136,7 @@ as $$
 $$;
 
 -- Rascunho do gerador antigo que entra pela carga: 'importada' na trilha (reaplicar a carga não repete: é atualização).
-create function public.draft_questions_log_import() returns trigger
+create or replace function public.draft_questions_log_import() returns trigger
   language plpgsql security definer set search_path = ''
 as $$
 begin
@@ -136,18 +144,21 @@ begin
   return null;
 end
 $$;
+drop trigger if exists draft_questions_imported on public.draft_questions;
 create trigger draft_questions_imported after insert on public.draft_questions
   for each row when (new.generated_by = 'gerador_antigo') execute function public.draft_questions_log_import();
 
 -- Os que já estavam no banco antes desta migração.
 insert into public.draft_question_events (draft_id, kind, content_hash, details)
 select d.id, 'importada', d.content_hash, jsonb_build_object('batch', d.batch, 'source_id', d.source_id)
-from public.draft_questions d where d.generated_by = 'gerador_antigo';
+from public.draft_questions d
+where d.generated_by = 'gerador_antigo'
+  and not exists (select 1 from public.draft_question_events e where e.draft_id = d.id and e.kind = 'importada');
 
 -- ---------------------------------------------------------------- fila: etapas novas (sem documento, como visual_render)
 -- União das etapas de todos os ramos: as de antes (…5100_materiais_visuais), as das estações, as das Questões StaziaMed
 -- e a da busca de fontes oficiais.
-alter table public.ch_jobs drop constraint ch_jobs_step_check;
+alter table public.ch_jobs drop constraint if exists ch_jobs_step_check;
 alter table public.ch_jobs add constraint ch_jobs_step_check
   check (step in ('extract', 'classify', 'claims', 'evidence', 'draft', 'materials', 'render', 'review_check', 'source_index', 'visual_render',
                   'station_pages', 'station_segment', 'station_draft',

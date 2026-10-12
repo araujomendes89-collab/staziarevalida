@@ -1,9 +1,11 @@
 // @vitest-environment node
 /**
- * Questões StaziaMed — rascunhos no banco (migração 8800, antiga 6200; parte 1): o hash do conteúdo é calculado pelo banco, a carga
+ * Questões StaziaMed — rascunhos no banco (migração 9800, antigas 6200 e 8800; parte 1): o hash do conteúdo é calculado pelo banco, a carga
  * antiga não apaga o que foi editado no servidor, os 200 importados ficam na trilha, pedidos/propostas/trilha só para a
  * equipe e os revisores, as etapas novas da fila e as funções de serviço fechadas para o app.
  */
+import fs from "fs";
+import { fileURLToPath } from "url";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildDraftStatements } from "../../scripts/supabase/engine-seed";
 import { addOfficialSource, insertDraft, openStaziaEnv, USERS, type StaziaEnv } from "./helpers/staziamed";
@@ -183,6 +185,35 @@ describe("Fila e funções de serviço", () => {
       await empty.close();
     }
   }, 600_000); // abre um segundo banco inteiro (migrações + carga): com a máquina cheia leva minutos
+
+  it("a migração pode ser colada de novo (duas vezes seguidas) sem estragar nada: nada novo, nada duplicado, nada mudado", async () => {
+    const file = fileURLToPath(new URL("../../supabase/migrations/20261003009800_questoes_staziamed.sql", import.meta.url));
+    const text = fs.readFileSync(file, "utf8");
+    const snapshot = async () => {
+      const [r] = await env.sql(`
+        select
+          (select md5(string_agg(pg_get_functiondef(p.oid), E'\n' order by p.oid::regprocedure::text))
+             from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname ~ '^(draft|staziamed)_') as functions,
+          (select md5(string_agg(pol.polname || pg_get_expr(pol.polqual, pol.polrelid), E'\n' order by pol.polname))
+             from pg_policy pol where pol.polrelid in ('public.staziamed_requests'::regclass, 'public.draft_source_proposals'::regclass, 'public.draft_question_events'::regclass)) as policies,
+          (select md5(string_agg(t.tgname || t.tgrelid::regclass::text, E'\n' order by t.tgname))
+             from pg_trigger t where t.tgrelid = 'public.draft_questions'::regclass and not t.tgisinternal) as triggers,
+          (select md5(string_agg(c.conname || pg_get_constraintdef(c.oid), E'\n' order by c.conname))
+             from pg_constraint c where c.conrelid in ('public.ch_jobs'::regclass, 'public.draft_questions'::regclass)) as constraints,
+          (select count(*)::int from information_schema.columns where table_schema = 'public' and table_name = 'draft_questions') as columns,
+          (select count(*)::int from public.draft_question_events) as events,
+          (select count(*)::int from public.draft_questions) as drafts,
+          (select md5(string_agg(content_hash, ',' order by id)) from public.draft_questions) as hashes,
+          (select count(*)::int from pg_proc p where p.pronamespace = 'public'::regnamespace and p.proname ~ '^(ch_worker|draft|staziamed)_'
+              and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))) as open_functions`);
+      return r;
+    };
+    const before = await snapshot();
+    expect(before.events).toBeGreaterThan(0);
+    await env.dev.db.exec(text);
+    await env.dev.db.exec(text);
+    expect(await snapshot()).toEqual(before);
+  }, 120_000);
 
   it("nenhuma função ch_worker_*, draft_* ou staziamed_* é executável por anon ou authenticated", async () => {
     const all = (await env.sql(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
