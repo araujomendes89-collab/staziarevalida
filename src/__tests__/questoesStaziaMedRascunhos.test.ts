@@ -169,6 +169,9 @@ describe("Fila e funções de serviço", () => {
         [USERS.REVISOR_CM]: "student/trial/trialing",
         [USERS.PRO]: "student/pro/active",
         [USERS.TESTE]: "student/trial/trialing",
+        [USERS.TESTE_VENCIDO]: "student/trial/trialing",
+        [USERS.PRO_VENCIDO]: "student/pro/canceled",
+        // SEM_PLANO não tem linha de assinatura: não aparece na junção
       });
       expect((await empty.rpc(USERS.EDITOR, "app_draft_questions", { p_limit: 1 })).total).toBe(0);
       await expect(empty.rpc(USERS.TESTE, "app_draft_questions")).rejects.toThrow(/restrito/);

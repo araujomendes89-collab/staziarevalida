@@ -22,6 +22,12 @@ export const USERS = {
   REVISOR_CM: "00000000-0000-4000-8000-0000000051c2",
   PRO: "00000000-0000-4000-8000-0000000051b1",
   TESTE: "00000000-0000-4000-8000-0000000051f1",
+  /** Teste grátis já vencido (data de fim no passado). */
+  TESTE_VENCIDO: "00000000-0000-4000-8000-0000000051f2",
+  /** Plano Pro cancelado. */
+  PRO_VENCIDO: "00000000-0000-4000-8000-0000000051b2",
+  /** Conta sem nenhuma linha de assinatura. */
+  SEM_PLANO: "00000000-0000-4000-8000-0000000051f3",
 } as const;
 
 export interface StaziaEnv {
@@ -54,12 +60,20 @@ export async function openStaziaEnv(opts: { drafts?: boolean } = {}): Promise<St
     [USERS.REVISOR_CM, "revisor.clinica@staziamed.teste"],
     [USERS.PRO, "aluno.pro@staziamed.teste"],
     [USERS.TESTE, "aluno.teste@staziamed.teste"],
+    [USERS.TESTE_VENCIDO, "aluno.teste.vencido@staziamed.teste"],
+    [USERS.PRO_VENCIDO, "aluno.pro.vencido@staziamed.teste"],
+    [USERS.SEM_PLANO, "aluno.sem.plano@staziamed.teste"],
   ];
   for (const [id, email] of emails) await sql(`insert into auth.users (id, email) values ($1, $2)`, [id, email]);
   await sql(`update public.user_roles set role = 'admin' where user_id = $1`, [USERS.ADMIN]);
   await sql(`update public.user_roles set role = 'editor' where user_id = $1`, [USERS.EDITOR]);
   await sql(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'PEDIATRIA'), ($2, 'CLINICA_MEDICA')`, [USERS.REVISOR_PED, USERS.REVISOR_CM]);
-  await sql(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [USERS.PRO]);
+  // plano pago só vale com data de fim no futuro (regra da correção de acesso, 9550)
+  await sql(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id = $1`, [USERS.PRO]);
+  await sql(`update public.subscriptions set plan = 'pro', status = 'canceled', current_period_end = now() - interval '2 days' where user_id = $1`, [USERS.PRO_VENCIDO]);
+  await sql(`update public.subscriptions set status = 'trialing', trial_ends_at = now() - interval '1 day' where user_id = $1`, [USERS.TESTE_VENCIDO]);
+  await sql(`update public.subscriptions set trial_ends_at = now() + interval '5 days' where user_id = $1`, [USERS.TESTE]);
+  await sql(`delete from public.subscriptions where user_id = $1`, [USERS.SEM_PLANO]);
 
   return {
     dev,
@@ -167,4 +181,54 @@ export async function insertDraft(env: StaziaEnv, o: Partial<DraftInsert> = {}):
     values
   );
   return r.id;
+}
+
+/** Colunas que um teste pode escolher numa Questão StaziaMed publicada (o resto é fixo e válido). */
+export interface StaziaQuestionInsert {
+  number?: number;
+  /** Valor de `med_area` (PEDIATRIA, CLINICA_MEDICA, CIRURGIA_GERAL, GINECOLOGIA_OBSTETRICIA, MEDICINA_FAMILIA_COMUNIDADE). */
+  area?: string;
+  topic?: string;
+  correct?: "A" | "B" | "C" | "D";
+  /** Tabela de apoio `{ type, title, rows: [{ label, value }] }`; sem ela, nula (como nas oficiais). */
+  support?: object;
+  /** Recolhida: fora do sorteio, mas ainda lida por quem já respondeu. */
+  retired?: boolean;
+}
+
+/**
+ * Questão StaziaMed já publicada, inserida direto no banco como o dono (origem 'staziamed', prova 'staziamed'):
+ * id `staziamed_q` + número com 4 dígitos, código `STZ-` + número. `sources` traz só título, órgão, nível, página e link
+ * (nunca `supports` nem trecho: o aluno lê esta coluna direto). Devolve o id.
+ */
+export async function insertStaziaQuestion(env: StaziaEnv, o: StaziaQuestionInsert = {}): Promise<string> {
+  const number =
+    o.number ?? Number((await env.sql<{ n: number }>(`select coalesce(max(number), 0) + 1 as n from public.questions where exam_id = 'staziamed'`))[0].n);
+  const tag = String(number).padStart(4, "0");
+  const id = `staziamed_q${tag}`;
+  const correct = o.correct ?? "A";
+  const options = (["A", "B", "C", "D"] as const).map((letter) => ({
+    id: letter,
+    text: `Alternativa ${letter} da questão ${tag}.`,
+    explanation: letter === correct ? `Correta. Explicação da questão ${tag}.` : `Incorreta. A alternativa ${letter} não é a conduta.`,
+  }));
+  await env.sql(
+    `insert into public.questions (id, code, exam_id, number, area, topic, statement, options, correct_option, expected_conduct, sources, origin, retired_at, support)
+     values ($1, $2, 'staziamed', $3, $4::public.med_area, $5, $6, $7::jsonb, $8, $9, $10::jsonb, 'staziamed', $11, $12::jsonb)`,
+    [
+      id,
+      `STZ-${tag}`,
+      number,
+      o.area ?? "PEDIATRIA",
+      o.topic ?? "Otite média aguda",
+      `Enunciado da Questão StaziaMed ${tag}: lactente de 8 meses com febre há 3 dias. Qual a conduta?`,
+      JSON.stringify(options),
+      correct,
+      `Conduta esperada da questão ${tag}.`,
+      JSON.stringify([{ title: "PCDT de teste", organ: "Ministério da Saúde (teste)", level: "A", page: 7, link: "https://exemplo.gov.br/pcdt-teste" }]),
+      o.retired ? new Date().toISOString() : null,
+      o.support ? JSON.stringify(o.support) : null,
+    ]
+  );
+  return id;
 }
