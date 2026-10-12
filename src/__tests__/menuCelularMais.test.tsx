@@ -19,7 +19,7 @@ const INFO = { name: "Ana Souza", streakDays: 2, flashcardsDue: 3, onSignOut: vi
 const mount = (over: any = {}) => {
   const go = vi.fn();
   render(
-    <AppShell route="home" go={go} theme="light" setTheme={() => {}} title="Início" sub="" phase={1} setPhase={() => {}} phase2Locked info={{ ...INFO, ...over }}>
+    <AppShell bare={false} route="home" go={go} theme="light" setTheme={() => {}} title="Início" sub="" phase={1} setPhase={() => {}} phase2Locked info={{ ...INFO, ...over }}>
       <div>corpo</div>
     </AppShell>
   );
