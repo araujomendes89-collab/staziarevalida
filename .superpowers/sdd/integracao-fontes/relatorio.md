@@ -232,5 +232,38 @@ produção, além das da seção 2, são o campo `sha_pendente` em `lesson_mater
 - A retenção (B) cobre arquivos enviados DEPOIS da 9620. Material de aula e fonte de podcast que já existem em produção sem SHA-256 continuam sem ele (não há como calcular sem os bytes);
   uma varredura única do servidor que leia os arquivos antigos e grave o SHA-256 seria um trabalho à parte.
 - O Flashcast copiado de um podcast para a aula (`/:id/flashcast`) não passa pela retenção (é áudio gerado pelo próprio servidor, não arquivo enviado pela equipe).
-- A lista de termos em cache vencida (C) vale por até 6 horas se o banco cair; é uma escolha minha (o líder pediu "ou usa o último cache bom"). Se preferir recusar sempre que o banco falhar, é só zerar esse limite.
+- (Corrigido na rodada 2, seção 9) A lista de termos vencida deixou de valer: depois dos 60 s a falha tenta de novo uma vez e depois fecha.
 - O cache da expressão (E) é por instrução, não por transação: um lote feito por uma função que dá uma instrução por linha não ganha com isso.
+
+## 9. Rodada de correções 2 (segunda leitura da OpenAI: A, B, D e E ficaram resolvidos; 2 pontos novos)
+
+### (1) ALTO: lista de termos velha liberava texto quando o banco falhava
+- **Era:** com o banco fora e cache de até 6 horas (inclusive lista VAZIA), `loadComplementarTerms` seguia com a lista velha. Caso: o servidor guardou `[]`, a equipe cadastrou uma
+  fonte, passaram 60 s, a consulta falhou e o texto com o título novo passava na conferência.
+- **Mudou (`complementarGuard.ts`):** dentro dos 60 s vale o cache (como antes). Passados os 60 s, a consulta é refeita; se falhar (erro ou resposta que não é lista), tenta de novo UMA vez
+  (150 ms depois); se continuar falhando, lança `ComplementarTermsUnavailable` (503). Lista vencida nunca é usada, nem vazia. O limite de 6 horas foi removido. Log em português:
+  "lista de termos indisponível depois de 2 tentativas ... a lista vencida não é usada e o pedido foi recusado."
+- **Chamadores:** o padrão (fechar) vale para todos, como na seção 8 (C). Único tratamento diferente que já existia: a busca de fontes do Tutor (`searchSources`) não gera nem publica texto, só filtra
+  trechos, então ela devolve "nenhuma fonte" em vez de derrubar a resposta; o Tutor continua exigindo a lista ao montar a resposta (`termsOrFail`) e fecha com 503. Não achei leitura crítica que
+  cair desnecessariamente.
+- **Testes (`Rodada2Termos`, agora 24):** dentro do prazo, falha usa o cache sem nem perguntar; depois do prazo, 2 falhas lançam (conta 2 consultas); lista vazia em cache + falha depois do
+  prazo = indisponível (e dentro do prazo continua valendo); 1ª tentativa falha e a 2ª dá certo = lista nova, guardada; resposta inválida também tenta 2 vezes. Os testes que afirmavam "usa a última lista boa
+  por até 6 h" foram trocados.
+
+### (2) BAIXO: retenção órfã quando o registro é recusado
+- **Era:** se o registro do material/fonte era recusado antes de criar a linha, o tratamento chamava `recordFileSha`; `ch_worker_file_sha` achava 0 registros, apagava a retenção e a recriava: ficava órfã.
+- **Mudou (9620):** função nova `ch_worker_file_release(p_path)` (security definer, search_path vazio, revoke de public/anon/authenticated, idempotente): solta a retenção SÓ se não houver
+  material de aula nem fonte de podcast com aquele caminho (arquivo já registrado nunca é solto por ela). `ch_worker_file_sha` agora devolve 0 e NÃO mexe na retenção quando não há linha com o caminho
+  (não apaga nem recria); havendo linha, solta a retenção ao gravar o SHA-256, e se a gravação falhar a retenção simplesmente continua (a função nem chega a apagar).
+  Os dois roteadores chamam `releaseFile` (`fileSha.ts`) no tratamento de erro do registro; falha ao soltar só vai para o log.
+- **Testes:** banco: liberar sem material solta, repetir devolve falso sem erro, com aula ou fonte de podcast registradas NÃO solta, SHA em caminho sem material não mexe na retenção, permissão só do servidor.
+  Servidor: aula com título vazio (registro recusado) e podcast com PDF sem texto (422) não deixam retenção; aula registrada com SHA falho continua retida.
+- **Limite conhecido:** no envio de desenvolvimento a chave do arquivo é derivada do conteúdo; dois envios simultâneos do MESMO arquivo, em que um é recusado, poderiam soltar a retenção do outro antes
+  do registro dele (janela de milissegundos, só em desenvolvimento; em produção a chave é aleatória).
+
+### Verificação desta rodada
+- Ordem e base (estado de produção simulado, 9620 e 9621 duas vezes): sem erro, 3ª colagem não muda função, 25 funções mudam, 55 novas (a nova é `ch_worker_file_release`), nenhuma função de produção sumiu; fumaça ok.
+- 12 arquivos de fontes complementares: 385 passaram, 99 `it.fails` esperados, 1 pulado. `registroAdministracao`, `registroAdministracaoBanco`, `supabaseLessonsApi` e os 3 de rodada 2: 149 passaram.
+- 38 arquivos que citam os arquivos alterados: todos passaram. 60 arquivos que rodam as migrações: todos passaram; `questionKnowledge > reaplicar a carga não duplica` falhou uma vez por lentidão
+  (7,7 s com a fila cheia) e passou sozinho (8/8); arquivo e código não alterados por mim.
+- Build passou; `tsc --noEmit` 1831 erros, igual à base.
