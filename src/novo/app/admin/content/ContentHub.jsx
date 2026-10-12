@@ -23,7 +23,7 @@ const SECTIONS = [
   { value: "visuais", label: "Materiais visuais", icon: "palette", who: "staff" },
   { value: "unidades", label: "Unidades e revisão", icon: "stamp", who: "reviewer" },
   { value: "analises", label: "Análise de questões", icon: "brain", who: "reviewer" },
-  { value: "ineditas", label: "Questões StaziaMed", icon: "file-question", who: "reviewer" },
+  { value: "ineditas", label: "Questões inéditas", icon: "file-question", who: "reviewer" },
   { value: "fontes", label: "Fontes oficiais", icon: "library", who: "staff" },
   { value: "conflitos", label: "Conflitos", icon: "scale", who: "staff" },
   { value: "taxonomia", label: "Taxonomia", icon: "list-tree", who: "staff" },

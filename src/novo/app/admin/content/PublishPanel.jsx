@@ -101,7 +101,7 @@ export function PublishPanel({ version, onPublished, onClose }) {
 
         <div>
           <Label>Questões</Label>
-          <p style={{ margin: 0, color: "var(--text-secondary)" }}>As questões desta unidade não entram nesta publicação: elas seguem pela fila de Questões StaziaMed, com revisão médica uma a uma.</p>
+          <p style={{ margin: 0, color: "var(--text-secondary)" }}>As questões desta unidade não entram nesta publicação: elas seguem pela fila de Questões inéditas, com revisão médica uma a uma.</p>
         </div>
 
         <div>

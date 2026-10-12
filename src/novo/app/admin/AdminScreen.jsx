@@ -52,7 +52,7 @@ export function AdminScreen() {
       <Tabs wrap label="Administração" value={tab} onChange={(aba) => setParams({ aba }, { replace: true })} tabs={tabs.map(({ value, label, icon }) => ({ value, label, icon }))} />
       {tab === "geral" && <AdminOverview isAdmin={isAdmin} />}
       {tab === "usuarios" && <AdminUsers />}
-      {tab === "questoes" && <AdminQuestions />}
+      {tab === "questoes" && <AdminQuestions onOpenIneditas={() => setParams({ aba: "conteudo", secao: "ineditas" })} />}
       {tab === "aulas" && <AdminLessons />}
       {tab === "podcasts" && <AdminPodcasts />}
       {tab === "atualizacoes" && <AdminUpdates />}

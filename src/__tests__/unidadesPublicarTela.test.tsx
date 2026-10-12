@@ -104,7 +104,7 @@ describe("Prévia 'Publicar para os alunos'", () => {
     expect(document.body.textContent).toMatch(/Aula nova.*em Estudar › Aulas.*“Unidade de teste”.*Pediatria.*tema Tema de teste/);
     expect(document.body.textContent).toMatch(/3 novo\(s\) · 0 mantido\(s\) · 0 saem do baralho/);
     expect(document.body.textContent).toMatch(/2 ponto\(s\)-chave/);
-    expect(document.body.textContent).toMatch(/não entram nesta publicação: elas seguem pela fila de Questões StaziaMed/);
+    expect(document.body.textContent).toMatch(/não entram nesta publicação: elas seguem pela fila de Questões inéditas/);
     fireEvent.click(screen.getByRole("button", { name: /Ver como o aluno vai ver/ }));
     expect(screen.getByText(/Texto da aula de teste\./)).toBeTruthy();
     expect(screen.getByText("Ponto dois.")).toBeTruthy();

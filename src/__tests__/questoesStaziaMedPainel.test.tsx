@@ -82,15 +82,15 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Seção Questões StaziaMed", () => {
-  it("a aba se chama 'Questões StaziaMed' e ?secao=ineditas continua abrindo", async () => {
+  it("a aba se chama 'Questões inéditas' (pedido do dono, 2026-10-12) e ?secao=ineditas continua abrindo", async () => {
     mount();
     expect(await screen.findByText(/não são questões oficiais do Inep/i)).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Questões StaziaMed" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.queryByRole("tab", { name: "Questões inéditas" })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Questões inéditas" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.queryByRole("tab", { name: "Questões StaziaMed" })).toBeNull();
   });
 
-  it("textos da Central: 'Questões StaziaMed' nos materiais", () => {
-    expect(MATERIAL_KIND.questions).toBe("Questões StaziaMed");
+  it("textos da Central: 'Questões inéditas' nos materiais", () => {
+    expect(MATERIAL_KIND.questions).toBe("Questões inéditas");
   });
 
   it("sem acervo: 'Cadastre fontes oficiais na Central de Conteúdo' com link para Fontes oficiais e Gerar desabilitado", async () => {

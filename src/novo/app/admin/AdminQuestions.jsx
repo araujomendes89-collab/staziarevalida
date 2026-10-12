@@ -907,13 +907,14 @@ function useQuestionPages(backend, filters, deps) {
   return { ...state, reload: () => setTick((n) => n + 1), more };
 }
 
-/** A aba: a equipe vê a lista; o revisor médico sem papel de equipe vê só a fila de comentários a revisar (Q09). */
-export function AdminQuestions() {
+/** A aba: a equipe vê a lista; o revisor médico sem papel de equipe vê só a fila de comentários a revisar (Q09).
+ *  onOpenIneditas leva à Central de Conteúdo › Questões inéditas (pedido do dono, 2026-10-12: no lugar de "Nova questão"). */
+export function AdminQuestions({ onOpenIneditas } = {}) {
   const { boot } = useSession();
-  return isStaffRole(boot?.role) ? <StaffQuestions /> : <CommentReviewQueue />;
+  return isStaffRole(boot?.role) ? <StaffQuestions onOpenIneditas={onOpenIneditas} /> : <CommentReviewQueue />;
 }
 
-function StaffQuestions() {
+function StaffQuestions({ onOpenIneditas }) {
   const { backend } = useSession();
   const mobile = useMobile();
   const [view, setView] = React.useState({ mode: "list", id: null }); // list | edit | new | import
@@ -934,8 +935,9 @@ function StaffQuestions() {
         <Button icon="upload" onClick={() => setView({ mode: "import", id: null })}>
           Carregar questões
         </Button>
-        <Button variant="secondary" icon="plus" onClick={() => setView({ mode: "new", id: null })}>
-          Nova questão
+        {/* questão nova é montada nas Questões inéditas, sempre a partir de fontes oficiais (pedido do dono, 2026-10-12) */}
+        <Button variant="secondary" icon="sparkles" onClick={onOpenIneditas} disabled={!onOpenIneditas}>
+          Questões inéditas
         </Button>
       </div>
       <Card>

@@ -1,4 +1,4 @@
-// Central de Conteúdo › Questões StaziaMed (antes "Questões inéditas"): gerar com custo à vista, conferir, buscar fonte oficial,
+// Central de Conteúdo › Questões inéditas (de 2026-10-10 a 2026-10-12 se chamou "Questões StaziaMed"): gerar com custo à vista, conferir, buscar fonte oficial,
 // revisar (revisor médico da área), publicar e recolher (administrador). Nunca é questão oficial do Inep.
 import React from "react";
 import { Banner, Button } from "../../../../ds";
@@ -16,7 +16,7 @@ export function QuestoesStaziaMed({ isAdmin, isStaff, reviewerAreas, go }) {
   const acervo = Number(head.data.acervo ?? 0);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Banner tone="info" icon="shield-check" title="Questões StaziaMed: não são questões oficiais do Inep">
+      <Banner tone="info" icon="shield-check" title="Questões inéditas: não são questões oficiais do Inep">
         Escritas pela StaziaMed só a partir de trechos de fontes oficiais e revisadas por médico. Nenhuma está no treino do aluno antes da aprovação do revisor da área e da publicação do administrador. A "revisão automática" abaixo é apontamento de IA e não vale como aprovação.
       </Banner>
       {acervo > 0 ? (
