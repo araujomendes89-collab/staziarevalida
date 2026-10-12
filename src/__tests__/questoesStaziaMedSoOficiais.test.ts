@@ -89,6 +89,7 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   question_attempts_ineditas_gate: { classe: "as_duas", como: "historico" },
   ineditas_option: { classe: "as_duas", como: "historico" },
   app_question_figure: { classe: "as_duas", como: "historico" }, // exige acesso às inéditas
+  ch_worker_similarity_corpus: { classe: "so_oficiais", como: "filtra" }, // corpus oficial = origin 'official'; as StaziaMed vêm dos rascunhos
   // as duas, ferramentas da equipe que agem pelo id da questão
   app_admin_comment_review: { classe: "as_duas", como: "equipe" },
   app_admin_comment_review_queue: { classe: "as_duas", como: "equipe" },

@@ -165,6 +165,22 @@ alter table public.ch_jobs add constraint ch_jobs_step_check
                   'question_generate', 'question_check', 'question_source',
                   'source_search'));
 
+-- ---------------------------------------------------------------- semelhança: o que o servidor compara
+-- Enunciados das provas oficiais (origem 'official') e dos rascunhos não recusados (Questões StaziaMed ainda não publicadas ou
+-- já publicadas: o rascunho fica ligado à questão). É plpgsql porque lê questions.origin, coluna da …9801 (o corpo só é
+-- conferido ao rodar). Só o servidor chama.
+create or replace function public.ch_worker_similarity_corpus() returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+begin
+  return jsonb_build_object(
+    'official', coalesce((select jsonb_agg(jsonb_build_object('id', q.id, 'text', q.statement) order by q.id)
+                          from public.questions q where q.origin = 'official'), '[]'::jsonb),
+    'staziamed', coalesce((select jsonb_agg(jsonb_build_object('id', d.id, 'text', d.stem) order by d.batch, d.slot, d.id)
+                           from public.draft_questions d where d.status <> 'rejected'), '[]'::jsonb));
+end
+$$;
+
 -- ---------------------------------------------------------------- funções de serviço e de apoio: fechadas para o app
 do $revoke$
 declare f text;
