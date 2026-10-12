@@ -12,6 +12,7 @@ import { XPToast } from "../play/PlayFeedback.jsx";
 import { durationLabel, lessonFileUrl, lessonsAvailable, materialTitle, sizeLabel, videoEmbed } from "./lessonsApi.js";
 import { canMeasureEnd, clearPendingEnd, createWatchTracker, flushPendingEnds, isMissingFunction, MEASURE_TIMEOUT_MS, parsePlayerMessage, savePendingEnd, subscribeToPlayer, withPlayerApi, xpNote } from "./lessonWatch.js";
 import { PodcastsSection } from "../podcasts/PodcastsSection.jsx";
+import { explainError } from "../../../shared/errors/explicarErro";
 
 const AREA_ICON = { CLINICA_MEDICA: "stethoscope", CIRURGIA_GERAL: "scissors", PEDIATRIA: "baby", GINECOLOGIA_OBSTETRICIA: "heart-pulse", MEDICINA_FAMILIA_COMUNIDADE: "shield-plus" };
 const AREA_COLOR = { CLINICA_MEDICA: "#2F5FD0", CIRURGIA_GERAL: "#D9650A", PEDIATRIA: "#0E8A5F", GINECOLOGIA_OBSTETRICIA: "#C23A74", MEDICINA_FAMILIA_COMUNIDADE: "#6A47E0" };
@@ -247,7 +248,7 @@ function Material({ m, backend }) {
       setState({ url, busy: false, error: null });
       return url;
     } catch (error) {
-      setState({ url: null, busy: false, error: error.message });
+      setState({ url: null, busy: false, error: explainError(error) });
       return null;
     }
   };

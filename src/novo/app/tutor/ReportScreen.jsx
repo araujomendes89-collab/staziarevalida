@@ -4,9 +4,10 @@ import { Badge, Banner, Button, Card } from "../../ds";
 import { useSession } from "../session.jsx";
 import { ERROR_CLASS, LEVEL } from "./labels.js";
 import { TutorGate } from "./nexus/TutorGate.jsx";
+import { explainError } from "../../../shared/errors/explicarErro";
 
 const R = { borderRadius: 24 };
-const messageOf = (error) => error?.message || "Não foi possível concluir. Tente de novo.";
+const messageOf = (error) => explainError(error);
 
 export function ReportScreen({ go }) {
   return <TutorGate go={go}>{() => <Report />}</TutorGate>;

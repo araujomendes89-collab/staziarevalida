@@ -2,6 +2,7 @@
 import React from "react";
 import { Badge, Banner, Button, SelectField, TextField } from "../../../ds";
 import { aiSend, PROVIDER_NAME } from "./aiApi.js";
+import { explainError } from "../../../../shared/errors/explicarErro";
 
 const MODES = [
   { value: "sozinha", label: "Sozinha" },
@@ -114,7 +115,7 @@ export function FunctionEditor({ fnKey, label, saved, check, providers: allProvi
       setState({ busy: false, problems: null, error: null, warnings: after ? [] : (out?.warnings ?? []) });
       await onSaved();
     } catch (error) {
-      setState({ busy: false, problems: error.problems ?? null, error: error.message, warnings: null });
+      setState({ busy: false, problems: error.problems ?? null, error: explainError(error), warnings: null });
     }
   };
   const save = () =>

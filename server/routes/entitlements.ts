@@ -183,9 +183,10 @@ entitlementsRouter.post("/consume", async (req: Request, res: Response) => {
 
 /**
  * POST /api/entitlements/upgrade-self
- * Permite que o usuário ative uma assinatura (ou simule upgrade direto)
+ * Troca de plano SEM pagamento: só administrador (RT03, 2026-10-12). Antes qualquer conta logada se dava Pro ou Elite de graça.
+ * A cobrança de verdade será feita do zero, com conferência obrigatória da assinatura (Stripe está parada por decisão do dono).
  */
-entitlementsRouter.post("/upgrade-self", async (req: Request, res: Response) => {
+entitlementsRouter.post("/upgrade-self", requireServerRole("ADMIN"), async (req: Request, res: Response) => {
   try {
     const userId = req.auth!.uid;
     const { plan } = req.body;

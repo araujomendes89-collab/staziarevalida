@@ -15,6 +15,7 @@ import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoic
 import { samplePath } from "./voicePreview";
 import { elevenAccessOf, nexusStatus, openNexus, type TtsQuota } from "./nexus";
 import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, STT_BUSY, STT_PER_MINUTE, audioFitsSeconds, sttConfig, transcribe } from "./stt";
+import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 
 type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -38,7 +39,7 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       // a tarefa diária também aplica a retenção das transcrições da voz (painel)
       res.json({ expired: await sweepVoice(deps), purged_transcripts: await purgeVoiceTranscripts(deps).catch(() => 0) });
     } catch (error) {
-      fail(res, 500, (error as Error).message.slice(0, 120));
+      fail(res, 500, shown(error));
     }
   });
 
@@ -50,7 +51,7 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       req.user = user;
       next();
     } catch (error) {
-      fail(res, 500, (error as Error).message);
+      fail(res, 500, ACCESS_CHECK_FAILED);
     }
   });
 

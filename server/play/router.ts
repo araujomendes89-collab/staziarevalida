@@ -6,6 +6,7 @@
  */
 import express, { type Response } from "express";
 import type { ContentDb } from "../contentHub/infra";
+import { shown } from "../auth/friendlyError";
 
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
 
@@ -30,7 +31,7 @@ export function createPlayRouter(deps: PlayDeps | null) {
       res.json(await runPlayDaily(deps));
     } catch (error) {
       deps.log?.(`[play] falha na rotina diária: ${(error as Error).message}`);
-      fail(res, 500, (error as Error).message.slice(0, 160));
+      fail(res, 500, shown(error));
     }
   });
 

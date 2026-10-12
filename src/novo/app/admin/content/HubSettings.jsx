@@ -8,6 +8,7 @@ import { dateTimeBR, LoadError, Loading, useDebounced, useLoad } from "../common
 import { AREA_LABEL, STEP_LABEL } from "./labels.js";
 import { KeyValue, ModelBadge, Section, useAction } from "./ui.jsx";
 import { aiGet, PROVIDER_NAME, usd } from "../ai/aiApi.js";
+import { explainError } from "../../../../shared/errors/explicarErro";
 
 const CREDENTIALS = [
   ["CONTENT_HUB_AI_PROVIDER", "a IA de cada função é escolhida em Administração › Central de IAs. Enquanto uma função não estiver salva lá, valem esta variável (anthropic, gemini ou openai; o modo mock só existe fora de produção) e as específicas CONTENT_HUB_AI_PROVIDER_CREATE (criação, engenharia reversa e assistentes) e CONTENT_HUB_VERIFIER_PROVIDER (verificação)"],
@@ -106,7 +107,7 @@ function AiSummary({ isAdmin }) {
   const { backend } = useSession();
   const [, setParams] = useSearchParams();
   const { data, error } = useLoad(() => aiGet(backend, "/summary"), [backend]);
-  if (error) return <span>{error.message}</span>;
+  if (error) return <span>{explainError(error)}</span>;
   if (!data) return <span>Carregando…</span>;
   const configured = (data.functions ?? []).filter((f) => f.configured).length;
   // o total vem da lista que o banco devolve (hoje 7 funções, com a Busca de fontes oficiais), não de um número fixo

@@ -21,6 +21,7 @@ import { loadComplementarTerms } from "../contentHub/complementarGuard";
 import { holdFile, recordFileSha, releaseFile, SHA_WARNING } from "../contentHub/fileSha";
 import { sweepLessonFiles } from "./files";
 import { AREA_CODES, generateLessonAssist, MAX_ASSIST_CHARS, type AssistProvider } from "./assist";
+import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 
 export const LESSONS_BUCKET = "lessons";
 const MAX_MB = Number(process.env.LESSONS_MAX_FILE_MB || 200);
@@ -66,7 +67,8 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       req.user = user;
       next();
     } catch (error) {
-      fail(res, 500, message(error));
+      (deps as { log?: (m: string) => void } | null)?.log?.(`conferência de login falhou: ${message(error)}`.slice(0, 300));
+      fail(res, 500, ACCESS_CHECK_FAILED);
     }
   });
   const asUser = <T>(req: Authed, fn: string, args: Record<string, unknown> = {}) => deps!.db.asUser<T>(req.user!, fn, args);
@@ -126,7 +128,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       const signed = await deps!.storage.signedUpload(key);
       res.json({ mode: "signed", bucket: LESSONS_BUCKET, key, path: signed.path, token: signed.token });
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), shown(error));
     }
   });
 
@@ -140,7 +142,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       if (!(await deps!.storage.exists(key))) throw httpError(400, "O arquivo não chegou ao depósito. Envie de novo.");
       res.status(201).json(await register(req, id, { kind: String(kind), title: String(title || "Material"), key, type: String(content_type), size: Number(size_bytes) || 0 }));
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), shown(error));
     }
   });
 
@@ -160,7 +162,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       if (!(await deps!.storage.exists(key))) await deps!.storage.put(key, body, type);
       res.status(201).json(await register(req, id, { kind, title: String(req.query.title ?? name), key, type, size: body.length }, body));
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), shown(error));
     }
   });
 
@@ -172,7 +174,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       await sweep(req);
       res.json(view);
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : /não encontrad/i.test(message(error)) ? 404 : 400), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : /não encontrad/i.test(message(error)) ? 404 : 400), shown(error));
     }
   });
 
@@ -184,7 +186,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       await sweep(req);
       res.json({ deleted: true });
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : /não encontrad/i.test(message(error)) ? 404 : 400), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : /não encontrad/i.test(message(error)) ? 404 : 400), shown(error));
     }
   });
 
@@ -195,7 +197,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       const r = await sweep(req);
       res.json({ deleted: r.deleted.length, failed: r.failed.length });
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), shown(error));
     }
   });
 
@@ -214,7 +216,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       if (!m.storage_path) throw httpError(404, "Material sem arquivo.");
       res.json({ url: deps!.storage.signedUrl ? await deps!.storage.signedUrl(m.storage_path, m.kind === "flashcast" ? AUDIO_LINK_SECONDS : LINK_SECONDS) : null });
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 404), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 404), shown(error));
     }
   });
 
@@ -229,7 +231,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       res.setHeader("Cache-Control", "private, no-store");
       res.send(data);
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 404), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 404), shown(error));
     }
   });
 
@@ -240,7 +242,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       await asUser(req, "app_admin_lessons");
       res.json(await aiChoices(deps!.db));
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 500), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 500), shown(error));
     }
   });
 
@@ -266,7 +268,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
         try {
           pages = (await fetchLink(url, deps!.fetchImpl ?? fetch, deps!.checkHost)).pages;
         } catch (error) {
-          throw httpError(422, message(error));
+          throw httpError(422, shown(error));
         }
       } else {
         throw httpError(400, "Envie o material: PDF (texto por página), texto ou link.");
@@ -292,7 +294,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
           mockRespond: kind === "mock" ? deps!.mockAssist : undefined,
         });
       } catch (error: any) {
-        throw httpError(error?.status ?? 502, `O assistente falhou: ${message(error)}`);
+        throw httpError(error?.status ?? 502, `O assistente falhou: ${shown(error)}`);
       }
       if (kind !== "mock") {
         try {
@@ -307,7 +309,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       }
       res.json(r);
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), shown(error));
     }
   });
 
