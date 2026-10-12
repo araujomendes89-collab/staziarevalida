@@ -14,6 +14,7 @@ import type { ContentHubWorker } from "./worker";
 import type { ProcessingReport } from "./capabilities";
 import { DEFAULT_MAX_SEARCHES, functionChecks, invalidateAiConfig, loadAiConfig } from "../ai/config";
 import { aiAllowed } from "./ai/registry";
+import { runScheduledReanalysis } from "./reanalysisRun";
 import { DEFAULT_EMBEDDING_MODEL, embedderAllowed, embeddingsConfig, queryEmbedding } from "./embeddings";
 
 /** A tarefa no Cloud Run roda a cada 10 minutos: sem relato há mais de 30, ela parou. */
@@ -31,6 +32,10 @@ const fail = (res: Response, status: number, error: string) => res.status(status
 const httpError = (status: number, text: string) => Object.assign(new Error(text), { status });
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 const forbidden = (error: unknown) => /restrito|sem acesso|administrador|42501|Acesso/i.test(message(error));
+
+/** O site já tem a função nova, mas o banco ainda não recebeu a atualização (SQL colado depois): aviso em português simples. */
+const NEEDS_DB_UPDATE = "Esta função ainda não está disponível: falta concluir uma atualização do banco de dados. Peça ao suporte técnico.";
+const missingDbFunction = (error: unknown) => /does not exist|could not find the function|schema cache/i.test(message(error)) && /app_ch_(request_sources_check|reanalysis_request)/.test(message(error));
 
 const NO_FUNCTION_READY = "Nenhuma função da Central de IAs está pronta: ligue e configure as IAs em Administração › Central de IAs.";
 
@@ -212,9 +217,28 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
   /** PDF completo de uma fonte oficial (acervo de validação): vira trechos citáveis com página. */
   const sendSourceDocument = async (req: Authed, res: Response, doc: { id: string; duplicate: boolean; sha256: string }) => {
     await asUser(req, "app_ch_attach_source_document", { p_source_id: req.params.id, p_document_id: doc.id });
-    const job = await enqueueExtract(doc.id);
+    let job = await enqueueExtract(doc.id);
+    if (job.duplicate) job = (await continueKnownDocument(doc.id)) ?? job;
     await deps!.db.service("ch_worker_unblock");
     res.status(201).json({ ...doc, job });
+  };
+  /**
+   * O mesmo arquivo já tinha sido enviado (ex.: em Documentos) e a fila reconheceu a leitura como repetida (CC24): sem isto a fonte
+   * ficava ligada ao documento, mas sem trechos. Leitura pronta = manda direto indexar os trechos (ler o PDF de novo apagaria o trabalho
+   * já feito no documento); leitura que falhou = refaz; na fila ou rodando = deixa terminar (a leitura confere no fim se virou fonte).
+   */
+  const continueKnownDocument = async (documentId: string) => {
+    const state = await deps!.db
+      .service<{ extract_status: string | null; blocks: number } | null>("ch_worker_document_extraction", { p_document_id: documentId })
+      .catch(() => null); // banco sem a atualização 9873: segue como antes
+    if (!state) return null;
+    if (state.extract_status === "succeeded" && state.blocks > 0) {
+      return deps!.db.service<{ id: string; duplicate: boolean }>("ch_worker_next", { p_document_id: documentId, p_step: "source_index", p_versions: stepVersions("source_index", deps!), p_scope_key: "" });
+    }
+    if (state.extract_status && ["failed", "dead", "blocked", "succeeded"].includes(state.extract_status)) {
+      return deps!.db.service<{ id: string; duplicate: boolean }>("ch_worker_next", { p_document_id: documentId, p_step: "extract", p_versions: stepVersions("extract", deps!), p_scope_key: "" });
+    }
+    return null;
   };
   const failUpload = (res: Response, error: any) => fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
 
@@ -312,15 +336,40 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
     }
   });
 
-  /** Conferir agora as fontes monitoradas (administrador). */
+  /**
+   * Conferir agora as fontes monitoradas (administrador). Onde o processamento roda junto com o servidor (desenvolvimento), confere
+   * na hora. No site publicado quem confere é o processamento no Google (o servidor da Vercel não processa): o pedido fica marcado
+   * em cada fonte monitorada e a próxima rodada atende (CC23).
+   */
   router.post("/sources/check", async (req: Authed, res) => {
     try {
       const me = await requireStaff(req);
       if (!me.admin) return fail(res, 403, "Somente administradores.");
-      if (!opts.worker) return fail(res, 503, "Worker desligado neste servidor.");
-      res.json(await opts.worker.checkSources());
+      if (opts.worker?.running) return res.json(await opts.worker.checkSources());
+      const requested = await asUser<number>(req, "app_ch_request_sources_check");
+      res.json({ requested: Number(requested) || 0 });
     } catch (error) {
+      if (missingDbFunction(error)) return fail(res, 503, NEEDS_DB_UPDATE);
       fail(res, forbidden(error) ? 403 : 500, message(error));
+    }
+  });
+
+  /**
+   * Reanalisar agora as questões cuja fonte oficial mudou (administrador, CC18). Marca o pedido no banco; o processamento atende na
+   * próxima rodada. Onde o processamento roda junto com o servidor (desenvolvimento), a rodada começa na hora, em segundo plano.
+   * A IA só propõe: nada vai ao aluno sem a decisão de um revisor médico.
+   */
+  router.post("/questions/reanalysis", async (req: Authed, res) => {
+    try {
+      const me = await requireStaff(req);
+      if (!me.admin) return fail(res, 403, "Somente administradores.");
+      const r = await asUser<{ waiting: number; already: boolean }>(req, "app_ch_reanalysis_request");
+      const now = Boolean(opts.worker?.running);
+      if (now) void runScheduledReanalysis(deps!).catch((error) => deps!.log?.(`[central] reanálise de questões: ${message(error)}`));
+      res.json({ ...r, now });
+    } catch (error) {
+      if (missingDbFunction(error)) return fail(res, 503, NEEDS_DB_UPDATE);
+      fail(res, forbidden(error) ? 403 : /esperando reanálise/.test(message(error)) ? 400 : 500, message(error));
     }
   });
 
