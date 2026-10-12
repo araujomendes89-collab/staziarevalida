@@ -68,6 +68,7 @@ export const ACTION_LABEL = {
   "podcast.script.edit": "Roteiro do podcast editado",
   "podcast.approve": "Roteiro do podcast aprovado",
   "podcast.audio": "Áudio do podcast gerado",
+  "podcast.files.cleanup": "Arquivos antigos do podcast apagados do depósito",
   "podcast.publish": "Podcast publicado",
   "podcast.unpublish": "Podcast tirado do ar",
   // tutor
@@ -350,6 +351,15 @@ const SUMMARY = {
   "podcast.script.edit": (d, entry) => join([entry.title, d.lines != null && count(d.lines, "fala", "falas")]),
   "podcast.approve": (d, entry) => join([entry.title, d.note && `Nota: ${d.note}`]),
   "podcast.audio": (d, entry) => join([entry.title, d.seconds && `Duração: ${duration(d.seconds)}`, d.simulated && "áudio de teste, sem voz de verdade"]),
+  // P08: o que saiu do depósito quando um áudio deixou de valer, uma fonte foi tirada ou o episódio foi apagado (só o que nenhuma linha do banco usava)
+  "podcast.files.cleanup": (d, entry) =>
+    join([
+      entry.title,
+      Number(d.audios) > 0 && `${count(d.audios, "áudio antigo apagado", "áudios antigos apagados")}`,
+      Number(d.fontes) > 0 && `${count(d.fontes, "arquivo de fonte apagado", "arquivos de fonte apagados")}`,
+      Array.isArray(d.arquivos) && d.arquivos.length > 0 && `Arquivos: ${d.arquivos.join(", ")}`,
+      Number(d.falhas) > 0 && `${count(d.falhas, "arquivo não pôde ser apagado agora", "arquivos não puderam ser apagados agora")} (nova tentativa na próxima ação do episódio)`,
+    ]),
   // O motivo é obrigatório na tela do Tutor ("fica no registro"): aparece inteiro. O "de → para" da configuração é um objeto
   // técnico e não vira texto.
   "tutor.config": (d) => reasonOf(d),

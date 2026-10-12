@@ -115,6 +115,77 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       log(`podcasts: não consegui apagar ${list.length} arquivo(s): ${message(error)}`);
     }
   };
+  /**
+   * Apaga do depósito os arquivos que ficaram sem uso (áudio que deixou de valer, fonte tirada, episódio apagado). Nunca apaga "na
+   * hora": o banco RESERVA o caminho (ch_worker_podcast_files_pending: só devolve o que nenhuma linha usa, com um código da reserva,
+   * e, enquanto a reserva vale, recusa quem tentar criar referência a ele). ANTES DE CADA exclusão o servidor pede ao banco para
+   * RENOVAR a reserva (ch_worker_podcast_files_renew): se o banco não confirmar (código trocado, reserva vencida ou o caminho passou
+   * a ser usado), o arquivo é pulado e nada é apagado. Só então apaga e confirma com o código (ch_worker_podcast_files_done, que só
+   * vale para a reserva vigente). A fila é única: qualquer evento (ou a rota de repetir) limpa o que ficou pendente de qualquer
+   * episódio, inclusive de episódio já apagado. Só lança "Acesso restrito" (quem não é equipe); qualquer outra falha NÃO desfaz a
+   * operação principal. Não há varredura de arquivos antigos.
+   * Sempre que algo não terminou (falha ao apagar, depósito sem resposta, banco sem a migração) devolve `note` em português simples,
+   * nunca sucesso silencioso. O número da migração vai só para o log técnico.
+   */
+  const SQL_ANTIGO = "A atualização necessária para limpar os arquivos antigos ainda não foi concluída. Nada foi apagado e nada se perdeu: os arquivos continuam guardados e aparecem na lista de arquivos esquecidos.";
+  const SEM_LIMPEZA = "Os arquivos antigos ainda não foram apagados do depósito (a limpeza não terminou). Nada se perdeu: eles saem na próxima limpeza.";
+  const comFalhas = (n: number) =>
+    `${n === 1 ? "1 arquivo antigo não pôde ser apagado agora" : `${n} arquivos antigos não puderam ser apagados agora`} (o depósito não respondeu). Nada se perdeu: ${n === 1 ? "ele sai" : "eles saem"} na próxima limpeza.`;
+  const REMOVE_TIMEOUT_MS = 60_000;
+  const withTimeout = <T>(work: Promise<T>, ms: number) =>
+    new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => reject(Object.assign(new Error("o depósito demorou demais para responder"), { timeout: true })), ms);
+      work.then(
+        (v) => { clearTimeout(timer); resolve(v); },
+        (e) => { clearTimeout(timer); reject(e); },
+      );
+    });
+  type Released = { ok: boolean; failed: number; note?: string };
+  const releaseFiles = async (user: string): Promise<Released> => {
+    let failed = 0;
+    try {
+      if (!deps!.storage.remove) return { ok: true, failed: 0 };
+      for (let round = 0; round < 5; round++) {
+        const pending = await service<Array<{ id: number; path: string; token: string }>>("ch_worker_podcast_files_pending", { p_user: user, p_podcast: null });
+        if (!Array.isArray(pending) || !pending.length) break;
+        const results: Array<{ id: number; token: string; ok: boolean; error?: string }> = [];
+        let aborted: unknown = null;
+        for (const file of pending) {
+          try {
+            // a reserva pode ter vencido enquanto os anteriores eram apagados: só apaga o que o banco confirmar agora
+            const alive = await service<boolean>("ch_worker_podcast_files_renew", { p_user: user, p_id: file.id, p_token: file.token });
+            if (alive !== true) continue;
+          } catch (error) {
+            aborted = error;
+            break;
+          }
+          try {
+            await withTimeout(deps!.storage.remove([file.path]), REMOVE_TIMEOUT_MS);
+            results.push({ id: file.id, token: file.token, ok: true });
+          } catch (error) {
+            log(`podcasts: não consegui apagar ${file.path}: ${message(error)}`);
+            failed++;
+            // se o depósito nem respondeu, o pedido pode ainda estar em andamento: não solta a reserva (ela vence sozinha)
+            if (!(error as { timeout?: boolean })?.timeout) results.push({ id: file.id, token: file.token, ok: false, error: message(error) });
+          }
+        }
+        if (results.length) await service("ch_worker_podcast_files_done", { p_user: user, p_results: results });
+        if (aborted) throw aborted;
+        if (failed || pending.length < 50) break;
+      }
+    } catch (error) {
+      if (/Acesso restrito/i.test(message(error))) throw error; // a rota de repetir é só da equipe: quem não é equipe recebe 403
+      if (/ch_worker_podcast_files_/.test(message(error)) && /could not find the function|schema cache|PGRST202|42883|does not exist/i.test(message(error))) {
+        log("podcasts: a migração 9721 não está aplicada no banco; nenhum arquivo antigo foi apagado");
+        return { ok: false, failed: 0, note: SQL_ANTIGO };
+      }
+      log(`podcasts: limpeza de arquivos antigos não terminou (fica para a próxima): ${message(error)}`);
+      return { ok: false, failed, note: SEM_LIMPEZA };
+    }
+    return failed ? { ok: false, failed, note: comFalhas(failed) } : { ok: true, failed: 0 };
+  };
+  /** Resposta das rotas de limpeza (repetir e a que a tela chama depois de editar o roteiro). */
+  const cleanupBody = (r: Released) => (r.ok ? { ok: true } : { ok: false, ...(r.failed ? { falhas: r.failed } : {}), note: r.note });
   /** Custo de IA no mesmo livro-caixa do Tutor (sem contar como interação do aluno). */
   const ledger = async (user: string, entry: Record<string, unknown>) => {
     try {
@@ -326,9 +397,9 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const before = await staffPodcast(req);
       const source = (before.sources ?? []).find((s: any) => s.id === req.params.sourceId);
       if (!source) throw httpError(404, "Fonte não encontrada.");
-      const view = await asUser(req, "app_admin_podcast_remove_source", { p_source_id: req.params.sourceId });
-      await removeQuietly(deps!.storage, [source.storage_path]);
-      res.json(view);
+      const view = await asUser<any>(req, "app_admin_podcast_remove_source", { p_source_id: req.params.sourceId });
+      const released = await releaseFiles(req.user!.id); // o arquivo da fonte (se nenhuma outra linha o usa) e o áudio que deixou de valer
+      res.json(released.note ? { ...(view ?? {}), note: released.note } : view);
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }
@@ -385,7 +456,8 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
         await ledger(req.user!.id, { feature: "podcast_script", provider: r.usage.provider, model: r.usage.model, input_text_tokens: r.usage.input_tokens, output_text_tokens: r.usage.output_tokens, estimated_cost_usd: r.usage.cost_usd, meta: { podcast_id: req.params.id, calls: r.usage.calls } });
       }
       log(`podcasts: roteiro ${simulated ? "simulado" : r.usage.model} no episódio ${req.params.id} (${r.script.lines.length} falas, ${r.warnings.length} avisos)`);
-      res.json({ podcast: view, warnings: r.warnings });
+      const released = await releaseFiles(req.user!.id); // o áudio do roteiro anterior deixou de valer
+      res.json({ podcast: view, warnings: r.warnings, ...(released.note ? { note: released.note } : {}) });
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }
@@ -549,7 +621,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     let newKey: string | null = null;
     try {
       await staffPodcast(req);
-      const { manifest, oldAudio } = await currentJob(req);
+      const { manifest } = await currentJob(req);
       const id = req.params.id;
       const pieces: Buffer[] = [];
       let seconds = 0;
@@ -573,11 +645,36 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
         await ledger(req.user!.id, { feature: "podcast_tts", provider: manifest.provider, model: manifest.model, duration_seconds: Math.round(seconds), characters: manifest.chars, estimated_cost_usd: cost, meta: { podcast_id: id, job: manifest.job } });
       }
       const tmp = manifest.parts.flatMap((_, i) => [partKey(id, manifest.job, i, "mp3"), partKey(id, manifest.job, i, "json"), partKey(id, manifest.job, i, "lock")]);
-      await removeQuietly(deps!.storage, [...tmp, manifestKey(id, manifest.job), oldAudio && oldAudio !== newKey ? oldAudio : null]);
+      await removeQuietly(deps!.storage, [...tmp, manifestKey(id, manifest.job)]);
+      const released = await releaseFiles(req.user!.id); // o áudio anterior (a fila só o apaga se nenhuma linha do banco o usa)
       log(`podcasts: áudio pronto no episódio ${id} (${Math.round(seconds)} s, ${manifest.provider})`);
-      res.json(view);
+      res.json(released.note ? { ...(view ?? {}), note: released.note } : view);
     } catch (error) {
       if (newKey) await removeQuietly(deps?.storage, [newKey]);
+      fail(res, statusOf(error), message(error));
+    }
+  });
+
+  /**
+   * Repetir a limpeza da fila inteira (qualquer episódio, inclusive já apagado). Só a equipe (o banco confere pela conta). Declarada
+   * ANTES das rotas por episódio. Se a 9721 não está aplicada, diz isso em vez de responder sucesso.
+   */
+  router.post("/files/cleanup", async (req: Authed, res) => {
+    try {
+      const released = await releaseFiles(req.user!.id);
+      res.json(cleanupBody(released));
+    } catch (error) {
+      fail(res, statusOf(error), message(error));
+    }
+  });
+
+  /** A tela chama depois de editar o roteiro (a edição é feita direto no banco): apaga o áudio que deixou de valer. */
+  router.post("/:id/files/cleanup", async (req: Authed, res) => {
+    try {
+      await staffPodcast(req);
+      const released = await releaseFiles(req.user!.id);
+      res.json(cleanupBody(released));
+    } catch (error) {
       fail(res, statusOf(error), message(error));
     }
   });
@@ -643,9 +740,9 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
   router.delete("/:id", async (req: Authed, res) => {
     try {
       if (!ID.test(req.params.id)) throw httpError(400, "Episódio inválido.");
-      const r = await asUser<{ paths?: string[] }>(req, "app_admin_delete_podcast", { p_id: req.params.id });
-      await removeQuietly(deps!.storage, r?.paths ?? []);
-      res.json({ deleted: true });
+      await asUser(req, "app_admin_delete_podcast", { p_id: req.params.id });
+      const released = await releaseFiles(req.user!.id); // áudio e arquivos das fontes do episódio apagado
+      res.json({ deleted: true, ...(released.note ? { aviso: released.note } : {}) });
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }
