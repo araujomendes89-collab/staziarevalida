@@ -10,6 +10,14 @@ export const sha = (s: string) => crypto.createHash("sha256").update(s).digest("
 export const TEMA_GO = "Síndromes hipertensivas na gestação"; // área GINECOLOGIA_OBSTETRICIA
 export const TEMA_PED = "Bronquiolite viral aguda"; // área PEDIATRIA
 
+/** Temas de verdade da taxonomia inicial, de áreas variadas: cada unidade de teste usa um tema diferente (aula parecida = mesmo tema). */
+export const TEMAS = [
+  "Rotina do pré-natal de risco habitual", "Rastreamento do câncer do colo do útero", "Insuficiência cardíaca", "Síndromes coronarianas agudas", "Asma no adulto",
+  "Diabetes mellitus tipo 2", "Tuberculose", "Calendário nacional de vacinação da criança", "Atendimento inicial ao politraumatizado", "Apendicite aguda",
+  "Rastreamento do câncer colorretal", "Hipertensão arterial sistêmica na atenção primária",
+];
+let rodizio = 0;
+
 export type Montagem = {
   titulo: string;
   tema?: string;
@@ -27,7 +35,8 @@ export type Montagem = {
 };
 
 export async function preparaBanco(sql: Sql) {
-  await sql(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'GINECOLOGIA_OBSTETRICIA') on conflict do nothing`, [REVISOR]);
+  for (const a of ["GINECOLOGIA_OBSTETRICIA", "PEDIATRIA", "CLINICA_MEDICA", "CIRURGIA", "MFC", "SAUDE_MENTAL"])
+    await sql(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, $2) on conflict do nothing`, [REVISOR, a]);
   await sql(`update public.ch_flags set value = case key when 'publish_enabled' then true when 'shadow_mode' then false else value end`);
 }
 
@@ -35,7 +44,7 @@ export const noTema = async (sql: Sql, nome: string) =>
   (await sql(`select n.id from public.ch_taxonomy_nodes n join public.ch_taxonomy_versions v on v.id = n.version_id where v.status = 'published' and n.name = $1`, [nome]))[0].id as string;
 
 export async function montarUnidade(sql: Sql, rpc: Rpc, m: Montagem) {
-  const tema = m.tema ?? TEMA_GO;
+  const tema = m.tema ?? TEMAS[rodizio++ % TEMAS.length];
   const textoFonte = `${m.titulo}: reconhecer a síndrome pela pressão elevada e pela proteína na urina${m.critica ? ", com ataque de 4 g por via intravenosa em 20 min" : ""}.`;
   const fonte = (await rpc(ADMIN, "app_ch_register_source", { p_source: { title: `Manual ${m.titulo}`, organ: "Ministério da Saúde", version: "2022", published_on: "2022-01-01", sha256: sha(m.titulo) } })).id as string;
   if (m.autoridade !== null) await rpc(ADMIN, "app_ch_set_source_authority", { p_source_id: fonte, p_level: m.autoridade ?? "A" });
@@ -71,6 +80,11 @@ export async function conteudoDaVersao(rpc: Rpc, sql: Sql, versao: string, afirm
       JSON.stringify({ material_id: aula.id, format: "pdf", storage_path: `renders/${versao}.pdf`, sha256: sha(versao), template_version: "t", brand_version: "b", material_hash: aula.content_hash, check_result: { ok: true } }),
     ]);
   }
+}
+
+/** Publica como o administrador; por padrão já confirma a aula parecida (os testes de unidades do mesmo tema dizem o contrário). */
+export async function publicar(rpc: Rpc, versao: string, opcoes: Record<string, unknown> = { confirm_similar: true }) {
+  return rpc(ADMIN, "app_ch_publish", { p_version_id: versao, p_options: opcoes });
 }
 
 export async function aprovar(rpc: Rpc, versao: string) {

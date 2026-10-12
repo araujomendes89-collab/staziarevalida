@@ -19,6 +19,7 @@ beforeAll(async () => {
   await sql(`insert into auth.users (id, email) values ($1, 'revped83@t.dev')`, [REVISOR_PED]);
   await sql(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'PEDIATRIA')`, [REVISOR_PED]);
   await preparaBanco(sql);
+  await sql(`delete from public.ch_reviewer_areas where user_id = $1 and area_code <> 'GINECOLOGIA_OBSTETRICIA'`, [REVISOR]); // aqui o REVISOR é só de Ginecologia e Obstetrícia
 }, 240_000);
 
 async function afirmacaoComEvidencia(statement: string, critica: boolean, tema = TEMA_GO) {

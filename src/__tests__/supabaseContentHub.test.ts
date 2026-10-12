@@ -146,6 +146,7 @@ describe("Fontes, afirmações e evidências", () => {
 
   it("busca nas fontes com filtros; diretriz de sociedade e consulta pública não sustentam conduta sozinhas", async () => {
     ms = (await rpc(ADMIN, "app_ch_register_source", { p_source: { title: "Manual de Gestação de Alto Risco", organ: "Ministério da Saúde", version: "2022", published_on: "2022-01-01", sha256: SHA(10) } })).id;
+    await rpc(ADMIN, "app_ch_set_source_authority", { p_source_id: ms, p_level: "A" }); // só fonte oficial (nível A a D) sustenta a publicação ao aluno
     await rpc(ADMIN, "app_ch_add_passage", {
       p_source_id: ms,
       p_passage: { section: "Pré-eclâmpsia grave", page: 112, population: "gestantes", care_setting: "hospitalar", theme: "síndromes hipertensivas",
@@ -223,7 +224,9 @@ describe("Unidade didática, materiais, aprovação e publicação", () => {
   });
 
   it("aprovação médica só por revisor da área; o processamento (sem usuário) nunca aprova", async () => {
-    await rpc(EDITOR, "app_ch_confirm_critical", { p_claim_id: (globalThis as any).__claimDose() });
+    // dose e via só são conferidas por revisor médico cadastrado na área (CC12)
+    await expect(rpc(EDITOR, "app_ch_confirm_critical", { p_claim_id: (globalThis as any).__claimDose() })).rejects.toThrow(/revisor médico cadastrado na área/);
+    await rpc(REVIEWER_GO, "app_ch_confirm_critical", { p_claim_id: (globalThis as any).__claimDose() });
     await rpc(EDITOR, "app_ch_submit_for_review", { p_version_id: version });
     await expect(rpc(REVIEWER_PED, "app_ch_approve", { p_version_id: version, p_kind: "medical" })).rejects.toThrow(/revisor cadastrado na área GINECOLOGIA_OBSTETRICIA/);
     await expect(rpc(null, "app_ch_approve", { p_version_id: version, p_kind: "medical" })).rejects.toThrow(/Entre na sua conta|permission/);
