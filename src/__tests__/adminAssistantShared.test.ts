@@ -133,6 +133,7 @@ describe("assistente das abas — valores e textos comuns", () => {
       newFeature: "Recurso novo: confirme que o plano tem",
       annulled: "Questão anulada: sem explicação de gabarito.",
       questoesNotice: "Enunciado e alternativas aparecem na hora para o aluno. Explicações, conduta e “o que avalia” esperam a aprovação do revisor médico.",
+      questoesNoticeSemRevisao: "O que você salvar aparece na hora para o aluno.",
       figure: "a questão cita uma figura que o assistente não vê",
       aiReason: "assistente de IA",
       mockLabel: "Simulação (sem IA)",

@@ -19,6 +19,7 @@ const ROW = {
   id: "q1", code: "REV-2024-1-001", attempts: 3, exam: { kind: "REVALIDA", year: 2024, semester: 1 }, number: 1, area: "PEDIATRIA", topic: "Bronquiolite", subtopic: "",
   statement: "Lactente com desconforto respiratório.", options: ["A", "B", "C", "D"].map((id) => ({ id, text: `Alt ${id}`, explanation: "" })),
   correct_option: "B", status: "valid", expected_conduct: "", inep_intent: "", needs_image: false, images: [],
+  comment_review_ready: true, // o banco pratica a revisão de comentários: o aviso do assistente a promete
 };
 const textarea = (label: string) => screen.getAllByLabelText(label).find((el) => el.tagName === "TEXTAREA") as HTMLTextAreaElement;
 const saveCalls = () => backend.rpc.mock.calls.filter((c: any[]) => c[0] === "app_admin_save_question");

@@ -20,7 +20,7 @@ const ROW = {
   statement: "Lactente com desconforto respiratório há dois dias.", options: ["A", "B", "C", "D"].map((id) => ({ id, text: `Alt ${id}`, explanation: (EXPLAINED as any)[id] })),
   correct_option: "B", status: "valid", expected_conduct: "Suporte ventilatório.", inep_intent: "Avalia o manejo.", needs_image: false, images: [], explanations_review: null,
   official: { answer: "B", answer_status: "FINAL", version: 1, source: "Gabarito", source_url: null, published_at: null },
-  comment_review: null, comment_can_review: false, comment_review_by: null, comment_decision: null,
+  comment_review: null, comment_can_review: false, comment_review_by: null, comment_decision: null, comment_review_ready: true,
 };
 const IN_REVIEW = { ...ROW, comment_review: { campos: ["expected_conduct", "explanation_B"], desde: "2026-10-11T12:00:00Z", por: "u1", ia: false }, comment_review_by: "Editora" };
 const calls = (fn: string) => backend.rpc.mock.calls.filter((c: any[]) => c[0] === fn);
@@ -160,7 +160,7 @@ describe("Q09 — editor: comentário em revisão", () => {
   it("questão nova com comentário também avisa; sem comentário, não", async () => {
     session.boot = { role: "editor", profile: { name: "Ed" } };
     routes(ROW);
-    render(<QuestionEditor id={undefined} onClose={vi.fn()} onSaved={vi.fn()} />);
+    render(<QuestionEditor id={undefined} onClose={vi.fn()} onSaved={vi.fn()} commentReviewReady />);
     await screen.findByRole("button", { name: "Criar questão" });
     expect(screen.queryByText("O comentário vai para revisão")).toBeNull();
     fireEvent.change(screen.getByLabelText("O que a questão avalia"), { target: { value: "Avalia o manejo." } });
@@ -178,7 +178,7 @@ describe("Q09 — lista da equipe", () => {
           { id: "q1", code: "REV-2024.1-Q001", area: "PEDIATRIA", topic: "Bronquiolite", status: "valid", needs_image: false, images: 0, excerpt: "Lactente…", comment_review: true, explanations_review: false },
           { id: "q2", code: "REV-2024.1-Q002", area: "PEDIATRIA", topic: "Asma", status: "valid", needs_image: false, images: 0, excerpt: "Criança…", comment_review: false, explanations_review: false },
         ].filter((i) => !only || i.comment_review);
-        return { total: items.length, exams: [], items };
+        return { total: items.length, exams: [], items, comment_review_ready: true };
       }
       throw new Error(`rpc não simulada: ${fn}`);
     });

@@ -5,6 +5,7 @@ import React from "react";
 import { Badge, Banner, Button, Card, EmptyState, Icon } from "../../ds";
 import { useSession } from "../session.jsx";
 import { areaLabel } from "../practice/format.js";
+import { QuestionFigures } from "../practice/QuestionFigures.jsx";
 import { dateBR, ListRow, LoadError, Loading, messageOf, TextArea, useLoad } from "./common.jsx";
 
 const LETTERS = ["A", "B", "C", "D"];
@@ -30,13 +31,13 @@ export function changedCommentFields(now, saved) {
 const NOTE_MIN = 10;
 
 /** Aprovar ou devolver: a nota é obrigatória (10 letras ou mais). Fica fora de <form>, então Enter não envia nada. */
-function DecisionPanel({ initialMode = "approve", busy, error, onSubmit, onCancel }) {
+function DecisionPanel({ initialMode = "approve", busy, error, locked = false, onSubmit, onCancel }) {
   const [mode, setMode] = React.useState(initialMode);
   const [approveNote, setApproveNote] = React.useState("");
   const [returnNote, setReturnNote] = React.useState("");
   const approving = mode === "approve";
   const note = approving ? approveNote : returnNote;
-  const ready = note.trim().length >= NOTE_MIN;
+  const ready = note.trim().length >= NOTE_MIN && !locked;
   return (
     <section
       aria-label="Decisão sobre o comentário"
@@ -50,6 +51,7 @@ function DecisionPanel({ initialMode = "approve", busy, error, onSubmit, onCance
       ) : (
         <TextArea label="Motivo da devolução" rows={3} maxLength={1000} value={returnNote} onChange={setReturnNote} hint={`Diga o que precisa mudar (pelo menos ${NOTE_MIN} letras). O comentário continua escondido do aluno.`} />
       )}
+      {locked && <Banner tone="warning">Você mudou o texto do formulário. Salve a questão (ou desfaça a mudança) antes de decidir: o revisor só aprova o texto que está gravado.</Banner>}
       {error && <Banner tone="danger">{error}</Banner>}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
         {approving ? (
@@ -83,10 +85,13 @@ function DecisionPanel({ initialMode = "approve", busy, error, onSubmit, onCance
 
 const sinceText = (review, by) =>
   [by ? `Alterado por ${by}` : "Alterado", review?.desde ? `em ${dateBR(review.desde)}` : null].filter(Boolean).join(" ") + (review?.ia ? " (sugerido pelo assistente de IA)" : "") + ".";
+// Só a devolução que ainda vale (a da marca atual). A nota de uma APROVAÇÃO anterior nunca aparece como devolução, nem a de uma
+// devolução já atendida (quando o editor muda o texto de novo, a marca nova nasce sem devolução).
 const returnedText = (question) => {
-  const note = question.comment_review?.devolvido?.nota ?? question.comment_decision?.note;
+  const note = question.comment_review?.devolvido?.nota;
   if (!note) return null;
-  const by = question.comment_decision?.decision === "return" ? question.comment_decision.by : null;
+  const decision = question.comment_decision;
+  const by = decision?.decision === "return" && decision.note === note ? decision.by : null;
   return `${by ? `Devolvido por ${by}` : "Devolvido pelo revisor"}: “${note}”`;
 };
 
@@ -99,22 +104,29 @@ export function CommentReviewBanner({ question, savedForm, unsaved, onDecided, o
   const review = question.comment_review;
   const [panel, setPanel] = React.useState(null); // null | "approve" | "return"
   const [state, setState] = React.useState({ busy: false, error: null });
+  // se o formulário mudou DEPOIS de abrir o painel, o erro que chega não pode trazer a questão do banco por cima do que a pessoa digitou
+  const unsavedRef = React.useRef(unsaved);
+  unsavedRef.current = unsaved;
   if (!review) return null;
   const canDecide = Boolean(question.comment_can_review);
   const returned = returnedText(question);
 
   const submit = async (decision, note) => {
+    // o texto que a tela mostra agora é o enviado; com mudança não salva a decisão nem sai (o painel fica travado)
+    if (unsavedRef.current) return;
     setState({ busy: true, error: null });
     try {
       const fresh = await backend.rpc("app_admin_question_comment_decide", {
-        p_question_id: question.id, p_decision: decision, p_note: note, p_seen_texts: commentTexts(savedForm ?? question),
+        p_question_id: question.id, p_decision: decision, p_note: note, p_seen_texts: commentTexts(question),
       });
       setState({ busy: false, error: null });
       setPanel(null);
       onDecided(decision, fresh);
     } catch (error) {
-      setState({ busy: false, error: messageOf(error) });
-      onStale?.();
+      const text = messageOf(error);
+      setState({ busy: false, error: text });
+      // só a recusa "o texto mudou" pede a questão de agora; e nunca por cima de mudança que a pessoa ainda não salvou
+      if (/mudou enquanto você revisava/i.test(text) && !unsavedRef.current) onStale?.();
     }
   };
 
@@ -141,7 +153,7 @@ export function CommentReviewBanner({ question, savedForm, unsaved, onDecided, o
         {!canDecide && ` A aprovação é de um revisor médico cadastrado em ${areaLabel(question.area)} ou um administrador.`}
         {canDecide && unsaved && " Salve a questão antes de decidir: o revisor só aprova o texto gravado."}
       </Banner>
-      {canDecide && panel && <DecisionPanel key={panel} initialMode={panel} busy={state.busy} error={state.error} onSubmit={submit} onCancel={() => (setPanel(null), setState({ busy: false, error: null }))} />}
+      {canDecide && panel && <DecisionPanel key={panel} initialMode={panel} busy={state.busy} error={state.error} locked={unsaved} onSubmit={submit} onCancel={() => (setPanel(null), setState({ busy: false, error: null }))} />}
       {!panel && state.error && <Banner tone="danger">{state.error}</Banner>}
     </>
   );
@@ -206,6 +218,7 @@ function CommentReviewDetail({ id, onBack, onDone }) {
           </div>
           <h3 style={{ margin: 0, font: "var(--type-h4)" }}>{q.topic}</h3>
           {text(q.statement)}
+          <QuestionFigures images={q.images} questionId={q.id} />
           {q.options.map((o) => (
             <div key={o.id} style={{ display: "grid", gridTemplateColumns: "32px minmax(0,1fr)", gap: 12, alignItems: "start" }}>
               <span style={{ width: 32, height: 32, borderRadius: 10, display: "inline-flex", alignItems: "center", justifyContent: "center", font: "700 14px var(--font-sans)", background: q.correct_option === o.id ? "var(--success-bg)" : "var(--surface-sunken)", color: q.correct_option === o.id ? "var(--success-text)" : "var(--text-secondary)" }}>{o.id}</span>
@@ -247,12 +260,36 @@ function CommentReviewDetail({ id, onBack, onDone }) {
   );
 }
 
-/** A fila do revisor médico: os comentários das questões das áreas dele, os mais antigos primeiro. */
+const QUEUE_PAGE = 50;
+
+/** A fila do revisor médico: os comentários das questões das áreas dele, os mais antigos primeiro, em páginas de 50. */
 export function CommentReviewQueue() {
   const { backend } = useSession();
   const [openId, setOpenId] = React.useState(null);
   const [note, setNote] = React.useState(null);
-  const list = useLoad(() => backend.rpc("app_admin_comment_review_queue", { p_filters: {}, p_limit: 200, p_offset: 0 }), [backend]);
+  const [queue, setQueue] = React.useState({ items: [], total: 0, loading: true, error: null, loaded: false });
+  const load = React.useCallback(
+    async (offset) => {
+      setQueue((s) => ({ ...s, loading: true, error: null }));
+      try {
+        const page = await backend.rpc("app_admin_comment_review_queue", { p_filters: {}, p_limit: QUEUE_PAGE, p_offset: offset });
+        setQueue((s) => ({
+          items: offset === 0 ? page.items : s.items.concat(page.items.filter((i) => !s.items.some((x) => x.id === i.id))),
+          total: page.total ?? page.items.length,
+          loading: false,
+          error: null,
+          loaded: true,
+        }));
+      } catch (error) {
+        setQueue((s) => ({ ...s, loading: false, error }));
+      }
+    },
+    [backend]
+  );
+  React.useEffect(() => {
+    load(0);
+  }, [load]);
+  const list = { data: queue.loaded ? queue : null, error: queue.error, reload: () => load(0) };
   if (openId) {
     return (
       <CommentReviewDetail
@@ -279,7 +316,7 @@ export function CommentReviewQueue() {
           {note}
         </div>
       )}
-      {list.error && <LoadError error={list.error} retry={list.reload} />}
+      {list.error && <LoadError error={list.error} retry={() => load(queue.items.length)} />}
       {!list.data && !list.error && <Loading />}
       {list.data &&
         (list.data.items.length === 0 ? (
@@ -313,6 +350,14 @@ export function CommentReviewQueue() {
             ))}
           </div>
         ))}
+      {queue.loaded && queue.items.length < queue.total && (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+          <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{`Mostrando ${queue.items.length} de ${queue.total} comentários.`}</span>
+          <Button variant="secondary" onClick={() => load(queue.items.length)} loading={queue.loading}>
+            Carregar mais
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

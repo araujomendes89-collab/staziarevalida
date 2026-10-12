@@ -20,7 +20,8 @@
 -- Funções redefinidas (cada uma a partir da versão mais nova): ch_raw_practice_correction_view e ch_raw_tutor_truth (…9620, as
 --   funções que praticam a regra por baixo de practice_correction_view e tutor_truth), app_admin_questions e app_admin_question (…7700).
 -- Novas: app_admin_comment_review_queue, app_admin_comment_review, app_admin_question_comment_decide, app_question_comment_check
---   (conferência para o administrador) e as internas question_comment_fields, question_hidden_fields, question_can_review_comment,
+--   (conferência para o administrador) e as internas question_comment_review_missing (a lista e a questão da equipe trazem
+--   comment_review_ready: a tela só promete "vai para revisão" quando o banco a pratica), question_comment_fields, question_hidden_fields, question_can_review_comment,
 --   question_comment_assert_access, question_person_name e o gatilho questions_comment_review_mark.
 --
 -- ORDEM: depois da …9620 e da …9621 (fontes complementares) e da …7700. Se a …9620 for colada de novo, cole esta de novo depois
@@ -250,6 +251,7 @@ begin
     )
     select jsonb_build_object(
       'total', (select count(*)::int from matched),
+      'comment_review_ready', cardinality(public.question_comment_review_missing()) = 0,
       'exams', (select coalesce(jsonb_agg(jsonb_build_object('id', e.id, 'title', e.title, 'question_count', e.question_count)
                                           order by e.year desc, e.semester desc nulls last, e.kind), '[]'::jsonb)
                 from public.exams e),
@@ -285,6 +287,7 @@ begin
                                                   'source_url', o.source_url, 'published_at', o.published_at, 'recorded_at', o.recorded_at)
                         from public.question_official_answers o where o.question_id = q.id and o.is_current),
            'comment_can_review', public.question_can_review_comment(q.area),
+           'comment_review_ready', cardinality(public.question_comment_review_missing()) = 0,
            'comment_review_by', public.question_person_name(nullif(q.comment_review ->> 'por', '')::uuid),
            'comment_decision', (select jsonb_build_object('decision', r.decision, 'note', r.note, 'at', r.decided_at, 'by', public.question_person_name(r.decided_by))
                                 from public.question_comment_reviews r where r.question_id = q.id order by r.decided_at desc, r.id desc limit 1))
@@ -335,8 +338,9 @@ end
 $$;
 revoke execute on function public.app_admin_comment_review_queue(jsonb, integer, integer) from public, anon;
 
--- O conteúdo da questão para o revisor conferir (e para a equipe ver): enunciado, alternativas com as explicações, gabarito,
--- conduta e "o que avalia", a marca e a última decisão.
+-- O conteúdo da questão para o revisor conferir (e para a equipe ver): enunciado, figuras ({path, alt} ou {url, alt}: a tela pede o
+-- endereço ao servidor, como a do aluno), alternativas com as explicações, gabarito, conduta e "o que avalia", a marca e a
+-- última decisão.
 create or replace function public.app_admin_comment_review(p_question_id text) returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
@@ -353,6 +357,7 @@ begin
     'id', q.id, 'code', q.code, 'area', q.area, 'area_label', public.area_label(q.area), 'topic', q.topic, 'subtopic', q.subtopic,
     'exam', (select e.title from public.exams e where e.id = q.exam_id), 'number', q.number, 'statement', q.statement,
     'options', (select jsonb_agg(jsonb_build_object('id', o ->> 'id', 'text', o ->> 'text', 'explanation', coalesce(o ->> 'explanation', '')) order by o ->> 'id') from jsonb_array_elements(q.options) o),
+    'images', coalesce(q.images, '[]'::jsonb),
     'correct_option', q.correct_option, 'status', q.status, 'expected_conduct', coalesce(q.expected_conduct, ''), 'inep_intent', coalesce(q.inep_intent, ''),
     'comment_review', q.comment_review,
     'comment_review_by', public.question_person_name(nullif(q.comment_review ->> 'por', '')::uuid),
@@ -415,22 +420,38 @@ end
 $$;
 revoke execute on function public.app_admin_question_comment_decide(text, text, text, jsonb) from public, anon;
 
--- ---------------------------------------------------------------- conferência (administrador)
--- Diz se as duas funções que o aluno lê escondem o comentário em revisão. Dá "faltando" se a …9620 foi colada de novo depois desta.
-create or replace function public.app_question_comment_check() returns jsonb
+-- ---------------------------------------------------------------- conferência
+-- Diz o que falta para a revisão de comentários valer: as duas funções que o aluno lê precisam esconder o comentário em revisão
+-- e o gatilho precisa existir. Dá "faltando" se a …9620 foi colada de novo depois desta, ou se esta ficou pela metade.
+create or replace function public.question_comment_review_missing() returns text[]
   language plpgsql stable security definer set search_path = ''
 as $$
 declare
   v_missing text[] := '{}';
   v_name text;
+  v_oid regprocedure;
 begin
-  perform public.assert_admin();
   foreach v_name in array array['ch_raw_practice_correction_view(text, text)', 'ch_raw_tutor_truth(text, text)'] loop
-    if position('question_hidden_fields' in pg_get_functiondef(to_regprocedure('public.' || v_name))) = 0 then v_missing := v_missing || v_name; end if;
+    v_oid := to_regprocedure('public.' || v_name);
+    if v_oid is null or position('question_hidden_fields' in pg_get_functiondef(v_oid)) = 0 then v_missing := v_missing || v_name; end if;
   end loop;
   if not exists (select 1 from pg_trigger where tgname = 'questions_comment_review_mark' and tgrelid = 'public.questions'::regclass and not tgisinternal) then
     v_missing := v_missing || 'gatilho questions_comment_review_mark'::text;
   end if;
+  return v_missing;
+end
+$$;
+revoke execute on function public.question_comment_review_missing() from public, anon, authenticated;
+
+-- Administrador: o que falta, em detalhe.
+create or replace function public.app_question_comment_check() returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  v_missing text[];
+begin
+  perform public.assert_admin();
+  v_missing := public.question_comment_review_missing();
   return jsonb_build_object('ok', cardinality(v_missing) = 0, 'faltando', to_jsonb(v_missing));
 end
 $$;

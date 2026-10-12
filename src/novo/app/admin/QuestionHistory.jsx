@@ -83,7 +83,7 @@ function Detail({ entry, onRestore }) {
   );
 }
 
-export function QuestionHistory({ questionId, onRestore }) {
+export function QuestionHistory({ questionId, onRestore, refreshKey = 0 }) {
   const { backend } = useSession();
   const [open, setOpen] = React.useState(false);
   const [state, setState] = React.useState({ items: [], total: 0, loading: false, error: null, loaded: false });
@@ -103,6 +103,16 @@ export function QuestionHistory({ questionId, onRestore }) {
     setOpen(true);
     if (!state.loaded) load(0);
   };
+  // uma mudança feita no próprio editor (salvar, figura, decisão do revisor) invalida o que já foi carregado: aberto, recarrega
+  // agora; fechado, recarrega na próxima vez que abrir
+  const lastKey = React.useRef(refreshKey);
+  React.useEffect(() => {
+    if (lastKey.current === refreshKey) return;
+    lastKey.current = refreshKey;
+    if (open) load(0);
+    else setState((s) => ({ ...s, loaded: false }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
   const restore = (target, value) => {
     onRestore(target, value);
     setNote("Texto copiado para o formulário. Confira e clique em “Salvar questão”: nada foi salvo ainda.");

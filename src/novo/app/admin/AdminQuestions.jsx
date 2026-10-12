@@ -252,14 +252,18 @@ function DeleteQuestion({ question, onDeleted }) {
   );
 }
 
-export function QuestionEditor({ id, onClose, onSaved }) {
+export function QuestionEditor({ id, onClose, onSaved, commentReviewReady = false }) {
   const { backend, boot } = useSession();
   const isAdmin = boot?.role === "admin";
   const [officialOpen, setOfficialOpen] = React.useState(false);
   const [officialNote, setOfficialNote] = React.useState(null);
   const [reviewState, setReviewState] = React.useState({ saving: false, error: null });
   const [decisionNote, setDecisionNote] = React.useState(null); // Q09: "Comentário aprovado…" depois da decisão do revisor
+  const [historyKey, setHistoryKey] = React.useState(0); // Q12: sobe a cada mudança feita aqui, para o histórico aberto recarregar
   const existing = useLoad(() => (id ? backend.rpc("app_admin_question", { p_id: id }) : Promise.resolve(null)), [backend, id]);
+  // Q09: o banco pratica a revisão de comentários? Só então a tela a promete. O banco diz em comment_review_ready (da questão, ou
+  // da lista para a questão nova); sem a atualização do banco o campo não vem e a tela não promete nada.
+  const reviewReady = existing.data ? existing.data.comment_review_ready === true : commentReviewReady === true;
   const [form, setForm] = React.useState(id ? null : emptyQuestion());
   // o formulário como está gravado no banco (para saber se há mudança não salva)
   const [savedForm, setSavedForm] = React.useState(null);
@@ -301,6 +305,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
     const next = storedKey(fresh);
     if (stored !== null && stored !== next) setPanelKey((k) => k + 1);
     setStored(next);
+    setHistoryKey((k) => k + 1);
   };
   // depois do registro do gabarito oficial
   const officialDone = async (result) => {
@@ -322,6 +327,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
   const figureChanged = (fresh) => {
     setForm((f) => ({ ...f, images: fresh?.images ?? [] }));
     setSavedForm((f) => f && { ...f, images: fresh?.images ?? [] });
+    setHistoryKey((k) => k + 1);
     onSaved();
   };
   const unsaved = savedForm !== null && JSON.stringify(payloadOf(form)) !== JSON.stringify(payloadOf(savedForm));
@@ -331,6 +337,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
   const commentDecided = (decision, fresh) => {
     setForm((f) => ({ ...f, comment_review: fresh?.comment_review ?? null, comment_decision: fresh?.comment_decision ?? null, comment_review_by: fresh?.comment_review_by ?? f.comment_review_by }));
     setDecisionNote(decision === "approve" ? "Comentário aprovado: o aluno já pode ver." : "Comentário devolvido ao editor.");
+    setHistoryKey((k) => k + 1);
     onSaved();
   };
   // a decisão foi recusada (o texto mudou enquanto o revisor lia): traz a questão de agora, para ele ler de novo
@@ -360,6 +367,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
     setSavedForm(fromRow(saved));
     setStored(next);
     setAiUsed(false);
+    setHistoryKey((k) => k + 1);
     return saved;
   };
 
@@ -420,7 +428,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
   return (
     <AssistantLayout
       open={assistantOpen}
-      panel={<TabAssistant key={panelKey} spec={QUESTOES_SPEC} title="Assistente" notice={ASSIST_TEXTS.questoesNotice} form={assistantForm} onUse={useSuggestion} onClose={() => setAssistantOpen(false)} />}
+      panel={<TabAssistant key={panelKey} spec={QUESTOES_SPEC} title="Assistente" notice={reviewReady === true ? ASSIST_TEXTS.questoesNotice : ASSIST_TEXTS.questoesNoticeSemRevisao} form={assistantForm} onUse={useSuggestion} onClose={() => setAssistantOpen(false)} />}
     >
     <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 16 }} noValidate>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
@@ -555,9 +563,14 @@ export function QuestionEditor({ id, onClose, onSaved }) {
           <TextArea label="O que a questão avalia" rows={3} value={form.inep_intent} onChange={(inep_intent) => set({ inep_intent })} />
         </div>
       </Card>
-      {commentChanged.length > 0 && (
+      {commentChanged.length > 0 && reviewReady === true && (
         <Banner tone="warning" title="O comentário vai para revisão">
           {`Você mudou: ${commentFieldsText(commentChanged)}. Ao salvar, o aluno deixa de ver esse texto até um revisor médico da área aprovar. O texto que está no ar hoje continua visível até você salvar.`}
+        </Banner>
+      )}
+      {commentChanged.length > 0 && reviewReady === false && (
+        <Banner tone="warning" title="A revisão de comentários ainda não está ativa no banco">
+          {`Você mudou: ${commentFieldsText(commentChanged)}. Enquanto o banco não receber a atualização da revisão, o que você salvar aparece na hora para o aluno. Peça ao administrador para aplicar a atualização antes de mexer no comentário.`}
         </Banner>
       )}
       {textChanged && (
@@ -575,7 +588,7 @@ export function QuestionEditor({ id, onClose, onSaved }) {
           {isNew ? "Criar questão" : "Salvar questão"}
         </Button>
       </div>
-      {!isNew && <QuestionHistory questionId={form.id} onRestore={restoreText} />}
+      {!isNew && <QuestionHistory questionId={form.id} onRestore={restoreText} refreshKey={historyKey} />}
       {isAdmin && !isNew && (
         <DeleteQuestion
           question={form}
@@ -894,10 +907,12 @@ function StaffQuestions() {
   const [filters, setFilters] = React.useState({ search: "", exam_id: "", area: "", status: "", needs_image: false, review: false, comment_review: false });
   const search = useDebounced(filters.search.trim());
   const list = useQuestionPages(backend, { ...filters, search }, [search, filters.exam_id, filters.area, filters.status, filters.needs_image, filters.review, filters.comment_review]);
+  // sem a atualização do banco (a lista não traz comment_review_ready) o filtro "comentário em revisão" nem aparece
+  const reviewReady = list.data?.comment_review_ready === true;
   const set = (patch) => setFilters((f) => ({ ...f, ...patch }));
   const back = () => setView({ mode: "list", id: null });
 
-  if (view.mode === "edit" || view.mode === "new") return <QuestionEditor key={view.id ?? "nova"} id={view.id} onClose={back} onSaved={list.reload} />;
+  if (view.mode === "edit" || view.mode === "new") return <QuestionEditor key={view.id ?? "nova"} id={view.id} onClose={back} onSaved={list.reload} commentReviewReady={list.data?.comment_review_ready === true} />;
   if (view.mode === "import") return <ImportPanel onClose={back} onImported={list.reload} />;
 
   return (
@@ -920,7 +935,7 @@ function StaffQuestions() {
           </div>
           <Checkbox label="Só as que citam figura sem imagem vinculada" checked={filters.needs_image} onChange={(e) => set({ needs_image: e.target.checked })} />
           <Checkbox label="Só as com explicações a revisar (o gabarito mudou)" checked={filters.review} onChange={(e) => set({ review: e.target.checked })} />
-          <Checkbox label="Só as com comentário em revisão (esperando o revisor médico)" checked={filters.comment_review} onChange={(e) => set({ comment_review: e.target.checked })} />
+          {reviewReady === true && <Checkbox label="Só as com comentário em revisão (esperando o revisor médico)" checked={filters.comment_review} onChange={(e) => set({ comment_review: e.target.checked })} />}
         </div>
       </Card>
       {list.error && <LoadError error={list.error} retry={list.reload} />}
