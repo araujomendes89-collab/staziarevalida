@@ -57,10 +57,11 @@ afterEach(() => {
   window.history.replaceState(null, "", "/");
 });
 
-describe("Link de recuperar senha no app", () => {
+// importar o app inteiro de novo a cada teste pode levar vários segundos quando a fila de testes está cheia
+describe("Link de recuperar senha no app", { timeout: 60_000 }, () => {
   it("com o link: mostra Criar nova senha antes do app; salva; só então entra no Início", async () => {
     await openApp("#access_token=a&refresh_token=b&expires_in=3600&token_type=bearer&type=recovery", USER);
-    expect(await screen.findByRole("heading", { name: "Criar nova senha" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Criar nova senha" }, { timeout: 15_000 })).toBeTruthy();
     expect(screen.queryByTestId("tela-home")).toBeNull();
     fireEvent.change(screen.getByLabelText("Nova senha"), { target: { value: "senha-boa-123" } });
     fireEvent.change(screen.getByLabelText("Conferir nova senha"), { target: { value: "senha-boa-123" } });
@@ -69,33 +70,33 @@ describe("Link de recuperar senha no app", () => {
     expect(await screen.findByText(/Senha alterada com sucesso/)).toBeTruthy();
     expect(screen.queryByTestId("tela-home")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "ENTRAR NO APP" }));
-    expect(await screen.findByTestId("tela-home")).toBeTruthy();
+    expect(await screen.findByTestId("tela-home", {}, { timeout: 15_000 })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Criar nova senha" })).toBeNull();
   });
 
   it("a recuperação também vale pelo aviso do Supabase (PASSWORD_RECOVERY), mesmo sem dados no endereço", async () => {
     await openApp("", USER);
-    expect(await screen.findByTestId("tela-home")).toBeTruthy();
+    expect(await screen.findByTestId("tela-home", {}, { timeout: 15_000 })).toBeTruthy();
     for (const cb of fake.backend.listeners) cb(USER, "PASSWORD_RECOVERY");
-    expect(await screen.findByRole("heading", { name: "Criar nova senha" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Criar nova senha" }, { timeout: 15_000 })).toBeTruthy();
   });
 
   it("sem o link: abre direto o Início, sem pedir nova senha", async () => {
     await openApp("", USER);
-    expect(await screen.findByTestId("tela-home")).toBeTruthy();
+    expect(await screen.findByTestId("tela-home", {}, { timeout: 15_000 })).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Criar nova senha" })).toBeNull();
   });
 
   it("não derruba a sessão do link, mesmo com 'Lembrar de mim' desmarcado em outra visita", async () => {
     localStorage.setItem("smn-session-only", "1");
     await openApp("#access_token=a&type=recovery", USER);
-    expect(await screen.findByRole("heading", { name: "Criar nova senha" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "Criar nova senha" }, { timeout: 15_000 })).toBeTruthy();
     expect(fake.backend.signOut).not.toHaveBeenCalled();
   });
 
   it("link vencido (sem sessão): mostra o aviso e o botão para pedir de novo", async () => {
     await openApp("#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired", null);
-    expect(await screen.findByText("Esse link venceu. Peça um novo.")).toBeTruthy();
+    expect(await screen.findByText("Esse link venceu. Peça um novo.", {}, { timeout: 15_000 })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "PEDIR NOVO LINK" }));
     expect(screen.getByRole("region", { name: "Recuperar senha" })).toBeTruthy();
   });
