@@ -1,6 +1,6 @@
 /**
  * PL04 (decisão do dono de 2026-10-11) nas telas: benefícios do plano Elite, SÓ A ESTRUTURA. Em Administração > Configurações o
- * dono vê os dois valores vazios/desligados com o aviso "TODO(dono)"; o aluno Elite só vê o benefício se o dono ligou/preencheu.
+ * dono vê os dois valores vazios/desligados com o aviso "Pendente: ..."; o aluno Elite só vê o benefício se o dono ligou/preencheu.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -45,14 +45,14 @@ describe("PL04 — Administração › Configurações", () => {
     return render(<AdminSettings />);
   };
 
-  it("sem valores: o Elite fica igual ao Pro, mostra os minutos do Pro e o TODO(dono) nos dois pontos", async () => {
+  it("sem valores: o Elite fica igual ao Pro, mostra os minutos do Pro e o aviso Pendente nos dois pontos", async () => {
     abrir();
     expect(await screen.findByText("Benefícios do plano Elite")).toBeTruthy();
     expect(screen.getByText(/Enquanto nada estiver preenchido, nada muda para ninguém: o Elite fica igual ao Pro\./)).toBeTruthy();
     expect(screen.getByText(/Pro: 60 min por dia/)).toBeTruthy();
     expect((screen.getByLabelText("Voz do Tutor por dia no Elite (minutos)") as HTMLInputElement).value).toBe("");
-    expect(screen.getByText("TODO(dono): definir os minutos de voz do Elite")).toBeTruthy();
-    expect(screen.getByText("TODO(dono): decidir se a correção de estação com devolutiva entra no Elite")).toBeTruthy();
+    expect(screen.getByText("Pendente: definir os minutos de voz do Elite")).toBeTruthy();
+    expect(screen.getByText("Pendente: decidir se a correção de estação com devolutiva entra no Elite")).toBeTruthy();
     expect((screen.getByRole("switch", { name: /^Correção de estação com devolutiva/ }) as HTMLInputElement).checked).toBe(false);
     // nenhum número ou preço inventado no bloco
     expect(screen.queryByText(/R\$/)).toBeNull();
@@ -67,13 +67,13 @@ describe("PL04 — Administração › Configurações", () => {
     expect(await screen.findByText("Benefícios do Elite salvos.")).toBeTruthy();
   });
 
-  it("o dono preenche os minutos e liga a correção: manda os valores e os avisos TODO(dono) saem", async () => {
+  it("o dono preenche os minutos e liga a correção: manda os valores e os avisos Pendente saem", async () => {
     const saved: any[] = [];
     abrir(VAZIO, saved);
     fireEvent.change(await screen.findByLabelText("Voz do Tutor por dia no Elite (minutos)"), { target: { value: "120" } });
     fireEvent.click(screen.getByRole("switch", { name: /^Correção de estação com devolutiva/ }));
-    expect(screen.queryByText("TODO(dono): definir os minutos de voz do Elite")).toBeNull();
-    expect(screen.queryByText("TODO(dono): decidir se a correção de estação com devolutiva entra no Elite")).toBeNull();
+    expect(screen.queryByText("Pendente: definir os minutos de voz do Elite")).toBeNull();
+    expect(screen.queryByText("Pendente: decidir se a correção de estação com devolutiva entra no Elite")).toBeNull();
     fireEvent.click(screen.getByText("Salvar benefícios do Elite"));
     await waitFor(() => expect(saved).toHaveLength(1));
     expect(saved[0]).toEqual({ elite_voice_daily_minutes: "120", elite_station_feedback: true });
@@ -90,7 +90,7 @@ describe("PL04 — Administração › Configurações", () => {
     abrir({ ...VAZIO, elite_voice_daily_minutes: 90, elite_station_feedback: true });
     expect(((await screen.findByLabelText("Voz do Tutor por dia no Elite (minutos)")) as HTMLInputElement).value).toBe("90");
     expect((screen.getByRole("switch", { name: /^Correção de estação com devolutiva/ }) as HTMLInputElement).checked).toBe(true);
-    expect(screen.queryByText(/TODO\(dono\)/)).toBeNull();
+    expect(screen.queryByText(/Pendente:/)).toBeNull();
   });
 
   it("a aba Planos explica onde ficam os benefícios do Elite", async () => {

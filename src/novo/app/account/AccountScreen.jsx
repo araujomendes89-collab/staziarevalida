@@ -8,7 +8,7 @@ import { isStaffRole } from "../admin/AdminScreen.jsx";
 import { isPhase2Locked, paidPlanLapsed, trialLapsed } from "../admin/common.jsx";
 import { PASSWORD_MIN_LENGTH } from "../../data";
 import { useSession } from "../session.jsx";
-import { lockNotice, planAccess } from "../plan/planAccess.js";
+import { usePlanLock } from "../plan/planAccess.js";
 import { useMobile } from "../Shell.jsx";
 import { PlayProfileSection } from "../play/PlayProfile.jsx";
 import { COUNTRIES, normalizePhone, phoneError, splitPhone } from "../legal/phone.js";
@@ -430,7 +430,10 @@ export function AccountScreen({ go }) {
   const { boot, user, signOut, backend } = useSession();
   const [benefits, setBenefits] = React.useState(null);
   const isElite = boot.subscription?.plan === "elite";
+  // refaz a consulta quando o plano, a situação ou a data do plano pagão mudam (ex.: Elite cancelado ou vencido), e apaga o que estava na tela
+  const eliteKey = [boot.subscription?.plan, boot.subscription?.status, boot.subscription?.current_period_end].join("|");
   React.useEffect(() => {
+    setBenefits(null);
     if (!isElite || !backend) return undefined;
     let alive = true;
     Promise.resolve(backend.rpc("app_my_benefits"))
@@ -439,12 +442,12 @@ export function AccountScreen({ go }) {
     return () => {
       alive = false;
     };
-  }, [backend, isElite]);
+  }, [backend, isElite, eliteKey]);
   const mobile = useMobile();
   const [section, setSection] = React.useState("conta");
   const profile = boot.profile;
   const plan = planBadge(boot.subscription, boot.role, Boolean(boot.reviewer_areas?.length));
-  const lock = lockNotice(planAccess(boot)); // teste grátis terminado ou sem plano pago: o que fica nos planos pagos (PL02)
+  const lock = usePlanLock(); // teste grátis terminado ou sem plano pago: o que fica nos planos pagos (PL02); o banco decide
   const phase2Locked = isPhase2Locked(boot.role); // 2ª fase "em breve" para o aluno: o selo mostra a 1ª mesmo se a 2ª estiver gravada
   const goal = profile.target_edition ? `Meta: ${profile.exam_type === "ENAMED" ? "ENAMED" : "Revalida INEP"} ${profile.target_edition}` : null;
 

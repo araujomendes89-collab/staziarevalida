@@ -7,7 +7,7 @@ import { Banner, Button, Card, EmptyState, Icon, TopicRow } from "../../ds";
 import { useSession } from "../session.jsx";
 import { areaLabel, formatClock, percent } from "../practice/format.js";
 import { KIND_LABEL, reasonText, trialDaysLeft, trialTitle } from "./plan.js";
-import { hasFullAccess, lockNotice } from "../plan/planAccess.js";
+import { hasFullAccess, usePlanLock } from "../plan/planAccess.js";
 import { PlayError, PlayHeader, PlayLoading, PlayLower, TrailPreview, usePlayHome } from "../play/PlayDashboard.jsx";
 
 const DIAGNOSTIC_SIZE = 10;
@@ -20,8 +20,10 @@ const trialEnding = (trial) => {
 };
 
 function TrialBanner({ trial, attempts, go }) {
-  // Teste que acabou: avisa o que fica nos planos pagos e o que segue aberto (PL02). Sem botão: ainda não há tela de assinatura.
-  const over = trialDaysLeft(trial) === null;
+  // Teste que acabou E o banco confirmou que a conta está sem acesso pago: avisa o que fica nos planos pagos e o que segue aberto (PL02).
+  // Sem botão: ainda não há tela de assinatura. Sem a confirmação do banco (regra ainda não aplicada), fica como antes.
+  const lock = usePlanLock();
+  const over = Boolean(lock) && trialDaysLeft(trial) === null;
   return (
     <Banner
       tone={trialEnding(trial) ? "warning" : "brand"}
@@ -35,7 +37,7 @@ function TrialBanner({ trial, attempts, go }) {
       }
     >
       {over
-        ? lockNotice("teste_acabou").text
+        ? lock.text
         : attempts === 0
           ? "Você ainda não respondeu nenhuma questão."
           : `Você respondeu ${attempts} ${attempts === 1 ? "questão" : "questões"} até agora.`}

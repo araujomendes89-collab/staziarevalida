@@ -35,6 +35,7 @@ describe("PL06 — aba Planos", () => {
   it("a chave explica o que faz agora e salva o que o dono escolheu", async () => {
     const saved: any[] = [];
     backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_admin_signup_trial_rule") return { applies: true };
       if (fn === "app_admin_plans") return PLANS(true);
       if (fn === "app_admin_save_plan") return (saved.push(args.p_plan), PLANS(args.p_plan.active));
       throw new Error(`rpc inesperada: ${fn}`);
@@ -63,7 +64,8 @@ describe("PL06 — Usuários e Conta", () => {
     expect(await screen.findByText("Acesso gratuito · sem teste")).toBeTruthy();
   });
 
-  it("Conta: 'Acesso gratuito' e o que fica nos planos pagos; sem inventar teste que nunca existiu", () => {
+  it("Conta: 'Acesso gratuito' e o que fica nos planos pagos; sem inventar teste que nunca existiu", async () => {
+    backend.rpc.mockImplementation(async (fn: string) => (fn === "app_my_access" ? { locked: true, state: "sem_teste", tutor_closed: true } : null));
     session.boot = {
       role: "student",
       profile: { name: "Nova", phase: 1, exam_type: "REVALIDA", target_edition: null, daily_minutes: null, exam_date: null, theme: "light" },
@@ -71,8 +73,8 @@ describe("PL06 — Usuários e Conta", () => {
       has_pro: false,
     };
     render(<AccountScreen go={vi.fn()} />);
+    expect(await screen.findByText("Você está no acesso gratuito")).toBeTruthy();
     expect(screen.getByText("Acesso gratuito")).toBeTruthy();
-    expect(screen.getByText("Você está no acesso gratuito")).toBeTruthy();
     expect(screen.queryByText(/Teste grátis · encerrado/)).toBeNull();
     expect(screen.queryByText("Seu teste grátis terminou")).toBeNull();
   });

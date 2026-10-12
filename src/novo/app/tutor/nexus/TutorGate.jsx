@@ -5,13 +5,14 @@ import { Banner, Button, EmptyState } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { TutorConsentCard } from "../TutorConsentCard.jsx";
 import { tutorAvailable } from "../api.js";
-import { lockNotice, planAccess } from "../../plan/planAccess.js";
+import { usePlanLock } from "../../plan/planAccess.js";
 
 const messageOf = (error) => error?.message || "Não foi possível concluir. Tente de novo.";
 
 /** frame: embrulha as telas do portão (carregando, desligado, aceite, plano); a Nexus por cima usa para pôr o "Fechar". */
 export function TutorGate({ go, children, frame = (node) => node }) {
-  const { backend, boot } = useSession();
+  const { backend } = useSession();
+  const planLock = usePlanLock();
   const [status, setStatus] = React.useState(null);
   const [error, setError] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
@@ -48,7 +49,7 @@ export function TutorGate({ go, children, frame = (node) => node }) {
       return frame(
         <EmptyState
           icon="lock"
-          title={(lockNotice(planAccess(boot)) ?? lockNotice("teste_acabou")).title}
+          title={planLock?.title ?? "O Tutor faz parte dos planos pagos"}
           description="O Tutor faz parte dos planos pagos; as questões e os flashcards continuam abertos. A assinatura pelo app ainda não está disponível."
         />
       );

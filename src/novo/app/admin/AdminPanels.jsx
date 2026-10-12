@@ -126,7 +126,25 @@ function toCents(text) {
 /** Prévia do preço que vai ser salvo ("R$ 129,90"), para o erro de digitação aparecer antes de salvar. */
 const pricePreview = (cents) => (cents == null || Number.isNaN(cents) ? undefined : `Vai salvar: R$ ${(cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
-function PlanEditor({ plan, onSaved }) {
+// O banco já tem a regra "Oferecer teste grátis no cadastro vale de verdade" (migração 9732)? Enquanto não responde ou se a função não
+// existe (banco ainda sem a 9732), a tela mantém o texto de antes e NÃO promete o que o banco não faz.
+function useSignupTrialRule() {
+  const { backend } = useSession();
+  const [applies, setApplies] = React.useState(false);
+  React.useEffect(() => {
+    let alive = true;
+    Promise.resolve()
+      .then(() => backend.rpc("app_admin_signup_trial_rule"))
+      .then((r) => alive && setApplies(r?.applies === true))
+      .catch(() => alive && setApplies(false));
+    return () => {
+      alive = false;
+    };
+  }, [backend]);
+  return applies;
+}
+
+function PlanEditor({ plan, onSaved, signupRule = false }) {
   const { backend } = useSession();
   const [form, setForm] = React.useState({
     name: plan.name,
@@ -169,7 +187,7 @@ function PlanEditor({ plan, onSaved }) {
       <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 16 }} noValidate>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <h3 style={{ margin: 0, font: "var(--type-h4)" }}>{PLAN_LABEL[plan.code]}</h3>
-          <Badge tone={plan.active ? "success" : "neutral"}>{plan.active ? (trial ? "Oferecido no cadastro" : "Marcado para venda") : trial ? "Cadastro sem teste" : "Fora de venda"}</Badge>
+          <Badge tone={plan.active ? "success" : "neutral"}>{plan.active ? (trial ? "Oferecido no cadastro" : "Marcado para venda") : trial && signupRule ? "Cadastro sem teste" : "Fora de venda"}</Badge>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
           <TextField label="Nome exibido" value={form.name} maxLength={60} onChange={(e) => set({ name: e.target.value })} />
@@ -178,7 +196,7 @@ function PlanEditor({ plan, onSaved }) {
         </div>
         <TextArea label="Descrição" rows={2} maxLength={400} value={form.description} onChange={(description) => set({ description })} />
         <TextArea label="Recursos incluídos (um por linha)" rows={4} value={form.features} onChange={(features) => set({ features })} hint="Até 20 itens. Ficam guardados para a futura tela de planos do aluno." />
-        <Switch label={trial ? "Oferecer teste grátis no cadastro" : "Marcar para venda"} description={trial ? "Ligado: quem se cadastrar ganha o teste grátis pelos dias de Configurações. Desligado: quem se cadastrar depois entra sem teste, só com questões e flashcards, até a equipe liberar um plano ou um teste em Usuários. Quem já está em teste não muda." : "Só com preço definido. Ainda não aparece para os alunos."} checked={form.active} onChange={(e) => set({ active: e.target.checked })} />
+        <Switch label={trial ? "Oferecer teste grátis no cadastro" : "Marcar para venda"} description={trial ? (signupRule ? "Ligado: quem se cadastrar ganha o teste grátis pelos dias de Configurações. Desligado: quem se cadastrar depois entra sem teste, só com questões e flashcards, até a equipe liberar um plano ou um teste em Usuários. Quem já está em teste não muda." : "Os dias de teste ficam em Configurações. Hoje todo cadastro novo recebe o teste, com esta chave ligada ou desligada.") : "Só com preço definido. Ainda não aparece para os alunos."} checked={form.active} onChange={(e) => set({ active: e.target.checked })} />
         {state.error && <Banner tone="danger">{state.error}</Banner>}
         <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
           {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Plano salvo.</span>}
@@ -194,6 +212,7 @@ function PlanEditor({ plan, onSaved }) {
 export function AdminPlans() {
   const { backend } = useSession();
   const { data, error, reload, setData } = useLoad(() => backend.rpc("app_admin_plans"), [backend]);
+  const signupRule = useSignupTrialRule();
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
   return (
@@ -202,7 +221,7 @@ export function AdminPlans() {
         O app ainda não tem a tela de planos do aluno: nome, preço e recursos definidos aqui ficam guardados para quando ela existir. A cobrança será pela Stripe, numa próxima etapa. Até lá, libere planos manualmente em Usuários, com a data em “Plano pago até”. O que só o Elite tem (minutos de voz do Tutor e correção de estação com devolutiva) fica em Configurações, no bloco “Benefícios do plano Elite”: a lista de recursos abaixo é só texto para a futura tela de planos.
       </Banner>
       {data.map((plan) => (
-        <PlanEditor key={plan.code} plan={plan} onSaved={setData} />
+        <PlanEditor key={plan.code} plan={plan} onSaved={setData} signupRule={signupRule} />
       ))}
     </div>
   );
@@ -509,14 +528,14 @@ function EliteBenefits() {
             hint={`Pro: ${data.pro_voice_daily_minutes} min por dia (muda no painel do Tutor, em “Voz por dia (plano pago, minutos)”). Vazio = igual ao Pro; o Elite nunca fica abaixo do Pro.`}
           />
         </div>
-        {noMinutes && <Badge tone="warning">TODO(dono): definir os minutos de voz do Elite</Badge>}
+        {noMinutes && <Badge tone="warning">Pendente: definir os minutos de voz do Elite</Badge>}
         <Switch
           label="Correção de estação com devolutiva: só Elite"
           description="Desligado: ninguém recebe este benefício. As telas de estações do aluno ainda estão em construção; ligado, o aluno Elite passa a ver o benefício na Conta e a função fica pronta para essas telas."
           checked={form.feedback}
           onChange={(e) => set({ feedback: e.target.checked })}
         />
-        {!form.feedback && <Badge tone="warning">TODO(dono): decidir se a correção de estação com devolutiva entra no Elite</Badge>}
+        {!form.feedback && <Badge tone="warning">Pendente: decidir se a correção de estação com devolutiva entra no Elite</Badge>}
         {state.error && <Banner tone="danger">{state.error}</Banner>}
         <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
           {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Benefícios do Elite salvos.</span>}
@@ -561,7 +580,7 @@ export function AdminSettings() {
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Cadastro</h3>
           <div style={{ maxWidth: 260 }}>
-            <TextField label="Dias de teste grátis" value={form.trial_days} inputMode="numeric" maxLength={2} onChange={(e) => set({ trial_days: e.target.value })} hint="Vale para os próximos cadastros (0 a 90), se “Oferecer teste grátis no cadastro” (aba Planos) estiver ligado." />
+            <TextField label="Dias de teste grátis" value={form.trial_days} inputMode="numeric" maxLength={2} onChange={(e) => set({ trial_days: e.target.value })} hint="Vale para os próximos cadastros (0 a 90)." />
           </div>
         </div>
       </Card>

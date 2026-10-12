@@ -117,6 +117,23 @@ describe("Achado 1 — Tutor com a chave requires_pro: o aviso não contradiz o 
     expect(await rpc(TUTOR_COMECADO, "simulado_gate")).not.toMatch(/o Tutor e as estações Pro/);
   });
 
+  it("alcance real do caso: pelo painel o dono NÃO consegue deixar o Tutor ligado e aberto a todos (trava CF01 da 9550); só ajuste direto no SQL", async () => {
+    const salvar = (config: Record<string, unknown>) => rpc(ADMIN, "app_admin_tutor_save_config", { p_config: config, p_reason: "Teste da revisão (Planos)." });
+    const MENSAGEM = "Para ligar o Tutor, ligue também “Planos pagos + teste grátis”.";
+    // com o Tutor ligado, desligar os planos pagos é recusado pelo painel
+    await expect(salvar({ enabled: true, requires_pro: false })).rejects.toThrow(MENSAGEM);
+    // com os planos pagos desligados e o Tutor DESLIGADO (único jeito de salvar pelo painel), ninguém usa o Tutor: o aviso não o chama de pago
+    await db.exec(`update public.tutor_config set enabled = false, requires_pro = false`);
+    try {
+      for (const uid of [VENCIDO, SEM_ASSINATURA, SEM_TESTE]) {
+        expect(await tutor(uid), uid).toMatchObject({ can_use: false, can_text: false, can_voice: false, block_reason: "disabled" });
+        expect(await acesso(uid), uid).toMatchObject({ locked: true, tutor_closed: false });
+      }
+    } finally {
+      await db.exec(`update public.tutor_config set enabled = true, requires_pro = true`);
+    }
+  });
+
   it("quem tem acesso (equipe, revisor, pago, teste valendo) não recebe aviso; título certo para cada caso", async () => {
     for (const uid of [ADMIN, EDITOR, REVISOR, VALIDO, PRO, ELITE]) expect(await acesso(uid), uid).toEqual({ locked: false, state: null, tutor_closed: false });
     expect(await acesso(VENCIDO)).toMatchObject({ state: "teste_acabou" });

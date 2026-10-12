@@ -6,7 +6,7 @@ import { Badge, Banner, Button, Card, Chip, EmptyState, Icon, SegmentedControl, 
 import { IconTile } from "../../prototype/RealIcons.jsx";
 import { useMobile } from "../Shell.jsx";
 import { useSession } from "../session.jsx";
-import { isPlanLockMessage, lockNotice, planAccess } from "../plan/planAccess.js";
+import { isPlanLockMessage, usePlanLock } from "../plan/planAccess.js";
 import "./practice.css";
 import { AREAS, SIM_MAX_MINUTES, areaLabel, examLabel, formatClock, formatMinutes, formatWhen, paceLabel, parseDuration, percent } from "./format.js";
 
@@ -82,11 +82,12 @@ function RecentSessions({ sessions, go, sim }) {
 }
 
 export function QuestionBuilder({ go, mode }) {
-  const { backend, boot } = useSession();
+  const { backend } = useSession();
   const mobile = useMobile();
   const sim = mode === "sim";
   // Teste grátis terminado (ou sem plano pago): simulado completo fica nos planos pagos; o treino de questões segue aberto (PL02).
-  const lock = sim ? lockNotice(planAccess(boot)) : null;
+  const planLock = usePlanLock();
+  const lock = sim ? planLock : null;
   const kind = sim ? "simulado" : "questoes";
 
   // O endereço pode trazer um ponto de partida (ex.: tema prioritário escolhido no Início).
