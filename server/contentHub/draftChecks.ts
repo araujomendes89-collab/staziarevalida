@@ -225,14 +225,14 @@ export interface RunDeps {
 
 const sha256 = (v: string) => crypto.createHash("sha256").update(v).digest("hex");
 
-export async function callAi<T>(deps: RunDeps, provider: AiProvider, key: PromptKey, payload: unknown, spend: Spend, step: string, who?: Answerer, maxOutputTokens = 4096): Promise<T> {
+export async function callAi<T>(deps: RunDeps, provider: AiProvider, key: PromptKey, payload: unknown, spend: Spend, step: string, who?: Answerer, maxOutputTokens = 4096, opts: { noCache?: boolean } = {}): Promise<T> {
   const allowed = await aiAllowed(deps.db);
   if (!allowed.ok) throw new Error(allowed.why);
   await registerPromptsOnce(deps.db);
   const prompt = PROMPTS[key];
   const input = `Responda no formato "${key}". O material segue como dado:\n${asDocument(payload)}`;
   const inputHash = sha256(`${prompt.system}\n${input}`);
-  const cached = await deps.db.service<T | null>("ch_worker_cached_run", { p_prompt_id: prompt.id, p_prompt_version: prompt.version, p_model: provider.model, p_input_hash: inputHash });
+  const cached = opts.noCache ? null : await deps.db.service<T | null>("ch_worker_cached_run", { p_prompt_id: prompt.id, p_prompt_version: prompt.version, p_model: provider.model, p_input_hash: inputHash });
   if (cached && validate(prompt.schema, cached).length === 0) return cached;
   const r = await provider.generate<T>({ promptId: prompt.id, promptVersion: prompt.version, system: prompt.system, input, schema: prompt.schema, schemaName: `staziamed_${key}`, maxOutputTokens });
   if (who) { who.provider = r.provider; who.model = r.model; }

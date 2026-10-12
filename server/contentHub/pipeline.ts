@@ -37,6 +37,7 @@ import { runSourceSearch, SearchFailed, SearchPending } from "./sources/search";
 import { snapshotPassages } from "./sourceDiff";
 import { Blocked, Fatal } from "./jobErrors";
 import { stepQuestionCheck } from "./questoes/check";
+import { stepQuestionGenerate } from "./questoes/generate";
 
 const run = promisify(execFile);
 
@@ -1136,7 +1137,7 @@ const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   review_check: stepReviewCheck,
   visual_render: stepVisualRender,
   source_search: stepSourceSearch,
-  question_generate: stepQuestionNotInstalled,
+  question_generate: (ctx) => stepQuestionGenerate(ctx.deps, ctx.job, ctx.metrics),
   question_check: (ctx) => stepQuestionCheck(ctx.deps, ctx.job, ctx.metrics),
   question_source: stepQuestionNotInstalled,
 };

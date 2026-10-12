@@ -627,6 +627,112 @@ grant execute on function public.app_staziamed_check_enqueue(uuid[], jsonb) to a
 revoke execute on function public.app_staziamed_pending_checks(jsonb) from public, anon;
 grant execute on function public.app_staziamed_pending_checks(jsonb) to authenticated;
 
+-- ---------------------------------------------------------------- geração por vaga (question_generate)
+-- Troca os campos de uma vaga (1..n) do pedido, sem mexer nas outras.
+create or replace function public.staziamed_slot_set(p_slots jsonb, p_slot integer, p_patch jsonb) returns jsonb
+  language sql immutable set search_path = ''
+as $$
+  select coalesce(jsonb_agg(case when e.ord = p_slot then e.elem || p_patch else e.elem end order by e.ord), '[]'::jsonb)
+  from jsonb_array_elements(p_slots) with ordinality as e (elem, ord)
+$$;
+
+-- A tarefa começou a vaga: marca o pedido e a vaga "gerando" (se ainda estavam na fila) e devolve a vaga com o modo do pedido.
+-- Vaga que já terminou volta como está (a tarefa repetida não gera de novo). Nulo se a vaga não existe.
+create or replace function public.ch_worker_staziamed_slot(p_request_id uuid, p_slot integer) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  r public.staziamed_requests;
+  s jsonb;
+begin
+  select * into r from public.staziamed_requests where id = p_request_id for update;
+  if not found or p_slot < 1 or p_slot > jsonb_array_length(r.slots) then return null; end if;
+  s := r.slots -> (p_slot - 1);
+  if s ->> 'state' = 'na_fila' then
+    s := s || jsonb_build_object('state', 'gerando');
+    update public.staziamed_requests set slots = public.staziamed_slot_set(slots, p_slot, jsonb_build_object('state', 'gerando')),
+           state = case when state = 'na_fila' then 'gerando' else state end
+     where id = r.id;
+  end if;
+  return s || jsonb_build_object('mode', r.mode, 'request_id', r.id);
+end
+$$;
+
+-- O resultado da vaga (gerada, pulada ou descartada, com o motivo). O pedido fica "concluído" quando nenhuma vaga está na fila
+-- ou gerando; o custo da vaga entra no custo do pedido.
+create or replace function public.ch_worker_staziamed_slot_result(p_request_id uuid, p_slot integer, p_state text, p_reason text, p_draft_id uuid, p_cost numeric) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  r public.staziamed_requests;
+  v_slots jsonb;
+begin
+  if p_state not in ('gerada', 'pulada', 'descartada') then raise exception 'Situação da vaga inválida: %', p_state using errcode = '22023'; end if;
+  select * into r from public.staziamed_requests where id = p_request_id for update;
+  if not found or p_slot < 1 or p_slot > jsonb_array_length(r.slots) then return null; end if;
+  -- vaga que já terminou não muda (resultado repetido)
+  if (r.slots -> (p_slot - 1)) ->> 'state' in ('gerada', 'pulada', 'descartada') then
+    return jsonb_build_object('state', r.state, 'repetido', true);
+  end if;
+  v_slots := public.staziamed_slot_set(r.slots, p_slot, jsonb_build_object('state', p_state, 'reason', p_reason, 'draft_id', p_draft_id, 'cost_usd', coalesce(p_cost, 0)));
+  update public.staziamed_requests set slots = v_slots, cost_usd = cost_usd + coalesce(p_cost, 0),
+         state = case when exists (select 1 from jsonb_array_elements(v_slots) e where e ->> 'state' in ('na_fila', 'gerando')) then 'gerando' else 'concluido' end,
+         finished_at = case when exists (select 1 from jsonb_array_elements(v_slots) e where e ->> 'state' in ('na_fila', 'gerando')) then null else now() end
+   where id = r.id returning * into r;
+  return jsonb_build_object('state', r.state, 'cost_usd', r.cost_usd, 'repetido', false);
+end
+$$;
+
+-- O rascunho gerado pelo servidor, aguardando revisão médica, com as conferências no texto exato (hash) e a trilha 'gerada'.
+-- Lote 'pedido_AAAAMMDD_<pedido>' e id 'vaga_NN'; repetir devolve o mesmo rascunho. A revisão pedagógica da IA vai para ai_review.
+create or replace function public.ch_worker_staziamed_save_draft(p_request_id uuid, p_slot integer, p_draft jsonb, p_checks jsonb, p_generation jsonb) returns uuid
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  r public.staziamed_requests;
+  s jsonb;
+  v_batch text;
+  v_source text := 'vaga_' || lpad(p_slot::text, 2, '0');
+  v_id uuid;
+  v_hash text;
+  v_layer text;
+begin
+  select * into r from public.staziamed_requests where id = p_request_id;
+  if not found or p_slot < 1 or p_slot > jsonb_array_length(r.slots) then raise exception 'Vaga não encontrada.' using errcode = 'P0002'; end if;
+  s := r.slots -> (p_slot - 1);
+  v_batch := 'pedido_' || to_char(r.created_at, 'YYYYMMDD') || '_' || left(r.id::text, 8);
+  insert into public.draft_questions (batch, source_id, slot, area, subarea, competency, title, stem, alternatives, correct_answer, explanation,
+                                      alternative_explanations, source_citations, similarity_to_official, similar_question_id, model, generated_at,
+                                      ai_review, support_type, support_title, support_rows, clinical_decision, key_concepts, generated_by, topic,
+                                      request_id, generation)
+  values (v_batch, v_source, p_slot, s ->> 'area', s ->> 'subarea', s ->> 'competency', p_draft ->> 'title', p_draft ->> 'stem',
+          p_draft -> 'alternatives', p_draft ->> 'correct_answer', p_draft ->> 'explanation', coalesce(p_draft -> 'alternative_explanations', '{}'::jsonb),
+          coalesce(p_draft -> 'source_citations', '[]'::jsonb), nullif(p_draft ->> 'similarity_to_official', '')::numeric, nullif(p_draft ->> 'similar_question_id', ''),
+          p_draft ->> 'model', now(),
+          case when p_checks ? 'pedagogia' then jsonb_build_object('pedagogia', p_checks -> 'pedagogia') end,
+          coalesce(p_draft ->> 'support_type', 'NONE'), p_draft ->> 'support_title', coalesce(p_draft -> 'support_rows', '[]'::jsonb),
+          p_draft ->> 'clinical_decision', coalesce(p_draft -> 'key_concepts', '[]'::jsonb), 'servidor', coalesce(nullif(p_draft ->> 'topic', ''), s ->> 'topic'),
+          r.id, coalesce(p_generation, '{}'::jsonb))
+  on conflict (batch, source_id) do nothing
+  returning id, content_hash into v_id, v_hash;
+  if v_id is null then
+    select id into v_id from public.draft_questions where batch = v_batch and source_id = v_source;
+    return v_id;
+  end if;
+  -- as quatro camadas, no hash do texto que acabou de ser gravado
+  for v_layer in select unnest(array['software', 'sources', 'currency', 'redteam']) loop
+    continue when not (p_checks ? v_layer);
+    insert into public.draft_checks (draft_id, layer, verdict, findings, provider, model, prompt_version, content_hash, cost_usd)
+    values (v_id, v_layer, p_checks -> v_layer ->> 'verdict', coalesce(p_checks -> v_layer -> 'findings', '[]'::jsonb), p_checks -> v_layer ->> 'provider',
+            p_checks -> v_layer ->> 'model', 'draft-checks-1.0.0', v_hash, nullif(p_checks -> v_layer ->> 'cost_usd', '')::numeric)
+    on conflict (draft_id, layer) do nothing;
+  end loop;
+  perform public.draft_event(v_id, 'gerada', null, null,
+    jsonb_build_object('pedido', r.id, 'vaga', p_slot, 'custo_usd', p_generation -> 'custo_usd', 'modelos', p_generation -> 'modelos'));
+  return v_id;
+end
+$$;
+
 -- ---------------------------------------------------------------- funções de serviço e de apoio: fechadas para o app
 do $revoke$
 declare f text;
