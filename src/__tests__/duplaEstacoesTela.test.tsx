@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import testStations from "../../server/dupla/data/teste-inep2020.json";
 
-const state: { rpc: ReturnType<typeof vi.fn> } = { rpc: vi.fn() };
+const state: { rpc: (...args: any[]) => Promise<any> } = { rpc: async () => null };
 // o `backend` do app é sempre o mesmo objeto: um novo a cada render faria a tela recarregar sem parar
 const session = { backend: { rpc: (...args: unknown[]) => state.rpc(...args) } };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => session }));
@@ -78,14 +78,14 @@ function setup(rows: Row[] = bankRows(), go = vi.fn()) {
   state.rpc = vi.fn(async (fn: string) => {
     if (fn !== "app_dupla_stations") throw new Error(`função inesperada: ${fn}`);
     return rows;
-  });
+  }) as unknown as typeof state.rpc;
   const view = render(<StationsScreen go={go} />);
   return { go, ...view };
 }
 const ready = () => screen.findByPlaceholderText("Buscar por estação, tema ou queixa");
 
 beforeEach(() => {
-  state.rpc = vi.fn();
+  state.rpc = async () => null;
 });
 afterEach(() => cleanup());
 
