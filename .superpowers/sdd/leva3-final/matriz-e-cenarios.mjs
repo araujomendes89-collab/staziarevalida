@@ -1,6 +1,6 @@
 // Tarefa 1 (parte 2): no estado de producao simulado + as 10 migracoes da leva (coladas 2x), confere PERMISSOES por pessoa e
 // CENARIOS que cruzam frentes (Questoes x Aulas x Podcasts x Planos). Saida: linhas "ok" / "ERRO"; codigo de saida 1 se algo falhar.
-import { montaProducao, sqlLeva } from "./lib.mjs";
+import { montaProducao, sqlLeva, retrato, compara } from "./lib.mjs";
 const db = await montaProducao();
 for (let v = 0; v < 2; v++) for (const s of sqlLeva()) await db.exec(s);
 const U = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
@@ -66,7 +66,7 @@ await ck("figura: caminho nunca conferido pelo servidor e recusado (SQL direto t
   await nega(() => rpcC(P.ed, "app_admin_set_question_image", { p_question_id: qid(1), p_image: { path: "questoes/" + "b".repeat(32) + ".png", alt: "texto alternativo valido" } }), /servidor ainda n/i);
   await nega(() => sql(`update public.questions set images = '[{"path":"questoes/${"c".repeat(32)}.png","alt":"x"}]' where id = $1`, [qid(1)]), /n.o foi conferida/i); });
 await ck("desmarcar 'Cita figura' sem figura e recusado (editor); com figura vale", async () => {
-  await nega(() => rpcC(P.ed, "app_admin_save_question", { p_question: quest(1, { needs_image: false }) }), /Cita figura|figura/i); });
+  await nega(() => rpcC(P.ed, "app_admin_save_question", { p_question: quest(5, { needs_image: true }) }).then(() => rpcC(P.ed, "app_admin_save_question", { p_question: { ...quest(5, { needs_image: false }), id: qid(5) } })), /Cita figura|figura/i); });
 await ck("comentario: editor muda a explicacao -> em revisao; aluno nao ve; revisor da area aprova; aluno ve", async () => {
   await rpcC(P.ed, "app_admin_save_question", { p_question: quest(2, { options: opts({ B: "B e a correta: suporte e oxigenio." }), expected_conduct: "Suporte." }) });
   const f = (await sql(`select comment_review from public.questions where id=$1`, [qid(2)]))[0].comment_review; assert(f && f.campos.includes("explanation_B") && f.por === P.ed, JSON.stringify(f));
@@ -90,6 +90,7 @@ await ck("fila do revisor: revisor da area ve so a area dele; aluno e visitante 
   assert(ped.length === 1 && cir.length === 1 && ed.length >= 2, JSON.stringify({ ped, cir, ed }));
   await nega(() => rpc(P.alu, "app_admin_comment_review_queue", {})); await nega(() => rpc(null, "app_admin_comment_review_queue", {})); });
 await ck("historico: editor e administrador leem; revisor sem equipe, aluno e visitante nao", async () => {
+  await rpcC(P.ed, "app_admin_save_question", { p_question: { ...quest(2, { expected_conduct: "Suporte e oxigenio revisados." }), id: qid(2) } });
   const h = await rpc(P.ed, "app_admin_question_history", { p_question_id: qid(2) }); assert(h.total >= 1 && h.items[0].changes, JSON.stringify(h).slice(0, 200));
   await rpc(P.adm, "app_admin_question_history", { p_question_id: qid(2) });
   for (const u of [P.revPed, P.alu, null]) await nega(() => rpc(u, "app_admin_question_history", { p_question_id: qid(2) })); });
@@ -183,7 +184,7 @@ await ck("Elite: beneficios so o administrador le/grava; aluno Elite le os dele;
   const p = await rpc(P.pro, "app_my_benefits"); assert(p.elite === false && p.voice_daily_minutes === null && p.station_feedback === false, JSON.stringify(p));
   assert((await rpc(P.elite, "station_feedback_allowed")) === true && (await rpc(P.pro, "station_feedback_allowed")) === false && (await rpc(P.ed, "station_feedback_allowed")) === true, "station_feedback_allowed");
   const v = (await rpc(P.elite, "app_tutor_status")).entitlement.voice.limit_today_s; assert(v >= 90 * 60 || v === 0, "voz do Elite " + v); });
-await ck("recolar a 9730 depois de o dono preencher os beneficios NAO apaga o que ele preencheu", async () => { await sql(sqlLeva()[7]); const r = (await sql(`select elite_voice_daily_minutes m, elite_station_feedback f from public.plan_benefits`))[0]; assert(r.m === 90 && r.f === true, JSON.stringify(r)); });
+await ck("recolar a 9730 depois de o dono preencher os beneficios NAO apaga o que ele preencheu", async () => { await db.exec(sqlLeva()[7]); const r = (await sql(`select elite_voice_daily_minutes m, elite_station_feedback f from public.plan_benefits`))[0]; assert(r.m === 90 && r.f === true, JSON.stringify(r)); });
 await ck("cadastro novo: chave ligada = com teste; desligada = sem teste (expirado, sem data)", async () => {
   await sql(`insert into auth.users (id, email) values ('00000000-0000-4000-8000-0000000000f1','n1@t.local')`);
   let r = (await sql(`select status, trial_ends_at from public.subscriptions where user_id='00000000-0000-4000-8000-0000000000f1'`))[0]; assert(r.status === "trialing" && r.trial_ends_at, JSON.stringify(r));
@@ -202,6 +203,13 @@ await ck("regra do cabecalho da 9730: consulta de conferencia roda e lista o ven
      and not coalesce(s.plan in ('pro','elite') and ((s.status='active' and s.current_period_end > now()) or (s.status='past_due' and s.current_period_end + interval '3 days' > now())), false)
      and not coalesce(s.status='trialing' and (s.trial_ends_at is null or s.trial_ends_at > now()), false) order by 1`;
   const l = (await sql(q)).map((x) => x.email.split("@")[0]); for (const k of ["vencido", "proVencido", "semAss"]) assert(l.includes(k), "faltou " + k + " em " + l); for (const k of ["alu", "pro", "elite", "ed", "adm", "revPed"]) assert(!l.includes(k), "sobrou " + k); return l.join(","); });
+
+// ------------------------------------------------------------------ F. recolar COM DADOS (depois de todos os cenarios acima)
+console.log("== F. colar a leva de novo com dados de verdade no banco");
+await ck("colagem extra com dados: nenhuma funcao, gatilho, politica, permissao nem LINHA de dado muda", async () => {
+  const a = await retrato(db); for (const s of sqlLeva()) await db.exec(s); const b = await retrato(db);
+  const dif = ["funcoes", "gatilhos", "politicas", "tabelas", "colunas", "restricoes", "indices", "dados"].flatMap((k) => { const c = compara(a[k], b[k]); return [...c.novos, ...c.removidos, ...c.mudaram].map((x) => k + ":" + x); });
+  assert(dif.length === 0, dif.join(", ")); return `${Object.keys(a.dados).length} tabelas conferidas`; });
 
 console.log(erros ? `\nRESULTADO: ${erros} ERRO(S) em ${total} checagens` : `\nRESULTADO FINAL: ${total} checagens, tudo ok`);
 await db.close(); process.exit(erros ? 1 : 0);
