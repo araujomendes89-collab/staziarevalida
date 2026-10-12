@@ -52,4 +52,18 @@ begin
 end
 $$;
 
--- Para desfazer: recriar handle_new_user de …5300_termo_aceite.
+-- A tela de Planos pergunta isto para saber se a chave "Oferecer teste grátis no cadastro" já vale de verdade neste banco. Se a função não
+-- existe (banco ainda sem a 9732), a tela mantém o texto de antes ("todo cadastro novo recebe o teste, com a chave ligada ou desligada") e
+-- não promete o que o banco não faz. Só o administrador pergunta.
+create or replace function public.app_admin_signup_trial_rule() returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+begin
+  perform public.assert_admin();
+  return jsonb_build_object('applies', true);
+end
+$$;
+revoke execute on function public.app_admin_signup_trial_rule() from public, anon;
+grant execute on function public.app_admin_signup_trial_rule() to authenticated;
+
+-- Para desfazer: recriar handle_new_user de …5300_termo_aceite e "drop function public.app_admin_signup_trial_rule()".

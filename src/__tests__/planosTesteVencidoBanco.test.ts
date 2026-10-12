@@ -212,7 +212,7 @@ describe("PL02 — consulta de conferência do cabeçalho", () => {
     const cabecalho = fs.readFileSync(MIGRATION, "utf8");
     const consulta = /select u\.email as "E-mail"[\s\S]*?order by u\.email;/.exec(cabecalho)![0].replace(/^--\s?/gm, "");
     const lista = await db.query<Record<string, any>>(consulta);
-    expect(lista.fields.map((f) => f.name)).toEqual(["E-mail", "Plano", "Situação", "Teste até", "Plano pago até"]);
+    expect(lista.fields.map((f) => f.name)).toEqual(["E-mail", "Plano", "Situação", "Teste até", "Plano pago até", "Tutor"]);
     const emails = lista.rows.map((r) => r["E-mail"]);
     expect(emails).toEqual(["comecado@teste.dev", "provencido@teste.dev", "vencido@teste.dev"]);
     // a lista bate com o que o banco decide: cada um deles está sem acesso pago e nenhum dos outros está
