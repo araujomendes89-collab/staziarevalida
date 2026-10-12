@@ -134,7 +134,7 @@ beforeAll(async () => {
   await sql(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await sql(`update public.user_roles set role = 'editor' where user_id = $1`, [EDITORA]);
   await sql(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'PEDIATRIA')`, [REVISOR]);
-  await sql(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [ALUNO]);
+  await sql(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id = $1`, [ALUNO]);
   await sql(`insert into public.legal_acceptances (user_id, document, version, origin, email_hash)
              select $1::uuid, v.document, v.version, case v.document when 'termo_uso' then 'cadastro' else 'tutor' end, public.legal_email_hash('aluno@t.dev')
              from public.legal_versions v on conflict do nothing`, [ALUNO]);

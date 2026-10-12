@@ -1,4 +1,4 @@
-STAZIAMED REVALIDA - LEVA 3 (SQL para colar no Supabase) - feito em 11/10/2026
+STAZIAMED REVALIDA - LEVA 3 (SQL para colar no Supabase) - feito em 12/10/2026 (versão com as correções da 2ª revisão independente)
 
 O QUE É ESTA PASTA
 Quatro partes de SQL (1 a 4) e uma conferência (0). Elas passaram pelas 4 frentes da leva 3: Questões, Aulas, Podcasts e Planos.
@@ -30,10 +30,14 @@ O QUE CADA PARTE MUDA
             gravado hoje continua visível.
   Parte 2 - Aulas (9710, 9711)
     Equipe: remover um material, trocar o PDF/áudio ou apagar a aula também apaga o arquivo do depósito (sem volta), se mais nada o usa.
-    Aluno:  o XP de concluir a aula (20) só vem para quem assistiu até o fim.
+            Antes de apagar, o servidor reserva o arquivo no banco e confere de novo a cada exclusão; quem tenta usar o arquivo
+            nesse instante recebe um aviso em português e tenta de novo. Só funciona com a Fonte complementar (9620) já colada.
+    Aluno:  o XP de concluir a aula (20) só vem para quem assistiu até o fim DE VERDADE (conta o tempo realmente assistido; pular para o final não vale).
   Parte 3 - Podcasts (9720, 9721)
-    Equipe: o roteiro só é aprovado pelo administrador ou pelo revisor médico da área do episódio; arquivos antigos que ficariam esquecidos
-            no depósito passam a ser apagados quando o áudio deixa de valer ou a fonte/episódio some.
+    Equipe: o roteiro só é aprovado pelo administrador ou pelo revisor médico da área do episódio (a permissão é conferida com o episódio
+            já travado); arquivos antigos que ficariam esquecidos no depósito passam a ser apagados quando o áudio deixa de valer ou a
+            fonte/episódio some. O servidor novo nunca apaga na hora: reserva o arquivo, confere de novo a cada exclusão e só então apaga.
+            Se a parte 3 faltar quando o site novo entrar no ar, o site NÃO apaga arquivo nenhum e avisa em português.
     Aluno:  nada que apareça.
   Parte 4 - Planos (9730, 9731, 9732)
     Equipe: teste grátis vencido conta como "sem acesso pago"; bloco "Benefícios do plano Elite" nas Configurações (nasce igual ao Pro);
@@ -58,6 +62,8 @@ EFEITOS QUE VOCÊ VAI VER (leia antes de colar)
   - Parte 1 (9700): o banco só aceita como figura um arquivo que o servidor conferiu. Por isso o envio de figura só funciona depois que o
     site novo e a imagem do Cloud Run estiverem no ar.
   - Parte 3 (9720): editor comum deixa de aprovar roteiro de podcast (a tela explica o motivo). Episódio sem grande área: só o administrador.
+  - Parte 2 (9710): se a Fonte complementar (9620) não estiver colada, a parte PARA no começo com o aviso "Cole antes a migração 9620" e não
+    altera nada. Em produção ela já está colada (o bloco 8 da conferência mostra OK).
   - Parte 3 (9721) e Parte 2 (9710): nada é apagado retroativamente. Os arquivos que já estão esquecidos hoje ficam onde estão (a lista
     opcional mostra quais); só os eventos DE AGORA EM DIANTE entram na fila de limpeza.
 
@@ -67,8 +73,14 @@ JANELA CURTA ENTRE COLAR E PUBLICAR O SITE
   - Aulas: quem concluir uma aula nessa janela não ganha o XP na hora (o site antigo não manda o "assistiu até o fim"); o XP vem quando
     assistir até o fim no site novo. O servidor antigo não apaga arquivos de aula (como hoje).
   - Podcasts: o servidor antigo apaga os arquivos direto, como hoje; editor comum já é barrado de aprovar (o botão aparece, o banco recusa).
+  - Planos: com a chave do Tutor "Planos pagos + teste grátis" DESLIGADA (estado antigo), o Tutor continua aberto a todos mesmo para quem
+    perdeu o acesso pago; os avisos não chamam o Tutor de pago nesse caso. Ligar a chave é decisão do dono.
   - Planos: quem perdeu o acesso e tentar um simulado vê no site antigo uma mensagem genérica ("Ajuste os filtros e tente de novo").
   Por isso a ordem é SQL, imagem do Cloud Run e site em seguida, sem pausa longa.
+  O contrário (site novo antes do SQL) deve ser EVITADO. Se acontecer, o site novo percebe que falta o SQL e volta a falar como antes
+  (não promete revisão de comentário, XP pelo fim da aula nem aviso de plano), e o servidor não apaga arquivo nenhum e avisa em português.
+  Questões: quem aprova um comentário em revisão é o revisor médico da área OU o administrador (o administrador não precisa estar
+  cadastrado como revisor; fica registrado quem decidiu). A tela aprova exatamente o texto que mostra, a fila vem de 50 em 50 e o revisor vê a figura.
 
 SE FOR PRECISO COLAR DE NOVO ALGO ANTIGO
   Depois desta leva, NÃO cole de novo, sozinhos:

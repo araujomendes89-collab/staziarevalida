@@ -28,9 +28,9 @@ console.log("== A. permissoes das funcoes novas ou redefinidas");
 const NOVAS_TELA = ["app_admin_comment_review(text)", "app_admin_comment_review_queue(jsonb,integer,integer)", "app_admin_plan_benefits()", "app_admin_podcast_approval(uuid)", "app_admin_question_comment_decide(text,text,text,jsonb)",
   "app_admin_question_history(text,integer,integer)", "app_admin_remove_question_image(text)", "app_admin_save_plan_benefits(jsonb)", "app_admin_set_question_image(text,jsonb)", "app_admin_signup_trial_rule()",
   "app_lesson_watch(uuid,integer,boolean,integer)", "app_lesson_watch_state(uuid)", "app_my_access()", "app_my_benefits()", "app_question_comment_check()", "app_question_figure(text,integer)", "simulado_gate()", "station_feedback_allowed()"];
-const INTERNAS = ["ch_podcast_approver_check(uuid)", "ch_worker_lesson_files_done(text[],uuid)", "ch_worker_lesson_files_release(text[])", "ch_worker_lesson_files_reserve(uuid)", "ch_worker_podcast_files_done(uuid,jsonb)", "ch_worker_podcast_files_pending(uuid,uuid)",
+const INTERNAS = ["ch_worker_lesson_files_done(jsonb,uuid)", "ch_worker_lesson_files_release(jsonb)", "ch_worker_lesson_files_renew(text,uuid)", "ch_worker_lesson_files_reserve(uuid)", "ch_worker_podcast_files_done(uuid,jsonb)", "ch_worker_podcast_files_renew(uuid,bigint,uuid)", "ch_worker_podcast_files_pending(uuid,uuid)",
   "ch_worker_question_figure_confirm(text,text,numeric)", "ch_worker_question_figure_drop(text)", "lesson_file_in_use(text)", "lesson_file_reference_guard()", "lesson_material_file_queue()", "podcast_approve_block_text(med_area)", "podcast_can_approve(med_area)",
-  "podcast_files_guard_ref()", "podcast_files_queue_audio()", "podcast_files_queue_audio_del()", "podcast_files_queue_source()", "question_can_review_comment(med_area)", "question_comment_assert_access()", "question_comment_fields(jsonb,text,text)",
+  "podcast_files_blocked(text)", "podcast_files_guard_ref()", "podcast_files_queue_audio()", "podcast_files_queue_audio_del()", "podcast_files_queue_source()", "question_can_review_comment(med_area)", "question_comment_assert_access()", "question_comment_fields(jsonb,text,text)",
   "question_comment_review_missing()", "question_hidden_fields(jsonb,jsonb)", "question_person_name(uuid)", "questions_comment_review_mark()", "questions_images_guard()", "questions_keep_figure_flag()", "subscription_trial_is_valid(subscription_status,timestamp with time zone)",
   "user_is_paid_elite(uuid)", "user_plan_lock(uuid)", "user_without_paid_access(uuid)", "ch_raw_app_admin_podcast_approve(uuid,text)", "ch_raw_practice_correction_view(text,text)", "ch_raw_tutor_truth(text,text)", "gam_process_lesson()", "tutor_entitlement(uuid)", "questions_change_trail()", "admin_import_merge_question(text,jsonb)"];
 const priv = async (sig, role) => (await sql(`select has_function_privilege($1, $2::regprocedure, 'execute') as x`, [role, sig]))[0].x;
@@ -122,13 +122,15 @@ await ck("Aulas: remover material poe o caminho na fila; reserva so devolve o qu
   await sql(`insert into public.lesson_materials (id, lesson_id, kind, title, storage_path) values ($1,$2,'slides','s',$3)`, [M, L, lp]);
   await sql(`delete from public.lesson_materials where id=$1`, [M]);
   const q = (await sql(`select state from public.lesson_files_pending_delete where storage_path=$1`, [lp]))[0]; assert(q?.state === "pending", JSON.stringify(q));
-  const r = (await sql(`select public.ch_worker_lesson_files_reserve($1::uuid) r`, [P.adm]))[0].r; assert(JSON.stringify(r.paths) === JSON.stringify([lp]), JSON.stringify(r)); });
+  const r = (await sql(`select public.ch_worker_lesson_files_reserve($1::uuid) r`, [P.adm]))[0].r; assert(JSON.stringify(r.items.map((i) => i.path)) === JSON.stringify([lp]) && r.items[0].token, JSON.stringify(r));
+  globalThis.__tokenLp = r.items[0].token; });
 await ck("Aulas: caminho reservado recusa material novo, fonte de podcast e retencao (os tres gatilhos)", async () => {
   await nega(() => sql(`insert into public.lesson_materials (lesson_id, kind, title, storage_path) values ($1,'slides','s',$2)`, [L, lp]), /sendo apagado/);
   const ep = (await rpcC(P.ed, "app_admin_save_podcast", { p_podcast: { title: "Ep teste", topic: "Asma", area: "PEDIATRIA", target_minutes: 5 } })).id;
   await nega(() => sql(`insert into public.podcast_sources (podcast_id, kind, title, storage_path) values ($1,'pdf','x',$2)`, [ep, lp]), /sendo apagado/).catch(async (e) => { throw e; });
   await nega(() => sql(`insert into public.ch_file_holds (storage_path) values ($1)`, [lp]), /sendo apagado/);
-  await sql(`select public.ch_worker_lesson_files_done(array[$1], $2::uuid)`, [lp, P.adm]); });
+  assert((await sql(`select public.ch_worker_lesson_files_renew($1, $2::uuid) r`, [lp, globalThis.__tokenLp]))[0].r === true, "renovar reserva vigente");
+  await sql(`select public.ch_worker_lesson_files_done($1::jsonb, $2::uuid)`, [JSON.stringify([{ path: lp, token: globalThis.__tokenLp }]), P.adm]); });
 let ep2;
 await ck("Podcasts: tirar fonte com arquivo poe na fila; fonte do MESMO arquivo em outro episodio impede apagar (mantido)", async () => {
   ep2 = (await rpcC(P.ed, "app_admin_save_podcast", { p_podcast: { title: "Ep A", topic: "Asma", area: "PEDIATRIA", target_minutes: 5 } })).id;
@@ -144,7 +146,7 @@ await ck("Podcasts: arquivo do 'PDF da aula' (lessons/..) usado por fonte nao e 
   await sql(`insert into public.lesson_materials (id, lesson_id, kind, title, storage_path) values ($1,$2,'slides','s',$3)`, ["00000000-0000-4000-8000-0000000000b2", L, pth]);
   await sql(`insert into public.podcast_sources (podcast_id, kind, title, storage_path) values ($1,'pdf','x',$2)`, [ep, pth]);
   await sql(`delete from public.lesson_materials where id='00000000-0000-4000-8000-0000000000b2'`);
-  const r = (await sql(`select public.ch_worker_lesson_files_reserve($1::uuid) r`, [P.adm]))[0].r; assert(!r.paths.includes(pth), "aulas reservou arquivo usado por fonte de podcast");
+  const r = (await sql(`select public.ch_worker_lesson_files_reserve($1::uuid) r`, [P.adm]))[0].r; assert(!r.items.some((i) => i.path === pth), "aulas reservou arquivo usado por fonte de podcast");
   await sql(`delete from public.podcast_sources where podcast_id=$1`, [ep]);
   const r2 = (await sql(`select public.ch_worker_podcast_files_pending($1::uuid, null) r`, [P.adm]))[0].r; assert(!r2.some((x) => x.path === pth), "podcasts reservou lessons/");
   const st = (await sql(`select status from public.podcast_files_released where storage_path=$1`, [pth]))[0]; assert(st?.status === "mantido", JSON.stringify(st)); });

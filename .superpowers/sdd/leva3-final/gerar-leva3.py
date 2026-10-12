@@ -21,9 +21,9 @@ def tabela_fechada(t): return f"(select c.relrowsecurity and not has_table_privi
 TELAS_Q = ["app_admin_set_question_image", "app_admin_remove_question_image", "app_question_figure", "app_admin_comment_review_queue", "app_admin_comment_review", "app_admin_question_comment_decide", "app_question_comment_check", "app_admin_question_history"]
 INT_Q = ["ch_worker_question_figure_confirm", "ch_worker_question_figure_drop", "questions_images_guard", "questions_keep_figure_flag", "questions_comment_review_mark", "question_comment_fields", "question_hidden_fields", "question_can_review_comment", "question_comment_assert_access", "question_person_name", "question_comment_review_missing"]
 TELAS_A = ["app_lesson_watch", "app_lesson_watch_state"]
-INT_A = ["ch_worker_lesson_files_reserve", "ch_worker_lesson_files_done", "ch_worker_lesson_files_release", "lesson_material_file_queue", "lesson_file_in_use", "lesson_file_reference_guard"]
+INT_A = ["ch_worker_lesson_files_reserve", "ch_worker_lesson_files_renew", "ch_worker_lesson_files_done", "ch_worker_lesson_files_release", "lesson_material_file_queue", "lesson_file_in_use", "lesson_file_reference_guard"]
 TELAS_P = ["app_admin_podcast_approval"]
-INT_P = ["podcast_can_approve", "podcast_approve_block_text", "ch_podcast_approver_check", "ch_raw_app_admin_podcast_approve", "ch_worker_podcast_files_pending", "ch_worker_podcast_files_done", "podcast_files_queue_audio", "podcast_files_queue_audio_del", "podcast_files_queue_source", "podcast_files_guard_ref"]
+INT_P = ["podcast_can_approve", "podcast_approve_block_text", "ch_raw_app_admin_podcast_approve", "ch_worker_podcast_files_pending", "ch_worker_podcast_files_renew", "ch_worker_podcast_files_done", "podcast_files_queue_audio", "podcast_files_queue_audio_del", "podcast_files_queue_source", "podcast_files_guard_ref", "podcast_files_blocked"]
 TELAS_PL = ["simulado_gate", "app_my_access", "app_my_benefits", "station_feedback_allowed", "app_admin_plan_benefits", "app_admin_save_plan_benefits", "app_admin_signup_trial_rule"]
 INT_PL = ["subscription_trial_is_valid", "user_without_paid_access", "user_plan_lock", "user_is_paid_elite", "tutor_entitlement", "practice_sessions_simulado_gate"]
 
@@ -39,9 +39,9 @@ PARTES = [
       telas=TELAS_Q, internas=INT_Q, tabelas=["question_figure_files", "question_comment_reviews"]),
  dict(nome="2-colar-ANTES-do-site-parte-2-Aulas", rotulo="2-Aulas", nums=["009710", "009711"],
       desc="Aulas: remover ou trocar um material apaga também o arquivo do depósito; o XP de concluir a aula só vem de quem assistiu até o fim",
-      equipe=["Ao remover um material de aula, trocar o PDF ou o áudio, ou apagar a aula, o arquivo antigo também sai do depósito \"lessons\" (sem volta), se nenhum outro material, fonte de podcast ou retenção ainda o usa. Os arquivos que JÁ estão esquecidos hoje não são tocados.",
+      equipe=["Ao remover um material de aula, trocar o PDF ou o áudio, ou apagar a aula, o arquivo antigo também sai do depósito \"lessons\" (sem volta), se nenhum outro material, fonte de podcast ou retenção ainda o usa (o servidor reserva o arquivo no banco antes de apagar e confere de novo antes de cada exclusão; quem cria uma referência nova nesse instante é recusado). Os arquivos que JÁ estão esquecidos hoje não são tocados. ATENÇÃO: esta parte exige que a Fonte complementar (9620) já esteja colada (está em produção); se não estiver, a parte para com um aviso e não altera nada.",
               "Nova ação no Registro: \"Arquivo de aula apagado do depósito\"."],
-      aluno=["O XP de concluir a aula (20) só vem de quem assistiu a aula até o fim (concluir antes e assistir depois também paga, uma vez só). Aula com link .m3u8, com outro endereço ou sem vídeo medido deixa de dar XP; concluir continua marcando a aula como feita.",
+      aluno=["O XP de concluir a aula (20) só vem de quem assistiu a aula até o fim de verdade: conta o tempo realmente assistido, pular o vídeo para o final não vale (concluir antes e assistir depois também paga, uma vez só). Aula com link .m3u8, com outro endereço ou sem vídeo medido deixa de dar XP; concluir continua marcando a aula como feita.",
              "Nada é retroativo: ninguém perde XP que já ganhou."],
       telas=TELAS_A, internas=INT_A, tabelas=["lesson_files_pending_delete"]),
  dict(nome="3-colar-ANTES-do-site-parte-3-Podcasts", rotulo="3-Podcasts", nums=["009720", "009721"],
@@ -73,7 +73,7 @@ def conferencias(p):
              ("historico_registra_a_figura", usa("questions_change_trail()", "figura"))]
     elif r == "2-Aulas":
         c = [("fila_de_arquivos_de_aula", "to_regclass('public.lesson_files_pending_delete') is not null"),
-             ("tres_funcoes_do_servidor", cont_funcs(["ch_worker_lesson_files_reserve", "ch_worker_lesson_files_done", "ch_worker_lesson_files_release"]) + " = 3"),
+             ("quatro_funcoes_do_servidor", cont_funcs(["ch_worker_lesson_files_reserve", "ch_worker_lesson_files_renew", "ch_worker_lesson_files_done", "ch_worker_lesson_files_release"]) + " = 4"),
              ("cinco_gatilhos_de_arquivo", cont_gat(["lesson_materials_file_queue_del", "lesson_materials_file_queue_upd", "lesson_materials_file_reference_guard", "podcast_sources_file_reference_guard", "ch_file_holds_file_reference_guard"]) + " = 5"),
              ("coluna_assistiu_ate_o_fim", col("lesson_progress", "watched_to_end_at")),
              ("funcao_de_assistir", "to_regprocedure('public.app_lesson_watch(uuid, integer, boolean, integer)') is not null"),
@@ -82,9 +82,9 @@ def conferencias(p):
     elif r == "3-Podcasts":
         c = [("fila_de_arquivos_de_podcast", "to_regclass('public.podcast_files_released') is not null"),
              ("sete_gatilhos_de_arquivo", cont_gat(["podcast_files_queue_audio", "podcast_files_queue_audio_del", "podcast_files_queue_source", "podcast_files_guard_audio", "podcast_files_guard_source", "podcast_files_guard_material", "podcast_files_guard_hold"]) + " = 7"),
-             ("aprovar_so_administrador_ou_revisor_da_area", usa("ch_raw_app_admin_podcast_approve(uuid, text)", "ch_podcast_approver_check")),
+             ("aprovar_so_administrador_ou_revisor_da_area", usa("ch_raw_app_admin_podcast_approve(uuid, text)", "podcast_can_approve")),
              ("tela_pergunta_quem_aprova", "to_regprocedure('public.app_admin_podcast_approval(uuid)') is not null"),
-             ("duas_funcoes_do_servidor", cont_funcs(["ch_worker_podcast_files_pending", "ch_worker_podcast_files_done"]) + " = 2"),
+             ("tres_funcoes_do_servidor", cont_funcs(["ch_worker_podcast_files_pending", "ch_worker_podcast_files_renew", "ch_worker_podcast_files_done"]) + " = 3"),
              ("recusa_de_fonte_complementar_continua", usa("app_admin_podcast_approve(uuid, text)", "ch_podcast_script_check"))]
     else:
         c = [("beneficios_do_elite_criados", "(select count(*) from public.plan_benefits) = 1"),

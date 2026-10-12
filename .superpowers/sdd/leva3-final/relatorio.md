@@ -1,3 +1,62 @@
+# Leva 3 final 2: ordem junta com as correções da 2ª revisão independente
+
+Ramo `leva3-final2`, criado de `8bd82fb` (o que está em produção: site, Cloud Run e SQL 9620/9621) com merge dos quatro ramos corrigidos na mesma ordem de antes: `leva3-q` 7dd08f9, `leva3-a` 090dff1, `leva3-p` 3753473, `leva3-pl` 54dab4d. Nada empurrado, nada colado em produção, nenhuma rede. (A seção 1 em diante é do relatório da primeira versão `leva3-final`, que continua valendo no que não é contrariado por esta seção.)
+
+## 0. O que a segunda versão trouxe
+**Conflitos de merge (2) e como foram resolvidos, sem perder nada**
+- `server/lessons/router.ts` (ao juntar `leva3-a`): a linha de importação. Ficou a união: `holdFile, recordFileSha, releaseFile, SHA_WARNING` (o `releaseFile` veio do main 8bd82fb; os ramos partiram de bcaf451, mais antigo) mais `sweepLessonFiles` de `./files`.
+- `src/__tests__/fontesComplementaresOrdem.test.ts` (ao juntar `leva3-p`): o filtro de migrações que ficam de fora. Ficou o mesmo da primeira versão: tira 9621, 9700 a 9739 (Questões, Aulas, Podcasts e Planos entram depois da 9620 e redefinem funções dela); a ordem com cada uma é provada nos testes das próprias frentes.
+- `leva3-q` e `leva3-pl` entraram sem conflito.
+
+**Correção do gate da 9730 (`9a662ec`) ainda era necessária.** Nenhum ramo a trazia (o `leva3-pl` não tem o gatilho `practice_sessions_simulado_gate`; o aluno com teste vencido inseria `kind='simulado'` direto na tabela). Reaplicada por cherry-pick (clean) junto dos scripts de verificação e do pacote da primeira versão.
+
+**Defeito achado na junção (testes de fora das quatro frentes).** Quatro testes antigos (`apoioT3Servidor`, `apoioVarredura`, `apoioVarreduraServidor`, `fontesComplementaresRodada2Termos`) criavam a aluna com `plan='pro', status='active'` SEM `current_period_end`. Pela regra que já existia (`subscription_is_paid`, usada por `has_pro` desde a 9550) isso não é plano pago válido, e a 9730 passou a fechar o Tutor para quem não tem plano pago válido ("Seu teste grátis do Tutor terminou"). Não é defeito do produto (plano pago de verdade sempre tem data de fim); foi ajustado o dado dos testes (`current_period_end = now() + interval '30 days'`).
+
+**Scripts de verificação atualizados** (funções das reservas com código): `matriz-e-cenarios.mjs` (assinaturas novas de `ch_worker_lesson_files_*` e `ch_worker_podcast_files_*`, renovação, `podcast_files_blocked`; `ch_podcast_approver_check` saiu) e `gerar-leva3.py` (conferências finais das partes 2 e 3).
+
+## 0.1 Resultado da verificação (tudo em PGlite, Postgres 18)
+| Verificação | Resultado |
+|---|---|
+| Produção simulada (base 23d53c1 + partes 1 a 7 de 11/10 + Arena + DESLIGAR tetos + 9610 + 9620/9621) + 10 migrações novas (9700, 9701, 9702, 9710, 9711, 9720, 9721, 9730, 9731, 9732) coladas 3 vezes | 30 colagens sem erro. 1a x 2a e 2a x 3a: nenhuma diferença em funções, gatilhos, políticas, permissões, colunas, restrições, índices e dados |
+| Funções antes x depois (`comparar.py`) | 588 antes, 639 depois: 51 novas, 0 removidas, 12 mudam (as mesmas 12 da primeira versão; só no que cada migração pretende), nenhuma ACL existente muda. Tabelas: 7 novas (5 com RLS fechado ao app e 2 sequências padrão); gatilhos: 16 novos e 1 alterado (`lesson_progress_play`), nenhum removido |
+| Quadro pessoa x função (`matriz-permissoes.mjs`) | idêntico ao `matriz-permissoes.md` anterior: visitante nunca passa; internas e `ch_worker_*` fechadas; tabelas novas fechadas |
+| Cenários e permissões (`matriz-e-cenarios.mjs`) | 99 de 99 ok (inclui renovar reserva de aula vigente, o gate de simulado pela tabela, aprovação de podcast por área) |
+| 24 ordens possíveis das 4 frentes (`permutar-partes.mjs`) | ver linha abaixo |
+| Recolar cada arquivo antigo DEPOIS da leva (`recolar-anteriores.mjs`) | mesmo resultado da primeira versão (ver seção 5) |
+| Pacote do dono colado 2x (`verificar-pacote.mjs`) | todas as 8 colagens com `OK: ... colada` e todas as conferências true; conferência 0 igual antes/depois; nenhuma tabela existente muda dados; pacote e migrações diretas dão a mesma estrutura |
+
+`permutar-partes.mjs`: RESULTADO: as 24 ordens colam sem erro e dao a mesma estrutura (funcoes, gatilhos, politicas, permissoes)
+
+## 0.2 Testes pela fila (`../vaga-de-teste.sh`, `--pool=threads --maxWorkers=2`, nunca a suíte inteira)
+- Lista A: 60 arquivos (todo teste que as quatro frentes e a junção mexeram, mais ordem de migrações, fonte complementar, registro da Administração, `supabase*Api`, `lesson*`): 8 lotes. Falhou só `fontesComplementaresRodada2Termos` (causa acima).
+- Lista B: 30 arquivos (todos os que usam Tutor, simulado ou `app_start_session` e não estavam na A, mais os 3 ajustados e `admConfigEstacoesBanco`), depois do ajuste de dados: 4 lotes, todos passaram (`Test Files` 8, 8, 8, 6).
+- Resultado final: 89 arquivos distintos (o ajustado `fontesComplementaresRodada2Termos` está nas duas listas), nenhum falha depois do ajuste.
+- `npm run build`: ok. `npx tsc --noEmit`: 1831 erros, igual à base (nenhum novo).
+- Não rodei a suíte inteira.
+
+## 0.3 Pacote do dono: `/Users/joaopaulomendes/Downloads/publicacao-staziamed-2026-10-12-leva3/`
+Gerado por `gerar-leva3.py` a partir deste ramo. Cada parte termina com `select 'OK: <parte> colada'` e conferências true. SHA-256:
+```
+ca2d66751caaa47872e89464d222ed6ae495b9b29fa7eda4be19eaffa6a94bfb  0-CONFERIR-primeiro-nao-altera-nada.sql
+ab490bf209ef92320b71b9ca941f842d09aefbc719d75f9dba329767d7b67841  0-LEIA-ME.txt
+b32550c9318c920b59a46a2ad9176bfed15efde27334478570410fd15538e93c  1-colar-ANTES-do-site-parte-1-Questoes.sql
+add8f5947b96ddcdeb54089bbae58531d2b96f293f41f611ecaecf25bc662ce8  2-colar-ANTES-do-site-parte-2-Aulas.sql
+71b7e6fa7ee80f709fad4d77327be7d01d2ef030c4e31e170f3b8859d008cc83  3-colar-ANTES-do-site-parte-3-Podcasts.sql
+277d53a0ae687e433daf0637f3e9342e3e2de0be769fd55c206b6b0dc6a8ee10  4-colar-ANTES-do-site-parte-4-Planos.sql
+5161ee04115452885bb2a4cbd4b6c74ca9ff7a9560eda60d1a73ed884015e26b  OPCIONAL-lista-dos-arquivos-esquecidos-de-podcast-so-leitura.sql
+```
+Ordem de publicação (no 0-LEIA-ME): conferência 0, partes 1 a 4, depois imagem do Cloud Run, por último o site.
+
+## 0.4 Limites e avisos desta versão
+- 9710, 9720, 9721 foram editadas no lugar (nenhuma está em produção). A 9710 só cola com a 9620 já colada (já está em produção): sem ela, para no começo com aviso e não altera nada.
+- O ensaio é em PGlite com UMA conexão: as corridas (reservas de arquivo) estão provadas por ordem, não por duas conexões reais.
+- Uma chamada ao depósito que demore mais de 10 minutos depois da última renovação ainda poderia coincidir com uma referência nova (limite documentado por Aulas e Podcasts; o servidor limita cada exclusão a 60 s).
+- Os arquivos de storage da 9700 (`storage.buckets`) só rodam no Supabase real; vale enviar uma figura de verdade e abrir uma aula de cada tipo depois de publicar.
+- Com a chave do Tutor "Planos pagos + teste grátis" desligada (estado antigo), o Tutor segue aberto a todos: decisão do dono.
+- Recolar `COLAR-fonte-complementar-9620-9621.sql` ou a parte 4 do pacote de 11/10 depois desta leva desfaz parte dela (ver 0-LEIA-ME).
+
+---
+
 # Leva 3 final: verificação da ordem junta e pacote de SQL
 
 Ramo `leva3-final` (partida 074598d). Nada empurrado, nada colado em produção, nenhuma rede. Tudo foi ensaiado numa cópia do banco em PGlite (Postgres 18).

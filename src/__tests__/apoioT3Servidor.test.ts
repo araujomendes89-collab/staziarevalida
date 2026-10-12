@@ -148,7 +148,7 @@ beforeAll(async () => {
   await sql(`insert into auth.users (id, email) values ($1, 'ad@t.dev'), ($2, 'ed@t.dev'), ($3, 'al@t.dev')`, [ADMIN, EDITOR, ALUNO]);
   await sql(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await sql(`update public.user_roles set role = 'editor' where user_id = $1`, [EDITOR]);
-  await sql(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [ALUNO]);
+  await sql(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id = $1`, [ALUNO]);
   await aceitarTermos(dev.db, ALUNO);
   process.env.TUTOR_AI_PROVIDER = "mock";
   await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, requires_pro: true }, "Tutor ligado para o teste adversarial.");

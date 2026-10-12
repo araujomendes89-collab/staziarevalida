@@ -210,7 +210,7 @@ beforeAll(async () => {
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'adm@t.dev'), ($2, 'ed@t.dev'), ($3, 'al@t.dev')`, [ADMIN, EDITOR, ALUNA]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await dev.db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [EDITOR]);
-  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [ALUNA]);
+  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id = $1`, [ALUNA]);
   await aceitarTermos(dev.db, ALUNA);
   await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, requires_pro: true }, "Tutor ligado para o teste da lista de termos indisponível.");
   await sql(`insert into public.ch_sources (title, organ, kind, version, authority_level) values ($1, 'Editora Delta de Medicina (teste)', 'final', '2026', 'E')`, [TITULO]);
