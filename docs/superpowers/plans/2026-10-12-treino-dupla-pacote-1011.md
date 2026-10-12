@@ -588,6 +588,8 @@ it("banco local consulta a cada 5 s; com tempo real usa o canal chat:{id} e fech
 ---
 
 ## Etapa Q — Cota de matches por pacote (SÓ DEPOIS DE D7; ligada por chave, desligada por padrão)
+
+> **Nota de 2026-10-12 (noite): esta Etapa Q está SUBSTITUÍDA** pelo livro de créditos único da frente "Stazia Match" (`docs/superpowers/specs/2026-10-12-stazia-match-engenharia.md` e `docs/superpowers/plans/2026-10-12-stazia-match-engenharia.md`, Etapas M1 a M4, migrações 9960 em diante). A migração `9950` e a tabela `study_quota_ledger` **não serão usadas**. O dono decidiu (D7) que o match é cobrado do **crédito diário de cada um dos dois**; resta decidir **quando** (no aceite ou no início confirmado). Não construir a Etapa Q como está escrita abaixo.
 **Pré-requisito:** D7 respondida (pacote = plano atual ou produto novo; quanto por dia; quem é debitado e quando; devolução; validade dos extras). **Nenhum valor é escrito no código.**
 
 ### Tarefa Q1: Migração 9950 — livro de movimentos, checagem e débito no servidor

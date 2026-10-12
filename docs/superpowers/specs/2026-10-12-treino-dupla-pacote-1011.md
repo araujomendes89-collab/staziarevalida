@@ -332,3 +332,5 @@ arquivo do pacote foi executado ou copiado.
 | D10 | "Sinalizar problema" **abre uma janela** onde o usuário envia mensagem à equipe de suporte, e **aparece na Administração**: criar campo/aba no menu da Administração para esses sinais |
 | D11 | Convite rápido e direto: aceitar o desenho do plano (junto com o radar) — resposta não escrita explicitamente pelo dono, adotada conforme a recomendação; confirmar |
 | D12 | Compra **parada**, tela só informativa; o dono enviará o método de engenharia do match e da cobrança |
+
+**Atualização (2026-10-12, noite):** o documento de engenharia "Stazia Match" que o dono enviou foi analisado em `docs/superpowers/specs/2026-10-12-stazia-match-engenharia.md`. Efeito sobre este texto: a **Etapa Q (cota, 9950) é substituída** por um livro de créditos único (match e IA do aluno), D7 e D12 passam a depender da pergunta "quando o crédito sai" (aceite do match ou início confirmado) e de "o que é uma unidade" (match ou sessão iniciada). Nada mais aqui muda.
