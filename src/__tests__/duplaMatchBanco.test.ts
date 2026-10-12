@@ -396,7 +396,9 @@ describe("Migração 9770 — sinal, baralho, escolha, match, convite e saída d
 
   it("sem match: recíproco de 8 dias, outro sem sinal, outro em sala aberta", async () => {
     const semMatch = async (esperado = false) => {
-      expect(await swipe(U.ana, U.bruno, "right")).toEqual({ matched: esperado });
+      const r = await swipe(U.ana, U.bruno, "right");
+      if (esperado) expect(r).toMatchObject({ matched: true, partner: { user_id: U.bruno } });
+      else expect(r).toEqual({ matched: false });
     };
     // Recíproco de 8 dias.
     await d.sql(`insert into public.study_swipes (from_user, to_user, direction, created_at) values ($1, $2, 'right', $3)`, [U.bruno, U.ana, diasAtras(8)]);
