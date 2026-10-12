@@ -81,7 +81,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
     return id;
   };
   /** Apaga do depósito os arquivos que ninguém mais usa (A07). Nunca lança erro: falha ao apagar não desfaz a ação da equipe. */
-  const sweep = (req: Authed) => sweepLessonFiles(deps!.db, req.user!, deps!.storage, deps!.log).catch(() => ({ deleted: [], failed: [] }));
+  const sweep = (req: Authed) => sweepLessonFiles(deps!.db, req.user!, deps!.storage, deps!.log).catch(() => ({ deleted: [], failed: [], skipped: [] }));
   const checkType = (kind: unknown, type: unknown) => {
     const spec = TYPES[String(type)];
     if (!spec) throw httpError(415, "Envie um PDF (slides) ou um MP3 (áudio Flashcast).");

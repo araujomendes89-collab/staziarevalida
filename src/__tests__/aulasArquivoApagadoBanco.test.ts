@@ -37,15 +37,25 @@ const asUser = (uid: string, sql: string, params: unknown[] = []) =>
   });
 const fila = async () => (await db.query<{ storage_path: string }>(`select storage_path from public.lesson_files_pending_delete order by storage_path`)).rows.map((r) => r.storage_path);
 const limparFila = () => db.query(`delete from public.lesson_files_pending_delete`);
-// funções de SERVIÇO (ch_worker_*): o servidor reserva, apaga no depósito, confirma ou devolve; a equipe não as chama direto
+// funções de SERVIÇO (ch_worker_*): o servidor reserva (e recebe um CÓDIGO por caminho), renova antes de cada exclusão, confirma ou
+// devolve com o código; a equipe não as chama direto
 const servico = async <T = any>(fn: string, args: Record<string, unknown> = {}) => {
   const keys = Object.keys(args);
-  const casts: Record<string, string> = { p_paths: "::text[]", p_actor: "::uuid" };
-  return (await db.query<{ r: T }>(`select public.${fn}(${keys.map((k, i) => `${k} => $${i + 1}${casts[k] ?? ""}`).join(", ")}) r`, keys.map((k) => args[k]))).rows[0].r;
+  const casts: Record<string, string> = { p_items: "::jsonb", p_actor: "::uuid", p_token: "::uuid" };
+  return (await db.query<{ r: T }>(`select public.${fn}(${keys.map((k, i) => `${k} => $${i + 1}${casts[k] ?? ""}`).join(", ")}) r`, keys.map((k) => (k === "p_items" ? JSON.stringify(args[k]) : args[k])))).rows[0].r;
 };
-const paths = async (actor: string | null = EDITOR) => ((await servico("ch_worker_lesson_files_reserve", { p_actor: actor })).paths as string[]).slice().sort();
-const confirmar = (p: string[], actor: string | null = EDITOR) => servico<number>("ch_worker_lesson_files_done", { p_paths: p, p_actor: actor });
-const devolver = (p: string[]) => servico<number>("ch_worker_lesson_files_release", { p_paths: p });
+const codigos = new Map<string, string>(); // último código recebido por caminho
+const NENHUM = "00000000-0000-4000-8000-0000000000ff";
+const reservar = async (actor: string | null = EDITOR) => {
+  const items = ((await servico("ch_worker_lesson_files_reserve", { p_actor: actor })).items as Array<{ path: string; token: string }>).slice().sort((a, b) => a.path.localeCompare(b.path));
+  for (const i of items) codigos.set(i.path, i.token);
+  return items;
+};
+const paths = async (actor: string | null = EDITOR) => (await reservar(actor)).map((i) => i.path);
+const itens = (p: string[]) => p.map((path) => ({ path, token: codigos.get(path) ?? NENHUM }));
+const renovar = (p: string, token: string | undefined = codigos.get(p)) => servico<boolean>("ch_worker_lesson_files_renew", { p_path: p, p_token: token ?? NENHUM });
+const confirmar = (p: string[], actor: string | null = EDITOR) => servico<number>("ch_worker_lesson_files_done", { p_items: itens(p), p_actor: actor });
+const devolver = (p: string[]) => servico<number>("ch_worker_lesson_files_release", { p_items: itens(p) });
 const estado = async (p: string) => (await db.query<any>(`select state from public.lesson_files_pending_delete where storage_path = $1`, [p])).rows[0]?.state ?? null;
 
 let n = 0;
@@ -303,21 +313,157 @@ describe("A07 (achado 2): a corrida entre conferir e apagar está fechada", () =
 });
 
 describe("A07 (achado 6): retenções antigas não prendem a fila", () => {
-  it("duzentas retenções no começo da fila não impedem entregar o arquivo livre que veio depois; em lotes de 200", async () => {
+  it("duzentas retenções no começo da fila não impedem entregar os arquivos livres que vieram depois; em lotes de 50", async () => {
     await limparFila();
     await db.query(`insert into public.lesson_files_pending_delete (storage_path, queued_at) select 'lessons/lote/ret' || lpad(g::text, 4, '0'), now() - interval '2 days' + g * interval '1 second' from generate_series(1, 200) g`);
     await db.query(`insert into public.ch_file_holds (storage_path) select 'lessons/lote/ret' || lpad(g::text, 4, '0') from generate_series(1, 200) g`);
-    await db.query(`insert into public.lesson_files_pending_delete (storage_path) select 'lessons/lote/livre' || lpad(g::text, 4, '0') from generate_series(1, 250) g`);
+    await db.query(`insert into public.lesson_files_pending_delete (storage_path) select 'lessons/lote/livre' || lpad(g::text, 4, '0') from generate_series(1, 120) g`);
     const a = await paths(EDITOR);
-    expect(a.length).toBe(200);
+    expect(a.length).toBe(50);
     expect(a.every((p) => p.startsWith("lessons/lote/livre"))).toBe(true);
-    const b = await paths(EDITOR);
-    expect(b.length).toBe(50);
+    expect((await paths(EDITOR)).length).toBe(50);
+    expect((await paths(EDITOR)).length).toBe(20);
     expect(await paths(EDITOR)).toEqual([]);
     // os retidos continuam na fila (não foram apagados nem reservados)
     expect((await db.query<any>(`select count(*)::int n from public.lesson_files_pending_delete where state = 'pending'`)).rows[0].n).toBe(200);
     await db.query(`delete from public.ch_file_holds`);
     await limparFila();
+  });
+});
+
+describe("A07 (2a rodada): a reserva tem código e prazo renovado antes de cada exclusão", () => {
+  const preparar = async (tag: string) => {
+    const id = await novaAula();
+    const l = await material(EDITOR, id, "slides", tag);
+    await rpc(EDITOR, "app_admin_delete_lesson_material", { p_id: idDe(l, "slides") });
+    return arquivo(id, "slides", tag);
+  };
+
+  it("cada reserva devolve um código próprio (uuid) por caminho; reservar de novo uma reserva vencida troca o código", async () => {
+    const k = await preparar("tok0");
+    const [a] = await reservar();
+    expect(a.path).toBe(k);
+    expect(a.token).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+    await db.query(`update public.lesson_files_pending_delete set reserved_at = now() - interval '11 minutes'`);
+    const [b] = await reservar();
+    expect(b.path).toBe(k);
+    expect(b.token).not.toBe(a.token);
+    await limparFila();
+  });
+
+  it("confirmar e devolver exigem o código vigente: código errado, de outro caminho ou de reserva antiga não age e não registra", async () => {
+    const k = await preparar("tok1");
+    const [a] = await reservar();
+    expect(await servico("ch_worker_lesson_files_done", { p_items: [{ path: k, token: NENHUM }], p_actor: EDITOR })).toBe(0);
+    expect(await servico("ch_worker_lesson_files_release", { p_items: [{ path: k, token: NENHUM }] })).toBe(0);
+    expect(await servico("ch_worker_lesson_files_done", { p_items: [{ path: k }, { token: a.token }, { path: k, token: "lixo" }, "x"], p_actor: EDITOR })).toBe(0);
+    expect(await servico("ch_worker_lesson_files_done", { p_items: { path: k, token: a.token }, p_actor: EDITOR })).toBe(0); // não é lista
+    expect(await estado(k)).toBe("deleting");
+    expect((await db.query<any>(`select count(*)::int n from public.admin_audit_log where action = 'lesson.file.delete' and details->>'path' = $1`, [k])).rows[0].n).toBe(0);
+    expect(await servico("ch_worker_lesson_files_done", { p_items: [{ path: k, token: a.token }], p_actor: EDITOR })).toBe(1);
+    await limparFila();
+  });
+
+  it("limpeza ANTIGA (reserva vencida e refeita por outra): sua renovação, confirmação e devolução não valem sobre a reserva NOVA; a nova registra", async () => {
+    const k = await preparar("tok2");
+    const [velha] = await reservar(EDITOR);
+    await db.query(`update public.lesson_files_pending_delete set reserved_at = now() - interval '11 minutes'`);
+    const [nova] = await reservar(ADMIN);
+    expect(nova.token).not.toBe(velha.token);
+    expect(await renovar(k, velha.token)).toBe(false); // a velha não pode mais apagar
+    expect(await servico("ch_worker_lesson_files_done", { p_items: [{ path: k, token: velha.token }], p_actor: EDITOR })).toBe(0);
+    expect(await servico("ch_worker_lesson_files_release", { p_items: [{ path: k, token: velha.token }] })).toBe(0);
+    expect(await estado(k)).toBe("deleting"); // a reserva nova continua intacta
+    expect((await db.query<any>(`select count(*)::int n from public.admin_audit_log where action = 'lesson.file.delete' and details->>'path' = $1`, [k])).rows[0].n).toBe(0);
+    expect(await renovar(k, nova.token)).toBe(true);
+    expect(await servico("ch_worker_lesson_files_done", { p_items: [{ path: k, token: nova.token }], p_actor: ADMIN })).toBe(1);
+    const reg = (await db.query<any>(`select actor_id from public.admin_audit_log where action = 'lesson.file.delete' and details->>'path' = $1`, [k])).rows;
+    expect(reg).toEqual([{ actor_id: ADMIN }]);
+    expect(await fila()).toEqual([]);
+  });
+
+  it("renovar: com o código vigente e dentro do prazo vale e recomeça o prazo de 10 minutos", async () => {
+    const k = await preparar("ren0");
+    await reservar();
+    await db.query(`update public.lesson_files_pending_delete set reserved_at = now() - interval '9 minutes'`);
+    expect(await renovar(k)).toBe(true);
+    const r = (await db.query<any>(`select reserved_at > now() - interval '1 minute' as novo from public.lesson_files_pending_delete where storage_path = $1`, [k])).rows[0];
+    expect(r.novo).toBe(true);
+    await limparFila();
+  });
+
+  it("reserva VENCIDA nunca permite apagar: renovar com o código certo, depois do prazo, responde não (e outra limpeza pode retomar)", async () => {
+    const k = await preparar("ren1");
+    await reservar();
+    await db.query(`update public.lesson_files_pending_delete set reserved_at = now() - interval '11 minutes'`);
+    expect(await renovar(k)).toBe(false);
+    expect(await estado(k)).toBe("deleting"); // nada mudou; a próxima reserva retoma
+    expect(await paths(ADMIN)).toEqual([k]);
+    await limparFila();
+  });
+
+  it("renovar sem reserva (caminho pendente), caminho inexistente, código nulo ou de outro caminho: não", async () => {
+    const k = await preparar("ren2");
+    expect(await renovar(k, NENHUM)).toBe(false); // ainda 'pendente'
+    expect(await servico("ch_worker_lesson_files_renew", { p_path: "lessons/nada/x.pdf", p_token: NENHUM })).toBe(false);
+    expect(await servico("ch_worker_lesson_files_renew", { p_path: k, p_token: null })).toBe(false);
+    const [a] = await reservar();
+    expect(await renovar(k, NENHUM)).toBe(false);
+    expect(await renovar(k, a.token)).toBe(true);
+    await limparFila();
+  });
+
+  it("o arquivo voltou a ser usado depois da reserva (reserva vencida deixou a criação passar): renovar responde não e o arquivo sai da fila sem apagar", async () => {
+    const id = await novaAula();
+    const l = await material(EDITOR, id, "other", "ren3");
+    await rpc(EDITOR, "app_admin_delete_lesson_material", { p_id: idDe(l, "other") });
+    const k = arquivo(id, "other", "ren3");
+    const [a] = await reservar();
+    await db.query(`update public.lesson_files_pending_delete set reserved_at = now() - interval '11 minutes'`);
+    await material(EDITOR, id, "other", "ren3"); // vencida: não bloqueia o novo uso
+    expect(await renovar(k, a.token)).toBe(false);
+    expect(await fila()).toEqual([]);
+    expect(await confirmar([k])).toBe(0);
+  });
+
+  it("retenção de arquivo criada com a reserva já vencida: renovar responde não e o caminho volta a 'pendente' (sem apagar)", async () => {
+    const k = await preparar("ren4");
+    const [a] = await reservar();
+    await db.query(`update public.lesson_files_pending_delete set reserved_at = now() - interval '11 minutes'`);
+    await db.query(`insert into public.ch_file_holds (storage_path) values ($1)`, [k]);
+    expect(await renovar(k, a.token)).toBe(false);
+    expect(await estado(k)).toBe("pending");
+    expect(await paths(EDITOR)).toEqual([]); // retido: não é entregue
+    await db.query(`delete from public.ch_file_holds`);
+    await limparFila();
+  });
+
+  it("durante uma reserva vigente e renovada, criar referência continua recusado (até o prazo renovado)", async () => {
+    const k = await preparar("ren5");
+    const id = k.split("/")[1];
+    await reservar();
+    await db.query(`update public.lesson_files_pending_delete set reserved_at = now() - interval '9 minutes'`);
+    await renovar(k);
+    await db.query(`update public.lesson_files_pending_delete set reserved_at = now() - interval '9 minutes'`); // ainda dentro do novo prazo
+    await expect(material(EDITOR, id, "slides", "ren5")).rejects.toThrow(/sendo apagado do depósito/);
+    await limparFila();
+  });
+});
+
+describe("A07 (2a rodada): a 9710 exige a 9620 (retenção de arquivos)", () => {
+  it("sem a tabela ch_file_holds a migração PARA com aviso em português (não pula em silêncio) e não deixa nada pela metade; com ela, cola de novo sem erro", async () => {
+    const sql = fs.readFileSync(path.join(MIGRATIONS, "20261003009710_aulas_apagar_arquivo.sql"), "utf8");
+    const holds = (await db.query<any>(`select count(*)::int n from public.ch_file_holds`)).rows[0].n;
+    expect(holds).toBe(0);
+    await db.exec(`alter table public.ch_file_holds rename to ch_file_holds_x`);
+    try {
+      await expect(db.exec(sql)).rejects.toThrow(/Cole antes a migração 9620 \(fonte complementar\)/);
+    } finally {
+      await db.exec(`alter table public.ch_file_holds_x rename to ch_file_holds`);
+    }
+    await db.exec(sql); // colar de novo (com a 9620) funciona
+    await db.exec(sql); // e mais uma vez
+    expect((await db.query<any>(`select count(*)::int n from pg_trigger where tgname = 'ch_file_holds_file_reference_guard' and not tgisinternal`)).rows[0].n).toBe(1);
   });
 });
 
@@ -327,10 +473,19 @@ describe("A07: permissões", () => {
     const l = await material(EDITOR, id, "slides", "perm");
     await rpc(EDITOR, "app_admin_delete_lesson_material", { p_id: idDe(l, "slides") });
     for (const uid of [null, ANA, REVISORA, EDITOR, ADMIN]) {
-      await expect(rpc(uid, "ch_worker_lesson_files_reserve", { p_actor: EDITOR })).rejects.toThrow(/permission denied/i);
-      await expect(rpc(uid, "ch_worker_lesson_files_done", { p_paths: [arquivo(id, "slides", "perm")] })).rejects.toThrow(/permission denied/i);
-      await expect(rpc(uid, "ch_worker_lesson_files_release", { p_paths: [arquivo(id, "slides", "perm")] })).rejects.toThrow(/permission denied/i);
+      const chamar = (sql: string) => (uid ? asUser(uid, sql) : db.transaction(async (tx) => { await tx.exec("set local role anon"); return tx.query<any>(sql); }));
+      await expect(chamar(`select public.ch_worker_lesson_files_reserve('${EDITOR}'::uuid)`)).rejects.toThrow(/permission denied/i);
+      await expect(chamar(`select public.ch_worker_lesson_files_renew('${arquivo(id, "slides", "perm")}', '${NENHUM}'::uuid)`)).rejects.toThrow(/permission denied/i);
+      await expect(chamar(`select public.ch_worker_lesson_files_done('[{"path":"${arquivo(id, "slides", "perm")}","token":"${NENHUM}"}]'::jsonb)`)).rejects.toThrow(/permission denied/i);
+      await expect(chamar(`select public.ch_worker_lesson_files_release('[{"path":"${arquivo(id, "slides", "perm")}","token":"${NENHUM}"}]'::jsonb)`)).rejects.toThrow(/permission denied/i);
     }
+    // só o serviço (service_role) executa as quatro funções
+    for (const f of ["ch_worker_lesson_files_reserve(uuid)", "ch_worker_lesson_files_renew(text, uuid)", "ch_worker_lesson_files_done(jsonb, uuid)", "ch_worker_lesson_files_release(jsonb)"]) {
+      const acl = (await db.query<any>(`select has_function_privilege('service_role', 'public.${f}', 'execute') s, has_function_privilege('authenticated', 'public.${f}', 'execute') a, has_function_privilege('anon', 'public.${f}', 'execute') n, has_function_privilege('public', 'public.${f}', 'execute') p`)).rows[0];
+      expect(acl).toEqual({ s: true, a: false, n: false, p: false });
+    }
+    // (as versões da 1a rodada, sem código de reserva, não existem mais)
+    expect((await db.query<any>(`select count(*)::int n from pg_proc where proname like 'ch_worker_lesson_files_%'`)).rows[0].n).toBe(4);
     // as versões antigas (que a equipe chamava direto) não existem mais
     await expect(rpc(ADMIN, "app_admin_lesson_files_purge")).rejects.toThrow();
     await expect(rpc(ADMIN, "app_admin_lesson_files_done", { p_paths: [arquivo(id, "slides", "perm")] })).rejects.toThrow();

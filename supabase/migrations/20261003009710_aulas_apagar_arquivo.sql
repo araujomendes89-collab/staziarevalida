@@ -22,6 +22,26 @@
 --      logo não consegue "confirmar" um apagamento que não houve nem esvaziar a fila.
 -- Não há apagamento retroativo: arquivos que já ficaram órfãos antes desta migração não estão na fila e não são tocados.
 -- Colar duas vezes não dá erro (tudo idempotente).
+--
+-- RODADA 2 DA REVISÃO (reserva com identidade e prazo renovado):
+--   * Cada reserva ganha um CÓDIGO próprio (reserve_token, uuid) devolvido ao servidor junto com o caminho. Confirmar
+--     (ch_worker_lesson_files_done) e devolver (ch_worker_lesson_files_release) exigem o código e só agem se ele for o da reserva
+--     VIGENTE daquele caminho: uma limpeza antiga (cuja reserva venceu e foi refeita por outra) não confirma nem devolve a reserva nova.
+--   * ANTES DE CADA exclusão no depósito o servidor pede ao banco ch_worker_lesson_files_renew(caminho, código): o banco confere de
+--     novo, sob o mesmo trava por caminho, que ninguém passou a usar o arquivo e que a reserva ainda é dele e NÃO venceu; se sim,
+--     renova o prazo por mais 10 minutos e responde "sim". Qualquer outra resposta: o servidor PULA o arquivo (reserva vencida
+--     nunca permite apagar).
+--   * Os lotes são de 50 caminhos (o servidor repete até acabar), para que o prazo não corra enquanto o lote espera a vez.
+--   * As funções novas só existem para o serviço (service_role).
+--   * Esta migração exige a 9620 (Fonte complementar, que cria ch_file_holds, a retenção de arquivos): sem ela, para com aviso.
+
+do $$
+begin
+  if to_regclass('public.ch_file_holds') is null then
+    raise exception 'Cole antes a migração 9620 (fonte complementar): ela cria a tabela de retenção de arquivos (ch_file_holds) de que esta migração depende. Depois cole esta de novo.';
+  end if;
+end
+$$;
 
 create table if not exists public.lesson_files_pending_delete (
   storage_path text primary key,
@@ -31,17 +51,22 @@ create table if not exists public.lesson_files_pending_delete (
   queued_at timestamptz not null default now(),
   state text not null default 'pending' check (state in ('pending', 'deleting')),
   reserved_at timestamptz,
-  reserved_by uuid
+  reserved_by uuid,
+  reserve_token uuid
 );
 alter table public.lesson_files_pending_delete add column if not exists state text not null default 'pending';
 alter table public.lesson_files_pending_delete add column if not exists reserved_at timestamptz;
 alter table public.lesson_files_pending_delete add column if not exists reserved_by uuid;
+alter table public.lesson_files_pending_delete add column if not exists reserve_token uuid;
 alter table public.lesson_files_pending_delete enable row level security;
 revoke all on public.lesson_files_pending_delete from public, anon, authenticated;
 
 -- (versão anterior desta rotina, que a equipe chamava direto: some; só o servidor limpa)
 drop function if exists public.app_admin_lesson_files_purge();
 drop function if exists public.app_admin_lesson_files_done(text[]);
+-- (versões da 1a rodada desta migração, sem código de reserva: trocadas pelas abaixo; reserve(uuid) só é redefinida)
+drop function if exists public.ch_worker_lesson_files_done(text[], uuid);
+drop function if exists public.ch_worker_lesson_files_release(text[]);
 
 create or replace function public.lesson_material_file_queue() returns trigger
   language plpgsql security definer set search_path = ''
@@ -107,25 +132,21 @@ create trigger lesson_materials_file_reference_guard before insert or update of 
 drop trigger if exists podcast_sources_file_reference_guard on public.podcast_sources;
 create trigger podcast_sources_file_reference_guard before insert or update of storage_path on public.podcast_sources
   for each row execute function public.lesson_file_reference_guard();
-do $$
-begin
-  -- ch_file_holds nasce na 9620 (já no ar); se ainda não existe, a 9620 colada depois não recebe o gatilho: cole esta de novo
-  if to_regclass('public.ch_file_holds') is not null then
-    drop trigger if exists ch_file_holds_file_reference_guard on public.ch_file_holds;
-    create trigger ch_file_holds_file_reference_guard before insert on public.ch_file_holds
-      for each row execute function public.lesson_file_reference_guard();
-  end if;
-end
-$$;
+drop trigger if exists ch_file_holds_file_reference_guard on public.ch_file_holds;
+create trigger ch_file_holds_file_reference_guard before insert on public.ch_file_holds
+  for each row execute function public.lesson_file_reference_guard();
 
--- Reserva os arquivos que podem ser apagados AGORA (até 200 por chamada; o servidor repete até acabar) e devolve só esses caminhos.
--- Função de serviço (o servidor já conferiu que quem pediu é da equipe). p_actor = quem pediu a limpeza (vai para o Registro).
+-- Reserva os arquivos que podem ser apagados AGORA (até 50 por chamada; o servidor repete até acabar) e devolve, para cada um,
+-- o caminho e o CÓDIGO da reserva: {"items": [{"path": "...", "token": "..."}]}. Cada reserva (inclusive a que retoma uma vencida)
+-- ganha um código NOVO, que invalida o da execução anterior. Função de serviço (o servidor já conferiu que quem pediu é da equipe).
+-- p_actor = quem pediu a limpeza (vai para o Registro).
 create or replace function public.ch_worker_lesson_files_reserve(p_actor uuid default null) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare
   r record;
-  v_paths text[] := '{}';
+  v_items jsonb := '[]'::jsonb;
+  v_token uuid;
 begin
   -- quem voltou a ser usado (outro material ou fonte de podcast) sai da fila sem apagar; sem limite, para não ocupar o lote
   delete from public.lesson_files_pending_delete q
@@ -138,7 +159,7 @@ begin
      where (q.state = 'pending' or q.reserved_at is null or q.reserved_at <= now() - interval '10 minutes')
        and not exists (select 1 from public.ch_file_holds h where h.storage_path = q.storage_path)
      order by q.queued_at, q.storage_path
-     limit 200
+     limit 50
      for update of q skip locked
   loop
     perform pg_advisory_xact_lock(hashtextextended('lesson-file:' || r.storage_path, 0));
@@ -148,51 +169,123 @@ begin
     elsif exists (select 1 from public.ch_file_holds h where h.storage_path = r.storage_path) then
       null; -- ganhou retenção no meio do caminho: fica na fila
     else
+      v_token := gen_random_uuid();
       update public.lesson_files_pending_delete
-         set state = 'deleting', reserved_at = now(), reserved_by = p_actor
+         set state = 'deleting', reserved_at = now(), reserved_by = p_actor, reserve_token = v_token
        where storage_path = r.storage_path;
-      v_paths := v_paths || r.storage_path;
+      v_items := v_items || jsonb_build_array(jsonb_build_object('path', r.storage_path, 'token', v_token));
     end if;
   end loop;
-  return jsonb_build_object('paths', to_jsonb(v_paths));
+  return jsonb_build_object('items', v_items);
 end
 $$;
 
--- O servidor apagou estes arquivos no depósito: tira da fila e registra. SÓ vale para caminho que está reservado ('apagando').
-create or replace function public.ch_worker_lesson_files_done(p_paths text[], p_actor uuid default null) returns integer
+-- ANTES DE CADA exclusão no depósito: confere e renova a reserva. Responde true só se (sob o trava do caminho) ninguém passou a usar
+-- o arquivo, a reserva ainda é a vigente (mesmo código) e NÃO venceu; nesse caso o prazo recomeça (mais 10 minutos). Qualquer outra
+-- coisa responde false e o servidor não apaga. Se o arquivo voltou a ser usado, a reserva dele sai da fila.
+create or replace function public.ch_worker_lesson_files_renew(p_path text, p_token uuid) returns boolean
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  if p_path is null or p_token is null then return false; end if;
+  perform pg_advisory_xact_lock(hashtextextended('lesson-file:' || p_path, 0));
+  if exists (select 1 from public.lesson_materials m where m.storage_path = p_path)
+     or exists (select 1 from public.podcast_sources s where s.storage_path = p_path)
+     or exists (select 1 from public.ch_file_holds h where h.storage_path = p_path) then
+    -- passou a ser usado: não se apaga; se a reserva era dele, ela cai (uso por material/podcast tira o caminho da fila)
+    delete from public.lesson_files_pending_delete q
+     where q.storage_path = p_path and q.state = 'deleting' and q.reserve_token = p_token
+       and (exists (select 1 from public.lesson_materials m where m.storage_path = p_path)
+            or exists (select 1 from public.podcast_sources s where s.storage_path = p_path));
+    update public.lesson_files_pending_delete
+       set state = 'pending', reserved_at = null, reserved_by = null, reserve_token = null
+     where storage_path = p_path and state = 'deleting' and reserve_token = p_token; -- (retenção: volta a pendente e espera)
+    return false;
+  end if;
+  update public.lesson_files_pending_delete
+     set reserved_at = now()
+   where storage_path = p_path and state = 'deleting' and reserve_token = p_token
+     and reserved_at is not null and reserved_at > now() - interval '10 minutes';
+  return found;
+end
+$$;
+
+-- O servidor apagou estes arquivos no depósito: tira da fila e registra. p_items = [{"path","token"}]. SÓ vale para a reserva
+-- vigente daquele caminho (mesmo código): a confirmação de uma limpeza antiga, cuja reserva foi refeita por outra, não vale.
+create or replace function public.ch_worker_lesson_files_done(p_items jsonb, p_actor uuid default null) returns integer
   language plpgsql security definer set search_path = ''
 as $$
 declare
-  p text;
+  e jsonb;
+  v_path text;
+  v_token uuid;
   r record;
   n integer := 0;
 begin
-  foreach p in array coalesce(p_paths, '{}') loop
-    delete from public.lesson_files_pending_delete where storage_path = p and state = 'deleting'
+  if jsonb_typeof(p_items) is distinct from 'array' then return 0; end if;
+  for e in select * from jsonb_array_elements(p_items) loop
+    begin
+      v_path := e ->> 'path';
+      v_token := (e ->> 'token')::uuid;
+    exception when others then
+      continue;
+    end;
+    if v_path is null or v_token is null then continue; end if;
+    delete from public.lesson_files_pending_delete
+     where storage_path = v_path and state = 'deleting' and reserve_token = v_token
     returning lesson_id, material_kind, reserved_by into r;
     if found then
       n := n + 1;
       insert into public.admin_audit_log (actor_id, action, target, details)
-      values (coalesce(p_actor, r.reserved_by), 'lesson.file.delete', r.lesson_id::text, jsonb_build_object('path', p, 'kind', r.material_kind));
+      values (coalesce(p_actor, r.reserved_by), 'lesson.file.delete', r.lesson_id::text, jsonb_build_object('path', v_path, 'kind', r.material_kind));
     end if;
   end loop;
   return n;
 end
 $$;
 
--- O depósito não conseguiu apagar: devolve a reserva (o caminho volta a 'pendente' e sai na próxima limpeza).
-create or replace function public.ch_worker_lesson_files_release(p_paths text[]) returns integer
+-- O depósito não conseguiu apagar: devolve a reserva (o caminho volta a 'pendente' e sai na próxima limpeza). Também exige o código.
+create or replace function public.ch_worker_lesson_files_release(p_items jsonb) returns integer
   language plpgsql security definer set search_path = ''
 as $$
-declare n integer;
+declare
+  e jsonb;
+  v_path text;
+  v_token uuid;
+  n integer := 0;
+  k integer;
 begin
-  update public.lesson_files_pending_delete set state = 'pending', reserved_at = null, reserved_by = null
-   where storage_path = any (coalesce(p_paths, '{}')) and state = 'deleting';
-  get diagnostics n = row_count;
+  if jsonb_typeof(p_items) is distinct from 'array' then return 0; end if;
+  for e in select * from jsonb_array_elements(p_items) loop
+    begin
+      v_path := e ->> 'path';
+      v_token := (e ->> 'token')::uuid;
+    exception when others then
+      continue;
+    end;
+    if v_path is null or v_token is null then continue; end if;
+    update public.lesson_files_pending_delete
+       set state = 'pending', reserved_at = null, reserved_by = null, reserve_token = null
+     where storage_path = v_path and state = 'deleting' and reserve_token = v_token;
+    get diagnostics k = row_count;
+    n := n + k;
+  end loop;
   return n;
 end
 $$;
 
+-- Só o serviço executa estas quatro funções (nem visitante, nem aluno, nem equipe falando direto com o banco).
 revoke execute on function public.ch_worker_lesson_files_reserve(uuid) from public, anon, authenticated;
-revoke execute on function public.ch_worker_lesson_files_done(text[], uuid) from public, anon, authenticated;
-revoke execute on function public.ch_worker_lesson_files_release(text[]) from public, anon, authenticated;
+revoke execute on function public.ch_worker_lesson_files_renew(text, uuid) from public, anon, authenticated;
+revoke execute on function public.ch_worker_lesson_files_done(jsonb, uuid) from public, anon, authenticated;
+revoke execute on function public.ch_worker_lesson_files_release(jsonb) from public, anon, authenticated;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    grant execute on function public.ch_worker_lesson_files_reserve(uuid) to service_role;
+    grant execute on function public.ch_worker_lesson_files_renew(text, uuid) to service_role;
+    grant execute on function public.ch_worker_lesson_files_done(jsonb, uuid) to service_role;
+    grant execute on function public.ch_worker_lesson_files_release(jsonb) to service_role;
+  end if;
+end
+$$;

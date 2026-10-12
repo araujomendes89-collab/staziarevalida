@@ -48,14 +48,31 @@ await ck("servico reserva o caminho; equipe nao chama; referencia a caminho rese
   try { await as(ids.adm, `select public.ch_worker_lesson_files_reserve('${ids.adm}'::uuid) r`); } catch { negou = true; }
   if (!negou) throw new Error("equipe chamou a funcao de servico");
   const r = (await db.query(`select public.ch_worker_lesson_files_reserve('${ids.adm}'::uuid) r`)).rows[0].r;
-  if (JSON.stringify(r.paths) !== JSON.stringify([pth])) throw new Error("reserva " + JSON.stringify(r));
+  if (r.items?.length !== 1 || r.items[0].path !== pth || !/^[0-9a-f-]{36}$/.test(r.items[0].token)) throw new Error("reserva " + JSON.stringify(r));
+  const tk = r.items[0].token;
   let recusou = false;
   try { await db.exec(`insert into public.lesson_materials (lesson_id, kind, title, storage_path) values ('${L}','slides','s','${pth}')`); } catch (e) { recusou = /sendo apagado/.test(e.message); }
   if (!recusou) throw new Error("referencia a caminho reservado foi aceita");
-  const n = (await db.query(`select public.ch_worker_lesson_files_done(array['${pth}'], '${ids.adm}'::uuid) r`)).rows[0].r;
+  const velho = "00000000-0000-4000-8000-0000000000ff";
+  if ((await db.query(`select public.ch_worker_lesson_files_renew('${pth}', '${velho}'::uuid) r`)).rows[0].r !== false) throw new Error("renovou com codigo errado");
+  if ((await db.query(`select public.ch_worker_lesson_files_done('[{"path":"${pth}","token":"${velho}"}]'::jsonb, '${ids.adm}'::uuid) r`)).rows[0].r !== 0) throw new Error("done com codigo errado valeu");
+  if ((await db.query(`select public.ch_worker_lesson_files_renew('${pth}', '${tk}'::uuid) r`)).rows[0].r !== true) throw new Error("renovacao vigente negada");
+  await db.exec(`update public.lesson_files_pending_delete set reserved_at = now() - interval '11 minutes'`);
+  if ((await db.query(`select public.ch_worker_lesson_files_renew('${pth}', '${tk}'::uuid) r`)).rows[0].r !== false) throw new Error("reserva vencida renovou");
+  const r2 = (await db.query(`select public.ch_worker_lesson_files_reserve('${ids.adm}'::uuid) r`)).rows[0].r; // retomada com codigo novo
+  if (r2.items.length !== 1 || r2.items[0].token === tk) throw new Error("retomada sem codigo novo");
+  if ((await db.query(`select public.ch_worker_lesson_files_done('[{"path":"${pth}","token":"${tk}"}]'::jsonb, '${ids.adm}'::uuid) r`)).rows[0].r !== 0) throw new Error("done de codigo antigo valeu");
+  const n = (await db.query(`select public.ch_worker_lesson_files_done($1::jsonb, '${ids.adm}'::uuid) r`, [JSON.stringify(r2.items)])).rows[0].r;
   if (n !== 1) throw new Error("done " + n);
   return "ok";
 });
 await ck("funcao admin lesson_materials_json mantem review_status (9580/9620 intactas)", async () => { const d = (await db.query("select pg_get_functiondef('public.lesson_materials_json(uuid)'::regprocedure) as d")).rows[0].d; if (!d.includes("review_status") || !d.includes("hidden_from_student")) throw new Error("perdeu"); return "ok"; });
+await ck("9710 colada SEM a 9620 PARA com aviso em portugues", async () => {
+  const d2 = new PGlite();
+  await d2.exec(fs.readFileSync(path.join(WT, "supabase/tests/bootstrap.sql"), "utf8"));
+  for (const f of base) await d2.exec(fs.readFileSync(path.join(WT, "supabase/migrations", f), "utf8"));
+  try { await d2.exec(fs.readFileSync(path.join(WT, "supabase/migrations", mig[0]), "utf8")); } catch (e) { await d2.close(); if (/Cole antes a migração 9620 \(fonte complementar\)/.test(e.message)) return "parou com o aviso"; throw e; }
+  await d2.close(); throw new Error("nao parou");
+});
 console.log(erros ? `RESULTADO: ${erros} ERRO(S)` : "RESULTADO FINAL: tudo ok");
 await db.close(); process.exit(erros ? 1 : 0);
