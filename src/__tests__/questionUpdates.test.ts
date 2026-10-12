@@ -58,6 +58,7 @@ beforeAll(async () => {
   dev = await openDevDatabaseForTests(path.join(tmp, "db"));
   db = devContentDb(async () => dev);
   for (const st of buildEngineStatements()) await dev.db.exec(st);
+  await dev.db.exec(`update public.ch_flags set value = case key when 'publish_enabled' then true when 'shadow_mode' then false else value end`); // CC19: o aluno só recebe com o modo sombra desligado e a publicação ligada
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'a@t.dev'), ($2, 's@t.dev'), ($3, 's2@t.dev'), ($4, 'r@t.dev'), ($5, 'r2@t.dev')`, [ADMIN, STUDENT, OTHER_STUDENT, REVIEWER, OTHER_AREA_REVIEWER]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   const qs = (await sql(`select question_id from public.question_claims where role = 'solves' order by question_id limit 80`)).map((r) => r.question_id);

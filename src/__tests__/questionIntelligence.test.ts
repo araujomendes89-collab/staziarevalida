@@ -143,6 +143,7 @@ describe("SQIE com banco e simulação de IA", () => {
     dev = await openDevDatabaseForTests(path.join(tmp, "db"));
     db = devContentDb(async () => dev);
     for (const st of buildEngineStatements()) await dev.db.exec(st);
+    await dev.db.exec(`update public.ch_flags set value = case key when 'publish_enabled' then true when 'shadow_mode' then false else value end`); // CC19: o aluno só recebe com o modo sombra desligado e a publicação ligada
     await dev.db.query(`insert into auth.users (id, email) values ($1, 'a@t.dev'), ($2, 'r@t.dev'), ($3, 's@t.dev')`, [ADMIN, REVIEWER, STUDENT]);
     await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
     await dev.db.query(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'PEDIATRIA'), ($1, 'CLINICA_MEDICA')`, [REVIEWER]);
