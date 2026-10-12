@@ -8,15 +8,16 @@ import express, { type Request, type Response, type NextFunction } from "express
 import { stepVersions, type PipelineDeps } from "./pipeline";
 import { loadBrand } from "./render";
 import { compareSourceVersions } from "./sourceCompare";
+import { estimateDocumentCost } from "./costEstimate";
 import { applyReferenceCleanup, previewReferenceCleanup, undoReferenceCleanup } from "./referenceCleanup";
-import { CONTENT_HUB_BUCKET, type Identity } from "./infra";
+import { CONTENT_HUB_BUCKET, DigestLimit, type Identity } from "./infra";
 import type { ContentHubWorker } from "./worker";
 import type { ProcessingReport } from "./capabilities";
 import { DEFAULT_MAX_SEARCHES, functionChecks, invalidateAiConfig, loadAiConfig } from "../ai/config";
 import { aiAllowed } from "./ai/registry";
 import { DEFAULT_EMBEDDING_MODEL, embedderAllowed, embeddingsConfig, queryEmbedding } from "./embeddings";
 
-/** A tarefa no Cloud Run roda a cada 10 minutos: sem relato há mais de 30, ela parou. */
+/** A tarefa no Cloud Run passa a cada minuto (agendador); a execução que pega trabalho dura até 50 min. Sem relato há mais de 30 min, ela parou. */
 const PROCESSING_STALE_MIN = 30;
 
 const MAX_PDF_MB = Number(process.env.CONTENT_HUB_MAX_PDF_MB || 300);
@@ -68,14 +69,20 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       // a IA vem da Central de IAs: a situação das funções vale no lugar da IA das variáveis de ambiente
       const central = await asUser<unknown>(req, "app_ai_summary").catch(() => null);
       const pending: string[] = [];
-      if (!deps!.ai.status.isMock) {
+      // CC11: "a IA está pronta?" olha as chaves de quem de fato chama a IA. Onde o processamento é este servidor (desenvolvimento), valem
+      // as chaves daqui; em produção quem chama a IA é a tarefa do Google Cloud Run, e as chaves do SITE (Vercel) não dizem nada sobre
+      // ela. Por isso o site só confere as próprias chaves quando não há relato do processamento no formato novo (que traz a Central de IAs
+      // conferida com as chaves da própria tarefa).
+      const checkSiteAi = async () => {
+        if (deps!.ai.status.isMock) return;
         const ready = await loadAiConfig(deps!.db).then((cfg) => Object.values(functionChecks(cfg, process.env)).some((c) => c.ready)).catch(() => false);
         if (!ready) pending.push(NO_FUNCTION_READY);
-      }
+      };
       let renderer: boolean;
       let brand: { version: string; pending: string[] };
       let processing: Record<string, unknown>;
       if (local) {
+        await checkSiteAi();
         const b = loadBrand();
         renderer = Boolean(deps!.renderer);
         brand = { version: b.version, pending: b.pending };
@@ -85,6 +92,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
         const last = await deps!.db
           .service<{ worker: string; reported_at: string; report: ProcessingReport & { jobs?: number; finished_at?: string } } | null>("ch_worker_last_report")
           .catch(() => null);
+        if (!last || last.report.ai?.source !== "central") await checkSiteAi();
         if (!last) {
           renderer = false;
           brand = { version: "", pending: [] };
@@ -94,13 +102,10 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
           const minutes = Math.max(0, Math.round((Date.now() - Date.parse(last.reported_at)) / 60_000));
           const stale = minutes > PROCESSING_STALE_MIN;
           if (stale) pending.push(`O processamento da Central não roda desde ${new Date(last.reported_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}: confira a tarefa no Google Cloud Run.`);
-          // IA do processamento: o relato novo confere a Central de IAs com as chaves do processamento e vale; o relato antigo (sem
-          // ai.source) olhava a variável CONTENT_HUB_AI_PROVIDER, que as etapas não usam, e continua escondido. Com o motivo do
-          // relato, a linha geral de "nenhuma função pronta" (conferida com as chaves do site) não se repete.
+          // IA do processamento: o relato novo confere a Central de IAs com as chaves do processamento e vale (as chaves do site não
+          // entram: CC11); o relato antigo (sem ai.source) olhava a variável CONTENT_HUB_AI_PROVIDER, que as etapas não usam, e
+          // continua escondido, e nesse caso o site confere as próprias chaves.
           const centralReport = last.report.ai?.source === "central";
-          const aiLines = (last.report.pending ?? []).filter((p) => p.startsWith("IA do processamento"));
-          const general = pending.indexOf(NO_FUNCTION_READY);
-          if (centralReport && aiLines.length && general >= 0) pending.splice(general, 1);
           for (const p of last.report.pending ?? []) {
             const oldAi = p.startsWith("IA do processamento") && (!centralReport || p.includes("CONTENT_HUB_AI_PROVIDER"));
             if (!oldAi && !pending.includes(p)) pending.push(p);
@@ -148,12 +153,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
    * Guarda o PDF pelo hash e registra o documento. Idempotente pelo hash: o mesmo arquivo não é duplicado. Os metadados
    * vêm da consulta (envio pelo servidor) ou do corpo JSON (confirmação do envio direto); só texto é aceito.
    */
-  const storePdf = async (req: Authed, body: Buffer, fileName: string, meta: Record<string, unknown>, kind: "study" | "source") => {
-    if (!Buffer.isBuffer(body) || body.length === 0) throw httpError(400, "Envie o arquivo PDF no corpo da requisição.");
-    if (body.subarray(0, 5).toString("latin1") !== "%PDF-") throw httpError(415, "O arquivo não é um PDF (assinatura %PDF- ausente).");
-    const sha256 = crypto.createHash("sha256").update(body).digest("hex");
-    const key = `documents/${sha256}.pdf`;
-    if (!(await deps!.storage.exists(key))) await deps!.storage.put(key, body, "application/pdf");
+  const registerPdf = async (req: Authed, file: { sha256: string; sizeBytes: number; key: string }, fileName: string, meta: Record<string, unknown>, kind: "study" | "source") => {
     const name = fileName.slice(0, 300);
     const q = Object.fromEntries(Object.entries(meta).filter(([, v]) => typeof v === "string")) as Record<string, string | undefined>;
     const registered = await asUser<{ id: string; duplicate: boolean }>(req, "app_ch_register_document", {
@@ -166,12 +166,46 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
         // decisão do dono (2026-10-09): documento de estudo é sempre material próprio, sem registro de autorização e ignorando o que o cliente enviar;
         // PDF de fonte oficial segue "unknown" (o anexo da fonte o torna "somente referência")
         rights_status: kind === "study" ? "own" : "unknown",
-        sha256,
-        storage_path: key,
-        provenance: { uploaded_at: new Date().toISOString(), uploaded_by: req.user!.id, original_file_name: name, size_bytes: body.length, source: q.source_note ?? null },
+        sha256: file.sha256,
+        storage_path: file.key,
+        provenance: { uploaded_at: new Date().toISOString(), uploaded_by: req.user!.id, original_file_name: name, size_bytes: file.sizeBytes, source: q.source_note ?? null },
       },
     });
-    return { ...registered, sha256 };
+    return { ...registered, sha256: file.sha256 };
+  };
+  const storePdf = async (req: Authed, body: Buffer, fileName: string, meta: Record<string, unknown>, kind: "study" | "source") => {
+    if (!Buffer.isBuffer(body) || body.length === 0) throw httpError(400, "Envie o arquivo PDF no corpo da requisição.");
+    if (body.subarray(0, 5).toString("latin1") !== "%PDF-") throw httpError(415, "O arquivo não é um PDF (assinatura %PDF- ausente).");
+    const sha256 = crypto.createHash("sha256").update(body).digest("hex");
+    const key = `documents/${sha256}.pdf`;
+    if (!(await deps!.storage.exists(key))) await deps!.storage.put(key, body, "application/pdf");
+    return registerPdf(req, { sha256, sizeBytes: body.length, key }, fileName, meta, kind);
+  };
+  /**
+   * Envio direto já no depósito (CC08): o arquivo NÃO é baixado inteiro para a memória do servidor nem enviado de volta. O servidor
+   * lê o arquivo em pedaços só para calcular o SHA-256 e conferir a assinatura de PDF e, se o depósito deixa copiar de dentro dele,
+   * copia do caminho temporário para o definitivo (documents/<sha>.pdf) sem mover bytes pela rede. Um PDF de 300 MB deixa de
+   * estourar a memória e metade do tempo da função da Vercel. Depósito sem essas duas operações (banco de desenvolvimento): o caminho
+   * antigo (storePdf).
+   */
+  const CONFIRM_SECONDS = 200;
+  const storeUploadedPdf = async (req: Authed, tempKey: string, fileName: string, meta: Record<string, unknown>, kind: "study" | "source") => {
+    const st = deps!.storage;
+    if (!st.digest || !st.copy) return storePdf(req, await st.get(tempKey), fileName, meta, kind);
+    let found;
+    try {
+      found = await st.digest(tempKey, { maxBytes: MAX_PDF_MB * 1024 * 1024, timeoutMs: CONFIRM_SECONDS * 1000 });
+    } catch (error) {
+      if (error instanceof DigestLimit) {
+        throw httpError(error.reason === "size" ? 413 : 504, error.reason === "size" ? `Arquivo acima de ${MAX_PDF_MB} MB.` : "A conferência do arquivo demorou demais. Tente enviar de novo; se repetir, envie um PDF menor ou em partes.");
+      }
+      throw error;
+    }
+    if (found.size === 0) throw httpError(400, "Envie o arquivo PDF no corpo da requisição.");
+    if (found.head.subarray(0, 5).toString("latin1") !== "%PDF-") throw httpError(415, "O arquivo não é um PDF (assinatura %PDF- ausente).");
+    const key = `documents/${found.sha256}.pdf`;
+    if (!(await st.exists(key))) await st.copy(tempKey, key);
+    return registerPdf(req, { sha256: found.sha256, sizeBytes: found.size, key }, fileName, meta, kind);
   };
   /** Envio pelo servidor (desenvolvimento): corpo bruto, nome em X-File-Name, metadados na consulta. */
   const upload = express.raw({ type: ["application/pdf", "application/octet-stream"], limit: `${MAX_PDF_MB}mb` });
@@ -198,7 +232,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
     if (typeof key !== "string" || !TEMP_UPLOAD.test(key)) throw httpError(400, "Caminho de arquivo inválido.");
     if (!(await deps!.storage.exists(key))) throw httpError(400, "O arquivo não chegou ao depósito. Envie de novo.");
     try {
-      return await storePdf(req, await deps!.storage.get(key), typeof name === "string" && name.trim() ? name : "documento.pdf", req.body, kind);
+      return await storeUploadedPdf(req, key, typeof name === "string" && name.trim() ? name : "documento.pdf", req.body, kind);
     } finally {
       await deps!.storage.remove?.([key]).catch(() => undefined);
     }
@@ -302,6 +336,23 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
     }
   });
 
+  /**
+   * Estimativa de custo de IA do documento (administrador; CC05): o pior caso pela mesma conta dos tetos, com o texto já lido. Não chama
+   * IA nem grava nada. O documento precisa ser acessível a quem pergunta (a mesma regra da tela do documento).
+   */
+  router.get("/documents/:id/cost-estimate", async (req: Authed, res) => {
+    try {
+      const me = await requireStaff(req);
+      if (!me.admin) return fail(res, 403, "Somente administradores.");
+      const id = String(req.params.id);
+      if (!/^[0-9a-f-]{36}$/i.test(id)) return fail(res, 400, "Documento inválido.");
+      await asUser(req, "app_ch_inventory", { p_document_id: id });
+      res.json(await estimateDocumentCost(deps!.db, id));
+    } catch (error) {
+      fail(res, forbidden(error) ? 403 : 400, message(error));
+    }
+  });
+
   /** Reprocessar uma etapa (sem duplicar) e acordar o worker. */
   router.post("/jobs/:id/retry", async (req: Authed, res) => {
     try {
@@ -325,8 +376,8 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
   });
 
   /**
-   * Retirada das referências do licenciante (administrador). Só com licença ativa que autorize isso.
-   * body: { action: "preview" | "apply" | "undo" }: a prévia não grava nada; o desfazer restaura o que ninguém revisou depois.
+   * "Tirar marcas de terceiros" (administrador, sem licença cadastrada: CC09). body: { action: "preview" | "apply" | "undo", terms: [nomes e
+   * endereços a tirar] }. A prévia não grava nada; o desfazer restaura o que ninguém revisou depois.
    */
   router.post("/documents/:id/clean-references", async (req: Authed, res) => {
     try {
@@ -335,9 +386,9 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       const id = String(req.params.id);
       if (!/^[0-9a-f-]{36}$/i.test(id)) return fail(res, 400, "Documento inválido.");
       const action = String(req.body?.action ?? "preview");
-      if (action === "apply") return res.json(await applyReferenceCleanup(deps!.db, id, req.user!.id));
       if (action === "undo") return res.json(await undoReferenceCleanup(deps!.db, id, req.user!.id));
-      const p = await previewReferenceCleanup(deps!.db, id);
+      if (action === "apply") return res.json(await applyReferenceCleanup(deps!.db, id, req.user!.id, req.body?.terms));
+      const p = await previewReferenceCleanup(deps!.db, id, req.body?.terms);
       res.json({ ...p, changes: p.changes.slice(0, 200), shown: Math.min(p.changes.length, 200), total: p.changes.length });
     } catch (error: any) {
       fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));

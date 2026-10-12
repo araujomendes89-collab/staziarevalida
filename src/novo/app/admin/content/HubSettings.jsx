@@ -149,6 +149,7 @@ export function HubSettings({ isAdmin, status }) {
         <KeyValue items={CREDENTIALS} />
       </Section>
       {isAdmin && <Usage />}
+      {isAdmin && <DocumentCap />}
       {isAdmin && <Reviewers />}
     </div>
   );
@@ -205,6 +206,37 @@ function Usage() {
           </Badge>
         ))}
       </div>
+    </Section>
+  );
+}
+
+/** Teto de gasto de IA por documento (CC05): a estrutura existe e nasce DESLIGADA; o dono liga quando quiser. */
+function DocumentCap() {
+  const { backend } = useSession();
+  const { data, error, reload } = useLoad(() => backend.rpc("app_ch_processing_settings"), [backend]);
+  const [enabled, setEnabled] = React.useState(null);
+  const [cap, setCap] = React.useState(null);
+  const act = useAction();
+  if (error) return <Section title="Teto de gasto de IA por documento"><p style={{ margin: 0, color: "var(--text-tertiary)" }}>Disponível depois que a atualização do banco for aplicada.</p></Section>;
+  if (!data) return <Loading />;
+  const on = enabled ?? data.document_cap_enabled;
+  const value = cap ?? (data.document_cap_usd == null ? "" : String(data.document_cap_usd).replace(".", ","));
+  const number = Number(String(value).replace(",", "."));
+  const save = () =>
+    act.run(() => backend.rpc("app_ch_set_processing_settings", { p_document_cap_enabled: on, p_document_cap_usd: value === "" ? null : number }), "Teto por documento salvo.").then((r) => r && (setEnabled(null), setCap(null), reload()));
+  return (
+    <Section title="Teto de gasto de IA por documento">
+      <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+        Fica desligado por enquanto. Ligado, o processamento de um documento para quando o gasto de IA dele alcançar este valor (em dólares) e continua quando você aumentar ou desligar o teto.
+      </p>
+      <Checkbox label="Ligar o teto por documento" checked={Boolean(on)} onChange={(e) => setEnabled(e.target.checked)} />
+      <TextField label="Valor do teto (US$)" value={value} onChange={(e) => setCap(e.target.value)} placeholder="ex.: 5,00" />
+      <div style={{ marginTop: 8 }}>
+        <Button size="sm" icon="check" loading={act.busy} disabled={Boolean(on) && !(number > 0)} onClick={save}>
+          Salvar
+        </Button>
+      </div>
+      {act.feedback}
     </Section>
   );
 }

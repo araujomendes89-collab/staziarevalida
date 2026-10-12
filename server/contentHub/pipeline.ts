@@ -101,6 +101,8 @@ interface Ctx {
   deps: PipelineDeps;
   job: Job;
   metrics: Metrics;
+  /** Teto de gasto por documento (CC05), lido uma vez por trabalho; ausente até a primeira chamada de IA. */
+  documentCap?: { enabled: boolean; usd: number | null };
   /** Marca que a próxima etapa recebe ao entrar na fila (reconferência automática: só os temas que mudaram). */
   carry?: Record<string, unknown>;
 }
@@ -206,6 +208,47 @@ export function stepVersions(step: Step, deps: PipelineDeps): Record<string, unk
   };
 }
 
+// ---------------------------------------------------------------------------- falta de crédito e teto por documento
+/**
+ * A IA recusou por falta de crédito ou de cota (CC06)? Repetir não resolve até o saldo ser recarregado, então o trabalho fica
+ * PARADO (pendência, sem gastar tentativa) em vez de virar "Falhou". Limite por minuto não conta: esse passa sozinho e a própria
+ * IA já tenta de novo (shouldRetrySame).
+ */
+export function isNoCreditError(message: string): boolean {
+  const text = String(message ?? "");
+  const credit = /credit balance|insufficient[_ ]?(?:quota|funds|credits?)|exceeded your current quota|billing|prepay|payment required|out of credits?|\b402\b|sem cr[eé]dito|cr[eé]dito insuficiente|saldo insuficiente|saldo (?:de cr[eé]dito )?esgotado/i;
+  if (!credit.test(text)) return false;
+  return !(/per[_ ]?minute|rate[_ ]?limit/i.test(text) && !/credit balance|billing|prepay|insufficient|cr[eé]dito|saldo/i.test(text));
+}
+/** Começo do aviso de pausa por falta de crédito: o banco o reconhece para só reenfileirar de tempos em tempos (migração 9842). */
+export const NO_CREDIT_MARK = "Sem crédito na IA";
+const noCreditNotice = (detail: string) =>
+  `${NO_CREDIT_MARK}: o provedor recusou o pedido por falta de crédito ou de cota (${detail.replace(/\s+/g, " ").trim().slice(0, 160)}). O processamento ficou parado, sem perder o que já foi feito, e tenta de novo sozinho a cada 10 minutos. Recarregue o crédito no site do provedor da IA.`;
+
+/**
+ * Teto de gasto de IA por documento (CC05): estrutura que nasce DESLIGADA. Ligado pelo administrador, o trabalho para quando o gasto já
+ * registrado do documento alcança o teto. Banco sem a atualização (migração 9843): sem teto.
+ */
+async function enforceDocumentCap(ctx: Ctx): Promise<void> {
+  if (!ctx.job.document_id) return;
+  if (!ctx.documentCap) {
+    try {
+      const r = await svc<{ document_cap_enabled?: boolean; document_cap_usd?: number | string | null } | null>(ctx, "ch_worker_processing_settings");
+      const usd = r?.document_cap_usd == null ? null : Number(r.document_cap_usd);
+      ctx.documentCap = { enabled: r?.document_cap_enabled === true && usd != null && usd > 0, usd };
+    } catch {
+      ctx.documentCap = { enabled: false, usd: null };
+    }
+  }
+  if (!ctx.documentCap.enabled) return;
+  const spent = Number(await svc<number | string>(ctx, "ch_worker_document_spend", { p_document_id: ctx.job.document_id })) || 0;
+  const cap = ctx.documentCap.usd as number;
+  if (spent >= cap) {
+    const brl = (n: number) => String(Number(n.toFixed(4))).replace(".", ",");
+    throw new Blocked(`Teto de gasto de IA por documento atingido: US$ ${brl(spent)} gastos de US$ ${brl(cap)}. O processamento ficou parado; aumente ou desligue o teto em Configuração para continuar.`);
+  }
+}
+
 // ---------------------------------------------------------------------------- IA
 type Rejection = { where: string; reason: string };
 
@@ -249,6 +292,7 @@ async function ai<T>(
     return { output: cached, rejections, model: provider.model };
   }
 
+  await enforceDocumentCap(ctx);
   ctx.metrics.ai_calls++;
   let result;
   try {
@@ -260,6 +304,8 @@ async function ai<T>(
     await svc(ctx, "ch_worker_log_ai_run", {
       p_run: { ...base, status: invalid ? "invalid_output" : "failed", output: invalid ? { raw: String(JSON.stringify((error as AiInvalidOutput).raw) ?? "").slice(0, 4000) } : null, error: (error as Error).message.slice(0, 1000) },
     });
+    // sem crédito ou cota no provedor (CC06): não é falha do documento; o trabalho espera o saldo voltar
+    if (!invalid && isNoCreditError((error as Error).message)) throw new Blocked(noCreditNotice((error as Error).message));
     throw error;
   }
   const rejections = check?.(result.output) ?? [];
@@ -866,6 +912,49 @@ const recheckNotice = (c: any, docName: string) => ({
   by: "reconferencia",
 });
 
+// ------------------------------------------------- documento sem nada para revisar (CC03)
+/** Por que nenhum rascunho foi gerado, em português simples, com o que fazer. */
+export function describeNoDrafts(claims: { status: string; theme_node_id: string | null }[]): string {
+  if (!claims.length) {
+    return "Sem rascunhos para revisar: nenhum rascunho foi gerado porque nenhuma afirmação clínica foi extraída deste documento. Confira o texto lido (Original × extração) e use Reprocessar na etapa de afirmações.";
+  }
+  const n = (...status: string[]) => claims.filter((c) => status.includes(c.status)).length;
+  const compatible = n("compatible");
+  const parts = [
+    n("insufficient") ? `${n("insufficient")} sem fonte oficial que a sustente` : null,
+    n("needs_review") ? `${n("needs_review")} para conferir à mão` : null,
+    n("conflicting", "outdated") ? `${n("conflicting", "outdated")} em conflito ou desatualizada(s)` : null,
+    n("context_dependent") ? `${n("context_dependent")} que dependem do contexto` : null,
+    n("extracted", "evidence_linked") ? `${n("extracted", "evidence_linked")} ainda sem conferência` : null,
+  ].filter(Boolean);
+  const detail = parts.length ? ` (${parts.join("; ")})` : "";
+  const total = claims.length;
+  if (compatible && !claims.some((c) => c.status === "compatible" && c.theme_node_id)) {
+    return `Sem rascunhos para revisar: ${compatible === 1 ? "1 afirmação ficou compatível" : `${compatible} afirmações ficaram compatíveis`} com fonte oficial, mas ${compatible === 1 ? "ela não tem" : "nenhuma tem"} tema, então nenhum rascunho foi gerado. Classifique os trechos por tema e use Reprocessar na etapa de rascunho.`;
+  }
+  if (compatible) {
+    return `Sem rascunhos para revisar: ${compatible === 1 ? "1 afirmação ficou compatível" : `${compatible} afirmações ficaram compatíveis`} com fonte oficial, mas o texto escrito pela IA foi barrado pela conferência do sistema (trecho sem sustentação nas afirmações), então nenhum rascunho foi gerado. Use Reprocessar na etapa de rascunho.`;
+  }
+  const none = total === 1 ? "a afirmação extraída não ficou compatível" : `nenhuma das ${total} afirmações ficou compatível`;
+  return `Sem rascunhos para revisar: ${none} com uma fonte oficial${detail}, então nenhum rascunho foi gerado. Cadastre ou aprove as fontes oficiais que faltam em Fontes (a conferência é refeita sozinha quando uma fonte nova é lida) ou use Reprocessar na etapa de conferência.`;
+}
+
+/**
+ * O documento terminou sem nenhum rascunho para revisar: situação "Sem rascunhos" com o motivo (em vez de "Aguardando revisão", que
+ * mandava a equipe procurar o que não existe). Banco sem a migração 9841 recusa a situação nova: grava o jeito antigo, com o mesmo
+ * motivo, que não começa com "Pendência:" (assim o desbloqueio das pendências de outro trabalho do documento não o apaga).
+ */
+async function finishWithoutDrafts(ctx: Ctx, claims: { status: string; theme_node_id: string | null }[]): Promise<void> {
+  const failure = describeNoDrafts(claims);
+  ctx.metrics.no_drafts = true;
+  try {
+    await setMeta(ctx, { status: "no_drafts", failure });
+  } catch (error) {
+    if (!/ch_documents_status_check|violates check constraint|no_drafts/i.test(error instanceof Error ? error.message : String(error))) throw error;
+    await setMeta(ctx, { status: "awaiting_review", failure });
+  }
+}
+
 async function stepDraft(ctx: Ctx): Promise<Step | null> {
   // reconferência automática (marca vinda da etapa de evidências): só os temas em que alguma afirmação passou a ser compatível
   const auto = autoMark(ctx);
@@ -938,6 +1027,12 @@ async function stepDraft(ctx: Ctx): Promise<Step | null> {
       }
     }
     await checkpoint(ctx, auto ? { auto_recheck: true, themes: auto.themes, claims: auto.claims, versions: created, theme: i + 1 } : { theme: i + 1 });
+  }
+  // CC03: nenhum rascunho novo e nenhuma versão que já existia para revisar: não há o que revisar, e o documento não diz que há
+  if (!auto && drafts + kept === 0) {
+    Object.assign(ctx.metrics, { themes: themes.length, drafts, kept_versions: kept, claims_without_theme: claims.filter((c) => !c.theme_node_id).length });
+    await finishWithoutDrafts(ctx, claims);
+    return null;
   }
   Object.assign(ctx.metrics, {
     themes: themes.length,
@@ -1086,7 +1181,15 @@ async function stepReviewCheck(ctx: Ctx): Promise<Step | null> {
     await svc(ctx, "ch_worker_review_flags", { p_version_id: v.version_id, p_flags: [...kept, ...found] });
     await checkpoint(ctx, { ...versionsMark(ctx), version: i + 1 });
   }
-  await setMeta(ctx, { status: "awaiting_review" });
+  const auto = autoMark(ctx);
+  if (auto) {
+    // reconferência automática: o documento continua como estava, exceto o que terminou "Sem rascunhos" e agora tem rascunho novo
+    const doc = versions.length ? await svc<{ status?: string } | null>(ctx, "ch_worker_document", { p_document_id: docId(ctx) }) : null;
+    if (doc?.status === "no_drafts") await svc(ctx, "ch_worker_document_meta", { p_document_id: docId(ctx), p_meta: { status: "awaiting_review", failure: "" } });
+  } else {
+    // (sem rascunho nenhum, a etapa de rascunho já terminou o documento como "Sem rascunhos" e esta etapa nem entra na fila)
+    await setMeta(ctx, { status: "awaiting_review", failure: "" });
+  }
   Object.assign(ctx.metrics, { versions: versions.length, review_issues: issues });
   return null;
 }
@@ -1167,6 +1270,8 @@ export async function runJob(deps: PipelineDeps, job: Job): Promise<{ status: st
     if (error instanceof Blocked) {
       const status = await deps.db.service<string | null>("ch_worker_block", { p_job_id: job.id, p_reason: message, ...owner(job) });
       if (status === "lost") return lost();
+      // pausa por falta de crédito: anota a hora para o banco só reenfileirar de 10 em 10 minutos (banco sem a migração 9842: sem nota)
+      if (message.startsWith(NO_CREDIT_MARK)) await deps.db.service("ch_worker_note_credit_pause", { p_job_id: job.id }).catch(() => undefined);
       deps.log?.(`[central] ${job.step} pendente: ${message}`);
       return { status: "blocked", next: null, error: message };
     }

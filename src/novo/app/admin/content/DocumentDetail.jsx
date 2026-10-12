@@ -5,10 +5,14 @@ import { useSession } from "../../session.jsx";
 import { useMobile } from "../../Shell.jsx";
 import { LoadError, Loading, TextArea, useLoad } from "../common.jsx";
 import { hubAvailable, hubDocumentUrl, hubPost } from "./api.js";
+import { CleanReferences, CostEstimate } from "./DocumentTools.jsx";
 import { BLOCK_STATUS, BLOCK_TYPE, DOC_STATUS, JOB_STATUS, STEP_LABEL } from "./labels.js";
 import { ClaimCard, KeyValue, Label, ModelBadge, Pre, Section, StatusBadge, useAction, when } from "./ui.jsx";
 
 const BUSY = new Set(["received", "extracting", "classifying", "verifying_sources", "drafting"]);
+const NO_DRAFTS = "Sem rascunhos para revisar";
+/** Aviso (não é falha): pendência de configuração ou documento que terminou sem rascunhos. */
+const isNotice = (text) => text.startsWith("Pendência") || text.startsWith(NO_DRAFTS);
 
 export function DocumentDetail({ id, go, isAdmin, params }) {
   const { backend } = useSession();
@@ -37,13 +41,15 @@ export function DocumentDetail({ id, go, isAdmin, params }) {
         {d.purpose === "reference_source" && <Badge tone="info">Fonte de referência</Badge>}
       </div>
       {d.failure && (
-        <Banner tone={d.failure.startsWith("Pendência") ? "warning" : "danger"} title={d.failure.startsWith("Pendência") ? "Pendência" : "Falha"}>
+        <Banner tone={isNotice(d.failure) ? "warning" : "danger"} title={d.failure.startsWith("Pendência") ? "Pendência" : d.failure.startsWith(NO_DRAFTS) ? "Sem rascunhos" : "Falha"}>
           {d.failure}
         </Banner>
       )}
       <Jobs jobs={data.jobs} onChanged={reload} />
+      {isAdmin && hubAvailable(backend) && d.purpose !== "reference_source" && <CostEstimate id={id} />}
       <Inventory inv={data.inventory} onPage={(n) => go("documentos", { id, pagina: String(n) })} />
       <Viewer doc={d} pages={data.pages} page={Number(params.get("pagina")) || 1} setPage={(n) => go("documentos", { id, pagina: String(n) })} onChanged={reload} />
+      {isAdmin && hubAvailable(backend) && d.purpose !== "reference_source" && <CleanReferences id={id} onChanged={reload} />}
       <Section title={`Afirmações clínicas (${data.claims.length})`}>
         {data.claims.length === 0 && <p style={{ margin: 0, color: "var(--text-tertiary)" }}>Nenhuma afirmação extraída ainda.</p>}
         {data.claims.map((c) => (
@@ -211,6 +217,7 @@ const FLAG_TEXT = {
   vector_diagram: "Fluxograma/diagrama desenhado: conferir setas, ordem e condições.",
   document_repaired: "Arquivo danificado ou cortado: conferir esta página com o original.",
   ocr_no_text: "OCR não reconheceu texto.",
+  reference_removed: "Nome ou marca de outro curso foi tirado deste texto (o original continua guardado).",
 };
 
 function BlockCard({ block, onChanged }) {
