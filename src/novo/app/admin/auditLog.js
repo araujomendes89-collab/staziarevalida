@@ -152,6 +152,12 @@ export const ACTION_LABEL = {
   "source_candidate.edit": "Candidato a fonte editado",
   "source_candidate.approve": "Candidato a fonte aprovado",
   "source_candidate.reject": "Candidato a fonte rejeitado",
+  // pedidos de IA feitos pela tela (migração 20261003009810): análise de questões e conferência de rascunhos inéditos
+  "question_analysis.request": "Análise de questões por IA pedida",
+  "question_analysis.result": "Análise de questões por IA terminou",
+  "draft_check.request": "Conferência de questões inéditas por IA pedida",
+  "draft_check.result": "Conferência de questões inéditas por IA terminou",
+  "ai_request.cancel": "Pedido de IA cancelado",
 };
 
 // começo do nome técnico → parte da Administração (para uma ação nova que ainda não ganhou nome acima)
@@ -161,7 +167,7 @@ const PART = {
 };
 
 // começo do nome técnico → ação da Central de Conteúdo (ch_audit)
-const CENTRAL_PART = new Set(["approve", "approval", "publish", "retire", "unit", "reviewer", "flag", "taxonomy", "document", "license", "block", "source", "source_domain", "source_search", "source_candidate", "conflict", "draft_question", "staziamed", "question_analysis", "question_update", "job", "visual"]);
+const CENTRAL_PART = new Set(["approve", "approval", "publish", "retire", "unit", "reviewer", "flag", "taxonomy", "document", "license", "block", "source", "source_domain", "source_search", "source_candidate", "conflict", "draft_question", "staziamed", "draft_check", "ai_request", "question_analysis", "question_update", "job", "visual"]);
 
 const own = (map, key) => (Object.prototype.hasOwnProperty.call(map, key) ? map[key] : undefined);
 const join = (parts) => parts.filter(Boolean).join(" · ");
@@ -294,6 +300,18 @@ const CANDIDATE_FIELD = {
   institution: "instituição", title: "título", version: "versão", published_on: "data de publicação", kind: "tipo",
   nature: "natureza", level: "nível", area: "área", theme: "tema", valid_until: "vigência",
 };
+
+const REQUEST_RESULT = { concluido: "Concluído", falhou: "Falhou" };
+const DRAFT_LAYER = { software: "regras", sources: "fontes oficiais", currency: "atualidade", redteam: "revisão clínica" };
+const aiRequestBase = (d, noun) => join([count(d.items, noun[0], noun[1]), d.estimate_usd != null && `custo estimado ${usd(d.estimate_usd)}`]);
+const aiRequestResult = (d, noun) =>
+  join([
+    own(REQUEST_RESULT, d.status),
+    d.done != null && `${d.done} de ${d.items} ${noun}`,
+    d.calls != null && count(d.calls, "chamada de IA", "chamadas de IA"),
+    d.cost_usd != null && `custo ${usd(d.cost_usd)}`,
+    typeof d.message === "string" && d.message.trim() && `Aviso: ${d.message.trim()}`,
+  ]);
 
 const SUMMARY = {
   "user.role": (d, entry) => join([person(entry), `${ROLE_LABEL[d.from] ?? d.from} → ${ROLE_LABEL[d.to] ?? d.to}`]),
@@ -456,6 +474,19 @@ const SUMMARY = {
   "source_candidate.approve": (d) =>
     join([d.site && `Site: ${d.site}`, d.level && `Nível ${d.level}`, d.superseded && "Substituiu uma versão anterior da fonte"]),
   "source_candidate.reject": (d) => join([d.site && `Site: ${d.site}`, whyOf(d)]),
+  "question_analysis.request": (d) =>
+    join([aiRequestBase(d, ["questão", "questões"]), d.exam && `Prova: ${d.exam}`, d.area && `Área: ${own(AREA_NAME, d.area) ?? "outra área"}`, d.only_missing === false && "Refazendo também as que já tinham análise"]),
+  "question_analysis.result": (d) => aiRequestResult(d, "questões"),
+  "draft_check.request": (d) =>
+    join([
+      aiRequestBase(d, ["rascunho", "rascunhos"]),
+      d.batch && `Lote: ${d.batch}`,
+      d.area && `Área: ${own(AREA_NAME, d.area) ?? "outra área"}`,
+      Array.isArray(d.layers) && `Camadas: ${d.layers.map((l) => own(DRAFT_LAYER, l) ?? "outra").join(", ")}`,
+      d.recheck && "Conferindo de novo",
+    ]),
+  "draft_check.result": (d) => aiRequestResult(d, "rascunhos"),
+  "ai_request.cancel": (d) => (d.kind === "draft_check" ? count(d.items, "rascunho", "rascunhos") : count(d.items, "questão", "questões")),
   "block.resolve": () => "",
   "conflict.detect": (d) => d.new != null && count(d.new, "novo", "novos"),
   "conflict.resolved": (d) => noteOf(d, "Motivo"),

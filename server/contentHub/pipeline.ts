@@ -39,6 +39,7 @@ import { Blocked, Fatal } from "./jobErrors";
 import { stepQuestionCheck } from "./questoes/check";
 import { stepQuestionGenerate } from "./questoes/generate";
 import { stepQuestionSource } from "./questoes/source";
+import { AiRequestFailed, AiRequestPending, runAiRequest } from "./aiRequests";
 
 const run = promisify(execFile);
 
@@ -47,7 +48,7 @@ export const EXTRACTOR_VERSION = "staziamed-extract-1.0";
 export const MATERIALS_TEMPLATE = "materials-1.0";
 const PAGE_RANGE = 20;
 
-export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render" | "source_search" | "question_generate" | "question_check" | "question_source";
+export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render" | "source_search" | "question_generate" | "question_check" | "question_source" | "question_analysis" | "draft_check";
 
 export interface Job {
   id: string;
@@ -1121,6 +1122,22 @@ async function stepSourceSearch(ctx: Ctx): Promise<Step | null> {
   return null;
 }
 
+/**
+ * Pedido de IA feito pela tela (análise de questões ou conferência de rascunhos, aiRequests.ts): sem documento. IA desligada ou
+ * teto atingido deixam o trabalho pendente, sem gastar tentativa; falha que nova tentativa não resolve mata o trabalho (repetir
+ * repetiria a chamada paga).
+ */
+async function stepAiRequest(ctx: Ctx): Promise<Step | null> {
+  try {
+    await runAiRequest(ctx.deps, ctx.job, { checkpoint: (data) => checkpoint(ctx, data), metrics: ctx.metrics });
+  } catch (error) {
+    if (error instanceof AiRequestPending) throw new Blocked(error.message);
+    if (error instanceof AiRequestFailed) throw new Fatal(error.message);
+    throw error;
+  }
+  return null;
+}
+
 const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   extract: stepExtract,
   source_index: stepSourceIndex,
@@ -1136,6 +1153,8 @@ const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   question_generate: (ctx) => stepQuestionGenerate(ctx.deps, ctx.job, ctx.metrics),
   question_check: (ctx) => stepQuestionCheck(ctx.deps, ctx.job, ctx.metrics),
   question_source: (ctx) => stepQuestionSource(ctx.deps, ctx.job, ctx.metrics),
+  question_analysis: stepAiRequest,
+  draft_check: stepAiRequest,
 };
 
 /**
