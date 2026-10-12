@@ -107,19 +107,32 @@ as $$
                    and (s.valid_until is null or s.valid_until >= current_date))
 $$;
 
--- Ganchos preenchidos pela migração 9862 (flashcards): aqui não fazem nada.
-create or replace function public.ch_cards_plan(p_version_id uuid) returns jsonb
-  language sql stable security definer set search_path = ''
-as $$ select jsonb_build_object('added', 0, 'kept', 0, 'hidden', 0, 'total', 0) $$;
-create or replace function public.ch_distribute_cards(p_version_id uuid, p_lesson_id uuid) returns jsonb
-  language sql security definer set search_path = ''
-as $$ select jsonb_build_object('added', 0, 'kept', 0, 'hidden', 0, 'total', 0) $$;
-create or replace function public.ch_hide_cards(p_version_id uuid) returns integer
-  language sql security definer set search_path = ''
-as $$ select 0 $$;
-create or replace function public.ch_publish_problems_cards(p_version_id uuid) returns text[]
-  language sql stable security definer set search_path = ''
-as $$ select '{}'::text[] $$;
+-- Ganchos preenchidos pela migração 9862 (flashcards): aqui nascem vazios, e só se ainda não existirem (colar esta migração de novo
+-- depois da 9862 NÃO desfaz os flashcards).
+do $stubs$
+begin
+  if to_regprocedure('public.ch_cards_plan(uuid)') is null then
+    create function public.ch_cards_plan(p_version_id uuid) returns jsonb
+      language sql stable security definer set search_path = ''
+    as $f$ select jsonb_build_object('added', 0, 'kept', 0, 'hidden', 0, 'total', 0) $f$;
+  end if;
+  if to_regprocedure('public.ch_distribute_cards(uuid,uuid)') is null then
+    create function public.ch_distribute_cards(p_version_id uuid, p_lesson_id uuid) returns jsonb
+      language sql security definer set search_path = ''
+    as $f$ select jsonb_build_object('added', 0, 'kept', 0, 'hidden', 0, 'total', 0) $f$;
+  end if;
+  if to_regprocedure('public.ch_hide_cards(uuid)') is null then
+    create function public.ch_hide_cards(p_version_id uuid) returns integer
+      language sql security definer set search_path = ''
+    as $f$ select 0 $f$;
+  end if;
+  if to_regprocedure('public.ch_publish_problems_cards(uuid)') is null then
+    create function public.ch_publish_problems_cards(p_version_id uuid) returns text[]
+      language sql stable security definer set search_path = ''
+    as $f$ select '{}'::text[] $f$;
+  end if;
+end
+$stubs$;
 
 -- O que o aluno vai ler desta versão, montado do texto revisado (nunca de afirmações, apontamentos ou arquivos de origem).
 create or replace function public.ch_student_lesson(p_version_id uuid) returns jsonb
