@@ -1,10 +1,11 @@
 // Painel "Questões atualizadas" (SQIE): gabarito oficial × resposta atual, tipo de mudança, data, fonte e situação.
 import React from "react";
-import { Badge, Button, EmptyState, SelectField, TextField } from "../../../ds";
+import { Badge, Banner, Button, EmptyState, SelectField, TextField } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { LoadError, Loading, useLoad } from "../common.jsx";
+import { hubAvailable, hubPost } from "./api.js";
 import { AREA_LABEL } from "./labels.js";
-import { Section, when } from "./ui.jsx";
+import { Section, useAction, when } from "./ui.jsx";
 
 const CHANGE = {
   NEW_RECOMMENDATION: "Recomendação nova", REMOVED_RECOMMENDATION: "Recomendação removida", MODIFIED_RECOMMENDATION: "Recomendação modificada", DOSE_CHANGED: "Dose",
@@ -14,6 +15,68 @@ const CHANGE = {
 };
 const STATUS = { queued: "Aguardando reanálise", review_required: "Para decidir", reviewed: "Decidida", dismissed: "Dispensada" };
 const PAGE = 20;
+
+/** O motivo que o servidor devolve fala em termos técnicos (nome da chave, variável): aqui sai em português simples. */
+export function friendlyPending(text) {
+  return String(text ?? "")
+    .replace(/Content Lab/g, "Central de Conteúdo")
+    .replace(/\s*\((?:sinalizador\s+)?[A-Za-z_]+(?:=\w+)?\)/g, "")
+    .trim();
+}
+
+/**
+ * Reanálise por IA das questões cuja fonte oficial mudou (CC18): quantas esperam, o botão do administrador, a rodada automática
+ * (chave "Análise automática") e o resultado da última rodada. A IA só propõe; o revisor médico decide na fila abaixo.
+ */
+function ReanalysisBox({ onDone }) {
+  const { backend, boot } = useSession();
+  const isAdmin = boot?.role === "admin";
+  const { data, reload } = useLoad(() => backend.rpc("app_ch_reanalysis_status").catch(() => null), [backend]);
+  const act = useAction();
+  const [note, setNote] = React.useState(null);
+  // banco ainda sem a atualização: a caixa não aparece (nada de erro técnico)
+  if (!data) return null;
+  const last = data.last_summary ?? {};
+  const waiting = data.waiting ?? 0;
+  const ask = () => {
+    setNote(null);
+    return act
+      .run(async () => {
+        const r = await hubPost(backend, "/questions/reanalysis");
+        setNote(r.now ? "A reanálise começou. Volte em alguns minutos para ver as propostas." : "Pedido enviado: o processamento reanalisa na próxima rodada (até 10 minutos). Volte a esta tela para ver o resultado.");
+        reload();
+        onDone?.();
+        return r;
+      }, null);
+  };
+  return (
+    <Section title="Reanálise por IA">
+      <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+        Quando uma fonte oficial muda, a IA relê o trecho antigo e o novo e propõe o que mudou para cada questão afetada. Ela só propõe: nada vai ao aluno sem a decisão de um revisor médico.
+      </p>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <Badge tone={waiting > 0 ? "warning" : "neutral"}>{waiting === 0 ? "Nenhuma questão esperando reanálise" : `${waiting} questão(ões) esperando reanálise`}</Badge>
+        <Badge tone={data.auto ? "success" : "neutral"}>{data.auto ? "Análise automática ligada" : "Análise automática desligada"}</Badge>
+        {data.requested_at && <Badge tone="info">Pedido enviado em {when(data.requested_at)}</Badge>}
+        {isAdmin && hubAvailable(backend) && (
+          <Button size="sm" icon="brain" loading={act.busy} disabled={waiting === 0 || Boolean(data.requested_at)} onClick={ask}>
+            Reanalisar agora
+          </Button>
+        )}
+      </div>
+      {!data.auto && <p style={{ margin: "8px 0 0", font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Para a IA reanalisar sozinha a cada rodada, o administrador liga a "Análise automática" em Configuração e custos.</p>}
+      {act.feedback}
+      {note && <Banner tone="success">{note}</Banner>}
+      {data.last_finished_at && (
+        <p style={{ margin: "8px 0 0", font: "var(--type-body-sm)" }}>
+          Última rodada ({data.last_manual ? "pedida por um administrador" : "automática"}): terminou em {when(data.last_finished_at)} · {last.saved ?? 0} proposta(s) gravada(s) · {last.skipped ?? 0} pulada(s)
+          {last.pending ? `. Parou porque: ${friendlyPending(last.pending)}` : "."}
+        </p>
+      )}
+      {data.last_started_at && !data.last_finished_at && <p style={{ margin: "8px 0 0", font: "var(--type-body-sm)" }}>Uma rodada começou em {when(data.last_started_at)} e ainda não terminou.</p>}
+    </Section>
+  );
+}
 
 export function UpdatedQuestions() {
   const { backend } = useSession();
@@ -26,6 +89,8 @@ export function UpdatedQuestions() {
   const { data, error, reload } = useLoad(() => backend.rpc("app_updated_questions", { p_filters: filters, p_limit: PAGE, p_offset: page * PAGE }), [backend, area, status, differs, search, page]);
   const pages = Math.max(Math.ceil((data?.total ?? 0) / PAGE), 1);
   return (
+    <>
+    <ReanalysisBox onDone={reload} />
     <Section title="Questões atualizadas">
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 12 }}>
         <div style={{ width: 200 }}>
@@ -80,5 +145,6 @@ export function UpdatedQuestions() {
         </div>
       )}
     </Section>
+    </>
   );
 }

@@ -60,6 +60,7 @@ export const ACTION_LABEL = {
   "lesson.file.delete": "Arquivo de aula apagado do depósito",
   // podcasts
   "source.audience": "Classe da fonte alterada",
+  "source.check_request": "Conferência das fontes monitoradas pedida",
   "podcast.save": "Podcast salvo",
   "podcast.delete": "Podcast apagado",
   "podcast.source": "Fonte do podcast adicionada",
@@ -127,6 +128,7 @@ export const ACTION_LABEL = {
   "draft_question.rejected": "Questão inédita recusada",
   "question_analysis.approved": "Análise da questão aprovada",
   "question_analysis.rejected": "Análise da questão recusada",
+  "question_analysis.reanalysis_request": "Reanálise das questões pedida",
   "question_update.no_change": "Atualização de questão: sem mudança",
   "question_update.publish_update": "Atualização de questão publicada",
   "question_update.reject_proposal": "Proposta de atualização de questão recusada",
@@ -316,6 +318,7 @@ const SUMMARY = {
     ]),
   "question.inserted": questionSaved,
   "question.updated": questionSaved,
+  "source.check_request": (d) => d.sources != null && `${d.sources} fonte(s) monitorada(s)`,
   "source.audience": (d) => join([d.title, d.to === "complementar" ? "Fonte complementar: o aluno não vê esta fonte" : "Fonte oficial", d.reason && `Motivo: ${d.reason}`]),
   // apagar: o código e o tema que o banco guardou (a questão já não existe); análise tirada do ar: o texto mudou
   "question.delete": (d, entry) => join([d.code ?? entry.target, d.topic]),
@@ -455,6 +458,7 @@ const SUMMARY = {
   "conflict.open": (d) => noteOf(d, "Motivo"),
   "question_analysis.approved": (d) => d.question && questionName(d.question),
   "question_analysis.rejected": (d) => d.question && questionName(d.question),
+  "question_analysis.reanalysis_request": (d) => d.waiting != null && `${d.waiting} questão(ões) esperando`,
   "question_update.no_change": (d) => join([d.question && questionName(d.question), noteOf(d)]),
   "question_update.publish_update": (d) => join([d.question && questionName(d.question), noteOf(d)]),
   "question_update.reject_proposal": (d) => join([d.question && questionName(d.question), noteOf(d)]),
