@@ -114,9 +114,11 @@ describe("Pedidos, propostas e trilha", () => {
     await env.sql(`insert into public.draft_source_proposals (draft_id, content_hash, claims, complete) values ($1, $2, '[]'::jsonb, false)`, [draft.id, draft.content_hash]);
     for (const t of TABLES) {
       for (const uid of [USERS.TESTE, USERS.PRO]) expect(await env.sqlAs(uid, `select id from public.${t}`), `${t} lido por aluno`).toEqual([]);
-      for (const uid of [USERS.REVISOR_PED, USERS.REVISOR_CM, USERS.EDITOR, USERS.ADMIN]) {
-        expect((await env.sqlAs(uid, `select id from public.${t}`)).length, `${t} lido pela equipe/revisor`).toBeGreaterThan(0);
+      for (const uid of [USERS.REVISOR_PED, USERS.EDITOR, USERS.ADMIN]) {
+        expect((await env.sqlAs(uid, `select id from public.${t}`)).length, `${t} lido pela equipe/revisor da área`).toBeGreaterThan(0);
       }
+      // Leva 4 (9830): o revisor de OUTRA área não lê a proposta nem a trilha do rascunho de Pediatria; o pedido (sem área) continua aberto a revisores
+      expect((await env.sqlAs(USERS.REVISOR_CM, `select id from public.${t}`)).length, `${t} lido pelo revisor de outra área`).toBe(t === "staziamed_requests" ? 1 : 0);
     }
     // escrita só pelas funções do banco: nem a equipe grava direto
     await expect(env.sqlAs(USERS.ADMIN, `insert into public.staziamed_requests (created_by, mode, count) values ($1, 'tema', 1)`, [USERS.ADMIN])).rejects.toThrow(/row-level security/);
@@ -175,9 +177,9 @@ describe("Fila e funções de serviço", () => {
       });
       expect((await empty.rpc(USERS.EDITOR, "app_draft_questions", { p_limit: 1 })).total).toBe(0);
       await expect(empty.rpc(USERS.TESTE, "app_draft_questions")).rejects.toThrow(/restrito/);
-      const id = await insertDraft(empty, { area: "CIRURGIA", topic: "Abdome agudo" });
+      const id = await insertDraft(empty, { area: "CLINICA_MEDICA", topic: "Abdome agudo" }); // o revisor da clínica lê só a área dele (9830)
       expect((await empty.sqlAs(USERS.REVISOR_CM, `select area, topic, generated_by from public.draft_questions where id = $1`, [id]))[0]).toEqual({
-        area: "CIRURGIA", topic: "Abdome agudo", generated_by: "servidor",
+        area: "CLINICA_MEDICA", topic: "Abdome agudo", generated_by: "servidor",
       });
       const { passageId } = await addOfficialSource(empty, { text: "Amoxicilina por dez dias na otite média aguda do lactente." });
       const found = (await empty.sql(`select public.ch_worker_search_official_passages('otite amoxicilina', 5) as r`))[0].r;
@@ -213,8 +215,12 @@ describe("Fila e funções de serviço", () => {
     };
     const before = await snapshot();
     expect(before.events).toBeGreaterThan(0);
-    await env.dev.db.exec(text);
-    await env.dev.db.exec(text);
+    // colar a 9800 de novo exige colar depois a 9810 e o fechamento 9830 (ordem do pacote: colar da parte dela até a última)
+    const resto = ["20261003009810_analise_ia_pedidos.sql", "20261003009830_fechamento_leva4.sql"].map((f) => fs.readFileSync(fileURLToPath(new URL(`../../supabase/migrations/${f}`, import.meta.url)), "utf8"));
+    for (let volta = 0; volta < 2; volta++) {
+      await env.dev.db.exec(text);
+      for (const sql of resto) await env.dev.db.exec(sql);
+    }
     expect(await snapshot()).toEqual(before);
   }, 120_000);
 

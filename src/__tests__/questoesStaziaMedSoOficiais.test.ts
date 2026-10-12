@@ -27,6 +27,9 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   app_trail: { classe: "so_oficiais", como: "filtra" },
   app_start_trail_node: { classe: "so_oficiais", como: "filtra" },
   ch_worker_questions_for_analysis: { classe: "so_oficiais", como: "filtra" },
+  // pedidos de análise pela tela (9810, com o filtro de origem na 9830)
+  ch_qa_pick: { classe: "so_oficiais", como: "filtra" },
+  ch_worker_questions_for_analysis_ids: { classe: "so_oficiais", como: "filtra" },
   app_question_analyses: { classe: "so_oficiais", como: "filtra" },
   app_question_updates_queue: { classe: "so_oficiais", como: "filtra" },
   ch_worker_updates_for_reanalysis: { classe: "so_oficiais", como: "filtra" },

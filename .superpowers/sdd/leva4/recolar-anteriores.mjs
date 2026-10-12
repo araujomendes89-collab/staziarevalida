@@ -5,6 +5,7 @@ import { montaProducao, retrato, compara, sqlLeva, DL, PACOTE } from "./lib.mjs"
 const arquivos = [
   ...fs.readdirSync(PACOTE).filter((f) => /^[1-7]-/.test(f)).sort().map((f) => path.join(PACOTE, f)),
   ...["COLAR-arena-equipe-fora-do-ranking.sql", "COLAR-fontes-oficiais-9610.sql", "COLAR-fonte-complementar-9620-9621.sql", "DESLIGAR-tetos-de-IA.sql"].map((f) => path.join(DL, f)),
+  ...fs.readdirSync(DL + "/publicacao-staziamed-2026-10-12-leva3").filter((f) => /^[1-4]-colar/.test(f)).sort().map((f) => path.join(DL, "publicacao-staziamed-2026-10-12-leva3", f)),
 ];
 for (const f of arquivos) {
   const db = await montaProducao(); for (let v = 0; v < 2; v++) for (const s of sqlLeva()) await db.exec(s);

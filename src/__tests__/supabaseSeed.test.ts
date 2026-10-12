@@ -34,7 +34,7 @@ beforeAll(async () => {
 describe("Carga real no Supabase", () => {
   it("entram 12 provas, 1.200 questões, 10 estações e 1 simulado", async () => {
     const r = await db.query<any>(`
-      select (select count(*) from public.exams)::int as exams,
+      select (select count(*) from public.exams where kind <> 'STAZIAMED')::int as exams, -- a prova "Questões Inéditas" (9801) nasce vazia e não é da carga oficial
              (select count(*) from public.questions)::int as questions,
              (select count(distinct code) from public.questions)::int as codes,
              (select count(*) from public.questions where status = 'annulled')::int as annulled,
@@ -44,7 +44,7 @@ describe("Carga real no Supabase", () => {
   });
 
   it("cada prova tem 100 questões e os códigos incluem a edição", async () => {
-    const r = await db.query<any>(`select id, question_count from public.exams order by id`);
+    const r = await db.query<any>(`select id, question_count from public.exams where kind <> 'STAZIAMED' order by id`);
     expect(r.rows.every((e: any) => e.question_count === 100)).toBe(true);
     const codes = buildSeedRows().questions.filter((q) => String(q.code).startsWith("REV-2025")).map((q) => q.code);
     expect(codes).toContain("REV-2025.1-Q001");
