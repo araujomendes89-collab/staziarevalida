@@ -204,7 +204,7 @@ export function QuestionBuilder({ go, mode }) {
     <div style={{ display: "grid", gridTemplateColumns: mobile ? "minmax(0,1fr)" : "minmax(0,1fr) 340px", gap: 24, alignItems: "start" }}>
       {lock && (
         <div style={{ gridColumn: "1 / -1" }}>
-          <Banner tone="warning" icon="lock" title={lock.title}>
+          <Banner tone="warning" icon="lock" title={lock.title} action={<Button size="sm" variant="secondary" onClick={() => go("planos")}>Ver planos</Button>}>
             {lock.text}
           </Banner>
         </div>

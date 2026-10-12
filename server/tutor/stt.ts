@@ -13,7 +13,7 @@
  */
 import { TutorError, type TutorDeps } from "./engine";
 import { realKey } from "./speech";
-import { tutorSettings } from "./settings";
+import { tutorSettings, type TutorSettings } from "./settings";
 import { voiceCall } from "./realtime";
 
 export interface SttConfig {
@@ -30,6 +30,43 @@ export const STT_FAILED = "Não entendi, pode repetir ou digitar?";
 /** Teto por aluno: uma transcrição por vez e até 20 por minuto (cada fala leva mais que 3 s entre gravar, responder e ouvir). */
 export const STT_PER_MINUTE = 20;
 export const STT_BUSY = "Espere um pouco antes de falar de novo.";
+/**
+ * CF02: o microfone da Nexus é da equipe até o dono abrir para os alunos (Administração > Configurações > Tutor). O aluno só fala ao
+ * microfone com a chave aberta E com os tetos diários da transcrição preenchidos (o banco também confere isso ao salvar); sem teto,
+ * o microfone fica fechado mesmo que a chave esteja aberta. Quem não pode segue pelo Chat, por escrito.
+ */
+export const STT_TEAM_ONLY = "O microfone do Tutor ainda não está liberado. Escreva a sua mensagem.";
+export const STT_STUDENT_LIMIT = "Você chegou ao limite de fala por microfone de hoje. Escreva a sua mensagem.";
+export const STT_ACCOUNT_LIMIT = "O microfone do Tutor não está disponível por hoje. Escreva a sua mensagem.";
+export type SttBlock = "team_only" | "student_limit" | "account_limit";
+export const STT_BLOCK: Record<SttBlock, { message: string; code: string }> = {
+  team_only: { message: STT_TEAM_ONLY, code: "stt_team_only" },
+  student_limit: { message: STT_STUDENT_LIMIT, code: "stt_student_limit" },
+  account_limit: { message: STT_ACCOUNT_LIMIT, code: "stt_account_limit" },
+};
+
+/** O teto diário do aluno no modo dele (teste ou plano pago); null = sem valor (ou conta sem direito). */
+const studentCap = (settings: TutorSettings, mode: string | undefined) =>
+  mode === "paid" ? settings.stt_paid_daily_seconds : mode === "trial" ? settings.stt_trial_daily_seconds : null;
+
+/** O aluno (não-equipe) pode usar o microfone em geral? Chave aberta e os dois tetos com valor. Não olha o uso de hoje. */
+export const studentMicOpen = (settings: TutorSettings, mode: string | undefined) =>
+  !settings.stt_team_only && studentCap(settings, mode) != null && settings.stt_account_daily_seconds != null;
+
+/**
+ * A pessoa pode transcrever `seconds` segundos agora? Equipe sempre. Aluno: chave aberta, os tetos com valor, e o que já usou hoje
+ * (`used`, lido do registro) mais este áudio dentro do teto dele e da plataforma.
+ */
+export function sttAccessOf(i: { staff: boolean; mode: string | undefined; settings: TutorSettings; used?: { user_seconds: number; account_seconds: number }; seconds?: number }): SttBlock | null {
+  if (i.staff) return null;
+  if (!studentMicOpen(i.settings, i.mode)) return "team_only";
+  if (!i.used) return null;
+  const add = Math.ceil(i.seconds ?? 0);
+  if (i.used.user_seconds + add > (studentCap(i.settings, i.mode) as number)) return "student_limit";
+  if (i.used.account_seconds + add > (i.settings.stt_account_daily_seconds as number)) return "account_limit";
+  return null;
+}
+
 /**
  * O serviço cobra pelo tempo de verdade do áudio, e a duração vem do aparelho: o tamanho tem de caber nela. 64 kB por segundo
  * (512 kbps) fica muito acima da gravação de voz dos navegadores; mais que isso é áudio longo espremido numa duração curta.

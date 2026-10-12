@@ -34,7 +34,7 @@ export interface FunctionConfig {
 export interface AiConfig {
   providers: Record<AiProviderId, { enabled: boolean; models: { id: string; label: string }[]; status: string | null }>;
   functions: Partial<Record<AiFunctionKey, FunctionConfig>>;
-  settings: { monthly_cap_usd: number | null; per_run_cap_usd: number | null; caps_enabled: boolean; tab_override_enabled: boolean };
+  settings: { monthly_cap_usd: number | null; per_run_cap_usd: number | null; caps_enabled: boolean; tab_override_enabled: boolean; overall_monthly_cap_usd?: number | null; overall_cap_enabled?: boolean };
   prices: ModelPrice[];
 }
 
@@ -299,6 +299,9 @@ function convert(raw: any): AiConfig {
       per_run_cap_usd: num(s.per_run_cap_usd),
       caps_enabled: s.caps_enabled === true,
       tab_override_enabled: s.tab_override_enabled === true,
+      // IA02: teto geral do mês (tudo junto); só avisa na tela, nada para por causa dele. Nasce desligado e sem valor.
+      overall_monthly_cap_usd: num(s.overall_monthly_cap_usd),
+      overall_cap_enabled: s.overall_cap_enabled === true,
     },
     prices,
   };

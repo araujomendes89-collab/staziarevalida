@@ -42,7 +42,7 @@ export function AdminOverview({ isAdmin }) {
       )}
       <div style={grid}>
         <StatCard label="Questões" value={data.questions.total} caption={`${data.questions.exams} provas · ${data.questions.annulled} anuladas`} icon="file-question" />
-        <StatCard label="Sem figura" value={data.questions.needs_image} caption="citam imagem não vinculada (o envio da imagem ainda não está na tela)" tone="warning" icon="image" />
+        <StatCard label="Sem figura" value={data.questions.needs_image} caption="citam figura sem imagem vinculada e ficam fora dos treinos; envie a figura em Questões" tone="warning" icon="image" />
         <StatCard label="Respostas" value={data.activity.attempts} caption={`${data.activity.attempts_7d} nos últimos 7 dias`} tone="success" icon="circle-check" />
         <StatCard label="Estações" value={data.stations.approved} caption={`${data.stations.pending} aguardando revisão médica`} tone="info" icon="clipboard-list" />
       </div>
@@ -199,8 +199,8 @@ function PlanEditor({ plan, onSaved, signupRule = "desconhecida" }) {
           {!trial && <SelectField label="Cobrança" value={form.billing_period} onChange={(e) => set({ billing_period: e.target.value })} options={PERIODS} />}
         </div>
         <TextArea label="Descrição" rows={2} maxLength={400} value={form.description} onChange={(description) => set({ description })} />
-        <TextArea label="Recursos incluídos (um por linha)" rows={4} value={form.features} onChange={(features) => set({ features })} hint="Até 20 itens. Ficam guardados para a futura tela de planos do aluno." />
-        <Switch label={trial ? "Oferecer teste grátis no cadastro" : "Marcar para venda"} description={trial ? (signupRule === "nova" ? "Ligado: quem se cadastrar ganha o teste grátis pelos dias de Configurações. Desligado: quem se cadastrar depois entra sem teste, só com questões e flashcards, até a equipe liberar um plano ou um teste em Usuários. Quem já está em teste não muda." : signupRule === "antiga" ? "Os dias de teste ficam em Configurações. Hoje todo cadastro novo recebe o teste, com esta chave ligada ou desligada." : "Os dias de teste ficam em Configurações. Conferindo como esta chave funciona hoje…") : "Só com preço definido. Ainda não aparece para os alunos."} checked={form.active} onChange={(e) => set({ active: e.target.checked })} />
+        <TextArea label="Recursos incluídos (um por linha)" rows={4} value={form.features} onChange={(features) => set({ features })} hint="Até 20 itens. Aparecem para o aluno na tela de Planos." />
+        <Switch label={trial ? "Oferecer teste grátis no cadastro" : "Marcar para venda"} description={trial ? (signupRule === "nova" ? "Ligado: quem se cadastrar ganha o teste grátis pelos dias de Configurações. Desligado: quem se cadastrar depois entra sem teste, só com questões e flashcards, até a equipe liberar um plano ou um teste em Usuários. Quem já está em teste não muda." : signupRule === "antiga" ? "Os dias de teste ficam em Configurações. Hoje todo cadastro novo recebe o teste, com esta chave ligada ou desligada." : "Os dias de teste ficam em Configurações. Conferindo como esta chave funciona hoje…") : "Só com preço definido. Por enquanto só marca o plano para quando a cobrança existir: não muda nada para o aluno."} checked={form.active} onChange={(e) => set({ active: e.target.checked })} />
         {state.error && <Banner tone="danger">{state.error}</Banner>}
         <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
           {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Plano salvo.</span>}
@@ -221,8 +221,8 @@ export function AdminPlans() {
   if (!data) return <Loading />;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Banner tone="info" title="Os planos ainda não aparecem para os alunos">
-        O app ainda não tem a tela de planos do aluno: nome, preço e recursos definidos aqui ficam guardados para quando ela existir. A cobrança será pela Stripe, numa próxima etapa. Até lá, libere planos manualmente em Usuários, com a data em “Plano pago até”. O que só o Elite tem (minutos de voz do Tutor e correção de estação com devolutiva) fica em Configurações, no bloco “Benefícios do plano Elite”: a lista de recursos abaixo é só texto para a futura tela de planos.
+      <Banner tone="info" title="O que o aluno vê dos planos">
+        O aluno tem uma tela de Planos só para informar: nome, descrição e recursos de cada plano, como você escreve aqui, e a situação dele. Ela não mostra preço e não tem botão de assinar: o preço fica guardado aqui para quando a cobrança existir, pela Stripe, numa próxima etapa. Até lá, libere planos manualmente em Usuários, com a data em “Plano pago até”. O que só o Elite tem (minutos de voz do Tutor e correção de estação com devolutiva) fica em Configurações, no bloco “Benefícios do plano Elite”, e só aparece na tela de planos depois que você preenche.
       </Banner>
       {data.map((plan) => (
         <PlanEditor key={plan.code} plan={plan} onSaved={setData} signupRule={signupRule} />
@@ -644,6 +644,9 @@ const DURONA_LEVELS = [
   { value: "sem_filtro", label: "Sem filtro (padrão; ataque pessoal continua proibido)" },
 ];
 const ENDED_LABEL = { student: "pelo aluno", timeout: "sem sinal", quota: "cota", replaced: "outro aparelho", error: "erro", session_closed: "sessão encerrada", session_limit: "limite da conversa", ativa: "ativas" };
+/** Segundos do banco → minutos no campo ("" quando o teto ainda não tem valor). */
+const secondsToMinutes = (seconds) => (seconds == null ? "" : String(Math.round((Number(seconds) / 60) * 100) / 100));
+const positive = (x) => Number(String(x ?? "").replace(",", ".")) > 0;
 /** "INEP = inépi" (uma por linha) ↔ [{ term, say }] */
 const pronText = (list) => (list ?? []).map((x) => `${x.term} = ${x.say}`).join("\n");
 const pronList = (text) =>
@@ -694,6 +697,10 @@ export function AdminTutor() {
         tts_account_monthly_chars: String(data.tts_account_monthly_chars ?? 30000),
         tts_price_per_1k_chars_usd: String(data.tts_price_per_1k_chars_usd ?? 0),
         stt_price_per_min_usd: String(data.stt_price_per_min_usd ?? 0),
+        stt_team_only: data.stt_team_only ?? true,
+        stt_trial_daily_min: secondsToMinutes(data.stt_trial_daily_seconds),
+        stt_paid_daily_min: secondsToMinutes(data.stt_paid_daily_seconds),
+        stt_account_daily_min: secondsToMinutes(data.stt_account_daily_seconds),
       });
   }, [data]);
   const personas = useLoad(() => backend.rpc("app_admin_tutor_personalities"), [backend]);
@@ -728,9 +735,16 @@ export function AdminTutor() {
   const set = (patch) => (setForm((f) => ({ ...f, ...patch })), setState((s) => ({ ...s, done: false })));
   // o banco recusa o Tutor ligado sem os planos pagos: avisa e trava o salvar antes
   const needsPlans = form.enabled && !form.requires_pro;
+  // o banco também recusa (…9891): o microfone só abre aos alunos com os três tetos e o preço da transcrição; a voz do professor, com o preço da voz
+  const micCapsFilled = [form.stt_trial_daily_min, form.stt_paid_daily_min, form.stt_account_daily_min].every(positive);
+  // banco ainda sem a atualização do microfone (…9891 não colada): a tela diz isso em vez de fingir que guarda os tetos
+  const micSupported = Object.prototype.hasOwnProperty.call(data, "stt_team_only");
+  const needsMicCaps = micSupported && !form.stt_team_only && !(micCapsFilled && positive(form.stt_price_per_min_usd));
+  const needsVoicePrice = !form.tts_team_only && data.tts_team_only !== false && !positive(form.tts_price_per_1k_chars_usd);
+  const blocked = needsPlans || needsMicCaps || needsVoicePrice;
   const save = async (event) => {
     event.preventDefault();
-    if (needsPlans) return;
+    if (blocked) return;
     setState({ saving: true, error: null, done: false });
     try {
       const n = (x) => String(x ?? "").trim();
@@ -746,6 +760,9 @@ export function AdminTutor() {
         tts_team_only: form.tts_team_only, tts_trial_daily_chars: n(form.tts_trial_daily_chars), tts_paid_daily_chars: n(form.tts_paid_daily_chars),
         tts_account_daily_chars: n(form.tts_account_daily_chars), tts_account_monthly_chars: n(form.tts_account_monthly_chars),
         tts_price_per_1k_chars_usd: price(form.tts_price_per_1k_chars_usd), stt_price_per_min_usd: price(form.stt_price_per_min_usd),
+        ...(micSupported
+          ? { stt_team_only: form.stt_team_only, stt_trial_daily_seconds: min(form.stt_trial_daily_min), stt_paid_daily_seconds: min(form.stt_paid_daily_min), stt_account_daily_seconds: min(form.stt_account_daily_min) }
+          : {}),
       };
       setData(await backend.rpc("app_admin_tutor_save_config", { p_config: config, p_reason: reason }));
       setReason("");
@@ -795,6 +812,17 @@ export function AdminTutor() {
           {(!(Number(String(form.tts_price_per_1k_chars_usd).replace(",", ".")) > 0) || !(Number(String(form.stt_price_per_min_usd).replace(",", ".")) > 0)) && (
             <Banner tone="warning">Preço não preenchido: o custo da voz do professor e da transcrição fica zerado no registro de consumo.</Banner>
           )}
+          {needsVoicePrice && <Banner tone="warning">Para liberar a voz do professor aos alunos, preencha antes o preço da voz (US$ por mil caracteres). Sem o preço, o gasto aparece como zero.</Banner>}
+          <div className="sm-overline">Microfone e transcrição (fala do aluno)</div>
+          {!micSupported && <Banner tone="warning">O microfone dos alunos continua só para a equipe e ainda não pode ser liberado: falta uma atualização do banco, que o Claude prepara para você colar.</Banner>}
+          <Switch label="Microfone só para a equipe" description="Ligado: só administrador e editor falam ao microfone da Nexus; os alunos escrevem pelo Chat. Para desligar, preencha antes os três tetos diários abaixo e o preço da transcrição." checked={form.stt_team_only} disabled={!micSupported} onChange={(e) => set({ stt_team_only: e.target.checked })} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
+            <TextField label="Microfone por dia — teste grátis (minutos por aluno)" value={form.stt_trial_daily_min} inputMode="decimal" maxLength={6} disabled={!micSupported} onChange={(e) => set({ stt_trial_daily_min: e.target.value })} hint="Vazio = ainda sem valor. De 1 segundo a 1.440 minutos." />
+            <TextField label="Microfone por dia — plano pago (minutos por aluno)" value={form.stt_paid_daily_min} inputMode="decimal" maxLength={6} disabled={!micSupported} onChange={(e) => set({ stt_paid_daily_min: e.target.value })} hint="Vazio = ainda sem valor." />
+            <TextField label="Teto da plataforma por dia (minutos, todos juntos)" value={form.stt_account_daily_min} inputMode="decimal" maxLength={6} disabled={!micSupported} onChange={(e) => set({ stt_account_daily_min: e.target.value })} hint="Vazio = ainda sem valor. A equipe também entra na soma." />
+          </div>
+          {micSupported && !micCapsFilled && <Badge tone="warning">Pendente: definir os tetos diários da transcrição antes de liberar o microfone aos alunos</Badge>}
+          {needsMicCaps && <Banner tone="warning">Para liberar o microfone aos alunos, preencha antes o teto diário de transcrição (teste grátis, plano pago e a plataforma toda) e o preço da transcrição.</Banner>}
           <div className="sm-overline">Teste grátis (7 dias, a partir do primeiro uso)</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>
             <TextField label="Interações de texto por dia" value={form.trial_text_daily} inputMode="numeric" maxLength={3} onChange={(e) => set({ trial_text_daily: e.target.value })} />
@@ -873,7 +901,7 @@ export function AdminTutor() {
           {state.error && <Banner tone="danger">{state.error}</Banner>}
           <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
             {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Tutor atualizado.</span>}
-            <Button type="submit" loading={state.saving} disabled={reason.trim().length < 10 || needsPlans}>Salvar Tutor</Button>
+            <Button type="submit" loading={state.saving} disabled={reason.trim().length < 10 || blocked}>Salvar Tutor</Button>
           </div>
         </div>
       </Card>

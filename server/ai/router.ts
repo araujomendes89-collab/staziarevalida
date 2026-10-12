@@ -13,7 +13,7 @@
  *                                       o que este servidor não chama: Ollama no site publicado). A busca de fontes
  *                                       oficiais (busca_fontes) só aceita o modo sozinha, sem Ollama e sem Gemini, e leva também
  *                                       max_searches (inteiro de 1 a 10 ou nulo = 5)
- *   PUT  /settings                      { monthly_cap_usd, per_run_cap_usd, caps_enabled, tab_override_enabled }
+ *   PUT  /settings                      { monthly_cap_usd, per_run_cap_usd, caps_enabled, tab_override_enabled, overall_monthly_cap_usd, overall_cap_enabled }
  *   PUT  /prices/:provider/:model       { input_per_mtok, output_per_mtok, source_url, per_search_usd? }  o preço por
  *                                       busca na internet (número >= 0 ou null) só muda quando vem no pedido
  */
@@ -243,12 +243,12 @@ export function createAiRouter(
     try {
       const b = body(req);
       const patch: Record<string, number | boolean | null> = {};
-      for (const k of ["monthly_cap_usd", "per_run_cap_usd"]) {
+      for (const k of ["monthly_cap_usd", "per_run_cap_usd", "overall_monthly_cap_usd"]) {
         if (!(k in b)) continue;
         if (b[k] !== null && !isNum(b[k])) throw bad("Os tetos precisam ser números maiores ou iguais a zero, ou vazios.");
         patch[k] = b[k];
       }
-      for (const k of ["caps_enabled", "tab_override_enabled"]) {
+      for (const k of ["caps_enabled", "tab_override_enabled", "overall_cap_enabled"]) {
         if (!(k in b)) continue;
         if (typeof b[k] !== "boolean") throw bad("Ligado ou desligado precisa ser verdadeiro ou falso.");
         patch[k] = b[k];
@@ -256,8 +256,13 @@ export function createAiRouter(
       const cur = (await fresh()).settings;
       const eff = { ...cur, ...patch } as typeof cur;
       if (eff.caps_enabled && (eff.monthly_cap_usd === null || eff.per_run_cap_usd === null)) throw bad("Para ligar os tetos, preencha o teto mensal e o teto por chamada.");
-      const out = await db().service("ch_worker_ai_save_settings", { p_actor: req.user!.id, p_settings: patch });
+      if (eff.overall_cap_enabled && (eff.overall_monthly_cap_usd ?? null) === null) throw bad("Para ligar o teto geral do mês, preencha o valor dele.");
+      const out = await db().service<Record<string, unknown>>("ch_worker_ai_save_settings", { p_actor: req.user!.id, p_settings: patch });
       invalidateAiConfig(db());
+      // banco sem a migração do teto geral (…9892 ainda não colada): a função antiga ignora as chaves novas; não finge que gravou
+      if (("overall_monthly_cap_usd" in patch || "overall_cap_enabled" in patch) && !(out && "overall_cap_enabled" in out)) {
+        throw bad("O teto geral do mês ainda não pode ser guardado: falta colar a atualização do banco (a 9892).");
+      }
       res.json(out);
     } catch (error) {
       fail(res, error);
