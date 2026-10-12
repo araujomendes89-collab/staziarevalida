@@ -26,6 +26,7 @@ import { loadComplementarTerms } from "../contentHub/complementarGuard";
 import { holdFile, recordFileSha, releaseFile, SHA_WARNING } from "../contentHub/fileSha";
 import { checkScript, generateScript, PODCAST_PROMPT_VERSION, type PodcastScript, type ScriptLine, type SourceChunk } from "./script";
 import { DEFAULT_VOICES, geminiTtsEnabled, pcmToMp3, pickVoices, SAMPLE_RATE, silence, splitParts, synthesizePart, ttsCost, ttsStatus, VOICE_OPTIONS, type PodcastVoices, type TtsKind } from "./audio";
+import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 
 export const PODCASTS_BUCKET = "podcasts";
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -100,7 +101,8 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       req.user = user;
       next();
     } catch (error) {
-      fail(res, 500, message(error));
+      (deps as { log?: (m: string) => void } | null)?.log?.(`conferência de login falhou: ${message(error)}`.slice(0, 300));
+      fail(res, 500, ACCESS_CHECK_FAILED);
     }
   });
   const asUser = <T>(req: Authed, fn: string, args: Record<string, unknown> = {}) => deps!.db.asUser<T>(req.user!, fn, args);
@@ -267,7 +269,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       });
       res.json({ script: await aiChoices(deps!.db), tts, voices: VOICE_OPTIONS, default_voices: DEFAULT_VOICES });
     } catch (error) {
-      fail(res, statusOf(error, 500), message(error));
+      fail(res, statusOf(error, 500), shown(error));
     }
   });
 
@@ -287,7 +289,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const signed = await deps!.storage.signedUpload(key);
       res.json({ mode: "signed", bucket: PODCASTS_BUCKET, key, path: signed.path, token: signed.token });
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -306,7 +308,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const view = await ingestFile(req, { kind: spec.ext, title: String(title || "Documento").slice(0, 200), storage_path: key }, pages, key, buf);
       res.status(201).json(view);
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -328,7 +330,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const view = await ingestFile(req, { kind: spec.ext, title: name, storage_path: key }, pages, key, body);
       res.status(201).json(view);
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -341,7 +343,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const title = String(req.body?.title ?? "").trim().slice(0, 200) || "Texto colado";
       res.status(201).json(await ingest(req, { kind: "text", title }, [{ page: null, text }]));
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -354,12 +356,12 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       try {
         fetched = await fetchLink(url, deps!.fetchImpl ?? fetch, deps!.checkHost);
       } catch (error) {
-        throw httpError(422, message(error));
+        throw httpError(422, shown(error));
       }
       const title = String(req.body?.title ?? "").trim() || fetched.title || url;
       res.status(201).json(await ingest(req, { kind: "link", title: title.slice(0, 200), url }, fetched.pages));
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -391,7 +393,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
           try {
             pages.push(...(await extractPdf(await readLimited(deps!.lessons, lesson.slides, MAX_SOURCE_BYTES, deps!.fetchImpl ?? fetch))));
           } catch (error) {
-            note = error instanceof TooBigError ? tooBig() : `O PDF da aula não foi lido (${message(error)}); entraram o resumo e os pontos-chave.`;
+            note = error instanceof TooBigError ? tooBig() : `O PDF da aula não foi lido (${shown(error)}); entraram o resumo e os pontos-chave.`;
           }
         }
       }
@@ -399,7 +401,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const notes = [view?.note, note].filter(Boolean).join(" ");
       res.status(201).json(notes ? { ...view, note: notes } : view);
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -414,7 +416,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const released = await releaseFiles(req.user!.id); // o arquivo da fonte (se nenhuma outra linha o usa) e o áudio que deixou de valer
       res.json(released.note ? { ...(view ?? {}), note: released.note } : view);
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -428,7 +430,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       if (!(before.sources ?? []).some((s: any) => s.id === req.params.sourceId)) throw httpError(404, "Fonte não encontrada.");
       res.json(await asUser(req, "app_admin_podcast_rename_source", { p_source_id: req.params.sourceId, p_title: title }));
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -457,7 +459,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       try {
         r = await generateScript({ terms, kind: kind as any, topic: m.topic || m.title, minutes: Number(m.target_minutes) || 8, chunks, notes, mockRespond: kind === "mock" ? deps!.mockScript : undefined, db: deps!.db, actorId: req.user!.id, podcastId: req.params.id, aiMaker: deps!.aiMaker });
       } catch (error: any) {
-        throw httpError(error?.status ?? 502, `A IA do roteiro falhou: ${message(error)}`);
+        throw httpError(error?.status ?? 502, `A IA do roteiro falhou: ${shown(error)}`);
       }
       const simulated = kind === "mock";
       const meta = {
@@ -472,7 +474,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const released = await releaseFiles(req.user!.id); // o áudio do roteiro anterior deixou de valer
       res.json({ podcast: view, warnings: r.warnings, ...(released.note ? { note: released.note } : {}) });
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -491,7 +493,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const valid = Array.isArray(sent) ? new Map(chunks.filter((c) => (sent as unknown[]).map(Number).includes(c.id)).map((c) => [c.id, c])) : all;
       res.json({ warnings: checkScript(script, valid, all, await loadComplementarTerms(deps!.db, undefined, log)) });
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -543,7 +545,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       await deps!.storage.put(manifestKey(req.params.id, manifest.job), Buffer.from(JSON.stringify(manifest)), "application/json");
       res.json({ job: manifest.job, parts: manifest.parts.length, provider: kind, model: st.model, voices: manifest.voices, lines: lines.length });
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -607,7 +609,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
             pcm = Buffer.concat([await synthesizePart(manifest.provider, partLines, manifest.voices, deps!.tts), silence(320)]);
           } catch (error: any) {
             log(`podcasts: voz falhou na parte ${index + 1} do episódio ${id}: ${error?.technical ?? message(error)}`);
-            throw httpError(error?.status ?? 502, `A voz falhou na parte ${index + 1}: ${message(error)}`);
+            throw httpError(error?.status ?? 502, `A voz falhou na parte ${index + 1}: ${shown(error)}`);
           }
           const mp3 = await pcmToMp3(pcm);
           const seconds = pcm.length / 2 / SAMPLE_RATE;
@@ -625,7 +627,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
         partsInFlight.delete(flight);
       }
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -664,7 +666,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       res.json(released.note ? { ...(view ?? {}), note: released.note } : view);
     } catch (error) {
       if (newKey) await removeQuietly(deps?.storage, [newKey]);
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -677,7 +679,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const released = await releaseFiles(req.user!.id);
       res.json(cleanupBody(released));
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -688,7 +690,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const released = await releaseFiles(req.user!.id);
       res.json(cleanupBody(released));
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -706,7 +708,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const p = await audioPath(req);
       res.json({ url: deps!.storage.signedUrl ? await deps!.storage.signedUrl(p, AUDIO_LINK_SECONDS) : null });
     } catch (error) {
-      fail(res, statusOf(error, 404), message(error));
+      fail(res, statusOf(error, 404), shown(error));
     }
   });
 
@@ -718,7 +720,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       res.setHeader("Cache-Control", "private, no-store");
       res.send(data);
     } catch (error) {
-      fail(res, statusOf(error, 404), message(error));
+      fail(res, statusOf(error, 404), shown(error));
     }
   });
 
@@ -745,7 +747,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       res.status(201).json({ lesson });
     } catch (error) {
       if (copied) await removeQuietly(deps?.lessons, [copied]);
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 
@@ -757,7 +759,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const released = await releaseFiles(req.user!.id); // áudio e arquivos das fontes do episódio apagado
       res.json({ deleted: true, ...(released.note ? { aviso: released.note } : {}) });
     } catch (error) {
-      fail(res, statusOf(error), message(error));
+      fail(res, statusOf(error), shown(error));
     }
   });
 

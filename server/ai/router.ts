@@ -22,6 +22,7 @@ import type { ContentDb, Identity } from "../contentHub/infra";
 import { listModels } from "./models";
 import { PRICE_SEED } from "./prices";
 import { capGuidance, FUNCTION_KEYS, functionChecks, invalidateAiConfig, isProviderId, loadAiConfig, isSearchFunction, providerChecks, providerPending, validateFunctionConfig, type AiFunctionKey, type FunctionConfig, type ModelRef } from "./config";
+import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 
 type Authed = Request & { user?: Identity; admin?: boolean };
 
@@ -53,12 +54,12 @@ export function createAiRouter(
       }
       next();
     } catch (error) {
-      res.status(forbidden(error) ? 403 : 500).json({ error: message(error) });
+      res.status(forbidden(error) ? 403 : 500).json({ error: forbidden(error) ? shown(error) : ACCESS_CHECK_FAILED });
     }
   });
 
   const fail = (res: Response, error: unknown) => {
-    res.status(forbidden(error) ? 403 : 400).json({ error: message(error) });
+    res.status(forbidden(error) ? 403 : 400).json({ error: shown(error) });
   };
   const db = () => deps!.db;
   const json = express.json({ limit: "64kb" });

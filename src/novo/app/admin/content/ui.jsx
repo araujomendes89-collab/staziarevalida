@@ -74,7 +74,7 @@ export function useAction() {
       setState({ busy: false, error: null, done });
       return result;
     } catch (error) {
-      setState({ busy: false, error: messageOf(error, error?.message || "Não foi possível concluir."), done: null });
+      setState({ busy: false, error: messageOf(error), done: null });
       return undefined;
     }
   };

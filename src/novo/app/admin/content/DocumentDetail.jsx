@@ -7,6 +7,7 @@ import { LoadError, Loading, TextArea, useLoad } from "../common.jsx";
 import { hubAvailable, hubDocumentUrl, hubPost } from "./api.js";
 import { BLOCK_STATUS, BLOCK_TYPE, DOC_STATUS, JOB_STATUS, STEP_LABEL } from "./labels.js";
 import { ClaimCard, KeyValue, Label, ModelBadge, Pre, Section, StatusBadge, useAction, when } from "./ui.jsx";
+import { explainError } from "../../../../shared/errors/explicarErro";
 
 const BUSY = new Set(["received", "extracting", "classifying", "verifying_sources", "drafting"]);
 
@@ -160,7 +161,7 @@ function Viewer({ doc, pages, page, setPage, onChanged }) {
   React.useEffect(() => {
     if (!hubAvailable(backend)) return undefined;
     let made = null;
-    hubDocumentUrl(backend, doc.id).then((u) => setUrl((made = u)), (e) => setFileError(e.message));
+    hubDocumentUrl(backend, doc.id).then((u) => setUrl((made = u)), (e) => setFileError(explainError(e)));
     return () => made?.startsWith("blob:") && URL.revokeObjectURL(made);
   }, [backend, doc.id]);
   if (!pages.length) return null;

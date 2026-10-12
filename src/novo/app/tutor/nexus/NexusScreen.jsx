@@ -15,10 +15,11 @@ import { NexusLobby, withArticle } from "./NexusLobby.jsx";
 import { QuestionCard } from "./QuestionCard.jsx";
 import { useNexusVoice } from "./useNexusVoice.js";
 import "./nexus.css";
+import { explainError } from "../../../../shared/errors/explicarErro";
 
 export const JEITO_LABEL = { eleven: "Voz do professor", reserva: "Voz reserva", escrito: "Por escrito" };
 export const PROFESSOR_CHANGED = "Este professor mudou. Comece uma conversa nova.";
-const messageOf = (error) => error?.message || "Não foi possível concluir. Tente de novo.";
+const messageOf = (error) => explainError(error);
 
 /** Argumentos de app_tutor_start: o modo, o professor e o contexto ("Me teste" pelos pontos fracos; "Perguntar" livre). */
 export function startArgs(personalityId, mode, request = null) {

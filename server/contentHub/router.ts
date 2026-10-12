@@ -15,6 +15,7 @@ import type { ProcessingReport } from "./capabilities";
 import { DEFAULT_MAX_SEARCHES, functionChecks, invalidateAiConfig, loadAiConfig } from "../ai/config";
 import { aiAllowed } from "./ai/registry";
 import { DEFAULT_EMBEDDING_MODEL, embedderAllowed, embeddingsConfig, queryEmbedding } from "./embeddings";
+import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 
 /** A tarefa no Cloud Run roda a cada 10 minutos: sem relato há mais de 30, ela parou. */
 const PROCESSING_STALE_MIN = 30;
@@ -45,7 +46,8 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       req.user = user;
       next();
     } catch (error) {
-      fail(res, 500, message(error));
+      (deps as { log?: (m: string) => void } | null)?.log?.(`conferência de login falhou: ${message(error)}`.slice(0, 300));
+      fail(res, 500, ACCESS_CHECK_FAILED);
     }
   });
 
@@ -120,7 +122,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       const embeddings = { ready: Boolean(deps!.embedder) && !deps!.embedder?.problem, model, passages: stats?.passages ?? null, embedded: stats?.embedded ?? null, vector_index: stats?.vector_index ?? null };
       res.json({ me, storage: deps!.db.mode, ai: deps!.ai.status, ai_central: central, renderer, brand, worker: local, processing, embeddings, pending });
     } catch (error) {
-      fail(res, forbidden(error) ? 403 : 500, message(error));
+      fail(res, forbidden(error) ? 403 : 500, shown(error));
     }
   });
 
@@ -140,7 +142,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       const results = await asUser<any[]>(req, "app_ch_search_passages", { p_query: query, p_filters: filters, p_limit: limit, p_embedding: meaning });
       res.json({ results: results ?? [], mode: meaning ? "palavras e significado" : "palavras" });
     } catch (error) {
-      fail(res, forbidden(error) ? 403 : 500, message(error));
+      fail(res, forbidden(error) ? 403 : 500, shown(error));
     }
   });
 
@@ -216,7 +218,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
     await deps!.db.service("ch_worker_unblock");
     res.status(201).json({ ...doc, job });
   };
-  const failUpload = (res: Response, error: any) => fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+  const failUpload = (res: Response, error: any) => fail(res, error?.status ?? (forbidden(error) ? 403 : 400), shown(error));
 
   router.post("/documents", upload, async (req: Authed, res) => {
     try {
@@ -270,7 +272,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       const detail = await asUser<{ document: { storage_path: string } }>(req, "app_ch_document", { p_document_id: req.params.id });
       res.json({ url: deps!.storage.signedUrl ? await deps!.storage.signedUrl(detail.document.storage_path, LINK_SECONDS) : null });
     } catch (error) {
-      fail(res, forbidden(error) ? 403 : 404, message(error));
+      fail(res, forbidden(error) ? 403 : 404, shown(error));
     }
   });
 
@@ -284,7 +286,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       res.setHeader("Cache-Control", "private, no-store");
       res.send(data);
     } catch (error) {
-      fail(res, forbidden(error) ? 403 : 404, message(error));
+      fail(res, forbidden(error) ? 403 : 404, shown(error));
     }
   });
 
@@ -298,7 +300,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       if (r.format === "html") res.setHeader("Content-Security-Policy", "default-src 'none'; img-src data:; style-src 'unsafe-inline'; font-src data:");
       res.send(data);
     } catch (error) {
-      fail(res, forbidden(error) ? 403 : 404, message(error));
+      fail(res, forbidden(error) ? 403 : 404, shown(error));
     }
   });
 
@@ -308,7 +310,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       await asUser(req, "app_ch_retry_job", { p_job_id: req.params.id });
       res.json({ ok: true });
     } catch (error) {
-      fail(res, forbidden(error) ? 403 : 400, message(error));
+      fail(res, forbidden(error) ? 403 : 400, shown(error));
     }
   });
 
@@ -320,7 +322,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       if (!opts.worker) return fail(res, 503, "Worker desligado neste servidor.");
       res.json(await opts.worker.checkSources());
     } catch (error) {
-      fail(res, forbidden(error) ? 403 : 500, message(error));
+      fail(res, forbidden(error) ? 403 : 500, shown(error));
     }
   });
 
@@ -340,7 +342,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       const p = await previewReferenceCleanup(deps!.db, id);
       res.json({ ...p, changes: p.changes.slice(0, 200), shown: Math.min(p.changes.length, 200), total: p.changes.length });
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), shown(error));
     }
   });
 
@@ -357,7 +359,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
     if (!UUID.test(id)) throw httpError(400, "Candidato inválido.");
     return id;
   };
-  const adminError = (res: Response, error: any) => fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+  const adminError = (res: Response, error: any) => fail(res, error?.status ?? (forbidden(error) ? 403 : 400), shown(error));
   /** Link temporário do arquivo guardado de um candidato (60 s). */
   const CANDIDATE_LINK_SECONDS = 60;
   const WEB_PAGE_NO_FILE = "Página web: o arquivo não abre aqui. Veja o texto e abra no site oficial.";
@@ -447,7 +449,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       res.setHeader("Cache-Control", "private, no-store");
       res.send(data);
     } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : /não encontrado/i.test(message(error)) ? 404 : 400), message(error));
+      fail(res, error?.status ?? (forbidden(error) ? 403 : /não encontrado/i.test(message(error)) ? 404 : 400), shown(error));
     }
   });
 
@@ -460,7 +462,7 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       if (!uuid.test(String(req.params.old)) || !uuid.test(String(req.params.new))) return fail(res, 400, "Fonte inválida.");
       res.json(await compareSourceVersions(deps!.db, String(req.params.old), String(req.params.new)));
     } catch (error) {
-      fail(res, forbidden(error) ? 403 : 400, message(error));
+      fail(res, forbidden(error) ? 403 : 400, shown(error));
     }
   });
 

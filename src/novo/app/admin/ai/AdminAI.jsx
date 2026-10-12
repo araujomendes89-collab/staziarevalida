@@ -7,6 +7,7 @@ import { Loading, useLoad } from "../common.jsx";
 import { KeyValue, Section } from "../content/ui.jsx";
 import { aiGet, aiSend, PROVIDER_NAME, usd } from "./aiApi.js";
 import { FunctionEditor } from "./FunctionEditor.jsx";
+import { explainError } from "../../../../shared/errors/explicarErro";
 
 const PROVIDER_ORDER = ["anthropic", "openai", "gemini", "ollama"];
 const FUNCTIONS = [
@@ -41,7 +42,7 @@ const note = { margin: 0, font: "var(--type-body-sm)", color: "var(--text-second
 function LoadFail({ error, retry }) {
   return (
     <Banner tone="danger" action={<Button size="sm" variant="secondary" onClick={retry}>Tentar de novo</Button>}>
-      {error?.message || "Não foi possível carregar a Central de IAs."}
+      {explainError(error, "Não foi possível carregar a Central de IAs.")}
     </Banner>
   );
 }
@@ -76,7 +77,7 @@ function ProviderCard({ p, spend, pending, blocks, backend, reload }) {
     try {
       return await fn();
     } catch (e) {
-      setError(e.message);
+      setError(explainError(e));
     } finally {
       setBusy(false);
     }
@@ -218,7 +219,7 @@ function PriceRow({ row, backend, reload }) {
       setState({ busy: false, error: null });
       await reload();
     } catch (e) {
-      setState({ busy: false, error: e.message });
+      setState({ busy: false, error: explainError(e) });
     }
   };
   const tag = fresh ? "Novo preço" : `${PROVIDER_NAME[row.provider]} ${row.model}`;
@@ -374,7 +375,7 @@ function Spend({ data, backend, reload }) {
       setState({ busy: false, error: null, done: true });
       await reload();
     } catch (e) {
-      setState({ busy: false, error: e.message, done: false });
+      setState({ busy: false, error: explainError(e), done: false });
     }
   };
   const prices = data.prices ?? [];
@@ -457,7 +458,7 @@ function TabSelector({ data, backend, reload }) {
       setState({ busy: false, error: null });
       await reload();
     } catch (e) {
-      setState({ busy: false, error: e.message });
+      setState({ busy: false, error: explainError(e) });
     }
   };
   return (

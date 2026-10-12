@@ -7,8 +7,9 @@ import { TutorConsentCard } from "../TutorConsentCard.jsx";
 import { tutorAvailable } from "../api.js";
 import { usePlanLock } from "../../plan/planAccess.js";
 import { askForAccess, useSupportEmail } from "../../support/supportContact.jsx";
+import { explainError } from "../../../../shared/errors/explicarErro";
 
-const messageOf = (error) => error?.message || "Não foi possível concluir. Tente de novo.";
+const messageOf = (error) => explainError(error);
 
 /** frame: embrulha as telas do portão (carregando, desligado, aceite, plano); a Nexus por cima usa para pôr o "Fechar". */
 export function TutorGate({ go, children, frame = (node) => node }) {

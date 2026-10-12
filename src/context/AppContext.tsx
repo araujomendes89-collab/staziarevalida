@@ -42,7 +42,6 @@ import {
 import { AdaptiveEngine } from "../services/adaptiveEngine";
 import { SpacedRepetitionService } from "../services/spacedRepetitionService";
 import { FlashcardProvenanceService } from "../services/flashcardProvenanceService";
-import { SEED_RADAR_UPDATES } from "../data/knowledgeGraphData";
 import { REVALIDA_EDITIONS_INVENTORY } from "../data/revalidaInventoryData";
 import { SEED_MEDICAL_GUIDELINES, SEED_GUIDELINE_WATCH_ALERTS, SEED_GUIDELINE_AUDIT_LOGS } from "../data/guidelinesData";
 
@@ -312,7 +311,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [knowledgeGraph, setKnowledgeGraph] = useState<KnowledgeNode[]>(() => StorageService.getKnowledgeGraph());
   const [osceAttempts, setOsceAttempts] = useState<OSCEStationAttempt[]>(() => StorageService.getOSCEAttempts());
   const [todayMission, setTodayMission] = useState<StudyMission>(() => StorageService.getTodayMission());
-  const [radarUpdates] = useState<RadarUpdate[]>(SEED_RADAR_UPDATES);
+  // RT06: o Radar não traz mais notícias médicas fixas e inventadas; fica vazio até existir fonte revisada.
+  const [radarUpdates] = useState<RadarUpdate[]>([]);
 
   const [activeQuestionIndex, setActiveQuestionIndex] = useState<number>(0);
   const [questionFilterArea, setQuestionFilterArea] = useState<MedicalArea | "ALL">("ALL");

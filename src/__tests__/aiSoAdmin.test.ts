@@ -50,8 +50,9 @@ const chamar = (method: string, p: string, token: string | null) =>
   });
 
 describe("server.ts", () => {
-  it("tem as 13 rotas antigas /api/ai/* (se mudar, conferir se a trava ainda cobre todas)", () => {
+  it("tem as 14 rotas antigas /api/ai/* (a /api/ai/health é a saúde detalhada, RT04) (se mudar, conferir se a trava ainda cobre todas)", () => {
     expect(ROTAS.map(([v, p]) => `${v} ${p}`)).toEqual([
+      "GET /api/ai/health",
       "GET /api/ai/models",
       "GET /api/ai/usage",
       "POST /api/ai/generate",

@@ -17,6 +17,7 @@ import path from "path";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { localStorageDir, supabaseStorage, type ContentDb, type Identity, type Storage } from "../contentHub/infra";
 import { imageProblem } from "./imageFiles";
+import { ACCESS_CHECK_FAILED, shown } from "../auth/friendlyError";
 
 export const FIGURES_BUCKET = "question-figures";
 export const FIGURE_MAX_BYTES = 5 * 1024 * 1024;
@@ -57,14 +58,15 @@ export function createQuestionFiguresRouter(deps: QuestionFiguresDeps | null, pe
       req.user = user;
       next();
     } catch (error) {
-      fail(res, 500, message(error));
+      (deps as { log?: (m: string) => void } | null)?.log?.(`conferência de login falhou: ${message(error)}`.slice(0, 300));
+      fail(res, 500, ACCESS_CHECK_FAILED);
     }
   });
   const asUser = <T>(req: Authed, fn: string, args: Record<string, unknown> = {}) => deps!.db.asUser<T>(req.user!, fn, args);
   const status = (error: any, fallback = 400) => error?.status ?? (forbidden(error) ? 403 : notFound(error) ? 404 : fallback);
   const FAIL_SQL = "A atualização do banco para as figuras das questões ainda não foi aplicada. Peça ao administrador para aplicar a atualização e tente de novo.";
   /** Resposta de erro: banco sem a atualização vira aviso em português (503), nunca um sucesso silencioso. */
-  const failWith = (res: Response, error: any, fallback = 400) => (missingSql(error) && !error?.status ? fail(res, 503, FAIL_SQL) : fail(res, status(error, fallback), message(error)));
+  const failWith = (res: Response, error: any, fallback = 400) => (missingSql(error) && !error?.status ? fail(res, 503, FAIL_SQL) : fail(res, status(error, fallback), shown(error)));
 
   /** Equipe (conferida no banco) e questão existente; devolve o id. */
   const staffQuestion = async (req: Authed) => {
@@ -217,7 +219,7 @@ export function createQuestionFiguresRouter(deps: QuestionFiguresDeps | null, pe
       if (!KEY.test(image.path)) throw httpError(404, "Figura não encontrada.");
       res.json({ url: deps!.storage.signedUrl ? await deps!.storage.signedUrl(image.path, LINK_SECONDS) : null });
     } catch (error: any) {
-      fail(res, status(error, 404), message(error));
+      fail(res, status(error, 404), shown(error));
     }
   });
 
@@ -231,7 +233,7 @@ export function createQuestionFiguresRouter(deps: QuestionFiguresDeps | null, pe
       res.setHeader("Cache-Control", "private, no-store");
       res.send(data);
     } catch (error: any) {
-      fail(res, status(error, 404), message(error));
+      fail(res, status(error, 404), shown(error));
     }
   });
 

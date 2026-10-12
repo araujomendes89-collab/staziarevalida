@@ -27,13 +27,11 @@ import {
   generateTransitQuizQuestion,
   evaluateTransitSpokenAnswer,
 } from "./server/ai/voiceTutor";
-import { adminFlashcardDraftsRouter } from "./server/routes/adminFlashcardDrafts";
 import { adminDesignCloneRouter } from "./server/routes/adminDesignClone";
 import { adminPdfIngestionRouter } from "./server/routes/adminPdfIngestion";
 import { adminContentPublicationRouter } from "./server/routes/adminContentPublication";
-import { publishedContentRouter } from "./server/routes/publishedContent";
 import { adminUsersRouter } from "./server/routes/adminUsers";
-import { entitlementsRouter, adminEntitlementsRouter } from "./server/routes/entitlements";
+import { entitlementsRouter } from "./server/routes/entitlements";
 import { resolveServerPort } from "./server/config/serverPort";
 import { checklistBankRouter } from "./server/checklistBank/router";
 import { createDevDbRouter } from "./server/devDb/router";
@@ -90,14 +88,17 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
   // Cobrança do app antigo (Firebase) desligada (RT01/RT02, 2026-10-10): /api/billing e /api/webhooks não são montadas.
   // Tinham simulação de aprovação sem login e aviso de pagamento sem conferência; nenhuma tela do app novo as usa.
   // Os arquivos ficam em server/routes; a cobrança nova será feita do zero, com conferência obrigatória da assinatura.
+  // Inventário das rotas do app antigo (RT03, 2026-10-12). Todas usam o login do Firebase do app antigo; o app novo (/novo) não chama nenhuma.
+  //   ligadas porque o app antigo ainda chama (src/services):
+  //     /api/entitlements (planos, meu acesso, consumo; "upgrade-self" só administrador), /api/admin/users, /api/admin/design,
+  //     /api/admin/content/publication e /api/admin/content (editorial/PDF): as de administração já exigem o papel ADMIN.
+  //   desligadas por não ter NENHUMA tela ou serviço que as chame (o app antigo lê direto do Firestore):
+  //     /api/admin/entitlements, /api/admin/flashcards/drafts e /api/published-content. Os arquivos ficam em server/routes.
   app.use("/api/entitlements", entitlementsRouter);
-  app.use("/api/admin/entitlements", adminEntitlementsRouter);
   app.use("/api/admin/users", adminUsersRouter);
-  app.use("/api/admin/flashcards/drafts", adminFlashcardDraftsRouter);
   app.use("/api/admin/design", adminDesignCloneRouter);
   app.use("/api/admin/content/publication", adminContentPublicationRouter);
   app.use("/api/admin/content", adminPdfIngestionRouter);
-  app.use("/api/published-content", publishedContentRouter);
 
   // Banco de Checklists + Simulados. Valida o catálogo agora: estação que não soma
   // 10,0 impede o servidor de subir.
@@ -138,9 +139,13 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
     );
   }
 
-  // API Health Check
-
+  // Saúde do servidor (RT04): resposta pública mínima, só "ok" e a hora. Os detalhes (chaves existentes, projeto, região, modelo) ficam
+  // em /api/ai/health, que passa pela trava de administrador de /api/ai e é a que a Administração usa.
   app.get("/api/health", (_req: Request, res: Response) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString() });
+  });
+
+  app.get("/api/ai/health", (_req: Request, res: Response) => {
     const claudeStatus = getClaudeEngineStatus();
     res.json({
       status: "ok",
@@ -618,63 +623,8 @@ export async function createApp(opts: { serverless?: boolean } = {}) {
     });
   });
 
-  // Revalida Radar updates
-  app.get("/api/radar/updates", (_req: Request, res: Response) => {
-    res.json({
-      lastChecked: new Date().toISOString(),
-      edition: "Revalida INEP 2026/1",
-      updates: [
-        {
-          id: "rad-1",
-          type: "EDITAL",
-          badge: "NOVO EDITAL",
-          title: "Publicação do Edital do Revalida INEP 2026/1",
-          date: "2026-08-20",
-          source: "INEP / Diário Oficial da União (DOU)",
-          link: "https://www.gov.br/inep/pt-br/areas-de-atuacao/avaliacao-e-exames-educacionais/revalida",
-          impact: "ALTO",
-          impactDescription: "Confirmação da 1ª Etapa (Prova Teórica Objetiva e Discursiva) com manutenção da Matriz de Referência em 5 grandes áreas com ênfase na Atenção Primária à Saúde.",
-          actionRequired: "Cronograma adaptado automaticamente para a data da prova em 12 semanas.",
-        },
-        {
-          id: "rad-2",
-          type: "PROTOCOLO",
-          badge: "DIRETRIZ SUS",
-          title: "Atualização do Protocolo Clínico de Pré-Eclâmpsia e Hipertensão Gestacional",
-          date: "2026-08-05",
-          source: "Ministério da Saúde / CONITEC / FEBRASGO",
-          link: "https://www.gov.br/saude/pt-br/assuntos/protocolos-clinicos-e-diretrizes-terapeuticas",
-          impact: "CRÍTICO",
-          impactDescription: "Reforço no uso de Sulfato de Magnésio (esquemas Pritchard/Zuspan) e definição estrita de critérios de gravidade para interrupção da gestação.",
-          actionRequired: "3 novas microcompetências adicionadas ao seu plano adaptativo em Ginecologia e Obstetrícia.",
-        },
-        {
-          id: "rad-3",
-          type: "ATENCAO",
-          badge: "RETIFICAÇÃO",
-          title: "Gabarito Definitivo e Padrão de Resposta da Estação de Pediatria",
-          date: "2026-07-15",
-          source: "Comissão do Revalida INEP",
-          link: "https://www.gov.br/inep/pt-br",
-          impact: "MÉDIO",
-          impactDescription: "Valorização da comunicação humanizada com o responsável na anamnese pediátrica (pontuação separada de empatia e orientação de sinais de alarme).",
-          actionRequired: "Simulador OSCE calibrado com novo padrão de checklist invisível.",
-        },
-        {
-          id: "rad-4",
-          type: "EPIDEMIOLOGIA",
-          badge: "VIGILÂNCIA",
-          title: "Nova Nota Técnica para Manejo de Arboviroses (Dengue, Chikungunya, Oropouche)",
-          date: "2026-06-28",
-          source: "SVS / Ministério da Saúde",
-          link: "https://www.gov.br/saude/pt-br",
-          impact: "ALTO",
-          impactDescription: "Classificação de risco estadiada (Grupos A, B, C, D) e hidratação venosa imediata no grupo C antes mesmo dos exames laboratoriais.",
-          actionRequired: "Questões de Saúde Coletiva e Clínica Médica atualizadas.",
-        },
-      ],
-    });
-  });
+  // Notícias do "Radar" (RT06): a rota /api/radar/updates devolvia quatro atualizações médicas FIXAS e inventadas, abertas ao público.
+  // Foi removida. Atualizações de verdade vêm da aba Atualizações & Diretrizes, que passa por revisão médica.
 
   // RADAR GROUNDED DE DIRETRIZES DO SUS (Search Grounding com Gemini)
   app.post("/api/gemini/grounded-guideline-audit", async (req: Request, res: Response) => {

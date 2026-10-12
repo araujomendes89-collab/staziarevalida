@@ -182,3 +182,108 @@ describe("as rotas do app novo continuam montadas", () => {
     expect(r.status).toBe(401);
   });
 });
+
+describe("RT04: a saúde pública do servidor mostra só 'ok' e a hora", () => {
+  it("/api/health não diz quais chaves existem, nem projeto, nem região, nem modelo", async () => {
+    const guardadas = { g: process.env.GEMINI_API_KEY, p: process.env.GOOGLE_CLOUD_PROJECT };
+    process.env.GEMINI_API_KEY = "chave-de-teste-nao-vazar";
+    process.env.GOOGLE_CLOUD_PROJECT = "projeto-de-teste-nao-vazar";
+    try {
+      const r = await chamar("GET", "/api/health");
+      const texto = await r.text();
+      expect(r.status).toBe(200);
+      const corpo = JSON.parse(texto);
+      expect(Object.keys(corpo).sort()).toEqual(["status", "timestamp"]);
+      expect(corpo.status).toBe("ok");
+      expect(Number.isNaN(Date.parse(corpo.timestamp))).toBe(false);
+      expect(texto).not.toMatch(/hasGeminiKey|hasClaudeKey|gcpProject|gcpRegion|claude|nao-vazar|staziamed-revalida-prod/i);
+    } finally {
+      if (guardadas.g === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = guardadas.g;
+      if (guardadas.p === undefined) delete process.env.GOOGLE_CLOUD_PROJECT; else process.env.GOOGLE_CLOUD_PROJECT = guardadas.p;
+    }
+  });
+
+  it("os detalhes ficam em /api/ai/health, atrás da trava de administrador (sem login não abre)", async () => {
+    const r = await chamar("GET", "/api/ai/health");
+    expect(r.status).not.toBe(200);
+    expect([401, 403, 503]).toContain(r.status);
+    expect(await r.text()).not.toMatch(/gcpProject|hasGeminiKey|hasClaudeKey/);
+  });
+});
+
+describe("RT05: as rotas antigas de IA continuam só para administrador", () => {
+  it("/api/ai/* e /api/gemini/* sem login não chegam à IA (a trava responde antes; o aiSoAdmin.test confere administrador, editor e aluno)", async () => {
+    for (const [m, p] of [
+      ["GET", "/api/ai/models"],
+      ["POST", "/api/ai/generate"],
+      ["POST", "/api/ai/stream"],
+      ["GET", "/api/ai/usage"],
+      ["POST", "/api/gemini/generate-question"],
+      ["POST", "/api/gemini/tutor"],
+      ["POST", "/api/gemini/osce-evaluate"],
+    ] as const) {
+      const r = await chamar(m, p, { prompt: "oi" });
+      expect([401, 403, 503], `${m} ${p}`).toContain(r.status);
+    }
+  });
+});
+
+describe("RT06: nada de notícia médica fixa e inventada", () => {
+  it("/api/radar/updates não existe mais (404) e o texto das notícias não está no servidor", async () => {
+    const r = await chamar("GET", "/api/radar/updates");
+    expect(r.status).toBe(404);
+    expect(TEXT.match(/app\.\w+\(\s*["'`]\/api\/radar[^)]*\)/g)).toBeNull();
+    expect(TEXT.match(/Publicação do Edital do Revalida INEP 2026\/1|rad-[1-4]\b/g)).toBeNull();
+  });
+});
+
+describe("RT03: rotas do app antigo sem nenhuma tela ficam desligadas", () => {
+  it("as três sem uso respondem 404 e não tocam no Firebase", async () => {
+    const antes = firebase.chamadas;
+    for (const [m, p] of [
+      ["GET", "/api/published-content/qualquer-tema/current"],
+      ["POST", "/api/admin/flashcards/drafts"],
+      ["GET", "/api/admin/entitlements/plans"],
+      ["POST", "/api/admin/entitlements/overrides"],
+    ] as const) {
+      const r = await chamar(m, p, {});
+      expect(r.status, `${m} ${p}`).toBe(404);
+    }
+    expect(firebase.chamadas - antes).toBe(0);
+  });
+
+  it("as que o app antigo ainda chama continuam montadas e fechadas a quem não está logado (401, nunca 404)", async () => {
+    for (const [m, p] of [
+      ["GET", "/api/entitlements/me"],
+      ["POST", "/api/entitlements/upgrade-self"],
+      ["GET", "/api/admin/users"],
+      ["POST", "/api/admin/design/clone-analysis"],
+      ["POST", "/api/admin/content/publication/publish"],
+      ["POST", "/api/admin/content/pdf-ingest"],
+      ["GET", "/api/checklist-bank/stations"],
+    ] as const) {
+      const r = await chamar(m, p, {});
+      expect(r.status, `${m} ${p}`).toBe(401);
+    }
+  });
+
+  it("inventário: o server.ts não importa nem monta as três rotas desligadas; os arquivos continuam no projeto", () => {
+    expect(TEXT.match(/app\.\w+\(\s*["'`]\/api\/(published-content|admin\/flashcards|admin\/entitlements)[^)]*\)/g)).toBeNull();
+    expect(TEXT.match(/.*\b(publishedContentRouter|adminFlashcardDraftsRouter|adminEntitlementsRouter)\b.*/g)).toBeNull();
+    for (const f of ["publishedContent", "adminFlashcardDrafts", "entitlements"]) expect(fs.existsSync(path.join(ROOT, `server/routes/${f}.ts`))).toBe(true);
+  });
+
+  it("o app novo (src/novo) não chama nenhuma rota do app antigo, nem a de saúde detalhada", () => {
+    const achados: string[] = [];
+    const varrer = (dir: string) => {
+      for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+        if (e.name.startsWith(".")) continue;
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) varrer(p);
+        else if (/\.(ts|tsx|js|jsx)$/.test(e.name) && /\/api\/(entitlements|admin\/(entitlements|users|flashcards|design|content)|published-content|radar|health)\b/.test(fs.readFileSync(p, "utf8"))) achados.push(path.relative(ROOT, p));
+      }
+    };
+    varrer(path.join(ROOT, "src/novo"));
+    expect(achados).toEqual([]);
+  });
+});

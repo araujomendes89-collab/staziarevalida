@@ -16,6 +16,7 @@ import { DraftQuestions } from "./DraftQuestions.jsx";
 import { QuestionAnalyses } from "./QuestionAnalyses.jsx";
 import { HubSettings } from "./HubSettings.jsx";
 import { VisualMaterials } from "./visual/VisualMaterials.jsx";
+import { explainError } from "../../../../shared/errors/explicarErro";
 
 const SECTIONS = [
   { value: "documentos", label: "Documentos", icon: "file-up", who: "staff" },
@@ -40,7 +41,7 @@ export function ContentHub({ isAdmin, isStaff }) {
 
   React.useEffect(() => {
     if (!hubAvailable(backend)) return;
-    hubGet(backend, "/status").then(setStatus, (error) => setStatus({ error: error.message }));
+    hubGet(backend, "/status").then(setStatus, (error) => setStatus({ error: explainError(error) }));
   }, [backend]);
 
   const go = (secao, extra = {}) => setParams({ aba: params.get("aba") ?? "conteudo", secao, ...extra }, { replace: false });

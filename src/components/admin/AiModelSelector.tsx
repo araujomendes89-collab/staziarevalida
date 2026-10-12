@@ -21,7 +21,7 @@ export const AiModelSelector: React.FC<AiModelSelectorProps> = ({
 
   useEffect(() => {
     AiService.getAvailableModels().then(setModels);
-    fetch("/api/health")
+    fetch("/api/ai/health") // detalhes só para administrador (a /api/health pública mostra apenas "ok")
       .then((r) => r.json())
       .then((data) => {
         if (data.gcpProject) {

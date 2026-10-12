@@ -8,6 +8,7 @@ import { OFFICIAL_VOICES, VOICE_SCENARIOS } from "../../../shared/tutor/official
 import { StaziaVoiceOrb, orbEmotion } from "../tutor/voice/StaziaVoiceOrb.jsx";
 import { unlockAudio } from "../tutor/voice/audioUnlock.js";
 import "./officialVoices.css";
+import { explainError } from "../../../shared/errors/explicarErro";
 
 /** O detalhe técnico do aviso (nome da variável do servidor etc.) fica escondido: quem só ouve e aprova não precisa dele. */
 function TechnicalDetail({ text }) {
@@ -46,7 +47,7 @@ export function OfficialVoicesPanel({ endpoint = "/api/tutor/voices" }) {
   const reload = React.useCallback((signal) => request("", { signal }).then((response) => response.json()).then((value) => { if (!signal?.aborted) setStatus(value); }), [request]);
   React.useEffect(() => {
     const abort = new AbortController();
-    reload(abort.signal).catch((e) => { if (!abort.signal.aborted) setError(e.message); });
+    reload(abort.signal).catch((e) => { if (!abort.signal.aborted) setError(explainError(e)); });
     return () => abort.abort();
   }, [reload]);
   React.useEffect(() => {
@@ -106,7 +107,7 @@ export function OfficialVoicesPanel({ endpoint = "/api/tutor/voices" }) {
       catch { setError("O navegador bloqueou a reprodução automática. Use o botão de reprodução do áudio abaixo."); }
       // a audição entrou no registro do servidor: o painel relê o que já foi ouvido
       reload().catch(() => undefined);
-    } catch (e) { if (!abort.signal.aborted && generation === r.generation) setError(e.message); }
+    } catch (e) { if (!abort.signal.aborted && generation === r.generation) setError(explainError(e)); }
     finally { if (generation === r.generation) setBusy(null); }
   };
   const decide = async (id, action) => {
@@ -115,7 +116,7 @@ export function OfficialVoicesPanel({ endpoint = "/api/tutor/voices" }) {
     try {
       const response = await request(`/${action}`, { method: "POST", body: JSON.stringify({ personality: id }) });
       setStatus(await response.json());
-    } catch (e) { setError(e.message); }
+    } catch (e) { setError(explainError(e)); }
     finally { setActing(null); }
   };
   const sample = selected ? VOICE_SCENARIOS[selected.scenario] : null;

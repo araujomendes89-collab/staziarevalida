@@ -17,6 +17,7 @@ import { visualFileName } from "../../../src/shared/visualMaterials";
 import type { Identity } from "../infra";
 import type { PipelineDeps } from "../pipeline";
 import { assetKey, duplicateVisualMaterial, regenerateVisualMaterial, saveVisualMaterial, VisualValidationError } from "./service";
+import { ACCESS_CHECK_FAILED, shown } from "../../auth/friendlyError";
 
 type Authed = Request & { user?: Identity };
 
@@ -68,13 +69,13 @@ export function createVisualRouter(deps: PipelineDeps | null, opts: { pending?: 
       if (!me?.staff) return res.status(403).json({ error: "Materiais visuais: acesso restrito à equipe (administrador ou editor)." });
       next();
     } catch (error) {
-      res.status(forbidden(error) ? 403 : 500).json({ error: message(error) });
+      res.status(forbidden(error) ? 403 : 500).json({ error: forbidden(error) ? shown(error) : ACCESS_CHECK_FAILED });
     }
   });
 
   const fail = (res: Response, error: unknown) => {
     if (error instanceof VisualValidationError) return res.status(400).json({ error: error.message, problems: error.problems });
-    res.status(forbidden(error) ? 403 : notFound(error) ? 404 : 400).json({ error: message(error) });
+    res.status(forbidden(error) ? 403 : notFound(error) ? 404 : 400).json({ error: shown(error) });
   };
   const body = (req: Request) => (req.body && typeof req.body === "object" ? req.body : {}) as { input?: unknown; generate?: unknown; note?: unknown; version?: unknown };
   const json = express.json({ limit: "256kb" });
