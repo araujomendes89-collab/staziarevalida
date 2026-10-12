@@ -159,7 +159,7 @@ describe("Contrato: Central de IAs (FunctionEditor e AdminAI)", () => {
   it("'Desligar a função' manda config null e a função volta a desligada", async () => {
     expect((await http(ai, "PUT", "/functions/busca_fontes", { config: null })).status).toBe(200);
     const status = (await http(hub, "GET", "/source-search/status")).body;
-    expect(Object.keys(status).sort()).toEqual(["max_searches", "problems", "ready", "warnings"]);
+    expect(Object.keys(status).sort()).toEqual(["max_searches", "model", "per_search_usd", "problems", "provider", "ready", "warnings"]); // provider, model e per_search_usd: estimativa de custo na tela das abas
     expect(status).toMatchObject({ ready: false, max_searches: 5 });
     // ligada de novo com máximo 4: o status devolve o 4
     await http(ai, "PUT", "/functions/busca_fontes", { config: { mode: "sozinha", care: "caprichado", primary: { provider: "anthropic", model: "claude-contrato" }, fallback: null, reviewers: [], max_searches: 4 } });

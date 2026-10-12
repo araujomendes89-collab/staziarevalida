@@ -126,6 +126,14 @@ describe("Rotas das fontes oficiais", () => {
     const on = await call(direct, admin, "/source-search/status");
     expect(on.body).toMatchObject({ ready: true, problems: [], max_searches: 7 });
     expect(JSON.stringify(on.body)).not.toMatch(/sk-|ANTHROPIC_API_KEY/);
+    // atualidade: a tela das abas estima o custo com a IA e o preço por busca de agora
+    expect(on.body).toMatchObject({ provider: "anthropic", model: "claude-sonnet-5-5" });
+    await t.db.service("ch_worker_ai_save_price", {
+      p_actor: t.ADMIN, p_provider: "anthropic", p_model: "claude-sonnet-5-5",
+      p_price: { input_per_mtok: 2, output_per_mtok: 10, per_search_usd: 0.012, source_url: "https://exemplo.com", checked_on: "2026-10-07" },
+    });
+    invalidateAiConfig(t.db);
+    expect((await call(direct, admin, "/source-search/status")).body.per_search_usd).toBe(0.012);
 
     expect((await call(direct, editor, "/source-search/status")).status).toBe(403);
     expect((await call(direct, editor, "/source-search/status")).body.error).toBe("Somente administradores.");
