@@ -168,6 +168,18 @@ export async function runAiRequest(
   );
   track(reports);
   await io.checkpoint(resume());
+  // trilha dos rascunhos (Questões StaziaMed): uma linha "conferida" por rascunho conferido neste pedido, no texto que ainda vale
+  // (o banco descarta se o texto mudou). Falha aqui nunca derruba o pedido: a conferência já está gravada.
+  const touched = new Set<string>();
+  for (const r of reports) for (const id of r.savedIds) touched.add(id);
+  for (const id of touched) {
+    try {
+      const d = await db.service<{ content_hash?: string } | null>("ch_worker_draft_for_job", { p_draft_id: id });
+      if (d?.content_hash) await db.service("ch_worker_draft_checked", { p_draft_id: id, p_hash: d.content_hash, p_summary: { origem: "pedido pela tela", pedido: row.id, camadas: layers } });
+    } catch (error) {
+      deps.log?.(`trilha do rascunho ${id}: ${(error as Error).message}`);
+    }
+  }
   const stopped = reports.find((r) => r.pending);
   const pending = stopped?.pending ?? null;
   const summary = { layers: Object.fromEntries(reports.map((r) => [r.layer, { saved: r.saved, verdicts: r.verdicts, pending: r.pending ?? null }])) };

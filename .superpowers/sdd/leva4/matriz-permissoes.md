@@ -32,7 +32,7 @@
 | ch_worker_source_currency_pending (servico) | NEGA | NEGA | NEGA | NEGA | NEGA | NEGA | NEGA | NEGA |
 | ch_draft_triage (interna) | NEGA | NEGA | NEGA | NEGA | NEGA | NEGA | NEGA | NEGA |
 | ch_draft_official_evidence (interna) | NEGA | NEGA | NEGA | NEGA | NEGA | NEGA | NEGA | NEGA |
-| tabela draft_questions (linhas visíveis) | vê 0 | vê 0 | vê 0 | vê 1 | vê 1 | vê 1 | vê 1 | vê 1 |
-| tabela draft_question_events (linhas visíveis) | vê 0 | vê 0 | vê 0 | vê 2 | vê 2 | vê 2 | vê 2 | vê 2 |
+| tabela draft_questions (linhas visíveis) | vê 0 | vê 0 | vê 0 | vê 1 | vê 0 | vê 1 | vê 1 | vê 1 |
+| tabela draft_question_events (linhas visíveis) | vê 0 | vê 0 | vê 0 | vê 2 | vê 0 | vê 2 | vê 2 | vê 2 |
 | tabela ch_ai_requests (linhas visíveis) | vê 0 | vê 0 | vê 0 | vê 0 | vê 0 | vê 0 | vê 0 | vê 1 |
 | tabela staziamed_requests (linhas visíveis) | vê 0 | vê 0 | vê 0 | vê 0 | vê 0 | vê 0 | vê 0 | vê 0 |

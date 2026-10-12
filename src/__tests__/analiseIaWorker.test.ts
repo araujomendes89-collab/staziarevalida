@@ -221,6 +221,9 @@ describe("Worker: conferência dos rascunhos pedida pela tela", () => {
     // as 3 camadas gravadas só para os 3 rascunhos do pedido; o 4º ficou intocado
     const checks = await sql(`select d.source_id, count(*)::int n from public.draft_checks c join public.draft_questions d on d.id = c.draft_id where d.batch = 'lote_w' group by d.source_id order by 1`);
     expect(checks).toEqual([{ source_id: "w1", n: 3 }, { source_id: "w2", n: 3 }, { source_id: "w3", n: 3 }]);
+    // trilha dos rascunhos (Questões StaziaMed): uma linha "conferida" por rascunho conferido pelo pedido; o 4º ficou de fora
+    const trilha = await sql(`select d.source_id, e.details ->> 'origem' as origem from public.draft_question_events e join public.draft_questions d on d.id = e.draft_id where e.kind = 'conferida' and d.batch = 'lote_w' order by 1`);
+    expect(trilha).toEqual([{ source_id: "w1", origem: "pedido pela tela" }, { source_id: "w2", origem: "pedido pela tela" }, { source_id: "w3", origem: "pedido pela tela" }]);
     // triagem: sem fonte oficial => aprovação bloqueada; o 4º ainda não foi conferido
     const list = await rpc("app_draft_questions", { p_batch: "lote_w", p_limit: 10 });
     const by = Object.fromEntries(list.items.map((i: any) => [i.source_id, i]));
