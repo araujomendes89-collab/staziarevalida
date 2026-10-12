@@ -6,7 +6,12 @@
  *      de chamadas valem); a resposta fica guardada no checkpoint do trabalho ANTES de qualquer download;
  *   3. confere cada achado no servidor (verifyFinding: lista de sites, download, SHA-256, repetidos, trecho no texto) e grava os
  *      bons como candidatos "aguardando sua conferência"; o ponto em que está vai para o checkpoint depois de CADA achado;
- *   4. fecha a busca (concluída, nada encontrada, pendente ou falhou) com os números e os motivos de descarte.
+ *   4. classifica a ATUALIDADE de cada candidato (mais nova, igual ou mais antiga que a biblioteca; currency.ts) e fecha a busca
+ *      (concluída, nada encontrada, pendente ou falhou) com os números e os motivos de descarte.
+ *
+ * "Sempre as fontes mais atuais": o pedido à IA leva o título, o órgão, a versão e as datas das fontes VIGENTES do tema (só isso,
+ * nenhum texto) e manda procurar a versão mais recente em vigor, conferir a data na própria página e dizer quando só achou versão
+ * antiga. O servidor só aceita como "mais atual" a data que o documento ou a página comprova.
  *
  * Retomada: se o trabalho cai depois da resposta da IA (Cloud Run reinicia, erro de armazenamento), a nova rodada reaproveita a
  * resposta guardada: não paga outra busca e não duplica candidatos. Nada do que é baixado volta para a IA. Nada aqui passa de
@@ -18,6 +23,7 @@ import { PROMPTS, asDocument } from "../ai/prompts";
 import { aiAllowed, registerPromptsOnce } from "../ai/registry";
 import type { PipelineDeps, Job } from "../pipeline";
 import type { OfficialDomain } from "./officialDomains";
+import { reconcileCurrency } from "./currency";
 import { verifyFinding } from "./verify";
 
 /** A busca não pode rodar agora (função desligada, IA ou teto): o trabalho fica pendente, sem gastar tentativa. */
@@ -94,6 +100,9 @@ export async function runSourceSearch(
     await registerPromptsOnce(db);
     const prompt = PROMPTS.source_search;
     const now = (deps.web?.now ?? (() => new Date()))();
+    // fontes vigentes do tema na biblioteca (título, órgão, versão, datas): a IA procura versão mais nova delas. Servidor novo com
+    // SQL antigo (função ausente): segue sem a lista, a busca não pode parar por isso.
+    const library = await db.service<unknown[]>("ch_worker_source_library_for_theme", { p_theme: row.theme }).catch(() => []);
     const sites = row.domains.map((d) => ({ endereco: d.address, instituicao: d.institution, tipo: d.kind }));
     const result = await runFunction<{ documentos: unknown[]; observacao: string | null }>(
       // a simulação de desenvolvimento nunca é usada aqui: busca na internet só com IA de verdade
@@ -106,7 +115,7 @@ export async function runSourceSearch(
         schema: prompt.schema,
         schemaName: "staziamed_source_search",
         maxOutputTokens: 8192,
-        input: `Responda no formato "source_search". O pedido segue como dado:\n${asDocument({ area: row.area, tema: row.theme, texto_livre: row.free_text, hoje: todayBR(now), sites })}`,
+        input: `Responda no formato "source_search". O pedido segue como dado:\n${asDocument({ area: row.area, tema: row.theme, texto_livre: row.free_text, hoje: todayBR(now), sites, biblioteca: Array.isArray(library) ? library : [] })}`,
         // o máximo real vem da função (maestro); aqui só o padrão
         webSearch: { allowedDomains: row.domains.map((d) => d.address), maxSearches: DEFAULT_MAX_SEARCHES },
       },
@@ -193,7 +202,12 @@ export async function runSourceSearch(
     await update({ verified_count: verified, discarded });
   }
 
-  // ---- 4. fecha a busca
+  // ---- 4. atualidade dos candidatos (a falha aqui não derruba uma busca já paga) e fecha a busca
+  try {
+    io.metrics.currency_updated = await reconcileCurrency(db, searchId);
+  } catch (error) {
+    io.metrics.currency_error = (error instanceof Error ? error.message : String(error)).slice(0, 200);
+  }
   const note = text(saved.observacao, 600);
   const summary = `${verified} para conferir, ${discarded.length} descartado${discarded.length === 1 ? "" : "s"}.`;
   await update({ status: "concluida", verified_count: verified, discarded, message: note ? `${summary} ${note}` : summary });
