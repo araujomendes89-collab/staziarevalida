@@ -1,6 +1,7 @@
 // Sessão do app novo: quem está logado e os dados de abertura (app_bootstrap).
 import React from "react";
 import { getBackend } from "../data";
+import { clearAuthLinkFromUrl, initialAuthLink } from "./auth/authLink.js";
 
 const SessionContext = React.createContext(null);
 
@@ -31,7 +32,9 @@ function sessionExpiredOnBrowserClose() {
 
 export function SessionProvider({ children }) {
   // status: loading | signed-out | ready | error
-  const [state, setState] = React.useState({ status: "loading", backend: null, user: null, boot: null, error: null });
+  // recovery: a pessoa abriu o link de recuperar senha e ainda não criou a nova senha (a tela "Criar nova senha" vem antes do app)
+  const recoveryRef = React.useRef(initialAuthLink.kind === "recovery");
+  const [state, setState] = React.useState({ status: "loading", backend: null, user: null, boot: null, error: null, recovery: recoveryRef.current });
 
   React.useEffect(() => {
     let alive = true;
@@ -40,21 +43,24 @@ export function SessionProvider({ children }) {
     (async () => {
       try {
         const backend = await getBackend();
-        const load = async (user) => {
+        const load = async (user, event) => {
           if (!alive) return;
+          if (event === "PASSWORD_RECOVERY") recoveryRef.current = true;
           if (!user) {
-            setState({ status: "signed-out", backend, user: null, boot: null, error: null });
+            recoveryRef.current = false;
+            setState({ status: "signed-out", backend, user: null, boot: null, error: null, recovery: false });
             return;
           }
           try {
             const boot = await backend.rpc("app_bootstrap");
-            if (alive) setState({ status: "ready", backend, user, boot, error: null });
+            if (alive) setState({ status: "ready", backend, user, boot, error: null, recovery: recoveryRef.current });
           } catch (error) {
-            if (alive) setState({ status: "error", backend, user, boot: null, error });
+            if (alive) setState({ status: "error", backend, user, boot: null, error, recovery: recoveryRef.current });
           }
         };
 
-        if (sessionExpiredOnBrowserClose()) await backend.signOut();
+        // abrir o link de recuperar senha não pode derrubar a sessão que o link acabou de criar
+        if (initialAuthLink.kind !== "recovery" && sessionExpiredOnBrowserClose()) await backend.signOut();
         stop = backend.onAuthChange(load);
         await load(await backend.getUser());
       } catch (error) {
@@ -99,6 +105,12 @@ export function SessionProvider({ children }) {
       },
       async signOut() {
         await backend.signOut();
+      },
+      /** A nova senha foi criada (ou a pessoa desistiu): a tela "Criar nova senha" sai e o app abre. */
+      finishRecovery() {
+        recoveryRef.current = false;
+        clearAuthLinkFromUrl();
+        setState((s) => ({ ...s, recovery: false }));
       },
     };
   }, [state]);

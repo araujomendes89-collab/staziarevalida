@@ -5,10 +5,11 @@ import React from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Banner, Button, EmptyState, SegmentedControl } from "../ds";
 import { AppShell, useMobile } from "./Shell.jsx";
-import { AuthFlow } from "./AuthScreens.jsx";
+import { AuthFlow, NewPasswordScreen } from "./AuthScreens.jsx";
 import { LegalPage } from "./legal/LegalPage.jsx";
 import { AcceptanceScreen } from "./legal/AcceptanceScreen.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
+import { rememberScreen } from "./support/lastScreen.js";
 import { NexusScreen } from "./tutor/nexus/NexusScreen.jsx";
 import { ReportScreen } from "./tutor/ReportScreen.jsx";
 import { TutorDockProvider } from "./tutor/TutorDrawer.jsx";
@@ -102,6 +103,11 @@ function Screen() {
   React.useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  // a tela de antes da Conta vai pré-escolhida em "Relatar um problema"
+  React.useEffect(() => {
+    rememberScreen(route);
+  }, [route]);
 
   // "Materiais oficiais" virou "Atualizações": endereços antigos continuam funcionando
   if (route === "materiais") return <Navigate to="/atualizacoes" replace />;
@@ -265,6 +271,8 @@ function Root() {
     );
   }
   if (session.status === "signed-out") return <AuthFlow />;
+  // Veio pelo link de recuperar senha: antes de qualquer tela do app, a pessoa cria a nova senha
+  if (session.recovery) return <NewPasswordScreen />;
   // Aluno sem aceite do Termo vigente ou sem WhatsApp: a tela de aceite vem antes de qualquer rota (o servidor decide em gate_required)
   if (session.boot?.legal?.gate_required) return <AcceptanceScreen />;
 

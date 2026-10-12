@@ -170,7 +170,7 @@ const STATE_PT: Record<string, string> = { open: "aberta", answered: "respondida
 
 export const TRIAL_OVER = "Seu teste grátis do Tutor terminou. O Tutor continua nos planos pagos.";
 /** Conta sem plano pago e sem teste grátis valendo (PL02): o Tutor faz parte dos planos pagos; questões e flashcards seguem abertos. */
-export const PLAN_LOCKED = "Seu teste grátis terminou. O Tutor faz parte dos planos pagos; as questões e os flashcards continuam abertos. A assinatura pelo app ainda não está disponível.";
+export const PLAN_LOCKED = "Seu teste grátis terminou. O Tutor faz parte dos planos pagos; as questões e os flashcards continuam abertos. Para pedir acesso ou tirar dúvidas, fale com o suporte (veja o e-mail em Conta, Ajuda e suporte).";
 /** Aviso de Tutor bloqueado: o da conta sem teste (PL02) quando o banco avisa `plan_locked`, senão o do fim do teste do Tutor. */
 export const trialOverMessage = (e?: { plan_locked?: boolean } | null) => (e?.plan_locked ? PLAN_LOCKED : TRIAL_OVER);
 export const textLimitMessage = (e: Pick<Entitlement, "mode" | "text">) =>

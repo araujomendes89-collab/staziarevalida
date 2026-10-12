@@ -4,6 +4,7 @@
 // a senha só vai para o backend no envio. Estados: normal, foco, carregando, erro e sucesso.
 import React from "react";
 import { rememberChoice, useSession } from "../session.jsx";
+import { useSupportEmail } from "../support/supportContact.jsx";
 import "./login.css";
 
 const isEmail = (value) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -125,6 +126,7 @@ function Backdrop() {
 
 export function LoginScreen({ go }) {
   const { backend } = useSession();
+  const supportEmail = useSupportEmail();
   // idle | loading | error | success
   const [status, setStatus] = React.useState("idle");
   const [message, setMessage] = React.useState("");
@@ -404,6 +406,9 @@ export function LoginScreen({ go }) {
           <span>{LOGIN_TEXT.copyright}</span>
           <a href="/novo/termos">Termos de uso</a>
           <a href="/novo/privacidade">Privacidade</a>
+          <span>
+            Precisa de ajuda? <a href={`mailto:${supportEmail}`}>{supportEmail}</a>
+          </span>
         </footer>
       </div>
     </div>

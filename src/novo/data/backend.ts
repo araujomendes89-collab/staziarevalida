@@ -25,8 +25,11 @@ export interface SignUpExtra {
 export interface Backend {
   readonly mode: "supabase" | "local";
   getUser(): Promise<AuthUser | null>;
-  /** Avisa quando alguém entra ou sai. Devolve a função para cancelar. */
-  onAuthChange(callback: (user: AuthUser | null) => void): () => void;
+  /**
+   * Avisa quando alguém entra ou sai. Devolve a função para cancelar.
+   * `event` (só no Supabase) diz o motivo; "PASSWORD_RECOVERY" = a pessoa abriu o link de recuperar senha e precisa criar a nova senha.
+   */
+  onAuthChange(callback: (user: AuthUser | null, event?: string) => void): () => void;
   signIn(email: string, password: string): Promise<void>;
   /**
    * `extra` vai nos metadados da conta (`phone`, `terms_version`, `user_agent`), que o gatilho de criação da conta lê.
@@ -70,6 +73,8 @@ export type BackendErrorCode =
   | "invalid_credentials"
   | "email_taken"
   | "weak_password"
+  | "same_password"
+  | "link_expired"
   | "invalid_email"
   | "google_unavailable"
   | "network"

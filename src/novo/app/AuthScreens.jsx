@@ -14,12 +14,16 @@ import { DocumentModal } from "./legal/DocumentModal.jsx";
 import { COUNTRIES, normalizePhone, phoneError } from "./legal/phone.js";
 import { TERMO_VERSAO } from "./legal/versions.js";
 import { rememberGoogleAcceptance } from "./legal/googleAcceptance.js";
+import { clearAuthLinkFromUrl, initialAuthLink } from "./auth/authLink.js";
+import { useSupportEmail } from "./support/supportContact.jsx";
 import "./auth/login.css";
 
 const ERROR_TEXT = {
   invalid_credentials: "Não foi possível entrar com esses dados. Verifique seu e-mail e senha.",
   email_taken: "Já existe uma conta com este e-mail.",
   weak_password: `A senha precisa ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres.`,
+  same_password: "Escolha uma senha diferente da anterior.",
+  link_expired: "Esse link venceu. Peça um novo.",
   invalid_email: "Informe um e-mail válido.",
   google_unavailable: "O login com Google não está disponível neste ambiente.",
   network: "Falha de conexão. Verifique sua internet e tente de novo.",
@@ -86,6 +90,7 @@ function SecureField({ name, label, type = "text", autoComplete, hint, error }) 
 }
 
 function SecureSignupLayout({ children, onLogin, onDoc, label = "Criar conta", asideTitle = "Já tem conta?", asideCopy = "Entre para continuar sua preparação para o Revalida.", asideButton = "Entrar" }) {
+  const supportEmail = useSupportEmail();
   return (
     <div className="lg-root">
       <div className="lg-shell lg-shell--auth">
@@ -101,11 +106,11 @@ function SecureSignupLayout({ children, onLogin, onDoc, label = "Criar conta", a
             </svg>
             <h2 className="lg-h2">{asideTitle}</h2>
             <p className="lg-sub lg-auth-copy">{asideCopy}</p>
-            <button type="button" className="lg-btn lg-btn-ghost lg-auth-login" onClick={onLogin}>{asideButton}</button>
+            {asideButton ? <button type="button" className="lg-btn lg-btn-ghost lg-auth-login" onClick={onLogin}>{asideButton}</button> : null}
           </aside>
         </section>
         <p className="lg-tagline">Foco no que cai <span className="lg-dot">•</span> Memória no que fica <span className="lg-dot">•</span> Confiança na prova</p>
-        <footer className="lg-footer"><span>© 2026 StaziaMed Revalida</span><button type="button" className="lg-link-btn" onClick={() => onDoc("termos")}>Termos de uso</button><button type="button" className="lg-link-btn" onClick={() => onDoc("privacidade")}>Privacidade</button></footer>
+        <footer className="lg-footer"><span>© 2026 StaziaMed Revalida</span><button type="button" className="lg-link-btn" onClick={() => onDoc("termos")}>Termos de uso</button><button type="button" className="lg-link-btn" onClick={() => onDoc("privacidade")}>Privacidade</button><span>Precisa de ajuda? <a className="lg-link-btn" href={`mailto:${supportEmail}`}>{supportEmail}</a></span></footer>
       </div>
     </div>
   );
@@ -285,6 +290,115 @@ function Forgot({ go }) {
   );
 }
 
+/**
+ * Depois do link do e-mail de recuperar senha: a pessoa já está dentro (o link criou uma sessão de recuperação), mas antes de
+ * usar o app precisa criar a nova senha. Só depois de salvar, a mensagem de sucesso aparece e o botão abre o app.
+ */
+export function NewPasswordScreen() {
+  const { backend, finishRecovery, signOut } = useSession();
+  const [errors, setErrors] = React.useState({});
+  const [error, setError] = React.useState(null);
+  const [expired, setExpired] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [done, setDone] = React.useState(false);
+  const [doc, setDoc] = React.useState(null);
+  const closeDoc = React.useCallback(() => setDoc(null), []);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    const field = (n) => e.target.elements.namedItem(n).value;
+    const password = field("pw");
+    const next = {};
+    if (password.length < PASSWORD_MIN_LENGTH) next.pw = `Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`;
+    else if (password !== field("pw2")) next.pw2 = "As senhas não são iguais.";
+    setErrors(next);
+    setError(null);
+    if (Object.keys(next).length) {
+      document.getElementById(next.pw ? "secure-pw" : "secure-pw2")?.focus();
+      return;
+    }
+    setLoading(true);
+    try {
+      await backend.updatePassword(password);
+      rememberChoice(true);
+      setDone(true);
+    } catch (err) {
+      if (err?.code === "link_expired") setExpired(true);
+      else setError(messageFor(err));
+    }
+    setLoading(false);
+  };
+  // link vencido no meio do caminho: sai da sessão de recuperação e leva ao pedido de um novo link
+  const askAgain = async () => {
+    clearAuthLinkFromUrl();
+    try {
+      await signOut();
+    } catch {
+      /* já estava fora */
+    }
+    finishRecovery();
+  };
+
+  return (
+    <SecureSignupLayout
+      onLogin={() => {}}
+      onDoc={setDoc}
+      label="Criar nova senha"
+      asideTitle="Defina sua nova senha"
+      asideCopy="Escolha uma senha que só você conheça. Depois é só continuar sua preparação para o Revalida."
+      asideButton={null}
+    >
+      <form onSubmit={submit} className="lg-auth-fields" noValidate>
+        <div><h2 className="lg-h2">Criar nova senha</h2><p className="lg-sub">Escreva a nova senha duas vezes para confirmar.</p></div>
+        {error && <div className="lg-msg lg-msg--error" role="alert">{error}</div>}
+        {expired && <div className="lg-msg lg-msg--error" role="alert">Esse link venceu. Peça um novo.</div>}
+        {done && <div className="lg-msg lg-msg--success" role="status">Senha alterada com sucesso. Você já está dentro da sua conta.</div>}
+        {done ? (
+          <button type="button" className="lg-btn lg-btn-primary" onClick={() => finishRecovery()}>ENTRAR NO APP</button>
+        ) : expired ? (
+          <button type="button" className="lg-btn lg-btn-primary" onClick={askAgain}>PEDIR NOVO LINK</button>
+        ) : (
+          <>
+            <SecureField name="pw" label="Nova senha" type="password" hint={`Mínimo de ${PASSWORD_MIN_LENGTH} caracteres.`} autoComplete="new-password" error={errors.pw} />
+            <SecureField name="pw2" label="Conferir nova senha" type="password" autoComplete="new-password" error={errors.pw2} />
+            <button type="submit" className="lg-btn lg-btn-primary" disabled={loading}>{loading ? <><span className="lg-spin" />SALVANDO…</> : "SALVAR NOVA SENHA"}</button>
+            <button type="button" className="lg-link-btn" onClick={async () => { try { await signOut(); } catch { /* já estava fora */ } finishRecovery(); }}>Agora não, sair</button>
+          </>
+        )}
+      </form>
+      {doc && <DocumentModal doc={doc} onClose={closeDoc} />}
+    </SecureSignupLayout>
+  );
+}
+
+/** Link do e-mail vencido ou já usado: aviso claro e botão para pedir outro. */
+function ExpiredLink({ go }) {
+  const [doc, setDoc] = React.useState(null);
+  const closeDoc = React.useCallback(() => setDoc(null), []);
+  const askAgain = () => {
+    clearAuthLinkFromUrl();
+    go("forgot");
+  };
+  return (
+    <SecureSignupLayout
+      onLogin={() => { clearAuthLinkFromUrl(); go("login"); }}
+      onDoc={setDoc}
+      label="Link vencido"
+      asideTitle="Lembrou da senha?"
+      asideCopy="Volte para o login e continue sua preparação para o Revalida."
+      asideButton="Entrar"
+    >
+      <div className="lg-auth-fields">
+        <div><h2 className="lg-h2">Link vencido</h2><p className="lg-sub">Por segurança, cada link vale por pouco tempo e só pode ser usado uma vez.</p></div>
+        <div className="lg-msg lg-msg--error" role="alert">Esse link venceu. Peça um novo.</div>
+        <button type="button" className="lg-btn lg-btn-primary" onClick={askAgain}>PEDIR NOVO LINK</button>
+        <button type="button" className="lg-link-btn" onClick={() => { clearAuthLinkFromUrl(); go("login"); }}>Voltar para o login</button>
+      </div>
+      {doc && <DocumentModal doc={doc} onClose={closeDoc} />}
+    </SecureSignupLayout>
+  );
+}
+
 /** Primeiro acesso no banco local: cria o administrador (conta master). */
 function MasterSetup({ go }) {
   const { backend } = useSession();
@@ -346,14 +460,16 @@ function MasterSetup({ go }) {
 }
 
 /** Fluxo de entrada: login → cadastro → recuperar senha (e, no 1º acesso local, conta master). */
-export function AuthFlow() {
-  const [screen, setScreen] = React.useState("login");
+export function AuthFlow({ link = initialAuthLink } = {}) {
+  // link do e-mail vencido ou já usado: abre direto o aviso "Esse link venceu. Peça um novo."
+  const [screen, setScreen] = React.useState(link?.kind === "expired" ? "expired" : "login");
   const go = (next) => {
     setScreen(next);
     window.scrollTo(0, 0);
   };
   if (screen === "signup") return <Signup go={go} />;
   if (screen === "forgot") return <Forgot go={go} />;
+  if (screen === "expired") return <ExpiredLink go={go} />;
   if (screen === "master") return <MasterSetup go={go} />;
   // tela de login "Acesso seguro REVALIDA" (auth/LoginScreen.jsx), com a mesma autenticação de antes
   return <LoginScreen go={go} />;
