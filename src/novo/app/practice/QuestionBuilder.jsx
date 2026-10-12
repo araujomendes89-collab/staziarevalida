@@ -6,7 +6,8 @@ import { Badge, Banner, Button, Card, Chip, EmptyState, Icon, SegmentedControl, 
 import { IconTile } from "../../prototype/RealIcons.jsx";
 import { useMobile } from "../Shell.jsx";
 import { useSession } from "../session.jsx";
-import { isPlanLockMessage, usePlanLock } from "../plan/planAccess.js";
+import { isPlanLockMessage, usePlanLock, withSupport } from "../plan/planAccess.js";
+import { useSupportEmail } from "../support/supportContact.jsx";
 import "./practice.css";
 import { AREAS, SIM_MAX_MINUTES, areaLabel, examLabel, formatClock, formatMinutes, formatWhen, paceLabel, parseDuration, percent } from "./format.js";
 
@@ -87,6 +88,7 @@ export function QuestionBuilder({ go, mode }) {
   const sim = mode === "sim";
   // Teste grátis terminado (ou sem plano pago): simulado completo fica nos planos pagos; o treino de questões segue aberto (PL02).
   const planLock = usePlanLock();
+  const supportEmail = useSupportEmail();
   const lock = sim ? planLock : null;
   const kind = sim ? "simulado" : "questoes";
 
@@ -182,7 +184,7 @@ export function QuestionBuilder({ go, mode }) {
       });
       go("sessao", { s: started.session_id });
     } catch (e) {
-      setError(isPlanLockMessage(e?.message) ? String(e.message) : "Não foi possível iniciar. Ajuste os filtros e tente de novo.");
+      setError(isPlanLockMessage(e?.message) ? withSupport(e.message, supportEmail) : "Não foi possível iniciar. Ajuste os filtros e tente de novo.");
       setStarting(false);
     }
   };

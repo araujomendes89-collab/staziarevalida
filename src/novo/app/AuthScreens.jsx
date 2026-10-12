@@ -15,6 +15,7 @@ import { COUNTRIES, normalizePhone, phoneError } from "./legal/phone.js";
 import { TERMO_VERSAO } from "./legal/versions.js";
 import { rememberGoogleAcceptance } from "./legal/googleAcceptance.js";
 import { clearAuthLinkFromUrl, initialAuthLink } from "./auth/authLink.js";
+import { useSupportEmail } from "./support/supportContact.jsx";
 import "./auth/login.css";
 
 const ERROR_TEXT = {
@@ -89,6 +90,7 @@ function SecureField({ name, label, type = "text", autoComplete, hint, error }) 
 }
 
 function SecureSignupLayout({ children, onLogin, onDoc, label = "Criar conta", asideTitle = "Já tem conta?", asideCopy = "Entre para continuar sua preparação para o Revalida.", asideButton = "Entrar" }) {
+  const supportEmail = useSupportEmail();
   return (
     <div className="lg-root">
       <div className="lg-shell lg-shell--auth">
@@ -108,7 +110,7 @@ function SecureSignupLayout({ children, onLogin, onDoc, label = "Criar conta", a
           </aside>
         </section>
         <p className="lg-tagline">Foco no que cai <span className="lg-dot">•</span> Memória no que fica <span className="lg-dot">•</span> Confiança na prova</p>
-        <footer className="lg-footer"><span>© 2026 StaziaMed Revalida</span><button type="button" className="lg-link-btn" onClick={() => onDoc("termos")}>Termos de uso</button><button type="button" className="lg-link-btn" onClick={() => onDoc("privacidade")}>Privacidade</button></footer>
+        <footer className="lg-footer"><span>© 2026 StaziaMed Revalida</span><button type="button" className="lg-link-btn" onClick={() => onDoc("termos")}>Termos de uso</button><button type="button" className="lg-link-btn" onClick={() => onDoc("privacidade")}>Privacidade</button><span>Precisa de ajuda? <a className="lg-link-btn" href={`mailto:${supportEmail}`}>{supportEmail}</a></span></footer>
       </div>
     </div>
   );

@@ -40,7 +40,7 @@ const TESTE_ACABOU = { plan: "trial", status: "trialing", trial_ends_at: iso(Dat
 const TESTE_VALE = { plan: "trial", status: "trialing", trial_ends_at: iso(Date.now() + 3 * DAY), current_period_end: null };
 const PAGO = { plan: "pro", status: "active", trial_ends_at: null, current_period_end: iso(Date.now() + 20 * DAY) };
 const SEM_TESTE = { plan: "trial", status: "expired", trial_ends_at: null, current_period_end: null };
-const AVISO = /Os simulados completos, o Tutor e as estações Pro fazem parte dos planos pagos; as questões e os flashcards continuam abertos\. A assinatura pelo app ainda não está disponível\./;
+const AVISO = /Os simulados completos, o Tutor e as estações Pro fazem parte dos planos pagos; as questões e os flashcards continuam abertos\. Para pedir acesso ou tirar dúvidas, fale com o suporte: suporte@staziamed\.com\.br\./;
 
 beforeEach(() => {
   backend.rpc.mockReset();
@@ -92,18 +92,18 @@ describe("PL02 — Início", () => {
     return render(<HomeScreen go={vi.fn()} mobile={false} />);
   };
 
-  it("teste vencido: 'Seu teste grátis terminou', o que fica aberto e fechado, e sem botão 'Ver planos'", async () => {
+  it("teste vencido: 'Seu teste grátis terminou', o que fica aberto e fechado, e sem botão 'Ver meu plano'", async () => {
     await abrir(bootOf(TESTE_ACABOU), { ends_at: TESTE_ACABOU.trial_ends_at, days_left: 0 }, ACESSO.teste_acabou);
     expect(await screen.findByText(AVISO)).toBeTruthy();
     expect(screen.getByText("Seu teste grátis terminou")).toBeTruthy();
-    expect(screen.queryByText("Ver planos")).toBeNull();
+    expect(screen.queryByText("Ver meu plano")).toBeNull();
   });
 
-  it("teste dentro do prazo: segue como antes (dias, questões respondidas e 'Ver planos')", async () => {
+  it("teste dentro do prazo: segue como antes (dias, questões respondidas e 'Ver meu plano')", async () => {
     await abrir(bootOf(TESTE_VALE), { ends_at: TESTE_VALE.trial_ends_at, days_left: 3 });
     expect(await screen.findByText(/Seu teste gratuito termina/)).toBeTruthy();
     expect(screen.getByText("Você respondeu 4 questões até agora.")).toBeTruthy();
-    expect(screen.getByText("Ver planos")).toBeTruthy();
+    expect(screen.getByText("Ver meu plano")).toBeTruthy();
     expect(screen.queryByText(AVISO)).toBeNull();
   });
 
@@ -197,8 +197,8 @@ describe("PL02 — Tutor", () => {
   it("conta sem teste valendo: 'Seu teste grátis terminou' e o que fica aberto, sem botão de assinar", async () => {
     abrir(bootOf(TESTE_ACABOU), status({ block_reason: "trial_expired", plan_locked: true }), ACESSO.teste_acabou);
     expect(await screen.findByText("Seu teste grátis terminou")).toBeTruthy();
-    expect(screen.getByText(/as questões e os flashcards continuam abertos\. A assinatura pelo app ainda não está disponível\./)).toBeTruthy();
-    expect(screen.queryByText("Ver planos")).toBeNull();
+    expect(screen.getByText(/as questões e os flashcards continuam abertos\. Para pedir acesso ou tirar dúvidas, fale com o suporte: suporte@staziamed\.com\.br\./)).toBeTruthy();
+    expect(screen.queryByText("Ver meu plano")).toBeNull();
   });
 
   it("cadastro sem teste: o título não diz que um teste terminou", async () => {
@@ -209,7 +209,7 @@ describe("PL02 — Tutor", () => {
   it("fim do teste do Tutor (o que já existia) continua igual", async () => {
     abrir(bootOf(TESTE_VALE), status({ block_reason: "trial_expired", plan_locked: false }));
     expect(await screen.findByText("Seu teste grátis do Tutor terminou")).toBeTruthy();
-    expect(screen.getByText("Ver planos")).toBeTruthy();
+    expect(screen.getByText("Ver meu plano")).toBeTruthy();
   });
 });
 

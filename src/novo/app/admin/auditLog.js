@@ -32,6 +32,8 @@ export const ACTION_LABEL = {
   "plan.save": "Plano editado",
   "plan.benefits": "Benefícios do Elite alterados",
   "settings.save": "Configurações salvas",
+  "support.contact": "Contato de suporte alterado",
+  "report.resolve": "Relato de aluno atendido",
   // questões
   "questions.import": "Questões importadas",
   "question.inserted": "Questão criada",
@@ -307,6 +309,8 @@ const SUMMARY = {
       d.trial_days != null && `Dias de teste grátis: ${d.trial_days}`,
       d.announcement && `Aviso no Início ${d.announcement.active ? "ligado" : "desligado"}${d.announcement.title ? `: ${d.announcement.title}` : ""}`,
     ]),
+  "support.contact": (d) => d.email && `E-mail de suporte: ${d.email}`,
+  "report.resolve": (d) => join([d.resolved === false ? "Relato reaberto" : "Relato marcado como resolvido", d.screen && `Tela: ${d.screen}`]),
   "questions.import": (d) =>
     join([
       count(d.inserted, "nova", "novas"),

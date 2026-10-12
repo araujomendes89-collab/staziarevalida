@@ -8,7 +8,9 @@ import { isStaffRole } from "../admin/AdminScreen.jsx";
 import { isPhase2Locked, paidPlanLapsed, trialLapsed } from "../admin/common.jsx";
 import { PASSWORD_MIN_LENGTH } from "../../data";
 import { useSession } from "../session.jsx";
-import { usePlanLock } from "../plan/planAccess.js";
+import { planSummary, usePlanLock } from "../plan/planAccess.js";
+import { ReportProblem } from "../support/ReportProblem.jsx";
+import { SupportMail, useSupportEmail } from "../support/supportContact.jsx";
 import { useMobile } from "../Shell.jsx";
 import { PlayProfileSection } from "../play/PlayProfile.jsx";
 import { COUNTRIES, normalizePhone, phoneError, splitPhone } from "../legal/phone.js";
@@ -20,6 +22,7 @@ const SECTIONS = [
   { id: "estudo", label: "Estudo e prova", sub: "Fase, prova-alvo e rotina", icon: "graduation-cap" },
   { id: "seg", label: "Segurança", sub: "Senha e sessão", icon: "shield-check" },
   { id: "priv", label: "Privacidade e dados", sub: "Exportação e exclusão (LGPD)", icon: "file-lock" },
+  { id: "ajuda", label: "Ajuda e suporte", sub: "Fale com a equipe ou relate um problema", icon: "life-buoy" },
 ];
 const THEMES = [
   { value: "light", label: "Claro" },
@@ -406,6 +409,53 @@ function PrivacySection() {
   );
 }
 
+/** Ajuda e suporte: o e-mail da equipe (configuração única da Administração) e o botão de relatar um problema. */
+function HelpSection({ email }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <SectionHeader title="Ajuda e suporte" subtitle="Dúvida, problema ou sugestão? Fale com a equipe do StaziaMed" />
+      <div>
+        <div style={{ font: "var(--type-label)" }}>E-mail de suporte</div>
+        <div style={{ font: "var(--type-body)" }}>
+          <SupportMail email={email} />
+        </div>
+        <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Escreva por aqui para tirar dúvidas, pedir acesso ou falar sobre seu plano.</div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 20, borderTop: "1px solid var(--border-subtle)" }}>
+        <div>
+          <div style={{ font: "var(--type-label)" }}>Relatar um problema</div>
+          <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Algo não funcionou ou uma questão parece errada? Conte aqui e a mensagem chega direto à equipe.</div>
+        </div>
+        <ReportProblem email={email} />
+      </div>
+    </div>
+  );
+}
+
+/** "Seu plano": a data de fim como está na assinatura do aluno (sem número inventado). O nome do plano já aparece no selo de cima. */
+function PlanCard({ summary, email }) {
+  return (
+    <Card>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Seu plano</h3>
+        <div style={{ font: "var(--type-label)" }}>
+          <span>{summary.lead}</span>
+          {summary.date && (
+            <>
+              {" "}
+              <strong>{summary.date}</strong>
+            </>
+          )}
+        </div>
+        {summary.note && <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{summary.note}</div>}
+        <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+          Dúvidas sobre o seu plano? Fale com o suporte: <SupportMail email={email} />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 /**
  * Benefícios do plano Elite (PL04). Só aparecem para quem tem Elite pago e dentro da data, e só os que o dono ligou/preencheu em
  * Administração > Configurações: sem valor definido, nada é mostrado (e nada é inventado).
@@ -471,6 +521,8 @@ export function AccountScreen({ go }) {
   const [section, setSection] = React.useState("conta");
   const profile = boot.profile;
   const plan = planBadge(boot.subscription, boot.role, Boolean(boot.reviewer_areas?.length));
+  const supportEmail = useSupportEmail();
+  const summary = planSummary(boot.subscription, boot.role, Boolean(boot.reviewer_areas?.length));
   const lock = usePlanLock(); // teste grátis terminado ou sem plano pago: o que fica nos planos pagos (PL02); o banco decide
   const phase2Locked = isPhase2Locked(boot.role); // 2ª fase "em breve" para o aluno: o selo mostra a 1ª mesmo se a 2ª estiver gravada
   const goal = profile.target_edition ? `Meta: ${profile.exam_type === "ENAMED" ? "ENAMED" : "Revalida INEP"} ${profile.target_edition}` : null;
@@ -495,6 +547,7 @@ export function AccountScreen({ go }) {
           </div>
         </div>
       </Card>
+      {summary && <PlanCard summary={summary} email={supportEmail} />}
       {lock && (
         <Banner tone="warning" icon="lock" title={lock.title}>
           {lock.text}
@@ -540,6 +593,7 @@ export function AccountScreen({ go }) {
           {section === "estudo" && <StudySection />}
           {section === "seg" && <SecuritySection />}
           {section === "priv" && <PrivacySection />}
+          {section === "ajuda" && <HelpSection email={supportEmail} />}
         </Card>
       </div>
     </>

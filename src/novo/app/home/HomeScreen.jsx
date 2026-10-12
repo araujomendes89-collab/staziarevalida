@@ -31,7 +31,7 @@ function TrialBanner({ trial, attempts, go }) {
       action={
         over ? undefined : (
           <Button size="sm" variant="secondary" onClick={() => go("planos")}>
-            Ver planos
+            Ver meu plano
           </Button>
         )
       }

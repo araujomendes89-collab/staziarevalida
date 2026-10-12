@@ -6,6 +6,7 @@ import { useSession } from "../../session.jsx";
 import { TutorConsentCard } from "../TutorConsentCard.jsx";
 import { tutorAvailable } from "../api.js";
 import { usePlanLock } from "../../plan/planAccess.js";
+import { askForAccess, useSupportEmail } from "../../support/supportContact.jsx";
 
 const messageOf = (error) => error?.message || "Não foi possível concluir. Tente de novo.";
 
@@ -13,6 +14,7 @@ const messageOf = (error) => error?.message || "Não foi possível concluir. Ten
 export function TutorGate({ go, children, frame = (node) => node }) {
   const { backend } = useSession();
   const planLock = usePlanLock();
+  const supportEmail = useSupportEmail();
   const [status, setStatus] = React.useState(null);
   const [error, setError] = React.useState(null);
   const [loading, setLoading] = React.useState(true);
@@ -50,7 +52,7 @@ export function TutorGate({ go, children, frame = (node) => node }) {
         <EmptyState
           icon="lock"
           title={planLock?.title ?? "O Tutor faz parte dos planos pagos"}
-          description="O Tutor faz parte dos planos pagos; as questões e os flashcards continuam abertos. A assinatura pelo app ainda não está disponível."
+          description={`O Tutor faz parte dos planos pagos; as questões e os flashcards continuam abertos. ${askForAccess(supportEmail)}`}
         />
       );
     }
@@ -58,8 +60,8 @@ export function TutorGate({ go, children, frame = (node) => node }) {
       <EmptyState
         icon="lock"
         title={expired ? "Seu teste grátis do Tutor terminou" : "O Tutor faz parte dos planos pagos"}
-        description="Com um plano ativo você conversa com o professor por texto ou por voz, com as suas questões, os seus erros e os seus temas."
-        action={<Button iconRight="arrow-right" onClick={() => go?.("perfil")}>Ver planos</Button>}
+        description={`Com um plano ativo você conversa com o professor por texto ou por voz, com as suas questões, os seus erros e os seus temas. ${askForAccess(supportEmail)}`}
+        action={<Button iconRight="arrow-right" onClick={() => go?.("perfil")}>Ver meu plano</Button>}
       />
     );
   }

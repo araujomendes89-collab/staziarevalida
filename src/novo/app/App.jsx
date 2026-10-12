@@ -9,6 +9,7 @@ import { AuthFlow, NewPasswordScreen } from "./AuthScreens.jsx";
 import { LegalPage } from "./legal/LegalPage.jsx";
 import { AcceptanceScreen } from "./legal/AcceptanceScreen.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
+import { rememberScreen } from "./support/lastScreen.js";
 import { NexusScreen } from "./tutor/nexus/NexusScreen.jsx";
 import { ReportScreen } from "./tutor/ReportScreen.jsx";
 import { TutorDockProvider } from "./tutor/TutorDrawer.jsx";
@@ -102,6 +103,11 @@ function Screen() {
   React.useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  // a tela de antes da Conta vai pré-escolhida em "Relatar um problema"
+  React.useEffect(() => {
+    rememberScreen(route);
+  }, [route]);
 
   // "Materiais oficiais" virou "Atualizações": endereços antigos continuam funcionando
   if (route === "materiais") return <Navigate to="/atualizacoes" replace />;

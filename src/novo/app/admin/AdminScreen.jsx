@@ -11,6 +11,7 @@ import { AdminAudit, AdminOverview, AdminPlans, AdminSettings, AdminStations, Ad
 import { ContentHub } from "./content/ContentHub.jsx";
 import { AdminPlay } from "./AdminPlay.jsx";
 import { AdminLessons } from "./AdminLessons.jsx";
+import { AdminReports, AdminSupportContact } from "./AdminSupport.jsx";
 import { AdminUpdates } from "./AdminUpdates.jsx";
 import { AdminPodcasts } from "./AdminPodcasts.jsx";
 import { AdminAI } from "./ai/AdminAI.jsx";
@@ -63,6 +64,8 @@ export function AdminScreen() {
       {tab === "config" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <AdminSettings />
+          <AdminSupportContact />
+          <AdminReports />
           <AdminTutor />
         </div>
       )}
