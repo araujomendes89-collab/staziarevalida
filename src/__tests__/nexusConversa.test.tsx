@@ -355,6 +355,20 @@ describe("Nexus: a conversa pela voz do professor", () => {
     expect(await within(dialog).findByText("O professor não conseguiu responder, tente de novo")).toBeInTheDocument();
   });
 
+  it("CF02: limite de fala de hoje (403 stt_student_limit): mostra o motivo escrito pelo servidor, sem 'Não entendi', e o Chat abre", async () => {
+    const LIMITE = "Você chegou ao limite de fala por microfone de hoje. Escreva a sua mensagem.";
+    server["/api/tutor/voice/transcribe"] = () => ({ status: 403, body: { error: LIMITE, code: "stt_student_limit" } });
+    const dialog = await openConversation();
+    await waitFor(() => expect(rec.calls).toHaveLength(1));
+    await act(async () => {
+      void rec.calls[0].opts.onDone(rec.next);
+    });
+    expect(await within(dialog).findByText(LIMITE)).toBeInTheDocument();
+    expect(within(dialog).queryByText("Não entendi, pode repetir ou digitar?")).toBeNull();
+    expect(within(dialog).getByLabelText("Escrever para o Tutor")).toBeInTheDocument();
+    expect(sayCalls()).toHaveLength(0);
+  });
+
   it("Conversa por voz desligada no painel: sem chamada, o Chat manda ao motor pela rota de texto e o cartão responde", async () => {
     rpcImpl.app_tutor_status = () => ({ ...status(), voice_enabled: false });
     rpcImpl.app_tutor_start = () => session({ mode: "questao", question_state: "open", question: QUESTION, messages: [{ id: 1, role: "tutor", content: "Lê com calma.", grounding: "none" }] });

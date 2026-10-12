@@ -170,6 +170,12 @@ export function useNexusVoice({ backend, session, jeito, voiceCallId, micStream,
     } catch (e) {
       if (e?.code === "tutor_consent") return c.onFallback?.("tutor_consent", e.message);
       if (e?.status === 409) return closed(e.message || CALL_ENDED);
+      // microfone não liberado ou limite de fala de hoje (CF02): o servidor já escreveu o motivo em português; segue pelo Chat
+      if (e?.status === 403 && /^stt_/.test(e?.code ?? "") && e.message) {
+        setNotice(e.message);
+        setChatRequest((n) => n + 1);
+        return afterReply();
+      }
       text = "";
     }
     if (!text) {

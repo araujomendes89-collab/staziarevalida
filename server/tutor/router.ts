@@ -14,7 +14,8 @@ import { planProviders } from "./voiceProviders";
 import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
 import { samplePath } from "./voicePreview";
 import { elevenAccessOf, nexusStatus, openNexus, type TtsQuota } from "./nexus";
-import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, STT_BUSY, STT_PER_MINUTE, audioFitsSeconds, sttConfig, transcribe } from "./stt";
+import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, STT_BLOCK, STT_BUSY, STT_PER_MINUTE, audioFitsSeconds, sttAccessOf, sttConfig, transcribe } from "./stt";
+import { tutorSettings } from "./settings";
 
 type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
@@ -141,7 +142,8 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
 
   /**
    * Transcrição da fala do aluno na Nexus: o áudio (até 4 MB e 45 s) vem no corpo, com X-Voice-Call-Id (a conversa de voz aberta)
-   * e X-Audio-Seconds. Ordem: conversa de voz do aluno, aceite, transcrição ligada, tamanho. Devolve só o texto.
+   * e X-Audio-Seconds. Ordem: conversa de voz do aluno, aceite, microfone liberado ao aluno (CF02), transcrição ligada, tamanho,
+   * tetos diários. Devolve só o texto.
    */
   const TOO_BIG = "Áudio acima de 45 segundos ou de 4 MB.";
   // teto da transcrição por aluno nesta instância: uma por vez e até STT_PER_MINUTE por minuto
@@ -154,12 +156,23 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       if (!v || v.status !== "active" || v.provider !== "tts") return fail(res, 409, "A conversa por voz foi encerrada.");
       const quota = await deps!.db.service<TtsQuota>("ch_worker_tutor_tts_quota", { p_user: req.user!.id });
       if (quota?.consent_pending) return failTutor(res, consentError());
+      // CF02: o microfone é da equipe até o dono abrir aos alunos e preencher os tetos diários; recusa antes de olhar o áudio e de qualquer gasto
+      const staff = quota?.staff === true;
+      const settings = await tutorSettings(deps!);
+      const closed = sttAccessOf({ staff, mode: quota?.mode, settings });
+      if (closed) return res.status(403).json({ error: STT_BLOCK[closed].message, code: STT_BLOCK[closed].code });
       if (!(deps!.stt ?? sttConfig()).ready) return fail(res, 503, "A transcrição não está ligada no servidor.");
       const seconds = Number(req.headers["x-audio-seconds"]);
       const audio = Buffer.isBuffer(req.body) ? req.body : null;
       if (req.headers["x-audio-seconds"] == null || !Number.isFinite(seconds) || seconds <= 0 || seconds > MAX_AUDIO_SECONDS || !audio?.length) return fail(res, 413, TOO_BIG);
       if (!audioFitsSeconds(audio.length, seconds)) return fail(res, 413, TOO_BIG);
       const uid = req.user!.id;
+      // tetos diários do aluno e da plataforma: o que já foi transcrito hoje (registro de uso) mais este áudio
+      if (!staff) {
+        const used = await deps!.db.service<{ user_seconds: number; account_seconds: number }>("ch_worker_tutor_stt_today", { p_user: uid });
+        const over = sttAccessOf({ staff, mode: quota?.mode, settings, used: { user_seconds: Number(used?.user_seconds ?? 0), account_seconds: Number(used?.account_seconds ?? 0) }, seconds });
+        if (over) return res.status(403).json({ error: STT_BLOCK[over].message, code: STT_BLOCK[over].code });
+      }
       const now = Date.now();
       const recent = (sttRecent.get(uid) ?? []).filter((t) => now - t < 60_000);
       if (sttBusy.has(uid) || recent.length >= STT_PER_MINUTE) return res.status(429).json({ error: STT_BUSY, code: "stt_busy" });
