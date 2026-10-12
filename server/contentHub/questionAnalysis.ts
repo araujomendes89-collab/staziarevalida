@@ -194,6 +194,8 @@ export interface AnalysisRunDeps {
   mockRespond?: (req: StructuredRequest) => unknown;
   /** Só para testes: cria o provedor de uma ref (as regras da Central de IAs continuam valendo). */
   aiMaker?: (ref: ModelRef) => AiProvider | null;
+  /** Só para testes e desenvolvimento: provedor de simulação já pronto (o do processamento da Central). */
+  mockProvider?: AiProvider | null;
   log?: (m: string) => void;
 }
 
@@ -230,6 +232,14 @@ export interface AnalysisRunOptions {
   limit?: number;
   exam?: string;
   dryRun?: boolean;
+  /** Pedido pela tela: exatamente estas questões (nunca outras). */
+  ids?: string[];
+  /** Com `ids`: false = refaz também as que já têm análise do conteúdo atual (padrão: só as sem análise). */
+  onlyMissing?: boolean;
+  /** Parada de segurança: para quando o gasto real passa deste valor em dólares. */
+  maxCostUsd?: number | null;
+  /** Chamado depois de cada questão (andamento do pedido). */
+  onProgress?: (r: AnalysisReport) => Promise<void> | void;
 }
 
 export interface AnalysisReport {
@@ -248,7 +258,9 @@ export function estimateAnalysisTokens(q: QuestionForAnalysis) {
 
 export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: AnalysisRunOptions = {}): Promise<AnalysisReport> {
   const report: AnalysisReport = { considered: 0, saved: 0, skipped: 0, verdicts: {}, spend: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: null } };
-  const questions = await deps.db.service<QuestionForAnalysis[]>("ch_worker_questions_for_analysis", { p_limit: options.limit ?? 20, p_exam: options.exam ?? null, p_only_missing: true });
+  const questions = options.ids
+    ? await deps.db.service<QuestionForAnalysis[]>("ch_worker_questions_for_analysis_ids", { p_ids: options.ids, p_only_missing: options.onlyMissing ?? true })
+    : await deps.db.service<QuestionForAnalysis[]>("ch_worker_questions_for_analysis", { p_limit: options.limit ?? 20, p_exam: options.exam ?? null, p_only_missing: true });
   report.considered = questions.length;
   if (!questions.length) return report;
   if (options.dryRun) {
@@ -272,9 +284,13 @@ export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: Analys
     }
     throw error;
   }
-  const mockProvider = deps.mockRespond ? resolveProviderKind("mock", deps.mockRespond).provider : null;
+  const mockProvider = deps.mockProvider ?? (deps.mockRespond ? resolveProviderKind("mock", deps.mockRespond).provider : null);
   const aiDeps = { db: deps.db, mockProvider, makeProviderFor: deps.aiMaker, log: deps.log };
   for (const q of questions) {
+    if (options.maxCostUsd != null && (report.spend.costUsd ?? 0) > options.maxCostUsd) {
+      report.pending = `Parada de segurança: o gasto (US$ ${(report.spend.costUsd ?? 0).toFixed(2)}) passou do limite deste pedido (US$ ${options.maxCostUsd.toFixed(2)}).`;
+      break;
+    }
     // a origem leva o id da questão; o maestro refaz o provedor a cada questão
     const { provider, status } = await maestroProvider(aiDeps, "engenharia_reversa", { source: "analise", itemId: q.id });
     if (!provider) {
@@ -296,6 +312,7 @@ export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: Analys
       await deps.db.service("ch_worker_save_analysis_check", { p_analysis_id: saved.analysis_id, p_layer: "software", p_verdict: verdict, p_findings: findings, p_meta: { provider: "software", model: "regras", prompt_version: ANALYSIS_VERSION } });
       report.saved++;
       report.verdicts[verdict] = (report.verdicts[verdict] ?? 0) + 1;
+      await options.onProgress?.(report);
     } catch (error) {
       // teto de gasto atingido: para aqui, com a mensagem do teto, em vez de seguir pelas outras questões gravando linhas de teto
       if (error instanceof AiCapReached) {

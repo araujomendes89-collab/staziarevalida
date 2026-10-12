@@ -18,7 +18,7 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import { PROMPTS, asDocument, type PromptKey } from "./ai/prompts";
 import { resolveProviderKind, type AiProvider, type StructuredRequest, type VerifierRole } from "./ai/provider";
-import { maestroRoleProvider } from "../ai/maestro";
+import { maestroCheckerProvider, maestroRoleProvider } from "../ai/maestro";
 import type { ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { copyRatio, isVerbatim, negations, normalize, numbers, numbersOutside } from "./checks";
@@ -168,6 +168,14 @@ export interface RunDeps {
   log?: (m: string) => void;
   /** Busca por significado (embeddings.ts); sem ele, só palavras. */
   embedder?: Embedder | null;
+  /** Só para testes e desenvolvimento: provedor de simulação já pronto (o do processamento da Central). */
+  mockProvider?: AiProvider | null;
+  /**
+   * Conferência por outra empresa (decisão do dono, 2026-10-10): a IA que confere é da função Verificação, mas nunca da mesma
+   * empresa de quem criou o rascunho; se a Verificação for da mesma empresa, troca sozinha (maestroCheckerProvider). Usado nos
+   * pedidos feitos pela tela; o comando de linha segue com os conferentes por papel e a recusa por mesma família.
+   */
+  crossCompany?: boolean;
 }
 
 const sha256 = (v: string) => crypto.createHash("sha256").update(v).digest("hex");
@@ -320,6 +328,14 @@ export interface RunOptions {
   batch?: string;
   dryRun?: boolean;
   referenceDir?: string;
+  /** Pedido pela tela: exatamente estes rascunhos (nunca outros). */
+  ids?: string[];
+  /** Com `ids`: confere de novo mesmo as camadas que já valem para o texto atual. */
+  force?: boolean;
+  /** Parada de segurança: para quando o gasto real somado passa deste valor em dólares. */
+  maxCostUsd?: number | null;
+  /** Chamado depois de cada rascunho conferido numa camada (andamento do pedido). */
+  onProgress?: (reports: RunReport[]) => Promise<void> | void;
 }
 
 export interface RunReport {
@@ -346,7 +362,9 @@ export async function runDraftChecks(deps: RunDeps, options: RunOptions): Promis
   for (const layer of options.layers) {
     const report: RunReport = { layer, considered: 0, saved: 0, verdicts: {}, spend: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: null } };
     reports.push(report);
-    const drafts = await deps.db.service<DraftRow[]>("ch_worker_drafts_for_check", { p_layer: layer, p_limit: options.limit ?? 50, p_batch: options.batch ?? null });
+    const drafts = options.ids
+      ? await deps.db.service<DraftRow[]>("ch_worker_drafts_for_check_ids", { p_layer: layer, p_ids: options.ids, p_force: options.force ?? false })
+      : await deps.db.service<DraftRow[]>("ch_worker_drafts_for_check", { p_layer: layer, p_limit: options.limit ?? 50, p_batch: options.batch ?? null });
     report.considered = drafts.length;
     if (!drafts.length) continue;
 
@@ -356,6 +374,11 @@ export async function runDraftChecks(deps: RunDeps, options: RunOptions): Promis
     }
 
     for (const d of drafts) {
+      const spentTotal = reports.reduce((a, r) => a + (r.spend.costUsd ?? 0), 0);
+      if (!options.dryRun && options.maxCostUsd != null && spentTotal > options.maxCostUsd) {
+        report.pending = `Parada de segurança: o gasto (US$ ${spentTotal.toFixed(2)}) passou do limite deste pedido (US$ ${options.maxCostUsd.toFixed(2)}).`;
+        break;
+      }
       if (options.dryRun) {
         if (layer !== "software") {
           const e = estimateTokens(d, layer);
@@ -372,8 +395,10 @@ export async function runDraftChecks(deps: RunDeps, options: RunOptions): Promis
       } else {
         const role = layer as VerifierRole;
         const roleIndex = ({ sources: 0, currency: 1, redteam: 2 } as const)[role];
-        const mockProvider = deps.mockRespond ? resolveProviderKind("mock", deps.mockRespond).provider : null;
-        const { provider, status } = await maestroRoleProvider({ db: deps.db, mockProvider, makeProviderFor: deps.aiMaker, log: deps.log }, roleIndex, d.model, { source: "conferencia", itemId: d.id });
+        const mockProvider = deps.mockProvider ?? (deps.mockRespond ? resolveProviderKind("mock", deps.mockRespond).provider : null);
+        const maestroDeps = { db: deps.db, mockProvider, makeProviderFor: deps.aiMaker, log: deps.log };
+        const origin = { source: "conferencia" as const, itemId: d.id };
+        const { provider, status } = deps.crossCompany ? await maestroCheckerProvider(maestroDeps, "verificacao", d.model, origin) : await maestroRoleProvider(maestroDeps, roleIndex, d.model, origin);
         const who: Answerer = { provider: provider?.name ?? "software", model: provider?.model ?? "" };
         const needsAi = layer === "redteam";
         // fontes/atualidade só chamam IA quando há trecho oficial; antes disso o resultado é determinístico
@@ -397,6 +422,7 @@ export async function runDraftChecks(deps: RunDeps, options: RunOptions): Promis
       await deps.db.service("ch_worker_save_draft_check", { p_draft_id: d.id, p_layer: layer, p_verdict: result.verdict, p_findings: result.findings, p_meta: meta });
       report.saved++;
       report.verdicts[result.verdict] = (report.verdicts[result.verdict] ?? 0) + 1;
+      await options.onProgress?.(reports);
     }
   }
   return reports;
