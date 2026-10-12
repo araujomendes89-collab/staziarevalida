@@ -15,7 +15,6 @@ import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoic
 import { samplePath } from "./voicePreview";
 import { elevenAccessOf, nexusStatus, openNexus, type TtsQuota } from "./nexus";
 import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, STT_BLOCK, STT_BUSY, STT_PER_MINUTE, audioFitsSeconds, sttAccessOf, sttConfig, transcribe } from "./stt";
-import { tutorSettings } from "./settings";
 
 type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
