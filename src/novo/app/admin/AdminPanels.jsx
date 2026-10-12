@@ -3,35 +3,75 @@ import React from "react";
 import { Badge, Banner, Button, Card, EmptyState, SelectField, StatCard, Switch, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
-import { dateTimeBR, LoadError, Loading, messageOf, PLAN_LABEL, ROLE_LABEL, SUB_STATUS_LABEL, TextArea, useLoad } from "./common.jsx";
+import { dateTimeBR, LoadError, Loading, messageOf, PLAN_LABEL, ROLE_LABEL, SUB_STATUS_LABEL, TextArea, useDebounced, useLoad } from "./common.jsx";
+import { auditActor, auditLabel, auditSummary } from "./auditLog.js";
 
 // ---------------------------------------------------------------- visão geral
+/** O que espera conferência, por aba (chaves de pending_review em app_admin_overview). */
+const PENDING_REVIEW = [
+  ["stations", "Estações"],
+  ["lessons_draft", "Aulas em rascunho"],
+  ["podcasts", "Podcasts com roteiro para aprovar"],
+  ["updates", "Atualizações pendentes"],
+  ["content", "Central de Conteúdo"],
+];
 export function AdminOverview({ isAdmin }) {
   const { backend } = useSession();
   const mobile = useMobile();
   const { data, error, reload } = useLoad(() => backend.rpc("app_admin_overview"), [backend]);
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
-  const plans = data.users.by_plan;
-  const paying = ["pro:active", "elite:active", "pro:past_due", "elite:past_due"].reduce((n, k) => n + (plans[k] ?? 0), 0);
+  // só o administrador recebe os números de usuários e planos (o banco não os envia ao editor)
+  const plans = data.users?.by_plan ?? {};
+  const paying = ["pro:active", "elite:active"].reduce((n, k) => n + (plans[k] ?? 0), 0);
+  const pastDue = ["pro:past_due", "elite:past_due"].reduce((n, k) => n + (plans[k] ?? 0), 0);
+  const pending = PENDING_REVIEW.filter(([key]) => data.pending_review?.[key] != null);
+  // sem nenhuma das duas somas (falha isolada no banco), o bloco some em vez de mostrar só o título
+  const ai = data.ai_month && (data.ai_month.central_usd != null || data.ai_month.tutor_usd != null) ? data.ai_month : null;
+  const usd = (v) => `US$ ${Number(v ?? 0).toFixed(2).replace(".", ",")}`;
   const grid = { display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(4,minmax(0,1fr))", gap: 16 };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {isAdmin && (
+      {isAdmin && data.users && (
         <div style={grid}>
           <StatCard label="Usuários" value={data.users.total} caption={`${data.users.new_7d} novos em 7 dias`} icon="users" />
-          <StatCard label="Ativos" value={data.users.active_7d} caption="estudaram nos últimos 7 dias" tone="success" icon="activity" />
-          <StatCard label="Em teste" value={plans["trial:trialing"] ?? 0} caption="teste grátis em andamento" tone="warning" icon="clock" />
-          <StatCard label="Planos pagos" value={paying} caption="Pro e Elite ativos" tone="info" icon="crown" />
+          <StatCard label="Ativos" value={data.users.active_7d} caption="alunos que estudaram nos últimos 7 dias (questões, flashcards, aulas ou Nexus)" tone="success" icon="activity" />
+          <StatCard label="Em teste" value={plans["trial:trialing"] ?? 0} caption="teste grátis dentro do prazo" tone="warning" icon="clock" />
+          <StatCard label="Planos pagos" value={paying} caption={pastDue > 0 ? `Pro e Elite ativos · ${pastDue} com pagamento pendente` : "Pro e Elite ativos"} tone="info" icon="crown" />
         </div>
       )}
       <div style={grid}>
         <StatCard label="Questões" value={data.questions.total} caption={`${data.questions.exams} provas · ${data.questions.annulled} anuladas`} icon="file-question" />
-        <StatCard label="Sem figura" value={data.questions.needs_image} caption="citam imagem não vinculada" tone="warning" icon="image" />
+        <StatCard label="Sem figura" value={data.questions.needs_image} caption="citam imagem não vinculada (o envio da imagem ainda não está na tela)" tone="warning" icon="image" />
         <StatCard label="Respostas" value={data.activity.attempts} caption={`${data.activity.attempts_7d} nos últimos 7 dias`} tone="success" icon="circle-check" />
         <StatCard label="Estações" value={data.stations.approved} caption={`${data.stations.pending} aguardando revisão médica`} tone="info" icon="clipboard-list" />
       </div>
-      {isAdmin && (
+      {(pending.length > 0 || ai) && (
+        <Card>
+          {pending.length > 0 && (
+            <>
+              <div style={{ font: "var(--type-label)", marginBottom: 12 }}>Esperando revisão</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {pending.map(([key, label]) => (
+                  <Badge key={key} tone={data.pending_review[key] > 0 ? "warning" : "neutral"}>
+                    {label}: {data.pending_review[key]}
+                  </Badge>
+                ))}
+              </div>
+            </>
+          )}
+          {ai && (
+            <>
+              <div style={{ font: "var(--type-label)", margin: pending.length ? "20px 0 12px" : "0 0 12px" }}>Gasto de IA neste mês (estimado)</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {ai.central_usd != null && <Badge>Central de IAs: {usd(ai.central_usd)}</Badge>}
+                {ai.tutor_usd != null && <Badge>Nexus: {usd(ai.tutor_usd)}</Badge>}
+              </div>
+            </>
+          )}
+        </Card>
+      )}
+      {isAdmin && data.users && (
         <Card>
           <div style={{ font: "var(--type-label)", marginBottom: 12 }}>Usuários por papel</div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -68,12 +108,23 @@ const PERIODS = [
   { value: "one_time", label: "Pagamento único" },
 ];
 const toPrice = (cents) => (cents == null ? "" : (cents / 100).toFixed(2).replace(".", ","));
+/**
+ * Preço digitado → centavos. Aceita "129,90", "129.90" (ponto com 1 ou 2 casas é decimal), "1.299,90" e "1.299" (ponto de milhar).
+ * Vazio = sem preço (null); o que não dá para entender = NaN.
+ */
 function toCents(text) {
-  const clean = String(text).replace(/[R$\s.]/g, "").replace(",", ".");
-  if (!clean) return null;
-  const value = Number(clean);
-  return Number.isFinite(value) && value >= 0 ? Math.round(value * 100) : NaN;
+  const raw = String(text).replace(/R\$|\s/g, "");
+  if (!raw) return null;
+  let clean;
+  if (raw.includes(",")) clean = raw.replace(/\./g, "").replace(",", ".");
+  else if (/^\d+\.\d{1,2}$/.test(raw)) clean = raw;
+  else if (/^\d{1,3}(\.\d{3})+$/.test(raw)) clean = raw.replace(/\./g, "");
+  else clean = raw;
+  const value = /^\d+(\.\d+)?$/.test(clean) ? Number(clean) : NaN;
+  return Number.isFinite(value) ? Math.round(value * 100) : NaN;
 }
+/** Prévia do preço que vai ser salvo ("R$ 129,90"), para o erro de digitação aparecer antes de salvar. */
+const pricePreview = (cents) => (cents == null || Number.isNaN(cents) ? undefined : `Vai salvar: R$ ${(cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 
 function PlanEditor({ plan, onSaved }) {
   const { backend } = useSession();
@@ -102,7 +153,7 @@ function PlanEditor({ plan, onSaved }) {
           description: form.description,
           price_cents: trial ? 0 : cents,
           billing_period: form.billing_period,
-          features: form.features.split("\n"),
+          features: form.features.split("\n").map((x) => x.trim()).filter(Boolean),
           active: form.active,
         },
       });
@@ -118,16 +169,16 @@ function PlanEditor({ plan, onSaved }) {
       <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 16 }} noValidate>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <h3 style={{ margin: 0, font: "var(--type-h4)" }}>{PLAN_LABEL[plan.code]}</h3>
-          <Badge tone={plan.active ? "success" : "neutral"}>{plan.active ? (trial ? "Oferecido no cadastro" : "À venda") : "Fora de venda"}</Badge>
+          <Badge tone={plan.active ? "success" : "neutral"}>{plan.active ? (trial ? "Oferecido no cadastro" : "Marcado para venda") : "Fora de venda"}</Badge>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
           <TextField label="Nome exibido" value={form.name} maxLength={60} onChange={(e) => set({ name: e.target.value })} />
-          {!trial && <TextField label="Preço (R$)" value={form.price} inputMode="decimal" placeholder="49,90" onChange={(e) => set({ price: e.target.value })} />}
+          {!trial && <TextField label="Preço (R$)" value={form.price} inputMode="decimal" placeholder="49,90" hint={pricePreview(toCents(form.price))} onChange={(e) => set({ price: e.target.value })} />}
           {!trial && <SelectField label="Cobrança" value={form.billing_period} onChange={(e) => set({ billing_period: e.target.value })} options={PERIODS} />}
         </div>
         <TextArea label="Descrição" rows={2} maxLength={400} value={form.description} onChange={(description) => set({ description })} />
-        <TextArea label="Recursos incluídos (um por linha)" rows={4} value={form.features} onChange={(features) => set({ features })} hint="Aparecem na tela de planos do aluno. Até 20 itens." />
-        <Switch label={trial ? "Oferecer teste grátis no cadastro" : "Colocar à venda"} description={trial ? "Os dias de teste ficam em Configurações." : "Só com preço definido."} checked={form.active} onChange={(e) => set({ active: e.target.checked })} />
+        <TextArea label="Recursos incluídos (um por linha)" rows={4} value={form.features} onChange={(features) => set({ features })} hint="Até 20 itens. Ficam guardados para a futura tela de planos do aluno." />
+        <Switch label={trial ? "Oferecer teste grátis no cadastro" : "Marcar para venda"} description={trial ? "Os dias de teste ficam em Configurações. Hoje todo cadastro novo recebe o teste, com esta chave ligada ou desligada." : "Só com preço definido. Ainda não aparece para os alunos."} checked={form.active} onChange={(e) => set({ active: e.target.checked })} />
         {state.error && <Banner tone="danger">{state.error}</Banner>}
         <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
           {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Plano salvo.</span>}
@@ -147,8 +198,8 @@ export function AdminPlans() {
   if (!data) return <Loading />;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Banner tone="info" title="Cobrança ainda não ligada">
-        Nome, preço e recursos definidos aqui aparecem para os alunos. O pagamento on-line depende da integração com o provedor (próxima etapa). Até lá, libere planos manualmente em Usuários.
+      <Banner tone="info" title="Os planos ainda não aparecem para os alunos">
+        O app ainda não tem a tela de planos do aluno: nome, preço e recursos definidos aqui ficam guardados para quando ela existir. A cobrança será pela Stripe, numa próxima etapa. Até lá, libere planos manualmente em Usuários, com a data em “Plano pago até”.
       </Banner>
       {data.map((plan) => (
         <PlanEditor key={plan.code} plan={plan} onSaved={setData} />
@@ -158,72 +209,248 @@ export function AdminPlans() {
 }
 
 // ---------------------------------------------------------------- estações
+// Aprovar é revisão médica: revisor cadastrado na área da estação ou administrador, com o registro do que foi conferido
+// (o banco confere tudo em app_admin_set_station_review, migração …8000). Voltar para revisão pede o motivo.
+const MIN_NOTE = 10;
+const pts = (n) => (n == null ? "—" : Number(n).toLocaleString("pt-BR"));
+
+// Níveis do item do checklist (src/shared/checklistBank/types.ts: grades e criteria).
+const LEVELS = [
+  ["correct", "Adequado"],
+  ["partial", "Parcial"],
+  ["incorrect", "Inadequado"],
+];
+
+/** Critério e valor de cada nível do item: é o texto médico que o avaliador usa para dar a nota, e a aprovação vale para ele. */
+function ItemCriteria({ item }) {
+  return (
+    <ul style={{ margin: "2px 0 0", paddingLeft: 18, color: "var(--text-secondary)" }}>
+      {LEVELS.map(([key, label]) => {
+        const points = item.grades?.[key];
+        const text = typeof item.criteria?.[key] === "string" ? item.criteria[key].trim() : "";
+        if (key === "partial" && points == null && !text) return null; // item de 2 níveis
+        return (
+          <li key={key}>
+            <b>
+              {label} ({pts(points)}):
+            </b>{" "}
+            {text || <span style={{ color: "var(--text-tertiary)" }}>sem critério escrito</span>}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function ContentBlock({ title, children }) {
+  return (
+    <div>
+      <div style={{ font: "var(--type-label)", marginBottom: 4 }}>{title}</div>
+      <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}>{children}</div>
+    </div>
+  );
+}
+
+/** Conteúdo completo da estação, só para ler e conferir: tudo o que a aprovação cobre (checklist_station_contents). */
+function StationContent({ content }) {
+  if (!content) return <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>Esta estação não tem roteiro, impressos nem checklist cadastrados.</p>;
+  const pressings = Array.isArray(content.pressings) ? content.pressings : [];
+  const items = (Array.isArray(content.checklist_items) ? content.checklist_items : []).slice().sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+  const summary = Array.isArray(content.summary)
+    ? content.summary.filter((t) => t && (t.topic || t.summary))
+    : typeof content.summary === "string" && content.summary.trim()
+      ? [{ topic: "", summary: content.summary }]
+      : [];
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {content.doctor_scene && <ContentBlock title="Cenário de atuação">{content.doctor_scene}</ContentBlock>}
+      {content.doctor_tasks && <ContentBlock title="Tarefas do participante">{content.doctor_tasks}</ContentBlock>}
+      {content.actor_script && <ContentBlock title="Roteiro do ator">{content.actor_script}</ContentBlock>}
+      {pressings.length > 0 && (
+        <div>
+          <div style={{ font: "var(--type-label)", marginBottom: 4 }}>Impressos</div>
+          {pressings.map((p, i) => (
+            <div key={p.id ?? i} style={{ marginTop: 6, font: "var(--type-body-sm)" }}>
+              <b>{p.name}</b>
+              {p.content && <div style={{ color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}>{p.content}</div>}
+              {p.image_url && <img src={p.image_url} alt={p.name ?? "Impresso"} loading="lazy" style={{ display: "block", maxWidth: "100%", marginTop: 6, borderRadius: 8 }} />}
+            </div>
+          ))}
+        </div>
+      )}
+      {items.length > 0 && (
+        <div>
+          <div style={{ font: "var(--type-label)", marginBottom: 4 }}>Checklist ({items.length} {items.length === 1 ? "item" : "itens"})</div>
+          <ol style={{ margin: 0, paddingLeft: 20, font: "var(--type-body-sm)", display: "grid", gap: 6 }}>
+            {items.map((it, i) => (
+              <li key={it.id ?? i}>
+                {it.phase && <span style={{ color: "var(--text-tertiary)" }}>{it.phase} · </span>}
+                {it.content}
+                <ItemCriteria item={it} />
+                {Array.isArray(it.subitems) && it.subitems.length > 0 && (
+                  <ul style={{ margin: "2px 0 0", paddingLeft: 18, color: "var(--text-secondary)" }}>
+                    {it.subitems.map((sub, k) => <li key={sub.id ?? k}>{sub.text}</li>)}
+                  </ul>
+                )}
+                {typeof it.tip === "string" && it.tip.trim() && (
+                  <div style={{ marginTop: 2, color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}>
+                    <b>Saiba mais:</b> {it.tip.trim()}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      {summary.length > 0 && (
+        <div>
+          <div style={{ font: "var(--type-label)", marginBottom: 4 }}>Resumo dos temas</div>
+          {summary.map((t, i) => (
+            <div key={i} style={{ marginTop: 6, font: "var(--type-body-sm)" }}>
+              {t.topic && <b>{t.topic}</b>}
+              {t.summary && <div style={{ color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}>{t.summary}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function reviewRecord(s) {
+  if (s.reviewed_at) {
+    const what = s.medical_review === "approved" ? "Aprovada" : "Devolvida para revisão";
+    return `${what}${s.reviewer ? ` por ${s.reviewer}` : ""} em ${dateTimeBR(s.reviewed_at)}${s.review_note ? `: “${s.review_note}”` : ""}`;
+  }
+  // aprovada antes do registro existir, ou por comando direto no banco (a trava da migração …8000 apaga o registro)
+  if (s.medical_review === "approved") return "Aprovada sem registro de quem conferiu: vale conferir de novo.";
+  return null;
+}
+
+function StationCard({ station: s, onSaved }) {
+  const { backend } = useSession();
+  const [open, setOpen] = React.useState(false);
+  const [content, setContent] = React.useState({ loading: false, data: undefined, error: null });
+  const [note, setNote] = React.useState("");
+  const [state, setState] = React.useState({ busy: false, error: null });
+  const approved = s.medical_review === "approved";
+  const record = reviewRecord(s);
+
+  const toggle = async () => {
+    const next = !open;
+    setOpen(next);
+    if (!next || content.data !== undefined || content.loading) return;
+    setContent({ loading: true, data: undefined, error: null });
+    try {
+      setContent({ loading: false, data: (await backend.rpc("app_admin_station_content", { p_station_id: s.id })) ?? null, error: null });
+    } catch (err) {
+      setContent({ loading: false, data: undefined, error: messageOf(err) });
+    }
+  };
+  const decide = async (status) => {
+    setState({ busy: true, error: null });
+    try {
+      onSaved(await backend.rpc("app_admin_set_station_review", { p_station_id: s.id, p_status: status, p_note: note.trim() }));
+      setNote("");
+      setState({ busy: false, error: null });
+    } catch (err) {
+      setState({ busy: false, error: messageOf(err) });
+    }
+  };
+  const short = note.trim().length < MIN_NOTE;
+
+  return (
+    <Card>
+      <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
+        <div style={{ flex: "1 1 320px", minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+            <Badge tone={approved ? "success" : "warning"} size="sm">
+              {approved ? "Aprovada" : "Aguardando revisão médica"}
+            </Badge>
+            <Badge size="sm">{s.area}</Badge>
+            {s.is_pro_only && (
+              <Badge tone="pro" size="sm">
+                Pro
+              </Badge>
+            )}
+            {s.institution === "INEP" && <Badge size="sm">INEP</Badge>}
+          </div>
+          <div style={{ font: "600 16px var(--font-sans)", marginTop: 8 }}>{s.name}</div>
+          <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{s.topic}</div>
+          {record && <div style={{ marginTop: 8, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{record}</div>}
+          {s.reports > 0 && (
+            <div style={{ marginTop: 10, font: "var(--type-body-sm)" }}>
+              <b>
+                {s.reports} {s.reports === 1 ? "relato de erro" : "relatos de erro"}
+              </b>
+              {s.reports > s.last_reports.length && <span style={{ color: "var(--text-tertiary)" }}> (mostrando os {s.last_reports.length} mais recentes)</span>}
+              {s.last_reports.map((r) => (
+                <div key={r.created_at} style={{ color: "var(--text-secondary)", marginTop: 4 }}>
+                  “{r.message}” · {dateTimeBR(r.created_at)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <Button variant="secondary" size="sm" icon={open ? "chevron-up" : "chevron-down"} aria-expanded={open} onClick={toggle}>
+          {open ? "Fechar" : "Conferir"}
+        </Button>
+      </div>
+
+      {open && (
+        <div style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--border-subtle)", display: "grid", gap: 16 }}>
+          {content.loading && <Loading />}
+          {content.error && <Banner tone="danger">{content.error}</Banner>}
+          {content.data !== undefined && <StationContent content={content.data} />}
+          <div style={{ display: "grid", gap: 8 }}>
+            <div style={{ font: "var(--type-label)" }}>Revisão médica</div>
+            {state.error && <Banner tone="danger">{state.error}</Banner>}
+            {approved ? (
+              <>
+                <TextArea label="Motivo para voltar à revisão" value={note} rows={2} maxLength={2000} onChange={setNote} hint="Pelo menos 10 caracteres. Fica registrado com seu nome e a data." />
+                <div>
+                  <Button variant="secondary" size="sm" icon="undo-2" disabled={short} loading={state.busy} onClick={() => decide("pending")}>
+                    Voltar para revisão
+                  </Button>
+                </div>
+              </>
+            ) : s.can_review ? (
+              <>
+                <TextArea label="O que foi conferido (roteiro, impressos e checklist)" value={note} rows={2} maxLength={2000} onChange={setNote} hint="Pelo menos 10 caracteres. Fica registrado com seu nome e a data." />
+                <div>
+                  <Button size="sm" icon="check" disabled={short} loading={state.busy} onClick={() => decide("approved")}>
+                    Aprovar
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-tertiary)" }}>
+                Só um revisor médico cadastrado em {s.area} ou um administrador aprova esta estação. O administrador cadastra os revisores em Central de Conteúdo › Configuração e custos.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 export function AdminStations() {
   const { backend } = useSession();
   const { data, error, reload, setData } = useLoad(() => backend.rpc("app_admin_stations"), [backend]);
-  const [busy, setBusy] = React.useState(null);
-  const [actionError, setActionError] = React.useState(null);
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
-  const setReview = async (id, status) => {
-    setBusy(id);
-    setActionError(null);
-    try {
-      setData(await backend.rpc("app_admin_set_station_review", { p_station_id: id, p_status: status }));
-    } catch (err) {
-      setActionError(messageOf(err));
-    }
-    setBusy(null);
-  };
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Banner tone="warning" title="Aprovação depende de revisão médica">
-        Só aprove uma estação depois que um médico revisor conferir roteiro, impressos e checklist. Aprovada, ela aparece para todos os alunos.
+      <Banner tone="info" title="Telas de estações do aluno em construção">
+        As telas de estações do aluno ainda estão em construção e continuam escondidas: por enquanto, só a equipe vê as estações, aprovadas ou não. Aprovar agora deixa a estação pronta para quando essas telas forem ligadas. Pelo mesmo motivo, os alunos ainda não conseguem relatar erro numa estação: os relatos só vão aparecer aqui depois que essas telas tiverem o botão de relatar.
       </Banner>
-      {actionError && <Banner tone="danger">{actionError}</Banner>}
+      <Banner tone="warning" title="Aprovação é revisão médica">
+        Só aprova o revisor médico cadastrado na área da estação, ou um administrador, depois de conferir roteiro, impressos e checklist. O que foi conferido fica registrado com o nome de quem aprovou e a data.
+      </Banner>
       {data.length === 0 && <EmptyState icon="clipboard-list" title="Nenhuma estação cadastrada" />}
       {data.map((s) => (
-        <Card key={s.id}>
-          <div style={{ display: "flex", gap: 16, alignItems: "flex-start", flexWrap: "wrap" }}>
-            <div style={{ flex: "1 1 320px", minWidth: 0 }}>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                <Badge tone={s.medical_review === "approved" ? "success" : "warning"} size="sm">
-                  {s.medical_review === "approved" ? "Aprovada" : "Aguardando revisão médica"}
-                </Badge>
-                <Badge size="sm">{s.area}</Badge>
-                {s.is_pro_only && (
-                  <Badge tone="pro" size="sm">
-                    Pro
-                  </Badge>
-                )}
-                {s.institution === "INEP" && <Badge size="sm">INEP</Badge>}
-              </div>
-              <div style={{ font: "600 16px var(--font-sans)", marginTop: 8 }}>{s.name}</div>
-              <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{s.topic}</div>
-              {s.reports > 0 && (
-                <div style={{ marginTop: 10, font: "var(--type-body-sm)" }}>
-                  <b>
-                    {s.reports} {s.reports === 1 ? "relato de erro" : "relatos de erro"}
-                  </b>
-                  {s.last_reports.map((r) => (
-                    <div key={r.created_at} style={{ color: "var(--text-secondary)", marginTop: 4 }}>
-                      “{r.message}” · {dateTimeBR(r.created_at)}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            {s.medical_review === "approved" ? (
-              <Button variant="secondary" size="sm" onClick={() => setReview(s.id, "pending")} loading={busy === s.id}>
-                Voltar para revisão
-              </Button>
-            ) : (
-              <Button size="sm" icon="check" onClick={() => setReview(s.id, "approved")} loading={busy === s.id}>
-                Aprovar
-              </Button>
-            )}
-          </div>
-        </Card>
+        <StationCard key={s.id} station={s} onSaved={setData} />
       ))}
     </div>
   );
@@ -318,6 +545,8 @@ const VOICE_NAMES = [
   { value: "cedar", label: "Cedar (OpenAI)" },
   { value: "__outra", label: "Outra (digite o nome)" },
 ];
+/** Vozes que a lista conhece; qualquer outro nome salvo volta em "Outra" (digite o nome). */
+const KNOWN_VOICES = VOICE_NAMES.map((v) => v.value).filter((v) => v && v !== "__outra");
 const DURONA_LEVELS = [
   { value: "moderada", label: "Moderada" },
   { value: "forte", label: "Forte" },
@@ -339,6 +568,9 @@ const PROFANITY_CAP = [
   { value: "moderate", label: "Até liberados (Durona: contra a resposta, nunca contra o aluno)" },
 ];
 
+/** Mesma mensagem da trava do banco (…9550_correcoes_acesso.sql): Tutor ligado exige "Planos pagos + teste grátis". */
+const TUTOR_NEEDS_PLANS = "Para ligar o Tutor, ligue também “Planos pagos + teste grátis”. Sem isso, todo aluno usaria o Tutor de graça, com os limites do plano pago.";
+
 /** Liga e desliga o Tutor, define o limite por aluno e mostra o consumo. Toda mudança pede motivo e vai para o registro. */
 export function AdminTutor() {
   const { backend } = useSession();
@@ -355,8 +587,8 @@ export function AdminTutor() {
         trial_voice_daily_min: String(Math.round((data.trial_voice_daily_seconds ?? 600) / 60)), trial_voice_total_min: String(Math.round((data.trial_voice_total_seconds ?? 2400) / 60)),
         paid_voice_daily_min: String(Math.round((data.paid_voice_daily_seconds ?? 3600) / 60)),
         voice_provider: data.voice_provider ?? "auto",
-        voice_choice: !data.voice_name ? "" : ["marin", "cedar"].includes(data.voice_name) ? data.voice_name : "__outra",
-        voice_other: data.voice_name && !["marin", "cedar"].includes(data.voice_name) ? data.voice_name : "",
+        voice_choice: !data.voice_name ? "" : KNOWN_VOICES.includes(data.voice_name) ? data.voice_name : "__outra",
+        voice_other: data.voice_name && !KNOWN_VOICES.includes(data.voice_name) ? data.voice_name : "",
         voice_session_max_min: String(Math.round((data.voice_session_max_seconds ?? 1800) / 60)),
         save_transcripts: data.save_transcripts ?? true,
         transcript_retention_days: String(data.transcript_retention_days ?? 180),
@@ -403,8 +635,11 @@ export function AdminTutor() {
   if (error) return <LoadError error={error} retry={reload} />;
   if (!form) return <Loading />;
   const set = (patch) => (setForm((f) => ({ ...f, ...patch })), setState((s) => ({ ...s, done: false })));
+  // o banco recusa o Tutor ligado sem os planos pagos: avisa e trava o salvar antes
+  const needsPlans = form.enabled && !form.requires_pro;
   const save = async (event) => {
     event.preventDefault();
+    if (needsPlans) return;
     setState({ saving: true, error: null, done: false });
     try {
       const n = (x) => String(x ?? "").trim();
@@ -448,7 +683,8 @@ export function AdminTutor() {
               {server.realtime_voice ? `Voz em tempo real pronta no servidor (${server.realtime_model}).` : `Voz em tempo real não configurada: ${server.realtime_pending ?? "sem detalhe"} Sem ela, não há voz reserva: a Nexus usa a voz do professor ou o Chat.`}
             </Banner>
           )}
-          <Switch label="Planos pagos + teste grátis" description="Ligado: quem não assina tem o teste grátis do Tutor (começa no primeiro uso) e depois vê o convite para assinar. Desligado: o Tutor fica liberado para todos (só para testes internos)." checked={form.requires_pro} onChange={(e) => set({ requires_pro: e.target.checked })} />
+          <Switch label="Planos pagos + teste grátis" description="Ligado: quem não assina tem o teste grátis do Tutor (começa no primeiro uso) e depois vê o convite para assinar. Precisa ficar ligado para o Tutor ficar ligado." checked={form.requires_pro} onChange={(e) => set({ requires_pro: e.target.checked })} />
+          {needsPlans && <Banner tone="warning">{TUTOR_NEEDS_PLANS}</Banner>}
           <Switch label="Conversa por voz" description="Desligada: só o Chat, por escrito (sem as vozes e sem o microfone)." checked={form.voice_enabled} onChange={(e) => set({ voice_enabled: e.target.checked })} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
             <TextField label="Interações de texto por dia (plano pago)" value={form.daily_message_limit} inputMode="numeric" maxLength={3} onChange={(e) => set({ daily_message_limit: e.target.value })} hint="De 1 a 500. É o teto de gasto por aluno." />
@@ -511,6 +747,11 @@ export function AdminTutor() {
           {personas.data && (
             <div>
               <div className="sm-field__label" style={{ marginBottom: 6 }}>Professores disponíveis para os alunos (usa o motivo abaixo)</div>
+              {reason.trim().length < 10 && (
+                <p style={{ margin: "0 0 8px", font: "var(--type-caption)", color: "var(--text-secondary)" }}>
+                  Para ligar ou desligar um professor, escreva primeiro o motivo da mudança (pelo menos 10 letras) no campo “Motivo da mudança”, mais abaixo.
+                </p>
+              )}
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                 {personas.data.map((p) => (
                   <Switch key={p.id} label={`${p.emoji} ${p.name}`} description={p.default ? "Padrão: fica sempre ligado." : p.voice ? `Voz: ${p.voice}` : p.tagline} checked={p.active} disabled={p.default || personaState.busy === p.id || reason.trim().length < 10} onChange={(e) => togglePersona(p.id, e.target.checked)} />
@@ -541,7 +782,7 @@ export function AdminTutor() {
           {state.error && <Banner tone="danger">{state.error}</Banner>}
           <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
             {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Tutor atualizado.</span>}
-            <Button type="submit" loading={state.saving} disabled={reason.trim().length < 10}>Salvar Tutor</Button>
+            <Button type="submit" loading={state.saving} disabled={reason.trim().length < 10 || needsPlans}>Salvar Tutor</Button>
           </div>
         </div>
       </Card>
@@ -550,61 +791,83 @@ export function AdminTutor() {
 }
 
 // ---------------------------------------------------------------- registro
-const ACTION_LABEL = {
-  "user.role": "Papel alterado",
-  "user.subscription": "Plano alterado",
-  "user.delete": "Usuário excluído",
-  "questions.import": "Questões importadas",
-  "question.inserted": "Questão criada",
-  "question.updated": "Questão editada",
-  "station.review": "Revisão de estação",
-  "plan.save": "Plano editado",
-  "settings.save": "Configurações salvas",
-  "tutor.config": "Tutor configurado",
-  "tutor.personality": "Professor ligado ou desligado",
-  "guideline_update.publish": "Atualização publicada",
-  "guideline_update.unpublish": "Atualização tirada do ar",
-  "guideline_update.delete": "Atualização apagada",
-};
-
-function summary(entry) {
-  const d = entry.details ?? {};
-  if (entry.action === "user.role") return `${ROLE_LABEL[d.from] ?? d.from} → ${ROLE_LABEL[d.to] ?? d.to}`;
-  if (entry.action === "user.subscription") return `${PLAN_LABEL[d.to?.plan] ?? d.to?.plan} · ${SUB_STATUS_LABEL[d.to?.status] ?? d.to?.status}`;
-  if (entry.action === "user.delete") return d.email;
-  if (entry.action === "questions.import") return `${d.inserted} novas · ${d.updated} atualizadas · ${d.skipped} puladas`;
-  if (entry.action === "station.review") return `${entry.target}: ${d.to === "approved" ? "aprovada" : "voltou para revisão"}`;
-  if (entry.action === "plan.save") return `${PLAN_LABEL[entry.target] ?? entry.target}${d.active ? " · à venda" : ""}`;
-  if (entry.action.startsWith("question.")) return entry.target;
-  // atualizações: o tema e, quando houver, o motivo (recusa, texto alterado, correção) e a nota do revisor
-  if (entry.action.startsWith("guideline_update.")) return [d.topic, d.motivo, d.note && `Nota do revisor: ${d.note}`].filter(Boolean).join(" · ");
-  return "";
-}
-
-// sem autor: a conta foi apagada, ou a ação foi feita pela própria correção do banco (marcada "automatica")
-const actorOf = (entry) => entry.actor ?? (entry.details?.automatica ? "correção automática" : "conta excluída");
+// Nome de cada ação, resumo e quem fez: auditLog.js (em português, sem códigos internos).
+const AUDIT_PAGE = 50;
+const NO_FILTERS = { action: "", person: "", from: "", to: "" };
 
 export function AdminAudit() {
   const { backend } = useSession();
-  const { data, error, reload } = useLoad(() => backend.rpc("app_admin_audit", { p_limit: 200 }), [backend]);
-  if (error) return <LoadError error={error} retry={reload} />;
+  const mobile = useMobile();
+  const [filters, setFilters] = React.useState(NO_FILTERS);
+  const [page, setPage] = React.useState(0);
+  const person = useDebounced(filters.person.trim());
+  const set = (patch) => (setFilters((f) => ({ ...f, ...patch })), setPage(0));
+  const filtering = Boolean(filters.action || filters.person.trim() || filters.from || filters.to);
+  const { data, error, loading, reload } = useLoad(
+    () => backend.rpc("app_admin_audit_page", { p_filters: { action: filters.action, person, from: filters.from, to: filters.to }, p_limit: AUDIT_PAGE, p_offset: page * AUDIT_PAGE }),
+    [backend, filters.action, person, filters.from, filters.to, page]
+  );
+  if (error && !data) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
-  if (data.length === 0) return <EmptyState icon="history" title="Nenhuma ação registrada" description="Toda alteração feita na administração aparece aqui, com quem fez e quando." />;
+  const pages = Math.max(1, Math.ceil(data.total / AUDIT_PAGE));
+  // tipos de ação que existem, com o nome em português (o escolhido continua na lista mesmo se não houver mais nenhum)
+  const types = [...new Set([...(data.actions ?? []), ...(filters.action ? [filters.action] : [])])]
+    .map((action) => ({ value: action, label: auditLabel({ action, details: {} }) }))
+    .sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+  if (!filtering && data.total === 0) return <EmptyState icon="history" title="Nenhuma ação registrada" description="Toda alteração feita na administração e na Central de Conteúdo aparece aqui, com quem fez e quando." />;
+  const first = page * AUDIT_PAGE + 1;
+  const last = page * AUDIT_PAGE + data.items.length;
   return (
-    <Card padding={8}>
-      {data.map((entry, index) => (
-        <div key={entry.id} style={{ display: "flex", gap: 12, padding: "12px 16px", borderTop: index ? "1px solid var(--border-subtle)" : 0, flexWrap: "wrap" }}>
-          <div style={{ flex: "1 1 260px", minWidth: 0 }}>
-            <div style={{ font: "600 14px var(--font-sans)" }}>{ACTION_LABEL[entry.action] ?? entry.action}</div>
-            <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", overflowWrap: "anywhere" }}>{summary(entry)}</div>
-          </div>
-          <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", textAlign: "right" }}>
-            {dateTimeBR(entry.created_at)}
-            <br />
-            {actorOf(entry)}
-          </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <Card>
+        <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "minmax(0,1.4fr) minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr)", gap: 12, alignItems: "end" }}>
+          <SelectField label="Tipo de ação" value={filters.action} onChange={(e) => set({ action: e.target.value })} options={[{ value: "", label: "Todos os tipos" }, ...types]} />
+          <TextField label="Pessoa" icon="search" placeholder="E-mail de quem fez ou de quem foi afetado" value={filters.person} onChange={(e) => set({ person: e.target.value })} />
+          <TextField label="De" type="date" value={filters.from} max={filters.to || undefined} onChange={(e) => set({ from: e.target.value })} />
+          <TextField label="Até" type="date" value={filters.to} min={filters.from || undefined} onChange={(e) => set({ to: e.target.value })} />
         </div>
-      ))}
-    </Card>
+        {filtering && (
+          <div style={{ marginTop: 12 }}>
+            <Button variant="ghost" size="sm" icon="x" onClick={() => (setFilters(NO_FILTERS), setPage(0))}>Limpar filtros</Button>
+          </div>
+        )}
+      </Card>
+      {error && <LoadError error={error} retry={reload} />}
+      {data.items.length > 0 && (
+        <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }} aria-live="polite">
+          {`Mostrando ${first} a ${last} de ${data.total} ${data.total === 1 ? "ação" : "ações"}`}
+          {filtering ? " com esses filtros" : ""}
+        </div>
+      )}
+      {data.items.length === 0 ? (
+        <EmptyState icon="search" title="Nenhuma ação com esses filtros" description="Ajuste o tipo, a pessoa ou as datas." />
+      ) : (
+        <Card padding={8} role="list" aria-label="Ações registradas">
+          {data.items.map((entry, index) => (
+            <div key={entry.key ?? entry.id} role="listitem" style={{ display: "flex", gap: 12, padding: "12px 16px", borderTop: index ? "1px solid var(--border-subtle)" : 0, flexWrap: "wrap" }}>
+              <div style={{ flex: "1 1 260px", minWidth: 0 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ font: "600 14px var(--font-sans)" }}>{auditLabel(entry)}</span>
+                  {entry.source === "central" && <Badge size="sm">Central de Conteúdo</Badge>}
+                </div>
+                <div style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)", overflowWrap: "anywhere" }}>{auditSummary(entry)}</div>
+              </div>
+              <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", textAlign: "right" }}>
+                {dateTimeBR(entry.created_at)}
+                <br />
+                {auditActor(entry)}
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+      {pages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+          <Button variant="secondary" size="sm" icon="chevron-left" disabled={page === 0 || loading} onClick={() => setPage((n) => Math.max(0, n - 1))}>Anterior</Button>
+          <span style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Página {page + 1} de {pages}</span>
+          <Button variant="secondary" size="sm" iconRight="chevron-right" disabled={page >= pages - 1 || loading} onClick={() => setPage((n) => n + 1)}>Próxima</Button>
+        </div>
+      )}
+    </div>
   );
 }

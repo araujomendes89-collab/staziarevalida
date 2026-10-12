@@ -232,7 +232,7 @@ describe("Decisão do revisor e cartão para o aluno", () => {
     invalidateAiConfig(db);
     const capped = await runQuestionReanalysis({ db, aiMaker });
     expect(capped).toMatchObject({ considered: 1, saved: 0, skipped: 0 });
-    expect(capped.pending).toMatch(/teto por execução de US\$ 0,01/);
+    expect(capped.pending).toMatch(/teto por chamada de US\$ 0,01/);
     expect(seen).toEqual([]);
     await db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: { caps_enabled: false } });
     invalidateAiConfig(db);

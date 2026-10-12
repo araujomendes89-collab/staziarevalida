@@ -474,7 +474,7 @@ describe("Aceite dos Tutores — rotas do servidor (/api/tutor)", () => {
     const aluno = await novoAluno();
     await aceitarTermos(dev.db, aluno);
     // plano pago: nenhum aviso de plano pode aparecer no lugar do aceite (o teste de precedência usa quem não paga)
-    if (pago) await sql(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [aluno]);
+    if (pago) await sql(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id = $1`, [aluno]);
     const conversa = await rpc(aluno, "app_tutor_start", "questao", null, null);
     const fala = (await sql<{ id: string }>(`select id from public.tutor_messages where session_id = $1 and role = 'tutor' order by id limit 1`, [conversa.id]))[0].id;
     return { aluno, token: await dev.createSession(aluno), sid: conversa.id as string, fala: Number(fala) };

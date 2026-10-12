@@ -25,7 +25,7 @@ const TABS = [
   { value: "podcasts", label: "Podcasts", icon: "headphones", staff: true },
   { value: "atualizacoes", label: "Atualizações", icon: "refresh-cw", staff: true, reviewer: true },
   { value: "planos", label: "Planos", icon: "crown" },
-  { value: "estacoes", label: "Estações", icon: "clipboard-list", staff: true },
+  { value: "estacoes", label: "Estações", icon: "clipboard-list", staff: true, reviewer: true },
   { value: "conteudo", label: "Central de Conteúdo", icon: "library", staff: true, reviewer: true },
   { value: "ias", label: "Central de IAs", icon: "bot" },
   { value: "play", label: "Stazia Arena", icon: "trophy" },
@@ -40,7 +40,7 @@ export function AdminScreen() {
   const { boot } = useSession();
   const isAdmin = boot.role === "admin";
   const isStaff = isStaffRole(boot.role);
-  // revisor médico sem papel de equipe: só a revisão da Central de Conteúdo
+  // revisor médico sem papel de equipe: só o que tem revisão médica (Atualizações, Estações e Central de Conteúdo)
   const tabs = TABS.filter((t) => t.admin ? isAdmin : isAdmin || (isStaff && t.staff) || (!isStaff && t.reviewer));
   const [params, setParams] = useSearchParams();
   const tab = tabs.some((t) => t.value === params.get("aba")) ? params.get("aba") : tabs[0].value;

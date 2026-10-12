@@ -14,6 +14,21 @@ import { assistAvailable, assistProviders, capPages, pdfPages, runLessonAssist }
 const pagesText = (pages) => (pages?.length ? `p. ${pages.join(", ")}` : "sem página");
 const usd = (n) => `US$ ${Number(n ?? 0).toFixed(4).replace(".", ",")}`;
 
+/** Início de cada trecho do material em que a sugestão se apoia, com a página: a equipe confere sem abrir o PDF (A02). */
+function Excerpts({ items }) {
+  if (!items?.length) return null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 4 }}>
+      {items.map((e) => (
+        <blockquote key={e.id} style={{ margin: 0, padding: "6px 10px", borderLeft: "3px solid var(--border-default)", font: "var(--type-caption)", color: "var(--text-secondary)" }}>
+          <span style={{ display: "block", fontWeight: 600 }}>Trecho citado ({pagesText(e.page != null ? [e.page] : [])})</span>
+          {e.text}
+        </blockquote>
+      ))}
+    </div>
+  );
+}
+
 function Suggestion({ label, children, onUse, used, meta }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: 12, borderRadius: 12, border: "1px solid var(--border-subtle)", background: "var(--surface-default, #fff)" }}>
@@ -64,7 +79,7 @@ export function LessonAssistant({ form, set, lesson, pending }) {
   const [providers, setProviders] = React.useState(null);
   const [central, setCentral] = React.useState({ override_allowed: true, current: null });
   const [picked, setProvider] = React.useState("");
-  const slides = lesson?.materials?.find((m) => m.kind === "slides" && m.storage_path);
+  const slides = lesson?.materials?.find((m) => m.kind === "slides" && (m.has_file || m.storage_path));
   const lessonPdf = pending?.slides ?? (slides ? "saved" : null);
   const [source, setSource] = React.useState(lessonPdf ? "lesson" : "text");
   const [file, setFile] = React.useState(null);
@@ -118,10 +133,13 @@ export function LessonAssistant({ form, set, lesson, pending }) {
     }
   };
 
-  const use = (key, patch) => (set(patch), setUsed((u) => ({ ...u, [key]: true })));
+  // os avisos da IA (e o que o material não esclarece) ficam guardados na aula quando alguma sugestão é usada (A01)
+  const aiNotes = () => [...(result?.warnings ?? []), ...(result?.suggestion?.missing ?? []).map((m) => `O material não esclarece: ${m}`)];
+  const use = (key, patch) => (set({ ai_notes: aiNotes() }), set(patch), setUsed((u) => ({ ...u, [key]: true })));
   const s = result?.suggestion;
   const useAll = () => {
     if (!s) return;
+    set({ ai_notes: aiNotes() });
     set({ ...(s.title ? { title: s.title } : {}), ...(s.topic ? { topic: s.topic } : {}), ...(s.area ? { area: s.area } : {}), ...(s.summary ? { summary: s.summary } : {}), ...(s.key_points.length ? { key_points: s.key_points.map((k) => k.text).join("\n") } : {}) });
     setUsed({ title: true, topic: true, area: true, summary: true, key_points: true });
   };
@@ -198,13 +216,14 @@ export function LessonAssistant({ form, set, lesson, pending }) {
               {s.title && <Suggestion label="Título" used={used.title} onUse={() => use("title", { title: s.title })}>{s.title}</Suggestion>}
               {s.topic && <Suggestion label="Tema" used={used.topic} onUse={() => use("topic", { topic: s.topic })}>{s.topic}</Suggestion>}
               {s.area && <Suggestion label="Grande área" used={used.area} onUse={() => use("area", { area: s.area })}>{areaLabel(s.area)}</Suggestion>}
-              {s.summary && <Suggestion label="Resumo & racionalidade clínica" meta={pagesText(s.summary_pages)} used={used.summary} onUse={() => use("summary", { summary: s.summary })}>{s.summary}</Suggestion>}
+              {s.summary && <Suggestion label="Resumo & racionalidade clínica" meta={pagesText(s.summary_pages)} used={used.summary} onUse={() => use("summary", { summary: s.summary })}>{s.summary}<Excerpts items={s.summary_excerpts} /></Suggestion>}
               {s.key_points.length > 0 && (
                 <Suggestion label="Pontos-chave" used={used.key_points} onUse={() => use("key_points", { key_points: s.key_points.map((k) => k.text).join("\n") })}>
                   <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4 }}>
                     {s.key_points.map((k, i) => (
                       <li key={i}>
                         {k.text} <Badge size="sm">{pagesText(k.pages)}</Badge>
+                        <Excerpts items={k.excerpts} />
                       </li>
                     ))}
                   </ul>

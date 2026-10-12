@@ -132,7 +132,7 @@ const cfg = (cap: number): AiConfig =>
     prices: PRICES,
   }) as any;
 const fn = (primary: R, fallback: R): FunctionConfig => ({ key: "assistente_conferir", mode: "sozinha", primary, fallback, reviewers: [], care: "caprichado" }) as any;
-const chain = (w: string[]) => w.filter((m) => m.startsWith("Teto por execução") && !m.includes("abaixo da estimativa de uma chamada"));
+const chain = (w: string[]) => w.filter((m) => m.startsWith("Teto por chamada") && !m.includes("abaixo da estimativa de uma tentativa"));
 const suggested = (w: string) => [...w.matchAll(/pelo menos US\$ (\d+,\d+)/g)].map((m) => Number(m[1].replace(",", ".")));
 
 function fakeDb(cap: number) {

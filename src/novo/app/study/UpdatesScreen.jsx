@@ -3,7 +3,8 @@
 // treino; tabela comparativa) com o layout de "Materiais oficiais" do novo design (prototype/Study1.jsx).
 // Só aparece ao aluno o que o administrador publicou, e o banco só deixa publicar o que um revisor médico aprovou no
 // documento oficial (registra quem e quando); recusar ou mudar o texto tira do ar. O aviso "Ainda sem conferência médica"
-// fica só como proteção, caso algum dia chegue ao aluno algo sem conferência.
+// do detalhe e o selo "Sem conferência médica" do cartão e da tabela ficam só como proteção, caso algum dia chegue ao aluno
+// algo sem conferência (AT04: o selo aparece em todo lugar onde a conduta aparece, não só no detalhe).
 import React from "react";
 import { AnswerOption, Badge, Banner, Button, Card, Chip, EmptyState, Flashcard, Icon, SegmentedControl, TextField } from "../../ds";
 import { IconTile } from "../../prototype/RealIcons.jsx";
@@ -33,6 +34,16 @@ function Years({ years, size = "sm" }) {
   ));
 }
 
+/** Selo do cartão e da tabela: ainda sem conferência de um revisor médico no documento oficial (o detalhe explica). */
+function NoReviewSeal({ item }) {
+  if (item.reviewed) return null;
+  return (
+    <Badge tone="warning" icon="shield-alert" size="sm">
+      Sem conferência médica
+    </Badge>
+  );
+}
+
 function PriorityBadge({ priority, size = "sm" }) {
   const [label, tone] = PRIORITY[priority] ?? PRIORITY[2];
   return (
@@ -49,6 +60,7 @@ function UpdateCard({ item, onOpen, compact = false }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <AreaTag area={item.area} />
         <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          <NoReviewSeal item={item} />
           <Years years={item.years} />
         </span>
       </div>
@@ -78,7 +90,10 @@ function CompareTable({ items, onOpen, mobile }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {items.map((u) => (
           <Card key={u.id} style={{ borderRadius: 20 }} padding={16}>
-            <AreaTag area={u.area} />
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <AreaTag area={u.area} />
+              <NoReviewSeal item={u} />
+            </div>
             <div style={{ font: "600 15px/1.35 var(--font-sans)", margin: "6px 0 10px" }}>{u.topic}</div>
             <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", textTransform: "uppercase", letterSpacing: ".04em" }}>Antes</div>
             <p style={{ margin: "2px 0 10px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>{u.before_text ?? "—"}</p>
@@ -108,7 +123,10 @@ function CompareTable({ items, onOpen, mobile }) {
             <tr key={u.id}>
               <td style={td}>
                 <div style={{ font: "600 14px/1.35 var(--font-sans)", marginBottom: 6 }}>{u.topic}</div>
-                <AreaTag area={u.area} />
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <AreaTag area={u.area} />
+                  <NoReviewSeal item={u} />
+                </div>
               </td>
               <td style={{ ...td, color: "var(--text-secondary)" }}>{u.before_text ?? "—"}</td>
               <td style={td}>{u.current_conduct ?? "—"}</td>

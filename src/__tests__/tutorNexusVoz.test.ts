@@ -77,7 +77,7 @@ beforeAll(async () => {
   for (const st of buildEngineStatements()) await dev.db.exec(st);
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'adm@t.dev'), ($2, 'pago@t.dev'), ($3, 'sem@t.dev')`, [ADMIN, PAGO, SEM_ACEITE]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
-  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id in ($1, $2)`, [PAGO, SEM_ACEITE]);
+  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id in ($1, $2)`, [PAGO, SEM_ACEITE]);
   for (const uid of [ADMIN, PAGO]) await aceitarTermos(dev.db, uid);
   for (const uid of [ADMIN, PAGO, SEM_ACEITE]) tokens[uid] = await dev.createSession(uid);
   process.env.TUTOR_AI_PROVIDER = "mock";

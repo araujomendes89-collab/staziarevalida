@@ -31,6 +31,8 @@ const ADMIN = "00000000-0000-4000-8000-0000000000a1";
 const ALUNA = "00000000-0000-4000-8000-0000000000c1";
 const OKEY = "sk-servidor-" + "y".repeat(40);
 const GKEY = "AIza" + "g".repeat(35);
+/** As duas travas da voz ao vivo dos alunos (VZ01). */
+const AO_VIVO = { TUTOR_VOICE_ALLOW_EXTERNAL: "1", TUTOR_LIVE_VOICE_ALLOW_EXTERNAL: "1" };
 const sql = async <T = any>(q: string, p: unknown[] = []) => (await dev.db.query<T>(q, p)).rows;
 const rpc = async (uid: string, fn: string, ...args: unknown[]) =>
   (await dev.db.transaction(async (tx) => {
@@ -80,7 +82,7 @@ beforeAll(async () => {
   for (const st of buildEngineStatements()) await dev.db.exec(st);
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'adm@t.dev'), ($2, 'aluna@t.dev')`, [ADMIN, ALUNA]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
-  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [ALUNA]);
+  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id = $1`, [ALUNA]);
   await aceitarTermos(dev.db, ALUNA); // a aluna já aceitou o §34 (o aceite em si é testado em termoAceiteTutor.test.ts)
   await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, requires_pro: true }, "Tutor ligado para os testes da voz do Gemini.");
   deps.db = db;
@@ -105,9 +107,11 @@ afterAll(async () => {
 describe("Qual voz abre", () => {
   it("Gemini pronto com chave e consentimento; o automático prefere o Gemini, depois GPT-Live, depois Realtime; o painel manda", () => {
     expect(geminiVoiceConfig({}).pending).toMatch(/TUTOR_VOICE_ALLOW_EXTERNAL=1/);
-    expect(geminiVoiceConfig({ TUTOR_VOICE_ALLOW_EXTERNAL: "1" }).pending).toMatch(/GEMINI_API_KEY/);
-    expect(geminiVoiceConfig({ TUTOR_VOICE_ALLOW_EXTERNAL: "1", GOOGLE_GEMINI_API_KEY: GKEY })).toMatchObject({ ready: true, model: "gemini-3.8-live" });
-    expect(geminiVoiceConfig({ TUTOR_VOICE_ALLOW_EXTERNAL: "1", GEMINI_API_KEY: GKEY, GEMINI_LIVE_MODEL: "gemini-x-live" }).model).toBe("gemini-x-live");
+    // VZ01: a autorização da equipe sozinha não liga a voz ao vivo dos alunos; precisa também da trava própria
+    expect(geminiVoiceConfig({ TUTOR_VOICE_ALLOW_EXTERNAL: "1", GOOGLE_GEMINI_API_KEY: GKEY }).pending).toMatch(/TUTOR_LIVE_VOICE_ALLOW_EXTERNAL=1/);
+    expect(geminiVoiceConfig({ ...AO_VIVO }).pending).toMatch(/GEMINI_API_KEY/);
+    expect(geminiVoiceConfig({ ...AO_VIVO, GOOGLE_GEMINI_API_KEY: GKEY })).toMatchObject({ ready: true, model: "gemini-3.8-live" });
+    expect(geminiVoiceConfig({ ...AO_VIVO, GEMINI_API_KEY: GKEY, GEMINI_LIVE_MODEL: "gemini-x-live" }).model).toBe("gemini-x-live");
     const LIVE_OK: LiveConfig = { ready: true, model: "gpt-live-1", key: OKEY, pending: null };
     expect(planProviders("auto", {}, LIVE_OK, RT, true, GEMINI)).toMatchObject({ first: "gemini", fallback: "live", order: ["gemini", "live", "realtime"] });
     expect(planProviders("auto", {}, LIVE_OK, RT, false, GEMINI).order).toEqual(["gemini", "realtime"]); // sem oferta WebRTC, nada de GPT-Live

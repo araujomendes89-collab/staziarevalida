@@ -6,7 +6,7 @@
  * Na Vercel o corpo de cada requisição vai até 4,5 MB, então com o Supabase os arquivos não passam por aqui:
  *   envio  → POST /:id/upload (prepara um envio assinado) → o navegador envia direto ao depósito "lessons"
  *            → POST /:id/materials/confirm (confere que o arquivo chegou e registra o material);
- *   leitura → GET /materials/:id/link (endereço assinado de 10 minutos).
+ *   leitura → GET /materials/:id/link (endereço assinado: 10 minutos para PDF e 6 horas para o áudio).
  * No banco de desenvolvimento (sem Supabase) o arquivo passa pelo servidor: POST /:id/materials e GET /materials/:id/file.
  */
 import crypto from "crypto";
@@ -17,11 +17,14 @@ import type { AiProvider, StructuredRequest } from "../contentHub/ai/provider";
 import { fetchLink, type ExtractedPage } from "../podcasts/extract";
 import { aiChoices } from "../ai/maestro";
 import type { ModelRef } from "../ai/config";
+import { loadComplementarTerms } from "../contentHub/complementarGuard";
+import { holdFile, recordFileSha, releaseFile, SHA_WARNING } from "../contentHub/fileSha";
 import { AREA_CODES, generateLessonAssist, MAX_ASSIST_CHARS, type AssistProvider } from "./assist";
 
 export const LESSONS_BUCKET = "lessons";
 const MAX_MB = Number(process.env.LESSONS_MAX_FILE_MB || 200);
-const LINK_SECONDS = 600;
+const LINK_SECONDS = 600; // PDF: abre na hora
+const AUDIO_LINK_SECONDS = 6 * 3600; // áudio Flashcast: dá para ouvir a aula inteira e voltar trechos com o mesmo endereço (A04)
 const ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const TYPES: Record<string, { kinds: string[]; ext: string; magic: (b: Buffer) => boolean }> = {
   "application/pdf": { kinds: ["slides", "other"], ext: "pdf", magic: (b) => b.subarray(0, 5).toString("latin1") === "%PDF-" },
@@ -83,7 +86,23 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
     return spec;
   };
   const keyFor = (id: string, kind: string, ext: string) => `lessons/${id}/${kind}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
-  const register = (req: Authed, id: string, m: { kind: string; title: string; key: string; type: string; size: number }) =>
+  /**
+   * Registro do material com o SHA-256 gravado, FECHANDO POR SEGURANÇA (ver contentHub/fileSha.ts): a retenção do caminho é pedida
+   * antes; se o SHA-256 não puder ser gravado (nem na nova tentativa), o material fica escondido do aluno e a resposta traz `aviso`.
+   */
+  const register = async (req: Authed, id: string, m: { kind: string; title: string; key: string; type: string; size: number }, bytes?: Buffer) => {
+    await holdFile(deps!.db, m.key, deps!.log, "aulas");
+    let out;
+    try {
+      out = await registerRaw(req, id, m);
+    } catch (error) {
+      await releaseFile(deps!.db, m.key, deps!.log, "aulas"); // registro recusado: não deixa retenção órfã (o banco nunca solta a de arquivo já registrado)
+      throw error;
+    }
+    if (!(await recordFileSha(deps!.db, m.key, async () => bytes ?? (await deps!.storage.get(m.key)), deps!.log, "aulas"))) return { ...out, aviso: SHA_WARNING };
+    return (await asUser(req, "app_lesson", { p_id: id }).catch(() => out)) ?? out; // a visão volta sem a marca de retenção
+  };
+  const registerRaw = (req: Authed, id: string, m: { kind: string; title: string; key: string; type: string; size: number }) =>
     asUser(req, "app_admin_lesson_material", {
       p_lesson_id: id,
       p_material: { kind: m.kind, title: m.title.slice(0, 200), storage_path: m.key, content_type: m.type, size_bytes: m.size },
@@ -134,7 +153,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       const name = decodeURIComponent(String(req.headers["x-file-name"] ?? "material")).slice(0, 200);
       const key = `lessons/${id}/${kind}-${crypto.createHash("sha256").update(body).digest("hex").slice(0, 16)}.${spec.ext}`;
       if (!(await deps!.storage.exists(key))) await deps!.storage.put(key, body, type);
-      res.status(201).json(await register(req, id, { kind, title: String(req.query.title ?? name), key, type, size: body.length }));
+      res.status(201).json(await register(req, id, { kind, title: String(req.query.title ?? name), key, type, size: body.length }, body));
     } catch (error: any) {
       fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
     }
@@ -142,7 +161,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
 
   const materialFor = async (req: Authed) => {
     if (!ID.test(req.params.id)) throw httpError(400, "Material inválido.");
-    const m = await asUser<{ storage_path: string | null; content_type: string | null; title: string; url: string | null } | null>(req, "app_lesson_material", { p_id: req.params.id });
+    const m = await asUser<{ kind: string; storage_path: string | null; content_type: string | null; title: string; url: string | null } | null>(req, "app_lesson_material", { p_id: req.params.id });
     if (!m) throw httpError(404, "Material não encontrado.");
     return m;
   };
@@ -153,7 +172,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       const m = await materialFor(req);
       if (m.url) return res.json({ url: m.url });
       if (!m.storage_path) throw httpError(404, "Material sem arquivo.");
-      res.json({ url: deps!.storage.signedUrl ? await deps!.storage.signedUrl(m.storage_path, LINK_SECONDS) : null });
+      res.json({ url: deps!.storage.signedUrl ? await deps!.storage.signedUrl(m.storage_path, m.kind === "flashcast" ? AUDIO_LINK_SECONDS : LINK_SECONDS) : null });
     } catch (error: any) {
       fail(res, error?.status ?? (forbidden(error) ? 403 : 404), message(error));
     }
@@ -215,9 +234,12 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       const chars = pages.reduce((n, p) => n + p.text.length, 0);
       if (chars < 80) throw httpError(422, "O material não tem texto aproveitável (PDF escaneado?). Cole o texto.");
       if (chars > MAX_ASSIST_CHARS) throw httpError(413, "Material longo demais: até 400 mil caracteres.");
+      // lista de fontes que o aluno não pode ver: sem ela o pedido é recusado (503), nunca segue sem conferência
+      const terms = await loadComplementarTerms(deps!.db, undefined, deps!.log);
       let r;
       try {
         r = await generateLessonAssist({
+          terms,
           kind: kind as AssistProvider,
           db: deps!.db,
           actorId: req.user!.id,

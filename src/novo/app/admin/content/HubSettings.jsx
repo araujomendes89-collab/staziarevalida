@@ -109,10 +109,12 @@ function AiSummary({ isAdmin }) {
   if (error) return <span>{error.message}</span>;
   if (!data) return <span>Carregando…</span>;
   const configured = (data.functions ?? []).filter((f) => f.configured).length;
+  // o total vem da lista que o banco devolve (hoje 7 funções, com a Busca de fontes oficiais), não de um número fixo
+  const total = (data.functions ?? []).length;
   const names = (data.providers_enabled ?? []).map((id) => PROVIDER_NAME[id] ?? id).join(", ") || "nenhuma";
   return (
     <span style={{ display: "inline-flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-      <span>{`Funções configuradas: ${configured} de 6 · IAs ligadas: ${names} · Gasto do mês: ${usd(data.month_spend)}`}</span>
+      <span>{`Funções configuradas: ${configured} de ${total} · IAs ligadas: ${names} · Gasto do mês: ${usd(data.month_spend)}`}</span>
       {isAdmin && (
         <Button size="sm" variant="secondary" icon="bot" onClick={() => setParams({ aba: "ias" })}>
           Abrir a Central de IAs

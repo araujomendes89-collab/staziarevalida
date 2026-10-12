@@ -9,6 +9,24 @@ export const isStaffRole = (role) => role === "admin" || role === "editor";
 export const isPhase2Locked = (role) => !isStaffRole(role);
 export const PLAN_LABEL = { trial: "Teste grátis", pro: "Pro", elite: "Elite" };
 export const SUB_STATUS_LABEL = { trialing: "Em teste", active: "Ativo", past_due: "Pagamento pendente", canceled: "Cancelado", expired: "Expirado" };
+/** Com pagamento pendente, o acesso pago continua por estes dias depois de "Plano pago até" (igual ao banco: …9550, subscription_is_paid). */
+export const PAID_GRACE_DAYS = 3;
+/**
+ * Plano pago (Pro ou Elite) ativo ou com pagamento pendente que já não dá o acesso pago: sem "Plano pago até", ou depois
+ * dessa data (com pagamento pendente, depois dos 3 dias de tolerância). Mesma regra do banco; quem decide o acesso é o banco.
+ */
+export function paidPlanLapsed(sub, now = Date.now()) {
+  if (!sub || !["pro", "elite"].includes(sub.plan) || !["active", "past_due"].includes(sub.status)) return false;
+  const end = sub.current_period_end ? Date.parse(sub.current_period_end) : NaN;
+  if (Number.isNaN(end)) return true;
+  return end + (sub.status === "past_due" ? PAID_GRACE_DAYS * 86_400_000 : 0) <= now;
+}
+/** Teste grátis cuja data de fim já passou (o banco não muda a situação sozinho; quem avisa é a tela). */
+export function trialLapsed(sub, now = Date.now()) {
+  if (!sub || sub.plan !== "trial" || sub.status !== "trialing" || !sub.trial_ends_at) return false;
+  const end = Date.parse(sub.trial_ends_at);
+  return !Number.isNaN(end) && end <= now;
+}
 export { QUESTION_STATUS_LABEL } from "../../../shared/questions/status";
 
 export const dateBR = (iso) => (iso ? new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(iso)) : "—");

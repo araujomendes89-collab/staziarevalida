@@ -10,8 +10,9 @@ import type { ContentDb } from "../contentHub/infra";
 import type { ModelRef } from "../ai/config";
 import { maestroProvider } from "../ai/maestro";
 import type { Schema } from "../contentHub/ai/schema";
+import { mentionsSupportMaterial, NEVER_CITE_SUPPORT_MATERIAL, referencesSupportMaterial } from "../contentHub/complementarGuard";
 
-export const PODCAST_PROMPT_VERSION = "1.0.0";
+export const PODCAST_PROMPT_VERSION = "1.1.0";
 export type ScriptProvider = "gemini" | "anthropic" | "openai" | "ollama";
 
 export interface SourceChunk {
@@ -37,7 +38,7 @@ export interface PodcastScript {
 
 export interface ScriptWarning {
   line: number;
-  kind: "unknown_source" | "ungrounded_number" | "no_source";
+  kind: "unknown_source" | "ungrounded_number" | "no_source" | "cites_material";
   detail: string;
 }
 
@@ -82,7 +83,10 @@ OS APRESENTADORES
 - Conversa de verdade: frases curtas, reações ("exato", "pera aí", "boa pergunta"), sem leitura de texto, sem lista falada, sem markdown.
 - Abra apresentando o tema em uma ou duas falas, desenvolva, aplique num caso clínico curto e feche com o que cai na prova (pegadinhas e pontos-chave) e um resumo.
 - "style" de cada fala: o jeito de dizer em poucas palavras (ex.: "didático e calmo", "curioso", "surpreso", "entusiasmado").
-- Números por extenso quando for natural falar; siglas que se leem por letra podem ficar como sigla.`;
+- Números por extenso quando for natural falar; siglas que se leem por letra podem ficar como sigla.
+
+REFERÊNCIAS AO MATERIAL
+- ${NEVER_CITE_SUPPORT_MATERIAL}`;
 
 /** Palavras faladas por minuto em português (conversa) para chegar na duração pedida. */
 export const WORDS_PER_MINUTE = 150;
@@ -90,7 +94,7 @@ export const WORDS_PER_MINUTE = 150;
 export function buildScriptInput(o: { topic: string; minutes: number; chunks: SourceChunk[]; notes?: string | null }): string {
   const words = o.minutes * WORDS_PER_MINUTE;
   const fontes = o.chunks
-    .map((c) => `[T${c.id}] (Documento ${c.doc} – ${c.source}${c.page != null ? `, página ${c.page}` : ""})\n${c.text}`)
+    .map((c) => `[T${c.id}] (Documento ${c.doc})\n${c.text}`) // sem nome do arquivo nem página: a IA não tem o que citar
     .join("\n\n");
   return [
     `Tema do episódio: ${o.topic}`,
@@ -140,12 +144,22 @@ export function ungroundedNumbers(text: string, cited: string[]): string[] {
   });
 }
 
-/** Confere o roteiro: trechos citados existem; número com unidade de uma fala aparece nos trechos dela. */
-export function checkScript(script: PodcastScript, chunks: Map<number, SourceChunk>): ScriptWarning[] {
+/**
+ * Confere o roteiro: trechos citados existem; número com unidade de uma fala aparece nos trechos dela.
+ * `chunks` são os trechos que valem como citação (para o roteiro da IA: só os que foram enviados a ela). `all` (opcional) são todos
+ * os trechos do episódio: um que existe lá mas não está em `chunks` é recusado com a mensagem "Trecho que a IA não recebeu".
+ */
+export function checkScript(script: PodcastScript, chunks: Map<number, SourceChunk>, all?: Map<number, SourceChunk>, terms: readonly string[] = []): ScriptWarning[] {
   const warnings: ScriptWarning[] = [];
   script.lines.forEach((l, i) => {
+    // texto voltado ao aluno: não pode citar apostila nem material complementar (nem o título ou o órgão dele)
+    const cites = [...mentionsSupportMaterial(l.text, terms), ...(terms.length > 1 ? referencesSupportMaterial(l.text) : [])];
+    if (cites.length) warnings.push({ line: i, kind: "cites_material", detail: `Cita material de apoio (${cites.map((c) => `"${c}"`).join(", ")}); tire o nome e diga só o conteúdo` });
     const bad = l.sources.filter((s) => !chunks.has(s));
-    if (bad.length) warnings.push({ line: i, kind: "unknown_source", detail: `Trecho inexistente: ${bad.map((b) => `T${b}`).join(", ")}` });
+    const notSent = bad.filter((s) => all?.has(s));
+    const missing = bad.filter((s) => !all?.has(s));
+    if (notSent.length) warnings.push({ line: i, kind: "unknown_source", detail: `Trecho que a IA não recebeu: ${notSent.map((b) => `T${b}`).join(", ")}` });
+    if (missing.length) warnings.push({ line: i, kind: "unknown_source", detail: `Trecho inexistente: ${missing.map((b) => `T${b}`).join(", ")}` });
     const cited = l.sources.filter((s) => chunks.has(s)).map((s) => chunks.get(s)!.text);
     for (const n of ungroundedNumbers(l.text, cited)) warnings.push({ line: i, kind: "ungrounded_number", detail: `"${n}" não está nos trechos citados` });
     if (!l.sources.length && l.text.length > 140) warnings.push({ line: i, kind: "no_source", detail: "Fala longa sem trecho citado" });
@@ -158,6 +172,8 @@ export interface ScriptResult {
   warnings: ScriptWarning[];
   usage: { provider: string; model: string; input_tokens: number; output_tokens: number; cost_usd: number; calls: number };
   used_chunks: number;
+  /** Ids dos trechos que foram ENVIADOS à IA (só estes valem como citação do roteiro dela, também nas conferências seguintes). */
+  sent_ids: number[];
 }
 
 /**
@@ -174,7 +190,7 @@ export function mockScriptFromInput(input: string, minutes: number): PodcastScri
   const want = Math.max(2, Math.min(chunks.length, minutes * 2));
   for (const c of chunks.slice(0, want)) {
     const sentence = (c.text.match(/[^.!?]+[.!?]/)?.[0] ?? c.text).trim().slice(0, 600);
-    lines.push({ speaker: "ANA", text: `Segundo o material (${c.origin}): ${sentence}`, style: "didática", sources: [c.id] });
+    lines.push({ speaker: "ANA", text: `Pelo que as fontes trazem: ${sentence}`, style: "didática", sources: [c.id] });
     lines.push({ speaker: "BRUNO", text: "Entendi. E isso cai na prova do jeito que está no material?", style: "curioso", sources: [] });
   }
   lines.push({ speaker: "ANA", text: "Para fechar: revise os pontos do material e confira as páginas citadas.", style: "calma", sources: [] });
@@ -189,12 +205,13 @@ async function scriptProvider(o: { kind: ScriptProvider | "mock"; db: ContentDb;
   return maestroProvider({ db: o.db, mockProvider: mock, makeProviderFor: o.aiMaker }, "criacao", { source: "podcast", actorId: o.actorId ?? null, itemId: o.podcastId ?? null }, o.kind === "mock" ? {} : { uiKind: o.kind });
 }
 
-export async function generateScript(o: { kind: ScriptProvider | "mock"; topic: string; minutes: number; chunks: SourceChunk[]; notes?: string | null; mockRespond?: (req: StructuredRequest) => unknown; db: ContentDb; actorId?: string | null; podcastId?: string | null; aiMaker?: (ref: ModelRef) => AiProvider | null }): Promise<ScriptResult> {
+export async function generateScript(o: { terms?: readonly string[]; kind: ScriptProvider | "mock"; topic: string; minutes: number; chunks: SourceChunk[]; notes?: string | null; mockRespond?: (req: StructuredRequest) => unknown; db: ContentDb; actorId?: string | null; podcastId?: string | null; aiMaker?: (ref: ModelRef) => AiProvider | null }): Promise<ScriptResult> {
   const { provider, status } = await scriptProvider(o);
   if (!provider) throw Object.assign(new Error(`IA do roteiro indisponível: ${status.pending}`), { status: 503 });
   const chosen = selectChunks(o.chunks, o.topic);
   if (!chosen.length) throw Object.assign(new Error("Adicione fontes com texto antes de gerar o roteiro."), { status: 409 });
-  const byId = new Map(o.chunks.map((c) => [c.id, c]));
+  const byId = new Map(chosen.map((c) => [c.id, c])); // só o que foi enviado à IA vale como citação
+  const allById = new Map(o.chunks.map((c) => [c.id, c]));
   const usage = { provider: provider.name, model: provider.model, input_tokens: 0, output_tokens: 0, cost_usd: 0, calls: 0 };
   const base = buildScriptInput({ topic: o.topic, minutes: o.minutes, chunks: chosen, notes: o.notes });
   let last: { script: PodcastScript; warnings: ScriptWarning[] } | null = null;
@@ -221,10 +238,10 @@ export async function generateScript(o: { kind: ScriptProvider | "mock"; topic: 
       missing: (r.output.missing ?? []).map((m) => String(m).slice(0, 240)),
       lines: (r.output.lines ?? []).map((l) => ({ speaker: l.speaker === "BRUNO" ? "BRUNO" : "ANA", text: String(l.text).trim().slice(0, 700), style: String(l.style ?? "").slice(0, 80), sources: [...new Set((l.sources ?? []).map(Number).filter(Number.isInteger))] })),
     };
-    const warnings = checkScript(script, byId);
+    const warnings = checkScript(script, byId, allById, o.terms ?? []);
     last = { script, warnings };
     if (!warnings.some((w) => w.kind !== "no_source")) break; // limpo: não precisa de segunda tentativa
   }
   if (!last) throw new Error("A IA não devolveu um roteiro válido. Tente de novo.");
-  return { script: last.script, warnings: last.warnings, usage, used_chunks: chosen.length };
+  return { script: last.script, warnings: last.warnings, usage, used_chunks: chosen.length, sent_ids: chosen.map((c) => c.id) };
 }

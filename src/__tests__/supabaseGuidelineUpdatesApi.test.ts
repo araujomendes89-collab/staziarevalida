@@ -5,11 +5,15 @@
  * só o administrador publica, editar depois da conferência volta a revisão, e o aluno só vê o que foi publicado.
  * Correções de 10/10/2026 (…7800_atualizacoes_publicar_so_conferida.sql): publicar exige conferência aprovada (AT03),
  * recusar uma publicada tira do ar (AT01) e mudar o texto de uma publicada tira do ar até nova conferência (AT02).
+ * Polimento do Registro (…9510_registro_atualizacoes.sql): o revisor que tenta levar uma atualização da área dele para
+ * outra área recebe uma mensagem que diz exatamente isso; o que o banco grava no registro aparece em português na tela.
  */
 import { beforeAll, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
 import { PGlite } from "@electric-sql/pglite";
+import { auditActor, auditLabel, auditSummary } from "../novo/app/admin/auditLog.js";
+import { messageOf } from "../novo/app/admin/common.jsx";
 
 const ROOT = path.resolve(__dirname, "../..");
 const MIGRATIONS = path.join(ROOT, "supabase/migrations");
@@ -21,6 +25,8 @@ const STUDENT = "00000000-0000-4000-8000-0000000000b1";
 const PE = "prot-go-preeclampsia-2025";
 const HAS = "prot-cm-has-sbc-2026";
 const FIX = "20261003007800"; // correção: publicar só com conferência aprovada
+// migrações desta frente (faixa reservada 9510 a 9519), em ordem
+const MINE = fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql") && f >= "20261003009510" && f < "20261003009520").sort();
 let db: PGlite;
 
 async function rpc<T = any>(uid: string | null, fn: string, args: Record<string, unknown> = {}): Promise<T> {
@@ -88,7 +94,12 @@ describe("Conteúdo do app anterior", () => {
     expect(has).toMatchObject({ published: false, review_status: "pending" });
     const log = await rpc(ADMIN, "app_admin_audit", { p_limit: 50 });
     // sem autor (foi a própria correção): o registro marca "automatica" para a tela não dizer "conta excluída"
-    expect(log.find((l: any) => l.action === "guideline_update.unpublish" && l.target === has.id)).toMatchObject({ actor: null, details: { review_status: "pending", automatica: true } });
+    const entry = log.find((l: any) => l.action === "guideline_update.unpublish" && l.target === has.id);
+    expect(entry).toMatchObject({ actor: null, details: { review_status: "pending", automatica: true } });
+    // na tela do Registro: retirada automática pela regra nova, com o tema e o motivo em português
+    expect(auditLabel(entry)).toBe("Retirada automática pela regra nova");
+    expect(auditSummary(entry)).toBe(`Tema: ${has.topic} · Motivo: estava publicada sem conferência médica aprovada; pela regra nova, só fica no ar o que um revisor médico conferiu`);
+    expect(auditActor(entry)).toBe("automático");
   });
 });
 
@@ -224,9 +235,88 @@ describe("Cadastro e segurança", () => {
     expect(await adminItem(HAS)).toMatchObject({ area: "CLINICA_MEDICA", published: true, review_status: "approved", current_conduct: before.current_conduct, reviewer: before.reviewer });
     expect((await rpc(STUDENT, "app_guideline_update", { p_slug: HAS }))?.reviewed).toBe(true);
     await expect(rpc(REVIEWER, "app_admin_review_guideline_update", { p_id: has.id, p_decision: "approve", p_note: "Tentativa de conferir outra área." })).rejects.toThrow(/revisor cadastrado em Clínica Médica/);
-    // o revisor da área também não leva a atualização para uma área que não é a dele
-    await expect(rpc(REVIEWER_CM, "app_admin_save_guideline_update", { p_update: { ...before, area: "GINECOLOGIA_OBSTETRICIA" } })).rejects.toThrow(/outra área/);
+    // o revisor da área também não leva a atualização para uma área que não é a dele, e a mensagem diz exatamente isso
+    // (antes dizia "Você revisa outra área: esta atualização é de Gineco & Obstetrícia.", mas ela é de Clínica Médica)
+    const moved = await rpc(REVIEWER_CM, "app_admin_save_guideline_update", { p_update: { ...before, area: "GINECOLOGIA_OBSTETRICIA" } }).catch((e) => e);
+    expect(moved).toBeInstanceOf(Error);
+    expect(moved.message).toBe("Você não pode levar esta atualização de Clínica Médica para Gineco & Obstetrícia: você não revisa Gineco & Obstetrícia. Para mudar a área, peça a um administrador ou editor.");
+    expect(messageOf(moved)).toBe(moved.message); // a tela mostra a frase inteira (não troca pela mensagem genérica)
     expect(await adminItem(HAS)).toMatchObject({ area: "CLINICA_MEDICA", published: true, review_status: "approved" });
+    // na própria área (sem trocar a área) ele continua editando; a mudança só da posição não tira do ar
+    expect(await rpc(REVIEWER_CM, "app_admin_save_guideline_update", { p_update: { ...before, position: 7 } })).toMatchObject({ area: "CLINICA_MEDICA", published: true, review_status: "approved" });
+  });
+
+  it("mudar a área de uma atualização: a equipe pode, mas a conferência e a publicação da área antiga deixam de valer; o revisor só leva entre áreas que ele revisa; fica registrado (AT06)", async () => {
+    // uma atualização nova de Clínica Médica, conferida pelo revisor da área e publicada pelo administrador
+    const nova = await rpc(EDITOR, "app_admin_save_guideline_update", {
+      p_update: { area: "CLINICA_MEDICA", topic: "Tema que muda de área", source_url: "https://www.gov.br/saude/muda-de-area", current_conduct: "Conduta de teste." },
+    });
+    await rpc(REVIEWER_CM, "app_admin_review_guideline_update", { p_id: nova.id, p_decision: "approve", p_note: "Conferido no documento oficial da área." });
+    await rpc(ADMIN, "app_admin_publish_guideline_update", { p_id: nova.id, p_published: true });
+    expect(await rpc(STUDENT, "app_guideline_update", { p_slug: nova.slug })).toMatchObject({ reviewed: true });
+    // a equipe leva para Gineco & Obstetrícia: a conferência de Clínica Médica não vale para a outra área e ela sai do ar
+    const doEditor = await rpc(EDITOR, "app_admin_save_guideline_update", { p_update: { ...(await adminItem(nova.slug)), area: "GINECOLOGIA_OBSTETRICIA" } });
+    expect(doEditor).toMatchObject({ area: "GINECOLOGIA_OBSTETRICIA", review_status: "pending", published: false });
+    expect(await rpc(STUDENT, "app_guideline_update", { p_slug: nova.slug })).toBeNull();
+    // o revisor de Clínica Médica não mexe mais nela (a área gravada agora é outra) e não confere
+    await expect(rpc(REVIEWER_CM, "app_admin_save_guideline_update", { p_update: { ...doEditor, area: "CLINICA_MEDICA", topic: "Puxando de volta" } })).rejects.toThrow(/esta atualização é de Gineco & Obstetrícia/);
+    await expect(rpc(REVIEWER_CM, "app_admin_review_guideline_update", { p_id: nova.id, p_decision: "approve", p_note: "Tentativa de conferir outra área." })).rejects.toThrow(/revisor cadastrado em Gineco/);
+    expect(await adminItem(nova.slug)).toMatchObject({ area: "GINECOLOGIA_OBSTETRICIA", topic: "Tema que muda de área" });
+    // quem revisa as duas áreas leva de uma para a outra
+    await db.query(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'GINECOLOGIA_OBSTETRICIA')`, [REVIEWER_CM]);
+    try {
+      expect(await rpc(REVIEWER_CM, "app_admin_save_guideline_update", { p_update: { ...doEditor, area: "CLINICA_MEDICA" } })).toMatchObject({ area: "CLINICA_MEDICA" });
+    } finally {
+      await db.query(`delete from public.ch_reviewer_areas where user_id = $1 and area_code = 'GINECOLOGIA_OBSTETRICIA'`, [REVIEWER_CM]);
+    }
+    // cada mudança de área fica no registro da Central (quem, de qual área para qual); salvar sem trocar a área não grava isso
+    await rpc(EDITOR, "app_admin_save_guideline_update", { p_update: { ...(await adminItem(nova.slug)), position: 3 } });
+    const saves = (await db.query<any>(`select actor_id, details from public.ch_audit where action = 'guideline_update.save' and target = $1 order by id`, [nova.id])).rows;
+    const moves = saves.filter((r: any) => r.details.area_de);
+    expect(moves.map((r: any) => [r.actor_id, r.details.area_de, r.details.area_para])).toEqual([
+      [EDITOR, "CLINICA_MEDICA", "GINECOLOGIA_OBSTETRICIA"],
+      [REVIEWER_CM, "GINECOLOGIA_OBSTETRICIA", "CLINICA_MEDICA"],
+    ]);
+    expect(saves.length).toBeGreaterThanOrEqual(4);
+    expect(await rpc(ADMIN, "app_admin_delete_guideline_update", { p_id: nova.id })).toBe(true);
+  });
+
+  it("com a Central de Conteúdo desligada, a aba Atualizações continua funcionando: as funções conferem só o papel da pessoa (AT08)", async () => {
+    // antes: a lista e o salvar chamavam ch_assert_staff, que também exige a chave de liga e desliga da Central de Conteúdo
+    // (ch_flags.enabled) e respondiam "Content Lab desligado pelo administrador." a todo mundo, inclusive ao administrador
+    await db.query(`update public.ch_flags set value = false where key = 'enabled'`);
+    try {
+      // sanidade do teste: a Central de Conteúdo em si continua travada com a chave desligada
+      await expect(rpc(ADMIN, "app_ch_taxonomy")).rejects.toThrow(/Content Lab desligado/);
+      // administrador, editor e revisor médico (papel de aluno) abrem a lista, e o revisor vê só as áreas dele
+      for (const uid of [ADMIN, EDITOR, REVIEWER]) expect((await rpc(uid, "app_admin_guideline_updates")).items.length).toBeGreaterThan(0);
+      expect((await rpc(REVIEWER, "app_admin_guideline_updates")).review_areas).toEqual(["GINECOLOGIA_OBSTETRICIA"]);
+      // salvar: a equipe qualquer área; o revisor só a área dele (a regra de área não depende da chave)
+      const novo = await rpc(EDITOR, "app_admin_save_guideline_update", { p_update: { area: "PEDIATRIA", topic: "Tema criado com a Central desligada" } });
+      expect(novo).toMatchObject({ published: false, review_status: "pending" });
+      const doRevisor = await rpc(REVIEWER, "app_admin_save_guideline_update", {
+        p_update: { area: "GINECOLOGIA_OBSTETRICIA", topic: "Tema do revisor com a Central desligada", source_url: "https://www.gov.br/saude/teste", current_conduct: "Conduta de teste." },
+      });
+      await expect(rpc(REVIEWER, "app_admin_save_guideline_update", { p_update: { area: "PEDIATRIA", topic: "Fora da área do revisor" } })).rejects.toThrow(/outra área/);
+      // conferir, publicar, tirar do ar e apagar também funcionam (nunca dependeram da chave)
+      await rpc(REVIEWER, "app_admin_review_guideline_update", { p_id: doRevisor.id, p_decision: "approve", p_note: "Conferido no documento oficial, com a Central desligada." });
+      await rpc(ADMIN, "app_admin_publish_guideline_update", { p_id: doRevisor.id, p_published: true });
+      expect((await rpc(STUDENT, "app_guideline_update", { p_slug: doRevisor.slug }))?.reviewed).toBe(true);
+      await rpc(ADMIN, "app_admin_publish_guideline_update", { p_id: doRevisor.id, p_published: false });
+      expect(await rpc(ADMIN, "app_admin_delete_guideline_update", { p_id: doRevisor.id })).toBe(true);
+      expect(await rpc(ADMIN, "app_admin_delete_guideline_update", { p_id: novo.id })).toBe(true);
+      // quem não é da equipe nem revisor continua barrado, com a mesma mensagem de sempre
+      await expect(rpc(STUDENT, "app_admin_guideline_updates")).rejects.toThrow(/equipe de conteúdo/);
+      await expect(rpc(STUDENT, "app_admin_save_guideline_update", { p_update: { area: "PEDIATRIA", topic: "Invasão" } })).rejects.toThrow(/equipe de conteúdo/);
+      // visitante (sem login): nem a lista nem o salvar podem ser chamados
+      await expect(rpc(null, "app_admin_guideline_updates")).rejects.toThrow(/permission denied/);
+      await expect(rpc(null, "app_admin_save_guideline_update", { p_update: { area: "PEDIATRIA", topic: "Invasão" } })).rejects.toThrow(/permission denied/);
+    } finally {
+      await db.query(`update public.ch_flags set value = true where key = 'enabled'`);
+    }
+    // com a chave ligada de novo, tudo como antes
+    expect((await rpc(ADMIN, "app_admin_guideline_updates")).items.length).toBeGreaterThan(0);
+    await expect(rpc(ADMIN, "app_ch_taxonomy")).resolves.toBeDefined();
   });
 
   it("sem login, as funções de salvar, conferir e publicar nem podem ser chamadas (revokes da correção 7800)", async () => {
@@ -237,15 +327,27 @@ describe("Cadastro e segurança", () => {
     expect(await adminItem(PE)).toMatchObject({ published: true, review_status: "approved" });
   });
 
-  it("o SQL da correção pode ser colado de novo no Supabase sem erro e sem tirar do ar o que está conferido", async () => {
+  it("o SQL das correções pode ser colado de novo no Supabase (a 7800 e as da faixa 9510 a 9519) sem erro e sem tirar do ar o que está conferido", async () => {
     const fix = fs.readdirSync(MIGRATIONS).find((f) => f.startsWith(FIX))!;
     // como ficaria o registro se uma versão anterior deste SQL (sem a marca "automatica") já tivesse sido colada
     await db.query(`insert into public.admin_audit_log (actor_id, action, target, details) values (null, 'guideline_update.unpublish', 'colada-antes',
       jsonb_build_object('topic', 'Retirada antiga', 'motivo', 'Estava publicada sem conferência médica aprovada: retirada do ar pela correção de 10/10/2026.'))`);
-    await db.exec(fs.readFileSync(path.join(MIGRATIONS, fix), "utf8"));
+    // o dono cola na ordem: primeiro a 7800, depois as da faixa 9510 a 9519; e pode colar tudo duas vezes
+    for (let vez = 0; vez < 2; vez++) {
+      await db.exec(fs.readFileSync(path.join(MIGRATIONS, fix), "utf8"));
+      for (const file of MINE) await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
+    }
     expect(await adminItem(PE)).toMatchObject({ published: true, review_status: "approved" });
     const log = await rpc(ADMIN, "app_admin_audit", { p_limit: 100 });
     expect(log.find((l: any) => l.target === "colada-antes")).toMatchObject({ actor: null, details: { automatica: true } });
     await expect(rpc(null, "app_admin_publish_guideline_update", { p_id: await idOf(PE), p_published: false })).rejects.toThrow(/permission denied/);
+    await expect(rpc(null, "app_admin_guideline_updates")).rejects.toThrow(/permission denied/);
+    // depois de colar tudo de novo, a aba continua sem depender da chave da Central de Conteúdo (AT08)
+    await db.query(`update public.ch_flags set value = false where key = 'enabled'`);
+    try {
+      expect((await rpc(ADMIN, "app_admin_guideline_updates")).items.length).toBeGreaterThan(0);
+    } finally {
+      await db.query(`update public.ch_flags set value = true where key = 'enabled'`);
+    }
   });
 });

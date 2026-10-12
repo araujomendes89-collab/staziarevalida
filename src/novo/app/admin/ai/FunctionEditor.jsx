@@ -13,6 +13,11 @@ const CARES = [
   { value: "caprichado", label: "Caprichado" },
 ];
 const EMPTY = { provider: "", model: "" };
+/** Busca de fontes oficiais (Fontes › Buscar com IA): só modo sozinha, só IAs que buscam na internet, com máximo de buscas por pedido. */
+const SEARCH_FN = "busca_fontes";
+const DEFAULT_MAX_SEARCHES = 5;
+const MAX_SEARCHES_PROBLEM = "Máximo de buscas por pedido: de 1 a 10.";
+const validMax = (t) => t.trim() === "" || (/^\d+$/.test(t.trim()) && Number(t) >= 1 && Number(t) <= 10);
 const MAX_OTHERS = { linha: 3, comite: 3 };
 const toRef = (r) => (r && r.provider && r.model ? { provider: r.provider, model: String(r.model).trim() } : null);
 const asDraft = (r) => (r ? { provider: r.provider ?? "", model: r.model ?? "" } : { ...EMPTY });
@@ -58,9 +63,12 @@ function ModelPicker({ title, fn, value, onChange, providers, checks, savedProvi
 
 const subtle = { font: "var(--type-caption)", color: "var(--text-tertiary)" };
 
-export function FunctionEditor({ fnKey, label, saved, check, providers, providerChecks, backend, onSaved }) {
+export function FunctionEditor({ fnKey, label, saved, check, providers: allProviders, providerChecks, backend, onSaved }) {
+  const search = fnKey === SEARCH_FN;
+  const providers = search ? allProviders.filter((p) => p.id !== "ollama" && p.id !== "gemini") : allProviders; // o Ollama não busca na internet e o Gemini não limita a busca aos sites oficiais
   const init = () => ({
-    mode: saved?.mode ?? "sozinha",
+    mode: search ? "sozinha" : (saved?.mode ?? "sozinha"),
+    maxSearches: saved?.max_searches == null ? "" : String(saved.max_searches),
     care: saved?.care ?? "caprichado",
     primary: asDraft(saved?.primary_ref),
     fallback: asDraft(saved?.fallback_ref),
@@ -89,7 +97,9 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
   const complete = others.filter((o) => toRef(o));
   const half = others.some((o) => (o.provider || o.model) && !toRef(o));
   const minOthers = draft.mode === "linha" ? 1 : draft.mode === "comite" ? 1 : 0;
-  const localProblem = half
+  const localProblem = search && !validMax(draft.maxSearches)
+    ? MAX_SEARCHES_PROBLEM
+    : half
     ? "Complete ou remova o conferente/membro incompleto."
     : draft.mode === "linha" && complete.length < 1
       ? "Linha de produção precisa de pelo menos 1 conferente."
@@ -110,11 +120,20 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
   const save = () =>
     run(() =>
       aiSend(backend, "PUT", `/functions/${fnKey}`, {
-        config: { mode: draft.mode, care: draft.care, primary: toRef(draft.primary), fallback: toRef(draft.fallback), reviewers: complete.map(toRef) },
+        config: {
+          mode: draft.mode,
+          care: draft.care,
+          primary: toRef(draft.primary),
+          fallback: toRef(draft.fallback),
+          reviewers: complete.map(toRef),
+          ...(search ? { max_searches: draft.maxSearches.trim() === "" ? DEFAULT_MAX_SEARCHES : Number(draft.maxSearches) } : {}),
+        },
       }),
     );
   const revert = () => {
-    if (!window.confirm(`Voltar "${label}" às variáveis do servidor? A configuração salva aqui será apagada.`)) return;
+    // a busca de fontes nunca usa as variáveis do servidor: tirar a configuração só a desliga
+    const question = search ? `Desligar "${label}"? A configuração salva será apagada e a função para de rodar.` : `Voltar "${label}" às variáveis do servidor? A configuração salva aqui será apagada.`;
+    if (!window.confirm(question)) return;
     run(() => aiSend(backend, "PUT", `/functions/${fnKey}`, { config: null }), true);
   };
 
@@ -136,7 +155,11 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
         </ul>
       )}
 
-      <SelectField label="Modo" aria-label={`Modo — ${label}`} value={draft.mode} onChange={(e) => set({ mode: e.target.value })} options={MODES} />
+      {search ? (
+        <div style={{ font: "var(--type-body-sm)" }}>Modo: sozinha (principal e reserva)</div>
+      ) : (
+        <SelectField label="Modo" aria-label={`Modo — ${label}`} value={draft.mode} onChange={(e) => set({ mode: e.target.value })} options={MODES} />
+      )}
       <div>
         <div style={{ ...subtle, marginBottom: 6 }}>IA principal</div>
         <ModelPicker fn={label} title="Principal" value={draft.primary} onChange={(v) => set({ primary: v })} providers={providers} checks={providerChecks} savedProviders={[saved?.primary_ref?.provider]} />
@@ -174,6 +197,25 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
           )}
         </div>
       )}
+      {search && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={subtle}>Só IAs que buscam na internet e limitam a pesquisa aos sites oficiais (Claude e OpenAI). Cada busca é cobrada à parte: preencha o preço por busca na tabela de preços.</div>
+          <div style={{ maxWidth: 280 }}>
+            <TextField
+              label="Máximo de buscas por pedido"
+              aria-label={`Máximo de buscas por pedido — ${label}`}
+              type="number"
+              min="1"
+              max="10"
+              step="1"
+              placeholder={String(DEFAULT_MAX_SEARCHES)}
+              value={draft.maxSearches}
+              onChange={(e) => set({ maxSearches: e.target.value })}
+              hint={`De 1 a 10. Sem valor, vale ${DEFAULT_MAX_SEARCHES}.`}
+            />
+          </div>
+        </div>
+      )}
       <SelectField label="Cuidado" aria-label={`Cuidado — ${label}`} value={draft.care} onChange={(e) => set({ care: e.target.value })} options={CARES} />
       <div style={subtle}>
         Rápido: menos raciocínio, mais rápido e barato (Claude, Gemini 2.5 e 3 e GPT-5/6; o Gemini 2.5 Flash-Lite deixa de pensar).
@@ -200,7 +242,7 @@ export function FunctionEditor({ fnKey, label, saved, check, providers, provider
         </Button>
         {saved && (
           <Button size="sm" variant="secondary" disabled={state.busy} onClick={revert}>
-            Voltar às variáveis do servidor
+            {search ? "Desligar a função" : "Voltar às variáveis do servidor"}
           </Button>
         )}
       </div>

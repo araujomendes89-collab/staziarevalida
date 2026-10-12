@@ -46,7 +46,10 @@ export interface TtsStatus {
   ready: boolean;
   kind: TtsKind | null;
   model: string | null;
+  /** O motivo, em português simples, para a equipe ler na tela. */
   pending: string | null;
+  /** O detalhe técnico (nome da variável de ambiente etc.): só para o registro interno do servidor, nunca vai para a tela. */
+  technical?: string;
 }
 
 const realKey = (v: string | undefined) => {
@@ -55,20 +58,21 @@ const realKey = (v: string | undefined) => {
 };
 /** A voz do Gemini fica desligada até a variável valer exatamente "1" (o código dela continua aqui). */
 export const geminiTtsEnabled = (env: NodeJS.ProcessEnv = process.env) => (env.PODCAST_TTS_GEMINI_ENABLED ?? "").trim() === "1";
-export const GEMINI_TTS_OFF = "indisponível por enquanto (desligada no servidor; PODCAST_TTS_GEMINI_ENABLED=1 liga).";
+export const GEMINI_TTS_OFF = "indisponível por enquanto (desligada no servidor).";
+export const GEMINI_TTS_OFF_TECHNICAL = "voz do Gemini desligada: falta PODCAST_TTS_GEMINI_ENABLED=1 no servidor.";
 export const geminiKey = (env: NodeJS.ProcessEnv = process.env) => realKey(env.GOOGLE_GEMINI_API_KEY) ?? realKey(env.GEMINI_API_KEY) ?? realKey(env.GOOGLE_TTS_API_KEY);
 
 /** Qual voz está pronta no servidor (precisa da autorização de envio de conteúdo a provedor externo; a do Gemini também precisa estar ligada). */
 export function ttsStatus(kind: TtsKind, env: NodeJS.ProcessEnv = process.env): TtsStatus {
   if (kind === "mock") return env.NODE_ENV === "production" ? { ready: false, kind, model: null, pending: "Voz simulada não existe em produção." } : { ready: true, kind, model: "voz-simulada", pending: null };
-  if (kind === "gemini" && !geminiTtsEnabled(env)) return { ready: false, kind, model: (env.PODCAST_TTS_GEMINI_MODEL ?? "").trim() || "gemini-3.8-flash-tts", pending: GEMINI_TTS_OFF };
-  if (env.CONTENT_HUB_AI_ALLOW_EXTERNAL !== "1") return { ready: false, kind, model: null, pending: "Envio de conteúdo a provedor externo não autorizado (CONTENT_HUB_AI_ALLOW_EXTERNAL=1)." };
+  if (kind === "gemini" && !geminiTtsEnabled(env)) return { ready: false, kind, model: (env.PODCAST_TTS_GEMINI_MODEL ?? "").trim() || "gemini-3.8-flash-tts", pending: GEMINI_TTS_OFF, technical: GEMINI_TTS_OFF_TECHNICAL };
+  if (env.CONTENT_HUB_AI_ALLOW_EXTERNAL !== "1") return { ready: false, kind, model: null, pending: "O envio de conteúdo a serviços de voz externos não está autorizado neste servidor. Peça ao administrador do sistema.", technical: "falta CONTENT_HUB_AI_ALLOW_EXTERNAL=1 no servidor." };
   if (kind === "gemini") {
     const model = (env.PODCAST_TTS_GEMINI_MODEL ?? "").trim() || "gemini-3.8-flash-tts";
-    return geminiKey(env) ? { ready: true, kind, model, pending: null } : { ready: false, kind, model, pending: "Chave do Gemini ausente no servidor (GEMINI_API_KEY ou GOOGLE_GEMINI_API_KEY)." };
+    return geminiKey(env) ? { ready: true, kind, model, pending: null } : { ready: false, kind, model, pending: "A chave da voz do Gemini não está configurada no servidor.", technical: "falta GEMINI_API_KEY (ou GOOGLE_GEMINI_API_KEY) no servidor." };
   }
   const model = (env.PODCAST_TTS_OPENAI_MODEL ?? "").trim() || "gpt-4o-mini-tts";
-  return realKey(env.OPENAI_API_KEY) ? { ready: true, kind, model, pending: null } : { ready: false, kind, model, pending: "OPENAI_API_KEY ausente no servidor." };
+  return realKey(env.OPENAI_API_KEY) ? { ready: true, kind, model, pending: null } : { ready: false, kind, model, pending: "A chave da voz da OpenAI não está configurada no servidor.", technical: "falta OPENAI_API_KEY no servidor." };
 }
 
 /** Divide as falas em partes de até `max` caracteres (sem quebrar fala). */
@@ -137,6 +141,35 @@ function findAudio(j: any): string | null {
   return null;
 }
 
+/** Erro da voz para a tela em português simples; o detalhe técnico (código HTTP, resposta, erro de rede) fica em `technical`, só para o registro interno. */
+export class VoiceError extends Error {
+  constructor(message: string, readonly technical: string, readonly status?: number) {
+    super(message);
+    this.name = "VoiceError";
+  }
+}
+const VOICE_NAME: Record<"gemini" | "openai", string> = { gemini: "do Gemini", openai: "da OpenAI" };
+function voiceHttpError(kind: "gemini" | "openai", status: number, body: string, key: string): VoiceError {
+  const who = VOICE_NAME[kind];
+  const technical = `${kind} (voz) respondeu ${status}: ${body.split(key).join("[chave]").slice(0, 200)}`;
+  if (status === 429) return new VoiceError(`O serviço de voz ${who} está com muitas chamadas agora. Espere um pouco e tente de novo.`, technical);
+  if (status === 401 || status === 403) return new VoiceError(`O serviço de voz ${who} recusou o acesso do servidor. Avise o administrador do sistema.`, technical);
+  if (status >= 500) return new VoiceError(`O serviço de voz ${who} está com problema agora. Tente de novo em alguns minutos.`, technical);
+  return new VoiceError(`O serviço de voz ${who} recusou este trecho. Tente de novo; se repetir, avise o administrador do sistema.`, technical);
+}
+async function voiceFetch(kind: "gemini" | "openai", fetchImpl: typeof fetch, url: string, init: RequestInit, key: string): Promise<Response> {
+  let res: Response;
+  try {
+    res = await fetchImpl(url, init);
+  } catch (error: any) {
+    const timeout = error?.name === "TimeoutError" || error?.name === "AbortError";
+    const technical = `${kind} (voz): ${String(error?.message ?? error).split(key).join("[chave]").slice(0, 200)}`;
+    throw new VoiceError(timeout ? `O serviço de voz ${VOICE_NAME[kind]} demorou demais para responder. Tente de novo.` : `Não foi possível falar com o serviço de voz ${VOICE_NAME[kind]}. Tente de novo em alguns minutos.`, technical);
+  }
+  if (!res.ok) throw voiceHttpError(kind, res.status, await res.text().catch(() => ""), key);
+  return res;
+}
+
 const PT = "Português do Brasil, sotaque neutro, conversa natural de podcast (não leitura).";
 
 /** Uma parte do roteiro (algumas falas) → PCM. */
@@ -144,14 +177,14 @@ export async function synthesizePart(kind: TtsKind, lines: ScriptLine[], voices:
   const env = deps.env ?? process.env;
   const fetchImpl = deps.fetchImpl ?? fetch;
   const st = ttsStatus(kind, env);
-  if (!st.ready) throw Object.assign(new Error(`Voz indisponível: ${st.pending}`), { status: 503 });
+  if (!st.ready) throw new VoiceError(`Voz indisponível: ${st.pending}`, st.technical ?? st.pending ?? "voz indisponível", 503);
   if (kind === "mock") {
     // simulação: silêncio proporcional ao texto (~14 caracteres por segundo)
     return Buffer.concat(lines.map((l) => Buffer.concat([silence(Math.min(15_000, l.text.length * 70)), silence(250)])));
   }
   if (kind === "gemini") {
     const key = geminiKey(env)!;
-    const res = await fetchImpl("https://generativelanguage.googleapis.com/v1beta/interactions", {
+    const res = await voiceFetch("gemini", fetchImpl, "https://generativelanguage.googleapis.com/v1beta/interactions", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({
@@ -168,19 +201,18 @@ export async function synthesizePart(kind: TtsKind, lines: ScriptLine[], voices:
         generation_config: { speech_config: { mode: "conversational", speakers: [{ speaker: "Ana", voice: voices.ana }, { speaker: "Bruno", voice: voices.bruno }] } },
       }),
       signal: AbortSignal.timeout(110_000),
-    });
-    if (!res.ok) throw new Error(`Gemini (voz) respondeu ${res.status}: ${(await res.text()).split(key).join("[chave]").slice(0, 200)}`);
-    const data = findAudio(await res.json());
-    if (!data) throw new Error("Gemini (voz) respondeu sem áudio.");
+    }, key);
+    const data = findAudio(await res.json().catch(() => null));
+    if (!data) throw new VoiceError("O serviço de voz do Gemini não devolveu áudio. Tente de novo.", "gemini (voz) respondeu sem áudio.");
     const { pcm, rate } = toPcm(Buffer.from(data, "base64"));
-    if (rate !== SAMPLE_RATE) throw new Error(`Taxa de amostragem inesperada: ${rate}.`);
+    if (rate !== SAMPLE_RATE) throw new VoiceError("O áudio devolvido pelo serviço de voz do Gemini veio num formato inesperado. Tente de novo.", `taxa de amostragem inesperada: ${rate}.`);
     return pcm;
   }
   // OpenAI: uma fala por chamada, emendadas com pausa curta
   const key = realKey(env.OPENAI_API_KEY)!;
   const out: Buffer[] = [];
   for (const l of lines) {
-    const res = await fetchImpl("https://api.openai.com/v1/audio/speech", {
+    const res = await voiceFetch("openai", fetchImpl, "https://api.openai.com/v1/audio/speech", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -191,8 +223,7 @@ export async function synthesizePart(kind: TtsKind, lines: ScriptLine[], voices:
         response_format: "pcm",
       }),
       signal: AbortSignal.timeout(60_000),
-    });
-    if (!res.ok) throw new Error(`OpenAI (voz) respondeu ${res.status}: ${(await res.text()).split(key).join("[chave]").slice(0, 200)}`);
+    }, key);
     out.push(Buffer.from(await res.arrayBuffer()), silence(280));
   }
   return Buffer.concat(out);

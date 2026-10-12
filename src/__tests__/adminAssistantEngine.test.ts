@@ -499,7 +499,8 @@ describe("assistente das abas — IA indisponível, teto e falha", () => {
     };
     await expect(run({ fields: ["expected_conduct"], material: MATERIAL })).rejects.toMatchObject({ status: 429, message: "Teto de gasto atingido: Gasto do mês passa do teto." });
     reply = () => ({ suggestions: "não é lista" });
-    await expect(run({ fields: ["expected_conduct"], material: MATERIAL })).rejects.toMatchObject({ status: 502, message: expect.stringMatching(/^O assistente falhou: /) });
+    // o detalhe técnico não vai para a tela (Q13): a frase padrão em português; o detalhe vai para o registro do servidor
+    await expect(run({ fields: ["expected_conduct"], material: MATERIAL })).rejects.toMatchObject({ status: 502, message: "O assistente não conseguiu responder agora. Tente de novo em instantes." });
   });
 
   it("maestro: função de cada modo, origem assistente, item e quem pediu; custo e rótulo da IA", async () => {
@@ -1212,5 +1213,28 @@ describe("assistente das abas — decisão D7: explicação que nomeia a alterna
     expect(explanationVerdict("Incorreta: o tratamento é de suporte.")).toEqual({ letter: null, correct: false });
     // a letra citada antes do veredito continua valendo
     expect(explanationVerdict("A alternativa C é a correta")).toEqual(right("C"));
+  });
+});
+
+describe("assistente das abas — Q14: o resultado diz se havia trecho para a IA (leva 2)", () => {
+  it("sem material e sem trecho oficial: nenhum trecho (a biblioteca não tem o tema)", async () => {
+    const r = await run({ fields: ["expected_conduct", "subtopic"] });
+    expect(r.no_source).toEqual(["expected_conduct"]);
+    expect(r.source_passages).toEqual({ material: 0, official: 0 });
+  });
+
+  it("com material enviado, mesmo que a IA não cite nada: o painel não diz que falta material", async () => {
+    reply = () => ({ suggestions: [{ field: "expected_conduct", value: V("Suporte."), sources: ["I1"] }], missing: [] });
+    const r = await run({ fields: ["expected_conduct"], material: MATERIAL });
+    expect(r.no_source).toEqual(["expected_conduct"]);
+    expect(r.source_passages).toEqual({ material: 1, official: 0 });
+  });
+
+  it("com trecho oficial encontrado, mesmo que a IA não cite nada", async () => {
+    OFFICIAL = [PCDT];
+    reply = () => ({ suggestions: [{ field: "expected_conduct", value: V("Suporte."), sources: ["I1"] }], missing: [] });
+    const r = await run({ fields: ["expected_conduct"] });
+    expect(r.no_source).toEqual(["expected_conduct"]);
+    expect(r.source_passages).toEqual({ material: 0, official: 1 });
   });
 });

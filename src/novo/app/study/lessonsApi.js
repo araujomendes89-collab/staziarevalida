@@ -24,6 +24,22 @@ const json = async (backend, path, body) =>
 
 export const lessonsAvailable = (backend) => Boolean(backend?.accessToken);
 
+/**
+ * Texto em português para um erro de envio. As frases do nosso servidor (com status) e as nossas próprias já vêm em português;
+ * o que vem do depósito de arquivos costuma vir em inglês e é traduzido por tipo de problema (A10).
+ */
+export function uploadErrorText(error) {
+  const text = String(error?.message ?? "").trim();
+  if (error?.code === "network" || /failed to fetch|network|networkerror|conex/i.test(text)) return "Sem conexão com o servidor. Confira a internet e tente de novo.";
+  if (error?.status === 413 && /\d+\s*MB/.test(text)) return text; // "Arquivo acima de 200 MB.": o limite fica na mensagem
+  if (error?.status === 413 || /exceeded|maximum allowed|too large|payload|tamanho/i.test(text)) return "O arquivo é grande demais para o depósito. Envie um arquivo menor.";
+  if (/mime|type|not allowed|unsupported|invalid.*(file|format)/i.test(text)) return "O depósito não aceitou este tipo de arquivo. Envie um PDF ou um MP3.";
+  if (/expired|token|jwt|unauthori[sz]ed|forbidden|signature|permission/i.test(text)) return "O envio expirou ou não foi autorizado. Entre de novo e tente outra vez.";
+  const portuguese = [400, 403, 404, 413, 415, 422].includes(error?.status) || /[áàâãéêíóôõúç]/i.test(text) || /^(Envie|Envio|Os arquivos|Arquivo|O arquivo|Falha|Escolha|Informe|Entre|Aula|Caminho)\b/.test(text);
+  if (portuguese && /^[A-ZÁÉÍÓÚÂÊÔÃÕÇ].{3,240}[.!?]$/.test(text)) return text;
+  return "Não foi possível enviar o arquivo. Tente de novo.";
+}
+
 /** Tipo aceito para o arquivo (PDF ou MP3), ou null. */
 export function lessonFileType(file) {
   if (file.type === "application/pdf" || /\.pdf$/i.test(file.name)) return "application/pdf";
@@ -59,6 +75,9 @@ export async function lessonFileUrl(backend, materialId) {
   return URL.createObjectURL(await res.blob());
 }
 
+/** Verdadeiro quando o vídeo toca dentro da aula (YouTube, Vimeo ou MP4/WebM); .m3u8 e outros endereços só abrem em outra aba (A11). */
+export const videoPlaysInside = (url) => Boolean(url) && videoEmbed(url)?.kind !== "link" && videoEmbed(url) !== null;
+
 /** Endereço de vídeo → como incorporar: {kind: "youtube"|"vimeo"|"file"|"link", src}. */
 export function videoEmbed(url) {
   if (!url) return null;
@@ -71,10 +90,14 @@ export function videoEmbed(url) {
       return id ? { kind: "youtube", src: `https://www.youtube-nocookie.com/embed/${id}` } : { kind: "link", src: url };
     }
     if (host === "vimeo.com" || host === "player.vimeo.com") {
-      const id = u.pathname.split("/").filter(Boolean).pop();
-      return /^\d+$/.test(id ?? "") ? { kind: "vimeo", src: `https://player.vimeo.com/video/${id}` } : { kind: "link", src: url };
+      const parts = u.pathname.split("/").filter(Boolean);
+      const last = parts[parts.length - 1] ?? "";
+      if (/^\d+$/.test(last)) return { kind: "vimeo", src: `https://player.vimeo.com/video/${last}${u.searchParams.get("h") ? `?h=${encodeURIComponent(u.searchParams.get("h"))}` : ""}` };
+      // vídeo não listado: vimeo.com/<id>/<código>
+      if (/^\d+$/.test(parts[parts.length - 2] ?? "") && /^[a-z0-9]+$/i.test(last)) return { kind: "vimeo", src: `https://player.vimeo.com/video/${parts[parts.length - 2]}?h=${last}` };
+      return { kind: "link", src: url };
     }
-    if (/\.(mp4|webm|m3u8)(\?|$)/i.test(u.pathname)) return { kind: "file", src: url };
+    if (/\.(mp4|webm)(\?|$)/i.test(u.pathname)) return { kind: "file", src: url };
     return { kind: "link", src: url };
   } catch {
     return null;
@@ -88,6 +111,9 @@ export function durationLabel(minutes) {
   const rest = minutes % 60;
   return `${Math.floor(minutes / 60)}h${rest ? String(rest).padStart(2, "0") : ""}`;
 }
+
+/** Título do material sem o prefixo "Flashcast:" repetido (o episódio já se chama "Flashcast: …" e o áudio da aula ganha outro). */
+export const materialTitle = (title) => String(title ?? "").replace(/^(?:\s*flashcast\s*:\s*)+/i, (m) => (m ? "Flashcast: " : ""));
 
 export function sizeLabel(bytes) {
   if (!bytes) return "";

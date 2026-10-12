@@ -13,7 +13,7 @@ import { tutorSettings } from "./settings";
 import { planProviders } from "./voiceProviders";
 import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
 import { samplePath } from "./voicePreview";
-import { nexusStatus, openNexus, type TtsQuota } from "./nexus";
+import { elevenAccessOf, nexusStatus, openNexus, type TtsQuota } from "./nexus";
 import { MAX_AUDIO_BYTES, MAX_AUDIO_SECONDS, STT_BUSY, STT_PER_MINUTE, audioFitsSeconds, sttConfig, transcribe } from "./stt";
 
 type Authed = Request & { user?: Identity };
@@ -115,7 +115,8 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
 
   /**
    * "Ouvir" do aluno: a Apresentação guardada quando a voz foi aprovada (a versão no ar precisa ser a aprovada). Não gera voz
-   * nem gasta caracteres.
+   * nem gasta caracteres. Vale as mesmas travas da voz do professor (VZ02): voz do Tutor ligada, "só equipe" desligado (ou quem
+   * pede é da equipe) e aprovação; a tela esconde o botão nesses casos e o pedido direto também é recusado.
    */
   router.get("/voice/sample/:personality", async (req: Authed, res) => {
     try {
@@ -124,7 +125,9 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       const id = officialVoiceForPersonality(String(req.params.personality ?? ""));
       const row = id ? elevenLabsReadiness(deps!.elevenEnv ?? process.env, quota?.approvals ?? {}).rows.find((r) => r.id === id) : null;
       const approval = id ? quota?.approvals?.[id] : null;
-      if (!id || !row?.approved || !approval?.sample_path || approval.sample_path !== samplePath(id, row.fingerprint) || !deps!.storage) return fail(res, 404, "Amostra indisponível.");
+      // need: 0, pois a amostra não gasta caracteres: o limite do dia não a bloqueia
+      const access = row && quota ? elevenAccessOf({ quota, row, need: 0 }) : null;
+      if (!id || !access?.ok || !row?.approved || !approval?.sample_path || approval.sample_path !== samplePath(id, row.fingerprint) || !deps!.storage) return fail(res, 404, "Amostra indisponível.");
       const audio = await deps!.storage.get(approval.sample_path).catch(() => null);
       if (!audio) return fail(res, 404, "Amostra indisponível.");
       res.setHeader("Content-Type", "audio/mpeg");

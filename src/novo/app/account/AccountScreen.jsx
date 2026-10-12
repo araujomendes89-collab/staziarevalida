@@ -5,7 +5,7 @@
 import React from "react";
 import { Avatar, Badge, Banner, Button, Card, Icon, SectionHeader, SegmentedControl, SelectField, TextField } from "../../ds";
 import { isStaffRole } from "../admin/AdminScreen.jsx";
-import { isPhase2Locked } from "../admin/common.jsx";
+import { isPhase2Locked, paidPlanLapsed, trialLapsed } from "../admin/common.jsx";
 import { PASSWORD_MIN_LENGTH } from "../../data";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
@@ -46,12 +46,15 @@ const dateTimeBR = (iso) => {
   return `${parts.day}/${parts.month}/${parts.year} às ${parts.hour}:${parts.minute}`;
 };
 
-function planBadge(subscription, role) {
+function planBadge(subscription, role, reviewer = false) {
   if (isStaffRole(role)) return "Equipe · acesso completo";
+  if (reviewer) return "Revisor médico · acesso completo";
   if (!subscription) return null;
   const label = PLAN_LABEL[subscription.plan] ?? subscription.plan;
+  if (trialLapsed(subscription)) return `${label} · encerrado`;
   if (subscription.status === "trialing" && subscription.trial_ends_at) return `${label} até ${dateBR(subscription.trial_ends_at)}`;
-  if (subscription.status === "canceled" || subscription.status === "expired") return `${label} · encerrado`;
+  // plano pago depois de "Plano pago até" (com pagamento pendente, depois dos 3 dias de tolerância) já não dá acesso
+  if (subscription.status === "canceled" || subscription.status === "expired" || paidPlanLapsed(subscription)) return `${label} · encerrado`;
   if (subscription.status === "past_due") return `${label} · pagamento pendente`;
   return label;
 }
@@ -405,7 +408,7 @@ export function AccountScreen({ go }) {
   const mobile = useMobile();
   const [section, setSection] = React.useState("conta");
   const profile = boot.profile;
-  const plan = planBadge(boot.subscription, boot.role);
+  const plan = planBadge(boot.subscription, boot.role, Boolean(boot.reviewer_areas?.length));
   const phase2Locked = isPhase2Locked(boot.role); // 2ª fase "em breve" para o aluno: o selo mostra a 1ª mesmo se a 2ª estiver gravada
   const goal = profile.target_edition ? `Meta: ${profile.exam_type === "ENAMED" ? "ENAMED" : "Revalida INEP"} ${profile.target_edition}` : null;
 

@@ -12,7 +12,8 @@ import { applyReferenceCleanup, previewReferenceCleanup, undoReferenceCleanup } 
 import { CONTENT_HUB_BUCKET, type Identity } from "./infra";
 import type { ContentHubWorker } from "./worker";
 import type { ProcessingReport } from "./capabilities";
-import { functionChecks, loadAiConfig } from "../ai/config";
+import { DEFAULT_MAX_SEARCHES, functionChecks, invalidateAiConfig, loadAiConfig } from "../ai/config";
+import { aiAllowed } from "./ai/registry";
 import { DEFAULT_EMBEDDING_MODEL, embedderAllowed, embeddingsConfig, queryEmbedding } from "./embeddings";
 
 /** A tarefa no Cloud Run roda a cada 10 minutos: sem relato há mais de 30, ela parou. */
@@ -340,6 +341,113 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       res.json({ ...p, changes: p.changes.slice(0, 200), shown: Math.min(p.changes.length, 200), total: p.changes.length });
     } catch (error: any) {
       fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+    }
+  });
+
+  // ------------------------------------------------------------------ biblioteca de fontes oficiais (administrador)
+  /** Só administrador (a equipe toda lê a Central, mas buscar, aprovar e rejeitar fontes é do dono). */
+  const requireAdmin = async (req: Authed) => {
+    const me = await requireStaff(req);
+    if (!me.admin) throw httpError(403, "Somente administradores.");
+    return me;
+  };
+  const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const candidateId = (req: Authed) => {
+    const id = String(req.params.id);
+    if (!UUID.test(id)) throw httpError(400, "Candidato inválido.");
+    return id;
+  };
+  const adminError = (res: Response, error: any) => fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+  /** Link temporário do arquivo guardado de um candidato (60 s). */
+  const CANDIDATE_LINK_SECONDS = 60;
+  const WEB_PAGE_NO_FILE = "Página web: o arquivo não abre aqui. Veja o texto e abra no site oficial.";
+
+  /** A busca de fontes oficiais está pronta? (função da Central de IAs configurada, IA ligada, sinalizadores) */
+  router.get("/source-search/status", async (req: Authed, res) => {
+    try {
+      await requireAdmin(req);
+      invalidateAiConfig(deps!.db);
+      const cfg = await loadAiConfig(deps!.db);
+      const check = functionChecks(cfg)["busca_fontes"];
+      const problems = [...check.problems];
+      const allowed = await aiAllowed(deps!.db);
+      if (!allowed.ok && !problems.includes(allowed.why)) problems.push(allowed.why);
+      res.json({ ready: check.ready && allowed.ok, problems, warnings: check.warnings, max_searches: cfg.functions.busca_fontes?.max_searches ?? DEFAULT_MAX_SEARCHES });
+    } catch (error) {
+      adminError(res, error);
+    }
+  });
+
+  /**
+   * Aprova um candidato: o banco cria a fonte, o documento de referência e o vínculo numa transação (só administrador) e a
+   * rota põe a leitura na fila. Se pôr na fila falhar, a aprovação vale e a resposta traz read_error (a tela oferece "Ler de novo").
+   */
+  router.post("/source-candidates/:id/approve", express.json({ limit: "64kb" }), async (req: Authed, res) => {
+    try {
+      await requireAdmin(req);
+      const id = candidateId(req);
+      const fields = req.body && typeof req.body.fields === "object" && req.body.fields && !Array.isArray(req.body.fields) ? req.body.fields : {};
+      const approved = await asUser<{ source_id: string; document_id: string }>(req, "app_ch_source_candidate_approve", { p_candidate_id: id, p_fields: fields });
+      try {
+        const job = await enqueueExtract(approved.document_id);
+        await deps!.db.service("ch_worker_unblock");
+        res.status(201).json({ ...approved, job });
+      } catch (error) {
+        deps!.log?.(`[central] leitura da fonte aprovada não entrou na fila: ${message(error).slice(0, 200)}`);
+        res.status(201).json({ ...approved, job: null, read_error: "A leitura não entrou na fila: use Ler de novo." });
+      }
+    } catch (error) {
+      adminError(res, error);
+    }
+  });
+
+  /** "Ler de novo": põe a leitura da fonte aprovada na fila, sem duplicar o trabalho (e recomeça o que falhou). */
+  router.post("/source-candidates/:id/read", async (req: Authed, res) => {
+    try {
+      await requireAdmin(req);
+      const c = await asUser<{ status: string; document_id: string | null }>(req, "app_ch_source_candidate", { p_candidate_id: candidateId(req) });
+      if (c.status !== "aprovado" || !c.document_id) throw httpError(409, "Só a fonte aprovada tem leitura.");
+      const next = await deps!.db.service<{ id: string; duplicate: boolean }>("ch_worker_next", { p_document_id: c.document_id, p_step: "extract", p_versions: stepVersions("extract", deps!), p_scope_key: "" });
+      await deps!.db.service("ch_worker_unblock");
+      res.json({ ok: true, job: next });
+    } catch (error) {
+      adminError(res, error);
+    }
+  });
+
+  /** Rejeita (motivo de pelo menos 10 caracteres) e apaga o arquivo guardado; o link e o SHA-256 ficam, então não volta. */
+  router.post("/source-candidates/:id/reject", express.json({ limit: "64kb" }), async (req: Authed, res) => {
+    try {
+      await requireAdmin(req);
+      const out = await asUser<{ storage_path: string | null }>(req, "app_ch_source_candidate_reject", { p_candidate_id: candidateId(req), p_reason: String(req.body?.reason ?? "") });
+      if (out?.storage_path) {
+        // falha ao apagar não desfaz a rejeição: só vai para o registro
+        await deps!.storage.remove?.([out.storage_path]).catch((error: unknown) => deps!.log?.(`[central] arquivo rejeitado não foi apagado (${out.storage_path}): ${message(error).slice(0, 200)}`));
+      }
+      res.json({ ok: true });
+    } catch (error) {
+      adminError(res, error);
+    }
+  });
+
+  /**
+   * Abre o arquivo guardado do candidato: link temporário de 60 s do depósito, ou (desenvolvimento) o PDF. Página web nunca é
+   * servida como página: 409 com o aviso (a tela mostra o texto e o link do site oficial). Rejeitado (arquivo apagado): 404.
+   */
+  router.get("/source-candidates/:id/file", async (req: Authed, res) => {
+    try {
+      await requireAdmin(req);
+      const c = await asUser<{ file_kind: string; storage_path: string | null; sha256: string }>(req, "app_ch_source_candidate", { p_candidate_id: candidateId(req) });
+      if (c.file_kind === "html") return fail(res, 409, WEB_PAGE_NO_FILE);
+      if (!c.storage_path) return fail(res, 404, "O arquivo deste candidato não está mais guardado.");
+      if (deps!.storage.signedUrl) return res.json({ url: await deps!.storage.signedUrl(c.storage_path, CANDIDATE_LINK_SECONDS) });
+      const data = await deps!.storage.get(c.storage_path);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `inline; filename="fonte-${c.sha256.slice(0, 12)}.pdf"`);
+      res.setHeader("Cache-Control", "private, no-store");
+      res.send(data);
+    } catch (error: any) {
+      fail(res, error?.status ?? (forbidden(error) ? 403 : /não encontrado/i.test(message(error)) ? 404 : 400), message(error));
     }
   });
 

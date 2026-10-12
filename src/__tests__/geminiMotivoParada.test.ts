@@ -267,14 +267,14 @@ describe("maestro: resposta cortada vai para a reserva e a falha conta no gasto"
     expect((await rows(r.runId)).map((l) => `${l.role}:${l.outcome}:${l.cost}`)).toEqual(["principal:falha:0", "principal:falha:0", "reserva:ok:0.003"]);
   });
 
-  it("o teto por execução enxerga o limite real mandado ao Gemini (pedido + folga do raciocínio)", async () => {
+  it("o teto por chamada enxerga o limite real mandado ao Gemini (pedido + folga do raciocínio)", async () => {
     // estimativa com 8.192: ~US$ 0,074; com a folga (24.576): ~US$ 0,221. Teto de US$ 0,10 só para com a folga na conta
     await db.service("ch_worker_ai_save_settings", { p_actor: ADMIN, p_settings: { caps_enabled: true, per_run_cap_usd: 0.1, monthly_cap_usd: 100 } });
     (await import("../../server/ai/config")).invalidateAiConfig(db);
     const f = fakes(() => new Error("não deveria chamar"));
     const r = await run(f);
     expect(r.status).toBe("parou_no_teto");
-    expect(r.message).toMatch(/teto por execução/);
+    expect(r.message).toMatch(/teto por chamada/);
     expect(f.calls).toEqual({});
   });
 });

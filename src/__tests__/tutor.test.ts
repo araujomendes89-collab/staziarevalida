@@ -388,6 +388,8 @@ describe("Banco e motor (IA simulada)", () => {
     await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
     await dev.db.query(`update public.profiles set name = 'Maria Souza' where id = $1`, [S1]);
     for (const uid of [S1, S2]) await aceitarTermos(dev.db, uid); // os alunos já aceitaram o §34 (o aceite em si é testado em termoAceiteTutor.test.ts)
+    // os alunos destes testes assinam (plano pago no prazo): o Tutor ligado exige "Planos pagos + teste grátis" (…9550)
+    await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id in ($1, $2)`, [S1, S2]);
     for (const r of await sql(`select id, correct_option from public.questions`)) off[r.id] = r.correct_option;
     process.env.TUTOR_AI_PROVIDER = "mock";
   }, 300_000);
@@ -410,7 +412,7 @@ describe("Banco e motor (IA simulada)", () => {
       await expect(rpc(S1, "app_tutor_start", "livre", null, null)).rejects.toThrow(/ainda não está ligado/);
       await expect(rpc(S1, "app_admin_tutor_save_config", { enabled: true }, "quero ligar o tutor agora")).rejects.toThrow(/administradores/);
       await expect(rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true }, "curto")).rejects.toThrow(/motivo/);
-      const c = await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, daily_message_limit: 6 }, "Piloto do Tutor com limite baixo.");
+      const c = await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, requires_pro: true, daily_message_limit: 6 }, "Piloto do Tutor com limite baixo.");
       expect(c).toMatchObject({ enabled: true, daily_message_limit: 6, max_profanity: "moderate" });
       expect((await sql(`select details from public.admin_audit_log where action = 'tutor.config'`))[0].details.reason).toMatch(/Piloto/);
       expect((await rpc(S1, "app_tutor_status")).available).toBe(true);
@@ -694,7 +696,7 @@ describe("Banco e motor (IA simulada)", () => {
       await sql(`update public.ch_flags set value = true where key = 'ai_enabled'`);
       await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: false }, "Desligando o Tutor para teste.");
       await expect(turn(() => reply("oi"), { type: "message", text: "oi" })).rejects.toMatchObject({ status: 503, message: expect.stringMatching(/não está ligado/) });
-      await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, daily_message_limit: 60 }, "Religando o Tutor para teste.");
+      await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, requires_pro: true, daily_message_limit: 60 }, "Religando o Tutor para teste.");
       process.env.TUTOR_ENABLED = "false";
       await expect(turn(() => reply("oi"), { type: "message", text: "oi" })).rejects.toBeInstanceOf(TutorError);
       delete process.env.TUTOR_ENABLED;
@@ -1034,9 +1036,12 @@ describe("Banco e motor (IA simulada)", () => {
         await sql(`update public.tutor_config set tts_paid_daily_chars = 4500`);
         await sql(`update public.tutor_config set voice_enabled = false`);
         expect((await post({ kind: "phrase", phrase: "unmarked", personality_id: "direto" })).status).toBe(503);
-        // a voz segue o direito do Tutor, não a regra antiga "só assinante": o aluno do teste grátis ouve
+        // a voz segue o direito do Tutor, não a regra antiga "só assinante": o aluno do teste grátis ouve (o plano de S1 vence por um momento)
+        await sql(`update public.subscriptions set current_period_end = now() - interval '1 day' where user_id = $1`, [S1]);
         await sql(`update public.tutor_config set voice_enabled = true, requires_pro = true`);
+        expect((await rpc(S1, "app_tutor_status")).entitlement).toMatchObject({ mode: "trial", is_paid: false });
         expect((await post({ kind: "phrase", phrase: "unmarked", personality_id: "direto" })).status).toBe(200);
+        await sql(`update public.subscriptions set current_period_end = now() + interval '30 days' where user_id = $1`, [S1]);
         await sql(`update public.tutor_config set requires_pro = false`);
         deps.speech = null;
         const off = await post({ kind: "phrase", phrase: "unmarked", personality_id: "direto" });

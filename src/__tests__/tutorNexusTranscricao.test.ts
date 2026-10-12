@@ -66,10 +66,10 @@ beforeAll(async () => {
   for (const st of buildEngineStatements()) await dev.db.exec(st);
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'adm@t.dev'), ($2, 'aluna@t.dev'), ($3, 'sem@t.dev')`, [ADMIN, ALUNA, SEM_ACEITE]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
-  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id in ($1, $2)`, [ALUNA, SEM_ACEITE]);
+  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id in ($1, $2)`, [ALUNA, SEM_ACEITE]);
   await aceitarTermos(dev.db, ALUNA);
   for (const uid of [ALUNA, SEM_ACEITE]) tokens[uid] = await dev.createSession(uid);
-  await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, voice_enabled: true, stt_price_per_min_usd: 0.003, pronunciations: [{ term: "INEP", say: "inépi" }, { term: "DPOC", say: "dê-pê-ó-cê" }] }, "Ajuste para os testes da transcrição do Nexus.");
+  await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, requires_pro: true, voice_enabled: true, stt_price_per_min_usd: 0.003, pronunciations: [{ term: "INEP", say: "inépi" }, { term: "DPOC", say: "dê-pê-ó-cê" }] }, "Ajuste para os testes da transcrição do Nexus.");
   const app = express();
   app.use(express.json());
   app.use("/api/tutor", createTutorRouter(deps));
@@ -194,7 +194,7 @@ describe("Transcrição da Nexus", () => {
   it("teto por aluno: uma transcrição por vez, até 20 por minuto, e o áudio do tamanho da duração declarada (o serviço cobra pelo tempo de verdade)", async () => {
     const uid = "00000000-0000-4000-8000-0000000000c9";
     await sql(`insert into auth.users (id, email) values ($1, 'teto@t.dev')`, [uid]);
-    await sql(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [uid]);
+    await sql(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id = $1`, [uid]);
     await aceitarTermos(dev.db, uid);
     tokens[uid] = await dev.createSession(uid);
     const call = await openCall(uid);

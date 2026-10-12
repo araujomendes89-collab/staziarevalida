@@ -61,7 +61,7 @@ beforeAll(async () => {
   for (const st of buildEngineStatements()) await dev.db.exec(st);
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'a@t.dev'), ($2, 'b1@t.dev'), ($3, 'b2@t.dev'), ($4, 'b3@t.dev'), ($5, 'pago@t.dev')`, [ADMIN, S1, S2, S3, PAID]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
-  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [PAID]);
+  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id = $1`, [PAID]);
   for (const uid of [S1, S2, S3, PAID]) await aceitarTermos(dev.db, uid); // os alunos já aceitaram o §34 (o aceite em si é testado em termoAceiteTutor.test.ts)
   for (const r of await sql(`select id, correct_option from public.questions`)) off[r.id] = r.correct_option;
   process.env.TUTOR_AI_PROVIDER = "mock";
@@ -161,8 +161,10 @@ describe("Voz em tempo real (OpenAI simulada)", () => {
   it("sem configuração no servidor a voz não abre; a configuração exige modelo, consentimento e chave de verdade", async () => {
     expect(realtimeConfig({}).pending).toMatch(/OPENAI_REALTIME_MODEL/);
     expect(realtimeConfig({ OPENAI_REALTIME_MODEL: "gpt-realtime-2.1", OPENAI_API_KEY: KEY }).pending).toMatch(/TUTOR_VOICE_ALLOW_EXTERNAL=1/);
-    expect(realtimeConfig({ OPENAI_REALTIME_MODEL: "gpt-realtime-2.1", TUTOR_VOICE_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: "MY_KEY" }).pending).toMatch(/texto de exemplo/);
-    expect(realtimeConfig({ OPENAI_REALTIME_MODEL: "m", TUTOR_VOICE_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: KEY })).toMatchObject({ ready: true, model: "m" });
+    // VZ01: a autorização da equipe sozinha não liga a voz ao vivo dos alunos; precisa também da trava própria
+    expect(realtimeConfig({ OPENAI_REALTIME_MODEL: "m", TUTOR_VOICE_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: KEY }).pending).toMatch(/TUTOR_LIVE_VOICE_ALLOW_EXTERNAL=1/);
+    expect(realtimeConfig({ OPENAI_REALTIME_MODEL: "gpt-realtime-2.1", TUTOR_VOICE_ALLOW_EXTERNAL: "1", TUTOR_LIVE_VOICE_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: "MY_KEY" }).pending).toMatch(/texto de exemplo/);
+    expect(realtimeConfig({ OPENAI_REALTIME_MODEL: "m", TUTOR_VOICE_ALLOW_EXTERNAL: "1", TUTOR_LIVE_VOICE_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: KEY })).toMatchObject({ ready: true, model: "m" });
     deps.realtime = { ...RT, ready: false, pending: "x", key: null };
     expect((await post("/voice/start", { session_id: session })).status).toBe(503);
     deps.realtime = RT;

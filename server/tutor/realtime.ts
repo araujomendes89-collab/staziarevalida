@@ -19,13 +19,16 @@
  *   OPENAI_VOICE_PROVIDER            live | realtime | auto
  *   OPENAI_REALTIME_VOICE            voz padrão quando o professor não tem uma
  *   TUTOR_VOICE_ALLOW_EXTERNAL=1     consentimento: a voz do aluno e as respostas passam pela OpenAI
+ *   TUTOR_LIVE_VOICE_ALLOW_EXTERNAL=1 trava própria da voz ao vivo dos alunos, exigida junto com a de cima (desligada por padrão;
+ *                                    a de cima sozinha só serve para a equipe ouvir e aprovar as vozes oficiais)
  *   OPENAI_REALTIME_TRANSCRIBE_MODEL opcional (Realtime): transcrição da fala do aluno
  */
 import { createHash } from "crypto";
 import { engineFor, languageIntensity, normalize, profanityForIntensity, stateLayer, type PersonaEngine, type TutorState } from "./emotion";
-import { PROFESSOR_CHANGED, TRIAL_OVER, TutorError, consentError, type Entitlement, type TutorDeps } from "./engine";
+import { PROFESSOR_CHANGED, TRIAL_OVER, TutorError, consentError, termsOrFail, type Entitlement, type TutorDeps } from "./engine";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings as SessionPrefs } from "./personality";
 import { composeLiveInstructions, composeRealtimeInstructions, type TutorMode } from "./prompts";
+import { redactSupportMaterial } from "../contentHub/complementarGuard";
 import { safetyCheck, type BaseBlock } from "./safety";
 import { realKey } from "./speech";
 import { REALTIME_TOOLS } from "./tools";
@@ -33,7 +36,7 @@ import { estimateCost, voiceTimeCost } from "./costs";
 import { deterministicTutor, tutorSettings, type TutorSettings } from "./settings";
 import {
   closeLiveSession, createGeminiVoiceToken, createLiveSession, geminiVoiceConfig, geminiVoiceName, GeminiVoiceError, liveConfig, LiveSessionError,
-  markGeminiUnavailable, markLiveUnavailable, planProviders, type GeminiVoiceConfig, type LiveConfig, type VoiceProviderId,
+  liveVoiceLockPending, markGeminiUnavailable, markLiveUnavailable, planProviders, type GeminiVoiceConfig, type LiveConfig, type VoiceProviderId,
 } from "./voiceProviders";
 
 const API = "https://api.openai.com/v1";
@@ -61,11 +64,7 @@ export function realtimeConfig(env: NodeJS.ProcessEnv = process.env): RealtimeCo
   const transcribeModel = (env.OPENAI_REALTIME_TRANSCRIBE_MODEL ?? "").trim() || null;
   const pending = !model
     ? "Defina OPENAI_REALTIME_MODEL no servidor (o modelo de voz em tempo real)."
-    : env.TUTOR_VOICE_ALLOW_EXTERNAL !== "1"
-      ? "Envio da voz do aluno à OpenAI não autorizado: defina TUTOR_VOICE_ALLOW_EXTERNAL=1 no servidor depois de aprovar o uso."
-      : !key
-        ? "OPENAI_API_KEY ausente ou com o texto de exemplo no .env do servidor."
-        : null;
+    : liveVoiceLockPending(env) ?? (!key ? "OPENAI_API_KEY ausente ou com o texto de exemplo no .env do servidor." : null);
   return { ready: !pending, model, pending, key: pending ? null : key, transcribeModel };
 }
 
@@ -459,15 +458,19 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
     // Durona "sem filtro cosmético": o teto do professor vale direto (os limites contra ataque pessoal continuam)
     profanity = settings.durona_level === "sem_filtro" && ctx.personality.id === "durona" ? max : RANK[byState] < RANK[max] ? byState : max;
   }
+  // sem a lista de fontes que o aluno não pode ver a fala não é conferida: recusa (503) e NÃO grava a fala no histórico
+  const supportTerms = await termsOrFail(deps);
   const check = safetyCheck(
     { reply: clean, grounding: "GENERAL", citations: [], evaluation: { error_type: "none", knowledge_gap: "", severity: 1, unsafe: false, reasoning_quality: "na", recommended_action: "none", answer_correct: "na", self_corrected: false }, justification: "NONE", reveals_answer: false, suggested_replies: [] },
-    { blocks, conversationTexts: (ctx?.history ?? []).map((h) => h.content), question: q ? { open, officialLetter: q.official_answer ?? null, officialText: (q.options ?? []).find((o: any) => o.id === q.official_answer)?.text ?? null } : null, hintLevel: null, hasUpdateCard: Boolean(q?.update_card), profanity },
+    { blocks, conversationTexts: (ctx?.history ?? []).map((h) => h.content), question: q ? { open, officialLetter: q.official_answer ?? null, officialText: (q.options ?? []).find((o: any) => o.id === q.official_answer)?.text ?? null } : null, hintLevel: null, hasUpdateCard: Boolean(q?.update_card), profanity, supportTerms },
   );
   // valores e documentos ditos sem ferramenta não são conferíveis aqui (as ferramentas trazem fontes): o que importa barrar na voz
   // é gabarito antes da hora, ataque pessoal, palavrão acima do liberado e contestar o gabarito
-  const serious = check.violations.filter((x) => ["answer_leak", "personal_attack", "profanity", "challenges_official_answer", "ungrounded_number", "invented_reference", "currency_claim"].includes(x.code));
+  const serious = check.violations.filter((x) => ["answer_leak", "personal_attack", "profanity", "challenges_official_answer", "ungrounded_number", "invented_reference", "currency_claim", "cites_support_material"].includes(x.code));
   await deps.db.service("ch_worker_tutor_append", {
-    p_user: userId, p_session_id: v.session_id, p_student: null, p_tutor: clean,
+    p_user: userId, p_session_id: v.session_id, p_student: null,
+    // a fala que cita a apostila é gravada SEM a citação (o aluno relê e ouve de novo o que está gravado)
+    p_tutor: serious.some((x) => x.code === "cites_support_material") ? (redactSupportMaterial(clean, supportTerms) || "(trecho retirado)") : clean,
     p_meta: { realtime: true, grounding: "general", ...(serious.length ? { violations: serious.map((x) => x.code) } : {}) }, p_usage: {},
   });
   if (!serious.length) return { correction: null };
@@ -480,6 +483,7 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
       facts ? "você disse um valor, documento ou conduta que não veio das ferramentas; diga que não tem isso confirmado na base e retire." : "",
       serious.some((x) => x.code === "personal_attack" || x.code === "profanity") ? "você passou do tom permitido; retome no limite (a bronca é para a resposta, nunca para a pessoa)." : "",
       serious.some((x) => x.code === "challenges_official_answer") ? "o gabarito oficial não está errado; corrija isso." : "",
+      serious.some((x) => x.code === "cites_support_material") ? "você citou o nome de um material de apoio (apostila ou livro); o aluno não vê essa fonte: nunca cite nome, autor, arquivo ou página desse material, diga o conteúdo com as suas palavras." : "",
     ].filter(Boolean).join(" "),
   };
 }

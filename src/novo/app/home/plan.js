@@ -30,8 +30,28 @@ export function progressText(task) {
   return `${task.progress} de ${task.target} ${unit} hoje`;
 }
 
-export function trialTitle(daysLeft) {
-  if (daysLeft <= 0) return "Seu teste gratuito termina hoje";
-  if (daysLeft === 1) return "Seu teste gratuito termina amanhã";
-  return `Seu teste gratuito termina em ${daysLeft} dias`;
+/** Data do calendário de Brasília (AAAA-MM-DD) de um instante. */
+const dayBR = (date) => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+
+/**
+ * Dias que faltam para o teste acabar, contados pelo calendário de Brasília (0 = acaba hoje), ou null se já acabou.
+ * Com a data de fim (`ends_at` do app_home), a conta é pela data; sem ela, vale o `days_left` do banco (0 = já acabou).
+ */
+export function trialDaysLeft(trial, now = new Date()) {
+  const ends = trial?.ends_at ? new Date(trial.ends_at) : null;
+  if (ends && !Number.isNaN(ends.getTime())) {
+    if (ends <= now) return null;
+    return Math.round((Date.parse(dayBR(ends)) - Date.parse(dayBR(now))) / 86_400_000);
+  }
+  const left = Number(trial?.days_left);
+  return Number.isFinite(left) && left > 0 ? left : null;
+}
+
+/** Título do aviso do teste grátis no Início. Depois do fim, diz que terminou (e não "termina hoje" para sempre). */
+export function trialTitle(trial, now = new Date()) {
+  const left = trialDaysLeft(trial, now);
+  if (left === null) return "Seu teste grátis terminou";
+  if (left <= 0) return "Seu teste gratuito termina hoje";
+  if (left === 1) return "Seu teste gratuito termina amanhã";
+  return `Seu teste gratuito termina em ${left} dias`;
 }

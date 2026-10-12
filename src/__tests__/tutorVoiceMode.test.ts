@@ -102,7 +102,7 @@ beforeAll(async () => {
   for (const st of buildEngineStatements()) await dev.db.exec(st);
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'adm@t.dev'), ($2, 'aluna@t.dev'), ($3, 'outro@t.dev')`, [ADMIN, ALUNA, OUTRO]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
-  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id in ($1, $2)`, [ALUNA, OUTRO]);
+  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id in ($1, $2)`, [ALUNA, OUTRO]);
   for (const uid of [ALUNA, OUTRO]) await aceitarTermos(dev.db, uid); // os alunos já aceitaram o §34 (o aceite em si é testado em termoAceiteTutor.test.ts)
   for (const r of await sql(`select id, correct_option from public.questions`)) off[r.id] = r.correct_option;
   await config({ enabled: true, requires_pro: true }, "Tutor ligado para os testes do modo de voz.");
@@ -130,7 +130,9 @@ describe("Provedor da voz", () => {
   it("modelos só pelo ambiente; GPT-Live exige modelo, consentimento e chave; o painel escolhe e o automático prefere o GPT-Live", () => {
     expect(liveConfig({}).pending).toMatch(/OPENAI_LIVE_MODEL/);
     expect(liveConfig({ OPENAI_LIVE_MODEL: "gpt-live-1", OPENAI_API_KEY: KEY }).pending).toMatch(/TUTOR_VOICE_ALLOW_EXTERNAL=1/);
-    expect(liveConfig({ OPENAI_LIVE_MODEL: "gpt-live-1", TUTOR_VOICE_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: KEY })).toMatchObject({ ready: true, model: "gpt-live-1" });
+    // VZ01: a autorização da equipe sozinha não liga a voz ao vivo dos alunos; precisa também da trava própria
+    expect(liveConfig({ OPENAI_LIVE_MODEL: "gpt-live-1", TUTOR_VOICE_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: KEY }).pending).toMatch(/TUTOR_LIVE_VOICE_ALLOW_EXTERNAL=1/);
+    expect(liveConfig({ OPENAI_LIVE_MODEL: "gpt-live-1", TUTOR_VOICE_ALLOW_EXTERNAL: "1", TUTOR_LIVE_VOICE_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: KEY })).toMatchObject({ ready: true, model: "gpt-live-1" });
     expect(planProviders("auto", {}, LIVE, RT, true)).toMatchObject({ first: "live", fallback: "realtime" });
     expect(planProviders("auto", { OPENAI_VOICE_PROVIDER: "realtime" }, LIVE, RT, true)).toMatchObject({ first: "realtime", fallback: "live" });
     expect(planProviders("realtime", { OPENAI_VOICE_PROVIDER: "live" }, LIVE, RT, true).first).toBe("realtime"); // painel manda
