@@ -371,7 +371,7 @@ describe("Rodada de correções da revisão: a corrida entre conferir e apagar (
     // uma segunda limpeza ao mesmo tempo não recebe o mesmo arquivo
     expect(await db.service<any[]>("ch_worker_podcast_files_pending", { p_user: EDITOR, p_podcast: null })).toEqual([]);
     // depois da confirmação o caminho volta a ser livre (um arquivo novo com esse nome é outro arquivo)
-    await db.service("ch_worker_podcast_files_done", { p_user: EDITOR, p_results: [{ id: reservados[0].id, ok: true }] });
+    await db.service("ch_worker_podcast_files_done", { p_user: EDITOR, p_results: [{ id: reservados[0].id, token: reservados[0].token, ok: true }] });
     await sql(`insert into public.ch_file_holds (storage_path) values ('${audio}')`);
     await sql(`delete from public.ch_file_holds where storage_path = '${audio}'`);
   });
@@ -449,17 +449,20 @@ describe("Rodada de correções da revisão: site novo com banco SEM a 9721 (ach
     const fonte = (await sql(`insert into public.podcast_sources (podcast_id, kind, title, storage_path, position) values ($1, 'pdf', 'F', $2, 9) returning id`, [id, arq]))[0].id;
     const tirar = await del(`${semSql}/${id}/sources/${fonte}`, editor);
     expect(tirar.status).toBe(200);
-    expect(tirar.body.note).toMatch(/9721.*ainda não foi aplicada/);
+    expect(tirar.body.note).toMatch(/atualização necessária.*ainda não foi concluída/);
+    expect(tirar.body.note).not.toMatch(/9721|migra/i);
     expect(await files.exists(arq)).toBe(true);
     const apagar = await del(`${semSql}/${id}`, admin);
     expect(apagar.status).toBe(200);
     expect(apagar.body).toMatchObject({ deleted: true });
-    expect(apagar.body.aviso).toMatch(/NÃO foram apagados/);
+    expect(apagar.body.aviso).toMatch(/atualização necessária/);
+    expect(apagar.body.aviso).not.toMatch(/9721|migra/i);
     expect(await files.exists(audio)).toBe(true); // nada se perdeu: os arquivos ficam e aparecem na lista de esquecidos
     expect(await files.exists(arq)).toBe(true);
     const repetir = await post(`${semSql}/files/cleanup`, editor);
     expect(repetir.body).toMatchObject({ ok: false });
-    expect(repetir.body.note).toMatch(/9721/);
+    expect(repetir.body.note).toMatch(/atualização necessária/);
+    expect(repetir.body.note).not.toMatch(/9721|migra/i);
   });
 });
 
@@ -529,14 +532,14 @@ describe("Rodada de correções da revisão: Registro sem duplicar e sem confirm
     const row = (await fila(id))[0];
     const rowId = (await sql(`select id from public.podcast_files_released where podcast_id = $1`, [id]))[0].id;
     // ainda "pendente" (ninguém reservou): a confirmação é ignorada, não apaga nem registra
-    expect(await db.service("ch_worker_podcast_files_done", { p_user: EDITOR, p_results: [{ id: rowId, ok: true }] })).toBe(0);
+    expect(await db.service("ch_worker_podcast_files_done", { p_user: EDITOR, p_results: [{ id: rowId, token: "00000000-0000-4000-8000-000000000000", ok: true }] })).toBe(0);
     expect(row.status).toBe("pendente");
     expect((await fila(id))[0].status).toBe("pendente");
     expect(await registro(id)).toHaveLength(0);
     const [r] = await db.service<any[]>("ch_worker_podcast_files_pending", { p_user: EDITOR, p_podcast: id });
     await files.remove!([audio]);
-    expect(await db.service("ch_worker_podcast_files_done", { p_user: EDITOR, p_results: [{ id: r.id, ok: true }, { id: r.id, ok: true }] })).toBe(1);
-    expect(await db.service("ch_worker_podcast_files_done", { p_user: EDITOR, p_results: [{ id: r.id, ok: true }] })).toBe(0);
+    expect(await db.service("ch_worker_podcast_files_done", { p_user: EDITOR, p_results: [{ id: r.id, token: r.token, ok: true }, { id: r.id, token: r.token, ok: true }] })).toBe(1);
+    expect(await db.service("ch_worker_podcast_files_done", { p_user: EDITOR, p_results: [{ id: r.id, token: r.token, ok: true }] })).toBe(0);
     expect(await registro(id)).toHaveLength(1);
   });
 
@@ -559,8 +562,297 @@ describe("Rodada de correções da revisão: Registro sem duplicar e sem confirm
     const reservados = await db.service<any[]>("ch_worker_podcast_files_pending", { p_user: EDITOR, p_podcast: id });
     expect(reservados).toHaveLength(2);
     const idAudio = reservados.find((r) => r.path === audio).id, idArq = reservados.find((r) => r.path === arq).id;
-    await db.service("ch_worker_podcast_files_done", { p_user: EDITOR, p_results: [{ id: idAudio, ok: true }, { id: idArq, ok: false, error: "fora do ar" }] });
+    const tokAudio = reservados.find((r) => r.path === audio).token, tokArq = reservados.find((r) => r.path === arq).token;
+    await db.service("ch_worker_podcast_files_done", { p_user: EDITOR, p_results: [{ id: idAudio, token: tokAudio, ok: true }, { id: idArq, token: tokArq, ok: false, error: "fora do ar" }] });
     expect((await registro(id))[0].details).toMatchObject({ audios: 1, fontes: 0, falhas: 1 });
     expect((await fila(id)).find((r) => r.storage_path === arq)).toMatchObject({ status: "pendente", attempts: 1, last_error: "fora do ar" });
+  });
+});
+
+// ================================================================================================================================
+// 2ª rodada da revisão independente
+// ================================================================================================================================
+const salvaRoteiro = async (id: string) =>
+  rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines, missing: [] } });
+const entrada = async (id: string) => (await sql(`select id, status, reserve_token, reserved_at, reavaliar, attempts from public.podcast_files_released where podcast_id = $1 order by id`, [id]));
+const vence = (rowId: number) => sql(`update public.podcast_files_released set reserved_at = now() - interval '11 minutes' where id = $1`, [rowId]);
+const renew = (rowId: number, token: string | null) => db.service<boolean>("ch_worker_podcast_files_renew", { p_user: EDITOR, p_id: rowId, p_token: token });
+const done = (results: unknown[]) => db.service<number>("ch_worker_podcast_files_done", { p_user: EDITOR, p_results: results });
+const reserva = async (id: string) => (await db.service<any[]>("ch_worker_podcast_files_pending", { p_user: EDITOR, p_podcast: id }))[0];
+
+describe("2ª rodada, achado 1: cada reserva tem um código; resposta atrasada de uma tentativa antiga não mexe na nova", () => {
+  it("A reserva, a reserva vence, B reserva de novo: a resposta atrasada de A (ok ou falha) é ignorada e a reserva de B continua valendo", async () => {
+    const { id, audio } = await episodioComAudio();
+    await salvaRoteiro(id);
+    const a = await reserva(id);
+    expect(a.token).toMatch(/^[0-9a-f-]{36}$/);
+    await vence(a.id);
+    const b = await reserva(id); // reserva vencida é reavaliada e ganha OUTRO código
+    expect(b.id).toBe(a.id);
+    expect(b.token).not.toBe(a.token);
+    expect(await done([{ id: a.id, token: a.token, ok: false, error: "tarde demais" }])).toBe(0); // antes: devolvia a entrada de B para 'pendente'
+    expect((await entrada(id))[0]).toMatchObject({ status: "apagando", reserve_token: b.token, attempts: 0 });
+    expect(await done([{ id: a.id, token: a.token, ok: true }])).toBe(0);
+    expect(await registro(id)).toHaveLength(0);
+    expect(await renew(a.id, a.token)).toBe(false); // o código antigo também não renova
+    expect(await renew(a.id, b.token)).toBe(true);
+    await files.remove!([audio]);
+    expect(await done([{ id: b.id, token: b.token, ok: true }])).toBe(1);
+    expect((await entrada(id))[0]).toMatchObject({ status: "apagado", reserve_token: null });
+    expect(await registro(id)).toHaveLength(1);
+  });
+
+  it("renovar: só com o código vigente, dentro do prazo e enquanto nada usa o caminho; reserva vencida nunca autoriza apagar", async () => {
+    const { id, audio } = await episodioComAudio();
+    await salvaRoteiro(id);
+    const row = (await entrada(id))[0];
+    expect(await renew(row.id, "00000000-0000-4000-8000-000000000001")).toBe(false); // ainda 'pendente': ninguém reservou
+    const r = await reserva(id);
+    expect(await renew(r.id, null)).toBe(false);
+    expect(await renew(r.id, "00000000-0000-4000-8000-000000000001")).toBe(false); // código errado
+    expect(await renew(r.id, r.token)).toBe(true);
+    expect(await renew(r.id, r.token)).toBe(true); // renovar de novo é permitido
+    await vence(r.id);
+    expect(await renew(r.id, r.token)).toBe(false); // vencida: não renova, mesmo com o código certo
+    expect((await entrada(id))[0]).toMatchObject({ status: "apagando" }); // continua reservada ao código antigo até alguém reservar de novo
+    // vencida + alguém passa a usar o caminho (a recusa só vale com reserva vigente): a renovação continua negada
+    await sql(`insert into public.ch_file_holds (storage_path) values ('${audio}')`);
+    expect(await renew(r.id, r.token)).toBe(false);
+    await sql(`delete from public.ch_file_holds where storage_path = '${audio}'`);
+  });
+
+  it("renovar percebe o uso que apareceu depois da reserva (reserva vencida, mas ainda com o código): encerra como mantido e não apaga", async () => {
+    const { id, audio } = await episodioComAudio();
+    await salvaRoteiro(id);
+    const r = await reserva(id);
+    await sql(`update public.podcast_files_released set reserved_at = now() - interval '9 minutes' where id = $1`, [r.id]); // ainda vigente
+    await sql(`alter table public.ch_file_holds disable trigger podcast_files_guard_hold`); // simula uma escrita que escapou do gatilho
+    await sql(`insert into public.ch_file_holds (storage_path) values ('${audio}')`);
+    await sql(`alter table public.ch_file_holds enable trigger podcast_files_guard_hold`);
+    expect(await renew(r.id, r.token)).toBe(false);
+    expect((await entrada(id))[0]).toMatchObject({ status: "mantido", reserve_token: null });
+    await sql(`delete from public.ch_file_holds where storage_path = '${audio}'`);
+  });
+
+  it("ponta a ponta: a reserva do 2º arquivo vence enquanto o 1º é apagado e alguém passa a usar o 2º → o servidor NÃO apaga o 2º", async () => {
+    const { id, audio } = await episodioComAudio(spy);
+    const arq = `podcasts/${id}/src-aaaaaaaaaaaaaaaa.pdf`;
+    await files.put(arq, Buffer.from("%PDF-1.4 teste"), "application/pdf");
+    const aula = (await sql(`insert into public.lessons (area, topic, title) values ('PEDIATRIA', 'Asma', 'Asma') returning id`))[0].id;
+    await salvaRoteiro(id);
+    await sql(`insert into public.podcast_files_released (podcast_id, storage_path, reason) values ($1, $2, 'fonte_tirada')`, [id, arq]);
+    const apagados: string[] = [];
+    aoApagar = async (keys) => {
+      apagados.push(...keys);
+      if (!keys.includes(audio)) return;
+      // a limpeza demorou: a reserva do 2º arquivo venceu e, sem reserva vigente, alguém conseguiu criar uma referência a ele
+      await sql(`update public.podcast_files_released set reserved_at = now() - interval '11 minutes' where podcast_id = $1 and storage_path = $2`, [id, arq]);
+      await sql(`insert into public.lesson_materials (lesson_id, kind, title, storage_path) values ('${aula}', 'flashcast', 'Apostila', '${arq}')`);
+    };
+    try {
+      expect((await post(`${spy}/${id}/files/cleanup`, editor)).body).toEqual({ ok: true });
+    } finally {
+      aoApagar = null;
+    }
+    expect(apagados).toEqual([audio]); // o 2º nunca chegou ao depósito
+    expect(await files.exists(arq)).toBe(true);
+    expect((await fila(id)).find((r) => r.storage_path === arq)).toMatchObject({ status: "apagando" }); // reserva vencida: fica para a próxima limpeza reavaliar
+    aoApagar = async (keys) => { apagados.push(...keys); };
+    try { expect((await post(`${spy}/${id}/files/cleanup`, editor)).body).toEqual({ ok: true }); } finally { aoApagar = null; }
+    expect(apagados).toEqual([audio]); // a próxima limpeza vê o uso e não apaga
+    expect(await files.exists(arq)).toBe(true);
+    expect((await fila(id)).find((r) => r.storage_path === arq)).toMatchObject({ status: "mantido" });
+    await sql(`delete from public.lesson_materials where lesson_id = '${aula}'`);
+  });
+
+  it("ponta a ponta: a reserva do 2º arquivo foi tomada por outra tentativa (outro código) durante a limpeza → o servidor NÃO apaga e a outra continua dona", async () => {
+    const { id, audio } = await episodioComAudio(spy);
+    const arq = `podcasts/${id}/src-bbbbbbbbbbbbbbbb.pdf`;
+    await files.put(arq, Buffer.from("%PDF-1.4 teste"), "application/pdf");
+    await salvaRoteiro(id);
+    await sql(`insert into public.podcast_files_released (podcast_id, storage_path, reason) values ($1, $2, 'fonte_tirada')`, [id, arq]);
+    let outro: any = null;
+    aoApagar = async (keys) => {
+      if (!keys.includes(audio)) return;
+      await sql(`update public.podcast_files_released set reserved_at = now() - interval '11 minutes' where podcast_id = $1 and storage_path = $2`, [id, arq]);
+      outro = (await db.service<any[]>("ch_worker_podcast_files_pending", { p_user: ADMIN, p_podcast: id })).find((r) => r.path === arq); // a tentativa B
+    };
+    try {
+      expect((await post(`${spy}/${id}/files/cleanup`, editor)).body).toEqual({ ok: true });
+    } finally {
+      aoApagar = null;
+    }
+    expect(outro).toBeTruthy();
+    expect(await files.exists(arq)).toBe(true);
+    expect((await fila(id)).find((r) => r.storage_path === arq)).toMatchObject({ status: "apagando" });
+    expect((await entrada(id)).find((r) => r.id === outro.id)).toMatchObject({ reserve_token: outro.token });
+    await files.remove!([arq]);
+    expect(await done([{ id: outro.id, token: outro.token, ok: true }])).toBe(1);
+  });
+
+  it("código ausente ou malformado nunca confirma nada", async () => {
+    const { id } = await episodioComAudio();
+    await salvaRoteiro(id);
+    const r = await reserva(id);
+    expect(await done([{ id: r.id, ok: true }, { id: r.id, token: "não-é-código", ok: true }, { id: r.id, token: 7, ok: true }, "lixo", null])).toBe(0);
+    expect((await entrada(id))[0]).toMatchObject({ status: "apagando", reserve_token: r.token });
+    await vence(r.id);
+    await reserva(id).then((x) => done([{ id: x.id, token: x.token, ok: false, error: "x" }]));
+  });
+});
+
+describe("2ª rodada, achado 3: o último uso liberado não se perde", () => {
+  it("novo evento com entrada aberta: não é descartado (marca reavaliar); com reserva vigente a reserva não é tocada", async () => {
+    const A = await episodioComAudio();
+    const B = (await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Episódio B1", topic: "T", area: "CLINICA_MEDICA", target_minutes: 5 } })).id as string;
+    await sql(`update public.podcasts set audio_path = $1 where id = $2`, [A.audio, B]); // A e B apontam para o mesmo áudio
+    await sql(`update public.podcasts set audio_path = null where id = $1`, [A.id]); // A solta: entrada aberta (pendente)
+    await sql(`update public.podcasts set audio_path = null where id = $1`, [B]); // B solta ANTES da limpeza: antes o evento era descartado
+    const abertas = (await sql(`select id, podcast_id, status, reavaliar from public.podcast_files_released where storage_path = $1`, [A.audio]));
+    expect(abertas).toHaveLength(1);
+    expect(abertas[0]).toMatchObject({ status: "pendente", reavaliar: true });
+    // com reserva vigente: a reserva e o código continuam, só chega a marca
+    const r = await reserva(A.id);
+    expect(r.path).toBe(A.audio);
+    const outro = (await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Episódio C1", topic: "T", area: "CLINICA_MEDICA", target_minutes: 5 } })).id as string;
+    await sql(`update public.podcast_files_released set reavaliar = false where id = $1`, [r.id]);
+    // evento novo para o mesmo caminho (simulado pela inserção que o gatilho faria) com a entrada reservada
+    await sql(`insert into public.podcast_files_released (podcast_id, storage_path, reason) values ($1, $2, 'audio_invalidado') on conflict (storage_path) where status in ('pendente', 'apagando') do update set reavaliar = true`, [outro, A.audio]);
+    expect((await sql(`select status, reserve_token, reavaliar from public.podcast_files_released where id = $1`, [r.id]))[0]).toMatchObject({ status: "apagando", reserve_token: r.token, reavaliar: true });
+    await files.remove!([A.audio]);
+    expect(await done([{ id: r.id, token: r.token, ok: true }])).toBe(1);
+  });
+
+  it("evento que chega com a entrada encerrada como 'mantido' abre uma entrada nova (e o arquivo sai quando o último uso solta)", async () => {
+    const A = await episodioComAudio();
+    const B = (await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Episódio B2", topic: "T", area: "CLINICA_MEDICA", target_minutes: 5 } })).id as string;
+    await sql(`update public.podcasts set audio_path = $1 where id = $2`, [A.audio, B]);
+    await sql(`update public.podcasts set audio_path = null where id = $1`, [A.id]);
+    expect((await post(`${base}/files/cleanup`, editor)).status).toBe(200);
+    expect((await fila(A.id))[0]).toMatchObject({ status: "mantido" });
+    await sql(`update public.podcasts set audio_path = null where id = $1`, [B]);
+    expect((await fila(B)).map((r) => r.status)).toEqual(["pendente"]);
+    expect((await post(`${base}/files/cleanup`, editor)).status).toBe(200);
+    expect(await files.exists(A.audio)).toBe(false);
+  });
+
+  it("rede de segurança: entrada 'mantido' com mais de uma hora é reavaliada; sem uso, o arquivo sai; ainda em uso, continua mantida", async () => {
+    const { id, audio } = await episodioComAudio();
+    await salvaRoteiro(id);
+    // simula o evento perdido: a entrada foi encerrada como 'mantido' vendo uma referência que já não existe
+    const antiga = "now() - interval '2 hours'";
+    await sql(`update public.podcast_files_released set status = 'mantido', resolved_at = ${antiga} where podcast_id = $1`, [id]);
+    expect((await post(`${base}/${id}/files/cleanup`, editor)).body).toEqual({ ok: true });
+    expect(await files.exists(audio)).toBe(false);
+    expect((await fila(id))[0]).toMatchObject({ status: "apagado" });
+    expect(await registro(id)).toHaveLength(1);
+
+    // ainda usado: continua mantido (e só é reavaliado de novo daqui a uma hora)
+    const outro = await episodioComAudio();
+    const aula = (await sql(`insert into public.lessons (area, topic, title) values ('PEDIATRIA', 'Asma', 'Asma') returning id`))[0].id;
+    await salvaRoteiro(outro.id);
+    await sql(`insert into public.lesson_materials (lesson_id, kind, title, storage_path) values ('${aula}', 'flashcast', 'F', '${outro.audio}')`);
+    await sql(`update public.podcast_files_released set status = 'mantido', resolved_at = ${antiga} where podcast_id = $1`, [outro.id]);
+    expect((await post(`${base}/${outro.id}/files/cleanup`, editor)).body).toEqual({ ok: true });
+    expect(await files.exists(outro.audio)).toBe(true);
+    const e = (await sql(`select status, resolved_at > now() - interval '1 minute' as recente from public.podcast_files_released where podcast_id = $1`, [outro.id]))[0];
+    expect(e).toMatchObject({ status: "mantido", recente: true });
+    // 'mantido' recente (menos de uma hora) não é mexido
+    await sql(`delete from public.lesson_materials where lesson_id = '${aula}'`);
+    expect((await post(`${base}/${outro.id}/files/cleanup`, editor)).status).toBe(200);
+    expect(await files.exists(outro.audio)).toBe(true);
+    expect((await fila(outro.id))[0]).toMatchObject({ status: "mantido" });
+  });
+
+  it("'mantido' antigo cujo caminho já tem outra entrada aberta não quebra o índice único: só renova a data", async () => {
+    const { id, audio } = await episodioComAudio();
+    await salvaRoteiro(id);
+    await sql(`insert into public.podcast_files_released (podcast_id, storage_path, reason, status, resolved_at) values ($1, $2, 'audio_refeito', 'mantido', now() - interval '3 hours')`, [id, audio]);
+    expect((await post(`${base}/${id}/files/cleanup`, editor)).body).toEqual({ ok: true });
+    expect(await files.exists(audio)).toBe(false);
+    expect((await fila(id)).map((r) => r.status).sort()).toEqual(["apagado", "mantido"]);
+  });
+});
+
+describe("2ª rodada, achado 4: sempre um aviso em português simples quando a limpeza não termina", () => {
+  const SEM_NUMERO = /^(?!.*(9721|migra)).*$/is;
+  it("depósito fora do ar: repetir a limpeza, a limpeza depois da edição, tirar fonte, gerar roteiro e apagar episódio devolvem aviso", async () => {
+    const { id, audio } = await episodioComAudio(flaky);
+    const arq = `podcasts/${id}/src-cccccccccccccccc.pdf`;
+    await files.put(arq, Buffer.from("%PDF-1.4"), "application/pdf");
+    const fonte = (await sql(`insert into public.podcast_sources (podcast_id, kind, title, storage_path, position) values ($1, 'pdf', 'F', $2, 9) returning id`, [id, arq]))[0].id;
+    falhaAoApagar = true;
+    try {
+      // edição do roteiro no banco + a rota que a tela chama depois
+      await salvaRoteiro(id);
+      const depoisDaEdicao = await post(`${flaky}/${id}/files/cleanup`, editor);
+      expect(depoisDaEdicao.status).toBe(200);
+      expect(depoisDaEdicao.body).toMatchObject({ ok: false, falhas: 1 });
+      expect(depoisDaEdicao.body.note).toMatch(/1 arquivo antigo não pôde ser apagado agora.*Nada se perdeu/);
+      expect(depoisDaEdicao.body.note).toMatch(SEM_NUMERO);
+      const repetir = await post(`${flaky}/files/cleanup`, editor);
+      expect(repetir.body).toMatchObject({ ok: false });
+      expect(repetir.body.note).toMatch(SEM_NUMERO);
+      // tirar a fonte: o arquivo dela e o áudio ficam na fila e o depósito falha
+      const tirar = await del(`${flaky}/${id}/sources/${fonte}`, editor);
+      expect(tirar.status).toBe(200);
+      expect(tirar.body.note).toMatch(/arquivos? antigos? não pôde|não puderam/);
+      expect(tirar.body.note).toMatch(SEM_NUMERO);
+      // gerar outro roteiro (o servidor limpa por conta própria)
+      const gerar = await post(`${flaky}/${id}/script`, editor, { provider: "mock" });
+      expect(gerar.status).toBe(200);
+      expect(gerar.body.note).toMatch(/Nada se perdeu/);
+      // apagar o episódio
+      const apagar = await del(`${flaky}/${id}`, admin);
+      expect(apagar.body).toMatchObject({ deleted: true });
+      expect(apagar.body.aviso).toMatch(/Nada se perdeu/);
+      expect(apagar.body.aviso).toMatch(SEM_NUMERO);
+    } finally {
+      falhaAoApagar = false;
+    }
+    expect(await files.exists(audio)).toBe(true); // nada se perdeu
+    expect((await post(`${base}/files/cleanup`, editor)).body).toEqual({ ok: true });
+    expect(await files.exists(audio)).toBe(false);
+  });
+
+  it("refazer o áudio com o depósito fora do ar devolve o aviso junto com o episódio", async () => {
+    const { id } = await episodioComAudio(flaky);
+    const start = await post(`${flaky}/${id}/audio/start`, editor, { provider: "mock" });
+    for (let i = 0; i < start.body.parts; i++) expect((await post(`${flaky}/${id}/audio/part`, editor, { job: start.body.job, index: i })).status).toBe(200);
+    falhaAoApagar = true;
+    let fin;
+    try { fin = await post(`${flaky}/${id}/audio/finish`, editor, { job: start.body.job }); } finally { falhaAoApagar = false; }
+    expect(fin.status).toBe(200);
+    expect(fin.body.id).toBe(id);
+    expect(fin.body.note).toMatch(/Nada se perdeu/);
+    expect((await post(`${base}/files/cleanup`, editor)).body).toEqual({ ok: true });
+  });
+
+  it("todas as mensagens ao dono estão sem número de migração nem termo técnico", async () => {
+    const fonte = fs.readFileSync(path.resolve(__dirname, "../../server/podcasts/router.ts"), "utf8");
+    const linhas = fonte.split("\n").filter((l) => /const (SQL_ANTIGO|SEM_LIMPEZA) =/.test(l) || /Nada se perdeu/.test(l));
+    expect(linhas.length).toBeGreaterThan(0);
+    for (const l of linhas) expect(l).not.toMatch(/9721|migra/i);
+  });
+});
+
+describe("2ª rodada: colar a migração duas vezes (simulação de dupla colagem)", () => {
+  it("colar de novo com reserva em andamento não muda a fila, o código nem as permissões, e o fluxo continua igual", async () => {
+    const { id, audio } = await episodioComAudio();
+    await salvaRoteiro(id);
+    const r = await reserva(id);
+    const antes = await entrada(id);
+    const migracao = fs.readFileSync(path.resolve(__dirname, "../../supabase/migrations/20261003009721_podcasts_arquivos_esquecidos.sql"), "utf8");
+    await dev.db.exec(migracao);
+    await dev.db.exec(migracao);
+    expect(await entrada(id)).toEqual(antes);
+    const perm = await sql(`select p.proname, has_function_privilege('authenticated', p.oid, 'execute') as auth, has_function_privilege('anon', p.oid, 'execute') as anon
+                              from pg_proc p where p.proname in ('ch_worker_podcast_files_pending', 'ch_worker_podcast_files_renew', 'ch_worker_podcast_files_done', 'podcast_files_blocked') order by 1`);
+    expect(perm).toHaveLength(4);
+    for (const f of perm) expect(f, f.proname).toMatchObject({ auth: false, anon: false });
+    expect(await renew(r.id, r.token)).toBe(true);
+    await files.remove!([audio]);
+    expect(await done([{ id: r.id, token: r.token, ok: true }])).toBe(1);
+    expect(await sql(`select count(*)::int n from pg_trigger where tgname like 'podcast_files_%' and not tgisinternal`)).toEqual([{ n: 7 }]);
   });
 });

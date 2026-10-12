@@ -144,9 +144,44 @@ describe("P07: a tela pergunta ao banco se pode aprovar (app_admin_podcast_appro
 
   it("as funções internas não são chamáveis por login nenhum", async () => {
     const id = await novoEpisodio("GINECOLOGIA_OBSTETRICIA");
-    for (const [fn, args] of [["podcast_can_approve", { p_area: "PEDIATRIA" }], ["podcast_approve_block_text", { p_area: "PEDIATRIA" }], ["ch_podcast_approver_check", { p_id: id }], ["ch_raw_app_admin_podcast_approve", { p_id: id, p_note: NOTA }]] as const) {
+    for (const [fn, args] of [["podcast_can_approve", { p_area: "PEDIATRIA" }], ["podcast_approve_block_text", { p_area: "PEDIATRIA" }], ["ch_raw_app_admin_podcast_approve", { p_id: id, p_note: NOTA }]] as const) {
       for (const uid of [ADMIN, REVISORA, null]) expect((await recusa(as(uid, fn, args as any))).message, `${fn} ${uid}`).toMatch(/permission denied/);
     }
+  });
+});
+
+describe("2ª rodada, achado 2: a permissão por área é conferida COM A LINHA JÁ TRAVADA", () => {
+  it("quando a permissão é conferida, a linha do episódio já está travada pela própria transação (e a área usada é a da linha travada)", async () => {
+    const id = await novoEpisodio("GINECOLOGIA_OBSTETRICIA");
+    await q(`create table if not exists public.zz_espiao (txid text, trava text, area text)`);
+    // troca a regra por um espião que só olha: a linha está travada por esta transação (xmax = o número dela) quando a permissão é decidida?
+    await q(`create or replace function public.podcast_can_approve(p_area public.med_area) returns boolean language plpgsql security definer set search_path = '' as $f$
+      begin
+        insert into public.zz_espiao select (txid_current() % 4294967296)::text, p.xmax::text, p.area::text from public.podcasts p where p.id = current_setting('zz.pid')::uuid;
+        return true;
+      end $f$`);
+    await q(`select set_config('zz.pid', $1, false)`, [id]);
+    try {
+      await as(ADMIN, "app_admin_podcast_approve", { p_id: id, p_note: NOTA });
+      const [vista] = await q(`select txid, trava, area from public.zz_espiao order by txid desc limit 1`);
+      expect(vista.trava).toBe(vista.txid); // antes da correção: xmax = 0 (a permissão era decidida antes da trava)
+      expect(vista.area).toBe("GINECOLOGIA_OBSTETRICIA");
+    } finally {
+      await q(`drop table public.zz_espiao`);
+      await db.exec(sql); // devolve a regra verdadeira
+    }
+  });
+
+  it("a área que vale é a da linha: mudou a área do episódio, a regra da área nova é a aplicada (revisora de Ginecologia perde, a de Pediatria ganha)", async () => {
+    const id = await novoEpisodio("GINECOLOGIA_OBSTETRICIA");
+    await q(`update public.podcasts set area = 'PEDIATRIA' where id = $1`, [id]);
+    expect((await recusa(as(REVISORA, "app_admin_podcast_approve", { p_id: id, p_note: NOTA }))).code).toBe("42501");
+    expect(await as(OUTRA, "app_admin_podcast_approve", { p_id: id, p_note: NOTA })).toMatchObject({ status: "approved", approved_by: OUTRA });
+  });
+
+  it("episódio inexistente continua dando 'não encontrado'; visitante e aluno continuam barrados antes de qualquer leitura", async () => {
+    expect((await recusa(as(REVISORA, "app_admin_podcast_approve", { p_id: "00000000-0000-4000-8000-00000000ffff", p_note: NOTA }))).code).toBe("P0002");
+    expect((await recusa(as(ALUNO, "app_admin_podcast_approve", { p_id: "00000000-0000-4000-8000-00000000ffff", p_note: NOTA }))).message).toMatch(/Acesso restrito/);
   });
 });
 

@@ -17,7 +17,7 @@
 --  * Publicar continua só do administrador (9620 -> app_admin_podcast_publish).
 --
 -- Funções e base: ch_raw_app_admin_podcast_approve parte da 20261003004700 (corpo original, renomeado pela 9620; ninguém mais o
--- redefiniu). Novas: podcast_can_approve, podcast_approve_block_text, ch_podcast_approver_check, app_admin_podcast_approval.
+-- redefiniu). Novas: podcast_can_approve, podcast_approve_block_text, app_admin_podcast_approval.
 -- PRÉ-REQUISITO: a 20261003009620 já colada (ela cria o invólucro). Pode ser colada duas vezes e não muda nenhum dado.
 -- =============================================================================
 
@@ -47,30 +47,20 @@ as $$
   end
 $$;
 
--- Recusa (42501) quem não pode aprovar o episódio; episódio que não existe dá "não encontrado".
-create or replace function public.ch_podcast_approver_check(p_id uuid) returns void
-  language plpgsql stable security definer set search_path = ''
-as $$
-declare v_area public.med_area;
-begin
-  select area into v_area from public.podcasts where id = p_id;
-  if not found then raise exception 'Episódio não encontrado.' using errcode = 'P0002'; end if;
-  if not public.podcast_can_approve(v_area) then
-    raise exception '%', public.podcast_approve_block_text(v_area) using errcode = '42501';
-  end if;
-end
-$$;
-
--- Função interna da aprovação (corpo da 4700 + a regra nova logo depois de conferir a equipe). O invólucro da 9620 chama esta.
+-- Função interna da aprovação (corpo da 4700 + a regra nova). O invólucro da 9620 chama esta. A ORDEM importa: primeiro TRAVA a linha do
+-- episódio (for update) e só depois confere a permissão com a área e o status da linha JÁ TRAVADA. Conferir antes da trava deixava
+-- uma janela: a área podia mudar entre a conferência e a trava, e a aprovação passava pela regra da área antiga.
 create or replace function public.ch_raw_app_admin_podcast_approve(p_id uuid, p_note text) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
 declare p public.podcasts;
 begin
   perform public.assert_staff();
-  perform public.ch_podcast_approver_check(p_id);
   select * into p from public.podcasts where id = p_id for update;
   if not found then raise exception 'Episódio não encontrado.' using errcode = 'P0002'; end if;
+  if not public.podcast_can_approve(p.area) then
+    raise exception '%', public.podcast_approve_block_text(p.area) using errcode = '42501';
+  end if;
   if p.script is null or p.status not in ('script_ready', 'approved') then raise exception 'Gere ou edite o roteiro antes de aprovar.' using errcode = '22023'; end if;
   if char_length(btrim(coalesce(p_note, ''))) < 10 then raise exception 'Escreva o que foi conferido (pelo menos 10 caracteres).' using errcode = '22023'; end if;
   update public.podcasts set approved_by = (select auth.uid()), approved_at = now(), approval_note = left(btrim(p_note), 600), status = 'approved', updated_at = now() where id = p_id;
@@ -98,7 +88,6 @@ begin
   -- internas: só o banco chama
   revoke execute on function public.podcast_can_approve(public.med_area) from public, anon, authenticated;
   revoke execute on function public.podcast_approve_block_text(public.med_area) from public, anon, authenticated;
-  revoke execute on function public.ch_podcast_approver_check(uuid) from public, anon, authenticated;
   revoke execute on function public.ch_raw_app_admin_podcast_approve(uuid, text) from public, anon, authenticated;
   -- tela: sem login ninguém chama
   revoke execute on function public.app_admin_podcast_approval(uuid) from public, anon;

@@ -55,14 +55,19 @@ await ck("aluno nao chama a pergunta", async () => { try { await as(ids.al, `sel
 await ck("audio invalidado entra na fila", async () => { await db.exec(`update public.podcasts set audio_path = 'podcasts/${pid}/audio-teste00000000.mp3', status = 'audio_ready' where id = '${pid}'`); await asCommit(ids.ed, `select public.app_admin_podcast_save_script('${pid}', '{"lines":[{"speaker":"ANA","text":"Oi, vamos falar de asma.","sources":[]},{"speaker":"BRUNO","text":"Vamos mesmo.","sources":[]}],"missing":[]}'::jsonb)`); const r = (await db.query(`select storage_path, status, reason from public.podcast_files_released where podcast_id = '${pid}'`)).rows; if (r.length !== 1 || r[0].status !== "pendente") throw new Error(JSON.stringify(r)); return r[0].reason; });
 await ck("reserva: o caminho reservado recusa referencia nova e a confirmacao libera", async () => {
   const [r] = JSON.parse(JSON.stringify((await db.query(`select public.ch_worker_podcast_files_pending('${ids.ed}', null) as r`)).rows[0].r));
-  if (!r || r.status === "mantido") throw new Error("nada reservado");
+  if (!r || !r.token) throw new Error("nada reservado");
   const st = (await db.query(`select status from public.podcast_files_released where id = ${r.id}`)).rows[0].status; if (st !== "apagando") throw new Error("estado " + st);
   try { await db.exec(`insert into public.ch_file_holds (storage_path) values ('${r.path}')`); throw new Error("aceitou"); } catch (e) { if (!/está sendo apagado do depósito agora/.test(e.message)) throw e; }
-  const n = (await db.query(`select public.ch_worker_podcast_files_done('${ids.ed}', '[{"id": ${r.id}, "ok": true}]'::jsonb) as n`)).rows[0].n;
-  const n2 = (await db.query(`select public.ch_worker_podcast_files_done('${ids.ed}', '[{"id": ${r.id}, "ok": true}]'::jsonb) as n`)).rows[0].n;
+  const ren = (tok) => db.query(`select public.ch_worker_podcast_files_renew('${ids.ed}', ${r.id}, ${tok ? `'${tok}'` : "null"}) as r`).then((x) => x.rows[0].r);
+  if ((await ren("00000000-0000-4000-8000-000000000001")) !== false || (await ren(null)) !== false) throw new Error("renovou com codigo errado");
+  if ((await ren(r.token)) !== true) throw new Error("nao renovou com o codigo vigente");
+  const velho = (await db.query(`select public.ch_worker_podcast_files_done('${ids.ed}', '[{"id": ${r.id}, "token": "00000000-0000-4000-8000-000000000001", "ok": true}]'::jsonb) as n`)).rows[0].n;
+  if (velho !== 0) throw new Error("confirmou com codigo que nao e o vigente");
+  const n = (await db.query(`select public.ch_worker_podcast_files_done('${ids.ed}', '[{"id": ${r.id}, "token": "${r.token}", "ok": true}]'::jsonb) as n`)).rows[0].n;
+  const n2 = (await db.query(`select public.ch_worker_podcast_files_done('${ids.ed}', '[{"id": ${r.id}, "token": "${r.token}", "ok": true}]'::jsonb) as n`)).rows[0].n;
   const reg = (await db.query(`select count(*)::int n from public.admin_audit_log where action = 'podcast.files.cleanup' and target = '${pid}'`)).rows[0].n;
   if (n !== 1 || n2 !== 0 || reg !== 1) throw new Error(JSON.stringify({ n, n2, reg }));
-  return "reservou, recusou, confirmou 1x";
+  return "reservou com codigo, recusou, renovou, ignorou codigo velho, confirmou 1x";
 });
 console.log(erros ? `RESULTADO: ${erros} ERRO(S)` : "RESULTADO FINAL: tudo ok");
 await db.close(); process.exit(erros ? 1 : 0);

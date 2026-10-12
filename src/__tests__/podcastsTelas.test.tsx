@@ -169,6 +169,34 @@ describe("Administração › Podcasts", () => {
     expect(screen.queryByText("Você não pode aprovar este roteiro")).toBeNull();
   });
 
+  it("2ª rodada: salvar a edição do roteiro avisa em português quando a limpeza dos arquivos antigos não termina (resposta com falha ou chamada que cai)", async () => {
+    const NOTA_SERVIDOR = "1 arquivo antigo não pôde ser apagado agora (o depósito não respondeu). Nada se perdeu: ele sai na próxima limpeza.";
+    const editar = async (cleanupResposta: () => Promise<Response>) => {
+      fetchMock.mockImplementation(async (url: string) => {
+        if (url.endsWith("/files/cleanup")) return cleanupResposta();
+        if (url.endsWith("/api/podcasts/providers")) return new Response(JSON.stringify(PROVIDERS), { status: 200, headers: { "Content-Type": "application/json" } });
+        if (url.includes("/script/check")) return new Response(JSON.stringify({ warnings: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+        return new Response("{}", { status: 404 });
+      });
+      renderAdmin("editor", episode());
+      const campos = await screen.findAllByLabelText("Fala");
+      fireEvent.change(campos[0], { target: { value: "Hoje: pré-eclâmpsia, com calma." } });
+      const rpc = backend.rpc.getMockImplementation()!;
+      backend.rpc.mockImplementation(async (fn: string, args: any) => (fn === "app_admin_podcast_save_script" ? episode() : rpc(fn, args)));
+      fireEvent.click(screen.getByRole("button", { name: "Salvar edição" }));
+    };
+    await editar(async () => new Response(JSON.stringify({ ok: false, falhas: 1, note: NOTA_SERVIDOR }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    expect(await screen.findByText(NOTA_SERVIDOR)).toBeTruthy();
+    cleanup();
+    await editar(async () => { throw new Error("sem rede"); });
+    expect(await screen.findByText(/O roteiro foi salvo, mas os arquivos antigos do áudio ainda não foram apagados do depósito\. Nada se perdeu/)).toBeTruthy();
+    cleanup();
+    await editar(async () => new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } }));
+    await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_admin_podcast_save_script", expect.anything()));
+    await new Promise((r) => setTimeout(r, 50));
+    expect(screen.queryByText(/ainda não foram apagados/)).toBeNull();
+  });
+
   it("administrador: com roteiro aprovado e áudio pronto, aparece Publicar; vozes da OpenAI quando o Gemini falta", async () => {
     renderAdmin("admin", episode({ status: "audio_ready", approved_at: "2026-10-06T13:00:00Z", approved_by_name: "Editora", approval_note: "Conferido.", audio_path: null }));
     const publish = await screen.findByRole("button", { name: /^Publicar$/ });
