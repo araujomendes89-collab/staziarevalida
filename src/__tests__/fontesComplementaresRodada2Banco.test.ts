@@ -163,3 +163,79 @@ describe("(D) o banco e o servidor dão a MESMA chave de comparação para os me
     expect((await sql(`select public.ch_complementar_hit($1) h`, ["Sangue nos Olhos — Cardiologia"]))[0].h).toBe(false);
   });
 });
+
+describe("(E) o gatilho de salvar monta a expressão da biblioteca uma vez por instrução", () => {
+  const MENSAGEM = "Este texto cita uma fonte complementar cadastrada (o aluno não pode ver). Reescreva sem citar o nome desse material.";
+  const T_COMPLEMENTAR = "Livro Delta de Clínica Médica 2026";
+  let gatilhosOk = false;
+
+  const contar = async () => Number((await sql<{ n: string }>(`select last_value::text n from public.teste_regex_chamadas`))[0].n);
+  /** Salva 500 linhas numa instrução só, COMO USUÁRIO (o gatilho barra citação só de quem está logado). */
+  async function salvar(titulos: (i: number) => string): Promise<{ construcoes: number; erro?: { message: string; code?: string }; linhas: number }> {
+    await sql(`delete from public.lessons where instructor = 'LOTE'`);
+    const antes = await contar();
+    await sql(`select set_config('request.jwt.claims', $1, false)`, [JSON.stringify({ sub: ADMIN })]);
+    let erro: { message: string; code?: string } | undefined;
+    try {
+      await db.query(
+        `insert into public.lessons (area, topic, title, instructor, specialty, summary, key_points)
+         select 'PEDIATRIA', 'Tema ' || g, ($1::text[])[g], 'LOTE', 'Pediatria', 'Resumo ' || g, array['ponto um', 'ponto dois'] from generate_series(1, 500) g`,
+        [Array.from({ length: 500 }, (_, i) => titulos(i))]);
+    } catch (e: any) {
+      erro = { message: e.message, code: e.code };
+    } finally {
+      await sql(`select set_config('request.jwt.claims', '{}', false)`);
+    }
+    const linhas = (await sql<{ n: number }>(`select count(*)::int n from public.lessons where instructor = 'LOTE'`))[0].n;
+    return { construcoes: (await contar()) - antes, erro, linhas };
+  }
+
+  beforeAll(async () => {
+    await sql(`delete from public.ch_sources where audience = 'complementar'`);
+    // instrumento de teste: cada construção da expressão incrementa uma sequência
+    await sql(`create sequence public.teste_regex_chamadas`);
+    await sql(`select setval('public.teste_regex_chamadas', 1, false)`);
+    await sql(`alter function public.ch_complementar_regex() rename to ch_complementar_regex_original`);
+    await sql(`create function public.ch_complementar_regex() returns text language plpgsql volatile security definer set search_path = ''
+               as $$ begin perform nextval('public.teste_regex_chamadas'); return public.ch_complementar_regex_original(); end $$`);
+    gatilhosOk = true;
+  });
+
+  it("biblioteca VAZIA (sem termos): 500 linhas montam a expressão no máximo uma vez e salvam tudo", async () => {
+    expect(gatilhosOk).toBe(true);
+    expect((await sql(`select count(*)::int n from public.ch_sources where audience = 'complementar'`))[0].n).toBe(0);
+    const r = await salvar((i) => `Aula ${i} de bronquiolite`);
+    expect(r.erro).toBeUndefined();
+    expect(r.linhas).toBe(500);
+    expect(r.construcoes).toBeLessThanOrEqual(1);
+  });
+
+  it("biblioteca COM termos: 500 linhas montam a expressão no máximo uma vez; nada citado, tudo salva", async () => {
+    await sql(`insert into public.ch_sources (title, organ, kind, authority_level) values ($1, 'Editora Delta de Medicina (teste)', 'final', 'E')`, [T_COMPLEMENTAR]);
+    const r = await salvar((i) => `Aula ${i} de bronquiolite`);
+    expect(r.erro).toBeUndefined();
+    expect(r.linhas).toBe(500);
+    expect(r.construcoes).toBeLessThanOrEqual(1);
+  });
+
+  it("biblioteca COM termos: uma linha do lote cita o título cadastrado e o lote inteiro é barrado, com a mesma mensagem de antes", async () => {
+    const r = await salvar((i) => (i === 321 ? `Resumo do ${T_COMPLEMENTAR}` : `Aula ${i} de bronquiolite`));
+    expect(r.erro).toMatchObject({ message: MENSAGEM, code: "22023" });
+    expect(r.linhas).toBe(0);
+    expect(r.construcoes).toBeLessThanOrEqual(1);
+  });
+
+  it("uma instrução nova enxerga a biblioteca como ela está (a expressão não fica velha entre instruções)", async () => {
+    await sql(`update public.ch_sources set title = 'Livro Epsilon de Cirurgia Geral 2026' where title = $1`, [T_COMPLEMENTAR]);
+    expect((await salvar((i) => (i === 7 ? `Resumo do ${T_COMPLEMENTAR}` : `Aula ${i}`))).erro).toBeUndefined();
+    expect((await salvar((i) => (i === 7 ? "Resumo do Livro Epsilon de Cirurgia Geral 2026" : `Aula ${i}`))).erro?.message).toBe(MENSAGEM);
+    await sql(`delete from public.lessons where instructor = 'LOTE'`);
+  });
+
+  it("toda tabela conferida pelo gatilho de salvar também tem o gatilho de instrução que zera a expressão guardada", async () => {
+    const guarda = (await sql<{ t: string }>(`select distinct c.relname t from pg_trigger g join pg_class c on c.oid = g.tgrelid join pg_proc p on p.oid = g.tgfoid where p.proname = 'ch_guard_complementar_save' and not g.tgisinternal`)).map((r) => r.t).sort();
+    const zera = (await sql<{ t: string }>(`select distinct c.relname t from pg_trigger g join pg_class c on c.oid = g.tgrelid join pg_proc p on p.oid = g.tgfoid where p.proname = 'ch_guard_complementar_reset' and not g.tgisinternal`)).map((r) => r.t).sort();
+    expect(guarda.length).toBeGreaterThanOrEqual(6);
+    expect(zera).toEqual(guarda);
+  });
+});

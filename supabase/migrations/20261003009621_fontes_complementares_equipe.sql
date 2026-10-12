@@ -104,6 +104,8 @@ declare
   v_new jsonb := to_jsonb(new);
   v_old jsonb;
   v_regex text;
+  v_built boolean := false;   -- a expressão já foi obtida nesta chamada (mesmo que o resultado seja nulo = biblioteca sem termos)
+  v_cache text;
   v_arg text;
   v_name text;
   v_is_url boolean;
@@ -126,8 +128,21 @@ begin
     if v_is_url then
       v_hit := public.ch_complementar_url_hit(v_text);
     else
-      if v_regex is null then v_regex := public.ch_complementar_regex(); end if;
-      v_hit := public.fold_text(v_text) ~ v_regex;
+      if not v_built then
+        -- a expressão é montada UMA vez por instrução (insert/update de várias linhas): fica guardada em apoio.cre até o gatilho de
+        -- instrução ch_guard_complementar_reset zerar no começo da instrução seguinte. 'N' = biblioteca sem termos, 'R...' = a expressão.
+        v_cache := coalesce(current_setting('apoio.cre', true), '');
+        if v_cache = '' then
+          v_regex := public.ch_complementar_regex();
+          perform set_config('apoio.cre', case when v_regex is null then 'N' else 'R' || v_regex end, true);
+        elsif v_cache = 'N' then
+          v_regex := null;
+        else
+          v_regex := substr(v_cache, 2);
+        end if;
+        v_built := true;
+      end if;
+      v_hit := coalesce(v_regex is not null and public.fold_text(v_text) ~ v_regex, false);
     end if;
     if v_hit then
       if (select auth.uid()) is null then
@@ -141,6 +156,29 @@ begin
   return new;
 end
 $$;
+
+-- Zera a expressão guardada no começo de CADA instrução que salva em uma tabela conferida: assim ela vale só para as linhas daquela
+-- instrução e nunca fica velha se a biblioteca mudar entre duas instruções da mesma transação.
+create or replace function public.ch_guard_complementar_reset() returns trigger
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  perform set_config('apoio.cre', '', true);
+  return null;
+end
+$$;
+drop trigger if exists lessons_guard_complementar_reset on public.lessons;
+create trigger lessons_guard_complementar_reset before insert or update on public.lessons for each statement execute function public.ch_guard_complementar_reset();
+drop trigger if exists guideline_updates_guard_complementar_reset on public.guideline_updates;
+create trigger guideline_updates_guard_complementar_reset before insert or update on public.guideline_updates for each statement execute function public.ch_guard_complementar_reset();
+drop trigger if exists questions_guard_complementar_reset on public.questions;
+create trigger questions_guard_complementar_reset before insert or update on public.questions for each statement execute function public.ch_guard_complementar_reset();
+drop trigger if exists podcasts_guard_complementar_reset on public.podcasts;
+create trigger podcasts_guard_complementar_reset before insert or update on public.podcasts for each statement execute function public.ch_guard_complementar_reset();
+drop trigger if exists podcast_sources_guard_complementar_reset on public.podcast_sources;
+create trigger podcast_sources_guard_complementar_reset before update on public.podcast_sources for each statement execute function public.ch_guard_complementar_reset();
+drop trigger if exists app_settings_guard_complementar_reset on public.app_settings;
+create trigger app_settings_guard_complementar_reset before insert or update on public.app_settings for each statement execute function public.ch_guard_complementar_reset();
 
 drop trigger if exists lessons_guard_complementar on public.lessons;
 create trigger lessons_guard_complementar before insert or update of title, topic, instructor, specialty, summary, key_points, guideline_title, guideline_url on public.lessons
@@ -325,6 +363,7 @@ begin
   revoke execute on function public.ch_complementar_snippet(text, text) from public, anon, authenticated;
   revoke execute on function public.ch_complementar_url_hit(text) from public, anon, authenticated;
   revoke execute on function public.ch_guard_complementar_save() from public, anon, authenticated;
+  revoke execute on function public.ch_guard_complementar_reset() from public, anon, authenticated;
   revoke execute on function public.podcast_admin_view(uuid) from public, anon, authenticated;
   -- telas
   revoke execute on function public.app_admin_podcast_source_complementar(uuid, boolean) from public, anon;
