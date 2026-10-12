@@ -153,13 +153,13 @@ Testes antigos mudados (e por quê):
   padrão das Aulas). O bucket `question-figures` é criado pela 9700; vale um envio de verdade depois de publicar.
 - **Beco sem saída possível na Q07.** Uma questão marcada "Cita figura" **por engano** (ou que cita figura que ninguém tem) não pode ser liberada sem figura, para
   ninguém (foi a decisão). Se aparecer o caso, a saída é enviar uma figura. Se o dono quiser uma exceção só do administrador, com motivo, é uma decisão nova.
-- Arquivo solto: se o banco recusar o registro depois do envio assinado (ex.: o mesmo arquivo já é de outra questão), o arquivo novo fica no depósito sem uso (ocupa pouco
-  e não é acessível); o servidor não apaga para nunca apagar a figura de outra questão. Apagar uma questão também deixa a figura no depósito.
+- Arquivo solto: se o banco recusar o registro depois do envio assinado, o servidor pergunta ao banco se pode apagar; só apaga o que nenhuma questão usa (na rodada de
+  correções isso passou a ser do banco, não do servidor). Apagar uma questão também deixa a figura no depósito.
 - Q09 depende de **pessoa logada**: texto mudado por SQL colado ou pelo servidor sem pessoa não entra em revisão (de propósito, mas é um jeito de pular a revisão).
 - O administrador pode aprovar o texto que ele mesmo escreveu (não há "segunda pessoa" obrigatória).
 - Colar a 9620 de novo depois da 9701 desfaz a regra do comentário até colar a 9701 de novo (o passo 5 da colagem confere).
 - A mudança de comentário em **massa** (importação de muitas questões com explicação) cria uma fila grande para os revisores; é o efeito da decisão.
-- Fila do revisor com limite de 200 itens por tela (sem "carregar mais" ainda).
+- (Fila do revisor: o limite de 200 itens por tela foi tirado na rodada de correções; a fila agora vem de 50 em 50 com "Carregar mais".)
 
 ## 7. O que NÃO foi feito
 
@@ -170,3 +170,47 @@ Testes antigos mudados (e por quê):
 - Guardar o histórico de questões apagadas.
 - Mostrar a figura enviada em outras telas do aluno além do treino/resultado (Tutor, caderno de erros), que já não mostravam as figuras do caderno.
 - Nenhuma mudança em permissões do Supabase real, em segredos ou em variáveis de ambiente.
+
+## 8. Rodada de correções da revisão
+
+Revisão independente (outra empresa de IA, só lendo o diff `c2a354a..HEAD`), 12 achados. Base: o que está em produção (8bd82fb + SQL 9620/9621) mais as
+migrações do ramo, que ainda não foram coladas (por isso 9700 e 9701 foram editadas no lugar; continuam idempotentes). Commits: `4808bca` (achados 1, 2, 6),
+`35792bf` (achados 4, 8, 9, 10, 11, 12), mais um commit de acerto de testes. Nada foi empurrado.
+
+| # | Veredito | O que mudou | Teste |
+|---|---|---|---|
+| 1 | confirmado (alto) | O banco só aceita como figura um caminho que o SERVIDOR conferiu: tabela `question_figure_files` (fechada ao app), gravada só por `ch_worker_question_figure_confirm` (serviço). `app_admin_set_question_image` deixou de ler tipo e tamanho do editor: usa os que o servidor mediu. Gatilho `questions_images_guard` vale também para SQL direto. | `leva3QFiguraBanco` ("achado 1": 3 casos), `leva3QFiguraServidor` ("achado 1") |
+| 2 | confirmado (alto) | O arquivo é reservado a UMA questão (coluna `question_id` da linha do arquivo, travada com `for update` ao vincular/trocar). Trocar ou tirar deixa a linha como `releasing` (lápide): ninguém mais a confere nem vincula, nem a mesma questão. O servidor NUNCA apaga na hora: pede `ch_worker_question_figure_drop`, que só diz sim se nenhuma questão usa o caminho e grava a lápide; só então apaga do depósito. Fecha a corrida "conferir se está em uso" x "apagar". | `leva3QFiguraBanco` ("achado 2": 4 casos, inclui as ordens confirmar/soltar/vincular), `leva3QFiguraServidor` ("achado 2") |
+| 3 | limite aceito | Regra do dono: decide "revisor médico da área OU administrador". O administrador sem cadastro de revisor aprova; fica registrado quem decidiu (`question_comment_reviews.decided_by`). Editor e revisor de outra área continuam barrados. Não há segunda pessoa obrigatória. | `leva3QRodadaRevisaoBanco` ("achado 3") documenta o comportamento |
+| 4 | confirmado (alto) | A lista e a questão da equipe trazem `comment_review_ready` (gatilho e as duas funções do aluno no lugar). A tela só promete "o comentário vai para revisão" (e o aviso do assistente) com `true`; sem ele (SQL antigo, parte incompleta, ainda não colado) diz que a revisão não está ativa e que o texto vai direto ao aluno, e esconde o filtro "comentário em revisão". Pelo servidor: `app_question_comment_check` agora usa a mesma conferência (`question_comment_review_missing`). | `leva3QRodadaRevisaoTela` ("achado 4": 4 casos), `leva3QRodadaRevisaoBanco` ("achado 4": 2 casos) |
+| 5 | limite aceito | Sem pessoa logada (SQL colado pelo dono, serviço) o gatilho não marca: é o jeito do dono corrigir à mão (decisão registrada na 9701). Conferi: nenhuma função do serviço (`ch_worker_*`) nem a importação grava `options`/`expected_conduct`/`inep_intent` sem pessoa; só o SQL colado. Não há saída simples e segura (marcar também sem pessoa travaria a correção à mão do dono e a importação do servidor). | `leva3QRodadaRevisaoBanco` ("achado 5") documenta |
+| 6 | confirmado (médio) | `server/questions/imageFiles.ts` confere a estrutura inteira: PNG (IHDR primeiro, largura/altura > 0, profundidade de cor válida, CRC dos blocos IHDR/PLTE/IDAT/IEND, ao menos um IDAT, paleta quando indexado, IEND no fim e nada depois) e JPG (FFD8, segmentos com tamanho que cabe, quadro SOF com largura/altura > 0 antes do SOS, FFD9 no fim; zeros de enchimento tolerados). Mensagem em português. Limite: JPG com bytes de lixo depois do FFD9 (alguns celulares) é recusado; reexportar a imagem resolve. | `leva3QImagemArquivo` (3), `leva3QFiguraServidor` ("achado 6") |
+| 7 | limite aceito | Aba antiga de aluno aberta antes da publicação, ao receber uma questão com figura NOVA (`{path, alt}`), mostra a imagem quebrada com o texto alternativo no lugar (o componente antigo lê só `img.url`). Só acontece com figuras enviadas pela equipe (feature nova) e some ao recarregar a página. Não há versão de cliente para bloquear. | sem teste (decisão de desenho) |
+| 8 | confirmado (médio) | O painel de aprovação recebe `locked` quando o formulário está diferente do gravado: botões travados, aviso, nada é enviado. O texto enviado (`p_seen_texts`) é o que a tela mostra. O erro só traz a questão do banco por cima (`onStale`) quando é a recusa "o comentário mudou enquanto você revisava" e não há mudança não salva. | `leva3QRodadaRevisaoTela` ("achado 8": 4 casos) |
+| 9 | confirmado (médio) | `app_admin_comment_review` devolve `images`; a tela do revisor mostra a figura com o texto alternativo (mesmo componente e mesmo endereço assinado do aluno). | `leva3QRodadaRevisaoBanco` ("achado 9"), `leva3QRodadaRevisaoTela` ("achado 9") |
+| 10 | confirmado (médio) | A fila vem de 50 em 50 (`p_limit` 50, `p_offset` = quantos já vieram), com "Mostrando X de Y comentários" e "Carregar mais"; sem repetir; erro mantém o que já veio. | `leva3QRodadaRevisaoTela` ("achado 10"), `leva3QRodadaRevisaoBanco` ("achado 10") |
+| 11 | confirmado (baixo) | Só vale a devolução da marca atual (`comment_review.devolvido`); a nota de uma aprovação, ou de uma devolução já atendida, não aparece como "Devolvido". | `leva3QRodadaRevisaoTela` ("achado 11": 3 casos) |
+| 12 | confirmado (baixo) | O histórico recarrega depois de salvar, enviar/trocar/tirar figura, registrar o gabarito oficial e decidir o comentário: aberto, recarrega na hora; fechado, na próxima abertura. | `leva3QRodadaRevisaoTela` ("achado 12": 2 casos) |
+
+Ajustes de testes antigos (não mudam regra): `correcoesQuestoesBanco` e `leva3QHistoricoBanco` confirmam o arquivo como o servidor faz antes de vincular;
+`admQuestoesBanco` usa figura do caderno (`url`) em vez de `{path:"q143.png"}`; `assistenteQuestoesTela` e `adminAssistantShared` ganham o texto sem revisão.
+As imagens de teste agora são reais (geradas pelo PyMuPDF), em `src/__tests__/helpers/imagensReais.ts`.
+
+### Janelas de publicação
+- SQL novo + site antigo: o site antigo não conhece `/confirm` com a conferência nova nem `released_path` (ignora); o servidor antigo, se ainda no ar, apaga o
+  arquivo anterior direto (como hoje) e `ch_worker_question_figure_*` não existe no servidor antigo: o vínculo falha com "O servidor ainda não conferiu" e a
+  equipe vê o erro em português (nada fica pior que hoje: antes a figura nem existia). Ordem recomendada: SQL, imagem do Cloud Run/servidor, site.
+- Site novo + SQL antigo: o servidor novo responde 503 com aviso em português ("A atualização do banco para as figuras ainda não foi aplicada") em vez de
+  sucesso silencioso; a tela de Questões não promete a revisão (achado 4) e esconde o filtro.
+- Se a 9620 for colada de novo depois da 9701, `comment_review_ready` vira `false` e a tela deixa de prometer até colar a 9701 de novo.
+
+### Verificação de colagem (produção simulada)
+Base `23d53c1` + partes 1-7 do pacote + 9630 + 9610 + 9620 + 9621 + 9700 + 9701 + 9702, coladas 2 vezes (script `scratchpad/leva3q/cola.mjs`): sem erro;
+nenhuma função muda da 1ª para a 2ª colagem; 19 funções novas e 6 redefinidas (`admin_import_merge_question`, `app_admin_question`, `app_admin_questions`,
+`questions_change_trail`, `ch_raw_practice_correction_view`, `ch_raw_tutor_truth`), todas só com acréscimos sobre a versão de produção (conferido por diff);
+`ch_worker_question_figure_*`, `questions_images_guard` e `question_comment_review_missing` fechadas para `authenticated` e `anon`; tabelas
+`question_figure_files` e `question_comment_reviews` sem acesso do app; todas `security definer` com `search_path` vazio.
+
+### Testes e build
+- 15 arquivos do ramo (`leva3Q*` + `registroAdministracao*` + `fontesComplementaresOrdem`) e os que tocam as funções redefinidas passam (conferidos por grupos).
+- `npm run build`: passou. `tsc --noEmit`: 1831 erros, igual à base; nenhum arquivo novo do ramo aparece.
