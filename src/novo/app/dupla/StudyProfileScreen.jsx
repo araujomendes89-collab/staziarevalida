@@ -1,12 +1,16 @@
 // Meu perfil de estudo (Treinamento em Dupla): formulário à esquerda e prévia do cartão à direita.
 // Porte de Profile.jsx do pacote de design (23-70) com os componentes e as cores do app; nenhum dado de exemplo:
 // nome e prova vêm da Conta (app_dupla_profile) e quem grava é app_dupla_save_profile. O título da tela fica no cabeçalho do app.
+// Quem está aqui conta como online (sinal "livre", Presença e convite): o "Deu match!" aparece também nesta tela (Tarefa 13).
 import React from "react";
 import { Avatar, Button, Card, Chip, Icon, MatchCard, SegmentedControl, Switch, Textarea, TextField, useToast } from "../../ds";
 import { useSession } from "../session.jsx";
 import { LoadError, Loading, messageOf, useLoad } from "../admin/common.jsx";
 import { AREAS, DAYS, PACE_LABEL, ROLE_PREF_LABEL, SHIFTS, areaVars } from "./labels.js";
 import { toCard } from "./card.js";
+import { useDuplaChannel, useHeartbeat } from "./live.js";
+import { InviteWatcher } from "./MatchModal.jsx";
+import { installAudioWake } from "./sound.js";
 import { AREA_ORDER, DAY_ORDER, SHIFT_ORDER, draftErrors, draftPayload, nextEditions, profileDraft, toggleInOrder } from "./profile.js";
 
 function Section({ title, desc, children }) {
@@ -53,6 +57,16 @@ function AreaChip({ area, on, onClick }) {
       {area.chip}
     </button>
   );
+}
+
+/** Sinal, Presença e convite do Perfil. Só existe com perfil salvo (o servidor não grava sinal sem perfil); o radar é o SALVO, não o do rascunho. */
+function ProfileLive({ go, meName, radar }) {
+  useHeartbeat("livre");
+  const { inviteTick, live } = useDuplaChannel({ radar });
+  React.useEffect(() => {
+    installAudioWake();
+  }, []);
+  return <InviteWatcher go={go} meName={meName} inviteTick={inviteTick} live={live} />;
 }
 
 export function StudyProfileScreen({ go }) {
@@ -104,6 +118,7 @@ export function StudyProfileScreen({ go }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {toastNode}
+      {data.profile && <ProfileLive go={go} meName={data.profile.public_name} radar={data.profile.radar_visible !== false} />}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
         <div>
           <button

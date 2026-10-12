@@ -1,6 +1,7 @@
 /**
- * Treinamento em Dupla · etapa 3 · tarefa 8: tela Praticar, sem o baralho (jsdom, banco simulado pelo contrato da Tarefa 6:
- * app_dupla_profile, app_dupla_save_profile e app_dupla_stations).
+ * Treinamento em Dupla · etapa 3 · tarefa 8 (atualizado na tarefa 13): tela Praticar com o baralho vazio (jsdom, banco simulado
+ * pelo contrato: app_dupla_profile, app_dupla_save_profile, app_dupla_stations, app_dupla_deck, app_dupla_heartbeat e
+ * app_dupla_invites). O baralho com colegas, o "Deu match!" e os convites ficam em duplaMatchTela.test.tsx.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -47,12 +48,15 @@ beforeEach(() => {
     if (fn === "app_dupla_profile") return loaded;
     if (fn === "app_dupla_save_profile") return { ...loaded, profile: { ...loaded.profile, ...args.p_profile } };
     if (fn === "app_dupla_stations") return STATIONS;
+    if (fn === "app_dupla_deck") return { cards: [], hidden_by_role: 0, online: 0, matches_today: 0, open_room: null, server_now: new Date().toISOString() };
+    if (fn === "app_dupla_heartbeat") return { server_now: new Date().toISOString() };
+    if (fn === "app_dupla_invites") return { invites: [], server_now: new Date().toISOString() };
     throw new Error(`rpc não simulada: ${fn}`);
   });
 });
 afterEach(cleanup);
 
-describe("Praticar (sem baralho)", () => {
+describe("Praticar (baralho vazio)", () => {
   it("primeira linha com a frase do protótipo e o botão 'Meu perfil de estudo'", async () => {
     await open();
     expect(screen.getByText("Encontre um colega com os mesmos objetivos e treine as estações da 2ª fase.")).toBeTruthy();
@@ -75,7 +79,7 @@ describe("Praticar (sem baralho)", () => {
   it("com perfil: painel 'Encontrar dupla' com o seletor de papel no valor do perfil", async () => {
     await open();
     expect(screen.getByText("Encontrar dupla")).toBeTruthy();
-    // decisão do dono (12/10): o texto do arraste só volta com o baralho, na Etapa 4
+    // decisão do dono (12/10): o texto do arraste volta com o baralho (Etapa 4)
     expect(screen.getByText(/Arraste para a direita para estudar junto, para a esquerda para pular\./)).toBeTruthy();
     const group = screen.getByRole("radiogroup", { name: "Papel desejado" });
     expect(within(group).getAllByRole("radio").map((r) => r.textContent)).toEqual(["Qualquer papel", "Quero ser médico", "Quero ser ator/avaliador"]);
@@ -92,7 +96,7 @@ describe("Praticar (sem baralho)", () => {
 
   it("papel sem complemento: vazio com a dica e 'Aceitar qualquer papel'; com 'Qualquer papel', só o título", async () => {
     await open();
-    expect(screen.getByText("Nenhum colega compatível agora")).toBeTruthy();
+    expect(await screen.findByText("Nenhum colega compatível agora")).toBeTruthy();
     expect(screen.getByText('Ninguém online quer o papel complementar ao seu. Tente "Qualquer papel".')).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Aceitar qualquer papel" }));
     await waitFor(() => expect(rpcCalls("app_dupla_save_profile")[0][1]).toEqual({ p_profile: { role_pref: "any" } }));
@@ -169,13 +173,15 @@ describe("Praticar (sem baralho)", () => {
     expect(go).toHaveBeenCalledWith("dupla-perfil");
   });
 
-  it("nada do que ficou fora nem contador inventado", async () => {
+  it("nada do que ficou fora nem contador inventado: os números vêm do baralho do servidor", async () => {
     await open();
+    expect(await screen.findByText("0 colegas online")).toBeTruthy();
+    expect(screen.getByText("0 matches hoje")).toBeTruthy();
     const text = document.body.textContent ?? "";
-    for (const banned of ["colegas online", "Convite rápido", "Busca automática", "WhatsApp", "Salas abertas", "matches hoje", "Permitir convites", "Atores", "Gabriela", "Tiago"]) {
+    for (const banned of ["Convite rápido", "Agendar sessão", "Enviar mensagem", "Busca automática", "WhatsApp", "Salas abertas", "Permitir convites", "Atores", "Gabriela", "Tiago"]) {
       expect(text, banned).not.toContain(banned);
     }
-    expect(text).not.toMatch(/\d+ colegas/);
+    expect(text).not.toContain("11 colegas"); // o número do protótipo
   });
 
   it("erro ao carregar mostra a mensagem com 'Tentar de novo'", async () => {

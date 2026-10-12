@@ -36,6 +36,8 @@ beforeEach(() => {
   backend.rpc.mockImplementation(async (fn: string, args: any) => {
     if (fn === "app_dupla_profile") return loaded;
     if (fn === "app_dupla_save_profile") return { ...loaded, profile: { ...(loaded.profile ?? {}), ...args.p_profile } };
+    if (fn === "app_dupla_heartbeat") return { server_now: new Date().toISOString() };
+    if (fn === "app_dupla_invites") return { invites: [], server_now: new Date().toISOString() };
     throw new Error(`rpc não simulada: ${fn}`);
   });
 });
