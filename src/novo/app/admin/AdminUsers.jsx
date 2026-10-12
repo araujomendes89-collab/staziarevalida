@@ -33,6 +33,8 @@ const roleTone = { admin: "danger", editor: "info", student: "neutral" };
  */
 const planText = (u) => {
   if (isStaffRole(u.role)) return "Equipe · acesso completo";
+  // cadastro feito com "Oferecer teste grátis no cadastro" desligado (PL06): sem teste e sem plano pago
+  if (u.plan === "trial" && u.status === "expired" && !u.trial_ends_at) return "Acesso gratuito · sem teste";
   const text = `${PLAN_LABEL[u.plan] ?? u.plan} · ${SUB_STATUS_LABEL[u.status] ?? u.status}`;
   if (trialLapsed(u)) return `${text} · terminou em ${dateBR(u.trial_ends_at)}`;
   if (!paidPlanLapsed(u)) return text;

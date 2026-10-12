@@ -169,7 +169,7 @@ function PlanEditor({ plan, onSaved }) {
       <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 16 }} noValidate>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
           <h3 style={{ margin: 0, font: "var(--type-h4)" }}>{PLAN_LABEL[plan.code]}</h3>
-          <Badge tone={plan.active ? "success" : "neutral"}>{plan.active ? (trial ? "Oferecido no cadastro" : "Marcado para venda") : "Fora de venda"}</Badge>
+          <Badge tone={plan.active ? "success" : "neutral"}>{plan.active ? (trial ? "Oferecido no cadastro" : "Marcado para venda") : trial ? "Cadastro sem teste" : "Fora de venda"}</Badge>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 12 }}>
           <TextField label="Nome exibido" value={form.name} maxLength={60} onChange={(e) => set({ name: e.target.value })} />
@@ -178,7 +178,7 @@ function PlanEditor({ plan, onSaved }) {
         </div>
         <TextArea label="Descrição" rows={2} maxLength={400} value={form.description} onChange={(description) => set({ description })} />
         <TextArea label="Recursos incluídos (um por linha)" rows={4} value={form.features} onChange={(features) => set({ features })} hint="Até 20 itens. Ficam guardados para a futura tela de planos do aluno." />
-        <Switch label={trial ? "Oferecer teste grátis no cadastro" : "Marcar para venda"} description={trial ? "Os dias de teste ficam em Configurações. Hoje todo cadastro novo recebe o teste, com esta chave ligada ou desligada." : "Só com preço definido. Ainda não aparece para os alunos."} checked={form.active} onChange={(e) => set({ active: e.target.checked })} />
+        <Switch label={trial ? "Oferecer teste grátis no cadastro" : "Marcar para venda"} description={trial ? "Ligado: quem se cadastrar ganha o teste grátis pelos dias de Configurações. Desligado: quem se cadastrar depois entra sem teste, só com questões e flashcards, até a equipe liberar um plano ou um teste em Usuários. Quem já está em teste não muda." : "Só com preço definido. Ainda não aparece para os alunos."} checked={form.active} onChange={(e) => set({ active: e.target.checked })} />
         {state.error && <Banner tone="danger">{state.error}</Banner>}
         <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
           {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Plano salvo.</span>}
@@ -561,7 +561,7 @@ export function AdminSettings() {
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Cadastro</h3>
           <div style={{ maxWidth: 260 }}>
-            <TextField label="Dias de teste grátis" value={form.trial_days} inputMode="numeric" maxLength={2} onChange={(e) => set({ trial_days: e.target.value })} hint="Vale para os próximos cadastros (0 a 90)." />
+            <TextField label="Dias de teste grátis" value={form.trial_days} inputMode="numeric" maxLength={2} onChange={(e) => set({ trial_days: e.target.value })} hint="Vale para os próximos cadastros (0 a 90), se “Oferecer teste grátis no cadastro” (aba Planos) estiver ligado." />
           </div>
         </div>
       </Card>

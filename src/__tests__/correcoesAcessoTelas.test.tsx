@@ -293,8 +293,9 @@ describe("PL05, PL06 e PL08 — aba Planos", () => {
     expect(saved[0].features).toEqual(["Tutor", "Simulados"]);
   });
 
-  it("PL06: a chave do teste grátis diz a verdade, enquanto o cadastro não a consulta", async () => {
+  it("PL06: a chave do teste grátis diz a verdade (o cadastro agora a consulta, migração 9732)", async () => {
     await abrir([]);
-    expect(screen.getByText(/Hoje todo cadastro novo recebe o teste, com esta chave ligada ou desligada\./)).toBeTruthy();
+    expect(screen.getByText(/Desligado: quem se cadastrar depois entra sem teste, só com questões e flashcards/)).toBeTruthy();
+    expect(screen.queryByText(/Hoje todo cadastro novo recebe o teste/)).toBeNull();
   });
 });
