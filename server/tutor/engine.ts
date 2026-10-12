@@ -20,7 +20,7 @@ import type { ContentDb } from "../contentHub/infra";
 import { avatarOf, engineFor, languageIntensity, normalize, profanityForIntensity, recentExpressions, stateLayer, step, type Happening, type PersonaEngine, type TutorState } from "./emotion";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings } from "./personality";
 import { NO_EVALUATION, TUTOR_PROMPT_LAYERS, TUTOR_SCHEMA, TUTOR_VERSION, composeSystem, taskInstruction, type TutorMode, type TutorOutput, type TutorTask } from "./prompts";
-import { labelIsSupportMaterial, loadComplementarTerms } from "../contentHub/complementarGuard";
+import { ComplementarTermsUnavailable, labelIsSupportMaterial, loadComplementarTerms } from "../contentHub/complementarGuard";
 import { fallbackReply, safetyCheck, spokenText, type BaseBlock, type SafetyResult, type Violation } from "./safety";
 import { deterministicTutor, tutorSettings } from "./settings";
 
@@ -227,12 +227,22 @@ export function sourceQuery(...texts: (string | null | undefined)[]): string {
   return [...new Set(words)].slice(0, 8).join(" or ");
 }
 
+/** Termos das fontes complementares; se a lista estiver indisponível, o Tutor recusa o pedido (503) em vez de responder sem conferência. */
+export async function termsOrFail(deps: TutorDeps): Promise<string[]> {
+  try {
+    return await loadComplementarTerms(deps.db, undefined, deps.log);
+  } catch (error) {
+    if (error instanceof ComplementarTermsUnavailable) throw new TutorError("O Tutor não conseguiu fazer uma conferência de segurança agora. Tente de novo em instantes.", 503);
+    throw error;
+  }
+}
+
 export async function searchSources(deps: TutorDeps, query: string): Promise<Passage[]> {
   if (!query) return [];
   try {
     const rows = (await deps.db.service<Passage[]>("ch_worker_search_official_passages", { p_query: query, p_limit: 3 })) ?? [];
     // fonte complementar (apostila) nunca vai ao aluno: o banco já só devolve fonte oficial, e aqui confere de novo pelo nome
-    const terms = await loadComplementarTerms(deps.db);
+    const terms = await loadComplementarTerms(deps.db, undefined, deps.log); // sem a lista, cai no catch abaixo: nenhuma fonte é devolvida
     return rows.filter((p) => !labelIsSupportMaterial(`${p.source} ${p.organ}`, terms));
   } catch (error) {
     deps.log?.(`[tutor] busca nas fontes falhou: ${(error as Error).message}`);
@@ -344,7 +354,8 @@ export async function tutorTurn(deps: TutorDeps, userId: string, sessionId: stri
     // ---- base conferida
     const includeAnswer = Boolean(q) && (!open || task.type === "hint" || task.type === "reveal");
     const weak = ctx.session.context?.type === "weak_points" ? (ctx.memory?.weak_subareas ?? []).slice(0, 3).map((w) => w.subarea).join(" ") : "";
-    const supportTerms = await loadComplementarTerms(deps.db);
+    // lista de fontes que o aluno não pode ver: sem ela o Tutor não responde (nada é publicado nem gravado); o aluno tenta de novo
+    const supportTerms = await termsOrFail(deps);
     const passages = await searchSources(deps, sourceQuery(q?.topic, q?.subtopic, ctx.session.topic, ctx.session.context?.label, weak, task.type === "message" && !q ? studentText : ""));
     const blocks = buildBlocks(ctx, passages, includeAnswer);
 

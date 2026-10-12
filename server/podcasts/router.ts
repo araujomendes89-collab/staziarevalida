@@ -366,9 +366,11 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       if (m.status === "published") throw httpError(409, "Despublique o episódio antes de gerar outro roteiro.");
       if (!chunks.length) throw httpError(409, "Adicione fontes com texto antes de gerar o roteiro.");
       const started = Date.now();
+      // lista de fontes que o aluno não pode ver: sem ela o roteiro não é gerado (503), nunca segue sem conferência
+      const terms = await loadComplementarTerms(deps!.db, undefined, log);
       let r;
       try {
-        r = await generateScript({ terms: await loadComplementarTerms(deps!.db), kind: kind as any, topic: m.topic || m.title, minutes: Number(m.target_minutes) || 8, chunks, notes, mockRespond: kind === "mock" ? deps!.mockScript : undefined, db: deps!.db, actorId: req.user!.id, podcastId: req.params.id, aiMaker: deps!.aiMaker });
+        r = await generateScript({ terms, kind: kind as any, topic: m.topic || m.title, minutes: Number(m.target_minutes) || 8, chunks, notes, mockRespond: kind === "mock" ? deps!.mockScript : undefined, db: deps!.db, actorId: req.user!.id, podcastId: req.params.id, aiMaker: deps!.aiMaker });
       } catch (error: any) {
         throw httpError(error?.status ?? 502, `A IA do roteiro falhou: ${message(error)}`);
       }
@@ -401,7 +403,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       // roteiro antigo, sem essa lista, aceita todos os trechos do episódio
       const sent: unknown = view?.script_meta?.sent_chunks;
       const valid = Array.isArray(sent) ? new Map(chunks.filter((c) => (sent as unknown[]).map(Number).includes(c.id)).map((c) => [c.id, c])) : all;
-      res.json({ warnings: checkScript(script, valid, all, await loadComplementarTerms(deps!.db)) });
+      res.json({ warnings: checkScript(script, valid, all, await loadComplementarTerms(deps!.db, undefined, log)) });
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }

@@ -15,7 +15,7 @@ import { AiCapReached, maestroProvider } from "../ai/maestro";
 import type { ModelRef } from "../ai/config";
 import { validate } from "./ai/schema";
 import { normalize, numbers, numbersOutside } from "./checks";
-import { loadComplementarTerms, mentionsSupportMaterial } from "./complementarGuard";
+import { ComplementarTermsUnavailable, loadComplementarTerms, mentionsSupportMaterial } from "./complementarGuard";
 import type { ContentDb } from "./infra";
 import { aiAllowed, registerPrompts } from "./ai/registry";
 import { verdictOf, type Finding, type Spend } from "./draftChecks";
@@ -261,7 +261,17 @@ export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: Analys
     return report;
   }
   await registerPrompts(deps.db);
-  const supportTerms = await loadComplementarTerms(deps.db);
+  // lista de fontes que o aluno não pode ver: sem ela nada é gerado nem gravado (a equipe vê o aviso e tenta de novo)
+  let supportTerms: string[];
+  try {
+    supportTerms = await loadComplementarTerms(deps.db, undefined, deps.log);
+  } catch (error) {
+    if (error instanceof ComplementarTermsUnavailable) {
+      report.pending = error.message;
+      return report;
+    }
+    throw error;
+  }
   const mockProvider = deps.mockRespond ? resolveProviderKind("mock", deps.mockRespond).provider : null;
   const aiDeps = { db: deps.db, mockProvider, makeProviderFor: deps.aiMaker, log: deps.log };
   for (const q of questions) {

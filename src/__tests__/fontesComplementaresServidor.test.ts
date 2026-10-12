@@ -47,7 +47,7 @@ describe("conferência de menção ao material complementar", () => {
     expect(labelIsSupportMaterial("PCDT de Bronquiolite · Ministério da Saúde", TERMOS)).toBe(false);
   });
 
-  it("os termos vêm do banco, ficam em cache por 60 s e, se o banco falhar, sobram os termos fixos", async () => {
+  it("os termos vêm do banco, ficam em cache por 60 s e, se o banco falhar sem lista anterior, o pedido é recusado (não finge biblioteca vazia; ver Rodada2Termos)", async () => {
     let chamadas = 0;
     const db = { service: async () => { chamadas++; return [TITULO]; } } as any;
     expect(await loadComplementarTerms(db, 1000)).toEqual([...ALWAYS_TERMS, TITULO]);
@@ -56,7 +56,7 @@ describe("conferência de menção ao material complementar", () => {
     await loadComplementarTerms(db, 70_000);
     expect(chamadas).toBe(2);
     resetComplementarTermsCache();
-    expect(await loadComplementarTerms({ service: async () => { throw new Error("fora"); } } as any)).toEqual([...ALWAYS_TERMS]);
+    await expect(loadComplementarTerms({ service: async () => { throw new Error("fora"); } } as any, 1000, () => {})).rejects.toThrow(/fontes que o aluno não pode ver/);
     expect(await loadComplementarTerms(null)).toEqual([...ALWAYS_TERMS]);
   });
 });

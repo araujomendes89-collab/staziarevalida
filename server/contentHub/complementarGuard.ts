@@ -93,18 +93,44 @@ export function labelIsSupportMaterial(label: string, terms: readonly string[] =
   });
 }
 
+/** Pedido sem a lista de termos: quem chama NÃO pode seguir como se a biblioteca estivesse vazia. */
+export const TERMS_UNAVAILABLE_MESSAGE = "Não foi possível conferir agora a lista de fontes que o aluno não pode ver. Tente de novo em instantes.";
+export class ComplementarTermsUnavailable extends Error {
+  readonly status = 503;
+  constructor(readonly cause?: unknown) {
+    super(TERMS_UNAVAILABLE_MESSAGE);
+    this.name = "ComplementarTermsUnavailable";
+  }
+}
+
+const FRESH_MS = 60_000;
+/** Na falta do banco, a última lista boa ainda vale por até 6 horas (a biblioteca muda pouco); depois disso, sem lista. */
+const STALE_MAX_MS = 6 * 3600_000;
 let cache: { at: number; terms: string[] } | null = null;
-/** Termos da biblioteca (título, órgão, siglas das fontes complementares). Guarda por 60 s; se o banco falhar, usa os últimos termos conhecidos (ou nenhum). */
-export async function loadComplementarTerms(db: Pick<ContentDb, "service"> | null | undefined, now = Date.now()): Promise<string[]> {
+const reason = (error: unknown) => (error instanceof Error ? error.message : String(error)).slice(0, 160);
+/**
+ * Termos da biblioteca (título, órgão, siglas das fontes complementares). Guarda por 60 s, SÓ resposta boa: falha do banco ou resposta
+ * que não é uma lista nunca vai para o cache. Se o banco falha, usa a última lista boa (até 6 horas) e avisa no log; sem nenhuma lista
+ * boa LANÇA ComplementarTermsUnavailable (503): quem chama age do lado seguro (não publica, não grava) e manda tentar de novo.
+ * Sem banco (db nulo, só em testes e desenvolvimento sem biblioteca) não há biblioteca: devolve ALWAYS_TERMS.
+ */
+export async function loadComplementarTerms(db: Pick<ContentDb, "service"> | null | undefined, now = Date.now(), log?: (m: string) => void): Promise<string[]> {
   if (!db) return [...ALWAYS_TERMS];
-  if (cache && now - cache.at < 60_000) return cache.terms;
+  if (cache && now - cache.at < FRESH_MS) return cache.terms;
+  const warn = log ?? ((m: string) => console.warn(m));
   try {
-    const rows = await db.service<string[] | null>("ch_worker_complementar_terms", {});
-    const terms = [...new Set([...ALWAYS_TERMS, ...(Array.isArray(rows) ? rows.map(String) : [])])];
+    const rows = await db.service<unknown>("ch_worker_complementar_terms", {});
+    if (!Array.isArray(rows)) throw new Error("a resposta do banco não é uma lista");
+    const terms = [...new Set([...ALWAYS_TERMS, ...rows.map(String)])];
     cache = { at: now, terms };
     return terms;
-  } catch {
-    return cache?.terms ?? [...ALWAYS_TERMS];
+  } catch (error) {
+    if (cache && now - cache.at < STALE_MAX_MS) {
+      warn(`[fontes complementares] lista de termos indisponível (${reason(error)}); usando a última lista boa, de ${Math.round((now - cache.at) / 1000)} s atrás.`);
+      return cache.terms;
+    }
+    warn(`[fontes complementares] lista de termos indisponível e sem lista anterior (${reason(error)}): a conferência foi suspensa por segurança e o pedido foi recusado.`);
+    throw new ComplementarTermsUnavailable(error);
   }
 }
 export function resetComplementarTermsCache() {

@@ -25,10 +25,10 @@
  */
 import { createHash } from "crypto";
 import { engineFor, languageIntensity, normalize, profanityForIntensity, stateLayer, type PersonaEngine, type TutorState } from "./emotion";
-import { PROFESSOR_CHANGED, TRIAL_OVER, TutorError, consentError, type Entitlement, type TutorDeps } from "./engine";
+import { PROFESSOR_CHANGED, TRIAL_OVER, TutorError, consentError, termsOrFail, type Entitlement, type TutorDeps } from "./engine";
 import { effectiveParams, personalityLayer, profanityLevel, type Personality, type ProfanityLevel, type TutorSettings as SessionPrefs } from "./personality";
 import { composeLiveInstructions, composeRealtimeInstructions, type TutorMode } from "./prompts";
-import { loadComplementarTerms, redactSupportMaterial } from "../contentHub/complementarGuard";
+import { redactSupportMaterial } from "../contentHub/complementarGuard";
 import { safetyCheck, type BaseBlock } from "./safety";
 import { realKey } from "./speech";
 import { REALTIME_TOOLS } from "./tools";
@@ -458,7 +458,8 @@ export async function voiceTranscript(deps: TutorDeps, userId: string, voiceCall
     // Durona "sem filtro cosmético": o teto do professor vale direto (os limites contra ataque pessoal continuam)
     profanity = settings.durona_level === "sem_filtro" && ctx.personality.id === "durona" ? max : RANK[byState] < RANK[max] ? byState : max;
   }
-  const supportTerms = await loadComplementarTerms(deps.db);
+  // sem a lista de fontes que o aluno não pode ver a fala não é conferida: recusa (503) e NÃO grava a fala no histórico
+  const supportTerms = await termsOrFail(deps);
   const check = safetyCheck(
     { reply: clean, grounding: "GENERAL", citations: [], evaluation: { error_type: "none", knowledge_gap: "", severity: 1, unsafe: false, reasoning_quality: "na", recommended_action: "none", answer_correct: "na", self_corrected: false }, justification: "NONE", reveals_answer: false, suggested_replies: [] },
     { blocks, conversationTexts: (ctx?.history ?? []).map((h) => h.content), question: q ? { open, officialLetter: q.official_answer ?? null, officialText: (q.options ?? []).find((o: any) => o.id === q.official_answer)?.text ?? null } : null, hintLevel: null, hasUpdateCard: Boolean(q?.update_card), profanity, supportTerms },

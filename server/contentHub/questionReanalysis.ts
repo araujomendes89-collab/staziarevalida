@@ -19,7 +19,7 @@ import { normalize, numbers } from "./checks";
 import { verdictOf, type Finding, type Spend } from "./draftChecks";
 import type { ContentDb } from "./infra";
 import { aiAllowed, registerPrompts } from "./ai/registry";
-import { loadComplementarTerms, mentionsSupportMaterial } from "./complementarGuard";
+import { ComplementarTermsUnavailable, loadComplementarTerms, mentionsSupportMaterial } from "./complementarGuard";
 import { CHALLENGE } from "./questionAnalysis";
 
 export const REANALYSIS_VERSION = "question-reanalysis-1.0.0";
@@ -184,7 +184,17 @@ export async function runQuestionReanalysis(deps: ReanalysisDeps, options: Reana
     return report;
   }
   await registerPrompts(deps.db);
-  const supportTerms = await loadComplementarTerms(deps.db);
+  // lista de fontes que o aluno não pode ver: sem ela nada é gerado nem gravado (a equipe vê o aviso e tenta de novo)
+  let supportTerms: string[];
+  try {
+    supportTerms = await loadComplementarTerms(deps.db, undefined, deps.log);
+  } catch (error) {
+    if (error instanceof ComplementarTermsUnavailable) {
+      report.pending = error.message;
+      return report;
+    }
+    throw error;
+  }
   const mockProvider = deps.mockRespond ? resolveProviderKind("mock", deps.mockRespond).provider : null;
   const aiDeps = { db: deps.db, mockProvider, makeProviderFor: deps.aiMaker, log: deps.log };
   for (const q of questions) {

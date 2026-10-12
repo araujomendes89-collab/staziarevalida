@@ -234,10 +234,12 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       const chars = pages.reduce((n, p) => n + p.text.length, 0);
       if (chars < 80) throw httpError(422, "O material não tem texto aproveitável (PDF escaneado?). Cole o texto.");
       if (chars > MAX_ASSIST_CHARS) throw httpError(413, "Material longo demais: até 400 mil caracteres.");
+      // lista de fontes que o aluno não pode ver: sem ela o pedido é recusado (503), nunca segue sem conferência
+      const terms = await loadComplementarTerms(deps!.db, undefined, deps!.log);
       let r;
       try {
         r = await generateLessonAssist({
-          terms: await loadComplementarTerms(deps!.db),
+          terms,
           kind: kind as AssistProvider,
           db: deps!.db,
           actorId: req.user!.id,
