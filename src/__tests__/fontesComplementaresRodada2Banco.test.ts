@@ -239,3 +239,76 @@ describe("(E) o gatilho de salvar monta a expressão da biblioteca uma vez por i
     expect(zera).toEqual(guarda);
   });
 });
+
+describe("(B) arquivo sem SHA-256 conferido fica escondido do aluno (retenção por caminho)", () => {
+  let aulaId: string;
+  let podcastId: string;
+  const CAMINHO = "lessons/x/slides-0123456789abcdef.pdf";
+  const SHA_B = "b".repeat(64);
+  const hold = (p: string) => sql(`select public.ch_worker_file_hold($1) r`, [p]);
+  const sha = async (p: string, h: string) => (await sql(`select public.ch_worker_file_sha($1, $2) r`, [p, h]))[0].r as number;
+  const material = async (path: string) => (await sql(`select id, hidden_from_student h, sha256 from public.lesson_materials where storage_path = $1`, [path]))[0];
+
+  beforeAll(async () => {
+    await sql(`delete from public.ch_sources where audience = 'complementar'`);
+    aulaId = (await sql(`insert into public.lessons (area, topic, title, published) values ('PEDIATRIA', 'Bronquiolite', 'Aula com retenção', true) returning id`))[0].id;
+    podcastId = (await sql(`insert into public.podcasts (title, topic, area, status, script, approved_at, audio_path, published_at) values ('Episódio B', 'Bronquiolite', 'PEDIATRIA', 'published', '{"lines":[]}'::jsonb, now(), 'podcasts/b.mp3', now()) returning id`))[0].id;
+  });
+
+  it("sem retenção e sem SHA: o material antigo (já em produção) continua à vista", async () => {
+    await sql(`insert into public.lesson_materials (lesson_id, kind, title, storage_path) values ($1, 'other', 'Antigo', $2)`, [aulaId, "lessons/x/antigo.pdf"]);
+    expect((await material("lessons/x/antigo.pdf")).h).toBe(false);
+  });
+
+  it("com retenção: o material nasce escondido do aluno e o servidor não entrega o arquivo", async () => {
+    await hold(CAMINHO);
+    await sql(`insert into public.lesson_materials (lesson_id, kind, title, storage_path) values ($1, 'slides', 'Slides', $2)`, [aulaId, CAMINHO]);
+    const m = await material(CAMINHO);
+    expect(m.h).toBe(true);
+    expect(await rpc(ALUNA, "app_lesson_material", { p_id: m.id })).toBeNull();
+    expect((await rpc(ALUNA, "lesson_materials_json", { p_lesson: aulaId })).find((x: any) => x.id === m.id)).toBeUndefined();
+    expect((await rpc(ADMIN, "lesson_materials_json", { p_lesson: aulaId })).find((x: any) => x.id === m.id)).toMatchObject({ sha_pendente: true }); // a equipe vê o motivo
+  });
+
+  it("gravar o SHA-256 solta a retenção e o aluno passa a receber o arquivo", async () => {
+    expect(await sha(CAMINHO, SHA_B)).toBe(1);
+    const m = await material(CAMINHO);
+    expect((await rpc(ADMIN, "lesson_materials_json", { p_lesson: aulaId })).find((x: any) => x.id === m.id)).toMatchObject({ sha_pendente: false });
+    expect(m).toMatchObject({ h: false, sha256: SHA_B });
+    expect(await rpc(ALUNA, "app_lesson_material", { p_id: m.id })).not.toBeNull();
+    expect((await sql(`select count(*)::int n from public.ch_file_holds where storage_path = $1`, [CAMINHO]))[0].n).toBe(0);
+  });
+
+  it("o SHA-256 de uma apostila cadastrada solta a retenção mas continua escondido pela classe", async () => {
+    const outro = "lessons/x/apostila-neutra.pdf";
+    await sql(`insert into public.ch_sources (title, organ, kind, authority_level, sha256) values ('Livro Zeta de Pediatria Geral 2026', 'Editora Zeta de Medicina (teste)', 'final', 'E', $1)`, ["c".repeat(64)]);
+    await hold(outro);
+    await sql(`insert into public.lesson_materials (lesson_id, kind, title, storage_path) values ($1, 'other', 'Arquivo', $2)`, [aulaId, outro]);
+    expect(await sha(outro, "c".repeat(64))).toBe(1);
+    expect((await material(outro)).h).toBe(true);
+    await sql(`delete from public.ch_sources where audience = 'complementar'`);
+  });
+
+  it("gravar SHA de um caminho sem material devolve 0 e mantém a retenção", async () => {
+    await hold("lessons/x/ainda-nao-registrado.pdf");
+    expect(await sha("lessons/x/ainda-nao-registrado.pdf", SHA_B)).toBe(0);
+    expect((await sql(`select count(*)::int n from public.ch_file_holds where storage_path = 'lessons/x/ainda-nao-registrado.pdf'`))[0].n).toBe(1);
+  });
+
+  it("fonte de podcast: com retenção fica escondida do aluno (e a equipe vê a marca), sem retenção aparece", async () => {
+    const view = async (srcId: string) => (await sql(`select public.podcast_admin_view($1) v`, [podcastId]))[0].v.sources.find((s: any) => s.id === srcId);
+    await hold("podcasts/x/src-aaaaaaaaaaaaaaaa.pdf");
+    const id = (await sql(`insert into public.podcast_sources (podcast_id, kind, title, storage_path, position) values ($1, 'pdf', 'Resumo neutro', 'podcasts/x/src-aaaaaaaaaaaaaaaa.pdf', 1) returning id`, [podcastId]))[0].id;
+    expect(await view(id)).toMatchObject({ student_hidden: true, sha_pendente: true });
+    expect((await rpc(ALUNA, "app_podcast", { p_id: podcastId })).sources ?? []).toEqual([]);
+    expect(await sha("podcasts/x/src-aaaaaaaaaaaaaaaa.pdf", SHA_B)).toBe(1);
+    expect(await view(id)).toMatchObject({ student_hidden: false, sha_pendente: false });
+    expect((await rpc(ALUNA, "app_podcast", { p_id: podcastId })).sources).toHaveLength(1);
+  });
+
+  it("só o servidor chama as funções de retenção", async () => {
+    await expect(rpc(ALUNA, "ch_worker_file_hold", { p_path: "x" })).rejects.toThrow(/permission denied/i);
+    await expect(rpc(ADMIN, "ch_worker_file_sha", { p_path: "x", p_sha: SHA_B })).rejects.toThrow(/permission denied/i);
+    await expect(rpc(ALUNA, "ch_complementar_file", { p_sha: SHA_B })).rejects.toThrow(/permission denied/i);
+  });
+});

@@ -242,6 +242,7 @@ as $$
       select jsonb_agg(jsonb_build_object('id', s.id, 'kind', s.kind, 'title', s.title, 'url', s.url, 'lesson_id', s.lesson_id, 'pages', s.pages, 'chars', s.chars, 'storage_path', s.storage_path,
                                           'chunks', (select count(*)::int from public.podcast_chunks c where c.source_id = s.id), 'created_at', s.created_at,
                                           'complementar', s.complementar,
+                                          'sha_pendente', exists (select 1 from public.ch_file_holds h where h.storage_path = s.storage_path),
                                           'student_hidden', (s.complementar or public.ch_complementar_hit(s.title, s.url) or public.ch_complementar_file(s.sha256, s.storage_path)))
                        order by s.position, s.created_at)
       from public.podcast_sources s where s.podcast_id = p.id), '[]'::jsonb),

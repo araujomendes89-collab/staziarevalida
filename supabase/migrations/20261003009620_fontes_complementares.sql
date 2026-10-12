@@ -95,6 +95,16 @@ drop trigger if exists ch_sources_audience_log on public.ch_sources;
 create trigger ch_sources_audience_log after insert or update on public.ch_sources
   for each row execute function public.ch_sources_audience_log();
 
+-- Retenção de arquivo enviado (fail closed): o servidor, ANTES de registrar um arquivo de aula ou de podcast, pede a retenção do caminho
+-- (ch_worker_file_hold). Enquanto ela existir, o arquivo fica escondido do aluno (ch_complementar_file). Só quando o servidor consegue
+-- calcular e gravar o SHA-256 (ch_worker_file_sha) a retenção cai. Se a gravação falhar, o arquivo continua escondido e a equipe é avisada.
+create table if not exists public.ch_file_holds (
+  storage_path text primary key,
+  created_at timestamptz not null default now()
+);
+alter table public.ch_file_holds enable row level security;
+revoke all on public.ch_file_holds from public, anon, authenticated;
+
 -- ---------------------------------------------------------------- 2. comparação com a biblioteca (internas)
 -- Texto normalizado para comparar: sem etiquetas HTML, sem entidades nem %20, NFKC, sem marcas combinantes (acento solto),
 -- sem caracteres de largura zero, com letras parecidas do cirílico e do grego trocadas pelas latinas, sem pontuação, sem caixa,
@@ -217,7 +227,9 @@ $$;
 create or replace function public.ch_complementar_file(p_sha text, p_name text default null) returns boolean
   language sql stable security definer set search_path = ''
 as $$
-  select (nullif(btrim(coalesce(p_sha, '')), '') is not null and exists (
+  -- arquivo com SHA-256 ainda NÃO conferido (retenção feita pelo servidor antes do registro): fica escondido do aluno até o servidor gravar o SHA-256
+  select (nullif(btrim(coalesce(p_name, '')), '') is not null and exists (select 1 from public.ch_file_holds h where h.storage_path = p_name))
+      or (nullif(btrim(coalesce(p_sha, '')), '') is not null and exists (
             select 1 from public.ch_sources s left join public.ch_documents d on d.id = s.document_id
              where s.audience = 'complementar' and (s.sha256 = lower(btrim(p_sha)) or d.sha256 = lower(btrim(p_sha)))))
       or (nullif(btrim(coalesce(p_name, '')), '') is not null and public.ch_complementar_hit(regexp_replace(p_name, '^.*/', ''), null))
@@ -431,14 +443,29 @@ create trigger ch_documents_refresh_flags after update of name, author, publishe
 create or replace function public.ch_worker_file_sha(p_path text, p_sha text) returns integer
   language plpgsql security definer set search_path = ''
 as $$
-declare n integer := 0; m integer;
+declare n integer := 0; m integer; v_had boolean;
 begin
   if p_sha is null or p_sha !~ '^[0-9a-f]{64}$' or nullif(btrim(coalesce(p_path, '')), '') is null then return 0; end if;
-  update public.lesson_materials set sha256 = p_sha where storage_path = p_path and sha256 is distinct from p_sha;
+  -- a retenção cai ANTES de gravar, para o gatilho de marca já recalcular sem ela; sem material com este caminho ela volta
+  delete from public.ch_file_holds where storage_path = p_path;
+  v_had := found;
+  update public.lesson_materials set sha256 = p_sha where storage_path = p_path;
   get diagnostics m = row_count; n := n + m;
-  update public.podcast_sources set sha256 = p_sha where storage_path = p_path and sha256 is distinct from p_sha;
+  update public.podcast_sources set sha256 = p_sha where storage_path = p_path;
   get diagnostics m = row_count; n := n + m;
+  if n = 0 and v_had then insert into public.ch_file_holds (storage_path) values (p_path) on conflict do nothing; end if;
   return n;
+end
+$$;
+
+-- Pede a retenção de um caminho (antes de registrar o arquivo). Idempotente.
+create or replace function public.ch_worker_file_hold(p_path text) returns boolean
+  language plpgsql security definer set search_path = ''
+as $$
+begin
+  if nullif(btrim(coalesce(p_path, '')), '') is null then raise exception 'Caminho de arquivo vazio.' using errcode = '22023'; end if;
+  insert into public.ch_file_holds (storage_path) values (p_path) on conflict do nothing;
+  return true;
 end
 $$;
 
@@ -720,6 +747,7 @@ as $$
                              else 'Material ' || row_number() over (partition by m.kind order by m.position, m.created_at) end,
         'has_file', m.storage_path is not null, 'content_type', m.content_type, 'size_bytes', m.size_bytes, 'url', m.url)
       || case when public.is_staff() then jsonb_build_object('file_title', m.title, 'storage_path', m.storage_path, 'review_status', m.review_status,
+                                                            'sha_pendente', exists (select 1 from public.ch_file_holds h where h.storage_path = m.storage_path),
                                                             'reviewed_at', m.reviewed_at,
                                                             'reviewer', (select coalesce(nullif(p.name, ''), u.email) from auth.users u left join public.profiles p on p.id = u.id where u.id = m.reviewed_by),
                                                             'can_release', public.lesson_can_release(l.area))
@@ -1151,6 +1179,7 @@ begin
   revoke execute on function public.ch_complementar_file(text, text) from public, anon, authenticated;
   revoke execute on function public.ch_refresh_hidden_flags_trg() from public, anon, authenticated;
   revoke execute on function public.ch_worker_file_sha(text, text) from public, anon, authenticated;
+  revoke execute on function public.ch_worker_file_hold(text) from public, anon, authenticated;
   revoke execute on function public.app_ch_set_source_aliases(uuid, text[]) from public, anon;
   revoke execute on function public.ch_complementar_hit(text, text) from public, anon, authenticated;
   revoke execute on function public.ch_decode_entities(text) from public, anon, authenticated;
