@@ -1,6 +1,12 @@
 // Conteúdo da estação para a sala do Treinamento em Dupla: separa o texto como a Montagem o grava.
 // Só formata o que veio do banco; não escreve, não corrige e não completa nada.
 
+/**
+ * Rótulo em CAIXA ALTA no começo da linha, como no roteiro do ator da estação 1 (pacote de 11/10): "DADOS PESSOAIS: texto".
+ * Pelo menos 6 caracteres e nenhuma letra minúscula antes dos dois-pontos, para "Dizer: …" ou "SIM:" não virarem rótulo.
+ */
+const UPPERCASE_LABEL = /^[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9 /,()’'-]{6,}:/;
+
 /** Rótulos do roteiro do ator, como a Montagem os grava ("Rótulo: valor" no começo da linha). */
 export const ACTOR_LABELS = [
   "Dados pessoais",
@@ -26,10 +32,14 @@ const text = (value) => (typeof value === "string" ? value : "");
 export function splitActorScript(value) {
   const source = text(value).replace(/\r\n?/g, "\n");
   if (!source.trim()) return [];
+  // devolve o começo da linha até os dois-pontos (inclusive), ou null
   const labelAtStart = (line) => {
     for (const label of ACTOR_LABELS) {
-      if (line.startsWith(label + ":")) return label;
+      if (line.startsWith(label + ":")) return label + ":";
     }
+    const upper = UPPERCASE_LABEL.exec(line);
+    // precisa ter uma letra de verdade (não só números, espaços e pontuação)
+    if (upper && /[A-ZÁÉÍÓÚÂÊÔÃÕÇ]/.test(upper[0])) return upper[0];
     return null;
   };
   const pairs = [];
@@ -39,10 +49,10 @@ export function splitActorScript(value) {
     if (joined || current.label) pairs.push([current.label, joined]);
   };
   for (const line of source.split("\n")) {
-    const label = labelAtStart(line.trimStart());
-    if (label) {
+    const head = labelAtStart(line.trimStart());
+    if (head) {
       flush();
-      current = { label, lines: [line.trimStart().slice(label.length + 1)] };
+      current = { label: head.slice(0, -1).trim(), lines: [line.trimStart().slice(head.length)] };
     } else {
       current.lines.push(line);
     }

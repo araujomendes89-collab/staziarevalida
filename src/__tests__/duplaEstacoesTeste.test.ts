@@ -13,7 +13,9 @@ import { buildDuplaTestStatements, loadDuplaTestStations } from "../../server/du
 import { openDevDatabaseForTests, type DevDatabase } from "../../server/devDb/devDatabase";
 import testStationsJson from "../../server/dupla/data/teste-inep2020.json";
 
-const PACOTE = "/Users/joaopaulomendes/Downloads/templates/handoff-treino-dupla/ui_kits/treino-dupla/stations-inep2020.js";
+// Pacote de design de 11/10 (o atual) e o de 08/10 (ainda aceito). Lidos só como TEXTO e só se existirem (só na máquina do dono).
+const PACOTE_NOVO = "/Users/joaopaulomendes/Documents/StaziaMed-Previas/treino-dupla-2026-10-11/ui_kits/treino-dupla/stations-inep2020.js";
+const PACOTE_ANTIGO = "/Users/joaopaulomendes/Downloads/templates/handoff-treino-dupla/ui_kits/treino-dupla/stations-inep2020.js";
 const ITENS = [8, 28, 11, 13, 14, 9, 14, 18, 13, 11];
 const IMPRESSOS = [2, 3, 3, 4, 0, 1, 4, 2, 4, 1];
 const raw = testStationsJson as any[];
@@ -31,7 +33,7 @@ describe("Estações de teste do INEP 2020 (formato publicado)", () => {
     }
   });
 
-  it("formato publicado: ids teste-inep2020-eNN, PEP com phase 'PEP', impressos sem imagem, sem roteiro do ator, aprovadas", () => {
+  it("formato publicado: ids teste-inep2020-eNN, PEP com phase 'PEP', impressos sem imagem, roteiro do ator só na E1, aprovadas", () => {
     const stations = loadDuplaTestStations();
     expect(stations.map((s) => s.id)).toEqual(Array.from({ length: 10 }, (_, i) => `teste-inep2020-e${String(i + 1).padStart(2, "0")}`));
     expect(stations.map((s) => s.pressings.length)).toEqual(IMPRESSOS);
@@ -43,11 +45,17 @@ describe("Estações de teste do INEP 2020 (formato publicado)", () => {
       expect(s.goal).toBe("Revalida");
       expect(s.topic).toBe(s.name);
       expect(s.taxonomy_path).toEqual([s.area, s.name]);
-      expect(s.actor_script).toBe(""); // TODO(dono): o roteiro do ator não consta nos documentos
+      // TODO(dono): o roteiro das outras 9 vem da Montagem (PEP oficial, com revisão médica); só a E1 veio do dono
+      if (s.id !== "teste-inep2020-e01") expect(s.actor_script).toBe("");
       expect(s.summary).toEqual([]);
       s.pressings.forEach((p, k) => {
         expect(p.id).toBe(`${s.id}-p${k + 1}`);
-        expect(p.image_url).toBeNull(); // TODO(dono): imagens dos impressos
+        expect(p.image_url).toBeNull(); // TODO(dono): imagens dos impressos vêm da Montagem
+        if (s.id !== "teste-inep2020-e01") {
+          expect(p).not.toHaveProperty("source_number");
+          expect(p).not.toHaveProperty("display_number");
+          expect(p).not.toHaveProperty("initially_visible");
+        }
       });
       s.checklist_items.forEach((item, k) => {
         expect(item.id).toBe(`${s.id}-i${k + 1}`);
@@ -109,10 +117,63 @@ describe("Estações de teste do INEP 2020 (formato publicado)", () => {
     expect(e3.pressings[2].content).toBe("Imagem disponível no documento original (página 11 do caderno de prova).");
   });
 
-  it("o conversor refeito a partir do pacote dá exatamente o JSON commitado", () => {
-    if (!fs.existsSync(PACOTE)) return; // o pacote só existe na máquina do dono
-    const refeito = convertInep2020(fs.readFileSync(PACOTE, "utf8"), "stations-inep2020.js");
+  it("E1: relato é impresso inicial (display 1, source 1) e o esfregaço é display 1 / source 2", () => {
+    const [e1] = loadDuplaTestStations();
+    expect(e1.pressings).toHaveLength(2);
+    const [relato, esfregaco] = e1.pressings;
+    expect(relato.name).toBe("Relato do caso clínico");
+    expect(relato).toMatchObject({ source_number: 1, display_number: 1, initially_visible: true });
+    expect(esfregaco.name).toBe("Imagem do esfregaço de sangue periférico");
+    expect(esfregaco).toMatchObject({ source_number: 2, display_number: 1, initially_visible: false });
+    // as demais estações não têm impresso inicial
+    for (const s of loadDuplaTestStations().slice(1)) expect(s.pressings.some((p) => p.initially_visible)).toBe(false);
+  });
+
+  it("E1: actor_script traz os 10 blocos do roteiro e as outras 9 seguem vazias", () => {
+    const stations = loadDuplaTestStations();
+    const linhas = stations[0].actor_script.split("\n");
+    expect(linhas).toHaveLength(10);
+    expect(linhas.map((l) => l.slice(0, l.indexOf(":")))).toEqual([
+      "DADOS PESSOAIS",
+      "MOTIVO DE CONSULTA",
+      "CARACTERÍSTICAS DO CANSAÇO/ FRAQUEZA",
+      "CARACTERÍSTICAS DA FEBRE",
+      "CARACTERÍSTICAS DO SANGRAMENTO GENGIVAL",
+      "ANTECEDENTES PESSOAIS",
+      "QUANDO O CANDIDATO TERMINAR A LEITURA DAS TAREFAS",
+      "QUANDO O CANDIDATO TERMINAR A DESCRIÇÃO DO EXAME FÍSICO",
+      "SE O CANDIDATO DER ALGUM DIAGNÓSTICO",
+      "SE O CANDIDATO INDICAR ALGUM EXAME PARA CONFIRMAR",
+    ]);
+    // texto exato do roteiro, sem completar o que o roteiro não diz
+    expect(linhas[0]).toBe("DADOS PESSOAIS: Marcelo, 30 anos de idade.");
+    expect(linhas[2]).toBe("CARACTERÍSTICAS DO CANSAÇO/ FRAQUEZA: Não consta no script.");
+    expect(linhas[4]).toBe("CARACTERÍSTICAS DO SANGRAMENTO GENGIVAL: Tempo de evolução: Dez dias. Outras características: Não consta no script.");
+    expect(linhas[7]).toContain("liberar o IMPRESSO 2");
+    expect(stations.slice(1).every((s) => s.actor_script === "")).toBe(true);
+  });
+
+  it("nenhuma imagem do pacote é copiada: image_url continua nulo e o JSON não cita caminho de imagem do pacote", () => {
+    for (const s of raw) for (const p of s.pressings) expect(p.image_url).toBeNull();
+    expect(JSON.stringify(testStationsJson)).not.toMatch(/assets\/inep2020|\.png|\.jpg|candidateImage|candidate_image/);
+  });
+
+  it("o conversor refeito a partir do pacote NOVO dá exatamente o JSON commitado", () => {
+    if (!fs.existsSync(PACOTE_NOVO)) return; // o pacote só existe na máquina do dono
+    const refeito = convertInep2020(fs.readFileSync(PACOTE_NOVO, "utf8"), "stations-inep2020.js");
     expect(refeito).toEqual(testStationsJson);
+  });
+
+  it("o pacote ANTIGO (08/10) também é aceito: só a E1 muda (sem roteiro, sem impresso inicial, sem os campos novos)", () => {
+    if (!fs.existsSync(PACOTE_ANTIGO)) return;
+    const antigo = convertInep2020(fs.readFileSync(PACOTE_ANTIGO, "utf8"), "stations-inep2020.js") as any[];
+    expect(antigo).toHaveLength(10);
+    expect(antigo.slice(1)).toEqual(raw.slice(1));
+    expect(antigo[0].actor_script).toBe("");
+    for (const p of antigo[0].pressings) {
+      expect(p).not.toHaveProperty("initially_visible");
+      expect(p).not.toHaveProperty("display_number");
+    }
   });
 });
 
@@ -140,6 +201,44 @@ ${extra}
     expect(() => convertInep2020(OK('const A = require("fs");'), "x.js")).toThrow(/x\.js:\d+:\d+: constante não aceita "A"/);
     expect(() => convertInep2020(OK("window.SZ_INEP2020.forEach(s => { s.x = 1; }); process.exit(1);"), "x.js")).toThrow(/instrução não aceita/);
     expect((globalThis as any).__executou).toBe(false);
+  });
+
+  const NOVO = () => OK().replace(
+    'tags: [],',
+    `tags: [], candidateImage: "../../assets/x.png",`
+  ).replace(
+    "prints: [],",
+    `prints: [{ title: "Relato", body: "R" }, { displayIndex: 1, title: "Esfregaço", body: "E", img: "../../assets/y.png" }, { title: "Outro", body: "O" }],`
+  );
+
+  it("aceita candidateImage, displayIndex e img: números ficam gravados, relato é inicial, imagens são ignoradas", () => {
+    const [s] = convertInep2020(NOVO());
+    expect(s.pressings.map((p) => [p.source_number, p.display_number, p.initially_visible])).toEqual([
+      [1, 1, true],
+      [2, 1, false],
+      [3, 3, false],
+    ]);
+    expect(s.pressings.every((p) => p.image_url === null)).toBe(true);
+    expect(JSON.stringify(s)).not.toMatch(/assets|\.png/);
+  });
+
+  it("sem candidateImage nem displayIndex o impresso fica como estava (sem campos novos)", () => {
+    const [s] = convertInep2020(OK().replace("prints: [],", 'prints: [{ title: "A", body: "a" }],'));
+    expect(s.pressings[0]).toEqual({ id: "teste-inep2020-e01-p1", name: "A", content: "a", image_url: null });
+  });
+
+  it("ACTOR_SCRIPT_1 vira actor_script com linhas RÓTULO: texto, só na estação 1; outra constante continua recusada", () => {
+    const script = 'const ACTOR_SCRIPT_1 = [["DADOS PESSOAIS", "Fulano."], ["SE O CANDIDATO PERGUNTAR", "Dizer: ‘sim’."]];\nwindow.SZ_INEP2020.forEach(s => { s.actor = s.n === 1 ? ACTOR_SCRIPT_1 : []; s.max = 1; });';
+    const [s] = convertInep2020(OK(script));
+    expect(s.actor_script).toBe("DADOS PESSOAIS: Fulano.\nSE O CANDIDATO PERGUNTAR: Dizer: ‘sim’.");
+    expect(() => convertInep2020(OK('const ACTOR_SCRIPT_2 = [["A", "b"]];'), "x.js")).toThrow(/constante não aceita "ACTOR_SCRIPT_2"/);
+    expect(() => convertInep2020(OK('const ACTOR_SCRIPT_1 = [["A"]];'), "x.js")).toThrow(/ACTOR_SCRIPT_1/);
+    expect(() => convertInep2020(OK('const ACTOR_SCRIPT_1 = "texto";'), "x.js")).toThrow(/ACTOR_SCRIPT_1/);
+  });
+
+  it("propriedade desconhecida no impresso segue recusada", () => {
+    expect(() => convertInep2020(OK().replace("prints: [],", 'prints: [{ title: "A", body: "a", extra: 1 }],'))).toThrow(/impresso 1: propriedade desconhecida "extra"/);
+    expect(() => convertInep2020(OK().replace("prints: [],", 'prints: [{ title: "A", body: "a", displayIndex: 0 }],'))).toThrow(/displayIndex/);
   });
 
   it("recusa chamada desconhecida, propriedade desconhecida e soma diferente de 10 (não corrige dado)", () => {
@@ -193,7 +292,10 @@ describe("Banco local de desenvolvimento", () => {
     expect(conteudo).toHaveLength(10);
     expect(conteudo.map((c: any) => c.content.checklist_items.length)).toEqual(ITENS);
     expect(conteudo.map((c: any) => c.content.pressings.length)).toEqual(IMPRESSOS);
-    expect(conteudo.every((c: any) => c.content.version === "teste" && c.content.actor_script === "")).toBe(true);
+    expect(conteudo.every((c: any) => c.content.version === "teste")).toBe(true);
+    // roteiro do ator só na E1; relato inicial e números do impresso chegam ao conteúdo gravado
+    expect(conteudo.map((c: any) => c.content.actor_script !== "")).toEqual([true, ...Array(9).fill(false)]);
+    expect(conteudo[0].content.pressings.map((p: any) => [p.source_number, p.display_number, p.initially_visible])).toEqual([[1, 1, true], [2, 1, false]]);
 
     // rodar a carga de novo é seguro (on conflict do update)
     for (const sql of buildDuplaTestStatements()) await db.exec(sql);

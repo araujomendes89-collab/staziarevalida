@@ -10,9 +10,17 @@
  * Nada dele é executado (sem eval, sem import, sem vm). Só são avaliados literais, as chamadas C(...)/R(...)
  * do próprio arquivo e constantes de texto dele (origin: ORIGIN). Qualquer outra forma é um erro com a posição.
  *
+ * Aceita o pacote de 11/10 (o atual) e o de 08/10. O que o pacote de 11/10 acrescenta:
+ *   - `candidateImage` (folha única do candidato) na estação: a imagem NÃO é lida nem copiada; vale como marca de que o
+ *     impresso da posição 1 (o relato do caso) é visível desde o início -> `initially_visible: true`, gravado no dado;
+ *   - `displayIndex` no impresso: número que a pessoa vê na tela -> `display_number` (a posição na prova -> `source_number`);
+ *   - `img` no impresso: ignorada (imagem do pacote);
+ *   - a constante ACTOR_SCRIPT_1 (roteiro do ator da estação 1, 10 blocos) -> `actor_script`, uma linha "RÓTULO: texto" por bloco.
+ *   Os campos novos só são gravados nas estações que usam alguma dessas marcas (hoje, só a estação 1); as demais ficam como estavam.
+ *
  * Nada é inventado nem corrigido: o que o pacote não traz fica vazio.
- *   TODO(dono): roteiro do ator (não consta nos documentos do INEP) -> actor_script "".
- *   TODO(dono): imagens dos impressos (esfregaço, radiografia, recortes das páginas) -> image_url null.
+ *   TODO(dono): roteiro do ator das outras 9 estações (vem do PEP, pela Montagem, com revisão médica) -> actor_script "".
+ *   TODO(dono): imagens dos impressos e da folha do candidato vêm da Montagem; nenhuma imagem do pacote é copiada -> image_url null.
  *   Os critérios do PEP foram lidos por OCR pelo autor do pacote; conferir contra o PEP oficial antes de publicar.
  *
  * Uso: npx tsx scripts/dupla/converter-inep2020.ts "<pacote>/ui_kits/treino-dupla/stations-inep2020.js" server/dupla/data/teste-inep2020.json
@@ -56,6 +64,7 @@ export function convertInep2020(sourceText: string, fileName = "stations-inep202
   };
 
   const constants = new Map<string, unknown>();
+  let actorScript1: [string, string][] | null = null;
 
   const evaluate = (node: ts.Node): unknown => {
     if (ts.isParenthesizedExpression(node)) return evaluate(node.expression);
@@ -136,6 +145,15 @@ export function convertInep2020(sourceText: string, fileName = "stations-inep202
           // só serve à vitrine do pacote
         } else if (name === "ORIGIN") {
           constants.set(name, evaluate(decl.initializer));
+        } else if (name === "ACTOR_SCRIPT_1") {
+          // roteiro do ator da estação 1: lista de pares [rótulo, texto]
+          const value = evaluate(decl.initializer);
+          const valid =
+            Array.isArray(value) &&
+            value.length > 0 &&
+            value.every((pair) => Array.isArray(pair) && pair.length === 2 && typeof pair[0] === "string" && typeof pair[1] === "string" && pair[0].trim() && pair[1].trim());
+          if (!valid) fail(decl, "ACTOR_SCRIPT_1 precisa ser uma lista de pares [rótulo, texto], ambos preenchidos");
+          actorScript1 = value as [string, string][];
         } else {
           fail(decl, `constante não aceita "${name}"`);
         }
@@ -175,11 +193,17 @@ export function convertInep2020(sourceText: string, fileName = "stations-inep202
   if (!rawStations) return fail(fn, "window.SZ_INEP2020 não encontrado");
 
   const stations = (rawStations as Record<string, any>[]).map((s) => toStation(s, fail, sf));
+  if (actorScript1) {
+    const first = stations.find((st) => st.id === "teste-inep2020-e01");
+    if (!first) return fail(sf, "ACTOR_SCRIPT_1 existe, mas a estação 1 não");
+    first.actor_script = (actorScript1 as [string, string][]).map(([label, text]) => `${label.trim()}: ${text.trim()}`).join("\n");
+  }
   loadStations(stations); // só valida (soma 10,00 por estação etc.): lança com o motivo e nada é corrigido
   return stations;
 }
 
-const KNOWN_STATION_KEYS = new Set(["id", "n", "name", "area", "code", "duration", "tags", "scenario", "tasks", "prints", "criteria"]);
+const KNOWN_STATION_KEYS = new Set(["id", "n", "name", "area", "code", "duration", "tags", "scenario", "tasks", "prints", "criteria", "candidateImage"]);
+const KNOWN_PRINT_KEYS = new Set(["title", "body", "displayIndex", "img"]);
 const KNOWN_EXTRA_KEYS = new Set(["hint", "items", "rubric"]);
 const LEVEL: Record<string, "incorrect" | "partial" | "correct"> = {
   Inadequado: "incorrect",
@@ -211,11 +235,23 @@ function toStation(raw: Record<string, any>, fail: (node: ts.Node, message: stri
     })
     .join("\n");
 
+  if (raw.candidateImage !== undefined && (typeof raw.candidateImage !== "string" || !raw.candidateImage)) problem("candidateImage precisa ser texto");
+  const hasCandidateSheet = raw.candidateImage !== undefined;
+  const usesNewFormat = hasCandidateSheet || (raw.prints as any[]).some((p) => p && p.displayIndex !== undefined);
   const pressings = (raw.prints as any[]).map((p, i) => {
-    for (const key of Object.keys(p)) if (key !== "title" && key !== "body") problem(`impresso ${i + 1}: propriedade desconhecida "${key}"`);
+    for (const key of Object.keys(p)) if (!KNOWN_PRINT_KEYS.has(key)) problem(`impresso ${i + 1}: propriedade desconhecida "${key}"`);
     if (typeof p.title !== "string" || typeof p.body !== "string") problem(`impresso ${i + 1}: título e texto são obrigatórios`);
-    // TODO(dono): imagem do impresso (o caderno de prova tem o recorte, o pacote só traz o texto) -> image_url null
-    return { id: `${id}-p${i + 1}`, name: p.title, content: p.body, image_url: null };
+    if (p.displayIndex !== undefined && (!Number.isInteger(p.displayIndex) || p.displayIndex < 1)) problem(`impresso ${i + 1}: displayIndex precisa ser inteiro a partir de 1`);
+    if (p.img !== undefined && typeof p.img !== "string") problem(`impresso ${i + 1}: img precisa ser texto`);
+    // TODO(dono): imagem do impresso e da folha do candidato (`img`, `candidateImage`) vêm da Montagem; nada do pacote é copiado -> image_url null
+    const base = { id: `${id}-p${i + 1}`, name: p.title, content: p.body, image_url: null };
+    if (!usesNewFormat) return base;
+    return {
+      ...base,
+      source_number: i + 1, // posição na prova
+      display_number: (p.displayIndex as number | undefined) ?? i + 1, // o que a pessoa vê na tela
+      initially_visible: hasCandidateSheet && i === 0, // regra explícita gravada no dado: a folha única traz o relato (impresso 1)
+    };
   });
 
   const checklist_items = (raw.criteria as Criterion[]).map((c, i) => {
@@ -271,7 +307,7 @@ function toStation(raw: Record<string, any>, fail: (node: ts.Node, message: stri
     max_score: 10,
     duration_ms: raw.duration * 1000,
     created_at: CREATED_AT,
-    actor_script: "", // TODO(dono): o roteiro do ator não consta nos documentos do INEP
+    actor_script: "", // a estação 1 recebe o roteiro de ACTOR_SCRIPT_1 depois; TODO(dono): roteiro das outras vem da Montagem (PEP)
     doctor_scene: raw.scenario,
     doctor_tasks,
     pressings,

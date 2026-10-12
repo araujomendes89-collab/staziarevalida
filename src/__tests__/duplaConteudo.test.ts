@@ -3,6 +3,7 @@
  * Só texto de teste: nenhuma estação, pessoa ou nota de verdade.
  */
 import { describe, expect, it } from "vitest";
+import testStationsJson from "../../server/dupla/data/teste-inep2020.json";
 import { ACTOR_LABELS, splitActorScript, splitBlocks, splitTasks, toPepItems } from "../novo/app/dupla/content.js";
 
 describe("conteúdo da estação para a sala", () => {
@@ -104,5 +105,33 @@ describe("conteúdo da estação para a sala", () => {
     // fora de ordem entra na ordem; sem itens → lista vazia
     expect(toPepItems([items[2], items[0]] as any).map((p) => p.id)).toEqual(["i1", "i3"]);
     expect(toPepItems(undefined as any)).toEqual([]);
+  });
+
+  it("rótulos em caixa alta do roteiro da E1 separam em 10 pares e a soma do texto confere com o original", () => {
+    const original = (testStationsJson as { id: string; actor_script: string }[]).find((st) => st.id === "teste-inep2020-e01")!.actor_script;
+    const pairs = splitActorScript(original);
+    expect(pairs).toHaveLength(10);
+    expect(pairs.every(([label, value]) => label !== "" && value !== "")).toBe(true);
+    expect(pairs[0]).toEqual(["DADOS PESSOAIS", "Marcelo, 30 anos de idade."]);
+    expect(pairs[2]).toEqual(["CARACTERÍSTICAS DO CANSAÇO/ FRAQUEZA", "Não consta no script."]);
+    expect(pairs[7][0]).toBe("QUANDO O CANDIDATO TERMINAR A DESCRIÇÃO DO EXAME FÍSICO");
+    // nada se perde nem se inventa: remontar com "RÓTULO: valor" dá o texto de partida
+    expect(pairs.map(([label, value]) => `${label}: ${value}`).join("\n")).toBe(original);
+  });
+
+  it("caixa alta e rótulos da Montagem convivem; frase com dois-pontos e minúsculas ou curta não vira rótulo", () => {
+    expect(splitActorScript("DADOS PESSOAIS: Ana.\nMotivo da consulta: Dor.\nSE O PACIENTE PERGUNTAR (ORIENTAÇÃO): Responder.")).toEqual([
+      ["DADOS PESSOAIS", "Ana."],
+      ["Motivo da consulta", "Dor."],
+      ["SE O PACIENTE PERGUNTAR (ORIENTAÇÃO)", "Responder."],
+    ]);
+    // "Dizer: …" tem minúsculas e "SIM:" tem menos de 6 caracteres: continuam anexados ao bloco anterior
+    expect(splitActorScript("MOTIVO DE CONSULTA: Dor.\nDizer: ‘sim’.\nSIM: talvez.")).toEqual([["MOTIVO DE CONSULTA", "Dor.\nDizer: ‘sim’.\nSIM: talvez."]]);
+  });
+
+  it("linha sem rótulo continua anexada ao bloco anterior (com rótulo em caixa alta também)", () => {
+    expect(splitActorScript("HISTÓRIA ATUAL: Começou ontem.\nViu um médico.\n\nOutra linha.")).toEqual([
+      ["HISTÓRIA ATUAL", "Começou ontem.\nViu um médico.\n\nOutra linha."],
+    ]);
   });
 });

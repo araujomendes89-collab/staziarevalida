@@ -22,7 +22,7 @@
     "max_score": 10,
     "duration_ms": 600000,
     "created_at": "2026-10-01T00:00:00.000Z",
-    "actor_script": "",
+    "actor_script": "DADOS PESSOAIS: Marcelo, 30 anos de idade.\nMOTIVO DE CONSULTA: Estou me sentindo cansado, fraco, tenho tido febre, e há 10 dias comecei a ter sangramento na gengiva.\nCARACTERÍSTICAS DO CANSAÇO/ FRAQUEZA: Não consta no script.\nCARACTERÍSTICAS DA FEBRE: Não consta no script.\nCARACTERÍSTICAS DO SANGRAMENTO GENGIVAL: Tempo de evolução: Dez dias. Outras características: Não consta no script.\nANTECEDENTES PESSOAIS: Não consta no script.\nQUANDO O CANDIDATO TERMINAR A LEITURA DAS TAREFAS: Liberar o IMPRESSO 1, mesmo se o candidato não pedir.\nQUANDO O CANDIDATO TERMINAR A DESCRIÇÃO DO EXAME FÍSICO: Dizer: ‘Eu fiz um exame, você pode olhar por favor?’ e liberar o IMPRESSO 2. Em seguida, perguntar: ‘O que eu tenho doutor? Pode ser sincero!’\nSE O CANDIDATO DER ALGUM DIAGNÓSTICO: Perguntar: ‘Eu preciso fazer algum exame pra confirmar isso?’\nSE O CANDIDATO INDICAR ALGUM EXAME PARA CONFIRMAR: Perguntar: ‘Como é feito esse exame?’",
     "doctor_scene": "Você fará atendimento ambulatorial, em hospital de Atenção Secundária, de um jovem com 30 anos de idade, previamente hígido, com queixas de cansaço, fraqueza, febre e sangramento gengival há 10 dias.",
     "doctor_tasks": "1. ler o impresso 1 (relato do caso clínico presente sobre a mesa do consultório);\n2. receber o paciente;\n3. realizar exame físico específico, conforme orientação do impresso 1;\n4. responder aos questionamentos do paciente simulado.",
     "pressings": [
@@ -30,13 +30,19 @@
         "id": "teste-inep2020-e01-p1",
         "name": "Relato do caso clínico",
         "content": "Homem, 30 anos, previamente hígido, procura atendimento hospitalar por cansaço, fraqueza, febre e sangramento gengival há 10 dias. No momento, apresenta-se em regular estado geral, descorado, anictérico, taquicárdico e febril (38 °C). Na pele, equimoses nos membros inferiores. Presença de linfonodos axilares e inguinais com cerca de 2 cm de diâmetro e levemente dolorosos à palpação. O abdômen é plano, com ruídos hidroaéreos presentes, normotenso e indolor à palpação. Fígado palpável a 3 cm abaixo do rebordo costal direito, superfície lisa, bordo rombo, consistência macia e com hepatimetria de 12 cm de extensão. Baço palpável. Demais aspectos do exame físico sem alterações. ATENÇÃO: Nesse momento, dirija-se ao paciente simulado e demonstre a técnica semiológica de palpação do fígado, apesar de não haver necessariamente hepatomegalia nesse paciente simulado. A seguir, demonstre duas técnicas semiológicas de palpação do baço no paciente simulado, apesar de não haver necessariamente esplenomegalia nesse paciente simulado.",
-        "image_url": null
+        "image_url": null,
+        "source_number": 1,
+        "display_number": 1,
+        "initially_visible": true
       },
       {
         "id": "teste-inep2020-e01-p2",
         "name": "Imagem do esfregaço de sangue periférico",
         "content": "Imagem disponível no documento original (página 3 do caderno de prova).",
-        "image_url": null
+        "image_url": null,
+        "source_number": 2,
+        "display_number": 1,
+        "initially_visible": false
       }
     ],
     "checklist_items": [
