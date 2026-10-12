@@ -5,8 +5,10 @@ import React from "react";
 import { Badge, Banner, Button, EmptyState, SegmentedControl, SelectField } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { LoadError, Loading, TextArea, useLoad } from "../common.jsx";
+import { CheckDrafts } from "./AiRequests.jsx";
 import { AREA_LABEL } from "./labels.js";
 import { Label, Pre, Section, useAction, when } from "./ui.jsx";
+import { isMissingFunction } from "./AiRequests.jsx";
 
 const PAGE = 20;
 const STATUS = {
@@ -30,6 +32,17 @@ const VERDICT = {
   inconclusive: ["não foi possível conferir", "neutral"],
 };
 const SEVERITY = { critical: ["crítico", "danger"], major: ["importante", "warning"], minor: ["menor", "neutral"], info: ["informação", "info"] };
+// Selo de triagem (ch_draft_triage): só triagem das conferências, nunca aprovação.
+const TRIAGE = {
+  reprovada: ["Reprovada pela IA ou pelas regras", "danger"],
+  sem_fonte: ["Sem fonte oficial: bloqueada", "danger"],
+  com_apontamentos: ["Com apontamentos", "warning"],
+  so_regras: ["Só regras conferidas", "neutral"],
+  nao_conferida: ["Ainda não conferida", "neutral"],
+  sem_apontamentos: ["Sem apontamentos", "success"],
+};
+const TRIAGE_ORDER = ["reprovada", "sem_fonte", "com_apontamentos", "so_regras", "nao_conferida", "sem_apontamentos"];
+const TRIAGE_NOTE = "A IA não aprova: quem decide é o revisor médico.";
 const REVIEW_VERDICT = { APPROVED: "sem problemas apontados", REVISION_REQUIRED: "pede revisão", REJECTED: "recusa" };
 
 export function DraftQuestions({ reviewerAreas }) {
@@ -38,10 +51,18 @@ export function DraftQuestions({ reviewerAreas }) {
   const [status, setStatus] = React.useState("awaiting_medical_review");
   const [area, setArea] = React.useState("");
   const [page, setPage] = React.useState(0);
-  const { data, error, reload } = useLoad(
-    () => backend.rpc("app_draft_questions", { p_batch: batch || null, p_status: status || null, p_area: area || null, p_limit: PAGE, p_offset: page * PAGE }),
-    [backend, batch, status, area, page]
-  );
+  const [triage, setTriage] = React.useState("");
+  const [order, setOrder] = React.useState("");
+  const { data, error, reload } = useLoad(async () => {
+    const base = { p_batch: batch || null, p_status: status || null, p_area: area || null, p_limit: PAGE, p_offset: page * PAGE };
+    try {
+      return await backend.rpc("app_draft_questions", { ...base, p_triage: triage || null, p_order: order || null });
+    } catch (e) {
+      // site novo + SQL antigo: a função ainda não tem os filtros de triagem; mostra a lista sem eles
+      if (!isMissingFunction(e)) throw e;
+      return { ...(await backend.rpc("app_draft_questions", base)), legacy_sql: true };
+    }
+  }, [backend, batch, status, area, page, triage, order]);
   const set = (fn) => (v) => (setPage(0), fn(v));
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
@@ -51,6 +72,31 @@ export function DraftQuestions({ reviewerAreas }) {
       <Banner tone="info" icon="shield-check" title="Questões StaziaMed, não oficiais do Inep">
         Rascunhos gerados pelo motor a partir do perfil das provas oficiais. Nenhum está no banco de treino: só entram depois da revisão médica. A "revisão automática" abaixo é apontamento de IA e não vale como aprovação.
       </Banner>
+      <CheckDrafts
+        batches={data.batches}
+        batchName={batchName}
+        areaOptions={Object.entries(AREA_LABEL).filter(([c]) => ["CLINICA_MEDICA", "CIRURGIA", "GINECOLOGIA_OBSTETRICIA", "PEDIATRIA", "MFC"].includes(c)).map(([value, label]) => ({ value, label }))}
+        onSettled={reload}
+      />
+      {data.legacy_sql && (
+        <Banner tone="warning" icon="triangle-alert" title="Selo de triagem indisponível">
+          O banco de dados ainda não recebeu a atualização (SQL 9810) que traz o selo de triagem e o bloqueio de aprovação sem fonte oficial. A lista abaixo funciona como antes.
+        </Banner>
+      )}
+      {!data.legacy_sql && (
+        <Section title="Triagem">
+          <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+            {TRIAGE_NOTE} O selo resume as conferências que valem para o texto atual de cada rascunho, para você começar pelos mais problemáticos ou pelos limpos. Rascunho sem fonte oficial (nível A a D) não pode ser aprovado.
+          </p>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {TRIAGE_ORDER.map((k) => (
+              <Badge key={k} size="sm" tone={TRIAGE[k][1]}>
+                {TRIAGE[k][0]}: {data.triage_counts?.[k] ?? 0}
+              </Badge>
+            ))}
+          </div>
+        </Section>
+      )}
       <Section title="Lotes">
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {data.batches.map((b) => (
@@ -83,6 +129,16 @@ export function DraftQuestions({ reviewerAreas }) {
           onChange={set(setStatus)}
           options={[{ value: "awaiting_medical_review", label: "Aguardando" }, { value: "needs_changes", label: "Ajustes" }, { value: "approved", label: "Aprovadas" }, { value: "rejected", label: "Recusadas" }, { value: "", label: "Todas" }]}
         />
+        {!data.legacy_sql && (
+          <>
+            <div style={{ width: 230 }}>
+              <SelectField aria-label="Triagem" value={triage} onChange={(e) => set(setTriage)(e.target.value)} options={[{ value: "", label: "Toda triagem" }, ...TRIAGE_ORDER.map((k) => ({ value: k, label: TRIAGE[k][0] }))]} />
+            </div>
+            <div style={{ width: 230 }}>
+              <SelectField aria-label="Ordem" value={order} onChange={(e) => set(setOrder)(e.target.value)} options={[{ value: "", label: "Ordem do lote" }, { value: "problematicos", label: "Mais problemáticos primeiro" }, { value: "limpos", label: "Sem apontamentos primeiro" }]} />
+            </div>
+          </>
+        )}
         <div style={{ width: 200 }}>
           <SelectField aria-label="Lote" value={batch} onChange={(e) => set(setBatch)(e.target.value)} options={[{ value: "", label: "Todos os lotes" }, ...data.batches.map((b) => ({ value: b.batch, label: batchName(b.batch) }))]} />
         </div>
@@ -128,6 +184,7 @@ function Draft({ item: d, onChanged }) {
     <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--radius-md)", padding: 12 }}>
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} style={{ all: "unset", cursor: "pointer", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", width: "100%" }}>
         <Badge size="sm" tone={tone}>{label}</Badge>
+        {d.triage && <Badge size="sm" tone={TRIAGE[d.triage]?.[1]}>{TRIAGE[d.triage]?.[0] ?? d.triage}</Badge>}
         <Badge size="sm" tone="brand">{AREA_LABEL[d.area] ?? d.area}</Badge>
         <Badge size="sm">{batchName(d.batch)} · nº {d.slot}</Badge>
         {d.similarity_to_official >= 50 && <Badge size="sm" tone="warning">semelhança com questão oficial: {d.similarity_to_official}%</Badge>}
@@ -190,6 +247,15 @@ function Draft({ item: d, onChanged }) {
               </ul>
             </>
           )}
+          {d.triage && (
+            <>
+              <Label>Triagem das conferências</Label>
+              <div style={{ font: "var(--type-body-sm)" }}>
+                <Badge size="sm" tone={TRIAGE[d.triage]?.[1]}>{TRIAGE[d.triage]?.[0] ?? d.triage}</Badge> <span style={{ color: "var(--text-tertiary)" }}>{TRIAGE_NOTE}</span>
+              </div>
+              {d.blocked_no_source && <Banner tone="danger" icon="shield-alert">{d.blocked_reason} Pedir ajustes e recusar continuam liberados.</Banner>}
+            </>
+          )}
           <Label>Conferência independente</Label>
           {Object.keys(LAYER).map((layer) => {
             const c = d.checks?.[layer];
@@ -239,7 +305,7 @@ function Draft({ item: d, onChanged }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
               <TextArea label="Observação (obrigatória para pedir ajustes ou recusar)" value={note} onChange={setNote} rows={2} />
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <Button size="sm" icon="stamp" loading={act.busy} onClick={() => decide("approved", "Aprovação registrada.")}>
+                <Button size="sm" icon="stamp" loading={act.busy} disabled={Boolean(d.blocked_no_source)} title={d.blocked_no_source ? "Sem fonte oficial (nível A a D): aprovação bloqueada" : undefined} onClick={() => decide("approved", "Aprovação registrada.")}>
                   Aprovar
                 </Button>
                 <Button size="sm" variant="secondary" icon="pencil" loading={act.busy} disabled={!note.trim()} onClick={() => decide("needs_changes", "Ajustes pedidos.")}>
