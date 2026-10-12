@@ -5,6 +5,7 @@ import { useSession } from "../../session.jsx";
 import { dateBR, messageOf, TextArea } from "../common.jsx";
 import { CLAIM_STATUS, CRITICAL, isMockModel, pick, VERDICTS } from "./labels.js";
 import { hubAvailable, hubPost } from "./api.js";
+import { SearchSourcesButton, OPEN_CONTEXT } from "../assistant/SearchSourcesButton.jsx";
 
 /** Como o trecho foi achado (busca por significado ligada): só pelas palavras, só pelo sentido ou pelos dois. */
 const MATCH_LABEL = { significado: "pelo sentido", ambos: "palavras e sentido" };
@@ -243,6 +244,7 @@ function EvidenceForm({ claim, onLinked }) {
         {mode && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Busca por {mode}</span>}
       </div>
       {results && results.length === 0 && <Banner tone="warning">Nenhum trecho encontrado. Cadastre a fonte oficial com o documento completo (aba Fontes).</Banner>}
+      {results && results.length === 0 && <SearchSourcesButton tab="evidencias" context={OPEN_CONTEXT} />}
       {(results ?? []).map((p) => (
         <button
           key={p.passage_id}

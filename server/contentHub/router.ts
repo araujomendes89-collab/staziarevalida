@@ -375,7 +375,18 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
       const problems = [...check.problems];
       const allowed = await aiAllowed(deps!.db);
       if (!allowed.ok && !problems.includes(allowed.why)) problems.push(allowed.why);
-      res.json({ ready: check.ready && allowed.ok, problems, warnings: check.warnings, max_searches: cfg.functions.busca_fontes?.max_searches ?? DEFAULT_MAX_SEARCHES });
+      // a IA e o preço por busca que valem agora (tabela de preços da Central de IAs): a tela das abas estima o custo com eles
+      const primary = cfg.functions.busca_fontes?.primary ?? null;
+      const price = primary ? cfg.prices.find((p) => p.provider === primary.provider && p.model === primary.model) : null;
+      res.json({
+        ready: check.ready && allowed.ok,
+        problems,
+        warnings: check.warnings,
+        max_searches: cfg.functions.busca_fontes?.max_searches ?? DEFAULT_MAX_SEARCHES,
+        provider: primary?.provider ?? null,
+        model: primary?.model ?? null,
+        per_search_usd: price?.per_search_usd ?? null,
+      });
     } catch (error) {
       adminError(res, error);
     }

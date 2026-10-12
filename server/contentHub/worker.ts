@@ -10,6 +10,7 @@ import { compareSnapshots } from "./sourceCompare";
 import { embedderAllowed, embedPendingPassages } from "./embeddings";
 import { fetchBytes, type Resolver } from "../podcasts/extract";
 import { linkProblem, OFFICIAL_FETCH } from "./sources/officialDomains";
+import { reconcilePendingCurrency } from "./sources/currency";
 
 export interface WorkerOptions {
   pollMs?: number;
@@ -30,6 +31,8 @@ export interface ContentHubWorker {
   tick(): Promise<boolean>;
   drain(max?: number): Promise<number>;
   checkSources(): Promise<{ checked: number; changed: number; unreachable: number }>;
+  /** Refaz a classificação de atualidade pendente (sem IA). Devolve quantas buscas foram refeitas. */
+  reconcilePendingCurrency(): Promise<number>;
   /** Vetores dos trechos que faltam (busca por significado); sem a busca ligada, não faz nada. */
   embed(opts?: { max?: number; deadline?: number }): Promise<{ embedded: number; tokens: number; costUsd: number }>;
   start(): void;
@@ -81,6 +84,7 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
   let busy: Promise<unknown> | null = null;
   let timer: NodeJS.Timeout | null = null;
   let lastWatch = 0;
+  let lastPending = 0;
   let lastEmbed = 0;
 
   const tick = async () => {
@@ -155,6 +159,12 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
         busy = checkSources();
         await busy;
       }
+      // atualidade pendente (a classificação de uma busca falhou ou o SQL chegou depois): refaz, sem IA, a cada rodada de 30 minutos
+      if (!worked && Date.now() - lastPending > watchEveryMs) {
+        lastPending = Date.now();
+        busy = reconcilePendingCurrency(deps.db, deps.log);
+        await busy;
+      }
       // fila vazia: vetores que faltam para a busca por significado (um lote por vez, no máximo a cada 2 minutos)
       if (!worked && deps.embedder && Date.now() - lastEmbed > 120_000) {
         lastEmbed = Date.now();
@@ -189,6 +199,7 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
       return n;
     },
     checkSources,
+    reconcilePendingCurrency: () => reconcilePendingCurrency(deps.db, deps.log),
     embed,
     start() {
       if (running) return;

@@ -6,6 +6,7 @@ import { useSession } from "../../session.jsx";
 import { LoadError, Loading, TextArea, useLoad } from "../common.jsx";
 import { AREA_LABEL } from "./labels.js";
 import { GenerateAnalyses } from "./AiRequests.jsx";
+import { SearchSourcesButton, OPEN_CONTEXT } from "../assistant/SearchSourcesButton.jsx";
 import { UpdateQueue } from "./UpdateQueue.jsx";
 import { UpdatedQuestions } from "./UpdatedQuestions.jsx";
 import { Label, Pre, Section, useAction, when } from "./ui.jsx";
@@ -109,6 +110,7 @@ function UpdateAlerts() {
       {data.claims_with_official_evidence === 0 && (
         <p style={{ margin: "8px 0 0", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Sem fonte oficial cadastrada e conferida, o sistema não consegue dizer se uma conduta mudou desde a prova. Cadastre o documento completo na aba "Fontes oficiais".</p>
       )}
+      {data.claims_with_official_evidence === 0 && <SearchSourcesButton tab="analises" context={OPEN_CONTEXT} />}
     </Section>
   );
 }

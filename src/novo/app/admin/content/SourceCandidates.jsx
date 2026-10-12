@@ -10,6 +10,7 @@ import { PROVIDER_NAME } from "../ai/aiApi.js";
 import { LoadError, Loading, useLoad } from "../common.jsx";
 import { hubOpenFile, hubPost } from "./api.js";
 import { AUTHORITY, CANDIDATE_STATUS, DOMAIN_KIND, SOURCE_KIND, SOURCE_TYPE } from "./labels.js";
+import { BASIS, currencyBadge, isOlder, olderWarning } from "./sourceCurrency.js";
 import { KeyValue, Label, Pre, Section, shortHash, StatusBadge, useAction, when } from "./ui.jsx";
 
 const caption = { font: "var(--type-caption)", color: "var(--text-tertiary)" };
@@ -112,7 +113,9 @@ function CandidateCard({ candidate: c, onDecided }) {
     institution: edited.institution ?? c.ai_institution ?? c.site_institution ?? "",
     title: edited.title ?? c.ai_title ?? "",
     version: edited.version ?? "",
-    published_on: edited.published_on ?? isoDay(c.ai_published),
+    // só a data COMPROVADA pela conferência (no texto do documento ou declarada pela página) vem preenchida; a que só a IA disse não vira
+    // data da fonte sozinha (o administrador digita, se quiser)
+    published_on: edited.published_on ?? isoDay(c.currency_date),
     kind: edited.kind ?? c.suggested_kind ?? c.ai_kind ?? "final",
     nature: edited.nature ?? c.suggested_nature ?? "",
     level: edited.level ?? c.suggested_level ?? "",
@@ -132,15 +135,25 @@ function CandidateCard({ candidate: c, onDecided }) {
   const canApprove = open && checked && /^[A-D]$/.test(f.level) && f.title.trim() !== "" && f.institution.trim() !== "";
   const site = httpsOnly(c.final_url);
   const web = c.file_kind === "html";
+  const older = open && isOlder(c);
+  const [currencyLabel, currencyTone] = currencyBadge(c.currency);
+  const info = c.currency_info ?? {};
+  const untilIso = isoDay(c.ai_valid_until);
   const page = web ? "página web" : c.quote_page != null ? `página ${c.quote_page}` : null;
 
   const approve = () =>
     decide
       .run(async () => {
         const send = (extra) => hubPost(backend, `/source-candidates/${c.id}/approve`, { fields: { ...fields(), checked: true, ...extra } });
+        // versão mais antiga que a da biblioteca (ou que outra achada): confirmação PRÓPRIA, que diz o que a aprovação faz
+        if (older && !window.confirm(olderWarning(c))) throw new Error("Aprovação cancelada: a versão mais antiga não foi confirmada.");
         try {
-          return await send({});
+          return await send(older ? { confirm_older: true } : {});
         } catch (e) {
+          if (/^Confirme a versão (mais antiga|sem data comparável)/.test(e?.message ?? "")) {
+            if (!window.confirm(`${e.message} Aprovar mesmo assim?`)) throw new Error("Aprovação cancelada: a versão não foi confirmada.");
+            return send({ confirm_older: true });
+          }
           if (!/^Confirme a substituição/.test(e?.message ?? "")) throw e;
           if (!window.confirm(e.message)) throw new Error("Aprovação cancelada: a substituição não foi confirmada.");
           return send({ confirm_replace: true });
@@ -154,13 +167,13 @@ function CandidateCard({ candidate: c, onDecided }) {
           candidateId: c.id,
           tone: r.read_error ? "warning" : "success",
           readError: Boolean(r.read_error),
-          lines: [`Fonte aprovada: ${name}.`, ...(r.superseded ? ["A fonte vigente anterior ficou substituída."] : []), r.read_error ? r.read_error : "A leitura do documento entrou na fila."],
+          lines: [`Fonte aprovada: ${name}.`, ...(older ? ["Você confirmou a aprovação de uma versão mais antiga."] : []), ...(r.superseded ? ["A fonte vigente anterior ficou substituída."] : []), r.read_error ? r.read_error : "A leitura do documento entrou na fila."],
         });
       });
 
   const reject = () =>
     decide.run(() => hubPost(backend, `/source-candidates/${c.id}/reject`, { reason: reason.trim() }), null).then((r) => {
-      if (r) onDecided({ key: `reject-${c.id}`, candidateId: c.id, tone: "success", lines: [`Candidato rejeitado: ${f.title.trim() || c.ai_title || "sem título"}. O arquivo guardado foi apagado e este link não volta a ser sugerido.`] });
+      if (r) onDecided({ key: `reject-${c.id}`, candidateId: c.id, tone: "success", lines: [`Candidato rejeitado: ${f.title.trim() || c.ai_title || "sem título"}. O arquivo guardado foi apagado e este arquivo não volta a ser sugerido (se o conteúdo deste link mudar, a versão nova pode aparecer como outro candidato).`] });
     });
 
   const grid = { display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: 12 };
@@ -173,6 +186,7 @@ function CandidateCard({ candidate: c, onDecided }) {
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <strong>{edited.title ?? c.ai_title ?? "Sem título"}</strong>
         <StatusBadge map={CANDIDATE_STATUS} value={c.status} />
+        <Badge size="sm" tone={currencyTone}>{currencyLabel}</Badge>
         {c.ai_kind && <Badge size="sm" tone={c.ai_kind === "final" ? "neutral" : "warning"}>{SOURCE_KIND[c.ai_kind] ?? c.ai_kind}</Badge>}
       </div>
       <div style={{ display: "flex", gap: 6, flexDirection: "column", font: "var(--type-body-sm)" }}>
@@ -186,7 +200,12 @@ function CandidateCard({ candidate: c, onDecided }) {
           <span style={{ font: "var(--type-body-sm)" }}>{c.ai_reason}</span>
         </>
       )}
-      {c.replaces && <Banner tone="warning">{`Vai substituir a fonte vigente: ${c.replaces.title} (versão ${c.replaces.version ?? "—"}).`}</Banner>}
+      {older && <Banner tone="danger" title="Versão mais antiga">{`${info.note ? `${info.note} ` : ""}${c.currency === "versao_mais_antiga" ? "Não é oferecida como substituta: aprovar vai trocar a fonte mais nova pela mais antiga, e o sistema pede a sua confirmação." : "Aprovar esta não traz a versão mais nova; o sistema pede a sua confirmação."}`}</Banner>}
+      {!older && c.replaces && <Banner tone="warning">{`Vai substituir a fonte vigente: ${c.replaces.title} (versão ${c.replaces.version ?? "—"}).`}</Banner>}
+      {!older && info.note && c.currency && <span style={caption}>{info.note}</span>}
+      {(info.notes ?? []).map((n) => (
+        <span key={n} style={caption}>{n}</span>
+      ))}
       {c.quote && (
         <>
           <Label>Trecho encontrado no arquivo</Label>
@@ -203,6 +222,8 @@ function CandidateCard({ candidate: c, onDecided }) {
           ["Título achado no arquivo", c.file_title ?? "não encontrado"],
           ["Data segundo a IA", day(c.ai_published) ?? "—"],
           ["Data achada no arquivo", day(c.file_date) ?? "não encontrada"],
+          ["Data comprovada", c.currency_date ? `${day(c.currency_date)} (${BASIS[info.basis] ?? "comprovada"})` : "não comprovada no documento"],
+          ...(c.ai_valid_until ? [["Vigência segundo a IA", `${untilIso ? day(untilIso) : c.ai_valid_until}${info.valid_until_proven ? " (comprovada no texto do documento)" : " (não encontrada no documento)"}`]] : []),
           ["Arquivo", [web ? "Página web" : "PDF", c.page_count ? `${c.page_count} páginas` : null, megabytes(c.size_bytes)].filter(Boolean).join(" · ")],
           ["SHA-256", c.sha256 ? <code key="h">{shortHash(c.sha256)}</code> : null],
           ...(c.status !== "aguardando" ? [["Decidido em", when(c.decided_at)], ...(c.decision_reason ? [["Motivo", c.decision_reason]] : [])] : []),
@@ -253,13 +274,13 @@ function CandidateCard({ candidate: c, onDecided }) {
           <Checkbox label="Conferi o documento no arquivo guardado" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
           {decide.error && <Banner tone="danger">{decide.error}</Banner>}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <Button icon="check" disabled={!canApprove} loading={decide.busy} onClick={approve}>
-              Aprovar
+            <Button icon="check" variant={older ? "danger" : undefined} disabled={!canApprove} loading={decide.busy} onClick={approve}>
+              {older ? "Aprovar versão mais antiga" : "Aprovar"}
             </Button>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 220 }}>
-              <TextField label="Motivo da rejeição" value={reason} onChange={(e) => setReason(e.target.value)} hint="Pelo menos 10 caracteres. O mesmo link ou arquivo não volta a ser sugerido." />
+              <TextField label="Motivo da rejeição" value={reason} onChange={(e) => setReason(e.target.value)} hint="Pelo menos 10 caracteres. O mesmo arquivo não volta a ser sugerido; se o conteúdo do link mudar, a versão nova pode aparecer." />
             </div>
             <Button variant="secondary" icon="x" disabled={reason.trim().length < 10} loading={decide.busy} onClick={reject}>
               Rejeitar

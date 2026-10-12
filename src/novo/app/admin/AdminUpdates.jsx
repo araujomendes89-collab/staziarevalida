@@ -8,6 +8,7 @@ import { AREAS, areaLabel } from "../practice/format.js";
 import { ATUALIZACOES_SPEC } from "../../../shared/adminAssistant/atualizacoes";
 import { AssistantLayout } from "./assistant/AssistantLayout.jsx";
 import { TabAssistant } from "./assistant/TabAssistant.jsx";
+import { SearchSourcesButton } from "./assistant/SearchSourcesButton.jsx";
 import { dateTimeBR, LoadError, Loading, messageOf, TextArea, useLoad } from "./common.jsx";
 
 const REVIEW = { pending: ["Conferência pendente", "warning"], approved: ["Conferida", "success"], rejected: ["Recusada", "danger"] };
@@ -47,7 +48,7 @@ const asStored = (u) => canon({
 });
 const OFF_AIR_CONFIRM = "Esta atualização está no ar para os alunos. Com a mudança no texto, ela sai do ar até um revisor médico conferir de novo e o administrador publicar outra vez. Salvar mesmo assim?";
 
-function LegacyBox({ legacy }) {
+function LegacyBox({ legacy, sources }) {
   if (!legacy?.original_url && !legacy?.cited_questions?.length) return null;
   return (
     <Banner tone="warning" title="Veio do app anterior: conferir tudo antes de aprovar">
@@ -64,6 +65,7 @@ function LegacyBox({ legacy }) {
             Questão citada {c.exam_code} ({c.claimed_answer}): {c.matched_question_id ? `no banco oficial ela é sobre "${c.matched_topic}" — a citação não confere.` : "não existe no banco oficial."}
           </span>
         ))}
+        {sources}
       </div>
     </Banner>
   );
@@ -255,7 +257,7 @@ function Editor({ item, onSaved, onClose, isAdmin, reviewAreas }) {
           {state.done === "save" && current?.review_status === "pending" && current?.review_note && <Banner tone="warning">{current.review_note}</Banner>}
           {state.done === "save" && <Banner tone="success">Atualização salva.</Banner>}
           {current?.published && <Banner tone="warning">Esta atualização está no ar. Se você mudar o texto, ela sai do ar para os alunos até um revisor médico conferir de novo e o administrador publicar outra vez. Mudar só a posição, a prioridade ou os termos do treino não tira do ar.</Banner>}
-          {current?.origin === "legacy_app" && <LegacyBox legacy={current.legacy} />}
+          {current?.origin === "legacy_app" && <LegacyBox legacy={current.legacy} sources={<SearchSourcesButton tab="atualizacoes" form={form} />} />}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
             <SelectField label="Grande área" value={form.area} onChange={(e) => set({ area: e.target.value })} options={AREAS.map((a) => ({ value: a.id, label: a.label }))} />
             <TextField label="Tema" value={form.topic} maxLength={200} onChange={(e) => set({ topic: e.target.value })} />
