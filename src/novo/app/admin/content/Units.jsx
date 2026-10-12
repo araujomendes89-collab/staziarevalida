@@ -97,7 +97,7 @@ function UnitVersion({ id, go, isAdmin, isStaff, reviewerAreas }) {
       {notice && <Banner tone="success" icon="globe">{notice}</Banner>}
       <Problems problems={data.problems} status={v.status} isAdmin={isAdmin} />
       <ReviewFlags flags={v.review_flags} />
-      <Decisions data={data} isAdmin={isAdmin} isStaff={isStaff} reviewerAreas={reviewerAreas} onChanged={reload} onPublish={() => setPublishing(true)} />
+      <Decisions data={data} isAdmin={isAdmin} isStaff={isStaff} reviewerAreas={reviewerAreas} onChanged={reload} onPublish={() => setPublishing(true)} go={go} />
       {publishing && isAdmin && v.status === "approved" && <PublishPanel version={v} onClose={() => setPublishing(false)} onPublished={(msg) => (setPublishing(false), setNotice(msg), reload())} />}
       <Editor key={v.content_hash} version={v} claims={data.claims} editable={editable} onSaved={reload} />
       <Materials data={data} canRegenerate={editable} onChanged={reload} />
@@ -187,7 +187,7 @@ function ReviewFlags({ flags }) {
   );
 }
 
-function Decisions({ data, isAdmin, isStaff, reviewerAreas, onChanged, onPublish }) {
+function Decisions({ data, isAdmin, isStaff, reviewerAreas, onChanged, onPublish, go }) {
   const { backend } = useSession();
   const v = data.version;
   const [note, setNote] = React.useState("");
@@ -223,6 +223,14 @@ function Decisions({ data, isAdmin, isStaff, reviewerAreas, onChanged, onPublish
         </div>
         {(v.status === "awaiting_review" || v.status === "approved") && !medicalReviewer && (
           <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>A aprovação médica é de um revisor cadastrado na área {AREA_LABEL[data.area_code] ?? data.area_code ?? "?"}.</span>
+        )}
+        {isStaff && (v.status === "published" || v.status === "needs_update") && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <Button variant="secondary" icon="file-pen-line" loading={act.busy} onClick={() => act.run(() => backend.rpc("app_ch_new_version", { p_from_version_id: v.id }), null).then((id) => id && go("unidades", { versao: id }))}>
+              Criar versão para corrigir
+            </Button>
+            <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Cria um rascunho com o mesmo texto. A versão no ar continua até a nova ser aprovada e publicada.</span>
+          </div>
         )}
         {isAdmin && (v.status === "published" || v.status === "needs_update") && (
           <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>

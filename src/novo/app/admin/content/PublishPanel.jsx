@@ -18,7 +18,7 @@ export function PublishPanel({ version, onPublished, onClose }) {
     const faltaSql = /does not exist|could not find|PGRST202|42883/i.test(String(error?.message ?? error));
     return faltaSql ? (
       <Banner tone="warning" title="A publicação nova ainda não está no banco">
-        Cole no Supabase os arquivos SQL novos da Central (20261003009860 a 20261003009863, nesta ordem) e abra esta tela de novo.
+        Cole no Supabase os arquivos SQL novos da Central (20261003009860 a 20261003009864, nesta ordem) e abra esta tela de novo.
       </Banner>
     ) : (
       <LoadError error={error} retry={reload} />

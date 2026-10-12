@@ -200,6 +200,32 @@ describe("Versão nova na mesma aula, aula parecida, retirar e voltar", () => {
     expect((await sql(`select status from public.ch_unit_versions where id = $1`, [u.versao]))[0].status).toBe("retired");
   });
 
+  it("Criar versão para corrigir: rascunho com o mesmo texto, só de versão no ar, sem duplicar; depois de aprovada e publicada atualiza a mesma aula", async () => {
+    const u = await montarUnidade(sql, rpc, { titulo: "Corrigir depois de publicado", secoes: [{ heading: "Conceito", paragraphs: ["Texto com erro de digitação."] }] });
+    await expect(rpc(EDITOR, "app_ch_new_version", { p_from_version_id: u.versao })).rejects.toThrow(/Só uma versão no ar ganha versão para corrigir/);
+    await publicar(rpc, u.versao);
+    await expect(rpc(ALUNO, "app_ch_new_version", { p_from_version_id: u.versao })).rejects.toThrow(/restrito à equipe/);
+    const nova = await rpc(EDITOR, "app_ch_new_version", { p_from_version_id: u.versao });
+    expect(await rpc(EDITOR, "app_ch_new_version", { p_from_version_id: u.versao })).toBe(nova);
+    const [v2] = await sql(`select version, status, candidate_of, candidate_reason, content_hash from public.ch_unit_versions where id = $1`, [nova]);
+    expect(v2).toMatchObject({ version: 2, status: "draft", candidate_of: u.versao, candidate_reason: "Correção da versão 1" });
+    expect((await sql(`select count(*)::int n from public.ch_unit_claims where unit_version_id = $1`, [nova]))[0].n).toBe(1);
+    expect((await sql(`select count(*)::int n from public.ch_materials where unit_version_id = $1`, [nova]))[0].n).toBe(3);
+    // a versão no ar continua; a nova ainda não passa (sem aprovação nem arquivo final desta versão)
+    expect((await sql(`select status from public.ch_unit_versions where id = $1`, [u.versao]))[0].status).toBe("published");
+    expect((await problemas(nova)).join(" | ")).toMatch(/aprovação médica|arquivo final/);
+    await conteudoDaVersao(rpc, sql, nova, u.afirmacao, { titulo: "Corrigir depois de publicado", secoes: [{ heading: "Conceito", paragraphs: ["Texto corrigido, sem erro de digitação."] }] });
+    await aprovar(rpc, nova);
+    const aula = await aulaDaUnidade(u.unidade);
+    await publicar(rpc, nova);
+    const depois = await aulaDaUnidade(u.unidade);
+    expect(depois.id).toBe(aula.id);
+    expect(depois.summary).toContain("Texto corrigido, sem erro de digitação.");
+    expect(depois.summary).not.toContain("Texto com erro de digitação.");
+    // versão retirada não gera versão para corrigir
+    await expect(rpc(EDITOR, "app_ch_new_version", { p_from_version_id: u.versao })).rejects.toThrow(/Só uma versão no ar/);
+  });
+
   it("aula parecida (mesma área e tema) exige 'Publicar mesmo assim'; sem a marca nada é gravado", async () => {
     await sql(`insert into public.lessons (area, topic, title, published) values ('PEDIATRIA', 'Bronquiolite viral aguda', 'Bronquiolite (aula antiga)', true)`);
     const u = await montarUnidade(sql, rpc, { titulo: "Bronquiolite nova", tema: TEMA_PED, semAprovar: true });

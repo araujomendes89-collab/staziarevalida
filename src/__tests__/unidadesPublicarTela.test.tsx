@@ -155,6 +155,21 @@ describe("Prévia 'Publicar para os alunos'", () => {
     expect(document.body.textContent).not.toMatch(/schema cache|PGRST/);
   });
 
+  it("versão no ar: Criar versão para corrigir cria o rascunho e abre a versão nova", async () => {
+    dados.versao = VERSAO({ status: "published" });
+    const go = vi.fn();
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      chamadas.push({ fn, args });
+      if (fn === "app_ch_unit_version") return dados.versao;
+      if (fn === "app_ch_new_version") return "v2";
+      return null;
+    });
+    render(<Units {...ctx({ go })} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Criar versão para corrigir" }));
+    await waitFor(() => expect(go).toHaveBeenCalledWith("unidades", { versao: "v2" }));
+    expect(chamou("app_ch_new_version")[0].args).toEqual({ p_from_version_id: "v1" });
+  });
+
   it("versão publicada: Retirar pede o motivo e avisa que nada do aluno é apagado", async () => {
     dados.versao = VERSAO({ status: "published" });
     render(<Units {...ctx()} />);
