@@ -132,3 +132,105 @@ Pré-requisito: a produção já tem a base 8748c97, as partes 1 a 7 do pacote, 
 5. Na tela Fontes: marcar as apostilas como complementares (título completo, de preferência com editora e ano); cadastrar as siglas se houver
    (função `app_ch_set_source_aliases`; ainda sem tela). Conferir "Textos que citam fontes complementares".
 Se colar de novo a 9580 ou a 9593, colar de novo a 9620 e a 9621 depois, na ordem.
+
+## 8. Rodada de correções (revisão independente da OpenAI, achados confirmados pelo líder)
+
+Base desta rodada: 476f340. As migrações 9620 e 9621 ainda não foram coladas em produção, então foram editadas no lugar. Testes novos:
+`fontesComplementaresRodada2Banco.test.ts` (A, D, E, B-banco), `fontesComplementaresRodada2Servidor.test.ts` (B-servidor) e
+`fontesComplementaresRodada2Termos.test.ts` (C). Cada um foi visto falhando antes da correção e passando depois.
+
+### (A) ALTO: mudar o nível ou a classe de uma fonte não atualizava as marcas dos anexos
+- **Era:** o gatilho `ch_sources_refresh_flags` só disparava em título, órgão, link, autores, siglas, SHA-256 e documento, e só quando a fonte já
+  era complementar. Subir uma fonte oficial para nível E (`app_ch_set_source_authority` ou UPDATE direto) a tornava complementar pelo gatilho
+  `ch_sources_audience_guard`, mas `lesson_materials.hidden_from_student`, `lessons.guideline_hidden` e `guideline_updates.source_hidden`
+  ficavam com a marca velha: `app_lesson_material` continuava entregando o arquivo ao aluno.
+- **Mudou (9620):** o gatilho de UPDATE agora também dispara em `authority_level` e `audience` e quando a fonte ESTÁ ou ESTAVA complementar
+  (`new.audience = 'complementar' or old.audience = 'complementar'`), então a marca volta quando a fonte deixa de ser complementar. Como o
+  Postgres não aceita `OLD` na condição de um gatilho de INSERT, ficaram três gatilhos: `ch_sources_refresh_flags` (update),
+  `ch_sources_refresh_flags_ins` (insert complementar) e `ch_sources_refresh_flags_del` (apagar fonte complementar devolve a marca). `app_ch_set_source_audience`
+  já chamava o refresh e continua assim. Marca de podcast: não é guardada (`app_podcast` e `podcast_admin_view` calculam na hora), o teste prova que acompanha.
+- **Teste:** `Rodada2Banco (A)`: 6 casos, nos dois sentidos (função do administrador, UPDATE direto do nível, UPDATE direto da classe, apagar,
+  inserir nível E), conferindo a marca do material, da aula e da atualização, e `app_lesson_material` como aluna.
+
+### (B) ALTO: falha ao gravar o SHA-256 só ia para o log, e o material podia ser liberado
+- **Era:** `markFile` em `server/lessons/router.ts` e `server/podcasts/router.ts` engolia o erro; o material ficava sem SHA-256 e sem
+  classificação por impressão digital.
+- **Escolha (fecha por segurança, sem janela):** uma **retenção por caminho** no banco, em vez de "esconder depois que falhar" (que teria a
+  mesma janela se a segunda chamada também falhasse) ou "desfazer o registro" (o desfazer também pode falhar):
+  1. ANTES de registrar, o servidor pede `ch_worker_file_hold(caminho)` (tabela nova `ch_file_holds`, só o servidor mexe). Se isso falhar, o envio é
+     recusado com erro 500 em português e nada é registrado.
+  2. Enquanto a retenção existe, `ch_complementar_file` devolve verdadeiro: o arquivo fica escondido do aluno (material de aula, fonte de podcast,
+     `app_lesson_material`, `app_podcast`), pelos mesmos pontos que já escondem fonte complementar. A retenção também vale no `ch_refresh_hidden_flags`.
+  3. Registrado o arquivo, o servidor calcula e grava o SHA-256 (`ch_worker_file_sha`, que solta a retenção antes de gravar para o gatilho
+     recalcular). Se falhar, repete UMA vez (`server/contentHub/fileSha.ts`). Se falhar de novo, a retenção fica, o arquivo segue escondido, o log recebe a
+     frase em português e a equipe recebe o aviso "Não foi possível conferir a impressão digital do arquivo; confira antes de liberar. Por segurança, o arquivo
+     ficou escondido do aluno até essa conferência." (aulas: campo `aviso` da resposta e faixa amarela na tela de aulas por `sha_pendente`; podcasts: campo `note` que a
+     tela já mostra, e a fonte aparece com o selo "escondida do aluno").
+  4. `ch_worker_file_sha` agora devolve 0 e mantém a retenção se não houver material com aquele caminho (o servidor trata como falha); o material antigo (já em
+     produção, sem SHA-256 e sem retenção) NÃO é afetado.
+- **Como a equipe resolve:** enviar o arquivo de novo (substitui o de slides; nos outros tipos, remover o antigo). Se quiser uma tela de "liberar manualmente",
+  é decisão de produto; não criei.
+- **Mudança de contrato:** `ch_worker_file_hold` é nova e o servidor novo a chama: colar a 9620 ANTES de publicar o servidor (já era a ordem do passo 4).
+  `lesson_materials_json` (equipe) e `podcast_admin_view` (equipe) ganharam o campo `sha_pendente`.
+- **Teste:** `Rodada2Banco (B)` (retenção, solta com o SHA, SHA de apostila continua escondendo, caminho sem material mantém a retenção, podcast,
+  permissões) e `Rodada2Servidor` (banco falso que falha no SHA: funcionando; falha passageira com a nova tentativa; falha nas duas; falha ao pedir a
+  retenção; aulas e podcasts).
+
+### (C) ALTO: lista de termos indisponível desligava a conferência sem aviso
+- **Era:** `loadComplementarTerms` devolvia lista vazia quando a RPC falhava sem cache, e uma resposta que não era lista virava lista vazia guardada por 60 s.
+- **Mudou (`server/contentHub/complementarGuard.ts`):** só resposta boa (array) entra no cache; falha ou resposta inválida nunca é guardada. Com falha: usa a
+  última lista boa se tiver até 6 horas (aviso no log em português); sem lista boa, LANÇA `ComplementarTermsUnavailable` (status 503, mensagem
+  "Não foi possível conferir agora a lista de fontes que o aluno não pode ver. Tente de novo em instantes."). Sem banco (db nulo, só teste/dev): sem termos, como antes.
+- **Por chamador:**
+  - Tutor texto (`engine.ts`, `termsOrFail`): erro 503 do Tutor "não conseguiu fazer uma conferência de segurança agora", antes de chamar a IA e de gravar qualquer mensagem.
+  - Tutor voz (`realtime.ts`, fala do professor): 503 e a fala NÃO é gravada no histórico.
+  - Ferramentas da voz (`tools.ts`: evento de aprendizagem e memória): nada é guardado; a voz recebe o erro curto em português.
+  - Busca de fontes do Tutor (`searchSources`): sem a lista, não devolve fonte nenhuma (já era tratado como falha da busca, agora com o aviso certo no log).
+  - Roteiro de podcast (gerar e conferir o roteiro) e assistente de aula: 503 com a mensagem, sem chamar a IA e sem gravar nada (a lista é pedida antes da IA).
+  - Análise e reanálise de questões: devolvem o aviso em `pending`, sem chamar a IA e sem gravar.
+- **Teste:** `Rodada2Termos` (21): cache, resposta inválida (6 formas), último cache bom, mais de 6 h, e cada chamador com banco real e a lista falhando de
+  propósito. Ajustei o teste antigo `fontesComplementaresServidor` que provava o comportamento ruim ("se o banco falhar, sobram os termos fixos").
+
+### (D) MÉDIO: entidades HTML diferentes no banco e no servidor
+- **Era:** o servidor decodificava `&#97;` para `a`; o banco trocava a entidade inteira por espaço, então "S&#97;ngue nos Olhos — Pediatria" escapava do filtro.
+- **Mudou (9620):** função nova `ch_decode_entities` (uma passada, como o servidor): decimais, hexadecimais (`&#x61;`, `&#X61;`, com zeros à esquerda), nomeadas
+  `nbsp amp quot lt gt apos shy` (sem diferenciar maiúsculas) e qualquer outra vira espaço; código impossível (0, acima de U+10FFFF, metade de par substituto) vira espaço;
+  `&amp;#97;` vira `&#97;`, não `a`. `ch_text_key` a usa depois de tirar as etiquetas e antes do `%xx`, na mesma ordem do servidor.
+- **Teste:** `Rodada2Banco (D)`: 29 textos (HTML, %20, largura zero, hífen suave, acento solto, NFD, NFKC, homóglifos do cirílico e do grego, maiúsculas, entidades de todos os tipos)
+  dão a MESMA chave em `ch_text_key` e em `normalizeKey` do servidor; e o título cadastrado escrito com `&#97;`/`&#x61;` agora é reconhecido por `ch_complementar_hit`.
+
+### (E) MÉDIO: o gatilho de salvar montava a expressão a cada linha (e a cada campo, com biblioteca vazia)
+- **Mudou (9621):** indicador `v_built` (a expressão é obtida no máximo uma vez por chamada, mesmo quando o resultado é NULL = biblioteca sem termos) e cache no
+  nível da instrução: `set_config('apoio.cre', …, true)` guarda a expressão ('N' = sem termos); um gatilho de instrução (`ch_guard_complementar_reset`, antes de insert/update, nas
+  6 tabelas conferidas) zera no começo de cada instrução. Assim um lote grande monta uma vez, e uma instrução nova nunca vê a biblioteca velha (equivale ao que já
+  acontecia: a expressão sempre foi relida a cada instrução). Resultado idêntico ao de antes. Escolhi zerar por instrução (e não por mudança em `ch_sources`) para não
+  depender de invalidação cruzada entre transações.
+- **Teste:** `Rodada2Banco (E)`: lote de 500 linhas com biblioteca vazia (antes: 2999 construções) e com termos (antes: 500): no máximo 1 por instrução (contador por sequência
+  numa função instrumentada); lote limpo salva as 500; lote com 1 linha citando o título cadastrado é barrado inteiro com a mesma mensagem e código 22023; troca de título
+  da fonte entre duas instruções é vista pela segunda; toda tabela com o gatilho de salvar tem o gatilho de zerar.
+
+### (F) Decisões de desenho, NÃO são defeito (documentado, nada mudou)
+1. Leitura direta pela API REST das colunas de texto livre de `lessons`, `guideline_updates` e `tutor_*` não passa pelo filtro (só as colunas de fonte foram fechadas): texto novo é
+   barrado ao salvar e o texto antigo aparece na varredura da tela Fontes para a equipe reescrever.
+2. Título complementar curto (menos de 3 palavras ou 20 letras) só é escondido quando o texto inteiro é igual ao título.
+3. Nome de arquivo curto e SHA-256 dentro de texto livre não são filtrados (só o arquivo em si, por SHA-256).
+
+### Ordem e base das funções, de novo (estado de produção simulado)
+Mesmo método da seção 2 (base 23d53c1 + partes 1 a 7 + 9630 + 9610; 9620 e 9621 coladas duas vezes): sem erro; a 3ª colagem não muda nenhuma função; **25 funções mudam, 54 são
+novas** (as 3 novas desta rodada: `ch_decode_entities`, `ch_guard_complementar_reset`, `ch_worker_file_hold`); nenhuma função de produção sumiu ou perdeu corpo. As únicas diferenças novas contra a
+produção, além das da seção 2, são o campo `sha_pendente` em `lesson_materials_json` e `podcast_admin_view`. Fumaça: tudo ok.
+
+### Testes desta rodada
+- Os 12 arquivos de fontes complementares (T2, T3, T4 banco e telas, varredura banco e servidor, banco, equipe, equipe tela, ordem, servidor, tela): 385 passaram, 99 `it.fails` esperados, 1 pulado, 0 falhas
+  (= 485, igual à seção 4). `registroAdministracao`, `registroAdministracaoBanco`, `supabaseLessonsApi` e os três arquivos novos da rodada: 142 passaram.
+- Os 37 arquivos que citam os arquivos de servidor alterados (tutor*, lessons, podcasts, análise/reanálise, telas de aulas e podcasts, etc.) e os 60 outros que rodam as migrações
+  (supabase*Api, fontesOficiais*, aiCentral*, contentHub*, sqie, arena, etc.): todos passaram.
+- Build (`npm run build`): passou. `tsc --noEmit`: 1831 erros, igual à base (nenhum novo).
+- Nunca rodei a suíte inteira; tudo pela fila `vaga-de-teste.sh`, no máximo 12 arquivos por vez.
+
+### Ressalvas honestas
+- A retenção (B) cobre arquivos enviados DEPOIS da 9620. Material de aula e fonte de podcast que já existem em produção sem SHA-256 continuam sem ele (não há como calcular sem os bytes);
+  uma varredura única do servidor que leia os arquivos antigos e grave o SHA-256 seria um trabalho à parte.
+- O Flashcast copiado de um podcast para a aula (`/:id/flashcast`) não passa pela retenção (é áudio gerado pelo próprio servidor, não arquivo enviado pela equipe).
+- A lista de termos em cache vencida (C) vale por até 6 horas se o banco cair; é uma escolha minha (o líder pediu "ou usa o último cache bom"). Se preferir recusar sempre que o banco falhar, é só zerar esse limite.
+- O cache da expressão (E) é por instrução, não por transação: um lote feito por uma função que dá uma instrução por linha não ganha com isso.
