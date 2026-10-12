@@ -179,7 +179,7 @@ export function FlashcardsScreen({ go }) {
         <EmptyState
           icon="layers"
           title={area ? `Nenhum flashcard de ${areaLabel(area)}` : "Nenhum flashcard ainda"}
-          description="Crie seus próprios cartões aqui ou salve um a partir da correção de uma questão. O baralho oficial aparece aqui quando for publicado."
+          description="Crie seus próprios cartões aqui ou salve um a partir da correção de uma questão. O baralho StaziaMed aparece aqui quando for publicado."
           action={
             <Button icon="plus" onClick={() => setCreating(true)}>
               Criar flashcard

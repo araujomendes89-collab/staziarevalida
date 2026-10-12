@@ -2,6 +2,7 @@
 // arquivos para baixar, duplicar, gerar de novo, editar). Só a equipe (administrador ou editor).
 import React from "react";
 import { Badge, Banner, Button, EmptyState, SelectField, TextField } from "../../../../ds";
+import { AREA_LABEL } from "../labels.js";
 import { useSession } from "../../../session.jsx";
 import { useMobile } from "../../../Shell.jsx";
 import { dateTimeBR, ListRow, LoadError, Loading, useDebounced, useLoad } from "../../common.jsx";
@@ -81,6 +82,7 @@ function MaterialList({ go }) {
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <strong style={{ overflowWrap: "anywhere" }}>{m.title}</strong>
                 <StatusBadge map={STATUS} value={m.status} />
+                {m.review_pending && <Badge size="sm" tone="warning" icon="stethoscope">Aguardando revisão médica</Badge>}
               </div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                 <Badge size="sm" icon={MODEL_ICON[m.model]}>
@@ -132,6 +134,40 @@ async function download(backend, file, material, version) {
 }
 
 const fileLabel = (f) => `${f.format.toUpperCase()}${SIDE_LABEL[f.side] ? ` (${SIDE_LABEL[f.side]})` : ""}`;
+
+/** Revisão médica do material com dose ou contraindicação: trava o download até um revisor da área registrar. */
+function ReviewBox({ review, version, onDone }) {
+  const { backend } = useSession();
+  const [note, setNote] = React.useState("");
+  const act = useAction();
+  const area = review.area ? (AREA_LABEL[review.area] ?? review.area) : "qualquer área";
+  if (review.done)
+    return (
+      <Banner tone="success" icon="stethoscope" title="Revisado por médico da área">
+        {review.by_name ? `${review.by_name} · ` : ""}
+        {dateTimeBR(review.at)}
+        {review.note ? ` · ${review.note}` : ""}
+      </Banner>
+    );
+  return (
+    <Banner tone="warning" icon="stethoscope" title="Este material tem dose ou contraindicação: falta a revisão médica">
+      Os arquivos ficam travados para baixar até um revisor médico cadastrado na área ({area}) registrar a revisão desta versão. Se você editar o texto, a versão nova pede a revisão de novo.
+      {review.can_review ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+          <TextField label="O que foi conferido (opcional)" value={note} onChange={(e) => setNote(e.target.value)} />
+          <div>
+            <Button size="sm" icon="stethoscope" loading={act.busy} onClick={() => act.run(() => backend.rpc("app_ch_visual_review", { p_version_id: version.id, p_note: note }), "Revisão médica registrada.").then((r) => r && onDone())}>
+              Registrar revisão médica
+            </Button>
+          </div>
+          {act.feedback}
+        </div>
+      ) : (
+        <div style={{ marginTop: 6 }}>O revisor da área precisa abrir este material aqui e registrar a revisão.</div>
+      )}
+    </Banner>
+  );
+}
 
 function processingNote(status) {
   if (status?.worker) return "A geração roda neste servidor: leva alguns segundos.";
@@ -189,6 +225,8 @@ function MaterialPage({ id, go, params, status }) {
     await act.run(() => navigator.clipboard.writeText(visualCommandText(current.content)), "Comando copiado (serve no formulário e no terminal).");
   };
   const check = current?.check_result ?? {};
+  const review = current?.medical_review;
+  const reviewPending = Boolean(review?.required && !review?.done);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -231,6 +269,7 @@ function MaterialPage({ id, go, params, status }) {
         </Banner>
       )}
       {current?.render_status === "draft" && <Banner tone="brand">Rascunho: ainda não gerado. Use "Gerar" para criar os arquivos.</Banner>}
+      {review?.required && <ReviewBox review={review} onDone={reload} version={current} />}
       {act.feedback}
 
       <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "minmax(280px, 460px) minmax(0, 1fr)", gap: 16, alignItems: "start" }}>
@@ -253,7 +292,7 @@ function MaterialPage({ id, go, params, status }) {
             {current?.files?.length ? (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {current.files.map((f) => (
-                  <Button key={f.id} variant="secondary" icon="download" disabled={current.render_status !== "ready"} onClick={() => act.run(() => download(backend, f, m, current.version), "Download iniciado.")}>
+                  <Button key={f.id} variant="secondary" icon="download" disabled={current.render_status !== "ready" || reviewPending} onClick={() => act.run(() => download(backend, f, m, current.version), "Download iniciado.")}>
                     {fileLabel(f)}
                   </Button>
                 ))}
@@ -262,6 +301,7 @@ function MaterialPage({ id, go, params, status }) {
               <p style={{ margin: 0, color: "var(--text-tertiary)" }}>Ainda sem arquivos nesta versão.</p>
             )}
             {current?.render_status === "check_failed" && <p style={{ margin: "8px 0 0", font: "var(--type-caption)", color: "var(--warning-text)" }}>Arquivos reprovados na conferência não são liberados para baixar.</p>}
+            {reviewPending && <p style={{ margin: "8px 0 0", font: "var(--type-caption)", color: "var(--warning-text)" }}>Os arquivos ficam travados para baixar até a revisão médica da área.</p>}
             {info.id === "flashcard_a6" && <p style={{ margin: "8px 0 0", font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Impressão: PDF com frente e verso em sequência (105 × 148 mm + sangria de 3 mm). Imprima em duplex, virando no eixo longo, e confira uma folha de teste antes da tiragem.</p>}
             {info.id === "flashcard_digital" && <p style={{ margin: "8px 0 0", font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Digital: duas imagens (frente e verso) e um PDF com as duas páginas em sequência.</p>}
           </Section>
@@ -317,7 +357,7 @@ function MaterialPage({ id, go, params, status }) {
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {v.files.map((f) => (
-                      <Button key={f.id} variant="ghost" size="sm" icon="download" disabled={v.render_status !== "ready"} onClick={() => act.run(() => download(backend, f, m, v.version), "Download iniciado.")}>
+                      <Button key={f.id} variant="ghost" size="sm" icon="download" disabled={v.render_status !== "ready" || Boolean(v.medical_review?.required && !v.medical_review?.done)} onClick={() => act.run(() => download(backend, f, m, v.version), "Download iniciado.")}>
                         {fileLabel(f)}
                       </Button>
                     ))}
