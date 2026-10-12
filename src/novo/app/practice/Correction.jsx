@@ -4,6 +4,7 @@ import React from "react";
 import { Badge, Button, Icon } from "../../ds";
 import { FlashcardForm } from "../review/FlashcardForm.jsx";
 import { QuestionCommentary, useCommentary } from "./QuestionCommentary.jsx";
+import { LinkedSources, useLinkedSources } from "./LinkedSources.jsx";
 import { useSession } from "../session.jsx";
 import { ERROR_TYPE, KIND_LABEL } from "./diagnosisLabels.js";
 import { isStaziamed } from "./format.js";
@@ -140,6 +141,8 @@ export function Correction({ selected, correction, question, tutorContext = "que
   // Análise Stazia publicada (se houver): substitui "Por que não as outras?", que fica como reserva
   const fetched = useCommentary(staz ? null : question?.id);
   const commentary = annulled ? null : fetched;
+  // Fontes vinculadas (12/10/2026): o trecho do documento oficial que sustenta a resposta; questão anulada não tem resposta a sustentar
+  const linked = useLinkedSources(annulled ? null : question?.id);
   return (
     <>
       <Verdict selected={selected} correction={correction} />
@@ -181,6 +184,8 @@ export function Correction({ selected, correction, question, tutorContext = "que
           <b>Conduta esperada.</b> {correction.expected_conduct}
         </div>
       )}
+      {/* o cartão de atualização do comentário já mostra "o que mudou": a nota não se repete no quadro */}
+      {!annulled && <LinkedSources data={linked} hideUpdateNote={Boolean(commentary?.update_card)} />}
       {!staz && correction.inep_intent && (
         <div>
           <div className="sm-overline">O que a questão avalia</div>

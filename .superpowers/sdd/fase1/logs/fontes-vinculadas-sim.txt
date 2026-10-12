@@ -1,0 +1,18 @@
+== A) antes da leva 4
+  ok  0-CONFERIR: FALTA: a leva 4 (Questões StaziaMed) e a fonte complementar: cole antes as levas da ORDEM GERAL; as duas tabelas (víncul
+  ok  arquivo 1 para com aviso: Cole antes a fonte complementar (9620), a leva 3 e a leva 4 (Questões StaziaMed): esta migração parte delas.
+  ok  nada mudou no banco
+== B) depois das levas 4 e 5 (pacotes reais)
+  ok  0-CONFERIR antes de colar: FALTA: as duas tabelas (vínculos e conferências) com RLS; leitura só da equipe (visitante sem acesso…
+  ok  volta 1: OK: Fontes vinculadas colada (9 conferências true)
+  ok  volta 2: OK: Fontes vinculadas colada (9 conferências true)
+  ok  volta 3: OK: Fontes vinculadas colada (9 conferências true)
+  ok  1a x 2a volta: nenhuma diferença (funções, gatilhos, políticas, ACL, RLS, colunas, restrições, índices, dados)
+  ok  2a x 3a volta: nenhuma diferença
+  ok  só coisas novas (nada existente mudou ou sumiu)
+     novos: app_admin_question_source_link_confirm(uuid), app_admin_question_source_link_remove(uuid,text), app_admin_question_source_links(text), app_question_source_links(text), question_source_link_hidden(uuid), question_source_links_guard(), question_source_vigente_problem(uuid)
+     tabelas novas: question_source_checks, question_source_links | políticas novas: 2 | gatilhos novos: 1
+  ok  0-CONFERIR depois: OK: Fontes vinculadas no banco (2 tabelas com RLS, função do aluno, 3 funções da equipe, regras e nota do que mudou)
+== C) pacote x migração colada direto (mesma estrutura)
+  ok  pacote x migração direta: mesma estrutura
+RESULTADO FINAL: o pacote cola 3x sem erro sobre a produção simulada com as levas 4 e 5, só cria coisas novas, e o 0-CONFERIR responde OK

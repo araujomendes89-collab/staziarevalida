@@ -1,0 +1,189 @@
+[
+ {
+  "id": "cab-29-rastreamento-2010",
+  "titulo": "Rastreamento (Cadernos de Atenção Primária, nº 29)",
+  "instituicao": "Ministério da Saúde (Secretaria de Atenção à Saúde, Departamento de Atenção Básica)",
+  "ano": 2010,
+  "versao": "1ª edição, 2010; Série A. Normas e Manuais Técnicos; ISBN 978-85-334-1729-8; 97 páginas",
+  "url": "https://bvsms.saude.gov.br/bvs/publicacoes/caderno_atencao_primaria_29_rastreamento.pdf",
+  "ato": null,
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "dengue-manejo-6ed-2024",
+  "titulo": "Dengue: diagnóstico e manejo clínico – adulto e criança (6ª edição)",
+  "instituicao": "Ministério da Saúde / Secretaria de Vigilância em Saúde e Ambiente (SVSA/MS) / Departamento de Doenças Transmissíveis",
+  "ano": 2024,
+  "versao": "6ª edição, 2024, versão eletrônica; PDF de 83 páginas (modificado em 20/02/2024)",
+  "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/dengue/dengue-diagnostico-e-manejo-clinico-adulto-e-crianca",
+  "ato": null,
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "gvs-6ed-rev-v2",
+  "titulo": "Guia de Vigilância em Saúde: volume 2 (6ª edição revisada)",
+  "instituicao": "Ministério da Saúde / Secretaria de Vigilância em Saúde e Ambiente (SVSA/MS) / Departamento de Ações Estratégicas de Epidemiologia e Vigilância em Saúde e Ambiente",
+  "ano": 2024,
+  "versao": "6ª edição revisada; ISBN 978-65-5993-505-5; 560 páginas no PDF",
+  "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/vigilancia/guia-de-vigilancia-em-saude-volume-2-6a-edicao/@@download/file",
+  "ato": "Lista de notificação compulsória: Portaria GM/MS nº 11.211, de 13/05/2026 (altera o Anexo 1 do Anexo V da PC GM/MS nº 4/2017), após a Portaria GM/MS nº 10.175/2026",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "gvs-6ed-rev-v3",
+  "titulo": "Guia de Vigilância em Saúde: volume 3 (6ª edição revisada)",
+  "instituicao": "Ministério da Saúde / Secretaria de Vigilância em Saúde e Ambiente (SVSA/MS) / Departamento de Ações Estratégicas de Epidemiologia e Vigilância em Saúde e Ambiente",
+  "ano": 2024,
+  "versao": "6ª edição revisada; ISBN 978-65-5993-503-1; 238 páginas no PDF",
+  "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/vigilancia/guia-de-vigilancia-em-saude-volume-3-6a-edicao/@@download/file",
+  "ato": null,
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "ms-linha-de-cuidado-violencias-criancas-2010",
+  "titulo": "Linha de Cuidado para a Atenção Integral à Saúde de Crianças, Adolescentes e suas Famílias em Situação de Violências: orientação para gestores e profissionais de saúde",
+  "instituicao": "Ministério da Saúde / Secretaria de Atenção à Saúde / Departamento de Ações Programáticas e Estratégicas",
+  "ano": 2010,
+  "versao": "1ª edição, 2010; 104 páginas (Série F – Comunicação e Educação em Saúde)",
+  "url": "https://bvsms.saude.gov.br/bvs/publicacoes/linha_cuidado_criancas_familias_violencias.pdf",
+  "ato": null,
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "ms-manual-gestacao-alto-risco-2022",
+  "titulo": "Manual de Gestação de Alto Risco",
+  "instituicao": "Ministério da Saúde (Secretaria de Atenção Primária à Saúde)",
+  "ano": "2022",
+  "versao": "1ª edição, 2022, versão eletrônica (694 páginas no PDF)",
+  "url": "https://bvsms.saude.gov.br/bvs/publicacoes/manual_gestacao_alto_risco.pdf",
+  "ato": null,
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "ms-pcdt-avci-2023",
+  "titulo": "Protocolo Clínico e Diretrizes Terapêuticas do Acidente Vascular Cerebral Isquêmico Agudo",
+  "instituicao": "Ministério da Saúde (SAES e SECTICS)",
+  "ano": "2023",
+  "versao": "Portaria Conjunta SAES/SECTICS nº 29, de 12/12/2023 (baseada nos relatórios Conitec 589 e 677 de 2021)",
+  "url": "https://www.gov.br/saude/pt-br/assuntos/pcdt/a/acidente-vascular-cerebral-isquemico-agudo",
+  "ato": "Portaria Conjunta SAES/SECTICS nº 29, de 12/12/2023",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "ms-pcdt-endometriose-2026",
+  "titulo": "Protocolo Clínico e Diretrizes Terapêuticas da Endometriose",
+  "instituicao": "Ministério da Saúde (SAES, SAPS e SECTICS)",
+  "ano": "2026",
+  "versao": "Portaria Conjunta SAES/SAPS/SCTIE nº 54, de 02/06/2026; 52 páginas",
+  "url": "https://www.gov.br/conitec/pt-br/midias/protocolos/portaria-conjunta-n-54-endometriose.pdf/@@display-file/file",
+  "ato": "Portaria Conjunta SAES/SAPS/SCTIE n. 54, de 02/06/2026",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "ms-pcdt-has-2025",
+  "titulo": "Protocolo Clínico e Diretrizes Terapêuticas da Hipertensão Arterial Sistêmica",
+  "instituicao": "Ministério da Saúde (SECTICS/MS)",
+  "ano": "2025",
+  "versao": "Portaria SECTICS/MS nº 49, de 23/07/2025; Conitec: consulta pública nº 11/2025, relatório de recomendação de jul/2025",
+  "url": "https://www.gov.br/saude/pt-br/assuntos/pcdt/h/hipertensao-arterial-sistemica.pdf",
+  "ato": "Portaria SECTICS/MS nº 49, de 23 de julho de 2025",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "ms-pcdt-ic-fer-2024",
+  "titulo": "Protocolo Clínico e Diretrizes Terapêuticas da Insuficiência Cardíaca com Fração de Ejeção Reduzida",
+  "instituicao": "Ministério da Saúde (SAES e SECTICS)",
+  "ano": "2024",
+  "versao": "Portaria Conjunta SAES/SECTICS nº 10, de 13/09/2024; anexo alterado em 11/11/2024",
+  "url": "https://www.gov.br/saude/pt-br/assuntos/pcdt/i/insuficiencia-cardiaca-com-fracao-de-ejecao-reduzida",
+  "ato": "Portaria Conjunta SAES/SECTICS nº 10, de 13/09/2024 (anexo alterado em 11/11/2024)",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "ms-pcdt-transmissao-vertical-2022",
+  "titulo": "Protocolo Clínico e Diretrizes Terapêuticas para Prevenção da Transmissão Vertical de HIV, Sífilis e Hepatites Virais",
+  "instituicao": "Ministério da Saúde (SECTICS e SVS)",
+  "ano": "2022",
+  "versao": "2ª edição revisada, Brasília-DF 2022 (224 p.; ISBN 978-65-5993-234-4); ato: Portaria SCTIE/MS nº 55, de 11/11/2020",
+  "url": "https://bvsms.saude.gov.br/bvs/publicacoes/protocolo_clinico_hiv_sifilis_hepatites.pdf",
+  "ato": "Portaria SCTIE/MS nº 55, de 11/11/2020",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "ms-samu-protocolo-sav",
+  "titulo": "Protocolos de Suporte Avançado de Vida (Protocolo SAMU 192)",
+  "instituicao": "Ministério da Saúde - SAS/DAHU (com PROADI-SUS/Hospital Alemão Oswaldo Cruz)",
+  "ano": "2016",
+  "versao": "Elaboração agosto/2014; revisão fevereiro/2016 (conforme os créditos do PDF; 638 páginas)",
+  "url": "https://www.gov.br/saude/pt-br/composicao/saes/samu-192/publicacoes/protocolo-de-suporte-avancado-de-vida-1.pdf",
+  "ato": "Sem portaria própria; publicação do Ministério da Saúde/SAMU 192 (edição 2016, republicada na página em 23/04/2024)",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "pcdt-doenca-de-parkinson",
+  "titulo": "Protocolo Clínico e Diretrizes Terapêuticas da Doença de Parkinson",
+  "instituicao": "Ministério da Saúde (SAES/SECTICS)",
+  "ano": "2025",
+  "versao": "Portaria Conjunta SAES/SECTICS nº 16, de 01/08/2025 (página gov.br/saude: \"nova portaria 18/09/2025\")",
+  "url": "https://www.gov.br/saude/pt-br/assuntos/pcdt/d/doenca-de-parkinson/@@download/file",
+  "ato": "Portaria Conjunta SAES/SECTICS nº 16, de 01/08/2025 (DOU 18/09/2025)",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "pcdt-esquizoafetivo",
+  "titulo": "Protocolo Clínico e Diretrizes Terapêuticas do Transtorno Esquizoafetivo",
+  "instituicao": "Ministério da Saúde (SAES/SCTIE e Conitec)",
+  "ano": 2021,
+  "versao": "Portaria Conjunta SAES/SCTIE nº 07, de 14 de maio de 2021 (55 páginas); a página fala em atualização da portaria em 31/05/2021",
+  "url": "https://www.gov.br/saude/pt-br/assuntos/pcdt/t/transtorno-esquizoafetivo/@@download/file",
+  "ato": "Portaria Conjunta SAES/SECTICS nº 07, de 14/05/2021",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "pcdt-esquizofrenia",
+  "titulo": "Protocolo Clínico e Diretrizes Terapêuticas: Esquizofrenia",
+  "instituicao": "Ministério da Saúde (Secretaria de Atenção à Saúde)",
+  "ano": 2013,
+  "versao": "Portaria SAS/MS nº 364, de 9 de abril de 2013 (27 páginas); página do Ministério com data de 20/01/2025",
+  "url": "https://www.gov.br/saude/pt-br/assuntos/pcdt/e/esquizofrenia/@@download/file",
+  "ato": "Portaria SAS/MS nº 364, de 09/04/2013",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "pcdt-pep-2024",
+  "titulo": "Protocolo Clínico e Diretrizes Terapêuticas para Profilaxia Pós-Exposição (PEP) de Risco à Infecção pelo HIV, ISTs e Hepatites Virais",
+  "instituicao": "Ministério da Saúde / SECTICS e SVSA (DATHI)",
+  "ano": 2024,
+  "versao": "Edição 2024; ISBN 978-65-5993-621-2; 81 p.; PDF de 83 páginas (criado em 09/09/2024)",
+  "url": "https://www.gov.br/aids/pt-br/central-de-conteudo/pcdts/copy3_of_PCDT_PEP_interativo.pdf/@@display-file/file",
+  "ato": "Portaria SECTICS/MS nº 14, de 08/04/2024 (anexo alterado em 20/03/2025 segundo a página gov.br/saude)",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "pcdt-tabagismo",
+  "titulo": "Protocolo Clínico e Diretrizes Terapêuticas do Tabagismo",
+  "instituicao": "Ministério da Saúde (SAES/SCTIE e Conitec)",
+  "ano": 2020,
+  "versao": "Portaria Conjunta SAES/SCTIE nº 10, de 16 de abril de 2020 (67 páginas); página do Ministério com data de 21/01/2025",
+  "url": "https://www.gov.br/saude/pt-br/assuntos/pcdt/t/tabagismo/@@download/file",
+  "ato": "Portaria Conjunta SAES/SCTIE nº 10, de 16/04/2020",
+  "status": "verificado",
+  "vigente": true
+ }
+]

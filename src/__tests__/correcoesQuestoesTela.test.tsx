@@ -193,7 +193,8 @@ describe("Rodada 2 — 'Marcar como revisadas' nunca libera ao aluno o texto ant
     fireEvent.change(screen.getByLabelText("Explicação da B (opcional)"), { target: { value: "B era a do gabarito preliminar." } });
     fireEvent.change(screen.getByLabelText("Conduta esperada"), { target: { value: "Conduta da C." } });
   };
-  const order = () => backend.rpc.mock.calls.map((c: any[]) => c[0]).filter((fn: string) => fn !== "app_admin_question");
+  // só as gravações: as leituras da questão e do quadro "Fontes vinculadas" (12/10/2026) não contam na ordem
+  const order = () => backend.rpc.mock.calls.map((c: any[]) => c[0]).filter((fn: string) => fn !== "app_admin_question" && fn !== "app_admin_question_source_links");
 
   it("com o formulário mudado, salva a questão antes de tirar a marca", async () => {
     session.boot = { role: "editor", profile: { name: "Ed" } };

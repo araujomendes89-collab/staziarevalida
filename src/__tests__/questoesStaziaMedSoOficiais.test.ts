@@ -102,6 +102,8 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   app_staziamed_retire: { classe: "as_duas", como: "historico" }, // recolhe a Questão StaziaMed
   draft_situation: { classe: "as_duas", como: "historico" }, // rascunho publicado: lê a questão para saber se foi recolhida
   ch_worker_similarity_corpus: { classe: "so_oficiais", como: "filtra" }, // corpus oficial = origin 'official'; as StaziaMed vêm dos rascunhos
+  // Fontes vinculadas (9900): o aluno lê os vínculos confirmados das duas coleções, só depois de responder (question_viewable)
+  app_question_source_links: { classe: "as_duas", como: "historico" },
   // as duas, ferramentas da equipe que agem pelo id da questão
   app_admin_comment_review: { classe: "as_duas", como: "equipe" },
   app_admin_comment_review_queue: { classe: "as_duas", como: "equipe" },
@@ -113,6 +115,7 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   ch_worker_question_figure_drop: { classe: "as_duas", como: "equipe" },
   question_comment_review_missing: { classe: "as_duas", como: "equipe" },
   app_ch_complementar_mentions: { classe: "as_duas", como: "equipe" },
+  question_source_links_guard: { classe: "as_duas", como: "equipe" }, // 9900: gatilho do vínculo de fonte; recusa só a "versão da época da prova" em Questão StaziaMed
   // visões
   my_area_stats: { classe: "as_duas", como: "historico" },
   my_topic_stats: { classe: "as_duas", como: "historico" },

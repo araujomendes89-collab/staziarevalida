@@ -1,0 +1,693 @@
+[
+ {
+  "question_id": "revalida_2025_2_q001",
+  "code": "REV-2025.2-Q001",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "ms-pcdt-ic-fer-2024",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas da Insuficiência Cardíaca com Fração de Ejeção Reduzida",
+    "versao": "Portaria Conjunta SAES/SECTICS nº 10, de 13/09/2024; anexo alterado em 11/11/2024",
+    "url_fonte": "https://www.gov.br/saude/pt-br/assuntos/pcdt/i/insuficiencia-cardiaca-com-fracao-de-ejecao-reduzida",
+    "temporal": "vigente",
+    "papel": "tratamento",
+    "pagina": 12,
+    "rotulo_pagina": "",
+    "secao": "6.2.4 Antagonistas da aldosterona",
+    "citacao": "O uso de antagonistas de aldosterona é indicado para pacientes com IC com fração de ejeção reduzida e sintomáticos (classe II-IV da NYHA), associados ao tratamento com IECA/ARA II e betabloqueador nas maiores doses toleradas.",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   },
+   {
+    "doc_id": "ms-pcdt-ic-fer-2024",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas da Insuficiência Cardíaca com Fração de Ejeção Reduzida",
+    "versao": "Portaria Conjunta SAES/SECTICS nº 10, de 13/09/2024; anexo alterado em 11/11/2024",
+    "url_fonte": "https://www.gov.br/saude/pt-br/assuntos/pcdt/i/insuficiencia-cardiaca-com-fracao-de-ejecao-reduzida",
+    "temporal": "vigente",
+    "papel": "tratamento",
+    "pagina": 13,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "No Brasil, o único antagonista da aldosterona disponível é a espironolactona, o qual está disponível no SUS.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Confirma que o antagonista da aldosterona disponível é a espironolactona."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q002",
+  "code": "REV-2025.2-Q002",
+  "conferencia": "nao_confirmada",
+  "nota": "Acidose tubular renal distal/raquitismo: sem documento sobre o tema na biblioteca. Consultas: acidose tubular renal distal.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q003",
+  "code": "REV-2025.2-Q003",
+  "conferencia": "nao_confirmada",
+  "nota": "TCE leve com amnésia, tomografia e observação por 12 h: biblioteca só tem protocolos SAMU (pré-hospitalar), sem critério de tomografia/observação. Consultas: TCE tomografia amnesia observacao.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q004",
+  "code": "REV-2025.2-Q004",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "ms-pcdt-endometriose-2026",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas da Endometriose",
+    "versao": "Portaria Conjunta SAES/SAPS/SCTIE nº 54, de 02/06/2026; 52 páginas",
+    "url_fonte": "https://www.gov.br/conitec/pt-br/midias/protocolos/portaria-conjunta-n-54-endometriose.pdf/@@display-file/file",
+    "temporal": "vigente",
+    "papel": "diagnostico",
+    "pagina": 4,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "Assim, recomenda-se que o diagnóstico de endometriose seja considerado na presença de dismenorreia, dispareunia profunda, disúria, disquezia, sangramento retal doloroso ou hematúria, dor na ponta dos ombros, pneumotórax catamenial, tosse cíclica/hemoptise/dor no peito, inchaço e dor cíclica da cicatriz, fadiga e infertilidade",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q005",
+  "code": "REV-2025.2-Q005",
+  "conferencia": "confirmada",
+  "nota": "Itraconazol confirmado; a duração de 120 dias da alternativa correta não aparece literalmente no guia.",
+  "vinculos": [
+   {
+    "doc_id": "gvs-6ed-rev-v2",
+    "titulo": "Guia de Vigilância em Saúde: volume 2 (6ª edição revisada)",
+    "versao": "6ª edição revisada; ISBN 978-65-5993-505-5; 560 páginas no PDF",
+    "url_fonte": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/vigilancia/guia-de-vigilancia-em-saude-volume-2-6a-edicao/@@download/file",
+    "temporal": "vigente",
+    "papel": "tratamento",
+    "pagina": 225,
+    "rotulo_pagina": "679",
+    "secao": "",
+    "citacao": "O tratamento da esporotricose consiste na administração de antifúngicos, tais como o itraconazol, a terbinafina, a solução de iodeto de potássio, o posaconazol e formulações de anfotericina B (Quadro 3)",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "O guia lista o itraconazol como primeira opção; o tempo no Quadro 3 é 'até 1 mês após desaparecimento das lesões', sem citar 120 dias."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q006",
+  "code": "REV-2025.2-Q006",
+  "conferencia": "confirmada",
+  "nota": "Níveis de atenção (secundária) não achados em documento da biblioteca; só o conceito de prevenção secundária.",
+  "vinculos": [
+   {
+    "doc_id": "cab-29-rastreamento-2010",
+    "titulo": "Rastreamento (Cadernos de Atenção Primária, nº 29)",
+    "versao": "1ª edição, 2010; Série A. Normas e Manuais Técnicos; ISBN 978-85-334-1729-8; 97 páginas",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/caderno_atencao_primaria_29_rastreamento.pdf",
+    "temporal": "vigente",
+    "papel": "prevencao",
+    "pagina": 50,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "Nesse estudo, pacientes com doença cardiovascular (prevenção secundária) se beneficiaram da terapia, enquanto aqueles sem doença cardiovascular (prevenção primária) não obtiveram benefícios.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Usa 'prevenção secundária' para quem já tem doença cardiovascular."
+   },
+   {
+    "doc_id": "cab-29-rastreamento-2010",
+    "titulo": "Rastreamento (Cadernos de Atenção Primária, nº 29)",
+    "versao": "1ª edição, 2010; Série A. Normas e Manuais Técnicos; ISBN 978-85-334-1729-8; 97 páginas",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/caderno_atencao_primaria_29_rastreamento.pdf",
+    "temporal": "vigente",
+    "papel": "conceito",
+    "pagina": 15,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "b) Prevenção secundária é a ação realizada para detectar um problema de saúde em estágio inicial",
+    "forca": "fraca",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Definição geral de prevenção secundária; não trata de infarto."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q007",
+  "code": "REV-2025.2-Q007",
+  "conferencia": "confirmada",
+  "nota": "Questão anulada: vínculo apenas do tema (distonia aguda por antipsicótico), não sustenta gabarito.",
+  "vinculos": [
+   {
+    "doc_id": "pcdt-esquizofrenia",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas: Esquizofrenia",
+    "versao": "Portaria SAS/MS nº 364, de 9 de abril de 2013 (27 páginas); página do Ministério com data de 20/01/2025",
+    "url_fonte": "https://www.gov.br/saude/pt-br/assuntos/pcdt/e/esquizofrenia/@@download/file",
+    "temporal": "vigente",
+    "papel": "tratamento",
+    "pagina": 6,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "Para o tratamento dos efeitos extrapiramidais, o biperideno poderá ser utilizado",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   },
+   {
+    "doc_id": "pcdt-esquizoafetivo",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas do Transtorno Esquizoafetivo",
+    "versao": "Portaria Conjunta SAES/SCTIE nº 07, de 14 de maio de 2021 (55 páginas); a página fala em atualização da portaria em 31/05/2021",
+    "url_fonte": "https://www.gov.br/saude/pt-br/assuntos/pcdt/t/transtorno-esquizoafetivo/@@download/file",
+    "temporal": "vigente",
+    "papel": "tratamento",
+    "pagina": 15,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "grupos: distonia, discinesia, acatisia e parkinsonismo (tremor, rigidez e bradicinesia) e que aparecem nos três primeiros meses de tratamento, normalmente nas primeiras semanas. Na presença desses efeitos adversos e após ajuste de dose, prometazina, biperideno ou propranolol são indicados como terapêutica.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "PCDT do transtorno esquizoafetivo, usado só por citar distonia e biperideno."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q008",
+  "code": "REV-2025.2-Q008",
+  "conferencia": "nao_confirmada",
+  "nota": "Artrite reumatoide: o PCDT de AR não está na biblioteca (só citado na tabela do RENAME). Consultas: artrite reumatoide metotrexato fator reumatoide.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q009",
+  "code": "REV-2025.2-Q009",
+  "conferencia": "nao_confirmada",
+  "nota": "Questão anulada. Neutropenia febril/sepse pediátrica oncológica: sem documento na biblioteca. Consultas: neutropenia febril sepse crianca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q010",
+  "code": "REV-2025.2-Q010",
+  "conferencia": "nao_confirmada",
+  "nota": "Hérnia femoral encarcerada: sem documento na biblioteca (apenas menção genérica de hérnia encarcerada como causa de obstrução no CAB 28 v2). Consultas: hernia femoral encarcerada.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q011",
+  "code": "REV-2025.2-Q011",
+  "conferencia": "confirmada",
+  "nota": "Questão anulada: vínculo apenas de tema (sífilis na gestação com benzilpenicilina benzatina); não sustenta o gabarito.",
+  "vinculos": [
+   {
+    "doc_id": "ms-pcdt-transmissao-vertical-2022",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas para Prevenção da Transmissão Vertical de HIV, Sífilis e Hepatites Virais",
+    "versao": "2ª edição revisada, Brasília-DF 2022 (224 p.; ISBN 978-65-5993-234-4); ato: Portaria SCTIE/MS nº 55, de 11/11/2020",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/protocolo_clinico_hiv_sifilis_hepatites.pdf",
+    "temporal": "vigente",
+    "papel": "prevencao",
+    "pagina": 170,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "o risco de desfechos desfavoráveis à criança será mínimo se a gestante receber tratamento adequado e precoce durante a gestação",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "O documento diz que o risco é 'mínimo', não que é nulo."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q012",
+  "code": "REV-2025.2-Q012",
+  "conferencia": "confirmada",
+  "nota": "Confirma 2 dos itens da alternativa correta (sangue oculto nas fezes e abordagem do tabagismo); os outros itens (lipídios, glicemia, testes rápidos) não foram vinculados.",
+  "vinculos": [
+   {
+    "doc_id": "cab-29-rastreamento-2010",
+    "titulo": "Rastreamento (Cadernos de Atenção Primária, nº 29)",
+    "versao": "1ª edição, 2010; Série A. Normas e Manuais Técnicos; ISBN 978-85-334-1729-8; 97 páginas",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/caderno_atencao_primaria_29_rastreamento.pdf",
+    "temporal": "vigente",
+    "papel": "exame",
+    "pagina": 76,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "Recomenda-se o rastreamento para o câncer de cólon e reto usando pesquisa de sangue oculto nas fezes, colonoscopia ou signoidoscopia, em adultos entre 50 e 75 anos.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Sustenta só o item da pesquisa de sangue oculto nas fezes (homem de 52 anos)."
+   },
+   {
+    "doc_id": "pcdt-tabagismo",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas do Tabagismo",
+    "versao": "Portaria Conjunta SAES/SCTIE nº 10, de 16 de abril de 2020 (67 páginas); página do Ministério com data de 21/01/2025",
+    "url_fonte": "https://www.gov.br/saude/pt-br/assuntos/pcdt/t/tabagismo/@@download/file",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 14,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "A abordagem breve/mínima (PAAP, sigla para Perguntar e Avaliar, Aconselhar e Preparar) consiste em perguntar, avaliar, aconselhar e preparar o fumante para que deixe de fumar",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Sustenta só o item da abordagem do tabagismo."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q013",
+  "code": "REV-2025.2-Q013",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "gvs-6ed-rev-v3",
+    "titulo": "Guia de Vigilância em Saúde: volume 3 (6ª edição revisada)",
+    "versao": "6ª edição revisada; ISBN 978-65-5993-503-1; 238 páginas no PDF",
+    "url_fonte": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/vigilancia/guia-de-vigilancia-em-saude-volume-3-6a-edicao/@@download/file",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 173,
+    "rotulo_pagina": "176",
+    "secao": "",
+    "citacao": "As intoxicações exógenas (por substâncias ou compostos químicos, incluindo agrotóxicos, gases tóxicos e metais pesados) são agravos de notificação compulsória semanal, de acordo com a Portaria n.º 1.061/2020 (Brasil, 2020b), e devem ser registradas no Sistema de Agravo de Notificação (Sinan) por meio do preenchimento da Ficha de Investigação de Intoxicação Exógena.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Sustenta só a notificação no Sinan; matriciamento com a Vigilância em Saúde do Trabalhador não foi vinculado."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q014",
+  "code": "REV-2025.2-Q014",
+  "conferencia": "nao_confirmada",
+  "nota": "Transtorno de oposição desafiante: sem documento sobre o tema na biblioteca (CAB 34 não o trata). Consultas: oposicao desafiante.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q015",
+  "code": "REV-2025.2-Q015",
+  "conferencia": "nao_confirmada",
+  "nota": "Síndrome nefrótica (critérios laboratoriais): sem documento na biblioteca. Consultas: sindrome nefrotica proteinuria albumina.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q016",
+  "code": "REV-2025.2-Q016",
+  "conferencia": "nao_confirmada",
+  "nota": "Curvas de crescimento específicas para síndrome de Down: Caderneta da Criança e CAB 33 da biblioteca não trazem esse trecho. Consultas: sindrome de Down curvas de crescimento.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q017",
+  "code": "REV-2025.2-Q017",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "ms-samu-protocolo-sav",
+    "titulo": "Protocolos de Suporte Avançado de Vida (Protocolo SAMU 192)",
+    "versao": "Elaboração agosto/2014; revisão fevereiro/2016 (conforme os créditos do PDF; 638 páginas)",
+    "url_fonte": "https://www.gov.br/saude/pt-br/composicao/saes/samu-192/publicacoes/protocolo-de-suporte-avancado-de-vida-1.pdf",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 145,
+    "rotulo_pagina": "",
+    "secao": "AT12 - Pneumotórax hipertensivo",
+    "citacao": "Realizar a descompressão torácica de alívio.",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   },
+   {
+    "doc_id": "ms-samu-protocolo-sav",
+    "titulo": "Protocolos de Suporte Avançado de Vida (Protocolo SAMU 192)",
+    "versao": "Elaboração agosto/2014; revisão fevereiro/2016 (conforme os créditos do PDF; 638 páginas)",
+    "url_fonte": "https://www.gov.br/saude/pt-br/composicao/saes/samu-192/publicacoes/protocolo-de-suporte-avancado-de-vida-1.pdf",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 205,
+    "rotulo_pagina": "",
+    "secao": "AP11 – Punção de descompressão",
+    "citacao": "Na presença de um pneumotórax hipertensivo (Protocolo AT12)",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q018",
+  "code": "REV-2025.2-Q018",
+  "conferencia": "nao_confirmada",
+  "nota": "Síndrome de insensibilidade androgênica: sem documento na biblioteca. Consultas: amenorreia primária insensibilidade androgenica.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q019",
+  "code": "REV-2025.2-Q019",
+  "conferencia": "confirmada",
+  "nota": "Possível divergência com a versão vigente (PCDT HAS 2025); gabarito mantido.",
+  "vinculos": [
+   {
+    "doc_id": "ms-pcdt-has-2025",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas da Hipertensão Arterial Sistêmica",
+    "versao": "Portaria SECTICS/MS nº 49, de 23/07/2025; Conitec: consulta pública nº 11/2025, relatório de recomendação de jul/2025",
+    "url_fonte": "https://www.gov.br/saude/pt-br/assuntos/pcdt/h/hipertensao-arterial-sistemica.pdf",
+    "temporal": "vigente",
+    "papel": "diagnostico",
+    "pagina": 7,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "A avaliação diagnóstica da HAS deve ser realizada em consulta clínica, com duas a três medidas de PA, com intervalos de 1 dia a 4 semanas",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   },
+   {
+    "doc_id": "ms-pcdt-has-2025",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas da Hipertensão Arterial Sistêmica",
+    "versao": "Portaria SECTICS/MS nº 49, de 23/07/2025; Conitec: consulta pública nº 11/2025, relatório de recomendação de jul/2025",
+    "url_fonte": "https://www.gov.br/saude/pt-br/assuntos/pcdt/h/hipertensao-arterial-sistemica.pdf",
+    "temporal": "vigente",
+    "papel": "tratamento",
+    "pagina": 32,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "De modo geral, o uso de medicamentos, em associação ou monoterapia, é a estratégia terapêutica preferencial para a maioria das pessoas com HAS, a despeito do grau da doença e do RCV",
+    "forca": "media",
+    "validado": true,
+    "divergencia": true,
+    "observacao": "O PCDT não trata especificamente de pessoa com 82 anos assintomática; fala em idosos frágeis com meta flexível. Divergência provável, a conferir pelo dono.",
+    "nota_atualizacao_proposta": "O que mudou desde a prova: a prova considerou correta a conduta expectante, sem medicamento, para mulher de 82 anos assintomática com pressão em torno de 146 x 87 mmHg. O PCDT da Hipertensão Arterial Sistêmica (Ministério da Saúde, 2025), página 32, diz que o uso de medicamentos é, de modo geral, a estratégia terapêutica preferencial para a maioria das pessoas com HAS, a despeito do grau da doença e do risco cardiovascular, e a página 7 pede duas a três medidas de PA em consultas para confirmar o diagnóstico. A biblioteca não tem versão histórica desse protocolo."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q020",
+  "code": "REV-2025.2-Q020",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "pcdt-pep-2024",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas para Profilaxia Pós-Exposição (PEP) de Risco à Infecção pelo HIV, ISTs e Hepatites Virais",
+    "versao": "Edição 2024; ISBN 978-65-5993-621-2; 81 p.; PDF de 83 páginas (criado em 09/09/2024)",
+    "url_fonte": "https://www.gov.br/aids/pt-br/central-de-conteudo/pcdts/copy3_of_PCDT_PEP_interativo.pdf/@@display-file/file",
+    "temporal": "vigente",
+    "papel": "prevencao",
+    "pagina": 38,
+    "rotulo_pagina": "37",
+    "secao": "5.23 Indicação de PrEP após conclusão do esquema de PEP por 28 dias",
+    "citacao": "Completado o uso de PEP por 28 dias, recomenda-se a avaliação individualizada da possibilidade de indicação de PrEP",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   },
+   {
+    "doc_id": "pcdt-pep-2024",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas para Profilaxia Pós-Exposição (PEP) de Risco à Infecção pelo HIV, ISTs e Hepatites Virais",
+    "versao": "Edição 2024; ISBN 978-65-5993-621-2; 81 p.; PDF de 83 páginas (criado em 09/09/2024)",
+    "url_fonte": "https://www.gov.br/aids/pt-br/central-de-conteudo/pcdts/copy3_of_PCDT_PEP_interativo.pdf/@@display-file/file",
+    "temporal": "vigente",
+    "papel": "prevencao",
+    "pagina": 39,
+    "rotulo_pagina": "38",
+    "secao": "",
+    "citacao": "A transição para a PrEP pode ser feita após os 28 dias de uso da PEP e exclusão de infecção pelo HIV.",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   },
+   {
+    "doc_id": "pcdt-pep-2024",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas para Profilaxia Pós-Exposição (PEP) de Risco à Infecção pelo HIV, ISTs e Hepatites Virais",
+    "versao": "Edição 2024; ISBN 978-65-5993-621-2; 81 p.; PDF de 83 páginas (criado em 09/09/2024)",
+    "url_fonte": "https://www.gov.br/aids/pt-br/central-de-conteudo/pcdts/copy3_of_PCDT_PEP_interativo.pdf/@@display-file/file",
+    "temporal": "vigente",
+    "papel": "prevencao",
+    "pagina": 14,
+    "rotulo_pagina": "13",
+    "secao": "",
+    "citacao": "Caso sejam identificadas uma ou múltiplas situações de exposição sexual, recomenda-se o início imediato de PEP",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q021",
+  "code": "REV-2025.2-Q021",
+  "conferencia": "nao_confirmada",
+  "nota": "Anorexia nervosa com instabilidade clínica (internação): sem documento na biblioteca. Consultas: anorexia nervosa internacao criterios.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q022",
+  "code": "REV-2025.2-Q022",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "pcdt-doenca-de-parkinson",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas da Doença de Parkinson",
+    "versao": "Portaria Conjunta SAES/SECTICS nº 16, de 01/08/2025 (página gov.br/saude: \"nova portaria 18/09/2025\")",
+    "url_fonte": "https://www.gov.br/saude/pt-br/assuntos/pcdt/d/doenca-de-parkinson/@@download/file",
+    "temporal": "vigente",
+    "papel": "tratamento",
+    "pagina": 10,
+    "rotulo_pagina": "",
+    "secao": "6.2.1 Critérios para início do tratamento",
+    "citacao": "Em suma, a literatura sugere que o tratamento sintomático da DP seja iniciado assim que o diagnóstico é confirmado, sendo obrigatório para os pacientes com incapacidade funcional causada por sintomas parkinsonianos.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   },
+   {
+    "doc_id": "pcdt-doenca-de-parkinson",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas da Doença de Parkinson",
+    "versao": "Portaria Conjunta SAES/SECTICS nº 16, de 01/08/2025 (página gov.br/saude: \"nova portaria 18/09/2025\")",
+    "url_fonte": "https://www.gov.br/saude/pt-br/assuntos/pcdt/d/doenca-de-parkinson/@@download/file",
+    "temporal": "vigente",
+    "papel": "tratamento",
+    "pagina": 10,
+    "rotulo_pagina": "",
+    "secao": "6.2.2 Tratamento inicial",
+    "citacao": "Cinco medicamentos podem ser usados em monoterapia nessa etapa do tratamento clínico: levodopa em associação com carbidopa ou benserazida",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "O trecho fica sob 'Sintomas leves com ou sem prejuízo funcional'; confirma levodopa+carbidopa como opção inicial, mas não afirma ser a única nem a preferida."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q023",
+  "code": "REV-2025.2-Q023",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "ms-linha-de-cuidado-violencias-criancas-2010",
+    "titulo": "Linha de Cuidado para a Atenção Integral à Saúde de Crianças, Adolescentes e suas Famílias em Situação de Violências: orientação para gestores e profissionais de saúde",
+    "versao": "1ª edição, 2010; 104 páginas (Série F – Comunicação e Educação em Saúde)",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/linha_cuidado_criancas_familias_violencias.pdf",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 51,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "Comunicar o caso ao Conselho Tutelar, da forma mais ágil possível (telefone ou pessoalmente ou com uma via da ficha de notificação).",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   },
+   {
+    "doc_id": "ms-linha-de-cuidado-violencias-criancas-2010",
+    "titulo": "Linha de Cuidado para a Atenção Integral à Saúde de Crianças, Adolescentes e suas Famílias em Situação de Violências: orientação para gestores e profissionais de saúde",
+    "versao": "1ª edição, 2010; 104 páginas (Série F – Comunicação e Educação em Saúde)",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/linha_cuidado_criancas_familias_violencias.pdf",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 52,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "Registra a notificação do caso de suspeita ou confirmação, mediante o preenchimento da ficha de notificação e imediata comunicação do caso ao Conselho Tutelar ou autoridade competente.",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q024",
+  "code": "REV-2025.2-Q024",
+  "conferencia": "nao_confirmada",
+  "nota": "Apendicite aguda (ultrassonografia e parecer cirúrgico): só há apendicite na gestação (Manual de Gestação de Alto Risco), que não cobre este cenário. Consultas: apendicite aguda.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q025",
+  "code": "REV-2025.2-Q025",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "ms-manual-gestacao-alto-risco-2022",
+    "titulo": "Manual de Gestação de Alto Risco (inclui capítulo 10: Diabetes mellitus gestacional)",
+    "versao": "1ª edição, versão eletrônica, 2022; 692 páginas; capítulo 10 'Diabetes mellitus gestacional' nas pp. 139-147 do manual",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/manual_gestacao_alto_risco.pdf",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 147,
+    "rotulo_pagina": "",
+    "secao": "10.9 Controle glicêmico no parto",
+    "citacao": "Após o parto, com a saída da placenta e a supressão hormonal antiinsulínica, a medicaçã o deverá ser descontinuada para a maioria dos casos de DMG.",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q026",
+  "code": "REV-2025.2-Q026",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "dengue-manejo-6ed-2024",
+    "titulo": "Dengue: diagnóstico e manejo clínico – adulto e criança (6ª edição)",
+    "versao": "6ª edição, 2024, versão eletrônica; PDF de 83 páginas (modificado em 20/02/2024)",
+    "url_fonte": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/dengue/dengue-diagnostico-e-manejo-clinico-adulto-e-crianca",
+    "temporal": "vigente",
+    "papel": "diagnostico",
+    "pagina": 33,
+    "rotulo_pagina": "32",
+    "secao": "6.3 Grupo C",
+    "citacao": "Presença de algum sinal de alarme: dor abdominal intensa (referida ou à palpação) e contínua; vômitos persistentes",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   },
+   {
+    "doc_id": "dengue-manejo-6ed-2024",
+    "titulo": "Dengue: diagnóstico e manejo clínico – adulto e criança (6ª edição)",
+    "versao": "6ª edição, 2024, versão eletrônica; PDF de 83 páginas (modificado em 20/02/2024)",
+    "url_fonte": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/dengue/dengue-diagnostico-e-manejo-clinico-adulto-e-crianca",
+    "temporal": "vigente",
+    "papel": "tratamento",
+    "pagina": 34,
+    "rotulo_pagina": "33",
+    "secao": "6.3.2 Conduta",
+    "citacao": "Iniciar a reposição volêmica imediata, em qualquer ponto de atenção, independentemente do nível de complexidade, inclusive durante eventual transferência para uma unidade de referência (mesmo na ausência de exames complementares),",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "O guia manda manter em leito de internação até estabilização (mínimo 48 horas); a alternativa fala em 'leito de observação'. A NS1 não aparece como exame obrigatório nesta página."
+   },
+   {
+    "doc_id": "dengue-manejo-6ed-2024",
+    "titulo": "Dengue: diagnóstico e manejo clínico – adulto e criança (6ª edição)",
+    "versao": "6ª edição, 2024, versão eletrônica; PDF de 83 páginas (modificado em 20/02/2024)",
+    "url_fonte": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/dengue/dengue-diagnostico-e-manejo-clinico-adulto-e-crianca",
+    "temporal": "vigente",
+    "papel": "exame",
+    "pagina": 34,
+    "rotulo_pagina": "33",
+    "secao": "",
+    "citacao": "Realizar exames complementares obrigatórios: ࡿhemograma completo;",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q027",
+  "code": "REV-2025.2-Q027",
+  "conferencia": "nao_confirmada",
+  "nota": "Lombalgia aguda inespecífica na APS: sem documento específico na biblioteca. Consultas: lombalgia dor lombar sinais de alerta.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q028",
+  "code": "REV-2025.2-Q028",
+  "conferencia": "nao_confirmada",
+  "nota": "Internação psiquiátrica involuntária (Lei 10.216/2001): a lei não está na biblioteca; CAB 34 só diz que medidas involuntárias são excepcionais. Consultas: internacao psiquiatrica involuntaria laudo medico CRM; involuntaria.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q029",
+  "code": "REV-2025.2-Q029",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "ms-pcdt-avci-2023",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas do Acidente Vascular Cerebral Isquêmico Agudo",
+    "versao": "Portaria Conjunta SAES/SECTICS nº 29, de 12/12/2023 (baseada nos relatórios Conitec 589 e 677 de 2021)",
+    "url_fonte": "https://www.gov.br/saude/pt-br/assuntos/pcdt/a/acidente-vascular-cerebral-isquemico-agudo",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 5,
+    "rotulo_pagina": "",
+    "secao": "Critérios de exclusão para trombólise",
+    "citacao": "Resolução completa espontânea imediata ou área de hipodensidade precoce à tomografia computadorizada (sugestiva de área isquêmica aguda) com acometimento maior do que um terço do território da artéria cerebral média;",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   },
+   {
+    "doc_id": "ms-pcdt-avci-2023",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas do Acidente Vascular Cerebral Isquêmico Agudo",
+    "versao": "Portaria Conjunta SAES/SECTICS nº 29, de 12/12/2023 (baseada nos relatórios Conitec 589 e 677 de 2021)",
+    "url_fonte": "https://www.gov.br/saude/pt-br/assuntos/pcdt/a/acidente-vascular-cerebral-isquemico-agudo",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 25,
+    "rotulo_pagina": "",
+    "secao": "Contraindicações absolutas",
+    "citacao": "Contraindicações absolutas: ● Pacientes com resolução completa espontânea imediata ou área de hipodensidade precoce à tomografia computadorizada (sugestiva de área isquêmica aguda) com acometimento maior do que um terço do território da artéria cerebral média;",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q030",
+  "code": "REV-2025.2-Q030",
+  "conferencia": "nao_confirmada",
+  "nota": "Fimose com balanopostites recorrentes: sem documento na biblioteca. Consultas: fimose balanopostite.",
+  "vinculos": []
+ }
+]
