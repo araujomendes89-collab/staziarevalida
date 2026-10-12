@@ -7,7 +7,8 @@ import { useSession } from "../../session.jsx";
 import { useMobile } from "../../Shell.jsx";
 import { LoadError, Loading, useLoad } from "../common.jsx";
 import { hubAvailable, hubPost, hubUploadPdf } from "./api.js";
-import { AUTHORITY, DIFF_KIND, DOC_STATUS, FRESHNESS, SOURCE_KIND, SOURCE_STATUS, SOURCE_TYPE } from "./labels.js";
+import { ComplementarMentions } from "./ComplementarMentions.jsx";
+import { AUDIENCE, AUDIENCE_NOTE, AUTHORITY, DIFF_KIND, DOC_STATUS, FRESHNESS, SOURCE_KIND, SOURCE_STATUS, SOURCE_TYPE } from "./labels.js";
 import { OfficialDomains } from "./OfficialDomains.jsx";
 import { SourceCandidates } from "./SourceCandidates.jsx";
 import { RecentSearches, SourceSearchPanel } from "./SourceSearch.jsx";
@@ -19,6 +20,12 @@ const WATCH_STATUS = { ok: "igual", changed: "mudou", unreachable: "não abriu" 
 export function Sources({ isAdmin, go }) {
   const { backend } = useSession();
   const { data, error, reload } = useLoad(() => backend.rpc("app_ch_sources"), [backend]);
+  // classe de cada fonte (oficial ou complementar); se a lista falhar, ninguém é marcado como complementar na tela
+  const classes = useLoad(() => backend.rpc("app_ch_source_audiences").catch(() => ({})), [backend]);
+  const reloadAll = () => {
+    reload();
+    classes.reload();
+  };
   const act = useAction();
   const [searchKey, setSearchKey] = React.useState(0);
   return (
@@ -50,9 +57,10 @@ export function Sources({ isAdmin, go }) {
         {!data && !error && <Loading />}
         {data?.length === 0 && <EmptyState icon="library" title="Nenhuma fonte cadastrada" description="Sem fontes, as afirmações ficam como 'insuficientemente sustentadas' e nada pode ser publicado." />}
         {(data ?? []).map((s) => (
-          <SourceRow key={s.id} source={s} isAdmin={isAdmin} onChanged={reload} go={go} />
+          <SourceRow key={s.id} source={s} audience={classes.data?.[s.id] ?? "oficial"} isAdmin={isAdmin} onChanged={reloadAll} go={go} />
         ))}
       </Section>
+      {isAdmin && <ComplementarMentions isAdmin />}
     </div>
   );
 }
@@ -83,7 +91,7 @@ function NewSource({ onSaved }) {
         <div style={grid}>
           <TextField label="Título do documento" value={form.title} onChange={(e) => set({ title: e.target.value })} />
           <TextField label="Órgão" value={form.organ} onChange={(e) => set({ organ: e.target.value })} placeholder="ex.: Ministério da Saúde" />
-          <SelectField label="Nível de autoridade" hint="A–D valem como evidência; E (apostila, curso) não." value={form.authority_level} onChange={(e) => set({ authority_level: e.target.value })} options={[{ value: "", label: "Escolher…" }, ...Object.entries(AUTHORITY).map(([value, label]) => ({ value, label }))]} />
+          <SelectField label="Nível de autoridade" hint="A–D valem como evidência para o aluno; E (apostila, curso) é fonte complementar: vale para a equipe e para a IA, e o aluno não a vê." value={form.authority_level} onChange={(e) => set({ authority_level: e.target.value })} options={[{ value: "", label: "Escolher…" }, ...Object.entries(AUTHORITY).map(([value, label]) => ({ value, label }))]} />
           <SelectField label="Tipo" value={form.kind} onChange={(e) => set({ kind: e.target.value })} options={Object.entries(SOURCE_KIND).map(([value, label]) => ({ value, label }))} />
           <TextField label="Versão" value={form.version} onChange={(e) => set({ version: e.target.value })} />
           <TextField label="Endereço oficial (https)" value={form.url} onChange={(e) => set({ url: e.target.value })} />
@@ -104,7 +112,7 @@ function NewSource({ onSaved }) {
   );
 }
 
-function SourceRow({ source: s, isAdmin, onChanged }) {
+function SourceRow({ source: s, audience = "oficial", isAdmin, onChanged }) {
   const { backend } = useSession();
   const [open, setOpen] = React.useState(false);
   const [file, setFile] = React.useState(null);
@@ -123,6 +131,7 @@ function SourceRow({ source: s, isAdmin, onChanged }) {
           {SOURCE_KIND[s.kind]}
         </Badge>
         <StatusBadge map={SOURCE_STATUS} value={s.status} />
+        {audience === "complementar" && <Badge size="sm" tone="warning" icon="eye-off">{AUDIENCE_NOTE}</Badge>}
         {s.found_by_search && <Badge size="sm" tone="ai">encontrada pela busca</Badge>}
         {s.found_by_search && s.document_status && (
           <>
@@ -161,6 +170,15 @@ function SourceRow({ source: s, isAdmin, onChanged }) {
               ["Monitoramento", s.watch ? `${s.watch.url} · a cada ${s.watch.interval_days} dia(s) · última conferência ${when(s.watch.last_checked_at)} (${WATCH_STATUS[s.watch.last_status] ?? s.watch.last_status ?? "—"}) · próxima ${when(s.watch.next_check_at)}` : "não"],
             ]}
           />
+          {isAdmin && (
+            <SelectField
+              label="Classe da fonte"
+              hint="Fonte complementar (apostilas) vale como fonte para a IA e para a equipe, mas o aluno não vê título, órgão, link, arquivo, página nem quantas são. Só a fonte oficial dá os selos do aluno. O sistema reconhece a fonte pelo título completo e exato, pela editora, pelas siglas cadastradas, pelo link e pelo arquivo; a palavra “apostila” sozinha não é barrada."
+              value={audience}
+              onChange={(e) => e.target.value !== audience && act.run(() => backend.rpc("app_ch_set_source_audience", { p_source_id: s.id, p_audience: e.target.value }), e.target.value === "complementar" ? "Fonte marcada como complementar: o aluno não a vê." : "Fonte marcada como oficial.").then((r) => r && onChanged())}
+              options={Object.entries(AUDIENCE).map(([value, label]) => ({ value, label }))}
+            />
+          )}
           {isAdmin && (
             <SelectField
               label="Nível de autoridade"

@@ -123,6 +123,11 @@ function MaterialsSection({ lesson, pending, setPending, onChanged, form, set })
       <div style={{ font: "var(--type-label)" }}>Materiais complementares</div>
       {!canUpload && <Banner tone="warning">O envio de arquivos precisa do servidor (não funciona no banco local do navegador).</Banner>}
       {state.error && <Banner tone="danger">{state.error}</Banner>}
+      {lesson?.materials?.some((x) => x.sha_pendente) && (
+        <Banner tone="warning" title="Arquivo escondido do aluno">
+          Não foi possível conferir a impressão digital do arquivo; confira antes de liberar. Por segurança, ele fica escondido do aluno. Para liberar, envie o arquivo de novo.
+        </Banner>
+      )}
       {FILE_SLOTS.map((slot) => {
         const m = lesson?.materials?.find((x) => x.kind === slot.kind && x.review_status !== "pending"); // o que os alunos recebem
         const waiting = lesson?.materials?.find((x) => x.kind === slot.kind && x.review_status === "pending");

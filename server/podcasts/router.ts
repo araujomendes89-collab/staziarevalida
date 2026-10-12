@@ -21,6 +21,8 @@ import type { AiProvider, StructuredRequest } from "../contentHub/ai/provider";
 import type { ModelRef } from "../ai/config";
 import { aiChoices } from "../ai/maestro";
 import { chunkPagesInfo, extractDocx, extractPdf, fetchLink, isPdf, isZip, MAX_SOURCE_BYTES, readLimited, TooBigError, type ExtractedPage } from "./extract";
+import { loadComplementarTerms } from "../contentHub/complementarGuard";
+import { holdFile, recordFileSha, releaseFile, SHA_WARNING } from "../contentHub/fileSha";
 import { checkScript, generateScript, PODCAST_PROMPT_VERSION, type PodcastScript, type ScriptLine, type SourceChunk } from "./script";
 import { DEFAULT_VOICES, geminiTtsEnabled, pcmToMp3, pickVoices, SAMPLE_RATE, silence, splitParts, synthesizePart, ttsCost, ttsStatus, VOICE_OPTIONS, type PodcastVoices, type TtsKind } from "./audio";
 
@@ -149,6 +151,23 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     const note = `Documento longo: entraram só os primeiros ${chunks.length} de ${info.total} trechos${ate}. O resto não foi usado. Divida o documento em partes menores para o podcast cobrir tudo.`;
     return { ...view, note };
   };
+  /**
+   * Fonte de arquivo (PDF/DOCX) com o SHA-256 gravado, FECHANDO POR SEGURANÇA (ver contentHub/fileSha.ts): a retenção do caminho
+   * é pedida antes de registrar; se o SHA-256 não puder ser gravado (nem na nova tentativa), a fonte fica escondida do aluno e a
+   * resposta traz o aviso em `note`.
+   */
+  const ingestFile = async (req: Authed, source: Record<string, unknown>, pages: ExtractedPage[], key: string, bytes: Buffer) => {
+    await holdFile(deps!.db, key, log, "podcasts");
+    let view: any;
+    try {
+      view = await ingest(req, source, pages);
+    } catch (error) {
+      await releaseFile(deps!.db, key, log, "podcasts"); // registro recusado: não deixa retenção órfã (o banco nunca solta a de arquivo já registrado)
+      throw error;
+    }
+    if (!(await recordFileSha(deps!.db, key, async () => bytes, log, "podcasts"))) return { ...view, note: [view?.note, SHA_WARNING].filter(Boolean).join(" ") };
+    return { ...((await staffPodcast(req).catch(() => null)) ?? view), ...(view?.note ? { note: view.note } : {}) }; // a visão volta sem a marca de retenção
+  };
   const extractFile = (buf: Buffer, ext: "pdf" | "docx") => (ext === "pdf" ? extractPdf(buf) : extractDocx(buf));
 
   /** O que está pronto no servidor: IA do roteiro, vozes e as opções de voz. */
@@ -199,7 +218,8 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const buf = await deps!.storage.get(key);
       if (!spec.magic(buf)) throw httpError(415, "O conteúdo não corresponde ao tipo informado.");
       const pages = await extractFile(buf, spec.ext);
-      res.status(201).json(await ingest(req, { kind: spec.ext, title: String(title || "Documento").slice(0, 200), storage_path: key }, pages));
+      const view = await ingestFile(req, { kind: spec.ext, title: String(title || "Documento").slice(0, 200), storage_path: key }, pages, key, buf);
+      res.status(201).json(view);
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }
@@ -220,7 +240,8 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       if (!(await deps!.storage.exists(key))) await deps!.storage.put(key, body, type);
       const pages = await extractFile(body, spec.ext);
       const name = decodeURIComponent(String(req.headers["x-file-name"] ?? "Documento")).slice(0, 200) || "Documento";
-      res.status(201).json(await ingest(req, { kind: spec.ext, title: name, storage_path: key }, pages));
+      const view = await ingestFile(req, { kind: spec.ext, title: name, storage_path: key }, pages, key, body);
+      res.status(201).json(view);
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }
@@ -345,9 +366,11 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       if (m.status === "published") throw httpError(409, "Despublique o episódio antes de gerar outro roteiro.");
       if (!chunks.length) throw httpError(409, "Adicione fontes com texto antes de gerar o roteiro.");
       const started = Date.now();
+      // lista de fontes que o aluno não pode ver: sem ela o roteiro não é gerado (503), nunca segue sem conferência
+      const terms = await loadComplementarTerms(deps!.db, undefined, log);
       let r;
       try {
-        r = await generateScript({ kind: kind as any, topic: m.topic || m.title, minutes: Number(m.target_minutes) || 8, chunks, notes, mockRespond: kind === "mock" ? deps!.mockScript : undefined, db: deps!.db, actorId: req.user!.id, podcastId: req.params.id, aiMaker: deps!.aiMaker });
+        r = await generateScript({ terms, kind: kind as any, topic: m.topic || m.title, minutes: Number(m.target_minutes) || 8, chunks, notes, mockRespond: kind === "mock" ? deps!.mockScript : undefined, db: deps!.db, actorId: req.user!.id, podcastId: req.params.id, aiMaker: deps!.aiMaker });
       } catch (error: any) {
         throw httpError(error?.status ?? 502, `A IA do roteiro falhou: ${message(error)}`);
       }
@@ -380,7 +403,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       // roteiro antigo, sem essa lista, aceita todos os trechos do episódio
       const sent: unknown = view?.script_meta?.sent_chunks;
       const valid = Array.isArray(sent) ? new Map(chunks.filter((c) => (sent as unknown[]).map(Number).includes(c.id)).map((c) => [c.id, c])) : all;
-      res.json({ warnings: checkScript(script, valid, all) });
+      res.json({ warnings: checkScript(script, valid, all, await loadComplementarTerms(deps!.db, undefined, log)) });
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }

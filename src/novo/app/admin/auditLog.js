@@ -53,10 +53,12 @@ export const ACTION_LABEL = {
   "lesson.material": "Material de aula adicionado",
   "lesson.material.delete": "Material de aula apagado",
   // podcasts
+  "source.audience": "Classe da fonte alterada",
   "podcast.save": "Podcast salvo",
   "podcast.delete": "Podcast apagado",
   "podcast.source": "Fonte do podcast adicionada",
   "podcast.source_rename": "Fonte do podcast renomeada",
+  "podcast.source_complementar": "Classe da fonte do podcast alterada",
   "podcast.script.ai": "Roteiro do podcast escrito pela IA",
   "podcast.script.edit": "Roteiro do podcast editado",
   "podcast.approve": "Roteiro do podcast aprovado",
@@ -106,6 +108,7 @@ export const ACTION_LABEL = {
   "block.resolve": "Trecho do documento resolvido",
   "source.register": "Fonte oficial cadastrada",
   "source.authority": "Nível de autoridade da fonte definido",
+  "source.aliases": "Siglas da fonte alteradas",
   "source.registry": "Registro da fonte atualizado",
   "source.change_resolved": "Mudança de fonte resolvida",
   "conflict.detect": "Conflitos entre fontes detectados",
@@ -289,6 +292,7 @@ const SUMMARY = {
     ]),
   "question.inserted": questionSaved,
   "question.updated": questionSaved,
+  "source.audience": (d) => join([d.title, d.to === "complementar" ? "Fonte complementar: o aluno não vê esta fonte" : "Fonte oficial", d.reason && `Motivo: ${d.reason}`]),
   // apagar: o código e o tema que o banco guardou (a questão já não existe); análise tirada do ar: o texto mudou
   "question.delete": (d, entry) => join([d.code ?? entry.target, d.topic]),
   "question.analysis_unpublished": (d, entry) => `${entry.target}: o enunciado ou o texto de uma alternativa mudou`,
@@ -317,6 +321,8 @@ const SUMMARY = {
   "podcast.unpublish": (d, entry) => entry.title,
   "podcast.source_rename": (d, entry) => entry.title,
   "podcast.source": (d, entry) => join([entry.title && `Episódio: ${entry.title}`, d.title && `Fonte: ${d.title}`]),
+  "podcast.source_complementar": (d, entry) =>
+    join([entry.title && `Episódio: ${entry.title}`, d.title && `Fonte: ${d.title}`, d.to === "complementar" ? "Fonte complementar: o aluno não vê esta fonte" : "Fonte oficial: o aluno volta a ver esta fonte"]),
   "podcast.script.ai": (d, entry) =>
     join([
       entry.title,
@@ -370,6 +376,7 @@ const SUMMARY = {
   "document.rights": (d, entry) => entry.title,
   "source.register": (d, entry) => entry.title ?? d.title,
   "source.authority": (d, entry) => entry.title,
+  "source.aliases": (d, entry) => join([entry.title, Array.isArray(d.aliases) && d.aliases.length ? `Siglas: ${d.aliases.join(", ")}` : "Sem siglas"]),
   "source.registry": (d, entry) => entry.title,
   "source.change_resolved": (d, entry) => join([entry.title, noteOf(d)]),
   "source_domain.save": (d) =>

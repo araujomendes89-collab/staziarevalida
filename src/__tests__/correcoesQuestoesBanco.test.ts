@@ -287,8 +287,8 @@ describe("Q02 — gabarito e situação: só pelo registro do gabarito oficial",
       [a, idOf(8)]
     );
     await sql(
-      `insert into public.question_update_cards (question_id, version, temporal_status, impact_level, official_answer, current_answer, what_changed, reviewed_by)
-       values ($1, 1, 'UPDATED_BUT_SAME_ANSWER', 'COMMENT_ONLY', 'B', 'B', 'A diretriz nova manteve a conduta da B.', $2)`,
+      `insert into public.question_update_cards (question_id, version, temporal_status, impact_level, official_answer, current_answer, what_changed, reviewed_by, sources)
+       values ($1, 1, 'UPDATED_BUT_SAME_ANSWER', 'COMMENT_ONLY', 'B', 'B', 'A diretriz nova manteve a conduta da B.', $2, '[{"title":"PCDT de teste","organ":"Ministério da Saúde"}]'::jsonb)`,
       [idOf(8), ADMIN]
     );
     const antes = await truth(8);

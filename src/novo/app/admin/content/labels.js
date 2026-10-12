@@ -93,8 +93,15 @@ export const AUTHORITY = {
   B: "B · Sociedade médica reconhecida",
   C: "C · Organização internacional (OMS, OPAS, CDC, NICE…)",
   D: "D · Revisão sistemática, metanálise, periódico de alto nível",
-  E: "E · Livro, apostila ou curso (não vale como evidência)",
+  E: "E · Livro, apostila ou curso (fonte complementar: não dá selo ao aluno)",
 };
+
+// Classe da fonte na biblioteca: oficial (confiável, pode ser mostrada ao aluno) ou complementar (o aluno não vê nada dela).
+export const AUDIENCE = {
+  oficial: "Oficial · confiável: pode ser mostrada ao aluno",
+  complementar: "Fonte complementar · o aluno não vê esta fonte",
+};
+export const AUDIENCE_NOTE = "Fonte complementar · o aluno não vê esta fonte";
 
 // Natureza da fonte (o que ela é), diferente de "tipo" (a situação do documento: final, consulta pública…).
 export const SOURCE_TYPE = {

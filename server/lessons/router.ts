@@ -17,6 +17,8 @@ import type { AiProvider, StructuredRequest } from "../contentHub/ai/provider";
 import { fetchLink, type ExtractedPage } from "../podcasts/extract";
 import { aiChoices } from "../ai/maestro";
 import type { ModelRef } from "../ai/config";
+import { loadComplementarTerms } from "../contentHub/complementarGuard";
+import { holdFile, recordFileSha, releaseFile, SHA_WARNING } from "../contentHub/fileSha";
 import { AREA_CODES, generateLessonAssist, MAX_ASSIST_CHARS, type AssistProvider } from "./assist";
 
 export const LESSONS_BUCKET = "lessons";
@@ -84,7 +86,23 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
     return spec;
   };
   const keyFor = (id: string, kind: string, ext: string) => `lessons/${id}/${kind}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
-  const register = (req: Authed, id: string, m: { kind: string; title: string; key: string; type: string; size: number }) =>
+  /**
+   * Registro do material com o SHA-256 gravado, FECHANDO POR SEGURANÇA (ver contentHub/fileSha.ts): a retenção do caminho é pedida
+   * antes; se o SHA-256 não puder ser gravado (nem na nova tentativa), o material fica escondido do aluno e a resposta traz `aviso`.
+   */
+  const register = async (req: Authed, id: string, m: { kind: string; title: string; key: string; type: string; size: number }, bytes?: Buffer) => {
+    await holdFile(deps!.db, m.key, deps!.log, "aulas");
+    let out;
+    try {
+      out = await registerRaw(req, id, m);
+    } catch (error) {
+      await releaseFile(deps!.db, m.key, deps!.log, "aulas"); // registro recusado: não deixa retenção órfã (o banco nunca solta a de arquivo já registrado)
+      throw error;
+    }
+    if (!(await recordFileSha(deps!.db, m.key, async () => bytes ?? (await deps!.storage.get(m.key)), deps!.log, "aulas"))) return { ...out, aviso: SHA_WARNING };
+    return (await asUser(req, "app_lesson", { p_id: id }).catch(() => out)) ?? out; // a visão volta sem a marca de retenção
+  };
+  const registerRaw = (req: Authed, id: string, m: { kind: string; title: string; key: string; type: string; size: number }) =>
     asUser(req, "app_admin_lesson_material", {
       p_lesson_id: id,
       p_material: { kind: m.kind, title: m.title.slice(0, 200), storage_path: m.key, content_type: m.type, size_bytes: m.size },
@@ -135,7 +153,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       const name = decodeURIComponent(String(req.headers["x-file-name"] ?? "material")).slice(0, 200);
       const key = `lessons/${id}/${kind}-${crypto.createHash("sha256").update(body).digest("hex").slice(0, 16)}.${spec.ext}`;
       if (!(await deps!.storage.exists(key))) await deps!.storage.put(key, body, type);
-      res.status(201).json(await register(req, id, { kind, title: String(req.query.title ?? name), key, type, size: body.length }));
+      res.status(201).json(await register(req, id, { kind, title: String(req.query.title ?? name), key, type, size: body.length }, body));
     } catch (error: any) {
       fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
     }
@@ -216,9 +234,12 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       const chars = pages.reduce((n, p) => n + p.text.length, 0);
       if (chars < 80) throw httpError(422, "O material não tem texto aproveitável (PDF escaneado?). Cole o texto.");
       if (chars > MAX_ASSIST_CHARS) throw httpError(413, "Material longo demais: até 400 mil caracteres.");
+      // lista de fontes que o aluno não pode ver: sem ela o pedido é recusado (503), nunca segue sem conferência
+      const terms = await loadComplementarTerms(deps!.db, undefined, deps!.log);
       let r;
       try {
         r = await generateLessonAssist({
+          terms,
           kind: kind as AssistProvider,
           db: deps!.db,
           actorId: req.user!.id,

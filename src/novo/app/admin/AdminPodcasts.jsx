@@ -85,7 +85,7 @@ function EpisodeForm({ podcast, lessons, onSaved }) {
 }
 
 // ---------------------------------------------------------------- 2. fontes
-function Sources({ podcast, lessons, onChanged }) {
+function Sources({ podcast, lessons, isAdmin, onChanged }) {
   const { backend } = useSession();
   const [mode, setMode] = React.useState("file");
   const [text, setText] = React.useState({ title: "", body: "" });
@@ -114,6 +114,12 @@ function Sources({ podcast, lessons, onChanged }) {
     if (next == null || !next.trim() || next.trim() === s.title) return;
     run(`rename-${s.id}`, () => api.renameSource(backend, podcast.id, s.id, next.trim()));
   };
+  // fonte complementar (apostila): vale para a IA e para a equipe, mas o aluno não vê o nome, o link nem as páginas dela. Só o administrador marca.
+  const marcarComplementar = (s) => {
+    const para = !s.complementar;
+    if (!para && !window.confirm("O aluno voltará a ver o nome desta fonte e as páginas usadas na transcrição. Continuar?")) return;
+    run(`comp-${s.id}`, () => backend.rpc("app_admin_podcast_source_complementar", { p_source_id: s.id, p_complementar: para }));
+  };
   const remove = (s) => {
     if (podcast.script && !window.confirm("Tirar esta fonte apaga o roteiro atual (ele pode citar trechos dela). Continuar?")) return;
     run(s.id, () => api.removeSource(backend, podcast.id, s.id));
@@ -135,7 +141,19 @@ function Sources({ podcast, lessons, onChanged }) {
                 <span style={{ display: "block", font: "var(--type-caption)", color: "var(--text-tertiary)", overflowWrap: "anywhere" }}>
                   {SOURCE_KIND[s.kind]} · {s.chunks} trechos{s.pages ? ` · ${s.pages} páginas` : ""}{s.url ? ` · ${s.url}` : ""}
                 </span>
+                {s.student_hidden && (
+                  <span style={{ display: "block", marginTop: 4 }}>
+                    <Badge size="sm" tone="warning" icon="eye-off">
+                      {s.complementar ? "Fonte complementar · o aluno não vê esta fonte" : "O aluno não vê esta fonte: o nome bate com uma fonte complementar da biblioteca"}
+                    </Badge>
+                  </span>
+                )}
               </span>
+              {isAdmin && (
+                <Button size="sm" variant="ghost" icon={s.complementar ? "eye" : "eye-off"} loading={state.busy === `comp-${s.id}`} onClick={() => marcarComplementar(s)}>
+                  {s.complementar ? "Voltar a oficial" : "Marcar como complementar"}
+                </Button>
+              )}
               {!locked && <Button size="sm" variant="ghost" icon="pencil" loading={state.busy === `rename-${s.id}`} onClick={() => rename(s)}>Renomear</Button>}
               {!locked && <Button size="sm" variant="ghost" icon="trash-2" loading={state.busy === s.id} onClick={() => remove(s)}>Tirar</Button>}
             </div>
@@ -563,7 +581,7 @@ function PodcastEditor({ id, isAdmin, lessons, providers, providersError, onClos
         {podcast && (
           <>
             <Section step={2} title="Fontes" done={podcast.sources.length > 0}>
-              <Sources podcast={podcast} lessons={lessons} onChanged={changed} />
+              <Sources podcast={podcast} lessons={lessons} isAdmin={isAdmin} onChanged={changed} />
             </Section>
             <Section step={3} title="Roteiro (revisão humana)" done={Boolean(podcast.approved_at)}>
               <ScriptStep podcast={podcast} providers={providers} onChanged={changed} />
