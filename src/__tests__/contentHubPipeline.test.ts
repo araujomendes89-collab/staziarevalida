@@ -273,7 +273,7 @@ describe("Central de Conteúdo — processamento", () => {
     await db.asUser(admin, "app_ch_watch_source", { p_source_id: sourceId, p_url: "https://exemplo.invalid/fonte.pdf", p_interval_days: 7 });
     let body = "%PDF-1.7 versão A";
     const fetchImpl = (async () => new Response(body, { status: 200, headers: { "content-type": "application/pdf" } })) as unknown as typeof fetch;
-    const worker = createContentHubWorker(mockDeps(), { fetchImpl });
+    const worker = createContentHubWorker(mockDeps(), { fetchImpl, resolver: async () => ["93.184.216.34"] });
     expect(await worker.checkSources()).toMatchObject({ checked: 1, changed: 0 });
     expect(await worker.checkSources()).toMatchObject({ checked: 0 });
     body = "%PDF-1.7 versão B";
