@@ -132,7 +132,7 @@ async function montaTutorHistorico(summary: any) {
   rpc.app_tutor_session = () => ({ id: SID, mode: "livre", title: "Bronquiolite", status: "closed", read_only: false, summary, personality: { id: "direto", name: "Direto", emoji: "🎯", voice: {} },
     question: null, messages: [{ id: 1, role: "tutor", content: "Suporte.", grounding: "source", sources: [{ ref: "S1", label: `${COMP_TITLE}, p. 345` }] }] });
   const { NexusScreen } = await import("../novo/app/tutor/nexus/NexusScreen.jsx");
-  const { container } = render(<NexusScreen go={vi.fn()} />);
+  const { container } = render(<NexusScreen go={vi.fn()} onClose={vi.fn()} />);
   fireEvent.click(await screen.findByRole("button", { name: "Histórico" }));
   fireEvent.click(await screen.findByRole("button", { name: /Direto · Perguntar ao Tutor/ }));
   await screen.findByText("Resumo");
