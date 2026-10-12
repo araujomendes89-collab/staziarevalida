@@ -79,7 +79,7 @@ function FindingCard({ finding, label, canPropose, onPropose }) {
   );
 }
 
-export function AssistantPanel({ title = "Assistente", notice, sourceAction, status, fields = [], values = {}, material = "material", materialLink, run, onUse, onDiscard, useLabel = "Usar", onClose }) {
+export function AssistantPanel({ title = "Assistente", notice, sourceAction = undefined, status, fields = [], values = {}, material = "material", materialLink, run, onUse, onDiscard, useLabel = "Usar", onClose }) {
   const [mode, setModeState] = React.useState("preencher");
   const [result, setResult] = React.useState(null);
   const [error, setError] = React.useState(null);

@@ -75,7 +75,7 @@ function CandidatesLink() {
   );
 }
 
-export function SearchSourcesButton({ tab, form, context, pollMs = 5000 }) {
+export function SearchSourcesButton({ tab, form = undefined, context = undefined, pollMs = 5000 }) {
   const { backend, boot } = useSession();
   const isAdmin = boot?.role === "admin";
   const base = React.useMemo(() => context ?? sourceSearchContext(tab, form), [context, tab, form]);

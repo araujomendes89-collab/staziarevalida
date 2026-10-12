@@ -23,6 +23,10 @@ import { QuestionAnalyses } from "../novo/app/admin/content/QuestionAnalyses.jsx
 import { QUESTOES_SPEC } from "../shared/adminAssistant/questoes";
 import { ATUALIZACOES_SPEC } from "../shared/adminAssistant/atualizacoes";
 
+// os componentes são JSX sem tipos: aqui todas as propriedades são opcionais
+const Tab: any = TabAssistant;
+const Claim: any = ClaimCard;
+const Candidates: any = SourceCandidates;
 const json = (body: unknown, status = 200) => ({ ok: status < 400, status, json: async () => body, headers: new Headers({ "content-type": "application/json" }) });
 const STATUS = { ready: true, problems: [], warnings: [], max_searches: 5, provider: "anthropic", model: "claude-opus-5-5", per_search_usd: 0.01 };
 const EMPTY_CHECK = { recent: [], waiting: 0, search: null };
@@ -244,7 +248,7 @@ describe("botão em cada aba", () => {
   it("assistente de Questões: 'Faltou fonte para este tema' traz o botão com a área e o tema da questão", async () => {
     assistantFetch("questoes", NO_SOURCE(["explanation_A", "explanation_B", "explanation_C", "explanation_D", "expected_conduct", "inep_intent"]));
     const form = { area: "PEDIATRIA", topic: "Bronquiolite", subtopic: "", options: [] };
-    render(<TabAssistant spec={QUESTOES_SPEC} title="Assistente" form={form} onUse={() => {}} />);
+    render(<Tab spec={QUESTOES_SPEC} title="Assistente" form={form} onUse={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: "Preencher campos" }));
     expect(await screen.findByText("Faltou fonte para este tema")).toBeTruthy();
     expect(screen.getByText("Tema da busca: Bronquiolite")).toBeTruthy();
@@ -256,7 +260,7 @@ describe("botão em cada aba", () => {
   it("assistente de Atualizações: 'Sem fonte' por campo traz o botão com tema, subtema e instituição", async () => {
     assistantFetch("atualizacoes", NO_SOURCE(["current_conduct"]));
     const form = { area: "GINECOLOGIA_OBSTETRICIA", topic: "Pré-eclâmpsia", subtopic: "AAS", institution: "Ministério da Saúde", timeline: [], flashcards: [] };
-    render(<TabAssistant spec={ATUALIZACOES_SPEC} title="Assistente" form={form} onUse={() => {}} />);
+    render(<Tab spec={ATUALIZACOES_SPEC} title="Assistente" form={form} onUse={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: "Preencher campos" }));
     expect(await screen.findByText(/Conduta vigente: Sem fonte: cole um trecho da diretriz ou envie o material/)).toBeTruthy();
     fireEvent.click(await buy());
@@ -266,7 +270,7 @@ describe("botão em cada aba", () => {
 
   it("assistente: com fonte para tudo, o botão não aparece (e nenhuma chamada é feita)", async () => {
     assistantFetch("questoes", { ...NO_SOURCE([]), suggestions: [] });
-    render(<TabAssistant spec={QUESTOES_SPEC} title="Assistente" form={{ area: "PEDIATRIA", topic: "Asma", options: [] }} onUse={() => {}} />);
+    render(<Tab spec={QUESTOES_SPEC} title="Assistente" form={{ area: "PEDIATRIA", topic: "Asma", options: [] }} onUse={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: "Preencher campos" }));
     await waitFor(() => expect(fetchCalls.some((c) => c.url === "/api/admin-assistant/run")).toBe(true));
     expect(screen.queryByRole("button", { name: "Buscar fontes com IA" })).toBeNull();
@@ -276,7 +280,7 @@ describe("botão em cada aba", () => {
   it("assistente para editor: o aviso 'Peça ao administrador…' no lugar do botão", async () => {
     who.role = "editor";
     assistantFetch("questoes", NO_SOURCE(["explanation_A"]));
-    render(<TabAssistant spec={QUESTOES_SPEC} title="Assistente" form={{ area: "PEDIATRIA", topic: "Asma", options: [] }} onUse={() => {}} />);
+    render(<Tab spec={QUESTOES_SPEC} title="Assistente" form={{ area: "PEDIATRIA", topic: "Asma", options: [] }} onUse={() => {}} />);
     fireEvent.click(await screen.findByRole("button", { name: "Preencher campos" }));
     expect(await screen.findByText("Peça ao administrador para buscar fontes deste tema.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Buscar fontes com IA" })).toBeNull();
@@ -316,7 +320,7 @@ describe("botão nas telas da Central de Conteúdo", () => {
       if (fn === "app_ch_source_search_start") return startResult;
       throw new Error(`rpc não simulada: ${fn}`);
     });
-    render(<ClaimCard claim={{ id: "k1", status: "pending", statement: "AAS reduz o risco.", evidence: [] }} canConfirm />);
+    render(<Claim claim={{ id: "k1", status: "pending", statement: "AAS reduz o risco.", evidence: [] }} canConfirm />);
     fireEvent.click(screen.getByRole("button", { name: "Vincular evidência" }));
     expect(screen.queryByRole("button", { name: "Buscar fontes com IA" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Buscar" }));
@@ -360,7 +364,7 @@ function showCandidates(items: any[]) {
     if (fn === "app_ch_source_candidates") return { items, counts: { aguardando: items.length, aprovado: 0, rejeitado: 0 } };
     throw new Error(`rpc não simulada: ${fn}`);
   });
-  render(<SourceCandidates />);
+  render(<Candidates />);
 }
 const card = (id = "c1") => screen.findByTestId(`candidate-${id}`);
 const readyToApprove = (c: HTMLElement) => fireEvent.click(within(c).getByLabelText("Conferi o documento no arquivo guardado"));
