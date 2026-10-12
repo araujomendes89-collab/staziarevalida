@@ -266,3 +266,14 @@ export async function addSession(
   );
   return id;
 }
+
+/**
+ * Sinal da pessoa (hora e situação do perfil de estudo) direto no banco: visto há `agoSeconds` segundos, na situação dada.
+ * O perfil tem de existir. "Online" para o baralho = sinal há menos de 2 minutos e situação diferente de "fora".
+ */
+export async function seen(db: PGlite, uid: string, agoSeconds = 0, status: "livre" | "em_estacao" | "fora" = "livre"): Promise<void> {
+  await db.query(
+    `update public.study_profiles set last_seen_at = now() - ($2 || ' seconds')::interval, status = $3 where user_id = $1`,
+    [uid, String(agoSeconds), status]
+  );
+}
