@@ -52,6 +52,7 @@ export const ACTION_LABEL = {
   "lesson.delete": "Aula apagada",
   "lesson.material": "Material de aula adicionado",
   "lesson.material.delete": "Material de aula apagado",
+  "lesson.file.delete": "Arquivo de aula apagado do depósito",
   // podcasts
   "source.audience": "Classe da fonte alterada",
   "podcast.save": "Podcast salvo",
@@ -314,6 +315,7 @@ const SUMMARY = {
   "lesson.audio.release": (d, entry) => entry.title,
   "lesson.review": (d, entry) => join([d.title ?? entry.title, d.note && `Conferido: ${d.note}`]),
   "lesson.delete": (d, entry) => entry.title,
+  "lesson.file.delete": (d, entry) => join([entry.title && `Aula: ${entry.title}`, d.path && `Arquivo apagado: ${d.path}`]),
   "lesson.material": (d, entry) => join([entry.title && `Aula: ${entry.title}`, d.title && `Material: ${d.title}`, d.aguardando_conferencia && "Áudio aguardando conferência"]),
   "podcast.save": (d, entry) => d.title ?? entry.title,
   "podcast.delete": (d, entry) => entry.title,

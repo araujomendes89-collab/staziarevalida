@@ -19,6 +19,7 @@ import { aiChoices } from "../ai/maestro";
 import type { ModelRef } from "../ai/config";
 import { loadComplementarTerms } from "../contentHub/complementarGuard";
 import { holdFile, recordFileSha, SHA_WARNING } from "../contentHub/fileSha";
+import { sweepLessonFiles } from "./files";
 import { AREA_CODES, generateLessonAssist, MAX_ASSIST_CHARS, type AssistProvider } from "./assist";
 
 export const LESSONS_BUCKET = "lessons";
@@ -79,6 +80,8 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
     if (!lesson) throw httpError(404, "Aula não encontrada.");
     return id;
   };
+  /** Apaga do depósito os arquivos que ninguém mais usa (A07). Nunca lança erro: falha ao apagar não desfaz a ação da equipe. */
+  const sweep = (req: Authed) => sweepLessonFiles(deps!.db, req.user!, deps!.storage, deps!.log).catch(() => ({ deleted: [], failed: [] }));
   const checkType = (kind: unknown, type: unknown) => {
     const spec = TYPES[String(type)];
     if (!spec) throw httpError(415, "Envie um PDF (slides) ou um MP3 (áudio Flashcast).");
@@ -99,7 +102,9 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       await recordFileSha(deps!.db, m.key, async () => bytes ?? (await deps!.storage.get(m.key)), undefined, "aulas").catch(() => false); // se o arquivo já existia, solta a retenção
       throw error;
     }
-    if (!(await recordFileSha(deps!.db, m.key, async () => bytes ?? (await deps!.storage.get(m.key)), deps!.log, "aulas"))) return { ...out, aviso: SHA_WARNING };
+    const sha = await recordFileSha(deps!.db, m.key, async () => bytes ?? (await deps!.storage.get(m.key)), deps!.log, "aulas");
+    await sweep(req); // o arquivo que este substituiu (PDF ou áudio) sai do depósito
+    if (!sha) return { ...out, aviso: SHA_WARNING };
     return (await asUser(req, "app_lesson", { p_id: id }).catch(() => out)) ?? out; // a visão volta sem a marca de retenção
   };
   const registerRaw = (req: Authed, id: string, m: { kind: string; title: string; key: string; type: string; size: number }) =>
@@ -154,6 +159,41 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
       const key = `lessons/${id}/${kind}-${crypto.createHash("sha256").update(body).digest("hex").slice(0, 16)}.${spec.ext}`;
       if (!(await deps!.storage.exists(key))) await deps!.storage.put(key, body, type);
       res.status(201).json(await register(req, id, { kind, title: String(req.query.title ?? name), key, type, size: body.length }, body));
+    } catch (error: any) {
+      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+    }
+  });
+
+  /** Remover um material (equipe): o material sai e o arquivo dele também sai do depósito, se nenhuma outra linha o usa (A07). */
+  router.delete("/materials/:id", async (req: Authed, res) => {
+    try {
+      if (!ID.test(req.params.id)) throw httpError(400, "Material inválido.");
+      const view = await asUser(req, "app_admin_delete_lesson_material", { p_id: req.params.id });
+      await sweep(req);
+      res.json(view);
+    } catch (error: any) {
+      fail(res, error?.status ?? (forbidden(error) ? 403 : /não encontrad/i.test(message(error)) ? 404 : 400), message(error));
+    }
+  });
+
+  /** Apagar a aula (só administrador): os materiais saem em cascata e os arquivos deles saem do depósito (A07). */
+  router.delete("/:id", async (req: Authed, res) => {
+    try {
+      if (!ID.test(req.params.id)) throw httpError(400, "Aula inválida.");
+      await asUser(req, "app_admin_delete_lesson", { p_id: req.params.id });
+      await sweep(req);
+      res.json({ deleted: true });
+    } catch (error: any) {
+      fail(res, error?.status ?? (forbidden(error) ? 403 : /não encontrad/i.test(message(error)) ? 404 : 400), message(error));
+    }
+  });
+
+  /** Limpeza avulsa (equipe): depois de liberar um áudio que substitui outro, por exemplo. */
+  router.post("/files/sweep", async (req: Authed, res) => {
+    try {
+      await asUser(req, "app_admin_lessons"); // só a equipe
+      const r = await sweep(req);
+      res.json({ deleted: r.deleted.length, failed: r.failed.length });
     } catch (error: any) {
       fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
     }
