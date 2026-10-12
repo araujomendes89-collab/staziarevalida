@@ -381,3 +381,172 @@ describe("migração 9820", () => {
     expect((await asAdmin("app_ch_source_candidates", { p_status: "rejeitado" })).items[0]).toMatchObject({ currency: "versao_mais_nova" });
   });
 });
+
+// ---------------------------------------------------------------- Revisão independente 1 (OpenAI): achados 1 a 6
+describe("revisão independente 1", () => {
+  const approve = (id: string, fields: Record<string, unknown> = {}) => asAdmin("app_ch_source_candidate_approve", { p_candidate_id: id, p_fields: { checked: true, level: "A", ...fields } });
+  let n = 0;
+  /** Candidato direto no banco (sem busca): o que a conferência gravou é o que o teste manda. */
+  async function cand(over: Record<string, unknown> = {}) {
+    const site = (await sql("select id from public.ch_official_domains where address = 'www.gov.br/saude'"))[0];
+    const k = ++n;
+    const sha = (0x5000000 + k).toString(16).padStart(64, "0");
+    const link = `https://www.gov.br/saude/rev1-${k}.pdf`;
+    const r = await t.db.service<{ id: string; duplicate: boolean }>("ch_worker_source_candidate_create", {
+      p_candidate: {
+        domain_id: site.id, requested_url: link, final_url: link, ai_title: `Doc rev1 ${k}`, ai_institution: "Ministério da Saúde", ai_published: "2025-03-14",
+        ai_nature: "PCDT", ai_kind: "final", ai_level: "A", file_date: "2026-01-01", quote: "Gestantes com pré-eclâmpsia grave devem ser encaminhadas ao centro.",
+        file_kind: "pdf", sha256: sha, size_bytes: 1000, page_count: 3, storage_path: `source-candidates/${sha}.pdf`, preview: "x", suggested_level: "A", suggested_kind: "final", suggested_nature: "PCDT",
+        ...over,
+      },
+    });
+    return { ...r, sha, link };
+  }
+  const sourceOf = async (id: string) => (await sql("select * from public.ch_sources where id = $1", [id]))[0];
+
+  it("achado 1: a data da IA ou do arquivo, sem prova, NÃO vira a data da fonte; a comprovada ou a do administrador vale", async () => {
+    const semProva = await cand();
+    const r1 = await approve(semProva.id);
+    expect((await sourceOf(r1.source_id)).published_on).toBeNull();
+    const comprovada = await cand({ currency_date: "2024-05-10" });
+    expect(String((await sourceOf((await approve(comprovada.id)).source_id)).published_on.toISOString())).toContain("2024-05-10");
+    const doAdmin = await cand();
+    expect(String((await sourceOf((await approve(doAdmin.id, { published_on: "2023-02-03" })).source_id)).published_on.toISOString())).toContain("2023-02-03");
+    const soAno = await cand({ currency_date: "2022" });
+    const rAno = await approve(soAno.id);
+    expect(await sourceOf(rAno.source_id)).toMatchObject({ published_on: null, version: "2022" });
+  });
+
+  it("achado 2: substituir pela mesma fonte (arquivo ou endereço) mais antiga ou sem data comparável exige confirm_older", async () => {
+    const libId = (await asAdmin("app_ch_register_source", { p_source: { title: "Outro título", organ: "Outro órgão", url: "https://www.gov.br/saude/rev1-mesmo-endereco.pdf", published_on: "2025-01-01", version: "2025" } })).id as string;
+    const velho = await cand({ requested_url: "https://www.gov.br/saude/rev1-mesmo-endereco.pdf", final_url: "https://www.gov.br/saude/rev1-mesmo-endereco.pdf", currency_date: "2020-01-01" });
+    await expect(approve(velho.id, { confirm_replace: true })).rejects.toThrow(/Confirme a versão mais antiga: esta fonte \(01\/01\/2020\) é mais antiga que a vigente "Outro título" \(versão 2025, 01\/01\/2025\)/);
+    expect((await sourceOf(libId)).status).toBe("current");
+    await approve(velho.id, { confirm_older: true });
+    expect((await sourceOf(libId)).status).toBe("superseded");
+
+    const lib2 = (await asAdmin("app_ch_register_source", { p_source: { title: "Mais outro", organ: "Mais outro órgão", url: "https://www.gov.br/saude/rev1-sem-data.pdf", published_on: "2025-01-01" } })).id as string;
+    const semData = await cand({ requested_url: "https://www.gov.br/saude/rev1-sem-data.pdf", final_url: "https://www.gov.br/saude/rev1-sem-data.pdf" });
+    await expect(approve(semData.id, { confirm_replace: true })).rejects.toThrow(/Confirme a versão sem data comparável: não foi possível comprovar que esta fonte é mais nova que a vigente "Mais outro"/);
+    expect((await sourceOf(lib2)).status).toBe("current");
+    // mais nova, comprovada: só a confirmação da substituição, como sempre (o anterior, que aguarda no mesmo endereço, sai antes)
+    await asAdmin("app_ch_source_candidate_reject", { p_candidate_id: semData.id, p_reason: "Rejeitado só para o teste." });
+    const nova = await cand({ requested_url: "https://www.gov.br/saude/rev1-sem-data.pdf", final_url: "https://www.gov.br/saude/rev1-sem-data.pdf", currency_date: "2026-02-02" });
+    await expect(approve(nova.id)).rejects.toThrow(/Confirme a substituição: já existe a fonte vigente "Mais outro"/);
+    await approve(nova.id, { confirm_replace: true });
+    expect((await sourceOf(lib2)).status).toBe("superseded");
+  });
+
+  it("achado 3: o mesmo endereço com conteúdo novo vira candidato à parte quando o anterior já foi decidido; aguardando ou mesmo arquivo continuam repetidos", async () => {
+    const first = await cand({ requested_url: "https://www.gov.br/saude/rev1-fixo.pdf", final_url: "https://www.gov.br/saude/rev1-fixo.pdf", currency_date: "2024-01-01" });
+    const site = (await sql("select id from public.ch_official_domains where address = 'www.gov.br/saude'"))[0];
+    const again = (over: Record<string, unknown>) => t.db.service<{ id: string; duplicate: boolean }>("ch_worker_source_candidate_create", {
+      p_candidate: { domain_id: site.id, requested_url: "https://www.gov.br/saude/rev1-fixo.pdf", final_url: "https://www.gov.br/saude/rev1-fixo.pdf", ai_title: "Doc fixo", ai_institution: "Ministério da Saúde", quote: "Gestantes com pré-eclâmpsia grave devem ser encaminhadas ao centro.", file_kind: "pdf", size_bytes: 10, suggested_level: "A", suggested_kind: "final", ...over },
+    });
+    const sha2 = "b".repeat(63) + "1";
+    // anterior ainda aguarda: não empilha
+    expect(await again({ sha256: sha2 })).toEqual({ id: first.id, duplicate: true });
+    await approve(first.id, { confirm_replace: true, confirm_older: true });
+    // aprovado + conteúdo novo no mesmo endereço: candidato novo, o antigo fica
+    const second = await again({ sha256: sha2, currency_date: "2026-01-01" });
+    expect(second.duplicate).toBe(false);
+    expect(second.id).not.toBe(first.id);
+    expect((await sql("select status from public.ch_source_candidates where id = $1", [first.id]))[0].status).toBe("aprovado");
+    // o mesmo arquivo continua repetido
+    expect(await again({ sha256: sha2 })).toEqual({ id: second.id, duplicate: true });
+    // rejeitado + conteúdo novo: também volta como versão nova
+    await asAdmin("app_ch_source_candidate_reject", { p_candidate_id: second.id, p_reason: "Rejeitado só para o teste." });
+    const third = await again({ sha256: "c".repeat(63) + "2" });
+    expect(third.duplicate).toBe(false);
+    expect((await sql("select count(*)::int as n from public.ch_source_candidates where url_norm = 'https://www.gov.br/saude/rev1-fixo.pdf'"))[0].n).toBe(3);
+  });
+
+  it("achado 3 (busca inteira): endereço fixo com edição nova aprovada antes é baixado de novo e entra como candidato", async () => {
+    await startSearch("Tema fixo");
+    const link = "https://www.gov.br/saude/rev1-endereco-fixo.pdf";
+    const web1 = fakeWeb({ [link]: pdfRoute("fixoA", "01/01/2023") });
+    const ai1 = fakeAi(() => ({ documentos: [finding(link, "fixoA", { titulo: "PCDT fixo", data_publicacao: "2023-01-01" })], observacao: null }));
+    await createContentHubWorker(depsOf(ai1, web1)).drain();
+    const c1 = (await sql("select id from public.ch_source_candidates where ai_title = 'PCDT fixo'"))[0];
+    await approve(c1.id);
+    await startSearch("Tema fixo 2");
+    const web2 = fakeWeb({ [link]: pdfRoute("fixoB", "01/06/2025") });
+    const ai2 = fakeAi(() => ({ documentos: [finding(link, "fixoB", { titulo: "PCDT fixo", data_publicacao: "2025-06-01" })], observacao: null }));
+    await createContentHubWorker(depsOf(ai2, web2)).drain();
+    const rows = await sql("select status, currency, currency_date from public.ch_source_candidates where ai_title = 'PCDT fixo' order by created_at");
+    expect(rows).toEqual([{ status: "aprovado", currency: "sem_comparacao", currency_date: "2023-01-01" }, { status: "aguardando", currency: "versao_mais_nova", currency_date: "2025-06-01" }]);
+    expect(web2.calls.some((c) => c.url === link)).toBe(true);
+  });
+
+  it("achado 4: na aprovação, existir candidato irmão comprovadamente mais novo exige confirm_older, mesmo com 'mesma versão'", async () => {
+    await library("Doc irmao", "2024-01-01");
+    const a = await cand({ ai_title: "Doc irmao", currency_date: "2024-01-01" });
+    const b = await cand({ ai_title: "Doc irmao", currency_date: "2025-01-01" });
+    await expect(approve(a.id, { confirm_replace: true })).rejects.toThrow(/Confirme a versão mais antiga: a busca achou outra versão mais nova deste mesmo documento/);
+    await expect(approve(a.id, { confirm_replace: true, confirm_older: true })).resolves.toMatchObject({ source_id: expect.any(String) });
+    expect(b.id).toBeTruthy();
+  });
+
+  it("achado 6: classificação que falhou fica pendente e é refeita depois, sem nova chamada à IA", async () => {
+    const id = await startSearch("Tema pendente");
+    const web = fakeWeb({ "https://www.gov.br/saude/pend.pdf": pdfRoute("pend", "14/03/2025") });
+    const ai = fakeAi(() => ({ documentos: [finding("https://www.gov.br/saude/pend.pdf", "pend")], observacao: null }));
+    const broken = { ...t.db, service: async (fn: string, args?: Record<string, unknown>) => {
+      if (fn === "ch_worker_source_currency_set" || fn === "ch_worker_source_currency_pending") throw new Error("falha temporária");
+      return t.db.service(fn, args);
+    } } as any;
+    await createContentHubWorker(depsOf(ai, web, { db: broken })).drain();
+    expect((await sql("select status from public.ch_source_searches where id = $1", [id]))[0].status).toBe("concluida");
+    const c = (await cands(id))[0];
+    expect(c.currency).toBeNull(); // pendente
+    expect(await t.db.service("ch_worker_source_currency_pending")).toContain(id);
+    // o servidor volta (ou o SQL chega): a rotina refaz a classificação
+    const worker = createContentHubWorker(depsOf(ai, web));
+    expect(await worker.reconcilePendingCurrency()).toBeGreaterThanOrEqual(1);
+    expect((await cands(id))[0].currency).toBe("sem_comparacao");
+    expect(ai.calls).toHaveLength(1);
+    expect(await t.db.service("ch_worker_source_currency_pending")).not.toContain(id);
+    expect(await worker.reconcilePendingCurrency()).toBe(0);
+  });
+
+  it("achado 6 (outra busca): uma busca nova também refaz as pendências antigas", async () => {
+    const id = await startSearch("Tema pendente 2");
+    const web = fakeWeb({ "https://www.gov.br/saude/pend2.pdf": pdfRoute("pend2", "14/03/2025") });
+    const ai = fakeAi(() => ({ documentos: [finding("https://www.gov.br/saude/pend2.pdf", "pend2")], observacao: null }));
+    const broken = { ...t.db, service: async (fn: string, args?: Record<string, unknown>) => {
+      if (fn === "ch_worker_source_currency_set" || fn === "ch_worker_source_currency_pending") throw new Error("falha temporária");
+      return t.db.service(fn, args);
+    } } as any;
+    await createContentHubWorker(depsOf(ai, web, { db: broken })).drain();
+    expect((await cands(id))[0].currency).toBeNull();
+    await startSearch("Tema qualquer depois");
+    await createContentHubWorker(depsOf(fakeAi(() => ({ documentos: [], observacao: null })), fakeWeb({}))).drain();
+    expect((await cands(id))[0].currency).toBe("sem_comparacao");
+  });
+
+  it("permissões: o servidor chama as funções internas; quem entrou chama só as da tela", async () => {
+    const can = async (role: string, sig: string) => (await sql(`select has_function_privilege('${role}', '${sig}', 'execute') as ok`))[0].ok as boolean;
+    for (const sig of ["public.ch_worker_source_candidate_create(jsonb)", "public.ch_worker_source_library_for_theme(text)", "public.ch_worker_source_currency_context(uuid)", "public.ch_worker_source_currency_set(jsonb)", "public.ch_worker_source_currency_pending()", "public.ch_source_date_cmp(text, text)"]) {
+      expect(await can("service_role", sig), `service_role ${sig}`).toBe(true);
+      expect(await can("authenticated", sig), `authenticated ${sig}`).toBe(false);
+      expect(await can("anon", sig), `anon ${sig}`).toBe(false);
+    }
+    for (const sig of ["public.app_ch_source_candidates(text)", "public.app_ch_source_candidate_approve(uuid, jsonb)", "public.app_ch_source_search_check(text, text, uuid)"]) {
+      expect(await can("authenticated", sig), `authenticated ${sig}`).toBe(true);
+      expect(await can("service_role", sig), `service_role ${sig}`).toBe(true);
+      expect(await can("anon", sig), `anon ${sig}`).toBe(false);
+    }
+  });
+
+  it("comparação de datas do banco: dia, ano, mistura e vazio", async () => {
+    const cmp = async (a: string | null, b: string | null) => (await t.dev.db.query<any>("select public.ch_source_date_cmp($1, $2) as r", [a, b])).rows[0].r;
+    expect(await cmp("2025-01-02", "2025-01-01")).toBe(1);
+    expect(await cmp("2025-01-01", "2025-01-01")).toBe(0);
+    expect(await cmp("2024-12-31", "2025-01-01")).toBe(-1);
+    expect(await cmp("2026", "2025-01-01")).toBe(1);
+    expect(await cmp("2025", "2025-06-01")).toBeNull();
+    expect(await cmp("2025", "2025")).toBe(0);
+    expect(await cmp(null, "2025")).toBeNull();
+    expect(await cmp("lixo", "2025")).toBeNull();
+  });
+});

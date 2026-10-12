@@ -293,8 +293,8 @@ describe("Contrato: fontes encontradas (cartão, salvar, aprovar, rejeitar)", ()
   });
 
   it("substituição: a recusa começa com 'Confirme a substituição' (a tela pergunta) e confirm_replace:true conclui", async () => {
-    const old = await asAdmin("app_ch_register_source", { p_source: { title: "PCDT do contrato", organ: "Ministério da Saúde", version: "2022", sha256: "b".repeat(64) } });
-    const c = await candidate(storage, { ai_title: "pcdt do contrato" });
+    const old = await asAdmin("app_ch_register_source", { p_source: { title: "PCDT do contrato", organ: "Ministério da Saúde", version: "2022", published_on: "2022-05-01", sha256: "b".repeat(64) } });
+    const c = await candidate(storage, { ai_title: "pcdt do contrato", currency_date: "2025-03-14" });
     const first = await http(hub, "POST", `/source-candidates/${c.id}/approve`, { fields: { ...screenFields(), checked: true } });
     expect(first.status).toBe(400);
     expect(first.body.error).toMatch(/^Confirme a substituição/);

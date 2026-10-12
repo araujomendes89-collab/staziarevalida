@@ -343,7 +343,7 @@ describe("Candidatos", () => {
     const args = rpcCalls("app_ch_source_candidate_save")[0][1];
     expect(args.p_candidate_id).toBe("c1");
     expect(args.p_fields).toEqual({
-      institution: "Ministério da Saúde", title: "PCDT de teste", version: "2024", published_on: "2024-05-10", kind: "final", nature: "PCDT",
+      institution: "Ministério da Saúde", title: "PCDT de teste", version: "2024", published_on: null, kind: "final", nature: "PCDT",
       level: "A", area: "PEDIATRIA", theme: "Asma", valid_until: null,
     });
     expect(await within(c).findByText("Dados salvos.")).toBeTruthy();

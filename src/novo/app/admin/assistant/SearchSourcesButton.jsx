@@ -15,8 +15,12 @@ import { SEARCH_STATUS } from "../content/labels.js";
 export const AVERAGE_COST_USD = 0.4;
 export const NOTE = "Só entra na biblioteca depois que você aprovar na aba Fontes.";
 export const ASK_ADMIN = "Peça ao administrador para buscar fontes deste tema.";
-export const OLD_SQL = "O banco ainda não recebeu a atualização necessária para esta busca (o site está mais novo que o SQL). Peça para colar a migração 20261003009820 no Supabase e tente de novo.";
+export const OLD_SQL = "O sistema está aguardando uma atualização para liberar esta busca. Avise quem cuida do sistema e tente de novo mais tarde.";
+export const GENERIC_ERROR = "Não foi possível concluir agora. Tente de novo; se continuar, avise quem cuida do sistema.";
 const ACTIVE = new Set(["na_fila", "buscando", "conferindo"]);
+/** Busca parada (teto, função desligada): continua a ser acompanhada, mais devagar, e volta ao andamento quando retoma. */
+const WATCHED = new Set([...ACTIVE, "pendente"]);
+const SLOW_FACTOR = 3;
 const caption = { font: "var(--type-caption)", color: "var(--text-tertiary)", margin: 0 };
 /** Sem item aberto (Análise de questões, busca de trechos): o administrador escreve o tema. */
 export const OPEN_CONTEXT = { area: null, theme: "", freeText: null };
@@ -34,6 +38,18 @@ export function sourceSearchContext(tab, form) {
   return { area, theme, freeText: parts.join(". ").slice(0, 300) || null };
 }
 
+/** Texto de erro que o dono pode ler: mensagem do sistema em português passa; erro cru (inglês, nome de função, rede) vira um aviso simples. */
+export function friendlyError(error) {
+  const raw = String(error?.message ?? error ?? "").trim();
+  if (!raw) return GENERIC_ERROR;
+  if (/could not find the function|schema cache|PGRST202|42883/i.test(raw)) return OLD_SQL;
+  if (/failed to fetch|network|fetch failed|timeout|timed out|ECONN|load failed/i.test(raw)) return "Sem conexão com o servidor agora. Confira a internet e tente de novo.";
+  if (/permission denied|not authorized|jwt|forbidden|row-level security/i.test(raw)) return "Você não tem permissão para pedir esta busca.";
+  // erro cru do banco, do navegador ou de biblioteca (inglês, nome de função, código): aviso genérico; o português do sistema passa
+  const technical = /\b(function|relation|column|syntax|violates|constraint|null value|undefined|exception|failed|invalid input|typeerror|referenceerror|sql|pgrst|schema|public\.|unexpected|cannot|could not|unable|went wrong|not found|internal server error|bad request)\b/i.test(raw) || /^(error|erro \d+)/i.test(raw) || /\b(the|is|was|please)\b/i.test(raw);
+  return technical ? GENERIC_ERROR : raw;
+}
+
 /** O erro é "a função não existe no banco" (site novo, SQL antigo)? */
 export const isMissingFunction = (error) => /could not find the function|schema cache|does not exist|PGRST202|42883/i.test(String(error?.message ?? error ?? ""));
 
@@ -42,7 +58,7 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 function progressOf(search) {
   const found = Number(search.verified_count ?? 0);
-  const why = typeof search.message === "string" && search.message.trim() ? search.message.trim() : "";
+  const why = typeof search.message === "string" && search.message.trim() ? friendlyError(search.message) : "";
   switch (search.status) {
     case "na_fila":
       return { tone: "info", busy: true, text: "Na fila: a busca começa em instantes (roda no processamento da Central; pode levar até ~10 minutos)." };
@@ -102,7 +118,8 @@ export function SearchSourcesButton({ tab, form = undefined, context = undefined
         const r = await check(searchId);
         if (!alive) return;
         if (r?.search) setSearch(r.search);
-        if (!r?.search || ACTIVE.has(r.search.status)) timer = setTimeout(tick, pollMs);
+        // andando: confere de pouco em pouco; parada (pendente): confere mais devagar até retomar ou terminar
+        if (!r?.search || WATCHED.has(r.search.status)) timer = setTimeout(tick, r?.search?.status === "pendente" ? pollMs * SLOW_FACTOR : pollMs);
       } catch (e) {
         if (!alive) return;
         if (isMissingFunction(e)) setOldSql(true);
@@ -139,7 +156,7 @@ export function SearchSourcesButton({ tab, form = undefined, context = undefined
       setSearchId(item.id);
     } catch (e) {
       if (isMissingFunction(e)) setOldSql(true);
-      else setError(e?.message || "Não foi possível pedir a busca.");
+      else setError(friendlyError(e));
     } finally {
       setBusy(false);
     }
@@ -161,7 +178,7 @@ export function SearchSourcesButton({ tab, form = undefined, context = undefined
     } catch (e) {
       setBusy(false);
       if (isMissingFunction(e)) setOldSql(true);
-      else setError(e?.message || "Não foi possível conferir buscas anteriores.");
+      else setError(friendlyError(e));
       return;
     }
     await start();

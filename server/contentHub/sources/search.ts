@@ -23,7 +23,7 @@ import { PROMPTS, asDocument } from "../ai/prompts";
 import { aiAllowed, registerPromptsOnce } from "../ai/registry";
 import type { PipelineDeps, Job } from "../pipeline";
 import type { OfficialDomain } from "./officialDomains";
-import { reconcileCurrency } from "./currency";
+import { reconcileCurrency, reconcilePendingCurrency } from "./currency";
 import { verifyFinding } from "./verify";
 
 /** A busca não pode rodar agora (função desligada, IA ou teto): o trabalho fica pendente, sem gastar tentativa. */
@@ -76,6 +76,8 @@ export async function runSourceSearch(
   if (!searchId) throw new SearchFailed("Trabalho de busca sem identificação da busca.");
   const db = deps.db;
   const update = (patch: Record<string, unknown>) => db.service("ch_worker_source_search_update", { p_search_id: searchId, p_patch: patch });
+  // classificações de atualidade que ficaram pendentes em buscas anteriores (sem nova chamada à IA)
+  await reconcilePendingCurrency(db).catch(() => 0);
   const row = await db.service<SearchRow | null>("ch_worker_source_search_get", { p_search_id: searchId });
   if (!row) throw new SearchFailed("Busca não encontrada.");
   if (FINAL.includes(row.status)) return; // já terminou (trabalho repetido): nada a fazer

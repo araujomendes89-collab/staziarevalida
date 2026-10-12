@@ -31,6 +31,37 @@ alter table public.ch_source_candidates drop constraint if exists ch_source_cand
 alter table public.ch_source_candidates add constraint ch_source_candidates_currency_check
   check (currency is null or currency in ('versao_mais_nova', 'mesma_versao', 'versao_mais_antiga', 'outra_mais_nova', 'data_nao_comprovada', 'sem_comparacao'));
 
+-- ---------------------------------------------------------------- mesmo endereço, conteúdo novo (revisão independente 1, achado 3)
+-- A 9610 não deixava gravar dois candidatos com o mesmo endereço (url_norm único) nem considerava a versão nova de um endereço fixo.
+-- Agora o que repete é o ARQUIVO (SHA-256, que continua único) ou um candidato do mesmo endereço que ainda AGUARDA. Se o conteúdo
+-- mudou no mesmo endereço e o anterior já foi decidido (aprovado ou rejeitado), o novo entra como candidato à parte; o antigo fica.
+alter table public.ch_source_candidates drop constraint if exists ch_source_candidates_url_norm_key;
+create index if not exists ch_source_candidates_url_norm_idx on public.ch_source_candidates (url_norm);
+
+-- Compara duas datas em texto (AAAA-MM-DD ou só AAAA): 1 (a é mais nova), 0 (iguais), -1 (a é mais antiga) ou nulo quando não dá
+-- para dizer (data ausente/inválida, ou dia contra ano no mesmo ano). Mesma regra de compareDates (currency.ts).
+create or replace function public.ch_source_date_cmp(p_a text, p_b text) returns integer
+  language plpgsql immutable set search_path = ''
+as $$
+declare
+  a text := btrim(coalesce(p_a, ''));
+  b text := btrim(coalesce(p_b, ''));
+  a_full date := public.ch_source_iso_date(a);
+  b_full date := public.ch_source_iso_date(b);
+  y_a integer;
+  y_b integer;
+begin
+  y_a := case when a ~ '^\d{4}$' then a::integer when a_full is not null then extract(year from a_full)::integer end;
+  y_b := case when b ~ '^\d{4}$' then b::integer when b_full is not null then extract(year from b_full)::integer end;
+  if y_a is null or y_b is null then return null; end if;
+  if y_a <> y_b then return sign(y_a - y_b)::integer; end if;
+  if a_full is null or b_full is null then
+    return case when a_full is null and b_full is null then 0 else null end;
+  end if;
+  return sign(a_full - b_full)::integer;
+end
+$$;
+
 -- ---------------------------------------------------------------- candidato novo (corpo da 9610 com os campos de atualidade)
 -- Os campos novos são opcionais: quem chama sem eles (versão antiga do servidor) grava como antes.
 
@@ -56,7 +87,7 @@ begin
   if v_url_norm is null or v_sha is null then raise exception 'Candidato sem link ou sem SHA-256.' using errcode = '22023'; end if;
 
   select c.id into v_id from public.ch_source_candidates c
-   where c.sha256 = v_sha or c.url_norm in (v_url_norm, v_final_norm) or c.final_url_norm in (v_url_norm, v_final_norm)
+   where c.sha256 = v_sha or (c.status = 'aguardando' and (c.url_norm in (v_url_norm, v_final_norm) or c.final_url_norm in (v_url_norm, v_final_norm)))
    order by c.created_at
    limit 1;
   if found then return jsonb_build_object('id', v_id, 'duplicate', true); end if;
@@ -88,7 +119,7 @@ begin
   if v_id is null then
     -- outro processamento gravou o mesmo link ou arquivo agora mesmo
     select c.id into v_id from public.ch_source_candidates c
-     where c.sha256 = v_sha or c.url_norm in (v_url_norm, v_final_norm) or c.final_url_norm in (v_url_norm, v_final_norm)
+     where c.sha256 = v_sha or (c.status = 'aguardando' and (c.url_norm in (v_url_norm, v_final_norm) or c.final_url_norm in (v_url_norm, v_final_norm)))
      order by c.created_at
      limit 1;
     return jsonb_build_object('id', v_id, 'duplicate', true);
@@ -147,6 +178,19 @@ as $$
                                     and lower(btrim(coalesce(o.ai_title, ''))) = lower(btrim(coalesce(g.ai_title, '')))
                                     and lower(btrim(coalesce(o.ai_institution, ''))) = lower(btrim(coalesce(g.ai_institution, '')))), '[]'::jsonb)) order by g.created_at, g.id), '[]'::jsonb)
     from grp g
+$$;
+
+-- Buscas concluídas com candidatos aguardando que ainda não foram classificados (a classificação falhou, ou o servidor novo rodou antes
+-- desta migração): o servidor refaz a classificação delas sem repetir a chamada paga à IA. Até 20 por vez.
+create or replace function public.ch_worker_source_currency_pending() returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select coalesce(jsonb_agg(x.id), '[]'::jsonb)
+    from (select distinct c.search_id as id
+            from public.ch_source_candidates c
+            join public.ch_source_searches s on s.id = c.search_id and s.status = 'concluida'
+           where c.status = 'aguardando' and c.currency is null
+           limit 20) x
 $$;
 
 -- Grava o estado de atualidade: p_updates = [{id, currency, info}]. Só candidato AGUARDANDO muda; "info" é juntado ao que já
@@ -233,7 +277,12 @@ declare
   v_document_id uuid;
   v_day date;
   v_older boolean := false;
+  v_incomp boolean := false;
   v_confirm boolean;
+  v_my text;
+  v_cmp_rep integer;
+  v_cmp_dup integer;
+  v_sibling boolean;
 begin
   perform public.assert_admin();
   if jsonb_typeof(f) <> 'object' then raise exception 'Dados inválidos.' using errcode = '22023'; end if;
@@ -274,11 +323,14 @@ begin
   v_kind := coalesce(nullif(e ->> 'kind', ''), c.suggested_kind);
   v_nature := coalesce(nullif(e ->> 'nature', ''), c.suggested_nature);
   v_valid := public.ch_source_iso_date(e ->> 'valid_until');
-  -- data de publicação: a do administrador; senão uma data INTEIRA achada no arquivo ou dita pela IA; ano sozinho não vira data
-  v_published := coalesce(public.ch_source_iso_date(e ->> 'published_on'), public.ch_source_iso_date(c.file_date), public.ch_source_iso_date(c.ai_published));
+  -- data de publicação: a do administrador ou a COMPROVADA pela conferência (currency_date: no texto do documento ou declarada pela
+  -- página). A data que só a IA disse, ou a interna do PDF, não vira data da fonte; sem data, fica nula ("data não comprovada").
+  -- Ano sozinho não vira data inteira.
+  v_published := coalesce(public.ch_source_iso_date(e ->> 'published_on'), public.ch_source_iso_date(c.currency_date));
+  v_my := coalesce(v_published::text, nullif(btrim(coalesce(c.currency_date, '')), ''));
   v_version := nullif(btrim(e ->> 'version'), '');
   if v_version is null and v_published is null then
-    v_year := coalesce((regexp_match(btrim(coalesce(c.file_date, '')), '^(\d{4})$'))[1], (regexp_match(btrim(coalesce(c.ai_published, '')), '^(\d{4})$'))[1]);
+    v_year := (regexp_match(btrim(coalesce(c.currency_date, '')), '^(\d{4})$'))[1];
     v_version := v_year;
   end if;
 
@@ -286,31 +338,45 @@ begin
   v_rep := null;
   select x.* into v_rep from public.ch_sources x
    where x.id = public.ch_source_replacement(v_title, v_organ, c.sha256, v_version);
-  -- versão mais antiga: a busca marcou o candidato como mais antigo que a fonte vigente ou que outro achado do mesmo documento, ou
-  -- a data que o administrador escolheu é anterior à da fonte vigente. Exige confirmação PRÓPRIA (confirm_older); confirmada, ela
-  -- vale também como confirmação da substituição.
-  v_older := c.currency in ('versao_mais_antiga', 'outra_mais_nova')
-             or (v_rep.id is not null and v_rep.published_on is not null and v_published is not null and v_published < v_rep.published_on);
-  v_confirm := f -> 'confirm_replace' is not distinct from 'true'::jsonb or (v_older and f -> 'confirm_older' is not distinct from 'true'::jsonb);
-  if v_older and f -> 'confirm_older' is distinct from 'true'::jsonb then
-    if v_rep.id is not null then
-      raise exception 'Confirme a versão mais antiga: esta fonte (%) é mais antiga que a vigente "%" (versão %, %) e aprovar vai SUBSTITUIR a mais nova pela mais antiga.',
-        coalesce(to_char(v_published, 'DD/MM/YYYY'), 'sem data inteira'), v_rep.title, coalesce(v_rep.version, 'sem versão'), coalesce(to_char(v_rep.published_on, 'DD/MM/YYYY'), 'sem data') using errcode = '22023';
-    end if;
-    raise exception 'Confirme a versão mais antiga: a busca achou outra versão mais nova deste mesmo documento, e aprovar esta não traz a mais nova.' using errcode = '22023';
-  end if;
-  if v_rep.id is not null and not v_confirm then
-    raise exception 'Confirme a substituição: esta aprovação substitui a fonte vigente "%" (versão %).', v_rep.title, coalesce(v_rep.version, 'sem versão') using errcode = '22023';
-  end if;
-
-  -- fonte vigente que já é este mesmo arquivo (SHA-256 e versão iguais) ou este mesmo endereço, ainda que sem documento na
-  -- Central: criar outra deixaria duas fontes vigentes iguais. Pede a mesma confirmação; confirmada, a anterior fica substituída.
+  -- fonte vigente com o mesmo arquivo (SHA-256 e versão iguais) ou o mesmo endereço, ainda que sem documento na Central: criar outra
+  -- deixaria duas fontes vigentes iguais; confirmada a substituição, a anterior fica substituída.
   select x.* into v_dup from public.ch_sources x
    where x.status = 'current' and x.id is distinct from v_rep.id
      and ((x.sha256 is not null and x.sha256 = c.sha256 and x.version is not distinct from v_version)
           or (x.url is not null and public.ch_url_norm(x.url) in (public.ch_url_norm(c.final_url), public.ch_url_norm(c.requested_url))))
    order by x.created_at desc
    limit 1;
+
+  -- Versão mais antiga ou sem data comparável: para QUALQUER fonte que a aprovação vá substituir (a de mesmo título e órgão, v_rep,
+  -- ou a de mesmo arquivo ou endereço, v_dup) e para o caso de a busca ter achado outra versão comprovadamente mais nova do mesmo
+  -- documento. Exige confirmação PRÓPRIA (confirm_older); confirmada, ela vale também como confirmação da substituição.
+  v_cmp_rep := case when v_rep.id is not null then public.ch_source_date_cmp(v_my, v_rep.published_on::text) end;
+  v_cmp_dup := case when v_dup.id is not null then public.ch_source_date_cmp(v_my, v_dup.published_on::text) end;
+  v_sibling := coalesce(c.currency, '') = 'outra_mais_nova' or exists (
+    select 1 from public.ch_source_candidates o
+     where o.status = 'aguardando' and o.id <> c.id
+       and lower(btrim(coalesce(o.ai_title, ''))) = lower(btrim(coalesce(c.ai_title, '')))
+       and lower(btrim(coalesce(o.ai_institution, ''))) = lower(btrim(coalesce(c.ai_institution, '')))
+       and public.ch_source_date_cmp(o.currency_date, v_my) = 1);
+  v_older := coalesce(c.currency, '') = 'versao_mais_antiga' or v_sibling or coalesce(v_cmp_rep < 0, false) or coalesce(v_cmp_dup < 0, false);
+  v_incomp := not v_older and ((v_rep.id is not null and v_cmp_rep is null) or (v_dup.id is not null and v_cmp_dup is null));
+  v_confirm := f -> 'confirm_replace' is not distinct from 'true'::jsonb or ((v_older or v_incomp) and f -> 'confirm_older' is not distinct from 'true'::jsonb);
+  if (v_older or v_incomp) and f -> 'confirm_older' is distinct from 'true'::jsonb then
+    if v_older and (coalesce(v_cmp_rep < 0, false) or coalesce(v_cmp_dup < 0, false) or coalesce(c.currency, '') = 'versao_mais_antiga') and (v_rep.id is not null or v_dup.id is not null) then
+      raise exception 'Confirme a versão mais antiga: esta fonte (%) é mais antiga que a vigente "%" (versão %, %) e aprovar vai SUBSTITUIR a mais nova pela mais antiga.',
+        coalesce(to_char(v_published, 'DD/MM/YYYY'), 'sem data inteira'),
+        coalesce(v_rep.title, v_dup.title), coalesce(coalesce(v_rep.version, v_dup.version), 'sem versão'),
+        coalesce(to_char(coalesce(v_rep.published_on, v_dup.published_on), 'DD/MM/YYYY'), 'sem data') using errcode = '22023';
+    elsif v_older then
+      raise exception 'Confirme a versão mais antiga: a busca achou outra versão mais nova deste mesmo documento, e aprovar esta não traz a mais nova.' using errcode = '22023';
+    end if;
+    raise exception 'Confirme a versão sem data comparável: não foi possível comprovar que esta fonte é mais nova que a vigente "%" (versão %, %); aprovar vai SUBSTITUIR a vigente.',
+      coalesce(case when v_cmp_rep is null then v_rep.title end, v_dup.title), coalesce(case when v_cmp_rep is null then v_rep.version end, v_dup.version, 'sem versão'),
+      coalesce(to_char(case when v_cmp_rep is null then v_rep.published_on else v_dup.published_on end, 'DD/MM/YYYY'), 'sem data') using errcode = '22023';
+  end if;
+  if v_rep.id is not null and not v_confirm then
+    raise exception 'Confirme a substituição: esta aprovação substitui a fonte vigente "%" (versão %).', v_rep.title, coalesce(v_rep.version, 'sem versão') using errcode = '22023';
+  end if;
   if v_dup.id is not null and not v_confirm then
     raise exception 'Confirme a substituição: já existe a fonte vigente "%" (versão %) com o mesmo arquivo ou endereço; esta aprovação a substitui.', v_dup.title, coalesce(v_dup.version, 'sem versão') using errcode = '22023';
   end if;
@@ -348,7 +414,7 @@ begin
 
   perform public.ch_log('source_candidate.approve', c.id::text,
     jsonb_build_object('source_id', v_source_id, 'document_id', v_document_id, 'level', v_level, 'site', c.site_address, 'superseded', v_reg -> 'superseded',
-      'currency', c.currency, 'confirmed_older', v_older));
+      'currency', c.currency, 'confirmed_older', v_older, 'date_not_comparable', v_incomp));
   return jsonb_build_object('source_id', v_source_id, 'document_id', v_document_id, 'superseded', v_reg -> 'superseded',
                             'candidate_versions', coalesce((v_reg ->> 'candidate_versions')::int, 0), 'file_kind', c.file_kind);
 end
@@ -390,9 +456,23 @@ $$;
 
 -- ---------------------------------------------------------------- permissões
 revoke execute on function public.ch_worker_source_candidate_create(jsonb) from public, anon, authenticated;
+revoke execute on function public.ch_source_date_cmp(text, text) from public, anon, authenticated;
+revoke execute on function public.ch_worker_source_currency_pending() from public, anon, authenticated;
 revoke execute on function public.ch_worker_source_library_for_theme(text) from public, anon, authenticated;
 revoke execute on function public.ch_worker_source_currency_context(uuid) from public, anon, authenticated;
 revoke execute on function public.ch_worker_source_currency_set(jsonb) from public, anon, authenticated;
 revoke execute on function public.app_ch_source_candidates(text) from public, anon;
 revoke execute on function public.app_ch_source_candidate_approve(uuid, jsonb) from public, anon;
 revoke execute on function public.app_ch_source_search_check(text, text, uuid) from public, anon;
+
+-- Quem pode chamar (explícito, para não depender dos privilégios padrão do projeto): o servidor (service_role) chama as funções
+-- internas; quem entrou (authenticated) chama só as da tela, e cada uma confere o papel de administrador lá dentro.
+grant execute on function public.ch_worker_source_candidate_create(jsonb) to service_role;
+grant execute on function public.ch_worker_source_library_for_theme(text) to service_role;
+grant execute on function public.ch_worker_source_currency_context(uuid) to service_role;
+grant execute on function public.ch_worker_source_currency_set(jsonb) to service_role;
+grant execute on function public.ch_worker_source_currency_pending() to service_role;
+grant execute on function public.ch_source_date_cmp(text, text) to service_role;
+grant execute on function public.app_ch_source_candidates(text) to authenticated, service_role;
+grant execute on function public.app_ch_source_candidate_approve(uuid, jsonb) to authenticated, service_role;
+grant execute on function public.app_ch_source_search_check(text, text, uuid) to authenticated, service_role;

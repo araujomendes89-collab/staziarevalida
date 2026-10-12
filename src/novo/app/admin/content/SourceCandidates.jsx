@@ -113,7 +113,9 @@ function CandidateCard({ candidate: c, onDecided }) {
     institution: edited.institution ?? c.ai_institution ?? c.site_institution ?? "",
     title: edited.title ?? c.ai_title ?? "",
     version: edited.version ?? "",
-    published_on: edited.published_on ?? isoDay(c.ai_published),
+    // só a data COMPROVADA pela conferência (no texto do documento ou declarada pela página) vem preenchida; a que só a IA disse não vira
+    // data da fonte sozinha (o administrador digita, se quiser)
+    published_on: edited.published_on ?? isoDay(c.currency_date),
     kind: edited.kind ?? c.suggested_kind ?? c.ai_kind ?? "final",
     nature: edited.nature ?? c.suggested_nature ?? "",
     level: edited.level ?? c.suggested_level ?? "",
@@ -148,8 +150,8 @@ function CandidateCard({ candidate: c, onDecided }) {
         try {
           return await send(older ? { confirm_older: true } : {});
         } catch (e) {
-          if (/^Confirme a versão mais antiga/.test(e?.message ?? "")) {
-            if (!window.confirm(`${e.message} Aprovar mesmo assim?`)) throw new Error("Aprovação cancelada: a versão mais antiga não foi confirmada.");
+          if (/^Confirme a versão (mais antiga|sem data comparável)/.test(e?.message ?? "")) {
+            if (!window.confirm(`${e.message} Aprovar mesmo assim?`)) throw new Error("Aprovação cancelada: a versão não foi confirmada.");
             return send({ confirm_older: true });
           }
           if (!/^Confirme a substituição/.test(e?.message ?? "")) throw e;
@@ -171,7 +173,7 @@ function CandidateCard({ candidate: c, onDecided }) {
 
   const reject = () =>
     decide.run(() => hubPost(backend, `/source-candidates/${c.id}/reject`, { reason: reason.trim() }), null).then((r) => {
-      if (r) onDecided({ key: `reject-${c.id}`, candidateId: c.id, tone: "success", lines: [`Candidato rejeitado: ${f.title.trim() || c.ai_title || "sem título"}. O arquivo guardado foi apagado e este link não volta a ser sugerido.`] });
+      if (r) onDecided({ key: `reject-${c.id}`, candidateId: c.id, tone: "success", lines: [`Candidato rejeitado: ${f.title.trim() || c.ai_title || "sem título"}. O arquivo guardado foi apagado e este arquivo não volta a ser sugerido (se o conteúdo deste link mudar, a versão nova pode aparecer como outro candidato).`] });
     });
 
   const grid = { display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: 12 };
@@ -278,7 +280,7 @@ function CandidateCard({ candidate: c, onDecided }) {
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 220 }}>
-              <TextField label="Motivo da rejeição" value={reason} onChange={(e) => setReason(e.target.value)} hint="Pelo menos 10 caracteres. O mesmo link ou arquivo não volta a ser sugerido." />
+              <TextField label="Motivo da rejeição" value={reason} onChange={(e) => setReason(e.target.value)} hint="Pelo menos 10 caracteres. O mesmo arquivo não volta a ser sugerido; se o conteúdo do link mudar, a versão nova pode aparecer." />
             </div>
             <Button variant="secondary" icon="x" disabled={reason.trim().length < 10} loading={decide.busy} onClick={reject}>
               Rejeitar

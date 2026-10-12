@@ -14,7 +14,7 @@ const backend: any = { rpc: vi.fn(), accessToken: async () => "t" };
 vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot: { role: who.role, profile: { name: "Adm" } }, user: { id: "a" } }) }));
 vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
 
-import { SearchSourcesButton, sourceSearchContext, OPEN_CONTEXT, isMissingFunction, AVERAGE_COST_USD } from "../novo/app/admin/assistant/SearchSourcesButton.jsx";
+import { SearchSourcesButton, sourceSearchContext, OPEN_CONTEXT, isMissingFunction, friendlyError, AVERAGE_COST_USD, OLD_SQL, GENERIC_ERROR } from "../novo/app/admin/assistant/SearchSourcesButton.jsx";
 import { TabAssistant } from "../novo/app/admin/assistant/TabAssistant.jsx";
 import { AdminUpdates } from "../novo/app/admin/AdminUpdates.jsx";
 import { SourceCandidates } from "../novo/app/admin/content/SourceCandidates.jsx";
@@ -90,6 +90,61 @@ describe("contexto do item aberto", () => {
     expect(isMissingFunction(new Error("Could not find the function public.app_ch_source_search_check(p_area, p_theme) in the schema cache"))).toBe(true);
     expect(isMissingFunction(new Error("function public.x() does not exist"))).toBe(true);
     expect(isMissingFunction(new Error("Somente administradores."))).toBe(false);
+  });
+});
+
+describe("textos para o dono (revisão independente 1, achado 8)", () => {
+  it("erro cru vira aviso em português; mensagem em português do sistema passa", () => {
+    expect(friendlyError(new Error("Could not find the function public.x in the schema cache"))).toBe(OLD_SQL);
+    expect(friendlyError(new Error("Failed to fetch"))).toBe("Sem conexão com o servidor agora. Confira a internet e tente de novo.");
+    expect(friendlyError(new Error("permission denied for function app_ch_source_search_start"))).toBe("Você não tem permissão para pedir esta busca.");
+    expect(friendlyError(new Error('insert or update on table "ch_source_searches" violates foreign key constraint'))).toBe(GENERIC_ERROR);
+    expect(friendlyError(new Error("TypeError: Cannot read properties of undefined"))).toBe(GENERIC_ERROR);
+    expect(friendlyError(new Error("Something unexpected happened"))).toBe(GENERIC_ERROR);
+    expect(friendlyError(new Error(""))).toBe(GENERIC_ERROR);
+    expect(friendlyError(new Error("Somente administradores."))).toBe("Somente administradores.");
+    expect(friendlyError(new Error("Teto de gasto atingido."))).toBe("Teto de gasto atingido.");
+    expect(GENERIC_ERROR).not.toMatch(/SQL|Supabase|migra/i);
+  });
+  it("erro cru ao pedir a busca não aparece na tela", async () => {
+    backend.rpc.mockImplementation(async (fn: string) => {
+      if (fn === "app_ch_source_search_check") return EMPTY_CHECK;
+      throw new Error('insert or update on table "ch_source_searches" violates foreign key constraint "x"');
+    });
+    render(<SearchSourcesButton tab="questoes" context={ctx} />);
+    fireEvent.click(await buy());
+    expect(await screen.findByText(GENERIC_ERROR)).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/violates|ch_source_searches/);
+  });
+  it("mensagem da busca com erro cru também é traduzida", async () => {
+    checks = [() => EMPTY_CHECK, () => ({ ...EMPTY_CHECK, search: search({ status: "falhou", message: "TypeError: fetch failed" }) })];
+    render(<SearchSourcesButton tab="questoes" context={ctx} pollMs={5} />);
+    fireEvent.click(await buy());
+    expect(await screen.findByText(/A busca falhou: Sem conexão com o servidor agora/)).toBeTruthy();
+  });
+});
+
+describe("busca parada (pendente)", () => {
+  it("o acompanhamento continua mais devagar enquanto está pendente e volta ao andamento quando retoma", async () => {
+    let calls = 0;
+    const seq = [search({ status: "pendente", message: "Teto de gasto atingido." }), search({ status: "pendente", message: "Teto de gasto atingido." }), search({ status: "buscando" }), search({ status: "concluida", verified_count: 2, found_count: 2 })];
+    checks = [() => EMPTY_CHECK, () => ({ ...EMPTY_CHECK, search: seq[Math.min(calls++, seq.length - 1)] })];
+    render(<SearchSourcesButton tab="questoes" context={ctx} pollMs={20} />);
+    fireEvent.click(await buy());
+    expect(await screen.findByText(/A busca está parada: Teto de gasto atingido\. Ela continua quando o problema for resolvido\./)).toBeTruthy();
+    // não parou: continua consultando, até retomar e concluir
+    expect(await screen.findByText("A IA está buscando nos sites oficiais…", {}, { timeout: 3000 })).toBeTruthy();
+    expect(await screen.findByText("Concluída com 2 candidatos para você conferir.", {}, { timeout: 3000 })).toBeTruthy();
+    expect(calls).toBeGreaterThanOrEqual(4);
+  });
+  it("pendente é consultada com intervalo maior que o do andamento", async () => {
+    const times: number[] = [];
+    checks = [() => EMPTY_CHECK, () => { times.push(Date.now()); return { ...EMPTY_CHECK, search: search({ status: "pendente", message: "Teto." }) }; }];
+    render(<SearchSourcesButton tab="questoes" context={ctx} pollMs={30} />);
+    fireEvent.click(await buy());
+    await waitFor(() => expect(times.length).toBeGreaterThanOrEqual(3), { timeout: 3000 });
+    const gap = times[2] - times[1];
+    expect(gap).toBeGreaterThanOrEqual(70); // 3 x 30 ms (com folga de relógio)
   });
 });
 
@@ -188,8 +243,11 @@ describe("botão Buscar fontes com IA", () => {
     checks = [() => new Error('Could not find the function public.app_ch_source_search_check(p_area, p_theme) in the schema cache')];
     render(<SearchSourcesButton tab="questoes" context={ctx} />);
     fireEvent.click(await buy());
-    expect(await screen.findByText(/O banco ainda não recebeu a atualização necessária para esta busca/)).toBeTruthy();
-    expect(document.body.textContent).not.toMatch(/schema cache|Could not find/);
+    expect(await screen.findByText(OLD_SQL)).toBeTruthy();
+    expect(OLD_SQL).toMatch(/aguardando uma atualização.*Avise quem cuida do sistema/);
+    // o dono não lê SQL, migração, Supabase nem erro cru
+    expect(OLD_SQL).not.toMatch(/SQL|migra|Supabase|9820|colar/i);
+    expect(document.body.textContent).not.toMatch(/schema cache|Could not find|Supabase|migração|SQL/);
     expect(rpcCalls("app_ch_source_search_start")).toHaveLength(0);
   });
 
@@ -401,6 +459,30 @@ describe("candidatos: selo de atualidade e datas comprovadas", () => {
     ]);
     expect(within(await card("c1")).getByText("01/01/2030 (comprovada no texto do documento)")).toBeTruthy();
     expect(within(await card("c2")).getByText("02/02/2031 (não encontrada no documento)")).toBeTruthy();
+  });
+});
+
+describe("candidatos: data da fonte só comprovada (achado 1)", () => {
+  it("a data do formulário vem da data COMPROVADA, nunca da que só a IA disse", async () => {
+    showCandidates([
+      { ...CAND, id: "c1", ai_published: "2024-05-10", file_date: "2023-01-01", currency_date: null },
+      { ...CAND, id: "c2", ai_published: "2024-05-10", currency_date: "2025-03-14", currency: "sem_comparacao", currency_info: { basis: "texto" } },
+    ]);
+    expect((within(await card("c1")).getByLabelText("Data de publicação") as HTMLInputElement).value).toBe("");
+    expect((within(await card("c2")).getByLabelText("Data de publicação") as HTMLInputElement).value).toBe("2025-03-14");
+  });
+  it("o banco pede a confirmação de versão sem data comparável e a tela a repassa", async () => {
+    let n = 0;
+    fetchHandlers["POST /api/content-hub/source-candidates/c1/approve"] = () => {
+      n += 1;
+      return n === 1 ? json({ error: 'Confirme a versão sem data comparável: não foi possível comprovar que esta fonte é mais nova que a vigente "X" (versão 1, sem data); aprovar vai SUBSTITUIR a vigente.' }, 400) : json({ source_id: "s", document_id: "d", superseded: true }, 201);
+    };
+    showCandidates([{ ...CAND, currency: "data_nao_comprovada" }]);
+    const c = await card();
+    readyToApprove(c);
+    fireEvent.click(within(c).getByRole("button", { name: "Aprovar" }));
+    await waitFor(() => expect(approved()).toHaveLength(2));
+    expect(approved()[1].body.fields.confirm_older).toBe(true);
   });
 });
 

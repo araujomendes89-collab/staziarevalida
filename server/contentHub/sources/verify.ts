@@ -221,6 +221,9 @@ export interface VerifyContext {
 
 export type VerifyOutcome = { ok: true; candidateId: string } | { ok: false; motivo: string };
 
+/** Resposta de ch_worker_source_known para um candidato do mesmo endereço que ainda aguarda a conferência. */
+const WAITING = "Repetido: candidato aguardando sua conferência.";
+
 const discard = (motivo: string): VerifyOutcome => ({ ok: false, motivo });
 
 const messageOf = (error: unknown) => {
@@ -245,9 +248,11 @@ export async function verifyFinding(item: unknown, ctx: VerifyContext): Promise<
   if (foldForQuote(quote).length < MIN_FOLDED_QUOTE) return discard("Trecho curto demais para conferir.");
   const published = normalizeDate(f.data_publicacao, true);
 
-  // 2. link já conhecido
+  // 2. link já conhecido: só o que ainda AGUARDA para o mesmo endereço dispensa o download. Endereço de fonte cadastrada, vigiada,
+  // aprovada ou rejeitada pode ter conteúdo novo (órgãos mantêm o mesmo endereço para a edição atualizada): baixa e compara o
+  // SHA-256 no passo 4. O mesmo arquivo continua repetido; o conteúdo novo entra como candidato à parte.
   const knownByLink = await ctx.db.service<string | null>("ch_worker_source_known", { p_url: link, p_sha256: null });
-  if (knownByLink) return discard(knownByLink);
+  if (knownByLink === WAITING) return discard(knownByLink);
 
   // 3. download conferido
   let got: Awaited<ReturnType<typeof downloadOfficial>>;
@@ -261,7 +266,7 @@ export async function verifyFinding(item: unknown, ctx: VerifyContext): Promise<
 
   // 4. o mesmo arquivo já é conhecido?
   const sha256 = crypto.createHash("sha256").update(got.body).digest("hex");
-  const knownByFile = await ctx.db.service<string | null>("ch_worker_source_known", { p_url: got.finalUrl, p_sha256: sha256 });
+  const knownByFile = await ctx.db.service<string | null>("ch_worker_source_known", { p_url: null, p_sha256: sha256 });
   if (knownByFile) return discard(knownByFile);
 
   // 5. texto do arquivo
