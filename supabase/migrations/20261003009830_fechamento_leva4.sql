@@ -17,6 +17,8 @@
 --   * app_draft_questions: filtros e contagens da 9800 (origem, tema, bloqueada, semelhança, publicadas, recolhidas, gabarito publicado,
 --     acervo) + selo de triagem, filtro/ordem por selo e escopo por área do revisor da 9810. Só existe esta versão (11 parâmetros);
 --   * app_draft_question_detail: o da 9800, e o revisor médico só abre rascunho das áreas dele (como já era na lista);
+--   * leitura direta das tabelas de rascunho (draft_questions, draft_checks, draft_question_events, draft_source_proposals): o revisor médico
+--     só lê as áreas dele, como já era na lista (antes, pela API do banco, ele lia os rascunhos de todas as áreas);
 --   * ch_qa_pick e ch_worker_questions_for_analysis_ids (pedidos de análise da 9810): só questões OFICIAIS (regra da 9801: a Questão
 --     StaziaMed nunca entra em análise de prova oficial).
 -- Triagem (ch_draft_triage), escopo (ch_draft_scope) e o resto da 9810 ficam como estão.
@@ -302,3 +304,17 @@ as $$
     order by q.exam_id, q.number) x
 $$;
 revoke execute on function public.ch_worker_questions_for_analysis_ids(text[], boolean) from public, anon, authenticated;
+
+-- ---------------------------------------------------------------- leitura direta das tabelas de rascunho: revisor só da área dele
+drop policy if exists "rascunhos: equipe e revisores leem" on public.draft_questions;
+create policy "rascunhos: equipe e revisores leem" on public.draft_questions for select to authenticated
+  using (public.is_staff() or public.ch_is_reviewer(area));
+drop policy if exists "conferências: equipe e revisores leem" on public.draft_checks;
+create policy "conferências: equipe e revisores leem" on public.draft_checks for select to authenticated
+  using (public.is_staff() or exists (select 1 from public.draft_questions d where d.id = draft_checks.draft_id and public.ch_is_reviewer(d.area)));
+drop policy if exists "trilha dos rascunhos: equipe e revisores leem" on public.draft_question_events;
+create policy "trilha dos rascunhos: equipe e revisores leem" on public.draft_question_events for select to authenticated
+  using (public.is_staff() or exists (select 1 from public.draft_questions d where d.id = draft_question_events.draft_id and public.ch_is_reviewer(d.area)));
+drop policy if exists "propostas de fonte: equipe e revisores leem" on public.draft_source_proposals;
+create policy "propostas de fonte: equipe e revisores leem" on public.draft_source_proposals for select to authenticated
+  using (public.is_staff() or exists (select 1 from public.draft_questions d where d.id = draft_source_proposals.draft_id and public.ch_is_reviewer(d.area)));

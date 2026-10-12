@@ -105,6 +105,25 @@ describe("lista e rascunho aberto: selo de triagem e escopo do revisor", () => {
   });
 });
 
+describe("leitura direta das tabelas de rascunho", () => {
+  it("o revisor médico lê pela API do banco só os rascunhos, conferências e trilha da área dele; a equipe lê tudo", async () => {
+    const ped = await readyDraft(env);
+    const cm = await insertDraft(env, { area: "CLINICA_MEDICA" });
+    await env.sql(`insert into public.draft_checks (draft_id, layer, verdict, content_hash, model) select id, 'software', 'pass', content_hash, 'mock' from public.draft_questions where id = $1`, [cm]);
+    await env.sql(`select public.draft_event($1::uuid, 'editada', 'teste', null, '{}'::jsonb)`, [cm]);
+    const seen = async (uid: string, table: string, col: string) => (await env.sqlAs<{ id: string }>(uid, `select ${col} as id from public.${table}`)).map((r) => r.id);
+    expect(await seen(USERS.REVISOR_PED, "draft_questions", "id")).toContain(ped.id);
+    expect(await seen(USERS.REVISOR_PED, "draft_questions", "id")).not.toContain(cm);
+    expect(await seen(USERS.REVISOR_PED, "draft_checks", "draft_id")).not.toContain(cm);
+    expect(await seen(USERS.REVISOR_PED, "draft_question_events", "draft_id")).not.toContain(cm);
+    expect(await seen(USERS.REVISOR_CM, "draft_questions", "id")).toContain(cm);
+    expect(await seen(USERS.REVISOR_CM, "draft_checks", "draft_id")).toContain(cm);
+    expect(await seen(USERS.ADMIN, "draft_questions", "id")).toEqual(expect.arrayContaining([ped.id, cm]));
+    expect(await seen(USERS.EDITOR, "draft_checks", "draft_id")).toContain(cm);
+    expect(await seen(USERS.PRO, "draft_questions", "id")).toEqual([]);
+  });
+});
+
 describe("pedido de análise: só questões oficiais", () => {
   it("a Questão StaziaMed publicada nunca entra num pedido de análise", async () => {
     const sid = await insertStaziaQuestion(env);
