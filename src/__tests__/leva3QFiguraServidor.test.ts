@@ -19,8 +19,7 @@ const EDITOR = "00000000-0000-4000-8000-0000000000e1";
 const STUDENT = "00000000-0000-4000-8000-0000000000b1";
 const ADMIN = "00000000-0000-4000-8000-0000000000ad";
 const REVIEWER = "00000000-0000-4000-8000-0000000000c1";
-const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(60, 1)]);
-const JPG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(60, 2)]);
+import { REAL_JPG as JPG, REAL_PNG as PNG } from "./helpers/imagensReais";
 const ALT = "Eletrocardiograma de 12 derivações com supradesnivelamento de ST";
 const QID = "revalida_2024_1_q901";
 const QID2 = "revalida_2024_1_q902";
@@ -226,5 +225,59 @@ describe("Envio direto ao depósito (Supabase)", () => {
     expect(r.body.error).toMatch(/já é a figura de outra questão/);
     expect(store.has(inUse)).toBe(true);
     expect(await images(QID2)).toEqual([{ path: inUse, alt: ALT }]);
+  });
+});
+
+describe("Rodada de correções da revisão (achados 1, 2 e 6)", () => {
+  it("achado 6: arquivo que só tem a assinatura do PNG ou do JPG, ou está cortado, é recusado e não vira figura", async () => {
+    const q = `alt=${encodeURIComponent(ALT)}`;
+    const onlySignaturePng = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const onlySignatureJpg = Buffer.from([0xff, 0xd8, 0xff]);
+    for (const [type, body] of [
+      ["image/png", onlySignaturePng],
+      ["image/png", PNG.subarray(0, PNG.length - 20)], // cortado antes do fim
+      ["image/png", Buffer.concat([PNG, Buffer.from("lixo depois do fim")])],
+      ["image/jpeg", onlySignatureJpg],
+      ["image/jpeg", JPG.subarray(0, JPG.length - 30)],
+    ] as const) {
+      const r = await postRaw(`${direct}/${QID2}/figure?${q}`, editor, type, body);
+      expect(r.status, `${type} ${body.length}`).toBe(415);
+      expect(r.body.error).toMatch(/completa/);
+    }
+    // no envio direto: o arquivo que chegou só com a assinatura sai do depósito e a questão continua sem figura
+    const bad = await postJson(`${signed}/${QID}/upload`, editor, { content_type: "image/png", size_bytes: 8 });
+    store.set(bad.body.key, Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    expect((await postJson(`${signed}/${QID}/confirm`, editor, { key: bad.body.key, alt: ALT, content_type: "image/png" })).status).toBe(415);
+    expect(store.has(bad.body.key)).toBe(false);
+  });
+
+  it("achado 1: o servidor confirma o arquivo ao banco antes de vincular; o banco não aceita caminho que o servidor não conferiu", async () => {
+    // pelo servidor: arquivo conferido aparece na tabela do banco com o tipo e o tamanho que o servidor mediu
+    const fresh = await postJson(`${signed}/${QID}/upload`, editor, { content_type: "image/png", size_bytes: PNG.length });
+    store.set(fresh.body.key, PNG);
+    expect((await postJson(`${signed}/${QID}/confirm`, editor, { key: fresh.body.key, alt: ALT, content_type: "image/png" })).status).toBe(201);
+    const rows = (await dev.db.query<any>(`select content_type, size_bytes, state, question_id from public.question_figure_files where path = $1`, [fresh.body.key])).rows;
+    expect(rows).toEqual([{ content_type: "image/png", size_bytes: PNG.length, state: "confirmed", question_id: QID }]);
+    // chamada direta ao banco com caminho inventado: recusada
+    await expect(sqlAs(EDITOR, `select public.app_admin_set_question_image($1, '{"path":"questoes/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png","alt":"Texto alternativo de teste longo"}'::jsonb)`, [QID2])).rejects.toThrow(/servidor ainda não conferiu/);
+  });
+
+  it("achado 2: depois de trocar, o arquivo antigo só sai do depósito porque o banco o soltou; uma figura vinculada nunca é apagada pelo servidor", async () => {
+    const [{ path: current }] = await images(QID);
+    // o servidor não consegue apagar o que ainda é figura (a resposta do banco é não)
+    expect((await dev.db.query<any>(`select public.ch_worker_question_figure_drop($1) as ok`, [current])).rows[0].ok).toBe(false);
+    expect(store.has(current)).toBe(true);
+    const prep = await postJson(`${signed}/${QID}/upload`, editor, { content_type: "image/jpeg", size_bytes: JPG.length });
+    store.set(prep.body.key, JPG);
+    const done = await postJson(`${signed}/${QID}/confirm`, editor, { key: prep.body.key, alt: ALT, content_type: "image/jpeg" });
+    expect(done.status).toBe(201);
+    expect(done.body.released_path).toBeUndefined(); // detalhe interno do servidor: não vai para a tela
+    expect(removed).toContain(current);
+    expect((await dev.db.query<any>(`select state from public.question_figure_files where path = $1`, [current])).rows[0].state).toBe("releasing");
+    // o arquivo solto não pode ser reenviado como figura (nem se ainda estivesse no depósito)
+    store.set(current, PNG);
+    const again = await postJson(`${signed}/${QID2}/confirm`, editor, { key: current, alt: ALT, content_type: "image/png" });
+    expect(again.status).toBe(400);
+    expect(await images(QID2)).not.toEqual([{ path: current, alt: ALT }]);
   });
 });

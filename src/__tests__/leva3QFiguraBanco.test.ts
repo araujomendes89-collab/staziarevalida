@@ -18,7 +18,12 @@ const row = async (n: number) => (await t.sql<any>(`select * from public.questio
 const save = (extra: Record<string, unknown>, uid = EDITOR) => t.rpc(uid, "app_admin_save_question", { p_question: extra });
 const inPool = async (uid: string, n: number) =>
   (await t.asUser<any>(uid, `select count(*)::int as c from public.practice_pool('{}'::jsonb) where question_id = $1`, [idOf(n)]))[0].c === 1;
-const setFigure = (uid: string | null, n: number, image: Record<string, unknown> = figure()) => t.rpc(uid, "app_admin_set_question_image", { p_question_id: idOf(n), p_image: image });
+/** O servidor confere o arquivo no depósito e só então o confirma ao banco (ch_worker_question_figure_confirm, só do serviço). */
+const confirmFile = (p: string, type = "image/png", size = 120_000) => t.sql(`select public.ch_worker_question_figure_confirm($1, $2, $3)`, [p, type, size]);
+const setFigure = async (uid: string | null, n: number, image: Record<string, unknown> = figure(), confirm = true) => {
+  if (confirm) await confirmFile(String(image.path), String(image.content_type ?? "image/png"), Number(image.size_bytes ?? 120_000));
+  return t.rpc(uid, "app_admin_set_question_image", { p_question_id: idOf(n), p_image: image });
+};
 const removeFigure = (uid: string | null, n: number) => t.rpc(uid, "app_admin_remove_question_image", { p_question_id: idOf(n) });
 const failure = async (p: Promise<unknown>) => {
   try {
@@ -194,5 +199,107 @@ describe("Q07 — enviar a figura da questão", () => {
     await t.db.exec(text);
     expect((await row(716)).images).toEqual([{ path: kept, alt: figure().alt }]);
     expect(await failure(save({ ...question(716, { needs_image: false }), id: idOf(716) }))).toBeNull();
+  });
+});
+
+
+describe("Q07 — rodada de correções da revisão: o banco só aceita o arquivo que o servidor confirmou (achados 1 e 2)", () => {
+  it("achado 1: caminho sem arquivo confirmado pelo servidor NÃO vira figura nem libera a questão", async () => {
+    await save(question(720, { needs_image: true }));
+    const never = fresh();
+    expect(await failure(setFigure(EDITOR, 720, figure(never, { size_bytes: 100 }), false))).toMatch(/servidor ainda não conferiu/);
+    expect(await failure(setFigure(ADMIN, 720, figure(never), false))).toMatch(/servidor ainda não conferiu/);
+    expect((await row(720)).images).toEqual([]);
+    expect(await inPool(ANA, 720)).toBe(false);
+  });
+
+  it("achado 1: só o serviço confirma arquivo; editor, administrador, aluno e visitante não chamam a função de confirmação", async () => {
+    const p = fresh();
+    for (const uid of [EDITOR, ADMIN, ANA, REV_PED, null]) {
+      expect(await failure(t.rpc(uid, "ch_worker_question_figure_confirm", { p_path: p, p_content_type: "image/png", p_size_bytes: 100 })), String(uid)).toMatch(/permission denied|permissão/i);
+      expect(await failure(t.rpc(uid, "ch_worker_question_figure_drop", { p_path: p })), String(uid)).toMatch(/permission denied|permissão/i);
+    }
+    expect(await t.sql(`select 1 from public.question_figure_files where path = $1`, [p])).toHaveLength(0);
+    // a tabela de arquivos conferidos é fechada ao app
+    expect(await failure(t.asUser(EDITOR, `select * from public.question_figure_files`))).toMatch(/permission denied|permissão/i);
+    expect(await failure(t.asUser(EDITOR, `insert into public.question_figure_files (path, content_type, size_bytes) values ($1, 'image/png', 10)`, [p]))).toMatch(/permission denied|permissão/i);
+  });
+
+  it("achado 1: o banco usa o tipo e o tamanho que o servidor conferiu, não os que o editor declara", async () => {
+    await save(question(721, { needs_image: true }));
+    const p = fresh("png");
+    await confirmFile(p, "image/png", 90_000);
+    // o editor diz 'jpeg' e pede um caminho .png: não confere com o arquivo conferido
+    expect(await failure(t.rpc(EDITOR, "app_admin_set_question_image", { p_question_id: idOf(721), p_image: figure(p, { content_type: "image/jpeg" }) }))).toBeNull(); // o tipo declarado é ignorado
+    expect((await row(721)).images).toEqual([{ path: p, alt: figure().alt }]);
+    // confirmar o mesmo caminho de novo com outro tipo ou tamanho é recusado
+    expect(await failure(confirmFile(p, "image/jpeg", 90_000))).toMatch(/PNG ou JPG|caminho/i);
+    expect(await failure(confirmFile(p, "image/png", 91_000))).toMatch(/já foi conferido/i);
+    await confirmFile(p, "image/png", 90_000); // o mesmo de antes é inofensivo (idempotente)
+  });
+
+  it("achado 2: um arquivo conferido é de UMA questão só (o vínculo é uma coluna do arquivo) e vale mesmo por SQL direto", async () => {
+    await save(question(722, { needs_image: true }));
+    await save(question(723, { needs_image: true }));
+    const p = fresh();
+    await setFigure(EDITOR, 722, figure(p));
+    expect(await failure(setFigure(EDITOR, 723, figure(p)))).toMatch(/já é a figura de outra questão/);
+    // gravação direta de um caminho que é de outra questão, ou nunca conferido, é barrada por um gatilho
+    expect(await failure(t.sql(`update public.questions set images = $2::jsonb where id = $1`, [idOf(723), JSON.stringify([{ path: p, alt: "x".repeat(20) }])]))).toMatch(/não foi conferida|outra questão/);
+    expect(await failure(t.sql(`update public.questions set images = $2::jsonb where id = $1`, [idOf(723), JSON.stringify([{ path: fresh(), alt: "x".repeat(20) }])]))).toMatch(/não foi conferida|outra questão/);
+    expect((await row(723)).images).toEqual([]);
+    // as figuras do caderno (com url) seguem como sempre
+    await t.sql(`update public.questions set images = '[{"url":"/question-assets/a.png","alt":"A"}]'::jsonb where id = $1`, [idOf(723)]);
+  });
+
+  it("achado 2: trocar ou tirar devolve o caminho solto; o arquivo solto não pode ser vinculado de novo e só então o servidor pode apagá-lo", async () => {
+    await save(question(724, { needs_image: true }));
+    await save(question(725, { needs_image: true }));
+    const a = fresh();
+    const b = fresh("jpg");
+    await setFigure(EDITOR, 724, figure(a));
+    // enquanto a figura está vinculada, o servidor NÃO pode apagar o arquivo
+    expect((await t.sql<any>(`select public.ch_worker_question_figure_drop($1) as ok`, [a]))[0].ok).toBe(false);
+    const swapped = await setFigure(EDITOR, 724, figure(b, { content_type: "image/jpeg" }));
+    expect(swapped.released_path).toBe(a);
+    expect((await t.sql<any>(`select state, question_id from public.question_figure_files where path = $1`, [a]))[0]).toEqual({ state: "releasing", question_id: null });
+    // o arquivo 'apagando' não vira figura de ninguém, nem da mesma questão (a corrida entre 'conferir' e 'apagar' fecha aqui)
+    expect(await failure(setFigure(EDITOR, 725, figure(a), false))).toMatch(/servidor ainda não conferiu/);
+    expect(await failure(setFigure(EDITOR, 724, figure(a), false))).toMatch(/servidor ainda não conferiu/);
+    expect((await row(725)).images).toEqual([]);
+    expect((await t.sql<any>(`select public.ch_worker_question_figure_drop($1) as ok`, [a]))[0].ok).toBe(true);
+    // a linha fica como lápide ('releasing'): o mesmo caminho nunca mais é conferido nem vinculado
+    expect((await t.sql<any>(`select state from public.question_figure_files where path = $1`, [a]))[0].state).toBe("releasing");
+    expect(await failure(confirmFile(a))).toMatch(/liberado para ser apagado/);
+    expect(await failure(setFigure(EDITOR, 725, figure(a), false))).toMatch(/servidor ainda não conferiu/);
+    // tirar a figura também solta o caminho
+    const removed = await removeFigure(EDITOR, 724);
+    expect(removed.released_path).toBe(b);
+    expect((await t.sql<any>(`select public.ch_worker_question_figure_drop($1) as ok`, [b]))[0].ok).toBe(true);
+    // sem figura, tirar de novo não solta nada
+    expect((await removeFigure(EDITOR, 724)).released_path ?? null).toBeNull();
+    // arquivo que nunca foi conferido: pode sair do depósito (nenhuma questão o usa) e vira lápide também
+    const never = fresh();
+    expect((await t.sql<any>(`select public.ch_worker_question_figure_drop($1) as ok`, [never]))[0].ok).toBe(true);
+    expect(await failure(confirmFile(never))).toMatch(/liberado para ser apagado/);
+    // caminho fora do padrão não vira lápide
+    expect(await failure(t.sql(`select public.ch_worker_question_figure_drop('questoes/../x.png')`))).toMatch(/inválido/);
+  });
+
+  it("achado 2: arquivo conferido e ainda sem questão pode ser apagado, mas depois disso não vira figura (o servidor que o apagou não deixa referência)", async () => {
+    await save(question(726, { needs_image: true }));
+    const p = fresh();
+    await confirmFile(p);
+    expect((await t.sql<any>(`select public.ch_worker_question_figure_drop($1) as ok`, [p]))[0].ok).toBe(true);
+    expect(await failure(setFigure(EDITOR, 726, figure(p), false))).toMatch(/servidor ainda não conferiu/);
+    expect((await row(726)).images).toEqual([]);
+  });
+
+  it("apagar a questão não deixa o arquivo preso a ela (a ligação é desfeita)", async () => {
+    await save(question(727, { needs_image: true }));
+    const p = fresh();
+    await setFigure(EDITOR, 727, figure(p));
+    await t.sql(`delete from public.questions where id = $1`, [idOf(727)]);
+    expect((await t.sql<any>(`select question_id from public.question_figure_files where path = $1`, [p]))[0].question_id).toBeNull();
   });
 });

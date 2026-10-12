@@ -16,16 +16,14 @@ import crypto from "crypto";
 import path from "path";
 import express, { type NextFunction, type Request, type Response } from "express";
 import { localStorageDir, supabaseStorage, type ContentDb, type Identity, type Storage } from "../contentHub/infra";
+import { imageProblem } from "./imageFiles";
 
 export const FIGURES_BUCKET = "question-figures";
 export const FIGURE_MAX_BYTES = 5 * 1024 * 1024;
 const LINK_SECONDS = 3600;
 const ID = /^[a-z0-9_]{3,80}$/;
 const KEY = /^questoes\/[0-9a-f]{32}\.(png|jpg)$/;
-const TYPES: Record<string, { ext: "png" | "jpg"; magic: (b: Buffer) => boolean }> = {
-  "image/png": { ext: "png", magic: (b) => b.length >= 8 && b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) },
-  "image/jpeg": { ext: "jpg", magic: (b) => b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff },
-};
+const TYPES: Record<string, { ext: "png" | "jpg" }> = { "image/png": { ext: "png" }, "image/jpeg": { ext: "jpg" } };
 const TYPE_BY_EXT: Record<string, string> = { png: "image/png", jpg: "image/jpeg" };
 
 type Authed = Request & { user?: Identity };
@@ -33,6 +31,8 @@ const fail = (res: Response, status: number, error: string) => res.status(status
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 const forbidden = (error: unknown) => /restrito|sem acesso|42501|Acesso/i.test(message(error));
 const notFound = (error: unknown) => /não encontrada|P0002/i.test(message(error));
+/** O banco ainda não recebeu a atualização das figuras (as funções ch_worker_question_figure_* não existem). */
+const missingSql = (error: unknown) => /ch_worker_question_figure_|PGRST202|42883|does not exist|could not find the function/i.test(message(error));
 const httpError = (status: number, text: string) => Object.assign(new Error(text), { status });
 
 export interface QuestionFiguresDeps {
@@ -62,13 +62,17 @@ export function createQuestionFiguresRouter(deps: QuestionFiguresDeps | null, pe
   });
   const asUser = <T>(req: Authed, fn: string, args: Record<string, unknown> = {}) => deps!.db.asUser<T>(req.user!, fn, args);
   const status = (error: any, fallback = 400) => error?.status ?? (forbidden(error) ? 403 : notFound(error) ? 404 : fallback);
+  const FAIL_SQL = "A atualização do banco para as figuras das questões ainda não foi aplicada. Peça ao administrador para aplicar a atualização e tente de novo.";
+  /** Resposta de erro: banco sem a atualização vira aviso em português (503), nunca um sucesso silencioso. */
+  const failWith = (res: Response, error: any, fallback = 400) => (missingSql(error) && !error?.status ? fail(res, 503, FAIL_SQL) : fail(res, status(error, fallback), message(error)));
 
-  /** Equipe (conferida no banco) e questão existente; devolve o id e a figura que ela tem agora. */
+  /** Equipe (conferida no banco) e questão existente; devolve o id. */
   const staffQuestion = async (req: Authed) => {
     const id = req.params.id;
     if (!ID.test(id)) throw httpError(400, "Questão inválida.");
-    const question = await asUser<{ images?: Array<{ path?: string; url?: string }> }>(req, "app_admin_question", { p_id: id }); // exige a equipe; 404 se não existe
-    return { id, current: question.images?.[0]?.path ?? null };
+    const question = await asUser<unknown>(req, "app_admin_question", { p_id: id }); // exige a equipe; 404 se não existe
+    void question;
+    return { id };
   };
   const checkType = (type: unknown) => {
     const spec = TYPES[String(type)];
@@ -83,21 +87,34 @@ export function createQuestionFiguresRouter(deps: QuestionFiguresDeps | null, pe
   const checkBytes = (bytes: Buffer, type: string) => {
     if (bytes.length === 0) throw httpError(400, "O arquivo da figura está vazio.");
     if (bytes.length > FIGURE_MAX_BYTES) throw httpError(413, "A figura pode ter no máximo 5 MB.");
-    if (!checkType(type).magic(bytes)) throw httpError(415, "O conteúdo do arquivo não corresponde a uma imagem PNG ou JPG.");
+    checkType(type);
+    // o arquivo precisa ser uma imagem COMPLETA (estrutura inteira), não só começar como PNG ou JPG
+    const problem = imageProblem(bytes, type);
+    if (problem) throw httpError(415, `O conteúdo do arquivo não é uma imagem PNG ou JPG completa (${problem}).`);
   };
   const newKey = (ext: string) => `questoes/${crypto.randomBytes(16).toString("hex")}.${ext}`;
-  /** Apaga um arquivo do depósito sem derrubar a resposta (a figura nova já está registrada; o que sobrar é só um arquivo solto). */
+  /**
+   * Apaga um arquivo do depósito. NUNCA apaga na hora: primeiro pede ao banco para soltar o caminho (ch_worker_question_figure_drop),
+   * que só diz sim se nenhuma questão o usa e depois disso o caminho não pode mais virar figura; só com o sim o arquivo sai.
+   * Sem resposta do banco (ou com não), o arquivo fica: um arquivo solto custa pouco, uma figura quebrada custa a questão.
+   */
   const drop = async (key: string | null) => {
     if (!key || !KEY.test(key)) return;
     try {
+      const free = await deps!.db.service<boolean>("ch_worker_question_figure_drop", { p_path: key });
+      if (free !== true) return;
       await deps!.storage.remove?.([key]);
     } catch (error) {
       deps!.log?.(`figuras das questões: não foi possível apagar ${key}: ${message(error)}`);
     }
   };
-  const register = async (req: Authed, id: string, current: string | null, key: string, alt: string, type: string, size: number) => {
-    const saved = await asUser<any>(req, "app_admin_set_question_image", { p_question_id: id, p_image: { path: key, alt, content_type: type, size_bytes: size } });
-    if (current && current !== key) await drop(current);
+  /** Registra a figura: o servidor confirma ao banco o arquivo que conferiu e só então a equipe o vincula; o arquivo anterior sai depois. */
+  const register = async (req: Authed, id: string, key: string, alt: string, type: string, size: number) => {
+    await deps!.db.service("ch_worker_question_figure_confirm", { p_path: key, p_content_type: type, p_size_bytes: size });
+    const saved = await asUser<any>(req, "app_admin_set_question_image", { p_question_id: id, p_image: { path: key, alt } });
+    const released: string | null = saved?.released_path ?? null;
+    if (saved && typeof saved === "object") delete saved.released_path;
+    await drop(released);
     return saved;
   };
 
@@ -115,7 +132,7 @@ export function createQuestionFiguresRouter(deps: QuestionFiguresDeps | null, pe
       const signed = await deps!.storage.signedUpload(key);
       res.json({ mode: "signed", bucket: FIGURES_BUCKET, key, path: signed.path, token: signed.token });
     } catch (error: any) {
-      fail(res, status(error), message(error));
+      failWith(res, error);
     }
   });
 
@@ -124,7 +141,7 @@ export function createQuestionFiguresRouter(deps: QuestionFiguresDeps | null, pe
     try {
       const { key, alt, content_type } = (req.body ?? {}) as Record<string, unknown>;
       const spec = checkType(content_type);
-      const { id, current } = await staffQuestion(req);
+      const { id } = await staffQuestion(req);
       if (typeof key !== "string" || !KEY.test(key) || !key.endsWith(`.${spec.ext}`)) throw httpError(400, "Caminho de arquivo inválido.");
       const text = checkAlt(alt);
       if (!(await deps!.storage.exists(key))) throw httpError(400, "O arquivo não chegou ao depósito. Envie de novo.");
@@ -135,9 +152,14 @@ export function createQuestionFiguresRouter(deps: QuestionFiguresDeps | null, pe
         await drop(key); // arquivo que não passa na conferência não fica no depósito
         throw error;
       }
-      res.status(201).json(await register(req, id, current, key, text, String(content_type), bytes.length));
+      try {
+        res.status(201).json(await register(req, id, key, text, String(content_type), bytes.length));
+      } catch (error) {
+        if (!missingSql(error)) await drop(key); // o banco recusou: o arquivo não foi vinculado; só sai se o banco o soltar
+        throw error;
+      }
     } catch (error: any) {
-      fail(res, status(error), message(error));
+      failWith(res, error);
     }
   });
 
@@ -147,32 +169,35 @@ export function createQuestionFiguresRouter(deps: QuestionFiguresDeps | null, pe
     try {
       const type = String(req.headers["content-type"] ?? "").split(";")[0].trim();
       const spec = checkType(type);
-      const { id, current } = await staffQuestion(req);
+      const { id } = await staffQuestion(req);
       const text = checkAlt(req.query.alt);
       const body = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
       checkBytes(body, type);
       const key = newKey(spec.ext);
       await deps!.storage.put(key, body, type);
       try {
-        res.status(201).json(await register(req, id, current, key, text, type, body.length));
+        res.status(201).json(await register(req, id, key, text, type, body.length));
       } catch (error) {
-        await drop(key); // o banco recusou: o arquivo acabou de ser criado aqui, então pode sair
+        if (!missingSql(error)) await drop(key); // o banco recusou: o arquivo acabou de ser criado aqui; só sai se o banco o soltar
+        else await deps!.storage.remove?.([key]).catch(() => undefined); // sem o SQL novo ninguém sabe do arquivo: nasceu agora, sai agora
         throw error;
       }
     } catch (error: any) {
-      if (!res.headersSent) fail(res, status(error), message(error));
+      if (!res.headersSent) failWith(res, error);
     }
   });
 
   /** Tirar a figura da questão (e o arquivo do depósito). */
   router.delete("/:id/figure", async (req: Authed, res) => {
     try {
-      const { id, current } = await staffQuestion(req);
+      const { id } = await staffQuestion(req);
       const saved = await asUser<any>(req, "app_admin_remove_question_image", { p_question_id: id });
-      await drop(current);
+      const released: string | null = saved?.released_path ?? null;
+      if (saved && typeof saved === "object") delete saved.released_path;
+      await drop(released);
       res.json(saved);
     } catch (error: any) {
-      fail(res, status(error), message(error));
+      failWith(res, error);
     }
   });
 
