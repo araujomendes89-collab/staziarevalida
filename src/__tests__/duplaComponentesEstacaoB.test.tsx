@@ -57,7 +57,7 @@ describe("MatchCard", () => {
     expect(screen.getByRole("heading", { name: "Pessoa de Exemplo" })).toBeTruthy();
     expect(screen.getByText("online")).toBeTruthy();
     expect(screen.getByText("87% compatível")).toBeTruthy();
-    expect(screen.getByText("PE")).toBeTruthy(); // iniciais
+    expect(screen.getByText("PD")).toBeTruthy(); // iniciais das duas primeiras palavras, como no pacote
     expect(screen.getByText("Por que vocês combinam")).toBeTruthy();
     expect(screen.getByText("Estuda as mesmas áreas")).toBeTruthy();
     expect(screen.getByText("Clínica Médica")).toBeTruthy();
@@ -162,7 +162,7 @@ describe("MatchCard", () => {
 // Exemplo do plano: níveis (correto / parcial / inadequado) 2,5/1,25/0 · 2,5/—/0 · 5/2,5/0
 const ITENS = [
   { id: "i1", number: "1", text: "Cumprimenta o paciente", section: "Anamnese", levels: { correct: 2.5, partial: 1.25, incorrect: 0 },
-    criteria: [{ label: "Adequado", text: "Faz tudo" }], tip: "Dica de exemplo" },
+    criteria: [{ label: "Critério", text: "Faz tudo" }], tip: "Dica de exemplo" },
   { id: "i2", number: "2", text: "Lava as mãos", levels: { correct: 2.5, partial: null, incorrect: 0 } },
   { id: "i3", number: "3", text: "Examina o abdome", levels: { correct: 5, partial: 2.5, incorrect: 0 },
     subitems: [{ id: "s1", text: "Inspeção" }, { id: "s2", text: "Palpação" }] },
