@@ -182,7 +182,7 @@ export const MATERIAL_KIND = {
   visual_cards: "Cards visuais",
   flashcards: "Flashcards",
   table: "Tabela",
-  questions: "Questões StaziaMed",
+  questions: "Questões inéditas",
   station: "Roteiro de estação",
 };
 
