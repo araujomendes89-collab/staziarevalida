@@ -533,7 +533,8 @@ function PublishStep({ podcast, isAdmin, onChanged, onDeleted }) {
     if (!window.confirm(`Apagar o episódio "${podcast.title}"? Fontes, roteiro e áudio somem.`)) return;
     setState({ busy: "delete", error: null });
     try {
-      await api.deletePodcast(backend, podcast.id);
+      const done = await api.deletePodcast(backend, podcast.id);
+      if (done?.aviso) window.alert(done.aviso); // a limpeza dos arquivos não aconteceu (SQL antigo): a equipe precisa saber
       onDeleted();
     } catch (error) {
       setState({ busy: null, error: messageOf(error) });

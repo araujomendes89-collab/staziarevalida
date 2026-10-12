@@ -68,9 +68,10 @@ conferência, simulação), `audio.ts` (OpenAI e Gemini, este desligado por vari
 | `GET /:id/audio/link`, `/audio/file` | ouvir (aluno: só publicado) |
 | `POST /:id/flashcast` | copiar o MP3 aprovado para a aula ligada |
 | `DELETE /:id` | apagar episódio e arquivos (administrador) |
-| `POST /:id/files/cleanup` | a tela chama depois de editar o roteiro: apaga o áudio que deixou de valer (P08) |
+| `POST /:id/files/cleanup` | a tela chama depois de editar o roteiro: apaga o áudio que deixou de valer (P08); limpa a FILA INTEIRA, não só o episódio |
+| `POST /files/cleanup` | repetir a limpeza da fila inteira, inclusive de episódio já apagado (só equipe); sem a migração 9721 responde `{ ok: false, note }` em português |
 
-Arquivos esquecidos (P08, migração 9721): gatilhos anotam em `podcast_files_released` o caminho que ficou sem uso (áudio que deixou de valer, fonte tirada, episódio apagado); o servidor apaga logo depois do evento, só se nenhuma linha do banco usa o caminho (outro episódio, fonte, material de aula, `ch_file_holds`), e registra no Registro (`podcast.files.cleanup`). Não há varredura dos arquivos antigos: a lista deles é a rotina de leitura `supabase/rotinas/lista-podcasts-arquivos-esquecidos.sql`.
+Arquivos esquecidos (P08, migração 9721): gatilhos anotam em `podcast_files_released` o caminho que ficou sem uso (áudio que deixou de valer, fonte tirada, episódio apagado); o servidor NUNCA apaga na hora: pede ao banco para RESERVAR o caminho (`ch_worker_podcast_files_pending`: só o que nenhuma linha usa — outro episódio, fonte, material de aula, `ch_file_holds` —, estado `apagando`, 10 minutos); enquanto a reserva vale, quem tenta criar referência ao caminho é recusado (gatilho `podcast_files_guard_ref`, mesmo cadeado nas duas pontas); só então apaga e confirma (`ch_worker_podcast_files_done`, que só vale para o reservado) e registra uma vez no Registro (`podcast.files.cleanup`). A fila é única (qualquer evento limpa o que ficou pendente de qualquer episódio). Servidor ANTIGO na janela "SQL novo + site antigo": apaga direto, como sempre fez; o SQL só faz `app_admin_delete_podcast` devolver os caminhos que nenhuma outra linha usa. Site novo com SQL antigo: nada é apagado e a resposta avisa. Não há varredura dos arquivos antigos: a lista deles é a rotina de leitura `supabase/rotinas/lista-podcasts-arquivos-esquecidos.sql`.
 
 ## 5. Assistente de IA da "Nova aula"
 

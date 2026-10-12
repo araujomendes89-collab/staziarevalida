@@ -115,30 +115,47 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     }
   };
   /**
-   * Apaga do depósito os arquivos que um evento deixou sem uso (áudio que deixou de valer, fonte tirada, episódio apagado). O banco
-   * anota o caminho (podcast_files_released) e só devolve o que nenhuma linha usa mais (outro episódio, material de aula,
-   * retenção de arquivo); o que apagou vai para o Registro. NUNCA lança: falha ao apagar não desfaz a operação principal (o
-   * arquivo fica pendente e é tentado de novo no próximo evento do mesmo episódio). Não há varredura de arquivos antigos.
+   * Apaga do depósito os arquivos que ficaram sem uso (áudio que deixou de valer, fonte tirada, episódio apagado). Nunca apaga "na
+   * hora": o banco RESERVA o caminho (ch_worker_podcast_files_pending: só devolve o que nenhuma linha usa e, enquanto a reserva vale,
+   * recusa quem tentar criar referência a ele) e só então o servidor apaga e confirma (ch_worker_podcast_files_done). A fila é
+   * única: qualquer evento (ou a rota de repetir) limpa o que ficou pendente de qualquer episódio, inclusive de episódio já apagado.
+   * Só lança "Acesso restrito" (quem não é equipe); qualquer outra falha NÃO desfaz a operação principal. Não há varredura de arquivos antigos.
+   * Banco sem a 9721 (site novo antes do SQL): não apaga nada (nada se perde) e devolve `note` em português, nunca sucesso silencioso.
    */
-  const releaseFiles = async (user: string, podcast: string) => {
+  const SQL_ANTIGO = "Os arquivos antigos NÃO foram apagados do depósito: a migração 9721 (limpeza de arquivos antigos) ainda não foi aplicada no banco. Nada se perdeu; eles aparecem na lista de arquivos esquecidos.";
+  const SEM_LIMPEZA = "Os arquivos antigos ainda não foram apagados do depósito (a limpeza não terminou). Eles saem na próxima limpeza.";
+  const releaseFiles = async (user: string): Promise<{ ok: boolean; failed: number; note?: string }> => {
+    const out: { ok: boolean; failed: number; note?: string } = { ok: true, failed: 0 };
     try {
-      if (!deps!.storage.remove) return;
-      const pending = await service<Array<{ id: number; path: string }>>("ch_worker_podcast_files_pending", { p_user: user, p_podcast: podcast });
-      if (!Array.isArray(pending) || !pending.length) return;
-      const results: Array<{ id: number; ok: boolean; error?: string }> = [];
-      for (const file of pending) {
-        try {
-          await deps!.storage.remove([file.path]);
-          results.push({ id: file.id, ok: true });
-        } catch (error) {
-          log(`podcasts: não consegui apagar ${file.path}: ${message(error)}`);
-          results.push({ id: file.id, ok: false, error: message(error) });
+      if (!deps!.storage.remove) return out;
+      for (let round = 0; round < 5; round++) {
+        const pending = await service<Array<{ id: number; path: string }>>("ch_worker_podcast_files_pending", { p_user: user, p_podcast: null });
+        if (!Array.isArray(pending) || !pending.length) break;
+        const results: Array<{ id: number; ok: boolean; error?: string }> = [];
+        for (const file of pending) {
+          try {
+            await deps!.storage.remove([file.path]);
+            results.push({ id: file.id, ok: true });
+          } catch (error) {
+            log(`podcasts: não consegui apagar ${file.path}: ${message(error)}`);
+            results.push({ id: file.id, ok: false, error: message(error) });
+          }
         }
+        await service("ch_worker_podcast_files_done", { p_user: user, p_results: results });
+        const failed = results.filter((r) => !r.ok).length;
+        out.failed += failed;
+        if (failed || pending.length < 50) break;
       }
-      await service("ch_worker_podcast_files_done", { p_user: user, p_results: results });
     } catch (error) {
-      log(`podcasts: limpeza de arquivos antigos não terminou (fica para o próximo evento): ${message(error)}`);
+      if (/Acesso restrito/i.test(message(error))) throw error; // a rota de repetir é só da equipe: quem não é equipe recebe 403
+      if (/ch_worker_podcast_files_/.test(message(error)) && /could not find the function|schema cache|PGRST202|42883|does not exist/i.test(message(error))) {
+        log("podcasts: a migração 9721 não está aplicada no banco; nenhum arquivo antigo foi apagado");
+        return { ok: false, failed: 0, note: SQL_ANTIGO };
+      }
+      log(`podcasts: limpeza de arquivos antigos não terminou (fica para a próxima): ${message(error)}`);
+      return { ok: false, failed: out.failed, note: SEM_LIMPEZA };
     }
+    return out;
   };
   /** Custo de IA no mesmo livro-caixa do Tutor (sem contar como interação do aluno). */
   const ledger = async (user: string, entry: Record<string, unknown>) => {
@@ -351,9 +368,9 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       const before = await staffPodcast(req);
       const source = (before.sources ?? []).find((s: any) => s.id === req.params.sourceId);
       if (!source) throw httpError(404, "Fonte não encontrada.");
-      const view = await asUser(req, "app_admin_podcast_remove_source", { p_source_id: req.params.sourceId });
-      await releaseFiles(req.user!.id, req.params.id); // o arquivo da fonte (se nenhuma outra fonte o usa) e o áudio que deixou de valer
-      res.json(view);
+      const view = await asUser<any>(req, "app_admin_podcast_remove_source", { p_source_id: req.params.sourceId });
+      const released = await releaseFiles(req.user!.id); // o arquivo da fonte (se nenhuma outra linha o usa) e o áudio que deixou de valer
+      res.json(released.note ? { ...(view ?? {}), note: released.note } : view);
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }
@@ -410,8 +427,8 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
         await ledger(req.user!.id, { feature: "podcast_script", provider: r.usage.provider, model: r.usage.model, input_text_tokens: r.usage.input_tokens, output_text_tokens: r.usage.output_tokens, estimated_cost_usd: r.usage.cost_usd, meta: { podcast_id: req.params.id, calls: r.usage.calls } });
       }
       log(`podcasts: roteiro ${simulated ? "simulado" : r.usage.model} no episódio ${req.params.id} (${r.script.lines.length} falas, ${r.warnings.length} avisos)`);
-      await releaseFiles(req.user!.id, req.params.id); // o áudio do roteiro anterior deixou de valer
-      res.json({ podcast: view, warnings: r.warnings });
+      const released = await releaseFiles(req.user!.id); // o áudio do roteiro anterior deixou de valer
+      res.json({ podcast: view, warnings: r.warnings, ...(released.note ? { note: released.note } : {}) });
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }
@@ -600,11 +617,24 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       }
       const tmp = manifest.parts.flatMap((_, i) => [partKey(id, manifest.job, i, "mp3"), partKey(id, manifest.job, i, "json"), partKey(id, manifest.job, i, "lock")]);
       await removeQuietly(deps!.storage, [...tmp, manifestKey(id, manifest.job)]);
-      await releaseFiles(req.user!.id, id); // o áudio anterior (a fila só o apaga se nenhuma linha do banco o usa)
+      const released = await releaseFiles(req.user!.id); // o áudio anterior (a fila só o apaga se nenhuma linha do banco o usa)
       log(`podcasts: áudio pronto no episódio ${id} (${Math.round(seconds)} s, ${manifest.provider})`);
-      res.json(view);
+      res.json(released.note ? { ...(view ?? {}), note: released.note } : view);
     } catch (error) {
       if (newKey) await removeQuietly(deps?.storage, [newKey]);
+      fail(res, statusOf(error), message(error));
+    }
+  });
+
+  /**
+   * Repetir a limpeza da fila inteira (qualquer episódio, inclusive já apagado). Só a equipe (o banco confere pela conta). Declarada
+   * ANTES das rotas por episódio. Se a 9721 não está aplicada, diz isso em vez de responder sucesso.
+   */
+  router.post("/files/cleanup", async (req: Authed, res) => {
+    try {
+      const released = await releaseFiles(req.user!.id);
+      res.json(released.ok ? { ok: true, ...(released.failed ? { falhas: released.failed } : {}) } : { ok: false, note: released.note });
+    } catch (error) {
       fail(res, statusOf(error), message(error));
     }
   });
@@ -613,8 +643,8 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
   router.post("/:id/files/cleanup", async (req: Authed, res) => {
     try {
       await staffPodcast(req);
-      await releaseFiles(req.user!.id, req.params.id);
-      res.json({ ok: true });
+      const released = await releaseFiles(req.user!.id);
+      res.json(released.ok ? { ok: true, ...(released.failed ? { falhas: released.failed } : {}) } : { ok: false, note: released.note });
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }
@@ -681,8 +711,8 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     try {
       if (!ID.test(req.params.id)) throw httpError(400, "Episódio inválido.");
       await asUser(req, "app_admin_delete_podcast", { p_id: req.params.id });
-      await releaseFiles(req.user!.id, req.params.id); // áudio e arquivos das fontes do episódio apagado
-      res.json({ deleted: true });
+      const released = await releaseFiles(req.user!.id); // áudio e arquivos das fontes do episódio apagado
+      res.json({ deleted: true, ...(released.note ? { aviso: released.note } : {}) });
     } catch (error) {
       fail(res, statusOf(error), message(error));
     }

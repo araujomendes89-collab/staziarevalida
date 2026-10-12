@@ -27,14 +27,18 @@ const sumidas = Object.keys(antes).filter((k) => !d1[k]);
 console.log("funcoes NOVAS:", novas);
 console.log("funcoes que MUDAM (existiam em producao):", mudadas);
 console.log("funcoes que SUMIRAM:", sumidas.length ? sumidas : "nenhuma");
+// as funcoes existentes que mudam: a interna da aprovacao (9720) e app_admin_delete_podcast (9721, so a lista de caminhos); permissao igual
+const esperadas = ["ch_raw_app_admin_podcast_approve(uuid,text)", "app_admin_delete_podcast(uuid)"].sort();
+if (JSON.stringify([...mudadas].sort()) !== JSON.stringify(esperadas)) { erros++; console.log("  ERRO funcoes que mudam diferem do esperado:", mudadas); }
+for (const k of mudadas) if (antes[k].acl !== d1[k].acl) { erros++; console.log("  ERRO permissao mudou:", k); }
 // a unica funcao existente que muda deve ser a interna da aprovacao; o invólucro da 9620 fica identico
 console.log("invólucro app_admin_podcast_approve identico:", antes["app_admin_podcast_approve(uuid,text)"].def === d1["app_admin_podcast_approve(uuid,text)"].def);
 // permissoes: nenhuma funcao nova chamavel por anon; internas fechadas a authenticated
 const acl = async (sig) => (await db.query(`select has_function_privilege('anon', $1::regprocedure, 'execute') as anon, has_function_privilege('authenticated', $1::regprocedure, 'execute') as auth, has_function_privilege('public', $1::regprocedure, 'execute') as pub`, [sig])).rows[0];
 for (const sig of novas.concat(["ch_raw_app_admin_podcast_approve(uuid,text)"])) { const a = await acl(sig); const esperadoAuth = sig.startsWith("app_admin_podcast_approval"); const ok = !a.anon && !a.pub && a.auth === esperadoAuth; if (!ok) erros++; console.log(`  ${ok ? "ok  " : "ERRO"} ${sig} anon=${a.anon} authenticated=${a.auth} public=${a.pub}`); }
 // triggers presentes uma vez cada
-const trg = (await db.query(`select tgname, count(*)::int n from pg_trigger where tgname like 'podcast_files_queue%' and not tgisinternal group by 1 order by 1`)).rows;
-console.log("gatilhos:", JSON.stringify(trg)); if (trg.length !== 3 || trg.some((t) => t.n !== 1)) erros++;
+const trg = (await db.query(`select tgname, count(*)::int n from pg_trigger where tgname like 'podcast_files_%' and not tgisinternal group by 1 order by 1`)).rows;
+console.log("gatilhos:", JSON.stringify(trg)); if (trg.length !== 7 || trg.some((t) => t.n !== 1)) erros++;
 // fumaca no estado de producao simulado
 const ids = { adm: "00000000-0000-0000-0000-0000000000a1", ed: "00000000-0000-0000-0000-0000000000a2", rev: "00000000-0000-0000-0000-0000000000a3", al: "00000000-0000-0000-0000-0000000000b1" };
 for (const [k, id] of Object.entries(ids)) await db.exec(`insert into auth.users (id, email) values ('${id}', '${k}@t.local') on conflict do nothing`);
@@ -49,5 +53,16 @@ await ck("revisora de Pediatria (editora) aprova", async () => (await as(ids.rev
 await ck("tela pergunta: editor nao, revisora sim", async () => JSON.stringify([(await as(ids.ed, `select public.app_admin_podcast_approval('${pid}') as r`))[0].r.can_approve, (await as(ids.rev, `select public.app_admin_podcast_approval('${pid}') as r`))[0].r.can_approve]));
 await ck("aluno nao chama a pergunta", async () => { try { await as(ids.al, `select public.app_admin_podcast_approval('${pid}')`); throw new Error("passou"); } catch (e) { if (!/Acesso restrito/.test(e.message)) throw e; return "barrado"; } });
 await ck("audio invalidado entra na fila", async () => { await db.exec(`update public.podcasts set audio_path = 'podcasts/${pid}/audio-teste00000000.mp3', status = 'audio_ready' where id = '${pid}'`); await asCommit(ids.ed, `select public.app_admin_podcast_save_script('${pid}', '{"lines":[{"speaker":"ANA","text":"Oi, vamos falar de asma.","sources":[]},{"speaker":"BRUNO","text":"Vamos mesmo.","sources":[]}],"missing":[]}'::jsonb)`); const r = (await db.query(`select storage_path, status, reason from public.podcast_files_released where podcast_id = '${pid}'`)).rows; if (r.length !== 1 || r[0].status !== "pendente") throw new Error(JSON.stringify(r)); return r[0].reason; });
+await ck("reserva: o caminho reservado recusa referencia nova e a confirmacao libera", async () => {
+  const [r] = JSON.parse(JSON.stringify((await db.query(`select public.ch_worker_podcast_files_pending('${ids.ed}', null) as r`)).rows[0].r));
+  if (!r || r.status === "mantido") throw new Error("nada reservado");
+  const st = (await db.query(`select status from public.podcast_files_released where id = ${r.id}`)).rows[0].status; if (st !== "apagando") throw new Error("estado " + st);
+  try { await db.exec(`insert into public.ch_file_holds (storage_path) values ('${r.path}')`); throw new Error("aceitou"); } catch (e) { if (!/está sendo apagado do depósito agora/.test(e.message)) throw e; }
+  const n = (await db.query(`select public.ch_worker_podcast_files_done('${ids.ed}', '[{"id": ${r.id}, "ok": true}]'::jsonb) as n`)).rows[0].n;
+  const n2 = (await db.query(`select public.ch_worker_podcast_files_done('${ids.ed}', '[{"id": ${r.id}, "ok": true}]'::jsonb) as n`)).rows[0].n;
+  const reg = (await db.query(`select count(*)::int n from public.admin_audit_log where action = 'podcast.files.cleanup' and target = '${pid}'`)).rows[0].n;
+  if (n !== 1 || n2 !== 0 || reg !== 1) throw new Error(JSON.stringify({ n, n2, reg }));
+  return "reservou, recusou, confirmou 1x";
+});
 console.log(erros ? `RESULTADO: ${erros} ERRO(S)` : "RESULTADO FINAL: tudo ok");
 await db.close(); process.exit(erros ? 1 : 0);
