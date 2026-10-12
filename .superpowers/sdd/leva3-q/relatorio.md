@@ -197,9 +197,10 @@ Ajustes de testes antigos (não mudam regra): `correcoesQuestoesBanco` e `leva3Q
 As imagens de teste agora são reais (geradas pelo PyMuPDF), em `src/__tests__/helpers/imagensReais.ts`.
 
 ### Janelas de publicação
-- SQL novo + site antigo: o site antigo não conhece `/confirm` com a conferência nova nem `released_path` (ignora); o servidor antigo, se ainda no ar, apaga o
-  arquivo anterior direto (como hoje) e `ch_worker_question_figure_*` não existe no servidor antigo: o vínculo falha com "O servidor ainda não conferiu" e a
-  equipe vê o erro em português (nada fica pior que hoje: antes a figura nem existia). Ordem recomendada: SQL, imagem do Cloud Run/servidor, site.
+- SQL novo + site antigo: o site que está no ar não tem a rota das figuras nem a tela nova; só a tela de Questões antiga vê campos a mais que ignora. Duas
+  consequências, ambas curtas e aceitas: (a) comentário salvo por uma pessoa nessa janela já entra em "Em revisão" e some do aluno, sem o aviso novo na tela
+  (é a decisão Q09, nada fica pior para o aluno: ele só deixa de ver texto novo); (b) nenhuma figura pode ser enviada (a rota não existe). Ordem recomendada:
+  SQL, imagem do Cloud Run/servidor, site.
 - Site novo + SQL antigo: o servidor novo responde 503 com aviso em português ("A atualização do banco para as figuras ainda não foi aplicada") em vez de
   sucesso silencioso; a tela de Questões não promete a revisão (achado 4) e esconde o filtro.
 - Se a 9620 for colada de novo depois da 9701, `comment_review_ready` vira `false` e a tela deixa de prometer até colar a 9701 de novo.
