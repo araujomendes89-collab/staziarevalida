@@ -122,10 +122,11 @@ describe("9620 junto das entregas de Aulas e Podcasts", () => {
   }, 90_000);
 
   it("(e) a 9620 colada ANTES da 9593 (depois da 9580) não dá erro; colada de novo no fim, tudo vale", async () => {
-    const base = todas().filter((f) => f !== NOVA && !DEPOIS.some((d) => f.startsWith(d)));
+    // (as migrações POSTERIORES à 9620, como a 9710 das Aulas, que exige a 9620, entram depois dela)
+    const base = todas().filter((f) => f < NOVA && !DEPOIS.some((d) => f.startsWith(d)));
     const db = await novoBanco(base);
     await db.exec(ler(NOVA));
-    for (const f of todas().filter((f) => DEPOIS.some((d) => f.startsWith(d)))) await db.exec(ler(f));
+    for (const f of todas().filter((f) => DEPOIS.some((d) => f.startsWith(d)) || f > NOVA)) await db.exec(ler(f));
     await db.exec(ler(NOVA));
     const { aula, pod } = await FIXTURA(db);
     await confere(db, aula, pod);

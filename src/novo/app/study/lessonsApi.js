@@ -22,6 +22,8 @@ async function parse(res) {
 const json = async (backend, path, body) =>
   (await parse(await fetch(BASE + path, body === undefined ? { headers: await headers(backend) } : { method: "POST", headers: await headers(backend, { "Content-Type": "application/json" }), body: JSON.stringify(body) }))).json();
 
+const del = async (backend, path) => (await parse(await fetch(BASE + path, { method: "DELETE", headers: await headers(backend) }))).json();
+
 export const lessonsAvailable = (backend) => Boolean(backend?.accessToken);
 
 /**
@@ -65,6 +67,31 @@ export async function uploadLessonFile(backend, lessonId, file, kind, title) {
     await fetch(`${BASE}/${lessonId}/materials?${query}`, { method: "POST", headers: await headers(backend, { "Content-Type": type, "X-File-Name": encodeURIComponent(file.name) }), body: file })
   );
   return res.json();
+}
+
+/**
+ * Remove um material da aula (equipe). Com o servidor, o arquivo guardado também sai do depósito (A07); sem ele (banco local do
+ * navegador), só o registro. Devolve a aula atualizada.
+ */
+export async function removeLessonMaterial(backend, materialId) {
+  if (!lessonsAvailable(backend)) return backend.rpc("app_admin_delete_lesson_material", { p_id: materialId });
+  return del(backend, `/materials/${materialId}`);
+}
+
+/** Apaga a aula (administrador); os arquivos dos materiais também saem do depósito (A07). */
+export async function removeLesson(backend, lessonId) {
+  if (!lessonsAvailable(backend)) return backend.rpc("app_admin_delete_lesson", { p_id: lessonId });
+  return del(backend, `/${lessonId}`);
+}
+
+/** Depois de uma ação que troca arquivos por outra via (liberar um áudio, por exemplo): apaga do depósito o que sobrou. Nunca falha. */
+export async function sweepLessonFiles(backend) {
+  if (!lessonsAvailable(backend)) return;
+  try {
+    await json(backend, "/files/sweep", {});
+  } catch {
+    // a limpeza roda de novo na próxima ação da equipe
+  }
 }
 
 /** Endereço para abrir ou tocar um material: assinado (Supabase) ou, no banco local, uma cópia baixada (blob). */

@@ -6,7 +6,7 @@ import { Badge, Banner, Button, Card, Icon, SelectField, Switch, TextField } fro
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
-import { lessonFileUrl, lessonsAvailable, materialTitle, sizeLabel, uploadErrorText, uploadLessonFile, videoPlaysInside } from "../study/lessonsApi.js";
+import { lessonFileUrl, lessonsAvailable, materialTitle, removeLesson, removeLessonMaterial, sizeLabel, sweepLessonFiles, uploadErrorText, uploadLessonFile, videoPlaysInside } from "../study/lessonsApi.js";
 import { dateTimeBR, LoadError, Loading, messageOf, TextArea, useLoad } from "./common.jsx";
 import { LessonAssistant } from "./LessonAssistant.jsx";
 
@@ -57,7 +57,9 @@ function PendingAudio({ material, hasPrevious, backend, onChanged, onRemove, bus
   const release = async () => {
     setState((s) => ({ ...s, releasing: true, error: null }));
     try {
-      onChanged(await backend.rpc("app_admin_release_lesson_audio", { p_id: material.id }));
+      const released = await backend.rpc("app_admin_release_lesson_audio", { p_id: material.id });
+      onChanged(released);
+      sweepLessonFiles(backend); // o áudio que este substituiu sai do depósito
     } catch (error) {
       setState((s) => ({ ...s, releasing: false, error: messageOf(error) }));
     }
@@ -112,7 +114,7 @@ function MaterialsSection({ lesson, pending, setPending, onChanged, form, set })
   const remove = async (id) => {
     setState({ busy: id, error: null });
     try {
-      onChanged(await backend.rpc("app_admin_delete_lesson_material", { p_id: id }));
+      onChanged(await removeLessonMaterial(backend, id));
       setState({ busy: null, error: null });
     } catch (error) {
       setState({ busy: null, error: messageOf(error) });
@@ -121,6 +123,7 @@ function MaterialsSection({ lesson, pending, setPending, onChanged, form, set })
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ font: "var(--type-label)" }}>Materiais complementares</div>
+      <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Ao remover ou trocar um arquivo, o arquivo antigo também é apagado do depósito, sem volta (se nenhum outro material o usa).</span>
       {!canUpload && <Banner tone="warning">O envio de arquivos precisa do servidor (não funciona no banco local do navegador).</Banner>}
       {state.error && <Banner tone="danger">{state.error}</Banner>}
       {lesson?.materials?.some((x) => x.sha_pendente) && (
@@ -230,9 +233,9 @@ function LessonEditor({ lesson, topics, onSaved, onClose, isAdmin }) {
     }
   };
   const remove = async () => {
-    if (!current || !window.confirm(`Apagar a aula "${current.title}"? Os materiais também somem.`)) return;
+    if (!current || !window.confirm(`Apagar a aula "${current.title}"? Os materiais e os arquivos deles também são apagados, sem volta.`)) return;
     try {
-      await backend.rpc("app_admin_delete_lesson", { p_id: current.id });
+      await removeLesson(backend, current.id);
       onSaved(null, current.id);
       onClose();
     } catch (error) {

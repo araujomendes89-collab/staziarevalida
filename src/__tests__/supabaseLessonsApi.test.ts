@@ -102,7 +102,9 @@ describe("Aluno", () => {
     expect(p.seconds_watched).toBe(120);
     p = await rpc(ANA, "app_lesson_progress", { p_id: lessonId, p_seconds: 2700, p_completed: true });
     expect(p.completed_at).toBeTruthy();
-    expect(p.xp).toBe(20);
+    expect(p.xp).toBeNull(); // A08: sem assistir até o fim, concluir não dá XP
+    p = await rpc(ANA, "app_lesson_watch", { p_id: lessonId, p_seconds: 2700, p_ended: true });
+    expect(p.xp).toBe(20); // o fim fecha o par: concluída e assistida até o fim
     p = await rpc(ANA, "app_lesson_progress", { p_id: lessonId, p_completed: true });
     expect(p.xp).toBeNull(); // já tinha concluído: nada de novo
     const ev = await db.query<any>(`select count(*)::int n, sum(xp_awarded)::int xp from public.gamification_events where user_id = $1 and event_type = 'LESSON_COMPLETED'`, [ANA]);

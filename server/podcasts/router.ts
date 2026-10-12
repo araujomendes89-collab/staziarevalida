@@ -13,6 +13,7 @@
  *   ouvir     → link assinado (Supabase) ou o arquivo pelo servidor (desenvolvimento); aluno só ouve episódio publicado;
  *   Flashcast → copia o MP3 aprovado para a aula ligada ao episódio (vira o "Áudio Flashcast" da aula).
  */
+import { sweepLessonFiles } from "../lessons/files";
 import crypto from "crypto";
 import path from "path";
 import express, { type NextFunction, type Request, type Response } from "express";
@@ -630,6 +631,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
         p_lesson_id: lessonId,
         p_material: { kind: "flashcast", title: `Flashcast: ${f.title}`.slice(0, 200), storage_path: copied, content_type: "audio/mpeg", size_bytes: audio.length },
       });
+      await sweepLessonFiles(deps!.db, req.user!, deps!.lessons, deps!.log).catch(() => null); // o Flashcast que este substituiu sai do depósito (A07)
       res.status(201).json({ lesson });
     } catch (error) {
       if (copied) await removeQuietly(deps?.lessons, [copied]);
