@@ -143,7 +143,9 @@ describe("Análise de questões › Gerar análises com IA", () => {
       return null;
     });
     render(<QuestionAnalyses reviewerAreas={[]} />);
-    fireEvent.click(await screen.findByRole("button", { name: "Pedir análise" }));
+    const button = await screen.findByRole("button", { name: "Pedir análise" });
+    await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false)); // espera a prévia carregar
+    fireEvent.click(button);
     expect(await screen.findByText(/Limite de 100 questões por dia atingido/)).toBeTruthy();
   });
 });
