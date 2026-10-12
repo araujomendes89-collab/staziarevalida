@@ -1,0 +1,40 @@
+== A) pacotes reais: 0 leva4, partes leva4, 0 leva5, partes leva5; 3 voltas
+  conferencia 0 da leva 4: 16 linhas; 0 FALTA
+  conferencia 0 da leva 5: 20 linhas; 0 FALTA
+  leva4 volta 1 1-colar-ANTES-do-site-parte-1-Questoes-StaziaMed-rascunhos.s: OK: 1-Questoes-StaziaMed-rascunhos colada (8 conferencias true)
+  leva4 volta 1 2-colar-ANTES-do-site-parte-2-Questoes-StaziaMed-aluno.sql: OK: 2-Questoes-StaziaMed-aluno colada (8 conferencias true)
+  leva4 volta 1 3-colar-ANTES-do-site-parte-3-Analise-e-conferencia-pela-tel: OK: 3-Analise-e-conferencia colada (12 conferencias true)
+  leva4 volta 1 4-colar-ANTES-do-site-parte-4-Atualidade-das-fontes.sql: OK: 4-Atualidade-das-fontes colada (6 conferencias true)
+  leva5 volta 1 1-colar-ANTES-do-site-parte-1-Suporte-e-relatos.sql: OK: 1-Suporte colada (9 conferencias true)
+  leva5 volta 1 2-colar-ANTES-do-site-parte-2-Documentos-e-processamento.sql: OK: 2-Documentos colada (10 conferencias true)
+  leva5 volta 1 3-colar-ANTES-do-site-parte-3-Publicar-ao-aluno-e-conferenci: OK: 3-Publicar colada (11 conferencias true)
+  leva5 volta 1 4-colar-ANTES-do-site-parte-4-Modo-sombra-reanalise-e-taxono: OK: 4-Sombra colada (11 conferencias true)
+  leva5 volta 1 5-colar-ANTES-do-site-parte-5-Planos-microfone-e-teto-de-IA.: OK: 5-Planos colada (9 conferencias true)
+  leva4 volta 2 1-colar-ANTES-do-site-parte-1-Questoes-StaziaMed-rascunhos.s: OK: 1-Questoes-StaziaMed-rascunhos colada (8 conferencias true)
+  leva4 volta 2 2-colar-ANTES-do-site-parte-2-Questoes-StaziaMed-aluno.sql: OK: 2-Questoes-StaziaMed-aluno colada (8 conferencias true)
+  leva4 volta 2 3-colar-ANTES-do-site-parte-3-Analise-e-conferencia-pela-tel: OK: 3-Analise-e-conferencia colada (12 conferencias true)
+  leva4 volta 2 4-colar-ANTES-do-site-parte-4-Atualidade-das-fontes.sql: OK: 4-Atualidade-das-fontes colada (6 conferencias true)
+  leva5 volta 2 1-colar-ANTES-do-site-parte-1-Suporte-e-relatos.sql: OK: 1-Suporte colada (9 conferencias true)
+  leva5 volta 2 2-colar-ANTES-do-site-parte-2-Documentos-e-processamento.sql: OK: 2-Documentos colada (10 conferencias true)
+  leva5 volta 2 3-colar-ANTES-do-site-parte-3-Publicar-ao-aluno-e-conferenci: OK: 3-Publicar colada (11 conferencias true)
+  leva5 volta 2 4-colar-ANTES-do-site-parte-4-Modo-sombra-reanalise-e-taxono: OK: 4-Sombra colada (11 conferencias true)
+  leva5 volta 2 5-colar-ANTES-do-site-parte-5-Planos-microfone-e-teto-de-IA.: OK: 5-Planos colada (9 conferencias true)
+  leva4 volta 3 1-colar-ANTES-do-site-parte-1-Questoes-StaziaMed-rascunhos.s: OK: 1-Questoes-StaziaMed-rascunhos colada (8 conferencias true)
+  leva4 volta 3 2-colar-ANTES-do-site-parte-2-Questoes-StaziaMed-aluno.sql: OK: 2-Questoes-StaziaMed-aluno colada (8 conferencias true)
+  leva4 volta 3 3-colar-ANTES-do-site-parte-3-Analise-e-conferencia-pela-tel: OK: 3-Analise-e-conferencia colada (12 conferencias true)
+  leva4 volta 3 4-colar-ANTES-do-site-parte-4-Atualidade-das-fontes.sql: OK: 4-Atualidade-das-fontes colada (6 conferencias true)
+  leva5 volta 3 1-colar-ANTES-do-site-parte-1-Suporte-e-relatos.sql: OK: 1-Suporte colada (9 conferencias true)
+  leva5 volta 3 2-colar-ANTES-do-site-parte-2-Documentos-e-processamento.sql: OK: 2-Documentos colada (10 conferencias true)
+  leva5 volta 3 3-colar-ANTES-do-site-parte-3-Publicar-ao-aluno-e-conferenci: OK: 3-Publicar colada (11 conferencias true)
+  leva5 volta 3 4-colar-ANTES-do-site-parte-4-Modo-sombra-reanalise-e-taxono: OK: 4-Sombra colada (11 conferencias true)
+  leva5 volta 3 5-colar-ANTES-do-site-parte-5-Planos-microfone-e-teto-de-IA.: OK: 5-Planos colada (9 conferencias true)
+  conferencias 0 depois (rodam sem erro): 16 20
+  1a x 2a volta: nenhuma diferenca (funcoes, gatilhos, politicas, ACL, RLS, colunas, restricoes, indices, dados)
+  2a x 3a volta: nenhuma diferenca (funcoes, gatilhos, politicas, ACL, RLS, colunas, restricoes, indices, dados)
+  funcoes: 640 -> 780; novas 142, removidas 2, mudadas 61
+  tabelas novas: 11; politicas: +11 -4; gatilhos novos: 6
+  dados: tabelas existentes com conteudo diferente: ai_settings, ch_taxonomy_nodes, exams, tutor_config (esperado: as que ganharam coluna/linha de configuracao)
+== B) migracoes diretas: leva 4 -> leva 5 (2 voltas) e leva 5 -> leva 4
+  pacotes (4 depois 5) x migracoes diretas 4 depois 5: mesma estrutura (funcoes, ACL, gatilhos, RLS/politicas, colunas, restricoes, indices)
+  4 depois 5 x 5 depois 4: mesma estrutura (funcoes, ACL, gatilhos, RLS/politicas, colunas, restricoes, indices)
+RESULTADO FINAL: leva 4 e leva 5, pelos pacotes reais, colam 3x sem erro; estado final igual ao das migracoes diretas e ao da ordem inversa

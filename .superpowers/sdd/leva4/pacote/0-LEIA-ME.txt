@@ -89,6 +89,10 @@ SE FOR PRECISO COLAR DE NOVO ALGO ANTIGO
     - as partes 1 e 4 da leva 3
   Podem ser colados de novo sem mexer em nada desta leva: partes 2, 3 e 7 de 11/10, a Arena, o DESLIGAR os tetos e as partes 2 e 3 da leva 3.
 
+ORDEM GERAL (leva 4 + leva 5)
+  Se a leva 5 também vai ser publicada, siga o arquivo publicacao-staziamed-2026-10-12-ORDEM-GERAL.txt: a leva 4 vai primeiro, a leva 5 logo depois, e
+  UMA imagem do Cloud Run e UM site no fim. A regra de "colar de novo algo antigo" daquele arquivo vale no lugar da acima (inclui as partes da leva 5).
+
 LIMITES (honestos)
   - O ensaio foi numa cópia do banco feita em PGlite (Postgres 18), não no Supabase de verdade. Nada nestes arquivos usa recurso novo do Postgres.
   - Nenhuma IA real foi chamada: a geração, a conferência e a busca de fonte foram provadas com IA de mentira. O primeiro teste de verdade (uma fonte

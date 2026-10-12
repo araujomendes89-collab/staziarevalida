@@ -53,6 +53,7 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   ch_worker_analyses_for_check: { classe: "so_oficiais", como: "herda" },
   app_question_analysis_decide: { classe: "so_oficiais", como: "herda" },
   question_analysis_fits: { classe: "so_oficiais", como: "herda" },
+  ch_reanalysis_waiting: { classe: "so_oficiais", como: "herda" }, // leva 5 (9872): só conta questão com pedido de atualização por mudança de fonte; esse pedido nasce da ligação questão-afirmação, que só a análise (oficiais) cria
   tutor_session_summary: { classe: "so_oficiais", como: "herda" },
   tutor_learning_memory: { classe: "so_oficiais", como: "herda" },
   ch_worker_tutor_learning_event: { classe: "so_oficiais", como: "herda" },

@@ -1,0 +1,13 @@
+4c1336777e787dff68b711af49769435fab57c0a8cf06c4f5ca918088f79ab0d  publicacao-staziamed-2026-10-12-leva4/0-CONFERIR-primeiro-nao-altera-nada.sql
+88a0ac071b8ad17c2bb8106eedc214024cb0cd89c82d360a9902dd3423a5608a  publicacao-staziamed-2026-10-12-leva4/0-LEIA-ME.txt
+3d267ee5ca1522d35ddfdacc2d74ede85cd77c8263e05a4f324bd25208e749e7  publicacao-staziamed-2026-10-12-leva4/1-colar-ANTES-do-site-parte-1-Questoes-StaziaMed-rascunhos.sql
+deac65734a0b339a8e8e05ebffc901d6334844a5ecca283d88cd411f1ce4bb3b  publicacao-staziamed-2026-10-12-leva4/2-colar-ANTES-do-site-parte-2-Questoes-StaziaMed-aluno.sql
+00f84a9e7037533aa2bd8c3a8c71c9f002d23d69dbe5f660819260cc6ce6bba7  publicacao-staziamed-2026-10-12-leva4/3-colar-ANTES-do-site-parte-3-Analise-e-conferencia-pela-tela.sql
+c73c99dbb17e06f9c864d45e2a3b7815ccdc694623c4375826cad8fbd86ac18c  publicacao-staziamed-2026-10-12-leva4/4-colar-ANTES-do-site-parte-4-Atualidade-das-fontes.sql
+1e234a7f9546dbcc213c3c54f9bc3989a044f65f600bceed0a69427f9ba40d0c  publicacao-staziamed-2026-10-12-leva5/0-CONFERIR-primeiro-nao-altera-nada.sql
+e4dd5d39638ea1853e1ef32d95d7f3c50e997d353addb1e9ae432de1dbf31f5a  publicacao-staziamed-2026-10-12-leva5/0-LEIA-ME.txt
+353847fd814f9b3ca61d89fd3cd6e89d43b27d605db2a87d404a2e3b7140dcf7  publicacao-staziamed-2026-10-12-leva5/1-colar-ANTES-do-site-parte-1-Suporte-e-relatos.sql
+bbc829a1d10b67a462649cf400f7377b44127e2941bb7d4b3d88188018daccda  publicacao-staziamed-2026-10-12-leva5/2-colar-ANTES-do-site-parte-2-Documentos-e-processamento.sql
+1d5c5edfa249a28752276ddbdfdd5f2b8e61bd17f63fefea64cde8a48ec56d8a  publicacao-staziamed-2026-10-12-leva5/3-colar-ANTES-do-site-parte-3-Publicar-ao-aluno-e-conferencias.sql
+c9006e8795cff084a3386d672f601d88368c1527df115bd5e595db78d65b08c4  publicacao-staziamed-2026-10-12-leva5/4-colar-ANTES-do-site-parte-4-Modo-sombra-reanalise-e-taxonomia.sql
+f73125b5cab675055fd72bb92fa66a248912aeaf226f3215127568dd3f9d5603  publicacao-staziamed-2026-10-12-leva5/5-colar-ANTES-do-site-parte-5-Planos-microfone-e-teto-de-IA.sql

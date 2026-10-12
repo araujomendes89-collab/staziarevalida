@@ -120,6 +120,11 @@ SE FOR PRECISO COLAR DE NOVO ALGO ANTIGO
   - as partes 1, 5 e 6 do pacote de 11/10 e o DESLIGAR-tetos-de-IA.sql continuam com os mesmos efeitos de antes (nenhum deles mexe numa função desta leva).
   As partes da leva 3 e as outras partes e arquivos antigos podem ser coladas de novo sem desfazer nada desta leva.
 
+ORDEM GERAL (leva 4 + leva 5)
+  Se a leva 4 também vai ser publicada, siga o arquivo publicacao-staziamed-2026-10-12-ORDEM-GERAL.txt: a leva 4 vai primeiro e esta leva logo depois, com
+  UMA imagem do Cloud Run e UM site no fim. Com a leva 4 no ar, quem re-colar a 9620/9621 também precisa re-colar as partes da leva 4 (a 9620 mexe em funções que a
+  leva 4 usa); a regra completa está no arquivo de ordem geral. Provado: leva 4 -> leva 5 e leva 5 -> leva 4 dão o mesmo estado final.
+
 COISAS QUE SÃO SÓ SUAS (sem SQL; passo a passo no relatório do grupo D)
   - Vercel > Settings > Environment Variables: conferir que existem (só o nome, nunca copie valores) SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, CRON_SECRET,
     VERTEX_API_KEY (ou GOOGLE_CLOUD_PROJECT e GOOGLE_CLOUD_LOCATION), OPENAI_API_KEY, ANTHROPIC_API_KEY e ELEVENLABS_API_KEY. Candidatas a apagar, uma por vez, com novo deploy e teste: PAYMENT_WEBHOOK_SECRET,
