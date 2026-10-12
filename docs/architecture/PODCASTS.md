@@ -11,7 +11,7 @@ sem tirar nada do que existe, e criar na "Nova aula" um agente de IA (Gemini, Op
 | **Aulas** (`lessons`, `lesson_materials`, depósito privado `lessons`, rotas `/api/lessons`) com o slot "Áudio Flashcast (MP3)" | O episódio pode ser ligado a uma aula, usar a aula como fonte e virar o Flashcast dela ("Usar como Flashcast da aula"). O envio manual de MP3 continua igual. |
 | **Central de Conteúdo** (PDF com PyMuPDF/OCR no processamento, provedores de IA `server/contentHub/ai/provider.ts`, autorização `CONTENT_HUB_AI_ALLOW_EXTERNAL`) | Mesma camada de provedores (Claude, Gemini, OpenAI) e a mesma autorização de envio de conteúdo a provedor externo. PDF escaneado (sem texto) é recusado com o aviso de passar pela Central (OCR). |
 | **Tutor** (`ai_usage_ledger`, voz do Gemini em `server/tutor/speech.ts`) | O custo do roteiro, da voz e do assistente entra no mesmo livro-caixa (`podcast_script`, `podcast_tts`, `lesson_assist`), sem contar como interação do aluno. |
-| **Papéis** (`is_staff`, `assert_staff`, `assert_admin`, `admin_log`) | Equipe (administrador ou editor) monta, revisa e aprova; só o administrador publica e apaga. Tudo no registro da administração. |
+| **Papéis** (`is_staff`, `assert_staff`, `assert_admin`, `admin_log`) | Equipe (administrador ou editor) monta e revisa; **aprova o roteiro só o administrador ou o revisor médico da área do episódio** (`ch_reviewer_areas`, migração 9720; episódio sem área: só o administrador); só o administrador publica e apaga. Tudo no registro da administração. |
 | **Tela de Aulas do aluno** | Ganhou a seção "Podcasts" (só episódios publicados). O menu ficou exatamente como o usuário pediu. |
 
 ## 2. Fluxo
@@ -68,6 +68,9 @@ conferência, simulação), `audio.ts` (OpenAI e Gemini, este desligado por vari
 | `GET /:id/audio/link`, `/audio/file` | ouvir (aluno: só publicado) |
 | `POST /:id/flashcast` | copiar o MP3 aprovado para a aula ligada |
 | `DELETE /:id` | apagar episódio e arquivos (administrador) |
+| `POST /:id/files/cleanup` | a tela chama depois de editar o roteiro: apaga o áudio que deixou de valer (P08) |
+
+Arquivos esquecidos (P08, migração 9721): gatilhos anotam em `podcast_files_released` o caminho que ficou sem uso (áudio que deixou de valer, fonte tirada, episódio apagado); o servidor apaga logo depois do evento, só se nenhuma linha do banco usa o caminho (outro episódio, fonte, material de aula, `ch_file_holds`), e registra no Registro (`podcast.files.cleanup`). Não há varredura dos arquivos antigos: a lista deles é a rotina de leitura `supabase/rotinas/lista-podcasts-arquivos-esquecidos.sql`.
 
 ## 5. Assistente de IA da "Nova aula"
 
