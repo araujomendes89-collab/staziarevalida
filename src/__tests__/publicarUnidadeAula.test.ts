@@ -126,6 +126,21 @@ describe("Travas novas no banco", () => {
     expect((await problemas(ok.versao)).join(" | ")).not.toMatch(/Contato de terceiros/);
   });
 
+  it("nome do arquivo de origem, da editora ou do autor do material estudado trava a publicação", async () => {
+    const u = await montarUnidade(sql, rpc, { titulo: "Origem no texto", secoes: [{ heading: "Conceito", paragraphs: ["Segundo a Apostila Medcurso Revalida 2024, a conduta é internar."] }], cards: [{ front: "Quem escreveu?", back: "Editora Concorrente Médica." }], semAprovar: true });
+    const doc = await rpc(EDITOR, "app_ch_register_document", { p_doc: { name: "Apostila Medcurso Revalida 2024.pdf", sha256: "a".repeat(64), publisher: "Editora Concorrente Médica", author: "Fulano" } });
+    await sql(`update public.ch_claims set document_id = $1 where id = $2`, [doc.id, u.afirmacao]);
+    const p = (await problemas(u.versao)).filter((x) => /material de origem/.test(x));
+    expect(p.join(" | ")).toMatch(/"Apostila Medcurso Revalida 2024"/);
+    expect(p.join(" | ")).toMatch(/"Editora Concorrente Médica"/);
+    expect(p.join(" | ")).not.toMatch(/Fulano/); // autor curto (menos de 5 letras) não é procurado
+    // o nome das fontes OFICIAIS citadas no fim da aula não conta
+    const limpa = await montarUnidade(sql, rpc, { titulo: "Origem limpa", semAprovar: true });
+    const doc2 = await rpc(EDITOR, "app_ch_register_document", { p_doc: { name: "Manual Origem limpa.pdf", sha256: "b".repeat(64), publisher: "Editora do Estudo" } });
+    await sql(`update public.ch_claims set document_id = $1 where id = $2`, [doc2.id, limpa.afirmacao]);
+    expect((await problemas(limpa.versao)).join(" | ")).not.toMatch(/material de origem/);
+  });
+
   it("mais de 30 pontos-chave ou título enorme travam, sem cortar o texto em silêncio", async () => {
     const muitos = await montarUnidade(sql, rpc, { titulo: "Muitos pontos", resumo: Array.from({ length: 31 }, (_, i) => `Ponto ${i + 1} da aula.`), semAprovar: true });
     expect((await problemas(muitos.versao)).join(" | ")).toMatch(/no máximo 30 pontos-chave/);

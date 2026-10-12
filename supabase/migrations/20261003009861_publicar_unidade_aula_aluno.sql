@@ -206,6 +206,7 @@ declare
   v_where text;
   c_mail constant text := '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}';
   c_user constant text := '(?:^|[^A-Za-z0-9._%+-])@[A-Za-z0-9_.]{3,}';
+  v_all text;
 begin
   select * into v from public.ch_unit_versions where id = p_version_id;
   if not found then return p; end if;
@@ -244,6 +245,22 @@ begin
       v_where := r.onde;
       p := array_append(p, 'Contato de terceiros no que vai ao aluno: "' || btrim(v_hit) || '" (' || v_where || ').');
       exit;
+    end if;
+  end loop;
+  -- nome do arquivo de origem, da editora ou do autor do material estudado: nunca vai ao aluno (sem precisar da Etapa 1 do caminho do documento)
+  v_all := public.fold_text(lower(coalesce(st ->> 'title', '') || E'\n' || split_part(coalesce(st ->> 'summary', ''), E'\n\nFontes oficiais desta aula', 1) || E'\n' || coalesce(st ->> 'key_points', '') || E'\n' ||
+             coalesce((select string_agg(coalesce(cd ->> 'front', '') || ' ' || coalesce(cd ->> 'back', ''), E'\n')
+                         from public.ch_materials m, jsonb_array_elements(coalesce(m.content -> 'cards', '[]'::jsonb)) cd
+                        where m.unit_version_id = p_version_id and m.kind = 'flashcards'), '')));
+  for r in
+    select distinct btrim(x.t) as term from public.ch_documents d,
+      lateral (values (regexp_replace(d.name, '\.[A-Za-z0-9]{2,4}$', '')), (d.publisher), (d.author),
+                      (regexp_replace(coalesce(d.provenance ->> 'original_file_name', ''), '\.[A-Za-z0-9]{2,4}$', ''))) x (t)
+    where d.purpose = 'study_material' and char_length(btrim(coalesce(x.t, ''))) >= 5
+      and d.id in (select c.document_id from public.ch_claims c join public.ch_unit_claims uc on uc.claim_id = c.id where uc.unit_version_id = p_version_id)
+  loop
+    if position(public.fold_text(lower(r.term)) in v_all) > 0 then
+      p := array_append(p, 'Nome do material de origem no que vai ao aluno: "' || r.term || '". Tire o nome de curso, editora ou autor antes de publicar.');
     end if;
   end loop;
   return p || public.ch_publish_problems_cards(p_version_id);

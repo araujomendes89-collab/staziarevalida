@@ -14,7 +14,16 @@ export function PublishPanel({ version, onPublished, onClose }) {
   const [showAsStudent, setShowAsStudent] = React.useState(false);
   const act = useAction();
 
-  if (error) return <LoadError error={error} retry={reload} />;
+  if (error) {
+    const faltaSql = /does not exist|could not find|PGRST202|42883/i.test(String(error?.message ?? error));
+    return faltaSql ? (
+      <Banner tone="warning" title="A publicação nova ainda não está no banco">
+        Cole no Supabase os arquivos SQL novos da Central (20261003009860 a 20261003009863, nesta ordem) e abra esta tela de novo.
+      </Banner>
+    ) : (
+      <LoadError error={error} retry={reload} />
+    );
+  }
   if (!data) return <Loading />;
   const lesson = data.lesson ?? {};
   const similar = data.similar ?? [];

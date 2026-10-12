@@ -143,6 +143,18 @@ describe("Prévia 'Publicar para os alunos'", () => {
     expect((screen.getAllByRole("button", { name: "Publicar para os alunos" }).pop() as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("SQL novo ainda não colado no banco: a tela explica o que fazer, sem erro técnico", async () => {
+    const base = backend.rpc.getMockImplementation();
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_ch_publish_preview") throw new Error("Could not find the function public.app_ch_publish_preview(p_version_id) in the schema cache");
+      return base(fn, args);
+    });
+    render(<Units {...ctx()} />);
+    fireEvent.click(await screen.findByRole("button", { name: /Publicar para os alunos…/ }));
+    expect(await screen.findByText("A publicação nova ainda não está no banco")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/schema cache|PGRST/);
+  });
+
   it("versão publicada: Retirar pede o motivo e avisa que nada do aluno é apagado", async () => {
     dados.versao = VERSAO({ status: "published" });
     render(<Units {...ctx()} />);
