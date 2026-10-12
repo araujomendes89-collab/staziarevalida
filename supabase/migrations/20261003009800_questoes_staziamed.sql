@@ -851,6 +851,352 @@ grant execute on function public.app_draft_source_accept(uuid) to authenticated;
 revoke execute on function public.app_draft_source_discard(uuid) from public, anon;
 grant execute on function public.app_draft_source_discard(uuid) to authenticated;
 
+-- ---------------------------------------------------------------- editar, equilibrar o gabarito, decidir e listar (Tarefa 10)
+-- A explicação cita alternativa por letra? Mesmos exemplos de `citesLetter` (TS): "a alternativa B", "Letra C", "(D)", "item A".
+create or replace function public.staziamed_cites_letter(p_text text) returns boolean
+  language sql immutable set search_path = ''
+as $$
+  select coalesce(p_text ~ '\m([Aa]lternativas?|[Ll]etras?|[Oo]p(ção|cao|ções|coes)|[Ii]te(m|ns))\s+["“(]?[A-D]\M|\(\s*[A-D]\s*\)', false)
+$$;
+
+-- O que se edita no rascunho (e vai para a trilha como "conteúdo anterior"); título, conceitos e aplicação não entram no hash,
+-- mas também contam como edição.
+create or replace function public.draft_content_json(d public.draft_questions) returns jsonb
+  language sql immutable set search_path = ''
+as $$
+  select jsonb_build_object('title', d.title, 'stem', d.stem, 'support', jsonb_build_object('type', d.support_type, 'title', d.support_title, 'rows', d.support_rows),
+    'alternatives', d.alternatives, 'correct_answer', d.correct_answer, 'explanation', d.explanation, 'alternative_explanations', d.alternative_explanations,
+    'clinical_decision', d.clinical_decision, 'key_concepts', d.key_concepts, 'update_application', d.update_application, 'topic', d.topic)
+$$;
+
+-- O que ainda impede aprovar, na ordem e com as palavras que o revisor lê. Lista vazia = pode aprovar (a decisão ainda exige o
+-- "Conferi as fontes citadas"). Vale para os rascunhos do servidor e para os 200 antigos (citação de apostila = sem fonte oficial).
+create or replace function public.draft_approval_blockers(p_id uuid) returns text[]
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  d public.draft_questions;
+  out text[] := '{}';
+  c jsonb;
+  p record;
+  v_labels constant jsonb := '{"software": "Regras", "sources": "Fontes oficiais", "currency": "Atualidade", "redteam": "Revisão clínica independente"}';
+  v_layer text;
+  k record;
+  v_dec boolean := false;
+  v_verdicts constant jsonb := '{"issues": "com apontamentos", "fail": "reprovada", "insufficient": "insuficiente", "inconclusive": "inconclusiva", "pass": "sem problemas"}';
+begin
+  select * into d from public.draft_questions where id = p_id;
+  if not found then return array['Questão não encontrada.']; end if;
+  if nullif(btrim(coalesce(d.topic, '')), '') is null then out := array_append(out, 'Falta o tema.'); end if;
+  if not public.draft_has_official_sources(d) then out := array_append(out, 'Bloqueada: sem fonte oficial.'); end if;
+  if jsonb_typeof(d.source_citations) = 'array' then
+    for c in select * from jsonb_array_elements(d.source_citations) loop
+      continue when jsonb_typeof(c) <> 'object' or not (c ? 'passage_id');
+      select s.title as title, p0.page as page, p0.text as text,
+             (s.status = 'current' and s.authority_level in ('A', 'B', 'C', 'D') and s.kind = 'final' and (s.valid_until is null or s.valid_until >= current_date)) as official
+        into p
+        from public.ch_source_passages p0 join public.ch_sources s on s.id = p0.source_id where p0.id::text = c ->> 'passage_id';
+      if not found then
+        out := array_append(out, 'Fonte citada não está vigente: ' || coalesce(c ->> 'source', 'fonte removida') || '.');
+      elsif not p.official then
+        out := array_append(out, 'Fonte citada não está vigente: ' || p.title || '.');
+      elsif length(btrim(regexp_replace(coalesce(c ->> 'quote', ''), '\s+', ' ', 'g'))) = 0
+         or strpos(regexp_replace(p.text, '\s+', ' ', 'g'), btrim(regexp_replace(c ->> 'quote', '\s+', ' ', 'g'))) = 0 then
+        out := array_append(out, 'Citação não confere com o trecho da fonte: ' || p.title || ', p. ' || coalesce(p.page::text, '?') || '.');
+      end if;
+      if lower(regexp_replace(btrim(coalesce(c ->> 'supports', '')), '\s+', ' ', 'g')) = lower(regexp_replace(btrim(coalesce(d.clinical_decision, '')), '\s+', ' ', 'g'))
+         and length(btrim(coalesce(d.clinical_decision, ''))) > 0 then
+        v_dec := true;
+      end if;
+    end loop;
+  end if;
+  if not v_dec then out := array_append(out, 'A decisão clínica não tem citação.'); end if;
+  for v_layer in select unnest(array['software', 'sources', 'currency', 'redteam']) loop
+    select * into k from public.draft_checks ck where ck.draft_id = d.id and ck.layer = v_layer and ck.content_hash = d.content_hash;
+    if not found then
+      out := array_append(out, 'Conferência pendente: ' || (v_labels ->> v_layer) || '.');
+    elsif v_layer = 'software' and k.verdict = 'fail' then
+      out := array_append(out, 'Regras com problema crítico.');
+    elsif v_layer = 'sources' and k.verdict <> 'pass' then
+      out := array_append(out, 'Fontes oficiais: ' || (v_verdicts ->> k.verdict) || '.');
+    elsif v_layer = 'currency' and k.verdict = 'fail' then
+      out := array_append(out, 'Atualidade reprovada.');
+    end if;
+  end loop;
+  if d.similarity_to_official is not null and d.similarity_to_official >= 70 then
+    out := array_append(out, 'Semelhança de ' || trim(trailing '.' from trim(trailing '0' from d.similarity_to_official::text)) || '% com questão oficial.');
+  end if;
+  if d.support_type = 'IMAGE_REQUEST' then out := array_append(out, 'Pede imagem que não existe.'); end if;
+  return out;
+end
+$$;
+
+-- Salvar uma edição. Só a equipe; exige o hash que a pessoa abriu (dois editores não pisam um no outro). Mudou algo: volta a
+-- "aguardando revisão médica", apaga as conferências e a revisão, zera a semelhança e deixa o conteúdo anterior na trilha.
+create or replace function public.app_draft_question_save(p_id uuid, p_hash text, p_content jsonb) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  d public.draft_questions;
+  v_before jsonb;
+  v_after jsonb;
+  c constant jsonb := coalesce(p_content, '{}'::jsonb);
+  v_topic text;
+  v_alts jsonb;
+  v_exps jsonb;
+  v_support jsonb;
+  l text;
+begin
+  if (select auth.uid()) is null or not public.is_staff() then
+    raise exception 'Editar rascunho é da equipe (administrador ou editor).' using errcode = '42501';
+  end if;
+  select * into d from public.draft_questions where id = p_id for update;
+  if not found then raise exception 'Questão não encontrada.' using errcode = 'P0002'; end if;
+  if d.status = 'rejected' then raise exception 'Questão recusada não é editada.' using errcode = '22023'; end if;
+  if p_hash is distinct from d.content_hash then
+    raise exception 'Outra pessoa salvou este rascunho depois que você abriu: abra de novo.' using errcode = '40001';
+  end if;
+  v_before := public.draft_content_json(d);
+  v_alts := coalesce(c -> 'alternatives', d.alternatives);
+  v_exps := coalesce(c -> 'alternative_explanations', d.alternative_explanations);
+  v_support := coalesce(c -> 'support', jsonb_build_object('type', d.support_type, 'title', d.support_title, 'rows', d.support_rows));
+  if char_length(btrim(coalesce(c ->> 'stem', d.stem))) < 20 then raise exception 'Rascunho inválido: enunciado.' using errcode = '22023'; end if;
+  foreach l in array array['A', 'B', 'C', 'D'] loop
+    if jsonb_typeof(v_alts -> l) is distinct from 'string' or char_length(btrim(v_alts ->> l)) = 0 then
+      raise exception 'Rascunho inválido: alternativa %.', l using errcode = '22023';
+    end if;
+  end loop;
+  if coalesce(c ->> 'correct_answer', d.correct_answer::text) not in ('A', 'B', 'C', 'D') then raise exception 'Rascunho inválido: gabarito.' using errcode = '22023'; end if;
+  if jsonb_typeof(v_exps) is distinct from 'object' then raise exception 'Rascunho inválido: explicações.' using errcode = '22023'; end if;
+  if coalesce(v_support ->> 'type', 'NONE') not in ('NONE', 'TABLE', 'LAB_PANEL', 'IMAGE_REQUEST') then raise exception 'Rascunho inválido: tabela de apoio.' using errcode = '22023'; end if;
+  if jsonb_typeof(coalesce(v_support -> 'rows', '[]'::jsonb)) is distinct from 'array' then raise exception 'Rascunho inválido: linhas da tabela.' using errcode = '22023'; end if;
+  v_topic := case when c ? 'topic' then nullif(btrim(coalesce(c ->> 'topic', '')), '') else d.topic end;
+  if v_topic is not null and v_topic is distinct from d.topic
+     and not exists (select 1 from public.staziamed_topic_weights(d.area) w where w.topic = v_topic) then
+    raise exception 'Escolha um tema da lista de temas das provas oficiais.' using errcode = '22023';
+  end if;
+  update public.draft_questions set
+    title = case when c ? 'title' then nullif(btrim(coalesce(c ->> 'title', '')), '') else title end,
+    stem = btrim(coalesce(c ->> 'stem', stem)),
+    support_type = coalesce(v_support ->> 'type', 'NONE'),
+    support_title = nullif(btrim(coalesce(v_support ->> 'title', '')), ''),
+    support_rows = coalesce(v_support -> 'rows', '[]'::jsonb),
+    alternatives = v_alts,
+    correct_answer = coalesce(c ->> 'correct_answer', correct_answer::text),
+    explanation = case when c ? 'explanation' then nullif(btrim(coalesce(c ->> 'explanation', '')), '') else explanation end,
+    alternative_explanations = v_exps,
+    clinical_decision = case when c ? 'clinical_decision' then nullif(btrim(coalesce(c ->> 'clinical_decision', '')), '') else clinical_decision end,
+    key_concepts = coalesce(c -> 'key_concepts', key_concepts),
+    update_application = case when c ? 'update_application' then nullif(btrim(coalesce(c ->> 'update_application', '')), '') else update_application end,
+    topic = v_topic
+  where id = d.id;
+  select * into d from public.draft_questions where id = p_id;
+  v_after := public.draft_content_json(d);
+  if v_after = v_before then
+    return jsonb_build_object('id', d.id, 'content_hash', d.content_hash, 'status', d.status, 'changed', false);
+  end if;
+  update public.draft_questions set status = 'awaiting_medical_review', reviewed_by = null, reviewed_at = null, review_note = null, reviewed_hash = null,
+         similarity_to_official = null, similar_question_id = null, ai_review = case when ai_review is null then null else ai_review - 'pedagogia' end,
+         edited_by = (select auth.uid()), edited_at = now()
+   where id = d.id;
+  delete from public.draft_checks where draft_id = d.id;
+  update public.draft_source_proposals set state = 'obsoleta' where draft_id = d.id and state = 'pendente';
+  perform public.draft_event(d.id, 'editada', null, v_before, jsonb_build_object('campos', (select coalesce(jsonb_agg(k.key order by k.key), '[]'::jsonb) from jsonb_each(v_after) k where k.value is distinct from v_before -> k.key)));
+  select content_hash, status into d.content_hash, d.status from public.draft_questions where id = d.id;
+  return jsonb_build_object('id', d.id, 'content_hash', d.content_hash, 'status', d.status, 'changed', true);
+end
+$$;
+
+-- Equilibrar o gabarito: a correta vai para a letra menos usada entre os rascunhos não recusados (fora este), trocando de lugar
+-- com a alternativa dessa letra; as explicações acompanham. Conta como edição.
+create or replace function public.app_draft_balance_answer(p_id uuid, p_hash text) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  d public.draft_questions;
+  v_before jsonb;
+  v_from text;
+  v_to text;
+  v_min integer;
+  v_cnt integer;
+  v_alts jsonb;
+  v_exps jsonb;
+  l text;
+begin
+  if (select auth.uid()) is null or not public.is_staff() then
+    raise exception 'Editar rascunho é da equipe (administrador ou editor).' using errcode = '42501';
+  end if;
+  select * into d from public.draft_questions where id = p_id for update;
+  if not found then raise exception 'Questão não encontrada.' using errcode = 'P0002'; end if;
+  if d.status = 'rejected' then raise exception 'Questão recusada não é editada.' using errcode = '22023'; end if;
+  if p_hash is distinct from d.content_hash then
+    raise exception 'Outra pessoa salvou este rascunho depois que você abriu: abra de novo.' using errcode = '40001';
+  end if;
+  if public.staziamed_cites_letter(d.explanation) or exists (select 1 from jsonb_each_text(d.alternative_explanations) e where public.staziamed_cites_letter(e.value)) then
+    raise exception 'A explicação cita letra: edite o texto antes de equilibrar o gabarito.' using errcode = '22023';
+  end if;
+  v_from := d.correct_answer::text;
+  select min(x.n) into v_min from (
+    select l.l, (select count(*) from public.draft_questions o where o.id <> d.id and o.status <> 'rejected' and o.correct_answer = l.l::char(1)) as n
+    from (values ('A'), ('B'), ('C'), ('D')) as l (l)) x;
+  select (select count(*) from public.draft_questions o where o.id <> d.id and o.status <> 'rejected' and o.correct_answer = v_from::char(1)) into v_cnt;
+  if v_cnt = v_min then raise exception 'O gabarito já está na letra menos usada.' using errcode = '22023'; end if;
+  select x.l into v_to from (
+    select l.l, (select count(*) from public.draft_questions o where o.id <> d.id and o.status <> 'rejected' and o.correct_answer = l.l::char(1)) as n
+    from (values ('A'), ('B'), ('C'), ('D')) as l (l)) x where x.n = v_min order by x.l limit 1;
+  v_before := public.draft_content_json(d);
+  v_alts := jsonb_set(jsonb_set(d.alternatives, array[v_from], d.alternatives -> v_to), array[v_to], d.alternatives -> v_from);
+  v_exps := jsonb_set(jsonb_set(d.alternative_explanations, array[v_from], coalesce(d.alternative_explanations -> v_to, to_jsonb(''::text))), array[v_to], coalesce(d.alternative_explanations -> v_from, to_jsonb(''::text)));
+  update public.draft_questions set alternatives = v_alts, alternative_explanations = v_exps, correct_answer = v_to::char(1),
+         status = 'awaiting_medical_review', reviewed_by = null, reviewed_at = null, review_note = null, reviewed_hash = null,
+         similarity_to_official = null, similar_question_id = null, ai_review = case when ai_review is null then null else ai_review - 'pedagogia' end,
+         edited_by = (select auth.uid()), edited_at = now()
+   where id = d.id returning content_hash into d.content_hash;
+  delete from public.draft_checks where draft_id = d.id;
+  update public.draft_source_proposals set state = 'obsoleta' where draft_id = d.id and state = 'pendente';
+  perform public.draft_event(d.id, 'editada', 'Equilibrar gabarito: ' || v_from || ' → ' || v_to, v_before, jsonb_build_object('de', v_from, 'para', v_to));
+  return jsonb_build_object('from', v_from, 'to', v_to, 'content_hash', d.content_hash);
+end
+$$;
+
+-- Decisão de uma PESSOA: revisor médico cadastrado na área. Aprovar exige o texto que a pessoa viu (p_hash), os bloqueios em dia,
+-- "Conferi as fontes citadas" e, se a IA reprovou na revisão adversarial ou deixou a atualidade inconclusiva, uma observação.
+drop function if exists public.app_draft_question_decide(uuid, text, text);
+create or replace function public.app_draft_question_decide(p_id uuid, p_decision text, p_note text default null, p_hash text default null, p_sources_checked boolean default false) returns boolean
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  d public.draft_questions;
+  v_block text[];
+  v_redteam text;
+  v_currency text;
+begin
+  if (select auth.uid()) is null then raise exception 'Entre na sua conta.' using errcode = '28000'; end if;
+  select * into d from public.draft_questions where id = p_id;
+  if not found then raise exception 'Questão não encontrada.' using errcode = 'P0002'; end if;
+  if not public.ch_is_reviewer(d.area) then
+    raise exception 'A revisão médica desta questão é de um revisor cadastrado na área %.', d.area using errcode = '42501';
+  end if;
+  if p_decision not in ('approved', 'needs_changes', 'rejected') then raise exception 'Decisão inválida.' using errcode = '22023'; end if;
+  if p_decision <> 'approved' and char_length(btrim(coalesce(p_note, ''))) = 0 then
+    raise exception 'Explique o motivo para pedir ajustes ou recusar.' using errcode = '22023';
+  end if;
+  if (p_decision = 'approved' or p_hash is not null) and p_hash is distinct from d.content_hash then
+    raise exception 'O texto mudou depois que você abriu: confira de novo.' using errcode = '40001';
+  end if;
+  if p_decision = 'approved' then
+    v_block := public.draft_approval_blockers(d.id);
+    if cardinality(v_block) > 0 then raise exception 'Não aprova: %', array_to_string(v_block, ' · ') using errcode = '22023'; end if;
+    if not coalesce(p_sources_checked, false) then raise exception 'Marque "Conferi as fontes citadas".' using errcode = '22023'; end if;
+    select verdict into v_redteam from public.draft_checks where draft_id = d.id and layer = 'redteam' and content_hash = d.content_hash;
+    select verdict into v_currency from public.draft_checks where draft_id = d.id and layer = 'currency' and content_hash = d.content_hash;
+    if (v_redteam = 'fail' or v_currency = 'inconclusive') and char_length(btrim(coalesce(p_note, ''))) = 0 then
+      raise exception 'Explique na observação por que aprova apesar da revisão adversarial reprovada ou da atualidade inconclusiva.' using errcode = '22023';
+    end if;
+  end if;
+  update public.draft_questions set status = p_decision, reviewed_by = (select auth.uid()), reviewed_at = now(),
+         review_note = nullif(btrim(p_note), ''), reviewed_hash = d.content_hash where id = p_id;
+  perform public.draft_event(d.id, 'decisao', nullif(btrim(p_note), ''), null, jsonb_build_object('decisao', p_decision));
+  perform public.ch_log('draft_question.' || p_decision, p_id::text, jsonb_build_object('hash', d.content_hash));
+  return true;
+end
+$$;
+revoke execute on function public.app_draft_question_decide(uuid, text, text, text, boolean) from public, anon;
+grant execute on function public.app_draft_question_decide(uuid, text, text, text, boolean) to authenticated;
+revoke execute on function public.app_draft_question_save(uuid, text, jsonb) from public, anon;
+grant execute on function public.app_draft_question_save(uuid, text, jsonb) to authenticated;
+revoke execute on function public.app_draft_balance_answer(uuid, text) from public, anon;
+grant execute on function public.app_draft_balance_answer(uuid, text) to authenticated;
+
+-- A lista (com filtros, contagens e a distribuição do gabarito publicado) e o rascunho aberto.
+drop function if exists public.app_draft_questions(text, text, text, integer, integer);
+create or replace function public.app_draft_questions(
+  p_batch text default null, p_status text default null, p_area text default null, p_limit integer default 30, p_offset integer default 0,
+  p_origin text default null, p_topic text default null, p_blocked boolean default null, p_min_similarity numeric default null
+) returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  f_all constant jsonb := jsonb_strip_nulls(jsonb_build_object('batch', p_batch, 'area', p_area, 'origin', p_origin, 'topic', p_topic, 'blocked', p_blocked, 'min_similarity', p_min_similarity));
+  f jsonb := f_all || case when p_status is null then '{}'::jsonb else jsonb_build_object('status', p_status) end;
+begin
+  perform public.ch_assert_staff();
+  return jsonb_build_object(
+    'batches', (select coalesce(jsonb_agg(x order by x ->> 'batch'), '[]'::jsonb) from (
+        select jsonb_build_object('batch', b.batch, 'total', count(*)::int,
+          'awaiting', count(*) filter (where b.st = 'awaiting_medical_review')::int,
+          'approved', count(*) filter (where b.st = 'approved')::int,
+          'published', count(*) filter (where b.st = 'published')::int,
+          'retired', count(*) filter (where b.st = 'retired')::int,
+          'needs_changes', count(*) filter (where b.st = 'needs_changes')::int,
+          'rejected', count(*) filter (where b.st = 'rejected')::int) as x
+        from (select d.batch, public.draft_situation(d) as st from public.draft_questions d) b group by b.batch) b),
+    'checks', (select coalesce(jsonb_object_agg(layer, v), '{}'::jsonb) from (
+        select c.layer, jsonb_object_agg(c.verdict, c.n) as v from (
+          select c.layer, c.verdict, count(*)::int as n from public.draft_checks c
+          join public.draft_questions d on d.id = c.draft_id and d.content_hash = c.content_hash
+          where p_batch is null or d.batch = p_batch group by c.layer, c.verdict) c group by c.layer) t),
+    'total', (select count(*)::int from public.draft_questions d where public.draft_matches_filters(d, f)),
+    'counts', (select jsonb_build_object(
+        'awaiting_medical_review', count(*) filter (where s = 'awaiting_medical_review')::int,
+        'needs_changes', count(*) filter (where s = 'needs_changes')::int,
+        'approved', count(*) filter (where s = 'approved')::int,
+        'published', count(*) filter (where s = 'published')::int,
+        'retired', count(*) filter (where s = 'retired')::int,
+        'rejected', count(*) filter (where s = 'rejected')::int,
+        'blocked', count(*) filter (where blocked)::int)
+      from (select public.draft_situation(d) as s, not public.draft_has_official_sources(d) as blocked
+            from public.draft_questions d where public.draft_matches_filters(d, f_all)) z),
+    'answer_distribution', (select jsonb_build_object('A', count(*) filter (where q.correct_option = 'A')::int, 'B', count(*) filter (where q.correct_option = 'B')::int,
+                                                       'C', count(*) filter (where q.correct_option = 'C')::int, 'D', count(*) filter (where q.correct_option = 'D')::int)
+                            from public.questions q where q.origin = 'staziamed' and q.retired_at is null),
+    'acervo', public.staziamed_acervo(),
+    'items', coalesce((select jsonb_agg(to_jsonb(d) || jsonb_build_object(
+        'situacao', public.draft_situation(d),
+        'can_review', public.ch_is_reviewer(d.area),
+        'can_edit', public.is_staff(),
+        'can_publish', public.is_admin(),
+        'reviewer', (select email from auth.users where id = d.reviewed_by),
+        'review_outdated', d.reviewed_hash is not null and d.reviewed_hash <> d.content_hash,
+        'blocked_no_source', not public.draft_has_official_sources(d),
+        'approval_blockers', to_jsonb(public.draft_approval_blockers(d.id)),
+        'question', (select jsonb_build_object('id', q.id, 'code', q.code, 'number', q.number, 'retired_at', q.retired_at) from public.questions q where q.id = d.question_id),
+        'checks', (select coalesce(jsonb_object_agg(c.layer, jsonb_build_object('verdict', c.verdict, 'findings', c.findings, 'model', c.model,
+                     'checked_at', c.checked_at, 'current', c.content_hash = d.content_hash)), '{}'::jsonb)
+                   from public.draft_checks c where c.draft_id = d.id)) order by d.batch, d.slot)
+      from (select * from public.draft_questions d where public.draft_matches_filters(d, f)
+            order by d.batch, d.slot limit least(greatest(coalesce(p_limit, 30), 1), 100) offset greatest(coalesce(p_offset, 0), 0)) d), '[]'::jsonb));
+end
+$$;
+revoke execute on function public.app_draft_questions(text, text, text, integer, integer, text, text, boolean, numeric) from public, anon;
+grant execute on function public.app_draft_questions(text, text, text, integer, integer, text, text, boolean, numeric) to authenticated;
+
+create or replace function public.app_draft_question_detail(p_id uuid) returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  d public.draft_questions;
+begin
+  perform public.ch_assert_staff();
+  select * into d from public.draft_questions where id = p_id;
+  if not found then raise exception 'Questão não encontrada.' using errcode = 'P0002'; end if;
+  return jsonb_build_object(
+    'draft', to_jsonb(d),
+    'events', coalesce((select jsonb_agg(jsonb_build_object('kind', e.kind, 'at', e.at, 'actor_email', (select u.email from auth.users u where u.id = e.actor_id),
+                          'content_hash', e.content_hash, 'note', e.note, 'previous', e.previous, 'details', e.details) order by e.at, e.id)
+                        from public.draft_question_events e where e.draft_id = d.id), '[]'::jsonb),
+    'proposals', coalesce((select jsonb_agg(jsonb_build_object('id', s.id, 'created_at', s.created_at, 'state', s.state, 'complete', s.complete, 'claims', s.claims,
+                          'current', s.content_hash = d.content_hash) order by s.created_at desc, s.id)
+                           from public.draft_source_proposals s where s.draft_id = d.id), '[]'::jsonb),
+    'similar_question', (select jsonb_build_object('id', q.id, 'code', q.code, 'exam_label', e.title, 'statement', q.statement,
+                           'options', (select jsonb_agg(jsonb_build_object('id', o ->> 'id', 'text', o ->> 'text') order by o ->> 'id') from jsonb_array_elements(q.options) o))
+                         from public.questions q join public.exams e on e.id = q.exam_id where q.id = d.similar_question_id),
+    'request', (select to_jsonb(r) - 'slots' from public.staziamed_requests r where r.id = d.request_id));
+end
+$$;
+revoke execute on function public.app_draft_question_detail(uuid) from public, anon;
+grant execute on function public.app_draft_question_detail(uuid) to authenticated;
+
 -- ---------------------------------------------------------------- funções de serviço e de apoio: fechadas para o app
 do $revoke$
 declare f text;

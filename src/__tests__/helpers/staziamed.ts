@@ -232,3 +232,38 @@ export async function insertStaziaQuestion(env: StaziaEnv, o: StaziaQuestionInse
   );
   return id;
 }
+
+/** Texto da fonte oficial usado por `readyDraft` (a citação literal e a decisão clínica saem dele). */
+export const READY_PASSAGE = "Em lactentes com otite média aguda, indica-se amoxicilina 90 mg/kg/dia por 10 dias como primeira escolha no tratamento.";
+export const READY_QUOTE = "indica-se amoxicilina 90 mg/kg/dia por 10 dias";
+export const READY_DECISION = "Tratar otite média aguda do lactente com amoxicilina 90 mg/kg/dia por 10 dias.";
+
+/** Grava as 4 camadas de conferência no texto ATUAL do rascunho (todas "pass", salvo `verdicts`). */
+export async function setChecks(env: StaziaEnv, draftId: string, verdicts: Partial<Record<"software" | "sources" | "currency" | "redteam", string | null>> = {}): Promise<string> {
+  const [{ content_hash: hash }] = await env.sql<{ content_hash: string }>(`select content_hash from public.draft_questions where id = $1`, [draftId]);
+  await env.sql(`delete from public.draft_checks where draft_id = $1`, [draftId]);
+  for (const layer of ["software", "sources", "currency", "redteam"] as const) {
+    const verdict = layer in verdicts ? verdicts[layer] : "pass";
+    if (verdict === null) continue;
+    await env.sql(`insert into public.draft_checks (draft_id, layer, verdict, content_hash, model) values ($1, $2, $3, $4, 'mock')`, [draftId, layer, verdict, hash]);
+  }
+  return hash;
+}
+
+/**
+ * Rascunho pronto para aprovar: fonte oficial com trecho, rascunho de PEDIATRIA com tema (o primeiro da lista de temas das provas), citação nova da
+ * decisão clínica e as 4 camadas "pass" no texto atual. Cada chamada cria a sua fonte e o seu rascunho (enunciado único).
+ */
+export async function readyDraft(env: StaziaEnv, over: Partial<DraftInsert> = {}): Promise<{ id: string; hash: string; sourceId: string; passageId: string; title: string }> {
+  readySeq += 1;
+  const title = `PCDT pronto ${readySeq}`;
+  const { sourceId, passageId } = await addOfficialSource(env, { title, text: READY_PASSAGE });
+  const [{ topic }] = await env.sql<{ topic: string }>(`select topic from public.staziamed_topic_weights('PEDIATRIA') limit 1`);
+  const citation = { passage_id: passageId, source_id: sourceId, source: title, organ: "Ministério da Saúde (teste)", version: "2026", page: 7, quote: READY_QUOTE, supports: READY_DECISION };
+  const id = await insertDraft(env, {
+    stem: `Quadro ${readySeq}: lactente com febre e otalgia há três dias, membrana timpânica abaulada e sem sinais de gravidade. Qual a conduta inicial adequada?`,
+    topic, source_citations: [citation], clinical_decision: READY_DECISION, ...over,
+  });
+  return { id, hash: await setChecks(env, id), sourceId, passageId, title };
+}
+let readySeq = 0;
