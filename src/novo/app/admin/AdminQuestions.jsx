@@ -283,6 +283,9 @@ export function QuestionEditor({ id, onClose, onSaved, commentReviewReady = fals
     }
   }, [existing.data]);
 
+  // o que a pessoa tem não salvo no instante em que uma resposta atrasada chega (não o de quando o pedido saiu)
+  const unsavedRef = React.useRef(false);
+  const [staleNote, setStaleNote] = React.useState(null);
   if (existing.error) return <LoadError error={existing.error} retry={existing.reload} />;
   if (!form) return <Loading />;
 
@@ -331,6 +334,7 @@ export function QuestionEditor({ id, onClose, onSaved, commentReviewReady = fals
     onSaved();
   };
   const unsaved = savedForm !== null && JSON.stringify(payloadOf(form)) !== JSON.stringify(payloadOf(savedForm));
+  unsavedRef.current = unsaved;
   // Q09: texto de comentário novo ou diferente vai para revisão ao salvar (o aluno deixa de ver esse texto até o revisor aprovar)
   const commentChanged = changedCommentFields(form, isNew ? null : savedForm);
   // depois da decisão do revisor (aprovar ou devolver): a marca de agora vem do banco; o resto do formulário fica como está
@@ -344,6 +348,12 @@ export function QuestionEditor({ id, onClose, onSaved, commentReviewReady = fals
   const commentStale = async () => {
     try {
       const fresh = fromRow(await backend.rpc("app_admin_question", { p_id: form.id }));
+      // a pessoa pode ter digitado enquanto a resposta vinha: nesse caso não troca nada, só avisa
+      if (unsavedRef.current) {
+        setStaleNote("O comentário foi alterado por outra pessoa, mas você tem texto digitado que ainda não foi salvo, então a tela não foi atualizada. Salve ou descarte o que digitou e abra a questão de novo para ver o texto de agora.");
+        return;
+      }
+      setStaleNote(null);
       setForm(fresh);
       setSavedForm(fresh);
     } catch {
@@ -461,6 +471,7 @@ export function QuestionEditor({ id, onClose, onSaved, commentReviewReady = fals
       )}
       {reviewState.error && <Banner tone="danger">{reviewState.error}</Banner>}
       <CommentReviewBanner question={form} savedForm={savedForm} unsaved={unsaved} onDecided={commentDecided} onStale={commentStale} />
+      {staleNote && <Banner tone="warning">{staleNote}</Banner>}
       {decisionNote && (
         <div role="status" style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>
           {decisionNote}

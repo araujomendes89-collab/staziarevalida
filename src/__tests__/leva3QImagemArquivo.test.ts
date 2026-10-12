@@ -36,6 +36,9 @@ describe("conferência do arquivo da figura", () => {
     ihdr[8] = 8;
     ihdr[9] = 2;
     expect(pngProblem(Buffer.concat([PNG_SIGNATURE, pngChunk("IHDR", ihdr), pngChunk("IEND")]))).toMatch(/pontos de imagem/);
+    // bloco de pontos de imagem vazio (tamanho zero) não conta como imagem
+    expect(pngProblem(Buffer.concat([PNG_SIGNATURE, pngChunk("IHDR", ihdr), pngChunk("IDAT", Buffer.alloc(0)), pngChunk("IEND")]))).toMatch(/pontos de imagem/);
+    expect(pngProblem(Buffer.concat([PNG_SIGNATURE, pngChunk("IHDR", ihdr), pngChunk("IDAT", Buffer.alloc(0)), pngChunk("IDAT", Buffer.alloc(0)), pngChunk("IEND")]))).toMatch(/pontos de imagem/);
     expect(imageProblem(REAL_JPG, "image/png")).not.toBeNull();
     expect(imageProblem(REAL_PNG, "image/jpeg")).not.toBeNull();
     expect(imageProblem(REAL_PNG, "image/gif")).not.toBeNull();

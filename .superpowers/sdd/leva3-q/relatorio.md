@@ -215,3 +215,10 @@ nenhuma função muda da 1ª para a 2ª colagem; 19 funções novas e 6 redefini
 ### Testes e build
 - 15 arquivos do ramo (`leva3Q*` + `registroAdministracao*` + `fontesComplementaresOrdem`) e os que tocam as funções redefinidas passam (conferidos por grupos).
 - `npm run build`: passou. `tsc --noEmit`: 1831 erros, igual à base; nenhum arquivo novo do ramo aparece.
+
+### Segunda rodada da revisão independente (médios Q1 a Q3)
+| # | Veredito | O que mudou | Teste |
+|---|---|---|---|
+| Q1 | confirmado (médio) | A conferência do PNG agora soma o tamanho dos blocos de pontos de imagem: um PNG só com blocos vazios (tamanho zero) é recusado ("o PNG não tem pontos de imagem"). | `leva3QImagemArquivo` (bloco vazio, um e dois) |
+| Q2 | confirmado (médio) | Ao chegar a questão de agora (depois de a aprovação ser recusada porque o texto mudou), a tela reconfere se há texto digitado não salvo naquele instante. Se houver, não troca o formulário e mostra um aviso em português. Sem texto novo, continua trazendo a questão de agora. | `leva3QRodadaRevisaoTela` ("achado 8": 2 casos novos) |
+| Q3 | confirmado (médio) | Cada consulta do histórico recebe um número; só a resposta da consulta mais recente vale, as antigas que chegam atrasadas são descartadas (sucesso e erro). | `leva3QHistoricoTela` (duas consultas, a antiga chega depois) |

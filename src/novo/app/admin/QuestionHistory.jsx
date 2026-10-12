@@ -90,12 +90,17 @@ export function QuestionHistory({ questionId, onRestore, refreshKey = 0 }) {
   const [shown, setShown] = React.useState({}); // id da mudança → detalhe aberto
   const [note, setNote] = React.useState(null);
 
+  // contador de consultas: só a resposta da consulta mais recente vale (as antigas, que chegam atrasadas, são descartadas)
+  const requestRef = React.useRef(0);
   const load = async (offset) => {
+    const mine = ++requestRef.current;
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
       const page = await backend.rpc("app_admin_question_history", { p_question_id: questionId, p_limit: PAGE, p_offset: offset });
+      if (mine !== requestRef.current) return;
       setState((s) => ({ items: offset === 0 ? page.items : s.items.concat(page.items.filter((i) => !s.items.some((x) => x.id === i.id))), total: page.total, loading: false, error: null, loaded: true }));
     } catch (error) {
+      if (mine !== requestRef.current) return;
       setState((s) => ({ ...s, loading: false, error: messageOf(error, "Não foi possível carregar o histórico. Tente de novo.") }));
     }
   };

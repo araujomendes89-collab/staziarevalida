@@ -163,4 +163,19 @@ describe("Q12 — histórico de mudanças no editor", () => {
     await open();
     expect(panel()).toBeTruthy();
   });
+
+  it("duas consultas seguidas: a resposta antiga, que chega depois, não sobrescreve a mais nova", async () => {
+    const releases: Array<(v: any) => void> = [];
+    await open(ROW, () => new Promise((resolve) => releases.push(resolve)));
+    fireEvent.click(within(panel()).getByRole("button", { name: "Ver histórico de mudanças" })); // 1ª consulta
+    fireEvent.click(within(panel()).getByRole("button", { name: "Esconder histórico" }));
+    fireEvent.click(within(panel()).getByRole("button", { name: "Ver histórico de mudanças" })); // 2ª consulta, ainda sem resposta
+    await waitFor(() => expect(releases).toHaveLength(2));
+    releases[1]({ total: ITEMS.length, items: ITEMS }); // a mais nova responde primeiro
+    await within(panel()).findAllByRole("listitem");
+    expect(within(panel()).getAllByRole("listitem")).toHaveLength(5);
+    releases[0]({ total: 1, items: [ITEMS[4]] }); // a antiga chega atrasada
+    await new Promise((r) => setTimeout(r, 30));
+    expect(within(panel()).getAllByRole("listitem")).toHaveLength(5);
+  });
 });

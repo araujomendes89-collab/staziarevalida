@@ -158,6 +158,46 @@ describe("achado 8 — decisão do revisor com o formulário mudado", () => {
     expect(calls("app_admin_question").length).toBe(before); // não trouxe a questão do banco por cima
     expect((screen.getByLabelText("Conduta esperada") as HTMLTextAreaElement).value).toBe("Texto que a pessoa estava digitando agora.");
   });
+
+  it("a questão de agora chega DEPOIS de a pessoa começar a digitar: não troca o formulário e avisa", async () => {
+    let release: (v?: unknown) => void = () => {};
+    const gate = new Promise((r) => (release = r));
+    let reads = 0;
+    const decide = vi.fn(() => {
+      throw new Error("O comentário mudou enquanto você revisava: outra pessoa salvou um texto depois da sua leitura. Veja o texto de agora e revise de novo.");
+    });
+    await open(IN_REVIEW, {
+      app_admin_question_comment_decide: decide,
+      app_admin_question: async () => {
+        if (++reads === 1) return current;
+        await gate; // a recarga demora; a pessoa digita nesse intervalo
+        return { ...current, expected_conduct: "Texto que outra pessoa salvou." };
+      },
+    }, ADMIN);
+    fireEvent.click(await screen.findByRole("button", { name: "Aprovar comentário" }));
+    fireEvent.change(screen.getByLabelText("O que você conferiu"), { target: { value: "Conferi a conduta nas diretrizes vigentes." } });
+    fireEvent.click(screen.getByRole("button", { name: "Aprovar e liberar ao aluno" }));
+    await waitFor(() => expect(reads).toBe(2)); // a recarga saiu quando não havia nada digitado
+    await typeConduct("Texto que a pessoa digitou durante a espera.");
+    release();
+    expect(await screen.findByText(/você tem texto digitado que ainda não foi salvo/)).toBeTruthy();
+    expect((screen.getByLabelText("Conduta esperada") as HTMLTextAreaElement).value).toBe("Texto que a pessoa digitou durante a espera.");
+  });
+
+  it("recarga que chega sem nada digitado continua trazendo a questão de agora", async () => {
+    let reads = 0;
+    const decide = vi.fn(() => {
+      throw new Error("O comentário mudou enquanto você revisava: outra pessoa salvou um texto depois da sua leitura. Veja o texto de agora e revise de novo.");
+    });
+    await open(IN_REVIEW, {
+      app_admin_question_comment_decide: decide,
+      app_admin_question: async () => (++reads === 1 ? current : { ...current, expected_conduct: "Texto que outra pessoa salvou." }),
+    }, ADMIN);
+    fireEvent.click(await screen.findByRole("button", { name: "Aprovar comentário" }));
+    fireEvent.change(screen.getByLabelText("O que você conferiu"), { target: { value: "Conferi a conduta nas diretrizes vigentes." } });
+    fireEvent.click(screen.getByRole("button", { name: "Aprovar e liberar ao aluno" }));
+    await waitFor(() => expect((screen.getByLabelText("Conduta esperada") as HTMLTextAreaElement).value).toBe("Texto que outra pessoa salvou."));
+  });
 });
 
 describe("achado 11 — a nota de uma aprovação não aparece como devolução", () => {

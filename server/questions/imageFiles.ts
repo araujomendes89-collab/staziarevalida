@@ -58,7 +58,7 @@ export function pngProblem(b: Buffer): string | null {
       if (length === 0 || length % 3 !== 0 || length > 768) return "paleta do PNG inválida";
       hasPlte = true;
     } else if (type === "IDAT") {
-      idat++;
+      idat += length; // só conta bloco com pontos de imagem de verdade (tamanho maior que zero)
     } else if (type === "IEND") {
       if (length !== 0) return "fim do PNG inválido";
       if (pos + 12 !== b.length) return "há bytes depois do fim do PNG";
