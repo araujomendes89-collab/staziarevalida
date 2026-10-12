@@ -5,7 +5,7 @@ import React from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from "react-router-dom";
 import { Banner, Button, EmptyState, SegmentedControl } from "../ds";
 import { AppShell, useMobile } from "./Shell.jsx";
-import { AuthFlow } from "./AuthScreens.jsx";
+import { AuthFlow, NewPasswordScreen } from "./AuthScreens.jsx";
 import { LegalPage } from "./legal/LegalPage.jsx";
 import { AcceptanceScreen } from "./legal/AcceptanceScreen.jsx";
 import { SessionProvider, useSession } from "./session.jsx";
@@ -265,6 +265,8 @@ function Root() {
     );
   }
   if (session.status === "signed-out") return <AuthFlow />;
+  // Veio pelo link de recuperar senha: antes de qualquer tela do app, a pessoa cria a nova senha
+  if (session.recovery) return <NewPasswordScreen />;
   // Aluno sem aceite do Termo vigente ou sem WhatsApp: a tela de aceite vem antes de qualquer rota (o servidor decide em gate_required)
   if (session.boot?.legal?.gate_required) return <AcceptanceScreen />;
 
