@@ -13,14 +13,16 @@ function numberFormat(digits) {
 
 /**
  * Número com vírgula decimal e `digits` casas: 7.25 → "7,25"; 10 → "10,00"; (61.4, 1) → "61,4"; (72, 0) → "72".
- * Sem número (null, undefined, NaN) devolve "—": nunca se inventa um zero.
+ * Sem número (null, undefined, NaN) devolve "—": nunca se inventa um zero. Zero sai sem sinal ("0,00", nunca "-0,00").
  * @param {number} value
  * @param {number} [digits]
  * @returns {string}
  */
 export function formatDecimal(value, digits = 2) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  return numberFormat(digits).format(value);
+  const text = numberFormat(digits).format(value);
+  // -0 e negativo pequeno que o arredondamento zera: o Intl devolve "-0,00"
+  return /^[-\u2212][0.,]*$/.test(text) ? text.slice(1) : text;
 }
 
 /**
