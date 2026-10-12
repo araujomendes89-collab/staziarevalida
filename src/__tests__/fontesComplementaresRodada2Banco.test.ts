@@ -306,7 +306,37 @@ describe("(B) arquivo sem SHA-256 conferido fica escondido do aluno (retenção 
     expect((await rpc(ALUNA, "app_podcast", { p_id: podcastId })).sources).toHaveLength(1);
   });
 
+  it("liberar a retenção: sem material registrado ela cai; com material registrado NUNCA cai; repetir não dá erro", async () => {
+    const livre = "lessons/x/recusado.pdf";
+    await hold(livre);
+    expect((await sql(`select public.ch_worker_file_release($1) r`, [livre]))[0].r).toBe(true);
+    expect((await sql(`select count(*)::int n from public.ch_file_holds where storage_path = $1`, [livre]))[0].n).toBe(0);
+    expect((await sql(`select public.ch_worker_file_release($1) r`, [livre]))[0].r).toBe(false); // já não havia
+    // material de aula registrado sem SHA: a retenção continua
+    const preso = "lessons/x/registrado-sem-sha.pdf";
+    await hold(preso);
+    await sql(`insert into public.lesson_materials (lesson_id, kind, title, storage_path) values ($1, 'other', 'Sem SHA', $2)`, [aulaId, preso]);
+    expect((await sql(`select public.ch_worker_file_release($1) r`, [preso]))[0].r).toBe(false);
+    expect((await sql(`select count(*)::int n from public.ch_file_holds where storage_path = $1`, [preso]))[0].n).toBe(1);
+    expect((await material(preso)).h).toBe(true);
+    // fonte de podcast registrada sem SHA: idem
+    const presoP = "podcasts/x/src-bbbbbbbbbbbbbbbb.pdf";
+    await hold(presoP);
+    await sql(`insert into public.podcast_sources (podcast_id, kind, title, storage_path, position) values ($1, 'pdf', 'Sem SHA', $2, 9)`, [podcastId, presoP]);
+    expect((await sql(`select public.ch_worker_file_release($1) r`, [presoP]))[0].r).toBe(false);
+    expect((await sql(`select count(*)::int n from public.ch_file_holds where storage_path = $1`, [presoP]))[0].n).toBe(1);
+  });
+
+  it("gravar SHA de caminho sem material não mexe na retenção (nem apaga nem recria)", async () => {
+    const c = "lessons/x/sem-material.pdf";
+    await hold(c);
+    expect(await sha(c, SHA_B)).toBe(0);
+    expect((await sql(`select count(*)::int n from public.ch_file_holds where storage_path = $1`, [c]))[0].n).toBe(1);
+    await sql(`select public.ch_worker_file_release($1)`, [c]);
+  });
+
   it("só o servidor chama as funções de retenção", async () => {
+    await expect(rpc(ADMIN, "ch_worker_file_release", { p_path: "x" })).rejects.toThrow(/permission denied/i);
     await expect(rpc(ALUNA, "ch_worker_file_hold", { p_path: "x" })).rejects.toThrow(/permission denied/i);
     await expect(rpc(ADMIN, "ch_worker_file_sha", { p_path: "x", p_sha: SHA_B })).rejects.toThrow(/permission denied/i);
     await expect(rpc(ALUNA, "ch_complementar_file", { p_sha: SHA_B })).rejects.toThrow(/permission denied/i);

@@ -22,7 +22,7 @@ import type { ModelRef } from "../ai/config";
 import { aiChoices } from "../ai/maestro";
 import { chunkPagesInfo, extractDocx, extractPdf, fetchLink, isPdf, isZip, MAX_SOURCE_BYTES, readLimited, TooBigError, type ExtractedPage } from "./extract";
 import { loadComplementarTerms } from "../contentHub/complementarGuard";
-import { holdFile, recordFileSha, SHA_WARNING } from "../contentHub/fileSha";
+import { holdFile, recordFileSha, releaseFile, SHA_WARNING } from "../contentHub/fileSha";
 import { checkScript, generateScript, PODCAST_PROMPT_VERSION, type PodcastScript, type ScriptLine, type SourceChunk } from "./script";
 import { DEFAULT_VOICES, geminiTtsEnabled, pcmToMp3, pickVoices, SAMPLE_RATE, silence, splitParts, synthesizePart, ttsCost, ttsStatus, VOICE_OPTIONS, type PodcastVoices, type TtsKind } from "./audio";
 
@@ -162,7 +162,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
     try {
       view = await ingest(req, source, pages);
     } catch (error) {
-      await recordFileSha(deps!.db, key, async () => bytes, undefined, "podcasts").catch(() => false); // se o arquivo já existia, solta a retenção
+      await releaseFile(deps!.db, key, log, "podcasts"); // registro recusado: não deixa retenção órfã (o banco nunca solta a de arquivo já registrado)
       throw error;
     }
     if (!(await recordFileSha(deps!.db, key, async () => bytes, log, "podcasts"))) return { ...view, note: [view?.note, SHA_WARNING].filter(Boolean).join(" ") };

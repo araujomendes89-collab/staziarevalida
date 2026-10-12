@@ -443,17 +443,18 @@ create trigger ch_documents_refresh_flags after update of name, author, publishe
 create or replace function public.ch_worker_file_sha(p_path text, p_sha text) returns integer
   language plpgsql security definer set search_path = ''
 as $$
-declare n integer := 0; m integer; v_had boolean;
+declare n integer := 0; m integer;
 begin
   if p_sha is null or p_sha !~ '^[0-9a-f]{64}$' or nullif(btrim(coalesce(p_path, '')), '') is null then return 0; end if;
-  -- a retenção cai ANTES de gravar, para o gatilho de marca já recalcular sem ela; sem material com este caminho ela volta
+  -- sem material com este caminho não há o que gravar: devolve 0 e NÃO mexe na retenção
+  if not exists (select 1 from public.lesson_materials where storage_path = p_path)
+     and not exists (select 1 from public.podcast_sources where storage_path = p_path) then return 0; end if;
+  -- a retenção cai ANTES de gravar, para o gatilho de marca já recalcular sem ela
   delete from public.ch_file_holds where storage_path = p_path;
-  v_had := found;
   update public.lesson_materials set sha256 = p_sha where storage_path = p_path;
   get diagnostics m = row_count; n := n + m;
   update public.podcast_sources set sha256 = p_sha where storage_path = p_path;
   get diagnostics m = row_count; n := n + m;
-  if n = 0 and v_had then insert into public.ch_file_holds (storage_path) values (p_path) on conflict do nothing; end if;
   return n;
 end
 $$;
@@ -466,6 +467,21 @@ begin
   if nullif(btrim(coalesce(p_path, '')), '') is null then raise exception 'Caminho de arquivo vazio.' using errcode = '22023'; end if;
   insert into public.ch_file_holds (storage_path) values (p_path) on conflict do nothing;
   return true;
+end
+$$;
+
+-- Libera a retenção de um caminho quando o REGISTRO do arquivo foi recusado (nenhuma linha foi criada). NUNCA solta a retenção de um arquivo que já
+-- tem material de aula ou fonte de podcast registrados (ali ela só cai quando o SHA-256 é gravado). Idempotente: devolve se havia retenção a soltar.
+create or replace function public.ch_worker_file_release(p_path text) returns boolean
+  language plpgsql security definer set search_path = ''
+as $$
+declare v_n integer;
+begin
+  if nullif(btrim(coalesce(p_path, '')), '') is null then return false; end if;
+  if exists (select 1 from public.lesson_materials where storage_path = p_path) or exists (select 1 from public.podcast_sources where storage_path = p_path) then return false; end if;
+  delete from public.ch_file_holds where storage_path = p_path;
+  get diagnostics v_n = row_count;
+  return v_n > 0;
 end
 $$;
 
@@ -1180,6 +1196,7 @@ begin
   revoke execute on function public.ch_refresh_hidden_flags_trg() from public, anon, authenticated;
   revoke execute on function public.ch_worker_file_sha(text, text) from public, anon, authenticated;
   revoke execute on function public.ch_worker_file_hold(text) from public, anon, authenticated;
+  revoke execute on function public.ch_worker_file_release(text) from public, anon, authenticated;
   revoke execute on function public.app_ch_set_source_aliases(uuid, text[]) from public, anon;
   revoke execute on function public.ch_complementar_hit(text, text) from public, anon, authenticated;
   revoke execute on function public.ch_decode_entities(text) from public, anon, authenticated;

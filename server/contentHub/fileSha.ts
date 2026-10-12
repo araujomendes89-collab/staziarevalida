@@ -46,3 +46,15 @@ export async function recordFileSha(db: Pick<ContentDb, "service">, key: string,
   log?.(`[${where}] SHA-256 do arquivo não gravado (o arquivo ficou escondido do aluno): ${message(last)}`);
   return false;
 }
+
+/**
+ * Solta a retenção quando o REGISTRO do arquivo foi recusado (nenhuma linha criada). O banco nunca solta a retenção de um arquivo que já
+ * tem material ou fonte registrados. Erro aqui só vai para o log: a retenção que sobrar só esconde um caminho que não existe.
+ */
+export async function releaseFile(db: Pick<ContentDb, "service">, key: string, log?: (m: string) => void, where = "arquivo"): Promise<void> {
+  try {
+    await db.service("ch_worker_file_release", { p_path: key });
+  } catch (error) {
+    log?.(`[${where}] retenção do arquivo recusado não foi solta (sem efeito para o aluno): ${message(error)}`);
+  }
+}

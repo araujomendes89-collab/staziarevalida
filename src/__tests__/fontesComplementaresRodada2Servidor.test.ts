@@ -109,6 +109,7 @@ afterAll(async () => {
 });
 
 const alunoAbreMaterial = async (id: string) => (await sqlAs(STUDENT, `select public.app_lesson_material($1) r`, [id]))[0].r !== null;
+const retencoes = async () => (await dev.db.query<any>(`select count(*)::int n from public.ch_file_holds`)).rows[0].n as number;
 const limpar = () => {
   logs.length = 0;
   for (const k of Object.keys(falhas)) delete falhas[k];
@@ -166,6 +167,32 @@ describe("(B) aulas: SHA-256 do arquivo não gravado", () => {
     expect(r.status).toBe(500);
     expect(r.body.error).toMatch(/não foi possível/i);
     expect((await dev.db.query<any>(`select count(*)::int n from public.lesson_materials`)).rows[0].n).toBe(antes);
+  });
+});
+
+describe("(B) retenção órfã: registro recusado não deixa retenção", () => {
+  it("aula: registro recusado (título vazio) solta a retenção; registrado com SHA falho continua retido", async () => {
+    limpar();
+    const antes = await retencoes();
+    const recusado = await postRaw(`${lessons}/${aulaId}/materials?kind=other&title=`, editor, "application/pdf", Buffer.concat([PDF, Buffer.from("recusado")]), "recusado.pdf");
+    expect(recusado.status).toBe(400);
+    expect(await retencoes()).toBe(antes);
+    expect(chamadas.ch_worker_file_release).toBe(1);
+    // SHA falha nas duas tentativas: o registro existe, a retenção FICA (não é solta pelo tratamento de erro)
+    falhas.ch_worker_file_sha = 5;
+    const r = await postRaw(`${lessons}/${aulaId}/materials?kind=other&title=Retido`, editor, "application/pdf", Buffer.concat([PDF, Buffer.from("retido")]), "retido.pdf");
+    expect(r.status).toBe(201);
+    expect(await retencoes()).toBe(antes + 1);
+    expect(chamadas.ch_worker_file_release).toBe(1);
+  });
+
+  it("podcast: registro recusado (PDF sem texto) solta a retenção", async () => {
+    limpar();
+    const antes = await retencoes();
+    const r = await postRaw(`${podcasts}/${podcastId}/sources/file`, editor, "application/pdf", makePdf([""]), "vazio.pdf");
+    expect(r.status).toBe(422);
+    expect(await retencoes()).toBe(antes);
+    expect(chamadas.ch_worker_file_release).toBe(1);
   });
 });
 

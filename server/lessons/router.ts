@@ -18,7 +18,7 @@ import { fetchLink, type ExtractedPage } from "../podcasts/extract";
 import { aiChoices } from "../ai/maestro";
 import type { ModelRef } from "../ai/config";
 import { loadComplementarTerms } from "../contentHub/complementarGuard";
-import { holdFile, recordFileSha, SHA_WARNING } from "../contentHub/fileSha";
+import { holdFile, recordFileSha, releaseFile, SHA_WARNING } from "../contentHub/fileSha";
 import { AREA_CODES, generateLessonAssist, MAX_ASSIST_CHARS, type AssistProvider } from "./assist";
 
 export const LESSONS_BUCKET = "lessons";
@@ -96,7 +96,7 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
     try {
       out = await registerRaw(req, id, m);
     } catch (error) {
-      await recordFileSha(deps!.db, m.key, async () => bytes ?? (await deps!.storage.get(m.key)), undefined, "aulas").catch(() => false); // se o arquivo já existia, solta a retenção
+      await releaseFile(deps!.db, m.key, deps!.log, "aulas"); // registro recusado: não deixa retenção órfã (o banco nunca solta a de arquivo já registrado)
       throw error;
     }
     if (!(await recordFileSha(deps!.db, m.key, async () => bytes ?? (await deps!.storage.get(m.key)), deps!.log, "aulas"))) return { ...out, aviso: SHA_WARNING };
