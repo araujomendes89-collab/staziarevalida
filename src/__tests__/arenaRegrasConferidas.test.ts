@@ -232,7 +232,7 @@ describe("O cálculo de XP nunca cancela o que o aluno fez", () => {
       expect((await sql(`select done_at from public.plan_tasks where id = $1`, [task.id]))[0].done_at).not.toBeNull();
 
       const lesson = (await sql(`insert into public.lessons (area, topic, title, published) values ('PEDIATRIA', 'tema', 'aula de teste', true) returning id`))[0];
-      await sql(`insert into public.lesson_progress (user_id, lesson_id, completed_at) values ($1, $2, now())`, [DIEGO, lesson.id]);
+      await sql(`insert into public.lesson_progress (user_id, lesson_id, completed_at, watched_to_end_at) values ($1, $2, now(), now())`, [DIEGO, lesson.id]);
       expect((await sql(`select completed_at from public.lesson_progress where user_id = $1`, [DIEGO]))[0].completed_at).not.toBeNull();
 
       expect((await failures(DIEGO)).map((x) => x.step).sort()).toEqual(["flashcard_review", "lesson", "plan_task"]);

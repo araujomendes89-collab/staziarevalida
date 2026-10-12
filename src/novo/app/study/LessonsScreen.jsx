@@ -10,6 +10,7 @@ import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
 import { XPToast } from "../play/PlayFeedback.jsx";
 import { durationLabel, lessonFileUrl, lessonsAvailable, materialTitle, sizeLabel, videoEmbed } from "./lessonsApi.js";
+import { canMeasureEnd, createWatchTracker, MEASURE_TIMEOUT_MS, parsePlayerMessage, subscribeToPlayer, withPlayerApi, xpNote } from "./lessonWatch.js";
 import { PodcastsSection } from "../podcasts/PodcastsSection.jsx";
 
 const AREA_ICON = { CLINICA_MEDICA: "stethoscope", CIRURGIA_GERAL: "scissors", PEDIATRIA: "baby", GINECOLOGIA_OBSTETRICIA: "heart-pulse", MEDICINA_FAMILIA_COMUNIDADE: "shield-plus" };
@@ -127,8 +128,41 @@ function Carousel({ lessons, onOpen }) {
   );
 }
 
-function Video({ url, lesson }) {
+/**
+ * Vídeo da aula. `watch` (A08) recebe o que o player avisa: { onAlive(), onTime(segundos), onEnd() }. YouTube e Vimeo avisam por
+ * mensagens do player incorporado; o arquivo MP4/WebM, pelos eventos do próprio <video>. Link aberto em outra aba não avisa nada.
+ */
+function Video({ url, lesson, watch }) {
   const v = videoEmbed(url);
+  const frame = React.useRef(null);
+  const handlers = React.useRef(watch);
+  handlers.current = watch;
+  const kind = v?.kind;
+  React.useEffect(() => {
+    if (kind !== "youtube" && kind !== "vimeo") return undefined;
+    let alive = false;
+    const listener = (e) => {
+      if (!frame.current || e.source !== frame.current.contentWindow) return;
+      const m = parsePlayerMessage(e.origin, e.data);
+      if (!m) return;
+      alive = true;
+      handlers.current?.onAlive?.();
+      if (m.kind === "ready") subscribeToPlayer(kind, frame.current.contentWindow);
+      else if (m.kind === "time") handlers.current?.onTime?.(m.seconds);
+      else if (m.kind === "ended") handlers.current?.onEnd?.();
+    };
+    window.addEventListener("message", listener);
+    // o player só começa a avisar depois do pedido; o pedido se repete até chegar o primeiro aviso
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      if (alive || ++tries > 12 || !frame.current) return window.clearInterval(timer);
+      subscribeToPlayer(kind, frame.current.contentWindow);
+    }, 1000);
+    return () => {
+      window.removeEventListener("message", listener);
+      window.clearInterval(timer);
+    };
+  }, [kind, url]);
   if (!v) {
     // sem vídeo: o pôster da área (como no protótipo), mais baixo, com o aviso
     return (
@@ -140,8 +174,30 @@ function Video({ url, lesson }) {
       </div>
     );
   }
-  if (v.kind === "youtube" || v.kind === "vimeo") return <iframe title="Vídeo da aula" src={v.src} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen style={{ width: "100%", aspectRatio: "16/9", border: 0, borderRadius: 18, background: "#000", display: "block" }} />;
-  if (v.kind === "file") return <video src={v.src} controls preload="metadata" style={{ width: "100%", aspectRatio: "16/9", borderRadius: 18, background: "#000", display: "block" }} />;
+  if (v.kind === "youtube" || v.kind === "vimeo")
+    return (
+      <iframe
+        ref={frame}
+        title="Vídeo da aula"
+        src={withPlayerApi(v.kind, v.src, typeof window !== "undefined" ? window.location.origin : undefined)}
+        onLoad={() => subscribeToPlayer(v.kind, frame.current?.contentWindow)}
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        allowFullScreen
+        style={{ width: "100%", aspectRatio: "16/9", border: 0, borderRadius: 18, background: "#000", display: "block" }}
+      />
+    );
+  if (v.kind === "file")
+    return (
+      <video
+        src={v.src}
+        controls
+        preload="metadata"
+        onLoadedMetadata={() => watch?.onAlive?.()}
+        onTimeUpdate={(e) => watch?.onTime?.(e.currentTarget.currentTime)}
+        onEnded={() => watch?.onEnd?.()}
+        style={{ width: "100%", aspectRatio: "16/9", borderRadius: 18, background: "#000", display: "block" }}
+      />
+    );
   return (
     <a href={v.src} target="_blank" rel="noreferrer" style={{ display: "flex", aspectRatio: "16/9", borderRadius: 18, background: "#000", alignItems: "center", justifyContent: "center", gap: 8, color: "#fff", font: "600 14px var(--font-sans)" }}>
       <Icon name="external-link" size={18} /> Abrir o vídeo em outra aba
@@ -247,6 +303,56 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
   const [play, setPlay] = React.useState(null);
   const c = AREA_COLOR[lesson.area] ?? "#0B6F68";
   const done = Boolean(lesson.progress?.completed_at);
+  const embed = videoEmbed(lesson.video_url);
+  const measurable = canMeasureEnd(embed);
+  // A08: o XP da conclusão só vem de quem assistiu até o fim; o player avisa e o banco guarda (app_lesson_watch)
+  const [watch, setWatch] = React.useState({ endedAt: lesson.progress?.watched_to_end_at ?? null, measure: measurable ? "waiting" : "none" });
+  const tracker = React.useRef(createWatchTracker());
+  const sent = React.useRef({ max: 0, ended: false });
+  const live = React.useRef({});
+  live.current = { backend, id: lesson.id };
+  const report = React.useCallback(async (ended) => {
+    const { backend: b, id } = live.current;
+    const max = tracker.current.max;
+    if (ended ? sent.current.ended : max <= sent.current.max) return;
+    const before = { ...sent.current };
+    sent.current = { max: Math.max(max, sent.current.max), ended: sent.current.ended || ended };
+    try {
+      const r = await b.rpc("app_lesson_watch", { p_id: id, p_seconds: max, p_ended: ended });
+      if (!r) return;
+      setWatch((w) => ({ ...w, endedAt: r.watched_to_end_at ?? w.endedAt }));
+      setLesson((l) => ({ ...l, progress: { ...(l.progress ?? {}), ...r } }));
+      if (r.xp) setPlay({ xp: { total: r.xp, valid: true }, bonus: [], coins: 0 });
+    } catch {
+      sent.current = before; // não chegou ao banco: tenta de novo no próximo aviso
+    }
+  }, []);
+  const watcher = React.useMemo(
+    () => ({
+      onAlive: () => setWatch((w) => (w.measure === "waiting" || w.measure === "unavailable" ? { ...w, measure: "ok" } : w)),
+      onTime: (t) => (tracker.current.time(t), setWatch((w) => (w.measure === "ok" ? w : { ...w, measure: "ok" }))),
+      onEnd: () => {
+        if (tracker.current.end()) report(true);
+      },
+    }),
+    [report]
+  );
+  React.useEffect(() => {
+    let alive = true;
+    Promise.resolve()
+      .then(() => backend.rpc("app_lesson_watch_state", { p_id: lesson.id }))
+      .then((r) => alive && r?.watched_to_end_at && setWatch((w) => ({ ...w, endedAt: r.watched_to_end_at })))
+      .catch(() => null); // sem o estado guardado a tela só mostra a regra
+    return () => {
+      alive = false;
+    };
+  }, [backend, lesson.id]);
+  React.useEffect(() => {
+    if (!measurable) return undefined;
+    const timer = window.setTimeout(() => setWatch((w) => (w.measure === "waiting" ? { ...w, measure: "unavailable" } : w)), MEASURE_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [measurable, lesson.id]);
+  React.useEffect(() => () => void report(false), [report]); // ao sair da aula, guarda até onde foi
   const train = async () => {
     setBusy(true);
     setError(null);
@@ -297,11 +403,13 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
             </Button>
           </div>
         </div>
-        <Video url={lesson.video_url} lesson={lesson} />
+        <Video url={lesson.video_url} lesson={lesson} watch={watcher} />
       </div>
       {error && <Banner tone="danger">{error}</Banner>}
       {play && <XPToast play={play} />}
-      {boot?.play?.enabled && !done && <p style={{ margin: 0, font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Concluir a aula vale XP na Stazia Arena (uma vez por aula).</p>}
+      {boot?.play?.enabled && xpNote({ embed, measure: watch.measure, done, ended: Boolean(watch.endedAt) }) && (
+        <p role="note" style={{ margin: 0, font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{xpNote({ embed, measure: watch.measure, done, ended: Boolean(watch.endedAt) })}</p>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "minmax(0,1.6fr) minmax(280px,1fr)", gap: 20, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <Card style={{ borderRadius: 24 }} padding={mobile ? 18 : 24}>
