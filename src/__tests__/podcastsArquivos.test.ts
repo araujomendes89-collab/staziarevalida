@@ -576,7 +576,7 @@ const salvaRoteiro = async (id: string) =>
   rpc(EDITOR, "app_admin_podcast_save_script", { p_id: id, p_script: { lines: (await rpc(EDITOR, "app_admin_podcast", { p_id: id })).script.lines, missing: [] } });
 const entrada = async (id: string) => (await sql(`select id, status, reserve_token, reserved_at, reavaliar, attempts from public.podcast_files_released where podcast_id = $1 order by id`, [id]));
 const vence = (rowId: number) => sql(`update public.podcast_files_released set reserved_at = now() - interval '11 minutes' where id = $1`, [rowId]);
-const renew = (rowId: number, token: string | null) => db.service<boolean>("ch_worker_podcast_files_renew", { p_user: EDITOR, p_id: rowId, p_token: token });
+const renew = (rowId: number, token: string | null) => db.service<string>("ch_worker_podcast_files_renew", { p_user: EDITOR, p_id: rowId, p_token: token });
 const done = (results: unknown[]) => db.service<number>("ch_worker_podcast_files_done", { p_user: EDITOR, p_results: results });
 const reserva = async (id: string) => (await db.service<any[]>("ch_worker_podcast_files_pending", { p_user: EDITOR, p_podcast: id }))[0];
 
@@ -594,8 +594,8 @@ describe("2ª rodada, achado 1: cada reserva tem um código; resposta atrasada d
     expect((await entrada(id))[0]).toMatchObject({ status: "apagando", reserve_token: b.token, attempts: 0 });
     expect(await done([{ id: a.id, token: a.token, ok: true }])).toBe(0);
     expect(await registro(id)).toHaveLength(0);
-    expect(await renew(a.id, a.token)).toBe(false); // o código antigo também não renova
-    expect(await renew(a.id, b.token)).toBe(true);
+    expect(await renew(a.id, a.token)).toBe("outra"); // o código antigo também não renova
+    expect(await renew(a.id, b.token)).toBe("ok");
     await files.remove!([audio]);
     expect(await done([{ id: b.id, token: b.token, ok: true }])).toBe(1);
     expect((await entrada(id))[0]).toMatchObject({ status: "apagado", reserve_token: null });
@@ -606,18 +606,18 @@ describe("2ª rodada, achado 1: cada reserva tem um código; resposta atrasada d
     const { id, audio } = await episodioComAudio();
     await salvaRoteiro(id);
     const row = (await entrada(id))[0];
-    expect(await renew(row.id, "00000000-0000-4000-8000-000000000001")).toBe(false); // ainda 'pendente': ninguém reservou
+    expect(await renew(row.id, "00000000-0000-4000-8000-000000000001")).toBe("incompleta"); // ainda 'pendente': ninguém reservou
     const r = await reserva(id);
-    expect(await renew(r.id, null)).toBe(false);
-    expect(await renew(r.id, "00000000-0000-4000-8000-000000000001")).toBe(false); // código errado
-    expect(await renew(r.id, r.token)).toBe(true);
-    expect(await renew(r.id, r.token)).toBe(true); // renovar de novo é permitido
+    expect(await renew(r.id, null)).toBe("incompleta");
+    expect(await renew(r.id, "00000000-0000-4000-8000-000000000001")).toBe("outra"); // código errado
+    expect(await renew(r.id, r.token)).toBe("ok");
+    expect(await renew(r.id, r.token)).toBe("ok"); // renovar de novo é permitido
     await vence(r.id);
-    expect(await renew(r.id, r.token)).toBe(false); // vencida: não renova, mesmo com o código certo
+    expect(await renew(r.id, r.token)).toBe("incompleta"); // vencida: não renova, mesmo com o código certo
     expect((await entrada(id))[0]).toMatchObject({ status: "apagando" }); // continua reservada ao código antigo até alguém reservar de novo
     // vencida + alguém passa a usar o caminho (a recusa só vale com reserva vigente): a renovação continua negada
     await sql(`insert into public.ch_file_holds (storage_path) values ('${audio}')`);
-    expect(await renew(r.id, r.token)).toBe(false);
+    expect(await renew(r.id, r.token)).toBe("incompleta");
     await sql(`delete from public.ch_file_holds where storage_path = '${audio}'`);
   });
 
@@ -629,7 +629,7 @@ describe("2ª rodada, achado 1: cada reserva tem um código; resposta atrasada d
     await sql(`alter table public.ch_file_holds disable trigger podcast_files_guard_hold`); // simula uma escrita que escapou do gatilho
     await sql(`insert into public.ch_file_holds (storage_path) values ('${audio}')`);
     await sql(`alter table public.ch_file_holds enable trigger podcast_files_guard_hold`);
-    expect(await renew(r.id, r.token)).toBe(false);
+    expect(await renew(r.id, r.token)).toBe("em_uso");
     expect((await entrada(id))[0]).toMatchObject({ status: "mantido", reserve_token: null });
     await sql(`delete from public.ch_file_holds where storage_path = '${audio}'`);
   });
@@ -656,12 +656,9 @@ describe("2ª rodada, achado 1: cada reserva tem um código; resposta atrasada d
     }
     expect(apagados).toEqual([audio]); // o 2º nunca chegou ao depósito
     expect(await files.exists(arq)).toBe(true);
-    expect((await fila(id)).find((r) => r.storage_path === arq)).toMatchObject({ status: "apagando" }); // reserva vencida: fica para a próxima limpeza reavaliar
-    aoApagar = async (keys) => { apagados.push(...keys); };
-    try { expect((await post(`${spy}/${id}/files/cleanup`, editor)).body).toEqual({ ok: true }); } finally { aoApagar = null; }
-    expect(apagados).toEqual([audio]); // a próxima limpeza vê o uso e não apaga
-    expect(await files.exists(arq)).toBe(true);
+    // reserva vencida: a rodada seguinte da MESMA limpeza reserva de novo, vê o uso e encerra como mantido (3ª revisão: sem aviso falso, nada apagado)
     expect((await fila(id)).find((r) => r.storage_path === arq)).toMatchObject({ status: "mantido" });
+    expect(await files.exists(arq)).toBe(true);
     await sql(`delete from public.lesson_materials where lesson_id = '${aula}'`);
   });
 
@@ -677,11 +674,14 @@ describe("2ª rodada, achado 1: cada reserva tem um código; resposta atrasada d
       await sql(`update public.podcast_files_released set reserved_at = now() - interval '11 minutes' where podcast_id = $1 and storage_path = $2`, [id, arq]);
       outro = (await db.service<any[]>("ch_worker_podcast_files_pending", { p_user: ADMIN, p_podcast: id })).find((r) => r.path === arq); // a tentativa B
     };
+    let resposta: any;
     try {
-      expect((await post(`${spy}/${id}/files/cleanup`, editor)).body).toEqual({ ok: true });
+      resposta = (await post(`${spy}/${id}/files/cleanup`, editor)).body;
     } finally {
       aoApagar = null;
     }
+    expect(resposta).toMatchObject({ ok: false }); // 3ª revisão: o arquivo ficou com outra tentativa; nunca "tudo certo" em silêncio
+    expect(resposta.note).toMatch(/Nada se perdeu/);
     expect(outro).toBeTruthy();
     expect(await files.exists(arq)).toBe(true);
     expect((await fila(id)).find((r) => r.storage_path === arq)).toMatchObject({ status: "apagando" });
@@ -850,9 +850,132 @@ describe("2ª rodada: colar a migração duas vezes (simulação de dupla colage
                               from pg_proc p where p.proname in ('ch_worker_podcast_files_pending', 'ch_worker_podcast_files_renew', 'ch_worker_podcast_files_done', 'podcast_files_blocked') order by 1`);
     expect(perm).toHaveLength(4);
     for (const f of perm) expect(f, f.proname).toMatchObject({ auth: false, anon: false });
-    expect(await renew(r.id, r.token)).toBe(true);
+    expect(await renew(r.id, r.token)).toBe("ok");
     await files.remove!([audio]);
     expect(await done([{ id: r.id, token: r.token, ok: true }])).toBe(1);
     expect(await sql(`select count(*)::int n from pg_trigger where tgname like 'podcast_files_%' and not tgisinternal`)).toEqual([{ n: 7 }]);
+  });
+});
+
+describe("3ª rodada, achado 1: o vencimento usa o relógio real, lido depois de esperar as travas", () => {
+  // dentro de UMA transação now() fica congelado no começo dela; é exatamente o que acontece com quem espera uma trava
+  const naTransacao = <T,>(fn: (tx: any) => Promise<T>) => dev.db.transaction(fn);
+
+  it("renovar: reserva que venceu enquanto a transação esperava NÃO é renovada (com now() ela seria autorizada já vencida)", async () => {
+    const { id } = await episodioComAudio();
+    await salvaRoteiro(id);
+    const r = await reserva(id);
+    const veredito = await naTransacao(async (tx) => {
+      // pelo relógio do começo da transação ainda faltava 1 s; 1,6 s depois (espera) ela já venceu de verdade
+      await tx.query(`update public.podcast_files_released set reserved_at = transaction_timestamp() - interval '10 minutes' + interval '1 second' where id = $1`, [r.id]);
+      await tx.query(`select pg_sleep(1.6)`);
+      return (await tx.query(`select public.ch_worker_podcast_files_renew($1, $2, $3) as v`, [EDITOR, r.id, r.token])).rows[0].v;
+    });
+    expect(veredito).toBe("incompleta");
+  });
+
+  it("renovar e reservar gravam a hora REAL (não a do começo da transação)", async () => {
+    const { id } = await episodioComAudio();
+    await salvaRoteiro(id);
+    const [reservada] = await naTransacao(async (tx) => {
+      await tx.query(`select pg_sleep(1.3)`);
+      const p = (await tx.query(`select public.ch_worker_podcast_files_pending($1, $2) as r`, [EDITOR, id])).rows[0].r;
+      const dif = (await tx.query(`select extract(epoch from (reserved_at - transaction_timestamp())) as d from public.podcast_files_released where id = $1`, [p[0].id])).rows[0].d;
+      return [{ ...p[0], reservaDepois: Number(dif) }];
+    });
+    expect(reservada.reservaDepois).toBeGreaterThan(1); // reserva: hora real
+    const renovada = await naTransacao(async (tx) => {
+      await tx.query(`select pg_sleep(1.3)`);
+      const v = (await tx.query(`select public.ch_worker_podcast_files_renew($1, $2, $3) as v`, [EDITOR, reservada.id, reservada.token])).rows[0].v;
+      const dif = (await tx.query(`select extract(epoch from (reserved_at - transaction_timestamp())) as d from public.podcast_files_released where id = $1`, [reservada.id])).rows[0].d;
+      return { v, dif: Number(dif) };
+    });
+    expect(renovada.v).toBe("ok");
+    expect(renovada.dif).toBeGreaterThan(1); // renovação: hora real
+  });
+});
+
+describe("3ª rodada, achado 2: recusa de renovação nunca termina em sucesso silencioso", () => {
+  const dois = async (url: string) => {
+    const { id, audio } = await episodioComAudio(url === spy ? spy : base);
+    const arq = `podcasts/${id}/src-${Math.random().toString(16).slice(2, 18).padEnd(16, "0")}.pdf`;
+    await files.put(arq, Buffer.from("%PDF-1.4 teste"), "application/pdf");
+    await salvaRoteiro(id);
+    await sql(`insert into public.podcast_files_released (podcast_id, storage_path, reason) values ($1, $2, 'fonte_tirada')`, [id, arq]);
+    return { id, audio, arq };
+  };
+
+  it("reserva do 2º arquivo vence SEM uso novo: a limpeza tenta de novo na rodada seguinte e apaga os dois, sem aviso", async () => {
+    const { id, audio, arq } = await dois(spy);
+    aoApagar = async (keys) => {
+      if (!keys.includes(audio)) return;
+      await sql(`update public.podcast_files_released set reserved_at = now() - interval '11 minutes' where podcast_id = $1 and storage_path = $2`, [id, arq]);
+    };
+    try {
+      expect((await post(`${spy}/${id}/files/cleanup`, editor)).body).toEqual({ ok: true });
+    } finally {
+      aoApagar = null;
+    }
+    expect(await files.exists(audio)).toBe(false);
+    expect(await files.exists(arq)).toBe(false);
+    expect((await fila(id)).map((r) => r.status)).toEqual(["apagado", "apagado"]);
+  });
+
+  it("o banco diz que a reserva está com OUTRA tentativa (ou que o código mudou): nada é apagado e a resposta traz o aviso em português", async () => {
+    const { id, audio, arq } = await dois(base);
+    const apagados: string[] = [];
+    const recusando: ContentDb = { ...db, service: async (fn, args) => (fn === "ch_worker_podcast_files_renew" ? ("outra" as any) : db.service(fn, args)) };
+    const srv = await listen({ db: recusando, storage: { ...files, remove: async (keys) => { apagados.push(...keys); return files.remove!(keys); } }, lessons: lessonFiles, mockScript });
+    const r = (await post(`${srv}/files/cleanup`, editor)).body;
+    expect(apagados).toEqual([]);
+    expect(r).toMatchObject({ ok: false });
+    expect(r.note).toMatch(/Nada se perdeu/);
+    expect(r.note).not.toMatch(/9721|migra/i);
+    expect(await files.exists(audio)).toBe(true);
+    expect(await files.exists(arq)).toBe(true);
+    // a limpeza normal depois (reservas vencem) termina o serviço sem aviso
+    await sql(`update public.podcast_files_released set reserved_at = now() - interval '11 minutes' where podcast_id = $1 and status = 'apagando'`, [id]);
+    expect((await post(`${base}/files/cleanup`, editor)).body).toEqual({ ok: true });
+    expect(await files.exists(audio)).toBe(false);
+  });
+
+  it("o banco diz 'incompleta' (reserva vencida) em todas as rodadas: sai das 5 rodadas com aviso, sem apagar às cegas", async () => {
+    const { id, audio } = await dois(base);
+    const apagados: string[] = [];
+    const recusando: ContentDb = {
+      ...db,
+      service: async (fn, args) => {
+        if (fn !== "ch_worker_podcast_files_renew") return db.service(fn, args);
+        await sql(`update public.podcast_files_released set reserved_at = now() - interval '11 minutes' where id = $1`, [(args as any).p_id]); // a reserva vence de novo antes da próxima rodada
+        return "incompleta" as any;
+      },
+    };
+    const srv = await listen({ db: recusando, storage: { ...files, remove: async (keys) => { apagados.push(...keys); return files.remove!(keys); } }, lessons: lessonFiles, mockScript });
+    const r = (await post(`${srv}/files/cleanup`, editor)).body;
+    expect(apagados).toEqual([]);
+    expect(r).toMatchObject({ ok: false });
+    expect(r.note).toMatch(/Nada se perdeu/);
+    expect(await files.exists(audio)).toBe(true);
+    expect((await post(`${base}/files/cleanup`, editor)).body).toEqual({ ok: true }); // sem o banco recusando, termina
+    expect((await fila(id)).every((x) => x.status === "apagado")).toBe(true);
+  });
+
+  it("os adaptadores da tela passam o aviso adiante (roteiro, áudio, fonte, episódio)", async () => {
+    const api = await import("../novo/app/podcasts/podcastsApi.js");
+    const aviso = "A limpeza não terminou. Nada se perdeu.";
+    (globalThis as any).fetch = vi.fn(async (url: string) => {
+      const json = (b: unknown) => new Response(JSON.stringify(b), { status: 200, headers: { "Content-Type": "application/json" } });
+      if (url.endsWith("/audio/start")) return json({ job: "j", parts: 1 });
+      if (url.endsWith("/audio/part")) return json({ ok: true });
+      if (url.endsWith("/audio/finish")) return json({ id: "x", note: aviso });
+      if (url.endsWith("/script")) return json({ podcast: { id: "x" }, warnings: [], note: aviso });
+      if (url.includes("/sources/")) return json({ id: "x", note: aviso });
+      return json({ deleted: true, aviso });
+    });
+    const backend: any = { accessToken: async () => "t" };
+    expect((await api.generatePodcastScript(backend, "x", "mock", "")).note).toBe(aviso);
+    expect((await api.generatePodcastAudio(backend, "x", { provider: "mock", voices: {} })).note).toBe(aviso);
+    expect((await api.removeSource(backend, "x", "s")).note).toBe(aviso);
+    expect((await api.deletePodcast(backend, "x")).aviso).toBe(aviso);
   });
 });

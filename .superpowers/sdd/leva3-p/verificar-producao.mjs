@@ -59,8 +59,8 @@ await ck("reserva: o caminho reservado recusa referencia nova e a confirmacao li
   const st = (await db.query(`select status from public.podcast_files_released where id = ${r.id}`)).rows[0].status; if (st !== "apagando") throw new Error("estado " + st);
   try { await db.exec(`insert into public.ch_file_holds (storage_path) values ('${r.path}')`); throw new Error("aceitou"); } catch (e) { if (!/está sendo apagado do depósito agora/.test(e.message)) throw e; }
   const ren = (tok) => db.query(`select public.ch_worker_podcast_files_renew('${ids.ed}', ${r.id}, ${tok ? `'${tok}'` : "null"}) as r`).then((x) => x.rows[0].r);
-  if ((await ren("00000000-0000-4000-8000-000000000001")) !== false || (await ren(null)) !== false) throw new Error("renovou com codigo errado");
-  if ((await ren(r.token)) !== true) throw new Error("nao renovou com o codigo vigente");
+  if ((await ren("00000000-0000-4000-8000-000000000001")) === "ok" || (await ren(null)) === "ok") throw new Error("renovou com codigo errado");
+  if ((await ren(r.token)) !== "ok") throw new Error("nao renovou com o codigo vigente");
   const velho = (await db.query(`select public.ch_worker_podcast_files_done('${ids.ed}', '[{"id": ${r.id}, "token": "00000000-0000-4000-8000-000000000001", "ok": true}]'::jsonb) as n`)).rows[0].n;
   if (velho !== 0) throw new Error("confirmou com codigo que nao e o vigente");
   const n = (await db.query(`select public.ch_worker_podcast_files_done('${ids.ed}', '[{"id": ${r.id}, "token": "${r.token}", "ok": true}]'::jsonb) as n`)).rows[0].n;
