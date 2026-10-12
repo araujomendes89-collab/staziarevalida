@@ -428,7 +428,8 @@ describe("Q03 — importação: atualiza só o que veio preenchido, nunca gabari
     expect((await row(27)).needs_image).toBe(true);
     // o inverso: desmarcada à mão, o palpite (verdadeiro) não a tira dos treinos. Desde a Q07 (leva 3) só dá para desmarcar
     // com a figura vinculada: sem ela, desmarcar liberaria a questão sem a imagem
-    await rpc(EDITOR, "app_admin_set_question_image", { p_question_id: idOf(27), p_image: { path: `questoes/${"b".repeat(32)}.png`, alt: "Eletrocardiograma de 12 derivações em repouso", content_type: "image/png", size_bytes: 1000 } });
+    await sql(`select public.ch_worker_question_figure_confirm($1, 'image/png', 1000)`, [`questoes/${"b".repeat(32)}.png`]); // o servidor conferiu o arquivo
+    await rpc(EDITOR, "app_admin_set_question_image", { p_question_id: idOf(27), p_image: { path: `questoes/${"b".repeat(32)}.png`, alt: "Eletrocardiograma de 12 derivações em repouso" } });
     await mark(false);
     await update({ needs_image: true });
     expect((await row(27)).needs_image).toBe(false);

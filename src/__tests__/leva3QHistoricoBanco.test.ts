@@ -84,8 +84,10 @@ describe("Q12 — histórico de mudanças da questão", () => {
     await t.rpc(EDITOR, "app_admin_save_question", { p_question: question(805, { needs_image: true }) });
     const p1 = `questoes/${"1".repeat(32)}.png`;
     const p2 = `questoes/${"2".repeat(32)}.jpg`;
-    await t.rpc(EDITOR, "app_admin_set_question_image", { p_question_id: idOf(805), p_image: { path: p1, alt: "Eletrocardiograma com supradesnivelamento de ST", content_type: "image/png", size_bytes: 1000 } });
-    await t.rpc(ADMIN, "app_admin_set_question_image", { p_question_id: idOf(805), p_image: { path: p2, alt: "Radiografia de tórax com derrame pleural à direita", content_type: "image/jpeg", size_bytes: 1000 } });
+    // o servidor confere cada arquivo antes de o banco aceitá-lo como figura
+    await t.sql(`select public.ch_worker_question_figure_confirm($1, 'image/png', 1000), public.ch_worker_question_figure_confirm($2, 'image/jpeg', 1000)`, [p1, p2]);
+    await t.rpc(EDITOR, "app_admin_set_question_image", { p_question_id: idOf(805), p_image: { path: p1, alt: "Eletrocardiograma com supradesnivelamento de ST" } });
+    await t.rpc(ADMIN, "app_admin_set_question_image", { p_question_id: idOf(805), p_image: { path: p2, alt: "Radiografia de tórax com derrame pleural à direita" } });
     await t.rpc(EDITOR, "app_admin_remove_question_image", { p_question_id: idOf(805) });
     await edit(805, { needs_image: true, topic: "ECG" });
     await t.rpc(ADMIN, "app_admin_set_official_answer", { p_question_id: idOf(805), p_answer: "C", p_status: "FINAL", p_source: "Gabarito definitivo", p_reason: "Recurso aceito." });
