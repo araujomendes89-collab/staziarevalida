@@ -196,6 +196,8 @@ export interface AnalysisRunDeps {
   aiMaker?: (ref: ModelRef) => AiProvider | null;
   /** Só para testes e desenvolvimento: provedor de simulação já pronto (o do processamento da Central). */
   mockProvider?: AiProvider | null;
+  /** Chamado logo depois de cada chamada paga à IA (antes de gravar qualquer coisa), para o gasto não se perder numa falha. */
+  onSpend?: (delta: { calls: number; costUsd: number }) => Promise<void> | void;
   log?: (m: string) => void;
 }
 
@@ -222,6 +224,7 @@ export async function generateAnalysis(deps: AnalysisRunDeps, provider: AiProvid
   spend.inputTokens += r.inputTokens ?? 0;
   spend.outputTokens += r.outputTokens ?? 0;
   if (r.costUsd != null) spend.costUsd = (spend.costUsd ?? 0) + r.costUsd;
+  await deps.onSpend?.({ calls: 1, costUsd: r.costUsd ?? 0 });
   await deps.db.service("ch_worker_log_ai_run", {
     p_run: { document_id: null, step: "question_analysis", provider: r.provider, model: r.model, prompt_id: prompt.id, prompt_version: prompt.version, schema_version: prompt.version, input_hash: inputHash, status: "ok", output: r.output, input_tokens: r.inputTokens, output_tokens: r.outputTokens, cost_usd: r.costUsd, latency_ms: r.latencyMs },
   });
@@ -238,6 +241,8 @@ export interface AnalysisRunOptions {
   onlyMissing?: boolean;
   /** Parada de segurança: para quando o gasto real passa deste valor em dólares. */
   maxCostUsd?: number | null;
+  /** Com `ids`: questões que este pedido já refez numa tentativa anterior (não entram de novo). */
+  skipIds?: string[];
   /** Chamado depois de cada questão (andamento do pedido). */
   onProgress?: (r: AnalysisReport) => Promise<void> | void;
 }
@@ -247,6 +252,10 @@ export interface AnalysisReport {
   saved: number;
   verdicts: Record<string, number>;
   skipped: number;
+  /** Questões gravadas nesta execução. */
+  savedIds: string[];
+  /** Parou pela parada de segurança do pedido (não pela falta de configuração). */
+  stop?: "seguranca";
   pending?: string;
   spend: Spend;
   estimate?: { calls: number; inputTokens: number; outputTokens: number };
@@ -257,10 +266,14 @@ export function estimateAnalysisTokens(q: QuestionForAnalysis) {
 }
 
 export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: AnalysisRunOptions = {}): Promise<AnalysisReport> {
-  const report: AnalysisReport = { considered: 0, saved: 0, skipped: 0, verdicts: {}, spend: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: null } };
+  const report: AnalysisReport = { considered: 0, saved: 0, skipped: 0, savedIds: [], verdicts: {}, spend: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: null } };
   const questions = options.ids
     ? await deps.db.service<QuestionForAnalysis[]>("ch_worker_questions_for_analysis_ids", { p_ids: options.ids, p_only_missing: options.onlyMissing ?? true })
     : await deps.db.service<QuestionForAnalysis[]>("ch_worker_questions_for_analysis", { p_limit: options.limit ?? 20, p_exam: options.exam ?? null, p_only_missing: true });
+  if (options.skipIds?.length) {
+    const skip = new Set(options.skipIds);
+    for (let i = questions.length - 1; i >= 0; i--) if (skip.has(questions[i].id)) questions.splice(i, 1);
+  }
   report.considered = questions.length;
   if (!questions.length) return report;
   if (options.dryRun) {
@@ -289,6 +302,7 @@ export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: Analys
   for (const q of questions) {
     if (options.maxCostUsd != null && (report.spend.costUsd ?? 0) > options.maxCostUsd) {
       report.pending = `Parada de segurança: o gasto (US$ ${(report.spend.costUsd ?? 0).toFixed(2)}) passou do limite deste pedido (US$ ${options.maxCostUsd.toFixed(2)}).`;
+      report.stop = "seguranca";
       break;
     }
     // a origem leva o id da questão; o maestro refaz o provedor a cada questão
@@ -311,6 +325,7 @@ export async function runQuestionAnalysis(deps: AnalysisRunDeps, options: Analys
       });
       await deps.db.service("ch_worker_save_analysis_check", { p_analysis_id: saved.analysis_id, p_layer: "software", p_verdict: verdict, p_findings: findings, p_meta: { provider: "software", model: "regras", prompt_version: ANALYSIS_VERSION } });
       report.saved++;
+      report.savedIds.push(q.id);
       report.verdicts[verdict] = (report.verdicts[verdict] ?? 0) + 1;
       await options.onProgress?.(report);
     } catch (error) {

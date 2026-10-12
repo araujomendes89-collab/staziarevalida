@@ -80,7 +80,7 @@ export function DraftQuestions({ reviewerAreas }) {
       />
       {data.legacy_sql && (
         <Banner tone="warning" icon="triangle-alert" title="Selo de triagem indisponível">
-          O banco de dados ainda não recebeu a atualização (SQL 9810) que traz o selo de triagem e o bloqueio de aprovação sem fonte oficial. A lista abaixo funciona como antes.
+          O selo de triagem e o bloqueio de aprovação sem fonte oficial ainda não estão disponíveis: o sistema está aguardando uma atualização. Avise quem cuida do sistema. A lista abaixo funciona como antes.
         </Banner>
       )}
       {!data.legacy_sql && (

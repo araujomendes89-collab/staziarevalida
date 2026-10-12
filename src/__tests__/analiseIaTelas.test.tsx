@@ -95,7 +95,9 @@ describe("Análise de questões › Gerar análises com IA", () => {
   it("sem preço cadastrado: avisa que o valor em dólar não pode ser estimado (não inventa número)", async () => {
     preview = { ...PREVIEW, estimate: { ...PREVIEW.estimate, typical_usd: null, max_usd: null, note: "Sem preço cadastrado para claude-opus-5-5 (anthropic) na Central de IAs." } };
     render(<QuestionAnalyses reviewerAreas={[]} />);
-    expect(await screen.findByText(/não foi possível estimar. Sem preço cadastrado/)).toBeTruthy();
+    expect(await screen.findByText(/não foi possível estimar, e sem isso o pedido não é aceito. Sem preço cadastrado/)).toBeTruthy();
+    // sem estimativa não há parada de segurança: o botão fica travado
+    expect((screen.getByRole("button", { name: "Pedir análise" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("andamento do pedido: barra, gasto e, ao concluir, aviso de que nada foi publicado e a lista recarrega", async () => {
@@ -126,7 +128,8 @@ describe("Análise de questões › Gerar análises com IA", () => {
     previewError = new Error("Could not find the function public.app_ch_question_analysis_preview(p_area, p_count) in the schema cache");
     render(<QuestionAnalyses reviewerAreas={[]} />);
     expect(await screen.findByText("Pedido de IA ainda indisponível")).toBeTruthy();
-    expect(screen.getByText(/atualização do banco de dados que ainda não foi aplicada/)).toBeTruthy();
+    expect(screen.getByText(/o sistema está aguardando uma atualização/)).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/SQL|9810|banco de dados/);
     expect(screen.queryByText(/schema cache/)).toBeNull();
     expect(screen.getByText("Andamento")).toBeTruthy();
   });
@@ -234,6 +237,7 @@ describe("Questões inéditas › Conferir com IA e selo de triagem", () => {
     });
     render(<DraftQuestions reviewerAreas={[]} />);
     expect(await screen.findByText("Selo de triagem indisponível")).toBeTruthy();
+    expect(document.body.textContent).not.toMatch(/SQL|9810|banco de dados/);
     expect(await screen.findByText("Pedido de IA ainda indisponível")).toBeTruthy();
     expect(screen.getByRole("button", { name: /Rascunho A/ })).toBeTruthy();
     expect(screen.queryByText(/does not exist|schema cache/)).toBeNull();

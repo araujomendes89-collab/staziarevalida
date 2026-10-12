@@ -16,21 +16,27 @@
 -- Regras no banco (números fixos, em ch_ai_request_limit; a tela só mostra):
 --   * análise de questões: no máximo 50 questões por pedido e 100 por dia por pessoa; padrão 3;
 --   * conferência de rascunhos: no máximo 20 por pedido e 60 por dia por pessoa; padrão 10;
---   * "dia" = dia de Brasília (UTC-3, sem horário de verão); pedido que falhou sem fazer nada não gasta a cota do dia;
+--   * "dia" = dia de Brasília (UTC-3, sem horário de verão); pedido que falhou sem chamar a IA não gasta a cota do dia (se a IA
+--     já foi chamada, o pedido conta inteiro); conferir a cota e reservá-la é uma operação só (trava por pessoa e tipo);
 --   * quem pede: administrador (qualquer área) ou revisor médico cadastrado (só as questões das áreas dele); editor sem
 --     área, aluno e quem entrou sem conta são barrados;
---   * recusa em português quando a Central de Conteúdo ou a IA da função não estão prontas (a análise usa a função
---     "Engenharia reversa" e a conferência usa a "Verificação"; as chaves de ai_functions não mudam);
---   * idempotente: o mesmo pedido (mesmas questões, mesmas opções) enquanto ainda anda não duplica: volta o que existe;
+--   * recusa em português quando a Central de Conteúdo ou a IA da função não estão prontas, ou quando falta a configuração da
+--     função ou o preço de uma IA paga ligada (sem preço não há parada de segurança); a análise usa a função "Engenharia
+--     reversa" e a conferência usa a "Verificação"; as chaves de ai_functions não mudam;
+--   * idempotente: o mesmo pedido da MESMA pessoa (mesmas questões, mesmas opções) enquanto ainda anda não duplica;
 --   * análise já PUBLICADA ou REVISADA nunca é substituída por este caminho (publicada sai do ar se a atual for trocada);
---   * pedido pode ser cancelado enquanto está na fila ou pendente (não durante a execução);
---   * parada de segurança por pedido: o processamento para se o gasto real passar do dobro do pior caso estimado.
+--   * pedido pode ser cancelado enquanto está na fila ou pendente (não durante a execução); o cancelamento vence a passagem
+--     para "analisando" e um pedido que terminou não muda mais de estado;
+--   * parada de segurança por pedido: o processamento para se o gasto real passar do dobro do pior caso estimado (o pior caso
+--     da conferência é o da IA paga mais cara entre as ligadas, porque ela troca de empresa);
+--   * cada pessoa lê só os seus pedidos (o administrador lê todos), e só enquanto continuar administrador ou revisor.
 --
 -- Triagem dos rascunhos (ch_draft_triage, só a partir das conferências ATUAIS, com o mesmo conteúdo):
 --   reprovada · sem_fonte · com_apontamentos · so_regras · nao_conferida · sem_apontamentos
---   rascunho SEM FONTE OFICIAL (nível A a D) fica com a aprovação BLOQUEADA no banco (app_draft_question_decide): a
---   camada "Fontes" disse "insuficiente", ou (sem a camada Fontes aprovada) a camada de regras viu que não cita fonte
---   oficial cadastrada. Pedir ajustes e recusar continuam livres.
+--   APROVAR um rascunho exige EVIDÊNCIA POSITIVA de fonte oficial (nível A a D), em app_draft_question_decide (linha travada):
+--   a conferência "Fontes" deu "sem problemas" para o texto atual, ou (sem conferência "Fontes" para este texto) o rascunho cita
+--   um documento cadastrado como fonte oficial vigente. Qualquer outra coisa bloqueia, inclusive rascunho nunca conferido.
+--   Pedir ajustes e recusar continuam livres. O revisor médico só lista os rascunhos das áreas dele.
 --
 -- Esta migração:
 --   * recria ch_jobs_step_check com a UNIÃO do que existe agora (lida da própria restrição) + as 17 etapas conhecidas até
@@ -90,6 +96,10 @@ create table if not exists public.ch_ai_requests (
   created_at timestamptz not null default now(),
   finished_at timestamptz
 );
+alter table public.ch_ai_requests drop constraint if exists ch_ai_requests_target_ids_check;
+alter table public.ch_ai_requests add constraint ch_ai_requests_target_ids_check check (cardinality(target_ids) between 1 and 50);
+alter table public.ch_ai_requests drop constraint if exists ch_ai_requests_item_count_check;
+alter table public.ch_ai_requests add constraint ch_ai_requests_item_count_check check (item_count between 1 and 50);
 create index if not exists ch_ai_requests_person_idx on public.ch_ai_requests (requested_by, kind, created_at desc);
 create index if not exists ch_ai_requests_job_idx on public.ch_ai_requests (job_id);
 create unique index if not exists ch_ai_requests_active_key on public.ch_ai_requests (request_key)
@@ -98,7 +108,7 @@ create unique index if not exists ch_ai_requests_active_key on public.ch_ai_requ
 alter table public.ch_ai_requests enable row level security;
 drop policy if exists "pedidos de IA: administrador lê tudo, cada pessoa os seus" on public.ch_ai_requests;
 create policy "pedidos de IA: administrador lê tudo, cada pessoa os seus" on public.ch_ai_requests for select to authenticated
-  using (public.is_admin() or requested_by = (select auth.uid()));
+  using (public.is_admin() or (requested_by = (select auth.uid()) and public.ch_is_reviewer()));
 -- escrita só pelas funções abaixo
 
 -- ---------------------------------------------------------------- apoio (fechadas para quem chama de fora)
@@ -122,11 +132,12 @@ as $$
   select (date_trunc('day', (now() at time zone 'UTC') - interval '3 hours') + interval '3 hours') at time zone 'UTC'
 $$;
 
--- Quantos itens a pessoa já pediu hoje deste tipo (pedido que falhou conta só o que chegou a fazer).
+-- Quantos itens a pessoa já pediu hoje deste tipo. Pedido que falhou sem chamar a IA conta só o que chegou a fazer; se a IA já
+-- foi chamada (gasto), o pedido conta inteiro.
 create or replace function public.ch_ai_used_today(p_user uuid, p_kind text) returns integer
   language sql stable security definer set search_path = ''
 as $$
-  select coalesce(sum(case when r.status = 'falhou' then r.done_count else r.item_count end), 0)::int
+  select coalesce(sum(case when r.status = 'falhou' and r.calls = 0 then r.done_count else r.item_count end), 0)::int
     from public.ch_ai_requests r
    where r.requested_by = p_user and r.kind = p_kind and r.created_at >= public.ch_ai_day_start()
 $$;
@@ -187,7 +198,7 @@ begin
   if not exists (select 1 from public.ai_providers p where p.enabled) then
     return format('Nenhuma IA está ligada na Central de IAs: ligue uma e configure a função "%s".', v_name);
   end if;
-  return null;
+  return format('A função "%s" ainda não foi configurada na Central de IAs: escolha a IA e cadastre o preço dela antes de pedir (sem isso não há como limitar o gasto).', v_name);
 end
 $$;
 
@@ -201,6 +212,18 @@ as $$
            else (select (coalesce(p_in, 0) * pr.input_per_mtok + coalesce(p_out, 0) * pr.output_per_mtok) / 1000000.0
                    from public.ai_model_prices pr
                   where pr.provider = p_ref ->> 'provider' and pr.model = p_ref ->> 'model')
+         end
+$$;
+
+-- Custo de uma IA que de fato pode rodar: IA desligada na Central não roda (custa zero); IA paga ligada sem preço cadastrado dá
+-- nulo (não dá para limitar o gasto: o pedido é recusado).
+create or replace function public.ch_ai_run_cost_usd(p_ref jsonb, p_in numeric, p_out numeric) returns numeric
+  language sql stable security definer set search_path = ''
+as $$
+  select case
+           when p_ref is null or coalesce(p_ref ->> 'provider', '') = '' then 0
+           when not exists (select 1 from public.ai_providers p where p.id = p_ref ->> 'provider' and p.enabled) then 0
+           else public.ch_ai_cost_usd(p_ref, p_in, p_out)
          end
 $$;
 
@@ -229,28 +252,40 @@ as $$
 $$;
 
 -- Estimativa: por questão, entrada = texto/4 + 1135 (instruções e formato), saída típica 2.600 e máxima 12.000 tokens (os
--- números de estimateAnalysisTokens e do pedido ao maestro). Preço da IA principal da função "Engenharia reversa".
+-- números de estimateAnalysisTokens e do pedido ao maestro). O processamento chama a principal da função "Engenharia reversa" e,
+-- se ela falhar, a reserva: o típico é o da IA que responde primeiro (a principal, ou a reserva se a principal estiver desligada)
+-- e o máximo soma as duas (as duas podem cobrar). IA desligada na Central não conta. Sem configuração salva ou com IA paga sem
+-- preço, o valor fica nulo e o pedido é recusado (não há como limitar o gasto).
 create or replace function public.ch_qa_estimate(p_chars integer[]) returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
 declare
+  f public.ai_functions;
   v_n integer := coalesce(cardinality(p_chars), 0);
   v_in numeric := coalesce((select sum(ceil(c / 4.0)) from unnest(p_chars) as c), 0) + v_n * 1135;
-  v_out numeric := v_n * 2600;
-  v_max numeric := v_n * 12000;
-  v_ref jsonb := (select f.primary_ref from public.ai_functions f where f.key = 'engenharia_reversa');
-  v_typical numeric := public.ch_ai_cost_usd(v_ref, v_in, v_n * 2600);
-  v_worst numeric := public.ch_ai_cost_usd(v_ref, v_in, v_n * 12000);
+  v_p_on boolean;
+  v_first jsonb;
+  v_typical numeric;
+  v_worst numeric;
   v_note text;
 begin
-  if v_ref is null then
-    v_note := 'A função "Engenharia reversa" não tem configuração salva na Central de IAs: o servidor usa o padrão dele e o valor em dólar não pode ser estimado aqui.';
-  elsif v_typical is null then
-    v_note := format('Sem preço cadastrado para %s (%s) na Central de IAs: o valor em dólar não pode ser estimado.', v_ref ->> 'model', v_ref ->> 'provider');
+  select * into f from public.ai_functions where key = 'engenharia_reversa';
+  if not found then
+    v_note := 'A função "Engenharia reversa" ainda não foi configurada na Central de IAs: sem a IA e o preço cadastrados não há como estimar nem limitar o gasto.';
+  else
+    v_p_on := exists (select 1 from public.ai_providers p where p.id = f.primary_ref ->> 'provider' and p.enabled);
+    v_first := case when v_p_on then f.primary_ref else f.fallback_ref end;
+    v_typical := public.ch_ai_run_cost_usd(v_first, v_in, v_n * 2600);
+    v_worst := public.ch_ai_run_cost_usd(f.primary_ref, v_in, v_n * 12000) + public.ch_ai_run_cost_usd(f.fallback_ref, v_in, v_n * 12000);
+    if v_typical is null or v_worst is null then
+      v_typical := null;
+      v_worst := null;
+      v_note := 'Falta o preço de uma das IAs da função "Engenharia reversa" na Central de IAs: sem ele não há como estimar nem limitar o gasto.';
+    end if;
   end if;
-  return jsonb_build_object('calls', v_n, 'input_tokens', v_in, 'output_tokens_typical', v_out, 'output_tokens_max', v_max,
+  return jsonb_build_object('calls', v_n, 'input_tokens', v_in, 'output_tokens_typical', v_n * 2600, 'output_tokens_max', v_n * 12000,
                             'typical_usd', round(v_typical, 4), 'max_usd', round(v_worst, 4),
-                            'provider', v_ref ->> 'provider', 'model', v_ref ->> 'model', 'note', v_note);
+                            'provider', v_first ->> 'provider', 'model', v_first ->> 'model', 'note', v_note);
 end
 $$;
 
@@ -315,6 +350,8 @@ declare
   v_only boolean := coalesce(p_only_missing, true);
 begin
   v_areas := public.ch_ai_request_scope(p_area);
+  -- conferir a cota do dia e reservá-la é uma operação só: dois pedidos da mesma pessoa e do mesmo tipo esperam um pelo outro
+  perform pg_advisory_xact_lock(hashtextextended('ch_ai_request:question_analysis:' || (select auth.uid())::text, 0));
   if v_count < 1 or v_count > v_per then
     raise exception 'Escolha de 1 a % questões por pedido (máximo de % por pedido).', v_per, v_per using errcode = '22023';
   end if;
@@ -330,7 +367,7 @@ begin
     raise exception 'Nenhuma questão para analisar com estes filtros: todas já têm análise, ou não são de uma área em que você é revisor.' using errcode = '22023';
   end if;
 
-  v_key := public.ch_hash(jsonb_build_object('kind', 'question_analysis', 'ids', to_jsonb(v_ids), 'only_missing', v_only));
+  v_key := public.ch_hash(jsonb_build_object('kind', 'question_analysis', 'by', (select auth.uid()), 'ids', to_jsonb(v_ids), 'only_missing', v_only));
   select * into v_dup from public.ch_ai_requests r where r.request_key = v_key and r.status in ('na_fila', 'analisando', 'pendente');
   if found then
     return jsonb_build_object('id', v_dup.id, 'duplicate', true, 'status', v_dup.status, 'items', v_dup.item_count, 'estimate_usd', v_dup.estimate_usd);
@@ -343,6 +380,9 @@ begin
   end if;
 
   v_est := public.ch_qa_estimate(v_chars);
+  if (v_est ->> 'typical_usd') is null then
+    raise exception 'Pedido recusado: %', v_est ->> 'note' using errcode = '55000';
+  end if;
   insert into public.ch_ai_requests (kind, requested_by, request_key, params, target_ids, item_count, estimate_usd, ceiling_usd)
   values ('question_analysis', (select auth.uid()), v_key,
           jsonb_build_object('exam', p_exam, 'area', p_area, 'count', v_count, 'only_missing', v_only),
@@ -402,10 +442,25 @@ begin
 end
 $$;
 
+-- IAs que a conferência pode chamar: a Verificação escolhe a sua (principal, reserva) mas, se for da mesma empresa que criou o
+-- rascunho, troca para outra empresa ligada (maestroCheckerProvider), com o modelo já escolhido em qualquer função da Central
+-- (menos a Busca de fontes). Para o dono nunca ver um "máximo" menor que o real, a estimativa vale pelo pior caso: a IA PAGA mais
+-- cara entre todas essas escolhas, de empresas ligadas. Ollama custa zero.
+create or replace function public.ch_dc_candidates() returns jsonb
+  language sql stable security definer set search_path = ''
+as $$
+  select coalesce(jsonb_agg(distinct t.ref), '[]'::jsonb)
+    from (select r as ref
+            from public.ai_functions f,
+                 lateral (select f.primary_ref union all select f.fallback_ref union all select jsonb_array_elements(f.reviewers)) as x(r)
+           where f.key <> 'busca_fontes' and r is not null and coalesce(r ->> 'provider', '') not in ('', 'ollama')
+             and exists (select 1 from public.ai_providers p where p.id = r ->> 'provider' and p.enabled)) t
+$$;
+
 -- Estimativa por camada de IA: fontes e atualidade 1 chamada cada (entrada = texto/4 + 500 + 3.750 de trechos oficiais, no
 -- pior caso; saída típica 350), revisão clínica 2 chamadas (às cegas e com o gabarito; saída típica 1.100). Máximo de 4.096 de
--- saída por chamada. Preço de cada papel: conferente da posição (fontes 0, atualidade 1, revisão clínica 2) ou a principal da
--- função "Verificação". A troca automática para outra empresa pode mudar o modelo na hora: o valor é aproximado.
+-- saída por chamada. Preço: o da IA mais cara entre as candidatas (ch_dc_candidates) e o máximo conta a principal e a reserva
+-- cobrando (2 ×). Sem a função Verificação salva, ou com uma candidata paga sem preço, o valor fica nulo e o pedido é recusado.
 create or replace function public.ch_dc_estimate(p_base integer[], p_key integer[], p_layers text[]) returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
@@ -414,12 +469,13 @@ declare
   v_n integer := coalesce(cardinality(p_base), 0);
   v_base numeric := coalesce((select sum(ceil(c / 4.0)) from unnest(p_base) as c), 0);
   v_keyed numeric := coalesce((select sum(ceil(c / 4.0)) from unnest(p_key) as c), 0);
-  v_layer text;
-  v_idx integer;
+  v_cands jsonb := public.ch_dc_candidates();
   v_ref jsonb;
+  v_layer text;
   v_in numeric;
   v_out numeric;
   v_calls integer;
+  v_c numeric;
   v_cost numeric;
   v_cost_max numeric;
   v_typical numeric := 0;
@@ -434,8 +490,6 @@ begin
   select * into f from public.ai_functions where key = 'verificacao';
   foreach v_layer in array p_layers loop
     continue when v_layer = 'software';
-    v_idx := case v_layer when 'sources' then 0 when 'currency' then 1 else 2 end;
-    v_ref := coalesce(f.reviewers -> v_idx, f.primary_ref);
     if v_layer = 'redteam' then
       v_calls := 2 * v_n;
       v_in := v_base + 500 * v_n + v_keyed + 500 * v_n;
@@ -445,18 +499,30 @@ begin
       v_in := v_base + 500 * v_n + 3750 * v_n;
       v_out := 350 * v_n;
     end if;
-    v_cost := public.ch_ai_cost_usd(v_ref, v_in, v_out);
-    v_cost_max := public.ch_ai_cost_usd(v_ref, v_in, v_calls * 4096);
-    if v_cost is null then v_unknown := true; else v_typical := v_typical + v_cost; v_max := v_max + v_cost_max; end if;
+    v_cost := 0;
+    v_cost_max := 0;
+    for v_ref in select e from jsonb_array_elements(v_cands) as e loop
+      v_c := public.ch_ai_cost_usd(v_ref, v_in, v_out);
+      if v_c is null then
+        v_unknown := true;
+      else
+        v_cost := greatest(v_cost, v_c);
+        v_cost_max := greatest(v_cost_max, public.ch_ai_cost_usd(v_ref, v_in, v_calls * 4096));
+      end if;
+    end loop;
+    v_typical := v_typical + v_cost;
+    v_max := v_max + 2 * v_cost_max;
     v_total_calls := v_total_calls + v_calls;
     v_tokens_in := v_tokens_in + v_in;
     v_tokens_out := v_tokens_out + v_out;
-    v_by := v_by || jsonb_build_object(v_layer, jsonb_build_object('calls', v_calls, 'provider', v_ref ->> 'provider', 'model', v_ref ->> 'model', 'usd', round(v_cost, 4)));
+    v_by := v_by || jsonb_build_object(v_layer, jsonb_build_object('calls', v_calls, 'usd', round(v_cost, 4)));
   end loop;
-  if v_total_calls > 0 and (f.key is null) then
-    v_note := 'A função "Verificação" não tem configuração salva na Central de IAs: o servidor usa o padrão dele e o valor em dólar não pode ser estimado aqui.';
+  if v_total_calls > 0 and f.key is null then
+    v_note := 'A função "Verificação" ainda não foi configurada na Central de IAs: sem a IA e o preço cadastrados não há como estimar nem limitar o gasto.';
   elsif v_unknown then
-    v_note := 'Falta preço cadastrado para a IA de alguma camada na Central de IAs: o valor em dólar não pode ser estimado por inteiro.';
+    v_note := 'Falta o preço de uma das IAs ligadas na Central de IAs: sem ele não há como estimar nem limitar o gasto.';
+  elsif v_total_calls > 0 then
+    v_note := 'Estimativa pelo pior caso entre as IAs ligadas: a conferência usa sempre uma IA de outra empresa que a criadora do rascunho e pode trocar de empresa.';
   end if;
   return jsonb_build_object('calls', v_total_calls, 'input_tokens', v_tokens_in, 'output_tokens_typical', v_tokens_out,
                             'typical_usd', case when v_total_calls = 0 then 0 when v_unknown or f.key is null then null else round(v_typical, 4) end,
@@ -529,6 +595,7 @@ declare
   v_recheck boolean := coalesce(p_recheck, false);
 begin
   v_areas := public.ch_ai_request_scope(p_area);
+  perform pg_advisory_xact_lock(hashtextextended('ch_ai_request:draft_check:' || (select auth.uid())::text, 0));
   v_layers := public.ch_dc_layers(p_layers);
   if v_count < 1 or v_count > v_per then
     raise exception 'Escolha de 1 a % rascunhos por pedido (máximo de % por pedido).', v_per, v_per using errcode = '22023';
@@ -545,7 +612,7 @@ begin
     raise exception 'Nenhum rascunho para conferir com estes filtros: todos já têm esta conferência, ou não são de uma área em que você é revisor.' using errcode = '22023';
   end if;
 
-  v_key := public.ch_hash(jsonb_build_object('kind', 'draft_check', 'ids', to_jsonb(v_ids), 'layers', to_jsonb(v_layers), 'recheck', v_recheck));
+  v_key := public.ch_hash(jsonb_build_object('kind', 'draft_check', 'by', (select auth.uid()), 'ids', to_jsonb(v_ids), 'layers', to_jsonb(v_layers), 'recheck', v_recheck));
   select * into v_dup from public.ch_ai_requests r where r.request_key = v_key and r.status in ('na_fila', 'analisando', 'pendente');
   if found then
     return jsonb_build_object('id', v_dup.id, 'duplicate', true, 'status', v_dup.status, 'items', v_dup.item_count, 'estimate_usd', v_dup.estimate_usd);
@@ -558,6 +625,9 @@ begin
   end if;
 
   v_est := public.ch_dc_estimate(v_base, v_keyed, v_layers);
+  if (v_est ->> 'typical_usd') is null then
+    raise exception 'Pedido recusado: %', v_est ->> 'note' using errcode = '55000';
+  end if;
   insert into public.ch_ai_requests (kind, requested_by, request_key, params, target_ids, item_count, estimate_usd, ceiling_usd)
   values ('draft_check', (select auth.uid()), v_key,
           jsonb_build_object('batch', p_batch, 'area', p_area, 'count', v_count, 'layers', to_jsonb(v_layers), 'recheck', v_recheck),
@@ -636,7 +706,10 @@ $$;
 
 -- Só as chaves presentes em p_patch mudam: status, message, done_count, skipped_count, calls, cost_usd, summary. Ao chegar a um
 -- estado final (concluido, falhou) grava finished_at e o resultado no registro (ch_audit, em nome de quem pediu).
-create or replace function public.ch_worker_ai_request_update(p_request_id uuid, p_patch jsonb) returns void
+-- Devolve se a alteração valeu: pedido que já terminou (concluído, falhou ou cancelado) não muda mais, nem para outro estado
+-- final, e o processamento que recebe falso para ali (o cancelamento vence a passagem para "analisando").
+drop function if exists public.ch_worker_ai_request_update(uuid, jsonb);
+create or replace function public.ch_worker_ai_request_update(p_request_id uuid, p_patch jsonb) returns boolean
   language plpgsql security definer set search_path = ''
 as $$
 declare
@@ -652,8 +725,7 @@ begin
   if v_status is null or v_status not in ('na_fila', 'analisando', 'concluido', 'falhou', 'pendente') then
     raise exception 'Situação do pedido inválida: %.', v_status using errcode = '22023';
   end if;
-  -- pedido que já terminou não volta a andar (cancelado, ou fechado por outra execução)
-  if v_old in ('concluido', 'falhou') and v_status not in ('concluido', 'falhou') then return; end if;
+  if v_old in ('concluido', 'falhou') then return false; end if;
   update public.ch_ai_requests
      set status = v_status,
          message = case when p_patch ? 'message' then left(p_patch ->> 'message', 1000) else message end,
@@ -663,11 +735,10 @@ begin
          cost_usd = case when p_patch ? 'cost_usd' then greatest(coalesce((p_patch ->> 'cost_usd')::numeric, 0), 0) else cost_usd end,
          summary = case when p_patch ? 'summary' and jsonb_typeof(p_patch -> 'summary') = 'object' then p_patch -> 'summary' else summary end,
          finished_at = case when v_status not in ('concluido', 'falhou') then null
-                            when v_old in ('concluido', 'falhou') and finished_at is not null then finished_at
                             else now() end
    where id = r.id
    returning * into r;
-  if r.status in ('concluido', 'falhou') and v_old not in ('concluido', 'falhou') then
+  if r.status in ('concluido', 'falhou') then
     if r.kind = 'question_analysis' then
       insert into public.ch_audit (actor_id, action, target, details)
       values (r.requested_by, 'question_analysis.result', r.id::text,
@@ -680,6 +751,7 @@ begin
                                  'calls', r.calls, 'cost_usd', r.cost_usd, 'layers', r.summary -> 'layers'));
     end if;
   end if;
+  return true;
 end
 $$;
 
@@ -750,6 +822,35 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------- triagem dos rascunhos inéditos
+-- Evidência POSITIVA de fonte oficial (nível A a D) para aprovar um rascunho. Vale quando, para o texto atual do rascunho:
+--   * a conferência "Fontes" deu "sem problemas" (a afirmação central tem trecho de fonte oficial conferido); ou
+--   * não há conferência "Fontes" para este texto e o rascunho cita um documento que está cadastrado como fonte oficial vigente
+--     (nível A a D, versão definitiva, em vigor).
+-- Qualquer outro resultado da conferência "Fontes" (insuficiente, com apontamentos, reprovada, inconclusiva) bloqueia, e a falta
+-- de resultado sem citação oficial também. Não depende de a conferência ter rodado: rascunho nunca conferido também fica bloqueado.
+create or replace function public.ch_draft_official_evidence(p_draft_id uuid) returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  d public.draft_questions;
+  v_src text;
+  v_cite boolean;
+  v_ok boolean;
+begin
+  select * into d from public.draft_questions where id = p_draft_id;
+  if not found then return jsonb_build_object('ok', false, 'reason', 'Rascunho não encontrado.'); end if;
+  select c.verdict into v_src from public.draft_checks c where c.draft_id = d.id and c.layer = 'sources' and c.content_hash = d.content_hash;
+  v_cite := exists (select 1
+                      from jsonb_array_elements(case when jsonb_typeof(d.source_citations) = 'array' then d.source_citations else '[]'::jsonb end) cit
+                      join public.ch_sources s on s.title = cit ->> 'source_file'
+                     where s.authority_level in ('A', 'B', 'C', 'D') and s.status = 'current' and s.kind = 'final');
+  v_ok := coalesce(v_src = 'pass', false) or (v_src is null and v_cite);
+  return jsonb_build_object('ok', v_ok, 'source_check', v_src, 'cites_official', v_cite,
+    'reason', case when v_ok then null
+                   else 'Sem fonte oficial (nível A a D) comprovada para a afirmação central: a aprovação fica bloqueada até haver o documento oficial cadastrado e conferido.' end);
+end
+$$;
+
 -- Sempre a partir das conferências ATUAIS (mesmo conteúdo do rascunho). Devolve {code, rank, blocked, reason}.
 create or replace function public.ch_draft_triage(p_draft_id uuid) returns jsonb
   language plpgsql stable security definer set search_path = ''
@@ -760,23 +861,17 @@ declare
   v_fail boolean;
   v_issue boolean;
   v_ai boolean;
-  v_src text;
+  v_ev jsonb;
   v_blocked boolean;
   v_code text;
   v_rank integer;
-  v_reason text;
 begin
   select content_hash into v_hash from public.draft_questions where id = p_draft_id;
   select count(*)::int, coalesce(bool_or(c.verdict = 'fail'), false), coalesce(bool_or(c.verdict <> 'pass'), false), coalesce(bool_or(c.layer <> 'software'), false)
     into v_n, v_fail, v_issue, v_ai
     from public.draft_checks c where c.draft_id = p_draft_id and c.content_hash = v_hash;
-  select c.verdict into v_src from public.draft_checks c where c.draft_id = p_draft_id and c.layer = 'sources' and c.content_hash = v_hash;
-  v_blocked := v_src = 'insufficient'
-    or (coalesce(v_src, '') <> 'pass'
-        and exists (select 1 from public.draft_checks c, jsonb_array_elements(c.findings) f
-                     where c.draft_id = p_draft_id and c.layer = 'software' and c.content_hash = v_hash
-                       and f ->> 'code' in ('no_citation', 'third_party_source_only')));
-  v_reason := case when v_blocked then 'Sem fonte oficial (nível A a D) para a afirmação central: a aprovação fica bloqueada até haver o documento oficial cadastrado.' end;
+  v_ev := public.ch_draft_official_evidence(p_draft_id);
+  v_blocked := not (v_ev ->> 'ok')::boolean;
   if v_n = 0 then v_code := 'nao_conferida'; v_rank := 5;
   elsif v_fail then v_code := 'reprovada'; v_rank := 1;
   elsif v_blocked then v_code := 'sem_fonte'; v_rank := 2;
@@ -784,12 +879,21 @@ begin
   elsif not v_ai then v_code := 'so_regras'; v_rank := 4;
   else v_code := 'sem_apontamentos'; v_rank := 6;
   end if;
-  return jsonb_build_object('code', v_code, 'rank', v_rank, 'blocked', coalesce(v_blocked, false), 'reason', v_reason);
+  return jsonb_build_object('code', v_code, 'rank', v_rank, 'blocked', v_blocked, 'reason', v_ev ->> 'reason');
 end
 $$;
 
--- Lista do painel (parte da versão da 2100): agora com o selo de triagem por rascunho, a contagem por selo e filtro/ordem por
--- selo. p_order: nulo = lote e número; 'problematicos' = reprovadas e sem fonte primeiro; 'limpos' = sem apontamentos primeiro.
+-- Escopo de leitura dos rascunhos: administrador e editor (equipe) veem tudo; revisor médico só as áreas dele.
+create or replace function public.ch_draft_scope() returns text[]
+  language sql stable security definer set search_path = ''
+as $$
+  select case when public.is_staff() then null
+              else coalesce((select array_agg(r.area_code) from public.ch_reviewer_areas r where r.user_id = (select auth.uid())), '{}'::text[]) end
+$$;
+
+-- Lista do painel (parte da versão da 2100, a mais nova que existe): agora com o selo de triagem por rascunho, a contagem por
+-- selo e filtro/ordem por selo; o revisor médico só enxerga os rascunhos (e as contagens, lotes, conferências e e-mails) das
+-- áreas dele. p_order: nulo = lote e número; 'problematicos' = reprovadas e sem fonte primeiro; 'limpos' = sem apontamentos primeiro.
 drop function if exists public.app_draft_questions(text, text, text, integer, integer);
 create or replace function public.app_draft_questions(
   p_batch text default null, p_status text default null, p_area text default null, p_limit integer default 30, p_offset integer default 0,
@@ -797,8 +901,11 @@ create or replace function public.app_draft_questions(
 ) returns jsonb
   language plpgsql stable security definer set search_path = ''
 as $$
+declare
+  v_scope text[];
 begin
   perform public.ch_assert_staff();
+  v_scope := public.ch_draft_scope();
   if p_triage is not null and p_triage not in ('nao_conferida', 'reprovada', 'sem_fonte', 'com_apontamentos', 'so_regras', 'sem_apontamentos') then
     raise exception 'Selo de triagem inválido.' using errcode = '22023';
   end if;
@@ -812,21 +919,23 @@ begin
           'approved', count(*) filter (where status = 'approved')::int,
           'needs_changes', count(*) filter (where status = 'needs_changes')::int,
           'rejected', count(*) filter (where status = 'rejected')::int) as x
-        from public.draft_questions group by batch) b),
+        from public.draft_questions where v_scope is null or area = any (v_scope) group by batch) b),
     'checks', (select coalesce(jsonb_object_agg(layer, v), '{}'::jsonb) from (
         select c.layer, jsonb_object_agg(c.verdict, c.n) as v from (
           select c.layer, c.verdict, count(*)::int as n from public.draft_checks c
           join public.draft_questions d on d.id = c.draft_id and d.content_hash = c.content_hash
-          where p_batch is null or d.batch = p_batch group by c.layer, c.verdict) c group by c.layer) t),
+          where (p_batch is null or d.batch = p_batch) and (v_scope is null or d.area = any (v_scope)) group by c.layer, c.verdict) c group by c.layer) t),
     'triage_counts', (select coalesce(jsonb_object_agg(t.code, t.n), '{}'::jsonb) from (
         select tr ->> 'code' as code, count(*)::int as n
           from public.draft_questions d, lateral public.ch_draft_triage(d.id) tr
          where (p_batch is null or d.batch = p_batch) and (p_status is null or d.status = p_status) and (p_area is null or d.area = p_area)
+           and (v_scope is null or d.area = any (v_scope))
          group by tr ->> 'code') t),
     'total', (select count(*)::int from public.draft_questions d
               where (p_batch is null or d.batch = p_batch) and (p_status is null or d.status = p_status) and (p_area is null or d.area = p_area)
+                and (v_scope is null or d.area = any (v_scope))
                 and (p_triage is null or public.ch_draft_triage(d.id) ->> 'code' = p_triage)),
-    'items', coalesce((select jsonb_agg(to_jsonb(d) - 'content_hash' || jsonb_build_object(
+    'items', coalesce((select jsonb_agg(to_jsonb(d) - 'content_hash' - 'tr' - 'ord_rank' || jsonb_build_object(
         'can_review', public.ch_is_reviewer(d.area),
         'reviewer', (select email from auth.users where id = d.reviewed_by),
         'review_outdated', d.reviewed_hash is not null and d.reviewed_hash <> d.content_hash,
@@ -843,23 +952,25 @@ begin
                                 else 0 end as ord_rank
               from public.draft_questions dq
              where (p_batch is null or dq.batch = p_batch) and (p_status is null or dq.status = p_status) and (p_area is null or dq.area = p_area)
+               and (v_scope is null or dq.area = any (v_scope))
                and (p_triage is null or public.ch_draft_triage(dq.id) ->> 'code' = p_triage)
-             order by 12, dq.batch, dq.slot
+             order by ord_rank, dq.batch, dq.slot
              limit least(greatest(coalesce(p_limit, 30), 1), 100) offset greatest(coalesce(p_offset, 0), 0)) d), '[]'::jsonb));
 end
 $$;
 
--- Decisão de uma PESSOA (parte da versão da 1800): aprovar fica bloqueado quando o rascunho não tem fonte oficial (nível A a D);
--- pedir ajustes e recusar continuam livres. O resto é igual.
+-- Decisão de uma PESSOA (parte da versão da 1800): aprovar exige evidência positiva de fonte oficial (nível A a D); pedir ajustes
+-- e recusar continuam livres. A linha fica travada durante a decisão (a conferência e o gravar valem para o mesmo texto) e vale
+-- para qualquer tela ou chamada, antiga ou nova. O resto é igual.
 create or replace function public.app_draft_question_decide(p_id uuid, p_decision text, p_note text default null) returns boolean
   language plpgsql security definer set search_path = ''
 as $$
 declare
   d public.draft_questions;
-  v_triage jsonb;
+  v_ev jsonb;
 begin
   if (select auth.uid()) is null then raise exception 'Entre na sua conta.' using errcode = '28000'; end if;
-  select * into d from public.draft_questions where id = p_id;
+  select * into d from public.draft_questions where id = p_id for update;
   if not found then raise exception 'Questão não encontrada.' using errcode = 'P0002'; end if;
   if not public.ch_is_reviewer(d.area) then
     raise exception 'A revisão médica desta questão é de um revisor cadastrado na área %.', d.area using errcode = '42501';
@@ -869,9 +980,9 @@ begin
     raise exception 'Explique o motivo para pedir ajustes ou recusar.' using errcode = '22023';
   end if;
   if p_decision = 'approved' then
-    v_triage := public.ch_draft_triage(d.id);
-    if (v_triage ->> 'blocked')::boolean then
-      raise exception 'Aprovação bloqueada: este rascunho não tem fonte oficial (nível A a D) para a afirmação central. Cadastre o documento oficial em Fontes oficiais e peça a conferência de novo, ou peça ajustes.' using errcode = '22023';
+    v_ev := public.ch_draft_official_evidence(d.id);
+    if not (v_ev ->> 'ok')::boolean then
+      raise exception 'Aprovação bloqueada: este rascunho não tem fonte oficial (nível A a D) comprovada para a afirmação central. Cadastre o documento oficial em Fontes oficiais e peça a conferência de novo, ou peça ajustes.' using errcode = '22023';
     end if;
   end if;
   update public.draft_questions set status = p_decision, reviewed_by = (select auth.uid()), reviewed_at = now(),
@@ -895,6 +1006,10 @@ revoke execute on function public.ch_dc_pick(text, text, text[], text[], boolean
 revoke execute on function public.ch_dc_layers(text[]) from public, anon, authenticated;
 revoke execute on function public.ch_dc_estimate(integer[], integer[], text[]) from public, anon, authenticated;
 revoke execute on function public.ch_draft_triage(uuid) from public, anon, authenticated;
+revoke execute on function public.ch_draft_official_evidence(uuid) from public, anon, authenticated;
+revoke execute on function public.ch_draft_scope() from public, anon, authenticated;
+revoke execute on function public.ch_dc_candidates() from public, anon, authenticated;
+revoke execute on function public.ch_ai_run_cost_usd(jsonb, numeric, numeric) from public, anon, authenticated;
 revoke execute on function public.ch_ai_request_job_dead() from public, anon, authenticated;
 revoke execute on function public.ch_worker_ai_request_get(uuid) from public, anon, authenticated;
 revoke execute on function public.ch_worker_ai_request_update(uuid, jsonb) from public, anon, authenticated;

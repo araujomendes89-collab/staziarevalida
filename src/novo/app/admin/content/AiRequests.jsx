@@ -16,7 +16,7 @@ const LAYER_LABEL = { software: "Regras (sem IA)", sources: "Fontes oficiais", c
 
 /** O site novo pode estar no ar antes do SQL novo: a função ainda não existe no banco. */
 export const isMissingFunction = (error) => /could not find the function|schema cache|PGRST202|does not exist|42883/i.test(String(error?.message ?? ""));
-const MISSING = "Este recurso precisa de uma atualização do banco de dados que ainda não foi aplicada (SQL 9810). Avise quem publica o sistema; até lá, a tela continua funcionando sem o botão.";
+const MISSING = "Este recurso ainda não está disponível: o sistema está aguardando uma atualização. Avise quem cuida do sistema e tente de novo depois; o resto da tela funciona normalmente.";
 
 function MissingNotice() {
   return (
@@ -33,12 +33,13 @@ function EstimateLine({ estimate, count }) {
   if (!estimate || !count) return null;
   if (estimate.calls === 0) return <span style={caption}>Só regras de software: sem chamada de IA e sem custo.</span>;
   if (estimate.typical_usd == null) {
-    return <span style={caption}>Custo em dólares: não foi possível estimar. {estimate.note ?? ""}</span>;
+    return <span style={caption}>Custo em dólares: não foi possível estimar, e sem isso o pedido não é aceito. {estimate.note ?? ""}</span>;
   }
   return (
     <span data-testid="estimate" style={{ font: "var(--type-body-sm)" }}>
       Custo estimado: <strong>≈ {money(estimate.typical_usd)}</strong> (no máximo {money(estimate.max_usd)}) · {estimate.calls} chamada(s) de IA
       {estimate.model ? ` · ${estimate.model}` : ""}. Calculado pela tabela de preços da Central de IAs; o gasto real aparece no pedido e na Central de IAs.
+      {estimate.note ? ` ${estimate.note}` : ""}
     </span>
   );
 }
@@ -135,7 +136,8 @@ export function GenerateAnalyses({ exams = [], onSettled }) {
   if (preview.error && isMissingFunction(preview.error)) return <MissingNotice />;
   const p = preview.data;
   const blockedToday = p && p.remaining_today < (p.will_analyze ?? 0);
-  const canAsk = Boolean(p && valid && p.ai.ready && p.will_analyze > 0 && !blockedToday);
+  const priced = !p || p.estimate.calls === 0 || p.estimate.typical_usd != null;
+  const canAsk = Boolean(p && valid && p.ai.ready && priced && p.will_analyze > 0 && !blockedToday);
   const submit = () =>
     act
       .run(async () => {
@@ -216,7 +218,8 @@ export function CheckDrafts({ batches = [], batchName = (b) => b, areaOptions = 
   const p = preview.data;
   const blockedToday = p && p.remaining_today < (p.will_check ?? 0);
   const aiOk = p && (!p.ai.needed || p.ai.ready);
-  const canAsk = Boolean(p && valid && aiOk && p.will_check > 0 && !blockedToday);
+  const priced = !p || p.estimate.calls === 0 || p.estimate.typical_usd != null;
+  const canAsk = Boolean(p && valid && aiOk && priced && p.will_check > 0 && !blockedToday);
   const submit = () =>
     act
       .run(async () => {

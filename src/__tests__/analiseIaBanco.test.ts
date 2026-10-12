@@ -189,7 +189,10 @@ describe("Análise de questões: pedido pela tela", () => {
     await sql(`delete from public.ai_model_prices where model = 'claude-opus-5-5'`);
     const p = await preview(ADMIN, { p_exam: "revalida-2025-1" });
     expect(p.estimate.typical_usd).toBeNull();
-    expect(p.estimate.note).toMatch(/Sem preço cadastrado/);
+    expect(p.estimate.note).toMatch(/Falta o preço/);
+    // sem preço não há como limitar o gasto: o pedido é RECUSADO em português (não roda sem parada de segurança)
+    await expect(request(ADMIN, { p_exam: "revalida-2025-1" })).rejects.toThrow(/Pedido recusado: Falta o preço/);
+    expect(await sql(`select 1 from public.ch_ai_requests where params ->> 'exam' = 'revalida-2025-1'`)).toHaveLength(0);
     await db.service("ch_worker_ai_save_price", { p_actor: ADMIN, p_provider: "anthropic", p_model: "claude-opus-5-5", p_price: { input_per_mtok: 4, output_per_mtok: 20 } });
   });
 
@@ -297,7 +300,8 @@ describe("Conferência de rascunhos inéditos: pedido pela tela, triagem e aprov
 
   it("selo de triagem: nada conferido, reprovada, sem fonte oficial, com apontamentos, só regras, sem apontamentos; contagem e ordem", async () => {
     const t = async (id: string) => (await sql(`select public.ch_draft_triage($1) r`, [id]))[0].r;
-    expect(await t(ids[0])).toMatchObject({ code: "nao_conferida", blocked: false });
+    // rascunho nunca conferido, sem citação oficial: sem evidência positiva, aprovação bloqueada
+    expect(await t(ids[0])).toMatchObject({ code: "nao_conferida", blocked: true });
     await check(ids[1], "software", "fail", [{ severity: "critical", code: "x", detail: "d" }]);
     expect(await t(ids[1])).toMatchObject({ code: "reprovada" });
     await check(ids[2], "software", "issues", [{ severity: "major", code: "third_party_source_only", detail: "d" }]);
@@ -310,6 +314,10 @@ describe("Conferência de rascunhos inéditos: pedido pela tela, triagem e aprov
     await check(ids[4], "redteam", "issues", [{ severity: "minor", code: "y", detail: "d" }]);
     expect(await t(ids[4])).toMatchObject({ code: "com_apontamentos", blocked: false });
     await check(ids[5], "software", "pass");
+    expect(await t(ids[5])).toMatchObject({ code: "sem_fonte", blocked: true }); // só regras e nada que prove fonte oficial
+    // cita um documento cadastrado como fonte oficial vigente (nível A a D): há evidência positiva
+    await sql(`insert into public.ch_sources (title, organ, kind, version, authority_level) values ('Documento Oficial A (teste)', 'Órgão', 'final', '1', 'A')`);
+    await sql(`update public.draft_questions set source_citations = '[{"source_file":"Documento Oficial A (teste)","supported_claim":"x"}]'::jsonb where id = $1`, [ids[5]]);
     expect(await t(ids[5])).toMatchObject({ code: "so_regras", blocked: false });
     await check(ids[6], "software", "pass");
     await check(ids[6], "sources", "pass");
@@ -342,5 +350,234 @@ describe("Conferência de rascunhos inéditos: pedido pela tela, triagem e aprov
     await expect(rpc(STUDENT, "app_draft_question_decide", { p_id: ids[6], p_decision: "approved" })).rejects.toThrow(/revisor cadastrado/);
     expect(await rpc(REV_PED, "app_draft_question_decide", { p_id: ids[6], p_decision: "approved" })).toBe(true);
     expect((await sql(`select count(*)::int n from public.draft_questions where status = 'approved'`))[0].n).toBe(1);
+  });
+});
+
+describe("Revisão independente 1: correções (achados 1 a 12 do relatório da OpenAI)", () => {
+  const dids: string[] = [];
+  const dpreview = (uid: string, a: Record<string, unknown> = {}) => rpc(uid, "app_ch_draft_check_preview", { p_batch: "lote_rev1", ...a });
+  const drequest = (uid: string, a: Record<string, unknown> = {}) => rpc(uid, "app_ch_draft_check_request", { p_batch: "lote_rev1", ...a });
+  const check = (id: string, layer: string, verdict: string, findings: unknown[] = []) =>
+    db.service("ch_worker_save_draft_check", { p_draft_id: id, p_layer: layer, p_verdict: verdict, p_findings: findings, p_meta: { provider: "software", model: "regras" } });
+  const decide = (uid: string, id: string, decision: string, note?: string) => rpc(uid, "app_draft_question_decide", { p_id: id, p_decision: decision, p_note: note ?? null });
+  const cleanRequests = async () => {
+    await sql(`delete from public.ch_jobs where step in ('draft_check', 'question_analysis')`);
+    await sql(`delete from public.ch_ai_requests`);
+  };
+
+  beforeAll(async () => {
+    await cleanRequests();
+    for (let i = 1; i <= 40; i++) {
+      const area = i <= 30 ? "PEDIATRIA" : "CIRURGIA";
+      const r = await sql(
+        `insert into public.draft_questions (batch, source_id, slot, area, stem, alternatives, correct_answer, explanation, alternative_explanations, source_citations, clinical_decision, content_hash, model)
+         values ('lote_rev1', $1, $2, $3, $4, '{"A":"a1","B":"b1","C":"c1","D":"d1"}'::jsonb, 'A', 'Explicação.', '{}'::jsonb, '[]'::jsonb, 'Tratar a doença X.', $5, 'gpt-5.6-luna') returning id`,
+        [`r${i}`, i, area, `Enunciado de revisão ${i}.`, `hr${i}`]
+      );
+      dids.push(r[0].id);
+    }
+    await sql(`insert into public.ch_sources (title, organ, kind, version, authority_level) values ('Diretriz Oficial B (teste)', 'Órgão', 'final', '1', 'B'), ('Apostila de curso (teste)', 'Curso', 'final', '1', 'E')`);
+  });
+
+  // ---- achado 1
+  it("1. aprovação exige evidência POSITIVA de fonte oficial A a D: sem conferência nenhuma, sem citação oficial, bloqueia (e vale na chamada direta, de qualquer tela)", async () => {
+    const id = dids[0];
+    await expect(decide(REV_PED, id, "approved")).rejects.toThrow(/Aprovação bloqueada.*fonte oficial/); // nunca conferido
+    await sql(`update public.draft_questions set source_citations = '[{"source_file":"Apostila de curso (teste)"}]'::jsonb where id = $1`, [id]);
+    await expect(decide(REV_PED, id, "approved")).rejects.toThrow(/Aprovação bloqueada/); // só material de terceiros (nível E)
+    await sql(`update public.draft_questions set source_citations = '[{"source_file":"Diretriz Oficial B (teste)"}]'::jsonb where id = $1`, [id]);
+    await check(id, "sources", "insufficient"); // a conferência disse que falta trecho: continua bloqueado
+    await expect(decide(REV_PED, id, "approved")).rejects.toThrow(/Aprovação bloqueada/);
+    await check(id, "sources", "issues");
+    await expect(decide(REV_PED, id, "approved")).rejects.toThrow(/Aprovação bloqueada/);
+    await check(id, "sources", "pass"); // evidência positiva conferida para este texto
+    expect(await decide(REV_PED, id, "approved")).toBe(true);
+    const [row] = await sql(`select status, reviewed_hash = content_hash as same from public.draft_questions where id = $1`, [id]);
+    expect(row).toEqual({ status: "approved", same: true });
+  });
+
+  it("1. citação de documento oficial vigente cadastrado vale como evidência quando ainda não há conferência; conferência velha (texto mudou) não vale", async () => {
+    const id = dids[1];
+    await sql(`update public.draft_questions set source_citations = '[{"source_file":"Diretriz Oficial B (teste)"}]'::jsonb where id = $1`, [id]);
+    await check(id, "sources", "insufficient");
+    await sql(`update public.draft_questions set content_hash = content_hash || 'v2' where id = $1`, [id]); // o texto mudou: a conferência antiga não conta
+    expect(await decide(REV_PED, id, "approved")).toBe(true);
+    // fonte retirada de vigência: a citação deixa de ser evidência
+    const id2 = dids[2];
+    await sql(`update public.draft_questions set source_citations = '[{"source_file":"Diretriz Oficial B (teste)"}]'::jsonb where id = $1`, [id2]);
+    await sql(`update public.ch_sources set status = 'superseded' where title = 'Diretriz Oficial B (teste)'`);
+    await expect(decide(REV_PED, id2, "approved")).rejects.toThrow(/Aprovação bloqueada/);
+    await sql(`update public.ch_sources set status = 'current' where title = 'Diretriz Oficial B (teste)'`);
+  });
+
+  it("1. a decisão trava a linha (for update), para a verificação e a gravação valerem para o mesmo texto", async () => {
+    const def = (await sql(`select pg_get_functiondef('public.app_draft_question_decide(uuid, text, text)'::regprocedure) d`))[0].d as string;
+    expect(def).toMatch(/from public\.draft_questions where id = p_id for update/);
+    // o triage da lista e o bloqueio da decisão usam a MESMA regra de evidência
+    const t = (await sql(`select public.ch_draft_triage($1) r`, [dids[3]]))[0].r;
+    expect(t.blocked).toBe(true);
+    await expect(decide(REV_PED, dids[3], "approved")).rejects.toThrow(/Aprovação bloqueada/);
+  });
+
+  // ---- achado 2
+  it("2. a lista de rascunhos mostra ao revisor só as áreas dele (lotes, contagens, conferências, e-mails); administrador e editor veem tudo", async () => {
+    await check(dids[31], "software", "pass"); // um de Cirurgia
+    const ped = await rpc(REV_PED, "app_draft_questions", { p_batch: "lote_rev1", p_limit: 100 });
+    expect(ped.items.length).toBe(30);
+    expect(ped.items.every((i: any) => i.area === "PEDIATRIA")).toBe(true);
+    expect(ped.total).toBe(30);
+    expect(ped.batches.find((b: any) => b.batch === "lote_rev1").total).toBe(30);
+    expect(Object.values(ped.triage_counts).reduce((a: number, b: any) => a + b, 0)).toBe(30);
+    // pedir a área dos outros não adianta
+    const outra = await rpc(REV_PED, "app_draft_questions", { p_batch: "lote_rev1", p_area: "CIRURGIA" });
+    expect(outra.items).toEqual([]);
+    expect(outra.total).toBe(0);
+    // as conferências de outras áreas não entram nas contagens por camada
+    expect(ped.checks.software ?? {}).not.toHaveProperty("pass", expect.anything());
+    const adm = await rpc(ADMIN, "app_draft_questions", { p_batch: "lote_rev1", p_limit: 100 });
+    expect(adm.total).toBe(40);
+    expect(adm.checks.software.pass).toBe(1);
+    expect((await rpc(EDITOR, "app_draft_questions", { p_batch: "lote_rev1", p_limit: 100 })).total).toBe(40);
+    // revisor sem nenhuma área não vê nada (não é equipe)
+    await sql(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'CIRURGIA') on conflict do nothing`, [REV_CIR]);
+    const cir = await rpc(REV_CIR, "app_draft_questions", { p_batch: "lote_rev1", p_limit: 100 });
+    expect(cir.items.every((i: any) => i.area === "CIRURGIA")).toBe(true);
+    expect(cir.total).toBe(10);
+  });
+
+  // ---- achado 3
+  it("3. conferir a cota e reservar é uma operação só: o pedido pega uma trava por pessoa e tipo até o fim da transação", async () => {
+    await cleanRequests();
+    const def = (await sql(`select pg_get_functiondef(p.oid) d from pg_proc p where p.proname = 'app_ch_question_analysis_request'`))[0].d as string;
+    expect(def.indexOf("pg_advisory_xact_lock")).toBeGreaterThan(0);
+    expect(def.indexOf("pg_advisory_xact_lock")).toBeLessThan(def.indexOf("ch_ai_used_today"));
+    const defDc = (await sql(`select pg_get_functiondef(p.oid) d from pg_proc p where p.proname = 'app_ch_draft_check_request'`))[0].d as string;
+    expect(defDc.indexOf("pg_advisory_xact_lock")).toBeGreaterThan(0);
+    expect(defDc.indexOf("pg_advisory_xact_lock")).toBeLessThan(defDc.indexOf("ch_ai_used_today"));
+    // na prática: dentro da transação do pedido a trava existe (some ao fim dela)
+    const held = await as(ADMIN, async (q) => {
+      await q(`select public.app_ch_question_analysis_request(p_exam => 'revalida-2024-1', p_count => 2)`);
+      return (await q(`select count(*)::int n from pg_locks where locktype = 'advisory' and granted and pid = pg_backend_pid()`))[0].n;
+    });
+    expect(held).toBeGreaterThan(0);
+    // e a cota continua certa depois dos dois tipos de pedido
+    expect((await preview_qa(ADMIN, "revalida-2024-1")).used_today).toBe(2);
+    await cleanRequests();
+  });
+  const preview_qa = (uid: string, exam: string) => rpc(uid, "app_ch_question_analysis_preview", { p_exam: exam });
+
+  // ---- achado 4 e 11
+  it("4. sem preço ou sem configuração salva da função, o pedido é RECUSADO em português (não roda sem parada de segurança)", async () => {
+    await cleanRequests();
+    // análise: função sem configuração salva
+    const saved = (await sql(`select * from public.ai_functions where key = 'engenharia_reversa'`))[0];
+    await sql(`delete from public.ai_functions where key = 'engenharia_reversa'`);
+    try {
+      expect((await preview_qa(ADMIN, "revalida-2024-2")).ai.reason).toMatch(/ainda não foi configurada na Central de IAs/);
+      await expect(rpc(ADMIN, "app_ch_question_analysis_request", { p_exam: "revalida-2024-2", p_count: 1 })).rejects.toThrow(/ainda não foi configurada/);
+    } finally {
+      await db.service("ch_worker_ai_save_function", { p_actor: ADMIN, p_key: "engenharia_reversa", p_config: { mode: saved.mode, primary_ref: saved.primary_ref, fallback_ref: saved.fallback_ref, reviewers: saved.reviewers, care: saved.care } });
+    }
+    // a reserva paga sem preço também recusa
+    await sql(`delete from public.ai_model_prices where model = 'gpt-6.1-sol'`);
+    try {
+      await expect(rpc(ADMIN, "app_ch_question_analysis_request", { p_exam: "revalida-2024-2", p_count: 1 })).rejects.toThrow(/Pedido recusado: Falta o preço/);
+      await expect(drequest(ADMIN, { p_layers: ["redteam"] })).rejects.toThrow(/Pedido recusado: Falta o preço/);
+      // só regras não gasta nada: segue
+      expect(await drequest(ADMIN, { p_count: 2 })).toMatchObject({ duplicate: false });
+    } finally {
+      await db.service("ch_worker_ai_save_price", { p_actor: ADMIN, p_provider: "openai", p_model: "gpt-6.1-sol", p_price: { input_per_mtok: 2, output_per_mtok: 10 } });
+    }
+    await cleanRequests();
+  });
+
+  it("11. a estimativa e o teto da conferência valem pelo pior caso das IAs ligadas (a conferência troca de empresa), nunca zero se pode pagar", async () => {
+    await cleanRequests();
+    const ver = (await sql(`select * from public.ai_functions where key = 'verificacao'`))[0];
+    // Verificação em Ollama (custa zero), mas há IAs pagas ligadas que a troca de empresa pode escolher
+    await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "ollama", p_enabled: true });
+    await db.service("ch_worker_ai_save_function", { p_actor: ADMIN, p_key: "verificacao", p_config: { mode: "sozinha", primary_ref: { provider: "ollama", model: "qwen3:8b" }, fallback_ref: null, reviewers: [], care: "caprichado" } });
+    try {
+      const p = await dpreview(ADMIN, { p_count: 5, p_layers: ["redteam"] });
+      expect(p.estimate.typical_usd).toBeGreaterThan(0);
+      expect(p.estimate.max_usd).toBeGreaterThan(p.estimate.typical_usd);
+      expect(p.estimate.note).toMatch(/pior caso entre as IAs ligadas/);
+      const r = await drequest(ADMIN, { p_count: 5, p_layers: ["redteam"] });
+      const [row] = await sql(`select estimate_usd, ceiling_usd from public.ch_ai_requests where id = $1`, [r.id]);
+      expect(Number(row.estimate_usd)).toBeGreaterThan(0);
+      expect(Number(row.ceiling_usd)).toBeGreaterThan(Number(row.estimate_usd));
+    } finally {
+      await db.service("ch_worker_ai_save_function", { p_actor: ADMIN, p_key: "verificacao", p_config: { mode: ver.mode, primary_ref: ver.primary_ref, fallback_ref: ver.fallback_ref, reviewers: ver.reviewers, care: ver.care } });
+      await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "ollama", p_enabled: false });
+    }
+    await cleanRequests();
+  });
+
+  // ---- achado 5 e 8 (banco)
+  it("5. o cancelamento vence a passagem para 'analisando'; estado final não vira outro estado final", async () => {
+    await cleanRequests();
+    const r = await rpc(ADMIN, "app_ch_question_analysis_request", { p_exam: "revalida-2024-2", p_count: 2 });
+    await rpc(ADMIN, "app_ch_ai_request_cancel", { p_id: r.id });
+    expect(await db.service("ch_worker_ai_request_update", { p_request_id: r.id, p_patch: { status: "analisando" } })).toBe(false);
+    expect((await sql(`select status from public.ch_ai_requests where id = $1`, [r.id]))[0].status).toBe("falhou");
+    // concluído não vira falhou, falhou não vira concluído, e nenhum registro de resultado extra nasce
+    expect(await db.service("ch_worker_ai_request_update", { p_request_id: r.id, p_patch: { status: "concluido", done_count: 2 } })).toBe(false);
+    const r2 = await rpc(ADMIN, "app_ch_question_analysis_request", { p_exam: "revalida-2024-2", p_count: 2, p_only_missing: false });
+    expect(await db.service("ch_worker_ai_request_update", { p_request_id: r2.id, p_patch: { status: "concluido", done_count: 2 } })).toBe(true);
+    expect(await db.service("ch_worker_ai_request_update", { p_request_id: r2.id, p_patch: { status: "falhou", message: "x" } })).toBe(false);
+    expect((await sql(`select status, message from public.ch_ai_requests where id = $1`, [r2.id]))[0]).toMatchObject({ status: "concluido", message: null });
+    expect((await sql(`select count(*)::int n from public.ch_audit where action = 'question_analysis.result' and target = $1`, [r2.id]))[0].n).toBe(1);
+    await cleanRequests();
+  });
+
+  // ---- achado 7 (cota)
+  it("7. pedido que falhou DEPOIS de chamar a IA conta a cota inteira (o gasto não devolve a cota)", async () => {
+    await cleanRequests();
+    const r = await rpc(ADMIN, "app_ch_question_analysis_request", { p_exam: "revalida-2024-2", p_count: 4 });
+    await db.service("ch_worker_ai_request_update", { p_request_id: r.id, p_patch: { status: "falhou", message: "x", done_count: 0 } });
+    expect((await preview_qa(ADMIN, "revalida-2024-2")).used_today).toBe(0); // falhou sem chamar a IA: cota volta
+    const r2 = await rpc(ADMIN, "app_ch_question_analysis_request", { p_exam: "revalida-2024-2", p_count: 4, p_only_missing: false });
+    await db.service("ch_worker_ai_request_update", { p_request_id: r2.id, p_patch: { status: "falhou", message: "x", done_count: 0, calls: 1, cost_usd: 0.04 } });
+    expect((await preview_qa(ADMIN, "revalida-2024-2")).used_today).toBe(4);
+    await cleanRequests();
+  });
+
+  // ---- achado 9
+  it("9. 'mais problemáticos primeiro' escolhe a PÁGINA pela ordem do selo (um reprovado do fim do lote vem na primeira página)", async () => {
+    await check(dids[29], "software", "fail", [{ severity: "critical", code: "x", detail: "d" }]); // último de Pediatria (nº 30)
+    const page = await rpc(ADMIN, "app_draft_questions", { p_batch: "lote_rev1", p_area: "PEDIATRIA", p_limit: 3, p_offset: 0, p_order: "problematicos" });
+    expect(page.items[0]).toMatchObject({ slot: 30, triage: "reprovada" });
+    const next = await rpc(ADMIN, "app_draft_questions", { p_batch: "lote_rev1", p_area: "PEDIATRIA", p_limit: 3, p_offset: 3, p_order: "problematicos" });
+    expect(next.items.map((i: any) => i.slot)).not.toContain(30);
+    const clean = await rpc(ADMIN, "app_draft_questions", { p_batch: "lote_rev1", p_area: "PEDIATRIA", p_limit: 2, p_order: "limpos" });
+    expect(clean.items).toHaveLength(2);
+  });
+
+  // ---- achado 10
+  it("10. quem deixou de ser revisor (ou administrador) não lê mais os próprios pedidos nem direto na tabela", async () => {
+    await cleanRequests();
+    await sql(`delete from public.ch_reviewer_areas where user_id = $1`, [REV_CIR]);
+    await sql(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'CIRURGIA')`, [REV_CIR]);
+    await rpc(REV_CIR, "app_ch_draft_check_request", { p_batch: "lote_rev1", p_count: 2 });
+    expect(await as(REV_CIR, (q) => q(`select id from public.ch_ai_requests`))).toHaveLength(1);
+    await sql(`delete from public.ch_reviewer_areas where user_id = $1`, [REV_CIR]);
+    expect(await as(REV_CIR, (q) => q(`select id from public.ch_ai_requests`))).toEqual([]);
+    expect((await as(ADMIN, (q) => q(`select id from public.ch_ai_requests`))).length).toBe(1);
+    await cleanRequests();
+  });
+
+  // ---- achado 12
+  it("12. pedido igual de outra pessoa NÃO é tratado como duplicado: cada pessoa recebe e vê o seu próprio pedido", async () => {
+    await cleanRequests();
+    await sql(`insert into public.ch_reviewer_areas (user_id, area_code) values ($1, 'PEDIATRIA') on conflict do nothing`, [REV_CIR]);
+    const a = await rpc(REV_PED, "app_ch_question_analysis_request", { p_exam: "revalida-2024-2", p_count: 2, p_area: "PEDIATRIA" });
+    const b = await rpc(REV_CIR, "app_ch_question_analysis_request", { p_exam: "revalida-2024-2", p_count: 2, p_area: "PEDIATRIA" });
+    expect(a.duplicate).toBe(false);
+    expect(b.duplicate).toBe(false);
+    expect(b.id).not.toBe(a.id);
+    expect((await rpc(REV_CIR, "app_ch_ai_requests", {})).map((x: any) => x.id)).toEqual([b.id]);
+    // o mesmo pedido da MESMA pessoa continua sem duplicar
+    expect(await rpc(REV_PED, "app_ch_question_analysis_request", { p_exam: "revalida-2024-2", p_count: 2, p_area: "PEDIATRIA" })).toMatchObject({ duplicate: true, id: a.id });
+    await cleanRequests();
   });
 });

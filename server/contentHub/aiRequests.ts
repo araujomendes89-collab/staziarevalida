@@ -11,7 +11,12 @@
  *     rascunhos é só triagem; o gabarito oficial não é tocado (a conferência por software barra a análise que o contesta);
  *   - IA desligada, função sem IA ou teto de gasto deixam o pedido "pendente" e a tarefa parada, sem gastar tentativa;
  *   - parada de segurança: se o gasto real passar do teto do pedido (o dobro do pior caso estimado), o processamento para;
- *   - tentativa repetida não paga de novo: o que já foi gravado não é refeito (o pedido só roda o que ainda falta).
+ *   - tentativa repetida não paga de novo: o que este pedido já fez fica no ponto de retomada (ids e gasto), gravado logo depois
+ *     de cada chamada paga, e não é refeito; o gasto das tentativas anteriores conta no teto;
+ *   - cancelar vence: se o pedido deixou de estar ativo (cancelado ou fechado), a passagem para "analisando" é recusada pelo
+ *     banco e o processamento para sem chamar a IA;
+ *   - parada por falta de configuração (IA desligada, teto da Central) com parte feita deixa o pedido "pendente" e retomável;
+ *     falha de item ou parada de segurança do pedido encerra com o que foi feito.
  */
 import { runQuestionAnalysis } from "./questionAnalysis";
 import { runDraftChecks, type Layer, type RunReport } from "./draftChecks";
@@ -35,6 +40,15 @@ interface RequestRow {
 const FINAL = ["concluido", "falhou"];
 const num = (v: unknown) => (v == null ? null : Number.isFinite(Number(v)) ? Number(v) : null);
 
+interface Resume {
+  cost_usd?: number;
+  calls?: number;
+  /** Análise: questões que este pedido já fez. */
+  done_ids?: string[];
+  /** Conferência: rascunhos que este pedido já conferiu, por camada. */
+  layer_done?: Record<string, string[]>;
+}
+
 export async function runAiRequest(
   deps: PipelineDeps,
   job: Job,
@@ -43,80 +57,122 @@ export async function runAiRequest(
   const requestId = job.scope_key.startsWith("ai_request:") ? job.scope_key.slice("ai_request:".length) : "";
   if (!requestId) throw new AiRequestFailed("Tarefa sem identificação do pedido.");
   const db = deps.db;
-  const update = (patch: Record<string, unknown>) => db.service("ch_worker_ai_request_update", { p_request_id: requestId, p_patch: patch });
+  const update = (patch: Record<string, unknown>) => db.service<boolean | null>("ch_worker_ai_request_update", { p_request_id: requestId, p_patch: patch });
   const row = await db.service<RequestRow | null>("ch_worker_ai_request_get", { p_request_id: requestId });
   if (!row) throw new AiRequestFailed("Pedido não encontrado.");
   if (FINAL.includes(row.status)) return; // já terminou ou foi cancelado: nada a fazer
   if (row.kind !== (job.step as string)) throw new AiRequestFailed("O pedido não é desta etapa.");
 
-  await update({ status: "analisando", message: null });
-  const ceiling = num(row.ceiling_usd);
-  const before = Number((job.checkpoint as { cost_usd?: number } | undefined)?.cost_usd ?? 0); // gasto de tentativas anteriores
-  const mockProvider = deps.ai.provider?.isMock ? deps.ai.provider : null;
-  const cp = (job.checkpoint ?? {}) as { started?: boolean; cost_usd?: number; calls?: number };
+  // o cancelamento vence: se o pedido deixou de estar ativo entre a leitura e agora, o banco recusa e aqui para, sem chamar a IA
+  if ((await update({ status: "analisando", message: null })) !== true) return;
 
-  const finish = async (done: number, calls: number, cost: number, summary: Record<string, unknown>, pending: string | null, failed: number) => {
+  const cp = (job.checkpoint ?? {}) as Resume;
+  const ceiling = num(row.ceiling_usd);
+  const prior = { cost: Number(cp.cost_usd ?? 0) || 0, calls: Number(cp.calls ?? 0) || 0 }; // de tentativas anteriores
+  const live = { cost: 0, calls: 0 }; // desta tentativa
+  const total = row.item_count;
+  const mockProvider = deps.ai.provider?.isMock ? deps.ai.provider : null;
+  const maxCostUsd = ceiling == null ? null : ceiling - prior.cost;
+
+  const doneIds = new Set<string>(cp.done_ids ?? []);
+  const layerDone: Record<string, Set<string>> = Object.fromEntries(Object.entries(cp.layer_done ?? {}).map(([k, v]) => [k, new Set(v)]));
+  const layers = (row.params.layers ?? ["software"]).filter((l) => ["software", "sources", "currency", "redteam"].includes(l)) as Layer[];
+  let pendingDone = 0; // rascunhos que já passaram por todas as camadas (conferência)
+
+  const resume = () => ({
+    cost_usd: prior.cost + live.cost,
+    calls: prior.calls + live.calls,
+    done_ids: [...doneIds],
+    layer_done: Object.fromEntries(Object.entries(layerDone).map(([k, v]) => [k, [...v]])),
+  });
+  const doneNow = () => (row.kind === "question_analysis" ? doneIds.size : pendingDone);
+  // o gasto e o que já foi feito vão para o ponto de retomada e para o pedido LOGO depois de cada chamada paga (antes de gravar o
+  // resultado), para uma falha seguinte não repetir a cobrança nem esquecer o gasto
+  const persist = async () => {
+    await io.checkpoint(resume());
+    await update({ done_count: doneNow(), calls: prior.calls + live.calls, cost_usd: prior.cost + live.cost });
+  };
+  const onSpend = async (d: { calls: number; costUsd: number }) => {
+    live.calls += d.calls;
+    live.cost += d.costUsd;
+    await persist();
+  };
+
+  const finish = async (o: { done: number; failed: number; pending: string | null; stop: boolean; retryable: boolean; summary: Record<string, unknown> }) => {
+    const calls = prior.calls + live.calls;
+    const cost = prior.cost + live.cost;
     io.metrics.ai_calls = calls;
     io.metrics.cost_usd = cost;
-    const total = row.item_count;
-    const patch = { done_count: done, skipped_count: failed, calls, cost_usd: cost, summary };
-    if (done < total && pending && done === 0 && failed === 0) {
-      // nada foi feito por falta de configuração: pendente, a tarefa espera
-      await update({ ...patch, status: "pendente", message: pending.slice(0, 1000) });
-      throw new AiRequestPending(pending);
+    const patch = { done_count: o.done, skipped_count: o.failed, calls, cost_usd: cost, summary: o.summary };
+    if (o.retryable && o.pending) {
+      // falta de configuração (IA desligada, teto da Central), com ou sem parte feita: espera e continua de onde parou
+      await update({ ...patch, status: "pendente", message: o.pending.slice(0, 1000) });
+      throw new AiRequestPending(o.pending);
     }
-    if (done === 0 && failed > 0) {
-      const why = pending ?? "A IA não conseguiu concluir nenhum item.";
+    if (o.done === 0 && (o.failed > 0 || o.stop || o.pending)) {
+      const why = o.pending ?? "A IA não conseguiu concluir nenhum item.";
       await update({ ...patch, status: "falhou", message: why.slice(0, 1000) });
       throw new AiRequestFailed(why);
     }
-    const message = done < total ? `${done} de ${total} concluídos. ${pending ?? ""}`.trim() : null;
+    const left = total - o.done;
+    const message = o.pending ? `${o.done} de ${total} concluídos. ${o.pending}` : left > 0 ? `${o.done} de ${total} concluídos; ${left} já estavam prontos ou deixaram de valer e foram pulados.` : null;
     await update({ ...patch, status: "concluido", message: message?.slice(0, 1000) ?? null });
   };
 
   if (row.kind === "question_analysis") {
     const report = await runQuestionAnalysis(
-      { db, mockProvider, aiMaker: deps.aiMaker, log: deps.log },
+      { db, mockProvider, aiMaker: deps.aiMaker, log: deps.log, onSpend },
       {
         ids: row.target_ids,
-        // na repetição de uma tentativa que caiu no meio, o que já foi gravado não se refaz
-        onlyMissing: cp.started ? true : row.params.only_missing !== false,
-        maxCostUsd: ceiling == null ? null : ceiling - before,
+        // o que este pedido já refez numa tentativa anterior não entra de novo (nem conta como feito por engano)
+        skipIds: [...doneIds],
+        onlyMissing: row.params.only_missing !== false,
+        maxCostUsd,
         onProgress: async (r) => {
-          await io.checkpoint({ started: true, cost_usd: before + (r.spend.costUsd ?? 0), calls: r.spend.calls });
-          await update({ done_count: r.saved, calls: r.spend.calls, cost_usd: before + (r.spend.costUsd ?? 0) });
+          for (const id of r.savedIds) doneIds.add(id);
+          await persist();
         },
       }
     );
-    await io.checkpoint({ started: true, cost_usd: before + (report.spend.costUsd ?? 0), calls: report.spend.calls });
-    // a tentativa repetida só conta o que falta: o que já estava gravado entra como feito
-    const done = Math.min(row.item_count, report.saved + Math.max(row.item_count - report.considered, 0));
-    await finish(done, report.spend.calls, before + (report.spend.costUsd ?? 0), { verdicts: report.verdicts }, report.pending ?? null, report.skipped);
+    for (const id of report.savedIds) doneIds.add(id);
+    await io.checkpoint(resume());
+    await finish({
+      done: doneIds.size, failed: report.skipped, pending: report.pending ?? null, stop: report.stop === "seguranca",
+      retryable: Boolean(report.pending) && !report.stop && report.skipped === 0, summary: { verdicts: report.verdicts },
+    });
     return;
   }
 
   // conferência dos rascunhos: software sempre; fontes, atualidade e revisão clínica se pedidas
-  const layers = (row.params.layers ?? ["software"]).filter((l) => ["software", "sources", "currency", "redteam"].includes(l)) as Layer[];
+  const track = (rs: RunReport[]) => {
+    for (const r of rs) {
+      const set = (layerDone[r.layer] ??= new Set<string>());
+      for (const id of r.savedIds) set.add(id);
+    }
+    // rascunhos que passaram por TODAS as camadas pedidas: o que não precisa de trabalho nesta camada já está pronto
+    pendingDone = Math.min(total, ...rs.map((r) => total - Math.max(r.considered - r.saved, 0)));
+  };
   const reports = await runDraftChecks(
-    { db, mockProvider, aiMaker: deps.aiMaker, log: deps.log, embedder: deps.embedder, crossCompany: true },
+    { db, mockProvider, aiMaker: deps.aiMaker, log: deps.log, embedder: deps.embedder, crossCompany: true, onSpend },
     {
       layers,
       ids: row.target_ids,
-      force: cp.started ? false : row.params.recheck === true,
-      maxCostUsd: ceiling == null ? null : ceiling - before,
+      force: row.params.recheck === true,
+      skip: Object.fromEntries(Object.entries(layerDone).map(([k, v]) => [k, [...v]])) as Partial<Record<Layer, string[]>>,
+      maxCostUsd,
       onProgress: async (rs: RunReport[]) => {
-        const cost = before + rs.reduce((a, r) => a + (r.spend.costUsd ?? 0), 0);
-        await io.checkpoint({ started: true, cost_usd: cost, calls: rs.reduce((a, r) => a + r.spend.calls, 0) });
-        await update({ done_count: Math.max(0, ...rs.map((r) => r.saved)), calls: rs.reduce((a, r) => a + r.spend.calls, 0), cost_usd: cost });
+        track(rs);
+        await persist();
       },
     }
   );
-  const calls = reports.reduce((a, r) => a + r.spend.calls, 0);
-  const cost = before + reports.reduce((a, r) => a + (r.spend.costUsd ?? 0), 0);
-  await io.checkpoint({ started: true, cost_usd: cost, calls });
-  const pending = reports.find((r) => r.pending)?.pending ?? null;
-  // feito = rascunhos que passaram por todas as camadas pedidas (o que já valia antes também conta)
-  const done = reports.every((r) => !r.pending) ? row.item_count : Math.min(...reports.map((r) => r.saved + Math.max(row.item_count - r.considered, 0)));
+  track(reports);
+  await io.checkpoint(resume());
+  const stopped = reports.find((r) => r.pending);
+  const pending = stopped?.pending ?? null;
   const summary = { layers: Object.fromEntries(reports.map((r) => [r.layer, { saved: r.saved, verdicts: r.verdicts, pending: r.pending ?? null }])) };
-  await finish(done, calls, cost, summary, pending, 0);
+  await finish({
+    done: stopped ? pendingDone : total, failed: reports.some((r) => r.failed) ? 1 : 0, pending, stop: reports.some((r) => r.stop === "seguranca"),
+    retryable: Boolean(stopped) && !reports.some((r) => r.stop || r.failed), summary,
+  });
 }

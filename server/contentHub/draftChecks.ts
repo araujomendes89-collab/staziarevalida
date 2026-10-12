@@ -170,6 +170,8 @@ export interface RunDeps {
   embedder?: Embedder | null;
   /** Só para testes e desenvolvimento: provedor de simulação já pronto (o do processamento da Central). */
   mockProvider?: AiProvider | null;
+  /** Chamado logo depois de cada chamada paga à IA (antes de gravar qualquer coisa), para o gasto não se perder numa falha. */
+  onSpend?: (delta: { calls: number; costUsd: number }) => Promise<void> | void;
   /**
    * Conferência por outra empresa (decisão do dono, 2026-10-10): a IA que confere é da função Verificação, mas nunca da mesma
    * empresa de quem criou o rascunho; se a Verificação for da mesma empresa, troca sozinha (maestroCheckerProvider). Usado nos
@@ -195,6 +197,7 @@ async function callAi<T>(deps: RunDeps, provider: AiProvider, key: PromptKey, pa
   spend.inputTokens += r.inputTokens ?? 0;
   spend.outputTokens += r.outputTokens ?? 0;
   if (r.costUsd != null) spend.costUsd = (spend.costUsd ?? 0) + r.costUsd;
+  await deps.onSpend?.({ calls: 1, costUsd: r.costUsd ?? 0 });
   await deps.db.service("ch_worker_log_ai_run", {
     p_run: { document_id: null, step: `draft_check:${layer}`, provider: r.provider, model: r.model, prompt_id: prompt.id, prompt_version: prompt.version, schema_version: prompt.version, input_hash: inputHash, status: "ok", output: r.output, input_tokens: r.inputTokens, output_tokens: r.outputTokens, cost_usd: r.costUsd, latency_ms: r.latencyMs },
   });
@@ -332,6 +335,8 @@ export interface RunOptions {
   ids?: string[];
   /** Com `ids`: confere de novo mesmo as camadas que já valem para o texto atual. */
   force?: boolean;
+  /** Com `ids`: rascunhos que este pedido já conferiu, por camada, numa tentativa anterior (não entram de novo). */
+  skip?: Partial<Record<Layer, string[]>>;
   /** Parada de segurança: para quando o gasto real somado passa deste valor em dólares. */
   maxCostUsd?: number | null;
   /** Chamado depois de cada rascunho conferido numa camada (andamento do pedido). */
@@ -342,6 +347,12 @@ export interface RunReport {
   layer: Layer;
   considered: number;
   saved: number;
+  /** Rascunhos gravados nesta execução, nesta camada. */
+  savedIds: string[];
+  /** Parou pela parada de segurança do pedido. */
+  stop?: "seguranca";
+  /** Parou por falha da chamada (não por falta de configuração). */
+  failed?: boolean;
   verdicts: Record<string, number>;
   pending?: string;
   spend: Spend;
@@ -360,11 +371,15 @@ export async function runDraftChecks(deps: RunDeps, options: RunOptions): Promis
   const officialSources = await deps.db.service<{ title: string }[]>("ch_worker_official_sources");
   const officialFiles = new Set(officialSources.map((s) => s.title));
   for (const layer of options.layers) {
-    const report: RunReport = { layer, considered: 0, saved: 0, verdicts: {}, spend: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: null } };
+    const report: RunReport = { layer, considered: 0, saved: 0, savedIds: [], verdicts: {}, spend: { calls: 0, inputTokens: 0, outputTokens: 0, costUsd: null } };
     reports.push(report);
     const drafts = options.ids
       ? await deps.db.service<DraftRow[]>("ch_worker_drafts_for_check_ids", { p_layer: layer, p_ids: options.ids, p_force: options.force ?? false })
       : await deps.db.service<DraftRow[]>("ch_worker_drafts_for_check", { p_layer: layer, p_limit: options.limit ?? 50, p_batch: options.batch ?? null });
+    if (options.skip?.[layer]?.length) {
+      const skip = new Set(options.skip[layer]);
+      for (let i = drafts.length - 1; i >= 0; i--) if (skip.has(drafts[i].id)) drafts.splice(i, 1);
+    }
     report.considered = drafts.length;
     if (!drafts.length) continue;
 
@@ -377,6 +392,7 @@ export async function runDraftChecks(deps: RunDeps, options: RunOptions): Promis
       const spentTotal = reports.reduce((a, r) => a + (r.spend.costUsd ?? 0), 0);
       if (!options.dryRun && options.maxCostUsd != null && spentTotal > options.maxCostUsd) {
         report.pending = `Parada de segurança: o gasto (US$ ${spentTotal.toFixed(2)}) passou do limite deste pedido (US$ ${options.maxCostUsd.toFixed(2)}).`;
+        report.stop = "seguranca";
         break;
       }
       if (options.dryRun) {
@@ -415,12 +431,14 @@ export async function runDraftChecks(deps: RunDeps, options: RunOptions): Promis
             break;
           }
           report.pending = `Falha na chamada (${(error as Error).message.slice(0, 160)})`;
+          report.failed = true;
           break;
         }
         meta = { provider: report.spend.calls > before ? who.provider : (provider?.name ?? "software"), model: report.spend.calls > before ? who.model : "sem chamada de IA", prompt_version: CHECKS_VERSION };
       }
       await deps.db.service("ch_worker_save_draft_check", { p_draft_id: d.id, p_layer: layer, p_verdict: result.verdict, p_findings: result.findings, p_meta: meta });
       report.saved++;
+      report.savedIds.push(d.id);
       report.verdicts[result.verdict] = (report.verdicts[result.verdict] ?? 0) + 1;
       await options.onProgress?.(reports);
     }

@@ -44,7 +44,7 @@ const opt = (id: string, over = {}) => ({
 const respond = (req: StructuredRequest): unknown => {
   const doc = JSON.parse(req.input.match(/<documento>\n([\s\S]*)\n<\/documento>/)![1]);
   if (req.promptId === "solve") return { answer: doc.alternativas ? "A" : "A", certainty: "high", rationale: "simulação", ambiguity: "" };
-  if (req.promptId === "redteam") return { issues: [{ severity: "minor", kind: "wording", where: "enunciado", detail: "Conferir a redação.", basis: "inconsistency" }] };
+  if (req.promptId === "redteam") return { issues: [{ severity: "minor", kind: "other", where: "enunciado", detail: "Conferir a redação.", basis: "text_internal" }] };
   const official = doc.gabarito_oficial as string;
   return {
     question_core: "Reconhecer o quadro e indicar a conduta de primeira escolha.",
@@ -225,7 +225,7 @@ describe("Worker: conferência dos rascunhos pedida pela tela", () => {
     const list = await rpc("app_draft_questions", { p_batch: "lote_w", p_limit: 10 });
     const by = Object.fromEntries(list.items.map((i: any) => [i.source_id, i]));
     expect(by.w1).toMatchObject({ triage: "sem_fonte", blocked_no_source: true });
-    expect(by.w4).toMatchObject({ triage: "nao_conferida", blocked_no_source: false });
+    expect(by.w4).toMatchObject({ triage: "nao_conferida", blocked_no_source: true }); // sem conferência nem citação oficial: sem evidência, aprovação bloqueada
     // nada aprovado nem publicado, e a revisão automática antiga do motor não foi tocada
     expect((await sql(`select count(*)::int n from public.draft_questions where status <> 'awaiting_medical_review' or reviewed_by is not null`))[0].n).toBe(0);
     expect((await sql(`select ai_review from public.draft_questions where id = $1`, [ids[0]]))[0].ai_review).toEqual({ status: "APPROVED_FOR_PDF" });
@@ -260,5 +260,118 @@ describe("Worker: conferência dos rascunhos pedida pela tela", () => {
     await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: "anthropic", p_enabled: true });
     invalidateAiConfig(db);
     await sql(`update public.ch_ai_requests set status = 'falhou' where id = $1`, [r.id]);
+  });
+});
+
+describe("Revisão independente 1: correções no processamento (achados 5 a 8)", () => {
+  const withMaker = (maker: (ref: any) => any): PipelineDeps => ({ ...realDeps(), aiMaker: maker }) as PipelineDeps;
+  const jobOf = async (requestId: string) => (await sql(`select j.* from public.ch_jobs j join public.ch_ai_requests r on r.job_id = j.id where r.id = $1`, [requestId]))[0];
+  const allEnabled = async (on: boolean) => {
+    for (const id of ["anthropic", "openai"]) await db.service("ch_worker_ai_set_provider", { p_actor: ADMIN, p_provider: id, p_enabled: on });
+    invalidateAiConfig(db);
+  };
+
+  it("5. se o pedido é cancelado entre a leitura e a passagem para 'analisando', o processamento para: nenhuma chamada de IA, o cancelamento fica", async () => {
+    const r = await rpc("app_ch_question_analysis_request", { p_exam: "revalida-2025-1", p_count: 2 });
+    const stale = new Proxy(db, {
+      get(target, prop, receiver) {
+        if (prop !== "service") return Reflect.get(target, prop, receiver);
+        return async (fn: string, args: Record<string, unknown> = {}) => {
+          const out = await target.service(fn, args);
+          // a leitura devolve o pedido ainda "na fila"; só depois a pessoa cancela
+          if (fn === "ch_worker_ai_request_get") await rpc("app_ch_ai_request_cancel", { p_id: r.id });
+          return out;
+        };
+      },
+    }) as ContentDb;
+    const n = seen.length;
+    await createContentHubWorker({ ...realDeps(), db: stale } as PipelineDeps).drain();
+    expect(seen.length).toBe(n);
+    const row = await requestRow(r.id);
+    expect(row).toMatchObject({ status: "falhou", done_count: 0, calls: 0, message: "Pedido cancelado antes de começar." });
+    expect((await jobOf(r.id)).status).toBe("succeeded");
+    expect((await sql(`select count(*)::int n from public.question_analysis qa where qa.question_id = any ($1)`, [row.target_ids]))[0].n).toBe(0);
+  });
+
+  it("6. retomada de 'refazer': o que este pedido já refez não entra de novo, o que tinha análise antiga NÃO conta como feito, e o gasto soma", async () => {
+    const r = await rpc("app_ch_question_analysis_request", { p_exam: "revalida-2021", p_count: 4, p_only_missing: false });
+    const row = await requestRow(r.id);
+    const analyzed = (await sql(`select count(*)::int n from public.question_analysis where is_current and question_id = any ($1)`, [row.target_ids]))[0].n;
+    expect(analyzed).toBe(4); // as 4 já tinham análise: o pedido é para refazer
+    // uma tentativa anterior refez a primeira e caiu (gasto e ponto de retomada gravados)
+    await sql(`update public.ch_jobs set checkpoint = $2::jsonb where id = $1`, [row.job_id, JSON.stringify({ done_ids: [row.target_ids[0]], cost_usd: 0.05, calls: 1 })]);
+    await sql(`delete from public.ch_ai_runs`); // respostas iguais ficam guardadas: parte do zero para ver as chamadas
+    const n = seen.length;
+    await drain(realDeps());
+    expect(seen.length - n).toBe(3); // só as outras 3
+    const done = await requestRow(r.id);
+    expect(done).toMatchObject({ status: "concluido", done_count: 4, calls: 4, message: null });
+    expect(Number(done.cost_usd)).toBeCloseTo(0.05 + 3 * 0.044, 4);
+    expect((await sql(`select count(*)::int n from public.question_analysis where question_id = $1 and version > 1`, [row.target_ids[0]]))[0].n).toBe(0); // a primeira não foi refeita
+    expect((await sql(`select count(*)::int n from public.question_analysis where question_id = $1 and version > 1`, [row.target_ids[1]]))[0].n).toBe(1);
+  });
+
+  it("7. falha depois de uma chamada paga: o gasto e as chamadas já estão no ponto de retomada e no pedido, e a nova tentativa não paga de novo nem os esquece", async () => {
+    const r = await rpc("app_ch_draft_check_request", { p_batch: "lote_w", p_count: 1, p_layers: ["software", "redteam"], p_recheck: true });
+    await sql(`delete from public.ch_ai_runs`);
+    let boom = true;
+    const flaky = new Proxy(db, {
+      get(target, prop, receiver) {
+        if (prop !== "service") return Reflect.get(target, prop, receiver);
+        return async (fn: string, args: Record<string, unknown> = {}) => {
+          if (boom && fn === "ch_worker_save_draft_check" && args.p_layer === "redteam") throw new Error("o banco caiu na hora de gravar");
+          return target.service(fn, args);
+        };
+      },
+    }) as ContentDb;
+    const n = seen.length;
+    await createContentHubWorker({ ...realDeps(), db: flaky } as PipelineDeps).drain();
+    const paid = seen.length - n;
+    expect(paid).toBe(2); // às cegas e com o gabarito
+    const after = await requestRow(r.id);
+    const cp = (await jobOf(r.id)).checkpoint;
+    expect(after.status).toBe("analisando");
+    expect(after.calls).toBe(2);
+    expect(Number(after.cost_usd)).toBeGreaterThan(0);
+    expect(cp.calls).toBe(2);
+    expect(cp.cost_usd).toBeCloseTo(Number(after.cost_usd), 6);
+    // nova tentativa (o gatilho de espera da fila é pulado)
+    boom = false;
+    await sql(`update public.ch_jobs set run_after = now() where id = $1`, [(await jobOf(r.id)).id]);
+    await createContentHubWorker({ ...realDeps(), db: flaky } as PipelineDeps).drain();
+    const end = await requestRow(r.id);
+    expect(end.status).toBe("concluido");
+    expect(end.calls).toBeGreaterThanOrEqual(2); // nunca menos que o já gasto
+    expect(Number(end.cost_usd)).toBeGreaterThanOrEqual(Number(after.cost_usd));
+    expect(seen.length - n).toBeLessThanOrEqual(paid); // as respostas pagas ficaram guardadas: nada foi cobrado de novo
+  });
+
+  it("8. parada por IA desligada com parte feita deixa o pedido PENDENTE (retomável), não 'concluído'; ao religar, termina só o que faltava", async () => {
+    const r = await rpc("app_ch_question_analysis_request", { p_exam: "revalida-2025-2", p_count: 4 });
+    let calls = 0;
+    const dying = (ref: any) => ({
+      name: ref.provider, model: ref.model, isMock: false,
+      async generate(req: StructuredRequest) {
+        calls++;
+        const out = { output: respond(req), provider: ref.provider, model: ref.model, inputTokens: 1000, outputTokens: 2000, latencyMs: 1, costUsd: null };
+        if (calls === 2) await allEnabled(false); // a IA é desligada na Central no meio do pedido
+        return out;
+      },
+    });
+    await createContentHubWorker(withMaker(dying)).drain();
+    const mid = await requestRow(r.id);
+    expect(mid).toMatchObject({ status: "pendente", done_count: 2, calls: 2 });
+    expect(mid.message).toMatch(/desligada na Central de IAs/);
+    expect(mid.finished_at).toBeNull();
+    expect((await jobOf(r.id)).status).toBe("blocked");
+    expect((await rpc("app_ch_ai_requests", {})).find((x: any) => x.id === r.id).can_cancel).toBe(true);
+    // liga de novo: o pedido continua de onde parou
+    await allEnabled(true);
+    await db.service("ch_worker_unblock");
+    const n = seen.length;
+    await drain(realDeps());
+    expect(seen.length - n).toBe(2);
+    expect(await requestRow(r.id)).toMatchObject({ status: "concluido", done_count: 4, calls: 4, message: null });
+    expect((await sql(`select count(*)::int n from public.question_analysis where question_id = any ($1) and is_current`, [mid.target_ids]))[0].n).toBe(4);
   });
 });
