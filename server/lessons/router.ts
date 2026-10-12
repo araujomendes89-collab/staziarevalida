@@ -18,6 +18,7 @@ import { fetchLink, type ExtractedPage } from "../podcasts/extract";
 import { aiChoices } from "../ai/maestro";
 import type { ModelRef } from "../ai/config";
 import { loadComplementarTerms } from "../contentHub/complementarGuard";
+import { holdFile, recordFileSha, SHA_WARNING } from "../contentHub/fileSha";
 import { AREA_CODES, generateLessonAssist, MAX_ASSIST_CHARS, type AssistProvider } from "./assist";
 
 export const LESSONS_BUCKET = "lessons";
@@ -85,19 +86,21 @@ export function createLessonsRouter(deps: LessonsDeps | null, pending: string | 
     return spec;
   };
   const keyFor = (id: string, kind: string, ext: string) => `lessons/${id}/${kind}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
-  /** Grava o SHA-256 do arquivo enviado: a apostila é reconhecida mesmo com nome de arquivo neutro (fonte complementar). */
-  const markFile = async (key: string, bytes?: Buffer) => {
-    try {
-      const data = bytes ?? (await deps!.storage.get(key));
-      await deps!.db.service("ch_worker_file_sha", { p_path: key, p_sha: crypto.createHash("sha256").update(data).digest("hex") });
-    } catch (error) {
-      deps!.log?.(`[aulas] SHA-256 do arquivo não gravado: ${message(error)}`);
-    }
-  };
+  /**
+   * Registro do material com o SHA-256 gravado, FECHANDO POR SEGURANÇA (ver contentHub/fileSha.ts): a retenção do caminho é pedida
+   * antes; se o SHA-256 não puder ser gravado (nem na nova tentativa), o material fica escondido do aluno e a resposta traz `aviso`.
+   */
   const register = async (req: Authed, id: string, m: { kind: string; title: string; key: string; type: string; size: number }, bytes?: Buffer) => {
-    const out = await registerRaw(req, id, m);
-    await markFile(m.key, bytes);
-    return out;
+    await holdFile(deps!.db, m.key, deps!.log, "aulas");
+    let out;
+    try {
+      out = await registerRaw(req, id, m);
+    } catch (error) {
+      await recordFileSha(deps!.db, m.key, async () => bytes ?? (await deps!.storage.get(m.key)), undefined, "aulas").catch(() => false); // se o arquivo já existia, solta a retenção
+      throw error;
+    }
+    if (!(await recordFileSha(deps!.db, m.key, async () => bytes ?? (await deps!.storage.get(m.key)), deps!.log, "aulas"))) return { ...out, aviso: SHA_WARNING };
+    return (await asUser(req, "app_lesson", { p_id: id }).catch(() => out)) ?? out; // a visão volta sem a marca de retenção
   };
   const registerRaw = (req: Authed, id: string, m: { kind: string; title: string; key: string; type: string; size: number }) =>
     asUser(req, "app_admin_lesson_material", {
