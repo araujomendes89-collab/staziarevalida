@@ -109,7 +109,8 @@ $$;
 create or replace function public.ineditas_option() returns table (total integer, locked boolean, lock_message text)
   language sql stable security definer set search_path = ''
 as $$
-  select (select count(*)::int from public.questions q where q.origin = 'staziamed' and q.retired_at is null),
+  select case when (select auth.uid()) is null then 0
+              else (select count(*)::int from public.questions q where q.origin = 'staziamed' and q.retired_at is null) end,
          not coalesce(public.has_ineditas(), false),
          public.ineditas_gate()
 $$;
@@ -1633,14 +1634,16 @@ $$;
 revoke execute on function public.ineditas_user_access(uuid) from public, anon, authenticated;
 revoke execute on function public.ineditas_gate_for(uuid) from public, anon, authenticated;
 revoke execute on function public.question_attempts_ineditas_gate() from public, anon, authenticated;
-revoke execute on function public.has_ineditas() from public, anon;
-grant execute on function public.has_ineditas() to authenticated;
-revoke execute on function public.ineditas_gate() from public, anon;
-grant execute on function public.ineditas_gate() to authenticated;
+-- As três podem ser chamadas também sem login (as funções "language sql" do aluno, como practice_pool e app_question_filters, conferem a
+-- permissão ao montar o plano, mesmo nos ramos que não rodam): para quem não está logado dão falso, nulo e zero.
+revoke execute on function public.has_ineditas() from public;
+grant execute on function public.has_ineditas() to anon, authenticated;
+revoke execute on function public.ineditas_gate() from public;
+grant execute on function public.ineditas_gate() to anon, authenticated;
 revoke execute on function public.practice_result(uuid) from public, anon;
 grant execute on function public.practice_result(uuid) to authenticated;
-revoke execute on function public.ineditas_option() from public, anon;
-grant execute on function public.ineditas_option() to authenticated;
+revoke execute on function public.ineditas_option() from public;
+grant execute on function public.ineditas_option() to anon, authenticated;
 
 -- Para desfazer: recriar as funções de …1900, …3800, …4300, …0700, …9701 e …9730 que esta migração redefine; depois
 -- "drop trigger question_attempts_ineditas_gate", recriar a política "questões: leitura para logados" (using (true)) e

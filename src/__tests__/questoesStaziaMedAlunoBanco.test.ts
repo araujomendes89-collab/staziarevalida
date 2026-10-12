@@ -121,7 +121,12 @@ describe("Origem, prova STAZIAMED e leitura protegida", () => {
       and p.proname in ('ineditas_user_access', 'ineditas_gate_for', 'question_attempts_ineditas_gate')
       and (has_function_privilege('anon', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))`);
     expect(open).toEqual([]);
-    expect((await env.sql(`select has_function_privilege('anon', 'public.has_ineditas()', 'execute') as a`))[0].a).toBe(false);
+    // sem login dá falso/nulo (as telas do aluno montam o plano com estas funções, mesmo sem login)
+    expect((await env.sql(`select has_function_privilege('anon', 'public.has_ineditas()', 'execute') as a`))[0].a).toBe(true);
+    await env.dev.db.transaction(async (tx) => {
+      await tx.exec("set local role anon");
+      expect((await tx.query<any>(`select public.has_ineditas() as i, public.ineditas_gate() as g`)).rows[0]).toEqual({ i: false, g: null });
+    });
   });
 
   it("o aluno lendo a tabela de uma StaziaMed não vê trecho de fonte nem a decisão clínica", async () => {
