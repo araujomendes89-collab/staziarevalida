@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Publica o processamento de PDF da Central de Conteúdo no Google Cloud Run: uma TAREFA (Cloud Run Job) que esvazia a fila
-# do Supabase e termina, e um AGENDADOR que a dispara a cada 10 minutos. Paga-se só o tempo em que a tarefa roda.
+# do Supabase e termina, e um AGENDADOR que a dispara a cada minuto. Paga-se só o tempo em que a tarefa roda.
 #
 #   PROJECT=staziamed-revalida-prod scripts/cloudrun/deploy-pdf-worker.sh
 #
-# Opcionais: REGION (padrão southamerica-east1, São Paulo), SCHEDULE (padrão "*/10 * * * *").
-# Execuções podem rodar ao mesmo tempo: o agendador dispara a cada 10 minutos e cada execução pega trabalho por até 50
+# Opcionais: REGION (padrão southamerica-east1, São Paulo), SCHEDULE (padrão "* * * * *", a cada minuto: é o que o painel diz ao dono; fila vazia sai em segundos).
+# Execuções podem rodar ao mesmo tempo: o agendador dispara a cada minuto e cada execução pega trabalho por até 50
 # (CONTENT_HUB_JOB_BUDGET_MIN); o --tasks=1 vale para cada execução, não para a tarefa toda. A fila no banco conta com isso
 # (ch_worker_claim com "skip locked"; desde a migração 9540, o pedido para uma etapa que está rodando fica guardado e vale
 # quando ela termina). Trabalho "rodando" sem sinal de vida por CONTENT_HUB_STALE_SECONDS (1800) volta para a fila: as etapas
@@ -23,7 +23,7 @@ cd "$(dirname "$0")/../.."
 
 PROJECT="${PROJECT:?defina PROJECT=<id do projeto no Google Cloud>}"
 REGION="${REGION:-southamerica-east1}"
-SCHEDULE="${SCHEDULE:-*/10 * * * *}"
+SCHEDULE="${SCHEDULE:-* * * * *}"
 JOB=stazia-pdf-worker
 REPO=stazia
 RUN_SA="stazia-pdf-worker@${PROJECT}.iam.gserviceaccount.com"

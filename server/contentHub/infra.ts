@@ -8,6 +8,7 @@
  *
  * Toda chamada ao banco passa os argumentos por safeForDb (o Postgres recusa o caractere nulo e metade solta de par substituto).
  */
+import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
@@ -38,6 +39,41 @@ export interface Storage {
   signedUpload?(key: string): Promise<{ path: string; token: string }>;
   /** Apaga arquivos (o que não existir é ignorado). */
   remove?(keys: string[]): Promise<void>;
+  /**
+   * Confere um arquivo do depósito lendo em pedaços, sem guardá-lo inteiro na memória (CC08): devolve o tamanho, o SHA-256 e os
+   * primeiros bytes (para a assinatura %PDF-). Passando de `maxBytes` (ou de `timeoutMs`), para e recusa.
+   */
+  digest?(key: string, opts?: { maxBytes?: number; timeoutMs?: number }): Promise<FileDigest>;
+  /** Copia um arquivo dentro do próprio depósito, sem baixar nem enviar de novo (CC08). */
+  copy?(from: string, to: string): Promise<void>;
+}
+
+export interface FileDigest {
+  sha256: string;
+  size: number;
+  head: Buffer;
+}
+
+/** Recusa de `digest`: o arquivo passou do tamanho máximo ou a conferência passou do tempo. */
+export class DigestLimit extends Error {
+  constructor(readonly reason: "size" | "time", message: string) {
+    super(message);
+  }
+}
+
+/** Lê os pedaços de uma fonte de bytes, juntando tamanho, SHA-256 e os primeiros bytes. */
+export async function digestChunks(chunks: AsyncIterable<Uint8Array>, opts: { maxBytes?: number; deadline?: number } = {}): Promise<FileDigest> {
+  const hash = crypto.createHash("sha256");
+  const first: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of chunks) {
+    size += chunk.byteLength;
+    if (opts.maxBytes != null && size > opts.maxBytes) throw new DigestLimit("size", "Arquivo acima do tamanho máximo.");
+    if (opts.deadline != null && Date.now() > opts.deadline) throw new DigestLimit("time", "A conferência do arquivo demorou demais.");
+    hash.update(chunk);
+    if (first.reduce((n, b) => n + b.length, 0) < 16) first.push(Buffer.from(chunk.subarray(0, 16)));
+  }
+  return { sha256: hash.digest("hex"), size, head: Buffer.concat(first).subarray(0, 16) };
 }
 
 const FN = /^(ch_worker_[a-z_]+|app_[a-z0-9_]+)$/;
@@ -133,6 +169,13 @@ export function localStorageDir(dir = process.env.CONTENT_HUB_STORAGE_DIR || pat
     async exists(key) {
       return fs.existsSync(full(key));
     },
+    async digest(key, opts = {}) {
+      return digestChunks(fs.createReadStream(full(key)), { maxBytes: opts.maxBytes, deadline: opts.timeoutMs != null ? Date.now() + opts.timeoutMs : undefined });
+    },
+    async copy(from, to) {
+      fs.mkdirSync(path.dirname(full(to)), { recursive: true });
+      fs.copyFileSync(full(from), full(to));
+    },
     async remove(keys) {
       for (const key of keys) fs.rmSync(full(key), { force: true });
       for (const d of [...new Set(keys.map((k) => path.dirname(full(k))))]) {
@@ -174,6 +217,27 @@ export function supabaseStorage(bucket = CONTENT_HUB_BUCKET): Storage {
       const { data, error } = await admin.storage.from(bucket).createSignedUrl(key, seconds);
       if (error || !data) throw new Error(error?.message ?? "Arquivo não encontrado.");
       return data.signedUrl;
+    },
+    async digest(key, opts = {}) {
+      const { data, error } = await admin.storage.from(bucket).createSignedUrl(key, 600);
+      if (error || !data) throw new Error(error?.message ?? "Arquivo não encontrado.");
+      const abort = new AbortController();
+      const timer = opts.timeoutMs != null ? setTimeout(() => abort.abort(), opts.timeoutMs) : null;
+      try {
+        const res = await fetch(data.signedUrl, { signal: abort.signal });
+        if (!res.ok || !res.body) throw new Error(`O depósito não entregou o arquivo (${res.status}).`);
+        return await digestChunks(res.body as unknown as AsyncIterable<Uint8Array>, { maxBytes: opts.maxBytes });
+      } catch (e) {
+        if (abort.signal.aborted) throw new DigestLimit("time", "A conferência do arquivo demorou demais.");
+        throw e;
+      } finally {
+        if (timer) clearTimeout(timer);
+        abort.abort();
+      }
+    },
+    async copy(from, to) {
+      const { error } = await admin.storage.from(bucket).copy(from, to);
+      if (error) throw new Error(error.message);
     },
     async signedUpload(key) {
       const { data, error } = await admin.storage.from(bucket).createSignedUploadUrl(key, { upsert: true });

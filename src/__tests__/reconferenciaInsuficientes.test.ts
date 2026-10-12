@@ -540,7 +540,7 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
     it("Reprocessar a partir da Classificação com fonte nova indexada no meio: a reexecução roda inteira e o documento termina pronto", async () => {
       const doc = await studyDocument("Apostila reprocessada com fonte no meio", SD1);
       expect((await claimOf(doc)).status).toBe("insufficient");
-      expect((await docState(doc)).status).toBe("awaiting_review");
+      expect((await docState(doc)).status).toBe("no_drafts");
       const draftBefore = await stepJob(doc, "draft");
       // a equipe aperta "Reprocessar" na Classificação; antes de a reexecução chegar à conferência, entra uma fonte nova
       await db.asUser(admin, "app_ch_retry_job", { p_job_id: (await stepJob(doc, "classify")).id });
@@ -554,8 +554,8 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
       expect(evidence.metrics.auto_recheck).toBeUndefined();
       const draft = await stepJob(doc, "draft");
       expect(new Date(draft.finished_at).getTime()).toBeGreaterThan(new Date(draftBefore.finished_at).getTime());
-      expect((await stepJob(doc, "review_check")).status).toBe("succeeded");
-      expect((await docState(doc)).status).toBe("awaiting_review");
+      expect(await stepJob(doc, "review_check")).toBeUndefined(); // CC03: sem tema não há rascunho, e a revisão automática nem entra na fila
+      expect((await docState(doc)).status).toBe("no_drafts");
     }, 300_000);
 
     it("a etapa anterior termina e acha a reconferência automática ainda na fila: tira a marca e a conferência roda inteira", async () => {
@@ -576,13 +576,13 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
       await drain();
       expect((await claimOf(doc)).status).toBe("compatible");
       expect((await evidenceJob(doc)).metrics.auto_recheck).toBeUndefined();
-      expect((await docState(doc)).status).toBe("awaiting_review");
+      expect((await docState(doc)).status).toBe("no_drafts");
     }, 300_000);
 
     it("a IA falha em todas as tentativas da reconferência automática: o documento pronto continua pronto e volta a ser conferido na fonte seguinte", async () => {
       const doc = await studyDocument("Apostila com IA fora do ar", SE1);
       const before = await docState(doc);
-      expect(before.status).toBe("awaiting_review");
+      expect(before.status).toBe("no_drafts");
       answer = failing("evidence", "Hetateste", () => new Error("Falha simulada do provedor de IA."));
       try {
         await indexSource("Manual fictício com IA fora do ar", SE1);
@@ -604,7 +604,7 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
     it("IA da conferência parada na reconferência automática: nenhuma pendência no documento pronto", async () => {
       const doc = await studyDocument("Apostila com IA parada", SF1);
       const before = await docState(doc);
-      expect(before.status).toBe("awaiting_review");
+      expect(before.status).toBe("no_drafts");
       answer = failing("evidence", "Qopateste", capReached);
       try {
         await indexSource("Manual fictício com IA parada", SF1);
@@ -628,7 +628,7 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
       expect((await claimBy(doc, SJ1)).status).toBe("insufficient");
       expect(await versionsOf(shin)).toEqual([]);
       const before = await docState(doc);
-      expect(before.status).toBe("awaiting_review");
+      expect(before.status).toBe("no_drafts");
       answer = failing("summary", "Shinteste", () => new Error("Falha simulada do provedor de IA."));
       try {
         await indexSource("Manual fictício dos materiais", SJ1);
@@ -729,7 +729,7 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
       expect(job.status).toBe("succeeded");
       expect(job.metrics.auto_recheck).toBeUndefined();
       expect((await claimBy(doc, SH1)).status).toBe("compatible");
-      expect((await docState(doc)).status).toBe("awaiting_review");
+      expect((await docState(doc)).status).toBe("no_drafts");
     }, 300_000);
 
     it("próxima etapa com a marca: só a etapa concluída roda parcial; a pendente, na fila ou com falha roda inteira; duas reconferências se juntam", async () => {
@@ -793,7 +793,7 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
     it("Reprocessar da Classificação enquanto a reconferência automática roda em outro processamento: a conferência roda inteira depois e o documento termina pronto", async () => {
       const doc = await studyDocument("Apostila com dois processamentos", SK1);
       expect((await claimOf(doc)).status).toBe("insufficient");
-      expect((await docState(doc)).status).toBe("awaiting_review");
+      expect((await docState(doc)).status).toBe("no_drafts");
       // processamento 1: a fonte nova é indexada e ele pega a reconferência automática deste documento (ainda sem terminar)
       await indexSource("Manual fictício de dois processamentos", SK1, "final", { drain: false });
       await createContentHubWorker(deps()).tick();
@@ -813,8 +813,8 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
       expect(evidence.status).toBe("succeeded");
       expect(evidence.metrics.auto_recheck).toBeUndefined();
       expect((await claimOf(doc)).status).toBe("compatible");
-      expect((await stepJob(doc, "review_check")).status).toBe("succeeded");
-      expect((await docState(doc)).status).toBe("awaiting_review");
+      expect(await stepJob(doc, "review_check")).toBeUndefined(); // CC03
+      expect((await docState(doc)).status).toBe("no_drafts");
     }, 300_000);
 
     it("fonte nova indexada enquanto a conferência roda em outro processamento: a reconferência fica guardada e roda quando ela termina", async () => {
@@ -849,7 +849,7 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
       await drain();
       expect((await claimOf(doc)).status).toBe("compatible");
       expect((await evidenceJob(doc)).metrics.auto_recheck).toBe(true);
-      expect((await docState(doc)).status).toBe("awaiting_review");
+      expect((await docState(doc)).status).toBe("no_drafts");
     }, 300_000);
 
     it("pedido para uma etapa que está rodando em outro processamento fica guardado e vale quando ela termina, de qualquer jeito que termine", async () => {
@@ -1087,7 +1087,7 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
         expect(await evidenceOf(c.id)).toEqual([{ source_id: manualSource, verdict: "compatible", stale: false }]);
       }
       await drain();
-      expect((await docState(doc)).status).toBe("awaiting_review");
+      expect((await docState(doc)).status).toBe("no_drafts");
     }, 300_000);
 
     it("processamento que ficou sem sinal e perdeu o trabalho para sem gravar nem registrar o fim; o outro termina com o que os dois conferiram", async () => {
@@ -1148,7 +1148,9 @@ describe("CC01: afirmação insuficiente por falta de trecho volta a ser conferi
       // os dois temas (sem unidade antes) ganham rascunho; o documento continua como estava
       expect(await versionsOf(turmalina)).toHaveLength(1);
       expect(await versionsOf(onix)).toHaveLength(1);
-      expect(await docState(doc)).toEqual(before);
+      // CC03: o documento estava "Sem rascunhos"; a reconferência criou rascunhos e a revisão automática terminou, então ele passa a aguardar revisão
+      expect(before.status).toBe("no_drafts");
+      expect(await docState(doc)).toEqual({ status: "awaiting_review", failure: null });
     }, 300_000);
   });
 
