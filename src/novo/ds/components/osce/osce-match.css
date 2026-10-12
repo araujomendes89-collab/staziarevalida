@@ -34,7 +34,7 @@
 
 /* ---------- PepTable (folha do INEP; branca nos dois temas) ---------- */
 .sm-pep{--sm-pep-level-w:76px;display:flex;flex-direction:column;background:var(--pep-sheet);color:var(--pep-sheet-text);border:1px solid var(--inep-blue-300);border-radius:var(--radius-md);overflow:clip;font-family:Arial,Helvetica,var(--font-sans)}
-.sm-pep__head{position:sticky;top:0;z-index:3;background:var(--pep-sheet)}
+.sm-pep__head{position:sticky;top:var(--topbar-h);z-index:3;background:var(--pep-sheet)}
 .sm-pep__top{display:flex;align-items:center;gap:14px;padding:14px 18px 10px}
 .sm-pep__station{font:700 22px/1 Arial,Helvetica,sans-serif;color:var(--inep-blue-700);white-space:nowrap}
 .sm-pep__rule{width:2px;align-self:stretch;background:var(--inep-blue-700)}
