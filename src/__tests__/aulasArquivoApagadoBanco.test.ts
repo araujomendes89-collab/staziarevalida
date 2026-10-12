@@ -37,7 +37,16 @@ const asUser = (uid: string, sql: string, params: unknown[] = []) =>
   });
 const fila = async () => (await db.query<{ storage_path: string }>(`select storage_path from public.lesson_files_pending_delete order by storage_path`)).rows.map((r) => r.storage_path);
 const limparFila = () => db.query(`delete from public.lesson_files_pending_delete`);
-const paths = async (uid: string) => ((await rpc(uid, "app_admin_lesson_files_purge")).paths as string[]).slice().sort();
+// funções de SERVIÇO (ch_worker_*): o servidor reserva, apaga no depósito, confirma ou devolve; a equipe não as chama direto
+const servico = async <T = any>(fn: string, args: Record<string, unknown> = {}) => {
+  const keys = Object.keys(args);
+  const casts: Record<string, string> = { p_paths: "::text[]", p_actor: "::uuid" };
+  return (await db.query<{ r: T }>(`select public.${fn}(${keys.map((k, i) => `${k} => $${i + 1}${casts[k] ?? ""}`).join(", ")}) r`, keys.map((k) => args[k]))).rows[0].r;
+};
+const paths = async (actor: string | null = EDITOR) => ((await servico("ch_worker_lesson_files_reserve", { p_actor: actor })).paths as string[]).slice().sort();
+const confirmar = (p: string[], actor: string | null = EDITOR) => servico<number>("ch_worker_lesson_files_done", { p_paths: p, p_actor: actor });
+const devolver = (p: string[]) => servico<number>("ch_worker_lesson_files_release", { p_paths: p });
+const estado = async (p: string) => (await db.query<any>(`select state from public.lesson_files_pending_delete where storage_path = $1`, [p])).rows[0]?.state ?? null;
 
 let n = 0;
 async function novaAula(published = true) {
@@ -69,6 +78,8 @@ describe("A07: o caminho do arquivo entra na fila quando o material sai", () => 
     expect(l.materials.some((m: any) => m.kind === "slides")).toBe(false);
     expect(await fila()).toEqual([arquivo(id, "slides", "aaaa")]);
     expect(await paths(EDITOR)).toEqual([arquivo(id, "slides", "aaaa")]);
+    expect(await estado(arquivo(id, "slides", "aaaa"))).toBe("deleting"); // reservado: só o que foi reservado é entregue
+    await devolver([arquivo(id, "slides", "aaaa")]);
     // o material do tipo link (sem arquivo) não entra na fila
     const link = (await rpc(EDITOR, "app_lesson", { p_id: id })).materials.find((m: any) => m.kind === "guideline");
     await rpc(EDITOR, "app_admin_delete_lesson_material", { p_id: link.id });
@@ -84,7 +95,7 @@ describe("A07: o caminho do arquivo entra na fila quando o material sai", () => 
     await material(EDITOR, id, "slides", "2222"); // mesmo caminho de novo (envio repetido)
     expect(await fila()).toEqual([arquivo(id, "slides", "1111"), arquivo(id, "slides", "2222")]);
     expect(await paths(EDITOR)).toEqual([arquivo(id, "slides", "1111")]); // o 2222 está em uso: sai da fila sem apagar
-    expect(await fila()).toEqual([arquivo(id, "slides", "1111")]);
+    expect(await fila()).toEqual([arquivo(id, "slides", "1111")]); // (reservado: 'apagando')
     await limparFila();
   });
 
@@ -171,30 +182,55 @@ describe("A07: só apaga o arquivo que ninguém mais usa", () => {
 });
 
 describe("A07: confirmar, registrar e falhas", () => {
-  it("confirmar o apagamento tira da fila e grava no Registro o caminho apagado (com a aula e quem apagou); sem confirmar, o caminho volta na próxima limpeza", async () => {
+  it("confirmar o apagamento tira da fila e grava no Registro o caminho apagado (com a aula e quem pediu); não registra duas vezes", async () => {
     const id = await novaAula();
     const l = await material(EDITOR, id, "slides", "log0");
     await rpc(EDITOR, "app_admin_delete_lesson_material", { p_id: idDe(l, "slides") });
     expect(await paths(EDITOR)).toEqual([arquivo(id, "slides", "log0")]);
-    expect(await paths(EDITOR)).toEqual([arquivo(id, "slides", "log0")]); // o depósito falhou e ninguém confirmou: continua na fila
-    expect(await rpc(EDITOR, "app_admin_lesson_files_done", { p_paths: [arquivo(id, "slides", "log0")] })).toBe(1);
+    expect(await confirmar([arquivo(id, "slides", "log0")])).toBe(1);
     expect(await fila()).toEqual([]);
     const reg = (await db.query<any>(`select actor_id, target, details from public.admin_audit_log where action = 'lesson.file.delete' order by id desc limit 1`)).rows[0];
     expect(reg).toMatchObject({ actor_id: EDITOR, target: id, details: { path: arquivo(id, "slides", "log0"), kind: "slides" } });
-    expect(await rpc(EDITOR, "app_admin_lesson_files_done", { p_paths: [arquivo(id, "slides", "log0")] })).toBe(0); // já confirmado: não registra de novo
+    expect(await confirmar([arquivo(id, "slides", "log0")])).toBe(0); // já confirmado: não registra de novo
     expect((await db.query<any>(`select count(*)::int n from public.admin_audit_log where action = 'lesson.file.delete' and target = $1`, [id])).rows[0].n).toBe(1);
   });
 
-  it("confirmar não apaga caminho que não está na fila, que voltou a ser usado ou que tem retenção", async () => {
+  it("achado 4: confirmar SÓ vale para o que foi reservado (nada de 'apagado' sem reserva), nem que o caminho esteja na fila", async () => {
     const id = await novaAula();
-    await material(EDITOR, id, "slides", "usa0");
-    expect(await rpc(EDITOR, "app_admin_lesson_files_done", { p_paths: [arquivo(id, "slides", "usa0"), "lessons/qualquer/outro.pdf"] })).toBe(0);
-    const l = await material(EDITOR, id, "other", "reu0");
-    await rpc(EDITOR, "app_admin_delete_lesson_material", { p_id: idDe(l, "other") });
-    await material(EDITOR, id, "other", "reu0"); // voltou a ser usado antes de confirmar
-    expect(await rpc(EDITOR, "app_admin_lesson_files_done", { p_paths: [arquivo(id, "other", "reu0")] })).toBe(0);
-    expect(await fila()).toEqual([arquivo(id, "other", "reu0")]); // fica para a próxima limpeza descartar
+    const l = await material(EDITOR, id, "slides", "falso");
+    await rpc(EDITOR, "app_admin_delete_lesson_material", { p_id: idDe(l, "slides") });
+    expect(await fila()).toEqual([arquivo(id, "slides", "falso")]); // na fila, mas NÃO reservado
+    expect(await confirmar([arquivo(id, "slides", "falso"), "lessons/qualquer/outro.pdf"])).toBe(0);
+    expect(await fila()).toEqual([arquivo(id, "slides", "falso")]); // continua para a próxima limpeza
+    expect((await db.query<any>(`select count(*)::int n from public.admin_audit_log where action = 'lesson.file.delete' and target = $1`, [id])).rows[0].n).toBe(0);
     await limparFila();
+  });
+
+  it("devolver a reserva (o depósito falhou): o caminho volta a 'pendente' e sai de novo na próxima limpeza; confirmar sem reserva não vale", async () => {
+    const id = await novaAula();
+    const l = await material(EDITOR, id, "slides", "devo");
+    await rpc(EDITOR, "app_admin_delete_lesson_material", { p_id: idDe(l, "slides") });
+    expect(await paths(EDITOR)).toEqual([arquivo(id, "slides", "devo")]);
+    expect(await paths(EDITOR)).toEqual([]); // já reservado: não entrega duas vezes
+    expect(await devolver([arquivo(id, "slides", "devo")])).toBe(1);
+    expect(await estado(arquivo(id, "slides", "devo"))).toBe("pending");
+    expect(await confirmar([arquivo(id, "slides", "devo")])).toBe(0);
+    expect(await paths(EDITOR)).toEqual([arquivo(id, "slides", "devo")]);
+    await limparFila();
+  });
+
+  it("achado 5: o servidor caiu antes de confirmar: a reserva vence em 10 minutos, a próxima limpeza entrega de novo e a confirmação registra", async () => {
+    const id = await novaAula();
+    const l = await material(EDITOR, id, "slides", "venc");
+    await rpc(EDITOR, "app_admin_delete_lesson_material", { p_id: idDe(l, "slides") });
+    expect(await paths(EDITOR)).toEqual([arquivo(id, "slides", "venc")]);
+    expect(await paths(EDITOR)).toEqual([]); // reserva recente: ninguém repete
+    await db.query(`update public.lesson_files_pending_delete set reserved_at = now() - interval '11 minutes'`);
+    expect(await paths(ADMIN)).toEqual([arquivo(id, "slides", "venc")]); // vencida: volta
+    expect(await confirmar([arquivo(id, "slides", "venc")], ADMIN)).toBe(1);
+    const reg = (await db.query<any>(`select actor_id from public.admin_audit_log where action = 'lesson.file.delete' and target = $1`, [id])).rows;
+    expect(reg).toEqual([{ actor_id: ADMIN }]);
+    expect(await fila()).toEqual([]);
   });
 
   it("falha ao guardar na fila NÃO desfaz a remoção do material", async () => {
@@ -210,23 +246,101 @@ describe("A07: confirmar, registrar e falhas", () => {
   });
 });
 
+describe("A07 (achado 2): a corrida entre conferir e apagar está fechada", () => {
+  it("caminho reservado para apagar NÃO aceita novo material de aula (a criação é recusada em português e nada fica pendurado)", async () => {
+    const id = await novaAula();
+    const l = await material(EDITOR, id, "other", "corr");
+    await rpc(EDITOR, "app_admin_delete_lesson_material", { p_id: idDe(l, "other") });
+    expect(await paths(EDITOR)).toEqual([arquivo(id, "other", "corr")]); // reservado; o servidor ainda não apagou
+    await expect(material(EDITOR, id, "other", "corr")).rejects.toThrow(/sendo apagado do depósito/);
+    expect((await rpc(EDITOR, "app_lesson", { p_id: id })).materials.some((m: any) => m.kind === "other")).toBe(false);
+    expect(await confirmar([arquivo(id, "other", "corr")])).toBe(1); // o servidor apagou: confirmado
+    await material(EDITOR, id, "other", "corr"); // agora o caminho pode ser usado de novo (arquivo novo)
+    expect((await rpc(EDITOR, "app_lesson", { p_id: id })).materials.some((m: any) => m.kind === "other")).toBe(true);
+  });
+
+  it("trocar o caminho de um material existente para um caminho reservado também é recusado", async () => {
+    const id = await novaAula();
+    const l = await material(EDITOR, id, "other", "rsv0");
+    await rpc(EDITOR, "app_admin_delete_lesson_material", { p_id: idDe(l, "other") });
+    expect(await paths(EDITOR)).toEqual([arquivo(id, "other", "rsv0")]);
+    await material(EDITOR, id, "slides", "orig");
+    const slides = (await rpc(EDITOR, "app_lesson", { p_id: id })).materials.find((m: any) => m.kind === "slides");
+    await expect(db.query(`update public.lesson_materials set storage_path = $1 where id = $2`, [arquivo(id, "other", "rsv0"), slides.id])).rejects.toThrow(/sendo apagado/);
+    await confirmar([arquivo(id, "other", "rsv0")]);
+  });
+
+  it("fonte de podcast e retenção de arquivo (ch_file_holds) com caminho reservado também são recusadas", async () => {
+    const id = await novaAula();
+    const l = await material(EDITOR, id, "other", "pod1");
+    await rpc(EDITOR, "app_admin_delete_lesson_material", { p_id: idDe(l, "other") });
+    expect(await paths(EDITOR)).toEqual([arquivo(id, "other", "pod1")]);
+    const ep = (await db.query<any>(`insert into public.podcasts (title, area, status) values ('Episódio', 'PEDIATRIA', 'draft') returning id`)).rows[0].id;
+    await expect(db.query(`insert into public.podcast_sources (podcast_id, kind, title, storage_path, position) values ($1, 'pdf', 'x.pdf', $2, 1)`, [ep, arquivo(id, "other", "pod1")])).rejects.toThrow(/sendo apagado/);
+    await expect(servico("ch_worker_file_hold", { p_path: arquivo(id, "other", "pod1") })).rejects.toThrow(/sendo apagado/);
+    await confirmar([arquivo(id, "other", "pod1")]);
+    await servico("ch_worker_file_hold", { p_path: arquivo(id, "other", "pod1") }); // depois de apagado, vale de novo
+    await db.query(`delete from public.ch_file_holds where storage_path = $1`, [arquivo(id, "other", "pod1")]);
+  });
+
+  it("a outra ordem: referência criada ANTES da reserva é vista por ela (sai da fila sem apagar); reserva vencida não bloqueia", async () => {
+    const id = await novaAula();
+    const l = await material(EDITOR, id, "other", "ord0");
+    await rpc(EDITOR, "app_admin_delete_lesson_material", { p_id: idDe(l, "other") });
+    await material(EDITOR, id, "other", "ord0"); // alguém reaproveita o caminho antes da limpeza
+    expect(await paths(EDITOR)).toEqual([]);
+    expect(await fila()).toEqual([]);
+    // reserva vencida (servidor caiu): não bloqueia quem quer usar o caminho
+    const k = await novaAula();
+    const m = await material(EDITOR, k, "other", "ven1");
+    await rpc(EDITOR, "app_admin_delete_lesson_material", { p_id: idDe(m, "other") });
+    await paths(EDITOR);
+    await db.query(`update public.lesson_files_pending_delete set reserved_at = now() - interval '11 minutes'`);
+    await material(EDITOR, k, "other", "ven1");
+    expect(await paths(EDITOR)).toEqual([]); // em uso de novo: sai da fila
+    expect(await fila()).toEqual([]);
+  });
+});
+
+describe("A07 (achado 6): retenções antigas não prendem a fila", () => {
+  it("duzentas retenções no começo da fila não impedem entregar o arquivo livre que veio depois; em lotes de 200", async () => {
+    await limparFila();
+    await db.query(`insert into public.lesson_files_pending_delete (storage_path, queued_at) select 'lessons/lote/ret' || lpad(g::text, 4, '0'), now() - interval '2 days' + g * interval '1 second' from generate_series(1, 200) g`);
+    await db.query(`insert into public.ch_file_holds (storage_path) select 'lessons/lote/ret' || lpad(g::text, 4, '0') from generate_series(1, 200) g`);
+    await db.query(`insert into public.lesson_files_pending_delete (storage_path) select 'lessons/lote/livre' || lpad(g::text, 4, '0') from generate_series(1, 250) g`);
+    const a = await paths(EDITOR);
+    expect(a.length).toBe(200);
+    expect(a.every((p) => p.startsWith("lessons/lote/livre"))).toBe(true);
+    const b = await paths(EDITOR);
+    expect(b.length).toBe(50);
+    expect(await paths(EDITOR)).toEqual([]);
+    // os retidos continuam na fila (não foram apagados nem reservados)
+    expect((await db.query<any>(`select count(*)::int n from public.lesson_files_pending_delete where state = 'pending'`)).rows[0].n).toBe(200);
+    await db.query(`delete from public.ch_file_holds`);
+    await limparFila();
+  });
+});
+
 describe("A07: permissões", () => {
-  it("visitante, aluno e revisora que não é da equipe não limpam nem confirmam; editor e administrador sim; a fila não é lida por ninguém direto", async () => {
+  it("achado 4: ninguém de fora do serviço (visitante, aluno, revisora, editor, administrador) chama reservar, confirmar ou devolver; a fila não é lida direto", async () => {
     const id = await novaAula();
     const l = await material(EDITOR, id, "slides", "perm");
     await rpc(EDITOR, "app_admin_delete_lesson_material", { p_id: idDe(l, "slides") });
-    await expect(rpc(null, "app_admin_lesson_files_purge")).rejects.toThrow();
-    await expect(rpc(null, "app_admin_lesson_files_done", { p_paths: [arquivo(id, "slides", "perm")] })).rejects.toThrow();
-    for (const uid of [ANA, REVISORA]) {
-      await expect(rpc(uid, "app_admin_lesson_files_purge")).rejects.toThrow(/equipe/);
-      await expect(rpc(uid, "app_admin_lesson_files_done", { p_paths: [arquivo(id, "slides", "perm")] })).rejects.toThrow(/equipe/);
+    for (const uid of [null, ANA, REVISORA, EDITOR, ADMIN]) {
+      await expect(rpc(uid, "ch_worker_lesson_files_reserve", { p_actor: EDITOR })).rejects.toThrow(/permission denied/i);
+      await expect(rpc(uid, "ch_worker_lesson_files_done", { p_paths: [arquivo(id, "slides", "perm")] })).rejects.toThrow(/permission denied/i);
+      await expect(rpc(uid, "ch_worker_lesson_files_release", { p_paths: [arquivo(id, "slides", "perm")] })).rejects.toThrow(/permission denied/i);
     }
+    // as versões antigas (que a equipe chamava direto) não existem mais
+    await expect(rpc(ADMIN, "app_admin_lesson_files_purge")).rejects.toThrow();
+    await expect(rpc(ADMIN, "app_admin_lesson_files_done", { p_paths: [arquivo(id, "slides", "perm")] })).rejects.toThrow();
     for (const uid of [ANA, EDITOR, ADMIN, REVISORA]) await expect(asUser(uid, `select * from public.lesson_files_pending_delete`)).rejects.toThrow();
     expect(await fila()).toEqual([arquivo(id, "slides", "perm")]); // nada foi mexido pelos barrados
     expect(await paths(ADMIN)).toEqual([arquivo(id, "slides", "perm")]);
-    expect(await rpc(ADMIN, "app_admin_lesson_files_done", { p_paths: [arquivo(id, "slides", "perm")] })).toBe(1);
-    // as funções internas do gatilho não são chamáveis por ninguém de fora
+    expect(await confirmar([arquivo(id, "slides", "perm")], ADMIN)).toBe(1);
+    // as funções internas dos gatilhos não são chamáveis por ninguém de fora
     await expect(asUser(EDITOR, `select public.lesson_material_file_queue()`)).rejects.toThrow();
+    await expect(asUser(EDITOR, `select public.lesson_file_reference_guard()`)).rejects.toThrow();
   });
 
   it("o aluno continua sem ler lesson_materials direto e sem ver caminho (nada mudou)", async () => {

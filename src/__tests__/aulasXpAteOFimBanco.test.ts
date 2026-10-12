@@ -87,7 +87,7 @@ describe("A08: XP da conclusão só com a aula assistida até o fim", () => {
     await rpc(ANA, "app_lesson_watch", { p_id: id, p_seconds: 300 });
     let s = await rpc(ANA, "app_lesson_watch", { p_id: id, p_seconds: 100 });
     expect(s.seconds_watched).toBe(300);
-    s = await rpc(ANA, "app_lesson_watch", { p_id: id, p_ended: true });
+    s = await rpc(ANA, "app_lesson_watch", { p_id: id, p_seconds: 300, p_ended: true });
     const quando = s.watched_to_end_at;
     expect(quando).toBeTruthy();
     s = await rpc(ANA, "app_lesson_watch", { p_id: id, p_seconds: 10, p_ended: false });
@@ -126,6 +126,45 @@ describe("A08: XP da conclusão só com a aula assistida até o fim", () => {
     } finally {
       await db.query(`update public.gamification_rules set value = $1::jsonb where key = 'flags.gamification_enabled'`, [JSON.stringify(flag.value)]);
     }
+  });
+});
+
+describe("A08 (rodada da revisão, achado 3): o fim só vale com tempo assistido coerente", () => {
+  it("'fim' sem tempo (chamada direta com 0 segundos, ou sem segundos) NÃO é gravado e não dá XP", async () => {
+    const id = await aula();
+    await rpc(ANA, "app_lesson_progress", { p_id: id, p_completed: true });
+    let s = await rpc(ANA, "app_lesson_watch", { p_id: id, p_seconds: 0, p_ended: true });
+    expect(s.watched_to_end_at).toBeNull();
+    s = await rpc(ANA, "app_lesson_watch", { p_id: id, p_ended: true });
+    expect(s.watched_to_end_at).toBeNull();
+    expect(await eventos(ANA, id)).toEqual([]);
+  });
+
+  it("com a duração informada pelo player, o tempo assistido precisa cobrir a aula (folga de 5 s); com tempo coerente, grava e paga", async () => {
+    const id = await aula();
+    await rpc(ANA, "app_lesson_progress", { p_id: id, p_completed: true });
+    let s = await rpc(ANA, "app_lesson_watch", { p_id: id, p_seconds: 30, p_ended: true, p_duration: 600 }); // viu 30 s de 600
+    expect(s.watched_to_end_at).toBeNull();
+    expect(await eventos(ANA, id)).toEqual([]);
+    s = await rpc(ANA, "app_lesson_watch", { p_id: id, p_seconds: 594, p_ended: true, p_duration: 600 });
+    expect(s.watched_to_end_at).toBeNull(); // 594 < 595
+    s = await rpc(ANA, "app_lesson_watch", { p_id: id, p_seconds: 597, p_ended: true, p_duration: 600 });
+    expect(s.watched_to_end_at).toBeTruthy();
+    expect(s.xp).toBe(20);
+  });
+
+  it("sem a duração do player, vale metade da duração cadastrada da aula (quando houver); aula sem duração exige só tempo > 0", async () => {
+    const id = (await rpc<any>(ADMIN, "app_admin_save_lesson", { p_lesson: JSON.stringify({ area: "PEDIATRIA", topic: "Sepse", title: `Aula ${++n}`, published: true, review_note: "Conferido com a diretriz.", duration_minutes: 10, video_url: "https://youtu.be/abc123" }) })).id as string;
+    expect((await rpc(BIA, "app_lesson_watch", { p_id: id, p_seconds: 120, p_ended: true })).watched_to_end_at).toBeNull(); // 120 < 300
+    expect((await rpc(BIA, "app_lesson_watch", { p_id: id, p_seconds: 300, p_ended: true })).watched_to_end_at).toBeTruthy();
+    const semDuracao = await aula();
+    expect((await rpc(CAIO, "app_lesson_watch", { p_id: semDuracao, p_seconds: 1, p_ended: true })).watched_to_end_at).toBeTruthy();
+  });
+
+  it("colar de novo não muda nada e a versão antiga de 3 argumentos não sobra", async () => {
+    await db.exec(fs.readFileSync(path.join(MIGRATIONS, "20261003009711_aulas_xp_ate_o_fim.sql"), "utf8"));
+    const r = await db.query<any>(`select count(*)::int n from pg_proc p join pg_namespace s on s.oid = p.pronamespace where s.nspname = 'public' and p.proname = 'app_lesson_watch'`);
+    expect(r.rows[0].n).toBe(1);
   });
 });
 

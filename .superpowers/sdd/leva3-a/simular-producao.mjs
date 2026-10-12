@@ -39,6 +39,23 @@ await db.exec("begin");
 await ck("aluno assiste ate o fim depois de concluir: XP 20", async () => { await db.exec(`select set_config('request.jwt.claims','{"sub":"${ids.al}","role":"authenticated"}',true); set local role authenticated`); const r = (await db.query(`select public.app_lesson_watch('00000000-0000-0000-0000-00000000aa01'::uuid, 100, true) r`)).rows[0].r; if (r.xp !== 20) throw new Error("xp " + r.xp); return JSON.stringify(r); });
 await db.exec("rollback");
 await ck("editor apaga material e a fila recebe o caminho", async () => { await db.exec(`insert into public.lesson_materials (lesson_id, kind, title, storage_path) values ('00000000-0000-0000-0000-00000000aa01','slides','s','lessons/00000000-0000-0000-0000-00000000aa01/slides-0000000000000000.pdf')`); const m = (await db.query(`select id from public.lesson_materials limit 1`)).rows[0].id; await db.exec("begin"); await db.exec(`select set_config('request.jwt.claims','{"sub":"${ids.adm}","role":"authenticated"}',true)`); await db.query(`select public.app_admin_delete_lesson_material('${m}'::uuid)`); const q = (await db.query(`select count(*)::int n from public.lesson_files_pending_delete`)).rows[0].n; await db.exec("rollback"); if (q < 1) throw new Error("fila vazia"); return "fila " + q; });
+await ck("servico reserva o caminho; equipe nao chama; referencia a caminho reservado e recusada", async () => {
+  const L = "00000000-0000-0000-0000-00000000aa01";
+  const pth = "lessons/" + L + "/slides-1111111111111111.pdf";
+  await db.exec(`delete from public.lesson_files_pending_delete`);
+  await db.exec(`insert into public.lesson_files_pending_delete (storage_path, lesson_id, material_kind) values ('${pth}', '${L}', 'slides')`);
+  let negou = false;
+  try { await as(ids.adm, `select public.ch_worker_lesson_files_reserve('${ids.adm}'::uuid) r`); } catch { negou = true; }
+  if (!negou) throw new Error("equipe chamou a funcao de servico");
+  const r = (await db.query(`select public.ch_worker_lesson_files_reserve('${ids.adm}'::uuid) r`)).rows[0].r;
+  if (JSON.stringify(r.paths) !== JSON.stringify([pth])) throw new Error("reserva " + JSON.stringify(r));
+  let recusou = false;
+  try { await db.exec(`insert into public.lesson_materials (lesson_id, kind, title, storage_path) values ('${L}','slides','s','${pth}')`); } catch (e) { recusou = /sendo apagado/.test(e.message); }
+  if (!recusou) throw new Error("referencia a caminho reservado foi aceita");
+  const n = (await db.query(`select public.ch_worker_lesson_files_done(array['${pth}'], '${ids.adm}'::uuid) r`)).rows[0].r;
+  if (n !== 1) throw new Error("done " + n);
+  return "ok";
+});
 await ck("funcao admin lesson_materials_json mantem review_status (9580/9620 intactas)", async () => { const d = (await db.query("select pg_get_functiondef('public.lesson_materials_json(uuid)'::regprocedure) as d")).rows[0].d; if (!d.includes("review_status") || !d.includes("hidden_from_student")) throw new Error("perdeu"); return "ok"; });
 console.log(erros ? `RESULTADO: ${erros} ERRO(S)` : "RESULTADO FINAL: tudo ok");
 await db.close(); process.exit(erros ? 1 : 0);

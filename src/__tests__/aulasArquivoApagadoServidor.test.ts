@@ -12,6 +12,8 @@ import type { Server } from "http";
 import { openDevDatabaseForTests, type DevDatabase } from "../../server/devDb/devDatabase";
 import { devContentDb, type ContentDb, type Storage } from "../../server/contentHub/infra";
 import { createLessonsRouter } from "../../server/lessons/router";
+import { sweepLessonFiles } from "../../server/lessons/files";
+import { HOLD_ERROR } from "../../server/contentHub/fileSha";
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "lessons-a07-"));
 const EDITOR = "00000000-0000-4000-8000-0000000000e1";
@@ -189,5 +191,112 @@ describe("A07: trocar o arquivo e apagar a aula", () => {
     expect(store.has(k1) || store.has(k2)).toBe(false);
     expect((await registro(id)).map((x) => x.details.path).sort()).toEqual([k1, k2].sort());
     expect((await del(`/${id}`, admin)).status).toBe(404);
+  });
+});
+
+describe("A07 (rodada da revisão): corrida, lotes, confirmação e SQL ainda ausente", () => {
+  const fila = async () => (await dev.db.query<any>(`select storage_path, state from public.lesson_files_pending_delete order by storage_path`)).rows;
+  const limpar = async () => {
+    await dev.db.query(`delete from public.lesson_files_pending_delete`);
+    await dev.db.query(`delete from public.ch_file_holds`);
+  };
+  const quem = { id: EDITOR, email: null } as any;
+
+  it("achado 6: duzentas retenções antigas na frente não prendem a limpeza; o servidor percorre a fila em lotes até o fim", async () => {
+    await limpar();
+    await dev.db.query(`insert into public.lesson_files_pending_delete (storage_path, queued_at) select 'lessons/lote/ret' || lpad(g::text, 4, '0'), now() - interval '2 days' + g * interval '1 second' from generate_series(1, 200) g`);
+    await dev.db.query(`insert into public.ch_file_holds (storage_path) select 'lessons/lote/ret' || lpad(g::text, 4, '0') from generate_series(1, 200) g`);
+    await dev.db.query(`insert into public.lesson_files_pending_delete (storage_path) select 'lessons/lote/livre' || lpad(g::text, 4, '0') from generate_series(1, 450) g`);
+    for (let g = 1; g <= 450; g++) store.set(`lessons/lote/livre${String(g).padStart(4, "0")}`, PDF);
+    for (let g = 1; g <= 200; g++) store.set(`lessons/lote/ret${String(g).padStart(4, "0")}`, PDF);
+    const r = await sweepLessonFiles(db, quem, storage, (m) => logs.push(m));
+    expect(r.deleted.length).toBe(450);
+    expect(r.failed).toEqual([]);
+    expect([...store.keys()].filter((k) => k.startsWith("lessons/lote/livre")).length).toBe(0);
+    expect([...store.keys()].filter((k) => k.startsWith("lessons/lote/ret")).length).toBe(200); // retidos: ficam
+    expect((await fila()).length).toBe(200);
+    await limpar();
+    for (const k of [...store.keys()]) if (k.startsWith("lessons/lote/")) store.delete(k);
+  });
+
+  it("achado 5: a confirmação falhou depois de apagar: tenta de novo; se ainda falhar, a reserva vence e a próxima limpeza registra", async () => {
+    await limpar();
+    const id = await novaAula();
+    const key = await guardar(id, "slides", "conf");
+    const [m] = await materiais(id);
+    await sqlAs(EDITOR, `select public.app_admin_delete_lesson_material($1::uuid)`, [m.id]);
+    let falhas = 0;
+    const flaky = { ...db, service: async (fn: string, args?: any) => (fn === "ch_worker_lesson_files_done" && falhas-- > 0 ? Promise.reject(new Error("conexão caiu")) : db.service(fn, args)) } as ContentDb;
+    falhas = 1; // só a primeira tentativa falha: a segunda confirma
+    let r = await sweepLessonFiles(flaky, quem, storage, (m2) => logs.push(m2));
+    expect(r.deleted).toEqual([key]);
+    expect(store.has(key)).toBe(false);
+    expect((await registro(id)).length).toBe(1);
+    // as duas tentativas falham: apagou, mas sem Registro por enquanto
+    const k2 = await guardar(id, "other", "conf2");
+    const m2 = (await materiais(id))[0];
+    await sqlAs(EDITOR, `select public.app_admin_delete_lesson_material($1::uuid)`, [m2.id]);
+    falhas = 2;
+    r = await sweepLessonFiles(flaky, quem, storage, (x) => logs.push(x));
+    expect(r.deleted).toEqual([k2]);
+    expect(store.has(k2)).toBe(false);
+    expect((await registro(id)).length).toBe(1); // sem a anotação ainda
+    expect(logs.some((l) => /não consegui confirmar no banco/.test(l))).toBe(true);
+    expect((await fila()).map((x) => x.state)).toEqual(["deleting"]);
+    r = await sweepLessonFiles(db, quem, storage, (x) => logs.push(x));
+    expect(r.deleted).toEqual([]); // reserva recente: ninguém repete ainda
+    await dev.db.query(`update public.lesson_files_pending_delete set reserved_at = now() - interval '11 minutes'`);
+    r = await sweepLessonFiles(db, quem, storage, (x) => logs.push(x));
+    expect(r.deleted).toEqual([k2]); // vencida: refaz (apagar de novo é inofensivo) e agora registra
+    expect((await registro(id)).map((x) => x.details.path).sort()).toEqual([key, k2].sort());
+    expect(await fila()).toEqual([]);
+  });
+
+  it("achado 2: enquanto o arquivo está reservado para apagar, reenviar o MESMO arquivo é recusado (nada fica apontando para um arquivo apagado); depois funciona", async () => {
+    await limpar();
+    const id = await novaAula();
+    expect((await upload(id, editor, PDF)).status).toBe(201);
+    const [m] = await materiais(id);
+    const key = m.storage_path as string;
+    await sqlAs(EDITOR, `select public.app_admin_delete_lesson_material($1::uuid)`, [m.id]); // sai da aula; o arquivo vai para a fila
+    const reservado = await db.service<{ paths: string[] }>("ch_worker_lesson_files_reserve", { p_actor: EDITOR }); // a limpeza está no meio
+    expect(reservado.paths).toEqual([key]);
+    const again = await upload(id, editor, PDF); // outra pessoa envia o mesmo conteúdo agora
+    expect(again.status).toBe(500);
+    expect(again.body.error ?? again.body.message ?? JSON.stringify(again.body)).toContain(HOLD_ERROR.slice(0, 40));
+    expect(await materiais(id)).toEqual([]);
+    await storage.remove([key]); // a limpeza termina
+    await db.service("ch_worker_lesson_files_done", { p_paths: [key], p_actor: EDITOR });
+    expect((await upload(id, editor, PDF)).status).toBe(201); // agora o envio vale e o arquivo existe de novo
+    expect(store.has(key)).toBe(true);
+    expect((await materiais(id)).map((x) => x.storage_path)).toEqual([key]);
+  });
+
+  it("achado 8: site novo + SQL antigo (funções ainda ausentes): a remoção vale, nada é apagado do depósito, o log diz o que falta e o servidor não quebra", async () => {
+    await limpar();
+    const semSql = { ...db, service: async (fn: string, args?: any) => (/^ch_worker_lesson_files_/.test(fn) ? Promise.reject(new Error("Could not find the function public.ch_worker_lesson_files_reserve(p_actor) in the schema cache")) : db.service(fn, args)) } as ContentDb;
+    const msgs: string[] = [];
+    const r = await sweepLessonFiles(semSql, quem, storage, (x) => msgs.push(x));
+    expect(r).toEqual({ deleted: [], failed: [] });
+    expect(msgs.some((x) => /SQL da limpeza de arquivos \(9710\) ainda não foi aplicado.*como antes/.test(x))).toBe(true);
+    // pela rota: o material sai e o arquivo fica (igual a hoje)
+    const srv = await new Promise<{ url: string; close: () => void }>((resolve) => {
+      const app = express();
+      app.use(express.json());
+      app.use("/api/lessons", createLessonsRouter({ db: semSql, storage, log: () => {} }));
+      const s = app.listen(0, () => resolve({ url: `http://127.0.0.1:${(s.address() as any).port}/api/lessons`, close: () => s.close() }));
+    });
+    try {
+      const id = await novaAula();
+      const key = await guardar(id, "slides", "semsql");
+      const [m] = await materiais(id);
+      const res = await call(`${srv.url}/materials/${m.id}`, editor, { method: "DELETE" });
+      expect(res.status).toBe(200);
+      expect(res.body.materials).toEqual([]);
+      expect(store.has(key)).toBe(true);
+      expect(await registro(id)).toEqual([]);
+    } finally {
+      srv.close();
+    }
   });
 });

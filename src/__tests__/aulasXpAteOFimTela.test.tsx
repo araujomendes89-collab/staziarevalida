@@ -57,28 +57,51 @@ const yt = (iframe: HTMLIFrameElement, currentTime: number, playerState = 1) => 
 const watchCalls = () => backend.rpc.mock.calls.filter((c: any[]) => c[0] === "app_lesson_watch").map((c: any[]) => c[1]);
 
 describe("A08: medidor do fim (funções puras)", () => {
-  it("o fim vale quando a reprodução chegou andando; não vale sem leitura nenhuma nem depois de um salto para a frente", () => {
+  it("o fim vale quando a aula foi assistida inteira andando; não vale sem leitura nenhuma", () => {
     const t = createWatchTracker();
     expect(t.end()).toBe(false); // nenhuma leitura: o aviso de fim sozinho não vale
-    [0, 0.5, 1, 1.5, 120.2].forEach((x) => t.time(x)); // saltou de 1,5 para 120,2
-    expect(t.end()).toBe(false);
-    expect(t.ended).toBe(false);
-    t.time(120.7);
+    for (let x = 0.25; x <= 120; x += 0.25) t.time(x, 120);
     expect(t.end()).toBe(true);
     expect(t.ended).toBe(true);
     expect(t.max).toBe(120);
+    expect(t.watched).toBe(119);
+    expect(t.length).toBe(120);
   });
-  it("voltar na barra não atrapalha; só o salto para a frente invalida", () => {
+
+  it("achado 1: 10 -> 590 -> 590.25 -> fim NÃO vale (pulou quase tudo), nem começar perto do fim, nem pular depois de ver um pedaço", () => {
     const t = createWatchTracker();
-    [0, 0.5, 100, 100.5].forEach((x) => t.time(x));
-    t.time(10); // voltou
-    t.time(10.5);
-    expect(t.end()).toBe(true);
-    expect(t.max).toBe(100);
+    [10, 10.25, 590, 590.25].forEach((x) => t.time(x, 600));
+    expect(t.end()).toBe(false);
+    expect(t.ended).toBe(false);
+    const perto = createWatchTracker();
+    [588, 588.25, 588.5, 588.75, 589].forEach((x) => perto.time(x, 600));
+    expect(perto.end()).toBe(false);
+    // sem a duração informada, a referência é o ponto mais longe a que chegou
+    const semDuracao = createWatchTracker();
+    [0, 0.25, 0.5, 590, 590.25].forEach((x) => semDuracao.time(x));
+    expect(semDuracao.end()).toBe(false);
+    // viu os primeiros 60 s inteiros e saltou para o fim
+    const meio = createWatchTracker();
+    for (let x = 0; x <= 60; x += 0.5) meio.time(x, 600);
+    [599, 599.5, 600].forEach((x) => meio.time(x, 600));
+    expect(meio.end()).toBe(false);
+  });
+
+  it("voltar na barra e rever um trecho não conta duas vezes: assistir 0-300, voltar e rever 0-300 e saltar para o fim NÃO vale; assistir tudo, ainda que com uma volta no meio, vale", () => {
+    const t = createWatchTracker();
+    for (let x = 0; x <= 300; x += 0.5) t.time(x, 600);
+    for (let x = 0; x <= 300; x += 0.5) t.time(x, 600); // revê o mesmo pedaço (voltou na barra: salto para trás não soma)
+    [599, 599.5, 600].forEach((x) => t.time(x, 600));
+    expect(t.end()).toBe(false);
     const u = createWatchTracker();
-    u.time(NaN);
-    u.time(-3);
-    expect(u.end()).toBe(false);
+    for (let x = 0; x <= 300; x += 0.5) u.time(x, 600);
+    for (let x = 100; x <= 150; x += 0.5) u.time(x, 600); // volta e vê de novo
+    for (let x = 300; x <= 600; x += 0.5) u.time(x, 600); // retoma de onde parou
+    expect(u.end()).toBe(true);
+    const v = createWatchTracker();
+    v.time(NaN);
+    v.time(-3);
+    expect(v.end()).toBe(false);
   });
 
   it("YouTube: lê o tempo e o fim (estado 0); Vimeo: lê timeupdate e ended; outras origens e lixo são ignorados", () => {
@@ -89,7 +112,7 @@ describe("A08: medidor do fim (funções puras)", () => {
     expect(parsePlayerMessage(y, { event: "onReady" })).toEqual({ kind: "ready" });
     expect(parsePlayerMessage(y, { event: "infoDelivery", info: { volume: 50 } })).toBeNull();
     const v = "https://player.vimeo.com";
-    expect(parsePlayerMessage(v, JSON.stringify({ event: "timeupdate", data: { seconds: 7.25, percent: 0.1, duration: 70 } }))).toEqual({ kind: "time", seconds: 7.25 });
+    expect(parsePlayerMessage(v, JSON.stringify({ event: "timeupdate", data: { seconds: 7.25, percent: 0.1, duration: 70 } }))).toEqual({ kind: "time", seconds: 7.25, duration: 70 });
     expect(parsePlayerMessage(v, { event: "ended", data: { seconds: 70 } })).toEqual({ kind: "ended" });
     expect(parsePlayerMessage(v, { event: "ready" })).toEqual({ kind: "ready" });
     expect(parsePlayerMessage("https://evil.test", { event: "ended" })).toBeNull();
@@ -151,7 +174,7 @@ describe("A08: tela da aula com YouTube", () => {
     [0, 0.5, 1, 1.5, 2].forEach((t) => yt(iframe, t));
     expect(watchCalls()).toEqual([]); // ainda não acabou: nada a gravar
     yt(iframe, 2.4, 0);
-    await waitFor(() => expect(watchCalls()).toEqual([{ p_id: ID, p_seconds: 2, p_ended: true }]));
+    await waitFor(() => expect(watchCalls()).toEqual([{ p_id: ID, p_seconds: 2, p_ended: true, p_duration: 2 }]));
     expect(await screen.findByText(/Você assistiu até o fim\. Marque a aula como concluída para ganhar o XP/)).toBeTruthy();
     // o fim chegando duas vezes não grava duas vezes
     yt(iframe, 2.4, 0);
@@ -238,7 +261,7 @@ describe("A08: outros tipos de aula", () => {
     v({ event: "ready" });
     [0.25, 0.5, 0.75].forEach((seconds) => v({ event: "timeupdate", data: { seconds } }));
     v({ event: "ended", data: { seconds: 0.75 } });
-    await waitFor(() => expect(watchCalls()).toEqual([{ p_id: ID, p_seconds: 0, p_ended: true }]));
+    await waitFor(() => expect(watchCalls()).toEqual([{ p_id: ID, p_seconds: 0, p_ended: true, p_duration: 1 }]));
   });
 
   it("MP4 na página: mede pelos eventos do próprio vídeo", async () => {
@@ -250,7 +273,7 @@ describe("A08: outros tipos de aula", () => {
       fireEvent.timeUpdate(video);
     }
     fireEvent.ended(video);
-    await waitFor(() => expect(watchCalls()).toEqual([{ p_id: ID, p_seconds: 3, p_ended: true }]));
+    await waitFor(() => expect(watchCalls()).toEqual([{ p_id: ID, p_seconds: 3, p_ended: true, p_duration: 3 }]));
   });
 
   it("link .m3u8 ou outro endereço (abre em outra aba): não mede, o texto avisa e concluir não dá XP", async () => {
