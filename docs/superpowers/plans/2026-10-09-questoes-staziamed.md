@@ -1,10 +1,40 @@
 # Questões StaziaMed (inéditas) com agente de IA — Implementation Plan
 
+## Registro de mudanças (leia primeiro)
+
+**2026-10-12 — decisão nova do dono (de 2026-10-11) e retomada.** Vale por cima de tudo o que está abaixo.
+- **Acesso:** as Questões StaziaMed aparecem como a opção **"Questões Inéditas"** na lista **"Prova / edição"** da tela Questões
+  do aluno (`QuestionBuilder.jsx`) e valem **também para o período de teste (teste grátis VÁLIDO)**, não só Pro/Elite. Treinam:
+  equipe, revisor médico, plano pago válido e teste grátis válido. **Ficam fechados** (regra PL02 do dono: sem acesso pago):
+  teste vencido, plano pago vencido/cancelado e conta sem assinatura, com o aviso e o convite em português. O desenho anterior
+  (teste grátis vendo a coleção fechada com cadeado e convite) acabou; o cadeado e o convite ficam **só** para quem está fechado.
+- **Mantido:** só aprovadas por revisor médico com fonte oficial (nível A a D); aviso "Não é questão oficial do Inep"; nome
+  "Questões StaziaMed" na sessão e na correção, "Questões Inéditas" só na opção da lista; as 200 geradas de apostilas ficam
+  bloqueadas sem fonte oficial; nada de inédita aprovada chega ao aluno sem revisão médica; gabarito oficial, SQIE, incidência,
+  Temas, Tutor, trilhas e Atualizações não misturam inédita com prova oficial.
+- **O que muda no banco:** função nova `has_ineditas()` (equipe, revisor, plano pago válido ou teste válido; usa
+  `user_without_paid_access` da leva 3, migração 9730) e `ineditas_gate()` (aviso em português); política de `questions` =
+  `origin = 'official' or has_ineditas() or <já respondeu>` (a última parte mantém os números do histórico: Q13);
+  `practice_pool` sem `exam_id` = só oficiais e `exam_id = 'staziamed'` = inéditas publicadas, não recolhidas e só com acesso
+  (**o filtro `collection` deixou de existir**); `app_start_session` parte da versão da 9730 e recusa `staziamed` sem acesso;
+  `app_question_filters` devolve a opção `staziamed` (`locked`); `app_get_session` devolve `collection`/`locked`;
+  `practice_question_view` e a correção só respondem com acesso; `app_bootstrap`, `app_home`, Temas, incidência: só oficiais.
+  `has_pro()` não muda (estações Pro).
+- **Numeração:** migrações `20261003009800_questoes_staziamed.sql` (antes 6200, depois 8800) e
+  `20261003009801_questoes_staziamed_aluno.sql` (antes 6300/8810); faixa reservada 9800 a 9809, depois da leva 3 (9700 a 9732).
+  Toda migração é **idempotente** (colar duas vezes não estraga) e redefine função a partir da versão **mais nova**, inclusive a da
+  leva 3.
+- **Base:** o ramo recebeu o main publicado `8bd82fb` (merge `ecbea4a`). A leva 3 (`leva3-final`, ainda não publicada) é
+  pré-requisito da 9801 (usa `user_without_paid_access` e parte de `app_start_session`, `ch_raw_practice_correction_view`,
+  `app_admin_questions` etc. da 9701/9730): ela precisa estar no banco **antes** da 9800/9801.
+- **Trailer dos commits:** `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` (a regra Q16 antiga dizia Opus 5.5).
+- **Registro por tarefa:** ver `.superpowers/sdd/2026-10-09-questoes-staziamed/rulings.md` (R-ineditas-2026-10-12) e `retomada-2026-10-12.md`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A equipe pede na Central de Conteúdo questões StaziaMed sobre um tema (ou os temas mais cobrados); o servidor monta cada uma só com trechos de fontes oficiais, confere e entrega como rascunho; os 200 rascunhos antigos passam pelo mesmo caminho; o revisor médico da área aprova, o administrador publica, e o aluno Pro/Elite treina com a coleção "Questões StaziaMed" (não é questão oficial do Inep).
+**Goal:** A equipe pede na Central de Conteúdo questões StaziaMed sobre um tema (ou os temas mais cobrados); o servidor monta cada uma só com trechos de fontes oficiais, confere e entrega como rascunho; os 200 rascunhos antigos passam pelo mesmo caminho; o revisor médico da área aprova, o administrador publica, e o aluno com plano pago ou teste grátis válido treina com as "Questões Inéditas" (opção da lista "Prova / edição"; na sessão e na correção: "Questão StaziaMed", não é questão oficial do Inep).
 
-**Architecture:** Duas migrações novas: `20261003006200_questoes_staziamed.sql` (rascunhos com hash no banco, pedidos e vagas, propostas de fonte, trilha, etapas novas da fila `ch_jobs`, trava de aprovação, publicação) e `20261003006300_questoes_staziamed_aluno.sql` (origem em `questions`, prova `STAZIAMED`, leitura protegida, coleção no sorteio e consumidores "só oficiais"). No servidor, três etapas novas da fila (`question_generate`, `question_check`, `question_source`) em `server/contentHub/questoes/*`, rodando onde a fila já roda (Cloud Run em produção, servidor no desenvolvimento), com a IA pela Central de IAs (`maestroProvider`/`maestroRoleProvider`); rotas `/api/content-hub/questoes-staziamed/…` fazem a estimativa de custo e enfileiram. Painel novo em `src/novo/app/admin/content/questoes/` e ajustes nas telas de treino do aluno.
+**Architecture:** Duas migrações novas: `20261003009800_questoes_staziamed.sql` (rascunhos com hash no banco, pedidos e vagas, propostas de fonte, trilha, etapas novas da fila `ch_jobs`, trava de aprovação, publicação) e `20261003009801_questoes_staziamed_aluno.sql` (origem em `questions`, prova `STAZIAMED`, leitura protegida por `has_ineditas()`, opção "Questões Inéditas" na lista de provas e consumidores "só oficiais"). No servidor, três etapas novas da fila (`question_generate`, `question_check`, `question_source`) em `server/contentHub/questoes/*`, rodando onde a fila já roda (Cloud Run em produção, servidor no desenvolvimento), com a IA pela Central de IAs (`maestroProvider`/`maestroRoleProvider`); rotas `/api/content-hub/questoes-staziamed/…` fazem a estimativa de custo e enfileiram. Painel novo em `src/novo/app/admin/content/questoes/` e ajustes nas telas de treino do aluno.
 
 **Tech Stack:** Node + Express + TypeScript (servidor), React JSX (`src/novo`, design system `src/novo/ds`), Postgres do Supabase (PGlite nos testes e no banco de desenvolvimento), Vitest + Testing Library.
 
@@ -16,24 +46,24 @@
   - Fontes do gerador: só fontes oficiais da Central (Ministério da Saúde, PCDT/Conitec, OMS/OPAS, sociedades médicas brasileiras; nível A–D, final, vigente) e o perfil das provas oficiais do Inep (incidência por área, tema e competência). **Nunca apostila ou curso.**
   - Os 200 rascunhos: salvos um por um — conferências, revisão médica e fonte oficial no lugar da citação da apostila. **Sem fonte oficial, ficam bloqueados.**
   - Nome para o aluno: **"Questões StaziaMed"**, sempre com **"não é questão oficial do Inep"**. "Inédita" continua querendo dizer "ainda não respondida" (Planejamento, Início, Play não mudam).
-  - Quem treina: só Pro e Elite (e a equipe). O teste grátis vê a coleção fechada, com o convite do plano.
+  - Quem treina: ~~só Pro e Elite~~ **(mudou em 2026-10-11)** equipe, revisor médico, plano pago válido **e teste grátis válido**. Teste vencido, plano pago vencido/cancelado e conta sem assinatura ficam fechados, com o aviso e o convite do plano.
   - Aprovação: **revisor médico da área aprova; administrador publica.** Nada de conteúdo médico inventado.
 - **Nada inventado:** nenhum conteúdo médico sai da memória do modelo. Sem trecho oficial, a vaga é pulada com "sem fonte oficial"; a IA pode responder "evidência insuficiente". A simulação de IA (`mock`, só desenvolvimento e testes) nunca escreve questão.
 - **Fonte oficial** = a regra de `ch_worker_search_official_passages`: `authority_level` A–D, `kind = 'final'`, `status = 'current'`, e `valid_until` nulo ou ≥ hoje. Nível E e trecho fora dessa regra nunca vão para o prompt nem contam como citação.
 - **Nada chega ao aluno sem pessoa:** nenhuma etapa automática passa de "aguardando revisão médica". Aprovar = revisor cadastrado na área (`ch_is_reviewer(area)`); publicar, republicar e recolher = administrador (`is_admin()`). Gerar, editar, conferir e buscar fonte = equipe (`is_staff()`: administrador ou editor).
 - **Limites fixos:** pedido de 1 a 20 questões; até 8 trechos por vaga; **uma** reescrita por questão; por questão 1 criação + 5 conferências, até 12 chamadas com a reescrita; semelhança **≥ 70% recusa (crítico), ≥ 50% alerta (importante)** contra as oficiais e contra as outras StaziaMed; cópia de sequências de 6 palavras dos trechos citados: **> 50% crítico, > 25% importante**; "Temas mais cobrados": no máximo 2 vagas por tema, meia-vida de 6 semestres.
-- **Textos exatos da spec:** "Cadastre fontes oficiais na Central de Conteúdo" · "Preencha a decisão clínica central" · "Bloqueada: sem fonte oficial" · "sem fonte oficial" · "evidência insuficiente" · "Usar estas fontes" / "Descartar" · "Equilibrar gabarito" · "Conferi as fontes citadas" · "não é fonte oficial" · "fonte desatualizada" · "Questões StaziaMed são dos planos Pro e Elite." · "Disponível nos planos Pro e Elite" · "Questões criadas pela StaziaMed a partir de fontes oficiais e revisadas por médico. Não é questão oficial do Inep." · "Questão StaziaMed · nº 12" · "não é questão oficial do Inep" · "Gabarito StaziaMed: alternativa B" · "Por que não as outras?" · "Fontes oficiais citadas". Nunca "gabarito oficial" nem "O que a questão avalia" numa questão StaziaMed. Na Central, "Questão inédita StaziaMed" vira "Questão StaziaMed".
+- **Textos exatos da spec:** "Cadastre fontes oficiais na Central de Conteúdo" · "Preencha a decisão clínica central" · "Bloqueada: sem fonte oficial" · "sem fonte oficial" · "evidência insuficiente" · "Usar estas fontes" / "Descartar" · "Equilibrar gabarito" · "Conferi as fontes citadas" · "não é fonte oficial" · "fonte desatualizada" · "Seu teste grátis terminou." / "Seu plano pago terminou." (começo do aviso de `ineditas_gate()`) · "As Questões Inéditas são abertas a quem tem plano pago ou teste grátis em dia." · "As questões das provas oficiais continuam abertas." · "Questões Inéditas" (opção da lista "Prova / edição") · "Ver planos" · "Questões criadas pela StaziaMed a partir de fontes oficiais e revisadas por médico. Não é questão oficial do Inep." · "Questão StaziaMed · nº 12" · "não é questão oficial do Inep" · "Gabarito StaziaMed: alternativa B" · "Por que não as outras?" · "Fontes oficiais citadas". Nunca "gabarito oficial" nem "O que a questão avalia" numa questão StaziaMed. Na Central, "Questão inédita StaziaMed" vira "Questão StaziaMed".
 - **IA:** criação = função `criacao` (`maestroProvider`); conferências e busca de fonte = `verificacao` (`maestroRoleProvider`, família diferente da criadora). Tetos da Central valem (`AiCapReached` → tarefa `blocked`); IA desligada → tarefa `blocked` até ligar (`ch_worker_block`/`ch_worker_unblock`). Trechos vão ao prompt como dado não confiável (`asDocument`, `GUARD`). Nenhum dado de aluno vai para a IA. Chaves só no servidor.
 - **Fora desta etapa (§4):** Tutor, trilhas do Play, Aulas e Atualizações com Questões StaziaMed; questões com imagem; recolher sozinho quando a fonte vence (só alerta); Rasch; refazer erros StaziaMed pelo Caderno; cobrança do plano; o recurso antigo "Questões Inéditas Stazia"; questões das unidades do Content Lab (`ch_materials`).
-- **Banco:** só as duas migrações novas; elas ainda não estão no Supabase, então cada tarefa **edita as definições no próprio arquivo** (sem `create or replace` repetido). Redefinição de função existente parte da última definição (`grep -n "function public.<nome>(" supabase/migrations/*.sql | tail -1`), sem perder campos nem regras. Funções novas `ch_worker_*`, de apoio e de gatilho (`draft_*`, `staziamed_*`) são `security definer set search_path = ''` com `revoke execute … from public, anon, authenticated`; `app_*` com `revoke … from public, anon`. O laço de revoke de `ch_worker_%` (como `20261003002100_draft_checks.sql:147-155`) é o **último bloco** de cada arquivo; função nova entra antes dele. Função da 6200 que lê coluna criada na 6300 (`questions.origin`, `retired_at`, `support`) é `language plpgsql` (o corpo só é conferido ao rodar).
+- **Banco:** só as duas migrações novas; elas ainda não estão no Supabase, então cada tarefa **edita as definições no próprio arquivo** (sem `create or replace` repetido). **Idempotentes** (colar duas vezes não estraga: `if not exists`, `create or replace`, `drop … if exists` antes de `add constraint`/`create policy`/`create trigger`, linhas de dados com `on conflict`/`where not exists`). Redefinição de função existente parte da **versão mais nova na ordem de produção, inclusive a leva 3** (`git grep -nE "create (or replace )?function public\.<nome>\s*\(" -- supabase/migrations`, a última por nome de arquivo; para as funções que a leva 3 muda, a cópia está em `.claude/worktrees/leva3-final/supabase/migrations`), sem perder campos nem regras. Funções novas `ch_worker_*`, de apoio e de gatilho (`draft_*`, `staziamed_*`) são `security definer set search_path = ''` com `revoke execute … from public, anon, authenticated`; `app_*` com `revoke … from public, anon`. O laço de revoke de `ch_worker_%` (como `20261003002100_draft_checks.sql:147-155`) é o **último bloco** de cada arquivo; função nova entra antes dele. Função da 9800 que lê coluna criada na 9801 (`questions.origin`, `retired_at`, `support`) é `language plpgsql` (o corpo só é conferido ao rodar).
 - **Catálogo:** toda função ou visão nova que lê `public.questions` entra, na mesma tarefa, no `CATALOGO` de `src/__tests__/questoesStaziaMedSoOficiais.test.ts` (Tarefa 3).
 - **Testes:** `npx vitest run <arquivo> --maxWorkers=1`; testes nunca chamam provedor real (só `MockProvider`/provedor de teste com `isMock: true` ou `aiMaker`); nunca rodar o gerador Python antigo; nunca abrir `.env` nem arquivo de chave.
-- **Git:** commits em português sem acento, `git add` explícito de cada arquivo, mensagem terminando com a linha `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` (segundo `-m`). Nunca `git push`. Publicar (SQL no Supabase, Vercel, Cloud Run) só com ordem do dono (§11).
+- **Git:** commits em português sem acento, `git add` explícito de cada arquivo, mensagem terminando com a linha `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>` (segundo `-m`). Nunca `git push`. Publicar (SQL no Supabase, Vercel, Cloud Run) só com ordem do dono (§11).
 
 ## Review Focus
 
 1. **Questão com tabela de apoio (79 dos 200 têm; sem ela não se responde):** na sessão, no resultado e na correção o aluno vê o título e as linhas de `support` antes das alternativas, sem rolagem horizontal da página no celular. Teste na Tarefa 14.
-2. **Assinatura Pro/Elite vence depois de treinar Questões StaziaMed:** a sessão StaziaMed antiga abre sem erro, sem questões e com "Questões StaziaMed são dos planos Pro e Elite." e o botão para os planos; sessão nova da coleção é recusada com a mesma frase. Testes nas Tarefas 2 (banco) e 14 (tela).
+2. **O acesso termina depois de treinar Questões Inéditas (teste grátis vence, plano pago vence ou é cancelado):** a sessão antiga abre sem erro, sem questões e com o aviso de `ineditas_gate()` e o botão "Ver planos"; sessão nova com `exam_id = 'staziamed'` é recusada com o mesmo aviso; teste grátis **válido** treina. Os números do histórico não mudam (Q13). Testes nas Tarefas 2 (banco) e 14 (tela).
 3. **Revisor aprova com a tela aberta enquanto alguém da equipe salvou outra versão:** a aprovação recusa ("O texto mudou depois que você abriu: confira de novo.") em vez de aprovar um texto que o médico não leu. Teste na Tarefa 10.
 4. **Rascunho editado (ou fonte aceita) enquanto a conferência ou a busca de fonte dele roda:** o resultado da versão antiga é descartado, as chamadas de IA restantes não acontecem e nada fica "conferido" no texto novo; proposta de versão antiga não pode ser usada. Testes nas Tarefas 6 e 8.
 5. **IA falha em todas as tentativas de uma vaga (erro, resposta fora do formato):** a vaga não fica presa em "gerando": vira "descartada" com "Falha da IA: …" e o pedido chega a "concluído". Teste na Tarefa 7.
@@ -54,7 +84,7 @@
 - Pedido aceito com IA desligada: as tarefas ficam "bloqueadas" até ligar (aviso na tela).
 - Aprovar exige o hash que o revisor viu; salvar exige o hash aberto (dois editores).
 - Número da questão publicada por sequência própria (`staziamed_question_seq`), nunca `max()+1`.
-- Quem perde o Pro deixa de ver as Questões StaziaMed também no histórico (a política da spec é `origin = 'official' or has_pro()`); volta a ver ao assinar de novo.
+- Quem perde o acesso (teste vence, plano vence) deixa de ver questões StaziaMed novas e o conteúdo/correção delas; os **números** do histórico continuam iguais em toda tela (Q13): a política deixa ler a linha da questão que o próprio aluno já respondeu (colunas liberadas, sem gabarito), e a correção só abre com acesso.
 - `app_admin_questions`/`app_admin_question` (banco de questões oficiais da administração) mostram só oficiais.
 - Rascunho recusado não é editado; área não é editável; citações só mudam pela proposta de fonte.
 - Um pedido igual (mesma pessoa, modo, área, tema e quantidade) nos últimos 2 minutos ainda na fila é recusado ("Este pedido já está na fila.").
@@ -64,8 +94,8 @@
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `supabase/migrations/20261003006200_questoes_staziamed.sql` | rascunhos, hash, pedidos/vagas, propostas, trilha, fila, conferência, edição, trava, publicação |
-| `supabase/migrations/20261003006300_questoes_staziamed_aluno.sql` | origem, prova STAZIAMED, política, visões do aluno, coleção, consumidores só oficiais |
+| `supabase/migrations/20261003009800_questoes_staziamed.sql` | rascunhos, hash, pedidos/vagas, propostas, trilha, fila, conferência, edição, trava, publicação |
+| `supabase/migrations/20261003009801_questoes_staziamed_aluno.sql` | origem, prova STAZIAMED, política, visões do aluno, coleção, consumidores só oficiais |
 | `scripts/supabase/engine-seed.ts` | carga antiga não sobrescreve rascunho editado; gabarito oficial da carga só de questão oficial (T3) |
 | `server/contentHub/jobErrors.ts` | `Blocked`, `Fatal` (sem importação circular) |
 | `server/contentHub/questoes/{types,similarity,validate,shuffle}.ts` | validações sem IA, semelhança, embaralhamento |
@@ -81,7 +111,7 @@
 ### Task 1: Rascunhos no banco — colunas, hash no banco, pedidos, propostas, trilha e fila
 
 **Files:**
-- Create: `supabase/migrations/20261003006200_questoes_staziamed.sql`
+- Create: `supabase/migrations/20261003009800_questoes_staziamed.sql`
 - Modify: `scripts/supabase/engine-seed.ts:146-176` (`buildDraftStatements`)
 - Create: `src/__tests__/helpers/staziamed.ts`
 - Test: Create `src/__tests__/questoesStaziaMedRascunhos.test.ts`; Modify `src/__tests__/engineSeed.test.ts:199-209` e `src/__tests__/contentHubDraftChecks.test.ts:192` (o hash agora é do banco: simular mudança alterando `stem`, não `content_hash`)
@@ -126,55 +156,65 @@ it("nenhuma função ch_worker_*, draft_* ou staziamed_* é executável por anon
 - [ ] **Step 5: Commit**
 
 ```bash
-git add supabase/migrations/20261003006200_questoes_staziamed.sql scripts/supabase/engine-seed.ts src/__tests__/helpers/staziamed.ts src/__tests__/questoesStaziaMedRascunhos.test.ts src/__tests__/engineSeed.test.ts src/__tests__/contentHubDraftChecks.test.ts
-git commit -m "Questoes StaziaMed: rascunhos com hash no banco, pedidos, propostas, trilha e etapas da fila" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git add supabase/migrations/20261003009800_questoes_staziamed.sql scripts/supabase/engine-seed.ts src/__tests__/helpers/staziamed.ts src/__tests__/questoesStaziaMedRascunhos.test.ts src/__tests__/engineSeed.test.ts src/__tests__/contentHubDraftChecks.test.ts
+git commit -m "Questoes StaziaMed: rascunhos com hash no banco, pedidos, propostas, trilha e etapas da fila" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
-### Task 2: Banco do aluno — origem, prova STAZIAMED, leitura protegida e coleção
+### Task 2: Banco do aluno — origem, prova STAZIAMED, acesso (has_ineditas), leitura protegida e opção na lista de provas
+
+> **Reescrita em 2026-10-12** (decisão do dono de 2026-10-11): o acesso inclui o teste grátis válido e a escolha é pela prova
+> `staziamed` da lista "Prova / edição"; não existe mais o filtro `collection`. Depende da leva 3 (9730) no banco.
 
 **Files:**
-- Create: `supabase/migrations/20261003006300_questoes_staziamed_aluno.sql`
-- Modify: `src/__tests__/helpers/staziamed.ts` (+ `insertStaziaQuestion`)
+- Create: `supabase/migrations/20261003009801_questoes_staziamed_aluno.sql`
+- Modify: `src/__tests__/helpers/staziamed.ts` (+ `insertStaziaQuestion`, contas `TESTE_VENCIDO`, `PRO_VENCIDO`, `SEM_PLANO`)
 - Test: Create `src/__tests__/questoesStaziaMedAlunoBanco.test.ts`
 
 **Interfaces:**
-- Consumes: `openStaziaEnv`, `USERS`, `sqlAs`, `rpc` (Tarefa 1).
+- Consumes: `openStaziaEnv`, `USERS`, `sqlAs`, `rpc` (Tarefa 1); `user_without_paid_access`, `subscription_trial_is_valid`, `user_plan_lock`, `simulado_gate` e `app_start_session` da 9730.
 - Produces (banco):
   - `questions.origin text not null default 'official' check (origin in ('official','staziamed'))`, `retired_at timestamptz`, `support jsonb` (nulo nas oficiais; `{ type, title, rows: [{label, value}] }`); `check ((origin = 'staziamed') = (exam_id = 'staziamed'))`; `check (origin = 'official' or inep_intent is null)`; índice `questions (origin)`.
   - `exams.kind` aceita `'STAZIAMED'`; linha `('staziamed', 'STAZIAMED', 2026, null, 'Questões StaziaMed')`.
-  - `grant select (origin, retired_at, support) on questions to anon, authenticated` (além das colunas de `20261003001900_answer_key_lockdown.sql:17-19`).
-  - Política: sai "questões: leitura para logados"; entra `using (origin = 'official' or (select public.has_pro()))`.
-  - `practice_question_view` e `practice_correction_view`: devolvem `origin` e `support`; só respondem se `q.origin = 'official' or public.has_pro()`.
-  - `practice_pool(p_filters)`: filtro `collection` (`'oficiais'` padrão | `'staziamed'`; outro valor = `'oficiais'`); `'oficiais'` → `origin = 'official'`; `'staziamed'` → `origin = 'staziamed' and retired_at is null and public.has_pro()`. Recolhida nunca entra.
-  - `app_start_session`: `collection = 'staziamed'` sem `has_pro()` → `raise 'Questões StaziaMed são dos planos Pro e Elite.'` (`42501`).
-  - `app_get_session` (de `20261003004300_simulado_cronometro.sql:100`): devolve também `collection` (`config->'filters'->>'collection'`, padrão `'oficiais'`) e `locked` (`collection = 'staziamed' and not has_pro()`); com `locked`, `questions = '[]'`.
-- Produces (teste): `insertStaziaQuestion(env, o?: { number?: number; area?: string; topic?: string; correct?: "A"|"B"|"C"|"D"; support?: object; retired?: boolean }): Promise<string>` (SQL direto, `origin 'staziamed'`, `exam_id 'staziamed'`, id `staziamed_q` + número com 4 dígitos).
+  - `grant select (origin, retired_at, support) on questions to anon, authenticated` (além das colunas de `20261003001900_answer_key_lockdown.sql:17-19`; `sources` continua fechada pela 9620 e `explanations_review`/`comment_review` não são liberadas).
+  - `has_ineditas() returns boolean` (security definer, executável por `authenticated`): `auth.uid()` não nulo e `not user_without_paid_access(auth.uid())` = equipe, revisor médico, plano pago válido ou teste grátis válido. `has_pro()` não muda.
+  - `ineditas_gate() returns text` (como `simulado_gate`): nulo com acesso; senão o aviso: `'Seu teste grátis terminou. '` / `'Seu plano pago terminou. '` / `''` (por `user_plan_lock(...) ->> 'state'`) + `'As Questões Inéditas são abertas a quem tem plano pago ou teste grátis em dia. As questões das provas oficiais continuam abertas.'`
+  - Política: sai "questões: leitura para logados"; entra `using (origin = 'official' or (select public.has_ineditas()) or exists (select 1 from public.question_attempts a where a.user_id = (select auth.uid()) and a.question_id = questions.id))` (a última parte mantém os números do histórico, Q13).
+  - `practice_question_view` e `ch_raw_practice_correction_view` (a de 9701; o invólucro `practice_correction_view` não muda): devolvem `origin` e `support`; só respondem se `q.origin = 'official' or public.has_ineditas()`.
+  - `practice_pool(p_filters)`: sem `exam_id` → só `origin = 'official'`; `exam_id = 'staziamed'` → `origin = 'staziamed' and retired_at is null and public.has_ineditas()`; outro `exam_id` → `origin = 'official'` com a prova pedida. Recolhida nunca entra.
+  - `app_start_session` (parte da versão da 9730, com `simulado_gate`): `exam_id = 'staziamed'` sem acesso → `raise ineditas_gate()` (`42501`).
+  - `app_get_session` (de `20261003004300_simulado_cronometro.sql`): devolve também `collection` (`'staziamed'` se `config->'filters'->>'exam_id' = 'staziamed'`, senão `'oficiais'`), `locked` (`collection = 'staziamed' and not has_ineditas()`) e `lock_message`; com `locked`, `questions = '[]'`.
+  - `app_question_filters`: `exams` ganha, no fim, `{ id: 'staziamed', kind: 'STAZIAMED', year: 2026, semester: null, title: 'Questões Inéditas', total, locked, lock_message }` quando há inéditas publicadas e não recolhidas (`total` = as da pessoa com acesso; fechado: o total publicado, `locked: true`); sem nenhuma publicada, a opção não aparece. `app_count_questions` herda a prova do filtro.
+- Produces (teste): `insertStaziaQuestion(env, o?: { number?: number; area?: string; topic?: string; correct?: "A"|"B"|"C"|"D"; support?: object; retired?: boolean }): Promise<string>` (SQL direto, `origin 'staziamed'`, `exam_id 'staziamed'`, id `staziamed_q` + número com 4 dígitos). Contas: `TESTE` (teste grátis válido), `TESTE_VENCIDO`, `PRO_VENCIDO` (plano pago cancelado), `SEM_PLANO` (sem linha de assinatura), `PRO` (com `current_period_end` no futuro).
 
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-it("a política esconde Questões StaziaMed do teste grátis, também na leitura direta da tabela; Pro e equipe leem", ...)
-  // sqlAs(TESTE, "select id from public.questions where origin='staziamed'") → []; PRO e EDITOR → [id]
-it("antes de responder: origem, tabela de apoio e a prova STAZIAMED; teste grátis recebe nulo", ...)
-  // practice_question_view(id) as PRO → { origin: 'staziamed', support: {...}, exam: { kind: 'STAZIAMED' } }; as TESTE → null
-it("coleção: padrão só oficiais; 'staziamed' só Pro, sem recolhidas; sessão não mistura", ...)
-  // practice_pool('{}') sem nenhuma staziamed; app_start_session('questoes', {collection:'staziamed'}, 10) as PRO → todos os ids staziamed_q*
-  // as TESTE → rejects 'Questões StaziaMed são dos planos Pro e Elite.'
-it("app_count_questions conta a coleção pedida", ...)            // as PRO com {collection:'staziamed'} → total = nº inseridas não recolhidas
+it("acesso: equipe, revisor, plano pago válido e TESTE GRÁTIS VÁLIDO leem; teste vencido, plano vencido e sem assinatura não (leitura direta da tabela)", ...)
+  // sqlAs(PRO|TESTE|EDITOR|REVISOR_PED, "select id from public.questions where origin='staziamed'") → [id]; TESTE_VENCIDO|PRO_VENCIDO|SEM_PLANO → []
+it("has_ineditas e ineditas_gate: a regra do Planos (9730) numa função só; has_pro continua sem o teste", ...)
+it("antes de responder: origem, tabela de apoio e a prova STAZIAMED; fechado recebe nulo", ...)
+  // practice_question_view(id) as PRO e as TESTE → { origin: 'staziamed', support: {...}, exam: { kind: 'STAZIAMED' } }; as TESTE_VENCIDO → null
+it("a lista de provas (app_question_filters) traz 'Questões Inéditas' aberta para quem tem acesso e com locked para quem não tem; sem publicadas, nada", ...)
+it("sorteio: sem prova só oficiais; exam_id 'staziamed' só com acesso, sem recolhidas; a sessão não mistura", ...)
+  // practice_pool('{}') sem nenhuma staziamed; app_start_session('questoes', {exam_id:'staziamed'}, 10) as PRO e as TESTE → todos os ids staziamed_q*
+  // as TESTE_VENCIDO → rejects ineditas_gate() com 'Seu teste grátis terminou.'; PRO_VENCIDO → 'Seu plano pago terminou.'; SEM_PLANO → sem a primeira frase
+it("app_count_questions conta a prova pedida", ...)
 it("recolhida sai do sorteio, mas continua na sessão antiga de quem respondeu", ...)
-it("assinatura vencida: a sessão StaziaMed antiga abre com locked e sem questões; sessão nova recusada", ...)   // Review Focus 2
+it("o acesso termina depois de treinar: a sessão antiga abre com locked e sem questões; sessão nova recusada; os números do histórico não mudam", ...)   // Review Focus 2, Q13
   // PRO responde (app_answer_question) → subscriptions status 'canceled' → app_get_session → { collection:'staziamed', locked:true, questions:[] }
+it("simulado e outras regras da 9730 seguem: app_start_session de simulado recusa teste vencido; sessão oficial abre", ...)
+it("migração idempotente: colar de novo não muda nada (mesmas funções, políticas e restrições)", ...)
 ```
 
 - [ ] **Step 2: Run** `npx vitest run src/__tests__/questoesStaziaMedAlunoBanco.test.ts --maxWorkers=1` — Expected: FAIL (coluna `origin` não existe).
-- [ ] **Step 3: Implement** a 6300 (seções acima) e `insertStaziaQuestion`.
+- [ ] **Step 3: Implement** a 9801 (seções acima) e `insertStaziaQuestion`.
 - [ ] **Step 4: Run** `npx vitest run src/__tests__/questoesStaziaMedAlunoBanco.test.ts src/__tests__/supabaseAnswerKey.test.ts src/__tests__/equipeAcessoCompleto.test.ts --maxWorkers=1` — Expected: PASS.
-- [ ] **Step 5: Commit** `git add` dos três arquivos; mensagem "Questoes StaziaMed: origem, prova STAZIAMED, leitura so Pro e colecao no sorteio".
+- [ ] **Step 5: Commit** `git add` dos três arquivos; mensagem "Questoes StaziaMed: origem, prova STAZIAMED, acesso com teste valido e opcao Questoes Ineditas na lista de provas".
 
 ### Task 3: Consumidores só oficiais, recusas e catálogo
 
 **Files:**
-- Modify: `supabase/migrations/20261003006300_questoes_staziamed_aluno.sql`; `scripts/supabase/engine-seed.ts:186-190` (primeira instrução de `buildEngineStatements`: o gabarito oficial da carga só vai para `origin = 'official'`)
+- Modify: `supabase/migrations/20261003009801_questoes_staziamed_aluno.sql`; `scripts/supabase/engine-seed.ts:186-190` (primeira instrução de `buildEngineStatements`: o gabarito oficial da carga só vai para `origin = 'official'`)
 - Test: Create `src/__tests__/questoesStaziaMedSoOficiais.test.ts`; Modify `src/__tests__/engineSeed.test.ts:44,130` (as 1.200 contadas com `origin = 'official'`)
 
 **Interfaces:**
@@ -188,7 +228,7 @@ it("assinatura vencida: a sessão StaziaMed antiga abre com locked e sem questõ
   - `so_oficiais/filtra`: as da primeira lista acima;
   - `so_oficiais/recusa`: `app_admin_set_official_answer`, `app_admin_save_question`, `admin_upsert_question`;
   - `so_oficiais/herda` (só recebem linhas de quem já filtra): `ch_worker_save_question_analysis`, `ch_worker_analyses_for_check`, `app_question_analysis_decide`, `tutor_session_summary`, `tutor_learning_memory`, `ch_worker_tutor_learning_event`, `ch_worker_tutor_speech`;
-  - `as_duas/historico`: `practice_pool` (pela coleção), `app_get_session`, `practice_result`, `practice_question_view`, `practice_correction_view`, `app_error_notebook`, `my_error_notebook_of`, `app_error_profile`, `app_performance`, `plan_task_progress`, `app_create_flashcard`, `grade_question_attempt`, `gam_check_achievements`, `gam_compute_score`, `gam_facts`, `gam_process_attempt`, `ch_worker_gamification_recalculate`, `admin_refresh_exam_counts`, `app_admin_overview`, `question_area_code`, `tutor_mastery`, `app_tutor_report`, `ch_worker_tutor_play_context` e as visões `my_area_stats`, `my_topic_stats`, `my_error_notebook`.
+  - `as_duas/historico`: `practice_pool` (pela prova `staziamed`), `app_question_filters`, `app_get_session`, `practice_result`, `practice_question_view`, `practice_correction_view`, `app_error_notebook`, `my_error_notebook_of`, `app_error_profile`, `app_performance`, `plan_task_progress`, `app_create_flashcard`, `grade_question_attempt`, `gam_check_achievements`, `gam_compute_score`, `gam_facts`, `gam_process_attempt`, `ch_worker_gamification_recalculate`, `admin_refresh_exam_counts`, `app_admin_overview`, `question_area_code`, `tutor_mastery`, `app_tutor_report`, `ch_worker_tutor_play_context` e as visões `my_area_stats`, `my_topic_stats`, `my_error_notebook`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -210,7 +250,7 @@ it("administração: salvar questão recusa StaziaMed; visão geral conta separa
 ```
 
 - [ ] **Step 2: Run** `npx vitest run src/__tests__/questoesStaziaMedSoOficiais.test.ts --maxWorkers=1` — Expected: FAIL (números mudam com as StaziaMed; catálogo acusa `filtra` sem `origin`; a carga reaplicada grava gabarito `FINAL` na StaziaMed).
-- [ ] **Step 3: Implement** as redefinições e recusas na 6300; a primeira instrução da carga (`engine-seed.ts:186-190`) ganha `q.origin = 'official' and` antes do `not exists`; o `engineSeed.test.ts` passa a contar `origin = 'official'`.
+- [ ] **Step 3: Implement** as redefinições e recusas na 9801; a primeira instrução da carga (`engine-seed.ts:186-190`) ganha `q.origin = 'official' and` antes do `not exists`; o `engineSeed.test.ts` passa a contar `origin = 'official'`.
 - [ ] **Step 4: Run** `npx vitest run src/__tests__/questoesStaziaMedSoOficiais.test.ts src/__tests__/engineSeed.test.ts src/__tests__/questionKnowledge.test.ts --maxWorkers=1` — Expected: PASS.
 - [ ] **Step 5: Commit** `git add` da migração, de `scripts/supabase/engine-seed.ts` e dos dois testes; mensagem "Questoes StaziaMed: incidencia, temas, Tutor e SQIE so com oficiais; catalogo de leitores".
 
@@ -218,7 +258,7 @@ it("administração: salvar questão recusa StaziaMed; visão geral conta separa
 
 **Files:**
 - Create: `server/contentHub/questoes/types.ts`, `server/contentHub/questoes/similarity.ts`, `server/contentHub/questoes/validate.ts`, `server/contentHub/questoes/shuffle.ts`
-- Modify: `supabase/migrations/20261003006200_questoes_staziamed.sql` (+ `ch_worker_similarity_corpus`); `src/__tests__/questoesStaziaMedSoOficiais.test.ts` (catálogo: `as_duas/historico`)
+- Modify: `supabase/migrations/20261003009800_questoes_staziamed.sql` (+ `ch_worker_similarity_corpus`); `src/__tests__/questoesStaziaMedSoOficiais.test.ts` (catálogo: `as_duas/historico`)
 - Test: Create `src/__tests__/questoesStaziaMedValidacoes.test.ts`
 
 **Interfaces:**
@@ -291,7 +331,7 @@ it("ch_worker_similarity_corpus traz as 1.200 oficiais e os rascunhos não recus
 ### Task 5: Vagas do pedido e criação do pedido (banco)
 
 **Files:**
-- Modify: `supabase/migrations/20261003006200_questoes_staziamed.sql`; `src/__tests__/questoesStaziaMedSoOficiais.test.ts` (catálogo)
+- Modify: `supabase/migrations/20261003009800_questoes_staziamed.sql`; `src/__tests__/questoesStaziaMedSoOficiais.test.ts` (catálogo)
 - Test: Create `src/__tests__/questoesStaziaMedVagas.test.ts`
 
 **Interfaces:**
@@ -338,7 +378,7 @@ it("a lista de pedidos mostra cada vaga com a situação da tarefa", ...)
 
 **Files:**
 - Create: `server/contentHub/jobErrors.ts`, `server/contentHub/questoes/passages.ts`, `server/contentHub/questoes/check.ts`, `server/contentHub/ai/promptsStaziamed.ts`
-- Modify: `server/contentHub/pipeline.ts` (importa e reexporta `Blocked`/`Fatal`; `Step` ganha as 3 etapas; `STEPS.question_check`; `question_generate`/`question_source` provisórios lançam `Blocked("Etapa de Questões StaziaMed ainda não instalada neste servidor.")`), `server/contentHub/draftChecks.ts`, `server/contentHub/ai/prompts.ts` (`...STAZIAMED_PROMPTS`), `server/ai/config.ts:114` (`staziamed_pedagogia` → `verificacao`), `server/contentHub/ai/mock.ts`, `supabase/migrations/20261003006200_questoes_staziamed.sql`
+- Modify: `server/contentHub/pipeline.ts` (importa e reexporta `Blocked`/`Fatal`; `Step` ganha as 3 etapas; `STEPS.question_check`; `question_generate`/`question_source` provisórios lançam `Blocked("Etapa de Questões StaziaMed ainda não instalada neste servidor.")`), `server/contentHub/draftChecks.ts`, `server/contentHub/ai/prompts.ts` (`...STAZIAMED_PROMPTS`), `server/ai/config.ts:114` (`staziamed_pedagogia` → `verificacao`), `server/contentHub/ai/mock.ts`, `supabase/migrations/20261003009800_questoes_staziamed.sql`
 - Test: Create `src/__tests__/questoesStaziaMedConferencia.test.ts`; Modify `src/__tests__/contentHubDraftChecks.test.ts` (linhas que **mudam de propósito**: semelhança 74 → `too_similar_official` crítico, e a linha "semelhança alta" passa a 55 → `similar_official` importante; "só cita material de terceiros" → `third_party_source_only` **crítico**)
 
 **Interfaces:**
@@ -395,7 +435,7 @@ it("Conferir pendentes: só os rascunhos do filtro sem as 4 camadas em dia", ...
 
 **Files:**
 - Create: `server/contentHub/questoes/generate.ts`
-- Modify: `server/contentHub/ai/promptsStaziamed.ts` (+ `staziamed_questao`, `staziamed_reescrita`), `server/contentHub/pipeline.ts` (`STEPS.question_generate`), `server/contentHub/ai/mock.ts`, `server/ai/maestro.ts:48-52` (`MaestroOrigin.source` + `"questoes_staziamed"`), `supabase/migrations/20261003006200_questoes_staziamed.sql`
+- Modify: `server/contentHub/ai/promptsStaziamed.ts` (+ `staziamed_questao`, `staziamed_reescrita`), `server/contentHub/pipeline.ts` (`STEPS.question_generate`), `server/contentHub/ai/mock.ts`, `server/ai/maestro.ts:48-52` (`MaestroOrigin.source` + `"questoes_staziamed"`), `supabase/migrations/20261003009800_questoes_staziamed.sql`
 - Test: Create `src/__tests__/questoesStaziaMedGeracao.test.ts`
 
 **Interfaces:**
@@ -447,7 +487,7 @@ it("a simulação do desenvolvimento nunca escreve questão", ...)
 
 **Files:**
 - Create: `server/contentHub/questoes/source.ts`
-- Modify: `server/contentHub/pipeline.ts` (`STEPS.question_source`), `supabase/migrations/20261003006200_questoes_staziamed.sql`
+- Modify: `server/contentHub/pipeline.ts` (`STEPS.question_source`), `supabase/migrations/20261003009800_questoes_staziamed.sql`
 - Test: Create `src/__tests__/questoesStaziaMedFonte.test.ts`
 
 **Interfaces:**
@@ -517,7 +557,7 @@ it("buscar fonte sem decisão clínica: 400 'Preencha a decisão clínica centra
 ### Task 10: Editar, equilibrar gabarito, decidir com a trava e listar (banco)
 
 **Files:**
-- Modify: `supabase/migrations/20261003006200_questoes_staziamed.sql`; `src/__tests__/questoesStaziaMedSoOficiais.test.ts` (catálogo)
+- Modify: `supabase/migrations/20261003009800_questoes_staziamed.sql`; `src/__tests__/questoesStaziaMedSoOficiais.test.ts` (catálogo)
 - Test: Create `src/__tests__/questoesStaziaMedRevisao.test.ts`; Modify `src/__tests__/helpers/staziamed.ts` (+ `readyDraft(env): Promise<{ id: string; hash: string; sourceId: string }>`: fonte oficial, rascunho de PEDIATRIA com tema, citação nova da decisão e as 4 camadas `pass` no hash atual)
 
 **Interfaces:**
@@ -554,7 +594,7 @@ it("lista: filtros de origem, pedido/lote, área, tema, situação, bloqueadas e
 ### Task 11: Publicar, republicar, recolher e "fonte desatualizada"
 
 **Files:**
-- Modify: `supabase/migrations/20261003006200_questoes_staziamed.sql`; `src/__tests__/questoesStaziaMedSoOficiais.test.ts` (catálogo)
+- Modify: `supabase/migrations/20261003009800_questoes_staziamed.sql`; `src/__tests__/questoesStaziaMedSoOficiais.test.ts` (catálogo)
 - Test: Create `src/__tests__/questoesStaziaMedPublicacao.test.ts`
 
 **Interfaces:**
@@ -649,7 +689,9 @@ it("Equilibrar gabarito chama a função e recarrega", ...)
 - [ ] **Step 4: Run** `npx vitest run src/__tests__/questoesStaziaMedPainel.test.tsx --maxWorkers=1` — Expected: PASS.
 - [ ] **Step 5: Commit** mensagem "Questoes StaziaMed: rascunho aberto com editar, conferir, fonte, aprovar, publicar e recolher".
 
-### Task 14: Lado do aluno — coleção, rótulo, tabela de apoio e correção
+### Task 14: Lado do aluno — opção "Questões Inéditas", rótulo, tabela de apoio e correção
+
+> **Reescrita em 2026-10-12:** a escolha é na lista "Prova / edição" (não há seletor "Coleção"); o teste grátis válido treina; cadeado e convite só para quem está fechado.
 
 **Files:**
 - Modify: `src/novo/app/practice/format.js:15-17`, `QuestionBuilder.jsx`, `PracticeSession.jsx:463-470`, `SessionResult.jsx:39`, `Correction.jsx`, `src/novo/app/review/ErrorNotebook.jsx:116`
@@ -657,30 +699,30 @@ it("Equilibrar gabarito chama a função e recarrega", ...)
 - Test: Create `src/__tests__/questoesStaziaMedAluno.test.tsx`; Modify `src/__tests__/novoPracticeFormat.test.ts`
 
 **Interfaces:**
-- Consumes: `boot.has_pro` (`app_bootstrap`), `collection`/`locked` de `app_get_session`, `origin`/`support` das visões (T2).
+- Consumes: `exams[].locked`/`lock_message` de `app_question_filters`, `collection`/`locked`/`lock_message` de `app_get_session`, `origin`/`support` das visões (T2).
 - Produces:
-  - `format.js`: `examLabel` com `kind === "STAZIAMED"` → `"Questão StaziaMed"`; `isStaziamed(q): boolean` (`q?.exam?.kind === "STAZIAMED" || q?.origin === "staziamed"`); `questionRef(q): string` → `"Questão StaziaMed · nº 12"` ou `"Revalida 2024/1 · Q51"`.
+  - `format.js`: `examLabel` com `kind === "STAZIAMED"` → `"Questões Inéditas"` (na lista) e `isStaziamed(q): boolean` (`q?.exam?.kind === "STAZIAMED" || q?.origin === "staziamed"`); `questionRef(q): string` → `"Questão StaziaMed · nº 12"` ou `"Revalida 2024/1 · Q51"`.
   - `SupportTable({ support })` — nada sem linhas; senão `<table aria-label={support.title || "Dados de apoio"}>` com rótulo/valor, dentro de um contêiner com rolagem horizontal própria.
-  - `QuestionBuilder`: `SegmentedControl label="Coleção"` com "Provas oficiais" (padrão) e "Questões StaziaMed" (`icon: "lock"` sem `has_pro`); StaziaMed esconde "Prova / edição", mostra o aviso "Questões criadas pela StaziaMed a partir de fontes oficiais e revisadas por médico. Não é questão oficial do Inep." e manda `collection: "staziamed"` em `app_count_questions` e `app_start_session`; sem `has_pro`, no lugar do início: "Disponível nos planos Pro e Elite" e "Ver planos" → `go("planos")`.
-  - Sessão, resultado e caderno: `questionRef(question)` e `Badge` "não é questão oficial do Inep" quando `isStaziamed`; `SupportTable` depois de `QuestionFigures`. Sessão com `locked`: `EmptyState` "Questões StaziaMed são dos planos Pro e Elite." com "Ver planos".
+  - `QuestionBuilder`: a lista "Prova / edição" mostra "Questões Inéditas" (quando o banco a devolve). Escolhida: mostra o aviso "Questões criadas pela StaziaMed a partir de fontes oficiais e revisadas por médico. Não é questão oficial do Inep." e manda `exam_id: "staziamed"` (como as outras provas); com `locked`: cadeado na opção, o `lock_message` e "Ver planos" → `go("planos")`, e "Começar" desabilitado. Teste grátis **válido** não vê cadeado.
+  - Sessão, resultado e caderno: `questionRef(question)` e `Badge` "não é questão oficial do Inep" quando `isStaziamed`; `SupportTable` depois de `QuestionFigures`. Sessão com `locked`: `EmptyState` com o `lock_message` e "Ver planos".
   - `Correction`: StaziaMed mostra "Gabarito StaziaMed: alternativa B", explicação, "Por que não as outras?", "Conduta esperada" e "Fontes oficiais citadas" (órgão, documento, versão, página, trecho); sem "O que a questão avalia", sem linha "Gabarito: …", sem botão do Tutor.
 
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
-it("questionRef e examLabel: 'Questão StaziaMed · nº 12' e 'Revalida 2024/1 · Q51'", ...)
-it("montador Pro: Coleção StaziaMed esconde a prova, mostra o aviso e manda collection 'staziamed'", ...)
-it("montador teste grátis: cadeado, 'Disponível nos planos Pro e Elite' e 'Ver planos'; nunca inicia sessão StaziaMed", ...)
+it("questionRef e examLabel: 'Questão StaziaMed · nº 12', 'Questões Inéditas' na lista e 'Revalida 2024/1 · Q51'", ...)
+it("montador com plano pago ou teste grátis válido: a lista traz 'Questões Inéditas'; escolhida, mostra o aviso e manda exam_id 'staziamed'", ...)
+it("montador fechado (teste vencido, plano vencido, sem assinatura): cadeado, o aviso do banco e 'Ver planos'; nunca inicia sessão StaziaMed", ...)
 it("sessão: 'Questão StaziaMed · nº 12', selo 'não é questão oficial do Inep' e a tabela de apoio antes das alternativas", ...)   // Review Focus 1
 it("correção: 'Gabarito StaziaMed: alternativa B', 'Por que não as outras?', conduta e 'Fontes oficiais citadas'; nunca 'gabarito oficial' nem 'O que a questão avalia'; sem Tutor", ...)
-it("sessão de quem perdeu o plano: 'Questões StaziaMed são dos planos Pro e Elite.' e 'Ver planos', sem erro", ...)   // Review Focus 2
+it("sessão de quem ficou sem acesso: o aviso do banco e 'Ver planos', sem erro", ...)   // Review Focus 2
 it("caderno de erros: rótulo e selo da questão StaziaMed", ...)
 ```
 
 - [ ] **Step 2: Run** `npx vitest run src/__tests__/questoesStaziaMedAluno.test.tsx src/__tests__/novoPracticeFormat.test.ts --maxWorkers=1` — Expected: FAIL.
 - [ ] **Step 3: Implement** as mudanças nas telas.
 - [ ] **Step 4: Run** `npx vitest run src/__tests__/questoesStaziaMedAluno.test.tsx src/__tests__/novoPracticeFormat.test.ts src/__tests__/errorNotebookConsolidation.test.tsx src/__tests__/equipeAcessoTelas.test.tsx --maxWorkers=1` — Expected: PASS.
-- [ ] **Step 5: Commit** mensagem "Questoes StaziaMed: colecao no montador, rotulo, tabela de apoio e correcao para o aluno".
+- [ ] **Step 5: Commit** mensagem "Questoes StaziaMed: opcao Questoes Ineditas no montador, rotulo, tabela de apoio e correcao para o aluno".
 
 ### Task 15: Documentação, suíte completa, build e SQL do dono
 
@@ -690,7 +732,7 @@ it("caderno de erros: rótulo e selo da questão StaziaMed", ...)
 
 **Interfaces:**
 - Consumes: tudo das Tarefas 1–14.
-- Produces: `QUESTOES_STAZIAMED.md` com: fluxo (pedido → vaga → rascunho → revisão → publicação), tabelas e funções novas, as três etapas da fila e onde rodam, rotas, regras (fonte oficial, limites, trava), o que conta "só oficiais" e "as duas" (o catálogo), o roteiro dos 200 (buscar fonte → usar → equilibrar gabarito → conferir → revisão médica; uma vez, `scripts/content-hub/run-draft-checks.ts --layers software --reference-dir <pasta das apostilas>` só no computador onde elas estão, para achar texto copiado), a ordem de publicação do §11 e que a tarefa do Cloud Run precisa ser implantada de novo para ter as etapas novas. O SQL do dono: `begin;`, a 6200, a 6300, `insert into supabase_migrations.schema_migrations (version, name) values ('20261003006200', 'questoes_staziamed'), ('20261003006300', 'questoes_staziamed_aluno') on conflict (version) do nothing;`, `commit;` (formato do arquivo do Termo).
+- Produces: `QUESTOES_STAZIAMED.md` com: fluxo (pedido → vaga → rascunho → revisão → publicação), tabelas e funções novas, as três etapas da fila e onde rodam, rotas, regras (fonte oficial, limites, trava), o que conta "só oficiais" e "as duas" (o catálogo), o roteiro dos 200 (buscar fonte → usar → equilibrar gabarito → conferir → revisão médica; uma vez, `scripts/content-hub/run-draft-checks.ts --layers software --reference-dir <pasta das apostilas>` só no computador onde elas estão, para achar texto copiado), a ordem de publicação do §11 e que a tarefa do Cloud Run precisa ser implantada de novo para ter as etapas novas. O SQL do dono (só depois de 9730 a 9732 estarem no banco): `begin;`, a 9800, a 9801, `insert into supabase_migrations.schema_migrations (version, name) values ('20261003009800', 'questoes_staziamed'), ('20261003009801', 'questoes_staziamed_aluno') on conflict (version) do nothing;`, `commit;` (formato do arquivo do Termo).
 
 - [ ] **Step 1:** escrever `QUESTOES_STAZIAMED.md`.
 - [ ] **Step 2: Run** `npx vitest run --maxWorkers=1` — Expected: todos os arquivos passam e o número de arquivos no relatório é igual ao de arquivos de teste existentes (o "reaplicar a carga" de `questionKnowledge` pode estourar o tempo sob carga e passa sozinho).
@@ -700,7 +742,7 @@ it("caderno de erros: rótulo e selo da questão StaziaMed", ...)
 
 ```bash
 git add docs/architecture/QUESTOES_STAZIAMED.md
-git commit -m "Questoes StaziaMed: documentacao da arquitetura e roteiro de publicacao" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+git commit -m "Questoes StaziaMed: documentacao da arquitetura e roteiro de publicacao" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
 ```
 
-- [ ] **Step 6:** publicar só com ordem do dono (§11): fontes oficiais carregadas → SQL no Supabase (6200, 6300) → código (GitHub/Vercel) → tarefa do Cloud Run com as etapas novas → primeiro teste dos 8 passos do §11 (um PCDT; 2 questões do tema com o custo; citações, conferências e semelhança; revisor da área aprova; administrador publica; conta de teste vê fechado e Pro treina com "Gabarito StaziaMed"; Temas e incidência com 1.200 oficiais; primeiro dos 200 pelo caminho completo). Só depois os outros 199.
+- [ ] **Step 6:** publicar só com ordem do dono (§11): fontes oficiais carregadas → SQL no Supabase (9800, 9801) → código (GitHub/Vercel) → tarefa do Cloud Run com as etapas novas → primeiro teste dos 8 passos do §11 (um PCDT; 2 questões do tema com o custo; citações, conferências e semelhança; revisor da área aprova; administrador publica; conta com teste grátis válido e conta Pro treinam e veem "Gabarito StaziaMed", e conta com teste vencido vê fechado com o convite; Temas e incidência com 1.200 oficiais; primeiro dos 200 pelo caminho completo). Só depois os outros 199.

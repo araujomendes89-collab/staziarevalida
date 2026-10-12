@@ -5,12 +5,43 @@ Origem: um dos três pedidos de IA em questões de 2026-10-08 ("Questões Inédi
 levantamento do código em `cfe260f` (`.superpowers/sdd/ineditas/levantamento.md`). Onde esta especificação escolhe um caminho
 que o pedido não fixou, o motivo está escrito.
 
+## 0. Decisão nova do dono (2026-10-11): acesso e lugar na tela do aluno
+Esta seção **vale por cima** do resto do documento onde houver diferença (as linhas antigas foram ajustadas, mas leia esta primeiro).
+1. **Onde aparece:** as Questões StaziaMed aparecem como a opção **"Questões Inéditas"** na lista **"Prova / edição"** da tela
+   Questões do aluno (`QuestionBuilder.jsx`, ao lado de "Todas as provas oficiais" e das provas). O padrão da lista continua só
+   com as questões oficiais: a sessão nunca mistura as duas. O nome que o aluno vê na sessão e na correção segue "Questão
+   StaziaMed · nº 12" / "Gabarito StaziaMed", e o aviso "Não é questão oficial do Inep" aparece sempre.
+2. **Quem treina:** equipe (administrador e editor), revisor médico, quem tem **plano pago válido** (Pro ou Elite) **e quem está
+   com o teste grátis VÁLIDO** (situação "Em teste" com a data de fim no futuro, ou sem data registrada). Isso **muda** o desenho
+   anterior, em que o teste grátis via a coleção fechada com cadeado e convite.
+3. **Quem fica fechado (regra PL02 do dono: sem acesso pago):** teste grátis **vencido**, plano pago vencido, cancelado ou
+   expirado, e conta sem nenhuma assinatura. Para eles a opção aparece com cadeado e o convite em português (botão "Ver planos");
+   a sessão nova é recusada com o aviso, e uma sessão aberta antes do fim do acesso abre sem questões, com o mesmo aviso.
+   Quem está fechado **continua vendo no histórico** o que já respondeu (desempenho, caderno, XP: Q13 do registro).
+4. **Uma regra só, a do Planos (leva 3, migração 9730):** o banco decide por `user_without_paid_access` (acesso completo da
+   equipe e do revisor, plano pago válido ou teste valendo). Função nova `has_ineditas()` (equipe, revisor, pago ou teste
+   válido). `has_pro()` **não muda** (estações Pro continuam só para quem tem plano pago).
+5. **Mantido:** só entram questões **aprovadas por revisor médico** com fonte oficial (níveis A a D), nada de conteúdo médico
+   inventado; as 200 geradas a partir de apostilas ficam **bloqueadas** sem fonte oficial; nada de inédita aprovada chega ao
+   aluno sem revisão médica e publicação por administrador; gabarito oficial/SQIE, incidência, Temas, Tutor, trilhas e
+   Atualizações **não misturam** inédita com prova oficial.
+6. **O que muda no banco:** (a) política de leitura de `questions`: `origin = 'official' or has_ineditas()`; (b) `practice_pool`:
+   a prova `staziamed` (`exam_id = 'staziamed'`) devolve as publicadas e não recolhidas só para quem tem acesso, e sem `exam_id`
+   devolve só as oficiais; (c) `app_start_session` (parte da versão da 9730, com `simulado_gate`): `exam_id = 'staziamed'` sem
+   acesso → aviso em português (`42501`); (d) `app_question_filters` devolve a opção `staziamed` com `locked`; (e)
+   `app_get_session` devolve `collection` e `locked` (sem acesso: sem questões); (f) `practice_question_view` e a correção só
+   respondem com acesso; (g) `app_bootstrap`/`app_home`/Temas/incidência continuam só com as oficiais. O filtro `collection`
+   do desenho anterior **não existe mais**: a coleção é escolhida pela prova `staziamed`.
+7. **Atenção (palavra "inédita"):** no app, "inédita" já quer dizer "ainda não respondida" (Planejamento, Início, Play). Com a
+   opção "Questões Inéditas" a palavra passa a ter dois sentidos para o aluno; o texto de aviso da opção explica ("criadas pela
+   StaziaMed, revisadas por médico, não são questões oficiais do Inep").
+
 ## 1. O pedido e o resultado esperado
 Na Central de Conteúdo, a equipe pede questões novas da StaziaMed sobre um tema (ou sobre os temas mais cobrados nas provas
 oficiais). Um agente de IA no servidor monta cada questão **só a partir de trechos de fontes oficiais cadastradas na Central**,
 confere e entrega como rascunho. Os 200 rascunhos antigos passam pelo mesmo caminho, um por um. Um revisor médico da área
-aprova; um administrador publica. O aluno Pro ou Elite treina com a coleção **"Questões StaziaMed"**, sempre com o aviso "não é
-questão oficial do Inep". **Nada chega ao aluno sem aprovação humana. Nenhum conteúdo médico sai da memória do modelo.**
+aprova; um administrador publica. O aluno com plano pago ou teste grátis em dia treina com as **"Questões Inéditas"** (opção da
+lista "Prova / edição"; na sessão e na correção, "Questão StaziaMed"), sempre com o aviso "não é questão oficial do Inep". **Nada chega ao aluno sem aprovação humana. Nenhum conteúdo médico sai da memória do modelo.**
 
 Critério de aceite: (1) sem fonte oficial cadastrada, "Gerar" e "Buscar fonte oficial" dizem "Cadastre fontes oficiais na
 Central de Conteúdo" e não gastam nada; (2) um pedido de até 20 questões mostra o custo antes e vira tarefas na fila; (3) cada
@@ -18,7 +49,7 @@ questão gerada tem a decisão clínica e cada número sustentados por citação
 "sem fonte oficial"; (4) nenhuma questão com 70% ou mais de semelhança com questão oficial; (5) gabarito do pedido equilibrado
 entre A, B, C e D; (6) conferências rodam por botão (hoje só pela linha de comando); (7) editar um rascunho zera conferências e
 revisão; (8) nenhum dos 200 é aprovado sem fonte oficial no lugar da apostila; (9) aprovar só o revisor da área, publicar e
-recolher só o administrador, tudo na trilha; (10) aluno Pro/Elite treina com a coleção, o teste grátis a vê fechada com convite;
+recolher só o administrador, tudo na trilha; (10) aluno com plano pago ou teste grátis válido treina com as Questões Inéditas; teste vencido, plano vencido e conta sem assinatura veem fechado, com convite;
 (11) incidência, temas mais cobrados, provas, SQIE, gabarito oficial e Tutor continuam só com as 1.200 questões oficiais.
 
 ## 2. O que existe hoje (conferido no código)
@@ -36,7 +67,7 @@ recolher só o administrador, tudo na trilha; (10) aluno Pro/Elite treina com a 
   gabarito torto (A38/B45/C15/D2 e A47/B39/C12/D2); semelhança com oficiais de 52% a 63%; 79 com tabela ou painel de exames,
   1 pede imagem, 20 com explicação que cita letra. O gerador antigo (Python local, SSD, Ollama, erro em `full_exam.py:387`)
   não será rodado: só a lógica útil é reescrita (§7).
-- **Plano:** `has_pro()` (`20261003004600:21`) = equipe ou Pro/Elite ativo, hoje só nas estações; `app_bootstrap` já o devolve.
+- **Plano:** `has_pro()` (`20261003009550`) = acesso completo (equipe, revisor) ou plano pago válido, hoje só nas estações. A leva 3 (`20261003009730`) traz `subscription_trial_is_valid` e `user_without_paid_access`, usadas pela função nova `has_ineditas()` desta etapa.
 
 ## 3. Decisões
 | Assunto | Decisão | De quem |
@@ -44,7 +75,7 @@ recolher só o administrador, tudo na trilha; (10) aluno Pro/Elite treina com a 
 | Fontes do gerador | Só fontes oficiais da Central (Ministério da Saúde, PCDT/Conitec, OMS/OPAS, sociedades médicas brasileiras; nível A–D, final, vigente) e o perfil das provas oficiais do Inep (incidência por área, tema e competência). Nunca apostila ou curso | dono (2026-10-09) |
 | Os 200 rascunhos | Salvos um por um: conferências, revisão médica e fonte oficial no lugar da citação da apostila. Sem fonte oficial, ficam bloqueados | dono (2026-10-09) |
 | Nome para o aluno | "Questões StaziaMed", sempre com "não é questão oficial do Inep". "Inédita" continua querendo dizer "ainda não respondida" | dono (2026-10-09) |
-| Quem treina | Só Pro e Elite (e a equipe). O teste grátis vê a coleção fechada, com o convite do plano | dono (2026-10-09) |
+| Quem treina | ~~Só Pro e Elite~~ **Substituída em 2026-10-11 (§0):** equipe, revisor, plano pago válido **e teste grátis válido**. Teste vencido, plano vencido/cancelado e conta sem assinatura veem fechado, com o convite do plano | dono (2026-10-09; mudou em 2026-10-11) |
 | Aprovação | Revisor médico da área aprova; administrador publica. Nada de conteúdo médico inventado | dono (2026-10-09) |
 | Onde roda | No servidor, como tarefas da fila `ch_jobs` (Cloud Run em produção, servidor de desenvolvimento no local). Central de IAs: "criacao" cria, "verificacao" confere, conferente de família diferente da criadora | projeto (2026-10-09) |
 | O que vem do gerador antigo | Prompts, esquemas, validações, o laço revisar → reescrever → revisar e a ideia do blueprint (vagas por área, subárea e competência), calculada das questões oficiais do banco | projeto (2026-10-09) |
@@ -58,8 +89,8 @@ recolher só o administrador, tudo na trilha; (10) aluno Pro/Elite treina com a 
 | Trava de aprovação no banco | Aprovar exige fonte oficial em todas as citações e conferências em dia (§5.4); a trava fica na função do banco, não só na tela | ajuste meu (decisões 2 e 5 do dono) |
 | Recolher | Marca `retired_at`: não apaga (as tentativas apontam para a questão, sem cascata) nem usa "anulada" (que é do Inep). Republicar só com o mesmo gabarito | ajuste meu |
 | Tabela de apoio | Coluna nova `questions.support` (título e linhas), vazia nas oficiais | ajuste meu |
-| Leitura protegida | A política de leitura de `questions` passa a `origin = 'official' or has_pro()`; as funções com direitos de dono conferem o mesmo | ajuste meu |
-| Sessão de uma coleção só | O aluno escolhe "Provas oficiais" ou "Questões StaziaMed"; a mesma sessão não mistura as duas | ajuste meu |
+| Leitura protegida | A política de leitura de `questions` passa a `origin = 'official' or has_ineditas()` (§0); as funções com direitos de dono conferem o mesmo | ajuste meu; mudou em 2026-10-11 |
+| Sessão de uma coleção só | O aluno escolhe, na lista "Prova / edição", "Todas as provas oficiais" (ou uma prova) ou "Questões Inéditas"; a mesma sessão não mistura as duas | ajuste meu; mudou em 2026-10-11 |
 | Números do aluno | Desempenho, caderno de erros e XP contam as respostas das duas coleções (é treino dele). O que descreve as provas conta só as oficiais | ajuste meu |
 | Tutor, trilhas, Aulas, Atualizações | Só questões oficiais nesta etapa (o Tutor chama o gabarito de "official_answer", `tutor_v2.sql:278`) | ajuste meu |
 | Revisão pedagógica e quem opera | Prompt pedagógico novo no laço de geração, gravado em `ai_review` (apontamento, não camada nova). Gerar, editar, conferir e buscar fonte: equipe (administrador ou editor); a busca usa a função "verificacao" | ajuste meu |
@@ -131,10 +162,13 @@ recolher e publicar como nova). "Recolher" (administrador, com motivo) tira do s
 histórico. Fonte citada vencida ou substituída gera o alerta "fonte desatualizada" no painel.
 
 ### 5.6 Aluno
-- **Montador** (`QuestionBuilder.jsx`): seletor novo "Coleção": "Provas oficiais" (padrão) ou "Questões StaziaMed". Com a
-  coleção StaziaMed, somem as provas e valem área, tema, situação e busca; aviso: "Questões criadas pela StaziaMed a partir de
-  fontes oficiais e revisadas por médico. Não é questão oficial do Inep." No teste grátis a opção aparece com cadeado e
-  "Disponível nos planos Pro e Elite", com o botão para ver os planos.
+- **Montador** (`QuestionBuilder.jsx`): a lista **"Prova / edição"** ganha a opção **"Questões Inéditas"** (depois das provas;
+  só aparece quando há questões publicadas). Escolhida, valem área, tema, situação e busca; aviso: "Questões criadas pela
+  StaziaMed a partir de fontes oficiais e revisadas por médico. Não é questão oficial do Inep." Com plano pago ou teste grátis
+  válido a opção funciona. Para quem está fechado (teste vencido, plano vencido/cancelado, sem assinatura) a opção aparece
+  com cadeado, o aviso "Seu teste grátis terminou. As Questões Inéditas são abertas a quem tem plano pago ou teste grátis em
+  dia. As questões das provas oficiais continuam abertas." (ou "Seu plano pago terminou. …" / sem a primeira frase) e o botão
+  "Ver planos"; "Começar" fica desabilitado.
 - **Sessão, resultado, caderno de erros:** "Questão StaziaMed · nº 12" e o selo "não é questão oficial do Inep".
 - **Correção:** "Gabarito StaziaMed: alternativa B", explicação, "Por que não as outras?", conduta esperada (a decisão clínica) e
   "Fontes oficiais citadas" (órgão, documento, versão, página, trecho). Sem "O que a questão avalia" e nunca "gabarito oficial".
@@ -142,14 +176,15 @@ histórico. Fonte citada vencida ou substituída gera o alerta "fonte desatualiz
 
 ## 6. Dados
 - **`questions`:** `origin` (`'official'` padrão | `'staziamed'`), `retired_at`, `support` (jsonb, tabela de apoio); colunas
-  novas no grant de leitura (`20261003001900_answer_key_lockdown.sql:17-19`); política `origin = 'official' or has_pro()`.
+  novas no grant de leitura (`20261003001900_answer_key_lockdown.sql:17-19`); política `origin = 'official' or has_ineditas()`.
   `practice_question_view` e `practice_correction_view` conferem o mesmo e devolvem `origin` e `support`.
 - **`exams`:** `kind` aceita `STAZIAMED`; uma linha `staziamed` ("Questões StaziaMed", ano 2026). Publicar: id `staziamed_q0001`,
   código `STZ-0001`, número em sequência; área editorial → `med_area` (CIRURGIA → CIRURGIA_GERAL, MFC →
   MEDICINA_FAMILIA_COMUNIDADE, o inverso de `question_area_code`); `options` = alternativas com explicação (a correta leva a
   explicação geral); `expected_conduct` = decisão clínica; `inep_intent` vazio; `sources` = trechos citados.
-- **`practice_pool`:** filtro novo `collection` (`oficiais` padrão | `staziamed`); `staziamed` só com `has_pro()` (senão
-  `app_start_session` responde "Questões StaziaMed são dos planos Pro e Elite.") e sem as recolhidas.
+- **`practice_pool`:** sem `exam_id`, só as oficiais; `exam_id = 'staziamed'` devolve as publicadas e não recolhidas **só com
+  `has_ineditas()`** (senão `app_start_session` responde com o aviso em português do §5.6 e nada é sorteado). Não há mais filtro
+  `collection` (§0).
 - **Só oficiais** (`origin = 'official'`): `practice_pool` padrão (e com ele Temas, Aulas, Atualizações, trilhas e "refazer"),
   `app_question_filters`, `app_count_questions`, `app_incidence` (linhas e lista de provas), totais de `app_bootstrap` e
   `app_home`, `app_lesson_topics`, `app_trail`, `tutor_pick_question`, `tutor_truth`, SQIE (`ch_worker_questions_for_analysis`,
@@ -172,8 +207,9 @@ histórico. Fonte citada vencida ou substituída gera o alerta "fonte desatualiz
   preços da Central, depois a fila); editar, decidir, publicar e recolher são `app_*` do banco. `ch_worker_*` com `revoke`
   explícito (o laço de `draft_checks.sql:147-155` só pegou as daquela época). A carga antiga (`engine-seed.ts`) só atualiza
   rascunho "gerador_antigo" ainda não editado no servidor.
-- **Migrações:** `20261003006200_questoes_staziamed.sql` (rascunhos, pedidos, propostas, trilha, fila, trava, publicação) e
-  `20261003006300_questoes_staziamed_aluno.sql` (origem, prova, política, coleção e consumidores "só oficiais").
+- **Migrações:** `20261003009800_questoes_staziamed.sql` (rascunhos, pedidos, propostas, trilha, fila, trava, publicação) e
+  `20261003009801_questoes_staziamed_aluno.sql` (origem, prova, política, acesso, opção na lista de provas e consumidores "só oficiais").
+  Faixa reservada: 9800 a 9809 (depois da leva 3, 9700 a 9732). A 9801 parte das versões mais novas das funções (leva 3).
 
 ## 7. IA
 - **Criação** (função "criacao", `maestroProvider`): prompts novos `staziamed_questao` (de `full_exam.py:94-132` e
@@ -214,7 +250,7 @@ Administração › Central de Conteúdo › **"Questões StaziaMed"** (antes "Q
   do antigo não vem. Citação curta e literal, sempre com órgão, documento, versão e página; a questão não copia a fonte (regra
   de 6 palavras: acima de 50% crítico, acima de 25% importante).
 - Rascunhos, pedidos, propostas e trilha: leitura só da equipe e dos revisores; escrita só por funções do banco. Questões
-  StaziaMed: leitura só Pro, Elite e equipe, também por acesso direto à tabela; o gabarito segue fora do alcance direto do aluno.
+  StaziaMed: leitura só de quem tem acesso (§0: equipe, revisor, plano pago válido, teste grátis válido), também por acesso direto à tabela; o gabarito segue fora do alcance direto do aluno.
 - Nunca atribuída ao Inep: prova STAZIAMED, sem "intenção do Inep", recusada no histórico de gabarito oficial. Chaves só no
   servidor; trechos tratados como dado não confiável no prompt; nenhum dado de aluno vai para a IA.
 
@@ -224,18 +260,17 @@ Administração › Central de Conteúdo › **"Questões StaziaMed"** (antes "Q
   geração (sem trecho = pula sem chamar IA; "evidência insuficiente"; uma reescrita só; 70% recusa), busca de fonte (citação não
   literal descartada; proposta completa ou não), estimativa de custo, "Cadastre fontes oficiais".
 - **Banco (PGlite):** editar zera revisão; trava de aprovação (sem fonte oficial, conferência antiga, área do revisor);
-  publicar só administrador e só aprovada; mapeamento para `questions`; coleção só com Pro/Elite; política esconde StaziaMed do
-  teste grátis; `practice_pool`, `app_incidence`, `app_question_filters`, Tutor e SQIE sem StaziaMed; gabarito oficial recusa;
+  publicar só administrador e só aprovada; mapeamento para `questions`; opção só com acesso (plano pago e teste válido abrem; teste vencido, plano vencido e sem assinatura fecham); política esconde StaziaMed de quem está fechado; `practice_pool`, `app_incidence`, `app_question_filters`, Tutor e SQIE sem StaziaMed; gabarito oficial recusa;
   recolhida fora do sorteio e histórico mantido; 1.200 oficiais; carga não sobrescreve editado; `ch_worker_*` fechadas.
   **Catálogo:** toda função que lê `public.questions` precisa estar classificada como "só oficiais" ou "as duas".
 - **Telas (`backend.rpc` simulado):** seção renomeada; gerar com custo e aviso de acervo vazio; editar; proposta de fonte;
-  aprovar desabilitado com motivos; publicar e recolher; montador com cadeado e convite; rótulo e "Gabarito StaziaMed".
+  aprovar desabilitado com motivos; publicar e recolher; montador com a opção "Questões Inéditas" (aberta, e com cadeado e convite para quem está fechado); rótulo e "Gabarito StaziaMed".
 
 ## 11. Publicação (só com ordem do dono)
 **Pré-requisito:** fontes oficiais carregadas na Central (documento completo, nível A–D, final, vigente, trechos indexados). Sem
 elas o gerador e "Buscar fonte oficial" não produzem nada e dizem "Cadastre fontes oficiais na Central de Conteúdo".
-SQL no Supabase (6200, 6300) → código (GitHub/Vercel) → tarefa do Cloud Run com as etapas novas → primeiro teste: (1) cadastrar
+SQL no Supabase (9800, 9801, depois da leva 3: 9700 a 9732) → código (GitHub/Vercel) → tarefa do Cloud Run com as etapas novas → primeiro teste: (1) cadastrar
 uma fonte oficial (ex.: um PCDT); (2) gerar 2 questões do tema dela e conferir o custo; (3) ver citações, conferências e
-semelhança; (4) revisor da área aprova uma; (5) administrador publica; (6) conta de teste vê fechado, conta Pro treina e vê
-"Gabarito StaziaMed"; (7) Temas e incidência continuam com 1.200 oficiais; (8) primeiro dos 200: buscar fonte, aceitar,
+semelhança; (4) revisor da área aprova uma; (5) administrador publica; (6) conta com teste grátis válido e conta Pro treinam e veem
+"Gabarito StaziaMed", e conta com teste vencido vê fechado com o convite; (7) Temas e incidência continuam com 1.200 oficiais; (8) primeiro dos 200: buscar fonte, aceitar,
 conferir, revisar. Só depois os outros.
