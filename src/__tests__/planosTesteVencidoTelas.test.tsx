@@ -42,7 +42,9 @@ const PAGO = { plan: "pro", status: "active", trial_ends_at: null, current_perio
 const SEM_TESTE = { plan: "trial", status: "expired", trial_ends_at: null, current_period_end: null };
 const AVISO = /Os simulados completos, o Tutor e as estações Pro fazem parte dos planos pagos; as questões e os flashcards continuam abertos\. A assinatura pelo app ainda não está disponível\./;
 
-beforeEach(() => backend.rpc.mockReset());
+beforeEach(() => {
+  backend.rpc.mockReset();
+});
 afterEach(() => cleanup());
 
 describe("PL02 — quem tem acesso a quê (regra espelhada do banco)", () => {

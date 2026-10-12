@@ -199,7 +199,7 @@ export function AdminPlans() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Banner tone="info" title="Os planos ainda não aparecem para os alunos">
-        O app ainda não tem a tela de planos do aluno: nome, preço e recursos definidos aqui ficam guardados para quando ela existir. A cobrança será pela Stripe, numa próxima etapa. Até lá, libere planos manualmente em Usuários, com a data em “Plano pago até”.
+        O app ainda não tem a tela de planos do aluno: nome, preço e recursos definidos aqui ficam guardados para quando ela existir. A cobrança será pela Stripe, numa próxima etapa. Até lá, libere planos manualmente em Usuários, com a data em “Plano pago até”. O que só o Elite tem (minutos de voz do Tutor e correção de estação com devolutiva) fica em Configurações, no bloco “Benefícios do plano Elite”: a lista de recursos abaixo é só texto para a futura tela de planos.
       </Banner>
       {data.map((plan) => (
         <PlanEditor key={plan.code} plan={plan} onSaved={setData} />
@@ -464,6 +464,71 @@ const TONES = [
   { value: "success", label: "Boa notícia (verde claro)" },
 ];
 
+/**
+ * Benefícios que só o plano Elite tem (PL04, migração …9731). SÓ A ESTRUTURA: o dono ainda não definiu os números. Vazio e desligado =
+ * o Elite fica igual ao Pro e nada muda para ninguém.
+ * TODO(dono): definir os minutos de voz do Tutor por dia do Elite e se a correção de estação com devolutiva entra no Elite.
+ */
+function EliteBenefits() {
+  const { backend } = useSession();
+  const { data, error, reload, setData } = useLoad(() => backend.rpc("app_admin_plan_benefits"), [backend]);
+  const [form, setForm] = React.useState(null);
+  const [state, setState] = React.useState({ saving: false, error: null, done: false });
+  React.useEffect(() => {
+    if (data) setForm({ minutes: data.elite_voice_daily_minutes == null ? "" : String(data.elite_voice_daily_minutes), feedback: Boolean(data.elite_station_feedback) });
+  }, [data]);
+  if (error) return <LoadError error={error} retry={reload} />;
+  if (!form) return <Loading />;
+  const set = (patch) => (setForm((f) => ({ ...f, ...patch })), setState((x) => ({ ...x, done: false })));
+  const save = async (event) => {
+    event.preventDefault();
+    setState({ saving: true, error: null, done: false });
+    try {
+      setData(await backend.rpc("app_admin_save_plan_benefits", { p_benefits: { elite_voice_daily_minutes: form.minutes.trim() || null, elite_station_feedback: form.feedback } }));
+      setState({ saving: false, error: null, done: true });
+    } catch (err) {
+      setState({ saving: false, error: messageOf(err), done: false });
+    }
+  };
+  const noMinutes = form.minutes.trim() === "";
+  return (
+    <Card>
+      <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 12 }} noValidate>
+        <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Benefícios do plano Elite</h3>
+        <p style={{ margin: 0, color: "var(--text-secondary)", font: "var(--type-body-sm)" }}>
+          Hoje o Pro e o Elite liberam o mesmo. Aqui você define o que só o Elite tem. Enquanto nada estiver preenchido, nada muda para ninguém: o Elite fica igual ao Pro. Só quem tem plano Elite pago e dentro da data vê estes benefícios.
+        </p>
+        <div style={{ maxWidth: 360 }}>
+          <TextField
+            label="Voz do Tutor por dia no Elite (minutos)"
+            value={form.minutes}
+            inputMode="numeric"
+            maxLength={4}
+            placeholder={`Igual ao Pro (${data.pro_voice_daily_minutes} min)`}
+            onChange={(e) => set({ minutes: e.target.value })}
+            hint={`Pro: ${data.pro_voice_daily_minutes} min por dia (muda no painel do Tutor, em “Voz por dia (plano pago, minutos)”). Vazio = igual ao Pro; o Elite nunca fica abaixo do Pro.`}
+          />
+        </div>
+        {noMinutes && <Badge tone="warning">TODO(dono): definir os minutos de voz do Elite</Badge>}
+        <Switch
+          label="Correção de estação com devolutiva: só Elite"
+          description="Desligado: ninguém recebe este benefício. As telas de estações do aluno ainda estão em construção; ligado, o aluno Elite passa a ver o benefício na Conta e a função fica pronta para essas telas."
+          checked={form.feedback}
+          onChange={(e) => set({ feedback: e.target.checked })}
+        />
+        {!form.feedback && <Badge tone="warning">TODO(dono): decidir se a correção de estação com devolutiva entra no Elite</Badge>}
+        {state.error && <Banner tone="danger">{state.error}</Banner>}
+        <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
+          {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Benefícios do Elite salvos.</span>}
+          <Button type="submit" loading={state.saving}>
+            Salvar benefícios do Elite
+          </Button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
 export function AdminSettings() {
   const { backend } = useSession();
   const { data, error, reload, setData } = useLoad(() => backend.rpc("app_admin_settings"), [backend]);
@@ -490,6 +555,7 @@ export function AdminSettings() {
     }
   };
   return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
     <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 16 }} noValidate>
       <Card>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -526,6 +592,8 @@ export function AdminSettings() {
         </Button>
       </div>
     </form>
+    <EliteBenefits />
+    </div>
   );
 }
 

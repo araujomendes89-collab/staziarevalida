@@ -30,6 +30,7 @@ export const ACTION_LABEL = {
   "user.subscription": "Plano alterado",
   "user.delete": "Usuário excluído",
   "plan.save": "Plano editado",
+  "plan.benefits": "Benefícios do Elite alterados",
   "settings.save": "Configurações salvas",
   // questões
   "questions.import": "Questões importadas",
@@ -277,7 +278,17 @@ const SUMMARY = {
   "user.role": (d, entry) => join([person(entry), `${ROLE_LABEL[d.from] ?? d.from} → ${ROLE_LABEL[d.to] ?? d.to}`]),
   "user.subscription": (d, entry) => join([person(entry), `${PLAN_LABEL[d.to?.plan] ?? d.to?.plan} · ${SUB_STATUS_LABEL[d.to?.status] ?? d.to?.status}`]),
   "user.delete": (d) => d.email,
-  "plan.save": (d, entry) => `${PLAN_LABEL[entry.target] ?? entry.target}${d.active ? " · marcado para venda" : ""}`,
+  "plan.save": (d, entry) =>
+    entry.target === "trial"
+      ? `${PLAN_LABEL.trial} · ${d.active ? "oferecido no cadastro" : "NÃO oferecido no cadastro (cadastro novo sem teste)"}`
+      : `${PLAN_LABEL[entry.target] ?? entry.target}${d.active ? " · marcado para venda" : ""}`,
+  "plan.benefits": (d) => {
+    const to = d.to ?? {};
+    return join([
+      to.elite_voice_daily_minutes != null ? `Voz do Tutor no Elite: ${to.elite_voice_daily_minutes} min por dia` : "Voz do Tutor no Elite: igual ao Pro",
+      `Correção de estação com devolutiva (só Elite): ${to.elite_station_feedback ? "ligada" : "desligada"}`,
+    ]);
+  },
   "settings.save": (d) =>
     join([
       d.trial_days != null && `Dias de teste grátis: ${d.trial_days}`,

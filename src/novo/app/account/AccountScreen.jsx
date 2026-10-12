@@ -406,8 +406,40 @@ function PrivacySection() {
   );
 }
 
+/**
+ * Benefícios do plano Elite (PL04). Só aparecem para quem tem Elite pago e dentro da data, e só os que o dono ligou/preencheu em
+ * Administração > Configurações: sem valor definido, nada é mostrado (e nada é inventado).
+ */
+function EliteBenefits({ benefits }) {
+  const items = [];
+  if (benefits?.voice_daily_minutes != null) items.push(`Voz do Tutor: até ${benefits.voice_daily_minutes} minutos por dia`);
+  if (benefits?.station_feedback) items.push("Correção de estação com devolutiva");
+  if (!benefits?.elite || items.length === 0) return null;
+  return (
+    <Banner tone="brand" icon="crown" title="Benefícios do seu plano Elite">
+      <ul style={{ margin: 0, paddingLeft: 18 }}>
+        {items.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+    </Banner>
+  );
+}
+
 export function AccountScreen({ go }) {
-  const { boot, user, signOut } = useSession();
+  const { boot, user, signOut, backend } = useSession();
+  const [benefits, setBenefits] = React.useState(null);
+  const isElite = boot.subscription?.plan === "elite";
+  React.useEffect(() => {
+    if (!isElite || !backend) return undefined;
+    let alive = true;
+    Promise.resolve(backend.rpc("app_my_benefits"))
+      .then((result) => alive && setBenefits(result ?? null))
+      .catch(() => {}); // sem o aviso dos benefícios a Conta funciona igual
+    return () => {
+      alive = false;
+    };
+  }, [backend, isElite]);
   const mobile = useMobile();
   const [section, setSection] = React.useState("conta");
   const profile = boot.profile;
@@ -441,6 +473,7 @@ export function AccountScreen({ go }) {
           {lock.text}
         </Banner>
       )}
+      <EliteBenefits benefits={benefits} />
       {isStaffRole(boot.role) && (
         <Banner
           tone="brand"
