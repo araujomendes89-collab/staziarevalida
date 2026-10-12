@@ -497,7 +497,9 @@ async function stepExtract(ctx: Ctx): Promise<Step | null> {
   }
   const nonEmpty = Object.keys(kinds).filter((k) => k !== "empty" && kinds[k] > 0);
   const textKind = nonEmpty.length > 1 ? "mixed" : nonEmpty[0] ?? "text";
-  const reference = doc.purpose === "reference_source";
+  // a finalidade é lida de novo: o PDF pode ter virado fonte oficial enquanto era lido (o mesmo arquivo enviado antes em Documentos)
+  const latest = await svc<any>(ctx, "ch_worker_document", { p_document_id: docId(ctx) });
+  const reference = (latest ?? doc).purpose === "reference_source";
   await setMeta(ctx, {
     page_count: pageCount,
     text_kind: textKind,

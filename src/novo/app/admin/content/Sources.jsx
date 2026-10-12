@@ -17,6 +17,15 @@ import { KeyValue, Label, Section, shortHash, StatusBadge, useAction, useUploadP
 // situação da última conferência do endereço vigiado (o banco guarda em inglês)
 const WATCH_STATUS = { ok: "igual", changed: "mudou", unreachable: "não abriu" };
 
+/** O que a conferência das fontes monitoradas respondeu: na hora (desenvolvimento) ou pedido para a próxima rodada do processamento (site publicado). */
+export function checkMessage(r) {
+  if (r?.requested != null) {
+    if (r.requested === 0) return "Nenhuma fonte está sendo monitorada: não há o que conferir.";
+    return `Pedido enviado: ${r.requested} fonte(s) monitorada(s) serão conferidas na próxima rodada do processamento (até 10 minutos). Volte a esta tela para ver o resultado.`;
+  }
+  return `Conferência concluída: ${r?.checked ?? 0} fonte(s) conferida(s), ${r?.changed ?? 0} mudaram e ${r?.unreachable ?? 0} não abriram.`;
+}
+
 export function Sources({ isAdmin, go }) {
   const { backend } = useSession();
   const { data, error, reload } = useLoad(() => backend.rpc("app_ch_sources"), [backend]);
@@ -27,6 +36,7 @@ export function Sources({ isAdmin, go }) {
     classes.reload();
   };
   const act = useAction();
+  const [checkNote, setCheckNote] = React.useState(null);
   const [searchKey, setSearchKey] = React.useState(0);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -42,17 +52,22 @@ export function Sources({ isAdmin, go }) {
         title="Fontes cadastradas"
         action={
           isAdmin && hubAvailable(backend) ? (
-            <Button size="sm" variant="secondary" icon="refresh-cw" loading={act.busy} onClick={() => act.run(async () => {
-              const r = await hubPost(backend, "/sources/check");
-              reload();
-              return r;
-            }, "Conferência das fontes monitoradas concluída.")}>
+            <Button size="sm" variant="secondary" icon="refresh-cw" loading={act.busy} onClick={() => {
+              setCheckNote(null);
+              act.run(async () => {
+                const r = await hubPost(backend, "/sources/check");
+                setCheckNote(checkMessage(r));
+                reload();
+                return r;
+              }, null);
+            }}>
               Conferir fontes monitoradas
             </Button>
           ) : null
         }
       >
         {act.feedback}
+        {checkNote && <Banner tone="success">{checkNote}</Banner>}
         {error && <LoadError error={error} retry={reload} />}
         {!data && !error && <Loading />}
         {data?.length === 0 && <EmptyState icon="library" title="Nenhuma fonte cadastrada" description="Sem fontes, as afirmações ficam como 'insuficientemente sustentadas' e nada pode ser publicado." />}

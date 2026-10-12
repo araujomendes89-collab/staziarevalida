@@ -5,37 +5,56 @@ import { useSearchParams } from "react-router-dom";
 import { Badge, Banner, Button, Checkbox, TextField } from "../../../ds";
 import { useSession } from "../../session.jsx";
 import { dateTimeBR, LoadError, Loading, useDebounced, useLoad } from "../common.jsx";
-import { AREA_LABEL, STEP_LABEL } from "./labels.js";
+import { AREA_LABEL, JOB_STATUS, STEP_LABEL } from "./labels.js";
 import { KeyValue, ModelBadge, Section, useAction } from "./ui.jsx";
 import { aiGet, PROVIDER_NAME, usd } from "../ai/aiApi.js";
 import { explainError } from "../../../../shared/errors/explicarErro";
 
 const CREDENTIALS = [
-  ["CONTENT_HUB_AI_PROVIDER", "a IA de cada função é escolhida em Administração › Central de IAs. Enquanto uma função não estiver salva lá, valem esta variável (anthropic, gemini ou openai; o modo mock só existe fora de produção) e as específicas CONTENT_HUB_AI_PROVIDER_CREATE (criação, engenharia reversa e assistentes) e CONTENT_HUB_VERIFIER_PROVIDER (verificação)"],
-  ["CONTENT_HUB_AI_FALLBACK_PROVIDER", "provedor secundário: usado se o principal falhar depois de uma nova tentativa (conferentes só aceitam outra família que a do criador)"],
-  ["OPENAI_API_KEY e CONTENT_HUB_OPENAI_MODEL", "provedor OpenAI: a chave e o modelo (o modelo é obrigatório, nunca é adivinhado)"],
-  ["CONTENT_LAB_ENABLED=false / CONTENT_LAB_AI_ENABLED=false", "desliga o módulo ou só a IA direto no servidor (vale mais que o painel)"],
-  ["CONTENT_HUB_AI_ALLOW_EXTERNAL=1", "autorização explícita para enviar trechos dos PDFs ao provedor de IA"],
-  ["ANTHROPIC_API_KEY ou GEMINI_API_KEY", "chave do provedor escolhido (só no servidor)"],
-  ["CONTENT_HUB_ANTHROPIC_MODEL / CONTENT_HUB_GEMINI_MODEL", "modelo (opcional; registrado em cada execução)"],
-  ["CONTENT_HUB_PRICE_INPUT_PER_MTOK e _OUTPUT_PER_MTOK", "preço por milhão de tokens, para medir o custo do piloto"],
-  ["SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY", "produção: banco e arquivos (bucket privado content-hub); nunca com prefixo VITE_"],
-  ["CONTENT_HUB_PYTHON", "comando Python com PyMuPDF e Tesseract (padrão: pdfpython)"],
-  ["CONTENT_HUB_FONT_DIR", "arquivos da fonte Plus Jakarta Sans para os PDFs"],
+  ["CONTENT_HUB_AI_PROVIDER", "qual IA cada função usa é escolhido em Administração › Central de IAs. Enquanto uma função não estiver salva lá, vale esta variável (anthropic, gemini ou openai; a simulação só existe fora de produção). Também existem CONTENT_HUB_AI_PROVIDER_CREATE (criação, engenharia reversa e assistentes) e CONTENT_HUB_VERIFIER_PROVIDER (conferência)"],
+  ["CONTENT_HUB_AI_FALLBACK_PROVIDER", "IA reserva: entra se a principal falhar depois de uma nova tentativa (quem confere só aceita uma IA de outra empresa que a de quem criou)"],
+  ["OPENAI_API_KEY e CONTENT_HUB_OPENAI_MODEL", "IA da OpenAI: a chave e o nome do modelo (o modelo é obrigatório; o sistema nunca escolhe sozinho)"],
+  ["CONTENT_LAB_ENABLED=false / CONTENT_LAB_AI_ENABLED=false", "desligam a Central inteira, ou só a IA, direto no servidor (vale mais que as chaves da tela)"],
+  ["CONTENT_HUB_AI_ALLOW_EXTERNAL=1", "autorização explícita para enviar trechos dos PDFs para a empresa da IA"],
+  ["ANTHROPIC_API_KEY ou GEMINI_API_KEY", "chave da empresa da IA escolhida (fica só no servidor)"],
+  ["CONTENT_HUB_ANTHROPIC_MODEL / CONTENT_HUB_GEMINI_MODEL", "nome do modelo (opcional; fica registrado em cada uso)"],
+  ["CONTENT_HUB_PRICE_INPUT_PER_MTOK e _OUTPUT_PER_MTOK", "preço por milhão de unidades de texto (os \"tokens\": pedaços de texto que a IA lê e escreve), para medir o custo do piloto"],
+  ["SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY", "produção: endereço do banco de dados e chave de serviço; os arquivos ficam no depósito privado content-hub. Nunca com o prefixo VITE_"],
+  ["CONTENT_HUB_PYTHON", "comando do Python que lê os PDFs e reconhece texto de imagem (padrão: pdfpython)"],
+  ["CONTENT_HUB_FONT_DIR", "pasta com a letra Plus Jakarta Sans usada nos PDFs gerados"],
   ["CONTENT_HUB_EMBEDDINGS_ALLOW_EXTERNAL=1 e GEMINI_API_KEY", "busca por significado (Gemini Embedding 2): autoriza enviar os textos das fontes e as buscas ao Google; vale no servidor e no processamento"],
   ["CONTENT_HUB_EMBEDDINGS_MODEL", "modelo da busca por significado (padrão gemini-embedding-2; off desliga)"],
 ];
 
+// Chaves liga e desliga da Central (o banco guarda o código em inglês; a tela mostra em português). A chave "Provedor NotebookLM"
+// foi tirada da tela: nunca fez nada (CC29).
 const FLAGS = [
-  ["enabled", "Content Lab ligado", "Desligado: nenhuma função da equipe responde (o app do aluno não muda)."],
-  ["ai_enabled", "IA ligada", "Desligado: o servidor não chama nenhum provedor de IA."],
-  ["shadow_mode", "Modo sombra", "Ligado: a IA analisa e sugere, mas nada é publicado."],
-  ["publish_enabled", "Publicação ligada", "Desligado: nenhuma unidade pode ser publicada, mesmo aprovada."],
-  ["auto_analysis_enabled", "Análise automática", "Reservado: análise sem comando manual (ainda não usado)."],
-  ["notebook_provider_enabled", "Provedor NotebookLM", "Reservado: integração futura, nunca é banco principal."],
+  ["enabled", "Central de Conteúdo ligada", "Desligada: nenhuma função da equipe responde (o app do aluno não muda)."],
+  ["ai_enabled", "IA ligada", "Desligada: o servidor não chama nenhuma IA."],
+  ["shadow_mode", "Modo sombra", "Ligado: a IA analisa e sugere, mas nada aprovado vai ao aluno (nem unidades, nem análises e atualizações de questões)."],
+  ["publish_enabled", "Publicação ligada", "Desligada: nada aprovado vai ao aluno. Para o aluno receber, desligue o modo sombra e ligue a publicação."],
+  ["auto_analysis_enabled", "Análise automática", "Ligada: a cada rodada do processamento (até 10 minutos), a IA reanalisa sozinha as questões cuja fonte oficial mudou. Ela só propõe; um revisor médico decide. Desligada: só quando um administrador clica em Reanalisar agora."],
 ];
 
-/** Sinalizadores do Content Lab: a trava está no banco; só administrador muda, com motivo. */
+// Nomes das instruções da IA (o banco guarda o código).
+const PROMPT_LABEL = {
+  classify: "Classificação por tema",
+  claims: "Extração das afirmações",
+  evidence: "Conferência nas fontes",
+  draft: "Rascunho da unidade",
+  flashcards: "Flashcards",
+  summary: "Resumo",
+  questions: "Questões do material",
+  review: "Revisão automática",
+  solve: "Resolução independente",
+  redteam: "Revisão clínica independente",
+  currency: "Atualidade",
+  qanalysis: "Análise de questões",
+  qreanalysis: "Reanálise de questões",
+  source_search: "Busca de fontes oficiais",
+};
+
+/** Chaves da Central: a trava está no banco; só administrador muda, com motivo. */
 function Flags({ isAdmin }) {
   const { backend } = useSession();
   const { data, error, reload } = useLoad(() => backend.rpc("app_ch_flags"), [backend]);
@@ -43,10 +62,10 @@ function Flags({ isAdmin }) {
   const act = useAction();
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
-  const toggle = (key, value) => act.run(() => backend.rpc("app_ch_set_flag", { p_key: key, p_value: value, p_reason: reason }), "Sinalizador atualizado e registrado na auditoria.").then((r) => r && (setReason(""), reload()));
+  const toggle = (key, value) => act.run(() => backend.rpc("app_ch_set_flag", { p_key: key, p_value: value, p_reason: reason }), "Chave atualizada e registrada no Registro.").then((r) => r && (setReason(""), reload()));
   return (
-    <Section title="Sinalizadores do Content Lab">
-      {data.shadow_mode && <Banner tone="info" icon="eye">Modo sombra ligado: a IA analisa e sugere, mas nada é publicado.</Banner>}
+    <Section title="Chaves liga e desliga da Central de Conteúdo">
+      {data.shadow_mode && <Banner tone="info" icon="eye">Modo sombra ligado: a IA analisa e sugere, mas nada aprovado vai ao aluno.</Banner>}
       <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
         {FLAGS.map(([key, label, hint]) => (
           <div key={key} style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", padding: "8px 0", borderTop: "1px solid var(--border-subtle)" }}>
@@ -62,23 +81,23 @@ function Flags({ isAdmin }) {
           </div>
         ))}
       </div>
-      {isAdmin && <TextField label="Motivo da mudança (obrigatório, fica na auditoria)" value={reason} onChange={(e) => setReason(e.target.value)} />}
+      {isAdmin && <TextField label="Motivo da mudança (obrigatório, fica no Registro)" value={reason} onChange={(e) => setReason(e.target.value)} />}
       {act.feedback}
     </Section>
   );
 }
 
-/** Versões de prompt que já rodaram (texto guardado no banco para reproduzir resultados). */
+/** Versões das instruções da IA que já rodaram (o texto fica guardado para poder repetir o resultado). */
 function Prompts() {
   const { backend } = useSession();
   const { data } = useLoad(() => backend.rpc("app_ch_prompt_versions"), [backend]);
   if (!data) return null;
   return (
-    <Section title="Prompts em uso">
+    <Section title="Instruções da IA em uso">
       {data.length === 0 ? (
-        <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Nenhum prompt registrado ainda: o registro acontece na primeira execução de IA.</p>
+        <p style={{ margin: 0, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Nenhuma instrução registrada ainda: o registro acontece na primeira vez que a IA é usada.</p>
       ) : (
-        <KeyValue items={data.map((p) => [`${p.prompt_id} v${p.version}`, <code key={p.content_hash}>{p.content_hash.slice(0, 10)}…</code>])} />
+        <KeyValue items={data.map((p) => [`${PROMPT_LABEL[p.prompt_id] ?? p.prompt_id} (versão ${p.version})`, <span key={p.content_hash}>código de conferência <code>{p.content_hash.slice(0, 10)}…</code></span>])} />
       )}
     </Section>
   );
@@ -89,7 +108,7 @@ function embeddingsLabel(status) {
   const e = status.embeddings;
   if (!e?.ready) return "desligada: a busca de evidências usa só palavras (veja as pendências)";
   const count = e.passages == null ? "" : e.passages === 0 ? " · nenhum trecho de fonte cadastrado ainda" : ` · ${e.embedded} de ${e.passages} trechos com vetor`;
-  return `ligada (${e.model})${count}${e.vector_index === false ? " · sem índice pgvector" : ""}`;
+  return `ligada (${e.model})${count}${e.vector_index === false ? " · sem índice de busca (fica mais lenta)" : ""}`;
 }
 
 /** Onde o processamento roda e quando deu sinal (o servidor do site na Vercel não processa). */
@@ -135,18 +154,18 @@ export function HubSettings({ isAdmin, status }) {
         {status && !status.error && (
           <KeyValue
             items={[
-              ["Banco e arquivos", status.storage === "dev" ? "desenvolvimento (.data no servidor)" : "Supabase"],
+              ["Banco e arquivos", status.storage === "dev" ? "teste local (arquivos no servidor)" : "banco de dados Supabase"],
               ["IA", <AiSummary key="ai" isAdmin={isAdmin} />],
-              ["Processamento (leitura de PDF, OCR e arquivos finais)", processingLabel(status)],
-              ["Renderizador de PDF", status.renderer ? "pronto (Chromium)" : status.worker || status.processing?.where ? "indisponível" : "sem relato do processamento"],
+              ["Processamento (leitura de PDF, reconhecimento de texto e arquivos finais)", processingLabel(status)],
+              ["Gerador de PDF", status.renderer ? "pronto" : status.worker || status.processing?.where ? "indisponível" : "sem relato do processamento"],
               ["Identidade visual", status.brand?.pending?.length ? status.brand.pending.join(" ") : status.brand?.version ? `completa (${status.brand.version})` : "sem relato do processamento"],
               ["Busca por significado", embeddingsLabel(status)],
             ]}
           />
         )}
       </Section>
-      <Section title="Credenciais e configurações a cadastrar no servidor">
-        <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Ficam no arquivo .env do servidor (ou no painel do provedor de hospedagem). Nenhuma delas vai para o navegador.</p>
+      <Section title="Configurações do servidor (para quem cuida da parte técnica)">
+        <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Ficam no arquivo .env do servidor (ou no painel da hospedagem). Nenhuma delas vai para o navegador.</p>
         <KeyValue items={CREDENTIALS} />
       </Section>
       {isAdmin && <Usage />}
@@ -170,7 +189,7 @@ function Usage() {
           <table style={{ width: "100%", borderCollapse: "collapse", font: "var(--type-body-sm)" }}>
             <thead>
               <tr style={{ textAlign: "left", color: "var(--text-tertiary)" }}>
-                {["Etapa", "Modelo", "Chamadas", "Ok", "Com recusas", "Fora do formato", "Falhas", "Tokens (entrada/saída)", "Custo", "Tempo médio"].map((h) => (
+                {["Etapa", "Modelo", "Chamadas", "Certas", "Com recusas", "Fora do formato", "Falhas", "Texto lido / escrito", "Custo", "Tempo médio"].map((h) => (
                   <th key={h} style={cell}>
                     {h}
                   </th>
@@ -203,7 +222,7 @@ function Usage() {
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
         {Object.entries(data.jobs).map(([k, n]) => (
           <Badge key={k} size="sm">
-            etapas {k}: {n}
+            {JOB_STATUS[k]?.[0] ?? k}: {n}
           </Badge>
         ))}
       </div>

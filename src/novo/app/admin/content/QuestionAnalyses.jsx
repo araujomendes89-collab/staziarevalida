@@ -6,6 +6,7 @@ import { useSession } from "../../session.jsx";
 import { LoadError, Loading, TextArea, useLoad } from "../common.jsx";
 import { AREA_LABEL } from "./labels.js";
 import { UpdateQueue } from "./UpdateQueue.jsx";
+import { ReleaseNotice } from "./ReleaseNotice.jsx";
 import { UpdatedQuestions } from "./UpdatedQuestions.jsx";
 import { Label, Pre, Section, useAction, when } from "./ui.jsx";
 
@@ -40,8 +41,9 @@ export function QuestionAnalyses({ reviewerAreas }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Banner tone="info" icon="shield-check" title="Gabarito oficial preservado">
-        O gabarito de cada prova é registro histórico e não é alterado aqui. A análise explica as quatro alternativas e só chega ao aluno depois que um revisor médico da área a aprova. "Atualidade" depende de fonte oficial vigente conferida por pessoa e fica como "não conferida" até existir acervo.
+        O gabarito de cada prova é registro histórico e não é alterado aqui. A análise explica as quatro alternativas e só chega ao aluno depois que um revisor médico da área a aprova e o administrador libera a publicação (modo sombra desligado e publicação ligada). "Atualidade" depende de fonte oficial vigente conferida por pessoa e fica como "não conferida" até existir acervo.
       </Banner>
+      <ReleaseNotice />
       <UpdateAlerts />
       <UpdateQueue reviewerAreas={reviewerAreas} />
       <UpdatedQuestions />

@@ -126,6 +126,7 @@ beforeAll(async () => {
   db = new PGlite();
   await db.exec(fs.readFileSync(path.join(ROOT, "supabase/tests/bootstrap.sql"), "utf8"));
   for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort()) await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
+  await db.exec(`update public.ch_flags set value = case key when 'publish_enabled' then true when 'shadow_mode' then false else value end`); // CC19: o aluno só recebe com o modo sombra desligado e a publicação ligada
 
   // ---- pessoas
   for (const [id, email, name] of [[ADMIN, "adm@t.dev", "Adm"], [EDITORA, "ed@t.dev", "Editora"], [REVISOR, "rev@t.dev", "Revisor"], [ALUNO, "aluno@t.dev", "Aluno"]]) {

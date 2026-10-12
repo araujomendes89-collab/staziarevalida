@@ -8,8 +8,8 @@ import { Label, Section, useAction } from "./ui.jsx";
 
 const LEVEL = { area: "Área", subarea: "Subárea", theme: "Tema", subtheme: "Subtema" };
 
-/** Aliases: nomes alternativos que apontam para o MESMO tema (HAS = hipertensão arterial) e busca de equivalentes antes de criar um tema. */
-function Aliases() {
+/** Apelidos: nomes alternativos que apontam para o MESMO tema (HAS = hipertensão arterial) e busca de equivalentes antes de criar um tema. */
+function Apelidos() {
   const { backend } = useSession();
   const { data, error, reload } = useLoad(() => backend.rpc("app_ch_taxonomy_aliases"), [backend]);
   const [text, setText] = React.useState("");
@@ -18,8 +18,8 @@ function Aliases() {
   const act = useAction();
   const search = () => act.run(() => backend.rpc("app_ch_taxonomy_find", { p_text: text, p_limit: 8 }), "").then((r) => r && setFound(r));
   return (
-    <Section title="Aliases e busca de equivalentes">
-      <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Antes de criar um tema novo, procure por equivalentes. Siglas e nomes alternativos viram alias do tema que já existe.</p>
+    <Section title="Apelidos e busca de temas parecidos">
+      <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Antes de criar um tema novo, procure por equivalentes. Siglas e nomes alternativos viram apelido do tema que já existe.</p>
       <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 220 }}><TextField label="Procurar tema" value={text} onChange={(e) => setText(e.target.value)} /></div>
         <Button size="sm" variant="secondary" icon="search" disabled={text.trim().length < 2} loading={act.busy} onClick={search}>Procurar</Button>
@@ -27,22 +27,22 @@ function Aliases() {
       {found && found.length === 0 && <p style={{ margin: "8px 0 0", font: "var(--type-body-sm)" }}>Nenhum tema equivalente: pode criar um novo.</p>}
       {(found ?? []).map((f) => (
         <div key={f.node_id} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 8, paddingTop: 8, borderTop: "1px solid var(--border-subtle)" }}>
-          <Badge size="sm" tone={f.score >= 1 ? "danger" : "warning"}>{f.via === "name" ? "mesmo nome" : f.via === "alias" ? `alias “${f.alias}”` : f.via === "contains" ? "nome parecido" : "palavras em comum"}</Badge>
+          <Badge size="sm" tone={f.score >= 1 ? "danger" : "warning"}>{f.via === "name" ? "mesmo nome" : f.via === "alias" ? `apelido “${f.alias}”` : f.via === "contains" ? "nome parecido" : "palavras em comum"}</Badge>
           <span style={{ font: "var(--type-body-sm)" }}>{f.path}</span>
-          <input aria-label={`Alias para ${f.path}`} placeholder="novo alias (ex.: HAS)" value={alias} onChange={(e) => setAlias(e.target.value)} style={{ minWidth: 140 }} />
-          <Button size="sm" variant="ghost" icon="plus" disabled={!alias.trim()} loading={act.busy} onClick={() => act.run(() => backend.rpc("app_ch_taxonomy_add_alias", { p_node_id: f.node_id, p_alias: alias }), "Alias criado.").then((r) => r && (setAlias(""), reload()))}>Adicionar alias</Button>
+          <input aria-label={`Apelido para ${f.path}`} placeholder="novo apelido (ex.: HAS)" value={alias} onChange={(e) => setAlias(e.target.value)} style={{ minWidth: 140 }} />
+          <Button size="sm" variant="ghost" icon="plus" disabled={!alias.trim()} loading={act.busy} onClick={() => act.run(() => backend.rpc("app_ch_taxonomy_add_alias", { p_node_id: f.node_id, p_alias: alias }), "Apelido criado.").then((r) => r && (setAlias(""), reload()))}>Adicionar apelido</Button>
         </div>
       ))}
       {act.feedback}
-      <Label>Aliases cadastrados</Label>
+      <Label>Apelidos cadastrados</Label>
       {error && <LoadError error={error} retry={reload} />}
-      {data?.length === 0 && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>nenhum alias ainda</span>}
+      {data?.length === 0 && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>nenhum apelido ainda</span>}
       {(data ?? []).map((a) => (
         <div key={a.id} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 4 }}>
           <Badge size="sm">{a.alias}</Badge>
           <span style={{ font: "var(--type-body-sm)" }}>→ {a.path ?? "tema renomeado ou removido"}</span>
-          {a.orphan && <Badge size="sm" tone="warning">órfão</Badge>}
-          <Button size="sm" variant="ghost" icon="x" onClick={() => act.run(() => backend.rpc("app_ch_taxonomy_remove_alias", { p_alias_id: a.id }), "Alias removido.").then((r) => r && reload())}>Remover</Button>
+          {a.orphan && <Badge size="sm" tone="warning">tema não existe mais</Badge>}
+          <Button size="sm" variant="ghost" icon="x" onClick={() => act.run(() => backend.rpc("app_ch_taxonomy_remove_alias", { p_alias_id: a.id }), "Apelido removido.").then((r) => r && reload())}>Remover</Button>
         </div>
       ))}
     </Section>
@@ -99,7 +99,7 @@ export function Taxonomy({ isAdmin }) {
         )}
         <Tree nodes={data.nodes} editable={draft} onChanged={reload} />
       </Section>
-      <Aliases />
+      <Apelidos />
     </div>
   );
 }

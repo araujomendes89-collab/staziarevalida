@@ -94,6 +94,7 @@ beforeAll(async () => {
   for (const file of fs.readdirSync(MIGRATIONS).filter((f) => f.endsWith(".sql")).sort()) {
     await db.exec(fs.readFileSync(path.join(MIGRATIONS, file), "utf8"));
   }
+  await db.exec(`update public.ch_flags set value = case key when 'publish_enabled' then true when 'shadow_mode' then false else value end`); // CC19: o aluno só recebe com o modo sombra desligado e a publicação ligada
   for (const [id, email, name] of [[ADMIN, "master@teste.dev", "Master"], [EDITOR, "editor@teste.dev", "Editora"], [ALUNA, "aluna@teste.dev", "Aluna"]]) {
     await db.query(`insert into auth.users (id, email, raw_user_meta_data) values ($1, $2, $3)`, [id, email, { name }]);
   }
