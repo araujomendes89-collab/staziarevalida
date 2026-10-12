@@ -239,3 +239,30 @@ export async function makeRoom(
   );
   return r.rows[0].id;
 }
+
+/**
+ * Avaliação de uma rodada direto no banco (sem passar pelas regras); devolve o id.
+ * Nota de teste: `score` = correctness / 10 sobre `max_score` 10. `finishedAt` (ISO) manda na ordem das avaliações;
+ * `answers` é o `checklist_answers` no formato publicado: `[{ id, grade: "Correct"|"Partial"|"Incorrect", subitems }]`.
+ */
+export async function addSession(
+  db: PGlite,
+  o: {
+    room: string; round: number; doctor: string | null; actor: string | null; station: string; correctness: number;
+    finishedAt?: string; usedMs?: number; answers?: unknown[]; feedback?: { pos?: string; neg?: string; gen?: string };
+  }
+): Promise<string> {
+  const id = `sess-${Math.random().toString(36).slice(2, 12)}`;
+  const fim = o.finishedAt ?? new Date().toISOString();
+  await db.query(
+    `insert into public.checklist_study_sessions
+       (id, station_id, room_id, round, actor_id, doctor_id, started_at, finished_at, score, max_score, correctness,
+        used_ms, checklist_answers, feedback_pos, feedback_neg, feedback_gen)
+     values ($1, $2, $3, $4, $5, $6, $7::timestamptz - interval '10 minutes', $7::timestamptz, $8, 10, $9, $10, $11::jsonb, $12, $13, $14)`,
+    [
+      id, o.station, o.room, o.round, o.actor, o.doctor, fim, o.correctness / 10, o.correctness, o.usedMs ?? 540000,
+      JSON.stringify(o.answers ?? []), o.feedback?.pos ?? "", o.feedback?.neg ?? "", o.feedback?.gen ?? "",
+    ]
+  );
+  return id;
+}
