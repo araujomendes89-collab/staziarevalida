@@ -86,10 +86,10 @@ describe("Análise de questões: pedido pela tela", () => {
 
   it("prévia: quantas entram, estimativa em dólares pela tabela de preços, cota do dia e IA pronta; não grava nada", async () => {
     const p = await preview(ADMIN, { p_count: 3 });
-    expect(p.limits).toEqual({ per_request: 10, per_day: 20, default: 3 });
+    expect(p.limits).toEqual({ per_request: 50, per_day: 100, default: 3 });
     expect(p.will_analyze).toBe(3);
     expect(p.available).toBeGreaterThan(3);
-    expect(p.remaining_today).toBe(20);
+    expect(p.remaining_today).toBe(100);
     expect(p.ai).toEqual({ ready: true, reason: null });
     expect(p.estimate).toMatchObject({ calls: 3, provider: "anthropic", model: "claude-opus-5-5", note: null });
     // 3 × 2.600 de saída a US$ 20/Mtok = 0,156 + entrada: mais que isso, menos que US$ 1
@@ -119,20 +119,23 @@ describe("Análise de questões: pedido pela tela", () => {
     expect((await sql(`select count(*)::int n from public.ch_jobs where step = 'question_analysis'`))[0].n).toBe(1);
   });
 
-  it("limite de 10 por pedido, 1 como mínimo", async () => {
-    await expect(request(ADMIN, { p_count: 11 })).rejects.toThrow(/1 a 10 questões por pedido/);
-    await expect(request(ADMIN, { p_count: 0 })).rejects.toThrow(/1 a 10 questões/);
+  it("limite de 50 por pedido, 1 como mínimo", async () => {
+    await expect(request(ADMIN, { p_count: 51 })).rejects.toThrow(/1 a 50 questões por pedido/);
+    await expect(request(ADMIN, { p_count: 0 })).rejects.toThrow(/1 a 50 questões/);
   });
 
-  it("limite de 20 por dia por pessoa (o pedido que estoura é recusado em português; outra pessoa não é afetada)", async () => {
-    // 3 já pedidas acima; mais 10 e mais 7 chegam a 20
-    expect(await request(ADMIN, { p_count: 10, p_exam: "revalida-2022-1" })).toMatchObject({ items: 10 });
+  it("limite de 100 por dia por pessoa (o pedido que estoura é recusado em português; outra pessoa não é afetada)", async () => {
+    // 3 já pedidas acima; preenche 90 com pedidos já concluídos (a base de teste não tem tantas questões por prova) e mais 7 chegam a 100
+    for (const [i, n] of [50, 40].entries()) {
+      await sql(`insert into public.ch_ai_requests (kind, requested_by, request_key, target_ids, item_count, status, done_count)
+                 values ('question_analysis', $1, $2, array(select 'q' || g from generate_series(1, $3::int) g), $3::int, 'concluido', $3::int)`, [ADMIN, `enchimento-${i}`, n]);
+    }
     expect(await request(ADMIN, { p_count: 7, p_exam: "revalida-2022-2" })).toMatchObject({ items: 7 });
-    await expect(request(ADMIN, { p_count: 1, p_exam: "revalida-2023-1" })).rejects.toThrow(/Limite de 20 questões por dia atingido: você já pediu 20 hoje/);
+    await expect(request(ADMIN, { p_count: 1, p_exam: "revalida-2023-1" })).rejects.toThrow(/Limite de 100 questões por dia atingido: você já pediu 100 hoje/);
     expect((await preview(ADMIN, { p_exam: "revalida-2023-1" })).remaining_today).toBe(0);
     // dia seguinte (Brasília): a cota volta
     await sql(`update public.ch_ai_requests set created_at = created_at - interval '1 day' where requested_by = $1`, [ADMIN]);
-    expect((await preview(ADMIN, { p_exam: "revalida-2023-1" })).remaining_today).toBe(20);
+    expect((await preview(ADMIN, { p_exam: "revalida-2023-1" })).remaining_today).toBe(100);
   });
 
   it("pedido que falhou antes de fazer algo não gasta a cota do dia", async () => {

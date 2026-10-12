@@ -18,7 +18,7 @@ import { ACTION_LABEL, auditLabel, auditSummary } from "../novo/app/admin/auditL
 
 const EXAMS = [{ id: "revalida-2021", title: "Revalida 2021" }, { id: "revalida-2022-1", title: "Revalida 2022/1" }];
 const PREVIEW = {
-  kind: "question_analysis", limits: { per_request: 10, per_day: 20, default: 3 }, available: 40, will_analyze: 3, used_today: 0, remaining_today: 20,
+  kind: "question_analysis", limits: { per_request: 50, per_day: 100, default: 3 }, available: 40, will_analyze: 3, used_today: 0, remaining_today: 100,
   estimate: { calls: 3, input_tokens: 9000, output_tokens_typical: 7800, output_tokens_max: 36000, typical_usd: 0.19, max_usd: 0.76, provider: "anthropic", model: "claude-opus-5-5", note: null },
   ai: { ready: true, reason: null }, areas: null,
 };
@@ -57,7 +57,7 @@ describe("Análise de questões › Gerar análises com IA", () => {
     expect(await screen.findByText("Gerar análises com IA")).toBeTruthy();
     expect(await screen.findByText(/questões entram neste pedido \(40 disponíveis/)).toBeTruthy();
     expect(screen.getByTestId("estimate").textContent).toMatch(/≈ US\$ 0,19.*no máximo US\$ 0,76.*claude-opus-5-5/);
-    expect(screen.getByText(/10 por pedido e 20 por dia/)).toBeTruthy();
+    expect(screen.getByText(/50 por pedido e 100 por dia/)).toBeTruthy();
     expect(backend.rpc).not.toHaveBeenCalledWith("app_ch_question_analysis_request", expect.anything());
     fireEvent.change(screen.getByLabelText("Prova a analisar") as HTMLSelectElement, { target: { value: "revalida-2022-1" } });
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_ch_question_analysis_preview", expect.objectContaining({ p_exam: "revalida-2022-1", p_count: 3, p_only_missing: true })));
@@ -66,12 +66,12 @@ describe("Análise de questões › Gerar análises com IA", () => {
     expect(await screen.findByText(/Pedido enviado: 3 questão\(ões\), custo estimado ≈ US\$ 0,19/)).toBeTruthy();
   });
 
-  it("a quantidade fica entre 1 e 10 (padrão 3) e a opção 'só sem análise' vai ao banco", async () => {
+  it("a quantidade fica entre 1 e 50 (padrão 3) e a opção 'só sem análise' vai ao banco", async () => {
     render(<QuestionAnalyses reviewerAreas={[]} />);
-    const qty = (await screen.findByLabelText("Quantas questões (1 a 10)")) as HTMLInputElement;
+    const qty = (await screen.findByLabelText("Quantas questões (1 a 50)")) as HTMLInputElement;
     expect(qty.value).toBe("3");
     fireEvent.change(qty, { target: { value: "99" } });
-    expect(qty.value).toBe("10");
+    expect(qty.value).toBe("50");
     fireEvent.change(qty, { target: { value: "0" } });
     expect(qty.value).toBe("1");
     fireEvent.click(screen.getByLabelText("Só questões ainda sem análise"));
@@ -133,7 +133,7 @@ describe("Análise de questões › Gerar análises com IA", () => {
 
   it("erro de limite do banco aparece como veio, em português", async () => {
     backend.rpc.mockImplementation(async (fn: string, args: any) => {
-      if (fn === "app_ch_question_analysis_request") throw new Error("Limite de 20 questões por dia atingido: você já pediu 20 hoje e este pedido tem 3. O limite recomeça amanhã (horário de Brasília).");
+      if (fn === "app_ch_question_analysis_request") throw new Error("Limite de 100 questões por dia atingido: você já pediu 100 hoje e este pedido tem 3. O limite recomeça amanhã (horário de Brasília).");
       if (fn === "app_question_analyses") return { summary: { questions: 1, analyzed: 0, by_status: {} }, total: 0, exams: EXAMS, items: [] };
       if (fn === "app_ch_question_analysis_preview") return PREVIEW;
       if (fn === "app_ch_ai_requests") return [];
@@ -141,7 +141,7 @@ describe("Análise de questões › Gerar análises com IA", () => {
     });
     render(<QuestionAnalyses reviewerAreas={[]} />);
     fireEvent.click(await screen.findByRole("button", { name: "Pedir análise" }));
-    expect(await screen.findByText(/Limite de 20 questões por dia atingido/)).toBeTruthy();
+    expect(await screen.findByText(/Limite de 100 questões por dia atingido/)).toBeTruthy();
   });
 });
 

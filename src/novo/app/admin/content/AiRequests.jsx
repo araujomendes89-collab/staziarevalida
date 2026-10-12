@@ -125,12 +125,12 @@ export function GenerateAnalyses({ exams = [], onSettled }) {
   const [result, setResult] = React.useState(null);
   const act = useAction();
   const n = Number(count);
-  const valid = Number.isInteger(n) && n >= 1 && n <= 10;
+  const valid = Number.isInteger(n) && n >= 1 && n <= 50;
   const args = { p_exam: exam || null, p_count: valid ? n : 3, p_only_missing: onlyMissing, p_area: null };
   const preview = useLoad(() => backend.rpc("app_ch_question_analysis_preview", args), [backend, exam, valid ? n : 3, onlyMissing, tick]);
   const changeCount = (value) => {
     const digits = value.replace(/\D/g, "");
-    setCount(digits === "" ? "" : String(Math.min(10, Math.max(1, Number(digits)))));
+    setCount(digits === "" ? "" : String(Math.min(50, Math.max(1, Number(digits)))));
   };
   if (preview.error && isMissingFunction(preview.error)) return <MissingNotice />;
   const p = preview.data;
@@ -156,7 +156,7 @@ export function GenerateAnalyses({ exams = [], onSettled }) {
             <SelectField label="Prova a analisar" value={exam} onChange={(e) => setExam(e.target.value)} options={[{ value: "", label: "Todas as provas" }, ...exams.map((x) => ({ value: x.id, label: x.title }))]} />
           </div>
           <div style={{ width: 200 }}>
-            <TextField label="Quantas questões (1 a 10)" type="number" inputMode="numeric" min="1" max="10" value={count} onChange={(e) => changeCount(e.target.value)} />
+            <TextField label="Quantas questões (1 a 50)" type="number" inputMode="numeric" min="1" max="50" value={count} onChange={(e) => changeCount(e.target.value)} />
           </div>
           <Checkbox label="Só questões ainda sem análise" checked={onlyMissing} onChange={(e) => setOnlyMissing(e.target.checked)} />
         </div>

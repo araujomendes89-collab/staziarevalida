@@ -14,7 +14,7 @@
 -- só triagem ("A IA não aprova: quem decide é o revisor médico").
 --
 -- Regras no banco (números fixos, em ch_ai_request_limit; a tela só mostra):
---   * análise de questões: no máximo 10 questões por pedido e 20 por dia por pessoa; padrão 3;
+--   * análise de questões: no máximo 50 questões por pedido e 100 por dia por pessoa; padrão 3;
 --   * conferência de rascunhos: no máximo 20 por pedido e 60 por dia por pessoa; padrão 10;
 --   * "dia" = dia de Brasília (UTC-3, sem horário de verão); pedido que falhou sem fazer nada não gasta a cota do dia;
 --   * quem pede: administrador (qualquer área) ou revisor médico cadastrado (só as questões das áreas dele); editor sem
@@ -73,8 +73,8 @@ create table if not exists public.ch_ai_requests (
   -- prova/lote, área, quantidade, camadas, "só sem análise"/"conferir de novo"
   params jsonb not null default '{}'::jsonb check (jsonb_typeof(params) = 'object'),
   -- ids congelados na hora do pedido (questões ou rascunhos): o processamento roda exatamente estes
-  target_ids text[] not null check (cardinality(target_ids) between 1 and 20),
-  item_count integer not null check (item_count between 1 and 20),
+  target_ids text[] not null check (cardinality(target_ids) between 1 and 50),
+  item_count integer not null check (item_count between 1 and 50),
   -- estimativa mostrada antes de confirmar (típica) e parada de segurança; nulos quando falta preço cadastrado
   estimate_usd numeric(12, 6) check (estimate_usd is null or estimate_usd >= 0),
   ceiling_usd numeric(12, 6) check (ceiling_usd is null or ceiling_usd >= 0),
@@ -106,8 +106,8 @@ create or replace function public.ch_ai_request_limit(p_kind text, p_what text) 
   language sql immutable security definer set search_path = ''
 as $$
   select case p_kind || ':' || p_what
-    when 'question_analysis:per_request' then 10
-    when 'question_analysis:per_day' then 20
+    when 'question_analysis:per_request' then 50
+    when 'question_analysis:per_day' then 100
     when 'question_analysis:default' then 3
     when 'draft_check:per_request' then 20
     when 'draft_check:per_day' then 60
