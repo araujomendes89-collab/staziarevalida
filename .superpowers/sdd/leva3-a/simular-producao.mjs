@@ -1,0 +1,44 @@
+import fs from "node:fs"; import path from "node:path"; import { pathToFileURL } from "node:url"; import { execFileSync } from "node:child_process";
+const [WT, PACOTE] = process.argv.slice(2);
+const { PGlite } = await import(pathToFileURL(path.join(WT, "node_modules/@electric-sql/pglite/dist/index.js")).href);
+const base = execFileSync("git", ["-C", WT, "--no-optional-locks", "ls-tree", "--name-only", "23d53c1", "supabase/migrations/"], { encoding: "utf8" }).trim().split("\n").map((p) => p.split("/").pop());
+const db = new PGlite();
+await db.exec(fs.readFileSync(path.join(WT, "supabase/tests/bootstrap.sql"), "utf8"));
+const run = async (f) => db.exec(fs.readFileSync(path.join(WT, "supabase/migrations", f), "utf8"));
+for (const f of base) await run(f);
+for (const p of fs.readdirSync(PACOTE).filter((f) => /^[1-7]-/.test(f)).sort()) await db.exec(fs.readFileSync(path.join(PACOTE, p), "utf8"));
+for (const f of ["20261003009630_arena_sem_equipe.sql", "20261003009610_fontes_oficiais_ia.sql", "20261003009620_fontes_complementares.sql", "20261003009621_fontes_complementares_equipe.sql"]) await run(f);
+const dump = async () => { const r = await db.query(`select p.oid::regprocedure::text as sig, pg_get_functiondef(p.oid) as def, p.proacl::text as acl from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prokind in ('f','p') order by 1`); return Object.fromEntries(r.rows.map((x) => [x.sig, x])); };
+const antes = await dump();
+console.log("producao simulada pronta:", Object.keys(antes).length, "funcoes");
+let erros = 0;
+const mig = ["20261003009710_aulas_apagar_arquivo.sql", "20261003009711_aulas_xp_ate_o_fim.sql"];
+for (const volta of [1, 2]) for (const f of mig) { try { await run(f); console.log(`  volta ${volta} ${f}: ok`); } catch (e) { erros++; console.log(`  volta ${volta} ${f}: ERRO ${String(e.message).slice(0, 300)}`); } }
+const d1 = await dump();
+await Promise.all(mig.map(run));
+const d2 = await dump();
+const mudou = Object.keys(antes).filter((k) => antes[k].def !== d1[k]?.def);
+const novas = Object.keys(d1).filter((k) => !antes[k]);
+const aclMudou = Object.keys(antes).filter((k) => antes[k].acl !== d1[k]?.acl);
+console.log("funcoes existentes que mudam:", mudou, "| acl que mudam:", aclMudou);
+console.log("funcoes novas:", novas);
+console.log("3a colagem muda alguma funcao:", Object.keys(d1).filter((k) => d1[k].def !== d2[k]?.def));
+// base do gam_process_lesson: so a parte nova deve diferir
+const fs2 = antes["gam_process_lesson()"].def.split("\n"), nw = d1["gam_process_lesson()"].def.split("\n");
+console.log("gam_process_lesson antes:", fs2.length, "linhas; depois:", nw.length);
+// fumaça no estado simulado
+const ids = { adm: "00000000-0000-0000-0000-0000000000a1", al: "00000000-0000-0000-0000-0000000000b1" };
+for (const [k, id] of Object.entries(ids)) await db.exec(`insert into auth.users (id, email) values ('${id}', '${k}@t.local') on conflict do nothing`);
+await db.exec(`update public.user_roles set role = 'admin' where user_id = '${ids.adm}'`);
+const as = async (uid, sql) => { await db.exec("begin"); try { await db.exec(`select set_config('request.jwt.claim.sub','${uid}',true); select set_config('request.jwt.claims','{"sub":"${uid}","role":"authenticated"}',true); set local role authenticated`); return (await db.query(sql)).rows; } finally { await db.exec("rollback"); } };
+const ck = async (n, fn) => { try { console.log("  ok   " + n + ": " + (await fn())); } catch (e) { erros++; console.log("  ERRO " + n + ": " + String(e.message).slice(0, 200)); } };
+await db.exec(`insert into public.lessons (id, area, topic, title, published, video_url) values ('00000000-0000-0000-0000-00000000aa01','PEDIATRIA','Asma','Asma',true,'https://youtu.be/abc')`);
+await ck("aluno conclui sem assistir: sem XP", async () => { const r = (await as(ids.al, `select public.app_lesson_progress('00000000-0000-0000-0000-00000000aa01'::uuid, null, true) r`))[0].r; if (r.xp) throw new Error("deu XP"); return JSON.stringify(r); });
+await db.exec(`insert into public.lesson_progress (user_id, lesson_id, completed_at) values ('${ids.al}','00000000-0000-0000-0000-00000000aa01', now())`);
+await db.exec("begin");
+await ck("aluno assiste ate o fim depois de concluir: XP 20", async () => { await db.exec(`select set_config('request.jwt.claims','{"sub":"${ids.al}","role":"authenticated"}',true); set local role authenticated`); const r = (await db.query(`select public.app_lesson_watch('00000000-0000-0000-0000-00000000aa01'::uuid, 100, true) r`)).rows[0].r; if (r.xp !== 20) throw new Error("xp " + r.xp); return JSON.stringify(r); });
+await db.exec("rollback");
+await ck("editor apaga material e a fila recebe o caminho", async () => { await db.exec(`insert into public.lesson_materials (lesson_id, kind, title, storage_path) values ('00000000-0000-0000-0000-00000000aa01','slides','s','lessons/00000000-0000-0000-0000-00000000aa01/slides-0000000000000000.pdf')`); const m = (await db.query(`select id from public.lesson_materials limit 1`)).rows[0].id; await db.exec("begin"); await db.exec(`select set_config('request.jwt.claims','{"sub":"${ids.adm}","role":"authenticated"}',true)`); await db.query(`select public.app_admin_delete_lesson_material('${m}'::uuid)`); const q = (await db.query(`select count(*)::int n from public.lesson_files_pending_delete`)).rows[0].n; await db.exec("rollback"); if (q < 1) throw new Error("fila vazia"); return "fila " + q; });
+await ck("funcao admin lesson_materials_json mantem review_status (9580/9620 intactas)", async () => { const d = (await db.query("select pg_get_functiondef('public.lesson_materials_json(uuid)'::regprocedure) as d")).rows[0].d; if (!d.includes("review_status") || !d.includes("hidden_from_student")) throw new Error("perdeu"); return "ok"; });
+console.log(erros ? `RESULTADO: ${erros} ERRO(S)` : "RESULTADO FINAL: tudo ok");
+await db.close(); process.exit(erros ? 1 : 0);

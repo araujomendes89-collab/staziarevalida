@@ -6,7 +6,7 @@
 import React from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { canMeasureEnd, createWatchTracker, parsePlayerMessage, subscribeToPlayer, withPlayerApi, xpNote, XP_RULE } from "../novo/app/study/lessonWatch.js";
+import { canMeasureEnd, createWatchTracker, MEASURE_TIMEOUT_MS, parsePlayerMessage, subscribeToPlayer, withPlayerApi, xpNote, XP_RULE } from "../novo/app/study/lessonWatch.js";
 import { videoEmbed } from "../novo/app/study/lessonsApi.js";
 
 const backend: any = { rpc: vi.fn(), accessToken: async () => "tok" };
@@ -210,13 +210,15 @@ describe("A08: tela da aula com YouTube", () => {
   });
 
   it("se o player nunca avisa, depois de um tempo a tela diz que não dá para medir neste aparelho (sem XP)", async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true });
-    await openLesson();
-    expect(screen.getByRole("note").textContent).toBe(XP_RULE);
-    await act(async () => {
-      vi.advanceTimersByTime(15_100);
-    });
-    expect(screen.getByRole("note").textContent).toMatch(/Não conseguimos medir se você assistiu até o fim neste aparelho.*não dá XP/);
+    const real = window.setTimeout.bind(window);
+    const spy = vi.spyOn(window, "setTimeout").mockImplementation(((fn: any, ms?: number, ...rest: any[]) => real(fn, ms === MEASURE_TIMEOUT_MS ? 0 : ms, ...rest)) as any); // o tempo de espera de 15 s passa na hora
+    try {
+      await openLesson();
+      await waitFor(() => expect(screen.getByRole("note").textContent).toMatch(/Não conseguimos medir se você assistiu até o fim neste aparelho.*não dá XP/));
+      expect(spy.mock.calls.some((c) => c[1] === MEASURE_TIMEOUT_MS)).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it("Arena desligada: nenhum texto de XP", async () => {

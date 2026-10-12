@@ -53,11 +53,14 @@ create trigger lesson_materials_file_queue_upd after update of storage_path on p
 
 -- Um caminho "em uso" não é apagado: outro material de aula, fonte de episódio de podcast ou retenção de arquivo.
 create or replace function public.lesson_file_in_use(p_path text) returns boolean
-  language sql stable security definer set search_path = ''
+  language plpgsql stable security definer set search_path = ''
 as $$
-  select exists (select 1 from public.lesson_materials m where m.storage_path = p_path)
+begin
+  -- (plpgsql, não sql: ch_file_holds nasce na 9620 e a checagem só roda quando a função é chamada)
+  return exists (select 1 from public.lesson_materials m where m.storage_path = p_path)
       or exists (select 1 from public.podcast_sources s where s.storage_path = p_path)
-      or exists (select 1 from public.ch_file_holds h where h.storage_path = p_path)
+      or exists (select 1 from public.ch_file_holds h where h.storage_path = p_path);
+end
 $$;
 revoke execute on function public.lesson_file_in_use(text) from public, anon, authenticated;
 
