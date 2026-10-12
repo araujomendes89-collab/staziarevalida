@@ -1144,8 +1144,9 @@ begin
         'published', count(*) filter (where s = 'published')::int,
         'retired', count(*) filter (where s = 'retired')::int,
         'rejected', count(*) filter (where s = 'rejected')::int,
-        'blocked', count(*) filter (where blocked)::int)
-      from (select public.draft_situation(d) as s, not public.draft_has_official_sources(d) as blocked
+        'blocked', count(*) filter (where blocked)::int,
+        'stale', count(*) filter (where stale)::int)
+      from (select public.draft_situation(d) as s, not public.draft_has_official_sources(d) as blocked, cardinality(public.draft_stale_sources(d)) > 0 as stale
             from public.draft_questions d where public.draft_matches_filters(d, f_all)) z),
     'answer_distribution', (select jsonb_build_object('A', count(*) filter (where q.correct_option = 'A')::int, 'B', count(*) filter (where q.correct_option = 'B')::int,
                                                        'C', count(*) filter (where q.correct_option = 'C')::int, 'D', count(*) filter (where q.correct_option = 'D')::int)
@@ -1159,6 +1160,7 @@ begin
         'reviewer', (select email from auth.users where id = d.reviewed_by),
         'review_outdated', d.reviewed_hash is not null and d.reviewed_hash <> d.content_hash,
         'blocked_no_source', not public.draft_has_official_sources(d),
+        'stale_sources', to_jsonb(public.draft_stale_sources(d)),
         'approval_blockers', to_jsonb(public.draft_approval_blockers(d.id)),
         'question', (select jsonb_build_object('id', q.id, 'code', q.code, 'number', q.number, 'retired_at', q.retired_at) from public.questions q where q.id = d.question_id),
         'checks', (select coalesce(jsonb_object_agg(c.layer, jsonb_build_object('verdict', c.verdict, 'findings', c.findings, 'model', c.model,
@@ -1196,6 +1198,155 @@ end
 $$;
 revoke execute on function public.app_draft_question_detail(uuid) from public, anon;
 grant execute on function public.app_draft_question_detail(uuid) to authenticated;
+
+-- ---------------------------------------------------------------- publicar, republicar, recolher e "fonte desatualizada" (Tarefa 11)
+-- Publicar é do administrador e só vale para a versão que o revisor médico aprovou. A Questão StaziaMed nasce em public.questions
+-- (origem 'staziamed', prova 'staziamed'); nunca é atribuída ao Inep. Tudo plpgsql: lê colunas da …9801 (origin, retired_at, support).
+create sequence if not exists public.staziamed_question_seq;
+
+-- Títulos das fontes citadas que deixaram de ser oficiais vigentes (vencida, retirada, substituída, nível mudado).
+create or replace function public.draft_stale_sources(d public.draft_questions) returns text[]
+  language sql stable security definer set search_path = ''
+as $$
+  select coalesce(array_agg(distinct coalesce(s.title, c ->> 'source', 'fonte removida')), '{}'::text[])
+  from jsonb_array_elements(case when jsonb_typeof(d.source_citations) = 'array' then d.source_citations else '[]'::jsonb end) c
+  left join public.ch_source_passages p on p.id::text = c ->> 'passage_id'
+  left join public.ch_sources s on s.id = p.source_id
+  where c ? 'passage_id'
+    and not coalesce(s.status = 'current' and s.authority_level in ('A', 'B', 'C', 'D') and s.kind = 'final' and (s.valid_until is null or s.valid_until >= current_date), false)
+$$;
+
+-- O que vai para public.questions. A correta leva a explicação geral; as outras, a explicação delas. `sources` guarda SÓ título,
+-- órgão, nível, página e versão de cada fonte (o aluno lê esta coluna direto: nada do trecho nem do que sustenta a resposta).
+create or replace function public.staziamed_question_payload(p_id uuid) returns jsonb
+  language plpgsql stable security definer set search_path = ''
+as $$
+declare
+  d public.draft_questions;
+  v_area public.med_area;
+begin
+  select * into d from public.draft_questions where id = p_id;
+  if not found then raise exception 'Questão não encontrada.' using errcode = 'P0002'; end if;
+  v_area := public.staziamed_med_area(d.area);
+  if v_area is null then raise exception 'A área % não tem correspondência nas provas.', d.area using errcode = '22023'; end if;
+  return jsonb_build_object(
+    'area', v_area::text,
+    'topic', d.topic,
+    'statement', d.stem,
+    'support', case when coalesce(d.support_type, 'NONE') in ('TABLE', 'LAB_PANEL') and jsonb_array_length(d.support_rows) > 0
+                    then jsonb_build_object('type', d.support_type, 'title', d.support_title, 'rows', d.support_rows) end,
+    'options', (select jsonb_agg(jsonb_build_object('id', l.l, 'text', d.alternatives ->> l.l,
+                   'explanation', case when l.l = d.correct_answer::text then coalesce(d.explanation, d.alternative_explanations ->> l.l) else d.alternative_explanations ->> l.l end)
+                 order by l.l) from (values ('A'), ('B'), ('C'), ('D')) as l (l)),
+    'correct_option', d.correct_answer::text,
+    'expected_conduct', d.clinical_decision,
+    'inep_intent', null,
+    'sources', coalesce((select jsonb_agg(jsonb_strip_nulls(jsonb_build_object('title', c ->> 'source', 'organ', c ->> 'organ', 'level', s.authority_level,
+                          'page', case when jsonb_typeof(c -> 'page') = 'number' then c -> 'page' end, 'version', c ->> 'version')) order by o)
+                         from jsonb_array_elements(d.source_citations) with ordinality as e (c, o)
+                         left join public.ch_sources s on s.id::text = c ->> 'source_id' where jsonb_typeof(c) = 'object'), '[]'::jsonb),
+    'status', 'valid');
+end
+$$;
+
+-- A prévia: como fica gravado, com a prova e o número (o atual, ou o próximo se ainda não foi publicada). Só o administrador.
+create or replace function public.app_staziamed_preview(p_id uuid) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  d public.draft_questions;
+begin
+  if (select auth.uid()) is null or not public.is_admin() then raise exception 'Publicar é do administrador.' using errcode = '42501'; end if;
+  select * into d from public.draft_questions where id = p_id;
+  if not found then raise exception 'Questão não encontrada.' using errcode = 'P0002'; end if;
+  return public.staziamed_question_payload(p_id) || jsonb_build_object(
+    'exam', jsonb_build_object('kind', 'STAZIAMED', 'title', 'Questões StaziaMed', 'year', 2026),
+    'number', coalesce((select q.number from public.questions q where q.id = d.question_id),
+                       (select case when is_called then last_value + 1 else last_value end from public.staziamed_question_seq)),
+    'code', coalesce((select q.code from public.questions q where q.id = d.question_id), 'STZ-' || lpad((select case when is_called then last_value + 1 else last_value end from public.staziamed_question_seq)::text, 4, '0')),
+    'blockers', to_jsonb(public.draft_approval_blockers(p_id)));
+end
+$$;
+
+-- Publicar (ou republicar). Só a versão aprovada pelo revisor, sem bloqueios, e uma vez só por versão.
+create or replace function public.app_staziamed_publish(p_id uuid, p_hash text) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  d public.draft_questions;
+  q public.questions;
+  v jsonb;
+  v_block text[];
+  v_num integer;
+  v_id text;
+  v_code text;
+  v_action text;
+begin
+  if (select auth.uid()) is null or not public.is_admin() then raise exception 'Publicar é do administrador.' using errcode = '42501'; end if;
+  select * into d from public.draft_questions where id = p_id for update;
+  if not found then raise exception 'Questão não encontrada.' using errcode = 'P0002'; end if;
+  if d.status <> 'approved' or d.reviewed_hash is distinct from d.content_hash or p_hash is distinct from d.content_hash then
+    raise exception 'Publique só a versão aprovada pelo revisor médico.' using errcode = '22023';
+  end if;
+  if d.question_id is not null and d.published_hash is not distinct from d.content_hash
+     and exists (select 1 from public.questions x where x.id = d.question_id and x.retired_at is null) then
+    raise exception 'Esta versão já está publicada.' using errcode = '22023';
+  end if;
+  v_block := public.draft_approval_blockers(d.id);
+  if cardinality(v_block) > 0 then raise exception 'Não publica: %', array_to_string(v_block, ' · ') using errcode = '22023'; end if;
+  v := public.staziamed_question_payload(d.id);
+  if d.question_id is not null then select * into q from public.questions where id = d.question_id for update; end if;
+  if q.id is not null and (q.retired_at is null or q.correct_option::text = v ->> 'correct_option') then
+    if q.correct_option::text is distinct from v ->> 'correct_option' then
+      raise exception 'O gabarito mudou: recolha esta questão e publique como nova.' using errcode = '22023';
+    end if;
+    update public.questions set area = (v ->> 'area')::public.med_area, topic = v ->> 'topic', statement = v ->> 'statement', options = v -> 'options',
+           expected_conduct = v ->> 'expected_conduct', sources = v -> 'sources', support = nullif(v -> 'support', 'null'::jsonb), retired_at = null
+     where id = q.id returning id, code, number into v_id, v_code, v_num;
+    v_action := 'republicada';
+  else
+    v_num := nextval('public.staziamed_question_seq');
+    v_id := 'staziamed_q' || lpad(v_num::text, 4, '0');
+    v_code := 'STZ-' || lpad(v_num::text, 4, '0');
+    insert into public.questions (id, code, exam_id, number, area, topic, statement, options, correct_option, status, expected_conduct, inep_intent, sources, origin, support)
+    values (v_id, v_code, 'staziamed', v_num, (v ->> 'area')::public.med_area, v ->> 'topic', v ->> 'statement', v -> 'options', v ->> 'correct_option',
+            'valid', v ->> 'expected_conduct', null, v -> 'sources', 'staziamed', nullif(v -> 'support', 'null'::jsonb));
+    v_action := 'publicada';
+  end if;
+  update public.draft_questions set question_id = v_id, published_hash = d.content_hash, published_at = now(), published_by = (select auth.uid()) where id = d.id;
+  update public.exams set question_count = (select count(*)::int from public.questions where exam_id = 'staziamed' and retired_at is null) where id = 'staziamed';
+  perform public.draft_event(d.id, v_action, null, null, jsonb_build_object('question_id', v_id, 'code', v_code, 'number', v_num));
+  perform public.ch_log('staziamed.' || v_action, d.id::text, jsonb_build_object('question_id', v_id, 'hash', d.content_hash));
+  return jsonb_build_object('question_id', v_id, 'code', v_code, 'number', v_num, 'action', v_action);
+end
+$$;
+
+-- Recolher: tira do sorteio (não apaga: as respostas apontam para a questão). Só o administrador, com motivo.
+create or replace function public.app_staziamed_retire(p_id uuid, p_reason text) returns jsonb
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  d public.draft_questions;
+  v_at timestamptz;
+begin
+  if (select auth.uid()) is null or not public.is_admin() then raise exception 'Recolher é do administrador.' using errcode = '42501'; end if;
+  if char_length(btrim(coalesce(p_reason, ''))) = 0 then raise exception 'Explique o motivo para recolher.' using errcode = '22023'; end if;
+  select * into d from public.draft_questions where id = p_id for update;
+  if not found then raise exception 'Questão não encontrada.' using errcode = 'P0002'; end if;
+  if d.question_id is null then raise exception 'Esta questão ainda não foi publicada.' using errcode = '22023'; end if;
+  update public.questions set retired_at = coalesce(retired_at, now()) where id = d.question_id returning retired_at into v_at;
+  update public.exams set question_count = (select count(*)::int from public.questions where exam_id = 'staziamed' and retired_at is null) where id = 'staziamed';
+  perform public.draft_event(d.id, 'recolhida', btrim(p_reason), null, jsonb_build_object('question_id', d.question_id));
+  perform public.ch_log('staziamed.retired', d.id::text, jsonb_build_object('question_id', d.question_id, 'reason', btrim(p_reason)));
+  return jsonb_build_object('question_id', d.question_id, 'retired_at', v_at);
+end
+$$;
+revoke execute on function public.app_staziamed_preview(uuid) from public, anon;
+grant execute on function public.app_staziamed_preview(uuid) to authenticated;
+revoke execute on function public.app_staziamed_publish(uuid, text) from public, anon;
+grant execute on function public.app_staziamed_publish(uuid, text) to authenticated;
+revoke execute on function public.app_staziamed_retire(uuid, text) from public, anon;
+grant execute on function public.app_staziamed_retire(uuid, text) to authenticated;
 
 -- ---------------------------------------------------------------- funções de serviço e de apoio: fechadas para o app
 do $revoke$

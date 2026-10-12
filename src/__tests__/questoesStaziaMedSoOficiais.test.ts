@@ -93,6 +93,9 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   staziamed_plan_slots: { classe: "as_duas", como: "historico" }, // oficiais para temas e peso; StaziaMed publicadas só para as letras-alvo
   app_draft_questions: { classe: "as_duas", como: "historico" }, // lista dos rascunhos: lê a questão publicada (recolhida, número) e conta as StaziaMed
   app_draft_question_detail: { classe: "as_duas", como: "historico" }, // mostra a questão oficial mais parecida
+  app_staziamed_preview: { classe: "as_duas", como: "historico" }, // prévia do administrador: lê a questão publicada para o número
+  app_staziamed_publish: { classe: "as_duas", como: "historico" }, // grava a Questão StaziaMed (origem 'staziamed'), nunca oficial
+  app_staziamed_retire: { classe: "as_duas", como: "historico" }, // recolhe a Questão StaziaMed
   draft_situation: { classe: "as_duas", como: "historico" }, // rascunho publicado: lê a questão para saber se foi recolhida
   ch_worker_similarity_corpus: { classe: "so_oficiais", como: "filtra" }, // corpus oficial = origin 'official'; as StaziaMed vêm dos rascunhos
   // as duas, ferramentas da equipe que agem pelo id da questão
