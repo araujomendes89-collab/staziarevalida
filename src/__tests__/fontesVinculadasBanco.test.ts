@@ -431,81 +431,105 @@ describe("SQL do gerador (scripts/fontes-vinculadas/gerar-sql.mjs)", () => {
 
 });
 
-describe("Vínculos REAIS do agente Vinculador (revalida_2025_2, cópia de 12/10/2026 em fixtures/fontes-vinculadas)", () => {
+describe("Vínculos REAIS do agente Vinculador (revalida_2025_2 e revalida_2025_1, cópia de 12/10/2026 em fixtures/fontes-vinculadas)", () => {
   const FX = path.join(__dirname, "fixtures/fontes-vinculadas");
-  const reais: any[] = JSON.parse(fs.readFileSync(path.join(FX, "vinculos-revalida_2025_2.json"), "utf8"));
+  const ler = (prova: string): any[] => JSON.parse(fs.readFileSync(path.join(FX, `vinculos-${prova}.json`), "utf8"));
   const catalogo: any[] = JSON.parse(fs.readFileSync(path.join(FX, "catalogo-amostra.json"), "utf8"));
-  const todosVinculos = reais.flatMap((it) => it.vinculos.map((v: any) => ({ q: it.question_id, ...v })));
-  const fracos = todosVinculos.filter((v) => v.forca === "fraca");
-  const emRevisao = todosVinculos.filter((v) => v.forca !== "fraca" && (v.divergencia === true || v.nota_atualizacao_proposta));
-  const comNota = todosVinculos.find((v) => v.forca !== "fraca" && v.nota_atualizacao_proposta);
-  let antesDaColagem: string[] = [];
+  const limpo = (t: string) => t.replace(/\s+/g, " ").trim();
+  const esperado = (v: any) => (v.divergencia === true || v.nota_atualizacao_proposta ? "em_revisao" : "confirmada");
+  const reais = ler("revalida_2025_2");
+  let naBiblioteca = new Set<string>();
+  const entram = (itens: any[]) =>
+    itens.flatMap((it) => it.vinculos.map((v: any) => ({ q: it.question_id, ...v }))).filter((v) => v.forca !== "fraca" && naBiblioteca.has(chaveUrl(v.url_fonte)));
 
-  it("a biblioteca recebe as fontes do catálogo citadas; o SQL do arquivo real grava o que pode, sem a força fraca e com a divergência em revisão; colar de novo não muda nada", async () => {
-    expect(reais.length).toBeGreaterThan(0);
-    expect(fracos.length).toBeGreaterThan(0);
-    expect(comNota, "o arquivo real tem uma nota do que mudou").toBeTruthy();
-    // as questões do arquivo existem na carga real
-    const ids = reais.map((it) => it.question_id);
-    const achadas = await env.sql<{ id: string; code: string }>(`select id, code from public.questions where id = any($1::text[])`, [ids]);
-    expect(achadas.length).toBe(ids.length);
-    for (const it of reais) expect(achadas.find((a) => a.id === it.question_id)?.code, it.question_id).toBe(it.code);
-    // fontes do catálogo (como a importação do catálogo grava: título, instituição, versão e link), só as que ainda não estão
+  it("a biblioteca recebe as fontes do catálogo citadas (documento revogado = fonte substituída), só as que ainda não estão", async () => {
     const ja = (await exportar()).map((f: any) => chaveUrl(f.url));
     for (const f of catalogo) {
-      expect(f.status, f.id).toBe("verificado");
+      expect(["verificado", "revogado"], f.id).toContain(f.status);
       if (!ja.includes(chaveUrl(f.url))) {
-        await env.sql(`insert into public.ch_sources (title, organ, kind, status, version, url, audience) values ($1, $2, 'final', 'current', $3, $4, 'oficial')`, [f.titulo, f.instituicao, f.versao, f.url]);
+        await env.sql(`insert into public.ch_sources (title, organ, kind, status, version, url, audience) values ($1, $2, 'final', $3, $4, $5, 'oficial')`,
+          [f.titulo, f.instituicao, f.status === "revogado" ? "superseded" : "current", f.versao, f.url]);
+        ja.push(chaveUrl(f.url));
       }
     }
-    antesDaColagem = (await env.sql<{ id: string }>(`select id::text from public.question_source_links order by id`)).map((r) => r.id);
+    naBiblioteca = new Set((await exportar()).map((f: any) => chaveUrl(f.url)));
+    expect(catalogo.every((f) => naBiblioteca.has(chaveUrl(f.url)))).toBe(true);
+  });
 
-    const { sql, relatorio } = gerarSql(reais, await exportar(), { arquivo: "revalida_2025_2.json" });
+  it.each(["revalida_2025_2", "revalida_2025_1"])("%s: o SQL do arquivo real grava o que pode, sem a força fraca e sem fonte fora da biblioteca, com a divergência em revisão; colar de novo não muda nada", async (prova) => {
+    const itens = ler(prova);
+    const todos = itens.flatMap((it) => it.vinculos.map((v: any) => ({ q: it.question_id, ...v })));
+    const fracos = todos.filter((v) => v.forca === "fraca");
+    const dentro = entram(itens);
+    expect(itens.length).toBeGreaterThan(0);
+    expect(fracos.length).toBeGreaterThan(0);
+    // as questões do arquivo existem na carga real, com o mesmo código
+    const ids = itens.map((it) => it.question_id);
+    const achadas = await env.sql<{ id: string; code: string }>(`select id, code from public.questions where id = any($1::text[])`, [ids]);
+    expect(achadas.length).toBe(ids.length);
+    for (const it of itens) expect(achadas.find((a) => a.id === it.question_id)?.code, it.question_id).toBe(it.code);
+    const antesDaColagem = (await env.sql<{ id: string }>(`select id::text from public.question_source_links where question_id = any($1::text[])`, [ids])).map((r) => r.id);
+
+    const { sql, relatorio } = gerarSql(itens, await exportar(), { arquivo: `${prova}.json` });
     expect(relatorio.pulados.filter((p: any) => /força "fraca"/.test(p.motivo))).toHaveLength(fracos.length);
-    expect(relatorio.pulados.every((p: any) => /força "fraca"|conferência "confirmada" não gravada/.test(p.motivo)), JSON.stringify(relatorio.pulados)).toBe(true);
-    expect(relatorio.vinculos).toHaveLength(todosVinculos.length - fracos.length);
-    expect(relatorio.vinculos.filter((v: any) => v.status === "em_revisao")).toHaveLength(emRevisao.length);
-    expect(relatorio.conferencias.filter((c: any) => c.status === "nao_confirmada")).toHaveLength(reais.filter((it) => it.conferencia === "nao_confirmada").length);
+    expect(relatorio.pulados.every((p: any) => /força "fraca"|fonte não encontrada no banco|conferência "confirmada" não gravada/.test(p.motivo)), JSON.stringify(relatorio.pulados)).toBe(true);
+    expect(relatorio.vinculos).toHaveLength(dentro.length);
+    expect(relatorio.vinculos.filter((v: any) => v.status === "em_revisao")).toHaveLength(dentro.filter((v) => esperado(v) === "em_revisao").length);
+    expect(relatorio.conferencias.filter((c: any) => c.status === "nao_confirmada")).toHaveLength(itens.filter((it) => it.conferencia === "nao_confirmada").length);
 
     expect((await colar(sql!)).resultado).toMatch(/^OK: Fontes vinculadas gravadas/);
     const uma = await digital();
     expect((await colar(sql!)).resultado).toMatch(/^OK: /);
     expect(await digital()).toEqual(uma);
 
-    // cada vínculo real entrou com a citação, a página e a situação certas
-    const gravados = await env.sql<any>(`select question_id, status, page, quote, update_note, reason from public.question_source_links where not (id::text = any($1::text[]))`, [antesDaColagem]);
-    expect(gravados).toHaveLength(todosVinculos.length - fracos.length);
-    for (const v of todosVinculos.filter((x) => x.forca !== "fraca")) {
-      const g = gravados.find((x: any) => x.question_id === v.q && x.quote === v.citacao.replace(/\s+/g, " ").trim());
+    // cada vínculo real entrou com a citação, a página, a referência e a situação certas
+    const gravados = await env.sql<any>(`select question_id, status, temporal, page, quote, update_note, reason from public.question_source_links where question_id = any($1::text[]) and not (id::text = any($2::text[]))`, [ids, antesDaColagem]);
+    expect(gravados).toHaveLength(dentro.length);
+    for (const v of dentro) {
+      const g = gravados.find((x: any) => x.question_id === v.q && x.quote === limpo(v.citacao));
       expect(g, `${v.q} p. ${v.pagina}`).toBeTruthy();
-      expect(g.page).toBe(v.pagina);
-      expect(g.status).toBe(v.divergencia === true || v.nota_atualizacao_proposta ? "em_revisao" : "confirmada");
-      if (v.nota_atualizacao_proposta) expect(g.update_note).toBe(limpaNotaAtualizacao(v.nota_atualizacao_proposta));
+      expect([g.page, g.temporal, g.status], `${v.q} p. ${v.pagina}`).toEqual([v.pagina, v.temporal, esperado(v)]);
+      expect(g.update_note).toBe(limpaNotaAtualizacao(v.nota_atualizacao_proposta ?? null));
     }
-    for (const v of fracos) expect(gravados.find((x: any) => x.question_id === v.q && x.quote === v.citacao.replace(/\s+/g, " ").trim()), v.q).toBeUndefined();
+    for (const v of fracos) expect(gravados.find((x: any) => x.question_id === v.q && x.quote === limpo(v.citacao)), v.q).toBeUndefined();
     const checks = await env.sql<any>(`select question_id, status from public.question_source_checks where question_id = any($1::text[])`, [ids]);
-    for (const it of reais.filter((x) => x.conferencia === "nao_confirmada")) expect(checks.find((c: any) => c.question_id === it.question_id)?.status, it.question_id).toBe("nao_confirmada");
+    for (const it of itens.filter((x) => x.conferencia === "nao_confirmada")) expect(checks.find((c: any) => c.question_id === it.question_id)?.status, it.question_id).toBe("nao_confirmada");
   });
 
   it("o aluno vê os trechos reais; a nota do que mudou só aparece depois que a equipe confirma o vínculo com divergência", async () => {
+    const comNota = entram(reais).find((v) => v.nota_atualizacao_proposta);
+    expect(comNota, "o arquivo real tem uma nota do que mudou").toBeTruthy();
     const q = comNota.q;
     await answer(USERS.PRO, q);
     const antes = await view(USERS.PRO, q);
-    expect(antes?.current?.some((i: any) => i.update_note)).not.toBe(true);
+    expect((antes?.current ?? []).some((i: any) => i.update_note)).toBe(false);
     const lista = await env.rpc<any>(USERS.EDITOR, "app_admin_question_source_links", { p_question_id: q });
-    const div = lista.links.find((l: any) => l.update_note);
-    expect(div).toMatchObject({ status: "em_revisao", update_note: limpaNotaAtualizacao(comNota.nota_atualizacao_proposta), reason: comNota.observacao });
+    const div = lista.links.find((l: any) => l.update_note === limpaNotaAtualizacao(comNota.nota_atualizacao_proposta));
+    expect(div).toMatchObject({ status: "em_revisao", reason: limpo(comNota.observacao) });
     await env.rpc(USERS.EDITOR, "app_admin_question_source_link_confirm", { p_link_id: div.id });
     const depois = await view(USERS.PRO, q);
     expect(depois.status).toBe("confirmada");
     const item = depois.current.find((i: any) => i.update_note);
-    expect(item).toMatchObject({ quote: comNota.citacao, page: comNota.pagina, update_note: limpaNotaAtualizacao(comNota.nota_atualizacao_proposta), temporal: "vigente" });
+    expect(item).toMatchObject({ quote: limpo(comNota.citacao), page: comNota.pagina, update_note: limpaNotaAtualizacao(comNota.nota_atualizacao_proposta), temporal: "vigente" });
     expect(item.update_note.startsWith("O que mudou desde a prova")).toBe(false); // o título do bloco não se repete
-    // uma questão confirmada sem divergência: os trechos reais, com página
-    const ok = reais.find((it) => it.conferencia === "confirmada" && it.vinculos.every((v: any) => v.forca !== "fraca" && !v.divergencia && !v.nota_atualizacao_proposta) && it.question_id !== Q_IC_2025);
+    // nada disso tocou no gabarito desta questão
+    const [g] = await env.sql<any>(`select count(*)::int as n from public.question_change_log where question_id = $1`, [q]);
+    expect(g.n).toBe(0);
+
+    // uma questão confirmada sem divergência, só com referência atual: os trechos reais, com página
+    const ok = reais.find((it) => it.conferencia === "confirmada" && it.question_id !== Q_IC_2025 && it.vinculos.length > 0
+      && it.vinculos.every((v: any) => v.temporal === "vigente" && v.forca !== "fraca" && esperado(v) === "confirmada" && naBiblioteca.has(chaveUrl(v.url_fonte))));
     await answer(USERS.PRO, ok.question_id);
     const r = await view(USERS.PRO, ok.question_id);
-    expect(r.current.map((i: any) => [i.quote, i.page]).sort()).toEqual(ok.vinculos.map((v: any) => [v.citacao.replace(/\s+/g, " ").trim(), v.pagina]).sort());
+    expect(r.current.map((i: any) => [i.quote, i.page]).sort()).toEqual(ok.vinculos.map((v: any) => [limpo(v.citacao), v.pagina]).sort());
+    // versão da época da prova REAL (documento revogado no catálogo): vem no bloco histórico, nunca como referência atual
+    const comHistorica = reais.find((it) => it.vinculos.some((v: any) => v.temporal === "historica" && v.forca !== "fraca"));
+    expect(comHistorica, "o arquivo real tem versão da época da prova").toBeTruthy();
+    await answer(USERS.PRO, comHistorica.question_id);
+    const h = await view(USERS.PRO, comHistorica.question_id);
+    const historicas = comHistorica.vinculos.filter((v: any) => v.temporal === "historica" && v.forca !== "fraca");
+    expect(h.historical.map((i: any) => [i.temporal, i.quote]).sort()).toEqual(historicas.map((v: any) => ["historica", limpo(v.citacao)]).sort());
+    for (const i of h.current) expect(historicas.map((v: any) => limpo(v.citacao))).not.toContain(i.quote);
     // não confirmada: o aviso
     const nao = reais.find((it) => it.conferencia === "nao_confirmada");
     await answer(USERS.PRO, nao.question_id);

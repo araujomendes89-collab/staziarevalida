@@ -141,33 +141,54 @@ describe("Quando o script NÃO gera o vínculo (e diz por quê)", () => {
   });
 });
 
-describe("Formato do agente Vinculador (arquivo REAL revalida_2025_2)", () => {
-  const reais: any[] = JSON.parse(fs.readFileSync(path.join(FX, "vinculos-revalida_2025_2.json"), "utf8"));
+describe("Formato do agente Vinculador (arquivos REAIS revalida_2025_2 e revalida_2025_1)", () => {
+  const ler = (prova: string): any[] => JSON.parse(fs.readFileSync(path.join(FX, `vinculos-${prova}.json`), "utf8"));
+  const reais = ler("revalida_2025_2");
   const catalogo: any[] = JSON.parse(fs.readFileSync(path.join(FX, "catalogo-amostra.json"), "utf8"));
-  const biblioteca = catalogo.map((f, i) => ({ id: ID(100 + i), url: f.url, version: f.versao, title: f.titulo, organ: f.instituicao, status: "current", audience: "oficial", kind: "final", editorial_approved: false }));
-  const todos = reais.flatMap((it) => it.vinculos.map((v: any) => ({ q: it.question_id, ...v })));
+  // a biblioteca simulada a partir do catálogo: documento revogado no catálogo = fonte substituída
+  const biblioteca = catalogo.map((f, i) => ({ id: ID(100 + i), url: f.url, version: f.versao, title: f.titulo, organ: f.instituicao, status: f.status === "revogado" ? "superseded" : "current", audience: "oficial", kind: "final", editorial_approved: false }));
+  const naBiblioteca = new Set(biblioteca.map((f) => chaveUrl(f.url)));
+  const limpo = (t: string) => t.replace(/\s+/g, " ").trim();
 
-  it("força fraca não entra; divergência e nota do que mudou entram em revisão (observação como motivo); o resto entra confirmado", () => {
-    const { relatorio, sql } = gerarSql(reais, biblioteca, { arquivo: "revalida_2025_2.json" });
+  it.each(["revalida_2025_2", "revalida_2025_1"])("%s: força fraca e fonte fora da biblioteca não entram; divergência e nota entram em revisão; o resto entra confirmado", (prova) => {
+    const itens = ler(prova);
+    const todos = itens.flatMap((it) => it.vinculos.map((v: any) => ({ q: it.question_id, conferencia: it.conferencia, ...v })));
+    const { relatorio, sql } = gerarSql(itens, biblioteca, { arquivo: `${prova}.json` });
     const fracos = todos.filter((v) => v.forca === "fraca");
+    const semFonte = todos.filter((v) => v.forca !== "fraca" && !naBiblioteca.has(chaveUrl(v.url_fonte)));
+    const entram = todos.filter((v) => v.forca !== "fraca" && naBiblioteca.has(chaveUrl(v.url_fonte)));
+    const esperado = (v: any) => (v.divergencia === true || v.nota_atualizacao_proposta ? "em_revisao" : "confirmada");
     expect(fracos.length).toBeGreaterThan(0);
     for (const v of fracos) expect(relatorio.pulados).toContainEqual({ questao: v.q, url: v.url_fonte, motivo: 'vínculo de força "fraca": não entra' });
-    expect(relatorio.vinculos).toHaveLength(todos.length - fracos.length);
+    for (const v of semFonte) expect(relatorio.pulados).toContainEqual({ questao: v.q, url: v.url_fonte, motivo: expect.stringMatching(/^fonte não encontrada no banco/) });
+    expect(relatorio.pulados.every((p: any) => /força "fraca"|fonte não encontrada no banco|conferência "confirmada" não gravada/.test(p.motivo)), JSON.stringify(relatorio.pulados)).toBe(true);
+    // cada vínculo real que entra: a citação, a página, o papel, a referência e a situação certa
+    expect(relatorio.vinculos).toHaveLength(entram.length);
+    for (const v of entram) {
+      const g = relatorio.vinculos.find((x: any) => x.chave === v.q && x.quote === limpo(v.citacao) && x.role === v.papel);
+      expect(g, `${v.q} p. ${v.pagina}`).toBeTruthy();
+      expect([g.page, g.temporal, g.status], `${v.q} p. ${v.pagina}`).toEqual([v.pagina, v.temporal, esperado(v)]);
+      expect(g.reason).toBe(esperado(v) === "em_revisao" ? limpo(v.observacao ?? "") || null : null);
+      expect(g.updateNote).toBe(limpaNotaAtualizacao(v.nota_atualizacao_proposta ?? null));
+      if (g.updateNote) expect(g.updateNote.startsWith("O que mudou desde a prova")).toBe(false);
+    }
+    expect(relatorio.vinculos.some((x: any) => x.status === "em_revisao" && x.updateNote)).toBe(true);
     // versão do arquivo diferente da biblioteca (no arquivo real: o manual de gestação de alto risco citado com a versão da outra
     // entrada do catálogo, ms-dmg): entra pelo link, com aviso no relatório
     expect(relatorio.avisos.length).toBeGreaterThan(0);
     for (const a of relatorio.avisos) expect(a.aviso).toMatch(/^versão no arquivo ".+", no banco ".+" \(achada pelo link\)$/);
-    const div = todos.find((v) => v.divergencia === true && v.forca !== "fraca");
-    expect(div).toBeTruthy();
-    const gerado = relatorio.vinculos.find((x: any) => x.chave === div.q && x.quote === div.citacao.replace(/\s+/g, " ").trim());
-    expect(gerado).toMatchObject({ status: "em_revisao", reason: div.observacao.replace(/\s+/g, " ").trim(), page: div.pagina, role: div.papel });
-    if (div.nota_atualizacao_proposta) {
-      expect(gerado.updateNote).toBe(limpaNotaAtualizacao(div.nota_atualizacao_proposta));
-      expect(gerado.updateNote.startsWith("O que mudou desde a prova")).toBe(false);
-    }
-    for (const x of relatorio.vinculos.filter((y: any) => y !== gerado)) expect([x.chave, x.status]).toEqual([x.chave, "confirmada"]);
-    expect(relatorio.conferencias.map((c: any) => c.chave).sort()).toEqual(reais.map((it) => it.question_id).sort());
+    // conferências: as "não confirmadas" e as "confirmadas" que têm referência atual entrando confirmada
+    const comAtualConfirmada = new Set(entram.filter((v) => v.temporal === "vigente" && esperado(v) === "confirmada").map((v) => v.q));
+    const conferencias = itens.filter((it) => it.conferencia === "nao_confirmada" || comAtualConfirmada.has(it.question_id)).map((it) => it.question_id);
+    expect(relatorio.conferencias.map((c: any) => c.chave).sort()).toEqual(conferencias.sort());
     expect(sql).toContain("'em_revisao'::text");
+  });
+
+  it("no arquivo real há versão da época da prova (documento revogado no catálogo): entra como histórica, de fonte substituída", () => {
+    const { relatorio } = gerarSql(reais, biblioteca);
+    const historicas = relatorio.vinculos.filter((x: any) => x.temporal === "historica");
+    expect(historicas.length).toBeGreaterThan(0);
+    for (const h of historicas) expect(biblioteca.find((f) => f.id === h.sourceId)?.status).toBe("superseded");
   });
 
   it("vínculo marcado validado: false não entra; 'não confirmada' aceita referência atual só com divergência (fica para a equipe)", () => {
@@ -233,9 +254,10 @@ describe("O SQL gerado", () => {
       const fontes = path.join(dir, "fontes.csv");
       fs.copyFileSync(path.join(FX, "vinculos-revalida_2025_2.json"), entrada);
       const catalogo: any[] = JSON.parse(fs.readFileSync(path.join(FX, "catalogo-amostra.json"), "utf8"));
-      fs.writeFileSync(fontes, csvDe(catalogo.map((f, i) => ({ id: ID(200 + i), url: f.url, version: f.versao, title: f.titulo, organ: f.instituicao, status: "current", audience: "oficial", kind: "final" }))));
+      fs.writeFileSync(fontes, csvDe(catalogo.map((f, i) => ({ id: ID(200 + i), url: f.url, version: f.versao, title: f.titulo, organ: f.instituicao, status: f.status === "revogado" ? "superseded" : "current", audience: "oficial", kind: "final" }))));
       const out = execFileSync(process.execPath, [path.join(ROOT, "scripts/fontes-vinculadas/gerar-sql.mjs"), entrada, "--fontes", fontes], { encoding: "utf8" });
-      expect(out).toMatch(/vínculos gerados: \d+ \(\d+ referência atual, 0 versão da época da prova; 1 em revisão para a equipe\)/);
+      expect(out).toMatch(/vínculos gerados: \d+ \(\d+ referência atual, \d+ versão da época da prova; \d+ em revisão para a equipe\)/);
+      expect(out).toMatch(/fonte não encontrada no banco/);
       expect(out).toContain('vínculo de força "fraca": não entra');
       expect(out).toContain(`SQL gravado em: ${path.join(dir, "revalida_2025_2-COLAR.sql")}`);
       expect(fs.readFileSync(path.join(dir, "revalida_2025_2-COLAR.sql"), "utf8")).toContain("insert into public.question_source_links");

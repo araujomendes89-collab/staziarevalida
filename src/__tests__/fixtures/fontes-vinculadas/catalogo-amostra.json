@@ -1,5 +1,49 @@
 [
  {
+  "id": "bronquiolite-guia-manejo-clinico-ms-2026",
+  "titulo": "Guia de manejo clínico: Bronquiolite Viral Aguda",
+  "instituicao": "Ministério da Saúde / SVSA / Departamento de Doenças Transmissíveis (com apoio da OPAS; participação da SBP, SBI, Amib, SBPT e outras sociedades)",
+  "ano": 2026,
+  "versao": "1ª edição, 2026, versão eletrônica; 89 p.; ISBN 978-85-334-2992-5",
+  "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2026/guia-de-manejo-clinico-bronquiolite-viral-aguda.pdf/@@download/file",
+  "ato": null,
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "cab-19-envelhecimento-2006",
+  "titulo": "Envelhecimento e Saúde da Pessoa Idosa (Cadernos de Atenção Básica, nº 19)",
+  "instituicao": "Ministério da Saúde (Secretaria de Atenção à Saúde, Departamento de Atenção Básica)",
+  "ano": 2006,
+  "versao": "1ª edição, 2006; Série A. Normas e Manuais Técnicos; 192 páginas; ISBN 85-334-1273-8",
+  "url": "https://bvsms.saude.gov.br/bvs/publicacoes/evelhecimento_saude_pessoa_idosa.pdf",
+  "ato": "Política Nacional de Saúde da Pessoa Idosa: Portaria GM/MS nº 2.528/2006 (citada na página oficial da pessoa idosa do gov.br/saude).",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "cab-23-aleitamento-materno-alimentacao-complementar",
+  "titulo": "Saúde da criança: aleitamento materno e alimentação complementar (Cadernos de Atenção Básica, nº 23)",
+  "instituicao": "Ministério da Saúde / Secretaria de Atenção à Saúde / Departamento de Atenção Básica",
+  "ano": 2015,
+  "versao": "2ª edição, 2015",
+  "url": "https://bvsms.saude.gov.br/bvs/publicacoes/saude_crianca_aleitamento_materno_cab23.pdf",
+  "ato": null,
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "cab-28-v2-queixas-2013",
+  "titulo": "Acolhimento à demanda espontânea: queixas mais comuns na Atenção Básica (Cadernos de Atenção Básica, nº 28, volume II)",
+  "instituicao": "Ministério da Saúde (Secretaria de Atenção à Saúde, Departamento de Atenção Básica)",
+  "ano": 2013,
+  "versao": "1ª edição, 1ª reimpressão (2013); © 2012; 292 páginas",
+  "url": "https://bvsms.saude.gov.br/bvs/publicacoes/acolhimento_demanda_espontanea_queixas_comuns_cab28v2.pdf",
+  "ato": null,
+  "status": "verificado",
+  "vigente": true
+ },
+ {
   "id": "cab-29-rastreamento-2010",
   "titulo": "Rastreamento (Cadernos de Atenção Primária, nº 29)",
   "instituicao": "Ministério da Saúde (Secretaria de Atenção à Saúde, Departamento de Atenção Básica)",
@@ -11,12 +55,78 @@
   "vigente": true
  },
  {
+  "id": "cab-34-saude-mental-2013",
+  "titulo": "Saúde Mental (Cadernos de Atenção Básica, nº 34)",
+  "instituicao": "Ministério da Saúde (Secretaria de Atenção à Saúde, Departamento de Atenção Básica)",
+  "ano": 2013,
+  "versao": "1ª edição, 2013; ISBN 978-85-334-2019-9; 173 páginas no PDF",
+  "url": "https://bvsms.saude.gov.br/bvs/publicacoes/cadernos_atencao_basica_34_saude_mental.pdf",
+  "ato": null,
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "cem-cfm-2217-2018",
+  "titulo": "Código de Ética Médica: Resolução CFM nº 2.217, de 27 de setembro de 2018, modificada pelas Resoluções CFM nº 2.222/2018 e 2.226/2019",
+  "instituicao": "Conselho Federal de Medicina (CFM)",
+  "ano": 2019,
+  "versao": "Edição CFM 2019 (110 páginas), 'Código de Ética Médica: Resolução CFM nº 2.217/2018, modificada pelas Resoluções 2.222/2018 e 2.226/2019'",
+  "url": "https://portal.cfm.org.br/images/PDF/cem2019.pdf",
+  "ato": "Resolução CFM nº 2.217/2018 (DOU 01/11/2018; vigência 180 dias depois), modificada pelas Resoluções CFM 2.222/2018 e 2.226/2019",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "cnv-2025-instrucao-normativa",
+  "titulo": "Instrução Normativa que instrui o Calendário Nacional de Vacinação – 2025",
+  "instituicao": "Ministério da Saúde / SVSA / DPNI",
+  "ano": 2025,
+  "versao": "Edição de 2025 (não abri o PDF)",
+  "url": "https://www.gov.br/saude/pt-br/vacinacao/publicacoes",
+  "ato": null,
+  "status": "revogado",
+  "vigente": false
+ },
+ {
+  "id": "cnv-2026-instrucao-normativa",
+  "titulo": "Instrução Normativa do Calendário Nacional de Vacinação – Ano 2026",
+  "instituicao": "Ministério da Saúde / SVSA / DPNI / CGICI",
+  "ano": 2026,
+  "versao": "4ª edição da Instrução Normativa do CNV Ano 2026, atualizada em 08/10/2026",
+  "url": "https://www.gov.br/saude/pt-br/vacinacao/publicacoes/instrucao-normativa-que-instrui-o-calendario-nacional-de-vacinacao-2026.pdf/@@download/file",
+  "ato": "Instrução Normativa do Calendário Nacional de Vacinação 2026, 4ª edição atualizada em 08/10/2026 (conforme registrado no PDF; o número da instrução não apareceu nas páginas que abri)",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
   "id": "dengue-manejo-6ed-2024",
   "titulo": "Dengue: diagnóstico e manejo clínico – adulto e criança (6ª edição)",
   "instituicao": "Ministério da Saúde / Secretaria de Vigilância em Saúde e Ambiente (SVSA/MS) / Departamento de Doenças Transmissíveis",
   "ano": 2024,
   "versao": "6ª edição, 2024, versão eletrônica; PDF de 83 páginas (modificado em 20/02/2024)",
   "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/dengue/dengue-diagnostico-e-manejo-clinico-adulto-e-crianca",
+  "ato": null,
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "febrasgo-protocolo-19-hipertensao-arterial-cronica-gravidez-2025",
+  "titulo": "Hipertensao arterial cronica e gravidez (Protocolo Febrasgo de Obstetricia, n. 19)",
+  "instituicao": "FEBRASGO (Comissao Nacional Especializada em Hipertensao na Gestacao)",
+  "ano": "2025",
+  "versao": "Femina 2025;53(2):117-23; PDF de 7 paginas; Protocolo Febrasgo de Obstetricia n. 19",
+  "url": "https://docs.bvsalud.org/biblioref/2025/09/1612584/femina-2025-532-117-123.pdf",
+  "ato": null,
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "gvs-6ed-rev-v1",
+  "titulo": "Guia de Vigilância em Saúde: volume 1 (6ª edição revisada)",
+  "instituicao": "Ministério da Saúde / Secretaria de Vigilância em Saúde e Ambiente (SVSA/MS) / Departamento de Ações Estratégicas de Epidemiologia e Vigilância em Saúde e Ambiente",
+  "ano": 2024,
+  "versao": "6ª edição revisada; ISBN 978-65-5993-506-2; 456 páginas no PDF",
+  "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/vigilancia/guia-de-vigilancia-em-saude-volume-1-6a-edicao/@@download/file",
   "ato": null,
   "status": "verificado",
   "vigente": true
@@ -40,6 +150,61 @@
   "versao": "6ª edição revisada; ISBN 978-65-5993-503-1; 238 páginas no PDF",
   "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/vigilancia/guia-de-vigilancia-em-saude-volume-3-6a-edicao/@@download/file",
   "ato": null,
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "inca-diretrizes-rastreamento-colo-utero-2025",
+  "titulo": "Diretrizes Brasileiras para o Rastreamento do Câncer do Colo do Útero, Volume 1: Rastreamento organizado com teste molecular para detecção de DNA-HPV oncogênico",
+  "instituicao": "Ministério da Saúde / Instituto Nacional de Câncer (INCA)",
+  "ano": "2025",
+  "versao": "3ª edição revista, atualizada e ampliada (1ª ed. 2011; 2ª ed. 2016); 98 páginas",
+  "url": "https://ninho.inca.gov.br/jspui/bitstream/123456789/17858/3/Diretrizes%20para%20o%20Rastreamento%20do%20c%c3%a2ncer%20do%20colo%20do%20%c3%batero_2025_completo.pdf",
+  "ato": "Portaria Conjunta SAES/SECTICS n. 13, de 29/07/2025 (Parte I, rastreamento com DNA-HPV). Parte II: so consulta publica CP 57/2026 (preliminar).",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "lc-tea-2025",
+  "titulo": "Linha de Cuidado para Pessoas com Transtorno do Espectro Autista - TEA",
+  "instituicao": "Ministério da Saúde (Secretaria de Atenção Primária à Saúde; Secretaria de Atenção Especializada à Saúde; Secretaria de Saúde Indígena; Secretaria de Informação e Saúde Digital)",
+  "ano": 2025,
+  "versao": "1ª edição, 2025, versão eletrônica (lançada em 18/09/2025)",
+  "url": "https://bvsms.saude.gov.br/bvs/publicacoes/linha_cuidado_pessoas_tea.pdf",
+  "ato": "Sem portaria própria localizada (documento técnico)",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "malaria-guia-tratamento-3ed-2026",
+  "titulo": "Guia de tratamento da malária no Brasil (3ª edição)",
+  "instituicao": "Ministério da Saúde / Secretaria de Vigilância em Saúde e Ambiente (SVSA/MS) / Departamento de Doenças Transmissíveis / Coordenação-Geral de Eliminação da Malária",
+  "ano": 2026,
+  "versao": "3ª edição – 2026 – versão eletrônica; PDF de 82 páginas (criado em 06/05/2026)",
+  "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/malaria/tratamento/guia-de-tratamento-da-malaria-no-brasil-3a-edicao",
+  "ato": null,
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "ms-cab32-prenatal-baixo-risco-2012",
+  "titulo": "Atenção ao Pré-Natal de Baixo Risco (Cadernos de Atenção Básica, nº 32)",
+  "instituicao": "Ministério da Saúde (Secretaria de Atenção à Saúde, Departamento de Atenção Básica)",
+  "ano": "2012",
+  "versao": "Série A. Normas e Manuais Técnicos; Cadernos de Atenção Básica nº 32; 318 p. (a edição exata não aparece na página consultada)",
+  "url": "https://bvsms.saude.gov.br/bvs/publicacoes/cadernos_atencao_basica_32_prenatal.pdf",
+  "ato": "Rede Alyne: Portaria GM/MS n. 5.350, de 12/09/2024 (norma de organizacao, nao e o caderno clinico).",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "ms-diretrizes-parto-normal-2017",
+  "titulo": "Diretrizes Nacionais de Assistência ao Parto Normal",
+  "instituicao": "Ministério da Saúde / Conitec",
+  "ano": "2017",
+  "versao": "Portaria nº 353, de 14/02/2017 (SAS/MS); arquivo DDT_Assistencia_PartoNormal.pdf",
+  "url": "https://www.gov.br/conitec/pt-br/midias/protocolos/diretrizes/ddt_assistencia_partonormal.pdf",
+  "ato": "Portaria SAS/MS n. 353, de 14/02/2017",
   "status": "verificado",
   "vigente": true
  },
@@ -73,6 +238,28 @@
   "versao": "Portaria Conjunta SAES/SECTICS nº 29, de 12/12/2023 (baseada nos relatórios Conitec 589 e 677 de 2021)",
   "url": "https://www.gov.br/saude/pt-br/assuntos/pcdt/a/acidente-vascular-cerebral-isquemico-agudo",
   "ato": "Portaria Conjunta SAES/SECTICS nº 29, de 12/12/2023",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "ms-pcdt-dm2-2026",
+  "titulo": "Protocolo Clínico e Diretrizes Terapêuticas do Diabete Melito Tipo 2 (atualização 2026)",
+  "instituicao": "Ministério da Saúde (SCTIE/MS; Conitec)",
+  "ano": "2026",
+  "versao": "Portaria SCTIE/MS nº 13, de 21/02/2026 (torna pública a decisão de atualizar; revoga a Portaria SECTICS/MS nº 7, de 28/02/2024); PCDT publicado na Conitec em 24/02/2026",
+  "url": "https://www.gov.br/saude/pt-br/assuntos/pcdt/d/diabete-melito-tipo-2.pdf",
+  "ato": "Portaria SCTIE/MS nº 13, de 21 de fevereiro de 2026 (revoga a Portaria SECTICS/MS nº 7, de 28/02/2024)",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "ms-pcdt-dpoc-2025",
+  "titulo": "Protocolo Clínico e Diretrizes Terapêuticas da Doença Pulmonar Obstrutiva Crônica",
+  "instituicao": "Ministério da Saúde (SAES e SCTIE)",
+  "ano": "2025",
+  "versao": "Portaria Conjunta SAES/SCTIE nº 29, de 27 de novembro de 2025; revoga a Portaria Conjunta nº 19, de 16/11/2021; baseada no Relatório de Recomendação Conitec nº 1046/2025; usa GOLD 2025 e SBPT 2024 como referências",
+  "url": "https://www.gov.br/saude/pt-br/assuntos/pcdt/d/doenca-pulmonar-obstrutiva-cronica",
+  "ato": "Portaria Conjunta SAES/SCTIE nº 29, de 27/11/2025",
   "status": "verificado",
   "vigente": true
  },
@@ -121,6 +308,17 @@
   "vigente": true
  },
  {
+  "id": "ms-protocolos-ab-saude-mulheres-2016",
+  "titulo": "Protocolos da Atenção Básica: Saúde das Mulheres",
+  "instituicao": "Ministério da Saúde / Instituto Sírio-Libanês de Ensino e Pesquisa",
+  "ano": "2016",
+  "versao": "1ª edição, 2016 (231 páginas)",
+  "url": "https://bvsms.saude.gov.br/bvs/publicacoes/protocolos_atencao_basica_saude_mulheres.pdf",
+  "ato": null,
+  "status": "verificado",
+  "vigente": true
+ },
+ {
   "id": "ms-samu-protocolo-sav",
   "titulo": "Protocolos de Suporte Avançado de Vida (Protocolo SAMU 192)",
   "instituicao": "Ministério da Saúde - SAS/DAHU (com PROADI-SUS/Hospital Alemão Oswaldo Cruz)",
@@ -139,6 +337,17 @@
   "versao": "Portaria Conjunta SAES/SECTICS nº 16, de 01/08/2025 (página gov.br/saude: \"nova portaria 18/09/2025\")",
   "url": "https://www.gov.br/saude/pt-br/assuntos/pcdt/d/doenca-de-parkinson/@@download/file",
   "ato": "Portaria Conjunta SAES/SECTICS nº 16, de 01/08/2025 (DOU 18/09/2025)",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "pcdt-doenca-falciforme-2024",
+  "titulo": "Protocolo Clínico e Diretrizes Terapêuticas da Doença Falciforme (Portaria Conjunta SAES/SECTICS nº 16, de 01/11/2024)",
+  "instituicao": "Ministério da Saúde / SAES / SECTICS (com Conitec)",
+  "ano": 2024,
+  "versao": "Portaria Conjunta SAES/SECTICS nº 16, de 01/11/2024 (publicada no portal Conitec em 22/11/2024); 89 páginas",
+  "url": "https://www.gov.br/conitec/pt-br/midias/protocolos/pcdt-da-doenca-falciforme/@@display-file/file",
+  "ato": "Portaria Conjunta SAES/SECTICS nº 16, de 01/11/2024 (resultado de busca e catálogo anterior; a página da Conitec aberta não mostra o número)",
   "status": "verificado",
   "vigente": true
  },
@@ -165,6 +374,17 @@
   "vigente": true
  },
  {
+  "id": "pcdt-ist-2022",
+  "titulo": "Protocolo Clínico e Diretrizes Terapêuticas para Atenção Integral às Pessoas com Infecções Sexualmente Transmissíveis (IST)",
+  "instituicao": "Ministério da Saúde / Secretaria de Vigilância em Saúde / Departamento de Doenças de Condições Crônicas e IST",
+  "ano": 2022,
+  "versao": "Edição diagramada 2022; ISBN 978-65-5993-276-4; 211 p. (PDF 215 páginas)",
+  "url": "https://www.gov.br/aids/pt-br/central-de-conteudo/pcdts/2022/ist/pcdt-ist-2022_isbn-1.pdf/@@display-file/file",
+  "ato": "Portaria SCTIE/MS nº 12, de 19/04/2021 (conforme registro do catálogo; não reconferida por mim)",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
   "id": "pcdt-pep-2024",
   "titulo": "Protocolo Clínico e Diretrizes Terapêuticas para Profilaxia Pós-Exposição (PEP) de Risco à Infecção pelo HIV, ISTs e Hepatites Virais",
   "instituicao": "Ministério da Saúde / SECTICS e SVSA (DATHI)",
@@ -183,6 +403,39 @@
   "versao": "Portaria Conjunta SAES/SCTIE nº 10, de 16 de abril de 2020 (67 páginas); página do Ministério com data de 21/01/2025",
   "url": "https://www.gov.br/saude/pt-br/assuntos/pcdt/t/tabagismo/@@download/file",
   "ato": "Portaria Conjunta SAES/SCTIE nº 10, de 16/04/2020",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "raiva-nt-8-2022",
+  "titulo": "Nota Técnica nº 8/2022-CGZV/DEIDT/SVS/MS: atualizações no Protocolo de Profilaxia pré, pós e reexposição da raiva humana no Brasil",
+  "instituicao": "Ministério da Saúde / SVS / CGZV / DEIDT",
+  "ano": 2022,
+  "versao": "Nota técnica (1105 KB); página do gov.br 'atualizada em 05/09/2024'",
+  "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/notas-tecnicas/2022/copy_of_nota-tecnica-n-8_2022-cgzv_deidt_svs_ms.pdf/view",
+  "ato": "Nota Técnica nº 8/2022-CGZV/DEIDT/SVS/MS",
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "tb-manual-controle-2ed-2019",
+  "titulo": "Manual de Recomendações para o Controle da Tuberculose no Brasil (2ª edição atualizada)",
+  "instituicao": "Ministério da Saúde / SVS / Departamento de Vigilância das Doenças Transmissíveis / Programa Nacional de Controle da Tuberculose",
+  "ano": 2019,
+  "versao": "2ª edição atualizada; tiragem 2019; PDF de 366 páginas",
+  "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/tuberculose/manual-de-recomendacoes-e-controle-da-tuberculose-no-brasil-2a-ed.pdf/@@download/file",
+  "ato": null,
+  "status": "verificado",
+  "vigente": true
+ },
+ {
+  "id": "tb-manual-diagnostico-lab-2022",
+  "titulo": "Manual de Recomendações para o Diagnóstico Laboratorial de Tuberculose e Micobactérias não Tuberculosas de Interesse em Saúde Pública no Brasil",
+  "instituicao": "Ministério da Saúde / SVS / Departamento de Doenças de Condições Crônicas e IST",
+  "ano": 2022,
+  "versao": "1ª edição 2022 (atualiza o manual de 2008 segundo a página); PDF de 494 páginas",
+  "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/tuberculose/manual-de-recomendacoes-e-para-diagnostico-laboratorial-de-tuberculose-e-micobacterias-nao-tuberculosas-de-interesse-em-saude-publica-no-brasil.pdf/@@download/file",
+  "ato": null,
   "status": "verificado",
   "vigente": true
  }

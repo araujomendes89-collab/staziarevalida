@@ -689,5 +689,1049 @@
   "conferencia": "nao_confirmada",
   "nota": "Fimose com balanopostites recorrentes: sem documento na biblioteca. Consultas: fimose balanopostite.",
   "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q031",
+  "code": "REV-2025.2-Q031",
+  "conferencia": "nao_confirmada",
+  "nota": "Icterícia obstrutiva/neoplasia pancreatobiliar: sem documento na biblioteca. Consultas: ictericia obstrutiva tomografia.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q032",
+  "code": "REV-2025.2-Q032",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "febrasgo-protocolo-19-hipertensao-arterial-cronica-gravidez-2025",
+    "titulo": "Hipertensao arterial cronica e gravidez (Protocolo Febrasgo de Obstetricia, n. 19)",
+    "versao": "Femina 2025;53(2):117-23; PDF de 7 paginas; Protocolo Febrasgo de Obstetricia n. 19",
+    "url_fonte": "https://docs.bvsalud.org/biblioref/2025/09/1612584/femina-2025-532-117-123.pdf",
+    "temporal": "vigente",
+    "papel": "tratamento",
+    "pagina": 2,
+    "rotulo_pagina": "118",
+    "secao": "",
+    "citacao": "A terapia medicamentosa deve ser iniciada como monoterapia pelos medicamentos considerados de primeira linha (metildopa, nifedipino de ação prolongada ou betabloqueadores – exceto atenolol ou propanolol).",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Metildopa é citada como medicamento de primeira linha."
+   },
+   {
+    "doc_id": "febrasgo-protocolo-19-hipertensao-arterial-cronica-gravidez-2025",
+    "titulo": "Hipertensao arterial cronica e gravidez (Protocolo Febrasgo de Obstetricia, n. 19)",
+    "versao": "Femina 2025;53(2):117-23; PDF de 7 paginas; Protocolo Febrasgo de Obstetricia n. 19",
+    "url_fonte": "https://docs.bvsalud.org/biblioref/2025/09/1612584/femina-2025-532-117-123.pdf",
+    "temporal": "vigente",
+    "papel": "prevencao",
+    "pagina": 2,
+    "rotulo_pagina": "118",
+    "secao": "",
+    "citacao": "uso de ácido acetilsalicílico (100 mg/dia à noite) a partir de 12 semanas até a 36ª semana e suplementação de cálcio (500 a 1.000 g/dia).",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Profilaxia de pré-eclâmpsia com AAS e cálcio."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q033",
+  "code": "REV-2025.2-Q033",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "tb-manual-diagnostico-lab-2022",
+    "titulo": "Manual de Recomendações para o Diagnóstico Laboratorial de Tuberculose e Micobactérias não Tuberculosas de Interesse em Saúde Pública no Brasil",
+    "versao": "1ª edição 2022 (atualiza o manual de 2008 segundo a página); PDF de 494 páginas",
+    "url_fonte": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/tuberculose/manual-de-recomendacoes-e-para-diagnostico-laboratorial-de-tuberculose-e-micobacterias-nao-tuberculosas-de-interesse-em-saude-publica-no-brasil.pdf/@@download/file",
+    "temporal": "vigente",
+    "papel": "exame",
+    "pagina": 175,
+    "rotulo_pagina": "173",
+    "secao": "",
+    "citacao": "nos casos de retratamento, sempre será realizada a cultura, juntamente ao TRM-TB e baciloscopia, independentemente dos seus resultados.",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   },
+   {
+    "doc_id": "tb-manual-diagnostico-lab-2022",
+    "titulo": "Manual de Recomendações para o Diagnóstico Laboratorial de Tuberculose e Micobactérias não Tuberculosas de Interesse em Saúde Pública no Brasil",
+    "versao": "1ª edição 2022 (atualiza o manual de 2008 segundo a página); PDF de 494 páginas",
+    "url_fonte": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/tuberculose/manual-de-recomendacoes-e-para-diagnostico-laboratorial-de-tuberculose-e-micobacterias-nao-tuberculosas-de-interesse-em-saude-publica-no-brasil.pdf/@@download/file",
+    "temporal": "vigente",
+    "papel": "tratamento",
+    "pagina": 417,
+    "rotulo_pagina": "415",
+    "secao": "Algoritmo para avaliação da resistência nos casos de retratamento de tuberculose",
+    "citacao": "Iniciar o tratamento com esquema básico: reavaliar o tratamento após resultado da cultura com TS.",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q034",
+  "code": "REV-2025.2-Q034",
+  "conferencia": "nao_confirmada",
+  "nota": "Validade de testes diagnósticos (prevalência e especificidade): conteúdo de epidemiologia geral, sem documento na biblioteca. Consultas: sensibilidade especificidade valor preditivo positivo prevalencia.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q035",
+  "code": "REV-2025.2-Q035",
+  "conferencia": "nao_confirmada",
+  "nota": "Luto agudo em acolhimento na APS: CAB 34 só traz o código de reação aguda ao estresse, sem conduta de luto. Consultas: luto reacao aguda ao estresse acolhimento.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q036",
+  "code": "REV-2025.2-Q036",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "cab-19-envelhecimento-2006",
+    "titulo": "Envelhecimento e Saúde da Pessoa Idosa (Cadernos de Atenção Básica, nº 19)",
+    "versao": "1ª edição, 2006; Série A. Normas e Manuais Técnicos; 192 páginas; ISBN 85-334-1273-8",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/evelhecimento_saude_pessoa_idosa.pdf",
+    "temporal": "vigente",
+    "papel": "prevencao",
+    "pagina": 70,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "Utilização criteriosa de medicamentos (ver capitulo específico, pág. 55) evitandose, em especial, as que podem causar hipotensão postural.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Trata de prevenção de quedas; não cita a revisão da polifarmácia nesses termos."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q037",
+  "code": "REV-2025.2-Q037",
+  "conferencia": "nao_confirmada",
+  "nota": "Febre reumática aguda: biblioteca só tem menção à complicação no CAB 28 v2, sem critérios nem tratamento. Consultas: febre reumatica; febre reumatica penicilina.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q038",
+  "code": "REV-2025.2-Q038",
+  "conferencia": "nao_confirmada",
+  "nota": "Pancreatite crônica: sem documento na biblioteca. Consultas: pancreatite cronica.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q039",
+  "code": "REV-2025.2-Q039",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "ms-manual-gestacao-alto-risco-2022",
+    "titulo": "Manual de Gestação de Alto Risco (inclui capítulo 10: Diabetes mellitus gestacional)",
+    "versao": "1ª edição, versão eletrônica, 2022; 692 páginas; capítulo 10 'Diabetes mellitus gestacional' nas pp. 139-147 do manual",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/manual_gestacao_alto_risco.pdf",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 136,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "a indução do parto deve ser proposta para pacientes entre 41 0/7 e 41 6/7 semanas, e é recomendada a partir de 42 semanas de gestação, na gravidez de risco habitual,",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   },
+   {
+    "doc_id": "ms-manual-gestacao-alto-risco-2022",
+    "titulo": "Manual de Gestação de Alto Risco (inclui capítulo 10: Diabetes mellitus gestacional)",
+    "versao": "1ª edição, versão eletrônica, 2022; 692 páginas; capítulo 10 'Diabetes mellitus gestacional' nas pp. 139-147 do manual",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/manual_gestacao_alto_risco.pdf",
+    "temporal": "vigente",
+    "papel": "exame",
+    "pagina": 137,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "A associação da cardiotocografia com o perfil biofísico fetal representa a forma preferencial, principalmente após 41 semanas de gestação",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q040",
+  "code": "REV-2025.2-Q040",
+  "conferencia": "confirmada",
+  "nota": "Possível divergência com o guia vigente (quimioprofilaxia não indicada no Brasil); gabarito mantido.",
+  "vinculos": [
+   {
+    "doc_id": "malaria-guia-tratamento-3ed-2026",
+    "titulo": "Guia de tratamento da malária no Brasil (3ª edição)",
+    "versao": "3ª edição – 2026 – versão eletrônica; PDF de 82 páginas (criado em 06/05/2026)",
+    "url_fonte": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/malaria/tratamento/guia-de-tratamento-da-malaria-no-brasil-3a-edicao",
+    "temporal": "vigente",
+    "papel": "prevencao",
+    "pagina": 67,
+    "rotulo_pagina": "66",
+    "secao": "4.3 Quimioprofilaxia",
+    "citacao": "A quimioprofilaxia para viajantes não é indicada em território nacional. No Brasil, há predomínio do Plasmodium vivax em toda a área endêmica, e a eficácia da quimioprofilaxia para essa espécie de Plasmodium é baixa.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": true,
+    "observacao": "O guia fala de 'viajantes'; a prova trata de médica contratada para trabalhar em área endêmica. A conferir pelo dono se o caso é o mesmo.",
+    "nota_atualizacao_proposta": "O que mudou desde a prova: a prova considerou doxiciclina a quimioprofilaxia correta para médica não imune que vai trabalhar em área endêmica da Amazônia. O Guia de tratamento da malária no Brasil (3ª edição, 2026), página 67, diz que a quimioprofilaxia para viajantes não é indicada em território nacional, porque predomina o Plasmodium vivax e a eficácia da quimioprofilaxia para essa espécie é baixa. A biblioteca não tem versão histórica desse guia."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q041",
+  "code": "REV-2025.2-Q041",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "ms-samu-protocolo-sav",
+    "titulo": "Protocolos de Suporte Avançado de Vida (Protocolo SAMU 192)",
+    "versao": "Elaboração agosto/2014; revisão fevereiro/2016 (conforme os créditos do PDF; 638 páginas)",
+    "url_fonte": "https://www.gov.br/saude/pt-br/composicao/saes/samu-192/publicacoes/protocolo-de-suporte-avancado-de-vida-1.pdf",
+    "temporal": "vigente",
+    "papel": "diagnostico",
+    "pagina": 87,
+    "rotulo_pagina": "",
+    "secao": "AC28 - Hiperglicemia",
+    "citacao": "Cetoacidose diabética: glicemia capilar > 250 mg/dL: hiperglicemia + cetonemia + acidemia.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Protocolo pré-hospitalar do SAMU."
+   },
+   {
+    "doc_id": "ms-samu-protocolo-sav",
+    "titulo": "Protocolos de Suporte Avançado de Vida (Protocolo SAMU 192)",
+    "versao": "Elaboração agosto/2014; revisão fevereiro/2016 (conforme os créditos do PDF; 638 páginas)",
+    "url_fonte": "https://www.gov.br/saude/pt-br/composicao/saes/samu-192/publicacoes/protocolo-de-suporte-avancado-de-vida-1.pdf",
+    "temporal": "vigente",
+    "papel": "tratamento",
+    "pagina": 87,
+    "rotulo_pagina": "",
+    "secao": "AC28 - Hiperglicemia",
+    "citacao": "administrar soro ﬁ siológico 0,9% IV rápido na velocidade de 500 a 1000 ml/hora.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Protocolo pré-hospitalar do SAMU; a UPA não é o mesmo cenário."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q042",
+  "code": "REV-2025.2-Q042",
+  "conferencia": "nao_confirmada",
+  "nota": "Choque séptico neonatal: sem documento na biblioteca (só diagnóstico diferencial de tétano neonatal no GVS). Consultas: sepse neonatal onfalite.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q043",
+  "code": "REV-2025.2-Q043",
+  "conferencia": "nao_confirmada",
+  "nota": "Questão anulada. Diverticulite complicada em pós-operatório cardíaco: sem documento na biblioteca. Consultas: diverticulite.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q044",
+  "code": "REV-2025.2-Q044",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "ms-diretrizes-parto-normal-2017",
+    "titulo": "Diretrizes Nacionais de Assistência ao Parto Normal",
+    "versao": "Aprovada pela Portaria SAS/MS nº 353, de 14/02/2017 (nº vem de página Conitec aberta); página gov.br/saude atualizada em 20/01/2025; PDF 3,67 MB",
+    "url_fonte": "https://www.gov.br/saude/pt-br/assuntos/pcdt/a/assistencia-ao-parto-normal-diretriz-nacional/view",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 25,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "A tração controlada do cordão, como parte da conduta ativa, só deve ser realizada após administração de ocitocina e sinais de separação da placenta.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Não cita a mão suprapúbica estabilizando o útero."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q045",
+  "code": "REV-2025.2-Q045",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "tb-manual-controle-2ed-2019",
+    "titulo": "Manual de Recomendações para o Controle da Tuberculose no Brasil (2ª edição atualizada)",
+    "versao": "2ª edição atualizada; tiragem 2019; PDF de 366 páginas",
+    "url_fonte": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/tuberculose/manual-de-recomendacoes-e-controle-da-tuberculose-no-brasil-2a-ed.pdf/@@download/file",
+    "temporal": "vigente",
+    "papel": "diagnostico",
+    "pagina": 235,
+    "rotulo_pagina": "",
+    "secao": "7.2.2 Atividades programáticas recomendadas (pessoas privadas de liberdade)",
+    "citacao": "Todas as PPL que procuram o serviço de saúde prisional com sintomas associados à TB, especialmente a tosse, devem ser submetidas ao rastreamento diagnóstico",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Não detalha radiografia de tórax para a busca passiva."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q046",
+  "code": "REV-2025.2-Q046",
+  "conferencia": "nao_confirmada",
+  "nota": "Espondilite anquilosante: sem documento na biblioteca (PCDT só citado no RENAME). Consultas: espondilite anquilosante.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q047",
+  "code": "REV-2025.2-Q047",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "cnv-2025-instrucao-normativa",
+    "titulo": "Instrução Normativa que instrui o Calendário Nacional de Vacinação – 2025",
+    "versao": "Edição de 2025 (não abri o PDF)",
+    "url_fonte": "https://www.gov.br/saude/pt-br/vacinacao/publicacoes",
+    "temporal": "historica",
+    "papel": "prevencao",
+    "pagina": 40,
+    "rotulo_pagina": "",
+    "secao": "Vacina meningocócica ACWY (conjugada)",
+    "citacao": "AGENDA OPORTUNA Adolescente Dose ou reforço (conforme situação vacinal encontrada): 1 dose entre 11 anos e 14 anos de idade.",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Versão da época da prova (Calendário 2025)."
+   },
+   {
+    "doc_id": "cnv-2025-instrucao-normativa",
+    "titulo": "Instrução Normativa que instrui o Calendário Nacional de Vacinação – 2025",
+    "versao": "Edição de 2025 (não abri o PDF)",
+    "url_fonte": "https://www.gov.br/saude/pt-br/vacinacao/publicacoes",
+    "temporal": "historica",
+    "papel": "prevencao",
+    "pagina": 19,
+    "rotulo_pagina": "",
+    "secao": "Vacina febre amarela (atenuada)",
+    "citacao": "Esquema básico: 1 dose aos 9 meses de idade; Dose de reforço: 1 dose de reforço aos 4 anos de idade.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Versão da época da prova. Sustenta só a febre amarela; HPV não foi vinculado."
+   },
+   {
+    "doc_id": "cnv-2026-instrucao-normativa",
+    "titulo": "Instrução Normativa do Calendário Nacional de Vacinação – Ano 2026",
+    "versao": "4ª edição da Instrução Normativa do CNV Ano 2026, atualizada em 08/10/2026",
+    "url_fonte": "https://www.gov.br/saude/pt-br/vacinacao/publicacoes/instrucao-normativa-que-instrui-o-calendario-nacional-de-vacinacao-2026.pdf/@@download/file",
+    "temporal": "vigente",
+    "papel": "prevencao",
+    "pagina": 36,
+    "rotulo_pagina": "",
+    "secao": "Vacina meningocócica ACWY (conjugada)",
+    "citacao": "Adolescente entre 11 anos e 14 anos, 11 meses e 29 dias de idade.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Calendário 2026 mantém a men ACWY para adolescentes de 11 a 14 anos."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q048",
+  "code": "REV-2025.2-Q048",
+  "conferencia": "nao_confirmada",
+  "nota": "Derrame pleural unilateral: sem documento na biblioteca. Consultas: derrame pleural toracocentese.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q049",
+  "code": "REV-2025.2-Q049",
+  "conferencia": "nao_confirmada",
+  "nota": "Contracepção em lúpus com trombose: critérios de elegibilidade (OMS/MEC) não estão na biblioteca (OMS MEC 6ª ed. sem PDF). Consultas: contracepcao lupus eritematoso sistemico trombose DIU levonorgestrel.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q050",
+  "code": "REV-2025.2-Q050",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "ms-pcdt-dm2-2026",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas do Diabete Melito Tipo 2 (atualização 2026)",
+    "versao": "Portaria SCTIE/MS nº 13, de 21/02/2026 (torna pública a decisão de atualizar; revoga a Portaria SECTICS/MS nº 7, de 28/02/2024); PCDT publicado na Conitec em 24/02/2026",
+    "url_fonte": "https://www.gov.br/saude/pt-br/assuntos/pcdt/d/diabete-melito-tipo-2.pdf",
+    "temporal": "vigente",
+    "papel": "tratamento",
+    "pagina": 26,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "com uma dose inicial de 10 U ou 0,1 U/kg a 0,2 U/kg, ajustando-se em 2 U, a cada 3 dias, até atingir a meta estabelecida para a glicemia em jejum (80 mg/dL a 130 mg/dL).",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "A alternativa fala em 2 a 3 UI a cada 2 a 3 dias; o PCDT fala em 2 U a cada 3 dias. Mesma lógica de ajuste."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q051",
+  "code": "REV-2025.2-Q051",
+  "conferencia": "nao_confirmada",
+  "nota": "Reconhecimento clínico de derrame pleural: sem documento na biblioteca. Consultas: derrame pleural.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q052",
+  "code": "REV-2025.2-Q052",
+  "conferencia": "nao_confirmada",
+  "nota": "Pneumonia atípica em escolar: biblioteca só tem diretriz de PAC em adultos (2009, histórica). Consultas: pneumonia atipica crianca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q053",
+  "code": "REV-2025.2-Q053",
+  "conferencia": "nao_confirmada",
+  "nota": "Nível neurológico da lesão medular: sem documento na biblioteca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q054",
+  "code": "REV-2025.2-Q054",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "ms-manual-gestacao-alto-risco-2022",
+    "titulo": "Manual de Gestação de Alto Risco (inclui capítulo 10: Diabetes mellitus gestacional)",
+    "versao": "1ª edição, versão eletrônica, 2022; 692 páginas; capítulo 10 'Diabetes mellitus gestacional' nas pp. 139-147 do manual",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/manual_gestacao_alto_risco.pdf",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 257,
+    "rotulo_pagina": "",
+    "secao": "Toxoplasmose na gestação - Cenário 3",
+    "citacao": "3a: Gestantes com sorologia IgM reagente e IgG não reagente: iniciar espiramicina imediatamente e repetir a sorologia em duas a três semanas.",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q055",
+  "code": "REV-2025.2-Q055",
+  "conferencia": "nao_confirmada",
+  "nota": "Questão anulada. Doença mão-pé-boca em lactente: sem documento na biblioteca. Consultas: doenca mao pe boca enterovirus.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q056",
+  "code": "REV-2025.2-Q056",
+  "conferencia": "nao_confirmada",
+  "nota": "Uso racional de medicamentos na saúde indígena: sem documento na biblioteca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q057",
+  "code": "REV-2025.2-Q057",
+  "conferencia": "nao_confirmada",
+  "nota": "Depressão pós-parto: o CAB 32 só descreve o quadro; tratamento com antidepressivo não encontrado. Consultas: depressao puerperal antidepressivo tratamento.",
+  "vinculos": [
+   {
+    "doc_id": "ms-cab32-prenatal-baixo-risco-2012",
+    "titulo": "Atenção ao Pré-Natal de Baixo Risco (Cadernos de Atenção Básica, nº 32)",
+    "versao": "Série A. Normas e Manuais Técnicos; Cadernos de Atenção Básica nº 32; 318 p. (a edição exata não aparece na página consultada)",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/cadernos_atencao_basica_32_prenatal.pdf",
+    "temporal": "vigente",
+    "papel": "diagnostico",
+    "pagina": 269,
+    "rotulo_pagina": "269",
+    "secao": "",
+    "citacao": "As formas de sofrimento mental puerperal devem ser diagnosticadas e assistidas precocemente",
+    "forca": "fraca",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Descreve as formas de sofrimento puerperal; não traz a conduta de iniciar antidepressivo."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q058",
+  "code": "REV-2025.2-Q058",
+  "conferencia": "nao_confirmada",
+  "nota": "Fibrilação atrial com resposta ventricular rápida: sem documento na biblioteca. Consultas: fibrilacao atrial.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q059",
+  "code": "REV-2025.2-Q059",
+  "conferencia": "nao_confirmada",
+  "nota": "ITU recorrente na infância/cintilografia renal: sem documento na biblioteca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q060",
+  "code": "REV-2025.2-Q060",
+  "conferencia": "confirmada",
+  "nota": "Descompressão confirmada, mas o local da punção diverge do protocolo SAMU; gabarito mantido.",
+  "vinculos": [
+   {
+    "doc_id": "ms-samu-protocolo-sav",
+    "titulo": "Protocolos de Suporte Avançado de Vida (Protocolo SAMU 192)",
+    "versao": "Elaboração agosto/2014; revisão fevereiro/2016 (conforme os créditos do PDF; 638 páginas)",
+    "url_fonte": "https://www.gov.br/saude/pt-br/composicao/saes/samu-192/publicacoes/protocolo-de-suporte-avancado-de-vida-1.pdf",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 145,
+    "rotulo_pagina": "",
+    "secao": "AT12 - Pneumotórax hipertensivo",
+    "citacao": "Realizar a descompressão torácica de alívio.",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   },
+   {
+    "doc_id": "ms-samu-protocolo-sav",
+    "titulo": "Protocolos de Suporte Avançado de Vida (Protocolo SAMU 192)",
+    "versao": "Elaboração agosto/2014; revisão fevereiro/2016 (conforme os créditos do PDF; 638 páginas)",
+    "url_fonte": "https://www.gov.br/saude/pt-br/composicao/saes/samu-192/publicacoes/protocolo-de-suporte-avancado-de-vida-1.pdf",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 205,
+    "rotulo_pagina": "",
+    "secao": "AP11 – Punção de descompressão",
+    "citacao": "2º ou 3º espaço intercostal, na linha médioclavicular/hemiclavicular;",
+    "forca": "media",
+    "validado": true,
+    "divergencia": true,
+    "observacao": "O protocolo SAMU indica 2º/3º espaço intercostal, linha hemiclavicular; a prova indica 5º espaço, entre linhas axilares anterior e média. Fontes e contextos diferentes (pré-hospitalar x trauma hospitalar). Conferir pelo dono.",
+    "nota_atualizacao_proposta": "O que mudou desde a prova: a prova considerou correto descomprimir o hemitórax com agulha no quinto espaço intercostal, entre a linha axilar anterior e a média. O Protocolo de Suporte Avançado de Vida do SAMU 192 (2016, republicado em 2024), página 205, manda identificar o 2º ou 3º espaço intercostal, na linha médio-clavicular/hemiclavicular. A biblioteca não tem versão histórica desse protocolo."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q061",
+  "code": "REV-2025.2-Q061",
+  "conferencia": "nao_confirmada",
+  "nota": "Atonia uterina no pós-cesárea: o Manual de Gestação de Alto Risco (p. 220-221) traz só risco e mecanismo, não o tratamento (massagem bimanual/uterotônicos). Consultas: hemorragia pos-parto uterotonicos massagem uterina; atonia.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q062",
+  "code": "REV-2025.2-Q062",
+  "conferencia": "nao_confirmada",
+  "nota": "Tratamento agudo da migrânea: sem documento na biblioteca. Consultas: enxaqueca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q063",
+  "code": "REV-2025.2-Q063",
+  "conferencia": "nao_confirmada",
+  "nota": "Sala de situação em saúde na APS: sem documento na biblioteca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q064",
+  "code": "REV-2025.2-Q064",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "cab-34-saude-mental-2013",
+    "titulo": "Saúde Mental (Cadernos de Atenção Básica, nº 34)",
+    "versao": "1ª edição, 2013; ISBN 978-85-334-2019-9; 173 páginas no PDF",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/cadernos_atencao_basica_34_saude_mental.pdf",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 163,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "colocando sempre um prazo limite de algumas semanas, negociando com o usuário a redução gradual.",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Trecho sobre benzodiazepínicos no CAB 34."
+   },
+   {
+    "doc_id": "cab-34-saude-mental-2013",
+    "titulo": "Saúde Mental (Cadernos de Atenção Básica, nº 34)",
+    "versao": "1ª edição, 2013; ISBN 978-85-334-2019-9; 173 páginas no PDF",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/cadernos_atencao_basica_34_saude_mental.pdf",
+    "temporal": "vigente",
+    "papel": "tratamento",
+    "pagina": 163,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "é mais interessante incluir alguma medicação “antidepressiva” (amitriptilina, fluoxetina etc.).",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Para queixas crônicas de ansiedade; sustenta a introdução de medicação não benzodiazepínica."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q065",
+  "code": "REV-2025.2-Q065",
+  "conferencia": "nao_confirmada",
+  "nota": "Sepse de foco urinário/pielonefrite: protocolo brasileiro de pielonefrite está 'sem PDF' na biblioteca. Consultas: sepse pielonefrite.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q066",
+  "code": "REV-2025.2-Q066",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "cab-23-aleitamento-materno-alimentacao-complementar",
+    "titulo": "Saúde da criança: aleitamento materno e alimentação complementar (Cadernos de Atenção Básica, nº 23)",
+    "versao": "2ª edição, 2015",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/saude_crianca_aleitamento_materno_cab23.pdf",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 59,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "Educação sobre o posicionamento adequado e pega correta é a melhor intervenção para dor nos mamilos",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   },
+   {
+    "doc_id": "cab-23-aleitamento-materno-alimentacao-complementar",
+    "titulo": "Saúde da criança: aleitamento materno e alimentação complementar (Cadernos de Atenção Básica, nº 23)",
+    "versao": "2ª edição, 2015",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/saude_crianca_aleitamento_materno_cab23.pdf",
+    "temporal": "vigente",
+    "papel": "prevencao",
+    "pagina": 58,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "Amamentação com técnica adequada (posicionamento e pega adequados)",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q067",
+  "code": "REV-2025.2-Q067",
+  "conferencia": "nao_confirmada",
+  "nota": "Fissura anal: sem documento na biblioteca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q068",
+  "code": "REV-2025.2-Q068",
+  "conferencia": "confirmada",
+  "nota": "Possível divergência: diretriz vigente (2025) não recomenda rastreamento antes dos 25 anos; gabarito mantido.",
+  "vinculos": [
+   {
+    "doc_id": "inca-diretrizes-rastreamento-colo-utero-2025",
+    "titulo": "Diretrizes Brasileiras para o Rastreamento do Câncer do Colo do Útero, Volume 1: Rastreamento organizado com teste molecular para detecção de DNA-HPV oncogênico",
+    "versao": "3ª edição revista, atualizada e ampliada (1ª ed. 2011; 2ª ed. 2016); 98 páginas",
+    "url_fonte": "https://ninho.inca.gov.br/jspui/bitstream/123456789/17858/3/Diretrizes%20para%20o%20Rastreamento%20do%20c%c3%a2ncer%20do%20colo%20do%20%c3%batero_2025_completo.pdf",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 17,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "Não é recomendado o rastreamento com testes de DNA-HPV oncogênico antes dos 25 anos",
+    "forca": "media",
+    "validado": true,
+    "divergencia": true,
+    "observacao": "A diretriz vigente trata do teste DNA-HPV e não dá conduta específica para ASC-US em menor de 25 anos já com citologia; a conduta de repetir citologia em 3 anos vem da diretriz antiga, que não está na biblioteca. Conferir pelo dono.",
+    "nota_atualizacao_proposta": "O que mudou desde a prova: a prova considerou correto repetir a citologia em 3 anos para paciente de 21 anos com ASC-US. As Diretrizes Brasileiras para o Rastreamento do Câncer do Colo do Útero (INCA/Conitec, 2025), página 17, passam a recomendar o início do rastreamento com teste de DNA-HPV oncogênico aos 25 anos e não recomendam o rastreamento antes dos 25 anos; a página 40 orienta a mulher a iniciar o rastreamento aos 25 anos. A biblioteca não tem a versão histórica anterior."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q069",
+  "code": "REV-2025.2-Q069",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "ms-protocolos-ab-saude-mulheres-2016",
+    "titulo": "Protocolos da Atenção Básica: Saúde das Mulheres",
+    "versao": "1ª edição, 2016 (231 páginas)",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/protocolos_atencao_basica_saude_mulheres.pdf",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 161,
+    "rotulo_pagina": "",
+    "secao": "Fluxograma 6 – DIU de cobre",
+    "citacao": "Se apresenta ciclos menstruais: a qualquer momento do mês. Caso se passaram mais de 12 dias do início da menstruação, poderá colocar o DIU a qualquer momento desde que se certifique a não possibilidade de gravidez.",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Documento de 2016 marcado como vigente na biblioteca."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q070",
+  "code": "REV-2025.2-Q070",
+  "conferencia": "nao_confirmada",
+  "nota": "Médico como gestor do cuidado na APS da saúde suplementar: sem documento na biblioteca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q071",
+  "code": "REV-2025.2-Q071",
+  "conferencia": "nao_confirmada",
+  "nota": "Transtorno do pânico: CAB 34 só cita alprazolam e antidepressivos de modo geral, sem conduta de crise e manutenção. Consultas: panico.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q072",
+  "code": "REV-2025.2-Q072",
+  "conferencia": "nao_confirmada",
+  "nota": "Choque séptico/colangite: sem documento na biblioteca (protocolo de sepse não baixado).",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q073",
+  "code": "REV-2025.2-Q073",
+  "conferencia": "nao_confirmada",
+  "nota": "Desidratação com vômitos na TRO e gastróclise: cartaz de diarreia do MS e AIDPI não trazem esta conduta de forma específica. Consultas: diarreia vomito sonda nasogastrica.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q074",
+  "code": "REV-2025.2-Q074",
+  "conferencia": "nao_confirmada",
+  "nota": "TCE leve em idoso com transferência: sem documento na biblioteca (SAMU só classifica TCE por Glasgow). Consultas: TCE tomografia amnesia observacao.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q075",
+  "code": "REV-2025.2-Q075",
+  "conferencia": "nao_confirmada",
+  "nota": "Cisto de Bartholin: sem documento na biblioteca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q076",
+  "code": "REV-2025.2-Q076",
+  "conferencia": "nao_confirmada",
+  "nota": "Dor lombar com sinais de alerta/metástase óssea: sem documento na biblioteca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q077",
+  "code": "REV-2025.2-Q077",
+  "conferencia": "nao_confirmada",
+  "nota": "Risco relativo em estudos de coorte: conteúdo de epidemiologia, sem documento na biblioteca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q078",
+  "code": "REV-2025.2-Q078",
+  "conferencia": "nao_confirmada",
+  "nota": "Encefalopatia de Wernicke/tiamina: sem documento na biblioteca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q079",
+  "code": "REV-2025.2-Q079",
+  "conferencia": "nao_confirmada",
+  "nota": "Pancreatite crônica/reposição enzimática: sem documento na biblioteca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q080",
+  "code": "REV-2025.2-Q080",
+  "conferencia": "nao_confirmada",
+  "nota": "Intoxicação por salicilato/carvão ativado: biblioteca só tem o manual de animais peçonhentos; sem protocolo de intoxicações. Consultas: intoxicacao carvao ativado.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q081",
+  "code": "REV-2025.2-Q081",
+  "conferencia": "nao_confirmada",
+  "nota": "Melanoma acral: sem documento na biblioteca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q082",
+  "code": "REV-2025.2-Q082",
+  "conferencia": "nao_confirmada",
+  "nota": "Sangramento uterino/anovulação na adolescência: o Protocolo AB Saúde das Mulheres (2016) só trata do assunto em fluxogramas sem o trecho sobre anovulação pós-menarca. Consultas: anovulacao adolescente.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q083",
+  "code": "REV-2025.2-Q083",
+  "conferencia": "nao_confirmada",
+  "nota": "Cólera: não localizado nos documentos baixados (GVS v1/v2/v3). Consultas: colera agua de arroz.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q084",
+  "code": "REV-2025.2-Q084",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "cem-cfm-2217-2018",
+    "titulo": "Código de Ética Médica: Resolução CFM nº 2.217, de 27 de setembro de 2018, modificada pelas Resoluções CFM nº 2.222/2018 e 2.226/2019",
+    "versao": "Edição CFM 2019 (110 páginas), 'Código de Ética Médica: Resolução CFM nº 2.217/2018, modificada pelas Resoluções 2.222/2018 e 2.226/2019'",
+    "url_fonte": "https://portal.cfm.org.br/images/PDF/cem2019.pdf",
+    "temporal": "vigente",
+    "papel": "conceito",
+    "pagina": 27,
+    "rotulo_pagina": "",
+    "secao": "Capítulo IV - Direitos humanos",
+    "citacao": "Art. 24. Deixar de garantir ao paciente o exercício do direito de decidir livremente sobre sua pessoa ou seu bem-estar, bem como exercer sua autoridade para limitá-lo.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   },
+   {
+    "doc_id": "cem-cfm-2217-2018",
+    "titulo": "Código de Ética Médica: Resolução CFM nº 2.217, de 27 de setembro de 2018, modificada pelas Resoluções CFM nº 2.222/2018 e 2.226/2019",
+    "versao": "Edição CFM 2019 (110 páginas), 'Código de Ética Médica: Resolução CFM nº 2.217/2018, modificada pelas Resoluções 2.222/2018 e 2.226/2019'",
+    "url_fonte": "https://portal.cfm.org.br/images/PDF/cem2019.pdf",
+    "temporal": "vigente",
+    "papel": "conceito",
+    "pagina": 19,
+    "rotulo_pagina": "",
+    "secao": "Capítulo I - Princípios fundamentais",
+    "citacao": "XXI - No processo de tomada de decisões profissionais, de acordo com seus ditames de consciência e as previsões legais, o médico aceitará as escolhas de seus pacientes relativas aos procedimentos diagnósticos e terapêuticos por eles expressos, desde que adequadas ao caso e cientificamente reconhecidas.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q085",
+  "code": "REV-2025.2-Q085",
+  "conferencia": "confirmada",
+  "nota": "Questão anulada: vínculo apenas de tema (triagem de TEA na puericultura); não sustenta o gabarito.",
+  "vinculos": [
+   {
+    "doc_id": "lc-tea-2025",
+    "titulo": "Linha de Cuidado para Pessoas com Transtorno do Espectro Autista - TEA",
+    "versao": "1ª edição, 2025, versão eletrônica (lançada em 18/09/2025)",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/linha_cuidado_pessoas_tea.pdf",
+    "temporal": "vigente",
+    "papel": "diagnostico",
+    "pagina": 23,
+    "rotulo_pagina": "22",
+    "secao": "",
+    "citacao": "optou-se por incluir na Caderneta da Criança a realização da triagem utilizando o M-CHAT-R/F",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Questão anulada: vínculo de tema (triagem de TEA); a idade 2, 4 e 10 meses da alternativa não aparece nesse trecho."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q086",
+  "code": "REV-2025.2-Q086",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "pcdt-doenca-falciforme-2024",
+    "titulo": "Protocolo Clínico e Diretrizes Terapêuticas da Doença Falciforme (Portaria Conjunta SAES/SECTICS nº 16, de 01/11/2024)",
+    "versao": "Portaria Conjunta SAES/SECTICS nº 16, de 01/11/2024 (publicada no portal Conitec em 22/11/2024); 89 páginas",
+    "url_fonte": "https://www.gov.br/conitec/pt-br/midias/protocolos/pcdt-da-doenca-falciforme/@@display-file/file",
+    "temporal": "vigente",
+    "papel": "diagnostico",
+    "pagina": 4,
+    "rotulo_pagina": "",
+    "secao": "",
+    "citacao": "O método recomendado para a confirmação do diagnóstico é a eletroforese de hemoglobina pela técnica de eletroforese por focalização isoelétrica (isoelectric focusing electrophoresis, IEF) ou pela cromatografia líquida de alta resolução (high performance liquid chromatography, HPLC).",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q087",
+  "code": "REV-2025.2-Q087",
+  "conferencia": "nao_confirmada",
+  "nota": "Questão anulada. Choque hipovolêmico em lactente/expansão com soro fisiológico: AIDPI traz reidratação IV por plano C, mas não o volume específico da alternativa; sem vínculo seguro. Consultas: diarreia desidratacao grave.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q088",
+  "code": "REV-2025.2-Q088",
+  "conferencia": "nao_confirmada",
+  "nota": "Câncer de pênis/biópsia: sem documento na biblioteca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q089",
+  "code": "REV-2025.2-Q089",
+  "conferencia": "nao_confirmada",
+  "nota": "Interrupção legal da gestação em síndrome congênita do Zika: o documento de Zika (2017) não trata de interrupção; Código Penal e a decisão do STF não estão na biblioteca. Consultas: interrupcao zika.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q090",
+  "code": "REV-2025.2-Q090",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "cem-cfm-2217-2018",
+    "titulo": "Código de Ética Médica: Resolução CFM nº 2.217, de 27 de setembro de 2018, modificada pelas Resoluções CFM nº 2.222/2018 e 2.226/2019",
+    "versao": "Edição CFM 2019 (110 páginas), 'Código de Ética Médica: Resolução CFM nº 2.217/2018, modificada pelas Resoluções 2.222/2018 e 2.226/2019'",
+    "url_fonte": "https://portal.cfm.org.br/images/PDF/cem2019.pdf",
+    "temporal": "vigente",
+    "papel": "conduta",
+    "pagina": 37,
+    "rotulo_pagina": "",
+    "secao": "Capítulo IX - Sigilo profissional",
+    "citacao": "Art. 74. Revelar sigilo profissional relacionado a paciente criança ou adolescente, desde que estes tenham capacidade de discernimento, inclusive a seus pais ou representantes legais, salvo quando a não revelação possa acarretar dano ao paciente.",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": ""
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q091",
+  "code": "REV-2025.2-Q091",
+  "conferencia": "nao_confirmada",
+  "nota": "Pneumonia viral por vírus sincicial respiratório em adolescente: sem documento na biblioteca (guia de bronquiolite é para lactentes).",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q092",
+  "code": "REV-2025.2-Q092",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "cab-28-v2-queixas-2013",
+    "titulo": "Acolhimento à demanda espontânea: queixas mais comuns na Atenção Básica (Cadernos de Atenção Básica, nº 28, volume II)",
+    "versao": "1ª edição, 1ª reimpressão (2013); © 2012; 292 páginas",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/acolhimento_demanda_espontanea_queixas_comuns_cab28v2.pdf",
+    "temporal": "vigente",
+    "papel": "tratamento",
+    "pagina": 82,
+    "rotulo_pagina": "",
+    "secao": "Impetigo",
+    "citacao": "Antimicrobianos tópicos: neomicina, mupirocina e ácido fusídico, aplicados após limpeza e remoção de crostas. A mupirocina utilizada três vezes ao dia demonstrou eficácia similar à eritromicina em casos de leve a moderada intensidade.",
+    "forca": "media",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Documento geral de demanda espontânea; não trata especificamente do período neonatal."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q093",
+  "code": "REV-2025.2-Q093",
+  "conferencia": "nao_confirmada",
+  "nota": "Trauma uretral/cistostomia: sem documento na biblioteca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q094",
+  "code": "REV-2025.2-Q094",
+  "conferencia": "confirmada",
+  "nota": "",
+  "vinculos": [
+   {
+    "doc_id": "ms-cab32-prenatal-baixo-risco-2012",
+    "titulo": "Atenção ao Pré-Natal de Baixo Risco (Cadernos de Atenção Básica, nº 32)",
+    "versao": "Série A. Normas e Manuais Técnicos; Cadernos de Atenção Básica nº 32; 318 p. (a edição exata não aparece na página consultada)",
+    "url_fonte": "https://bvsms.saude.gov.br/bvs/publicacoes/cadernos_atencao_basica_32_prenatal.pdf",
+    "temporal": "vigente",
+    "papel": "prevencao",
+    "pagina": 188,
+    "rotulo_pagina": "188",
+    "secao": "",
+    "citacao": "Também deve ser indicada imunoglobulina, dentro de 72 horas, após abortamento, gestação ectópica, gestação molar, sangramento vaginal ou após procedimentos invasivos (amniocentese, biópsia de vilo corial, cordocentese) quando o pai é Rh+ e a mãe é Rh-.",
+    "forca": "forte",
+    "validado": true,
+    "divergencia": false,
+    "observacao": "Documento de 2012 marcado como vigente na biblioteca. Não trata de reavaliação em 7 a 14 dias."
+   }
+  ]
+ },
+ {
+  "question_id": "revalida_2025_2_q095",
+  "code": "REV-2025.2-Q095",
+  "conferencia": "nao_confirmada",
+  "nota": "Febre na criança com antecedente de convulsão febril simples: sem documento na biblioteca. Consultas: convulsao febril.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q096",
+  "code": "REV-2025.2-Q096",
+  "conferencia": "nao_confirmada",
+  "nota": "Dispepsia com sinais de alarme: sem documento na biblioteca (diretriz de dispepsia/câncer gástrico não baixada). Consultas: dispepsia endoscopia sinais de alarme.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q097",
+  "code": "REV-2025.2-Q097",
+  "conferencia": "nao_confirmada",
+  "nota": "Síndrome torácica aguda: o PCDT de doença falciforme só a cita como complicação, sem conduta. Consultas: sindrome toracica aguda.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q098",
+  "code": "REV-2025.2-Q098",
+  "conferencia": "nao_confirmada",
+  "nota": "Fecaloma e fissura anal em paciente hospitalizado: sem documento na biblioteca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q099",
+  "code": "REV-2025.2-Q099",
+  "conferencia": "nao_confirmada",
+  "nota": "Variação normal da menarca após a telarca: sem documento específico na biblioteca (CAB 33 e Caderneta sem este trecho). Consultas: menarca telarca.",
+  "vinculos": []
+ },
+ {
+  "question_id": "revalida_2025_2_q100",
+  "code": "REV-2025.2-Q100",
+  "conferencia": "nao_confirmada",
+  "nota": "Tungíase: sem documento na biblioteca. Consultas: tungiase.",
+  "vinculos": []
  }
 ]
