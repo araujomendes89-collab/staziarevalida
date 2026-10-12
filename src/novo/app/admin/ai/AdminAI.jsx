@@ -7,6 +7,7 @@ import { Loading, useLoad } from "../common.jsx";
 import { KeyValue, Section } from "../content/ui.jsx";
 import { aiGet, aiSend, PROVIDER_NAME, usd } from "./aiApi.js";
 import { FunctionEditor } from "./FunctionEditor.jsx";
+import { overallCapState } from "./overallCap.js";
 
 const PROVIDER_ORDER = ["anthropic", "openai", "gemini", "ollama"];
 const FUNCTIONS = [
@@ -166,6 +167,21 @@ function CapsNotice({ settings }) {
         {!c.off && missing.join(" ") + " "}
         {c.off && !c.noMonthly && !c.noPerRun ? "Os valores já estão preenchidos: falta ligar os tetos. " : ""}
         O Tutor, as vozes e a busca por significado não entram nestes tetos.
+      </Banner>
+    </div>
+  );
+}
+
+/** Aviso do teto geral do mês (IA02): só aparece com o teto ligado e a partir de 80%. Só avisa; nada é parado por causa dele. */
+function OverallNotice({ data }) {
+  const o = overallCapState(data);
+  if (o.level !== "perto" && o.level !== "passou") return null;
+  return (
+    <div data-testid="aviso-teto-geral">
+      <Banner tone={o.level === "passou" ? "danger" : "warning"} title={o.level === "passou" ? "O gasto de IA do mês passou do teto geral" : "O gasto de IA do mês chegou perto do teto geral"}>
+        {`Gasto do mês com registro: ${usd(o.spend)} de um teto geral de ${usd(o.cap)} (${o.percent}%). `}
+        {o.partial ? "Esta soma só tem a Central de IAs: falta uma atualização do banco para somar o resto. " : ""}
+        O teto geral só avisa: nenhuma IA foi parada por causa dele.
       </Banner>
     </div>
   );
@@ -333,6 +349,61 @@ function AllSpend({ data }) {
   );
 }
 
+/**
+ * Teto geral do mês (IA02): soma da Central, do Tutor, das vozes, da transcrição, dos Podcasts e da busca por significado. Nasce desligado
+ * e sem valor; o valor é do dono. Só avisa (a 80% e ao passar): não para nada. Sem a atualização do banco (9892), a tela diz isso.
+ */
+function OverallCap({ data, backend, reload }) {
+  const o = overallCapState(data);
+  const [value, setValue] = React.useState(o.cap == null ? "" : String(o.cap));
+  const [on, setOn] = React.useState(o.enabled);
+  const [state, setState] = React.useState({ busy: false, error: null, done: false });
+  const key = JSON.stringify([o.cap, o.enabled]);
+  React.useEffect(() => {
+    setValue(o.cap == null ? "" : String(o.cap));
+    setOn(o.enabled);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  const missing = on && value.trim() === "";
+  const save = async () => {
+    setState({ busy: true, error: null, done: false });
+    try {
+      await aiSend(backend, "PUT", "/settings", { overall_monthly_cap_usd: value.trim() === "" ? null : Number(value), overall_cap_enabled: on });
+      setState({ busy: false, error: null, done: true });
+      await reload();
+    } catch (e) {
+      setState({ busy: false, error: e.message, done: false });
+    }
+  };
+  return (
+    <div data-testid="teto-geral" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <h4 style={{ margin: "8px 0 0", font: "var(--type-label)" }}>Teto geral do mês (só avisa)</h4>
+      <p style={note}>
+        Soma tudo o que tem registro: a Central de IAs, o Tutor, as vozes, a transcrição, os Podcasts e a busca por significado. Fica desligado e sem valor até você escolher. Ligado, avisa a 80% e quando passar; não para nenhuma IA.
+      </p>
+      {!o.supported ? (
+        <p style={note}>O teto geral ainda não pode ser guardado: falta uma atualização do banco, que o Claude prepara para você colar.</p>
+      ) : (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+            <TextField id="teto-geral-mensal" label="Teto geral do mês (US$)" type="number" min="0" step="any" value={value} onChange={(e) => setValue(e.target.value)} />
+          </div>
+          <Switch label="Avisar pelo teto geral" checked={on} onChange={(e) => setOn(e.target.checked)} />
+          {missing && <div style={subtle}>Preencha o valor para ligar</div>}
+          {o.level && <p style={note}>{`Gasto do mês com registro: ${usd(o.spend)} (${o.percent}% do teto geral).`}</p>}
+          {state.error && <Banner tone="danger">{state.error}</Banner>}
+          {state.done && <Banner tone="success">Teto geral salvo.</Banner>}
+          <div>
+            <Button size="sm" icon="check" disabled={missing} loading={state.busy} onClick={save}>
+              Salvar teto geral
+            </Button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 /** O que escolher nos tetos e o que ajuda a escolher (IA01): o gasto do mês e o mínimo calculado pelos preços; nada vem preenchido. */
 function CapsGuide({ data }) {
   const guide = data.cap_guidance;
@@ -409,6 +480,8 @@ function Spend({ data, backend, reload }) {
         />
 
         <AllSpend data={data} />
+
+        <OverallCap data={data} backend={backend} reload={reload} />
 
         <h4 style={{ margin: "8px 0 0", font: "var(--type-label)" }}>Últimas chamadas</h4>
         {(data.recent_calls ?? []).length === 0 ? (
@@ -502,6 +575,7 @@ export function AdminAI() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {error && <LoadFail error={error} retry={reload} />}
       <CapsNotice settings={data.settings} />
+      <OverallNotice data={data} />
       <Providers data={data} backend={backend} reload={refresh} />
       <Functions data={data} backend={backend} reload={refresh} />
       <Spend data={data} backend={backend} reload={refresh} />

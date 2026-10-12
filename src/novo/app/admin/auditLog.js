@@ -467,7 +467,9 @@ const SUMMARY = {
   "ai.settings": (d) =>
     join([
       "monthly_cap_usd" in d && `Teto do mês: ${cap(d.monthly_cap_usd)}`,
-      "per_run_cap_usd" in d && `Teto por execução: ${cap(d.per_run_cap_usd)}`,
+      "per_run_cap_usd" in d && `Teto por chamada: ${cap(d.per_run_cap_usd)}`,
+      "overall_monthly_cap_usd" in d && `Teto geral do mês: ${cap(d.overall_monthly_cap_usd)}`,
+      "overall_cap_enabled" in d && `Teto geral ${d.overall_cap_enabled ? "ligado (só avisa)" : "desligado"}`,
       "caps_enabled" in d && `Tetos ${d.caps_enabled ? "ligados" : "desligados"}`,
       "tab_override_enabled" in d && `Trocar a IA nas abas: ${d.tab_override_enabled ? "permitido" : "não permitido"}`,
     ]),
