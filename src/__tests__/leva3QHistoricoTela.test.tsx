@@ -21,7 +21,7 @@ const ROW = {
   official: { answer: "B", answer_status: "FINAL", version: 1, source: "Gabarito", source_url: null, published_at: null },
 };
 const opts = (map: Record<string, [string, string]>) => ["A", "B", "C", "D"].map((id) => ({ id, text: map[id]?.[0] ?? `Alt ${id}`, explanation: map[id]?.[1] ?? "" }));
-const ITEMS = [
+const ITEMS: any[] = [
   { id: 30, at: "2026-10-11T15:30:00Z", by: "Editora", reason: "assistente de IA", changes: { topic: { de: "Bronquiolite", para: "Bronquiolite aguda" }, expected_conduct: { de: "Suporte.", para: "Suporte e oxigênio." } } },
   { id: 29, at: "2026-10-10T12:00:00Z", by: "Master", reason: null, changes: { statement: { de: "Lactente com desconforto respiratório há dois dias.", para: "Lactente com desconforto respiratório há três dias." }, options: { de: opts({ B: ["Alt B", ""] }), para: opts({ B: ["Alt B", "B é a correta: suporte e oxigênio."], C: ["Alt C reescrita", ""] }) } } },
   { id: 28, at: "2026-10-09T09:00:00Z", by: null, reason: null, changes: { subtopic: { de: null, para: "Manejo" } } },
@@ -124,7 +124,8 @@ describe("Q12 — histórico de mudanças no editor", () => {
   });
 
   it("carrega mais páginas quando há mais mudanças que as mostradas", async () => {
-    await open(ROW, (args) => ({ total: 7, items: ITEMS.slice(args.p_offset, args.p_offset + (args.p_offset === 0 ? 5 : 2)).concat(args.p_offset === 0 ? [] : [{ id: 20 + args.p_offset, at: "2026-10-01T09:00:00Z", by: "Master", reason: null, changes: { topic: { de: "A", para: "B" } } }]) }));
+    const older: any[] = [25, 24].map((id) => ({ id, at: "2026-10-01T09:00:00Z", by: "Master", reason: null, changes: { topic: { de: "A", para: "B" } } }));
+    await open(ROW, (args) => ({ total: 7, items: args.p_offset === 0 ? ITEMS : older }));
     fireEvent.click(within(panel()).getByRole("button", { name: "Ver histórico de mudanças" }));
     await within(panel()).findAllByRole("listitem");
     expect(within(panel()).getAllByRole("listitem")).toHaveLength(5);
