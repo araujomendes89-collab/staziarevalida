@@ -2,7 +2,7 @@ import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 const FOCUSABLE='a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
 // Janela de confirmação. Portal em document.body, foco preso dentro, Esc e clique no fundo fecham, o foco volta a quem abriu.
-export function Dialog({open=true,title,description,children,actions,onClose}){
+export function Dialog({open=true,title,description,children,actions,onClose,className,label}){
   const uid=useId(); const boxRef=useRef(null); const closeRef=useRef(onClose);
   closeRef.current=onClose;
   useEffect(()=>{
@@ -32,7 +32,7 @@ export function Dialog({open=true,title,description,children,actions,onClose}){
   const titleId=title?uid+'-t':undefined, descId=description?uid+'-d':undefined;
   return createPortal(
     <div className="sm-dialog-overlay" onClick={e=>{ if(e.target===e.currentTarget&&onClose) onClose(); }}>
-      <div ref={boxRef} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descId} tabIndex={-1} className="sm-dialog">
+      <div ref={boxRef} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-label={title?undefined:label} aria-describedby={descId} tabIndex={-1} className={className?'sm-dialog '+className:'sm-dialog'}>
         <div className="sm-dialog__body">
           {title&&<h2 id={titleId} className="sm-dialog__title">{title}</h2>}
           {description&&<p id={descId} className="sm-dialog__desc">{description}</p>}
