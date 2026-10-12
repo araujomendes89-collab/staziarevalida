@@ -121,6 +121,15 @@ describe("Meu perfil de estudo", () => {
     expect(within(screen.getByRole("radiogroup", { name: "Prova" })).getByRole("radio", { name: "2026/2" }).getAttribute("aria-checked")).toBe("true");
   });
 
+  it("perfil salvo com prova fora das três próximas: a prova salva entra na frente e fica marcada", async () => {
+    loaded = { profile: { ...SAVED, exam: "2026/1" }, defaults: null, stats: NO_STATS };
+    await open();
+    const group = screen.getByRole("radiogroup", { name: "Prova" });
+    expect(within(group).getAllByRole("radio").map((r) => r.textContent)).toEqual(["2026/1", "2026/2", "2027/1", "2027/2"]);
+    expect(within(group).getByRole("radio", { name: "2026/1" }).getAttribute("aria-checked")).toBe("true");
+    expect((screen.getByRole("button", { name: "Salvar perfil" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("nome com menos de 3 letras mostra o erro e não salva; Salvar e Descartar só com alteração", async () => {
     await open();
     const save = screen.getByRole("button", { name: "Salvar perfil" }) as HTMLButtonElement;
