@@ -135,7 +135,7 @@ describe("mergeDeck", () => {
     const novo = { ...b, compat: 99 };
     const out = mergeDeck([a, b], [novo, a, novo]);
     expect(out.map((p: any) => p.user_id)).toEqual(["a", "b"]);
-    expect(out[1].compat).toBe(99);
+    expect((out[1] as any).compat).toBe(99);
   });
   it("sem cartões na tela, vale o que veio; entradas nulas viram lista vazia", () => {
     expect(mergeDeck([], [b, a]).map((p: any) => p.user_id)).toEqual(["b", "a"]);
