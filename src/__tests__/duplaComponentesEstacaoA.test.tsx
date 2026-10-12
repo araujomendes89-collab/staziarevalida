@@ -8,7 +8,6 @@ import fs from "fs";
 import path from "path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-// @ts-expect-error módulo JS sem tipos
 import { PrintImage, PrintItem, StatTile, StationCard, Timer } from "../novo/ds/components/osce/index.js";
 
 const ROOT = path.resolve(__dirname, "../..");
