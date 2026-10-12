@@ -10,9 +10,10 @@
  *      "sim" (reserva vencida, refeita por outra limpeza, arquivo voltou a ser usado, banco fora do ar), o arquivo é PULADO e
  *      não é apagado;
  *   3. APAGA no depósito, um por um;
- *   4. CONFIRMA ao banco (caminho + código) o que foi apagado (tira da fila e escreve no Registro da Administração). Só vale para a
- *      reserva vigente. Se a confirmação falhar, tenta de novo; se ainda assim falhar, a reserva vence sozinha em 10 minutos e a
- *      próxima limpeza refaz (apagar é idempotente) e registra;
+ *   4. CONFIRMA ao banco (caminho + código), logo depois de CADA exclusão (tira da fila e escreve no Registro da Administração). Só
+ *      vale para a reserva vigente; se o banco recusar o código (reserva refeita por outra limpeza), o apagamento é anotado no
+ *      Registro sem mexer na reserva nova. Se a confirmação falhar por erro, tenta de novo; se persistir, a reserva vence sozinha em
+ *      10 minutos e a próxima limpeza refaz (apagar é idempotente) e registra;
  *   5. DEVOLVE (caminho + código) a reserva do que o depósito não conseguiu apagar (volta para a fila).
  * Repete em lotes (até MAX_ROUNDS) para alcançar a fila inteira. NUNCA lança erro: falha ao apagar não desfaz a remoção do
  * material. Quem chama é responsável por já ter conferido que quem pediu é da equipe.
@@ -36,6 +37,30 @@ interface Reserva {
   token: string;
 }
 
+/**
+ * Confirma ao banco UM apagamento (caminho + código). O banco responde quantos aceitou: menos que 1 = o código foi recusado (a reserva
+ * já tinha vencido e sido refeita por outra limpeza), mas o arquivo FOI apagado: então só se ANOTA o apagamento no Registro
+ * (ch_worker_lesson_files_audit), sem mexer na reserva nova. Erro de conexão: tenta de novo uma vez; se persistir, a reserva vence
+ * em 10 minutos e a próxima limpeza refaz (apagar é idempotente) e registra.
+ */
+async function confirmar(db: Pick<ContentDb, "service">, user: Identity, item: Reserva, log?: (m: string) => void): Promise<void> {
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const aceitos = Number(await db.service<number>("ch_worker_lesson_files_done", { p_items: [item], p_actor: user.id }));
+      if (aceitos >= 1) return;
+      // código recusado: o arquivo já foi apagado; preserva o registro sem tocar na reserva nova
+      try {
+        await db.service<number>("ch_worker_lesson_files_audit", { p_items: [{ path: item.path }], p_actor: user.id });
+      } catch (error) {
+        log?.(`aulas: apaguei o arquivo ${item.path}, mas a reserva dele já era de outra limpeza e não consegui anotar o apagamento no Registro: ${message(error)}`);
+      }
+      return;
+    } catch (error) {
+      if (attempt === 2) log?.(`aulas: apaguei o arquivo ${item.path} mas não consegui confirmar no banco; a reserva vence em 10 minutos e a próxima limpeza registra: ${message(error)}`);
+    }
+  }
+}
+
 export async function sweepLessonFiles(db: Pick<ContentDb, "service">, user: Identity, storage: Pick<Storage, "remove"> | undefined, log?: (m: string) => void): Promise<SweepResult> {
   const out: SweepResult = { deleted: [], failed: [], skipped: [] };
   const devolver: Reserva[] = [];
@@ -54,7 +79,6 @@ export async function sweepLessonFiles(db: Pick<ContentDb, "service">, user: Ide
       break;
     }
     if (!items.length) break;
-    const done: Reserva[] = [];
     for (const item of items) {
       // antes de CADA exclusão: o banco confere e renova a reserva; sem o "sim" dele, o arquivo não é apagado
       let renovada = false;
@@ -73,24 +97,14 @@ export async function sweepLessonFiles(db: Pick<ContentDb, "service">, user: Ide
       }
       try {
         await storage.remove([item.path]);
-        done.push(item);
       } catch (error) {
         out.failed.push(item.path);
         devolver.push(item);
         log?.(`aulas: não consegui apagar o arquivo ${item.path} do depósito (a remoção do material vale; ele volta para a fila): ${message(error)}`);
+        continue;
       }
-    }
-    if (done.length) {
-      out.deleted.push(...done.map((i) => i.path));
-      let confirmed = false;
-      for (let attempt = 1; attempt <= 2 && !confirmed; attempt++) {
-        try {
-          await db.service<number>("ch_worker_lesson_files_done", { p_items: done, p_actor: user.id });
-          confirmed = true;
-        } catch (error) {
-          if (attempt === 2) log?.(`aulas: apaguei ${done.length} arquivo(s) mas não consegui confirmar no banco; a reserva vence em 10 minutos e a próxima limpeza registra: ${message(error)}`);
-        }
-      }
+      out.deleted.push(item.path);
+      await confirmar(db, user, item, log); // logo depois de CADA exclusão
     }
   }
   if (devolver.length) {
