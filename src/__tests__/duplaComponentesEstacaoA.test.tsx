@@ -8,12 +8,12 @@ import fs from "fs";
 import path from "path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { PrintImage, PrintItem, StatTile, StationCard, Timer } from "../novo/ds/components/osce/index.js";
+import { PrintImage, PrintItem, ScrollPane, StatTile, StationCard, Timer } from "../novo/ds/components/osce/index.js";
 
 const ROOT = path.resolve(__dirname, "../..");
 const read = (rel: string) => fs.readFileSync(path.join(ROOT, rel), "utf8");
 const DIR = "src/novo/ds/components/osce";
-const NAMES = ["Timer", "PrintItem", "PrintImage", "StatTile", "StationCard"];
+const NAMES = ["Timer", "PrintItem", "PrintImage", "StatTile", "StationCard", "ScrollPane"];
 
 afterEach(() => {
   cleanup();
@@ -128,11 +128,32 @@ describe("StationCard", () => {
 });
 
 describe("PrintItem", () => {
-  it("título 'Impresso {n} · {título}'; sem canRelease e não liberado mostra só o título trancado", () => {
-    render(<PrintItem index={1} title="Exame físico">PA 130x80</PrintItem>);
-    expect(screen.getByText("Impresso 1 · Exame físico")).toBeTruthy();
+  it("título 'Impresso {n} · {título}' quando liberado; sem canRelease e não liberado mostra só 'Impresso {n} · Aguardando liberação' (sem o título)", () => {
+    const { rerender } = render(<PrintItem index={1} title="Exame físico">PA 130x80</PrintItem>);
+    expect(screen.getByText("Impresso 1 · Aguardando liberação")).toBeTruthy();
+    expect(screen.queryByText(/Exame físico/)).toBeNull();
     expect(screen.queryByRole("button")).toBeNull();
     expect(screen.queryByText("PA 130x80")).toBeNull();
+    rerender(<PrintItem index={1} title="Exame físico" released>PA 130x80</PrintItem>);
+    expect(screen.getByText("Impresso 1 · Exame físico")).toBeTruthy();
+    expect(screen.queryByText(/Aguardando liberação/)).toBeNull();
+  });
+
+  it("'Impresso 1 · Esfregaço' e, com sourceNumber 2, 'no documento oficial: Impresso 2'; sem sourceNumber ou igual ao número da tela não escreve a linha", () => {
+    const { rerender } = render(<PrintItem index={1} sourceNumber={2} title="Esfregaço" canRelease released />);
+    expect(screen.getByText("Impresso 1 · Esfregaço")).toBeTruthy();
+    expect(screen.getByText("no documento oficial: Impresso 2")).toBeTruthy();
+    rerender(<PrintItem index={1} sourceNumber={1} title="Esfregaço" canRelease released />);
+    expect(screen.queryByText(/no documento oficial/)).toBeNull();
+    rerender(<PrintItem index={1} title="Esfregaço" canRelease released />);
+    expect(screen.queryByText(/no documento oficial/)).toBeNull();
+    rerender(<PrintItem index={1} sourceNumber={null} title="Esfregaço" canRelease released />);
+    expect(screen.queryByText(/no documento oficial/)).toBeNull();
+  });
+
+  it("o candidato (sem canRelease) nunca recebe a linha do documento oficial, mesmo se passarem sourceNumber", () => {
+    render(<PrintItem index={1} sourceNumber={2} title="Esfregaço" released />);
+    expect(screen.queryByText(/no documento oficial/)).toBeNull();
   });
 
   it("Liberar / Ocultar chamam onToggleRelease", () => {
@@ -192,7 +213,7 @@ describe("PrintImage", () => {
     expect(document.activeElement).toBe(open);
   });
 
-  it("Fechar e clique no fundo fecham; clique na imagem não; Tab não sai do botão Fechar", () => {
+  it("Fechar e clique no fundo fecham; clique na imagem não; Tab não sai da tela cheia", () => {
     render(<PrintImage src="/impresso.png" alt="ECG" />);
     const open = screen.getByRole("button", { name: "Ampliar impresso" });
     fireEvent.click(open);
@@ -200,7 +221,10 @@ describe("PrintImage", () => {
     fireEvent.click(imgs[1]);
     expect(screen.getByRole("dialog")).toBeTruthy();
     const close = screen.getByRole("button", { name: "Fechar" });
-    expect(fireEvent.keyDown(document, { key: "Tab" })).toBe(false); // preventDefault: foco preso
+    // foco preso na tela cheia: de "Fechar", Tab volta ao primeiro (−) e Shift+Tab volta ao último (Fechar)
+    expect(fireEvent.keyDown(document, { key: "Tab" })).toBe(false);
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Diminuir imagem" }));
+    expect(fireEvent.keyDown(document, { key: "Tab", shiftKey: true })).toBe(false);
     expect(document.activeElement).toBe(close);
     fireEvent.click(close);
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -208,6 +232,102 @@ describe("PrintImage", () => {
     fireEvent.click(open);
     fireEvent.click(screen.getByRole("dialog"));
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("PrintImage: zoom e ocultar", () => {
+  const zoomLabel = () => screen.getByText(/^\d+%$/).textContent;
+  const big = () => screen.getAllByAltText("Hemograma")[1] as HTMLElement;
+
+  it("− e + andam de 60% a 200% de 20 em 20, desligam nos limites e voltam a 100% ao reabrir", () => {
+    render(<PrintImage src="/i.png" alt="Hemograma" />);
+    fireEvent.click(screen.getByRole("button", { name: "Ampliar impresso" }));
+    const minus = screen.getByRole("button", { name: "Diminuir imagem" }) as HTMLButtonElement;
+    const plus = screen.getByRole("button", { name: "Ampliar imagem" }) as HTMLButtonElement;
+    expect(zoomLabel()).toBe("100%");
+    expect(big().style.width).toBe("900px");
+    fireEvent.click(plus);
+    expect(zoomLabel()).toBe("120%");
+    expect(big().style.width).toBe("1080px");
+    for (let i = 0; i < 6; i++) fireEvent.click(plus);
+    expect(zoomLabel()).toBe("200%");
+    expect(plus.disabled).toBe(true);
+    expect(minus.disabled).toBe(false);
+    fireEvent.click(plus);
+    expect(zoomLabel()).toBe("200%");
+    for (let i = 0; i < 7; i++) fireEvent.click(minus);
+    expect(zoomLabel()).toBe("60%");
+    expect(big().style.width).toBe("540px");
+    expect(minus.disabled).toBe(true);
+    expect(plus.disabled).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ampliar impresso" }));
+    expect(zoomLabel()).toBe("100%");
+  });
+
+  it("Esc ainda fecha a imagem ampliada com o zoom ligado", () => {
+    render(<PrintImage src="/i.png" alt="Hemograma" />);
+    fireEvent.click(screen.getByRole("button", { name: "Ampliar impresso" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ampliar imagem" }));
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("clicar em − ou + não fecha a tela cheia", () => {
+    render(<PrintImage src="/i.png" alt="Hemograma" />);
+    fireEvent.click(screen.getByRole("button", { name: "Ampliar impresso" }));
+    fireEvent.click(screen.getByRole("button", { name: "Ampliar imagem" }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("sem canHide não há botão de ocultar", () => {
+    render(<PrintImage src="/i.png" alt="Hemograma" />);
+    expect(screen.queryByRole("button", { name: "Ocultar imagem do impresso" })).toBeNull();
+  });
+
+  it("canHide oculta e mostra a imagem sem fechar o impresso", () => {
+    render(
+      <PrintItem index={1} title="Hemograma" canRelease released>
+        <PrintImage src="/i.png" alt="Hemograma" canHide />
+      </PrintItem>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Ver conteúdo" }));
+    expect(screen.getByAltText("Hemograma")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Ocultar imagem do impresso" }));
+    expect(screen.queryByAltText("Hemograma")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ampliar impresso" })).toBeNull();
+    // o impresso continua aberto e liberado
+    expect(screen.getByRole("button", { name: "Ver conteúdo" }).getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByRole("button", { name: "Ocultar" })).toBeTruthy(); // o Ocultar do avaliador (liberação) segue ali
+    fireEvent.click(screen.getByRole("button", { name: "Mostrar imagem do impresso" }));
+    expect(screen.getByAltText("Hemograma")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Mostrar imagem do impresso" })).toBeNull();
+  });
+});
+
+describe("ScrollPane", () => {
+  it("região com nome, foco por teclado e rolagem própria", () => {
+    const { container } = render(
+      <ScrollPane label="Coluna do avaliador" className="minha">
+        <p>conteúdo</p>
+      </ScrollPane>,
+    );
+    const region = screen.getByRole("region", { name: "Coluna do avaliador" });
+    expect(region.getAttribute("tabindex")).toBe("0");
+    expect(region.className).toContain("osce-scroll");
+    expect(region.className).toContain("minha");
+    expect(screen.getByText("conteúdo")).toBeTruthy();
+    expect(container.querySelectorAll(".osce-scroll")).toHaveLength(1);
+    const css = read(`${DIR}/osce.css`);
+    const rule = css.match(/\.osce-scroll\{[^}]*\}/)?.[0] ?? "";
+    expect(rule).toMatch(/min-height:0/);
+    expect(rule).toMatch(/overflow-y:auto/);
+    expect(rule).toMatch(/overscroll-behavior:contain/);
+  });
+
+  it("ScrollPane tem .d.ts e está no índice", () => {
+    expect(fs.existsSync(path.join(ROOT, `${DIR}/ScrollPane.d.ts`))).toBe(true);
+    expect(read(`${DIR}/index.js`)).toMatch(/ScrollPane/);
   });
 });
 
@@ -246,7 +366,7 @@ describe("arquivos", () => {
   it("osce.css só tem classes dos cinco componentes (nada de match nem pep)", () => {
     const css = read(`${DIR}/osce.css`);
     expect(css).not.toMatch(/osce-(match|pep)/);
-    for (const c of ["osce-timer", "osce-print", "osce-printimg", "osce-stat", "osce-station"]) expect(css).toContain(`.${c}`);
+    for (const c of ["osce-timer", "osce-print", "osce-printimg", "osce-stat", "osce-station", "osce-scroll"]) expect(css).toContain(`.${c}`);
   });
 
   it("o pulso do cronômetro respeita 'reduzir movimento'", () => {
