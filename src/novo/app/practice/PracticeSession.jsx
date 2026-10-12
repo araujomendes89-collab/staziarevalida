@@ -14,7 +14,8 @@ import { useSession } from "../session.jsx";
 import { Correction, answerState } from "./Correction.jsx";
 import { QuestionFigures } from "./QuestionFigures.jsx";
 import { SessionResult } from "./SessionResult.jsx";
-import { areaLabel, examLabel, formatClock, splitStatement } from "./format.js";
+import { areaLabel, formatClock, isStaziamed, questionRef, splitStatement } from "./format.js";
+import { SupportTable } from "./SupportTable.jsx";
 import { XPToast, useTurnFeedback } from "../play/PlayFeedback.jsx";
 
 // Até aqui, um traço por questão na barra do topo; acima disso, uma barra contínua.
@@ -460,9 +461,8 @@ function Runner({ session, go, onFinished }) {
           <div style={{ maxWidth: 720, margin: "0 auto", padding: mobile ? "24px 18px" : "44px 32px" }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <Badge tone="brand">{areaLabel(question.area)}</Badge>
-              <Badge>
-                {examLabel(question.exam)} · Q{question.number}
-              </Badge>
+              <Badge>{questionRef(question)}</Badge>
+              {isStaziamed(question) && <Badge tone="warning">não é questão oficial do Inep</Badge>}
               {question.bookmarked && (
                 <Badge tone="warning" icon="bookmark">
                   Marcada
@@ -476,6 +476,7 @@ function Runner({ session, go, onFinished }) {
             )}
             <p style={{ font: `400 ${mobile ? 17 : 19}px/1.65 var(--font-sans)`, margin: "22px 0 0", textWrap: "pretty" }}>{stem}</p>
             <QuestionFigures images={question.images} questionId={question.id} />
+            <SupportTable support={question.support} />
             {ask && <p style={{ font: "600 18px/1.4 var(--font-sans)", margin: "28px 0 0" }}>{ask}</p>}
             <div role="radiogroup" aria-label="Alternativas" style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: ask ? 20 : 28 }}>
               {question.options.map((option) => {
@@ -577,6 +578,19 @@ export function PracticeSession({ go }) {
           title="Sessão não encontrada"
           description="Ela pode ter sido aberta em outra conta ou o endereço está incompleto."
           action={<Button onClick={() => go("questoes")}>Montar um treino</Button>}
+        />
+      </Centered>
+    );
+  }
+  // acesso às Questões Inéditas acabou (teste vencido, plano vencido): a sessão abre sem questões e com o aviso do banco
+  if (view.session.locked) {
+    return (
+      <Centered>
+        <EmptyState
+          icon="lock"
+          title="Questões Inéditas indisponíveis agora"
+          description={view.session.lock_message || "As Questões Inéditas são abertas a quem tem plano pago ou teste grátis em dia. As questões das provas oficiais continuam abertas."}
+          action={<Button onClick={() => go("planos")}>Ver planos</Button>}
         />
       </Centered>
     );

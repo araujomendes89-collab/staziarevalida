@@ -6,6 +6,7 @@ import { FlashcardForm } from "../review/FlashcardForm.jsx";
 import { QuestionCommentary, useCommentary } from "./QuestionCommentary.jsx";
 import { useSession } from "../session.jsx";
 import { ERROR_TYPE, KIND_LABEL } from "./diagnosisLabels.js";
+import { isStaziamed } from "./format.js";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
 
 /** Questão anulada pela banca (o banco diz "annulled"; sem gabarito também é anulada): não conta como acerto nem erro. */
@@ -107,19 +108,49 @@ function SaveAsFlashcard({ question, correction }) {
   );
 }
 
+/** Fontes oficiais citadas de uma Questão StaziaMed: órgão, documento, versão, página e o trecho (só depois de responder). */
+function OfficialSources({ correction }) {
+  const list = correction.official_sources?.length ? correction.official_sources : (correction.sources ?? []).map((s) => ({ source: s.title, organ: s.organ, version: s.version, page: s.page }));
+  if (!list.length) return null;
+  return (
+    <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", fontSize: 14, display: "flex", flexDirection: "column", gap: 8 }}>
+      <b>Fontes oficiais citadas</b>
+      {list.map((c, i) => (
+        <div key={i}>
+          <div>
+            <b>{c.source ?? c.title}</b>
+            {c.organ ? ` · ${c.organ}` : ""}
+            {c.version ? ` · versão ${c.version}` : ""}
+            {c.page != null ? ` · p. ${c.page}` : ""}
+          </div>
+          {c.quote && <blockquote style={{ margin: "4px 0 0", paddingLeft: 10, borderLeft: "3px solid var(--border-default)", color: "var(--text-secondary)" }}>{c.quote}</blockquote>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function Correction({ selected, correction, question, tutorContext = "question" }) {
   const source = correction.sources?.[0];
+  // Questão StaziaMed: "Gabarito StaziaMed", nunca "gabarito oficial", "O que a questão avalia" nem o Tutor (o Tutor só trabalha com as oficiais)
+  const staz = correction.origin === "staziamed" || isStaziamed(question);
   // Anulada: nenhuma alternativa é "a correta" (a letra guardada não vale), então não há "Explicação clínica" da correta,
   // "Por que não as outras?" nem análise publicada, mesmo que venham de um servidor antigo
   const annulled = isAnnulled(correction);
   // Análise Stazia publicada (se houver): substitui "Por que não as outras?", que fica como reserva
-  const fetched = useCommentary(question?.id);
+  const fetched = useCommentary(staz ? null : question?.id);
   const commentary = annulled ? null : fetched;
   return (
     <>
       <Verdict selected={selected} correction={correction} />
       {/* anulada: o Tutor não abre questão anulada (responderia "Questão não encontrada."), então o botão não aparece */}
-      {question?.id && selected != null && !annulled && (
+      {staz && !annulled && (
+        <div style={{ font: "600 15px var(--font-sans)" }}>
+          Gabarito StaziaMed: alternativa {correction.correct_option}
+          <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", fontWeight: 400 }}> · não é questão oficial do Inep</span>
+        </div>
+      )}
+      {!staz && question?.id && selected != null && !annulled && (
         <div>
           <TutorButton request={{ mode: "livre", questionId: question.id, context: { type: tutorContext, id: question.id } }} label={correction.is_correct === false ? "Discutir com o Tutor" : "Conversar com o Tutor"} />
         </div>
@@ -150,7 +181,7 @@ export function Correction({ selected, correction, question, tutorContext = "que
           <b>Conduta esperada.</b> {correction.expected_conduct}
         </div>
       )}
-      {correction.inep_intent && (
+      {!staz && correction.inep_intent && (
         <div>
           <div className="sm-overline">O que a questão avalia</div>
           <p style={{ margin: "8px 0 0", fontSize: 14, lineHeight: 1.55, color: "var(--text-secondary)" }}>{correction.inep_intent}</p>
@@ -167,7 +198,8 @@ export function Correction({ selected, correction, question, tutorContext = "que
           )}
         </div>
       )}
-      {source?.title && (
+      {staz && <OfficialSources correction={correction} />}
+      {!staz && source?.title && (
         <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
           Gabarito: {source.title}
           {source.organization ? ` · ${source.organization}` : ""}

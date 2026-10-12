@@ -201,10 +201,12 @@ describe("Rascunhos inéditos do motor", () => {
     const { buildDraftStatements } = await import("../../scripts/supabase/engine-seed");
     for (const st of buildDraftStatements()) await db.exec(st);
     expect((await db.query<any>(`select status from public.draft_questions where id = $1`, [decided.id])).rows[0].status).toBe("needs_changes");
-    // o texto mudou depois da revisão: o hash que foi revisado deixa de ser o do conteúdo atual
-    await db.query(`update public.draft_questions set content_hash = 'texto-anterior', reviewed_hash = 'texto-anterior' where id = $1`, [decided.id]);
+    // o texto mudou depois da revisão: o hash que foi revisado deixa de ser o do conteúdo atual.
+    // O hash é do banco (gatilho): a versão revisada é simulada mudando o enunciado, não o hash.
+    await db.query(`update public.draft_questions set stem = 'texto anterior' where id = $1`, [decided.id]);
+    await db.query(`update public.draft_questions set reviewed_hash = content_hash where id = $1`, [decided.id]);
     for (const st of buildDraftStatements()) await db.exec(st);
     const after = (await db.query<any>(`select status, reviewed_hash <> content_hash as stale from public.draft_questions where id = $1`, [decided.id])).rows[0];
     expect(after).toEqual({ status: "awaiting_medical_review", stale: true });
-  });
+  }, 120_000); // recarrega os lotes duas vezes (o gatilho do hash roda em cada linha): com a máquina cheia 5 s não bastam
 });

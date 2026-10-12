@@ -153,6 +153,15 @@ export function mockRespond(req: StructuredRequest): unknown {
         ],
       };
     }
+    case "staziamed_questao":
+    case "staziamed_reescrita":
+      // a simulação nunca escreve questão: ninguém pode confundir texto de teste com conteúdo médico
+      return { status: "evidencia_insuficiente", reason: "Simulação: sem IA real, nenhuma questão é escrita.", question: null };
+    case "staziamed_pedagogia":
+      return {
+        verdict: "revisar", single_best_answer: false, stem_clear_and_sufficient: false, distractors_plausible: false, no_unintended_clues: false, competency_aligned: false,
+        issues: [{ severity: "minor", where: "questão", detail: "Simulação: sem revisão pedagógica real." }],
+      };
     case "review":
       return { issues: [] };
     default:

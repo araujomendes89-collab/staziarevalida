@@ -6,7 +6,8 @@ import { AnswerOption, Badge, Banner, Button, Card, Chip, EmptyState, Icon, Sele
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { Correction, answerState } from "../practice/Correction.jsx";
-import { AREAS, areaLabel, examLabel, formatWhen, splitStatement } from "../practice/format.js";
+import { AREAS, areaLabel, formatWhen, isStaziamed, questionRef, splitStatement } from "../practice/format.js";
+import { SupportTable } from "../practice/SupportTable.jsx";
 
 const REASONS = [
   { value: "conhecimento", label: "Não sabia o conteúdo" },
@@ -113,7 +114,7 @@ function ErrorRow({ item, first, open, onToggle, onNote }) {
           <span style={{ display: "block", font: "600 15px/1.35 var(--font-sans)" }}>{item.topic}</span>
           <span style={{ display: "block", font: "var(--type-body-sm)", color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.excerpt}</span>
           <span style={{ display: "block", font: "var(--type-caption)", color: "var(--text-tertiary)", marginTop: 2 }}>
-            {areaLabel(item.area)} · {examLabel(item.exam)} · Q{item.number} · {formatWhen(item.last_attempt_at)}
+            {areaLabel(item.area)} · {questionRef(item)} · {formatWhen(item.last_attempt_at)}{isStaziamed(item) ? " · não é questão oficial do Inep" : ""}
           </span>
         </span>
         {item.has_note && <Icon name="notebook-pen" size={16} label="Tem anotação" style={{ color: "var(--text-tertiary)", flex: "none" }} />}
@@ -131,6 +132,7 @@ function ErrorRow({ item, first, open, onToggle, onNote }) {
           {detail && (
             <>
               <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, textWrap: "pretty" }}>{parts.stem}</p>
+              <SupportTable support={detail.support} />
               {parts.ask && <p style={{ margin: 0, font: "600 16px/1.45 var(--font-sans)" }}>{parts.ask}</p>}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {detail.options.map((option) => (

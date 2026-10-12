@@ -4,7 +4,8 @@ import React from "react";
 import { AnswerOption, Badge, Banner, Button, Card, Icon, ProgressBar, StatCard, Tabs } from "../../ds";
 import { useMQ } from "../Shell.jsx";
 import { Correction, answerState, isAnnulled } from "./Correction.jsx";
-import { areaLabel, areaOf, examLabel, formatClock, formatWhen, percent, splitStatement } from "./format.js";
+import { areaLabel, areaOf, formatClock, formatWhen, isStaziamed, percent, questionRef, splitStatement } from "./format.js";
+import { SupportTable } from "./SupportTable.jsx";
 import { QuestionFigures } from "./QuestionFigures.jsx";
 
 // Anulada pela banca: fora de certas, erradas e em branco (não conta como acerto nem erro).
@@ -38,12 +39,12 @@ function ReviewRow({ question, position, first, open, onToggle }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "4px 0 24px" }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Badge tone="brand">{areaLabel(question.area)}</Badge>
-            <Badge>
-              {examLabel(question.exam)} · Q{question.number}
-            </Badge>
+            <Badge>{questionRef(question)}</Badge>
+            {isStaziamed(question) && <Badge tone="warning">não é questão oficial do Inep</Badge>}
           </div>
           <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, textWrap: "pretty" }}>{stem}</p>
           <QuestionFigures images={question.images} questionId={question.id} />
+          <SupportTable support={question.support} />
           {ask && <p style={{ margin: 0, font: "600 16px/1.45 var(--font-sans)" }}>{ask}</p>}
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {question.options.map((option) => (

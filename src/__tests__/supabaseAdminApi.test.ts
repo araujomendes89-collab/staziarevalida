@@ -207,7 +207,7 @@ describe("Administração — questões", () => {
       { id: "revalida_2026_2_q001", code: "REV-2026.2-Q001", exam_id: "revalida-2026-2", status: "valid", correct_option: "C" },
       { id: "revalida_2026_2_q002", code: "REV-2026.2-Q002", exam_id: "revalida-2026-2", status: "annulled", correct_option: null },
     ]);
-    const exams = (await db.query<any>(`select id, title, question_count from public.exams order by id`)).rows;
+    const exams = (await db.query<any>(`select id, title, question_count from public.exams where kind <> 'STAZIAMED' order by id`)).rows;
     expect(exams).toEqual([
       { id: "enamed-2025", title: "ENAMED 2025", question_count: 1 },
       { id: "revalida-2026-2", title: "Revalida INEP 2026/2", question_count: 2 },
