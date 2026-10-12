@@ -101,7 +101,13 @@ function Header({title,sub,theme,setTheme,go,mobile,phase,setPhase,phase2Locked,
 }
 // soon: telas que aparecem no menu lateral apagadas, sem clique e com "Em breve"; studentPhase2: aluno com a 2ª fase aberta (atalhos reduzidos)
 function AppShell({route,go,theme,setTheme,title,sub,children,bare,phase=1,setPhase,phase2Locked=false,soon=[],studentPhase2=false,info}){
-  const mobile=useMobile();const narrowRail=useNarrowRail();const [pref,setC]=React.useState(()=>localStorage.getItem('smf-col'));const collapsed=pref==null?narrowRail:pref==='1';const setCollapsed=v=>{const x=v?'1':'0';setC(x);localStorage.setItem('smf-col',x);};
+  const mobile=useMobile();const narrowRail=useNarrowRail();const [pref,setC]=React.useState(()=>localStorage.getItem('smf-col'));
+  // Na sala do Treinamento em Dupla (bare) o menu abre recolhido; o botão expande só enquanto a pessoa está na sala (estado em memória,
+  // não grava a preferência dela). Ao sair da sala vale de novo a preferência anterior, e a próxima entrada recolhe outra vez.
+  const inRoom=!!bare&&route==='dupla-sala';const [roomOpen,setRoomOpen]=React.useState(false);
+  React.useEffect(()=>{if(!inRoom)setRoomOpen(false);},[inRoom]);
+  const collapsed=inRoom?!roomOpen:(pref==null?narrowRail:pref==='1');
+  const setCollapsed=v=>{if(inRoom){setRoomOpen(!v);return;}const x=v?'1':'0';setC(x);localStorage.setItem('smf-col',x);};
   return <div style={{minHeight:'100vh',background:'var(--bg-app)'}}>
     {!mobile&&!FULL.includes(route)&&<Rail route={route} go={go} phase={phase} collapsed={collapsed} setCollapsed={setCollapsed} info={info} theme={theme} soon={phase===2?soon:[]}/>}
     <main style={{marginLeft:mobile||FULL.includes(route)?0:(collapsed?100:288),transition:'margin-left var(--dur-slow) var(--ease-standard)',padding:bare?0:(mobile?'24px 18px 112px':'36px 48px 128px')}}>
