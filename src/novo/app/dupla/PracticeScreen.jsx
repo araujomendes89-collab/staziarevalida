@@ -124,8 +124,8 @@ export function PracticeScreen({ go }) {
         {saved ? (
           <>
             <div style={panel}>
-              <h2 style={{ margin: "0 0 14px", font: "600 18px var(--font-sans)", color: "var(--text-primary)" }}>Encontrar dupla</h2>
-              {/* TODO(dono): "Arraste para a direita para estudar junto, para a esquerda para pular." (Match.jsx:152) volta com o baralho, na Etapa 4: decisão do dono, 2026-10-12 */}
+              <h2 style={{ margin: 0, font: "600 18px var(--font-sans)", color: "var(--text-primary)" }}>Encontrar dupla</h2>
+              <p style={{ margin: "2px 0 14px", font: "14px var(--font-sans)", color: "var(--text-muted)" }}>Arraste para a direita para estudar junto, para a esquerda para pular.</p>
               <SegmentedControl fullWidth label="Papel desejado" value={saved.role_pref} onChange={saveRole} options={ROLE_OPTIONS} />
             </div>
             {saved.radar_visible === false && <Banner tone="warning" icon="eye-off">Com o radar desligado, ninguém vê seu cartão.</Banner>}

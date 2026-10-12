@@ -76,7 +76,7 @@ describe("Praticar (sem baralho)", () => {
     await open();
     expect(screen.getByText("Encontrar dupla")).toBeTruthy();
     // decisão do dono (12/10): o texto do arraste só volta com o baralho, na Etapa 4
-    expect(screen.queryByText(/Arraste para a direita/)).toBeNull();
+    expect(screen.getByText(/Arraste para a direita para estudar junto, para a esquerda para pular\./)).toBeTruthy();
     const group = screen.getByRole("radiogroup", { name: "Papel desejado" });
     expect(within(group).getAllByRole("radio").map((r) => r.textContent)).toEqual(["Qualquer papel", "Quero ser médico", "Quero ser ator/avaliador"]);
     expect(within(group).getByRole("radio", { name: "Quero ser médico" }).getAttribute("aria-checked")).toBe("true");
