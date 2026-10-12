@@ -85,13 +85,13 @@ function SecureField({ name, label, type = "text", autoComplete, hint, error }) 
   );
 }
 
-function SecureSignupLayout({ children, onLogin, onDoc }) {
+function SecureSignupLayout({ children, onLogin, onDoc, label = "Criar conta", asideTitle = "Já tem conta?", asideCopy = "Entre para continuar sua preparação para o Revalida.", asideButton = "Entrar" }) {
   return (
     <div className="lg-root">
       <div className="lg-shell lg-shell--auth">
         <header className="lg-top"><img className="lg-logo" src="/novo-assets/logo-staziamed-revalida-v2-escuro.png" alt="StaziaMed Revalida" width="200" height="61" /></header>
         <h1 className="lg-h1">Acesso seguro <span className="lg-grad">REVALIDA</span></h1>
-        <section className="lg-card lg-auth-card" aria-label="Criar conta">
+        <section className="lg-card lg-auth-card" aria-label={label}>
           <div className="lg-auth-form">{children}</div>
           <aside className="lg-auth-aside">
             <svg className="lg-auth-mark" aria-hidden="true" viewBox="0 0 120 120" fill="none">
@@ -99,9 +99,9 @@ function SecureSignupLayout({ children, onLogin, onDoc }) {
               <path d="M60 18 94 31v30c0 23-15 40-34 49-19-9-34-26-34-49V31Z" fill="rgba(31,166,160,.12)" stroke="#7FE3DE" strokeWidth="2" />
               <path d="M43 60h34M60 43v34" stroke="#7FE3DE" strokeWidth="6" strokeLinecap="round" />
             </svg>
-            <h2 className="lg-h2">Já tem conta?</h2>
-            <p className="lg-sub lg-auth-copy">Entre para continuar sua preparação para o Revalida.</p>
-            <button type="button" className="lg-btn lg-btn-ghost lg-auth-login" onClick={onLogin}>Entrar</button>
+            <h2 className="lg-h2">{asideTitle}</h2>
+            <p className="lg-sub lg-auth-copy">{asideCopy}</p>
+            <button type="button" className="lg-btn lg-btn-ghost lg-auth-login" onClick={onLogin}>{asideButton}</button>
           </aside>
         </section>
         <p className="lg-tagline">Foco no que cai <span className="lg-dot">•</span> Memória no que fica <span className="lg-dot">•</span> Confiança na prova</p>
@@ -234,17 +234,20 @@ function Signup({ go }) {
 function Forgot({ go }) {
   const { backend } = useSession();
   const [sent, setSent] = React.useState(false);
-  const [emailError, setEmailError] = React.useState(false);
+  const [emailError, setEmailError] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
+  const [doc, setDoc] = React.useState(null);
+  const closeDoc = React.useCallback(() => setDoc(null), []);
 
   const submit = async (e) => {
     e.preventDefault();
-    const email = e.target.email.value.trim();
+    const email = e.target.elements.namedItem("email").value.trim();
     if (!isEmail(email)) {
-      setEmailError(true);
+      setEmailError("Informe um e-mail válido.");
+      document.getElementById("secure-email")?.focus();
       return;
     }
-    setEmailError(false);
+    setEmailError(null);
     setLoading(true);
     try {
       await backend.resetPassword(email);
@@ -256,33 +259,29 @@ function Forgot({ go }) {
   };
 
   return (
-    <AuthLayout
-      aside={
-        <>
-          <h2 style={{ margin: 0, font: "var(--type-h2)", color: "#fff" }}>Olá!</h2>
-          <p style={{ margin: 0, color: "var(--navy-200)" }}>Comece sua jornada com a gente e descubra algo novo.</p>
-        </>
-      }
+    <SecureSignupLayout
+      onLogin={() => go("login")}
+      onDoc={setDoc}
+      label="Recuperar senha"
+      asideTitle="Lembrou da senha?"
+      asideCopy="Volte para o login e continue sua preparação para o Revalida."
+      asideButton="Entrar"
     >
-      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 18 }} noValidate>
-        <div>
-          <h1 style={{ margin: 0, font: "var(--type-h2)" }}>Recuperar senha</h1>
-          <p style={{ margin: "6px 0 0", color: "var(--text-secondary)" }}>Informe seu e-mail para receber as instruções de recuperação.</p>
-        </div>
+      <form onSubmit={submit} className="lg-auth-fields" noValidate>
+        <div><h2 className="lg-h2">Recuperar senha</h2><p className="lg-sub">Informe seu e-mail para receber as instruções de recuperação.</p></div>
         {sent && (
-          <Banner tone="success" title="Instruções enviadas">
+          <div className="lg-msg lg-msg--success" role="status">
             Se houver uma conta com este e-mail, as instruções chegam em instantes. Confira também o spam.
-          </Banner>
+          </div>
         )}
-        <TextField name="email" label="E-mail cadastrado" type="email" icon="mail" autoComplete="email" error={emailError ? "Informe um e-mail válido." : undefined} />
-        <Button type="submit" size="lg" fullWidth loading={loading}>
-          Enviar instruções
-        </Button>
-        <Button variant="ghost" icon="arrow-left" onClick={() => go("login")}>
-          Voltar para o login
-        </Button>
+        <SecureField name="email" label="E-mail cadastrado" type="email" autoComplete="email" error={emailError} />
+        <button type="submit" className="lg-btn lg-btn-primary" disabled={loading}>
+          {loading ? <><span className="lg-spin" />ENVIANDO…</> : "ENVIAR INSTRUÇÕES"}
+        </button>
+        <button type="button" className="lg-link-btn" onClick={() => go("login")}>Voltar para o login</button>
       </form>
-    </AuthLayout>
+      {doc && <DocumentModal doc={doc} onClose={closeDoc} />}
+    </SecureSignupLayout>
   );
 }
 
