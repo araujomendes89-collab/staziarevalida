@@ -192,7 +192,7 @@ describe("Camadas com banco e simulação de IA", () => {
     const [d] = await sql(`select id from public.draft_questions limit 1`);
     await sql(`update public.draft_questions set stem = stem || ' (alterado)' where id = $1`, [d.id]);
     expect((await runDraftChecks({ db }, { layers: ["software"] }))[0].considered).toBe(1);
-  });
+  }, 900_000); // com a semelhança contra as 1.200 oficiais (Questões StaziaMed) a conferência dos 200 leva alguns minutos no PGlite
 
   it("todos os 200 aparecem com 'fonte só de terceiros' enquanto não há fonte oficial cadastrada", async () => {
     const n = (await sql(`select count(*)::int n from public.draft_checks where layer = 'software' and findings @> '[{"code":"third_party_source_only"}]'::jsonb`))[0].n;
