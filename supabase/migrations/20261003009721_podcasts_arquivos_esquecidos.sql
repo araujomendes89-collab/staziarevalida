@@ -125,7 +125,7 @@ begin
   if TG_OP = 'UPDATE' and (to_jsonb(old) ->> TG_ARGV[0]) is not distinct from v_path then return new; end if;
   perform pg_advisory_xact_lock(hashtextextended('podcast-file:' || v_path, 0));
   if exists (select 1 from public.podcast_files_released r
-              where r.storage_path = v_path and r.status = 'apagando' and r.reserved_at > now() - interval '10 minutes') then
+              where r.storage_path = v_path and r.status = 'apagando' and r.reserved_at > clock_timestamp() - interval '10 minutes') then
     raise exception 'Este arquivo está sendo apagado do depósito agora. Tente de novo em instantes.' using errcode = '55P03';
   end if;
   return new;
@@ -176,7 +176,7 @@ begin
   for v_row in
     select r.id, r.storage_path, r.reason
       from public.podcast_files_released r
-     where (r.status = 'pendente' or (r.status = 'apagando' and r.reserved_at <= now() - interval '10 minutes'))
+     where (r.status = 'pendente' or (r.status = 'apagando' and r.reserved_at <= clock_timestamp() - interval '10 minutes'))
        and (p_podcast is null or r.podcast_id = p_podcast)
      order by r.attempts, r.id
      limit 50
@@ -190,7 +190,7 @@ begin
     else
       v_token := gen_random_uuid();
       update public.podcast_files_released
-         set status = 'apagando', reserved_at = now(), reserve_token = v_token, reavaliar = false where id = v_row.id;
+         set status = 'apagando', reserved_at = clock_timestamp(), reserve_token = v_token, reavaliar = false where id = v_row.id;
       v_out := v_out || jsonb_build_array(jsonb_build_object('id', v_row.id, 'path', v_row.storage_path, 'reason', v_row.reason, 'token', v_token));
     end if;
   end loop;
@@ -211,7 +211,7 @@ begin
     else
       v_token := gen_random_uuid();
       update public.podcast_files_released
-         set status = 'apagando', reserved_at = now(), reserve_token = v_token, resolved_at = null, reavaliar = false where id = v_row.id;
+         set status = 'apagando', reserved_at = clock_timestamp(), reserve_token = v_token, resolved_at = null, reavaliar = false where id = v_row.id;
       v_out := v_out || jsonb_build_array(jsonb_build_object('id', v_row.id, 'path', v_row.storage_path, 'reason', v_row.reason, 'token', v_token));
     end if;
   end loop;
@@ -219,25 +219,38 @@ begin
 end
 $$;
 
--- O servidor chama ANTES DE CADA exclusão. Confirma (e renova por mais 10 minutos) só se a reserva ainda é a dele: código vigente,
--- não vencida e nenhuma linha passou a usar o caminho. Devolve false se não confirmou, e então o servidor NÃO apaga. Reserva vencida
--- nunca autoriza apagar (a próxima limpeza reserva de novo, com outro código). Usa o mesmo cadeado por caminho do gatilho
--- podcast_files_guard_ref, então "renovei" e "alguém criou uma referência" acontecem numa ordem só.
-create or replace function public.ch_worker_podcast_files_renew(p_user uuid, p_id bigint, p_token uuid) returns boolean
+-- O servidor chama ANTES DE CADA exclusão. Devolve o que fazer com o arquivo:
+--   'ok'         a reserva ainda é a dele (código vigente, não vencida, nada usa o caminho): renovada por mais 10 minutos; PODE apagar;
+--   'em_uso'     passou a ser usado por alguma linha: encerrado como mantido, NÃO apagar e não há limpeza pendente;
+--   'resolvida'  outra tentativa já terminou este caminho (apagado ou mantido): nada a fazer;
+--   'incompleta' a reserva venceu, voltou a pendente ou o código não é mais este: NÃO apagar, o arquivo segue na fila (o servidor tenta de novo);
+--   'outra'      outra tentativa tem uma reserva vigente deste caminho: NÃO apagar; a limpeza está com ela.
+-- Reserva vencida nunca autoriza apagar. O relógio é o REAL (clock_timestamp), lido DEPOIS de obter o cadeado do caminho e a linha: now()
+-- é a hora de início da transação e, depois de esperar uma trava, daria uma autorização que já nasce vencida. Usa o mesmo cadeado por
+-- caminho do gatilho podcast_files_guard_ref, então "renovei" e "alguém criou uma referência" acontecem numa ordem só.
+-- (a primeira versão devolvia boolean; trocar o tipo de retorno exige apagar a função antes — nada a usa além desta migração)
+drop function if exists public.ch_worker_podcast_files_renew(uuid, bigint, uuid);
+create or replace function public.ch_worker_podcast_files_renew(p_user uuid, p_id bigint, p_token uuid) returns text
   language plpgsql security definer set search_path = ''
 as $$
 declare
   v_path text;
   v_row public.podcast_files_released;
+  v_agora timestamptz;
 begin
   if not public.user_is_staff(p_user) then raise exception 'Acesso restrito à equipe.' using errcode = '42501'; end if;
-  if p_id is null or p_token is null then return false; end if;
+  if p_id is null or p_token is null then return 'incompleta'; end if;
   select storage_path into v_path from public.podcast_files_released where id = p_id;
-  if v_path is null then return false; end if;
+  if v_path is null then return 'resolvida'; end if;
   perform pg_advisory_xact_lock(hashtextextended('podcast-file:' || v_path, 0));
   select * into v_row from public.podcast_files_released where id = p_id for update;  -- relê já com o cadeado e a linha travada
-  if not found or v_row.status <> 'apagando' or v_row.reserve_token is distinct from p_token then return false; end if;
-  if v_row.reserved_at <= now() - interval '10 minutes' then return false; end if;
+  v_agora := clock_timestamp();                                                          -- só agora: depois de toda a espera
+  if not found or v_row.status in ('apagado', 'mantido') then return 'resolvida'; end if;
+  if v_row.status = 'pendente' then return 'incompleta'; end if;
+  if v_row.reserve_token is distinct from p_token then
+    return case when v_row.reserved_at > v_agora - interval '10 minutes' then 'outra' else 'incompleta' end;
+  end if;
+  if v_row.reserved_at <= v_agora - interval '10 minutes' then return 'incompleta'; end if;
   if public.podcast_files_blocked(v_row.storage_path) then
     -- passou a ter uso: encerra como mantido (ou volta para pendente se chegou novo evento) e o servidor não apaga
     update public.podcast_files_released
@@ -245,10 +258,10 @@ begin
            resolved_at = case when v_row.reavaliar then null else now() end,
            reserved_at = null, reserve_token = null, reavaliar = false
      where id = p_id;
-    return false;
+    return 'em_uso';
   end if;
-  update public.podcast_files_released set reserved_at = now() where id = p_id;
-  return true;
+  update public.podcast_files_released set reserved_at = clock_timestamp() where id = p_id;
+  return 'ok';
 end
 $$;
 

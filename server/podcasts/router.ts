@@ -142,9 +142,12 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
   type Released = { ok: boolean; failed: number; note?: string };
   const releaseFiles = async (user: string): Promise<Released> => {
     let failed = 0;
+    let incomplete = 0; // desta rodada: o banco recusou renovar (reserva vencida / código trocado); seguem na fila e a rodada seguinte tenta de novo
+    let otherHolds = 0; // no total: arquivos cuja reserva vigente está com OUTRA tentativa (a limpeza está com ela; sem garantia, avisa)
     try {
       if (!deps!.storage.remove) return { ok: true, failed: 0 };
       for (let round = 0; round < 5; round++) {
+        incomplete = 0;
         const pending = await service<Array<{ id: number; path: string; token: string }>>("ch_worker_podcast_files_pending", { p_user: user, p_podcast: null });
         if (!Array.isArray(pending) || !pending.length) break;
         const results: Array<{ id: number; token: string; ok: boolean; error?: string }> = [];
@@ -152,8 +155,13 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
         for (const file of pending) {
           try {
             // a reserva pode ter vencido enquanto os anteriores eram apagados: só apaga o que o banco confirmar agora
-            const alive = await service<boolean>("ch_worker_podcast_files_renew", { p_user: user, p_id: file.id, p_token: file.token });
-            if (alive !== true) continue;
+            const verdict = await service<string>("ch_worker_podcast_files_renew", { p_user: user, p_id: file.id, p_token: file.token });
+            if (verdict !== "ok") {
+              // 'em_uso' e 'resolvida': nada a fazer. 'incompleta': tenta de novo na rodada seguinte. 'outra': está com outra tentativa
+              if (verdict === "incompleta") incomplete++;
+              else if (verdict === "outra") otherHolds++;
+              continue;
+            }
           } catch (error) {
             aborted = error;
             break;
@@ -170,7 +178,7 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
         }
         if (results.length) await service("ch_worker_podcast_files_done", { p_user: user, p_results: results });
         if (aborted) throw aborted;
-        if (failed || pending.length < 50) break;
+        if (failed || (pending.length < 50 && !incomplete)) break;
       }
     } catch (error) {
       if (/Acesso restrito/i.test(message(error))) throw error; // a rota de repetir é só da equipe: quem não é equipe recebe 403
@@ -180,6 +188,11 @@ export function createPodcastsRouter(deps: PodcastsDeps | null, pending: string 
       }
       log(`podcasts: limpeza de arquivos antigos não terminou (fica para a próxima): ${message(error)}`);
       return { ok: false, failed, note: SEM_LIMPEZA };
+    }
+    // saiu das rodadas ainda com arquivos recusados pelo banco (reserva vencida de novo ou na mão de outra tentativa): nunca "tudo certo" em silêncio
+    if (!failed && (incomplete || otherHolds)) {
+      log(`podcasts: limpeza incompleta (${incomplete} arquivo(s) seguem na fila)`);
+      return { ok: false, failed: 0, note: SEM_LIMPEZA };
     }
     return failed ? { ok: false, failed, note: comFalhas(failed) } : { ok: true, failed: 0 };
   };

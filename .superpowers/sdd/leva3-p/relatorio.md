@@ -159,3 +159,21 @@ Base desta rodada: `62f504e`. Sem `git push`, sem Supabase/GCP/Vercel reais, sem
 - O PGlite tem UMA conexão: as corridas são provadas por ordem (cada intercalação importante é simulada), não por duas conexões reais ao mesmo tempo.
 - Um apagamento que o depósito aceitou mas demorou mais de 10 minutos para concluir (depois da última renovação) ainda poderia coincidir com uma referência nova; o servidor limita cada exclusão a 60 s e não solta a reserva de um pedido sem resposta, então a janela exigiria um depósito que ignora o limite.
 - O revisor não vê o resultado das reavaliações horárias em tela: elas só agem se a limpeza rodar (qualquer evento ou a rota de repetir).
+
+## 11. Rodada de correções da revisão (3ª rodada)
+
+Base desta rodada: `3753473`. Sem `git push`, sem Supabase/GCP/Vercel reais, sem rede. 9720 e 9721 continuam não coladas em produção (editadas no lugar).
+
+| # | Veredito | O que mudou | Teste |
+|---|---|---|---|
+| 1 (alto) | CONFIRMADO | `now()` é a hora de início da transação: depois de esperar o cadeado do caminho ou a linha, `ch_worker_podcast_files_renew` comparava o vencimento e gravava `reserved_at` com hora velha (autorização já nascia vencida). Agora a hora é lida com `clock_timestamp()` DEPOIS do cadeado e do `for update`, tanto para conferir quanto para gravar a renovação; o mesmo na criação e na retomada das reservas (`pending`, as duas voltas), na seleção das reservas vencidas e na recusa do gatilho `podcast_files_guard_ref`. Conferi as demais comparações da migração: as de "uma hora" (`mantido`) e as datas de encerramento seguem com `now()` de propósito (não autorizam apagar). A função passou a devolver texto (ver achado 2), por isso há um `drop function if exists` antes do `create`. | `podcastsArquivos` (3ª rodada, achado 1): numa transação com `pg_sleep`, reserva que vence durante a espera não é renovada (falhava com `now()`: devolvia "ok") e renovar/reservar gravam a hora real (falhava: diferença 0) |
+| 2 (médio) | CONFIRMADO | `renew` devolve o que fazer: `ok` (apagar), `em_uso` e `resolvida` (nada a fazer), `incompleta` (reserva vencida/código trocado/voltou a pendente: o arquivo segue na fila) e `outra` (reserva vigente com outra tentativa). O servidor só apaga com `ok`. Com `incompleta` ele tenta de novo na rodada seguinte (até 5; a reserva vencida é refeita). Se sai das rodadas com `incompleta` ou com algum `outra`, responde `ok:false` + `note` em português ("…a limpeza não terminou. Nada se perdeu…", sem número de migração) em vez de sucesso silencioso. Adaptadores da tela: o roteiro, o áudio, remover fonte e apagar episódio passam o `note`/`aviso` adiante (confirmado no código e em teste); a tela já exibia roteiro, áudio e edição. | `podcastsArquivos`: reserva do 2º arquivo vence sem uso novo (as 2 saem, sem aviso); banco diz `outra` e `incompleta` em todas as rodadas (nada apagado, aviso, depois a limpeza normal termina); os dois pontas a pontas antigos ajustados; adaptadores propagam o aviso |
+
+### Conferências da 3ª rodada
+- Testes (fila): `podcastsArquivos` 47, `podcastsRevisorBanco` 12, `podcastsTelas` 17, `podcasts`, `registroAdministracao`, `registroAdministracaoBanco`, `fontesComplementaresOrdem`: 7 arquivos, 158 testes passam. Os 2 testes do relógio falham com `now()` e passam com `clock_timestamp()`.
+- `verificar-producao.mjs` (produção simulada): 9720 e 9721 coladas 2 vezes sem erro, 3ª colagem não muda função nem permissão, nenhuma função sumiu, permissões iguais, fumaça com `renew` em texto ok. `npm run build` ok; typecheck 1831 erros (igual à base).
+
+### Limites que restam
+- PGlite tem uma só conexão: a espera por trava é simulada com uma transação longa (`pg_sleep`), não com duas conexões reais.
+- Se outra tentativa segura a reserva vigente (`outra`) e a limpeza termina, a resposta avisa "não terminou" mesmo que a outra tentativa vá concluir: é um aviso conservador, nunca o contrário.
+- Colar sobre um banco que já tenha a versão anterior da 9721 (com `renew` devolvendo verdadeiro/falso) exige o `drop function` que a migração já faz; em produção essa versão nunca foi colada.
