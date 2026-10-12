@@ -1,0 +1,31 @@
+== antes de colar
+   0. Pré-requisito: leva 3 (9731 benefícios do Elite) colada | OK
+   0. Pré-requisito: Fonte complementar (9620) e Central de IAs (5200) coladas | OK
+   0. Pré-requisito: Central de Conteúdo (documentos, unidades, publicações, aulas, cartões) exist | OK
+   1. Esta leva já foi colada? (tabelas novas que ela cria) | NÃO (primeira vez) | suporte e relatos (parte 1): não | documentos (parte 2): não | análise e reanálise (parte 4): não | planos e microfone (parte 5): não
+   2. MODO SOMBRA (parte 4, 9871): análises de questão e cartões de atualização que o aluno VÊ hoj | análises publicadas: 0 | cartões de atualização publicados: 0 | modo sombra: LIGADO | publicação: desligada | Nada publicado: nada some.
+   2. Linhas da tabela de chaves da Central (devem ser 6) | 6
+   3. Documentos por dono (o editor passará a ver os de todos da equipe) | donos diferentes: 0 | documentos no total: 0
+   4. Publicações da Central AINDA NO AR (sem aula do aluno: não ganham aula sozinhas; use "Criar  | 0 | já retiradas: 0
+   4. Aulas e cartões que já existem hoje (a parte 3 passa a trancar só as aulas que vierem da Cen | aulas: 0 | aulas publicadas: 0 | cartões: 0
+   4. Materiais visuais com texto de dose/posologia/contraindicação (a parte 3 trava o download at | 0 | versões de material no total: 0
+   5. Taxonomia: versões por situação (um rascunho aberto com tema já renomeado volta ao nome anti | published | 1
+   5. Fontes monitoradas (o botão "Conferir fontes monitoradas" passa a deixar o pedido para a pró | 0 | fontes oficiais vigentes: 0
+   5. Questões esperando reanálise por mudança de fonte (botão "Reanalisar agora") | 0
+   6. Tutor hoje (parte 5, 9891: o microfone da Nexus nasce SÓ DA EQUIPE; aluno com plano pago per | tutor ligado: false | só planos pagos: false | voz ligada: true | transcrições dos últimos 7 dias (registro de uso): 0
+   6. Contas que usariam o microfone se estivesse aberto: planos pagos válidos (não equipe) | 1 | em teste valendo: 2 | equipe: 1
+   6. Tetos de IA hoje (9892 cria o teto geral do mês, que nasce desligado e vazio; só avisa) | tetos da Central ligados: false | teto mensal: vazio | teto por chamada: vazio
+   7. Planos: o que o aluno vai ler na tela de Planos (sem preço, sem botão de assinar). Plano ati | elite | ativo: false | descrição: VAZIA | recursos escritos: 0
+   7. Planos: o que o aluno vai ler na tela de Planos (sem preço, sem botão de assinar). Plano ati | pro | ativo: false | descrição: VAZIA | recursos escritos: 0
+   7. Planos: o que o aluno vai ler na tela de Planos (sem preço, sem botão de assinar). Plano ati | trial | ativo: true | descrição: VAZIA | recursos escritos: 0
+   7. Contas por situação (para saber a quem a tela de Planos e o "Seu plano" na Conta falam) | Equipe (administrador ou editor) | 1
+   7. Contas por situação (para saber a quem a tela de Planos e o "Seu plano" na Conta falam) | Plano Pro pago e válido | 1
+   7. Contas por situação (para saber a quem a tela de Planos e o "Seu plano" na Conta falam) | Teste grátis valendo | 2
+   7. Total de contas | 4
+== depois de colar (deve rodar igual, sem erro)
+  linhas: 23 23
+   0. Pré-requisito: leva 3 (9731 benefícios do Elite) colada | OK
+   0. Pré-requisito: Fonte complementar (9620) e Central de IAs (5200) coladas | OK
+   0. Pré-requisito: Central de Conteúdo (documentos, unidades, publicações, aulas, cartões) exist | OK
+   1. Esta leva já foi colada? (tabelas novas que ela cria) | SIM (já colada; pode colar de novo sem estragar) | suporte e relatos (parte 1): colada | documentos (parte 2): colada | análise e reanálise (parte 4): colada | planos e microfone (parte 5): colada
+somente leitura (mesmos dados): true

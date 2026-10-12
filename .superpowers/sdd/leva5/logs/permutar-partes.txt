@@ -1,0 +1,2 @@
+1>2>3>4>5 (referencia)
+RESULTADO: as 120 ordens possiveis das 5 partes colam sem erro e dao a mesma estrutura (funcoes, gatilhos, politicas, permissoes, colunas, restricoes, indices)
