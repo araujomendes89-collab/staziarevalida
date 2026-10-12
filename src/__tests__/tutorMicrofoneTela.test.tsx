@@ -123,6 +123,25 @@ describe("CF02 — Configurações do Tutor", () => {
   });
 });
 
+describe("CF02 — banco ainda sem a atualização (site novo, SQL antigo)", () => {
+  const { stt_team_only, stt_trial_daily_seconds, stt_paid_daily_seconds, stt_account_daily_seconds, ...ANTIGO } = CONFIG;
+
+  it("avisa que falta a atualização, trava os campos e não manda as chaves novas ao salvar", async () => {
+    const saved: any[] = [];
+    abrir(ANTIGO, saved);
+    const chave = await mic();
+    expect(screen.getByText(/O microfone dos alunos continua só para a equipe e ainda não pode ser liberado: falta uma atualização do banco/)).toBeTruthy();
+    expect(chave.disabled).toBe(true);
+    expect(campo(/^Microfone por dia — plano pago/).disabled).toBe(true);
+    expect(screen.queryByText(PENDENTE)).toBeNull();
+    motivo();
+    expect(salvar().disabled).toBe(false);
+    fireEvent.click(salvar());
+    await waitFor(() => expect(saved).toHaveLength(1));
+    expect(Object.keys(saved[0].p_config).filter((k) => k.startsWith("stt_") && k !== "stt_price_per_min_usd")).toEqual([]);
+  });
+});
+
 describe("VZ03 — voz do professor só com o preço preenchido", () => {
   it("liberar a voz aos alunos com preço zerado mostra o aviso e trava o salvar; com preço, libera", async () => {
     abrir({ ...CONFIG, tts_price_per_1k_chars_usd: 0 });

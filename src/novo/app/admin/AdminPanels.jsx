@@ -42,7 +42,7 @@ export function AdminOverview({ isAdmin }) {
       )}
       <div style={grid}>
         <StatCard label="Questões" value={data.questions.total} caption={`${data.questions.exams} provas · ${data.questions.annulled} anuladas`} icon="file-question" />
-        <StatCard label="Sem figura" value={data.questions.needs_image} caption="citam imagem não vinculada (o envio da imagem ainda não está na tela)" tone="warning" icon="image" />
+        <StatCard label="Sem figura" value={data.questions.needs_image} caption="citam figura sem imagem vinculada e ficam fora dos treinos; envie a figura em Questões" tone="warning" icon="image" />
         <StatCard label="Respostas" value={data.activity.attempts} caption={`${data.activity.attempts_7d} nos últimos 7 dias`} tone="success" icon="circle-check" />
         <StatCard label="Estações" value={data.stations.approved} caption={`${data.stations.pending} aguardando revisão médica`} tone="info" icon="clipboard-list" />
       </div>
@@ -737,7 +737,9 @@ export function AdminTutor() {
   const needsPlans = form.enabled && !form.requires_pro;
   // o banco também recusa (…9891): o microfone só abre aos alunos com os três tetos e o preço da transcrição; a voz do professor, com o preço da voz
   const micCapsFilled = [form.stt_trial_daily_min, form.stt_paid_daily_min, form.stt_account_daily_min].every(positive);
-  const needsMicCaps = !form.stt_team_only && !(micCapsFilled && positive(form.stt_price_per_min_usd));
+  // banco ainda sem a atualização do microfone (…9891 não colada): a tela diz isso em vez de fingir que guarda os tetos
+  const micSupported = Object.prototype.hasOwnProperty.call(data, "stt_team_only");
+  const needsMicCaps = micSupported && !form.stt_team_only && !(micCapsFilled && positive(form.stt_price_per_min_usd));
   const needsVoicePrice = !form.tts_team_only && data.tts_team_only !== false && !positive(form.tts_price_per_1k_chars_usd);
   const blocked = needsPlans || needsMicCaps || needsVoicePrice;
   const save = async (event) => {
@@ -758,8 +760,9 @@ export function AdminTutor() {
         tts_team_only: form.tts_team_only, tts_trial_daily_chars: n(form.tts_trial_daily_chars), tts_paid_daily_chars: n(form.tts_paid_daily_chars),
         tts_account_daily_chars: n(form.tts_account_daily_chars), tts_account_monthly_chars: n(form.tts_account_monthly_chars),
         tts_price_per_1k_chars_usd: price(form.tts_price_per_1k_chars_usd), stt_price_per_min_usd: price(form.stt_price_per_min_usd),
-        stt_team_only: form.stt_team_only,
-        stt_trial_daily_seconds: min(form.stt_trial_daily_min), stt_paid_daily_seconds: min(form.stt_paid_daily_min), stt_account_daily_seconds: min(form.stt_account_daily_min),
+        ...(micSupported
+          ? { stt_team_only: form.stt_team_only, stt_trial_daily_seconds: min(form.stt_trial_daily_min), stt_paid_daily_seconds: min(form.stt_paid_daily_min), stt_account_daily_seconds: min(form.stt_account_daily_min) }
+          : {}),
       };
       setData(await backend.rpc("app_admin_tutor_save_config", { p_config: config, p_reason: reason }));
       setReason("");
@@ -811,13 +814,14 @@ export function AdminTutor() {
           )}
           {needsVoicePrice && <Banner tone="warning">Para liberar a voz do professor aos alunos, preencha antes o preço da voz (US$ por mil caracteres). Sem o preço, o gasto aparece como zero.</Banner>}
           <div className="sm-overline">Microfone e transcrição (fala do aluno)</div>
-          <Switch label="Microfone só para a equipe" description="Ligado: só administrador e editor falam ao microfone da Nexus; os alunos escrevem pelo Chat. Para desligar, preencha antes os três tetos diários abaixo e o preço da transcrição." checked={form.stt_team_only} onChange={(e) => set({ stt_team_only: e.target.checked })} />
+          {!micSupported && <Banner tone="warning">O microfone dos alunos continua só para a equipe e ainda não pode ser liberado: falta uma atualização do banco, que o Claude prepara para você colar.</Banner>}
+          <Switch label="Microfone só para a equipe" description="Ligado: só administrador e editor falam ao microfone da Nexus; os alunos escrevem pelo Chat. Para desligar, preencha antes os três tetos diários abaixo e o preço da transcrição." checked={form.stt_team_only} disabled={!micSupported} onChange={(e) => set({ stt_team_only: e.target.checked })} />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12 }}>
-            <TextField label="Microfone por dia — teste grátis (minutos por aluno)" value={form.stt_trial_daily_min} inputMode="decimal" maxLength={6} onChange={(e) => set({ stt_trial_daily_min: e.target.value })} hint="Vazio = ainda sem valor. De 1 segundo a 1.440 minutos." />
-            <TextField label="Microfone por dia — plano pago (minutos por aluno)" value={form.stt_paid_daily_min} inputMode="decimal" maxLength={6} onChange={(e) => set({ stt_paid_daily_min: e.target.value })} hint="Vazio = ainda sem valor." />
-            <TextField label="Teto da plataforma por dia (minutos, todos juntos)" value={form.stt_account_daily_min} inputMode="decimal" maxLength={6} onChange={(e) => set({ stt_account_daily_min: e.target.value })} hint="Vazio = ainda sem valor. A equipe também entra na soma." />
+            <TextField label="Microfone por dia — teste grátis (minutos por aluno)" value={form.stt_trial_daily_min} inputMode="decimal" maxLength={6} disabled={!micSupported} onChange={(e) => set({ stt_trial_daily_min: e.target.value })} hint="Vazio = ainda sem valor. De 1 segundo a 1.440 minutos." />
+            <TextField label="Microfone por dia — plano pago (minutos por aluno)" value={form.stt_paid_daily_min} inputMode="decimal" maxLength={6} disabled={!micSupported} onChange={(e) => set({ stt_paid_daily_min: e.target.value })} hint="Vazio = ainda sem valor." />
+            <TextField label="Teto da plataforma por dia (minutos, todos juntos)" value={form.stt_account_daily_min} inputMode="decimal" maxLength={6} disabled={!micSupported} onChange={(e) => set({ stt_account_daily_min: e.target.value })} hint="Vazio = ainda sem valor. A equipe também entra na soma." />
           </div>
-          {!micCapsFilled && <Badge tone="warning">Pendente: definir os tetos diários da transcrição antes de liberar o microfone aos alunos</Badge>}
+          {micSupported && !micCapsFilled && <Badge tone="warning">Pendente: definir os tetos diários da transcrição antes de liberar o microfone aos alunos</Badge>}
           {needsMicCaps && <Banner tone="warning">Para liberar o microfone aos alunos, preencha antes o teto diário de transcrição (teste grátis, plano pago e a plataforma toda) e o preço da transcrição.</Banner>}
           <div className="sm-overline">Teste grátis (7 dias, a partir do primeiro uso)</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>
