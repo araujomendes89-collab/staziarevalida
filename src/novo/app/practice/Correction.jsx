@@ -23,7 +23,10 @@ export function Verdict({ selected, correction }) {
     return (
       <div style={{ padding: 16, borderRadius: 16, background: "var(--info-bg)", border: "1px solid var(--info-border)", display: "flex", gap: 12, alignItems: "center" }}>
         <Icon name="ban" size={22} style={{ color: "var(--info-text)", flex: "none" }} />
-        <div style={{ font: "600 15px var(--font-sans)" }}>Questão anulada pela banca. Não conta como acerto nem erro.</div>
+        <div>
+          <div style={{ font: "600 15px var(--font-sans)" }}>Questão anulada pela banca. Não conta como acerto nem erro.</div>
+          <div style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 2 }}>Nenhuma alternativa conta como correta, por isso não há explicação de cada alternativa.</div>
+        </div>
       </div>
     );
   }
@@ -115,7 +118,8 @@ export function Correction({ selected, correction, question, tutorContext = "que
   return (
     <>
       <Verdict selected={selected} correction={correction} />
-      {question?.id && selected != null && (
+      {/* anulada: o Tutor não abre questão anulada (responderia "Questão não encontrada."), então o botão não aparece */}
+      {question?.id && selected != null && !annulled && (
         <div>
           <TutorButton request={{ mode: "livre", questionId: question.id, context: { type: tutorContext, id: question.id } }} label={correction.is_correct === false ? "Discutir com o Tutor" : "Conversar com o Tutor"} />
         </div>

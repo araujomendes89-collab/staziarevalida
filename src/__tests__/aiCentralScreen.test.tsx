@@ -42,7 +42,7 @@ const OVERVIEW: any = {
   tutor_month_spend: 0.5,
   recent_calls: [],
   history: [],
-  checks: Object.fromEntries(["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar"].map((k) => [k, { source: "variaveis", ready: false, ref: null, problems: ["Nenhuma IA definida: configure a função."], warnings: [] }])),
+  checks: Object.fromEntries(["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes"].map((k) => [k, { source: "variaveis", ready: false, ref: null, problems: ["Nenhuma IA definida: configure a função."], warnings: [] }])),
 };
 
 let calls: { url: string; method: string; body: any }[] = [];
@@ -169,8 +169,8 @@ describe("Central de IAs (painel do administrador)", () => {
     expect(within(box).getByText(aviso)).toBeTruthy();
   });
 
-  describe("aviso do teto por execução depois de subir o teto (rodada final)", () => {
-    const TETO = "Teto por execução de US$ 0,1 está abaixo da estimativa de uma chamada de Criação (Podcasts) com Claude claude-a.";
+  describe("aviso do teto por chamada depois de subir o teto (rodada final)", () => {
+    const TETO = "Teto por chamada de US$ 0,1 está abaixo da estimativa de uma tentativa de Criação (Podcasts) com Claude claude-a.";
     /** O servidor depois de salvar os tetos: o teto maior e a conferência das funções já sem o aviso. */
     const raiseCap = () => {
       handlers["PUT /api/ai-central/settings"] = (body) => {
@@ -194,7 +194,7 @@ describe("Central de IAs (painel do administrador)", () => {
       const box = await screen.findByTestId("function-criacao");
       expect(within(box).getByText(TETO)).toBeTruthy();
       const loads = overviewLoads();
-      fireEvent.change(screen.getByLabelText("Teto por execução (US$)"), { target: { value: "5" } });
+      fireEvent.change(screen.getByLabelText("Teto por chamada (US$)"), { target: { value: "5" } });
       fireEvent.click(screen.getByRole("button", { name: "Salvar tetos" }));
       await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai-central/settings")).toBe(true));
       await waitFor(() => expect(overviewLoads()).toBeGreaterThan(loads));
@@ -213,7 +213,7 @@ describe("Central de IAs (painel do administrador)", () => {
       await waitFor(() => expect(overviewLoads()).toBeGreaterThan(loads));
       expect(within(box).getByText(TETO)).toBeTruthy();
       const afterSave = overviewLoads();
-      fireEvent.change(screen.getByLabelText("Teto por execução (US$)"), { target: { value: "5" } });
+      fireEvent.change(screen.getByLabelText("Teto por chamada (US$)"), { target: { value: "5" } });
       fireEvent.click(screen.getByRole("button", { name: "Salvar tetos" }));
       await waitFor(() => expect(overviewLoads()).toBeGreaterThan(afterSave));
       await waitFor(() => expect(within(box).queryByText(TETO)).toBeNull());
@@ -333,7 +333,7 @@ describe("Central de IAs (painel do administrador)", () => {
   it("tetos: ligar exige os dois valores", async () => {
     render(<AdminAI />);
     await screen.findByTestId("provider-anthropic");
-    expect(screen.getByText("Duas execuções ao mesmo tempo podem passar do teto em até o custo de uma execução.")).toBeTruthy();
+    expect(screen.getByText(/Duas chamadas ao mesmo tempo podem passar do teto em até o custo de uma chamada\./)).toBeTruthy();
     expect(screen.getByText("Tutor (fora do teto, só informação)")).toBeTruthy();
     fireEvent.click(screen.getByRole("switch", { name: /Tetos ligados/ }));
     expect(screen.getByText("Preencha os dois tetos para ligar")).toBeTruthy();
@@ -341,7 +341,7 @@ describe("Central de IAs (painel do administrador)", () => {
     expect(save.disabled).toBe(true);
     fireEvent.change(screen.getByLabelText("Teto mensal (US$)"), { target: { value: "50" } });
     expect(save.disabled).toBe(true);
-    fireEvent.change(screen.getByLabelText("Teto por execução (US$)"), { target: { value: "2" } });
+    fireEvent.change(screen.getByLabelText("Teto por chamada (US$)"), { target: { value: "2" } });
     expect(save.disabled).toBe(false);
     fireEvent.click(save);
     await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai-central/settings")).toBe(true));
@@ -390,13 +390,13 @@ describe("Central de IAs (painel do administrador)", () => {
 
   it("Central de Conteúdo mostra o resumo das IAs e o botão só para administrador", async () => {
     backend.rpc.mockImplementation(async (fn: string) => (fn === "app_ch_flags" ? {} : fn === "app_ch_ai_usage" ? { by_step: [], jobs: {} } : []));
-    handlers["GET /api/ai-central/summary"] = () => json({ functions: [{ key: "criacao", configured: true }, { key: "verificacao", configured: false }], providers_enabled: ["anthropic"], month_spend: 1.5 });
+    handlers["GET /api/ai-central/summary"] = () => json({ functions: [{ key: "criacao", configured: true }, ...["verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes"].map((key) => ({ key, configured: false }))], providers_enabled: ["anthropic"], month_spend: 1.5 });
     const a = render(
       <MemoryRouter>
         <HubSettings isAdmin={true} status={{}} />
       </MemoryRouter>,
     );
-    expect(await screen.findByText("Funções configuradas: 1 de 6 · IAs ligadas: Claude · Gasto do mês: US$ 1,50")).toBeTruthy();
+    expect(await screen.findByText("Funções configuradas: 1 de 7 · IAs ligadas: Claude · Gasto do mês: US$ 1,50")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Abrir a Central de IAs" })).toBeTruthy();
     a.unmount();
     render(
@@ -404,7 +404,136 @@ describe("Central de IAs (painel do administrador)", () => {
         <HubSettings isAdmin={false} status={{}} />
       </MemoryRouter>,
     );
-    expect(await screen.findByText(/Funções configuradas: 1 de 6/)).toBeTruthy();
+    expect(await screen.findByText(/Funções configuradas: 1 de 7/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Abrir a Central de IAs" })).toBeNull();
+  });
+});
+
+describe("Central de IAs: Busca de fontes oficiais", () => {
+  const BF = "Busca de fontes oficiais";
+  const bfSaved = (extra: any = {}) => ({ key: "busca_fontes", mode: "sozinha", primary_ref: { provider: "anthropic", model: "claude-a" }, fallback_ref: null, reviewers: [], care: "caprichado", max_searches: null, ...extra });
+  const putBf = () => calls.find((c) => c.method === "PUT" && c.url === "/api/ai-central/functions/busca_fontes");
+
+  it("só modo sozinha, sem Ollama e máximo de buscas no salvar", async () => {
+    overview.checks.busca_fontes = { source: "variaveis", ready: false, ref: null, problems: ["Desligada: configure esta função na Central de IAs."], warnings: [] };
+    render(<AdminAI />);
+    const box = await screen.findByTestId("function-busca_fontes");
+    expect(within(box).getByText(BF)).toBeTruthy();
+    expect(within(box).queryByLabelText(`Modo — ${BF}`)).toBeNull();
+    expect(within(box).getByText("Modo: sozinha (principal e reserva)")).toBeTruthy();
+    expect(within(box).queryByText(/Conferente|Membro|Adicionar/)).toBeNull();
+    for (const title of ["Principal", "Reserva"]) {
+      const select = within(box).getByLabelText(`${title}: IA — ${BF}`) as HTMLSelectElement;
+      expect(Array.from(select.options).some((o) => /Ollama/.test(o.textContent ?? ""))).toBe(false);
+      expect(Array.from(select.options).some((o) => /Gemini/.test(o.textContent ?? ""))).toBe(false);
+      expect(Array.from(select.options).some((o) => /OpenAI/.test(o.textContent ?? ""))).toBe(true);
+      expect(Array.from(select.options).some((o) => /Claude/.test(o.textContent ?? ""))).toBe(true);
+    }
+    expect(within(box).getByText("Só IAs que buscam na internet e limitam a pesquisa aos sites oficiais (Claude e OpenAI). Cada busca é cobrada à parte: preencha o preço por busca na tabela de preços.")).toBeTruthy();
+    expect(within(box).getByText("Desligada: configure esta função na Central de IAs.")).toBeTruthy();
+    fireEvent.change(within(box).getByLabelText(`Principal: IA — ${BF}`), { target: { value: "anthropic" } });
+    fireEvent.change(within(box).getByLabelText(`Principal: modelo — ${BF}`), { target: { value: "claude-a" } });
+    const max = within(box).getByLabelText(`Máximo de buscas por pedido — ${BF}`) as HTMLInputElement;
+    fireEvent.change(max, { target: { value: "3" } });
+    fireEvent.click(within(box).getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(putBf()).toBeTruthy());
+    expect(putBf()!.body).toEqual({ config: { mode: "sozinha", care: "caprichado", primary: { provider: "anthropic", model: "claude-a" }, fallback: null, reviewers: [], max_searches: 3 } });
+  });
+
+  it("o Gemini sai da lista só na busca de fontes; as outras funções continuam com ele", async () => {
+    overview.checks.busca_fontes = { source: "variaveis", ready: false, ref: null, problems: ["Desligada: configure esta função na Central de IAs."], warnings: [] };
+    render(<AdminAI />);
+    const box = await screen.findByTestId("function-busca_fontes");
+    const names = (el: HTMLElement) => Array.from((el as HTMLSelectElement).options).map((o) => o.textContent ?? "");
+    expect(names(within(box).getByLabelText(`Principal: IA — ${BF}`)).some((n) => /Gemini/.test(n))).toBe(false);
+    const other = await screen.findByTestId("function-criacao");
+    expect(names(within(other).getByLabelText(/^Principal: IA — /)).some((n) => /Gemini/.test(n))).toBe(true);
+  });
+
+  it("máximo de buscas vazio envia 5 (o padrão)", async () => {
+    overview.functions = [bfSaved()];
+    overview.checks.busca_fontes = savedCheck;
+    render(<AdminAI />);
+    const box = await screen.findByTestId("function-busca_fontes");
+    const max = within(box).getByLabelText(`Máximo de buscas por pedido — ${BF}`) as HTMLInputElement;
+    expect(max.value).toBe("");
+    fireEvent.click(within(box).getByRole("button", { name: "Salvar" }));
+    await waitFor(() => expect(putBf()).toBeTruthy());
+    expect(putBf()!.body.config.max_searches).toBe(5);
+  });
+
+  it("máximo salvo aparece no campo; fora de 1 a 10 trava o Salvar", async () => {
+    overview.functions = [bfSaved({ max_searches: 7 })];
+    overview.checks.busca_fontes = savedCheck;
+    render(<AdminAI />);
+    const box = await screen.findByTestId("function-busca_fontes");
+    const max = within(box).getByLabelText(`Máximo de buscas por pedido — ${BF}`) as HTMLInputElement;
+    expect(max.value).toBe("7");
+    const save = within(box).getByRole("button", { name: "Salvar" }) as HTMLButtonElement;
+    expect(save.disabled).toBe(false);
+    for (const bad of ["0", "11", "2.5"]) {
+      fireEvent.change(max, { target: { value: bad } });
+      expect(within(box).getByText("Máximo de buscas por pedido: de 1 a 10.")).toBeTruthy();
+      expect(save.disabled).toBe(true);
+    }
+    fireEvent.change(max, { target: { value: "10" } });
+    expect(save.disabled).toBe(false);
+  });
+
+  it("não há volta às variáveis: tirar a configuração só desliga a função", async () => {
+    overview.functions = [bfSaved()];
+    overview.checks.busca_fontes = savedCheck;
+    render(<AdminAI />);
+    const box = await screen.findByTestId("function-busca_fontes");
+    expect(within(box).queryByRole("button", { name: "Voltar às variáveis do servidor" })).toBeNull();
+    fireEvent.click(within(box).getByRole("button", { name: "Desligar a função" }));
+    expect((window.confirm as any).mock.calls[0][0]).toBe(`Desligar "${BF}"? A configuração salva será apagada e a função para de rodar.`);
+    await waitFor(() => expect(putBf()).toBeTruthy());
+    expect(putBf()!.body).toEqual({ config: null });
+  });
+
+  it("as outras 6 funções continuam com o seletor de modo e sem o campo de buscas", async () => {
+    render(<AdminAI />);
+    await screen.findByTestId("function-busca_fontes");
+    for (const label of ["Criação", "Verificação e checagem", "Engenharia reversa", "Assistente: preencher", "Assistente: conferir", "Assistente: conversar e revisar"]) {
+      expect(screen.getByLabelText(`Modo — ${label}`)).toBeTruthy();
+      expect(screen.queryByLabelText(`Máximo de buscas por pedido — ${label}`)).toBeNull();
+    }
+    const criacao = within(screen.getByTestId("function-criacao")).getByLabelText("Principal: IA — Criação") as HTMLSelectElement;
+    expect(Array.from(criacao.options).some((o) => /Ollama/.test(o.textContent ?? ""))).toBe(true);
+  });
+
+  it("preço por busca editável", async () => {
+    render(<AdminAI />);
+    await screen.findByTestId("function-busca_fontes");
+    expect(screen.getByText("Por busca (US$)")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Claude claude-a: por busca"), { target: { value: "0.01" } });
+    fireEvent.click(screen.getByRole("button", { name: "Claude claude-a: salvar preço" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai-central/prices/anthropic/claude-a")).toBe(true));
+    expect(calls.find((c) => c.url === "/api/ai-central/prices/anthropic/claude-a")!.body).toEqual({ input_per_mtok: 3, output_per_mtok: 15, per_search_usd: 0.01, source_url: "https://exemplo.test/p" });
+  });
+
+  it("preço por busca vazio envia null; o valor salvo aparece no campo", async () => {
+    overview.prices = [{ ...overview.prices[0], per_search_usd: 0.01 }];
+    render(<AdminAI />);
+    const field = (await screen.findByLabelText("Claude claude-a: por busca")) as HTMLInputElement;
+    expect(field.value).toBe("0.01");
+    fireEvent.change(field, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Claude claude-a: salvar preço" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai-central/prices/anthropic/claude-a")).toBe(true));
+    expect(calls.find((c) => c.url === "/api/ai-central/prices/anthropic/claude-a")!.body.per_search_usd).toBeNull();
+  });
+
+  it("linha de preço nova aceita o preço por busca", async () => {
+    render(<AdminAI />);
+    await screen.findByTestId("function-busca_fontes");
+    fireEvent.change(screen.getByLabelText("Novo preço: IA"), { target: { value: "gemini" } });
+    fireEvent.change(screen.getByLabelText("Novo preço: modelo"), { target: { value: "g1" } });
+    fireEvent.change(screen.getByLabelText("Novo preço: entrada"), { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Novo preço: saída"), { target: { value: "2" } });
+    fireEvent.change(screen.getByLabelText("Novo preço: por busca"), { target: { value: "0.035" } });
+    fireEvent.click(screen.getByRole("button", { name: "Novo preço: salvar preço" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "PUT" && c.url === "/api/ai-central/prices/gemini/g1")).toBe(true));
+    expect(calls.find((c) => c.url === "/api/ai-central/prices/gemini/g1")!.body).toMatchObject({ input_per_mtok: 1, output_per_mtok: 2, per_search_usd: 0.035 });
   });
 });

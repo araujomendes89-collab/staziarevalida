@@ -140,12 +140,19 @@ export function ungroundedNumbers(text: string, cited: string[]): string[] {
   });
 }
 
-/** Confere o roteiro: trechos citados existem; número com unidade de uma fala aparece nos trechos dela. */
-export function checkScript(script: PodcastScript, chunks: Map<number, SourceChunk>): ScriptWarning[] {
+/**
+ * Confere o roteiro: trechos citados existem; número com unidade de uma fala aparece nos trechos dela.
+ * `chunks` são os trechos que valem como citação (para o roteiro da IA: só os que foram enviados a ela). `all` (opcional) são todos
+ * os trechos do episódio: um que existe lá mas não está em `chunks` é recusado com a mensagem "Trecho que a IA não recebeu".
+ */
+export function checkScript(script: PodcastScript, chunks: Map<number, SourceChunk>, all?: Map<number, SourceChunk>): ScriptWarning[] {
   const warnings: ScriptWarning[] = [];
   script.lines.forEach((l, i) => {
     const bad = l.sources.filter((s) => !chunks.has(s));
-    if (bad.length) warnings.push({ line: i, kind: "unknown_source", detail: `Trecho inexistente: ${bad.map((b) => `T${b}`).join(", ")}` });
+    const notSent = bad.filter((s) => all?.has(s));
+    const missing = bad.filter((s) => !all?.has(s));
+    if (notSent.length) warnings.push({ line: i, kind: "unknown_source", detail: `Trecho que a IA não recebeu: ${notSent.map((b) => `T${b}`).join(", ")}` });
+    if (missing.length) warnings.push({ line: i, kind: "unknown_source", detail: `Trecho inexistente: ${missing.map((b) => `T${b}`).join(", ")}` });
     const cited = l.sources.filter((s) => chunks.has(s)).map((s) => chunks.get(s)!.text);
     for (const n of ungroundedNumbers(l.text, cited)) warnings.push({ line: i, kind: "ungrounded_number", detail: `"${n}" não está nos trechos citados` });
     if (!l.sources.length && l.text.length > 140) warnings.push({ line: i, kind: "no_source", detail: "Fala longa sem trecho citado" });
@@ -158,6 +165,8 @@ export interface ScriptResult {
   warnings: ScriptWarning[];
   usage: { provider: string; model: string; input_tokens: number; output_tokens: number; cost_usd: number; calls: number };
   used_chunks: number;
+  /** Ids dos trechos que foram ENVIADOS à IA (só estes valem como citação do roteiro dela, também nas conferências seguintes). */
+  sent_ids: number[];
 }
 
 /**
@@ -194,7 +203,8 @@ export async function generateScript(o: { kind: ScriptProvider | "mock"; topic: 
   if (!provider) throw Object.assign(new Error(`IA do roteiro indisponível: ${status.pending}`), { status: 503 });
   const chosen = selectChunks(o.chunks, o.topic);
   if (!chosen.length) throw Object.assign(new Error("Adicione fontes com texto antes de gerar o roteiro."), { status: 409 });
-  const byId = new Map(o.chunks.map((c) => [c.id, c]));
+  const byId = new Map(chosen.map((c) => [c.id, c])); // só o que foi enviado à IA vale como citação
+  const allById = new Map(o.chunks.map((c) => [c.id, c]));
   const usage = { provider: provider.name, model: provider.model, input_tokens: 0, output_tokens: 0, cost_usd: 0, calls: 0 };
   const base = buildScriptInput({ topic: o.topic, minutes: o.minutes, chunks: chosen, notes: o.notes });
   let last: { script: PodcastScript; warnings: ScriptWarning[] } | null = null;
@@ -221,10 +231,10 @@ export async function generateScript(o: { kind: ScriptProvider | "mock"; topic: 
       missing: (r.output.missing ?? []).map((m) => String(m).slice(0, 240)),
       lines: (r.output.lines ?? []).map((l) => ({ speaker: l.speaker === "BRUNO" ? "BRUNO" : "ANA", text: String(l.text).trim().slice(0, 700), style: String(l.style ?? "").slice(0, 80), sources: [...new Set((l.sources ?? []).map(Number).filter(Number.isInteger))] })),
     };
-    const warnings = checkScript(script, byId);
+    const warnings = checkScript(script, byId, allById);
     last = { script, warnings };
     if (!warnings.some((w) => w.kind !== "no_source")) break; // limpo: não precisa de segunda tentativa
   }
   if (!last) throw new Error("A IA não devolveu um roteiro válido. Tente de novo.");
-  return { script: last.script, warnings: last.warnings, usage, used_chunks: chosen.length };
+  return { script: last.script, warnings: last.warnings, usage, used_chunks: chosen.length, sent_ids: chosen.map((c) => c.id) };
 }

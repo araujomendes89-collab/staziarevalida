@@ -132,7 +132,16 @@ function Screen() {
 
   // o Tutor abre em qualquer tela de estudo, com o contexto que a tela já conhece
   if (route === "sessao") return <TutorDockProvider go={go}><PracticeSession go={go} /></TutorDockProvider>;
-  if (route === "estacao") return <Station go={go} />;
+  // a tela de uma estação abre sem a moldura: o aviso de "em reconstrução" entra aqui, antes dela
+  if (route === "estacao")
+    return (
+      <>
+        <div style={{ maxWidth: 820, margin: "0 auto", padding: "16px 16px 0" }}>
+          <ReconstructionNotice />
+        </div>
+        <Station go={go} />
+      </>
+    );
 
   // Até cada tela ser ligada aos dados, usa o estado "aluno novo" do design (sem números inventados).
   const data = "novo";
@@ -205,16 +214,20 @@ function Screen() {
         isReviewer: Boolean(boot.reviewer_areas?.length),
       }}
     >
-      {!CONNECTED.has(route) && (
-        <Banner tone="warning" title="Tela em reconstrução">
-          Os itens e números abaixo são exemplos do novo design e ainda não refletem os seus dados.
-        </Banner>
-      )}
+      {!CONNECTED.has(route) && <ReconstructionNotice />}
       {route === "flash" && reviewSwitch("flash")}
       {route === "erros" && reviewSwitch("erros")}
       {body}
     </AppShell>
     </TutorDockProvider>
+  );
+}
+
+function ReconstructionNotice() {
+  return (
+    <Banner tone="warning" title="Tela em reconstrução">
+      Os itens e números abaixo são exemplos do novo design e ainda não refletem os seus dados.
+    </Banner>
   );
 }
 

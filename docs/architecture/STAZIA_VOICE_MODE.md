@@ -109,7 +109,8 @@ Reconectando…), `VoiceTranscript.jsx` (legenda progressiva e chat), `useAudioL
 
 ```
 OPENAI_API_KEY=…                     # já existe na Vercel
-TUTOR_VOICE_ALLOW_EXTERNAL=1         # já existe
+TUTOR_VOICE_ALLOW_EXTERNAL=1         # já existe (sozinha, só a audição das vozes pela equipe)
+TUTOR_LIVE_VOICE_ALLOW_EXTERNAL=1    # NOVA (2026-10-10, VZ01): liga a voz ao vivo dos alunos (fala pelo microfone); desligada por padrão
 OPENAI_REALTIME_MODEL=gpt-realtime-2.1   # já existe (reserva)
 OPENAI_LIVE_MODEL=gpt-live-1         # NOVA: liga o GPT-Live
 OPENAI_VOICE_PROVIDER=auto           # opcional: gemini | live | realtime | auto (o painel pode escolher por cima)

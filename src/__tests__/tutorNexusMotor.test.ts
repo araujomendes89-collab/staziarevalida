@@ -196,9 +196,9 @@ describe("Motor do Nexus: o turno", () => {
     for (const st of buildEngineStatements()) await dev.db.exec(st);
     await dev.db.query(`insert into auth.users (id, email) values ($1, 'adm@t.dev'), ($2, 'aluna@t.dev')`, [ADMIN, ALUNA]);
     await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
-    await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [ALUNA]);
+    await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id = $1`, [ALUNA]);
     await aceitarTermos(dev.db, ALUNA);
-    await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true }, "Ligar o Tutor para os testes do motor do Nexus.");
+    await rpc(ADMIN, "app_admin_tutor_save_config", { enabled: true, requires_pro: true }, "Ligar o Tutor para os testes do motor do Nexus.");
     process.env.TUTOR_AI_PROVIDER = "mock";
     process.env.DETERMINISTIC_TUTOR = "true";
   }, 300_000);

@@ -111,7 +111,9 @@ describe("Equipe: acesso completo, sem período de teste", () => {
   it("o que é só do administrador continua só do administrador", async () => {
     await expect(rpc(EDITOR, "app_admin_users")).rejects.toThrow();
     await expect(rpc(EDITOR, "app_admin_set_role", { p_user_id: ANA, p_role: "editor" })).rejects.toThrow();
-    expect((await rpc(EDITOR, "app_admin_overview")).users.total).toBe(4);
+    // GE03: o editor não recebe os números de usuários (migração …9601); o administrador recebe
+    expect(await rpc(EDITOR, "app_admin_overview")).not.toHaveProperty("users");
+    expect((await rpc(ADMIN, "app_admin_overview")).users.total).toBe(4);
   });
 
   it("a verificação por id não fica exposta a quem usa o app", async () => {

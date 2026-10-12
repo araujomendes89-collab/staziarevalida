@@ -82,3 +82,17 @@ export async function hubDocumentUrl(backend, id) {
   const link = await hubGet(backend, `/documents/${id}/link`);
   return link.url || hubBlobUrl(backend, `/documents/${id}/file`);
 }
+
+/**
+ * Abre o arquivo guardado de um candidato a fonte (rota que devolve `{ url }` temporário do depósito ou, no banco local,
+ * os próprios bytes). O link temporário vale poucos segundos: abre na hora.
+ */
+export async function hubOpenFile(backend, path) {
+  const res = await parse(await fetch(BASE + path, { headers: await headers(backend) }));
+  if (typeof res.blob === "function") {
+    window.open(URL.createObjectURL(await res.blob()), "_blank", "noopener");
+    return;
+  }
+  if (!res?.url) throw new Error("O servidor não devolveu o endereço do arquivo.");
+  window.open(res.url, "_blank", "noopener");
+}

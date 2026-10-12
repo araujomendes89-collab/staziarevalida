@@ -84,7 +84,7 @@ beforeAll(async () => {
   for (const st of buildEngineStatements()) await dev.db.exec(st);
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'dono@t.dev'), ($2, 'socia@t.dev'), ($3, 'outro.admin@t.dev'), ($4, 'aluno@t.dev'), ($5, 'novo@t.dev')`, [DONO, SOCIA, ADMIN2, ALUNO, NOVO]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id in ($1, $2, $3)`, [DONO, SOCIA, ADMIN2]);
-  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active' where user_id = $1`, [ALUNO]);
+  await dev.db.query(`update public.subscriptions set plan = 'pro', status = 'active', current_period_end = now() + interval '30 days' where user_id = $1`, [ALUNO]);
   for (const uid of [DONO, SOCIA, ADMIN2, ALUNO]) await aceitarTermos(dev.db, uid);
   for (const uid of [DONO, SOCIA, ADMIN2, ALUNO, NOVO]) tokens[uid] = await dev.createSession(uid);
   await sql(`update public.tutor_config set enabled = true, voice_enabled = true, tts_team_only = false, tts_price_per_1k_chars_usd = 0.3`);
@@ -209,6 +209,27 @@ describe("Vozes do Nexus: audição e aprovação no servidor", () => {
     expect((await call(SOCIA, "POST", "/tutor/voices/approve", { personality: "direto" })).status).toBe(200);
     expect(generated.length).toBe(m + 1);
     expect((await deps.storage.get(samplePath("direto", voiceFingerprint("direto", ENV)))).toString()).toBe(`ID3:${OFFICIAL_VOICES.direto.sample}`);
+  });
+
+  it("VZ02: o Ouvir do aluno também confere só equipe e a voz ligada; pedido direto não toca a amostra; a equipe continua ouvindo", async () => {
+    expect((await preview(DONO, "durona", "apresentacao")).status).toBe(200);
+    await heardAll(DONO, "durona");
+    expect((await call(DONO, "POST", "/tutor/voices/approve", { personality: "durona" })).status).toBe(200);
+    const nego = { status: 404, json: { error: "Amostra indisponível." } };
+    try {
+      expect((await call(ALUNO, "GET", "/tutor/voice/sample/durona")).status).toBe(200);
+      // "só equipe" ligado: o aluno não ouve, nem pelo pedido direto; a equipe (administrador) ouve
+      await sql(`update public.tutor_config set tts_team_only = true`);
+      expect(await call(ALUNO, "GET", "/tutor/voice/sample/durona")).toMatchObject(nego);
+      expect((await call(SOCIA, "GET", "/tutor/voice/sample/durona")).status).toBe(200);
+      // voz do Tutor desligada no painel: o aluno não ouve; a equipe também não (a tela some com o botão)
+      await sql(`update public.tutor_config set tts_team_only = false, voice_enabled = false`);
+      expect(await call(ALUNO, "GET", "/tutor/voice/sample/durona")).toMatchObject(nego);
+    } finally {
+      await sql(`update public.tutor_config set tts_team_only = false, voice_enabled = true`);
+    }
+    // tudo ligado de novo: volta a tocar
+    expect((await call(ALUNO, "GET", "/tutor/voice/sample/durona")).status).toBe(200);
   });
 
   it("audições entram como tutor_tts_audicao e não contam no limite de quem ouviu nem nos tetos", async () => {

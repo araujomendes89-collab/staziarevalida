@@ -38,6 +38,7 @@ export const STEP_LABEL = {
   materials: "Materiais",
   render: "Arquivos finais",
   review_check: "Revisão automática",
+  source_search: "Busca de fontes",
 };
 
 export const BLOCK_STATUS = {
@@ -100,6 +101,25 @@ export const SOURCE_TYPE = {
   GUIDELINE: "Diretriz", PCDT: "PCDT", LAW: "Lei ou norma", MANUAL: "Manual", CONSENSUS: "Consenso", ARTICLE: "Artigo", SYSTEMATIC_REVIEW: "Revisão sistemática",
   BOOK: "Livro", OFFICIAL_EXAM: "Prova oficial", OFFICIAL_ANSWER_KEY: "Gabarito oficial", VIDEO: "Vídeo", AUDIO: "Áudio", WEB_PAGE: "Página da web",
   SLIDES: "Slides", DOCUMENT: "Documento", OTHER: "Outra",
+};
+
+// Fontes oficiais com IA: estado da busca, tipo de site e estado do achado (candidato).
+export const SEARCH_STATUS = {
+  na_fila: ["Na fila", "neutral"],
+  buscando: ["Buscando", "info"],
+  conferindo: ["Conferindo", "info"],
+  concluida: ["Concluída", "success"],
+  nada_encontrado: ["Nada encontrado", "neutral"],
+  pendente: ["Pendente", "warning"],
+  falhou: ["Falhou", "danger"],
+};
+
+export const DOMAIN_KIND = { governo: "Governo", internacional: "Internacional", sociedade: "Sociedade médica" };
+
+export const CANDIDATE_STATUS = {
+  aguardando: ["Aguardando sua conferência", "warning"],
+  aprovado: ["Aprovado", "success"],
+  rejeitado: ["Rejeitado", "danger"],
 };
 
 export const SOURCE_STATUS = { current: ["Vigente", "success"], superseded: ["Substituída", "warning"], withdrawn: ["Retirada", "danger"] };

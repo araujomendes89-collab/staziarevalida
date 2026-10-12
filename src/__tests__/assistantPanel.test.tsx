@@ -149,10 +149,10 @@ describe("AssistantPanel", () => {
     expect(onDiscard).toHaveBeenCalledWith(expect.objectContaining({ id: "s1" }));
   });
 
-  it("erro do run vai para um aviso de perigo", async () => {
-    render(<AssistantPanel status={STATUS} fields={FIELDS} values={{ resumo: "" }} run={async () => { throw Object.assign(new Error("O assistente falhou: x"), { status: 502 }); }} onUse={vi.fn()} />);
+  it("erro do run vai para um aviso de perigo (a recusa que o servidor escreve para a tela aparece; o erro técnico não, Q13)", async () => {
+    render(<AssistantPanel status={STATUS} fields={FIELDS} values={{ resumo: "" }} run={async () => { throw Object.assign(new Error("Teto de gasto atingido: Gasto do mês passa do teto."), { status: 429 }); }} onUse={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Preencher campos" }));
-    expect(await screen.findByText("O assistente falhou: x")).toBeTruthy();
+    expect(await screen.findByText("Teto de gasto atingido: Gasto do mês passa do teto.")).toBeTruthy();
   });
 
   it("o painel não conhece nenhuma aba", () => {

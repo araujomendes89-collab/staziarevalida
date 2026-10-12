@@ -7,18 +7,29 @@ import { useSession } from "../../session.jsx";
 import { useMobile } from "../../Shell.jsx";
 import { LoadError, Loading, useLoad } from "../common.jsx";
 import { hubAvailable, hubPost, hubUploadPdf } from "./api.js";
-import { AUTHORITY, DIFF_KIND, FRESHNESS, SOURCE_KIND, SOURCE_STATUS, SOURCE_TYPE } from "./labels.js";
+import { AUTHORITY, DIFF_KIND, DOC_STATUS, FRESHNESS, SOURCE_KIND, SOURCE_STATUS, SOURCE_TYPE } from "./labels.js";
+import { OfficialDomains } from "./OfficialDomains.jsx";
+import { SourceCandidates } from "./SourceCandidates.jsx";
+import { RecentSearches, SourceSearchPanel } from "./SourceSearch.jsx";
 import { KeyValue, Label, Section, shortHash, StatusBadge, useAction, useUploadProgress, when } from "./ui.jsx";
+
+// situação da última conferência do endereço vigiado (o banco guarda em inglês)
+const WATCH_STATUS = { ok: "igual", changed: "mudou", unreachable: "não abriu" };
 
 export function Sources({ isAdmin, go }) {
   const { backend } = useSession();
   const { data, error, reload } = useLoad(() => backend.rpc("app_ch_sources"), [backend]);
   const act = useAction();
+  const [searchKey, setSearchKey] = React.useState(0);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Banner tone="info" icon="library">
         Prioridade para fontes oficiais (Ministério da Saúde, Conitec/PCDT/DDT, INCA, PNI, Anvisa) e para o edital/matriz da edição selecionada — não há lista fixa de manuais. Diretrizes de sociedades médicas só valem com aprovação editorial. Consulta pública e relatório preliminar não sustentam conduta.
       </Banner>
+      {isAdmin && <SourceSearchPanel onRequested={() => setSearchKey((k) => k + 1)} />}
+      {isAdmin && <RecentSearches reloadKey={searchKey} />}
+      {isAdmin && <SourceCandidates onDecided={reload} />}
+      {isAdmin && <OfficialDomains />}
       {isAdmin && <NewSource onSaved={reload} />}
       <Section
         title="Fontes cadastradas"
@@ -112,6 +123,13 @@ function SourceRow({ source: s, isAdmin, onChanged }) {
           {SOURCE_KIND[s.kind]}
         </Badge>
         <StatusBadge map={SOURCE_STATUS} value={s.status} />
+        {s.found_by_search && <Badge size="sm" tone="ai">encontrada pela busca</Badge>}
+        {s.found_by_search && s.document_status && (
+          <>
+            <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>leitura:</span>
+            <StatusBadge map={DOC_STATUS} value={s.document_status} />
+          </>
+        )}
         {s.authority_level ? <Badge size="sm" tone={s.authority_level === "E" ? "warning" : "info"}>nível {s.authority_level}</Badge> : <Badge size="sm" tone="danger">sem nível: não vale como evidência</Badge>}
         <Badge size="sm" tone={s.passages ? "success" : "warning"}>
           {s.passages ? `${s.passages} trechos` : "sem documento completo"}
@@ -140,7 +158,7 @@ function SourceRow({ source: s, isAdmin, onChanged }) {
               ["Fonte primária", s.is_primary_source ? "sim" : undefined],
               ["Vigência a partir de", s.effective_date],
               ["Última revisão", s.revision_date],
-              ["Monitoramento", s.watch ? `${s.watch.url} · a cada ${s.watch.interval_days} dia(s) · última conferência ${when(s.watch.last_checked_at)} (${s.watch.last_status ?? "—"}) · próxima ${when(s.watch.next_check_at)}` : "não"],
+              ["Monitoramento", s.watch ? `${s.watch.url} · a cada ${s.watch.interval_days} dia(s) · última conferência ${when(s.watch.last_checked_at)} (${WATCH_STATUS[s.watch.last_status] ?? s.watch.last_status ?? "—"}) · próxima ${when(s.watch.next_check_at)}` : "não"],
             ]}
           />
           {isAdmin && (

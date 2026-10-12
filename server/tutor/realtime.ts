@@ -19,6 +19,8 @@
  *   OPENAI_VOICE_PROVIDER            live | realtime | auto
  *   OPENAI_REALTIME_VOICE            voz padrão quando o professor não tem uma
  *   TUTOR_VOICE_ALLOW_EXTERNAL=1     consentimento: a voz do aluno e as respostas passam pela OpenAI
+ *   TUTOR_LIVE_VOICE_ALLOW_EXTERNAL=1 trava própria da voz ao vivo dos alunos, exigida junto com a de cima (desligada por padrão;
+ *                                    a de cima sozinha só serve para a equipe ouvir e aprovar as vozes oficiais)
  *   OPENAI_REALTIME_TRANSCRIBE_MODEL opcional (Realtime): transcrição da fala do aluno
  */
 import { createHash } from "crypto";
@@ -33,7 +35,7 @@ import { estimateCost, voiceTimeCost } from "./costs";
 import { deterministicTutor, tutorSettings, type TutorSettings } from "./settings";
 import {
   closeLiveSession, createGeminiVoiceToken, createLiveSession, geminiVoiceConfig, geminiVoiceName, GeminiVoiceError, liveConfig, LiveSessionError,
-  markGeminiUnavailable, markLiveUnavailable, planProviders, type GeminiVoiceConfig, type LiveConfig, type VoiceProviderId,
+  liveVoiceLockPending, markGeminiUnavailable, markLiveUnavailable, planProviders, type GeminiVoiceConfig, type LiveConfig, type VoiceProviderId,
 } from "./voiceProviders";
 
 const API = "https://api.openai.com/v1";
@@ -61,11 +63,7 @@ export function realtimeConfig(env: NodeJS.ProcessEnv = process.env): RealtimeCo
   const transcribeModel = (env.OPENAI_REALTIME_TRANSCRIBE_MODEL ?? "").trim() || null;
   const pending = !model
     ? "Defina OPENAI_REALTIME_MODEL no servidor (o modelo de voz em tempo real)."
-    : env.TUTOR_VOICE_ALLOW_EXTERNAL !== "1"
-      ? "Envio da voz do aluno à OpenAI não autorizado: defina TUTOR_VOICE_ALLOW_EXTERNAL=1 no servidor depois de aprovar o uso."
-      : !key
-        ? "OPENAI_API_KEY ausente ou com o texto de exemplo no .env do servidor."
-        : null;
+    : liveVoiceLockPending(env) ?? (!key ? "OPENAI_API_KEY ausente ou com o texto de exemplo no .env do servidor." : null);
   return { ready: !pending, model, pending, key: pending ? null : key, transcribeModel };
 }
 

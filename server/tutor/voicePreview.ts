@@ -34,6 +34,8 @@ export interface VoicePanel {
   model: string;
   keyConfigured: boolean;
   pending: string | null;
+  /** Detalhe técnico do aviso, para a tela mostrar escondido. */
+  detail: string | null;
   approver: boolean;
   rows: (ReadinessRow & { approved_at: string | null; scenarios: { id: VoiceScenario; label: string; heard: boolean }[]; can_approve: boolean })[];
 }
@@ -82,7 +84,7 @@ export function createVoicePreviewRouter(deps: TutorDeps | null, env: NodeJS.Pro
     const r = elevenLabsReadiness(voiceEnv(), approvals);
     const approver = isApprover(user);
     return {
-      model: r.model, keyConfigured: r.keyConfigured, pending: r.pending, approver,
+      model: r.model, keyConfigured: r.keyConfigured, pending: r.pending, detail: r.detail, approver,
       rows: r.rows.map((row) => {
         const scenarios = scenariosFor(row.id).map((id) => ({
           id, label: VOICE_SCENARIOS[id].label,
@@ -147,7 +149,7 @@ export function createVoicePreviewRouter(deps: TutorDeps | null, env: NodeJS.Pro
       await deps!.db.service("ch_worker_tutor_voice_listened", { p_user: user.id, p_voice: id, p_fingerprint: row.fingerprint, p_scenario: scenario });
       res.type("audio/mpeg").send(audio);
     } catch {
-      res.status(502).json({ error: "A audição falhou. Confira a chave, as permissões, o voice_id e os créditos no painel do fornecedor." });
+      res.status(502).json({ error: "A audição falhou. Confira a chave de acesso, as permissões, o cadastro da voz e os créditos no painel do serviço de voz." });
     } finally {
       busy.delete(user.id);
     }
@@ -163,7 +165,7 @@ export function createVoicePreviewRouter(deps: TutorDeps | null, env: NodeJS.Pro
       const row = (await panelOf(user)).rows.find((r) => r.id === id)!;
       if (!row.ready) return res.status(409).json({ error: row.pending ?? "A voz não está configurada no servidor." });
       if (!row.scenarios.every((s) => s.heard)) return res.status(409).json({ error: NOT_HEARD });
-      if (!deps!.storage) return res.status(503).json({ error: "Depósito das amostras indisponível no servidor." });
+      if (!deps!.storage) return res.status(503).json({ error: "O depósito das amostras não está disponível no servidor." });
       // a Apresentação desta versão vira a amostra do "Ouvir" (do cache ou gerada de novo, como audição)
       const audio = await scenarioAudio(user, id, row, "apresentacao");
       const key = samplePath(id, row.fingerprint);

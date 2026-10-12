@@ -73,12 +73,12 @@ describe("assistente das abas — formato e tamanho de cada campo", () => {
   it("lista: item longo sai e o total respeita o máximo ao acrescentar", () => {
     const r = checkValue(FEATURES, ["Novo 1", "y".repeat(121), "Novo 2", "Novo 3"], Array.from({ length: 18 }, (_, i) => `R${i}`), true);
     expect(r.value).toEqual(["Novo 1", "Novo 2"]);
-    expect(r.warnings).toEqual(["Recursos incluídos: item com mais de 120 caracteres descartado.", "Recursos incluídos: no máximo 20 itens; 1 ficaram de fora."]);
+    expect(r.warnings).toEqual(["Recursos incluídos: item com mais de 120 caracteres descartado.", "Recursos incluídos: no máximo 20 itens; 1 ficou de fora."]);
   });
 
   it("lista já cheia: nada a acrescentar vira nulo com aviso", () => {
     const r = checkValue(FEATURES, ["Novo"], Array.from({ length: 20 }, (_, i) => `R${i}`), true);
-    expect(r).toEqual({ value: null, warnings: ["Recursos incluídos: no máximo 20 itens; 1 ficaram de fora."] });
+    expect(r).toEqual({ value: null, warnings: ["Recursos incluídos: no máximo 20 itens; 1 ficou de fora."] });
   });
 
   it("lista sem acréscimo também respeita o máximo do campo", () => {
@@ -106,9 +106,9 @@ describe("assistente das abas — formato e tamanho de cada campo", () => {
     const current = Array.from({ length: 29 }, (_, i) => ({ year: 2000 + i, text: "a" }));
     const r = checkValue(TIMELINE, [{ year: 2030, text: "b" }, { year: 2031, text: "c" }], current, true);
     expect(r.value).toEqual([{ year: 2030, text: "b" }]);
-    expect(r.warnings).toEqual(["Linha do tempo: no máximo 30 itens; 1 ficaram de fora."]);
+    expect(r.warnings).toEqual(["Linha do tempo: no máximo 30 itens; 1 ficou de fora."]);
     const cards = Array.from({ length: 40 }, () => ({ front: "Pergunta?", back: "Sim." }));
-    expect(checkValue(FLASHCARDS, [{ front: "Nova?", back: "Sim." }], cards, true)).toEqual({ value: null, warnings: ["Flashcards: no máximo 40 itens; 1 ficaram de fora."] });
+    expect(checkValue(FLASHCARDS, [{ front: "Nova?", back: "Sim." }], cards, true)).toEqual({ value: null, warnings: ["Flashcards: no máximo 40 itens; 1 ficou de fora."] });
   });
 
   it("ao acrescentar, entrada que já está no campo ou repetida sai calada e não ocupa vaga dos itens novos", () => {

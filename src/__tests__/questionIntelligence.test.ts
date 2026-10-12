@@ -297,7 +297,7 @@ describe("SQIE com banco e simulação de IA", () => {
     try {
       const r = await runQuestionAnalysis({ db, aiMaker }, { limit: 3, exam: "revalida-2022-1" });
       expect(r).toMatchObject({ considered: 3, saved: 0, skipped: 0 }); // parou: nenhuma questão marcada como falha
-      expect(r.pending).toMatch(/teto por execução de US\$ 0,01/);
+      expect(r.pending).toMatch(/teto por chamada de US\$ 0,01/);
       expect(seen).toEqual([]);
       // uma linha de teto só (a questão que bateu no teto), não uma por questão
       expect((await sql(`select count(*)::int n from public.ai_calls where outcome = 'teto'`))[0].n).toBe(1);

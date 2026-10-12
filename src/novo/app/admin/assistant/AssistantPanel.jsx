@@ -4,8 +4,9 @@ import React from "react";
 import { Banner, Button, Checkbox, SegmentedControl, SelectField, TextField } from "../../../ds";
 import { ASSIST_TEXTS, aiDefinedText, isEmptyValue, sameValue, valueText } from "../../../../shared/adminAssistant/types";
 import { itemDiff, wordDiff } from "../../../../shared/textDiff";
-import { TextArea, messageOf } from "../common.jsx";
-import { readPdfMaterial } from "./assistantApi.js";
+import { TextArea } from "../common.jsx";
+import { assistantErrorText, readPdfMaterial } from "./assistantApi.js";
+import { ASSIST_ERRORS } from "../../../../shared/adminAssistant/errors";
 
 const MODES = [{ value: "preencher", label: "Preencher" }, { value: "conferir", label: "Conferir" }, { value: "conversar", label: "Conversar" }];
 const MATERIALS = [{ value: "text", label: "Colar texto" }, { value: "pdf", label: "PDF" }, { value: "link", label: "Link" }];
@@ -100,8 +101,9 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
   const seq = React.useRef(0);
   // valores dos campos como foram no pedido: "Usar" não troca campo de texto que a pessoa mudou depois (decisão D2c)
   const sent = React.useRef({});
-  // campos pedidos no último Preencher (para saber se TODOS voltaram "Sem fonte", Q14)
+  // campos pedidos no último Preencher (para saber se TODOS voltaram "Sem fonte", Q14) e se foi com material
   const requested = React.useRef([]);
+  const sentMaterial = React.useRef(false);
 
   const editable = fields.filter((f) => f.ai === "editar");
   const checkable = fields.filter((f) => f.ai === "editar" || f.ai === "conferir");
@@ -145,6 +147,7 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
     reset();
     sent.current = values;
     requested.current = mode === "preencher" ? request.fields : [];
+    sentMaterial.current = Boolean(mat);
     setBusy(true);
     const mine = seq.current;
     try {
@@ -152,7 +155,7 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
       if (seq.current === mine) setResult(res);
     } catch (e) {
       if (seq.current !== mine) return;
-      setError(e?.status ? e.message : messageOf(e, "O assistente falhou. Tente de novo."));
+      setError(assistantErrorText(e));
     } finally {
       if (seq.current === mine) setBusy(false);
     }
@@ -166,7 +169,7 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
       setPdf(await readPdfMaterial(file));
     } catch (e) {
       setPdf(null);
-      setError(e?.message ?? "Não foi possível ler o PDF.");
+      setError(assistantErrorText(e, ASSIST_ERRORS.pdf));
     } finally {
       setPdfBusy(false);
     }
@@ -198,8 +201,23 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
 
   const suggestions = (result?.suggestions ?? []).filter((s) => !gone[s.id]);
   const pending = suggestions.filter((s) => !used[s.id]);
-  // Preencher sem nenhum trecho para todos os campos pedidos: parece que o assistente não fez nada; o aviso diz por quê
-  const noSourceAll = mode === "preencher" && !!result && requested.current.length > 0 && requested.current.every((name) => (result.no_source ?? []).includes(name));
+  // Preencher sem trecho para todos os campos pedidos que exigem fonte: parece que o assistente não fez nada; o aviso diz por
+  // quê. Tema e Subtema saem do próprio item (vão à IA mesmo sem trecho) e não contam, nem o campo que a aba recusa para este
+  // item (vai para "A fonte não esclarece"). Campo sem "base" conta como exigindo fonte.
+  const refused = new Set((result?.missing ?? []).map((m) => m.field));
+  const needsSource = requested.current.filter((name) => (fields.find((f) => f.name === name)?.base ?? "fonte") === "fonte" && !refused.has(name));
+  const noSourceAll = mode === "preencher" && !!result && needsSource.length > 0 && needsSource.every((name) => (result.no_source ?? []).includes(name));
+  // por que faltou: havia material (a biblioteca não é o motivo), a biblioteca achou trechos que não sustentam, ou ela não tem
+  // trecho do tema. Servidor sem a contagem: vale o material que a pessoa mandou.
+  const passages = result?.source_passages;
+  const hadMaterial = passages ? passages.material > 0 : sentMaterial.current;
+  const hadOfficial = Boolean(passages && passages.official > 0);
+  const inNotes = material === "notas";
+  const noSourceAllText = hadMaterial
+    ? inNotes ? ASSIST_TEXTS.noSourceAllMaterialNotes : ASSIST_TEXTS.noSourceAllMaterial
+    : hadOfficial
+      ? inNotes ? ASSIST_TEXTS.noSourceAllOfficialNotes : ASSIST_TEXTS.noSourceAllOfficial
+      : inNotes ? ASSIST_TEXTS.noSourceAllNotes : ASSIST_TEXTS.noSourceAll;
   const cost = result?.usage ? (result.usage.provider === "mock" ? ASSIST_TEXTS.mockLabel : `${usd(result.usage.cost_usd)} · ${result.usage.label} ${result.usage.model}`) : null;
 
   return (
@@ -267,7 +285,7 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
           })}
           {noSourceAll && (
             <Banner tone="warning" title={ASSIST_TEXTS.noSourceAllTitle}>
-              {material === "notas" ? ASSIST_TEXTS.noSourceAllNotes : ASSIST_TEXTS.noSourceAll}
+              {noSourceAllText}
             </Banner>
           )}
           {result.no_source?.map((name) => <p key={name} style={smallStyle}>{`${labelOf(name)}: ${ASSIST_TEXTS.noSource}`}</p>)}

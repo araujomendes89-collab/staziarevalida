@@ -14,8 +14,8 @@ import type { Server } from "http";
 import { openDevDatabaseForTests, type DevDatabase } from "../../server/devDb/devDatabase";
 import { devContentDb, localStorageDir, type ContentDb, type Storage } from "../../server/contentHub/infra";
 import { createPodcastsRouter, type PodcastsDeps } from "../../server/podcasts/router";
-import { chunkPages, fetchLink, htmlToText, privateAddress } from "../../server/podcasts/extract";
-import { checkScript, mockScriptFromInput, buildScriptInput, ungroundedNumbers, type PodcastScript } from "../../server/podcasts/script";
+import { chunkPages, chunkPagesInfo, fetchLink, htmlToText, privateAddress } from "../../server/podcasts/extract";
+import { checkScript, generateScript, mockScriptFromInput, buildScriptInput, ungroundedNumbers, type PodcastScript } from "../../server/podcasts/script";
 import { pcmToMp3, pickVoices, silence, splitParts, synthesizePart, toPcm, ttsStatus, SAMPLE_RATE } from "../../server/podcasts/audio";
 import { AiInvalidOutput } from "../../server/contentHub/ai/provider";
 
@@ -140,7 +140,7 @@ beforeAll(async () => {
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'adm@t.dev'), ($2, 'ed@t.dev'), ($3, 'al@t.dev')`, [ADMIN, EDITOR, STUDENT]);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await dev.db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [EDITOR]);
-  lessonId = (await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { area: "GINECOLOGIA_OBSTETRICIA", topic: "Pré-eclâmpsia", title: "Pré-eclâmpsia grave", summary: "Pré-eclâmpsia é hipertensão após 20 semanas com proteinúria ou lesão de órgão-alvo. Sulfato de magnésio previne eclâmpsia.", key_points: ["Sulfato de magnésio 4 g IV no ataque", "Parto é o tratamento definitivo"], published: true } })).id;
+  lessonId = (await rpc(EDITOR, "app_admin_save_lesson", { p_lesson: { area: "GINECOLOGIA_OBSTETRICIA", topic: "Pré-eclâmpsia", title: "Pré-eclâmpsia grave", summary: "Pré-eclâmpsia é hipertensão após 20 semanas com proteinúria ou lesão de órgão-alvo. Sulfato de magnésio previne eclâmpsia.", key_points: ["Sulfato de magnésio 4 g IV no ataque", "Parto é o tratamento definitivo"], published: true, review_note: "Conferido no material da aula pela equipe." } })).id;
   base = await listen({ db, storage: files, lessons: lessonFiles, mockScript });
   gem = await listen({
     db,
@@ -188,6 +188,16 @@ describe("Peças do servidor (sem rede)", () => {
     expect(chunks.some((c) => c.text === "Cabeçalho")).toBe(false);
   });
 
+  it("documento longo: o corte em 600 trechos é avisado, com a última página que entrou", () => {
+    const pages = Array.from({ length: 700 }, (_, i) => ({ page: i + 1, text: `Página ${i + 1}: ${"Conduta clínica detalhada. ".repeat(10)}` }));
+    const info = chunkPagesInfo(pages);
+    expect(info.chunks).toHaveLength(600);
+    expect(info).toMatchObject({ total: 700, truncated: true, lastPage: 600, pagesTotal: 700 });
+    expect(chunkPages(pages)).toEqual(info.chunks); // quem já usava chunkPages não muda
+    const curto = chunkPagesInfo(pages.slice(0, 3));
+    expect(curto).toMatchObject({ total: 3, truncated: false, lastPage: 3 });
+  });
+
   it("número com unidade precisa estar no trecho citado (vírgula e ponto valem igual)", () => {
     expect(ungroundedNumbers("Faça 4 g IV e repita em 1,5 h.", ["Sulfato de magnésio 4 g IV; reavaliar em 1.5 h"])).toEqual([]);
     expect(ungroundedNumbers("Faça 6 g IV.", ["Sulfato de magnésio 4 g IV"])).toEqual(["6 g"]);
@@ -202,6 +212,53 @@ describe("Peças do servidor (sem rede)", () => {
       { line: 1, kind: "ungrounded_number", detail: '"2 g" não está nos trechos citados' },
       { line: 2, kind: "unknown_source", detail: "Trecho inexistente: T7" },
     ]);
+  });
+
+  it("conferência: trecho que existe no episódio mas não foi enviado à IA é recusado como citação", () => {
+    const sent = new Map([[1, { id: 1, source: "PCDT", doc: 1, page: 2, text: "Sulfato de magnésio 4 g IV em 20 minutos" }]]);
+    const all = new Map([...sent, [2, { id: 2, source: "PCDT", doc: 1, page: 9, text: "Dose de manutenção 2 g por hora" }]]);
+    const script: PodcastScript = { missing: [], lines: [
+      { speaker: "ANA", text: "Manutenção de 2 g por hora.", style: "", sources: [2] },
+      { speaker: "BRUNO", text: "E o ataque?", style: "", sources: [1] },
+      { speaker: "ANA", text: "Foi citado outro.", style: "", sources: [9] },
+    ] };
+    expect(checkScript(script, sent, all)).toEqual([
+      { line: 0, kind: "unknown_source", detail: "Trecho que a IA não recebeu: T2" },
+      { line: 0, kind: "ungrounded_number", detail: '"2 g" não está nos trechos citados' },
+      { line: 2, kind: "unknown_source", detail: "Trecho inexistente: T9" },
+    ]);
+    // sem o terceiro argumento, tudo o que existe vale (a revisão da equipe confere o roteiro editado com todos os trechos)
+    expect(checkScript(script, all).map((w) => w.detail)).toEqual(["Trecho inexistente: T9"]);
+  });
+
+  it("roteiro da IA que cita trecho que ela não recebeu volta com aviso (e a correção é pedida na segunda tentativa)", async () => {
+    const big = (id: number) => ({ id, source: "Livro", doc: 1, page: id, text: `Trecho ${id} sobre pré-eclâmpsia. ${"conteúdo clínico ".repeat(3500)}` });
+    const chunks = [big(1), big(2), big(3)]; // ~60 mil caracteres cada: só dois cabem nos 120 mil enviados
+    const sentIds: number[] = [];
+    const inputs: string[] = [];
+    const r = await generateScript({
+      kind: "mock",
+      topic: "pré-eclâmpsia",
+      minutes: 3,
+      chunks,
+      db,
+      mockRespond: (req: any) => {
+        inputs.push(req.input);
+        const ids = [...req.input.matchAll(/\[T(\d+)\]/g)].map((m: RegExpMatchArray) => Number(m[1]));
+        if (!sentIds.length) sentIds.push(...ids);
+        const notSent = [1, 2, 3].find((i) => !ids.includes(i))!;
+        return { title_suggestion: "x", missing: [], lines: [
+          { speaker: "ANA", text: "Abertura.", style: "", sources: [] },
+          { speaker: "BRUNO", text: "Pergunta.", style: "", sources: [] },
+          { speaker: "ANA", text: "Resposta citando algo que não recebi.", style: "", sources: [notSent] },
+          { speaker: "BRUNO", text: "Fim.", style: "", sources: [] },
+        ] };
+      },
+    });
+    expect(sentIds).toHaveLength(2);
+    expect(r.warnings.some((w) => w.kind === "unknown_source" && /não recebeu/.test(w.detail))).toBe(true);
+    expect(inputs).toHaveLength(2);
+    expect(inputs[1]).toContain("Trecho que a IA não recebeu");
   });
 
   it("simulação do roteiro só usa frases dos trechos e cita de onde vieram", () => {
@@ -231,19 +288,55 @@ describe("Peças do servidor (sem rede)", () => {
     const off = ttsStatus("gemini", env);
     expect(off).toMatchObject({ ready: false, kind: "gemini" });
     expect(off.pending).toMatch(/indisponível por enquanto/);
-    expect(off.pending).toContain("PODCAST_TTS_GEMINI_ENABLED=1");
+    expect(off.pending).not.toMatch(/PODCAST_TTS|[A-Z]{3,}_[A-Z_]+/); // o nome da variável não vai para a tela
+    expect(off.technical).toContain("PODCAST_TTS_GEMINI_ENABLED=1"); // fica só para o registro interno
     expect(ttsStatus("gemini", { ...env, PODCAST_TTS_GEMINI_ENABLED: "0" }).ready).toBe(false);
     expect(ttsStatus("gemini", { ...env, PODCAST_TTS_GEMINI_ENABLED: "true" }).ready).toBe(false);
     // ligada: volta como antes (e, sem a chave, o motivo volta a ser a chave)
     expect(ttsStatus("gemini", { ...env, PODCAST_TTS_GEMINI_ENABLED: "1" })).toEqual({ ready: true, kind: "gemini", model: "gemini-3.8-flash-tts", pending: null });
-    expect(ttsStatus("gemini", { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", PODCAST_TTS_GEMINI_ENABLED: "1" }).pending).toMatch(/Chave do Gemini ausente/);
+    expect(ttsStatus("gemini", { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", PODCAST_TTS_GEMINI_ENABLED: "1" }).pending).toMatch(/chave da voz do Gemini não está configurada/);
     // OpenAI segue pronta, com o modelo padrão
     expect(ttsStatus("openai", env)).toEqual({ ready: true, kind: "openai", model: "gpt-4o-mini-tts", pending: null });
     // a geração recusa a Gemini desligada sem chamar ninguém
     const fetchImpl = vi.fn();
     const lines = [{ speaker: "ANA" as const, text: "Olá!", style: "", sources: [] }];
-    await expect(synthesizePart("gemini", lines, pickVoices("gemini", null), { env, fetchImpl: fetchImpl as any })).rejects.toMatchObject({ status: 503, message: expect.stringContaining("PODCAST_TTS_GEMINI_ENABLED=1") });
+    await expect(synthesizePart("gemini", lines, pickVoices("gemini", null), { env, fetchImpl: fetchImpl as any })).rejects.toMatchObject({ status: 503, message: expect.stringContaining("indisponível por enquanto") });
     expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it("erros da voz: português simples na tela; o código do erro e o nome da variável só no detalhe interno", async () => {
+    const env = { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", GEMINI_API_KEY: GEMINI_KEY, OPENAI_API_KEY: OPENAI_KEY, PODCAST_TTS_GEMINI_ENABLED: "1" };
+    const lines = [{ speaker: "ANA" as const, text: "Olá!", style: "", sources: [] }];
+    const answer = (status: number, body = "rate limit exceeded: quota") => (async () => new Response(body, { status })) as any;
+    const tecnico = /\b(429|401|403|500|503)\b|respondeu|quota|rate limit|CONTENT_HUB|_API_KEY|PODCAST_TTS|fetch failed|aborted|timeout/i;
+    for (const kind of ["openai", "gemini"] as const) {
+      const casos: [number, RegExp][] = [[429, /muitas chamadas|Espere/], [401, /recusou|acesso|administrador/i], [403, /recusou|acesso|administrador/i], [400, /recusou/], [500, /problema|instável|Tente de novo/], [503, /problema|instável|Tente de novo/]];
+      for (const [status, esperado] of casos) {
+        const error: any = await synthesizePart(kind, lines, pickVoices(kind, null), { env, fetchImpl: answer(status) }).catch((e) => e);
+        expect(error).toBeInstanceOf(Error);
+        expect(error.message, `${kind} ${status}`).toMatch(esperado);
+        expect(error.message, `${kind} ${status}`).not.toMatch(tecnico);
+        expect(error.technical).toContain(String(status)); // o detalhe fica para o registro interno
+        expect(error.technical).not.toContain(kind === "gemini" ? GEMINI_KEY : OPENAI_KEY);
+      }
+    }
+    // sem rede / tempo esgotado: nada de mensagem em inglês
+    for (const raw of [new TypeError("fetch failed"), Object.assign(new Error("The operation was aborted due to timeout"), { name: "TimeoutError" })]) {
+      const error: any = await synthesizePart("openai", lines, pickVoices("openai", null), { env, fetchImpl: (async () => { throw raw; }) as any }).catch((e) => e);
+      expect(error.message).toMatch(/serviço de voz/);
+      expect(error.message).not.toMatch(tecnico);
+      expect(error.technical).toContain(raw.message);
+    }
+    // resposta do Gemini sem áudio
+    const semAudio: any = await synthesizePart("gemini", lines, pickVoices("gemini", null), { env, fetchImpl: (async () => new Response(JSON.stringify({ steps: [] }), { status: 200 })) as any }).catch((e) => e);
+    expect(semAudio.message).toMatch(/não devolveu áudio/);
+    // sem autorização de envio / sem chave: o motivo na tela não traz nome de variável
+    for (const [kind, e] of [["openai", { NODE_ENV: "test" }], ["openai", { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1" }], ["gemini", { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", PODCAST_TTS_GEMINI_ENABLED: "1" }]] as const) {
+      const st = ttsStatus(kind, e as any);
+      expect(st.ready).toBe(false);
+      expect(st.pending).not.toMatch(/[A-Z]{3,}_[A-Z_]+/);
+      expect(st.technical).toMatch(/[A-Z]{3,}_[A-Z_]+/);
+    }
   });
 
   it("links: só https, nada da rede interna, página vira texto sem menu nem script", async () => {
@@ -315,6 +408,168 @@ describe("Episódio, fontes e permissões", () => {
     expect(b.status).toBe(422);
     expect(b.body.error).toMatch(/escaneado|OCR/);
     expect((await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId })).sources).toHaveLength(4);
+  });
+});
+
+describe("Fonte longa demais", () => {
+  it("texto que passa de 600 trechos entra cortado e a equipe é avisada de quanto entrou", async () => {
+    const created = await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Fonte longa", topic: "Teste", area: "CLINICA_MEDICA", target_minutes: 5 } });
+    const paragraphs = Array.from({ length: 612 }, (_, i) => `Item ${i + 1}: ${"x".repeat(630)}`.replace(/x/g, "a"));
+    const text = paragraphs.join("\n\n");
+    expect(text.length).toBeLessThan(400_000);
+    const r = await post(`${base}/${created.id}/sources/text`, editor, { title: "Texto enorme", text });
+    expect(r.status).toBe(201);
+    expect(r.body.note).toMatch(/entraram só os primeiros 600 de 612 trechos/);
+    expect(r.body.note).toMatch(/o resto não foi usado/i);
+    expect(r.body.sources[0].chunks).toBe(600);
+    // fonte curta não leva aviso
+    const ok = await post(`${base}/${created.id}/sources/text`, editor, { title: "Curto", text: "Um parágrafo curto com mais de oitenta caracteres para a fonte entrar inteira, sem nenhum aviso. ".repeat(2) });
+    expect(ok.status).toBe(201);
+    expect(ok.body.note).toBeUndefined();
+    await call(`${base}/${created.id}`, admin, { method: "DELETE" });
+  });
+});
+
+describe("PDF da aula como fonte e o limite de tamanho", () => {
+  it("PDF da aula acima de 30 MB não é lido (nem baixado); o resumo e os pontos-chave entram e a equipe é avisada", async () => {
+    const created = await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Aula com PDF grande", topic: "Teste", area: "CLINICA_MEDICA", target_minutes: 5 } });
+    const key = `lessons/${lessonId}/slides-grande.pdf`;
+    await lessonFiles.put(key, makePdf(["Conteudo do PDF da aula: sulfato de magnesio 4 g IV no ataque."]), "application/pdf");
+    const mat = await dev.db.query<any>(`insert into public.lesson_materials (lesson_id, kind, title, storage_path, content_type, size_bytes) values ($1, 'slides', 'Slides', $2, 'application/pdf', $3) returning id`, [lessonId, key, 40 * 1024 * 1024]);
+    const spy = vi.spyOn(lessonFiles, "get");
+    try {
+      // tamanho declarado acima do limite: não baixa o arquivo
+      const big = await post(`${base}/${created.id}/sources/lesson`, editor, { lesson_id: lessonId });
+      expect(big.status).toBe(201);
+      expect(big.body.note).toMatch(/PDF da aula/);
+      expect(big.body.note).toMatch(/30 MB/);
+      expect(spy).not.toHaveBeenCalled();
+      expect(big.body.sources[0]).toMatchObject({ kind: "lesson" });
+      const texto = await dev.db.query<any>(`select string_agg(text, ' ') t from public.podcast_chunks where podcast_id = $1`, [created.id]);
+      expect(texto.rows[0].t).toContain("Sulfato de magnésio 4 g IV no ataque"); // resumo e pontos-chave
+      expect(texto.rows[0].t).not.toContain("Conteudo do PDF da aula");
+      // tamanho dentro do limite: o PDF entra
+      await dev.db.query(`update public.lesson_materials set size_bytes = 1000 where id = $1`, [mat.rows[0].id]);
+      await call(`${base}/${created.id}/sources/${big.body.sources[0].id}`, editor, { method: "DELETE" });
+      const ok = await post(`${base}/${created.id}/sources/lesson`, editor, { lesson_id: lessonId });
+      expect(ok.status).toBe(201);
+      expect(ok.body.note).toBeUndefined();
+      expect(spy).toHaveBeenCalledTimes(1);
+      const dentro = await dev.db.query<any>(`select string_agg(text, ' ') t from public.podcast_chunks where podcast_id = $1`, [created.id]);
+      expect(dentro.rows[0].t).toContain("Conteudo do PDF da aula");
+      // tamanho declarado errado (menor que o real): o arquivo baixado é conferido antes de ser lido
+      await call(`${base}/${created.id}/sources/${ok.body.sources[0].id}`, editor, { method: "DELETE" });
+      const huge = Buffer.alloc(31 * 1024 * 1024);
+      huge.write("%PDF-1.4\n", 0, "latin1");
+      await lessonFiles.put(key, huge, "application/pdf");
+      const lied = await post(`${base}/${created.id}/sources/lesson`, editor, { lesson_id: lessonId });
+      expect(lied.status).toBe(201);
+      expect(lied.body.note).toMatch(/30 MB/);
+      // com endereço assinado (Supabase): o download PARA ao passar de 30 MB, mesmo com tamanho informado falso e sem Content-Length
+      await call(`${base}/${created.id}/sources/${lied.body.sources[0].id}`, editor, { method: "DELETE" });
+      let servidos = 0;
+      const streaming = await listen({
+        db, storage: files, mockScript,
+        lessons: { ...lessonFiles, signedUrl: async () => "https://depósito.exemplo/slides.pdf" },
+        fetchImpl: (async () => {
+          const pedaco = Buffer.alloc(1024 * 1024);
+          let n = 0;
+          return new Response(new ReadableStream({
+            pull(controller) {
+              if (n++ >= 200) return controller.close(); // até 200 MB
+              servidos += pedaco.length;
+              controller.enqueue(new Uint8Array(pedaco));
+            },
+          }), { status: 200 });
+        }) as any,
+      });
+      const parou = await post(`${streaming}/${created.id}/sources/lesson`, editor, { lesson_id: lessonId });
+      expect(parou.status).toBe(201);
+      expect(parou.body.note).toMatch(/mais de 30 MB/);
+      expect(servidos).toBeLessThan(40 * 1024 * 1024);
+    } finally {
+      spy.mockRestore();
+      await dev.db.query(`delete from public.lesson_materials where id = $1`, [mat.rows[0].id]);
+      await call(`${base}/${created.id}`, admin, { method: "DELETE" });
+    }
+  });
+});
+
+describe("Conferência do roteiro lembra o que foi enviado à IA", () => {
+  it("o aviso de trecho que a IA não recebeu volta em toda nova conferência, mesmo depois de editar outra fala", async () => {
+    const created = await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Muitas fontes", topic: "Pré-eclâmpsia", area: "CLINICA_MEDICA", target_minutes: 5 } });
+    const bloco = (n: number) => Array.from({ length: 150 }, (_, i) => `Fonte ${n} item ${i + 1}: ${"a".repeat(640)}`).join("\n\n");
+    expect((await post(`${base}/${created.id}/sources/text`, editor, { title: "Fonte A", text: bloco(1) })).status).toBe(201);
+    expect((await post(`${base}/${created.id}/sources/text`, editor, { title: "Fonte B", text: bloco(2) })).status).toBe(201);
+    const all = (await dev.db.query<any>(`select id from public.podcast_chunks where podcast_id = $1 order by id`, [created.id])).rows.map((r) => Number(r.id));
+    let naoEnviado = 0;
+    const url = await listen({
+      db, storage: files, lessons: lessonFiles,
+      mockScript: (req: any) => {
+        const sent = new Set([...req.input.matchAll(/\[T(\d+)\]/g)].map((m: RegExpMatchArray) => Number(m[1])));
+        naoEnviado = all.find((id) => !sent.has(id))!;
+        return { title_suggestion: "x", missing: [], lines: [
+          { speaker: "ANA", text: "Abertura.", style: "", sources: [] },
+          { speaker: "BRUNO", text: "Pergunta.", style: "", sources: [] },
+          { speaker: "ANA", text: "Resposta citando algo que a IA não recebeu.", style: "", sources: [naoEnviado] },
+          { speaker: "BRUNO", text: "Fim.", style: "", sources: [] },
+        ] };
+      },
+    });
+    const gen = await post(`${url}/${created.id}/script`, editor, { provider: "mock" });
+    expect(gen.status).toBe(200);
+    expect(naoEnviado).toBeGreaterThan(0);
+    expect(gen.body.warnings.some((w: any) => /não recebeu/.test(w.detail))).toBe(true);
+    // a equipe corrige outra fala e salva: o aviso apagado do banco volta pela conferência, que usa só o que foi enviado
+    const p = await rpc(EDITOR, "app_admin_podcast", { p_id: created.id });
+    expect(p.script_meta.sent_chunks).toEqual(expect.any(Array));
+    expect(p.script_meta.sent_chunks).not.toContain(naoEnviado);
+    const lines = p.script.lines.map((l: any, i: number) => (i === 0 ? { ...l, text: "Abertura, corrigida." } : l));
+    const saved = await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: created.id, p_script: { lines, missing: [] } });
+    expect(saved.script_meta.warnings).toBeUndefined();
+    expect(saved.script_meta.sent_chunks).toEqual(p.script_meta.sent_chunks);
+    const check = (await call(`${url}/${created.id}/script/check`, editor)).body;
+    expect(check.warnings).toEqual([expect.objectContaining({ line: 2, kind: "unknown_source", detail: `Trecho que a IA não recebeu: T${naoEnviado}` })]);
+    // tirando a citação inválida do texto, o aviso some
+    const limpo = lines.map((l: any, i: number) => (i === 2 ? { ...l, sources: [] } : l));
+    await rpc(EDITOR, "app_admin_podcast_save_script", { p_id: created.id, p_script: { lines: limpo, missing: [] } });
+    expect((await call(`${url}/${created.id}/script/check`, editor)).body.warnings.filter((w: any) => w.kind === "unknown_source")).toEqual([]);
+    await call(`${base}/${created.id}`, admin, { method: "DELETE" });
+  });
+});
+
+describe("Nome da fonte", () => {
+  it("equipe renomeia a fonte; aluno não; nome vazio ou fonte alheia é recusado", async () => {
+    const view = await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId });
+    const docx = view.sources.find((s: any) => s.kind === "docx");
+    const url = `${base}/${podcastId}/sources/${docx.id}`;
+    const patch = (token: string, body: unknown, u = url) => call(u, token, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    expect((await patch(student, { title: "Qualquer" })).status).toBe(403);
+    expect((await patch(editor, { title: "   " })).status).toBe(400);
+    expect((await patch(editor, { title: "x".repeat(201) })).status).toBe(400);
+    expect((await patch(editor, { title: "Nome" }, `${base}/${podcastId}/sources/00000000-0000-4000-8000-000000000001`)).status).toBe(404);
+    const ok = await patch(editor, { title: "  Resumo de eclâmpsia da equipe " });
+    expect(ok.status).toBe(200);
+    expect(ok.body.sources.find((s: any) => s.id === docx.id).title).toBe("Resumo de eclâmpsia da equipe");
+    // o roteiro não é mexido por causa do nome
+    expect(ok.body.status).toBe((await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId })).status);
+  });
+
+  it("nome de arquivo longo ou sem extensão também vira \"Documento N\" ao aluno; nome escolhido pela equipe vale, mesmo terminando em .pdf", async () => {
+    const created = await rpc(EDITOR, "app_admin_save_podcast", { p_podcast: { title: "Nomes", topic: "T", area: "CLINICA_MEDICA", target_minutes: 5 } });
+    const longo = `${"relatorio-confidencial-da-empresa-".repeat(8)}.pdf`; // > 200 caracteres: o corte tira o ".pdf"
+    expect((await postRaw(`${base}/${created.id}/sources/file`, editor, "application/pdf", makePdf(["Texto um sobre sulfato de magnesio 4 g IV no ataque, com conduta completa e todos os cuidados necessarios na enfermaria."]), longo)).status).toBe(201);
+    expect((await postRaw(`${base}/${created.id}/sources/file`, editor, "application/pdf", makePdf(["Texto dois sobre pre-eclampsia grave e criterios de gravidade conhecidos, com a conduta recomendada em cada situacao."]), "Marca-X-resumo")).status).toBe(201);
+    const view = await rpc(EDITOR, "app_admin_podcast", { p_id: created.id });
+    expect(view.sources[0].title).not.toMatch(/\.pdf$/); // cortado em 200
+    await dev.db.query(`update public.podcasts set status = 'published', published_at = now(), audio_path = 'x', approved_at = now(), script = $2::jsonb where id = $1`, [created.id, JSON.stringify({ lines: [{ speaker: "ANA", text: "oi", sources: [] }] })]);
+    const nomes = async () => (await rpc(STUDENT, "app_podcast", { p_id: created.id })).sources.map((x: any) => x.title);
+    expect(await nomes()).toEqual(["Documento 1", "Documento 2"]);
+    await dev.db.query(`update public.podcasts set status = 'draft' where id = $1`, [created.id]);
+    await rpc(EDITOR, "app_admin_podcast_rename_source", { p_source_id: view.sources[1].id, p_title: "PCDT.pdf" });
+    await dev.db.query(`update public.podcasts set status = 'published' where id = $1`, [created.id]);
+    expect(await nomes()).toEqual(["Documento 1", "PCDT.pdf"]);
+    await dev.db.query(`delete from public.podcasts where id = $1`, [created.id]);
   });
 });
 
@@ -490,6 +745,8 @@ describe("Áudio em partes, publicação e Flashcast", () => {
     const refused = await post(`${oa}/${podcastId}/audio/start`, editor, { provider: "gemini" });
     expect(refused.status).toBe(503);
     expect(refused.body.error).toMatch(/Voz indisponível.*indisponível por enquanto/);
+    expect(refused.body.error).not.toMatch(/PODCAST_TTS/);
+    expect(JSON.stringify(provs.tts)).not.toMatch(/PODCAST_TTS|technical|_API_KEY|ALLOW_EXTERNAL/); // o detalhe técnico não sai do servidor
     expect(oaCalls).toHaveLength(0);
 
     const before = (await rpc(EDITOR, "app_admin_podcast", { p_id: podcastId })).audio_path;
@@ -531,6 +788,69 @@ describe("Áudio em partes, publicação e Flashcast", () => {
     expect((await post(`${base}/${podcastId}/audio/finish`, editor, { job: again.body.job })).body.status).toBe("audio_ready");
   });
 
+  it("nova tentativa de uma parte já gerada não chama a voz de novo (não cobra duas vezes)", async () => {
+    const start = await post(`${oa}/${podcastId}/audio/start`, editor, {});
+    expect(start.status).toBe(200);
+    const before = oaCalls.length;
+    const first = await post(`${oa}/${podcastId}/audio/part`, editor, { job: start.body.job, index: 0 });
+    expect(first.status).toBe(200);
+    const gastas = oaCalls.length - before;
+    expect(gastas).toBeGreaterThan(0); // a primeira vez chama a voz
+    // a resposta "se perdeu" e o navegador tenta de novo: o servidor devolve a parte guardada
+    const again = await post(`${oa}/${podcastId}/audio/part`, editor, { job: start.body.job, index: 0 });
+    expect(again.status).toBe(200);
+    expect(again.body).toEqual(first.body);
+    expect(oaCalls.length - before).toBe(gastas);
+    // parte que ainda não existe continua sendo gerada normalmente
+    if (start.body.parts > 1) {
+      expect((await post(`${oa}/${podcastId}/audio/part`, editor, { job: start.body.job, index: 1 })).status).toBe(200);
+      expect(oaCalls.length - before).toBeGreaterThan(gastas);
+    }
+    // só o MP3 guardado (sem o registro de que a parte terminou) não conta como parte pronta
+    const key = `podcasts/${podcastId}/tmp/${start.body.job}`;
+    fs.rmSync(path.join(tmp, "podcasts", key, "part-0.json"));
+    const total = oaCalls.length;
+    expect((await post(`${oa}/${podcastId}/audio/part`, editor, { job: start.body.job, index: 0 })).status).toBe(200);
+    expect(oaCalls.length).toBeGreaterThan(total);
+  });
+
+  it("duas chamadas ao mesmo tempo para a mesma parte chamam a voz uma vez só; marcador de outra instância faz esperar", async () => {
+    process.env.PODCASTS_PART_POLL_MS = "100";
+    const rapido = await listen({ db, storage: files, lessons: lessonFiles, mockScript, tts: { env: { NODE_ENV: "test", CONTENT_HUB_AI_ALLOW_EXTERNAL: "1", OPENAI_API_KEY: OPENAI_KEY }, fetchImpl: (async (url: string, init: any) => {
+      oaCalls.push({ url, headers: init.headers, body: JSON.parse(init.body) });
+      await new Promise((r) => setTimeout(r, 300)); // a voz demora: dá tempo da segunda chamada chegar
+      return new Response(silence(400), { status: 200 });
+    }) as any } });
+    delete process.env.PODCASTS_PART_POLL_MS;
+    const start = await post(`${rapido}/${podcastId}/audio/start`, editor, {});
+    const before = oaCalls.length;
+    const [a, b] = await Promise.all([1, 2].map(() => post(`${rapido}/${podcastId}/audio/part`, editor, { job: start.body.job, index: 0 })));
+    expect([a.status, b.status]).toEqual([200, 200]);
+    expect(a.body).toEqual(b.body);
+    const gastas = oaCalls.length - before;
+    const manifest = JSON.parse(fs.readFileSync(path.join(tmp, "podcasts", `podcasts/${podcastId}/tmp/${start.body.job}/manifest.json`), "utf8"));
+    expect(gastas).toBe(manifest.parts[0].length); // a OpenAI cobra uma chamada por fala: a parte foi paga uma vez só
+    // o marcador "em geração" não fica para trás
+    const dir = path.join(tmp, "podcasts", `podcasts/${podcastId}/tmp/${start.body.job}`);
+    expect(fs.existsSync(path.join(dir, "part-0.lock"))).toBe(false);
+    expect(fs.existsSync(path.join(dir, "part-0.mp3"))).toBe(true);
+    // outra instância está gerando a parte 0 (marcador recente, sem os arquivos): esta espera os arquivos aparecerem e não chama a voz
+    const mp3 = fs.readFileSync(path.join(dir, "part-0.mp3"));
+    const json = fs.readFileSync(path.join(dir, "part-0.json"));
+    fs.rmSync(path.join(dir, "part-0.mp3"));
+    fs.rmSync(path.join(dir, "part-0.json"));
+    fs.writeFileSync(path.join(dir, "part-0.lock"), JSON.stringify({ at: Date.now() }));
+    setTimeout(() => {
+      fs.writeFileSync(path.join(dir, "part-0.json"), json);
+      fs.writeFileSync(path.join(dir, "part-0.mp3"), mp3);
+    }, 700);
+    const total = oaCalls.length;
+    const esperou = await post(`${rapido}/${podcastId}/audio/part`, editor, { job: start.body.job, index: 0 });
+    expect(esperou.status).toBe(200);
+    expect(esperou.body).toEqual(a.body);
+    expect(oaCalls.length).toBe(total);
+  });
+
   it("só o administrador publica; o aluno ouve, lê a transcrição e vê as fontes com as páginas", async () => {
     await expect(rpc(EDITOR, "app_admin_podcast_publish", { p_id: podcastId, p_published: true })).rejects.toThrow();
     const pub = await rpc(ADMIN, "app_admin_podcast_publish", { p_id: podcastId, p_published: true });
@@ -540,7 +860,10 @@ describe("Áudio em partes, publicação e Flashcast", () => {
     expect(await rpc(STUDENT, "app_podcasts", { p_area: "PEDIATRIA" })).toEqual([]);
     const ep = await rpc(STUDENT, "app_podcast", { p_id: podcastId });
     expect(ep.lines[0]).toEqual({ speaker: "ANA", text: "Hoje a conversa é sobre pré-eclâmpsia, só com o material da equipe." });
-    expect(ep.sources.find((s: any) => s.title === "PCDT pré-eclâmpsia.pdf")).toMatchObject({ kind: "pdf", pages: [1] });
+    // o aluno não lê o nome do arquivo enviado: PDF vira "Documento 1" (a posição da fonte); o DOCX foi renomeado pela equipe
+    expect(ep.sources.find((s: any) => s.kind === "pdf")).toMatchObject({ title: "Documento 1", pages: [1] });
+    expect(ep.sources.some((s: any) => /PCDT pré-eclâmpsia\.pdf|eclampsia\.docx/.test(s.title))).toBe(false);
+    expect(ep.sources.find((s: any) => s.kind === "docx")?.title).toBe("Resumo de eclâmpsia da equipe");
     expect((await call(`${base}/${podcastId}/audio/link`, student)).body).toEqual({ url: null });
     expect((await call(`${base}/${podcastId}/audio/file`, student)).status).toBe(200);
     // publicado não aceita mudança de fonte nem de roteiro
@@ -548,11 +871,29 @@ describe("Áudio em partes, publicação e Flashcast", () => {
     await expect(rpc(EDITOR, "app_admin_podcast_save_script", { p_id: podcastId, p_script: { lines: ep.lines } })).rejects.toThrow(/Despublique/);
   });
 
-  it("Flashcast: o MP3 aprovado vira o áudio da aula ligada", async () => {
-    const r = await post(`${base}/${podcastId}/flashcast`, editor, {});
+  it("Flashcast: só o administrador, com confirmação e com o episódio publicado; o MP3 vira o áudio da aula ligada", async () => {
+    const lessonMaterials = async () => (await dev.db.query<any>(`select count(*)::int n from public.lesson_materials where lesson_id = $1 and kind = 'flashcast'`, [lessonId])).rows[0].n;
+    // editor não copia áudio para a aula (nem com confirmação); aluno também não
+    expect((await post(`${base}/${podcastId}/flashcast`, editor, { confirm: true })).status).toBe(403);
+    expect((await post(`${base}/${podcastId}/flashcast`, student, { confirm: true })).status).toBe(403);
+    expect(await lessonMaterials()).toBe(0);
+    // administrador sem confirmar: nada acontece
+    const semConfirmar = await post(`${base}/${podcastId}/flashcast`, admin, {});
+    expect(semConfirmar.status).toBe(400);
+    expect(semConfirmar.body.error).toMatch(/confirm/i);
+    expect(await lessonMaterials()).toBe(0);
+    // episódio não publicado: recusa, mesmo para o administrador
+    await rpc(ADMIN, "app_admin_podcast_publish", { p_id: podcastId, p_published: false });
+    const naoPublicado = await post(`${base}/${podcastId}/flashcast`, admin, { confirm: true });
+    expect(naoPublicado.status).toBe(409);
+    expect(naoPublicado.body.error).toMatch(/publicado/);
+    expect(await lessonMaterials()).toBe(0);
+    await rpc(ADMIN, "app_admin_podcast_publish", { p_id: podcastId, p_published: true });
+    // administrador, confirmado e publicado: copia
+    const r = await post(`${base}/${podcastId}/flashcast`, admin, { confirm: true });
     expect(r.status).toBe(201);
     const m = r.body.lesson.materials.find((x: any) => x.kind === "flashcast");
-    expect(m).toMatchObject({ title: "Flashcast: Pré-eclâmpsia em 5 minutos", content_type: "audio/mpeg", has_file: true });
+    expect(m).toMatchObject({ file_title: "Flashcast: Pré-eclâmpsia em 5 minutos", content_type: "audio/mpeg", has_file: true });
     const row = await dev.db.query<any>(`select storage_path from public.lesson_materials where id = $1`, [m.id]);
     expect(row.rows[0].storage_path).toMatch(new RegExp(`^lessons/${lessonId}/flashcast-[0-9a-f]{16}\\.mp3$`));
     expect(await lessonFiles.exists(row.rows[0].storage_path)).toBe(true);

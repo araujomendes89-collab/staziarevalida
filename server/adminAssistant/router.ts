@@ -9,6 +9,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import type { Identity } from "../contentHub/infra";
 import { fetchLink, type ExtractedPage } from "../podcasts/extract";
 import type { AssistForm, AssistMode, AssistTab } from "../../src/shared/adminAssistant/types";
+import { ASSIST_ERRORS } from "../../src/shared/adminAssistant/errors";
 import { assistantStatus, runAssistant, type AssistMaterial, type EngineDeps } from "./engine";
 import { httpError, type TabAdapter, type Whoami } from "./types";
 import { ADAPTERS } from "./adapters";
@@ -31,6 +32,28 @@ type Authed = Request & { user?: Identity };
 const fail = (res: Response, status: number, error: string) => res.status(status).json({ error });
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 const forbidden = (error: unknown) => /restrito|sem acesso|administrador|42501|Acesso/i.test(message(error));
+
+/**
+ * A resposta de um erro (Q13). O que vem de `httpError` (tem código) é texto nosso, em português, para a tela. Qualquer outro erro é
+ * imprevisto (banco, rede, defeito) e traz texto técnico, muitas vezes em inglês: o detalhe vai para o registro do servidor e a tela
+ * recebe a frase padrão.
+ */
+function failFrom(res: Response, error: unknown, log?: (m: string) => void) {
+  const status = (error as { status?: unknown } | null)?.status;
+  if (typeof status === "number") return fail(res, status, message(error));
+  if (forbidden(error)) return fail(res, 403, message(error));
+  log?.(`[assistente] erro inesperado: ${message(error)}`.slice(0, 300));
+  return fail(res, 500, ASSIST_ERRORS.failed);
+}
+
+/** O que `fetchLink` escreve de propósito, em português; qualquer outro erro (rede, tempo esgotado, PDF quebrado) é técnico (Q13). */
+const LINK_OWN = /^(Só links https|O link |O conteúdo do link|Endereço interno|O arquivo não é)/;
+function linkMessage(error: unknown, log?: (m: string) => void) {
+  const text = message(error);
+  if (LINK_OWN.test(text)) return text;
+  log?.(`[assistente] link não lido: ${text}`.slice(0, 300));
+  return ASSIST_ERRORS.link;
+}
 
 const adapterFor = (tab: unknown): TabAdapter => {
   const adapter = typeof tab === "string" && Object.hasOwn(ADAPTERS, tab) ? ADAPTERS[tab as AssistTab] : undefined;
@@ -65,7 +88,7 @@ export async function readMaterial(raw: unknown, adapter: TabAdapter, deps: Admi
     try {
       pages = (await fetchLink(link, deps.fetchImpl ?? fetch, deps.checkHost)).pages;
     } catch (error) {
-      throw httpError(422, message(error));
+      throw httpError(422, linkMessage(error, deps.log));
     }
     origin = "link";
     url = link;
@@ -90,7 +113,8 @@ export function createAdminAssistantRouter(deps: AdminAssistantDeps | null, pend
       req.user = user;
       next();
     } catch (error) {
-      fail(res, 500, message(error));
+      deps?.log?.(`[assistente] não foi possível entrar na conta: ${message(error)}`.slice(0, 300));
+      fail(res, 500, ASSIST_ERRORS.failed);
     }
   });
 
@@ -105,8 +129,8 @@ export function createAdminAssistantRouter(deps: AdminAssistantDeps | null, pend
       const adapter = adapterFor(req.query.tab);
       if (!adapter.allowTab(await whoami(req))) throw httpError(403, "Acesso restrito.");
       res.json(await assistantStatus(deps!, adapter.tab, req.user!.id));
-    } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+    } catch (error) {
+      failFrom(res, error, deps?.log);
     }
   });
 
@@ -136,8 +160,8 @@ export function createAdminAssistantRouter(deps: AdminAssistantDeps | null, pend
         actorId: req.user!.id,
       });
       res.json(result);
-    } catch (error: any) {
-      fail(res, error?.status ?? (forbidden(error) ? 403 : 400), message(error));
+    } catch (error) {
+      failFrom(res, error, deps?.log);
     }
   });
 

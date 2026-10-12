@@ -16,6 +16,7 @@ import { createLessonsRouter } from "../../server/lessons/router";
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "lessons-"));
 const EDITOR = "00000000-0000-4000-8000-0000000000e1";
 const STUDENT = "00000000-0000-4000-8000-0000000000b1";
+const ADMIN = "00000000-0000-4000-8000-0000000000ad";
 const PDF = Buffer.from("%PDF-1.4\n1 0 obj << >> endobj\n%%EOF\n");
 const MP3 = Buffer.concat([Buffer.from("ID3"), Buffer.alloc(61)]);
 let dev: DevDatabase;
@@ -76,10 +77,11 @@ const postRaw = (url: string, token: string, type: string, body: Buffer) => call
 beforeAll(async () => {
   dev = await openDevDatabaseForTests(path.join(tmp, "db"));
   db = devContentDb(async () => dev);
-  await dev.db.query(`insert into auth.users (id, email) values ($1, 'ed@t.dev'), ($2, 'al@t.dev')`, [EDITOR, STUDENT]);
+  await dev.db.query(`insert into auth.users (id, email) values ($1, 'ed@t.dev'), ($2, 'al@t.dev'), ($3, 'ad@t.dev')`, [EDITOR, STUDENT, ADMIN]);
+  await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await dev.db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [EDITOR]);
   const save = async (lesson: Record<string, unknown>) => (await sqlAs(EDITOR, `select public.app_admin_save_lesson($1::jsonb) r`, [JSON.stringify(lesson)]))[0].r;
-  lessonId = (await save({ area: "PEDIATRIA", topic: "Bronquiolite", title: "Bronquiolite viral aguda", published: true })).id;
+  lessonId = (await save({ area: "PEDIATRIA", topic: "Bronquiolite", title: "Bronquiolite viral aguda", published: true, review_note: "Conferido no material da aula pela equipe." })).id;
   draftId = (await save({ area: "PEDIATRIA", topic: "Bronquiolite", title: "Rascunho" })).id;
   direct = await listen(localStorageDir(path.join(tmp, "files")));
   signed = await listen(signedStorage);
@@ -101,7 +103,7 @@ describe("Envio pelo servidor (banco local)", () => {
     expect((await postRaw(`${direct}/${lessonId}/materials?kind=flashcast`, editor, "application/pdf", PDF)).status).toBe(400);
     const r = await postRaw(`${direct}/${lessonId}/materials?kind=slides&title=Slides`, editor, "application/pdf", PDF);
     expect(r.status).toBe(201);
-    expect(r.body.materials).toEqual([expect.objectContaining({ kind: "slides", title: "Slides", has_file: true, size_bytes: PDF.length })]);
+    expect(r.body.materials).toEqual([expect.objectContaining({ kind: "slides", file_title: "Slides", title: "Material complementar", has_file: true, size_bytes: PDF.length })]);
   });
 
   it("aluno abre o material de aula publicada (sem endereço assinado, baixa pelo servidor); de rascunho, não", async () => {
@@ -133,9 +135,20 @@ describe("Envio direto ao depósito (Supabase)", () => {
     const done = await postJson(`${signed}/${lessonId}/materials/confirm`, editor, confirm);
     expect(done.status).toBe(201);
     const audio = done.body.materials.find((m: any) => m.kind === "flashcast");
-    expect(audio).toMatchObject({ title: "Flashcast", has_file: true });
+    expect(audio).toMatchObject({ file_title: "Flashcast", title: "Áudio Flashcast", has_file: true });
+    // áudio enviado pelo editor aguarda conferência: o aluno não ouve nem recebe o link assinado
+    expect(audio).toMatchObject({ review_status: "pending" });
+    expect((await call(`${signed}/materials/${audio.id}/link`, student)).status).toBe(404);
+    expect((await call(`${signed}/materials/${audio.id}/link`, editor)).status).toBe(200); // a equipe ouve para conferir
+    await sqlAs(ADMIN, `select public.app_admin_release_lesson_audio($1::uuid)`, [audio.id]);
     const link = await call(`${signed}/materials/${audio.id}/link`, student);
-    expect(link.body.url).toBe(`https://deposito.test/${prep.body.key}?expira=600`);
+    expect(link.body.url).toBe(`https://deposito.test/${prep.body.key}?expira=21600`); // A04: o áudio vale 6 horas, para ouvir a aula inteira
+    // PDF continua com o endereço curto de 10 minutos
+    const pdfKey = `lessons/${lessonId}/slides-0123456789abcdef.pdf`;
+    store.set(pdfKey, Buffer.from("%PDF-1.4"));
+    const withPdf = await postJson(`${signed}/${lessonId}/materials/confirm`, editor, { kind: "slides", key: pdfKey, title: "x", content_type: "application/pdf", size_bytes: 8 });
+    const pdf = withPdf.body.materials.find((m: any) => m.kind === "slides");
+    expect((await call(`${signed}/materials/${pdf.id}/link`, student)).body.url).toBe(`https://deposito.test/${pdfKey}?expira=600`);
     expect((await call(`${signed}/materials/abc/link`, student)).status).toBe(400);
   });
 });

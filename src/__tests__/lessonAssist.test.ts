@@ -114,8 +114,8 @@ describe("Assistente da aula", () => {
     expect(r.status).toBe(200);
     expect(r.body.suggestion).toMatchObject({ topic: "Bronquiolite", area: "PEDIATRIA", summary_pages: [3, 4] });
     expect(r.body.suggestion.key_points).toEqual([
-      { text: "Bronquiolite viral aguda: primeiro episódio de sibilância em menores de 2 anos, geralmente pelo VSR.", sources: [1], pages: [3] },
-      { text: "Tratamento de suporte: oxigênio se saturação abaixo de 90% e hidratação.", sources: [2], pages: [4] },
+      { text: "Bronquiolite viral aguda: primeiro episódio de sibilância em menores de 2 anos, geralmente pelo VSR.", sources: [1], pages: [3], excerpts: [{ id: 1, page: 3, text: PAGES[0].text }] },
+      { text: "Tratamento de suporte: oxigênio se saturação abaixo de 90% e hidratação.", sources: [2], pages: [4], excerpts: [{ id: 2, page: 4, text: PAGES[1].text }] },
     ]);
     expect(r.body.warnings).toEqual([]);
     expect(r.body.usage).toMatchObject({ provider: "mock" });
@@ -127,11 +127,46 @@ describe("Assistente da aula", () => {
     const r = await call(`${custom}/assist`, editor, { provider: "mock", pages: PAGES, instructions: "foque em conduta" });
     expect(r.status).toBe(200);
     expect(r.body.warnings).toEqual(['Ponto-chave 2: "2 mg" não está nos trechos citados.', "Ponto-chave 3 sem trecho citado."]);
-    expect(r.body.suggestion.key_points[2]).toEqual({ text: "Ponto sem fonte.", sources: [], pages: [] });
+    expect(r.body.suggestion.key_points[2]).toEqual({ text: "Ponto sem fonte.", sources: [], pages: [], excerpts: [] });
     expect(r.body.suggestion.missing).toEqual(["Critérios de internação não aparecem no material."]);
     // a IA recebeu só o material, numerado com a página, e o pedido da equipe
     expect(seenInputs[0]).toContain("[T1] (página 3)\nBronquiolite viral aguda");
     expect(seenInputs[0]).toContain("Pedido da equipe: foque em conduta");
+  });
+
+  it("A02: material grande - só vale citar trecho que foi enviado à IA; o resto vira 'sem trecho citado'", async () => {
+    // 120 páginas de ~900 caracteres; só as que falam do tema cabem no orçamento enviado à IA (80 mil caracteres)
+    const filler = "Texto de outro assunto sem relação com o tema pedido, apenas para encher a página do material. ".repeat(9);
+    const big = Array.from({ length: 120 }, (_, i) => ({ page: i + 1, text: i < 10 ? `Bronquiolite página ${i + 1}: ${filler}` : `Cardiologia página ${i + 1}: ${filler}` }));
+    const sent: number[] = [];
+    let unread = 0;
+    const url = await listen((req) => {
+      for (const m of req.input.matchAll(/\[T(\d+)\]/g)) sent.push(Number(m[1]));
+      const all = Array.from({ length: 140 }, (_, i) => i + 1);
+      unread = all.find((id) => !sent.includes(id))!;
+      return { title: "Aula", topic: "Bronquiolite", area: "PEDIATRIA", summary: "Resumo.", summary_sources: [sent[0], unread], key_points: [{ text: "Ponto lido.", sources: [sent[0]] }, { text: "Ponto de trecho que a IA nem leu.", sources: [unread] }], missing: [] };
+    });
+    const r = await call(`${url}/assist`, editor, { provider: "mock", pages: big, topic: "Bronquiolite", area: "PEDIATRIA" });
+    expect(r.status).toBe(200);
+    expect(r.body.used_chunks).toBeLessThan(r.body.total_chunks); // material grande: só parte foi para a IA
+    expect(unread).toBeGreaterThan(0);
+    expect(r.body.suggestion.key_points[0].sources).toEqual([sent[0]]);
+    expect(r.body.suggestion.key_points[1]).toMatchObject({ sources: [], pages: [], excerpts: [] });
+    expect(r.body.warnings).toEqual(["Ponto-chave 2 sem trecho citado."]);
+    // o resumo cita um trecho lido e um que não foi: só o lido conta
+    expect(r.body.suggestion.summary_pages.length).toBe(1);
+  });
+
+  it("A02: cada trecho citado volta com a página e o começo do texto, para a equipe conferir", async () => {
+    const r = await call(`${base}/assist`, editor, { provider: "mock", pages: PAGES, topic: "Bronquiolite", area: "PEDIATRIA" });
+    expect(r.body.suggestion.key_points[1].excerpts).toEqual([{ id: 2, page: 4, text: PAGES[1].text }]);
+    expect(r.body.suggestion.summary_excerpts.map((e: any) => e.page)).toEqual([3, 4]);
+    const longPage = [{ page: 7, text: `Início do trecho. ${"palavra ".repeat(100)}` }];
+    const l = await call(`${base}/assist`, editor, { provider: "mock", pages: longPage });
+    const ex = l.body.suggestion.key_points[0].excerpts[0];
+    expect(ex.page).toBe(7);
+    expect(ex.text.length).toBeLessThanOrEqual(301);
+    expect(ex.text.startsWith("Início do trecho.")).toBe(true);
   });
 
   it("texto colado e link (página vira texto) também servem de material", async () => {

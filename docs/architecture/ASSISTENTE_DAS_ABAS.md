@@ -102,7 +102,9 @@ o liga ao seu formulário. As Estações vão montar o mesmo painel, com "Aplica
 
 - **Corpo do `run`:** `{ tab, mode, form, fields?, field?, message?, material? }`, com `material` = `{ pages }`, `{ text }` ou `{ url }`; o formulário vai como
   está na tela, inclusive o não salvo. Limites: material de 80 a 400 mil caracteres (até 3.000 páginas), formulário até 100 mil, pedido até 1.000; link só
-  https, lido por `fetchLink` (barra endereço interno). Erros: 400, 401, 403, 404, 413, 422, 429 (teto), 503 (IA indisponível), 502 "O assistente falhou: …".
+  https, lido por `fetchLink` (barra endereço interno). Erros: 400, 401, 403, 404, 413, 422, 429 (teto) e 503 (IA indisponível) trazem o texto que o servidor escreve para a tela; 502 (falha da IA ou
+  resposta fora do formato) e 500 (erro imprevisto) trazem a frase padrão "O assistente não conseguiu responder agora. Tente de novo em instantes." e o detalhe técnico
+  fica no registro do servidor (Q13). O painel mostra só os códigos acima; qualquer outro erro vira a frase padrão e o detalhe vai para o console do navegador.
 - **Pedido à IA:** regras no sistema e dados em `<item>`, `<material>`, `<fontes_oficiais>` e `<pedido>`, com marcas `[I…]` (item), `[T…]` (material) e
   `[F…]` (oficial: até 6, por palavras e, com a busca por significado liberada, pelo vetor). Instrução escondida em item, material ou fonte não é
   seguida; o `<pedido>` é da própria pessoa e vale dentro das regras (C1).
