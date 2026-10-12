@@ -118,7 +118,8 @@ describe("Pedidos, propostas e trilha", () => {
         expect((await env.sqlAs(uid, `select id from public.${t}`)).length, `${t} lido pela equipe/revisor da área`).toBeGreaterThan(0);
       }
       // Leva 4 (9830): o revisor de OUTRA área não lê a proposta nem a trilha do rascunho de Pediatria; o pedido (sem área) continua aberto a revisores
-      expect((await env.sqlAs(USERS.REVISOR_CM, `select id from public.${t}`)).length, `${t} lido pelo revisor de outra área`).toBe(t === "staziamed_requests" ? 1 : 0);
+      const outra = t === "staziamed_requests" ? await env.sqlAs(USERS.REVISOR_CM, `select id from public.${t}`) : await env.sqlAs(USERS.REVISOR_CM, `select id from public.${t} where draft_id = $1`, [draft.id]);
+      expect(outra.length, `${t} lido pelo revisor de outra área`).toBe(t === "staziamed_requests" ? 1 : 0);
     }
     // escrita só pelas funções do banco: nem a equipe grava direto
     await expect(env.sqlAs(USERS.ADMIN, `insert into public.staziamed_requests (created_by, mode, count) values ($1, 'tema', 1)`, [USERS.ADMIN])).rejects.toThrow(/row-level security/);
