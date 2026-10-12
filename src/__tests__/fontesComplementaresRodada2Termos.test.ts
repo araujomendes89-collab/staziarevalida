@@ -2,7 +2,7 @@
 /**
  * Fontes complementares, rodada de correções (C): a lista de termos das fontes complementares indisponível.
  *  - loadComplementarTerms nunca guarda falha nem resposta inválida no cache; sem lista conhecida LANÇA ComplementarTermsUnavailable (503);
- *    com uma lista boa anterior (até 6 h) usa essa, e avisa no log em português.
+ *    dentro dos 60 s vale o cache; depois disso a falha tenta de novo uma vez e, se continuar, lança (nunca usa lista vencida, nem vazia).
  *  - Cada chamador age do lado seguro: Tutor (texto, voz, ferramentas), roteiro de podcast, assistente de aula, análise e reanálise
  *    de questões. Banco normal: tudo como antes.
  */
@@ -82,10 +82,10 @@ describe("loadComplementarTerms: nunca finge que a biblioteca está vazia", () =
     // o banco volta ao normal logo em seguida (dentro dos 60 s): a próxima chamada pergunta de novo e recebe a lista boa
     resposta = [TITULO];
     expect(await loadComplementarTerms(db as any, 5000, log)).toEqual([TITULO]);
-    expect(f.chamadas).toBe(2);
+    expect(f.chamadas).toBe(3); // 2 tentativas que falharam (nada guardado) + a seguinte, que pergunta de novo
   });
 
-  it("falha depois de uma lista boa vencida: usa a última lista boa e avisa; a falha não vai para o cache", async () => {
+  it("falha DENTRO dos 60 s: continua usando a lista em cache (nem pergunta ao banco)", async () => {
     let falhar = false;
     const { db, log, f } = listaFalsa(() => {
       if (falhar) throw new Error("banco fora do ar");
@@ -93,24 +93,62 @@ describe("loadComplementarTerms: nunca finge que a biblioteca está vazia", () =
     });
     await loadComplementarTerms(db as any, 0, log);
     falhar = true;
-    expect(await loadComplementarTerms(db as any, 120_000, log)).toEqual([TITULO]);
-    expect(f.logs.join("\n")).toMatch(/usando a última lista boa/);
-    // a falha não renovou o cache: a chamada seguinte tenta o banco de novo
-    falhar = false;
-    const antes = f.chamadas;
-    expect(await loadComplementarTerms(db as any, 121_000, log)).toEqual([TITULO]);
-    expect(f.chamadas).toBe(antes + 1);
+    expect(await loadComplementarTerms(db as any, 59_000, log)).toEqual([TITULO]);
+    expect(f.chamadas).toBe(1);
   });
 
-  it("falha e a última lista boa é de mais de 6 horas atrás: lança", async () => {
+  it("falha DEPOIS dos 60 s, nas duas tentativas: LANÇA (não usa lista vencida), com aviso em português no log", async () => {
     let falhar = false;
-    const { db, log } = listaFalsa(() => {
+    const { db, log, f } = listaFalsa(() => {
       if (falhar) throw new Error("banco fora do ar");
       return [TITULO];
     });
     await loadComplementarTerms(db as any, 0, log);
     falhar = true;
+    const antes = f.chamadas;
+    const erro = await loadComplementarTerms(db as any, 61_000, log).catch((e) => e);
+    expect(erro).toBeInstanceOf(ComplementarTermsUnavailable);
+    expect(f.chamadas - antes).toBe(2); // pergunta e tenta de novo uma vez
+    expect(f.logs.join("\n")).toMatch(/lista vencida não é usada|conferência foi suspensa/);
+  });
+
+  it("lista VAZIA em cache + falha depois dos 60 s = indisponível (a equipe pode ter cadastrado uma fonte nesse tempo)", async () => {
+    let falhar = false;
+    const { db, log } = listaFalsa(() => {
+      if (falhar) throw new Error("banco fora do ar");
+      return [];
+    });
+    expect(await loadComplementarTerms(db as any, 0, log)).toEqual([]);
+    falhar = true;
+    expect(await loadComplementarTerms(db as any, 30_000, log)).toEqual([]); // dentro do prazo: lista vazia em cache vale
+    await expect(loadComplementarTerms(db as any, 90_000, log)).rejects.toBeInstanceOf(ComplementarTermsUnavailable);
     await expect(loadComplementarTerms(db as any, 7 * 3600_000, log)).rejects.toBeInstanceOf(ComplementarTermsUnavailable);
+  });
+
+  it("depois dos 60 s a primeira tentativa falha e a segunda dá certo: devolve a lista NOVA e a guarda", async () => {
+    let n = 0;
+    let atual: string[] = [];
+    const { db, log, f } = listaFalsa(() => {
+      n++;
+      if (n === 2) throw new Error("falha passageira");
+      return atual;
+    });
+    expect(await loadComplementarTerms(db as any, 0, log)).toEqual([]); // chamada 1
+    atual = [TITULO]; // a equipe cadastrou a fonte
+    expect(await loadComplementarTerms(db as any, 61_000, log)).toEqual([TITULO]); // chamada 2 falha, chamada 3 traz a lista nova
+    expect(f.chamadas).toBe(3);
+    expect(await loadComplementarTerms(db as any, 70_000, log)).toEqual([TITULO]); // guardada
+    expect(f.chamadas).toBe(3);
+  });
+
+  it("resposta inválida depois dos 60 s também é tentada de novo uma vez e, se continuar, lança", async () => {
+    let boa = true;
+    const { db, log, f } = listaFalsa(() => (boa ? [TITULO] : { erro: "x" }));
+    await loadComplementarTerms(db as any, 0, log);
+    boa = false;
+    const antes = f.chamadas;
+    await expect(loadComplementarTerms(db as any, 61_000, log)).rejects.toBeInstanceOf(ComplementarTermsUnavailable);
+    expect(f.chamadas - antes).toBe(2);
   });
 });
 
