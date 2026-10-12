@@ -194,6 +194,12 @@ describe("Treino em dupla · tokens novos (dupla.css)", () => {
     expect(contrast("#FFFFFF", resolve(v, "--score-partial"))).toBeLessThan(AA);
   });
 
+  it("nenhuma cor hexadecimal fora de dupla.css nos arquivos desta tarefa (só tokens)", () => {
+    for (const file of ["src/novo/ds/areas.js", "src/novo/ds/format.js", "src/novo/app/dupla/labels.js", "src/novo/ds/components/core/Badge.jsx"]) {
+      expect(read(file), file).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+    }
+  });
+
   it("styles.css importa dupla.css logo depois de semantic.css", () => {
     const imports = [...read("src/novo/ds/styles.css").matchAll(/@import\s+['"]([^'"]+)['"]/g)].map((m) => m[1]);
     expect(imports.indexOf("./tokens/semantic.css")).toBeGreaterThanOrEqual(0);
@@ -288,6 +294,12 @@ describe("Treino em dupla · formato, áreas e rótulos", () => {
     expect(formatDecimal(61.4, 1)).toBe("61,4");
     expect(formatDecimal(72, 0)).toBe("72");
     expect(formatDecimal(0)).toBe("0,00");
+    // zero nunca aparece com sinal ("-0,00"), nem quando o arredondamento zera um valor negativo pequeno
+    expect(formatDecimal(-0)).toBe("0,00");
+    expect(formatDecimal(-0.001)).toBe("0,00");
+    expect(formatDecimal(-0.4, 0)).toBe("0");
+    expect(formatDecimal(-1.5)).toBe("-1,50");
+    expect(formatDecimal(1234.5)).toBe("1.234,50");
     // sem número não se inventa zero
     expect(formatDecimal(null as unknown as number)).toBe("—");
     expect(formatDecimal(undefined as unknown as number)).toBe("—");
