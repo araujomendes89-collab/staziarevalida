@@ -99,6 +99,51 @@ create trigger ch_sources_audience_log after insert or update on public.ch_sourc
 -- Texto normalizado para comparar: sem etiquetas HTML, sem entidades nem %20, NFKC, sem marcas combinantes (acento solto),
 -- sem caracteres de largura zero, com letras parecidas do cirílico e do grego trocadas pelas latinas, sem pontuação, sem caixa,
 -- com espaço simples. A mesma normalização vale no servidor (server/contentHub/complementarGuard.ts).
+-- Entidades HTML decodificadas como no servidor (complementarGuard.ts, normalizeKey): numéricas decimais (&#97;) e hexadecimais
+-- (&#x61;, &#X61;) viram o caractere; as nomeadas comuns (nbsp amp quot lt gt apos shy) também; qualquer outra, ou um código
+-- impossível (zero, acima de U+10FFFF, metade de par substituto), vira espaço. Uma passada só: "&amp;#97;" vira "&#97;", não "a".
+create or replace function public.ch_decode_entities(p_text text) returns text
+  language plpgsql immutable set search_path = ''
+as $$
+declare
+  v_rest text := coalesce(p_text, '');
+  v_out text := '';
+  v_m text[];
+  v_e text;
+  v_digits text;
+  v_code integer;
+  v_chr text;
+begin
+  if position('&' in v_rest) = 0 then return v_rest; end if;
+  loop
+    v_m := regexp_match(v_rest, '^(.*?)&(#[0-9]+|#[xX][0-9a-fA-F]+|[a-zA-Z]+);');
+    exit when v_m is null;
+    v_e := v_m[2];
+    v_chr := ' ';
+    if v_e like '#%' then
+      if substr(v_e, 2, 1) in ('x', 'X') then
+        v_digits := ltrim(substr(v_e, 3), '0');
+        if v_digits = '' then v_code := 0;
+        elsif char_length(v_digits) > 6 then v_code := null;
+        else v_code := ('x' || lpad(v_digits, 8, '0'))::bit(32)::integer; end if;
+      else
+        v_digits := ltrim(substr(v_e, 2), '0');
+        if v_digits = '' then v_code := 0;
+        elsif char_length(v_digits) > 7 then v_code := null;
+        else v_code := v_digits::integer; end if;
+      end if;
+      if v_code is not null and v_code between 1 and 1114111 and v_code not between 55296 and 57343 then v_chr := chr(v_code); end if;
+    else
+      v_chr := case lower(v_e) when 'nbsp' then ' ' when 'amp' then '&' when 'quot' then '"' when 'lt' then '<' when 'gt' then '>'
+                               when 'shy' then '' when 'apos' then '''' else ' ' end;
+    end if;
+    v_out := v_out || v_m[1] || v_chr;
+    v_rest := substr(v_rest, char_length(v_m[1]) + char_length(v_e) + 3);
+  end loop;
+  return v_out || v_rest;
+end
+$$;
+
 create or replace function public.ch_text_key(p_text text) returns text
   language sql stable set search_path = ''
 as $$
@@ -106,8 +151,7 @@ as $$
     translate(
       lower(regexp_replace(
         normalize(normalize(
-          regexp_replace(regexp_replace(regexp_replace(coalesce(p_text, ''), '<[^>]*>', '', 'g'),
-                         '&(#[0-9]+|#x[0-9a-fA-F]+|[a-zA-Z]+);', ' ', 'g'),
+          regexp_replace(public.ch_decode_entities(regexp_replace(coalesce(p_text, ''), '<[^>]*>', '', 'g')),
                          '%[0-9a-fA-F]{2}', ' ', 'g'),
           NFKC), NFD),
         '[̀-ͯ​-‏‪-‮⁠-⁤﻿­]', '', 'g')),
@@ -1109,6 +1153,7 @@ begin
   revoke execute on function public.ch_worker_file_sha(text, text) from public, anon, authenticated;
   revoke execute on function public.app_ch_set_source_aliases(uuid, text[]) from public, anon;
   revoke execute on function public.ch_complementar_hit(text, text) from public, anon, authenticated;
+  revoke execute on function public.ch_decode_entities(text) from public, anon, authenticated;
   revoke execute on function public.ch_source_item_hit(jsonb) from public, anon, authenticated;
   revoke execute on function public.ch_student_sources(jsonb) from public, anon, authenticated;
   revoke execute on function public.ch_student_text(text, text) from public, anon, authenticated;

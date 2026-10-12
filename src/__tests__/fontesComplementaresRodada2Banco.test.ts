@@ -10,6 +10,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
 import { PGlite } from "@electric-sql/pglite";
+import { normalizeKey } from "../../server/contentHub/complementarGuard";
 
 const ROOT = path.resolve(__dirname, "../..");
 const MIGRATIONS = path.join(ROOT, "supabase/migrations");
@@ -113,5 +114,52 @@ describe("(A) marcas guardadas dos anexos acompanham o nível e a classe da font
     expect(await marcas()).toEqual({ material: false, aula: false, atualizacao: false });
     await sql(`insert into public.ch_sources (title, organ, kind, url, version, authority_level, sha256) values ($1, 'Editora Beta de Pediatria (teste)', 'final', $2, '2026', 'E', $3)`, [FONTE_TITULO, FONTE_URL, SHA]);
     expect(await marcas()).toEqual({ material: true, aula: true, atualizacao: true });
+  });
+});
+
+describe("(D) o banco e o servidor dão a MESMA chave de comparação para os mesmos textos", () => {
+  const CASOS: Array<[string, string]> = [
+    ["texto simples", "Sangue nos Olhos — Pediatria"],
+    ["acentos", "Manual de Pediatria: Coração, Pulmão e Ação"],
+    ["etiquetas HTML", "<b>Sangue</b> nos <i>Olhos</i> — Pediatria"],
+    ["entidade numérica decimal", "S&#97;ngue nos Olhos — Pediatria"],
+    ["entidade numérica hexadecimal minúscula", "S&#x61;ngue nos Olhos"],
+    ["entidade numérica hexadecimal maiúscula", "S&#X41;NGUE nos Olhos"],
+    ["entidade com zeros à esquerda", "S&#x0000061;ngue &#0000097;qui"],
+    ["entidade nomeada &amp;", "Saúde &amp; Sangue nos Olhos"],
+    ["entidade nomeada &nbsp;", "Sangue&nbsp;nos&nbsp;Olhos"],
+    ["entidades &quot; &lt; &gt; &apos;", "&quot;Sangue&quot; &lt;nos&gt; &apos;Olhos&apos;"],
+    ["entidade &shy; some", "San&shy;gue nos Olhos"],
+    ["entidade nomeada em maiúsculas", "Sangue&NBSP;nos&AMP;Olhos"],
+    ["entidade desconhecida", "Sangue&foo;nos Olhos &bar;"],
+    ["entidade que decodifica para largura zero", "San&#x200B;gue nos Olhos"],
+    ["entidade que decodifica para acento solto", "Sangue nos Ol&#x0301;hos"],
+    ["entidade de código impossível", "Sangue&#99999999999;nos&#x110000;Olhos&#0;fim&#xD800;x"],
+    ["entidade dupla não se decodifica duas vezes", "S&amp;#97;ngue nos Olhos"],
+    ["e comercial solta e ponto e vírgula", "Tom & Jerry; e S&ngue"],
+    ["%20 e %xx", "Sangue%20nos%20Olhos%2Fpdf"],
+    ["largura zero", "San\u200bgue\u200c nos\u200d Ol\u2060hos\ufeff"],
+    ["hífen suave", "San\u00adgue nos Olhos"],
+    ["acento solto (combinante)", "Sangue nos Olhos Ped\u0069\u0301atria"],
+    ["decomposto (NFD)", "Pediatria Ação".normalize("NFD")],
+    ["largura total (NFKC)", "Ｓａｎｇｕｅ ｎｏｓ Ｏｌｈｏｓ"],
+    ["ligadura e fração (NFKC)", "ﬁlho ½ dose"],
+    ["homóglifos do cirílico", "Sаngue nоs Оlhоs — Рediatriа"],
+    ["homóglifos do grego", "Sangυe nοs Οlhοs"],
+    ["cirílico em maiúsculas", "СANGUE NОS ОLHОS"],
+    ["pontuação e números", "Manual 2026/2027 (v.3) - Cap. 12"],
+    ["vazio e espaços", "   "],
+  ];
+  for (const [nome, texto] of CASOS) {
+    it(nome, async () => {
+      const banco = (await sql<{ k: string }>(`select public.ch_text_key($1) k`, [texto]))[0].k;
+      expect(banco).toBe(normalizeKey(texto));
+    });
+  }
+  it("a entidade numérica não escapa do filtro do banco: 'S&#97;ngue nos Olhos' é igual ao título cadastrado", async () => {
+    await sql(`insert into public.ch_sources (title, organ, kind, authority_level) values ('Sangue nos Olhos — Pediatria', 'Curso Gama de Pediatria (teste)', 'final', 'E')`);
+    expect((await sql(`select public.ch_complementar_hit($1) h`, ["S&#97;ngue nos Olhos — Pediatria"]))[0].h).toBe(true);
+    expect((await sql(`select public.ch_complementar_hit($1) h`, ["S&#x61;ngue nos Olhos — Pediatria"]))[0].h).toBe(true);
+    expect((await sql(`select public.ch_complementar_hit($1) h`, ["Sangue nos Olhos — Cardiologia"]))[0].h).toBe(false);
   });
 });
