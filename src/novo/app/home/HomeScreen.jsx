@@ -208,9 +208,10 @@ function HomeActive({ go, mobile, home, plan, startTask, toggleTask, busy, play 
                 area={areaLabel(topic.area)}
                 title={topic.topic}
                 questions={topic.questions}
+                questionsLabel={topic.questions === 0 && topic.ineditas > 0 ? `${topic.ineditas} inéditas StaziaMed` : undefined}
                 cards={0}
                 mastery={percent(topic.correct, topic.attempts)}
-                onClick={() => go("questoes", { tema: topic.topic, area: topic.area, status: "all" })}
+                onClick={() => go("questoes", { tema: topic.topic, area: topic.area, status: "all", ...(topic.questions === 0 && topic.ineditas > 0 ? { prova: "staziamed" } : {}) })}
               />
             ))}
           </div>

@@ -180,3 +180,31 @@ describe("Fonte desatualizada", () => {
     expect((await q(out.question_id)).retired_at).toBeNull(); // só alerta: recolher é decisão do administrador
   });
 });
+
+describe("O que o aluno recebe da Questão StaziaMed publicada", () => {
+  it("a correção traz as fontes oficiais com o trecho SÓ depois de responder; a coluna sources nunca traz o trecho; o Início separa as inéditas", async () => {
+    const r = await readyDraft(env);
+    const out = await publish(r.id, await approve(r.id));
+    const [{ topic }] = await env.sql<{ topic: string }>(`select topic from public.draft_questions where id = $1`, [r.id]);
+    // antes de responder: nada de gabarito, de trecho nem de fonte
+    const view = (await env.sqlAs(USERS.PRO, `select public.practice_question_view($1) as v`, [out.question_id]))[0].v;
+    expect(JSON.stringify(view)).not.toMatch(/amoxicilina 90|quote|official_sources|correct/);
+    expect((await env.sqlAs(USERS.PRO, `select public.practice_correction_view($1, 'A') as v`, [out.question_id]))[0].v).toBeNull();
+    await expect(env.sqlAs(USERS.PRO, `select source_quotes from public.questions where id = $1`, [out.question_id])).rejects.toThrow(/permission denied/);
+    const s = await env.rpc<{ session_id: string }>(USERS.PRO, "app_start_session", { p_kind: "questoes", p_filters: { exam_id: "staziamed", topic }, p_count: 200 });
+    // errou de propósito (a correta é a A): o tema entra nos temas prioritários do Início
+    const answered = await env.rpc<any>(USERS.PRO, "app_answer_question", { p_session_id: s.session_id, p_question_id: out.question_id, p_option: "B" });
+    expect(answered.is_correct).toBe(false);
+    expect(answered.origin).toBe("staziamed");
+    expect(answered.official_sources).toHaveLength(1);
+    expect(answered.official_sources[0]).toMatchObject({ source: r.title, organ: "Ministério da Saúde (teste)", version: "2026", page: 7, quote: "indica-se amoxicilina 90 mg/kg/dia por 10 dias" });
+    expect(answered.sources).toEqual([{ title: r.title, organ: "Ministério da Saúde (teste)", level: "A", page: 7, version: "2026" }]);
+    expect(answered.inep_intent).toBeNull();
+    // o Início: o tema com erro mostra as oficiais e, separado, as inéditas
+    const home = await env.rpc<any>(USERS.PRO, "app_home", {});
+    const t = home.priority_topics.find((x: any) => x.topic === topic);
+    expect(t).toBeTruthy();
+    expect(t.ineditas).toBeGreaterThanOrEqual(1);
+    expect(t.questions).toBeGreaterThanOrEqual(0);
+  });
+});

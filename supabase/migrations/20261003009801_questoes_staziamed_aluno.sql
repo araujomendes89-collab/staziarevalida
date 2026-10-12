@@ -42,7 +42,8 @@ on conflict (id) do nothing;
 alter table public.questions
   add column if not exists origin text not null default 'official' check (origin in ('official', 'staziamed')),
   add column if not exists retired_at timestamptz,                -- recolhida: fora do sorteio (quem respondeu continua vendo)
-  add column if not exists support jsonb;                         -- { type, title, rows: [{ label, value }] }; nulo nas oficiais
+  add column if not exists support jsonb,                        -- { type, title, rows: [{ label, value }] }; nulo nas oficiais
+  add column if not exists source_quotes jsonb;                   -- as citações com o trecho (só a correção, depois de responder); nunca liberada ao aluno por coluna
 create index if not exists questions_origin_idx on public.questions (origin);
 
 -- O que o aluno lê direto na tabela de uma Questão StaziaMed é só título, órgão, nível, página, link e versão de cada fonte:
@@ -194,7 +195,8 @@ as $$
     'inep_intent', case when 'inep_intent' = any (h.campos) then null else q.inep_intent end,
     'sources', public.ch_student_sources(q.sources),
     'origin', q.origin,
-    'support', q.support
+    'support', q.support,
+    'official_sources', case when q.origin = 'staziamed' then q.source_quotes end
   )
   from public.questions q
   cross join lateral (
@@ -517,7 +519,7 @@ as $$
   )
 $$;
 
--- ---------------------------------------------------------------- Início: questões do tema prioritário contam só o treino oficial
+-- ---------------------------------------------------------------- Início: questões do tema prioritário contam só o treino oficial; as Questões Inéditas do tema vêm separadas
 create or replace function public.app_home() returns jsonb
   language sql stable set search_path = ''
 as $$
@@ -555,13 +557,15 @@ as $$
     -- entram no treino (sem anulada e sem as que citam figura ainda sem imagem: a mesma regra de practice_pool) (Q15).
     'priority_topics', coalesce((
       select jsonb_agg(jsonb_build_object('area', p.area, 'topic', p.topic, 'pending', p.pending, 'attempts', p.attempts,
-                                          'correct', p.correct, 'questions', p.questions)
+                                          'correct', p.correct, 'questions', p.questions, 'ineditas', p.ineditas)
                        order by p.accuracy, p.pending desc, p.topic)
       from (
         select e.area, e.topic, count(*)::int as pending, st.attempts, st.correct, st.accuracy,
                (select count(*)::int from public.questions q
                 where q.origin = 'official' and q.area = e.area and q.topic = e.topic and q.status <> 'annulled'
-                  and not (q.needs_image and jsonb_array_length(q.images) = 0)) as questions
+                  and not (q.needs_image and jsonb_array_length(q.images) = 0)) as questions,
+               (select count(*)::int from public.questions q
+                where q.origin = 'staziamed' and q.retired_at is null and q.area = e.area and q.topic = e.topic and public.has_ineditas()) as ineditas
         from public.my_error_notebook e
         join public.my_topic_stats st on st.area = e.area and st.topic = e.topic
         where e.status = 'para_revisar'

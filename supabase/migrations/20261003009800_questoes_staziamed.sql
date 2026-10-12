@@ -1301,16 +1301,16 @@ begin
       raise exception 'O gabarito mudou: recolha esta questão e publique como nova.' using errcode = '22023';
     end if;
     update public.questions set area = (v ->> 'area')::public.med_area, topic = v ->> 'topic', statement = v ->> 'statement', options = v -> 'options',
-           expected_conduct = v ->> 'expected_conduct', sources = v -> 'sources', support = nullif(v -> 'support', 'null'::jsonb), retired_at = null
+           expected_conduct = v ->> 'expected_conduct', sources = v -> 'sources', support = nullif(v -> 'support', 'null'::jsonb), source_quotes = d.source_citations, retired_at = null
      where id = q.id returning id, code, number into v_id, v_code, v_num;
     v_action := 'republicada';
   else
     v_num := nextval('public.staziamed_question_seq');
     v_id := 'staziamed_q' || lpad(v_num::text, 4, '0');
     v_code := 'STZ-' || lpad(v_num::text, 4, '0');
-    insert into public.questions (id, code, exam_id, number, area, topic, statement, options, correct_option, status, expected_conduct, inep_intent, sources, origin, support)
+    insert into public.questions (id, code, exam_id, number, area, topic, statement, options, correct_option, status, expected_conduct, inep_intent, sources, origin, support, source_quotes)
     values (v_id, v_code, 'staziamed', v_num, (v ->> 'area')::public.med_area, v ->> 'topic', v ->> 'statement', v -> 'options', v ->> 'correct_option',
-            'valid', v ->> 'expected_conduct', null, v -> 'sources', 'staziamed', nullif(v -> 'support', 'null'::jsonb));
+            'valid', v ->> 'expected_conduct', null, v -> 'sources', 'staziamed', nullif(v -> 'support', 'null'::jsonb), d.source_citations);
     v_action := 'publicada';
   end if;
   update public.draft_questions set question_id = v_id, published_hash = d.content_hash, published_at = now(), published_by = (select auth.uid()) where id = d.id;
