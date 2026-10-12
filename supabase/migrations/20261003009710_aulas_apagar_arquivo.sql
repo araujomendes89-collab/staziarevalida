@@ -33,6 +33,10 @@
 --     nunca permite apagar).
 --   * Os lotes são de 50 caminhos (o servidor repete até acabar), para que o prazo não corra enquanto o lote espera a vez.
 --   * As funções novas só existem para o serviço (service_role).
+--   * (3a rodada) Prazos com clock_timestamp() lido DEPOIS de obter o trava do caminho (now() é o início da transação e fica velho
+--     se a espera foi longa). Ordem de travas igual em reserva, renovação e gatilho: 1o caminho, 2o linha da fila. Se a confirmação
+--     for recusada por código velho depois de o arquivo ter sido apagado, ch_worker_lesson_files_audit só anota o apagamento no
+--     Registro, sem mexer na reserva nova.
 --   * Esta migração exige a 9620 (Fonte complementar, que cria ch_file_holds, a retenção de arquivos): sem ela, para com aviso.
 
 do $$
@@ -118,7 +122,7 @@ begin
   if tg_op = 'UPDATE' and new.storage_path is not distinct from old.storage_path then return new; end if;
   perform pg_advisory_xact_lock(hashtextextended('lesson-file:' || new.storage_path, 0));
   if exists (select 1 from public.lesson_files_pending_delete q
-              where q.storage_path = new.storage_path and q.state = 'deleting' and q.reserved_at > now() - interval '10 minutes') then
+              where q.storage_path = new.storage_path and q.state = 'deleting' and q.reserved_at > clock_timestamp() - interval '10 minutes') then
     raise exception 'Este arquivo está sendo apagado do depósito neste momento. Envie o arquivo de novo em instantes.' using errcode = '55006';
   end if;
   return new;
@@ -145,24 +149,35 @@ create or replace function public.ch_worker_lesson_files_reserve(p_actor uuid de
 as $$
 declare
   r record;
+  v_linha record;
   v_items jsonb := '[]'::jsonb;
   v_token uuid;
+  v_agora timestamptz;
 begin
+  -- ORDEM DE TRAVAS (igual em reserva, renovação e gatilho): 1o o trava do CAMINHO, 2o a linha da fila. Esta função nunca espera
+  -- por trava de caminho segurando linha da fila de outro caminho. Os prazos usam clock_timestamp() (hora real, lida DEPOIS de
+  -- obter as travas), nunca o relógio de início da transação (que fica velho se a espera for longa).
   -- quem voltou a ser usado (outro material ou fonte de podcast) sai da fila sem apagar; sem limite, para não ocupar o lote
   delete from public.lesson_files_pending_delete q
-   where (q.state = 'pending' or q.reserved_at is null or q.reserved_at <= now() - interval '10 minutes')
+   where (q.state = 'pending' or q.reserved_at is null or q.reserved_at <= clock_timestamp() - interval '10 minutes')
      and (exists (select 1 from public.lesson_materials m where m.storage_path = q.storage_path)
           or exists (select 1 from public.podcast_sources s where s.storage_path = q.storage_path));
   -- candidatos: pendentes ou com reserva vencida, SEM retenção de arquivo (retido fica na fila até a retenção cair e não ocupa o lote)
   for r in
-    select q.storage_path from public.lesson_files_pending_delete q
-     where (q.state = 'pending' or q.reserved_at is null or q.reserved_at <= now() - interval '10 minutes')
-       and not exists (select 1 from public.ch_file_holds h where h.storage_path = q.storage_path)
-     order by q.queued_at, q.storage_path
+    select c.storage_path from public.lesson_files_pending_delete c
+     where (c.state = 'pending' or c.reserved_at is null or c.reserved_at <= clock_timestamp() - interval '10 minutes')
+       and not exists (select 1 from public.ch_file_holds h where h.storage_path = c.storage_path)
+     order by c.queued_at, c.storage_path
      limit 50
-     for update of q skip locked
   loop
-    perform pg_advisory_xact_lock(hashtextextended('lesson-file:' || r.storage_path, 0));
+    perform pg_advisory_xact_lock(hashtextextended('lesson-file:' || r.storage_path, 0)); -- 1o o caminho
+    v_agora := clock_timestamp();
+    -- 2o a linha, conferida de novo (outra limpeza pode ter reservado enquanto esperávamos o trava)
+    select * into v_linha from public.lesson_files_pending_delete x
+     where x.storage_path = r.storage_path
+       and (x.state = 'pending' or x.reserved_at is null or x.reserved_at <= v_agora - interval '10 minutes')
+       for update skip locked;
+    if not found then continue; end if;
     if exists (select 1 from public.lesson_materials m where m.storage_path = r.storage_path)
        or exists (select 1 from public.podcast_sources s where s.storage_path = r.storage_path) then
       delete from public.lesson_files_pending_delete where storage_path = r.storage_path; -- voltou a ser usado: não se apaga
@@ -171,7 +186,7 @@ begin
     else
       v_token := gen_random_uuid();
       update public.lesson_files_pending_delete
-         set state = 'deleting', reserved_at = now(), reserved_by = p_actor, reserve_token = v_token
+         set state = 'deleting', reserved_at = v_agora, reserved_by = p_actor, reserve_token = v_token
        where storage_path = r.storage_path;
       v_items := v_items || jsonb_build_array(jsonb_build_object('path', r.storage_path, 'token', v_token));
     end if;
@@ -186,9 +201,12 @@ $$;
 create or replace function public.ch_worker_lesson_files_renew(p_path text, p_token uuid) returns boolean
   language plpgsql security definer set search_path = ''
 as $$
+declare
+  v_agora timestamptz;
 begin
   if p_path is null or p_token is null then return false; end if;
-  perform pg_advisory_xact_lock(hashtextextended('lesson-file:' || p_path, 0));
+  perform pg_advisory_xact_lock(hashtextextended('lesson-file:' || p_path, 0)); -- 1o o caminho (mesma ordem da reserva)
+  v_agora := clock_timestamp(); -- hora real DEPOIS de obter o trava (o relógio de início da transação ficaria velho se a espera foi longa)
   if exists (select 1 from public.lesson_materials m where m.storage_path = p_path)
      or exists (select 1 from public.podcast_sources s where s.storage_path = p_path)
      or exists (select 1 from public.ch_file_holds h where h.storage_path = p_path) then
@@ -203,9 +221,9 @@ begin
     return false;
   end if;
   update public.lesson_files_pending_delete
-     set reserved_at = now()
+     set reserved_at = v_agora
    where storage_path = p_path and state = 'deleting' and reserve_token = p_token
-     and reserved_at is not null and reserved_at > now() - interval '10 minutes';
+     and reserved_at is not null and reserved_at > v_agora - interval '10 minutes';
   return found;
 end
 $$;
@@ -274,11 +292,40 @@ begin
 end
 $$;
 
--- Só o serviço executa estas quatro funções (nem visitante, nem aluno, nem equipe falando direto com o banco).
+-- O servidor apagou o arquivo, mas a confirmação com o código foi RECUSADA (a reserva já tinha vencido e sido refeita por outra
+-- limpeza). O apagamento aconteceu de verdade: esta função só ANOTA no Registro da Administração, sem tocar na fila nem na
+-- reserva nova. p_items = [{"path": "..."}] (só o caminho; o tipo e a aula vêm da fila, se o caminho ainda estiver nela).
+create or replace function public.ch_worker_lesson_files_audit(p_items jsonb, p_actor uuid default null) returns integer
+  language plpgsql security definer set search_path = ''
+as $$
+declare
+  e jsonb;
+  v_path text;
+  v_lesson uuid;
+  v_kind text;
+  n integer := 0;
+begin
+  if jsonb_typeof(p_items) is distinct from 'array' then return 0; end if;
+  for e in select * from jsonb_array_elements(p_items) loop
+    v_path := e ->> 'path';
+    if v_path is null or v_path = '' then continue; end if;
+    v_lesson := null; v_kind := null;
+    select lesson_id, material_kind into v_lesson, v_kind from public.lesson_files_pending_delete where storage_path = v_path;
+    insert into public.admin_audit_log (actor_id, action, target, details)
+    values (p_actor, 'lesson.file.delete', v_lesson::text,
+            jsonb_build_object('path', v_path, 'kind', v_kind, 'nota', 'apagado por uma limpeza cuja reserva já tinha sido refeita por outra'));
+    n := n + 1;
+  end loop;
+  return n;
+end
+$$;
+
+-- Só o serviço executa estas cinco funções (nem visitante, nem aluno, nem equipe falando direto com o banco).
 revoke execute on function public.ch_worker_lesson_files_reserve(uuid) from public, anon, authenticated;
 revoke execute on function public.ch_worker_lesson_files_renew(text, uuid) from public, anon, authenticated;
 revoke execute on function public.ch_worker_lesson_files_done(jsonb, uuid) from public, anon, authenticated;
 revoke execute on function public.ch_worker_lesson_files_release(jsonb) from public, anon, authenticated;
+revoke execute on function public.ch_worker_lesson_files_audit(jsonb, uuid) from public, anon, authenticated;
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'service_role') then
@@ -286,6 +333,7 @@ begin
     grant execute on function public.ch_worker_lesson_files_renew(text, uuid) to service_role;
     grant execute on function public.ch_worker_lesson_files_done(jsonb, uuid) to service_role;
     grant execute on function public.ch_worker_lesson_files_release(jsonb) to service_role;
+    grant execute on function public.ch_worker_lesson_files_audit(jsonb, uuid) to service_role;
   end if;
 end
 $$;

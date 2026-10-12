@@ -375,6 +375,71 @@ describe("A07 (rodada da revisão): corrida, lotes, confirmação e SQL ainda au
     expect(await fila()).toEqual([]);
   });
 
+  it("3a rodada: confirmação RECUSADA por código velho depois de apagar: o apagamento é anotado no Registro e a reserva da outra limpeza fica intacta", async () => {
+    await limpar();
+    const id = await novaAula();
+    const key = await guardar(id, "slides", "aud1");
+    const [m] = await materiais(id);
+    await sqlAs(EDITOR, `select public.app_admin_delete_lesson_material($1::uuid)`, [m.id]);
+    let outra: { items: Array<{ path: string; token: string }> } | undefined;
+    const trocaNoMeio = {
+      async remove(keys: string[]) {
+        await storage.remove(keys); // o depósito apaga de verdade...
+        // ...mas, enquanto isso, a reserva venceu e OUTRA limpeza a refez
+        await dev.db.query(`update public.lesson_files_pending_delete set reserved_at = now() - interval '11 minutes'`);
+        outra = await db.service("ch_worker_lesson_files_reserve", { p_actor: ADMIN });
+      },
+    } as unknown as Storage;
+    const msgs: string[] = [];
+    const r = await sweepLessonFiles(db, quem, trocaNoMeio, (x) => msgs.push(x));
+    expect(r.deleted).toEqual([key]);
+    expect(store.has(key)).toBe(false);
+    expect(outra?.items.map((i) => i.path)).toEqual([key]);
+    // a reserva da outra limpeza continua de pé, com o código dela
+    const fila1 = (await dev.db.query<any>(`select state, reserve_token from public.lesson_files_pending_delete`)).rows;
+    expect(fila1).toEqual([{ state: "deleting", reserve_token: outra!.items[0].token }]);
+    // o apagamento foi anotado mesmo assim (uma vez, por quem pediu a limpeza que apagou)
+    expect(await registro(id)).toEqual([{ actor_id: EDITOR, details: expect.objectContaining({ path: key, kind: "slides" }) }]);
+    expect(msgs.filter((x) => /não consegui/.test(x))).toEqual([]);
+    await limpar();
+  });
+
+  it("3a rodada: se nem a anotação de apoio funcionar, o log avisa o que ficou sem registro", async () => {
+    await limpar();
+    const id = await novaAula();
+    const key = await guardar(id, "slides", "aud2");
+    const [m] = await materiais(id);
+    await sqlAs(EDITOR, `select public.app_admin_delete_lesson_material($1::uuid)`, [m.id]);
+    const msgs: string[] = [];
+    const recusa = {
+      ...db,
+      service: async (fn: string, args?: any) => {
+        if (fn === "ch_worker_lesson_files_done") return 0; // código recusado
+        if (fn === "ch_worker_lesson_files_audit") throw new Error("banco fora do ar");
+        return db.service(fn, args);
+      },
+    } as ContentDb;
+    const r = await sweepLessonFiles(recusa, quem, storage, (x) => msgs.push(x));
+    expect(r.deleted).toEqual([key]);
+    expect(msgs.some((x) => x.includes(key) && /não consegui anotar o apagamento no Registro/.test(x))).toBe(true);
+    await limpar();
+  });
+
+  it("3a rodada: confirma logo depois de CADA exclusão (a 2a exclusão só começa depois da confirmação da 1a)", async () => {
+    await limpar();
+    const id = await novaAula();
+    const k1 = await guardar(id, "other", "seq1");
+    const k2 = await guardar(id, "other", "seq2");
+    for (const m of await materiais(id)) await sqlAs(EDITOR, `select public.app_admin_delete_lesson_material($1::uuid)`, [m.id]);
+    const ordem: string[] = [];
+    const espiaDb = { ...db, service: async (fn: string, args?: any) => { if (fn === "ch_worker_lesson_files_done") ordem.push("confirma " + args.p_items.length); return db.service(fn, args); } } as ContentDb;
+    const espiaSt = { ...storage, remove: async (keys: string[]) => { ordem.push("apaga"); return storage.remove(keys); } } as Storage;
+    await sweepLessonFiles(espiaDb, quem, espiaSt, () => {});
+    expect(ordem).toEqual(["apaga", "confirma 1", "apaga", "confirma 1"]);
+    expect([k1, k2].some((k) => store.has(k))).toBe(false);
+    expect((await registro(id)).length).toBe(2);
+  });
+
   it("achado 8: site novo + SQL antigo (funções ainda ausentes): a remoção vale, nada é apagado do depósito, o log diz o que falta e o servidor não quebra", async () => {
     await limpar();
     const semSql = { ...db, service: async (fn: string, args?: any) => (/^ch_worker_lesson_files_/.test(fn) ? Promise.reject(new Error("Could not find the function public.ch_worker_lesson_files_reserve(p_actor) in the schema cache")) : db.service(fn, args)) } as ContentDb;
