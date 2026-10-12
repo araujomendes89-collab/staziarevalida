@@ -315,3 +315,20 @@ Publicação continua como na spec de 09/10 (§13): só com ordem sua, por etapa
 avisos de `README.md`/`PROMPT_IA.md`; `Room.jsx` novo inteiro; `study-social.js` inteiro; textos de `StudyChat.jsx`; 4 dos 6
 PNGs (cota, rodapé do avaliador, cronômetro do candidato, chat); nomes dos 39 PDFs. **Não foram abertos:** nenhum PDF; nenhum
 arquivo do pacote foi executado ou copiado.
+
+## Decisões do dono (2026-10-12) sobre D1–D12 desta spec — valem sobre qualquer recomendação acima
+
+| # | Resposta do dono |
+|---|---|
+| D1 | A IA no Praticar **sozinho** vale (o pedido do dono manda sobre o "sem IA" do pacote). Ela **escuta a prática** e dá **feedback conforme a engenharia reversa das estações e o que a Matriz do INEP cobra**. (Voz ao vivo é o destino; a narração escrita vem primeiro. Ver adendo do sozinho.) |
+| D2 | Folha do candidato com o **logotipo do Revalida** e, junto, o nome **StaziaMed**; **sem demais logos** |
+| D3 | Os dois conversam **fora do app** (sem link, como o pacote) |
+| D4 | **Sim**: tema só para o avaliador e só o avaliador escolhe a estação, com aviso ao aluno |
+| D5 | **Quer VER as duas primeiro** (2020/E1 e 2024/1/E1) antes de decidir. Nada publicado ao aluno até lá |
+| D6 | Chat: as mensagens **se apagam a cada 24 horas**; **denúncia** enviada vai à equipe; a equipe tem **acesso a todas as conversas** denunciadas (leitura da equipe via denúncia). Bloqueio/denúncia: sim |
+| D7 | Cada match é cobrado do **crédito diário** de cada aluno, **de ambos** os participantes. Pacote, quantidade por dia, devolução e validade: ainda a definir (o dono enviará o método de engenharia do match e da cobrança) |
+| D8 | **Não**: o candidato não finaliza a estação |
+| D9 | Na sala do avaliador: **resumo, impressos, controle do cronômetro e marcação do PEP** |
+| D10 | "Sinalizar problema" **abre uma janela** onde o usuário envia mensagem à equipe de suporte, e **aparece na Administração**: criar campo/aba no menu da Administração para esses sinais |
+| D11 | Convite rápido e direto: aceitar o desenho do plano (junto com o radar) — resposta não escrita explicitamente pelo dono, adotada conforme a recomendação; confirmar |
+| D12 | Compra **parada**, tela só informativa; o dono enviará o método de engenharia do match e da cobrança |
