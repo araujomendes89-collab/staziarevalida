@@ -10,6 +10,7 @@ import dns from "dns/promises";
 import https from "https";
 import net from "net";
 import { Readable } from "stream";
+import zlib from "zlib";
 
 export interface ExtractedPage {
   /** Página de origem (PDF); nula quando o formato não tem página (DOCX, texto, página web). */
@@ -214,6 +215,20 @@ export function pinnedLookup(ips: string[]) {
 }
 
 /**
+ * O `https.request` não descomprime a resposta (o `fetch` comum faz): um servidor que mande gzip, deflate ou br mesmo sem o
+ * pedido entregaria bytes comprimidos e o hash da publicação mudaria sem a publicação mudar. Devolve o corpo já descomprimido
+ * (e `true`) quando a codificação é uma dessas; qualquer outra (ou nenhuma) passa como veio. O limite de tamanho de quem lê
+ * vale sobre os bytes já descomprimidos.
+ */
+export function decodedBody(encoding: string | string[] | undefined, body: Readable): { stream: Readable; decoded: boolean } {
+  const enc = String(Array.isArray(encoding) ? encoding[0] : encoding ?? "").trim().toLowerCase();
+  const make = enc === "gzip" || enc === "x-gzip" ? zlib.createGunzip() : enc === "deflate" ? zlib.createInflate() : enc === "br" ? zlib.createBrotliDecompress() : null;
+  if (!make) return { stream: body, decoded: false };
+  body.on("error", (e) => make.destroy(e));
+  return { stream: body.pipe(make), decoded: true };
+}
+
+/**
  * `fetch` que conecta AO IP já validado (o nome fica no Host e no SNI): fecha o "DNS rebinding", em que o nome responde um
  * endereço público na conferência e um interno na conexão. Não segue redirecionamento (quem chama confere cada destino).
  */
@@ -231,7 +246,12 @@ export function pinnedFetch(url: string, init: RequestInit, ips: string[]): Prom
         const status = res.statusCode ?? 502;
         const empty = status === 204 || status === 205 || status === 304 || (status >= 100 && status < 200);
         if (empty) res.resume();
-        resolve(new Response(empty ? null : (Readable.toWeb(res) as unknown as ReadableStream), { status, headers: h }));
+        const body = empty ? { stream: res, decoded: false } : decodedBody(res.headers["content-encoding"], res);
+        if (body.decoded) {
+          h.delete("content-encoding");
+          h.delete("content-length");
+        }
+        resolve(new Response(empty ? null : (Readable.toWeb(body.stream) as unknown as ReadableStream), { status, headers: h }));
       },
     );
     req.on("error", reject);
@@ -263,6 +283,13 @@ export interface FetchBytesOptions {
   connect?: (url: string, init: RequestInit, ips: string[]) => Promise<Response>;
   /** Todo status de erro vira "O link respondeu N." (sem as mensagens próprias do 403 e do 429). */
   plainStatus?: boolean;
+  /** Texto próprio do erro para qualquer status de erro (ex.: o monitor de fontes escreve "HTTP 404"); tem prioridade sobre `plainStatus`. */
+  statusMessage?: (status: number) => string;
+  /**
+   * Aceita qualquer tipo de conteúdo (o monitor de fontes só compara impressões digitais): nada de recusar tipo desconhecido nem
+   * PDF sem assinatura; o tipo volta como "pdf" (assinatura), "html" ou "text" (todo o resto).
+   */
+  acceptAnyType?: boolean;
 }
 
 export interface FetchedBytes {
@@ -322,6 +349,7 @@ export async function fetchBytes(url: string, fetchImpl: typeof fetch, opts: Fet
       }
       if (!res.ok) {
         res.body?.cancel().catch(() => {});
+        if (opts.statusMessage) throw new Error(opts.statusMessage(res.status));
         if (!opts.plainStatus && res.status === 429) throw new Error("O site pediu para esperar (429).");
         if (!opts.plainStatus && res.status === 403) throw new Error("O site bloqueou o download (403).");
         throw new Error(`O link respondeu ${res.status}.`);
@@ -354,6 +382,7 @@ export async function fetchBytes(url: string, fetchImpl: typeof fetch, opts: Fet
       }
       const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
       if (isPdf(body)) return { finalUrl: u.toString(), body, contentType, kind: "pdf" };
+      if (opts.acceptAnyType) return { finalUrl: u.toString(), body, contentType, kind: contentType.includes("html") ? "html" : "text" };
       if (contentType.includes("pdf")) throw new Error("O arquivo não é um PDF (assinatura %PDF- ausente).");
       if (contentType.includes("html")) return { finalUrl: u.toString(), body, contentType, kind: "html" };
       if (contentType.includes("text")) return { finalUrl: u.toString(), body, contentType, kind: "text" };

@@ -8,13 +8,22 @@ import { runJob, type Job, type PipelineDeps } from "./pipeline";
 import { snapshotPassages, type Passage } from "./sourceDiff";
 import { compareSnapshots } from "./sourceCompare";
 import { embedderAllowed, embedPendingPassages } from "./embeddings";
+import { fetchBytes, type Resolver } from "../podcasts/extract";
+import { linkProblem, OFFICIAL_FETCH } from "./sources/officialDomains";
 
 export interface WorkerOptions {
   pollMs?: number;
   staleSeconds?: number;
   watchEveryMs?: number;
   fetchImpl?: typeof fetch;
+  /** Só para testes: resolve o nome do servidor (padrão: DNS do sistema), para simular endereços sem rede. */
+  resolver?: Resolver;
+  /** Só para testes: substitui a conferência do servidor (no uso real, nunca é informado). */
+  checkHost?: (host: string) => Promise<void>;
 }
+
+/** Limites do download do monitor de fontes: os mesmos do download das Fontes oficiais (50 MB), com 30 s para tudo. */
+const WATCH_FETCH = { ...OFFICIAL_FETCH, timeoutMs: 30_000 } as const;
 
 export interface ContentHubWorker {
   readonly running: boolean;
@@ -90,10 +99,19 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
       let snapshot: Passage[] | null = null;
       try {
         if (!/^https:\/\//.test(w.url)) throw new Error("endereço sem https");
-        const res = await fetchImpl(w.url, { signal: AbortSignal.timeout(30_000), redirect: "follow" });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const body = Buffer.from(await res.arrayBuffer());
-        const type = res.headers.get("content-type") ?? "";
+        // Mesmas proteções de rede das Fontes oficiais, mas sem lista de sites (o endereço pode ser de qualquer órgão): nada de
+        // endereço interno (conexão ao IP já conferido), cada redirecionamento (até 3) conferido de novo (https, porta 443,
+        // sem usuário e senha), corpo lido em pedaços e cortado em 50 MB, 30 s para tudo.
+        const got = await fetchBytes(w.url, fetchImpl, {
+          ...WATCH_FETCH,
+          checkUrl: (u) => linkProblem(u.href),
+          checkHost: opts.checkHost,
+          resolver: opts.resolver,
+          acceptAnyType: true,
+          statusMessage: (status) => `HTTP ${status}`,
+        });
+        const body = got.body;
+        const type = got.contentType;
         hash = publicationHash(body, type);
         if (!/pdf/i.test(type) && body.subarray(0, 5).toString("latin1") !== "%PDF-") snapshot = snapshotPassages(body.toString("utf8"), type);
       } catch (error) {
