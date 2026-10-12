@@ -316,6 +316,96 @@ describe("Rotas novas", () => {
     expect(within(rail()).getByText("Praticar").closest("button")).toHaveAttribute("aria-current", "page");
   });
 
+  describe("menu recolhido na sala (Etapa P, Tarefa P5)", () => {
+    const toggle = () => within(rail()).getByRole("button", { name: /^(Recolher|Expandir) menu$/ });
+    const largura = () => (rail() as HTMLElement).style.width;
+    const guardada = () => localStorage.getItem("smf-col");
+    const entrarNaSala = () => fireEvent.click(screen.getByText("abrir-sala"));
+    const sairDaSala = () => fireEvent.click(within(rail()).getByRole("button", { name: "Praticar" }));
+    afterEach(() => localStorage.removeItem("smf-col"));
+
+    it("na sala o menu abre recolhido; o botão expande; ao sair volta como estava", () => {
+      localStorage.setItem("smf-col", "0");
+      renderApp("/dupla", bootOf("student", 2), ABERTO_COM_PLANO);
+      expect(toggle()).toHaveAttribute("aria-label", "Recolher menu");
+      expect(toggle()).toHaveAttribute("aria-expanded", "true");
+      expect(largura()).toBe("264px");
+
+      entrarNaSala();
+      expect(screen.getByTestId("tela-dupla-sala")).toBeTruthy();
+      expect(toggle()).toHaveAttribute("aria-label", "Expandir menu");
+      expect(toggle()).toHaveAttribute("aria-expanded", "false");
+      expect(largura()).toBe("76px");
+      // A sala continua sem cabeçalho e sem barra de atalhos.
+      expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+      expect(screen.queryByRole("toolbar", { name: "Ações rápidas" })).toBeNull();
+
+      fireEvent.click(toggle());
+      expect(toggle()).toHaveAttribute("aria-label", "Recolher menu");
+      expect(largura()).toBe("264px");
+      fireEvent.click(toggle());
+      expect(largura()).toBe("76px");
+
+      sairDaSala();
+      expect(screen.getByTestId("tela-dupla")).toBeTruthy();
+      expect(toggle()).toHaveAttribute("aria-label", "Recolher menu");
+      expect(largura()).toBe("264px");
+      expect(guardada()).toBe("0");
+    });
+
+    it("quem abre a sala direto pelo endereço também vê o menu recolhido, e quem já usava recolhido segue recolhido ao sair", () => {
+      localStorage.setItem("smf-col", "1");
+      renderApp("/dupla/sala/sala-123", bootOf("student", 2), ABERTO_COM_PLANO);
+      expect(largura()).toBe("76px");
+      fireEvent.click(toggle());
+      expect(largura()).toBe("264px");
+      sairDaSala();
+      expect(screen.getByTestId("tela-dupla")).toBeTruthy();
+      expect(largura()).toBe("76px");
+      expect(guardada()).toBe("1");
+    });
+
+    it("entrar na sala de novo recolhe outra vez, mesmo que a pessoa tenha expandido da vez anterior", () => {
+      localStorage.setItem("smf-col", "0");
+      renderApp("/dupla", bootOf("student", 2), ABERTO_COM_PLANO);
+      entrarNaSala();
+      fireEvent.click(toggle());
+      expect(largura()).toBe("264px");
+      sairDaSala();
+      entrarNaSala();
+      expect(largura()).toBe("76px");
+    });
+
+    it("fora da sala a preferência de menu não muda sozinha, e o botão continua gravando a escolha", () => {
+      localStorage.setItem("smf-col", "0");
+      renderApp("/dupla", bootOf("student", 2), ABERTO_COM_PLANO);
+      fireEvent.click(screen.getByText("abrir-perfil"));
+      expect(screen.getByTestId("tela-dupla-perfil")).toBeTruthy();
+      expect(largura()).toBe("264px");
+      expect(guardada()).toBe("0");
+      fireEvent.click(toggle());
+      expect(largura()).toBe("76px");
+      expect(guardada()).toBe("1");
+      fireEvent.click(toggle());
+      expect(largura()).toBe("264px");
+      expect(guardada()).toBe("0");
+    });
+
+    it("dentro da sala, recolher e expandir não gravam a preferência da pessoa", () => {
+      localStorage.setItem("smf-col", "0");
+      renderApp("/dupla/sala/sala-123", bootOf("student", 2), ABERTO_COM_PLANO);
+      fireEvent.click(toggle());
+      fireEvent.click(toggle());
+      fireEvent.click(toggle());
+      expect(guardada()).toBe("0");
+      cleanup();
+      localStorage.removeItem("smf-col");
+      renderApp("/dupla/sala/sala-123", bootOf("student", 2), ABERTO_COM_PLANO);
+      fireEvent.click(toggle());
+      expect(guardada()).toBeNull();
+    });
+  });
+
   it("go() monta os endereços: perfil, sala e Praticar com a estação escolhida", () => {
     renderApp("/estacoes", bootOf("student", 2), ABERTO_COM_PLANO);
     fireEvent.click(screen.getByText("abrir-praticar"));
