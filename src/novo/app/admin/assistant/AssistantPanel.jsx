@@ -79,7 +79,7 @@ function FindingCard({ finding, label, canPropose, onPropose }) {
   );
 }
 
-export function AssistantPanel({ title = "Assistente", notice, status, fields = [], values = {}, material = "material", materialLink, run, onUse, onDiscard, useLabel = "Usar", onClose }) {
+export function AssistantPanel({ title = "Assistente", notice, sourceAction, status, fields = [], values = {}, material = "material", materialLink, run, onUse, onDiscard, useLabel = "Usar", onClose }) {
   const [mode, setModeState] = React.useState("preencher");
   const [result, setResult] = React.useState(null);
   const [error, setError] = React.useState(null);
@@ -289,6 +289,7 @@ export function AssistantPanel({ title = "Assistente", notice, status, fields = 
             </Banner>
           )}
           {result.no_source?.map((name) => <p key={name} style={smallStyle}>{`${labelOf(name)}: ${ASSIST_TEXTS.noSource}`}</p>)}
+          {sourceAction && (noSourceAll || result.no_source?.length > 0) && sourceAction}
           {result.missing?.length > 0 && (
             <Banner tone="info" title="A fonte não esclarece">
               {result.missing.map((m) => `${labelOf(m.field)}: ${m.reason}`).join(" ")}

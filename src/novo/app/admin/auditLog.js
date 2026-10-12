@@ -263,6 +263,8 @@ const guidelineDecision = (d) => join([topic(d), noteOf(d, "Nota do revisor"), d
 
 // busca de fontes oficiais: nomes em português dos valores que a migração 9610 grava
 const DOMAIN_KIND = { governo: "governo", internacional: "organização internacional", sociedade: "sociedade médica" };
+// atualidade da fonte achada pela busca (migração 9820): os mesmos nomes da tela de candidatos
+const CURRENCY_LABEL = { versao_mais_nova: "versão mais nova que a da biblioteca", mesma_versao: "mesma versão da biblioteca", versao_mais_antiga: "mais antiga que a da biblioteca", outra_mais_nova: "outra mais nova do mesmo tema achada pela IA", data_nao_comprovada: "data não comprovada", sem_comparacao: "documento novo na biblioteca" };
 const SEARCH_ORIGIN = { tema: "Tema escrito pelo administrador", incidencia: "Tema mais cobrado nas provas" };
 const SEARCH_STATUS = {
   na_fila: "Na fila", buscando: "Buscando", conferindo: "Conferindo os links", concluida: "Busca concluída",
@@ -408,7 +410,13 @@ const SUMMARY = {
     return fields.length ? `Dados ajustados: ${fields.join(", ")}` : "";
   },
   "source_candidate.approve": (d) =>
-    join([d.site && `Site: ${d.site}`, d.level && `Nível ${d.level}`, d.superseded && "Substituiu uma versão anterior da fonte"]),
+    join([
+      d.site && `Site: ${d.site}`,
+      d.level && `Nível ${d.level}`,
+      d.superseded && "Substituiu uma versão anterior da fonte",
+      own(CURRENCY_LABEL, d.currency) && `Atualidade: ${CURRENCY_LABEL[d.currency]}`,
+      d.confirmed_older === true && "Versão mais antiga aprovada com confirmação",
+    ]),
   "source_candidate.reject": (d) => join([d.site && `Site: ${d.site}`, whyOf(d)]),
   "block.resolve": () => "",
   "conflict.detect": (d) => d.new != null && count(d.new, "novo", "novos"),
