@@ -34,3 +34,5 @@ export { LockedFeature } from "./components/surfaces/LockedFeature.jsx";
 export { ProgressBar } from "./components/surfaces/ProgressBar.jsx";
 export { SectionHeader } from "./components/surfaces/SectionHeader.jsx";
 export { StatCard } from "./components/surfaces/StatCard.jsx";
+export * from "./components/osce/index.js";
+export * from "./components/osce/index-b.js";

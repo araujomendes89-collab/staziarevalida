@@ -34,6 +34,9 @@ import { LeaderboardScreen } from "./play/LeaderboardScreen.jsx";
 import { MissionsScreen } from "./play/MissionsScreen.jsx";
 import { AchievementsScreen } from "./play/AchievementsScreen.jsx";
 
+// Vitrine dos componentes do Treinamento em Dupla: só no servidor de desenvolvimento; sai do build de produção.
+const Vitrine = import.meta.env.DEV ? React.lazy(() => import("./dupla/Vitrine.jsx")) : null;
+
 // [título, subtítulo] de cada rota (o início é montado com nome e data reais).
 const TITLES = {
   aulas: ["Aulas teórico-práticas", "Estudar · conteúdo audiovisual por grande área"],
@@ -60,12 +63,13 @@ const TITLES = {
   paciente: ["Paciente simulado", "Treine a anamnese com IA"],
   desempenho2: ["Desempenho prático", "Notas pelo PEP"],
   admin: ["Administração", "Gestão da plataforma"],
+  ...(import.meta.env.DEV ? { "vitrine-dupla": ["Vitrine de componentes", "Somente em desenvolvimento · dados de exemplo"] } : {}),
 };
 const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps", "paciente", "desempenho2"];
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes"]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", ...(import.meta.env.DEV ? ["vitrine-dupla"] : [])]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -172,6 +176,7 @@ function Screen() {
   else if (route === "paciente") body = <SimPatient go={go} />;
   else if (route === "desempenho2") body = <Perf2 go={go} data={data} />;
   else if (route === "admin") body = <AdminScreen />;
+  else if (import.meta.env.DEV && Vitrine && route === "vitrine-dupla") body = <React.Suspense fallback={null}><Vitrine /></React.Suspense>;
   else body = <AccountScreen go={go} />;
 
   const isHome = route === "home" || route === "home2";

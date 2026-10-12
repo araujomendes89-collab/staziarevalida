@@ -7,3 +7,5 @@
 @import './tokens/effects.css';
 @import './tokens/base.css';
 @import './components/components.css';
+@import './components/osce/osce.css';
+@import './components/osce/osce-match.css';
