@@ -11,7 +11,7 @@ import { AssistantLayout } from "./assistant/AssistantLayout.jsx";
 import { TabAssistant } from "./assistant/TabAssistant.jsx";
 import { QuestionFigureCard } from "./QuestionFigureCard.jsx";
 import { QuestionHistory } from "./QuestionHistory.jsx";
-import { changedCommentFields, CommentReviewBanner, CommentReviewQueue, commentFieldsText } from "./QuestionCommentReview.jsx";
+import { changedCommentFields, CommentReviewBanner, CommentReviewQueue, commentFieldsText, LoadNotes, UpdateNoteCard } from "./QuestionCommentReview.jsx";
 import { downloadText, isStaffRole, ListRow, LoadError, Loading, messageOf, QUESTION_STATUS_LABEL, TextArea, useDebounced, useLoad } from "./common.jsx";
 
 const PAGE = 50;
@@ -471,6 +471,7 @@ export function QuestionEditor({ id, onClose, onSaved, commentReviewReady = fals
       )}
       {reviewState.error && <Banner tone="danger">{reviewState.error}</Banner>}
       <CommentReviewBanner question={form} savedForm={savedForm} unsaved={unsaved} onDecided={commentDecided} onStale={commentStale} />
+      {form.comment_review?.carga && <LoadNotes carga={form.comment_review.carga} />}
       {staleNote && <Banner tone="warning">{staleNote}</Banner>}
       {decisionNote && (
         <div role="status" style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>
@@ -550,7 +551,7 @@ export function QuestionEditor({ id, onClose, onSaved, commentReviewReady = fals
           )}
           {form.status === "annulled" && (
             <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
-              Questão anulada: o aluno não vê a explicação de cada alternativa (nenhuma é a correta).
+              Questão anulada: o aluno vê a explicação de cada alternativa só como estudo, com o aviso da anulação, e só quando as quatro começam com “Defensável.” ou “Incorreta.” (nunca “Correta.”); continua fora de acertos e erros.
             </div>
           )}
           <Checkbox
@@ -599,6 +600,7 @@ export function QuestionEditor({ id, onClose, onSaved, commentReviewReady = fals
           {isNew ? "Criar questão" : "Salvar questão"}
         </Button>
       </div>
+      {!isNew && <UpdateNoteCard questionId={form.id} lazy />}
       {!isNew && <QuestionHistory questionId={form.id} onRestore={restoreText} refreshKey={historyKey} />}
       {isAdmin && !isNew && (
         <DeleteQuestion
@@ -926,6 +928,8 @@ function StaffQuestions({ onOpenIneditas }) {
 
   if (view.mode === "edit" || view.mode === "new") return <QuestionEditor key={view.id ?? "nova"} id={view.id} onClose={back} onSaved={list.reload} commentReviewReady={list.data?.comment_review_ready === true} />;
   if (view.mode === "import") return <ImportPanel onClose={back} onImported={list.reload} />;
+  // fila de revisão médica (com "Aprovar a prova inteira" para o administrador e as notas "O que mudou desde a prova")
+  if (view.mode === "queue") return <CommentReviewQueue onBack={() => (back(), list.reload())} />;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -937,6 +941,11 @@ function StaffQuestions({ onOpenIneditas }) {
         <Button variant="secondary" icon="sparkles" onClick={onOpenIneditas} disabled={!onOpenIneditas}>
           Questões inéditas
         </Button>
+        {reviewReady === true && (
+          <Button variant="secondary" icon="list-checks" onClick={() => setView({ mode: "queue", id: null })}>
+            Fila de revisão médica
+          </Button>
+        )}
       </div>
       <Card>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

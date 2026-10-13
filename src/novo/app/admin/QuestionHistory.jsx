@@ -12,7 +12,7 @@ const LETTERS = ["A", "B", "C", "D"];
 const FIELDS = [
   ["statement", "Enunciado"], ["options", "Alternativas"], ["correct_option", "Gabarito"], ["status", "Situação"], ["prova", "Prova e número"],
   ["topic", "Tema"], ["subtopic", "Subtema"], ["expected_conduct", "Conduta esperada"], ["inep_intent", "O que a questão avalia"],
-  ["figura", "Figura"], ["needs_image", "Marca “Cita figura”"],
+  ["figura", "Figura"], ["needs_image", "Marca “Cita figura”"], ["update_note", "Nota “O que mudou desde a prova”"],
 ];
 const LABEL = Object.fromEntries(FIELDS);
 const RESTORABLE = new Set(["statement", "topic", "subtopic", "expected_conduct", "inep_intent"]);

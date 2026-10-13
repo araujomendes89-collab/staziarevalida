@@ -165,8 +165,8 @@ describe("Q02 — gabarito e situação travados; registro do gabarito oficial",
     render(<QuestionEditor id="q1" onClose={vi.fn()} onSaved={vi.fn()} />);
     const review = await screen.findByText(/O gabarito mudou de B para anulada pela banca\./);
     expect(review.textContent).toContain("Revise: Análise publicada (não aparece ao aluno em questão anulada), Explicação da A, Explicação da B.");
-    // rodada 2: em anulada, a explicação de cada alternativa nunca aparece ao aluno
-    expect(screen.getByText(/Questão anulada: o aluno não vê a explicação de cada alternativa/)).toBeTruthy();
+    // carga das explicações (12/10/2026): em anulada, o aluno só vê as explicações de estudo ("Defensável."/"Incorreta."), nunca "Correta."
+    expect(screen.getByText(/Questão anulada: o aluno vê a explicação de cada alternativa só como estudo.*nunca “Correta\.”/)).toBeTruthy();
   });
 });
 
