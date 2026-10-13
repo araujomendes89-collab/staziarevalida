@@ -18,6 +18,7 @@ export const AI_FUNCTION_NAME = {
   assistente_revisar: "Assistente: conversar e revisar",
   busca_fontes: "Busca de fontes oficiais",
   similaridade: "Questões parecidas",
+  analise_mudancas: "Análise do que mudou (Vigilância científica)",
 };
 /** Dólar em pt-BR: "US$ 0,0123" (até 4 casas); zero vira "US$ 0" (igual ao da Central de IAs). */
 const usd = (n) => {
@@ -127,6 +128,12 @@ export const ACTION_LABEL = {
   "source.aliases": "Siglas da fonte alteradas",
   "source.registry": "Registro da fonte atualizado",
   "source.change_resolved": "Mudança de fonte resolvida",
+  "vigilance.mark": "Vigilância científica: decisão na fila",
+  "vigilance.interval": "Vigilância científica: frequência do site",
+  "vigilance.quality_override": "Vigilância científica: quarentena decidida",
+  "vigilance.identifiers": "Vigilância científica: DOI/PMID corrigido",
+  "vigilance.analysis_request": "Vigilância científica: análise do que mudou pedida",
+  "vigilance.topic": "Vigilância científica: dossiê do tema",
   "conflict.detect": "Conflitos entre fontes detectados",
   "conflict.resolved": "Conflito entre fontes resolvido",
   "conflict.deferred": "Conflito entre fontes adiado",
