@@ -25,7 +25,16 @@
 --     que ele pode abrir (cadeado das Questões Inéditas respeitado), relações aprovadas ou de confiança alta, nunca
 --     duplicata exata ou semântica, nunca gabarito nem explicação;
 --   * a fila (ch_jobs, etapa similarity) tem trava contra duplicação: um processamento de questões parecidas por vez;
---   * nada de IA na abertura da questão: a lista do aluno é só leitura do banco.
+--   * nada de IA na abertura da questão: a lista do aluno é só leitura do banco;
+--   * a relação proposta só chega ao aluno com confiança ALTA (0,8) vinda do motor (regra ou vetor); a que a IA reclassificou
+--     só depois que uma pessoa aprova.
+--
+-- TAXONOMIA MÉDICA OFICIAL (decisão do dono de 2026-10-12): o motor DEPENDE dela. O perfil guarda taxonomy_node_id (id estável
+-- do nó, nulo enquanto a taxonomia não é aprovada e a questão não é reclassificada) além do tema e subtema em texto (auditoria).
+-- As candidatas "por tema" e o peso de conceitos/subtema (30%) usam o nó (ou o pai); sem o nó em uma das duas questões, o par
+-- NÃO vira relação definitiva: fica a duplicata exata (fato do texto, confiança 1) e, como proposta de confiança BAIXA, só o
+-- enunciado quase igual e a candidata achada pelo vetor. Por isso o motor só deve ser LIGADO depois da taxonomia aprovada e das
+-- questões reclassificadas; antes disso, "Reprocessar" grava só as duplicatas.
 --
 -- Esta migração também:
 --   * recria ch_jobs_step_check e ai_functions_key_check com a UNIÃO do que existe (lida da própria restrição) + similarity e
@@ -1239,7 +1248,7 @@ begin
 end
 $revoke$;
 
--- Para desfazer: drop das funções app_related_questions, app_admin_question_relations, app_admin_review_relation,
+-- Para desfazer: drop das funções app_related_questions, app_start_related_question, app_admin_question_relations, app_admin_review_relation,
 -- app_admin_similarity_*, ch_worker_similarity_*, similarity_* e ai_function_keys; drop das tabelas question_relation_history,
 -- question_relations, question_embeddings, question_similarity_state, similarity_runs e question_profiles; recriar
--- ch_worker_ai_save_function e app_ai_summary como na …9610 (e drop de app_start_related_question) e tirar 'similarity'/'similaridade' das duas restrições.
+-- ch_worker_ai_save_function e app_ai_summary como na …9610 e tirar 'similarity'/'similaridade' das duas restrições.
