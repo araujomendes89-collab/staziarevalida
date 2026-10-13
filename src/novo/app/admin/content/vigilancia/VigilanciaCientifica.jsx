@@ -11,6 +11,7 @@ import { Section } from "../ui.jsx";
 import { AvisoFaltaBanco, legenda, plural, quando, REGRA_DO_DONO } from "./comum.jsx";
 import { FilaAuditoria } from "./FilaAuditoria.jsx";
 import { FrequenciaDominios } from "./FrequenciaDominios.jsx";
+import { TemasVigiados } from "./TemasVigiados.jsx";
 
 const CARTOES = [
   { campo: "novas_fontes", rotulo: "Novas fontes", icone: "file-plus", tom: "brand", legenda: () => "achadas pela vigilância" },
@@ -87,6 +88,7 @@ export function VigilanciaCientifica() {
         {r && <Cartoes r={r} />}
         {r && !r.funcao_analise_ligada && <p style={{ ...legenda, margin: "10px 0 0" }}>A função “Análise do que mudou” está desligada na Central de IAs: a fila funciona, mas o pedido de análise fica indisponível.</p>}
       </Section>
+      <TemasVigiados />
       <FilaAuditoria analiseLigada={Boolean(r?.funcao_analise_ligada)} recarregar={filaChave} aoMudar={resumo.reload} />
       {r && <FrequenciaDominios dominios={r.por_dominio} aoSalvar={resumo.reload} />}
     </div>

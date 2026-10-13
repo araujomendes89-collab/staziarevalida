@@ -8,6 +8,7 @@ import { hubAvailable, hubBlobUrl } from "./api.js";
 import { AREA_LABEL, isMockModel, MATERIAL_KIND, UNIT_STATUS } from "./labels.js";
 import { openFileInTab } from "./openFile.js";
 import { PublishPanel } from "./PublishPanel.jsx";
+import { TemaDaUnidade } from "./vigilancia/TemasVigiados.jsx";
 import { ClaimCard, Label, ModelBadge, Pre, Section, shortHash, StatusBadge, useAction, when } from "./ui.jsx";
 
 const ORDER = ["awaiting_review", "needs_update", "draft", "approved", "published", "retired"];
@@ -130,6 +131,7 @@ function UnitVersion({ id, go, isAdmin, isStaff, reviewerAreas }) {
         <ModelBadge model={v.generated_by_model} />
       </div>
       {isMockModel(v.generated_by_model) && <Banner tone="danger" title="Simulação de desenvolvimento">Esta versão foi produzida pela simulação (não é IA nem revisão). Serve para testar o fluxo e não pode ser publicada.</Banner>}
+      {isStaff && <TemaDaUnidade unitId={v.unit_id} />}
       {v.candidate_reason && <Banner tone="warning" title="Versão candidata">{v.candidate_reason}</Banner>}
       {v.scope_note && <Banner tone="info" title="Escopo">{v.scope_note}</Banner>}
       {notice && <Banner tone="success" icon="globe">{notice}</Banner>}
