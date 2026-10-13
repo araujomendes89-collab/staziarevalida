@@ -180,7 +180,8 @@ async function computeRelations(deps: PipelineDeps, runId: string, model: string
 async function classify(deps: PipelineDeps, runId: string, cp: Record<string, any>, totals: Totals, save: () => Promise<void>, notes: string[]) {
   const db = deps.db;
   const cfg = await loadAiConfig(db);
-  if (!cfg.functions.similaridade && !deps.ai.provider?.isMock) throw new SimilarityPending(FUNCTION_OFF);
+  // desligada depois do pedido: o pedido não fica parado esperando (sem tentativa nova); o administrador liga e pede de novo
+  if (!cfg.functions.similaridade && !deps.ai.provider?.isMock) throw new SimilarityFailed(`${FUNCTION_OFF} Ligue a função e peça a classificação de novo.`);
   const limit = Math.min(Math.max(Number(cp.limit) || 20, 1), 100);
   const left = Math.max(limit - totals.ai_pairs, 0);
   if (!left) return;

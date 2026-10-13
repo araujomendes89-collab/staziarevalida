@@ -493,8 +493,14 @@ begin
 end
 $$;
 
+-- Versão do motor que o banco espera (a mesma constante ENGINE_VERSION de server/contentHub/similarity/engine.ts; um teste
+-- confere as duas). Trocar a versão no servidor exige uma migração que troque esta também: aí todos os pares são recalculados.
+create or replace function public.similarity_engine_version() returns text
+  language sql immutable set search_path = ''
+as $$ select 'sim-1'::text $$;
+
 -- Questões cujos pares precisam ser (re)calculados: mudou o texto ou o perfil, mudou a versão do motor, ganhou vetor, ou a
--- equipe pediu. p_engine nulo = qualquer versão (contagem para a tela).
+-- equipe pediu. p_engine nulo = a versão que o banco espera; p_model nulo = não confere a marca "com vetor".
 create or replace function public.similarity_pending_ids(p_model text, p_engine text, p_limit integer default null) returns text[]
   language sql stable security definer set search_path = ''
 as $$
@@ -504,7 +510,7 @@ as $$
     where (s.requested_at is not null and (s.relations_at is null or s.requested_at > s.relations_at))
        or s.relations_basis is null
        or split_part(s.relations_basis, ':', 1) <> s.basis_hash
-       or (p_engine is not null and split_part(s.relations_basis, ':', 3) <> p_engine)
+       or split_part(s.relations_basis, ':', 3) <> coalesce(p_engine, public.similarity_engine_version())
        or (p_model is not null and split_part(s.relations_basis, ':', 2) = 'l' and exists (
              select 1 from public.question_embeddings e
              where e.question_id = s.question_id and e.model = p_model and e.kind = 'tematico' and e.basis_hash = s.tematico_hash)
@@ -516,6 +522,17 @@ as $$
 $$;
 
 -- ---------------------------------------------------------------- fila: um processamento de questões parecidas por vez
+-- O trabalho que impede outro: qualquer um na fila ou rodando; parado (teto de gasto da IA) só impede outro do MESMO modo (o
+-- pedido de IA parado no teto não segura o reprocessamento do motor).
+create or replace function public.similarity_active_job(p_mode text) returns uuid
+  language sql stable security definer set search_path = ''
+as $$
+  select j.id from public.ch_jobs j
+   where j.step = 'similarity'
+     and (j.status in ('queued', 'running') or (j.status = 'blocked' and coalesce(j.checkpoint ->> 'mode', 'motor') = p_mode))
+   order by j.created_at limit 1
+$$;
+
 create or replace function public.similarity_enqueue(p_mode text, p_actor uuid, p_params jsonb default '{}'::jsonb) returns jsonb
   language plpgsql security definer set search_path = ''
 as $$
@@ -523,8 +540,7 @@ declare v_job uuid; v_active uuid;
 begin
   if p_mode not in ('motor', 'ia') then raise exception 'Modo inválido.' using errcode = '22023'; end if;
   perform pg_advisory_xact_lock(hashtext('staziamed:similaridade'));
-  select j.id into v_active from public.ch_jobs j
-   where j.step = 'similarity' and j.status in ('queued', 'running', 'blocked') order by j.created_at limit 1;
+  v_active := public.similarity_active_job(p_mode);
   if v_active is not null then return jsonb_build_object('job_id', v_active, 'duplicate', true); end if;
   insert into public.ch_jobs (document_id, step, scope_key, idempotency_key, versions, max_attempts, checkpoint)
   values (null, 'similarity', 'similarity:' || p_mode, 'similarity:' || gen_random_uuid()::text, '{}'::jsonb, 3,
@@ -927,7 +943,7 @@ create or replace function public.ch_worker_similarity_autoqueue() returns boole
 as $$
 begin
   if not exists (select 1 from public.ai_functions where key = 'similaridade') then return false; end if;
-  if exists (select 1 from public.ch_jobs where step = 'similarity' and status in ('queued', 'running', 'blocked')) then return false; end if;
+  if public.similarity_active_job('motor') is not null then return false; end if;
   perform public.similarity_refresh_state(null);
   if cardinality(public.similarity_pending_ids(null, null, 1)) = 0 then return false; end if;
   return not ((public.similarity_enqueue('motor', null, jsonb_build_object('auto', true)) ->> 'duplicate')::boolean);
@@ -1217,6 +1233,7 @@ begin
                                where p.basis_hash is distinct from public.similarity_text_hash(q.statement, q.options)),
     'pendentes_processar', cardinality(public.similarity_pending_ids(null, null, null)),
     'na_fila', exists (select 1 from public.ch_jobs where step = 'similarity' and status in ('queued', 'running', 'blocked')),
+    'versao_do_motor', public.similarity_engine_version(),
     'funcao_ia_ligada', exists (select 1 from public.ai_functions where key = 'similaridade'));
 end
 $$;

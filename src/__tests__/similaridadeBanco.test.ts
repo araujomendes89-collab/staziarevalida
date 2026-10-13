@@ -177,6 +177,8 @@ describe("Banco: tabelas fechadas, fila e Central de IAs", () => {
     expect(s.functions.find((f: any) => f.key === "similaridade")).toMatchObject({ configured: false });
     expect(await sql(`select 1 from public.ai_functions where key = 'similaridade'`)).toEqual([]);
     expect((await sql(`select pg_get_constraintdef(oid) d from pg_constraint where conname = 'ch_jobs_step_check'`))[0].d).toMatch(/'similarity'/);
+    // a versão do motor no banco é a mesma do servidor (trocar uma exige trocar a outra)
+    expect((await sql(`select public.similarity_engine_version() v`))[0].v).toBe(ENGINE_VERSION);
     // sem a função ligada: a fila automática não põe nada, e a IA em lote é recusada em português
     expect((await sql(`select public.ch_worker_similarity_autoqueue() r`))[0].r).toBe(false);
     await expect(rpc(ADMIN, "app_admin_similarity_classify", { p_limit: 5 })).rejects.toThrow(/desligada na Central de IAs/);
@@ -598,9 +600,19 @@ describe("Vetores (de teste, derivados do texto real) só com a função ligada;
     expect((await relations(`id = '${r0.id}'`))[0]).toMatchObject({ origin: "ia", relation: r0.relation });
   });
 
-  it("função desligada de novo: nenhum vetor novo é gerado (os já gravados continuam servindo)", async () => {
+  it("função desligada de novo: o pedido de IA que ficou na fila morre com o aviso, e nenhum vetor novo é gerado", async () => {
+    // pedido feito com a função ligada, que é desligada antes de o pedido rodar
+    const pedido = await rpc(ADMIN, "app_admin_similarity_classify", { p_limit: 4 });
+    expect(pedido).toMatchObject({ duplicate: false });
+    expect(pedido.job_id).toBeTruthy();
     await db.service("ch_worker_ai_save_function", { p_actor: ADMIN, p_key: "similaridade", p_config: null });
     invalidateAiConfig(db);
+    aiSeen.length = 0;
+    expect(await drain()).toBe(1);
+    expect(aiSeen).toEqual([]);
+    expect((await sql(`select status, error from public.ch_jobs where id = $1`, [pedido.job_id]))[0]).toMatchObject({ status: "dead" });
+    expect(await lastRun()).toMatchObject({ mode: "ia", status: "falhou" });
+    expect((await lastRun()).message).toMatch(/desligada na Central de IAs.*peça a classificação de novo/);
     const [{ question_id: id }] = await sql(`select question_id from public.question_profiles where taxonomy_node_id <> taxonomy_parent_id order by 1 limit 1`);
     await sql(`update public.question_profiles set taxonomy_node_id = taxonomy_parent_id where question_id = $1`, [id]);
     embedCalls.texts = 0;

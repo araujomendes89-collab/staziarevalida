@@ -24,7 +24,10 @@
  */
 import { charRatio, normalizeForSimilarity, tokenSetRatio } from "../questoes/similarity";
 
-/** Versão do motor: mudar faz o banco recalcular todos os pares (fica em relations_basis). */
+/**
+ * Versão do motor: mudar faz o banco recalcular todos os pares (fica em relations_basis). Precisa ser igual a
+ * public.similarity_engine_version() (migração 20261003009910): trocar aqui exige uma migração que troque lá (um teste confere).
+ */
 export const ENGINE_VERSION = "sim-1";
 export const WEIGHTS = { raciocinio: 0.4, conceitos: 0.3, competencia: 0.2, achados: 0.1 } as const;
 /** Confiança: alta ≥ 0,8 (o aluno pode ver sem revisão), média ≥ 0,6, baixa abaixo disso (duvidosa: vai para a IA, se pedida). */
