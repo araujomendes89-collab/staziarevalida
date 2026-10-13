@@ -1,0 +1,12 @@
+Perfis REAIS das questões, para os testes do motor de questões parecidas (similaridadeBanco.test.ts e similaridadeMotor.test.ts).
+
+O que é: cópia, feita em 2026-10-12, dos perfis que os agentes da revisão local escreveram para as provas Revalida 2021 e
+Revalida 2022/2 (scratchpad revisao-questoes/revalida_2021_1 e revalida_2022_2, arquivos prof-NN.json). De cada questão foram
+copiadas só as chaves que o motor usa: id, tema, subtema, confianca e perfil. Nada foi escrito à mão nem alterado.
+
+O que NÃO é: revisão médica. Esses perfis saíram dos agentes (sem chave do sistema) e ainda não passaram por médico.
+
+As questões dos testes são as questões oficiais da carga do próprio repositório (scripts/supabase/seed-builder.ts), as mesmas
+do arquivo questoes-1200.json da revisão. Nenhuma questão, perfil ou par de exemplo foi inventado para os testes.
+A Taxonomia Médica Oficial ainda não existe: onde o teste precisa do nó da taxonomia, ele é derivado do tema e do subtema reais
+da questão, com o prefixo "teste-" (não é a taxonomia oficial).
