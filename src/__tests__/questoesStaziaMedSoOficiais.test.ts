@@ -63,6 +63,9 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   // as duas, histórico do aluno e acesso
   practice_pool: { classe: "as_duas", como: "historico" },
   practice_question_view: { classe: "as_duas", como: "historico" },
+  // carga das provas (9930): o selo "gabarito preliminar" de UMA questão; só é chamada por practice_question_view e
+  // practice_correction_view, que já decidiram o acesso (fechada ao app)
+  question_preliminary_info: { classe: "as_duas", como: "historico" },
   ch_raw_practice_correction_view: { classe: "as_duas", como: "historico" },
   practice_result: { classe: "as_duas", como: "historico" },
   app_get_session: { classe: "as_duas", como: "historico" },
@@ -266,6 +269,8 @@ describe("Migração", () => {
                       from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'origin'`))[0];
     const before = await snap();
     await env.dev.db.exec(text);
+    // a 9930 (carga das provas) redefine practice_question_view por cima da 9801: colar a 9801 de novo pede colar a 9930 depois
+    await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003009930_gabarito_preliminar_aviso.sql", import.meta.url)), "utf8"));
     expect(await snap()).toEqual(before);
   });
 });

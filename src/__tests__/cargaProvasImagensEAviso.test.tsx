@@ -15,7 +15,7 @@ vi.mock("../novo/app/session.jsx", () => ({ useSession: () => ({ backend, boot: 
 vi.mock("../novo/app/Shell.jsx", () => ({ useMobile: () => false, useMQ: () => false }));
 vi.mock("../novo/app/tutor/TutorDrawer.jsx", () => ({ TutorButton: ({ label }: any) => <button type="button">{label}</button> }));
 
-import { Correction, PRELIMINARY_NOTICE } from "../novo/app/practice/Correction.jsx";
+import { Correction, PreliminarySeal, PRELIMINARY_SEAL, preliminaryText } from "../novo/app/practice/Correction.jsx";
 // @ts-ignore módulo .mjs
 import { enviarImagens, conferirArquivos } from "../../scripts/carga-provas/subir-imagens.mjs";
 
@@ -68,22 +68,37 @@ describe("envio das imagens", () => {
   });
 });
 
-describe("aviso do gabarito preliminar na correção", () => {
-  // Revalida 2026/2 Q1 (texto real da prova; gabarito preliminar do Inep: B)
+describe("selo GABARITO PRELIMINAR (Revalida 2026/2)", () => {
+  // Revalida 2026/2 Q1 (texto real da prova; gabarito preliminar do Inep: B); a data vem do banco (exams.final_answer_expected_on)
   const question = { id: "revalida_2026_2_q001", area: "CLINICA_MEDICA", exam: { kind: "REVALIDA", year: 2026, semester: 2 } };
   const base = { is_correct: false, correct_option: "B", annulled: false, option_notes: [], sources: [{ title: "Gabarito oficial do Inep — Revalida INEP 2026/2 — 2ª Edição Semestral", organization: "INEP / MEC" }] };
+  const FRASE = "O gabarito definitivo só será divulgado pelo Inep em 04/12/2026.";
 
-  it("aparece quando o gabarito oficial atual é o preliminar, junto da correção", () => {
-    render(<Correction selected="A" correction={{ ...base, answer_preliminary: true }} question={question} />);
-    expect(screen.getByText("Você marcou A. A correta é B.")).toBeTruthy();
-    expect(screen.getByRole("note").textContent).toBe(PRELIMINARY_NOTICE);
-    expect(PRELIMINARY_NOTICE).toBe("Gabarito preliminar do Inep: pode mudar quando o Inep publicar o definitivo.");
+  it("a data é dado do banco: a frase sai da data gravada na prova", () => {
+    expect(preliminaryText("2026-12-04")).toBe(FRASE);
+    expect(preliminaryText("2027-01-15")).toBe("O gabarito definitivo só será divulgado pelo Inep em 15/01/2027.");
+    expect(preliminaryText(null)).toBe("O gabarito definitivo ainda não foi divulgado pelo Inep.");
   });
 
-  it("não aparece com gabarito definitivo, com servidor antigo (sem o campo) nem em questão anulada", () => {
-    for (const c of [{ ...base, answer_preliminary: false }, base, { ...base, annulled: true, answer_preliminary: true }]) {
+  it("na correção: selo e frase visíveis junto do veredito", () => {
+    render(<Correction selected="A" correction={{ ...base, answer_preliminary: true, preliminary: { expected_on: "2026-12-04" } }} question={question} />);
+    expect(screen.getByText("Você marcou A. A correta é B.")).toBeTruthy();
+    const nota = screen.getByRole("note", { name: PRELIMINARY_SEAL });
+    expect(nota.textContent).toBe(`${PRELIMINARY_SEAL}${FRASE}`);
+  });
+
+  it("nas listas (resultado da sessão, caderno de erros) o selo compacto; sem gabarito preliminar, nada", () => {
+    const { container } = render(<PreliminarySeal info={{ expected_on: "2026-12-04" }} compact />);
+    expect(container.textContent).toBe("GABARITO PRELIMINAR");
+    cleanup();
+    expect(render(<PreliminarySeal info={null} />).container.textContent).toBe("");
+  });
+
+  it("não aparece com gabarito definitivo (o banco manda answer_preliminary falso), servidor antigo ou questão anulada", () => {
+    for (const c of [{ ...base, answer_preliminary: false, preliminary: null }, base, { ...base, annulled: true, answer_preliminary: true, preliminary: { expected_on: "2026-12-04" } }]) {
       render(<Correction selected="A" correction={c} question={question} />);
-      expect(screen.queryByText(PRELIMINARY_NOTICE)).toBeNull();
+      expect(screen.queryByText(FRASE)).toBeNull();
+      expect(screen.queryByText(PRELIMINARY_SEAL)).toBeNull();
       cleanup();
     }
   });

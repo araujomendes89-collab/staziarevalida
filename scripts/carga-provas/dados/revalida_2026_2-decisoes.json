@@ -1,5 +1,10 @@
 {
- "nota": "Decisões do dono para a prova 2026/2. A grande área é obrigatória no banco: Q74 e Q93 vieram sem área na extração e ficam FORA da carga até o dono escolher (CLINICA_MEDICA, CIRURGIA_GERAL, GINECOLOGIA_OBSTETRICIA, PEDIATRIA ou MEDICINA_FAMILIA_COMUNIDADE). Depois de preencher, rode de novo o gerador e cole a parte 3 de novo (as que já entraram não mudam).",
- "areas": { "74": null, "93": null },
- "tema_provisorio": "Revalida 2026/2 · Q{n} · tema a classificar"
+ "nota": "Decisões do dono para a prova 2026/2 (13/10/2026): Q74 em Medicina de Família e Comunidade e Q93 em Cirurgia Geral (as outras 98 áreas vieram da extração). Data do gabarito definitivo informada pelo dono; confirmar no cronograma do Inep (a fonte oficial ainda não está na biblioteca). Para trocar a data depois, basta: update public.exams set final_answer_expected_on = 'AAAA-MM-DD' where id = 'revalida-2026-2';",
+ "areas": {
+  "74": "MEDICINA_FAMILIA_COMUNIDADE",
+  "93": "CIRURGIA_GERAL"
+ },
+ "tema_provisorio": "Revalida 2026/2 · Q{n} · tema a classificar",
+ "gabarito_definitivo_em": "2026-12-04",
+ "gabarito_definitivo_em_fonte": "informada pelo dono em 13/10/2026; confirmar no cronograma do Inep"
 }

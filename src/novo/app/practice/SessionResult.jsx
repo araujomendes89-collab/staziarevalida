@@ -3,7 +3,7 @@
 import React from "react";
 import { AnswerOption, Badge, Banner, Button, Card, Icon, ProgressBar, StatCard, Tabs } from "../../ds";
 import { useMQ } from "../Shell.jsx";
-import { Correction, answerState, isAnnulled } from "./Correction.jsx";
+import { Correction, PreliminarySeal, answerState, isAnnulled } from "./Correction.jsx";
 import { areaLabel, areaOf, formatClock, formatWhen, isStaziamed, percent, questionRef, splitStatement } from "./format.js";
 import { SupportTable } from "./SupportTable.jsx";
 import { QuestionFigures } from "./QuestionFigures.jsx";
@@ -32,6 +32,7 @@ function ReviewRow({ question, position, first, open, onToggle }) {
         <Icon name={state.icon} size={20} label={state.label} style={{ color: state.color, flex: "none" }} />
         <span style={{ font: "600 13px var(--font-mono)", color: "var(--text-tertiary)", width: 28, flex: "none" }}>{position}</span>
         <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", font: "var(--type-body-sm)" }}>{question.statement}</span>
+        <PreliminarySeal info={question.preliminary} compact />
         <Badge size="sm">{areaLabel(question.area)}</Badge>
         <Icon name={open ? "chevron-up" : "chevron-down"} size={18} style={{ color: "var(--text-tertiary)", flex: "none" }} />
       </button>

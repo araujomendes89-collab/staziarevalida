@@ -24,7 +24,11 @@ export const sqlAviso = () =>
   fs.readFileSync(path.join(RAIZ, "supabase/migrations", MIGRACAO_AVISO), "utf8") +
   `
 select 'OK: 1-aviso colada' as resultado,
-  pg_get_functiondef('public.practice_correction_view(text, text)'::regprocedure) like '%answer_preliminary%' as correcao_traz_o_aviso,
+  pg_get_functiondef('public.practice_correction_view(text, text)'::regprocedure) like '%answer_preliminary%' as correcao_traz_o_selo,
+  pg_get_functiondef('public.practice_question_view(text)'::regprocedure) like '%question_preliminary_info%' as questao_traz_o_selo,
+  pg_get_functiondef('public.app_error_notebook()'::regprocedure) like '%preliminary%' as caderno_de_erros_traz_o_selo,
+  exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'exams' and column_name = 'final_answer_expected_on') as data_do_definitivo_na_prova,
+  not has_function_privilege('authenticated', 'public.question_preliminary_info(text)', 'execute') as funcao_interna_fechada_ao_aluno,
   pg_get_functiondef('public.practice_correction_view(text, text)'::regprocedure) like '%ch_raw_practice_correction_view%' as continua_com_as_regras_de_quem_ve;
 `;
 
@@ -60,6 +64,9 @@ export function dados2026_2() {
 
 export function sql2026_2() {
   const { entram, fora } = dados2026_2();
+  const dec = lerJson("revalida_2026_2-decisoes.json");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dec.gabarito_definitivo_em ?? "")) throw new Error("data do gabarito definitivo da 2026/2 ausente");
+  const [ano, mes, dia] = dec.gabarito_definitivo_em.split("-");
   const fontes = [{ year: 2026, title: "Gabarito oficial do Inep — Revalida INEP 2026/2 — 2ª Edição Semestral", reliability: "OFICIAL_INEP", organization: "INEP / MEC" }];
   const motivo = `Prova nova: Revalida 2026/2 (texto do caderno 1 do Inep). ${OBS_2026_2}.`;
   return `-- =============================================================================
@@ -69,8 +76,10 @@ export function sql2026_2() {
 --   * cria a prova "Revalida INEP 2026/2 — 2ª Edição Semestral" (revalida-2026-2) e ${entram.length} questões (texto do caderno 1, conferido com o PDF);
 --   * registra para cada uma o gabarito oficial PRELIMINAR (fonte: gabarito preliminar do Inep), com a observação
 --     "${OBS_2026_2}" no histórico da questão;
---   * o aluno vê, depois de responder, o aviso "Gabarito preliminar do Inep: pode mudar quando o Inep publicar o definitivo"
---     (precisa da parte 1). O definitivo entra depois pela função oficial de registro de gabarito (situação FINAL) e o aviso some.
+--   * o aluno vê em TODAS elas (treino, correção, resultado da sessão, caderno de erros) o selo "GABARITO PRELIMINAR" e a frase
+--     "O gabarito definitivo só será divulgado pelo Inep em ${dia}/${mes}/${ano}." (precisa da parte 1). A data fica gravada na prova
+--     (exams.final_answer_expected_on), é DADO: para trocar, um update nessa coluna, sem publicar o site. Data informada pelo dono;
+--     confirmar no cronograma do Inep. O definitivo entra depois pela função oficial de registro de gabarito (situação FINAL) e o selo some.
 --   * as ${entram.filter((q) => q.needs_image).length} questões com figura ou tabela entram com a marca "cita figura": ficam FORA dos treinos até a parte 4 ligar as imagens.
 --   * tema provisório "Revalida 2026/2 · Qnn · tema a classificar" (o tema de verdade vem na carga das explicações).
 ${fora.length ? `--   * FICAM DE FORA (sem grande área; decisão do dono em scripts/carga-provas/dados/revalida_2026_2-decisoes.json): ${fora.map((f) => "Q" + f.numero).join(", ")}.\n` : ""}-- Pode colar de novo: questão que já existe não é mexida; gabarito já registrado não é trocado (nunca rebaixa um definitivo).
@@ -87,9 +96,14 @@ declare
   v_id text;
   v_novas integer := 0;
 begin
+  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'exams' and column_name = 'final_answer_expected_on') then
+    raise exception 'Cole antes a parte 1 (1-aviso-gabarito-preliminar.sql). Nada foi mudado.';
+  end if;
   insert into public.exams (id, kind, year, semester, title)
   values ('revalida-2026-2', 'REVALIDA', 2026, 2, 'Revalida INEP 2026/2 — 2ª Edição Semestral')
   on conflict (id) do nothing;
+  -- a data do definitivo: só grava se ainda está vazia (quem trocou depois não é desfeito por uma nova colagem)
+  update public.exams set final_answer_expected_on = ${sqlTexto(dec.gabarito_definitivo_em)}::date where id = 'revalida-2026-2' and final_answer_expected_on is null;
   for r in select value from jsonb_array_elements(v_dados) loop
     v_id := null;
     insert into public.questions (id, code, exam_id, number, area, topic, statement, options, correct_option, status, needs_image, images, sources)
@@ -131,7 +145,8 @@ select resultado, detalhe from (
          || (select count(*) from _carga_2026_2_resultado where situacao = 'criada agora') || ' criadas agora); gabarito atual: '
          || coalesce((select string_agg(s || ' ' || n, ', ') from (select o.answer_status s, count(*) n from public.question_official_answers o
                       join public.questions q on q.id = o.question_id where q.exam_id = 'revalida-2026-2' and o.is_current group by 1) z), 'nenhum') as resultado,
-         ${sqlTexto(fora.length ? `fora da carga (sem grande área): ${fora.map((f) => "Q" + f.numero).join(", ")}` : "")} as detalhe
+         'gabarito definitivo previsto (selo do aluno): ' || coalesce(to_char((select final_answer_expected_on from public.exams where id = 'revalida-2026-2'), 'DD/MM/YYYY'), 'sem data')
+         ${fora.length ? `|| ${sqlTexto(`; fora da carga (sem grande área): ${fora.map((f) => "Q" + f.numero).join(", ")}`)}` : ""} as detalhe
 ) x order by ordem;
 `;
 }
@@ -344,8 +359,9 @@ linhas as (
          (select count(*) from public.questions where exam_id = 'revalida-2026-2') || ' / ' ||
          (select count(*) from public.question_official_answers o join public.questions q on q.id = o.question_id where q.exam_id = 'revalida-2026-2' and o.is_current and o.answer_status = 'PRELIMINARY')
   union all
-  select 40, 'Aviso do gabarito preliminar (parte 1) colado',
-         case when pg_get_functiondef('public.practice_correction_view(text, text)'::regprocedure) like '%answer_preliminary%' then 'sim' else 'não' end
+  select 40, 'Selo "GABARITO PRELIMINAR" (parte 1) colado / data do definitivo da 2026/2',
+         case when pg_get_functiondef('public.practice_question_view(text)'::regprocedure) like '%question_preliminary_info%' then 'sim' else 'não' end || ' / ' ||
+         coalesce((select to_char((to_jsonb(e) ->> 'final_answer_expected_on')::date, 'DD/MM/YYYY') from public.exams e where e.id = 'revalida-2026-2'), 'sem data')
   union all
   select 50, 'Análises Stazia publicadas nas questões com texto ainda antigo (saem do ar na parte 2)',
          (select count(*)::text from public.question_analysis a where a.is_current and a.status = 'published' and a.question_id in (select id from estado where e = 'antigo'))

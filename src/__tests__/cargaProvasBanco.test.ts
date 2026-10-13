@@ -10,7 +10,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import fs from "fs";
 import path from "path";
-import { ANA, ROOT, startDb, type Db } from "./helpers/questoesLeva3";
+import { ADMIN, ANA, ROOT, startDb, type Db } from "./helpers/questoesLeva3";
 // @ts-ignore módulos .mjs do gerador
 import { correcoesDaProva, manifestoImagens, provas, questoesAntes, lerJson } from "../../scripts/carga-provas/comum.mjs";
 // @ts-ignore
@@ -110,16 +110,19 @@ describe("carga das provas corrigidas — no banco", () => {
     expect((await t.sql(`select count(*)::int n from public.admin_audit_log where action = 'question.updated' and details->>'reason' = $1`, [MOTIVO_TEXTO]))[0].n).toBe(362);
   });
 
-  it("parte 3: prova 2026/2 com as questões e o gabarito oficial PRELIMINARY (Q74 e Q93 esperam a área)", async () => {
+  it("parte 3: prova 2026/2 com as 100 questões, o gabarito oficial PRELIMINARY e a data do definitivo (decisões do dono: Q74 MFC, Q93 Cirurgia)", async () => {
     const r = ultimo(await exec(sql2026_2()));
     const { entram, fora } = dados2026_2();
-    expect(entram).toHaveLength(98);
-    expect(fora.map((f: any) => f.numero)).toEqual([74, 93]);
-    expect(r[0].resultado).toMatch(/^OK: Revalida 2026\/2: 98 questões no banco \(98 criadas agora\); gabarito atual: PRELIMINARY 98/);
+    expect(entram).toHaveLength(100);
+    expect(fora).toEqual([]);
+    expect(r[0].resultado).toMatch(/^OK: Revalida 2026\/2: 100 questões no banco \(100 criadas agora\); gabarito atual: PRELIMINARY 100/);
+    expect(r[0].detalhe).toBe("gabarito definitivo previsto (selo do aluno): 04/12/2026");
+    expect((await t.sql(`select final_answer_expected_on::text d from public.exams where id = 'revalida-2026-2'`))[0].d).toBe("2026-12-04");
+    expect((await t.sql(`select id, area from public.questions where id in ('revalida_2026_2_q074', 'revalida_2026_2_q093') order by id`)).map((x: any) => x.area)).toEqual(["MEDICINA_FAMILIA_COMUNIDADE", "CIRURGIA_GERAL"]);
     const real = lerJson("revalida_2026_2.json");
     const qs = await t.sql(`select q.id, q.statement, q.options, q.correct_option, q.status, q.needs_image, o.answer, o.answer_status, o.source from public.questions q
                             join public.question_official_answers o on o.question_id = q.id and o.is_current where q.exam_id = 'revalida-2026-2' order by q.number`);
-    expect(qs).toHaveLength(98);
+    expect(qs).toHaveLength(100);
     for (const q of qs) {
       const x = real.find((y: any) => y.id === q.id);
       expect(q.statement).toBe(x.statement);
@@ -129,7 +132,7 @@ describe("carga das provas corrigidas — no banco", () => {
       expect(q.needs_image).toBe(Boolean(x.figura || x.tabela));
     }
     const c = await t.sql(`select count(*)::int n from public.question_change_log where reason like 'Prova nova: Revalida 2026/2%' and changes ? 'criacao'`);
-    expect(c[0].n).toBe(98);
+    expect(c[0].n).toBe(100);
   });
 
   it("parte 4: sem os arquivos no depósito, para e não muda nada; com eles, liga imagens, tira o trecho da tabela e liga a marca", async () => {
@@ -200,8 +203,8 @@ describe("carga das provas corrigidas — no banco", () => {
     expect(r.find((x: any) => x.ordem === 12).resultado).toBe(`${mexida.id} ${mexida.campo}`);
     expect(r.find((x: any) => x.ordem === 10).resultado).toBe("700 / 0 / 1");
     expect(r.find((x: any) => x.ordem === 20).resultado).toBe("77 / 79");
-    expect(r.find((x: any) => x.ordem === 30).resultado).toBe("98 / 98");
-    expect(r.find((x: any) => x.ordem === 40).resultado).toBe("sim");
+    expect(r.find((x: any) => x.ordem === 30).resultado).toBe("100 / 100");
+    expect(r.find((x: any) => x.ordem === 40).resultado).toBe("sim / 04/12/2026");
     expect(await fotografia()).toEqual(f0);
   });
 
@@ -213,10 +216,30 @@ describe("carga das provas corrigidas — no banco", () => {
     expect(Object.keys(q)).not.toContain("correct_option");
     const c = await t.rpc(ANA, "app_answer_question", { p_session_id: s.session_id, p_question_id: q.id, p_option: "A" });
     expect(c.answer_preliminary).toBe(true);
+    expect(c.preliminary).toEqual({ expected_on: "2026-12-04" });
+    expect(q.preliminary).toEqual({ expected_on: "2026-12-04" }); // o selo aparece antes de responder, sem a letra
+    // resultado da sessão e caderno de erros: a mesma marca (errou de propósito para cair no caderno)
+    const errada = (await t.sql(`select correct_option from public.questions where id = $1`, [q.id]))[0].correct_option === "A" ? "B" : "A";
+    if (errada !== "A") await t.rpc(ANA, "app_answer_question", { p_session_id: s.session_id, p_question_id: q.id, p_option: errada }).catch(() => null);
     const s2 = await t.rpc(ANA, "app_start_session", { p_kind: "questoes", p_filters: { exam_id: "revalida-2023-2" }, p_count: 1 });
     const q2 = (await t.rpc(ANA, "app_get_session", { p_session_id: s2.session_id })).questions[0];
     const c2 = await t.rpc(ANA, "app_answer_question", { p_session_id: s2.session_id, p_question_id: q2.id, p_option: "A" });
     expect(c2.answer_preliminary).toBe(false);
+    expect(c2.preliminary).toBeNull();
+    const caderno = await t.rpc(ANA, "app_error_notebook");
+    for (const it of caderno.items) expect(it.preliminary, it.question_id).toEqual(it.question_id.startsWith("revalida_2026_2_") ? { expected_on: "2026-12-04" } : null);
+    const detalhe = await t.rpc(ANA, "app_error_detail", { p_question_id: caderno.items[0].question_id });
+    if (detalhe) expect(Object.keys(detalhe)).toContain("preliminary");
+    // a função interna do selo fica fechada ao aluno
+    await expect(t.asUser(ANA, `select public.question_preliminary_info('revalida_2026_2_q001')`)).rejects.toThrow(/permission denied/);
+    // quando a equipe registra o gabarito DEFINITIVO pela função oficial, o selo some
+    const [g] = await t.sql(`select correct_option from public.questions where id = $1`, [q.id]);
+    await t.rpc(ADMIN, "app_admin_set_official_answer", { p_question_id: q.id, p_answer: g.correct_option, p_status: "FINAL", p_source: "Gabarito definitivo do Inep (teste)", p_reason: "Definitivo publicado" });
+    const depois = await t.rpc(ANA, "app_get_session", { p_session_id: s.session_id });
+    const qd = depois.questions.find((x: any) => x.id === q.id);
+    expect(qd.preliminary).toBeNull();
+    expect(qd.correction.answer_preliminary).toBe(false);
+    expect(depois.questions.filter((x: any) => x.id !== q.id).every((x: any) => x.preliminary?.expected_on === "2026-12-04")).toBe(true);
     // o aluno não lê gabarito oficial, histórico nem arquivos; o visitante não lê questões nem chama a correção
     for (const tabela of ["question_official_answers", "question_change_log"]) expect(await t.asUser(ANA, `select * from public.${tabela}`)).toEqual([]);
     await expect(t.asUser(ANA, `select * from public.question_figure_files`)).rejects.toThrow(/permission denied/);

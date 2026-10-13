@@ -16,6 +16,7 @@ import { QuestionFigures } from "./QuestionFigures.jsx";
 import { SessionResult } from "./SessionResult.jsx";
 import { areaLabel, formatClock, isStaziamed, questionRef, splitStatement } from "./format.js";
 import { SupportTable } from "./SupportTable.jsx";
+import { PreliminarySeal } from "./Correction.jsx";
 import { XPToast, useTurnFeedback } from "../play/PlayFeedback.jsx";
 
 // Até aqui, um traço por questão na barra do topo; acima disso, uma barra contínua.
@@ -469,6 +470,11 @@ function Runner({ session, go, onFinished }) {
                 </Badge>
               )}
             </div>
+            {question.preliminary && (
+              <div style={{ marginTop: 16 }}>
+                <PreliminarySeal info={question.preliminary} />
+              </div>
+            )}
             {error && (
               <div style={{ marginTop: 16 }}>
                 <Banner tone="danger">{error}</Banner>

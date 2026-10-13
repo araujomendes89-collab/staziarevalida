@@ -43,12 +43,13 @@ linhas as (
   select 20, 'Imagens: questões já ligadas (de 77) / arquivos no depósito (de 79)',
          count(*) filter (where ligada) || ' / ' || coalesce(sum(no_deposito)::text, 'sem esquema storage (banco de teste)') from img_estado
   union all
-  select 30, 'Prova 2026/2: questões no banco (de 98) / com gabarito PRELIMINAR atual',
+  select 30, 'Prova 2026/2: questões no banco (de 100) / com gabarito PRELIMINAR atual',
          (select count(*) from public.questions where exam_id = 'revalida-2026-2') || ' / ' ||
          (select count(*) from public.question_official_answers o join public.questions q on q.id = o.question_id where q.exam_id = 'revalida-2026-2' and o.is_current and o.answer_status = 'PRELIMINARY')
   union all
-  select 40, 'Aviso do gabarito preliminar (parte 1) colado',
-         case when pg_get_functiondef('public.practice_correction_view(text, text)'::regprocedure) like '%answer_preliminary%' then 'sim' else 'não' end
+  select 40, 'Selo "GABARITO PRELIMINAR" (parte 1) colado / data do definitivo da 2026/2',
+         case when pg_get_functiondef('public.practice_question_view(text)'::regprocedure) like '%question_preliminary_info%' then 'sim' else 'não' end || ' / ' ||
+         coalesce((select to_char((to_jsonb(e) ->> 'final_answer_expected_on')::date, 'DD/MM/YYYY') from public.exams e where e.id = 'revalida-2026-2'), 'sem data')
   union all
   select 50, 'Análises Stazia publicadas nas questões com texto ainda antigo (saem do ar na parte 2)',
          (select count(*)::text from public.question_analysis a where a.is_current and a.status = 'published' and a.question_id in (select id from estado where e = 'antigo'))

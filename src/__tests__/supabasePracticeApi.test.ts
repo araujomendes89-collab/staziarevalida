@@ -123,7 +123,7 @@ describe("Treino — sessão de questões", () => {
 
     first = session.questions[0];
     expect(Object.keys(first).sort()).toEqual(
-      ["active_ms", "area", "bookmarked", "code", "correction", "exam", "id", "images", "number", "options", "origin", "selected", "statement", "support"].sort()
+      ["active_ms", "area", "bookmarked", "code", "correction", "exam", "id", "images", "number", "options", "origin", "preliminary", "selected", "statement", "support"].sort()
     );
     expect(first.options[0]).toEqual({ id: "A", text: "alternativa A" });
     const sent = JSON.stringify(session.questions);
