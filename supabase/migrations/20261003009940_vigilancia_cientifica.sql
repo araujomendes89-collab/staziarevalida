@@ -490,12 +490,12 @@ begin
   em := 'Tipo ' || coalesce(s.source_type, 'não informado') || ', nível ' || coalesce(s.authority_level, 'não informado') || '.';
 
   -- rastreabilidade: impressão digital, documento guardado, identificadores, versão e data
-  if s.sha256 is not null then rz := rz + 0.4; erz := erz || 'SHA-256 do arquivo'; end if;
-  if v_watched then rz := rz + 0.3; erz := erz || 'link conferido pelo vigia'; end if;
-  if s.document_id is not null then rz := rz + 0.2; erz := erz || 'documento guardado'; end if;
-  if s.doi is not null or s.pmid is not null then rz := rz + 0.2; erz := erz || 'DOI/PMID'; end if;
-  if nullif(btrim(coalesce(s.version, '')), '') is not null then rz := rz + 0.1; erz := erz || 'versão'; end if;
-  if coalesce(s.published_on, s.effective_date, s.revision_date) is not null then rz := rz + 0.1; erz := erz || 'data'; end if;
+  if s.sha256 is not null then rz := rz + 0.4; erz := erz || 'SHA-256 do arquivo'::text; end if;
+  if v_watched then rz := rz + 0.3; erz := erz || 'link conferido pelo vigia'::text; end if;
+  if s.document_id is not null then rz := rz + 0.2; erz := erz || 'documento guardado'::text; end if;
+  if s.doi is not null or s.pmid is not null then rz := rz + 0.2; erz := erz || 'DOI/PMID'::text; end if;
+  if nullif(btrim(coalesce(s.version, '')), '') is not null then rz := rz + 0.1; erz := erz || 'versão'::text; end if;
+  if coalesce(s.published_on, s.effective_date, s.revision_date) is not null then rz := rz + 0.1; erz := erz || 'data'::text; end if;
   rz := least(rz, 1);
 
   v_total := round(100 * ((w ->> 'autenticidade')::numeric * a + (w ->> 'situacao_normativa')::numeric * sn + (w ->> 'metodologia')::numeric * m

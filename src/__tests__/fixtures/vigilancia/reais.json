@@ -1,0 +1,104 @@
+{
+ "_origem": "Dados reais: fontes do catálogo (scratchpad fontes-catalogo/catalogo-v2.json, 12/10/2026), questão real (comentarios-agentes/questoes-1200.json) e página 13 do PDF oficial do PCDT de IC com FE reduzida (biblioteca local de fontes). Copiados sem alteração.",
+ "fontes": [
+  {
+   "id": "ms-pcdt-ic-fer-2024",
+   "titulo": "Protocolo Clínico e Diretrizes Terapêuticas da Insuficiência Cardíaca com Fração de Ejeção Reduzida",
+   "instituicao": "Ministério da Saúde (SAES e SECTICS)",
+   "versao": "Portaria Conjunta SAES/SECTICS nº 10, de 13/09/2024; anexo alterado em 11/11/2024",
+   "url": "https://www.gov.br/saude/pt-br/assuntos/pcdt/i/insuficiencia-cardiaca-com-fracao-de-ejecao-reduzida",
+   "nivel": 3,
+   "ato": "Portaria Conjunta SAES/SECTICS nº 10, de 13/09/2024 (anexo alterado em 11/11/2024)",
+   "vigente": true
+  },
+  {
+   "id": "gvs-6ed-rev-v2",
+   "titulo": "Guia de Vigilância em Saúde: volume 2 (6ª edição revisada)",
+   "instituicao": "Ministério da Saúde / Secretaria de Vigilância em Saúde e Ambiente (SVSA/MS) / Departamento de Ações Estratégicas de Epidemiologia e Vigilância em Saúde e Ambiente",
+   "versao": "6ª edição revisada; ISBN 978-65-5993-505-5; 560 páginas no PDF",
+   "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/vigilancia/guia-de-vigilancia-em-saude-volume-2-6a-edicao/@@download/file",
+   "nivel": 3,
+   "ato": "Lista de notificação compulsória: Portaria GM/MS nº 11.211, de 13/05/2026 (altera o Anexo 1 do Anexo V da PC GM/MS nº 4/2017), após a Portaria GM/MS nº 10.175/2026",
+   "vigente": true
+  },
+  {
+   "id": "tb-manual-controle-2ed-2019",
+   "titulo": "Manual de Recomendações para o Controle da Tuberculose no Brasil (2ª edição atualizada)",
+   "instituicao": "Ministério da Saúde / SVS / Departamento de Vigilância das Doenças Transmissíveis / Programa Nacional de Controle da Tuberculose",
+   "versao": "2ª edição atualizada; tiragem 2019; PDF de 366 páginas",
+   "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/tuberculose/manual-de-recomendacoes-e-controle-da-tuberculose-no-brasil-2a-ed.pdf/@@download/file",
+   "nivel": 3,
+   "ato": null,
+   "vigente": true
+  },
+  {
+   "id": "tb-nota-informativa-5-2024",
+   "titulo": "Nota Informativa nº 5/2024-CGTM/DATHI/SVSA/MS: Implementação do tratamento encurtado da tuberculose sensível não grave em crianças e adolescentes (2RHZ(E)/2RH)",
+   "instituicao": "Ministério da Saúde / SVSA / DATHI / CGTM",
+   "versao": "Nota Informativa (5 páginas, de abril/2024)",
+   "url": "https://www.gov.br/aids/pt-br/central-de-conteudo/notas-informativas/2024/nota-informativa-no-5-2024-cgtm.pdf/@@display-file/file",
+   "nivel": 3,
+   "ato": "Nota Informativa nº 5/2024-CGTM/DATHI/SVSA/MS",
+   "vigente": true
+  },
+  {
+   "id": "ms-cab32-prenatal-baixo-risco-2012",
+   "titulo": "Atenção ao Pré-Natal de Baixo Risco (Cadernos de Atenção Básica, nº 32)",
+   "instituicao": "Ministério da Saúde (Secretaria de Atenção à Saúde, Departamento de Atenção Básica)",
+   "versao": "Série A. Normas e Manuais Técnicos; Cadernos de Atenção Básica nº 32; 318 p. (a edição exata não aparece na página consultada)",
+   "url": "https://bvsms.saude.gov.br/bvs/publicacoes/cadernos_atencao_basica_32_prenatal.pdf",
+   "nivel": 3,
+   "ato": "Rede Alyne: Portaria GM/MS n. 5.350, de 12/09/2024 (norma de organizacao, nao e o caderno clinico).",
+   "vigente": true
+  }
+ ],
+ "questao": {
+  "id": "enamed_2025_q001",
+  "code": "ENAMED-2025-Q001",
+  "exam_id": "enamed-2025",
+  "number": 1,
+  "area": "CLINICA_MEDICA",
+  "specialty": "CARDIOLOGY",
+  "topic": "Insuficiência cardíaca com fração de ejeção reduzida",
+  "subtopic": "Tratamento farmacológico modificador de prognóstico com antagonista da aldosterona",
+  "statement": "Mulher de 58 anos, com diagnóstico de hipertensão arterial sistêmica (HAS) e em tratamento irregular, é encaminhada ao ambulatório de clínica médica de atenção secundária. Queixa-se de fadiga e dispneia aos esforços, com piora progressiva. Ao exame físico, é observado ritmo cardíaco regular em 4 tempos (B3 + B4), sem sopros no precórdio, mas com crépitos em bases pulmonares; pressão arterial: 148 x 90 mmHg. Ecocardiograma transtorácico evidencia hipertrofia ventricular esquerda concêntrica, associada com fração de ejeção de 38% (por Simpson). Exames laboratoriais normais, salvo pela elevação sérica de peptídeo natriurético tipo B (BNP). Para melhorar o controle da HAS e o prognóstico da paciente, o tratamento com inibidor da enzima conversora de angiotensina foi mantido, e o especialista optou por associar determinado fármaco, devido ao impacto positivo no prognóstico de sobrevida dessa paciente. O fármaco introduzido no tratamento da paciente foi",
+  "options": [
+   {
+    "id": "A",
+    "text": "espironolactona.",
+    "explanation": "Espironolactona, um antagonista do receptor mineralocorticoide, deve ser associada ao inibidor da enzima conversora de angiotensina na insuficiência cardíaca sintomática com fração de ejeção reduzida, pois reduz a mortalidade e melhora a sobrevida."
+   },
+   {
+    "id": "B",
+    "text": "clortalidona.",
+    "explanation": ""
+   },
+   {
+    "id": "C",
+    "text": "hidralazina.",
+    "explanation": ""
+   },
+   {
+    "id": "D",
+    "text": "clonidina.",
+    "explanation": ""
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "key_finding": "espironolactona.",
+  "expected_conduct": "Associar espironolactona ao inibidor da enzima conversora de angiotensina em paciente com insuficiência cardíaca sintomática e fração de ejeção reduzida, visando reduzir mortalidade e melhorar o prognóstico.",
+  "inep_intent": "Avaliar o reconhecimento da terapia farmacológica que modifica o prognóstico da insuficiência cardíaca com fração de ejeção reduzida, diferenciando a espironolactona de fármacos anti-hipertensivos sem benefício prognóstico comprovado nesse contexto.",
+  "needs_image": false,
+  "images": [],
+  "sources": [
+   {
+    "year": 2025,
+    "title": "Gabarito Oficial Definitivo Exame Nacional da Medicina 2025 — ENAMED",
+    "reliability": "OFICIAL_INEP",
+    "organization": "INEP / MEC"
+   }
+  ]
+ },
+ "pcdt_ic_pagina_13": " \nApós o início do tratamento, é importante a dosagem periódica de potássio sérico (por exemplo, após 1ª \nsemana, 1º mês de tratamento e, depois, a cada 1 a 4 meses), assim como quando houver aumento da dose. O \nuso de antagonistas de aldosterona associado a IECA, ARA II e diuréticos tiazídicos pode favorecer o surgimento \nde hipercalemia, sendo necessárias dosagens periódicas de potássio sérico em caso de mudanças posológicas \nmaiores.  \nNo Brasil, o único antagonista da aldosterona disponível é a espironolactona, o qual está disponível no \nSUS. \n \n6.2.5 \nDiuréticos (de alça ou tiazídicos) \nOs diuréticos são eficazes no tratamento da congestão. Inexistem evidências para o seu uso em pacientes \nsem sintoma ou sinal de congestão.  \nOs diuréticos de alça produzem diurese mais intensa e de menor duração que os diuréticos tiazídicos, \nsendo preferencialmente utilizados. Já em pacientes com congestão resistente, podem ser utilizados em \ncombinação dado o efeito sinérgico entre eles.  \nOs pacientes podem ser orientados a ajustar a dose diurética com base no monitoramento de sintomas, \nsinais de congestão (edema periférico) e peso diário. A monitorização periódica da função renal e de eletrólitos, \nem especial dos níveis séricos de potássio, sódio e magnésio, é recomendada dadas as possíveis interações com \noutros fármacos utilizados para IC. \nNo SUS, o diurético de alça disponível é a furosemida e o diurético tiazídico é a hidroclorotiazida. \n \n6.2.6 \nDapagliflozina \nAs gliflozinas são fármacos que inibem o cotransporte de sódio e glicose, predominantemente no néfron, \ntendo sido descritas inicialmente como fármacos antidiabéticos de uso oral. A administração de dapagliflozina \nna IC em pacientes sintomáticos com fração de ejeção reduzida demonstrou redução de hospitalização por \ndescompensação da síndrome, da mortalidade cardiovascular e da mortalidade total34. \nConforme recomendação da Conitec35, preconiza-se associar dapagliflozina à terapia padrão (IECA, ARA \nII, betabloqueadores, diuréticos e antagonista de receptor de mineralocorticoides) nos tratamentos dos pacientes \nadultos com IC com as seguintes características: \n- Classe funcional NYHA II a IV; \n- Fração de ejeção reduzida < 40%; \n- Sintomáticos (sintomas como dispneia aos esforços, sinais de congestão, piora clínica com internações \nrecentes). \n \nPacientes que cumprem simultaneamente critérios para uso de dapagliflozina e sacubitril valsartana e \npersistem sintomáticos podem ter o tratamento otimizado para uso simultâneo dos dois medicamentos. \n \n6.2.7 \nSacubitril valsartana sódica hidratada \nO medicamento sacubitril valsartana sódica hidratada consiste na associação de um fármaco inibidor da \nneprilisina (sacubitril), inibindo a degradação de substâncias vasodilatadoras, com um antagonista do receptor \nda angiotensina II (valsartana). O uso de sacubitril valsartana sódica hidratada foi associado a redução de \n"
+}
