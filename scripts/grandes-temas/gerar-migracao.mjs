@@ -1,13 +1,13 @@
 // Gera a migração dos 100 Grandes Temas (tabelas, dados, treino por tema e a contagem) a partir dos dois arquivos versionados
 // desta pasta: temas.json (os 100 temas) e ligacao-questoes.json (questão -> tema, com método e dúvidas).
-// Uso: node scripts/grandes-temas/gerar-migracao.mjs [--pacote <pasta>]   (reescreve supabase/migrations/20261003009960_grandes_temas_100.sql;
+// Uso: node scripts/grandes-temas/gerar-migracao.mjs [--pacote <pasta>]   (reescreve supabase/migrations/20261003009970_grandes_temas_100.sql;
 // com --pacote, grava também 1-Grandes-temas.sql (a migração + a linha "OK"), 0-CONFERIR.sql e a pasta auditoria/ na pasta indicada)
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
-const SAIDA = path.join(AQUI, "../../supabase/migrations/20261003009960_grandes_temas_100.sql");
+const SAIDA = path.join(AQUI, "../../supabase/migrations/20261003009970_grandes_temas_100.sql");
 const METODO = "taxonomia-7-areas-2026-10-13";
 const q = (s) => `'${String(s).replace(/'/g, "''")}'`;
 

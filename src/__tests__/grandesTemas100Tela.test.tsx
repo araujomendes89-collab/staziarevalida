@@ -1,6 +1,6 @@
 /**
  * Tela "Grandes Temas" (Estudar) com os 100 Grandes Temas Prioritários, jsdom com o banco simulado (a forma da resposta é a de
- * app_grandes_temas, migração 9960; a contagem com as questões reais é testada em grandesTemas100Banco.test.ts).
+ * app_grandes_temas, migração 9970; a contagem com as questões reais é testada em grandesTemas100Banco.test.ts).
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -80,8 +80,7 @@ describe("Grandes Temas: 100 Grandes Temas Prioritários", () => {
     const tb = screen.getByText("Tuberculose pulmonar").closest("div")!.parentElement!;
     expect(within(tb).getByText("12 questões · 2 provas")).toBeTruthy();
     expect(within(tb).getByText("Aula pronta, aguardando revisão médica")).toBeTruthy();
-    expect(within(tb).getByText("Rev. 2024/1: 7")).toBeTruthy();
-    expect(within(tb).getByText("ENAMED 2025: 5")).toBeTruthy();
+    expect(within(tb).queryByText(/Rev\.|ENAMED/)).toBeNull();
     const pn = screen.getByText("Assistência ao pré-natal").closest("div")!.parentElement!;
     expect(within(pn).getByText("1 questão · 1 prova")).toBeTruthy();
     expect(within(pn).getByText("Roteiro em validação")).toBeTruthy();

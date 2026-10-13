@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * 100 Grandes Temas (migração 9960) com as QUESTÕES REAIS das provas oficiais no banco de teste (PGlite): só a infraestrutura é
+ * 100 Grandes Temas (migração 9970) com as QUESTÕES REAIS das provas oficiais no banco de teste (PGlite): só a infraestrutura é
  * simulada. Confere os 100 temas, a contagem verdadeira por tema, as anuladas fora, o treino por tema e a segurança.
  */
 import fs from "fs";
@@ -13,7 +13,7 @@ vi.setConfig({ testTimeout: 600_000, hookTimeout: 600_000 });
 const DIR = path.join(process.cwd(), "scripts/grandes-temas");
 const temasFile = JSON.parse(fs.readFileSync(path.join(DIR, "temas.json"), "utf8"));
 const lig = JSON.parse(fs.readFileSync(path.join(DIR, "ligacao-questoes.json"), "utf8"));
-const MIGRACAO = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/20261003009960_grandes_temas_100.sql"), "utf8");
+const MIGRACAO = fs.readFileSync(path.join(process.cwd(), "supabase/migrations/20261003009970_grandes_temas_100.sql"), "utf8");
 
 let env: StaziaEnv;
 let dbQuestions: Map<string, { exam_id: string; status: string }>;

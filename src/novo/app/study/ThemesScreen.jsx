@@ -17,12 +17,6 @@ const STATUS = {
 // Sem acento e em minúsculas, para a busca achar "ginecologia" em "Ginecologia" e "pre natal" em "pré-natal".
 const fold = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
-// revalida-2024-1 → "Rev. 2024/1" · enamed-2025 → "ENAMED 2025"
-const examName = (id) => {
-  const m = id.match(/^(revalida|enamed)-(\d{4})(?:-(\d))?$/);
-  return m ? `${m[1] === "enamed" ? "ENAMED" : "Rev."} ${m[2]}${m[3] ? `/${m[3]}` : ""}` : id;
-};
-
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 export function ThemesScreen({ go }) {
@@ -103,17 +97,7 @@ export function ThemesScreen({ go }) {
                   <div style={{ height: 6, borderRadius: 999, background: "var(--chart-track)" }} aria-hidden="true">
                     <div style={{ width: `${t.total > 0 ? Math.max((t.total / max) * 100, 4) : 0}%`, height: "100%", borderRadius: 999, background: "var(--chart-1)" }} />
                   </div>
-                  {t.total > 0 ? (
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                      {exams.map(([id, n]) => (
-                        <span key={id} style={{ font: "var(--type-caption)", color: "var(--text-secondary)", background: "var(--surface-sunken)", borderRadius: 6, padding: "2px 6px" }}>
-                          {examName(id)}: {n}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>Ainda não há questão oficial catalogada ligada a este tema.</div>
-                  )}
+                  {t.total === 0 && <div style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>Ainda não há questão oficial catalogada ligada a este tema.</div>}
                   <div style={{ marginTop: "auto", paddingTop: 10, borderTop: "1px solid var(--border-subtle)" }}>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                       {t.total > 0 && (
