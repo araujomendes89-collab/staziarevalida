@@ -6,6 +6,7 @@
 //
 // Uso: node scripts/carga-explicacoes/gerar-sql.mjs [--pasta <revisao-questoes>] [--saida <pasta do pacote>] [--decisoes <json>]
 //                                                    [--estrutura <migração 9920>] [--sem-pacote]
+// --decisoes: decisoes-divergencias.json da tela do dono. Sem ele, NENHUMA divergente entra (nem em revisão).
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -35,7 +36,7 @@ export const BLOQUEIA = [
   [/diverg[eê]ncia (fica |foi |est[aá] )?(sinalizad|registrad|marcad)/i, "fala da divergência sinalizada (aviso interno)"],
   [/sinalizad[ao]s? para (a )?revis/i, "diz que foi sinalizada para revisão (aviso interno)"],
   [/gabarito oficial (diz|aponta|considera|marca)[^.]{0,80}\bmas\b/i, "desconfia do gabarito no texto do aluno"],
-  [/motivo prov[aá]vel|hip[oó]tese de anula/i, "traz a hipótese interna da anulação"],
+  [/motivo prov[aá]vel d[ae] anula|hip[oó]tese de anula/i, "traz a hipótese interna da anulação"],
   [/\bo auditor\b/i, "cita o Auditor"],
 ];
 // Citação ou afirmação que os agentes não podem fazer: a questão entra, mas nunca direto (fica para o revisor médico).
@@ -73,6 +74,25 @@ export function lerProva(pasta, slug) {
   }
   const prof = new Map();
   const aud = new Map();
+  // Arquivo final já mesclado (final/<prova>.json: o Auditor aplicado sobre o Professor, gabarito intacto): quando existe, manda.
+  const final = lerJson(path.join(pasta, "final", `${slug}.json`), null);
+  if (Array.isArray(final)) {
+    for (const x of final) {
+      if (!x || typeof x.id !== "string" || !x.professor_final) continue;
+      prof.set(x.id, { p: x.professor_final, arquivo: `final/${slug}.json` });
+      if (x.auditor && typeof x.auditor === "object") {
+        const correcoes = x.auditor.correcoes && typeof x.auditor.correcoes === "object" ? x.auditor.correcoes : {};
+        const ja = x.estado === "corrigida_pelo_auditor";
+        aud.set(x.id, {
+          // a correção já está no professor_final (corrigida); na divergente ela não foi aplicada: aplica aqui, se o dono decidir
+          a: { ...x.auditor, correcoes: ja ? null : x.estado === "divergente" ? correcoes : null },
+          arquivo: `final/${slug}.json`, antiga: false,
+          aplicadas: ja ? Object.entries(correcoes).flatMap(([k, v]) => (k === "explicacao" && v && typeof v === "object" ? Object.keys(v).map((l) => `explicacao.${l}`) : [k])) : [],
+        });
+      }
+    }
+    return { slug, nome: NOME[slug] ?? slug, questoes, prof, aud, avisos, final: true };
+  }
   if (fs.existsSync(dir)) {
     for (const f of fs.readdirSync(dir).filter((x) => /^prof-(\d+|anuladas)\.json$/.test(x)).sort()) {
       const sufixo = f.slice(5, -5);
@@ -196,6 +216,7 @@ export function classificarProva(prova, decisoes = {}) {
       continue;
     }
     const cor = aplicarCorrecoes(P.p, veredito === "ok" ? null : a.correcoes);
+    if (!cor.erro && A.aplicadas?.length) cor.aplicadas.unshift(...A.aplicadas);
     if (cor.erro) {
       linha.situacao = "fora";
       linha.motivos.push(cor.erro);
@@ -473,7 +494,8 @@ O QUE PRECISA DO DONO
 export function gerarTudo(opts = {}) {
   const pasta = opts.pasta ?? PASTA_PADRAO;
   const geradoEm = opts.geradoEm ?? new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
-  const decisoes = opts.decisoes ?? lerJson(path.join(pasta, "../fontes-catalogo/decisoes-divergencias.json"), {});
+  // as decisões do dono só valem quando passadas (--decisoes): sem elas, toda divergente fica fora da carga
+  const decisoes = opts.decisoes ?? {};
   const resultados = [];
   for (const [slug] of PROVAS) {
     if (!fs.existsSync(path.join(pasta, slug))) continue;
