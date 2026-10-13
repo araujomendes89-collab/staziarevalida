@@ -148,6 +148,9 @@ export const ACTION_LABEL = {
   "question_update.publish_update": "Atualização de questão publicada",
   "question_update.reject_proposal": "Proposta de atualização de questão recusada",
   "question.confirm_currency": "Questão confirmada como atual",
+  // fontes vinculadas da questão (migração 20261003009900): a equipe confirma ou tira o vínculo com o trecho do documento oficial
+  "question.source_link_confirmed": "Fonte vinculada confirmada",
+  "question.source_link_removed": "Fonte vinculada tirada",
   "job.retry": "Processamento tentado de novo",
   "visual.create": "Material visual criado",
   "visual.keep": "Material visual mantido",
@@ -294,6 +297,18 @@ const AREA_NAME = {
 };
 // chaves da Central de Conteúdo (a tela de Configuração da Central usa estes nomes)
 const FLAG_NAME = { enabled: "Central de Conteúdo", ai_enabled: "IA da Central", shadow_mode: "Modo sombra", publish_enabled: "Publicação", auto_analysis_enabled: "Análise automática", notebook_provider_enabled: "Provedor NotebookLM" };
+// fontes vinculadas: a questão, o documento, qual referência, o papel, a página e (ao tirar) o motivo
+const LINK_TEMPORAL = { vigente: "Referência atual", historica: "Versão da época da prova" };
+const LINK_ROLE = { diagnostico: "Diagnóstico", conduta: "Conduta", exame: "Exame", tratamento: "Tratamento", prevencao: "Prevenção", conceito: "Conceito", outro: "Outro" };
+const sourceLinkSummary = (d, entry) =>
+  join([
+    questionName(entry.target),
+    typeof d.source === "string" && d.source.trim() && `Fonte: ${d.source.trim()}`,
+    own(LINK_TEMPORAL, d.temporal),
+    own(LINK_ROLE, d.role),
+    d.page && `Página: ${d.page}`,
+    typeof d.reason === "string" && d.reason.trim() && `Motivo: ${d.reason.trim()}`,
+  ]);
 const noteOf = (d, label = "Nota") => (typeof d.note === "string" && d.note.trim() ? `${label}: ${d.note.trim()}` : "");
 const whyOf = (d) => (typeof (d.reason ?? d.why) === "string" && String(d.reason ?? d.why).trim() ? `Motivo: ${String(d.reason ?? d.why).trim()}` : "");
 const versionOf = (entry) => (entry.target && /^\d+$/.test(String(entry.target)) ? `Versão ${entry.target}` : "");
@@ -520,6 +535,8 @@ const SUMMARY = {
   "question_update.publish_update": (d) => join([d.question && questionName(d.question), noteOf(d)]),
   "question_update.reject_proposal": (d) => join([d.question && questionName(d.question), noteOf(d)]),
   "question.confirm_currency": (d, entry) => join([questionName(entry.target), noteOf(d)]),
+  "question.source_link_confirmed": (d, entry) => sourceLinkSummary(d, entry),
+  "question.source_link_removed": (d, entry) => sourceLinkSummary(d, entry),
   "gamification.achievement": (d) => d.name,
   "gamification.mission": (d) => d.title,
   "gamification.reward": (d) => d.name,
