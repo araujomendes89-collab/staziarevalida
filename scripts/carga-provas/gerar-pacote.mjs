@@ -317,7 +317,8 @@ imgs as (
 img_estado as (
   select i.id, coalesce(array(select e ->> 'path' from jsonb_array_elements(q.images) e) = i.paths, false) as ligada,
          case when to_regclass('storage.objects') is null then null else
-           (select count(*) from unnest(i.paths) p join storage.objects o on o.bucket_id = '${BUCKET}' and o.name = p) end as no_deposito,
+           -- consulta montada na hora: no banco sem o esquema storage o texto nem é lido
+           (xpath('/row/n/text()', query_to_xml(format('select count(*) as n from storage.objects where bucket_id = %L and name = any (%L::text[])', '${BUCKET}', i.paths), false, true, '')))[1]::text::int end as no_deposito,
          cardinality(i.paths) as n
   from imgs i left join public.questions q on q.id = i.id
 ),
