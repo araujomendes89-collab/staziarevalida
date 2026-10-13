@@ -1,0 +1,82 @@
+[
+ {
+  "id": "revalida_2022_2_q052",
+  "tema": "Pneumologia",
+  "subtema": "Derrame pleural parapneumônico",
+  "o_que_a_questao_avalia": "Avalia a identificação de derrame pleural associado a pneumonia e a escolha do passo seguinte. Cobra saber que o líquido pleural precisa ser analisado para diferenciar derrame simples de complicado.",
+  "conduta_esperada": "Realizar toracocentese à direita para análise do líquido pleural, pois há pneumonia com derrame e quadro infeccioso importante.",
+  "explicacao": {
+   "A": "Incorreta. A tomografia pode detalhar o derrame e o pulmão, mas não define se o líquido está infectado. Não é o passo seguinte quando o que falta é a análise do líquido para decidir a conduta.",
+   "B": "Correta. Em pneumonia com derrame pleural e febre persistente, o líquido deve ser puncionado e analisado para saber se o derrame é complicado ou empiema, o que muda a necessidade de drenagem.",
+   "C": "Incorreta. A ultrassonografia é útil para localizar o derrame e orientar a punção, mas não substitui a análise do líquido, que é o que classifica o derrame. O raciocínio errado é pedir mais um exame de imagem em vez de obter material.",
+   "D": "Incorreta. O quadro é de pneumonia bacteriana aguda, com início há 1 semana, febre alta e expectoração purulenta. Não há elementos que levem a investigar tuberculose como próximo passo."
+  },
+  "pontos_de_atencao": [
+   "Derrame associado a pneumonia deve ser tratado como possível complicação, não apenas como achado.",
+   "Na prática, a ultrassonografia costuma orientar a punção, mas a pergunta cobra o procedimento que fornece o diagnóstico do líquido."
+  ],
+  "precisa_conferir_diretriz": {
+   "sim": false,
+   "motivo": ""
+  },
+  "divergencia_gabarito": {
+   "suspeita": false,
+   "motivo": ""
+  },
+  "confianca": 85
+ },
+ {
+  "id": "revalida_2022_2_q093",
+  "tema": "Pediatria",
+  "subtema": "Intoxicação exógena por antipsicótico (haloperidol)",
+  "o_que_a_questao_avalia": "Avalia o raciocínio epidemiológico e clínico diante de duas crianças com o mesmo quadro após exposição comum. Cobra reconhecer a possibilidade de intoxicação medicamentosa acidental por antipsicótico a partir de rigidez, espasmos e hipertermia.",
+  "conduta_esperada": "Investigar intoxicação exógena acidental por haloperidol, considerando que a avó usa medicação para esquizofrenia e que duas crianças tiveram o mesmo quadro. Isso orienta a busca de informações sobre o medicamento e o manejo como intoxicação.",
+  "explicacao": {
+   "A": "Incorreta. Cardiopatia congênita cianótica se manifestaria com cianose e comprometimento cardiorrespiratório, e o enunciado afirma que não havia dificuldade respiratória nem história cardíaca. Dois primos com o mesmo quadro e exposição comum também falam contra uma doença congênita.",
+   "B": "Incorreta. O captopril é um anti-hipertensivo usado pela avó, mas sua intoxicação tende a causar efeitos como hipotensão, e não rigidez e espasmos musculares. A alternativa tenta atrair quem se prende apenas à hipertensão da avó.",
+   "C": "Correta. Rigidez, espasmos musculares e hipertermia em duas crianças que ficaram juntas na casa de uma avó em tratamento para esquizofrenia indicam ingestão acidental de antipsicótico. O haloperidol é o medicamento que explica o quadro extrapiramidal.",
+   "D": "Incorreta. Os benzodiazepínicos tendem a causar sedação e hipotonia, o oposto da rigidez e dos espasmos descritos. A alternativa explora o fato de ser medicamento de ação no sistema nervoso, sem considerar os sinais do caso."
+  },
+  "pontos_de_atencao": [
+   "O enunciado não cita o nome do medicamento; a dedução vem da doença da avó e do quadro das crianças.",
+   "A exposição compartilhada em duas crianças é a pista epidemiológica central.",
+   "O quadro de rigidez e espasmos pode corresponder a reações extrapiramidais, e a hipertermia aumenta a preocupação com gravidade."
+  ],
+  "precisa_conferir_diretriz": {
+   "sim": false,
+   "motivo": ""
+  },
+  "divergencia_gabarito": {
+   "suspeita": false,
+   "motivo": ""
+  },
+  "confianca": 82
+ },
+ {
+  "id": "revalida_2022_2_q025",
+  "tema": "Obstetrícia",
+  "subtema": "Sífilis na gestação: tratamento de sífilis de duração ignorada",
+  "o_que_a_questao_avalia": "Avalia a decisão de tratar imediatamente a gestante com teste não treponêmico reagente e sem história de tratamento, mesmo com título baixo. Cobra o esquema com penicilina e os erros comuns de conduta no pré-natal.",
+  "conduta_esperada": "Tratar sem demora, como sífilis de duração ignorada, com penicilina G benzatina por via intramuscular em esquema semanal de três semanas, conforme o gabarito oficial.",
+  "explicacao": {
+   "A": "Incorreta. Um título baixo de VDRL não autoriza esperar, porque a sífilis na gestação pode causar infecção fetal e o tratamento deve ser iniciado logo. A alternativa tenta induzir uma conduta expectante com base no valor numérico do exame.",
+   "B": "Incorreta. Deixar a gestante alérgica sem tratamento até o parto não é aceitável, pois o feto fica exposto durante toda a gestação. Além disso, a eritromicina não é uma alternativa adequada para tratar o feto, de modo que a alergia exige outra estratégia, como a dessensibilização, e não a omissão do tratamento.",
+   "C": "Incorreta. O seguimento após o tratamento é feito com a avaliação da evolução da titulação do exame, e não com a simples repetição do exame positivo. Muitas pacientes mantêm resultado reagente em títulos baixos após tratar corretamente, por isso novo tratamento depende da evolução do título, e não de qualquer positividade.",
+   "D": "Correta. Gestante com exame reagente e sem tratamento prévio comprovado é tratada como sífilis de duração ignorada, com penicilina G benzatina intramuscular uma vez por semana durante três semanas. É o esquema indicado no gabarito oficial."
+  },
+  "pontos_de_atencao": [
+   "A penicilina é o único tratamento aceito para evitar a transmissão ao feto.",
+   "O título baixo do exame não dispensa o tratamento.",
+   "O seguimento é feito pela evolução da titulação do exame, e não por simples positividade."
+  ],
+  "precisa_conferir_diretriz": {
+   "sim": true,
+   "motivo": "Esquemas de tratamento da sífilis, critérios de seguimento e manejo da paciente alérgica à penicilina costumam ser revisados em protocolos."
+  },
+  "divergencia_gabarito": {
+   "suspeita": false,
+   "motivo": ""
+  },
+  "confianca": 85
+ }
+]

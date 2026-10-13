@@ -1,0 +1,119 @@
+[
+ {
+  "id": "revalida_2022_2_q052",
+  "code": "REV-2022.2-Q052",
+  "exam_id": "revalida-2022-2",
+  "number": 52,
+  "statement": "Paciente de 40 anos de idade, sexo masculino, compareceu ao pronto-socorro com história de tosse produtiva e expectoração mucopurulenta, de coloração “esverdeada”, dor ventilatória-dependente em hemitórax direito, taquidispneia e febre alta, constante, havia 1 semana. Realizou exame radiográfico de tórax, em incidências posteroanterior e Laurell, com imagem radiopaca de consolidação em lobo pulmonar médio e derrame pleural à direita. Nessa situação, qual é a conduta subsequente adequada para esse paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Tomografia de tórax.",
+    "explanation": ""
+   },
+   {
+    "id": "B",
+    "text": "Toracocentese à direita.",
+    "explanation": "A presença de derrame pleural em paciente com consolidação pneumônica e sinais infecciosos exige toracocentese diagnóstica para caracterizar o derrame parapneumônico e identificar derrame complicado ou empiema."
+   },
+   {
+    "id": "C",
+    "text": "Ultrassonografia de tórax.",
+    "explanation": ""
+   },
+   {
+    "id": "D",
+    "text": "Exame de escarro com pesquisa de BAAR.",
+    "explanation": ""
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "area": "CLINICA_MEDICA",
+  "topic": "Derrame pleural parapneumônico",
+  "subtopic": "Indicação de toracocentese diagnóstica no derrame pleural associado à pneumonia",
+  "expected_conduct": "Realizar toracocentese à direita para análise do líquido pleural diante de derrame pleural associado a quadro de pneumonia bacteriana.",
+  "inep_intent": "Avaliar o reconhecimento do derrame pleural parapneumônico como complicação de pneumonia e a escolha da toracocentese como próxima conduta diagnóstica apropriada.",
+  "key_finding": "Toracocentese à direita.",
+  "needs_image": false,
+  "images": []
+ },
+ {
+  "id": "revalida_2022_2_q093",
+  "code": "REV-2022.2-Q093",
+  "exam_id": "revalida-2022-2",
+  "number": 93,
+  "statement": "Pré-escolar de 3 anos e 4 meses de idade deu entrada no pronto-socorro apresentando rigidez e espasmos musculares e hipertermia. Não apresentava dificuldade respiratória. Ausculta cardíaca sem anormalidades. Sem história prévia de doença cardíaca. O paciente estava recebendo oxigenoterapia quando um primo dele, de quatro anos, deu entrada no mesmo hospital, com quadro semelhante. Ambos haviam passado as últimas 12 horas na casa da avó materna, que há anos faz tratamento de esquizofrenia e hipertensão arterial. As evidências clínicas dessa história induzem a necessidade de o médico investigar",
+  "options": [
+   {
+    "id": "A",
+    "text": "cardiopatia congênita cianótica.",
+    "explanation": ""
+   },
+   {
+    "id": "B",
+    "text": "intoxicação exógena por captopril.",
+    "explanation": ""
+   },
+   {
+    "id": "C",
+    "text": "intoxicação exógena de haloperidol.",
+    "explanation": "A associação entre acesso potencial a medicamento antipsicótico usado pela avó, exposição simultânea de duas crianças e síndrome de rigidez, espasmos musculares e hipertermia indica intoxicação exógena por haloperidol."
+   },
+   {
+    "id": "D",
+    "text": "ingestão exógena por benzodiazepínico.",
+    "explanation": ""
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "area": "PEDIATRIA",
+  "topic": "Intoxicação exógena na infância",
+  "subtopic": "Intoxicação por haloperidol com sintomas extrapiramidais agudos",
+  "expected_conduct": "Investigar intoxicação exógena acidental por haloperidol em duas crianças com exposição domiciliar comum e quadro de rigidez, espasmos musculares e hipertermia.",
+  "inep_intent": "Avaliar o reconhecimento de intoxicação medicamentosa acidental por antipsicótico em crianças a partir de manifestações extrapiramidais e de uma história epidemiológica de exposição compartilhada.",
+  "key_finding": "intoxicação exógena de haloperidol.",
+  "needs_image": false,
+  "images": []
+ },
+ {
+  "id": "revalida_2022_2_q025",
+  "code": "REV-2022.2-Q025",
+  "exam_id": "revalida-2022-2",
+  "number": 25,
+  "statement": "Durante o pré-natal de uma primigesta com 18 semanas, o médico da unidade básica de saúde teve acesso ao resultado do VDRL, com titulação de 1:4. A paciente não recordava ter sido diagnosticada com sífilis nem ter feito tratamento contra essa doença. Com base nesse resultado de exame VDRL durante o pré-natal e nos dados da entrevista clínica, assinale a opção correta.",
+  "options": [
+   {
+    "id": "A",
+    "text": "Considerando o título baixo de VDRL, o médico pode esperar para fazer exames seriados mensais de VDRL antes de instituir tratamento.",
+    "explanation": ""
+   },
+   {
+    "id": "B",
+    "text": "Caso a paciente tenha alergia à penicilina, deve-se seguir com a gestação sem tratamento até o momento do parto, quando se deve instituir tratamento com eritromicina.",
+    "explanation": ""
+   },
+   {
+    "id": "C",
+    "text": "Após o tratamento com penicilina, a paciente deve repetir o VDRL no último trimestre, realizando novo tratamento caso o resultado seja positivo, independentemente da titulação.",
+    "explanation": ""
+   },
+   {
+    "id": "D",
+    "text": "O tratamento de escolha deve ser feito com penicilina G benzatina, 2,4 milhões de unidades, IM, semanalmente, durante 3 semanas.",
+    "explanation": "Gestante com teste não treponêmico reagente e sem comprovação de tratamento prévio deve receber esquema para sífilis de duração ignorada: penicilina G benzatina 2,4 milhões de unidades por via intramuscular, uma vez por semana, por três semanas."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "topic": "Infecções sexualmente transmissíveis na gestação",
+  "subtopic": "Tratamento da sífilis gestacional de duração ignorada",
+  "expected_conduct": "Tratar imediatamente a gestante com VDRL reagente e sem história de tratamento prévio como sífilis de duração ignorada, utilizando penicilina G benzatina semanal por três semanas.",
+  "inep_intent": "Avaliar a indicação e o esquema terapêutico adequado para sífilis identificada no pré-natal quando não há história de diagnóstico ou tratamento anterior, independentemente de titulação baixa do VDRL.",
+  "key_finding": "O tratamento de escolha deve ser feito com penicilina G benzatina, 2,4 milhões de unidades, IM, semanalmente, durante 3 semanas.",
+  "needs_image": false,
+  "images": []
+ }
+]

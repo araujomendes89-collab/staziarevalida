@@ -1,0 +1,47 @@
+[
+ {
+  "id": "revalida_2020_1_q008",
+  "veredito": "divergente",
+  "problemas": [
+   "O enunciado (abscesso perianal drenado há 1 ano, orifício cutâneo a 2 cm da borda anal, secreção à compressão, induração) descreve fístula perianal (alternativa C), mas o gabarito oficial é D (fissura anal crônica); gabarito mantido, vai para a revisão médica.",
+   "A explicação de C contém texto interno ('a explicação a considera incorreta, e a divergência fica sinalizada') e a de D contém aviso editorial ('Atenção: ... exige conferência pela revisão médica'); os pontos de atenção citam 'revisão médica ... antes de qualquer comentário ser liberado ao aluno'. Isso é metalinguagem que não pode aparecer ao aluno; a divergência já está registrada no campo próprio.",
+   "No lote, o key_finding da questão traz um '2020' sobrando no final (erro de dado, não do Professor)."
+  ],
+  "severidade": "alta",
+  "correcoes": {
+   "explicacao": {
+    "C": "Incorreta. Esta alternativa propõe fístula perianal com tratamento cirúrgico eletivo, diagnóstico que o gabarito oficial desta questão não adota.",
+    "D": "Correta. É a alternativa indicada pelo gabarito oficial: fissura anal crônica com encaminhamento para tratamento cirúrgico eletivo."
+   },
+   "pontos_de_atencao": [
+    "Questão sinalizada para revisão médica: os achados do enunciado não coincidem com o diagnóstico do gabarito oficial."
+   ]
+  },
+  "precisa_revisao_medica": true
+ },
+ {
+  "id": "revalida_2020_1_q100",
+  "veredito": "corrigir",
+  "problemas": [
+   "As explicações de C e D justificam a incorreção apenas com 'o gabarito oficial indica...', o que é circular e não ensina o raciocínio clínico; devem explicar por que a imunoglobulina isolada não resolve a falta de imunidade da criança.",
+   "O motivo de 'precisa conferir diretriz' afirma que o gabarito reflete o protocolo vigente na época da prova, algo que o Professor não tem como confirmar.",
+   "A suspeita de divergência é especulativa (se o protocolo previa também imunoglobulina com agressor de condição desconhecida); o gabarito A é compatível com o enunciado, mas a dúvida clínica deve ir para o revisor médico humano, sem alterar o gabarito."
+  ],
+  "severidade": "media",
+  "correcoes": {
+   "explicacao": {
+    "C": "Incorreta. A imunoglobulina oferece apenas proteção passiva e temporária e não corrige a falta de imunidade própria da criança, que o anti-HBs negativo demonstra. A medida que constrói proteção duradoura é a nova série de vacinação, que é a resposta do gabarito oficial; um esquema de duas doses de imunoglobulina não é a conduta apontada para este caso.",
+    "D": "Incorreta. A imunoglobulina em dose única também dá somente proteção passiva e temporária, sem reiniciar a imunização. A alternativa tenta atrair quem pensa que anti-HBs negativo exige apenas anticorpo pronto, esquecendo que a criança precisa de proteção duradoura por meio da vacina."
+   },
+   "precisa_conferir_diretriz": {
+    "sim": true,
+    "motivo": "Condutas de profilaxia pós-exposição e o uso de imunoglobulina costumam ser atualizadas, por isso a revisão médica deve conferir o conteúdo."
+   },
+   "divergencia_gabarito": {
+    "suspeita": true,
+    "motivo": "O gabarito oficial indica apenas nova série vacinal; a revisão médica deve conferir se, com agressor de condição desconhecida, o protocolo da época previa algo a mais, sem alterar o gabarito."
+   }
+  },
+  "precisa_revisao_medica": true
+ }
+]

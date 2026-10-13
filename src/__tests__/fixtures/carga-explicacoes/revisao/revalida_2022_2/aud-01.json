@@ -1,0 +1,30 @@
+[
+ {
+  "id": "revalida_2022_2_q052",
+  "veredito": "ok",
+  "problemas": [],
+  "severidade": "nenhuma",
+  "precisa_revisao_medica": false
+ },
+ {
+  "id": "revalida_2022_2_q093",
+  "veredito": "corrigir",
+  "problemas": [
+   "A explicação de C afirma que o quadro 'indica ingestão acidental de antipsicótico' e que o haloperidol 'é o medicamento que explica', com mais certeza do que o enunciado permite: o texto não cita o medicamento e pede apenas que se investigue; o tom deve ser de suspeita fundamentada."
+  ],
+  "severidade": "baixa",
+  "correcoes": {
+   "explicacao": {
+    "C": "Correta. Rigidez, espasmos musculares e hipertermia em duas crianças que ficaram juntas na casa de uma avó em tratamento para esquizofrenia levantam forte suspeita de ingestão acidental de antipsicótico. O haloperidol é o medicamento que melhor se encaixa no quadro extrapiramidal e na pista epidemiológica, e por isso deve ser investigado."
+   }
+  },
+  "precisa_revisao_medica": false
+ },
+ {
+  "id": "revalida_2022_2_q025",
+  "veredito": "ok",
+  "problemas": [],
+  "severidade": "nenhuma",
+  "precisa_revisao_medica": true
+ }
+]

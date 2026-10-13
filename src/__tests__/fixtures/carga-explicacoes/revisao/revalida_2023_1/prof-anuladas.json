@@ -1,0 +1,53 @@
+[
+ {
+  "id": "revalida_2023_1_q007",
+  "tema": "Urologia",
+  "subtema": "Câncer de bexiga sem invasão muscular: tratamento após a ressecção transuretral",
+  "aviso_aluno": "Questão anulada pela banca do Inep. As explicações abaixo servem para estudo; nenhuma alternativa conta como gabarito.",
+  "o_que_a_questao_avalia": "Reconhecer o tumor de bexiga que não invade o músculo e decidir o tratamento complementar depois da ressecção transuretral. A banca dá os dados que definem o risco de o tumor voltar ou avançar (alto grau, três lesões, sem invasão muscular e sem linfonodos) para o aluno escolher entre só vigiar, tratar por dentro da bexiga ou retirar o órgão.",
+  "conduta_esperada": "Em tumor superficial de alto grau e com mais de uma lesão, a ressecção sozinha não basta, porque a chance de recidiva e de progressão é alta. O caminho habitual é complementar com imunoterapia dentro da bexiga com BCG e manter a vigilância com cistoscopias periódicas. A retirada da bexiga fica para quando há invasão do músculo ou falha desse tratamento. O enunciado, porém, não informa a profundidade exata das lesões, e esse dado pesa na escolha fina da conduta.",
+  "explicacao": {
+   "A": "Incorreta. A cistectomia total é o tratamento de quem tem invasão da camada muscular, e o laudo diz justamente que não há invasão. Em tumor superficial, mesmo de alto grau, retirar a bexiga de início fica reservado a situações de risco muito alto ou a quem não respondeu ao tratamento feito dentro da bexiga. A armadilha é o excesso de intervenção: o alto grau assusta, mas o que decide aqui é a profundidade do tumor.",
+   "B": "Defensável. Repare nos dados que definem o risco: alto grau e três lesões, sem invasão muscular. Nesse perfil, a ressecção sozinha deixa uma chance alta de o tumor voltar ou avançar, e a imunoterapia com BCG dentro da bexiga é o complemento indicado para reduzir esse risco. É a alternativa mais coerente com o caso, embora o enunciado não informe a profundidade exata das lesões, o que na prática pode pedir uma nova ressecção antes do BCG.",
+   "C": "Incorreta. A dose única de quimioterápico dentro da bexiga, feita logo depois da ressecção, é uma medida pensada para tumores de risco menor ou usada como complemento inicial. Sozinha, ela é pouco para um tumor de alto grau e com várias lesões, que precisa de um tratamento mais prolongado. A alternativa monta a armadilha da conduta certa para outro paciente, o de baixo risco.",
+   "D": "Incorreta. Acompanhar com cistoscopia periódica faz parte do seguimento de todo paciente com tumor de bexiga, mas aqui aparece como se fosse o tratamento inteiro. Só vigiar e ressecar de novo a cada três meses deixa sem tratamento complementar um tumor com alta chance de recidiva e progressão. A ideia de uma nova ressecção tem fundamento nos tumores de alto grau, mas como etapa única e precoce de reavaliação, e não como rotina trimestral."
+  },
+  "pontos_de_atencao": [
+   "O que separa o tratamento conservador da cistectomia é a invasão da camada muscular, e não o grau do tumor sozinho.",
+   "Hematúria visível em adulto tabagista pede investigação da via urinária, porque o tabagismo é o principal fator de risco do câncer de bexiga.",
+   "Nota interna: o enunciado não informa se as lesões atingem a lâmina própria nem se há carcinoma in situ; isso muda a classificação de risco e a conduta fina."
+  ],
+  "precisa_conferir_diretriz": {
+   "sim": true,
+   "motivo": "A classificação de risco do tumor de bexiga sem invasão muscular e os esquemas de tratamento dentro da bexiga seguem protocolos que mudam com o tempo."
+  },
+  "divergencia_gabarito": {
+   "suspeita": false,
+   "motivo": ""
+  },
+  "confianca": 70,
+  "motivo_provavel_anulacao": "Hipótese: o enunciado não informa a profundidade exata das lesões (diz apenas 'limitadas ao revestimento da bexiga'), e a conduta em tumor de alto grau e múltiplo pode incluir nova ressecção, BCG e até cistectomia precoce nos casos de risco muito alto, o que abre espaço para mais de uma alternativa. Também pode ter pesado o tema ser de especialista, além do esperado para o médico generalista.",
+  "perfil": {
+   "competencia": "tratamento",
+   "cenario": "enfermaria_hospital",
+   "problema_central": "Câncer de bexiga de alto grau sem invasão muscular",
+   "conceitos": [
+    "carcinoma urotelial de bexiga",
+    "tumor sem invasão muscular",
+    "ressecção transuretral",
+    "BCG intravesical",
+    "quimioterapia intravesical",
+    "cistectomia"
+   ],
+   "achados_discriminatorios": [
+    "três lesões tumorais superficiais, limitadas ao revestimento da bexiga",
+    "carcinoma de células transicionais de alto grau",
+    "ausência de invasão muscular",
+    "ultrassonografia sem acometimento de linfonodos locais"
+   ],
+   "raciocinio_cobrado": "Classificar o risco do tumor superficial de bexiga pelo grau, número de lesões e profundidade e escolher o tratamento complementar à ressecção.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ }
+]

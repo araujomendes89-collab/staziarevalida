@@ -13,6 +13,15 @@ import { RelatedQuestions } from "./RelatedQuestions.jsx";
 
 /** Questão anulada pela banca (o banco diz "annulled"; sem gabarito também é anulada): não conta como acerto nem erro. */
 export const isAnnulled = (correction) => correction?.annulled === true || (correction != null && correction.correct_option == null);
+/** Anulada com explicações de estudo (carga das explicações, 12/10/2026): o aviso exato, pedido pelo dono. */
+export const ANNULLED_NOTICE = "Questão anulada pela banca do Inep. As explicações abaixo servem para estudo; nenhuma alternativa conta como gabarito.";
+export const UPDATE_NOTE_TITLE = "O que mudou desde a prova";
+export const UPDATE_NOTE_CAPTION = "O gabarito oficial da prova não muda. A nota mostra o que mudou depois da prova e foi aprovada pela equipe.";
+/** As explicações de estudo da anulada: o banco só manda as quatro, todas "Defensável." ou "Incorreta."; a tela confere de novo. */
+export const annulledStudyNotes = (correction) => {
+  const notes = Array.isArray(correction?.annulled_notes) ? correction.annulled_notes : [];
+  return notes.length === 4 && notes.every((n) => typeof n?.text === "string" && /^(Defensável|Incorreta)\./.test(n.text.trim())) ? notes : [];
+};
 
 /** Estado de cada alternativa depois da correção. Anulada: nenhuma é "correta" nem "incorreta"; a marcada fica destacada. */
 export function answerState(id, selected, correction) {
@@ -28,7 +37,9 @@ export function Verdict({ selected, correction }) {
         <Icon name="ban" size={22} style={{ color: "var(--info-text)", flex: "none" }} />
         <div>
           <div style={{ font: "600 15px var(--font-sans)" }}>Questão anulada pela banca. Não conta como acerto nem erro.</div>
-          <div style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 2 }}>Nenhuma alternativa conta como correta, por isso não há explicação de cada alternativa.</div>
+          {annulledStudyNotes(correction).length === 0 && (
+            <div style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 2 }}>Nenhuma alternativa conta como correta, por isso não há explicação de cada alternativa.</div>
+          )}
         </div>
       </div>
     );
@@ -110,6 +121,40 @@ function SaveAsFlashcard({ question, correction }) {
   );
 }
 
+/** Anulada: as explicações de estudo das quatro letras ("Defensável." ou "Incorreta."), com o aviso. Fora de acertos e erros. */
+function AnnulledStudy({ notes }) {
+  if (!notes.length) return null;
+  return (
+    <section aria-label="Explicações para estudo" style={{ padding: "14px 16px", borderRadius: 14, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", fontSize: 14, lineHeight: 1.55, display: "flex", flexDirection: "column", gap: 8 }}>
+      <b>Explicações para estudo</b>
+      <div role="note" style={{ padding: "8px 10px", borderRadius: 10, background: "var(--info-bg)", border: "1px solid var(--info-border)" }}>
+        {ANNULLED_NOTICE}
+      </div>
+      {notes.map((note) => {
+        const text = note.text.trim();
+        const label = text.startsWith("Defensável.") ? "Defensável." : "Incorreta.";
+        return (
+          <div key={note.id}>
+            <b>{note.id}.</b> <b>{label}</b> {text.slice(label.length).trim()}
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
+/** "O que mudou desde a prova": a nota aprovada pela equipe (o banco só manda aprovada e sem repetir a das Fontes vinculadas). */
+function UpdateNote({ text }) {
+  if (!text) return null;
+  return (
+    <section aria-label={UPDATE_NOTE_TITLE} style={{ display: "flex", flexDirection: "column", gap: 6, padding: "10px 12px", borderRadius: 12, background: "var(--warning-bg)", border: "1px solid var(--warning-border)", fontSize: 14, lineHeight: 1.55 }}>
+      <div className="sm-overline">{UPDATE_NOTE_TITLE}</div>
+      <p style={{ margin: 0, overflowWrap: "anywhere" }}>{text}</p>
+      <div style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>{UPDATE_NOTE_CAPTION}</div>
+    </section>
+  );
+}
+
 /** Fontes oficiais citadas de uma Questão StaziaMed: órgão, documento, versão, página e o trecho (só depois de responder). */
 function OfficialSources({ correction }) {
   const list = correction.official_sources?.length ? correction.official_sources : (correction.sources ?? []).map((s) => ({ source: s.title, organ: s.organ, version: s.version, page: s.page }));
@@ -148,6 +193,9 @@ export function Correction({ selected, correction, question, tutorContext = "que
   const commentary = annulled ? null : fetched;
   // Fontes vinculadas (12/10/2026): o trecho do documento oficial que sustenta a resposta; questão anulada não tem resposta a sustentar
   const linked = useLinkedSources(annulled ? null : question?.id);
+  // regra da rodada 2: a nota "O que mudou desde a prova" aparece UMA vez só. O banco (9920) já não manda a da carga das explicações
+  // quando o quadro tem nota; a tela confere de novo (se o quadro mostra a nota da referência atual, a outra não aparece)
+  const linkedNote = Boolean(linked) && linked.status !== "nao_confirmada" && (linked.current ?? []).some((i) => typeof i?.update_note === "string" && i.update_note.trim());
   return (
     <>
       <Verdict selected={selected} correction={correction} />
@@ -184,6 +232,7 @@ export function Correction({ selected, correction, question, tutorContext = "que
           ))}
         </div>
       )}
+      {annulled && <AnnulledStudy notes={annulledStudyNotes(correction)} />}
       {correction.expected_conduct && (
         <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--surface-card)", border: "1px solid var(--border-subtle)", fontSize: 14, lineHeight: 1.55 }}>
           <b>Conduta esperada.</b> {correction.expected_conduct}
@@ -191,6 +240,9 @@ export function Correction({ selected, correction, question, tutorContext = "que
       )}
       {/* o cartão de atualização do comentário já mostra "o que mudou": a nota não se repete no quadro */}
       {!annulled && <LinkedSources data={linked} hideUpdateNote={Boolean(commentary?.update_card)} />}
+      {/* nota "O que mudou desde a prova" da carga das explicações (9920): o banco já a devolve vazia quando o quadro Fontes
+          vinculadas (9900) mostra a nota da referência atual (e a tela confere de novo: linkedNote); o cartão da Análise Stazia também a esconde */}
+      {!commentary?.update_card && !linkedNote && <UpdateNote text={correction.update_note} />}
       {!staz && correction.inep_intent && (
         <div>
           <div className="sm-overline">O que a questão avalia</div>

@@ -1,0 +1,56 @@
+[
+ {
+  "id": "enamed_2025_q041",
+  "code": "ENAMED-2025-Q041",
+  "exam_id": "enamed-2025",
+  "number": 41,
+  "area": "CLINICA_MEDICA",
+  "specialty": "ENDOCRINOLOGY",
+  "topic": "Cetoacidose diabética",
+  "subtopic": "Complicações da diabetes",
+  "statement": "Homem de 21 anos, portador de diabetes mellitus tipo 1, diagnosticado há 5 anos, foi levado à Unidade de Pronto Atendimento (UPA) devido à dor abdominal, náuseas e vômitos. Familiares informam que está sem utilizar insulina há 3 dias por dificuldades financeiras. No exame físico, encontra-se torporoso, desidratado, com hálito cetótico e dor abdominal à palpação profunda de forma generalizada. Ao exame, frequência cardíaca de 112 bpm; frequência respiratória de 38 irpm; pressão arterial de 110 x 70 mmHg. Os exames laboratoriais na admissão indicam: O diagnóstico e a conduta inicial indicada para esse paciente são, respectivamente,",
+  "options": [
+   {
+    "id": "A",
+    "text": "pancreatite aguda; iniciar dieta oral zero.",
+    "explanation": ""
+   },
+   {
+    "id": "B",
+    "text": "estado hiperosmolar hiperglicêmico; iniciar insulinoterapia.",
+    "explanation": ""
+   },
+   {
+    "id": "C",
+    "text": "cetoacidose diabética; prescrever solução fisiológica a 0,9 por cento.",
+    "explanation": "Cetoacidose diabética requer reidratação e insulina para corrigir a hiperglicemia e a acidose"
+   },
+   {
+    "id": "D",
+    "text": "insuficiência renal aguda; prescrever bicarbonato de sódio.",
+    "explanation": ""
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "key_finding": "cetoacidose diabética; prescrever solução fisiológica a 0,9 por cento.",
+  "expected_conduct": "Reidratação e insulina",
+  "inep_intent": "Avaliar reconhecimento da cetoacidose diabética e conduta inicial",
+  "needs_image": false,
+  "images": [],
+  "sources": [
+   {
+    "year": 2025,
+    "title": "Gabarito Oficial Definitivo Exame Nacional da Medicina 2025 — ENAMED",
+    "reliability": "OFICIAL_INEP",
+    "organization": "INEP / MEC"
+   }
+  ],
+  "tabela": {
+   "arquivo": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/enamed_2025/tabelas/enamed_2025_q041.png",
+   "alt": "Tabela de 3 colunas (Exame, Resultado, Valor de referência) com 5 linhas: glicemia, gasometria arterial (pH), bicarbonato, creatinina e potássio sérico, com unidades.",
+   "tabela_removida_do_texto": "Exame Resultado Valor de referência Glicemia 472 mg/dL 60 a 100 mg/dL Gasometria arterial pH de 7,2 7,35 a 7,45 Bicarbonato 10 mEq/L 22 a 26 mEg/L Creatinina 1,6 mg/dL 0,7 a 1,3 mg/dL Potássio sérico 3,0 mEq/L 3,5 a 5,5 mEq/L",
+   "pagina": 12
+  }
+ }
+]

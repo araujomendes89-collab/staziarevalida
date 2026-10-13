@@ -1,0 +1,50 @@
+[
+ {
+  "id": "revalida_2023_1_q007",
+  "code": "REV-2023.1-Q007",
+  "exam_id": "revalida-2023-1",
+  "number": 7,
+  "area": "CLINICA_MEDICA",
+  "specialty": "Medicina Geral",
+  "topic": "Revalida INEP 2023/1 — 1ª Edição Semestral",
+  "subtopic": "",
+  "statement": "Um paciente de 55 anos, obeso, tabagista, foi internado no serviço de urologia. Apresentava hematúria franca, tendo sido submetido a cistoscopia com ressecção transuretral de lesões. O laudo anatomopatológico revelou a ressecção de 3 lesões tumorais superficiais, limitadas ao revestimento da bexiga, compatíveis com carcinoma de células transicionais de alto grau, além de ausência de invasão muscular. A pesquisa realizada por meio de ultrassonografia não demonstrou acometimento de linfonodos locais. Nessa situação, qual conduta deve ser adotada para o caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Solicitar cistectomia total.",
+    "explanation": "Questão oficialmente anulada pela banca examinadora. Pontuação atribuída a todos os candidatos."
+   },
+   {
+    "id": "B",
+    "text": "Indicar tratamento intravesical com BCG.",
+    "explanation": "Questão oficialmente anulada pela banca examinadora. Pontuação atribuída a todos os candidatos."
+   },
+   {
+    "id": "C",
+    "text": "Indicar tratamento com dose única de mitomicina.",
+    "explanation": "Questão oficialmente anulada pela banca examinadora. Pontuação atribuída a todos os candidatos."
+   },
+   {
+    "id": "D",
+    "text": "Solicitar cistoscopia com nova ressecção trimestral.",
+    "explanation": "Questão oficialmente anulada pela banca examinadora. Pontuação atribuída a todos os candidatos."
+   }
+  ],
+  "correct_option": "A",
+  "status": "annulled",
+  "key_finding": "Questão anulada pela banca examinadora.",
+  "expected_conduct": "Manejo fundamentado nas diretrizes do Ministério da Saúde / INEP.",
+  "inep_intent": "Avaliar a competência clínica e segurança no atendimento médico.",
+  "needs_image": false,
+  "images": [],
+  "sources": [
+   {
+    "year": 2023,
+    "title": "Gabarito Oficial Definitivo Revalida INEP 2023/1 — 1ª Edição Semestral",
+    "reliability": "OFICIAL_INEP",
+    "organization": "INEP / MEC"
+   }
+  ]
+ }
+]
