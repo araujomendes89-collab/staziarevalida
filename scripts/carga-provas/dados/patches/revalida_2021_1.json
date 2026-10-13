@@ -1,0 +1,542 @@
+[
+ {
+  "id": "revalida_2021_1_q004",
+  "campo": "statement",
+  "antes": "temperatura 39 oC, PA",
+  "depois": "temperatura 39 ºC, PA",
+  "tipo": "unidade",
+  "pagina": 1,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q004.png"
+ },
+ {
+  "id": "revalida_2021_1_q005",
+  "campo": "statement",
+  "antes": "<<1.ITEM-137677-V.720676/>> ",
+  "depois": "",
+  "tipo": "codigo",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q005.png"
+ },
+ {
+  "id": "revalida_2021_1_q018",
+  "campo": "statement",
+  "antes": "22 kg/m2, contudo,",
+  "depois": "22 kg/m², contudo,",
+  "tipo": "sobrescrito",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q018.png"
+ },
+ {
+  "id": "revalida_2021_1_q019",
+  "campo": "statement",
+  "antes": "o 5.o mês estavam",
+  "depois": "o 5.º mês estavam",
+  "tipo": "sobrescrito",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q019.png"
+ },
+ {
+  "id": "revalida_2021_1_q022",
+  "campo": "statement",
+  "antes": "pós- operatório",
+  "depois": "pós-operatório",
+  "tipo": "caractere",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q022.png"
+ },
+ {
+  "id": "revalida_2021_1_q022",
+  "campo": "statement",
+  "antes": "leucócitos/mm3 (referência:",
+  "depois": "leucócitos/mm³ (referência:",
+  "tipo": "sobrescrito",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q022.png"
+ },
+ {
+  "id": "revalida_2021_1_q024",
+  "campo": "statement",
+  "antes": "200/mm3 (referência:",
+  "depois": "200/mm³ (referência:",
+  "tipo": "sobrescrito",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q024.png"
+ },
+ {
+  "id": "revalida_2021_1_q024",
+  "campo": "statement",
+  "antes": "= 36,5 oC. Com",
+  "depois": "= 36,5 ºC. Com",
+  "tipo": "unidade",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q024.png"
+ },
+ {
+  "id": "revalida_2021_1_q026",
+  "campo": "statement",
+  "antes": "chegou a 39 oC. O exantema",
+  "depois": "chegou a 39 ºC. O exantema",
+  "tipo": "unidade",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q026.png"
+ },
+ {
+  "id": "revalida_2021_1_q026",
+  "campo": "statement",
+  "antes": "exame, mostra- se em",
+  "depois": "exame, mostra-se em",
+  "tipo": "caractere",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q026.png"
+ },
+ {
+  "id": "revalida_2021_1_q026",
+  "campo": "statement",
+  "antes": "febril (38,5 oC), acianótico",
+  "depois": "febril (38,5 ºC), acianótico",
+  "tipo": "unidade",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q026.png"
+ },
+ {
+  "id": "revalida_2021_1_q027",
+  "campo": "statement",
+  "antes": "de 38 oC), coriza",
+  "depois": "de 38 ºC), coriza",
+  "tipo": "unidade",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q027.png"
+ },
+ {
+  "id": "revalida_2021_1_q027",
+  "campo": "statement",
+  "antes": "no 5.o dia de",
+  "depois": "no 5.º dia de",
+  "tipo": "sobrescrito",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q027.png"
+ },
+ {
+  "id": "revalida_2021_1_q033",
+  "campo": "options.D",
+  "antes": "do 3.o arco branquial.",
+  "depois": "do 3.º arco branquial.",
+  "tipo": "sobrescrito",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q033.png"
+ },
+ {
+  "id": "revalida_2021_1_q041",
+  "campo": "statement",
+  "antes": "gráficos, conclui- se que",
+  "depois": "gráficos, conclui-se que",
+  "tipo": "caractere",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q041.png"
+ },
+ {
+  "id": "revalida_2021_1_q042",
+  "campo": "statement",
+  "antes": "de 38 oC, aferido",
+  "depois": "de 38 ºC, aferido",
+  "tipo": "unidade",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q042.png"
+ },
+ {
+  "id": "revalida_2021_1_q042",
+  "campo": "statement",
+  "antes": "de 38,1 oC. O",
+  "depois": "de 38,1 ºC. O",
+  "tipo": "unidade",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q042.png"
+ },
+ {
+  "id": "revalida_2021_1_q042",
+  "campo": "statement",
+  "antes": "000/mm3 (referência:",
+  "depois": "000/mm³ (referência:",
+  "tipo": "sobrescrito",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q042.png"
+ },
+ {
+  "id": "revalida_2021_1_q042",
+  "campo": "statement",
+  "antes": "11 000/mm3) com",
+  "depois": "11 000/mm³) com",
+  "tipo": "sobrescrito",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q042.png"
+ },
+ {
+  "id": "revalida_2021_1_q046",
+  "campo": "statement",
+  "antes": "x 106/mcl (valor",
+  "depois": "x 10⁶/mcl (valor",
+  "tipo": "sobrescrito",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q046.png"
+ },
+ {
+  "id": "revalida_2021_1_q046",
+  "campo": "statement",
+  "antes": "x 106/mcl); volume",
+  "depois": "x 10⁶/mcl); volume",
+  "tipo": "sobrescrito",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q046.png"
+ },
+ {
+  "id": "revalida_2021_1_q046",
+  "campo": "statement",
+  "antes": "x 103/mcl). Ao",
+  "depois": "x 10³/mcl). Ao",
+  "tipo": "sobrescrito",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q046.png"
+ },
+ {
+  "id": "revalida_2021_1_q046",
+  "campo": "statement",
+  "antes": "encontra- se",
+  "depois": "encontra-se",
+  "tipo": "caractere",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q046.png"
+ },
+ {
+  "id": "revalida_2021_1_q053",
+  "campo": "statement",
+  "antes": "de 1.a linha para",
+  "depois": "de 1.ª linha para",
+  "tipo": "sobrescrito",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q053.png"
+ },
+ {
+  "id": "revalida_2021_1_q056",
+  "campo": "statement",
+  "antes": "“dedo-de- luva”.",
+  "depois": "“dedo-de-luva”.",
+  "tipo": "caractere",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q056.png"
+ },
+ {
+  "id": "revalida_2021_1_q059",
+  "campo": "options.A",
+  "antes": "o 3.o mês de",
+  "depois": "o 3.º mês de",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q059.png"
+ },
+ {
+  "id": "revalida_2021_1_q059",
+  "campo": "options.B",
+  "antes": "o 3.o mês de",
+  "depois": "o 3.º mês de",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q059.png"
+ },
+ {
+  "id": "revalida_2021_1_q059",
+  "campo": "options.C",
+  "antes": "o 6.o mês de",
+  "depois": "o 6.º mês de",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q059.png"
+ },
+ {
+  "id": "revalida_2021_1_q059",
+  "campo": "options.D",
+  "antes": "o 6.o mês de",
+  "depois": "o 6.º mês de",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q059.png"
+ },
+ {
+  "id": "revalida_2021_1_q061",
+  "campo": "statement",
+  "antes": "no 1.o minuto =",
+  "depois": "no 1.º minuto =",
+  "tipo": "sobrescrito",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q061.png"
+ },
+ {
+  "id": "revalida_2021_1_q061",
+  "campo": "statement",
+  "antes": "no 5.o minuto =",
+  "depois": "no 5.º minuto =",
+  "tipo": "sobrescrito",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q061.png"
+ },
+ {
+  "id": "revalida_2021_1_q061",
+  "campo": "statement",
+  "antes": "no 10.o minuto =",
+  "depois": "no 10.º minuto =",
+  "tipo": "sobrescrito",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q061.png"
+ },
+ {
+  "id": "revalida_2021_1_q063",
+  "campo": "statement",
+  "antes": "não- produtiva.",
+  "depois": "não-produtiva.",
+  "tipo": "caractere",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q063.png"
+ },
+ {
+  "id": "revalida_2021_1_q063",
+  "campo": "statement",
+  "antes": "de O2 de 60%",
+  "depois": "de O₂ de 60%",
+  "tipo": "sobrescrito",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q063.png"
+ },
+ {
+  "id": "revalida_2021_1_q068",
+  "campo": "statement",
+  "antes": "no 4.o dia de",
+  "depois": "no 4.º dia de",
+  "tipo": "sobrescrito",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q068.png"
+ },
+ {
+  "id": "revalida_2021_1_q068",
+  "campo": "statement",
+  "antes": "recém- nascido",
+  "depois": "recém-nascido",
+  "tipo": "caractere",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q068.png"
+ },
+ {
+  "id": "revalida_2021_1_q075",
+  "campo": "statement",
+  "antes": "no 1.o segundo (VEF",
+  "depois": "no 1.º segundo (VEF",
+  "tipo": "sobrescrito",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q075.png"
+ },
+ {
+  "id": "revalida_2021_1_q075",
+  "campo": "statement",
+  "antes": "segundo (VEF1), da",
+  "depois": "segundo (VEF₁), da",
+  "tipo": "sobrescrito",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q075.png"
+ },
+ {
+  "id": "revalida_2021_1_q075",
+  "campo": "statement",
+  "antes": "relação VEF1/CVF, do",
+  "depois": "relação VEF₁/CVF, do",
+  "tipo": "sobrescrito",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q075.png"
+ },
+ {
+  "id": "revalida_2021_1_q075",
+  "campo": "options.B",
+  "antes": "do VEF1 maior que",
+  "depois": "do VEF₁ maior que",
+  "tipo": "sobrescrito",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q075.png"
+ },
+ {
+  "id": "revalida_2021_1_q075",
+  "campo": "options.C",
+  "antes": "VEF1 inferior",
+  "depois": "VEF₁ inferior",
+  "tipo": "sobrescrito",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q075.png"
+ },
+ {
+  "id": "revalida_2021_1_q075",
+  "campo": "options.D",
+  "antes": "VEF1/CVF inferior",
+  "depois": "VEF₁/CVF inferior",
+  "tipo": "sobrescrito",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q075.png"
+ },
+ {
+  "id": "revalida_2021_1_q076",
+  "campo": "statement",
+  "antes": "propedêutico- terapêutica",
+  "depois": "propedêutico-terapêutica",
+  "tipo": "caractere",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q076.png"
+ },
+ {
+  "id": "revalida_2021_1_q079",
+  "campo": "statement",
+  "antes": "com 1.a bulha hiperfonética",
+  "depois": "com 1.ª bulha hiperfonética",
+  "tipo": "sobrescrito",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q079.png"
+ },
+ {
+  "id": "revalida_2021_1_q080",
+  "campo": "statement",
+  "antes": "1.o trimestre",
+  "depois": "1.º trimestre",
+  "tipo": "sobrescrito",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q080.png"
+ },
+ {
+  "id": "revalida_2021_1_q080",
+  "campo": "options.A",
+  "antes": "3.o trimestre",
+  "depois": "3.º trimestre",
+  "tipo": "sobrescrito",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q080.png"
+ },
+ {
+  "id": "revalida_2021_1_q080",
+  "campo": "options.B",
+  "antes": "3.o trimestre",
+  "depois": "3.º trimestre",
+  "tipo": "sobrescrito",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q080.png"
+ },
+ {
+  "id": "revalida_2021_1_q080",
+  "campo": "options.C",
+  "antes": "3.o trimestre",
+  "depois": "3.º trimestre",
+  "tipo": "sobrescrito",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q080.png"
+ },
+ {
+  "id": "revalida_2021_1_q080",
+  "campo": "options.D",
+  "antes": "C no 2.o e 3.",
+  "depois": "C no 2.º e 3.",
+  "tipo": "sobrescrito",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q080.png"
+ },
+ {
+  "id": "revalida_2021_1_q080",
+  "campo": "options.D",
+  "antes": "3.o trimestres,",
+  "depois": "3.º trimestres,",
+  "tipo": "sobrescrito",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q080.png"
+ },
+ {
+  "id": "revalida_2021_1_q081",
+  "campo": "statement",
+  "antes": "na 32.a semana de",
+  "depois": "na 32.ª semana de",
+  "tipo": "sobrescrito",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q081.png"
+ },
+ {
+  "id": "revalida_2021_1_q082",
+  "campo": "statement",
+  "antes": "de 3.o grau que",
+  "depois": "de 3.º grau que",
+  "tipo": "sobrescrito",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q082.png"
+ },
+ {
+  "id": "revalida_2021_1_q085",
+  "campo": "statement",
+  "antes": "30 Kg/m2. Exame",
+  "depois": "30 Kg/m². Exame",
+  "tipo": "sobrescrito",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q085.png"
+ },
+ {
+  "id": "revalida_2021_1_q086",
+  "campo": "statement",
+  "antes": "1.a consulta",
+  "depois": "1.ª consulta",
+  "tipo": "sobrescrito",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q086.png"
+ },
+ {
+  "id": "revalida_2021_1_q086",
+  "campo": "statement",
+  "antes": "000/mm3 (valor",
+  "depois": "000/mm³ (valor",
+  "tipo": "sobrescrito",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q086.png"
+ },
+ {
+  "id": "revalida_2021_1_q086",
+  "campo": "statement",
+  "antes": "400 000/mm3); leucograma",
+  "depois": "400 000/mm³); leucograma",
+  "tipo": "sobrescrito",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q086.png"
+ },
+ {
+  "id": "revalida_2021_1_q087",
+  "campo": "statement",
+  "antes": "na 14.a semana de",
+  "depois": "na 14.ª semana de",
+  "tipo": "sobrescrito",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q087.png"
+ },
+ {
+  "id": "revalida_2021_1_q093",
+  "campo": "statement",
+  "antes": "pronto- socorro",
+  "depois": "pronto-socorro",
+  "tipo": "caractere",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q093.png"
+ },
+ {
+  "id": "revalida_2021_1_q093",
+  "campo": "options.A",
+  "antes": "metotrexato 50 mg/m2.",
+  "depois": "metotrexato 50 mg/m².",
+  "tipo": "sobrescrito",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q093.png"
+ },
+ {
+  "id": "revalida_2021_1_q098",
+  "campo": "options.D",
+  "antes": "saúde- doença",
+  "depois": "saúde-doença",
+  "tipo": "caractere",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2021_1/evid/q098.png"
+ }
+]

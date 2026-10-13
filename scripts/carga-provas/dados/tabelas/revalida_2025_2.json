@@ -1,0 +1,72 @@
+[
+ {
+  "id": "revalida_2025_2_q010",
+  "arquivo": "revalida_2025_2_q010-tabela.png",
+  "alt": "Tabela de exames laboratoriais com três colunas (exame, resultado e valor de referência): hemoglobina, leucócitos, plaquetas, creatinina e ureia, com as unidades de cada medida.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de referência Hemoglobina 13 g/dL 11 a 15 g/dL Leucócitos 10.300/mL 4.000 a 11.000/mL Plaquetas 261.000/mm³ 150 a 300.000/mm³ Creatinina 1,8 mg/dL 0,7 a 1,3 mg/dL Ureia 65 mg/dL 40 a 80 mg/dL",
+  "pagina": 4,
+  "arquivo_origem": "revisao-questoes/revalida_2025_2/tabelas/revalida_2025_2_q010.png",
+  "sha256": "18386ecdf41bb7ea2cdeed445ec2cad87a7dcb65d86a86efd6124aa1eff2a456",
+  "tamanho": 32648
+ },
+ {
+  "id": "revalida_2025_2_q015",
+  "arquivo": "revalida_2025_2_q015-tabela.png",
+  "alt": "Tabela com três colunas (exame, resultado e valor de referência): pressão arterial, peso, hematócrito, glicemia, albumina sérica, creatinina, triglicerídeos, proteína urinária de 24 horas e sedimentos da urina.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de referência Pressão arterial 130 x 80 mmHg --- Peso 70 kg --- Hematócrito 35% 48 a 69% Glicemia 88 mg/dL 60 a 100 mg/dL Albumina sérica 1,8 g/dL 3,8 a 4,8 g/dL Creatinina 1,2 mg/dL 0,7 a 1,3 mg/dL Triglicerídeos 200 mg/dL < 150 mg/dL Proteína urinária de 24 horas 3,6 g/24 horas < 100 mg/24 horas Sedimentos proteínas +++ hemácias + (5 por campo) ---",
+  "pagina": 6,
+  "arquivo_origem": "revisao-questoes/revalida_2025_2/tabelas/revalida_2025_2_q015.png",
+  "sha256": "3ae08319910dd59f208de03e8083ba1921b3074e798a82bcbb869ac68a40fd50",
+  "tamanho": 60636
+ },
+ {
+  "id": "revalida_2025_2_q024",
+  "arquivo": "revalida_2025_2_q024-tabela.png",
+  "alt": "Tabela com três colunas (exame, resultado e valor de referência): hemoglobina, hematócrito, leucócitos totais, bastonetes, urina, hemácias e beta-hCG sérico, com as unidades de cada medida.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de referência Hemoglobina 10,7 g/dL 11,5 a 15,5 g/dL Hematócrito 37% 38 a 52% Leucócitos totais 13.400/mm³ 4.000 a 11.000/mm³ Bastonetes 7% 0 a 5% Urina 25 leucócitos/ campo -- Hemácias 8 hemácias/campo -- Beta-hCG sérico negativo --",
+  "pagina": 8,
+  "arquivo_origem": "revisao-questoes/revalida_2025_2/tabelas/revalida_2025_2_q024.png",
+  "sha256": "54b5b64e404a3e7a83e303b91df27a3ec084764f61fbe865b794a9b704dc8d9f",
+  "tamanho": 40222
+ },
+ {
+  "id": "revalida_2025_2_q038",
+  "arquivo": "revalida_2025_2_q038-tabela.png",
+  "alt": "Tabela com três colunas (exame, resultado e valor de referência) com 12 exames: hematócrito, hemoglobina, leucócitos, glicose, bilirrubina total, ureia, cálcio, amilase, lipase, fosfatase alcalina, LDH e TGO.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de referência Hematócrito 46% 36 a 46% Hemoglobina 15,0 g/dL 12,0 a 15,0 g/dL Leucócitos 12.000/mm³ 4.000 a 10.000/mm³ Glicose 120 mg/dL 70 a 99 mg/dL Bilirrubina total 1,2 mg/dL 0,3 a 1,3 mg/dL Ureia 38 mg/dL 15 a 40 mg/dL Cálcio 8,9 mg/dL 8,7 a 10,2 mg/dL Amilase 35 U/L 20 a 96 U/L Lipase 12 U/L 3 a 43 U/L Fosfatase alcalina 81 U/L 33 a 96 U/L LDH 127 U/L 100 a 190 U/L TGO 36 U/L 5 a 40 U/L",
+  "pagina": 11,
+  "arquivo_origem": "revisao-questoes/revalida_2025_2/tabelas/revalida_2025_2_q038.png",
+  "sha256": "ff47247444c5efe1dbd5fefc52f51a988eb695c57c8cc950a0f6c4ebba2cb06d",
+  "tamanho": 63753
+ },
+ {
+  "id": "revalida_2025_2_q041",
+  "arquivo": "revalida_2025_2_q041-tabela.png",
+  "alt": "Tabela com três colunas (exame, resultado e valor de referência): glicemia, gasometria arterial (pH), bicarbonato, creatinina e potássio sérico, com as unidades de cada medida.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de referência Glicemia 472 mg/dL 60 a 100 mg/dL Gasometria arterial pH de 7,2 7,35 a 7,45 Bicarbonato 10 mEq/L 22 a 26 mEq/L Creatinina 1,6 mg/dL 0,7 a 1,3 mg/dL Potássio sérico 3,0 mEq/L 3,5 a 5,5 mEq/L",
+  "pagina": 12,
+  "arquivo_origem": "revisao-questoes/revalida_2025_2/tabelas/revalida_2025_2_q041.png",
+  "sha256": "f5673cee92725a1669d2877c57dfd295f880c48022aa7696638cabd1cee02f5f",
+  "tamanho": 32851
+ },
+ {
+  "id": "revalida_2025_2_q046",
+  "arquivo": "revalida_2025_2_q046-tabela.png",
+  "alt": "Tabela de duas colunas, sem linha de cabeçalho, com o painel de autoanticorpos e o resultado de cada um: ANA (com título e padrão), anti-DNA dupla hélice, HLA-B27, fator reumatoide, anti-CCP, anti-Ro e anti-La.",
+  "tabela_removida_do_texto": "Anticorpo antinuclear (ANA) Positivo Título 1:80 Padrão homogêneo/difuso Anticorpo anti-DNA dupla hélice Negativo Antígeno leucocitário humano B27 (HLA-B27) Positivo Fator reumatoide Negativo Anticorpo anti-CCP Negativo Anticorpo anti-Ro Negativo Anticorpo anti-La Negativo",
+  "pagina": 13,
+  "arquivo_origem": "revisao-questoes/revalida_2025_2/tabelas/revalida_2025_2_q046.png",
+  "sha256": "1d8299333b07e52fef4bed91b9264b6d5527eca70af5ecd474388d0f396bc1c4",
+  "tamanho": 45848
+ },
+ {
+  "id": "revalida_2025_2_q086",
+  "arquivo": "revalida_2025_2_q086-tabela.png",
+  "alt": "Tabela com três colunas (exame, resultado e valor de referência): hematócrito, hemoglobina, reticulócitos, leucócitos, plaquetas, glicemia de jejum, colesterol total, HDL-C, triglicerídeos, esfregaço e ECG.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de referência Hematócrito 24% 36 a 47% Hemoglobina 8,2 g/dL 12,5 a 16,0 g/dL Reticulócitos 135.000/mm³ 20.000 a 100.000/mm³ Leucócitos 11.000/mm³ 4.000 a 11.000/mm³ Plaquetas 420.000/mm³ 150.000 a 450.000/mm³ Glicemia de jejum 80 mg/dL 70 a 99 mg/dL Colesterol total 151 mg/dL Abaixo de 200 mg/dL HDL-C 53 mg/dL Acima de 50 mg/dL Triglicerídeos 134 mg/dL Abaixo de 150 mg/dL Esfregaço Apresenta drepanócitos ------ ECG Sem alterações ------",
+  "pagina": 22,
+  "arquivo_origem": "revisao-questoes/revalida_2025_2/tabelas/revalida_2025_2_q086.png",
+  "sha256": "58023eac17b9749d2ecab3af280937213cf82fb3762ff00dff090a27d7a537f9",
+  "tamanho": 71432
+ }
+]

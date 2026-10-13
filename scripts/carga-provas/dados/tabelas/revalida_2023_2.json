@@ -1,0 +1,32 @@
+[
+ {
+  "id": "revalida_2023_2_q022",
+  "arquivo": "revalida_2023_2_q022-tabela.png",
+  "alt": "Tabela de exames laboratoriais com três colunas (exame, resultado e valor de referência): leucócitos, transaminases TGO e TGP, fosfatase alcalina, gama glutamil transferase, bilirrubinas totais e diretas, amilase e proteína C reativa.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de Referência Leucócitos 16 150 mm³ 4 500 a 11 000 mm³ Transaminase glutâmico 81 U/L 0 a 35 U/L oxalacética (TGO) Transaminase glutâmico 79 U/L 0 a 35 U/L pirúvica (TGP) Fosfatase alcalina 850 U/L 30 a 120 U/L Gama glutamil transferase 790 U/L 1 a 94 U/L GGT Bilirrubinas totais 6,90 mg/dL 0,3 a 1,0 mg/dL Bilirrubinas diretas 6,50 mg/dL 0,1 a 0,3 mg/dL Amilase 45 U/L 20 a 160 U/L Proteína C Reativa (PCR) 220 mg/dL < 8 mg/dL",
+  "pagina": 7,
+  "arquivo_origem": "revisao-questoes/revalida_2023_2/tabelas/revalida_2023_2_q022.png",
+  "sha256": "0c8a78657b751e67e464441720275de60b1d6cd2ef66d8836b940e52163fd297",
+  "tamanho": 60990
+ },
+ {
+  "id": "revalida_2023_2_q044",
+  "arquivo": "revalida_2023_2_q044-tabela.png",
+  "alt": "Tabela de exames de rotina com duas colunas (exame e resultado): mamografia, ultrassonografia transvaginal, hematócrito, hemoglobina, HDL, LDL, colesterol total, triglicerídeos e glicemia de jejum.",
+  "tabela_removida_do_texto": "EXAME RESULTADO Mamografia BI-RADS II Ultrassonografia transvaginal Endométrio de 4 mm Hematócrito 36% Hemoglobina 12 g/dl C-HDL 80 mg/dl C-LDL 130 mg/dl Colesterol total 270 mg/dl Triglicerídeos 330 mg/dl Glicemia de jejum 98 mg/dl",
+  "pagina": 13,
+  "arquivo_origem": "revisao-questoes/revalida_2023_2/tabelas/revalida_2023_2_q044.png",
+  "sha256": "b261eff6cc0d6549a8037156f71b6bea974271f542b86f722429128fbce4daa6",
+  "tamanho": 34374
+ },
+ {
+  "id": "revalida_2023_2_q071",
+  "arquivo": "revalida_2023_2_q071-tabela.png",
+  "alt": "Tabela de exames com três colunas (exame, resultado e valor de referência): hemoglobina, hematócrito, leucócitos totais, proteínas totais, albumina, cálcio, creatinina e imunoglobulinas IgA, IgG e IgM na imunoeletroforese.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de Referência Hemoglobina 7,5 g/dL 13 a 15 g/dL Hematócrito 23% 36 a 47% Leucócitos totais 8 000 mm³ 4 500 a 11 000 mm³ Proteínas totais 9,4 g/dL 6,5 a 8,1 g/dL Albumina 2,2 g/dL 3,5 a 5,2 g/dL Cálcio sérico 12,3 mg/dL 8,8 a 10,4 mg/dL Creatinina 1,4 mg/dL 0,6 a 1,2 mg/dL Imunoeletroforese de proteínas – banda monoclonal de imunoglobulina (Ig): IgA 5 200 mg/dL 40 a 350 mg/dL IgG 180 mg/dL 700 a 1 600 mg/dL IgM 100 mg/dL 50 a 300 mg/dL",
+  "pagina": 20,
+  "arquivo_origem": "revisao-questoes/revalida_2023_2/tabelas/revalida_2023_2_q071.png",
+  "sha256": "c8c7bb5cfc900c13aa4d2cc7643cf042b85b91e13563fa2c730f323d91badaa8",
+  "tamanho": 57375
+ }
+]

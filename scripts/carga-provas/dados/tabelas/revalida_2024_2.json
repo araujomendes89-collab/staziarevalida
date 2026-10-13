@@ -1,0 +1,54 @@
+[
+ {
+  "id": "revalida_2024_2_q023",
+  "arquivo": "revalida_2024_2_q023-tabela.png",
+  "alt": "Tabela de exames do recém-nascido com três colunas (exame laboratorial, resultado e valor de referência): hemoglobina, hematócrito, VCM, HCM, CHCM, plaquetas, reticulócitos, bilirrubinas e TSH.",
+  "tabela_removida_do_texto": "Exame laboratorial Resultado Valor de referência Hemoglobina 12 g/dL 12,5 a 20,5 g/dL Hematócrito 36% 39 a 63% VCM 80 fL 86 a 124 fL HCM 26 pg 28 a 40 pg CHCM 25 g/dL 28 a 38 g/dL Plaquetas 450.000/mm³ 250.000 a 500.000/mm³ Reticulócitos 6,4 % 2,0 a 6,0% Bilirrubinas totais 12,8 mg/dL RN 3 - 5 dias: 10,30 mg/dL Bilirrubinas diretas 0,8 mg/dL RN 3 - 5 dias: até 0,4 mg/dL Bilirrubinas indiretas 12,0 g/dL TSH 5 μU/mL < 10 μU/mL",
+  "pagina": 7,
+  "arquivo_origem": "revisao-questoes/revalida_2024_2/tabelas/revalida_2024_2_q023.png",
+  "sha256": "ed8fe7cc5e4d95e2b3fb6d25fe8350af977feb50474223af21b7888b8c6e638f",
+  "tamanho": 54012
+ },
+ {
+  "id": "revalida_2024_2_q060",
+  "arquivo": "revalida_2024_2_q060-tabela.png",
+  "alt": "Tabela de exames do paciente (hemoglobina, hematócrito, leucócitos, ureia, creatinina, HbA1c, glicemia, TGO, TGP e ECG), seguida do título Radiografia de tórax e de duas radiografias de tórax, (a) e (b).",
+  "tabela_removida_do_texto": "Exames Resultados Hemoglobina 11 mg/dL Hematócrito 40% Leucócitos 9.000 Ureia 15 mg/dL Creatinina 1 mg/dL Hemoglobina glicada (HBA1C) 6% Glicemia em jejum 95mg/dL TGO 35 U/L TGP 41 U/L ECG de 12 derivações sem alterações Radiografia de tórax.",
+  "pagina": 18,
+  "observacao": "Imagem única na ordem da prova: tabela, título \"Radiografia de tórax.\" e as duas radiografias. Substitui a imagem antiga do banco (que tinha só as radiografias). O título \"Radiografia de tórax.\" está dentro da imagem e por isso entra no trecho removido do texto.",
+  "arquivo_origem": "revisao-questoes/revalida_2024_2/tabelas/revalida_2024_2_q060.png",
+  "sha256": "9a840237bb707653b02b2467ad082284333b88f4c88602cc1cfdc0a7131478bc",
+  "tamanho": 254316
+ },
+ {
+  "id": "revalida_2024_2_q066",
+  "arquivo": "revalida_2024_2_q066-tabela.png",
+  "alt": "Tabela de exames de controle de paciente com diabetes: ureia, creatinina, taxa de filtração glomerular, glicemia de jejum, hemoglobina glicada e albuminúria, com resultado e valor de referência, e nota sobre a fórmula CKD-EPI.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de Referência Ureia 28 mg/dL 13 a 43 mg/dL Creatinina 1,04 mg/dL 0,60 a 1,30 mg/dL taxa de filtração glomerular (TFG – CKP - EPI) 74,99 mL/min/1,73 m² > 90 mL/min/1,73 m² Glicemia de jejum 144 mg/dL < 100 mg/dL Hemoglobina glicada 7,2% 4,5 a 5,6% Albuminúria em amostra isolada de urina 234 mg/L < 30 mg/L Observação: TFG – CKD - EPI corresponde à estimativa da taxa de filtração glomerular pela fórmula proposta pela ChronicKidneyDiseaseEpidemiologyCollaboration.",
+  "pagina": 20,
+  "arquivo_origem": "revisao-questoes/revalida_2024_2/tabelas/revalida_2024_2_q066.png",
+  "sha256": "08bb39a49fb9086379cf2e4364971a74de281b82349ec15dce65995a5df0823e",
+  "tamanho": 55511
+ },
+ {
+  "id": "revalida_2024_2_q073",
+  "arquivo": "revalida_2024_2_q073-tabela.png",
+  "alt": "Três tabelas: exames do recém-nascido às 32 horas, exames após 4 horas de fototerapia e tabela de referência da bilirrubina total (mg/dL) para fototerapia e exsanguineotransfusão, por idade e idade gestacional.",
+  "tabela_removida_do_texto": "Exame Valor bilirrubinas totais 13 mg/dL bilirrubinas diretas 1,5 mg/dL bilirrubinas indiretas 11,5 mg/dL Coombs direto positivo antígeno-D positivo hemoglobina 13,0 g/dL reticulócitos 2,0% O pediatra, ao ver esses resultados, iniciou fototerapia de alta intensidade e transferiu o paciente para unidade de cuidados neonatais. Após 4 horas de fototerapia (com 36 horas de vida) obteve-se: Exame Valor bilirrubinas totais 15 mg/dL bilirrubinas diretas 1,5 mg/dL bilirrubinas indiretas 13,5 mg/dL Tabela – Nível de bilirrubina total (mg/dL) para indicação de fototerapia e exsanguineotransfusão (EST) em RN IG ≥ 35 semanas. idade Bilirrubina total (mg/dL) Fototerapia Exsanguineotransfusão 35⁰⁄⁷ - 37⁶⁄⁷ semanas ≥38⁰⁄⁷ semanas 35⁰⁄⁷ - 37⁶⁄⁷ semanas ≥38⁰⁄⁷ semanas 24 horas 8 10 15 18 36 horas 9,5 11,5 16 20 48 horas 11 13 17 21 72 horas 13 15 18 22 96 horas 14 16 20 23 5 a 7 dias 15 17 21 24",
+  "pagina": 21,
+  "observacao": "A prova tem três tabelas separadas por texto. Como o sistema aceita uma imagem por questão, o recorte é contínuo e traz também, dentro da imagem, o parágrafo entre as duas primeiras tabelas (\"O pediatra, ao ver esses resultados, iniciou fototerapia de alta intensidade e transferiu o paciente para unidade de cuidados neonatais. Após 4 horas de fototerapia (com 36 horas de vida) obteve-se:\") e o título \"Tabela – Nível de bilirrubina total (mg/dL) para indicação de fototerapia e exsanguineotransfusão (EST) em RN IG ≥ 35 semanas.\". Esse trecho faz parte de tabela_removida_do_texto; se preferirem manter o parágrafo no texto, é decisão humana.",
+  "arquivo_origem": "revisao-questoes/revalida_2024_2/tabelas/revalida_2024_2_q073.png",
+  "sha256": "eeef0a3b5e9da75045ee6b52e8bde6e8b90593a75c71580d730b79fa17c064d9",
+  "tamanho": 107501
+ },
+ {
+  "id": "revalida_2024_2_q076",
+  "arquivo": "revalida_2024_2_q076-tabela.png",
+  "alt": "Tabela de exames com quatro colunas (exame, amostra, resultado e valor de referência): ácido 5-hidroxiindolacético, normetanefrina e metanefrina na urina; TSH, T3 e T4 livre no sangue.",
+  "tabela_removida_do_texto": "Exame Amostra Resultado Valor de referência Ácido 5-hidroxiindolacético (5-HIAA) Urina 5 mg/24h 2 a 7 mg/24h Normetanefrina Urina > 2,2 nmol/L < 0,9 nmol/L Metanefrina Urina > 1,1 nmol/L < 0,5 nmol/L TSH Sangue 5 mUI/L 0,25 a 5 mUI/L T3 Sangue 132 ng/dL 60 a 182 ng/dL T4 livre Sangue 1,0 ng/dL 0,9 a 1,8 ng/dL",
+  "pagina": 22,
+  "arquivo_origem": "revisao-questoes/revalida_2024_2/tabelas/revalida_2024_2_q076.png",
+  "sha256": "206642d323a9328e003bc6fef7385f2fa2a3ac999e6523d4fd16804466c025d8",
+  "tamanho": 43733
+ }
+]

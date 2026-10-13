@@ -1,0 +1,110 @@
+[
+ {
+  "id": "revalida_2023_2_q004",
+  "campo": "statement",
+  "antes": "kg/m2. Sua",
+  "depois": "kg/m². Sua",
+  "tipo": "sobrescrito",
+  "pagina": 2,
+  "evidencia": "evidencia/revalida_2023_2_q004_statement.png"
+ },
+ {
+  "id": "revalida_2023_2_q016",
+  "campo": "statement",
+  "antes": "kg/m2), normocorada",
+  "depois": "kg/m²), normocorada",
+  "tipo": "sobrescrito",
+  "pagina": 5,
+  "evidencia": "evidencia/revalida_2023_2_q016_statement.png"
+ },
+ {
+  "id": "revalida_2023_2_q031",
+  "campo": "statement",
+  "antes": "leucócitos/mm3, com 95%",
+  "depois": "leucócitos/mm³, com 95%",
+  "tipo": "sobrescrito",
+  "pagina": 10,
+  "evidencia": "evidencia/revalida_2023_2_q031_statement.png"
+ },
+ {
+  "id": "revalida_2023_2_q057",
+  "campo": "statement",
+  "antes": "kg/m2 e nega",
+  "depois": "kg/m² e nega",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "evidencia/revalida_2023_2_q057_statement.png"
+ },
+ {
+  "id": "revalida_2023_2_q062",
+  "campo": "options.A",
+  "antes": "máscara de O2.",
+  "depois": "máscara de O₂.",
+  "tipo": "sobrescrito",
+  "pagina": 18,
+  "evidencia": "evidencia/revalida_2023_2_q062_options_A.png"
+ },
+ {
+  "id": "revalida_2023_2_q081",
+  "campo": "statement",
+  "antes": "por mm3, sendo",
+  "depois": "por mm³, sendo",
+  "tipo": "sobrescrito",
+  "pagina": 23,
+  "evidencia": "evidencia/revalida_2023_2_q081_statement.png"
+ },
+ {
+  "id": "revalida_2023_2_q086",
+  "campo": "options.C",
+  "antes": "1,73 m2.",
+  "depois": "1,73 m².",
+  "tipo": "sobrescrito",
+  "pagina": 24,
+  "evidencia": "evidencia/revalida_2023_2_q086_options_C.png"
+ },
+ {
+  "id": "revalida_2023_2_q094",
+  "campo": "statement",
+  "antes": "kg/m2, hemoglobina",
+  "depois": "kg/m², hemoglobina",
+  "tipo": "sobrescrito",
+  "pagina": 26,
+  "evidencia": "evidencia/revalida_2023_2_q094_statement.png"
+ },
+ {
+  "id": "revalida_2023_2_q097",
+  "campo": "options.C",
+  "antes": "Kg/m2 e presença",
+  "depois": "Kg/m² e presença",
+  "tipo": "sobrescrito",
+  "pagina": 27,
+  "evidencia": "evidencia/revalida_2023_2_q097_options_C.png"
+ },
+ {
+  "id": "revalida_2023_2_q022",
+  "campo": "statement",
+  "antes": "11 000 mm3 Transaminase glutâmico 81",
+  "depois": "11 000 mm³ Transaminase glutâmico 81",
+  "tipo": "sobrescrito",
+  "pagina": 7,
+  "evidencia": "tabelas/revalida_2023_2_q022.png"
+ },
+ {
+  "id": "revalida_2023_2_q071",
+  "campo": "statement",
+  "antes": "Leucócitos totais 8 000 mm3 4 500",
+  "depois": "Leucócitos totais 8 000 mm³ 4 500",
+  "tipo": "sobrescrito",
+  "pagina": 20,
+  "evidencia": "tabelas/revalida_2023_2_q071.png"
+ },
+ {
+  "id": "revalida_2023_2_q071",
+  "campo": "statement",
+  "antes": "11 000 mm3 Proteínas totais",
+  "depois": "11 000 mm³ Proteínas totais",
+  "tipo": "sobrescrito",
+  "pagina": 20,
+  "evidencia": "tabelas/revalida_2023_2_q071.png"
+ }
+]

@@ -1,0 +1,102 @@
+[
+ {
+  "id": "revalida_2025_1_q002",
+  "arquivo": "revalida_2025_1_q002-tabela.png",
+  "alt": "Tabela de sinais vitais do paciente, com duas colunas (exame e resultado): frequência cardíaca, pressão arterial, frequência respiratória e temperatura axilar, cada uma com seu valor e unidade.",
+  "tabela_removida_do_texto": "Exame Resultado Frequência cardíaca 110 bpm Pressão arterial 90 x 50 mmHg Frequência respiratória 22 irpm Temperatura axilar 36,5 oC",
+  "pagina": 2,
+  "arquivo_origem": "revisao-questoes/revalida_2025_1/tabelas/revalida_2025_1_q002.png",
+  "sha256": "be1497e53156c0e0b5e16f62e7e0679b94b49791a0db5716db7be7d57fc128a9",
+  "tamanho": 20745
+ },
+ {
+  "id": "revalida_2025_1_q021",
+  "arquivo": "revalida_2025_1_q021-tabela.png",
+  "alt": "Tabela de espirometria com quatro colunas: parâmetro, valor encontrado antes do broncodilatador, valor encontrado depois do broncodilatador e valor previsto. Linhas: VEF1, CVF e relação VEF1/CVF.",
+  "tabela_removida_do_texto": "Valor Valor Valor previsto (de encontrado encontrado acordo com sexo, Parâmetro (pré- (pós- idade, cor da pele e broncodi- broncodi- estatura do paciente) latador) latador) Volume expiratório forçado no 1º 1,72 1,73 3,65 segundo (VEF1) Capacidade vital 3,13 3,14 4,66 forçada (CVF) Relação VEF1/CVF 0,55 0,55 0,79",
+  "pagina": 6,
+  "arquivo_origem": "revisao-questoes/revalida_2025_1/tabelas/revalida_2025_1_q021.png",
+  "sha256": "14006672c2cd991466345310108cc44f1de1780466f2884149dd72c111ab6ff4",
+  "tamanho": 43322
+ },
+ {
+  "id": "revalida_2025_1_q024",
+  "arquivo": "revalida_2025_1_q024-tabela.png",
+  "alt": "Tabela de sinais vitais maternos, com duas colunas (exame e resultado): frequência cardíaca materna, pressão arterial e saturação de oxigênio, cada uma com valor e unidade.",
+  "tabela_removida_do_texto": "Exame Resultado Frequência cardíaca materna 60 bpm Pressão arterial 80 x 60 mmHg Saturação de oxigênio 94%",
+  "pagina": 7,
+  "arquivo_origem": "revisao-questoes/revalida_2025_1/tabelas/revalida_2025_1_q024.png",
+  "sha256": "6cb75f665d16ab32584adbfd14a17d95ece3b6aea41eba7c7a5f901b150f5462",
+  "tamanho": 20064
+ },
+ {
+  "id": "revalida_2025_1_q029",
+  "arquivo": "revalida_2025_1_q029-tabela.png",
+  "alt": "Duas tabelas na ordem da prova, com uma frase entre elas. A primeira traz sinais vitais e dados do exame físico (exame e resultado). A segunda traz o hemograma, com resultado e valor de referência para hematócrito, hemoglobina, leucócitos totais e plaquetas.",
+  "tabela_removida_do_texto": "Exame Resultado Pressão arterial 90 x 70 mmHg Frequência cardíaca 82 bpm Saturação de O2 98% em ar ambiente Temperatura axilar 38,6 °C Altura uterina 20 cm Batimentos cardiofetais 142 bpm (regular) Após ouvir a história da paciente e examiná-la, o médico solicita um hemograma, cujo resultado é: Exame Resultado Valor de referência Hematócrito 38% 35 - 45% Hemoglobina 11,2 g/dL 12,0 - 16,0 g/dL Leucócitos totais 9.500/mm³ 4.500 – 11.000 /mm³ Plaquetas 28.000/mm³ 150.000 – 450.000/mm³",
+  "pagina": 8,
+  "arquivo_origem": "revisao-questoes/revalida_2025_1/tabelas/revalida_2025_1_q029.png",
+  "sha256": "992c723062b7e06bde20e1bc0c941ac15bd656d95979461d4435834ecb9ad3ed",
+  "tamanho": 73002
+ },
+ {
+  "id": "revalida_2025_1_q047",
+  "arquivo": "revalida_2025_1_q047-tabela.png",
+  "alt": "Tabela de sinais vitais do paciente, com duas colunas (exame e resultado): pressão arterial, frequência cardíaca e frequência respiratória, cada uma com valor e unidade.",
+  "tabela_removida_do_texto": "Exame Resultado Pressão arterial 80 x 50 mmHg Frequência cardíaca 130 bpm Frequência respiratória 30 irpm",
+  "pagina": 13,
+  "arquivo_origem": "revisao-questoes/revalida_2025_1/tabelas/revalida_2025_1_q047.png",
+  "sha256": "6ab9d8c9484b91184ecd0d852efebc6cf5a73ea28c16a7b22e42d04f6c73428e",
+  "tamanho": 18741
+ },
+ {
+  "id": "revalida_2025_1_q051",
+  "arquivo": "revalida_2025_1_q051-tabela.png",
+  "alt": "Tabela de exames laboratoriais com três colunas (exame, resultado e valor de referência): leucócitos totais, hematócrito, plaquetas e teste rápido de antígeno NS1.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de referência (VR) Leucócitos 3.500 4.000 a 10.000/mm3 totais células/mm3 Hematócrito 46% 39,9 a 52,1% Plaquetas 130.000/mm3 150.000 a 450.000/mm3 Teste rápido de antígeno Positivo - NS1",
+  "pagina": 14,
+  "arquivo_origem": "revisao-questoes/revalida_2025_1/tabelas/revalida_2025_1_q051.png",
+  "sha256": "90b92f6edf2c7954178e5993d1f1be64978f7526df6d7bbb699e0e5fd3a9a2e6",
+  "tamanho": 33204
+ },
+ {
+  "id": "revalida_2025_1_q053",
+  "arquivo": "revalida_2025_1_q053-tabela.png",
+  "alt": "Tabela de hemograma com três colunas (exame, resultado e valor de referência): hemoglobina, hematócrito, volume corpuscular médio, hemoglobina corpuscular média e plaquetas, com as unidades.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de referência Hemoglobina (Hb) 9,5 g/dL 10,5 a 13,5 g/dL Hematócrito (Ht) 34% 33 a 39% Volume corpuscular 101 fL 70 a 86 fL médio (VCM) Hemoglobina corpuscular média 23 pg 23 a 31 pg (HCM) Plaquetas 120.000/mm3 200.000 a 500.000/mm3",
+  "pagina": 14,
+  "arquivo_origem": "revisao-questoes/revalida_2025_1/tabelas/revalida_2025_1_q053.png",
+  "sha256": "72c29516d7a27333d31a3e9e26c3086d32485a33db01e7a99012591eb3617893",
+  "tamanho": 41252
+ },
+ {
+  "id": "revalida_2025_1_q054",
+  "arquivo": "revalida_2025_1_q054-tabela.png",
+  "alt": "Tabela de hemograma com três colunas (exame, resultado e valor de referência): hemoglobina, hematócrito, leucócitos e plaquetas, com as unidades.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de referência Hemoglobina 12,7 g/dL 11,5 a 14,8 g/dL Hematócrito 38% 35,4 a 45,9 % Leucócitos 7.800/mm3 3.143 a 10.074/mm3 Plaquetas 324.000/mm3 135.606 a 343.044/mm3",
+  "pagina": 15,
+  "arquivo_origem": "revisao-questoes/revalida_2025_1/tabelas/revalida_2025_1_q054.png",
+  "sha256": "1faea24c6e6e54e623c9b3f7e5352b6eae251ffc5f32b3a48bad8c5f9a8a1af4",
+  "tamanho": 26977
+ },
+ {
+  "id": "revalida_2025_1_q070",
+  "arquivo": "revalida_2025_1_q070-tabela.png",
+  "alt": "Tabela de sinais vitais da paciente, com duas colunas (exame e resultado): pressão arterial, frequência cardíaca, frequência respiratória e saturação de oxigênio, cada uma com valor e unidade.",
+  "tabela_removida_do_texto": "Exame Resultado Pressão arterial (PA) 150 x 95 mmHg Frequência cardíaca (FC) 90 bpm Frequência respiratória (FR) 20 irpm Saturação de oxigênio 95%",
+  "pagina": 18,
+  "arquivo_origem": "revisao-questoes/revalida_2025_1/tabelas/revalida_2025_1_q070.png",
+  "sha256": "19fe37f91373186f70cc8cd3b6be3dfa086dd4e9f73ddcdb1bbdb780d6a07093",
+  "tamanho": 26355
+ },
+ {
+  "id": "revalida_2025_1_q083",
+  "arquivo": "revalida_2025_1_q083-tabela.png",
+  "alt": "Duas tabelas na ordem da prova, com um parágrafo entre elas: exames antes do tratamento e exames pós-tratamento, cada uma com resultado e valor de referência para hemoglobina, hematócrito, volume corpuscular médio e ferritina, mais a observação sobre anisocitose.",
+  "tabela_removida_do_texto": "Valor de Exame Resultado referência Hemoglobina (Hb) 9,0 g/dL 10,5 a 13,5 g/dL Hematócrito (Ht) 27,5% 33 a 39% Volume corpuscular 64 fL 70 a 86 fL médio (VCM) Ferritina 12 ng/mL 20 – 100 ng/mL Obs: anisocitose + O médico inicia tratamento com ferro elementar na dose de 2 mg/kg/dia. Após 3 meses, exames foram repetidos, conforme tabela a seguir. Valor de Exame pós tratamento Resultado referência Hemoglobina (Hb) 9,2 g/dL 10,5 a 13,5 g/dL Hematócrito (Ht) 27,9% 33 a 39% Volume corpuscular 68 fL 70 a 86 fL médio (VCM) Ferritina 15 ng/mL 20 – 100 ng/mL Obs: anisocitose +",
+  "pagina": 21,
+  "arquivo_origem": "revisao-questoes/revalida_2025_1/tabelas/revalida_2025_1_q083.png",
+  "sha256": "8ef14bc0d7d7c578cdb2f6a09865f137d466745059f23cae9de662232a3759f3",
+  "tamanho": 90048
+ }
+]

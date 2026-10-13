@@ -1,0 +1,407 @@
+[
+ {
+  "id": "revalida_2026_1_q003",
+  "campo": "statement",
+  "antes": "Temperatura 36,5 °C; SpO2 94% em ar ambiente;",
+  "depois": "Temperatura 36,5 °C; SpO₂ 94% em ar ambiente;",
+  "tipo": "sobrescrito",
+  "pagina": 3,
+  "evidencia": "evidencias/q003.png"
+ },
+ {
+  "id": "revalida_2026_1_q007",
+  "campo": "statement",
+  "antes": "clínico, apresenta- se normocorada;",
+  "depois": "clínico, apresenta-se normocorada;",
+  "tipo": "caractere",
+  "pagina": 4,
+  "evidencia": "evidencias/q007.png"
+ },
+ {
+  "id": "revalida_2026_1_q008",
+  "campo": "statement",
+  "antes": "de febre (38,8 oC), com duração",
+  "depois": "de febre (38,8 ºC), com duração",
+  "tipo": "simbolo",
+  "pagina": 5,
+  "evidencia": "evidencias/q008.png"
+ },
+ {
+  "id": "revalida_2026_1_q009",
+  "campo": "statement",
+  "antes": "estatura); SatO2 91% em ar ambiente.",
+  "depois": "estatura); SatO₂ 91% em ar ambiente.",
+  "tipo": "sobrescrito",
+  "pagina": 5,
+  "evidencia": "evidencias/q009.png"
+ },
+ {
+  "id": "revalida_2026_1_q010",
+  "campo": "statement",
+  "antes": "bilateralmente e SpO2 95% em ar ambiente.",
+  "depois": "bilateralmente e SpO₂ 95% em ar ambiente.",
+  "tipo": "sobrescrito",
+  "pagina": 5,
+  "evidencia": "evidencias/q010.png"
+ },
+ {
+  "id": "revalida_2026_1_q014",
+  "campo": "statement",
+  "antes": "temperatura axilar de 37 oC e glicemia capilar",
+  "depois": "temperatura axilar de 37 ºC e glicemia capilar",
+  "tipo": "simbolo",
+  "pagina": 7,
+  "evidencia": "evidencias/q014.png"
+ },
+ {
+  "id": "revalida_2026_1_q015",
+  "campo": "statement",
+  "antes": "FR 14 irpm, SatO2 98% em ar ambiente.",
+  "depois": "FR 14 irpm, SatO₂ 98% em ar ambiente.",
+  "tipo": "sobrescrito",
+  "pagina": 7,
+  "evidencia": "evidencias/q015.png"
+ },
+ {
+  "id": "revalida_2026_1_q015",
+  "campo": "statement",
+  "antes": "Leucócitos 5.650/mm3 5.000 a 10.000/mm3",
+  "depois": "Leucócitos 5.650/mm³ 5.000 a 10.000/mm3",
+  "tipo": "unidade",
+  "pagina": 7,
+  "evidencia": "evidencias/q015.png"
+ },
+ {
+  "id": "revalida_2026_1_q015",
+  "campo": "statement",
+  "antes": "5.000 a 10.000/mm3 Bastonetes 0%",
+  "depois": "5.000 a 10.000/mm³ Bastonetes 0%",
+  "tipo": "unidade",
+  "pagina": 7,
+  "evidencia": "evidencias/q015.png"
+ },
+ {
+  "id": "revalida_2026_1_q015",
+  "campo": "statement",
+  "antes": "Plaquetas 185.000/mm3 140.000 a 400.000/mm3",
+  "depois": "Plaquetas 185.000/mm³ 140.000 a 400.000/mm3",
+  "tipo": "unidade",
+  "pagina": 7,
+  "evidencia": "evidencias/q015.png"
+ },
+ {
+  "id": "revalida_2026_1_q015",
+  "campo": "statement",
+  "antes": "140.000 a 400.000/mm3 TGO 30 U/L 5 a",
+  "depois": "140.000 a 400.000/mm³ TGO 30 U/L 5 a",
+  "tipo": "unidade",
+  "pagina": 7,
+  "evidencia": "evidencias/q015.png"
+ },
+ {
+  "id": "revalida_2026_1_q018",
+  "campo": "options.D",
+  "antes": "IMC > 35 Kg/m2.",
+  "depois": "IMC > 35 Kg/m².",
+  "tipo": "unidade",
+  "pagina": 8,
+  "evidencia": "evidencias/q018.png"
+ },
+ {
+  "id": "revalida_2026_1_q023",
+  "campo": "statement",
+  "antes": "Temperatura 36,1 oC; FC 188 bpm; FR",
+  "depois": "Temperatura 36,1 ºC; FC 188 bpm; FR",
+  "tipo": "simbolo",
+  "pagina": 9,
+  "evidencia": "evidencias/q023.png"
+ },
+ {
+  "id": "revalida_2026_1_q024",
+  "campo": "statement",
+  "antes": "de fármaco anti- hipertensivo; nega",
+  "depois": "de fármaco anti-hipertensivo; nega",
+  "tipo": "caractere",
+  "pagina": 9,
+  "evidencia": "evidencias/q024.png"
+ },
+ {
+  "id": "revalida_2026_1_q026",
+  "campo": "statement",
+  "antes": "físico, apresenta- se em estado geral",
+  "depois": "físico, apresenta-se em estado geral",
+  "tipo": "caractere",
+  "pagina": 10,
+  "evidencia": "evidencias/q026.png"
+ },
+ {
+  "id": "revalida_2026_1_q026",
+  "campo": "statement",
+  "antes": "regular; febril (39,3 oC); FR 22 irpm;",
+  "depois": "regular; febril (39,3 ºC); FR 22 irpm;",
+  "tipo": "simbolo",
+  "pagina": 10,
+  "evidencia": "evidencias/q026.png"
+ },
+ {
+  "id": "revalida_2026_1_q026",
+  "campo": "statement",
+  "antes": "Oximetria indica SpO2 96%. Sinal de",
+  "depois": "Oximetria indica SpO₂ 96%. Sinal de",
+  "tipo": "sobrescrito",
+  "pagina": 10,
+  "evidencia": "evidencias/q026.png"
+ },
+ {
+  "id": "revalida_2026_1_q031",
+  "campo": "statement",
+  "antes": "súbita. Encontra- se consciente,",
+  "depois": "súbita. Encontra-se consciente,",
+  "tipo": "caractere",
+  "pagina": 11,
+  "evidencia": "evidencias/q031.png"
+ },
+ {
+  "id": "revalida_2026_1_q032",
+  "campo": "statement",
+  "antes": "após parto extra- hospitalar. Relata",
+  "depois": "após parto extra-hospitalar. Relata",
+  "tipo": "caractere",
+  "pagina": 11,
+  "evidencia": "evidencias/q032.png"
+ },
+ {
+  "id": "revalida_2026_1_q032",
+  "campo": "statement",
+  "antes": "parto, identifica- se laceração perineal",
+  "depois": "parto, identifica-se laceração perineal",
+  "tipo": "caractere",
+  "pagina": 11,
+  "evidencia": "evidencias/q032.png"
+ },
+ {
+  "id": "revalida_2026_1_q045",
+  "campo": "options.D",
+  "antes": "pesquisa de DNA- HPV e, caso o resultado",
+  "depois": "pesquisa de DNA-HPV e, caso o resultado",
+  "tipo": "caractere",
+  "pagina": 14,
+  "evidencia": "evidencias/q045.png"
+ },
+ {
+  "id": "revalida_2026_1_q046",
+  "campo": "statement",
+  "antes": "FR 20 irpm; SpO2 93% sob máscara",
+  "depois": "FR 20 irpm; SpO₂ 93% sob máscara",
+  "tipo": "sobrescrito",
+  "pagina": 15,
+  "evidencia": "evidencias/q046.png"
+ },
+ {
+  "id": "revalida_2026_1_q047",
+  "campo": "statement",
+  "antes": "físico, observa- se tecido mamário",
+  "depois": "físico, observa-se tecido mamário",
+  "tipo": "caractere",
+  "pagina": 15,
+  "evidencia": "evidencias/q047.png"
+ },
+ {
+  "id": "revalida_2026_1_q049",
+  "campo": "statement",
+  "antes": "temperatura axilar 36,6 oC; pele pálida,",
+  "depois": "temperatura axilar 36,6 ºC; pele pálida,",
+  "tipo": "simbolo",
+  "pagina": 15,
+  "evidencia": "evidencias/q049.png"
+ },
+ {
+  "id": "revalida_2026_1_q051",
+  "campo": "statement",
+  "antes": "kg, IMC 25 kg/m2, sedentário, motorista",
+  "depois": "kg, IMC 25 kg/m², sedentário, motorista",
+  "tipo": "unidade",
+  "pagina": 16,
+  "evidencia": "evidencias/q051.png"
+ },
+ {
+  "id": "revalida_2026_1_q056",
+  "campo": "statement",
+  "antes": "princípio, pois tratava- se de exames de",
+  "depois": "princípio, pois tratava-se de exames de",
+  "tipo": "caractere",
+  "pagina": 16,
+  "evidencia": "evidencias/q056.png"
+ },
+ {
+  "id": "revalida_2026_1_q057",
+  "campo": "statement",
+  "antes": "eletiva. No 3º dia pós- operatório, foi",
+  "depois": "eletiva. No 3º dia pós-operatório, foi",
+  "tipo": "caractere",
+  "pagina": 17,
+  "evidencia": "evidencias/q057.png"
+ },
+ {
+  "id": "revalida_2026_1_q057",
+  "campo": "statement",
+  "antes": "temperatura axilar 36 oC. Qual medicação",
+  "depois": "temperatura axilar 36 ºC. Qual medicação",
+  "tipo": "simbolo",
+  "pagina": 17,
+  "evidencia": "evidencias/q057.png"
+ },
+ {
+  "id": "revalida_2026_1_q057",
+  "campo": "statement",
+  "antes": "FR 8 irpm; SatO2 86% em ar ambiente",
+  "depois": "FR 8 irpm; SatO₂ 86% em ar ambiente",
+  "tipo": "sobrescrito",
+  "pagina": 17,
+  "evidencia": "evidencias/q057.png"
+ },
+ {
+  "id": "revalida_2026_1_q059",
+  "campo": "statement",
+  "antes": "febre de até 39,5 oC, iniciado há 10",
+  "depois": "febre de até 39,5 ºC, iniciado há 10",
+  "tipo": "simbolo",
+  "pagina": 17,
+  "evidencia": "evidencias/q059.png"
+ },
+ {
+  "id": "revalida_2026_1_q065",
+  "campo": "statement",
+  "antes": "FR 20 irpm, SatO2 93% em ar ambiente.",
+  "depois": "FR 20 irpm, SatO₂ 93% em ar ambiente.",
+  "tipo": "sobrescrito",
+  "pagina": 18,
+  "evidencia": "evidencias/q065.png"
+ },
+ {
+  "id": "revalida_2026_1_q066",
+  "campo": "statement",
+  "antes": "x 60 mmHg, SatO2 98% em ar ambiente;",
+  "depois": "x 60 mmHg, SatO₂ 98% em ar ambiente;",
+  "tipo": "sobrescrito",
+  "pagina": 19,
+  "evidencia": "evidencias/q066.png"
+ },
+ {
+  "id": "revalida_2026_1_q068",
+  "campo": "statement",
+  "antes": "quadrante ínfero- medial. Mama direita:",
+  "depois": "quadrante ínfero-medial. Mama direita:",
+  "tipo": "caractere",
+  "pagina": 19,
+  "evidencia": "evidencias/q068.png"
+ },
+ {
+  "id": "revalida_2026_1_q069",
+  "campo": "statement",
+  "antes": "discussão técnico- assistencial do",
+  "depois": "discussão técnico-assistencial do",
+  "tipo": "caractere",
+  "pagina": 20,
+  "evidencia": "evidencias/q069.png"
+ },
+ {
+  "id": "revalida_2026_1_q072",
+  "campo": "statement",
+  "antes": "FR 20 irpm, SatO2 95% em ar ambiente,",
+  "depois": "FR 20 irpm, SatO₂ 95% em ar ambiente,",
+  "tipo": "sobrescrito",
+  "pagina": 20,
+  "evidencia": "evidencias/q072.png"
+ },
+ {
+  "id": "revalida_2026_1_q072",
+  "campo": "statement",
+  "antes": "22 a 26 mEq/L pCO2 (gasometria venosa)",
+  "depois": "22 a 26 mEq/L pCO₂ (gasometria venosa)",
+  "tipo": "sobrescrito",
+  "pagina": 20,
+  "evidencia": "evidencias/q072.png"
+ },
+ {
+  "id": "revalida_2026_1_q076",
+  "campo": "statement",
+  "antes": "detecção de DNA- HPV. Nesse caso,",
+  "depois": "detecção de DNA-HPV. Nesse caso,",
+  "tipo": "caractere",
+  "pagina": 21,
+  "evidencia": "evidencias/q076.png"
+ },
+ {
+  "id": "revalida_2026_1_q081",
+  "campo": "statement",
+  "antes": "Recuperação Total Pós- Operatória (ACERTO)",
+  "depois": "Recuperação Total Pós-Operatória (ACERTO)",
+  "tipo": "caractere",
+  "pagina": 23,
+  "evidencia": "evidencias/q081.png"
+ },
+ {
+  "id": "revalida_2026_1_q087",
+  "campo": "statement",
+  "antes": "hemitórax esquerdo; SatO2 88% em ar ambiente.",
+  "depois": "hemitórax esquerdo; SatO₂ 88% em ar ambiente.",
+  "tipo": "sobrescrito",
+  "pagina": 24,
+  "evidencia": "evidencias/q087.png"
+ },
+ {
+  "id": "revalida_2026_1_q091",
+  "campo": "statement",
+  "antes": "físico, apresenta- se em bom estado",
+  "depois": "físico, apresenta-se em bom estado",
+  "tipo": "caractere",
+  "pagina": 25,
+  "evidencia": "evidencias/q091.png"
+ },
+ {
+  "id": "revalida_2026_1_q093",
+  "campo": "statement",
+  "antes": "no 3º dia de pós- operatório de enterectomia",
+  "depois": "no 3º dia de pós-operatório de enterectomia",
+  "tipo": "caractere",
+  "pagina": 25,
+  "evidencia": "evidencias/q093.png"
+ },
+ {
+  "id": "revalida_2026_1_q094",
+  "campo": "statement",
+  "antes": "abundante, amarelo- esverdeado, acompanhado",
+  "depois": "abundante, amarelo-esverdeado, acompanhado",
+  "tipo": "caractere",
+  "pagina": 25,
+  "evidencia": "evidencias/q094.png"
+ },
+ {
+  "id": "revalida_2026_1_q095",
+  "campo": "statement",
+  "antes": "dias, dor retro- orbitária, mialgia",
+  "depois": "dias, dor retro-orbitária, mialgia",
+  "tipo": "caractere",
+  "pagina": 25,
+  "evidencia": "evidencias/q095.png"
+ },
+ {
+  "id": "revalida_2026_1_q096",
+  "campo": "statement",
+  "antes": "temperatura axilar 37,9 oC. O joelho direito",
+  "depois": "temperatura axilar 37,9 ºC. O joelho direito",
+  "tipo": "simbolo",
+  "pagina": 26,
+  "evidencia": "evidencias/q096.png"
+ },
+ {
+  "id": "revalida_2026_1_q100",
+  "campo": "statement",
+  "antes": "temperatura axilar 39 oC, hiperemia conjuntival",
+  "depois": "temperatura axilar 39 ºC, hiperemia conjuntival",
+  "tipo": "simbolo",
+  "pagina": 26,
+  "evidencia": "evidencias/q100.png"
+ }
+]

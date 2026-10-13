@@ -1,0 +1,74 @@
+[
+ {
+  "id": "revalida_2025_1_q001",
+  "campo": "statement",
+  "antes": "saturação de O2 de 96%",
+  "depois": "saturação de O₂ de 96%",
+  "tipo": "sobrescrito",
+  "pagina": 2,
+  "evidencia": "evidencias/q001.png"
+ },
+ {
+  "id": "revalida_2025_1_q006",
+  "campo": "statement",
+  "antes": "teste respiratório com C13.",
+  "depois": "teste respiratório com C¹³.",
+  "tipo": "sobrescrito",
+  "pagina": 3,
+  "evidencia": "evidencias/q006.png"
+ },
+ {
+  "id": "revalida_2025_1_q024",
+  "campo": "options.B",
+  "antes": "monitorização contínua materno- fetal",
+  "depois": "monitorização contínua materno-fetal",
+  "tipo": "caractere",
+  "pagina": 7,
+  "evidencia": "evidencias/q024.png"
+ },
+ {
+  "id": "revalida_2025_1_q027",
+  "campo": "options.D",
+  "antes": "ântero- superior",
+  "depois": "ântero-superior",
+  "tipo": "caractere",
+  "pagina": 8,
+  "evidencia": "evidencias/q027.png"
+ },
+ {
+  "id": "revalida_2025_1_q040",
+  "campo": "options.A",
+  "antes": "anti- inflamatório",
+  "depois": "anti-inflamatório",
+  "tipo": "caractere",
+  "pagina": 11,
+  "evidencia": "evidencias/q040.png"
+ },
+ {
+  "id": "revalida_2025_1_q079",
+  "campo": "statement",
+  "antes": "lactante no 2o mês",
+  "depois": "lactante no 2º mês",
+  "tipo": "sobrescrito",
+  "pagina": 20,
+  "evidencia": "evidencias/q079.png"
+ },
+ {
+  "id": "revalida_2025_1_q083",
+  "campo": "options.B",
+  "antes": "deve- se repor",
+  "depois": "deve-se repor",
+  "tipo": "caractere",
+  "pagina": 21,
+  "evidencia": "evidencias/q083.png"
+ },
+ {
+  "id": "revalida_2025_1_q086",
+  "campo": "statement",
+  "antes": "Saturação de O2 de 86%",
+  "depois": "Saturação de O₂ de 86%",
+  "tipo": "sobrescrito",
+  "pagina": 22,
+  "evidencia": "evidencias/q086.png"
+ }
+]
