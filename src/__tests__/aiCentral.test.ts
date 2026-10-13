@@ -203,7 +203,7 @@ describe("Banco", () => {
     await expect(db.asUser(studentUser, "app_admin_ai_overview")).rejects.toThrow(RESTRITO);
 
     const s = await db.asUser<any>(editorUser, "app_ai_summary");
-    expect(s.functions).toHaveLength(7);
+    expect(s.functions).toHaveLength(8);
     expect(s.functions.find((f: any) => f.key === "verificacao")).toMatchObject({ configured: true, mode: "sozinha" });
     expect(s.functions.find((f: any) => f.key === "criacao")).toMatchObject({ configured: false });
     expect(s.providers_enabled).toEqual(["anthropic"]);
@@ -1422,7 +1422,7 @@ describe("Rotas", () => {
   it("editor lê o resumo, mas não grava (403)", async () => {
     const s = await call("editor", "GET", "/summary");
     expect(s.status).toBe(200);
-    expect((await s.json()).functions).toHaveLength(7);
+    expect((await s.json()).functions).toHaveLength(8);
     for (const [m, p, b] of [["GET", "/overview", undefined], ["POST", "/providers/anthropic/enabled", { enabled: true }], ["POST", "/providers/anthropic/refresh", {}], ["PUT", "/settings", { caps_enabled: false }]] as const) {
       const r = await call("editor", m, p, b);
       expect(r.status, p).toBe(403);
@@ -1490,15 +1490,17 @@ describe("Rotas", () => {
     expect((await call("admin", "PUT", "/settings", { per_run_cap_usd: null })).status).toBe(400);
   });
 
-  it("overview traz checks das 7 funções e nenhuma chave", async () => {
+  it("overview traz checks das 8 funções e nenhuma chave", async () => {
     const r = await call("admin", "GET", "/overview");
     const text = await r.text();
     expect(text).not.toContain(KEY);
     const j = JSON.parse(text);
-    expect(Object.keys(j.checks).sort()).toEqual(["assistente_conferir", "assistente_preencher", "assistente_revisar", "busca_fontes", "criacao", "engenharia_reversa", "verificacao"]);
+    expect(Object.keys(j.checks).sort()).toEqual(["assistente_conferir", "assistente_preencher", "assistente_revisar", "busca_fontes", "criacao", "engenharia_reversa", "similaridade", "verificacao"]);
     expect(j.checks.criacao).toMatchObject({ source: "variaveis", ready: false });
     // a busca de fontes sem configuração fica desligada, nunca pelas variáveis de ambiente
     expect(j.checks.busca_fontes).toMatchObject({ source: "variaveis", ready: false, ref: null, problems: ["Desligada: configure esta função na Central de IAs."] });
+    // Questões parecidas (similaridade, 9910): também começa desligada e nunca pelas variáveis de ambiente
+    expect(j.checks.similaridade).toMatchObject({ source: "variaveis", ready: false, ref: null, problems: ["Desligada: configure esta função na Central de IAs."] });
     expect(j.checks.criacao.problems.join(" ")).toMatch(/desligada/);
     await priceModels(A);
     await call("admin", "POST", "/providers/anthropic/enabled", { enabled: true });

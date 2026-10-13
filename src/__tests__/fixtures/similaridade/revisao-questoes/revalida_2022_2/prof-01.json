@@ -1,0 +1,2377 @@
+[
+ {
+  "id": "revalida_2022_2_q001",
+  "tema": "Cardiologia",
+  "subtema": "Bloqueio atrioventricular total sintomático",
+  "confianca": 65,
+  "perfil": {
+   "competencia": "tratamento",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Bradiarritmia sintomática com dissociação atrioventricular (provável bloqueio atrioventricular total)",
+   "conceitos": [
+    "bloqueio atrioventricular total",
+    "dissociação atrioventricular",
+    "ondas a em canhão",
+    "síncope por bradiarritmia",
+    "marca-passo definitivo"
+   ],
+   "achados_discriminatorios": [
+    "síncopes recorrentes precedidas de tontura e escurecimento visual",
+    "bradicardia de 42 batimentos por minuto",
+    "ondas a em canhão intermitentes no pulso venoso jugular",
+    "nenhum fármaco em uso regular"
+   ],
+   "raciocinio_cobrado": "Reconhecer pelos sinais de dissociação atrioventricular uma bradiarritmia avançada sintomática e saber que a solução definitiva é a estimulação cardíaca permanente, e não tratamentos de taquiarritmias.",
+   "tipo": "imagem",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q002",
+  "tema": "Urologia",
+  "subtema": "Hematúria macroscópica e investigação de câncer de bexiga",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "nao_se_aplica",
+   "problema_central": "Hematúria macroscópica não glomerular com provável câncer de bexiga",
+   "conceitos": [
+    "hematúria macroscópica",
+    "hemácias isomórficas",
+    "tabagismo como fator de risco",
+    "carcinoma urotelial de bexiga",
+    "uretrocistoscopia"
+   ],
+   "achados_discriminatorios": [
+    "75 anos de idade",
+    "tabagismo de 1 maço/dia desde os 20 anos",
+    "hematúria macroscópica com sintomas irritativos",
+    "mais de 80% de hemácias isomórficas",
+    "próstata aumentada de superfície regular após ressecção transuretral"
+   ],
+   "raciocinio_cobrado": "Localizar a origem da hematúria como não glomerular pelas hemácias isomórficas e, somando idade e tabagismo, priorizar o câncer de bexiga e o exame que vê a mucosa vesical diretamente.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q003",
+  "tema": "Puericultura",
+  "subtema": "Introdução da alimentação complementar aos 6 meses",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "prevencao_rastreamento",
+   "cenario": "atencao_primaria",
+   "problema_central": "Introdução da alimentação complementar em lactente saudável de 6 meses",
+   "conceitos": [
+    "alimentação complementar",
+    "aleitamento materno",
+    "consistência dos alimentos",
+    "ferro na carne",
+    "sucos no primeiro ano",
+    "alimentos alergênicos"
+   ],
+   "achados_discriminatorios": [
+    "lactente de 6 meses",
+    "aleitamento materno exclusivo",
+    "nascido com 39 semanas e desenvolvimento neuropsicomotor adequado",
+    "consulta de puericultura na unidade básica de saúde"
+   ],
+   "raciocinio_cobrado": "Separar a orientação correta de introdução alimentar das meias verdades e das regras antigas sobre carne, suco e ovo.",
+   "tipo": "conceitual",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q004",
+  "tema": "Obstetrícia",
+  "subtema": "Hemorragia pós-parto por retenção de restos placentários",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "conduta_inicial",
+   "cenario": "centro_obstetrico",
+   "problema_central": "Hemorragia pós-parto com choque por provável retenção de restos placentários",
+   "conceitos": [
+    "hemorragia pós-parto",
+    "quatro causas da hemorragia pós-parto (tônus, trauma, tecido, trombina)",
+    "choque hipovolêmico",
+    "retenção de restos placentários",
+    "curetagem uterina"
+   ],
+   "achados_discriminatorios": [
+    "sangramento vaginal abundante no puerpério imediato",
+    "frequência cardíaca de 128 bpm, pressão arterial de 80 x 30 mmHg e enchimento capilar de 6 segundos",
+    "útero contraído abaixo da cicatriz umbilical",
+    "sem lesões no canal de parto"
+   ],
+   "raciocinio_cobrado": "Excluir atonia e trauma pelo exame físico e deduzir que o tecido retido é a causa a investigar, tratando-a junto com a reanimação.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q005",
+  "tema": "Saúde mental na atenção primária",
+  "subtema": "Encaminhamento ao CAPS na depressão com sintomas psicóticos e ideação suicida",
+  "confianca": 75,
+  "perfil": {
+   "competencia": "organizacao_sus",
+   "cenario": "atencao_primaria",
+   "problema_central": "Depressão com sintomas psicóticos e ideação suicida sem plano",
+   "conceitos": [
+    "Rede de Atenção Psicossocial",
+    "Centro de Atenção Psicossocial",
+    "depressão com sintomas psicóticos",
+    "ideação suicida",
+    "avaliação de risco de suicídio",
+    "cuidado compartilhado"
+   ],
+   "achados_discriminatorios": [
+    "fluoxetina 40 mg/dia nos últimos 6 meses com discreta melhora",
+    "ouve vozes e vê vultos há cerca de 1 mês",
+    "pensa em se matar, mas sem plano",
+    "mora com a irmã, que a acompanha e está preocupada"
+   ],
+   "raciocinio_cobrado": "Perceber que o quadro se agravou para transtorno mental grave sem risco iminente descrito e escolher o CAPS como ponto adequado da rede.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q006",
+  "tema": "Nefrologia",
+  "subtema": "Hipertensão na doença renal crônica com albuminúria",
+  "confianca": 90,
+  "perfil": {
+   "competencia": "tratamento",
+   "cenario": "ambulatorio_especializado",
+   "problema_central": "Hipertensão não controlada em doença renal crônica estágio 3 com albuminúria",
+   "conceitos": [
+    "doença renal crônica",
+    "albuminúria",
+    "bloqueio do sistema renina-angiotensina",
+    "nefroproteção",
+    "hipertensão arterial sistêmica"
+   ],
+   "achados_discriminatorios": [
+    "taxa de filtração glomerular estimada de 54 ml/min/1,73 m²",
+    "microalbuminúria de 120 mg/g de creatinina",
+    "pressão de 150 x 90 mmHg com hidroclorotiazida e anlodipino",
+    "ausência de inibidor da enzima conversora ou bloqueador do receptor de angiotensina II no esquema"
+   ],
+   "raciocinio_cobrado": "Perceber que, em doente renal com albuminúria e pressão fora do alvo, a classe que falta e que protege o rim é o inibidor da enzima conversora ou o bloqueador do receptor de angiotensina II.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q007",
+  "tema": "Coloproctologia",
+  "subtema": "Diverticulite aguda complicada com abscesso",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "conduta_inicial",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Diverticulite aguda complicada com abscesso pericólico de 6 cm",
+   "conceitos": [
+    "diverticulite aguda complicada",
+    "abscesso pericólico",
+    "drenagem percutânea",
+    "antibioticoterapia venosa",
+    "procedimento de Hartmann",
+    "classificação de Hinchey"
+   ],
+   "achados_discriminatorios": [
+    "dor em fossa ilíaca esquerda com temperatura axilar de 37,9 °C",
+    "bom estado geral e sinais vitais estáveis",
+    "abscesso pericolônico de 6 cm",
+    "ausência de líquido livre e de gás na cavidade peritoneal"
+   ],
+   "raciocinio_cobrado": "Usar o tamanho do abscesso e a ausência de perfuração livre para escolher entre antibiótico isolado, drenagem e cirurgia.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q008",
+  "tema": "Crescimento e desenvolvimento",
+  "subtema": "Baixa estatura familiar",
+  "confianca": 90,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "atencao_primaria",
+   "problema_central": "Baixa estatura familiar",
+   "conceitos": [
+    "baixa estatura familiar",
+    "atraso constitucional do crescimento e da puberdade",
+    "velocidade de crescimento",
+    "idade óssea",
+    "alvo estatural familiar",
+    "estadiamento de Tanner"
+   ],
+   "achados_discriminatorios": [
+    "estatura entre escore-z −2 e −3",
+    "projeção no canal familiar (pai 161 cm, mãe 150 cm)",
+    "crescimento de 2,5 cm em 6 meses",
+    "idade óssea de 11 anos igual à cronológica",
+    "Tanner G2 P1 aos 11 anos"
+   ],
+   "raciocinio_cobrado": "Integrar alvo familiar, velocidade de crescimento, idade óssea e estágio puberal para separar baixa estatura familiar de atraso constitucional e de doença.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q009",
+  "tema": "Ginecologia",
+  "subtema": "Sangramento uterino anormal por pólipo endometrial",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "ambulatorio_especializado",
+   "problema_central": "Sangramento uterino anormal por provável pólipo endometrial",
+   "conceitos": [
+    "sangramento uterino anormal",
+    "pólipo endometrial",
+    "histeroscopia",
+    "ultrassonografia pélvica",
+    "espessamento endometrial"
+   ],
+   "achados_discriminatorios": [
+    "aumento da intensidade e duração do fluxo menstrual há 8 meses",
+    "eco endometrial heterogêneo de 36 mm",
+    "lesão hiperecoica de contornos regulares na cavidade uterina",
+    "colpocitologia com alterações celulares benignas reativas ou reparativas",
+    "anexos sem alterações ultrassonográficas"
+   ],
+   "raciocinio_cobrado": "Localizar a lesão na cavidade uterina pelo laudo, reconhecer o aspecto de pólipo e escolher o exame que vê a cavidade por dentro.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q010",
+  "tema": "Psiquiatria",
+  "subtema": "Ansiedade com evitação agorafóbica e resposta parcial ao antidepressivo",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "tratamento",
+   "cenario": "atencao_primaria",
+   "problema_central": "Ataques de ansiedade com evitação agorafóbica e resposta parcial à sertralina",
+   "conceitos": [
+    "agorafobia",
+    "ataques de pânico",
+    "terapia cognitivo-comportamental",
+    "inibidor seletivo da recaptação de serotonina",
+    "resposta parcial ao tratamento",
+    "polifarmácia"
+   ],
+   "achados_discriminatorios": [
+    "sertralina 50 mg/dia há 10 semanas com melhora discreta",
+    "ataques recorrentes de ansiedade intensa ao sair de casa nas últimas 4 semanas",
+    "limitação de atividades do dia a dia, como ir ao supermercado e buscar os filhos",
+    "atendimento em unidade de saúde da família"
+   ],
+   "raciocinio_cobrado": "Perceber resposta parcial com prejuízo funcional e combinar psicoterapia estruturada com revisão do antidepressivo, sem escalar para emergência ou polifarmácia.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q011",
+  "tema": "Dermatologia",
+  "subtema": "Síndrome de Stevens-Johnson induzida por hidantoína",
+  "confianca": 88,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Síndrome de Stevens-Johnson por hidantoína",
+   "conceitos": [
+    "síndrome de Stevens-Johnson",
+    "farmacodermia grave",
+    "lesões em alvo",
+    "acometimento de mucosa",
+    "hidantoína (fenitoína)",
+    "diagnóstico clínico"
+   ],
+   "achados_discriminatorios": [
+    "hidantoína introduzida recentemente",
+    "lesões em alvo com bolhas e desprendimento cutâneo limitado",
+    "crostas hemáticas nos lábios com desprendimento mucoso",
+    "febre, mal-estar e mialgias",
+    "lesões em menos de 10% da superfície corpórea"
+   ],
+   "raciocinio_cobrado": "Ligar o início recente de um anticonvulsivante a lesões em alvo com acometimento de mucosa e concluir que o diagnóstico provável é clínico, sem perseguir diferenciais sugeridos pela história familiar.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q013",
+  "tema": "Pediatria",
+  "subtema": "Bronquiolite viral aguda: diagnóstico e tratamento de suporte",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "atencao_primaria",
+   "problema_central": "Bronquiolite viral aguda",
+   "conceitos": [
+    "bronquiolite viral aguda",
+    "sibilância no lactente",
+    "hipoxemia",
+    "tratamento de suporte",
+    "desconforto respiratório"
+   ],
+   "achados_discriminatorios": [
+    "lactente de 6 meses",
+    "coriza, espirros e obstrução nasal seguidos de chiado e dispneia",
+    "episódios anteriores apenas de rinofaringite",
+    "saturação de 88% em ar ambiente com tiragem",
+    "radiografia com hiperinsuflação pulmonar"
+   ],
+   "raciocinio_cobrado": "Reconhecer o primeiro episódio de sibilância após quadro viral no lactente como bronquiolite e escolher suporte com monitorização, sem broncodilatador, corticoide ou antibiótico de rotina.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q014",
+  "tema": "Ginecologia",
+  "subtema": "Dispareunia: causas e relação com lubrificação e contraceptivos hormonais",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "fisiopatologia_conceito",
+   "cenario": "nao_se_aplica",
+   "problema_central": "Dispareunia",
+   "conceitos": [
+    "dispareunia de penetração",
+    "dispareunia de profundidade",
+    "hipolubrificação vaginal",
+    "contraceptivo hormonal",
+    "endometriose",
+    "causas psicossociais"
+   ],
+   "achados_discriminatorios": [
+    "dispareunia classificada como de profundidade ou de penetração",
+    "associação com falta de desejo e de excitação sexual",
+    "impacto na saúde física e mental da mulher"
+   ],
+   "raciocinio_cobrado": "Reconhecer a natureza multifatorial da dispareunia e descartar as alternativas que restringem suas causas com termos absolutos.",
+   "tipo": "conceitual",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q015",
+  "tema": "Medicina de Família e Comunidade",
+  "subtema": "Educação popular em saúde e hesitação vacinal contra a covid-19",
+  "confianca": 90,
+  "perfil": {
+   "competencia": "saude_coletiva_epidemiologia",
+   "cenario": "atencao_primaria",
+   "problema_central": "Hesitação vacinal contra a covid-19 na comunidade",
+   "conceitos": [
+    "educação popular em saúde",
+    "abordagem centrada na pessoa",
+    "competência cultural",
+    "orientação familiar e comunitária",
+    "roda de conversa",
+    "hesitação vacinal"
+   ],
+   "achados_discriminatorios": [
+    "atividade de educação popular planejada pela equipe da unidade de saúde da família",
+    "abordagem centrada na pessoa e competência cultural citadas no enunciado",
+    "objetivo de enfrentar a resistência à vacinação contra a covid-19"
+   ],
+   "raciocinio_cobrado": "Escolher a estratégia de diálogo que escuta percepções positivas e negativas antes de apresentar as evidências científicas.",
+   "tipo": "conceitual",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q017",
+  "tema": "Cirurgia Geral",
+  "subtema": "Abscesso anorretal: manejo inicial",
+  "confianca": 90,
+  "perfil": {
+   "competencia": "conduta_inicial",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Abscesso anorretal",
+   "conceitos": [
+    "abscesso perianal",
+    "abscesso anorretal",
+    "drenagem cirúrgica",
+    "flutuação",
+    "sinais sistêmicos de infecção"
+   ],
+   "achados_discriminatorios": [
+    "dor anal há 5 dias com prostração e calafrios",
+    "abaulamento perianal à direita com calor e vermelhidão, sem flutuação",
+    "dor ao toque retal no quadrante posterior direito",
+    "frequência cardíaca de 105 bpm e temperatura axilar de 37,5 °C"
+   ],
+   "raciocinio_cobrado": "Reconhecer abscesso anorretal pelo exame físico e indicar drenagem imediata mesmo sem flutuação, sem trocá-la por antibiótico, observação ou imagem.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q018",
+  "tema": "Neonatologia",
+  "subtema": "Taquipneia transitória do recém-nascido: fatores de risco",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "enfermaria_hospital",
+   "problema_central": "Taquipneia transitória do recém-nascido",
+   "conceitos": [
+    "taquipneia transitória do recém-nascido",
+    "líquido pulmonar fetal",
+    "prematuridade tardia",
+    "parto operatório",
+    "asma materna",
+    "diabetes gestacional"
+   ],
+   "achados_discriminatorios": [
+    "idade gestacional de 35 semanas e 5 dias com parto operatório",
+    "desconforto respiratório moderado com redução progressiva do oxigênio",
+    "hemograma, proteína C reativa e hemocultura normais",
+    "radiografia com retificação de costelas, hiperinsuflação e linhas opacificadas",
+    "asma materna"
+   ],
+   "raciocinio_cobrado": "Deduzir taquipneia transitória pelo quadro e pela radiografia e, a partir disso, identificar a asma materna como fator de risco entre os dados do caso.",
+   "tipo": "caso_clinico",
+   "complexidade": 3
+  }
+ },
+ {
+  "id": "revalida_2022_2_q019",
+  "tema": "Obstetrícia",
+  "subtema": "Gestação após bypass gástrico em Y de Roux",
+  "confianca": 87,
+  "perfil": {
+   "competencia": "prognostico_complicacoes",
+   "cenario": "ambulatorio_especializado",
+   "problema_central": "Gestação após bypass gástrico em Y de Roux",
+   "conceitos": [
+    "bypass gástrico em Y de Roux",
+    "intervalo entre cirurgia e concepção",
+    "recém-nascido pequeno para a idade gestacional",
+    "síndrome de dumping",
+    "rastreio de diabetes gestacional",
+    "anemia carencial"
+   ],
+   "achados_discriminatorios": [
+    "bypass gástrico em Y de Roux há 10 meses",
+    "perda de peso de 104 kg para 88 kg",
+    "mal-estar e tontura após o almoço",
+    "gestação de 24 semanas em pré-natal de alto risco"
+   ],
+   "raciocinio_cobrado": "Reconhecer o risco perinatal da concepção precoce após bypass e identificar as condutas que mudam depois da cirurgia, como a glicose oral que provoca dumping e a via de reposição de ferro.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q020",
+  "tema": "Cardiologia",
+  "subtema": "Dislipidemia e dor muscular associada à estatina",
+  "confianca": 90,
+  "perfil": {
+   "competencia": "tratamento",
+   "cenario": "atencao_primaria",
+   "problema_central": "Dor muscular após início de tratamento para dislipidemia",
+   "conceitos": [
+    "dislipidemia",
+    "estatina",
+    "dor muscular por estatina",
+    "efeito adverso medicamentoso",
+    "creatinofosfoquinase"
+   ],
+   "achados_discriminatorios": [
+    "fortes dores musculares",
+    "medicação nova prescrita há duas semanas",
+    "prescrição motivada por alterações em exames laboratoriais",
+    "homem de 58 anos hipertenso"
+   ],
+   "raciocinio_cobrado": "Partir do efeito adverso (dor muscular) para o medicamento provável (estatina) e daí para a condição laboratorial que o justificou (dislipidemia).",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q022",
+  "tema": "Oncologia",
+  "subtema": "Câncer de esôfago avançado: paliação da disfagia com prótese endoscópica",
+  "confianca": 90,
+  "perfil": {
+   "competencia": "tratamento",
+   "cenario": "nao_se_aplica",
+   "problema_central": "Disfagia por carcinoma escamoso de esôfago metastático",
+   "conceitos": [
+    "câncer de esôfago",
+    "disfagia maligna",
+    "cuidados paliativos",
+    "prótese esofágica endoscópica",
+    "suporte nutricional"
+   ],
+   "achados_discriminatorios": [
+    "carcinoma escamoso estenosante de esôfago médio",
+    "múltiplas metástases pulmonares",
+    "aparelho endoscópico ultrapassou a lesão até o estômago",
+    "emagrecimento de 12 kg em 3 meses com dieta líquida e pastosa"
+   ],
+   "raciocinio_cobrado": "Diante de doença metastática, priorizar a paliação da disfagia com prótese endoscópica em vez de vias alternativas de alimentação.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q023",
+  "tema": "Ortopedia",
+  "subtema": "Escoliose no adolescente: diagnóstico e ângulo de Cobb",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "atencao_primaria",
+   "problema_central": "Escoliose no adolescente",
+   "conceitos": [
+    "escoliose",
+    "teste de Adams",
+    "ângulo de Cobb",
+    "radiografia panorâmica da coluna",
+    "lordose"
+   ],
+   "achados_discriminatorios": [
+    "adolescente de 13 anos",
+    "assimetria dos ombros e escápula proeminente à direita",
+    "teste de Adams com assimetria da caixa torácica",
+    "mãe com quadro semelhante e percepção de piora"
+   ],
+   "raciocinio_cobrado": "Reconhecer escoliose pelo exame físico e saber que a radiografia com medida do ângulo de Cobb é necessária para definir o tratamento, mesmo com história familiar.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q024",
+  "tema": "Ginecologia",
+  "subtema": "Rastreamento do câncer do colo do útero: conduta diante de células glandulares atípicas (AGC)",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "prevencao_rastreamento",
+   "cenario": "atencao_primaria",
+   "problema_central": "Citologia oncótica com células glandulares atípicas de significado indeterminado",
+   "conceitos": [
+    "células glandulares atípicas (AGC)",
+    "colposcopia",
+    "avaliação do canal endocervical",
+    "rastreamento do câncer do colo do útero",
+    "exérese da zona de transformação"
+   ],
+   "achados_discriminatorios": [
+    "citologia com AGC possivelmente não neoplásicas",
+    "mulher de 30 anos sem queixas",
+    "exame ginecológico normal",
+    "citologia anterior normal havia 3 anos"
+   ],
+   "raciocinio_cobrado": "Saber que qualquer AGC na citologia, mesmo possivelmente não neoplásica, leva à colposcopia, e não à repetição do exame.",
+   "tipo": "caso_clinico",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q025",
+  "tema": "Obstetrícia",
+  "subtema": "Sífilis na gestação: tratamento da sífilis de duração ignorada",
+  "confianca": 93,
+  "perfil": {
+   "competencia": "tratamento",
+   "cenario": "atencao_primaria",
+   "problema_central": "Sífilis na gestação sem tratamento prévio, de duração ignorada",
+   "conceitos": [
+    "VDRL",
+    "sífilis de duração ignorada",
+    "penicilina G benzatina",
+    "sífilis congênita",
+    "dessensibilização à penicilina",
+    "seguimento sorológico"
+   ],
+   "achados_discriminatorios": [
+    "primigesta com 18 semanas",
+    "VDRL reagente com título 1:4",
+    "sem diagnóstico anterior de sífilis",
+    "sem tratamento anterior"
+   ],
+   "raciocinio_cobrado": "Tratar de imediato a gestante com VDRL reagente sem tratamento documentado, classificando como duração ignorada e usando três doses semanais de penicilina benzatina.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q026",
+  "tema": "Gastroenterologia",
+  "subtema": "Retocolite ulcerativa: diagnóstico e tratamento inicial da doença em atividade",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "ambulatorio_especializado",
+   "problema_central": "Retocolite ulcerativa em atividade do reto ao cólon esquerdo",
+   "conceitos": [
+    "retocolite ulcerativa",
+    "doença de Crohn",
+    "distorção arquitetural das criptas",
+    "abscesso de cripta",
+    "plasmocitose basal",
+    "corticoide sistêmico na indução de remissão"
+   ],
+   "achados_discriminatorios": [
+    "diarreia com sangue e pus, tenesmo e urgência",
+    "evolução de 1 ano com perda de 5 kg",
+    "inflamação difusa do reto ao cólon esquerdo na colonoscopia",
+    "biópsia com abscessos, ramificação e atrofia das criptas e plasmocitose basal",
+    "sem uso recente de antibiótico nem viagens"
+   ],
+   "raciocinio_cobrado": "Integrar colonoscopia com inflamação contínua desde o reto e histologia de colite crônica ativa para diagnosticar retocolite ulcerativa e escolher a indução com corticoide.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q027",
+  "tema": "Cirurgia geral",
+  "subtema": "Obstrução intestinal por aderências sem sinais de complicação",
+  "confianca": 55,
+  "perfil": {
+   "competencia": "conduta_inicial",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Obstrução intestinal por aderências pós-operatórias sem sinais de complicação",
+   "conceitos": [
+    "obstrução intestinal mecânica",
+    "aderências pós-operatórias",
+    "sonda nasogástrica descompressiva",
+    "sinais de estrangulamento",
+    "tratamento conservador",
+    "laparotomia exploradora"
+   ],
+   "achados_discriminatorios": [
+    "vômitos biliosos, cólica e parada de eliminação de gases e fezes",
+    "cirurgia abdominal prévia com incisão mediana xifopubiana",
+    "abdome pouco distendido",
+    "ausência de sinais de irritação peritoneal"
+   ],
+   "raciocinio_cobrado": "Reconhecer obstrução por aderências sem sinais de complicação e iniciar tratamento conservador antes de indicar cirurgia.",
+   "tipo": "imagem",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q028",
+  "tema": "Oncologia pediátrica",
+  "subtema": "Neuroblastoma: diagnóstico clínico e laboratorial",
+  "confianca": 95,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "ambulatorio_especializado",
+   "problema_central": "Neuroblastoma com sinais de metástase orbitária",
+   "conceitos": [
+    "neuroblastoma",
+    "ácido vanilmandélico",
+    "metástase orbitária (olhos de guaxinim)",
+    "síndrome de opsoclono-mioclono-ataxia",
+    "tumor de Wilms",
+    "feocromocitoma"
+   ],
+   "achados_discriminatorios": [
+    "lactente de 23 meses",
+    "massa abdominal grande e fixa que ultrapassa a linha média",
+    "ácido vanilmandélico dez vezes o valor de referência",
+    "proptose e equimose periorbitária bilateral",
+    "nistagmo e ataxia cerebelar"
+   ],
+   "raciocinio_cobrado": "Integrar idade, massa que cruza a linha média, marcador de catecolaminas e sinais à distância para diferenciar neuroblastoma de tumor de Wilms e feocromocitoma.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q029",
+  "tema": "Ginecologia",
+  "subtema": "Torção de cisto ovariano",
+  "confianca": 90,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Torção de cisto ovariano",
+   "conceitos": [
+    "torção anexial",
+    "cisto ovariano",
+    "ultrassonografia com Doppler",
+    "abdome agudo ginecológico",
+    "abscesso tubo-ovariano",
+    "cisto hemorrágico"
+   ],
+   "achados_discriminatorios": [
+    "dor pélvica intermitente por uma semana que se tornou intensa e constante",
+    "imagem anecoica de 10 cm com septação no ovário direito",
+    "ausência de fluxo ao Doppler",
+    "afebril com hemograma normal",
+    "teste de gravidez negativo"
+   ],
+   "raciocinio_cobrado": "Ligar a mudança do padrão da dor ao cisto volumoso sem fluxo e afastar causas infecciosas e hemorrágicas pelos dados do caso.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q030",
+  "tema": "Dermatologia",
+  "subtema": "Dermatite de contato ocupacional nas mãos",
+  "confianca": 90,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "nao_se_aplica",
+   "problema_central": "Dermatite de contato ocupacional nas mãos",
+   "conceitos": [
+    "dermatite de contato irritativa",
+    "dermatite de contato alérgica",
+    "alergia ao látex",
+    "dermatose ocupacional",
+    "teste de contato",
+    "eczema"
+   ],
+   "achados_discriminatorios": [
+    "técnica de enfermagem há um ano",
+    "vesículas, eritema e fissuras nas mãos com prurido",
+    "evolução de seis meses",
+    "melhora no período de férias"
+   ],
+   "raciocinio_cobrado": "Reconhecer eczema das mãos ligado ao trabalho pela melhora no afastamento, sem tirar conclusões absolutas de dados inespecíficos.",
+   "tipo": "caso_clinico",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q031",
+  "tema": "Segurança do paciente",
+  "subtema": "Prevenção de quedas no hospital: hipotensão causada por medicamentos",
+  "confianca": 88,
+  "perfil": {
+   "competencia": "conduta_inicial",
+   "cenario": "enfermaria_hospital",
+   "problema_central": "Hipotensão por medicamentos com risco de queda em paciente internada",
+   "conceitos": [
+    "segurança do paciente",
+    "prevenção de quedas",
+    "hipotensão induzida por medicamentos",
+    "revisão da prescrição",
+    "contenção física e química"
+   ],
+   "achados_discriminatorios": [
+    "tontura e lipotimia durante a internação",
+    "vários episódios de hipotensão nas anotações de enfermagem",
+    "uso simultâneo de losartana, nimodipino e propatilnitrato"
+   ],
+   "raciocinio_cobrado": "Identificar a hipotensão causada pela soma de medicamentos como fator de risco modificável para queda e agir sobre ela.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q032",
+  "tema": "Coloproctologia",
+  "subtema": "Vigilância colonoscópica após ressecção de adenomas",
+  "confianca": 88,
+  "perfil": {
+   "competencia": "prevencao_rastreamento",
+   "cenario": "ambulatorio_especializado",
+   "problema_central": "Múltiplos adenomas colorretais ressecados por completo, com adenoma de 2 cm e adenoma tubuloviloso",
+   "conceitos": [
+    "vigilância pós-polipectomia",
+    "adenoma tubular",
+    "adenoma tubuloviloso",
+    "adenoma avançado",
+    "polipose adenomatosa familiar"
+   ],
+   "achados_discriminatorios": [
+    "sete adenomas ressecados",
+    "pólipo de 2,0 × 1,5 cm no cólon descendente",
+    "adenoma tubuloviloso no cólon transverso",
+    "todos pediculados e removidos completamente"
+   ],
+   "raciocinio_cobrado": "Somar número, tamanho e histologia dos adenomas para definir o intervalo de vigilância e descartar cirurgia.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q033",
+  "tema": "Neonatologia",
+  "subtema": "Dermatoses neonatais benignas: eritema tóxico neonatal",
+  "confianca": 93,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "atencao_primaria",
+   "problema_central": "Eritema tóxico neonatal",
+   "conceitos": [
+    "eritema tóxico neonatal",
+    "miliária rubra",
+    "pustulose cefálica neonatal",
+    "melanose pustulosa transitória neonatal",
+    "dermatoses neonatais benignas"
+   ],
+   "achados_discriminatorios": [
+    "recém-nascido de 5 dias com lesões desde o 2º dia de vida",
+    "bom estado geral e exame físico normal",
+    "vesículas, pápulas e pústulas de 1 a 3 mm com halo eritematoso de 1 a 2 cm",
+    "acometimento de tórax e abdome, poupando palmas e plantas"
+   ],
+   "raciocinio_cobrado": "Reconhecer pelo início, aspecto e distribuição das lesões a dermatose neonatal benigna que não exige tratamento.",
+   "tipo": "caso_clinico",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q034",
+  "tema": "Oncologia ginecológica",
+  "subtema": "Suspeita de câncer de vulva em lesão ulcerada de mulher idosa",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "ambulatorio_especializado",
+   "problema_central": "Suspeita de câncer de vulva",
+   "conceitos": [
+    "câncer de vulva",
+    "biópsia vulvar",
+    "líquen escleroso",
+    "neoplasia intraepitelial vulvar",
+    "úlcera genital"
+   ],
+   "achados_discriminatorios": [
+    "mulher de 70 anos",
+    "prurido vulvar crônico e queimação",
+    "apagamento de pequenos lábios e área hipocrômica",
+    "lesão ulcerada em grande lábio direito próximo ao clitóris"
+   ],
+   "raciocinio_cobrado": "Suspeitar de malignidade em úlcera vulvar de mulher idosa com dermatose crônica e indicar biópsia antes de qualquer tratamento.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q035",
+  "tema": "Educação em saúde na atenção primária",
+  "subtema": "Educação popular em saúde: metodologia dialógica e problematizadora com adolescentes",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "saude_coletiva_epidemiologia",
+   "cenario": "comunidade_territorio",
+   "problema_central": "Educação em saúde sobre violência com adolescentes",
+   "conceitos": [
+    "educação popular em saúde",
+    "problematização",
+    "diálogo",
+    "construção compartilhada do conhecimento",
+    "educação bancária",
+    "promoção da saúde"
+   ],
+   "achados_discriminatorios": [
+    "atividades educativas para adolescentes da escola por alto número de casos de violência",
+    "encontros semanais durante alguns meses",
+    "pergunta sobre o primeiro encontro",
+    "exigência de seguir os princípios da educação popular e saúde"
+   ],
+   "raciocinio_cobrado": "Distinguir a metodologia dialógica e problematizadora das propostas verticais de transmissão de conteúdo.",
+   "tipo": "conceitual",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q036",
+  "tema": "Neurologia",
+  "subtema": "Doença de Parkinson: diagnóstico clínico da síndrome parkinsoniana",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "nao_se_aplica",
+   "problema_central": "Doença de Parkinson",
+   "conceitos": [
+    "síndrome parkinsoniana",
+    "bradicinesia",
+    "tremor de repouso",
+    "rigidez em roda dentada",
+    "sintomas não motores",
+    "tremor essencial"
+   ],
+   "achados_discriminatorios": [
+    "bradicinesia há 6 meses com tremor de repouso e rigidez",
+    "assimetria dos sinais motores",
+    "menor expressividade facial e marcha arrastada com passos curtos",
+    "alteração olfativa, constipação e alteração do sono",
+    "memória e cognição preservadas"
+   ],
+   "raciocinio_cobrado": "Identificar síndrome parkinsoniana assimétrica com sintomas não motores e cognição preservada e separá-la do tremor essencial e das demências.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q038",
+  "tema": "Cirurgia pediátrica",
+  "subtema": "Hérnia inguinal em recém-nascido prematuro: momento da correção cirúrgica",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "tratamento",
+   "cenario": "ambulatorio_especializado",
+   "problema_central": "Hérnia inguinal indireta em prematuro",
+   "conceitos": [
+    "hérnia inguinal indireta",
+    "conduto peritoneovaginal",
+    "encarceramento",
+    "hidrocele",
+    "transiluminação",
+    "prematuridade"
+   ],
+   "achados_discriminatorios": [
+    "recém-nascido prematuro",
+    "aumento da bolsa escrotal direita que piora com o choro",
+    "conteúdo redutível com transiluminação negativa",
+    "espessamento do cordão espermático",
+    "testículo palpável sem alterações"
+   ],
+   "raciocinio_cobrado": "Fazer o diagnóstico clínico de hérnia inguinal e indicar correção eletiva precoce, sem esperar regressão nem pedir imagem confirmatória.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q039",
+  "tema": "Obstetrícia de alto risco",
+  "subtema": "Trombofilia com trombose prévia e antecedente de pré-eclâmpsia: ácido acetilsalicílico e heparina na gestação",
+  "confianca": 82,
+  "perfil": {
+   "competencia": "tratamento",
+   "cenario": "ambulatorio_especializado",
+   "problema_central": "Gestante com deficiência de antitrombina, trombose venosa prévia e antecedente de pré-eclâmpsia grave",
+   "conceitos": [
+    "trombofilia hereditária",
+    "deficiência de antitrombina",
+    "tromboembolismo venoso na gestação",
+    "enoxaparina em dose plena",
+    "ácido acetilsalicílico na prevenção de pré-eclâmpsia"
+   ],
+   "achados_discriminatorios": [
+    "pré-eclâmpsia grave com 32 semanas na gestação anterior",
+    "trombose venosa profunda em membro inferior esquerdo aos 19 anos",
+    "deficiência de antitrombina homozigótica"
+   ],
+   "raciocinio_cobrado": "Associar ácido acetilsalicílico pela pré-eclâmpsia prévia e escolher heparina em dose plena pela trombofilia de alto risco com trombose prévia.",
+   "tipo": "caso_clinico",
+   "complexidade": 3
+  }
+ },
+ {
+  "id": "revalida_2022_2_q040",
+  "tema": "Micoses subcutâneas",
+  "subtema": "Esporotricose linfocutânea",
+  "confianca": 90,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "atencao_primaria",
+   "problema_central": "Esporotricose linfocutânea",
+   "conceitos": [
+    "esporotricose",
+    "forma linfocutânea",
+    "micoses de implantação",
+    "transmissão zoonótica por gatos",
+    "leishmaniose tegumentar",
+    "paracoccidioidomicose"
+   ],
+   "achados_discriminatorios": [
+    "funcionário de pet shop morador da cidade de São Paulo",
+    "nódulo que ulcerou no antebraço há 2 meses",
+    "4 nódulos eritematosos em linha entre a úlcera e a fossa cubital",
+    "linfonodo axilar direito aumentado"
+   ],
+   "raciocinio_cobrado": "Reconhecer o padrão linfocutâneo e o contexto de exposição a animais para escolher esporotricose entre as lesões cutâneas crônicas.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q041",
+  "tema": "Hematologia",
+  "subtema": "Linfoma com sintomas B e massa mediastinal: biópsia de linfonodo",
+  "confianca": 90,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "nao_se_aplica",
+   "problema_central": "Suspeita de linfoma",
+   "conceitos": [
+    "linfoma",
+    "sintomas B",
+    "massa mediastinal",
+    "biópsia excisional de linfonodo",
+    "linfonodomegalia generalizada"
+   ],
+   "achados_discriminatorios": [
+    "linfonodomegalia cervical e axilar bilateral progressiva há 2 meses",
+    "febre, sudorese noturna e perda de 6 kg",
+    "massa mediastinal de cerca de 8 cm",
+    "gânglios de 2,5 a 4 cm endurecidos e fixos"
+   ],
+   "raciocinio_cobrado": "Integrar linfonodomegalia em várias cadeias, sintomas B e massa mediastinal para suspeitar de linfoma e indicar biópsia de linfonodo.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q042",
+  "tema": "Oftalmologia",
+  "subtema": "Blefarite ulcerativa estafilocócica",
+  "confianca": 55,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Blefarite ulcerativa",
+   "conceitos": [
+    "blefarite ulcerativa",
+    "Staphylococcus aureus",
+    "conjuntivite viral",
+    "herpes ocular",
+    "tracoma"
+   ],
+   "achados_discriminatorios": [
+    "prurido nos olhos e lacrimejamento há dois dias",
+    "hiperemia conjuntival",
+    "pálpebras edemaciadas com bordas ulceradas e crostosas"
+   ],
+   "raciocinio_cobrado": "Localizar a lesão na margem palpebral e associar a blefarite ulcerativa ao seu agente mais comum.",
+   "tipo": "imagem",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q043",
+  "tema": "Pediatria",
+  "subtema": "Convulsão febril simples recorrente e acompanhamento longitudinal da família",
+  "confianca": 90,
+  "perfil": {
+   "competencia": "conduta_inicial",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Convulsão febril simples recorrente",
+   "conceitos": [
+    "convulsão febril simples",
+    "acompanhamento longitudinal",
+    "projeto terapêutico",
+    "vulnerabilidade social",
+    "investigação desnecessária"
+   ],
+   "achados_discriminatorios": [
+    "criança de 4 anos com crise tônico-clônica generalizada rápida associada a febre",
+    "crise semelhante aos 18 meses, sempre com febre",
+    "12 horas de observação sem novas crises e sem alterações metabólicas",
+    "família em vulnerabilidade social com morte súbita de filho de 1 mês"
+   ],
+   "raciocinio_cobrado": "Reconhecer convulsão febril simples e escolher acolhimento e seguimento longitudinal, sem internação, imagem ou encaminhamento motivados por dados familiares.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q044",
+  "tema": "Mastologia",
+  "subtema": "Fatores prognósticos no carcinoma de mama invasivo",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "prognostico_complicacoes",
+   "cenario": "nao_se_aplica",
+   "problema_central": "Carcinoma de mama invasivo com linfonodos sentinelas comprometidos",
+   "conceitos": [
+    "fatores prognósticos",
+    "linfonodo sentinela",
+    "receptores hormonais",
+    "tamanho tumoral",
+    "carcinoma ductal invasivo"
+   ],
+   "achados_discriminatorios": [
+    "nódulo de 1,5 cm sem alterações cutâneas ou adenopatia axilar",
+    "2 linfonodos sentinelas acometidos",
+    "receptores de estrogênio e progesterona positivos"
+   ],
+   "raciocinio_cobrado": "Comparar os fatores prognósticos do laudo e reconhecer o comprometimento dos linfonodos como o mais desfavorável.",
+   "tipo": "caso_clinico",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q045",
+  "tema": "Saúde coletiva",
+  "subtema": "Interpretação de hospitalizações e óbitos por SRAG por covid-19 segundo raça/etnia",
+  "confianca": 45,
+  "perfil": {
+   "competencia": "saude_coletiva_epidemiologia",
+   "cenario": "nao_se_aplica",
+   "problema_central": "Comparação de hospitalizações e óbitos por SRAG por covid-19 segundo raça/etnia",
+   "conceitos": [
+    "síndrome respiratória aguda grave",
+    "covid-19",
+    "proporção",
+    "letalidade",
+    "raça/etnia",
+    "interpretação de gráficos"
+   ],
+   "achados_discriminatorios": [
+    "Figura 1 com hospitalizações por SRAG por covid-19 segundo raça/etnia",
+    "Figura 2 com óbitos por SRAG por covid-19 segundo raça/etnia",
+    "dados de abril de 2020, no início da pandemia"
+   ],
+   "raciocinio_cobrado": "Comparar a proporção de cada grupo entre internados e entre óbitos para inferir a sobrevida relativa.",
+   "tipo": "dados_epidemiologicos",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q046",
+  "tema": "Cirurgia vascular",
+  "subtema": "Trombose venosa profunda: exame de confirmação em paciente oncológico",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "exame_complementar",
+   "cenario": "ambulatorio_especializado",
+   "problema_central": "Suspeita de trombose venosa profunda de membro inferior em paciente com câncer",
+   "conceitos": [
+    "trombose venosa profunda",
+    "ultrassonografia com Doppler venoso",
+    "compressibilidade venosa",
+    "flebografia",
+    "câncer como fator de risco trombótico",
+    "sinal de Homans"
+   ],
+   "achados_discriminatorios": [
+    "72 anos em tratamento de câncer de próstata",
+    "dor no membro mais intensa à dorsiflexão do pé",
+    "edema de panturrilha progressivo para todo o membro",
+    "pulso palpável"
+   ],
+   "raciocinio_cobrado": "Reconhecer a trombose venosa profunda como hipótese mais provável e escolher o exame não invasivo que a confirma.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q047",
+  "tema": "Gastroenterologia",
+  "subtema": "Doença do refluxo gastroesofágico com disfagia e resposta insatisfatória ao inibidor da bomba de prótons",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "exame_complementar",
+   "cenario": "atencao_primaria",
+   "problema_central": "Sintomas de refluxo com disfagia e resposta insatisfatória ao inibidor da bomba de prótons",
+   "conceitos": [
+    "doença do refluxo gastroesofágico",
+    "sinais de alarme",
+    "endoscopia digestiva alta",
+    "refratariedade ao inibidor da bomba de prótons",
+    "biópsia esofágica",
+    "pHmetria esofágica"
+   ],
+   "achados_discriminatorios": [
+    "disfagia",
+    "pouca melhora com omeprazol 20 mg 2 vezes ao dia por 8 semanas",
+    "pirose retroesternal e tosse noturna"
+   ],
+   "raciocinio_cobrado": "Identificar sinal de alarme e falta de resposta ao tratamento e escolher o exame que avalia a mucosa e permite biópsia antes dos testes funcionais.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q048",
+  "tema": "Pediatria",
+  "subtema": "Prevenção de acidentes no lactente de 1 ano durante a puericultura",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "prevencao_rastreamento",
+   "cenario": "atencao_primaria",
+   "problema_central": "Prevenção de acidentes no lactente de 1 ano",
+   "conceitos": [
+    "puericultura",
+    "prevenção de acidentes",
+    "asfixia",
+    "quedas",
+    "aspiração de corpo estranho",
+    "desenvolvimento neuropsicomotor"
+   ],
+   "achados_discriminatorios": [
+    "lactente de 1 ano",
+    "consulta de puericultura sem queixas"
+   ],
+   "raciocinio_cobrado": "Associar as habilidades motoras e o comportamento exploratório do lactente de 1 ano aos acidentes mais prováveis.",
+   "tipo": "conceitual",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q049",
+  "tema": "Ética médica",
+  "subtema": "Prescrição a distância de contracepção de emergência em situação de urgência",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "etica_legislacao",
+   "cenario": "nao_se_aplica",
+   "problema_central": "Prescrição de contracepção de emergência a distância sem exame presencial",
+   "conceitos": [
+    "Código de Ética Médica",
+    "prescrição sem exame direto",
+    "urgência",
+    "impossibilidade comprovada de exame",
+    "contracepção de emergência",
+    "atendimento a distância"
+   ],
+   "achados_discriminatorios": [
+    "coito desprotegido havia 10 horas",
+    "paciente em outro estado sem condições de realizar consulta",
+    "contato com o ginecologista habitual por aplicativo de mensagens"
+   ],
+   "raciocinio_cobrado": "Reconhecer a exceção ética que permite orientar e prescrever sem exame diante de urgência e impossibilidade comprovada de consulta.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q051",
+  "tema": "Pneumologia",
+  "subtema": "Neoplasia pulmonar com pneumonia pós-obstrutiva e derrame pleural",
+  "confianca": 88,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "enfermaria_hospital",
+   "problema_central": "Suspeita de neoplasia pulmonar com pneumonia pós-obstrutiva e derrame pleural",
+   "conceitos": [
+    "carcinoma broncogênico",
+    "pneumonia pós-obstrutiva",
+    "derrame pleural",
+    "síndrome consumptiva",
+    "nervo laríngeo recorrente",
+    "semiologia do tórax"
+   ],
+   "achados_discriminatorios": [
+    "76 anos, tabagista 40 anos/maço",
+    "segunda internação pelas mesmas manifestações em três meses",
+    "hiporexia, astenia e perda de peso",
+    "escarro com raios de sangue e rouquidão",
+    "macicez em base direita com hipersonoridade logo acima e murmúrio vesicular abolido"
+   ],
+   "raciocinio_cobrado": "Integrar fator de risco, curso recorrente, sintomas consumptivos e semiologia do tórax em uma hipótese que explique todo o quadro.",
+   "tipo": "caso_clinico",
+   "complexidade": 3
+  }
+ },
+ {
+  "id": "revalida_2022_2_q052",
+  "tema": "Pneumologia",
+  "subtema": "Derrame pleural parapneumônico: indicação de toracocentese",
+  "confianca": 86,
+  "perfil": {
+   "competencia": "conduta_inicial",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Pneumonia com derrame pleural parapneumônico",
+   "conceitos": [
+    "derrame pleural parapneumônico",
+    "toracocentese",
+    "empiema",
+    "incidência de Laurell",
+    "análise do líquido pleural",
+    "pneumonia adquirida na comunidade"
+   ],
+   "achados_discriminatorios": [
+    "febre alta e expectoração mucopurulenta esverdeada havia 1 semana",
+    "dor ventilatório-dependente em hemitórax direito",
+    "consolidação em lobo médio",
+    "derrame pleural à direita na radiografia com incidência de Laurell"
+   ],
+   "raciocinio_cobrado": "Reconhecer que o derrame associado à pneumonia precisa ser puncionado e analisado para definir se é complicado.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q053",
+  "tema": "Pediatria",
+  "subtema": "Vacina BCG sem cicatriz vacinal após dose documentada",
+  "confianca": 88,
+  "perfil": {
+   "competencia": "prevencao_rastreamento",
+   "cenario": "atencao_primaria",
+   "problema_central": "Ausência de cicatriz vacinal após BCG documentada",
+   "conceitos": [
+    "vacina BCG",
+    "cicatriz vacinal",
+    "revacinação",
+    "prova tuberculínica",
+    "cartão de vacinação",
+    "imunodeficiência"
+   ],
+   "achados_discriminatorios": [
+    "lactente hígido de 12 meses",
+    "ausência de cicatriz da BCG",
+    "cartão vacinal com BCG aplicada aos 20 dias de vida"
+   ],
+   "raciocinio_cobrado": "Valorizar o registro da dose no cartão e saber que a falta de cicatriz não indica revacinação nem investigação.",
+   "tipo": "caso_clinico",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q054",
+  "tema": "Obstetrícia",
+  "subtema": "Prevenção de recorrência de parto pré-termo com colo uterino de comprimento normal",
+  "confianca": 78,
+  "perfil": {
+   "competencia": "prevencao_rastreamento",
+   "cenario": "atencao_primaria",
+   "problema_central": "Prevenção de recorrência de parto pré-termo com colo uterino de comprimento normal",
+   "conceitos": [
+    "parto pré-termo",
+    "progesterona natural micronizada",
+    "comprimento do colo uterino",
+    "cerclagem",
+    "insuficiência istmocervical",
+    "pré-natal de alto risco"
+   ],
+   "achados_discriminatorios": [
+    "parto pré-termo anterior na 21ª semana",
+    "início do pré-natal na 16ª semana",
+    "colo do útero de 43 mm na ultrassonografia transvaginal"
+   ],
+   "raciocinio_cobrado": "Usar o antecedente obstétrico e a medida do colo para escolher progesterona e não cerclagem.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q055",
+  "tema": "Infectologia",
+  "subtema": "Dengue: manejo inicial, notificação e controle vetorial em área sem casos autóctones",
+  "confianca": 82,
+  "perfil": {
+   "competencia": "conduta_inicial",
+   "cenario": "atencao_primaria",
+   "problema_central": "Caso suspeito de dengue em área sem transmissão autóctone registrada",
+   "conceitos": [
+    "dengue",
+    "prova do laço",
+    "hidratação",
+    "hemograma",
+    "notificação compulsória",
+    "controle vetorial"
+   ],
+   "achados_discriminatorios": [
+    "febre, dores no corpo e cefaleia havia 5 dias",
+    "prova do laço positiva",
+    "sinais vitais estáveis",
+    "paciente hipertenso",
+    "área sem notificação de casos autóctones de arboviroses"
+   ],
+   "raciocinio_cobrado": "Diferenciar dengue de outras viroses febris pela prova do laço e unir hidratação, hemograma, notificação e controle vetorial na mesma conduta.",
+   "tipo": "caso_clinico",
+   "complexidade": 3
+  }
+ },
+ {
+  "id": "revalida_2022_2_q056",
+  "tema": "Pneumologia",
+  "subtema": "Derrame pleural: do exame físico à radiografia de tórax",
+  "confianca": 90,
+  "perfil": {
+   "competencia": "exame_complementar",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Síndrome de derrame pleural à esquerda",
+   "conceitos": [
+    "derrame pleural",
+    "frêmito toracovocal",
+    "macicez à percussão",
+    "opacificação radiográfica",
+    "pneumotórax",
+    "linhas B de Kerley"
+   ],
+   "achados_discriminatorios": [
+    "frêmito toracovocal diminuído à esquerda",
+    "macicez na porção inferior do hemitórax esquerdo",
+    "expansão torácica e sons respiratórios diminuídos à esquerda",
+    "febre, tosse e dispneia há 48 horas"
+   ],
+   "raciocinio_cobrado": "Reconhecer pela semiologia, com frêmito diminuído e macicez, que há líquido pleural e prever a opacificação na radiografia.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q057",
+  "tema": "Trauma e queimaduras",
+  "subtema": "Queimadura elétrica: gravidade e lesões profundas ocultas",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "prognostico_complicacoes",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Queimadura elétrica com lesões de entrada e saída",
+   "conceitos": [
+    "queimadura elétrica",
+    "trajeto da corrente",
+    "lesão muscular profunda",
+    "rabdomiólise",
+    "arritmia cardíaca",
+    "trauma associado"
+   ],
+   "achados_discriminatorios": [
+    "lesão de entrada no ombro direito e de saída no pé esquerdo",
+    "queda da laje com perda de consciência",
+    "amnésia do evento com recuperação da consciência no trajeto",
+    "dor na região lateral direita do tórax e na hemiface direita"
+   ],
+   "raciocinio_cobrado": "Entender que a pele subestima o dano profundo da corrente elétrica e que nem a perda de consciência nem as lesões cutâneas definem sozinhas a causa ou a gravidade.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q058",
+  "tema": "Neonatologia",
+  "subtema": "Teste do coraçãozinho na triagem de cardiopatias congênitas críticas",
+  "confianca": 88,
+  "perfil": {
+   "competencia": "prevencao_rastreamento",
+   "cenario": "enfermaria_hospital",
+   "problema_central": "Teste do coraçãozinho alterado em recém-nascido assintomático",
+   "conceitos": [
+    "teste do coraçãozinho",
+    "oximetria de pulso",
+    "saturação pré-ductal e pós-ductal",
+    "cardiopatia congênita crítica",
+    "canal arterial",
+    "ecocardiograma"
+   ],
+   "achados_discriminatorios": [
+    "36 h de vida",
+    "saturação de 99% no membro superior direito",
+    "saturação de 95% no membro inferior direito",
+    "recém-nascido assintomático com exame cardiovascular normal"
+   ],
+   "raciocinio_cobrado": "Calcular a diferença entre as saturações pré e pós-ductal, reconhecer o teste alterado e seguir o próximo passo do fluxo, que é repetir em 1 hora.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q059",
+  "tema": "Ginecologia",
+  "subtema": "Síndrome dos ovários policísticos: alterações hormonais e metabólicas",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "fisiopatologia_conceito",
+   "cenario": "nao_se_aplica",
+   "problema_central": "Síndrome dos ovários policísticos",
+   "conceitos": [
+    "síndrome dos ovários policísticos",
+    "relação LH/FSH",
+    "resistência à insulina",
+    "acantose nigricans",
+    "pulsatilidade do GnRH",
+    "S-DHEA"
+   ],
+   "achados_discriminatorios": [
+    "anovulação frequente como característica da síndrome",
+    "elevação do LH e relação LH/FSH maior que 2,5 apresentadas como achados observáveis"
+   ],
+   "raciocinio_cobrado": "Lembrar que a SOP cursa com LH aumentado e hiperinsulinemia e que não existe exame padrão-ouro, descartando as alternativas que invertem o mecanismo.",
+   "tipo": "conceitual",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q063",
+  "tema": "Neonatologia",
+  "subtema": "Icterícia neonatal nas primeiras 24 horas: indicação de fototerapia",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "tratamento",
+   "cenario": "enfermaria_hospital",
+   "problema_central": "Hiperbilirrubinemia neonatal nas primeiras 24 horas de vida",
+   "conceitos": [
+    "icterícia neonatal precoce",
+    "fototerapia",
+    "encefalopatia bilirrubínica",
+    "incompatibilidade Rh",
+    "exsanguineotransfusão",
+    "prematuro tardio"
+   ],
+   "achados_discriminatorios": [
+    "bilirrubina total de 12 mg/dL às 18 horas de vida",
+    "icterícia antes de 24 horas de vida",
+    "36 semanas de idade gestacional",
+    "mãe A negativo e recém-nascido A positivo",
+    "filho de mãe diabética"
+   ],
+   "raciocinio_cobrado": "Reconhecer que icterícia antes de 24 horas com bilirrubina alta e fatores de risco exige fototerapia imediata, sem omissão nem intervenção excessiva.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q064",
+  "tema": "Obstetrícia",
+  "subtema": "Classificação da morte materna: direta, indireta e não obstétrica",
+  "confianca": 90,
+  "perfil": {
+   "competencia": "saude_coletiva_epidemiologia",
+   "cenario": "nao_se_aplica",
+   "problema_central": "Óbito puerperal por covid-19 grave",
+   "conceitos": [
+    "morte materna",
+    "morte materna direta",
+    "morte materna indireta",
+    "morte não obstétrica",
+    "puerpério",
+    "vigilância do óbito materno"
+   ],
+   "achados_discriminatorios": [
+    "1º dia após cesariana",
+    "insuficiência respiratória aguda grave por covid-19",
+    "óbito 72 h após a entubação"
+   ],
+   "raciocinio_cobrado": "Classificar a morte materna pela natureza da causa, reconhecendo a covid-19 como doença não obstétrica agravada pelo puerpério.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q065",
+  "tema": "Obstetrícia",
+  "subtema": "Pré-natal: interpretação da sorologia para toxoplasmose",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "exame_complementar",
+   "cenario": "atencao_primaria",
+   "problema_central": "Toxoplasmose pregressa em gestante imune",
+   "conceitos": [
+    "toxoplasmose na gestação",
+    "sorologia IgG e IgM",
+    "imunidade prévia",
+    "gestante suscetível",
+    "pré-natal de risco habitual"
+   ],
+   "achados_discriminatorios": [
+    "IgG reagente para toxoplasmose",
+    "IgM não reagente para toxoplasmose",
+    "exames colhidos ao final do primeiro trimestre",
+    "gestante sem queixas"
+   ],
+   "raciocinio_cobrado": "Ler IgG reagente com IgM não reagente como infecção antiga e manter o pré-natal habitual sem tratamento nem encaminhamento.",
+   "tipo": "caso_clinico",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q067",
+  "tema": "Cirurgia geral",
+  "subtema": "Abdome agudo obstrutivo: obstrução do intestino grosso e válvula ileocecal",
+  "confianca": 55,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Obstrução intestinal baixa",
+   "conceitos": [
+    "abdome agudo obstrutivo",
+    "obstrução do intestino grosso",
+    "válvula ileocecal competente",
+    "alça fechada",
+    "radiografia simples de abdome",
+    "neoplasia colorretal"
+   ],
+   "achados_discriminatorios": [
+    "parada de eliminação de flatos e fezes com dor em cólica há 3 dias",
+    "abdome distendido e hipertimpânico",
+    "massa palpável em hipogástrio",
+    "emagrecimento, dores abdominais e obstipação havia cinco meses",
+    "descompressão brusca negativa"
+   ],
+   "raciocinio_cobrado": "Localizar a obstrução no intestino grosso pela clínica e ligar a distensão restrita ao cólon à válvula ileocecal competente.",
+   "tipo": "imagem",
+   "complexidade": 3
+  }
+ },
+ {
+  "id": "revalida_2022_2_q068",
+  "tema": "Cirurgia pediátrica",
+  "subtema": "Estenose hipertrófica do piloro: exame de confirmação",
+  "confianca": 95,
+  "perfil": {
+   "competencia": "exame_complementar",
+   "cenario": "nao_se_aplica",
+   "problema_central": "Estenose hipertrófica do piloro",
+   "conceitos": [
+    "estenose hipertrófica do piloro",
+    "vômitos não biliosos em jato",
+    "oliva pilórica",
+    "ultrassonografia abdominal",
+    "alcalose metabólica hipoclorêmica",
+    "piloromiotomia"
+   ],
+   "achados_discriminatorios": [
+    "vômitos em jato, não biliosos, sempre após as mamadas",
+    "lactente de 40 dias com vômitos há cerca de 15 dias",
+    "oliva palpável",
+    "distensão do andar superior com peristalse aumentada",
+    "baixo ganho de peso e desidratação 1+/4+"
+   ],
+   "raciocinio_cobrado": "Reconhecer a estenose hipertrófica do piloro pelo quadro clássico e escolher a ultrassonografia como exame de confirmação.",
+   "tipo": "caso_clinico",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q069",
+  "tema": "Ética médica",
+  "subtema": "Sigilo profissional em grupos de mensagens eletrônicas",
+  "confianca": 78,
+  "perfil": {
+   "competencia": "etica_legislacao",
+   "cenario": "atencao_primaria",
+   "problema_central": "Sigilo médico na discussão de casos em grupo de mensagens",
+   "conceitos": [
+    "sigilo profissional",
+    "Código de Ética Médica",
+    "grupos de mensagens eletrônicas",
+    "caso clínico identificável",
+    "responsabilidade ética individual"
+   ],
+   "achados_discriminatorios": [
+    "grupo de mensagens para discutir diagnósticos e tratamentos",
+    "dados pessoais dos pacientes não revelados",
+    "equipe multiprofissional de unidade de saúde da família"
+   ],
+   "raciocinio_cobrado": "Saber que a discussão de casos em grupo é admitida entre médicos, com confidencialidade, sem identificação do paciente e com responsabilidade individual pelo sigilo.",
+   "tipo": "conceitual",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q071",
+  "tema": "Nefrologia",
+  "subtema": "Síndrome nefrótica associada à neoplasia: nefropatia membranosa paraneoplásica",
+  "confianca": 90,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "ambulatorio_especializado",
+   "problema_central": "síndrome nefrótica por provável nefropatia membranosa paraneoplásica",
+   "conceitos": [
+    "síndrome nefrótica",
+    "nefropatia membranosa",
+    "síndrome paraneoplásica",
+    "proteinúria de 24 horas",
+    "hipoalbuminemia"
+   ],
+   "achados_discriminatorios": [
+    "proteína na urina de 24 horas de 4,2 g",
+    "hipoalbuminemia de 2,4 g/dL",
+    "hipercolesterolemia às custas de LDL-colesterol",
+    "edema palpebral bilateral e urina espumosa",
+    "adenocarcinoma ductal infiltrante de mama recém-diagnosticado"
+   ],
+   "raciocinio_cobrado": "Reconhecer o padrão laboratorial da síndrome nefrótica e associá-lo à nefropatia membranosa ligada a tumor sólido.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q072",
+  "tema": "Endocrinologia",
+  "subtema": "Nódulo tireoidiano: estratificação ultrassonográfica de risco e seguimento",
+  "confianca": 88,
+  "perfil": {
+   "competencia": "conduta_inicial",
+   "cenario": "atencao_primaria",
+   "problema_central": "nódulo tireoidiano espongiforme de 1 cm de baixíssima suspeita",
+   "conceitos": [
+    "nódulo tireoidiano",
+    "padrão espongiforme",
+    "estratificação de risco ultrassonográfico",
+    "punção aspirativa por agulha fina",
+    "seguimento ultrassonográfico"
+   ],
+   "achados_discriminatorios": [
+    "nódulo de 1 cm",
+    "aspecto espongiforme",
+    "sem calcificações, mais largo que alto e de limites precisos",
+    "perfil hormonal tireoidiano normal",
+    "paciente assintomática"
+   ],
+   "raciocinio_cobrado": "Classificar o nódulo como de baixíssima suspeita pelo ultrassom e concluir que não há indicação de punção nem de tratamento.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q074",
+  "tema": "Obstetrícia",
+  "subtema": "Pré-eclâmpsia: critérios de gravidade e indicação de internação",
+  "confianca": 90,
+  "perfil": {
+   "competencia": "conduta_inicial",
+   "cenario": "ambulatorio_especializado",
+   "problema_central": "pré-eclâmpsia com hipertensão grave persistente",
+   "conceitos": [
+    "pré-eclâmpsia",
+    "critérios de gravidade",
+    "hipertensão grave na gestação",
+    "síndrome HELLP",
+    "proteinúria"
+   ],
+   "achados_discriminatorios": [
+    "nível tensional de 150 × 110 mmHg mantido por 4 horas",
+    "32ª semana de gestação",
+    "pré-eclâmpsia leve em acompanhamento no pré-natal de alto risco"
+   ],
+   "raciocinio_cobrado": "Separar critério de gravidade da pré-eclâmpsia de achados sem valor de gravidade e reconhecer a hipertensão grave persistente como indicação de internação.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q075",
+  "tema": "Saúde coletiva",
+  "subtema": "Saúde dos povos indígenas: intervenção comunitária participativa e intercultural sobre alcoolismo",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "saude_coletiva_epidemiologia",
+   "cenario": "comunidade_territorio",
+   "problema_central": "alcoolismo na população masculina de território indígena",
+   "conceitos": [
+    "saúde indígena",
+    "interculturalidade",
+    "participação social",
+    "roda de conversa",
+    "educação em saúde",
+    "alcoolismo"
+   ],
+   "achados_discriminatorios": [
+    "distrito sanitário especial indígena",
+    "alcoolismo na população masculina",
+    "planejamento junto com os líderes locais",
+    "respeito ao contexto intercultural local"
+   ],
+   "raciocinio_cobrado": "Escolher a proposta participativa, feita no território e pactuada com a comunidade, descartando modelos verticais e medicalizantes.",
+   "tipo": "conceitual",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q076",
+  "tema": "Nefrologia",
+  "subtema": "Complicações agudas da hemodiálise: reação anafilática ou anafilactoide ao sistema de diálise",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "prognostico_complicacoes",
+   "cenario": "enfermaria_hospital",
+   "problema_central": "reação anafilática ou anafilactoide ao sistema de hemodiálise",
+   "conceitos": [
+    "hemodiálise",
+    "reação anafilactoide",
+    "óxido de etileno",
+    "síndrome do desequilíbrio dialítico",
+    "hipotensão intradialítica",
+    "embolia gasosa"
+   ],
+   "achados_discriminatorios": [
+    "início nos primeiros minutos após iniciada a hemodiálise",
+    "hipotensão arterial",
+    "flush facial",
+    "sibilância"
+   ],
+   "raciocinio_cobrado": "Associar o tempo de início e a combinação de hipotensão, rubor e broncoespasmo à reação de hipersensibilidade ao sistema de diálise, diferenciando-a das outras complicações.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q077",
+  "tema": "Urologia",
+  "subtema": "Tumor de testículo: reconhecimento clínico e ultrassonográfico",
+  "confianca": 95,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "nao_se_aplica",
+   "problema_central": "tumor de testículo",
+   "conceitos": [
+    "massa testicular indolor",
+    "neoplasia testicular",
+    "ultrassonografia escrotal",
+    "diagnóstico diferencial do aumento escrotal"
+   ],
+   "achados_discriminatorios": [
+    "aumento indolor do testículo direito há seis meses",
+    "sensação de caroço endurecido",
+    "lesão de aproximadamente 2 cm com bordas irregulares e aspecto heterogêneo",
+    "calcificações numerosas",
+    "homem de 31 anos"
+   ],
+   "raciocinio_cobrado": "Diferenciar o aumento testicular indolor e crônico com ultrassom suspeito das causas dolorosas, inflamatórias e herniárias de aumento escrotal.",
+   "tipo": "caso_clinico",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q079",
+  "tema": "Obstetrícia",
+  "subtema": "Estreptococo do grupo B e antibioticoprofilaxia na cesariana em gestante com alergia à penicilina",
+  "confianca": 65,
+  "perfil": {
+   "competencia": "prevencao_rastreamento",
+   "cenario": "centro_obstetrico",
+   "problema_central": "antibioticoprofilaxia na cesariana eletiva em gestante colonizada por estreptococo e alérgica à penicilina",
+   "conceitos": [
+    "estreptococo do grupo B",
+    "antibioticoprofilaxia na cesariana",
+    "alergia à penicilina",
+    "clindamicina",
+    "cesariana eletiva"
+   ],
+   "achados_discriminatorios": [
+    "cesariana eletiva por iteratividade com 39 semanas",
+    "cultura de swab vaginal e retal positiva para Streptococcus beta-hemolítico com 36 semanas",
+    "alergia relatada à penicilina benzatina"
+   ],
+   "raciocinio_cobrado": "Reconhecer que a paciente precisa de antibiótico profilático e escolher uma opção que não pertença ao grupo das penicilinas.",
+   "tipo": "caso_clinico",
+   "complexidade": 3
+  }
+ },
+ {
+  "id": "revalida_2022_2_q080",
+  "tema": "Saúde coletiva",
+  "subtema": "Política Nacional de Atenção Integral à Saúde das Pessoas Privadas de Liberdade no Sistema Prisional (PNAISP)",
+  "confianca": 88,
+  "perfil": {
+   "competencia": "organizacao_sus",
+   "cenario": "nao_se_aplica",
+   "problema_central": "",
+   "conceitos": [
+    "PNAISP",
+    "pactuação interfederativa",
+    "adesão voluntária",
+    "atenção primária prisional",
+    "territorialização"
+   ],
+   "achados_discriminatorios": [
+    "política que segue os atributos e as competências da Atenção Primária à Saúde",
+    "acordo entre o governo federal, estados e municípios",
+    "adesão apresentada como obrigatória na alternativa D"
+   ],
+   "raciocinio_cobrado": "Reconhecer que a política funciona por pactuação e adesão entre os entes federados e integra o sistema prisional à rede do SUS.",
+   "tipo": "conceitual",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q081",
+  "tema": "Neurologia",
+  "subtema": "Acidente vascular cerebral isquêmico agudo: trombólise intravenosa na janela terapêutica",
+  "confianca": 88,
+  "perfil": {
+   "competencia": "conduta_inicial",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "AVC isquêmico agudo em janela de trombólise",
+   "conceitos": [
+    "acidente vascular cerebral isquêmico",
+    "trombólise intravenosa",
+    "janela terapêutica",
+    "fibrilação atrial",
+    "hipertensão permissiva",
+    "tomografia de crânio"
+   ],
+   "achados_discriminatorios": [
+    "quadro neurológico de instalação abrupta havia cerca de 2 horas",
+    "hemiparesia de predomínio braquiofacial direito e fala embolada",
+    "tomografia de crânio sem anormalidades laudada 45 minutos após a chegada",
+    "pressão arterial de 160 × 100 mmHg e glicemia capilar de 320 mg/dL",
+    "fármacos de uso crônico sem anticoagulante (valsartana, amlodipina e amiodarona)"
+   ],
+   "raciocinio_cobrado": "Confirmar janela de tempo, ausência de hemorragia e de contraindicações e priorizar a reperfusão sobre as medidas de suporte.",
+   "tipo": "caso_clinico",
+   "complexidade": 3
+  }
+ },
+ {
+  "id": "revalida_2022_2_q082",
+  "tema": "Medicina de Família e Comunidade",
+  "subtema": "Rastreamento do câncer de próstata em idoso com comorbidades graves",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "prevencao_rastreamento",
+   "cenario": "nao_se_aplica",
+   "problema_central": "pedido de rastreamento de câncer de próstata em idoso com comorbidades graves",
+   "conceitos": [
+    "rastreamento do câncer de próstata",
+    "PSA",
+    "sobrediagnóstico",
+    "prevenção quaternária",
+    "expectativa de vida"
+   ],
+   "achados_discriminatorios": [
+    "83 anos",
+    "cardiopatia grave com infarto prévio tratado com 2 stents",
+    "diabetes e dislipidemia sem ajustes nos hábitos de vida",
+    "pedido de rastreamento feito pela família",
+    "conduta conforme as recomendações do Ministério da Saúde"
+   ],
+   "raciocinio_cobrado": "Aplicar a recomendação de não rastrear e reconhecer que idade avançada e comorbidades graves tornam o dano maior que o benefício.",
+   "tipo": "caso_clinico",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q083",
+  "tema": "Ética médica",
+  "subtema": "Sigilo médico do adolescente diante de risco à vida",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "etica_legislacao",
+   "cenario": "ambulatorio_especializado",
+   "problema_central": "Recusa do tratamento do diabetes por adolescente com cetoacidose de repetição",
+   "conceitos": [
+    "sigilo médico",
+    "autonomia do adolescente",
+    "capacidade de discernimento",
+    "cetoacidose diabética",
+    "adesão ao tratamento"
+   ],
+   "achados_discriminatorios": [
+    "adolescente de 13 anos",
+    "duas internações por cetoacidose diabética nos últimos três meses",
+    "despreza a dose após a manipulação",
+    "médico avisa que comunicará a mãe"
+   ],
+   "raciocinio_cobrado": "Reconhecer que o sigilo do adolescente cede quando mantê-lo expõe o próprio paciente a risco grave à vida.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q086",
+  "tema": "Arboviroses",
+  "subtema": "Artrite crônica pós-chikungunya",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "tratamento",
+   "cenario": "ambulatorio_especializado",
+   "problema_central": "Artrite crônica pós-chikungunya",
+   "conceitos": [
+    "chikungunya",
+    "fase crônica",
+    "artrite inflamatória",
+    "medicamento modificador de doença",
+    "metotrexato",
+    "diagnóstico diferencial das arboviroses"
+   ],
+   "achados_discriminatorios": [
+    "início súbito com febre (até 38,5 °C), exantema levemente pruriginoso e eritema conjuntival",
+    "sintomas sistêmicos por 3 a 5 dias com persistência da dor articular",
+    "evolução de 4 meses",
+    "artrite em metacarpofalangeanas, interfalangeanas proximais, joelhos e tornozelos"
+   ],
+   "raciocinio_cobrado": "Associar o quadro agudo típico à chikungunya e reconhecer, pelo tempo de evolução, a fase crônica que pede modificador de doença.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q087",
+  "tema": "Oftalmologia",
+  "subtema": "Calázio e diagnóstico diferencial das lesões palpebrais",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "nao_se_aplica",
+   "problema_central": "Calázio",
+   "conceitos": [
+    "calázio",
+    "glândula de Meibomius",
+    "hordéolo",
+    "canaliculite",
+    "dacriocistite"
+   ],
+   "achados_discriminatorios": [
+    "edema, rubor e dor na pálpebra com resolução espontânea em 48 horas",
+    "nodulação de 0,3 cm indolor",
+    "face interna do terço médio da pálpebra superior direita",
+    "nega febre"
+   ],
+   "raciocinio_cobrado": "Diferenciar uma lesão palpebral crônica e indolor das infecções agudas da pálpebra e das vias lacrimais pela localização e pela evolução.",
+   "tipo": "caso_clinico",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q088",
+  "tema": "Intoxicação exógena na infância",
+  "subtema": "Síndrome anticolinérgica por ingestão de dexclorfeniramina",
+  "confianca": 88,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Síndrome anticolinérgica por intoxicação por dexclorfeniramina",
+   "conceitos": [
+    "síndrome anticolinérgica",
+    "anti-histamínico de primeira geração",
+    "intoxicação exógena acidental",
+    "midríase",
+    "síndromes tóxicas"
+   ],
+   "achados_discriminatorios": [
+    "agitação psicomotora",
+    "midríase",
+    "boca seca e rubor facial",
+    "criança de três anos em casa à tarde com a irmã de 10 anos"
+   ],
+   "raciocinio_cobrado": "Identificar a síndrome tóxica pelos sinais clínicos e escolher o medicamento com efeito anticolinérgico predominante.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q089",
+  "tema": "Obstetrícia",
+  "subtema": "Restrição de crescimento fetal com diástole zero na artéria umbilical",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "conduta_inicial",
+   "cenario": "nao_se_aplica",
+   "problema_central": "Restrição de crescimento fetal com diástole zero na artéria umbilical",
+   "conceitos": [
+    "restrição de crescimento fetal",
+    "insuficiência placentária",
+    "dopplervelocimetria da artéria umbilical",
+    "diástole zero",
+    "duto venoso",
+    "momento e via do parto"
+   ],
+   "achados_discriminatorios": [
+    "35ª semana de gestação",
+    "diástole zero na artéria umbilical",
+    "duto venoso normal",
+    "restrição de crescimento fetal por insuficiência placentária"
+   ],
+   "raciocinio_cobrado": "Combinar idade gestacional e grau de alteração do Doppler para decidir entre vigilância e interrupção da gestação e escolher a via adequada.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q090",
+  "tema": "Planejamento familiar e contracepção",
+  "subtema": "Direitos sexuais e reprodutivos na APS e prescrição de anticoncepcional oral",
+  "confianca": 88,
+  "perfil": {
+   "competencia": "organizacao_sus",
+   "cenario": "atencao_primaria",
+   "problema_central": "Acesso à contracepção oral sem exames prévios obrigatórios",
+   "conceitos": [
+    "direitos sexuais e reprodutivos",
+    "acolhimento com escuta qualificada",
+    "anticoncepcional oral",
+    "esterilização voluntária",
+    "rastreamento do câncer do colo do útero",
+    "trabalho em equipe na APS"
+   ],
+   "achados_discriminatorios": [
+    "atividades educativas sobre métodos contraceptivos na unidade de saúde da família",
+    "termos restritivos nas alternativas: exclusiva, específica e somente",
+    "prescrição de anticoncepcional oral sem colpocitologia oncótica nem exame de mamas prévios"
+   ],
+   "raciocinio_cobrado": "Reconhecer que contracepção oral não depende de exames de rastreamento e identificar as alternativas que criam barreiras indevidas de acesso.",
+   "tipo": "conceitual",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q091",
+  "tema": "Sepse",
+  "subtema": "Sepse de provável foco pulmonar no pós-operatório com delirium",
+  "confianca": 93,
+  "perfil": {
+   "competencia": "conduta_inicial",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Sepse de provável foco pulmonar no pós-operatório",
+   "conceitos": [
+    "sepse",
+    "pneumonia pós-operatória",
+    "delirium",
+    "disfunção orgânica",
+    "antimicrobiano intravenoso precoce",
+    "metformina e acidose lática"
+   ],
+   "achados_discriminatorios": [
+    "confusão mental flutuante com 14 na Escala de Coma de Glasgow",
+    "temperatura de 38,6 °C, pulso de 120 e 26 incursões respiratórias por minuto",
+    "saturação de O₂ de 93% com cateter nasal e pressão de 96 × 60 mmHg",
+    "crepitações em base direita com abdome e ferida sem alterações"
+   ],
+   "raciocinio_cobrado": "Reconhecer sinais de sepse com foco pulmonar e decidir por internação com antimicrobiano intravenoso em vez de tratamento ambulatorial ou investigação isolada por imagem.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q092",
+  "tema": "Hérnias da parede abdominal",
+  "subtema": "Hérnia femoral encarcerada com obstrução intestinal",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Hérnia femoral encarcerada com obstrução intestinal",
+   "conceitos": [
+    "hérnia femoral",
+    "ligamento inguinal",
+    "encarceramento",
+    "obstrução intestinal",
+    "hérnia inguinal direta e indireta",
+    "hérnia incisional"
+   ],
+   "achados_discriminatorios": [
+    "abaulamento irredutível abaixo do ligamento inguinal à direita",
+    "mulher de 47 anos",
+    "vômitos, distensão abdominal e parada de eliminação de gases",
+    "cicatriz cirúrgica subcostal à direita"
+   ],
+   "raciocinio_cobrado": "Usar a posição do abaulamento em relação ao ligamento inguinal para classificar a hérnia e associá-la ao quadro obstrutivo.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q093",
+  "tema": "Intoxicação exógena na infância",
+  "subtema": "Intoxicação por haloperidol com sintomas extrapiramidais agudos",
+  "confianca": 87,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Intoxicação exógena por haloperidol",
+   "conceitos": [
+    "intoxicação exógena acidental",
+    "antipsicótico típico",
+    "reação extrapiramidal",
+    "distonia aguda",
+    "síndrome neuroléptica maligna"
+   ],
+   "achados_discriminatorios": [
+    "rigidez e espasmos musculares com hipertermia",
+    "primo de quatro anos com quadro semelhante",
+    "últimas 12 horas na casa da avó que trata esquizofrenia e hipertensão",
+    "sem dificuldade respiratória e com ausculta cardíaca normal"
+   ],
+   "raciocinio_cobrado": "Reconhecer exposição comum em duas crianças e escolher, entre os medicamentos prováveis da casa, o que explica rigidez, espasmos e hipertermia.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q094",
+  "tema": "Vulvovaginites na gestação",
+  "subtema": "Candidíase vulvovaginal recorrente em gestante com diabetes mellitus tipo 1",
+  "confianca": 85,
+  "perfil": {
+   "competencia": "tratamento",
+   "cenario": "ambulatorio_especializado",
+   "problema_central": "Candidíase vulvovaginal recorrente na gestação",
+   "conceitos": [
+    "candidíase vulvovaginal recorrente",
+    "antifúngicos azólicos",
+    "segurança de medicamentos na gestação",
+    "tratamento de indução e manutenção",
+    "diabetes mellitus tipo 1"
+   ],
+   "achados_discriminatorios": [
+    "gestante com 25 semanas",
+    "diabetes mellitus tipo 1",
+    "corrimento grumoso com placas brancas aderidas, eritema, fissuras e edema vulvar",
+    "já tratou 4 vezes os mesmos sintomas desde o início da gestação"
+   ],
+   "raciocinio_cobrado": "Reconhecer a recorrência, excluir azólicos orais por causa da gestação e escolher o esquema tópico com indução e manutenção prolongadas.",
+   "tipo": "caso_clinico",
+   "complexidade": 3
+  }
+ },
+ {
+  "id": "revalida_2022_2_q095",
+  "tema": "Violência contra a mulher na atenção primária à saúde",
+  "subtema": "Violência psicológica por parceiro íntimo: notificação e acompanhamento na USF",
+  "confianca": 88,
+  "perfil": {
+   "competencia": "conduta_inicial",
+   "cenario": "atencao_primaria",
+   "problema_central": "Violência psicológica por parceiro íntimo",
+   "conceitos": [
+    "violência psicológica",
+    "violência por parceiro íntimo",
+    "notificação de agravo",
+    "acompanhamento longitudinal",
+    "autonomia da paciente",
+    "rede de proteção à mulher"
+   ],
+   "achados_discriminatorios": [
+    "marido não deixa trabalhar, grita e critica muito",
+    "sente-se humilhada e tem medo dele",
+    "nega agressão física",
+    "pede clonazepam por insônia",
+    "atendimento em unidade de saúde da família"
+   ],
+   "raciocinio_cobrado": "Reconhecer violência psicológica por trás da queixa de insônia e saber que a conduta é notificar e cuidar na própria USF, sem denunciar pela paciente nem encaminhar ao psiquiatra.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q096",
+  "tema": "Reumatologia",
+  "subtema": "Fibromialgia: diagnóstico clínico e diferenciação de doenças musculares e inflamatórias",
+  "confianca": 92,
+  "perfil": {
+   "competencia": "diagnostico",
+   "cenario": "nao_se_aplica",
+   "problema_central": "Fibromialgia",
+   "conceitos": [
+    "dor musculoesquelética difusa",
+    "sono não reparador",
+    "fadiga",
+    "dor à palpação muscular",
+    "provas inflamatórias normais",
+    "diagnóstico diferencial reumatológico"
+   ],
+   "achados_discriminatorios": [
+    "mulher de 32 anos",
+    "dores generalizadas e acorda exausta",
+    "dor à pressão em diversos grupamentos musculares",
+    "sem bloqueio ou inflamação articular",
+    "TSH, VHS e PCR ultrassensível normais"
+   ],
+   "raciocinio_cobrado": "Reunir dor difusa, sono não reparador e sensibilidade muscular com exames normais e usar idade e provas inflamatórias para descartar miosite e polimialgia.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q097",
+  "tema": "Acesso venoso central",
+  "subtema": "Punção arterial inadvertida na cateterização da veia jugular interna",
+  "confianca": 83,
+  "perfil": {
+   "competencia": "prognostico_complicacoes",
+   "cenario": "enfermaria_hospital",
+   "problema_central": "Punção arterial inadvertida durante acesso venoso central jugular",
+   "conceitos": [
+    "acesso venoso central",
+    "veia jugular interna",
+    "punção arterial inadvertida",
+    "teste de retorno sanguíneo",
+    "compressão local",
+    "hematoma cervical"
+   ],
+   "achados_discriminatorios": [
+    "punção da veia jugular interna direita",
+    "equipo com frasco de SF 0,9% 500 ml acoplado",
+    "teste do retorno sanguíneo positivo",
+    "fluxo ascendente da coluna de sangue dentro do equipo"
+   ],
+   "raciocinio_cobrado": "Interpretar o sangue subindo pelo equipo contra o soro como sinal de punção arterial e priorizar retirada e compressão antes de qualquer exame.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q098",
+  "tema": "Nefrologia pediátrica",
+  "subtema": "Síndrome nefrótica idiopática na infância: tratamento inicial com corticoide",
+  "confianca": 93,
+  "perfil": {
+   "competencia": "tratamento",
+   "cenario": "urgencia_emergencia",
+   "problema_central": "Síndrome nefrótica na infância",
+   "conceitos": [
+    "síndrome nefrótica",
+    "doença por lesões mínimas",
+    "proteinúria",
+    "edema",
+    "corticoterapia",
+    "síndrome nefrítica como diferencial"
+   ],
+   "achados_discriminatorios": [
+    "pré-escolar de três anos",
+    "edema palpebral e de membros inferiores com oligúria",
+    "proteinúria 3+/4+",
+    "hemácias 3/campo",
+    "pressão arterial de 80 × 60 mmHg"
+   ],
+   "raciocinio_cobrado": "Separar o quadro nefrótico do nefrítico pela proteinúria sem hematúria nem hipertensão e lembrar que, nessa idade, o tratamento de primeira linha é o corticoide.",
+   "tipo": "caso_clinico",
+   "complexidade": 2
+  }
+ },
+ {
+  "id": "revalida_2022_2_q099",
+  "tema": "Infecções na gestação",
+  "subtema": "Sífilis na gestação: seguimento sorológico após o tratamento com teste não treponêmico",
+  "confianca": 94,
+  "perfil": {
+   "competencia": "exame_complementar",
+   "cenario": "atencao_primaria",
+   "problema_central": "Sífilis na gestação tratada",
+   "conceitos": [
+    "sífilis gestacional",
+    "teste não treponêmico",
+    "teste treponêmico",
+    "titulação do VDRL",
+    "controle de cura",
+    "cicatriz sorológica"
+   ],
+   "achados_discriminatorios": [
+    "gestante de 20 semanas com sífilis",
+    "gestante e parceiro adequadamente tratados com penicilina benzatina",
+    "controle mensal de cura na Atenção Primária à Saúde"
+   ],
+   "raciocinio_cobrado": "Diferenciar teste não treponêmico, cujo título cai com a cura, de teste treponêmico, que permanece reagente, e escolher o primeiro para o seguimento.",
+   "tipo": "conceitual",
+   "complexidade": 1
+  }
+ },
+ {
+  "id": "revalida_2022_2_q100",
+  "tema": "Infectologia pediátrica",
+  "subtema": "Síndrome mão-pé-boca: conduta ambulatorial e afastamento da creche",
+  "confianca": 86,
+  "perfil": {
+   "competencia": "conduta_inicial",
+   "cenario": "atencao_primaria",
+   "problema_central": "Síndrome mão-pé-boca",
+   "conceitos": [
+    "síndrome mão-pé-boca",
+    "enterovírus",
+    "doença autolimitada",
+    "afastamento escolar",
+    "tratamento de suporte",
+    "transmissão por secreções e fezes"
+   ],
+   "achados_discriminatorios": [
+    "criança de 5 anos atendida na unidade básica de saúde",
+    "febre há 3 dias, odinofagia e recusa alimentar",
+    "lesões vesiculares na mucosa bucal e na língua",
+    "erupções papulovesiculares palmares e plantares bilaterais"
+   ],
+   "raciocinio_cobrado": "Com o diagnóstico dado, escolher o cuidado de suporte com afastamento da creche e rejeitar notificação imediata, antiviral e internação em caso sem gravidade.",
+   "tipo": "caso_clinico",
+   "complexidade": 1
+  }
+ }
+]

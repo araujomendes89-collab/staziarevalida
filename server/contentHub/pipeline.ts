@@ -40,6 +40,7 @@ import { stepQuestionCheck } from "./questoes/check";
 import { stepQuestionGenerate } from "./questoes/generate";
 import { stepQuestionSource } from "./questoes/source";
 import { AiRequestFailed, AiRequestPending, runAiRequest } from "./aiRequests";
+import { runSimilarity, SimilarityFailed, SimilarityPending } from "./similarity/run";
 
 const run = promisify(execFile);
 
@@ -48,7 +49,7 @@ export const EXTRACTOR_VERSION = "staziamed-extract-1.0";
 export const MATERIALS_TEMPLATE = "materials-1.0";
 const PAGE_RANGE = 20;
 
-export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render" | "source_search" | "question_generate" | "question_check" | "question_source" | "question_analysis" | "draft_check";
+export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render" | "source_search" | "question_generate" | "question_check" | "question_source" | "question_analysis" | "draft_check" | "similarity";
 
 export interface Job {
   id: string;
@@ -1243,6 +1244,22 @@ async function stepAiRequest(ctx: Ctx): Promise<Step | null> {
   return null;
 }
 
+/**
+ * Questões parecidas (sem documento, similarity/run.ts): só o que mudou; vetores só com a função "Questões parecidas" ligada na
+ * Central de IAs; a IA só nos pares duvidosos, em lote pedido pelo administrador. Função desligada ou teto deixam o trabalho
+ * pendente, sem gastar tentativa.
+ */
+async function stepSimilarity(ctx: Ctx): Promise<Step | null> {
+  try {
+    await runSimilarity(ctx.deps, ctx.job, { checkpoint: (data) => checkpoint(ctx, data), metrics: ctx.metrics });
+  } catch (error) {
+    if (error instanceof SimilarityPending) throw new Blocked(error.message);
+    if (error instanceof SimilarityFailed) throw new Fatal(error.message);
+    throw error;
+  }
+  return null;
+}
+
 const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   extract: stepExtract,
   source_index: stepSourceIndex,
@@ -1260,6 +1277,7 @@ const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   question_source: (ctx) => stepQuestionSource(ctx.deps, ctx.job, ctx.metrics),
   question_analysis: stepAiRequest,
   draft_check: stepAiRequest,
+  similarity: stepSimilarity,
 };
 
 /**

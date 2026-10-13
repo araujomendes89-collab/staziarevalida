@@ -35,6 +35,8 @@ async function main() {
   const worker = createContentHubWorker(deps, { staleSeconds });
   // trabalhos parados por falta de IA voltam para a fila quando o dono liga alguma IA na Central de IAs
   if (await aiAvailable(deps)) await deps.db.service("ch_worker_unblock").catch(() => undefined);
+  // questões parecidas: com a função ligada na Central de IAs, as questões que mudaram entram na fila (falhar aqui não derruba a tarefa)
+  await deps.db.service("ch_worker_similarity_autoqueue").catch((error: Error) => console.error(`[central] questões parecidas: ${error.message.slice(0, 200)}`));
   let jobs = 0;
   while (Date.now() - t0 < budgetMs && (await worker.tick())) jobs++;
   const sources = await worker.checkSources();

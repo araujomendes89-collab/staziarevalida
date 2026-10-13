@@ -1,0 +1,7 @@
+{
+  "formato": "staziamed.similaridade.pares-revisados.v1",
+  "leia": "Pares de questões revisados por MÉDICO, para medir o motor de questões parecidas (scripts/similaridade/avaliar.mjs). VAZIO DE PROPÓSITO: os pares virão da revisão médica; nenhum par foi inventado. Cada par: a e b = id da questão (como no banco, ex.: revalida_2024_1_q012); relacao = um dos tipos abaixo; revisado_por = nome ou papel de quem revisou; revisado_em = AAAA-MM-DD; nota = opcional. Um par por linha da lista; a ordem de a e b não importa.",
+  "tipos": ["duplicada_exata", "duplicada_semantica", "mesmo_raciocinio", "complementar", "mesmo_subtema", "mesmo_tema", "nao_relacionada"],
+  "exemplo_de_formato": { "a": "<id da questão>", "b": "<id da outra questão>", "relacao": "<um dos tipos>", "revisado_por": "<quem revisou>", "revisado_em": "AAAA-MM-DD", "nota": "" },
+  "pares": []
+}
