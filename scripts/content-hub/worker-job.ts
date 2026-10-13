@@ -45,6 +45,10 @@ async function main() {
     console.error(`[central] retratações (Crossref): ${error.message.slice(0, 200)}`);
     return { checked: 0, retracted: 0 };
   });
+  const pages = await worker.checkIndexPages().catch((error: Error) => {
+    console.error(`[central] páginas-índice: ${error.message.slice(0, 200)}`);
+    return { checked: 0, discovered: 0 };
+  });
   await worker.vigilanceSync().catch((error: Error) => console.error(`[central] quarentena da vigilância: ${error.message.slice(0, 200)}`));
   // reanálise das questões cuja fonte mudou: só quando o administrador pediu na tela ou a "Análise automática" está ligada (falhar aqui não derruba a tarefa)
   const reanalysis: ScheduledReanalysis = await runScheduledReanalysis(deps).catch((error: Error) => {
@@ -60,7 +64,7 @@ async function main() {
   // a busca por significado pode ter parado na rodada (erro de configuração do Google): o relato final mostra o motivo
   const finalReport = deps.embedder?.problem ? await probeProcessing(deps) : report;
   await reportProcessing(deps, finalReport, { started_at: new Date(t0).toISOString(), finished_at: new Date().toISOString(), jobs, sources, vectors, reanalysis: { ran: reanalysis.ran, manual: reanalysis.manual } });
-  console.log(`[central] tarefa concluída: ${jobs} trabalho(s) da fila · fontes conferidas ${sources.checked} (mudaram ${sources.changed}, inacessíveis ${sources.unreachable}) · DOI conferidos ${identifiers.checked} (retratados ${identifiers.retracted}) · vetores novos ${vectors.embedded} · reanálise ${reanalysis.ran ? `${reanalysis.report?.saved ?? 0} proposta(s)` : "não rodou"} · ${Math.round((Date.now() - t0) / 1000)} s`);
+  console.log(`[central] tarefa concluída: ${jobs} trabalho(s) da fila · fontes conferidas ${sources.checked} (mudaram ${sources.changed}, inacessíveis ${sources.unreachable}) · DOI conferidos ${identifiers.checked} (retratados ${identifiers.retracted}) · páginas-índice ${pages.checked} (documentos novos ${pages.discovered}) · vetores novos ${vectors.embedded} · reanálise ${reanalysis.ran ? `${reanalysis.report?.saved ?? 0} proposta(s)` : "não rodou"} · ${Math.round((Date.now() - t0) / 1000)} s`);
 }
 
 main()

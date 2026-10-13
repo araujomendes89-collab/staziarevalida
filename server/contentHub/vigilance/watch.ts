@@ -10,7 +10,7 @@
 import { fetchBytes, extractPdf, type Resolver } from "../../podcasts/extract";
 import { linkProblem, matchDomain, OFFICIAL_FETCH, type OfficialDomain } from "../sources/officialDomains";
 import { snapshotPassages, type Passage } from "../sourceDiff";
-import { comparablePageText, comparablePdfText, mainHtml, pageFacts, pdfFacts, sha256, stripPageDates, versionCandidates, type PageFacts } from "./pageFacts";
+import { comparablePageText, comparablePdfText, indexItems, mainHtml, pageFacts, pdfFacts, sha256, stripPageDates, versionCandidates, type IndexItem, type PageFacts } from "./pageFacts";
 import { crossrefUrl, CROSSREF_UA, parseCrossref, type CrossrefReport } from "./crossref";
 
 export interface WatchDue {
@@ -115,5 +115,24 @@ export async function checkDoi(doi: string, net: NetOptions): Promise<CrossrefRe
     return parseCrossref(JSON.parse(got.body.toString("utf8")), doi);
   } catch (error) {
     return { status: "erro", erro: String((error as Error)?.message ?? error).slice(0, 300) };
+  }
+}
+
+/** Lê uma página-índice oficial (lista de notas, PCDT, publicações) e devolve os itens para ch_worker_index_page_report. Nunca lança. */
+export async function readIndexPage(url: string, domains: OfficialDomain[], net: NetOptions): Promise<{ status: "ok"; items: IndexItem[] } | { status: "unreachable"; error: string }> {
+  try {
+    const got = await fetchBytes(url, net.fetchImpl, {
+      ...WATCH_FETCH,
+      maxBytes: 10 * 1024 * 1024,
+      checkUrl: (u) => linkProblem(u.href) ?? (matchDomain(u, domains) ? null : "Redirecionamento para fora da lista de sites oficiais."),
+      checkHost: net.checkHost,
+      resolver: net.resolver,
+      acceptAnyType: true,
+      statusMessage: (status) => `HTTP ${status}`,
+    });
+    if (got.kind === "pdf") return { status: "unreachable", error: "A página-índice virou um PDF." };
+    return { status: "ok", items: indexItems(got.body.toString("utf8"), got.finalUrl) };
+  } catch (error) {
+    return { status: "unreachable", error: String((error as Error)?.message ?? error).slice(0, 300) };
   }
 }

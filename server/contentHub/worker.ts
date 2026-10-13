@@ -10,7 +10,7 @@ import { compareSnapshots } from "./sourceCompare";
 import { embedderAllowed, embedPendingPassages } from "./embeddings";
 import type { Resolver } from "../podcasts/extract";
 import type { OfficialDomain } from "./sources/officialDomains";
-import { checkDoi, readPublication, type WatchDue } from "./vigilance/watch";
+import { checkDoi, readIndexPage, readPublication, type WatchDue } from "./vigilance/watch";
 import { reconcilePendingCurrency } from "./sources/currency";
 
 export interface WorkerOptions {
@@ -31,6 +31,8 @@ export interface ContentHubWorker {
   checkSources(): Promise<{ checked: number; changed: number; unreachable: number }>;
   /** Retratações no Crossref (DOI das fontes, semanal). */
   checkIdentifiers(): Promise<{ checked: number; retracted: number }>;
+  /** Páginas-índice oficiais (documento novo por tema). */
+  checkIndexPages(): Promise<{ checked: number; discovered: number }>;
   /** Quarentena da Vigilância científica em dia com a nota das fontes (sem IA). */
   vigilanceSync(): Promise<{ quarentena_nova: number; quarentena_fechada: number }>;
   /** Refaz a classificação de atualidade pendente (sem IA). Devolve quantas buscas foram refeitas. */
@@ -137,6 +139,20 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
     return { checked: due.length, retracted };
   };
 
+  // Páginas-índice oficiais: documento novo que casa com as palavras-chave de um tema vira item da fila (sem IA).
+  const checkIndexPages = async () => {
+    const due = await deps.db.service<{ id: string; url: string }[]>("ch_worker_index_pages_due", { p_limit: 10 });
+    if (!due.length) return { checked: 0, discovered: 0 };
+    const domains = await deps.db.service<OfficialDomain[]>("ch_worker_vigilance_domains");
+    let discovered = 0;
+    for (const p of due) {
+      const reading = await readIndexPage(p.url, domains, net());
+      const r = await deps.db.service<{ avisos?: number } | null>("ch_worker_index_page_report", { p_page_id: p.id, p_report: reading });
+      discovered += Number(r?.avisos ?? 0);
+    }
+    return { checked: due.length, discovered };
+  };
+
   const vigilanceSync = () => deps.db.service<{ quarentena_nova: number; quarentena_fechada: number }>("ch_worker_vigilance_sync");
 
   const embed = async (o: { max?: number; deadline?: number } = {}) => {
@@ -161,6 +177,8 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
         busy = checkSources();
         await busy;
         busy = checkIdentifiers().catch((error: Error) => deps.log?.(`[central] retratações (Crossref): ${error.message}`));
+        await busy;
+        busy = checkIndexPages().catch((error: Error) => deps.log?.(`[central] páginas-índice: ${error.message}`));
         await busy;
         busy = vigilanceSync().catch((error: Error) => deps.log?.(`[central] quarentena da vigilância: ${error.message}`));
         await busy;
@@ -212,6 +230,7 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
     },
     checkSources,
     checkIdentifiers,
+    checkIndexPages,
     vigilanceSync,
     reconcilePendingCurrency: () => reconcilePendingCurrency(deps.db, deps.log),
     embed,
