@@ -449,7 +449,7 @@ export function relatorio(resultados, geradoEm, extras = {}) {
 
 export function leiaMe({ geradoEm, partes, totalRevisao, totalB, totalNotas, faltam }) {
   return `STAZIAMED - CARGA DAS EXPLICAÇÕES DAS QUESTÕES (gerado em ${geradoEm})
-Nada disto foi colado no banco. Este pacote é refeito quando os agentes Professor e Auditor terminarem (o Claude roda o gerador de novo).
+Nada disto foi colado no banco. Pode ser refeito a qualquer hora (por exemplo, depois das decisões do dono nas divergências): o Claude roda o gerador de novo.
 
 O QUE É
   Os agentes escreveram, para cada questão: a explicação da A, B, C e D, a conduta esperada, "o que a questão avalia", o tema e o
@@ -458,7 +458,9 @@ O QUE É
   O gabarito oficial, a situação da questão, o enunciado e as alternativas NÃO mudam. O texto antigo fica no histórico de cada questão.
 
 ORDEM
-  1. Antes: o que está na ORDEM GERAL (leva 3, leva 4, leva 5) já colado.
+  1. Antes: o que está na ORDEM GERAL (leva 3, leva 4, leva 5) já colado E a carga das provas (texto corrigido da revisão de
+     fidelidade e a prova 2026/2). Sem ela, a parte da 2026/2 pula todas (as questões ainda não existem no banco) e as questões cujo
+     enunciado ainda é o antigo entram, mas nunca vão direto pela regra B (o revisor confere).
   2. 1-Estrutura-carga-das-explicacoes.sql (pode colar de novo sem estragar nada). No fim não aparece nada de erro.
   3. Uma parte por prova (2-Prova-...sql), na ordem que quiser. Cada uma termina com "OK: ..." ou "ATENÇÃO: ..." (mostre ao Claude).
      Partes neste pacote: ${partes.length ? partes.join(", ") : "nenhuma ainda (o Auditor ainda não conferiu nenhuma questão)"}.
