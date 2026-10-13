@@ -535,13 +535,16 @@ end
 $$;
 
 -- Por que a fonte não pode sustentar afirmação: 'retratada' | 'bloqueada' | 'quarentena' | nulo.
+-- Quarentena pela REGRA (nota baixa, sem origem) só avisa: vira item da fila "em revisão" e não apaga nem trava nada (o dono pediu
+-- "nota baixa = quarentena, não apagar"; travar sozinho pararia o envio de PDF de referência que já existe). Trava quando a EQUIPE
+-- confirma a quarentena (app_admin_source_quality_override com quarentena = true), além de retratada e bloqueada.
 create or replace function public.ch_source_block_reason(p_source_id uuid) returns text
   language sql stable security definer set search_path = ''
 as $$
   select case
     when s.retracted_at is not null then 'retratada'
     when coalesce(v.blocked, false) then 'bloqueada'
-    when coalesce((public.ch_source_quality_eval(s.id) ->> 'quarentena')::boolean, false) then 'quarentena'
+    when v.quarantine_override is true then 'quarentena'
   end
   from public.ch_sources s left join public.ch_source_vigilance v on v.source_id = s.id
   where s.id = p_source_id
@@ -736,7 +739,9 @@ begin
   end if;
 
   if w.last_hash is null then v_rebase := true;
-  elsif w.hash_method is distinct from v_method and not (w.hash_method is null and v_method = 'pdf-sha256') then v_rebase := true;
+  -- método novo de comparação = base nova (sem acusar mudança). PDF: a impressão dos bytes é a mesma no método antigo (nulo) e no
+  -- novo ('pdf-sha256'), então os dois se comparam nos dois sentidos (a tarefa antiga do Cloud Run continua achando mudança de PDF)
+  elsif w.hash_method is distinct from v_method and not (coalesce(w.hash_method, 'pdf-sha256') = 'pdf-sha256' and coalesce(v_method, 'pdf-sha256') = 'pdf-sha256') then v_rebase := true;
   elsif v_hash = w.last_hash then null;
   elsif v_method = 'pdf-sha256' and w.text_hash is not null and v_text_hash is not null and v_text_hash = w.text_hash then v_meta := true;
   else v_changed := true;

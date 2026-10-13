@@ -43,6 +43,8 @@ beforeAll(async () => {
   db = devContentDb(async () => dev);
   for (const st of buildEngineStatements()) await dev.db.exec(st);
   await dev.db.query(`insert into auth.users (id, email) values ($1, 'a@t.dev'), ($2, 'e@t.dev'), ($3, 's@t.dev'), ($4, 'r@t.dev')`, [ADMIN, EDITOR, STUDENT, REVIEWER]);
+  // o vigia só baixa endereço da lista de sites oficiais (Vigilância científica, migração 9940): o site de teste entra na lista
+  await dev.db.query(`insert into public.ch_official_domains (address, institution, kind) values ('exemplo.invalid', 'Site de teste', 'governo') on conflict do nothing`);
   await dev.db.query(`update public.user_roles set role = 'admin' where user_id = $1`, [ADMIN]);
   await dev.db.query(`update public.user_roles set role = 'editor' where user_id = $1`, [EDITOR]);
 }, 300_000);

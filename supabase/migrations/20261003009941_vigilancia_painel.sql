@@ -23,9 +23,10 @@ begin
   alter table public.ch_jobs drop constraint if exists ch_jobs_step_check;
   execute format('alter table public.ch_jobs add constraint ch_jobs_step_check check (step in (%s))', (select string_agg(quote_literal(x), ', ') from unnest(v_vals) x));
 
+  -- chaves das funções: a ORDEM da restrição é a ordem da Central de IAs (ai_function_keys); a nova vai para o fim
   select pg_get_constraintdef(c.oid) into v_def from pg_constraint c where c.conrelid = 'public.ai_functions'::regclass and c.conname = 'ai_functions_key_check';
-  v_vals := array['analise_mudancas'] || coalesce(array(select m[1] from regexp_matches(coalesce(v_def, ''), '''([a-z_]+)''', 'g') as m), '{}');
-  v_vals := array(select distinct x from unnest(v_vals) x order by x);
+  v_vals := coalesce(array(select m[1] from regexp_matches(coalesce(v_def, ''), '''([a-z_]+)''', 'g') as m), '{}');
+  if not ('analise_mudancas' = any (v_vals)) then v_vals := v_vals || 'analise_mudancas'::text; end if;
   alter table public.ai_functions drop constraint if exists ai_functions_key_check;
   execute format('alter table public.ai_functions add constraint ai_functions_key_check check (key in (%s))', (select string_agg(quote_literal(x), ', ') from unnest(v_vals) x));
 end

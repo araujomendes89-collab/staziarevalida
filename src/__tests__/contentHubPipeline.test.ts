@@ -76,6 +76,8 @@ beforeAll(async () => {
   storage = localStorageDir(path.join(tmp, "files"));
   admin = await dev.core.createAccount("Admin Teste", "admin@teste.local", "senha-forte-123", true);
   await dev.db.query(`update public.ch_flags set value = case key when 'publish_enabled' then true when 'shadow_mode' then false else value end`);
+  // o vigia só baixa endereço da lista de sites oficiais (Vigilância científica, migração 9940): o site de teste entra na lista
+  await dev.db.query(`insert into public.ch_official_domains (address, institution, kind) values ('exemplo.invalid', 'Site de teste', 'governo') on conflict do nothing`);
   if (HAS_PDFPYTHON) renderer = await createRenderer();
 
   const src = await db.asUser<{ id: string }>(admin, "app_ch_register_source", {

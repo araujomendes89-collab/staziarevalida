@@ -52,7 +52,7 @@ export async function readPublication(w: WatchDue, domains: OfficialDomain[], ne
     }
     const got = await fetchBytes(w.url, net.fetchImpl, {
       ...WATCH_FETCH,
-      checkUrl: (u) => linkProblem(u.href) ?? (matchDomain(u, domains) ? null : "Redirecionamento para fora da lista de sites oficiais."),
+      checkUrl: (u) => linkProblem(u.href) ?? (matchDomain(u, domains) ? null : "Endereço fora da lista de sites oficiais."),
       checkHost: net.checkHost,
       resolver: net.resolver,
       acceptAnyType: true,
@@ -124,7 +124,7 @@ export async function readIndexPage(url: string, domains: OfficialDomain[], net:
     const got = await fetchBytes(url, net.fetchImpl, {
       ...WATCH_FETCH,
       maxBytes: 10 * 1024 * 1024,
-      checkUrl: (u) => linkProblem(u.href) ?? (matchDomain(u, domains) ? null : "Redirecionamento para fora da lista de sites oficiais."),
+      checkUrl: (u) => linkProblem(u.href) ?? (matchDomain(u, domains) ? null : "Endereço fora da lista de sites oficiais."),
       checkHost: net.checkHost,
       resolver: net.resolver,
       acceptAnyType: true,
