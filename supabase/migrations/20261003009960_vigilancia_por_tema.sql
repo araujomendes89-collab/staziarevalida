@@ -83,6 +83,7 @@ create policy "fontes do tema: equipe lê" on public.ch_topic_sources for select
 drop policy if exists "páginas-índice: equipe lê" on public.ch_index_pages;
 create policy "páginas-índice: equipe lê" on public.ch_index_pages for select to authenticated using (public.is_staff());
 revoke all on table public.ch_topic_dossiers, public.ch_topic_sources, public.ch_index_pages from anon;
+revoke insert, update, delete, truncate on table public.ch_topic_dossiers, public.ch_topic_sources, public.ch_index_pages from authenticated;
 
 -- ---------------------------------------------------------------- 3. situação do tema (portão)
 -- ok | vencido | mudanca_pendente | sem_dossie, com os motivos em português (só para a equipe).

@@ -1,0 +1,60 @@
+== 1) rodada 2 e aula GR-001, na ordem
+  ok   1-fontes-vinculadas/1-Fontes-vinculadas.sql: OK: Fontes vinculadas colada
+  ok   2-similaridade-estrutura/1-Similaridade.sql: (sem linha)
+  ok   3-carga-das-provas/1-aviso-gabarito-preliminar.sql: OK: 1-aviso colada
+  ok   3-carga-das-provas/2-01-correcoes-enamed-2025.sql: OK: ENAMED 2025: 62 questões corrigidas agora (85 campos); 0 campos já estavam corrigidos;
+  ok   3-carga-das-provas/2-02-correcoes-revalida-2020.sql: OK: Revalida 2020: 24 questões corrigidas agora (25 campos); 0 campos já estavam corrigido
+  ok   3-carga-das-provas/2-03-correcoes-revalida-2021.sql: OK: Revalida 2021: 29 questões corrigidas agora (40 campos); 0 campos já estavam corrigido
+  ok   3-carga-das-provas/2-04-correcoes-revalida-2022-1.sql: OK: Revalida 2022/1: 100 questões corrigidas agora (397 campos); 0 campos já estavam corri
+  ok   3-carga-das-provas/2-05-correcoes-revalida-2022-2.sql: OK: Revalida 2022/2: 15 questões corrigidas agora (17 campos); 0 campos já estavam corrigi
+  ok   3-carga-das-provas/2-06-correcoes-revalida-2023-1.sql: OK: Revalida 2023/1: 22 questões corrigidas agora (22 campos); 0 campos já estavam corrigi
+  ok   3-carga-das-provas/2-07-correcoes-revalida-2023-2.sql: OK: Revalida 2023/2: 11 questões corrigidas agora (11 campos); 0 campos já estavam corrigi
+  ok   3-carga-das-provas/2-08-correcoes-revalida-2024-1.sql: OK: Revalida 2024/1: 17 questões corrigidas agora (20 campos); 0 campos já estavam corrigi
+  ok   3-carga-das-provas/2-09-correcoes-revalida-2024-2.sql: OK: Revalida 2024/2: 18 questões corrigidas agora (20 campos); 0 campos já estavam corrigi
+  ok   3-carga-das-provas/2-10-correcoes-revalida-2025-1.sql: OK: Revalida 2025/1: 8 questões corrigidas agora (8 campos); 0 campos já estavam corrigido
+  ok   3-carga-das-provas/2-11-correcoes-revalida-2025-2.sql: OK: Revalida 2025/2: 21 questões corrigidas agora (21 campos); 0 campos já estavam corrigi
+  ok   3-carga-das-provas/2-12-correcoes-revalida-2026-1.sql: OK: Revalida 2026/1: 35 questões corrigidas agora (35 campos); 0 campos já estavam corrigi
+  ok   3-carga-das-provas/3-prova-nova-revalida-2026-2.sql: OK: Revalida 2026/2: 100 questões no banco (100 criadas agora); gabarito atual: PRELIMINAR
+  ok   4-explicacoes/1-Estrutura-carga-das-explicacoes.sql: (sem linha)
+  ok   4-explicacoes/2-Prova-01-revalida_2020_1.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2020 — 96 questões: 96 gravadas
+  ok   4-explicacoes/2-Prova-02-revalida_2021_1.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2021 — 99 questões: 99 gravadas
+  ok   4-explicacoes/2-Prova-03-revalida_2022_1.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2022/1 — 99 questões: 99 gravad
+  ok   4-explicacoes/2-Prova-04-revalida_2022_2.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2022/2 — 99 questões: 99 gravad
+  ok   4-explicacoes/2-Prova-05-revalida_2023_1.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2023/1 — 95 questões: 95 gravad
+  ok   4-explicacoes/2-Prova-06-revalida_2023_2.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2023/2 — 98 questões: 98 gravad
+  ok   4-explicacoes/2-Prova-07-revalida_2024_1.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2024/1 — 98 questões: 98 gravad
+  ok   4-explicacoes/2-Prova-08-revalida_2024_2.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2024/2 — 91 questões: 91 gravad
+  ok   4-explicacoes/2-Prova-09-revalida_2025_1.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2025/1 — 99 questões: 99 gravad
+  ok   4-explicacoes/2-Prova-10-revalida_2025_2.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2025/2 — 97 questões: 97 gravad
+  ok   4-explicacoes/2-Prova-11-revalida_2026_1.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2026/1 — 98 questões: 98 gravad
+  ok   4-explicacoes/2-Prova-12-revalida_2026_2.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2026/2 (gabarito preliminar) — 
+  ok   4-explicacoes/2-Prova-13-enamed_2025.sql: OK: Carga das explicações (Professor e Auditor) · ENAMED 2025 — 98 questões: 98 gravadas, 
+  ok   5-similaridade-perfis/2-Perfis-da-revisao.sql: OK: 1217 perfis da revisão local no banco (1217 neste arquivo; questão que não existe no b
+  ok   aula GR-001: OK: aula GR-001 importada: versão 1, aguardando revisão médica e editorial; 42 afirmações com evidência (42 novas); mate
+== 2) vigilância: antes de colar
+  ok   0-CONFERIR antes: FALTA: tabela ch_auto_change_policy; tabela ch_source_vigilance; tabela ch_vigilance_config; tabela ch_vigilance_items; tabela ch_topic_dossiers; tabela ch_topi
+== 3) 1-Vigilancia.sql, 1ª vez
+  ok   OK: Vigilância científica por tema colada (2 temas com dossiê, 7 páginas-índice, portão desligado) (280 ms)
+  ok   0-CONFERIR depois: OK: Vigilância científica no banco: 159 fontes vigiadas (138 todo dia), 41 com DOI para o Crossref, 7 páginas-índice oficiais, 2 temas com dossiê (Rotina do pré-natal de risco habitual: 5 fontes, vencido; Tuberculose: 3 fontes, vencido); 2 avisos abertos na fila; portão desligado; análise do que mudou desligada.
+  ok   visitante: nenhuma função nova
+  ok   funções novas para quem entrou (todas recusam quem não é da equipe): app_admin_index_page_save(text,text,boolean), app_admin_index_pages(), app_admin_source_quality(uuid), app_admin_source_quality_override(uuid,boolean,text), app_admin_source_set_identifiers(uuid,text,text,text), app_admin_topic(uuid), app_admin_topic_save(uuid,text[],integer,text), app_admin_topic_set_source(uuid,uuid,text), app_admin_topic_verified(uuid,text), app_admin_topics(), app_admin_unit_topic(uuid), app_admin_vigilance_mark(uuid,text,text), app_admin_vigilance_queue(text,integer,integer), app_admin_vigilance_request_analysis(uuid), app_admin_vigilance_set_gate(text), app_admin_vigilance_set_interval(text,integer), app_admin_vigilance_summary()
+  ok   nenhuma tabela nova aberta para gravar
+  ok   dossiê Tuberculose: Guia de Vigilância em Saúde: volume 2 (6 (principal) | Manual de Recomendações para o Controle  (principal) | Nota Informativa nº 5/2024-CGTM/DATHI/SV (principal)
+     dossiê pré-natal: 5 fontes ligadas (as que a biblioteca tem pelo link oficial)
+     vigiadas por frequência: [{"interval_days":1,"n":138},{"interval_days":7,"n":21}]; fora da lista: 0
+     com DOI: 41; itens na fila: [{"kind":"quarentena","n":2}]
+     GR-001: [{"g":{"modo":"desligado","tema":"Tuberculose","status":"vencido","motivos":["O dossiê nunca foi conferido pela equipe.","Fonte \"Guia de Vigilância em Saúde: volume 2 (6ª edição revisada)\" está com a conferência do link atrasada.","Fonte \"Manual de Recomendações para o Controle da Tuberculose no Brasil (2ª edição atualizada)\" está com a conferência do link atrasada.","Fonte \"Nota Informativa nº 5/2024-CGTM/DATHI/SVSA/MS: Implementação do tratamento encurtado da tuberculose sensível não grave e\" está com a conferência do link atrasada."],"tema_id":"f19ccb91-1c89-4e93-8b54-ecef9264dada","verificado_em":null}}]
+  ok   portão desligado: pendências para publicar a GR-001 iguais (22 → 22)
+== 4) 1-Vigilancia.sql, 2ª vez
+  ok   OK: Vigilância científica por tema colada (2 temas com dossiê, 7 páginas-índice, portão desligado)
+  ok   colar 2 vezes não muda nada: 0 diferenças (estrutura, permissões e dados)
+== 5) os 0-CONFERIR anteriores continuam OK
+  ok   1-fontes-vinculadas: OK: Fontes vinculadas no banco (2 tabelas com RLS, função do aluno, 3 funções da equipe, r
+  ok   2-similaridade-estrutura: OK: motor de questões parecidas instalado (6 tabelas com RLS, 7 funções das telas, 10 do p
+  ok   3-carga-das-provas: OK: conferência da carga das provas (701 de 701 campos já fiéis; 0 de 77 questões com imag
+  ok   4-explicacoes: OK: estrutura da carga no banco; ENAMED 2025 98/98 (98 esperando o revisor, 0 no ar); Reva
+  ok   5-similaridade-perfis: OK: motor de questões parecidas instalado (6 tabelas com RLS, 7 funções das telas, 10 do p
+  ok   aula GR-001: OK: aula GR-001 na Central: versão 1, aguardando revisão médica e editorial (na fila "Aguardando rev
+  ok   aula GR-001 colada de novo (casca do portão): OK: aula GR-001 já estava importada (nada mudou): versão 1, aguardando revisão médica e editorial; 4
+
+RESULTADO: tudo OK

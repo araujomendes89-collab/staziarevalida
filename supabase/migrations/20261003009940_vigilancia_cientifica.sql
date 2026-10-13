@@ -368,6 +368,8 @@ drop policy if exists "fila da vigilância: equipe lê" on public.ch_vigilance_i
 create policy "fila da vigilância: equipe lê" on public.ch_vigilance_items for select to authenticated using (public.is_staff());
 
 revoke all on table public.ch_auto_change_policy, public.ch_source_vigilance, public.ch_vigilance_config, public.ch_vigilance_items from anon;
+-- escrita só pelas funções (o RLS já não tem política de escrita; aqui nem o privilégio fica)
+revoke insert, update, delete, truncate on table public.ch_auto_change_policy, public.ch_source_vigilance, public.ch_vigilance_config, public.ch_vigilance_items from authenticated;
 
 -- data de Brasília para os textos
 create or replace function public.ch_br_date(p_at timestamptz) returns text
