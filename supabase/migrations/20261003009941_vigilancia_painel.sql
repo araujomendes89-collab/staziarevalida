@@ -7,8 +7,7 @@
 -- revoke). Cada decisão vai para o Registro da Administração (admin_audit_log).
 -- Vocabulário que o banco devolve: fonte.nivel = nível de autoridade da biblioteca (A a E; nulo = não informado);
 -- fonte.status = situação na biblioteca (current = vigente, superseded = substituída, withdrawn = retirada/retratada/bloqueada).
--- Recria, partindo da 9610 (nenhuma migração depois a mudou): ch_worker_ai_save_function e app_ai_summary, com a 8ª função
--- (analise_mudancas). As restrições ch_jobs_step_check e ai_functions_key_check são refeitas com a UNIÃO do que existe.
+-- Precisa da 9910 (ai_function_keys). Função nova da Central de IAs: analise_mudancas. As restrições ch_jobs_step_check e ai_functions_key_check são refeitas com a UNIÃO do que existe.
 -- Pode ser colada mais de uma vez.
 -- =============================================================================
 
@@ -32,100 +31,8 @@ begin
 end
 $union$;
 
--- Corpo da 9610 + 'analise_mudancas' (sem configuração salva fica desligada; não busca na internet).
-create or replace function public.ch_worker_ai_save_function(p_actor uuid, p_key text, p_config jsonb) returns jsonb
-  language plpgsql security definer set search_path = ''
-as $$
-declare
-  v public.ai_functions;
-  v_mode text;
-  v_care text;
-  v_reviewers jsonb;
-  v_item jsonb;
-  v_max smallint;
-  v_max_n numeric;
-begin
-  perform public.ai_assert_admin_actor(p_actor);
-  if p_key is null or p_key not in ('criacao', 'verificacao', 'engenharia_reversa', 'assistente_preencher', 'assistente_conferir', 'assistente_revisar', 'busca_fontes', 'analise_mudancas') then
-    raise exception 'Função de IA desconhecida: %.', p_key using errcode = '22023';
-  end if;
-  if p_config is null or jsonb_typeof(p_config) = 'null' then
-    delete from public.ai_functions where key = p_key;
-    insert into public.admin_audit_log (actor_id, action, target, details)
-    values (p_actor, 'ai.function', p_key, jsonb_build_object('removed', true));
-    return null;
-  end if;
-  if jsonb_typeof(p_config) <> 'object' then raise exception 'Configuração inválida.' using errcode = '22023'; end if;
-  v_mode := p_config ->> 'mode';
-  v_care := coalesce(p_config ->> 'care', 'caprichado');
-  v_reviewers := coalesce(p_config -> 'reviewers', '[]'::jsonb);
-  if v_mode is null or v_mode not in ('sozinha', 'linha', 'comite') then raise exception 'Modo inválido: %.', v_mode using errcode = '22023'; end if;
-  if v_care not in ('rapido', 'caprichado') then raise exception 'Cuidado inválido: %.', v_care using errcode = '22023'; end if;
-  if jsonb_typeof(v_reviewers) <> 'array' or jsonb_array_length(v_reviewers) > 4 then
-    raise exception 'No máximo 4 conferentes ou membros.' using errcode = '22023';
-  end if;
-  if jsonb_typeof(p_config -> 'primary_ref') = 'object' and not public.ai_valid_ref(p_config -> 'primary_ref') then
-    raise exception 'IA ou modelo principal inválido.' using errcode = '22023';
-  end if;
-  if jsonb_typeof(p_config -> 'fallback_ref') = 'object' and not public.ai_valid_ref(p_config -> 'fallback_ref') then
-    raise exception 'IA ou modelo da reserva inválido.' using errcode = '22023';
-  end if;
-  for v_item in select * from jsonb_array_elements(v_reviewers) loop
-    if not public.ai_valid_ref(v_item) then raise exception 'IA ou modelo de conferente inválido.' using errcode = '22023'; end if;
-  end loop;
-  if p_key = 'busca_fontes' then
-    if v_mode <> 'sozinha' then raise exception 'A busca de fontes oficiais só usa o modo sozinha.' using errcode = '22023'; end if;
-    if jsonb_array_length(v_reviewers) > 0 then
-      raise exception 'A busca de fontes oficiais não tem conferentes: escolha só a IA principal e a reserva.' using errcode = '22023';
-    end if;
-    if (p_config #>> '{primary_ref,provider}') = 'ollama' or (p_config #>> '{fallback_ref,provider}') = 'ollama' then
-      raise exception 'Ollama não busca na internet.' using errcode = '22023';
-    end if;
-    if (p_config #>> '{primary_ref,provider}') = 'gemini' or (p_config #>> '{fallback_ref,provider}') = 'gemini' then
-      raise exception 'A busca de fontes oficiais não funciona com o Gemini: ele não consegue limitar a pesquisa aos sites oficiais. Escolha Claude ou OpenAI.' using errcode = '22023';
-    end if;
-    if jsonb_typeof(p_config -> 'max_searches') = 'number' then
-      v_max_n := (p_config ->> 'max_searches')::numeric;
-      if v_max_n <> trunc(v_max_n) or v_max_n not between 1 and 10 then
-        raise exception 'Máximo de buscas por pedido: de 1 a 10.' using errcode = '22023';
-      end if;
-      v_max := v_max_n::smallint;
-    elsif coalesce(jsonb_typeof(p_config -> 'max_searches'), 'null') <> 'null' then
-      raise exception 'Máximo de buscas por pedido: de 1 a 10.' using errcode = '22023';
-    end if;
-  end if;
-  insert into public.ai_functions (key, mode, primary_ref, fallback_ref, reviewers, care, max_searches, updated_by, updated_at)
-  values (p_key, v_mode,
-          case when jsonb_typeof(p_config -> 'primary_ref') = 'object' then p_config -> 'primary_ref' end,
-          case when jsonb_typeof(p_config -> 'fallback_ref') = 'object' then p_config -> 'fallback_ref' end,
-          v_reviewers, v_care, v_max, p_actor, now())
-  on conflict (key) do update
-     set mode = excluded.mode, primary_ref = excluded.primary_ref, fallback_ref = excluded.fallback_ref,
-         reviewers = excluded.reviewers, care = excluded.care, max_searches = excluded.max_searches,
-         updated_by = excluded.updated_by, updated_at = excluded.updated_at
-  returning * into v;
-  insert into public.admin_audit_log (actor_id, action, target, details)
-  values (p_actor, 'ai.function', p_key, to_jsonb(v) - 'key' - 'updated_by' - 'updated_at');
-  return to_jsonb(v);
-end
-$$;
-
--- Equipe: as 8 funções (sem preços nem chaves).
-create or replace function public.app_ai_summary() returns jsonb
-  language plpgsql stable security definer set search_path = ''
-as $$
-begin
-  perform public.assert_staff();
-  return jsonb_build_object(
-    'functions', (select jsonb_agg(jsonb_build_object('key', k.key, 'configured', f.key is not null, 'mode', f.mode) order by k.ord)
-                    from unnest(array['criacao', 'verificacao', 'engenharia_reversa', 'assistente_preencher', 'assistente_conferir', 'assistente_revisar', 'busca_fontes', 'analise_mudancas'])
-                         with ordinality as k(key, ord)
-                    left join public.ai_functions f on f.key = k.key),
-    'providers_enabled', coalesce((select jsonb_agg(id order by id) from public.ai_providers where enabled), '[]'::jsonb),
-    'month_spend', public.ch_worker_ai_month_spend(now())
-  );
-end
-$$;
+-- ch_worker_ai_save_function e app_ai_summary já leem a lista de funções da restrição (ai_function_keys, migração 9910):
+-- basta a união acima para a função nova aparecer e poder ser salva.
 
 -- "Análise do que mudou" ligada: configuração salva com IA principal (ou reserva) LIGADA na Central de IAs.
 create or replace function public.ch_vigilance_analysis_on() returns boolean
@@ -458,13 +365,13 @@ declare f text;
 begin
   for f in select p.oid::regprocedure::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.proname in ('ch_vigilance_analysis_on', 'ch_vigilance_item_json', 'ch_vigilance_block',
-             'ch_worker_vigilance_analysis_input', 'ch_worker_vigilance_analysis_save', 'ch_vigilance_analysis_job_dead', 'ch_worker_ai_save_function') loop
+             'ch_worker_vigilance_analysis_input', 'ch_worker_vigilance_analysis_save', 'ch_vigilance_analysis_job_dead') loop
     execute format('revoke execute on function %s from public, anon, authenticated', f);
   end loop;
   for f in select p.oid::regprocedure::text from pg_proc p join pg_namespace n on n.oid = p.pronamespace
            where n.nspname = 'public' and p.proname in ('app_admin_vigilance_summary', 'app_admin_vigilance_queue', 'app_admin_vigilance_mark',
              'app_admin_vigilance_set_interval', 'app_admin_source_quality', 'app_admin_source_quality_override', 'app_admin_source_set_identifiers',
-             'app_admin_vigilance_request_analysis', 'app_ai_summary') loop
+             'app_admin_vigilance_request_analysis') loop
     execute format('revoke execute on function %s from public, anon', f);
     execute format('grant execute on function %s to authenticated', f);
   end loop;

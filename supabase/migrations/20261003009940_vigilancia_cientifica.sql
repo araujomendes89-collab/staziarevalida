@@ -26,7 +26,7 @@
 --
 -- Só a equipe lê (RLS); escrita só pelas funções; aluno e anônimo nunca veem nada disto.
 -- Pode ser colada mais de uma vez (if not exists / create or replace / drop ... if exists / on conflict).
--- Numeração: 20261003009920 (9900 fontes vinculadas e 9910 similaridade estão reservados em outros ramos).
+-- Numeração: 20261003009940 (depois da rodada 2 e das explicações; 9950 é a importação de aula pronta).
 -- Redefine (partindo das versões mais novas): ch_worker_watch_due (2800, agora com lote), ch_worker_watch_result (2800, vira
 -- atalho para ch_worker_watch_report). Quem mexer nelas depois parte do corpo desta.
 -- =============================================================================
