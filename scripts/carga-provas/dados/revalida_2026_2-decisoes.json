@@ -1,0 +1,5 @@
+{
+ "nota": "Decisões do dono para a prova 2026/2. A grande área é obrigatória no banco: Q74 e Q93 vieram sem área na extração e ficam FORA da carga até o dono escolher (CLINICA_MEDICA, CIRURGIA_GERAL, GINECOLOGIA_OBSTETRICIA, PEDIATRIA ou MEDICINA_FAMILIA_COMUNIDADE). Depois de preencher, rode de novo o gerador e cole a parte 3 de novo (as que já entraram não mudam).",
+ "areas": { "74": null, "93": null },
+ "tema_provisorio": "Revalida 2026/2 · Q{n} · tema a classificar"
+}

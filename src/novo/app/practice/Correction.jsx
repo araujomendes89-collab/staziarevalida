@@ -47,6 +47,18 @@ export function Verdict({ selected, correction }) {
   );
 }
 
+export const PRELIMINARY_NOTICE = "Gabarito preliminar do Inep: pode mudar quando o Inep publicar o definitivo.";
+
+/** Aviso discreto: o gabarito oficial desta questão ainda é o preliminar do Inep. */
+export function PreliminaryNotice() {
+  return (
+    <div role="note" style={{ display: "flex", gap: 8, alignItems: "flex-start", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+      <Icon name="info" size={16} style={{ color: "var(--info-text)", flex: "none", marginTop: 2 }} />
+      <span>{PRELIMINARY_NOTICE}</span>
+    </div>
+  );
+}
+
 /** Diagnóstico do erro: só aparece para quem errou, e só com o que a análise revisada por médico diz da alternativa marcada. */
 function ErrorDiagnosis({ questionId }) {
   const { backend } = useSession();
@@ -143,6 +155,8 @@ export function Correction({ selected, correction, question, tutorContext = "que
   return (
     <>
       <Verdict selected={selected} correction={correction} />
+      {/* gabarito oficial ainda preliminar (o banco diz answer_preliminary; some quando o definitivo for registrado) */}
+      {!staz && !annulled && correction.answer_preliminary === true && <PreliminaryNotice />}
       {/* anulada: o Tutor não abre questão anulada (responderia "Questão não encontrada."), então o botão não aparece */}
       {staz && !annulled && (
         <div style={{ font: "600 15px var(--font-sans)" }}>
