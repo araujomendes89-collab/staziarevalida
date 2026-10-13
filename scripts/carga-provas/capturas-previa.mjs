@@ -43,7 +43,10 @@ const ALVOS = [
   ["2026-2-q001_gabarito-preliminar", "revalida_2026_2_q001", "Revalida 2026/2"],
   ["2026-2-q029_figura-e-gabarito-preliminar", "revalida_2026_2_q029", "Revalida 2026/2"],
   ["2026-2-q037_figura-tabela-e-gabarito-preliminar", "revalida_2026_2_q037", "Revalida 2026/2"],
+  ["2026-2-q074_area-decidida-pelo-dono", "revalida_2026_2_q074", "Revalida 2026/2"],
 ];
+// 2026/2: marca uma alternativa ERRADA (para a questão cair no caderno de erros e mostrar o selo lá também)
+const gabarito262 = new Map(lerJson("revalida_2026_2.json").map((q) => [q.id, q.correct_option]));
 
 const b = await chromium.launch({ executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless: true });
 const rel = [];
@@ -79,15 +82,37 @@ try {
     const imgs = [];
     for (let i = 0; i < nfig; i++) imgs.push(await figs.nth(i).evaluate((x) => ({ ok: x.complete && x.naturalWidth > 0, alt: x.alt.slice(0, 60) })));
     await p.screenshot({ path: `${OUT}/aluno_${nome}_1-questao.png`, fullPage: true });
-    await p.getByRole("radio").first().click();
+    const certa = gabarito262.get(id);
+    await p.getByRole("radio").nth(certa ? (["A", "B", "C", "D"].indexOf(certa) === 0 ? 1 : 0) : 0).click();
     await p.getByRole("button", { name: "Confirmar" }).click();
     await p.waitForTimeout(2500);
     const corpo = await p.innerText("body");
-    const aviso = corpo.includes("Gabarito preliminar do Inep: pode mudar quando o Inep publicar o definitivo.");
+    const aviso = corpo.includes("GABARITO PRELIMINAR") && corpo.includes("O gabarito definitivo só será divulgado pelo Inep em 04/12/2026.");
     await p.screenshot({ path: `${OUT}/aluno_${nome}_2-correcao.png`, fullPage: true });
-    rel.push({ nome, id, termos, cabecalho: ref, imagens: imgs, aviso_gabarito_preliminar: aviso });
-    console.log(nome, "| imagens:", imgs.length, imgs.every((i) => i.ok) ? "carregadas" : "COM FALHA", "| aviso preliminar:", aviso);
+    let noResultado = null;
+    if (certa) {
+      await p.getByRole("button", { name: /Concluir/ }).click();
+      await p.waitForTimeout(2500);
+      await p.getByRole("button", { name: /GABARITO PRELIMINAR|Revalida 2026\/2/ }).first().click().catch(() => {});
+      await p.waitForTimeout(1200);
+      noResultado = (await p.innerText("body")).includes("GABARITO PRELIMINAR");
+      await p.screenshot({ path: `${OUT}/aluno_${nome}_3-resultado-da-sessao.png`, fullPage: true });
+    }
+    rel.push({ nome, id, termos, cabecalho: ref, imagens: imgs, aviso_gabarito_preliminar: aviso, selo_no_resultado: noResultado });
+    console.log(nome, "| imagens:", imgs.length, imgs.every((i) => i.ok) ? "carregadas" : "COM FALHA", "| selo/frase:", aviso, "| no resultado:", noResultado);
   }
+  // caderno de erros: a lista com o selo e uma questão da 2026/2 aberta
+  await p.goto(URL, { waitUntil: "networkidle" });
+  await p.waitForTimeout(1200);
+  await p.getByText("Caderno de erros", { exact: true }).first().click();
+  await p.waitForTimeout(2500);
+  await p.screenshot({ path: `${OUT}/aluno_caderno-de-erros_1-lista.png`, fullPage: true });
+  await p.getByRole("button", { name: /Revalida 2026\/2/ }).first().click().catch(() => {});
+  await p.waitForTimeout(2500);
+  const noCaderno = (await p.innerText("body")).includes("O gabarito definitivo só será divulgado pelo Inep em 04/12/2026.");
+  await p.screenshot({ path: `${OUT}/aluno_caderno-de-erros_2-questao-2026-2.png`, fullPage: true });
+  rel.push({ nome: "caderno-de-erros", selo_e_frase: noCaderno });
+  console.log("caderno de erros | selo e frase:", noCaderno);
   // equipe
   const e = await (await b.newContext({ viewport: { width: 1280, height: 1100 } })).newPage();
   await e.goto(URL, { waitUntil: "networkidle" });

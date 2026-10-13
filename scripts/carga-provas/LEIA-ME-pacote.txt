@@ -11,24 +11,31 @@ O QUE ESTA PASTA FAZ
      2023/2 12 (11) · 2024/1 25 (17) · 2024/2 26 (18) · 2025/1 8 (8) · 2025/2 27 (21) · 2026/1 45 (35).
   2. Tabelas como imagem: 56 tabelas que estavam "achatadas" no texto viram imagem (recorte do PDF) e o trecho achatado sai do enunciado.
      Figuras que faltavam: 5 (2020 Q25 e Q47, 2023/2 Q79, 2025/2 Q58 e 2024/2 Q46, que troca a imagem antiga só com o 1º ECG).
-  3. Prova nova Revalida 2026/2: 98 questões com o GABARITO PRELIMINAR do Inep (as 100 letras conferidas com o PDF do gabarito: 0 diferenças),
-     com 8 figuras e 10 tabelas (18 imagens). O aluno vê, depois de responder, o aviso discreto
-     "Gabarito preliminar do Inep: pode mudar quando o Inep publicar o definitivo." O definitivo entra depois pela função oficial de registro do
-     gabarito (Administração > Questões > Gabarito oficial, situação "definitivo") e o aviso some sozinho.
+  3. Prova nova Revalida 2026/2: as 100 questões com o GABARITO PRELIMINAR do Inep (as 100 letras conferidas com o PDF do gabarito: 0 diferenças),
+     com 8 figuras e 10 tabelas (18 imagens). Q74 entra em Medicina de Família e Comunidade e Q93 em Cirurgia Geral (escolha do dono).
+     Em TODAS elas o aluno vê, de forma clara, o selo "GABARITO PRELIMINAR" e a frase "O gabarito definitivo só será divulgado pelo Inep em
+     04/12/2026.": no treino e no simulado (antes de responder), na correção, no resultado da sessão e no caderno de erros (lista e questão aberta).
+     A data é DADO da prova (exams.final_answer_expected_on), não está no código: DATA INFORMADA PELO DONO, CONFIRMAR NO CRONOGRAMA DO INEP
+     (a fonte oficial ainda não está na biblioteca). Para trocar sem publicar o site:
+        update public.exams set final_answer_expected_on = 'AAAA-MM-DD' where id = 'revalida-2026-2';
+     Quando o Inep publicar o definitivo, registre-o pela função oficial do gabarito (Administração > Questões > Gabarito oficial, situação
+     "definitivo"): o selo some sozinho daquela questão (testado).
   4. Marca "Cita figura" ligada onde os relatórios apontaram (10 questões que já têm figura) e em todas as questões que passam a depender
-     da imagem (as 56 com tabela, as 5 figuras novas e as 16 da 2026/2). Questão marcada sem imagem fica fora dos treinos (regra do sistema).
+     da imagem (as 56 com tabela, as 5 figuras novas e as 16 da 2026/2 com figura ou tabela). Questão marcada sem imagem fica fora dos treinos (regra do sistema).
 
 ORDEM (siga assim; depois desta carga vem a carga das EXPLICAÇÕES, do ramo carga-explicacoes, que depende desta)
   0. Rode 0-CONFERIR.sql (só lê). A primeira linha começa com "OK:" (ou "ATENÇÃO:"/"FALTA:"). Mostre ao Claude.
-  1. 1-aviso-gabarito-preliminar.sql (migração 9930; não colide com a 9920 das explicações).
+  1. 1-aviso-gabarito-preliminar.sql (migração 9930: o selo e a coluna da data; não colide com a 9920 das explicações).
+     Se um dia colarem de novo a 9620 ou a 9801, colem esta parte 1 de novo depois.
   2. As 12 partes 2-01 a 2-12 (uma por prova), na ordem.
   3. 3-prova-nova-revalida-2026-2.sql
   4. O Claude envia as 79 imagens ao depósito "question-figures" (SÓ com a sua autorização):
        npx tsx scripts/carga-provas/subir-imagens.mjs --enviar --env-file "<pasta do projeto>/.env"
      Sem "--enviar" o script só simula (é o padrão): confere os 79 arquivos e não envia nada. Ele nunca sobrescreve arquivo diferente.
   5. 4-ligar-imagens-DEPOIS-do-envio.sql (se faltar alguma imagem no depósito, ele para e não muda nada).
-  6. 0-CONFERIR.sql de novo: deve dizer "OK: ... 701 de 701 campos já fiéis; 77 de 77 questões com imagem ligada; 2026/2 com 98 questões".
-  7. O site novo (ramo carga-provas: aviso do gabarito preliminar na correção). SQL antes do site; se o site for antes, o aviso só não aparece.
+  6. 0-CONFERIR.sql de novo: deve dizer "OK: ... 701 de 701 campos já fiéis; 77 de 77 questões com imagem ligada; 2026/2 com 100 questões"
+     e, na linha 40, "sim / 04/12/2026".
+  7. O site novo (ramo carga-provas: o selo do gabarito preliminar). SQL antes do site; se o site for antes, o selo só não aparece.
   8. Depois, a carga das explicações.
   (5-OPCIONAL-... só se você decidir; ver abaixo.)
 
@@ -50,7 +57,8 @@ PRÉVIA ("como vai ficar")
   - O app de prévia (banco LOCAL de teste, porta 31914): http://127.0.0.1:31914/novo
       aluno.teste@previa.local / Previa-Aluno-2026!   (Questões > escolha a prova > Status "Todas")
       equipe.teste@previa.local / Previa-Equipe-2026!  (Administração > Questões > Editar > Ver histórico de mudanças)
-  - Capturas de tela: pasta previa-capturas/ (aluno: questão e correção de 13 questões reais; equipe: editor e histórico).
+  - Capturas de tela: pasta previa-capturas/ (aluno: questão e correção de 14 questões reais, resultado da sessão e caderno de erros
+    com o selo da 2026/2; equipe: editor e histórico).
 
 EFEITOS QUE VOCÊ PRECISA SABER
   - Análise Stazia: regra do sistema (9500) tira do ar a análise publicada de questão cujo enunciado ou alternativa mudou. O 0-CONFERIR
@@ -64,8 +72,7 @@ EFEITOS QUE VOCÊ PRECISA SABER
 
 O QUE FICA PARA VOCÊ DECIDIR
   1. Autorizar o envio das 79 imagens (passo 4) e a colagem.
-  2. 2026/2 Q74 e Q93 vieram SEM grande área (o banco exige). Ficam fora até você escolher; o Claude preenche
-     scripts/carga-provas/dados/revalida_2026_2-decisoes.json e gera a parte 3 de novo.
+  2. Confirmar no cronograma do Inep a data 04/12/2026 do gabarito definitivo da 2026/2 (informada por você).
   3. Tema provisório da 2026/2 ("Revalida 2026/2 · Qnn · tema a classificar"): o tema de verdade vem na carga das explicações.
      As áreas da 2026/2 foram classificadas na extração (não pelo Inep); dúvidas: Q14, Q39, Q45, Q65, Q79, Q88, Q91.
   4. 5-OPCIONAL-liberar-revalida-2023-1-Q001.sql: a Q1 de 2023/1 está marcada "cita figura" sem figura, por isso fora dos treinos; a prova não
