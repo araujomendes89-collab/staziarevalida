@@ -39,7 +39,7 @@ import { AchievementsScreen } from "./play/AchievementsScreen.jsx";
 // [título, subtítulo] de cada rota (o início é montado com nome e data reais).
 const TITLES = {
   aulas: ["Aulas teórico-práticas", "Estudar · conteúdo audiovisual por grande área"],
-  temas: ["Grandes Temas do Revalida", "Estudar · incidência real nas provas oficiais"],
+  temas: ["Grandes Temas do Revalida", "Estudar · os 100 temas prioritários, com as questões oficiais de cada um"],
   atualizacoes: ["Atualizações", "Estudar · o que mudou nas condutas e onde conferir"],
   hoje: ["Plano de hoje", "Estudar · praticar · revisar"],
   questoes: ["Questões", "Monte seu treino"],
