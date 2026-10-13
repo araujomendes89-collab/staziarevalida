@@ -1,0 +1,87 @@
+STAZIAMED REVALIDA - CARGA DAS PROVAS CORRIGIDAS (feito em 12 e 13/10/2026, ramo carga-provas)
+
+NADA FOI ENVIADO À PRODUÇÃO. Nenhum SQL foi colado no banco de verdade, nenhuma imagem foi enviada ao depósito, nenhuma chave foi usada.
+Antes de qualquer envio, veja "como vai ficar" (abaixo, PRÉVIA) e diga ao Claude se pode seguir.
+
+O QUE ESTA PASTA FAZ
+  1. Texto fiel ao PDF oficial: 880 correções em 362 questões de 12 provas (701 campos: enunciado ou alternativa).
+     Tipos: lixo de OCR 381, sobrescrito/subscrito (m², O₂…) 187, caractere 142, unidade 57, símbolo 48, texto que faltava 33,
+     texto fora de ordem 23, texto a mais 7, selo 1, código 1.
+     Por prova: ENAMED 2025 133 (62 questões) · Revalida 2020 49 (24) · 2021 60 (29) · 2022/1 442 (100) · 2022/2 22 (15) · 2023/1 31 (22) ·
+     2023/2 12 (11) · 2024/1 25 (17) · 2024/2 26 (18) · 2025/1 8 (8) · 2025/2 27 (21) · 2026/1 45 (35).
+  2. Tabelas como imagem: 56 tabelas que estavam "achatadas" no texto viram imagem (recorte do PDF) e o trecho achatado sai do enunciado.
+     Figuras que faltavam: 5 (2020 Q25 e Q47, 2023/2 Q79, 2025/2 Q58 e 2024/2 Q46, que troca a imagem antiga só com o 1º ECG).
+  3. Prova nova Revalida 2026/2: 98 questões com o GABARITO PRELIMINAR do Inep (as 100 letras conferidas com o PDF do gabarito: 0 diferenças),
+     com 8 figuras e 10 tabelas (18 imagens). O aluno vê, depois de responder, o aviso discreto
+     "Gabarito preliminar do Inep: pode mudar quando o Inep publicar o definitivo." O definitivo entra depois pela função oficial de registro do
+     gabarito (Administração > Questões > Gabarito oficial, situação "definitivo") e o aviso some sozinho.
+  4. Marca "Cita figura" ligada onde os relatórios apontaram (10 questões que já têm figura) e em todas as questões que passam a depender
+     da imagem (as 56 com tabela, as 5 figuras novas e as 16 da 2026/2). Questão marcada sem imagem fica fora dos treinos (regra do sistema).
+
+ORDEM (siga assim; depois desta carga vem a carga das EXPLICAÇÕES, do ramo carga-explicacoes, que depende desta)
+  0. Rode 0-CONFERIR.sql (só lê). A primeira linha começa com "OK:" (ou "ATENÇÃO:"/"FALTA:"). Mostre ao Claude.
+  1. 1-aviso-gabarito-preliminar.sql (migração 9930; não colide com a 9920 das explicações).
+  2. As 12 partes 2-01 a 2-12 (uma por prova), na ordem.
+  3. 3-prova-nova-revalida-2026-2.sql
+  4. O Claude envia as 79 imagens ao depósito "question-figures" (SÓ com a sua autorização):
+       npx tsx scripts/carga-provas/subir-imagens.mjs --enviar --env-file "<pasta do projeto>/.env"
+     Sem "--enviar" o script só simula (é o padrão): confere os 79 arquivos e não envia nada. Ele nunca sobrescreve arquivo diferente.
+  5. 4-ligar-imagens-DEPOIS-do-envio.sql (se faltar alguma imagem no depósito, ele para e não muda nada).
+  6. 0-CONFERIR.sql de novo: deve dizer "OK: ... 701 de 701 campos já fiéis; 77 de 77 questões com imagem ligada; 2026/2 com 98 questões".
+  7. O site novo (ramo carga-provas: aviso do gabarito preliminar na correção). SQL antes do site; se o site for antes, o aviso só não aparece.
+  8. Depois, a carga das explicações.
+  (5-OPCIONAL-... só se você decidir; ver abaixo.)
+
+COMO COLAR
+  Editor SQL do Supabase, o arquivo INTEIRO, sem selecionar nada, Run. Cada parte termina com uma linha "OK: ..." (ou "ATENÇÃO: ..." com a
+  lista do que foi pulado). Se der erro, pare e mostre ao Claude. Todas podem ser coladas de novo: a segunda vez não muda nada.
+
+COMO A TROCA É SEGURA
+  - Cada campo só muda se o texto no banco ainda é EXATAMENTE o de 12/10/2026 (o que a revisão comparou com o PDF). Se alguém editou depois,
+    o campo é pulado e listado. Nada é apagado: o texto antigo fica no histórico da questão (Administração > Questões > Editar > Ver histórico
+    de mudanças), com o motivo, e o Registro de ações anota cada questão.
+  - Não mexe em gabarito, situação (anulada), explicações, conduta esperada, "o que a questão avalia", tema nem fontes.
+
+PRÉVIA ("como vai ficar")
+  - Antes x depois das 880 correções, por prova e por tipo, com o recorte do PDF; tabelas e figuras novas ao lado da página do PDF; a 2026/2;
+    e a lista unificada das dúvidas dos relatórios:
+      /private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/previa-correcoes.html
+    (abra no navegador; é um arquivo temporário deste computador: o Claude gera de novo com scripts/carga-provas/gerar-previa.mjs).
+  - O app de prévia (banco LOCAL de teste, porta 31914): http://127.0.0.1:31914/novo
+      aluno.teste@previa.local / Previa-Aluno-2026!   (Questões > escolha a prova > Status "Todas")
+      equipe.teste@previa.local / Previa-Equipe-2026!  (Administração > Questões > Editar > Ver histórico de mudanças)
+  - Capturas de tela: pasta previa-capturas/ (aluno: questão e correção de 13 questões reais; equipe: editor e histórico).
+
+EFEITOS QUE VOCÊ PRECISA SABER
+  - Análise Stazia: regra do sistema (9500) tira do ar a análise publicada de questão cujo enunciado ou alternativa mudou. O 0-CONFERIR
+    mostra quantas existem hoje (linha 50); cada parte 2 diz quantas saíram.
+  - Explicações (ramo carga-explicacoes): nas questões com tabela, o enunciado perde o trecho achatado; onde o Professor leu o texto COM a
+    tabela, a explicação vai para a revisão médica em vez de entrar direto (regra B). Nada se perde.
+  - A imagem aparece depois do texto do enunciado e antes da pergunta (o app não põe imagem no meio do texto). Ex.: 2023/2 Q22 diz
+    "apresentaram o seguinte resultado:" e a tabela vem depois do parágrafo do ultrassom. Veja nas capturas.
+  - Com 2 imagens (2026/2 Q37 e Q81) a tela escreve "Figura 1" e "Figura 2" (também na tabela).
+  - Algumas legendas/fontes das figuras ficam repetidas no texto e dentro da imagem (2020 Q25 e Q47, 2023/2 Q79, 2024/2 Q46).
+
+O QUE FICA PARA VOCÊ DECIDIR
+  1. Autorizar o envio das 79 imagens (passo 4) e a colagem.
+  2. 2026/2 Q74 e Q93 vieram SEM grande área (o banco exige). Ficam fora até você escolher; o Claude preenche
+     scripts/carga-provas/dados/revalida_2026_2-decisoes.json e gera a parte 3 de novo.
+  3. Tema provisório da 2026/2 ("Revalida 2026/2 · Qnn · tema a classificar"): o tema de verdade vem na carga das explicações.
+     As áreas da 2026/2 foram classificadas na extração (não pelo Inep); dúvidas: Q14, Q39, Q45, Q65, Q79, Q88, Q91.
+  4. 5-OPCIONAL-liberar-revalida-2023-1-Q001.sql: a Q1 de 2023/1 está marcada "cita figura" sem figura, por isso fora dos treinos; a prova não
+     tem figura nela. O banco não deixa tirar a marca sem figura; este arquivo desliga essa regra só durante a mudança. Só cole se quiser.
+  5. 2024/2 Q73: as três tabelas viram uma imagem só, e o parágrafo entre elas (fototerapia, 36 horas de vida) sai do texto e fica dentro da
+     imagem. 2025/1 Q29 e Q83: a frase entre as duas tabelas também fica só na imagem.
+  6. Grafias da própria prova mantidas de propósito (ex.: "cmH₂0", "Growht", "oxigêncio", "CO²"), ºC x °C, ponto no ordinal ("1.º") e
+     subscritos (O₂): a lista completa está em "Dúvidas" na prévia.
+  7. key_finding (campo interno) com sujeira de rodapé em 2021, 2022/1, 2023/1 e 2025/1: NÃO foi mexido (fora do pedido).
+  8. 6 questões com figura e marca "cita figura" desligada que os relatórios NÃO apontaram (ENAMED Q5 e Q96, 2023/1 Q100, 2025/2 Q5, Q91, Q100):
+     não mexi.
+  9. Cadernos chamados "preliminar" usados na revisão (ENAMED 2025 e 2025/2): vale conferir se o caderno definitivo do Inep tem o mesmo texto.
+
+REGISTRO À PARTE (não muda nada): ver REGISTRO-gabarito-revalida-2020.txt.
+
+LIMITES (honestos)
+  - Ensaio feito num Postgres de teste (PGlite) com TODAS as migrações e as questões reais do export da produção de 12/10/2026, e no banco
+    local da prévia; não no Supabase de verdade. O depósito de arquivos foi simulado (o envio real nunca rodou).
+  - Se a produção mudou depois do export, a parte 2 pula o campo e avisa; a parte 4 pula a questão e avisa.
