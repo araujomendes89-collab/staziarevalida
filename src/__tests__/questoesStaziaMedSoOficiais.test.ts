@@ -113,6 +113,20 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   ch_worker_question_figure_drop: { classe: "as_duas", como: "equipe" },
   question_comment_review_missing: { classe: "as_duas", como: "equipe" },
   app_ch_complementar_mentions: { classe: "as_duas", como: "equipe" },
+  // questões parecidas (9910): o motor compara as duas coleções (uma inédita pode repetir uma oficial); só a equipe e o servidor
+  app_admin_similarity_status: { classe: "as_duas", como: "equipe" },
+  ch_worker_similarity_candidates: { classe: "as_duas", como: "equipe" },
+  ch_worker_similarity_doubtful: { classe: "as_duas", como: "equipe" },
+  ch_worker_similarity_save: { classe: "as_duas", como: "equipe" },
+  ch_worker_similarity_save_embeddings: { classe: "as_duas", como: "equipe" },
+  similarity_pair_in_scope: { classe: "as_duas", como: "equipe" },
+  similarity_profiles: { classe: "as_duas", como: "equipe" },
+  similarity_relation_item: { classe: "as_duas", como: "equipe" },
+  similarity_texts: { classe: "as_duas", como: "equipe" },
+  similarity_vector_neighbors: { classe: "as_duas", como: "equipe" },
+  // questões parecidas, lado do aluno: decidem pelo acesso (a inédita só para quem tem plano ou teste em dia)
+  app_related_questions: { classe: "as_duas", como: "historico" },
+  app_start_related_question: { classe: "as_duas", como: "historico" },
   // visões
   my_area_stats: { classe: "as_duas", como: "historico" },
   my_topic_stats: { classe: "as_duas", como: "historico" },
