@@ -45,7 +45,9 @@ export type Bloco =
   | { t: "tabela"; c: VisualContent }
   | { t: "passos"; c: VisualContent }
   | { t: "mudou"; itens: { titulo: string; md: string }[] }
-  | { t: "caso"; md: string };
+  | { t: "caso"; md: string }
+  | { t: "aviso"; titulo: string; md: string }
+  | { t: "nota"; md: string };
 
 export interface Secao {
   id: string;
@@ -99,7 +101,7 @@ export interface Aula {
 // ---------------------------------------------------------------------------- markdown simples → blocos
 interface MdSec {
   titulo: string;
-  itens: ({ k: "p"; s: string } | { k: "li"; s: string } | { k: "h3"; s: string })[];
+  itens: ({ k: "p"; s: string } | { k: "li"; s: string } | { k: "h3"; s: string } | { k: "q"; s: string })[];
 }
 
 export function lerMarkdown(md: string): { titulo: string; meta: string; secoes: MdSec[] } {
@@ -132,6 +134,17 @@ export function lerMarkdown(md: string): { titulo: string; meta: string; secoes:
     if (/^###\s+/.test(l)) {
       fecha();
       cur.itens.push({ k: "h3", s: l.replace(/^###\s+/, "") });
+      continue;
+    }
+    if (/^>\s?/.test(l)) {
+      fecha();
+      cur.itens.push({ k: "q", s: l.replace(/^>\s?/, "") });
+      continue;
+    }
+    // marcação de figura do roteiro: a figura é a tabela da página A4, que o montador encaixa
+    if (/^[*_]?\[figura:.*\][*_]?$/i.test(l)) {
+      fecha();
+      cur.itens.push({ k: "p", s: "{{FIGURA_TABELA}}" });
       continue;
     }
     if (/^[-*]\s+/.test(l)) {
@@ -182,6 +195,7 @@ export function montarSecoes(md: MdSec[], a4: VisualContent | null, limpar: (s: 
   const out: Secao[] = [];
   let n = 0;
   let tabelaUsada = false;
+  const temFigura = md.some((s) => s.itens.some((i) => i.s === "{{FIGURA_TABELA}}"));
   let passosUsados = false;
   for (const s of md) {
     if (SECOES_INTERNAS.test(s.titulo)) continue;
@@ -214,6 +228,22 @@ export function montarSecoes(md: MdSec[], a4: VisualContent | null, limpar: (s: 
         blocos.push({ t: "sub", titulo: it.s });
         continue;
       }
+      if (it.k === "q") {
+        const m = /^\*\*(.+?)\*\*\s*(.*)$/.exec(it.s);
+        const tit = m ? m[1].replace(/[:!.]+$/, "") : "";
+        const corpo = m ? m[2] : it.s;
+        if (/pegadinha/i.test(tit)) blocos.push({ t: "peg", md: corpo.replace(/^(armadilha clássica|armadilha)\s*:\s*/i, "") });
+        else if (/tome nota|lembre/i.test(tit)) blocos.push({ t: "post", md: corpo });
+        else blocos.push({ t: "aviso", titulo: tit || "Atenção", md: corpo });
+        continue;
+      }
+      if (it.k === "p" && it.s === "{{FIGURA_TABELA}}") {
+        if (a4?.tabela && !tabelaUsada) {
+          blocos.push({ t: "tabela", c: a4 });
+          tabelaUsada = true;
+        }
+        continue;
+      }
       if (it.k === "li") {
         const lis = [it.s];
         while (itens[i + 1]?.k === "li") lis.push(itens[++i].s);
@@ -231,6 +261,10 @@ export function montarSecoes(md: MdSec[], a4: VisualContent | null, limpar: (s: 
       }
       // parágrafos
       const p = it.s;
+      if (/^material staziamed\b/i.test(p)) {
+        blocos.push({ t: "nota", md: p });
+        continue;
+      }
       if (ehCaso && /^ao final,? voc[êe] vai saber/i.test(p)) {
         const [cab, resto] = p.split(/:\s*/, 2).length === 2 ? [p.slice(0, p.indexOf(":")), p.slice(p.indexOf(":") + 1)] : [p, ""];
         blocos.push({ t: "objetivos", titulo: cab, itens: resto.split(/;\s*/).map((x) => x.replace(/\.$/, "").trim()).filter(Boolean) });
@@ -249,7 +283,7 @@ export function montarSecoes(md: MdSec[], a4: VisualContent | null, limpar: (s: 
         continue;
       }
       if (ehMudou) {
-        const m = /^([^:]{3,60}):\s*(.+)$/.exec(p);
+        const m = /^([^:]{3,90}):\s*(.+)$/.exec(p);
         const last = blocos[blocos.length - 1];
         const item = m ? { titulo: m[1], md: m[2] } : { titulo: "", md: p };
         if (last && last.t === "mudou") last.itens.push(item);
@@ -258,7 +292,7 @@ export function montarSecoes(md: MdSec[], a4: VisualContent | null, limpar: (s: 
       }
       blocos.push({ t: "p", md: p });
       // a tabela do A4 entra logo depois do parágrafo que fala do resultado/fluxograma
-      if (a4?.tabela && !tabelaUsada && /fluxograma|^leia o/i.test(p) && /diagnost|investig/.test(f)) {
+      if (a4?.tabela && !tabelaUsada && !temFigura && /fluxograma|^leia o/i.test(p) && /diagnost|investig/.test(f)) {
         blocos.push({ t: "tabela", c: a4 });
         tabelaUsada = true;
       }
@@ -317,6 +351,8 @@ b{font-weight:700;color:#0B2545}
 .post:before{content:"";position:absolute;top:-9px;left:50%;width:84px;height:18px;margin-left:-42px;background:rgba(158,216,230,.85);transform:rotate(-4deg)}
 .post .h{display:flex;align-items:center;gap:8px;font-family:'Caveat',cursive;font-weight:700;font-size:30px;color:#0B2545;line-height:1}
 .post .t{font-family:'Caveat',cursive;font-weight:700;font-size:23px;line-height:1.12;color:#142033;margin-top:4px}
+.aviso{display:flex;gap:12px;align-items:flex-start;border-left:6px solid #F2B705;background:linear-gradient(90deg,#FFF8DB,#FFFDF3);border-radius:12px;padding:12px 16px;margin:6px 0 14px;box-shadow:0 2px 8px rgba(11,37,69,.06)}
+.aviso .h{font-family:'Barlow Condensed',sans-serif;font-weight:800;text-transform:uppercase;color:#8A5A00;font-size:19px;line-height:1}.aviso .t{font-size:14.2px;line-height:1.45;margin-top:4px}
 .peg{display:flex;gap:14px;align-items:center;border:2.5px solid #C8102E;border-radius:14px;background:linear-gradient(180deg,#fff,#FFF3F4);padding:12px 16px;margin:6px 0 14px}
 .peg .h{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;text-transform:uppercase;color:#C8102E;font-size:24px;line-height:1}
 .peg .t{font-size:14.2px;line-height:1.42;margin-top:3px}
@@ -394,6 +430,10 @@ function blocoHtml(b: Bloco, P: ReturnType<typeof paleta>, mode: Mode, ctx: { se
       return b.itens.map((i, k) => (k % 2 === 0 ? `<div class="conc blk">${[i, b.itens[k + 1]].filter(Boolean).map((x) => `<div class="card">${x!.termo ? `<div class="term">${spot(spotForText(x!.termo + " " + x!.md, "livro"), 22, P.d)}${esc(x!.termo)}</div>` : ""}${inline(x!.md)}</div>`).join("")}</div>` : "")).join("");
     case "post":
       return `<div class="blk" style="padding-top:4px"><div class="post"><div class="h">${spot("lampada", 28)}Tome nota!</div><div class="t">${inline(b.md)}</div></div></div>`;
+    case "aviso":
+      return `<div class="aviso blk">${spot("lampada", 34, P.d)}<div><div class="h">${esc(b.titulo)}</div><div class="t">${inline(b.md)}</div></div></div>`;
+    case "nota":
+      return `<div class="foot-ofc blk" style="text-align:left;margin:4px 0 12px">${inline(b.md)}</div>`;
     case "peg":
       return `<div class="peg blk">${spot("triangulo", 52, "#C8102E")}<div><div class="h">Pegadinha de prova!</div><div class="t">${inline(b.md)}</div></div></div>`;
     case "checks": {
@@ -597,7 +637,10 @@ export function htmlPdf(aula: Aula, fontCss: string): string {
     var ult=body&&body.lastElementChild, livre=ult?body.clientHeight-(ult.offsetTop+ult.offsetHeight-body.offsetTop)-10:0;
     if(body && livre>=300 && el.getAttribute('data-own-page')!=='1'){var sp=document.createElement('div');sp.style.height='18px';body.appendChild(sp);} else body=nova(titulo);
     var blocks=el.classList.contains('flow')?Array.prototype.slice.call(el.children):[el];
-    blocks.forEach(function(b){body.appendChild(b); if(body.scrollHeight>body.clientHeight+1 && body.children.length>1){
+    blocks.forEach(function(b){body.appendChild(b);
+      // anotações: encolhem (mínimo de 2 linhas) antes de pular sozinhas para a página seguinte
+      if(b.classList.contains('notes') && body.scrollHeight>body.clientHeight+1){var ar=b.querySelector('.area'); if(ar){ar.style.height='48px'; if(body.scrollHeight>body.clientHeight+1) ar.style.height='';}}
+      if(body.scrollHeight>body.clientHeight+1 && body.children.length>1){
       body.removeChild(b);
       // o título da seção nunca fica sozinho no fim da página
       var prev=body.lastElementChild, junto=[];

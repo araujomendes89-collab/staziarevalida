@@ -90,7 +90,14 @@ const MANUAIS = ["conferencia-visual.md"];
 if (fs.existsSync(OUT)) for (const f of fs.readdirSync(OUT)) if (!MANUAIS.includes(f)) fs.rmSync(path.join(OUT, f), { recursive: true, force: true });
 for (const d of ["imagens", "pdf", "comandos", "fontes-internas"]) fs.mkdirSync(path.join(OUT, d), { recursive: true });
 
+/** comandos/_lista.json ([{ name, comando }]) tem prioridade; depois os .txt da pasta comandos/. */
+const LISTA: { name: string; comando: string }[] = (() => {
+  const f = path.join(SRC, "comandos", "_lista.json");
+  return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, "utf8")) : [];
+})();
 function comandoArquivo(sufixo: RegExp): string | null {
+  const daLista = LISTA.find((x) => sufixo.test(`${x.name}.txt`));
+  if (daLista) return daLista.comando;
   const dir = path.join(SRC, "comandos");
   if (!fs.existsSync(dir)) return null;
   const f = fs.readdirSync(dir).find((x) => sufixo.test(x));
@@ -119,8 +126,10 @@ if (storyTxt) pecas.push({ nome: `${CODIGO}-card-story`, modelo: "story", texto:
 if (a4Txt) pecas.push({ nome: `${CODIGO}-pagina-a4`, modelo: "a4", texto: a4Txt });
 const cartoes: any[] = flashJson.cartoes ?? [];
 for (const c of cartoes) {
-  if (c.comando_flashcard_digital) pecas.push({ nome: `${c.id}-digital`, modelo: "flashcard_digital", texto: c.comando_flashcard_digital, flash: true });
-  if (c.comando_flashcard_a6) pecas.push({ nome: `${c.id}-a6`, modelo: "flashcard_a6", texto: c.comando_flashcard_a6, flash: true });
+  const dig = comandoArquivo(new RegExp(`^${c.id}-digital\\.txt$`)) ?? c.comando_flashcard_digital;
+  const a6 = comandoArquivo(new RegExp(`^${c.id}-a6\\.txt$`)) ?? c.comando_flashcard_a6;
+  if (dig) pecas.push({ nome: `${c.id}-digital`, modelo: "flashcard_digital", texto: dig, flash: true });
+  if (a6) pecas.push({ nome: `${c.id}-a6`, modelo: "flashcard_a6", texto: a6, flash: true });
 }
 if (!cartoes.length) {
   const dir = path.join(SRC, "comandos");
@@ -139,7 +148,8 @@ function prepararPeca(p: Peca): Record<string, any> | null {
   if (p.flash) {
     // flashcards: sem fonte nem referência no que o aluno lê (vão para fontes-internas)
     fontesFlash[input.card_id ?? p.nome] = { ...(fontesFlash[input.card_id ?? p.nome] ?? {}), ...(input.fonte ? { fonte: input.fonte } : {}), ...(input.referencia ? { referencia: input.referencia } : {}) };
-    delete input.fonte;
+    // só a linha genérica do órgão (sem documento nem página) fica no rodapé escuro, como nos cards
+    if (!/^minist[ée]rio da sa[úu]de\.?$/i.test(String(input.fonte ?? "").trim())) delete input.fonte;
     delete input.referencia;
     for (const k of ["pergunta", "resposta", "explicacao", "como_lembrar", "pegadinha"]) if (typeof input[k] === "string") input[k] = limpar(input[k]);
   } else {
