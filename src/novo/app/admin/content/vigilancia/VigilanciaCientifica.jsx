@@ -20,7 +20,11 @@ const CARTOES = [
   { campo: "links_fora_do_ar", rotulo: "Links fora do ar", icone: "link-2-off", tom: "danger", legenda: (r) => `de ${plural(Number(r.vigiadas) || 0, "fonte vigiada", "fontes vigiadas")}` },
 ];
 
-const contagem = (v) => (typeof v === "number" && Number.isFinite(v) ? v.toLocaleString("pt-BR") : "—");
+/** Contagem do banco (número ou texto numérico); sem valor: travessão, nunca um número inventado. */
+const contagem = (v) => {
+  const n = v == null || v === "" ? NaN : Number(v);
+  return Number.isFinite(n) ? n.toLocaleString("pt-BR") : "—";
+};
 
 function Regra() {
   return (

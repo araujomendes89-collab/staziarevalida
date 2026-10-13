@@ -273,7 +273,8 @@ export function FilaAuditoria({ analiseLigada, recarregar = 0, aoMudar }) {
   const [feito, setFeito] = React.useState(null);
   const fila = useLoad(() => backend.rpc("app_admin_vigilance_queue", { p_filter: filtro, p_limit: PAGINA, p_offset: pagina * PAGINA }), [backend, filtro, pagina, recarregar]);
   const itens = Array.isArray(fila.data?.items) ? fila.data.items : [];
-  const total = Number.isFinite(fila.data?.total) ? fila.data.total : itens.length;
+  const contado = fila.data?.total == null ? NaN : Number(fila.data.total);
+  const total = Number.isFinite(contado) ? contado : itens.length;
   const paginas = Math.max(Math.ceil(total / PAGINA), 1);
   React.useEffect(() => {
     // depois de resolver itens a última página pode sumir: volta para a última que existe
