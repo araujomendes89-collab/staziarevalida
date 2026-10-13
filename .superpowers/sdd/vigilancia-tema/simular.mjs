@@ -66,6 +66,13 @@ for (const d2 of pastas) { const c = await cola(path.join(R2, d2, "0-CONFERIR.sq
 const ca = await cola(path.join(AULA, "0-CONFERIR.sql")); ok(/^OK/.test(ca), `aula GR-001: ${ca.slice(0, 100)}`);
 const a2 = await cola(path.join(AULA, "1-Importar-aula.sql")); ok(/^OK/.test(a2), `aula GR-001 colada de novo (casca do portão): ${a2.slice(0, 100)}`);
 
+const casca = async () => (await q(`select position('_antes_tema' in prosrc) > 0 c from pg_proc where oid = to_regprocedure('public.app_ch_import_lesson_package(jsonb)')`))[0].c;
+console.log(`     depois de recolar o pacote da aula: portão na importação = ${await casca()} (a aula recria a função dela)`);
+const r3 = await cola(path.join(VIG, "1-Vigilancia.sql")); ok(/^OK/.test(r3), `1-Vigilancia.sql de novo depois da aula: ${r3}`);
+ok(await casca(), "portão de volta na importação de aula");
+const a3 = await cola(path.join(AULA, "0-CONFERIR.sql")); ok(/^OK/.test(a3), `aula GR-001 continua OK: ${a3.slice(0, 80)}`);
+const c3 = await cola(path.join(VIG, "0-CONFERIR.sql")); ok(/^OK/.test(c3), `0-CONFERIR da vigilância: ${c3.slice(0, 80)}`);
+
 console.log(erros ? `\nRESULTADO: ${erros} ERRO(S)` : "\nRESULTADO: tudo OK");
 await db.close();
 process.exitCode = erros ? 1 : 0;

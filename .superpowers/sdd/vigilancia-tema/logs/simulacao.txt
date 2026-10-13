@@ -34,7 +34,7 @@
 == 2) vigilância: antes de colar
   ok   0-CONFERIR antes: FALTA: tabela ch_auto_change_policy; tabela ch_source_vigilance; tabela ch_vigilance_config; tabela ch_vigilance_items; tabela ch_topic_dossiers; tabela ch_topi
 == 3) 1-Vigilancia.sql, 1ª vez
-  ok   OK: Vigilância científica por tema colada (2 temas com dossiê, 7 páginas-índice, portão desligado) (280 ms)
+  ok   OK: Vigilância científica por tema colada (2 temas com dossiê, 7 páginas-índice, portão desligado) (285 ms)
   ok   0-CONFERIR depois: OK: Vigilância científica no banco: 159 fontes vigiadas (138 todo dia), 41 com DOI para o Crossref, 7 páginas-índice oficiais, 2 temas com dossiê (Rotina do pré-natal de risco habitual: 5 fontes, vencido; Tuberculose: 3 fontes, vencido); 2 avisos abertos na fila; portão desligado; análise do que mudou desligada.
   ok   visitante: nenhuma função nova
   ok   funções novas para quem entrou (todas recusam quem não é da equipe): app_admin_index_page_save(text,text,boolean), app_admin_index_pages(), app_admin_source_quality(uuid), app_admin_source_quality_override(uuid,boolean,text), app_admin_source_set_identifiers(uuid,text,text,text), app_admin_topic(uuid), app_admin_topic_save(uuid,text[],integer,text), app_admin_topic_set_source(uuid,uuid,text), app_admin_topic_verified(uuid,text), app_admin_topics(), app_admin_unit_topic(uuid), app_admin_vigilance_mark(uuid,text,text), app_admin_vigilance_queue(text,integer,integer), app_admin_vigilance_request_analysis(uuid), app_admin_vigilance_set_gate(text), app_admin_vigilance_set_interval(text,integer), app_admin_vigilance_summary()
@@ -56,5 +56,10 @@
   ok   5-similaridade-perfis: OK: motor de questões parecidas instalado (6 tabelas com RLS, 7 funções das telas, 10 do p
   ok   aula GR-001: OK: aula GR-001 na Central: versão 1, aguardando revisão médica e editorial (na fila "Aguardando rev
   ok   aula GR-001 colada de novo (casca do portão): OK: aula GR-001 já estava importada (nada mudou): versão 1, aguardando revisão médica e editorial; 4
+     depois de recolar o pacote da aula: portão na importação = false (a aula recria a função dela)
+  ok   1-Vigilancia.sql de novo depois da aula: OK: Vigilância científica por tema colada (2 temas com dossiê, 7 páginas-índice, portão desligado)
+  ok   portão de volta na importação de aula
+  ok   aula GR-001 continua OK: OK: aula GR-001 na Central: versão 1, aguardando revisão médica e editorial (na 
+  ok   0-CONFERIR da vigilância: OK: Vigilância científica no banco: 159 fontes vigiadas (138 todo dia), 41 com D
 
 RESULTADO: tudo OK

@@ -2,7 +2,7 @@
 // situação da evidência (em dia, vencida, mudança pendente, sem dossiê), os motivos, as fontes do dossiê e o que depende do tema;
 // e o modo do portão (desligado, aviso, bloqueia), que só o administrador muda. Só a equipe vê; o aluno nunca vê motivo nenhum.
 import React from "react";
-import { Badge, Banner, Button, SegmentedControl } from "../../../../ds";
+import { Badge, Banner, Button, SegmentedControl, TextField } from "../../../../ds";
 import { useSession } from "../../../session.jsx";
 import { LoadError, Loading, useLoad } from "../../common.jsx";
 import { isMissingFunction } from "../AiRequests.jsx";
@@ -44,8 +44,11 @@ function Motivos({ motivos }) {
   );
 }
 
-function CartaoTema({ tema, aberto, abrir }) {
+function CartaoTema({ tema, aberto, abrir, aoMudar }) {
   const { backend } = useSession();
+  const [nota, setNota] = React.useState("");
+  const acao = useAction();
+  const conferir = () => acao.run(() => chamar(backend, "app_admin_topic_verified", { p_theme_node_id: tema.tema_id, p_note: nota.trim() }).then(() => { setNota(""); det.reload(); aoMudar?.(); }), "Dossiê marcado como conferido.");
   const det = useLoad(() => (aberto ? backend.rpc("app_admin_topic", { p_theme_node_id: tema.tema_id }) : Promise.resolve(null)), [backend, aberto, tema.tema_id]);
   const d = det.data;
   return (
@@ -78,6 +81,13 @@ function CartaoTema({ tema, aberto, abrir }) {
           <span style={texto}>
             Depende deste tema: {plural((d.depende?.unidades ?? []).length, "unidade", "unidades")}, {plural(Number(d.depende?.flashcards) || 0, "conjunto de flashcards", "conjuntos de flashcards")}, {plural(Number(d.depende?.questoes) || 0, "questão", "questões")}.
           </span>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 260px" }}>
+              <TextField label="O que foi conferido (pelo menos 10 caracteres)" value={nota} onChange={(e) => setNota(e.target.value)} />
+            </div>
+            <Button size="sm" variant="secondary" icon="check" disabled={nota.trim().length < 10} loading={acao.busy} onClick={conferir}>Marcar dossiê conferido</Button>
+          </div>
+          {acao.feedback}
         </div>
       )}
     </div>
@@ -106,7 +116,7 @@ export function TemasVigiados() {
           {acao.error && <Banner tone="danger">{acao.error}</Banner>}
           {(d.temas ?? []).length === 0 && <span style={texto}>Nenhum tema com dossiê ainda.</span>}
           {(d.temas ?? []).map((t) => (
-            <CartaoTema key={t.tema_id} tema={t} aberto={aberto === t.tema_id} abrir={() => setAberto(aberto === t.tema_id ? null : t.tema_id)} />
+            <CartaoTema key={t.tema_id} tema={t} aberto={aberto === t.tema_id} abrir={() => setAberto(aberto === t.tema_id ? null : t.tema_id)} aoMudar={lista.reload} />
           ))}
         </div>
       )}

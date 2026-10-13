@@ -149,19 +149,21 @@ $$;
 
 -- ---------------------------------------------------------------- 4. portão nas funções que já existem (casca)
 do $casca$
+declare
+  f record;
 begin
-  if to_regprocedure('public.ch_publish_problems_antes_tema(uuid)') is null and to_regprocedure('public.ch_publish_problems(uuid)') is not null then
-    alter function public.ch_publish_problems(uuid) rename to ch_publish_problems_antes_tema;
-  end if;
-  if to_regprocedure('public.app_ch_publish_preview_antes_tema(uuid,jsonb)') is null and to_regprocedure('public.app_ch_publish_preview(uuid,jsonb)') is not null then
-    alter function public.app_ch_publish_preview(uuid, jsonb) rename to app_ch_publish_preview_antes_tema;
-  end if;
-  if to_regprocedure('public.app_ch_import_lesson_package_antes_tema(jsonb)') is null and to_regprocedure('public.app_ch_import_lesson_package(jsonb)') is not null then
-    alter function public.app_ch_import_lesson_package(jsonb) rename to app_ch_import_lesson_package_antes_tema;
-  end if;
+  -- para cada função: se a que está no banco NÃO é a casca (primeira colagem, ou alguém recolou a 9861/9950 ou o pacote da aula),
+  -- ela vira a "_antes_tema" (a anterior, se houver, sai) e a casca abaixo é criada de novo por cima
+  for f in select * from (values ('ch_publish_problems', 'uuid'), ('app_ch_publish_preview', 'uuid, jsonb'), ('app_ch_import_lesson_package', 'jsonb')) as x(nome, args) loop
+    if to_regprocedure(format('public.%s(%s)', f.nome, f.args)) is not null
+       and position('_antes_tema' in (select p.prosrc from pg_proc p where p.oid = to_regprocedure(format('public.%s(%s)', f.nome, f.args)))) = 0 then
+      execute format('drop function if exists public.%s_antes_tema(%s)', f.nome, f.args);
+      execute format('alter function public.%s(%s) rename to %s_antes_tema', f.nome, f.args, f.nome);
+    end if;
+  end loop;
 end
 $casca$;
--- recolar a 9861/9950 recria as originais: a casca abaixo as substitui de novo (as versões _antes_tema ficam as de antes)
+-- recolar a 9861/9950 (ou o pacote da aula GR-001) recria as originais: colar esta migração de novo refaz a casca por cima delas
 
 -- modo 'bloqueia': o tema fora de "ok" vira problema que trava a publicação (ch_publish_impl recusa com a lista)
 create or replace function public.ch_publish_problems(p_version_id uuid) returns text[]
