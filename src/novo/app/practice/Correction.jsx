@@ -9,6 +9,7 @@ import { useSession } from "../session.jsx";
 import { ERROR_TYPE, KIND_LABEL } from "./diagnosisLabels.js";
 import { isStaziamed } from "./format.js";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
+import { RelatedQuestions } from "./RelatedQuestions.jsx";
 
 /** Questão anulada pela banca (o banco diz "annulled"; sem gabarito também é anulada): não conta como acerto nem erro. */
 export const isAnnulled = (correction) => correction?.annulled === true || (correction != null && correction.correct_option == null);
@@ -131,7 +132,11 @@ function OfficialSources({ correction }) {
   );
 }
 
-export function Correction({ selected, correction, question, tutorContext = "question" }) {
+/**
+ * `go` (navegação das telas) liga o bloco "Questões relacionadas" no fim da correção; `inSession` avisa que abrir outra
+ * questão sai do treino em andamento.
+ */
+export function Correction({ selected, correction, question, tutorContext = "question", go, inSession = false }) {
   const source = correction.sources?.[0];
   // Questão StaziaMed: "Gabarito StaziaMed", nunca "gabarito oficial", "O que a questão avalia" nem o Tutor (o Tutor só trabalha com as oficiais)
   const staz = correction.origin === "staziamed" || isStaziamed(question);
@@ -211,6 +216,7 @@ export function Correction({ selected, correction, question, tutorContext = "que
         </div>
       )}
       {question && <SaveAsFlashcard key={question.id} question={question} correction={correction} />}
+      {go && question?.id && <RelatedQuestions key={question.id} questionId={question.id} go={go} inSession={inSession} />}
     </>
   );
 }
