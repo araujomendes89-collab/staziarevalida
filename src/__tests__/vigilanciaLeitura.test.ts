@@ -85,8 +85,9 @@ describe("página-índice oficial: documento novo por tema", () => {
     expect(bpalm).toMatchObject({ url: "https://www.gov.br/aids/pt-br/central-de-conteudo/notas-informativas/2026/nota-informativa-no-2_2026_cgtm_dathi_svsa_ms.pdf", data: "2026-09-30" });
     expect(bpalm.descricao).toMatch(/tuberculose drogarresistente.*BPaLM/);
     expect(matchKeywords(bpalm, TB)).toEqual(["tubercul", "BPaLM", "bedaquilina", "pretomanida"]);
-    // as outras duas (hepatites) não são do tema tuberculose nem do pré-natal
-    expect(items.slice(0, 2).every((i) => matchKeywords(i, TB).length === 0 && matchKeywords(i, PRENATAL).length === 0)).toBe(true);
+    // as outras duas são de hepatites: não são de tuberculose; a nº 1/2026 (hepatite C em GESTANTES) casa com o pré-natal
+    expect(items.slice(0, 2).map((i) => matchKeywords(i, TB))).toEqual([[], []]);
+    expect(items.map((i) => matchKeywords(i, PRENATAL))).toEqual([["gestante"], [], []]);
   });
   it("Nota Informativa nº 25/2025 (TPT com rifampicina) casa com tuberculose", () => {
     const n25 = indexItems(p25, NI("2025")).find((i) => /Nº 25\/2025/.test(i.titulo))!;
