@@ -162,8 +162,8 @@ function altPeca(c: VisualContent, lado: string): string {
   if (c.model === "flashcard_digital" || c.model === "flashcard_a6") {
     return lado === "front" ? `Flashcard ${c.card_id}, frente: ${c.pergunta}` : resumir(`Flashcard ${c.card_id}, verso. Resposta: ${c.resposta} ${c.explicacao || c.como_lembrar}`);
   }
-  const partes = [`${c.model === "a4" ? "Página A4" : c.model === "feed" ? "Card de feed" : "Story"} "${c.titulo}"`, c.subtitulo, c.resumo, c.dado_chave && `Destaque: ${c.dado_chave}`, c.pontos_chave.length && `Pontos-chave: ${c.pontos_chave.join("; ")}`, c.tabela && `Tabela: ${c.tabela.titulo}`, c.pegadinha && `Pegadinha: ${c.pegadinha}`];
-  return resumir(partes.filter(Boolean).join(". "), 400);
+  const partes = [`${c.model === "a4" ? "Página A4" : c.model === "feed" ? "Card de feed" : "Story"} "${c.titulo}"`, c.subtitulo, c.resumo, c.dado_chave && `Destaque: ${c.dado_chave}`, c.pontos_chave.length && `Pontos-chave: ${c.pontos_chave.map((x) => x.replace(/[.;]+$/, "")).join("; ")}`, c.tabela && `Tabela: ${c.tabela.titulo}`, c.pegadinha && `Pegadinha: ${c.pegadinha}`];
+  return resumir(partes.filter(Boolean).map((x) => String(x).replace(/[.;]+$/, "")).join(". ") + ".", 400);
 }
 
 // ---------------------------------------------------------------------------- geração das peças
