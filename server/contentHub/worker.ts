@@ -5,11 +5,12 @@
  */
 import crypto from "crypto";
 import { runJob, type Job, type PipelineDeps } from "./pipeline";
-import { snapshotPassages, type Passage } from "./sourceDiff";
+import type { Passage } from "./sourceDiff";
 import { compareSnapshots } from "./sourceCompare";
 import { embedderAllowed, embedPendingPassages } from "./embeddings";
-import { fetchBytes, type Resolver } from "../podcasts/extract";
-import { linkProblem, OFFICIAL_FETCH } from "./sources/officialDomains";
+import type { Resolver } from "../podcasts/extract";
+import type { OfficialDomain } from "./sources/officialDomains";
+import { checkDoi, readPublication, type WatchDue } from "./vigilance/watch";
 import { reconcilePendingCurrency } from "./sources/currency";
 
 export interface WorkerOptions {
@@ -23,14 +24,15 @@ export interface WorkerOptions {
   checkHost?: (host: string) => Promise<void>;
 }
 
-/** Limites do download do monitor de fontes: os mesmos do download das Fontes oficiais (50 MB), com 30 s para tudo. */
-const WATCH_FETCH = { ...OFFICIAL_FETCH, timeoutMs: 30_000 } as const;
-
 export interface ContentHubWorker {
   readonly running: boolean;
   tick(): Promise<boolean>;
   drain(max?: number): Promise<number>;
   checkSources(): Promise<{ checked: number; changed: number; unreachable: number }>;
+  /** Retratações no Crossref (DOI das fontes, semanal). */
+  checkIdentifiers(): Promise<{ checked: number; retracted: number }>;
+  /** Quarentena da Vigilância científica em dia com a nota das fontes (sem IA). */
+  vigilanceSync(): Promise<{ quarentena_nova: number; quarentena_fechada: number }>;
   /** Refaz a classificação de atualidade pendente (sem IA). Devolve quantas buscas foram refeitas. */
   reconcilePendingCurrency(): Promise<number>;
   /** Vetores dos trechos que faltam (busca por significado); sem a busca ligada, não faz nada. */
@@ -95,41 +97,26 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
     return true;
   };
 
+  const net = () => ({ fetchImpl, resolver: opts.resolver, checkHost: opts.checkHost });
+
+  // Vigia (Vigilância científica, migração 9920): lote de fontes vencidas, só sites da lista oficial ativa, sem IA.
   const checkSources = async () => {
-    const due = await deps.db.service<{ source_id: string; url: string }[]>("ch_worker_watch_due");
+    const due = await deps.db.service<WatchDue[]>("ch_worker_watch_due", { p_limit: 40 });
+    if (!due.length) return { checked: 0, changed: 0, unreachable: 0 };
+    const domains = await deps.db.service<OfficialDomain[]>("ch_worker_vigilance_domains");
     let changed = 0;
     let unreachable = 0;
     for (const w of due) {
-      let hash: string | null = null;
-      let snapshot: Passage[] | null = null;
-      try {
-        if (!/^https:\/\//.test(w.url)) throw new Error("endereço sem https");
-        // Mesmas proteções de rede das Fontes oficiais, mas sem lista de sites (o endereço pode ser de qualquer órgão): nada de
-        // endereço interno (conexão ao IP já conferido), cada redirecionamento (até 3) conferido de novo (https, porta 443,
-        // sem usuário e senha), corpo lido em pedaços e cortado em 50 MB, 30 s para tudo.
-        const got = await fetchBytes(w.url, fetchImpl, {
-          ...WATCH_FETCH,
-          checkUrl: (u) => linkProblem(u.href),
-          checkHost: opts.checkHost,
-          resolver: opts.resolver,
-          acceptAnyType: true,
-          statusMessage: (status) => `HTTP ${status}`,
-        });
-        const body = got.body;
-        const type = got.contentType;
-        hash = publicationHash(body, type);
-        if (!/pdf/i.test(type) && body.subarray(0, 5).toString("latin1") !== "%PDF-") snapshot = snapshotPassages(body.toString("utf8"), type);
-      } catch (error) {
-        deps.log?.(`[central] fonte inacessível (${w.url}): ${(error as Error).message}`);
-      }
-      const r = await deps.db.service<{ changed: boolean } | null>("ch_worker_watch_result", { p_source_id: w.source_id, p_hash: hash, p_status: hash ? "ok" : "unreachable" });
-      if (!hash) unreachable++;
+      const reading = await readPublication(w, domains, net());
+      if (reading.report.status === "unreachable") deps.log?.(`[central] fonte inacessível (${w.url}): ${reading.report.error}`);
+      const r = await deps.db.service<{ changed: boolean } | null>("ch_worker_watch_report", { p_source_id: w.source_id, p_report: reading.report });
+      if (reading.report.status === "unreachable") unreachable++;
       else if (r?.changed) changed++;
-      if (hash && snapshot) {
-        // HTML/texto: guarda a leitura e, se mudou, compara o conteúdo com a anterior (PDF segue só com a impressão digital)
+      if (reading.snapshot && reading.report.status === "ok") {
+        // HTML/texto: guarda a leitura e, se mudou, compara o conteúdo com a anterior (PDF segue só com as impressões digitais)
         try {
-          const before = await deps.db.service<Passage[] | null>("ch_worker_watch_snapshot", { p_source_id: w.source_id, p_passages: snapshot });
-          if (r?.changed && before?.length) await compareSnapshots(deps.db, w.source_id, before, snapshot, { new: hash });
+          const before = await deps.db.service<Passage[] | null>("ch_worker_watch_snapshot", { p_source_id: w.source_id, p_passages: reading.snapshot });
+          if (r?.changed && before?.length) await compareSnapshots(deps.db, w.source_id, before, reading.snapshot, { new: String(reading.report.hash) });
         } catch (error) {
           deps.log?.(`[central] comparação de conteúdo falhou (${w.url}): ${(error as Error).message}`);
         }
@@ -137,6 +124,20 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
     }
     return { checked: due.length, changed, unreachable };
   };
+
+  // Retratações: DOI das fontes no Crossref (semanal por fonte, API pública sem chave).
+  const checkIdentifiers = async () => {
+    const due = await deps.db.service<{ source_id: string; doi: string }[]>("ch_worker_identifiers_due", { p_limit: 20 });
+    let retracted = 0;
+    for (const d of due) {
+      const report = await checkDoi(d.doi, net());
+      await deps.db.service("ch_worker_identifier_report", { p_source_id: d.source_id, p_report: report });
+      if (report.status === "retratada") retracted++;
+    }
+    return { checked: due.length, retracted };
+  };
+
+  const vigilanceSync = () => deps.db.service<{ quarentena_nova: number; quarentena_fechada: number }>("ch_worker_vigilance_sync");
 
   const embed = async (o: { max?: number; deadline?: number } = {}) => {
     const embedder = await embedderAllowed(deps.db, deps.embedder);
@@ -158,6 +159,10 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
       if (requested || Date.now() - lastWatch > watchEveryMs) {
         lastWatch = Date.now();
         busy = checkSources();
+        await busy;
+        busy = checkIdentifiers().catch((error: Error) => deps.log?.(`[central] retratações (Crossref): ${error.message}`));
+        await busy;
+        busy = vigilanceSync().catch((error: Error) => deps.log?.(`[central] quarentena da vigilância: ${error.message}`));
         await busy;
       }
       // atualidade pendente (a classificação de uma busca falhou ou o SQL chegou depois): refaz, sem IA, a cada rodada de 30 minutos
@@ -206,6 +211,8 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
       return n;
     },
     checkSources,
+    checkIdentifiers,
+    vigilanceSync,
     reconcilePendingCurrency: () => reconcilePendingCurrency(deps.db, deps.log),
     embed,
     start() {

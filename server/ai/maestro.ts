@@ -60,7 +60,7 @@ export interface MaestroDeps {
 }
 
 export interface MaestroOrigin {
-  source: "central" | "analise" | "conferencia" | "aula" | "podcast" | "assistente" | "fontes" | "questoes_staziamed" | "similaridade";
+  source: "central" | "analise" | "conferencia" | "aula" | "podcast" | "assistente" | "fontes" | "questoes_staziamed" | "similaridade" | "vigilancia";
   itemId?: string | null;
   actorId?: string | null;
 }
@@ -287,7 +287,7 @@ function resolveRefs(cfg: AiConfig, fn: AiFunctionKey, env: NodeJS.ProcessEnv, o
   const fc = cfg.functions[fn] ?? null;
   // busca na internet: só roda com a configuração salva, e a escolha da aba ou de quem chama não troca a IA dela (nem as
   // variáveis de ambiente a definem); sem configuração, desligada
-  if (isSearchFunction(fn)) {
+  if (requiresSavedConfig(fn)) {
     return fc ? { fc, mode: fc.mode, primary: fc.primary, fallback: fc.fallback, reviewers: fc.reviewers } : { fc: null, mode: "sozinha", primary: null, fallback: null, reviewers: [] };
   }
   // Questões parecidas: sem configuração salva fica desligada (nem as variáveis nem a escolha da aba a ligam)

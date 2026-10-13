@@ -290,6 +290,10 @@ export interface FetchBytesOptions {
    * PDF sem assinatura; o tipo volta como "pdf" (assinatura), "html" ou "text" (todo o resto).
    */
   acceptAnyType?: boolean;
+  /** Cabeçalhos a mais no pedido (vigia: If-None-Match / If-Modified-Since). */
+  headers?: Record<string, string>;
+  /** 304 (não mudou) vira resultado com `notModified` e corpo vazio, em vez de erro (vigia). */
+  allowNotModified?: boolean;
 }
 
 export interface FetchedBytes {
@@ -297,6 +301,11 @@ export interface FetchedBytes {
   body: Buffer;
   contentType: string;
   kind: "pdf" | "html" | "text";
+  /** O servidor respondeu 304 (só com `allowNotModified`). */
+  notModified?: boolean;
+  /** ETag e Last-Modified da resposta (para a próxima conferência condicional). */
+  etag?: string | null;
+  lastModified?: string | null;
 }
 
 const MAX_REDIRECTS = 3;
@@ -331,7 +340,7 @@ export async function fetchBytes(url: string, fetchImpl: typeof fetch, opts: Fet
       if (u.protocol !== "https:") throw new Error("Só links https são aceitos.");
       const problem = opts.checkUrl?.(u);
       if (problem) throw new Error(problem);
-      const init: RequestInit = { redirect: "manual", headers: { "User-Agent": opts.userAgent, Accept: "text/html,application/pdf;q=0.9,*/*;q=0.5" }, signal: controller.signal };
+      const init: RequestInit = { redirect: "manual", headers: { "User-Agent": opts.userAgent, Accept: "text/html,application/pdf;q=0.9,*/*;q=0.5", ...(opts.headers ?? {}) }, signal: controller.signal };
       let res: Response;
       if (opts.checkHost) {
         await within(opts.checkHost(u.hostname));
@@ -339,6 +348,10 @@ export async function fetchBytes(url: string, fetchImpl: typeof fetch, opts: Fet
       } else {
         const ips = await within(resolvePublicHost(u.hostname, opts.resolver));
         res = await within(connect(current, init, ips));
+      }
+      if (res.status === 304 && opts.allowNotModified) {
+        res.body?.cancel().catch(() => {});
+        return { finalUrl: u.toString(), body: Buffer.alloc(0), contentType: "", kind: "text", notModified: true, etag: res.headers.get("etag"), lastModified: res.headers.get("last-modified") };
       }
       if (res.status >= 300 && res.status < 400) {
         res.body?.cancel().catch(() => {});
@@ -381,8 +394,8 @@ export async function fetchBytes(url: string, fetchImpl: typeof fetch, opts: Fet
         if (body.length > opts.maxBytes) throw tooBig();
       }
       const contentType = (res.headers.get("content-type") ?? "").toLowerCase();
-      if (isPdf(body)) return { finalUrl: u.toString(), body, contentType, kind: "pdf" };
-      if (opts.acceptAnyType) return { finalUrl: u.toString(), body, contentType, kind: contentType.includes("html") ? "html" : "text" };
+      if (isPdf(body)) return { finalUrl: u.toString(), body, contentType, kind: "pdf", etag: res.headers.get("etag"), lastModified: res.headers.get("last-modified") };
+      if (opts.acceptAnyType) return { finalUrl: u.toString(), body, contentType, kind: contentType.includes("html") ? "html" : "text", etag: res.headers.get("etag"), lastModified: res.headers.get("last-modified") };
       if (contentType.includes("pdf")) throw new Error("O arquivo não é um PDF (assinatura %PDF- ausente).");
       if (contentType.includes("html")) return { finalUrl: u.toString(), body, contentType, kind: "html" };
       if (contentType.includes("text")) return { finalUrl: u.toString(), body, contentType, kind: "text" };

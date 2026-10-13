@@ -15,6 +15,7 @@
  *     motivo — nunca é simulada em produção;
  *   - checkpoints permitem retomar; reprocessar reaproveita respostas idênticas e não duplica.
  */
+import { AnalysisFailed, AnalysisPending, runChangeAnalysis } from "./vigilance/analysis";
 import { compareSourceVersions } from "./sourceCompare";
 import { aiAllowed, registerPromptsOnce } from "./ai/registry";
 import crypto from "crypto";
@@ -49,7 +50,7 @@ export const EXTRACTOR_VERSION = "staziamed-extract-1.0";
 export const MATERIALS_TEMPLATE = "materials-1.0";
 const PAGE_RANGE = 20;
 
-export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render" | "source_search" | "question_generate" | "question_check" | "question_source" | "question_analysis" | "draft_check" | "similarity";
+export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render" | "source_search" | "question_generate" | "question_check" | "question_source" | "question_analysis" | "draft_check" | "similarity" | "source_change_analysis";
 
 export interface Job {
   id: string;
@@ -1272,6 +1273,18 @@ async function stepSimilarity(ctx: Ctx): Promise<Step | null> {
   return null;
 }
 
+/** Vigilância científica: análise do que mudou numa fonte, só quando a equipe pede (vigilance/analysis.ts). */
+async function stepChangeAnalysis(ctx: Ctx): Promise<Step | null> {
+  try {
+    await runChangeAnalysis(ctx.deps, ctx.job, { metrics: ctx.metrics });
+  } catch (error) {
+    if (error instanceof AnalysisPending) throw new Blocked(error.message);
+    if (error instanceof AnalysisFailed) throw new Fatal(error.message);
+    throw error;
+  }
+  return null;
+}
+
 const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   extract: stepExtract,
   source_index: stepSourceIndex,
@@ -1290,6 +1303,7 @@ const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   question_analysis: stepAiRequest,
   draft_check: stepAiRequest,
   similarity: stepSimilarity,
+  source_change_analysis: stepChangeAnalysis,
 };
 
 /**
