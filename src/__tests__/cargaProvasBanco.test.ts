@@ -214,13 +214,14 @@ describe("carga das provas corrigidas — no banco", () => {
     const q = sess.questions[0];
     expect(q.correction).toBeNull();
     expect(Object.keys(q)).not.toContain("correct_option");
-    const c = await t.rpc(ANA, "app_answer_question", { p_session_id: s.session_id, p_question_id: q.id, p_option: "A" });
+    // rodada 2: a sessão sorteia as questões; responder sempre "A" às vezes acertava e o caderno de erros ficava vazio (teste
+    // instável). Agora responde de propósito uma letra ERRADA (lida do banco só pelo teste), para cair no caderno.
+    const errada = (await t.sql(`select correct_option from public.questions where id = $1`, [q.id]))[0].correct_option === "A" ? "B" : "A";
+    const c = await t.rpc(ANA, "app_answer_question", { p_session_id: s.session_id, p_question_id: q.id, p_option: errada });
     expect(c.answer_preliminary).toBe(true);
     expect(c.preliminary).toEqual({ expected_on: "2026-12-04" });
     expect(q.preliminary).toEqual({ expected_on: "2026-12-04" }); // o selo aparece antes de responder, sem a letra
     // resultado da sessão e caderno de erros: a mesma marca (errou de propósito para cair no caderno)
-    const errada = (await t.sql(`select correct_option from public.questions where id = $1`, [q.id]))[0].correct_option === "A" ? "B" : "A";
-    if (errada !== "A") await t.rpc(ANA, "app_answer_question", { p_session_id: s.session_id, p_question_id: q.id, p_option: errada }).catch(() => null);
     const s2 = await t.rpc(ANA, "app_start_session", { p_kind: "questoes", p_filters: { exam_id: "revalida-2023-2" }, p_count: 1 });
     const q2 = (await t.rpc(ANA, "app_get_session", { p_session_id: s2.session_id })).questions[0];
     const c2 = await t.rpc(ANA, "app_answer_question", { p_session_id: s2.session_id, p_question_id: q2.id, p_option: "A" });
