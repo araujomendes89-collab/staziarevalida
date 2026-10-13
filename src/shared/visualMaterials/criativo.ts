@@ -12,7 +12,7 @@
  */
 import { A6_PRINT, STORY_SAFE, paletteOf, updatedLabel, type TableRowKind, type VisualContent, type VisualSide } from "./model";
 import { VISUAL_TOKENS } from "./tokens";
-import { corDoCampo } from "./temas";
+import { corDoCampo, temaVermelho } from "./temas";
 import { KIT_NAVY, glowOnlySvg, heroInnerWhite, sceneSvg, spot, spotForText, themeOf, type SpotName } from "./kit";
 import { esc, guidesHtml, type Artboard, type BuildOptions } from "./templates";
 
@@ -44,6 +44,8 @@ interface CP {
   d: string;
   c: string;
   glow: string;
+  /** Cor do tema na família vermelha (GO): a Pegadinha e a linha de alerta recebem o reforço listrado. */
+  vermelho: boolean;
   /** Cores das linhas normais da tabela, em sequência (a 1ª é a da especialidade). */
   cycle: { stripe: string; bg: string; text: string; badge: SpotName; end: SpotName }[];
 }
@@ -60,6 +62,7 @@ const pal = (c: VisualContent): CP => {
     d: t.dark,
     c: t.contrast,
     glow: tema ? tema.brilho : (GLOW[c.specialty.key] ?? GLOW.fallback),
+    vermelho: temaVermelho(tema),
     cycle: [
       { stripe: t.primary, bg: t.soft, text: NAVY, badge: "ok", end: "documento" },
       { ...blue, text: NAVY, badge: "pergunta", end: "lupa" },
@@ -236,7 +239,7 @@ function colorTable(c: VisualContent, P: CP, s: TableSize) {
       const cells = r.celulas
         .map((cell, j) => {
           if (j === 0)
-            return `<div style="display:flex;align-items:center;gap:${Math.round(s.badge * 0.4)}px;padding:${s.cellPad};border-left:${s.stripe}px solid ${look.stripe};background:${look.bg};min-width:0">${spot(look.badge, s.badge)}<div style="font-weight:700;font-size:${s.first}px;line-height:1.2;color:${look.text};min-width:0;overflow-wrap:anywhere">${esc(cell)}</div></div>`;
+            return `<div style="display:flex;align-items:center;gap:${Math.round(s.badge * 0.4)}px;padding:${s.cellPad};border-left:${s.stripe}px solid ${look.stripe};${kind === "alerta" && P.vermelho ? `border-image:${HAZARD(Math.max(3, Math.round(s.stripe * 0.8)))} 1;` : ""}background:${look.bg};min-width:0">${spot(look.badge, s.badge)}<div style="font-weight:700;font-size:${s.first}px;line-height:1.2;color:${look.text};min-width:0;overflow-wrap:anywhere">${esc(cell)}</div></div>`;
           const isEnd = j === n - 1;
           return `<div style="display:flex;align-items:center;gap:${Math.round(s.end * 0.4)}px;padding:${s.cellPad};border-left:1px solid ${CARD_LINE};background:${isEnd ? look.bg : "#FFFFFF"};min-width:0">${isEnd ? spot(look.end, s.end, look.endColor) : ""}<div style="font-weight:${isEnd ? 600 : 500};font-size:${s.cell}px;line-height:1.25;color:${kind === "alerta" && isEnd ? ALERT : INK};min-width:0;overflow-wrap:anywhere">${esc(cell)}</div></div>`;
         })
@@ -258,9 +261,18 @@ interface AlertSize {
   gap: number;
 }
 /** Caixa "Pegadinha de prova!": sempre o vermelho de alerta #C8102E. */
-const pegadinha = (text: string, s: AlertSize, style = "") =>
+/** Faixa listrada vermelho/branco de alerta (só nos temas vermelhos, para a Pegadinha não se confundir com a cor do tema). */
+const HAZARD = (w: number) => `repeating-linear-gradient(-45deg, ${ALERT} 0 ${w}px, #FFFFFF ${w}px ${Math.round(w * 1.8)}px)`;
+/** Recuo horizontal de um padding CSS ("10px 16px" → 16). */
+const padX = (pad: string) => {
+  const v = pad.trim().split(/\s+/).map((x) => parseFloat(x) || 0);
+  return v.length === 1 ? v[0] : v.length === 4 ? v[3] : v[1];
+};
+const pegadinha = (text: string, s: AlertSize, style = "", forte = false) =>
   text
-    ? `<div data-role="alert" data-k="pegadinha" style="flex:none;border:${s.border}px solid ${ALERT};border-radius:${s.radius}px;background:linear-gradient(180deg,#FFFFFF 0%,${ALERT_SOFT} 100%);padding:${s.pad};display:flex;gap:${s.gap}px;align-items:center;box-shadow:0 2px 10px rgba(200,16,46,0.10);${style}">${spot("triangulo", s.icon, ALERT)}<div style="display:flex;flex-direction:column;gap:${Math.round(s.gap / 5)}px;min-width:0"><div data-role="alert-title" style="${COND};font-style:italic;font-weight:800;font-size:${s.title}px;line-height:0.95;letter-spacing:0.3px;text-transform:uppercase;color:${ALERT}">Pegadinha de prova!</div><div data-k="pegadinha" data-lines="${s.lines}" data-fit="0.75" style="font-size:${s.text}px;line-height:1.3;font-weight:500;color:${INK}">${multi(text)}</div></div></div>`
+    ? `<div data-role="alert" data-k="pegadinha"${forte ? ' data-alert="reforcado"' : ""} style="flex:none;border:${s.border}px solid ${ALERT};border-radius:${s.radius}px;background:${forte ? "#FFFFFF" : `linear-gradient(180deg,#FFFFFF 0%,${ALERT_SOFT} 100%)`};padding:${s.pad};${forte ? `position:relative;padding-left:${Math.round(s.icon * 0.22) + padX(s.pad) + 4}px;overflow:hidden;` : ""}display:flex;gap:${s.gap}px;align-items:center;box-shadow:0 2px 10px rgba(200,16,46,${forte ? "0.18" : "0.10"});${style}">${
+        forte ? `<div aria-hidden="true" style="position:absolute;left:0;top:0;bottom:0;width:${Math.round(s.icon * 0.22)}px;background:${HAZARD(Math.max(4, Math.round(s.icon * 0.09)))}"></div>` : ""
+      }${spot(forte ? "trianguloCheio" : "triangulo", s.icon, ALERT)}<div style="display:flex;flex-direction:column;gap:${Math.round(s.gap / 5)}px;min-width:0"><div data-role="alert-title" style="${COND};font-style:italic;font-weight:800;font-size:${s.title}px;line-height:0.95;letter-spacing:0.3px;text-transform:uppercase;color:${ALERT}">Pegadinha de prova!</div><div data-k="pegadinha" data-lines="${s.lines}" data-fit="0.75" style="font-size:${s.text}px;line-height:1.3;font-weight:500;color:${INK}">${multi(text)}</div></div></div>`
     : "";
 
 interface StepsSize {
@@ -344,13 +356,13 @@ ${c.subtitulo ? `<div data-k="subtitulo" data-lines="1" data-fit="0.7" style="${
 </div></div>`;
   const main = mainCard(c, P, o, { pad: "14px 16px", radius: 14, hero: 62, dado: 30, legend: 14, para: 14.5, paraLines: 8, gap: 12 }, true);
   const pontos = pontosPanel(c, P, { pad: "12px 14px", radius: 14, head: 15, icon: 22, text: 13, detail: 12, gap: 8 }, "flex:1");
-  const nota = postIt(c.tome_nota, { width: pontos ? 166 : null, pad: "22px 12px 10px", rot: 3.5, title: pontos ? 25 : 30, text: pontos ? 21 : 24, lines: 6, bulb: pontos ? 22 : 28, tape: [64, 16] }, pontos ? "align-self:center" : "align-self:center;width:250px");
+  const nota = postIt(c.tome_nota, { width: pontos ? 166 : null, pad: pontos ? "22px 12px 10px" : "22px 14px 10px", rot: 3.5, title: pontos ? 25 : 30, text: pontos ? 21 : 24, lines: 6, bulb: pontos ? 22 : 28, tape: [64, 16] }, pontos ? "align-self:center" : "align-self:center;width:250px");
   const right = pontos || nota ? `<div style="display:flex;gap:14px;align-items:stretch;min-width:0;padding:4px 6px 4px 0">${pontos}${nota}</div>` : "";
   const row1 = main || right ? `<div style="flex:none;display:grid;grid-template-columns:${main && right ? "1fr 1.15fr" : "1fr"};gap:12px;align-items:stretch">${main}${right}</div>` : "";
   const table = hasTable(c)
     ? `<div style="flex:none;display:flex;flex-direction:column;gap:8px">${sectionHead(++n, c.tabela!.titulo || "Resumo em tabela", P, { circle: 40, font: 19 }, c.tabela!.titulo ? "tabela" : "")}${colorTable(c, P, { radius: 10, head: 13, cellPad: "7px 12px", first: 13.5, cell: 13, badge: 24, end: 22, stripe: 5 })}</div>`
     : "";
-  const peg = pegadinha(c.pegadinha, { border: 2.5, radius: 14, pad: "10px 16px", icon: 50, title: 25, text: 14, lines: 3, gap: 14 });
+  const peg = pegadinha(c.pegadinha, { border: 2.5, radius: 14, pad: "10px 16px", icon: 50, title: 25, text: 14, lines: 3, gap: 14 }, "", P.vermelho);
   const bl = steps(c, P, { radius: 14, pad: "10px 16px 12px", headIcon: 32, head: 21, num: 24, icon: 30, text: 12.5, gap: 10 });
   const mn = mnemonico(c, P, { radius: 12, head: 16, letter: 24, text: 12.5 }, ++n);
   const inner = `${header}
@@ -379,7 +391,7 @@ ${c.subtitulo ? `<div data-k="subtitulo" data-lines="2" data-fit="0.7" style="${
   const table = hasTable(c)
     ? `<div style="flex:none;display:flex;flex-direction:column;gap:10px">${sectionHead(1, c.tabela!.titulo || "Resumo em tabela", P, { circle: 54, font: 27 }, c.tabela!.titulo ? "tabela" : "")}${colorTable(c, P, { radius: 16, head: 20, cellPad: "10px 16px", first: 22, cell: 21, badge: 36, end: 32, stripe: 7 })}</div>`
     : "";
-  const peg = pegadinha(c.pegadinha, { border: 3, radius: 22, pad: "14px 22px", icon: 72, title: 38, text: 24, lines: 3, gap: 20 });
+  const peg = pegadinha(c.pegadinha, { border: 3, radius: 22, pad: "14px 22px", icon: 72, title: 38, text: 24, lines: 3, gap: 20 }, "", P.vermelho);
   const inner = `${header}
 ${band(c, P, { font: 27, pad: "10px 22px", margin: "-24px 26px 0", icon: 34, radius: 16 })}
 <div data-region="body" data-box style="flex:1;min-height:0;padding:18px 26px 16px;display:flex;flex-direction:column;gap:18px">${row1}${table}${peg}</div>
@@ -406,7 +418,7 @@ ${nota}
   const table = hasTable(c)
     ? `<div style="flex:none;display:flex;flex-direction:column;gap:12px">${sectionHead(1, c.tabela!.titulo || "Resumo em tabela", P, { circle: 66, font: 34 }, c.tabela!.titulo ? "tabela" : "")}${colorTable(c, P, { radius: 20, head: 26, cellPad: "14px 20px", first: 29, cell: 28, badge: 46, end: 40, stripe: 9 })}</div>`
     : "";
-  const peg = pegadinha(c.pegadinha, { border: 4, radius: 26, pad: "20px 28px", icon: 92, title: 48, text: 31, lines: 4, gap: 24 });
+  const peg = pegadinha(c.pegadinha, { border: 4, radius: 26, pad: "20px 28px", icon: 92, title: 48, text: 31, lines: 4, gap: 24 }, "", P.vermelho);
   const inner = `${header}
 ${band(c, P, { font: 34, pad: "14px 28px", margin: "-34px 40px 0", icon: 44, radius: 20 })}
 <div data-region="body" data-box style="flex:1;min-height:0;padding:28px 50px 26px;display:flex;flex-direction:column;gap:26px">${row1}${table}${peg}</div>
@@ -453,7 +465,7 @@ ${
     ? `<div data-box style="flex:0 1 auto;min-height:0;background:#FFFFFF;border:2px solid ${CARD_LINE};border-radius:30px;padding:28px 34px 32px;display:flex;flex-direction:column;gap:16px;box-shadow:0 4px 18px rgba(11,37,69,0.08)"><div style="display:flex;align-items:center;gap:14px">${spot("lampada", 52, P.d)}<div style="${COND};font-weight:800;font-size:34px;letter-spacing:3px;text-transform:uppercase;color:${P.d}">Explicação</div></div><div data-k="explicacao" data-lines="${c.pegadinha ? 6 : 10}" data-fit="0.7" style="font-size:40px;line-height:1.3;font-weight:500;color:${INK}">${multi(c.explicacao)}</div></div>`
     : ""
 }
-${pegadinha(c.pegadinha, { border: 3, radius: 26, pad: "16px 24px", icon: 70, title: 40, text: 29, lines: 2, gap: 20 })}
+${pegadinha(c.pegadinha, { border: 3, radius: 26, pad: "16px 24px", icon: 70, title: 40, text: 29, lines: 2, gap: 20 }, "", P.vermelho)}
 </div>
 ${foot(c.fonte)}`;
   return [
@@ -495,7 +507,7 @@ ${
     ? `<div data-box style="flex:0 1 auto;min-height:0;position:relative;background:linear-gradient(160deg,#FFF3AE 0%,#FFE57E 60%,#FFD95A 100%);border-radius:10px;padding:44px 42px 30px;transform:rotate(-1deg);box-shadow:0 8px 20px rgba(11,37,69,0.18);display:flex;flex-direction:column;gap:14px;margin:6px 10px"><div style="position:absolute;top:-16px;left:50%;width:170px;height:34px;margin-left:-85px;background:rgba(158,216,230,0.85);transform:rotate(-3deg)"></div><div style="display:flex;align-items:center;gap:16px">${spot("lampada", 62, NAVY)}<div style="${CAV};font-weight:700;font-size:72px;line-height:0.95;color:${NAVY}">Como lembrar</div></div><div data-k="como_lembrar" data-lines="${c.pegadinha ? 6 : 9}" data-fit="0.7" style="font-size:44px;line-height:1.28;font-weight:500;color:${INK}">${multi(c.como_lembrar)}</div></div>`
     : ""
 }
-${pegadinha(c.pegadinha, { border: 4, radius: 32, pad: "20px 30px", icon: 90, title: 52, text: 38, lines: 2, gap: 24 })}
+${pegadinha(c.pegadinha, { border: 4, radius: 32, pad: "20px 30px", icon: 90, title: 52, text: 38, lines: 2, gap: 24 }, "", P.vermelho)}
 ${c.referencia ? `<div style="flex:none;display:flex;align-items:center;gap:16px;padding-top:18px;border-top:3px solid ${CARD_LINE}">${spot("livro", 46, NAVY)}<div data-k="referencia" data-lines="2" data-fit="0.75" style="font-size:34px;line-height:1.2;font-weight:600;color:${NAVY};min-width:0">${multi(c.referencia)}</div></div>` : ""}
 </div>
 ${foot(logo({ logo: 46, rev: 20 }, P), c.fonte ? `<div data-k="fonte" data-lines="2" data-fit="0.75" style="min-width:0;${COND};font-weight:600;font-size:26px;line-height:1.3;letter-spacing:2px;text-transform:uppercase;color:#C3D0E2;text-align:right">${esc(c.fonte)}</div>` : "")}`;

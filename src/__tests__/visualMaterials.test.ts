@@ -36,7 +36,7 @@ import {
   VISUAL_TEMPLATE_VERSION,
 } from "../../src/shared/visualMaterials";
 import { THEMES, sceneSvg, spotForText } from "../../src/shared/visualMaterials/kit";
-import { COR_MODELO, PALETA_TEMAS, TONS_PROIBIDOS, conferirContraste, corDoCampo, distancia, hexParaOklch } from "../../src/shared/visualMaterials/temas";
+import { COR_MODELO, PALETA_TEMAS, conferirContraste, corDoCampo, distancia, hexParaOklch, temaVermelho, tomProibido } from "../../src/shared/visualMaterials/temas";
 import { A4_SAMPLE, CARD_SAMPLE, PIECE_SAMPLE, SPECIALTY_SAMPLES } from "./visualSamples";
 
 vi.setConfig({ testTimeout: 120_000 });
@@ -210,12 +210,13 @@ describe("Cor de cada tema (tema_cor, paleta dos 100 Grandes Temas)", () => {
     expect(Object.keys(PALETA_TEMAS)).toHaveLength(100);
   });
 
-  it("todos os temas passam no contraste (o mesmo exigido do GR-001) e nenhum usa o vermelho ou o amarelo de alerta", () => {
+  it("todos os temas passam no contraste (o mesmo do GR-001); amarelo nunca; vermelho só em Ginecologia e Obstetrícia", () => {
     for (const t of Object.values(PALETA_TEMAS)) {
       expect(conferirContraste(t).filter((c) => !c.ok), t.id).toEqual([]);
       const h = hexParaOklch(t.primaria)[2];
-      expect(TONS_PROIBIDOS.some((f) => h >= f.de && h <= f.ate), `${t.id} tom ${h}`).toBe(false);
-      expect(distancia(t.primaria, "#C8102E")).toBeGreaterThan(0.1);
+      expect(tomProibido(h, t.area), `${t.id} tom ${h}`).toBeNull();
+      expect(temaVermelho(t), t.id).toBe(t.area === "go");
+      if (t.area !== "go") expect(distancia(t.primaria, "#C8102E")).toBeGreaterThan(0.1);
       expect(distancia(t.primaria, "#F2B705")).toBeGreaterThan(0.1);
     }
   });
@@ -238,6 +239,21 @@ describe("Cor de cada tema (tema_cor, paleta dos 100 Grandes Temas)", () => {
     expect(renderArtboards(content({ ...base, tema_cor: "#3366CC" }))[0].html).toContain(`linear-gradient(90deg, ${livre.escura} 0%, ${livre.primaria} 100%)`);
     expect(validateVisualInput({ ...base, tema_cor: "GR-999" }).problems.map((p) => p.field)).toContain("tema_cor");
     expect(parseVisualCommand("modelo: feed\nespecialidade: cm\ntitulo: T\ncor do tema: GR-094").input.tema_cor).toBe("GR-094");
+  });
+});
+
+describe("Pegadinha nos temas vermelhos (GO)", () => {
+  it("nos temas vermelhos a Pegadinha ganha o reforço (faixa listrada e triângulo cheio); nos outros, nada muda", () => {
+    const base = { modelo: "a4", especialidade: "ginecologia", ...A4_SAMPLE };
+    const go = renderArtboards(content({ ...base, tema_cor: "GR-043" }))[0].html;
+    expect(go).toMatch(/data-role="alert" data-k="pegadinha" data-alert="reforcado"[^>]*solid #C8102E/);
+    expect(go).toContain("repeating-linear-gradient(-45deg, #C8102E");
+    expect(go).toMatch(/data-role="alert-title"[^>]*color:#C8102E/);
+    for (const tema of ["GR-001", "GR-094", ""]) {
+      const html = renderArtboards(content({ ...base, especialidade: "clinica_medica", tema_cor: tema }))[0].html;
+      expect(html, tema).not.toContain('data-alert="reforcado"');
+      expect(html, tema).not.toContain("repeating-linear-gradient(-45deg, #C8102E");
+    }
   });
 });
 

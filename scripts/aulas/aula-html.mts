@@ -6,7 +6,7 @@
  *   - "web": prévia HTML com os mesmos recursos (flashcards que viram, questões que corrigem, checklists, anotações).
  * Nenhum texto clínico é escrito aqui: tudo vem da pasta de conteúdo. Só rótulos de interface.
  */
-import { corDoCampo, esc, paletteOf, resolveSpecialty, type VisualContent } from "../../src/shared/visualMaterials/index.ts";
+import { corDoCampo, temaVermelho, esc, paletteOf, resolveSpecialty, type VisualContent } from "../../src/shared/visualMaterials/index.ts";
 import { sceneSvg, spot, spotForText, heroInnerWhite, themeOf, type SpotName } from "../../src/shared/visualMaterials/kit/index.ts";
 
 // ---------------------------------------------------------------------------- limpeza: nenhuma referência no texto do aluno
@@ -326,7 +326,7 @@ const hexA = (hex: string, a: number) => {
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
 };
 
-function css(P: { p: string; s: string; d: string; glow: string }, fontCss: string, mode: "pdf" | "web") {
+function css(P: { p: string; s: string; d: string; glow: string; vermelho?: boolean }, fontCss: string, mode: "pdf" | "web") {
   return `${fontCss}
 *{box-sizing:border-box}html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 body{margin:0;font-family:'Barlow','Segoe UI',sans-serif;color:#142033;background:${mode === "pdf" ? "#FFFFFF" : "#DCE6EA"}}
@@ -356,6 +356,7 @@ b{font-weight:700;color:#0B2545}
 .aviso{display:flex;gap:12px;align-items:flex-start;border-left:6px solid #F2B705;background:linear-gradient(90deg,#FFF8DB,#FFFDF3);border-radius:12px;padding:12px 16px;margin:6px 0 14px;box-shadow:0 2px 8px rgba(11,37,69,.06)}
 .aviso .h{font-family:'Barlow Condensed',sans-serif;font-weight:800;text-transform:uppercase;color:#8A5A00;font-size:19px;line-height:1}.aviso .t{font-size:14.2px;line-height:1.45;margin-top:4px}
 .peg{display:flex;gap:14px;align-items:center;border:2.5px solid #C8102E;border-radius:14px;background:linear-gradient(180deg,#fff,#FFF3F4);padding:12px 16px;margin:6px 0 14px}
+.peg.forte{position:relative;overflow:hidden;background:#fff;padding-left:34px}.peg.forte:before{content:"";position:absolute;left:0;top:0;bottom:0;width:13px;background:repeating-linear-gradient(-45deg,#C8102E 0 5px,#fff 5px 9px)}
 .peg .h{font-family:'Barlow Condensed',sans-serif;font-style:italic;font-weight:800;text-transform:uppercase;color:#C8102E;font-size:24px;line-height:1}
 .peg .t{font-size:14.2px;line-height:1.42;margin-top:3px}
 .chk{border:2px solid ${hexA(P.p, 0.35)};border-radius:14px;background:#fff;padding:12px 16px;margin:4px 0 14px}
@@ -393,10 +394,10 @@ b{font-weight:700;color:#0B2545}
 /** Rótulo, ícone e cores do kit para a aula. */
 function paleta(aula: Aula) {
   const tema = corDoCampo(aula.temaCor ?? "");
-  if (tema) return { p: tema.primaria, s: tema.clara, d: tema.escura, glow: tema.brilho };
+  if (tema) return { p: tema.primaria, s: tema.clara, d: tema.escura, glow: tema.brilho, vermelho: temaVermelho(tema) };
   const t = paletteOf(aula.specialtyKey);
   const glow: Record<string, string> = { clinica_medica: "#5FE6C0", pediatria: "#8EC8FF", ginecologia: "#FF9EC2", cirurgia: "#FFA59C", preventiva_mfc: "#C9B8FF", fallback: "#7FE3DE" };
-  return { p: t.primary, s: t.soft, d: t.dark, glow: glow[aula.specialtyKey] ?? glow.fallback };
+  return { p: t.primary, s: t.soft, d: t.dark, glow: glow[aula.specialtyKey] ?? glow.fallback, vermelho: false };
 }
 
 function tituloDuasCores(t: string) {
@@ -439,7 +440,7 @@ function blocoHtml(b: Bloco, P: ReturnType<typeof paleta>, mode: Mode, ctx: { se
     case "nota":
       return `<div class="foot-ofc blk" style="text-align:left;margin:4px 0 12px">${inline(b.md)}</div>`;
     case "peg":
-      return `<div class="peg blk">${spot("triangulo", 52, "#C8102E")}<div><div class="h">Pegadinha de prova!</div><div class="t">${inline(b.md)}</div></div></div>`;
+      return `<div class="peg${P.vermelho ? " forte" : ""} blk">${spot(P.vermelho ? "trianguloCheio" : "triangulo", 52, "#C8102E")}<div><div class="h">Pegadinha de prova!</div><div class="t">${inline(b.md)}</div></div></div>`;
     case "checks": {
       const rows = b.itens
         .map((i) => {

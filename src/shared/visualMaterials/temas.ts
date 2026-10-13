@@ -6,7 +6,9 @@
  * Os outros 99 temas repetem a MESMA estrutura (mesma luminosidade e saturação em OKLCH, só muda o tom),
  * então o contraste fica igual ao do GR-001. Cada área tem uma família de tons; dentro da área, temas vizinhos
  * pulam de tom e alternam um pouco a luminosidade para ficarem bem diferentes.
- * Nunca entram como cor de tema o vermelho das caixas "Pegadinha" nem o amarelo das caixas "Atenção"/post-it.
+ * O amarelo das caixas "Atenção"/post-it nunca é cor de tema. O vermelho é a família de Ginecologia e Obstetrícia
+ * (decisão do dono, 2026-10-13: "Ginecologia vermelho") e fica proibido nas outras 6 áreas. Nos temas vermelhos,
+ * a caixa "Pegadinha de prova!" ganha o reforço de alerta (faixa listrada e triângulo cheio): ver temaVermelho().
  *
  * Os dados prontos ficam em paletaTemas.data.ts (gerado por scripts/aulas/paleta-temas.mts).
  */
@@ -36,20 +38,33 @@ export interface TemaPaleta extends CorTema {
 export const COR_MODELO: CorTema = { primaria: "#2E9B67", escura: "#1B6B45", clara: "#E9F6EF", brilho: "#5FE6C0" };
 
 /** Família de tons (OKLCH, graus) de cada área. Fora: vermelho (alerta, ~22°) e amarelo/laranja (Atenção, post-it, 53° a 116°). */
-export const FAIXAS_AREA: Record<string, { de: number; ate: number; nome: string }> = {
+export const FAIXAS_AREA: Record<string, { de: number; ate: number; nome: string; croma?: number }> = {
   cm: { de: 119, ate: 174, nome: "verdes" },
   cir: { de: 179, ate: 212, nome: "petróleo e ciano" },
   ped: { de: 217, ate: 255, nome: "azuis" },
   mfc: { de: 260, ate: 275, nome: "índigo" },
   sm: { de: 280, ate: 292, nome: "violeta" },
   sc: { de: 297, ate: 310, nome: "roxo-magenta" },
-  go: { de: 315, ate: 348, nome: "rosa e framboesa" },
+  // vermelhos de verdade pedem um pouco mais de saturação (o contraste é conferido do mesmo jeito)
+  go: { de: 2, ate: 32, nome: "vermelhos", croma: 1.3 },
 };
-export const TONS_PROIBIDOS = [
-  { de: 350, ate: 360, motivo: "vermelho de alerta (Pegadinha)" },
-  { de: 0, ate: 52, motivo: "vermelho de alerta (Pegadinha)" },
+export const TONS_PROIBIDOS: { de: number; ate: number; motivo: string; exceto?: string[] }[] = [
+  { de: 350, ate: 360, motivo: "vermelho de alerta (Pegadinha)", exceto: ["go"] },
+  { de: 0, ate: 52, motivo: "vermelho de alerta (Pegadinha)", exceto: ["go"] },
   { de: 53, ate: 116, motivo: "amarelo/laranja (Atenção e post-it)" },
 ];
+
+/** Tom proibido para a área? (o vermelho só é permitido em Ginecologia e Obstetrícia). */
+export function tomProibido(h: number, area: string) {
+  return TONS_PROIBIDOS.find((f) => h >= f.de && h <= f.ate && !(f.exceto ?? []).includes(area)) ?? null;
+}
+
+/** A cor do tema é da família vermelha (perto do vermelho de alerta)? Aí a Pegadinha recebe o reforço visual. */
+export function temaVermelho(c: CorTema | null | undefined): boolean {
+  if (!c) return false;
+  const h = hexParaOklch(c.primaria)[2];
+  return h >= 345 || h <= 52;
+}
 
 // ---------------------------------------------------------------------------- conversão de cor (OKLab/OKLCH ↔ sRGB)
 const toLin = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -121,12 +136,12 @@ const MODELO_OKLCH = {
  * Cores de um tema com o tom H (OKLCH). `dl` muda um pouco a luminosidade da primária e da escura
  * (variação entre temas vizinhos); clara e brilho ficam iguais ao modelo, só mudando o tom.
  */
-export function corDoTom(H: number, dl = 0): CorTema {
+export function corDoTom(H: number, dl = 0, croma = 1): CorTema {
   const m = MODELO_OKLCH;
   const dh = (x: number) => (H + (x - m.primaria[2]) + 360) % 360;
   return {
-    primaria: oklchParaHex(m.primaria[0] + dl, m.primaria[1], H),
-    escura: oklchParaHex(m.escura[0] + dl * 0.6, m.escura[1], dh(m.escura[2])),
+    primaria: oklchParaHex(m.primaria[0] + dl, m.primaria[1] * croma, H),
+    escura: oklchParaHex(m.escura[0] + dl * 0.6, m.escura[1] * croma, dh(m.escura[2])),
     clara: oklchParaHex(m.clara[0], m.clara[1], dh(m.clara[2])),
     brilho: oklchParaHex(m.brilho[0], m.brilho[1], dh(m.brilho[2])),
   };
@@ -151,12 +166,12 @@ export function conferirContraste(c: CorTema) {
 }
 
 /** Ajusta a luminosidade até passar em todas as regras (raro: só alguns tons claros pedem). */
-export function corSegura(H: number, dl = 0): CorTema {
+export function corSegura(H: number, dl = 0, croma = 1): CorTema {
   for (let k = 0; k < 20; k++) {
-    const c = corDoTom(H, dl - k * 0.01);
+    const c = corDoTom(H, dl - k * 0.01, croma);
     if (conferirContraste(c).every((x) => x.ok)) return c;
   }
-  return corDoTom(H, dl - 0.2);
+  return corDoTom(H, dl - 0.2, croma);
 }
 
 // ---------------------------------------------------------------------------- uso nas peças

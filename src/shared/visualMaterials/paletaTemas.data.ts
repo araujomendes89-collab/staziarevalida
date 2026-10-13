@@ -777,11 +777,11 @@ export const PALETA_TEMAS: Record<string, TemaPaleta> = {
   "titulo": "Psicoses e esquizofrenia",
   "area": "sm",
   "area_nome": "Saúde Mental",
-  "tom": 286,
-  "primaria": "#6E66B9",
-  "escura": "#4D4784",
-  "clara": "#F2F1FD",
-  "brilho": "#D3BEFE"
+  "tom": 289,
+  "primaria": "#7264B7",
+  "escura": "#504683",
+  "clara": "#F2F0FD",
+  "brilho": "#D6BCFE"
  },
  "GR-098": {
   "id": "GR-098",
@@ -832,11 +832,11 @@ export const PALETA_TEMAS: Record<string, TemaPaleta> = {
   "titulo": "PNAB e Redes de Atenção à Saúde",
   "area": "sc",
   "area_nome": "Saúde Coletiva",
-  "tom": 304,
-  "primaria": "#9570C2",
-  "escura": "#674C87",
-  "clara": "#F5EFFB",
-  "brilho": "#EBB2FE"
+  "tom": 310,
+  "primaria": "#9C6EBD",
+  "escura": "#6C4A84",
+  "clara": "#F7EFFA",
+  "brilho": "#F4ADFB"
  },
  "GR-089": {
   "id": "GR-089",
@@ -854,11 +854,11 @@ export const PALETA_TEMAS: Record<string, TemaPaleta> = {
   "titulo": "SINAN, SIM e SINASC",
   "area": "sc",
   "area_nome": "Saúde Coletiva",
-  "tom": 303.5,
-  "primaria": "#835EAF",
-  "escura": "#5C427D",
-  "clara": "#F5F0FB",
-  "brilho": "#EAB2FF"
+  "tom": 300.5,
+  "primaria": "#9171C4",
+  "escura": "#644D89",
+  "clara": "#F5F0FC",
+  "brilho": "#E5B5FE"
  },
  "GR-091": {
   "id": "GR-091",
@@ -876,22 +876,22 @@ export const PALETA_TEMAS: Record<string, TemaPaleta> = {
   "titulo": "Sensibilidade, especificidade e valores preditivos",
   "area": "sc",
   "area_nome": "Saúde Coletiva",
-  "tom": 297,
-  "primaria": "#7B61B3",
-  "escura": "#574480",
-  "clara": "#F4F0FC",
-  "brilho": "#E0B7FE"
+  "tom": 300,
+  "primaria": "#7F60B1",
+  "escura": "#59437E",
+  "clara": "#F5F0FC",
+  "brilho": "#E4B5FE"
  },
  "GR-093": {
   "id": "GR-093",
   "titulo": "Planejamento e avaliação em saúde",
   "area": "sc",
   "area_nome": "Saúde Coletiva",
-  "tom": 306.5,
-  "primaria": "#A178CA",
-  "escura": "#6E508B",
-  "clara": "#F6EFFB",
-  "brilho": "#EFB0FD"
+  "tom": 309.5,
+  "primaria": "#A577C7",
+  "escura": "#704F8A",
+  "clara": "#F6EFFA",
+  "brilho": "#F4ADFC"
  },
  "GR-094": {
   "id": "GR-094",
@@ -909,197 +909,197 @@ export const PALETA_TEMAS: Record<string, TemaPaleta> = {
   "titulo": "Assistência ao pré-natal",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 321,
-  "primaria": "#9D61A9",
-  "escura": "#6E4277",
-  "clara": "#F8EFF8",
-  "brilho": "#FFAAED"
+  "tom": 32,
+  "primaria": "#CA4D38",
+  "escura": "#8F3424",
+  "clara": "#FDEFEB",
+  "brilho": "#FFB897"
  },
  "GR-044": {
   "id": "GR-044",
   "titulo": "Infecções na gestação e congênitas",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 334.2,
-  "primaria": "#A85D9A",
-  "escura": "#763F6C",
-  "clara": "#FAEEF6",
-  "brilho": "#FFAED7"
+  "tom": 14,
+  "primaria": "#CA485E",
+  "escura": "#8E3040",
+  "clara": "#FDEEEE",
+  "brilho": "#FEB5AC"
  },
  "GR-045": {
   "id": "GR-045",
   "titulo": "Síndromes hipertensivas da gestação",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 348,
-  "primaria": "#B15A89",
-  "escura": "#7C3D60",
-  "clara": "#FCEEF3",
-  "brilho": "#FFB1C6"
+  "tom": 23,
+  "primaria": "#CB4A4C",
+  "escura": "#8F3133",
+  "clara": "#FDEEEC",
+  "brilho": "#FDB7A3"
  },
  "GR-046": {
   "id": "GR-046",
   "titulo": "Diabetes gestacional",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 321.6,
-  "primaria": "#B172BB",
-  "escura": "#794C81",
-  "clara": "#F9EFF8",
-  "brilho": "#FDABEB"
+  "tom": 2,
+  "primaria": "#C64874",
+  "escura": "#8C3051",
+  "clara": "#FDEEF0",
+  "brilho": "#FEB4B8"
  },
  "GR-047": {
   "id": "GR-047",
   "titulo": "Sangramento no primeiro trimestre",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 337.8,
-  "primaria": "#BE6EA8",
-  "escura": "#834973",
-  "clara": "#FBEEF5",
-  "brilho": "#FFAFD2"
+  "tom": 20,
+  "primaria": "#C04049",
+  "escura": "#892B33",
+  "clara": "#FDEEED",
+  "brilho": "#FEB6A6"
  },
  "GR-048": {
   "id": "GR-048",
   "titulo": "Sangramento na segunda metade da gestação",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 315,
-  "primaria": "#A16CB8",
-  "escura": "#6F4980",
-  "clara": "#F7EFF9",
-  "brilho": "#F9ABF5"
+  "tom": 32,
+  "primaria": "#C0432E",
+  "escura": "#892E1F",
+  "clara": "#FDEFEB",
+  "brilho": "#FFB897"
  },
  "GR-049": {
   "id": "GR-049",
   "titulo": "Trabalho de parto e partograma",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 328.2,
-  "primaria": "#9A5698",
-  "escura": "#6D3B6C",
-  "clara": "#FAEEF7",
-  "brilho": "#FFACE0"
+  "tom": 8,
+  "primaria": "#BD3E61",
+  "escura": "#872B44",
+  "clara": "#FDEEEF",
+  "brilho": "#FEB4B2"
  },
  "GR-050": {
   "id": "GR-050",
   "titulo": "Distócias e emergências intraparto",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 341.4,
-  "primaria": "#A35288",
-  "escura": "#743961",
-  "clara": "#FBEEF5",
-  "brilho": "#FEB0CE"
+  "tom": 32,
+  "primaria": "#D55741",
+  "escura": "#953929",
+  "clara": "#FDEFEB",
+  "brilho": "#FFB897"
  },
  "GR-051": {
   "id": "GR-051",
   "titulo": "Hemorragia pós-parto",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 321.6,
-  "primaria": "#A769B2",
-  "escura": "#74477C",
-  "clara": "#F9EFF8",
-  "brilho": "#FDABEB"
+  "tom": 2,
+  "primaria": "#D0527D",
+  "escura": "#913655",
+  "clara": "#FDEEF0",
+  "brilho": "#FEB4B8"
  },
  "GR-052": {
   "id": "GR-052",
   "titulo": "Puerpério, endometrite e mastite",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 334.8,
-  "primaria": "#B265A3",
-  "escura": "#7C4471",
-  "clara": "#FAEEF6",
-  "brilho": "#FFAED6"
+  "tom": 14,
+  "primaria": "#D45266",
+  "escura": "#943645",
+  "clara": "#FDEEEE",
+  "brilho": "#FEB5AC"
  },
  "GR-053": {
   "id": "GR-053",
   "titulo": "Prematuridade e rotura prematura de membranas",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 348,
-  "primaria": "#BB6392",
-  "escura": "#824265",
-  "clara": "#FCEEF3",
-  "brilho": "#FFB1C6"
+  "tom": 32,
+  "primaria": "#DF604A",
+  "escura": "#9B3E2E",
+  "clara": "#FDEFEB",
+  "brilho": "#FFB897"
  },
  "GR-054": {
   "id": "GR-054",
   "titulo": "Restrição de crescimento fetal e avaliação do bem-estar",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 328.2,
-  "primaria": "#B770B4",
-  "escura": "#7D4A7C",
-  "clara": "#FAEEF7",
-  "brilho": "#FFACE0"
+  "tom": 8,
+  "primaria": "#DD5B7B",
+  "escura": "#993B52",
+  "clara": "#FDEEEF",
+  "brilho": "#FEB4B2"
  },
  "GR-055": {
   "id": "GR-055",
   "titulo": "Contracepção e planejamento reprodutivo",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 347.4,
-  "primaria": "#C46C9C",
-  "escura": "#87476A",
-  "clara": "#FCEEF3",
-  "brilho": "#FFB1C7"
+  "tom": 20,
+  "primaria": "#E05D63",
+  "escura": "#9B3C41",
+  "clara": "#FDEEED",
+  "brilho": "#FEB6A6"
  },
  "GR-056": {
   "id": "GR-056",
   "titulo": "Rastreamento do câncer do colo do útero",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 315,
-  "primaria": "#AA75C2",
-  "escura": "#754E86",
-  "clara": "#F7EFF9",
-  "brilho": "#F9ABF5"
+  "tom": 2,
+  "primaria": "#BB3F6B",
+  "escura": "#862B4C",
+  "clara": "#FDEEF0",
+  "brilho": "#FEB4B8"
  },
  "GR-057": {
   "id": "GR-057",
   "titulo": "Avaliação mamária e câncer de mama",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 334.8,
-  "primaria": "#9F5490",
-  "escura": "#713A66",
-  "clara": "#FAEEF6",
-  "brilho": "#FFAED6"
+  "tom": 14,
+  "primaria": "#BF3F55",
+  "escura": "#892B3B",
+  "clara": "#FDEEEE",
+  "brilho": "#FEB5AC"
  },
  "GR-058": {
   "id": "GR-058",
   "titulo": "Vulvovaginites e cervicites",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 348,
-  "primaria": "#A75180",
-  "escura": "#77385B",
-  "clara": "#FCEEF3",
-  "brilho": "#FFB1C6"
+  "tom": 26,
+  "primaria": "#C0413D",
+  "escura": "#892D29",
+  "clara": "#FDEFEC",
+  "brilho": "#FFB79F"
  },
  "GR-059": {
   "id": "GR-059",
   "titulo": "Sangramento uterino anormal",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 318.6,
-  "primaria": "#9259A2",
-  "escura": "#673E73",
-  "clara": "#F8EFF9",
-  "brilho": "#FDAAF0"
+  "tom": 8,
+  "primaria": "#D25272",
+  "escura": "#93354D",
+  "clara": "#FDEEEF",
+  "brilho": "#FEB4B2"
  },
  "GR-060": {
   "id": "GR-060",
   "titulo": "Doença inflamatória pélvica e dor pélvica",
   "area": "go",
   "area_nome": "Ginecologia e Obstetrícia",
-  "tom": 341.4,
-  "primaria": "#B7649B",
-  "escura": "#7F436B",
-  "clara": "#FBEEF5",
-  "brilho": "#FEB0CE"
+  "tom": 23,
+  "primaria": "#D55454",
+  "escura": "#953738",
+  "clara": "#FDEEEC",
+  "brilho": "#FDB7A3"
  }
 };

@@ -55,6 +55,9 @@ export const SPOT_DRAW = {
   /** Triângulo de alerta (contorno vermelho, como o da referência). */
   triangulo: (c) =>
     `<path d="M24 4.5L45 41.5H3z" fill="#FFFFFF" stroke="${c}" stroke-width="3.8" stroke-linejoin="round"></path><path d="M24 17v12" stroke="${c}" stroke-width="4.6" stroke-linecap="round"></path><circle cx="24" cy="35" r="2.8" fill="${c}"></circle>`,
+  /** Triângulo de alerta cheio (reforço da Pegadinha nos temas vermelhos). */
+  trianguloCheio: (c) =>
+    `<path d="M24 3.5L46 42.5H2z" fill="${c}" stroke="#FFFFFF" stroke-width="2.4" stroke-linejoin="round"></path><path d="M24 16.5v13" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round"></path><circle cx="24" cy="36" r="3" fill="#FFFFFF"></circle>`,
   pulmoes: (c) =>
     `<path d="M22.5 5v15M22.5 20l-4 4M25.5 5v15M25.5 20l4 4" fill="none" stroke="${c}" stroke-width="3" stroke-linecap="round"></path><path d="M18 12c-6 0-12 9-13 21-.5 6 2 9 7 8 5-1 8-3 9-7V18c0-3.5-1.2-6-3-6z" fill="${c}"></path><path d="M30 12c6 0 12 9 13 21 .5 6-2 9-7 8-5-1-8-3-9-7V18c0-3.5 1.2-6 3-6z" fill="${c}"></path>${shine(12, 24, 2.4, 6, 20)}${shine(36, 24, 2.4, 6, -20)}`,
   coracao: (c) => `<path d="M24 42S5 30.5 5 17.5A10.5 10.5 0 0 1 24 11a10.5 10.5 0 0 1 19 6.5C43 30.5 24 42 24 42z" fill="${c}"></path>${shine(14.5, 16, 5, 2.6)}<path d="M8 25h8l3-5 4 9 3-6 2.5 2H40" fill="none" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path>`,

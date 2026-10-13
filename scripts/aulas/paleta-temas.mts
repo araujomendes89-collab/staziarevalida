@@ -10,7 +10,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { COR_MODELO, FAIXAS_AREA, REGRAS_CONTRASTE, TONS_PROIBIDOS, conferirContraste, corSegura, distancia, hexParaOklch, type TemaPaleta } from "../../src/shared/visualMaterials/temas.ts";
+import { COR_MODELO, FAIXAS_AREA, REGRAS_CONTRASTE, tomProibido, conferirContraste, corSegura, distancia, hexParaOklch, type TemaPaleta } from "../../src/shared/visualMaterials/temas.ts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const [src, out] = process.argv.slice(2).map((p) => path.resolve(p));
@@ -40,7 +40,7 @@ for (const [areaIdx, [area, faixa]] of Object.entries(FAIXAS_AREA).entries()) {
     const q = pos[n > 1 ? (s0 + i * k) % n : 0];
     const tom = t.id === "GR-001" ? HUE_MODELO : q.h;
     const dl = q.dl;
-    const cor = t.id === "GR-001" ? COR_MODELO : corSegura(tom, dl);
+    const cor = t.id === "GR-001" ? COR_MODELO : corSegura(tom, dl, faixa.croma ?? 1);
     paleta[t.id] = { id: t.id, titulo: t.titulo, area, area_nome: t.area_nome, tom: Math.round(tom * 10) / 10, ...cor };
   });
 }
@@ -62,7 +62,7 @@ for (const [areaIdx, [area, faixa]] of Object.entries(FAIXAS_AREA).entries()) {
       for (const dh of [0, -3, 3, -6, 6])
         for (const dl of [-0.06, -0.03, 0, 0.03]) {
           const tom = Math.min(f.ate, Math.max(f.de, paleta[id].tom + dh));
-          const cor = corSegura(tom, dl);
+          const cor = corSegura(tom, dl, f.croma ?? 1);
           const sc = Math.min(minDist(id, cor.primaria), viz(id, cor.primaria) >= 0.025 ? 1 : 0);
           if (sc > melhor.score + 0.002) melhor = { score: sc, cor, tom };
         }
@@ -87,11 +87,12 @@ const relatorio = temas.map((t, i) => {
   for (const c of contr) if (!c.ok) problemas.push(`${t.id}: ${c.regra} = ${c.valor} (mínimo ${c.minimo}).`);
   for (const k of ["primaria", "escura"] as const) {
     const h = hexParaOklch(p[k])[2];
-    const f = TONS_PROIBIDOS.find((x) => h >= x.de && h <= x.ate);
+    const f = tomProibido(h, t.area);
     if (f) problemas.push(`${t.id}: ${k} com tom ${h.toFixed(1)}°, reservado ao ${f.motivo}.`);
   }
   const alerta = Object.entries(ALERTAS).map(([nome, hex]) => ({ nome, d: Math.min(distancia(p.primaria, hex), distancia(p.escura, hex)) }));
-  for (const a of alerta) if (a.d < 0.12) problemas.push(`${t.id}: perto demais do ${a.nome} (distância ${a.d.toFixed(3)}).`);
+  // nos vermelhos de GO a proximidade com a Pegadinha é esperada: lá a caixa ganha o reforço (faixa listrada e triângulo cheio)
+  for (const a of alerta) if (a.d < 0.12 && !(t.area === "go" && a.nome.startsWith("vermelho"))) problemas.push(`${t.id}: perto demais do ${a.nome} (distância ${a.d.toFixed(3)}).`);
   const viz = i > 0 && paleta[temas[i - 1].id] ? distancia(p.primaria, paleta[temas[i - 1].id].primaria) : null;
   return { ...p, contraste: contr, distancia_do_anterior: viz == null ? null : Math.round(viz * 1000) / 1000, distancia_minima_alertas: Math.round(Math.min(...alerta.map((a) => a.d)) * 1000) / 1000 };
 }).filter(Boolean) as any[];
@@ -108,7 +109,8 @@ const resumo = {
   menor_distancia_entre_vizinhos: Math.round(Math.min(...vizinhos) * 1000) / 1000,
   media_distancia_entre_vizinhos: Math.round((vizinhos.reduce((a, b) => a + b, 0) / vizinhos.length) * 1000) / 1000,
   par_mais_parecido: { ...menorPar, d: Math.round(menorPar.d * 1000) / 1000 },
-  menor_distancia_das_cores_de_alerta: Math.min(...relatorio.map((x) => x.distancia_minima_alertas)),
+  menor_distancia_das_cores_de_alerta_fora_de_GO: Math.min(...relatorio.filter((x) => x.area !== "go").map((x) => x.distancia_minima_alertas)),
+  menor_distancia_GO_ao_vermelho_da_Pegadinha: Math.min(...relatorio.filter((x) => x.area === "go").map((x) => Math.round(Math.min(distancia(x.primaria, "#C8102E"), distancia(x.escura, "#C8102E")) * 1000) / 1000)),
   problemas,
 };
 
@@ -126,7 +128,8 @@ fs.writeFileSync(
       como_usar: "Campo tema_cor nas peças (ex.: tema_cor: GR-043) ou #RRGGBB. Vazio = cor da especialidade (como antes).",
       papeis: { primaria: "destaque: faixas, filetes, números", escura: "texto colorido sobre branco e início dos gradientes", clara: "fundo de linhas e caixas", brilho: "2ª linha do título, selos e 'Med' sobre o azul-marinho" },
       familias_por_area: FAIXAS_AREA,
-      tons_proibidos: "vermelho (Pegadinha) e amarelo/laranja (Atenção e post-it)",
+      tons_proibidos: "amarelo/laranja (Atenção e post-it) em todas as áreas; vermelho só é permitido em Ginecologia e Obstetrícia (decisão do dono)",
+      pegadinha_em_tema_vermelho: "Nos temas vermelhos (GO), a caixa 'Pegadinha de prova!' ganha faixa listrada vermelho/branco na lateral e triângulo de alerta cheio; o vermelho de alerta (#C8102E), o rótulo e a borda continuam. Nos outros temas a caixa não muda.",
       resumo,
       temas: relatorio,
     },
@@ -151,6 +154,7 @@ const cartao = (r: any) => {
 <div class="x"><div class="row" style="background:${r.clara};border-left:5px solid ${r.primaria}"><span class="n" style="background:${r.clara};border-color:${r.primaria};color:${r.escura}">1</span><span>Linha da tabela</span></div>
 <div class="lab" style="color:${r.escura}">PONTOS-CHAVE</div>
 <div class="sw">${["primaria", "escura", "clara", "brilho"].map((k) => `<span style="background:${r[k]}" title="${k} ${r[k]}"></span>`).join("")}</div>
+<div class="pg${r.area === "go" ? " forte" : ""}"><b>PEGADINHA DE PROVA!</b></div>
 <div class="hex">${r.primaria} · ${r.escura}</div><div class="ok">${pior >= 1 ? "Contraste AA ok" : "REVER contraste"}</div></div></article>`;
 };
 const secoes = Object.entries(FAIXAS_AREA)
@@ -175,10 +179,12 @@ main{padding:8px 16px 40px}h2{font-size:20px;margin:26px 0 10px}h2 small{font-we
 .x{padding:9px 10px 10px;display:flex;flex-direction:column;gap:6px}.row{display:flex;gap:7px;align-items:center;font-size:12px;font-weight:600;padding:5px 7px;border-radius:6px;color:#0B2545}
 .n{width:18px;height:18px;border-radius:50%;border:2px solid;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800}
 .lab{font-weight:800;font-size:11.5px;letter-spacing:.8px}.sw{display:flex;gap:4px}.sw span{flex:1;height:16px;border-radius:4px;border:1px solid rgba(0,0,0,.08)}
+.pg{border:2px solid #C8102E;border-radius:8px;padding:4px 8px;font-size:10.5px;color:#C8102E;background:#FFF3F4}.pg b{font-style:italic;letter-spacing:.2px}
+.pg.forte{position:relative;background:#fff;padding-left:16px}.pg.forte:before{content:"";position:absolute;left:0;top:0;bottom:0;width:8px;border-radius:6px 0 0 6px;background:repeating-linear-gradient(-45deg,#C8102E 0 3px,#fff 3px 6px)}
 .hex{font:11px ui-monospace,Menlo,monospace;color:#5B6B80}.ok{font-size:11px;color:#1B6B45;font-weight:700}
 .sum{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px;margin-top:14px}.sum div{background:rgba(255,255,255,.07);border:1px solid rgba(95,230,192,.35);border-radius:10px;padding:8px 10px;font-size:13px;color:#E3EAF4}
 </style></head><body><header><div class="w"><h1>Cores dos <span>100 temas</span></h1>
-<p>Cada tema tem a sua cor, com a mesma estrutura da cor do GR-001 (tuberculose), que você aprovou: mesmo contraste e as mesmas versões escura, clara e de brilho. Cada área é uma família de tons. Vermelho e amarelo ficam reservados para "Pegadinha" e "Atenção".</p>
+<p>Cada tema tem a sua cor, com a mesma estrutura da cor do GR-001 (tuberculose), que você aprovou: mesmo contraste e as mesmas versões escura, clara e de brilho. Cada área é uma família de tons; Ginecologia e Obstetrícia é vermelha (sua decisão). O amarelo fica só para "Atenção" e o post-it. Nos temas vermelhos, a caixa "Pegadinha de prova!" ganha faixa listrada e triângulo cheio para não se confundir com a cor do tema.</p>
 <div class="sum"><div>Contraste: ${problemas.length ? `${problemas.length} problema(s)` : "todos os 100 temas passam (nível AA)"}</div><div>Pior contraste do texto branco nas faixas: ${resumo.contraste_minimo_por_regra[0].pior_valor} (mínimo 4,5)</div><div>Temas vizinhos: diferença média ${resumo.media_distancia_entre_vizinhos}, menor ${resumo.menor_distancia_entre_vizinhos}</div><div>Passe o mouse num cartão para ver o contraste de cada uso.</div></div></div></header><main>${secoes}</main></body></html>`
 );
 console.log(JSON.stringify(resumo, null, 1));
