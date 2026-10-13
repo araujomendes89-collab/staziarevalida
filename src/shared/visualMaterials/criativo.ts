@@ -371,7 +371,7 @@ ${c.subtitulo ? `<div data-k="subtitulo" data-lines="2" data-fit="0.7" style="${
   const nota = postIt(c.tome_nota, { width: null, pad: "30px 22px 14px", rot: -2.5, title: 44, text: 36, lines: 3, bulb: 40, tape: [100, 24] }, "margin:6px 14px 4px");
   const left = main || nota ? `<div style="display:flex;flex-direction:column;gap:18px;min-width:0">${main}${nota}</div>` : "";
   const pontos = pontosPanel(c, P, { pad: "22px 26px", radius: 22, head: 28, icon: 50, text: 29, detail: 24, gap: 24 }, "justify-content:center");
-  const row1 = left || pontos ? `<div style="flex:1 1 auto;min-height:0;display:grid;grid-template-columns:${left && pontos ? "1fr 1.05fr" : "1fr"};gap:18px;align-items:stretch">${left}${pontos}</div>` : "";
+  const row1 = left || pontos ? `<div style="flex:1 0 auto;display:grid;grid-template-columns:${left && pontos ? "1fr 1.05fr" : "1fr"};gap:18px;align-items:stretch">${left}${pontos}</div>` : "";
   const table = hasTable(c)
     ? `<div style="flex:none;display:flex;flex-direction:column;gap:10px">${sectionHead(1, c.tabela!.titulo || "Resumo em tabela", P, { circle: 54, font: 27 }, c.tabela!.titulo ? "tabela" : "")}${colorTable(c, P, { radius: 16, head: 20, cellPad: "10px 16px", first: 22, cell: 21, badge: 36, end: 32, stripe: 7 })}</div>`
     : "";
@@ -398,7 +398,7 @@ ${nota}
 </div></div>`;
   const main = mainCard(c, P, o, { pad: "24px 30px", radius: 26, hero: 120, dado: 66, legend: 28, gap: 22 }, false, "justify-content:center");
   const pontos = pontosPanel(c, P, { pad: "22px 26px", radius: 26, head: 30, icon: 48, text: 30, detail: 25, gap: 16 });
-  const row1 = main || pontos ? `<div style="flex:1 1 auto;min-height:0;display:grid;grid-template-columns:${main && pontos ? "0.9fr 1.1fr" : "1fr"};gap:22px;align-items:stretch">${main}${pontos}</div>` : "";
+  const row1 = main || pontos ? `<div style="flex:1 0 auto;display:grid;grid-template-columns:${main && pontos ? "0.9fr 1.1fr" : "1fr"};gap:22px;align-items:stretch">${main}${pontos}</div>` : "";
   const table = hasTable(c)
     ? `<div style="flex:none;display:flex;flex-direction:column;gap:12px">${sectionHead(1, c.tabela!.titulo || "Resumo em tabela", P, { circle: 66, font: 34 }, c.tabela!.titulo ? "tabela" : "")}${colorTable(c, P, { radius: 20, head: 26, cellPad: "14px 20px", first: 29, cell: 28, badge: 46, end: 40, stripe: 9 })}</div>`
     : "";

@@ -36,6 +36,31 @@ Por isso, o que aparece na prévia é o que sai no arquivo.
 
 **Nada de conteúdo clínico é escrito pelo sistema.** Não há IA nesta função: o texto é sempre o que a equipe forneceu.
 
+## Modelo visual "criativo-1" (padrão desde 2026-10-13)
+O dono pediu todos os cards no estilo do modelo de referência dele (prancha de tuberculose de 2026-10-13):
+- cabeçalho azul-marinho com ilustração vetorial e brilho; título enorme em fonte condensada, em branco e na cor de
+  destaque (a parte depois dos dois-pontos, ou a 2ª metade das palavras);
+- três selos (especialidade, selo da prova e "Atualizado"), faixa verde da mensagem-chave (`resumo`);
+- cartão principal com ícone grande, dado-chave e parágrafo; painel de pontos-chave com ícones; "post-it" amarelo
+  inclinado ("Tome nota!");
+- seção numerada com tabela de linhas coloridas (cor da especialidade, vermelho de alerta, azul e cinza) e ícones;
+- caixa vermelha "Pegadinha de prova!"; faixa de passos numerados (`bloco`, ex.: "Depois de confirmar");
+- rodapé azul-marinho com a marca e a linha de fonte pequena.
+
+Mesmos campos, mesmo comando e mesma conferência do clássico. O clássico (`visual-1.0`) continua disponível por
+`BuildOptions.template` / `RenderOptions.template`. Código: `src/shared/visualMaterials/criativo.ts`.
+
+**Kit de ilustrações** (`src/shared/visualMaterials/kit/`): tudo em SVG desenhado à mão, sem IA de imagem e sem
+texto dentro do desenho.
+- `spots.ts`: ícones pequenos (tosse, microscópio, cápsulas, pessoas, lupa, gota, placa de cultura, documento,
+  calendário, lâmpada, triângulo de alerta, selos coloridos…). O ícone de cada ponto-chave e de cada passo é escolhido
+  pelo texto (`SPOT_KEYWORDS`), só como decoração.
+- `scenes.ts`: cenas do cabeçalho. Prontas: **pulmão** (com bacilos brilhantes e lupa), **coração** e **bebê**.
+  Planejada: útero/gestação. Sem cena própria, o tema usa a cena genérica (círculo de luz com o ícone).
+- `index.ts` (`THEMES`): liga o ícone do formulário (`ilustracao.icone`) à cena e ao ícone grande do cartão. Para um
+  tema novo: desenhar a cena, registrar em `THEMES` e acrescentar o ícone em `ILLUSTRATION_ICONS`.
+- Flashcards: `ilustracao.icone` (opcional) escolhe a cena do cabeçalho.
+
 ## Modelos
 | Modelo | Tamanho | Arquivos |
 |---|---|---|

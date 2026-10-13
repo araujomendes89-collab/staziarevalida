@@ -33,7 +33,9 @@ import {
   visualCommandText,
   visualFileName,
   STORY_SAFE,
+  VISUAL_TEMPLATE_VERSION,
 } from "../../src/shared/visualMaterials";
+import { THEMES, sceneSvg, spotForText } from "../../src/shared/visualMaterials/kit";
 import { A4_SAMPLE, CARD_SAMPLE, PIECE_SAMPLE, SPECIALTY_SAMPLES } from "./visualSamples";
 
 vi.setConfig({ testTimeout: 120_000 });
@@ -155,10 +157,55 @@ describe("Validação do conteúdo (a mesma no formulário, na rota e no comando
 });
 
 // ---------------------------------------------------------------------------- HTML dos modelos
+describe("Modelo criativo-1 (estilo do modelo do dono) e kit de ilustrações", () => {
+  it("é o modelo padrão; o clássico visual-1.0 continua disponível", () => {
+    const c = content({ modelo: "feed", especialidade: "pediatria", ...PIECE_SAMPLE });
+    expect(VISUAL_TEMPLATE_VERSION).toBe("criativo-1");
+    expect(renderArtboards(c)[0].html).toContain('data-template="criativo-1"');
+    expect(renderArtboards(c, { template: "visual-1.0" })[0].html).not.toContain('data-template="criativo-1"');
+  });
+
+  it("os 5 modelos têm o mesmo contrato: especialidade escrita, pegadinha em #C8102E (mesmo em Cirurgia), campos marcados para a conferência", () => {
+    for (const modelo of ["feed", "a4", "story", "flashcard_digital", "flashcard_a6"]) {
+      const flash = modelo.startsWith("flash");
+      const c = content({ modelo, especialidade: "cirurgia", ...(flash ? { ...CARD_SAMPLE, card_id: "CIR-0001" } : modelo === "a4" ? A4_SAMPLE : PIECE_SAMPLE) });
+      const html = renderArtboards(c).map((a) => a.html).join("");
+      expect(html, modelo).toMatch(/data-role="specialty"[^>]*>.*?<span>Cirurgia<\/span>/);
+      expect(/<div data-role="alert"[^>]*style="([^"]*)"/.exec(html)![1]).toContain("solid #C8102E");
+      expect(html).toMatch(/data-role="alert-title"[^>]*color:#C8102E/);
+      expect(html).toContain(flash ? 'data-k="pergunta"' : 'data-k="titulo"');
+      expect(html).not.toMatch(/\[[A-ZÁÉÍÓÚ ]{3,}\]/);
+    }
+  });
+
+  it("story: só a ilustração (decorativa) fica na zona segura do topo; o rodapé reserva os 150 px da base", () => {
+    const html = renderArtboards(content({ modelo: "story", especialidade: "ginecologia", ...PIECE_SAMPLE }))[0].html;
+    expect(html).toContain(`padding:${STORY_SAFE.top + 24}px 64px`);
+    expect(html).toContain(`padding:0 56px ${STORY_SAFE.bottom}px`);
+  });
+
+  it("cena do cabeçalho pelo ícone escolhido; ids dos gradientes únicos entre frente e verso", () => {
+    const c = content({ modelo: "flashcard_digital", especialidade: "clinica_medica", ...CARD_SAMPLE, card_id: "CM-1", ilustracao: { tipo: "icone", icone: "pulmao" } });
+    const [front, back] = renderArtboards(c).map((a) => a.html);
+    expect(front).toContain('id="fd-front-lung"');
+    expect(back).toContain('id="fd-back-lung"');
+    const ids = (h: string) => [...h.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]);
+    expect(ids(front).filter((i) => ids(back).includes(i))).toEqual([]);
+  });
+
+  it("ícone pelo texto (só decoração) e todo desenho sem texto dentro do SVG", () => {
+    expect(spotForText("Avaliar todos os contatos e oferecer teste de HIV")).toBe("pessoas");
+    expect(spotForText("Esquema básico 2RHZE/4RH, com baciloscopia mensal")).toBe("capsulas");
+    expect(spotForText("Baciloscopia de controle mensal")).toBe("microscopio");
+    expect(spotForText("Algo sem palavra conhecida")).toBe("ok");
+    for (const k of Object.keys(THEMES)) expect(sceneSvg(THEMES[k].scene, "t", { glow: "#fff", primary: "#000" }, "")).not.toMatch(/<text/);
+  });
+});
+
 describe("Modelos (HTML fiel às pranchas)", () => {
   it("pegadinha e linha de alerta ficam no vermelho de alerta mesmo em Cirurgia; a especialidade aparece por extenso", () => {
     const c = content({ modelo: "a4", especialidade: "cirurgia", ...A4_SAMPLE });
-    const html = renderArtboards(c)[0].html;
+    const html = renderArtboards(c, { template: "visual-1.0" })[0].html;
     const alert = /<div data-role="alert"[^>]*style="([^"]*)"/.exec(html)![1];
     expect(alert).toContain("border:2px solid #C8102E");
     expect(alert).not.toContain("#D94A4A");
@@ -180,7 +227,10 @@ describe("Modelos (HTML fiel às pranchas)", () => {
     const c = content({ modelo: "feed", especialidade: "pediatria", titulo: '<img src=x onerror="alert(1)">' });
     const html = renderArtboards(c)[0].html;
     expect(html).not.toContain("<img src=x");
-    expect(html).toContain("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
+    // o modelo criativo divide o título em duas cores: as duas partes saem escapadas
+    expect(html).toContain("&lt;img src=x");
+    expect(html).toContain("onerror=&quot;alert(1)&quot;&gt;");
+    expect(renderArtboards(c, { template: "visual-1.0" })[0].html).toContain("&lt;img src=x onerror=&quot;alert(1)&quot;&gt;");
   });
 
   it("guias só na prévia; a geração final nunca leva guias", () => {
@@ -192,7 +242,7 @@ describe("Modelos (HTML fiel às pranchas)", () => {
   });
 
   it("story: a faixa do topo cobre a zona segura e o rodapé reserva os 150 px da base", () => {
-    const html = renderArtboards(content({ modelo: "story", especialidade: "ginecologia", ...PIECE_SAMPLE }))[0].html;
+    const html = renderArtboards(content({ modelo: "story", especialidade: "ginecologia", ...PIECE_SAMPLE }), { template: "visual-1.0" })[0].html;
     const band = Number(/data-region="safe-top" style="height:(\d+)px/.exec(html)![1]);
     expect(band).toBeGreaterThan(STORY_SAFE.top + 40);
     expect(html).toContain(`padding:26px 64px ${STORY_SAFE.bottom}px`);
