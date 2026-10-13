@@ -1,0 +1,122 @@
+[
+ {
+  "id": "revalida_2026_1_q004",
+  "arquivo": "revalida_2026_1_q004-tabela.png",
+  "alt": "Tabela do exame de urina tipo I de gestante, com resultado e valor de referência de aspecto, densidade, pH, proteínas, nitrito, leucócitos, hemácias, células epiteliais e bactérias, e a linha da urocultura.",
+  "tabela_removida_do_texto": "EAS (urina tipo I) Exame Resultado Valor de Referência Aspecto Ligeiramente turvo Límpido Densidade 1.015 1.010 a 1.030 pH 5,5 5,0 a 8,0 Proteínas Traços Ausentes Nitrito Negativo Negativo Leucócitos 4 por campo Até 5 por campo Hemácias 2 por campo Até 2 por campo Células epiteliais Raras Raras Bactérias Moderadas Ausentes Urocultura: Crescimento de Escherichia coli 30.000 UFC/mL",
+  "pagina": 3,
+  "arquivo_origem": "revisao-questoes/revalida_2026_1/tabelas/revalida_2026_1_q004.png",
+  "sha256": "3ac0e4fbd1d8449d98b08c8e01f6dfbfeec30022d18a0264a3d1d00744a8b2b7",
+  "tamanho": 48620
+ },
+ {
+  "id": "revalida_2026_1_q015",
+  "arquivo": "revalida_2026_1_q015-tabela.png",
+  "alt": "Tabela de exames laboratoriais de adolescente, com resultado e valor de referência: hemoglobina, hematócrito, leucócitos, diferencial, plaquetas, TGO, TGP, ureia e creatinina.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de referência Hemoglobina 14,5 g/dL 13 a 16 g/dL Hematócrito 45,3% 37 a 49% Leucócitos 5.650/mm³ 5.000 a 10.000/mm³ Bastonetes 0% -- Segmentados 52% -- Linfócitos típicos 38% -- Linfócitos atípicos 0% -- Eosinófilos 2% -- Plaquetas 185.000/mm³ 140.000 a 400.000/mm³ TGO 30 U/L 5 a 40 U/L TGP 32 U/L 4 a 32 U/L Ureia 28 mg/dL 16,6 a 48,5 mg/dL Creatinina 1,2 mg/dL 0,6 a 0,9 mg/dL",
+  "pagina": 7,
+  "arquivo_origem": "revisao-questoes/revalida_2026_1/tabelas/revalida_2026_1_q015.png",
+  "sha256": "153f717ec83f14213d4b0f9d7980f43d7c56a27d786444d384733633fbea76b2",
+  "tamanho": 54186
+ },
+ {
+  "id": "revalida_2026_1_q017",
+  "arquivo": "revalida_2026_1_q017-tabela.png",
+  "alt": "Tabela de exames laboratoriais da admissão, com resultado e valor de referência de leucócitos e de proteína C reativa.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de referência Leucócitos 14.800/mm³ 4.500 a 10.000/mm³ Proteína C reativa 36 mg/L < 5 mg/L",
+  "pagina": 7,
+  "arquivo_origem": "revisao-questoes/revalida_2026_1/tabelas/revalida_2026_1_q017.png",
+  "sha256": "bf64723107da6d15df0cfb09fda3a8641c6ab007d42e3687f426f9dc846b9678",
+  "tamanho": 15153
+ },
+ {
+  "id": "revalida_2026_1_q020",
+  "arquivo": "revalida_2026_1_q020-tabela.png",
+  "alt": "Tabela com número de casos novos e de óbitos entre os casos novos de quatro tipos de câncer em 2025: colorretal, estômago, mama e próstata.",
+  "tabela_removida_do_texto": "Número de casos novos e óbitos dos cânceres mais frequentes, 2025 Tipo de Câncer Nº de casos novos Nº de óbitos entre os casos novos Colorretal 21 7 Estômago 10 5 Mama 40 4 Próstata 30 6",
+  "pagina": 8,
+  "arquivo_origem": "revisao-questoes/revalida_2026_1/tabelas/revalida_2026_1_q020.png",
+  "sha256": "68c46c9c9c286dc9fcf6735318af33a982cd2561b98bdb20de6b28c3e57cca11",
+  "tamanho": 26057
+ },
+ {
+  "id": "revalida_2026_1_q021",
+  "arquivo": "revalida_2026_1_q021-tabela.png",
+  "alt": "Tabela de exames laboratoriais de criança de 4 anos, com resultado e valor de referência: EAS, urocultura, glicemia de jejum e ultrassonografia de rins e vias urinárias.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de referência EAS (urina tipo I) Sem alterações - Urocultura Negativa Ausência de crescimento Glicemia de jejum 86 mg/dL 70 a 105 mg/dL Ultrassonografia de rins e vias urinárias Normal -",
+  "pagina": 8,
+  "arquivo_origem": "revisao-questoes/revalida_2026_1/tabelas/revalida_2026_1_q021.png",
+  "sha256": "8531a5ffa166e28cc543547348a413c19942cde38b9fb63222c10f8936339ecb",
+  "tamanho": 24951
+ },
+ {
+  "id": "revalida_2026_1_q029",
+  "arquivo": "revalida_2026_1_q029-tabela.png",
+  "alt": "Tabela de exames de admissão de homem com cirrose, com resultado e valor de referência de INR, plaquetas, creatinina e sódio.",
+  "tabela_removida_do_texto": "Exame Resultado Valores de Referência INR 2,1 0,8 a 1,2 Plaquetas 62.000/mm³ 150.000 a 350.000/mm³ Creatinina 1,1 mg/dL 0,7 a 1,2 mg/dL Sódio 134 mEq/L 135 a 145 mEq/L",
+  "pagina": 11,
+  "arquivo_origem": "revisao-questoes/revalida_2026_1/tabelas/revalida_2026_1_q029.png",
+  "sha256": "893f95c9994a5516ae09b261a6921a6dd93ec0a511cfd5f193107d658306a55d",
+  "tamanho": 21333
+ },
+ {
+  "id": "revalida_2026_1_q040",
+  "arquivo": "revalida_2026_1_q040-tabela.png",
+  "alt": "Tabela de exames de paciente com diabetes e hipertensão, com resultado e valor de referência: hemoglobina glicada, colesterol, triglicerídeos, creatinina, albuminúria e pressão arterial.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de Referência Hemoglobina glicada 7,9 % 4,7 a 5,7 % Colesterol total 239 mg/dL 150 a 200 mg/dL Colesterol HDL 29 mg/dL > 40 mg/dL Triglicerídeos 235 mg/dL < 150 mg/dL Creatinina 1,2 mg/dL 0,7 a 1,2 mg/dL Albuminúria 55 mg/24h <30 mg/24h PA 142 x 85 mmHg -",
+  "pagina": 13,
+  "arquivo_origem": "revisao-questoes/revalida_2026_1/tabelas/revalida_2026_1_q040.png",
+  "sha256": "5869b9943cea7999390233d36e7f2b5c224374978d86e090a23f3fa21cbca45b",
+  "tamanho": 38594
+ },
+ {
+  "id": "revalida_2026_1_q066",
+  "arquivo": "revalida_2026_1_q066-tabela.png",
+  "alt": "Tabela de exames iniciais de menina de 7 anos, com resultado e limites de normalidade: glicemia, pH arterial, bicarbonato, lactato, função renal, eletrólitos, leucócitos e plaquetas.",
+  "tabela_removida_do_texto": "Exames Iniciais Resultado Limites de normalidade Glicemia Capilar 392 mg/dl 70 a 105 mg/dl pH arterial 7,12 7,35 a 7,45 Bicarbonato 9 mEq/L 22 a 26 mEq/L Lactato 1,2 mmol/L 0,5 a 2,2 mmol/L Creatinina 0,5 mg/dL 0,3 a 0,9 mg/dL Ureia 32 mg/dL 11 a 38 mg/dL Sódio 132 mEq/L 135 a 145 mEq/L Potássio 4,8 mEq/L 3,4 a 5,0 mEq/L Leucócitos totais 15.200/mm³ 5.000 a 14.500/mm³ Plaquetas 150.000/mm³ 150.000 a 450.000/mm³",
+  "pagina": 19,
+  "arquivo_origem": "revisao-questoes/revalida_2026_1/tabelas/revalida_2026_1_q066.png",
+  "sha256": "a067d0b1bf457caa54fe9ec8caf65102e61f8f80becba67113127359a6c23b1e",
+  "tamanho": 50422
+ },
+ {
+  "id": "revalida_2026_1_q072",
+  "arquivo": "revalida_2026_1_q072-tabela.png",
+  "alt": "Tabela de exames da admissão, com resultado e valor de referência: creatinina, ureia, potássio, sódio, pH, bicarbonato e pCO₂ da gasometria venosa, e eletrocardiograma.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de referência Creatinina sérica 1,9 mg/dL 0,7 a 1,2 mg/dL Ureia 124 mg/dL 10 a 50 mg/dL Potássio sérico 5,7 mEq/L 3,5 a 5,5 mEq/L Sódio sérico 145 mEq/L 135 a 145 mEq/L pH (gasometria venosa) 7,35 7,35 a 7,45 Bicarbonato (gasometria venosa) 20 mEq/L 22 a 26 mEq/L pCO₂ (gasometria venosa) 38 mmHg 35 a 45 mmHg Eletrocardiograma Sem alterações",
+  "pagina": 20,
+  "arquivo_origem": "revisao-questoes/revalida_2026_1/tabelas/revalida_2026_1_q072.png",
+  "sha256": "eccada9ee276a1fc9b2122e8dd24a57e072417481e5e3ae92c3fbfd364c31925",
+  "tamanho": 45058
+ },
+ {
+  "id": "revalida_2026_1_q073",
+  "arquivo": "revalida_2026_1_q073-tabela.png",
+  "alt": "Tabela do hemograma de menino de 5 anos, com resultado e valor de referência de leucócitos, hemoglobina, hematócrito e plaquetas, e duas notas de rodapé.",
+  "tabela_removida_do_texto": "Hemograma Componente Resultado Valor de referência Leucócitos 8.200/mm³ 5.000 a 15.000/mm³ Hemoglobina 12,3 g/dL 11,5 a 13,5 g/dL Hematócrito 37 % 40 a 50 % Plaquetas 18.000/mm³ 150.000 a 450.000/mm³ *Contagem diferencial de Leucócitos sem alterações. **Provas de coagulação normais.",
+  "pagina": 21,
+  "arquivo_origem": "revisao-questoes/revalida_2026_1/tabelas/revalida_2026_1_q073.png",
+  "sha256": "17b6b78adc10452252912998de8582dab25814f782ee912e9b8469ca8bfe4f4f",
+  "tamanho": 34846
+ },
+ {
+  "id": "revalida_2026_1_q091",
+  "arquivo": "revalida_2026_1_q091-tabela.png",
+  "alt": "Tabela de exames laboratoriais, com resultado e valores de referência: bilirrubinas, AST, ALT, fosfatase alcalina, GGT, hemoglobina, reticulócitos, LDH e haptoglobina.",
+  "tabela_removida_do_texto": "Exame Resultado Valores de referência Bilirrubina total 3,2 mg/dL 0,3 a 1,2 mg/dL Bilirrubina indireta 2,8 mg/dL até 0,8 mg/dL Bilirrubina direta 0,3 mg/dL até 0,3 mg/dL AST (TGO) 22 U/L até 35 U/L ALT (TGP) 25 U/L até 35 U/L Fosfatase alcalina 82 U/L 30 a 120 U/L GGT 28 U/L 1 a 94 U/L Hemoglobina 14,5 g/dL 13,5 a 17,5 g/dL Reticulócitos 1,1% 0,5 a 2,0% LDH 178 U/L 100 a 190 U/L Haptoglobina 110 mg/dL 30 a 200 mg/dL",
+  "pagina": 25,
+  "arquivo_origem": "revisao-questoes/revalida_2026_1/tabelas/revalida_2026_1_q091.png",
+  "sha256": "c76520883355ca0be4bb5d754d5a149f10a0fc31ad1f7b6336118f2ac68a84b0",
+  "tamanho": 52397
+ },
+ {
+  "id": "revalida_2026_1_q096",
+  "arquivo": "revalida_2026_1_q096-tabela.png",
+  "alt": "Tabela de exames laboratoriais de mulher de 68 anos, com resultado e valor de referência de hemoglobina, leucócitos, creatinina e proteína C reativa.",
+  "tabela_removida_do_texto": "Exame Resultado Valor de referência Hemoglobina 12,2 g/dL 11,5 a 13,5 g/dL Leucócitos 13.400/mm³ 5.000 a 15.000/mm³ Creatinina 1,1 mg/dL 0,5 a 0,9 mg/dL Proteína C Reativa 8,5 mg/L < 5mg/L",
+  "pagina": 26,
+  "arquivo_origem": "revisao-questoes/revalida_2026_1/tabelas/revalida_2026_1_q096.png",
+  "sha256": "557e658c27dba995e045aaf735edffa3fdf8eb45c1c37413680ff080522ed9a8",
+  "tamanho": 24990
+ }
+]

@@ -60,6 +60,29 @@ export function Verdict({ selected, correction }) {
   );
 }
 
+export const PRELIMINARY_SEAL = "GABARITO PRELIMINAR";
+
+/** "2026-12-04" → "O gabarito definitivo só será divulgado pelo Inep em 04/12/2026." (a data é dado da prova no banco). */
+export function preliminaryText(expectedOn) {
+  const m = String(expectedOn ?? "").match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? `O gabarito definitivo só será divulgado pelo Inep em ${m[3]}/${m[2]}/${m[1]}.` : "O gabarito definitivo ainda não foi divulgado pelo Inep.";
+}
+
+/**
+ * Selo claro das questões com gabarito oficial ainda PRELIMINAR (o banco manda preliminary = { expected_on } ou nulo).
+ * compact: só o selo (linhas de lista). Some quando a equipe registra o gabarito definitivo.
+ */
+export function PreliminarySeal({ info, compact = false }) {
+  if (!info) return null;
+  if (compact) return <Badge tone="warning" size="sm">{PRELIMINARY_SEAL}</Badge>;
+  return (
+    <div role="note" aria-label={PRELIMINARY_SEAL} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", padding: "12px 14px", borderRadius: 14, background: "var(--warning-bg)", border: "1px solid var(--warning-border)" }}>
+      <Badge tone="warning">{PRELIMINARY_SEAL}</Badge>
+      <span style={{ font: "600 14px/1.4 var(--font-sans)", color: "var(--warning-text)" }}>{preliminaryText(info.expected_on)}</span>
+    </div>
+  );
+}
+
 /** Diagnóstico do erro: só aparece para quem errou, e só com o que a análise revisada por médico diz da alternativa marcada. */
 function ErrorDiagnosis({ questionId }) {
   const { backend } = useSession();
@@ -199,6 +222,8 @@ export function Correction({ selected, correction, question, tutorContext = "que
   return (
     <>
       <Verdict selected={selected} correction={correction} />
+      {/* gabarito oficial ainda preliminar (o banco diz answer_preliminary; some quando o definitivo for registrado) */}
+      {!staz && !annulled && correction.answer_preliminary === true && <PreliminarySeal info={correction.preliminary ?? {}} />}
       {/* anulada: o Tutor não abre questão anulada (responderia "Questão não encontrada."), então o botão não aparece */}
       {staz && !annulled && (
         <div style={{ font: "600 15px var(--font-sans)" }}>

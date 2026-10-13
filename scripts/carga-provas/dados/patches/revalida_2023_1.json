@@ -1,0 +1,281 @@
+[
+ {
+  "id": "revalida_2023_1_q004",
+  "campo": "statement",
+  "antes": "30 kg/m2, pressão",
+  "depois": "30 kg/m², pressão",
+  "tipo": "sobrescrito",
+  "pagina": 2,
+  "evidencia": "evidencias/q004.png"
+ },
+ {
+  "id": "revalida_2023_1_q019",
+  "campo": "statement",
+  "antes": "198,6 cm3 (valor",
+  "depois": "198,6 cm³ (valor",
+  "tipo": "sobrescrito",
+  "pagina": 6,
+  "evidencia": "evidencias/q019.png"
+ },
+ {
+  "id": "revalida_2023_1_q019",
+  "campo": "statement",
+  "antes": "136 cm3); ovários",
+  "depois": "136 cm³); ovários",
+  "tipo": "sobrescrito",
+  "pagina": 6,
+  "evidencia": "evidencias/q019.png"
+ },
+ {
+  "id": "revalida_2023_1_q023",
+  "campo": "statement",
+  "antes": "constatou- se também",
+  "depois": "constatou-se também",
+  "tipo": "caractere",
+  "pagina": 7,
+  "evidencia": "evidencias/q023.png"
+ },
+ {
+  "id": "revalida_2023_1_q026",
+  "campo": "statement",
+  "antes": "14,8 kg/m2 e sua",
+  "depois": "14,8 kg/m² e sua",
+  "tipo": "sobrescrito",
+  "pagina": 8,
+  "evidencia": "evidencias/q026.png"
+ },
+ {
+  "id": "revalida_2023_1_q031",
+  "campo": "options.B",
+  "antes": "250 polimorfonucleares/mm3 no",
+  "depois": "250 polimorfonucleares/mm³ no",
+  "tipo": "sobrescrito",
+  "pagina": 9,
+  "evidencia": "evidencias/q031.png"
+ },
+ {
+  "id": "revalida_2023_1_q032",
+  "campo": "statement",
+  "antes": "saturação O2 de 90%",
+  "depois": "saturação O₂ de 90%",
+  "tipo": "sobrescrito",
+  "pagina": 9,
+  "evidencia": "evidencias/q032.png"
+ },
+ {
+  "id": "revalida_2023_1_q043",
+  "campo": "statement",
+  "antes": "pressão parcial de CO2 de 48 mmHg",
+  "depois": "pressão parcial de CO₂ de 48 mmHg",
+  "tipo": "sobrescrito",
+  "pagina": 12,
+  "evidencia": "evidencias/q043.png"
+ },
+ {
+  "id": "revalida_2023_1_q043",
+  "campo": "statement",
+  "antes": "pressão parcial de O2 de 75 mmHg",
+  "depois": "pressão parcial de O₂ de 75 mmHg",
+  "tipo": "sobrescrito",
+  "pagina": 12,
+  "evidencia": "evidencias/q043.png"
+ },
+ {
+  "id": "revalida_2023_1_q043",
+  "campo": "statement",
+  "antes": "saturação de O2 de 94%",
+  "depois": "saturação de O₂ de 94%",
+  "tipo": "sobrescrito",
+  "pagina": 12,
+  "evidencia": "evidencias/q043.png"
+ },
+ {
+  "id": "revalida_2023_1_q046",
+  "campo": "statement",
+  "antes": "[VR]: 13- 17 g/dL",
+  "depois": "[VR]: 13-17 g/dL",
+  "tipo": "caractere",
+  "pagina": 12,
+  "evidencia": "evidencias/q046.png"
+ },
+ {
+  "id": "revalida_2023_1_q046",
+  "campo": "statement",
+  "antes": "VR: 0,8- 1,2 mg/dL",
+  "depois": "VR: 0,8-1,2 mg/dL",
+  "tipo": "caractere",
+  "pagina": 12,
+  "evidencia": "evidencias/q046.png"
+ },
+ {
+  "id": "revalida_2023_1_q047",
+  "campo": "statement",
+  "antes": "38kg/m2, com história",
+  "depois": "38kg/m², com história",
+  "tipo": "sobrescrito",
+  "pagina": 13,
+  "evidencia": "evidencias/q047.png"
+ },
+ {
+  "id": "revalida_2023_1_q047",
+  "campo": "statement",
+  "antes": "pós- operatório. Após 36",
+  "depois": "pós-operatório. Após 36",
+  "tipo": "caractere",
+  "pagina": 13,
+  "evidencia": "evidencias/q047.png"
+ },
+ {
+  "id": "revalida_2023_1_q053",
+  "campo": "statement",
+  "antes": "recém- nascido (RN)",
+  "depois": "recém-nascido (RN)",
+  "tipo": "caractere",
+  "pagina": 14,
+  "evidencia": "evidencias/q053.png"
+ },
+ {
+  "id": "revalida_2023_1_q058",
+  "campo": "statement",
+  "antes": "30 kg/m2, é atendido",
+  "depois": "30 kg/m², é atendido",
+  "tipo": "sobrescrito",
+  "pagina": 15,
+  "evidencia": "evidencias/q058.png"
+ },
+ {
+  "id": "revalida_2023_1_q061",
+  "campo": "statement",
+  "antes": "18 kg/m2; frequência",
+  "depois": "18 kg/m²; frequência",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "evidencias/q061.png"
+ },
+ {
+  "id": "revalida_2023_1_q061",
+  "campo": "statement",
+  "antes": "(VR: 150.000- 400.00)",
+  "depois": "(VR: 150.000-400.00)",
+  "tipo": "caractere",
+  "pagina": 16,
+  "evidencia": "evidencias/q061.png"
+ },
+ {
+  "id": "revalida_2023_1_q071",
+  "campo": "statement",
+  "antes": "3.200/mm3, com 69%",
+  "depois": "3.200/mm³, com 69%",
+  "tipo": "sobrescrito",
+  "pagina": 19,
+  "evidencia": "evidencias/q071.png"
+ },
+ {
+  "id": "revalida_2023_1_q071",
+  "campo": "statement",
+  "antes": "200 leucócitos/mm3, com 78%",
+  "depois": "200 leucócitos/mm³, com 78%",
+  "tipo": "sobrescrito",
+  "pagina": 19,
+  "evidencia": "evidencias/q071.png"
+ },
+ {
+  "id": "revalida_2023_1_q080",
+  "campo": "statement",
+  "antes": "saturação de O2 de 89%",
+  "depois": "saturação de O₂ de 89%",
+  "tipo": "sobrescrito",
+  "pagina": 21,
+  "evidencia": "evidencias/q080.png"
+ },
+ {
+  "id": "revalida_2023_1_q081",
+  "campo": "statement",
+  "antes": "SPECT com 99mTc-sestamibi",
+  "depois": "SPECT com ⁹⁹ᵐTc-sestamibi",
+  "tipo": "sobrescrito",
+  "pagina": 22,
+  "evidencia": "evidencias/q081.png"
+ },
+ {
+  "id": "revalida_2023_1_q085",
+  "campo": "statement",
+  "antes": "extra- amazônica",
+  "depois": "extra-amazônica",
+  "tipo": "caractere",
+  "pagina": 23,
+  "evidencia": "evidencias/q085.png"
+ },
+ {
+  "id": "revalida_2023_1_q087",
+  "campo": "statement",
+  "antes": "saturação de O2 de 89%",
+  "depois": "saturação de O₂ de 89%",
+  "tipo": "sobrescrito",
+  "pagina": 23,
+  "evidencia": "evidencias/q087.png"
+ },
+ {
+  "id": "revalida_2023_1_q094",
+  "campo": "statement",
+  "antes": "36,7 oC, abdome",
+  "depois": "36,7 ºC, abdome",
+  "tipo": "simbolo",
+  "pagina": 25,
+  "evidencia": "evidencias/q094.png"
+ },
+ {
+  "id": "revalida_2023_1_q096",
+  "campo": "statement",
+  "antes": "pressão parcial de CO2: 45 mmHg",
+  "depois": "pressão parcial de CO²: 45 mmHg",
+  "tipo": "sobrescrito",
+  "pagina": 25,
+  "evidencia": "evidencias/q096.png"
+ },
+ {
+  "id": "revalida_2023_1_q096",
+  "campo": "statement",
+  "antes": "(VR: 35- 45 mmHg)",
+  "depois": "(VR: 35-45 mmHg)",
+  "tipo": "caractere",
+  "pagina": 25,
+  "evidencia": "evidencias/q096.png"
+ },
+ {
+  "id": "revalida_2023_1_q096",
+  "campo": "statement",
+  "antes": "pressão parcial de O2: 85 mmHg",
+  "depois": "pressão parcial de O²: 85 mmHg",
+  "tipo": "sobrescrito",
+  "pagina": 25,
+  "evidencia": "evidencias/q096.png"
+ },
+ {
+  "id": "revalida_2023_1_q097",
+  "campo": "statement",
+  "antes": "14.000/mm3, amilase",
+  "depois": "14.000/mm³, amilase",
+  "tipo": "sobrescrito",
+  "pagina": 25,
+  "evidencia": "evidencias/q097.png"
+ },
+ {
+  "id": "revalida_2023_1_q099",
+  "campo": "options.D",
+  "antes": "cirurgia de conização. BUSS e PELLEGRINI FILHO, Saneamento e saúde ambiental. Acesso em 03 fev. 23 (adaptado).",
+  "depois": "cirurgia de conização.",
+  "tipo": "texto_extra",
+  "pagina": 26,
+  "evidencia": "evidencias/q099.png"
+ },
+ {
+  "id": "revalida_2023_1_q100",
+  "campo": "statement",
+  "antes": "Dahlgren e Whitehead. Disponível em: <https://publica.ciar.ufg.br/ebooks/saneamento-e-saude-ambiental/modulos/4_modulo_saude/01.html.> Considerando",
+  "depois": "Dahlgren e Whitehead. BUSS e PELLEGRINI FILHO, Saneamento e saúde ambiental. Disponível em: <https://publica.ciar.ufg.br/ebooks/saneamento-e-saude-ambiental/modulos/4_modulo_saude/01.html.> Acesso em 03 fev. 23 (adaptado). Considerando",
+  "tipo": "texto_faltando",
+  "pagina": 26,
+  "evidencia": "evidencias/q100.png"
+ }
+]

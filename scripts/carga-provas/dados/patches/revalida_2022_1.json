@@ -1,0 +1,3980 @@
+[
+ {
+  "id": "revalida_2022_1_q001",
+  "campo": "options.A",
+  "antes": "A oxacilina.",
+  "depois": "oxacilina.",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q001_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q001",
+  "campo": "options.B",
+  "antes": "в cefalexina.",
+  "depois": "cefalexina.",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q001_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q001",
+  "campo": "options.C",
+  "antes": "© clindamicina.",
+  "depois": "clindamicina.",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q001_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q001",
+  "campo": "options.D",
+  "antes": "• levofloxacina.",
+  "depois": "levofloxacina.",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q001_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q002",
+  "campo": "options.A",
+  "antes": "A Coledocolitíase.",
+  "depois": "Coledocolitíase.",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q002_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q002",
+  "campo": "options.B",
+  "antes": "B Adenocarcinoma",
+  "depois": "Adenocarcinoma",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q002_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q002",
+  "campo": "options.C",
+  "antes": "© Adenocarcinoma",
+  "depois": "Adenocarcinoma",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q002_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q002",
+  "campo": "options.D",
+  "antes": "• Colangiocarcinoma",
+  "depois": "Colangiocarcinoma",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q002_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q003",
+  "campo": "statement",
+  "antes": "5.700 leucócitos/mm? (VR:",
+  "depois": "5.700 leucócitos/mm³ (VR:",
+  "tipo": "sobrescrito",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q003_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q003",
+  "campo": "statement",
+  "antes": "(VR: 5.000-15.000/mm3), com",
+  "depois": "(VR: 5.000-15.000/mm³), com",
+  "tipo": "sobrescrito",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q003_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q003",
+  "campo": "statement",
+  "antes": "(VR: 150.000- 450.000/mm3). Coagulograma",
+  "depois": "(VR: 150.000-450.000/mm³). Coagulograma",
+  "tipo": "sobrescrito",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q003_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q003",
+  "campo": "statement",
+  "antes": "com de tempo tromboplastina",
+  "depois": "com um tempo de tromboplastina",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q003_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q003",
+  "campo": "options.A",
+  "antes": "• Terapia",
+  "depois": "Terapia",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q003_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q003",
+  "campo": "options.B",
+  "antes": "® Internação",
+  "depois": "Internação",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q003_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q003",
+  "campo": "options.C",
+  "antes": "• Observação",
+  "depois": "Observação",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q003_p7.png"
+ },
+ {
+  "id": "revalida_2022_1_q003",
+  "campo": "options.D",
+  "antes": "• Administração",
+  "depois": "Administração",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q003_p8.png"
+ },
+ {
+  "id": "revalida_2022_1_q004",
+  "campo": "options.A",
+  "antes": "A 45",
+  "depois": "45",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q004_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q004",
+  "campo": "options.B",
+  "antes": "B 50",
+  "depois": "50",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q004_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q004",
+  "campo": "options.C",
+  "antes": "© 40",
+  "depois": "40",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q004_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q004",
+  "campo": "options.D",
+  "antes": "• 50",
+  "depois": "50",
+  "tipo": "lixo_ocr",
+  "pagina": 2,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q004_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q005",
+  "campo": "statement",
+  "antes": "dizendo \"eles estão",
+  "depois": "dizendo “eles estão",
+  "tipo": "caractere",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q005_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q005",
+  "campo": "statement",
+  "antes": "sentir doente\". O",
+  "depois": "sentir doente”. O",
+  "tipo": "caractere",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q005_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q005",
+  "campo": "options.A",
+  "antes": "A construir",
+  "depois": "construir",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q005_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q005",
+  "campo": "options.B",
+  "antes": "® esclarecer",
+  "depois": "esclarecer",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q005_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q005",
+  "campo": "options.C",
+  "antes": "• utilizar,",
+  "depois": "utilizar,",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q005_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q005",
+  "campo": "options.D",
+  "antes": "O condicionar,",
+  "depois": "condicionar,",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q005_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q006",
+  "campo": "options.A",
+  "antes": "A clonidina,",
+  "depois": "clonidina,",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q006_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q006",
+  "campo": "options.B",
+  "antes": "B nitroprussiato",
+  "depois": "nitroprussiato",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q006_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q006",
+  "campo": "options.C",
+  "antes": "© nitroglicerina",
+  "depois": "nitroglicerina",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q006_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q006",
+  "campo": "options.D",
+  "antes": "• captopril,",
+  "depois": "captopril,",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q006_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q006",
+  "campo": "options.D",
+  "antes": "mmHg. QUEStÃO,",
+  "depois": "mmHg.",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q006_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q007",
+  "campo": "options.A",
+  "antes": "A Laparotomia",
+  "depois": "Laparotomia",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q007_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q007",
+  "campo": "options.B",
+  "antes": "® Laparotomia,",
+  "depois": "Laparotomia,",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q007_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q007",
+  "campo": "options.C",
+  "antes": "© Internação",
+  "depois": "Internação",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q007_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q008",
+  "campo": "options.A",
+  "antes": "• Antiestreptolisina",
+  "depois": "Antiestreptolisina",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q008_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q008",
+  "campo": "options.B",
+  "antes": "B Anticorpo",
+  "depois": "Anticorpo",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q008_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q008",
+  "campo": "options.C",
+  "antes": "• Ultrassonografia",
+  "depois": "Ultrassonografia",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q008_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q008",
+  "campo": "options.D",
+  "antes": "• Hemograma",
+  "depois": "Hemograma",
+  "tipo": "lixo_ocr",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q008_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q009",
+  "campo": "statement",
+  "antes": "diagnosticada. (D) Refere",
+  "depois": "diagnosticada. Refere",
+  "tipo": "lixo_ocr",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q009_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q009",
+  "campo": "statement",
+  "antes": "adequada? (A)",
+  "depois": "adequada?",
+  "tipo": "lixo_ocr",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q009_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q009",
+  "campo": "options.B",
+  "antes": "® Encaminhar",
+  "depois": "Encaminhar",
+  "tipo": "lixo_ocr",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q009_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q009",
+  "campo": "options.C",
+  "antes": "• Solicitar",
+  "depois": "Solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q009_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q009",
+  "campo": "options.D",
+  "antes": "• Solicitar",
+  "depois": "Solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q009_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q010",
+  "campo": "statement",
+  "antes": "2019 - COVID-19",
+  "depois": "2019 – COVID-19",
+  "tipo": "caractere",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q010_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q010",
+  "campo": "statement",
+  "antes": "por SARS-COV-2. Nesta",
+  "depois": "por SARS-CoV-2. Nesta",
+  "tipo": "caractere",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q010_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q010",
+  "campo": "options.A",
+  "antes": "• gorro",
+  "depois": "gorro",
+  "tipo": "lixo_ocr",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q010_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q010",
+  "campo": "options.B",
+  "antes": "B óculos",
+  "depois": "óculos",
+  "tipo": "lixo_ocr",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q010_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q010",
+  "campo": "options.C",
+  "antes": "• gorro",
+  "depois": "gorro",
+  "tipo": "lixo_ocr",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q010_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q010",
+  "campo": "options.D",
+  "antes": "• gorro",
+  "depois": "gorro",
+  "tipo": "lixo_ocr",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q010_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q011",
+  "campo": "statement",
+  "antes": "inalatório (A) (budesonida)",
+  "depois": "inalatório (budesonida)",
+  "tipo": "lixo_ocr",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q011_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q011",
+  "campo": "statement",
+  "antes": "bacteriano (A) (leucocitose",
+  "depois": "bacteriano (leucocitose",
+  "tipo": "lixo_ocr",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q011_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q011",
+  "campo": "statement",
+  "antes": "7,44 (A) (valor",
+  "depois": "7,44 (valor",
+  "tipo": "lixo_ocr",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q011_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q011",
+  "campo": "statement",
+  "antes": "7,35-7,45); Pa02: 65",
+  "depois": "7,35-7,45); PaO₂: 65",
+  "tipo": "sobrescrito",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q011_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q011",
+  "campo": "statement",
+  "antes": "95); PaCO 2: 44",
+  "depois": "95); PaCO₂: 44",
+  "tipo": "sobrescrito",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q011_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q011",
+  "campo": "statement",
+  "antes": "35-45); HC03: 22",
+  "depois": "35-45); HCO₃⁻: 22",
+  "tipo": "sobrescrito",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q011_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q011",
+  "campo": "statement",
+  "antes": "2); Sa02: 91%",
+  "depois": "2); SaO₂: 91%",
+  "tipo": "sobrescrito",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q011_p7.png"
+ },
+ {
+  "id": "revalida_2022_1_q011",
+  "campo": "options.A",
+  "antes": "• foi",
+  "depois": "foi",
+  "tipo": "lixo_ocr",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q011_p8.png"
+ },
+ {
+  "id": "revalida_2022_1_q011",
+  "campo": "options.A",
+  "antes": "da PaOz à",
+  "depois": "da PaO₂ à",
+  "tipo": "sobrescrito",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q011_p9.png"
+ },
+ {
+  "id": "revalida_2022_1_q011",
+  "campo": "options.B",
+  "antes": "® foi",
+  "depois": "foi",
+  "tipo": "lixo_ocr",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q011_p10.png"
+ },
+ {
+  "id": "revalida_2022_1_q011",
+  "campo": "options.B",
+  "antes": "da PaCOz à",
+  "depois": "da PaCO₂ à",
+  "tipo": "sobrescrito",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q011_p11.png"
+ },
+ {
+  "id": "revalida_2022_1_q011",
+  "campo": "options.D",
+  "antes": "• foi",
+  "depois": "foi",
+  "tipo": "lixo_ocr",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q011_p12.png"
+ },
+ {
+  "id": "revalida_2022_1_q012",
+  "campo": "options.A",
+  "antes": "A Colecistite",
+  "depois": "Colecistite",
+  "tipo": "lixo_ocr",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q012_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q012",
+  "campo": "options.B",
+  "antes": "® Colangite",
+  "depois": "Colangite",
+  "tipo": "lixo_ocr",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q012_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q012",
+  "campo": "options.C",
+  "antes": "• Colecistite",
+  "depois": "Colecistite",
+  "tipo": "lixo_ocr",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q012_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q012",
+  "campo": "options.D",
+  "antes": "• Colangite",
+  "depois": "Colangite",
+  "tipo": "lixo_ocr",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q012_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q013",
+  "campo": "options.A",
+  "antes": "A tríplice",
+  "depois": "tríplice",
+  "tipo": "lixo_ocr",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q013_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q013",
+  "campo": "options.D",
+  "antes": "vacina antissarampo aos 18 meses e outra dose da tetraviral",
+  "depois": "antissarampo aos 18 meses e outra dose da vacina tetraviral",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q013_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q014",
+  "campo": "options.A",
+  "antes": "A acesso",
+  "depois": "acesso",
+  "tipo": "lixo_ocr",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q014_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q014",
+  "campo": "options.B",
+  "antes": "® decúbito",
+  "depois": "decúbito",
+  "tipo": "lixo_ocr",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q014_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q014",
+  "campo": "options.C",
+  "antes": "• acesso",
+  "depois": "acesso",
+  "tipo": "lixo_ocr",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q014_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q014",
+  "campo": "options.D",
+  "antes": "• acesso",
+  "depois": "acesso",
+  "tipo": "lixo_ocr",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q014_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q015",
+  "campo": "options.A",
+  "antes": "A Diabetes",
+  "depois": "Diabetes",
+  "tipo": "lixo_ocr",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q015_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q015",
+  "campo": "options.B",
+  "antes": "da B insulinoterapia",
+  "depois": "da insulinoterapia",
+  "tipo": "lixo_ocr",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q015_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q016",
+  "campo": "options.A",
+  "antes": "• leptospirose.",
+  "depois": "leptospirose.",
+  "tipo": "lixo_ocr",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q016_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q016",
+  "campo": "options.B",
+  "antes": "B mononucleose.",
+  "depois": "mononucleose.",
+  "tipo": "lixo_ocr",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q016_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q016",
+  "campo": "options.C",
+  "antes": "• colecistite",
+  "depois": "colecistite",
+  "tipo": "lixo_ocr",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q016_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q016",
+  "campo": "options.D",
+  "antes": "• hepatite",
+  "depois": "hepatite",
+  "tipo": "lixo_ocr",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q016_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q017",
+  "campo": "statement",
+  "antes": "hipotenso. (D) Realizou",
+  "depois": "hipotenso. Realizou",
+  "tipo": "lixo_ocr",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q017_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q017",
+  "campo": "statement",
+  "antes": "(Classificação la de",
+  "depois": "(Classificação Ia de",
+  "tipo": "caractere",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q017_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q017",
+  "campo": "statement",
+  "antes": "ser (A)",
+  "depois": "ser",
+  "tipo": "lixo_ocr",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q017_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q017",
+  "campo": "options.B",
+  "antes": "® terapia",
+  "depois": "terapia",
+  "tipo": "lixo_ocr",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q017_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q018",
+  "campo": "statement",
+  "antes": "saúde materno- infantil de",
+  "depois": "saúde materno-infantil de",
+  "tipo": "caractere",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q018_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q018",
+  "campo": "options.A",
+  "antes": "A fazer",
+  "depois": "fazer",
+  "tipo": "lixo_ocr",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q018_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q018",
+  "campo": "options.B",
+  "antes": "® solicitar",
+  "depois": "solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q018_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q018",
+  "campo": "options.C",
+  "antes": "© notificar",
+  "depois": "notificar",
+  "tipo": "lixo_ocr",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q018_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q018",
+  "campo": "options.D",
+  "antes": "• notificar",
+  "depois": "notificar",
+  "tipo": "lixo_ocr",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q018_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q019",
+  "campo": "options.A",
+  "antes": "A Apendicite",
+  "depois": "Apendicite",
+  "tipo": "lixo_ocr",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q019_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q019",
+  "campo": "options.B",
+  "antes": "® Gestação",
+  "depois": "Gestação",
+  "tipo": "lixo_ocr",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q019_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q019",
+  "campo": "options.C",
+  "antes": "• Doença",
+  "depois": "Doença",
+  "tipo": "lixo_ocr",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q019_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q019",
+  "campo": "options.D",
+  "antes": "• Aborto",
+  "depois": "Aborto",
+  "tipo": "lixo_ocr",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q019_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q020",
+  "campo": "options.A",
+  "antes": "• não",
+  "depois": "não",
+  "tipo": "lixo_ocr",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q020_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q020",
+  "campo": "options.B",
+  "antes": "B a",
+  "depois": "a",
+  "tipo": "lixo_ocr",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q020_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q020",
+  "campo": "options.C",
+  "antes": "• a",
+  "depois": "a",
+  "tipo": "lixo_ocr",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q020_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q020",
+  "campo": "options.D",
+  "antes": "D a",
+  "depois": "a",
+  "tipo": "lixo_ocr",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q020_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q021",
+  "campo": "statement",
+  "antes": "em \"H\", tendo",
+  "depois": "em “H”, tendo",
+  "tipo": "caractere",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q021_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q021",
+  "campo": "options.A",
+  "antes": "A hiperparatireoidismo",
+  "depois": "hiperparatireoidismo",
+  "tipo": "lixo_ocr",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q021_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q021",
+  "campo": "options.B",
+  "antes": "B anemia",
+  "depois": "anemia",
+  "tipo": "lixo_ocr",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q021_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q021",
+  "campo": "options.C",
+  "antes": "• fraturas",
+  "depois": "fraturas",
+  "tipo": "lixo_ocr",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q021_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q021",
+  "campo": "options.D",
+  "antes": "• espondilite",
+  "depois": "espondilite",
+  "tipo": "lixo_ocr",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q021_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q022",
+  "campo": "options.A",
+  "antes": "A radiografia",
+  "depois": "radiografia",
+  "tipo": "lixo_ocr",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q022_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q022",
+  "campo": "options.C",
+  "antes": "© toracocentese",
+  "depois": "toracocentese",
+  "tipo": "lixo_ocr",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q022_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q023",
+  "campo": "statement",
+  "antes": "notado \"algo duro\" na",
+  "depois": "notado “algo duro” na",
+  "tipo": "caractere",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q023_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q023",
+  "campo": "statement",
+  "antes": "febre. (D) Relata",
+  "depois": "febre. Relata",
+  "tipo": "lixo_ocr",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q023_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q023",
+  "campo": "statement",
+  "antes": "exclusivo por meses.",
+  "depois": "exclusivo por 6 meses.",
+  "tipo": "texto_faltando",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q023_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q023",
+  "campo": "statement",
+  "antes": "respectivamente, (A)",
+  "depois": "respectivamente,",
+  "tipo": "lixo_ocr",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q023_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q023",
+  "campo": "options.A",
+  "antes": "abome. (B)",
+  "depois": "abome.",
+  "tipo": "lixo_ocr",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q023_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q023",
+  "campo": "options.B",
+  "antes": "abdome. (C)",
+  "depois": "abdome.",
+  "tipo": "lixo_ocr",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q023_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q023",
+  "campo": "options.C",
+  "antes": "sérico. (D)",
+  "depois": "sérico.",
+  "tipo": "lixo_ocr",
+  "pagina": 7,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q023_p7.png"
+ },
+ {
+  "id": "revalida_2022_1_q024",
+  "campo": "options.A",
+  "antes": "A solicitar",
+  "depois": "solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q024_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q024",
+  "campo": "options.B",
+  "antes": "® pedir",
+  "depois": "pedir",
+  "tipo": "lixo_ocr",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q024_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q024",
+  "campo": "options.C",
+  "antes": "© solicitar",
+  "depois": "solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q024_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q024",
+  "campo": "options.D",
+  "antes": "• orientar",
+  "depois": "orientar",
+  "tipo": "lixo_ocr",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q024_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q025",
+  "campo": "options.A",
+  "antes": "• homogeneizar",
+  "depois": "homogeneizar",
+  "tipo": "lixo_ocr",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q025_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q025",
+  "campo": "options.B",
+  "antes": "® assumir",
+  "depois": "assumir",
+  "tipo": "lixo_ocr",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q025_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q025",
+  "campo": "options.C",
+  "antes": "• buscar",
+  "depois": "buscar",
+  "tipo": "lixo_ocr",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q025_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q025",
+  "campo": "options.D",
+  "antes": "O posicionar-se",
+  "depois": "posicionar-se",
+  "tipo": "lixo_ocr",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q025_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q026",
+  "campo": "statement",
+  "antes": "paciente pressão em moderado desconforto agudo, ansioso, com arterial",
+  "depois": "paciente em moderado desconforto agudo, ansioso, com pressão arterial",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q026_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q026",
+  "campo": "options.A",
+  "antes": "A agravamento",
+  "depois": "agravamento",
+  "tipo": "lixo_ocr",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q026_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q026",
+  "campo": "options.B",
+  "antes": "® desenvolvimento",
+  "depois": "desenvolvimento",
+  "tipo": "lixo_ocr",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q026_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q026",
+  "campo": "options.C",
+  "antes": "• medicação",
+  "depois": "medicação",
+  "tipo": "lixo_ocr",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q026_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q026",
+  "campo": "options.D",
+  "antes": "• instalação",
+  "depois": "instalação",
+  "tipo": "lixo_ocr",
+  "pagina": 8,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q026_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q027",
+  "campo": "statement",
+  "antes": "corpóreos. físico, apresenta frequência cardíaca de Ao exame 84",
+  "depois": "corpóreos. Ao exame físico, apresenta frequência cardíaca de 84",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q027_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q027",
+  "campo": "options.A",
+  "antes": "• arteriografia",
+  "depois": "arteriografia",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q027_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q027",
+  "campo": "options.B",
+  "antes": "® tratamento",
+  "depois": "tratamento",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q027_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q027",
+  "campo": "options.C",
+  "antes": "• sonda",
+  "depois": "sonda",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q027_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q028",
+  "campo": "options.A",
+  "antes": "A Peso",
+  "depois": "Peso",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q028_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q028",
+  "campo": "options.B",
+  "antes": "® Peso",
+  "depois": "Peso",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q028_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q028",
+  "campo": "options.C",
+  "antes": "• Peso",
+  "depois": "Peso",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q028_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q028",
+  "campo": "options.D",
+  "antes": "• Peso",
+  "depois": "Peso",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q028_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q029",
+  "campo": "options.A",
+  "antes": "• Sífilis",
+  "depois": "Sífilis",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q029_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q029",
+  "campo": "options.B",
+  "antes": "• Sífilis",
+  "depois": "Sífilis",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q029_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q029",
+  "campo": "options.C",
+  "antes": "• Herpes",
+  "depois": "Herpes",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q029_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q029",
+  "campo": "options.D",
+  "antes": "• Herpes",
+  "depois": "Herpes",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q029_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q030",
+  "campo": "options.A",
+  "antes": "A mensalmente",
+  "depois": "mensalmente",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q030_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q030",
+  "campo": "options.B",
+  "antes": "® mensalmente",
+  "depois": "mensalmente",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q030_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q030",
+  "campo": "options.C",
+  "antes": "• quinzenalmente",
+  "depois": "quinzenalmente",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q030_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q030",
+  "campo": "options.D",
+  "antes": "• quinzenalmente",
+  "depois": "quinzenalmente",
+  "tipo": "lixo_ocr",
+  "pagina": 9,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q030_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q031",
+  "campo": "options.A",
+  "antes": "A encaminhar",
+  "depois": "encaminhar",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q031_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q031",
+  "campo": "options.B",
+  "antes": "B iniciar",
+  "depois": "iniciar",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q031_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q031",
+  "campo": "options.C",
+  "antes": "• observar",
+  "depois": "observar",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q031_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q032",
+  "campo": "options.A",
+  "antes": "• Mepivacaína",
+  "depois": "Mepivacaína",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q032_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q032",
+  "campo": "options.B",
+  "antes": "B Lidocaína",
+  "depois": "Lidocaína",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q032_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q032",
+  "campo": "options.C",
+  "antes": "• Cloroprocaína",
+  "depois": "Cloroprocaína",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q032_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q032",
+  "campo": "options.D",
+  "antes": "• Cloroprocaína",
+  "depois": "Cloroprocaína",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q032_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q033",
+  "campo": "options.A",
+  "antes": "• Penicilina",
+  "depois": "Penicilina",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q033_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q033",
+  "campo": "options.B",
+  "antes": "® Gentamicina",
+  "depois": "Gentamicina",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q033_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q033",
+  "campo": "options.C",
+  "antes": "© Ceftazidima",
+  "depois": "Ceftazidima",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q033_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q033",
+  "campo": "options.D",
+  "antes": "• Vancomicina",
+  "depois": "Vancomicina",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q033_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q034",
+  "campo": "options.A",
+  "antes": "• As",
+  "depois": "As",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q034_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q034",
+  "campo": "options.B",
+  "antes": "® As",
+  "depois": "As",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q034_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q034",
+  "campo": "options.C",
+  "antes": "• As",
+  "depois": "As",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q034_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q034",
+  "campo": "options.D",
+  "antes": "• O",
+  "depois": "O",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q034_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q035",
+  "campo": "options.A",
+  "antes": "• Hemograma;",
+  "depois": "Hemograma;",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q035_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q035",
+  "campo": "options.C",
+  "antes": "HIV, | toxoplasmose",
+  "depois": "HIV, toxoplasmose",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q035_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q035",
+  "campo": "options.D",
+  "antes": "• Hemograma;",
+  "depois": "Hemograma;",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q035_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q036",
+  "campo": "options.A",
+  "antes": "A deficiência",
+  "depois": "deficiência",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q036_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q036",
+  "campo": "options.B",
+  "antes": "® aplasia",
+  "depois": "aplasia",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q036_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q036",
+  "campo": "options.C",
+  "antes": "© deficiência",
+  "depois": "deficiência",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q036_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q036",
+  "campo": "options.D",
+  "antes": "• hipotireoidismo.",
+  "depois": "hipotireoidismo.",
+  "tipo": "lixo_ocr",
+  "pagina": 10,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q036_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q037",
+  "campo": "options.A",
+  "antes": "• fasciotomia,",
+  "depois": "fasciotomia,",
+  "tipo": "lixo_ocr",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q037_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q037",
+  "campo": "options.B",
+  "antes": "® sondagem",
+  "depois": "sondagem",
+  "tipo": "lixo_ocr",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q037_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q037",
+  "campo": "options.C",
+  "antes": "• avaliação",
+  "depois": "avaliação",
+  "tipo": "lixo_ocr",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q037_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q037",
+  "campo": "options.D",
+  "antes": "• reposição",
+  "depois": "reposição",
+  "tipo": "lixo_ocr",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q037_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q038",
+  "campo": "options.A",
+  "antes": "A Tiopental;",
+  "depois": "Tiopental;",
+  "tipo": "lixo_ocr",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q038_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q038",
+  "campo": "options.B",
+  "antes": "B Midazolan;",
+  "depois": "Midazolan;",
+  "tipo": "lixo_ocr",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q038_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q038",
+  "campo": "options.C",
+  "antes": "© Propofol;",
+  "depois": "Propofol;",
+  "tipo": "lixo_ocr",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q038_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q038",
+  "campo": "options.D",
+  "antes": "• Fenobarbital",
+  "depois": "Fenobarbital",
+  "tipo": "lixo_ocr",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q038_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q039",
+  "campo": "statement",
+  "antes": "e \"aspecto de",
+  "depois": "e “aspecto de",
+  "tipo": "caractere",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q039_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q039",
+  "campo": "statement",
+  "antes": "de morango\". Nesse",
+  "depois": "de morango”. Nesse",
+  "tipo": "caractere",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q039_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q039",
+  "campo": "options.A",
+  "antes": "A exame",
+  "depois": "exame",
+  "tipo": "lixo_ocr",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q039_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q039",
+  "campo": "options.A",
+  "antes": "observadas \"Clue Cells\".",
+  "depois": "observadas “Clue Cells”.",
+  "tipo": "caractere",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q039_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q039",
+  "campo": "options.D",
+  "antes": "• exame",
+  "depois": "exame",
+  "tipo": "lixo_ocr",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q039_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q040",
+  "campo": "options.A",
+  "antes": "• Acidentes",
+  "depois": "Acidentes",
+  "tipo": "lixo_ocr",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q040_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q040",
+  "campo": "options.B",
+  "antes": "® Acidentes",
+  "depois": "Acidentes",
+  "tipo": "lixo_ocr",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q040_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q040",
+  "campo": "options.C",
+  "antes": "© Acidentes",
+  "depois": "Acidentes",
+  "tipo": "lixo_ocr",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q040_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q040",
+  "campo": "options.D",
+  "antes": "• Intoxicação",
+  "depois": "Intoxicação",
+  "tipo": "lixo_ocr",
+  "pagina": 11,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q040_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q041",
+  "campo": "options.A",
+  "antes": "radioativo. A",
+  "depois": "radioativo.",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q041_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q041",
+  "campo": "options.B",
+  "antes": "B o",
+  "depois": "o",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q041_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q041",
+  "campo": "options.C",
+  "antes": "© a",
+  "depois": "a",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q041_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q041",
+  "campo": "options.D",
+  "antes": "• a",
+  "depois": "a",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q041_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q042",
+  "campo": "statement",
+  "antes": "conduta pré- operatória para",
+  "depois": "conduta pré-operatória para",
+  "tipo": "caractere",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q042_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q042",
+  "campo": "options.A",
+  "antes": "• Contaminada;",
+  "depois": "Contaminada;",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q042_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q042",
+  "campo": "options.B",
+  "antes": "B Contaminada;",
+  "depois": "Contaminada;",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q042_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q042",
+  "campo": "options.C",
+  "antes": "• Limpa-contaminada;",
+  "depois": "Limpa-contaminada;",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q042_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q042",
+  "campo": "options.D",
+  "antes": "• Limpa-contaminada;",
+  "depois": "Limpa-contaminada;",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q042_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q043",
+  "campo": "options.A",
+  "antes": "A asma",
+  "depois": "asma",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q043_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q043",
+  "campo": "options.B",
+  "antes": "® asma",
+  "depois": "asma",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q043_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q043",
+  "campo": "options.D",
+  "antes": "• asma",
+  "depois": "asma",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q043_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q044",
+  "campo": "options.A",
+  "antes": "• usar",
+  "depois": "usar",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q044_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q044",
+  "campo": "options.A",
+  "antes": "dos por exemplo, sangramentos intermenstruais, anti-inflamatórios",
+  "depois": "dos sangramentos intermenstruais, por exemplo, anti-inflamatórios",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q044_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q044",
+  "campo": "options.B",
+  "antes": "® voltar",
+  "depois": "voltar",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q044_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q044",
+  "campo": "options.C",
+  "antes": "• inserir",
+  "depois": "inserir",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q044_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q044",
+  "campo": "options.D",
+  "antes": "• usar",
+  "depois": "usar",
+  "tipo": "lixo_ocr",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q044_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q045",
+  "campo": "statement",
+  "antes": "familiar. (D) Refere",
+  "depois": "familiar. Refere",
+  "tipo": "lixo_ocr",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q045_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q045",
+  "campo": "options.A",
+  "antes": "• solicitar",
+  "depois": "solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q045_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q045",
+  "campo": "options.C",
+  "antes": "• iniciar",
+  "depois": "iniciar",
+  "tipo": "lixo_ocr",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q045_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q045",
+  "campo": "options.C",
+  "antes": "escarro. O iniciar esquema básico com rifampicina, isoniazida,",
+  "depois": "escarro.",
+  "tipo": "texto_extra",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q045_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q045",
+  "campo": "options.D",
+  "antes": "pirazinamida",
+  "depois": "iniciar esquema básico com rifampicina, isoniazida, pirazinamida",
+  "tipo": "texto_faltando",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q045_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q046",
+  "campo": "statement",
+  "antes": "dias. (D) Relatou",
+  "depois": "dias. Relatou",
+  "tipo": "lixo_ocr",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q046_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q046",
+  "campo": "statement",
+  "antes": "é (A)",
+  "depois": "é",
+  "tipo": "lixo_ocr",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q046_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q046",
+  "campo": "options.B",
+  "antes": "® sepse",
+  "depois": "sepse",
+  "tipo": "lixo_ocr",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q046_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q046",
+  "campo": "options.C",
+  "antes": "© bacteriúria",
+  "depois": "bacteriúria",
+  "tipo": "lixo_ocr",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q046_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q046",
+  "campo": "options.D",
+  "antes": "• infecção",
+  "depois": "infecção",
+  "tipo": "lixo_ocr",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q046_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q047",
+  "campo": "statement",
+  "antes": "por \"flash\" ocasionado",
+  "depois": "por “flash” ocasionado",
+  "tipo": "caractere",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q047_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q047",
+  "campo": "statement",
+  "antes": "e \"sensação de",
+  "depois": "e “sensação de",
+  "tipo": "caractere",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q047_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q047",
+  "campo": "statement",
+  "antes": "de areia\" nos",
+  "depois": "de areia” nos",
+  "tipo": "caractere",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q047_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q047",
+  "campo": "options.A",
+  "antes": "• curativo",
+  "depois": "curativo",
+  "tipo": "lixo_ocr",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q047_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q047",
+  "campo": "options.B",
+  "antes": "• oftalmoscopia",
+  "depois": "oftalmoscopia",
+  "tipo": "lixo_ocr",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q047_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q047",
+  "campo": "options.C",
+  "antes": "• aplicação",
+  "depois": "aplicação",
+  "tipo": "lixo_ocr",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q047_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q047",
+  "campo": "options.D",
+  "antes": "• irrigação",
+  "depois": "irrigação",
+  "tipo": "lixo_ocr",
+  "pagina": 13,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q047_p7.png"
+ },
+ {
+  "id": "revalida_2022_1_q048",
+  "campo": "options.A",
+  "antes": "• dengue",
+  "depois": "dengue",
+  "tipo": "lixo_ocr",
+  "pagina": 14,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q048_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q048",
+  "campo": "options.B",
+  "antes": "• síndrome",
+  "depois": "síndrome",
+  "tipo": "lixo_ocr",
+  "pagina": 14,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q048_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q048",
+  "campo": "options.D",
+  "antes": "• síndrome",
+  "depois": "síndrome",
+  "tipo": "lixo_ocr",
+  "pagina": 14,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q048_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q049",
+  "campo": "statement",
+  "antes": "500 células/mm e",
+  "depois": "500 células/mm³ e",
+  "tipo": "sobrescrito",
+  "pagina": 14,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q049_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q049",
+  "campo": "options.A",
+  "antes": "A realização",
+  "depois": "realização",
+  "tipo": "lixo_ocr",
+  "pagina": 14,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q049_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q049",
+  "campo": "options.B",
+  "antes": "® uso",
+  "depois": "uso",
+  "tipo": "lixo_ocr",
+  "pagina": 14,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q049_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q049",
+  "campo": "options.C",
+  "antes": "© uso",
+  "depois": "uso",
+  "tipo": "lixo_ocr",
+  "pagina": 14,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q049_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q049",
+  "campo": "options.D",
+  "antes": "• realização",
+  "depois": "realização",
+  "tipo": "lixo_ocr",
+  "pagina": 14,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q049_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q050",
+  "campo": "options.A",
+  "antes": "• solicitar",
+  "depois": "solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 14,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q050_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q050",
+  "campo": "options.B",
+  "antes": "• solicitar",
+  "depois": "solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 14,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q050_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q050",
+  "campo": "options.C",
+  "antes": "• solicitar",
+  "depois": "solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 14,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q050_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q050",
+  "campo": "options.D",
+  "antes": "O individualizar",
+  "depois": "individualizar",
+  "tipo": "lixo_ocr",
+  "pagina": 14,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q050_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q051",
+  "campo": "options.A",
+  "antes": "A tuberculose",
+  "depois": "tuberculose",
+  "tipo": "lixo_ocr",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q051_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q051",
+  "campo": "options.B",
+  "antes": "® tuberculose",
+  "depois": "tuberculose",
+  "tipo": "lixo_ocr",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q051_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q051",
+  "campo": "options.C",
+  "antes": "• tuberculose",
+  "depois": "tuberculose",
+  "tipo": "lixo_ocr",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q051_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q051",
+  "campo": "options.D",
+  "antes": "• infecção",
+  "depois": "infecção",
+  "tipo": "lixo_ocr",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q051_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q052",
+  "campo": "options.A",
+  "antes": "• pedir",
+  "depois": "pedir",
+  "tipo": "lixo_ocr",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q052_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q052",
+  "campo": "options.B",
+  "antes": "® aplicar",
+  "depois": "aplicar",
+  "tipo": "lixo_ocr",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q052_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q052",
+  "campo": "options.C",
+  "antes": "© iniciar",
+  "depois": "iniciar",
+  "tipo": "lixo_ocr",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q052_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q052",
+  "campo": "options.D",
+  "antes": "• imobilizar",
+  "depois": "imobilizar",
+  "tipo": "lixo_ocr",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q052_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q053",
+  "campo": "options.A",
+  "antes": "• Caso",
+  "depois": "Caso",
+  "tipo": "lixo_ocr",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q053_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q053",
+  "campo": "options.C",
+  "antes": "• Caso",
+  "depois": "Caso",
+  "tipo": "lixo_ocr",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q053_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q054",
+  "campo": "options.A",
+  "antes": "• Encaminhar",
+  "depois": "Encaminhar",
+  "tipo": "lixo_ocr",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q054_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q054",
+  "campo": "options.B",
+  "antes": "• Prescrever",
+  "depois": "Prescrever",
+  "tipo": "lixo_ocr",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q054_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q054",
+  "campo": "options.C",
+  "antes": "• Encaminhar",
+  "depois": "Encaminhar",
+  "tipo": "lixo_ocr",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q054_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q054",
+  "campo": "options.D",
+  "antes": "• Solicitar",
+  "depois": "Solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q054_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q055",
+  "campo": "statement",
+  "antes": "de Paracoccidioidomicose, Criptococose e Tuberculose, Toxoplasmose.",
+  "depois": "de Tuberculose, Paracoccidioidomicose, Criptococose e Toxoplasmose.",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q055_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q055",
+  "campo": "options.A",
+  "antes": "A criptococose;",
+  "depois": "criptococose;",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q055_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q055",
+  "campo": "options.B",
+  "antes": "B paracocciodioidomicose;",
+  "depois": "paracocciodioidomicose;",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q055_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q055",
+  "campo": "options.C",
+  "antes": "• toxoplasmose;",
+  "depois": "toxoplasmose;",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q055_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q055",
+  "campo": "options.D",
+  "antes": "D tuberculose",
+  "depois": "tuberculose",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q055_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q056",
+  "campo": "options.A",
+  "antes": "A Solicitar",
+  "depois": "Solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q056_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q056",
+  "campo": "options.B",
+  "antes": "® Solicitar",
+  "depois": "Solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q056_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q056",
+  "campo": "options.C",
+  "antes": "© Encaminhar",
+  "depois": "Encaminhar",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q056_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q056",
+  "campo": "options.D",
+  "antes": "• Solicitar",
+  "depois": "Solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q056_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q057",
+  "campo": "statement",
+  "antes": "UH. (D) Resultado",
+  "depois": "UH. Resultado",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q057_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q057",
+  "campo": "statement",
+  "antes": "é (A)",
+  "depois": "é",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q057_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q057",
+  "campo": "options.B",
+  "antes": "® pielolitotomia",
+  "depois": "pielolitotomia",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q057_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q057",
+  "campo": "options.C",
+  "antes": "• litotripsia",
+  "depois": "litotripsia",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q057_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q057",
+  "campo": "options.D",
+  "antes": "• terapia",
+  "depois": "terapia",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q057_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q057",
+  "campo": "options.D",
+  "antes": "e alfa- bloqueadores.",
+  "depois": "e alfa-bloqueadores.",
+  "tipo": "caractere",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q057_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q058",
+  "campo": "statement",
+  "antes": "7,20; pCO2 =",
+  "depois": "7,20; pCO₂ =",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q058_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q058",
+  "campo": "statement",
+  "antes": "mmHg; pO2 =",
+  "depois": "mmHg; pO₂ =",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q058_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q058",
+  "campo": "statement",
+  "antes": "80 mmHg; Bicarbonato",
+  "depois": "80 mmHg ; Bicarbonato",
+  "tipo": "caractere",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q058_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q058",
+  "campo": "options.A",
+  "antes": "A bicarbonato,",
+  "depois": "bicarbonato,",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q058_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q058",
+  "campo": "options.B",
+  "antes": "B flush",
+  "depois": "flush",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q058_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q058",
+  "campo": "options.C",
+  "antes": "• manitol,",
+  "depois": "manitol,",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q058_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q058",
+  "campo": "options.D",
+  "antes": "• 40",
+  "depois": "40",
+  "tipo": "lixo_ocr",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q058_p7.png"
+ },
+ {
+  "id": "revalida_2022_1_q059",
+  "campo": "statement",
+  "antes": "menstruação sexual prévio. Ao exame nesse intervalo e nega contato ginecológico,",
+  "depois": "menstruação nesse intervalo e nega contato sexual prévio. Ao exame ginecológico,",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q059_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q059",
+  "campo": "statement",
+  "antes": "está integro. Considerando",
+  "depois": "está íntegro. Considerando",
+  "tipo": "caractere",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q059_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q059",
+  "campo": "options.A",
+  "antes": "• anovulação.",
+  "depois": "anovulação.",
+  "tipo": "lixo_ocr",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q059_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q059",
+  "campo": "options.B",
+  "antes": "B doença",
+  "depois": "doença",
+  "tipo": "lixo_ocr",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q059_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q059",
+  "campo": "options.C",
+  "antes": "• hipogonadismo",
+  "depois": "hipogonadismo",
+  "tipo": "lixo_ocr",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q059_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q059",
+  "campo": "options.D",
+  "antes": "• púrpura",
+  "depois": "púrpura",
+  "tipo": "lixo_ocr",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q059_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q060",
+  "campo": "options.A",
+  "antes": "A a",
+  "depois": "a",
+  "tipo": "lixo_ocr",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q060_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q060",
+  "campo": "options.B",
+  "antes": "B o",
+  "depois": "o",
+  "tipo": "lixo_ocr",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q060_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q060",
+  "campo": "options.C",
+  "antes": "• a",
+  "depois": "a",
+  "tipo": "lixo_ocr",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q060_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q060",
+  "campo": "options.D",
+  "antes": "• o",
+  "depois": "o",
+  "tipo": "lixo_ocr",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q060_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q061",
+  "campo": "options.A",
+  "antes": "• a",
+  "depois": "a",
+  "tipo": "lixo_ocr",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q061_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q061",
+  "campo": "options.B",
+  "antes": "B os",
+  "depois": "os",
+  "tipo": "lixo_ocr",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q061_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q062",
+  "campo": "statement",
+  "antes": "Saúde (A) (UBS)",
+  "depois": "Saúde (UBS)",
+  "tipo": "lixo_ocr",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q062_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q062",
+  "campo": "options.A",
+  "antes": "• Câncer",
+  "depois": "Câncer",
+  "tipo": "lixo_ocr",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q062_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q062",
+  "campo": "options.B",
+  "antes": "® Câncer",
+  "depois": "Câncer",
+  "tipo": "lixo_ocr",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q062_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q062",
+  "campo": "options.C",
+  "antes": "• Câncer",
+  "depois": "Câncer",
+  "tipo": "lixo_ocr",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q062_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q062",
+  "campo": "options.C",
+  "antes": "venoso. • Coledocolitíase; colangiopancreatografia",
+  "depois": "venoso.",
+  "tipo": "texto_extra",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q062_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q062",
+  "campo": "options.D",
+  "antes": "retrógrada",
+  "depois": "Coledocolitíase; colangiopancreatografia retrógrada",
+  "tipo": "texto_faltando",
+  "pagina": 17,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q062_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q063",
+  "campo": "options.A",
+  "antes": "A alterado,",
+  "depois": "alterado,",
+  "tipo": "lixo_ocr",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q063_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q063",
+  "campo": "options.B",
+  "antes": "pré-ductal. • inválido, já que foi feito antes da idade",
+  "depois": "pré-ductal.",
+  "tipo": "texto_extra",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q063_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q063",
+  "campo": "options.C",
+  "antes": "gestacional",
+  "depois": "inválido, já que foi feito antes da idade gestacional",
+  "tipo": "texto_faltando",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q063_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q063",
+  "campo": "options.D",
+  "antes": "• inválido,",
+  "depois": "inválido,",
+  "tipo": "lixo_ocr",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q063_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q064",
+  "campo": "statement",
+  "antes": "0 (A) (três",
+  "depois": "0 (três",
+  "tipo": "lixo_ocr",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q064_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q064",
+  "campo": "statement",
+  "antes": "com ocasião em que realizou todos os exames 11 semanas, anormalidade foi detectada. nenhuma recomendados e Com",
+  "depois": "com 11 semanas, ocasião em que realizou todos os exames recomendados e nenhuma anormalidade foi detectada. Com",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q064_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q064",
+  "campo": "statement",
+  "antes": "é (A)",
+  "depois": "é",
+  "tipo": "lixo_ocr",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q064_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q064",
+  "campo": "options.B",
+  "antes": "® programar",
+  "depois": "programar",
+  "tipo": "lixo_ocr",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q064_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q064",
+  "campo": "options.C",
+  "antes": "semana e prescrever • realizar parto cesariana na 40ª zidovudina",
+  "depois": "realizar parto cesariana na 40ª semana e prescrever zidovudina",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q064_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q064",
+  "campo": "options.D",
+  "antes": "• aguardar",
+  "depois": "aguardar",
+  "tipo": "lixo_ocr",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q064_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q065",
+  "campo": "options.A",
+  "antes": "A nos",
+  "depois": "nos",
+  "tipo": "lixo_ocr",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q065_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q065",
+  "campo": "options.B",
+  "antes": "® na",
+  "depois": "na",
+  "tipo": "lixo_ocr",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q065_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q065",
+  "campo": "options.C",
+  "antes": "• nas",
+  "depois": "nas",
+  "tipo": "lixo_ocr",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q065_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q066",
+  "campo": "statement",
+  "antes": "por \"impinge\". Ele",
+  "depois": "por “impinge”. Ele",
+  "tipo": "caractere",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q066_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q066",
+  "campo": "options.A",
+  "antes": "A investigar",
+  "depois": "investigar",
+  "tipo": "lixo_ocr",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q066_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q066",
+  "campo": "options.C",
+  "antes": "• tratar",
+  "depois": "tratar",
+  "tipo": "lixo_ocr",
+  "pagina": 18,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q066_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q067",
+  "campo": "statement",
+  "antes": "de \"caroço no",
+  "depois": "de “caroço no",
+  "tipo": "caractere",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q067_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q067",
+  "campo": "statement",
+  "antes": "no pescoço\". Nega",
+  "depois": "no pescoço”. Nega",
+  "tipo": "caractere",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q067_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q067",
+  "campo": "options.A",
+  "antes": "A Bócio;",
+  "depois": "Bócio;",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q067_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q067",
+  "campo": "options.B",
+  "antes": "B Tireoidite",
+  "depois": "Tireoidite",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q067_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q067",
+  "campo": "options.C",
+  "antes": "• Cisto",
+  "depois": "Cisto",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q067_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q067",
+  "campo": "options.D",
+  "antes": "• Câncer",
+  "depois": "Câncer",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q067_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q068",
+  "campo": "statement",
+  "antes": "de \"feixe de",
+  "depois": "de “feixe de",
+  "tipo": "caractere",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q068_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q068",
+  "campo": "statement",
+  "antes": "de charuto\". Diante",
+  "depois": "de charuto”. Diante",
+  "tipo": "caractere",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q068_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q068",
+  "campo": "options.A",
+  "antes": "A realizar",
+  "depois": "realizar",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q068_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q068",
+  "campo": "options.B",
+  "antes": "® realizar",
+  "depois": "realizar",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q068_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q068",
+  "campo": "options.C",
+  "antes": "• instalar",
+  "depois": "instalar",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q068_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q068",
+  "campo": "options.D",
+  "antes": "• suspender",
+  "depois": "suspender",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q068_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q069",
+  "campo": "options.A",
+  "antes": "• realizar",
+  "depois": "realizar",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q069_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q069",
+  "campo": "options.B",
+  "antes": "• administrar",
+  "depois": "administrar",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q069_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q069",
+  "campo": "options.C",
+  "antes": "© realizar",
+  "depois": "realizar",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q069_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q069",
+  "campo": "options.D",
+  "antes": "• realizar",
+  "depois": "realizar",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q069_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q070",
+  "campo": "options.A",
+  "antes": "• a",
+  "depois": "a",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q070_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q070",
+  "campo": "options.B",
+  "antes": "• o",
+  "depois": "o",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q070_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q070",
+  "campo": "options.C",
+  "antes": "• o",
+  "depois": "o",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q070_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q070",
+  "campo": "options.D",
+  "antes": "• a",
+  "depois": "a",
+  "tipo": "lixo_ocr",
+  "pagina": 19,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q070_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q071",
+  "campo": "statement",
+  "antes": "apresentados",
+  "depois": "Uma mulher com 33 anos de idade procura o ambulatório de clínica médica devido a dores articulares há 3 meses. Refere o acometimento de mãos (interfalangeanas proximais e metacarpofalangeanas), punhos e joelhos. Ao exame físico, apresenta sinais de artrite nessas articulações. Foram solicitados exames laboratoriais para a investigação diagnóstica e os resultados são apresentados",
+  "tipo": "texto_faltando",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q071_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q071",
+  "campo": "options.A",
+  "antes": "• AntiDNA",
+  "depois": "AntiDNA",
+  "tipo": "lixo_ocr",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q071_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q071",
+  "campo": "options.C",
+  "antes": "Antiscl-70; esclerose",
+  "depois": "AntiScl-70; esclerose",
+  "tipo": "caractere",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q071_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q072",
+  "campo": "options.A",
+  "antes": "A documentos",
+  "depois": "documentos",
+  "tipo": "lixo_ocr",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q072_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q072",
+  "campo": "options.B",
+  "antes": "B documentos",
+  "depois": "documentos",
+  "tipo": "lixo_ocr",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q072_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q072",
+  "campo": "options.C",
+  "antes": "© documentos",
+  "depois": "documentos",
+  "tipo": "lixo_ocr",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q072_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q072",
+  "campo": "options.C",
+  "antes": "referentes que são de guarda e à internação hospitalar, responsabilidade",
+  "depois": "referentes à internação hospitalar, que são de guarda e responsabilidade",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q072_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q072",
+  "campo": "options.D",
+  "antes": "D documentos",
+  "depois": "documentos",
+  "tipo": "lixo_ocr",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q072_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q072",
+  "campo": "options.D",
+  "antes": "paciente. Exame Valor encontrado Valor de Referência 0,6-1,2 mg/dL 0,7 mg/dL Creatinina 15-38 mg/dL Ureia 20 mg/dL 30 U/L TGO/AST < 38 U/L 31U/L < 41 U/L TGP/ALT Bilirrubina total 0,2-1,0 mg/dL 2 mg/dL 0,1-0,4 mg/dL Bilirrubina direta 0,8 mg/dL 1,2 mg/dL 0,1-0,6 mg/dL Bilirrubina indireta Pesquisa de Negativa Positiva autoanticorpos Título > 1:640 Padrão nuclear homogêneo Negativo Fator reumatoide Positivo",
+  "depois": "paciente.",
+  "tipo": "texto_extra",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q072_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q073",
+  "campo": "options.A",
+  "antes": "• escarlatina.",
+  "depois": "escarlatina.",
+  "tipo": "lixo_ocr",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q073_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q073",
+  "campo": "options.B",
+  "antes": "® mononucleose.",
+  "depois": "mononucleose.",
+  "tipo": "lixo_ocr",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q073_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q073",
+  "campo": "options.C",
+  "antes": "• eritema",
+  "depois": "eritema",
+  "tipo": "lixo_ocr",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q073_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q073",
+  "campo": "options.D",
+  "antes": "• doença",
+  "depois": "doença",
+  "tipo": "lixo_ocr",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q073_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q074",
+  "campo": "statement",
+  "antes": "contraceptivo combinado oral regularmente,",
+  "depois": "contraceptivo oral combinado regularmente,",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q074_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q074",
+  "campo": "options.A",
+  "antes": "A Repetir",
+  "depois": "Repetir",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q074_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q074",
+  "campo": "options.B",
+  "antes": "® Realizar",
+  "depois": "Realizar",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q074_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q074",
+  "campo": "options.C",
+  "antes": "• Solicitar",
+  "depois": "Solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q074_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q074",
+  "campo": "options.D",
+  "antes": "• Encaminhar",
+  "depois": "Encaminhar",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q074_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q075",
+  "campo": "statement",
+  "antes": "Saúde (A) (UBS),",
+  "depois": "Saúde (UBS),",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q075_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q075",
+  "campo": "statement",
+  "antes": "talco. (D) Revisando",
+  "depois": "talco. Revisando",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q075_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q075",
+  "campo": "statement",
+  "antes": "para (A)",
+  "depois": "para",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q075_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q075",
+  "campo": "options.A",
+  "antes": "leucemia. (B)",
+  "depois": "leucemia.",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q075_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q075",
+  "campo": "options.B",
+  "antes": "tuberculose. (C)",
+  "depois": "tuberculose.",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q075_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q075",
+  "campo": "options.C",
+  "antes": "bexiga. (D)",
+  "depois": "bexiga.",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q075_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q076",
+  "campo": "options.A",
+  "antes": "A tratamento",
+  "depois": "tratamento",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q076_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q076",
+  "campo": "options.B",
+  "antes": "® teste",
+  "depois": "teste",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q076_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q076",
+  "campo": "options.C",
+  "antes": "• teste",
+  "depois": "teste",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q076_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q076",
+  "campo": "options.D",
+  "antes": "• teste",
+  "depois": "teste",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q076_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q077",
+  "campo": "options.A",
+  "antes": "• hérnia",
+  "depois": "hérnia",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q077_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q077",
+  "campo": "options.B",
+  "antes": "® hérnia",
+  "depois": "hérnia",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q077_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q077",
+  "campo": "options.C",
+  "antes": "© hidrocele",
+  "depois": "hidrocele",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q077_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q077",
+  "campo": "options.D",
+  "antes": "• hidrocele",
+  "depois": "hidrocele",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q077_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q078",
+  "campo": "options.A",
+  "antes": "• Manometria",
+  "depois": "Manometria",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q078_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q078",
+  "campo": "options.B",
+  "antes": "® Biópsia",
+  "depois": "Biópsia",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q078_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q078",
+  "campo": "options.C",
+  "antes": "• Enema",
+  "depois": "Enema",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q078_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q078",
+  "campo": "options.D",
+  "antes": "• Radiografia",
+  "depois": "Radiografia",
+  "tipo": "lixo_ocr",
+  "pagina": 21,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q078_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q079",
+  "campo": "statement",
+  "antes": "negativa. compatível com 12 semanas de O exame obstétrico está gestação.",
+  "depois": "negativa. O exame obstétrico está compatível com 12 semanas de gestação.",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q079_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q079",
+  "campo": "options.A",
+  "antes": "hidralazina A endovenosa.",
+  "depois": "hidralazina endovenosa.",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q079_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q079",
+  "campo": "options.B",
+  "antes": "® orientar",
+  "depois": "orientar",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q079_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q079",
+  "campo": "options.C",
+  "antes": "• orientar",
+  "depois": "orientar",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q079_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q079",
+  "campo": "options.D",
+  "antes": "• orientar",
+  "depois": "orientar",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q079_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q080",
+  "campo": "options.A",
+  "antes": "A somente",
+  "depois": "somente",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q080_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q080",
+  "campo": "options.B",
+  "antes": "B coletivamente",
+  "depois": "coletivamente",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q080_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q080",
+  "campo": "options.C",
+  "antes": "• os",
+  "depois": "os",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q080_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q080",
+  "campo": "options.D",
+  "antes": "• somente",
+  "depois": "somente",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q080_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q081",
+  "campo": "statement",
+  "antes": "°C, frequência pressão",
+  "depois": "°C, frequência cardíaca (FC) = 90 batimentos por minuto (bpm), pressão",
+  "tipo": "texto_faltando",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q081_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q081",
+  "campo": "statement",
+  "antes": "estimou • derrame",
+  "depois": "estimou o derrame",
+  "tipo": "caractere",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q081_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q081",
+  "campo": "statement",
+  "antes": "g/L, bactérias. A amostra sérica Gram: não se visualizaram colhida",
+  "depois": "g/L, Gram: não se visualizaram bactérias. A amostra sérica colhida",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q081_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q081",
+  "campo": "options.A",
+  "antes": "A referenciar",
+  "depois": "referenciar",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q081_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q081",
+  "campo": "options.B",
+  "antes": "® manter",
+  "depois": "manter",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q081_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q081",
+  "campo": "options.C",
+  "antes": "© suspender",
+  "depois": "suspender",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q081_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q081",
+  "campo": "options.D",
+  "antes": "• manter",
+  "depois": "manter",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q081_p7.png"
+ },
+ {
+  "id": "revalida_2022_1_q082",
+  "campo": "statement",
+  "antes": "trata-se de",
+  "depois": "trata-se de ferida",
+  "tipo": "texto_faltando",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q082_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q082",
+  "campo": "options.A",
+  "antes": "A limpa.",
+  "depois": "limpa.",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q082_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q082",
+  "campo": "options.B",
+  "antes": "® infectada.",
+  "depois": "infectada.",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q082_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q082",
+  "campo": "options.C",
+  "antes": "• contaminada.",
+  "depois": "contaminada.",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q082_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q082",
+  "campo": "options.D",
+  "antes": "• potencialmente",
+  "depois": "potencialmente",
+  "tipo": "lixo_ocr",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q082_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q083",
+  "campo": "statement",
+  "antes": "palidez, insidiosos hepatoesplenomegalia e emagrecimento, e",
+  "depois": "palidez, hepatoesplenomegalia e emagrecimento, insidiosos e",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q083_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q083",
+  "campo": "options.A",
+  "antes": "A o",
+  "depois": "o",
+  "tipo": "lixo_ocr",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q083_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q083",
+  "campo": "options.B",
+  "antes": "® a",
+  "depois": "a",
+  "tipo": "lixo_ocr",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q083_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q083",
+  "campo": "options.C",
+  "antes": "• a",
+  "depois": "a",
+  "tipo": "lixo_ocr",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q083_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q083",
+  "campo": "options.D",
+  "antes": "• a",
+  "depois": "a",
+  "tipo": "lixo_ocr",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q083_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q084",
+  "campo": "options.A",
+  "antes": "A identificar",
+  "depois": "identificar",
+  "tipo": "lixo_ocr",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q084_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q084",
+  "campo": "options.B",
+  "antes": "® encaminhar",
+  "depois": "encaminhar",
+  "tipo": "lixo_ocr",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q084_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q084",
+  "campo": "options.C",
+  "antes": "• instituir",
+  "depois": "instituir",
+  "tipo": "lixo_ocr",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q084_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q084",
+  "campo": "options.D",
+  "antes": "• encaminhar",
+  "depois": "encaminhar",
+  "tipo": "lixo_ocr",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q084_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q085",
+  "campo": "options.A",
+  "antes": "A solicitar",
+  "depois": "solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q085_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q085",
+  "campo": "options.C",
+  "antes": "• encaminhar",
+  "depois": "encaminhar",
+  "tipo": "lixo_ocr",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q085_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q085",
+  "campo": "options.D",
+  "antes": "• instituir",
+  "depois": "instituir",
+  "tipo": "lixo_ocr",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q085_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q086",
+  "campo": "statement",
+  "antes": "receber 02 suplementar",
+  "depois": "receber O2 suplementar",
+  "tipo": "caractere",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q086_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q086",
+  "campo": "statement",
+  "antes": "com 02, peak",
+  "depois": "com O₂, peak",
+  "tipo": "sobrescrito",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q086_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q086",
+  "campo": "options.A",
+  "antes": "• mantê-la",
+  "depois": "mantê-la",
+  "tipo": "lixo_ocr",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q086_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q086",
+  "campo": "options.B",
+  "antes": "® mantê-la",
+  "depois": "mantê-la",
+  "tipo": "lixo_ocr",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q086_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q086",
+  "campo": "options.C",
+  "antes": "• admiti-la",
+  "depois": "admiti-la",
+  "tipo": "lixo_ocr",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q086_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q086",
+  "campo": "options.D",
+  "antes": "• realizar",
+  "depois": "realizar",
+  "tipo": "lixo_ocr",
+  "pagina": 23,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q086_p6.png"
+ },
+ {
+  "id": "revalida_2022_1_q087",
+  "campo": "options.A",
+  "antes": "A tumor",
+  "depois": "tumor",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q087_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q087",
+  "campo": "options.B",
+  "antes": "® tuberculose",
+  "depois": "tuberculose",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q087_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q087",
+  "campo": "options.C",
+  "antes": "• doença",
+  "depois": "doença",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q087_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q087",
+  "campo": "options.D",
+  "antes": "• doença",
+  "depois": "doença",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q087_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q088",
+  "campo": "options.A",
+  "antes": "• Tomografia",
+  "depois": "Tomografia",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q088_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q088",
+  "campo": "options.B",
+  "antes": "® Endoscopia",
+  "depois": "Endoscopia",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q088_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q088",
+  "campo": "options.D",
+  "antes": "• Ultrassonografia.",
+  "depois": "Ultrassonografia.",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q088_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q089",
+  "campo": "options.A",
+  "antes": "• Ácido",
+  "depois": "Ácido",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q089_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q089",
+  "campo": "options.B",
+  "antes": "® Anti-inflamatório",
+  "depois": "Anti-inflamatório",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q089_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q089",
+  "campo": "options.C",
+  "antes": "• Anticoncepcional",
+  "depois": "Anticoncepcional",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q089_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q089",
+  "campo": "options.D",
+  "antes": "D Sistema",
+  "depois": "Sistema",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q089_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q090",
+  "campo": "statement",
+  "antes": "e que esses exames foram eletrocardiograma. Acredita insuficientes",
+  "depois": "e CPK e eletrocardiograma. Acredita que esses exames foram insuficientes",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q090_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q090",
+  "campo": "options.A",
+  "antes": "• referenciar",
+  "depois": "referenciar",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q090_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q090",
+  "campo": "options.B",
+  "antes": "® solicitar",
+  "depois": "solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q090_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q090",
+  "campo": "options.C",
+  "antes": "© explicar",
+  "depois": "explicar",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q090_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q090",
+  "campo": "options.D",
+  "antes": "• explicar",
+  "depois": "explicar",
+  "tipo": "lixo_ocr",
+  "pagina": 24,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q090_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q091",
+  "campo": "options.A",
+  "antes": "A hepatite",
+  "depois": "hepatite",
+  "tipo": "lixo_ocr",
+  "pagina": 25,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q091_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q091",
+  "campo": "options.D",
+  "antes": "hepático. Espaço livre Valor de Referência Marcadores Virais da Hepatite Anti-HAV total: negativo até 40 UI/L até 38 UI/L HBsag: positivo até 1,2 mg/dL Anti-HBc IgM: positivo Anti-HBc IgG: negativo até 0,3 mg/dL Anti-HBe IgM: negativo 40-129 UI/L Anti-HBs: negativo 10-50 UI/L Anti-HCV: negativo 0,9-1,03 29-35 segundos",
+  "depois": "hepático.",
+  "tipo": "texto_extra",
+  "pagina": 25,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q091_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q092",
+  "campo": "options.A",
+  "antes": "A Traumatismo",
+  "depois": "Traumatismo",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q092_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q092",
+  "campo": "options.B",
+  "antes": "® Traumatismo",
+  "depois": "Traumatismo",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q092_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q092",
+  "campo": "options.C",
+  "antes": "• Traumatismo",
+  "depois": "Traumatismo",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q092_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q092",
+  "campo": "options.D",
+  "antes": "• Traumatismo",
+  "depois": "Traumatismo",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q092_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q093",
+  "campo": "options.A",
+  "antes": "• realizar",
+  "depois": "realizar",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q093_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q093",
+  "campo": "options.B",
+  "antes": "® iniciar",
+  "depois": "iniciar",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q093_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q093",
+  "campo": "options.C",
+  "antes": "• encaminhar",
+  "depois": "encaminhar",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q093_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q093",
+  "campo": "options.D",
+  "antes": "• ventilar",
+  "depois": "ventilar",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q093_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q093",
+  "campo": "options.D",
+  "antes": "uma FiO2 entre",
+  "depois": "uma FiO₂ entre",
+  "tipo": "sobrescrito",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q093_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q094",
+  "campo": "options.A",
+  "antes": "A exérese",
+  "depois": "exérese",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q094_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q094",
+  "campo": "options.B",
+  "antes": "® conização",
+  "depois": "conização",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q094_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q094",
+  "campo": "options.C",
+  "antes": "• repetição",
+  "depois": "repetição",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q094_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q094",
+  "campo": "options.D",
+  "antes": "D amputação",
+  "depois": "amputação",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q094_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q095",
+  "campo": "options.A",
+  "antes": "* promoção",
+  "depois": "promoção",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q095_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q095",
+  "campo": "options.B",
+  "antes": "• escuta",
+  "depois": "escuta",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q095_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q095",
+  "campo": "options.C",
+  "antes": "• utilização",
+  "depois": "utilização",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q095_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q095",
+  "campo": "options.D",
+  "antes": "• elaboração",
+  "depois": "elaboração",
+  "tipo": "lixo_ocr",
+  "pagina": 26,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q095_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q096",
+  "campo": "options.A",
+  "antes": "A realização",
+  "depois": "realização",
+  "tipo": "lixo_ocr",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q096_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q096",
+  "campo": "options.B",
+  "antes": "® repetição,",
+  "depois": "repetição,",
+  "tipo": "lixo_ocr",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q096_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q096",
+  "campo": "options.C",
+  "antes": "• repetição",
+  "depois": "repetição",
+  "tipo": "lixo_ocr",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q096_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q097",
+  "campo": "options.A",
+  "antes": "A fio",
+  "depois": "fio",
+  "tipo": "lixo_ocr",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q097_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q097",
+  "campo": "options.B",
+  "antes": "® fio",
+  "depois": "fio",
+  "tipo": "lixo_ocr",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q097_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q097",
+  "campo": "options.C",
+  "antes": "• fio",
+  "depois": "fio",
+  "tipo": "lixo_ocr",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q097_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q097",
+  "campo": "options.D",
+  "antes": "• fio",
+  "depois": "fio",
+  "tipo": "lixo_ocr",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q097_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q098",
+  "campo": "statement",
+  "antes": "excreção de Diante",
+  "depois": "excreção de sódio < 1%. Diante",
+  "tipo": "texto_faltando",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q098_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q098",
+  "campo": "options.A",
+  "antes": "A expansão",
+  "depois": "expansão",
+  "tipo": "lixo_ocr",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q098_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q098",
+  "campo": "options.B",
+  "antes": "® aplicação",
+  "depois": "aplicação",
+  "tipo": "lixo_ocr",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q098_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q098",
+  "campo": "options.C",
+  "antes": "• realização",
+  "depois": "realização",
+  "tipo": "lixo_ocr",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q098_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q098",
+  "campo": "options.D",
+  "antes": "• aplicação",
+  "depois": "aplicação",
+  "tipo": "lixo_ocr",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q098_p5.png"
+ },
+ {
+  "id": "revalida_2022_1_q099",
+  "campo": "options.A",
+  "antes": "A situação",
+  "depois": "situação",
+  "tipo": "lixo_ocr",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q099_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q099",
+  "campo": "options.B",
+  "antes": "B situação",
+  "depois": "situação",
+  "tipo": "lixo_ocr",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q099_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q099",
+  "campo": "options.C",
+  "antes": "• situação",
+  "depois": "situação",
+  "tipo": "lixo_ocr",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q099_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q099",
+  "campo": "options.D",
+  "antes": "• situação",
+  "depois": "situação",
+  "tipo": "lixo_ocr",
+  "pagina": 27,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q099_p4.png"
+ },
+ {
+  "id": "revalida_2022_1_q100",
+  "campo": "statement",
+  "antes": "ASCUS - (células",
+  "depois": "ASCUS – (células",
+  "tipo": "caractere",
+  "pagina": 28,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q100_p1.png"
+ },
+ {
+  "id": "revalida_2022_1_q100",
+  "campo": "options.B",
+  "antes": "® solicitar",
+  "depois": "solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 28,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q100_p2.png"
+ },
+ {
+  "id": "revalida_2022_1_q100",
+  "campo": "options.C",
+  "antes": "• encaminhar",
+  "depois": "encaminhar",
+  "tipo": "lixo_ocr",
+  "pagina": 28,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q100_p3.png"
+ },
+ {
+  "id": "revalida_2022_1_q100",
+  "campo": "options.D",
+  "antes": "° solicitar",
+  "depois": "solicitar",
+  "tipo": "lixo_ocr",
+  "pagina": 28,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_1/evidencias/q100_p4.png"
+ }
+]

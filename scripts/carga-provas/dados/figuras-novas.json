@@ -1,0 +1,104 @@
+{
+ "figuras": [
+  {
+   "id": "revalida_2020_1_q025",
+   "code": "REV-2020-Q025",
+   "arquivo": "revalida_2020_1_q025-figura.png",
+   "arquivo_origem": "figuras-novas/revalida2020_1_q025.png",
+   "sha256": "1c177d9d9df9fc0ec33974fb77b8372d54f863784c8907f4f740f54f0616aef6",
+   "tamanho": 594061,
+   "alt": "Gráfico de IMC por idade para meninos de 5 a 19 anos, em escores-z. Mostra curvas de -3 a 3, idade no eixo horizontal e IMC em kg/m² no vertical. Fonte: WHO, 2007.",
+   "pagina": 12,
+   "paginas": [
+    12
+   ],
+   "pdf": "2020:1/revalida_obj_001_1.pdf",
+   "composicao": "recorte unico",
+   "substitui": []
+  },
+  {
+   "id": "revalida_2020_1_q047",
+   "code": "REV-2020-Q047",
+   "arquivo": "revalida_2020_1_q047-figura.png",
+   "arquivo_origem": "figuras-novas/revalida2020_1_q047.png",
+   "sha256": "799a5e17d5371ca63fe56c64b66f13cbcb6d9ec207cb03de732facb841eb2bf2",
+   "tamanho": 470657,
+   "alt": "Quadro com as capitais brasileiras em linhas e, nas colunas, mortes confirmadas por COVID-19, população estimada em 2019, mortalidade por 100 mil e proporção de pessoas com renda per capita menor que US$ 5,5 por dia.",
+   "pagina": 22,
+   "paginas": [
+    22
+   ],
+   "pdf": "2020:1/revalida_obj_001_1.pdf",
+   "composicao": "recorte unico",
+   "substitui": []
+  },
+  {
+   "id": "revalida_2023_2_q079",
+   "code": "REV-2023.2-Q079",
+   "arquivo": "revalida_2023_2_q079-figura.png",
+   "arquivo_origem": "figuras-novas/revalida2023_2_q079.png",
+   "sha256": "c2e5dbd385a0580b1dfaa3e9252c9cf9734882b28d1db0e06c34b75c4ac53bda",
+   "tamanho": 577713,
+   "alt": "Duas figuras. Figura 1: desenhos da palpação obstétrica no abdome. Figura 2: gráfico da altura uterina em cm por semanas de gestação, com duas curvas de percentil. Fonte: Ministério da Saúde, 2012.",
+   "pagina": 22,
+   "paginas": [
+    22
+   ],
+   "pdf": "Revalida 2023:2/2023_2_PV_objetiva_regular.pdf",
+   "composicao": "recorte unico",
+   "substitui": []
+  },
+  {
+   "id": "revalida_2025_2_q058",
+   "code": "REV-2025.2-Q058",
+   "arquivo": "revalida_2025_2_q058-figura.png",
+   "arquivo_origem": "figuras-novas/revalida2025_2_q058.png",
+   "sha256": "f42d654de535c59f9854acd840d94aea8bb8d177458063965a4a1dec845cdf80",
+   "tamanho": 238061,
+   "alt": "Traçado de eletrocardiograma na derivação D2, em papel quadriculado, apresentado no enunciado da questão.",
+   "pagina": 15,
+   "paginas": [
+    15
+   ],
+   "pdf": "Revalida 2025:2/2025_2_caderno_1_preliminar.pdf",
+   "composicao": "recorte unico",
+   "substitui": []
+  },
+  {
+   "id": "revalida_2024_2_q046",
+   "code": "REV-2024.2-Q046",
+   "arquivo": "revalida_2024_2_q046-figura.png",
+   "arquivo_origem": "figuras-novas/revalida2024_2_q046.png",
+   "sha256": "569e6fd726ed8f3b33b985d9f59036de2de5b42aa49b6353e272dde4899709de",
+   "tamanho": 1879548,
+   "alt": "Dois eletrocardiogramas de 12 derivações, um acima do outro: o primeiro rotulado ECG Admissão e o segundo ECG após 30 minutos, conforme apresentados no enunciado.",
+   "pagina": 13,
+   "paginas": [
+    13,
+    14
+   ],
+   "pdf": "Revalida 2024:2/2024_2_PV_objetiva_regular.pdf",
+   "composicao": "vertical (ordem da prova)",
+   "substitui": [
+    {
+     "alt": "Figura 1 da questão 46",
+     "url": "/question-assets/revalida_2024_2/q046_image_01.png",
+     "sha256": "c54c4ddb00ac022e6696fa3cefae0db50451dbb7d0f993e04ada87dc6c7f9d89",
+     "source_page": 13
+    }
+   ]
+  }
+ ],
+ "conferidas_sem_figura": [
+  {
+   "question_id": "revalida_2021_1_q013",
+   "code": "REV-2021-Q013",
+   "resultado": "SEM figura no PDF (2021_PV_objetiva_1.pdf, pagina 4): so ha o logotipo e os rotulos 'QUESTAO'; o enunciado descreve a ressonancia em texto. Nada a anexar."
+  },
+  {
+   "question_id": "revalida_2023_1_q001",
+   "code": "REV-2023.1-Q001",
+   "resultado": "SEM figura no PDF (2023_1_PV_objetiva_regular.pdf, pagina 2): o ECG e descrito so em texto. A marca 'precisa de imagem' do banco nao tem figura correspondente na prova."
+  }
+ ]
+}

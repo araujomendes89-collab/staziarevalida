@@ -1,0 +1,200 @@
+[
+ {
+  "id": "revalida_2022_2_q006",
+  "campo": "statement",
+  "antes": "1,73 m2.",
+  "depois": "1,73 m².",
+  "tipo": "sobrescrito",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q006.png"
+ },
+ {
+  "id": "revalida_2022_2_q009",
+  "campo": "statement",
+  "antes": "recentes:  Colpocitologia",
+  "depois": "recentes: • Colpocitologia",
+  "tipo": "caractere",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q009.png"
+ },
+ {
+  "id": "revalida_2022_2_q009",
+  "campo": "statement",
+  "antes": "reparativas.  Ultrassonografia",
+  "depois": "reparativas. • Ultrassonografia",
+  "tipo": "caractere",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q009.png"
+ },
+ {
+  "id": "revalida_2022_2_q009",
+  "campo": "statement",
+  "antes": "88 cm3.",
+  "depois": "88 cm³.",
+  "tipo": "sobrescrito",
+  "pagina": 3,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q009.png"
+ },
+ {
+  "id": "revalida_2022_2_q012",
+  "campo": "statement",
+  "antes": "seguintes.  Hemograma",
+  "depois": "seguintes. • Hemograma",
+  "tipo": "caractere",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q012.png"
+ },
+ {
+  "id": "revalida_2022_2_q012",
+  "campo": "statement",
+  "antes": "1,09.  Urina",
+  "depois": "1,09. • Urina",
+  "tipo": "caractere",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q012.png"
+ },
+ {
+  "id": "revalida_2022_2_q012",
+  "campo": "statement",
+  "antes": "alterações.  Bioquímica",
+  "depois": "alterações. • Bioquímica",
+  "tipo": "caractere",
+  "pagina": 4,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q012.png"
+ },
+ {
+  "id": "revalida_2022_2_q015",
+  "campo": "statement",
+  "antes": "bate- papo",
+  "depois": "bate-papo",
+  "tipo": "caractere",
+  "pagina": 5,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q015.png"
+ },
+ {
+  "id": "revalida_2022_2_q017",
+  "campo": "statement",
+  "antes": "pronto- socorro",
+  "depois": "pronto-socorro",
+  "tipo": "caractere",
+  "pagina": 6,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q017.png"
+ },
+ {
+  "id": "revalida_2022_2_q043",
+  "campo": "statement",
+  "antes": "pronto- socorro",
+  "depois": "pronto-socorro",
+  "tipo": "caractere",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q043.png"
+ },
+ {
+  "id": "revalida_2022_2_q045",
+  "campo": "statement",
+  "antes": "boletim- epidemiologico",
+  "depois": "boletim-epidemiologico",
+  "tipo": "caractere",
+  "pagina": 12,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q045.png"
+ },
+ {
+  "id": "revalida_2022_2_q051",
+  "campo": "statement",
+  "antes": "amoxicilina- clavulanato",
+  "depois": "amoxicilina-clavulanato",
+  "tipo": "caractere",
+  "pagina": 14,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q051.png"
+ },
+ {
+  "id": "revalida_2022_2_q052",
+  "campo": "statement",
+  "antes": "ventilatória- dependente",
+  "depois": "ventilatória-dependente",
+  "tipo": "caractere",
+  "pagina": 14,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q052.png"
+ },
+ {
+  "id": "revalida_2022_2_q056",
+  "campo": "statement",
+  "antes": "saturação de O2 é",
+  "depois": "saturação de O₂ é",
+  "tipo": "sobrescrito",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q056.png"
+ },
+ {
+  "id": "revalida_2022_2_q059",
+  "campo": "options.D",
+  "antes": "folículo- estimulante",
+  "depois": "folículo-estimulante",
+  "tipo": "caractere",
+  "pagina": 15,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q059.png"
+ },
+ {
+  "id": "revalida_2022_2_q060",
+  "campo": "options.A",
+  "antes": "33 kg/m2,",
+  "depois": "33 kg/m²,",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q060.png"
+ },
+ {
+  "id": "revalida_2022_2_q060",
+  "campo": "options.B",
+  "antes": "19 kg/m2 e",
+  "depois": "19 kg/m² e",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q060.png"
+ },
+ {
+  "id": "revalida_2022_2_q060",
+  "campo": "options.D",
+  "antes": "33 kg/m2,",
+  "depois": "33 kg/m²,",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q060.png"
+ },
+ {
+  "id": "revalida_2022_2_q062",
+  "campo": "statement",
+  "antes": "saturação de O2 de 94%",
+  "depois": "saturação de O₂ de 94%",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q062.png"
+ },
+ {
+  "id": "revalida_2022_2_q078",
+  "campo": "statement",
+  "antes": "pré- natal. Foram",
+  "depois": "pré-natal. Foram",
+  "tipo": "caractere",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q078.png"
+ },
+ {
+  "id": "revalida_2022_2_q078",
+  "campo": "statement",
+  "antes": "recém- nascido",
+  "depois": "recém-nascido",
+  "tipo": "caractere",
+  "pagina": 20,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q078.png"
+ },
+ {
+  "id": "revalida_2022_2_q091",
+  "campo": "statement",
+  "antes": "saturação de O2 de 93%",
+  "depois": "saturação de O₂ de 93%",
+  "tipo": "sobrescrito",
+  "pagina": 22,
+  "evidencia": "/private/tmp/claude-501/-Volumes-StaziaMed/5d3dd43b-7aaf-486f-81c4-583d693b3d8e/scratchpad/revisao-questoes/revalida_2022_2/evidencias/revalida_2022_2_q091.png"
+ }
+]

@@ -1,0 +1,74 @@
+[
+ {
+  "pasta": "enamed_2025",
+  "exam_id": "enamed-2025",
+  "rotulo": "ENAMED 2025",
+  "pdf": "Enamed/2025_caderno_1_preliminar (2).pdf"
+ },
+ {
+  "pasta": "revalida_2020_1",
+  "exam_id": "revalida-2020",
+  "rotulo": "Revalida 2020",
+  "pdf": "2020:1/revalida_obj_001_1.pdf"
+ },
+ {
+  "pasta": "revalida_2021_1",
+  "exam_id": "revalida-2021",
+  "rotulo": "Revalida 2021",
+  "pdf": "2021/2021_PV_objetiva_1.pdf"
+ },
+ {
+  "pasta": "revalida_2022_1",
+  "exam_id": "revalida-2022-1",
+  "rotulo": "Revalida 2022/1",
+  "pdf": "2022:1/2022_PV_objetiva_1.pdf"
+ },
+ {
+  "pasta": "revalida_2022_2",
+  "exam_id": "revalida-2022-2",
+  "rotulo": "Revalida 2022/2",
+  "pdf": "2022:2/2022-2_PV_objetiva.pdf"
+ },
+ {
+  "pasta": "revalida_2023_1",
+  "exam_id": "revalida-2023-1",
+  "rotulo": "Revalida 2023/1",
+  "pdf": "Revalida 2023:1/2023_1_PV_objetiva_regular.pdf"
+ },
+ {
+  "pasta": "revalida_2023_2",
+  "exam_id": "revalida-2023-2",
+  "rotulo": "Revalida 2023/2",
+  "pdf": "Revalida 2023:2/2023_2_PV_objetiva_regular.pdf"
+ },
+ {
+  "pasta": "revalida_2024_1",
+  "exam_id": "revalida-2024-1",
+  "rotulo": "Revalida 2024/1",
+  "pdf": "Revalida 2024:1/2024_1_PV_objetiva_regular.pdf"
+ },
+ {
+  "pasta": "revalida_2024_2",
+  "exam_id": "revalida-2024-2",
+  "rotulo": "Revalida 2024/2",
+  "pdf": "Revalida 2024:2/2024_2_PV_objetiva_regular.pdf"
+ },
+ {
+  "pasta": "revalida_2025_1",
+  "exam_id": "revalida-2025-1",
+  "rotulo": "Revalida 2025/1",
+  "pdf": "Revalida 2025:1 /2025_1_PV_objetiva_regular.pdf"
+ },
+ {
+  "pasta": "revalida_2025_2",
+  "exam_id": "revalida-2025-2",
+  "rotulo": "Revalida 2025/2",
+  "pdf": "Revalida 2025:2/2025_2_caderno_1_preliminar.pdf"
+ },
+ {
+  "pasta": "revalida_2026_1",
+  "exam_id": "revalida-2026-1",
+  "rotulo": "Revalida 2026/1",
+  "pdf": "Revalida 2026:1/2026_1_caderno_1_ (1).pdf"
+ }
+]

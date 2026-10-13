@@ -1,0 +1,70 @@
+{
+ "ligar": [
+  {
+   "id": "revalida_2020_1_q079",
+   "motivo": "revalida_2020_1/relatorio.md: \"Q79 tem imagem mas needs_image False (tambem a conferir)\""
+  },
+  {
+   "id": "revalida_2021_1_q099",
+   "motivo": "revalida_2021_1/relatorio.md: \"Q99 está com needs_image = false, mas tem imagem e a prova depende dela\""
+  },
+  {
+   "id": "revalida_2023_2_q063",
+   "motivo": "revalida_2023_2/relatorio.md: \"Q63 e Q96 tem imagem no banco mas needs_image=False\""
+  },
+  {
+   "id": "revalida_2023_2_q096",
+   "motivo": "revalida_2023_2/relatorio.md: \"Q63 e Q96 tem imagem no banco mas needs_image=False\""
+  },
+  {
+   "id": "revalida_2024_1_q069",
+   "motivo": "revalida_2024_1/relatorio.md: \"Q69 tem imagem mas needs_image esta falso no banco\""
+  },
+  {
+   "id": "revalida_2024_2_q011",
+   "motivo": "revalida_2024_2/registro-extra.json: needs_image_vs_imagem (Q11)"
+  },
+  {
+   "id": "revalida_2024_2_q046",
+   "motivo": "revalida_2024_2/registro-extra.json: needs_image_vs_imagem (Q46)"
+  },
+  {
+   "id": "revalida_2024_2_q060",
+   "motivo": "revalida_2024_2/registro-extra.json: needs_image_vs_imagem (Q60)"
+  },
+  {
+   "id": "revalida_2025_1_q001",
+   "motivo": "revalida_2025_1/registro-extra.json: needs_image_false_mas_tem_figura (Q1)"
+  },
+  {
+   "id": "revalida_2025_1_q076",
+   "motivo": "revalida_2025_1/registro-extra.json: needs_image_false_mas_tem_figura (Q76)"
+  },
+  {
+   "id": "revalida_2026_1_q027",
+   "motivo": "revalida_2026_1/relatorio.md: \"Q27 e Q68 tem imagem, mas needs_image esta falso no banco\""
+  },
+  {
+   "id": "revalida_2026_1_q068",
+   "motivo": "revalida_2026_1/relatorio.md: \"Q27 e Q68 tem imagem, mas needs_image esta falso no banco\""
+  },
+  {
+   "id": "revalida_2020_1_q025",
+   "motivo": "revalida_2020_1/relatorio.md: \"Q25 e Q47: needs_image continua False no banco; ao importar a figura, ligar\""
+  },
+  {
+   "id": "revalida_2020_1_q047",
+   "motivo": "revalida_2020_1/relatorio.md: \"Q25 e Q47: needs_image continua False no banco; ao importar a figura, ligar\""
+  },
+  {
+   "id": "revalida_2025_2_q058",
+   "motivo": "revalida_2025_2/relatorio.md: \"Q58 ... quem for importar deve ligar a figura (e talvez ajustar esse campo)\""
+  }
+ ],
+ "sem_figura_no_pdf": [
+  {
+   "id": "revalida_2023_1_q001",
+   "motivo": "revalida_2023_1/registro-extra.json: \"A prova nao tem figura na Q1; needs_image=True no banco esta errado\" (conferido também em figuras-novas/manifest.json)"
+  }
+ ]
+}

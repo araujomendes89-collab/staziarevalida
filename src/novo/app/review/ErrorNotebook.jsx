@@ -5,7 +5,7 @@ import React from "react";
 import { AnswerOption, Badge, Banner, Button, Card, Chip, EmptyState, Icon, SelectField, StatCard, Tabs } from "../../ds";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
-import { Correction, answerState } from "../practice/Correction.jsx";
+import { Correction, PreliminarySeal, answerState } from "../practice/Correction.jsx";
 import { AREAS, areaLabel, formatWhen, isStaziamed, questionRef, splitStatement } from "../practice/format.js";
 import { SupportTable } from "../practice/SupportTable.jsx";
 
@@ -117,6 +117,7 @@ function ErrorRow({ item, first, open, onToggle, onNote, go }) {
             {areaLabel(item.area)} · {questionRef(item)} · {formatWhen(item.last_attempt_at)}{isStaziamed(item) ? " · não é questão oficial do Inep" : ""}
           </span>
         </span>
+        <PreliminarySeal info={item.preliminary} compact />
         {item.has_note && <Icon name="notebook-pen" size={16} label="Tem anotação" style={{ color: "var(--text-tertiary)", flex: "none" }} />}
         {item.wrong_count >= 2 && (
           <Badge tone="danger" size="sm">

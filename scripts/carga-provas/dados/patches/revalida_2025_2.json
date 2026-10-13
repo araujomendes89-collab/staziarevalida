@@ -1,0 +1,245 @@
+[
+ {
+  "id": "revalida_2025_2_q003",
+  "campo": "statement",
+  "antes": "atendimento pré- hospitalar. Não",
+  "depois": "atendimento pré-hospitalar. Não",
+  "tipo": "caractere",
+  "pagina": 3,
+  "evidencia": "evidencias/q003.png"
+ },
+ {
+  "id": "revalida_2025_2_q010",
+  "campo": "statement",
+  "antes": "35 kg/m2. Abdome",
+  "depois": "35 kg/m². Abdome",
+  "tipo": "sobrescrito",
+  "pagina": 4,
+  "evidencia": "evidencias/q010.png"
+ },
+ {
+  "id": "revalida_2025_2_q010",
+  "campo": "statement",
+  "antes": "Plaquetas 261.000/mm3 150",
+  "depois": "Plaquetas 261.000/mm³ 150",
+  "tipo": "sobrescrito",
+  "pagina": 4,
+  "evidencia": "evidencias/q010.png"
+ },
+ {
+  "id": "revalida_2025_2_q010",
+  "campo": "statement",
+  "antes": "a 300.000/mm3 Creatinina",
+  "depois": "a 300.000/mm³ Creatinina",
+  "tipo": "sobrescrito",
+  "pagina": 4,
+  "evidencia": "evidencias/q010.png"
+ },
+ {
+  "id": "revalida_2025_2_q012",
+  "campo": "statement",
+  "antes": "23 kg/m2, sem",
+  "depois": "23 kg/m², sem",
+  "tipo": "sobrescrito",
+  "pagina": 5,
+  "evidencia": "evidencias/q012.png"
+ },
+ {
+  "id": "revalida_2025_2_q015",
+  "campo": "statement",
+  "antes": "horas proteínas +++ hemácias + (5 por Sedimentos --- campo) Dentre",
+  "depois": "horas Sedimentos proteínas +++ hemácias + (5 por campo) --- Dentre",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 6,
+  "evidencia": "evidencias/q015.png"
+ },
+ {
+  "id": "revalida_2025_2_q017",
+  "campo": "statement",
+  "antes": "de O2 de",
+  "depois": "de O₂ de",
+  "tipo": "sobrescrito",
+  "pagina": 6,
+  "evidencia": "evidencias/q017.png"
+ },
+ {
+  "id": "revalida_2025_2_q020",
+  "campo": "statement",
+  "antes": "ou pós- exposição (PEP)",
+  "depois": "ou pós-exposição (PEP)",
+  "tipo": "caractere",
+  "pagina": 7,
+  "evidencia": "evidencias/q020.png"
+ },
+ {
+  "id": "revalida_2025_2_q021",
+  "campo": "statement",
+  "antes": "14,7 kg/m2); pressão",
+  "depois": "14,7 kg/m²); pressão",
+  "tipo": "sobrescrito",
+  "pagina": 7,
+  "evidencia": "evidencias/q021.png"
+ },
+ {
+  "id": "revalida_2025_2_q023",
+  "campo": "options.C",
+  "antes": "e retro- orbitária, sangramento",
+  "depois": "e retro-orbitária, sangramento",
+  "tipo": "caractere",
+  "pagina": 7,
+  "evidencia": "evidencias/q023.png"
+ },
+ {
+  "id": "revalida_2025_2_q024",
+  "campo": "statement",
+  "antes": "totais 13.400/mm3 4.000",
+  "depois": "totais 13.400/mm³ 4.000",
+  "tipo": "sobrescrito",
+  "pagina": 8,
+  "evidencia": "evidencias/q024.png"
+ },
+ {
+  "id": "revalida_2025_2_q024",
+  "campo": "statement",
+  "antes": "a 11.000/mm3 Bastonetes",
+  "depois": "a 11.000/mm³ Bastonetes",
+  "tipo": "sobrescrito",
+  "pagina": 8,
+  "evidencia": "evidencias/q024.png"
+ },
+ {
+  "id": "revalida_2025_2_q038",
+  "campo": "statement",
+  "antes": "23 kg/m2; pressão",
+  "depois": "23 kg/m²; pressão",
+  "tipo": "sobrescrito",
+  "pagina": 11,
+  "evidencia": "evidencias/q038.png"
+ },
+ {
+  "id": "revalida_2025_2_q038",
+  "campo": "statement",
+  "antes": "37 oC. Abdome",
+  "depois": "37 ºC. Abdome",
+  "tipo": "simbolo",
+  "pagina": 11,
+  "evidencia": "evidencias/q038.png"
+ },
+ {
+  "id": "revalida_2025_2_q038",
+  "campo": "statement",
+  "antes": "Leucócitos 12.000/mm3 4.000",
+  "depois": "Leucócitos 12.000/mm³ 4.000",
+  "tipo": "sobrescrito",
+  "pagina": 11,
+  "evidencia": "evidencias/q038.png"
+ },
+ {
+  "id": "revalida_2025_2_q038",
+  "campo": "statement",
+  "antes": "a 10.000/mm3 Glicose",
+  "depois": "a 10.000/mm³ Glicose",
+  "tipo": "sobrescrito",
+  "pagina": 11,
+  "evidencia": "evidencias/q038.png"
+ },
+ {
+  "id": "revalida_2025_2_q039",
+  "campo": "options.B",
+  "antes": "o bem- estar fetal",
+  "depois": "o bem-estar fetal",
+  "tipo": "caractere",
+  "pagina": 11,
+  "evidencia": "evidencias/q039.png"
+ },
+ {
+  "id": "revalida_2025_2_q042",
+  "campo": "statement",
+  "antes": "de O2 em",
+  "depois": "de O₂ em",
+  "tipo": "sobrescrito",
+  "pagina": 12,
+  "evidencia": "evidencias/q042.png"
+ },
+ {
+  "id": "revalida_2025_2_q043",
+  "campo": "statement",
+  "antes": "100 mm3 no",
+  "depois": "100 mm³ no",
+  "tipo": "sobrescrito",
+  "pagina": 12,
+  "evidencia": "evidencias/q043.png"
+ },
+ {
+  "id": "revalida_2025_2_q046",
+  "campo": "statement",
+  "antes": "apresenta: Positivo Título 1:80 Padrão homogêneo/difuso Anticorpo antinuclear (ANA) Anticorpo",
+  "depois": "apresenta: Anticorpo antinuclear (ANA) Positivo Título 1:80 Padrão homogêneo/difuso Anticorpo",
+  "tipo": "texto_fora_de_ordem",
+  "pagina": 13,
+  "evidencia": "evidencias/q046.png"
+ },
+ {
+  "id": "revalida_2025_2_q058",
+  "campo": "statement",
+  "antes": "de O2 de",
+  "depois": "de O₂ de",
+  "tipo": "sobrescrito",
+  "pagina": 15,
+  "evidencia": "evidencias/q058.png"
+ },
+ {
+  "id": "revalida_2025_2_q060",
+  "campo": "statement",
+  "antes": "de O2 de",
+  "depois": "de O₂ de",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "evidencias/q060.png"
+ },
+ {
+  "id": "revalida_2025_2_q062",
+  "campo": "statement",
+  "antes": "35 kg/m2. Qual",
+  "depois": "35 kg/m². Qual",
+  "tipo": "sobrescrito",
+  "pagina": 16,
+  "evidencia": "evidencias/q062.png"
+ },
+ {
+  "id": "revalida_2025_2_q065",
+  "campo": "statement",
+  "antes": "de O2 de",
+  "depois": "de O₂ de",
+  "tipo": "sobrescrito",
+  "pagina": 17,
+  "evidencia": "evidencias/q065.png"
+ },
+ {
+  "id": "revalida_2025_2_q076",
+  "campo": "statement",
+  "antes": "aposentado, ex- trabalhador rural",
+  "depois": "aposentado, ex-trabalhador rural",
+  "tipo": "caractere",
+  "pagina": 19,
+  "evidencia": "evidencias/q076.png"
+ },
+ {
+  "id": "revalida_2025_2_q097",
+  "campo": "statement",
+  "antes": "de O2 de",
+  "depois": "de O₂ de",
+  "tipo": "sobrescrito",
+  "pagina": 25,
+  "evidencia": "evidencias/q097.png"
+ },
+ {
+  "id": "revalida_2025_2_q099",
+  "campo": "statement",
+  "antes": "18,5 kg/m2; estatura",
+  "depois": "18,5 kg/m²; estatura",
+  "tipo": "sobrescrito",
+  "pagina": 25,
+  "evidencia": "evidencias/q099.png"
+ }
+]

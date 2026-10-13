@@ -1,0 +1,3546 @@
+[
+ {
+  "id": "revalida_2026_2_q001",
+  "code": "REV-2026.2-Q001",
+  "exam_id": "revalida-2026-2",
+  "number": 1,
+  "statement": "Homem de 75 anos, residente em instituição de longa permanência, com histórico de declínio cognitivo leve, é levado a uma Unidade Básica de Saúde devido a quadro de confusão mental progressiva iniciado há 7 dias, associado a astenia, tosse e agitação psicomotora. No segundo dia de sintomas, foi iniciada ciprofloxacina empiricamente, sem melhora. O paciente apresenta hipertensão arterial e dislipidemia bem controladas. O exame físico revela: paciente confuso no tempo e no espaço; temperatura axilar 36,1 °C; PA 110 x 60 mmHg; FC 98 bpm; FR 21 irpm; SatO₂ 94% em ar ambiente. Ausculta respiratória com estertores finos em bases bilateralmente. Qual é a conduta inicial para esse paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Associar claritromicina."
+   },
+   {
+    "id": "B",
+    "text": "Encaminhar para Unidade de Pronto Atendimento."
+   },
+   {
+    "id": "C",
+    "text": "Solicitar tomografia de tórax."
+   },
+   {
+    "id": "D",
+    "text": "Administrar furosemida."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 3
+ },
+ {
+  "id": "revalida_2026_2_q002",
+  "code": "REV-2026.2-Q002",
+  "exam_id": "revalida-2026-2",
+  "number": 2,
+  "statement": "Criança de 4 anos, previamente saudável, é levada a uma Unidade de Pronto Atendimento após início súbito de dificuldade respiratória, estridor inspiratório intenso, sialorreia, postura sentada em tripé, aspecto tóxico e rebaixamento de nível de consciência. A mãe relata que a criança estava bem até poucas horas antes do episódio. Ao exame: FC 160 bpm; FR 50 irpm; SatO₂ 86% em ar ambiente; temperatura axilar 40 °C. A criança apresenta piora da dispneia à manipulação. Qual é a principal hipótese diagnóstica nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Laringite aguda."
+   },
+   {
+    "id": "B",
+    "text": "Obstrução por corpo estranho."
+   },
+   {
+    "id": "C",
+    "text": "Epiglotite aguda."
+   },
+   {
+    "id": "D",
+    "text": "Pneumonia bacteriana."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 3
+ },
+ {
+  "id": "revalida_2026_2_q003",
+  "code": "REV-2026.2-Q003",
+  "exam_id": "revalida-2026-2",
+  "number": 3,
+  "statement": "Gestante de 32 semanas é socorrida por equipe de atendimento pré-hospitalar após sofrer acidente automobilístico. A paciente está conversando. Apresenta: escala de Glasgow 12; FC 108 bpm; PA 90 x 60 mmHg. É imobilizada em prancha rígida com colar cervical. Qual é a conduta indicada para otimizar o retorno venoso materno, durante o transporte, sem risco de comprometer a estabilização da coluna vertebral da paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Colocá-la em posição de Trendelemburg."
+   },
+   {
+    "id": "B",
+    "text": "Imobilizá-la na prancha em decúbito lateral esquerdo."
+   },
+   {
+    "id": "C",
+    "text": "Realizar o deslocamento manual do útero para a esquerda."
+   },
+   {
+    "id": "D",
+    "text": "Elevar os membros inferiores."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 3
+ },
+ {
+  "id": "revalida_2026_2_q004",
+  "code": "REV-2026.2-Q004",
+  "exam_id": "revalida-2026-2",
+  "number": 4,
+  "statement": "Mulher de 35 anos, nuligesta, comparece à consulta em Unidade Básica de Saúde com queixa de dismenorreia progressiva e de hematoquezia quando está menstruada. Relata que as cólicas menstruais pioraram há 5 anos e que precisou procurar o pronto-socorro em duas ocasiões por dor pélvica forte e necessidade de medicação intravenosa. Afirma não fazer uso de contracepção hormonal por não ter atividade sexual há 10 anos. Nega doenças crônicas ou uso de medicações. Refere constipação, com piora nos últimos 6 meses, e distensão abdominal. Ao exame físico, observa-se abdome indolor à palpação; exame especular sem lesões visíveis; toque vaginal com dor à mobilização do colo uterino; útero pouco móvel; palpação de nódulos endurecidos e doloridos em fórnice vaginal posterior. Considerando-se a provável hipótese diagnóstica, qual é o exame de referência para investigação inicial nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Tomografia computadorizada do abdome."
+   },
+   {
+    "id": "B",
+    "text": "Laparoscopia diagnóstica."
+   },
+   {
+    "id": "C",
+    "text": "Histerossonossalpingografia."
+   },
+   {
+    "id": "D",
+    "text": "Ultrassonografia endovaginal."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 3
+ },
+ {
+  "id": "revalida_2026_2_q005",
+  "code": "REV-2026.2-Q005",
+  "exam_id": "revalida-2026-2",
+  "number": 5,
+  "statement": "Homem de 27 anos procura Unidade Básica de Saúde referindo febre, mialgia, artralgia, cefaleia e dor retro-orbitária, iniciadas há 7 dias. Relatou vômitos frequentes há 2 dias. Nega ter viajado nas últimas 2 semanas. O exame físico mostra: temperatura axilar 39 °C; desidratado (2+/4+); PA 80 x 50 mmHg; FC 120 bpm; FR 22 irpm; abdome com dor difusa à palpação profunda; exantema maculopapular em tronco e membros superiores. A confirmação do diagnóstico provável nesse caso será determinada por",
+  "options": [
+   {
+    "id": "A",
+    "text": "pesquisa de proteína NS1."
+   },
+   {
+    "id": "B",
+    "text": "avaliação da contagem de plaquetas."
+   },
+   {
+    "id": "C",
+    "text": "realização de isolamento viral."
+   },
+   {
+    "id": "D",
+    "text": "detecção de Anticorpos IgM por ELISA."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 3
+ },
+ {
+  "id": "revalida_2026_2_q006",
+  "code": "REV-2026.2-Q006",
+  "exam_id": "revalida-2026-2",
+  "number": 6,
+  "statement": "Em uma reunião de equipe, a enfermeira da Unidade Básica de Saúde (UBS) informa que, apesar de estar conseguindo manter os atendimentos de rotina, no último mês percebeu aumento de atendimentos por desidratação leve, exaustão pelo calor e descompensação de doenças crônicas, e que suspeita estarem relacionadas à onda de calor que está ocorrendo no município. O plano de intervenção para a população do território adstrito dessa UBS consiste em",
+  "options": [
+   {
+    "id": "A",
+    "text": "separar o fluxo de atendimento da UBS para agilizar o atendimento da população atingida."
+   },
+   {
+    "id": "B",
+    "text": "implementar hospital de campanha para atender a população por demanda espontânea."
+   },
+   {
+    "id": "C",
+    "text": "encaminhar as pessoas afetadas para hidratação parenteral a fim de evitar descompensação clínica."
+   },
+   {
+    "id": "D",
+    "text": "orientar hidratação, adaptação do domicílio, sinais de alerta, e monitoramento ativo dos susceptíveis."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 4
+ },
+ {
+  "id": "revalida_2026_2_q007",
+  "code": "REV-2026.2-Q007",
+  "exam_id": "revalida-2026-2",
+  "number": 7,
+  "statement": "Estudante de 17 anos comparece espontaneamente a uma Unidade Básica de Saúde com relato de tristeza e dificuldade de relacionamento com os pais. Refere que já pensou em “sumir” depois da última briga em casa, mas nega intenção ou planejamento suicida, afirmando que não quer morrer, “só queria que esse sentimento ruim passasse”. Segundo seu relato, perdeu interesse nas atividades do dia a dia e, nos últimos meses, passou a maior parte do tempo em seu quarto, mas tem mantido sono regular, apetite inalterado, bom desempenho escolar, além de funcionalidade preservada. Afirma não usar substâncias psicoativas e nega comportamentos autolesivos ou tentativas de suicídio anteriores. Considerando o quadro apresentado e o manejo na atenção primária, a conduta inicial para esse paciente é",
+  "options": [
+   {
+    "id": "A",
+    "text": "convocar seus responsáveis e encaminhá-lo ao Centro de Atenção Psicossocial infantojuvenil do território de referência."
+   },
+   {
+    "id": "B",
+    "text": "prescrever inibidor de recaptação de serotonina e encaminhá-lo para acompanhamento em ambulatório de saúde mental."
+   },
+   {
+    "id": "C",
+    "text": "propor o envolvimento da família no cuidado e iniciar acompanhamento multidisciplinar na Unidade Básica de Saúde."
+   },
+   {
+    "id": "D",
+    "text": "explicar-lhe que a distimia faz parte da adolescência, orientá-lo a aguardar e sugerir que busque o serviço de emergência em caso de piora."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 4
+ },
+ {
+  "id": "revalida_2026_2_q008",
+  "code": "REV-2026.2-Q008",
+  "exam_id": "revalida-2026-2",
+  "number": 8,
+  "statement": "Mulher de 56 anos, hipertensa mal controlada, com obesidade grau 3, tabagista ativa de 60 maços/ano, procura uma Unidade de Pronto Atendimento por dor torácica, iniciada há 2 horas e 30 minutos. A dor é do tipo queimação, retroesternal, que piora com esforço e melhora com repouso. O eletrocardiograma demonstrou infradesnivelamento do segmento ST > 0,5 mm em V1, V2, V3 e V4. Foi realizada dosagem de troponina de alta sensibilidade à admissão, com resultado de 6 ng/L (VR: até 9 ng/L). Após administração de nitrato e morfina, a paciente está hemodinamicamente estável e sem dor. Qual é a próxima conduta no manejo dessa paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Iniciar terapia trombolítica em até 30 minutos."
+   },
+   {
+    "id": "B",
+    "text": "Encaminhar para cateterismo coronariano de urgência."
+   },
+   {
+    "id": "C",
+    "text": "Realizar nova dosagem de troponina em 1 hora."
+   },
+   {
+    "id": "D",
+    "text": "Repetir eletrocardiograma em 2 horas."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 4
+ },
+ {
+  "id": "revalida_2026_2_q009",
+  "code": "REV-2026.2-Q009",
+  "exam_id": "revalida-2026-2",
+  "number": 9,
+  "statement": "Escolar de 8 anos, asmático prévio sem tratamento intercrises e com uso frequente de salbutamol de resgate (4 vezes nos últimos 6 meses), deu entrada em uma Unidade de Pronto Atendimento em crise aguda de asma. Na admissão, apresentava fala entrecortada, FR 40 irpm, SatO₂ 90% em ar ambiente, FC 112 bpm, murmúrio vesicular abafado e retração de fúrcula. Foi monitorizado, prescrito corticoide via oral e 3 ciclos de salbutamol e ipratrópio por via inalatória. Após o tratamento inicial, o paciente mantém fala entrecortada, FR 42 irpm, SatO₂ 92% em ar ambiente, FC 128 bpm, sibilos difusos, retração de fúrcula, uso de musculatura abdominal e tempo expiratório prolongado. A conduta medicamentosa após o tratamento inicial é administrar",
+  "options": [
+   {
+    "id": "A",
+    "text": "sulfato de magnésio."
+   },
+   {
+    "id": "B",
+    "text": "corticoide."
+   },
+   {
+    "id": "C",
+    "text": "anti-histamínico."
+   },
+   {
+    "id": "D",
+    "text": "terbutalina."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 4
+ },
+ {
+  "id": "revalida_2026_2_q010",
+  "code": "REV-2026.2-Q010",
+  "exam_id": "revalida-2026-2",
+  "number": 10,
+  "statement": "Homem de 45 anos, sem comorbidades, realizou hernioplastia inguinal aberta com tela há 7 dias, e retorna ao ambulatório com dor no local da cirurgia. Nega febre ou calafrios. Ao exame físico, apresenta, no terço médio da ferida operatória: área de tumefação; rubor e calor. Não há evidências de acometimento de fáscia ou plano muscular. Diante do quadro apresentado, qual é a conduta nesse momento?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Prescrever antibioticoterapia oral."
+   },
+   {
+    "id": "B",
+    "text": "Remover a tela."
+   },
+   {
+    "id": "C",
+    "text": "Explorar localmente a ferida."
+   },
+   {
+    "id": "D",
+    "text": "Solicitar ultrassonografia de partes moles."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CIRURGIA_GERAL",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 4
+ },
+ {
+  "id": "revalida_2026_2_q011",
+  "code": "REV-2026.2-Q011",
+  "exam_id": "revalida-2026-2",
+  "number": 11,
+  "statement": "Gestante de 38 anos, G3PC1A1, com 38 semanas de gestação, comparece a um pronto atendimento referindo sangramento vaginal, iniciado há 1 hora. Ela descreve o sangramento como moderado, de cor vermelho vivo, e afirma que iniciou após um episódio de forte dor abdominal. Relata que, desde então, o útero permanece “muito duro” e que percebeu redução dos movimentos fetais. Nega perda de líquido. A paciente possui histórico de hipertensão gestacional na gravidez atual. Ao exame físico, mostra-se pálida, com PA 150 x 95 mmHg e FC 105 bpm. O abdome está doloroso à palpação, com hipertonia uterina. Identifica-se batimento cardíaco fetal variando de 100 a 110 bpm de forma sustentada. A inspeção especular revela moderada quantidade de sangue vermelho vivo no fundo vaginal. Qual é a conduta imediata nessa situação?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Interromper a gestação pela via de parto mais rápida."
+   },
+   {
+    "id": "B",
+    "text": "Confirmar a localização placentária por ultrassonografia obstétrica."
+   },
+   {
+    "id": "C",
+    "text": "Realizar perfil biofísico fetal com monitorização dos sinais vitais maternos."
+   },
+   {
+    "id": "D",
+    "text": "Iniciar a indução do trabalho de parto."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 5
+ },
+ {
+  "id": "revalida_2026_2_q012",
+  "code": "REV-2026.2-Q012",
+  "exam_id": "revalida-2026-2",
+  "number": 12,
+  "statement": "Homem de 42 anos, em situação de rua, comparece a uma Unidade Básica de Saúde (UBS) em atendimento de demanda espontânea, apresentando adinamia, tosse persistente, febre vespertina e perda de peso. Relata diagnóstico de tuberculose pulmonar há 6 meses e início de tratamento em outra UBS, interrompido após cerca de 3 semanas por dificuldades relacionadas à instabilidade de moradia e ao acesso a serviços. No momento do atendimento, não apresenta documentação pessoal e refere receio em retomar o tratamento, relatando experiências anteriores de discriminação nos serviços de saúde. Como parte do plano terapêutico singular, onde deve ser reiniciado o tratamento para esse paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Na UBS atual, na qual compareceu para atendimento."
+   },
+   {
+    "id": "B",
+    "text": "Na UBS de origem, na qual o tratamento foi iniciado."
+   },
+   {
+    "id": "C",
+    "text": "No Consultório na Rua responsável pela região."
+   },
+   {
+    "id": "D",
+    "text": "Em unidade hospitalar, com médico pneumologista."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 5
+ },
+ {
+  "id": "revalida_2026_2_q013",
+  "code": "REV-2026.2-Q013",
+  "exam_id": "revalida-2026-2",
+  "number": 13,
+  "statement": "Uma equipe de saúde da família observa um aumento de crises hipertensivas entre pacientes diagnosticados com hipertensão arterial sistêmica acompanhados pela equipe nos últimos 3 meses. A revisão dos dados revela redução da adesão aos grupos educativos sobre hipertensão, diminuição nos registros de pressão arterial e menor comparecimento às consultas programadas. As visitas domiciliares estão aquém do necessário, devido à redução do número de agentes comunitários no território. Qual é a medida prioritária a ser adotada pela equipe de saúde para solucionar essa situação na atenção primária?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Desenvolver ações educativas para o controle de condições de risco."
+   },
+   {
+    "id": "B",
+    "text": "Identificar as falhas no cuidado e no fluxo de informação."
+   },
+   {
+    "id": "C",
+    "text": "Analisar o número de visitas domiciliares como indicador."
+   },
+   {
+    "id": "D",
+    "text": "Encaminhar para acompanhamento ambulatorial especializado."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 5
+ },
+ {
+  "id": "revalida_2026_2_q014",
+  "code": "REV-2026.2-Q014",
+  "exam_id": "revalida-2026-2",
+  "number": 14,
+  "statement": "Adolescente de 14 anos foi levada a uma Unidade Básica de Saúde pelos pais por apresentar “medo intenso de engordar”. Refere preocupação excessiva com ganho de peso há 1 ano, razão pela qual tem feito restrição alimentar progressiva durante o dia. Relata, porém, episódios de compulsão alimentar quase todas as noites da semana, nos últimos 4 meses, quando não consegue controlar a quantidade e a qualidade do que come. Menciona compensar os episódios de compulsão alimentar com jejuns prolongados e exercícios físicos excessivos. Nega histórico de vômitos autoinduzidos ou uso de laxantes. Não há comorbidades clínicas prévias. O exame físico revela: paciente consciente e orientada; sinais vitais estáveis; IMC 23 kg/m²; pele levemente ressecada e ausência de sinais de desnutrição ou outras alterações. Qual é a principal hipótese diagnóstica nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Anorexia nervosa."
+   },
+   {
+    "id": "B",
+    "text": "Transtorno alimentar não especificado."
+   },
+   {
+    "id": "C",
+    "text": "Bulimia nervosa."
+   },
+   {
+    "id": "D",
+    "text": "Transtorno de compulsão alimentar."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 5
+ },
+ {
+  "id": "revalida_2026_2_q015",
+  "code": "REV-2026.2-Q015",
+  "exam_id": "revalida-2026-2",
+  "number": 15,
+  "statement": "Homem de 64 anos, agricultor, residente em zona rural, está em investigação em uma Unidade Básica de Saúde por insuficiência cardíaca com fração de ejeção reduzida. De antecedentes relevantes, informa 2 episódios de malária há 10 anos e hipertensão arterial controlada. A mãe faleceu de arritmia aos 48 anos. Exames laboratoriais descartam diabetes mellitus e dislipidemia. Eletrocardiograma apresenta bloqueio de ramo direito. Ecocardiograma mostra dilatação ventricular excêntrica bilateral. Considerando-se a principal hipótese clínica e a fase da doença, qual método laboratorial é indicado para a confirmação diagnóstica nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Exame parasitológico direto por gota espessa."
+   },
+   {
+    "id": "B",
+    "text": "Intradermo reação de Montenegro."
+   },
+   {
+    "id": "C",
+    "text": "Sorologia por IgG em dois métodos distintos."
+   },
+   {
+    "id": "D",
+    "text": "Reação em cadeia da polimerase."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 5
+ },
+ {
+  "id": "revalida_2026_2_q016",
+  "code": "REV-2026.2-Q016",
+  "exam_id": "revalida-2026-2",
+  "number": 16,
+  "statement": "Criança de 1 ano e 9 meses, previamente hígida, é levada a uma Unidade Básica de Saúde devido a quadro de rash cutâneo iniciado há 12 horas. Nos últimos três dias, vinha apresentando febre, irritabilidade e inapetência, sem outras manifestações. A febre cessou quando o rash cutâneo surgiu, de maneira repentina, inicialmente no tórax, seguido pelos braços. O exame físico revela paciente em estado geral preservado, ativo, brincando durante avaliação e afebril. Constata-se presença de exantema maculopapular de coloração rosada em face, tronco e extremidades. Palpado linfonodo em região cervical anterior direita, indolor, móvel, fibroelástico, de aproximadamente 0,5 cm. Não há outros achados. Qual é o agente etiológico do caso relatado?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Vírus Epstein-Barr."
+   },
+   {
+    "id": "B",
+    "text": "Parvovírus humano B19."
+   },
+   {
+    "id": "C",
+    "text": "Vírus Coxsackie A1."
+   },
+   {
+    "id": "D",
+    "text": "Herpes-vírus humano 6."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 6
+ },
+ {
+  "id": "revalida_2026_2_q017",
+  "code": "REV-2026.2-Q017",
+  "exam_id": "revalida-2026-2",
+  "number": 17,
+  "statement": "Mulher de 54 anos, com obesidade moderada, procura a emergência clínica de um hospital terciário, relatando dor contínua em hipocôndrio direito, há 72 horas, que se intensificou nas últimas 6 horas, acompanhada de náuseas e febre baixa. Durante a palpação profunda do hipocôndrio direito, apresenta interrupção súbita da inspiração profunda. O hemograma mostra contagem de leucócitos de 12.000 células/mm³ (VR: 4.450 a 10.950 células/mm³), e a ultrassonografia revela vesícula biliar com paredes de 0,8 cm de espessura, múltiplas imagens arredondadas com sombra acústica posterior e colédoco com 0,4 cm de diâmetro. Com base na principal hipótese diagnóstica, qual é a conduta indicada nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Encaminhar para colecistectomia de urgência."
+   },
+   {
+    "id": "B",
+    "text": "Indicar descompressão endoscópica das vias biliares."
+   },
+   {
+    "id": "C",
+    "text": "Solicitar ressonância magnética de abdome superior."
+   },
+   {
+    "id": "D",
+    "text": "Tratar clinicamente com antibióticos e analgésicos."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CIRURGIA_GERAL",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 6
+ },
+ {
+  "id": "revalida_2026_2_q018",
+  "code": "REV-2026.2-Q018",
+  "exam_id": "revalida-2026-2",
+  "number": 18,
+  "statement": "Mulher de 23 anos, G2P0A1, com última menstruação há 8 semanas, é atendida em uma emergência com dor pélvica leve e sangramento vaginal em pequena quantidade. PA 120 x 70 mmHg e FC 82 bpm. Ao exame físico, apresenta-se lúcida e orientada, sem dor à palpação de abdômen e pelve. Tem beta-HCG quantitativo de 1920 mUI/mL na primeira dosagem e 700 mUI/mL na segunda dosagem. Na ultrassonografia transvaginal: ausência de saco gestacional na cavidade uterina; presença de massa anexial esquerda de 2,0 cm com sinal de anel tubário e ausência de batimento cardíaco fetal ou de líquido livre na cavidade pélvica. Qual é a estratégia de manejo indicada nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Orientar beta-HCG quantitativo seriado."
+   },
+   {
+    "id": "B",
+    "text": "Indicar procedimento cirúrgico."
+   },
+   {
+    "id": "C",
+    "text": "Prescrever o uso de metotrexate."
+   },
+   {
+    "id": "D",
+    "text": "Indicar aspiração intrauterina."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 6
+ },
+ {
+  "id": "revalida_2026_2_q019",
+  "code": "REV-2026.2-Q019",
+  "exam_id": "revalida-2026-2",
+  "number": 19,
+  "statement": "Uma equipe de Saúde da Família, durante planejamento semestral, identificou um aumento significativo na incidência de obesidade e hipertensão arterial sistêmica na população adscrita. O nutricionista propôs uma ação educativa baseada nas recomendações do Guia alimentar para a população brasileira. O objetivo era impactar positivamente os determinantes sociais da saúde e a redução de doenças crônicas não transmissíveis. Assinale a alternativa que contém a estratégia educativa a ser priorizada pela equipe para enfrentar o problema identificado.",
+  "options": [
+   {
+    "id": "A",
+    "text": "Estimular a redução do aporte calórico diário, com o uso de produtos diet e light."
+   },
+   {
+    "id": "B",
+    "text": "Ensinar a contagem sistemática de calorias, com cálculo de macronutrientes para controle da ingestão energética."
+   },
+   {
+    "id": "C",
+    "text": "Promover habilidades culinárias, com o resgate de hábitos regionais, e incentivar o consumo de alimentos in natura."
+   },
+   {
+    "id": "D",
+    "text": "Recomendar a exclusão de alimentos processados, como queijos e pães artesanais, e conservar vegetais da dieta regular."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 6
+ },
+ {
+  "id": "revalida_2026_2_q020",
+  "code": "REV-2026.2-Q020",
+  "exam_id": "revalida-2026-2",
+  "number": 20,
+  "statement": "Homem de 58 anos, que era residente em território adscrito a uma Unidade de Saúde da Família, vinha sendo acompanhado, há alguns meses, por queixa de dor abdominal recorrente, constipação crônica, anemia normocítica persistente, parestesias e alterações da memória. Era casado, sem filhos, e trabalhava há mais de 20 anos em sua própria oficina de reciclagem de bateria automotiva. Em determinada ocasião, procurou atendimento em uma Unidade Básica de Saúde devido à exacerbação dos sintomas, com forte dor abdominal. O exame físico feito no momento revelou confusão mental e dor difusa à palpação do abdome. O paciente foi, então, encaminhado para o pronto-socorro; porém, nas primeiras 24 horas da internação, evoluiu com insuficiência renal, convulsão, coma e óbito, devido a uma provável intoxicação por chumbo. Qual é o papel da atenção primária em saúde com relação à vigilância do caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Registrar no Sistema de Informação de Agravos de Notificação e comunicar à Vigilância em Saúde do Trabalhador."
+   },
+   {
+    "id": "B",
+    "text": "Registrar no Sistema de Informação de Mortalidade e comunicar à Vigilância em Saúde do Trabalhador."
+   },
+   {
+    "id": "C",
+    "text": "Registrar no Sistema de Informação de Agravos de Notificação e no Sistema de Informação de Mortalidade."
+   },
+   {
+    "id": "D",
+    "text": "Registrar no Sistema de Informação de Agravos de Notificação e acionar a Vigilância Sanitária."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 6
+ },
+ {
+  "id": "revalida_2026_2_q021",
+  "code": "REV-2026.2-Q021",
+  "exam_id": "revalida-2026-2",
+  "number": 21,
+  "statement": "Mulher de 30 anos chega ao Centro de Atenção Psicossocial animada, inquieta e falante, andando de um lado para outro, cumprimentando todas as pessoas com sorrisos exagerados e fazendo comentários animados a respeito de coisas aleatórias, emendando os assuntos. O médico que costuma atendê-la percebe que ela está diferente, mais “elétrica” que seu habitual, sendo impossível interrompê-la. As alterações psicopatológicas apresentadas por essa paciente incluem",
+  "options": [
+   {
+    "id": "A",
+    "text": "humor disfórico, esterotipias vocais e agitação psicomotora."
+   },
+   {
+    "id": "B",
+    "text": "humor hipotímico, apragmatismo e afrouxamento de associações."
+   },
+   {
+    "id": "C",
+    "text": "humor eutímico, fuga de ideias e avolia."
+   },
+   {
+    "id": "D",
+    "text": "humor hipertímico, taquipsiquismo e taquilalia."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 7
+ },
+ {
+  "id": "revalida_2026_2_q022",
+  "code": "REV-2026.2-Q022",
+  "exam_id": "revalida-2026-2",
+  "number": 22,
+  "statement": "Homem de 49 anos, com diabetes mellitus tipo 2, em uso irregular de metformina e dapaglifozina, procura uma Unidade de Pronto Atendimento com queixa de poliúria, polidipsia, fadiga e visão turva há 3 dias. Ao exame físico, apresenta-se hemodinamicamente estável, discretamente desidratado, sem sinais de infecção, sem dor abdominal e sem náuseas ou vômitos. Glicemia capilar: 420 mg/dL. Glicemia plasmática confirmatória: 460 mg/dL. Foram realizados exames para avaliação do quadro clínico do paciente, cujos resultados são apresentados na seguinte tabela. Qual é o provável diagnóstico desse paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Cetoacidose diabética."
+   },
+   {
+    "id": "B",
+    "text": "Estado hiperosmolar hiperglicêmico."
+   },
+   {
+    "id": "C",
+    "text": "Hiperglicemia não crítica de emergência metabólica."
+   },
+   {
+    "id": "D",
+    "text": "Acidose metabólica induzida por medicação."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": {
+   "arquivo": "revalida_2026_2_q022-tabela.png",
+   "alt": "Tabela com colunas Exame, Resultado e Valor de referência: pH 7,36 (7,35 a 7,45); bicarbonato 22 mEq/L (22 a 26); osmolaridade plasmática 292 mOsm/kg (285 a 295); cetonemia e cetonúria ausentes; sódio 147 mEq/L (136 a 145); potássio 3,6 mEq/L (3,5 a 5,1).",
+   "tabela_removida_do_texto": "Exame Resultado Valor de referência pH (gasometria arterial) 7,36 7,35 a 7,45 Bicarbonato sérico (HC03 – ) 22 mEq/L 22 a 26 mEq/L Osmolaridade plasmática 292 mOsm/kg 285 a 295 mOsm/kg Cetonemia Ausente Ausente Cetonúria Ausente Ausente Sódio 147 mEq/L 136 a 145 mEq/L Potássio 3,6 mEq/L 3,5 a 5,1 mEq/L",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/tabelas/revalida_2026_2_q022.png",
+   "sha256": "f1aa8c9fd5c1bce9e68c09846fcdcc5eca7a93792efb3f1c487b43c04751529c",
+   "tamanho": 38052,
+   "pagina": 7,
+   "caixa_pdf": [
+    38.5,
+    427.0,
+    290.7,
+    565.0
+   ]
+  },
+  "fonte_pagina": 7
+ },
+ {
+  "id": "revalida_2026_2_q023",
+  "code": "REV-2026.2-Q023",
+  "exam_id": "revalida-2026-2",
+  "number": 23,
+  "statement": "Menino de 2 anos e 3 meses é levado pela mãe a uma Unidade Básica de Saúde para consulta de rotina. Ela refere palidez progressiva e redução do apetite nos últimos dois meses. O exame físico mostra palidez cutaneomucosa, sem outros achados relevantes. O hemograma mostra os seguintes resultados. A conduta para essa criança é prescrever",
+  "options": [
+   {
+    "id": "A",
+    "text": "ferro oral em dose terapêutica e orientar adequação alimentar."
+   },
+   {
+    "id": "B",
+    "text": "polivitamínico com ferro em dose profilática e manter dieta atual."
+   },
+   {
+    "id": "C",
+    "text": "ferro oral em dose profilática e orientar uso de ácido fólico."
+   },
+   {
+    "id": "D",
+    "text": "ferro endovenoso e suplementar com vitamina B12."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": {
+   "arquivo": "revalida_2026_2_q023-tabela.png",
+   "alt": "Tabela do hemograma com colunas Exame, Resultado e Valor de referência: hemoglobina 9,4 g/dL (10,5 a 14,2); volume corpuscular médio 68 fL (75 a 87); índice de anisocitose aumentado (sem valor de referência).",
+   "tabela_removida_do_texto": "Exame Resultado Valor de referência Hemoglobina 9,4 g/dL 10,5 a 14,2 g/dL Volume corpuscular médio 68 fL 75 a 87 fL Índice de anisocitose Aumentado –",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/tabelas/revalida_2026_2_q023.png",
+   "sha256": "3cb31a38a9ccfec72f80789e120648b3a15e1fdb223d2824a2370874afa1cb81",
+   "tamanho": 18206,
+   "pagina": 7,
+   "caixa_pdf": [
+    303.6,
+    148.0,
+    557.1,
+    215.0
+   ]
+  },
+  "fonte_pagina": 7
+ },
+ {
+  "id": "revalida_2026_2_q024",
+  "code": "REV-2026.2-Q024",
+  "exam_id": "revalida-2026-2",
+  "number": 24,
+  "statement": "Homem de 58 anos, no 2º dia de pós-operatório de hemicolectomia esquerda por neoplasia de cólon, apresenta distensão abdominal progressiva, náuseas e vômitos ocasionais. Refere não ter eliminado flatos ou fezes desde o procedimento. Exame físico: paciente em bom estado geral, lúcido, afebril; PA 120 x 80 mmHg; FC 78 bpm. Abdome: globoso, com timpanismo difuso, indolor à palpação, sem massas ou sinais de peritonite; ruídos hidroaéreos diminuídos. A radiografia simples de abdome em pé e deitado mostra distensão difusa de alças de delgado e cólon, sem níveis hidroaéreos. Diante do quadro clínico apresentado, a conduta recomendada nesse momento é",
+  "options": [
+   {
+    "id": "A",
+    "text": "indicar reintervenção cirúrgica e confecção de colostomia em alça."
+   },
+   {
+    "id": "B",
+    "text": "estimular deambulação precoce e considerar progressão de dieta conforme aceitação."
+   },
+   {
+    "id": "C",
+    "text": "realizar descompressão colonoscópica e administrar neostigmina sob monitorização cardíaca."
+   },
+   {
+    "id": "D",
+    "text": "iniciar nutrição parenteral total e antibioticoterapia de amplo espectro."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CIRURGIA_GERAL",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 7
+ },
+ {
+  "id": "revalida_2026_2_q025",
+  "code": "REV-2026.2-Q025",
+  "exam_id": "revalida-2026-2",
+  "number": 25,
+  "statement": "Mulher de 20 anos procura Unidade de Pronto Atendimento devido a queixa de corrimento vaginal há 7 dias, associado a odor fétido e prurido leve. Refere início recente de dor pélvica hipogástrica, febre não aferida e dispareunia. O exame ginecológico mostra corrimento acinzentado, colo uterino doloroso à mobilização e dor à palpação anexial bilateral. Qual é o tratamento medicamentoso nesse caso, considerando-se o diagnóstico provável?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Metronidazol, ceftriaxona e doxiciclina."
+   },
+   {
+    "id": "B",
+    "text": "Fluconazol, azitromicina e clidamicina."
+   },
+   {
+    "id": "C",
+    "text": "Doxiciclina, ceftriaxona e gentamicina."
+   },
+   {
+    "id": "D",
+    "text": "Miconazol, metronidazol e azitromicina."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 8
+ },
+ {
+  "id": "revalida_2026_2_q026",
+  "code": "REV-2026.2-Q026",
+  "exam_id": "revalida-2026-2",
+  "number": 26,
+  "statement": "Mulher cisgênero de 26 anos, profissional do sexo, comparece a uma Unidade Básica de Saúde para consulta agendada. Relata uso inconsistente de preservativos e manifesta preocupação com o risco de infecção pelo HIV. Nega comorbidades ou uso contínuo de medicações. Realizou teste rápido para HIV há 2 meses em uma ação social, com resultado não reagente, e exames laboratoriais recentes, que mostram função renal preservada. Durante a consulta, a médica de família oferta novos testes rápidos para HIV, sífilis, hepatites B e C, todos não reagentes, e exclui, por anamnese e exame físico, a presença de sinais e sintomas de infecção aguda pelo HIV ou outras infecções sexualmente transmissíveis ativas no momento. Considerando-se o início da prevenção, o manejo da profilaxia pré-exposição (PrEP) para esse caso é prescrevê-la na modalidade",
+  "options": [
+   {
+    "id": "A",
+    "text": "sob demanda e agendar retorno mensal para teste rápido."
+   },
+   {
+    "id": "B",
+    "text": "de uso diário consecutivo e orientar que a proteção ocorrerá em 20 dias."
+   },
+   {
+    "id": "C",
+    "text": "sob demanda e aguardar confirmação da sorologia com resultado não reagente."
+   },
+   {
+    "id": "D",
+    "text": "de uso diário consecutivo e agendar retorno trimestral para teste rápido."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 8
+ },
+ {
+  "id": "revalida_2026_2_q027",
+  "code": "REV-2026.2-Q027",
+  "exam_id": "revalida-2026-2",
+  "number": 27,
+  "statement": "Em uma Unidade Básica de Saúde, foi avaliado o desempenho de um teste rápido de triagem para diabetes mellitus tipo 2 em homens e mulheres, assintomáticos, de 40 a 69 anos, atendidos no território adscrito. A incidência estimada de diabetes nessa população era de 10%, com base em dados locais. O teste rápido foi comparado ao padrão de referência (glicemia de jejum ≥ 126 mg/dL). Os resultados percentuais obtidos estão apresentados na seguinte tabela. Com base na tabela, quais são, respectivamente, o valor e a interpretação clínica para a razão de verossimilhança positiva do teste rápido avaliado?",
+  "options": [
+   {
+    "id": "A",
+    "text": "0,02 — indica redução na probabilidade de o paciente ter a doença."
+   },
+   {
+    "id": "B",
+    "text": "1,12 — demonstra uma alteração mínima e irrelevante na probabilidade de o paciente ter a doença."
+   },
+   {
+    "id": "C",
+    "text": "8,00 — apresenta aumento moderado na probabilidade pós-teste de o paciente ter a doença."
+   },
+   {
+    "id": "D",
+    "text": "9,00 — confirma o diagnóstico definitivo do diabetes, independentemente da probabilidade do teste."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": {
+   "arquivo": "revalida_2026_2_q027-tabela.png",
+   "alt": "Tabela 2 por 2 do teste rápido contra o padrão de referência: teste positivo 80 com diabetes presente e 20 com diabetes ausente (total 100); teste negativo 20 e 180 (total 200); totais 100, 200 e 300.",
+   "tabela_removida_do_texto": "Resultado do teste rápido Diabetes presente Diabetes ausente Total Teste positivo 80 20 100 Teste negativo 20 180 200 Total 100 200 300",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/tabelas/revalida_2026_2_q027.png",
+   "sha256": "7b22d3e58efcc88dba3948d17bb57828f6e03b20f4d40023c6f881922f2f0657",
+   "tamanho": 17412,
+   "pagina": 8,
+   "caixa_pdf": [
+    303.6,
+    187.0,
+    556.8,
+    265.0
+   ]
+  },
+  "fonte_pagina": 8
+ },
+ {
+  "id": "revalida_2026_2_q028",
+  "code": "REV-2026.2-Q028",
+  "exam_id": "revalida-2026-2",
+  "number": 28,
+  "statement": "Homem de 29 anos comparece a uma Unidade Básica de Saúde queixando-se de “sofrimento emocional constante” e “problemas nos relacionamentos”. Relata episódios frequentes de explosões de raiva, sensação de abandono quando os outros não respondem como ele espera e histórico de relações interpessoais intensas e instáveis, com ocorrências de lesões autoprovocadas leves (arranhões em face interna de braços) quando se sente frustrado ou rejeitado. O prontuário revela que o paciente passou por diversos serviços de saúde e abandona os acompanhamentos com frequência. Na consulta, demonstra desconfiança inicial e uma busca intensa por atenção e aprovação da médica. Não há evidências de sintomas psicóticos nem quadro compatível com transtorno de humor. Qual é o transtorno de personalidade identificado nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Paranoide."
+   },
+   {
+    "id": "B",
+    "text": "Borderline."
+   },
+   {
+    "id": "C",
+    "text": "Dependente."
+   },
+   {
+    "id": "D",
+    "text": "Antissocial."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 9
+ },
+ {
+  "id": "revalida_2026_2_q029",
+  "code": "REV-2026.2-Q029",
+  "exam_id": "revalida-2026-2",
+  "number": 29,
+  "statement": "Mulher de 67 anos procura unidade de emergência com queixa de fadiga, fraqueza e palpitação, com início há 3 dias. Encontra-se hemodinamicamente estável. Seu eletrocardiograma é apresentado na imagem a seguir. Qual é a conduta imediata para esse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Realizar cardioversão elétrica."
+   },
+   {
+    "id": "B",
+    "text": "Iniciar amiodarona em bolus."
+   },
+   {
+    "id": "C",
+    "text": "Indicar anticoagulação."
+   },
+   {
+    "id": "D",
+    "text": "Implantar marca-passo temporário."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": {
+   "arquivo": "revalida_2026_2_q029-figura.png",
+   "alt": "Eletrocardiograma de 12 derivações em papel milimetrado, com as derivações DI, DII, DIII, aVR, aVL, aVF e V1 a V6 em tira contínua, mostrando o traçado do ritmo cardíaco.",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/figuras/revalida_2026_2_q029.png",
+   "sha256": "579414605de08c9dae3e8ee29b139151d7a6123473c567b420a560cdd1ca065d",
+   "tamanho": 1217478,
+   "pagina": 9,
+   "caixa_pdf": [
+    44.55516052246094,
+    297.18585205078125,
+    550.4494018554688,
+    565.79052734375
+   ]
+  },
+  "tabela": null,
+  "fonte_pagina": 9
+ },
+ {
+  "id": "revalida_2026_2_q030",
+  "code": "REV-2026.2-Q030",
+  "exam_id": "revalida-2026-2",
+  "number": 30,
+  "statement": "Adolescente de 13 anos compareceu a uma Unidade Básica de Saúde para avaliação anual de saúde. Encontra-se assintomática. Ao exame físico, apresenta-se em bom estado geral, com PA e FC normais para a idade. A ausculta cardíaca mostra sopro sistólico de baixa intensidade (grau 1+/4+), audível no foco pulmonar, sem irradiação, com timbre suave, que diminui de intensidade quando em posição ortostática. Não há frêmito, nem outros ruídos cardíacos anormais. Quanto a antecedentes pessoais, não relata história de dispneia, dor torácica, síncope ou intolerância aos esforços. Não há antecedentes familiares de cardiopatia ou morte súbita. Considerando-se os dados da paciente, o que sugere o diagnóstico de sopro cardíaco inocente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Sopro sistólico de baixa intensidade, sem irradiação e com diminuição em posição ortostática."
+   },
+   {
+    "id": "B",
+    "text": "Sopro localizado em foco pulmonar sem irradiação, associado à ausência de sintomas respiratórios."
+   },
+   {
+    "id": "C",
+    "text": "Ausência de antecedentes familiares de cardiopatia congênita ou de morte súbita."
+   },
+   {
+    "id": "D",
+    "text": "Presença de PA e FC dentro da normalidade para a idade."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 10
+ },
+ {
+  "id": "revalida_2026_2_q031",
+  "code": "REV-2026.2-Q031",
+  "exam_id": "revalida-2026-2",
+  "number": 31,
+  "statement": "Menino de 12 anos é levado por seus pais a um pronto-socorro porque se machucou, há 5 dias, com galho de árvore. Os pais relatam que demoraram a buscar atendimento para o filho por morarem em região de difícil acesso. Exame físico: ferimento corto-contuso na face lateral da perna direita, com aproximadamente 12 cm, irregular, com presença de contaminação grosseira da ferida. Os pais afirmam que o paciente tem histórico de atopias e que tomou as vacinas da infância até os 5 anos. O médico indica desbridamento cirúrgico, sob anestesia local infiltrativa, com 20 mL de lidocaína a 2% sem vasoconstritor. Durante o procedimento, o paciente começa a relatar formigamento nos lábios, gosto metálico na boca e zumbido. Em seguida, apresenta crise convulsiva tônico-clônica generalizada. Qual é o diagnóstico provável do quadro apresentado no momento da cirurgia?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Reação anafilática grave."
+   },
+   {
+    "id": "B",
+    "text": "Toxicidade pelo anestésico."
+   },
+   {
+    "id": "C",
+    "text": "Paroxismo tetânico."
+   },
+   {
+    "id": "D",
+    "text": "Sepse por infecção da ferida."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CIRURGIA_GERAL",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 10
+ },
+ {
+  "id": "revalida_2026_2_q032",
+  "code": "REV-2026.2-Q032",
+  "exam_id": "revalida-2026-2",
+  "number": 32,
+  "statement": "Mulher de 21 anos, G1P0, com 27 semanas e 1 dia de gestação, procura Unidade Básica de Saúde para mostrar o resultado do exame de curva glicêmica (teste oral de tolerância à glicose 75 g), conforme descrito na seguinte tabela. Além de orientação de dieta pobre em carboidrato e atividade física regular, qual a medida imediata deve ser adotada no seguimento do tratamento dessa paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Solicitar dosagem de insulina."
+   },
+   {
+    "id": "B",
+    "text": "Repetir curva glicêmica."
+   },
+   {
+    "id": "C",
+    "text": "Solicitar dosagem de HbA1c."
+   },
+   {
+    "id": "D",
+    "text": "Monitorar a glicemia capilar."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "figura": null,
+  "tabela": {
+   "arquivo": "revalida_2026_2_q032-tabela.png",
+   "alt": "Tabela da curva glicêmica (TOTG 75 g) com colunas Exame, Resultado e Valor de referência: jejum 89 mg/dL (< 92); 1 hora 182 mg/dL (< 180); 2 horas 152 mg/dL (< 153).",
+   "tabela_removida_do_texto": "Exame Resultado Valor de referência Glicemia de jejum 89 mg/dL < 92 mg/dL 1 hora após ingestão 182 mg/dL < 180 mg/dL 2 horas após ingestão 152 mg/dL < 153 mg/dL",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/tabelas/revalida_2026_2_q032.png",
+   "sha256": "7710fa6cf99763a2cbb61c277b464e02e9b2fecb2804054d2daf61fc93872eba",
+   "tamanho": 21130,
+   "pagina": 10,
+   "caixa_pdf": [
+    303.6,
+    152.0,
+    556.9,
+    219.0
+   ]
+  },
+  "fonte_pagina": 10
+ },
+ {
+  "id": "revalida_2026_2_q033",
+  "code": "REV-2026.2-Q033",
+  "exam_id": "revalida-2026-2",
+  "number": 33,
+  "statement": "Mãe leva filha de 6 anos para consulta de puericultura em Unidade Básica de Saúde. A criança tem histórico familiar de hipercolesterolemia (pai e mãe), mas não apresenta comorbidades nem faz uso de medicações. Durante o exame físico, identifica-se IMC na faixa de sobrepeso. Considerando-se as diretrizes brasileiras de dislipidemia e prevenção de aterosclerose, além das orientações sobre mudança de estilo de vida, qual é a conduta indicada nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Solicitar dosagem de lipoproteína A e, se normal, repetir entre 12 e 16 anos de idade."
+   },
+   {
+    "id": "B",
+    "text": "Solicitar dosagem de triglicerídeos, colesterol total, HDL-c e LDL-c e, se normais, repetir entre 12 e 16 anos de idade."
+   },
+   {
+    "id": "C",
+    "text": "Rastrear a partir dos 9 anos, caso a criança mantenha IMC compatível com sobrepeso ou obesidade."
+   },
+   {
+    "id": "D",
+    "text": "Solicitar dosagem de LDL-c e, se alterado, ampliar para perfil lipídico completo e prescrever estatina."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 10
+ },
+ {
+  "id": "revalida_2026_2_q034",
+  "code": "REV-2026.2-Q034",
+  "exam_id": "revalida-2026-2",
+  "number": 34,
+  "statement": "A Coordenação de IST/AIDS de um município brasileiro analisou a série histórica de indicadores epidemiológicos relativos à infecção pelo HIV no período de 2019 a 2023. Nesse intervalo, houve ampla expansão da oferta de diagnóstico e implementação de novos protocolos, com medicamentos de maior eficácia e menor toxicidade. A população do município permaneceu estável em aproximadamente 100 mil habitantes. A tabela a seguir apresenta os dados consolidados do período. Considerando-se a relação entre as medidas de frequência e a dinâmica demográfica, a elevação da prevalência da infecção no período analisado é consequência",
+  "options": [
+   {
+    "id": "A",
+    "text": "da crescente virulência das cepas virais circulantes, indicada pela estabilidade da taxa de incidência."
+   },
+   {
+    "id": "B",
+    "text": "do aumento da duração média da doença, resultante da redução da letalidade observada na série."
+   },
+   {
+    "id": "C",
+    "text": "da ineficácia das estratégias de prevenção primária, demonstrada pelo acúmulo de casos ativos."
+   },
+   {
+    "id": "D",
+    "text": "da variação de exposição de risco da infecção, o que gera diagnósticos superiores à capacidade de resolução do sistema."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": {
+   "arquivo": "revalida_2026_2_q034-tabela.png",
+   "alt": "Tabela por ano, de 2019 a 2023, com casos novos de HIV diagnosticados no ano, total de pessoas vivendo com HIV em 31 de dezembro e óbitos relacionados à AIDS no ano (120/600/50; 125/670/35; 118/780/15; 122/890/5; 120/1.005/4).",
+   "tabela_removida_do_texto": "Ano Casos novos de HIV diagnosticados no ano Total de pessoas vivendo com HIV (PVHA) em 31 de dezembro Óbitos relacionados à AIDS no ano 2019 120 600 50 2020 125 670 35 2021 118 780 15 2022 122 890 5 2023 120 1.005 4",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/tabelas/revalida_2026_2_q034.png",
+   "sha256": "43f4f8bda234c468269c7f25f0e9927c03fe4ad082746a3c56dcd117652e2789",
+   "tamanho": 29522,
+   "pagina": 11,
+   "caixa_pdf": [
+    38.5,
+    199.0,
+    289.9,
+    328.0
+   ]
+  },
+  "fonte_pagina": 11
+ },
+ {
+  "id": "revalida_2026_2_q035",
+  "code": "REV-2026.2-Q035",
+  "exam_id": "revalida-2026-2",
+  "number": 35,
+  "statement": "Uma equipe da atenção primária à saúde acolhe uma mulher de 42 anos cuja casa foi destruída há 3 dias, após um desastre natural. Ela afirma estar bastante angustiada e desesperançosa, com sono entrecortado e pesadelos. Refere, ainda, choro recorrente, inapetência e dificuldade de concentração. Relata que, apesar de tudo isso, os filhos lhe dão “força para seguir adiante” e nega pensamentos de morte ou ideação suicida. Além de abrigo, alimentação e abastecimento de água, que ações, no âmbito da saúde, devem ser inicialmente oferecidas a essa paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Realizar escuta ativa, identificando as suas necessidades de saúde, e manter o seguimento na atenção primária à saúde."
+   },
+   {
+    "id": "B",
+    "text": "Solicitar relato dos eventos traumáticos, oferecendo visão de futuro otimista, e orientar busca por serviço de urgência se houver piora."
+   },
+   {
+    "id": "C",
+    "text": "Prescrever inibidores seletivos da recaptação de serotonina ou benzodiazepínicos e encaminhar a ambulatório especializado."
+   },
+   {
+    "id": "D",
+    "text": "Indicar acompanhamento psicológico regular e encaminhar a um centro de atenção psicossocial."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 11
+ },
+ {
+  "id": "revalida_2026_2_q036",
+  "code": "REV-2026.2-Q036",
+  "exam_id": "revalida-2026-2",
+  "number": 36,
+  "statement": "Mulher de 23 anos, com diagnóstico de anemia falciforme, procura Unidade de Pronto Atendimento devido à dor em membros inferiores (escala visual analógica = 9), iniciada há 12 horas. Relata crises similares anteriores e nega outros sintomas. Ao ser avaliada, está afebril, hidratada, sem sinais de infecção. Exame físico: PA 112 x 70 mmHg; FC 92 bpm; FR 18 irpm e SatO₂ 97% em ar ambiente. Qual é a conduta medicamentosa imediata para essa paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Codeína e paracetamol via oral."
+   },
+   {
+    "id": "B",
+    "text": "Dipirona intravenosa."
+   },
+   {
+    "id": "C",
+    "text": "Tenoxicam intramuscular."
+   },
+   {
+    "id": "D",
+    "text": "Morfina intravenosa."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 11
+ },
+ {
+  "id": "revalida_2026_2_q037",
+  "code": "REV-2026.2-Q037",
+  "exam_id": "revalida-2026-2",
+  "number": 37,
+  "statement": "Escolar de 5 anos, pesando 20 kg, apresenta queimaduras de 2º e 3º graus que atingem os membros inferiores (ambos integralmente), o tórax e o abdome anteriores. Abaixo o diagrama de Lund-Browder para cálculo da superfície corporal queimada: No caso apresentado, qual a forma correta de administração de Ringer lactato?",
+  "options": [
+   {
+    "id": "A",
+    "text": "2.820 mL, administrado em 16 horas."
+   },
+   {
+    "id": "B",
+    "text": "3.760 mL, administrado em 8 horas."
+   },
+   {
+    "id": "C",
+    "text": "1.500 mL, administrado em 2 horas."
+   },
+   {
+    "id": "D",
+    "text": "1.000 mL, administrado em 15 a 20 minutos."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CIRURGIA_GERAL",
+  "figura": {
+   "arquivo": "revalida_2026_2_q037-figura.png",
+   "alt": "Diagrama de Lund-Browder: figuras do corpo humano de frente e de costas, divididas por linhas tracejadas em regiões com percentuais (1%, 2%, 1,5%, 13%, 2,5%, 1,75%) e letras A (cabeça), B (coxas) e C (pernas).",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/figuras/revalida_2026_2_q037.png",
+   "sha256": "03ae1ce1680a162dfb98f3c88c8b9587d567621258aa5772be531654818c4981",
+   "tamanho": 287653,
+   "pagina": 12,
+   "caixa_pdf": [
+    37.45669174194336,
+    130.4569854736328,
+    291.7165222167969,
+    451.349853515625
+   ]
+  },
+  "tabela": {
+   "arquivo": "revalida_2026_2_q037-tabela.png",
+   "alt": "Tabela de referência para áreas variáveis (A, B e C) no diagrama de Lund-Browder, com a coluna 5 anos: área A 6,5%, área B 4,0% e área C 2,75%.",
+   "tabela_removida_do_texto": "Tabela de referência para áreas variáveis (A, B e C) Área 5 anos A 6,5% B 4,0% C 2,75%",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/tabelas/revalida_2026_2_q037.png",
+   "sha256": "7bf27dc3d00b4b033ccf58baaf9ae711a15186280552202b62f88f2c5859c25f",
+   "tamanho": 12840,
+   "pagina": 12,
+   "caixa_pdf": [
+    331.2,
+    235.0,
+    534.1,
+    316.0
+   ]
+  },
+  "fonte_pagina": 12
+ },
+ {
+  "id": "revalida_2026_2_q038",
+  "code": "REV-2026.2-Q038",
+  "exam_id": "revalida-2026-2",
+  "number": 38,
+  "statement": "Homem de 28 anos é levado pelo SAMU para um hospital de trauma, após ferimento por arma de fogo no hemitórax direito. Apresenta dispneia, dor torácica, pulsos filiformes, FC 128 bpm, FR 32 irpm, PA 90 x 55 mmHg e SpO₂ 89% em ar ambiente. Há assimetria da expansão torácica, macicez à percussão e redução do murmúrio vesicular à direita. A radiografia de tórax evidencia velamento à direita. Diante do quadro, qual é a conduta adequada para o paciente nesse momento?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Drenagem torácica."
+   },
+   {
+    "id": "B",
+    "text": "Toracotomia na sala de emergência."
+   },
+   {
+    "id": "C",
+    "text": "Punção torácica de alívio."
+   },
+   {
+    "id": "D",
+    "text": "Videotoracoscopia."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CIRURGIA_GERAL",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 13
+ },
+ {
+  "id": "revalida_2026_2_q039",
+  "code": "REV-2026.2-Q039",
+  "exam_id": "revalida-2026-2",
+  "number": 39,
+  "statement": "Gestante de 24 anos, G1P0, com 12 semanas de gestação, procura atendimento médico para mostrar o resultado de teste rápido para HIV realizado na primeira consulta do pré-natal, o qual consta como reagente. Demonstra ansiedade e afirma nunca ter imaginado essa possibilidade. Refere medo de ser julgada e receio de que sua família descubra o diagnóstico. Em atenção aos princípios da comunicação em saúde, da ética médica e do cuidado humanizado, qual é a conduta inicial nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Solicitar a presença de um familiar da paciente e encaminhá-la para o pré-natal de alto risco."
+   },
+   {
+    "id": "B",
+    "text": "Acolher a paciente com escuta ativa e fornecer esclarecimentos quanto ao resultado do teste rápido."
+   },
+   {
+    "id": "C",
+    "text": "Explicar à paciente o risco de transmissão da doença ao feto e solicitar sorologia para confirmar o diagnóstico."
+   },
+   {
+    "id": "D",
+    "text": "Tranquilizar a paciente e iniciar terapia antirretroviral."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 13
+ },
+ {
+  "id": "revalida_2026_2_q040",
+  "code": "REV-2026.2-Q040",
+  "exam_id": "revalida-2026-2",
+  "number": 40,
+  "statement": "Mulher de 66 anos, hipertensa, diabética e tabagista, é levada a uma Unidade Básica de Saúde (UBS) por quadro de síncope há 40 minutos, após discussão familiar. Apresenta-se ansiosa, com mal-estar intenso, tontura, náuseas e sudorese, e tem um episódio de vômito na UBS. Relata sensação de desconforto moderado em andar superior do abdome. Nega alergias, etilismo ou uso de drogas ilícitas. Ao exame físico, apresenta-se eupneica, com PA 86 x 53 mmHg, FC 49 bpm e SpO₂ 95% em ar ambiente. O desconforto abdominal não é reproduzível à palpação. Não há outras alterações ao exame físico. A UBS não dispõe de eletrocardiograma ou monitor cardíaco. Além de se acionar o SAMU, a conduta de suporte nesse caso deve incluir",
+  "options": [
+   {
+    "id": "A",
+    "text": "AAS via oral mastigado."
+   },
+   {
+    "id": "B",
+    "text": "isossorbida sublingual."
+   },
+   {
+    "id": "C",
+    "text": "omeprazol via oral."
+   },
+   {
+    "id": "D",
+    "text": "diazepam via oral."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 13
+ },
+ {
+  "id": "revalida_2026_2_q041",
+  "code": "REV-2026.2-Q041",
+  "exam_id": "revalida-2026-2",
+  "number": 41,
+  "statement": "Homem de 68 anos, com quadro de perda de consciência após picada de abelha, é levado a uma Unidade de Pronto Atendimento ainda confuso e com falta de ar. Vem realizando acompanhamento por hipertensão arterial, insuficiência cardíaca de fração de ejeção reduzida e glaucoma. Faz uso de propranolol, enalapril e espironolactona. O exame físico revela: paciente sonolento e confuso (escala de coma de Glasgow 13); presença de estridor inspiratório; PA 76 x 42 mmHg; FC 54 bpm; FR 28 irpm; temperatura axilar 35,9 °C e glicemia capilar 102 mg/dL. Após administração de 0,5 mg de adrenalina intramuscular, o paciente mantém o quadro descrito. Qual é a próxima conduta medicamentosa para o caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Glucagon."
+   },
+   {
+    "id": "B",
+    "text": "Atropina."
+   },
+   {
+    "id": "C",
+    "text": "Adrenalina."
+   },
+   {
+    "id": "D",
+    "text": "Dopamina."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 13
+ },
+ {
+  "id": "revalida_2026_2_q042",
+  "code": "REV-2026.2-Q042",
+  "exam_id": "revalida-2026-2",
+  "number": 42,
+  "statement": "Lactente de 5 meses, prematuro de 32 semanas, com antecedente de displasia broncopulmonar, é levado pela mãe a uma Unidade de Pronto Atendimento, com relato de que, há 3 dias, iniciou quadro de coriza e tosse, com piora progressiva do estado geral e dificuldade para mamar nas últimas 24 horas. O exame físico mostra: FR 65 irpm; tiragem subcostal, sibilos e roncos à ausculta; SpO₂ 90% em ar ambiente. A conduta inicial nesse caso consiste em",
+  "options": [
+   {
+    "id": "A",
+    "text": "oxigenoterapia e amoxicilina oral."
+   },
+   {
+    "id": "B",
+    "text": "hidratação endovenosa e suporte ventilatório."
+   },
+   {
+    "id": "C",
+    "text": "salbutamol inalatório e corticoide sistêmico."
+   },
+   {
+    "id": "D",
+    "text": "fisioterapia respiratória e dexametasona intramuscular."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 13
+ },
+ {
+  "id": "revalida_2026_2_q043",
+  "code": "REV-2026.2-Q043",
+  "exam_id": "revalida-2026-2",
+  "number": 43,
+  "statement": "Homem de 50 anos, pedreiro, foi atendido em ambulatório de especialidade, há 4 meses, com queixa de lombociatalgia e dificuldade de exercer atividades laborais. Realizou ressonância magnética da coluna lombar, que evidenciou hérnia discal no nível L4-L5. Antes da data do retorno para mostrar os resultados dos exames, apresentou perda de sensibilidade no períneo, anestesia em sela e incontinência urinária. Devido a esses novos sintomas, procurou uma Unidade de Pronto Atendimento. Considerando-se o quadro clínico descrito, qual é a conduta adequada para esse paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Antecipar retorno ao ambulatório de especialidade."
+   },
+   {
+    "id": "B",
+    "text": "Indicar tratamento com corticoide epidural."
+   },
+   {
+    "id": "C",
+    "text": "Internar com prescrição de analgésicos associado a relaxantes musculares."
+   },
+   {
+    "id": "D",
+    "text": "Encaminhar ao serviço de emergência para avaliar indicação cirúrgica."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CIRURGIA_GERAL",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 13
+ },
+ {
+  "id": "revalida_2026_2_q044",
+  "code": "REV-2026.2-Q044",
+  "exam_id": "revalida-2026-2",
+  "number": 44,
+  "statement": "Gestante de 24 anos, com 11 semanas de gestação, comparece à Unidade Básica de Saúde para consulta de pré-natal, trazendo os resultados de exames solicitados em consulta anterior. Está sem queixas no momento. Entre os exames apresentados, observa-se sorologia para toxoplasmose com IgG reagente e IgM não reagente. O resultado desse exame sorológico de toxoplasmose indica",
+  "options": [
+   {
+    "id": "A",
+    "text": "susceptibilidade."
+   },
+   {
+    "id": "B",
+    "text": "infecção aguda."
+   },
+   {
+    "id": "C",
+    "text": "imunidade."
+   },
+   {
+    "id": "D",
+    "text": "soroconversão recente."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 14
+ },
+ {
+  "id": "revalida_2026_2_q045",
+  "code": "REV-2026.2-Q045",
+  "exam_id": "revalida-2026-2",
+  "number": 45,
+  "statement": "Menino de 1 ano é levado pelos pais para consulta de puericultura em Unidade Básica de Saúde. Eles referem preocupação com a vacina tríplice viral e informam que a criança apresentou reações leves após receber aplicações de outras vacinas. Relatam também que, pesquisando sobre o tema em redes sociais, assistiram a vídeos que associavam a vacina tríplice viral ao desenvolvimento do transtorno do espectro autista (TEA). Receosos, hesitam em imunizar o filho. Qual é a abordagem a ser realizada com esses pais?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Explicar que há baixa ocorrência de TEA em crianças vacinadas e encaminhar paciente para a atualização vacinal."
+   },
+   {
+    "id": "B",
+    "text": "Orientar sobre a importância das vacinas e reforçar a superioridade de seus benefícios em relação à possibilidade de TEA."
+   },
+   {
+    "id": "C",
+    "text": "Pesquisar sintomas preditores de TEA na criança e, em caso de resultado negativo, continuar o protocolo de vacinação segura."
+   },
+   {
+    "id": "D",
+    "text": "Acolher a preocupação dos familiares e fornecer informações sobre a ausência de associação entre TEA e vacinas."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 14
+ },
+ {
+  "id": "revalida_2026_2_q046",
+  "code": "REV-2026.2-Q046",
+  "exam_id": "revalida-2026-2",
+  "number": 46,
+  "statement": "Homem de 71 anos, tabagista, hipertenso, em uso de bloqueador de canal de cálcio, dá entrada em emergência com quadro de dor retroesternal em queimação, com início há 1 hora, após ter feito uma refeição farta. Exame físico: paciente hemodinamicamente estável; PA 160 x 90 mmHg; FC 72 bpm. Qual é a conduta imediata para esse paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Indicar ecocardiograma transesofágico."
+   },
+   {
+    "id": "B",
+    "text": "Solicitar eletrocardiograma e marcadores de necrose miocárdica."
+   },
+   {
+    "id": "C",
+    "text": "Dosar D-dímero e realizar angiotomografia de tórax."
+   },
+   {
+    "id": "D",
+    "text": "Realizar endoscopia digestiva alta."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 14
+ },
+ {
+  "id": "revalida_2026_2_q047",
+  "code": "REV-2026.2-Q047",
+  "exam_id": "revalida-2026-2",
+  "number": 47,
+  "statement": "Menina de 10 anos é encaminhada para avaliação especializada por perda de peso progressiva nos últimos 10 meses. A mãe relata que a criança, após engasgar com carne, passou a recusar alimentos sólidos e a apresentar episódios de refeições prolongadas com vômitos, quando há insistência para alimentar-se, além de medo de “passar mal” em ambiente escolar ou em eventos sociais. Aceita alimentos pastosos. Nega dor abdominal, diarreia, febre ou infecções. Sono e desempenho escolar estão preservados. O desenvolvimento neuropsicomotor é adequado para a idade. O exame físico mostra: escore Z igual a peso –3; estatura entre –1 e –2; IMC entre –2 e –3. Foram excluídas causas orgânicas. A principal hipótese diagnóstica nesse caso é",
+  "options": [
+   {
+    "id": "A",
+    "text": "transtorno dismórfico corporal."
+   },
+   {
+    "id": "B",
+    "text": "anorexia nervosa."
+   },
+   {
+    "id": "C",
+    "text": "transtorno alimentar restritivo evitativo."
+   },
+   {
+    "id": "D",
+    "text": "seletividade alimentar típica."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 14
+ },
+ {
+  "id": "revalida_2026_2_q048",
+  "code": "REV-2026.2-Q048",
+  "exam_id": "revalida-2026-2",
+  "number": 48,
+  "statement": "Homem de 32 anos, vítima de acidente motociclístico envolvendo colisão contra poste, com uso de capacete, é atendido no local do acidente por equipe avançada do SAMU. Está consciente e conversando, com sinais vitais estáveis. Apresenta escoriações no braço e no ombro esquerdos, ferimento corto-contuso de 3 cm em região clavicular esquerda, com exposição de fragmento ósseo pela ferida. Há ausência de flexão do punho e dos dedos da mão esquerda, com anestesia em região medial do antebraço. Pulsos palpáveis. É realizada a limpeza do ferimento clavicular. Nessa situação, qual outra conduta deve ser realizada no local do acidente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Imobilizar com curativo."
+   },
+   {
+    "id": "B",
+    "text": "Reduzir fratura da clavícula."
+   },
+   {
+    "id": "C",
+    "text": "Realizar tração do membro superior."
+   },
+   {
+    "id": "D",
+    "text": "Alinhar com tala moldável."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CIRURGIA_GERAL",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 14
+ },
+ {
+  "id": "revalida_2026_2_q049",
+  "code": "REV-2026.2-Q049",
+  "exam_id": "revalida-2026-2",
+  "number": 49,
+  "statement": "Mulher de 23 anos, G3P3, sem comorbidades, procura atendimento em Unidade Básica de Saúde, manifestando forte desejo de ser submetida à laqueadura tubária. De acordo com a lei de planejamento familiar, qual é a conduta inicial do profissional de saúde nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Informar que a situação da paciente está em desacordo com os critérios legais pertinentes."
+   },
+   {
+    "id": "B",
+    "text": "Orientar que é necessária a autorização do cônjuge para a realização do procedimento."
+   },
+   {
+    "id": "C",
+    "text": "Oferecer à paciente informações a respeito de outros métodos anticoncepcionais."
+   },
+   {
+    "id": "D",
+    "text": "Encaminhar a paciente para a realização do procedimento em questão."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 14
+ },
+ {
+  "id": "revalida_2026_2_q050",
+  "code": "REV-2026.2-Q050",
+  "exam_id": "revalida-2026-2",
+  "number": 50,
+  "statement": "Homem de 34 anos, tabagista, sedentário, com IMC 43 kg/m² e assintomático, comparece a uma consulta em Unidade Básica de Saúde relatando que seu pai foi diagnosticado com câncer de cólon aos 53 anos. O paciente demonstra preocupação com a doença. Considerando-se o rastreamento do câncer colorretal desse paciente pelo SUS, a conduta nesse caso é solicitar colonoscopia",
+  "options": [
+   {
+    "id": "A",
+    "text": "na consulta atual."
+   },
+   {
+    "id": "B",
+    "text": "a partir dos 43 anos."
+   },
+   {
+    "id": "C",
+    "text": "a partir dos 50 anos."
+   },
+   {
+    "id": "D",
+    "text": "se a pesquisa de sangue oculto tiver resultado positivo."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 15
+ },
+ {
+  "id": "revalida_2026_2_q051",
+  "code": "REV-2026.2-Q051",
+  "exam_id": "revalida-2026-2",
+  "number": 51,
+  "statement": "Um homem de 42 anos foi admitido em uma Unidade de Terapia Intensiva (UTI) com história de provável intoxicação exógena. Ele havia sido encontrado desacordado em sua residência, com sialorreia intensa e broncoespasmo. Exame físico: FC 38 bpm; PA 116 x 64 mmHg; SatO₂ 83% em ar ambiente; escala de coma de Glasgow 3 e glicemia capilar 70 mg/dL. Optou-se por intubação orotraqueal e instalação de ventilação mecânica invasiva. Na UTI, o paciente apresentava: pupilas puntiformes; roncos e sibilos inspiratórios e expiratórios à ausculta pulmonar; secreção clara e abundante à aspiração de vias aéreas; grande quantidade de resíduo gástrico à sondagem gástrica; boa diurese por sonda vesical de demora e ausência de febre. Foi realizada lavagem gástrica, utilizando-se carvão ativado por 24 horas, e iniciou-se suporte com atropina intravenosa, em bomba de infusão contínua. Qual foi o provável agente da intoxicação desse paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Organofosforado."
+   },
+   {
+    "id": "B",
+    "text": "Benzodiazepínico."
+   },
+   {
+    "id": "C",
+    "text": "Sulfonilureia."
+   },
+   {
+    "id": "D",
+    "text": "Antidepressivo tricíclico."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 15
+ },
+ {
+  "id": "revalida_2026_2_q052",
+  "code": "REV-2026.2-Q052",
+  "exam_id": "revalida-2026-2",
+  "number": 52,
+  "statement": "Menina de 4 anos é levada a uma Unidade Básica de Saúde pela mãe, que relata o aparecimento de lesões avermelhadas e com crostas amareladas na região periorbital, labial e nasal da criança há cerca de 5 dias. A mãe refere que as lesões começaram como pequenas bolhas que se romperam facilmente, liberando um líquido amarelado, com prurido associado. Nega febre, prostração ou demais queixas. Exame físico: sem alterações, exceto a pele da face, conforme a seguinte imagem. O diagnóstico provável para o caso é",
+  "options": [
+   {
+    "id": "A",
+    "text": "celulite."
+   },
+   {
+    "id": "B",
+    "text": "impetigo."
+   },
+   {
+    "id": "C",
+    "text": "ectima."
+   },
+   {
+    "id": "D",
+    "text": "herpes."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": {
+   "arquivo": "revalida_2026_2_q052-figura.png",
+   "alt": "Fotografia do rosto de uma criança, com várias lesões avermelhadas e crostas amareladas ao redor do nariz, da boca e do queixo.",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/figuras/revalida_2026_2_q052.png",
+   "sha256": "8167235f59539c5babb04d26b1181714c293575152dbf1314316c4f65474f33d",
+   "tamanho": 709238,
+   "pagina": 15,
+   "caixa_pdf": [
+    307.55908203125,
+    186.1778106689453,
+    552.7559204101562,
+    352.79229736328125
+   ]
+  },
+  "tabela": null,
+  "fonte_pagina": 15
+ },
+ {
+  "id": "revalida_2026_2_q053",
+  "code": "REV-2026.2-Q053",
+  "exam_id": "revalida-2026-2",
+  "number": 53,
+  "statement": "Recém-nascido a termo, masculino, Apgar 9/9, peso, comprimento e perímetro cefálico adequados para idade gestacional. Ultrassom morfológico com polidrâminio. Logo após o nascimento, evoluiu com salivação excessiva. Realizada aspiração da secreção com melhora da saturação, sem necessidade de oxigenioterapia. Ausência de sinais de desconforto respiratório; murmúrio vesicular presente bilateralmente com roncos de transmissão difusos; abdome escavado e extremidades bem perfundidas. Realizada passagem de sonda orogástrica com dificuldade na progressão após a introdução de 10 cm. Solicitada radiografia com contraste iodado (imagem a seguir). Com base no quadro clínico, trata-se de qual tipo de atresia?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Esofágica."
+   },
+   {
+    "id": "B",
+    "text": "Gástrica."
+   },
+   {
+    "id": "C",
+    "text": "Duodenal."
+   },
+   {
+    "id": "D",
+    "text": "Intestinal."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": {
+   "arquivo": "revalida_2026_2_q053-figura.png",
+   "alt": "Radiografia frontal de tórax e abdome superior de recém-nascido, com material de contraste radiopaco visível na região superior do tórax, entre os campos pulmonares.",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/figuras/revalida_2026_2_q053.png",
+   "sha256": "c8e5b65599ed925d50f188e454b9765c18e157467617d8667214a1c35ed93f00",
+   "tamanho": 105159,
+   "pagina": 16,
+   "caixa_pdf": [
+    42.51968002319336,
+    222.57778930664062,
+    289.7489929199219,
+    573.715087890625
+   ]
+  },
+  "tabela": null,
+  "fonte_pagina": 16
+ },
+ {
+  "id": "revalida_2026_2_q054",
+  "code": "REV-2026.2-Q054",
+  "exam_id": "revalida-2026-2",
+  "number": 54,
+  "statement": "Mulher, G2P1, assintomática, com história prévia de prematuridade, comparece a uma consulta de pré-natal para mostrar os seguintes resultados de ultrassonografia de 22 semanas: feto vivo, com exame morfológico normal e colo uterino medindo 20 mm. Diante desses resultados, qual é o manejo para o caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Indicar o uso de indometacina até 32 semanas de gestação."
+   },
+   {
+    "id": "B",
+    "text": "Prescrever nifedipina e manter até 30 semanas de gestação."
+   },
+   {
+    "id": "C",
+    "text": "Prescrever betametasona e repetir o exame com 30 semanas de gestação."
+   },
+   {
+    "id": "D",
+    "text": "Indicar progesterona natural e manter até 36 semanas de gestação."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 16
+ },
+ {
+  "id": "revalida_2026_2_q055",
+  "code": "REV-2026.2-Q055",
+  "exam_id": "revalida-2026-2",
+  "number": 55,
+  "statement": "Homem de 74 anos comparece a uma Unidade Básica de Saúde para consulta. Mora sozinho e tem como renda o Benefício de Prestação Continuada. Relata que, há 6 meses, sente dor e queimação em ambos os pés, de moderada intensidade, com predomínio noturno, associada a parestesias em “bota”, sem alívio com analgésicos simples. Tem diagnóstico de diabetes mellitus tipo 2 há 18 anos, em uso de metformina e insulina NPH em esquema basal. Não há evidência de cardiopatia associada. A hemoglobina glicada se mantém estável em 6,5% e a taxa de filtração glomerular é 75 mL/min/1,73m². O eletrocardiograma é normal. Ao exame físico, deambula sem dificuldade e evidencia-se hipoestesia tátil e vibratória em padrão distal simétrico, em “bota”, com pulsos distais palpáveis. Não há lesões cutâneas nos membros inferiores. Qual é a medicação de primeira linha para o manejo da dor nesse paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Carbamazepina."
+   },
+   {
+    "id": "B",
+    "text": "Ibuprofeno."
+   },
+   {
+    "id": "C",
+    "text": "Amitriptilina."
+   },
+   {
+    "id": "D",
+    "text": "Tramadol e paracetamol."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 16
+ },
+ {
+  "id": "revalida_2026_2_q056",
+  "code": "REV-2026.2-Q056",
+  "exam_id": "revalida-2026-2",
+  "number": 56,
+  "statement": "Em uma Unidade Básica de Saúde (UBS), a equipe local, preocupada com a alta prevalência de hipertensão arterial sistêmica (HAS) entre os pacientes, decidiu realizar um estudo epidemiológico para investigar possíveis fatores de risco associados à doença. Os pesquisadores selecionaram cerca de 50 pacientes com diagnóstico recente de HAS e 80 pacientes sem a doença, pareados por idade e sexo, que frequentavam a mesma UBS. Com base em entrevistas e em revisão de prontuários, foram coletadas informações sobre histórico familiar de HAS, nível de atividade física e padrão alimentar desses pacientes nos últimos 5 anos. Qual foi o tipo de estudo realizado nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Caso-controle."
+   },
+   {
+    "id": "B",
+    "text": "Coorte."
+   },
+   {
+    "id": "C",
+    "text": "Ecológico."
+   },
+   {
+    "id": "D",
+    "text": "Série temporal."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 16
+ },
+ {
+  "id": "revalida_2026_2_q057",
+  "code": "REV-2026.2-Q057",
+  "exam_id": "revalida-2026-2",
+  "number": 57,
+  "statement": "Estudante de Psicologia de 22 anos, de origem Guarani Kaiowá, cometeu suicídio. Pessoas de sua aldeia atribuíram o fato a um suposto enfeitiçamento, justificando que isso teria feito com que ela perdesse o discernimento. Uma equipe de saúde foi acionada para lidar com essa situação. Nesse caso, qual é a abordagem adequada a ser realizada pela equipe de saúde?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Participar ativamente dos rituais religiosos e de luto próprios da comunidade, para atuar com prontidão caso algum membro da comunidade apresente intenso sofrimento."
+   },
+   {
+    "id": "B",
+    "text": "Compreender a crença de enfeitiçamento, mas sem estimulá-la, acolhendo os membros da etnia e orientando sobre sinais de risco a serem observados."
+   },
+   {
+    "id": "C",
+    "text": "Acolher as famílias enlutadas, respeitando seus rituais funerários e evitando falar sobre suicídio, visto que a menção a esse tema poderia suscitar novas tentativas."
+   },
+   {
+    "id": "D",
+    "text": "Explicar, de maneira objetiva, o que são transtornos mentais e o que é transtorno depressivo maior, para evitar interpretações místicas e ritualísticas do adoecimento."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 17
+ },
+ {
+  "id": "revalida_2026_2_q058",
+  "code": "REV-2026.2-Q058",
+  "exam_id": "revalida-2026-2",
+  "number": 58,
+  "statement": "Homem de 40 anos, etilista crônico, procura a unidade de emergência queixando-se de distensão abdominal há 2 dias e náuseas eventualmente acompanhadas de vômitos. Ao exame físico: temperatura axilar aferida de 38,2 °C; mucosas levemente descoradas e anictéricas; aranhas vasculares no tronco; abdome distendido com circulação colateral; sinal de piparote positivo e baço palpável a 3 cm do rebordo costal esquerdo. Qual é a conduta imediata para esse quadro clínico?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Solicitar hemocultura."
+   },
+   {
+    "id": "B",
+    "text": "Realizar paracentese."
+   },
+   {
+    "id": "C",
+    "text": "Prescrever antibioticoterapia empírica."
+   },
+   {
+    "id": "D",
+    "text": "Iniciar diurético poupador de potássio."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 17
+ },
+ {
+  "id": "revalida_2026_2_q059",
+  "code": "REV-2026.2-Q059",
+  "exam_id": "revalida-2026-2",
+  "number": 59,
+  "statement": "Menino de 8 anos é levado a um ambulatório de pediatria com queixa de febre persistente há 3 semanas, associada a palidez progressiva, emagrecimento e aparecimento de petéquias nos membros inferiores. A mãe relata que a criança tem se queixado de dores em membros inferiores e astenia. O exame físico mostra: palidez cutâneo-mucosa; petéquias difusas e hepatoesplenomegalia. O hemograma revela os resultados apresentados na tabela a seguir. Nesse caso, a principal hipótese diagnóstica é",
+  "options": [
+   {
+    "id": "A",
+    "text": "anemia aplásica."
+   },
+   {
+    "id": "B",
+    "text": "leucemia linfoblástica aguda."
+   },
+   {
+    "id": "C",
+    "text": "púrpura trombocitopênica imunológica."
+   },
+   {
+    "id": "D",
+    "text": "calazar."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": {
+   "arquivo": "revalida_2026_2_q059-tabela.png",
+   "alt": "Tabela do hemograma com colunas Exame, Resultado e Valor de referência: leucócitos 2.500/mm³; hemoglobina 8,0 g/dL; plaquetas 30.000/mm³; neutrófilos 500/mm³; linfócitos 1.800/mm³; blastos 5% (referência 0%).",
+   "tabela_removida_do_texto": "Exame Resultado Valor de referência Leucócitos 2.500/mm³ 4.500 a 13.500/mm³ Hemoglobina 8,0 g/dL 11,7 a 15,3 g/dL Plaquetas 30.000/mm³ 150.000 a 450.000/mm³ Neutrófilos 500/mm³ 1.500 a 8.500/mm³ Linfócitos 1.800/mm³ 1.000 a 4.800/mm³ Blastos 5% 0%",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/tabelas/revalida_2026_2_q059.png",
+   "sha256": "7b7cb228d05bd796ea36894335efa1e80a5fddecc848798506260150cae88ef5",
+   "tamanho": 31272,
+   "pagina": 17,
+   "caixa_pdf": [
+    303.6,
+    187.0,
+    556.8,
+    299.0
+   ]
+  },
+  "fonte_pagina": 17
+ },
+ {
+  "id": "revalida_2026_2_q060",
+  "code": "REV-2026.2-Q060",
+  "exam_id": "revalida-2026-2",
+  "number": 60,
+  "statement": "Criança de 5 anos é levada a um pronto-socorro após sofrer acidente automobilístico grave, com rebaixamento do nível de consciência, respiração irregular e sinais de comprometimento respiratório, sem sinais de sangramento ativo externo. É indicada obtenção de via aérea eficaz e definitiva. Nesse caso, a particularidade anatômica a ser considerada para a realização de procedimento seguro é o fato de que crianças dessa idade, em comparação com adultos, apresentam",
+  "options": [
+   {
+    "id": "A",
+    "text": "língua proporcionalmente menor."
+   },
+   {
+    "id": "B",
+    "text": "anel cricofaríngeo relativamente mais largo."
+   },
+   {
+    "id": "C",
+    "text": "laringe mais baixa e anterior."
+   },
+   {
+    "id": "D",
+    "text": "epiglote mais anteriorizada e rígida."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 17
+ },
+ {
+  "id": "revalida_2026_2_q061",
+  "code": "REV-2026.2-Q061",
+  "exam_id": "revalida-2026-2",
+  "number": 61,
+  "statement": "Uma paciente de 46 anos, sem comorbidades e assintomática, procura Unidade Básica de Saúde para mostrar resultado de exame realizado para prevenção do câncer de colo uterino: teste de DNA-HPV oncogênico positivo para HPV 51. Informa ter realizado citologia oncótica há 1 ano, sem alterações. Qual é a conduta inicial indicada nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Repetir o teste de DNA-HPV oncogênico."
+   },
+   {
+    "id": "B",
+    "text": "Solicitar citologia reflexa."
+   },
+   {
+    "id": "C",
+    "text": "Encaminhar para colposcopia."
+   },
+   {
+    "id": "D",
+    "text": "Indicar vacina contra o HPV."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 17
+ },
+ {
+  "id": "revalida_2026_2_q062",
+  "code": "REV-2026.2-Q062",
+  "exam_id": "revalida-2026-2",
+  "number": 62,
+  "statement": "O Ministério da Saúde lançou, em 2025, os novos indicadores do componente de qualidade do cofinanciamento federal da atenção primária à saúde no SUS. Considerando-se os novos indicadores de cuidado na gestação e puerpério, é necessário garantir a realização",
+  "options": [
+   {
+    "id": "A",
+    "text": "de pelo menos um exame de ultrassonografia obstétrica durante a gestação."
+   },
+   {
+    "id": "B",
+    "text": "dos testes para sífilis, HIV e hepatites B e C no 1º trimestre da gestação."
+   },
+   {
+    "id": "C",
+    "text": "da primeira consulta de pré-natal antes da 20ª semana da gestação."
+   },
+   {
+    "id": "D",
+    "text": "de pelo menos quatro consultas médicas de pré-natal."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 18
+ },
+ {
+  "id": "revalida_2026_2_q063",
+  "code": "REV-2026.2-Q063",
+  "exam_id": "revalida-2026-2",
+  "number": 63,
+  "statement": "Uma equipe técnica do Ministério da Saúde está avaliando os efeitos da redução do ponto de corte da medida de PA sistólica de 130 mmHg para 120 mmHg para o diagnóstico de hipertensão arterial (HA). Considerando-se as mudanças nos valores de referência, o que se espera em relação ao diagnóstico de HA?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Aumento na detecção da HA e redução na frequência de falsos positivos."
+   },
+   {
+    "id": "B",
+    "text": "Aumento na detecção da HA e aumento na frequência de falsos positivos."
+   },
+   {
+    "id": "C",
+    "text": "Redução na detecção da HA e redução na frequência de falsos positivos."
+   },
+   {
+    "id": "D",
+    "text": "Redução na detecção da HA e aumento na frequência de falsos positivos."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 18
+ },
+ {
+  "id": "revalida_2026_2_q064",
+  "code": "REV-2026.2-Q064",
+  "exam_id": "revalida-2026-2",
+  "number": 64,
+  "statement": "Homem de 60 anos, sem emprego formal, está em acompanhamento em um Centro de Atenção Psicossocial (CAPS) por esquizofrenia. Nos últimos meses, retomou uso de álcool, isolou-se mais e foi visto pelos vizinhos diversas vezes embriagado, em casa, falando sozinho. Apresenta dificuldades de pagar o aluguel, de comprar alimentos e medicamentos da mãe de 80 anos, com quem habita. Considerando-se a composição da rede de atenção psicossocial, quais pontos de atenção, além do CAPS, são apropriados para a articulação do cuidado desse paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Unidade de Pronto Atendimento; atenção primária à saúde; e centros de convivência e cultura."
+   },
+   {
+    "id": "B",
+    "text": "Serviço móvel de urgência; serviços residenciais terapêuticos; e centro de orientação e aconselhamento."
+   },
+   {
+    "id": "C",
+    "text": "Unidade de acolhimento; centro de referência em assistência social; e unidades ambulatoriais especializadas."
+   },
+   {
+    "id": "D",
+    "text": "Equipe de consultório na rua; núcleos de apoio à saúde da família; e serviço de atenção domiciliar."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 18
+ },
+ {
+  "id": "revalida_2026_2_q065",
+  "code": "REV-2026.2-Q065",
+  "exam_id": "revalida-2026-2",
+  "number": 65,
+  "statement": "Homem de 30 anos, sem comorbidades prévias, procura Unidade Básica de Saúde devido à lesão pruriginosa em região da panturrilha direita, com 3 semanas de evolução. O exame físico mostra lesão anular de cerca de 3 cm de diâmetro, com bordas eritematosas, elevadas e descamativas, com clareamento central. Qual medicamento deve ser prescrito para o tratamento dessa lesão?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Cefalexina oral."
+   },
+   {
+    "id": "B",
+    "text": "Clotrimazol tópico."
+   },
+   {
+    "id": "C",
+    "text": "Hidrocortisona tópica."
+   },
+   {
+    "id": "D",
+    "text": "Ivermectina oral."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 18
+ },
+ {
+  "id": "revalida_2026_2_q066",
+  "code": "REV-2026.2-Q066",
+  "exam_id": "revalida-2026-2",
+  "number": 66,
+  "statement": "Menina de 2 anos apresenta tosse, coriza e obstrução nasal há 24 horas. Há 1 hora, apresentou quadro convulsivo tônico-clônico generalizado, com duração de 2 minutos, e foi levada ao pronto atendimento. Não há relato de convulsão anterior, mas a mãe refere histórico de crise convulsiva febril em irmão mais velho. Os exames mostram: temperatura axilar 38,7 °C; exame neurológico sem alterações e ausência de sinais meníngeos. A conduta adequada para esse caso, após medicar com antitérmico, é",
+  "options": [
+   {
+    "id": "A",
+    "text": "internar a paciente e coletar líquido cefalorraquidiano."
+   },
+   {
+    "id": "B",
+    "text": "solicitar tomografia de crânio e indicar acompanhamento especializado."
+   },
+   {
+    "id": "C",
+    "text": "orientar a família e indicar acompanhamento ambulatorial."
+   },
+   {
+    "id": "D",
+    "text": "internar a paciente e realizar eletroencefalograma."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 18
+ },
+ {
+  "id": "revalida_2026_2_q067",
+  "code": "REV-2026.2-Q067",
+  "exam_id": "revalida-2026-2",
+  "number": 67,
+  "statement": "Homem de 22 anos, vítima de atropelamento, foi levado pelo suporte avançado do SAMU a uma emergência terciária de trauma, onde chegou em prancha rígida, com colar cervical e com queixa de dor em andar inferior de abdome. Avaliação inicial: paciente consciente; contactante; descorado 2+/4+; FC 120 bpm; FR 24 irpm; PA 80 x 60 mmHg; abdome plano, normotenso, doloroso à palpação profunda em andar inferior; descompressão brusca negativa; bacia instável e hematoma em região escrotal. Foram realizadas: medidas de estabilização na sala de emergência; ultrassonografia FAST, cujo resultado foi negativo para líquido livre abdominal; e radiografia da pelve, conforme a seguinte figura. Após, foi aplicada cinta pélvica, o que resultou em estabilização mecânica do anel pélvico, com fechamento do quadril. Nesse caso, mantendo-se um quadro de hipotensão, qual é a próxima conduta a ser realizada?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Angiografia com embolização."
+   },
+   {
+    "id": "B",
+    "text": "Laparotomia exploradora."
+   },
+   {
+    "id": "C",
+    "text": "Estabilização cirúrgica do quadril."
+   },
+   {
+    "id": "D",
+    "text": "Tomografia de abdome e pelve."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CIRURGIA_GERAL",
+  "figura": {
+   "arquivo": "revalida_2026_2_q067-figura.png",
+   "alt": "Radiografia simples da pelve em incidência frontal na admissão, mostrando sacro, ossos ilíacos, articulações sacroilíacas, sínfise e quadris.",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/figuras/revalida_2026_2_q067.png",
+   "sha256": "047675c0b55ca5ad7039c5c6b9bcf2877d711fd743acd31a1a559676aaa84b1f",
+   "tamanho": 90337,
+   "pagina": 19,
+   "caixa_pdf": [
+    38.51966857910156,
+    244.78773498535156,
+    292.55718994140625,
+    465.8874206542969
+   ]
+  },
+  "tabela": null,
+  "fonte_pagina": 19
+ },
+ {
+  "id": "revalida_2026_2_q068",
+  "code": "REV-2026.2-Q068",
+  "exam_id": "revalida-2026-2",
+  "number": 68,
+  "statement": "Mulher de 72 anos procura atendimento em Unidade Básica de Saúde com queixas de dores na coluna lombar e histórico de fratura de fêmur após ter sofrido queda da própria altura há 2 anos. É hipertensa, faz uso de hidroclorotiazida e teve menopausa há 22 anos. Não usa nenhum outro medicamento nem fez uso de terapia hormonal. Realizou densitometria óssea recentemente, que indicou um alto risco para fraturas. A paciente não possui história de doenças secundárias associadas à osteoporose nem doenças crônicas, além da hipertensão arterial sistêmica. Não apresenta queixas relacionadas à intolerância gastrointestinal ou à dificuldade de deglutição. Iniciou uso de vitamina D e cálcio via oral. Com base no protocolo clínico nacional para osteoporose, qual é a opção inicial de tratamento medicamentoso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Bisfosfonato."
+   },
+   {
+    "id": "B",
+    "text": "Estrogênio conjugado."
+   },
+   {
+    "id": "C",
+    "text": "Teriparatida."
+   },
+   {
+    "id": "D",
+    "text": "Romosozumabe."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 19
+ },
+ {
+  "id": "revalida_2026_2_q069",
+  "code": "REV-2026.2-Q069",
+  "exam_id": "revalida-2026-2",
+  "number": 69,
+  "statement": "Mulher de 34 anos, em consulta, relata ao médico de família tristeza, insônia e medo constante. Revela estar, há anos, em relacionamento abusivo que envolve agressões psicológicas, manipulação financeira e episódios recentes de violência física cometida pelo parceiro. Afirma não desejar romper imediatamente o relacionamento por preocupação quanto à sua segurança e à possibilidade de agravamento de sua situação financeira. Considerando-se o planejamento de ações e intervenções centradas na singularidade da pessoa assistida, são condutas adequadas nessa situação",
+  "options": [
+   {
+    "id": "A",
+    "text": "iniciar tratamento farmacológico, encaminhar paciente para acompanhamento especializado em saúde da mulher e denunciar parceiro à delegacia de proteção à mulher."
+   },
+   {
+    "id": "B",
+    "text": "elaborar plano terapêutico com avaliação de risco junto à equipe multiprofissional, fortalecer a rede de apoio e notificar caso à vigilância epidemiológica."
+   },
+   {
+    "id": "C",
+    "text": "elaborar plano terapêutico farmacológico, encaminhar paciente para centro de apoio psicossocial e solicitar medida protetiva junto à defensoria pública."
+   },
+   {
+    "id": "D",
+    "text": "indicar o acolhimento em casa abrigo como intervenção protetiva, ofertar sorologias para rastreio de IST e notificar caso à rede de atenção psicossocial do município."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 19
+ },
+ {
+  "id": "revalida_2026_2_q070",
+  "code": "REV-2026.2-Q070",
+  "exam_id": "revalida-2026-2",
+  "number": 70,
+  "statement": "Em reunião de equipe de saúde da família, discute-se o caso de uma idosa diabética, com locomoção reduzida, que apresenta episódios de hipoglicemia por dificuldade de compreensão do esquema de uso da insulina. A paciente tem 8 filhos, porém reside com apenas uma filha, que trabalha fora o dia todo. Qual ação inicial a equipe deve desenvolver nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Realizar aplicação diária da insulina, na unidade de saúde."
+   },
+   {
+    "id": "B",
+    "text": "Solicitar vaga em instituição de longa permanência."
+   },
+   {
+    "id": "C",
+    "text": "Realizar a articulação do cuidado com a comunidade."
+   },
+   {
+    "id": "D",
+    "text": "Substituir a insulina por hipoglicemiante oral."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 20
+ },
+ {
+  "id": "revalida_2026_2_q071",
+  "code": "REV-2026.2-Q071",
+  "exam_id": "revalida-2026-2",
+  "number": 71,
+  "statement": "Homem de 30 anos procurou uma Unidade Básica de Saúde pela primeira vez com o objetivo de reduzir o consumo de crack. Nega uso diário, mas afirma que há momentos em que “engata” 3 dias de uso. Após, consegue ficar semanas sem utilizar, mas recai na sequência. Depois do último uso continuado por 3 dias, não retornou para casa e decidiu buscar ajuda. Considerando-se as recomendações atuais dos Ministérios da Saúde e da Justiça, qual é a conduta inicial para esse paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Internação hospitalar com abstinência total, com vistas a cessar os efeitos nocivos do consumo."
+   },
+   {
+    "id": "B",
+    "text": "Encaminhamento a uma comunidade terapêutica, para acolhimento, devido ao padrão de uso apresentado."
+   },
+   {
+    "id": "C",
+    "text": "Realização de ações voltadas à redução de danos, para minimizar problemas secundários ao consumo."
+   },
+   {
+    "id": "D",
+    "text": "Prescrição de psicofármaco, uma vez que há medicamentos padronizados para o tratamento."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 20
+ },
+ {
+  "id": "revalida_2026_2_q072",
+  "code": "REV-2026.2-Q072",
+  "exam_id": "revalida-2026-2",
+  "number": 72,
+  "statement": "Adolescente de 15 anos comparece à Unidade de Pronto Atendimento com queixa de mialgia, mal-estar e cansaço, iniciados há 1 semana, quadro que evoluiu, há 3 dias, com febre, dor de garganta e odinofagia. Exame físico: amígdalas hiperemiadas, com exsudato bilateral e linfoadenomegalia dolorosa em região cervical posterior bilateral de até 2 cm de diâmetro. É indicado o uso de sintomáticos, além de repouso e observação. Após 24 horas, não tem mais febre, porém apresenta erupção exantemática macular na face, no abdome e na região torácica. Qual é o diagnóstico provável para esse caso clínico?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Amigdalite bacteriana."
+   },
+   {
+    "id": "B",
+    "text": "Infecção pelo vírus Epstein-Barr."
+   },
+   {
+    "id": "C",
+    "text": "Reação alérgica ao antitérmico."
+   },
+   {
+    "id": "D",
+    "text": "Rinofaringite."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 20
+ },
+ {
+  "id": "revalida_2026_2_q073",
+  "code": "REV-2026.2-Q073",
+  "exam_id": "revalida-2026-2",
+  "number": 73,
+  "statement": "Lactente de 1 ano e 4 meses, com calendário vacinal atualizado até os 12 meses, é levada a uma Unidade Básica de Saúde para atualização vacinal. A mãe relata que a criança está em acompanhamento com a nefrologia pediátrica devido à síndrome nefrótica corticossensível. A paciente faz uso de prednisolona em dose imunossupressora há 5 semanas e, no momento, encontra-se assintomática. Considerando-se o calendário vacinal recomendado pelo Ministério da Saúde e a condição clínica da criança, a orientação adequada a ser fornecida pelo médico é",
+  "options": [
+   {
+    "id": "A",
+    "text": "adiar a vacinação até a suspensão do corticoide."
+   },
+   {
+    "id": "B",
+    "text": "adiar a aplicação da vacina tetraviral e aplicar as demais."
+   },
+   {
+    "id": "C",
+    "text": "aplicar a vacina contra hepatite A e adiar as demais."
+   },
+   {
+    "id": "D",
+    "text": "aplicar todas as vacinas indicadas para a faixa etária."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 20
+ },
+ {
+  "id": "revalida_2026_2_q074",
+  "code": "REV-2026.2-Q074",
+  "exam_id": "revalida-2026-2",
+  "number": 74,
+  "statement": "Paciente de 65 anos, em acompanhamento em Unidade Básica de Saúde, retorna para sua consulta anual e relata piora de sintomas do trato urinário inferior, como jato urinário fraco, disúria e noctúria. O exame de toque evidencia próstata aumentada, de consistência elástica e superfície lisa. O PSA total (antígeno prostático específico), realizado há 2 semanas, revela o valor de 6,5 ng/mL (VR: até 4,0 ng/mL). Qual exame deve ser solicitado para comprovar a especificidade diagnóstica nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "PSA fração total e livre."
+   },
+   {
+    "id": "B",
+    "text": "Ultrassonografia transretal."
+   },
+   {
+    "id": "C",
+    "text": "Tomografia contrastada de pelve."
+   },
+   {
+    "id": "D",
+    "text": "Biópsia transretal de próstata."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": null,
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 20
+ },
+ {
+  "id": "revalida_2026_2_q075",
+  "code": "REV-2026.2-Q075",
+  "exam_id": "revalida-2026-2",
+  "number": 75,
+  "statement": "Mulher de 28 anos, com ciclos menstruais regulares, comparece a uma Unidade de Pronto Atendimento apresentando dor pélvica iniciada há 2 dias e localizada na fossa ilíaca direita. Nega febre, corrimento vaginal ou outros sintomas associados. Refere data da última menstruação há 16 dias e uso regular de preservativo masculino nas relações sexuais. O exame físico mostra dor à palpação superficial na fossa ilíaca direita, sem sinais de irritação peritoneal e sem outras alterações. Foi realizada ultrassonografia transvaginal, que revelou imagem medindo 2,5 cm no ovário direito, com componente cístico central, parede espessada e regular, ecos internos avasculares e vascularização periférica, conforme a imagem a seguir. Com base nos achados da ultrassonografia e no contexto clínico descrito, a hipótese diagnóstica mais provável é cisto",
+  "options": [
+   {
+    "id": "A",
+    "text": "paraovariano."
+   },
+   {
+    "id": "B",
+    "text": "folicular."
+   },
+   {
+    "id": "C",
+    "text": "hemorrágico."
+   },
+   {
+    "id": "D",
+    "text": "lúteo."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "figura": {
+   "arquivo": "revalida_2026_2_q075-figura.png",
+   "alt": "Duas imagens de ultrassonografia transvaginal do ovário direito lado a lado: à esquerda em escala de cinza, com área central escura circundada por parede; à direita com Doppler colorido mostrando fluxo em azul e vermelho na periferia.",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/figuras/revalida_2026_2_q075.png",
+   "sha256": "088d31f9ef41396002e01a743b96b5061a9d5fea38bc47c7862e217dfbad15cb",
+   "tamanho": 445038,
+   "pagina": 21,
+   "caixa_pdf": [
+    38.51966094970703,
+    247.6223907470703,
+    292.36767578125,
+    365.80706787109375
+   ]
+  },
+  "tabela": null,
+  "fonte_pagina": 21
+ },
+ {
+  "id": "revalida_2026_2_q076",
+  "code": "REV-2026.2-Q076",
+  "exam_id": "revalida-2026-2",
+  "number": 76,
+  "statement": "Menino de 9 anos é levado a uma Unidade Básica de Saúde para continuidade do acompanhamento de transtorno de déficit de atenção e hiperatividade (TDAH). Há prejuízos acadêmicos e sociais significativos refratários às intervenções pedagógicas e comportamentais isoladas. A criança é ativa, joga futebol sem cansaço desproporcional e nega síncope, dor no peito ou palpitações. O pai é hipertenso e a avó materna faleceu de infarto aos 68 anos. Não há relato de morte súbita em familiares jovens, arritmias hereditárias ou surdez congênita. Exame físico sem alterações. Nesse caso, a conduta inicial é",
+  "options": [
+   {
+    "id": "A",
+    "text": "investigar condições cardiológicas com exames complementares."
+   },
+   {
+    "id": "B",
+    "text": "prescrever metilfenidato e monitorar sinais vitais."
+   },
+   {
+    "id": "C",
+    "text": "reaplicar escalas de avaliação neuropsicológica."
+   },
+   {
+    "id": "D",
+    "text": "instituir atomoxetina e orientar sobre eventos adversos."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 21
+ },
+ {
+  "id": "revalida_2026_2_q077",
+  "code": "REV-2026.2-Q077",
+  "exam_id": "revalida-2026-2",
+  "number": 77,
+  "statement": "Em maio de 2024, aconteceram inundações devastadoras no Rio Grande do Sul (RS), que afetaram 478 municípios e mais de 2 milhões de pessoas, segundo dados de 2025 do Boletim da Defesa Civil do RS. Várias famílias ficaram desalojadas. Além disso, houve contaminação hídrica e desabastecimento da rede assistencial. Diante do quadro apresentado, assinale a alternativa que apresenta, respectivamente, a etapa e as ações a serem adotadas pela Vigilância Epidemiológica em casos como esse.",
+  "options": [
+   {
+    "id": "A",
+    "text": "Manejo do desastre; decidir sobre as ações de controle de doenças e agravos à saúde."
+   },
+   {
+    "id": "B",
+    "text": "Mitigação; monitorar e controlar prioritariamente as doenças transmissíveis."
+   },
+   {
+    "id": "C",
+    "text": "Recuperação; intensificar as ações para detecção de doenças-sentinela e de surtos e efetuar a notificação."
+   },
+   {
+    "id": "D",
+    "text": "Redução de risco; identificar e mapear a morbimortalidade e apontar as medidas para a redução do risco."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 21
+ },
+ {
+  "id": "revalida_2026_2_q078",
+  "code": "REV-2026.2-Q078",
+  "exam_id": "revalida-2026-2",
+  "number": 78,
+  "statement": "Homem de 74 anos, com diagnóstico de transtorno depressivo maior e hipertensão arterial, comparece a uma consulta em Unidade Básica de Saúde referindo episódios de tontura ao se levantar, letargia e confusão mental leve, há 3 semanas. O paciente faz uso de enalapril 10 mg/dia, há 1 ano, e iniciou o uso de paroxetina 40 mg/dia, há 1 mês. O exame físico revela: paciente hidratado, eupneico e orientado; PA 130 x 80 mmHg (sentado) e 115 x 75 mmHg (em pé). Considerando-se esse caso clínico, o exame laboratorial prioritário para a confirmação diagnóstica é a dosagem de",
+  "options": [
+   {
+    "id": "A",
+    "text": "sódio."
+   },
+   {
+    "id": "B",
+    "text": "potássio."
+   },
+   {
+    "id": "C",
+    "text": "transaminases."
+   },
+   {
+    "id": "D",
+    "text": "creatinina."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 21
+ },
+ {
+  "id": "revalida_2026_2_q079",
+  "code": "REV-2026.2-Q079",
+  "exam_id": "revalida-2026-2",
+  "number": 79,
+  "statement": "Homem de 63 anos retorna a determinada Unidade Básica de Saúde com os resultados de exames solicitados para investigação de perda de peso e tosse produtiva, iniciadas há cerca de 6 meses. Nega comorbidades, uso contínuo de medicações ou tratamento para qualquer patologia respiratória prévia. A radiografia de tórax apresenta consolidação em lobo superior direito, sem evidências de cavitação. Teste rápido molecular para tuberculose positivo; resistência à rifampicina não detectada; sorologia para HIV negativa. Após a prescrição do tratamento pertinente, com que frequência esse paciente deve ser monitorado?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Mensalmente até o término do tratamento."
+   },
+   {
+    "id": "B",
+    "text": "Quando houver sintomas respiratórios."
+   },
+   {
+    "id": "C",
+    "text": "No início e ao término do tratamento."
+   },
+   {
+    "id": "D",
+    "text": "Após 3 e 6 meses do início do tratamento."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 21
+ },
+ {
+  "id": "revalida_2026_2_q080",
+  "code": "REV-2026.2-Q080",
+  "exam_id": "revalida-2026-2",
+  "number": 80,
+  "statement": "Determinado médico de uma Unidade Básica de Saúde, durante reunião com equipe interprofissional, discute a ocorrência de cinco casos de hepatite A em crianças de uma ocupação habitacional sem rede de esgoto formal. O Conselho Local de Saúde e a Associação de Moradores relatam insegurança quanto à qualidade da água e dificuldade de adesão às medidas de higiene por falta de insumos. A análise epidemiológica indica que há um grande número de crianças na comunidade que não completaram o esquema vacinal e que a transmissão está ativa no território. Além da vacinação, qual é a próxima ação adequada para essa comunidade?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Instituir o isolamento das crianças acometidas e de seus familiares."
+   },
+   {
+    "id": "B",
+    "text": "Organizar mutirões de limpeza coordenados pela equipe de saúde."
+   },
+   {
+    "id": "C",
+    "text": "Acionar a Vigilância Sanitária com vistas à melhoria do tratamento da água."
+   },
+   {
+    "id": "D",
+    "text": "Prescrever profilaxia medicamentosa com antivirais para todas as crianças."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 22
+ },
+ {
+  "id": "revalida_2026_2_q081",
+  "code": "REV-2026.2-Q081",
+  "exam_id": "revalida-2026-2",
+  "number": 81,
+  "statement": "Homem de 62 anos, diabético, foi submetido a colecistectomia, seguida de colangiopancreatografia retrógrada endoscópica com retirada de cálculo em colédoco, há 3 semanas. Após alta, retorna à emergência hospitalar com queixa de febre, prostração e dor em hipocôndrio direito. Exames revelam: paciente febril; dor à palpação em hipocôndrio direito; hepatimetria de 4 cm do rebordo costal; ausência de dor à descompressão brusca. Os resultados do hemograma são apresentados a seguir. É indicada internação hospitalar, além de antibioticoterapia venosa. Realizada tomografia de abdome, apresentada na seguinte figura. Considerando-se a principal hipótese diagnóstica e a evolução clínica descrita, qual é o manejo para esse paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Manter tratamento clínico, ampliando o esquema de antibioticoterapia."
+   },
+   {
+    "id": "B",
+    "text": "Solicitar sorologia para amebíase e associar antibiótico específico."
+   },
+   {
+    "id": "C",
+    "text": "Propor reabordagem cirúrgica e exploração de vias biliares."
+   },
+   {
+    "id": "D",
+    "text": "Encaminhar para drenagem percutânea guiada por imagem."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CIRURGIA_GERAL",
+  "figura": {
+   "arquivo": "revalida_2026_2_q081-figura.png",
+   "alt": "Tomografia computadorizada axial de abdome superior mostrando o fígado e, no lobo direito, uma área arredondada de menor densidade, com contornos lobulados, junto à parede.",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/figuras/revalida_2026_2_q081.png",
+   "sha256": "e945f299b9541310dbc2cbb8cbbae5ec831d2121749b950d8359fb120e3fa32c",
+   "tamanho": 280915,
+   "pagina": 22,
+   "caixa_pdf": [
+    303.8621826171875,
+    359.9610900878906,
+    556.7559204101562,
+    558.4794921875
+   ]
+  },
+  "tabela": {
+   "arquivo": "revalida_2026_2_q081-tabela.png",
+   "alt": "Tabela do hemograma com colunas Exame, Resultado e Valor de referência: leucócitos 18.000/mm³; bastonetes 12%; neutrófilos 50%; linfócitos 20%; basófilos 3%, cada um com sua faixa de referência.",
+   "tabela_removida_do_texto": "Exame Resultado Valor de referência Leucócitos 18.000/mm³ 4.450 a 10.950 /mm³ Bastonetes 12% 0,5 a 6,0 % Neutrófilos 50% 42,10 a 73,60 % Linfócitos 20% 19,50 a 47,30 % Basófilos 3% 0,20 a 1,20%",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/tabelas/revalida_2026_2_q081.png",
+   "sha256": "936f4a2aafa6368d996c97bd1f7dadba4973d8438c800390d3d2820f630d189a",
+   "tamanho": 27305,
+   "pagina": 22,
+   "caixa_pdf": [
+    303.6,
+    199.0,
+    556.8,
+    296.0
+   ]
+  },
+  "fonte_pagina": 22
+ },
+ {
+  "id": "revalida_2026_2_q082",
+  "code": "REV-2026.2-Q082",
+  "exam_id": "revalida-2026-2",
+  "number": 82,
+  "statement": "Gestante de 34 anos, na 24ª semana de gestação, é acompanhada em pré-natal de alto risco por história de anemia crônica e cirurgia bariátrica com bypass gástrico em Y de Roux, realizada há 5 anos. Queixa-se de astenia, mas não há sinais de instabilidade hemodinâmica. Está em uso de 200 mg/dia de ferro elementar. Os exames laboratoriais mostram os seguintes resultados. Qual é a conduta terapêutica para essa gestante?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Manter o ferro elementar e acrescentar ácido fólico."
+   },
+   {
+    "id": "B",
+    "text": "Aumentar a dose do ferro elementar e adicionar vitamina B12."
+   },
+   {
+    "id": "C",
+    "text": "Prescrever ferro parenteral."
+   },
+   {
+    "id": "D",
+    "text": "Transfundir concentrado de hemácias."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "figura": null,
+  "tabela": {
+   "arquivo": "revalida_2026_2_q082-tabela.png",
+   "alt": "Tabela de exames com colunas Exame, Resultado e Valor de referência: hemoglobina 6,9 g/dL (12,0 a 15,1); volume corpuscular médio 67 fL (80 a 100); ferritina 5 ng/mL (20 a 200).",
+   "tabela_removida_do_texto": "Exame Resultado Valor de referência Hemoglobina 6,9 g/dL 12,0 a 15,1 g/dL Volume corpuscular médio 67 fL 80 a 100 fL Ferritina 5 ng/mL 20 a 200 ng/mL",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/tabelas/revalida_2026_2_q082.png",
+   "sha256": "dc7b8c0f4a3399b45317a41ea410fee3b0cedf2e5e398e046186dde340ab13f2",
+   "tamanho": 18238,
+   "pagina": 23,
+   "caixa_pdf": [
+    38.5,
+    160.0,
+    291.7,
+    227.0
+   ]
+  },
+  "fonte_pagina": 23
+ },
+ {
+  "id": "revalida_2026_2_q083",
+  "code": "REV-2026.2-Q083",
+  "exam_id": "revalida-2026-2",
+  "number": 83,
+  "statement": "Mulher de 48 anos procurou uma Unidade Básica de Saúde (UBS) devido a dor crônica generalizada persistente. Relata que, em consulta com outro médico, recebeu o diagnóstico de fibromialgia e que, desde então, tem feito diversos tratamentos, mas sem resultados. Diante disso, a paciente solicita a prescrição de Cannabis medicinal. Qual é o papel do médico da UBS em relação ao uso da Cannabis medicinal nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Prescrevê-la, visto que ela consta na relação nacional de medicamentos excepcionais do SUS."
+   },
+   {
+    "id": "B",
+    "text": "Solicitar autorização do Conselho Regional de Medicina para sua prescrição no SUS."
+   },
+   {
+    "id": "C",
+    "text": "Informar que faltam evidências que sustentem seu uso e sua prescrição no SUS."
+   },
+   {
+    "id": "D",
+    "text": "Comunicar que seu uso e sua prescrição no SUS devem ocorrer mediante autorização judicial."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 23
+ },
+ {
+  "id": "revalida_2026_2_q084",
+  "code": "REV-2026.2-Q084",
+  "exam_id": "revalida-2026-2",
+  "number": 84,
+  "statement": "Adolescente de 16 anos, assintomática, procura atendimento em uma Unidade de Saúde da Família, sozinha. Em consulta, informa que iniciou atividade sexual consentida com um colega da escola, de mesma idade, razão pela qual pede ao médico que coloque nela um implante contraceptivo de longa duração. Refere que seus pais têm ciência do namoro, mas não sabem que ela iniciou sua vida sexual. Qual é a conduta adequada do médico nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Encaminhar a paciente para o serviço ginecológico."
+   },
+   {
+    "id": "B",
+    "text": "Acionar o Conselho Tutelar da Criança e do Adolescente."
+   },
+   {
+    "id": "C",
+    "text": "Comunicar aos pais da paciente o desejo de anticoncepção."
+   },
+   {
+    "id": "D",
+    "text": "Atender ao pedido feito pela paciente quanto à anticoncepção."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 23
+ },
+ {
+  "id": "revalida_2026_2_q085",
+  "code": "REV-2026.2-Q085",
+  "exam_id": "revalida-2026-2",
+  "number": 85,
+  "statement": "Homem de 44 anos, com histórico de esquizofrenia, conhecido da equipe de uma Unidade Básica de Saúde, foi encontrado por uma agente comunitária de saúde em situação de rua e estava sem uso de medicamentos há vários meses. Tem histórico de múltiplas internações psiquiátricas e de má adesão aos tratamentos no Centro de Atenção Psicossocial. Após o acolhimento, quais ações são indicadas para esse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Administrar antipsicótico de longa duração e encaminhar à assistência social."
+   },
+   {
+    "id": "B",
+    "text": "Iniciar processo de curatela e recomendar a internação compulsória."
+   },
+   {
+    "id": "C",
+    "text": "Acionar a rede de atenção psicossocial e articular o cuidado intersetorial."
+   },
+   {
+    "id": "D",
+    "text": "Resgatar vínculo familiar e promover institucionalização."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 23
+ },
+ {
+  "id": "revalida_2026_2_q086",
+  "code": "REV-2026.2-Q086",
+  "exam_id": "revalida-2026-2",
+  "number": 86,
+  "statement": "Homem de 42 anos está sob investigação em Unidade Básica de Saúde, devido a aumento progressivo do volume abdominal e astenia. O paciente é natural e residente de uma cidade no interior da Bahia, nunca tendo viajado para fora do seu estado. Nega etilismo. O exame físico revela ascite moderada e circulação colateral na parede abdominal. A ultrassonografia mostra: fígado de dimensões preservadas, bordas rombas e sem nodulações; presença de fibrose periportal; esplenomegalia e aumento do calibre da veia porta e líquido ascítico na cavidade peritoneal. A endoscopia digestiva alta indica varizes esofágicas. Qual o exame indicado para confirmação da principal hipótese diagnóstica?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Doppler de sistema portal."
+   },
+   {
+    "id": "B",
+    "text": "Paracentese diagnóstica."
+   },
+   {
+    "id": "C",
+    "text": "Sorologia de hepatites virais."
+   },
+   {
+    "id": "D",
+    "text": "Exame parasitológico."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 23
+ },
+ {
+  "id": "revalida_2026_2_q087",
+  "code": "REV-2026.2-Q087",
+  "exam_id": "revalida-2026-2",
+  "number": 87,
+  "statement": "Adolescente de 15 anos, acompanhada pelos pais, é atendida em Unidade Básica de Saúde. A mãe relata que a paciente passa quase todo o tempo no quarto e não conversa com os familiares, preferindo usar o celular. Durante exame físico, a sós com a médica, a paciente refere estar apaixonada por uma colega de classe e afirma que tem medo de que os pais descubram. Reforça que “gosta de garotas” e se reconhece como mulher. Refere, ainda, que, devido à angústia relacionada ao preconceito da família, vem fazendo cortes em face interna de coxas, para “diminuir o sofrimento”. Ao final, pede à médica que não conte nada disso aos pais. Considerando-se o caso descrito, qual é a conduta adequada a ser adotada pela médica?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Preservar sigilo sobre a orientação sexual e revelar aos pais os comportamentos autolesivos."
+   },
+   {
+    "id": "B",
+    "text": "Guardar sigilo tanto sobre a orientação sexual quanto sobre os comportamentos autolesivos."
+   },
+   {
+    "id": "C",
+    "text": "Revelar aos pais as informações referentes à orientação sexual e aos comportamentos autolesivos."
+   },
+   {
+    "id": "D",
+    "text": "Manter sigilo sobre os comportamentos autolesivos e revelar aos pais a orientação sexual."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 24
+ },
+ {
+  "id": "revalida_2026_2_q088",
+  "code": "REV-2026.2-Q088",
+  "exam_id": "revalida-2026-2",
+  "number": 88,
+  "statement": "Homem de 32 anos estava internado para tratamento de criptococose encefálica. Durante a internação, relatou ao seu médico ser pessoa vivendo com HIV (PVHIV) e portador de tuberculose, sem tratamentos, e entregou-lhe documento em que solicitava que sua condição de saúde não fosse revelada a nenhum familiar, inclusive para sua mãe e seu companheiro. Ainda durante a internação, devido a derrame pleural tuberculoso volumoso, necessitou ser submetido à drenagem pleural. No sétimo dia após o procedimento, apresentou sangramento intenso pelo dreno de tórax, sendo submetido à toracotomia de urgência. Foi identificada lesão aórtica com sangramento ativo e impossível de ser contido. Apesar de todos os esforços da equipe médica, o paciente evoluiu a óbito intraoperatório. Assinale a alternativa que apresenta o correto preenchimento da declaração de óbito nessa situação, na ordem da causa terminal para a básica.",
+  "options": [
+   {
+    "id": "A",
+    "text": "Hemorragia torácica, choque hipovolêmico, rotura aórtica, tuberculose."
+   },
+   {
+    "id": "B",
+    "text": "Choque hipovolêmico, rotura aórtica, tuberculose, PVHIV."
+   },
+   {
+    "id": "C",
+    "text": "Tuberculose, PVHIV, criptococose encefálica, choque hipovolêmico."
+   },
+   {
+    "id": "D",
+    "text": "Rotura aórtica, choque hipovolêmico, PVHIV, criptococose encefálica."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 24
+ },
+ {
+  "id": "revalida_2026_2_q089",
+  "code": "REV-2026.2-Q089",
+  "exam_id": "revalida-2026-2",
+  "number": 89,
+  "statement": "Mulher de 72 anos, diabética, procura atendimento devido a uma lesão pruriginosa em vulva, há 8 meses. Fez uso de corticosteroides tópicos e aciclovir por 6 semanas, sem melhora dos sintomas ou redução da lesão. O exame físico revela: lesão no lábio externo, arredondada, circunscrita, ulcerada, com 3 cm de diâmetro, bordas discretamente elevadas e pouco definidas, fundo hiperemiado e granulado, com depósitos esbranquiçados na região central. Considerando-se o caso clínico, qual é o exame indicado para confirmar a hipótese diagnóstica?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Esfregaço da lesão para coloração de Gram."
+   },
+   {
+    "id": "B",
+    "text": "Genotipagem de HPV."
+   },
+   {
+    "id": "C",
+    "text": "Biópsia da lesão."
+   },
+   {
+    "id": "D",
+    "text": "Vulvoscopia com ácido acético."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "figura": {
+   "arquivo": "revalida_2026_2_q089-figura.png",
+   "alt": "Fotografia da região vulvar com mãos enluvadas afastando as pregas, mostrando no lábio externo uma lesão arredondada, avermelhada, com centro esbranquiçado e bordas elevadas.",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/figuras/revalida_2026_2_q089.png",
+   "sha256": "a5cca5f81cf6c0611042c73ad809fca353968c8e322c1bd387eeae0dd44a9d67",
+   "tamanho": 1708053,
+   "pagina": 24,
+   "caixa_pdf": [
+    307.55908203125,
+    189.01248168945312,
+    552.7681884765625,
+    517.4110107421875
+   ]
+  },
+  "tabela": null,
+  "fonte_pagina": 24
+ },
+ {
+  "id": "revalida_2026_2_q090",
+  "code": "REV-2026.2-Q090",
+  "exam_id": "revalida-2026-2",
+  "number": 90,
+  "statement": "Agricultor de 65 anos chega a uma Unidade Básica de Saúde com história de febre não aferida há 5 dias, tosse com expectoração purulenta, fraqueza e cansaço aos esforços. É tabagista e etilista. O exame físico mostra: paciente consciente e colaborativo; PA 100 x 70 mmHG; FC 84 bpm; FR 16 irpm; SpO₂ 96% em ar ambiente; sem esforço respiratório; ausculta pulmonar com estertores em base direita e sem outras alterações. Qual é o manejo adequado para esse paciente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Indicar internação para antibioticoterapia parenteral."
+   },
+   {
+    "id": "B",
+    "text": "Encaminhar ao pronto atendimento para radiografia de tórax prévia."
+   },
+   {
+    "id": "C",
+    "text": "Prescrever antibioticoterapia oral com reavaliação em 48 horas."
+   },
+   {
+    "id": "D",
+    "text": "Solicitar exames laboratoriais para diagnóstico etiológico."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 25
+ },
+ {
+  "id": "revalida_2026_2_q091",
+  "code": "REV-2026.2-Q091",
+  "exam_id": "revalida-2026-2",
+  "number": 91,
+  "statement": "Adolescente de 15 anos, com quadro de transtorno do espectro autista, é levado pela mãe a uma Unidade de Pronto Atendimento após ter apresentado, na escola, episódio de agitação progressiva, vocalizações intensas e repetitivas, movimentos amplos dos membros superiores, chegando a cair ao chão. Durante todo o episódio, manteve os olhos abertos e reagia aos estímulos do ambiente. Não houve liberação esfincteriana, confusão mental ou sonolência após o episódio. O quadro em questão é compatível com o diagnóstico de crise",
+  "options": [
+   {
+    "id": "A",
+    "text": "epiléptica."
+   },
+   {
+    "id": "B",
+    "text": "de ansiedade aguda."
+   },
+   {
+    "id": "C",
+    "text": "conversiva."
+   },
+   {
+    "id": "D",
+    "text": "de desregulação comportamental."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 25
+ },
+ {
+  "id": "revalida_2026_2_q092",
+  "code": "REV-2026.2-Q092",
+  "exam_id": "revalida-2026-2",
+  "number": 92,
+  "statement": "Lactente de 3 meses é levado a uma Unidade Básica de Saúde por apresentar crises de tosse intensa há 15 dias, acentuando-se há 10 dias em crises sucessivas, com associação de vômitos. Durante as crises, apresenta cianose, hemorragia conjuntival, petéquias e rubor facial. Foi realizada imunização somente ao nascimento. Qual exame deve ser realizado para confirmação da hipótese diagnóstica nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Bacterioscopia pelo Gram em amostra de swab de nasofaringe."
+   },
+   {
+    "id": "B",
+    "text": "Hemograma com contagem de plaquetas."
+   },
+   {
+    "id": "C",
+    "text": "Reação em cadeia da polimerase em amostra de swab de nasofaringe."
+   },
+   {
+    "id": "D",
+    "text": "Sorologia para toxina em amostra de sangue."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 25
+ },
+ {
+  "id": "revalida_2026_2_q093",
+  "code": "REV-2026.2-Q093",
+  "exam_id": "revalida-2026-2",
+  "number": 93,
+  "statement": "Homem de 45 anos foi submetido a colecistectomia laparoscópica eletiva, devido a litíase não complicada. No dia seguinte à cirurgia, apresentou temperatura axilar de 37,5 °C, dor abdominal difusa e FC 110 bpm. O médico assistente deu alta ao paciente, atribuindo as queixas ao processo normal de recuperação. O paciente retornou para reavaliação no 4º dia de pós-operatório, com piora do quadro clínico. A ultrassonografia abdominal identificou grande quantidade de líquido livre abdominal, e a reabordagem cirúrgica mostrou fístula biliar. Após a recuperação, a família do paciente decidiu buscar orientação jurídica. A situação descrita configura",
+  "options": [
+   {
+    "id": "A",
+    "text": "negligência."
+   },
+   {
+    "id": "B",
+    "text": "imprudência."
+   },
+   {
+    "id": "C",
+    "text": "diligência."
+   },
+   {
+    "id": "D",
+    "text": "omissão de socorro."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": null,
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 25
+ },
+ {
+  "id": "revalida_2026_2_q094",
+  "code": "REV-2026.2-Q094",
+  "exam_id": "revalida-2026-2",
+  "number": 94,
+  "statement": "Adolescente de 16 anos comparece à consulta em ambulatório de ginecologia referindo ainda não ter menstruado, a despeito de ter apresentado telarca aos 10 anos e pubarca logo em seguida. Ela não tem outras queixas. Tem 1,68 m de estatura e pesa 65 kg. A paciente tem pilificação axilar habitual, acne grau II em face, tórax e região dorsal. O exame ginecológico mostra: mamas com configuração normal; distribuição de pelos pubianos adequada para o sexo feminino; órgãos genitais externos sem alterações evidentes; hímen íntegro, com orifício orbicular permeável. No exame, não se procedeu ao toque vaginal. Considerando-se o caso descrito, qual é a hipótese diagnóstica a ser investigada?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Síndrome de Turner."
+   },
+   {
+    "id": "B",
+    "text": "Insensibilidade androgênica."
+   },
+   {
+    "id": "C",
+    "text": "Amenorreia hipotalâmica primária."
+   },
+   {
+    "id": "D",
+    "text": "Anomalia Mülleriana."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 25
+ },
+ {
+  "id": "revalida_2026_2_q095",
+  "code": "REV-2026.2-Q095",
+  "exam_id": "revalida-2026-2",
+  "number": 95,
+  "statement": "Homem de 53 anos, em consulta a uma Unidade Básica de Saúde (UBS), vigilante, viúvo, relata que perdeu a esposa e um filho de 17 anos em uma tentativa de assalto, há 2 anos. Refere aumento progressivo do consumo de álcool e isolamento social desde o ocorrido. Informa que, durante a semana, ingere cerca de 2 latas de cerveja após o trabalho e, aos finais de semana, consome uma caixa de cerveja ao dia. Afirma também que, ultimamente, tem recebido reclamações do chefe, pois tem chegado atrasado ao trabalho. Nega episódios de “apagões”, agressões ou acidentes. Ao exame psíquico, apresenta humor deprimido e sono fragmentado. Nega plano suicida no momento. Não há sinais de abstinência aguda nem alterações ao exame físico. Qual deve ser a abordagem inicial nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Diagnosticar o abuso de álcool utilizando o questionário CAGE e prescrever antidepressivo tricíclico."
+   },
+   {
+    "id": "B",
+    "text": "Utilizar a abordagem de redução de danos no manejo do consumo de álcool e prescrever dissulfiran."
+   },
+   {
+    "id": "C",
+    "text": "Realizar intervenção breve e terapia multiprofissional na UBS para abordagem do consumo de álcool."
+   },
+   {
+    "id": "D",
+    "text": "Encaminhar paciente para internação hospitalar de curta duração e envolver os familiares no plano de cuidado."
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 26
+ },
+ {
+  "id": "revalida_2026_2_q096",
+  "code": "REV-2026.2-Q096",
+  "exam_id": "revalida-2026-2",
+  "number": 96,
+  "statement": "Mulher de 38 anos é atendida em Unidade Básica de Saúde para investigação de quadro de emagrecimento e palpitações. Relata que o emagrecimento não é intencional e que seu apetite está preservado. Além disso, refere incomodar-se muito com a sensação de palpitações esporádicas, sentidas geralmente durante o esforço, mas também, por vezes, mesmo em repouso. O exame físico revela: PA 160 x 80 mmHg; FC 132 bpm em repouso; exoftalmia; pele quente e úmida e alopecia generalizada. Exames laboratoriais mostram os seguintes resultados: Qual esquema terapêutico deve ser instituído nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Metimazol e propranolol."
+   },
+   {
+    "id": "B",
+    "text": "Propiltiouracil e amiodarona."
+   },
+   {
+    "id": "C",
+    "text": "Carbonato de lítio e propafenona."
+   },
+   {
+    "id": "D",
+    "text": "Iodo radioativo e procainamida."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "CLINICA_MEDICA",
+  "figura": null,
+  "tabela": {
+   "arquivo": "revalida_2026_2_q096-tabela.png",
+   "alt": "Tabela de exames de tireoide com colunas Exame, Resultado e Valor de referência: TSH 0,01 mUI/L (0,60 a 4,48); T4 livre 4,2 ng/dL (0,92 a 1,68).",
+   "tabela_removida_do_texto": "Exame Resultado Valor de referência TSH 0,01 mUI/L 0,60 a 4,48 mUI/L T4 livre 4,2 ng/dL 0,92 a 1,68 ng/dL",
+   "arquivo_origem": "revisao-questoes/revalida_2026_2/tabelas/revalida_2026_2_q096.png",
+   "sha256": "c02be423a239b97856efe8b51894890c54a271cde57306ecfb1e3688a59e56e1",
+   "tamanho": 13124,
+   "pagina": 26,
+   "caixa_pdf": [
+    38.5,
+    505.0,
+    291.7,
+    557.0
+   ]
+  },
+  "fonte_pagina": 26
+ },
+ {
+  "id": "revalida_2026_2_q097",
+  "code": "REV-2026.2-Q097",
+  "exam_id": "revalida-2026-2",
+  "number": 97,
+  "statement": "Criança de 3 anos é levada para consulta de rotina. Apresenta-se irritada, com relato materno de febre intermitente e perda ponderal de 2 kg nos últimos 2 meses. O exame físico mostra que a PA está no percentil 95 para a idade e altura. Nota-se presença de equimoses periorbitárias bilaterais e de massa firme em flanco direito que ultrapassa a linha média abdominal. Qual é o diagnóstico mais provável nessa situação?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Tumor de Wilms."
+   },
+   {
+    "id": "B",
+    "text": "Neuroblastoma."
+   },
+   {
+    "id": "C",
+    "text": "Rabdomiossarcoma."
+   },
+   {
+    "id": "D",
+    "text": "Linfoma de Burkitt."
+   }
+  ],
+  "correct_option": "B",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 26
+ },
+ {
+  "id": "revalida_2026_2_q098",
+  "code": "REV-2026.2-Q098",
+  "exam_id": "revalida-2026-2",
+  "number": 98,
+  "statement": "Menina de 1 ano é levada a uma Unidade de Pronto Atendimento com história de abaulamento em região inguinal até o lábio maior esquerdo, há cerca de 6 meses. O exame físico revela abaulamento inguinal esquerdo, com conteúdo fibroelástico, pequeno e redutível. Qual é a conduta adequada nesse caso?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Indicar cirurgia eletiva."
+   },
+   {
+    "id": "B",
+    "text": "Encaminhar para cirurgia de urgência."
+   },
+   {
+    "id": "C",
+    "text": "Manter conduta expectante."
+   },
+   {
+    "id": "D",
+    "text": "Prescrever gonadotrofina coriônica."
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "PEDIATRIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 26
+ },
+ {
+  "id": "revalida_2026_2_q099",
+  "code": "REV-2026.2-Q099",
+  "exam_id": "revalida-2026-2",
+  "number": 99,
+  "statement": "Paciente, G3P1A1, com gestação de 13 semanas, datada pela ecografia de 8 semanas, procura pronto atendimento devido à queixa de sangramento vaginal iniciado há 3 dias, em pequena quantidade. A tipagem sanguínea anotada no cartão de pré-natal é A negativo. Ela desconhece a tipagem sanguínea de seu parceiro. O exame ginecológico mostra sangue escurecido em moderada quantidade na vagina e colo uterino fechado. É solicitado teste de coombs indireto, cujo resultado é positivo. Qual a conduta nesse momento?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Alertar paciente sobre a inviabilidade da gestação."
+   },
+   {
+    "id": "B",
+    "text": "Realizar imunoglobulina anti-RH."
+   },
+   {
+    "id": "C",
+    "text": "Solicitar tipagem sanguínea do parceiro."
+   },
+   {
+    "id": "D",
+    "text": "Encaminhar paciente ao pré-natal de alto risco."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "GINECOLOGIA_OBSTETRICIA",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 26
+ },
+ {
+  "id": "revalida_2026_2_q100",
+  "code": "REV-2026.2-Q100",
+  "exam_id": "revalida-2026-2",
+  "number": 100,
+  "statement": "Após a ocorrência de grandes ondas de calor em determinada região, idosa de 72 anos procura atendimento em Unidade Básica de Saúde por apresentar tontura, fraqueza, cefaleia pulsátil e redução do volume urinário. Ela refere ser hipertensa e morar em uma casa pequena com pouca ventilação. Nega outras comorbidades ou sintomas adicionais. O exame físico mostra PA 100 x 60 mmHg, FC 110 bpm, mucosas secas e temperatura axilar de 38 °C. A equipe de saúde observa que outros moradores da área estão nas mesmas condições dessa paciente. Nessa situação, quais são as estratégias adequadas a serem adotadas, nas abordagens individual e coletiva, respectivamente?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Prescrever antitérmicos, antieméticos e resfriamento corporal; mobilizar os agentes comunitários na orientação das famílias quanto às medidas para amenizar os efeitos do calor."
+   },
+   {
+    "id": "B",
+    "text": "Iniciar reposição hidroeletrolítica e encaminhar paciente ao pronto-socorro; notificar caso à Secretaria de Saúde para intervenções nesse território."
+   },
+   {
+    "id": "C",
+    "text": "Orientar o aumento da ingestão hídrica em domicílio; realizar reunião de equipe para organizar o fluxo assistencial desses atendimentos."
+   },
+   {
+    "id": "D",
+    "text": "Indicar reposição hídrica, resfriamento corporal e monitorização; realizar a vigilância ativa de idosos vulneráveis com ações intersetoriais."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "gabarito_preliminar": true,
+  "observacao_gabarito": "Gabarito preliminar: questão do Revalida 2026/2, ainda sem gabarito definitivo do Inep",
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "figura": null,
+  "tabela": null,
+  "fonte_pagina": 26
+ }
+]
