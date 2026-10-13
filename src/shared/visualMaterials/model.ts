@@ -7,7 +7,10 @@
  */
 import { SPECIALTY_KEYS, VISUAL_TOKENS, type SpecialtyKey, type SpecialtyPalette } from "./tokens";
 
-export const VISUAL_TEMPLATE_VERSION = "visual-1.0";
+/** Modelo visual atual. "visual-1.0" (clássico, pranchas de 2026-10-06) continua disponível por BuildOptions.template. */
+export const VISUAL_TEMPLATE_VERSION = "criativo-1";
+export const VISUAL_TEMPLATE_VERSIONS = ["criativo-1", "visual-1.0"] as const;
+export type VisualTemplateVersion = (typeof VISUAL_TEMPLATE_VERSIONS)[number];
 
 export type VisualModel = "feed" | "a4" | "story" | "flashcard_digital" | "flashcard_a6";
 export type VisualSide = "single" | "front" | "back";
@@ -68,6 +71,8 @@ export const ILLUSTRATION_ICONS = {
   comprimido: "Comprimido",
   cronometro: "Cronômetro",
   prancheta: "Prancheta",
+  pulmao: "Pulmões (cena com bacilos)",
+  bebe: "Bebê (pediatria)",
 } as const;
 export type IllustrationIcon = keyof typeof ILLUSTRATION_ICONS;
 
@@ -184,8 +189,9 @@ export const MODEL_FIELDS: Record<VisualModel, FieldKey[]> = {
   feed: COMMON_PIECE,
   story: COMMON_PIECE,
   a4: [...COMMON_PIECE, "resumo_paragrafo", "bloco", "mnemonico"],
-  flashcard_digital: ["card_id", "ordem", "lote", "nivel", "tema", "pergunta", "resposta", "explicacao", "pegadinha", "fonte", "atualizacao"],
-  flashcard_a6: ["card_id", "ordem", "lote", "nivel", "tema", "pergunta", "resposta", "como_lembrar", "pegadinha", "referencia", "fonte", "atualizacao"],
+  // ilustracao nos flashcards: só escolhe a cena do cabeçalho do modelo criativo (opcional)
+  flashcard_digital: ["card_id", "ordem", "lote", "nivel", "tema", "pergunta", "resposta", "explicacao", "pegadinha", "fonte", "atualizacao", "ilustracao"],
+  flashcard_a6: ["card_id", "ordem", "lote", "nivel", "tema", "pergunta", "resposta", "como_lembrar", "pegadinha", "referencia", "fonte", "atualizacao", "ilustracao"],
 };
 
 export const REQUIRED_FIELDS: Record<VisualModel, FieldKey[]> = {
