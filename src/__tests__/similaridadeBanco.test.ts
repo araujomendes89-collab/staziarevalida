@@ -332,7 +332,7 @@ describe("Só o que mudou é reprocessado", () => {
 describe("Com o nó da taxonomia nas questões (derivado do tema real, só para o teste)", () => {
   it("as questões com perfil ganham o nó e só elas são reprocessadas", async () => {
     // nó = teste-<área>.<tema da questão>.<subtema da questão>; pai = teste-<área>.<tema> (campos reais topic e subtopic)
-    const slugSql = (x: string) => `btrim(regexp_replace(public.similarity_norm(${x}), ' ', '-', 'g'), '-')`;
+    const slugSql = (x: string) => `btrim(left(regexp_replace(public.similarity_norm(${x}), ' ', '-', 'g'), 50), '-')`;
     await dev.db.exec(`
       update public.question_profiles p
          set taxonomy_parent_id = 'teste-' || lower(q.area::text) || '.' || ${slugSql("q.topic")},
