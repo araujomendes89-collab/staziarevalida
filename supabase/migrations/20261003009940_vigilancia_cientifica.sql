@@ -334,8 +334,12 @@ create policy "configuração da vigilância: equipe lê" on public.ch_vigilance
 -- ---------------------------------------------------------------- 5. fila de auditoria
 create table if not exists public.ch_vigilance_items (
   id uuid primary key default gen_random_uuid(),
-  source_id uuid not null references public.ch_sources (id) on delete cascade,
+  -- nulo só no documento descoberto numa página-índice (ainda fora da biblioteca; 9960)
+  source_id uuid references public.ch_sources (id) on delete cascade,
   kind text not null check (kind in ('mudanca', 'nova_versao', 'retratada', 'quarentena', 'fora_do_ar', 'fonte_nova')),
+  theme_node_id uuid references public.ch_taxonomy_nodes (id) on delete cascade,
+  index_page_id uuid,
+  discovery_key text,
   change_id uuid references public.ch_source_changes (id) on delete cascade,
   detected_at timestamptz not null default now(),
   summary text not null check (char_length(summary) between 1 and 600),

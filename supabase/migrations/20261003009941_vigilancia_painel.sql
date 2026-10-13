@@ -50,14 +50,18 @@ create or replace function public.ch_vigilance_item_json(p_id uuid) returns json
 as $$
   select jsonb_build_object(
     'id', i.id, 'tipo', i.kind,
-    'fonte', jsonb_build_object('id', s.id, 'titulo', s.title, 'orgao', s.organ, 'versao', s.version, 'url', s.url, 'nivel', s.authority_level, 'status', s.status),
+    -- documento descoberto numa página-índice (ainda fora da biblioteca): fonte sem id, com o título e o link achados, status 'descoberto'
+    'fonte', case when s.id is not null then jsonb_build_object('id', s.id, 'titulo', s.title, 'orgao', s.organ, 'versao', s.version, 'url', s.url, 'nivel', s.authority_level, 'status', s.status)
+                  else jsonb_build_object('id', null, 'titulo', i.version_candidates -> 0 ->> 'titulo', 'orgao', i.details ->> 'pagina_titulo', 'versao', null,
+                                          'url', i.version_candidates -> 0 ->> 'url', 'nivel', null, 'status', 'descoberto') end,
     'detectado_em', i.detected_at, 'resumo', i.summary, 'versoes_candidatas', i.version_candidates, 'situacao', i.status,
     'questoes_afetadas', case when i.kind = 'fonte_nova' then null else
       (select count(distinct qc.question_id)::int from public.question_claims qc join public.ch_evidence e on e.claim_id = qc.claim_id where e.source_id = s.id) end,
+    'tema', case when i.theme_node_id is not null then jsonb_build_object('id', i.theme_node_id, 'nome', (select n.name from public.ch_taxonomy_nodes n where n.id = i.theme_node_id)) end,
     'nota', i.note,
     'analise', case when i.analysis_status is not null then jsonb_build_object('situacao', i.analysis_status, 'resultado', i.analysis, 'pedida_em', i.analysis_requested_at, 'job_id', i.analysis_job_id) end,
     'detalhes', i.details)
-  from public.ch_vigilance_items i join public.ch_sources s on s.id = i.source_id
+  from public.ch_vigilance_items i left join public.ch_sources s on s.id = i.source_id
   where i.id = p_id
 $$;
 
@@ -157,6 +161,9 @@ begin
   if not found then raise exception 'Item da vigilância não encontrado.' using errcode = 'P0002'; end if;
   select * into s from public.ch_sources where id = i.source_id for update;
   select * into v from public.ch_source_vigilance where source_id = i.source_id;
+  if i.source_id is null and p_action in ('bloquear', 'desbloquear') then
+    raise exception 'Este documento ainda não está na biblioteca: cadastre a fonte (Fontes) antes de bloquear ou desbloquear.' using errcode = '22023';
+  end if;
 
   if p_action = 'vista' then
     update public.ch_vigilance_items set status = case when status = 'pendente' then 'vista' else status end,
