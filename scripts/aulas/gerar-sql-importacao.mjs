@@ -322,11 +322,11 @@ falta (ordem, item) as (
     from fontes f where not exists (select 1 from public.ch_sources s where public.ch_url_norm(s.url) = public.ch_url_norm(f.url) and s.status = 'current')
   union all select 5, 'o tema "' || ${lit(pacote.tema.tema)} || '" na taxonomia publicada da Central' where not exists (select 1 from tema)
   union all select 6, 'a aula ${pacote.codigo} na Central (cole 1-Importar-aula.sql)' where not exists (select 1 from versao)
-  union all select 7, 'as ${pacote.afirmacoes.length} afirmações da aula, cada uma com evidência compatível e trecho conferido'
+  union all select 7, 'as ${pacote.afirmacoes.length} afirmações da aula, cada uma com evidência e o trecho citado (página e conferência literal)'
    where exists (select 1 from versao) and (select count(*) from public.ch_unit_claims uc join versao on versao.id = uc.unit_version_id
                   where exists (select 1 from public.ch_evidence e join public.ch_source_passages sp on sp.id = e.passage_id
-                                 where e.claim_id = uc.claim_id and e.verdict = 'compatible' and not e.stale and e.discarded_at is null
-                                   and sp.literal_check is not null and sp.reading_kind is not null)) <> ${pacote.afirmacoes.length}
+                                 where e.claim_id = uc.claim_id and e.verdict in ('compatible', 'insufficient') and e.discarded_at is null
+                                   and to_jsonb(sp) ->> 'literal_check' is not null and to_jsonb(sp) ->> 'reading_kind' is not null)) <> ${pacote.afirmacoes.length}
   union all select 8, 'os materiais da aula (aula, pontos-chave, cards, flashcards e questões)'
    where exists (select 1 from versao) and (select count(*) from public.ch_materials m join versao on versao.id = m.unit_version_id) < ${materiaisEsperados(pacote).length}
 )
@@ -335,7 +335,11 @@ select case when not exists (select 1 from falta) then
   case v.status when 'awaiting_review' then 'aguardando revisão médica e editorial (na fila "Aguardando revisão" de Central > Unidades)'
                 when 'approved' then 'aprovada pelas pessoas (falta o administrador publicar)'
                 when 'published' then 'publicada pelas pessoas' else v.status end ||
-  '; ' || (select count(*) from public.ch_unit_claims uc where uc.unit_version_id = v.id) || ' afirmações com evidência; materiais: ' ||
+  '; ' || (select count(*) from public.ch_unit_claims uc where uc.unit_version_id = v.id) || ' afirmações com o trecho citado (' ||
+  (select count(*) from public.ch_unit_claims uc join public.ch_claims c on c.id = uc.claim_id where uc.unit_version_id = v.id and c.status = 'compatible') ||
+  ' compatíveis' || coalesce(', ' || nullif((select count(*) from public.ch_unit_claims uc join public.ch_claims c on c.id = uc.claim_id
+                                            where uc.unit_version_id = v.id and c.status <> 'compatible'), 0) || ' para o revisor corrigir', '') ||
+  '); materiais: ' ||
   (select string_agg(m.kind, ', ' order by m.kind) from public.ch_materials m where m.unit_version_id = v.id) ||
   '; arquivo final da aula: ' || case when exists (select 1 from public.ch_materials m join public.ch_renders x on x.material_id = m.id and x.material_hash = m.content_hash and coalesce((x.check_result ->> 'ok')::boolean, false)
                                                   where m.unit_version_id = v.id and m.kind = 'lesson') then 'gerado e conferido'
@@ -374,6 +378,7 @@ O QUE ENTRA
     (marcadas "Questão StaziaMed, não é questão oficial do Inep") e ${pacote.visuais.comandos.length} comandos de peças visuais.
   - ${arquivos.length ? `${arquivos.length} arquivos (imagens e PDF) só como referência; os arquivos sobem pelo script scripts/aulas/subir-arquivos.mjs, só com a sua autorização.` : "Sem imagens nem PDF nesta importação (o manifesto ainda não existia)."}
   - Tema da Central: ${pacote.tema.area} > ${pacote.tema.subarea} > ${pacote.tema.tema}.
+  - O aluno não vê nenhuma referência (sem lista de fontes, páginas ou trechos): as fontes ficam na Central, para o revisor e a equipe.
 
 DEPOIS (pessoas, na tela Central > Unidades e revisão)
   1. O processamento gera sozinho o PDF conferido da aula (sem IA). Precisa do site/Cloud Run deste ramo.

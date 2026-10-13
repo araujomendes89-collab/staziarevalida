@@ -1,0 +1,63 @@
+== 1) pacote da rodada 2, na ordem
+  ok   1-fontes-vinculadas/1-Fontes-vinculadas.sql: OK: Fontes vinculadas colada
+  ok   1-fontes-vinculadas/0-CONFERIR: OK: Fontes vinculadas no banco (2 tabelas com RLS, função do aluno, 3 funções da equipe, regras e nota do que 
+  ok   2-similaridade-estrutura/1-Similaridade.sql: (sem linha)
+  ok   2-similaridade-estrutura/0-CONFERIR: OK: motor de questões parecidas instalado (6 tabelas com RLS, 7 funções das telas, 10 do processamento; aluno 
+  ok   3-carga-das-provas/1-aviso-gabarito-preliminar.sql: OK: 1-aviso colada
+  ok   3-carga-das-provas/2-01-correcoes-enamed-2025.sql: OK: ENAMED 2025: 62 questões corrigidas agora (85 campos); 0 campos já estavam corrigidos; 0 pulados (de 85)
+  ok   3-carga-das-provas/2-02-correcoes-revalida-2020.sql: OK: Revalida 2020: 24 questões corrigidas agora (25 campos); 0 campos já estavam corrigidos; 0 pulados (de 25)
+  ok   3-carga-das-provas/2-03-correcoes-revalida-2021.sql: OK: Revalida 2021: 29 questões corrigidas agora (40 campos); 0 campos já estavam corrigidos; 0 pulados (de 40)
+  ok   3-carga-das-provas/2-04-correcoes-revalida-2022-1.sql: OK: Revalida 2022/1: 100 questões corrigidas agora (397 campos); 0 campos já estavam corrigidos; 0 pulados (de
+  ok   3-carga-das-provas/2-05-correcoes-revalida-2022-2.sql: OK: Revalida 2022/2: 15 questões corrigidas agora (17 campos); 0 campos já estavam corrigidos; 0 pulados (de 1
+  ok   3-carga-das-provas/2-06-correcoes-revalida-2023-1.sql: OK: Revalida 2023/1: 22 questões corrigidas agora (22 campos); 0 campos já estavam corrigidos; 0 pulados (de 2
+  ok   3-carga-das-provas/2-07-correcoes-revalida-2023-2.sql: OK: Revalida 2023/2: 11 questões corrigidas agora (11 campos); 0 campos já estavam corrigidos; 0 pulados (de 1
+  ok   3-carga-das-provas/2-08-correcoes-revalida-2024-1.sql: OK: Revalida 2024/1: 17 questões corrigidas agora (20 campos); 0 campos já estavam corrigidos; 0 pulados (de 2
+  ok   3-carga-das-provas/2-09-correcoes-revalida-2024-2.sql: OK: Revalida 2024/2: 18 questões corrigidas agora (20 campos); 0 campos já estavam corrigidos; 0 pulados (de 2
+  ok   3-carga-das-provas/2-10-correcoes-revalida-2025-1.sql: OK: Revalida 2025/1: 8 questões corrigidas agora (8 campos); 0 campos já estavam corrigidos; 0 pulados (de 8)
+  ok   3-carga-das-provas/2-11-correcoes-revalida-2025-2.sql: OK: Revalida 2025/2: 21 questões corrigidas agora (21 campos); 0 campos já estavam corrigidos; 0 pulados (de 2
+  ok   3-carga-das-provas/2-12-correcoes-revalida-2026-1.sql: OK: Revalida 2026/1: 35 questões corrigidas agora (35 campos); 0 campos já estavam corrigidos; 0 pulados (de 3
+  ok   3-carga-das-provas/3-prova-nova-revalida-2026-2.sql: OK: Revalida 2026/2: 100 questões no banco (100 criadas agora); gabarito atual: PRELIMINARY 100
+  ok   3-carga-das-provas/0-CONFERIR: OK: conferência da carga das provas (701 de 701 campos já fiéis; 0 de 77 questões com imagem ligada; 2026/2 co
+  ok   4-explicacoes/1-Estrutura-carga-das-explicacoes.sql: (sem linha)
+  ok   4-explicacoes/2-Prova-01-revalida_2020_1.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2020 — 96 questões: 96 gravadas, 0 já estavam iguai
+  ok   4-explicacoes/2-Prova-02-revalida_2021_1.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2021 — 99 questões: 99 gravadas, 0 já estavam iguai
+  ok   4-explicacoes/2-Prova-03-revalida_2022_1.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2022/1 — 99 questões: 99 gravadas, 0 já estavam igu
+  ok   4-explicacoes/2-Prova-04-revalida_2022_2.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2022/2 — 99 questões: 99 gravadas, 0 já estavam igu
+  ok   4-explicacoes/2-Prova-05-revalida_2023_1.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2023/1 — 95 questões: 95 gravadas, 0 já estavam igu
+  ok   4-explicacoes/2-Prova-06-revalida_2023_2.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2023/2 — 98 questões: 98 gravadas, 0 já estavam igu
+  ok   4-explicacoes/2-Prova-07-revalida_2024_1.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2024/1 — 98 questões: 98 gravadas, 0 já estavam igu
+  ok   4-explicacoes/2-Prova-08-revalida_2024_2.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2024/2 — 91 questões: 91 gravadas, 0 já estavam igu
+  ok   4-explicacoes/2-Prova-09-revalida_2025_1.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2025/1 — 99 questões: 99 gravadas, 0 já estavam igu
+  ok   4-explicacoes/2-Prova-10-revalida_2025_2.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2025/2 — 97 questões: 97 gravadas, 0 já estavam igu
+  ok   4-explicacoes/2-Prova-11-revalida_2026_1.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2026/1 — 98 questões: 98 gravadas, 0 já estavam igu
+  ok   4-explicacoes/2-Prova-12-revalida_2026_2.sql: OK: Carga das explicações (Professor e Auditor) · Revalida 2026/2 (gabarito preliminar) — 94 questões: 94 grav
+  ok   4-explicacoes/2-Prova-13-enamed_2025.sql: OK: Carga das explicações (Professor e Auditor) · ENAMED 2025 — 98 questões: 98 gravadas, 0 já estavam iguais,
+  ok   4-explicacoes/0-CONFERIR: OK: estrutura da carga no banco; ENAMED 2025 98/98 (98 esperando o revisor, 0 no ar); Revalida 2020 96/96 (96 
+  ok   5-similaridade-perfis/2-Perfis-da-revisao.sql: OK: 1217 perfis da revisão local no banco (1217 neste arquivo; questão que não existe no banco é pulada).
+  ok   5-similaridade-perfis/0-CONFERIR: OK: motor de questões parecidas instalado (6 tabelas com RLS, 7 funções das telas, 10 do processamento; aluno 
+== 2) aula GR-001: antes de colar
+  ok   0-CONFERIR antes: FALTA: a função de importação (cole 1-Importar-aula.sql); as colunas do trecho (tipo de leitura e conferência literal); a aula GR-001 na Central (cole 1-Importar-aula.sql).
+== 3) 1-Importar-aula.sql, 1ª vez
+  ok   OK: aula GR-001 importada: versão 1, aguardando revisão médica e editorial; 42 afirmações com evidência (42 novas); materiais: lesson, summary, visual_cards, flashcards, questions; 61 arquivos referenciados; avisos para o revisor: 6 (89 ms)
+  ok   0-CONFERIR depois: OK: aula GR-001 na Central: versão 1, aguardando revisão médica e editorial (na fila "Aguardando revisão" de Central > Unidades); 42 afirmações com o trecho citado (38 compatíveis, 4 para o revisor corrigir); materiais: flashcards, lesson, questions, summary, visual_cards; arquivo final da aula: ainda não gerado (o processamento gera sozinho, sem IA)
+  ok   visitante: nenhuma função nova
+  ok   funções novas para quem entrou: app_ch_import_lesson_package(jsonb) (a própria função recusa quem não é da equipe)
+  ok   nenhuma tabela nova aberta
+  ok   nenhuma fonte criada (as 3 já estavam no catálogo)
+  ok   versão importada: [{"id":"1344914c-9508-410e-b1ad-cbcef3771a8d","status":"awaiting_review","version":1}]
+  ok   nada publicado, nenhuma aula do aluno
+     afirmações por situação: [{"status":"compatible","n":38},{"status":"insufficient","n":4}]
+     pendências para publicar: 22
+     pedido do arquivo final: [{"step":"render","status":"queued","document_id":null}]
+== 4) 1-Importar-aula.sql, 2ª vez
+  ok   OK: aula GR-001 já estava importada (nada mudou): versão 1, aguardando revisão médica e editorial; 42 afirmações com evidência; materiais: flashcards, lesson, questions, summary, visual_cards; avisos para o revisor: 6 (40 ms)
+  ok   colar 2 vezes não muda nada: 0 diferenças (estrutura, permissões e dados de todas as tabelas)
+  ok   0-CONFERIR de novo: OK: aula GR-001 na Central: versão 1, aguardando revisão médica e editorial (na fila "Aguardando revisão" de Central > U
+== 5) os 0-CONFERIR da rodada 2 continuam OK
+  ok   1-fontes-vinculadas: OK: Fontes vinculadas no banco (2 tabelas com RLS, função do aluno, 3 funções da equipe, r
+  ok   2-similaridade-estrutura: OK: motor de questões parecidas instalado (6 tabelas com RLS, 7 funções das telas, 10 do p
+  ok   3-carga-das-provas: OK: conferência da carga das provas (701 de 701 campos já fiéis; 0 de 77 questões com imag
+  ok   4-explicacoes: OK: estrutura da carga no banco; ENAMED 2025 98/98 (98 esperando o revisor, 0 no ar); Reva
+  ok   5-similaridade-perfis: OK: motor de questões parecidas instalado (6 tabelas com RLS, 7 funções das telas, 10 do p
+
+RESULTADO: tudo OK
