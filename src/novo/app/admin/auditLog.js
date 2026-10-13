@@ -17,6 +17,7 @@ export const AI_FUNCTION_NAME = {
   assistente_conferir: "Assistente: conferir",
   assistente_revisar: "Assistente: conversar e revisar",
   busca_fontes: "Busca de fontes oficiais",
+  similaridade: "Questões parecidas",
 };
 /** Dólar em pt-BR: "US$ 0,0123" (até 4 casas); zero vira "US$ 0" (igual ao da Central de IAs). */
 const usd = (n) => {
@@ -168,12 +169,17 @@ export const ACTION_LABEL = {
   "draft_check.request": "Conferência de questões inéditas por IA pedida",
   "draft_check.result": "Conferência de questões inéditas por IA terminou",
   "ai_request.cancel": "Pedido de IA cancelado",
+  // questões parecidas (migração 20261003009910)
+  "similarity.relation.review": "Relação entre questões revisada",
+  "similarity.reprocess": "Questões parecidas: reprocessamento pedido",
+  "similarity.classify": "Questões parecidas: classificação por IA pedida",
 };
 
 // começo do nome técnico → parte da Administração (para uma ação nova que ainda não ganhou nome acima)
 const PART = {
   user: "Usuários", plan: "Planos", settings: "Configurações", questions: "Questões", question: "Questões", station: "Estações",
   guideline_update: "Atualizações", lesson: "Aulas", podcast: "Podcasts", tutor: "Tutor", gamification: "Stazia Arena", ai: "Central de IAs",
+  similarity: "Questões",
 };
 
 // começo do nome técnico → ação da Central de Conteúdo (ch_audit)

@@ -18,6 +18,7 @@ import {
   FUNCTION_KEYS,
   isProviderId,
   isSearchFunction,
+  requiresSavedConfig,
   loadAiConfig,
   makeProvider,
   PROVIDER_NAMES,
@@ -59,7 +60,7 @@ export interface MaestroDeps {
 }
 
 export interface MaestroOrigin {
-  source: "central" | "analise" | "conferencia" | "aula" | "podcast" | "assistente" | "fontes" | "questoes_staziamed";
+  source: "central" | "analise" | "conferencia" | "aula" | "podcast" | "assistente" | "fontes" | "questoes_staziamed" | "similaridade";
   itemId?: string | null;
   actorId?: string | null;
 }
@@ -289,6 +290,8 @@ function resolveRefs(cfg: AiConfig, fn: AiFunctionKey, env: NodeJS.ProcessEnv, o
   if (isSearchFunction(fn)) {
     return fc ? { fc, mode: fc.mode, primary: fc.primary, fallback: fc.fallback, reviewers: fc.reviewers } : { fc: null, mode: "sozinha", primary: null, fallback: null, reviewers: [] };
   }
+  // Questões parecidas: sem configuração salva fica desligada (nem as variáveis nem a escolha da aba a ligam)
+  if (!fc && requiresSavedConfig(fn)) return { fc: null, mode: "sozinha", primary: null, fallback: null, reviewers: [] };
   if (fc) {
     let primary = fc.primary;
     if (cfg.settings.tab_override_enabled) {
@@ -770,7 +773,7 @@ export async function runFunction<T>(deps: MaestroDeps, fn: AiFunctionKey, req: 
   const cfg = await loadAiConfig(deps.db);
   const rs = resolveRefs(cfg, fn, env, override);
   const early = (message: string) => emptyResult<T>(crypto.randomUUID(), "falhou", message);
-  if (!rs.primary) return early(isSearchFunction(fn) ? SEARCH_OFF : `Nenhuma IA definida para ${fn}: configure na Central de IAs.`);
+  if (!rs.primary) return early(requiresSavedConfig(fn) ? SEARCH_OFF : `Nenhuma IA definida para ${fn}: configure na Central de IAs.`);
 
   // busca de fontes oficiais com o Gemini salvo (principal ou reserva): fica desligada, nunca busca (nem na reserva)
   if (isSearchFunction(fn) && [rs.primary, rs.fallback].some((r) => r?.provider === "gemini")) return early(`Desligada: ${SEARCH_NO_GEMINI}`);

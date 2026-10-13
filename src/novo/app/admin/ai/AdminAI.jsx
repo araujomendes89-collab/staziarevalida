@@ -19,6 +19,7 @@ const FUNCTIONS = [
   ["assistente_conferir", "Assistente: conferir"],
   ["assistente_revisar", "Assistente: conversar e revisar"],
   ["busca_fontes", "Busca de fontes oficiais"],
+  ["similaridade", "Questões parecidas"],
 ];
 const FUNCTION_NAME = Object.fromEntries(FUNCTIONS);
 const STATUS = { pronta: ["pronta", "success"], sem_chave: ["sem chave", "warning"], chave_recusada: ["chave recusada", "danger"], so_no_mac: ["roda só no Mac", "neutral"], erro: ["erro", "danger"] };

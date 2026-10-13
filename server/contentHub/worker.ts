@@ -86,6 +86,7 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
   let lastWatch = 0;
   let lastPending = 0;
   let lastEmbed = 0;
+  let lastSimilarity = 0;
 
   const tick = async () => {
     const job = await deps.db.service<Job | null>("ch_worker_claim", { p_stale_seconds: staleSeconds });
@@ -169,6 +170,12 @@ export function createContentHubWorker(deps: PipelineDeps, opts: WorkerOptions =
       if (!worked && deps.embedder && Date.now() - lastEmbed > 120_000) {
         lastEmbed = Date.now();
         busy = embed({ max: 200 });
+        await busy;
+      }
+      // questões parecidas: com a função ligada na Central de IAs, o que mudou entra na fila sozinho (no máximo a cada 10 minutos)
+      if (!worked && Date.now() - lastSimilarity > 10 * 60_000) {
+        lastSimilarity = Date.now();
+        busy = deps.db.service<boolean>("ch_worker_similarity_autoqueue").catch(() => false);
         await busy;
       }
       if (failures > 0) deps.log?.("[central] worker voltou ao normal.");
