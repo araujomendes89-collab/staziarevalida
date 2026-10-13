@@ -204,7 +204,7 @@ function OfficialSources({ correction }) {
  * `go` (navegação das telas) liga o bloco "Questões relacionadas" no fim da correção; `inSession` avisa que abrir outra
  * questão sai do treino em andamento.
  */
-export function Correction({ selected, correction, question, tutorContext = "question", go, inSession = false }) {
+export function Correction({ selected, correction, question, tutorContext = "question", go = null, inSession = false }) {
   const source = correction.sources?.[0];
   // Questão StaziaMed: "Gabarito StaziaMed", nunca "gabarito oficial", "O que a questão avalia" nem o Tutor (o Tutor só trabalha com as oficiais)
   const staz = correction.origin === "staziamed" || isStaziamed(question);

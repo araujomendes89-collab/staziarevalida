@@ -245,7 +245,7 @@ export function UpdateNoteCard({ questionId, lazy = false }) {
  * Aprovar a prova inteira (revisor médico: só as questões das áreas dele; administrador: todas). Mostra quantas entram, quantas
  * ficam de fora (devolvidas, de outras áreas) e pede a nota do que foi conferido. O banco recusa se a lista mudou desde a leitura.
  */
-export function ExamApproval({ examId, onDone }) {
+export function ExamApproval({ examId, onDone = null }) {
   const { backend } = useSession();
   const [info, setInfo] = React.useState(null);
   const [note, setNote] = React.useState("");
