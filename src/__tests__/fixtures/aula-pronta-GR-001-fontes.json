@@ -1,0 +1,32 @@
+{
+ "origem": "pacote 1-Fontes-oficiais.sql de 12/10/2026 (catálogo de fontes oficiais colado em produção em 13/10), só as 3 fontes da GR-001",
+ "fontes": [
+  {
+   "cid": "gvs-6ed-rev-v2",
+   "title": "Guia de Vigilância em Saúde: volume 2 (6ª edição revisada)",
+   "organ": "Ministério da Saúde / Secretaria de Vigilância em Saúde e Ambiente (SVSA/MS) / Departamento de Ações Estratégicas de Epidemiologia e Vigilância em Saúde e Ambiente",
+   "kind": "final",
+   "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/vigilancia/guia-de-vigilancia-em-saude-volume-2-6a-edicao/@@download/file",
+   "version": "6ª edição revisada; ISBN 978-65-5993-505-5; 560 páginas no PDF",
+   "level": "A"
+  },
+  {
+   "cid": "tb-manual-controle-2ed-2019",
+   "title": "Manual de Recomendações para o Controle da Tuberculose no Brasil (2ª edição atualizada)",
+   "organ": "Ministério da Saúde / SVS / Departamento de Vigilância das Doenças Transmissíveis / Programa Nacional de Controle da Tuberculose",
+   "kind": "final",
+   "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/tuberculose/manual-de-recomendacoes-e-controle-da-tuberculose-no-brasil-2a-ed.pdf/@@download/file",
+   "version": "2ª edição atualizada; tiragem 2019; PDF de 366 páginas",
+   "level": "A"
+  },
+  {
+   "cid": "tb-nota-informativa-5-2024",
+   "title": "Nota Informativa nº 5/2024-CGTM/DATHI/SVSA/MS: Implementação do tratamento encurtado da tuberculose sensível não grave em crianças e adolescentes (2RHZ(E)/2RH)",
+   "organ": "Ministério da Saúde / SVSA / DATHI / CGTM",
+   "kind": "final",
+   "url": "https://www.gov.br/aids/pt-br/central-de-conteudo/notas-informativas/2024/nota-informativa-no-5-2024-cgtm.pdf/@@display-file/file",
+   "version": "Nota Informativa (5 páginas, de abril/2024)",
+   "level": "A"
+  }
+ ]
+}

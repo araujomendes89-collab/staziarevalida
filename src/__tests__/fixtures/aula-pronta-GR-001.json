@@ -1,0 +1,1852 @@
+{
+ "formato": "staziamed.aula-pronta.v1",
+ "codigo": "GR-001",
+ "titulo": "Tuberculose pulmonar: da tosse persistente ao controle dos contatos",
+ "tema": {
+  "area": "CLINICA_MEDICA",
+  "subarea": "Infectologia",
+  "tema": "Tuberculose"
+ },
+ "escopo": "Cobre a tuberculose pulmonar no adulto e no adolescente (≥ 10 anos) atendidos na Atenção Primária: suspeita clínica e epidemiológica, uso do TRM-TB, baciloscopia e cultura, leitura do resultado e resistência à rifampicina, esquema básico, seguimento, tratamento diretamente observado, investigação de contatos, ILTB e notificação. Não cobre: doses por faixa de peso (consultar o quadro oficial), TB extrapulmonar, TB em pessoas vivendo com HIV em detalhe, esquemas para TB drogarresistente, escore diagnóstico da criança e manejo de efeitos adversos.",
+ "fontes": [
+  {
+   "ref": "gvs-6ed-rev-v2",
+   "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/vigilancia/guia-de-vigilancia-em-saude-volume-2-6a-edicao/@@download/file",
+   "titulo": "Guia de Vigilância em Saúde: volume 2 (6ª edição revisada)",
+   "versao": "6ª edição revisada; ISBN 978-65-5993-505-5; 560 páginas no PDF"
+  },
+  {
+   "ref": "tb-manual-controle-2ed-2019",
+   "url": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/svsa/tuberculose/manual-de-recomendacoes-e-controle-da-tuberculose-no-brasil-2a-ed.pdf/@@download/file",
+   "titulo": "Manual de Recomendações para o Controle da Tuberculose no Brasil (2ª edição atualizada)",
+   "versao": "2ª edição atualizada; tiragem 2019; PDF de 366 páginas"
+  },
+  {
+   "ref": "tb-nota-informativa-5-2024",
+   "url": "https://www.gov.br/aids/pt-br/central-de-conteudo/notas-informativas/2024/nota-informativa-no-5-2024-cgtm.pdf/@@display-file/file",
+   "titulo": "Nota Informativa nº 5/2024-CGTM/DATHI/SVSA/MS: Implementação do tratamento encurtado da tuberculose sensível não grave em crianças e adolescentes (2RHZ(E)/2RH)",
+   "versao": "Nota Informativa (5 páginas, de abril/2024)"
+  }
+ ],
+ "afirmacoes": [
+  {
+   "id": "TB01",
+   "texto": "Tosse com duração de três semanas ou mais, com ou sem febre vespertina, sudorese noturna, emagrecimento e cansaço, indica investigação de TB com exames bacteriológicos.",
+   "tipo": "diagnostico",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 98,
+   "pagina_impressa": "552",
+   "citacao": "A pessoa que apresenta tosse com duração de três semanas ou mais, acompanhada ou não de outros sinais e sintomas sugestivos de TB (febre vespertina, sudorese noturna, emagrecimento e cansaço), deve ser investigada para a TB por meio de exames bacteriológicos",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB02",
+   "texto": "Em pessoas em situação de rua, a tosse de qualquer duração já justifica a busca de TB.",
+   "tipo": "diagnostico",
+   "fonte": "tb-manual-controle-2ed-2019",
+   "pagina": 198,
+   "pagina_impressa": null,
+   "citacao": "Pessoas em situação de rua Qualquer duração",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB03",
+   "texto": "O tempo de tosse que define suspeita de TB pode ser menor em populações mais vulneráveis.",
+   "tipo": "diagnostico",
+   "fonte": "tb-manual-controle-2ed-2019",
+   "pagina": 321,
+   "pagina_impressa": null,
+   "citacao": "O tempo de tosse que caracteriza a suspeição de um caso de tuberculose pode variar em grupos com maior vulnerabilidade para infecção/adoecimento",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB04",
+   "texto": "A radiografia de tórax deve ser pedida para toda pessoa com suspeita de TB pulmonar, mas nenhuma imagem é patognomônica: é preciso confirmação laboratorial.",
+   "tipo": "diagnostico",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 109,
+   "pagina_impressa": "563",
+   "citacao": "Deve ser solicitada para toda pessoa com suspeita clínica de TB pulmonar. Diferentes achados radiológicos apontam para a suspeita de doença em atividade ou anterior, no entanto não existe nenhuma imagem radiológica patognomônica de TB. Dessa forma, sempre devem ser realizados exames laboratoriais comprobatórios.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB05",
+   "texto": "O TRM-TB é indicado para o diagnóstico de casos novos de TB pulmonar e para triar resistência à rifampicina em retratamento, falência ou suspeita de resistência.",
+   "tipo": "diagnostico",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 102,
+   "pagina_impressa": "556",
+   "citacao": "O TRM-TB está indicado para o diagnóstico de casos novos de TB pulmonar e extrapulmonar, em adultos e crianças, e para a triagem de resistência à rifampicina nos casos de retratamento, falência ao tratamento da TB ou suspeita de resistência.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB06",
+   "texto": "O TRM-TB identifica precocemente a resistência à rifampicina; resistência aos demais fármacos é vista pelo teste de sensibilidade.",
+   "tipo": "conceito",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 101,
+   "pagina_impressa": "555",
+   "citacao": "O TRM-TB é o método que identifica de forma precoce a resistência à rifampicina, e a detecção de resistências aos demais medicamentos utilizados no tratamento da doença é realizada pelo teste de sensibilidade (TS) por método fenotípico ou genotípico.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB07",
+   "texto": "O TRM-TB detecta material genético de bacilos vivos ou mortos e por isso não serve para acompanhar o tratamento; o controle é feito com baciloscopias mensais.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 102,
+   "pagina_impressa": "556",
+   "citacao": "A PCR identifica fragmentos de material genético de microrganismos vivos ou mortos e, por isso, não está indicada para o acompanhamento do tratamento (Anvisa, 2011). Para esse fim, devem ser realizadas baciloscopias mensais de controle.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB08",
+   "texto": "Recomenda-se cultura para todos os casos, qualquer que seja o resultado da baciloscopia.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 101,
+   "pagina_impressa": "555",
+   "citacao": "é recomendada a realização de cultura para todos os casos, independentemente do resultado.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB09",
+   "texto": "A baciloscopia de escarro para diagnóstico é feita em duas amostras.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 101,
+   "pagina_impressa": "555",
+   "citacao": "A baciloscopia de escarro para diagnóstico deve ser realizada em duas amostras:",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB10",
+   "texto": "Com MTB detectado e sem resistência à rifampicina, inicia-se o esquema básico e reavalia-se após o resultado da cultura com TS.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 104,
+   "pagina_impressa": "558",
+   "citacao": "Iniciar o tratamento com esquema básico: reavaliar o tratamento após resultado da cultura com TS.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB11",
+   "texto": "Com resistência à rifampicina detectada, a pessoa vai imediatamente à referência terciária, onde a conduta deve ser definida em até sete dias.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 104,
+   "pagina_impressa": "558",
+   "citacao": "A pessoa deve chegar à referência terciária imediatamente. Nesse serviço, a avaliação médica e a conduta adequada deverão ser tomadas em até sete dias.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB12",
+   "texto": "Com MTB não detectado e sintomas mantidos, continua-se a investigação (micobactéria não tuberculosa e micoses sistêmicas).",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 104,
+   "pagina_impressa": "558",
+   "citacao": "Continuar a investigação: investigar micobacteriose não tuberculosa (MNT) e micoses sistêmicas.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB13",
+   "texto": "No retratamento, coleta-se material para baciloscopia, TRM-TB, cultura com identificação de espécie e TS antes de reintroduzir o esquema.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 118,
+   "pagina_impressa": "572",
+   "citacao": "Em caso de retratamento, coletar material (antes da reintrodução do esquema de tratamento) para baciloscopias e TRM-TB, cultura para micobactéria com identificação de espécie e TS.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB14",
+   "texto": "O TRM-TB não deve ser usado para diagnóstico em retratamento (reingresso após abandono e recidiva), por detectar bacilos mortos.",
+   "tipo": "conduta",
+   "fonte": "tb-manual-controle-2ed-2019",
+   "pagina": 57,
+   "pagina_impressa": null,
+   "citacao": "o TRM-TB não deve ser utilizado para diagnóstico nos casos de retratamento (reingresso após abandono e recidivas)",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB15",
+   "texto": "Toda pessoa com TB deve receber oferta de teste para HIV.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 109,
+   "pagina_impressa": "563",
+   "citacao": "a oferta do teste para diagnóstico para HIV (rápido ou sorológico) em todas as pessoas com TB.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB16",
+   "texto": "O tratamento da TB sensível é feito preferencialmente na Atenção Primária à Saúde.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 111,
+   "pagina_impressa": "565",
+   "citacao": "O tratamento da TB sensível deve ser realizado, preferencialmente na Atenção Primária à Saúde.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB17",
+   "texto": "Adultos e adolescentes (≥ 10 anos) usam o esquema básico 2RHZE/4RH.",
+   "tipo": "conduta",
+   "fonte": "tb-manual-controle-2ed-2019",
+   "pagina": 106,
+   "pagina_impressa": null,
+   "citacao": "Esquema Básico para o tratamento de adultos e adolescentes (≥ 10 anos de idade): 2RHZE/4RH",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB18",
+   "texto": "O esquema usa quatro fármacos na fase intensiva e dois na manutenção, em dose fixa combinada (RHZE e RH).",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 111,
+   "pagina_impressa": "565",
+   "citacao": "sendo quatro medicamentos na fase intensiva e dois na de manutenção, em dose fixa combinada (RHZE e RH)",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB19",
+   "texto": "Na gestante, o esquema básico é usado nas doses habituais, com piridoxina 50 mg/dia associada.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 111,
+   "pagina_impressa": "565",
+   "citacao": "O esquema básico pode ser administrado em gestantes nas doses habituais, mas, nesses casos, está recomendado o uso concomitante de piridoxina 50 mg/dia",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB20",
+   "texto": "O tratamento diretamente observado (TDO) é recomendado para todas as pessoas com TB.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 119,
+   "pagina_impressa": "573",
+   "citacao": "O tratamento diretamente observado (TDO) é uma estratégia recomendada para todas as pessoas com diagnóstico de TB.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB21",
+   "texto": "Na TB pulmonar, a baciloscopia de controle é mensal durante todo o tratamento.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 101,
+   "pagina_impressa": "555",
+   "citacao": "A baciloscopia de controle deve ser realizada mensalmente durante o acompanhamento do",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB22",
+   "texto": "Baciloscopia positiva ao final do segundo mês: pedir cultura com TS e prolongar a fase de ataque (RHZE) por mais 30 dias.",
+   "tipo": "conduta",
+   "fonte": "tb-manual-controle-2ed-2019",
+   "pagina": 124,
+   "pagina_impressa": null,
+   "citacao": "Quando a baciloscopia for positiva ao final do segundo mês do tratamento, deve-se solicitar cultura para micobactéria com teste de sensibilidade, prolongando a fase de ataque (RHZE) por mais 30 dias",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB23",
+   "texto": "Baciloscopia positiva ao final do tratamento caracteriza falência terapêutica.",
+   "tipo": "conceito",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 119,
+   "pagina_impressa": "573",
+   "citacao": "Pessoas com baciloscopia de escarro positiva ao final do tratamento.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB24",
+   "texto": "Com o tratamento adequado, a transmissão cai e, em geral, após 15 dias está muito reduzida.",
+   "tipo": "conceito",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 97,
+   "pagina_impressa": "551",
+   "citacao": "em geral, após 15 dias de tratamento, encontra-se muito reduzida.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB25",
+   "texto": "A avaliação de contatos é feita fundamentalmente pela Atenção Primária.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 130,
+   "pagina_impressa": "584",
+   "citacao": "O controle de contatos é realizado fundamentalmente pela Atenção Primária (AP)",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB26",
+   "texto": "Contato sintomático (criança, adolescente ≥10 anos ou adulto): exame de escarro (baciloscopia ou TRM-TB e cultura quando indicado) e radiografia de tórax.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 131,
+   "pagina_impressa": "585",
+   "citacao": "Contatos sintomáticos: crianças, adolescentes (≥10 anos de idade) ou adultos (incluindo PVHA) deverão realizar o exame de escarro (baciloscopia ou TRM-TB e cultura, quando indicado – ver diagnóstico), radiografia de tórax",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB27",
+   "texto": "Contato assintomático (criança, adolescente ≥10 anos ou adulto): prova tuberculínica e/ou radiografia de tórax, tratando a ILTB quando indicado.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 131,
+   "pagina_impressa": "585",
+   "citacao": "Contatos assintomáticos: crianças, adolescentes (≥10 anos de idade) e adultos deverão realizar a investigação com PT e/ou radiografia de tórax e tratar ILTB, quando indicado.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB28",
+   "texto": "Todo contato, com ou sem sintomas, deve receber oferta de teste para HIV.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 131,
+   "pagina_impressa": "585",
+   "citacao": "Para todos os contatos sintomáticos ou assintomáticos, deve ser ofertada a testagem para o HIV.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB29",
+   "texto": "PT ≥5 mm (ou IGRA positivo) em contato indica tratar ILTB, independentemente de BCG prévia.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 123,
+   "pagina_impressa": "577",
+   "citacao": "PT ≥5 mm ou IGRA positivo • Contatos adultos e crianças, independentemente da vacinação prévia com BCG.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB30",
+   "texto": "No contato assintomático com PT abaixo do ponto de corte, repete-se a PT em 8 semanas para avaliar conversão.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 131,
+   "pagina_impressa": "585",
+   "citacao": "Repetir PT em 8 semanas",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB31",
+   "texto": "O tratamento da ILTB é feito preferencialmente com 3HP (rifapentina + isoniazida), 12 doses semanais.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 123,
+   "pagina_impressa": "577",
+   "citacao": "O tratamento da ILTB reduz o risco de adoecimento por TB ativa e é realizado, preferencialmente, com rifapentina associada à isoniazida, esquema 3HP com 12 doses semanais",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB32",
+   "texto": "Não se trata ILTB quando há sinais sugestivos de TB ativa.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 123,
+   "pagina_impressa": "577",
+   "citacao": "Importante: não tratar a ILTB na presença de sinais sugestivos de TB ativa.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB33",
+   "texto": "Notifica-se apenas o caso confirmado de TB (critério laboratorial ou clínico).",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 127,
+   "pagina_impressa": "581",
+   "citacao": "Notifica-se apenas o caso confirmado de TB (critério laboratorial ou clínico).",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB34",
+   "texto": "A BCG não protege contra a TB pulmonar.",
+   "tipo": "conceito",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 120,
+   "pagina_impressa": "574",
+   "citacao": "Reforça-se que a vacina BCG não protege contra a TB pulmonar, forma transmissível e mais comum da doença.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB35",
+   "texto": "Diferenciais: pneumonias, micoses pulmonares, sarcoidose e carcinoma brônquico, entre outros.",
+   "tipo": "diagnostico",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 110,
+   "pagina_impressa": "564",
+   "citacao": "Pneumonias, micoses pulmonares (paracoccidioidomicose, histoplasmose, criptococose), sarcoidose e carcinoma brônquico",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB36",
+   "texto": "Quem começou com exame bacteriológico positivo precisa de pelo menos duas baciloscopias negativas na manutenção para comprovar cura.",
+   "tipo": "conduta",
+   "fonte": "tb-manual-controle-2ed-2019",
+   "pagina": 124,
+   "pagina_impressa": null,
+   "citacao": "Pacientes inicialmente com exame bacteriológico positivo deverão ter pelo menos duas baciloscopias negativas na fase de manutenção para comprovar cura",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB37",
+   "texto": "Desde 2024, há esquema encurtado só para crianças e adolescentes entre 3 meses e 16 anos, com TB sensível não grave e sem suspeita de resistência.",
+   "tipo": "conduta",
+   "fonte": "tb-nota-informativa-5-2024",
+   "pagina": 1,
+   "pagina_impressa": null,
+   "citacao": "O esquema encurtado de tratamento da TB sensível é recomendado exclusivamente para crianças e adolescentes com idade entre 3 meses e 16 anos, com TB sensível e não grave, sem suspeita de TB drogarresistente (DR)",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB38",
+   "texto": "Versão da época (2019): a isoniazida era o esquema preferencial para ILTB.",
+   "tipo": "conceito",
+   "fonte": "tb-manual-controle-2ed-2019",
+   "pagina": 169,
+   "pagina_impressa": null,
+   "citacao": "a H deve ser o esquema preferencial para tratamento da ILTB",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB39",
+   "texto": "No esquema encurtado pediátrico, o tempo total cai de 6 para 4 meses.",
+   "tipo": "conduta",
+   "fonte": "tb-nota-informativa-5-2024",
+   "pagina": 2,
+   "pagina_impressa": null,
+   "citacao": "No esquema encurtado, o tempo total de tratamento da TB é reduzido de 6 para 4 meses.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB40",
+   "texto": "No algoritmo do caso novo baseado no TRM-TB, MTB não detectado e sem sintomas mantidos: excluir o diagnóstico de TB.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 104,
+   "pagina_impressa": "558",
+   "citacao": "Excluir diagnóstico de TB",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB41",
+   "texto": "A referência terciária é o ambulatório especializado em tratamento de TB drogarresistente.",
+   "tipo": "conceito",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 104,
+   "pagina_impressa": "558",
+   "citacao": "Referência terciária: ambulatório especializado em tratamento de tuberculose drogarresistente.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  },
+  {
+   "id": "TB42",
+   "texto": "O resultado da cultura com TS deve ser encaminhado à referência terciária.",
+   "tipo": "conduta",
+   "fonte": "gvs-6ed-rev-v2",
+   "pagina": 104,
+   "pagina_impressa": "558",
+   "citacao": "O resultado da cultura com TS deverá ser encaminhado à referência terciária.",
+   "leitura": "texto_digital",
+   "conferencia": {
+    "ok": true,
+    "por": "validar_trecho.py",
+    "em": "2026-10-13"
+   },
+   "tipos_criticos": []
+  }
+ ],
+ "aula": {
+  "label": "Material StaziaMed",
+  "sections": [
+   {
+    "heading": "Caso clínico de abertura",
+    "paragraphs": [
+     {
+      "text": "Marcos, 34 anos, ajudante de obra, chega à UBS com tosse produtiva há mais de um mês, febre no fim da tarde, suor à noite e emagrecimento visível. Ele divide o quarto com o irmão, que começou tratamento para tuberculose há poucas semanas. Está em bom estado geral, sem falta de ar. A pergunta da prova costuma ser simples e direta: o que você pede agora, como interpreta o resultado e o que faz com quem mora com ele?",
+      "clinical": false,
+      "claim_ids": []
+     }
+    ]
+   },
+   {
+    "heading": "Bloco 1 · Suspeita clínica e epidemiológica",
+    "paragraphs": [
+     {
+      "text": "O ponto de partida é o sintomático respiratório. Tosse com duração de três semanas ou mais, com ou sem febre vespertina, sudorese noturna, emagrecimento e cansaço, já obriga a investigar tuberculose com exame de escarro. Marcos tem tudo isso e ainda tem um contato domiciliar doente: a hipótese principal é forte.",
+      "clinical": true,
+      "claim_ids": [
+       "TB01"
+      ]
+     },
+     {
+      "text": "Atenção ao tempo de tosse: ele pode ser menor em grupos mais vulneráveis. Na pessoa em situação de rua, por exemplo, tosse de qualquer duração já justifica a busca. A prova gosta de colocar um paciente desses com tosse recente para ver se você espera as três semanas. Não espere.",
+      "clinical": true,
+      "claim_ids": [
+       "TB03",
+       "TB02"
+      ]
+     },
+     {
+      "text": "A radiografia de tórax deve ser pedida para toda pessoa com suspeita de TB pulmonar, mas nenhuma imagem é patognomônica: o raio X levanta a suspeita, e quem confirma é o laboratório. No diagnóstico diferencial entram pneumonias, micoses pulmonares, sarcoidose e carcinoma brônquico.",
+      "clinical": true,
+      "claim_ids": [
+       "TB04",
+       "TB35"
+      ]
+     },
+     {
+      "text": "Armadilha clássica: cicatriz de BCG não afasta tuberculose pulmonar. A vacina não protege contra a forma pulmonar, que é justamente a que transmite.",
+      "clinical": true,
+      "claim_ids": [
+       "TB34"
+      ]
+     }
+    ]
+   },
+   {
+    "heading": "Bloco 2 · Diagnóstico bacteriológico e avaliação de resistência",
+    "paragraphs": [
+     {
+      "text": "Para um caso novo de TB pulmonar, o exame indicado para o diagnóstico é o teste rápido molecular (TRM-TB). Ele detecta o material genético do bacilo e, no mesmo exame, faz a triagem de resistência à rifampicina; a resistência aos outros fármacos fica para o teste de sensibilidade (TS).",
+      "clinical": true,
+      "claim_ids": [
+       "TB05",
+       "TB06"
+      ]
+     },
+     {
+      "text": "Onde entram baciloscopia e cultura? A baciloscopia de escarro para diagnóstico é feita em duas amostras, e a cultura é recomendada para todos os casos, qualquer que seja o resultado inicial. Junto com a cultura vem o teste de sensibilidade: por isso o fluxo oficial fala sempre em cultura com TS.",
+      "clinical": true,
+      "claim_ids": [
+       "TB09",
+       "TB08",
+       "TB10"
+      ]
+     },
+     {
+      "text": "Leia o TRM-TB como um fluxograma. MTB detectado e resistência à rifampicina não detectada: inicie o esquema básico e reavalie quando chegar a cultura com TS. Resistência à rifampicina detectada: encaminhe imediatamente à referência terciária (ambulatório especializado em TB drogarresistente), que deve definir a conduta em até sete dias; o resultado da cultura com TS segue para lá. MTB não detectado com sintomas mantidos: continue investigando, inclusive micobactéria não tuberculosa e micoses sistêmicas. MTB não detectado e sem sintomas: o fluxograma oficial exclui o diagnóstico de TB.",
+      "clinical": true,
+      "claim_ids": [
+       "TB10",
+       "TB11",
+       "TB41",
+       "TB42",
+       "TB12",
+       "TB40"
+      ]
+     },
+     {
+      "text": "Retratamento (recidiva ou volta após abandono) muda a lógica: o TRM-TB não serve para diagnosticar, porque pode detectar bacilo morto. Antes de reintroduzir o esquema, colete baciloscopia, TRM-TB, cultura com identificação de espécie e TS; o TRM-TB aqui serve para triar resistência à rifampicina.",
+      "clinical": true,
+      "claim_ids": [
+       "TB14",
+       "TB07",
+       "TB13"
+      ]
+     },
+     {
+      "text": "E não esqueça: toda pessoa com tuberculose deve receber oferta de teste para HIV.",
+      "clinical": true,
+      "claim_ids": [
+       "TB15"
+      ]
+     }
+    ]
+   },
+   {
+    "heading": "Bloco 3 · Tratamento, contatos e vigilância",
+    "paragraphs": [
+     {
+      "text": "A TB sensível é tratada preferencialmente na Atenção Primária. Para adultos e adolescentes (≥ 10 anos), o esquema básico é 2RHZE/4RH: quatro fármacos na fase intensiva e dois na manutenção, em dose fixa combinada (RHZE e RH). A dose depende do peso; consulte sempre o quadro oficial.",
+      "clinical": true,
+      "claim_ids": [
+       "TB16",
+       "TB17",
+       "TB18"
+      ]
+     },
+     {
+      "text": "O tratamento diretamente observado (TDO) é recomendado para todas as pessoas com TB. Na TB pulmonar, a baciloscopia de controle é mensal; o TRM-TB não serve para acompanhar o tratamento, porque detecta material de bacilos vivos ou mortos.",
+      "clinical": true,
+      "claim_ids": [
+       "TB20",
+       "TB21",
+       "TB07"
+      ]
+     },
+     {
+      "text": "Baciloscopia positiva ao final do segundo mês: peça cultura com TS e prolongue a fase de ataque (RHZE) por mais 30 dias. Para comprovar cura, quem começou com exame positivo precisa de pelo menos duas baciloscopias negativas na manutenção; baciloscopia positiva ao final do tratamento caracteriza falência.",
+      "clinical": true,
+      "claim_ids": [
+       "TB22",
+       "TB36",
+       "TB23"
+      ]
+     },
+     {
+      "text": "Na gestante, o esquema básico segue nas doses habituais, associado à piridoxina 50 mg/dia.",
+      "clinical": true,
+      "claim_ids": [
+       "TB19"
+      ]
+     },
+     {
+      "text": "Agora os contatos, que a prova adora. A avaliação é feita fundamentalmente pela Atenção Primária. Contato com sintomas: exame de escarro (baciloscopia ou TRM-TB e cultura quando indicado) e radiografia de tórax. Contato sem sintomas: prova tuberculínica (PT) e/ou radiografia, tratando ILTB quando indicado. Todo contato, com ou sem sintomas, recebe oferta de teste para HIV.",
+      "clinical": true,
+      "claim_ids": [
+       "TB25",
+       "TB26",
+       "TB27",
+       "TB28"
+      ]
+     },
+     {
+      "text": "No contato assintomático, PT ≥5 mm (ou IGRA positivo) indica tratar a infecção latente, mesmo com BCG prévia, depois de afastar doença ativa. Se a PT vier abaixo do corte, repita em 8 semanas para ver se houve conversão. O esquema preferencial da ILTB é o 3HP (rifapentina + isoniazida), em 12 doses semanais. E nunca trate ILTB em quem tem sinais de TB ativa.",
+      "clinical": true,
+      "claim_ids": [
+       "TB29",
+       "TB30",
+       "TB31",
+       "TB32"
+      ]
+     },
+     {
+      "text": "Vigilância: notifica-se apenas o caso confirmado de TB, por critério laboratorial ou clínico. Com o tratamento adequado, a transmissão cai e, em geral, após 15 dias já está muito reduzida.",
+      "clinical": true,
+      "claim_ids": [
+       "TB33",
+       "TB24"
+      ]
+     }
+    ]
+   },
+   {
+    "heading": "O que mudou desde a prova",
+    "paragraphs": [
+     {
+      "text": "Cultura: resumos de estudo e materiais mais antigos costumam reservar a cultura para populações vulneráveis. No Guia de Vigilância em Saúde revisado de 2024, a cultura é recomendada para todos os casos, independentemente do resultado do primeiro exame. Na dúvida da prova, fique com o documento oficial vigente.",
+      "clinical": true,
+      "claim_ids": [
+       "TB08"
+      ]
+     },
+     {
+      "text": "Tratamento da ILTB: no manual de 2019, a isoniazida aparecia como esquema preferencial. No Guia de Vigilância em Saúde revisado de 2024, o preferencial passou a ser o 3HP. Questões antigas podem refletir a versão da época; para a conduta atual, vale o 3HP.",
+      "clinical": true,
+      "claim_ids": [
+       "TB38",
+       "TB31"
+      ]
+     },
+     {
+      "text": "Crianças e adolescentes: desde 2024 existe um esquema encurtado, que reduz o tempo total de 6 para 4 meses, mas só para crianças e adolescentes entre 3 meses e 16 anos com TB sensível não grave e sem suspeita de resistência. Para o adulto, nada muda.",
+      "clinical": true,
+      "claim_ids": [
+       "TB37",
+       "TB39"
+      ]
+     }
+    ]
+   },
+   {
+    "heading": "Erros frequentes na prova",
+    "paragraphs": [
+     {
+      "text": "Esperar três semanas de tosse em quem vive em situação de rua. Usar o TRM-TB para controlar o tratamento ou para diagnosticar retratamento. Iniciar o esquema básico e segurar o paciente na UBS quando o TRM-TB mostra resistência à rifampicina. Dispensar o contato assintomático sem PT. Tratar ILTB sem antes afastar TB ativa. Esquecer o teste de HIV do paciente e dos contatos.",
+      "clinical": true,
+      "claim_ids": [
+       "TB02",
+       "TB07",
+       "TB14",
+       "TB11",
+       "TB27",
+       "TB32",
+       "TB15",
+       "TB28"
+      ]
+     }
+    ]
+   },
+   {
+    "heading": "Voltando ao caso",
+    "paragraphs": [
+     {
+      "text": "Marcos é sintomático respiratório com contato domiciliar: peça TRM-TB, cultura com TS e radiografia, ofereça teste de HIV. Se vier MTB detectado sem resistência à rifampicina, inicie o esquema básico na UBS, com TDO e baciloscopia mensal, e notifique o caso confirmado. Em seguida, avalie todos os contatos da casa.",
+      "clinical": true,
+      "claim_ids": [
+       "TB05",
+       "TB08",
+       "TB04",
+       "TB15",
+       "TB10",
+       "TB20",
+       "TB21",
+       "TB33",
+       "TB25"
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "resumo": {
+  "items": [
+   {
+    "text": "Tosse com duração de três semanas ou mais = sintomático respiratório: investigue TB com exame de escarro.",
+    "claim_ids": [
+     "TB01"
+    ]
+   },
+   {
+    "text": "Em populações vulneráveis (ex.: pessoas em situação de rua), tosse de qualquer duração já justifica investigar.",
+    "claim_ids": [
+     "TB02",
+     "TB03"
+    ]
+   },
+   {
+    "text": "Caso novo: TRM-TB é o exame inicial e já faz a triagem da resistência à rifampicina; cultura com TS para todos.",
+    "claim_ids": [
+     "TB05",
+     "TB08"
+    ]
+   },
+   {
+    "text": "Resistência à rifampicina detectada: referência terciária imediatamente (conduta em até sete dias).",
+    "claim_ids": [
+     "TB11"
+    ]
+   },
+   {
+    "text": "Esquema básico (≥ 10 anos): 2RHZE/4RH, na Atenção Primária, com TDO.",
+    "claim_ids": [
+     "TB16",
+     "TB17",
+     "TB20"
+    ]
+   },
+   {
+    "text": "Controle do tratamento com baciloscopia mensal; o TRM-TB não serve para acompanhar.",
+    "claim_ids": [
+     "TB07",
+     "TB21"
+    ]
+   },
+   {
+    "text": "Contato assintomático: PT e/ou raio X; ILTB preferencialmente com 3HP, só após afastar TB ativa.",
+    "claim_ids": [
+     "TB27",
+     "TB31",
+     "TB32"
+    ]
+   },
+   {
+    "text": "Notifica-se apenas o caso confirmado; ofereça teste de HIV ao paciente e aos contatos.",
+    "claim_ids": [
+     "TB33",
+     "TB15",
+     "TB28"
+    ]
+   }
+  ]
+ },
+ "flashcards": {
+  "cards": [
+   {
+    "front": "Caso novo de TB pulmonar: qual exame molecular está indicado para o diagnóstico?",
+    "back": "TRM-TB (teste rápido molecular). Ele detecta o material genético do bacilo e faz a triagem de resistência à rifampicina no mesmo exame. A cultura com TS é pedida para todos os casos.",
+    "card_id": "GR-001-F01",
+    "claim_ids": [
+     "TB05",
+     "TB06",
+     "TB08"
+    ]
+   },
+   {
+    "front": "Quanto tempo de tosse define o sintomático respiratório na população geral?",
+    "back": "Três semanas ou mais. Com ou sem febre vespertina, sudorese noturna, emagrecimento e cansaço. Em populações vulneráveis, o tempo pode ser menor.",
+    "card_id": "GR-001-F02",
+    "claim_ids": [
+     "TB01",
+     "TB03"
+    ]
+   },
+   {
+    "front": "Pessoa em situação de rua com tosse há poucos dias: investiga TB?",
+    "back": "Sim: tosse de qualquer duração. Em grupos mais vulneráveis, o tempo de tosse que define a suspeita pode ser menor. Para pessoas em situação de rua, vale qualquer duração.",
+    "card_id": "GR-001-F03",
+    "claim_ids": [
+     "TB02",
+     "TB03"
+    ]
+   },
+   {
+    "front": "TRM-TB com resistência à rifampicina detectada. Conduta?",
+    "back": "Referência terciária imediatamente. É o ambulatório especializado em TB drogarresistente, onde a conduta deve ser definida em até sete dias. Não inicie o esquema básico nem segure o paciente na UBS.",
+    "card_id": "GR-001-F04",
+    "claim_ids": [
+     "TB11",
+     "TB41"
+    ]
+   },
+   {
+    "front": "Por que o TRM-TB não serve para controlar o tratamento?",
+    "back": "Detecta material genético de bacilos vivos ou mortos. Por isso, o controle do tratamento da TB pulmonar é feito com baciloscopia mensal.",
+    "card_id": "GR-001-F05",
+    "claim_ids": [
+     "TB07",
+     "TB21"
+    ]
+   },
+   {
+    "front": "Qual é o esquema básico para adultos e adolescentes (≥ 10 anos)?",
+    "back": "2RHZE/4RH, em dose fixa combinada. Quatro fármacos na fase intensiva e dois na manutenção. Tratamento preferencialmente na Atenção Primária e com TDO.",
+    "card_id": "GR-001-F06",
+    "claim_ids": [
+     "TB17",
+     "TB18",
+     "TB16",
+     "TB20"
+    ]
+   },
+   {
+    "front": "Contato assintomático com PT ≥5 mm e raio X normal. Conduta?",
+    "back": "Tratar ILTB, de preferência com 3HP. A indicação vale mesmo com BCG prévia. O 3HP (rifapentina + isoniazida) tem 12 doses semanais. Antes, afaste TB ativa.",
+    "card_id": "GR-001-F07",
+    "claim_ids": [
+     "TB29",
+     "TB31",
+     "TB32"
+    ]
+   },
+   {
+    "front": "Contato assintomático com PT abaixo do corte. Próximo passo?",
+    "back": "Repetir a PT em 8 semanas. Serve para ver se houve conversão da prova.",
+    "card_id": "GR-001-F08",
+    "claim_ids": [
+     "TB30"
+    ]
+   },
+   {
+    "front": "Baciloscopia positiva ao final do segundo mês. O que fazer?",
+    "back": "Cultura com TS e mais 30 dias de RHZE. Peça cultura com teste de sensibilidade e prolongue a fase de ataque (RHZE) por mais 30 dias.",
+    "card_id": "GR-001-F09",
+    "claim_ids": [
+     "TB22"
+    ]
+   }
+  ]
+ },
+ "questoes": {
+  "items": [
+   {
+    "number": 1,
+    "dimension": "Reconhecimento",
+    "stem": "Homem adulto procura a unidade básica com tosse produtiva há mais de um mês, febre no fim da tarde, suor noturno e emagrecimento. Divide o quarto com o irmão, que está em tratamento para tuberculose. Tem cicatriz de BCG. Qual afirmação sobre esse quadro está correta?",
+    "options": [
+     {
+      "id": "A",
+      "text": "A cicatriz de BCG torna a tuberculose pulmonar improvável, e a primeira hipótese deve ser pneumonia bacteriana."
+     },
+     {
+      "id": "B",
+      "text": "Trata-se de sintomático respiratório com contato domiciliar, o que exige investigação bacteriológica para tuberculose."
+     },
+     {
+      "id": "C",
+      "text": "Uma radiografia de tórax com cavidade apical basta para confirmar o diagnóstico e dispensa o exame de escarro."
+     },
+     {
+      "id": "D",
+      "text": "Como o paciente está em bom estado geral, é possível aguardar mais algumas semanas antes de investigar."
+     }
+    ],
+    "correct": "B",
+    "comments": [
+     {
+      "id": "A",
+      "text": "Errada. A BCG não protege contra a forma pulmonar, que é a forma transmissível; a cicatriz não afasta a doença."
+     },
+     {
+      "id": "B",
+      "text": "Correta. Tosse com duração de três semanas ou mais, com febre vespertina, sudorese noturna e emagrecimento, define o sintomático respiratório e obriga a investigar com exame bacteriológico. O contato domiciliar reforça a suspeita."
+     },
+     {
+      "id": "C",
+      "text": "Errada. A radiografia deve ser pedida, mas nenhuma imagem é patognomônica de TB; a confirmação é laboratorial."
+     },
+     {
+      "id": "D",
+      "text": "Errada. Bom estado geral não muda a indicação: o tempo de tosse e os sintomas já justificam investigar agora."
+     }
+    ],
+    "claim_ids": [
+     "TB01",
+     "TB04",
+     "TB34"
+    ]
+   },
+   {
+    "number": 2,
+    "dimension": "Investigação",
+    "stem": "Mulher adulta, caso novo com suspeita de tuberculose pulmonar, colhe escarro na unidade básica. O teste rápido molecular (TRM-TB) mostra: MTB detectado, resistência à rifampicina detectada. Qual é a conduta adequada?",
+    "options": [
+     {
+      "id": "A",
+      "text": "Iniciar o esquema básico na unidade e reavaliar quando chegar o teste de sensibilidade."
+     },
+     {
+      "id": "B",
+      "text": "Aguardar na unidade o resultado da cultura com teste de sensibilidade e só então decidir o encaminhamento."
+     },
+     {
+      "id": "C",
+      "text": "Encaminhar imediatamente à referência terciária (ambulatório especializado em tuberculose drogarresistente)."
+     },
+     {
+      "id": "D",
+      "text": "Solicitar apenas baciloscopia, pois o TRM-TB não avalia resistência."
+     }
+    ],
+    "correct": "C",
+    "comments": [
+     {
+      "id": "A",
+      "text": "Errada. Iniciar o esquema básico e reavaliar depois é a conduta quando a resistência à rifampicina NÃO é detectada."
+     },
+     {
+      "id": "B",
+      "text": "Errada. Não há por que esperar: a pessoa deve chegar à referência terciária imediatamente, onde a conduta é definida em até sete dias; o resultado da cultura com TS é encaminhado depois para lá."
+     },
+     {
+      "id": "C",
+      "text": "Correta. Com resistência à rifampicina detectada, o fluxo oficial manda a pessoa chegar imediatamente à referência terciária, o ambulatório especializado em TB drogarresistente."
+     },
+     {
+      "id": "D",
+      "text": "Errada. O TRM-TB é justamente o método que identifica precocemente a resistência à rifampicina."
+     }
+    ],
+    "claim_ids": [
+     "TB05",
+     "TB06",
+     "TB11",
+     "TB10",
+     "TB41",
+     "TB42"
+    ]
+   },
+   {
+    "number": 3,
+    "dimension": "Conduta",
+    "stem": "Mulher de 30 anos mora na mesma casa de um homem com tuberculose pulmonar confirmada, que acabou de iniciar o tratamento. Ela não tem tosse, febre, emagrecimento nem outros sintomas. A prova tuberculínica mede 12 mm e a radiografia de tórax é normal. Recebeu BCG na infância. Qual é a conduta?",
+    "options": [
+     {
+      "id": "A",
+      "text": "Tratar infecção latente, preferencialmente com 3HP (rifapentina + isoniazida)."
+     },
+     {
+      "id": "B",
+      "text": "Dar alta com orientação, porque a reação pode ser explicada pela BCG."
+     },
+     {
+      "id": "C",
+      "text": "Iniciar o esquema básico 2RHZE/4RH."
+     },
+     {
+      "id": "D",
+      "text": "Repetir a prova tuberculínica em 8 semanas antes de decidir."
+     }
+    ],
+    "correct": "A",
+    "comments": [
+     {
+      "id": "A",
+      "text": "Correta. Contato assintomático com PT ≥5 mm (aqui, 12 mm) e TB ativa afastada (sem sintomas e radiografia normal) tem indicação de tratar ILTB, independentemente da BCG; o esquema preferencial é o 3HP, em 12 doses semanais."
+     },
+     {
+      "id": "B",
+      "text": "Errada. A indicação de tratar ILTB em contatos vale independentemente da vacinação prévia com BCG."
+     },
+     {
+      "id": "C",
+      "text": "Errada. Sem sintomas e com radiografia normal, não há TB ativa; o esquema básico trataria doença, não infecção latente."
+     },
+     {
+      "id": "D",
+      "text": "Errada. Repetir a PT em 8 semanas é o caminho quando a primeira prova vem abaixo do ponto de corte, para ver se houve conversão. Aqui a PT já está acima do corte."
+     }
+    ],
+    "claim_ids": [
+     "TB27",
+     "TB29",
+     "TB31",
+     "TB32",
+     "TB30",
+     "TB17"
+    ]
+   }
+  ]
+ },
+ "visuais": {
+  "comandos": [
+   {
+    "modelo": "feed",
+    "comando": "modelo: feed\nespecialidade: clinica_medica\ntitulo: Tuberculose pulmonar\nsubtitulo: Confirmar, tratar e rastrear contatos\nselo_prova: Material StaziaMed\natualizacao: 10/2026\nresumo: Confirmar, tratar e investigar contatos são etapas de um mesmo cuidado.\ndado_chave: Tosse ≥ 3 semanas\npontos_chave:\n- Caso novo: TRM-TB + cultura com TS; resistência à rifampicina vai à referência terciária.\n- Esquema básico 2RHZE/4RH na Atenção Primária, com TDO e baciloscopia mensal.\n- Contato sem sintomas: PT e/ou raio X; ILTB preferencialmente com 3HP.\nilustracao.tipo: icone\nilustracao.icone: prancheta\npegadinha: TRM-TB não serve para controlar tratamento nem para diagnosticar retratamento: pode detectar bacilo morto.\nfonte: Guia de Vigilância em Saúde v.2, 6ª ed. rev. 2024; Manual de Controle da TB, 2019",
+    "claim_ids": [
+     "TB01",
+     "TB05",
+     "TB08",
+     "TB11",
+     "TB16",
+     "TB17",
+     "TB20",
+     "TB21",
+     "TB27",
+     "TB31",
+     "TB07",
+     "TB14"
+    ]
+   },
+   {
+    "modelo": "story",
+    "comando": "modelo: story\nespecialidade: clinica_medica\ntitulo: Tuberculose pulmonar\nsubtitulo: Confirmar, tratar e rastrear contatos\nselo_prova: Material StaziaMed\natualizacao: 10/2026\nresumo: O resultado do TRM-TB decide o próximo passo.\ndado_chave: Cultura com TS para todos\ntabela_titulo: Resultado do TRM-TB (caso novo)\ntabela:\n| Resultado | Conduta |\n| MTB detectado, sem resistência à R | Esquema básico + cultura com TS |\n| !alerta Resistência à R detectada | Referência terciária imediatamente |\n| MTB não detectado, com sintomas | Continuar investigação |\nilustracao.tipo: icone\nilustracao.icone: prancheta\npegadinha: TRM-TB não serve para controlar tratamento nem para diagnosticar retratamento: pode detectar bacilo morto.\nfonte: Guia de Vigilância em Saúde v.2, 6ª ed. rev. 2024; Manual de Controle da TB, 2019",
+    "claim_ids": [
+     "TB05",
+     "TB08",
+     "TB10",
+     "TB11",
+     "TB12",
+     "TB07",
+     "TB14"
+    ]
+   },
+   {
+    "modelo": "a4",
+    "titulo": "Fluxograma de investigação da tosse persistente",
+    "comando": "modelo: a4\nespecialidade: clinica_medica\ntitulo: Tosse persistente: investigar TB pulmonar\nsubtitulo: Do sintomático respiratório ao TRM-TB\nselo_prova: Material StaziaMed\natualizacao: 10/2026\nresumo: Suspeitou, pediu TRM-TB e cultura; o resultado decide o próximo passo.\nresumo_paragrafo: Tosse com duração de três semanas ou mais define o sintomático respiratório; em populações vulneráveis, qualquer duração. Peça TRM-TB, cultura com TS e raio X: a imagem sugere, mas não confirma. Ofereça teste de HIV.\ndado_chave: TRM-TB + cultura com TS\ntabela_titulo: Leitura do TRM-TB (caso novo)\ntabela:\n| Resultado | Próximo passo |\n| MTB detectado, sem resistência à R | Esquema básico; reavaliar com cultura e TS |\n| !alerta Resistência à R detectada | Referência terciária imediatamente |\n| MTB não detectado, mantém sintomas | Continuar investigação (cultura, MNT, micoses) |\n| MTB não detectado, sem sintomas | Excluir diagnóstico de TB |\nilustracao.tipo: icone\nilustracao.icone: prancheta\npegadinha: Retratamento: o TRM-TB não serve para diagnosticar (detecta bacilo morto); colete baciloscopia, cultura e TS antes de reiniciar.\ntome_nota: Cicatriz de BCG não afasta TB pulmonar.\nbloco.titulo: Depois de confirmar\nbloco.itens:\n- Esquema básico 2RHZE/4RH na Atenção Primária, com TDO\n- Baciloscopia de controle mensal; notificar o caso confirmado\n- Avaliar todos os contatos e oferecer teste de HIV\nfonte: Guia de Vigilância em Saúde v.2, 6ª ed. rev. 2024, p. 98-131; Manual de Controle da TB, 2019",
+    "claim_ids": [
+     "TB01",
+     "TB02",
+     "TB03",
+     "TB05",
+     "TB08",
+     "TB04",
+     "TB15",
+     "TB28",
+     "TB10",
+     "TB11",
+     "TB12",
+     "TB40",
+     "TB16",
+     "TB17",
+     "TB20",
+     "TB21",
+     "TB33",
+     "TB25",
+     "TB14",
+     "TB13",
+     "TB34"
+    ]
+   }
+  ]
+ },
+ "arquivos": [
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F01-a6-frente-previa.png",
+   "sha256": "46acbbbf63f906f03ac4f494a5a6b864fc501add8eaee69409eef93f13b67eca",
+   "bytes": 46849,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F01, frente. Pergunta: Caso novo de TB pulmonar: qual exame molecular está indicado para o diagnóstico?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F01-a6-verso-previa.png",
+   "sha256": "ce71031497c006a142dd6418b05de015e7b86fa49338b6b50223d8f87b7e34d1",
+   "bytes": 56127,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F01, verso. Resposta: TRM-TB (teste rápido molecular). Referência: Guia de Vigilância em Saúde v.2, 6ª ed. rev. (2024), p. 101, 102 do PDF",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F01-a6.pdf",
+   "sha256": "8966021e7247f9d61134874669339016ebadc2d10d752988b2323a105555c7cf",
+   "bytes": 69671,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F01-digital-frente.png",
+   "sha256": "87efb6fee70cb13b92d252eeba03d5becc2399eeb7b3efe784d92ef81bec9e22",
+   "bytes": 100282,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F01, frente. Pergunta: Caso novo de TB pulmonar: qual exame molecular está indicado para o diagnóstico?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F01-digital-verso.png",
+   "sha256": "c14cd966092e0bbf8ea01750f36a8252916af9f081890484c3570a2e5c8cbd38",
+   "bytes": 102945,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F01, verso. Resposta: TRM-TB (teste rápido molecular). Ele detecta o material genético do bacilo e faz a triagem de resistência à rifampicina no mesmo exame. A cultura com TS é pedida para todos os casos.",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F01-digital.pdf",
+   "sha256": "8d464577c02bac456b23da8baaf6b660616a6063f1e7cf7d797598e4a939bc0a",
+   "bytes": 69228,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F02-a6-frente-previa.png",
+   "sha256": "3d03bacac21df286edfb969a8b52bbe0d691d3b1bc1474be10b6566f9b3f231a",
+   "bytes": 43527,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F02, frente. Pergunta: Quanto tempo de tosse define o sintomático respiratório na população geral?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F02-a6-verso-previa.png",
+   "sha256": "6e28256a7f58363242084bde2dab67e8c036e34dc1d53e82954e0d797733f35e",
+   "bytes": 56364,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F02, verso. Resposta: Três semanas ou mais. Referência: Guia de Vigilância em Saúde v.2, 6ª ed. rev. (2024), p. 98 do PDF; Manual de Controle da Tuberculose, 2ª ed. (2019), p. 321 do PDF",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F02-a6.pdf",
+   "sha256": "a067756b2b24a09fbb012e9820579e74eb39d2104a30d31716cfd02180da44f4",
+   "bytes": 70846,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F02-digital-frente.png",
+   "sha256": "a7a422e9267676d89fd7b9ce9acda9340393fcbda40e93a563e6d8f771fdcb5a",
+   "bytes": 93014,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F02, frente. Pergunta: Quanto tempo de tosse define o sintomático respiratório na população geral?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F02-digital-verso.png",
+   "sha256": "81a10d5b7039570de89e913c758b6dce5caf06b998cf37344c67f1f419606064",
+   "bytes": 97659,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F02, verso. Resposta: Três semanas ou mais. Com ou sem febre vespertina, sudorese noturna, emagrecimento e cansaço. Em populações vulneráveis, o tempo pode ser menor.",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F02-digital.pdf",
+   "sha256": "ec593ee2786399dc2714e81d6f23e180be06e043a8ba5b1168b6d05fd52cd620",
+   "bytes": 68874,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F03-a6-frente-previa.png",
+   "sha256": "72e6773dc7577a8bb47397b80bd3dfe438b622f7acd9a2716e2170294aa5aa9c",
+   "bytes": 41083,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F03, frente. Pergunta: Pessoa em situação de rua com tosse há poucos dias: investiga TB?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F03-a6-verso-previa.png",
+   "sha256": "b51ce61e7e97078fe29feb0b860afb7cd54893c8f17ecaf1df794a8acaef0b36",
+   "bytes": 54438,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F03, verso. Resposta: Sim: tosse de qualquer duração. Referência: Manual de Controle da Tuberculose, 2ª ed. (2019), p. 198, 321 do PDF",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F03-a6.pdf",
+   "sha256": "1f86d5caf0b9ecd4441ec5499a89aebf35e2a641f2feb808d1f43fab60075a69",
+   "bytes": 69426,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F03-digital-frente.png",
+   "sha256": "5f497d9b19e2278dedd228af676c501e5bf7d38c9a4563f5c4e453c4581e698d",
+   "bytes": 93995,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F03, frente. Pergunta: Pessoa em situação de rua com tosse há poucos dias: investiga TB?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F03-digital-verso.png",
+   "sha256": "a92720427b290b06437d6825ae51ed626b3f07e22ce96449ee5507d25aa4f4f9",
+   "bytes": 105397,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F03, verso. Resposta: Sim: tosse de qualquer duração. Em grupos mais vulneráveis, o tempo de tosse que define a suspeita pode ser menor. Para pessoas em situação de rua, vale qualquer duração.",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F03-digital.pdf",
+   "sha256": "45419a143982733a65233a914556c7f9c795304007f6f28c547e14b17ee321c6",
+   "bytes": 69227,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F04-a6-frente-previa.png",
+   "sha256": "0f636757ace59f1ea3c96956cdcaa120d7a12a0d1005cfb9157f51cc36daccde",
+   "bytes": 38453,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F04, frente. Pergunta: TRM-TB com resistência à rifampicina detectada. Conduta?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F04-a6-verso-previa.png",
+   "sha256": "2cd49dda34335f9024f7a21fff68f9835752416cc5baf625beb01cf0eb7a6890",
+   "bytes": 57090,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F04, verso. Resposta: Referência terciária imediatamente. Referência: Guia de Vigilância em Saúde v.2, 6ª ed. rev. (2024), p. 104 do PDF",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F04-a6.pdf",
+   "sha256": "ae76f7678012b8cea86a5843317a87dbc3d84808ec53697318650f3329f5d644",
+   "bytes": 69631,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F04-digital-frente.png",
+   "sha256": "22e743a1ccb317c251c5d00a238a2ef4fe6454c7c06c1334d7d08ed13c7344ff",
+   "bytes": 82127,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F04, frente. Pergunta: TRM-TB com resistência à rifampicina detectada. Conduta?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F04-digital-verso.png",
+   "sha256": "af86ef989cadbe7fdfd9c04b3b33800be2f3f3b21f32755ef6de02d86c4b145d",
+   "bytes": 108265,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F04, verso. Resposta: Referência terciária imediatamente. É o ambulatório especializado em TB drogarresistente, onde a conduta deve ser definida em até sete dias. Não inicie o esquema básico nem segure o paciente na UBS.",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F04-digital.pdf",
+   "sha256": "8d7ddabc867672e25f6e2378e1e9816c213d0f064911eb98d82d03a4fe473b77",
+   "bytes": 69229,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F05-a6-frente-previa.png",
+   "sha256": "c016ea8620fac8aaaa0b863eb0768db58a6be0ee075b3bd8deee605aa1f32f6d",
+   "bytes": 37629,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F05, frente. Pergunta: Por que o TRM-TB não serve para controlar o tratamento?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F05-a6-verso-previa.png",
+   "sha256": "e34f03db2c37c1f579eae118832bc05835ac7efeffbd0ec42a8ec33d81e0e5af",
+   "bytes": 50600,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F05, verso. Resposta: Detecta material genético de bacilos vivos ou mortos. Referência: Guia de Vigilância em Saúde v.2, 6ª ed. rev. (2024), p. 101, 102 do PDF",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F05-a6.pdf",
+   "sha256": "05d7b03b5ee576f66154655c9ebc749fcc84960afbe309f8c4d7b23c88fa17bd",
+   "bytes": 68719,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F05-digital-frente.png",
+   "sha256": "b297e71a3b9ff47a410ecb5d263a1e1d47d4a04dab96722141e03b3158384560",
+   "bytes": 83298,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F05, frente. Pergunta: Por que o TRM-TB não serve para controlar o tratamento?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F05-digital-verso.png",
+   "sha256": "87f66ec54d6afcc79944a8a155d53ae6ccc84c79bd9acb00b6b39db3dc74c511",
+   "bytes": 101205,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F05, verso. Resposta: Detecta material genético de bacilos vivos ou mortos. Por isso, o controle do tratamento da TB pulmonar é feito com baciloscopia mensal.",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F05-digital.pdf",
+   "sha256": "fd235ed2b39dd539f6b3b8de3cf6524cd91d9e799e5f47190dbf47ced438b500",
+   "bytes": 68271,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F06-a6-frente-previa.png",
+   "sha256": "b0f6bae37e8bbb9c78d7d003c1d0dced5066c6572c2e1e24e1a9852e9739a32a",
+   "bytes": 43448,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F06, frente. Pergunta: Qual é o esquema básico para adultos e adolescentes (≥ 10 anos)?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F06-a6-verso-previa.png",
+   "sha256": "f1bfd3bc4e7928b0205ee77266a6ccfa582278578b9243efd4525fa4715a7862",
+   "bytes": 57505,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F06, verso. Resposta: 2RHZE/4RH, em dose fixa combinada. Referência: Manual de Controle da Tuberculose, 2ª ed. (2019), p. 106 do PDF; Guia de Vigilância em Saúde v.2, 6ª ed. rev. (2024), p. 111, 119 do PDF",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F06-a6.pdf",
+   "sha256": "0ab3478bdaa1256a41bc077d69bda1da7f7b6d77d531e48b0572346693c45bf6",
+   "bytes": 71407,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F06-digital-frente.png",
+   "sha256": "6fb5cb4bc2ba5f6aa67af90bb5dac3fc67e7e769d43e30a5ce1dc940ed57bcf4",
+   "bytes": 91533,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F06, frente. Pergunta: Qual é o esquema básico para adultos e adolescentes (≥ 10 anos)?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F06-digital-verso.png",
+   "sha256": "1062ce4aa65232dce188b7d0710324d9b1676d381c1309ab298a20f2892fa743",
+   "bytes": 100470,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F06, verso. Resposta: 2RHZE/4RH, em dose fixa combinada. Quatro fármacos na fase intensiva e dois na manutenção. Tratamento preferencialmente na Atenção Primária e com TDO.",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F06-digital.pdf",
+   "sha256": "aefe9e27354584f7d7a358c04e38bf1b7af6055af01c2cf43808f1a0e688c852",
+   "bytes": 69819,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F07-a6-frente-previa.png",
+   "sha256": "1de88289dde6bf912348f14f8d70f62e64427b0b392c64463da819bceec52b3b",
+   "bytes": 38758,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F07, frente. Pergunta: Contato assintomático com PT ≥5 mm e raio X normal. Conduta?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F07-a6-verso-previa.png",
+   "sha256": "1cb8c74a8cab68f3f7b4bb146160ce463a2d52a383cb29e26221382b006ab547",
+   "bytes": 52614,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F07, verso. Resposta: Tratar ILTB, de preferência com 3HP. Referência: Guia de Vigilância em Saúde v.2, 6ª ed. rev. (2024), p. 123 do PDF",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F07-a6.pdf",
+   "sha256": "8dcf5b00d00efef7263419d4ff236da9ccbe508a7f64dd747013047c0537e123",
+   "bytes": 71070,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F07-digital-frente.png",
+   "sha256": "eb6a5ec406153e6b0e60618a16ff8fe2e8d03a254bef4ed55ba135bb218c56fb",
+   "bytes": 88154,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F07, frente. Pergunta: Contato assintomático com PT ≥5 mm e raio X normal. Conduta?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F07-digital-verso.png",
+   "sha256": "7541c7978c53b101e7cf484d33a5fe7f26fcb256f2c530d120ea182db8441a2f",
+   "bytes": 99581,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F07, verso. Resposta: Tratar ILTB, de preferência com 3HP. A indicação vale mesmo com BCG prévia. O 3HP (rifapentina + isoniazida) tem 12 doses semanais. Antes, afaste TB ativa.",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F07-digital.pdf",
+   "sha256": "0705dec8e2dfcddbcdf1b3d5c8bd6744f66bd68fa59b18a6f1b788e935608e4e",
+   "bytes": 70501,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F08-a6-frente-previa.png",
+   "sha256": "4b9f73fa6642f29e223fbf5b1a548d92eca6f6c8ec42a3a5126af8fce5551ec1",
+   "bytes": 39423,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F08, frente. Pergunta: Contato assintomático com PT abaixo do corte. Próximo passo?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F08-a6-verso-previa.png",
+   "sha256": "4501f2a8c3a8bf91d943ae59012d3a7f53556cea6c749847076a745b7cc36899",
+   "bytes": 41946,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F08, verso. Resposta: Repetir a PT em 8 semanas. Referência: Guia de Vigilância em Saúde v.2, 6ª ed. rev. (2024), p. 131 do PDF",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F08-a6.pdf",
+   "sha256": "bb8a4ef55c0f8bf42b99d58800f2e04aac884233006827fa8134c725cd8fe713",
+   "bytes": 67458,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F08-digital-frente.png",
+   "sha256": "45f536d4261b279d63190b114bbcbe102e01b2577c8627f93c24313a6a5b954b",
+   "bytes": 92271,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F08, frente. Pergunta: Contato assintomático com PT abaixo do corte. Próximo passo?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F08-digital-verso.png",
+   "sha256": "a4c0d0c8c0984e27f237fcc06ae8b23bee84ff311d810b21062fbdb386b4d312",
+   "bytes": 79678,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F08, verso. Resposta: Repetir a PT em 8 semanas. Serve para ver se houve conversão da prova.",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F08-digital.pdf",
+   "sha256": "5491308835bbe359602f7d7047e3d5835d8f303c52cbf05eefc9b02c8732586d",
+   "bytes": 66900,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F09-a6-frente-previa.png",
+   "sha256": "99e217dafa8b1680552f71e8020b1897745b3fac98fe498c31c38aae738759e0",
+   "bytes": 37893,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F09, frente. Pergunta: Baciloscopia positiva ao final do segundo mês. O que fazer?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F09-a6-verso-previa.png",
+   "sha256": "3f9d2cdd2d75d479167a20d032e0b266b9c66bdffeb36c3e2a49d6c200098c86",
+   "bytes": 50781,
+   "tipo": "image/png",
+   "texto_alternativo": "Prévia do flashcard A6 para impressão GR-001-F09, verso. Resposta: Cultura com TS e mais 30 dias de RHZE. Referência: Manual de Controle da Tuberculose, 2ª ed. (2019), p. 124 do PDF",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F09-a6.pdf",
+   "sha256": "c96138a9d56629facb6f2f6f19564607a369dea070e07658bfecfc89cc95356e",
+   "bytes": 69510,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F09-digital-frente.png",
+   "sha256": "fb64a9631432829111482ec2bfe1ad6bf3e3063b2c11c6b285cf3322679026dc",
+   "bytes": 83188,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F09, frente. Pergunta: Baciloscopia positiva ao final do segundo mês. O que fazer?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F09-digital-verso.png",
+   "sha256": "102c025264da51266599f05f5ba3fe86152f3dd4c4f93efa468d81870a44bab7",
+   "bytes": 97678,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard digital GR-001-F09, verso. Resposta: Cultura com TS e mais 30 dias de RHZE. Peça cultura com teste de sensibilidade e prolongue a fase de ataque (RHZE) por mais 30 dias.",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-F09-digital.pdf",
+   "sha256": "6d12fbbb7f280f3513e1bbea98b1a54d5058d6991441e0419c14b39a18bf9e56",
+   "bytes": 69543,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-card-feed.pdf",
+   "sha256": "1a738c84651f08751e42cc8533ecd5ed3daf09aad0df5444c20c333c052c7e35",
+   "bytes": 70112,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 1 página(s)",
+   "material": "visual_cards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-card-feed.png",
+   "sha256": "f27de6bcfeb1d6a5b0bbb1948a63121e99503c0d77a64698e28b4ba7a7c09b93",
+   "bytes": 188263,
+   "tipo": "image/png",
+   "texto_alternativo": "Card de feed StaziaMed sobre tuberculose pulmonar: pontos-chave (TRM-TB e cultura com TS no caso novo, esquema 2RHZE/4RH com TDO, contato sem sintomas com PT e ILTB com 3HP), tosse ≥ 3 semanas e pegadinha sobre o TRM-TB.",
+   "descricao": null,
+   "material": "visual_cards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-card-story.pdf",
+   "sha256": "b04a7d3668dae331afa4ed3dc08a9570d30b8648094bfaa33a3527642cf96333",
+   "bytes": 102336,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 1 página(s)",
+   "material": "visual_cards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-card-story.png",
+   "sha256": "5562e73cedc62bf8aea4ba50ce9e97c2928714b5564c888b1262b2d121b937b4",
+   "bytes": 199216,
+   "tipo": "image/png",
+   "texto_alternativo": "Story StaziaMed sobre tuberculose pulmonar: tabela com a leitura do TRM-TB no caso novo, cultura com TS para todos e pegadinha: o TRM-TB não controla tratamento nem diagnostica retratamento.",
+   "descricao": null,
+   "material": "visual_cards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-pagina-a4.pdf",
+   "sha256": "e15da11e7135ee1f879a103d042b2dbcdcfac7c53205e33218f746423911d133",
+   "bytes": 101567,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 1 página(s)",
+   "material": "visual_cards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/imagens/GR-001-pagina-a4.png",
+   "sha256": "30e9ca77354b94a844d643991d717ca96ebb427ad6e6646e90860382a769fe37",
+   "bytes": 394798,
+   "tipo": "image/png",
+   "texto_alternativo": "Página-resumo A4 StaziaMed: investigar tosse persistente, leitura do TRM-TB em 4 resultados, pegadinha do retratamento, lembrete sobre BCG e passos depois de confirmar o caso.",
+   "descricao": null,
+   "material": "visual_cards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/pdf/GR-001-tuberculose-pulmonar-aluno.pdf",
+   "sha256": "db1cca0f218f8ccd537da024eff74924f1f6bf87599ef37d0cdbd6dbe7b6dc15",
+   "bytes": 470620,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 9 página(s)",
+   "material": "lesson"
+  }
+ ]
+}
