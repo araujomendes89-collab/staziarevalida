@@ -17,6 +17,7 @@ import { QuestionAnalyses } from "./QuestionAnalyses.jsx";
 import { SimilarQuestions } from "./SimilarQuestions.jsx";
 import { HubSettings } from "./HubSettings.jsx";
 import { VisualMaterials } from "./visual/VisualMaterials.jsx";
+import { VigilanciaCientifica } from "./vigilancia/VigilanciaCientifica.jsx";
 import { explainError } from "../../../../shared/errors/explicarErro";
 
 const SECTIONS = [
@@ -28,6 +29,7 @@ const SECTIONS = [
   { value: "parecidas", label: "Questões parecidas", icon: "git-compare", who: "staff" },
   { value: "fontes", label: "Fontes oficiais", icon: "library", who: "staff" },
   { value: "conflitos", label: "Conflitos", icon: "scale", who: "staff" },
+  { value: "vigilancia", label: "Vigilância científica", icon: "radar", who: "staff" },
   { value: "taxonomia", label: "Taxonomia", icon: "list-tree", who: "staff" },
   { value: "config", label: "Configuração e custos", icon: "gauge", who: "staff" },
 ];
@@ -93,6 +95,7 @@ export function ContentHub({ isAdmin, isStaff }) {
       {section === "parecidas" && <SimilarQuestions {...ctx} />}
       {section === "fontes" && <Sources {...ctx} />}
       {section === "conflitos" && <Conflicts {...ctx} />}
+      {section === "vigilancia" && <VigilanciaCientifica {...ctx} />}
       {section === "taxonomia" && <Taxonomy {...ctx} />}
       {section === "config" && <HubSettings {...ctx} />}
     </div>
