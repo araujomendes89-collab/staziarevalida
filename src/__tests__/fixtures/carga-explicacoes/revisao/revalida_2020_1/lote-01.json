@@ -1,0 +1,98 @@
+[
+ {
+  "id": "revalida_2020_1_q008",
+  "code": "REV-2020-Q008",
+  "exam_id": "revalida-2020",
+  "number": 8,
+  "area": "CIRURGIA_GERAL",
+  "specialty": "COLOPROCTOLOGY",
+  "topic": "Doenças anorretais benignas",
+  "subtopic": "Fissura anal crônica e indicação de tratamento cirúrgico eletivo",
+  "statement": "Um paciente com 54 anos de idade procurou a Unidade Básica de Saúde para atendimento. O homem relatou que, há um ano, apresentou abscesso na região perineal que foi drenado em pronto-socorro. Desde então, apresentou uma ferida próxima ao ânus, que ocasionalmente inflama e apresenta saída de secreção turva, com odor fecaloide. O paciente realizou colonoscopia há 3 anos, a qual não evidenciou lesões no cólon. O exame da região perianal evidenciou orifício cutâneo a 2 cm da borda anal, na região anterior direita do períneo. O toque retal evidenciou próstata com características normais e induração anteriormente à borda anal. Após a compressão local, houve saída de secreção pelo orifício cutâneo. Com base na história clínica e nos dados do exame físico, o diagnóstico e a conduta adequada são",
+  "options": [
+   {
+    "id": "A",
+    "text": "abscesso perianal e drenagem cirúrgica.",
+    "explanation": ""
+   },
+   {
+    "id": "B",
+    "text": "fissura anal aguda e uso de anti-inflamatórios tópicos.",
+    "explanation": ""
+   },
+   {
+    "id": "C",
+    "text": "fístula perianal e encaminhamento para tratamento cirúrgico eletivo.",
+    "explanation": ""
+   },
+   {
+    "id": "D",
+    "text": "fissura anal crônica e encaminhamento para tratamento cirúrgico eletivo.",
+    "explanation": "Fissura anal crônica com indicação de encaminhamento para tratamento cirúrgico eletivo."
+   }
+  ],
+  "correct_option": "D",
+  "status": "valid",
+  "key_finding": "fissura anal crônica e encaminhamento para tratamento cirúrgico eletivo. 2020",
+  "expected_conduct": "Encaminhar para tratamento cirúrgico eletivo da fissura anal crônica, conforme o gabarito oficial.",
+  "inep_intent": "Avaliar o reconhecimento de doença anorretal crônica e a definição de encaminhamento para manejo cirúrgico eletivo, adotando o gabarito oficial.",
+  "needs_image": false,
+  "images": [],
+  "sources": [
+   {
+    "year": 2020,
+    "title": "Gabarito Oficial Definitivo Revalida INEP 2020",
+    "reliability": "OFICIAL_INEP",
+    "organization": "INEP / Ministério da Educação"
+   }
+  ]
+ },
+ {
+  "id": "revalida_2020_1_q100",
+  "code": "REV-2020-Q100",
+  "exam_id": "revalida-2020",
+  "number": 100,
+  "area": "PEDIATRIA",
+  "specialty": "IMMUNIZATION",
+  "topic": "Profilaxia pós-exposição à hepatite B",
+  "subtopic": "Revacinação contra hepatite B após violência sexual em criança com anti-HBs negativo",
+  "statement": "Uma escolar com 7 anos de idade foi levada para atendimento no pronto-socorro após episódio de violência sexual. A criança, no dia anterior, foi deixada aos cuidados do primo com 18 anos de idade para que os pais pudessem trabalhar. No dia seguinte, pela manhã, a mãe notou que a criança estava chorosa e com presença de sangue em roupas íntimas e de ferimento em região anal. Durante o atendimento, a criança informou que o seu primo introduziu o pênis em seu orifício anal e que isso tem acontecido há 1 ano. A caderneta de vacinação da criança encontra-se completa. Durante o exame físico, a criança mostra-se em bom estado geral, mas bastante assustada, com sinais vitais estáveis e presença de laceração em região anal. Após o atendimento inicial, são realizados exames laboratoriais e o resultado do anti-HBs da criança é negativo. O primo da criança encontra-se foragido. Segundo a linha de cuidado para a atenção integral à saúde de crianças em situação de violências, para a profilaxia para hepatite B, recomenda-se realizar",
+  "options": [
+   {
+    "id": "A",
+    "text": "nova série de vacinação Anti-hepatite B (3 doses).",
+    "explanation": "Nova série de três doses da vacina contra hepatite B para criança sexualmente exposta com anti-HBs negativo, conforme protocolo de profilaxia pós-exposição."
+   },
+   {
+    "id": "B",
+    "text": "acompanhamento clínico, sem medidas específicas.",
+    "explanation": ""
+   },
+   {
+    "id": "C",
+    "text": "duas doses de imunoglobulina humana Anti-hepatite B.",
+    "explanation": ""
+   },
+   {
+    "id": "D",
+    "text": "uma única dose de imunoglobulina humana Anti-hepatite B.",
+    "explanation": ""
+   }
+  ],
+  "correct_option": "A",
+  "status": "valid",
+  "key_finding": "nova série de vacinação Anti-hepatite B (3 doses).",
+  "expected_conduct": "Indicar nova série de três doses da vacina contra hepatite B para profilaxia pós-exposição, diante de violência sexual e anti-HBs negativo após esquema vacinal prévio.",
+  "inep_intent": "Avaliar a aplicação da recomendação de imunoprofilaxia contra hepatite B após violência sexual em criança previamente vacinada, mas com anti-HBs negativo.",
+  "needs_image": false,
+  "images": [],
+  "sources": [
+   {
+    "year": 2020,
+    "title": "Gabarito Oficial Definitivo Revalida INEP 2020",
+    "reliability": "OFICIAL_INEP",
+    "organization": "INEP / Ministério da Educação"
+   }
+  ]
+ }
+]

@@ -1,0 +1,55 @@
+[
+ {
+  "id": "revalida_2020_1_q008",
+  "tema": "Coloproctologia",
+  "subtema": "Doenças anorretais benignas: fissura anal crônica ou fístula perianal",
+  "o_que_a_questao_avalia": "Avalia o diagnóstico de doença anorretal crônica e a definição do encaminhamento para tratamento cirúrgico eletivo, conforme o gabarito oficial.",
+  "conduta_esperada": "Segundo o gabarito oficial, o diagnóstico é fissura anal crônica e a conduta é o encaminhamento para tratamento cirúrgico eletivo.",
+  "explicacao": {
+   "A": "Incorreta. O paciente não apresenta coleção aguda com sinais de abscesso no momento, e o abscesso que ele teve há um ano já foi drenado. Drenagem cirúrgica não é a conduta indicada pelo gabarito para o quadro atual.",
+   "B": "Incorreta. O quadro dura cerca de um ano e não é agudo, então a hipótese de fissura aguda com tratamento tópico não se aplica. O gabarito considera a doença crônica e com indicação de conduta cirúrgica.",
+   "C": "Incorreta. Esta alternativa propõe fístula perianal com tratamento cirúrgico eletivo, que combina com orifício externo e saída de secreção, mas o gabarito oficial não a adota. Por isso a explicação a considera incorreta, e a divergência fica sinalizada para a revisão médica.",
+   "D": "Correta. É a alternativa indicada pelo gabarito oficial: fissura anal crônica com encaminhamento para tratamento cirúrgico eletivo. Atenção: o quadro descrito, com história de abscesso drenado, orifício cutâneo e saída de secreção à compressão, lembra fístula perianal, o que exige conferência pela revisão médica."
+  },
+  "pontos_de_atencao": [
+   "O enunciado descreve achados que lembram fístula perianal, e isso não coincide com o diagnóstico do gabarito.",
+   "A revisão médica deve conferir a questão e o gabarito antes de qualquer comentário ser liberado ao aluno."
+  ],
+  "precisa_conferir_diretriz": {
+   "sim": false,
+   "motivo": ""
+  },
+  "divergencia_gabarito": {
+   "suspeita": true,
+   "motivo": "O enunciado (abscesso perianal drenado, orifício cutâneo externo com secreção à compressão e induração) lembra fístula perianal, enquanto o gabarito oficial indica fissura anal crônica."
+  },
+  "confianca": 25
+ },
+ {
+  "id": "revalida_2020_1_q100",
+  "tema": "Pediatria",
+  "subtema": "Profilaxia da hepatite B após violência sexual",
+  "o_que_a_questao_avalia": "Avalia a escolha da imunoprofilaxia contra hepatite B em criança vítima de violência sexual que tem vacinação completa, mas anti-HBs negativo. Cobra a aplicação do protocolo de atendimento a crianças em situação de violência.",
+  "conduta_esperada": "Segundo o gabarito oficial, indicar nova série de vacina contra hepatite B, em três doses, para a criança com anti-HBs negativo. Esse atendimento deve ser integrado ao acompanhamento da criança e à notificação do caso.",
+  "explicacao": {
+   "A": "Correta. A criança tem cartão completo, mas o anti-HBs negativo mostra que não há proteção comprovada. De acordo com o gabarito oficial, a conduta é repetir a série vacinal de três doses.",
+   "B": "Incorreta. Apenas acompanhar sem medida específica deixaria a criança sem proteção comprovada após exposição sexual de risco. O erro de raciocínio é supor que a vacinação completa no cartão garante imunidade, desconsiderando o exame negativo.",
+   "C": "Incorreta. O gabarito oficial indica a revacinação como medida, e um esquema de duas doses de imunoglobulina não corresponde ao que se espera nesta situação. A imunoglobulina oferece proteção passiva e temporária, e não constrói imunidade duradoura.",
+   "D": "Incorreta. A imunoglobulina isolada, em dose única, não é a medida apontada pelo gabarito oficial, porque dá proteção apenas passiva. A alternativa tenta atrair quem pensa que anti-HBs negativo exige somente anticorpo pronto, sem reiniciar a vacinação."
+  },
+  "pontos_de_atencao": [
+   "A conduta depende do resultado do anti-HBs e do histórico vacinal; o cartão completo não basta.",
+   "O agressor está foragido, então não é possível conhecer a condição dele em relação à hepatite B.",
+   "O atendimento de violência sexual envolve também outras profilaxias, acompanhamento e notificação, fora do foco desta questão."
+  ],
+  "precisa_conferir_diretriz": {
+   "sim": true,
+   "motivo": "Condutas de profilaxia pós-exposição e uso de imunoglobulina costumam ser atualizadas, e o gabarito reflete o protocolo vigente na época da prova."
+  },
+  "divergencia_gabarito": {
+   "suspeita": true,
+   "motivo": "Em criança que não respondeu à vacina e com agressor de condição desconhecida, convém a revisão médica conferir se o protocolo da época previa também imunoglobulina; o gabarito oficial indica apenas nova série vacinal."
+  },
+  "confianca": 60
+ }
+]

@@ -378,6 +378,8 @@ describe("Migração", () => {
     const before = await snapshot();
     await env.dev.db.exec(text);
     await env.dev.db.exec(text);
+    // a 9920 (carga das explicações) redefine a correção do aluno a partir desta: colar esta de novo pede colar a 9920 depois
+    await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003009920_carga_explicacoes.sql", import.meta.url)), "utf8"));
     expect(await snapshot()).toEqual(before);
     // as funções de serviço continuam fechadas e o app só chama as três que devem ser chamadas
     expect(text).toContain("Cole antes as migrações da leva 3");

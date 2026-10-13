@@ -1,0 +1,50 @@
+[
+ {
+  "id": "revalida_2021_1_q064",
+  "code": "REV-2021-Q064",
+  "exam_id": "revalida-2021",
+  "number": 64,
+  "area": "MEDICINA_FAMILIA_COMUNIDADE",
+  "specialty": "PREVENTION_SCREENING",
+  "topic": "Rastreamento do câncer do colo do útero",
+  "subtopic": "Faixa etária de início da citologia cervical em mulheres assintomáticas",
+  "statement": "Uma adolescente com 18 anos de idade, procura assistência primária para realizar o exame preventivo do câncer do colo uterino. Sexarca aos 17 anos, em uso de contraceptivo oral. De acordo com as diretrizes brasileiras na prevenção do câncer de colo uterino, qual deve ser a conduta do agente de saúde?",
+  "options": [
+   {
+    "id": "A",
+    "text": "Fazer o exame clínico e ginecológico completo e coletar material para o exame citopatológico do colo uterino.",
+    "explanation": ""
+   },
+   {
+    "id": "B",
+    "text": "Coletar material para identificar o DNA-HPV (captura híbrida), se estiver disponível, pois é mais sensível que o exame citológico.",
+    "explanation": ""
+   },
+   {
+    "id": "C",
+    "text": "Colher a história clínica e informar que não há necessidade de realizar o exame preventivo antes de completar 25 anos.",
+    "explanation": "O rastreamento do câncer do colo uterino por exame citopatológico não está indicado antes dos 25 anos em mulher assintomática, independentemente de já ter iniciado atividade sexual."
+   },
+   {
+    "id": "D",
+    "text": "Coletar material para citologia e caso tenha duas citologias normais com intervalo de 1 ano, fazer a coleta a cada 3 anos.",
+    "explanation": ""
+   }
+  ],
+  "correct_option": "C",
+  "status": "valid",
+  "key_finding": "Colher a história clínica e informar que não há necessidade de realizar o exame preventivo antes de completar 25 anos.",
+  "expected_conduct": "Não realizar rastreamento citopatológico do colo uterino antes dos 25 anos em adolescente assintomática, devendo orientar a paciente após colher a história clínica.",
+  "inep_intent": "Avaliar o conhecimento da recomendação brasileira quanto à idade de início do rastreamento do câncer do colo uterino na atenção primária.",
+  "needs_image": false,
+  "images": [],
+  "sources": [
+   {
+    "year": 2021,
+    "title": "Gabarito Oficial Definitivo Revalida INEP 2021",
+    "reliability": "OFICIAL_INEP",
+    "organization": "INEP / Ministério da Educação"
+   }
+  ]
+ }
+]

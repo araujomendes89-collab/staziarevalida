@@ -102,6 +102,8 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   app_staziamed_retire: { classe: "as_duas", como: "historico" }, // recolhe a Questão StaziaMed
   draft_situation: { classe: "as_duas", como: "historico" }, // rascunho publicado: lê a questão para saber se foi recolhida
   ch_worker_similarity_corpus: { classe: "so_oficiais", como: "filtra" }, // corpus oficial = origin 'official'; as StaziaMed vêm dos rascunhos
+  // Carga das explicações (9920): a correção do aluno lê a nota aprovada (as duas coleções, depois de responder)
+  question_update_note_visible: { classe: "as_duas", como: "historico" },
   // as duas, ferramentas da equipe que agem pelo id da questão
   app_admin_comment_review: { classe: "as_duas", como: "equipe" },
   app_admin_comment_review_queue: { classe: "as_duas", como: "equipe" },
@@ -113,6 +115,17 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   ch_worker_question_figure_drop: { classe: "as_duas", como: "equipe" },
   question_comment_review_missing: { classe: "as_duas", como: "equipe" },
   app_ch_complementar_mentions: { classe: "as_duas", como: "equipe" },
+  // Carga das explicações (9920): carga e regra B do dono (por id, só o editor SQL), prova inteira e nota (equipe e revisores)
+  question_explanations_apply: { classe: "as_duas", como: "equipe" },
+  question_explanations_release: { classe: "as_duas", como: "equipe" },
+  question_update_notes_trail: { classe: "as_duas", como: "equipe" },
+  question_comment_review_exam_rows: { classe: "as_duas", como: "equipe" },
+  app_admin_comment_review_exams: { classe: "as_duas", como: "equipe" },
+  app_admin_comment_review_exam: { classe: "as_duas", como: "equipe" },
+  app_admin_comment_review_approve_exam: { classe: "as_duas", como: "equipe" },
+  app_admin_question_update_note: { classe: "as_duas", como: "equipe" },
+  app_admin_question_update_note_save: { classe: "as_duas", como: "equipe" },
+  app_admin_question_update_note_decide: { classe: "as_duas", como: "equipe" },
   // visões
   my_area_stats: { classe: "as_duas", como: "historico" },
   my_topic_stats: { classe: "as_duas", como: "historico" },
@@ -264,8 +277,11 @@ describe("Migração", () => {
     const snap = async () =>
       (await env.sql(`select md5(string_agg(pg_get_functiondef(p.oid), E'\\n' order by p.oid::regprocedure::text)) as h, count(*)::int as n
                       from pg_proc p where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'origin'`))[0];
+    // a 9920 (carga das explicações) redefine a correção do aluno a partir da 9801: colar a 9801 de novo pede colar a 9920 depois
+    const carga = fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003009920_carga_explicacoes.sql", import.meta.url)), "utf8");
     const before = await snap();
     await env.dev.db.exec(text);
+    await env.dev.db.exec(carga);
     expect(await snap()).toEqual(before);
   });
 });
