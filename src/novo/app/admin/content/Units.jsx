@@ -25,6 +25,7 @@ function UnitList({ go, reviewerAreas, isStaff }) {
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
   const latest = (u) => u.versions[0];
+  const importada = (r) => go("unidades", { versao: r.version_id });
   const rows = data
     .filter((u) => filter !== "mine" || reviewerAreas.includes(u.area_code))
     .filter((u) => filter !== "review" || latest(u).status === "awaiting_review")
@@ -44,6 +45,7 @@ function UnitList({ go, reviewerAreas, isStaff }) {
         />
       }
     >
+      {isStaff && <ImportLesson onImported={importada} />}
       {rows.length === 0 && <EmptyState icon="stamp" title="Nenhuma unidade aqui" description="As unidades nascem do processamento dos documentos: cada documento enviado gera um rascunho por tema, que aparece aqui para revisão." />}
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {rows.map((u) => {
@@ -65,6 +67,42 @@ function UnitList({ go, reviewerAreas, isStaff }) {
         })}
       </div>
     </Section>
+  );
+}
+
+/**
+ * "Importar aula pronta" (só equipe): lê o pacote-<código>.json gerado por scripts/aulas/gerar-sql-importacao.mjs e chama
+ * app_ch_import_lesson_package. A aula entra sempre "aguardando revisão"; o banco recusa com a lista do que falta.
+ */
+function ImportLesson({ onImported }) {
+  const { backend } = useSession();
+  const act = useAction();
+  const input = React.useRef(null);
+  const escolher = async (file) => {
+    if (!file) return;
+    const r = await act.run(async () => {
+      let pacote;
+      try {
+        pacote = JSON.parse(await file.text());
+      } catch {
+        throw new Error("O arquivo não é um pacote de aula (JSON). Use o pacote-<código>.json gerado para a aula.");
+      }
+      return backend.rpc("app_ch_import_lesson_package", { p_package: pacote });
+    }, null);
+    if (input.current) input.current.value = "";
+    if (r) onImported(r);
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+      <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <input ref={input} type="file" accept="application/json,.json" style={{ display: "none" }} onChange={(e) => escolher(e.target.files?.[0])} />
+        <Button size="sm" variant="secondary" icon="file-up" loading={act.busy} onClick={() => input.current?.click()}>
+          Importar aula pronta
+        </Button>
+        <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Pacote da aula (.json). Entra na fila "Aguardando revisão"; nada é publicado.</span>
+      </div>
+      {act.feedback}
+    </div>
   );
 }
 
@@ -171,7 +209,7 @@ function ReviewFlags({ flags }) {
             <Badge size="sm" tone={f.severity === "critical" ? "danger" : f.severity === "major" ? "warning" : "neutral"}>
               {{ critical: "crítico", major: "importante", minor: "menor" }[f.severity] ?? f.severity}
             </Badge>
-            <Badge size="sm" tone={f.by === "ai_review" ? "ai" : "neutral"}>{f.by === "ai_review" ? "revisão por IA" : "regra de software"}</Badge>
+            <Badge size="sm" tone={f.by === "ai_review" ? "ai" : "neutral"}>{f.by === "ai_review" ? "revisão por IA" : f.by === "importacao" ? "importação da aula pronta" : "regra de software"}</Badge>
             <span style={{ font: "var(--type-caption)" }}>{f.where}</span>
           </div>
           <div style={{ font: "var(--type-body-sm)", marginTop: 4 }}>{f.detail}</div>
