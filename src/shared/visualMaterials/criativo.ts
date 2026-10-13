@@ -12,6 +12,7 @@
  */
 import { A6_PRINT, STORY_SAFE, paletteOf, updatedLabel, type TableRowKind, type VisualContent, type VisualSide } from "./model";
 import { VISUAL_TOKENS } from "./tokens";
+import { corDoCampo } from "./temas";
 import { KIT_NAVY, glowOnlySvg, heroInnerWhite, sceneSvg, spot, spotForText, themeOf, type SpotName } from "./kit";
 import { esc, guidesHtml, type Artboard, type BuildOptions } from "./templates";
 
@@ -47,15 +48,18 @@ interface CP {
   cycle: { stripe: string; bg: string; text: string; badge: SpotName; end: SpotName }[];
 }
 
+/** Cor da especialidade (padrão) ou, se preenchido, a cor do tema (campo tema_cor: GR-001…GR-100 ou #RRGGBB). */
 const pal = (c: VisualContent): CP => {
-  const t = paletteOf(c.specialty.key);
+  const esp = paletteOf(c.specialty.key);
+  const tema = corDoCampo(c.tema_cor ?? "");
+  const t = tema ? { ...esp, primary: tema.primaria, soft: tema.clara, dark: tema.escura } : esp;
   const blue = c.specialty.key === "pediatria" ? { stripe: "#1FA6A0", bg: "#E8F7F6", text: "#0E6B74" } : { stripe: "#3A7BD5", bg: "#EAF2FC", text: "#1F4E96" };
   return {
     p: t.primary,
     s: t.soft,
     d: t.dark,
     c: t.contrast,
-    glow: GLOW[c.specialty.key] ?? GLOW.fallback,
+    glow: tema ? tema.brilho : (GLOW[c.specialty.key] ?? GLOW.fallback),
     cycle: [
       { stripe: t.primary, bg: t.soft, text: NAVY, badge: "ok", end: "documento" },
       { ...blue, text: NAVY, badge: "pergunta", end: "lupa" },
@@ -340,7 +344,7 @@ ${c.subtitulo ? `<div data-k="subtitulo" data-lines="1" data-fit="0.7" style="${
 </div></div>`;
   const main = mainCard(c, P, o, { pad: "14px 16px", radius: 14, hero: 62, dado: 30, legend: 14, para: 14.5, paraLines: 8, gap: 12 }, true);
   const pontos = pontosPanel(c, P, { pad: "12px 14px", radius: 14, head: 15, icon: 22, text: 13, detail: 12, gap: 8 }, "flex:1");
-  const nota = postIt(c.tome_nota, { width: pontos ? 158 : null, pad: "22px 14px 10px", rot: 3.5, title: 30, text: 24, lines: 6, bulb: 28, tape: [64, 16] }, pontos ? "align-self:center" : "align-self:center;width:250px");
+  const nota = postIt(c.tome_nota, { width: pontos ? 166 : null, pad: "22px 12px 10px", rot: 3.5, title: pontos ? 25 : 30, text: pontos ? 21 : 24, lines: 6, bulb: pontos ? 22 : 28, tape: [64, 16] }, pontos ? "align-self:center" : "align-self:center;width:250px");
   const right = pontos || nota ? `<div style="display:flex;gap:14px;align-items:stretch;min-width:0;padding:4px 6px 4px 0">${pontos}${nota}</div>` : "";
   const row1 = main || right ? `<div style="flex:none;display:grid;grid-template-columns:${main && right ? "1fr 1.15fr" : "1fr"};gap:12px;align-items:stretch">${main}${right}</div>` : "";
   const table = hasTable(c)
@@ -506,7 +510,8 @@ export function printSheetCriativo(a: Artboard, c: VisualContent) {
   const b = A6_PRINT.bleed;
   const W = a.width + 2 * b;
   const H = a.height + 2 * b;
-  const P = paletteOf(c.specialty.key);
+  const tema = corDoCampo(c.tema_cor ?? "");
+  const P = tema ? { primary: tema.primaria } : paletteOf(c.specialty.key);
   return `<div class="vm-sheet" data-sheet="${a.side}" style="position:relative;width:${W}px;height:${H}px;background:${BODY_BG};overflow:hidden;break-after:page"><div style="position:absolute;left:0;top:0;width:${W}px;height:${b + A6_CRIATIVO.header}px;background:#0B2545"></div><div style="position:absolute;left:0;top:${b + A6_CRIATIVO.header}px;width:${W}px;height:${A6_CRIATIVO.stripe}px;background:${P.primary}"></div><div style="position:absolute;left:0;bottom:0;width:${W}px;height:${b + A6_CRIATIVO.footer}px;background:#0B2545"></div><div style="position:absolute;left:${b}px;top:${b}px">${a.html}</div></div>`;
 }
 

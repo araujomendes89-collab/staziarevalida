@@ -32,7 +32,7 @@ import { fileURLToPath } from "url";
 import { execFileSync } from "child_process";
 import { createRenderer } from "../../server/contentHub/render.ts";
 import { renderVisualContent, visualFontCss } from "../../server/contentHub/visual/render.ts";
-import { VISUAL_TEMPLATE_VERSION, parseVisualCommand, resolveSpecialty, validateVisualInput, visualCommandText, type VisualContent } from "../../src/shared/visualMaterials/index.ts";
+import { PALETA_TEMAS, VISUAL_TEMPLATE_VERSION, parseVisualCommand, resolveSpecialty, validateVisualInput, visualCommandText, type VisualContent } from "../../src/shared/visualMaterials/index.ts";
 import { SECOES_INTERNAS, SINAIS_DE_REFERENCIA, htmlPdf, htmlPrevia, lerMarkdown, limparTexto, montarSecoes, type Aula } from "./aula-html.mts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -55,6 +55,8 @@ if (path.resolve(SRC) === path.resolve(OUT)) throw new Error("A saída não pode
 interface Ajustes {
   /** Ícone/cena do kit para todas as peças (ex.: "pulmao"). */
   ilustracao_icone?: string;
+  /** Cor do tema (GR-xxx ou #RRGGBB). Sem isso: a do próprio código da aula, se ele estiver na paleta dos 100 temas. */
+  tema_cor?: string;
   /** Trocas extras no texto do aluno: [["de (regex)", "para"]]. */
   substituicoes?: [string, string][];
   /** Campos a acrescentar ou trocar por peça: { "feed": { "tome_nota": "…" } } (só texto já validado). */
@@ -81,6 +83,7 @@ const briefing = lerJson("visual_briefing.json") ?? {};
 const pdfMd = ler("pdf_aluno.md") ?? "";
 const CODIGO: string = aulaJson.codigo_roteiro ?? path.basename(path.dirname(SRC));
 
+const TEMA_COR = AJ.tema_cor ?? (PALETA_TEMAS[CODIGO] ? CODIGO : "");
 const avisos: string[] = [];
 const erros: string[] = [];
 
@@ -156,6 +159,7 @@ function prepararPeca(p: Peca): Record<string, any> | null {
     for (const k of ["resumo", "resumo_paragrafo", "pegadinha", "tome_nota", "dado_chave", "subtitulo"]) if (typeof input[k] === "string") input[k] = limpar(input[k]);
     if (Array.isArray(input.pontos_chave)) input.pontos_chave = input.pontos_chave.map((x: string) => limpar(x));
   }
+  if (TEMA_COR && !input.tema_cor) input.tema_cor = TEMA_COR;
   if (AJ.ilustracao_icone) input.ilustracao = { ...(typeof input.ilustracao === "object" ? input.ilustracao : {}), tipo: "icone", icone: AJ.ilustracao_icone };
   Object.assign(input, AJ.campos?.[p.modelo] ?? {}, AJ.campos?.[p.nome] ?? {});
   return input;
@@ -250,6 +254,7 @@ try {
     mensagem: limpar(cardResumo.mensagem_do_card ?? ""),
     meta: limpar(md.meta.replace(/·?\s*Não é material oficial do Inep\.?/i, "").trim()) + (md.meta ? " Não é material oficial do Inep." : ""),
     icone: AJ.ilustracao_icone ?? "prancheta",
+    temaCor: TEMA_COR,
     secoes,
     questoes,
     flashcards,

@@ -36,6 +36,7 @@ import {
   VISUAL_TEMPLATE_VERSION,
 } from "../../src/shared/visualMaterials";
 import { THEMES, sceneSvg, spotForText } from "../../src/shared/visualMaterials/kit";
+import { COR_MODELO, PALETA_TEMAS, TONS_PROIBIDOS, conferirContraste, corDoCampo, distancia, hexParaOklch } from "../../src/shared/visualMaterials/temas";
 import { A4_SAMPLE, CARD_SAMPLE, PIECE_SAMPLE, SPECIALTY_SAMPLES } from "./visualSamples";
 
 vi.setConfig({ testTimeout: 120_000 });
@@ -199,6 +200,44 @@ describe("Modelo criativo-1 (estilo do modelo do dono) e kit de ilustrações", 
     expect(spotForText("Baciloscopia de controle mensal")).toBe("microscopio");
     expect(spotForText("Algo sem palavra conhecida")).toBe("ok");
     for (const k of Object.keys(THEMES)) expect(sceneSvg(THEMES[k].scene, "t", { glow: "#fff", primary: "#000" }, "")).not.toMatch(/<text/);
+  });
+});
+
+describe("Cor de cada tema (tema_cor, paleta dos 100 Grandes Temas)", () => {
+  it("GR-001 é a cor-modelo, sem mudança; os 100 temas existem", () => {
+    expect(PALETA_TEMAS["GR-001"]).toMatchObject(COR_MODELO);
+    expect(COR_MODELO).toEqual({ primaria: "#2E9B67", escura: "#1B6B45", clara: "#E9F6EF", brilho: "#5FE6C0" });
+    expect(Object.keys(PALETA_TEMAS)).toHaveLength(100);
+  });
+
+  it("todos os temas passam no contraste (o mesmo exigido do GR-001) e nenhum usa o vermelho ou o amarelo de alerta", () => {
+    for (const t of Object.values(PALETA_TEMAS)) {
+      expect(conferirContraste(t).filter((c) => !c.ok), t.id).toEqual([]);
+      const h = hexParaOklch(t.primaria)[2];
+      expect(TONS_PROIBIDOS.some((f) => h >= f.de && h <= f.ate), `${t.id} tom ${h}`).toBe(false);
+      expect(distancia(t.primaria, "#C8102E")).toBeGreaterThan(0.1);
+      expect(distancia(t.primaria, "#F2B705")).toBeGreaterThan(0.1);
+    }
+  });
+
+  it("temas vizinhos na lista têm cores bem diferentes", () => {
+    const ids = Object.keys(PALETA_TEMAS).sort();
+    for (let i = 1; i < ids.length; i++) expect(distancia(PALETA_TEMAS[ids[i]].primaria, PALETA_TEMAS[ids[i - 1]].primaria), ids[i]).toBeGreaterThan(0.02);
+  });
+
+  it("campo tema_cor: vazio mantém a cor da especialidade; GR-xxx ou #RRGGBB trocam a cor; valor inválido é recusado", () => {
+    const base = { modelo: "feed", especialidade: "clinica_medica", ...PIECE_SAMPLE };
+    const semCor = renderArtboards(content(base))[0].html;
+    expect(semCor).toContain("#2E9B67");
+    const t = PALETA_TEMAS["GR-043"];
+    const comCor = renderArtboards(content({ ...base, tema_cor: "gr-043" }))[0].html;
+    expect(comCor).toContain(t.primaria);
+    expect(comCor).toContain(t.brilho);
+    expect(comCor).toMatch(/data-role="alert"[^>]*solid #C8102E/);
+    const livre = corDoCampo("#3366CC")!;
+    expect(renderArtboards(content({ ...base, tema_cor: "#3366CC" }))[0].html).toContain(`linear-gradient(90deg, ${livre.escura} 0%, ${livre.primaria} 100%)`);
+    expect(validateVisualInput({ ...base, tema_cor: "GR-999" }).problems.map((p) => p.field)).toContain("tema_cor");
+    expect(parseVisualCommand("modelo: feed\nespecialidade: cm\ntitulo: T\ncor do tema: GR-094").input.tema_cor).toBe("GR-094");
   });
 });
 

@@ -6,7 +6,7 @@
  *   - "web": prévia HTML com os mesmos recursos (flashcards que viram, questões que corrigem, checklists, anotações).
  * Nenhum texto clínico é escrito aqui: tudo vem da pasta de conteúdo. Só rótulos de interface.
  */
-import { esc, paletteOf, resolveSpecialty, type VisualContent } from "../../src/shared/visualMaterials/index.ts";
+import { corDoCampo, esc, paletteOf, resolveSpecialty, type VisualContent } from "../../src/shared/visualMaterials/index.ts";
 import { sceneSvg, spot, spotForText, heroInnerWhite, themeOf, type SpotName } from "../../src/shared/visualMaterials/kit/index.ts";
 
 // ---------------------------------------------------------------------------- limpeza: nenhuma referência no texto do aluno
@@ -91,6 +91,8 @@ export interface Aula {
   mensagem: string;
   meta: string;
   icone: string;
+  /** Cor do tema (GR-xxx ou #RRGGBB); vazio = cor da especialidade. */
+  temaCor?: string;
   secoes: Secao[];
   questoes: Questao[];
   flashcards: Flashcard[];
@@ -390,6 +392,8 @@ b{font-weight:700;color:#0B2545}
 
 /** Rótulo, ícone e cores do kit para a aula. */
 function paleta(aula: Aula) {
+  const tema = corDoCampo(aula.temaCor ?? "");
+  if (tema) return { p: tema.primaria, s: tema.clara, d: tema.escura, glow: tema.brilho };
   const t = paletteOf(aula.specialtyKey);
   const glow: Record<string, string> = { clinica_medica: "#5FE6C0", pediatria: "#8EC8FF", ginecologia: "#FF9EC2", cirurgia: "#FFA59C", preventiva_mfc: "#C9B8FF", fallback: "#7FE3DE" };
   return { p: t.primary, s: t.soft, d: t.dark, glow: glow[aula.specialtyKey] ?? glow.fallback };
