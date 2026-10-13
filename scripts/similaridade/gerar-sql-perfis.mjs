@@ -142,7 +142,14 @@ on conflict (question_id) do update
        competencia = excluded.competencia, cenario = excluded.cenario, problema_central = excluded.problema_central,
        conceitos = excluded.conceitos, achados_discriminatorios = excluded.achados_discriminatorios, raciocinio_cobrado = excluded.raciocinio_cobrado,
        tipo = excluded.tipo, complexidade = excluded.complexidade, confianca = excluded.confianca, basis_hash = excluded.basis_hash, updated_at = now()
- where p.origem in ('revisao_local', 'dna');
+ where p.origem in ('revisao_local', 'dna')
+   -- rodada 2: perfil igual não é regravado (colar de novo não muda nem a data da última mudança)
+   and (p.area, p.tema, p.subtema, p.taxonomy_node_id, p.taxonomy_parent_id, p.competencia, p.cenario, p.problema_central, p.conceitos,
+        p.achados_discriminatorios, p.raciocinio_cobrado, p.tipo, p.complexidade, p.confianca, p.basis_hash)
+       is distinct from
+       (excluded.area, excluded.tema, excluded.subtema, coalesce(excluded.taxonomy_node_id, p.taxonomy_node_id), coalesce(excluded.taxonomy_parent_id, p.taxonomy_parent_id),
+        excluded.competencia, excluded.cenario, excluded.problema_central, excluded.conceitos, excluded.achados_discriminatorios, excluded.raciocinio_cobrado,
+        excluded.tipo, excluded.complexidade, excluded.confianca, excluded.basis_hash);
 `
     );
   }

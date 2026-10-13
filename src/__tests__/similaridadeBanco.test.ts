@@ -199,10 +199,13 @@ describe("Perfis reais da revisão local (SQL do script)", () => {
     expect((r1[r1.length - 1].rows[0] as any).resultado).toMatch(new RegExp(`^OK: ${total} perfis`));
     const retrato = () => sql(`select question_id, md5((to_jsonb(p) - 'updated_at' - 'created_at')::text) h from public.question_profiles p order by 1`);
     const antes = await retrato();
+    const datas = () => sql(`select question_id, updated_at::text u from public.question_profiles order by 1`);
+    const datasAntes = await datas();
     await dev.db.exec(text);
     const depois = await retrato();
     expect(antes).toHaveLength(total);
     expect(depois).toEqual(antes);
+    expect(await datas()).toEqual(datasAntes); // rodada 2: perfil igual não é regravado (nem a data muda)
     const row = (await sql(`select * from public.question_profiles where question_id = $1`, [perfis[0].id]))[0];
     expect(row).toMatchObject({ origem: "revisao_local", competencia: perfis[0].competencia, taxonomy_node_id: null, conceitos: perfis[0].conceitos });
     expect(row.basis_hash).toBe((await sql(`select public.similarity_text_hash(statement, options) h from public.questions where id = $1`, [perfis[0].id]))[0].h);

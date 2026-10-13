@@ -64,9 +64,19 @@ linhas as (
 )
 select case when not (select ok from pre) then 'FALTA: as migrações 9700/9702 (figuras e histórico das questões) não estão no banco; pare e avise o Claude'
             when exists (select 1 from estado where e in ('outro', 'sem questão')) then 'ATENÇÃO: há campo com texto diferente do esperado (veja a linha 12); o resto pode seguir'
+            -- rodada 2: antes de colar (ou com parte faltando) a resposta é FALTA com o que falta, nunca "OK"
+            when pg_get_functiondef('public.practice_question_view(text)'::regprocedure) not like '%question_preliminary_info%'
+                 or exists (select 1 from estado where e = 'antigo')
+                 or (select count(*) from public.questions where exam_id = 'revalida-2026-2') < 100
+              then 'FALTA: ' || concat_ws('; ',
+                case when pg_get_functiondef('public.practice_question_view(text)'::regprocedure) not like '%question_preliminary_info%' then 'parte 1 (aviso do gabarito preliminar)' end,
+                case when exists (select 1 from estado where e = 'antigo') then 'partes 2 (' || (select count(*) from estado where e = 'antigo') || ' campos ainda com o texto antigo, em ' || (select count(distinct prova) from estado where e = 'antigo') || ' provas)' end,
+                case when (select count(*) from public.questions where exam_id = 'revalida-2026-2') < 100 then 'parte 3 (prova 2026/2 com ' || (select count(*) from public.questions where exam_id = 'revalida-2026-2') || ' de 100 questões)' end)
+                || '. Antes de colar isto é o normal: cole na ordem e rode de novo.'
             else 'OK: conferência da carga das provas (' || (select count(*) filter (where e = 'fiel') from estado) || ' de ' || (select count(*) from estado) || ' campos já fiéis; '
                  || (select count(*) filter (where ligada) from img_estado) || ' de 77 questões com imagem ligada; 2026/2 com '
-                 || (select count(*) from public.questions where exam_id = 'revalida-2026-2') || ' questões)' end as conferencia,
+                 || (select count(*) from public.questions where exam_id = 'revalida-2026-2') || ' questões)'
+                 || case when (select count(*) filter (where ligada) from img_estado) < 77 then '. Imagens: a parte 4 só depois do envio dos arquivos (autorização do dono).' else '' end end as conferencia,
        null::text as resultado, -1 as ordem
 union all
 select conferencia, resultado, ordem from linhas

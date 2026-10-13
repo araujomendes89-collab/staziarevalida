@@ -70,6 +70,18 @@ describe("carga das provas corrigidas — no banco", () => {
     fs.rmSync(tmp, { recursive: true, force: true });
   });
 
+  it("rodada 2: antes de colar, o 0-CONFERIR responde FALTA com o que falta (nunca OK)", async () => {
+    // (a migração 9930 já está neste banco de teste, então a parte 1 não aparece; na simulação da produção ela aparece)
+    // sem o campo mexido de propósito (que daria "ATENÇÃO", de prioridade maior): desfeito só dentro desta transação
+    let r: any[] = [];
+    await t.db.transaction(async (tx: any) => {
+      await tx.query(`update public.questions set options = $2 where id = $1`, [mexida.id, JSON.stringify(antes.get(mexida.id).options)]);
+      r = ultimo(await tx.exec(sqlConferir()));
+      await tx.rollback();
+    });
+    expect(r[0].conferencia).toMatch(/^FALTA: partes 2 \(\d+ campos ainda com o texto antigo, em 12 provas\); parte 3 \(prova 2026\/2 com 0 de 100 questões\)/);
+  });
+
   it("parte 1 e partes 2: só troca o campo cujo texto ainda é o do export; o campo mexido depois é pulado e listado", async () => {
     const perm0 = await permissoes();
     ultimo(await exec(sqlAviso()));
