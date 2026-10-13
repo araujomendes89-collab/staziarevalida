@@ -13,7 +13,9 @@
   "paginas": {
     "como": "Páginas oficiais baixadas em 12/10/2026 pelo agente do catálogo de fontes (scratchpad fontes-catalogo), gravadas aqui em gzip sem nenhuma alteração.",
     "inep-revalida-provas-2025.html.gz": "https://www.gov.br/inep/pt-br/areas-de-atuacao/avaliacao-e-exames-educacionais/revalida/provas-e-gabaritos/2025",
-    "ms-guias-e-manuais-2026.html.gz": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2026"
+    "ms-guias-e-manuais-2026.html.gz": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2026",
+    "aids-notas-informativas-2026.html.gz": "https://www.gov.br/aids/pt-br/central-de-conteudo/notas-informativas/2026 (curl uma vez em 13/10/2026 22:25 UTC; tem a NOTA INFORMATIVA Nº 2/2026-CGTM/.DATHI/SVSA/MS, BPaLM, effective 2026-09-30, na lista que a página traz embutida em JSON. O WebFetch foi usado para conferir e NÃO mostra a lista: a página monta a lista no navegador; o HTML cru tem os itens)",
+    "aids-notas-informativas-2025.html.gz": "https://www.gov.br/aids/pt-br/central-de-conteudo/notas-informativas/2025 (curl uma vez em 13/10/2026 22:25 UTC; tem a NOTA INFORMATIVA Nº 25/2025-CGAFME/DAF/SECTICS/MS, TPT com rifampicina)"
   },
   "pdf": {
     "como": "PDFs reais da biblioteca local de fontes (_biblioteca-fontes-local/pdf/vigente), copiados sem alteração.",

@@ -235,3 +235,79 @@ export function versionCandidates(prev: PageFacts | null | undefined, next: Page
   }
   return out.slice(0, 20);
 }
+
+/** Um item de página-índice oficial (lista de notas, PCDT, publicações): link, título, descrição e data, quando houver. */
+export interface IndexItem {
+  url: string;
+  titulo: string;
+  descricao: string | null;
+  data: string | null;
+}
+
+const unescapeJson = (s: string) => s.replace(/\\u([0-9a-fA-F]{4})/g, (_, h) => String.fromCharCode(parseInt(h, 16))).replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+
+/**
+ * Itens de uma página-índice oficial, entre execuções do vigia. Lê os dois jeitos do gov.br: links no HTML (Plone clássico) e a
+ * lista que o portal novo (Volto) traz embutida em JSON ("@id", "title", "description", "effective"), que o navegador desenha
+ * depois. Só itens dentro do caminho da própria página ou documentos (PDF etc.). No máximo 500. Tudo é dado.
+ */
+export function indexItems(html: string, pageUrl: string): IndexItem[] {
+  const out = new Map<string, IndexItem>();
+  let base: URL;
+  try {
+    base = new URL(pageUrl);
+  } catch {
+    return [];
+  }
+  const prefix = base.origin + base.pathname.replace(/\/+$/, "") + "/";
+  const keep = (url: string) => url.startsWith("https://") && (url.startsWith(prefix) || DOC_LINK.test(url));
+  // 1. JSON embutido do portal (cada objeto com "@id" e "title")
+  const decoded = html.includes("\\u002F") ? unescapeJson(html) : html;
+  const re = /\{"@id":"(https:\/\/[^"]+)","@type":"([A-Za-z ]+)"([\s\S]*?)(?=\{"@id":|\]\s*,\s*"items_total"|$)/g;
+  for (const m of decoded.matchAll(re)) {
+    const body = m[3].slice(0, 4000);
+    const url = m[1].split("#")[0];
+    const title = /"title":"((?:[^"\\]|\\.)*)"/.exec(body)?.[1];
+    if (!title || !keep(url) || /^(Folder|Image)$/.test(m[2]) && !url.startsWith(prefix)) continue;
+    const desc = /"description":"((?:[^"\\]|\\.)*)"/.exec(body)?.[1] ?? null;
+    const eff = /"effective":"(\d{4}-\d{2}-\d{2})/.exec(body)?.[1] ?? null;
+    const t = cleanField(title, 300);
+    if (!t) continue;
+    out.set(url, { url: url.slice(0, 2000), titulo: t, descricao: cleanField(desc, 500), data: eff && eff > "1971" ? eff : (datesOf(`${t} ${desc ?? ""}`)[0] ?? null) });
+    if (out.size >= 500) break;
+  }
+  // 2. links do HTML (conteúdo principal)
+  for (const l of documentLinks(html, pageUrl)) {
+    if (out.has(l.url) || !keep(l.url) || !l.text) continue;
+    out.set(l.url, { url: l.url, titulo: l.text, descricao: null, data: datesOf(l.text)[0] ?? null });
+  }
+  const main = mainHtml(html);
+  for (const m of main.matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi)) {
+    if (out.size >= 500) break;
+    const href = /\bhref\s*=\s*"([^"]*)"/i.exec(m[1])?.[1];
+    if (!href) continue;
+    let url: string;
+    try {
+      url = new URL(decodeEntities(href), pageUrl).href.split("#")[0];
+    } catch {
+      continue;
+    }
+    const text = cleanField(htmlText(m[2]), 300);
+    if (!text || text.length < 8 || out.has(url) || !url.startsWith(prefix)) continue;
+    out.set(url, { url, titulo: text, descricao: null, data: datesOf(text)[0] ?? null });
+  }
+  return [...out.values()];
+}
+
+/** Texto sem acento e em minúsculas (para casar palavra-chave do tema). */
+export const fold = (t: string) => t.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
+/** Palavras-chave do tema que aparecem no item (título + descrição). Palavra curta (até 4 letras) só casa inteira. */
+export function matchKeywords(item: Pick<IndexItem, "titulo" | "descricao">, keywords: string[]): string[] {
+  const text = ` ${fold(`${item.titulo} ${item.descricao ?? ""}`).replace(/[^a-z0-9]+/g, " ")} `;
+  return keywords.filter((k) => {
+    const kk = fold(k).replace(/[^a-z0-9]+/g, " ").trim();
+    if (!kk) return false;
+    return kk.length <= 4 ? text.includes(` ${kk} `) : text.includes(kk);
+  });
+}
