@@ -1,0 +1,1652 @@
+{
+"GR-001": {
+"k": [
+"tuberculose",
+"tubercul"
+],
+"x": [
+"TB",
+"BPaLM",
+"TPT",
+"ILTB",
+"rifampicina",
+"rifapentina",
+"isoniazida",
+"bedaquilina",
+"pretomanida",
+"baciloscopia",
+"TRM-TB",
+"esquema basico tuberculose"
+]
+},
+"GR-002": {
+"k": [
+"diabetes mellitus tipo 2",
+"diabetes mellitus",
+"diabetes",
+"diabete melito",
+"diabetes melito"
+],
+"x": [
+"DM2",
+"metformina",
+"iSGLT2",
+"agonista GLP-1",
+"hemoglobina glicada",
+"pe diabetico",
+"rastreamento diabetes",
+"insulinizacao"
+]
+},
+"GR-003": {
+"k": [
+"hipertensao arterial",
+"hipertensao"
+],
+"x": [
+"HAS",
+"pressao arterial",
+"anti-hipertensivo",
+"diretriz brasileira de hipertensao",
+"crise hipertensiva",
+"MAPA",
+"MRPA"
+]
+},
+"GR-004": {
+"k": [
+"pneumonia adquirida na comunidade",
+"pneumonia"
+],
+"x": [
+"PAC",
+"CURB-65",
+"antibioticoterapia pneumonia",
+"diretrizes pneumonia"
+]
+},
+"GR-005": {
+"k": [
+"hiv",
+"aids",
+"imunodeficiencia humana"
+],
+"x": [
+"TARV",
+"dolutegravir",
+"PrEP",
+"PEP",
+"terapia antirretroviral",
+"carga viral",
+"CD4",
+"PCDT HIV",
+"infeccoes oportunistas"
+]
+},
+"GR-006": {
+"k": [
+"hepatite",
+"hepatites virais"
+],
+"x": [
+"hepatite B",
+"hepatite C",
+"hepatite A",
+"HBV",
+"HCV",
+"antivirais de acao direta",
+"HBsAg",
+"PCDT hepatite"
+]
+},
+"GR-007": {
+"k": [
+"dengue",
+"arbovirose",
+"chikungunya",
+"zika"
+],
+"x": [
+"febre amarela",
+"Aedes aegypti",
+"prova do laco",
+"sinais de alarme dengue",
+"hidratacao dengue",
+"notificacao dengue"
+]
+},
+"GR-008": {
+"k": [
+"sifilis",
+"infeccoes sexualmente transmissiveis",
+"pessoas com infeccoes sexualmente"
+],
+"x": [
+"Treponema pallidum",
+"penicilina benzatina",
+"VDRL",
+"teste treponemico",
+"IST",
+"PCDT IST",
+"neurossifilis"
+]
+},
+"GR-009": {
+"k": [
+"infeccao urinaria",
+"infeccao do trato urinario",
+"pielonefrite",
+"cistite"
+],
+"x": [
+"ITU",
+"urocultura",
+"bacteriuria",
+"nitrofurantoina",
+"fosfomicina"
+]
+},
+"GR-010": {
+"k": [
+"sepse",
+"choque septico"
+],
+"x": [
+"Surviving Sepsis Campaign",
+"qSOFA",
+"SOFA",
+"lactato",
+"noradrenalina",
+"pacote da primeira hora",
+"ILAS"
+]
+},
+"GR-011": {
+"k": [
+"sindrome coronariana",
+"infarto agudo do miocardio",
+"infarto",
+"angina instavel",
+"coronariana aguda"
+],
+"x": [
+"SCA",
+"IAMCSST",
+"supradesnivelamento do segmento ST",
+"troponina",
+"dor toracica",
+"angioplastia primaria",
+"trombolise"
+]
+},
+"GR-012": {
+"k": [
+"insuficiencia cardiaca"
+],
+"x": [
+"IC",
+"fracao de ejecao",
+"sacubitril",
+"iSGLT2 insuficiencia cardiaca",
+"BNP",
+"diretriz de insuficiencia cardiaca"
+]
+},
+"GR-013": {
+"k": [
+"fibrilacao atrial",
+"taquiarritmia",
+"arritmia"
+],
+"x": [
+"FA",
+"cardioversao",
+"CHA2DS2-VASc",
+"anticoagulacao fibrilacao",
+"flutter",
+"taquicardia supraventricular"
+]
+},
+"GR-014": {
+"k": [
+"acidente vascular cerebral",
+"avc",
+"acidente vascular encefalico",
+"avci"
+],
+"x": [
+"AVC isquemico",
+"AVC hemorragico",
+"trombolise AVC",
+"alteplase",
+"trombectomia",
+"escala NIHSS",
+"linha de cuidado AVC"
+]
+},
+"GR-015": {
+"k": [
+"tromboembolismo venoso",
+"tromboembolismo",
+"trombose venosa",
+"embolia pulmonar"
+],
+"x": [
+"TEV",
+"TVP",
+"TEP",
+"anticoagulante oral direto",
+"heparina",
+"escore de Wells",
+"D-dimero"
+]
+},
+"GR-016": {
+"k": [
+"asma"
+],
+"x": [
+"GINA",
+"broncoespasmo",
+"corticoide inalatorio",
+"crise de asma",
+"diretrizes asma",
+"beta-2 agonista"
+]
+},
+"GR-017": {
+"k": [
+"doenca pulmonar obstrutiva cronica",
+"dpoc"
+],
+"x": [
+"GOLD",
+"broncodilatador",
+"exacerbacao DPOC",
+"espirometria",
+"tabagismo"
+]
+},
+"GR-018": {
+"k": [
+"lesao renal aguda",
+"insuficiencia renal aguda"
+],
+"x": [
+"LRA",
+"KDIGO",
+"necrose tubular aguda",
+"creatinina",
+"terapia renal substitutiva"
+]
+},
+"GR-019": {
+"k": [
+"doenca renal cronica",
+"insuficiencia renal cronica"
+],
+"x": [
+"DRC",
+"TFG",
+"taxa de filtracao glomerular",
+"albuminuria",
+"dialise",
+"hemodialise",
+"PCDT doenca renal"
+]
+},
+"GR-020": {
+"k": [
+"hiponatremia",
+"hipernatremia",
+"hipercalemia",
+"hipocalemia",
+"distarbios hidroeletroliticos",
+"disturbios hidroeletroliticos",
+"sodio",
+"potassio"
+],
+"x": [
+"hiponatremia",
+"hipernatremia",
+"hipercalemia",
+"hipocalemia",
+"distúrbio hidroeletrolítico",
+"SIADH",
+"ECG hipercalemia"
+]
+},
+"GR-021": {
+"k": [
+"hemorragia digestiva"
+],
+"x": [
+"HDA",
+"varizes esofagicas",
+"ulcera peptica",
+"inibidor de bomba de protons",
+"endoscopia digestiva",
+"Forrest",
+"Helicobacter pylori"
+]
+},
+"GR-022": {
+"k": [
+"cirrose",
+"hipertensao portal",
+"ascite"
+],
+"x": [
+"encefalopatia hepatica",
+"peritonite bacteriana espontanea",
+"varizes esofagicas",
+"Child-Pugh",
+"MELD",
+"albumina"
+]
+},
+"GR-023": {
+"k": [
+"anemia"
+],
+"x": [
+"anemia ferropriva",
+"anemia megaloblastica",
+"anemia falciforme",
+"ferritina",
+"vitamina B12",
+"reticulocitos",
+"sulfato ferroso"
+]
+},
+"GR-024": {
+"k": [
+"hipotireoidismo",
+"hipertireoidismo",
+"tireoide",
+"tireoidiano",
+"doenca de graves"
+],
+"x": [
+"TSH",
+"T4 livre",
+"levotiroxina",
+"Graves",
+"tireotoxicose",
+"nodulo tireoidiano",
+"tireoidite"
+]
+},
+"GR-025": {
+"k": [
+"epilepsia",
+"crise convulsiva",
+"estado de mal epileptico"
+],
+"x": [
+"crise epileptica",
+"anticonvulsivante",
+"estado epileptico",
+"benzodiazepinico",
+"fenitoina",
+"valproato"
+]
+},
+"GR-026": {
+"k": [
+"meningite"
+],
+"x": [
+"meningococo",
+"doenca meningococica",
+"liquor",
+"ceftriaxona meningite",
+"dexametasona meningite",
+"quimioprofilaxia meningite",
+"rifampicina quimioprofilaxia"
+]
+},
+"GR-027": {
+"k": [
+"apendicite"
+],
+"x": [
+"abdome agudo",
+"apendicectomia",
+"escore de Alvarado",
+"dor em fossa iliaca direita"
+]
+},
+"GR-028": {
+"k": [
+"colecistite",
+"colangite",
+"colelitiase",
+"vias biliares"
+],
+"x": [
+"Diretrizes de Tokyo",
+"coledocolitiase",
+"colecistectomia",
+"triade de Charcot",
+"pentade de Reynolds",
+"CPRE"
+]
+},
+"GR-029": {
+"k": [
+"pancreatite"
+],
+"x": [
+"pancreatite aguda",
+"Atlanta",
+"criterios de Ranson",
+"lipase",
+"pancreatite biliar",
+"necrose pancreatica"
+]
+},
+"GR-030": {
+"k": [
+"obstrucao intestinal",
+"oclusao intestinal"
+],
+"x": [
+"volvo",
+"brida",
+"intestino delgado obstrucao",
+"sonda nasogastrica",
+"abdome agudo obstrutivo"
+]
+},
+"GR-031": {
+"k": [
+"peritonite",
+"perfuracao"
+],
+"x": [
+"pneumoperitonio",
+"ulcera perfurada",
+"abdome agudo perfurativo",
+"laparotomia",
+"diverticulite"
+]
+},
+"GR-032": {
+"k": [
+"politraumatizado",
+"atendimento inicial ao traumatizado",
+"trauma",
+"atls"
+],
+"x": [
+"ATLS",
+"ABCDE",
+"avaliacao primaria",
+"PHTLS",
+"colar cervical",
+"escala de coma de Glasgow",
+"atendimento pre-hospitalar"
+]
+},
+"GR-033": {
+"k": [
+"trauma toracico",
+"pneumotorax",
+"hemotorax",
+"toracico"
+],
+"x": [
+"pneumotorax hipertensivo",
+"drenagem toracica",
+"toracotomia",
+"tamponamento cardiaco",
+"torax instavel"
+]
+},
+"GR-034": {
+"k": [
+"traumatismo cranioencefalico",
+"tce",
+"trauma cranioencefalico"
+],
+"x": [
+"TCE",
+"Glasgow",
+"hematoma extradural",
+"hematoma subdural",
+"hipertensao intracraniana",
+"regra canadense de TC de cranio"
+]
+},
+"GR-035": {
+"k": [
+"trauma abdominal"
+],
+"x": [
+"FAST",
+"lavado peritoneal",
+"esplenectomia",
+"trauma esplenico",
+"trauma hepatico"
+]
+},
+"GR-036": {
+"k": [
+"queimadura",
+"lesao eletrica",
+"trauma eletrico"
+],
+"x": [
+"superficie corporal queimada",
+"regra dos nove",
+"formula de Parkland",
+"grande queimado",
+"inalacao de fumaca"
+]
+},
+"GR-037": {
+"k": [
+"pos-operatorio",
+"perioperatorio",
+"pre-operatorio",
+"cirurgia segura",
+"infeccao de sitio cirurgico"
+],
+"x": [
+"complicacao pos-operatoria",
+"ISC",
+"deiscencia",
+"profilaxia antibiotica cirurgica",
+"risco cirurgico",
+"ASA",
+"checklist cirurgia segura"
+]
+},
+"GR-038": {
+"k": [
+"tetano",
+"ferida",
+"sutura"
+],
+"x": [
+"profilaxia do tetano",
+"vacina dT",
+"dTpa",
+"imunoglobulina antitetanica",
+"ferida contaminada",
+"cicatrizacao"
+]
+},
+"GR-039": {
+"k": [
+"hernia"
+],
+"x": [
+"hernia inguinal",
+"hernia incisional",
+"hernia umbilical",
+"herniorrafia",
+"hernia encarcerada",
+"hernia estrangulada"
+]
+},
+"GR-040": {
+"k": [
+"litiase urinaria",
+"colica renal",
+"calculo renal",
+"nefrolitiase",
+"uropatia obstrutiva"
+],
+"x": [
+"colica nefretica",
+"hidronefrose",
+"ureterolitiase",
+"litotripsia",
+"tansulosina"
+]
+},
+"GR-041": {
+"k": [
+"cancer colorretal",
+"colorretal",
+"polipo",
+"cancer de colon",
+"cancer de intestino"
+],
+"x": [
+"pesquisa de sangue oculto nas fezes",
+"colonoscopia",
+"polipos colorretais",
+"retossigmoidoscopia",
+"diretrizes rastreamento colorretal"
+]
+},
+"GR-042": {
+"k": [
+"isquemia arterial",
+"oclusao arterial",
+"doenca arterial"
+],
+"x": [
+"isquemia aguda de membro",
+"embolia arterial",
+"seis P",
+"doenca arterial periferica",
+"claudicacao",
+"embolectomia"
+]
+},
+"GR-043": {
+"k": [
+"pre-natal",
+"prenatal",
+"gestacao de risco habitual",
+"atencao ao pre-natal"
+],
+"x": [
+"pre-natal de baixo risco",
+"caderneta da gestante",
+"Rede Alyne",
+"Rede Cegonha",
+"consulta de pre-natal",
+"exames de pre-natal",
+"acido folico",
+"vacinas na gestacao"
+]
+},
+"GR-044": {
+"k": [
+"transmissao vertical",
+"toxoplasmose",
+"infeccoes congenitas",
+"sifilis congenita",
+"citomegalovirus"
+],
+"x": [
+"sifilis gestacional",
+"HIV na gestacao",
+"TORCH",
+"estreptococo do grupo B",
+"zika congenito",
+"rubeola congenita",
+"hepatite B gestacao"
+]
+},
+"GR-045": {
+"k": [
+"pre-eclampsia",
+"eclampsia",
+"sindromes hipertensivas",
+"hipertensao na gestacao",
+"hipertensiva na gestacao"
+],
+"x": [
+"sulfato de magnesio",
+"HELLP",
+"hipertensao gestacional",
+"pre-eclampsia grave",
+"anti-hipertensivo na gestacao",
+"aspirina pre-eclampsia",
+"alto risco gestacao"
+]
+},
+"GR-046": {
+"k": [
+"diabetes gestacional",
+"diabetes mellitus gestacional",
+"diabetes na gestacao",
+"diabete melito gestacional"
+],
+"x": [
+"DMG",
+"TOTG gestacao",
+"curva glicemica",
+"glicemia de jejum gestacao",
+"insulina na gestacao"
+]
+},
+"GR-047": {
+"k": [
+"abortamento",
+"gravidez ectopica",
+"gestacao ectopica",
+"mola hidatiforme",
+"aborto"
+],
+"x": [
+"sangramento do primeiro trimestre",
+"ameaca de abortamento",
+"ectopica",
+"metotrexato",
+"beta-hCG",
+"misoprostol"
+]
+},
+"GR-048": {
+"k": [
+"placenta previa",
+"descolamento prematuro de placenta",
+"descolamento de placenta",
+"sangramento na segunda metade"
+],
+"x": [
+"DPP",
+"placenta pre via",
+"acretismo placentario",
+"rotura uterina",
+"hemorragia de terceiro trimestre"
+]
+},
+"GR-049": {
+"k": [
+"trabalho de parto",
+"partograma",
+"parto normal",
+"assistencia ao parto",
+"parto"
+],
+"x": [
+"fases do trabalho de parto",
+"Friedman",
+"Diretrizes Nacionais de Assistencia ao Parto Normal",
+"analgesia de parto",
+"amniotomia",
+"ocitocina",
+"episiotomia"
+]
+},
+"GR-050": {
+"k": [
+"distocia",
+"distocia de ombro",
+"apresentacao pelvica",
+"parto operatorio",
+"fórceps",
+"forceps"
+],
+"x": [
+"distocia de ombro",
+"manobra de McRoberts",
+"Rubin",
+"vacuo extrator",
+"cesariana",
+"prolapso de cordao",
+"parto instrumentalizado"
+]
+},
+"GR-051": {
+"k": [
+"hemorragia pos-parto",
+"hemorragia puerperal"
+],
+"x": [
+"HPP",
+"atonia uterina",
+"ocitocina HPP",
+"tranexamico",
+"balao de Bakri",
+"manobra de Hamilton",
+"acretismo"
+]
+},
+"GR-052": {
+"k": [
+"puerperio",
+"mastite",
+"endometrite",
+"puerperal"
+],
+"x": [
+"febre puerperal",
+"abscesso mamario",
+"infeccao puerperal",
+"depressao pos-parto",
+"consulta puerperal",
+"amamentacao mastite"
+]
+},
+"GR-053": {
+"k": [
+"prematuridade",
+"trabalho de parto prematuro",
+"rotura prematura de membranas",
+"parto prematuro",
+"prematuro"
+],
+"x": [
+"RPMO",
+"corticoide antenatal",
+"betametasona",
+"progesterona",
+"nifedipina tocolise",
+"sulfato de magnesio neuroprotecao",
+"amniorrexe prematura"
+]
+},
+"GR-054": {
+"k": [
+"restricao de crescimento",
+"crescimento fetal",
+"bem-estar fetal",
+"vitalidade fetal"
+],
+"x": [
+"RCF",
+"doppler obstetrico",
+"cardiotocografia",
+"perfil biofisico fetal",
+"indice de liquido amniotico",
+"oligodramnia"
+]
+},
+"GR-055": {
+"k": [
+"contracepcao",
+"planejamento reprodutivo",
+"planejamento familiar",
+"anticoncepcao",
+"anticoncepcional"
+],
+"x": [
+"DIU",
+"implante contraceptivo",
+"pilula",
+"anticoncepcao de emergencia",
+"criterios de elegibilidade da OMS",
+"laqueadura",
+"vasectomia",
+"Lei do planejamento familiar"
+]
+},
+"GR-056": {
+"k": [
+"colo do utero",
+"papanicolau",
+"cancer do colo",
+"hpv"
+],
+"x": [
+"citopatologico",
+"HPV",
+"colposcopia",
+"lesao intraepitelial",
+"diretrizes rastreamento colo do utero",
+"teste de DNA-HPV",
+"vacina HPV",
+"NIC"
+]
+},
+"GR-057": {
+"k": [
+"cancer de mama",
+"mamografia",
+"mama",
+"mamario"
+],
+"x": [
+"BI-RADS",
+"nodulo mamario",
+"rastreamento mamografico",
+"autoexame das mamas",
+"ultrassonografia mamaria",
+"controle do cancer de mama"
+]
+},
+"GR-058": {
+"k": [
+"vulvovaginite",
+"cervicite",
+"corrimento vaginal",
+"vaginose",
+"infeccoes sexualmente transmissiveis"
+],
+"x": [
+"vaginose bacteriana",
+"candidiase",
+"tricomoniase",
+"clamidia",
+"gonorreia",
+"PCDT IST",
+"corrimento"
+]
+},
+"GR-059": {
+"k": [
+"sangramento uterino anormal",
+"sangramento uterino",
+"mioma",
+"adenomiose"
+],
+"x": [
+"SUA",
+"PALM-COEIN",
+"ultrassonografia transvaginal",
+"endometrio",
+"menorragia",
+"FIGO sangramento"
+]
+},
+"GR-060": {
+"k": [
+"doenca inflamatoria pelvica",
+"dor pelvica"
+],
+"x": [
+"DIP",
+"salpingite",
+"abscesso tubo-ovariano",
+"endometriose",
+"ceftriaxona doxiciclina metronidazol"
+]
+},
+"GR-061": {
+"k": [
+"reanimacao neonatal"
+],
+"x": [
+"reanimacao do recem-nascido",
+"clampeamento do cordao",
+"Apgar",
+"ventilacao com pressao positiva",
+"SBP reanimacao",
+"PRN-SBP",
+"boletim de Apgar",
+"asfixia perinatal"
+]
+},
+"GR-062": {
+"k": [
+"aleitamento materno",
+"amamentacao"
+],
+"x": [
+"aleitamento exclusivo",
+"alimentacao complementar",
+"Guia alimentar para criancas menores de dois anos",
+"pega",
+"banco de leite",
+"NBCAL",
+"Iniciativa Hospital Amigo da Crianca"
+]
+},
+"GR-063": {
+"k": [
+"crescimento e desenvolvimento",
+"puericultura",
+"crescimento infantil",
+"desenvolvimento infantil"
+],
+"x": [
+"curva de crescimento",
+"caderneta da crianca",
+"marcos do desenvolvimento",
+"escore Z",
+"OMS curvas de crescimento",
+"atencao a saude da crianca"
+]
+},
+"GR-064": {
+"k": [
+"calendario nacional de vacinacao",
+"calendario vacinal",
+"vacinacao",
+"imunizacao",
+"vacina"
+],
+"x": [
+"PNI",
+"calendario de vacinacao da crianca",
+"SBP calendario",
+"BCG",
+"pentavalente",
+"rotavirus",
+"pneumococica",
+"meningococica",
+"HPV",
+"triplice viral",
+"PNI manual de normas"
+]
+},
+"GR-065": {
+"k": [
+"ictericia neonatal",
+"ictericia",
+"hiperbilirrubinemia"
+],
+"x": [
+"fototerapia",
+"exsanguineotransfusao",
+"kernicterus",
+"incompatibilidade ABO",
+"icterícia do recem-nascido",
+"bilirrubina"
+]
+},
+"GR-066": {
+"k": [
+"sepse neonatal",
+"infeccao neonatal",
+"sepse do recem-nascido"
+],
+"x": [
+"sepse precoce",
+"sepse tardia",
+"estreptococo do grupo B",
+"hemocultura neonatal",
+"ampicilina gentamicina neonatal"
+]
+},
+"GR-067": {
+"k": [
+"diarreia",
+"desidratacao",
+"gastroenterite"
+],
+"x": [
+"TRO",
+"terapia de reidratacao oral",
+"plano A B C",
+"soro de reidratacao oral",
+"zinco",
+"diarreia aguda",
+"rotavirus",
+"sais de reidratacao oral"
+]
+},
+"GR-068": {
+"k": [
+"pneumonia"
+],
+"x": [
+"pneumonia na crianca",
+"pneumonia pediatrica",
+"AIDPI",
+"taquipneia",
+"amoxicilina",
+"tiragem subcostal",
+"SBP pneumonia"
+]
+},
+"GR-069": {
+"k": [
+"bronquiolite"
+],
+"x": [
+"VSR",
+"virus sincicial respiratorio",
+"palivizumabe",
+"nirsevimabe",
+"chiado lactente",
+"bronquiolite viral aguda"
+]
+},
+"GR-070": {
+"k": [
+"asma"
+],
+"x": [
+"asma na crianca",
+"asma pediatrica",
+"GINA",
+"bombinha espacador",
+"sibilancia recorrente",
+"crise de asma criança"
+]
+},
+"GR-071": {
+"k": [
+"febre sem sinais localizatorios",
+"febre no lactente",
+"febre em lactente"
+],
+"x": [
+"FSSL",
+"lactente febril",
+"bacteriemia oculta",
+"criterios de Rochester",
+"febre em menores de 3 meses",
+"febre sem foco"
+]
+},
+"GR-072": {
+"k": [
+"meningite"
+],
+"x": [
+"meningite na crianca",
+"meningite bacteriana",
+"Haemophilus",
+"pneumococo",
+"meningococo",
+"vacina meningococica",
+"liquor"
+]
+},
+"GR-073": {
+"k": [
+"desnutricao",
+"anemia ferropriva",
+"carencia de ferro",
+"suplementacao de ferro"
+],
+"x": [
+"desnutricao grave",
+"kwashiorkor",
+"marasmo",
+"NutriSUS",
+"Programa Nacional de Suplementacao de Ferro",
+"vitamina A",
+"recuperacao nutricional",
+"F-75",
+"F-100"
+]
+},
+"GR-074": {
+"k": [
+"sarampo",
+"exantematica",
+"exantema",
+"rubeola",
+"varicela",
+"escarlatina"
+],
+"x": [
+"sarampo",
+"eliminação do sarampo",
+"doencas exantematicas",
+"roseola",
+"eritema infeccioso",
+"mão pé boca",
+"caxumba",
+"notificacao imediata"
+]
+},
+"GR-075": {
+"k": [
+"infeccao urinaria",
+"infeccao do trato urinario"
+],
+"x": [
+"ITU pediatrica",
+"ITU em lactente",
+"refluxo vesicoureteral",
+"uretrocistografia miccional",
+"pielonefrite crianca",
+"cintilografia DMSA"
+]
+},
+"GR-076": {
+"k": [
+"choque",
+"sepse pediatrica",
+"suporte avancado de vida em pediatria",
+"pals"
+],
+"x": [
+"PALS",
+"choque septico pediatrico",
+"SAVP",
+"reposicao volemica na crianca",
+"Surviving Sepsis Campaign Children",
+"parada cardiorrespiratoria pediatrica"
+]
+},
+"GR-077": {
+"k": [
+"convulsao febril"
+],
+"x": [
+"crise febril",
+"convulsao febril simples",
+"convulsao febril complexa",
+"punção lombar",
+"diazepam retal",
+"febre e convulsão"
+]
+},
+"GR-078": {
+"k": [
+"invaginacao intestinal",
+"intussuscepcao"
+],
+"x": [
+"geleia de morango",
+"sinal do alvo",
+"enema",
+"abdome agudo na crianca",
+"rotavirus invaginacao"
+]
+},
+"GR-079": {
+"k": [
+"estrategia saude da familia",
+"saude da familia",
+"territorializacao",
+"atencao primaria",
+"atencao basica"
+],
+"x": [
+"ESF",
+"ACS",
+"NASF",
+"eMulti",
+"territorio",
+"PNAB",
+"equipe de saude da familia",
+"UBS",
+"agente comunitario de saude"
+]
+},
+"GR-080": {
+"k": [
+"metodo clinico centrado na pessoa",
+"centrado na pessoa",
+"comunicacao clinica",
+"clinica ampliada"
+],
+"x": [
+"MCCP",
+"consulta",
+"SOAP",
+"CIAP-2",
+"Calgary-Cambridge",
+"relacao medico-paciente",
+"acolhimento"
+]
+},
+"GR-081": {
+"k": [
+"prevencao quaternaria",
+"rastreamento",
+"prevencao"
+],
+"x": [
+"sobrediagnostico",
+"sobretratamento",
+"Wilson e Jungner",
+"rastreamento populacional",
+"prevencao quaternaria",
+"diretrizes de rastreamento",
+"check-up"
+]
+},
+"GR-082": {
+"k": [
+"hipertensao",
+"diabetes",
+"doenca cronica"
+],
+"x": [
+"HAS e DM na APS",
+"Hiperdia",
+"estratificacao de risco cardiovascular",
+"cuidado de condicoes cronicas",
+"autocuidado apoiado",
+"Cadernos de Atencao Basica 36",
+"Cadernos de Atencao Basica 37",
+"CAB 35"
+]
+},
+"GR-083": {
+"k": [
+"visita domiciliar",
+"abordagem familiar",
+"genograma",
+"ecomapa",
+"vulnerabilidade familiar"
+],
+"x": [
+"genograma",
+"ecomapa",
+"FIRO",
+"PRACTICE",
+"APGAR familiar",
+"ciclo de vida familiar",
+"atencao domiciliar",
+"Melhor em Casa"
+]
+},
+"GR-084": {
+"k": [
+"saude sexual e reprodutiva",
+"saude da mulher",
+"planejamento familiar",
+"contracepcao",
+"saude sexual"
+],
+"x": [
+"atencao a saude da mulher",
+"violencia sexual",
+"IST na APS",
+"consulta ginecologica",
+"cuidados com a saude sexual",
+"Cadernos de Atencao Basica 26",
+"preservativo"
+]
+},
+"GR-085": {
+"k": [
+"idoso",
+"pessoa idosa",
+"envelhecimento",
+"geriatria"
+],
+"x": [
+"avaliacao multidimensional da pessoa idosa",
+"AMPI",
+"fragilidade",
+"Estatuto da Pessoa Idosa",
+"quedas em idosos",
+"caderneta da pessoa idosa",
+"polifarmacia",
+"Beers",
+"demencia",
+"VES-13"
+]
+},
+"GR-086": {
+"k": [
+"cuidados paliativos",
+"ma noticia",
+"ma noticias",
+"fim de vida",
+"terminalidade"
+],
+"x": [
+"protocolo SPIKES",
+"SPIKES",
+"ortotanasia",
+"diretivas antecipadas de vontade",
+"dor total",
+"escada analgesica da OMS",
+"morte e morrer",
+"luto",
+"Resolução CFM 2.217"
+]
+},
+"GR-087": {
+"k": [
+"sistema unico de saude",
+"sus",
+"lei 8080",
+"lei 8.080",
+"lei 8142",
+"lei 8.142",
+"constituicao federal"
+],
+"x": [
+"Lei 8.080",
+"Lei 8.142",
+"universalidade",
+"integralidade",
+"equidade",
+"descentralizacao",
+"controle social",
+"Conselho de Saude",
+"financiamento do SUS",
+"NOB",
+"Pacto pela Saude",
+"Decreto 7.508"
+]
+},
+"GR-088": {
+"k": [
+"politica nacional de atencao basica",
+"redes de atencao a saude",
+"rede de atencao",
+"pnab"
+],
+"x": [
+"PNAB 2017",
+"Portaria 2.436",
+"Portaria 4.279",
+"RAS",
+"regionalizacao",
+"RAPS",
+"Rede Cegonha",
+"Rede de Urgencia e Emergencia",
+"coordenacao do cuidado",
+"atributos da APS"
+]
+},
+"GR-089": {
+"k": [
+"notificacao compulsoria",
+"vigilancia epidemiologica",
+"surto",
+"investigacao de surtos",
+"vigilancia em saude"
+],
+"x": [
+"Portaria de Consolidacao 4",
+"lista nacional de notificacao compulsoria",
+"notificacao imediata",
+"curva epidemica",
+"Guia de Vigilancia em Saude",
+"bloqueio vacinal",
+"investigacao epidemiologica",
+"agravos de notificacao"
+]
+},
+"GR-090": {
+"k": [
+"sinan",
+"sim",
+"sinasc",
+"sistemas de informacao"
+],
+"x": [
+"SINAN",
+"SIM",
+"SINASC",
+"SIH",
+"SIA",
+"DATASUS",
+"declaracao de obito",
+"declaracao de nascido vivo",
+"e-SUS",
+"SISAB",
+"RIPSA"
+]
+},
+"GR-091": {
+"k": [
+"incidencia",
+"prevalencia",
+"indicadores de saude",
+"indicador",
+"mortalidade"
+],
+"x": [
+"coeficiente de mortalidade infantil",
+"mortalidade materna",
+"razao de mortalidade materna",
+"taxa de letalidade",
+"taxa de natalidade",
+"IDB",
+"RIPSA indicadores",
+"anos potenciais de vida perdidos"
+]
+},
+"GR-092": {
+"k": [
+"sensibilidade e especificidade",
+"valor preditivo",
+"epidemiologia clinica",
+"acuracia"
+],
+"x": [
+"sensibilidade",
+"especificidade",
+"VPP",
+"VPN",
+"razao de verossimilhanca",
+"curva ROC",
+"teorema de Bayes",
+"medicina baseada em evidencias",
+"NNT",
+"risco relativo",
+"odds ratio"
+]
+},
+"GR-093": {
+"k": [
+"planejamento em saude",
+"avaliacao em saude",
+"gestao em saude",
+"planejamento"
+],
+"x": [
+"planejamento estrategico situacional",
+"PES",
+"diagnostico situacional",
+"monitoramento e avaliacao",
+"PlanejaSUS",
+"plano municipal de saude",
+"gestao do SUS",
+"regulacao"
+]
+},
+"GR-094": {
+"k": [
+"codigo de etica medica",
+"etica medica",
+"bioetica",
+"sigilo",
+"consentimento"
+],
+"x": [
+"Resolução CFM 2.217",
+"Código de Ética Médica",
+"sigilo medico",
+"termo de consentimento",
+"prontuario",
+"Resolucao CFM 2.299",
+"atestado medico",
+"segredo medico",
+"autonomia",
+"beneficencia",
+"responsabilidade medica",
+"declaração de óbito"
+]
+},
+"GR-095": {
+"k": [
+"depressao",
+"suicidio",
+"transtorno depressivo",
+"risco de suicidio"
+],
+"x": [
+"PHQ-9",
+"ideação suicida",
+"prevencao do suicidio",
+"antidepressivo",
+"ISRS",
+"episodio depressivo",
+"CAPS",
+"Setembro Amarelo",
+"tentativa de suicidio",
+"Lei 13.819",
+"notificacao de tentativa de suicidio"
+]
+},
+"GR-096": {
+"k": [
+"ansiedade",
+"panico",
+"transtorno de ansiedade"
+],
+"x": [
+"TAG",
+"transtorno do panico",
+"fobia social",
+"benzodiazepinico",
+"ISRS ansiedade",
+"terapia cognitivo-comportamental",
+"ataque de panico",
+"GAD-7",
+"TOC"
+]
+},
+"GR-097": {
+"k": [
+"psicose",
+"esquizofrenia",
+"psicotico"
+],
+"x": [
+"antipsicotico",
+"haloperidol",
+"clozapina",
+"primeiro episodio psicotico",
+"alucinacao",
+"delirio",
+"sintomas negativos",
+"PCDT esquizofrenia",
+"surto psicotico"
+]
+},
+"GR-098": {
+"k": [
+"bipolar",
+"mania",
+"transtorno bipolar"
+],
+"x": [
+"litio",
+"estabilizador de humor",
+"episodio maniaco",
+"PCDT transtorno bipolar",
+"valproato",
+"hipomania",
+"ciclagem rapida"
+]
+},
+"GR-099": {
+"k": [
+"delirium",
+"demencia",
+"comprometimento cognitivo",
+"alzheimer"
+],
+"x": [
+"CAM",
+"Mini-Exame do Estado Mental",
+"MEEM",
+"doenca de Alzheimer",
+"demencia vascular",
+"PCDT doenca de Alzheimer",
+"estado confusional agudo",
+"donepezila",
+"declinio cognitivo"
+]
+},
+"GR-100": {
+"k": [
+"alcool",
+"drogas",
+"reducao de danos",
+"dependencia quimica",
+"alcoolismo",
+"tabagismo",
+"uso de substancias"
+],
+"x": [
+"abstinencia alcoolica",
+"CIWA",
+"tiamina",
+"CAGE",
+"AUDIT",
+"crack",
+"CAPS AD",
+"Rede de Atencao Psicossocial",
+"naltrexona",
+"dissulfiram",
+"tabagismo PCDT",
+"PCDT alcool"
+]
+}
+}

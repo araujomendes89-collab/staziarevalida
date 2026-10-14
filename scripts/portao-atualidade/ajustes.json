@@ -1,0 +1,49 @@
+{
+ "GR-002": {
+  "remover": {
+   "ms-pcdt-dm1-2019": "Trata do diabetes tipo 1, não do tipo 2."
+  }
+ },
+ "GR-006": {
+  "rebaixar": {
+   "pcdt-pep-2024": "Profilaxia pós-exposição ao HIV: só toca em hepatites de passagem.",
+   "pcdt-pep-portaria-14-2024": "Idem.",
+   "lib-ms-hiv-ist-hepatites-pcdts": "Coletânea geral; o título só cita hepatites entre outros assuntos."
+  }
+ },
+ "GR-001": {
+  "rebaixar": {
+   "lib-ms-hiv-ist-hepatites-pcdts": "Coletânea geral; o título só cita tuberculose como nome do departamento."
+  }
+ },
+ "GR-005": {
+  "rebaixar": {
+   "lib-ms-hiv-ist-hepatites-pcdts": "Coletânea geral; confirme o PCDT de HIV específico."
+  },
+  "promover": {
+   "pcdt-hiv-adultos-m1-2024": "Título confere: PCDT de manejo da infecção pelo HIV em adultos (módulo 1).",
+   "pcdt-hiv-adultos-m2-2024": "Título confere: PCDT de manejo da infecção pelo HIV em adultos (módulo 2)."
+  }
+ },
+ "GR-024": {
+  "rebaixar": {
+   "ms-pcdt-hipotireoidismo-congenito": "Cobre só o hipotireoidismo congênito."
+  }
+ },
+ "GR-063": {
+  "remover": {
+   "zika-orientacoes-integradas-2016": "Trata de zika; não é a fonte principal de crescimento e desenvolvimento."
+  }
+ },
+ "GR-079": {
+  "rebaixar": {
+   "cab-29-rastreamento-2010": "Caderno de rastreamento; não é a fonte da organização da APS.",
+   "cab-19-envelhecimento-2006": "Caderno do idoso.",
+   "cab-28-v1-acolhimento-2013": "Acolhimento à demanda espontânea.",
+   "cab-28-v2-queixas-2013": "Queixas mais comuns.",
+   "cab-34-saude-mental-2013": "Saúde mental na APS."
+  }
+ },
+ "GR-049": {},
+ "GR-084": {}
+}
