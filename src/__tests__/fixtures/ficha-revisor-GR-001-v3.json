@@ -1,0 +1,126 @@
+{
+ "titulo": "GR-001 Tuberculose pulmonar (v3): o que o revisor médico precisa conferir",
+ "intro": [
+  "A aprovação médica é do revisor, não nossa. **Esta aula não vai para os alunos antes desse sim.**",
+  "Esta versão aplica a auditoria científica de 13/10/2026. O que mudou e o que ficou de fora estão em `CHANGELOG.md`.",
+  "**Como ler as páginas.** As páginas citadas são do **arquivo PDF**. Entre parênteses vai o número impresso no rodapé:",
+  "- Guia 2024: rodapé = página do PDF + 453.",
+  "- Manual 2019: rodapé = página do PDF − 1.",
+  "**Siglas dos documentos:**",
+  "- **GVS:** Guia de Vigilância em Saúde, v. 2, 6ª ed. revisada, 2024.",
+  "- **Manual 2019:** Manual de Recomendações para o Controle da Tuberculose no Brasil.",
+  "- **NI 5/2024** e **NI 2/2026:** Notas Informativas do Ministério da Saúde.",
+  "Os códigos TBxx estão em `fontes.json`, cada um com o trecho literal."
+ ],
+ "decisoes": [
+  {
+   "n": 1,
+   "titulo": "Cultura: cenário ou \"todos\"?",
+   "pergunta": "O GVS diz as duas coisas: \"cultura para todos os casos\" (p. 101, rodapé 554) e o detalhamento por cenário (p. 107, rodapé 560).",
+   "como_esta": "A aula ensina o cenário (TB47, TB48, TB49). A frase da p. 101 saiu.",
+   "onde": "aula, F01, story, A4"
+  },
+  {
+   "n": 2,
+   "titulo": "Baciloscopia positiva no 2º mês: manter \"RHZE por mais 30 dias\"?",
+   "pergunta": "A regra está no Manual 2019 (p. 124, rodapé 123). O GVS 2024 só pede cultura com TS (p. 107) e não repete os 30 dias. Não achamos norma mais nova.",
+   "como_esta": "Mantido, com TRM-TB onde houver e referência se a evolução for ruim (TB22, TB66, TB67, TB68).",
+   "onde": "aula, F09"
+  },
+  {
+   "n": 3,
+   "titulo": "Data do 3HP.",
+   "pergunta": "Não há documento na biblioteca que prove a incorporação em 2021.",
+   "como_esta": "Sem ano: \"em 2019, isoniazida; nas recomendações vigentes revisadas em 2024, 3HP\".",
+   "onde": "seção 7"
+  },
+  {
+   "n": 4,
+   "titulo": "BPaLM: onde se inicia?",
+   "pergunta": "A Nota não diz em que serviço o esquema começa.",
+   "como_esta": "Só a conduta literal: resistência à rifampicina detectada vai imediatamente à referência terciária. Data mostrada ao aluno: \"documento de agosto de 2026\".",
+   "onde": "seção 7"
+  },
+  {
+   "n": 5,
+   "titulo": "Campo \"fonte\" das peças visuais",
+   "pergunta": "",
+   "como_esta": "Agora é só \"Ministério da Saúde\", sem página. Precisa decidir se fica ou sai. O mesmo vale para `guideline_title` em `lessons_campos.json`.",
+   "onde": "cards, flashcards, A4"
+  },
+  {
+   "n": 6,
+   "titulo": "Tamanho.",
+   "pergunta": "O texto do aluno passou de cerca de 1.040 para cerca de 2.070 palavras, porque entraram exceções, falência, restrições do 3HP e BPaLM.",
+   "como_esta": "Pode cortar o que achar demais para a prova. Cada corte deve manter a condição essencial.",
+   "onde": "aula/PDF"
+  }
+ ],
+ "pontos": [
+  {
+   "n": 1,
+   "texto": "**Tosse de qualquer duração nos cinco grupos (TB02).** Agora a fonte é o texto corrido do GVS, não mais a tabela do Manual.",
+   "onde": "GVS p. 125 (578)"
+  },
+  {
+   "n": 2,
+   "texto": "**Quadro 12 (TB29, TB75, TB77).** As citações juntam o cabeçalho da linha e o item: \"PT ≥5 mm ou IGRA positivo • Contatos…\", \"Conversão (…10 mm…) • Contatos de TB confirmada por critério laboratorial\" e \"Sem PT e sem IGRA realizados • Recém-nascidos coabitantes…\". Confira se cada item está na linha certa do quadro.",
+   "onde": "GVS p. 123 (576)"
+  },
+  {
+   "n": 3,
+   "texto": "**Quadro 13 (TB78, TB81).** As restrições do 3HP vêm da nota \"c\" (gestante; IP, nevirapina, TAF) e da coluna de indicação da linha do 3HP (monorresistência, intolerância). A nota \"b\", da rifampicina, tem frase quase igual sobre IP, nevirapina e TAF. A citação usada começa em \"Regime de tratamento com três meses de isoniazida (H) e rifapentina (P)\", para ficar presa ao 3HP.",
+   "onde": "GVS p. 124 (577)"
+  },
+  {
+   "n": 4,
+   "texto": "**Figura 1 (TB40, TB53, TB56).** A auditoria olhou a imagem. \"Excluir diagnóstico de TB\" fica no ramo sem sintomas. O \"Não\" impresso duas vezes é erro gráfico do Guia (no Manual 2019, Figura 5, está \"Não/Sim\"). \"Outro TRM-TB + cultura + TS\" fica no ramo da resistência detectada, junto com \"encaminhar imediatamente\".",
+   "onde": "GVS p. 104 (557); Manual p. 59 (58)"
+  },
+  {
+   "n": 5,
+   "texto": "**\"Sem aguardar os novos exames\" (TB54).** A frase literal é do Manual 2019. O GVS 2024 diz só \"imediatamente\" e \"em até sete dias\" (TB11).",
+   "onde": "Manual p. 59 (58)"
+  },
+  {
+   "n": 6,
+   "texto": "**Traços e resistência indeterminada (TB58 a TB61).** \"Repetir em nova amostra\" na resistência inconclusiva vem do Manual 2019. O Quadro 3 do GVS só a classifica como \"inconclusiva\".",
+   "onde": "GVS p. 102–104; Manual p. 58 (57)"
+  },
+  {
+   "n": 7,
+   "texto": "**Falência (TB23, TB69, TB70, TB71) e cura (TB36).** A cura agora segue o GVS: uma baciloscopia em qualquer mês e outra no 5º ou 6º mês.",
+   "onde": "GVS p. 119 (572) e p. 129 (582)"
+  },
+  {
+   "n": 8,
+   "texto": "**Esquema pediátrico (TB37, TB39, TB86 a TB89).** Inclui a exclusão de crianças com ≤ 3 meses ou < 4 kg e o \"completar 6 meses\" se a evolução for desfavorável.",
+   "onde": "NI 5/2024 p. 1–3 e 5"
+  },
+  {
+   "n": 9,
+   "texto": "**BPaLM (TB90 a TB96)**",
+   "onde": "NI 2/2026 p. 1–4 e 23"
+  }
+ ],
+ "fixacao": [
+  "**Q1:** a letra C (\"radiografia basta e dispensa escarro\") agora tem comentário com a exceção do diagnóstico clínico, que só vale quando é impossível comprovar.",
+  "**Q2:** a letra B é \"aguardar a cultura com TS na unidade antes de encaminhar\". O comentário explica que outro TRM-TB, a cultura e o TS são pedidos, mas que a pessoa não espera por eles.",
+  "**Q3:** o enunciado agora traz \"não está grávida, não vive com HIV, sem medicamentos contínuos\" e \"caso-fonte com TB sensível\", para o 3HP não ser contestável. A PT passou de 12 mm para **10 mm**, porque o número precisava constar de uma citação validada. 10 mm continua acima do corte de 5 mm."
+ ],
+ "fixacao_instrucao": "Confira se cada alternativa errada é errada sem discussão.",
+ "fora": [
+  "TARV e dolutegravir na coinfecção.",
+  "Doses por peso: a aula manda consultar o quadro oficial.",
+  "2RHZE/10RH na forma meningoencefálica e osteoarticular: o trecho validado só traz o título do quadro.",
+  "Idade e peso para o 3HP.",
+  "Diabetes com 2 semanas de tosse (Manual 2019).",
+  "A Nota 25/2025 foi lida e só revoga a suspensão temporária da rifampicina 300 mg. Não muda o 3HP."
+ ],
+ "apresentacao": [
+  "**O aluno não vê referência nenhuma**: saíram do texto da aula, do PDF, dos flashcards e das explicações das questões os números entre colchetes, a lista de referências, os trechos citados e as frases do tipo \"segundo o Guia…\". Nada clínico foi reescrito além dessas expressões.",
+  "**Onde estão as citações agora**: `fontes-internas/` (`fontes.json` com o trecho literal validado de cada afirmação, `trechos-citados.md` com a lista que antes ia no PDF, `flashcards-fontes.json` com a fonte e a página de cada flashcard, `afirmacoes-e-referencias.json`).",
+  "**Cards e A4**: mantêm só uma linha pequena de fonte no rodapé escuro (como no modelo do dono).",
+  "**Para conferir**: o texto clínico das peças é o mesmo dos comandos em `comandos/`; confira se a troca de expressões não mudou o sentido (lista das trocas padrão em `scripts/aulas/aula-html.mts`, SUBSTITUICOES_PADRAO)."
+ ]
+}

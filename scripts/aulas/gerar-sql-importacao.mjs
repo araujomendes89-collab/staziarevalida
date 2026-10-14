@@ -49,7 +49,7 @@ export const negacoes = (t) => [...new Set([...String(t ?? "").matchAll(RE_NEG)]
 
 /** A pasta usada: final-v2/ (preferida), final/ (versão final, com o manifesto dos arquivos) ou a da aula. */
 export function pastaDaAula(pasta) {
-  for (const sub of ["final-v2", "final"]) if (fs.existsSync(path.join(pasta, sub, "aula.json"))) return path.join(pasta, sub);
+  for (const sub of ["final-v3", "final-v2", "final"]) if (fs.existsSync(path.join(pasta, sub, "aula.json"))) return path.join(pasta, sub);
   return pasta;
 }
 /** Material só da equipe (fontes internas, conferências, prévias): nunca vai como arquivo da aula. */
@@ -112,7 +112,8 @@ export function montarPacote(pastaAula, opcoes = {}) {
   const problemas = [];
   const avisos = [];
   const ler = (nome, obrigatorio = true) => {
-    const p = path.join(dir, nome);
+    // a v3 guarda as fontes em fontes-internas/; o que não está na pasta final pode estar na pasta da aula
+    const p = [path.join(dir, nome), path.join(dir, "fontes-internas", nome), path.join(dir, "..", nome)].find((x) => fs.existsSync(x)) ?? path.join(dir, nome);
     if (!fs.existsSync(p)) {
       if (obrigatorio) problemas.push(`Falta o arquivo ${nome} em ${dir}.`);
       return null;
@@ -181,6 +182,19 @@ export function montarPacote(pastaAula, opcoes = {}) {
     semReferencia(`Aula, seção ${i + 1}`, sec.heading, true);
     sec.paragraphs.forEach((p, j) => semReferencia(`Aula, seção ${i + 1}, parágrafo ${j + 1}`, p.text));
   });
+  // ajustes de ligação (scripts/aulas/ajustes/<código>.json): só ligam afirmação a parágrafo; nenhuma palavra do texto muda e o aviso fica no relatório
+  const ajustesArq = opcoes.ajustes ?? path.join(AQUI, "ajustes", `${codigo}.json`);
+  if (fs.existsSync(ajustesArq)) {
+    for (const l of lerJson(ajustesArq).ligar ?? []) {
+      const par = sections[l.secao - 1]?.paragraphs?.[l.paragrafo - 1];
+      if (!par) problemas.push(`Ajuste de ligação ${l.afirmacao}: seção ${l.secao}, parágrafo ${l.paragrafo} não existe.`);
+      else if (!ids.has(l.afirmacao)) problemas.push(`Ajuste de ligação: a afirmação ${l.afirmacao} não existe.`);
+      else if (!par.claim_ids.includes(l.afirmacao)) {
+        par.claim_ids.push(l.afirmacao);
+        avisos.push(`Ajuste de ligação: ${l.afirmacao} ligada à seção ${l.secao}, parágrafo ${l.paragrafo} da aula (${l.motivo}). Nenhuma palavra do texto mudou; o agente de conteúdo deve confirmar.`);
+      }
+    }
+  }
   const resumo = campos
     ? (campos.key_points ?? []).map((t, i) => ({ text: limpa(t), claim_ids: confere(`Ponto-chave ${i + 1}`, (campos.key_points_claims ?? [])[i]) }))
     : [];
