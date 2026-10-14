@@ -292,8 +292,9 @@ export function Correction({ selected, correction, question, tutorContext = "que
           {source.organization ? ` · ${source.organization}` : ""}
         </div>
       )}
-      {question && <SaveAsFlashcard key={question.id} question={question} correction={correction} />}
-      {go && question?.id && <RelatedQuestions key={question.id} questionId={question.id} go={go} inSession={inSession} />}
+      {/* chaves DIFERENTES de propósito: irmãos com a mesma chave fazem o React duplicar o botão a cada nova renderização */}
+      {question && <SaveAsFlashcard key={`flashcard-${question.id}`} question={question} correction={correction} />}
+      {go && question?.id && <RelatedQuestions key={`related-${question.id}`} questionId={question.id} go={go} inSession={inSession} />}
     </>
   );
 }
