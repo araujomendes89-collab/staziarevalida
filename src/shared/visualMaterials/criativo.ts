@@ -12,7 +12,7 @@
  */
 import { A6_PRINT, STORY_SAFE, paletteOf, updatedLabel, type TableRowKind, type VisualContent, type VisualSide } from "./model";
 import { VISUAL_TOKENS } from "./tokens";
-import { aplicarEstruturaV2, corDoCampo, temaVermelho, versaoDoCampo } from "./temas";
+import { aplicarEstruturaV2, resolverCor, temaVermelho } from "./temas";
 import { LOGO_ASPECT, LOGO_ON_DARK } from "./logoData";
 import { KIT_NAVY, glowOnlySvg, heroInnerWhite, sceneSvg, spot, spotForText, themeOf, type SpotName } from "./kit";
 import { esc, guidesHtml, type Artboard, type BuildOptions } from "./templates";
@@ -29,15 +29,6 @@ const HEADER_BG = "radial-gradient(130% 150% at 88% 20%, #1A4C8A 0%, #0D2B52 42%
 const FOOTER_BG = "linear-gradient(90deg, #071A33 0%, #0B2545 60%, #0E2F57 100%)";
 const MUTED = "#3B4A5E";
 
-/** Cor de brilho por especialidade (título em destaque, contornos e selo "Atualizado"). */
-const GLOW: Record<string, string> = {
-  clinica_medica: "#5FE6C0",
-  pediatria: "#8EC8FF",
-  ginecologia: "#FF9EC2",
-  cirurgia: "#FFA59C",
-  preventiva_mfc: "#C9B8FF",
-  fallback: "#7FE3DE",
-};
 
 interface CP {
   p: string;
@@ -54,15 +45,15 @@ interface CP {
 /** Cor da especialidade (padrão) ou, se preenchido, a cor do tema (campo tema_cor: GR-001…GR-100 ou #RRGGBB). */
 const pal = (c: VisualContent): CP => {
   const esp = paletteOf(c.specialty.key);
-  const tema = corDoCampo(c.tema_cor ?? "");
-  const t = tema ? { ...esp, primary: tema.primaria, soft: tema.clara, dark: tema.escura } : esp;
+  const tema = resolverCor(c.tema_cor ?? "", c.specialty.key).cor;
+  const t = { ...esp, primary: tema.primaria, soft: tema.clara, dark: tema.escura };
   const blue = c.specialty.key === "pediatria" ? { stripe: "#1FA6A0", bg: "#E8F7F6", text: "#0E6B74" } : { stripe: "#3A7BD5", bg: "#EAF2FC", text: "#1F4E96" };
   return {
     p: t.primary,
     s: t.soft,
     d: t.dark,
     c: t.contrast,
-    glow: tema ? tema.brilho : (GLOW[c.specialty.key] ?? GLOW.fallback),
+    glow: tema.brilho,
     vermelho: temaVermelho(tema),
     cycle: [
       { stripe: t.primary, bg: t.soft, text: NAVY, badge: "ok", end: "documento" },
@@ -531,8 +522,7 @@ export function printSheetCriativo(a: Artboard, c: VisualContent) {
   const b = A6_PRINT.bleed;
   const W = a.width + 2 * b;
   const H = a.height + 2 * b;
-  const tema = corDoCampo(c.tema_cor ?? "");
-  const P = tema ? { primary: tema.primaria } : paletteOf(c.specialty.key);
+  const P = { primary: resolverCor(c.tema_cor ?? "", c.specialty.key).cor.primaria };
   const html = `<div class="vm-sheet" data-sheet="${a.side}" style="position:relative;width:${W}px;height:${H}px;background:${BODY_BG};overflow:hidden;break-after:page"><div style="position:absolute;left:0;top:0;width:${W}px;height:${b + A6_CRIATIVO.header}px;background:#0B2545"></div><div style="position:absolute;left:0;top:${b + A6_CRIATIVO.header}px;width:${W}px;height:${A6_CRIATIVO.stripe}px;background:${P.primary}"></div><div style="position:absolute;left:0;bottom:0;width:${W}px;height:${b + A6_CRIATIVO.footer}px;background:#0B2545"></div><div style="position:absolute;left:${b}px;top:${b}px">${a.html}</div></div>`;
   return usaV2(c) ? aplicarEstruturaV2(html) : html;
 }
@@ -545,7 +535,7 @@ const BASE_BUILDERS: Record<VisualContent["model"], (c: VisualContent, o: BuildO
   flashcard_a6: flashcardA6,
 };
 /** Paleta v2 (tema_cor "GR-xxx@v2"): mesmas peças, com as cores estruturais da v2 (azul-marinho, fundo, texto, alerta). */
-const usaV2 = (c: VisualContent) => versaoDoCampo(c.tema_cor ?? "") === "v2";
+const usaV2 = (c: VisualContent) => resolverCor(c.tema_cor ?? "", c.specialty.key).versao === "v2";
 export const CRIATIVO_BUILDERS = Object.fromEntries(
   Object.entries(BASE_BUILDERS).map(([k, build]) => [k, (c: VisualContent, o: BuildOptions) => (usaV2(c) ? build(c, o).map((a) => ({ ...a, html: aplicarEstruturaV2(a.html) })) : build(c, o))])
 ) as typeof BASE_BUILDERS;

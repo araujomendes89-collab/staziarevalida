@@ -19,7 +19,7 @@
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { BASES_V2, ESTRUTURA_V2, contraste, distancia, hexParaOklch, oklchParaHex, type CorTema, type TemaPaleta } from "../../src/shared/visualMaterials/temas.ts";
+import { BASES_V2, ESTRUTURA_V2, papeisV2, contraste, distancia, hexParaOklch, oklchParaHex, type CorTema, type TemaPaleta } from "../../src/shared/visualMaterials/temas.ts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const [src, out] = process.argv.slice(2).map((p) => path.resolve(p));
@@ -68,16 +68,7 @@ const avaliar = (c: CorTema) => COMPONENTES.map((k) => {
 });
 
 // ---------------------------------------------------------------------------- variações da cor-base (mesmo tom)
-function papeis(L: number, C: number, H: number, base?: string): CorTema {
-  const primaria = base ?? oklchParaHex(L, C, H);
-  const [Lp, Cp] = hexParaOklch(primaria);
-  return {
-    primaria,
-    escura: oklchParaHex(Math.max(0.24, Lp - 0.13), Cp * 0.9, H),
-    clara: oklchParaHex(0.962, Math.min(0.03, Cp * 0.22), H),
-    brilho: oklchParaHex(0.865, Math.min(0.14, Cp * 0.95), H),
-  };
-}
+const papeis = papeisV2;
 /** Maior luminosidade com o tom e a saturação dados em que todos os componentes passam. */
 function lMax(C: number, H: number) {
   let best = 0;
@@ -163,9 +154,9 @@ fs.writeFileSync(
   path.join(out, "paleta-temas.json"),
   JSON.stringify(
     {
-      versao: "temas-2 (2026-10-13)",
-      como_usar: 'Campo tema_cor com o sufixo @v2 (ex.: "tema_cor: GR-043@v2"). Sem o sufixo, vale a paleta v1 (atual). Vazio = cor da especialidade.',
-      atencao: "Na v2 o verde do GR-001 muda de #2E9B67 (aprovado antes) para #087A63 (cor-base da Clínica Médica).",
+      versao: "temas-2 (2026-10-13; principal desde 2026-10-14)",
+      como_usar: 'Paleta PRINCIPAL (única) desde 14/10/2026 ("V2 aprovado"). Campo tema_cor: "GR-043" (ou "GR-043@v2"). "GR-043@v1" = paleta antiga, só legado. Vazio = cor-base da área da especialidade.',
+      atencao: "O GR-001 passou de #2E9B67 (v1) para #087A63 (cor-base da Clínica Médica).",
       estrutura: E,
       areas: areasInfo,
       papeis: { primaria: "destaque: faixas, filetes, números (texto sobre ela: só branco)", escura: "texto colorido sobre branco/fundo; início dos gradientes; passar o mouse", clara: "fundo suave de linhas e caixas", brilho: "2ª linha do título, selos e bordas sobre o azul-marinho; acento no modo escuro" },

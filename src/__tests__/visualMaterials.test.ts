@@ -167,14 +167,14 @@ describe("Modelo criativo-1 (estilo do modelo do dono) e kit de ilustrações", 
     expect(renderArtboards(c, { template: "visual-1.0" })[0].html).not.toContain('data-template="criativo-1"');
   });
 
-  it("os 5 modelos têm o mesmo contrato: especialidade escrita, pegadinha em #C8102E (mesmo em Cirurgia), campos marcados para a conferência", () => {
+  it("os 5 modelos têm o mesmo contrato: especialidade escrita, pegadinha no vermelho de alerta da v2 (#B42336), campos marcados para a conferência", () => {
     for (const modelo of ["feed", "a4", "story", "flashcard_digital", "flashcard_a6"]) {
       const flash = modelo.startsWith("flash");
       const c = content({ modelo, especialidade: "cirurgia", ...(flash ? { ...CARD_SAMPLE, card_id: "CIR-0001" } : modelo === "a4" ? A4_SAMPLE : PIECE_SAMPLE) });
       const html = renderArtboards(c).map((a) => a.html).join("");
       expect(html, modelo).toMatch(/data-role="specialty"[^>]*>.*?<span>Cirurgia<\/span>/);
-      expect(/<div data-role="alert"[^>]*style="([^"]*)"/.exec(html)![1]).toContain("solid #C8102E");
-      expect(html).toMatch(/data-role="alert-title"[^>]*color:#C8102E/);
+      expect(/<div data-role="alert"[^>]*style="([^"]*)"/.exec(html)![1]).toContain("solid #B42336");
+      expect(html).toMatch(/data-role="alert-title"[^>]*color:#B42336/);
       expect(html).toContain(flash ? 'data-k="pergunta"' : 'data-k="titulo"');
       expect(html).not.toMatch(/\[[A-ZÁÉÍÓÚ ]{3,}\]/);
     }
@@ -227,15 +227,18 @@ describe("Cor de cada tema (tema_cor, paleta dos 100 Grandes Temas)", () => {
     for (let i = 1; i < ids.length; i++) expect(distancia(PALETA_TEMAS[ids[i]].primaria, PALETA_TEMAS[ids[i - 1]].primaria), ids[i]).toBeGreaterThan(0.02);
   });
 
-  it("campo tema_cor: vazio mantém a cor da especialidade; GR-xxx ou #RRGGBB trocam a cor; valor inválido é recusado", () => {
+  it("campo tema_cor: vazio usa a cor-base v2 da área; GR-xxx (v2), GR-xxx@v1 (legado) ou #RRGGBB trocam a cor; valor inválido é recusado", () => {
     const base = { modelo: "feed", especialidade: "clinica_medica", ...PIECE_SAMPLE };
     const semCor = renderArtboards(content(base))[0].html;
-    expect(semCor).toContain("#2E9B67");
-    const t = PALETA_TEMAS["GR-043"];
+    expect(semCor).toContain("#087A63");
+    const t = PALETA_TEMAS_V2["GR-043"];
     const comCor = renderArtboards(content({ ...base, tema_cor: "gr-043" }))[0].html;
     expect(comCor).toContain(t.primaria);
     expect(comCor).toContain(t.brilho);
-    expect(comCor).toMatch(/data-role="alert"[^>]*solid #C8102E/);
+    expect(comCor).toMatch(/data-role="alert"[^>]*solid #B42336/);
+    const legado = renderArtboards(content({ ...base, tema_cor: "GR-043@v1" }))[0].html;
+    expect(legado).toContain(PALETA_TEMAS["GR-043"].primaria);
+    expect(legado).toMatch(/data-role="alert"[^>]*solid #C8102E/);
     const livre = corDoCampo("#3366CC")!;
     expect(renderArtboards(content({ ...base, tema_cor: "#3366CC" }))[0].html).toContain(`linear-gradient(90deg, ${livre.escura} 0%, ${livre.primaria} 100%)`);
     expect(validateVisualInput({ ...base, tema_cor: "GR-999" }).problems.map((p) => p.field)).toContain("tema_cor");
@@ -276,10 +279,11 @@ describe("Paleta v2 (cor-base fixa por área; tema_cor GR-xxx@v2)", () => {
     }
   });
 
-  it("v1 continua igual (sem sufixo); @v2 troca a cor do tema e as cores estruturais; nenhum código de cor aparece como texto", () => {
+  it("v2 é o padrão (sem sufixo ou @v2); @v1 é o legado com a estrutura antiga; nenhum código de cor aparece como texto", () => {
     const base = { modelo: "feed", especialidade: "clinica_medica", ...PIECE_SAMPLE };
-    const v1 = renderArtboards(content({ ...base, tema_cor: "GR-001" }))[0].html;
-    const v2 = renderArtboards(content({ ...base, tema_cor: "gr-001@v2" }))[0].html;
+    const v1 = renderArtboards(content({ ...base, tema_cor: "GR-001@v1" }))[0].html;
+    const v2 = renderArtboards(content({ ...base, tema_cor: "GR-001" }))[0].html;
+    expect(renderArtboards(content({ ...base, tema_cor: "gr-001@v2" }))[0].html).toBe(v2);
     expect(v1).toContain("#2E9B67");
     expect(v1).toContain("#0B2545");
     expect(v2).toContain("#087A63");
@@ -292,6 +296,7 @@ describe("Paleta v2 (cor-base fixa por área; tema_cor GR-xxx@v2)", () => {
       expect(texto).not.toMatch(/contraste/i);
     }
     expect(validateVisualInput({ ...base, tema_cor: "GR-999@v2" }).problems.map((p) => p.field)).toContain("tema_cor");
+    expect(validateVisualInput({ ...base, tema_cor: "GR-999@v1" }).problems.map((p) => p.field)).toContain("tema_cor");
   });
 
   it("Pegadinha só aparece quando o conteúdo tem advertência; em GO v2 ganha o reforço", () => {
@@ -304,14 +309,16 @@ describe("Paleta v2 (cor-base fixa por área; tema_cor GR-xxx@v2)", () => {
 describe("Pegadinha nos temas vermelhos (GO)", () => {
   it("nos temas vermelhos a Pegadinha ganha o reforço (faixa listrada e triângulo cheio); nos outros, nada muda", () => {
     const base = { modelo: "a4", especialidade: "ginecologia", ...A4_SAMPLE };
-    const go = renderArtboards(content({ ...base, tema_cor: "GR-043" }))[0].html;
-    expect(go).toMatch(/data-role="alert" data-k="pegadinha" data-alert="reforcado"[^>]*solid #C8102E/);
-    expect(go).toContain("repeating-linear-gradient(-45deg, #C8102E");
-    expect(go).toMatch(/data-role="alert-title"[^>]*color:#C8102E/);
-    for (const tema of ["GR-001", "GR-094", ""]) {
+    for (const [tema, alerta] of [["GR-043", "#B42336"], ["GR-043@v1", "#C8102E"], ["", "#B42336"]]) {
+      const go = renderArtboards(content({ ...base, tema_cor: tema }))[0].html;
+      expect(go, tema).toMatch(new RegExp(`data-role="alert" data-k="pegadinha" data-alert="reforcado"[^>]*solid ${alerta}`));
+      expect(go, tema).toContain(`repeating-linear-gradient(-45deg, ${alerta}`);
+      expect(go, tema).toMatch(new RegExp(`data-role="alert-title"[^>]*color:${alerta}`));
+    }
+    for (const tema of ["GR-001", "GR-094", "GR-001@v1", ""]) {
       const html = renderArtboards(content({ ...base, especialidade: "clinica_medica", tema_cor: tema }))[0].html;
       expect(html, tema).not.toContain('data-alert="reforcado"');
-      expect(html, tema).not.toContain("repeating-linear-gradient(-45deg, #C8102E");
+      expect(html, tema).not.toMatch(/repeating-linear-gradient\(-45deg, #(C8102E|B42336)/);
     }
   });
 });
@@ -601,7 +608,7 @@ describe("Geração com Chromium e conferência do PDF (PyMuPDF)", () => {
     expect(row.rows[0]).toEqual({ specialty_key: "fallback", specialty_label: "Neurologia" });
   });
 
-  it.skipIf(skip())("no navegador, a pegadinha de Cirurgia é #C8102E (não o vermelho #D94A4A da especialidade)", async () => {
+  it.skipIf(skip())("no navegador, a pegadinha de Cirurgia fica no vermelho de alerta (#B42336, v2) e a cor da área (#006D77) só no acento", async () => {
     const page = await renderer!.newPage!({ viewport: { width: 1240, height: 1748 } });
     try {
       const c = content({ modelo: "flashcard_a6", especialidade: "cirurgia", card_id: "CIR-COR-1", ...CARD_SAMPLE });
@@ -613,9 +620,9 @@ describe("Geração com Chromium e conferência do PDF (PyMuPDF)", () => {
         stripe: getComputedStyle(document.querySelector(".vm-artboard [data-bg]")!).backgroundColor,
         problems: (window as any).__visual.problems,
       }));
-      expect(colors.alert).toBe("rgb(200, 16, 46)");
-      expect(colors.title).toBe("rgb(200, 16, 46)");
-      expect(colors.stripe).toBe("rgb(217, 74, 74)"); // #D94A4A só como acento da especialidade
+      expect(colors.alert).toBe("rgb(180, 35, 54)");
+      expect(colors.title).toBe("rgb(180, 35, 54)");
+      expect(colors.stripe).toBe("rgb(0, 109, 119)"); // cor-base v2 da Cirurgia só como acento
       expect(colors.problems).toEqual([]);
     } finally {
       await page.close();

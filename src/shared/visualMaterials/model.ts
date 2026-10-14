@@ -511,7 +511,7 @@ export function validateVisualInput(input: unknown): ValidationResult {
     referencia: text("referencia", raw.referencia, TEXT_LIMITS.referencia, true),
     tema_cor: oneLine(raw.tema_cor ?? raw.cor_do_tema ?? "").toUpperCase(),
   };
-  if (!temaCorValido(content.tema_cor)) problems.push({ field: "tema_cor", message: "Cor do tema: use o código do tema (GR-001 a GR-100; GR-001@v2 para a paleta v2) ou uma cor no formato #RRGGBB." });
+  if (!temaCorValido(content.tema_cor)) problems.push({ field: "tema_cor", message: "Cor do tema: use o código do tema (GR-001 a GR-100), GR-001@v1 para a paleta antiga, ou uma cor no formato #RRGGBB." });
 
   if (model) {
     for (const f of REQUIRED_FIELDS[model]) {

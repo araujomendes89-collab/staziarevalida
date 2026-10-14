@@ -215,12 +215,12 @@ export function VisualEditor({ material, version, onSaved, onCancel, status }) {
                   {field("fonte", { hint: "Opcional; deixe vazio (as peças saem sem linha de fonte)" })}
                   {field("atualizacao", { placeholder: "ex.: 2026" })}
                 </div>
-                {field("tema_cor", { hint: "Opcional: GR-001 a GR-100 (cor do tema) ou #RRGGBB. Vazio = cor da especialidade", placeholder: "ex.: GR-043" })}
+                {field("tema_cor", { hint: "Opcional: GR-001 a GR-100 (cor do tema). Vazio = cor da área da especialidade. GR-001@v1 = paleta antiga", placeholder: "ex.: GR-043" })}
               </>
             ) : (
               <>
                 {field("titulo", { hint: "Até 2 linhas" })}
-                {field("tema_cor", { hint: "Opcional: GR-001 a GR-100 (cor do tema) ou #RRGGBB. Vazio = cor da especialidade", placeholder: "ex.: GR-043" })}
+                {field("tema_cor", { hint: "Opcional: GR-001 a GR-100 (cor do tema). Vazio = cor da área da especialidade. GR-001@v1 = paleta antiga", placeholder: "ex.: GR-043" })}
                 {field("subtitulo", { hint: "1 linha" })}
                 <div style={grid}>
                   {field("selo_prova", { placeholder: "ex.: Revalida 2025/1" })}

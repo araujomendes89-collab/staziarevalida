@@ -61,6 +61,16 @@ texto dentro do desenho.
   tema novo: desenhar a cena, registrar em `THEMES` e acrescentar o ícone em `ILLUSTRATION_ICONS`.
 - Flashcards: `ilustracao.icone` (opcional) escolhe a cena do cabeçalho.
 
+## Cor de cada tema (paleta v2, única desde 2026-10-14)
+- O dono aprovou a v2 ("V2 aprovado"): uma cor-base fixa por área (Clínica Médica #087A63, Cirurgia #006D77, Pediatria #086DA8,
+  Ginecologia e Obstetrícia #A94136, Medicina de Família #464DA0, Saúde Coletiva #983B78, Saúde Mental #713EA5) e, em cada tema,
+  só a luz e um pouco a saturação mudam. Cores estruturais: azul-marinho #102B4C, fundo #F3F7FA, texto #15263D, alerta #B42336.
+- Campo `tema_cor`: `GR-043` (v2), `GR-043@v1` (paleta antiga, legado), `#RRGGBB` (cor avulsa na estrutura da v2). Vazio: cor-base
+  da área da especialidade. Código: `src/shared/visualMaterials/temas.ts`; dados: `paletaTemasV2.data.ts` (gerado por
+  `scripts/aulas/paleta-temas-v2.mts`, que também confere o contraste de cada componente).
+- Nos temas vermelhos (Ginecologia e Obstetrícia) a caixa "Pegadinha de prova!" ganha faixa listrada e triângulo cheio.
+- Sem linha de fonte nas peças (decisão do dono, 2026-10-13); a logo nova assina o rodapé.
+
 ## Modelos
 | Modelo | Tamanho | Arquivos |
 |---|---|---|

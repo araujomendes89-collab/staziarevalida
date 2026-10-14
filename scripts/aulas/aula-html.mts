@@ -6,7 +6,7 @@
  *   - "web": prévia HTML com os mesmos recursos (flashcards que viram, questões que corrigem, checklists, anotações).
  * Nenhum texto clínico é escrito aqui: tudo vem da pasta de conteúdo. Só rótulos de interface.
  */
-import { aplicarEstruturaV2, versaoDoCampo, corDoCampo, temaVermelho, esc, paletteOf, resolveSpecialty, type VisualContent } from "../../src/shared/visualMaterials/index.ts";
+import { aplicarEstruturaV2, resolverCor, temaVermelho, esc, paletteOf, resolveSpecialty, type VisualContent } from "../../src/shared/visualMaterials/index.ts";
 import { sceneSvg, spot, spotForText, heroInnerWhite, themeOf, type SpotName } from "../../src/shared/visualMaterials/kit/index.ts";
 
 // ---------------------------------------------------------------------------- limpeza: nenhuma referência no texto do aluno
@@ -393,11 +393,8 @@ b{font-weight:700;color:#0B2545}
 
 /** Rótulo, ícone e cores do kit para a aula. */
 function paleta(aula: Aula) {
-  const tema = corDoCampo(aula.temaCor ?? "");
-  if (tema) return { p: tema.primaria, s: tema.clara, d: tema.escura, glow: tema.brilho, vermelho: temaVermelho(tema) };
-  const t = paletteOf(aula.specialtyKey);
-  const glow: Record<string, string> = { clinica_medica: "#5FE6C0", pediatria: "#8EC8FF", ginecologia: "#FF9EC2", cirurgia: "#FFA59C", preventiva_mfc: "#C9B8FF", fallback: "#7FE3DE" };
-  return { p: t.primary, s: t.soft, d: t.dark, glow: glow[aula.specialtyKey] ?? glow.fallback, vermelho: false };
+  const { cor } = resolverCor(aula.temaCor ?? "", aula.specialtyKey);
+  return { p: cor.primaria, s: cor.clara, d: cor.escura, glow: cor.brilho, vermelho: temaVermelho(cor) };
 }
 
 function tituloDuasCores(t: string) {
@@ -576,7 +573,7 @@ function flashVerso(f: Flashcard, i: number, P: ReturnType<typeof paleta>, mode:
 
 // ---------------------------------------------------------------------------- documento do PDF
 /** Paleta v2 (tema_cor "GR-xxx@v2"): troca as cores estruturais no documento inteiro. */
-const comEstrutura = (aula: Aula, html: string) => (versaoDoCampo(aula.temaCor ?? "") === "v2" ? aplicarEstruturaV2(html) : html);
+const comEstrutura = (aula: Aula, html: string) => (resolverCor(aula.temaCor ?? "", aula.specialtyKey).versao === "v2" ? aplicarEstruturaV2(html) : html);
 export function htmlPdf(aula: Aula, fontCss: string): string {
   return comEstrutura(aula, htmlPdfBase(aula, fontCss));
 }

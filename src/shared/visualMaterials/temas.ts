@@ -219,32 +219,72 @@ export function aplicarEstruturaV2(html: string): string {
   return s;
 }
 
-// ---------------------------------------------------------------------------- uso nas peças
-const HEX = /^#[0-9a-f]{6}$/i;
-const ID_TEMA = /^GR-\d{3}$/i;
-const ID_TEMA_V2 = /^(GR-\d{3})@V2$/i;
+// ---------------------------------------------------------------------------- papéis da v2 a partir de uma cor
+/** Destaque, escura, clara e brilho da v2 para uma cor (mesmo tom). Usado pelo gerador da paleta e por cores avulsas. */
+export function papeisV2(L: number, C: number, H: number, base?: string): CorTema {
+  const primaria = base ?? oklchParaHex(L, C, H);
+  const [Lp, Cp] = hexParaOklch(primaria);
+  return {
+    primaria,
+    escura: oklchParaHex(Math.max(0.24, Lp - 0.13), Cp * 0.9, H),
+    clara: oklchParaHex(0.962, Math.min(0.03, Cp * 0.22), H),
+    brilho: oklchParaHex(0.865, Math.min(0.14, Cp * 0.95), H),
+  };
+}
+/** Cor avulsa (#RRGGBB) na estrutura da v2: escurece até o texto branco ter 4,5:1 sobre o destaque. */
+export function corDaBaseV2(hex: string): CorTema {
+  const [L, C, H] = hexParaOklch(hex);
+  if (contraste("#FFFFFF", hex) >= 4.5) return papeisV2(L, C, H, hex.toUpperCase());
+  for (let l = L; l > 0.2; l -= 0.01) if (contraste("#FFFFFF", oklchParaHex(l, C, H)) >= 4.5) return papeisV2(l, C, H);
+  return papeisV2(0.45, C, H);
+}
+/** Especialidade do formulário → área da paleta v2 (campo tema_cor vazio usa a cor-base da área). */
+export const AREA_DA_ESPECIALIDADE: Record<string, string> = { clinica_medica: "cm", cirurgia: "cir", pediatria: "ped", ginecologia: "go", preventiva_mfc: "mfc" };
+/** Especialidade sem área própria (fallback): petróleo, na estrutura da v2. */
+export const COR_FALLBACK_V2 = "#0E6B74";
 
-/** Valor aceito no campo tema_cor: vazio, um tema (GR-001…GR-100, paleta v1), um tema da v2 (GR-043@v2) ou #RRGGBB. */
+// ---------------------------------------------------------------------------- uso nas peças
+/**
+ * Campo tema_cor (decisão do dono, 2026-10-14: "V2 aprovado"; a v2 é a única paleta):
+ *   - "GR-043" ou "GR-043@v2": cor do tema na paleta v2 (padrão);
+ *   - "GR-043@v1": paleta antiga (legado, só para refazer peças antigas iguais);
+ *   - "#RRGGBB": cor avulsa na estrutura da v2;
+ *   - vazio: cor-base da área da especialidade (v2).
+ */
+const HEX = /^#[0-9a-f]{6}$/i;
+const ID_TEMA = /^(GR-\d{3})(?:@V2)?$/i;
+const ID_TEMA_V1 = /^(GR-\d{3})@V1$/i;
+
 export function temaCorValido(v: string): boolean {
   const s = String(v ?? "").trim();
-  const v2 = ID_TEMA_V2.exec(s);
-  return !s || (ID_TEMA.test(s) && Boolean(PALETA_TEMAS[s.toUpperCase()])) || Boolean(v2 && PALETA_TEMAS_V2[v2[1].toUpperCase()]) || HEX.test(s);
+  const v2 = ID_TEMA.exec(s);
+  const v1 = ID_TEMA_V1.exec(s);
+  return !s || Boolean(v2 && PALETA_TEMAS_V2[v2[1].toUpperCase()]) || Boolean(v1 && PALETA_TEMAS[v1[1].toUpperCase()]) || HEX.test(s);
 }
 
-/** Qual paleta o campo usa ("v2" só com o sufixo @v2). */
+/** Qual paleta o campo usa: "v1" só com o sufixo @v1 (legado). */
 export function versaoDoCampo(v: string): "v1" | "v2" {
-  return ID_TEMA_V2.test(String(v ?? "").trim()) ? "v2" : "v1";
+  return ID_TEMA_V1.test(String(v ?? "").trim()) ? "v1" : "v2";
 }
 
-/** Cores do campo tema_cor: tema da lista (v1 ou @v2), ou uma cor qualquer (estrutura do GR-001 com aquele tom). Vazio = null. */
+/** Cores do campo tema_cor (ver acima). Vazio ou inválido = null (quem chama usa a cor da especialidade). */
 export function corDoCampo(v: string): CorTema | null {
   const s = String(v ?? "").trim();
   if (!s) return null;
-  const v2 = ID_TEMA_V2.exec(s);
+  const v1 = ID_TEMA_V1.exec(s);
+  if (v1) return PALETA_TEMAS[v1[1].toUpperCase()] ?? null;
+  const v2 = ID_TEMA.exec(s);
   if (v2) return PALETA_TEMAS_V2[v2[1].toUpperCase()] ?? null;
-  if (ID_TEMA.test(s)) return PALETA_TEMAS[s.toUpperCase()] ?? null;
-  if (HEX.test(s)) return corSegura(hexParaOklch(s)[2]);
+  if (HEX.test(s)) return corDaBaseV2(s);
   return null;
+}
+
+/** Cor final da peça: a do campo tema_cor ou, vazio, a cor-base v2 da área da especialidade. */
+export function resolverCor(temaCor: string, specialtyKey: string): { cor: CorTema; versao: "v1" | "v2" } {
+  const cor = corDoCampo(temaCor);
+  if (cor) return { cor, versao: versaoDoCampo(temaCor) };
+  const area = AREA_DA_ESPECIALIDADE[specialtyKey];
+  return { cor: corDaBaseV2(area ? BASES_V2[area].cor : COR_FALLBACK_V2), versao: "v2" };
 }
 
 export { PALETA_TEMAS, PALETA_TEMAS_V2 };
