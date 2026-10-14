@@ -12,7 +12,7 @@ interface StaziaMedLogoProps {
 const ALT = "StaziaMed Revalida";
 
 // Proporção real dos arquivos (largura / altura), para o navegador reservar o espaço sem esticar.
-const RATIO = { horizontal: 1144 / 361, vertical: 862 / 750, monogram: 546 / 809 };
+const RATIO = { horizontal: 1664 / 517, vertical: 862 / 750, monogram: 546 / 809 };
 
 export const StaziaMedLogo: React.FC<StaziaMedLogoProps> = ({
   className = "",

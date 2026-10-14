@@ -9,6 +9,7 @@ src, out = sys.argv[1], sys.argv[2]
 os.makedirs(out, exist_ok=True)
 files = {s: glob.glob(os.path.join(src, f'*{s}.png'))[0] for s in ('21_05_48', '21_05_54', '21_05_59')}
 NAVY = (11, 36, 71)
+if len(sys.argv) > 3: files['21_05_48'] = sys.argv[3]  # logo horizontal em resolucao maior (opcional)
 
 def unmix(path):
     a = np.asarray(Image.open(path).convert('RGB')).astype(np.float64)
@@ -55,7 +56,7 @@ def save_sizes(im, name, widths):
         h = round(im.height * w / im.width)
         im.resize((w, h), Image.LANCZOS).save(f'{out}/{name}-{w}w.png', optimize=True)
 
-kinds = {'horizontal': ('21_05_48', [160, 240, 320, 480, 640, 960]),
+kinds = {'horizontal': ('21_05_48', [160, 240, 320, 480, 640, 960, 1280]),
          'vertical': ('21_05_59', [120, 180, 240, 360, 480, 720]),
          'simbolo': ('21_05_54', [32, 48, 64, 96, 128, 192, 256, 512])}
 res = {}
@@ -116,7 +117,7 @@ def b64(name): return base64.b64encode(open(f'{out}/{name}','rb').read()).decode
 ts = os.path.join(os.path.dirname(os.path.abspath(__file__)), '../../src/shared/visualMaterials/logoData.ts')
 open(ts, 'w').write(
     '// GERADO por scripts/logos/gerar-logos.py a partir das logos novas (public/brand). Nao editar a mao.\n'
-    '// Proporcao do arquivo: 1144 x 361 (largura / altura).\n'
-    'export const LOGO_ASPECT = 1144 / 361;\n'
+    f'// Proporcao do arquivo: {res["horizontal"][0].shape[1]} x {res["horizontal"][0].shape[0]} (largura / altura).\n'
+    f'export const LOGO_ASPECT = {res["horizontal"][0].shape[1]} / {res["horizontal"][0].shape[0]};\n'
     f'export const LOGO_ON_LIGHT = "data:image/png;base64,{b64("horizontal-480w.png")}";\n'
     f'export const LOGO_ON_DARK = "data:image/png;base64,{b64("horizontal-escuro-480w.png")}";\n')

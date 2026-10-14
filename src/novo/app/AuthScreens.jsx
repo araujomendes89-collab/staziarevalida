@@ -94,7 +94,7 @@ function SecureSignupLayout({ children, onLogin, onDoc, label = "Criar conta", a
   return (
     <div className="lg-root">
       <div className="lg-shell lg-shell--auth">
-        <header className="lg-top"><img className="lg-logo" src="/brand/horizontal-escuro-480w.png" alt="StaziaMed Revalida" width="200" height="63" /></header>
+        <header className="lg-top"><img className="lg-logo" src="/brand/horizontal-escuro-480w.png" alt="StaziaMed Revalida" width="200" height="62" /></header>
         <h1 className="lg-h1">Acesso seguro <span className="lg-grad">REVALIDA</span></h1>
         <section className="lg-card lg-auth-card" aria-label={label}>
           <div className="lg-auth-form">{children}</div>

@@ -87,7 +87,7 @@ export function AcceptanceScreen() {
   return (
     <div className="lg-root">
       <div className="lg-shell lg-shell--auth">
-        <header className="lg-top"><img className="lg-logo" src="/brand/horizontal-escuro-480w.png" alt="StaziaMed Revalida" width="200" height="63" /></header>
+        <header className="lg-top"><img className="lg-logo" src="/brand/horizontal-escuro-480w.png" alt="StaziaMed Revalida" width="200" height="62" /></header>
         <section className="lg-card lga-card" aria-label="Termo de Aceite e Uso">
           <form onSubmit={submit} className="lg-auth-fields" noValidate>
             <div>

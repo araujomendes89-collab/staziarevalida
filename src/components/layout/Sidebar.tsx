@@ -200,7 +200,7 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
           <img
             src="/brand/horizontal-escuro-320w.png"
             alt="StaziaMed Revalida"
-            width={127}
+            width={129}
             height={40}
             className="h-10 w-auto shrink-0 group-hover:scale-[1.02] transition-transform"
             draggable={false}
