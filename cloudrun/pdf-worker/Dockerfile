@@ -31,7 +31,7 @@ COPY --from=build /app/dist-worker/package.json ./package.json
 RUN npm install --omit=dev --ignore-scripts --no-audit --no-fund && npm cache clean --force
 COPY --from=build /app/dist-worker/worker-job.cjs ./dist-worker/worker-job.cjs
 COPY scripts/content-hub/*.py ./scripts/content-hub/
-COPY public/novo-assets/logo-horizontal.png ./public/novo-assets/logo-horizontal.png
+COPY public/brand/horizontal-480w.png ./public/brand/horizontal-480w.png
 COPY server/contentHub/fonts ./server/contentHub/fonts
 USER pwuser
 CMD ["node", "dist-worker/worker-job.cjs"]

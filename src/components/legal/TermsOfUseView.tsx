@@ -85,7 +85,7 @@ export const TermsOfUseView: React.FC = () => {
 
             <div className="flex items-center">
               <img
-                src="/images/logo/staziamed_logo_legal.png"
+                src="/brand/horizontal-480w.png"
                 alt="StaziaMed Revalida"
                 className="h-8 sm:h-9 w-auto object-contain"
                 loading="eager"

@@ -202,7 +202,7 @@ export function LoginScreen({ go }) {
       <div className="lg-shell">
         <Backdrop />
         <header className="lg-top">
-          <img className="lg-logo" src="/novo-assets/logo-staziamed-revalida-v2-escuro.png" alt="StaziaMed Revalida" width="200" height="61" />
+          <img className="lg-logo" src="/brand/horizontal-escuro-480w.png" alt="StaziaMed Revalida" width="200" height="62" />
         </header>
 
         <h1 className="lg-h1">

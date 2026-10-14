@@ -41,7 +41,7 @@ describe("Login: textos oficiais e links", () => {
     expect(screen.getByText("© 2026 StaziaMed Revalida")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Termos de uso" }).getAttribute("href")).toBe("/novo/termos");
     expect(screen.getByRole("link", { name: "Privacidade" }).getAttribute("href")).toBe("/novo/privacidade");
-    expect((screen.getByRole("img", { name: "StaziaMed Revalida" }) as HTMLImageElement).getAttribute("src")).toBe("/novo-assets/logo-staziamed-revalida-v2-escuro.png");
+    expect((screen.getByRole("img", { name: "StaziaMed Revalida" }) as HTMLImageElement).getAttribute("src")).toBe("/brand/horizontal-escuro-480w.png");
     // o controle de demonstração do protótipo não entra na tela real
     expect(screen.queryByText("DEMO")).toBeNull();
   });

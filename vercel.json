@@ -31,7 +31,7 @@
       "permanent": false
     },
     {
-      "source": "/:path((?!api(?:/|$)|novo|assets/|ds-icons/|question-assets/|images/|\\.well-known/|_vercel/).+)",
+      "source": "/:path((?!api(?:/|$)|novo|assets/|brand/|ds-icons/|question-assets/|images/|\\.well-known/|_vercel/).+)",
       "destination": "/novo",
       "permanent": false
     }
