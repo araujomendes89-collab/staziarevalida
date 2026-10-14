@@ -6,7 +6,6 @@ import {
   SlidersHorizontal,
   Database,
   Crown,
-  Activity,
   User,
   Settings,
   Bell,
@@ -198,19 +197,14 @@ export const Sidebar: React.FC<{ onCloseMobile?: () => void }> = ({ onCloseMobil
           className="flex items-center gap-2.5 text-left group min-h-[40px] focus:outline-hidden cursor-pointer"
           id="sidebar-brand-btn"
         >
-          <div className="w-8 h-8 rounded-xl bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-            <Activity className="w-5 h-5 text-teal-400" />
-          </div>
-          <div>
-            <div className="flex items-center gap-1.5 leading-none">
-              <span className="font-bold tracking-tight text-white text-base">
-                Stazia<span className="text-teal-400">Med</span>
-              </span>
-            </div>
-            <span className="text-[11px] font-bold text-teal-400 tracking-widest uppercase block mt-0.5">
-              REVALIDA
-            </span>
-          </div>
+          <img
+            src="/brand/horizontal-escuro-320w.png"
+            alt="StaziaMed Revalida"
+            width={127}
+            height={40}
+            className="h-10 w-auto shrink-0 group-hover:scale-[1.02] transition-transform"
+            draggable={false}
+          />
         </button>
       </div>
 

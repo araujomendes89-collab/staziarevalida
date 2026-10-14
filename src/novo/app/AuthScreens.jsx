@@ -61,7 +61,7 @@ function AuthLayout({ children, aside }) {
       >
         <div style={{ padding: mobile ? "32px 24px" : "48px 48px" }}>{children}</div>
         <div style={{ background: "var(--navy-900)", color: "#fff", padding: mobile ? "32px 24px" : 48, display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", textAlign: "center", gap: 20 }}>
-          <img src="/novo-assets/logo-vertical-on-dark.png" alt="StaziaMed Revalida" style={{ height: mobile ? 96 : 140 }} />
+          <img src="/brand/vertical-escuro-240w.png" alt="StaziaMed Revalida" width="140" height="122" style={{ height: mobile ? 96 : 140, width: "auto" }} />
           {aside}
         </div>
       </div>
@@ -94,7 +94,7 @@ function SecureSignupLayout({ children, onLogin, onDoc, label = "Criar conta", a
   return (
     <div className="lg-root">
       <div className="lg-shell lg-shell--auth">
-        <header className="lg-top"><img className="lg-logo" src="/novo-assets/logo-staziamed-revalida-v2-escuro.png" alt="StaziaMed Revalida" width="200" height="61" /></header>
+        <header className="lg-top"><img className="lg-logo" src="/brand/horizontal-escuro-480w.png" alt="StaziaMed Revalida" width="200" height="63" /></header>
         <h1 className="lg-h1">Acesso seguro <span className="lg-grad">REVALIDA</span></h1>
         <section className="lg-card lg-auth-card" aria-label={label}>
           <div className="lg-auth-form">{children}</div>

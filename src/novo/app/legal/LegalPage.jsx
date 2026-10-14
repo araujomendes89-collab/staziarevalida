@@ -63,7 +63,7 @@ export function LegalPage({ doc }) {
     <div className="lg-root lgl-root">
       <div className="lgl-shell">
         <div className="lgl-top">
-          <img className="lgl-logo" src="/novo-assets/logo-staziamed-revalida-v2-escuro.png" alt="StaziaMed Revalida" width="200" height="61" />
+          <img className="lgl-logo" src="/brand/horizontal-escuro-480w.png" alt="StaziaMed Revalida" width="200" height="63" />
           <a className="lgl-back" href="/novo">Voltar para o app</a>
         </div>
         <main className="lgl-paper">

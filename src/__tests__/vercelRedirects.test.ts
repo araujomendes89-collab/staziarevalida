@@ -23,7 +23,7 @@ describe("redirecionamentos do vercel.json", () => {
       expect(re.test(p), p).toBe(true);
     }
     for (const p of [
-      "/api", "/api/tutor/voice/sweep", "/novo", "/novo/termos", "/novo.html", "/novo-assets/logo-mark.png",
+      "/api", "/api/tutor/voice/sweep", "/novo", "/novo/termos", "/novo.html", "/brand/simbolo-96w.png",
       "/assets/novo-x.js", "/ds-icons/a.svg", "/question-assets/q.png", "/images/x.png", "/.well-known/x", "/_vercel/insights",
     ]) {
       expect(re.test(p), p).toBe(false);

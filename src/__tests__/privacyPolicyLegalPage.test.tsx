@@ -124,7 +124,7 @@ describe("Privacy Policy Legal Page (/politica-de-privacidade)", () => {
     // Verify new official logo is rendered
     const logoImgs = screen.getAllByRole("img", { name: /StaziaMed Revalida/i });
     expect(logoImgs.length).toBeGreaterThan(0);
-    expect(logoImgs[0]).toHaveAttribute("src", "/images/logo/staziamed_logo_legal.png");
+    expect(logoImgs[0]).toHaveAttribute("src", "/brand/horizontal-480w.png");
   });
 
   it("should NOT render any Print button or print action", () => {

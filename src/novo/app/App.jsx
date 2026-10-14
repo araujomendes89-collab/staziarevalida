@@ -237,7 +237,7 @@ function ReconstructionNotice() {
 function Splash({ children }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, background: "var(--bg-app)", padding: 24 }}>
-      <img src="/novo-assets/logo-mark.png" alt="StaziaMed" style={{ height: 56 }} />
+      <img src="/brand/simbolo-96w.png" alt="StaziaMed Revalida" width="38" height="56" style={{ height: 56, width: "auto" }} />
       {children}
     </div>
   );
