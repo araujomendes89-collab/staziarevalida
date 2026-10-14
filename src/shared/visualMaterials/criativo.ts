@@ -13,6 +13,7 @@
 import { A6_PRINT, STORY_SAFE, paletteOf, updatedLabel, type TableRowKind, type VisualContent, type VisualSide } from "./model";
 import { VISUAL_TOKENS } from "./tokens";
 import { aplicarEstruturaV2, corDoCampo, temaVermelho, versaoDoCampo } from "./temas";
+import { LOGO_ASPECT, LOGO_ON_DARK } from "./logoData";
 import { KIT_NAVY, glowOnlySvg, heroInnerWhite, sceneSvg, spot, spotForText, themeOf, type SpotName } from "./kit";
 import { esc, guidesHtml, type Artboard, type BuildOptions } from "./templates";
 
@@ -313,8 +314,11 @@ function mnemonico(c: VisualContent, P: CP, s: { radius: number; head: number; l
     .join("")}</div></div>`;
 }
 
-const logo = (s: { logo: number; rev: number }, P: CP, align = "flex-start") =>
-  `<div style="display:flex;flex-direction:column;align-items:${align};line-height:1;color:#FFFFFF;flex:none"><div style="font-weight:700;font-size:${s.logo}px;letter-spacing:-0.3px">Stazia<span style="color:${P.glow}">Med</span></div><div style="${COND};font-weight:600;font-size:${s.rev}px;letter-spacing:${Math.round(s.rev * 0.55)}px;margin-top:${Math.round(s.rev * 0.35)}px;color:#DCE6F2">REVALIDA</div></div>`;
+/** Logo oficial nova (imagem embutida, versão para fundo escuro): todos os rodapés do criativo são azul-marinho. */
+const logo = (s: { logo: number; rev: number }, _P: CP, align = "flex-start") => {
+  const h = Math.round((s.logo + s.rev) * 1.5);
+  return `<div data-k="logo" style="display:flex;align-items:center;justify-content:${align};flex:none"><img src="${LOGO_ON_DARK}" alt="StaziaMed Revalida" width="${Math.round(h * LOGO_ASPECT)}" height="${h}" style="display:block;height:${h}px;width:auto"></div>`;
+};
 
 interface FootSize {
   height: number;
@@ -324,8 +328,13 @@ interface FootSize {
   src: number;
   pill: number;
 }
-/** Rodapé azul-marinho: marca, linha de fonte (pequena, à direita) e número da peça ou ID do card. */
+/**
+ * Rodapé azul-marinho: logo, linha de fonte opcional (pequena, à direita; vazia por padrão desde 2026-10-13, decisão
+ * do dono) e número da peça ou ID do card. Sem fonte e sem número, a logo fica centralizada (assinatura, sem buraco).
+ */
 function footer(P: CP, s: FootSize, src: string, right: string) {
+  if (!src && !right)
+    return `<div data-region="footer" style="flex:none;height:${s.height}px;box-sizing:border-box;background:${FOOTER_BG};padding:${s.pad};display:flex;align-items:center;justify-content:center">${logo(s, P, "center")}</div>`;
   return `<div data-region="footer" style="flex:none;height:${s.height}px;box-sizing:border-box;background:${FOOTER_BG};padding:${s.pad};display:flex;align-items:center;justify-content:space-between;gap:${Math.round(s.logo)}px">${logo(s, P)}<div style="flex:1;min-width:0;display:flex;justify-content:flex-end;align-items:center;gap:${Math.round(s.logo * 0.6)}px">${
     src ? `<div data-k="fonte" data-lines="2" data-fit="0.75" style="min-width:0;${COND};font-weight:600;font-size:${s.src}px;line-height:1.35;letter-spacing:${(s.src * 0.12).toFixed(1)}px;text-transform:uppercase;color:#C3D0E2;text-align:right">${esc(src)}</div>` : ""
   }${right}</div></div>`;
@@ -487,7 +496,7 @@ function flashcardA6(c: VisualContent, o: BuildOptions): Artboard[] {
   const hs = { h: A6_CRIATIVO.header, pad: `${I}px 0 0 ${I}px`, tema: 80, pill, sceneW: 470, sceneH: 352, textW: 760 };
   const stripe = `<div data-bg style="height:${A6_CRIATIVO.stripe}px;flex:none;background:${P.p}"></div>`;
   const foot = (left: string, right: string) =>
-    `<div data-region="footer" style="flex:none;height:${A6_CRIATIVO.footer}px;box-sizing:border-box;background:${FOOTER_BG};padding:30px ${I}px ${I}px;display:flex;align-items:center;justify-content:space-between;gap:30px">${left}${right}</div>`;
+    `<div data-region="footer" style="flex:none;height:${A6_CRIATIVO.footer}px;box-sizing:border-box;background:${FOOTER_BG};padding:30px ${I}px ${I}px;display:flex;align-items:center;justify-content:${right ? "space-between" : "center"};gap:30px">${left}${right}</div>`;
   const front = `${cardHeader(c, P, "a6-front", hs, `${specialtyPill(c, P, pill)}${id}`)}${stripe}
 <div data-region="body" data-box style="flex:1;min-height:0;padding:44px ${I}px 36px;display:flex;flex-direction:column;gap:30px">
 <div data-box style="flex:1;min-height:0;background:#FFFFFF;border:3px solid ${CARD_LINE};border-radius:40px;box-shadow:0 6px 22px rgba(11,37,69,0.10);padding:40px 48px;display:flex;flex-direction:column;justify-content:center;gap:34px">
@@ -510,7 +519,7 @@ ${
 ${pegadinha(c.pegadinha, { border: 4, radius: 32, pad: "20px 30px", icon: 90, title: 52, text: 38, lines: 2, gap: 24 }, "", P.vermelho)}
 ${c.referencia ? `<div style="flex:none;display:flex;align-items:center;gap:16px;padding-top:18px;border-top:3px solid ${CARD_LINE}">${spot("livro", 46, NAVY)}<div data-k="referencia" data-lines="2" data-fit="0.75" style="font-size:34px;line-height:1.2;font-weight:600;color:${NAVY};min-width:0">${multi(c.referencia)}</div></div>` : ""}
 </div>
-${foot(logo({ logo: 46, rev: 20 }, P), c.fonte ? `<div data-k="fonte" data-lines="2" data-fit="0.75" style="min-width:0;${COND};font-weight:600;font-size:26px;line-height:1.3;letter-spacing:2px;text-transform:uppercase;color:#C3D0E2;text-align:right">${esc(c.fonte)}</div>` : "")}`;
+${foot(logo({ logo: 46, rev: 20 }, P, c.fonte ? "flex-start" : "center"), c.fonte ? `<div data-k="fonte" data-lines="2" data-fit="0.75" style="min-width:0;${COND};font-weight:600;font-size:26px;line-height:1.3;letter-spacing:2px;text-transform:uppercase;color:#C3D0E2;text-align:right">${esc(c.fonte)}</div>` : "")}`;
   return [
     { side: "front", width: W, height: H, html: artboard(c, "front", W, H, front, o) },
     { side: "back", width: W, height: H, html: artboard(c, "back", W, H, back, o) },

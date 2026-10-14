@@ -36,6 +36,7 @@ import {
   VISUAL_TEMPLATE_VERSION,
 } from "../../src/shared/visualMaterials";
 import { THEMES, sceneSvg, spotForText } from "../../src/shared/visualMaterials/kit";
+import { LOGO_ON_DARK } from "../../src/shared/visualMaterials/logoData";
 import { BASES_V2, ESTRUTURA_V2, PALETA_TEMAS_V2, contraste, COR_MODELO, PALETA_TEMAS, conferirContraste, corDoCampo, distancia, hexParaOklch, temaVermelho, tomProibido } from "../../src/shared/visualMaterials/temas";
 import { A4_SAMPLE, CARD_SAMPLE, PIECE_SAMPLE, SPECIALTY_SAMPLES } from "./visualSamples";
 
@@ -239,6 +240,24 @@ describe("Cor de cada tema (tema_cor, paleta dos 100 Grandes Temas)", () => {
     expect(renderArtboards(content({ ...base, tema_cor: "#3366CC" }))[0].html).toContain(`linear-gradient(90deg, ${livre.escura} 0%, ${livre.primaria} 100%)`);
     expect(validateVisualInput({ ...base, tema_cor: "GR-999" }).problems.map((p) => p.field)).toContain("tema_cor");
     expect(parseVisualCommand("modelo: feed\nespecialidade: cm\ntitulo: T\ncor do tema: GR-094").input.tema_cor).toBe("GR-094");
+  });
+});
+
+describe("Rodapé sem fonte e com a logo nova (decisão do dono, 2026-10-13)", () => {
+  it("fonte vazia: nenhuma linha de fonte; a logo nova (imagem) fica como assinatura, centralizada quando o rodapé não tem número", () => {
+    for (const modelo of ["feed", "a4", "story", "flashcard_digital", "flashcard_a6"]) {
+      const flash = modelo.startsWith("flash");
+      const c = content({ modelo, especialidade: "clinica_medica", ...(flash ? { ...CARD_SAMPLE, card_id: "CM-0001" } : modelo === "a4" ? A4_SAMPLE : PIECE_SAMPLE), fonte: "", paginacao: "" });
+      const html = renderArtboards(c).map((a) => a.html).join("");
+      expect(html, modelo).not.toContain('data-k="fonte"');
+      expect(html, modelo).toContain(`src="${LOGO_ON_DARK}"`);
+      if (!flash) expect(html, modelo).toMatch(/data-region="footer"[^>]*justify-content:center/);
+    }
+  });
+
+  it("o campo fonte continua opcional: preenchido, ainda aparece (para quem quiser usar)", () => {
+    const html = renderArtboards(content({ modelo: "feed", especialidade: "clinica_medica", ...PIECE_SAMPLE, fonte: "Fonte de teste" }))[0].html;
+    expect(html).toContain('data-k="fonte"');
   });
 });
 

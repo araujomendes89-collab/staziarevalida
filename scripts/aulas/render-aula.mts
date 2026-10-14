@@ -142,17 +142,19 @@ if (!cartoes.length) {
 }
 
 const fontesFlash: Record<string, { fonte?: string; referencia?: string }> = {};
+const fontesPecas: Record<string, string> = {};
 const contents: Record<string, VisualContent> = {};
 
 function prepararPeca(p: Peca): Record<string, any> | null {
   const parsed = parseVisualCommand(p.texto);
   for (const pr of parsed.problems) erros.push(`${p.nome}: linha ${pr.line}: ${pr.message}`);
   const input = { ...parsed.input };
+  // decisão do dono (2026-10-13): nenhuma linha de fonte nas peças (nem "Ministério da Saúde"); a fonte fica só em fontes-internas/
+  if (input.fonte) fontesPecas[p.nome] = input.fonte;
+  delete input.fonte;
   if (p.flash) {
     // flashcards: sem fonte nem referência no que o aluno lê (vão para fontes-internas)
     fontesFlash[input.card_id ?? p.nome] = { ...(fontesFlash[input.card_id ?? p.nome] ?? {}), ...(input.fonte ? { fonte: input.fonte } : {}), ...(input.referencia ? { referencia: input.referencia } : {}) };
-    // só a linha genérica do órgão (sem documento nem página) fica no rodapé escuro, como nos cards
-    if (!/^minist[ée]rio da sa[úu]de\.?$/i.test(String(input.fonte ?? "").trim())) delete input.fonte;
     delete input.referencia;
     for (const k of ["pergunta", "resposta", "explicacao", "como_lembrar", "pegadinha"]) if (typeof input[k] === "string") input[k] = limpar(input[k]);
   } else {
@@ -345,9 +347,20 @@ try {
   fs.writeFileSync(path.join(OUT, "flashcards.json"), JSON.stringify(flashJson, null, 2));
   if (fixJson.items) fixJson.items = fixJson.items.map((q: any) => ({ ...q, stem: limpar(q.stem), comments: (q.comments ?? []).map((c: any) => ({ ...c, text: limpar(c.text) })) }));
   fs.writeFileSync(path.join(OUT, "fixacao.json"), JSON.stringify(fixJson, null, 2));
-  for (const f of ["card_resumo.json", "visual_briefing.json", "lessons_campos.json"]) if (ler(f)) fs.copyFileSync(path.join(SRC, f), path.join(OUT, f));
+  for (const f of ["card_resumo.json", "visual_briefing.json"]) if (ler(f)) fs.copyFileSync(path.join(SRC, f), path.join(OUT, f));
+  // lessons_campos.json vai para a tela do aluno (Administração > Aulas): sem título nem link de diretriz (ficam internos)
+  const lc = lerJson("lessons_campos.json");
+  if (lc) {
+    const internos = Object.fromEntries(Object.entries(lc).filter(([k]) => /^guideline/i.test(k)));
+    for (const k of Object.keys(internos)) delete lc[k];
+    lc.guideline_title = "";
+    lc.guideline_url = "";
+    fs.writeFileSync(path.join(OUT, "lessons_campos.json"), JSON.stringify(lc, null, 2));
+    if (Object.keys(internos).length) fs.writeFileSync(path.join(OUT, "fontes-internas", "lessons-diretriz.json"), JSON.stringify(internos, null, 2));
+  }
   for (const f of ["fontes.json", "lacunas.md"]) if (ler(f)) fs.copyFileSync(path.join(SRC, f), path.join(OUT, "fontes-internas", f));
   fs.writeFileSync(path.join(OUT, "fontes-internas", "flashcards-fontes.json"), JSON.stringify(fontesFlash, null, 2));
+  fs.writeFileSync(path.join(OUT, "fontes-internas", "pecas-fontes.json"), JSON.stringify(fontesPecas, null, 2));
   if (aulaJson.claims || aulaJson.referencias) fs.writeFileSync(path.join(OUT, "fontes-internas", "afirmacoes-e-referencias.json"), JSON.stringify({ claims: aulaJson.claims ?? [], referencias: aulaJson.referencias ?? [] }, null, 2));
   for (const f of ["CHANGELOG.md"]) if (ler(f)) fs.copyFileSync(path.join(SRC, f), path.join(OUT, "fontes-internas", f));
   if (fs.existsSync(path.join(SRC, "auditoria"))) fs.cpSync(path.join(SRC, "auditoria"), path.join(OUT, "fontes-internas", "auditoria"), { recursive: true });
@@ -362,7 +375,7 @@ try {
 
 - **O aluno não vê referência nenhuma**: saíram do texto da aula, do PDF, dos flashcards e das explicações das questões os números entre colchetes, a lista de referências, os trechos citados e as frases do tipo "segundo o Guia…". Nada clínico foi reescrito além dessas expressões.
 - **Onde estão as citações agora**: \`fontes-internas/\` (\`fontes.json\` com o trecho literal validado de cada afirmação, \`trechos-citados.md\` com a lista que antes ia no PDF, \`flashcards-fontes.json\` com a fonte e a página de cada flashcard, \`afirmacoes-e-referencias.json\`).
-- **Cards e A4**: mantêm só uma linha pequena de fonte no rodapé escuro (como no modelo do dono).
+- **Cards, A4 e flashcards**: sem linha de fonte no rodapé (decisão do dono, 13/10); a fonte de cada peça está em \`fontes-internas/pecas-fontes.json\`. O \`guideline_title\` e o \`guideline_url\` saíram do \`lessons_campos.json\` (estão em \`fontes-internas/lessons-diretriz.json\`).
 - **Para conferir**: o texto clínico das peças é o mesmo dos comandos em \`comandos/\`; confira se a troca de expressões não mudou o sentido (lista das trocas padrão em \`scripts/aulas/aula-html.mts\`, SUBSTITUICOES_PADRAO).
 `
   );
