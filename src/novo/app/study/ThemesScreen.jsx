@@ -8,6 +8,8 @@ import { useMobile } from "../Shell.jsx";
 import { LoadError, Loading, useDebounced, useLoad } from "../admin/common.jsx";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
 import { temaVars } from "./temaCores.js";
+import { TemaAula } from "./TemaAula.jsx";
+import { useInRouterContext, useSearchParams } from "react-router-dom";
 import "./temas.css";
 
 /** Situação do conteúdo de cada tema (o que o aluno pode esperar encontrar). */
@@ -19,6 +21,18 @@ const STATUS = {
 // Sem acento e em minúsculas, para a busca achar "ginecologia" em "Ginecologia" e "pre natal" em "pré-natal".
 const fold = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
+/** Qual aula está aberta: guardado no endereço (?aula=ordem, sem código interno) para o botão Voltar do navegador funcionar; sem roteador (testes), em memória. */
+function useAulaAberta() {
+  const inRouter = useInRouterContext();
+  const local = React.useState(null);
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const url = inRouter ? useSearchParams() : null;
+  if (!url) return local;
+  const [params, setParams] = url;
+  const value = params.get("aula");
+  return [value ? Number(value) : null, (next) => setParams(next ? { aula: String(next) } : {}, { replace: false })];
+}
+
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 export function ThemesScreen({ go }) {
@@ -27,12 +41,26 @@ export function ThemesScreen({ go }) {
   const [area, setArea] = React.useState("");
   const [search, setSearch] = React.useState("");
   const q = fold(useDebounced(search, 200));
+  const [aberta, setAberta] = useAulaAberta();
+  const scroll = React.useRef(null);
   const [starting, setStarting] = React.useState(null);
   const [startError, setStartError] = React.useState(null);
   const { data, error, reload } = useLoad(() => backend.rpc("app_grandes_temas"), [backend]);
+  // Temas com aula PUBLICADA (só o aluno vê o botão nesses). Se a função ainda não existe no banco, simplesmente não há botão.
+  const { data: comAula } = useLoad(() => backend.rpc("app_temas_com_aula").catch(() => []), [backend]);
+  const temAula = React.useMemo(() => new Set(Array.isArray(comAula) ? comAula : []), [comAula]);
+  // Ao voltar da aula, a lista volta para o mesmo ponto (filtro e busca ficam guardados porque esta tela não é desmontada).
+  React.useLayoutEffect(() => {
+    if (aberta == null && scroll.current != null) window.scrollTo({ top: scroll.current, behavior: "instant" });
+  }, [aberta]);
   if (error) return <LoadError error={error} retry={reload} />;
   if (!data) return <Loading />;
 
+  const openAula = (t) => {
+    scroll.current = window.scrollY;
+    setAberta(t.order);
+    window.scrollTo({ top: 0, behavior: "instant" });
+  };
   const themes = data.themes.filter(
     (t) => (!area || t.area === area) && (!q || fold(`${t.title} ${t.subarea ?? ""} ${t.area_name}`).includes(q))
   );
@@ -50,6 +78,11 @@ export function ThemesScreen({ go }) {
       setStarting(null);
     }
   };
+
+  const aulaTema = aberta != null ? data.themes.find((t) => t.order === aberta && temAula.has(t.id)) : null;
+  if (aulaTema) {
+    return <TemaAula tema={aulaTema} mobile={mobile} onBack={() => setAberta(null)} go={{ train, flash: () => go("flash") }} />;
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -88,7 +121,8 @@ export function ThemesScreen({ go }) {
           <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "repeat(auto-fill,minmax(320px,1fr))", gap: 16 }}>
             {g.items.map((t) => {
               const exams = Object.entries(t.by_exam).sort(([a], [b]) => a.localeCompare(b));
-              const status = STATUS[t.status] ?? STATUS.roteiro_em_validacao;
+              const aula = temAula.has(t.id);
+              const status = aula ? { label: "Aula disponível", tone: "success", icon: "check" } : STATUS[t.status] ?? STATUS.roteiro_em_validacao;
               return (
                 <Card key={t.id} className="gt-card" padding={20} style={{ borderRadius: 20, display: "flex", flexDirection: "column", gap: 10, ...temaVars(t.id, t.area) }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -110,6 +144,11 @@ export function ThemesScreen({ go }) {
                   {t.total === 0 && <div style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>Ainda não há questão oficial catalogada ligada a este tema.</div>}
                   <div style={{ marginTop: "auto", paddingTop: 10, borderTop: "1px solid var(--border-subtle)" }}>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      {aula && (
+                        <Button variant="primary" size="sm" iconRight="chevron-right" onClick={() => openAula(t)}>
+                          Abrir a aula
+                        </Button>
+                      )}
                       {t.total > 0 && (
                         <Button variant="link" size="sm" iconRight="chevron-right" loading={starting === t.id} onClick={() => train(t)}>
                           Treinar este tema

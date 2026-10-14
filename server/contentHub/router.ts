@@ -372,6 +372,30 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
     }
   });
 
+  /**
+   * Imagem da aula do ALUNO (Revisão da Aula A4 ou flashcard ilustrado): só PNG de item publicado e visível ao aluno. O servidor confere o
+   * login (acima), pede o caminho ao banco por função só do servidor e entrega os bytes; o navegador nunca recebe o caminho do depósito
+   * nem endereço assinado, e a resposta não fica em cache. Nunca há rota de PDF para o aluno.
+   */
+  router.get("/aula-aluno/:tema/:qual/:n", async (req: Authed, res) => {
+    try {
+      const n = Number(req.params.n);
+      const tema = String(req.params.tema);
+      const qual = String(req.params.qual);
+      if (!/^GR-[0-9]{3}$/.test(tema) || !["revisao", "frente", "verso"].includes(qual) || !Number.isInteger(n) || n < 1 || n > 60) return fail(res, 400, "Arquivo inválido.");
+      const f = await deps!.db.service<{ caminho: string; tipo: string }>("ch_worker_aula_aluno_arquivo", { p_tema_id: tema, p_qual: qual, p_n: n });
+      if (!f?.caminho || f.tipo !== "image/png" || !/^aulas-prontas\/[A-Za-z0-9._-]+\/[A-Za-z0-9/_.-]+\.png$/.test(f.caminho) || f.caminho.includes("..")) return fail(res, 404, "Arquivo não encontrado.");
+      const data = await deps!.storage.get(f.caminho);
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Content-Disposition", "inline");
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.send(data);
+    } catch (error) {
+      fail(res, 404, "Imagem indisponível agora.");
+    }
+  });
+
   /** Arquivo final (PDF/HTML) de um material. */
   router.get("/renders/:id", async (req: Authed, res) => {
     try {
