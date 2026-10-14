@@ -8,6 +8,7 @@ import { useMobile } from "../Shell.jsx";
 import { LoadError, Loading, useDebounced, useLoad } from "../admin/common.jsx";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
 import { temaVars } from "./temaCores.js";
+import { aulasParaAluno } from "../features.js";
 import "./temas.css";
 
 /** Situação do conteúdo de cada tema (o que o aluno pode esperar encontrar). */
@@ -15,6 +16,9 @@ const STATUS = {
   aula_pronta_aguardando_revisao: { label: "Aula pronta, aguardando revisão médica", tone: "info", icon: "clock" },
   roteiro_em_validacao: { label: "Roteiro em validação", tone: "neutral", icon: "clock" },
 };
+
+/** Com as Aulas fechadas ao aluno (features.js), o cartão não fala em aula: só que o conteúdo do tema está em preparação. */
+const STATUS_SEM_AULAS = { label: "Conteúdo em preparação", tone: "neutral", icon: "clock" };
 
 // Sem acento e em minúsculas, para a busca achar "ginecologia" em "Ginecologia" e "pre natal" em "pré-natal".
 const fold = (s) => String(s ?? "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -88,7 +92,7 @@ export function ThemesScreen({ go }) {
           <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "repeat(auto-fill,minmax(320px,1fr))", gap: 16 }}>
             {g.items.map((t) => {
               const exams = Object.entries(t.by_exam).sort(([a], [b]) => a.localeCompare(b));
-              const status = STATUS[t.status] ?? STATUS.roteiro_em_validacao;
+              const status = aulasParaAluno() ? (STATUS[t.status] ?? STATUS.roteiro_em_validacao) : STATUS_SEM_AULAS;
               return (
                 <Card key={t.id} className="gt-card" padding={20} style={{ borderRadius: 20, display: "flex", flexDirection: "column", gap: 10, ...temaVars(t.id, t.area) }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

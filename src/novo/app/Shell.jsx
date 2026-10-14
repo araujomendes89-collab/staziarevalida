@@ -1,6 +1,7 @@
 // Estrutura do app novo (menu lateral, cabeçalho, barra de atalhos, navegação mobile).
 // Derivado de src/novo/prototype/AppShell.jsx: mesma marcação e estilos; os dados de
 // demonstração (nome, contadores) foram trocados pelos dados reais recebidos em `info`.
+import { aulasParaAluno } from "./features.js";
 import React from "react";
 import { Icon, Avatar, IconButton } from "../ds";
 import { RI_CSS } from "../prototype/RealIcons.jsx";
@@ -12,9 +13,11 @@ const GROUP={erros:'flash',missoes:'trilha',conquistas:'perfil',classificacao:'c
 const FULL=['sessao','estacao'];
 const GROUPS={1:[['Início',[['home','house','Início'],['hoje','list-checks','Plano de hoje'],['trilha','route','Trilha']]],['Estudar',[['aulas','tv','Aulas'],['temas','book-open','Grandes Temas'],['atualizacoes','newspaper','Atualizações']]],['Praticar',[['questoes','file-question','Questões'],['simulados','timer','Simulados']]],['Revisar',[['flash','layers','Flashcards'],['erros','notebook-pen','Caderno de erros']]],['Stazia Arena',[['missoes','target','Missões'],['classificacao','trophy','Classificação'],['conquistas','award','Conquistas']]],['Evolução',[['desempenho','chart-column','Desempenho'],['analise','chart-pie','Análise'],['plano','calendar-days','Planejamento']]],['Tutor IA',[['tutor','sparkles','Nexus']]]],
 2:[['Menu',[['home2','house','Início'],['teoria2','book-open','Teoria'],['estacoes','clipboard-list','Estações'],['dupla','users','Praticar'],['peps','list-checks','Meus PEPs']]],['Treino com IA',[['paciente','message-circle-heart','Paciente simulado']]],['Análise',[['desempenho2','chart-column','Desempenho']]]]};
+// Aulas fechadas ao aluno por enquanto (features.js): o item só aparece quando o interruptor está ligado. Lido na hora de desenhar.
+const groupsOf=n=>GROUPS[n].map(([t,items])=>[t,items.filter(([id])=>id!=='aulas'||aulasParaAluno())]);
 function Rail({route,go,phase,collapsed,setCollapsed,info,theme}){
   const badgeOf={flash:info.flashcardsDue||null};
-  const G=GROUPS[phase];const W=collapsed?76:264;
+  const G=groupsOf(phase);const W=collapsed?76:264;
   const [txt,setTxt]=React.useState(!collapsed);const [hov,setHov]=React.useState(false);
   React.useEffect(()=>{if(collapsed){setTxt(false);return;}const t=setTimeout(()=>setTxt(true),170);return ()=>clearTimeout(t);},[collapsed]);
   const sub=['aulas','temas','atualizacoes'];const [openSub,setOpenSub]=React.useState(sub.includes(route));
@@ -71,7 +74,7 @@ function MoreSheet({route,go,info,onClose}){
   React.useEffect(()=>{const k=e=>{if(e.key==='Escape')onClose();};document.addEventListener('keydown',k);const first=ref.current&&ref.current.querySelector('button[data-item]');if(first)first.focus();return ()=>document.removeEventListener('keydown',k);},[onClose]);
   const pick=id=>{onClose();go(id);};
   const badgeOf={flash:info.flashcardsDue||null};
-  const groups=[...GROUPS[1],['Geral',[...(info.isStaff?[['admin','users','Administração']]:info.isReviewer?[['admin','stamp','Revisão médica']]:[]),['planos','crown','Planos'],['perfil','settings','Conta e ajuda']]]];
+  const groups=[...groupsOf(1),['Geral',[...(info.isStaff?[['admin','users','Administração']]:info.isReviewer?[['admin','stamp','Revisão médica']]:[]),['planos','crown','Planos'],['perfil','settings','Conta e ajuda']]]];
   const item=(id,ic,l)=>{const on=route===id||GROUP[route]===id;const b=badgeOf[id];return <button key={id} type="button" data-item="1" onClick={()=>pick(id)} aria-current={on?'page':undefined} style={{display:'flex',alignItems:'center',gap:10,minHeight:48,padding:'0 12px',border:'1px solid '+(on?'var(--action-primary)':'var(--border-subtle)'),borderRadius:14,background:on?'var(--surface-subtle)':'transparent',color:on?'var(--text-primary)':'var(--text-secondary)',font:(on?'700':'500')+' 14px var(--font-sans)',cursor:'pointer',textAlign:'left'}}><Icon name={ic} size={18}/><span style={{flex:1,minWidth:0}}>{l}</span>{b!=null&&<span style={{minWidth:20,height:20,padding:'0 6px',borderRadius:999,background:'var(--danger-solid)',color:'#fff',font:'700 11px/20px var(--font-sans)',textAlign:'center'}}>{b}</span>}</button>;};
   return <div style={{position:'fixed',inset:0,zIndex:40}}>
     <div onClick={onClose} aria-hidden="true" style={{position:'absolute',inset:0,background:'rgba(13,28,66,.45)'}}/>

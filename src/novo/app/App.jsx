@@ -14,6 +14,7 @@ import { NexusScreen } from "./tutor/nexus/NexusScreen.jsx";
 import { ReportScreen } from "./tutor/ReportScreen.jsx";
 import { TutorDockProvider } from "./tutor/TutorDrawer.jsx";
 import { LessonsScreen } from "./study/LessonsScreen.jsx";
+import { aulasParaAluno } from "./features.js";
 import { UpdatesScreen } from "./study/UpdatesScreen.jsx";
 import { Home2, Stations, Station, Peps, Perf2, SimPatient } from "../prototype/Phase2.jsx";
 import { Pair } from "../prototype/Match.jsx";
@@ -117,6 +118,8 @@ function Screen() {
   // equipe (admin/editor) ou revisor médico de alguma área (só a revisão da Central de Conteúdo)
   if (route === "admin" && !isStaffRole(boot.role) && !boot.reviewer_areas?.length) return <Navigate to="/" replace />;
   if (phase2Locked && PHASE2_ROUTES.includes(route)) return <Navigate to="/" replace />;
+  // Aulas fechadas ao aluno por enquanto (ver features.js): quem abrir o endereço antigo cai no início
+  if (route === "aulas" && !aulasParaAluno() && !isStaffRole(boot.role)) return <Navigate to="/" replace />;
 
   const go = (next, query) => {
     const target = next;

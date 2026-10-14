@@ -46,11 +46,25 @@ describe("Menu do celular: Mais", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Mais" }));
     const sheet = screen.getByRole("dialog", { name: "Todas as áreas" });
-    for (const nome of ["Plano de hoje", "Aulas", "Grandes Temas", "Atualizações", "Questões", "Simulados", "Flashcards", "Caderno de erros", "Missões", "Classificação", "Conquistas", "Desempenho", "Análise", "Planejamento", "Nexus", "Planos", "Conta e ajuda"]) {
+    for (const nome of ["Plano de hoje", "Grandes Temas", "Atualizações", "Questões", "Simulados", "Flashcards", "Caderno de erros", "Missões", "Classificação", "Conquistas", "Desempenho", "Análise", "Planejamento", "Nexus", "Planos", "Conta e ajuda"]) {
       expect(within(sheet).getByRole("button", { name: new RegExp(nome) })).toBeTruthy();
     }
     for (const fase2 of ["Estações", "Teoria", "PEPs", "Paciente", "Praticar em dupla"]) expect(within(sheet).queryByRole("button", { name: new RegExp(fase2) })).toBeNull();
     expect(within(sheet).queryByText(/Administração/)).toBeNull(); // aluno não vê
+    // Aulas fechadas ao aluno por decisão do dono (14/10/2026; ver features.js)
+    expect(within(sheet).queryByRole("button", { name: /Aulas/ })).toBeNull();
+  });
+
+  it("com VITE_AULAS_ALUNO=1 (caminho para abrir as Aulas de novo) a lista volta a ter Aulas", () => {
+    vi.stubEnv("VITE_AULAS_ALUNO", "1");
+    try {
+      setWidth(390);
+      mount();
+      fireEvent.click(screen.getByRole("button", { name: "Mais" }));
+      expect(within(screen.getByRole("dialog", { name: "Todas as áreas" })).getByRole("button", { name: /Aulas/ })).toBeTruthy();
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it("tocar numa área leva até ela e fecha a lista; Esc e o fundo também fecham", () => {
