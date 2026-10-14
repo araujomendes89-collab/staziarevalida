@@ -71,18 +71,6 @@ describe("Grandes Temas: 100 Grandes Temas Prioritários", () => {
     expect(calls("app_incidence")).toHaveLength(0);
   });
 
-  it("com VITE_AULAS_ALUNO=1 o cartão volta a mostrar a situação da aula", async () => {
-    vi.stubEnv("VITE_AULAS_ALUNO", "1");
-    try {
-      render(<ThemesScreen go={go} />);
-      const tb = (await screen.findByText("Tuberculose pulmonar")).closest(".gt-card") as HTMLElement;
-      expect(within(tb).getByText("Aula pronta, aguardando revisão médica")).toBeTruthy();
-      expect(screen.getAllByText("Roteiro em validação")).toHaveLength(4);
-    } finally {
-      vi.unstubAllEnvs();
-    }
-  });
-
   it("não mostra o código interno do tema (GR-xxx) ao aluno", async () => {
     render(<ThemesScreen go={go} />);
     await screen.findByText("Tuberculose pulmonar");
@@ -97,14 +85,12 @@ describe("Grandes Temas: 100 Grandes Temas Prioritários", () => {
     expect(screen.getByRole("heading", { name: /Saúde Mental/ })).toBeTruthy();
     const tb = screen.getByText("Tuberculose pulmonar").closest(".gt-card") as HTMLElement;
     expect(within(tb).getByText("12 questões · 2 provas")).toBeTruthy();
-    // Aulas fechadas ao aluno (features.js): o cartão não fala em aula
-    expect(within(tb).getByText("Conteúdo em preparação")).toBeTruthy();
-    expect(within(tb).queryByText(/Aula pronta/)).toBeNull();
+    expect(within(tb).getByText("Aula pronta, aguardando revisão médica")).toBeTruthy();
     expect(within(tb).queryByText(/Rev\.|ENAMED/)).toBeNull();
     const pn = screen.getByText("Assistência ao pré-natal").closest(".gt-card") as HTMLElement;
     expect(within(pn).getByText("1 questão · 1 prova")).toBeTruthy();
-    expect(within(pn).getByText("Conteúdo em preparação")).toBeTruthy();
-    expect(screen.getAllByText("Conteúdo em preparação")).toHaveLength(5);
+    expect(within(pn).getByText("Roteiro em validação")).toBeTruthy();
+    expect(screen.getAllByText("Roteiro em validação")).toHaveLength(4);
   });
 
   it("tema sem questão mostra 0 questões, explica e não oferece treino (mas mantém o 'Me teste')", async () => {
