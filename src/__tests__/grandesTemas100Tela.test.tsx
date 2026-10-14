@@ -77,11 +77,11 @@ describe("Grandes Temas: 100 Grandes Temas Prioritários", () => {
     expect(cm.textContent).toMatch(/2 temas · 12 questões ligadas/);
     expect(screen.getByRole("heading", { name: /Ginecologia e Obstetrícia/ })).toBeTruthy();
     expect(screen.getByRole("heading", { name: /Saúde Mental/ })).toBeTruthy();
-    const tb = screen.getByText("Tuberculose pulmonar").closest("div")!.parentElement!;
+    const tb = screen.getByText("Tuberculose pulmonar").closest(".gt-card") as HTMLElement;
     expect(within(tb).getByText("12 questões · 2 provas")).toBeTruthy();
     expect(within(tb).getByText("Aula pronta, aguardando revisão médica")).toBeTruthy();
     expect(within(tb).queryByText(/Rev\.|ENAMED/)).toBeNull();
-    const pn = screen.getByText("Assistência ao pré-natal").closest("div")!.parentElement!;
+    const pn = screen.getByText("Assistência ao pré-natal").closest(".gt-card") as HTMLElement;
     expect(within(pn).getByText("1 questão · 1 prova")).toBeTruthy();
     expect(within(pn).getByText("Roteiro em validação")).toBeTruthy();
     expect(screen.getAllByText("Roteiro em validação")).toHaveLength(4);
@@ -89,7 +89,7 @@ describe("Grandes Temas: 100 Grandes Temas Prioritários", () => {
 
   it("tema sem questão mostra 0 questões, explica e não oferece treino (mas mantém o 'Me teste')", async () => {
     render(<ThemesScreen go={go} />);
-    const card = (await screen.findByText("Diabetes mellitus tipo 2")).closest("div")!.parentElement!;
+    const card = (await screen.findByText("Diabetes mellitus tipo 2")).closest(".gt-card") as HTMLElement;
     expect(within(card).getByText("0 questões")).toBeTruthy();
     expect(within(card).getByText("Ainda não há questão oficial catalogada ligada a este tema.")).toBeTruthy();
     expect(within(card).queryByRole("button", { name: /Treinar este tema/ })).toBeNull();
@@ -98,7 +98,7 @@ describe("Grandes Temas: 100 Grandes Temas Prioritários", () => {
 
   it("'Treinar este tema' abre um treino só com as questões ligadas ao tema (filtro grande_tema)", async () => {
     render(<ThemesScreen go={go} />);
-    const card = (await screen.findByText("Tuberculose pulmonar")).closest("div")!.parentElement!;
+    const card = (await screen.findByText("Tuberculose pulmonar")).closest(".gt-card") as HTMLElement;
     fireEvent.click(within(card).getByRole("button", { name: /Treinar este tema/ }));
     await waitFor(() => expect(calls("app_start_session")).toHaveLength(1));
     expect(calls("app_start_session")[0][1]).toEqual({ p_kind: "questoes", p_filters: { grande_tema: "GR-001" }, p_count: 20 });
@@ -111,7 +111,7 @@ describe("Grandes Temas: 100 Grandes Temas Prioritários", () => {
       throw new Error("Nenhuma questão encontrada com esses filtros.");
     });
     render(<ThemesScreen go={go} />);
-    const card = (await screen.findByText("Tuberculose pulmonar")).closest("div")!.parentElement!;
+    const card = (await screen.findByText("Tuberculose pulmonar")).closest(".gt-card") as HTMLElement;
     fireEvent.click(within(card).getByRole("button", { name: /Treinar este tema/ }));
     expect(await screen.findByText("Não há questões disponíveis nesse tema agora.")).toBeTruthy();
     expect(go).not.toHaveBeenCalled();
@@ -119,7 +119,7 @@ describe("Grandes Temas: 100 Grandes Temas Prioritários", () => {
 
   it("'Me teste' abre o Tutor com o tema", async () => {
     render(<ThemesScreen go={go} />);
-    const card = (await screen.findByText("Tuberculose pulmonar")).closest("div")!.parentElement!;
+    const card = (await screen.findByText("Tuberculose pulmonar")).closest(".gt-card") as HTMLElement;
     fireEvent.click(within(card).getByRole("button", { name: "Me teste" }));
     expect(tutorRequests[0]).toEqual({ mode: "perguntas", topic: "Tuberculose pulmonar", context: { type: "theme", id: "GR-001", label: "Tuberculose pulmonar", area: "Clínica Médica" } });
   });

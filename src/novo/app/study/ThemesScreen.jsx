@@ -7,6 +7,8 @@ import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { LoadError, Loading, useDebounced, useLoad } from "../admin/common.jsx";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
+import { temaVars } from "./temaCores.js";
+import "./temas.css";
 
 /** Situação do conteúdo de cada tema (o que o aluno pode esperar encontrar). */
 const STATUS = {
@@ -59,7 +61,15 @@ export function ThemesScreen({ go }) {
       <TextField icon="search" aria-label="Buscar" placeholder="Buscar tema, subárea ou área" value={search} onChange={(e) => setSearch(e.target.value)} />
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }} role="group" aria-label="Grande área">
         {[{ id: "", name: "Todas", themes: data.themes.length }, ...data.areas].map((a) => (
-          <button key={a.id} type="button" className={`sm-chip${area === a.id ? " is-selected" : ""}`} aria-pressed={area === a.id} onClick={() => setArea(a.id)}>
+          <button
+            key={a.id}
+            type="button"
+            className={`sm-chip gt-chip-area${area === a.id ? " is-selected" : ""}`}
+            style={a.id ? temaVars(`area-${a.id}`, a.id) : undefined}
+            aria-pressed={area === a.id}
+            onClick={() => setArea(a.id)}
+          >
+            {a.id && <span className="gt-dot" aria-hidden="true" />}
             {a.name}
           </button>
         ))}
@@ -80,7 +90,7 @@ export function ThemesScreen({ go }) {
               const exams = Object.entries(t.by_exam).sort(([a], [b]) => a.localeCompare(b));
               const status = STATUS[t.status] ?? STATUS.roteiro_em_validacao;
               return (
-                <Card key={t.id} padding={20} style={{ borderRadius: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+                <Card key={t.id} className="gt-card" padding={20} style={{ borderRadius: 20, display: "flex", flexDirection: "column", gap: 10, ...temaVars(t.id, t.area) }}>
                   <div style={{ display: "flex", justifyContent: "space-between", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                     <Badge size="sm" tone={status.tone} icon={status.icon}>
                       {status.label}
@@ -89,13 +99,16 @@ export function ThemesScreen({ go }) {
                       {t.total > 0 ? `${plural(t.total, "questão", "questões")} · ${plural(exams.length, "prova", "provas")}` : "0 questões"}
                     </Badge>
                   </div>
-                  <div style={{ font: "600 16px/1.35 var(--font-sans)", overflowWrap: "anywhere" }}>{t.title}</div>
+                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <span className="gt-code">{t.id}</span>
+                    <div style={{ font: "600 16px/1.35 var(--font-sans)", overflowWrap: "anywhere" }}>{t.title}</div>
+                  </div>
                   <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
                     Tema {t.order}
                     {t.subarea ? ` · ${t.subarea}` : ""}
                   </div>
-                  <div style={{ height: 6, borderRadius: 999, background: "var(--chart-track)" }} aria-hidden="true">
-                    <div style={{ width: `${t.total > 0 ? Math.max((t.total / max) * 100, 4) : 0}%`, height: "100%", borderRadius: 999, background: "var(--chart-1)" }} />
+                  <div className="gt-bar" aria-hidden="true">
+                    <span style={{ width: `${t.total > 0 ? Math.max((t.total / max) * 100, 4) : 0}%` }} />
                   </div>
                   {t.total === 0 && <div style={{ font: "var(--type-caption)", color: "var(--text-secondary)" }}>Ainda não há questão oficial catalogada ligada a este tema.</div>}
                   <div style={{ marginTop: "auto", paddingTop: 10, borderTop: "1px solid var(--border-subtle)" }}>
