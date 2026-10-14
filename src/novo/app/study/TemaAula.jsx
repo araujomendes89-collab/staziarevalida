@@ -7,9 +7,9 @@ import { useSession } from "../session.jsx";
 import { LoadError, Loading, messageOf, useLoad } from "../admin/common.jsx";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
 import { temaVars } from "./temaCores.js";
+import { ProtectedImage, noMenu } from "./AulaImagem.jsx";
 import "./aula.css";
 
-const noMenu = (e) => e.preventDefault();
 const cleanHeading = (h) => String(h ?? "").replace(/^Bloco\s*\d+\s*[·:.-]\s*/i, "").trim();
 const monthYear = (iso) => (iso ? new Intl.DateTimeFormat("pt-BR", { month: "2-digit", year: "numeric" }).format(new Date(iso)) : null);
 
@@ -20,40 +20,6 @@ export function boxOf(text) {
   const a = /^(Aten[çc][ãa]o|Cuidado)\b[^.:]{0,70}[.:]\s*/i.exec(text);
   if (a) return { kind: "atencao", title: "Atenção", body: text };
   return null;
-}
-
-/** Imagem protegida pelo servidor: baixa com o login e mostra como blob. { src } | { error } | {}. */
-function useAulaImage(temaId, qual, n, enabled = true) {
-  const { backend } = useSession();
-  const [state, setState] = React.useState({});
-  React.useEffect(() => {
-    if (!enabled) return undefined;
-    let alive = true;
-    let url = null;
-    (async () => {
-      try {
-        const token = backend.accessToken ? await backend.accessToken() : null;
-        const res = await fetch(`/api/content-hub/aula-aluno/${temaId}/${qual}/${n}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-        if (!res.ok) throw new Error("falhou");
-        url = URL.createObjectURL(await res.blob());
-        if (alive) setState({ src: url });
-      } catch {
-        if (alive) setState({ error: true });
-      }
-    })();
-    return () => {
-      alive = false;
-      if (url) URL.revokeObjectURL?.(url);
-    };
-  }, [backend, temaId, qual, n, enabled]);
-  return state;
-}
-
-function ProtectedImage({ temaId, qual, n = 1, alt, enabled }) {
-  const img = useAulaImage(temaId, qual, n, enabled);
-  if (img.error) return <div role="status" style={{ padding: 16, font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Não foi possível carregar a imagem agora.</div>;
-  if (!img.src) return <div aria-busy="true" style={{ width: "100%", height: "100%", minHeight: 120, background: "var(--surface-sunken)" }} />;
-  return <img src={img.src} alt={alt} draggable={false} onContextMenu={noMenu} onDragStart={noMenu} />;
 }
 
 function Head({ n, title, id }) {

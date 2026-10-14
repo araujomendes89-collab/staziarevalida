@@ -9,6 +9,7 @@ import { AREAS, areaLabel, formatWhen } from "../practice/format.js";
 import { FlashcardForm } from "./FlashcardForm.jsx";
 import { intervalLabel, nextSchedule, previewDays } from "./fsrs.js";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
+import { CartaoIlustrado } from "../study/AulaImagem.jsx";
 
 const RATINGS = [
   { value: 1, label: "Errei", variant: "danger" },
@@ -29,14 +30,27 @@ export function FlashcardsScreen({ go }) {
   const [creating, setCreating] = React.useState(false);
   const [reviewed, setReviewed] = React.useState(0);
   const [reload, setReload] = React.useState(0);
+  const [ilustrados, setIlustrados] = React.useState({});
   const keys = React.useRef(() => {});
 
   React.useEffect(() => {
     let alive = true;
     backend
       .rpc("app_flashcards", { p_area: area || null })
-      .then((result) => {
+      .then(async (result) => {
+        // cartões do baralho StaziaMed que têm imagem (só de aula publicada); se a função não existir ainda ou falhar, fica o texto
+        const ids = (result?.queue ?? []).filter((c) => !c.mine).map((c) => c.id);
+        let map = {};
+        if (ids.length) {
+          try {
+            const m = await backend.rpc("app_flashcards_ilustrados", { p_ids: ids });
+            if (m && typeof m === "object") map = m;
+          } catch {
+            map = {};
+          }
+        }
         if (!alive) return;
+        setIlustrados(map);
         setData(result);
         setIndex(0);
         setFlipped(false);
@@ -147,7 +161,11 @@ export function FlashcardsScreen({ go }) {
               {index + 1} / {queue.length}
             </span>
           </div>
-          <Flashcard key={card.id} area={areaLabel(card.area)} front={card.front} back={card.back} flipped={flipped} onFlip={setFlipped} height={280} />
+          {ilustrados[card.id] ? (
+            <CartaoIlustrado key={card.id} tema={ilustrados[card.id].tema} n={ilustrados[card.id].n} front={card.front} back={card.back} flipped={flipped} onFlip={setFlipped} />
+          ) : (
+            <Flashcard key={card.id} area={areaLabel(card.area)} front={card.front} back={card.back} flipped={flipped} onFlip={setFlipped} height={280} />
+          )}
           {flipped ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }} role="group" aria-label="Como foi lembrar?">
               {RATINGS.map((r, k) => (
