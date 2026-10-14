@@ -99,10 +99,7 @@ export function ThemesScreen({ go }) {
                       {t.total > 0 ? `${plural(t.total, "questão", "questões")} · ${plural(exams.length, "prova", "provas")}` : "0 questões"}
                     </Badge>
                   </div>
-                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                    <span className="gt-code">{t.id}</span>
-                    <div style={{ font: "600 16px/1.35 var(--font-sans)", overflowWrap: "anywhere" }}>{t.title}</div>
-                  </div>
+                  <div style={{ font: "600 16px/1.35 var(--font-sans)", overflowWrap: "anywhere" }}>{t.title}</div>
                   <div style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
                     Tema {t.order}
                     {t.subarea ? ` · ${t.subarea}` : ""}

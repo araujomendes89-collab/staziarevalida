@@ -71,6 +71,12 @@ describe("Grandes Temas: 100 Grandes Temas Prioritários", () => {
     expect(calls("app_incidence")).toHaveLength(0);
   });
 
+  it("não mostra o código interno do tema (GR-xxx) ao aluno", async () => {
+    render(<ThemesScreen go={go} />);
+    await screen.findByText("Tuberculose pulmonar");
+    expect(document.body.textContent).not.toMatch(/GR-\d{3}/);
+  });
+
   it("lista os temas por área, com contagem de questões e provas, e a situação do conteúdo", async () => {
     render(<ThemesScreen go={go} />);
     const cm = await screen.findByRole("heading", { name: /Clínica Médica/ });
