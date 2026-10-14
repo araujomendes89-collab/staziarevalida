@@ -31,17 +31,17 @@ async function afirmacaoComEvidencia(statement: string, critica: boolean, tema =
 }
 
 describe("CC12: conferir dose só o revisor médico da área", () => {
-  it("editor, administrador sem área e revisor de outra área são recusados; o revisor da área confere", async () => {
+  it("editor, aluno e revisor de outra área são recusados; o revisor da área (e o administrador, que faz a aprovação médica) conferem", async () => {
     const { claim } = await afirmacaoComEvidencia("Ataque com 4 g por via intravenosa em 20 min.", true);
-    const msg = /revisor médico cadastrado na área \(GINECOLOGIA_OBSTETRICIA\)/;
+    const msg = /administrador ou de um revisor médico cadastrado na área \(GINECOLOGIA_OBSTETRICIA\)/;
     await expect(rpc(EDITOR, "app_ch_confirm_critical", { p_claim_id: claim })).rejects.toThrow(msg);
-    await expect(rpc(ADMIN, "app_ch_confirm_critical", { p_claim_id: claim })).rejects.toThrow(msg);
     await expect(rpc(REVISOR_PED, "app_ch_confirm_critical", { p_claim_id: claim })).rejects.toThrow(msg);
     await expect(rpc(ALUNO, "app_ch_confirm_critical", { p_claim_id: claim })).rejects.toThrow(/restrito à equipe/);
     expect((await sql(`select critical_checked_by from public.ch_claims where id = $1`, [claim]))[0].critical_checked_by).toBeNull();
 
     expect(await rpc(EDITOR, "app_ch_claim_can_confirm", { p_claim_id: claim })).toEqual({ areas: ["GINECOLOGIA_OBSTETRICIA"], can: false });
     expect(await rpc(REVISOR, "app_ch_claim_can_confirm", { p_claim_id: claim })).toEqual({ areas: ["GINECOLOGIA_OBSTETRICIA"], can: true });
+    expect(await rpc(ADMIN, "app_ch_claim_can_confirm", { p_claim_id: claim })).toEqual({ areas: ["GINECOLOGIA_OBSTETRICIA"], can: true });
     expect(await rpc(REVISOR, "app_ch_confirm_critical", { p_claim_id: claim })).toBe(true);
     const [c] = await sql(`select critical_checked_by from public.ch_claims where id = $1`, [claim]);
     expect(c.critical_checked_by).toBe(REVISOR);

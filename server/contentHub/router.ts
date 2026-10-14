@@ -351,6 +351,27 @@ export function createContentHubRouter(deps: PipelineDeps | null, opts: { pendin
     }
   });
 
+  /**
+   * Arquivo de um material da unidade (imagem ou PDF da aula importada), do depósito protegido. Só equipe e revisor médico (a função do
+   * banco recusa os demais); nunca guarda em cache e nunca devolve o caminho do depósito. O aluno não tem rota para arquivo de unidade.
+   */
+  router.get("/unit-materials/:id/file/:idx", async (req: Authed, res) => {
+    try {
+      const idx = Number(req.params.idx);
+      if (!Number.isInteger(idx) || idx < 0 || idx > 200) return fail(res, 400, "Arquivo inválido.");
+      const f = await asUser<{ caminho: string; tipo: string }>(req, "app_ch_unit_material_file", { p_item_id: req.params.id, p_idx: idx });
+      if (!/^aulas-prontas\/[A-Za-z0-9._-]+\/[A-Za-z0-9/_.-]+$/.test(f.caminho) || f.caminho.includes("..")) return fail(res, 400, "Arquivo inválido.");
+      const data = await deps!.storage.get(f.caminho);
+      res.setHeader("Content-Type", f.tipo === "application/pdf" ? "application/pdf" : f.tipo);
+      res.setHeader("Content-Disposition", "inline");
+      res.setHeader("Cache-Control", "private, no-store");
+      res.setHeader("X-Content-Type-Options", "nosniff");
+      res.send(data);
+    } catch (error) {
+      fail(res, forbidden(error) ? 403 : 404, shown(error));
+    }
+  });
+
   /** Arquivo final (PDF/HTML) de um material. */
   router.get("/renders/:id", async (req: Authed, res) => {
     try {

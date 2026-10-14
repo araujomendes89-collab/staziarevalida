@@ -18,6 +18,7 @@ export const AI_FUNCTION_NAME = {
   assistente_revisar: "Assistente: conversar e revisar",
   busca_fontes: "Busca de fontes oficiais",
   similaridade: "Questões parecidas",
+  analise_mudancas: "Análise do que mudou (Vigilância científica)",
 };
 /** Dólar em pt-BR: "US$ 0,0123" (até 4 casas); zero vira "US$ 0" (igual ao da Central de IAs). */
 const usd = (n) => {
@@ -100,6 +101,12 @@ export const ACTION_LABEL = {
   "approval.invalidate": "Aprovação do conteúdo desfeita",
   "unit.regenerate": "Conteúdo gerado de novo",
   "unit.new_version": "Nova versão criada para corrigir o conteúdo",
+  "unit.import": "Aula pronta importada na Central",
+  "unit.material.insert": "Material inserido na unidade",
+  "unit.material.retire": "Material retirado da unidade",
+  "unit.material.restore": "Material devolvido à lista da unidade",
+  "review.sheet_import": "Ficha do revisor médico importada",
+  "review.decision": "Decisão do revisor registrada na ficha",
   "publish.distribute": "Conteúdo publicado na aula e nos flashcards dos alunos",
   "evidence.discard": "Evidência descartada na correção",
   "processing.settings": "Teto de gasto por documento alterado",
@@ -127,6 +134,12 @@ export const ACTION_LABEL = {
   "source.aliases": "Siglas da fonte alteradas",
   "source.registry": "Registro da fonte atualizado",
   "source.change_resolved": "Mudança de fonte resolvida",
+  "vigilance.mark": "Vigilância científica: decisão na fila",
+  "vigilance.interval": "Vigilância científica: frequência do site",
+  "vigilance.quality_override": "Vigilância científica: quarentena decidida",
+  "vigilance.identifiers": "Vigilância científica: DOI/PMID corrigido",
+  "vigilance.analysis_request": "Vigilância científica: análise do que mudou pedida",
+  "vigilance.topic": "Vigilância científica: dossiê do tema",
   "conflict.detect": "Conflitos entre fontes detectados",
   "conflict.resolved": "Conflito entre fontes resolvido",
   "conflict.deferred": "Conflito entre fontes adiado",

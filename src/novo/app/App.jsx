@@ -39,7 +39,7 @@ import { AchievementsScreen } from "./play/AchievementsScreen.jsx";
 // [título, subtítulo] de cada rota (o início é montado com nome e data reais).
 const TITLES = {
   aulas: ["Aulas teórico-práticas", "Estudar · conteúdo audiovisual por grande área"],
-  temas: ["Grandes Temas do Revalida", "Estudar · incidência real nas provas oficiais"],
+  temas: ["Grandes Temas do Revalida", "Estudar · os 100 temas prioritários, com as questões oficiais de cada um"],
   atualizacoes: ["Atualizações", "Estudar · o que mudou nas condutas e onde conferir"],
   hoje: ["Plano de hoje", "Estudar · praticar · revisar"],
   questoes: ["Questões", "Monte seu treino"],
@@ -237,7 +237,7 @@ function ReconstructionNotice() {
 function Splash({ children }) {
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, background: "var(--bg-app)", padding: 24 }}>
-      <img src="/novo-assets/logo-mark.png" alt="StaziaMed" style={{ height: 56 }} />
+      <img src="/brand/simbolo-96w.png" alt="StaziaMed Revalida" width="38" height="56" style={{ height: 56, width: "auto" }} />
       {children}
     </div>
   );

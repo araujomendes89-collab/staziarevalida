@@ -1,0 +1,26 @@
+{
+  "_sobre": "Origem dos arquivos REAIS usados nos testes da Vigilância científica (nada foi inventado nem editado; o teste é que muda cópias em memória e diz o que mudou).",
+  "crossref": {
+    "como": "curl uma única vez, 2026-10-13 02:04 UTC (12/10/2026 23:04 em Brasília), com User-Agent 'StaziaMed-Vigilancia/1.0 (mailto:suporte@staziamed.com.br)'. O WebFetch foi tentado primeiro, mas ele só devolve resumo (não o corpo cru), então não serve para guardar a resposta como veio.",
+    "url": "https://api.crossref.org/works?filter=doi:<DOI>&select=DOI,title,type,publisher,container-title,published,update-to,updated-by,relation,update-policy",
+    "arquivos": {
+      "sbc-hipertensao-2025.json": "DOI 10.36660/abc.20250624 (catálogo: sbc-hipertensao-2025) - não retratado",
+      "ese-hiponatremia-2014.json": "DOI 10.1530/EJE-13-1020 (catálogo: ese-hiponatremia-2014) - não retratado",
+      "sbp-reanimacao-2026.json": "DOI 10.25060/PRN-SBP-2026-1 (catálogo: reanimacao-neonatal-sbp-2026-ge34) - não retratado",
+      "retratado-lancet-2020.json": "DOI 10.1016/S0140-6736(20)31180-6 (Lancet 2020, hidroxicloroquina/Surgisphere; NÃO é do catálogo) - artigo real retratado, usado para provar o bloqueio"
+    }
+  },
+  "paginas": {
+    "como": "Páginas oficiais baixadas em 12/10/2026 pelo agente do catálogo de fontes (scratchpad fontes-catalogo), gravadas aqui em gzip sem nenhuma alteração.",
+    "inep-revalida-provas-2025.html.gz": "https://www.gov.br/inep/pt-br/areas-de-atuacao/avaliacao-e-exames-educacionais/revalida/provas-e-gabaritos/2025",
+    "ms-guias-e-manuais-2026.html.gz": "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2026",
+    "aids-notas-informativas-2026.html.gz": "https://www.gov.br/aids/pt-br/central-de-conteudo/notas-informativas/2026 (curl uma vez em 13/10/2026 22:25 UTC; tem a NOTA INFORMATIVA Nº 2/2026-CGTM/.DATHI/SVSA/MS, BPaLM, effective 2026-09-30, na lista que a página traz embutida em JSON. O WebFetch foi usado para conferir e NÃO mostra a lista: a página monta a lista no navegador; o HTML cru tem os itens)",
+    "aids-notas-informativas-2025.html.gz": "https://www.gov.br/aids/pt-br/central-de-conteudo/notas-informativas/2025 (curl uma vez em 13/10/2026 22:25 UTC; tem a NOTA INFORMATIVA Nº 25/2025-CGAFME/DAF/SECTICS/MS, TPT com rifampicina)"
+  },
+  "pdf": {
+    "como": "PDFs reais da biblioteca local de fontes (_biblioteca-fontes-local/pdf/vigente), copiados sem alteração.",
+    "nt-626-2025-pdfium.pdf": "Nota Técnica nº 626/2025-CGCAN/DECAN/SAES/MS, cópia gerada pelo PDFium",
+    "nt-626-2025-wkhtmltopdf.pdf": "a MESMA Nota Técnica 626/2025, cópia gerada pelo wkhtmltopdf (bytes diferentes, texto igual)",
+    "portaria-conjunta-saes-sectics-13-2025.pdf": "Portaria Conjunta SAES/SECTICS nº 13, de 29/07/2025 (DOU de 18/08/2025)"
+  }
+}

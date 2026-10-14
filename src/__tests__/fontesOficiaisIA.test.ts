@@ -1044,7 +1044,7 @@ describe("Central", () => {
 
   describe("preços e problemas (sem banco)", () => {
     it("a função é a sétima (a oitava, Questões parecidas, veio depois); só ela é função de busca; as variáveis de ambiente nunca a definem", () => {
-      expect(FUNCTION_KEYS).toEqual(["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes", "similaridade"]);
+      expect(FUNCTION_KEYS).toEqual(["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes", "similaridade", "analise_mudancas"]);
       expect(DEFAULT_MAX_SEARCHES).toBe(5);
       expect(FUNCTION_KEYS.filter((k) => isSearchFunction(k))).toEqual(["busca_fontes"]);
       const env = { CONTENT_HUB_AI_PROVIDER: "anthropic", ANTHROPIC_API_KEY: "x", CONTENT_HUB_MODEL_CREATE: "claude-sonnet-5-5" } as NodeJS.ProcessEnv;

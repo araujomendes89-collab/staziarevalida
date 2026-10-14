@@ -15,6 +15,7 @@
  *     motivo — nunca é simulada em produção;
  *   - checkpoints permitem retomar; reprocessar reaproveita respostas idênticas e não duplica.
  */
+import { AnalysisFailed, AnalysisPending, runChangeAnalysis } from "./vigilance/analysis";
 import { compareSourceVersions } from "./sourceCompare";
 import { aiAllowed, registerPromptsOnce } from "./ai/registry";
 import crypto from "crypto";
@@ -49,7 +50,7 @@ export const EXTRACTOR_VERSION = "staziamed-extract-1.0";
 export const MATERIALS_TEMPLATE = "materials-1.0";
 const PAGE_RANGE = 20;
 
-export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render" | "source_search" | "question_generate" | "question_check" | "question_source" | "question_analysis" | "draft_check" | "similarity";
+export type Step = "extract" | "source_index" | "classify" | "claims" | "evidence" | "draft" | "materials" | "render" | "review_check" | "visual_render" | "source_search" | "question_generate" | "question_check" | "question_source" | "question_analysis" | "draft_check" | "similarity" | "source_change_analysis";
 
 export interface Job {
   id: string;
@@ -118,6 +119,11 @@ const docId = (ctx: Ctx) => {
 };
 const versionScope = (ctx: Ctx) => (ctx.job.scope_key.startsWith("version:") ? ctx.job.scope_key.slice("version:".length) : null);
 /**
+ * Aula pronta importada na Central (app_ch_import_lesson_package, migração 9950): a importação pede só o arquivo final (etapa
+ * "render") da versão importada, que já está aguardando revisão. Nada de IA e nada de etapa seguinte.
+ */
+const importScope = (ctx: Ctx) => (ctx.job.scope_key.startsWith("import:") ? ctx.job.scope_key.slice("import:".length) : null);
+/**
  * Situação do documento: trabalho de uma versão só (edição manual) não mexe no documento. Trabalho da reconferência automática
  * (marca no checkpoint) também não, em nenhuma etapa: o documento continua como estava, mesmo se a etapa falhar no meio (CC01,
  * rodada de correção 2; no banco, ch_worker_finish/ch_worker_block/ch_worker_fail fazem o mesmo na falha e na pendência).
@@ -155,6 +161,11 @@ const passMark = (ctx: Ctx) => {
 };
 /** Versões em rascunho a processar: as do documento ou, em trabalho de versão, só aquela (ou só as da reconferência automática). */
 async function targetVersions(ctx: Ctx): Promise<any[]> {
+  const imported = importScope(ctx);
+  if (imported) {
+    const v = await svc<any>(ctx, "ch_worker_unit_version", { p_version_id: imported });
+    return v && (v.status === "draft" || v.status === "awaiting_review") ? [v] : [];
+  }
   const only = versionScope(ctx);
   const auto = versionsMark(ctx);
   const ids = only ? [only] : auto ? auto.versions : null;
@@ -1164,6 +1175,8 @@ async function stepRender(ctx: Ctx): Promise<Step | null> {
     }
   }
   Object.assign(ctx.metrics, { files: rendered, failed_checks: failed });
+  // aula pronta importada: só o arquivo final; a revisão é das pessoas (a versão já está aguardando revisão)
+  if (importScope(ctx)) return null;
   passMark(ctx);
   return "review_check";
 }
@@ -1260,6 +1273,18 @@ async function stepSimilarity(ctx: Ctx): Promise<Step | null> {
   return null;
 }
 
+/** Vigilância científica: análise do que mudou numa fonte, só quando a equipe pede (vigilance/analysis.ts). */
+async function stepChangeAnalysis(ctx: Ctx): Promise<Step | null> {
+  try {
+    await runChangeAnalysis(ctx.deps, ctx.job, { metrics: ctx.metrics });
+  } catch (error) {
+    if (error instanceof AnalysisPending) throw new Blocked(error.message);
+    if (error instanceof AnalysisFailed) throw new Fatal(error.message);
+    throw error;
+  }
+  return null;
+}
+
 const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   extract: stepExtract,
   source_index: stepSourceIndex,
@@ -1278,6 +1303,7 @@ const STEPS: Record<Step, (ctx: Ctx) => Promise<Step | null>> = {
   question_analysis: stepAiRequest,
   draft_check: stepAiRequest,
   similarity: stepSimilarity,
+  source_change_analysis: stepChangeAnalysis,
 };
 
 /**

@@ -89,16 +89,27 @@ async function createCandidate(over: Record<string, unknown> = {}) {
 }
 
 describe("Banco", () => {
-  it("sites oficiais: 11 sementes, a equipe lê, só administrador grava", async () => {
+  it("sites oficiais: 11 sementes + 10 da Vigilância científica (9940), a equipe lê, só administrador grava", async () => {
     const list = await t.db.asUser<any[]>(t.editorUser, "app_ch_official_domains");
-    expect(list).toHaveLength(11);
-    // governo, internacional, sociedade; dentro de cada tipo, pelo endereço
+    expect(list).toHaveLength(21);
+    // governo, internacional, sociedade; dentro de cada tipo, pelo endereço (os sites que as fontes vigiadas do catálogo já usam
+    // entraram com a Vigilância científica, 9940: o vigia só baixa site da lista)
     expect(list.map((d) => [d.kind, d.address])).toEqual([
       ["governo", "bvsms.saude.gov.br"],
+      ["governo", "download.inep.gov.br"],
+      ["governo", "linhasdecuidado.saude.gov.br"],
+      ["governo", "ninho.inca.gov.br"],
+      ["governo", "portal.cfm.org.br"],
+      ["governo", "www.gov.br/aids"],
       ["governo", "www.gov.br/anvisa"],
       ["governo", "www.gov.br/conitec"],
       ["governo", "www.gov.br/inca"],
+      ["governo", "www.gov.br/inep"],
+      ["governo", "www.gov.br/mec"],
       ["governo", "www.gov.br/saude"],
+      ["governo", "www.in.gov.br"],
+      ["governo", "www.inca.gov.br"],
+      ["governo", "www.planalto.gov.br"],
       ["internacional", "iris.paho.org"],
       ["internacional", "paho.org"],
       ["internacional", "who.int"],
@@ -114,7 +125,7 @@ describe("Banco", () => {
       t.db.asUser(t.editorUser, "app_ch_save_official_domain", { p_domain: { address: "exemplo.gov.br", institution: "Exemplo", kind: "governo" } })
     ).rejects.toThrow(RESTRITO);
     // RLS: a equipe lê a tabela; o aluno não
-    expect((await selectAs(t.EDITOR, "select id from public.ch_official_domains")).length).toBe(11);
+    expect((await selectAs(t.EDITOR, "select id from public.ch_official_domains")).length).toBe(21);
     expect(await selectAs(t.STUDENT, "select id from public.ch_official_domains")).toEqual([]);
   });
 
@@ -323,7 +334,7 @@ describe("Banco", () => {
       expect((await save("criacao", { mode: "sozinha", primary_ref: C, max_searches: 4 })).max_searches).toBeNull();
 
       const s = await t.db.asUser<any>(t.editorUser, "app_ai_summary");
-      expect(s.functions).toHaveLength(7);
+      expect(s.functions).toHaveLength(9);
       expect(s.functions.map((f: any) => f.key)).toEqual(["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes"]);
       expect(s.functions.find((f: any) => f.key === "busca_fontes")).toMatchObject({ configured: true, mode: "sozinha" });
 
@@ -514,7 +525,7 @@ describe("Banco", () => {
     expect(got).toMatchObject({ id, area: null, status: "na_fila", requested_by: t.ADMIN });
     // o site desativado no teste do endereço não entra
     expect(got.domains.map((d: any) => d.address)).not.toContain("exemplo.gov.br/saude");
-    expect(got.domains).toHaveLength(11);
+    expect(got.domains).toHaveLength(21); // 11 sementes + 10 sites da Vigilância científica (9940)
     expect(got.domains[0]).toEqual({ id: expect.any(String), address: "bvsms.saude.gov.br", institution: "Biblioteca Virtual em Saúde do Ministério da Saúde", kind: "governo" });
     expect(await t.db.service("ch_worker_source_search_get", { p_search_id: "00000000-0000-4000-8000-000000000000" })).toBeNull();
 

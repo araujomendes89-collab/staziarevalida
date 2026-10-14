@@ -21,6 +21,7 @@ type Como = "filtra" | "recusa" | "herda" | "historico" | "equipe";
 export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   // só oficiais, filtra
   app_incidence: { classe: "so_oficiais", como: "filtra" },
+  app_grandes_temas: { classe: "so_oficiais", como: "filtra" }, // 9970: a contagem dos 100 Grandes Temas só olha origin = 'official'
   app_bootstrap: { classe: "so_oficiais", como: "filtra" },
   app_home: { classe: "so_oficiais", como: "filtra" },
   app_lesson_topics: { classe: "so_oficiais", como: "filtra" },
@@ -112,7 +113,11 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   // as duas, ferramentas da equipe que agem pelo id da questão
   app_admin_comment_review: { classe: "as_duas", como: "equipe" },
   app_admin_comment_review_queue: { classe: "as_duas", como: "equipe" },
-  app_admin_question_comment_decide: { classe: "as_duas", como: "equipe" },
+  // 9990 (portão de atualidade): a função da equipe agora só chama a original, renomeada para _antes_atual (mesma classe: equipe)
+  app_admin_question_comment_decide_antes_atual: { classe: "as_duas", como: "equipe" },
+  app_admin_comment_review_approve_exam_antes_atual: { classe: "as_duas", como: "equipe" },
+  // 9980 (Central > Unidades): conta as questões ligadas a uma unidade; acesso revogado para visitante e aluno (só o servidor e a equipe)
+  ch_unit_questions_linked: { classe: "as_duas", como: "equipe" },
   app_admin_question_history: { classe: "as_duas", como: "equipe" },
   app_admin_question_review_done: { classe: "as_duas", como: "equipe" },
   app_admin_remove_question_image: { classe: "as_duas", como: "equipe" },
@@ -304,6 +309,8 @@ describe("Migração", () => {
     await env.dev.db.exec(carga);
     // a 9930 (carga das provas) redefine practice_question_view por cima da 9801: colar a 9801 de novo pede colar a 9930 depois
     await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003009930_gabarito_preliminar_aviso.sql", import.meta.url)), "utf8"));
+    // a 9970 (100 Grandes Temas) redefine practice_pool por cima da 9801 (filtro grande_tema): colar a 9801 de novo pede colar a 9970 depois
+    await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003009970_grandes_temas_100.sql", import.meta.url)), "utf8"));
     expect(await snap()).toEqual(before);
   });
 });

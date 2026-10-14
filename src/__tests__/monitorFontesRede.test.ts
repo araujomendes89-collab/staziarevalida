@@ -5,7 +5,8 @@
  * corpo limitado a 50 MB, e um endereço ruim não derruba os outros da mesma rodada.
  */
 import { describe, expect, it } from "vitest";
-import { createContentHubWorker, publicationHash } from "../../server/contentHub/worker";
+import { createContentHubWorker } from "../../server/contentHub/worker";
+import { comparablePageText, sha256 } from "../../server/contentHub/vigilance/pageFacts";
 import { snapshotPassages } from "../../server/contentHub/sourceDiff";
 import type { PipelineDeps } from "../../server/contentHub/pipeline";
 
@@ -18,8 +19,12 @@ function setup(urls: string[], fetchImpl: typeof fetch, extra: { resolver?: (h: 
   const db = {
     service: async (name: string, p: any) => {
       if (name === "ch_worker_watch_due") return urls.map((url, i) => ({ source_id: `s${i}`, url }));
-      if (name === "ch_worker_watch_result") {
-        results.push({ source_id: p.p_source_id, hash: p.p_hash, status: p.p_status });
+      // Vigilância científica (9940): só sites da lista oficial; aqui a lista tem os próprios hosts do teste, para as proteções de
+      // rede (endereço interno, redirecionamento, porta, tamanho) continuarem sendo as que respondem
+      if (name === "ch_worker_vigilance_domains")
+        return [...new Set(["exemplo.gov.br", ...urls.map((u) => { try { return new URL(u).hostname; } catch { return ""; } })])].filter(Boolean).map((address, i) => ({ id: `d${i}`, address, institution: "teste", kind: "governo" }));
+      if (name === "ch_worker_watch_report") {
+        results.push({ source_id: p.p_source_id, hash: p.p_report.hash ?? null, status: p.p_report.status });
         return { changed: false };
       }
       if (name === "ch_worker_watch_snapshot") {
@@ -53,10 +58,10 @@ describe("monitor de fontes: rede", () => {
     const { worker, results, snapshots, logs } = setup(["https://exemplo.gov.br/pagina", "https://exemplo.gov.br/doc.pdf"], fetchImpl);
     expect(await worker.checkSources()).toEqual({ checked: 2, changed: 0, unreachable: 0 });
     expect(results).toEqual([
-      { source_id: "s0", hash: publicationHash(Buffer.from(html), "text/html; charset=utf-8"), status: "ok" },
-      { source_id: "s1", hash: publicationHash(Buffer.from(pdf), "application/pdf"), status: "ok" },
+      { source_id: "s0", hash: sha256(comparablePageText(html)), status: "ok" },
+      { source_id: "s1", hash: sha256(Buffer.from(pdf)), status: "ok" },
     ]);
-    expect(snapshots).toEqual([{ source_id: "s0", passages: snapshotPassages(html, "text/html; charset=utf-8") }]);
+    expect(snapshots).toEqual([{ source_id: "s0", passages: snapshotPassages(html.replace(/^[\s\S]*<body>|<\/body>[\s\S]*$/g, ""), "text/html") }]);
     expect(logs).toEqual([]);
   });
 
@@ -64,7 +69,7 @@ describe("monitor de fontes: rede", () => {
     const fetchImpl = (async () => new Response('{"a":1}', { status: 200, headers: { "content-type": "application/json" } })) as unknown as typeof fetch;
     const { worker, results } = setup(["https://exemplo.gov.br/dados"], fetchImpl);
     expect(await worker.checkSources()).toMatchObject({ unreachable: 0 });
-    expect(results[0]).toEqual({ source_id: "s0", hash: publicationHash(Buffer.from('{"a":1}'), "application/json"), status: "ok" });
+    expect(results[0]).toEqual({ source_id: "s0", hash: sha256('{"a":1}'), status: "ok" });
   });
 
   it("status de erro mantém a mensagem 'HTTP N' e vira inacessível", async () => {

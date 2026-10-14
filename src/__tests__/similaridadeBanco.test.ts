@@ -173,7 +173,7 @@ describe("Banco: tabelas fechadas, fila e Central de IAs", () => {
 
   it("a função Questões parecidas existe na Central de IAs e começa DESLIGADA; a fila aceita a etapa nova", async () => {
     const s = await rpc(EDITOR, "app_ai_summary");
-    expect(s.functions.map((f: any) => f.key)).toEqual(["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes", "similaridade"]);
+    expect(s.functions.map((f: any) => f.key)).toEqual(["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes", "similaridade", "analise_mudancas"]);
     expect(s.functions.find((f: any) => f.key === "similaridade")).toMatchObject({ configured: false });
     expect(await sql(`select 1 from public.ai_functions where key = 'similaridade'`)).toEqual([]);
     expect((await sql(`select pg_get_constraintdef(oid) d from pg_constraint where conname = 'ch_jobs_step_check'`))[0].d).toMatch(/'similarity'/);

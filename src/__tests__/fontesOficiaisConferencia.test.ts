@@ -52,7 +52,7 @@ const byAddress = (a: string) => domains.find((d) => d.address === a)!;
 
 describe("Sites e download", () => {
   it("encaixe na lista: subdomínio, caminho inteiro, falsos e não ASCII", () => {
-    expect(domains).toHaveLength(11);
+    expect(domains).toHaveLength(21); // 11 sementes + 10 sites da Vigilância científica (9940)
     expect(matchDomain("https://www.gov.br/saude/x.pdf", domains)?.institution).toBe("Ministério da Saúde");
     expect(matchDomain("https://www.gov.br/saude", domains)?.address).toBe("www.gov.br/saude");
     // o site do ministério é o www.gov.br: prefeitura e estado (qualquer *.gov.br com /saude) NÃO são o Ministério da Saúde

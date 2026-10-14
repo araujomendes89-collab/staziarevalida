@@ -228,7 +228,7 @@ describe("Unidade didática, materiais, aprovação e publicação", () => {
     await expect(rpc(EDITOR, "app_ch_confirm_critical", { p_claim_id: (globalThis as any).__claimDose() })).rejects.toThrow(/revisor médico cadastrado na área/);
     await rpc(REVIEWER_GO, "app_ch_confirm_critical", { p_claim_id: (globalThis as any).__claimDose() });
     await rpc(EDITOR, "app_ch_submit_for_review", { p_version_id: version });
-    await expect(rpc(REVIEWER_PED, "app_ch_approve", { p_version_id: version, p_kind: "medical" })).rejects.toThrow(/revisor cadastrado na área GINECOLOGIA_OBSTETRICIA/);
+    await expect(rpc(REVIEWER_PED, "app_ch_approve", { p_version_id: version, p_kind: "medical" })).rejects.toThrow(/revisor médico da área GINECOLOGIA_OBSTETRICIA/);
     await expect(rpc(null, "app_ch_approve", { p_version_id: version, p_kind: "medical" })).rejects.toThrow(/Entre na sua conta|permission/);
     await expect(rpc(REVIEWER_GO, "app_ch_approve", { p_version_id: version, p_kind: "editorial" })).rejects.toThrow(/editor ou administrador/);
     await rpc(REVIEWER_GO, "app_ch_approve", { p_version_id: version, p_kind: "medical", p_note: "Doses conferidas no Manual 2022, p. 112." });

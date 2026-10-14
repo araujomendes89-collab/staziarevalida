@@ -12,7 +12,7 @@ import type { AiProviderId } from "./models";
 import { estimateCostUsd, type ModelPrice } from "./prices";
 import { googleAiAccess, GOOGLE_KEY_MISSING } from "./googleKey";
 
-export type AiFunctionKey = "criacao" | "verificacao" | "engenharia_reversa" | "assistente_preencher" | "assistente_conferir" | "assistente_revisar" | "busca_fontes" | "similaridade";
+export type AiFunctionKey = "criacao" | "verificacao" | "engenharia_reversa" | "assistente_preencher" | "assistente_conferir" | "assistente_revisar" | "busca_fontes" | "similaridade" | "analise_mudancas";
 export type AiMode = "sozinha" | "linha" | "comite";
 
 export interface ModelRef {
@@ -53,11 +53,11 @@ export const SEARCH_NO_GEMINI = "A busca de fontes oficiais não funciona com o 
 /** Funções que buscam na internet: só modo sozinha, sem Ollama, com máximo de buscas e preço por busca. */
 export const isSearchFunction = (fn: AiFunctionKey): boolean => fn === "busca_fontes";
 /**
- * Funções que só rodam com a configuração SALVA na Central de IAs (sem ela ficam desligadas; as variáveis de ambiente nunca as
+ * Funções que só rodam com a configuração SALVA na Central de IAs e a Análise do que mudou da Vigilância científica (sem ela ficam desligadas; as variáveis de ambiente nunca as
  * definem): a busca de fontes oficiais e as Questões parecidas (similaridade: vetores das questões e classificação dos pares
  * duvidosos; começa desligada por decisão do dono, 2026-10-12).
  */
-export const requiresSavedConfig = (fn: AiFunctionKey): boolean => isSearchFunction(fn) || fn === "similaridade";
+export const requiresSavedConfig = (fn: AiFunctionKey): boolean => isSearchFunction(fn) || fn === "similaridade" || fn === "analise_mudancas";
 
 export const isProviderId = (v: unknown): v is AiProviderId => PROVIDER_IDS.includes(v as AiProviderId);
 
@@ -119,6 +119,8 @@ export const TYPICAL_CALLS: Record<AiFunctionKey, TypicalCall[]> = {
   busca_fontes: [{ use: "busca de fontes oficiais", inputChars: 6_000, maxOut: 8192, searches: DEFAULT_MAX_SEARCHES }],
   // Questões parecidas (similarity/classifier.ts): 4 pares por chamada, com enunciado, alternativas e perfil (~24 mil caracteres)
   similaridade: [{ use: "pares duvidosos de questões parecidas", inputChars: 24_000, maxOut: 4096 }],
+  // Vigilância científica (vigilance/analysis.ts): os trechos que mudaram (até 40 de 3 mil caracteres) e as instruções
+  analise_mudancas: [{ use: "análise do que mudou (Vigilância científica)", inputChars: 40_000, maxOut: 4096 }],
 };
 
 /** As chamadas típicas da função; a de busca usa o máximo de buscas salvo nela (senão o padrão). */
@@ -348,6 +350,8 @@ export function functionForPrompt(key: PromptKey): AiFunctionKey {
       return "engenharia_reversa";
     case "source_search":
       return "busca_fontes";
+    case "source_change":
+      return "analise_mudancas";
     default:
       return "criacao";
   }
@@ -570,7 +574,7 @@ export interface FunctionCheck {
   warnings: string[];
 }
 
-export const FUNCTION_KEYS: AiFunctionKey[] = ["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes", "similaridade"];
+export const FUNCTION_KEYS: AiFunctionKey[] = ["criacao", "verificacao", "engenharia_reversa", "assistente_preencher", "assistente_conferir", "assistente_revisar", "busca_fontes", "similaridade", "analise_mudancas"];
 
 /**
  * Função salva: além da validação da configuração, confere o que ESTE servidor consegue chamar. Bloqueia só o que não
@@ -626,7 +630,7 @@ function savedFunctionCheck(saved: FunctionConfig, cfg: AiConfig, env: NodeJS.Pr
 }
 
 /**
- * Situação de cada uma das 7 funções: pronta ou o motivo. Função sem configuração salva usa as variáveis de ambiente, menos a
+ * Situação de cada uma das 8 funções: pronta ou o motivo. Função sem configuração salva usa as variáveis de ambiente, menos a
  * de busca na internet, que sem configuração fica desligada.
  */
 export function functionChecks(cfg: AiConfig, env: NodeJS.ProcessEnv = process.env): Record<AiFunctionKey, FunctionCheck> {

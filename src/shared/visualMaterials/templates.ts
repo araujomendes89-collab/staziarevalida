@@ -27,6 +27,7 @@ import {
 } from "./model";
 import { TEMPLATE_COLORS, VISUAL_TOKENS } from "./tokens";
 import { CRIATIVO_BUILDERS, printSheetCriativo } from "./criativo";
+import { LOGO_ASPECT, LOGO_ON_DARK, LOGO_ON_LIGHT } from "./logoData";
 
 const NAVY = VISUAL_TOKENS.brand.neutral.navy;
 const INK = VISUAL_TOKENS.brand.neutral.ink;
@@ -226,8 +227,13 @@ interface FooterScale {
   pnPad: string;
   height?: number;
 }
-const logoBlock = (f: { logo: number; rev: number; revLs: number }, med: string = MED, color: string = "#FFFFFF", align: string = "flex-start") =>
-  `<div style="display:flex;flex-direction:column;align-items:${align};line-height:1;color:${color};flex:none"><div style="font-weight:700;font-size:${f.logo}px">Stazia<span style="color:${med}">Med</span></div><div style="${COND};font-weight:600;font-size:${f.rev}px;letter-spacing:${f.revLs}px;margin-top:4px">REVALIDA</div></div>`;
+// Logo oficial (imagem embutida): fundo claro usa a versao colorida; fundo azul-marinho usa a versao com o nome em branco.
+// A altura mantem a mesma area do antigo bloco de texto (nome + REVALIDA), para nao mexer na diagramacao das pecas.
+const logoBlock = (f: { logo: number; rev: number; revLs: number }, _med?: string, color: string = "#FFFFFF", align: string = "flex-start") => {
+  const h = f.logo + f.rev + 4;
+  const src = color === "#FFFFFF" ? LOGO_ON_DARK : LOGO_ON_LIGHT;
+  return `<div data-k="logo" style="display:flex;align-items:center;justify-content:${align};flex:none"><img src="${src}" alt="StaziaMed Revalida" width="${Math.round(h * LOGO_ASPECT)}" height="${h}" style="display:block;height:${h}px;width:auto"></div>`;
+};
 const pagePill = (text: string, P: Pal, f: Pick<FooterScale, "pn" | "pnBorder" | "pnPad">, k: string, role = "") =>
   text
     ? `<div data-k="${k}" ${role ? `data-role="${role}" ` : ""}style="background:${P.s};color:${P.d};border:${f.pnBorder}px solid ${P.p};${COND};font-weight:800;font-size:${f.pn}px;letter-spacing:${k === "card_id" ? 1 : 0}px;padding:${f.pnPad};border-radius:999px;white-space:nowrap;flex:none">${esc(text)}</div>`

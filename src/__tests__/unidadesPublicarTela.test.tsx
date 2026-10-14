@@ -71,7 +71,7 @@ describe("Unidades: o aviso diz a verdade e não promete o que não existe", () 
     dados.versao = VERSAO({ status: "awaiting_review" });
     render(<Units {...ctx()} />);
     expect(await screen.findByText("Nenhum bloqueio de conteúdo encontrado")).toBeTruthy();
-    expect(document.body.textContent).toMatch(/Falta a aprovação: a revisão médica \(revisor da área\) e a editorial/);
+    expect(document.body.textContent).toMatch(/Falta a aprovação: a revisão médica \(administrador ou revisor da área\) e a editorial/);
     expect(screen.queryByRole("button", { name: /Publicar para os alunos/ })).toBeNull();
   });
 
