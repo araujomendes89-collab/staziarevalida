@@ -138,6 +138,11 @@
 .al-notes .h small { font: 500 12px/1 var(--font-sans); color: var(--text-tertiary); }
 .al-notes textarea { width: 100%; min-height: 150px; resize: vertical; border: 0; outline: 0; background: repeating-linear-gradient(180deg, transparent 0 27px, var(--border-default) 27px 28px); font: 400 15.5px/28px var(--font-sans); color: var(--text-primary); padding: 0 2px; margin-top: 6px; }
 .al-notes textarea:focus-visible { outline: 2px solid var(--focus-color); outline-offset: 2px; border-radius: 4px; }
+/* uma caixa de anotação por seção (14/10/2026): menor que o bloco único de antes, para não pesar a leitura */
+.al-notes-sec { margin-top: 14px; }
+.al-notes-sec .h { font-size: 21px; }
+.al-notes-sec textarea { min-height: 84px; }
+.al-notes-sec textarea:disabled { opacity: .6; }
 .al-foot { text-align: center; font: 400 12px/1.4 var(--font-sans); color: var(--text-tertiary); margin: 4px 0 24px; }
 
 @media (max-width: 640px) {

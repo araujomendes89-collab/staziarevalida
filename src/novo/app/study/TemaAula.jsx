@@ -1,5 +1,5 @@
 // A aula dentro do Grande Tema (aluno). Lê app_tema_aula (só aula PUBLICADA pela Central; sem PDF, fonte, afirmação ou código do tema).
-// Anotações e caixas marcadas: app_lesson_notes / app_lesson_notes_save (por aluno). Imagens (Revisão da Aula e flashcards ilustrados)
+// Anotações (uma por seção, migração 9994) e caixas marcadas: app_lesson_notes / app_lesson_section_note_save / app_lesson_checks_save (por aluno). Imagens (Revisão da Aula e flashcards ilustrados)
 // vêm do servidor como bytes (sem endereço de arquivo, sem botão de baixar, sem arrastar nem menu de imagem).
 import React from "react";
 import { Banner, Button, Icon } from "../../ds";
@@ -133,46 +133,101 @@ function FlashcardIlustrado({ c, temaId, total }) {
   );
 }
 
-/** Minhas anotações + caixas marcadas, gravadas por aluno (app_lesson_notes_save). Grava depois de uma pausa; avisa se falhar. */
+const PAUSA_MS = 900;
+const statusNota = (st) => (st === "saving" ? "Salvando…" : st === "saved" ? "Salvo" : st === "error" ? "Não salvo" : "Só você vê");
+
+/**
+ * Anotações por seção (app_lesson_section_note_save, chave "geral" ou "sec-N") e caixas marcadas (app_lesson_checks_save), por aluno.
+ * Cada caixa grava sozinha depois de uma pausa; sair da caixa grava na hora; sair da aula grava o que estava pendente. Avisa se falhar.
+ */
 function useNotes(backend, lessonId) {
-  const [state, setState] = React.useState({ loaded: false, note: "", checks: {}, saving: "", error: null });
+  const [state, setState] = React.useState({ loaded: false, notas: {}, inicial: [], checks: {}, saving: {}, error: null });
   const latest = React.useRef(state);
   latest.current = state;
-  const timer = React.useRef(null);
+  const ctx = React.useRef({ backend, lessonId });
+  ctx.current = { backend, lessonId };
+  const pending = React.useRef({}); // chave -> { timer, run }
+
+  const runNow = (key) => {
+    const p = pending.current[key];
+    if (!p) return;
+    clearTimeout(p.timer);
+    delete pending.current[key];
+    p.run();
+  };
+  const later = (key, run) => {
+    clearTimeout(pending.current[key]?.timer);
+    pending.current[key] = { run, timer: setTimeout(() => runNow(key), PAUSA_MS) };
+  };
+
   React.useEffect(() => {
+    if (!lessonId) return undefined;
     let alive = true;
     backend.rpc("app_lesson_notes", { p_lesson_id: lessonId }).then(
-      (r) => alive && setState((s) => ({ ...s, loaded: true, note: r?.note ?? "", checks: r?.checks ?? {} })),
+      (r) => {
+        if (!alive) return;
+        const notas = r?.notas && typeof r.notas === "object" ? { ...r.notas } : r?.note ? { geral: r.note } : {};
+        setState((s) => ({ ...s, loaded: true, notas, inicial: Object.keys(notas), checks: r?.checks ?? {} }));
+      },
       () => alive && setState((s) => ({ ...s, loaded: true, error: "Não foi possível carregar as suas anotações." }))
     );
     return () => {
       alive = false;
-      clearTimeout(timer.current);
+      for (const key of Object.keys(pending.current)) runNow(key); // nada se perde ao sair da aula
     };
   }, [backend, lessonId]);
-  const save = React.useCallback(async () => {
-    const { note, checks } = latest.current;
-    setState((s) => ({ ...s, saving: "saving", error: null }));
+
+  const setSaving = (key, st, error) => setState((s) => ({ ...s, saving: { ...s.saving, [key]: st }, ...(error !== undefined ? { error } : {}) }));
+  const saveNota = async (key) => {
+    const { backend: b, lessonId: id } = ctx.current;
+    const text = latest.current.notas[key] ?? "";
+    setSaving(key, "saving", null);
     try {
-      await backend.rpc("app_lesson_notes_save", { p_lesson_id: lessonId, p_note: note, p_checks: checks });
-      setState((s) => ({ ...s, saving: "saved" }));
+      await b.rpc("app_lesson_section_note_save", { p_lesson_id: id, p_secao: key, p_note: text });
+      setSaving(key, pending.current[key] ? "" : "saved");
     } catch (e) {
-      setState((s) => ({ ...s, saving: "", error: messageOf(e, "Não foi possível salvar. Tente de novo.") }));
+      setSaving(key, "error", messageOf(e, "Não foi possível salvar a anotação. Tente de novo."));
     }
-  }, [backend, lessonId]);
-  const later = () => { clearTimeout(timer.current); timer.current = setTimeout(save, 900); };
+  };
+  const saveChecks = async () => {
+    const { backend: b, lessonId: id } = ctx.current;
+    try {
+      await b.rpc("app_lesson_checks_save", { p_lesson_id: id, p_checks: latest.current.checks });
+    } catch (e) {
+      setState((s) => ({ ...s, error: messageOf(e, "Não foi possível salvar as caixas marcadas. Tente de novo.") }));
+    }
+  };
   return {
     ...state,
-    setNote: (note) => { setState((s) => ({ ...s, note: note.slice(0, 20000), saving: "" })); later(); },
-    toggle: (key) => { setState((s) => ({ ...s, checks: { ...s.checks, [key]: !s.checks[key] }, saving: "" })); later(); },
-    flush: save,
+    setNota: (key, text) => {
+      setState((s) => ({ ...s, notas: { ...s.notas, [key]: String(text).slice(0, 20000) }, saving: { ...s.saving, [key]: "" } }));
+      later(key, () => saveNota(key));
+    },
+    flush: (key) => runNow(key),
+    toggle: (key) => {
+      setState((s) => ({ ...s, checks: { ...s.checks, [key]: !s.checks[key] } }));
+      later("__caixas", saveChecks);
+    },
   };
+}
+
+/** Uma caixa de anotação (de uma seção ou a geral antiga). */
+function NotaBox({ k, label, title, notes, placeholder }) {
+  return (
+    <div className="al-notes al-notes-sec">
+      <div className="h">
+        <span aria-hidden="true">{title}</span>
+        <small aria-live="polite">{statusNota(notes.saving[k])}</small>
+      </div>
+      <textarea aria-label={label} value={notes.notas[k] ?? ""} onChange={(e) => notes.setNota(k, e.target.value)} onBlur={() => notes.flush(k)} placeholder={placeholder} maxLength={20000} disabled={!notes.loaded} />
+    </div>
+  );
 }
 
 export function TemaAula({ tema, onBack, go, mobile }) {
   const { backend } = useSession();
   const { data, error, reload } = useLoad(() => backend.rpc("app_tema_aula", { p_tema_id: tema.id }), [backend, tema.id]);
-  const notes = useNotes(backend, data?.lesson_id ?? "00000000-0000-0000-0000-000000000000");
+  const notes = useNotes(backend, data?.lesson_id ?? null);
   const vars = temaVars(tema.id, tema.area);
   const jump = (id) => document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
 
@@ -204,12 +259,15 @@ function Conteudo({ data, tema, go, notes, jump }) {
   const fix = data.questoes?.itens ?? [];
   const cards = data.flashcards?.cartoes ?? [];
   const upd = monthYear(data.atualizado_em);
+  const secN = (k) => (/^sec-(\d+)$/.exec(k) ? Number(k.slice(4)) : null);
+  const antigas = notes.inicial.filter((k) => k !== "geral" && secN(k) != null && secN(k) > secoes.length).sort((a, b) => secN(a) - secN(b));
+  const temAntes = notes.inicial.includes("geral") || antigas.length > 0;
   const toc = [
+    ...(temAntes ? [["al-notas", "Minhas anotações de antes"]] : []),
     ...secoes.map((s, i) => [`al-s${i + 1}`, `${i + 1}. ${cleanHeading(s.titulo)}`]),
     ...(fix.length ? [["al-fix", "Questões de fixação"]] : []),
     ...(cards.length ? [["al-fc", "Flashcards ilustrados"]] : []),
     ...(data.revisao_aula ? [["al-rev", "Revisão da Aula"]] : []),
-    ["al-notas", "Minhas anotações"],
   ];
   const trainable = tema.total > 0;
   const extras = (pos) => (
@@ -242,7 +300,7 @@ function Conteudo({ data, tema, go, notes, jump }) {
             <li>Caixas para marcar o que já estudou (ficam salvas)</li>
             <li>Questões de fixação: toque na alternativa e veja a explicação</li>
             <li>Flashcards ilustrados: toque para virar</li>
-            <li>Um espaço de anotações só seu</li>
+            <li>Uma caixa de anotações em cada seção, só sua (salva sozinha)</li>
           </ul>
         </div>
       </header>
@@ -272,6 +330,19 @@ function Conteudo({ data, tema, go, notes, jump }) {
       </section>
 
       {(tabelasPor(0).length > 0 || midiasPor(0).length > 0) && <section className="al-sheet">{extras(0)}</section>}
+
+      {temAntes && (
+        <section className="al-sheet" aria-labelledby="al-notas">
+          <Head title="Minhas anotações de antes" id="al-notas" />
+          <p className="al-p">O que você já tinha escrito nesta aula continua aqui. As novas anotações ficam em cada seção.</p>
+          {notes.inicial.includes("geral") && (
+            <NotaBox k="geral" label="Anotação geral desta aula" title="Anotação geral" notes={notes} placeholder="Escreva aqui o que quiser lembrar desta aula." />
+          )}
+          {antigas.map((k) => (
+            <NotaBox key={k} k={k} label={`Anotação da antiga seção ${secN(k)}`} title={`Antiga seção ${secN(k)}`} notes={notes} placeholder="Escreva aqui." />
+          ))}
+        </section>
+      )}
 
       {secoes.map((s, i) => {
         const n = i + 1;
@@ -303,6 +374,7 @@ function Conteudo({ data, tema, go, notes, jump }) {
               </div>
             )}
             {extras(n)}
+            <NotaBox k={`sec-${n}`} label={`Minha anotação da seção ${n}: ${h}`} title="Minha anotação" notes={notes} placeholder="Escreva aqui o que quiser lembrar desta seção." />
             {unmarked(`sec-${n}`, "Marcar esta seção como estudada")}
           </section>
         );
@@ -333,19 +405,9 @@ function Conteudo({ data, tema, go, notes, jump }) {
         </section>
       )}
 
-      <section className="al-sheet" aria-labelledby="al-notas">
-        <Head title="Minhas anotações" id="al-notas" />
-        <div className="al-notes">
-          <div className="h">
-            <span aria-hidden="true">Minhas anotações</span>
-            <small aria-live="polite">{notes.saving === "saving" ? "Salvando…" : notes.saving === "saved" ? "Salvo" : "Só você vê"}</small>
-          </div>
-          <textarea aria-label="Minhas anotações" value={notes.note} onChange={(e) => notes.setNote(e.target.value)} onBlur={notes.flush} placeholder="Escreva aqui o que quiser lembrar desta aula." maxLength={20000} disabled={!notes.loaded} />
-        </div>
-        <div style={{ marginTop: 12 }}>
-          <button type="button" className="al-btn" onClick={() => jump("al-sumario")}><Icon name="arrow-up" size={14} /> Sumário</button>
-        </div>
-      </section>
+      <div>
+        <button type="button" className="al-btn" onClick={() => jump("al-sumario")}><Icon name="arrow-up" size={14} /> Sumário</button>
+      </div>
       <p className="al-foot">Material StaziaMed. Não é material oficial do Inep.</p>
     </>
   );

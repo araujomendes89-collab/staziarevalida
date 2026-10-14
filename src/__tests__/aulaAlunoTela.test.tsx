@@ -1,7 +1,7 @@
 /**
  * A aula dentro do Grande Tema (tela do aluno), jsdom com banco simulado (forma de app_tema_aula, migração 9992).
  * Regras: botão só com aula publicada; sem PDF/baixar/código do tema; Voltar aos temas mantém filtro; fixação corrige ao tocar;
- * anotações e caixas gravadas no banco; imagens sem arrastar nem menu.
+ * anotações (uma por seção, migração 9994) e caixas gravadas no banco; imagens sem arrastar nem menu.
  */
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -46,8 +46,8 @@ beforeEach(() => {
     if (fn === "app_grandes_temas") return TEMAS;
     if (fn === "app_temas_com_aula") return comAula;
     if (fn === "app_tema_aula") return aula;
-    if (fn === "app_lesson_notes") return { note: "anotação antiga", checks: { "sec-1": true } };
-    if (fn === "app_lesson_notes_save") return { ok: true };
+    if (fn === "app_lesson_notes") return { note: "anotação antiga", notas: { geral: "anotação antiga" }, checks: { "sec-1": true } };
+    if (fn === "app_lesson_section_note_save" || fn === "app_lesson_checks_save") return { ok: true };
     throw new Error(`rpc não simulada: ${fn}`);
   });
   (globalThis as any).fetch = vi.fn(async () => ({ ok: true, blob: async () => new Blob(["x"], { type: "image/png" }) }));
@@ -90,7 +90,8 @@ describe("página do tema com a aula", () => {
     expect(document.querySelector("iframe")!.getAttribute("src")).toBe("https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ");
     expect(screen.getByRole("button", { name: /Virar flashcard 1 de 2/ })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Revisão da Aula" })).toBeTruthy();
-    await waitFor(() => expect((screen.getByRole("textbox", { name: "Minhas anotações" }) as HTMLTextAreaElement).value).toBe("anotação antiga"));
+    await waitFor(() => expect((screen.getByRole("textbox", { name: "Anotação geral desta aula" }) as HTMLTextAreaElement).value).toBe("anotação antiga"));
+    expect(screen.getAllByRole("textbox", { name: /^Minha anotação da seção/ })).toHaveLength(AULA.secoes.length);
   });
 
   it("nada de PDF, baixar, código do tema nem link de arquivo; imagens sem arrastar", async () => {
@@ -114,17 +115,16 @@ describe("página do tema com a aula", () => {
     expect(screen.getByRole("status").textContent).toMatch(/Correta porque sim/);
   });
 
-  it("caixa marcada e anotação são gravadas no banco (por aula)", async () => {
+  it("caixa marcada e anotação são gravadas no banco (caixas por aula, anotação por seção)", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
       await abrir();
-      await waitFor(() => expect((screen.getByRole("textbox", { name: "Minhas anotações" }) as HTMLTextAreaElement).value).toBe("anotação antiga"));
+      await waitFor(() => expect((screen.getByRole("textbox", { name: "Anotação geral desta aula" }) as HTMLTextAreaElement).value).toBe("anotação antiga"));
       fireEvent.click(screen.getAllByLabelText("Marcar esta seção como estudada")[1]);
-      fireEvent.change(screen.getByRole("textbox", { name: "Minhas anotações" }), { target: { value: "nova nota" } });
+      fireEvent.change(screen.getByRole("textbox", { name: /^Minha anotação da seção 2/ }), { target: { value: "nova nota" } });
       await act(async () => { await vi.advanceTimersByTimeAsync(1200); });
-      const save = calls("app_lesson_notes_save");
-      expect(save.length).toBeGreaterThan(0);
-      expect(save[save.length - 1][1]).toEqual({ p_lesson_id: AULA.lesson_id, p_note: "nova nota", p_checks: { "sec-1": true, "sec-2": true } });
+      expect(calls("app_lesson_checks_save").map((c: any[]) => c[1])).toEqual([{ p_lesson_id: AULA.lesson_id, p_checks: { "sec-1": true, "sec-2": true } }]);
+      expect(calls("app_lesson_section_note_save").map((c: any[]) => c[1])).toEqual([{ p_lesson_id: AULA.lesson_id, p_secao: "sec-2", p_note: "nova nota" }]);
     } finally { vi.useRealTimers(); }
   });
 
