@@ -6,8 +6,12 @@
  * Nada aqui escreve conteúdo clínico: o sistema só usa o que o administrador fornece.
  */
 import { SPECIALTY_KEYS, VISUAL_TOKENS, type SpecialtyKey, type SpecialtyPalette } from "./tokens";
+import { temaCorValido } from "./temas";
 
-export const VISUAL_TEMPLATE_VERSION = "visual-1.0";
+/** Modelo visual atual. "visual-1.0" (clássico, pranchas de 2026-10-06) continua disponível por BuildOptions.template. */
+export const VISUAL_TEMPLATE_VERSION = "criativo-1";
+export const VISUAL_TEMPLATE_VERSIONS = ["criativo-1", "visual-1.0"] as const;
+export type VisualTemplateVersion = (typeof VISUAL_TEMPLATE_VERSIONS)[number];
 
 export type VisualModel = "feed" | "a4" | "story" | "flashcard_digital" | "flashcard_a6";
 export type VisualSide = "single" | "front" | "back";
@@ -68,6 +72,8 @@ export const ILLUSTRATION_ICONS = {
   comprimido: "Comprimido",
   cronometro: "Cronômetro",
   prancheta: "Prancheta",
+  pulmao: "Pulmões (cena com bacilos)",
+  bebe: "Bebê (pediatria)",
 } as const;
 export type IllustrationIcon = keyof typeof ILLUSTRATION_ICONS;
 
@@ -118,6 +124,8 @@ export interface VisualContent {
   explicacao: string;
   como_lembrar: string;
   referencia: string;
+  /** Cor do tema (modelo criativo-1): "GR-001"…"GR-100" ou #RRGGBB. Vazio = cor da especialidade. */
+  tema_cor: string;
 }
 
 export type FieldKey =
@@ -146,7 +154,8 @@ export type FieldKey =
   | "resposta"
   | "explicacao"
   | "como_lembrar"
-  | "referencia";
+  | "referencia"
+  | "tema_cor";
 
 export const FIELD_LABELS: Record<FieldKey, string> = {
   titulo: "Título do tema",
@@ -175,17 +184,19 @@ export const FIELD_LABELS: Record<FieldKey, string> = {
   explicacao: "Explicação",
   como_lembrar: "Como lembrar",
   referencia: "Referência",
+  tema_cor: "Cor do tema",
 };
 
-const COMMON_PIECE: FieldKey[] = ["titulo", "subtitulo", "resumo", "selo_prova", "atualizacao", "paginacao", "pontos_chave", "ilustracao", "dado_chave", "tabela", "pegadinha", "tome_nota", "fonte"];
+const COMMON_PIECE: FieldKey[] = ["titulo", "subtitulo", "resumo", "selo_prova", "atualizacao", "paginacao", "pontos_chave", "ilustracao", "dado_chave", "tabela", "pegadinha", "tome_nota", "fonte", "tema_cor"];
 
 /** Campos que cada modelo mostra (o resto fica guardado, mas não aparece na peça). */
 export const MODEL_FIELDS: Record<VisualModel, FieldKey[]> = {
   feed: COMMON_PIECE,
   story: COMMON_PIECE,
   a4: [...COMMON_PIECE, "resumo_paragrafo", "bloco", "mnemonico"],
-  flashcard_digital: ["card_id", "ordem", "lote", "nivel", "tema", "pergunta", "resposta", "explicacao", "pegadinha", "fonte", "atualizacao"],
-  flashcard_a6: ["card_id", "ordem", "lote", "nivel", "tema", "pergunta", "resposta", "como_lembrar", "pegadinha", "referencia", "fonte", "atualizacao"],
+  // ilustracao nos flashcards: só escolhe a cena do cabeçalho do modelo criativo (opcional)
+  flashcard_digital: ["card_id", "ordem", "lote", "nivel", "tema", "pergunta", "resposta", "explicacao", "pegadinha", "fonte", "atualizacao", "ilustracao", "tema_cor"],
+  flashcard_a6: ["card_id", "ordem", "lote", "nivel", "tema", "pergunta", "resposta", "como_lembrar", "pegadinha", "referencia", "fonte", "atualizacao", "ilustracao", "tema_cor"],
 };
 
 export const REQUIRED_FIELDS: Record<VisualModel, FieldKey[]> = {
@@ -230,6 +241,7 @@ export const TEXT_LIMITS: Record<string, number> = {
   legenda: 70,
   alt: 160,
   especialidade: 60,
+  tema_cor: 10,
 };
 
 /** Quantidade de itens por modelo (sistema visual: 3 pontos e 2 linhas; 4 no A4). */
@@ -497,7 +509,9 @@ export function validateVisualInput(input: unknown): ValidationResult {
     explicacao: text("explicacao", raw.explicacao ?? raw.resposta_completa ?? raw.justificativa, TEXT_LIMITS.explicacao, true),
     como_lembrar: text("como_lembrar", raw.como_lembrar, TEXT_LIMITS.como_lembrar, true),
     referencia: text("referencia", raw.referencia, TEXT_LIMITS.referencia, true),
+    tema_cor: oneLine(raw.tema_cor ?? raw.cor_do_tema ?? "").toUpperCase(),
   };
+  if (!temaCorValido(content.tema_cor)) problems.push({ field: "tema_cor", message: "Cor do tema: use o código do tema (GR-001 a GR-100), GR-001@v1 para a paleta antiga, ou uma cor no formato #RRGGBB." });
 
   if (model) {
     for (const f of REQUIRED_FIELDS[model]) {

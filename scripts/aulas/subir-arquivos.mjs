@@ -26,7 +26,9 @@ export function conferirArquivos(pacote, pastaAula) {
   return (pacote.arquivos ?? []).map((item) => {
     if (!item.caminho?.startsWith(prefixo) || item.caminho.includes("..")) return { item, problema: `caminho fora de ${prefixo}` };
     if (!TIPOS.has(item.tipo)) return { item, problema: `tipo ${item.tipo} não aceito pelo depósito` };
-    const local = path.join(dir, item.caminho.slice(prefixo.length));
+    // caminho com a pasta da versão no depósito (aulas-prontas/<código>/v5/imagens/...): na pasta local o arquivo fica sem ela
+    const rel = item.caminho.slice(prefixo.length);
+    const local = [path.join(dir, rel), path.join(dir, rel.replace(/^v\d+\//, ""))].find((p) => fs.existsSync(p)) ?? path.join(dir, rel);
     if (!fs.existsSync(local)) return { item, problema: `arquivo não encontrado em ${dir}` };
     const bytes = fs.readFileSync(local);
     if (item.bytes != null && bytes.length !== Number(item.bytes)) return { item, problema: `tamanho ${bytes.length}, o pacote diz ${item.bytes}` };

@@ -15,6 +15,7 @@ import {
   A6_PRINT,
   STORY_SAFE,
   VISUAL_MODELS,
+  VISUAL_TEMPLATE_VERSION,
   paletteOf,
   sourceLine,
   updatedLabel,
@@ -22,8 +23,10 @@ import {
   type TableRowKind,
   type VisualContent,
   type VisualSide,
+  type VisualTemplateVersion,
 } from "./model";
 import { TEMPLATE_COLORS, VISUAL_TOKENS } from "./tokens";
+import { CRIATIVO_BUILDERS, printSheetCriativo } from "./criativo";
 import { LOGO_ASPECT, LOGO_ON_DARK, LOGO_ON_LIGHT } from "./logoData";
 
 const NAVY = VISUAL_TOKENS.brand.neutral.navy;
@@ -45,6 +48,8 @@ export interface BuildOptions {
   images?: Record<string, string>;
   /** Prévia de material novo: o ID do card ainda não existe. */
   preview?: boolean;
+  /** Versão do modelo visual: "criativo-1" (padrão) ou "visual-1.0" (clássico, para conferir versões antigas). */
+  template?: VisualTemplateVersion;
 }
 
 export interface Artboard {
@@ -87,6 +92,8 @@ const ICONS: Record<IllustrationIcon | "tag" | "bars" | "question" | "bulb" | "b
   question: `<path d="M8.5 8.5a3.5 3.5 0 1 1 5.4 2.9c-1.1.7-1.9 1.5-1.9 2.8"></path>`,
   bulb: `<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .8 1.6V16h5.4v-.5c0-.6.3-1.2.8-1.6A6 6 0 0 0 12 3z"></path>`,
   book: `<path d="M4 5a2 2 0 0 1 2-2h13v15H6a2 2 0 0 0-2 2V5z"></path><path d="M4 20a2 2 0 0 0 2 2h13v-4"></path>`,
+  pulmao: `<path d="M10.5 3v6M10.5 9l-2 2M13.5 3v6M13.5 9l2 2"></path><path d="M8 6c-3 0-5.5 4.5-6 10-.2 2.8 1 4.2 3.3 3.7C7.6 19.2 9 18 9.3 16V8.5C9.3 7 8.9 6 8 6zM16 6c3 0 5.5 4.5 6 10 .2 2.8-1 4.2-3.3 3.7-2.3-.5-3.7-1.7-4-3.7V8.5C14.7 7 15.1 6 16 6z"></path>`,
+  bebe: `<circle cx="12" cy="13" r="7.5"></circle><path d="M12 5.5c1-2 3.5-2 3.7-.5M9.5 12.5h.01M14.5 12.5h.01M10 16q2 1.5 4 0"></path>`,
   flip: `<path d="M20 11a8 8 0 0 0-14.9-3M4 13a8 8 0 0 0 14.9 3"></path><path d="M20 4v4h-4M4 20v-4h4"></path>`,
 };
 const icon = (name: keyof typeof ICONS, size: number, stroke: string, width = 2.2, style = "flex:none") => `<svg ${svgAttrs(size, stroke, width, `style="${style}"`)}>${ICONS[name]}</svg>`;
@@ -240,7 +247,7 @@ const footer = (c: VisualContent, P: Pal, f: FooterScale, src: string, right: st
 const pieceFooter = (c: VisualContent, P: Pal, f: FooterScale) => footer(c, P, f, c.fonte, pagePill(c.paginacao, P, f, "paginacao"));
 
 // ---------------------------------------------------------------------------- guias (só prévia)
-function guidesHtml(model: VisualContent["model"], side: VisualSide, w: number, h: number): string {
+export function guidesHtml(model: VisualContent["model"], side: VisualSide, w: number, h: number): string {
   const label = `${COND};font-weight:700;letter-spacing:1.5px;text-transform:uppercase`;
   if (model === "story") {
     const band = (top: number, height: number, text: string) =>
@@ -505,7 +512,8 @@ const BUILDERS: Record<VisualContent["model"], (c: VisualContent, o: BuildOption
 
 /** Pranchas (um lado ou frente e verso) do material. */
 export function renderArtboards(c: VisualContent, o: BuildOptions = {}): Artboard[] {
-  return BUILDERS[c.model](c, o);
+  const t = o.template ?? VISUAL_TEMPLATE_VERSION;
+  return (t === "visual-1.0" ? BUILDERS : CRIATIVO_BUILDERS)[c.model](c, o);
 }
 
 // ---------------------------------------------------------------------------- documento completo
@@ -533,7 +541,8 @@ export function buildVisualDocument(c: VisualContent, o: BuildOptions = {}): Vis
   const artboards = renderArtboards(c, { ...o, guides: false, preview: false });
   const a6 = c.model === "flashcard_a6";
   const page = a6 ? { width: artboards[0].width + 2 * A6_PRINT.bleed, height: artboards[0].height + 2 * A6_PRINT.bleed } : { width: artboards[0].width, height: artboards[0].height };
-  const pages = artboards.map((a) => (a6 ? printSheet(a, c) : `<div class="vm-page" style="width:${a.width}px;height:${a.height}px;overflow:hidden;break-after:page">${a.html}</div>`)).join("");
+  const classic = (o.template ?? VISUAL_TEMPLATE_VERSION) === "visual-1.0";
+  const pages = artboards.map((a) => (a6 ? (classic ? printSheet(a, c) : printSheetCriativo(a, c)) : `<div class="vm-page" style="width:${a.width}px;height:${a.height}px;overflow:hidden;break-after:page">${a.html}</div>`)).join("");
   const info = VISUAL_MODELS[c.model];
   const html = `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${esc(info.label)} · ${esc(c.card_id || c.titulo || c.pergunta)}</title><style>${o.fontCss ?? ""}${VISUAL_BASE_CSS}
 @page{size:${page.width}px ${page.height}px;margin:0}.vm-page:last-child,.vm-sheet:last-child{break-after:auto}</style></head><body>${pages}<script>${VISUAL_FIT_SCRIPT}
@@ -673,10 +682,10 @@ export const VISUAL_FIT_SCRIPT = String.raw`
     });
     // pegadinha e alerta: sempre o vermelho de alerta, em qualquer especialidade
     art.querySelectorAll('[data-role="alert"]').forEach(function (el) {
-      if (getComputedStyle(el).borderTopColor !== "rgb(200, 16, 46)") add("alert_color", "pegadinha", "A pegadinha perdeu o vermelho de alerta.");
+      if (["rgb(200, 16, 46)", "rgb(180, 35, 54)"].indexOf(getComputedStyle(el).borderTopColor) < 0) add("alert_color", "pegadinha", "A pegadinha perdeu o vermelho de alerta.");
     });
     art.querySelectorAll('[data-role="alert-title"]').forEach(function (el) {
-      if (getComputedStyle(el).color !== "rgb(200, 16, 46)") add("alert_color", "pegadinha", "O título da pegadinha perdeu o vermelho de alerta.");
+      if (["rgb(200, 16, 46)", "rgb(180, 35, 54)"].indexOf(getComputedStyle(el).color) < 0) add("alert_color", "pegadinha", "O título da pegadinha perdeu o vermelho de alerta.");
     });
     var sp = art.querySelector('[data-role="specialty"]');
     if (!sp || !sp.textContent.trim()) add("specialty", "especialidade", "A especialidade precisa aparecer escrita por extenso.");

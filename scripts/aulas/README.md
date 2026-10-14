@@ -46,3 +46,12 @@ arquivos    [{ caminho: "aulas-prontas/<código>/...", sha256, bytes, tipo, text
 - O aluno não recebe referência nenhuma da aula importada; fontes e trechos ficam na Central para a equipe e o revisor.
 - Mesmo pacote de novo: nada muda. Pacote diferente: atualiza a versão importada ainda não aprovada (as aprovações deixam de
   valer) ou cria versão nova candidata se a anterior já foi aprovada ou publicada.
+
+## Só os materiais de uma aula que já está na Central (ex.: GR-001 v5, 14/10/2026)
+
+1. `npx tsx scripts/aulas/render-aula.mts <conteúdo> <aulas-piloto/GR-001/final-v5>` gera as peças, o PDF e o manifesto.
+2. `node scripts/aulas/gerar-pacote-materiais-aula.mjs --pasta aulas-piloto/GR-001/final-v5 --versao v5 --anterior aulas-piloto/GR-001/final-v3`
+   grava `0-CONFERIR.sql`, `1-Atualizar-materiais-GR-001-v5.sql`, `LEIA-ME.txt` e `pacote-GR-001-v5.json`. O arquivo 1 reimporta pela função
+   oficial com o MESMO texto: se o texto, as afirmações, o resumo, os flashcards ou as questões mudassem, ou se a versão estiver aprovada ou
+   publicada, nada é gravado. Os arquivos vão para `aulas-prontas/<código>/<versão>/...` (não colidem com os da versão anterior).
+3. Arquivos: `npx tsx scripts/aulas/subir-arquivos.mjs --pacote <pacote-GR-001-v5.json> --pasta aulas-piloto/GR-001/final-v5` (simula; `--enviar` só com autorização).

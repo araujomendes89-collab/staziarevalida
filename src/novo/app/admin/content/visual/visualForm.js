@@ -57,6 +57,7 @@ export function emptyForm(model = "feed") {
     explicacao: "",
     como_lembrar: "",
     referencia: "",
+    tema_cor: "",
   };
 }
 
@@ -89,7 +90,7 @@ export function fromContent(c) {
   return {
     ...f,
     ...Object.fromEntries(
-      ["titulo", "subtitulo", "resumo", "resumo_paragrafo", "dado_chave", "pegadinha", "tome_nota", "fonte", "atualizacao", "selo_prova", "paginacao", "card_id", "lote", "nivel", "tema", "pergunta", "resposta", "explicacao", "como_lembrar", "referencia"].map((k) => [k, c[k] ?? ""])
+      ["titulo", "subtitulo", "resumo", "resumo_paragrafo", "dado_chave", "pegadinha", "tome_nota", "fonte", "atualizacao", "selo_prova", "paginacao", "card_id", "lote", "nivel", "tema", "pergunta", "resposta", "explicacao", "como_lembrar", "referencia", "tema_cor"].map((k) => [k, c[k] ?? ""])
     ),
     modelo: c.model,
     especialidade: c.specialty?.key === "fallback" ? "outra" : (c.specialty?.key ?? ""),

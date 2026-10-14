@@ -106,6 +106,8 @@ export interface RenderOptions {
   python?: string;
   /** Tempo máximo esperando o encaixe e as fontes no navegador. */
   timeoutMs?: number;
+  /** Versão do modelo visual (padrão: VISUAL_TEMPLATE_VERSION). */
+  template?: "criativo-1" | "visual-1.0";
 }
 
 export class VisualRenderUnavailable extends Error {}
@@ -117,7 +119,7 @@ export async function renderVisualContent(renderer: Renderer, c: VisualContent, 
   if (fonts.missing.length) throw new VisualRenderUnavailable(`Fontes dos modelos ausentes em ${visualFontDir()}: ${fonts.missing.join(", ")}.`);
   const python = opts.python ?? process.env.CONTENT_HUB_PYTHON ?? "pdfpython";
   const info = VISUAL_MODELS[c.model];
-  const doc = buildVisualDocument(c, { fontCss: fonts.css, images: opts.images });
+  const doc = buildVisualDocument(c, { fontCss: fonts.css, images: opts.images, template: opts.template });
   const scale = c.model === "a4" ? 2 : 1; // PNG do A4 em resolução de leitura (1588 × 2246)
   const page = await renderer.newPage({ viewport: { width: doc.page.width, height: doc.page.height }, deviceScaleFactor: scale });
   const problems: VisualProblem[] = [];
@@ -203,7 +205,7 @@ export async function renderVisualContent(renderer: Renderer, c: VisualContent, 
         fitted: report.fitted ?? [],
         pdf: { pages: pdf.report.pages, page_info: pdf.report.page_info, fonts: pdf.report.fonts, embedded: pdf.report.embedded, empty_pages: pdf.report.empty_pages },
         png: pngs,
-        template_version: VISUAL_TEMPLATE_VERSION,
+        template_version: opts.template ?? VISUAL_TEMPLATE_VERSION,
       },
     };
   } finally {
