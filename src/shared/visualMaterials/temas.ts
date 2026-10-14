@@ -13,6 +13,7 @@
  * Os dados prontos ficam em paletaTemas.data.ts (gerado por scripts/aulas/paleta-temas.mts).
  */
 import { PALETA_TEMAS } from "./paletaTemas.data";
+import { PALETA_TEMAS_V2 } from "./paletaTemasV2.data";
 
 export interface CorTema {
   /** Cor de destaque (faixas, filetes, números das seções). */
@@ -174,23 +175,76 @@ export function corSegura(H: number, dl = 0, croma = 1): CorTema {
   return corDoTom(H, dl - 0.2, croma);
 }
 
+// ---------------------------------------------------------------------------- paleta v2 (análise profissional colada pelo dono, 2026-10-13)
+/**
+ * v2: uma cor-base FIXA por área (valores do dono) e cada tema varia só a luminosidade e, de leve, a saturação
+ * da cor-base, sem trocar o tom. Cores estruturais próprias (azul-marinho, fundo, texto, alerta crítico).
+ * A v1 continua como está; a v2 é escolhida no campo tema_cor com o sufixo "@v2" (ex.: GR-043@v2).
+ */
+export const BASES_V2: Record<string, { cor: string; nome: string }> = {
+  cm: { cor: "#087A63", nome: "Clínica Médica" },
+  cir: { cor: "#006D77", nome: "Cirurgia" },
+  ped: { cor: "#086DA8", nome: "Pediatria" },
+  go: { cor: "#A94136", nome: "Ginecologia e Obstetrícia" },
+  mfc: { cor: "#464DA0", nome: "Medicina de Família e Comunidade" },
+  sc: { cor: "#983B78", nome: "Saúde Coletiva" },
+  sm: { cor: "#713EA5", nome: "Saúde Mental" },
+};
+export const ESTRUTURA_V2 = {
+  azulMarinho: "#102B4C",
+  azulSecundario: "#1C4777",
+  fundo: "#F3F7FA",
+  superficie: "#FFFFFF",
+  texto: "#15263D",
+  alerta: "#B42336",
+  /** Cabeçalho com gradiente mais discreto que o da v1. */
+  cabecalho: "linear-gradient(160deg, #1C4777 0%, #15375F 34%, #102B4C 72%)",
+  rodape: "linear-gradient(90deg, #0D2440 0%, #102B4C 100%)",
+};
+/** Trocas das cores estruturais do modelo criativo-1 (v1 → v2). Aplicadas só quando o tema usa a paleta v2. */
+const TROCAS_ESTRUTURA_V2: [string, string][] = [
+  ["radial-gradient(130% 150% at 88% 20%, #1A4C8A 0%, #0D2B52 42%, #071A33 100%)", ESTRUTURA_V2.cabecalho],
+  ["linear-gradient(90deg, #071A33 0%, #0B2545 60%, #0E2F57 100%)", ESTRUTURA_V2.rodape],
+  ["#0B2545", ESTRUTURA_V2.azulMarinho],
+  ["#142033", ESTRUTURA_V2.texto],
+  ["#EEF4F5", ESTRUTURA_V2.fundo],
+  ["#F4F8F9", ESTRUTURA_V2.fundo],
+  ["#C8102E", ESTRUTURA_V2.alerta],
+  ["rgba(200,16,46", "rgba(180,35,54"],
+  ["rgba(11,37,69", "rgba(16,43,76"],
+];
+export function aplicarEstruturaV2(html: string): string {
+  let s = html;
+  for (const [a, b] of TROCAS_ESTRUTURA_V2) s = s.split(a).join(b);
+  return s;
+}
+
 // ---------------------------------------------------------------------------- uso nas peças
 const HEX = /^#[0-9a-f]{6}$/i;
 const ID_TEMA = /^GR-\d{3}$/i;
+const ID_TEMA_V2 = /^(GR-\d{3})@V2$/i;
 
-/** Valor aceito no campo tema_cor: vazio, um tema (GR-001…GR-100) ou uma cor #RRGGBB. */
+/** Valor aceito no campo tema_cor: vazio, um tema (GR-001…GR-100, paleta v1), um tema da v2 (GR-043@v2) ou #RRGGBB. */
 export function temaCorValido(v: string): boolean {
   const s = String(v ?? "").trim();
-  return !s || (ID_TEMA.test(s) && Boolean(PALETA_TEMAS[s.toUpperCase()])) || HEX.test(s);
+  const v2 = ID_TEMA_V2.exec(s);
+  return !s || (ID_TEMA.test(s) && Boolean(PALETA_TEMAS[s.toUpperCase()])) || Boolean(v2 && PALETA_TEMAS_V2[v2[1].toUpperCase()]) || HEX.test(s);
 }
 
-/** Cores do campo tema_cor: tema da lista, ou uma cor qualquer (vira a estrutura do GR-001 com aquele tom). Vazio = null. */
+/** Qual paleta o campo usa ("v2" só com o sufixo @v2). */
+export function versaoDoCampo(v: string): "v1" | "v2" {
+  return ID_TEMA_V2.test(String(v ?? "").trim()) ? "v2" : "v1";
+}
+
+/** Cores do campo tema_cor: tema da lista (v1 ou @v2), ou uma cor qualquer (estrutura do GR-001 com aquele tom). Vazio = null. */
 export function corDoCampo(v: string): CorTema | null {
   const s = String(v ?? "").trim();
   if (!s) return null;
+  const v2 = ID_TEMA_V2.exec(s);
+  if (v2) return PALETA_TEMAS_V2[v2[1].toUpperCase()] ?? null;
   if (ID_TEMA.test(s)) return PALETA_TEMAS[s.toUpperCase()] ?? null;
   if (HEX.test(s)) return corSegura(hexParaOklch(s)[2]);
   return null;
 }
 
-export { PALETA_TEMAS };
+export { PALETA_TEMAS, PALETA_TEMAS_V2 };

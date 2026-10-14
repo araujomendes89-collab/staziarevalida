@@ -6,7 +6,7 @@
  *   - "web": prévia HTML com os mesmos recursos (flashcards que viram, questões que corrigem, checklists, anotações).
  * Nenhum texto clínico é escrito aqui: tudo vem da pasta de conteúdo. Só rótulos de interface.
  */
-import { corDoCampo, temaVermelho, esc, paletteOf, resolveSpecialty, type VisualContent } from "../../src/shared/visualMaterials/index.ts";
+import { aplicarEstruturaV2, versaoDoCampo, corDoCampo, temaVermelho, esc, paletteOf, resolveSpecialty, type VisualContent } from "../../src/shared/visualMaterials/index.ts";
 import { sceneSvg, spot, spotForText, heroInnerWhite, themeOf, type SpotName } from "../../src/shared/visualMaterials/kit/index.ts";
 
 // ---------------------------------------------------------------------------- limpeza: nenhuma referência no texto do aluno
@@ -575,7 +575,15 @@ function flashVerso(f: Flashcard, i: number, P: ReturnType<typeof paleta>, mode:
 }
 
 // ---------------------------------------------------------------------------- documento do PDF
+/** Paleta v2 (tema_cor "GR-xxx@v2"): troca as cores estruturais no documento inteiro. */
+const comEstrutura = (aula: Aula, html: string) => (versaoDoCampo(aula.temaCor ?? "") === "v2" ? aplicarEstruturaV2(html) : html);
 export function htmlPdf(aula: Aula, fontCss: string): string {
+  return comEstrutura(aula, htmlPdfBase(aula, fontCss));
+}
+export function htmlPrevia(aula: Aula, fontCss: string): string {
+  return comEstrutura(aula, htmlPreviaBase(aula, fontCss));
+}
+function htmlPdfBase(aula: Aula, fontCss: string): string {
   const P = paleta(aula);
   let seq = 0;
   const fixed: string[] = [];
@@ -670,7 +678,7 @@ export function htmlPdf(aula: Aula, fontCss: string): string {
 }
 
 // ---------------------------------------------------------------------------- prévia HTML (mesmos recursos)
-export function htmlPrevia(aula: Aula, fontCss: string): string {
+function htmlPreviaBase(aula: Aula, fontCss: string): string {
   const P = paleta(aula);
   let seq = 0;
   const secoes = aula.secoes

@@ -676,10 +676,10 @@ export const VISUAL_FIT_SCRIPT = String.raw`
     });
     // pegadinha e alerta: sempre o vermelho de alerta, em qualquer especialidade
     art.querySelectorAll('[data-role="alert"]').forEach(function (el) {
-      if (getComputedStyle(el).borderTopColor !== "rgb(200, 16, 46)") add("alert_color", "pegadinha", "A pegadinha perdeu o vermelho de alerta.");
+      if (["rgb(200, 16, 46)", "rgb(180, 35, 54)"].indexOf(getComputedStyle(el).borderTopColor) < 0) add("alert_color", "pegadinha", "A pegadinha perdeu o vermelho de alerta.");
     });
     art.querySelectorAll('[data-role="alert-title"]').forEach(function (el) {
-      if (getComputedStyle(el).color !== "rgb(200, 16, 46)") add("alert_color", "pegadinha", "O título da pegadinha perdeu o vermelho de alerta.");
+      if (["rgb(200, 16, 46)", "rgb(180, 35, 54)"].indexOf(getComputedStyle(el).color) < 0) add("alert_color", "pegadinha", "O título da pegadinha perdeu o vermelho de alerta.");
     });
     var sp = art.querySelector('[data-role="specialty"]');
     if (!sp || !sp.textContent.trim()) add("specialty", "especialidade", "A especialidade precisa aparecer escrita por extenso.");

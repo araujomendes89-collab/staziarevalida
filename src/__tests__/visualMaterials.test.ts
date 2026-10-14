@@ -36,7 +36,7 @@ import {
   VISUAL_TEMPLATE_VERSION,
 } from "../../src/shared/visualMaterials";
 import { THEMES, sceneSvg, spotForText } from "../../src/shared/visualMaterials/kit";
-import { COR_MODELO, PALETA_TEMAS, conferirContraste, corDoCampo, distancia, hexParaOklch, temaVermelho, tomProibido } from "../../src/shared/visualMaterials/temas";
+import { BASES_V2, ESTRUTURA_V2, PALETA_TEMAS_V2, contraste, COR_MODELO, PALETA_TEMAS, conferirContraste, corDoCampo, distancia, hexParaOklch, temaVermelho, tomProibido } from "../../src/shared/visualMaterials/temas";
 import { A4_SAMPLE, CARD_SAMPLE, PIECE_SAMPLE, SPECIALTY_SAMPLES } from "./visualSamples";
 
 vi.setConfig({ testTimeout: 120_000 });
@@ -239,6 +239,46 @@ describe("Cor de cada tema (tema_cor, paleta dos 100 Grandes Temas)", () => {
     expect(renderArtboards(content({ ...base, tema_cor: "#3366CC" }))[0].html).toContain(`linear-gradient(90deg, ${livre.escura} 0%, ${livre.primaria} 100%)`);
     expect(validateVisualInput({ ...base, tema_cor: "GR-999" }).problems.map((p) => p.field)).toContain("tema_cor");
     expect(parseVisualCommand("modelo: feed\nespecialidade: cm\ntitulo: T\ncor do tema: GR-094").input.tema_cor).toBe("GR-094");
+  });
+});
+
+describe("Paleta v2 (cor-base fixa por área; tema_cor GR-xxx@v2)", () => {
+  it("cor-base exata de cada área no 1º tema; cada tema mantém o tom da sua área", () => {
+    expect(Object.keys(PALETA_TEMAS_V2)).toHaveLength(100);
+    expect(PALETA_TEMAS_V2["GR-001"].primaria).toBe("#087A63");
+    expect(PALETA_TEMAS_V2["GR-043"].primaria).toBe(BASES_V2.go.cor);
+    for (const t of Object.values(PALETA_TEMAS_V2)) {
+      const h = hexParaOklch(t.primaria)[2], hb = hexParaOklch(BASES_V2[t.area].cor)[2];
+      expect(Math.min(Math.abs(h - hb), 360 - Math.abs(h - hb)), t.id).toBeLessThan(4);
+      // sobre a cor de destaque só vai texto branco, e ele precisa de 4,5:1
+      expect(contraste("#FFFFFF", t.primaria), t.id).toBeGreaterThanOrEqual(4.5);
+      expect(contraste(t.escura, "#FFFFFF"), t.id).toBeGreaterThanOrEqual(4.5);
+      expect(contraste(t.brilho, ESTRUTURA_V2.azulMarinho), t.id).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  it("v1 continua igual (sem sufixo); @v2 troca a cor do tema e as cores estruturais; nenhum código de cor aparece como texto", () => {
+    const base = { modelo: "feed", especialidade: "clinica_medica", ...PIECE_SAMPLE };
+    const v1 = renderArtboards(content({ ...base, tema_cor: "GR-001" }))[0].html;
+    const v2 = renderArtboards(content({ ...base, tema_cor: "gr-001@v2" }))[0].html;
+    expect(v1).toContain("#2E9B67");
+    expect(v1).toContain("#0B2545");
+    expect(v2).toContain("#087A63");
+    expect(v2).toContain(ESTRUTURA_V2.azulMarinho);
+    expect(v2).not.toContain("#0B2545");
+    expect(v2).toMatch(/data-role="alert"[^>]*solid #B42336/);
+    for (const html of [v1, v2]) {
+      const texto = html.replace(/<[^>]+>/g, " ");
+      expect(texto).not.toMatch(/#[0-9A-F]{6}/i);
+      expect(texto).not.toMatch(/contraste/i);
+    }
+    expect(validateVisualInput({ ...base, tema_cor: "GR-999@v2" }).problems.map((p) => p.field)).toContain("tema_cor");
+  });
+
+  it("Pegadinha só aparece quando o conteúdo tem advertência; em GO v2 ganha o reforço", () => {
+    const base = { modelo: "a4", especialidade: "ginecologia", ...A4_SAMPLE, tema_cor: "GR-043@v2" };
+    expect(renderArtboards(content(base))[0].html).toContain('data-alert="reforcado"');
+    expect(renderArtboards(content({ ...base, pegadinha: "" }))[0].html).not.toContain('data-role="alert"');
   });
 });
 

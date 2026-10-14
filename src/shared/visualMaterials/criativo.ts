@@ -12,7 +12,7 @@
  */
 import { A6_PRINT, STORY_SAFE, paletteOf, updatedLabel, type TableRowKind, type VisualContent, type VisualSide } from "./model";
 import { VISUAL_TOKENS } from "./tokens";
-import { corDoCampo, temaVermelho } from "./temas";
+import { aplicarEstruturaV2, corDoCampo, temaVermelho, versaoDoCampo } from "./temas";
 import { KIT_NAVY, glowOnlySvg, heroInnerWhite, sceneSvg, spot, spotForText, themeOf, type SpotName } from "./kit";
 import { esc, guidesHtml, type Artboard, type BuildOptions } from "./templates";
 
@@ -524,13 +524,19 @@ export function printSheetCriativo(a: Artboard, c: VisualContent) {
   const H = a.height + 2 * b;
   const tema = corDoCampo(c.tema_cor ?? "");
   const P = tema ? { primary: tema.primaria } : paletteOf(c.specialty.key);
-  return `<div class="vm-sheet" data-sheet="${a.side}" style="position:relative;width:${W}px;height:${H}px;background:${BODY_BG};overflow:hidden;break-after:page"><div style="position:absolute;left:0;top:0;width:${W}px;height:${b + A6_CRIATIVO.header}px;background:#0B2545"></div><div style="position:absolute;left:0;top:${b + A6_CRIATIVO.header}px;width:${W}px;height:${A6_CRIATIVO.stripe}px;background:${P.primary}"></div><div style="position:absolute;left:0;bottom:0;width:${W}px;height:${b + A6_CRIATIVO.footer}px;background:#0B2545"></div><div style="position:absolute;left:${b}px;top:${b}px">${a.html}</div></div>`;
+  const html = `<div class="vm-sheet" data-sheet="${a.side}" style="position:relative;width:${W}px;height:${H}px;background:${BODY_BG};overflow:hidden;break-after:page"><div style="position:absolute;left:0;top:0;width:${W}px;height:${b + A6_CRIATIVO.header}px;background:#0B2545"></div><div style="position:absolute;left:0;top:${b + A6_CRIATIVO.header}px;width:${W}px;height:${A6_CRIATIVO.stripe}px;background:${P.primary}"></div><div style="position:absolute;left:0;bottom:0;width:${W}px;height:${b + A6_CRIATIVO.footer}px;background:#0B2545"></div><div style="position:absolute;left:${b}px;top:${b}px">${a.html}</div></div>`;
+  return usaV2(c) ? aplicarEstruturaV2(html) : html;
 }
 
-export const CRIATIVO_BUILDERS: Record<VisualContent["model"], (c: VisualContent, o: BuildOptions) => Artboard[]> = {
+const BASE_BUILDERS: Record<VisualContent["model"], (c: VisualContent, o: BuildOptions) => Artboard[]> = {
   feed,
   a4,
   story,
   flashcard_digital: flashcardDigital,
   flashcard_a6: flashcardA6,
 };
+/** Paleta v2 (tema_cor "GR-xxx@v2"): mesmas peças, com as cores estruturais da v2 (azul-marinho, fundo, texto, alerta). */
+const usaV2 = (c: VisualContent) => versaoDoCampo(c.tema_cor ?? "") === "v2";
+export const CRIATIVO_BUILDERS = Object.fromEntries(
+  Object.entries(BASE_BUILDERS).map(([k, build]) => [k, (c: VisualContent, o: BuildOptions) => (usaV2(c) ? build(c, o).map((a) => ({ ...a, html: aplicarEstruturaV2(a.html) })) : build(c, o))])
+) as typeof BASE_BUILDERS;
