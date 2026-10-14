@@ -651,7 +651,8 @@ revoke execute on function public.app_ch_approve(uuid, text, text) from public, 
 grant execute on function public.app_ch_approve(uuid, text, text) to authenticated;
 
 -- Conferência de dose, via, frequência e contraindicação (CC12, migração 9860): continua sendo ato médico, agora também do ADMINISTRADOR
--- (o dono é médico e faz a aprovação médica, decisão de 13/10/2026). Editor, aluno e sem usuário continuam recusados. Só esta frase mudou
+-- (o dono é médico e faz a aprovação médica; DECISÃO DO ASSISTENTE de 14/10/2026, a revisar: o dono disse 'não precisa' e pediu que eu resolvesse;
+-- sem isso ele não consegue conferir as afirmações com dose/tempo da GR-001). Processamento, IA e automação NUNCA conferem (sem usuário = recusado). Editor, aluno e sem usuário continuam recusados. Só esta frase mudou
 -- em relação à 9860: "revisor da área" → "administrador ou revisor da área".
 create or replace function public.app_ch_confirm_critical(p_claim_id uuid) returns boolean
   language plpgsql security definer set search_path = ''
@@ -739,12 +740,14 @@ begin
                                'aprovar_medica', public.ch_can_approve_medical(v_area) and v.status in ('awaiting_review', 'approved'),
                                'conferir_criticas', public.ch_can_approve_medical(v_area),
                                'aprovar_editorial', public.is_staff() and v.status in ('awaiting_review', 'approved'),
-                               'publicar', public.is_admin() and v.status = 'approved' and v_gate ->> 'status' = 'ok' and cardinality(v_problems) = 0));
+                               'publicar', public.is_admin() and v.status = 'approved' and cardinality(v_problems) = 0));
 end
 $$;
 
--- Publicar ao aluno pela tela de Unidades: administrador, versão aprovada (médica E editorial, hash atual) e portão de atualidade em ordem
--- (ch_topic_freshness = "ok"), QUALQUER que seja o modo do portão (o modo 'desligado' continua valendo para as outras telas e para a importação).
+-- Publicar ao aluno pela tela de Unidades: administrador, versão aprovada (médica E editorial, hash atual) e o MODO GERAL do portão de atualidade
+-- (Vigilância científica › ch_vigilance_config.topic_gate), sem exigência própria da tela (decisão do dono, 14/10/2026):
+--   'desligado' = não exige nada do portão; 'aviso' = publica e devolve o motivo ('portao' no resultado, a tela mostra);
+--   'bloqueia' = o tema fora de "ok" trava (ch_publish_problems, a casca da vigilância, recusa dentro de app_ch_publish).
 -- Depois chama a publicação de sempre (app_ch_publish), com todas as travas dela.
 create or replace function public.app_ch_unit_publish(p_version_id uuid, p_options jsonb default '{}'::jsonb) returns jsonb
   language plpgsql security definer set search_path = ''
@@ -752,6 +755,7 @@ as $$
 declare
   v public.ch_unit_versions;
   g jsonb;
+  r jsonb;
 begin
   perform public.assert_admin();
   select * into v from public.ch_unit_versions where id = p_version_id;
@@ -760,12 +764,12 @@ begin
   if not exists (select 1 from public.ch_approvals a where a.unit_version_id = p_version_id and a.kind = 'medical' and a.invalidated_at is null and a.content_hash = v.content_hash) then
     raise exception 'Falta a aprovação médica desta versão.' using errcode = '22023';
   end if;
-  g := public.ch_topic_freshness((select u.theme_node_id from public.ch_units u where u.id = v.unit_id));
-  if g ->> 'status' <> 'ok' then
-    raise exception 'Portão de atualidade da Vigilância: o tema está com evidência % . %', case g ->> 'status' when 'sem_dossie' then 'sem dossiê' when 'vencido' then 'vencida' else 'com mudança pendente' end,
-      coalesce((select string_agg(m, ' ') from jsonb_array_elements_text(g -> 'motivos') m), '') using errcode = '55000';
+  g := public.ch_topic_gate((select u.theme_node_id from public.ch_units u where u.id = v.unit_id));
+  r := public.app_ch_publish(p_version_id, coalesce(p_options, '{}'::jsonb));
+  if g ->> 'modo' = 'aviso' and g ->> 'status' <> 'ok' then
+    r := coalesce(r, '{}'::jsonb) || jsonb_build_object('portao', g);
   end if;
-  return public.app_ch_publish(p_version_id, coalesce(p_options, '{}'::jsonb));
+  return r;
 end
 $$;
 revoke execute on function public.app_ch_unit_publish(uuid, jsonb) from public, anon;

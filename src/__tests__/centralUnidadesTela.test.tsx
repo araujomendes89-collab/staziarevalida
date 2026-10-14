@@ -86,7 +86,7 @@ describe("Página da unidade: cabeçalho e caminho até publicar", () => {
     expect(caminho.textContent).toMatch(/Do administrador ou do revisor médico/);
     expect(caminho.textContent).toMatch(/Portão de atualidade da vigilância/);
     expect((screen.getByRole("button", { name: /Publicar ao aluno/ }) as HTMLButtonElement).disabled).toBe(true);
-    expect(caminho.querySelectorAll("[data-estado=feito]").length).toBe(2);
+    expect(caminho.querySelectorAll("[data-estado=feito]").length).toBe(3); // auditoria... + portão desligado (não segura)
     expect(within(caminho).getByText("agora")).toBeTruthy();
   });
 
@@ -96,9 +96,16 @@ describe("Página da unidade: cabeçalho e caminho até publicar", () => {
     expect(p.map((x) => x.estado)).toEqual(["feito", "feito", "feito", "feito", "feito", "pendente"]);
     expect(p[2].texto).toMatch(/Por adm@t\.dev/);
     const preso = passosDoCaminho(VISAO({ portao: { modo: "desligado", status: "vencido", motivos: ["Última conferência do dossiê em 01/01/2026."] } }));
-    expect(preso[4].estado).toBe("aviso");
-    expect(preso[4].texto).toMatch(/vencida|conferência vencida/);
-    expect(preso[4].texto).toMatch(/mesmo assim/);
+    // modo desligado: o portão não segura a publicação (não vira o "agora" do caminho)
+    expect(preso[4].texto).toMatch(/desligado/);
+    expect(preso[4].agora).toBe(false);
+    const avisando = passosDoCaminho(VISAO({ portao: { modo: "aviso", status: "vencido", motivos: ["Última conferência do dossiê em 01/01/2026."] } }));
+    expect(avisando[4].estado).toBe("aviso");
+    expect(avisando[4].texto).toMatch(/Só avisar.*não impede/);
+    expect(avisando[4].texto).toMatch(/Última conferência/);
+    const travado = passosDoCaminho(VISAO({ portao: { modo: "bloqueia", status: "vencido", motivos: ["Última conferência do dossiê em 01/01/2026."] } }));
+    expect(travado[4].estado).toBe("aviso");
+    expect(travado[4].texto).toMatch(/Bloquear/);
   });
 
   it("com tudo pronto o administrador pode abrir a publicação", async () => {

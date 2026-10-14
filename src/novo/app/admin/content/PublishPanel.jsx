@@ -7,7 +7,7 @@ import { useSession } from "../../session.jsx";
 import { LoadError, Loading, useLoad } from "../common.jsx";
 import { Label, Pre, Section, useAction } from "./ui.jsx";
 
-/** publishFn: a tela de Unidades publica por app_ch_unit_publish (exige aprovação médica e portão de atualidade em ordem). */
+/** publishFn: a tela de Unidades publica por app_ch_unit_publish (exige aprovação médica e editorial; o portão de atualidade segue o modo geral da Vigilância: desligado não exige, "só avisar" avisa, "bloquear" trava). */
 export function PublishPanel({ version, onPublished, onClose, publishFn = "app_ch_publish" }) {
   const { backend } = useSession();
   const { data, error, reload } = useLoad(() => backend.rpc("app_ch_publish_preview", { p_version_id: version.id, p_options: {} }), [backend, version.id]);
@@ -40,7 +40,7 @@ export function PublishPanel({ version, onPublished, onClose, publishFn = "app_c
   const publish = () =>
     act
       .run(() => backend.rpc(publishFn, { p_version_id: version.id, p_options: { confirm_similar: similarOk } }), null)
-      .then((r) => r !== undefined && onPublished?.("Publicada. A aula já está em Estudar › Aulas para todos os alunos" + (cards.total ? ", e os flashcards no baralho StaziaMed." : ".")));
+      .then((r) => r !== undefined && onPublished?.("Publicada. A aula já está em Estudar › Aulas para todos os alunos" + (cards.total ? ", e os flashcards no baralho StaziaMed." : ".") + (r?.portao ? ` Aviso do portão de atualidade (modo "só avisar"): ${(r.portao.motivos ?? []).join(" ")}` : "")));
 
   return (
     <Section title="Publicar para os alunos" action={<Button variant="ghost" size="sm" icon="x" onClick={onClose}>Fechar</Button>}>

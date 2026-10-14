@@ -58,24 +58,23 @@ describe("Lista e cabeçalho da unidade (tudo lido do banco)", () => {
   it("lista: código GR-001, título, área › subárea, versão, data, afirmações, palavras, situação", async () => {
     const lista = await rpc(EDITOR, "app_ch_unit_overview_list");
     expect(lista).toHaveLength(1);
-    expect(lista[0]).toMatchObject({ code: "GR-001", title: PACOTE.titulo, version: 1, status: "awaiting_review", afirmacoes: 86, area_code: "CLINICA_MEDICA", questoes_ligadas: null });
+    expect(lista[0]).toMatchObject({ code: "GR-001", title: PACOTE.titulo, version: 1, status: "awaiting_review", afirmacoes: 86, area_code: "CLINICA_MEDICA", questoes_ligadas: 0 });
     expect(lista[0].caminho).toMatchObject({ area: "Clínica Médica", subarea: "Infectologia", tema: "Tuberculose" });
     expect(lista[0].palavras).toBeGreaterThan(1500);
     expect(new Date(lista[0].date).getFullYear()).toBeGreaterThan(2025);
   });
 
   it("questões ligadas: lê a tabela dos Grandes Temas quando ela existe (e só conta questão que existe)", async () => {
-    await sql(`create table if not exists public.grande_tema_questoes (tema_id text not null, question_id text not null, no_taxonomia text not null default 'x', primary key (tema_id, question_id))`);
     await sql(`set session_replication_role = replica`);
     for (const n of [1, 2, 3])
       await sql(`insert into public.questions (id, code, exam_id, number, area, topic, statement, options, correct_option) values ($1, $2, 'exam-x', $3, 'CLINICA_MEDICA', 'Tuberculose', 'Enunciado de teste', '[{},{},{},{}]'::jsonb, 'A') on conflict do nothing`, [`qtb${n}`, `QTB-${n}`, n]);
     await sql(`set session_replication_role = origin`);
     const existentes = (await sql(`select id::text from public.questions where id like 'qtb%' order by id`)).map((x) => x.id);
-    for (const id of existentes) await sql(`insert into public.grande_tema_questoes (tema_id, question_id) values ('GR-001', $1)`, [id]);
-    await sql(`insert into public.grande_tema_questoes (tema_id, question_id) values ('GR-001', 'nao-existe')`);
+    for (const id of existentes) await sql(`insert into public.grande_tema_questoes (tema_id, question_id, no_taxonomia) values ('GR-001', $1, 'x')`, [id]);
+    await sql(`insert into public.grande_tema_questoes (tema_id, question_id, no_taxonomia) values ('GR-001', 'nao-existe', 'x')`);
     const o = await rpc(EDITOR, "app_ch_unit_overview", { p_version_id: versao });
     expect(o.questoes_ligadas).toBe(existentes.length);
-    await sql(`drop table public.grande_tema_questoes`);
+    await sql(`delete from public.grande_tema_questoes where tema_id = 'GR-001'`);
   });
 
   it("cabeçalho e caminho: auditoria feita, médica pendente, portão, publicação travada", async () => {
@@ -86,7 +85,8 @@ describe("Lista e cabeçalho da unidade (tudo lido do banco)", () => {
     expect(o.auditoria.data).toBeTruthy();
     expect(o.aprovacao_medica.valida).toBe(false);
     expect(o.aprovacao_editorial.valida).toBe(false);
-    expect(o.portao).toMatchObject({ modo: "desligado", status: "sem_dossie" });
+    expect(o.portao.modo).toBe("desligado");
+    expect(o.portao.status).not.toBe("ok");
     expect(o.publicacao.no_ar).toBe(false);
     expect(o.pode).toMatchObject({ editar: true, aprovar_medica: false, aprovar_editorial: true, publicar: false });
     const adm = await rpc(ADMIN, "app_ch_unit_overview", { p_version_id: versao });
@@ -266,7 +266,7 @@ describe("Aprovação médica: administrador ou revisor médico da área", () =>
   });
 });
 
-describe("Publicar ao aluno: aprovação médica + editorial + portão de atualidade", () => {
+describe("Publicar ao aluno: aprovação médica + editorial + modo geral do portão de atualidade", () => {
   const prepararParaPublicar = async () => {
     await rpc(EDITOR, "app_ch_submit_for_review", { p_version_id: versao }).catch(() => undefined);
     await rpc(ADMIN, "app_ch_approve", { p_version_id: versao, p_kind: "medical", p_note: "ok" });
@@ -275,7 +275,7 @@ describe("Publicar ao aluno: aprovação médica + editorial + portão de atuali
       await sql(`select public.ch_worker_save_render($1::jsonb)`, [JSON.stringify({ material_id: m.id, format: "pdf", storage_path: `renders/${m.id}.pdf`, sha256: sha(m.id), template_version: "t", brand_version: "b", material_hash: m.content_hash, check_result: { ok: true } })]);
   };
 
-  it("com tudo aprovado, o portão em 'bloqueia' e o tema sem dossiê: não publica; com o dossiê conferido, publica; só administrador", async () => {
+  it("com tudo aprovado a tela segue o modo geral do portão: desligado não exige, bloqueia trava, só avisar publica com o motivo; só administrador", async () => {
     await rpc(EDITOR, "app_ch_submit_for_review", { p_version_id: versao });
     // afirmações com dose, tempo ou via esperam a conferência médica: editor e aluno não conferem; administrador e revisor da área sim
     const criticas = (await sql(`select c.id from public.ch_claims c join public.ch_unit_claims uc on uc.claim_id = c.id where uc.unit_version_id = $1 and cardinality(c.critical_kinds) > 0 and c.critical_checked_by is null order by c.id`, [versao])).map((x) => x.id);
@@ -288,27 +288,35 @@ describe("Publicar ao aluno: aprovação médica + editorial + portão de atuali
     for (const n of [1, 2, 3, 4, 5, 6]) await rpc(ADMIN, "app_ch_review_decide", { p_version_id: versao, p_n: n, p_decision: "de_acordo" });
     await prepararParaPublicar();
     expect((await sql(`select status from public.ch_unit_versions where id = $1`, [versao]))[0].status).toBe("approved");
-    // portão DESLIGADO (o padrão): a tela de Unidades publica mesmo assim? Não: pede o portão em ordem, qualquer que seja o modo
-    expect((await rpc(ADMIN, "app_ch_unit_overview", { p_version_id: versao })).portao).toMatchObject({ modo: "desligado", status: "sem_dossie" });
-    await expect(rpc(ADMIN, "app_ch_unit_publish", { p_version_id: versao, p_options: { confirm_similar: true } })).rejects.toThrow(/Portão de atualidade da Vigilância.*sem dossiê/);
+    // decisão do dono (14/10/2026): a tela de Unidades SEGUE o modo geral do portão, sem exigência própria
+    // 'desligado' (o padrão): o tema sem dossiê não segura nada
+    const desl = await rpc(ADMIN, "app_ch_unit_overview", { p_version_id: versao });
+    expect(desl.portao.modo).toBe("desligado");
+    expect(desl.portao.status).not.toBe("ok");
+    expect(desl.publicacao.problemas).toEqual([]);
+    expect(desl.pode.publicar).toBe(true);
+    // 'bloqueia': o tema fora de "ok" trava, pelas duas portas
     await rpc(ADMIN, "app_admin_vigilance_set_gate", { p_mode: "bloqueia" });
     const o = await rpc(ADMIN, "app_ch_unit_overview", { p_version_id: versao });
-    expect(o.portao).toMatchObject({ modo: "bloqueia", status: "sem_dossie" });
+    expect(o.portao.modo).toBe("bloqueia");
+    expect(o.portao.status).not.toBe("ok");
     expect(o.publicacao.problemas.join(" ")).toMatch(/Vigilância científica/);
+    expect(o.pode.publicar).toBe(false);
     await expect(rpc(ADMIN, "app_ch_publish", { p_version_id: versao, p_options: { confirm_similar: true } })).rejects.toThrow(/Vigilância científica/);
+    await expect(rpc(ADMIN, "app_ch_unit_publish", { p_version_id: versao, p_options: { confirm_similar: true } })).rejects.toThrow(/Vigilância científica/);
     for (const uid of [EDITOR, REVISOR, ALUNO, null]) for (const fn of ["app_ch_publish", "app_ch_unit_publish"]) await expect(rpc(uid, fn, { p_version_id: versao, p_options: {} })).rejects.toThrow();
     expect((await sql(`select count(*)::int n from public.ch_publications`))[0].n).toBe(0);
-    // dossiê conferido com a fonte principal vigente: portão ok
-    const guia = (await sql(`select id from public.ch_sources where url like '%guia-de-vigilancia-em-saude-volume-2%'`))[0].id;
-    await rpc(ADMIN, "app_admin_topic_save", { p_theme_node_id: tema, p_keywords: ["tuberculose"], p_max_age_days: 90 });
-    await rpc(ADMIN, "app_admin_topic_set_source", { p_theme_node_id: tema, p_source_id: guia, p_role: "principal" });
-    await rpc(ADMIN, "app_admin_topic_verified", { p_theme_node_id: tema, p_note: "Fontes vigentes conferidas em teste." });
-    const ok = await rpc(ADMIN, "app_ch_unit_overview", { p_version_id: versao });
-    expect(ok.portao.status).toBe("ok");
-    expect(ok.publicacao.problemas).toEqual([]);
-    expect(ok.pode.publicar).toBe(true);
+    // 'aviso': publica e devolve o motivo
+    await rpc(ADMIN, "app_admin_vigilance_set_gate", { p_mode: "aviso" });
+    const av = await rpc(ADMIN, "app_ch_unit_overview", { p_version_id: versao });
+    expect(av.portao.modo).toBe("aviso");
+    expect(av.portao.status).not.toBe("ok");
+    expect(av.pode.publicar).toBe(true);
     const pub = await rpc(ADMIN, "app_ch_unit_publish", { p_version_id: versao, p_options: { confirm_similar: true } });
     expect(pub.content_hash).toBeTruthy();
+    expect(pub.portao.modo).toBe("aviso");
+    expect(pub.portao.status).not.toBe("ok");
+    expect((pub.portao.motivos ?? []).length).toBeGreaterThan(0);
     expect((await sql(`select status from public.ch_unit_versions where id = $1`, [versao]))[0].status).toBe("published");
   });
 

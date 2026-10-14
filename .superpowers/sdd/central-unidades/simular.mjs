@@ -1,6 +1,6 @@
 // Central › Unidades: simula a colagem do pacote do dono (~/Downloads/publicacao-staziamed-2026-10-13-central-unidades) num banco PGlite.
 // Estado de partida (ordem do LEIA-ME): as migrações do ramo ATÉ a 9960 (rodada 2 e vigilância) + o pacote aula-gr001 do dono (v2 colada de verdade)
-// + o pacote vigilancia-tema do dono (que refaz a casca do portão por cima da aula). Depois: 0-CONFERIR (FALTA), 1-Central-Unidades.sql (2 vezes),
+// + o pacote vigilancia-e-portao do dono (9940, 9941, 9960, 9990; refaz a casca do portão por cima da aula). Depois: 0-CONFERIR (FALTA), 1-Central-Unidades.sql (2 vezes),
 // 0-CONFERIR (OK), 2-Atualizar-GR-001-v3.sql (2 vezes). Confere: colar 2 vezes não muda nada (estrutura, permissões e dados); visitante sem função nova;
 // aluno só ganha funções que o recusam; GR-001 nunca fica aprovada nem publicada; os 0-CONFERIR anteriores continuam OK.
 // Uso: node simular.mjs
@@ -41,12 +41,21 @@ for (const f of fontes) {
 }
 await db.exec(`select set_config('request.jwt.claims', '', false)`);
 const aula = await cola(DL + "publicacao-staziamed-2026-10-13-aula-gr001/1-Importar-aula.sql"); ok(/^OK/.test(aula), `aula GR-001 (pacote do dono, v2): ${aula.slice(0, 110)}`);
-const vig = await cola(DL + "publicacao-staziamed-2026-10-13-vigilancia-tema/1-Vigilancia.sql"); ok(/^OK/.test(vig), `vigilância (pacote do dono): ${vig.slice(0, 100)}`);
+const vig = await cola(DL + "publicacao-staziamed-2026-10-14-vigilancia-e-portao/1-Vigilancia.sql"); ok(/^OK/.test(vig), `vigilância (pacote do dono): ${vig.slice(0, 100)}`);
 const c0aula = await cola(DL + "publicacao-staziamed-2026-10-13-aula-gr001/0-CONFERIR.sql"); ok(/^OK/.test(c0aula), `0-CONFERIR da aula: ${c0aula.slice(0, 80)}`);
-const c0vig = await cola(DL + "publicacao-staziamed-2026-10-13-vigilancia-tema/0-CONFERIR.sql"); ok(/^OK/.test(c0vig), `0-CONFERIR da vigilância: ${c0vig.slice(0, 80)}`);
+const c0vig = await cola(DL + "publicacao-staziamed-2026-10-14-vigilancia-e-portao/0-CONFERIR.sql"); ok(/^OK/.test(c0vig), `0-CONFERIR da vigilância: ${c0vig.slice(0, 80)}`);
 const v2 = (await q(`select v.id, v.status, v.version from public.ch_unit_versions v order by v.created_at desc limit 1`))[0];
 ok(v2.status === "awaiting_review", `GR-001 v2 aguardando revisão (versão ${v2.version})`);
 
+console.log("== 0b) 0-CONFERIR sem erro em bancos incompletos (só base; e migrações só até a 9900, sem vigilância nem aula)");
+for (const [nome, ate] of [["banco só com a base", null], ["migrações até 9900", "20261003009900"]]) {
+  const d2 = new PGlite(); await d2.waitReady;
+  await d2.exec(ler(path.join(WT, "supabase/tests/bootstrap.sql")));
+  if (ate) for (const f of fs.readdirSync(path.join(WT, "supabase/migrations")).filter((f) => f.endsWith(".sql") && !f.startsWith("._") && f <= ate + "z").sort()) await d2.exec(ler(path.join(WT, "supabase/migrations", f)));
+  let msg; try { msg = ultima(await d2.exec(ler(PK + "0-CONFERIR.sql"))); } catch (e) { msg = "ERRO: " + String(e.message).slice(0, 300); }
+  ok(/^FALTA:/.test(msg), `${nome}: ${msg.slice(0, 160)}`);
+  await d2.close();
+}
 console.log("== 1) 0-CONFERIR antes");
 const c0 = await cola(PK + "0-CONFERIR.sql"); ok(/^FALTA/.test(c0), `0-CONFERIR antes: ${c0.slice(0, 200)}`);
 const A0 = await acessos(); const R0 = await retrato(db);
@@ -97,7 +106,7 @@ ok(ruido.length === 0, `colar 2 vezes não muda nada além do registro: ${ruido.
 ok((await q(`select count(*)::int n from public.ch_unit_versions`))[0].n === 1, "a v2 ainda não aprovada foi atualizada para a v3 na mesma versão; a 2ª colagem não criou versão nova");
 
 console.log("== 6) os 0-CONFERIR anteriores continuam OK");
-const cv = await cola(DL + "publicacao-staziamed-2026-10-13-vigilancia-tema/0-CONFERIR.sql"); ok(/^OK/.test(cv), `vigilância: ${cv.slice(0, 90)}`);
+const cv = await cola(DL + "publicacao-staziamed-2026-10-14-vigilancia-e-portao/0-CONFERIR.sql"); ok(/^OK/.test(cv), `vigilância: ${cv.slice(0, 90)}`);
 const ca = await cola(DL + "publicacao-staziamed-2026-10-13-aula-gr001/0-CONFERIR.sql");
 ok(/^FALTA: a aula GR-001 na Central/.test(ca), `0-CONFERIR antigo da aula (confere o texto da v2): ${ca.slice(0, 70)} — esperado depois do arquivo 2; o novo mostra a v3`);
 console.log(erros ? `\nRESULTADO: ${erros} ERRO(S)` : "\nRESULTADO: tudo OK");

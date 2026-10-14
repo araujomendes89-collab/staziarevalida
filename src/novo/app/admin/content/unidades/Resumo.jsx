@@ -40,6 +40,11 @@ export function ResumoAprovacao({ versionId, tipo, nota, busy, onConfirm, onCanc
         </li>
         <li>Materiais que o aluno vê: {(data.materiais_aluno ?? []).map((x) => x.title).join("; ") || "nenhum"}.</li>
       </ul>
+      {tipo === "medical" && a.criticas > 0 && (
+        <Banner tone="info" title="Decisão a revisar: quem confere dose, via, tempo e frequência">
+          O administrador também pode conferir as afirmações com dose, via, tempo ou frequência (antes só o revisor médico da área). Automação, IA e processamento nunca conferem nem aprovam.
+        </Banner>
+      )}
       {faltaFicha && <Banner tone="warning">Marque "de acordo" nas decisões da ficha antes de aprovar.</Banner>}
       <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>
         Fica registrado: quem aprovou, data e hora, a identificação exata desta versão e a ficha das decisões. Qualquer mudança depois derruba a aprovação. Esta aprovação não publica nada.

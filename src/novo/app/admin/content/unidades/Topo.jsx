@@ -100,7 +100,7 @@ export function passosDoCaminho(o) {
       id: "afirmacoes",
       titulo: `${a.validadas} afirmações validadas`,
       estado: a.total > 0 && a.sem_validacao === 0 && a.criticas_sem_conferencia === 0 ? "feito" : "aviso",
-      texto: `Cada uma com fonte, página e citação (lista só da equipe, abaixo).${a.criticas_sem_conferencia ? ` ${a.criticas_sem_conferencia} com dose, tempo ou via ainda esperam a conferência do administrador ou do revisor médico.` : ""}`,
+      texto: `Cada uma com fonte, página e citação (lista só da equipe, abaixo).${a.criticas_sem_conferencia ? ` ${a.criticas_sem_conferencia} com dose, tempo ou via ainda esperam a conferência do administrador ou do revisor médico (decisão a revisar: o administrador pode conferir; automação e IA nunca).` : ""}`,
     },
     {
       id: "medica",
@@ -119,10 +119,16 @@ export function passosDoCaminho(o) {
     {
       id: "portao",
       titulo: "Portão de atualidade da vigilância",
-      estado: portaoOk ? "feito" : "aviso",
+      // Segue o MODO GERAL do portão (Vigilância científica): desligado não segura; só avisar mostra o motivo e deixa publicar; bloquear segura.
+      estado: portaoOk ? "feito" : g.modo === "bloqueia" ? "aviso" : g.modo === "aviso" ? "aviso" : "feito",
+      naoTrava: !portaoOk && g.modo !== "bloqueia",
       texto: portaoOk
         ? `As fontes do tema estão na versão mais recente${g.verificado_em ? ` (dossiê conferido em ${dataCurta(g.verificado_em)})` : ""}.`
-        : `Tema ${nomeStatus[g.status] ?? "sem situação"}. ${motivos} Para publicar, o tema precisa estar em ordem (Vigilância científica › Temas).${g.modo === "desligado" ? " O modo geral do portão está desligado, mas a tela de Unidades exige o portão em ordem mesmo assim." : ""}`,
+        : g.modo === "bloqueia"
+          ? `Tema ${nomeStatus[g.status] ?? "sem situação"}. ${motivos} O portão está em "Bloquear": para publicar, o tema precisa estar em ordem (Vigilância científica › Temas).`
+          : g.modo === "aviso"
+            ? `Atenção: tema ${nomeStatus[g.status] ?? "sem situação"}. ${motivos} O portão está em "Só avisar": isto não impede a publicação.`
+            : "O portão de atualidade está desligado na Vigilância científica: não segura a publicação desta unidade.",
     },
   ];
   const publicavel = o.pode?.publicar === true;
@@ -132,14 +138,14 @@ export function passosDoCaminho(o) {
     estado: o.publicacao.no_ar ? "feito" : "pendente",
     texto: o.publicacao.no_ar ? `No ar desde ${dataHora(o.publicacao.em)}.` : publicavel ? "Tudo pronto: o administrador pode publicar." : "Bloqueado até os passos acima estarem feitos.",
   });
-  const primeiro = passos.findIndex((p) => p.estado !== "feito");
+  const primeiro = passos.findIndex((p) => p.estado !== "feito" && !p.naoTrava);
   return passos.map((p, i) => ({ ...p, agora: i === primeiro }));
 }
 
 export function CaminhoAtePublicar({ o, onPublish }) {
   const passos = passosDoCaminho(o);
   const podePublicar = o.pode?.publicar === true && !o.publicacao.no_ar;
-  const falta = passos.filter((p) => p.estado !== "feito" && p.id !== "publicar").map((p) => p.titulo.toLowerCase());
+  const falta = passos.filter((p) => p.estado !== "feito" && !p.naoTrava && p.id !== "publicar").map((p) => p.titulo.toLowerCase());
   const outros = (o.publicacao.problemas ?? []).filter((p) => !/Vigilância científica/.test(p));
   return (
     <section className="sm-card" style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14 }} aria-label="Caminho até publicar">

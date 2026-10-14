@@ -36,6 +36,7 @@ declare
   v_extra text := '';
   v_sig text;
   v_ver record;
+  v_modo text := '?';
 begin
   for f in select * from (values
     ('app_ch_unit_overview_list', ''), ('app_ch_unit_overview', 'uuid'), ('app_ch_unit_materials', 'uuid'), ('app_ch_unit_material_insert', 'uuid, jsonb'),
@@ -48,6 +49,10 @@ begin
     elsif has_function_privilege('anon', to_regprocedure(v_sig), 'execute') or not has_function_privilege('authenticated', to_regprocedure(v_sig), 'execute') then
       v_falta := v_falta || ('a função ' || f.nome || ' só para quem entrou (visitante não executa)');
     end if;
+  end loop;
+  -- tabelas de base de outros pacotes: se não existem, só diz FALTA (nada abaixo as consulta antes desta conferência)
+  for f in select * from (values ('ch_units'), ('ch_unit_versions'), ('ch_approvals'), ('ch_audit'), ('ch_vigilance_config')) as t (nome) loop
+    if to_regclass('public.' || f.nome) is null then v_falta := v_falta || ('a tabela de base ' || f.nome || ' (cole antes os pacotes rodada2, aula-gr001 e vigilancia-e-portao)'); end if;
   end loop;
   for f in select * from (values ('ch_unit_materials'), ('ch_review_sheets'), ('ch_review_decisions'), ('lesson_notes')) as t (nome) loop
     if to_regclass('public.' || f.nome) is null then v_falta := v_falta || ('a tabela ' || f.nome);
@@ -63,11 +68,14 @@ begin
   if to_regprocedure('public.app_ch_approve(uuid, text, text)') is null or position('ch_can_approve_medical' in (select prosrc from pg_proc where oid = to_regprocedure('public.app_ch_approve(uuid, text, text)'))) = 0 then
     v_falta := v_falta || 'a aprovação médica do administrador ou revisor (função app_ch_approve nova)'::text;
   end if;
-  if not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ch_approvals' and column_name = 'sheet') then v_falta := v_falta || 'a coluna sheet em ch_approvals'::text; end if;
+  if to_regclass('public.ch_approvals') is not null and not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ch_approvals' and column_name = 'sheet') then v_falta := v_falta || 'a coluna sheet em ch_approvals'::text; end if;
   if to_regprocedure('public.app_ch_import_lesson_package(jsonb)') is null or to_regprocedure('public.ch_topic_freshness(uuid)') is null then
-    v_falta := v_falta || 'a função de importação de aula pronta e o portão da vigilância (cole antes os pacotes aula-gr001 e vigilancia-tema)'::text;
+    v_falta := v_falta || 'a função de importação de aula pronta e o portão da vigilância (cole antes os pacotes aula-gr001 e vigilancia-e-portao)'::text;
   end if;
   if cardinality(v_falta) = 0 then
+    if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'ch_vigilance_config' and column_name = 'topic_gate') then
+      execute 'select topic_gate from public.ch_vigilance_config where id' into v_modo;
+    end if;
     select v.version, v.status, v.id into v_ver from public.ch_unit_versions v join public.ch_units u on u.id = v.unit_id
      where exists (select 1 from public.ch_audit a where a.action = 'unit.import' and a.target = v.id::text and a.details ->> 'codigo' = '${codigo}') order by v.created_at desc, v.version desc limit 1;
     if v_ver.id is not null then
@@ -75,6 +83,7 @@ begin
         case when exists (select 1 from public.ch_review_sheets s where s.unit_version_id = v_ver.id) then 'importada' else 'ainda não importada (opcional: 2-Atualizar-GR-001-v3.sql)' end ||
         ', ' || (select count(*) from public.ch_approvals a where a.unit_version_id = v_ver.id and a.invalidated_at is null) || ' aprovações válidas';
     else v_extra := '; ${codigo} ainda não está na Central'; end if;
+    v_extra := v_extra || '; portão de atualidade no modo "' || v_modo || '" (Publicar da unidade segue este modo)';
     insert into _unidades_conferir values ('OK: Central › Unidades no banco (16 funções, 4 tabelas fechadas, aprovação médica do administrador ou revisor, PDFs só da equipe)' || v_extra);
   else
     insert into _unidades_conferir values ('FALTA: ' || array_to_string(v_falta, '; ') || '.');
@@ -149,7 +158,7 @@ select 'OK: ${pacote.codigo} v3 na Central, aguardando revisão; ficha do reviso
 }
 
 export function leiaMe(pacote, avisos, ficha) {
-  return `STAZIAMED · CENTRAL DE CONTEÚDO › UNIDADES (13/10/2026)
+  return `STAZIAMED · CENTRAL DE CONTEÚDO › UNIDADES (14/10/2026)
 =====================================================================
 NADA DISTO FOI COLADO NO BANCO DE VERDADE. Foi ensaiado numa cópia simulada do banco do ramo (PGlite), colado 2 vezes sem mudar nada.
 Ramo: central-unidades. Sem IA e sem chave nenhuma.
@@ -162,9 +171,17 @@ O QUE É
 REGRAS QUE O BANCO GARANTE (não só a tela)
   - Aprovação médica: só ADMINISTRADOR ou REVISOR MÉDICO da área. Editor, aluno, visitante, processamento e IA nunca. Grava quem, quando,
     a identificação exata da versão, a ficha das decisões e o resumo. Qualquer mudança depois derruba a aprovação.
-  - A conferência de dose, via, tempo e frequência (CC12) também é do administrador ou do revisor da área (antes só do revisor).
-  - Aprovação médica, aprovação editorial e publicação são separadas. Publicar pela tela exige aprovação médica + editorial + portão de
-    atualidade da vigilância EM ORDEM, mesmo com o portão geral "desligado".
+  - Aprovação médica, aprovação editorial e publicação são separadas. Publicar pela tela exige aprovação médica + editorial, e depois
+    SEGUE O MODO GERAL do portão de atualidade (Vigilância científica): "desligado" não exige nada do portão; "só avisar" publica e mostra o
+    motivo na tela; "bloquear" trava o tema que não estiver "em dia". A tela de Unidades NÃO tem mais exigência própria (decisão sua: "não precisa").
+
+DECISÕES TOMADAS PELO ASSISTENTE (14/10/2026) — REVISE SE DISCORDAR
+  1. Portão na tela de Unidades: tirei a exigência fixa, como você disse. Para voltar a exigir sempre, é só pedir (uma linha no banco).
+  2. Conferência de dose, via, tempo e frequência (CC12): você disse "não precisa" e pediu que eu resolvesse. MANTIVE o administrador podendo
+     conferir (além do revisor médico da área), porque você é o médico que aprova a GR-001 e, sem isso, não conseguiria conferir as afirmações
+     com dose, tempo ou via para aprovar. NÃO mudei a regra de segurança: processamento, IA e automação NUNCA conferem nem aprovam
+     (sem usuário = recusado; editor e aluno também). A tela mostra esse aviso ("Decisão a revisar") no resumo da aprovação médica.
+     Se preferir só o revisor da área, é uma troca pequena na migração 9980 (função app_ch_confirm_critical).
   - PDF interativo, PDF da A4, card de feed, story e flashcards A6 são SÓ DA EQUIPE (regra no banco). O aluno nunca baixa PDF.
   - Áudio e vídeo só por link de player (YouTube ou Vimeo) dentro do sistema. Envio de arquivo de áudio/vídeo: ETAPA FUTURA (exige
     armazenamento protegido com leitura em pedaços e sem link direto para o arquivo).
@@ -172,17 +189,20 @@ REGRAS QUE O BANCO GARANTE (não só a tela)
   - Nenhuma referência no texto que o aluno lê.
 
 ORDEM DE COLAGEM (editor SQL do Supabase, papel "postgres"; cole o arquivo INTEIRO > Run; se perguntar sobre "operação destrutiva", pode confirmar)
-  ANTES, nesta ordem: pacotes rodada2, aula-gr001 e vigilancia-tema (já ensaiados).
-  1. 0-CONFERIR.sql                 -> antes: "FALTA: ..." (normal)
+  JÁ COLADOS NA PRODUÇÃO (conferido na ordem de hoje): rodada2, aula-gr001 (9950), vigilancia-e-portao (9940, 9941, 9960, 9990) e Grandes Temas (9970).
+  Este pacote usa as migrações 9980 e 9981 (não colidem com nenhuma das de cima). Não cola nada das anteriores de novo.
+  1. 0-CONFERIR.sql                 -> antes: "FALTA: ..." (normal; nunca dá erro, mesmo sem nada colado)
   2. 1-Central-Unidades.sql         -> "OK: Central > Unidades colada ..."
-  3. 0-CONFERIR.sql                 -> tem que começar com "OK:"
-  4. (opcional) 2-Atualizar-GR-001-v3.sql -> cadastra a Nota Informativa 2/2026 na biblioteca (nível A), importa a aula v3 e a ficha do revisor.
-     A aula entra "aguardando revisão". NÃO aprova nem publica. Só rode se quiser que a v3 seja a versão em revisão.
+  3. 0-CONFERIR.sql                 -> tem que começar com "OK:" e diz em que modo está o portão de atualidade
+  4. (opcional) 2-Atualizar-GR-001-v3.sql -> cadastra a Nota Informativa 2/2026 na biblioteca (nível A), troca a GR-001 que está na Central
+     (v2: 42 afirmações, aguardando revisão) pela v3 (86 afirmações; corrige TB01, TB10, TB28 e TB40) na MESMA versão e importa a ficha do revisor.
+     A aula continua "aguardando revisão". NÃO aprova nem publica. Só rode se quiser que a v3 seja a versão em revisão.
   Pode colar qualquer arquivo de novo: não duplica nada. Se aparecer ERRO, PARE e mostre ao Claude.
   ATENÇÃO: depois do arquivo 2, o 0-CONFERIR do pacote aula-gr001 passa a dizer "FALTA", porque ele confere o texto da v2 e a versão agora é a v3.
   É esperado. O 0-CONFERIR deste pacote já mostra a situação da GR-001 (versão, ficha, aprovações).
 
 SOBRE A AULA v3 (${pacote.codigo})
+  - Conteúdo: pasta final-v3 do agente de conteúdo (texto, afirmações e questões idênticos à final-v3-conteudo; a final-v3 traz também o manifesto das imagens e PDFs).
   - ${pacote.afirmacoes.length} afirmações, ${pacote.aula.sections.length} seções, ${pacote.flashcards.cards.length} flashcards, ${pacote.questoes.items.length} questões de fixação, ${pacote.arquivos.length} arquivos (imagens e PDFs, só referências; o envio dos arquivos é o script subir-arquivos.mjs, só com a sua autorização).
   - Ficha do revisor: ${ficha.decisoes.length} decisões, ${ficha.pontos.length} pontos a conferir, ${ficha.fixacao.length} notas das questões, ${ficha.fora.length} itens fora da aula.
 ${avisos.length ? "  - AVISOS PARA CONFERIR (do pacote da aula):\n" + avisos.map((a) => `      * ${a}`).join("\n") + "\n" : ""}  - A v3 cita a Nota Informativa 2/2026 (BPaLM), que NÃO estava na biblioteca: o arquivo 2 a cadastra (nível A) pelo endereço oficial.

@@ -73,12 +73,18 @@ describe("Pacote do dono", () => {
     expect(c).toMatch(/'OK: Central/);
     expect(c).toMatch(/'FALTA: '/);
     expect(c).toMatch(/ch_unit_materials_so_equipe/);
+    // sem erro quando as tabelas de base ainda não existem: confere a existência antes de consultá-las
+    expect(c.indexOf("'ch_audit'")).toBeLessThan(c.indexOf("from public.ch_audit a"));
+    expect(c).toMatch(/a tabela de base/);
     expect(c).not.toMatch(/\b(insert into public|update public|delete from public|drop |alter )/i);
   });
   it("o LEIA-ME diz a ordem, a etapa futura do áudio/vídeo e que nada foi colado", () => {
     const t = leiaMe(pacote, [], fx("ficha-revisor-GR-001-v3.json"));
     expect(t).toMatch(/NADA DISTO FOI COLADO/);
-    expect(t).toMatch(/rodada2, aula-gr001 e vigilancia-tema/);
+    expect(t).toMatch(/rodada2, aula-gr001 \(9950\), vigilancia-e-portao/);
+    expect(t).toMatch(/SEGUE O MODO GERAL do portão/);
+    expect(t).toMatch(/DECISÕES TOMADAS PELO ASSISTENTE/);
+    expect(t).toMatch(/NUNCA conferem nem aprovam/);
     expect(t).toMatch(/ETAPA FUTURA/);
     expect(t).toMatch(/administrador ou revisor médico|ADMINISTRADOR ou REVISOR MÉDICO/);
   });

@@ -1,13 +1,16 @@
 == 0) estado de partida: migrações do ramo até a 9960, aula GR-001 (pacote do dono) e vigilância (pacote do dono)
   ok   aula GR-001 (pacote do dono, v2): OK: aula GR-001 importada: versão 1, aguardando revisão médica e editorial; 42 afirmações com evidência (42 no
-  ok   vigilância (pacote do dono): OK: Vigilância científica por tema colada (2 temas com dossiê, 7 páginas-índice, portão desligado)
+  ok   vigilância (pacote do dono): OK: Vigilância científica por tema e portão de atualidade colados (100 dossiês dos 100 temas, 2 tema
   ok   0-CONFERIR da aula: OK: aula GR-001 na Central: versão 1, aguardando revisão médica e editorial (na 
   ok   0-CONFERIR da vigilância: OK: Vigilância científica no banco: 0 fontes vigiadas (0 todo dia), 0 com DOI pa
   ok   GR-001 v2 aguardando revisão (versão 1)
+== 0b) 0-CONFERIR sem erro em bancos incompletos (só base; e migrações só até a 9900, sem vigilância nem aula)
+  ok   banco só com a base: FALTA: a função app_ch_unit_overview_list; a função app_ch_unit_overview; a função app_ch_unit_materials; a função app_ch_unit_material_insert; a função app_ch_
+  ok   migrações até 9900: FALTA: a função app_ch_unit_overview_list; a função app_ch_unit_overview; a função app_ch_unit_materials; a função app_ch_unit_material_insert; a função app_ch_
 == 1) 0-CONFERIR antes
   ok   0-CONFERIR antes: FALTA: a função app_ch_unit_overview_list; a função app_ch_unit_overview; a função app_ch_unit_materials; a função app_ch_unit_material_insert; a função app_ch_unit_material_retire; a função app_ch_un
 == 2) 1-Central-Unidades.sql, 1ª vez
-  ok   OK: Central › Unidades colada (16 funções, 4 tabelas fechadas, aprovação médica do administrador ou revisor, PDFs só da equipe); GR-001 na Central: versão 1, awaiting_review, ficha do revisor ainda não importada (opciona (17 ms)
+  ok   OK: Central › Unidades colada (16 funções, 4 tabelas fechadas, aprovação médica do administrador ou revisor, PDFs só da equipe); GR-001 na Central: versão 1, awaiting_review, ficha do revisor ainda não importada (opciona (19 ms)
   ok   0-CONFERIR depois: OK: Central › Unidades no banco (16 funções, 4 tabelas fechadas, aprovação médica do administrador ou revisor, PDFs só da equipe); GR-001 na Central: versão 1, awaiting_review, ficha do revisor ainda não importada (opcional: 2-Atualizar-GR-001-v3.sql), 0 aprov
   ok   visitante: nenhuma função nova
      visitante perdeu o direito de executar (só aperto de segurança; já era recusado dentro): app_ch_approve(uuid,text,text)
@@ -25,13 +28,13 @@
   ok   OK: Central › Unidades colada (16 funções, 4 tabelas fechadas, aprovação médica do administrador ou revisor, PDFs só da 
   ok   colar 2 vezes não muda nada: 0 diferenças (estrutura, permissões e dados)
 == 4) 2-Atualizar-GR-001-v3.sql (opcional), 1ª vez
-  ok   OK: GR-001 v3 na Central, aguardando revisão; ficha do revisor criada (6 decisões). Nada aprovado, nada publicado. (97 ms)
+  ok   OK: GR-001 v3 na Central, aguardando revisão; ficha do revisor criada (6 decisões). Nada aprovado, nada publicado. (103 ms)
   ok   GR-001 v3 aguardando revisão (versão 1, awaiting_review), nunca aprovada
   ok   só a Nota Informativa 2/2026 entrou na biblioteca (nível A)
   ok   nenhuma aprovação nem publicação
   ok   nenhuma aula publicada para o aluno
   ok   ficha do revisor importada na versão
-  ok   0-CONFERIR: OK: Central › Unidades no banco (16 funções, 4 tabelas fechadas, aprovação médica do administrador ou revisor, PDFs só da equipe); GR-001 na Central: versão 1, awaiting_review, ficha do revisor importada, 0 aprovações válidas
+  ok   0-CONFERIR: OK: Central › Unidades no banco (16 funções, 4 tabelas fechadas, aprovação médica do administrador ou revisor, PDFs só da equipe); GR-001 na Central: versão 1, awaiting_review, ficha do revisor importada, 0 aprovações válidas; portão de atualidade no modo "desligado" (Publicar da unidade segue este 
 == 5) 2-Atualizar-GR-001-v3.sql, 2ª vez
   ok   OK: GR-001 v3 na Central, aguardando revisão; ficha do revisor sem_mudanca (6 decisões). Nada aprovado, nada publicado.
   ok   colar 2 vezes não muda nada além do registro: 0 diferenças (estrutura, permissões e dados); registro/fila: nada
