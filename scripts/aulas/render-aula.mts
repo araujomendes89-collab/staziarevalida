@@ -347,7 +347,25 @@ try {
   fs.writeFileSync(path.join(OUT, "flashcards.json"), JSON.stringify(flashJson, null, 2));
   if (fixJson.items) fixJson.items = fixJson.items.map((q: any) => ({ ...q, stem: limpar(q.stem), comments: (q.comments ?? []).map((c: any) => ({ ...c, text: limpar(c.text) })) }));
   fs.writeFileSync(path.join(OUT, "fixacao.json"), JSON.stringify(fixJson, null, 2));
-  for (const f of ["card_resumo.json", "visual_briefing.json"]) if (ler(f)) fs.copyFileSync(path.join(SRC, f), path.join(OUT, f));
+  // card_resumo.json e visual_briefing.json levam os comandos realmente usados nas peças (sem fonte, com tema_cor)
+  const usado = (nome: string) => (fs.existsSync(path.join(OUT, "comandos", `${nome}.txt`)) ? fs.readFileSync(path.join(OUT, "comandos", `${nome}.txt`), "utf8").trim() : null);
+  if (ler("card_resumo.json")) {
+    const cr = lerJson("card_resumo.json");
+    for (const [k, nome] of [["feed", `${CODIGO}-card-feed`], ["story", `${CODIGO}-card-story`]] as const) if (cr[k] && usado(nome)) cr[k].comando = usado(nome);
+    fs.writeFileSync(path.join(OUT, "card_resumo.json"), JSON.stringify(cr, null, 2));
+  }
+  if (ler("visual_briefing.json")) {
+    const vb = lerJson("visual_briefing.json");
+    const a4 = usado(`${CODIGO}-pagina-a4`);
+    if (a4) {
+      vb.comando = a4;
+      if (vb.campos && typeof vb.campos === "object") {
+        delete vb.campos.fonte;
+        if (TEMA_COR) vb.campos.tema_cor = TEMA_COR;
+      }
+    }
+    fs.writeFileSync(path.join(OUT, "visual_briefing.json"), JSON.stringify(vb, null, 2));
+  }
   // lessons_campos.json vai para a tela do aluno (Administração > Aulas): sem título nem link de diretriz (ficam internos)
   const lc = lerJson("lessons_campos.json");
   if (lc) {

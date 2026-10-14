@@ -1,0 +1,624 @@
+{
+ "visuais": {
+  "comandos": [
+   {
+    "modelo": "feed",
+    "comando": "modelo: feed\nespecialidade: clinica_medica\ntitulo: Tuberculose pulmonar\nsubtitulo: Confirmar, tratar e rastrear contatos\nselo_prova: Material StaziaMed\natualizacao: 10/2026\nresumo: Confirmar, tratar e investigar contatos são etapas de um mesmo cuidado.\ndado_chave: Tosse por três semanas ou mais\npontos_chave:\n- Caso novo: TRM-TB; cultura com TS conforme o cenário. Resistência à rifampicina: referência terciária imediatamente.\n- Esquema básico 2RHZE/4RH na Atenção Primária, com TDO e baciloscopia mensal.\n- Contato sem sintomas: PT e/ou raio X. ILTB com 3HP se elegível (não na gestação).\nilustracao.tipo: icone\nilustracao.icone: pulmao\npegadinha: O TRM-TB não acompanha o tratamento e, no retratamento, não confirma TB sozinho: pode detectar bacilo morto.\ntema_cor: GR-001",
+    "claim_ids": [
+     "TB01",
+     "TB05",
+     "TB47",
+     "TB11",
+     "TB16",
+     "TB17",
+     "TB20",
+     "TB21",
+     "TB27",
+     "TB31",
+     "TB78",
+     "TB07",
+     "TB50"
+    ]
+   },
+   {
+    "modelo": "story",
+    "comando": "modelo: story\nespecialidade: clinica_medica\ntitulo: Tuberculose pulmonar\nsubtitulo: Confirmar, tratar e rastrear contatos\nselo_prova: Material StaziaMed\natualizacao: 10/2026\nresumo: O resultado do TRM-TB decide o próximo passo.\ndado_chave: Cultura com TS conforme o fluxograma\ntabela:\n| Resultado | Conduta |\n| MTB detectado, sem resistência à R | Esquema básico + cultura com TS |\n| !alerta Resistência à R detectada | Referência terciária imediatamente |\n| MTB não detectado, com sintomas | Cultura com TS e continuar investigação |\nilustracao.tipo: icone\nilustracao.icone: pulmao\npegadinha: O TRM-TB não acompanha o tratamento e, no retratamento, não confirma TB sozinho: pode detectar bacilo morto.\ntema_cor: GR-001",
+    "claim_ids": [
+     "TB05",
+     "TB47",
+     "TB48",
+     "TB52",
+     "TB10",
+     "TB11",
+     "TB12",
+     "TB07",
+     "TB50"
+    ]
+   },
+   {
+    "modelo": "a4",
+    "titulo": "Fluxograma de investigação da tosse persistente",
+    "comando": "modelo: a4\nespecialidade: clinica_medica\ntitulo: Tosse persistente: investigar TB pulmonar\nsubtitulo: Do sintomático respiratório ao TRM-TB\nselo_prova: Material StaziaMed\natualizacao: 10/2026\nresumo: Suspeitou, pediu TRM-TB; o resultado decide o próximo passo.\nresumo_paragrafo: Tosse por três semanas ou mais (qualquer duração em cinco grupos de risco): investigue TB. Peça TRM-TB e raio X, que não confirma. Cultura com TS: sempre em HIV, criança e extrapulmonar; nos demais, conforme o TRM-TB. Teste de HIV a todos.\ndado_chave: TRM-TB e cultura por cenário\ntabela:\n| Resultado | Próximo passo |\n| MTB detectado, sem resistência à R | Esquema básico; reavaliar com cultura e TS |\n| !alerta Resistência à R detectada | Referência terciária já; novo TRM-TB, cultura e TS sem esperar |\n| MTB não detectado, mantém sintomas | Cultura com TS; investigar MNT e micoses |\n| MTB não detectado, sem sintomas | Excluir TB (exceto HIV, criança menor de 10 anos, extrapulmonar) |\nilustracao.tipo: icone\nilustracao.icone: pulmao\npegadinha: Retratamento: o TRM-TB não confirma TB sozinho (detecta bacilo morto) e serve para triar resistência à rifampicina; confirme com baciloscopia e/ou cultura.\ntome_nota: Cicatriz de BCG não afasta TB pulmonar.\nbloco.titulo: Depois de confirmar\nbloco.itens:\n- Esquema básico 2RHZE/4RH na Atenção Primária, com TDO\n- Baciloscopia de controle mensal; notificar o caso confirmado\n- Avaliar todos os contatos e oferecer teste de HIV\ntema_cor: GR-001",
+    "claim_ids": [
+     "TB01",
+     "TB02",
+     "TB04",
+     "TB47",
+     "TB48",
+     "TB15",
+     "TB28",
+     "TB52",
+     "TB10",
+     "TB11",
+     "TB53",
+     "TB54",
+     "TB12",
+     "TB40",
+     "TB56",
+     "TB57",
+     "TB16",
+     "TB17",
+     "TB20",
+     "TB21",
+     "TB33",
+     "TB25",
+     "TB07",
+     "TB50",
+     "TB13",
+     "TB34"
+    ]
+   }
+  ]
+ },
+ "arquivos": [
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F01-a6-frente-previa.png",
+   "sha256": "43cbaee2c16244b303f83f27fdd7741efcc9100ebfa017e2cc07f56a1c3214dd",
+   "bytes": 75468,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F01, frente: Caso novo de TB pulmonar: qual exame molecular está indicado para o diagnóstico? (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F01-a6-verso-previa.png",
+   "sha256": "1dd4710b1478c9163221e08c27035c7387c77e8b0fad3ce1d688f9df641309ad",
+   "bytes": 104646,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F01, verso. Resposta: TRM-TB (teste rápido molecular). Detecta o bacilo e faz a triagem de resistência à rifampicina no mesmo exame. Cultura com TS: sempre em HIV, criança e suspeita extrapulmonar. Nos demais, somente com TRM-TB positivo ou q… (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F01-a6.pdf",
+   "sha256": "7dbb91f5018b7bb9272e325c368152c2b5fead75dc305d4d49ce922230b2309b",
+   "bytes": 701055,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F01-digital-frente.png",
+   "sha256": "76e98dd8f92e7fb10443f953ca4dd6e932454d96c815d8e309124591ee6a5cf6",
+   "bytes": 336163,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F01, frente: Caso novo de TB pulmonar: qual exame molecular está indicado para o diagnóstico?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F01-digital-verso.png",
+   "sha256": "1ab87dbe61015defa1ab5c405a833a158c94d7055a3925c849c962fbf7b5c04f",
+   "bytes": 462744,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F01, verso. Resposta: TRM-TB (teste rápido molecular). Detecta o bacilo e faz a triagem de resistência à rifampicina no mesmo exame. Cultura com TS: sempre em HIV, criança e suspeita extrapulmonar. Nos demais, somente com TRM-TB positivo ou q…",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F01-digital.pdf",
+   "sha256": "209e44bf4aa04ef0362c0127eb09e4126a0f9e8fb15512721138a537bc14a33d",
+   "bytes": 657520,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F02-a6-frente-previa.png",
+   "sha256": "afab6a7fdbca51a1af6b7ddb09d47facb269f01df2b47a353912a5d9b6c33231",
+   "bytes": 73991,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F02, frente: Quanto tempo de tosse define o sintomático respiratório na população geral? (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F02-a6-verso-previa.png",
+   "sha256": "33502ac591ac77fa6e9963c1e5156d7baf800927dcd1ae3c1341f732a398d116",
+   "bytes": 102741,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F02, verso. Resposta: Três semanas ou mais. Febre vespertina, sudorese noturna, emagrecimento e cansaço são outros sinais sugestivos. Privados de liberdade, profissionais de saúde, pessoas com HIV, situação de rua e indígenas: tosse de qualqu… (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F02-a6.pdf",
+   "sha256": "1b5f0727242ea76dfa2fb5b8dd045fb08bb95f74b6a9a814a7614d33f143bb85",
+   "bytes": 672261,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F02-digital-frente.png",
+   "sha256": "49f0a1ac527bf041328e8bdc58691434f7ce9ce7efcf5ec6046b32978eda2ff6",
+   "bytes": 331246,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F02, frente: Quanto tempo de tosse define o sintomático respiratório na população geral?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F02-digital-verso.png",
+   "sha256": "4f72bd6bd3ca916752aa2d3fdf3cb215f32345d59bea657620fd4268808266a4",
+   "bytes": 433733,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F02, verso. Resposta: Três semanas ou mais. Febre vespertina, sudorese noturna, emagrecimento e cansaço são outros sinais sugestivos. Privados de liberdade, profissionais de saúde, pessoas com HIV, situação de rua e indígenas: tosse de qualqu…",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F02-digital.pdf",
+   "sha256": "0fb0aa2f2886b9597e3590f4b604ea72fd61ac8d4c15e795884de616c4078022",
+   "bytes": 640033,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F03-a6-frente-previa.png",
+   "sha256": "e6bc5130cf3f0c99d11e70114746115529623695bd1e8316d61946d3f2e8ef77",
+   "bytes": 72749,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F03, frente: Pessoa em situação de rua com tosse há poucos dias: investiga TB? (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F03-a6-verso-previa.png",
+   "sha256": "10b54732f1668d176cd14cf85e1a25b83593340c6d1125200c1cba7e0f4e8718",
+   "bytes": 99017,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F03, verso. Resposta: Sim: tosse de qualquer duração. Vale também para privados de liberdade, profissionais de saúde, pessoas vivendo com HIV e indígenas. Na população geral, o critério é tosse por três semanas ou mais. (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F03-a6.pdf",
+   "sha256": "a8ca116c13e16b8a21c1e85f7b68900c9cc24f65e50d62ba26b4296a863be377",
+   "bytes": 696671,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F03-digital-frente.png",
+   "sha256": "1d5bb099435da6583a67413a167b6048d1d68b40eb787c9410a477a265223f27",
+   "bytes": 329371,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F03, frente: Pessoa em situação de rua com tosse há poucos dias: investiga TB?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F03-digital-verso.png",
+   "sha256": "9498cdb264a1b96d4c3408ca7f7a4ff11fb638ef6905668dc6dd05e90b2d4642",
+   "bytes": 457191,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F03, verso. Resposta: Sim: tosse de qualquer duração. Vale também para privados de liberdade, profissionais de saúde, pessoas vivendo com HIV e indígenas. Na população geral, o critério é tosse por três semanas ou mais.",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F03-digital.pdf",
+   "sha256": "0d48a04a50047e6f257c206835adb55deda85697192d6b876601589743ff3585",
+   "bytes": 654857,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F04-a6-frente-previa.png",
+   "sha256": "dcd0aa3ecf545864dbfe2fcc674b4632f1e3f25fb99ab31c49b860b5df865584",
+   "bytes": 72380,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F04, frente: Caso novo, TRM-TB com resistência à rifampicina detectada. Conduta? (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F04-a6-verso-previa.png",
+   "sha256": "6e0ad7eab0a34aad8eec5de0ea68e4dc13755d3a5a5b3468145dca6ff987364f",
+   "bytes": 99437,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F04, verso. Resposta: Referência terciária imediatamente. É o ambulatório de TB drogarresistente, que define a conduta em até sete dias. Peça outro TRM-TB em nova amostra, cultura e TS, mas encaminhe sem aguardar esses resultados. (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F04-a6.pdf",
+   "sha256": "05ecdbd03210ebfd8963b2414bec33207d32367c64ec171032a57f61d1e2536b",
+   "bytes": 696579,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F04-digital-frente.png",
+   "sha256": "2ca2d2b6488c3a7feac31815155a8eef61ac5fe76e6ceada27b2e12852546eac",
+   "bytes": 329143,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F04, frente: Caso novo, TRM-TB com resistência à rifampicina detectada. Conduta?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F04-digital-verso.png",
+   "sha256": "589d3bd1dd2d214e0d4cf1b74cf8e8d331de8f01c553dffa2809c0b613378631",
+   "bytes": 452204,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F04, verso. Resposta: Referência terciária imediatamente. É o ambulatório de TB drogarresistente, que define a conduta em até sete dias. Peça outro TRM-TB em nova amostra, cultura e TS, mas encaminhe sem aguardar esses resultados.",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F04-digital.pdf",
+   "sha256": "f9613d562d3554a3684504a4dae08bf599d416823b45d8096e7443c715703ff9",
+   "bytes": 655097,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F05-a6-frente-previa.png",
+   "sha256": "16b4d0f8e424839df6ee3a04c154b7ce00cbbb00803b51bc25c54d02cd4f927e",
+   "bytes": 68211,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F05, frente: O TRM-TB serve para acompanhar o tratamento? (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F05-a6-verso-previa.png",
+   "sha256": "7241cc851faf4867335d648e1a2d02f3ccae3232b4fa57107387f88ac0fe583a",
+   "bytes": 105294,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F05, verso. Resposta: Não: detecta bacilos vivos ou mortos. O controle da TB pulmonar é feito com baciloscopia mensal. Exceção: na suspeita de resistência ou falência clínica, o TRM-TB pode ser pedido em qualquer momento para ver resistência… (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F05-a6.pdf",
+   "sha256": "689daf6aeaa8bc86a6c6e8a28362ef876a81a117e5c17e727080bcc91091c4ad",
+   "bytes": 700346,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F05-digital-frente.png",
+   "sha256": "422f4cc9b14ce6ea009adb1075d26f790bc907bded454dbe17105977930828c9",
+   "bytes": 320265,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F05, frente: O TRM-TB serve para acompanhar o tratamento?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F05-digital-verso.png",
+   "sha256": "c0e59fbbd58c11796bae0bf6644de3a76ac72d5502053b8c5901ea4d0cb10420",
+   "bytes": 462115,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F05, verso. Resposta: Não: detecta bacilos vivos ou mortos. O controle da TB pulmonar é feito com baciloscopia mensal. Exceção: na suspeita de resistência ou falência clínica, o TRM-TB pode ser pedido em qualquer momento para ver resistência…",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F05-digital.pdf",
+   "sha256": "a09635bd10097a074fdf423ff678214e9e10bb03c86a972daeb5ad5d91cf1065",
+   "bytes": 656864,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F06-a6-frente-previa.png",
+   "sha256": "fb473dfad823c861c28944ca4e7f38c5611307949df355e5da23dfc675a590e6",
+   "bytes": 74228,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F06, frente: Qual é o esquema básico da TB sensível em adultos e adolescentes (≥ 10 anos)? (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F06-a6-verso-previa.png",
+   "sha256": "e5738b20263c37db5bd834e5f21bc19d59ec8aa03178935d20dfc6cc7b089061",
+   "bytes": 102292,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F06, verso. Resposta: 2RHZE/4RH, em dose fixa combinada. Quatro fármacos na fase intensiva e dois na manutenção, preferencialmente na Atenção Primária e com TDO. Comorbidades como HIV, hepatopatia ou insuficiência renal vão à referência. (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F06-a6.pdf",
+   "sha256": "d9b26da90420a62aab6f22432a2d9829ece4b0d449abe6362a1e44f767ede3e7",
+   "bytes": 701588,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F06-digital-frente.png",
+   "sha256": "c32d0df9f5f91d61da4ccf04ef064588a43f7910b1917c1eff10fa2b1af48bee",
+   "bytes": 336497,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F06, frente: Qual é o esquema básico da TB sensível em adultos e adolescentes (≥ 10 anos)?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F06-digital-verso.png",
+   "sha256": "72076c0e35f395ded49c12b645d21c764312b0a359d6bcf8afb8751e347f6b02",
+   "bytes": 455836,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F06, verso. Resposta: 2RHZE/4RH, em dose fixa combinada. Quatro fármacos na fase intensiva e dois na manutenção, preferencialmente na Atenção Primária e com TDO. Comorbidades como HIV, hepatopatia ou insuficiência renal vão à referência.",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F06-digital.pdf",
+   "sha256": "53cbddc993f798572ccf5088f364fe40838724525454f61353f1a738117a721c",
+   "bytes": 656416,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F07-a6-frente-previa.png",
+   "sha256": "56f96894d38c5a2e6f3952191413a929f146255a2006bff5fc7e45998752f706",
+   "bytes": 71369,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F07, frente: Contato assintomático, TB ativa afastada, PT ≥5 mm. Conduta? (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F07-a6-verso-previa.png",
+   "sha256": "02a1b804a51d7d9471524c6b4fd34ae0133c69624bca5bba2ca98255a035b1a7",
+   "bytes": 100940,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F07, verso. Resposta: Tratar ILTB; 3HP é o preferencial. Vale mesmo com BCG prévia. O 3HP tem 12 doses semanais, mas não está indicado na gestação, em contato de TB monorresistente à isoniazida ou à rifampicina e com alguns antirretrovirais. (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F07-a6.pdf",
+   "sha256": "2227cd1c961b675625da297ebb6ee7b5509ee5127d16e4031262d9035953e733",
+   "bytes": 697715,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F07-digital-frente.png",
+   "sha256": "21cceac99f6b66efc03716fbef96f9b6a69e80d4a4d9510b657eccadd1f230a7",
+   "bytes": 324105,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F07, frente: Contato assintomático, TB ativa afastada, PT ≥5 mm. Conduta?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F07-digital-verso.png",
+   "sha256": "926a7d5fc4f96621d08b388ef633d385063bcbd21d276f74102fd1b30c06a19f",
+   "bytes": 456159,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F07, verso. Resposta: Tratar ILTB; 3HP é o preferencial. Vale mesmo com BCG prévia. O 3HP tem 12 doses semanais, mas não está indicado na gestação, em contato de TB monorresistente à isoniazida ou à rifampicina e com alguns antirretrovirais.",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F07-digital.pdf",
+   "sha256": "6eed51134b99dd99d38ccd0dbf7e9ae77233b2edd487a7fe13b556627aced47a",
+   "bytes": 656286,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F08-a6-frente-previa.png",
+   "sha256": "72214cc5e933b48725d7b91acb3ee0d7b6e94fce500c36e1685d8493f9294467",
+   "bytes": 76376,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F08, frente: Contato assintomático a partir de 10 anos, com PT abaixo do corte. Próximo passo? (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F08-a6-verso-previa.png",
+   "sha256": "409d8a3a1e4f758e6fe2eba641b1d6c2a7c6500a79e6cc920133156981841574",
+   "bytes": 95976,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F08, verso. Resposta: Repetir a PT em 8 semanas. Conversão é um incremento de pelo menos 10 mm em relação à PT anterior. Se houver conversão, trata-se a ILTB, depois de afastar TB ativa. (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F08-a6.pdf",
+   "sha256": "9459fbb52db504102e028dcdbbb4eec6d39f434212b98cc07d540bffe7e21ac1",
+   "bytes": 691623,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F08-digital-frente.png",
+   "sha256": "3cfac86cdbc2bda9c7efc6fd1e4527daf37deaa66e9079d60ffa92a853db1830",
+   "bytes": 337334,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F08, frente: Contato assintomático a partir de 10 anos, com PT abaixo do corte. Próximo passo?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F08-digital-verso.png",
+   "sha256": "3330c887308d3a0839e2e7806fc9ae330cece098d87cebc4f6cfba881dc90782",
+   "bytes": 413222,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F08, verso. Resposta: Repetir a PT em 8 semanas. Conversão é um incremento de pelo menos 10 mm em relação à PT anterior. Se houver conversão, trata-se a ILTB, depois de afastar TB ativa.",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F08-digital.pdf",
+   "sha256": "053e760bfef56aa2a8bf9269c6e0f9ab92ea0c9e290c5f7fab6c716adbe2911b",
+   "bytes": 633916,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F09-a6-frente-previa.png",
+   "sha256": "7755800ac7c01a7cdc54fcf0469ab000334a0c9fc24d662da03a64ef8a2b81bf",
+   "bytes": 70272,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F09, frente: Baciloscopia positiva ao final do segundo mês. O que fazer? (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F09-a6-verso-previa.png",
+   "sha256": "34eb63a9bc85892387e4209ce04ed05bb88c09432da28731032995b88a168f4f",
+   "bytes": 100819,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F09, verso. Resposta: Cultura com TS e reavaliar o esquema. Onde houver, peça também TRM-TB para ver resistência à rifampicina. Prolonga-se a fase de ataque (RHZE) por mais 30 dias até o TS. Evolução insatisfatória: referência de TB. (prévia da impressão A6)",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F09-a6.pdf",
+   "sha256": "5484d9fe1e8f8fe23ba411d307c5fe59a07772b91ecb576aec0cff7700bc1ebe",
+   "bytes": 697916,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F09-digital-frente.png",
+   "sha256": "1b87a2b2a1f96e45518b69523b72c9cdb330ea5c9837df9414470ce9ea3b9f24",
+   "bytes": 323121,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F09, frente: Baciloscopia positiva ao final do segundo mês. O que fazer?",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F09-digital-verso.png",
+   "sha256": "0ce8e83fa6c152902e015b665ee0681ffe73ea7af1491aff2b9fc6c90395fcd7",
+   "bytes": 458778,
+   "tipo": "image/png",
+   "texto_alternativo": "Flashcard GR-001-F09, verso. Resposta: Cultura com TS e reavaliar o esquema. Onde houver, peça também TRM-TB para ver resistência à rifampicina. Prolonga-se a fase de ataque (RHZE) por mais 30 dias até o TS. Evolução insatisfatória: referência de TB.",
+   "descricao": null,
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-F09-digital.pdf",
+   "sha256": "96bf97cef5620bd6270fae5494c1f6de96de48e3e6a549dfce558a221ef92cf0",
+   "bytes": 656459,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 2 página(s)",
+   "material": "flashcards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-card-feed.pdf",
+   "sha256": "c8917fc930a2189fe88219198d08703aa8678b4f5bc47f94782ae8f7b420a144",
+   "bytes": 415381,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 1 página(s)",
+   "material": "visual_cards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-card-feed.png",
+   "sha256": "7b7c5910e980eefb6d4e820d77786335d54e531f6d980a3cd20e6ff659fedc36",
+   "bytes": 490468,
+   "tipo": "image/png",
+   "texto_alternativo": "Card de feed \"Tuberculose pulmonar\". Confirmar, tratar e rastrear contatos. Confirmar, tratar e investigar contatos são etapas de um mesmo cuidado. Destaque: Tosse por três semanas ou mais. Pontos-chave: Caso novo: TRM-TB; cultura com TS conforme o cenário. Resistência à rifampicina: referência terciária imediatamente; Esquema básico 2RHZE/4RH na Atenção Primária, com TDO e baciloscopia mensal; C…",
+   "descricao": null,
+   "material": "visual_cards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-card-story.pdf",
+   "sha256": "c1b6dfc0de79670cfde20266e623637368eb8214b5fabaede93a6704edbc4aa0",
+   "bytes": 605743,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 1 página(s)",
+   "material": "visual_cards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-card-story.png",
+   "sha256": "e04766d010bc097358cace07f64bfe8f17bf2c651053edc2a2f2902966420c08",
+   "bytes": 688298,
+   "tipo": "image/png",
+   "texto_alternativo": "Story \"Tuberculose pulmonar\". Confirmar, tratar e rastrear contatos. O resultado do TRM-TB decide o próximo passo. Destaque: Cultura com TS conforme o fluxograma. Tabela: Resultado do TRM-TB (caso novo). Pegadinha: O TRM-TB não acompanha o tratamento e, no retratamento, não confirma TB sozinho: pode detectar bacilo morto.",
+   "descricao": null,
+   "material": "visual_cards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-pagina-a4.pdf",
+   "sha256": "f953268d10b56312e7638ab391d1be52ca3a0a0f610df29f662d5ca8eb84a040",
+   "bytes": 421238,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 1 página(s)",
+   "material": "visual_cards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/imagens/GR-001-pagina-a4.png",
+   "sha256": "c76daf3aa19c46b48ddb70530418c522d8de4d282808f312c28f8ce3e9b37f82",
+   "bytes": 917675,
+   "tipo": "image/png",
+   "texto_alternativo": "Página A4 \"Tosse persistente: investigar TB pulmonar\". Do sintomático respiratório ao TRM-TB. Suspeitou, pediu TRM-TB; o resultado decide o próximo passo. Destaque: TRM-TB e cultura por cenário. Tabela: Leitura do TRM-TB (caso novo, adulto). Pegadinha: Retratamento: o TRM-TB não confirma TB sozinho (detecta bacilo morto) e serve para triar resistência à rifampicina; confirme com baciloscopia e/ou…",
+   "descricao": null,
+   "material": "visual_cards"
+  },
+  {
+   "caminho": "aulas-prontas/GR-001/v5/pdf/GR-001-aula-interativa.pdf",
+   "sha256": "f4b9e156a923bd96ec3ed6f1d6072f9cb0d562a66a7d7743f9f2c679f9cf6213",
+   "bytes": 3884514,
+   "tipo": "application/pdf",
+   "texto_alternativo": null,
+   "descricao": "PDF de 38 página(s)",
+   "material": "lesson"
+  }
+ ]
+}
