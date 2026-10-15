@@ -1,13 +1,13 @@
 // Cartão de um Grande Tema (Temas Essenciais), no padrão aprovado pelo dono em 15/10/2026: cartão branco arejado, faixa fina na
-// cor do tema, selo da situação, pílula de questões, título grande, ilustração de vidro à direita, progresso da aula (só com
-// dado real) e as ações. Comportamento igual ao de antes: "Abrir a aula" só com aula publicada, "Treinar este tema" só com
+// cor do tema, selo da situação, pílula de questões, título grande, foto do tema à direita (esmaecida para o branco por CSS),
+// progresso da aula (só com dado real) e as ações. Tema sem foto: cartão limpo, sem ilustração.
+// Comportamento igual ao de antes: "Abrir a aula" só com aula publicada, "Treinar este tema" só com
 // questão ligada, "Me teste" abre o Tutor. Favoritar tema não existe (pendência em docs/temas-card.md).
 import React from "react";
 import { Icon } from "../../ds";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
 import { temaVars } from "./temaCores.js";
-import { IlustracaoTema } from "./ilustracoes/IlustracaoTema.jsx";
-import { motivoDesenhado } from "./ilustracoes/mapa.js";
+import { fotoDoTema } from "./fotosTemas.js";
 
 /** Situação do conteúdo de cada tema (o que o aluno pode esperar encontrar). */
 export const STATUS = {
@@ -29,17 +29,6 @@ const Play = () => (
  * `aula`: o tema tem aula publicada; `progresso`: % de seções estudadas (só quando a aula já foi lida do banco nesta visita);
  * `starting`: o treino deste tema está abrindo.
  */
-/**
- * Foto do tema (opcional, ainda não vem do banco; contrato em docs/temas-card-fotos.md): `t.foto = { webp, avif?, foco? }`.
- * O banco só deve mandar foto APROVADA; o cartão usa a foto com carregamento preguiçoso e, se ela falhar, volta ao desenho.
- */
-function fotoDoTema(t) {
-  const f = t?.foto;
-  if (!f || typeof f !== "object") return null;
-  const ok = (u) => typeof u === "string" && /^(https:\/\/|\/)/.test(u);
-  return ok(f.webp) ? { webp: f.webp, avif: ok(f.avif) ? f.avif : null, foco: Number.isFinite(f.foco) ? Math.max(0, Math.min(100, f.foco)) : 72 } : null;
-}
-
 export function TemaCartao({ t, aula, progresso, starting, onAbrir, onTreinar }) {
   const exams = Object.keys(t.by_exam ?? {}).length;
   const status = aula ? AULA_DISPONIVEL : STATUS[t.status] ?? STATUS.roteiro_em_validacao;
@@ -48,8 +37,7 @@ export function TemaCartao({ t, aula, progresso, starting, onAbrir, onTreinar })
   const temProgresso = aula && Number.isFinite(progresso);
   const pct = temProgresso ? Math.max(0, Math.min(100, Math.round(progresso))) : 0;
   const titulo = `gt-tema-${t.order}`;
-  const motivo = motivoDesenhado(t.id);
-  const foto = fotoDoTema(t);
+  const foto = fotoDoTema(t.id);
   const [fotoFalhou, setFotoFalhou] = React.useState(false);
   const comFoto = foto && !fotoFalhou;
 
@@ -72,21 +60,11 @@ export function TemaCartao({ t, aula, progresso, starting, onAbrir, onTreinar })
   );
 
   return (
-    <article className={`gt-card${aula ? " tem-aula" : ""}${comFoto ? " com-foto" : ""}`} style={temaVars(t.id, t.area)} aria-labelledby={titulo} data-motivo={motivo}>
-      {comFoto ? (
-        <div className="gt-foto" aria-hidden="true">
-          <picture>
-            {foto.avif && <source type="image/avif" srcSet={foto.avif} />}
-            <img src={foto.webp} alt="" loading="lazy" decoding="async" draggable="false" style={{ objectPosition: `${foto.foco}% 50%` }} onError={() => setFotoFalhou(true)} />
-          </picture>
+    <article className={`gt-card${aula ? " tem-aula" : ""}${comFoto ? " com-foto" : ""}`} style={temaVars(t.id, t.area)} aria-labelledby={titulo}>
+      {comFoto && (
+        <div className="gt-foto" aria-hidden="true" data-tipo={foto.tipo ?? undefined}>
+          <img src={foto.webp} alt="" width="1280" height="720" loading="lazy" decoding="async" draggable="false" onError={() => setFotoFalhou(true)} />
         </div>
-      ) : (
-        <>
-          <div className="gt-fundo" aria-hidden="true" />
-          <div className="gt-ilus" aria-hidden="true">
-            <IlustracaoTema motivo={motivo} area={t.area} />
-          </div>
-        </>
       )}
       <div className="gt-topo">
         <span className={`gt-selo is-${status.tone}`}>

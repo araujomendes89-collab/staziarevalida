@@ -1,0 +1,452 @@
+{
+  "GR-001": {
+    "arquivo": "/temas/foto/GR-001.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "d9c83364902557f6",
+    "bytes": 27108,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-002": {
+    "arquivo": "/temas/foto/GR-002.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "1174fe04cd39a0d1",
+    "bytes": 26092,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-003": {
+    "arquivo": "/temas/foto/GR-003.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "78105ce707ac84b5",
+    "bytes": 40452,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-004": {
+    "arquivo": "/temas/foto/GR-004.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "b8268efeb2f7e921",
+    "bytes": 29628,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-005": {
+    "arquivo": "/temas/foto/GR-005.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "93e4af0b08f91dca",
+    "bytes": 33264,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-006": {
+    "arquivo": "/temas/foto/GR-006.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "c8acd694bc925c43",
+    "bytes": 26222,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-007": {
+    "arquivo": "/temas/foto/GR-007.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "52a58ade1d6f5441",
+    "bytes": 27258,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-008": {
+    "arquivo": "/temas/foto/GR-008.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "26b81a69f154a444",
+    "bytes": 33390,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-009": {
+    "arquivo": "/temas/foto/GR-009.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "ddd10b024edcfa27",
+    "bytes": 16252,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-010": {
+    "arquivo": "/temas/foto/GR-010.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "3e55cb1a9ac1825e",
+    "bytes": 22340,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-011": {
+    "arquivo": "/temas/foto/GR-011.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "650258e1b8e7a9f8",
+    "bytes": 28624,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-012": {
+    "arquivo": "/temas/foto/GR-012.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "34702838d656be09",
+    "bytes": 45400,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-013": {
+    "arquivo": "/temas/foto/GR-013.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "58d7e7167296d97a",
+    "bytes": 26810,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-014": {
+    "arquivo": "/temas/foto/GR-014.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "e367d8a35efc0040",
+    "bytes": 32690,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-015": {
+    "arquivo": "/temas/foto/GR-015.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "6a6b7e5550975705",
+    "bytes": 22142,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-016": {
+    "arquivo": "/temas/foto/GR-016.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "9cbef74aa31a80ef",
+    "bytes": 43212,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-017": {
+    "arquivo": "/temas/foto/GR-017.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "8fabbf29d06a020c",
+    "bytes": 62150,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-018": {
+    "arquivo": "/temas/foto/GR-018.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "f2bc8c58059a91aa",
+    "bytes": 22110,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-019": {
+    "arquivo": "/temas/foto/GR-019.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "925c5d2de80ccc45",
+    "bytes": 22252,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-020": {
+    "arquivo": "/temas/foto/GR-020.webp",
+    "tipo": "objeto_medico",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "3e3ab4c44ae8a1cd",
+    "bytes": 22960,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-021": {
+    "arquivo": "/temas/foto/GR-021.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "55cc5b2c95897322",
+    "bytes": 15270,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-022": {
+    "arquivo": "/temas/foto/GR-022.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "82d4e9a635fdf4a6",
+    "bytes": 18700,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-023": {
+    "arquivo": "/temas/foto/GR-023.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "ba99d27bda6b5b6c",
+    "bytes": 15154,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-024": {
+    "arquivo": "/temas/foto/GR-024.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "b576ae6f433d3fc4",
+    "bytes": 24710,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-025": {
+    "arquivo": "/temas/foto/GR-025.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "eb136acba1c510dc",
+    "bytes": 37118,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-026": {
+    "arquivo": "/temas/foto/GR-026.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "efd9273d29c2a896",
+    "bytes": 58228,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-027": {
+    "arquivo": "/temas/foto/GR-027.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "6d0df7ea2e1cebf3",
+    "bytes": 47834,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-032": {
+    "arquivo": "/temas/foto/GR-032.webp",
+    "tipo": "objeto_medico",
+    "risco_medico": "alto",
+    "estado": "pendente de revisão médica",
+    "origem": "f3f8d8bd068503d2",
+    "bytes": 20354,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-033": {
+    "arquivo": "/temas/foto/GR-033.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "alto",
+    "estado": "pendente de revisão médica",
+    "origem": "dda7ed140dd008e4",
+    "bytes": 68134,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-036": {
+    "arquivo": "/temas/foto/GR-036.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "alto",
+    "estado": "pendente de revisão médica",
+    "origem": "b039a71777a73952",
+    "bytes": 32316,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-043": {
+    "arquivo": "/temas/foto/GR-043.webp",
+    "tipo": "cena_clinica",
+    "risco_medico": "alto",
+    "estado": "pendente de revisão médica",
+    "origem": "61cffdecd8038cd4",
+    "bytes": 32636,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-044": {
+    "arquivo": "/temas/foto/GR-044.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "54d79e0d01c60b72",
+    "bytes": 40568,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-056": {
+    "arquivo": "/temas/foto/GR-056.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "alto",
+    "estado": "pendente de revisão médica",
+    "origem": "724670e54c84b243",
+    "bytes": 27908,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-063": {
+    "arquivo": "/temas/foto/GR-063.webp",
+    "tipo": "objeto_medico",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "ae7f17974985c2d0",
+    "bytes": 25012,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-064": {
+    "arquivo": "/temas/foto/GR-064.webp",
+    "tipo": "objeto_medico",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "0ad313e12bb2242b",
+    "bytes": 12912,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-069": {
+    "arquivo": "/temas/foto/GR-069.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "3be5d63f9e48c53c",
+    "bytes": 36648,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-079": {
+    "arquivo": "/temas/foto/GR-079.webp",
+    "tipo": "paisagem_saude",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "3db3cfec1d5975d2",
+    "bytes": 33076,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-081": {
+    "arquivo": "/temas/foto/GR-081.webp",
+    "tipo": "objeto_medico",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "b12a5c7e4efc94d4",
+    "bytes": 14726,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-085": {
+    "arquivo": "/temas/foto/GR-085.webp",
+    "tipo": "cena_clinica",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "41401a7729e84696",
+    "bytes": 35850,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-087": {
+    "arquivo": "/temas/foto/GR-087.webp",
+    "tipo": "paisagem_saude",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "e094cf9839e83954",
+    "bytes": 26756,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-089": {
+    "arquivo": "/temas/foto/GR-089.webp",
+    "tipo": "objeto_medico",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "6a99acfc1f14a839",
+    "bytes": 19016,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-094": {
+    "arquivo": "/temas/foto/GR-094.webp",
+    "tipo": "objeto_medico",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "c471f304c0b3d3a4",
+    "bytes": 22244,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-095": {
+    "arquivo": "/temas/foto/GR-095.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "ef5fc3002b2a0fbc",
+    "bytes": 27252,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-096": {
+    "arquivo": "/temas/foto/GR-096.webp",
+    "tipo": "anatomia_vidro",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "0e373af697802843",
+    "bytes": 36244,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  },
+  "GR-100": {
+    "arquivo": "/temas/foto/GR-100.webp",
+    "tipo": "objeto_medico",
+    "risco_medico": "baixo",
+    "estado": "pendente de revisão médica",
+    "origem": "f2aee7f454e36c12",
+    "bytes": 21810,
+    "qualidade": 80,
+    "sincronizada_em": "2026-10-15"
+  }
+}

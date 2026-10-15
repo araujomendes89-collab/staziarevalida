@@ -1,10 +1,25 @@
 # Fotos realistas nos cartões dos Temas Essenciais: plano
 
-Pedido do dono em 15/10/2026: além do desenho em vidro, uma imagem médica fotorrealista por tema, gerada por um modelo de
-imagens, com direção de arte. **Nesta etapa nenhuma imagem foi gerada e nenhuma função paga foi chamada** (regra fixa: não
-gastar crédito das chaves do sistema). Este documento traz o que existe hoje, o plano e o que o dono precisa decidir.
+Pedido do dono em 15/10/2026: uma imagem médica fotorrealista por tema, gerada por um modelo de imagens, com direção de arte.
+Os itens 1 a 7 foram escritos de manhã, antes da geração começar (registro do levantamento e do plano); o item 0 é a
+situação atual.
 
-## 1. O que existe hoje (conferido no código e neste computador)
+## 0. Situação em 15/10/2026 (tarde): fotos em uso
+
+- O dono escolheu as fotos realistas no lugar das ilustrações em vidro. As imagens estão sendo geradas pelo Nano Banana
+  (modelo `gemini-3-pro-image`, 16:9, 2K) fora do repositório, em `/Volumes/StaziaMed/.tmp-aulas/imagens-temas/img/`, com
+  os prompts, o tipo (anatomia em vidro, objeto médico, cena clínica, paisagem de saúde) e o risco médico em `prompts.json`.
+  Este ramo **não gera imagem** e não usa nenhuma chave: só converte e associa o que já foi gerado.
+- `pdfpython scripts/sincronizar-fotos-temas.py` converte cada PNG para WebP 1280 × 720 (qualidade 80, no máximo 180 KB),
+  grava em `public/temas/foto/` e atualiza `src/novo/app/study/fotos-temas.json` (arquivo, tipo, risco médico, estado,
+  impressão do PNG, tamanho). Toda foto nova ou trocada entra como **"pendente de revisão médica"**; foto **"aprovada"**
+  nunca é sobrescrita; "reprovada" não aparece no cartão. Ninguém aprova pelo script: a aprovação é trocar o estado no
+  manifesto depois da revisão humana (até existir a tabela do item 3).
+- O cartão só mostra foto de tema que está no manifesto. Tema ainda sem foto: cartão limpo, sem ilustração.
+- Temas de **risco médico alto** (revisão humana obrigatória antes de liberar a alunos de verdade): GR-032, 033, 036, 038,
+  043, 049, 050, 051, 056, 061 e 076.
+
+## 1. Levantamento da manhã (conferido no código e neste computador)
 
 | Caminho | Gera foto? | Gasta crédito? | Observação |
 |---|---|---|---|
@@ -133,12 +148,15 @@ Arquivos grandes de trabalho (tentativas, originais) ficam em `/Volumes/StaziaMe
 
 ## 6. O que já está pronto no cartão
 
-- Campo opcional `foto: { webp, avif?, foco? }` em cada tema (`TemaCartao.jsx`). Sem foto, o cartão usa o desenho em vidro.
-- Com foto: `<picture>` com AVIF e WebP, carregamento preguiçoso, decorativa (sem texto alternativo), foco horizontal,
-  degradê por CSS para o texto ficar legível (claro e escuro, celular e computador).
-- Se a foto não carregar, volta sozinho para o desenho. Endereço que não comece com `https://` ou `/` é ignorado.
-- Testes em `src/__tests__/temasCartaoIlustracoes.test.tsx` (bloco "foto do tema").
-- O banco ainda não manda o campo; nada muda para o aluno até a etapa das fotos ser aprovada.
+- Foto à direita a partir do manifesto (`fotosTemas.js`), `<img>` WebP com carregamento preguiçoso, decorativa (texto
+  alternativo vazio), sem arrastar.
+- Esmaecimento só por CSS: máscara que some para a esquerda e para baixo; no claro a foto se funde ao branco do cartão; com a
+  barra de progresso, a foto termina antes da linha do "% concluído".
+- Escuro: anatomia em vidro com a luz invertida e a cor preservada (o fundo claro some); cenas, objetos e paisagens mais
+  escuras e esmaecidas.
+- Se a foto não carregar, o cartão fica limpo. Endereço fora de `/temas/foto/GR-xxx.webp` é ignorado.
+- Testes: `src/__tests__/temasCartaoFotos.test.tsx` (cartão com e sem foto, falha da foto, manifesto real: arquivo existe,
+  é WebP, até 180 KB, estado e risco válidos, nenhum WebP solto).
 
 ## 7. O que o dono precisa decidir ou liberar
 

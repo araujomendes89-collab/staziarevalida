@@ -1,7 +1,10 @@
 /**
- * Cartão dos Temas Essenciais no padrão de 15/10/2026 (docs/temas-card.md) e o sistema de ilustrações em vidro.
- * jsdom com o banco simulado (formas de app_grandes_temas, app_temas_com_aula, app_tema_aula e app_lesson_notes).
+ * Cartão dos Temas Essenciais no padrão de 15/10/2026 (docs/temas-card.md), com a foto de cada tema vinda do manifesto
+ * fotos-temas.json (scripts/sincronizar-fotos-temas.py). jsdom com o banco simulado (formas de app_grandes_temas,
+ * app_temas_com_aula, app_tema_aula e app_lesson_notes).
  */
+import fs from "node:fs";
+import path from "node:path";
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
@@ -19,10 +22,20 @@ vi.mock("../novo/app/tutor/TutorDrawer.jsx", () => ({
 }));
 
 import { ThemesScreen } from "../novo/app/study/ThemesScreen.jsx";
-import { IlustracaoTema } from "../novo/app/study/ilustracoes/IlustracaoTema.jsx";
-import { DESENHOS } from "../novo/app/study/ilustracoes/motivos.jsx";
-import { MAPA_TEMAS, MOTIVOS, motivoDesenhado, motivosQueFaltam } from "../novo/app/study/ilustracoes/mapa.js";
 import { TemaCartao } from "../novo/app/study/TemaCartao.jsx";
+import { fotoDoTema } from "../novo/app/study/fotosTemas.js";
+import manifestoReal from "../novo/app/study/fotos-temas.json";
+
+// Manifesto de teste: Tuberculose e AVC com foto, os outros sem (o real muda conforme chegam imagens).
+vi.mock("../novo/app/study/fotos-temas.json", () => ({
+  default: {
+    "GR-001": { arquivo: "/temas/foto/GR-001.webp", tipo: "anatomia_vidro", risco_medico: "baixo", estado: "pendente de revisão médica" },
+    "GR-014": { arquivo: "/temas/foto/GR-014.webp", tipo: "anatomia_vidro", risco_medico: "baixo", estado: "pendente de revisão médica" },
+    "GR-097": { arquivo: "/temas/foto/GR-097.webp", tipo: "anatomia_vidro", risco_medico: "baixo", estado: "reprovada" },
+  },
+}));
+const RAIZ = path.resolve(__dirname, "../..");
+const manifestoDoDisco = () => JSON.parse(fs.readFileSync(path.join(RAIZ, "src/novo/app/study/fotos-temas.json"), "utf8"));
 
 const T = (id: string, order: number, title: string, area: string, area_name: string, subarea: string, status: string, total: number, provas: number) => ({
   id, order, title, area, area_name, subarea, status, total,
@@ -202,96 +215,66 @@ describe("cartão do tema: progresso da aula", () => {
   });
 });
 
-describe("ilustrações em vidro", () => {
-  it("cada cartão mostra a ilustração do seu motivo (genérico quando o motivo ainda não foi desenhado), sempre decorativa", async () => {
+describe("foto do tema no cartão", () => {
+  it("tema no manifesto mostra a foto: decorativa, carregamento preguiçoso, sem texto e sem ilustração desenhada", async () => {
     await comAulaCarregada();
-    const motivo = async (t: string) => (await cartao(t)).querySelector("svg.il")!;
-    expect((await motivo("Tuberculose pulmonar")).getAttribute("data-motivo")).toBe("pulmao");
-    expect((await motivo("Acidente vascular cerebral agudo")).getAttribute("data-motivo")).toBe("cerebro");
-    expect((await motivo("Apendicite aguda")).getAttribute("data-motivo")).toBe("intestino");
-    expect((await motivo("Diabetes mellitus tipo 2")).getAttribute("data-motivo")).toBe("generico");
-    expect((await motivo("Psicoses e esquizofrenia")).getAttribute("data-motivo")).toBe("generico");
-    for (const svg of Array.from(document.querySelectorAll("svg.il"))) {
-      expect(svg.getAttribute("aria-hidden")).toBe("true");
-      expect(svg.closest("[aria-hidden='true']")).toBeTruthy();
+    const tb = await cartao("Tuberculose pulmonar");
+    const img = tb.querySelector(".gt-foto img") as HTMLImageElement;
+    expect(img.getAttribute("src")).toBe("/temas/foto/GR-001.webp");
+    expect(img.getAttribute("alt")).toBe("");
+    expect(img.getAttribute("loading")).toBe("lazy");
+    expect(img.getAttribute("decoding")).toBe("async");
+    expect(tb.querySelector(".gt-foto")!.getAttribute("aria-hidden")).toBe("true");
+    expect(tb.className).toMatch(/com-foto/);
+    expect(document.querySelectorAll("svg.il, .gt-ilus, [data-motivo]")).toHaveLength(0);
+  });
+
+  it("tema fora do manifesto (ou reprovado): cartão limpo, sem foto e sem ilustração", async () => {
+    await comAulaCarregada();
+    for (const t of ["Apendicite aguda", "Diabetes mellitus tipo 2", "Psicoses e esquizofrenia"]) {
+      const c = await cartao(t);
+      expect(c.querySelector(".gt-foto"), t).toBeNull();
+      expect(c.querySelector("svg.il"), t).toBeNull();
+      expect(c.className, t).not.toMatch(/com-foto/);
     }
   });
 
-  it("os motivos pedidos estão desenhados e cada desenho é só forma (sem texto, sem imagem) e com ids únicos por cartão", () => {
-    for (const m of ["pulmao", "coracao", "cerebro", "rim", "utero", "feto", "osso", "microrganismo", "intestino", "recem-nascido", "casa"]) {
-      expect(MOTIVOS[m as keyof typeof MOTIVOS].desenhado, m).toBe(true);
-      expect(DESENHOS[m as keyof typeof DESENHOS], m).toBeTruthy();
-      const { container } = render(
-        <div>
-          <IlustracaoTema motivo={m} cor="#90E7CD" />
-          <IlustracaoTema motivo={m} />
-        </div>
-      );
-      const svgs = container.querySelectorAll("svg");
-      expect(svgs).toHaveLength(2);
-      expect(svgs[0].getAttribute("data-motivo")).toBe(m);
-      expect(container.querySelectorAll("image, img, text, foreignObject")).toHaveLength(0);
-      expect(container.textContent).toBe("");
-      expect(svgs[0].querySelectorAll("path").length).toBeGreaterThan(5);
-      const ids = Array.from(container.querySelectorAll("[id]")).map((e) => e.id);
-      expect(new Set(ids).size).toBe(ids.length);
-      expect((svgs[0] as SVGElement).style.getPropertyValue("--il-halo")).toBe("#90E7CD");
-      cleanup();
-    }
+  it("se a foto não carregar, o cartão fica limpo", async () => {
+    await comAulaCarregada();
+    const avc = await cartao("Acidente vascular cerebral agudo");
+    fireEvent.error(avc.querySelector(".gt-foto img")!);
+    expect(avc.querySelector(".gt-foto")).toBeNull();
   });
 
-  it("motivo desconhecido cai no genérico", () => {
-    const { container } = render(<IlustracaoTema motivo="nao-existe" area="go" />);
-    expect(container.querySelector("svg")!.getAttribute("data-motivo")).toBe("generico");
-  });
-
-  it("o mapa cobre os 100 temas, só com motivos existentes, e a marca 'desenhado' bate com os desenhos", () => {
-    expect(Object.keys(MAPA_TEMAS)).toHaveLength(100);
-    for (let n = 1; n <= 100; n += 1) expect(MAPA_TEMAS[`GR-${String(n).padStart(3, "0")}` as keyof typeof MAPA_TEMAS]).toBeTruthy();
-    for (const m of Object.values(MAPA_TEMAS)) expect(MOTIVOS[m as keyof typeof MOTIVOS], m).toBeTruthy();
-    for (const [m, v] of Object.entries(MOTIVOS)) expect(Boolean(DESENHOS[m as keyof typeof DESENHOS]), m).toBe(v.desenhado);
-    expect(Object.keys(MOTIVOS).length).toBeGreaterThanOrEqual(30);
-    expect(motivosQueFaltam()).not.toContain("pulmao");
-    expect(motivoDesenhado("GR-001")).toBe("pulmao");
-    expect(motivoDesenhado("GR-002")).toBe("generico");
-    expect(motivoDesenhado("GR-999")).toBe("generico");
+  it("fotoDoTema só aceita arquivo da pasta das fotos e ignora reprovadas", () => {
+    expect(fotoDoTema("GR-001")).toEqual({ webp: "/temas/foto/GR-001.webp", tipo: "anatomia_vidro" });
+    expect(fotoDoTema("GR-097")).toBeNull();
+    expect(fotoDoTema("GR-002")).toBeNull();
+    expect(fotoDoTema("GR-001", { "GR-001": { arquivo: "javascript:alert(1)", estado: "aprovada" } })).toBeNull();
+    expect(fotoDoTema("GR-001", { "GR-001": { arquivo: "https://outro.site/x.webp" } })).toBeNull();
   });
 });
 
-describe("foto do tema (opcional; docs/temas-card-fotos.md)", () => {
-  const base = DATA.themes[0];
-  const montar = (foto?: any) => render(<TemaCartao t={{ ...base, foto }} aula progresso={undefined} starting={false} onAbrir={() => {}} onTreinar={() => {}} />);
-
-  it("sem foto, o cartão usa o desenho em vidro", () => {
-    const { container } = montar();
-    expect(container.querySelector(".gt-foto")).toBeNull();
-    expect(container.querySelector("svg.il")!.getAttribute("data-motivo")).toBe("pulmao");
+describe("manifesto real das fotos (scripts/sincronizar-fotos-temas.py)", () => {
+  it("cada linha aponta para um WebP que existe, até 180 KB, com estado e risco válidos", () => {
+    const m = manifestoDoDisco();
+    expect(manifestoReal).toBeTruthy();
+    expect(Object.keys(m).length).toBeGreaterThan(0);
+    for (const [codigo, f] of Object.entries<any>(m)) {
+      expect(codigo).toMatch(/^GR-\d{3}$/);
+      expect(f.arquivo).toBe(`/temas/foto/${codigo}.webp`);
+      const arq = path.join(RAIZ, "public", f.arquivo);
+      expect(fs.existsSync(arq), codigo).toBe(true);
+      expect(fs.statSync(arq).size, codigo).toBeLessThanOrEqual(180 * 1024);
+      expect(fs.readFileSync(arq).subarray(8, 12).toString("ascii"), codigo).toBe("WEBP");
+      expect(["pendente de revisão médica", "aprovada", "reprovada"]).toContain(f.estado);
+      expect(["baixo", "alto"]).toContain(f.risco_medico);
+    }
   });
 
-  it("com foto: WebP (e AVIF quando houver), carregamento preguiçoso, decorativa, foco à direita; sem o desenho", () => {
-    const { container } = montar({ webp: "https://cdn.exemplo/tema-1.webp", avif: "https://cdn.exemplo/tema-1.avif", foco: 80 });
-    const img = container.querySelector(".gt-foto img") as HTMLImageElement;
-    expect(img.getAttribute("src")).toBe("https://cdn.exemplo/tema-1.webp");
-    expect(img.getAttribute("loading")).toBe("lazy");
-    expect(img.getAttribute("decoding")).toBe("async");
-    expect(img.getAttribute("alt")).toBe("");
-    expect(img.style.objectPosition).toBe("80% 50%");
-    expect(container.querySelector(".gt-foto source")!.getAttribute("type")).toBe("image/avif");
-    expect(container.querySelector(".gt-foto")!.getAttribute("aria-hidden")).toBe("true");
-    expect(container.querySelector("svg.il")).toBeNull();
-    expect(container.querySelector(".gt-card")!.className).toMatch(/com-foto/);
-  });
-
-  it("se a foto não carregar, volta ao desenho", () => {
-    const { container } = montar({ webp: "/temas/tema-1.webp" });
-    fireEvent.error(container.querySelector(".gt-foto img")!);
-    expect(container.querySelector(".gt-foto")).toBeNull();
-    expect(container.querySelector("svg.il")).toBeTruthy();
-  });
-
-  it("endereço estranho (sem https) é ignorado e fica o desenho", () => {
-    const { container } = montar({ webp: "javascript:alert(1)" });
-    expect(container.querySelector(".gt-foto")).toBeNull();
-    expect(container.querySelector("svg.il")).toBeTruthy();
+  it("nenhum WebP solto fora do manifesto", () => {
+    const m = manifestoDoDisco();
+    const arquivos = fs.readdirSync(path.join(RAIZ, "public/temas/foto")).filter((n) => n.endsWith(".webp"));
+    for (const n of arquivos) expect(m[n.replace(".webp", "")], n).toBeTruthy();
   });
 });

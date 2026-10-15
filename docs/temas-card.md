@@ -2,7 +2,10 @@
 
 Etapa 1, 15/10/2026. Tela: Temas Essenciais (Grandes Temas), `src/novo/app/study/ThemesScreen.jsx`.
 Cartão: `src/novo/app/study/TemaCartao.jsx`. Estilo: `src/novo/app/study/temas.css`.
-Ilustrações: `src/novo/app/study/ilustracoes/`.
+Fotos: `public/temas/foto/GR-xxx.webp` + manifesto `src/novo/app/study/fotos-temas.json` (item 5).
+Atualização de 15/10/2026 à tarde: o dono preferiu as **fotos realistas** (geradas pelo Nano Banana) às ilustrações em vidro
+desenhadas em código. As ilustrações ficaram guardadas, sem uso, em `src/novo/_dormente/ilustracoes-vidro/` (não entram no
+site). Os itens 5 a 8 abaixo descrevem esse estilo só como registro.
 
 ## 1. O cartão (padrão da referência e dos 5 exemplos do dono)
 
@@ -14,18 +17,21 @@ Ilustrações: `src/novo/app/study/ilustracoes/`.
 - Canto superior direito: a pílula "17 questões · 10 provas" com seta. Ela abre o mesmo treino de "Treinar este tema"
   (`app_start_session` com o filtro `grande_tema`). Tema sem questão: pílula "0 questões", sem seta e sem clique.
 - Título grande em negrito e, abaixo, "Tema N · subárea" em cinza.
-- Ilustração do tema à direita, em vidro translúcido, que some em degradê para o branco (máscara, vale no claro e no escuro).
+- Foto do tema à direita, que some em degradê para o branco por CSS (máscara para a esquerda e para baixo; no claro a foto
+  ainda se funde ao branco do cartão). Nenhum texto na imagem. Tema ainda sem foto: cartão limpo, sem ilustração.
+- Escuro: fotos de anatomia em vidro têm a luz invertida com a cor preservada (o fundo claro some no cartão escuro); cenas,
+  objetos e paisagens ficam mais escuras e esmaecidas.
 - "Progresso da aula": barra na cor do tema e "70% concluído". Só aparece com dado real (ver item 4).
 - Botões:
   - com aula: "Abrir a aula" (principal, na cor do tema, ícone de play), "Treinar este tema" (secundário, ícone de barras) e "Me teste" (terciário, estrela de brilho);
   - sem aula e com questões: "Treinar este tema" vira o principal (play), e "Me teste" ao lado;
   - sem questão: só "Me teste" e o aviso "Ainda não há questão oficial catalogada ligada a este tema.".
 - "Me teste" já existia: abre o Tutor no modo perguntas com o tema (mesmo pedido de antes).
-- Celular primeiro: margem de 16 px, sem rolagem lateral, a ilustração encolhe e fica por trás do lado direito; o botão
+- Celular primeiro: margem de 16 px, sem rolagem lateral, a foto encolhe e fica por trás do lado direito; o botão
   principal ocupa a linha inteira e os outros dois ficam embaixo. Os tamanhos seguem a largura do cartão (container), então
   o mesmo cartão serve no celular e na grade de duas colunas do computador.
 - Acessibilidade: tudo é botão de verdade (teclado e foco visível com anel), barra de progresso com `role="progressbar"`,
-  ilustração escondida dos leitores de tela (é decorativa), contraste AA conferido (texto branco sobre a cor do tema ≥ 4,5;
+  foto decorativa (texto alternativo vazio, escondida dos leitores de tela, carregamento preguiçoso), contraste AA conferido (texto branco sobre a cor do tema ≥ 4,5;
   cor do tema sobre branco ≥ 4,5; brilho do tema sobre o fundo escuro ≥ 11).
 
 ## 2. O que NÃO mudou
@@ -47,7 +53,18 @@ estudadas ÷ seções da aula, `progressoDaAula`), depois que as caixas do aluno
 e volta, o cartão mostra o progresso. Ao recarregar a página, some até a aula ser aberta de novo. Para mostrar sempre: uma
 função leve no banco (ex.: `app_temas_progresso()` devolvendo `{tema: pct}`), sem mexer na tela além de preencher o mesmo dado.
 
-## 5. Estilo das ilustrações: "órgão em vidro translúcido"
+## 5. Fotos dos temas (em uso)
+
+- Origem: imagens 16:9 geradas pelo Nano Banana (fora do repositório, em `/Volumes/StaziaMed/.tmp-aulas/imagens-temas/img/`,
+  com os prompts, o tipo e o risco médico em `prompts.json`).
+- Sincronizar quando chegarem novas: `pdfpython scripts/sincronizar-fotos-temas.py` (na raiz do projeto). Converte para
+  WebP 1280 × 720, qualidade 80 (baixa até caber em 180 KB), grava em `public/temas/foto/` e atualiza o manifesto com
+  arquivo, tipo, risco médico e estado. Foto nova ou trocada entra como "pendente de revisão médica". Tema "aprovada" nunca
+  é sobrescrito. PNG igual ao já convertido é pulado. `--seco` mostra o que faria.
+- O cartão só mostra foto de tema que está no manifesto (e não "reprovada"). O aluno não vê estado, risco nem código.
+- Plano completo, auditoria e decisões: `docs/temas-card-fotos.md`.
+
+## 5b. Registro: estilo das ilustrações em vidro (guardadas, sem uso)
 
 Tudo em SVG desenhado em código (sem imagem, sem serviço pago). Caixa de 240 × 240.
 
@@ -69,7 +86,7 @@ Peças (em `vidro.jsx`): `Vidro` (corpo com tudo acima), `Tubo`, `arvore` + `Ram
 `Brilho`, `suave` (curva suave por pontos). Componente base: `<IlustracaoTema motivo="pulmao" />` (usa `--gt-b` do cartão)
 ou `<IlustracaoTema motivo="rim" cor="#90E7CD" />`. Motivo sem desenho cai no genérico da área.
 
-## 6. Motivos desenhados nesta etapa (11 + genérico)
+## 6. Registro: motivos desenhados (11 + genérico)
 
 pulmão (traqueia com anéis, brônquios ramificados, lobos com fissuras e toques rosados), coração e grandes vasos, cérebro
 (giros, fissura lateral, cerebelo e tronco), rim (pirâmides, pelve, ureter, artéria e veia), útero com trompas e ovários,
@@ -77,11 +94,11 @@ feto no útero (placenta, cordão, cabeça para baixo), osso/articulação (joel
 e, pelos exemplos do dono: intestino com apêndice, recém-nascido com ambu, agente de saúde no território.
 Genérico da área: célula de vidro com núcleo na cor do tema (a disposição muda por área).
 
-## 7. Mapa dos 100 temas
+## 7. Registro: mapa dos 100 temas
 
-`src/novo/app/study/ilustracoes/mapa.js`: 36 motivos; cada um dos 100 temas aponta para um motivo (`MAPA_TEMAS`).
+`src/novo/_dormente/ilustracoes-vidro/mapa.js`: 36 motivos; cada um dos 100 temas aponta para um motivo.
 
-## 8. Motivos que faltam desenhar (etapa 2, depois da aprovação do dono)
+## 8. Registro: motivos que faltariam desenhar (etapa 2 cancelada pela troca para fotos)
 
 | Motivo | Temas |
 |---|---|
@@ -111,9 +128,8 @@ Genérico da área: célula de vidro com núcleo na cor do tema (a disposição 
 | copo e substâncias | 100 |
 | pílula e contracepção | 55, 84 |
 
-Enquanto não forem desenhados, esses temas mostram a célula de vidro na cor do tema.
+(Sem efeito agora: tema sem foto fica com o cartão limpo.)
 
-## 9. Fotos realistas (próxima frente)
+## 9. Fotos realistas
 
-O cartão já aceita uma foto aprovada por tema (campo opcional `foto`), com o desenho em vidro como reserva. Plano, prompts,
-custo e decisões pendentes: `docs/temas-card-fotos.md`. Nenhuma imagem foi gerada nesta etapa.
+Em uso desde 15/10/2026 (item 5). Plano, auditoria, banco futuro e decisões: `docs/temas-card-fotos.md`.

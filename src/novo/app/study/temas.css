@@ -1,4 +1,4 @@
-/* Temas Essenciais (Grandes Temas): cartão no padrão aprovado em 15/10/2026 (docs/temas-card.md).
+/* Temas Essenciais (Grandes Temas): cartão no padrão aprovado em 15/10/2026 (docs/temas-card.md), com a foto do tema.
    Cores do tema pela paleta v2 (--gt-p principal, --gt-e escura, --gt-c fundo suave, --gt-b brilho); nenhum código de cor
    aparece na tela. Modo escuro: o brilho da cor (contraste conferido contra o fundo escuro). Tamanhos pelo cartão
    (container), não pela janela: o mesmo cartão serve no celular e na grade do computador. */
@@ -14,33 +14,17 @@
   min-width:0;padding:26px 26px 24px;border-radius:28px;background:var(--surface-card);border:1px solid color-mix(in srgb,var(--border-subtle) 70%,transparent);
   box-shadow:0 1px 2px rgba(13,28,66,.04),0 22px 44px -26px rgba(13,28,66,.24),0 8px 18px -12px rgba(13,28,66,.08)}
 .gt-card::before{content:"";position:absolute;inset:0 0 auto;height:4px;background:var(--gt-p);z-index:2}
-.gt-card>*:not(.gt-fundo):not(.gt-ilus):not(.gt-foto){position:relative;z-index:1}
+.gt-card>*:not(.gt-foto){position:relative;z-index:1}
 
-/* vidro de fundo no canto e a ilustração, que some em degradê para o branco (máscara: vale para claro e escuro) */
-.gt-fundo{position:absolute;z-index:0;top:-34%;right:-22%;width:64%;height:112%;border-radius:44%;transform:rotate(-16deg);pointer-events:none;
-  background:linear-gradient(200deg,color-mix(in srgb,var(--gt-b) 46%,transparent) 0%,color-mix(in srgb,var(--gt-b) 16%,transparent) 42%,transparent 72%);
-  box-shadow:inset 1px 0 0 rgba(255,255,255,.7)}
-.gt-ilus{position:absolute;z-index:0;top:40px;right:-3cqi;width:min(50cqi,320px);aspect-ratio:1;pointer-events:none;
-  -webkit-mask-image:linear-gradient(to right,transparent 0%,#000 30%),linear-gradient(to bottom,#000 64%,transparent 98%);-webkit-mask-composite:source-in;
-  mask-image:linear-gradient(to right,transparent 0%,#000 30%),linear-gradient(to bottom,#000 64%,transparent 98%);mask-composite:intersect}
-.gt-ilus .il{display:block;width:100%;height:100%;overflow:visible}
-/* com a barra de progresso, a ilustração some antes da linha do "% concluído" (como na referência) */
-.gt-card:has(.gt-prog) .gt-ilus{width:min(46cqi,290px);
-  -webkit-mask-image:linear-gradient(to right,transparent 0%,#000 30%),linear-gradient(to bottom,#000 48%,transparent 82%);
-  mask-image:linear-gradient(to right,transparent 0%,#000 30%),linear-gradient(to bottom,#000 48%,transparent 82%)}
-
-/* foto do tema (opcional; docs/temas-card-fotos.md): 16:9 com o assunto à direita; o degradê por CSS garante o texto legível
-   à esquerda e embaixo. Sem foto, ou se ela falhar, o cartão usa o desenho em vidro. */
-.gt-foto{position:absolute;z-index:0;inset:0;pointer-events:none}
-.gt-foto picture,.gt-foto img{display:block;width:100%;height:100%}
-.gt-foto img{object-fit:cover;-webkit-user-drag:none;user-select:none}
-.gt-foto::after{content:"";position:absolute;inset:0;
-  background:linear-gradient(90deg,var(--surface-card) 0%,var(--surface-card) 34%,color-mix(in srgb,var(--surface-card) 70%,transparent) 52%,transparent 74%),
-             linear-gradient(0deg,var(--surface-card) 0%,color-mix(in srgb,var(--surface-card) 60%,transparent) 28%,transparent 48%)}
-@container (max-width: 499px){
-  .gt-foto::after{background:linear-gradient(90deg,var(--surface-card) 0%,color-mix(in srgb,var(--surface-card) 82%,transparent) 50%,color-mix(in srgb,var(--surface-card) 20%,transparent) 100%),
-             linear-gradient(0deg,var(--surface-card) 0%,var(--surface-card) 45%,transparent 70%)}
-}
+/* foto do tema à direita (WebP 16:9 com o assunto à direita, sem texto). O esmaecimento para o branco é só CSS: máscara que
+   some para a esquerda e para baixo (vale no claro e no escuro); no claro a foto ainda "multiplica" com o branco do cartão,
+   então o fundo claro da imagem se funde ao cartão, como na referência. Tema sem foto: cartão limpo. */
+.gt-foto{position:absolute;z-index:0;top:0;right:0;width:66%;height:84%;pointer-events:none;
+  -webkit-mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.35) 18%,#000 44%),linear-gradient(to bottom,#000 58%,transparent 100%);-webkit-mask-composite:source-in;
+  mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.35) 18%,#000 44%),linear-gradient(to bottom,#000 58%,transparent 100%);mask-composite:intersect}
+.gt-foto img{display:block;width:100%;height:100%;object-fit:cover;object-position:78% 50%;mix-blend-mode:multiply;-webkit-user-drag:none;user-select:none}
+/* com a barra de progresso, a foto termina antes da linha do "% concluído" */
+.gt-card:has(.gt-prog) .gt-foto{height:68%}
 
 /* topo: selo e pílula */
 .gt-topo{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -61,6 +45,7 @@ button.gt-pilula:hover:not(:disabled){border-color:var(--gt-p);background:var(--
 
 /* título e linha do tema */
 .gt-texto{max-width:58cqi;margin-top:8px}
+.gt-card:not(.com-foto) .gt-texto{max-width:none}
 .gt-titulo{margin:0;font:800 clamp(25px,7cqi,40px)/1.06 var(--font-sans);letter-spacing:-.025em;color:var(--text-primary);text-wrap:balance;hyphens:manual;overflow-wrap:break-word}
 .gt-meta{margin:8px 0 0;font:500 clamp(15px,3.5cqi,18px)/1.35 var(--font-sans);color:var(--text-secondary)}
 .gt-aviso{margin:0;max-width:62cqi;font:var(--type-body-sm);color:var(--text-secondary)}
@@ -110,7 +95,8 @@ button.gt-pilula:hover:not(:disabled){border-color:var(--gt-p);background:var(--
 @container (max-width: 499px){
   .gt-card .gt-btn{min-height:56px;font-size:16px}
   .gt-texto{max-width:70cqi;margin-top:2px}
-  .gt-ilus{top:64px;right:-9cqi;width:50cqi}
+  .gt-foto{width:82%;height:62%}
+  .gt-card:has(.gt-prog) .gt-foto{height:52%}
   .gt-pilula{margin-left:0}
   .gt-acoes.com-aula{grid-template-columns:minmax(0,1fr) auto}
   .gt-acoes.com-aula>.gt-btn--pri{grid-column:1/-1}
@@ -123,8 +109,12 @@ button.gt-pilula:hover:not(:disabled){border-color:var(--gt-p);background:var(--
 /* modo escuro */
 [data-theme="dark"] .gt-card{border-color:var(--border-subtle);box-shadow:var(--shadow-md)}
 [data-theme="dark"] .gt-card::before{background:var(--gt-b)}
-[data-theme="dark"] .gt-fundo{background:linear-gradient(200deg,color-mix(in srgb,var(--gt-b) 22%,transparent) 0%,color-mix(in srgb,var(--gt-b) 7%,transparent) 42%,transparent 72%);box-shadow:inset 1px 0 0 rgba(255,255,255,.08)}
-[data-theme="dark"] .gt-ilus{opacity:.88}
+/* escuro: as fotos de anatomia em vidro (fundo claro) têm a luz invertida com a cor preservada e "clareiam" o cartão escuro
+   (o fundo claro vira escuro e some); cenas e objetos ficam mais escuros e mais esmaecidos. */
+[data-theme="dark"] .gt-foto img{mix-blend-mode:normal;filter:brightness(.62) saturate(1.05)}
+[data-theme="dark"] .gt-foto{opacity:.8}
+[data-theme="dark"] .gt-foto[data-tipo="anatomia_vidro"]{opacity:1}
+[data-theme="dark"] .gt-foto[data-tipo="anatomia_vidro"] img{filter:invert(1) hue-rotate(180deg) brightness(.95) saturate(1.2);mix-blend-mode:screen}
 [data-theme="dark"] .gt-pilula{background:color-mix(in srgb,var(--surface-card) 78%,transparent);border-color:color-mix(in srgb,var(--text-primary) 18%,transparent)}
 [data-theme="dark"] .gt-selo.is-neutral .gt-selo-ic{background:#5A677B}
 [data-theme="dark"] .gt-prog-barra>span{background:linear-gradient(90deg,color-mix(in srgb,var(--gt-b) 70%,var(--gt-p)),var(--gt-b))}
