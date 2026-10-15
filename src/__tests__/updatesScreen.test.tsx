@@ -66,7 +66,7 @@ describe("Lista", () => {
     expect(screen.getAllByText("Prevenção da pré-eclâmpsia").length).toBe(2); // destaque + lista
     fireEvent.click(screen.getByRole("button", { name: /Clínica Médica/ }));
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_guideline_updates", { p_area: "CLINICA_MEDICA", p_year: null, p_search: null }));
-    fireEvent.click(screen.getByRole("button", { name: "2026" }));
+    fireEvent.click(screen.getByRole("radio", { name: "2026" })); // ano: controle segmentado (onda 4)
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_guideline_updates", { p_area: "CLINICA_MEDICA", p_year: 2026, p_search: null }));
     fireEvent.change(screen.getByLabelText("Buscar atualização"), { target: { value: "aas" } });
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_guideline_updates", { p_area: "CLINICA_MEDICA", p_year: 2026, p_search: "aas" }));

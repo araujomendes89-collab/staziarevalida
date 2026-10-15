@@ -10,11 +10,12 @@
 // do detalhe e o selo "Sem conferência médica" do cartão e da tabela ficam só como proteção, caso algum dia chegue ao aluno
 // algo sem conferência (AT04: o selo aparece em todo lugar onde a conduta aparece, não só no detalhe).
 import React from "react";
-import { AnswerOption, Badge, Banner, Button, Card, Chip, EmptyState, Icon, ProgressBar, SegmentedControl, TextField } from "../../ds";
+import { AnswerOption, Badge, Banner, Button, Card, EmptyState, Icon, ProgressBar, SegmentedControl, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
-import { useMobile } from "../Shell.jsx";
+import { useMobile, useMQ } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
 import { areaVars, atualizacaoVars } from "./temaCores.js";
+import { AREA_CHAVE, AreaFiltro } from "./casca.jsx";
 import { useLidas } from "./atualizacoesLidas.js";
 import { CartaoFlashcard, mesAno } from "../review/CartaoFlashcard.jsx";
 import "./atualizacoes.css";
@@ -130,7 +131,22 @@ function SourceLine({ item }) {
   );
 }
 
-/** Cartão da lista: faixa na cor da área, selos, fonte e data, e se já foi lido. */
+/** Linha de fonte do cartão: "Fonte: órgão · documento" (a caixa com ícone fica no detalhe). */
+const Fonte = ({ item }) => (
+  <>
+    {item.institution && <span>{item.institution}</span>}
+    {item.institution && item.publication_label && " · "}
+    {item.publication_label && <span>{item.publication_label}</span>}
+  </>
+);
+
+/** Ano em fonte de código, sem selo (modelo novo). */
+function AnoMono({ years }) {
+  const ys = years ?? [];
+  return ys.length ? <span className="at-ano">{ys.join(" · ")}</span> : null;
+}
+
+/** Cartão da lista: faixa na cor da área, selos, conduta vigente, fonte, "Lida" (só mostra; marcar é no detalhe). */
 function UpdateCard({ item, onOpen, compact = false, read = false }) {
   const open = (e) => {
     if (e.type === "click" || e.key === "Enter" || e.key === " ") {
@@ -138,36 +154,62 @@ function UpdateCard({ item, onOpen, compact = false, read = false }) {
       onOpen(item);
     }
   };
+  const fonte = item.institution || item.publication_label;
   return (
-    <Card interactive onClick={open} onKeyDown={open} role="button" aria-label={`Ver o que mudou: ${item.topic}${read ? " (lida)" : ""}`} className="at-card at-scope" style={areaVars(item.area)} padding={20}>
+    <Card interactive onClick={open} onKeyDown={open} role="button" aria-label={`Ver o que mudou: ${item.topic}${read ? " (lida)" : ""}`} className={`at-card at-scope${compact ? " at-card--destaque" : ""}`} style={areaVars(item.area)} padding={20}>
       <div className="at-card__head">
-        <AreaTag area={item.area} />
         <span className="at-card__tags">
+          <AreaTag area={item.area} />
           <NewSeal item={item} />
           <NoReviewSeal item={item} />
-          <Years years={item.years} />
         </span>
+        {compact ? (
+          <AnoMono years={item.years} />
+        ) : (
+          <span className="at-card__lida">
+            <AnoMono years={item.years} />
+            <span className={`at-lida${read ? " is-on" : ""}`}>
+              <Icon name={read ? "square-check-big" : "square"} size={18} />
+              <span className={read ? undefined : "at-lida__off"}>Lida</span>
+            </span>
+          </span>
+        )}
       </div>
       <div className="at-card__title">{item.topic}</div>
       {item.subtopic && <div className="at-card__sub">{item.subtopic}</div>}
+      {compact && fonte && <div className="at-card__fonte"><Fonte item={item} /></div>}
       {!compact && item.current_conduct && (
         <p className="at-card__conduct">
-          <b style={{ color: "var(--text-primary)" }}>Conduta vigente: </b>
+          <b>Conduta vigente: </b>
           {item.current_conduct.replace(/\s*\n\s*/g, " ")}
         </p>
       )}
-      <SourceLine item={item} />
       <div className="at-card__foot">
-        {read && (
-          <span className="at-read">
-            <Icon name="circle-check" size={16} /> Lida
-          </span>
-        )}
+        {!compact && fonte ? <span className="at-card__fonte">Fonte: <Fonte item={item} /></span> : <span />}
         <span className="at-card__cta">
-          Ver o que mudou <Icon name="chevron-right" size={16} />
+          Ver o que mudou <Icon name="arrow-right" size={16} />
         </span>
       </div>
     </Card>
+  );
+}
+
+/** Linha da lista no celular: área, ano, título e "Agora:", com seta (várias linhas num cartão só). */
+function UpdateRow({ item, onOpen, read = false }) {
+  return (
+    <button type="button" className="at-row at-scope" style={areaVars(item.area)} onClick={() => onOpen(item)} aria-label={`Ver o que mudou: ${item.topic}${read ? " (lida)" : ""}`}>
+      <span className="at-row__main">
+        <span className="at-card__tags">
+          <AreaTag area={item.area} />
+          <NoReviewSeal item={item} />
+          <AnoMono years={item.years} />
+          {read && <span className="at-read"><Icon name="circle-check" size={14} /> Lida</span>}
+        </span>
+        <span className="at-card__title">{item.topic}</span>
+        {item.current_conduct && <span className="at-row__agora"><b>Agora: </b>{item.current_conduct.replace(/\s*\n\s*/g, " ")}</span>}
+      </span>
+      <Icon name="chevron-right" size={18} className="at-row__seta" />
+    </button>
   );
 }
 
@@ -598,9 +640,22 @@ export function UpdateDetail({ slug, go, onBack, lidas: lidasLista, onToggleRead
   );
 }
 
+/** Lista do celular: um cartão só com as linhas; mostra 12 e abre mais 12 a cada toque (tudo já foi carregado). */
+function MobileLista({ items, onOpen, lidas }) {
+  const [n, setN] = React.useState(12);
+  React.useEffect(() => setN(12), [items]);
+  return (
+    <Card padding={0} className="at-rows">
+      {items.slice(0, n).map((i) => <UpdateRow key={i.id} item={i} onOpen={onOpen} read={Boolean(lidas[i.slug])} />)}
+      {items.length > n && <button type="button" className="at-mais" onClick={() => setN(n + 12)}>Carregar mais</button>}
+    </Card>
+  );
+}
+
 export function UpdatesScreen({ go }) {
   const { backend, user } = useSession();
   const mobile = useMobile();
+  const celular = useMQ("(max-width: 719px)"); // celular do modelo novo (até 719 px); o tablet mantém os cartões em duas colunas
   const [area, setArea] = React.useState("");
   const [year, setYear] = React.useState(null);
   const [q, setQ] = React.useState("");
@@ -647,51 +702,41 @@ export function UpdatesScreen({ go }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
-      <Card style={{ borderRadius: 24 }} padding={mobile ? 18 : 24}>
-        <div className="at-hero">
-          <div className="at-hero__top">
-            <div style={{ minWidth: 0, flex: "1 1 320px" }}>
-              <span className="sm-overline">Atualizações e diretrizes</span>
-              <h2 className="at-hero__title">O que mudou nas condutas</h2>
-              <p className="at-hero__lead">Antes × agora, o que cai no Revalida e a fonte oficial de cada mudança. Consulte sempre o documento original.</p>
-            </div>
-            {data.total > 0 && (
-              <div className="at-progress">
-                <ProgressBar label="Seu progresso" valueLabel={`${readCount} de ${totalAll} ${totalAll === 1 ? "lida" : "lidas"}`} value={readCount} max={Math.max(totalAll, 1)} />
-                <span className="at-progress__note">Fica salvo só neste aparelho e navegador.</span>
-              </div>
-            )}
+      <div className="at-top">
+        <Card className="at-intro" padding={mobile ? 16 : 20}>
+          <span className="at-intro__ic" aria-hidden="true"><Icon name="file-pen-line" size={26} /></span>
+          <div style={{ minWidth: 0 }}>
+            <h2 className="at-hero__title">O que mudou nas condutas</h2>
+            <p className="at-hero__lead">Antes × agora, o que cai no Revalida e a fonte oficial de cada mudança. Consulte sempre o documento original.</p>
           </div>
-          {data.total > 0 && (
-            <>
-              <TextField icon="search" aria-label="Buscar atualização" placeholder="Buscar por tema, conduta, fármaco, vacina ou órgão" value={q} onChange={(e) => setQ(e.target.value)} />
-              <div className="at-filters">
-                <div className="at-filters__row" role="group" aria-label="Grande área">
-                  <span className="at-filters__label" aria-hidden="true">Área</span>
-                  <Chip selected={area === ""} onClick={() => setArea("")} count={data.total}>
-                    Todas as áreas
-                  </Chip>
-                  {areas.map((a) => (
-                    <Chip key={a.id} className="sm-chip at-chip-area at-scope" style={areaVars(a.id)} selected={area === a.id} onClick={() => setArea(area === a.id ? "" : a.id)} count={data.by_area[a.id]}>
-                      <span className="at-dot" aria-hidden="true" />
-                      {a.label}
-                    </Chip>
-                  ))}
-                </div>
-                <div className="at-filters__row" role="group" aria-label="Ano da mudança">
-                  <span className="at-filters__label" aria-hidden="true">Ano</span>
-                  <Chip selected={year === null} onClick={() => setYear(null)}>Todos os anos</Chip>
-                  {data.years.map((y) => (
-                    <Chip key={y} selected={year === y} onClick={() => setYear(year === y ? null : y)}>
-                      {y}
-                    </Chip>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
+        </Card>
+        {data.total > 0 && (
+          <Card className="at-progress" padding={mobile ? 16 : 20}>
+            <ProgressBar label="Seu progresso" valueLabel={`${readCount} de ${totalAll} ${totalAll === 1 ? "lida" : "lidas"}`} value={readCount} max={Math.max(totalAll, 1)} />
+            <span className="at-progress__note">Fica salvo só neste aparelho e navegador.</span>
+          </Card>
+        )}
+      </div>
+      {data.total > 0 && (
+        <div className="at-filtros">
+          <div className="at-filtros__linha">
+            <div className="ap-busca">
+              <TextField icon="search" aria-label="Buscar atualização" placeholder={celular ? "Buscar tema, conduta, fármaco…" : "Buscar por tema, conduta, fármaco, vacina ou órgão"} value={q} onChange={(e) => setQ(e.target.value)} />
+            </div>
+            <SegmentedControl
+              label="Ano da mudança"
+              value={year === null ? "todos" : String(year)}
+              onChange={(v) => setYear(v === "todos" ? null : Number(v))}
+              options={[{ value: "todos", label: "Todos" }, ...data.years.map((y) => ({ value: String(y), label: String(y) }))]}
+            />
+          </div>
+          <AreaFiltro
+            valor={area}
+            onChange={(id) => setArea(id && area === id ? "" : id)}
+            itens={[{ id: "", label: "Todas as áreas", k: "todas", curto: "Todas", count: data.total }, ...areas.map((a) => ({ id: a.id, label: a.label, k: AREA_CHAVE[a.id], count: data.by_area[a.id] }))]}
+          />
         </div>
-      </Card>
+      )}
       {data.total === 0 ? (
         <EmptyState
           icon="shield-check"
@@ -704,9 +749,9 @@ export function UpdatesScreen({ go }) {
           {!filtering && view === "lista" && featured.length > 0 && (
             <section aria-labelledby="at-destaque">
               <div style={{ marginBottom: 12 }}>
-                <span className="sm-overline" id="at-destaque">Atualizações em destaque</span>
+                <h3 className="at-sec" id="at-destaque">Atualizações em destaque</h3>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: mobile ? "minmax(0,1fr)" : `repeat(${Math.min(featured.length, 4)},minmax(0,1fr))`, gap: 16 }}>
+              <div className="at-destaques" style={celular ? undefined : { gridTemplateColumns: `repeat(${Math.min(featured.length, 4)},minmax(0,1fr))` }}>
                 {featured.map((i) => <UpdateCard key={i.id} item={i} onOpen={openItem} compact read={Boolean(lidas[i.slug])} />)}
               </div>
             </section>
@@ -722,9 +767,13 @@ export function UpdatesScreen({ go }) {
           ) : view === "tabela" ? (
             <CompareTable items={data.items} onOpen={openItem} mobile={mobile} />
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: mobile ? "minmax(0,1fr)" : "repeat(auto-fill,minmax(320px,1fr))", gap: 16 }}>
-              {data.items.map((i) => <UpdateCard key={i.id} item={i} onOpen={openItem} read={Boolean(lidas[i.slug])} />)}
-            </div>
+            celular ? (
+              <MobileLista items={data.items} onOpen={openItem} lidas={lidas} />
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(100%,380px),1fr))", gap: 16 }}>
+                {data.items.map((i) => <UpdateCard key={i.id} item={i} onOpen={openItem} read={Boolean(lidas[i.slug])} />)}
+              </div>
+            )
           )}
         </>
       )}
