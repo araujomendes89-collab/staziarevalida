@@ -179,7 +179,7 @@ function UnitVersion({ id, go, isAdmin, isStaff, reviewerAreas }) {
       <ReviewFlags flags={v.review_flags} />
       <Decisions data={data} isAdmin={isAdmin} isStaff={isStaff} reviewerAreas={reviewerAreas} onChanged={recarrega} onPublish={() => setPublishing(true)} go={go} hideLegacyPublish={Boolean(visao)} />
       {publishing && isAdmin && v.status === "approved" && <PublishPanel version={v} publishFn={visao ? "app_ch_unit_publish" : "app_ch_publish"} onClose={() => setPublishing(false)} onPublished={(msg) => (setPublishing(false), setNotice(msg), recarrega())} />}
-      <Editor key={v.content_hash} version={v} claims={data.claims} editable={editable} onSaved={reload} />
+      <Editor key={v.content_hash} version={v} claims={data.claims} editable={editable} canNewVersion={isStaff && ["published", "needs_update"].includes(v.status)} onNewVersion={(novo) => go("unidades", { versao: novo })} onSaved={reload} />
       <Materials data={data} canRegenerate={editable} onChanged={recarrega} />
       <Section title={`Afirmações e evidências (${data.claims.length})`}>
         <p style={{ margin: "0 0 8px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Lista só da equipe: cada afirmação com a fonte, a página e a citação literal. O aluno nunca vê esta lista.</p>
@@ -342,13 +342,21 @@ function Decisions({ data, isAdmin, isStaff, reviewerAreas, onChanged, onPublish
   );
 }
 
-/** Editor da base revisada: seções e parágrafos; parágrafo clínico precisa citar afirmações. */
-function Editor({ version, claims, editable, onSaved }) {
+/**
+ * Editor da base revisada: seções e parágrafos; parágrafo clínico precisa citar afirmações.
+ * Abre em modo leitura; "Editar" liga a edição (equipe, versão editável) e "Cancelar" descarta. Versão no ar não se edita no lugar:
+ * "Editar (criar versão nova)" chama app_ch_new_version (só published/needs_update; a versão no ar continua até a nova ser publicada).
+ */
+function Editor({ version, claims, editable: podeEditar, canNewVersion = false, onNewVersion, onSaved }) {
   const { backend } = useSession();
-  const [sections, setSections] = React.useState(() => structuredClone(version.content.sections ?? []));
+  const original = () => structuredClone(version.content.sections ?? []);
+  const [sections, setSections] = React.useState(original);
   const [dirty, setDirty] = React.useState(false);
+  const [editando, setEditando] = React.useState(false);
+  const [confirmaNova, setConfirmaNova] = React.useState(false);
   const act = useAction();
   const claimLabel = new Map(claims.map((c, i) => [c.id, `A${i + 1}`]));
+  const editable = podeEditar && editando; // campos ligados agora
   const update = (fn) => {
     setSections((s) => {
       const next = structuredClone(s);
@@ -357,17 +365,53 @@ function Editor({ version, claims, editable, onSaved }) {
     });
     setDirty(true);
   };
+  const cancelar = () => {
+    setSections(original());
+    setDirty(false);
+    setEditando(false);
+  };
+  const salvar = () =>
+    act.run(() => backend.rpc("app_ch_save_unit_version", { p_version_id: version.id, p_content: { ...version.content, sections } }), "Texto salvo. As aprovações desta versão deixaram de valer.").then((r) => r && (setDirty(false), setEditando(false), onSaved()));
+  const criarNova = () => act.run(() => backend.rpc("app_ch_new_version", { p_from_version_id: version.id }), null).then((id) => id && onNewVersion?.(id));
   return (
     <Section
       title="Texto da unidade (base revisada)"
       action={
-        editable && dirty ? (
-          <Button size="sm" icon="check" loading={act.busy} onClick={() => act.run(() => backend.rpc("app_ch_save_unit_version", { p_version_id: version.id, p_content: { ...version.content, sections } }), "Texto salvo. As aprovações desta versão deixaram de valer.").then((r) => r && (setDirty(false), onSaved()))}>
-            Salvar texto
+        editable ? (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <Button size="sm" icon="check" disabled={!dirty} loading={act.busy} onClick={salvar}>
+              Salvar texto
+            </Button>
+            <Button size="sm" variant="secondary" disabled={act.busy} onClick={cancelar}>
+              Cancelar
+            </Button>
+          </div>
+        ) : podeEditar ? (
+          <Button size="sm" variant="secondary" icon="pencil" onClick={() => setEditando(true)}>
+            Editar
+          </Button>
+        ) : canNewVersion && !confirmaNova ? (
+          <Button size="sm" variant="secondary" icon="pencil" onClick={() => setConfirmaNova(true)}>
+            Editar (criar versão nova)
           </Button>
         ) : null
       }
     >
+      {confirmaNova && canNewVersion && (
+        <div style={{ marginBottom: 10 }}>
+          <Banner tone="info" icon="file-pen-line" title="Editar uma versão que está no ar">
+            <p style={{ margin: "0 0 8px" }}>A versão no ar continua como está; a edição vai numa versão nova, que precisa ser aprovada de novo.</p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <Button size="sm" icon="file-pen-line" loading={act.busy} onClick={criarNova}>
+                Criar versão nova e editar
+              </Button>
+              <Button size="sm" variant="secondary" disabled={act.busy} onClick={() => setConfirmaNova(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </Banner>
+        </div>
+      )}
       {editable && <p style={{ margin: "0 0 10px", font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>Salvar invalida as aprovações e exige gerar os materiais de novo. Informação clínica nova precisa de afirmação com evidência.</p>}
       {act.feedback}
       {sections.map((s, si) => (
