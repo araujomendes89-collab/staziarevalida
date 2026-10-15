@@ -6,6 +6,7 @@ import { useSearchParams } from "react-router-dom";
 import { Badge, Banner, Button, Card, Checkbox, EmptyState, ProgressBar, SegmentedControl, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
 import { percent } from "../practice/format.js";
+import { IneditasCard, useMyIneditas } from "../practice/IneditasCard.jsx";
 import { KIND_LABEL, planHeadline, progressText, reasonText } from "./plan.js";
 
 const MINUTES = [
@@ -79,6 +80,7 @@ export function TodayPlan({ go }) {
   const [plan, setPlan] = React.useState(null);
   const [error, setError] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
+  const ineditas = useMyIneditas(backend);
 
   React.useEffect(() => {
     let alive = true;
@@ -135,6 +137,7 @@ export function TodayPlan({ go }) {
           </Button>
         </div>
       </Card>
+      {ineditas && <IneditasCard variant="inicio" ineditas={ineditas} onPlans={() => go("planos")} onOpen={({ status }) => go("questoes", { prova: "staziamed", status })} />}
       {adjusting && <Personalize profile={boot.profile} onSave={save} onCancel={() => setAdjusting(false)} />}
       {plan.total === 0 ? (
         <EmptyState icon="list-checks" title="Sem tarefas para hoje" description="Monte um treino em Questões para começar." action={<Button onClick={() => go("questoes")}>Montar treino</Button>} />

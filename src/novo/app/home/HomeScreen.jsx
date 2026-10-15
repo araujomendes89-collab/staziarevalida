@@ -10,6 +10,7 @@ import { KIND_LABEL, reasonText, trialDaysLeft, trialTitle } from "./plan.js";
 import { hasFullAccess, usePlanLock } from "../plan/planAccess.js";
 import { RadarAvisoFaixa } from "../admin/radar/RadarAvisoFaixa.jsx";
 import { useRadarAvisos } from "../admin/radar/useRadarAvisos.js";
+import { IneditasCard, ineditasState } from "../practice/IneditasCard.jsx";
 import { PlayError, PlayHeader, PlayLoading, PlayLower, TrailPreview, usePlayHome } from "../play/PlayDashboard.jsx";
 
 const DIAGNOSTIC_SIZE = 10;
@@ -45,7 +46,7 @@ function TrialBanner({ trial, attempts, go }) {
   );
 }
 
-function HomeNew({ go, mobile, home, profile, startDiagnostic, busy }) {
+function HomeNew({ go, mobile, home, profile, startDiagnostic, busy, extra }) {
   const started = home.attempts > 0 || home.open_session;
   const steps = [
     ["Personalizar rotina", profile.daily_minutes != null, () => go("hoje", { ajustar: 1 })],
@@ -92,12 +93,13 @@ function HomeNew({ go, mobile, home, profile, startDiagnostic, busy }) {
           ))}
         </Card>
       </div>
+      {extra}
       <EmptyState icon="chart-no-axes-combined" title="Seu desempenho aparece aqui" description={`Depois das primeiras ${DIAGNOSTIC_SIZE} questões mostramos acurácia, ritmo e temas prioritários.`} />
     </>
   );
 }
 
-function HomeActive({ go, mobile, home, plan, startTask, toggleTask, busy, play }) {
+function HomeActive({ go, mobile, home, plan, startTask, toggleTask, busy, play, extra }) {
   const open = home.open_session;
   const pending = plan.tasks.find((t) => !t.done);
   let hero;
@@ -191,6 +193,7 @@ function HomeActive({ go, mobile, home, plan, startTask, toggleTask, busy, play 
           )}
         </div>
       </Card>
+      {extra}
       {playOn && s.data?.flags?.trail !== false && <TrailPreview go={go} mobile={mobile} onStart={play.startNode} busy={play.busy} />}
       {playOn && s.data && <PlayLower summary={s.data} mobile={mobile} go={go} />}
       <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "repeat(3,1fr)", gap: mobile ? 12 : 20 }}>
@@ -241,8 +244,8 @@ export function HomeScreen({ go, mobile }) {
 
   React.useEffect(() => {
     let alive = true;
-    Promise.all([backend.rpc("app_home"), backend.rpc("app_today"), backend.rpc("app_announcement").catch(() => null)])
-      .then(([home, plan, announcement]) => alive && setData({ home, plan, announcement }))
+    Promise.all([backend.rpc("app_home"), backend.rpc("app_today"), backend.rpc("app_announcement").catch(() => null), Promise.resolve().then(() => backend.rpc("app_my_ineditas")).catch(() => null)])
+      .then(([home, plan, announcement, ineditas]) => alive && setData({ home, plan, announcement, ineditas }))
       .catch(() => alive && setError("Não foi possível carregar o Início. Recarregue a página."));
     return () => {
       alive = false;
@@ -282,6 +285,17 @@ export function HomeScreen({ go, mobile }) {
     return task ? startTask(task) : go("questoes");
   };
 
+  // atalho das Questões Inéditas (contador + convite); só aparece se existir alguma publicada
+  const ineditasCard =
+    ineditasState(data.ineditas) !== "oculto" ? (
+      <IneditasCard
+        variant="inicio"
+        ineditas={data.ineditas}
+        onPlans={() => go("planos")}
+        onOpen={({ status }) => go("questoes", { prova: "staziamed", status })}
+      />
+    ) : null;
+
   return (
     <>
       {error && <Banner tone="danger">{error}</Banner>}
@@ -292,9 +306,9 @@ export function HomeScreen({ go, mobile }) {
         </Banner>
       )}
       {home.attempts < DIAGNOSTIC_SIZE ? (
-        <HomeNew go={go} mobile={mobile} home={home} profile={boot.profile} startDiagnostic={startDiagnostic} busy={busy} />
+        <HomeNew go={go} mobile={mobile} home={home} profile={boot.profile} startDiagnostic={startDiagnostic} busy={busy} extra={ineditasCard} />
       ) : (
-        <HomeActive go={go} mobile={mobile} home={home} plan={plan} startTask={startTask} toggleTask={toggleTask} busy={busy} play={play} />
+        <HomeActive go={go} mobile={mobile} home={home} plan={plan} startTask={startTask} toggleTask={toggleTask} busy={busy} play={play} extra={ineditasCard} />
       )}
     </>
   );

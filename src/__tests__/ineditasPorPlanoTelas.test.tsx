@@ -23,7 +23,7 @@ afterEach(cleanup);
 
 const TESTE = { id: "staziamed", kind: "STAZIAMED", year: 2026, semester: null, title: "Questões Inéditas", total: 74, locked: false, lock_message: null, released: 20, answered: 3, limited: true };
 
-function openBuilder(staz: any) {
+function openBuilder(staz: any, mode: "q" | "sim" = "q") {
   backend.rpc.mockImplementation(async (fn: string, args: any) => {
     if (fn === "app_question_filters") return { total: 1200, exams: [staz], topics: [] };
     if (fn === "app_count_questions") return { total: staz.released, by_area: { PEDIATRIA: staz.released } };
@@ -33,7 +33,7 @@ function openBuilder(staz: any) {
   const go = vi.fn();
   render(
     <MemoryRouter>
-      <QuestionBuilder go={go} mode="q" />
+      <QuestionBuilder go={go} mode={mode} />
     </MemoryRouter>
   );
   return go;
@@ -41,7 +41,7 @@ function openBuilder(staz: any) {
 
 describe("Montador: limite do plano", () => {
   it("teste grátis: mostra o total, as liberadas, as respondidas e o convite, sem preço nem gabarito", async () => {
-    const go = openBuilder(TESTE);
+    const go = openBuilder(TESTE, "sim"); // o quadro com o detalhe do limite aparece junto do filtro do Simulado
     const select = (await screen.findByLabelText("Prova / edição")) as HTMLSelectElement;
     expect([...select.options].map((o) => o.textContent)).toContain("Questões Inéditas (20 de 74)");
     fireEvent.change(select, { target: { value: "staziamed" } });
@@ -54,7 +54,7 @@ describe("Montador: limite do plano", () => {
   });
 
   it("plano com todas (sem limite): nada de bloqueio nem convite", async () => {
-    openBuilder({ ...TESTE, released: 74, limited: false });
+    openBuilder({ ...TESTE, released: 74, limited: false }, "sim");
     const select = (await screen.findByLabelText("Prova / edição")) as HTMLSelectElement;
     expect([...select.options].map((o) => o.textContent)).toContain("Questões Inéditas");
     fireEvent.change(select, { target: { value: "staziamed" } });

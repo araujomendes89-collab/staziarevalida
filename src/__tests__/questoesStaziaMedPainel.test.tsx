@@ -289,7 +289,7 @@ describe("Rascunho aberto", () => {
     await open();
     fireEvent.click(await screen.findByRole("button", { name: "Publicar" }));
     const preview = await screen.findByLabelText("Prévia como o aluno vê");
-    expect(within(preview).getByText("Questão StaziaMed · nº 7")).toBeTruthy();
+    expect(within(preview).getByText("Questão Inédita · nº 7")).toBeTruthy();
     expect(within(preview).getByText("não é questão oficial do Inep")).toBeTruthy();
     expect(within(preview).getByText("Enunciado da prévia.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Confirmar publicar" }));

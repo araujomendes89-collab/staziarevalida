@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Questões StaziaMed — lado do aluno (Tarefa 14): a opção "Questões Inéditas" na lista "Prova / edição", o aviso e o convite para
- * quem está fechado (teste vencido, plano vencido, sem assinatura), o rótulo "Questão StaziaMed · nº 12" com o selo de que não é
+ * quem está fechado (teste vencido, plano vencido, sem assinatura), o rótulo "Questão Inédita · nº 12" com o selo de que não é
  * oficial do Inep, a tabela de apoio, a correção "Gabarito StaziaMed" com as fontes oficiais citadas e o caderno de erros.
  */
 import React from "react";
@@ -41,8 +41,8 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe("Rótulos", () => {
-  it("questionRef e examLabel: 'Questão StaziaMed · nº 12', 'Questões Inéditas' na lista e 'Revalida 2024/1 · Q51'", () => {
-    expect(questionRef(STAZ)).toBe("Questão StaziaMed · nº 12");
+  it("questionRef e examLabel: 'Questão Inédita · nº 12', 'Questões Inéditas' na lista e 'Revalida 2024/1 · Q51'", () => {
+    expect(questionRef(STAZ)).toBe("Questão Inédita · nº 12");
     expect(examLabel(STAZ.exam)).toBe("Questões Inéditas");
     expect(questionRef({ number: 51, exam: { kind: "REVALIDA", year: 2024, semester: 1 } })).toBe("Revalida 2024/1 · Q51");
     expect(isStaziamed(STAZ)).toBe(true);
@@ -99,7 +99,7 @@ describe("Montador: opção 'Questões Inéditas' na lista 'Prova / edição'", 
     expect(await screen.findByText(message)).toBeTruthy();
     expect(screen.getByText("Questões Inéditas indisponíveis agora")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Começar treino" }).hasAttribute("disabled")).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Ver planos" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Ver planos" })[0]); // o cartão do topo e o aviso do filtro levam ao mesmo lugar
     expect(go).toHaveBeenCalledWith("planos");
     expect(backend.rpc.mock.calls.some((c: any[]) => c[0] === "app_start_session")).toBe(false);
   });
@@ -125,9 +125,9 @@ describe("Sessão e correção", () => {
     );
   };
 
-  it("sessão: 'Questão StaziaMed · nº 12', selo 'não é questão oficial do Inep' e a tabela de apoio antes das alternativas", async () => {
+  it("sessão: 'Questão Inédita · nº 12', selo 'não é questão oficial do Inep' e a tabela de apoio antes das alternativas", async () => {
     openSession(session());
-    expect(await screen.findByText("Questão StaziaMed · nº 12")).toBeTruthy();
+    expect(await screen.findByText("Questão Inédita · nº 12")).toBeTruthy();
     expect(screen.getByText("não é questão oficial do Inep")).toBeTruthy();
     const table = screen.getByRole("table", { name: "Exames da admissão" });
     expect(within(table).getByText("Hemoglobina")).toBeTruthy();
@@ -185,7 +185,7 @@ describe("Caderno de erros", () => {
         <ErrorNotebook go={vi.fn()} />
       </MemoryRouter>
     );
-    const row = await screen.findByText(/Questão StaziaMed · nº 12/);
+    const row = await screen.findByText(/Questão Inédita · nº 12/);
     expect(row.textContent).toContain("não é questão oficial do Inep");
   });
 });

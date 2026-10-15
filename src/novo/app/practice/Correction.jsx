@@ -228,7 +228,7 @@ export function Correction({ selected, correction, question, tutorContext = "que
       {staz && !annulled && (
         <div style={{ font: "600 15px var(--font-sans)" }}>
           Gabarito StaziaMed: alternativa {correction.correct_option}
-          <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", fontWeight: 400 }}> · não é questão oficial do Inep</span>
+          <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)", fontWeight: 400 }}> · Questão Inédita, não é questão oficial do Inep</span>
         </div>
       )}
       {!staz && question?.id && selected != null && !annulled && (

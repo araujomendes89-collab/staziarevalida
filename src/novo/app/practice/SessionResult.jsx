@@ -4,6 +4,7 @@ import React from "react";
 import { AnswerOption, Badge, Banner, Button, Card, Icon, ProgressBar, StatCard, Tabs } from "../../ds";
 import { useMQ } from "../Shell.jsx";
 import { Correction, PreliminarySeal, answerState, isAnnulled } from "./Correction.jsx";
+import { IneditaSeal } from "./IneditasCard.jsx";
 import { areaLabel, areaOf, formatClock, formatWhen, isStaziamed, percent, questionRef, splitStatement } from "./format.js";
 import { SupportTable } from "./SupportTable.jsx";
 import { QuestionFigures } from "./QuestionFigures.jsx";
@@ -41,7 +42,7 @@ function ReviewRow({ question, position, first, open, onToggle, go }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 16, padding: "4px 0 24px" }}>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <Badge tone="brand">{areaLabel(question.area)}</Badge>
-            <Badge>{questionRef(question)}</Badge>
+            {isStaziamed(question) ? <IneditaSeal number={question.number} /> : <Badge>{questionRef(question)}</Badge>}
             {isStaziamed(question) && <Badge tone="warning">não é questão oficial do Inep</Badge>}
           </div>
           <p style={{ margin: 0, fontSize: 16, lineHeight: 1.65, textWrap: "pretty", textAlign: "justify", hyphens: "auto" }} lang="pt-BR">{stem}</p>

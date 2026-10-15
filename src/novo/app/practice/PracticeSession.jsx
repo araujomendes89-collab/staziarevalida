@@ -14,6 +14,7 @@ import { useSession } from "../session.jsx";
 import { Correction, answerState } from "./Correction.jsx";
 import { QuestionFigures } from "./QuestionFigures.jsx";
 import { SessionResult } from "./SessionResult.jsx";
+import { IneditaSeal } from "./IneditasCard.jsx";
 import { areaLabel, formatClock, isStaziamed, questionRef, splitStatement } from "./format.js";
 import { SupportTable } from "./SupportTable.jsx";
 import { PreliminarySeal } from "./Correction.jsx";
@@ -462,7 +463,7 @@ function Runner({ session, go, onFinished }) {
           <div style={{ maxWidth: 720, margin: "0 auto", padding: mobile ? "24px 18px" : "44px 32px" }}>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <Badge tone="brand">{areaLabel(question.area)}</Badge>
-              <Badge>{questionRef(question)}</Badge>
+              {isStaziamed(question) ? <IneditaSeal number={question.number} /> : <Badge>{questionRef(question)}</Badge>}
               {isStaziamed(question) && <Badge tone="warning">não é questão oficial do Inep</Badge>}
               {question.bookmarked && (
                 <Badge tone="warning" icon="bookmark">

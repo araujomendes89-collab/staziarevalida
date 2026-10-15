@@ -21,13 +21,13 @@ export function examLabel(exam) {
 /** Questão escrita pela StaziaMed (não é questão oficial do Inep)? */
 export const isStaziamed = (q) => q?.exam?.kind === "STAZIAMED" || q?.origin === "staziamed";
 
-/** "Questão StaziaMed · nº 12" · "Revalida 2024/1 · Q51" */
+/** "Questão Inédita · nº 12" · "Revalida 2024/1 · Q51" */
 export function questionRef(q) {
-  if (isStaziamed(q)) return `Questão StaziaMed · nº ${q.number}`;
+  if (isStaziamed(q)) return `Questão Inédita · nº ${q.number}`;
   return `${examLabel(q?.exam)} · Q${q?.number}`;
 }
 
-/** O aviso que acompanha toda Questão StaziaMed. */
+/** O aviso que acompanha toda Questão Inédita (escrita pela StaziaMed). */
 export const STAZIAMED_NOTICE = "Questões criadas pela StaziaMed a partir de fontes oficiais e revisadas por médico. Não é questão oficial do Inep.";
 
 /** 36 → "36 min" · 60 → "1h" · 90 → "1h30" */

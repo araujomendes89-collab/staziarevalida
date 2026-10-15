@@ -11,6 +11,7 @@ import { useSupportEmail } from "../support/supportContact.jsx";
 import "./practice.css";
 import { AREAS, SIM_MAX_MINUTES, STAZIAMED_NOTICE, areaLabel, examLabel, formatClock, formatMinutes, formatWhen, paceLabel, parseDuration, percent } from "./format.js";
 import { IneditasQuota, isIneditasLimited, quotaText } from "./IneditasQuota.jsx";
+import { IneditasCard } from "./IneditasCard.jsx";
 import { SCORING_MODES, TRI_MIN_QUESTIONS } from "./tri.js";
 
 const STATUS_OPTIONS = [
@@ -220,6 +221,7 @@ export function QuestionBuilder({ go, mode }) {
   const lockedIneditas = onIneditas && (ineditas?.locked === true || !ineditas);
   const lockMessage = ineditas?.lock_message || "As Questões Inéditas são abertas a quem tem plano pago ou teste grátis em dia. As questões das provas oficiais continuam abertas.";
   // limite do plano (ex.: teste grátis): a tela mostra o total existente e quantas o plano libera
+  // no Banco de Questões o cartão "Questões Inéditas" do topo já mostra o contador; no Simulado o quadro aparece junto do filtro
   const limitedIneditas = isIneditasLimited(ineditas);
   const topics = (options?.topics ?? []).filter((t) => !form.area || t.area === form.area).slice(0, 6);
   const start = async () => {
@@ -243,6 +245,22 @@ export function QuestionBuilder({ go, mode }) {
     }
   };
 
+  // Atalho do cartão "Questões Inéditas": abre direto um treino só com elas (as que faltam; se já fez todas, as respondidas).
+  // Se não abrir, deixa a prova "Questões Inéditas" escolhida no montador, com o aviso do motivo.
+  const openIneditas = async ({ status }) => {
+    setStarting(true);
+    setError(null);
+    try {
+      const filters = { area: "", exam_id: "staziamed", search: "", status };
+      const started = await backend.rpc("app_start_session", { p_kind: "questoes", p_filters: filters, p_count: 20, p_time_limit_seconds: null });
+      go("sessao", { s: started.session_id });
+    } catch (e) {
+      set({ exam: "staziamed", status });
+      setError(isPlanLockMessage(e?.message) ? withSupport(e.message, supportEmail) : "Não foi possível abrir as Questões Inéditas agora. Ajuste os filtros abaixo e tente de novo.");
+      setStarting(false);
+    }
+  };
+
   if (options && options.total === 0) {
     return <EmptyState icon="file-question" title="Banco de questões vazio" description="Ainda não há questões carregadas neste ambiente." />;
   }
@@ -262,6 +280,11 @@ export function QuestionBuilder({ go, mode }) {
           <Banner tone="warning" icon="lock" title={lock.title} action={<Button size="sm" variant="secondary" onClick={() => go("planos")}>Ver planos</Button>}>
             {lock.text}
           </Banner>
+        </div>
+      )}
+      {!sim && ineditas && (
+        <div style={{ gridColumn: "1 / -1" }}>
+          <IneditasCard ineditas={ineditas} onOpen={openIneditas} onPlans={() => go("planos")} busy={starting} />
         </div>
       )}
       <Card style={{ borderRadius: 24 }} padding={mobile ? 22 : 32}>
@@ -336,7 +359,7 @@ export function QuestionBuilder({ go, mode }) {
               {STAZIAMED_NOTICE} Aqui "inéditas" quer dizer escritas pela StaziaMed; não é o mesmo que "ainda não respondidas" (isso é o filtro Status).
             </Banner>
           )}
-          {onIneditas && limitedIneditas && <IneditasQuota ineditas={ineditas} onPlans={() => go("planos")} />}
+          {sim && onIneditas && limitedIneditas && <IneditasQuota ineditas={ineditas} onPlans={() => go("planos")} />}
           {lockedIneditas && (
             <Banner
               tone="warning"

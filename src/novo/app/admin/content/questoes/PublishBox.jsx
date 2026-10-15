@@ -57,7 +57,7 @@ export function PublishBox({ item, onChanged }) {
       {preview && (
         <div style={{ marginTop: 10, border: "1px dashed var(--border-default)", borderRadius: "var(--radius-md)", padding: 12 }} aria-label="Prévia como o aluno vê">
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-            <Badge size="sm" tone="brand">Questão StaziaMed · nº {preview.number}</Badge>
+            <Badge size="sm" tone="brand">Questão Inédita · nº {preview.number}</Badge>
             <Badge size="sm" tone="warning">não é questão oficial do Inep</Badge>
             <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>{preview.code}</span>
           </div>
