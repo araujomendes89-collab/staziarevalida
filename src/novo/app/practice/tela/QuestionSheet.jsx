@@ -51,8 +51,8 @@ const FS_KEY = "stazia-tq-tamanho-texto";
 function useTextSize() {
   const [size, setSize] = React.useState(() => {
     try {
-      const saved = Number(window.localStorage.getItem(FS_KEY));
-      return saved === 0 || saved === 2 ? saved : 1;
+      const saved = window.localStorage.getItem(FS_KEY);
+      return saved === "0" ? 0 : saved === "2" ? 2 : 1;
     } catch {
       return 1;
     }
