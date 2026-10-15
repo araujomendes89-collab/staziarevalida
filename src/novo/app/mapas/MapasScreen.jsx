@@ -36,6 +36,7 @@ export function MapasScreen({ go }) {
         <div className="mm-topo">
           <Button variant="ghost" icon="arrow-left" onClick={() => setAberto(null)}>Todos os mapas</Button>
           {mapa && <span className="mm-topo-area">{nomeDaArea(mapa.area)}</span>}
+          <img className="mm-topo-logo" src="/brand/horizontal-240w.png" alt="StaziaMed Revalida" />
         </div>
         {mapa ? <MapaMental mapa={mapa} /> : <MapaEmPreparacao />}
       </div>

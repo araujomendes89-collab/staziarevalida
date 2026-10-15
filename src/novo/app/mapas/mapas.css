@@ -242,7 +242,7 @@
 /* pôster realista (imagem) */
 .mm-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .mm-pimg{margin:0;display:flex;flex-direction:column;gap:10px}
-.mm-pimg-abrir{display:block;padding:0;border:0;background:none;cursor:zoom-in;border-radius:22px;overflow:hidden;box-shadow:0 14px 40px -20px rgba(10,30,70,.5);aspect-ratio:3/2;background:var(--surface-subtle)}
+.mm-pimg-abrir{display:block;padding:0;border:0;background:none;cursor:zoom-in;border-radius:22px;overflow:hidden;box-shadow:0 14px 40px -20px rgba(10,30,70,.5);aspect-ratio:2528/1866;background:var(--surface-subtle)}
 .mm-pimg-abrir img{display:block;width:100%;height:100%;object-fit:contain}
 .mm-pimg-acoes{display:flex;gap:10px;flex-wrap:wrap}
 .mm-pimg-acoes button,.mm-pimg-acoes a,.mm-tc-barra button,.mm-tc-barra a{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 16px;border-radius:999px;border:1.5px solid var(--border-strong,var(--border-default));background:var(--surface-card);color:var(--text-primary);font:700 13px var(--font-sans);cursor:pointer;text-decoration:none}
@@ -255,3 +255,6 @@
 .mm-lcard-img{display:block;width:calc(100% + 6px);margin:-6px -6px 4px -6px;aspect-ratio:3/2;object-fit:cover;border-radius:12px;background:var(--surface-subtle)}
 .mm-mini{display:block;padding:0;border:1.5px solid var(--border-default);border-radius:12px;overflow:hidden;cursor:pointer;width:120px;aspect-ratio:3/2;background:var(--surface-subtle)}
 .mm-mini img{display:block;width:100%;height:100%;object-fit:cover}
+
+.mm-topo-logo{margin-left:auto;height:26px;width:auto;opacity:.9}
+:root[data-theme="dark"] .mm-topo-logo{content:url(/brand/horizontal-escuro-240w.png)}
