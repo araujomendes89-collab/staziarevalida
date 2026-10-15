@@ -140,7 +140,7 @@ export function QuestionBuilder({ go, mode }) {
     return {
       area: AREAS.some((a) => a.id === area) ? area : "",
       search: params.get("tema") ?? "",
-      exam: params.get("prova") === "staziamed" ? "staziamed" : "",
+      exam: !sim && params.get("prova") === "staziamed" ? "staziamed" : "",
       status: sim ? "all" : STATUS_OPTIONS.some((o) => o.value === status) ? status : "unanswered",
       count: sim ? "30" : "20",
       timer: "prova",
@@ -228,7 +228,7 @@ export function QuestionBuilder({ go, mode }) {
     setStarting(true);
     setError(null);
     try {
-      const filters = { area: form.area, exam_id: form.exam, search: form.search.trim(), status: form.status };
+      const filters = { area: form.area, exam_id: sim && form.exam === "staziamed" ? "" : form.exam, search: form.search.trim(), status: form.status };
       const started = tri
         ? await backend.rpc("app_start_simulado_tri", { p_filters: filters, p_count: requested, p_time_limit_seconds: limitSeconds })
         : await backend.rpc("app_start_session", { p_kind: kind, p_filters: filters, p_count: requested, p_time_limit_seconds: limitSeconds });
@@ -336,7 +336,7 @@ export function QuestionBuilder({ go, mode }) {
               label="Prova / edição"
               value={form.exam}
               onChange={(e) => edit({ exam: e.target.value })}
-              options={[{ value: "", label: "Todas as provas oficiais" }, ...(options?.exams ?? []).map((e) => ({ value: e.id, label: e.id === "staziamed" && e.locked ? `${examLabel(e)} (indisponível no seu plano agora)` : e.id === "staziamed" && isIneditasLimited(e) ? `${examLabel(e)} (${e.released} de ${e.total})` : examLabel(e) }))]}
+              options={[{ value: "", label: "Todas as provas oficiais" }, ...(options?.exams ?? []).filter((e) => !sim || e.id !== "staziamed").map((e) => ({ value: e.id, label: e.id === "staziamed" && e.locked ? `${examLabel(e)} (indisponível no seu plano agora)` : e.id === "staziamed" && isIneditasLimited(e) ? `${examLabel(e)} (${e.released} de ${e.total})` : examLabel(e) }))]}
             />
             {sim ? (
               <SelectField
