@@ -66,9 +66,10 @@ describe("pôster realista (imagem) como visual principal", () => {
     semImagem();
     expect(screen.getByRole("heading", { level: 2 }).textContent).toMatch(/Tuberculose\s+pulmonar/);
   });
-  it("a lista mostra a miniatura do pôster e o botão do cartão do tema só com mapa", () => {
+  it("a lista não tem miniatura de imagem: só a caixa com os escritos", () => {
     render(<MemoryRouter><MapasScreen go={() => {}} /></MemoryRouter>);
-    expect(document.querySelector(".mm-lcard-img")).toBeTruthy();
+    expect(document.querySelector(".mm-lcard img")).toBeNull();
+    expect(screen.getAllByText(/ramos · revisão rápida e aprofundado/).length).toBe(MAPAS.length);
   });
 });
 

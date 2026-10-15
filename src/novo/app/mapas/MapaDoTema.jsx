@@ -34,13 +34,3 @@ export function BotaoMapaMental({ codigo, go, className = "", compacto = false }
   );
 }
 
-/** Miniatura do pôster para o cartão do tema (Temas Essenciais): imagem pequena que abre o mapa. Sem mapa ou sem imagem, não aparece. */
-export function MiniaturaMapa({ codigo, go, className = "" }) {
-  const mapa = mapaPorCodigo(codigo);
-  if (!mapa?.poster?.webp) return null;
-  return (
-    <button type="button" className={"mm-mini " + className} onClick={(e) => { e.stopPropagation(); go("mapas", { tema: mapa.slug, de: "temas" }); }} aria-label={`Mapa mental: ${mapa.titulo}`}>
-      <img src={mapa.poster.webp} alt="" loading="lazy" onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }} />
-    </button>
-  );
-}
