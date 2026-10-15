@@ -1,0 +1,8 @@
+# Monta a imagem do vigia do Radar no Google Cloud Build (nada pesado roda no Mac). Usado por scripts/cloudrun/deploy-radar-vigia.sh.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "cloudrun/radar-vigia/Dockerfile", "-t", "${_IMAGE}", "."]
+images: ["${_IMAGE}"]
+options:
+  logging: CLOUD_LOGGING_ONLY
+timeout: 600s

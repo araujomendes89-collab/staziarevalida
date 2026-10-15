@@ -2,15 +2,21 @@
 // Radar de Evidências StaziaMed, vigia local em MODO ENSAIO (não grava em banco, não publica nada ao aluno).
 //
 //   node scripts/radar/vigia.mjs [--biblioteca DIR] [--saida DIR] [--max-remoto 10] [--max-pares 5] [--max-ia 3]
-//                                [--sem-rede] [--sem-ia] [--sem-hash-local] [--modelo gemini-2.5-flash] [--env ARQUIVO.env]
+//                                [--sem-rede] [--sem-ia] [--sem-hash-local] [--modelo gemini-3.8-flash] [--env ARQUIVO.env]
+//                                [--adaptadores [conitec,dou,vacinacao,febrasgo]] [--envelhecer-base] [--mapa-producao] [--teto-usd 5]
 //
 // 1. lê o catálogo da biblioteca local (SQLite) e classifica cada referência (vigente | proposta | revogada | evidência
 //    complementar | desconhecido | proibida_samu);
 // 2. confere o hash dos PDFs locais contra o catálogo e acha duplicatas;
 // 3. compara VERSÕES do mesmo documento dentro da biblioteca (diff por trecho e página);
 // 4. confere uma amostra de URLs oficiais na internet (hash do arquivo) contra o catálogo;
-// 5. SÓ quando há mudança chama o Gemini (Vertex) para explicar em português simples; a IA nunca altera nada;
-// 6. cruza com o mapa fonte → usos (temas, questões, aulas) e lista o que fica "revalidar";
+// 5. SÓ quando há mudança chama o Gemini (Vertex) para explicar em português simples; a IA nunca altera nada. Teto de US$ 5 por mês
+//    (contador persistido em radar/custo.json): ao atingir, a IA para e a mudança é só registrada;
+// 6. cruza com o mapa fonte → usos e lista o que fica "revalidar" (só AVISA; nunca bloqueia nem altera). Com --mapa-producao o mapa é
+//    POR TRECHO (questão/aula/atualização → fonte/página), lido da produção em SOMENTE LEITURA; sem a flag, por tema;
+// 6b. --adaptadores lê Conitec, Diário Oficial (canais permitidos), calendário de vacinação e Febrasgo; --envelhecer-base simula, no
+//    ensaio, uma base antiga para mostrar como o vigia detecta o que é novo ou mudou;
+// 6c. cada evento recebe gravidade: grave (revogação ou mudança de conduta, vai ao dono) ou leve (redação/numeração);
 // 7. grava relatório em Markdown e JSON em --saida (padrão /Volumes/StaziaMed/.tmp-aulas/radar/).
 //
 // A chave VERTEX_API_KEY vem do .env do projeto e NUNCA é impressa nem gravada.
@@ -21,9 +27,16 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import {
-  anoDoDoc, classificarReferencia, decodificarBytes, esqueleto, textoDeHtml, compararVersoes, custoEstimadoUsd, decidirMudanca, duplicatasExatas, familiasDeVersoes,
-  itensAfetados, montarMapaUsos, sanitizarAnaliseIA, sha256Hex,
+  anoDoDoc, classificarGravidade, classificarReferencia, observacaoDaIA, decodificarBytes, esqueleto, textoDeHtml, compararVersoes, decidirMudanca, duplicatasExatas, familiasDeVersoes,
+  itensAfetados, montarMapaUsos, sha256Hex,
 } from "./lib.mjs";
+import { ContadorCusto, StoreCustoArquivo, tetoEfetivo } from "./custo.mjs";
+import { analisarComTeto, MODELO_PADRAO, montarPrompt } from "./ia.mjs";
+import { criarCliente } from "./adaptadores/http.mjs";
+import { ORDEM } from "./adaptadores/index.mjs";
+import { EstadoArquivo, EstadoMemoria } from "./estado.mjs";
+import { carregarMapaDeProducao, itensAfetadosPorTrecho, lerEnv, resumoDoMapa } from "./mapa-trechos.mjs";
+import { vigiarAdaptadores } from "./nucleo.mjs";
 
 const AQUI = path.dirname(fileURLToPath(import.meta.url));
 const RAIZ = path.resolve(AQUI, "..", "..");
@@ -43,7 +56,9 @@ const SAIDA = A.saida ?? "/Volumes/StaziaMed/.tmp-aulas/radar";
 const MAX_REMOTO = Number(A["max-remoto"] ?? 10);
 const MAX_PARES = Number(A["max-pares"] ?? 5);
 const MAX_IA = Number(A["max-ia"] ?? 3);
-const MODELO = A.modelo ?? "gemini-2.5-flash";
+const MODELO = A.modelo ?? MODELO_PADRAO;
+const ADAPTADORES = A.adaptadores ? A.adaptadores.split(",").filter((x) => ORDEM.includes(x)) : A.flags.has("adaptadores") ? ORDEM : [];
+const ENVELHECER = A.flags.has("envelhecer-base"), MAPA_PRODUCAO = A.flags.has("mapa-producao");
 const SEM_REDE = A.flags.has("sem-rede"), SEM_IA = A.flags.has("sem-ia"), SEM_HASH_LOCAL = A.flags.has("sem-hash-local");
 const agora = new Date();
 const carimbo = agora.toISOString().slice(0, 16).replace(/[-:T]/g, "").replace(/^(\d{8})(\d{4})$/, "$1-$2");
@@ -77,6 +92,16 @@ const dossies = lerJson(path.join(RAIZ, "scripts/portao-atualidade/dossies-100.j
 const ligacao = lerJson(path.join(RAIZ, "scripts/grandes-temas/ligacao-questoes.json"));
 const mapa = montarMapaUsos(dossies, ligacao);
 log(`Mapa fonte→usos: ${mapa.size} fontes ligadas a temas`);
+let mapaTrechos = null, mapaInfo = { modo: "por tema (dossiês locais)" };
+if (MAPA_PRODUCAO) {
+  try {
+    const env = lerEnv(A.env ?? path.resolve(RAIZ, "..", "..", "..", ".env"));
+    const r = await carregarMapaDeProducao({ env, dossies, ligacao });
+    mapaTrechos = r.mapa;
+    mapaInfo = { modo: "por trecho, produção em SOMENTE LEITURA (somente GET)", leituras: r.leitor.chamadas.length, tabelas_lidas: r.bruto, resumo: resumoDoMapa(r.mapa) };
+    log(`Mapa por trecho (produção, só leitura): ${JSON.stringify(mapaInfo.resumo)}`);
+  } catch (e) { mapaInfo = { modo: "por tema (a leitura da produção falhou)", erro: String(e.message).slice(0, 160) }; log(mapaInfo.modo, mapaInfo.erro); }
+}
 
 // ---------------------------------------------------------------- 1. classificação + campos por fonte
 const fontes = docs.map((d) => {
@@ -202,49 +227,76 @@ for (const d of integridade.diferentes) eventos.push({ origem: "arquivo_local_di
 for (const m of remoto.mudaram) eventos.push({ origem: "fonte_oficial_mudou", doc_id: m.doc_id, resumo: m.resumo, itens: m.itens, detalhe: { url: m.url, lastModified: m.lastModified } });
 for (const v of diffsVersoes) if (v.mesmo_documento && v.itens.length) eventos.push({ origem: "versoes_divergem_na_biblioteca", manual: v.manual, doc_id: v.novo, doc_id_comparado: v.antigo, resumo: v.resumo, itens: v.itens, detalhe: { ano_antigo: v.ano_antigo, ano_novo: v.ano_novo, ref_antigo: v.ref_antigo, ref_novo: v.ref_novo } });
 
+const paginasDoDiff = (itens) => [...new Set((itens ?? []).flatMap((i) => [i.pagina_antiga, i.pagina_nova]).filter((p) => Number.isInteger(p)))];
 for (const ev of eventos) {
-  const af = itensAfetados(ev.doc_id, mapa);
-  ev.afetados = af;
+  ev.afetados = mapaTrechos ? itensAfetadosPorTrecho(ev.doc_id, mapaTrechos, paginasDoDiff(ev.itens)) : itensAfetados(ev.doc_id, mapa);
   ev.referencia = fontes.find((f) => f.doc_id === ev.doc_id)?.referencia ?? "desconhecido";
+  const g = classificarGravidade({ referencia: ev.referencia, item: { titulo: fontes.find((f) => f.doc_id === ev.doc_id)?.titulo ?? ev.doc_id, tipo: "biblioteca", adaptador: "biblioteca" }, diff: { itens: ev.itens }, novo: false, temasAfetados: ev.afetados.resumo.temas ?? 0 });
+  ev.gravidade = g.gravidade; ev.motivo_gravidade = g.motivo;
 }
 
-// ---------------------------------------------------------------- 6. Gemini (só nas mudanças, com teto)
-const ia = { modelo: MODELO, chamadas: 0, tokens_entrada: 0, tokens_saida: 0, custo_estimado_usd: 0, erros: [] };
-async function perguntarGemini(ev, chave) {
-  const top = ev.itens.slice(0, 12).map((i, n) =>
-    `#${n + 1} [${i.kind}${i.critical ? ", CRITICO" : ""}] antigo(p.${i.pagina_antiga ?? "-"}): ${(i.trecho?.antes ?? i.texto_antigo ?? "(não existia)").slice(0, 350)}\n   novo(p.${i.pagina_nova ?? "-"}): ${(i.trecho?.depois ?? i.texto_novo ?? "(removido)").slice(0, 350)}`).join("\n");
-  const doc = fontes.find((f) => f.doc_id === ev.doc_id);
-  const prompt = `Você ajuda a equipe médica do StaziaMed (preparatório Revalida) a triar mudanças em fontes oficiais. Você NÃO decide conduta clínica e NÃO altera gabarito: apenas descreve a diferença para um revisor médico.
-Documento: ${doc?.titulo ?? ev.doc_id} (${doc?.instituicao ?? ""}). Classificação do radar: ${ev.referencia}. Origem do sinal: ${ev.origem}${ev.doc_id_comparado ? `, comparado com ${ev.doc_id_comparado}` : ""}.
-Diferenças encontradas por comparação automática de texto (trecho antigo x novo, com página):
-${top}
-Responda SOMENTE em JSON, em português simples, com as chaves: "o_que_mudou" (até 4 frases, citando as páginas), "recomendacao_alterada" (qual recomendação ou número mudou, ou "nenhuma recomendação clara"), "impacto_clinico_provavel" (o que isso pode mudar na prática ou em questões de prova; diga "incerto" se não der para saber), "certeza" ("alta", "media" ou "baixa"), "observacao" (ressalvas: pode ser só diferença de diagramação ou de extração de PDF). Não invente nada que não esteja nos trechos.`;
-  const r = await fetch(`https://aiplatform.googleapis.com/v1beta1/publishers/google/models/${MODELO}:generateContent`, {
-    method: "POST",
-    headers: { "x-goog-api-key": chave, "content-type": "application/json" },
-    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { temperature: 0.1, maxOutputTokens: 3000, responseMimeType: "application/json", thinkingConfig: { thinkingBudget: 0 } } }),
-  });
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const j = await r.json();
-  ia.chamadas++;
-  ia.tokens_entrada += j.usageMetadata?.promptTokenCount ?? 0;
-  ia.tokens_saida += (j.usageMetadata?.candidatesTokenCount ?? 0) + (j.usageMetadata?.thoughtsTokenCount ?? 0);
-  const txt = j.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") ?? "";
-  if (process.env.RADAR_DEBUG) fs.writeFileSync(path.join(SAIDA, "tmp", `ia-${ev.doc_id}.txt`), txt);
-  return sanitizarAnaliseIA(JSON.parse(txt));
+// ---------------------------------------------------------------- 6. Gemini (só nas mudanças, com teto de chamadas e TETO MENSAL em dólar)
+const contador = new ContadorCusto({ store: new StoreCustoArquivo(path.join(SAIDA, "custo.json")), tetoUsd: tetoEfetivo(A["teto-usd"]) });
+const custoAntes = await contador.estado();
+const ia = { modelo: MODELO, chamadas: 0, tokens_entrada: 0, tokens_saida: 0, custo_estimado_usd: 0, erros: [], puladas_por_teto: 0 };
+const chaveIA = SEM_IA ? null : lerChave();
+async function analisar(ev, doc) {
+  const r = await analisarComTeto({ contador, chave: chaveIA, modelo: MODELO, prompt: montarPrompt({ titulo: doc?.titulo ?? ev.doc_id, instituicao: doc?.instituicao ?? "", referencia: ev.referencia, origem: ev.origem, comparadoCom: ev.doc_id_comparado, itens: ev.itens }) });
+  if (r.analise) { ev.analise_ia = r.analise; ia.chamadas++; ia.tokens_entrada += r.tokensEntrada; ia.tokens_saida += r.tokensSaida; ev.ia_custo_usd = r.custo_usd; ev.ia_modelo = MODELO; const o = observacaoDaIA(ev.gravidade, r.analise); if (o) ev.motivo_gravidade += ` ${o}`; }
+  else if (r.pulada === "teto_mensal") { ia.puladas_por_teto++; ev.ia_pulada = "teto mensal de US$ 5 atingido: mudança registrada sem análise"; }
 }
 if (!SEM_IA && MAX_IA > 0) {
-  const chave = lerChave();
-  if (!chave) ia.erros.push("VERTEX_API_KEY não encontrada: IA pulada");
+  if (!chaveIA) ia.erros.push("VERTEX_API_KEY não encontrada: IA pulada");
   else {
-    const fila = eventos.filter((e) => e.itens.length).sort((x, y) => (Number(!!y.manual) - Number(!!x.manual)) || ((y.afetados.resumo.questoes + y.afetados.resumo.aulas) - (x.afetados.resumo.questoes + x.afetados.resumo.aulas)) || ((y.resumo?.criticas ?? 0) - (x.resumo?.criticas ?? 0))).slice(0, MAX_IA) // primeiro o que foi pedido, depois o que mais conteúdo toca;
+    const fila = eventos.filter((e) => e.itens.length).sort((x, y) => (Number(!!y.manual) - Number(!!x.manual)) || (Number(y.gravidade === "grave") - Number(x.gravidade === "grave")) || ((y.afetados.resumo.questoes + y.afetados.resumo.aulas) - (x.afetados.resumo.questoes + x.afetados.resumo.aulas)) || ((y.resumo?.criticas ?? 0) - (x.resumo?.criticas ?? 0))).slice(0, MAX_IA); // primeiro o que foi pedido, depois o que mais conteúdo toca
     for (const ev of fila) {
-      try { ev.analise_ia = await perguntarGemini(ev, chave); if (!ev.analise_ia.o_que_mudou) ev.analise_ia = await perguntarGemini(ev, chave); /* resposta vazia: tenta uma vez mais */ } catch (e) { ia.erros.push(`${ev.doc_id}: ${String(e.message).replace(chave, "***").slice(0, 120)}`); }
+      try { await analisar(ev, fontes.find((f) => f.doc_id === ev.doc_id)); } catch (e) { ia.erros.push(`${ev.doc_id}: ${String(e.message).replace(chaveIA, "***").slice(0, 120)}`); }
     }
   }
-  ia.custo_estimado_usd = custoEstimadoUsd(MODELO, ia.tokens_entrada, ia.tokens_saida);
 }
-log(`Gemini: ${ia.chamadas} chamadas, ${ia.tokens_entrada} tokens entrada, ${ia.tokens_saida} saída, custo estimado US$ ${ia.custo_estimado_usd}`);
+
+// ---------------------------------------------------------------- 6b. adaptadores (Conitec, DOU, vacinação, Febrasgo)
+let adaptadores = null;
+if (ADAPTADORES.length && !SEM_REDE) {
+  const cliente = criarCliente({ pausaMs: Number(A["pausa-ms"] ?? 1500) });
+  const arquivoBase = path.join(SAIDA, "estado-adaptadores.json");
+  const comIA = !SEM_IA && MAX_IA > 0 && chaveIA ? { contador, chaveIA, modelo: MODELO, maxIA: Number(A["max-ia-adaptadores"] ?? 8) } : {};
+  const dadosComuns = { cliente, quais: ADAPTADORES, dossies, ligacao };
+  if (ENVELHECER) {
+    // ensaio: 1) lê tudo e grava a base de verdade (se ainda não existe); 2) cria uma cópia ENVELHECIDA da base (tira os itens mais novos de cada
+    // adaptador e muda número e hash de algumas páginas) e lê de novo, para o relatório mostrar o que o vigia faria diante de mudanças.
+    const real = new EstadoArquivo(arquivoBase);
+    const primeira = await vigiarAdaptadores({ ...dadosComuns, estado: real });
+    const velha = new EstadoMemoria();
+    const alteracoesSimuladas = [];
+    for (const ad of ADAPTADORES) {
+      const base = await real.carregar(ad);
+      const lista = [...base].map(([chave, v]) => ({ chave, ...v }));
+      const porData = [...lista].sort((x, y) => String(y.data ?? y.versao ?? "").localeCompare(String(x.data ?? x.versao ?? "")));
+      const tirar = new Set(porData.slice(0, Math.max(1, Math.min(4, Math.floor(lista.length / 3)))).map((x) => x.chave));
+      const resto = lista.filter((x) => !tirar.has(x.chave));
+      let alterados = 0;
+      for (const x of resto) {
+        if (alterados >= 3) break;
+        if (x.texto && /\d/.test(x.texto)) { x.texto = x.texto.replace(/(\d+)(\s*(?:meses|anos|dias|doses?|semanas))/i, (_, n, u) => `${Number(n) + 1}${u}`); x.hash = "0".repeat(64); alterados++; alteracoesSimuladas.push({ adaptador: ad, chave: x.chave, simulacao: "número alterado no texto da base antiga" }); }
+        else if (!x.texto && !/^vacinacao:calendario/.test(x.chave) && ad !== "dou") { x.hash = "f".repeat(64); x.versao = "2020-01-01"; alterados++; alteracoesSimuladas.push({ adaptador: ad, chave: x.chave, simulacao: "data/versão antiga na base" }); }
+      }
+      await velha.salvar(ad, resto.map((x) => ({ chave: x.chave, hash: x.hash, titulo: x.titulo, versao: x.versao, data: x.data, url: x.url, tipo: x.tipo, texto: x.texto })));
+      alteracoesSimuladas.push({ adaptador: ad, simulacao: `${tirar.size} itens mais novos removidos da base antiga (voltam como NOVOS)` });
+    }
+    const segunda = await vigiarAdaptadores({ ...dadosComuns, estado: velha, gravarBase: false, ...comIA });
+    adaptadores = { modo: "ensaio com base envelhecida artificialmente", primeira_leitura: primeira.porAdaptador, alteracoes_simuladas: alteracoesSimuladas, ...segunda };
+  } else {
+    const r = await vigiarAdaptadores({ ...dadosComuns, estado: new EstadoArquivo(arquivoBase), ...comIA });
+    adaptadores = { modo: "leitura real contra a base gravada", ...r };
+  }
+  for (const ev of adaptadores.eventos) if (ev.analise_ia) { ia.chamadas++; ia.custo_estimado_usd += ev.ia_custo_usd ?? 0; }
+  log(`Adaptadores: ${adaptadores.porAdaptador.map((x) => `${x.adaptador} ${x.lidos} lidos/${x.eventos} eventos`).join("; ")}`);
+}
+const custoDepois = await contador.estado();
+ia.custo_estimado_usd = Number((custoDepois.usd - custoAntes.usd).toFixed(6));
+ia.mes = { mes: custoDepois.mes, usd: custoDepois.usd, teto_usd: custoDepois.teto_usd, restante_usd: custoDepois.restante_usd, atingiu_teto: custoDepois.atingiu_teto };
+log(`Gemini: ${ia.chamadas} chamadas, custo estimado desta rodada US$ ${ia.custo_estimado_usd}; mês ${ia.mes.mes}: US$ ${ia.mes.usd} de US$ ${ia.mes.teto_usd}`);
 
 // ---------------------------------------------------------------- 7. relatório
 const relatorio = {
@@ -253,7 +305,7 @@ const relatorio = {
   integridade_local: integridade, duplicatas_exatas: duplicatas,
   familias_de_versoes: familias.map((f) => ({ chave: f.chave, docs: f.docs.map((d) => d.doc_id) })),
   comparacoes_de_versoes: diffsVersoes.map((v) => ({ ...v, itens: v.itens.slice(0, 40) })),
-  conferencia_remota: remoto, eventos, ia,
+  conferencia_remota: remoto, eventos, ia, mapa: mapaInfo, adaptadores,
   fila_de_revisao: eventos.flatMap((e) => e.afetados.itens.length ? [{ fonte: e.doc_id, origem: e.origem, qtd_itens_para_revalidar: e.afetados.itens.length, resumo: e.afetados.resumo }] : []),
   fontes,
 };
@@ -278,7 +330,21 @@ for (const e of eventos) {
   if (e.analise_ia) md.push(`IA (sugestão, precisa de revisão médica; certeza ${e.analise_ia.certeza}): ${e.analise_ia.o_que_mudou}  \nRecomendação alterada: ${e.analise_ia.recomendacao_alterada}  \nImpacto provável: ${e.analise_ia.impacto_clinico_provavel}`);
   md.push("");
 }
-md.push(`## Custo do Gemini`, "", `Modelo ${ia.modelo}; ${ia.chamadas} chamadas; ${ia.tokens_entrada} tokens de entrada; ${ia.tokens_saida} de saída; custo estimado US$ ${ia.custo_estimado_usd} (preço de tabela, conferir na fatura).`, ...ia.erros.map((x) => `- erro: ${x}`), "");
+md.push(`## Mapa de itens afetados`, "", `Modo: ${mapaInfo.modo}.${mapaInfo.resumo ? ` ${JSON.stringify(mapaInfo.resumo)}` : ""}${mapaInfo.erro ? ` Erro: ${mapaInfo.erro}` : ""}`, "");
+if (adaptadores) {
+  md.push(`## Adaptadores (${adaptadores.modo})`, "");
+  for (const x of adaptadores.porAdaptador) md.push(`- ${x.adaptador}: ${x.lidos} itens lidos em ${x.ms} ms; base antes ${x.base_antes}; ${x.novos} novos, ${x.alterados} alterados, ${x.iguais} iguais; ${x.eventos} eventos${x.primeira_leitura ? " (primeira leitura: virou linha de base)" : ""}${x.leitura_suspeita ? " (leitura suspeita: ignorada)" : ""}${x.inundacao ? ` (${x.inundacao} itens novos de uma vez: aceitos como nova linha de base, sem eventos)` : ""}${x.base_incompleta ? " (leitura parcial: não virou linha de base)" : ""}${x.bloqueado ? " (canal oficial bloqueado pelo robots.txt)" : ""}${x.erros.length ? `; erros: ${x.erros.join(" | ")}` : ""}`);
+  if (adaptadores.alteracoes_simuladas) md.push("", "Simulação do ensaio (base antiga artificial):", ...adaptadores.alteracoes_simuladas.map((a) => `- ${a.adaptador}${a.chave ? ` ${a.chave}` : ""}: ${a.simulacao}`));
+  md.push("", `### Eventos dos adaptadores (${adaptadores.eventos.length}; graves: ${adaptadores.eventos.filter((e) => e.gravidade === "grave").length})`, "");
+  for (const e of adaptadores.eventos.sort((x, y) => Number(y.gravidade === "grave") - Number(x.gravidade === "grave"))) {
+    md.push(`- [${e.gravidade.toUpperCase()}] ${e.adaptador} ${e.origem === "adaptador_novo" ? "NOVO" : "MUDOU"}: ${e.titulo} (${e.tipo}${e.data ? `, ${e.data}` : ""}) ${e.url}`, `  Motivo: ${e.motivo_gravidade}. Referência: ${e.referencia}${e.fonte.esfera === "sociedade" ? " (sociedade médica, não é norma do SUS)" : ""}. Temas do app: ${e.temas.map((t) => t.tema).join(", ") || "nenhum"}; revalidar: ${e.afetados.filter((i) => i.tipo === "questao").length} questões, ${e.afetados.filter((i) => i.tipo === "aula").length} aulas.`);
+    if (e.analise_ia) md.push(`  IA (sugestão, precisa de revisão médica; certeza ${e.analise_ia.certeza}): ${e.analise_ia.o_que_mudou} Impacto: ${e.analise_ia.impacto_clinico_provavel}`);
+    if (e.ia_pulada) md.push(`  IA pulada: ${e.ia_pulada}`);
+  }
+  md.push("");
+}
+md.push(`## Gravidade dos eventos da biblioteca e da conferência remota`, "", ...eventos.map((e) => `- [${(e.gravidade ?? "leve").toUpperCase()}] ${e.origem} ${e.doc_id}: ${e.motivo_gravidade}`), "");
+md.push(`## Custo do Gemini`, "", `Modelo ${ia.modelo}; ${ia.chamadas} chamadas; custo estimado desta rodada US$ ${ia.custo_estimado_usd} (preço de tabela, conferir na fatura). Mês ${ia.mes.mes}: US$ ${ia.mes.usd} de US$ ${ia.mes.teto_usd} (restam US$ ${ia.mes.restante_usd}${ia.mes.atingiu_teto ? "; TETO ATINGIDO: a IA para e só se registra a mudança" : ""}). Puladas por teto: ${ia.puladas_por_teto}.`, ...ia.erros.map((x) => `- erro: ${x}`), "");
 fs.writeFileSync(path.join(PASTA, "relatorio.md"), md.join("\n"));
 // linha de base para a próxima rodada
 fs.writeFileSync(path.join(SAIDA, "estado.json"), JSON.stringify({ atualizado_em: agora.toISOString(), docs: Object.fromEntries(docs.filter((d) => d.sha256).map((d) => [d.doc_id, { sha256: d.sha256 }])) }));

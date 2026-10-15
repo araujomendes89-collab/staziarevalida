@@ -1,0 +1,10 @@
+Sitemap: https://www.gov.br/conitec/sitemap-index.xml
+
+User-agent: *
+Disallow: /search
+Disallow: /login
+
+User-Agent: Googlebot
+Disallow: /*login
+Disallow: /*search
+Disallow: /*edit

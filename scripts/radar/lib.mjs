@@ -60,6 +60,8 @@ const RE_MARCADOR = /^\s*(?:art\.?\s*)?(?:§\s*)?\d+\s*[ºo°.)]?\s+/i; // "6º 
 function numeros(s) {
   return (normalizar(s.replace(RE_MARCADOR, "")).match(RE_NUM) ?? []).map((n) => n.replace(",", "."));
 }
+/** Os números (algarismo ou por extenso) das duas frases diferem? Ignora a numeração do parágrafo no começo. */
+export function numerosDiferem(a, b) { return numeros(a).join("|") !== numeros(b).join("|"); }
 function contaNegacao(s) {
   return (normalizar(s).match(NEGACAO) ?? []).length;
 }
@@ -340,10 +342,16 @@ export function itensAfetados(docId, mapa, { principalSomente = false } = {}) {
 
 // ---------------------------------------------------------------- custo da IA (estimativa)
 // Preços de tabela do Gemini 2.5 Flash em US$ por milhão de tokens (entrada 0,30; saída 2,50). Estimativa: conferir na fatura do Google Cloud.
-export const PRECOS_USD_POR_MILHAO = { "gemini-2.5-flash": { entrada: 0.3, saida: 2.5 }, "gemini-2.5-flash-lite": { entrada: 0.1, saida: 0.4 } };
-export function custoEstimadoUsd(modelo, tokensEntrada, tokensSaida) {
-  const p = PRECOS_USD_POR_MILHAO[modelo];
+export const PRECOS_USD_POR_MILHAO = {
+  "gemini-2.5-flash": { entrada: 0.3, saida: 2.5 }, "gemini-2.5-flash-lite": { entrada: 0.1, saida: 0.4 },
+  // gemini-3.8-flash: 0,75 / 3,75 até 31/12/2026; 1,50 / 7,50 a partir de 01/01/2027 (mesma tabela de server/ai/prices.ts)
+  "gemini-3.8-flash": { entrada: 0.75, saida: 3.75, ate: "2026-12-31", depois: { entrada: 1.5, saida: 7.5 } },
+  "gemini-3.5-flash": { entrada: 1.5, saida: 9 },
+};
+export function custoEstimadoUsd(modelo, tokensEntrada, tokensSaida, quando = new Date()) {
+  let p = PRECOS_USD_POR_MILHAO[modelo];
   if (!p) return null;
+  if (p.ate && quando.toISOString().slice(0, 10) > p.ate) p = p.depois;
   return Number(((tokensEntrada * p.entrada + tokensSaida * p.saida) / 1e6).toFixed(6));
 }
 
@@ -360,4 +368,93 @@ export function sanitizarAnaliseIA(bruto) {
     certeza,
     observacao: t(obj?.observacao, 300),
   };
+}
+
+// ---------------------------------------------------------------- linha de base e diferenças dos adaptadores
+/**
+ * Compara o que o adaptador leu agora com a linha de base (Map chave → {hash,...}).
+ * Primeira leitura (base vazia) não gera evento: vira linha de base. Leitura com menos da metade dos itens da base é suspeita
+ * (site fora do ar ou layout mudou): não gera evento nem apaga a base.
+ */
+export function diffItens(base, atuais) {
+  const baseMap = base instanceof Map ? base : new Map(Object.entries(base ?? {}));
+  if (baseMap.size === 0) return { primeira_leitura: atuais.length > 0, suspeita: false, novos: [], alterados: [], iguais: 0, sumiram: 0 };
+  if (atuais.length < baseMap.size * 0.5) return { primeira_leitura: false, suspeita: true, novos: [], alterados: [], iguais: 0, sumiram: 0 };
+  const novos = [], alterados = [];
+  let iguais = 0;
+  const vistos = new Set();
+  for (const it of atuais) {
+    vistos.add(it.chave);
+    const antes = baseMap.get(it.chave);
+    if (!antes) novos.push(it);
+    else if (antes.hash !== it.hash) alterados.push({ antes, agora: it });
+    else iguais++;
+  }
+  let sumiram = 0;
+  for (const k of baseMap.keys()) if (!vistos.has(k)) sumiram++;
+  // enxurrada de itens novos de uma vez = base incompleta ou site reorganizado, não 1.000 publicações: aceita como linha de base, sem eventos
+  const limiteNovos = Math.max(50, Math.ceil(baseMap.size * 0.25));
+  if (novos.length > limiteNovos) return { primeira_leitura: false, suspeita: false, inundacao: novos.length, novos: [], alterados, iguais, sumiram };
+  return { primeira_leitura: false, suspeita: false, novos, alterados, iguais, sumiram };
+}
+
+// ---------------------------------------------------------------- referência e gravidade dos itens de adaptador
+/** Classificação conservadora do que um adaptador trouxe. Sociedade médica nunca vira norma do SUS. */
+export function classificarItemAdaptador(item) {
+  const t = normalizar(`${item.titulo ?? ""} ${item.url ?? ""}`);
+  if (item.adaptador === "febrasgo") return { referencia: "evidencia_complementar", esfera: "sociedade", norma_sus: false, uso_permitido: "apoio" };
+  if (/revog|retirad|tornad[ao] sem efeito/.test(t)) return { referencia: "revogada", esfera: "sus", norma_sus: false, uso_permitido: "historico" };
+  if (item.tipo === "relatorio_preliminar") return { referencia: "proposta", esfera: "sus", norma_sus: false, uso_permitido: "apoio" };
+  if (item.adaptador === "conitec" || item.adaptador === "vacinacao") return { referencia: "vigente", esfera: "sus", norma_sus: item.tipo !== "relatorio_recomendacao", uso_permitido: "conduta_apos_conferencia" };
+  return { referencia: "desconhecido", esfera: "sus", norma_sus: false, uso_permitido: "conduta_apos_conferencia" };
+}
+
+const RE_UNIDADE = /\b(mg|mcg|ug|ml|ui|g|kg|mmhg|mm hg|bpm|meses|mes|semanas|semana|anos|ano|dias|dia|horas|hora|dose|doses|comprimidos?|ciclos?|vezes)\b|%|\/dia|\/kg/;
+const RE_REVOGACAO = /revog|retirad[ao] |tornad[ao] sem efeito|exclu[ií]d[ao] do sus|n[aã]o incorpor|exclus[aã]o/;
+const RE_CONDUTA = /protocolo cl[ií]nico|\bpcdt\b|diretriz|incorpor|calend[aá]rio|instru[cç][aã]o normativa|nota t[eé]cnica|portaria|resolu[cç][aã]o|revog/; // "vacinação" sozinha (campanha, notícia) não é mudança de conduta
+/**
+ * Gravidade (decisão do dono, 2026-10-15): GRAVE = revogação da fonte ou mudança de conduta; LEVE = redação/numeração/moldura.
+ * Só as graves vão para a decisão do dono; todas entram na fila dos 2 revisores (48 h). Nunca bloqueia nada.
+ * Entrada: { referencia, origem, item:{titulo,tipo,adaptador}, diff:{itens,resumo}, novo:boolean, temasAfetados:number }
+ */
+export function classificarGravidade({ referencia, item, diff, novo = false, temasAfetados = 0 }) {
+  const titulo = normalizar(item?.titulo ?? "");
+  if (referencia === "revogada" || RE_REVOGACAO.test(titulo)) return { gravidade: "grave", motivo: "fonte revogada, retirada ou incorporação negada/excluída" };
+  // mudança de conduta provável = negação (frase curta e parecida) ou número COM unidade clínica (dose, tempo, %): numeração de artigo/§/quadro é leve
+  // (linha de tabela colada pelo PDF passa de 60 palavras e não vira NUMERIC: por isso o par também é checado aqui, se parecido e com números diferentes)
+  const calendario = ["pagina_calendario", "arquivo_calendario", "instrucao_normativa"].includes(item?.tipo);
+  const criticas = (diff?.itens ?? []).filter((i) => i.kind === "NEGATION" && i.critical
+    || (i.texto_antigo && i.texto_novo && !["UNCHANGED", "EDITORIAL"].includes(i.kind) && ((i.kind === "NUMERIC" && i.critical) || (i.similarity ?? 0) >= 0.5) && numerosDiferem(i.texto_antigo, i.texto_novo)
+        && (calendario || RE_UNIDADE.test(normalizar(`${i.texto_antigo} ${i.texto_novo}`)))));
+  if (criticas.length) return { gravidade: "grave", motivo: `mudança de conduta provável: ${criticas.length} diferença(s) de número com unidade clínica ou de negação` };
+  if (item?.adaptador === "febrasgo") return { gravidade: "leve", motivo: "evidência complementar de sociedade médica (não é norma do SUS); revisão editorial" };
+  if (item?.tipo === "relatorio_preliminar") return { gravidade: "leve", motivo: "relatório em consulta pública (proposta, ainda não vigente)" };
+  if (item?.tipo === "instrucao_normativa" && !novo) return { gravidade: "grave", motivo: "a Instrução Normativa do calendário mudou" };
+  if ((item?.tipo === "decisao_incorporacao" || item?.tipo === "pcdt") && temasAfetados > 0) return { gravidade: "grave", motivo: "decisão de incorporação ou PCDT novo/alterado que toca tema do app" };
+  if ((item?.tipo === "pagina_calendario" || item?.tipo === "arquivo_calendario") && diff && diff.itens.length) return { gravidade: "leve", motivo: "calendário mudou só em redação, numeração ou moldura" };
+  if (item?.tipo === "arquivo_calendario" && !novo && !diff) return { gravidade: "grave", motivo: "arquivo do calendário mudou e não foi possível comparar o texto: revisar à mão" };
+  if (novo && temasAfetados > 0 && RE_CONDUTA.test(titulo)) return { gravidade: "grave", motivo: "norma nova sobre conduta/protocolo/calendário que toca tema do app" };
+  return { gravidade: "leve", motivo: temasAfetados ? "mudança de redação ou documento sem efeito claro sobre conduta" : "sem tema do app afetado (informativo)" };
+}
+
+/** Temas do app cujas palavras-chave aparecem no título do item (dossiês dos 100 Grandes Temas). Palavra curta exige palavra inteira. */
+export function temasDoTitulo(titulo, dossies) {
+  const alvo = " " + normalizar(titulo).replace(/[^a-z0-9]+/g, " ") + " ";
+  const achados = [];
+  for (const t of dossies?.temas ?? []) {
+    const hit = (t.palavras ?? []).some((p) => {
+      const n = normalizar(p).replace(/[^a-z0-9]+/g, " ").trim();
+      if (n.length < 2) return false;
+      return n.length <= 4 ? alvo.includes(" " + n + " ") : alvo.includes(" " + n);
+    });
+    if (hit) achados.push({ tema: t.tema, titulo: t.titulo });
+  }
+  return achados;
+}
+
+/** A IA nunca muda a gravidade, mas avisa o revisor quando ela, com certeza alta, só enxerga redação num evento classificado grave. */
+export function observacaoDaIA(gravidade, analise) {
+  if (gravidade !== "grave" || !analise) return null;
+  if (analise.certeza === "alta" && /nenhuma recomenda/i.test(analise.recomendacao_alterada ?? "")) return "A IA (certeza alta) viu só mudança de redação/numeração: revisar para rebaixar a leve.";
+  return null;
 }
