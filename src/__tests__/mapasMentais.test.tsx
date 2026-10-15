@@ -56,7 +56,10 @@ describe("pôster realista (imagem) como visual principal", () => {
     const dlg = screen.getByRole("dialog");
     fireEvent.click(within(dlg).getByRole("button", { name: "Aumentar" }));
     expect(within(dlg).getByText("150%")).toBeTruthy();
-    fireEvent.click(within(dlg).getByRole("button", { name: "Fechar" }));
+    fireEvent.click(within(dlg).getByRole("button", { name: "Voltar" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Ampliar o mapa mental/ }));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Fechar" }));
     expect(screen.queryByRole("dialog")).toBeNull();
   });
   it("se a imagem falhar, cai no mapa em código", () => {
@@ -150,7 +153,7 @@ describe("tema sem mapa e integração", () => {
     expect(container.firstChild).toBeNull();
     rerender(<BotaoMapaMental codigo="GR-001" go={go} />);
     fireEvent.click(screen.getByRole("button", { name: /Mapa mental/ }));
-    expect(chamadas[0]).toEqual(["mapas", { tema: "tuberculose-pulmonar" }]);
+    expect(chamadas[0]).toEqual(["mapas", { tema: "tuberculose-pulmonar", de: "temas" }]);
   });
   it("a tela lista só temas com mapa, filtra por área e busca, e abre o mapa", () => {
     render(
@@ -164,7 +167,7 @@ describe("tema sem mapa e integração", () => {
     fireEvent.change(screen.getByLabelText("Buscar tema"), { target: { value: "tuberculose" } });
     const lista = screen.getByRole("list");
     fireEvent.click(within(lista).getByRole("button", { name: /Tuberculose pulmonar/ }));
-    expect(screen.getByRole("button", { name: /Todos os mapas/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Voltar" })).toBeTruthy();
     expect(screen.getByRole("img", { name: /Mapa mental: Tuberculose pulmonar/ })).toBeTruthy();
   });
 });

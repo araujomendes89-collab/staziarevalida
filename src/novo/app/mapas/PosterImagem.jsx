@@ -31,6 +31,7 @@ export function PosterImagem({ mapa, onErro }) {
       {cheia && (
         <div className="mm-tela-cheia" role="dialog" aria-modal="true" aria-label={`Mapa mental ampliado: ${mapa.titulo}`}>
           <div className="mm-tc-barra">
+            <button type="button" className="mm-tc-voltar" onClick={fechar} aria-label="Voltar">← Voltar</button>
             <button type="button" onClick={() => setZoom((z) => Math.max(1, +(z - 0.5).toFixed(1)))} aria-label="Diminuir">−</button>
             <span aria-live="polite">{Math.round(zoom * 100)}%</span>
             <button type="button" onClick={() => setZoom((z) => Math.min(4, +(z + 0.5).toFixed(1)))} aria-label="Aumentar">+</button>

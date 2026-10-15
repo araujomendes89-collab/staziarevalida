@@ -27,7 +27,7 @@ export function BotaoMapaMental({ codigo, go, className = "", compacto = false }
   const mapa = mapaPorCodigo(codigo);
   if (!mapa) return null;
   return (
-    <button type="button" className={"mm-botao " + className} data-compacto={compacto || undefined} onClick={(e) => { e.stopPropagation(); go("mapas", { tema: mapa.slug }); }} aria-label={`Mapa mental: ${mapa.titulo}`}>
+    <button type="button" className={"mm-botao " + className} data-compacto={compacto || undefined} onClick={(e) => { e.stopPropagation(); go("mapas", { tema: mapa.slug, de: "temas" }); }} aria-label={`Mapa mental: ${mapa.titulo}`}>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3" /><circle cx="4.5" cy="5" r="1.8" /><circle cx="19.5" cy="5" r="1.8" /><circle cx="4.5" cy="19" r="1.8" /><circle cx="19.5" cy="19" r="1.8" /><path d="M10 10 6 6.200M14 10l4-3.800M10 14l-4 3.800M14 14l4 3.800" /></svg>
       {!compacto && <span>Mapa mental</span>}
     </button>
@@ -39,7 +39,7 @@ export function MiniaturaMapa({ codigo, go, className = "" }) {
   const mapa = mapaPorCodigo(codigo);
   if (!mapa?.poster?.webp) return null;
   return (
-    <button type="button" className={"mm-mini " + className} onClick={(e) => { e.stopPropagation(); go("mapas", { tema: mapa.slug }); }} aria-label={`Mapa mental: ${mapa.titulo}`}>
+    <button type="button" className={"mm-mini " + className} onClick={(e) => { e.stopPropagation(); go("mapas", { tema: mapa.slug, de: "temas" }); }} aria-label={`Mapa mental: ${mapa.titulo}`}>
       <img src={mapa.poster.webp} alt="" loading="lazy" onError={(e) => { e.currentTarget.parentElement.style.display = "none"; }} />
     </button>
   );

@@ -258,3 +258,7 @@
 
 
 .mm-lcard-img,.mm-mini img{object-position:50% 100%}
+
+.mm-voltar{font-weight:800;min-height:44px;padding:0 20px;border:2px solid var(--action-primary);color:var(--action-primary)}
+.mm-voltar:focus-visible,.mm-tc-voltar:focus-visible{outline:3px solid var(--action-primary);outline-offset:2px}
+.mm-tc-voltar{background:#fff!important;color:#0B2A63!important;border-color:#fff!important}

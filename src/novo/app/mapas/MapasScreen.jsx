@@ -16,11 +16,11 @@ function useTemaAberto() {
   const url = inRouter ? useSearchParams() : null;
   if (!url) return local;
   const [params, setParams] = url;
-  return [params.get("tema"), (slug) => setParams(slug ? { tema: slug } : {}, { replace: false })];
+  return [params.get("tema"), (slug) => setParams(slug ? { tema: slug } : {}, { replace: false }), params.get("de")];
 }
 
 export function MapasScreen({ go }) {
-  const [aberto, setAberto] = useTemaAberto();
+  const [aberto, setAberto, origem] = useTemaAberto();
   const [area, setArea] = React.useState("");
   const [busca, setBusca] = React.useState("");
   const scroll = React.useRef(null);
@@ -34,7 +34,7 @@ export function MapasScreen({ go }) {
     return (
       <div className="mm-tela">
         <div className="mm-topo">
-          <Button variant="ghost" icon="arrow-left" onClick={() => setAberto(null)}>Todos os mapas</Button>
+          <Button className="mm-voltar" variant="secondary" aria-label="Voltar" onClick={() => (origem === "temas" ? go("temas") : setAberto(null))}>← Voltar</Button>
           {mapa && <span className="mm-topo-area">{nomeDaArea(mapa.area)}</span>}
         </div>
         {mapa ? <MapaMental mapa={mapa} /> : <MapaEmPreparacao />}
