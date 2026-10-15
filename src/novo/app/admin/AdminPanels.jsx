@@ -213,6 +213,79 @@ function PlanEditor({ plan, onSaved, signupRule = "desconhecida" }) {
   );
 }
 
+/**
+ * Questões Inéditas por plano (migração …010300): quantas Questões Inéditas cada plano libera. Número inteiro, ou "todas".
+ * O aluno vê o total existente ("20 de 74 liberadas no seu plano"); aqui o administrador troca os números. Teste grátis começa em 20.
+ */
+function IneditasLimits() {
+  const { backend } = useSession();
+  const { data, error, reload, setData } = useLoad(() => backend.rpc("app_admin_ineditas_limits"), [backend]);
+  const [form, setForm] = React.useState(null);
+  const [state, setState] = React.useState({ saving: false, error: null, done: false });
+  React.useEffect(() => {
+    if (data) setForm(Object.fromEntries(data.plans.map((p) => [p.plan, { all: p.all, value: p.limit == null ? "" : String(p.limit) }])));
+  }, [data]);
+  if (error) return <LoadError error={error} retry={reload} />;
+  if (!form) return <Loading />;
+  const set = (plan, patch) => (setForm((f) => ({ ...f, [plan]: { ...f[plan], ...patch } })), setState((x) => ({ ...x, done: false, error: null })));
+  const invalid = (plan) => !form[plan].all && !/^\d{1,6}$/.test(form[plan].value.trim());
+  const anyInvalid = data.plans.some((p) => invalid(p.plan));
+  const save = async (event) => {
+    event.preventDefault();
+    if (anyInvalid) return setState({ saving: false, error: "Informe um número inteiro (0 ou mais) em cada plano que não libera todas.", done: false });
+    setState({ saving: true, error: null, done: false });
+    try {
+      const limits = Object.fromEntries(data.plans.map((p) => [p.plan, form[p.plan].all ? null : Number(form[p.plan].value)]));
+      setData(await backend.rpc("app_admin_save_ineditas_limits", { p_limits: limits }));
+      setState({ saving: false, error: null, done: true });
+    } catch (err) {
+      setState({ saving: false, error: messageOf(err), done: false });
+    }
+  };
+  return (
+    <Card>
+      <form onSubmit={save} style={{ display: "flex", flexDirection: "column", gap: 16 }} noValidate>
+        <div>
+          <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Questões Inéditas por plano</h3>
+          <p style={{ margin: "4px 0 0", color: "var(--text-secondary)", font: "var(--type-body-sm)" }}>
+            Hoje existem <b>{data.published}</b> Questões Inéditas publicadas. Defina quantas cada plano libera. O aluno vê o total existente (por exemplo, “20 de {data.published} liberadas no seu plano”) e as demais ficam bloqueadas, com convite para conhecer os planos. Sem acesso (teste vencido ou sem plano) continua sem nenhuma. As questões oficiais do Inep não mudam.
+          </p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 12 }}>
+          {data.plans.map((p) => (
+            <div key={p.plan} style={{ display: "flex", flexDirection: "column", gap: 10, padding: 16, borderRadius: 16, border: "1px solid var(--border-default)", background: "var(--surface-subtle)" }}>
+              <b style={{ font: "var(--type-h5, var(--type-body-md))" }}>{PLAN_LABEL[p.plan] ?? p.plan}</b>
+              <Switch label="Liberar todas" checked={form[p.plan].all} onChange={(e) => set(p.plan, { all: e.target.checked })} />
+              {!form[p.plan].all && (
+                <TextField
+                  label="Quantas liberar"
+                  value={form[p.plan].value}
+                  inputMode="numeric"
+                  maxLength={6}
+                  error={invalid(p.plan) ? "Número inteiro, 0 ou mais" : undefined}
+                  hint={invalid(p.plan) ? undefined : Number(form[p.plan].value) > data.published ? `Mais que as ${data.published} publicadas: libera todas as de hoje e as próximas.` : `${form[p.plan].value || 0} de ${data.published}`}
+                  onChange={(e) => set(p.plan, { value: e.target.value.replace(/\D/g, "") })}
+                />
+              )}
+              {p.plan === "trial" && <span style={{ font: "var(--type-caption)", color: "var(--text-tertiary)" }}>Padrão: 20. Vale para quem está no teste grátis em dia.</span>}
+            </div>
+          ))}
+        </div>
+        <p style={{ margin: 0, color: "var(--text-tertiary)", font: "var(--type-caption)" }}>
+          Cada aluno recebe sempre o mesmo conjunto (as que ele já respondeu mais as primeiras da ordem dele). Subir o número só acrescenta; baixar nunca tira o que o aluno já respondeu. Equipe e revisor médico veem todas.
+        </p>
+        {state.error && <Banner tone="danger">{state.error}</Banner>}
+        <div style={{ display: "flex", gap: 12, alignItems: "center", justifyContent: "flex-end" }}>
+          {state.done && <span style={{ font: "var(--type-body-sm)", color: "var(--success-text)" }}>Limites salvos.</span>}
+          <Button type="submit" loading={state.saving} disabled={anyInvalid}>
+            Salvar limites
+          </Button>
+        </div>
+      </form>
+    </Card>
+  );
+}
+
 export function AdminPlans() {
   const { backend } = useSession();
   const { data, error, reload, setData } = useLoad(() => backend.rpc("app_admin_plans"), [backend]);
@@ -224,6 +297,7 @@ export function AdminPlans() {
       <Banner tone="info" title="O que o aluno vê dos planos">
         O aluno tem uma tela de Planos só para informar: nome, descrição e recursos de cada plano, como você escreve aqui, e a situação dele. Ela não mostra preço e não tem botão de assinar: o preço fica guardado aqui para quando a cobrança existir, pela Stripe, numa próxima etapa. Até lá, libere planos manualmente em Usuários, com a data em “Plano pago até”. O que só o Elite tem (minutos de voz do Tutor e correção de estação com devolutiva) fica em Configurações, no bloco “Benefícios do plano Elite”, e só aparece na tela de planos depois que você preenche.
       </Banner>
+      <IneditasLimits />
       {data.map((plan) => (
         <PlanEditor key={plan.code} plan={plan} onSaved={setData} signupRule={signupRule} />
       ))}

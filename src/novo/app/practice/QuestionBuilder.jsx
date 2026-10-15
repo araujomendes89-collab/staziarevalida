@@ -10,6 +10,7 @@ import { isPlanLockMessage, usePlanLock, withSupport } from "../plan/planAccess.
 import { useSupportEmail } from "../support/supportContact.jsx";
 import "./practice.css";
 import { AREAS, SIM_MAX_MINUTES, STAZIAMED_NOTICE, areaLabel, examLabel, formatClock, formatMinutes, formatWhen, paceLabel, parseDuration, percent } from "./format.js";
+import { IneditasQuota, isIneditasLimited, quotaText } from "./IneditasQuota.jsx";
 import { SCORING_MODES, TRI_MIN_QUESTIONS } from "./tri.js";
 
 const STATUS_OPTIONS = [
@@ -218,6 +219,8 @@ export function QuestionBuilder({ go, mode }) {
   const onIneditas = form.exam === "staziamed";
   const lockedIneditas = onIneditas && (ineditas?.locked === true || !ineditas);
   const lockMessage = ineditas?.lock_message || "As Questões Inéditas são abertas a quem tem plano pago ou teste grátis em dia. As questões das provas oficiais continuam abertas.";
+  // limite do plano (ex.: teste grátis): a tela mostra o total existente e quantas o plano libera
+  const limitedIneditas = isIneditasLimited(ineditas);
   const topics = (options?.topics ?? []).filter((t) => !form.area || t.area === form.area).slice(0, 6);
   const start = async () => {
     setStarting(true);
@@ -310,7 +313,7 @@ export function QuestionBuilder({ go, mode }) {
               label="Prova / edição"
               value={form.exam}
               onChange={(e) => edit({ exam: e.target.value })}
-              options={[{ value: "", label: "Todas as provas oficiais" }, ...(options?.exams ?? []).map((e) => ({ value: e.id, label: e.id === "staziamed" && e.locked ? `${examLabel(e)} (indisponível no seu plano agora)` : examLabel(e) }))]}
+              options={[{ value: "", label: "Todas as provas oficiais" }, ...(options?.exams ?? []).map((e) => ({ value: e.id, label: e.id === "staziamed" && e.locked ? `${examLabel(e)} (indisponível no seu plano agora)` : e.id === "staziamed" && isIneditasLimited(e) ? `${examLabel(e)} (${e.released} de ${e.total})` : examLabel(e) }))]}
             />
             {sim ? (
               <SelectField
@@ -333,6 +336,7 @@ export function QuestionBuilder({ go, mode }) {
               {STAZIAMED_NOTICE} Aqui "inéditas" quer dizer escritas pela StaziaMed; não é o mesmo que "ainda não respondidas" (isso é o filtro Status).
             </Banner>
           )}
+          {onIneditas && limitedIneditas && <IneditasQuota ineditas={ineditas} onPlans={() => go("planos")} />}
           {lockedIneditas && (
             <Banner
               tone="warning"
@@ -345,6 +349,7 @@ export function QuestionBuilder({ go, mode }) {
               }
             >
               {lockMessage}
+              {ineditas?.total > 0 && <div style={{ marginTop: 6 }}>Existem {ineditas.total} Questões Inéditas no banco.</div>}
             </Banner>
           )}
           {sim && form.timer === "custom" && (
@@ -396,6 +401,10 @@ export function QuestionBuilder({ go, mode }) {
             <div style={{ font: "var(--type-body-sm)", color: available < requested ? "var(--warning-text)" : "var(--text-tertiary)", marginTop: 8 }} aria-live="polite">
               {lockedIneditas
                 ? "Disponível nos planos pagos e no teste grátis em dia."
+                : onIneditas && limitedIneditas && available === 0
+                ? `Você já usou as ${ineditas.released} Questões Inéditas do seu plano com esses filtros. ${quotaText(ineditas)}.`
+                : onIneditas && limitedIneditas
+                ? `${available} disponíveis com esses filtros · ${quotaText(ineditas)}.`
                 : available === 0
                 ? "Nenhuma questão com esses filtros."
                 : available < requested

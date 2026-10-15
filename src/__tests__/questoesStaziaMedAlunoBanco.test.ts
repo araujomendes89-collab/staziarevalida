@@ -89,7 +89,8 @@ describe("Origem, prova STAZIAMED e leitura protegida", () => {
   it("acesso: equipe, revisor, plano pago válido e TESTE GRÁTIS VÁLIDO leem; teste vencido, plano vencido e sem assinatura não (leitura direta)", async () => {
     const todas = [A, B, C, RETIRADA].sort();
     const direct = async (uid: string) => (await env.sqlAs<{ id: string }>(uid, `select id from public.questions where origin = 'staziamed' order by id`)).map((r) => r.id);
-    for (const uid of ABERTOS) expect(await direct(uid), uid).toEqual(todas);
+    // 010300: o teste grátis (limite 20) lê as publicadas, mas não a recolhida; quem tem "todas" lê também a recolhida
+    for (const uid of ABERTOS) expect(await direct(uid), uid).toEqual(uid === USERS.TESTE ? todas.filter((x) => x !== RETIRADA) : todas);
     for (const [uid] of FECHADOS) {
       expect(await direct(uid), uid).toEqual([]);
       expect(await env.sqlAs(uid, `select id from public.questions where id = $1`, [A])).toEqual([]);
@@ -176,7 +177,7 @@ describe("Opção Questões Inéditas na lista de provas e no sorteio", () => {
     const opcao = async (uid: string) => ((await env.rpc(uid, "app_question_filters", {})).exams as any[]).find((e) => e.id === "staziamed");
     const publicadas = (await publishedNow()).length;
     for (const uid of [USERS.PRO, USERS.TESTE]) {
-      expect(await opcao(uid), uid).toEqual({ id: "staziamed", kind: "STAZIAMED", year: 2026, semester: null, title: "Questões Inéditas", total: publicadas, locked: false, lock_message: null });
+      expect(await opcao(uid), uid).toEqual({ id: "staziamed", kind: "STAZIAMED", year: 2026, semester: null, title: "Questões Inéditas", total: publicadas, locked: false, lock_message: null, released: publicadas, answered: expect.any(Number), limited: uid === USERS.TESTE });
     }
     for (const [uid, aviso] of FECHADOS) {
       expect(await opcao(uid), uid).toMatchObject({ title: "Questões Inéditas", locked: true, lock_message: aviso });
@@ -382,6 +383,10 @@ describe("Migração", () => {
     await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003009920_carga_explicacoes.sql", import.meta.url)), "utf8"));
     // a 9930 (carga das provas) redefine practice_question_view por cima desta: depois de colar a 9801 de novo, cola-se a 9930
     await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003009930_gabarito_preliminar_aviso.sql", import.meta.url)), "utf8"));
+    // a 9970 (100 Grandes Temas) redefine practice_pool por cima desta (filtro grande_tema): colar esta de novo pede colar a 9970 depois
+    await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003009970_grandes_temas_100.sql", import.meta.url)), "utf8"));
+    // a 010300 (inéditas por plano) redefine funções desta por cima: colar esta de novo pede colar a 010300 depois
+    await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003010300_ineditas_por_plano.sql", import.meta.url)), "utf8"));
     expect(await snapshot()).toEqual(before);
     // as funções de serviço continuam fechadas e o app só chama as três que devem ser chamadas
     expect(text).toContain("Cole antes as migrações da leva 3");

@@ -96,6 +96,9 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   ch_worker_tutor_play_context: { classe: "as_duas", como: "historico" },
   question_attempts_ineditas_gate: { classe: "as_duas", como: "historico" },
   ineditas_option: { classe: "as_duas", como: "historico" },
+  ineditas_released_ids_for: { classe: "as_duas", como: "historico" }, // 010300: quais inéditas o plano libera (+ as já respondidas)
+  app_my_ineditas: { classe: "as_duas", como: "historico" }, // 010300: contadores "X de Y liberadas", sem conteúdo de questão
+  app_admin_ineditas_limits: { classe: "as_duas", como: "equipe" }, // 010300: só conta as publicadas, para o administrador
   app_question_figure: { classe: "as_duas", como: "historico" }, // exige acesso às inéditas
   staziamed_topic_weights: { classe: "so_oficiais", como: "filtra" },
   staziamed_plan_slots: { classe: "as_duas", como: "historico" }, // oficiais para temas e peso; StaziaMed publicadas só para as letras-alvo
@@ -311,6 +314,8 @@ describe("Migração", () => {
     await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003009930_gabarito_preliminar_aviso.sql", import.meta.url)), "utf8"));
     // a 9970 (100 Grandes Temas) redefine practice_pool por cima da 9801 (filtro grande_tema): colar a 9801 de novo pede colar a 9970 depois
     await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003009970_grandes_temas_100.sql", import.meta.url)), "utf8"));
+    // a 010300 (inéditas por plano) redefine funções da 9801/9910/9920/9930: colar a 9801 de novo pede colar a 010300 depois
+    await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003010300_ineditas_por_plano.sql", import.meta.url)), "utf8"));
     expect(await snap()).toEqual(before);
   });
 });
