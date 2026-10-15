@@ -77,7 +77,7 @@
 .tq-timer[data-level="critical"] .tq-ring, .tq-timer[data-level="over"] .tq-ring { color: var(--danger-solid); }
 .tq-timer[data-paused="true"] .tq-ring { color: var(--text-disabled); }
 .tq-timer__col { display: flex; flex-direction: column; gap: 2px; min-width: 76px; }
-.tq-timer__lab { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); }
+.tq-timer__lab { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-tertiary); }
 .tq-timer__col--main .tq-timer__lab { color: var(--tq-accent-text); }
 .tq-timer[data-level="warn"] .tq-timer__col--main .tq-timer__lab { color: var(--warning-text); }
 .tq-timer[data-level="critical"] .tq-timer__col--main .tq-timer__lab, .tq-timer[data-level="over"] .tq-timer__col--main .tq-timer__lab { color: var(--danger-text); }
@@ -297,4 +297,61 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .tq-timer, .tq-alt, .tq-primary { transition: none; }
+}
+
+/* ===== Novas telas, onda 3 (15/10/2026): detalhes do pacote que faltavam ===== */
+/* a pergunta fica alinhada à esquerda (só o caso clínico é justificado, como no pacote) */
+.tq-ask__text { text-align: left; hyphens: none; }
+/* rótulos de 11 px passam a 12 px (onda 0) */
+.tq-timer__lab { font-size: 12px; }
+.tq-timer__lab { letter-spacing: 0.06em; }
+.tq-case__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.tq-case__head .tq-over { margin: 0; }
+.tq-fs, .tq-more { display: none; }
+.tq-brand .tq-logo--sym { display: none !important; }
+
+/* tablet (720 a 1180 px): cabeçalho numa linha com o símbolo, contador em pílula, só o tempo restante e o X na ponta;
+   A−/A+; depois de responder, cartão e painel lado a lado e o caso em 3 linhas com "Ver caso completo" */
+@media (min-width: 721px) and (max-width: 1180px) {
+  .tq-head__in { padding: 12px 20px; gap: 12px 18px; }
+  .tq-brand { display: contents; }
+  .tq-brand .tq-logo:not(.tq-logo--sym) { display: none !important; }
+  .tq-brand .tq-logo--sym.tq-logo--light { display: block !important; height: 36px; order: 0; }
+  [data-theme="dark"] .tq-brand .tq-logo--sym.tq-logo--light { display: none !important; }
+  [data-theme="dark"] .tq-brand .tq-logo--sym.tq-logo--dark { display: block !important; height: 36px; order: 0; }
+  .tq-prog { order: 1; }
+  .tq-tools { order: 2; }
+  .tq-exit { order: 3; width: 44px; height: 44px; }
+  .tq-prog__count { padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border-default); color: var(--tq-ink); }
+  .tq-timer__q-wrap { display: none; }
+  .tq-main { padding: 20px 20px 40px; gap: 16px; }
+  .tq-main[data-revealed="true"] { flex-wrap: nowrap; }
+  .tq-main[data-revealed="true"] .tq-sheet { flex: 1 1 0; }
+  .tq-main[data-revealed="true"] .tq-side { flex: 0 0 320px; }
+  .tq-chips { padding: 22px 24px 0; }
+  .tq-case { padding: 20px 24px 0; }
+  .tq-ask { margin: 22px 24px 0; }
+  .tq-alts { padding: 20px 24px 0; }
+  .tq-answer { margin: 24px 24px 0; }
+  .tq-foot { padding: 14px 24px; }
+  .tq-report { padding: 14px 24px 18px; }
+  .tq-main[data-revealed="true"] .tq-notice { flex-basis: 100%; margin-left: 0; }
+}
+@media (max-width: 1180px) {
+  .tq-fs { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--surface-sunken); }
+  .tq-fs button { min-width: 44px; height: 36px; border: 0; border-radius: 8px; background: transparent; color: var(--text-secondary); font-size: 14px; font-weight: 800; cursor: pointer; }
+  .tq-fs button[data-plus="true"] { font-size: 16px; color: var(--tq-ink); background: var(--surface-card); box-shadow: var(--shadow-xs); }
+  .tq-fs button:disabled { opacity: 0.4; cursor: not-allowed; }
+  .tq-sheet[data-fs="0"] .tq-stem { font-size: 16px; }
+  .tq-sheet[data-fs="2"] .tq-stem { font-size: 21px; }
+  .tq-sheet[data-fs="0"] .tq-ask__text { font-size: 19px; }
+  .tq-sheet[data-fs="2"] .tq-ask__text { font-size: 24px; }
+  .tq-sheet[data-fs="0"] .tq-alt__text { font-size: 15px; }
+  .tq-sheet[data-fs="1"] .tq-alt__text { font-size: 17px; }
+  .tq-sheet[data-fs="2"] .tq-alt__text { font-size: 19px; }
+  .tq-stem[data-clamp="true"] { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .tq-more { display: inline-flex; align-items: center; min-height: 44px; margin-top: 4px; padding: 0 2px; border: 0; background: none; color: var(--tq-accent-text); font-size: 14px; font-weight: 700; cursor: pointer; }
+}
+@media (max-width: 720px) {
+  .tq-ask__text { text-align: left !important; }
 }

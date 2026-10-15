@@ -84,6 +84,7 @@ function Centered({ children }) {
 function Runner({ session, go, onFinished }) {
   const { backend } = useSession();
   const mobile = useMQ("(max-width: 1023px)");
+  const phone = useMQ("(max-width: 719px)"); // no celular o simulado usa barra contínua; no tablet, um traço por questão (pacote)
   const sim = session.kind === "simulado";
 
   const [questions, setQuestions] = React.useState(session.questions);
@@ -293,7 +294,7 @@ function Runner({ session, go, onFinished }) {
 
   // Progresso: um traço por questão (até 30) com a cor do resultado no treino; acima disso, barra contínua.
   const segments =
-    total <= SEGMENT_LIMIT && !(mobile && sim)
+    total <= SEGMENT_LIMIT && !(phone && sim)
       ? questions.map((q, k) => {
           if (k === index) return revealed ? (isAnnulled(question.correction) ? "done" : question.correction.is_correct ? "right" : "wrong") : "current";
           if (q.selected == null) return "open";
