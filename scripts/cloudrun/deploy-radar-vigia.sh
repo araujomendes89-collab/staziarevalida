@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Publica o VIGIA do Radar de Evidências no Google Cloud Run: uma TAREFA (Cloud Run Job, Node puro) e um AGENDADOR (Cloud Scheduler)
-# que a dispara. A vigia é a cada 3 DIAS: o agendador dispara todo dia às 06h (Brasília) e a tarefa pula sozinha se a última rodada
+# que a dispara. A tarefa tem 4 tarefas paralelas, uma por adaptador (CLOUD_RUN_TASK_INDEX), com limite de 2 h cada. A vigia é a cada 3 DIAS: o agendador dispara todo dia às 06h (Brasília) e a tarefa pula sozinha se a última rodada
 # terminou há menos de 70 h (tabela radar_rodadas). Mesmo padrão de scripts/cloudrun/deploy-pdf-worker.sh.
 #
 #   PROJECT=staziamed-revalida-prod scripts/cloudrun/deploy-radar-vigia.sh
@@ -92,7 +92,7 @@ ENVVARS="NODE_ENV=production,RADAR_MODELO=${RADAR_MODELO:-gemini-3.8-flash},RADA
 [ -n "${RADAR_TETO_USD:-}" ] && ENVVARS="$ENVVARS,RADAR_TETO_USD=$RADAR_TETO_USD"
 [ "${RADAR_ENSAIO:-0}" = "1" ] && ENVVARS="$ENVVARS,RADAR_ENSAIO=1"
 "${G[@]}" run jobs deploy "$JOB" --region="$REGION" --image="$IMAGE" --service-account="$RUN_SA" \
-  --tasks=1 --max-retries=1 --task-timeout=1800 --cpu=1 --memory=512Mi \
+  --tasks=4 --parallelism=4 --max-retries=1 --task-timeout=7200 --cpu=1 --memory=512Mi \
   --set-env-vars="$ENVVARS" --set-secrets="$SECRETS"
 "${G[@]}" run jobs add-iam-policy-binding "$JOB" --region="$REGION" --member="serviceAccount:$SCHED_SA" --role=roles/run.invoker >/dev/null
 
