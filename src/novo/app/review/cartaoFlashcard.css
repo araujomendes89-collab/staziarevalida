@@ -1,0 +1,106 @@
+/* Cartão de flashcard em texto no padrão dos ilustrados (CartaoFlashcard.jsx; docs/flashcard-layout.md).
+   Cor do tema/área só por variáveis: --gt-p principal, --gt-e escura, --gt-c fundo suave, --gt-b brilho (paleta v2).
+   Faixa e rodapé azul-marinho como nas peças; modo escuro troca só o corpo. Mesma proporção do ilustrado (4:5, até 420 px). */
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 700; font-display: swap; src: url("../auth/fonts/barlow-condensed-700.woff2") format("woff2"); }
+@font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 600; font-display: swap; src: url("../auth/fonts/barlow-condensed-600.woff2") format("woff2"); }
+
+.fcp {
+  --fc-cond: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --fc-navy: #13294B; --fc-navy-2: #1C3F6E; --fc-navy-3: #0F2240;
+  --fc-corpo: #F1F4F8; --fc-caixa: #FFFFFF; --fc-borda: #DCE4EC; --fc-tinta: #13294B; --fc-rotulo: var(--gt-e);
+  --fc-dica: var(--gt-e);
+  position: relative; display: block; width: 100%; max-width: 420px; margin: 0 auto;
+  aspect-ratio: 4 / 5; min-height: 440px; perspective: 1400px; cursor: pointer; text-align: left;
+  -webkit-tap-highlight-color: transparent;
+}
+[data-theme="dark"] .fcp {
+  --fc-corpo: #0E1A2C; --fc-caixa: #16243A; --fc-borda: #26364F; --fc-tinta: #EEF3F9; --fc-rotulo: var(--gt-b); --fc-dica: var(--gt-b);
+  --fc-navy: #0D1F3A; --fc-navy-2: #15315A; --fc-navy-3: #0A1830;
+}
+.fcp.sm-flash:focus-visible { outline: 3px solid var(--focus-color); outline-offset: 3px; border-radius: 22px; }
+.fcp-in { position: absolute; inset: 0; transition: transform .6s var(--ease-standard, ease); transform-style: preserve-3d; }
+.fcp--virado .fcp-in { transform: rotateY(180deg); }
+.fcp-face {
+  position: absolute; inset: 0; display: flex; flex-direction: column; overflow: hidden; border-radius: 20px;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden; background: var(--fc-corpo);
+  box-shadow: 0 10px 28px rgba(15, 34, 64, .16), 0 2px 6px rgba(15, 34, 64, .08); container-type: inline-size;
+}
+[data-theme="dark"] .fcp-face { box-shadow: 0 10px 28px rgba(0, 0, 0, .45); outline: 1px solid var(--fc-borda); }
+.fcp-verso { transform: rotateY(180deg); }
+
+/* faixa azul-marinho: selos, título do tema e ícone com brilho na cor do tema */
+.fcp-faixa {
+  position: relative; display: flex; gap: 12px; align-items: center; padding: 16px 18px 15px; flex: none; color: #fff;
+  background:
+    radial-gradient(circle at 86% 50%, color-mix(in srgb, var(--gt-p) 55%, transparent) 0, transparent 34%),
+    linear-gradient(135deg, var(--fc-navy-2) 0%, var(--fc-navy) 58%, var(--fc-navy-3) 100%);
+}
+.fcp-faixa-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.fcp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.fcp-chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px 4px 8px; border-radius: 999px;
+  border: 1.5px solid color-mix(in srgb, var(--gt-b) 70%, transparent); color: #fff;
+  font: 700 12.5px/1 var(--fc-cond); letter-spacing: .6px; text-transform: uppercase; white-space: nowrap;
+}
+.fcp-chip .sm-icon { color: var(--gt-b); }
+.fcp-chip--forte { background: var(--gt-b); border-color: var(--gt-b); color: var(--gt-e); }
+.fcp-chip--forte .sm-icon { color: var(--gt-e); }
+.fcp-titulo {
+  font: 700 clamp(21px, 7.4cqw, 31px)/1 var(--fc-cond); text-transform: uppercase; letter-spacing: -.1px;
+  color: var(--gt-b); overflow-wrap: anywhere; hyphens: auto;
+}
+.fcp-simbolo { position: relative; flex: none; width: clamp(56px, 17cqw, 76px); aspect-ratio: 1; display: grid; place-items: center; }
+.fcp-simbolo-in {
+  width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center; color: #fff;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--gt-p) 85%, #fff 10%), var(--gt-e) 90%);
+  border: 2px solid color-mix(in srgb, var(--gt-b) 75%, transparent);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--gt-b) 12%, transparent), 0 0 24px color-mix(in srgb, var(--gt-p) 55%, transparent);
+}
+.fcp-brilho { position: absolute; color: var(--gt-b); opacity: .9; }
+.fcp-brilho--1 { left: -12px; top: 4px; }
+.fcp-brilho--2 { right: -10px; bottom: -2px; }
+
+/* corpo claro: caixa da pergunta / caixa colorida da resposta */
+.fcp-corpo { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 14px 14px 10px; }
+.fcp-caixa, .fcp-resp { flex: 1; min-height: 0; display: flex; flex-direction: column; border-radius: 18px; }
+.fcp-caixa { background: var(--fc-caixa); border: 1px solid var(--fc-borda); }
+.fcp-resp {
+  color: #fff; border: 1px solid color-mix(in srgb, var(--gt-p) 70%, #fff 10%);
+  background: linear-gradient(135deg, var(--gt-e) 0%, var(--gt-p) 100%);
+}
+.fcp-rola {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column;
+  padding: 18px 18px 16px; scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--gt-p) 45%, transparent) transparent;
+}
+.fcp-rola--mais { padding-bottom: 34px; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 30px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 30px), transparent); }
+.fcp-mais { align-self: center; flex: none; display: inline-flex; align-items: center; gap: 6px; margin-top: -4px; font: 600 12.5px/1.2 var(--font-sans); color: var(--text-secondary); }
+.fcp-centro { margin-block: auto; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.fcp-rotulo { display: flex; align-items: center; gap: 10px; font: 700 15px/1 var(--fc-cond); letter-spacing: 2.4px; text-transform: uppercase; color: var(--fc-rotulo); }
+.fcp-rotulo-ic { width: 30px; height: 30px; flex: none; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--gt-p); }
+.fcp-resp .fcp-rotulo { color: #fff; }
+.fcp-resp .fcp-rotulo-ic { background: #fff; color: var(--gt-e); }
+.fcp-t { margin: 0; color: var(--fc-tinta); overflow-wrap: anywhere; white-space: pre-line; }
+.fcp-resp .fcp-t { color: #fff; }
+.fcp-t--xl { font: 700 clamp(25px, 8.6cqw, 38px)/1.02 var(--fc-cond); text-transform: uppercase; }
+.fcp-t--lg { font: 700 clamp(21px, 6.6cqw, 29px)/1.06 var(--fc-cond); text-transform: uppercase; }
+.fcp-t--md { font: 600 clamp(19px, 5.4cqw, 23px)/1.2 var(--fc-cond); }
+.fcp-t--sm { font: 500 15px/1.55 var(--font-sans); }
+.fcp-traco { display: block; width: 92px; height: 5px; border-radius: 999px; background: linear-gradient(90deg, var(--gt-p), var(--gt-b)); }
+.fcp-dica {
+  align-self: center; display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px; border-radius: 999px; flex: none;
+  border: 1.5px solid color-mix(in srgb, var(--gt-p) 35%, transparent); background: var(--fc-caixa); color: var(--fc-dica);
+  font: italic 600 14.5px/1.1 var(--font-sans);
+}
+.fcp-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; padding: 0; }
+
+/* rodapé azul-marinho com a logo nova */
+[data-theme="dark"] .fcp-rodape { border-top: 1px solid var(--fc-borda); }
+.fcp-rodape { flex: none; display: flex; align-items: center; height: 46px; padding: 0 18px; background: var(--fc-navy-3); }
+.fcp-logo { display: block; height: 28px; aspect-ratio: 320 / 99; background: url("/brand/horizontal-escuro-320w.png") left center / contain no-repeat; }
+
+@container (max-width: 340px) {
+  .fcp-brilho { display: none; }
+  .fcp-faixa { padding: 14px 14px 13px; }
+  .fcp-rola { padding: 14px 14px 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .fcp-in { transition: none; } }

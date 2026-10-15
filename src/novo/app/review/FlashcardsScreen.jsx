@@ -2,7 +2,7 @@
 // Mesma marcação da FlashcardsScreen do kit (prototype/ReviewScreens.jsx). O "Modo áudio"
 // do protótipo deu lugar a "Novo flashcard": não existe modo áudio no produto.
 import React from "react";
-import { Badge, Banner, Button, Card, Chip, EmptyState, Flashcard, StatCard } from "../../ds";
+import { Badge, Banner, Button, Card, Chip, EmptyState, StatCard } from "../../ds";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel, formatWhen } from "../practice/format.js";
@@ -10,7 +10,7 @@ import { FlashcardForm } from "./FlashcardForm.jsx";
 import { intervalLabel, nextSchedule, previewDays } from "./fsrs.js";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
 import { CartaoIlustrado } from "../study/AulaImagem.jsx";
-import { areaVars } from "../study/temaCores.js";
+import { CartaoFlashcard } from "./CartaoFlashcard.jsx";
 
 const RATINGS = [
   { value: 1, label: "Errei", variant: "danger" },
@@ -165,8 +165,8 @@ export function FlashcardsScreen({ go }) {
           {ilustrados[card.id] ? (
             <CartaoIlustrado key={card.id} tema={ilustrados[card.id].tema} n={ilustrados[card.id].n} front={card.front} back={card.back} flipped={flipped} onFlip={setFlipped} />
           ) : (
-            // frente e verso na cor da área do cartão (paleta v2); cartão sem área fica na cor padrão
-            <Flashcard key={card.id} area={areaLabel(card.area)} front={card.front} back={card.back} flipped={flipped} onFlip={setFlipped} height={280} className={areaVars(card.area) ? "sm-flash--tema" : ""} style={areaVars(card.area)} />
+            // sem imagem: o mesmo layout dos ilustrados, em texto, na cor da área (paleta v2); o cartão do próprio aluno ganha o selo "Meu cartão"
+            <CartaoFlashcard key={card.id} area={card.area} topic={card.topic} front={card.front} back={card.back} selos={{ meu: Boolean(card.mine) }} flipped={flipped} onFlip={setFlipped} />
           )}
           {flipped ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }} role="group" aria-label="Como foi lembrar?">

@@ -2,19 +2,21 @@
 // Visual de 14/10/2026 (prévia interativa aprovada pelo dono): cabeçalho com busca, filtros de área e ano e progresso de
 // leitura; cartões com faixa na cor da área (paleta v2 dos Grandes Temas), fonte e data à vista e selo "Novo"; detalhe em
 // abas (O que mudou / Conduta e impacto / O que a prova cobra / Armadilha / Linha do tempo / Flashcards / Miniquiz).
-// Os flashcards usam a cor do Grande Tema ligado à atualização (slug ...-gr-016 → GR-016) ou, sem tema, a da área.
+// Os flashcards usam o layout padrão dos ilustrados (CartaoFlashcard) na cor do Grande Tema ligado à atualização
+// (slug ...-gr-016 → GR-016) ou, sem tema, na da área; selos "Essencial" (prioridade muito alta) e "Atualizado mm/aaaa".
 // "Marcar como lido" fica só neste navegador (atualizacoesLidas.js): não há tabela de leitura de atualização no banco.
 // Só aparece ao aluno o que o administrador publicou, e o banco só deixa publicar o que um revisor médico aprovou no
 // documento oficial (registra quem e quando); recusar ou mudar o texto tira do ar. O aviso "Ainda sem conferência médica"
 // do detalhe e o selo "Sem conferência médica" do cartão e da tabela ficam só como proteção, caso algum dia chegue ao aluno
 // algo sem conferência (AT04: o selo aparece em todo lugar onde a conduta aparece, não só no detalhe).
 import React from "react";
-import { AnswerOption, Badge, Banner, Button, Card, Chip, EmptyState, Flashcard, Icon, ProgressBar, SegmentedControl, TextField } from "../../ds";
+import { AnswerOption, Badge, Banner, Button, Card, Chip, EmptyState, Icon, ProgressBar, SegmentedControl, TextField } from "../../ds";
 import { useSession } from "../session.jsx";
 import { useMobile } from "../Shell.jsx";
 import { AREAS, areaLabel } from "../practice/format.js";
 import { areaVars, atualizacaoVars } from "./temaCores.js";
 import { useLidas } from "./atualizacoesLidas.js";
+import { CartaoFlashcard, mesAno } from "../review/CartaoFlashcard.jsx";
 import "./atualizacoes.css";
 
 const PRIORITY = { 1: ["Prioridade muito alta", "streak"], 2: ["Prioridade alta", "warning"], 3: ["Prioridade moderada", "neutral"], 4: ["Prioridade baixa", "neutral"] };
@@ -478,8 +480,16 @@ export function UpdateDetail({ slug, go, onBack, lidas: lidasLista, onToggleRead
     flash: flash.length > 0 && (
       <>
         <PanelTitle icon="layers">Flashcards de fixação</PanelTitle>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 640 }}>
-          <Flashcard key={card} front={flash[card].front} back={flash[card].back} area={areaLabel(u.area)} height={mobile ? 360 : 300} className="sm-flash--tema" style={atualizacaoVars(u.slug ?? slug, u.area)} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 420, width: "100%", margin: "0 auto" }}>
+          <CartaoFlashcard
+            key={card}
+            front={flash[card].front}
+            back={flash[card].back}
+            area={u.area}
+            topic={u.topic}
+            selos={{ essencial: u.priority === 1, atualizado: mesAno(u.reviewed_at ?? u.updated_at) }}
+            cores={atualizacaoVars(u.slug ?? slug, u.area)}
+          />
           {flash.length > 1 && (
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
               <Button size="sm" variant="ghost" icon="chevron-left" disabled={card === 0} onClick={() => setCard(card - 1)}>Anterior</Button>
