@@ -494,8 +494,8 @@
     "tipo": "anatomia_realista",
     "risco_medico": "alto",
     "estado": "retida (aguardando revisão médica)",
-    "origem": "f3bc869dcf23257b",
-    "bytes": 24976,
+    "origem": "594d64065e300c73",
+    "bytes": 23624,
     "qualidade": 80,
     "sincronizada_em": "2026-10-15"
   },
@@ -634,8 +634,8 @@
     "tipo": "fotografia",
     "risco_medico": "alto",
     "estado": "retida (aguardando revisão médica)",
-    "origem": "6f7f1e4aac661c29",
-    "bytes": 39524,
+    "origem": "ab5261ba96f7db4d",
+    "bytes": 34812,
     "qualidade": 80,
     "sincronizada_em": "2026-10-15"
   },
@@ -754,8 +754,8 @@
     "tipo": "fotografia",
     "risco_medico": "alto",
     "estado": "retida (aguardando revisão médica)",
-    "origem": "f55aa2d1e6b5ec9c",
-    "bytes": 51318,
+    "origem": "f8afe2f1d636a082",
+    "bytes": 36012,
     "qualidade": 80,
     "sincronizada_em": "2026-10-15"
   },
