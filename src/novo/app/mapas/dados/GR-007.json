@@ -19,7 +19,8 @@
       "Conferência 15/10: item de analgésicos, opioides, AINEs e corticoides em casos refratários da chikungunya recebeu o contexto da aula 'na fase crônica' (CK39), para não parecer válido na fase aguda, em que AINE não é recomendado.",
       "Conferência 15/10: ponto-chave do estadiamento completado com 'comprometimento grave de órgãos' (D) e 'sangramento de pele' (B), como na aula (AR36, AR58).",
       "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
-      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): hidratação oral (A e B) e venosa (C e D) passada de `faixas` para `itens`; repetição de \"um único sinal de alarme\" reduzida."
     ]
   },
   "ramos": [
@@ -1204,7 +1205,7 @@
       "itens": [
         "Grupos C e D: soro mesmo sem exames",
         "Reclassificar: o grupo pode mudar",
-        "Um único sinal de alarme já é grupo C",
+        "Grupo B: hemograma completo obrigatório",
         "Notificar todo caso suspeito"
       ],
       "claims": [
@@ -1271,19 +1272,8 @@
       "titulo": "Hidratação e medicamentos",
       "icone": "pilula",
       "cor": "laranja",
-      "faixas": [
-        {
-          "rotulo": "Hidratação oral",
-          "chip": "Oral",
-          "texto": "Grupos A e B"
-        },
-        {
-          "rotulo": "Hidratação venosa",
-          "chip": "Venosa",
-          "texto": "Grupos C e D"
-        }
-      ],
       "itens": [
+        "Hidratação oral: grupos A e B; venosa: grupos C e D",
         "Dor e febre: paracetamol e/ou dipirona",
         "Não usar salicilatos, anti-inflamatórios ou corticoides",
         "Chikungunya crônica: preferir hidroxicloroquina"

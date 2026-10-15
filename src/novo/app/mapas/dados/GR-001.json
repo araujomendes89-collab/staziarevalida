@@ -14,7 +14,8 @@
     "pendencias": [
       "Data de incorporacao do BPaLM citada pelo dono (06/10/2026) NAO verificada: a aula traz apenas o documento de 24/08/2026; data omitida do mapa.",
       "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
-      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): rótulo \"Rifampicina detectada\" corrigido para \"Resistência à rifampicina detectada\" (o que é detectado é a resistência)."
     ]
   },
   "ramos": [
@@ -763,7 +764,7 @@
         },
         {
           "icone": "alerta",
-          "rotulo": "Rifampicina detectada",
+          "rotulo": "Resistência à rifampicina detectada",
           "texto": "Referência terciária imediatamente"
         },
         {

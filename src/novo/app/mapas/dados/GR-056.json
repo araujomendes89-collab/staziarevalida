@@ -18,7 +18,8 @@
       "Intervalo da citologia na imunossuprimida (semestral no 1º ano, depois anual) mantido como regra da citologia; a aula não detalha o seguimento após alterações nesse grupo.",
       "Conferência 15/10: preparo com estrogênio no homem trans restrito a quem está 'em uso de hormônio', como na aula (CU29, CU30); antes parecia valer para todo homem trans com útero.",
       "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
-      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): rotina do HPV e imunodeprimidos passadas de `faixas` para `itens`; aviso do ASC-US reescrito de forma clara (CU57)."
     ]
   },
   "ramos": [
@@ -598,7 +599,7 @@
   "atencao": [
     "Teste positivo não significa lesão ou câncer",
     "A vacina não dispensa o rastreamento",
-    "Idades do ASC-US são trocadas: 6 meses, 12 meses, 3 anos",
+    "ASC-US: quanto mais velha, menor o intervalo (30 anos ou mais: 6 meses; 25 a 29: 12 meses; menos de 25: 3 anos)",
     "Ver e tratar é inaceitável até 24 anos e na LSIL"
   ],
   "foto": {
@@ -950,19 +951,9 @@
       "titulo": "Vacina contra o HPV",
       "icone": "seringa",
       "cor": "laranja",
-      "faixas": [
-        {
-          "rotulo": "Rotina: 9 a 14 anos",
-          "chip": "1 dose",
-          "texto": "Meninas e meninos"
-        },
-        {
-          "rotulo": "Imunodeprimidos",
-          "chip": "3 doses",
-          "texto": "De 9 a 45 anos"
-        }
-      ],
       "itens": [
+        "Rotina: 9 a 14 anos, 1 dose",
+        "Imunodeprimidos: 3 doses, de 9 a 45 anos",
         "15 a 19 anos sem dose: resgate, conforme o estado",
         "Tratadas por NIC 2, NIC 3 ou AIS: 3 doses",
         "Contraindicada na gestação"

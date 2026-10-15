@@ -18,7 +18,8 @@
       "A aula não traz o ferro de tratamento para Hb abaixo de 9 g/dL além de 'ferro endovenoso preferível'; nada acrescentado.",
       "Conferência 15/10: pesquisa do estreptococo do grupo B recebeu a ressalva da aula 'quando disponível' (PN26).",
       "Revisão reescrita em palavras-chave em 15/10 (sem fato novo)",
-      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): dTpa (PN31, PN70) e vacina do vírus sincicial respiratório (PN32) passadas de `faixas` para `itens`."
     ]
   },
   "ramos": [
@@ -1088,19 +1089,9 @@
       "titulo": "Vacinas na gestação",
       "icone": "seringa",
       "cor": "laranja",
-      "faixas": [
-        {
-          "rotulo": "Cada gestação",
-          "chip": "dTpa",
-          "texto": "1 dose da 20ª semana"
-        },
-        {
-          "rotulo": "Sincicial respiratório",
-          "chip": "Única",
-          "texto": "Desde a 28ª semana"
-        }
-      ],
       "itens": [
+        "dTpa: 1 dose a partir da 20ª semana, em cada gestação",
+        "Vírus sincicial respiratório: dose única, desde a 28ª semana",
         "Influenza: 1 dose por temporada",
         "Covid: 1 dose, 6 meses após a última",
         "Sem histórico: 3 doses de toxoide diftérico e tetânico"

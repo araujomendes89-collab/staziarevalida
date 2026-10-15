@@ -18,7 +18,8 @@
       "Conferência 15/10: suspeita de pneumotórax hipertensivo 'com choque descompensado' recebeu o contexto da aula ('pelo critério pré-hospitalar nacional'), já que a própria aula diz que o choque é sinal tardio e o caso pode vir sem a pressão (TT11, TT13, TT16).",
       "Removido dos avisos exibidos o item \"a aula não traz critérios de drenagem/toracotomia\" (nota de autoria); permanece no ramo aprofundado.",
       "Revisão reescrita em palavras-chave em 15/10 (sem fato novo)",
-      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): faixas do tratamento imediato passadas para `itens`."
     ]
   },
   "ramos": [
@@ -976,22 +977,11 @@
       "titulo": "Tratamento imediato",
       "icone": "pilula",
       "cor": "laranja",
-      "faixas": [
-        {
-          "rotulo": "Pneumotórax aberto",
-          "chip": "3 lados",
-          "texto": "Curativo oclusivo"
-        },
-        {
-          "rotulo": "Tórax instável: suporte",
-          "chip": "O2",
-          "texto": "Alto fluxo e analgesia"
-        }
-      ],
       "itens": [
+        "Pneumotórax aberto: curativo oclusivo fixado em 3 lados",
+        "Tórax instável: oxigênio em alto fluxo e analgesia",
         "Tamponamento: dois acessos de grosso calibre e volume",
-        "Não enfaixar nem estabilizar o segmento instável",
-        "Incentivar inspiração profunda e tosse"
+        "Não enfaixar nem estabilizar o segmento instável"
       ],
       "claims": [
         "TT04",

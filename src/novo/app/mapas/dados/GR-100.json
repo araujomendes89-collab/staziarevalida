@@ -18,7 +18,8 @@
       "Duvida registrada: a aula diz que o protocolo do SAMU (2016) indica diazepam intravenoso na abstinencia, mas orienta via oral sem convulsao e intravenosa na convulsao e no delirium tremens; o mapa segue a conduta da aula.",
       "Conferência 15/10: todos os itens exibidos conferidos contra a aula (afirmações AD01 a AD130); nenhuma correção necessária.",
       "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
-      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): fármaco e via dos estágios 2 e 3 (AD67, AD68) passados de `faixas` para `itens`. Sobreposição do cartão Atenção com \"Dependente que quer parar\" é da imagem: refazer o pôster."
     ]
   },
   "ramos": [
@@ -973,21 +974,11 @@
       "titulo": "Abstinência: estágios 2 e 3",
       "icone": "pilula",
       "cor": "laranja",
-      "faixas": [
-        {
-          "rotulo": "Estágio 2 (10 a 30 horas)",
-          "chip": "Via oral",
-          "texto": "Benzodiazepínico oral"
-        },
-        {
-          "rotulo": "Estágio 3 (12 a 48 horas)",
-          "chip": "SAMU 192",
-          "texto": "Via intravenosa"
-        }
-      ],
       "itens": [
-        "Estágio 2: de hora em hora até sintomas leves",
-        "Estágio 3: dar o fármaco enquanto aguarda o SAMU",
+        "Estágio 2: benzodiazepínico oral de hora em hora",
+        "Sintomas leves: então encaminhar",
+        "Estágio 3: acionar o SAMU 192",
+        "Dar benzodiazepínico intravenoso enquanto aguarda",
         "Sem clorpromazina nem fenitoína"
       ],
       "claims": [

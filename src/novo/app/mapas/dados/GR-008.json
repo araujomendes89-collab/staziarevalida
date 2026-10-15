@@ -18,7 +18,8 @@
       "Conferência 15/10: cancro duro recebeu de volta a ressalva da aula 'geralmente' única e indolor (SF03); antes parecia regra absoluta.",
       "Conferência 15/10: título 'Em quem foi tratado' trocado por 'Quem teve parceria com sífilis e não foi tratado', porque contradizia o item (SF113 fala de quem não foi tratado).",
       "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
-      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): doses da penicilina benzatina passadas de `faixas` para `itens` (o pôster não mostrava a dose no cartão)."
     ]
   },
   "ramos": [
@@ -964,19 +965,9 @@
       "titulo": "Tratamento (penicilina benzatina)",
       "icone": "seringa",
       "cor": "laranja",
-      "faixas": [
-        {
-          "rotulo": "Sífilis recente",
-          "chip": "1 dose",
-          "texto": "2,4 milhões UI, IM"
-        },
-        {
-          "rotulo": "Sífilis tardia",
-          "chip": "3 doses",
-          "texto": "2,4 milhões UI semanal"
-        }
-      ],
       "itens": [
+        "Recente: 1 dose de benzatina, 2,4 milhões UI, IM",
+        "Tardia: 3 doses, 2,4 milhões UI por semana",
         "Só via intramuscular, de preferência ventro-glútea",
         "Gestante: só penicilina benzatina; sem doxiciclina",
         "Dor de injeção antiga não é alergia à penicilina"

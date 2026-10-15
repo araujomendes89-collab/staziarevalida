@@ -19,7 +19,8 @@
       "Conferência 15/10: 'nunca com menos de 2 semanas' trocado por 'evitando trocas com menos de 2 semanas', como na aula (AN119: 'evite').",
       "Conferência 15/10: duração de 1 a 2 anos após a remissão recebeu de volta a ressalva 'a maioria das diretrizes sugere' (AN128; a aula diz que a duração ideal é controversa, AN142), no ramo de seguimento e no ponto-chave.",
       "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
-      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): cartão de longo prazo coerente com o aviso (benzodiazepínico só por pouco tempo; ISRS e TCC como primeira escolha); verbo \"manter\" no aviso (AN128)."
     ]
   },
   "ramos": [
@@ -758,7 +759,7 @@
     "Benzodiazepínico não é de longo prazo: risco de dependência",
     "Benzodiazepínico intramuscular não recomendado: absorção errática",
     "Inquietude inicial do ISRS costuma passar; em geral, não suspender",
-    "Após a remissão, a maioria das diretrizes sugere 1 a 2 anos"
+    "Após a remissão, a maioria das diretrizes sugere manter por 1 a 2 anos"
   ],
   "foto": {
     "webp": "/mapas-mentais/transtornos-de-ansiedade-e-panico.webp",
@@ -962,22 +963,12 @@
       "titulo": "Tratamento de longo prazo",
       "icone": "pilula",
       "cor": "laranja",
-      "faixas": [
-        {
-          "rotulo": "Primeira escolha",
-          "chip": "ISRS",
-          "texto": "Começar com dose baixa"
-        },
-        {
-          "rotulo": "Psicoterapia estruturada",
-          "chip": "TCC",
-          "texto": "Maiores evidências"
-        }
-      ],
       "itens": [
+        "ISRS: primeira escolha; começar com dose baixa",
+        "TCC: psicoterapia com maiores evidências",
         "ISRS: inibidor seletivo de recaptação de serotonina",
         "TCC: terapia cognitivo-comportamental",
-        "Benzodiazepínico: apoio na ansiedade muito intensa"
+        "Benzodiazepínico: só por pouco tempo, na crise muito intensa"
       ],
       "claims": [
         "AN94",

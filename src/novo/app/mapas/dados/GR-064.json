@@ -17,7 +17,8 @@
       "A aula so traz o resgate da pneumocócica ate 4a11m29d (dose unica de VPC 20); nao ha regra para idades maiores e nada foi acrescentado.",
       "Conferência 15/10: corte do corticoide imunossupressor reescrito com '≥ 2 mg/kg/dia' e '≥ 20 mg/dia', como na aula (CV70); antes o '2 mg/kg/dia' aparecia sem o 'ou mais'.",
       "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
-      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): pneumocócica aos 2 meses (VPC 20, CV10) incluída; prazos do rotavírus (CV07, CV08) passados de `faixas` para `itens`."
     ]
   },
   "ramos": [
@@ -750,7 +751,7 @@
       "cor": "vermelho",
       "itens": [
         "Ao nascer: BCG e hepatite B",
-        "2 meses: penta, VIP e rotavírus",
+        "2 meses: penta, VIP, rotavírus e pneumocócica",
         "3 e 5 meses: meningocócica C",
         "9 meses: febre amarela",
         "12 meses: tríplice viral"
@@ -924,19 +925,9 @@
       "titulo": "Rotavírus: prazos das doses",
       "icone": "seringa",
       "cor": "laranja",
-      "faixas": [
-        {
-          "rotulo": "Primeira dose",
-          "chip": "2 meses",
-          "texto": "Até 11 meses e 29 dias"
-        },
-        {
-          "rotulo": "Segunda dose",
-          "chip": "4 meses",
-          "texto": "Até 23 meses e 29 dias"
-        }
-      ],
       "itens": [
+        "Primeira dose: até 11 meses e 29 dias",
+        "Segunda dose: até 23 meses e 29 dias",
         "Mínimo: 1 mês e 15 dias (1ª); 3 meses e 15 dias (2ª)",
         "Perdeu a 1ª dose no prazo: perde as duas"
       ],

@@ -19,7 +19,8 @@
       "Conferência 15/10: 'não baixar para menos de 120/70' restrito à faixa de 65 a 79 anos, como na aula (HA101); antes estava generalizado a todo idoso.",
       "Conferência 15/10: definição de emergência das recomendações de 2025 reescrita para deixar claro que a lesão de órgão-alvo aguda e progressiva é exigida também com 180/110 (HS01).",
       "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
-      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): braços x pernas completado (HA39); nifedipino de curta duração não na urgência (HB25) com a exceção da emergência na gestação (HB12); metas por grau do cartão de tratamento passadas de `faixas` para `itens`."
     ]
   },
   "ramos": [
@@ -611,7 +612,7 @@
             "Sem risco iminente: horas de observação; se assintomático e PA caindo, alta",
             "Retorno com a atenção primária",
             {
-              "t": "Nifedipino de liberação rápida: não usar em elevação aguda da PA (nem sublingual)",
+              "t": "Nifedipino de curta duração (cápsulas): não recomendado na urgência hipertensiva; na emergência da gestação, nifedipino oral é primeira escolha",
               "tom": "alerta"
             },
             {
@@ -829,7 +830,7 @@
   ],
   "atencao": [
     "Antes de falar em crise, conferir a técnica de medida",
-    "Nifedipino de liberação rápida: não usar em elevação aguda da PA",
+    "Nifedipino de curta duração: não na urgência; na emergência da gestação, nifedipino oral é opção",
     "Gestação: sem IECA, BRA nem antagonistas de mineralocorticoides",
     "Antes de chamar de resistente, verificar a adesão"
   ],
@@ -917,7 +918,7 @@
       "itens": [
         "Sopro abdominal: artéria renal",
         "Creatinina sobe mais de 30%",
-        "Sistólica 10 mmHg maior nos braços",
+        "Sistólica 10 mmHg maior nos braços que nas pernas",
         "Crises de palpitação e sudorese"
       ],
       "claims": [
@@ -1064,7 +1065,7 @@
           "rotulo": "Urgência",
           "itens": [
             "Queda gradual por via oral em 24 a 48 h",
-            "Nifedipino de liberação rápida: não usar"
+            "Nifedipino de curta duração: não usar"
           ]
         },
         {
@@ -1153,21 +1154,10 @@
       "titulo": "Tratamento de longo prazo",
       "icone": "pilula",
       "cor": "laranja",
-      "faixas": [
-        {
-          "rotulo": "Grau 1 de risco baixo",
-          "chip": "Único",
-          "texto": "Mais mudança de hábitos"
-        },
-        {
-          "rotulo": "Graus 2 e 3",
-          "chip": "Dupla",
-          "texto": "Mecanismos diferentes"
-        }
-      ],
       "itens": [
-        "Grau 1 de risco moderado ou alto: também dupla",
-        "Betabloqueador só com indicação específica",
+        "Grau 1, risco baixo: um fármaco e mudança de hábitos",
+        "Grau 1, risco moderado ou alto: dois fármacos",
+        "Graus 2 e 3: dois fármacos de mecanismos diferentes",
         "IECA e BRA contraindicados na gestação"
       ],
       "claims": [

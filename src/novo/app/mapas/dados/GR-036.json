@@ -18,7 +18,8 @@
       "Regra dos nove na criança: a aula traz 13,5% e 14% para cada membro inferior conforme a tabela usada; ambos mantidos.",
       "Conferência 15/10: item do cianeto reescrito; antes ligava os sinais direto à hidroxocobalamina, e a aula diz que esses sinais 'levam a verificar' o cianeto e que o antídoto segue 'os critérios oficiais' (QM19, QM21).",
       "Revisão reescrita em palavras-chave em 15/10 (sem fato novo)",
-      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): faixas do tétano passadas para `itens`; cartão \"Objetivos do atendimento\" já consta nos dados (via aérea definitiva precoce, O2 por 3 h no monóxido, escarotomia, analgesia)."
     ]
   },
   "ramos": [
@@ -980,22 +981,11 @@
       "titulo": "Tétano na queimadura",
       "icone": "seringa",
       "cor": "laranja",
-      "faixas": [
-        {
-          "rotulo": "Última dose < 5 anos",
-          "chip": "Nada",
-          "texto": "Sem vacina nem soro"
-        },
-        {
-          "rotulo": "Última dose > 5 anos",
-          "chip": "Reforço",
-          "texto": "Um reforço, sem soro"
-        }
-      ],
       "itens": [
-        "As duas faixas valem para 3 doses ou mais",
-        "Incerto ou < 3 doses: vacina e soro/imunoglobulina",
-        "Queimadura é ferimento de alto risco"
+        "Última dose há menos de 5 anos: nada",
+        "Última dose há mais de 5 anos: um reforço, sem soro",
+        "Vale para 3 doses ou mais de vacina",
+        "Incerto ou menos de 3 doses: vacina e soro ou imunoglobulina"
       ],
       "claims": [
         "QM05",

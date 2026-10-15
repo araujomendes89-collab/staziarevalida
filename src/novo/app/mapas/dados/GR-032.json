@@ -17,7 +17,8 @@
       "Escolha entre ringer lactato e salina refere-se à conduta pré-hospitalar nacional; no choque hemorrágico a aula trata o soro só como ponte inicial.",
       "Conferência 15/10: item do cristaloide aquecido recebeu o contexto da aula ('conduta pré-hospitalar nacional', 'preferencialmente'; PT48, PT49), para não parecer regra geral do choque hemorrágico.",
       "Revisão reescrita em palavras-chave em 15/10 (sem fato novo)",
-      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)"
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): \"punção com agulha\" esclarecida como cricotireoidostomia por punção (PT21, PT22)."
     ]
   },
   "ramos": [
@@ -800,7 +801,7 @@
       "icone": "alvo",
       "cor": "ciano",
       "itens": [
-        "Criança: punção com agulha, não cirúrgica",
+        "Criança: cricotireoidostomia por punção, não cirúrgica",
         "Criança: até 2 tentativas de veia em 90 s",
         "Gestante >20 semanas: inclinar à esquerda",
         "Transferir: avisar a Regulação e dar relatório"
