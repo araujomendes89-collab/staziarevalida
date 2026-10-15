@@ -1,0 +1,1011 @@
+{
+  "esquema": 1,
+  "slug": "alcool-e-outras-drogas",
+  "codigo": "GR-100",
+  "area": "sm",
+  "titulo": "Álcool e outras drogas",
+  "subtitulo": "Do rastreio na UBS ao delirium tremens",
+  "emblema": "cruz",
+  "revisao": {
+    "status": "pre-revisado por agente",
+    "origem": "Aula GR-100 versao do pacote 2026-10-15-aulas-corrigidas, afirmacoes AD01 a AD130",
+    "gerado_em": "2026-10-15",
+    "aprovacao_humana": null,
+    "pendencias": [
+      "A aula nao traz doses de diazepam, tiamina, haloperidol, naltrexona ou acamprosato; nenhuma dose foi acrescentada.",
+      "A aula cita dissulfiram entre os medicamentos considerados (complemento internacional), mas a escolha na rotina segue o servico; mantido so como lista, sem indicacao propria.",
+      "A aula nao define quantas gramas ou mililitros correspondem a uma dose; omitido.",
+      "Duvida registrada: a aula diz que o protocolo do SAMU (2016) indica diazepam intravenoso na abstinencia, mas orienta via oral sem convulsao e intravenosa na convulsao e no delirium tremens; o mapa segue a conduta da aula.",
+      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
+      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
+      "Revisor 2 (15/10): fármaco e via dos estágios 2 e 3 (AD67, AD68) passados de `faixas` para `itens`.",
+      "Revisor B (15/10): \"Sintomas leves: então encaminhar\" reescrito (estágio 2: benzodiazepínico oral de hora em hora até sintomas leves; depois, encaminhar; AD67); encefalopatia de Wernicke incluída (confusão, nistagmo, oftalmoplegia e ataxia; tiamina parenteral e desintoxicação no hospital; AD50, AD52); tiamina antes de encaminhar mantida no tratamento (AD69) e glicose só após a tiamina na Atenção (AD71).",
+      "Revisor B (15/10, rodada 3): Wernicke com a tríade completa (confusão, oftalmoplegia ou nistagmo, ataxia; AD50, AD52); estágios nomeados pelo quadro (estágio 2: tremor, insônia, AD77; estágio 3: com convulsão, AD78) e conduta do estágio 3 como cenário da aula (AD68; o SAMU aparece só como serviço a acionar, não como fonte). Glicose: mantido \"de preferência após a tiamina\" (AD71); \"sem atrasar a correção\" não foi acrescentado ao pôster por não constar literal em AD71."
+    ]
+  },
+  "ramos": [
+    {
+      "id": "consumo",
+      "titulo": "Níveis de consumo e AUDIT",
+      "cor": "azul",
+      "icone": "prancheta",
+      "revisao": {
+        "itens": [
+          {
+            "t": "Nenhum consumo é isento de risco: avaliar sempre",
+            "tom": "atencao"
+          }
+        ],
+        "linhas": [
+          {
+            "rotulo": "Consumo moderado",
+            "itens": [
+              "Homem: até 14/semana; até 4 por ocasião",
+              "Mulher: até 7/semana; até 3 por ocasião"
+            ]
+          },
+          {
+            "rotulo": "Consumo de risco",
+            "itens": [
+              "Homem: 15+/semana ou 5+ por ocasião",
+              "Mulher: 8+/semana ou 4+ por ocasião"
+            ]
+          },
+          {
+            "rotulo": "AUDIT",
+            "itens": [
+              "10 questões, últimos 12 meses",
+              "Detecta também o consumo de risco"
+            ]
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "0 a 7 baixo; 8 a 15 baixo/moderado; 16 a 19 moderado; 20 a 40 alto",
+            "Triagem (questões 1 a 3): acima de 3 na mulher e acima de 4 no homem, avaliação completa",
+            "Pensar em álcool como causa de ansiedade ou depressão",
+            {
+              "t": "Não existe consumo de álcool isento de risco: avaliar em toda consulta, desde a adolescência",
+              "tom": "atencao"
+            },
+            "Dez questões sobre os últimos 12 meses; preferido por detectar também o consumo de risco"
+          ]
+        },
+        {
+          "titulo": "Contínuo e binge",
+          "itens": [
+            "O consumo vai do abstêmio ao consumo baixo ou moderado, ao de risco e ao transtorno por uso de álcool.",
+            "Binge: 4 ou mais doses (mulheres e idosos) ou 5 ou mais (homens) numa mesma ocasião.",
+            "Abstêmio: sem consumo nos últimos 12 meses, AUDIT 0."
+          ]
+        },
+        {
+          "titulo": "Exames e álcool zero",
+          "itens": [
+            "GGT aumentada pode predizer problemas com o álcool; VCM elevado pode sugerir transtorno mais crônico.",
+            {
+              "t": "Álcool zero: menores de 18 anos; gestantes, nutrizes ou mulheres tentando engravidar; quem dirige, opera máquinas ou faz atividade de risco; quem não controla o consumo; quem tem doença que o álcool agrava ou usa remédio que interage.",
+              "tom": "alerta"
+            }
+          ]
+        },
+        {
+          "titulo": "Risco associado",
+          "itens": [
+            "Sempre avaliar o risco de suicídio.",
+            "Ideação suicida ou comportamento agressivo ou violento: avaliação psiquiátrica no mesmo dia."
+          ]
+        }
+      ],
+      "claims": [
+        "AD01",
+        "AD03",
+        "AD04",
+        "AD13",
+        "AD14",
+        "AD15",
+        "AD16",
+        "AD20",
+        "AD21",
+        "AD22",
+        "AD23",
+        "AD24",
+        "AD25",
+        "AD29",
+        "AD31",
+        "AD32",
+        "AD33",
+        "AD84",
+        "AD88"
+      ]
+    },
+    {
+      "id": "criterios",
+      "titulo": "Critérios do transtorno",
+      "cor": "azul-forte",
+      "icone": "lupa",
+      "revisao": {
+        "itens": [
+          "Pelo menos 2 critérios em 12 meses, com prejuízo",
+          {
+            "t": "Leve 2 ou 3; moderado 4 ou 5; grave 6 ou mais",
+            "tom": "diag"
+          },
+          "Leve: uso nocivo; moderado/grave: dependência",
+          {
+            "t": "AUDIT: conduta; critérios: transtorno, gravidade",
+            "tom": "atencao"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "O escore do AUDIT orienta a conduta; critérios definem o transtorno e a gravidade",
+              "tom": "atencao"
+            }
+          ]
+        },
+        {
+          "titulo": "Os critérios citados na aula",
+          "itens": [
+            "Muito tempo para obter álcool, usar ou se recuperar dos efeitos.",
+            "Desejo persistente ou esforços malsucedidos de reduzir ou controlar o uso; fissura.",
+            "Fracasso em papéis importantes no trabalho, na escola ou em casa.",
+            "Atividades sociais, profissionais ou de lazer abandonadas ou reduzidas.",
+            "Uso continuado apesar de problemas sociais ou interpessoais.",
+            "Tolerância: quantidades cada vez maiores para o mesmo efeito.",
+            "Abstinência: usa álcool, ou substância parecida como benzodiazepínico, para aliviar ou evitar os sintomas."
+          ]
+        },
+        {
+          "titulo": "Nomenclatura",
+          "itens": [
+            "A CID-10 usa uso nocivo e dependência; o DSM-5 unificou em transtorno por uso de álcool leve, moderado ou grave, pelo número de critérios.",
+            "Nas questões os dois vocabulários aparecem: traduzir um no outro."
+          ]
+        }
+      ],
+      "claims": [
+        "AD02",
+        "AD05",
+        "AD06",
+        "AD07",
+        "AD08",
+        "AD09",
+        "AD10",
+        "AD11",
+        "AD12",
+        "AD30",
+        "AD58",
+        "AD59",
+        "AD85"
+      ]
+    },
+    {
+      "id": "conduta",
+      "titulo": "Conduta por nível e desintoxicação",
+      "cor": "verde",
+      "icone": "pessoas",
+      "revisao": {
+        "itens": [
+          "Apoio sem confronto; o paciente decide",
+          "Pré-contemplação: criar dúvida",
+          "Contemplação: pesar prós e contras"
+        ],
+        "linhas": [
+          {
+            "rotulo": "AUDIT 1 a 7",
+            "itens": [
+              "Consultas de rotina, limites de risco",
+              "Avaliar consumo zero"
+            ]
+          },
+          {
+            "rotulo": "AUDIT 8 a 19",
+            "itens": [
+              "Intervenção breve ou motivacional",
+              "Retorno em 1 mês"
+            ]
+          },
+          {
+            "rotulo": "AUDIT 20 a 40",
+            "itens": [
+              "Plano terapêutico",
+              "Avaliar o risco de abstinência"
+            ]
+          }
+        ],
+        "fluxo": [
+          {
+            "t": "Quer parar: avaliar risco de abstinência",
+            "tom": "diag"
+          },
+          {
+            "t": "Sem contraindicação: ambulatorial, tiamina",
+            "tom": "conduta"
+          },
+          {
+            "t": "Alto risco: CAPS AD III ou hospital",
+            "tom": "alerta"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Recaída: motivar a retomar a mudança",
+            {
+              "t": "Dependente quer parar: avaliar o risco de abstinência grave",
+              "tom": "diag"
+            },
+            {
+              "t": "Sem contraindicação: desintoxicação ambulatorial, com tiamina",
+              "tom": "conduta"
+            },
+            {
+              "t": "Alto risco ou contraindicação: CAPS AD III ou hospital",
+              "tom": "alerta"
+            },
+            "1 a 7: consultas de rotina, limites de risco, avaliar consumo zero",
+            "8 a 15: avaliação dos riscos, intervenção breve e entrevista motivacional, retorno em 1 mês",
+            "16 a 19 (leve): intervenção breve ou entrevista motivacional, retorno em 1 mês",
+            "20 a 40 (moderado ou grave): plano terapêutico, avaliando o risco de abstinência",
+            "Apoio em vez de confronto; o paciente decide parar ou reduzir",
+            "Pré-contemplação: criar dúvida; contemplação: pesar prós e contras"
+          ]
+        },
+        {
+          "titulo": "Intervenção breve",
+          "itens": [
+            "Dura de 5 a 30 minutos; identifica o problema e motiva a pessoa a alcançar metas combinadas.",
+            "Indicada sobretudo para uso abusivo sem sinais de dependência.",
+            "Na dependência, geralmente não se indica sozinha, mas ajuda a sensibilizar e motivar para o tratamento."
+          ]
+        },
+        {
+          "titulo": "Fatores de risco para abstinência grave",
+          "itens": [
+            "Abstinência grave prévia (convulsão ou delirium), outros problemas clínicos ou psiquiátricos importantes, abstinência marcada nas primeiras 6 horas.",
+            "Falha prévia de desintoxicação ambulatorial; morar na rua ou não ter apoio social.",
+            {
+              "t": "Contraindicam a desintoxicação ambulatorial: ausência de rede de apoio, risco de abstinência grave, história de delirium tremens e de convulsões na abstinência.",
+              "tom": "alerta"
+            },
+            "Cuidado ao orientar a parar de beber de uma vez sem avaliar o risco: a redução repentina pode causar abstinência no dependente."
+          ]
+        },
+        {
+          "titulo": "Manter o tratamento",
+          "itens": [
+            "Manter o tratamento costuma ser mais efetivo do que a desintoxicação isolada.",
+            "Na dependência, a recomendação (complemento internacional) é combinar intervenções psicossociais e farmacológicas; a aula cita acamprosato, dissulfiram e naltrexona, escolhidos por danos, benefícios, disponibilidade e preferência da pessoa.",
+            "Medicamento isolado só na falta de intervenção psicossocial."
+          ]
+        },
+        {
+          "titulo": "Rede e encaminhamento",
+          "itens": [
+            "CAPS AD: referência para necessidades ligadas a álcool e drogas em qualquer idade; portas abertas, sem agendamento ou encaminhamento.",
+            "Psiquiatria: transtorno moderado a grave com desejo de tratamento após esgotar a atenção primária, transtorno grave na gravidez ou lactação, ideação suicida persistente.",
+            "Comunidades terapêuticas acolhem, em caráter voluntário, pessoas com uso nocivo ou dependência.",
+            "A abordagem é centrada no paciente; vale engajar quem mora na mesma casa."
+          ]
+        }
+      ],
+      "claims": [
+        "AD26",
+        "AD27",
+        "AD28",
+        "AD34",
+        "AD35",
+        "AD36",
+        "AD37",
+        "AD38",
+        "AD39",
+        "AD40",
+        "AD41",
+        "AD42",
+        "AD43",
+        "AD44",
+        "AD45",
+        "AD46",
+        "AD47",
+        "AD48",
+        "AD49",
+        "AD51",
+        "AD53",
+        "AD54",
+        "AD56",
+        "AD83",
+        "AD106",
+        "AD107",
+        "AD108",
+        "AD109",
+        "AD123",
+        "AD126",
+        "AD127",
+        "AD128",
+        "AD129"
+      ]
+    },
+    {
+      "id": "intoxicacao",
+      "titulo": "Intoxicação alcoólica",
+      "cor": "ciano",
+      "icone": "gota",
+      "revisao": {
+        "itens": [
+          "Fala arrastada, incoordenação, marcha instável",
+          "Leve: ambiente calmo; vigiar vias aéreas",
+          "Procurar trauma causado pela intoxicação",
+          {
+            "t": "Grave: glicemia; glicose só se hipoglicemia",
+            "tom": "conduta"
+          },
+          {
+            "t": "Agitado, parece intoxicado: pode ser abstinência",
+            "tom": "alerta"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Sinais: fala arrastada, incoordenação, marcha instável, nistagmo, estupor ou coma",
+            "Alcoolemia em geral não é medida: manejo pela gravidade dos sintomas",
+            "Leve: ambiente calmo, vigiar vias aéreas e risco de aspirar vômito"
+          ]
+        },
+        {
+          "titulo": "Abstinência ou intoxicação?",
+          "itens": [
+            "Tremores, febre, sudorese profusa, convulsão e delírio apontam para abstinência.",
+            "Considerar intoxicação por outras drogas, associação frequente.",
+            "Com a queda da alcoolemia, quem tem transtorno por uso de álcool pode começar a ter abstinência."
+          ]
+        }
+      ],
+      "claims": [
+        "AD60",
+        "AD61",
+        "AD62",
+        "AD63",
+        "AD64",
+        "AD65",
+        "AD115",
+        "AD117",
+        "AD118"
+      ]
+    },
+    {
+      "id": "estagios",
+      "titulo": "Abstinência: estágios",
+      "cor": "roxo",
+      "icone": "relogio",
+      "revisao": {
+        "itens": [
+          {
+            "t": "Estágio 4 (3 a 5 dias): delirium tremens",
+            "tom": "alerta"
+          },
+          "Desorientação, agitação, alucinações",
+          "Ao parar ou reduzir: transtorno moderado a grave",
+          {
+            "t": "Estágio pelos sintomas, não só pelo relógio",
+            "tom": "atencao"
+          }
+        ],
+        "linhas": [
+          {
+            "rotulo": "Estágio 1 (6 a 8 h)",
+            "itens": [
+              "Ansiedade, tremor leve, náusea",
+              "Taquicardia"
+            ]
+          },
+          {
+            "rotulo": "Estágio 2 (10 a 30 h)",
+            "itens": [
+              "Tremor grosseiro, insônia, sudorese",
+              "Pesadelos; ilusões podem evoluir"
+            ]
+          },
+          {
+            "rotulo": "Estágio 3 (12 a 48 h)",
+            "itens": [
+              "Como o estágio 2",
+              "Mais convulsões tônico-clônicas"
+            ]
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Sem tratamento, 1/3 evolui para o estágio 4",
+              "tom": "alerta"
+            },
+            {
+              "t": "Reconhecer o estágio pelos sintomas, não só pelo relógio",
+              "tom": "atencao"
+            },
+            "Pode surgir ao interromper ou reduzir o consumo no transtorno moderado ou grave",
+            "Ansiedade, tremor leve, náusea, taquicardia",
+            "Tremor grosseiro, insônia, sudorese, pesadelos",
+            "Ilusões que podem evoluir para alucinações",
+            "Como o estágio 2 mais convulsões tônico-clônicas",
+            "Delirium tremens: desorientação, agitação, alucinações, diaforese, hipertensão, taquicardia"
+          ]
+        },
+        {
+          "titulo": "O que é",
+          "itens": [
+            "Excitação do sistema nervoso central: de quadros leves (tremor, ansiedade) a graves, com risco de vida (convulsões, delirium tremens).",
+            "Delirium tremens é um estado confusional breve, acompanhado de perturbações somáticas."
+          ]
+        },
+        {
+          "titulo": "Tempos e duração",
+          "itens": [
+            "As faixas se sobrepõem; o estágio 2 pode durar até 8 dias e o delirium tremens, até 14 dias.",
+            "Sintomas em geral mais intensos no 2º dia sem beber e muito melhores no 4º ou 5º dia.",
+            "Sem tratamento adequado, podem se agravar dentro de 72 horas."
+          ]
+        }
+      ],
+      "claims": [
+        "AD17",
+        "AD18",
+        "AD19",
+        "AD76",
+        "AD77",
+        "AD78",
+        "AD79",
+        "AD86",
+        "AD87",
+        "AD89",
+        "AD90"
+      ]
+    },
+    {
+      "id": "abstinencia",
+      "titulo": "Abstinência: conduta",
+      "cor": "laranja",
+      "icone": "seringa",
+      "lado": "centro",
+      "revisao": {
+        "itens": [
+          {
+            "t": "Tiamina antes de encaminhar, se disponível",
+            "tom": "conduta"
+          },
+          "Estágio 4 (delirium): atendimento no hospital",
+          {
+            "t": "Sem clorpromazina nem fenitoína",
+            "tom": "alerta"
+          },
+          {
+            "t": "Glicose só se hipoglicemia; corrigir logo",
+            "tom": "alerta"
+          },
+          "Alucinação ou agitação: não confrontar"
+        ],
+        "linhas": [
+          {
+            "rotulo": "Estágio 1",
+            "itens": [
+              "Único tratado na atenção primária"
+            ]
+          },
+          {
+            "rotulo": "Estágio 2",
+            "itens": [
+              "Benzodiazepínico oral de hora em hora",
+              "Até sintomas leves, depois encaminhar"
+            ]
+          },
+          {
+            "rotulo": "Estágio 3",
+            "itens": [
+              {
+                "t": "SAMU 192 e benzodiazepínico intravenoso",
+                "tom": "alerta"
+              },
+              "Precoce, previne novas crises"
+            ]
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Não usar clorpromazina nem fenitoína",
+              "tom": "alerta"
+            },
+            {
+              "t": "Não dar glicose sem hipoglicemia; havendo, corrigir logo, de preferência após a tiamina",
+              "tom": "alerta"
+            },
+            "Alucinações ou agitação: não confrontar e manter acompanhado",
+            "Benzodiazepínico oral (diazepam) de hora em hora até sintomas leves, depois encaminhar",
+            {
+              "t": "SAMU 192 e benzodiazepínico intravenoso enquanto aguarda",
+              "tom": "alerta"
+            },
+            "Benzodiazepínico precoce previne novas crises e delirium tremens"
+          ]
+        },
+        {
+          "titulo": "Detalhes da conduta",
+          "itens": [
+            "No SAMU: sem convulsão, o diazepam pode ser oral; com convulsão, intravenoso.",
+            "Abstinência grave ou alto risco de convulsões ou delirium: considerar internação para desintoxicação assistida.",
+            "Convulsões de abstinência em geral são únicas."
+          ]
+        },
+        {
+          "titulo": "O que evitar",
+          "itens": [
+            "Clorpromazina diminui o limiar convulsivante; se precisar de antipsicótico, preferir haloperidol em baixa dose, com cautela.",
+            "No hospital: não hidratar indiscriminadamente, não dar glicose sem hipoglicemia, não usar clorpromazina nem fenitoína.",
+            "A glicose pode desencadear encefalopatia de Wernicke."
+          ]
+        },
+        {
+          "titulo": "Encefalopatia de Wernicke",
+          "itens": [
+            "Todo paciente com transtorno moderado a grave está em risco: deficiência de tiamina.",
+            "Sinais: confusão mental, nistagmo, oftalmoplegia e ataxia.",
+            {
+              "t": "Com qualquer sinal: tiamina parenteral em doses mais altas e desintoxicação no hospital.",
+              "tom": "alerta"
+            },
+            "No etilista, hepatopata ou desnutrido com hipoglicemia, a tiamina vem antes da glicose, sem atrasar a correção."
+          ]
+        }
+      ],
+      "claims": [
+        "AD50",
+        "AD52",
+        "AD66",
+        "AD67",
+        "AD68",
+        "AD69",
+        "AD70",
+        "AD71",
+        "AD72",
+        "AD73",
+        "AD74",
+        "AD75",
+        "AD80",
+        "AD81",
+        "AD91",
+        "AD116",
+        "AD119",
+        "AD125"
+      ]
+    },
+    {
+      "id": "danos",
+      "titulo": "Danos, benzodiazepínicos, estimulantes",
+      "cor": "amarelo",
+      "icone": "escudo",
+      "revisao": {
+        "itens": [
+          {
+            "t": "Cuidado não condicionado à abstinência",
+            "tom": "conduta"
+          },
+          "Ao iniciar: prazo de semanas, redução gradual"
+        ],
+        "linhas": [
+          {
+            "rotulo": "Redução de danos",
+            "itens": [
+              "Estratégia de saúde pública",
+              "Metas: do uso protegido à abstinência"
+            ]
+          },
+          {
+            "rotulo": "Benzodiazepínico",
+            "itens": [
+              "Uso contínuo: tolerância e dependência",
+              "Déficits de atenção e memória"
+            ]
+          },
+          {
+            "rotulo": "Estimulantes (SAMU)",
+            "itens": [
+              "Colaborativo e consciente: manejo verbal"
+            ]
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Retirada: formulação em gotas, uma gota a cada 2 ou mais semanas",
+            "Ansiedade crônica: antidepressivo, resguardando o benzodiazepínico",
+            "Agitado, desorientado ou agressivo: contenção química só com benzodiazepínico, o mais rápido possível",
+            "Em todo agitado: glicemia e saturação de oxigênio",
+            "Estratégia de saúde pública, pautada na ética do cuidado"
+          ]
+        },
+        {
+          "titulo": "Redução de danos",
+          "itens": [
+            "Busca minimizar as consequências do consumo na saúde e na vida econômica e social do usuário e da família.",
+            "Pode envolver uso protegido, diminuição do uso, substituição por substâncias que causem menos problemas e até a abstinência.",
+            "Parte das pessoas não consegue ou não quer interromper o uso, e isso não impede o direito ao cuidado."
+          ]
+        },
+        {
+          "titulo": "Benzodiazepínicos",
+          "itens": [
+            "Podem ser úteis na abstinência de álcool, cocaína ou crack; trazem risco de sedação (acidentes) e, com outros sedativos, de depressão respiratória.",
+            "Para ansiedade crônica, a aula cita antidepressivos como amitriptilina e fluoxetina."
+          ]
+        }
+      ],
+      "claims": [
+        "AD100",
+        "AD101",
+        "AD102",
+        "AD103",
+        "AD104",
+        "AD105",
+        "AD110",
+        "AD111",
+        "AD112",
+        "AD113",
+        "AD114",
+        "AD120",
+        "AD121",
+        "AD122",
+        "AD124",
+        "AD130"
+      ]
+    },
+    {
+      "id": "revalida",
+      "titulo": "Revalida INEP: decisões e pegadinhas",
+      "cor": "vermelho",
+      "icone": "alerta",
+      "revisao": {
+        "itens": [
+          {
+            "t": "2 ou 3 critérios chamado de dependência (é leve)",
+            "tom": "alerta"
+          },
+          {
+            "t": "Mandar parar de uma vez sem avaliar abstinência",
+            "tom": "alerta"
+          },
+          {
+            "t": "Condicionar o cuidado à abstinência",
+            "tom": "alerta"
+          },
+          {
+            "t": "Glicose de rotina; clorpromazina ou fenitoína",
+            "tom": "alerta"
+          },
+          {
+            "t": "Suspender de uma vez o benzodiazepínico crônico",
+            "tom": "alerta"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Chamar de dependência quem preenche só 2 ou 3 critérios: é transtorno leve",
+              "tom": "alerta"
+            },
+            {
+              "t": "Mandar o dependente parar de uma vez sem avaliar o risco de abstinência",
+              "tom": "alerta"
+            },
+            {
+              "t": "Dar glicose de rotina ao etilista ou atrasar a correção da hipoglicemia",
+              "tom": "alerta"
+            },
+            {
+              "t": "Usar clorpromazina ou fenitoína na abstinência",
+              "tom": "alerta"
+            },
+            {
+              "t": "Suspender de uma vez o benzodiazepínico usado há anos",
+              "tom": "alerta"
+            }
+          ]
+        },
+        {
+          "titulo": "O que mudou desde a prova",
+          "itens": [
+            "Rede: em 21/06/2023 as regras do CAPS AD IV foram revogadas; a desintoxicação com leito fica no CAPS AD III ou no hospital.",
+            "Na conduta clínica não há mudança confirmada desde as provas cobradas.",
+            "Nomenclatura da CID-10 e do DSM-5 aparece nos dois vocabulários."
+          ]
+        },
+        {
+          "titulo": "Caso típico de prova",
+          "itens": [
+            "Beber diário, tentativas frustradas de parar, tolerância, tremor matinal aliviado pela bebida e AUDIT de 27: transtorno grave, equivalente à dependência.",
+            "Na UBS: intervenção motivacional, plano terapêutico e avaliação do risco de abstinência; desintoxicação assistida, não sozinho.",
+            "Três dias depois da última dose, com agitação, desorientação, alucinações, hipertensão e taquicardia: estágio 4, delirium tremens, no hospital.",
+            "Conduta: benzodiazepínico intravenoso, tiamina, ambiente calmo, sem confronto, sem clorpromazina; glicose só com hipoglicemia.",
+            "Depois: cuidado na rede (CAPS AD e atenção primária) e avaliação do risco de suicídio."
+          ]
+        },
+        {
+          "titulo": "Mais armadilha",
+          "itens": [
+            "Tratar o delirium tremens com antipsicótico no lugar do benzodiazepínico."
+          ]
+        }
+      ],
+      "claims": [
+        "AD02",
+        "AD06",
+        "AD30",
+        "AD37",
+        "AD70",
+        "AD71",
+        "AD72",
+        "AD73",
+        "AD92",
+        "AD100",
+        "AD102",
+        "AD103",
+        "AD113",
+        "AD114",
+        "AD116",
+        "AD119",
+        "AD125"
+      ]
+    }
+  ],
+  "pontos_chave": [
+    "Nenhum consumo é isento de risco; usar o AUDIT",
+    "Transtorno: 2 ou mais critérios em 12 meses",
+    "Leve 2 ou 3, moderado 4 ou 5, grave 6 ou mais",
+    "Delirium tremens (estágio 4): atendimento hospitalar"
+  ],
+  "atencao": [
+    "O AUDIT orienta a conduta; os critérios definem o transtorno",
+    "Leve (2 ou 3 critérios) equivale ao uso nocivo, não à dependência",
+    "Glicose só se hipoglicemia, de preferência após a tiamina",
+    "Sem clorpromazina nem fenitoína na abstinência alcoólica"
+  ],
+  "cartoes": {
+    "conceito": {
+      "titulo": "Consumo e rastreio",
+      "icone": "gota",
+      "cor": "azul",
+      "itens": [
+        "Nenhum consumo de álcool é isento de risco",
+        "Avaliar em toda consulta, desde a adolescência",
+        "AUDIT: 10 questões sobre os últimos 12 meses",
+        "AUDIT detecta também o consumo de risco"
+      ],
+      "claims": [
+        "AD13",
+        "AD20",
+        "AD22",
+        "AD24"
+      ]
+    },
+    "quadro": {
+      "titulo": "Intoxicação alcoólica",
+      "icone": "alerta",
+      "cor": "vermelho",
+      "itens": [
+        "Fala arrastada e incoordenação",
+        "Marcha instável e nistagmo",
+        "Pode chegar ao estupor ou coma",
+        "Procurar trauma pela intoxicação",
+        "Agitado: pode ser abstinência"
+      ],
+      "claims": [
+        "AD61",
+        "AD64",
+        "AD117"
+      ]
+    },
+    "fatores": {
+      "titulo": "Álcool zero: principais grupos",
+      "icone": "escudo",
+      "cor": "amarelo",
+      "itens": [
+        "Menores de 18 anos",
+        "Gestantes e nutrizes",
+        "Quem tenta engravidar",
+        "Quem dirige ou opera máquinas",
+        "Quem não controla o consumo"
+      ],
+      "claims": [
+        "AD14",
+        "AD15"
+      ]
+    },
+    "diagnostico": {
+      "titulo": "Critérios do transtorno",
+      "icone": "prancheta",
+      "cor": "verde",
+      "linhas": [
+        {
+          "icone": "prancheta",
+          "rotulo": "Transtorno",
+          "itens": [
+            "Pelo menos 2 critérios em 12 meses",
+            "Com prejuízo clinicamente significativo"
+          ]
+        },
+        {
+          "icone": "balanca",
+          "rotulo": "Gravidade",
+          "itens": [
+            "Leve 2 ou 3; moderado 4 ou 5",
+            "Grave: 6 ou mais critérios"
+          ]
+        },
+        {
+          "icone": "lupa",
+          "rotulo": "Nomenclatura",
+          "itens": [
+            "Leve equivale ao uso nocivo",
+            "Moderado e grave: dependência"
+          ]
+        }
+      ],
+      "claims": [
+        "AD02",
+        "AD05",
+        "AD06",
+        "AD30"
+      ]
+    },
+    "exames": {
+      "titulo": "Conduta pelo escore do AUDIT",
+      "icone": "microscopio",
+      "cor": "roxo",
+      "linhas": [
+        {
+          "icone": "escudo",
+          "rotulo": "AUDIT 1 a 7",
+          "texto": "Consultas de rotina, limites de risco, avaliar consumo zero"
+        },
+        {
+          "icone": "pessoas",
+          "rotulo": "AUDIT 8 a 15",
+          "texto": "Intervenção breve e entrevista motivacional; retorno em 1 mês"
+        },
+        {
+          "icone": "lupa",
+          "rotulo": "AUDIT 16 a 19",
+          "texto": "Transtorno leve: intervenção breve ou motivacional; retorno em 1 mês"
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "AUDIT 20 a 40",
+          "texto": "Plano terapêutico e avaliação do risco de abstinência"
+        }
+      ],
+      "claims": [
+        "AD25",
+        "AD26",
+        "AD27",
+        "AD28",
+        "AD56",
+        "AD83"
+      ]
+    },
+    "conduta": {
+      "titulo": "Dependente que quer parar",
+      "icone": "pessoas",
+      "cor": "azul-forte",
+      "linhas": [
+        {
+          "icone": "lupa",
+          "rotulo": "Antes de tudo",
+          "itens": [
+            "Risco de abstinência grave primeiro",
+            "Não mandar parar de uma vez sem avaliar"
+          ]
+        },
+        {
+          "icone": "estetoscopio",
+          "rotulo": "Ambulatorial",
+          "itens": [
+            "Sem contraindicação: desintoxicação",
+            "Com tiamina"
+          ]
+        },
+        {
+          "icone": "alerta",
+          "rotulo": "Alto risco",
+          "itens": [
+            "CAPS AD III ou hospital",
+            "Também: sem rede de apoio, delirium prévio"
+          ]
+        }
+      ],
+      "claims": [
+        "AD36",
+        "AD37",
+        "AD38",
+        "AD39",
+        "AD51",
+        "AD56"
+      ]
+    },
+    "objetivos": {
+      "titulo": "Condutas essenciais",
+      "icone": "alvo",
+      "cor": "ciano",
+      "itens": [
+        "Só o estágio 1 é tratado na atenção primária",
+        "Wernicke: confusão, oftalmoplegia ou nistagmo, ataxia",
+        "Estágio 4 (delirium tremens): hospital",
+        "Alucinação ou agitação: não confrontar"
+      ],
+      "claims": [
+        "AD50",
+        "AD52",
+        "AD66",
+        "AD69",
+        "AD74",
+        "AD80"
+      ]
+    },
+    "tratamento": {
+      "titulo": "Abstinência: estágios 2 e 3",
+      "icone": "pilula",
+      "cor": "laranja",
+      "itens": [
+        "Estágio 2 (tremor, insônia): benzodiazepínico oral",
+        "De hora em hora até sintomas leves; depois, encaminhar",
+        "Estágio 3 (convulsão): acionar o SAMU 192",
+        "Dar benzodiazepínico intravenoso enquanto aguarda",
+        "Tiamina antes de encaminhar; no Wernicke, parenteral"
+      ],
+      "claims": [
+        "AD52",
+        "AD67",
+        "AD68",
+        "AD69",
+        "AD70",
+        "AD72",
+        "AD77",
+        "AD78"
+      ]
+    }
+  },
+  "poster": {
+    "webp": "/mapas-mentais/poster-alcool-e-outras-drogas.webp",
+    "estado": "pendente de revisão médica (com ressalvas)",
+    "ressalvas": [
+      "cartão Atenção sobrepõe levemente o cartão Dependente que quer parar (texto legível)"
+    ],
+    "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K (versão com logo no topo e marca d'água, 15/10)"
+  },
+  "icone": {
+    "webp": "/mapas-mentais/icone-alcool-e-outras-drogas.webp",
+    "origem": "ícone 3D sintético gerado pelo diretor de arte (decorativo)"
+  }
+}
