@@ -56,6 +56,16 @@ describe("flashcard ilustrado no baralho", () => {
     expect(document.querySelectorAll("img").length).toBe(0);
   });
 
+  it("cartão de texto: frente e verso na cor da área (paleta v2), sem mostrar o código da cor", async () => {
+    ilus = {};
+    render(<FlashcardsScreen go={vi.fn()} />);
+    await screen.findByText("Pergunta c1");
+    const flash = document.querySelector(".sm-flash") as HTMLElement;
+    expect(flash.classList.contains("sm-flash--tema")).toBe(true);
+    expect(flash.style.getPropertyValue("--gt-p")).toBe("#087A63"); // Clínica Médica
+    expect(document.body.textContent).not.toMatch(/#[0-9A-F]{6}/i);
+  });
+
   it("cartão pessoal nunca vai para a função de imagens", async () => {
     backend.rpc.mockImplementation(async (fn: string) => {
       if (fn === "app_flashcards") return { counts: { total: 1, new: 1, learning: 0, consolidated: 0, next_due: null }, queue: [CARD("p1", true)] };

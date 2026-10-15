@@ -119,3 +119,24 @@ export function temaVars(id, area) {
   const c = TEMA_CORES[id] ?? AREA_CORES[area] ?? AREA_CORES.cm;
   return { "--gt-p": c[0], "--gt-e": c[1], "--gt-c": c[2], "--gt-b": c[3] };
 }
+
+/** Área do banco (CLINICA_MEDICA…) → chave da paleta v2 (cm, cir…). */
+export const AREA_DO_BANCO = { CLINICA_MEDICA: "cm", CIRURGIA_GERAL: "cir", PEDIATRIA: "ped", GINECOLOGIA_OBSTETRICIA: "go", MEDICINA_FAMILIA_COMUNIDADE: "mfc" };
+
+/** Cor-base da área (aceita a área do banco ou a chave curta). Área desconhecida: nada (a tela usa a cor da marca). */
+export function areaVars(area) {
+  const k = AREA_DO_BANCO[area] ?? area;
+  return AREA_CORES[k] ? temaVars(null, k) : undefined;
+}
+
+/** Grande Tema ligado a uma atualização pelo endereço (atual-2026-10-14-gr-016 → GR-016); sem tema: null. */
+export function temaDaAtualizacao(slug) {
+  const m = /(?:^|-)gr-(\d{3})(?:-|$)/i.exec(String(slug ?? ""));
+  return m && TEMA_CORES[`GR-${m[1]}`] ? `GR-${m[1]}` : null;
+}
+
+/** Cor do tema da atualização; sem tema, a cor da área. */
+export function atualizacaoVars(slug, area) {
+  const tema = temaDaAtualizacao(slug);
+  return tema ? temaVars(tema) : areaVars(area);
+}

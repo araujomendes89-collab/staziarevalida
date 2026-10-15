@@ -169,3 +169,11 @@
 .sm-flash__face--back{transform:rotateY(180deg);background:var(--surface-subtle)}
 .sm-flash:focus-visible{outline:none}
 .sm-flash:focus-visible .sm-flash__face{box-shadow:var(--focus-ring)}
+.sm-flash__area{color:var(--text-brand)}
+/* Flashcard na cor do tema (paleta v2; --gt-p principal, --gt-e escura, --gt-c fundo suave, --gt-b brilho). Nenhum código de cor aparece na tela. */
+.sm-flash--tema .sm-flash__face{background:var(--gt-c);border:1.5px solid var(--gt-p);border-top-width:6px;overflow-y:auto}
+.sm-flash--tema .sm-flash__face--back{background:color-mix(in oklab,var(--gt-b) 38%,var(--gt-c))}
+.sm-flash--tema .sm-flash__area{color:var(--gt-e)}
+[data-theme="dark"] .sm-flash--tema .sm-flash__face{background:color-mix(in oklab,var(--gt-b) 10%,var(--surface-card));border-color:var(--gt-b)}
+[data-theme="dark"] .sm-flash--tema .sm-flash__face--back{background:color-mix(in oklab,var(--gt-b) 20%,var(--surface-card))}
+[data-theme="dark"] .sm-flash--tema .sm-flash__area{color:var(--gt-b)}

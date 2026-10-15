@@ -10,6 +10,7 @@ import { FlashcardForm } from "./FlashcardForm.jsx";
 import { intervalLabel, nextSchedule, previewDays } from "./fsrs.js";
 import { TutorButton } from "../tutor/TutorDrawer.jsx";
 import { CartaoIlustrado } from "../study/AulaImagem.jsx";
+import { areaVars } from "../study/temaCores.js";
 
 const RATINGS = [
   { value: 1, label: "Errei", variant: "danger" },
@@ -164,7 +165,8 @@ export function FlashcardsScreen({ go }) {
           {ilustrados[card.id] ? (
             <CartaoIlustrado key={card.id} tema={ilustrados[card.id].tema} n={ilustrados[card.id].n} front={card.front} back={card.back} flipped={flipped} onFlip={setFlipped} />
           ) : (
-            <Flashcard key={card.id} area={areaLabel(card.area)} front={card.front} back={card.back} flipped={flipped} onFlip={setFlipped} height={280} />
+            // frente e verso na cor da área do cartão (paleta v2); cartão sem área fica na cor padrão
+            <Flashcard key={card.id} area={areaLabel(card.area)} front={card.front} back={card.back} flipped={flipped} onFlip={setFlipped} height={280} className={areaVars(card.area) ? "sm-flash--tema" : ""} style={areaVars(card.area)} />
           )}
           {flipped ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8 }} role="group" aria-label="Como foi lembrar?">
