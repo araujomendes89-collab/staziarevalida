@@ -23,10 +23,11 @@ describe("menu", () => {
         <div />
       </AppShell>
     );
-    const chaves = Array.from(container.querySelectorAll("nav [data-key]")).map((n) => n.getAttribute("data-key"));
-    const i = chaves.indexOf("atualizacoes");
+    fireEvent.click(screen.getByRole("button", { name: /^Aprender/ })); // sanfona
+    const nomes = Array.from(container.querySelectorAll("nav .smn-sub .smn-item")).map((n) => (n.textContent ?? "").trim());
+    const i = nomes.indexOf("Diretrizes e Atualizações");
     expect(i).toBeGreaterThan(-1);
-    expect(chaves[i + 1]).toBe("mapas");
+    expect(nomes[i + 1]).toBe("Mapas Mentais");
     expect(screen.getAllByText("Mapas Mentais").length).toBeGreaterThan(0);
   });
 });

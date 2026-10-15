@@ -112,7 +112,7 @@ const AT_HOME = /^\/novo\/?$/;
 const originalMatchMedia = window.matchMedia;
 function setMobile(on: boolean) {
   window.matchMedia = ((query: string) => ({
-    matches: on && query.includes("860px"),
+    matches: on && (query.includes("860px") || query.includes("719px")),
     media: query,
     onchange: null,
     addListener: () => {},

@@ -2,7 +2,7 @@
 // ligar VITE_AULAS_ALUNO=1 (e publicar) é o caminho para abrir de novo. A equipe (Administração) não é afetada.
 import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { AppShell } from "../novo/app/Shell.jsx";
 import { aulasParaAluno } from "../novo/app/features.js";
 
@@ -28,12 +28,14 @@ describe("Aulas fechadas ao aluno", () => {
   });
   it("o menu do aluno não tem Aulas, mas mantém Temas Essenciais e Diretrizes e Atualizações", () => {
     mount();
+    fireEvent.click(screen.getByRole("button", { name: /^Aprender/ })); // a sanfona abre o grupo
     expect(screen.queryByRole("button", { name: /^Aulas$/ })).toBeNull();
     expect(screen.getAllByText("Temas Essenciais").length).toBeGreaterThan(0);
   });
   it("com o interruptor ligado o menu volta a ter Aulas", () => {
     vi.stubEnv("VITE_AULAS_ALUNO", "1");
     mount();
+    fireEvent.click(screen.getByRole("button", { name: /^Aprender/ }));
     expect(screen.getAllByText("Aulas").length).toBeGreaterThan(0);
   });
 });

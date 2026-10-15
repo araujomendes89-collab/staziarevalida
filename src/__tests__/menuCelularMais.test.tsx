@@ -32,12 +32,12 @@ afterEach(() => {
 beforeEach(() => INFO.onSignOut.mockReset());
 
 describe("Menu do celular: Mais", () => {
-  it("a barra de baixo mantém os atalhos de antes e ganha 'Mais' (sem poluir: 6 botões)", () => {
+  it("a barra de baixo mantém os atalhos de antes e ganha 'Mais' (sem poluir: 5 botões)", () => {
     setWidth(390);
     mount();
     const bar = screen.getByRole("navigation", { name: "Navegação principal" });
     const names = within(bar).getAllByRole("button").map((b) => b.getAttribute("aria-label"));
-    expect(names).toEqual(["Jornada", "Trilha", "Praticar", "Ranking", "Perfil", "Mais"]);
+    expect(names).toEqual(["Início", "Questões", "Revisar", "Tutor", "Mais"]);
   });
 
   it("'Mais' abre a lista com todas as áreas da 1ª fase e nenhuma da 2ª", () => {
@@ -100,13 +100,36 @@ describe("Menu do celular: Mais", () => {
     fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Sair" }));
     expect(INFO.onSignOut).toHaveBeenCalled();
     const bar = screen.getByRole("navigation", { name: "Navegação principal" });
-    for (const b of within(bar).getAllByRole("button")) expect((b as HTMLElement).style.width).toMatch(/min\(\d+px,\s*\d+vw\)/);
+    for (const b of within(bar).getAllByRole("button")) expect(b.className).toContain("smn-tab") // largura flexível (flex:1) e min-height 56 no CSS;
   });
 
-  it("no computador não há 'Mais' (o menu lateral já mostra tudo)", () => {
+  it("no computador não há 'Mais' (o menu lateral já mostra tudo) e o botão Perguntar ao tutor fica visível", () => {
     setWidth(1400);
     mount();
     expect(screen.queryByRole("button", { name: "Mais" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Perguntar ao tutor" })).toBeTruthy();
+  });
+
+  it("Administração só para equipe e Revisão médica só para revisor (computador)", () => {
+    setWidth(1400);
+    mount();
+    expect(screen.queryByText("Administração")).toBeNull();
+    expect(screen.queryByText("Revisão médica")).toBeNull();
+    cleanup();
+    mount({ isStaff: true });
+    expect(screen.getByText("Administração")).toBeTruthy();
+    cleanup();
+    mount({ isReviewer: true });
+    expect(screen.getByText("Revisão médica")).toBeTruthy();
+  });
+
+  it("tablet (834 px): trilho com painel; o painel lista os itens do grupo e leva à rota", () => {
+    setWidth(834);
+    const go = mount();
+    fireEvent.click(screen.getByRole("button", { name: "Praticar" }));
+    fireEvent.click(within(screen.getByRole("group", { name: "Praticar" })).getByRole("button", { name: /Simulados/ }));
+    expect(go).toHaveBeenCalledWith("simulados");
+    expect(screen.getByRole("button", { name: "Perguntar ao tutor" })).toBeTruthy();
   });
 });
 
