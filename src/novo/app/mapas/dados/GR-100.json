@@ -8,19 +8,15 @@
   "emblema": "cruz",
   "revisao": {
     "status": "pre-revisado por agente",
-    "origem": "Aula GR-100 versao do pacote 2026-10-15-aulas-corrigidas, afirmacoes AD01 a AD130",
+    "origem": "Aula GR-100 versão 5.2 (v5 + revisores + verificador final) sem o Protocolo SAMU 192 como fonte (pacote 2026-10-15-aulas-corrigidas/GR-100-sem-samu), afirmações AD01 a AD135",
     "gerado_em": "2026-10-15",
     "aprovacao_humana": null,
     "pendencias": [
-      "A aula nao traz doses de diazepam, tiamina, haloperidol, naltrexona ou acamprosato; nenhuma dose foi acrescentada.",
-      "A aula cita dissulfiram entre os medicamentos considerados (complemento internacional), mas a escolha na rotina segue o servico; mantido so como lista, sem indicacao propria.",
-      "A aula nao define quantas gramas ou mililitros correspondem a uma dose; omitido.",
-      "Duvida registrada: a aula diz que o protocolo do SAMU (2016) indica diazepam intravenoso na abstinencia, mas orienta via oral sem convulsao e intravenosa na convulsao e no delirium tremens; o mapa segue a conduta da aula.",
-      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
-      "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
-      "Revisor 2 (15/10): fármaco e via dos estágios 2 e 3 (AD67, AD68) passados de `faixas` para `itens`.",
-      "Revisor B (15/10): \"Sintomas leves: então encaminhar\" reescrito (estágio 2: benzodiazepínico oral de hora em hora até sintomas leves; depois, encaminhar; AD67); encefalopatia de Wernicke incluída (confusão, nistagmo, oftalmoplegia e ataxia; tiamina parenteral e desintoxicação no hospital; AD50, AD52); tiamina antes de encaminhar mantida no tratamento (AD69) e glicose só após a tiamina na Atenção (AD71).",
-      "Revisor B (15/10, rodada 3): Wernicke com a tríade completa (confusão, oftalmoplegia ou nistagmo, ataxia; AD50, AD52); estágios nomeados pelo quadro (estágio 2: tremor, insônia, AD77; estágio 3: com convulsão, AD78) e conduta do estágio 3 como cenário da aula (AD68; o SAMU aparece só como serviço a acionar, não como fonte). Glicose: mantido \"de preferência após a tiamina\" (AD71); \"sem atrasar a correção\" não foi acrescentado ao pôster por não constar literal em AD71."
+      "Mapa refeito só com o que sobreviveu à retirada do Protocolo SAMU 192 (regra do dono, 15/10): 10 afirmações dependiam dele; 7 re-fonteadas na Linha de Cuidado do MS (subpágina do manejo inicial) e no Guia AD, 3 removidas, 2 novas. Revisão dos 2 revisores médicos pendente.",
+      "Saíram do mapa: 'agitado, parece intoxicado: pode ser abstinência', glicemia e saturação em todo agitado, 'o etilista, hepatopata ou desnutrido: tiamina antes da glicose', 'benzodiazepínico intravenoso' no delirium tremens e a conduta do serviço móvel (diazepam oral repetido). Na v5.1 (ajuste dos revisores) voltaram o benzodiazepínico na agitação adrenérgica e a contraindicação do betabloqueador (CAB 28 v. II p. 139).",
+      "A aula e o mapa seguem sem doses de medicamentos; a Linha de Cuidado traz doses (decisão do revisor).",
+      "O SAMU 192 aparece só como serviço que se aciona no estágio 3, como manda a Linha de Cuidado.",
+      "Texto do mapa conferido pelos 2 revisores (Fable e Opus) contra a aula v5.2 em 15/10, com correções aplicadas; pôster regerado e conferido palavra por palavra pelos mesmos 2 revisores."
     ]
   },
   "ramos": [
@@ -40,15 +36,15 @@
           {
             "rotulo": "Consumo moderado",
             "itens": [
-              "Homem: até 14/semana; até 4 por ocasião",
-              "Mulher: até 7/semana; até 3 por ocasião"
+              "Homem: até 14 doses/semana; até 4 por ocasião",
+              "Mulher: até 7 doses/semana; até 3 por ocasião"
             ]
           },
           {
             "rotulo": "Consumo de risco",
             "itens": [
-              "Homem: 15+/semana ou 5+ por ocasião",
-              "Mulher: 8+/semana ou 4+ por ocasião"
+              "Homem: 15+ doses/semana ou 5+ por ocasião",
+              "Mulher: 8+ doses/semana ou 4+ por ocasião"
             ]
           },
           {
@@ -285,7 +281,7 @@
           "titulo": "Manter o tratamento",
           "itens": [
             "Manter o tratamento costuma ser mais efetivo do que a desintoxicação isolada.",
-            "Na dependência, a recomendação (complemento internacional) é combinar intervenções psicossociais e farmacológicas; a aula cita acamprosato, dissulfiram e naltrexona, escolhidos por danos, benefícios, disponibilidade e preferência da pessoa.",
+            "Na dependência, a recomendação (complemento internacional) é combinar intervenções psicossociais e farmacológicas; a aula cita a naltrexona e o acamprosato, escolhidos por danos, benefícios, disponibilidade e preferência da pessoa.",
             "Medicamento isolado só na falta de intervenção psicossocial."
           ]
         },
@@ -343,14 +339,14 @@
       "revisao": {
         "itens": [
           "Fala arrastada, incoordenação, marcha instável",
-          "Leve: ambiente calmo; vigiar vias aéreas",
+          "Ambiente calmo; vigiar vias aéreas e vômito",
           "Procurar trauma causado pela intoxicação",
           {
-            "t": "Grave: glicemia; glicose só se hipoglicemia",
+            "t": "Grave: HGT; glicose só se hipoglicemia",
             "tom": "conduta"
           },
           {
-            "t": "Agitado, parece intoxicado: pode ser abstinência",
+            "t": "Tremor, febre, sudorese, convulsão: abstinência",
             "tom": "alerta"
           }
         ]
@@ -361,13 +357,14 @@
           "itens": [
             "Sinais: fala arrastada, incoordenação, marcha instável, nistagmo, estupor ou coma",
             "Alcoolemia em geral não é medida: manejo pela gravidade dos sintomas",
-            "Leve: ambiente calmo, vigiar vias aéreas e risco de aspirar vômito"
+            "Ambiente calmo, vigiar vias aéreas e risco de aspirar vômito",
+            "Intoxicação alcoólica: realizar o HGT e dar glicose apenas se houver hipoglicemia."
           ]
         },
         {
           "titulo": "Abstinência ou intoxicação?",
           "itens": [
-            "Tremores, febre, sudorese profusa, convulsão e delírio apontam para abstinência.",
+            "Tremores, febre, sudorese excessiva, convulsões e delirium são os sinais diferenciais da abstinência.",
             "Considerar intoxicação por outras drogas, associação frequente.",
             "Com a queda da alcoolemia, quem tem transtorno por uso de álcool pode começar a ter abstinência."
           ]
@@ -381,8 +378,8 @@
         "AD64",
         "AD65",
         "AD115",
-        "AD117",
-        "AD118"
+        "AD118",
+        "AD131"
       ]
     },
     {
@@ -422,7 +419,7 @@
             "rotulo": "Estágio 3 (12 a 48 h)",
             "itens": [
               "Como o estágio 2",
-              "Mais convulsões tônico-clônicas"
+              "Com convulsões tônico-clônicas"
             ]
           }
         ]
@@ -432,7 +429,7 @@
           "titulo": "Mais pontos",
           "itens": [
             {
-              "t": "Sem tratamento, 1/3 evolui para o estágio 4",
+              "t": "Estágio 3 sem tratamento: 1/3 evolui para o estágio 4",
               "tom": "alerta"
             },
             {
@@ -443,7 +440,7 @@
             "Ansiedade, tremor leve, náusea, taquicardia",
             "Tremor grosseiro, insônia, sudorese, pesadelos",
             "Ilusões que podem evoluir para alucinações",
-            "Como o estágio 2 mais convulsões tônico-clônicas",
+            "Como o estágio 2, com convulsões tônico-clônicas",
             "Delirium tremens: desorientação, agitação, alucinações, diaforese, hipertensão, taquicardia"
           ]
         },
@@ -518,7 +515,7 @@
             "rotulo": "Estágio 3",
             "itens": [
               {
-                "t": "SAMU 192 e benzodiazepínico intravenoso",
+                "t": "Acionar o SAMU 192; benzodiazepínico intravenoso",
                 "tom": "alerta"
               },
               "Precoce, previne novas crises"
@@ -550,7 +547,7 @@
         {
           "titulo": "Detalhes da conduta",
           "itens": [
-            "No SAMU: sem convulsão, o diazepam pode ser oral; com convulsão, intravenoso.",
+            "Convulsão: diazepam por via intravenosa lenta, repetido se as convulsões continuarem.",
             "Abstinência grave ou alto risco de convulsões ou delirium: considerar internação para desintoxicação assistida.",
             "Convulsões de abstinência em geral são únicas."
           ]
@@ -572,7 +569,7 @@
               "t": "Com qualquer sinal: tiamina parenteral em doses mais altas e desintoxicação no hospital.",
               "tom": "alerta"
             },
-            "No etilista, hepatopata ou desnutrido com hipoglicemia, a tiamina vem antes da glicose, sem atrasar a correção."
+            "A tiamina por via IM/EV é indicada, de preferência, em quem tem sinais de desnutrição, má absorção ou complicações prévias de abstinência grave; a hipoglicemia é corrigida rapidamente, de preferência depois da tiamina."
           ]
         }
       ],
@@ -591,7 +588,6 @@
         "AD75",
         "AD80",
         "AD81",
-        "AD91",
         "AD116",
         "AD119",
         "AD125"
@@ -626,9 +622,14 @@
             ]
           },
           {
-            "rotulo": "Estimulantes (SAMU)",
+            "rotulo": "Agitação",
             "itens": [
-              "Colaborativo e consciente: manejo verbal"
+              "Redução da escalada de crise",
+              "Cocaína/anfetamina: benzodiazepínico útil",
+              {
+                "t": "Betabloqueador contraindicado",
+                "tom": "alerta"
+              }
             ]
           }
         ]
@@ -639,8 +640,8 @@
           "itens": [
             "Retirada: formulação em gotas, uma gota a cada 2 ou mais semanas",
             "Ansiedade crônica: antidepressivo, resguardando o benzodiazepínico",
-            "Agitado, desorientado ou agressivo: contenção química só com benzodiazepínico, o mais rápido possível",
-            "Em todo agitado: glicemia e saturação de oxigênio",
+            "Agitação ou agressividade: primeiro as técnicas de redução da escalada de crise, com vistas a evitar o isolamento e a contenção física e química.",
+            "Síndrome adrenérgica (cocaína, inclusive na forma de crack, anfetaminas e derivados, ecstasy): taquicardia, hipertensão, midríase, hipertermia, sudorese; o benzodiazepínico pode ser útil para agitação, hipertensão, taquicardia, convulsões e hipertermia, e o betabloqueador é contraindicado.",
             "Estratégia de saúde pública, pautada na ética do cuidado"
           ]
         },
@@ -656,7 +657,7 @@
           "titulo": "Benzodiazepínicos",
           "itens": [
             "Podem ser úteis na abstinência de álcool, cocaína ou crack; trazem risco de sedação (acidentes) e, com outros sedativos, de depressão respiratória.",
-            "Para ansiedade crônica, a aula cita antidepressivos como amitriptilina e fluoxetina."
+            "Para ansiedade crônica, a aula indica incluir um antidepressivo e resguardar o benzodiazepínico."
           ]
         }
       ],
@@ -673,10 +674,11 @@
         "AD113",
         "AD114",
         "AD120",
-        "AD121",
-        "AD122",
         "AD124",
-        "AD130"
+        "AD130",
+        "AD133",
+        "AD134",
+        "AD135"
       ]
     },
     {
@@ -748,7 +750,7 @@
             "Beber diário, tentativas frustradas de parar, tolerância, tremor matinal aliviado pela bebida e AUDIT de 27: transtorno grave, equivalente à dependência.",
             "Na UBS: intervenção motivacional, plano terapêutico e avaliação do risco de abstinência; desintoxicação assistida, não sozinho.",
             "Três dias depois da última dose, com agitação, desorientação, alucinações, hipertensão e taquicardia: estágio 4, delirium tremens, no hospital.",
-            "Conduta: benzodiazepínico intravenoso, tiamina, ambiente calmo, sem confronto, sem clorpromazina; glicose só com hipoglicemia.",
+            "Conduta: benzodiazepínico, tiamina, ambiente calmo, sem confronto, sem clorpromazina; glicose só com hipoglicemia.",
             "Depois: cuidado na rede (CAPS AD e atenção primária) e avaliação do risco de suicídio."
           ]
         },
@@ -789,7 +791,7 @@
   "atencao": [
     "O AUDIT orienta a conduta; os critérios definem o transtorno",
     "Leve (2 ou 3 critérios) equivale ao uso nocivo, não à dependência",
-    "Glicose só se hipoglicemia, de preferência após a tiamina",
+    "Glicose só na hipoglicemia, sem atraso; de preferência após a tiamina",
     "Sem clorpromazina nem fenitoína na abstinência alcoólica"
   ],
   "cartoes": {
@@ -819,12 +821,13 @@
         "Marcha instável e nistagmo",
         "Pode chegar ao estupor ou coma",
         "Procurar trauma pela intoxicação",
-        "Agitado: pode ser abstinência"
+        "Tremor, febre e sudorese: abstinência"
       ],
       "claims": [
         "AD61",
         "AD64",
-        "AD117"
+        "AD115",
+        "AD118"
       ]
     },
     "fatores": {
@@ -941,7 +944,7 @@
           "rotulo": "Alto risco",
           "itens": [
             "CAPS AD III ou hospital",
-            "Também: sem rede de apoio, delirium prévio"
+            "Também: sem apoio, delirium tremens ou convulsão prévia"
           ]
         }
       ],
@@ -960,7 +963,7 @@
       "cor": "ciano",
       "itens": [
         "Só o estágio 1 é tratado na atenção primária",
-        "Wernicke: confusão, oftalmoplegia ou nistagmo, ataxia",
+        "Wernicke: confusão, nistagmo, oftalmoplegia, ataxia",
         "Estágio 4 (delirium tremens): hospital",
         "Alucinação ou agitação: não confrontar"
       ],
@@ -982,7 +985,7 @@
         "De hora em hora até sintomas leves; depois, encaminhar",
         "Estágio 3 (convulsão): acionar o SAMU 192",
         "Dar benzodiazepínico intravenoso enquanto aguarda",
-        "Tiamina antes de encaminhar; no Wernicke, parenteral"
+        "Tiamina antes de encaminhar, se houver; Wernicke: parenteral"
       ],
       "claims": [
         "AD52",
@@ -992,20 +995,21 @@
         "AD70",
         "AD72",
         "AD77",
-        "AD78"
+        "AD78",
+        "AD116"
       ]
     }
   },
   "poster": {
     "webp": "/mapas-mentais/poster-alcool-e-outras-drogas.webp",
-    "estado": "pendente de revisão médica (com ressalvas)",
+    "estado": "pendente de revisão médica (aprovada pelos 2 revisores, v5.2 sem SAMU)",
     "ressalvas": [
-      "cartão Atenção sobrepõe levemente o cartão Dependente que quer parar (texto legível)"
+      "ilustração central mistura fígado e cérebro em uma só peça (estético, sem texto)"
     ],
-    "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K (versão com logo no topo e marca d'água, 15/10)"
+    "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K (versão com logo no topo e marca d'água, 15/10, regerado da aula v5.2)"
   },
   "icone": {
     "webp": "/mapas-mentais/icone-alcool-e-outras-drogas.webp",
-    "origem": "ícone 3D sintético gerado pelo diretor de arte (decorativo)"
+    "origem": "ícone 3D sintético gerado pelo diretor de arte (decorativo), regerado em 15/10"
   }
 }
