@@ -29,6 +29,7 @@ import { AccountScreen } from "./account/AccountScreen.jsx";
 import { PlansScreen } from "./plan/PlansScreen.jsx";
 import { AdminScreen, isStaffRole } from "./admin/AdminScreen.jsx";
 import { isPhase2Locked } from "./admin/common.jsx";
+import { useRadarAvisos } from "./admin/radar/useRadarAvisos.js";
 import { ThemesScreen } from "./study/ThemesScreen.jsx";
 import { QuestionBuilder } from "./practice/QuestionBuilder.jsx";
 import { PracticeSession } from "./practice/PracticeSession.jsx";
@@ -96,6 +97,8 @@ function Screen() {
   const navigate = useNavigate();
   const mobile = useMobile();
   const profile = boot.profile;
+  // aviso das mudanças GRAVES do Radar de Evidências: só o administrador pede (para os outros papéis nem chama o banco)
+  const radar = useRadarAvisos(boot.role === "admin");
   // 2ª fase · prática "em breve": por enquanto só a equipe (admin/editor) entra; aluno e revisor médico não
   const phase2Locked = isPhase2Locked(boot.role);
 
@@ -218,6 +221,7 @@ function Screen() {
         onSignOut: () => signOut(),
         isStaff: isStaffRole(boot.role),
         isReviewer: Boolean(boot.reviewer_areas?.length),
+        radarGraves: radar.graves,
       }}
     >
       {!CONNECTED.has(route) && <ReconstructionNotice />}

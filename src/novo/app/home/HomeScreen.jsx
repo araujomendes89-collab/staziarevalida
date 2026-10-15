@@ -8,6 +8,8 @@ import { useSession } from "../session.jsx";
 import { areaLabel, formatClock, percent } from "../practice/format.js";
 import { KIND_LABEL, reasonText, trialDaysLeft, trialTitle } from "./plan.js";
 import { hasFullAccess, usePlanLock } from "../plan/planAccess.js";
+import { RadarAvisoFaixa } from "../admin/radar/RadarAvisoFaixa.jsx";
+import { useRadarAvisos } from "../admin/radar/useRadarAvisos.js";
 import { PlayError, PlayHeader, PlayLoading, PlayLower, TrailPreview, usePlayHome } from "../play/PlayDashboard.jsx";
 
 const DIAGNOSTIC_SIZE = 10;
@@ -232,6 +234,7 @@ function HomeActive({ go, mobile, home, plan, startTask, toggleTask, busy, play 
 export function HomeScreen({ go, mobile }) {
   const { backend, boot } = useSession();
   const play = usePlayHome(go);
+  const radar = useRadarAvisos(boot.role === "admin");
   const [data, setData] = React.useState(null);
   const [error, setError] = React.useState(null);
   const [busy, setBusy] = React.useState(false);
@@ -282,6 +285,7 @@ export function HomeScreen({ go, mobile }) {
   return (
     <>
       {error && <Banner tone="danger">{error}</Banner>}
+      {boot.role === "admin" && <RadarAvisoFaixa avisos={radar} go={go} />}
       {data.announcement && (
         <Banner tone={data.announcement.tone} icon="megaphone" title={data.announcement.title}>
           {data.announcement.text}

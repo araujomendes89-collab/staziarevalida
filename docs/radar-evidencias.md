@@ -138,3 +138,27 @@ Relatório completo (o que mudou nas fontes, gravidade, itens afetados por trech
 3. (Futuro) Religar o DOU com o INLABS, ver "Diário Oficial desligado".
 4. Ligar na Administração a tela da fila (usa `app_admin_radar_fila` e `app_admin_radar_decidir`) e escolher os 2 agentes revisores e quem recebe o aviso das graves. Hoje a fila existe no banco e no relatório; a tela ainda não foi construída.
 5. Conferir na fatura do Google Cloud o custo real da IA (o contador usa preço de tabela) depois do primeiro mês.
+
+## Fila do Radar e aviso ao dono (15/10/2026, parte 2) — PROPOSTA, nada aplicado em produção
+
+### O que o app já tinha (auditoria)
+- Não existe central de avisos nem sino no app novo (`/novo`). O único "sino" é o do app antigo (`src/components/layout/Header.tsx`), alimentado por atualizações de diretrizes locais; `notificationService.ts` só faz notificação do navegador e som para convites de dupla.
+- Avisos ao usuário que existem: faixa `app_announcement` no Início (texto e tom definidos pela equipe), contador de Flashcards no menu e a Fila de vigilância da Central de Conteúdo (`ch_vigilance_items`, para onde o Radar já manda cada evento).
+- E-mail transacional: não há. Só o Supabase Auth manda e-mail (recuperação e confirmação) e o SMTP próprio está pendente. Nenhum serviço novo foi montado.
+
+### O que foi feito
+1. Aba **Fila do Radar** na Administração (`src/novo/app/admin/radar/`; só administrador; entrada única em `AdminScreen.jsx`). Filtros: Aguardam você (padrão), Graves, Leves, Pendentes, Decididos, Todas. Cada evento mostra fonte (nome oficial), antes/depois com página, gravidade e motivo, classificação da fonte, quem usa (por trecho e por tema, com links internos para Questões, Aulas e Atualizações), prazo de 48 h, parecer dos revisores (campo para colar) e a decisão do dono (Sem impacto, Ajustar texto, Refazer, Encaminhar à revisão, e Concluir depois) com nota obrigatória. A decisão só registra: nenhuma questão, aula, atualização ou gabarito é alterado.
+2. **Aviso no app** (não precisa de nada além da migração): número de graves que esperam o dono na própria aba, no item "Administração" do menu (lateral e "Mais" do celular) e uma faixa vermelha no Início do administrador. Só o administrador pergunta ao banco (`useRadarAvisos`); para os outros papéis nem há chamada, e o banco devolve zero.
+3. **Aviso por e-mail: gancho pronto, envio NÃO montado.** O gatilho `radar_aviso_grave` enfileira em `radar_avisos` um aviso por administrador e por evento grave (assunto e corpo em português). Quando houver canal de e-mail, um processo com a chave de serviço lê `radar_avisos where status = 'pendente'`, envia e marca `enviado` ou `erro`. O endereço do dono é lido de `auth.users` na hora do envio.
+4. Migração proposta: `supabase/migrations/20261003010200_radar_fila_e_avisos.sql` (colunas `decisao_dono` e `parecer_*` em `radar_eventos`, tabela `radar_avisos`, gatilho e funções `app_admin_radar_fila_detalhada`, `app_admin_radar_avisos`, `app_admin_radar_parecer`, `app_admin_radar_acao`; esta última chama `app_admin_radar_decidir`). Só acrescenta; pode ser colada de novo; o final traz o desfazer.
+5. Regra de quem decide: o revisor (editor) pode registrar parecer e encaminhar uma grave à revisão, mas isso NÃO a tira da lista do dono; só a decisão do administrador tira. Revisor resolve leves.
+
+### Ensaio e testes
+- `scripts/radar/ensaio-fila-avisos.ts` (banco de desenvolvimento PGlite, apagado no fim): aplica a migração duas vezes e prova que nada existente mudou; só grave gera aviso; leve não; repetir a rodada não duplica; aluno e anônimo barrados (funções e tabela); revisor lê zero em `radar_avisos`; ninguém escreve direto; nota obrigatória; `questions` intacta. Relatório: `/Volumes/StaziaMed/.tmp-aulas/radar/fila-avisos-ensaio.json`.
+- `src/__tests__/radarFilaTela.test.tsx` (15 testes): filtros, tela vazia, decisão com nota, parecer, aba só do administrador, aluno sem chamada nem faixa, texto da migração. `adminAbasVisiveis` passou de 14 para 15 abas.
+- Capturas (claro/escuro, desktop/celular, vazio, faixa do Início): `/Volumes/StaziaMed/.tmp-aulas/radar-fila/`. Prévia com dados simulados e sem login: `npx vite --config scripts/radar/previa/vite.config.mjs --port 31938 --host 127.0.0.1` e abrir `/scripts/radar/previa/index.html?cenario=cheio|vazio|sem-graves&tema=claro|escuro&rota=admin&aba=radar|home&papel=admin|editor|aluno`.
+
+### Para ligar
+1. Colar a migração 20261003010200 no SQL Editor de produção (depois da 010100). Sem ela, a aba mostra o erro em português e não aparece número nem faixa.
+2. Publicar o site. Cloud Run não muda.
+3. Decisão do dono: canal do e-mail (SMTP do Supabase quando sair, ou outro) para esvaziar `radar_avisos`.

@@ -50,7 +50,7 @@ function Rail({route,go,phase,collapsed,setCollapsed,info,theme}){
       {ind&&<span aria-hidden="true" style={{position:'absolute',left:0,right:0,top:ind.top,height:ind.h,background:'var(--action-primary)',boxShadow:'0 6px 18px -6px color-mix(in oklab,var(--action-primary) 70%,transparent)',transition:'top 420ms cubic-bezier(.3,1.25,.5,1),height 300ms',zIndex:0}}/>}
       {G.map(([t,its])=><div key={t}>{label(t)}{its.map(([id,ic,l,bd,kids])=>kids?<div key={id}>{row(id,ic,l,{chev:true,open:openSub,onClick:()=>collapsed?go(kids[0][0]):setOpenSub(o=>!o)})}{openSub&&!collapsed&&<div style={{position:'relative'}}><span style={{position:'absolute',left:29,top:2,bottom:2,width:1,background:'var(--border-default)',zIndex:2}}/>{kids.map(([k,kl])=>row(k,null,kl,{small:true}))}</div>}</div>:row(id,ic,l,{badge:badgeOf[id]??null}))}</div>)}
       <div style={{flex:1}}/>
-      <div>{label('Configurações')}{info.isStaff?row('admin','users','Administração'):info.isReviewer&&row('admin','stamp','Revisão médica')}{row('planos','crown','Meu Plano')}{row('perfil','settings','Preferências')}{row('sair','log-out','Sair',{onClick:info.onSignOut})}</div>
+      <div>{label('Configurações')}{info.isStaff?row('admin','users','Administração',{badge:info.radarGraves||null}):info.isReviewer&&row('admin','stamp','Revisão médica')}{row('planos','crown','Meu Plano')}{row('perfil','settings','Preferências')}{row('sair','log-out','Sair',{onClick:info.onSignOut})}</div>
     </div>
   </nav>;
 }
@@ -73,7 +73,7 @@ function MoreSheet({route,go,info,onClose}){
   const ref=React.useRef(null);
   React.useEffect(()=>{const k=e=>{if(e.key==='Escape')onClose();};document.addEventListener('keydown',k);const first=ref.current&&ref.current.querySelector('button[data-item]');if(first)first.focus();return ()=>document.removeEventListener('keydown',k);},[onClose]);
   const pick=id=>{onClose();go(id);};
-  const badgeOf={flash:info.flashcardsDue||null};
+  const badgeOf={flash:info.flashcardsDue||null,admin:info.radarGraves||null};
   const groups=[...groupsOf(1),['Configurações',[...(info.isStaff?[['admin','users','Administração']]:info.isReviewer?[['admin','stamp','Revisão médica']]:[]),['planos','crown','Meu Plano'],['perfil','settings','Conta e ajuda']]]];
   const item=(id,ic,l)=>{const on=route===id||GROUP[route]===id;const b=badgeOf[id];return <button key={id} type="button" data-item="1" onClick={()=>pick(id)} aria-current={on?'page':undefined} style={{display:'flex',alignItems:'center',gap:10,minHeight:48,padding:'0 12px',border:'1px solid '+(on?'var(--action-primary)':'var(--border-subtle)'),borderRadius:14,background:on?'var(--surface-subtle)':'transparent',color:on?'var(--text-primary)':'var(--text-secondary)',font:(on?'700':'500')+' 14px var(--font-sans)',cursor:'pointer',textAlign:'left'}}><Icon name={ic} size={18}/><span style={{flex:1,minWidth:0}}>{l}</span>{b!=null&&<span style={{minWidth:20,height:20,padding:'0 6px',borderRadius:999,background:'var(--danger-solid)',color:'#fff',font:'700 11px/20px var(--font-sans)',textAlign:'center'}}>{b}</span>}</button>;};
   return <div style={{position:'fixed',inset:0,zIndex:40}}>

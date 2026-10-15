@@ -16,6 +16,8 @@ import { AdminUpdates } from "./AdminUpdates.jsx";
 import { AdminPodcasts } from "./AdminPodcasts.jsx";
 import { AdminAI } from "./ai/AdminAI.jsx";
 import { OfficialVoicesPanel } from "./OfficialVoicesPanel.jsx";
+import { RadarFila } from "./radar/RadarFila.jsx";
+import { useRadarAvisos } from "./radar/useRadarAvisos.js";
 import { isStaffRole } from "./common.jsx";
 
 const TABS = [
@@ -28,6 +30,7 @@ const TABS = [
   { value: "planos", label: "Planos", icon: "crown" },
   { value: "estacoes", label: "Estações", icon: "clipboard-list", staff: true, reviewer: true },
   { value: "conteudo", label: "Central de Conteúdo", icon: "library", staff: true, reviewer: true },
+  { value: "radar", label: "Fila do Radar", icon: "radar", admin: true },
   { value: "ias", label: "Central de IAs", icon: "bot" },
   { value: "play", label: "Stazia Arena", icon: "trophy" },
   { value: "config", label: "Configurações", icon: "settings" },
@@ -41,6 +44,7 @@ export function AdminScreen() {
   const { boot } = useSession();
   const isAdmin = boot.role === "admin";
   const isStaff = isStaffRole(boot.role);
+  const radar = useRadarAvisos(isAdmin);
   // revisor médico sem papel de equipe: só o que tem revisão médica (Questões: fila de comentários a revisar, Atualizações, Estações e Central de Conteúdo)
   const tabs = TABS.filter((t) => t.admin ? isAdmin : isAdmin || (isStaff && t.staff) || (!isStaff && t.reviewer));
   const [params, setParams] = useSearchParams();
@@ -49,7 +53,7 @@ export function AdminScreen() {
   return (
     <>
       {/* 14 abas não cabem numa linha: a barra quebra linha para todas aparecerem */}
-      <Tabs wrap label="Administração" value={tab} onChange={(aba) => setParams({ aba }, { replace: true })} tabs={tabs.map(({ value, label, icon }) => ({ value, label, icon }))} />
+      <Tabs wrap label="Administração" value={tab} onChange={(aba) => setParams({ aba }, { replace: true })} tabs={tabs.map(({ value, label, icon }) => ({ value, label, icon, ...(value === "radar" && radar.graves > 0 ? { count: radar.graves } : {}) }))} />
       {tab === "geral" && <AdminOverview isAdmin={isAdmin} />}
       {tab === "usuarios" && <AdminUsers />}
       {tab === "questoes" && <AdminQuestions onOpenIneditas={() => setParams({ aba: "conteudo", secao: "ineditas" })} />}
@@ -59,6 +63,7 @@ export function AdminScreen() {
       {tab === "planos" && <AdminPlans />}
       {tab === "estacoes" && <AdminStations />}
       {tab === "conteudo" && <ContentHub isAdmin={isAdmin} isStaff={isStaff} />}
+      {tab === "radar" && isAdmin && <RadarFila />}
       {tab === "ias" && isAdmin && <AdminAI />}
       {tab === "play" && <AdminPlay />}
       {tab === "config" && (
