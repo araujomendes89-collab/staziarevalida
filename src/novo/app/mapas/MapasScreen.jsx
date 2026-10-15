@@ -71,7 +71,7 @@ export function MapasScreen({ go }) {
         <ul className="mm-grade">
           {lista.map((m) => (
             <li key={m.slug}>
-              <button type="button" className="mm-lcard" style={temaVars(m.codigo, m.area)} onClick={() => abrir(m)}>
+              <button type="button" className="mm-lcard" title={m.titulo} aria-label={`${m.titulo}. ${m.subtitulo ?? ""}`.trim()} style={temaVars(m.codigo, m.area)} onClick={() => abrir(m)}>
                 <span className="mm-lcard-fita" aria-hidden="true" />
                 <span className="mm-lcard-area">{nomeDaArea(m.area)}</span>
                 {m.icone?.webp && <img className="mm-lcard-ico" src={m.icone.webp} alt="" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.style.display = "none"; }} />}

@@ -73,6 +73,10 @@ describe("pôster realista (imagem) como visual principal", () => {
     for (const i of imgs) { expect(i.className).toBe("mm-lcard-ico"); expect(i.getAttribute("alt")).toBe(""); expect(i.getAttribute("loading")).toBe("lazy"); }
     expect(imgs.length).toBe(MAPAS.filter((m: any) => m.icone?.webp).length);
     expect(screen.getAllByText(/ramos · revisão rápida e aprofundado/).length).toBe(MAPAS.length);
+    // todos os cartões são iguais: o título completo fica acessível por title e aria-label
+    const cartoes = Array.from(document.querySelectorAll("button.mm-lcard"));
+    expect(cartoes.length).toBe(MAPAS.length);
+    for (const c of cartoes) { expect(c.getAttribute("title")).toBeTruthy(); expect(c.getAttribute("aria-label")).toContain(c.getAttribute("title")!); }
   });
 });
 

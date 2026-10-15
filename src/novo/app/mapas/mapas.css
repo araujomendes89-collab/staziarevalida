@@ -261,3 +261,11 @@
 /* ícone 3D decorativo no canto do cartão da lista (por fora do texto; some se faltar) */
 .mm-lcard-ico{position:absolute;top:12px;right:12px;width:56px;height:56px;object-fit:contain;pointer-events:none;filter:drop-shadow(0 6px 8px rgba(10,30,70,.22))}
 .mm-lcard-t{padding-right:64px}
+
+/* cartões da lista: todos com a mesma altura e largura (título e subtítulo em até 2 linhas) */
+.mm-grade{grid-auto-rows:180px}
+.mm-grade>li{min-width:0;height:100%}
+.mm-lcard{height:100%;min-height:0;box-sizing:border-box}
+.mm-lcard-t{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;min-height:2.4em;max-height:2.4em}
+.mm-lcard-s{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;max-height:2.8em}
+.mm-lcard-r{margin-top:auto}
