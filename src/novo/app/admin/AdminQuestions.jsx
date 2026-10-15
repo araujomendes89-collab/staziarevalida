@@ -11,6 +11,7 @@ import { AssistantLayout } from "./assistant/AssistantLayout.jsx";
 import { TabAssistant } from "./assistant/TabAssistant.jsx";
 import { QuestionFigureCard } from "./QuestionFigureCard.jsx";
 import { QuestionHistory } from "./QuestionHistory.jsx";
+import { QuestionDifficulty } from "./QuestionDifficulty.jsx";
 import { QuestionSourceLinksCard } from "./QuestionSourceLinksCard.jsx";
 import { changedCommentFields, CommentReviewBanner, CommentReviewQueue, commentFieldsText, LoadNotes, UpdateNoteCard } from "./QuestionCommentReview.jsx";
 import { downloadText, isStaffRole, ListRow, LoadError, Loading, messageOf, QUESTION_STATUS_LABEL, TextArea, useDebounced, useLoad } from "./common.jsx";
@@ -931,6 +932,7 @@ function StaffQuestions({ onOpenIneditas }) {
   if (view.mode === "edit" || view.mode === "new") return <QuestionEditor key={view.id ?? "nova"} id={view.id} onClose={back} onSaved={list.reload} commentReviewReady={list.data?.comment_review_ready === true} />;
   if (view.mode === "import") return <ImportPanel onClose={back} onImported={list.reload} />;
   // fila de revisão médica (com "Aprovar a prova inteira" para o administrador e as notas "O que mudou desde a prova")
+  if (view.mode === "difficulty") return <QuestionDifficulty onBack={back} />;
   if (view.mode === "queue") return <CommentReviewQueue onBack={() => (back(), list.reload())} />;
 
   return (
@@ -942,6 +944,9 @@ function StaffQuestions({ onOpenIneditas }) {
         {/* questão nova é montada nas Questões inéditas, sempre a partir de fontes oficiais (pedido do dono, 2026-10-12) */}
         <Button variant="secondary" icon="sparkles" onClick={onOpenIneditas} disabled={!onOpenIneditas}>
           Questões inéditas
+        </Button>
+        <Button variant="secondary" icon="gauge" onClick={() => setView({ mode: "difficulty", id: null })}>
+          Dificuldade validada
         </Button>
         {reviewReady === true && (
           <Button variant="secondary" icon="list-checks" onClick={() => setView({ mode: "queue", id: null })}>
