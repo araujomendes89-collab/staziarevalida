@@ -139,3 +139,31 @@
 .mm-checks{align-content:start}
 
 .mm-imagem{width:min(330px,100%);height:auto;margin-bottom:-84px;position:relative;z-index:0;object-fit:contain;filter:drop-shadow(0 10px 24px rgba(70,130,230,.35));-webkit-mask-image:linear-gradient(#000 80%,transparent);mask-image:linear-gradient(#000 80%,transparent)}
+
+.mm-figura{margin-left:auto;flex:none;width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #fff;box-shadow:0 4px 12px -4px rgba(10,30,70,.35)}
+/* proporções da referência: cartões compactos, título grande, ícone com anel branco */
+.mm-badge{width:50px;height:50px;box-shadow:0 0 0 3px rgba(255,255,255,.9),0 5px 12px -3px color-mix(in oklab,var(--ac-d) 70%,transparent)}
+.mm-card{border-radius:22px}
+.mm-card-b{font-size:14px;padding:12px 18px 16px}
+.mm-card-h{min-height:64px}
+
+/* Escala de pôster (como a referência): no desenho horizontal, tudo cresce e diminui com a largura do mapa */
+.mm{container-type:inline-size}
+.mm-wide{font-size:clamp(12px,1.36cqi,23px);grid-template-columns:minmax(0,1fr) minmax(0,.92fr) minmax(0,1fr);column-gap:clamp(28px,3.4cqi,56px)}
+.mm-wide .mm-col{gap:1.3em}
+.mm-wide .mm-col-c{gap:1.6em}
+.mm-wide .mm-card{border-radius:1.5em}
+.mm-wide .mm-card-h{min-height:4.4em;gap:.8em;padding:.5em 1em .5em .5em}
+.mm-wide .mm-badge{width:3.6em;height:3.6em}
+.mm-wide .mm-badge svg{width:1.7em;height:1.7em}
+.mm-wide .mm-card-t{font-size:1.55em}
+.mm-wide .mm-card-b{font-size:1em;padding:.9em 1.3em 1.1em;gap:.8em}
+.mm-wide .mm-ul{gap:.35em}
+.mm-wide .mm-center{border-radius:1.8em;padding:1.4em 1.2em 1.1em}
+.mm-wide .mm-center-t{font-size:3.05em;line-height:1;overflow-wrap:anywhere}
+.mm-wide .mm-center-s{font-size:1.55em;margin:.5em auto .8em}
+.mm-wide .mm-tag{font-size:.95em}
+.mm-wide .mm-emblema{width:108%;margin-left:-4%;margin-bottom:-8em}
+.mm-wide .mm-pill{font-size:1.25em}
+.mm-base{font-size:clamp(12px,1.36cqi,23px)}
+.mm-base .mm-checks,.mm-base .mm-atencao .mm-ul{font-size:1em}

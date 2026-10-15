@@ -82,6 +82,7 @@ function Ramo({ r, modo, aberto, onToggle, setRef }) {
       <header className="mm-card-h">
         <span className="mm-badge"><MapaIcon nome={r.icone} size={22} /></span>
         <h3 className="mm-card-t">{r.titulo}</h3>
+        {r.foto?.webp && <img className="mm-figura" src={r.foto.webp} alt={r.foto.alt ?? ""} loading="lazy" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
       </header>
       <div className="mm-card-b">
         <Revisao v={r.revisao} />
@@ -109,13 +110,18 @@ function Ramo({ r, modo, aberto, onToggle, setRef }) {
   );
 }
 
-/** Imagem central: campo opcional `imagem` {url, alt} (sem texto nem logo dentro da imagem; efeitos de vidro/brilho por CSS).
+/** Imagem central: campo opcional `foto` {webp, avif, foco, alt} (sem texto nem logo dentro da imagem; efeitos de vidro/brilho por CSS).
  *  Sem imagem, ou se ela falhar ao carregar, entra o emblema desenhado em SVG (fallback). */
 function ImagemCentral({ mapa }) {
   const [falhou, setFalhou] = React.useState(false);
-  const url = mapa.imagem?.url;
-  if (!url || falhou) return <Emblema tipo={mapa.emblema} />;
-  return <img className="mm-imagem" src={url} alt={mapa.imagem.alt ?? ""} loading="lazy" onError={() => setFalhou(true)} />;
+  const f = mapa.foto;
+  if (!f?.webp || falhou) return <Emblema tipo={mapa.emblema} />;
+  return (
+    <picture>
+      {f.avif && <source srcSet={f.avif} type="image/avif" />}
+      <img className="mm-imagem" src={f.webp} alt={f.alt ?? ""} loading="lazy" style={f.foco ? { objectPosition: f.foco } : undefined} onError={() => setFalhou(true)} />
+    </picture>
+  );
 }
 
 function Centro({ mapa, setRef }) {

@@ -16,7 +16,8 @@
       "Local da punçao: a aula traz dois locais (resposta esperada na prova pratica x procedimento pre-hospitalar nacional em vigor); ambos mantidos, sem opiniao sobre qual prevalece.",
       "Sem base na aula para tratamento definitivo do tamponamento alem do que consta (acessos, volume, FAST/E-FAST, pericardiocentese ou toracotomia); nada acrescentado.",
       "Conferência 15/10: suspeita de pneumotórax hipertensivo 'com choque descompensado' recebeu o contexto da aula ('pelo critério pré-hospitalar nacional'), já que a própria aula diz que o choque é sinal tardio e o caso pode vir sem a pressão (TT11, TT13, TT16).",
-      "Removido dos avisos exibidos o item \"a aula não traz critérios de drenagem/toracotomia\" (nota de autoria); permanece no ramo aprofundado."
+      "Removido dos avisos exibidos o item \"a aula não traz critérios de drenagem/toracotomia\" (nota de autoria); permanece no ramo aprofundado.",
+      "Revisão reescrita em palavras-chave em 15/10 (sem fato novo)"
     ]
   },
   "ramos": [
@@ -27,12 +28,12 @@
       "icone": "estetoscopio",
       "revisao": {
         "itens": [
-          "xABCDE: o tórax é examinado no B",
-          "Traqueia, jugulares, tórax exposto e simetria da expansão",
-          "Pensar em lesões osteomusculares, pulmonares, cardíacas e de grandes vasos",
-          "Examinar o dorso: lesões torácicas ocultas",
+          "O tórax é examinado no B do xABCDE",
+          "Traqueia, jugulares, tórax exposto, simetria",
+          "Pensar: osteomuscular, pulmão, coração, vasos",
+          "Examinar o dorso: lesões ocultas",
           {
-            "t": "No início pode não haver dificuldade respiratória nem hipóxia",
+            "t": "No início, pode não haver dispneia nem hipóxia",
             "tom": "atencao"
           }
         ]
@@ -59,6 +60,13 @@
             "A máscara de oxigênio é verbalizada logo no começo, antes da avaliação primária completa e da punção.",
             "Manutenção do colar cervical."
           ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Pensar em lesões osteomusculares, pulmonares, cardíacas e de grandes vasos.",
+            "No início do trauma torácico pode não haver dificuldade respiratória nem hipóxia."
+          ]
         }
       ],
       "claims": [
@@ -84,9 +92,8 @@
             "rotulo": "Simples",
             "itens": [
               "Sem choque descompensado (hipotensão)",
-              "Murmúrio diminuído; percussão normal ou hipertimpânica",
               {
-                "t": "Pressão positiva agrava e pode torná-lo hipertensivo",
+                "t": "Pressão positiva pode agravá-lo",
                 "tom": "atencao"
               }
             ]
@@ -94,34 +101,42 @@
           {
             "rotulo": "Hipertensivo",
             "itens": [
-              "Critério pré-hospitalar: trauma com choque descompensado (hipotensão) e sinais respiratórios",
-              "Precoce: murmúrio diminuído ou ausente e timpanismo (difícil de detectar)",
-              "Tardio: jugulares ingurgitadas, traqueia desviada para o lado oposto, choque"
+              "Pré-hosp.: hipotensão + sinais respirat.",
+              "Murmúrio diminuído/ausente; timpanismo"
             ]
           },
           {
             "rotulo": "Aberto",
             "itens": [
-              "Ferida com passagem visível de ar entre o ambiente e a pleura"
+              "Ferida com passagem visível de ar"
             ]
           }
         ],
         "fluxo": [
           {
-            "t": "Pneumotórax aberto: curativo oclusivo fixado em 3 lados",
+            "t": "Aberto: curativo oclusivo em 3 lados",
             "tom": "conduta"
           },
           {
-            "t": "Esforço respiratório piora: pensar em hipertensivo",
+            "t": "Piorou o esforço: pensar em hipertensivo",
             "tom": "atencao"
           },
           {
-            "t": "Remover o curativo para descomprimir e reposicionar",
+            "t": "Remover curativo para descomprimir",
             "tom": "conduta"
           }
         ]
       },
       "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Tardio: jugulares ingurgitadas, traqueia desviada para o lado oposto, choque",
+            "Simples: murmúrio diminuído; percussão normal ou hipertimpânica; a pressão positiva agrava e pode torná-lo hipertensivo.",
+            "Hipertensivo, critério pré-hospitalar: trauma com choque descompensado (hipotensão) e sinais respiratórios; sinais precoces (murmúrio diminuído ou ausente e timpanismo) são difíceis de detectar.",
+            "Aberto: ferida com passagem visível de ar entre o ambiente e a pleura; se o esforço respiratório piorar, pensar em hipertensivo, remover o curativo para descomprimir e reposicionar."
+          ]
+        },
         {
           "titulo": "Pneumotórax simples",
           "itens": [
@@ -177,26 +192,22 @@
       "revisao": {
         "fluxo": [
           {
-            "t": "Detectou ou suspeitou",
-            "tom": "diag"
-          },
-          {
-            "t": "Descompressão torácica de alívio (punção)",
+            "t": "Suspeita: descompressão torácica de alívio",
             "tom": "conduta"
           },
-          "Reavaliar ausculta, respiração, oxigenação e hemodinâmica",
+          "Reavaliar ausculta, respiração, oxigenação",
           {
             "t": "Drenagem torácica fechada em selo d'água",
             "tom": "conduta"
-          },
-          "Radiografia de tórax e repetir o B ou o ABCDE"
+          }
         ],
         "itens": [
-          "Cateter intravenoso 14G, mínimo de 5 cm, na borda superior da costela inferior",
-          "Prova prática: 4º ou 5º espaço intercostal, linha axilar média ou anterior a ela",
-          "O2 em alto fluxo para SatO2 ≥ 94% e oximetria de pulso",
+          "Cateter IV 14G com no mínimo 5 cm",
+          "Entrar na borda superior da costela inferior",
+          "Prova prática: 4º/5º espaço, linha axilar média",
+          "O2 em alto fluxo, SatO2 ≥ 94%",
           {
-            "t": "Já intubado: conferir antes a posição da cânula pela ausculta",
+            "t": "Intubado: conferir antes a posição da cânula",
             "tom": "alerta"
           }
         ]
@@ -234,6 +245,15 @@
               "tom": "atencao"
             }
           ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Detectou ou suspeitou: descompressão torácica de alívio (punção), seguida de reavaliação da ausculta, da respiração, da oxigenação e da hemodinâmica.",
+            "Depois: drenagem torácica fechada em selo d'água, radiografia de tórax e repetir o B ou o ABCDE.",
+            "Cateter intravenoso 14G, mínimo de 5 cm, na borda superior da costela inferior; prova prática: 4º ou 5º espaço intercostal, linha axilar média ou anterior a ela.",
+            "O2 em alto fluxo para SatO2 ≥ 94% e oximetria de pulso; no paciente já intubado, conferir antes a posição da cânula pela ausculta."
+          ]
         }
       ],
       "claims": [
@@ -265,16 +285,15 @@
       "icone": "gota",
       "revisao": {
         "itens": [
-          "Murmúrio ausente ou diminuído, macicez à percussão e sinais de choque",
-          "A percussão separa ar de sangue: no pneumotórax é normal ou hipertimpânica",
-          "Cada espaço pleural acomoda de 2500 a 3000 mL de sangue",
+          "Murmúrio ausente/diminuído, macicez, choque",
+          "Cada espaço pleural: 2500 a 3000 mL de sangue",
           {
-            "t": "Pré-hospitalar: no choque, considerar causa hemorrágica até prova em contrário",
+            "t": "Pré-hosp.: no choque, considerar hemorragia",
             "tom": "atencao"
           },
-          "No trauma penetrante, pensar em pneumotórax associado",
+          "Trauma penetrante: pensar em pneumotórax junto",
           {
-            "t": "Suspeita de pneumotórax hipertensivo junto: descompressão torácica de alívio",
+            "t": "Hipertensivo junto: descomprimir",
             "tom": "conduta"
           }
         ]
@@ -285,6 +304,14 @@
           "itens": [
             "Esta aula não traz os critérios hospitalares de drenagem nem de toracotomia no hemotórax: seguir a orientação oficial em vigor e a rotina do serviço.",
             "Fora do hospital, contato com a Regulação Médica para definir encaminhamento e unidade de destino."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "A percussão separa ar de sangue: no hemotórax há macicez; no pneumotórax é normal ou hipertimpânica.",
+            "Pré-hospitalar: no choque, considerar causa hemorrágica até prova em contrário.",
+            "No trauma penetrante, pensar em pneumotórax associado; com suspeita de pneumotórax hipertensivo junto, descompressão torácica de alívio."
           ]
         }
       ],
@@ -308,28 +335,43 @@
           {
             "rotulo": "Quadro",
             "itens": [
-              "Mais comum no trauma penetrante, mas ocorre no fechado",
-              "Tríade de Beck: jugulares ingurgitadas, hipotensão, bulhas abafadas",
-              "Choque que piora progressivamente, sem causa hemorrágica aparente"
+              "Penetrante mais comum; ocorre no fechado",
+              "Choque piora, sem hemorragia aparente"
+            ]
+          },
+          {
+            "rotulo": "Tríade de Beck",
+            "itens": [
+              "Jugulares ingurgitadas, hipotensão",
+              "Bulhas abafadas"
             ]
           },
           {
             "rotulo": "Conduta",
             "itens": [
-              "Dois acessos venosos de grosso calibre e reposição volêmica",
-              "Ultrassom à beira do leito (FAST ou E-FAST)",
-              "Pericardiocentese (punção de Marfan) ou toracotomia de urgência"
+              "Dois acessos de grosso calibre + volume",
+              "USG à beira do leito (FAST/E-FAST)"
             ]
           }
         ],
         "itens": [
           {
-            "t": "Jugular túrgida com hipotensão também ocorre no pneumotórax hipertensivo: o exame do pulmão decide",
+            "t": "Também no hipertensivo: o exame do pulmão decide",
             "tom": "atencao"
           }
         ]
       },
       "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Pericardiocentese (punção de Marfan) ou toracotomia de urgência",
+            "Quadro: mais comum no trauma penetrante, mas ocorre no fechado; choque que piora progressivamente, sem causa hemorrágica aparente.",
+            "Tríade de Beck: jugulares ingurgitadas, hipotensão e bulhas abafadas.",
+            "Conduta: dois acessos venosos de grosso calibre e reposição volêmica; ultrassom à beira do leito (FAST ou E-FAST).",
+            "Jugular túrgida com hipotensão também ocorre no pneumotórax hipertensivo: o exame do pulmão decide."
+          ]
+        },
         {
           "titulo": "Sinais",
           "itens": [
@@ -379,38 +421,45 @@
       "revisao": {
         "linhas": [
           {
-            "rotulo": "Costela e tórax instável",
+            "rotulo": "Tórax instável",
             "itens": [
-              "Tórax instável: 2 ou mais arcos adjacentes fraturados em 2 ou mais pontos",
-              "Movimento paradoxal é sinal tardio; a palpação do gradil costal pode detectar antes",
+              "≥ 2 arcos adjacentes, em ≥ 2 pontos",
               {
-                "t": "Não enfaixar nem estabilizar o segmento afundado por qualquer meio",
+                "t": "Não enfaixar nem estabilizar o segmento",
                 "tom": "alerta"
-              },
-              "Incentivar inspiração profunda e tosse, apesar da dor"
+              }
             ]
           },
           {
             "rotulo": "Suporte",
             "itens": [
-              "O2 em alto fluxo para SatO2 ≥ 94% e analgesia",
-              "Sem ventilação ou oxigenação adequadas: bolsa-valva-máscara com reservatório; sem sucesso, via aérea avançada"
+              "O2 alto fluxo (SatO2 ≥ 94%) e analgesia",
+              "Incentivar inspiração profunda e tosse"
             ]
           },
           {
             "rotulo": "Contusão pulmonar",
             "itens": [
-              "Considerar sempre no tórax instável",
-              "Insuficiência respiratória mais tardia, nas primeiras 24 horas",
-              {
-                "t": "Volume só se houver sinais de choque: excesso piora a ventilação",
-                "tom": "atencao"
-              }
+              "Considerar sempre no tórax instável"
             ]
           }
         ]
       },
       "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Sem ventilação ou oxigenação adequadas: bolsa-valva-máscara com reservatório; sem sucesso, via aérea avançada",
+            "Insuficiência respiratória mais tardia, nas primeiras 24 horas",
+            {
+              "t": "Volume só se houver sinais de choque: excesso piora a ventilação",
+              "tom": "atencao"
+            },
+            "Tórax instável: 2 ou mais arcos adjacentes fraturados em 2 ou mais pontos; o movimento paradoxal é sinal tardio e a palpação do gradil costal pode detectar antes.",
+            "Não enfaixar nem estabilizar o segmento afundado por qualquer meio; incentivar inspiração profunda e tosse, apesar da dor.",
+            "Suporte: O2 em alto fluxo para SatO2 ≥ 94% e analgesia; considerar sempre contusão pulmonar no tórax instável."
+          ]
+        },
         {
           "titulo": "Fratura de costela",
           "itens": [
@@ -452,21 +501,22 @@
           {
             "rotulo": "Impacto frontal",
             "itens": [
-              "Fratura de coluna cervical, tórax instável anterior, contusão miocárdica, pneumotórax, secção de aorta"
+              "Fratura cervical e tórax instável",
+              "Contusão miocárdica, pneumotórax, aorta"
             ]
           },
           {
             "rotulo": "Impacto lateral",
             "itens": [
-              "Fratura de clavícula e de costelas, contusão pulmonar, pneumotórax"
+              "Clavícula e costelas fraturadas",
+              "Contusão pulmonar, pneumotórax"
             ]
           },
           {
             "rotulo": "Transferência",
             "itens": [
-              "Lesão de aorta e vasos da base: diferencial do trauma torácico com choque",
-              "Contato com a Regulação Médica para definir destino",
-              "Antes de transferir, a melhor estabilização respiratória e hemodinâmica possível"
+              "Estabilizar antes de transferir",
+              "Regulação Médica define o destino"
             ]
           }
         ]
@@ -477,6 +527,14 @@
           "itens": [
             "A estabilização prévia pode exigir intubação e drenagem torácica.",
             "Contato com a Regulação Médica para definir o encaminhamento e a unidade de destino."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Impacto frontal: fratura de coluna cervical, tórax instável anterior, contusão miocárdica, pneumotórax, secção de aorta.",
+            "Impacto lateral: fratura de clavícula e de costelas, contusão pulmonar, pneumotórax.",
+            "Lesão de aorta e vasos da base é diferencial do trauma torácico com choque; antes de transferir, a melhor estabilização respiratória e hemodinâmica possível."
           ]
         }
       ],
@@ -498,27 +556,23 @@
       "revisao": {
         "itens": [
           {
-            "t": "Pedir radiografia ou tomografia antes de descomprimir pneumotórax hipertensivo",
+            "t": "Imagem antes de descomprimir o hipertensivo",
             "tom": "alerta"
           },
           {
-            "t": "Parar na punção: depois dela vem a drenagem torácica fechada",
+            "t": "Parar na punção: segue a drenagem fechada",
             "tom": "alerta"
           },
           {
-            "t": "Puncionar o intubado sem conferir a posição da cânula",
+            "t": "Puncionar intubado sem conferir a cânula",
             "tom": "alerta"
           },
           {
-            "t": "Confundir tamponamento com pneumotórax hipertensivo: faltam os sinais pulmonares",
+            "t": "Confundir tamponamento com hipertensivo",
             "tom": "alerta"
           },
           {
-            "t": "Retirar objeto encravado; enfaixar ou estabilizar o segmento instável",
-            "tom": "alerta"
-          },
-          {
-            "t": "Dar líquido em excesso na contusão pulmonar",
+            "t": "Retirar encravado ou enfaixar tórax instável",
             "tom": "alerta"
           }
         ]
@@ -535,6 +589,14 @@
           "titulo": "Local da punção",
           "itens": [
             "A resposta esperada na prova prática é o 4º ou 5º espaço intercostal, na linha axilar média ou anterior a ela; o pré-hospitalar nacional descreve o 2º ou 3º espaço, hemiclavicular."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Pedir radiografia ou tomografia antes de descomprimir pneumotórax hipertensivo.",
+            "Confundir tamponamento com pneumotórax hipertensivo: faltam os sinais pulmonares.",
+            "Retirar objeto encravado; enfaixar ou estabilizar o segmento instável; dar líquido em excesso na contusão pulmonar."
           ]
         }
       ],
@@ -556,18 +618,17 @@
     }
   ],
   "pontos_chave": [
-    "Tórax no B do xABCDE: traqueia, jugulares, ventilação e simetria",
-    "Pneumotórax hipertensivo detectado ou suspeitado: descomprimir, sem pedir imagem antes",
-    "Depois da punção vem a drenagem torácica fechada, com radiografia depois",
-    "Intubado que piora: conferir a cânula antes de descomprimir",
-    "Tamponamento: choque sem sinais de pneumotórax hipertensivo e sem hipovolemia",
-    "Tórax instável e costela fraturada: não enfaixar, oxigênio e analgesia",
-    "Contusão pulmonar: volume só se houver choque"
+    "Tórax no B do xABCDE: traqueia, jugulares, simetria",
+    "Hipertensivo suspeito: descomprimir sem pedir imagem",
+    "Após a punção, drenagem torácica fechada; RX depois",
+    "Intubado que piora: conferir a cânula antes de puncionar",
+    "Tamponamento: choque sem hipertensivo e sem hipovolemia",
+    "Instável: não enfaixar; contusão: volume só se choque"
   ],
   "atencao": [
     "Pressão positiva pode transformar pneumotórax simples em hipertensivo",
     "Choque descompensado é PAS < 90 mmHg, mas o caso pode vir sem a pressão informada",
     "Objeto encravado não é removido",
-    "Dois locais de punção na aula: prova prática (4º/5º espaço) e pré-hospitalar nacional (2º/3º)"
+    "Dois locais de punção: prova prática (4º/5º) e pré-hospitalar (2º/3º)"
   ]
 }

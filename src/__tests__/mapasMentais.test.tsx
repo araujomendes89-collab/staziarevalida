@@ -49,7 +49,7 @@ describe("mapa piloto: Tuberculose pulmonar", () => {
     expect(txt).toMatch(/TRM-TB negativo com quadro persistente/);
     expect(txt).toMatch(/ILTB não é TB ativa/);
     expect(txt).toMatch(/não diagnosticam doença ativa/);
-    expect(txt).toMatch(/há alternativas \(isoniazida, rifampicina\)/);
+    expect(txt).toMatch(/3HP tem alternativas e restrições|3HP é o preferencial, mas há alternativas/);
     expect(txt).not.toMatch(/06\/10\/2026/); // data do BPaLM não verificada
   });
 

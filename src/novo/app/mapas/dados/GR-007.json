@@ -17,7 +17,8 @@
       "Esquema detalhado de hidratação do grupo B além da 'hidratação oral como no grupo A' não consta na aula: omitido.",
       "Doses de analgésicos (paracetamol e dipirona) não constam na aula: omitidas.",
       "Conferência 15/10: item de analgésicos, opioides, AINEs e corticoides em casos refratários da chikungunya recebeu o contexto da aula 'na fase crônica' (CK39), para não parecer válido na fase aguda, em que AINE não é recomendado.",
-      "Conferência 15/10: ponto-chave do estadiamento completado com 'comprometimento grave de órgãos' (D) e 'sangramento de pele' (B), como na aula (AR36, AR58)."
+      "Conferência 15/10: ponto-chave do estadiamento completado com 'comprometimento grave de órgãos' (D) e 'sangramento de pele' (B), como na aula (AR36, AR58).",
+      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)"
     ]
   },
   "ramos": [
@@ -28,15 +29,14 @@
       "icone": "estetoscopio",
       "revisao": {
         "itens": [
-          "Febre de 2 a 7 dias + 2 ou mais: mialgia, cefaleia, dor retro-orbital, exantema, petéquias...",
-          "Em área com casos ou viagem nos últimos 14 dias a área com transmissão",
+          "Febre 2-7 dias + 2 ou mais: mialgia, cefaleia",
+          "Área com casos ou viagem nos últimos 14 dias",
           "Fases: febril, crítica e de recuperação",
           {
-            "t": "Sinais de alarme surgem na queda da febre (fase crítica)",
+            "t": "Sinais de alarme surgem na queda da febre",
             "tom": "alerta"
           },
-          "Na criança, o agravamento costuma ser súbito",
-          "Basta 1 sinal de alarme"
+          "Basta 1 sinal de alarme; criança piora de súbito"
         ]
       },
       "aprofundado": [
@@ -76,6 +76,15 @@
             "Quando é difícil diferenciar a dengue de outras viroses, adotar o manejo clínico de dengue.",
             "Manifestações da lista: náuseas, vômitos, exantema, mialgias, artralgias, cefaleia, dor retro-orbital, petéquias, prova do laço positiva e leucopenia."
           ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Febre de 2 a 7 dias + 2 ou mais: mialgia, cefaleia, dor retro-orbital, exantema, petéquias...",
+            "Em área com casos ou viagem nos últimos 14 dias a área com transmissão",
+            "Na criança, o agravamento costuma ser súbito",
+            "Basta 1 sinal de alarme"
+          ]
         }
       ],
       "claims": [
@@ -108,23 +117,23 @@
       "revisao": {
         "fluxo": [
           {
-            "t": "Choque, sangramento grave ou comprometimento grave de órgãos: grupo D",
+            "t": "Choque, sangramento, órgão grave: D",
             "tom": "alerta"
           },
           {
             "t": "Algum sinal de alarme: grupo C",
             "tom": "atencao"
           },
-          "Sangramento de pele (espontâneo ou induzido), condição especial, risco social ou comorbidade: grupo B",
+          "Sangramento de pele, condição especial: B"
+        ],
+        "itens": [
           {
             "t": "Nada disso: grupo A",
             "tom": "conduta"
-          }
-        ],
-        "itens": [
-          "O grupo define exames, local de cuidado e tratamento",
-          "O paciente pode mudar de grupo em pouco tempo: reclassificar",
-          "Hidratação oral nos grupos A e B; venosa nos C e D",
+          },
+          "O grupo define exames, local e tratamento",
+          "Pode mudar de grupo: reclassificar",
+          "Hidratação oral em A e B; venosa em C e D",
           "Notificar todo caso suspeito"
         ]
       },
@@ -152,6 +161,18 @@
           "titulo": "Grupo A",
           "itens": [
             "Caso suspeito sem sinais de alarme e sem comorbidades, grupo de risco ou condição clínica especial."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "O paciente pode mudar de grupo em pouco tempo: reclassificar",
+            "Hidratação oral nos grupos A e B; venosa nos C e D",
+            {
+              "t": "Choque, sangramento grave ou comprometimento grave de órgãos: grupo D",
+              "tom": "alerta"
+            },
+            "Sangramento de pele (espontâneo ou induzido), condição especial, risco social ou comorbidade: grupo B"
           ]
         }
       ],
@@ -182,48 +203,57 @@
             "rotulo": "Grupo A",
             "itens": [
               "Ambulatorial; exames a critério médico",
-              "Adulto: 60 mL/kg/dia, 1/3 com sais de reidratação oral",
-              "Retorno no dia da melhora da febre, ou no 5º dia se não houver defervescência"
+              "Adulto: 60 mL/kg/dia, 1/3 com SRO"
             ]
           },
           {
             "rotulo": "Grupo B",
             "itens": [
-              "Hemograma completo obrigatório (resultado em até 2 h, no máximo 4 h)",
-              "Observação com hidratação oral até o resultado",
-              "Hematócrito normal: ambulatorial, reavaliação diária até 48 h após a queda da febre",
-              "Hemoconcentração ou sinal de alarme: conduzir como grupo C"
+              "Hemograma completo obrigatório",
+              "Resultado em até 2 h (no máximo 4 h)"
             ]
           },
           {
-            "rotulo": "Grupo C",
+            "rotulo": "Grupo C e D",
             "itens": [
-              "Soro fisiológico 0,9%, 10 mL/kg na 1ª hora, mesmo sem exames",
-              "Internação até estabilizar, no mínimo 48 h",
-              "Exames: hemograma, albumina, transaminases"
-            ]
-          },
-          {
-            "rotulo": "Grupo D",
-            "itens": [
-              "Expansão rápida: 20 mL/kg em até 20 min, até 3 vezes",
-              "UTI até estabilizar (mínimo 48 h)",
-              "Reavaliar a cada 15 a 30 min; hematócrito a cada 2 h"
+              "C: SF 0,9% 10 mL/kg na 1ª hora",
+              "D: 20 mL/kg em até 20 min, até 3 vezes"
             ]
           }
         ],
         "itens": [
           {
-            "t": "Dor e febre: paracetamol e/ou dipirona",
+            "t": "Grupos C e D: soro mesmo sem exames",
             "tom": "conduta"
           },
           {
-            "t": "Não usar salicilatos, anti-inflamatórios não esteroides nem corticosteroides",
-            "tom": "alerta"
+            "t": "Dor e febre: paracetamol e/ou dipirona",
+            "tom": "conduta"
           }
         ]
       },
       "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Retorno no dia da melhora da febre, ou no 5º dia se não houver defervescência",
+            "Observação com hidratação oral até o resultado",
+            "Hematócrito normal: ambulatorial, reavaliação diária até 48 h após a queda da febre",
+            "Hemoconcentração ou sinal de alarme: conduzir como grupo C",
+            "Internação até estabilizar, no mínimo 48 h",
+            "Exames: hemograma, albumina, transaminases",
+            "UTI até estabilizar (mínimo 48 h)",
+            "Reavaliar a cada 15 a 30 min; hematócrito a cada 2 h",
+            {
+              "t": "Não usar salicilatos, anti-inflamatórios não esteroides nem corticosteroides",
+              "tom": "alerta"
+            },
+            "Adulto: 60 mL/kg/dia, 1/3 com sais de reidratação oral",
+            "Hemograma completo obrigatório (resultado em até 2 h, no máximo 4 h)",
+            "Soro fisiológico 0,9%, 10 mL/kg na 1ª hora, mesmo sem exames",
+            "Expansão rápida: 20 mL/kg em até 20 min, até 3 vezes"
+          ]
+        },
         {
           "titulo": "Grupo A",
           "itens": [
@@ -343,34 +373,44 @@
           {
             "rotulo": "Dengue",
             "itens": [
-              "Até o 5º dia: RT-PCR, NS1 ou isolamento viral",
-              "A partir do 6º dia: sorologia IgM ELISA"
+              "Até o 5º dia: RT-PCR, NS1, isolamento",
+              "A partir do 6º dia: IgM ELISA"
             ]
           },
           {
             "rotulo": "Chikungunya",
             "itens": [
               "RT-PCR até o 5º dia",
-              "IgM e IgG por ELISA a partir do 6º dia"
+              "IgM/IgG ELISA a partir do 6º dia"
             ]
           },
           {
             "rotulo": "Febre amarela",
             "itens": [
-              "IgM ELISA a partir do 7º dia",
-              "RT-PCR e isolamento, de preferência até o 10º dia"
+              "IgM ELISA a partir do 7º dia"
             ]
           }
         ],
         "itens": [
           {
-            "t": "Dengue e Zika são flavivírus: a reação cruzada pode dar resultado inconclusivo",
+            "t": "Dengue e Zika cruzam: resultado inconclusivo",
             "tom": "atencao"
-          },
-          "Sem exame, o caso pode ser confirmado por vínculo clínico-epidemiológico"
+          }
         ]
       },
       "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "RT-PCR e isolamento, de preferência até o 10º dia",
+            "Sem exame, o caso pode ser confirmado por vínculo clínico-epidemiológico",
+            {
+              "t": "Dengue e Zika são flavivírus: a reação cruzada pode dar resultado inconclusivo",
+              "tom": "atencao"
+            },
+            "A partir do 6º dia: sorologia IgM ELISA"
+          ]
+        },
         {
           "titulo": "Dengue",
           "itens": [
@@ -428,39 +468,44 @@
           {
             "rotulo": "Fases",
             "itens": [
-              "Aguda: até 14 dias",
-              "Pós-aguda: 15 a 90 dias",
-              "Crônica: após 3 meses"
-            ]
-          },
-          {
-            "rotulo": "Aguda",
-            "itens": [
-              "Febre súbita e poliartralgia intensa",
-              {
-                "t": "Analgésicos em doses fixas; AINEs não recomendados",
-                "tom": "alerta"
-              }
+              "Aguda até 14 d: febre e poliartralgia",
+              "Pós-aguda 15-90 d; crônica após 3 m"
             ]
           },
           {
             "rotulo": "Pós-aguda",
             "itens": [
-              "Dor não inflamatória: AINE, reavaliar após 10 dias",
-              "Artrite/tenossinovite: corticoide após 14 dias",
-              "Dor neuropática (DN4 com 4 ou mais): tricíclico ou anticonvulsivante"
+              "Dor não inflamatória: AINE",
+              "Reavaliar após 10 dias"
             ]
           },
           {
             "rotulo": "Crônica",
             "itens": [
               "Preferencialmente hidroxicloroquina",
-              "Na falha: metotrexato; depois, reumatologista"
+              "Na falha: metotrexato"
             ]
           }
         ]
       },
       "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Analgésicos em doses fixas; AINEs não recomendados",
+              "tom": "alerta"
+            },
+            "Artrite/tenossinovite: corticoide após 14 dias",
+            "Dor neuropática (DN4 com 4 ou mais): tricíclico ou anticonvulsivante",
+            "Na falha: metotrexato; depois, reumatologista",
+            "Aguda: até 14 dias",
+            "Pós-aguda: 15 a 90 dias",
+            "Crônica: após 3 meses",
+            "Febre súbita e poliartralgia intensa",
+            "Dor não inflamatória: AINE, reavaliar após 10 dias"
+          ]
+        },
         {
           "titulo": "Quadro e suspeita",
           "itens": [
@@ -537,25 +582,34 @@
           {
             "rotulo": "Zika",
             "itens": [
-              "Exantema maculopapular pruriginoso + febre (pode ser baixa), conjuntivite ou artralgia",
-              "Gestantes: confirmação específica por método direto, prioridade de investigação (100%)"
+              "Exantema pruriginoso + febre/artralgia",
+              "Gestante: confirmar por método direto"
             ]
           },
           {
             "rotulo": "Febre amarela",
             "itens": [
-              "Não vacinado, febre súbita com icterícia e/ou hemorragia, exposição em 15 dias a área de risco",
-              "Forma grave bifásica; sinal de Faget (pulso lento com febre)",
-              "Notificação compulsória e imediata"
+              "Febre súbita, icterícia e/ou hemorragia",
+              "Não vacinado; exposição em até 15 dias"
             ]
           }
         ],
         "itens": [
-          "Vacina: pelo menos 10 dias antes de entrar em área de risco",
-          "Febre amarela entra no diferencial das síndromes hemorrágicas febris"
+          "FA: grave bifásica; sinal de Faget (pulso lento)",
+          "FA: notificação compulsória e imediata",
+          "Vacina: ao menos 10 dias antes da área de risco"
         ]
       },
       "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Febre amarela entra no diferencial das síndromes hemorrágicas febris",
+            "Exantema maculopapular pruriginoso + febre (pode ser baixa), conjuntivite ou artralgia",
+            "Gestantes: confirmação específica por método direto, prioridade de investigação (100%)",
+            "Não vacinado, febre súbita com icterícia e/ou hemorragia, exposição em 15 dias a área de risco"
+          ]
+        },
         {
           "titulo": "Zika: confirmação clínico-epidemiológica",
           "itens": [
@@ -604,16 +658,15 @@
       "icone": "escudo",
       "revisao": {
         "itens": [
-          "Dengue, chikungunya e Zika: notificação compulsória (suspeito ou confirmado)",
+          "Notificação compulsória: dengue, chik., Zika",
           {
-            "t": "Óbito suspeito: notificação imediata, em até 24 horas",
+            "t": "Óbito suspeito: notificar em até 24 h",
             "tom": "atencao"
           },
-          "Com os primeiros casos: visitas domiciliares, controle focal, eliminação de criadouros",
-          "Vacina dengue do calendário: 10 anos a 14 anos, 11 meses e 29 dias; 2 doses, intervalo de 3 meses",
-          "Via exclusivamente subcutânea; aguardar 6 meses após ter dengue",
+          "Primeiros casos: controle focal e criadouros",
+          "Vacina do calendário: 10 a <15 anos, 2 doses",
           {
-            "t": "Vacina do Instituto Butantan: estratégia descontinuada no SUS por precaução",
+            "t": "Butantan: descontinuada no SUS por precaução",
             "tom": "alerta"
           }
         ]
@@ -643,6 +696,23 @@
             "Por precaução, o Ministério da Saúde orientou descontinuar a estratégia com essa vacina no SUS e recolher todas as doses disponíveis.",
             "Quem foi vacinado e, de 0 a 21 dias depois, tem quadro compatível com dengue é caso em monitoramento prioritário.",
             "Conferir sempre a norma federal vigente."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Dengue, chikungunya e Zika: notificação compulsória (suspeito ou confirmado)",
+            {
+              "t": "Óbito suspeito: notificação imediata, em até 24 horas",
+              "tom": "atencao"
+            },
+            "Com os primeiros casos: visitas domiciliares, controle focal, eliminação de criadouros",
+            "Vacina dengue do calendário: 10 anos a 14 anos, 11 meses e 29 dias; 2 doses, intervalo de 3 meses",
+            "Via exclusivamente subcutânea; aguardar 6 meses após ter dengue",
+            {
+              "t": "Vacina do Instituto Butantan: estratégia descontinuada no SUS por precaução",
+              "tom": "alerta"
+            }
           ]
         }
       ],
@@ -681,27 +751,23 @@
       "revisao": {
         "itens": [
           {
-            "t": "Achar que a queda da febre é melhora e liberar sem retorno marcado",
+            "t": "Liberar na queda da febre sem retorno marcado",
             "tom": "alerta"
           },
           {
-            "t": "Deixar no grupo B quem tem um sinal de alarme (um só já é grupo C)",
+            "t": "Grupo B com sinal de alarme (um só já é C)",
             "tom": "alerta"
           },
           {
-            "t": "Esperar hemograma, NS1 ou vaga para começar o soro nos grupos C e D",
+            "t": "Esperar exames para iniciar soro em C e D",
             "tom": "alerta"
           },
           {
-            "t": "Prescrever salicilatos, AINEs ou corticosteroides na suspeita de dengue",
+            "t": "Salicilato, AINE ou corticoide na suspeita",
             "tom": "alerta"
           },
           {
-            "t": "Sorologia antes do 6º dia ou detecção viral depois do 5º",
-            "tom": "alerta"
-          },
-          {
-            "t": "Transfundir plaquetas só porque estão baixas; AINE na chikungunya aguda",
+            "t": "Plaquetas só por estar baixa; AINE na chik aguda",
             "tom": "alerta"
           }
         ]
@@ -721,6 +787,35 @@
             "Prova do laço: segue na pesquisa de sangramento induzido, mas com baixo valor de predição para formas graves.",
             "Chikungunya: manejo atualizado a partir de 2023; edição vigente é a 2ª revisada, de 2025. A classificação separa manifestações articulares e extra-articulares; o que era chamado de complicação 'atípica' agora é manifestação extra-articular e grave.",
             "Vacina dengue do calendário e situação da vacina do Instituto Butantan: ver o ramo de vigilância."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Achar que a queda da febre é melhora e liberar sem retorno marcado",
+              "tom": "alerta"
+            },
+            {
+              "t": "Deixar no grupo B quem tem um sinal de alarme (um só já é grupo C)",
+              "tom": "alerta"
+            },
+            {
+              "t": "Esperar hemograma, NS1 ou vaga para começar o soro nos grupos C e D",
+              "tom": "alerta"
+            },
+            {
+              "t": "Prescrever salicilatos, AINEs ou corticosteroides na suspeita de dengue",
+              "tom": "alerta"
+            },
+            {
+              "t": "Sorologia antes do 6º dia ou detecção viral depois do 5º",
+              "tom": "alerta"
+            },
+            {
+              "t": "Transfundir plaquetas só porque estão baixas; AINE na chikungunya aguda",
+              "tom": "alerta"
+            }
           ]
         }
       ],
@@ -754,19 +849,17 @@
     }
   ],
   "pontos_chave": [
-    "Os sinais de alarme surgem na queda da febre: não liberar sem retorno marcado",
-    "Estadiamento: choque, sangramento grave ou comprometimento grave de órgãos (D); sinal de alarme (C); sangramento de pele ou condição especial (B); nada disso (A)",
+    "Sinais de alarme surgem na queda da febre: marcar retorno",
+    "Estadiamento: D grave, C alarme, B pele/condição, A nenhum",
     "Grupos C e D: soro fisiológico imediato, mesmo sem exames",
     "Dengue: até o 5º dia detecção viral; a partir do 6º, IgM",
-    "Nada de salicilatos, AINEs ou corticosteroides na suspeita de dengue",
-    "Chikungunya crônica: preferencialmente hidroxicloroquina; metotrexato na falha",
-    "Dengue, chikungunya e Zika são de notificação compulsória; óbito suspeito em até 24 horas"
+    "Sem salicilato, AINE ou corticoide na suspeita de dengue",
+    "Chik. crônica: preferir hidroxicloroquina; falha: metotrexato"
   ],
   "atencao": [
     "Um único sinal de alarme já é grupo C",
-    "Plaquetas só em sangramento persistente não controlado, após corrigir coagulação e choque",
+    "Plaquetas só em sangramento persistente não controlado, após corrigir o choque",
     "Dengue e Zika cruzam na sorologia: testar em paralelo",
-    "Idoso tem risco de sobrecarga de fluidos: vigiar edema pulmonar",
-    "Conferir a norma federal vigente sobre a vacina dengue do Instituto Butantan"
+    "Idoso: risco de sobrecarga de fluidos; vigiar edema pulmonar"
   ]
 }

@@ -16,7 +16,8 @@
       "Fonte oficial e data do documento que embasa a resposta imunológica atual não constam nas afirmações: omitidas.",
       "Seguimento da gestante: a aula traz apenas teste não treponêmico mensal; critérios adicionais não constam e foram omitidos.",
       "Conferência 15/10: cancro duro recebeu de volta a ressalva da aula 'geralmente' única e indolor (SF03); antes parecia regra absoluta.",
-      "Conferência 15/10: título 'Em quem foi tratado' trocado por 'Quem teve parceria com sífilis e não foi tratado', porque contradizia o item (SF113 fala de quem não foi tratado)."
+      "Conferência 15/10: título 'Em quem foi tratado' trocado por 'Quem teve parceria com sífilis e não foi tratado', porque contradizia o item (SF113 fala de quem não foi tratado).",
+      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)"
     ]
   },
   "ramos": [
@@ -36,33 +37,36 @@
           {
             "rotulo": "Tardia (mais de 1 ano)",
             "itens": [
-              "Latente tardia, terciária e latente de duração ignorada"
+              "Latente tardia, terciária, dur. ignorada"
             ]
           },
           {
-            "rotulo": "Primária",
+            "rotulo": "Primária e secundária",
             "itens": [
-              "Cancro duro: úlcera geralmente única e indolor, base endurecida, fundo limpo",
-              "Linfadenopatia regional; some sem tratamento"
-            ]
-          },
-          {
-            "rotulo": "Secundária",
-            "itens": [
-              "Roséola; lesões em palmas e plantas com colarinho de escamação",
-              "Condilomas planos; micropoliadenopatia epitroclear"
+              "Cancro duro, geralmente único e indolor",
+              "Secundária: roséola; palmas e plantas"
             ]
           }
         ],
         "itens": [
           {
-            "t": "Os sintomas somem sozinhos, com falsa impressão de cura",
+            "t": "Sintomas somem sozinhos: falsa impressão de cura",
             "tom": "alerta"
-          },
-          "Latente: sem sinais; diagnóstico só pelos testes"
+          }
         ]
       },
       "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Condilomas planos; micropoliadenopatia epitroclear",
+            "Latente: sem sinais; diagnóstico só pelos testes",
+            "Latente tardia, terciária e latente de duração ignorada",
+            "Cancro duro: úlcera geralmente única e indolor, base endurecida, fundo limpo",
+            "Linfadenopatia regional; some sem tratamento",
+            "Roséola; lesões em palmas e plantas com colarinho de escamação"
+          ]
+        },
         {
           "titulo": "Primária",
           "itens": [
@@ -144,8 +148,7 @@
           {
             "rotulo": "Treponêmicos",
             "itens": [
-              "Teste rápido, FTA-Abs, TPHA, ELISA",
-              "Primeiros a positivar; 85% ficam reagentes a vida toda",
+              "Rápido, FTA-Abs, TPHA, ELISA",
               {
                 "t": "Não servem para monitorar o tratamento",
                 "tom": "alerta"
@@ -156,31 +159,48 @@
             "rotulo": "Não treponêmicos",
             "itens": [
               "VDRL, RPR, USR; resultado em títulos",
-              "Servem ao diagnóstico e ao controle de cura"
+              "Diagnóstico e controle de cura"
             ]
           }
         ],
         "itens": [
-          "Diagnóstico = um treponêmico + um não treponêmico reagentes",
-          {
-            "t": "Não ler o título isolado nem usar ponto de corte",
-            "tom": "atencao"
-          }
+          "Diagnóstico: treponêmico + não treponêmico"
         ],
         "fluxo": [
           {
-            "t": "Teste rápido reagente (leitura em até 30 min)",
+            "t": "Rápido reagente: pedir não treponêmico",
             "tom": "diag"
           },
-          "Laboratório faz o teste não treponêmico",
           {
-            "t": "Não treponêmico não reagente: 3º teste treponêmico de outra metodologia",
+            "t": "Não reagente: 3º treponêmico, outro método",
             "tom": "atencao"
           },
-          "Reagente: sífilis ou cicatriz sorológica; não reagente: falso-reagente"
+          "Reagente: sífilis ou cicatriz sorológica"
         ]
       },
       "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Não ler o título isolado nem usar ponto de corte",
+              "tom": "atencao"
+            },
+            "Diagnóstico = um treponêmico + um não treponêmico reagentes",
+            "Primeiros a positivar; 85% ficam reagentes a vida toda",
+            "Servem ao diagnóstico e ao controle de cura",
+            {
+              "t": "Teste rápido reagente (leitura em até 30 min)",
+              "tom": "diag"
+            },
+            "Laboratório faz o teste não treponêmico",
+            {
+              "t": "Não treponêmico não reagente: 3º teste treponêmico de outra metodologia",
+              "tom": "atencao"
+            },
+            "Reagente: sífilis ou cicatriz sorológica; não reagente: falso-reagente"
+          ]
+        },
         {
           "titulo": "Detalhes dos testes",
           "itens": [
@@ -248,25 +268,29 @@
           {
             "rotulo": "Sífilis recente",
             "chip": "1 dose",
-            "texto": "Benzilpenicilina benzatina 2,4 milhões UI, IM, dose única"
+            "texto": "Benzatina 2,4 milhões UI, IM, dose única"
           },
           {
             "rotulo": "Sífilis tardia",
             "chip": "3 doses",
-            "texto": "2,4 milhões UI, IM, semanal, por 3 semanas (total 7,2 milhões UI)"
+            "texto": "2,4 milhões UI, IM, 1x/semana, 3 semanas"
           }
         ],
         "itens": [
           {
-            "t": "Um teste reagente já indica tratar na hora em gestante, violência sexual ou sem diagnóstico prévio",
+            "t": "Sem diagnóstico prévio: tratar já se reagente",
             "tom": "conduta"
           },
-          "Intervalo de 1 semana; não gestante com mais de 14 dias entre doses: reiniciar",
           {
-            "t": "Gestante: só benzilpenicilina benzatina; doxiciclina contraindicada",
+            "t": "Vale também para gestante e violência sexual",
+            "tom": "conduta"
+          },
+          {
+            "t": "Gestante: só penicilina; sem doxiciclina",
             "tom": "alerta"
           },
-          "Via exclusivamente intramuscular, de preferência ventro-glútea"
+          "Não gestante: >14 dias entre doses, reiniciar",
+          "Só via IM, de preferência ventro-glútea"
         ]
       },
       "aprofundado": [
@@ -309,6 +333,23 @@
             "VDRL reagente no líquor: tratar como neurossífilis, mesmo sem sinais.",
             "Benzilpenicilina potássica/cristalina 3 a 4 milhões UI IV de 4/4h ou infusão contínua (18 a 24 milhões UI por dia) por 14 dias; alternativa: ceftriaxona 2 g IV, 1 vez ao dia, por 10 a 14 dias.",
             "Pode ocorrer já nas fases iniciais."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Um teste reagente já indica tratar na hora em gestante, violência sexual ou sem diagnóstico prévio",
+              "tom": "conduta"
+            },
+            "Intervalo de 1 semana; não gestante com mais de 14 dias entre doses: reiniciar",
+            {
+              "t": "Gestante: só benzilpenicilina benzatina; doxiciclina contraindicada",
+              "tom": "alerta"
+            },
+            "Via exclusivamente intramuscular, de preferência ventro-glútea",
+            "Benzilpenicilina benzatina 2,4 milhões UI, IM, dose única",
+            "2,4 milhões UI, IM, semanal, por 3 semanas (total 7,2 milhões UI)"
           ]
         }
       ],
@@ -356,13 +397,12 @@
         "itens": [
           "Sempre pelo menos duas pessoas infectadas",
           {
-            "t": "Exposição nos 90 dias anteriores: dose única presuntiva de 2,4 milhões UI, IM",
+            "t": "Exposta nos 90 dias: dose única presuntiva",
             "tom": "conduta"
           },
-          "Vale independentemente do estágio e mesmo com teste não reagente",
-          "Todas as parcerias são testadas; reagente: tratar conforme o estágio",
-          "Teste da parceria não reagente: repetir após 30 dias",
-          "Infecção anterior não protege contra nova sífilis"
+          "Vale em qualquer estágio, mesmo não reagente",
+          "Testar todas; reagente: tratar pelo estágio",
+          "Não reagente: repetir após 30 dias"
         ]
       },
       "aprofundado": [
@@ -377,6 +417,19 @@
           "titulo": "Quem teve parceria com sífilis e não foi tratado",
           "itens": [
             "Quem não foi tratado e teve parceria com diagnóstico de sífilis, com teste não reagente: tratamento para sífilis recente e novo teste após 30 dias."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Exposição nos 90 dias anteriores: dose única presuntiva de 2,4 milhões UI, IM",
+              "tom": "conduta"
+            },
+            "Vale independentemente do estágio e mesmo com teste não reagente",
+            "Todas as parcerias são testadas; reagente: tratar conforme o estágio",
+            "Teste da parceria não reagente: repetir após 30 dias",
+            "Infecção anterior não protege contra nova sífilis"
           ]
         }
       ],
@@ -397,25 +450,25 @@
       "icone": "calendario",
       "revisao": {
         "itens": [
-          "Não treponêmico aos 3, 6, 9 e 12 meses (gestante: mensal)",
+          "Controle: 3, 6, 9 e 12 meses; gestante mensal",
           "Mesmo método do diagnóstico (VDRL com VDRL)",
-          "Resposta adequada: não reagente, ou queda de 2 diluições em até 6 meses (recente) ou 12 meses (tardia)",
+          "Resposta: não reagente ou queda de 2 diluições",
+          "Prazo: 6 meses (recente) ou 12 (tardia)",
           {
-            "t": "Cicatriz sorológica: queda prévia de 2 diluições, sem nova exposição; não é falha",
+            "t": "Cicatriz sorológica: não é falha",
             "tom": "atencao"
-          },
-          "Tratada com sucesso: dispensa de coletas após 1 ano"
+          }
         ],
         "fluxo": [
           {
-            "t": "Sem queda de 2 diluições, aumento de 2 ou mais, ou sintomas persistentes",
+            "t": "Sem queda, aumento ≥2 diluições, sintomas",
             "tom": "alerta"
           },
           {
             "t": "Retratar a pessoa e as parcerias",
             "tom": "conduta"
           },
-          "Punção lombar na falha sem exposição que justifique reinfecção; no HIV, em todo retratamento"
+          "Punção: falha sem reexposição; HIV sempre"
         ]
       },
       "aprofundado": [
@@ -451,6 +504,23 @@
             "Oferecer testagem para HIV, sífilis e hepatites B e C e teste molecular para clamídia e gonococo; orientar a concluir o tratamento mesmo sem sintomas.",
             "Nova IST é fator de risco para outras: considerar rastreamento conforme a história sexual nos curados."
           ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Não treponêmico aos 3, 6, 9 e 12 meses (gestante: mensal)",
+            "Resposta adequada: não reagente, ou queda de 2 diluições em até 6 meses (recente) ou 12 meses (tardia)",
+            {
+              "t": "Cicatriz sorológica: queda prévia de 2 diluições, sem nova exposição; não é falha",
+              "tom": "atencao"
+            },
+            "Tratada com sucesso: dispensa de coletas após 1 ano",
+            {
+              "t": "Sem queda de 2 diluições, aumento de 2 ou mais, ou sintomas persistentes",
+              "tom": "alerta"
+            },
+            "Punção lombar na falha sem exposição que justifique reinfecção; no HIV, em todo retratamento"
+          ]
         }
       ],
       "claims": [
@@ -484,27 +554,23 @@
       "revisao": {
         "itens": [
           {
-            "t": "Esperar o VDRL para tratar quem tem teste rápido reagente e úlcera ou sem diagnóstico prévio",
+            "t": "Esperar o VDRL com rápido reagente e úlcera",
             "tom": "alerta"
           },
           {
-            "t": "Encerrar o caso no teste rápido reagente, sem pedir o não treponêmico",
+            "t": "Encerrar no rápido reagente, sem não treponêmico",
             "tom": "alerta"
           },
           {
-            "t": "Usar teste treponêmico para controle de cura",
+            "t": "Recente em assintomático sem data: é tardia",
             "tom": "alerta"
           },
           {
-            "t": "Tratar como recente o assintomático sem tratamento prévio e sem data de infecção (é tardia: 3 doses)",
+            "t": "Chamar de alergia a dor de injeção antiga",
             "tom": "alerta"
           },
           {
-            "t": "Chamar de alergia a dor no local de injeção antiga",
-            "tom": "alerta"
-          },
-          {
-            "t": "Retratar só porque o VDRL não negativou; esquecer a parceria",
+            "t": "Retratar só por VDRL não negativo; sem parceria",
             "tom": "alerta"
           }
         ]
@@ -523,6 +589,31 @@
           "itens": [
             "A parceria exposta nos 90 dias anteriores recebe dose única presuntiva mesmo com teste não reagente.",
             "Latente com duração ignorada é sífilis tardia, com três doses semanais."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Esperar o VDRL para tratar quem tem teste rápido reagente e úlcera ou sem diagnóstico prévio",
+              "tom": "alerta"
+            },
+            {
+              "t": "Encerrar o caso no teste rápido reagente, sem pedir o não treponêmico",
+              "tom": "alerta"
+            },
+            {
+              "t": "Usar teste treponêmico para controle de cura",
+              "tom": "alerta"
+            },
+            {
+              "t": "Tratar como recente o assintomático sem tratamento prévio e sem data de infecção (é tardia: 3 doses)",
+              "tom": "alerta"
+            },
+            {
+              "t": "Retratar só porque o VDRL não negativou; esquecer a parceria",
+              "tom": "alerta"
+            }
           ]
         }
       ],
@@ -548,18 +639,17 @@
     }
   ],
   "pontos_chave": [
-    "Sífilis recente (até 1 ano): dose única de benzilpenicilina benzatina 2,4 milhões UI, IM",
-    "Sífilis tardia ou duração ignorada: 3 doses semanais",
-    "Teste rápido reagente com sinais de primária/secundária ou sem diagnóstico prévio: tratar na hora",
-    "Controle de cura com não treponêmico aos 3, 6, 9 e 12 meses, pelo mesmo método",
+    "Recente (até 1 ano): benzatina 2,4 milhões UI, IM, dose única",
+    "Tardia ou duração ignorada: 3 doses semanais",
+    "Rápido reagente com sinais ou sem diagnóstico prévio: tratar",
+    "Controle de cura: não treponêmico aos 3, 6, 9 e 12 meses",
     "Parceria exposta nos 90 dias: dose única presuntiva",
     "Gestante: só a penicilina benzatina é segura e eficaz"
   ],
   "atencao": [
-    "Treponêmico não serve para monitorar: fica reagente por toda a vida em 85% dos casos",
+    "Treponêmico não serve para monitorar: fica reagente na vida toda em 85% dos casos",
     "Dor no local de injeção antiga não é alergia à penicilina",
     "Cicatriz sorológica não é falha terapêutica e não é notificada",
-    "Doxiciclina é contraindicada na gestação e na amamentação",
-    "Sintomas que somem sozinhos não significam cura"
+    "Doxiciclina é contraindicada na gestação e na amamentação"
   ]
 }

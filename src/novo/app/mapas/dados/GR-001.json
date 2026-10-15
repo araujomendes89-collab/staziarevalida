@@ -12,7 +12,8 @@
     "gerado_em": "2026-10-15",
     "aprovacao_humana": null,
     "pendencias": [
-      "Data de incorporacao do BPaLM citada pelo dono (06/10/2026) NAO verificada: a aula traz apenas o documento de 24/08/2026; data omitida do mapa."
+      "Data de incorporacao do BPaLM citada pelo dono (06/10/2026) NAO verificada: a aula traz apenas o documento de 24/08/2026; data omitida do mapa.",
+      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)"
     ]
   },
   "ramos": [
@@ -23,13 +24,13 @@
       "icone": "estetoscopio",
       "revisao": {
         "itens": [
-          "Tosse por 3 semanas ou mais: investigar TB",
-          "Febre vespertina, sudorese noturna, emagrecimento, cansaço",
+          "Tosse há 3 semanas ou mais: investigar TB",
+          "Febre vespertina, sudorese, emagrecimento",
           {
-            "t": "Privados de liberdade, profissionais de saúde, HIV, situação de rua, indígenas: tosse de qualquer duração",
+            "t": "Grupos de risco: tosse de qualquer duração",
             "tom": "atencao"
           },
-          "Contato com caso de TB reforça a hipótese"
+          "Contato com caso de TB reforça a suspeita"
         ]
       },
       "aprofundado": [
@@ -55,6 +56,16 @@
             },
             "Ela evita as formas mais graves (miliar e meníngea) em menores de 5 anos."
           ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Febre vespertina, sudorese noturna, emagrecimento, cansaço",
+            {
+              "t": "Privados de liberdade, profissionais de saúde, HIV, situação de rua, indígenas: tosse de qualquer duração",
+              "tom": "atencao"
+            }
+          ]
         }
       ],
       "claims": [
@@ -73,9 +84,9 @@
       "revisao": {
         "itens": [
           "A forma pulmonar é a que transmite",
-          "Com tratamento adequado, a transmissão cai",
-          "Em geral, após 15 dias de tratamento está muito reduzida",
-          "BCG não protege contra a forma pulmonar"
+          "Tratamento adequado reduz a transmissão",
+          "Em geral, após 15 dias, muito reduzida",
+          "BCG não protege da forma pulmonar"
         ]
       },
       "aprofundado": [
@@ -85,6 +96,13 @@
             "A transmissão está associada à forma pulmonar.",
             "Com o tratamento adequado a transmissão diminui e, em geral, após 15 dias já está muito reduzida.",
             "A BCG evita as formas graves (miliar e meníngea) em menores de 5 anos, mas não a pulmonar."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Com tratamento adequado, a transmissão cai",
+            "Em geral, após 15 dias de tratamento está muito reduzida"
           ]
         }
       ],
@@ -104,7 +122,7 @@
           {
             "rotulo": "Imagem",
             "itens": [
-              "Radiografia de tórax em toda suspeita",
+              "Radiografia de tórax na suspeita",
               {
                 "t": "Nenhuma imagem é patognomônica",
                 "tom": "atencao"
@@ -114,15 +132,15 @@
           {
             "rotulo": "Caso novo",
             "itens": [
-              "TRM-TB: exame de escolha (detecta o bacilo e triagem de resistência à rifampicina)",
-              "Sem TRM-TB: baciloscopia de 2 amostras e cultura"
+              "TRM-TB: exame de escolha",
+              "Sem TRM-TB: baciloscopia + cultura"
             ]
           },
           {
             "rotulo": "Cultura com TS",
             "itens": [
-              "Sempre: HIV, criança e suspeita extrapulmonar",
-              "Demais: se TRM-TB positivo ou quadro persistente"
+              "Sempre: HIV, criança, extrapulmonar",
+              "Demais: TRM-TB positivo/persistência"
             ]
           }
         ],
@@ -132,11 +150,11 @@
             "tom": "diag"
           },
           {
-            "t": "MTB detectado, rifampicina sensível: esquema básico",
+            "t": "MTB detectado, sensível: esquema básico",
             "tom": "conduta"
           },
           {
-            "t": "Resistência à rifampicina: referência terciária já",
+            "t": "Resistência à rifampicina: terciária já",
             "tom": "alerta"
           }
         ]
@@ -179,6 +197,14 @@
               "t": "Oferecer teste de HIV a toda pessoa com TB.",
               "tom": "conduta"
             }
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "TRM-TB: exame de escolha (detecta o bacilo e triagem de resistência à rifampicina)",
+            "Sem TRM-TB: baciloscopia de 2 amostras e cultura",
+            "Demais: se TRM-TB positivo ou quadro persistente"
           ]
         }
       ],
@@ -224,10 +250,10 @@
           }
         ],
         "itens": [
-          "Adultos e adolescentes (10 anos ou mais): 2RHZE/4RH",
+          "10 anos ou mais: 2RHZE/4RH",
           "Atenção Primária, com TDO para todos",
-          "Gestante: doses habituais + piridoxina 50 mg/dia",
-          "Esquemas especiais (efeitos adversos, comorbidades): referência"
+          "Gestante: doses habituais + piridoxina",
+          "Esquemas especiais: referência"
         ]
       },
       "aprofundado": [
@@ -244,6 +270,13 @@
           "itens": [
             "Efeitos adversos maiores ou comorbidades (incluindo HIV, hepatopatias e insuficiência renal): referência secundária ou terciária.",
             "Coinfecção TB-HIV: acompanhamento clínico no SAE, com TDO compartilhado com a Atenção Primária."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Adultos e adolescentes (10 anos ou mais): 2RHZE/4RH",
+            "Esquemas especiais (efeitos adversos, comorbidades): referência"
           ]
         }
       ],
@@ -266,11 +299,11 @@
         "itens": [
           "Baciloscopia de controle mensal",
           {
-            "t": "TRM-TB não serve para acompanhar o tratamento",
+            "t": "TRM-TB não acompanha o tratamento",
             "tom": "alerta"
           },
-          "Cura: 2 baciloscopias negativas (uma em qualquer mês e outra ao final)",
-          "Falência: baciloscopia positiva ao final do tratamento"
+          "Cura: 2 baciloscopias negativas",
+          "Falência: baciloscopia positiva ao final"
         ],
         "fluxo": [
           {
@@ -315,6 +348,17 @@
               "tom": "atencao"
             }
           ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "TRM-TB não serve para acompanhar o tratamento",
+              "tom": "alerta"
+            },
+            "Cura: 2 baciloscopias negativas (uma em qualquer mês e outra ao final)",
+            "Falência: baciloscopia positiva ao final do tratamento"
+          ]
         }
       ],
       "claims": [
@@ -341,17 +385,16 @@
       "revisao": {
         "linhas": [
           {
-            "rotulo": "Contato com sintomas",
+            "rotulo": "Com sintomas",
             "itens": [
-              "Exame de escarro e radiografia de tórax"
+              "Escarro e radiografia de tórax"
             ]
           },
           {
             "rotulo": "Contato sem sintomas",
             "itens": [
               "PT e/ou radiografia de tórax",
-              "PT 5 mm ou mais: tratar ILTB (mesmo com BCG prévia)",
-              "PT abaixo do corte: repetir em 8 semanas"
+              "PT 5 mm ou mais: tratar ILTB"
             ]
           },
           {
@@ -361,16 +404,25 @@
                 "t": "Antes: afastar TB ativa",
                 "tom": "alerta"
               },
-              "Preferencial 3HP (rifapentina + isoniazida, 12 doses semanais)",
-              "Há alternativas: isoniazida ou rifampicina"
+              "Preferencial: 3HP"
             ]
           }
         ],
         "itens": [
-          "Oferecer teste de HIV a todos os contatos"
+          "Oferecer teste de HIV a todos os contatos",
+          "ILTB: 3HP tem alternativas e restrições"
         ]
       },
       "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Preferencial 3HP (rifapentina + isoniazida, 12 doses semanais)",
+            "Há alternativas: isoniazida ou rifampicina",
+            "PT 5 mm ou mais: tratar ILTB (mesmo com BCG prévia)",
+            "PT abaixo do corte: repetir em 8 semanas"
+          ]
+        },
         {
           "titulo": "Avaliação",
           "itens": [
@@ -430,10 +482,14 @@
       "icone": "bebe",
       "revisao": {
         "itens": [
-          "Recém-nascido de caso confirmado: sem BCG ao nascer; isoniazida (ou rifampicina) por 3 meses e depois PT",
-          "PT do recém-nascido de 5 mm ou mais: manter o tratamento e não vacinar; abaixo de 5 mm: suspender e dar BCG",
-          "Crianças e adolescentes de 3 meses a 16 anos, TB sensível e não grave: esquema encurtado de 4 meses (2024)",
-          "BPaLM (2026): TB resistente à rifampicina, 6 meses, 14 anos ou mais; não usar em gestantes e lactantes"
+          "RN de caso confirmado: sem BCG ao nascer",
+          "Isoniazida (ou rifampicina) 3 meses, depois PT",
+          "TB sensível não grave, 3m-16a: esquema de 4m",
+          "BPaLM (2026): TB resistente à rifampicina, 6 m",
+          {
+            "t": "BPaLM: não usar em gestantes e lactantes",
+            "tom": "alerta"
+          }
         ]
       },
       "aprofundado": [
@@ -466,6 +522,15 @@
               "tom": "alerta"
             },
             "TB RR é a resistência à rifampicina vista só no TRM-TB; MDR exige resistência a pelo menos rifampicina e isoniazida."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Recém-nascido de caso confirmado: sem BCG ao nascer; isoniazida (ou rifampicina) por 3 meses e depois PT",
+            "PT do recém-nascido de 5 mm ou mais: manter o tratamento e não vacinar; abaixo de 5 mm: suspender e dar BCG",
+            "Crianças e adolescentes de 3 meses a 16 anos, TB sensível e não grave: esquema encurtado de 4 meses (2024)",
+            "BPaLM (2026): TB resistente à rifampicina, 6 meses, 14 anos ou mais; não usar em gestantes e lactantes"
           ]
         }
       ],
@@ -500,11 +565,11 @@
       "revisao": {
         "itens": [
           {
-            "t": "Esperar 3 semanas de tosse em grupos onde qualquer duração já basta",
+            "t": "Esperar 3 semanas de tosse em grupos de risco",
             "tom": "alerta"
           },
           {
-            "t": "Excluir TB por TRM-TB negativo em HIV, criança menor de 10 anos ou suspeita extrapulmonar",
+            "t": "Excluir TB com TRM-TB negativo em HIV/criança",
             "tom": "alerta"
           },
           {
@@ -512,15 +577,11 @@
             "tom": "alerta"
           },
           {
-            "t": "Reter na UBS quem tem resistência à rifampicina detectada",
+            "t": "Reter na UBS quem tem resistência à rifampicina",
             "tom": "alerta"
           },
           {
-            "t": "Tratar ILTB sem afastar TB ativa; 3HP na gestante",
-            "tom": "alerta"
-          },
-          {
-            "t": "Esquecer o teste de HIV do paciente e dos contatos",
+            "t": "ILTB sem afastar TB ativa; 3HP na gestante",
             "tom": "alerta"
           }
         ]
@@ -540,6 +601,23 @@
             "Confirmar TB só pela clínica sem ter oferecido os exames é falha do serviço.",
             "Dispensar contato assintomático sem avaliar PT e radiografia, ou esperar a PT em contato vivendo com HIV.",
             "Usar o TRM-TB sozinho para confirmar o retratamento."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Esperar 3 semanas de tosse em grupos onde qualquer duração já basta",
+              "tom": "alerta"
+            },
+            {
+              "t": "Excluir TB por TRM-TB negativo em HIV, criança menor de 10 anos ou suspeita extrapulmonar",
+              "tom": "alerta"
+            },
+            {
+              "t": "Esquecer o teste de HIV do paciente e dos contatos",
+              "tom": "alerta"
+            }
           ]
         }
       ],
@@ -563,19 +641,17 @@
     }
   ],
   "pontos_chave": [
-    "Tosse por 3 semanas ou mais: investigar TB com exame de escarro",
+    "Tosse por 3 semanas ou mais: investigar TB com escarro",
     "Caso novo: TRM-TB primeiro; cultura com TS conforme o cenário",
-    "TRM-TB negativo com quadro persistente: cultura e TS, a investigação continua",
-    "Esquema básico (10 anos ou mais): 2RHZE/4RH, na Atenção Primária, com TDO",
-    "Controle por baciloscopia mensal",
-    "Contato assintomático: PT e/ou radiografia; ILTB só depois de afastar TB ativa",
-    "Notifica-se apenas o caso confirmado; oferecer teste de HIV"
+    "TRM-TB negativo com quadro persistente: cultura e TS",
+    "Esquema básico (10 anos ou mais): 2RHZE/4RH, com TDO",
+    "Contato assintomático: PT e/ou radiografia de tórax",
+    "Notifica só o caso confirmado; oferecer teste de HIV"
   ],
   "atencao": [
-    "ILTB não é TB ativa: antes de tratar, afastar sinais sugestivos de TB ativa",
+    "ILTB não é TB ativa: antes de tratar, afastar sinais de TB ativa",
     "PT e IGRA indicam infecção latente: não diagnosticam doença ativa",
-    "O esquema preferencial da ILTB é o 3HP, mas há alternativas (isoniazida, rifampicina) e restrições",
-    "Resistência à rifampicina detectada: referência terciária imediatamente",
-    "Notificação: só o caso confirmado"
+    "ILTB: 3HP é o preferencial, mas há alternativas e restrições",
+    "Resistência à rifampicina detectada: referência terciária imediata"
   ]
 }

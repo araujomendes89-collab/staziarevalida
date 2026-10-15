@@ -17,182 +17,821 @@
       "Doses de anti-hipertensivos além do captopril 25 mg não constam na aula: omitidas.",
       "Conferência 15/10: 'hiperaldosteronismo' recebeu a ressalva da aula 'hipopotassemia não obrigatória' (HA36).",
       "Conferência 15/10: 'não baixar para menos de 120/70' restrito à faixa de 65 a 79 anos, como na aula (HA101); antes estava generalizado a todo idoso.",
-      "Conferência 15/10: definição de emergência das recomendações de 2025 reescrita para deixar claro que a lesão de órgão-alvo aguda e progressiva é exigida também com 180/110 (HS01)."
+      "Conferência 15/10: definição de emergência das recomendações de 2025 reescrita para deixar claro que a lesão de órgão-alvo aguda e progressiva é exigida também com 180/110 (HS01).",
+      "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)"
     ]
   },
   "ramos": [
     {
-      "id": "diagnostico", "titulo": "Rastreamento e diagnóstico", "cor": "azul", "icone": "estetoscopio",
+      "id": "diagnostico",
+      "titulo": "Rastreamento e diagnóstico",
+      "cor": "azul",
+      "icone": "estetoscopio",
       "revisao": {
         "linhas": [
-          { "rotulo": "Rastreamento", "itens": ["Todo adulto de 18 anos ou mais, anual, 2 medidas no consultório", "Abaixo de 130/85: prevenção primária e repetir em 1 ano", "130/85 a 139/89 (normal alta): consulta para outros fatores de risco", "140/90 ou mais: confirmação diagnóstica"] },
-          { "rotulo": "Confirmação", "itens": ["2 a 3 medidas, em intervalos de 1 dia a 4 semanas", "PA mantida em 140 ou mais (sistólica) ou 90 ou mais (diastólica)", "Suspeita de grau 1: 2 medições com intervalo de 7 a 14 dias"] }
+          {
+            "rotulo": "Rastreamento",
+            "itens": [
+              "18 anos ou mais: anual, 2 medidas",
+              "140/90 ou mais: confirmar diagnóstico"
+            ]
+          },
+          {
+            "rotulo": "Confirmação",
+            "itens": [
+              "2 a 3 medidas, 1 dia a 4 semanas"
+            ]
+          }
         ],
         "itens": [
-          { "t": "160/100 ou mais: consulta médica imediata", "tom": "atencao" },
-          { "t": "180/110 ou mais, ou doença cardiovascular/lesão de órgão-alvo: diagnóstico em 1 consulta", "tom": "atencao" }
+          {
+            "t": "160/100 ou mais: consulta médica imediata",
+            "tom": "atencao"
+          }
         ]
       },
       "aprofundado": [
-        { "titulo": "Como medir", "itens": ["Paciente sentado, pernas descruzadas, pés apoiados no chão e dorso recostado.", "Na primeira avaliação, medir nos dois braços e usar o braço com o valor maior."] },
-        { "titulo": "Classificação da PA de consultório (mmHg)", "itens": ["Ótima: abaixo de 120/80.", "Normal: 120-129 / 80-84.", "Normal alta: 130-139 / 85-89.", "Grau 1: 140-159 / 90-99.", "Grau 2: 160-179 / 100-109.", "Grau 3: 180/110 ou mais."] },
-        { "titulo": "Nomes que podem aparecer na prova", "itens": ["'Estágio' pode aparecer no lugar de 'grau', e 'pré-hipertensão' no lugar de PA normal e normal alta; a classificação é pelo maior valor de PAS ou PAD."] }
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "PA mantida em 140 ou mais (sistólica) ou 90 ou mais (diastólica)",
+            "Suspeita de grau 1: 2 medições com intervalo de 7 a 14 dias",
+            {
+              "t": "180/110 ou mais, ou doença cardiovascular/lesão de órgão-alvo: diagnóstico em 1 consulta",
+              "tom": "atencao"
+            },
+            "Todo adulto de 18 anos ou mais, anual, 2 medidas no consultório",
+            "Abaixo de 130/85: prevenção primária e repetir em 1 ano",
+            "130/85 a 139/89 (normal alta): consulta para outros fatores de risco",
+            "2 a 3 medidas, em intervalos de 1 dia a 4 semanas"
+          ]
+        },
+        {
+          "titulo": "Como medir",
+          "itens": [
+            "Paciente sentado, pernas descruzadas, pés apoiados no chão e dorso recostado.",
+            "Na primeira avaliação, medir nos dois braços e usar o braço com o valor maior."
+          ]
+        },
+        {
+          "titulo": "Classificação da PA de consultório (mmHg)",
+          "itens": [
+            "Ótima: abaixo de 120/80.",
+            "Normal: 120-129 / 80-84.",
+            "Normal alta: 130-139 / 85-89.",
+            "Grau 1: 140-159 / 90-99.",
+            "Grau 2: 160-179 / 100-109.",
+            "Grau 3: 180/110 ou mais."
+          ]
+        },
+        {
+          "titulo": "Nomes que podem aparecer na prova",
+          "itens": [
+            "'Estágio' pode aparecer no lugar de 'grau', e 'pré-hipertensão' no lugar de PA normal e normal alta; a classificação é pelo maior valor de PAS ou PAD."
+          ]
+        }
       ],
-      "claims": ["HA01", "HA02", "HA03", "HA04", "HA05", "HA06", "HA07", "HA08", "HA09", "HA10", "HA11", "HA12", "HA13", "HS08", "HS10"]
+      "claims": [
+        "HA01",
+        "HA02",
+        "HA03",
+        "HA04",
+        "HA05",
+        "HA06",
+        "HA07",
+        "HA08",
+        "HA09",
+        "HA10",
+        "HA11",
+        "HA12",
+        "HA13",
+        "HS08",
+        "HS10"
+      ]
     },
     {
-      "id": "fora", "titulo": "Fora do consultório", "cor": "ciano", "icone": "lupa",
-      "revisao": { "itens": [
-        "Avental branco: PA alta só no consultório, normal fora (cerca de 10% a 30%)",
-        "Mascarada: normal no consultório, alta fora",
-        { "t": "Mascarada não é benigna: risco semelhante ao da HAS sustentada", "tom": "alerta" },
-        "Confirmar com MAPA; sem MAPA, com MRPA",
-        "Cortes na MAPA: 24 h 130/80; vigília 135/85; sono 120/70",
-        "MRPA: média de 130/80 ou mais"
-      ] },
-      "aprofundado": [
-        { "titulo": "Quando pedir", "itens": ["Na suspeita de avental branco (em especial HAS grau 1 avaliada no consultório) ou de hipertensão mascarada.", "MRPA: média de medidas feitas em casa por 5 dias seguidos, 2 vezes ao dia (manhã e noite); incorporada ao SUS em 2023."] },
-        { "titulo": "Avental branco", "itens": ["Pode-se não prescrever remédio se o risco cardiovascular total for baixo e não houver lesão de órgão-alvo."] }
-      ],
-      "claims": ["HA14", "HA15", "HA16", "HA17", "HA18", "HA19", "HA21", "HA22", "HA23", "HB36", "HB37"]
-    },
-    {
-      "id": "avaliacao", "titulo": "Avaliação inicial e causa secundária", "cor": "roxo", "icone": "prancheta",
+      "id": "fora",
+      "titulo": "Fora do consultório",
+      "cor": "ciano",
+      "icone": "lupa",
       "revisao": {
-        "linhas": [
-          { "rotulo": "Exames", "itens": ["Sódio, potássio, ácido úrico, albuminúria, creatinina com TFGe, lipídios, glicemia de jejum", "Urina de vareta e eletrocardiograma de 12 derivações", "Fundo de olho, em especial no grau 3, no diabetes ou com lesão de órgão-alvo"] },
-          { "rotulo": "Lesão de órgão-alvo", "itens": ["Retinopatia hipertensiva", "Albuminúria de 30 a 300 mg em 24 h", "Doença cerebrovascular (AVE, AIT)"] },
-          { "rotulo": "Suspeitar de causa secundária", "itens": ["Diagnóstico antes dos 40 anos", "Lesão de órgão-alvo com diagnóstico antes dos 30 ou depois dos 50 anos", "Resistente, com hipopotassemia (não obrigatória) ou nódulo adrenal: hiperaldosteronismo primário", "Crises de palpitação, sudorese e cefaleia: feocromocitoma"] }
-        ],
         "itens": [
-          "Risco cardiovascular anual entre 40 e 74 anos (calculadora HEARTS)",
-          { "t": "Não conseguir calcular o risco não impede iniciar o tratamento", "tom": "conduta" }
+          "Avental branco: alta só no consultório",
+          "Mascarada: normal no consultório, alta fora",
+          {
+            "t": "Mascarada: risco semelhante à HAS sustentada",
+            "tom": "alerta"
+          },
+          "Confirmar com MAPA; sem MAPA, MRPA",
+          "MAPA 24 h 130/80; vigília 135/85; sono 120/70"
         ]
       },
       "aprofundado": [
-        { "titulo": "Outras pistas de causa secundária (5% a 10% dos casos, potencialmente reversível)", "itens": ["Sopro abdominal, edema agudo de pulmão ou piora inexplicada da função renal (inclusive com remédios que bloqueiam o sistema renina-angiotensina): estenose de artéria renal.", "Sistólica 10 mmHg maior nos braços que nas pernas, com sopro sistólico interescapular: coarctação de aorta."] },
-        { "titulo": "Creatinina no tratamento", "itens": ["Na doença renal crônica tratada com anti-hipertensivo, em especial IECA ou BRA, espera-se alguma queda da TFGe e alguma subida da creatinina.", { "t": "Subida de creatinina maior que 30% pede avaliar doença renovascular.", "tom": "atencao" }] },
-        { "titulo": "Conduta na suspeita", "itens": ["Encaminhar conforme a causa e os recursos para investigar."] },
-        { "titulo": "O eletrocardiograma detecta", "itens": ["Fibrilação atrial, hipertrofia ventricular esquerda e cardiopatia isquêmica."] }
+        {
+          "titulo": "Quando pedir",
+          "itens": [
+            "Na suspeita de avental branco (em especial HAS grau 1 avaliada no consultório) ou de hipertensão mascarada.",
+            "MRPA: média de medidas feitas em casa por 5 dias seguidos, 2 vezes ao dia (manhã e noite); incorporada ao SUS em 2023."
+          ]
+        },
+        {
+          "titulo": "Avental branco",
+          "itens": [
+            "Pode-se não prescrever remédio se o risco cardiovascular total for baixo e não houver lesão de órgão-alvo."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Avental branco: PA alta só no consultório, normal fora (cerca de 10% a 30%)",
+            {
+              "t": "Mascarada não é benigna: risco semelhante ao da HAS sustentada",
+              "tom": "alerta"
+            },
+            "MRPA: média de 130/80 ou mais"
+          ]
+        }
       ],
-      "claims": ["HA24", "HA25", "HA26", "HA27", "HA28", "HA29", "HA30", "HA31", "HA32", "HB40", "HA33", "HA34", "HA35", "HA36", "HA37", "HA38", "HA39", "HA100", "HA105", "HB27"]
+      "claims": [
+        "HA14",
+        "HA15",
+        "HA16",
+        "HA17",
+        "HA18",
+        "HA19",
+        "HA21",
+        "HA22",
+        "HA23",
+        "HB36",
+        "HB37"
+      ]
     },
     {
-      "id": "tratamento", "titulo": "Tratamento de longo prazo", "cor": "laranja", "icone": "pilula", "lado": "centro",
+      "id": "avaliacao",
+      "titulo": "Avaliação inicial e causa secundária",
+      "cor": "roxo",
+      "icone": "prancheta",
       "revisao": {
         "linhas": [
-          { "rotulo": "Quando e como começar", "itens": ["Grau 1 com risco baixo, ou idoso frágil: monoterapia + mudança no modo de vida", "Grau 1 com risco moderado/alto ou lesão de órgão-alvo, e graus 2 e 3: 2 fármacos de mecanismos diferentes", "Normal alta com risco alto ou muito alto: anti-hipertensivo e estatina", "Normal alta com risco baixo ou moderado: tratamento não medicamentoso"] },
-          { "rotulo": "Não medicamentoso", "itens": ["Sódio até 2 g/dia (5 g de sal)", "150 min/semana de atividade moderada", "Parar de fumar; não há nível seguro de álcool"] }
+          {
+            "rotulo": "Exames",
+            "itens": [
+              "Sangue, albuminúria e urina de vareta",
+              "ECG de 12 derivações; fundo de olho"
+            ]
+          },
+          {
+            "rotulo": "Lesão de órgão-alvo",
+            "itens": [
+              "Retinopatia hipertensiva"
+            ]
+          },
+          {
+            "rotulo": "Causa secundária?",
+            "itens": [
+              "Diagnóstico antes dos 40 anos"
+            ]
+          }
         ],
         "itens": [
-          "5 classes: IECA, BRA, bloqueador de canal de cálcio, diurético, betabloqueador",
-          "IECA ou BRA: proteinúria, diabetes, insuficiência cardíaca, doença renal",
-          { "t": "Betabloqueador só com indicação específica", "tom": "atencao" }
+          "Risco CV anual de 40 a 74 anos (HEARTS)"
         ]
       },
       "aprofundado": [
-        { "titulo": "Escolha da classe", "itens": ["População preta: tiazídico é a primeira opção, isolado ou com bloqueador de canal de cálcio; outras classes no lugar de IECA/BRA em monoterapia.", "Gota: evitar tiazídico, a menos que também trate o ácido úrico.", "Diurético de alça (furosemida): doença renal com TFGe abaixo de 30 mL/min/1,73 m2 ou edema por insuficiência cardíaca."] },
-        { "titulo": "Betabloqueador", "itens": ["Aumenta o risco de AVE em comparação com as outras classes.", "Reservado a angina, pós-infarto, insuficiência cardíaca, cardiopatia isquêmica, controle da frequência cardíaca ou mulher em idade reprodutiva ou planejando gravidez.", "Evitar a interrupção abrupta."] },
-        { "titulo": "Contraindicações e efeitos adversos", "itens": [{ "t": "IECA, BRA e antagonistas dos receptores de mineralocorticoides: contraindicados na gestação (malformação fetal).", "tom": "alerta" }, "IECA também contraindicado em quem já usa BRA ou tem história de angioedema.", "Tosse seca: evento mais comum do IECA.", "Bloqueador de canal de cálcio: edema maleolar, cefaleia latejante, constipação e tontura, dependentes da dose."] },
-        { "titulo": "Idoso frágil", "itens": ["Pelo menos um critério, como 75 anos ou mais, morar em instituição de longa permanência ou estar acamado.", "As evidências para iniciar remédio no grau 1 de risco baixo e no idoso frágil são fracas, porque esses perfis raramente entram nos estudos."] }
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Albuminúria de 30 a 300 mg em 24 h",
+            "Doença cerebrovascular (AVE, AIT)",
+            "Lesão de órgão-alvo com diagnóstico antes dos 30 ou depois dos 50 anos",
+            "Resistente, com hipopotassemia (não obrigatória) ou nódulo adrenal: hiperaldosteronismo primário",
+            "Crises de palpitação, sudorese e cefaleia: feocromocitoma",
+            {
+              "t": "Não conseguir calcular o risco não impede iniciar o tratamento",
+              "tom": "conduta"
+            },
+            "Risco cardiovascular anual entre 40 e 74 anos (calculadora HEARTS)",
+            "Sódio, potássio, ácido úrico, albuminúria, creatinina com TFGe, lipídios, glicemia de jejum",
+            "Urina de vareta e eletrocardiograma de 12 derivações",
+            "Fundo de olho, em especial no grau 3, no diabetes ou com lesão de órgão-alvo"
+          ]
+        },
+        {
+          "titulo": "Outras pistas de causa secundária (5% a 10% dos casos, potencialmente reversível)",
+          "itens": [
+            "Sopro abdominal, edema agudo de pulmão ou piora inexplicada da função renal (inclusive com remédios que bloqueiam o sistema renina-angiotensina): estenose de artéria renal.",
+            "Sistólica 10 mmHg maior nos braços que nas pernas, com sopro sistólico interescapular: coarctação de aorta."
+          ]
+        },
+        {
+          "titulo": "Creatinina no tratamento",
+          "itens": [
+            "Na doença renal crônica tratada com anti-hipertensivo, em especial IECA ou BRA, espera-se alguma queda da TFGe e alguma subida da creatinina.",
+            {
+              "t": "Subida de creatinina maior que 30% pede avaliar doença renovascular.",
+              "tom": "atencao"
+            }
+          ]
+        },
+        {
+          "titulo": "Conduta na suspeita",
+          "itens": [
+            "Encaminhar conforme a causa e os recursos para investigar."
+          ]
+        },
+        {
+          "titulo": "O eletrocardiograma detecta",
+          "itens": [
+            "Fibrilação atrial, hipertrofia ventricular esquerda e cardiopatia isquêmica."
+          ]
+        }
       ],
-      "claims": ["HA50", "HA51", "HA52", "HA53", "HA54", "HA55", "HA56", "HA57", "HA58", "HA59", "HA60", "HA61", "HA64", "HA65", "HA66", "HA67", "HA68", "HA69", "HA70", "HA71", "HA72", "HA73", "HA103", "HA104", "HB29", "HB30", "HB33", "HB38"]
+      "claims": [
+        "HA24",
+        "HA25",
+        "HA26",
+        "HA27",
+        "HA28",
+        "HA29",
+        "HA30",
+        "HA31",
+        "HA32",
+        "HB40",
+        "HA33",
+        "HA34",
+        "HA35",
+        "HA36",
+        "HA37",
+        "HA38",
+        "HA39",
+        "HA100",
+        "HA105",
+        "HB27"
+      ]
     },
     {
-      "id": "acompanhamento", "titulo": "Metas e acompanhamento", "cor": "verde", "icone": "calendario",
+      "id": "tratamento",
+      "titulo": "Tratamento de longo prazo",
+      "cor": "laranja",
+      "icone": "pilula",
+      "lado": "centro",
+      "revisao": {
+        "linhas": [
+          {
+            "rotulo": "Monoterapia + hábitos",
+            "itens": [
+              "Grau 1 com risco baixo",
+              "Idoso frágil"
+            ]
+          },
+          {
+            "rotulo": "2 fármacos",
+            "itens": [
+              "Graus 2 e 3",
+              "Grau 1 risco moderado/alto ou com lesão"
+            ]
+          },
+          {
+            "rotulo": "Normal alta",
+            "itens": [
+              "Alto risco: anti-hipertensivo + estatina",
+              "Risco baixo/moderado: sem medicamento"
+            ]
+          }
+        ],
+        "itens": [
+          "IECA, BRA, cálcio, diurético, betabloqueador",
+          "Não medicamentoso: sódio até 2 g/dia",
+          {
+            "t": "Betabloqueador só com indicação específica",
+            "tom": "atencao"
+          }
+        ]
+      },
+      "aprofundado": [
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "150 min/semana de atividade moderada",
+            "Parar de fumar; não há nível seguro de álcool",
+            "IECA ou BRA: proteinúria, diabetes, insuficiência cardíaca, doença renal",
+            {
+              "t": "Betabloqueador só com indicação específica",
+              "tom": "atencao"
+            },
+            "5 classes: IECA, BRA, bloqueador de canal de cálcio, diurético, betabloqueador",
+            "Grau 1 com risco baixo, ou idoso frágil: monoterapia + mudança no modo de vida",
+            "Grau 1 com risco moderado/alto ou lesão de órgão-alvo, e graus 2 e 3: 2 fármacos de mecanismos diferentes",
+            "Normal alta com risco alto ou muito alto: anti-hipertensivo e estatina",
+            "Normal alta com risco baixo ou moderado: tratamento não medicamentoso",
+            "Sódio até 2 g/dia (5 g de sal)"
+          ]
+        },
+        {
+          "titulo": "Escolha da classe",
+          "itens": [
+            "População preta: tiazídico é a primeira opção, isolado ou com bloqueador de canal de cálcio; outras classes no lugar de IECA/BRA em monoterapia.",
+            "Gota: evitar tiazídico, a menos que também trate o ácido úrico.",
+            "Diurético de alça (furosemida): doença renal com TFGe abaixo de 30 mL/min/1,73 m2 ou edema por insuficiência cardíaca."
+          ]
+        },
+        {
+          "titulo": "Betabloqueador",
+          "itens": [
+            "Aumenta o risco de AVE em comparação com as outras classes.",
+            "Reservado a angina, pós-infarto, insuficiência cardíaca, cardiopatia isquêmica, controle da frequência cardíaca ou mulher em idade reprodutiva ou planejando gravidez.",
+            "Evitar a interrupção abrupta."
+          ]
+        },
+        {
+          "titulo": "Contraindicações e efeitos adversos",
+          "itens": [
+            {
+              "t": "IECA, BRA e antagonistas dos receptores de mineralocorticoides: contraindicados na gestação (malformação fetal).",
+              "tom": "alerta"
+            },
+            "IECA também contraindicado em quem já usa BRA ou tem história de angioedema.",
+            "Tosse seca: evento mais comum do IECA.",
+            "Bloqueador de canal de cálcio: edema maleolar, cefaleia latejante, constipação e tontura, dependentes da dose."
+          ]
+        },
+        {
+          "titulo": "Idoso frágil",
+          "itens": [
+            "Pelo menos um critério, como 75 anos ou mais, morar em instituição de longa permanência ou estar acamado.",
+            "As evidências para iniciar remédio no grau 1 de risco baixo e no idoso frágil são fracas, porque esses perfis raramente entram nos estudos."
+          ]
+        }
+      ],
+      "claims": [
+        "HA50",
+        "HA51",
+        "HA52",
+        "HA53",
+        "HA54",
+        "HA55",
+        "HA56",
+        "HA57",
+        "HA58",
+        "HA59",
+        "HA60",
+        "HA61",
+        "HA64",
+        "HA65",
+        "HA66",
+        "HA67",
+        "HA68",
+        "HA69",
+        "HA70",
+        "HA71",
+        "HA72",
+        "HA73",
+        "HA103",
+        "HA104",
+        "HB29",
+        "HB30",
+        "HB33",
+        "HB38"
+      ]
+    },
+    {
+      "id": "acompanhamento",
+      "titulo": "Metas e acompanhamento",
+      "cor": "verde",
+      "icone": "calendario",
       "revisao": {
         "itens": [
-          "Meta inicial: abaixo de 140/90, qualquer comorbidade ou risco",
-          "Se bem tolerado: 130/80 abaixo de 65 anos, diabetes, DRC, coronariopatia, AVE/AIT",
-          "65 a 79 anos: sistólica inicialmente entre 140 e 130",
-          { "t": "65 a 79 anos: não baixar a PA para menos de 120/70", "tom": "alerta" },
+          "Meta inicial: abaixo de 140/90",
+          "Se tolerar: 130/80 se <65 anos ou comorbidade",
+          {
+            "t": "65 a 79 anos: sistólica 140-130; não < 120/70",
+            "tom": "alerta"
+          },
           "Idoso frágil: meta flexível (140-149 / 70-79)",
-          "Reavaliar todo mês até a meta; depois, a cada 6 meses"
+          "Reavaliar todo mês até a meta; depois, 6/6 meses"
         ],
         "fluxo": [
-          { "t": "Sem meta com 1 mês: avaliar adesão", "tom": "atencao" },
-          "Sem meta com 2 classes: subir até dose máxima",
-          { "t": "Ainda sem controle: 3ª classe em dose mínima", "tom": "conduta" }
+          {
+            "t": "Sem meta em 1 mês: avaliar adesão",
+            "tom": "atencao"
+          },
+          "2 classes sem meta: subir até dose máxima",
+          {
+            "t": "Ainda sem controle: 3ª classe, dose mínima",
+            "tom": "conduta"
+          }
         ]
       },
       "aprofundado": [
-        { "titulo": "Ajuste", "itens": ["Começar pela menor dose e associar classes até o controle.", "Associar classes é preferível a aumentar a dose de um remédio só ou trocar por outro em monoterapia.", "O efeito pleno costuma vir em 1 a 2 semanas e pode levar até 2 meses."] },
-        { "titulo": "Entre 65 e 79 anos", "itens": ["Se tolerar e não houver sinais de hipoperfusão, pode-se considerar reduzir a sistólica para menos de 130."] },
-        { "titulo": "HAS resistente", "itens": ["PA elevada após 6 meses de tratamento adequado com 3 remédios de classes diferentes (IECA ou BRA, bloqueador de canal de cálcio de ação prolongada e tiazídico de longa ação), em doses máximas toleradas e com boa adesão.", { "t": "Antes, verificar a adesão: causa comum de pseudorresistência.", "tom": "atencao" }, "Quarta classe preferencial: espironolactona; encaminhar.", "Refratária: sem controle mesmo com 5 classes."] }
+        {
+          "titulo": "Ajuste",
+          "itens": [
+            "Começar pela menor dose e associar classes até o controle.",
+            "Associar classes é preferível a aumentar a dose de um remédio só ou trocar por outro em monoterapia.",
+            "O efeito pleno costuma vir em 1 a 2 semanas e pode levar até 2 meses."
+          ]
+        },
+        {
+          "titulo": "Entre 65 e 79 anos",
+          "itens": [
+            "Se tolerar e não houver sinais de hipoperfusão, pode-se considerar reduzir a sistólica para menos de 130."
+          ]
+        },
+        {
+          "titulo": "HAS resistente",
+          "itens": [
+            "PA elevada após 6 meses de tratamento adequado com 3 remédios de classes diferentes (IECA ou BRA, bloqueador de canal de cálcio de ação prolongada e tiazídico de longa ação), em doses máximas toleradas e com boa adesão.",
+            {
+              "t": "Antes, verificar a adesão: causa comum de pseudorresistência.",
+              "tom": "atencao"
+            },
+            "Quarta classe preferencial: espironolactona; encaminhar.",
+            "Refratária: sem controle mesmo com 5 classes."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Meta inicial: abaixo de 140/90, qualquer comorbidade ou risco",
+            "Se bem tolerado: 130/80 abaixo de 65 anos, diabetes, DRC, coronariopatia, AVE/AIT",
+            "65 a 79 anos: sistólica inicialmente entre 140 e 130",
+            {
+              "t": "65 a 79 anos: não baixar a PA para menos de 120/70",
+              "tom": "alerta"
+            },
+            "Sem meta com 2 classes: subir até dose máxima"
+          ]
+        }
       ],
-      "claims": ["HA40", "HA41", "HA42", "HA43", "HA44", "HA45", "HA46", "HA47", "HA48", "HA49", "HA62", "HA63", "HA74", "HA75", "HA76", "HA101", "HA102", "HB28", "HB34", "HB35"]
+      "claims": [
+        "HA40",
+        "HA41",
+        "HA42",
+        "HA43",
+        "HA44",
+        "HA45",
+        "HA46",
+        "HA47",
+        "HA48",
+        "HA49",
+        "HA62",
+        "HA63",
+        "HA74",
+        "HA75",
+        "HA76",
+        "HA101",
+        "HA102",
+        "HB28",
+        "HB34",
+        "HB35"
+      ]
     },
     {
-      "id": "crise", "titulo": "Crise: emergência, urgência, pseudocrise", "cor": "amarelo", "icone": "alerta",
+      "id": "crise",
+      "titulo": "Crise: emergência, urgência, pseudocrise",
+      "cor": "amarelo",
+      "icone": "alerta",
       "revisao": {
         "itens": [
-          "Crise: sistólica 180 ou mais, ou diastólica 120 ou mais (definição arbitrária)",
-          { "t": "Conferir a técnica de medida antes de falar em crise", "tom": "atencao" },
-          { "t": "Emergência é definida pelo estado clínico, não pelo número da PA", "tom": "alerta" },
-          "Emergência: lesão de órgão-alvo aguda ou em progressão",
-          "Urgência: sintomas, sem lesão aguda e sem risco iminente de morte",
-          "Pseudocrise: sem lesão; assintomático ou por ansiedade, dor, desconforto"
+          "Crise (arbitrário): PAS 180+ ou PAD 120+",
+          {
+            "t": "Antes de falar em crise, conferir a técnica",
+            "tom": "atencao"
+          },
+          {
+            "t": "Emergência = lesão de órgão-alvo, não o número",
+            "tom": "alerta"
+          },
+          "Urgência: sintomas, sem lesão nem risco iminente",
+          "Pseudocrise: sem lesão; ansiedade, dor"
         ]
       },
       "aprofundado": [
-        { "titulo": "Emergência", "itens": ["Em geral com risco de vida; pode ocorrer com ou sem HAS prévia e com PA abaixo do limiar arbitrário da crise.", "Cerebral: AVE isquêmico ou hemorrágico e encefalopatia hipertensiva (letargia, convulsões, amaurose cortical, coma).", "Cardíaca: síndrome coronariana aguda e edema agudo de pulmão; também renal e ocular.", "Hiperatividade simpática: feocromocitoma, crack, cocaína, anfetamínicos ou interrupção de clonidina ou betabloqueador.", "Hipertensão maligna: sinais neurológicos e no fundo de olho com perda progressiva da função renal."] },
-        { "titulo": "Urgência", "itens": ["Sintomas comuns: cefaleia, dispneia, epistaxe, palpitação e ansiedade.", { "t": "Na suspeita, o mais importante é ter certeza, pela história e pelo exame físico, de que não é uma emergência.", "tom": "diag" }] },
-        { "titulo": "Exames na emergência", "itens": ["Hemoglobina, plaquetas, sódio, potássio, creatinina com TFGe e eletrocardiograma.", "Teste de gravidez em mulher em idade fértil.", "Tomografia ou ressonância de crânio se houver trauma de crânio, sinais ou sintomas neurológicos ou retinopatia hipertensiva."] }
+        {
+          "titulo": "Emergência",
+          "itens": [
+            "Em geral com risco de vida; pode ocorrer com ou sem HAS prévia e com PA abaixo do limiar arbitrário da crise.",
+            "Cerebral: AVE isquêmico ou hemorrágico e encefalopatia hipertensiva (letargia, convulsões, amaurose cortical, coma).",
+            "Cardíaca: síndrome coronariana aguda e edema agudo de pulmão; também renal e ocular.",
+            "Hiperatividade simpática: feocromocitoma, crack, cocaína, anfetamínicos ou interrupção de clonidina ou betabloqueador.",
+            "Hipertensão maligna: sinais neurológicos e no fundo de olho com perda progressiva da função renal."
+          ]
+        },
+        {
+          "titulo": "Urgência",
+          "itens": [
+            "Sintomas comuns: cefaleia, dispneia, epistaxe, palpitação e ansiedade.",
+            {
+              "t": "Na suspeita, o mais importante é ter certeza, pela história e pelo exame físico, de que não é uma emergência.",
+              "tom": "diag"
+            }
+          ]
+        },
+        {
+          "titulo": "Exames na emergência",
+          "itens": [
+            "Hemoglobina, plaquetas, sódio, potássio, creatinina com TFGe e eletrocardiograma.",
+            "Teste de gravidez em mulher em idade fértil.",
+            "Tomografia ou ressonância de crânio se houver trauma de crânio, sinais ou sintomas neurológicos ou retinopatia hipertensiva."
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Crise: sistólica 180 ou mais, ou diastólica 120 ou mais (definição arbitrária)",
+            {
+              "t": "Conferir a técnica de medida antes de falar em crise",
+              "tom": "atencao"
+            },
+            {
+              "t": "Emergência é definida pelo estado clínico, não pelo número da PA",
+              "tom": "alerta"
+            },
+            "Emergência: lesão de órgão-alvo aguda ou em progressão",
+            "Urgência: sintomas, sem lesão aguda e sem risco iminente de morte",
+            "Pseudocrise: sem lesão; assintomático ou por ansiedade, dor, desconforto"
+          ]
+        }
       ],
-      "claims": ["HA77", "HA78", "HA79", "HA80", "HA81", "HA82", "HA83", "HA84", "HA85", "HA86", "HA87", "HA88", "HA89", "HA90", "HA91", "HA92", "HA99"]
+      "claims": [
+        "HA77",
+        "HA78",
+        "HA79",
+        "HA80",
+        "HA81",
+        "HA82",
+        "HA83",
+        "HA84",
+        "HA85",
+        "HA86",
+        "HA87",
+        "HA88",
+        "HA89",
+        "HA90",
+        "HA91",
+        "HA92",
+        "HA99"
+      ]
     },
     {
-      "id": "conduta-crise", "titulo": "Conduta na crise", "cor": "verde", "icone": "seringa",
+      "id": "conduta-crise",
+      "titulo": "Conduta na crise",
+      "cor": "verde",
+      "icone": "seringa",
       "revisao": {
         "linhas": [
-          { "rotulo": "Emergência", "itens": ["Remédio intravenoso, de preferência em UTI", "Queda gradual: PA média até 25% na 1ª hora", "Depois 160/100-110 em 2 a 6 h; 135/85 em 24 a 48 h", "Retorno ambulatorial em 7 dias"] },
-          { "rotulo": "Urgência e pseudocrise", "itens": ["Tirar o fator desencadeante; observar em ambiente calmo", "Redução gradual por via oral em 24 a 48 horas", "Sem risco iminente: horas de observação; se assintomático e PA caindo, alta", "Retorno com a atenção primária"] }
+          {
+            "rotulo": "Emergência",
+            "itens": [
+              "IV, de preferência em UTI",
+              "PA média até 25% na 1ª hora"
+            ]
+          },
+          {
+            "rotulo": "Urgência e pseudocrise",
+            "itens": [
+              "Tirar o fator desencadeante",
+              "Observar em ambiente calmo"
+            ]
+          }
         ],
         "itens": [
-          { "t": "Não há benefício em baixar rápido a PA na HAS grave assintomática: risco de AVE, infarto, cegueira e dano renal", "tom": "alerta" },
-          { "t": "Nifedipino de liberação rápida: não usar em elevação aguda da PA (nem sublingual)", "tom": "alerta" }
+          {
+            "t": "HAS grave sem sintoma: não baixar rápido",
+            "tom": "alerta"
+          }
         ]
       },
       "aprofundado": [
-        { "titulo": "Alvo conforme a condição na emergência", "itens": ["Nitroprussiato de sódio é indicado na maioria; remédio e alvo dependem da condição associada.", "AVE isquêmico: reduzir só se 185/110 ou mais em candidato a trombólise, ou 220/120 ou mais em quem não é candidato.", "AVE hemorrágico: sistólica abaixo de 180, mas não abaixo de 140, nas primeiras 24 h.", "Encefalopatia: na 1ª hora, sistólica reduzida em não mais de 20% a 25%.", "Síndrome coronariana aguda: reduzir a PA em 20% nas 2 primeiras horas; sem betabloqueador se houver sinais de insuficiência cardíaca.", "Edema agudo de pulmão: diurético de alça e vasodilatador de fácil titulação; evitar hidralazina e betabloqueador.", "Dissecção aguda de aorta: sistólica a 100-120 em 20 a 60 min; pode começar com betabloqueador (frequência abaixo de 60) seguido de vasodilatador.", "Hiperatividade simpática: verapamil, podendo associar benzodiazepínico; evitar betabloqueador.", "Gestação: nifedipino oral ou hidralazina intravenosa."] },
-        { "titulo": "Passagem para via oral", "itens": ["Controlada a PA na UTI, em geral em 8 a 24 horas, o remédio intravenoso pode passar para a via oral."] },
-        { "titulo": "Urgência com risco cardiovascular iminente", "itens": ["Exemplo: aneurisma aórtico ou cerebral conhecido; reduzir em horas, por via oral.", "Pode-se usar captopril 25 mg, se não houver sobrecarga de volume (pico em 60 a 90 minutos).", { "t": "Captopril é por via oral, não sublingual.", "tom": "alerta" }] },
-        { "titulo": "Quem já tem HAS", "itens": ["Estratégia superior: tratamento de longo prazo, com seguimento ambulatorial em 24 a 48 h, buscando 160/95 ou menos em até 48 h.", "Se houve suspensão recente dos remédios: reiniciar os de uso habitual e reavaliar a PA em 3 a 6 horas.", "Na pseudocrise, podem ser usados ansiolíticos, como benzodiazepínicos."] },
-        { "titulo": "Encaminhar da atenção primária à urgência", "itens": ["Necessidade de tratamento intravenoso e monitorização contínua: PA em nível de crise mesmo após a medicação, ou sinais e sintomas de lesão aguda de órgão-alvo."] }
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            "Redução gradual por via oral em 24 a 48 horas",
+            "Sem risco iminente: horas de observação; se assintomático e PA caindo, alta",
+            "Retorno com a atenção primária",
+            {
+              "t": "Nifedipino de liberação rápida: não usar em elevação aguda da PA (nem sublingual)",
+              "tom": "alerta"
+            },
+            {
+              "t": "Não há benefício em baixar rápido a PA na HAS grave assintomática: risco de AVE, infarto, cegueira e dano renal",
+              "tom": "alerta"
+            },
+            "Remédio intravenoso, de preferência em UTI",
+            "Queda gradual: PA média até 25% na 1ª hora",
+            "Depois 160/100-110 em 2 a 6 h; 135/85 em 24 a 48 h",
+            "Retorno ambulatorial em 7 dias",
+            "Tirar o fator desencadeante; observar em ambiente calmo"
+          ]
+        },
+        {
+          "titulo": "Alvo conforme a condição na emergência",
+          "itens": [
+            "Nitroprussiato de sódio é indicado na maioria; remédio e alvo dependem da condição associada.",
+            "AVE isquêmico: reduzir só se 185/110 ou mais em candidato a trombólise, ou 220/120 ou mais em quem não é candidato.",
+            "AVE hemorrágico: sistólica abaixo de 180, mas não abaixo de 140, nas primeiras 24 h.",
+            "Encefalopatia: na 1ª hora, sistólica reduzida em não mais de 20% a 25%.",
+            "Síndrome coronariana aguda: reduzir a PA em 20% nas 2 primeiras horas; sem betabloqueador se houver sinais de insuficiência cardíaca.",
+            "Edema agudo de pulmão: diurético de alça e vasodilatador de fácil titulação; evitar hidralazina e betabloqueador.",
+            "Dissecção aguda de aorta: sistólica a 100-120 em 20 a 60 min; pode começar com betabloqueador (frequência abaixo de 60) seguido de vasodilatador.",
+            "Hiperatividade simpática: verapamil, podendo associar benzodiazepínico; evitar betabloqueador.",
+            "Gestação: nifedipino oral ou hidralazina intravenosa."
+          ]
+        },
+        {
+          "titulo": "Passagem para via oral",
+          "itens": [
+            "Controlada a PA na UTI, em geral em 8 a 24 horas, o remédio intravenoso pode passar para a via oral."
+          ]
+        },
+        {
+          "titulo": "Urgência com risco cardiovascular iminente",
+          "itens": [
+            "Exemplo: aneurisma aórtico ou cerebral conhecido; reduzir em horas, por via oral.",
+            "Pode-se usar captopril 25 mg, se não houver sobrecarga de volume (pico em 60 a 90 minutos).",
+            {
+              "t": "Captopril é por via oral, não sublingual.",
+              "tom": "alerta"
+            }
+          ]
+        },
+        {
+          "titulo": "Quem já tem HAS",
+          "itens": [
+            "Estratégia superior: tratamento de longo prazo, com seguimento ambulatorial em 24 a 48 h, buscando 160/95 ou menos em até 48 h.",
+            "Se houve suspensão recente dos remédios: reiniciar os de uso habitual e reavaliar a PA em 3 a 6 horas.",
+            "Na pseudocrise, podem ser usados ansiolíticos, como benzodiazepínicos."
+          ]
+        },
+        {
+          "titulo": "Encaminhar da atenção primária à urgência",
+          "itens": [
+            "Necessidade de tratamento intravenoso e monitorização contínua: PA em nível de crise mesmo após a medicação, ou sinais e sintomas de lesão aguda de órgão-alvo."
+          ]
+        }
       ],
-      "claims": ["HA94", "HA95", "HA96", "HA97", "HA98", "HB01", "HB02", "HB03", "HB04", "HB05", "HB06", "HB07", "HB08", "HB09", "HB10", "HB11", "HB12", "HB13", "HB14", "HB15", "HB16", "HB17", "HB18", "HB19", "HB20", "HB21", "HB22", "HB23", "HB24", "HB25", "HB26", "HB31", "HB32", "HB39", "HA93", "HS11", "HS12"]
+      "claims": [
+        "HA94",
+        "HA95",
+        "HA96",
+        "HA97",
+        "HA98",
+        "HB01",
+        "HB02",
+        "HB03",
+        "HB04",
+        "HB05",
+        "HB06",
+        "HB07",
+        "HB08",
+        "HB09",
+        "HB10",
+        "HB11",
+        "HB12",
+        "HB13",
+        "HB14",
+        "HB15",
+        "HB16",
+        "HB17",
+        "HB18",
+        "HB19",
+        "HB20",
+        "HB21",
+        "HB22",
+        "HB23",
+        "HB24",
+        "HB25",
+        "HB26",
+        "HB31",
+        "HB32",
+        "HB39",
+        "HA93",
+        "HS11",
+        "HS12"
+      ]
     },
     {
-      "id": "revalida", "titulo": "Revalida INEP: decisões e pegadinhas", "cor": "vermelho", "icone": "alerta",
-      "revisao": { "itens": [
-        { "t": "Chamar de emergência só pelo número da PA, sem procurar lesão de órgão-alvo", "tom": "alerta" },
-        { "t": "Baixar rápido a PA sem lesão de órgão-alvo (ex.: captopril sublingual)", "tom": "alerta" },
-        { "t": "Normalizar a PA de uma vez na emergência (meta: até 25% na 1ª hora)", "tom": "alerta" },
-        { "t": "HAS grau 1 de risco baixo só com hábitos; grau 2 ou 3 com um remédio só", "tom": "alerta" },
-        { "t": "Betabloqueador de primeira escolha; IECA/BRA na gestante", "tom": "alerta" },
-        { "t": "Chamar de resistente sem conferir a adesão", "tom": "alerta" }
-      ] },
+      "id": "revalida",
+      "titulo": "Revalida INEP: decisões e pegadinhas",
+      "cor": "vermelho",
+      "icone": "alerta",
+      "revisao": {
+        "itens": [
+          {
+            "t": "Chamar de emergência só pelo número da PA",
+            "tom": "alerta"
+          },
+          {
+            "t": "Captopril sublingual / baixar rápido sem lesão",
+            "tom": "alerta"
+          },
+          {
+            "t": "Normalizar a PA de uma vez na emergência",
+            "tom": "alerta"
+          },
+          {
+            "t": "Grau 2 ou 3 com um remédio só",
+            "tom": "alerta"
+          },
+          {
+            "t": "Betabloqueador 1ª escolha; IECA/BRA na gestante",
+            "tom": "alerta"
+          }
+        ]
+      },
       "aprofundado": [
-        { "titulo": "O que mudou desde a prova", "itens": ["Início do tratamento: materiais antigos davam remédio desde o diagnóstico só para alto risco ou estágio 2 (160/100 ou mais), e quem decidia não iniciar podia tentar só hábitos por 3 a 6 meses; hoje o remédio é a estratégia preferencial para a maioria.", "Risco cardiovascular: o escore de Framingham deu lugar à calculadora HEARTS, anual entre 40 e 74 anos; MRPA no SUS desde 2023.", "Ajuste: começar pela menor dose e associar classes, em vez de subir a dose de um remédio só."] },
-        { "titulo": "Recomendações de 2025 de entidades médicas (diferem do SUS seguido na aula)", "itens": ["Emergência: lesão de órgão-alvo aguda e progressiva, com sistólica de 180 ou mais e/ou diastólica de 110 ou mais ou, conforme a situação, até com valores menores; 'urgência' proposta como 'elevação importante da PA sem lesão progressiva de órgão-alvo', com reavaliação ambulatorial em 1 a 7 dias.", "Meta abaixo de 130/80 para todos, qualquer risco; quem não tolera e o idoso frágil ou muito idoso reduzem até o menor valor tolerado.", "'PA ótima' foi retirada; pré-hipertensão é 120-139 e/ou 80-89; graus viram estágios 1, 2 e 3.", { "t": "A orientação do SUS seguida na aula mantém 180/120, o termo urgência, meta inicial abaixo de 140/90 e as categorias ótima, normal e normal alta. O gabarito oficial de uma prova não muda quando a recomendação é atualizada.", "tom": "atencao" }] }
+        {
+          "titulo": "O que mudou desde a prova",
+          "itens": [
+            "Início do tratamento: materiais antigos davam remédio desde o diagnóstico só para alto risco ou estágio 2 (160/100 ou mais), e quem decidia não iniciar podia tentar só hábitos por 3 a 6 meses; hoje o remédio é a estratégia preferencial para a maioria.",
+            "Risco cardiovascular: o escore de Framingham deu lugar à calculadora HEARTS, anual entre 40 e 74 anos; MRPA no SUS desde 2023.",
+            "Ajuste: começar pela menor dose e associar classes, em vez de subir a dose de um remédio só."
+          ]
+        },
+        {
+          "titulo": "Recomendações de 2025 de entidades médicas (diferem do SUS seguido na aula)",
+          "itens": [
+            "Emergência: lesão de órgão-alvo aguda e progressiva, com sistólica de 180 ou mais e/ou diastólica de 110 ou mais ou, conforme a situação, até com valores menores; 'urgência' proposta como 'elevação importante da PA sem lesão progressiva de órgão-alvo', com reavaliação ambulatorial em 1 a 7 dias.",
+            "Meta abaixo de 130/80 para todos, qualquer risco; quem não tolera e o idoso frágil ou muito idoso reduzem até o menor valor tolerado.",
+            "'PA ótima' foi retirada; pré-hipertensão é 120-139 e/ou 80-89; graus viram estágios 1, 2 e 3.",
+            {
+              "t": "A orientação do SUS seguida na aula mantém 180/120, o termo urgência, meta inicial abaixo de 140/90 e as categorias ótima, normal e normal alta. O gabarito oficial de uma prova não muda quando a recomendação é atualizada.",
+              "tom": "atencao"
+            }
+          ]
+        },
+        {
+          "titulo": "Mais pontos",
+          "itens": [
+            {
+              "t": "Chamar de emergência só pelo número da PA, sem procurar lesão de órgão-alvo",
+              "tom": "alerta"
+            },
+            {
+              "t": "Baixar rápido a PA sem lesão de órgão-alvo (ex.: captopril sublingual)",
+              "tom": "alerta"
+            },
+            {
+              "t": "Normalizar a PA de uma vez na emergência (meta: até 25% na 1ª hora)",
+              "tom": "alerta"
+            },
+            {
+              "t": "HAS grau 1 de risco baixo só com hábitos; grau 2 ou 3 com um remédio só",
+              "tom": "alerta"
+            },
+            {
+              "t": "Chamar de resistente sem conferir a adesão",
+              "tom": "alerta"
+            }
+          ]
+        }
       ],
-      "claims": ["HA99", "HA79", "HB15", "HB19", "HA95", "HA96", "HA54", "HA56", "HA104", "HA65", "HB38", "HB30", "HA43", "HM01", "HM02", "HM03", "HB34", "HB35", "HA28", "HB36", "HS01", "HS02", "HS03", "HS04", "HS05", "HS06", "HS07", "HS08", "HS09", "HS10"]
+      "claims": [
+        "HA99",
+        "HA79",
+        "HB15",
+        "HB19",
+        "HA95",
+        "HA96",
+        "HA54",
+        "HA56",
+        "HA104",
+        "HA65",
+        "HB38",
+        "HB30",
+        "HA43",
+        "HM01",
+        "HM02",
+        "HM03",
+        "HB34",
+        "HB35",
+        "HA28",
+        "HB36",
+        "HS01",
+        "HS02",
+        "HS03",
+        "HS04",
+        "HS05",
+        "HS06",
+        "HS07",
+        "HS08",
+        "HS09",
+        "HS10"
+      ]
     }
   ],
   "pontos_chave": [
-    "Rastreamento anual a partir dos 18 anos; confirmação a partir de 140/90",
-    "Avental branco e hipertensão mascarada se confirmam com MAPA ou MRPA",
-    "Grau 2 ou 3: começar com dois fármacos de mecanismos diferentes",
-    "Meta inicial abaixo de 140/90; 130/80 se bem tolerado em quem tem menos de 65 anos ou comorbidades",
-    "Emergência hipertensiva é definida pela lesão de órgão-alvo, não pelo número da PA",
-    "Na urgência: queda gradual por via oral em 24 a 48 horas, sem captopril sublingual",
-    "Na emergência: PA média reduzida até 25% na 1ª hora"
+    "Rastreio anual desde os 18 anos; confirmar a partir de 140/90",
+    "Avental branco e mascarada: confirmar com MAPA ou MRPA",
+    "Grau 2 ou 3: iniciar com 2 fármacos de mecanismos diferentes",
+    "Meta inicial abaixo de 140/90; 130/80 se bem tolerado",
+    "Emergência hipertensiva: definida pela lesão de órgão-alvo",
+    "Urgência: queda gradual oral em 24-48 h, sem captopril SL"
   ],
   "atencao": [
     "Antes de falar em crise, conferir a técnica de medida",
-    "Nifedipino de liberação rápida não deve ser usado em elevação aguda da PA",
-    "IECA, BRA e antagonistas de mineralocorticoides são contraindicados na gestação",
-    "Antes de chamar de resistente, verificar a adesão",
-    "Subida de creatinina maior que 30% com o tratamento: avaliar doença renovascular"
+    "Nifedipino de liberação rápida: não usar em elevação aguda da PA",
+    "IECA, BRA e antagonistas de mineralocorticoides: contraindicados na gestação",
+    "Antes de chamar de resistente, verificar a adesão"
   ]
 }
