@@ -46,23 +46,65 @@ export function QuestionChips({ question, topic = null, bookmarked = false }) {
   );
 }
 
+// Tamanho do texto (A− / A+, só no tablet e no celular; no computador não aparece): 0, 1 (padrão) ou 2. Fica só neste aparelho.
+const FS_KEY = "stazia-tq-tamanho-texto";
+function useTextSize() {
+  const [size, setSize] = React.useState(() => {
+    try {
+      const saved = window.localStorage.getItem(FS_KEY);
+      return saved === "0" ? 0 : saved === "2" ? 2 : 1;
+    } catch {
+      return 1;
+    }
+  });
+  const change = (delta) =>
+    setSize((current) => {
+      const next = Math.max(0, Math.min(2, current + delta));
+      try {
+        window.localStorage.setItem(FS_KEY, String(next));
+      } catch {
+        /* sem armazenamento: vale só nesta tela */
+      }
+      return next;
+    });
+  return [size, change];
+}
+
 /** Enunciado: "Caso clínico", figuras e tabela de apoio, e a caixa "Pergunta" (a última frase, quando dá para separar). */
-export function QuestionStatement({ question, hint = null }) {
+export function QuestionStatement({ question, hint = null, revealed = false, size = 1, changeSize = () => {} }) {
   const { stem, ask } = splitStatement(question.statement);
+  const [caseOpen, setCaseOpen] = React.useState(false);
+  // tablet/celular, depois de responder: o caso fica em 3 linhas com "Ver caso completo" (no computador o caso aparece inteiro)
+  const clamp = revealed && !caseOpen;
   return (
     <>
       <div className="tq-case">
-        <span className="tq-over">{ask ? "Caso clínico" : "Enunciado"}</span>
-        <p className="tq-stem" lang="pt-BR" style={{ textAlign: "justify", hyphens: "auto" }}>
+        <div className="tq-case__head">
+          <span className="tq-over">{ask ? "Caso clínico" : "Enunciado"}</span>
+          <span role="group" aria-label="Tamanho do texto" className="tq-fs">
+            <button type="button" onClick={() => changeSize(-1)} disabled={size === 0} aria-label="Diminuir texto">
+              A−
+            </button>
+            <button type="button" onClick={() => changeSize(1)} disabled={size === 2} aria-label="Aumentar texto" data-plus="true">
+              A+
+            </button>
+          </span>
+        </div>
+        <p id={`tq-stem-${question.id}`} className="tq-stem" data-clamp={clamp ? "true" : "false"} lang="pt-BR" style={{ textAlign: "justify", hyphens: "auto" }}>
           {stem}
         </p>
+        {revealed && (
+          <button type="button" className="tq-more" aria-expanded={caseOpen} aria-controls={`tq-stem-${question.id}`} onClick={() => setCaseOpen(!caseOpen)}>
+            {caseOpen ? "Mostrar menos" : "Ver caso completo"}
+          </button>
+        )}
         <QuestionFigures images={question.images} questionId={question.id} />
         <SupportTable support={question.support} />
       </div>
       {ask && (
         <div className="tq-ask">
           <span className="tq-over tq-over--accent">Pergunta</span>
-          <h1 className="tq-ask__text" lang="pt-BR" style={{ textAlign: "justify", hyphens: "auto" }}>
+          <h1 className="tq-ask__text" lang="pt-BR">
             {ask}
           </h1>
           {hint}
@@ -264,8 +306,9 @@ export function ReportQuestion({ question }) {
  * `banner`: avisos e erros acima do enunciado.
  */
 export function QuestionSheet({ question, revealed = false, topic = null, bookmarked = false, banner = null, hint = null, alternatives, answer = null, footer = null, report = null, compact = false }) {
+  const [size, changeSize] = useTextSize();
   return (
-    <section className={`tq-sheet${compact ? " tq-sheet--static" : ""}`} aria-label="Questão">
+    <section className={`tq-sheet${compact ? " tq-sheet--static" : ""}`} aria-label="Questão" data-fs={size}>
       <QuestionChips question={question} topic={revealed ? topic : null} bookmarked={bookmarked} />
       {question.preliminary && (
         <div className="tq-flag">
@@ -273,7 +316,7 @@ export function QuestionSheet({ question, revealed = false, topic = null, bookma
         </div>
       )}
       {banner && <div className="tq-err">{banner}</div>}
-      <QuestionStatement question={question} hint={hint} />
+      <QuestionStatement question={question} hint={hint} revealed={revealed} size={size} changeSize={changeSize} />
       {alternatives}
       {revealed && answer}
       {footer}

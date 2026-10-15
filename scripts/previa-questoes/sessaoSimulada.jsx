@@ -189,6 +189,17 @@ const backend = {
   async rpc(fn, args = {}) {
     await new Promise((r) => setTimeout(r, 40));
     switch (fn) {
+      // Montagem (Banco de Questões e Simulados): números de EXEMPLO da prévia, nada real
+      case "app_question_filters":
+        return { total: 1200, exams: [{ id: "e1", kind: "REVALIDA", year: 2025, semester: 1 }, { id: "e2", kind: "ENAMED", year: 2025, semester: null }, { id: "staziamed", kind: "STAZIAMED", year: 2026, semester: null, total: 12, released: 12, locked: false }], topics: [{ area: "PEDIATRIA", topic: "Asma" }, { area: "CLINICA_MEDICA", topic: "Sepse" }, { area: "GINECOLOGIA_OBSTETRICIA", topic: "Pré-eclâmpsia" }, { area: "CIRURGIA_GERAL", topic: "Abdome agudo" }] };
+      case "app_count_questions":
+        return { total: 1200, by_area: { CLINICA_MEDICA: 370, CIRURGIA_GERAL: 170, PEDIATRIA: 210, GINECOLOGIA_OBSTETRICIA: 240, MEDICINA_FAMILIA_COMUNIDADE: 210 } };
+      case "app_recent_sessions":
+        return args.p_kind === "simulado"
+          ? [{ id: "r1", total: 30, answered: 30, correct: 21, annulled: 0, filters: {}, started_at: iso(now() - 86400000), finished_at: iso(now() - 80000000) }, { id: "r2", total: 50, answered: 12, correct: 0, annulled: 0, filters: { area: "PEDIATRIA" }, started_at: iso(now() - 3600000), finished_at: null, paused: true, remaining_seconds: 3600 }]
+          : [{ id: "r3", total: 20, answered: 20, correct: 15, annulled: 0, filters: {}, started_at: iso(now() - 86400000), finished_at: iso(now() - 80000000) }, { id: "r4", total: 20, answered: 4, correct: 0, annulled: 0, filters: { area: "CIRURGIA_GERAL" }, started_at: iso(now() - 3600000), finished_at: null }];
+      case "app_my_ineditas":
+        return { total: 12, released: 12, answered: 3, limit: null, limited: false, locked: false };
       case "app_get_session":
         return session();
       case "app_answer_question": {
