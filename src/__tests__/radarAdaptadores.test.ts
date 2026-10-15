@@ -16,7 +16,7 @@ import * as vacinacao from "../../scripts/radar/adaptadores/vacinacao.mjs";
 // @ts-expect-error módulo .mjs sem tipos
 import * as febrasgo from "../../scripts/radar/adaptadores/febrasgo.mjs";
 // @ts-expect-error módulo .mjs sem tipos
-import { coletarTodos } from "../../scripts/radar/adaptadores/index.mjs";
+import { coletarTodos, ATIVOS, ORDEM } from "../../scripts/radar/adaptadores/index.mjs";
 // @ts-expect-error módulo .mjs sem tipos
 import * as lib from "../../scripts/radar/lib.mjs";
 // @ts-expect-error módulo .mjs sem tipos
@@ -136,7 +136,11 @@ describe("adaptador Conitec", () => {
   });
 });
 
-describe("adaptador Diário Oficial da União", () => {
+describe("adaptador Diário Oficial da União (desligado por decisão do dono em 15/10/2026)", () => {
+  it("o código existe, mas o DOU não está entre os adaptadores ativos", () => {
+    expect(ORDEM).toContain("dou");
+    expect(ATIVOS).toEqual(["conitec", "vacinacao", "febrasgo"]);
+  });
   it("respeita o robots da Imprensa Nacional (não faz pedido) e lê o canal permitido filtrando termos de saúde", async () => {
     const f = falso({
       "https://www.in.gov.br/robots.txt": resp(fx("robots-in-gov-br.txt"), { tipo: "text/plain" }),
@@ -221,10 +225,10 @@ describe("adaptador Febrasgo (wp-json)", () => {
 });
 
 describe("falha de um site não quebra o vigia", () => {
-  it("coletarTodos com internet fora do ar devolve os 4 adaptadores com erro", async () => {
+  it("coletarTodos com internet fora do ar devolve os 3 adaptadores ativos com erro", async () => {
     const cliente = http.criarCliente({ fetchImpl: (async () => { throw new Error("sem rede"); }) as unknown as typeof fetch, pausaMs: 0 });
     const r = await coletarTodos(cliente);
-    expect(r.map((x: { adaptador: string }) => x.adaptador)).toEqual(["conitec", "dou", "vacinacao", "febrasgo"]);
+    expect(r.map((x: { adaptador: string }) => x.adaptador)).toEqual(["conitec", "vacinacao", "febrasgo"]); // DOU desligado por decisão do dono
     for (const x of r) expect(x.itens).toEqual([]);
   });
   it("um adaptador que lança exceção vira erro daquele adaptador", async () => {

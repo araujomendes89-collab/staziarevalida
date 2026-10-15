@@ -1,6 +1,6 @@
 # Radar de Evidências StaziaMed
 
-Estado em 15/10/2026: migração aprovada e aplicada no banco de DESENVOLVIMENTO (não em produção), quatro adaptadores ligados, mapa por trecho lido da produção em somente leitura, contador de custo com teto de US$ 5 por mês e job do Cloud Run pronto (sem deploy). Nada foi gravado em produção, nada foi publicado, nenhum conteúdo do aluno foi tocado.
+Estado em 15/10/2026: migração aplicada em desenvolvimento e em produção, job do Cloud Run implantado com três adaptadores ativos (Conitec, vacinação, Febrasgo; o Diário Oficial está DESLIGADO por decisão do dono, ver a seção própria), mapa por trecho lido da produção em somente leitura, contador de custo com teto de US$ 5 por mês e job do Cloud Run pronto (sem deploy). Nada foi publicado e nenhum conteúdo do aluno foi tocado; em produção o Radar só grava nas tabelas `radar_*`.
 
 ## Decisões do dono (15/10/2026) e como estão no código
 
@@ -9,7 +9,7 @@ Estado em 15/10/2026: migração aprovada e aplicada no banco de DESENVOLVIMENTO
 3. Fila resolvida por 2 agentes revisores (skill revisor-medico) em até 48 h: cada evento nasce com `prazo_revisao_ate = agora + 48 h`. Os revisores (perfil editor) resolvem os leves; uma grave só pode ser encerrada pelo administrador (dono), os revisores dão parecer (`em_revisao`). Funções: `app_admin_radar_fila(só_graves)` e `app_admin_radar_decidir(evento, status, nota)`.
 4. Vigia a cada 3 DIAS, Gemini (`VERTEX_API_KEY`, modelo `gemini-3.8-flash`, testado) SÓ quando há mudança com texto para explicar, e teto de US$ 5 por mês no código (`scripts/radar/custo.mjs`): o total do mês é persistido; ao atingir, a IA para e a mudança é só registrada (`ia_pulada: teto_mensal`). O teto do ambiente (`RADAR_TETO_USD`) só pode DIMINUIR o limite. Preço de tabela: US$ 0,75/3,75 por milhão de tokens até 31/12/2026 e 1,50/7,50 depois (mesma tabela de `server/ai/prices.ts`). A chave nunca é impressa nem gravada; 429 e 503 do Google têm espera e nova tentativa.
 5. Mapa por trecho lido da produção em SOMENTE LEITURA (ver abaixo).
-6. Adaptadores ligados, na ordem: Conitec, Diário Oficial da União, calendário de vacinação, Febrasgo (ver abaixo).
+6. Adaptadores: Conitec, calendário de vacinação e Febrasgo ativos. O Diário Oficial foi implementado mas DESLIGADO em 15/10/2026 (ver "Diário Oficial desligado").
 
 ## O que o radar faz
 
@@ -50,6 +50,16 @@ Todos usam o mesmo cliente (`adaptadores/http.mjs`): user-agent identificado (`S
 | Calendário de vacinação | páginas e arquivos do calendário nacional e do calendário técnico (comparados pelo TEXTO por página), listas de legislação e de notas técnicas/informativas do PNI do ano e do ano anterior (documento novo = item novo) e a Instrução Normativa do calendário | o calendário técnico por faixa etária é um **PDF** (descoberto no ensaio): lido com PyMuPDF por página; sem Python ou sem camada de texto, cai no hash do arquivo e avisa |
 | Febrasgo | API pública `wp-json/wp/v2`: tipos `fps`, `diretriz`, `protocolo-assistenci` e a biblioteca de mídia de PDFs (`media`) | "mediateca" não existe como tipo na API (404); a mediateca do site é a biblioteca de mídia do WordPress (1.774 PDFs; o vigia olha as 3 páginas mais recentes). Sempre `evidencia_complementar`, `norma_sus = false` |
 
+## Diário Oficial desligado (decisão do dono, 15/10/2026)
+
+O adaptador `adaptadores/dou.mjs` continua no código e testado, mas não roda: a lista `ATIVOS` em `adaptadores/index.mjs` é `conitec, vacinacao, febrasgo`, e o job do Cloud Run tem 3 tarefas (`CLOUD_RUN_TASK_INDEX` 0 a 2 = esses três, na ordem). Os 2 registros antigos do DOU em `radar_itens_vistos` ficam. Motivo: a Imprensa Nacional (in.gov.br) proíbe robôs no `robots.txt` e o canal alternativo (notícias do Ministério da Saúde) é fraco.
+
+Como religar no futuro com o INLABS:
+1. O dono se cadastra no INLABS (inlabs.in.gov.br), que entrega o XML diário do DOU por login autorizado.
+2. Trocar o canal do `dou.mjs` por um leitor do XML do INLABS (credenciais em novos segredos `INLABS_EMAIL` e `INLABS_SENHA` no Secret Manager), filtrando seção 1 e 2 por órgão Ministério da Saúde/Anvisa/Conitec e pelos termos de `TERMOS_RELEVANTES`.
+3. Acrescentar `"dou"` a `ATIVOS` e rodar `PROJECT=staziamed-revalida-prod scripts/cloudrun/deploy-radar-vigia.sh` depois de mudar `--tasks` e `--parallelism` do script para 4.
+4. A primeira rodada com o DOU só grava a linha de base.
+
 ## Gravidade
 
 `classificarGravidade` (em `lib.mjs`, testada):
@@ -75,7 +85,7 @@ Aplicação em produção (quando o dono mandar): colar o arquivo `supabase/migr
 
 ## Agendamento (a cada 3 dias) e deploy (NÃO feito)
 
-Job do Cloud Run no projeto `staziamed-revalida-prod`, no padrão do `stazia-pdf-worker`: `cloudrun/radar-vigia/Dockerfile` (Node 22 + PyMuPDF só para PDFs de calendário, sem pacotes npm), `cloudbuild.yaml` e `scripts/cloudrun/deploy-radar-vigia.sh`. O Cloud Scheduler dispara TODO DIA às 06h (Brasília) e o job pula sozinho se a última rodada terminou há menos de 70 h (tabela `radar_rodadas`), o que dá exatamente "a cada 3 dias" (um cron `*/3` do mês teria intervalos de 1 e 2 dias na virada do mês). Segredos: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `VERTEX_API_KEY` vão do `.env` para o Secret Manager sem aparecer na tela. A primeira rodada só grava a linha de base (nenhum evento). Variáveis: `RADAR_MODELO`, `RADAR_TETO_USD` (só diminui), `RADAR_ENSAIO=1` (lê tudo e não grava), `RADAR_FORCAR=1`, `RADAR_ADAPTADORES`.
+Job do Cloud Run (`stazia-radar-vigia`, 3 tarefas paralelas, uma por adaptador ativo, 2 h de limite cada; a duração de cada adaptador fica em `radar_rodadas.resumo`) no projeto `staziamed-revalida-prod`, no padrão do `stazia-pdf-worker`: `cloudrun/radar-vigia/Dockerfile` (Node 22 + PyMuPDF só para PDFs de calendário, sem pacotes npm), `cloudbuild.yaml` e `scripts/cloudrun/deploy-radar-vigia.sh`. O Cloud Scheduler dispara TODO DIA às 06h (Brasília) e o job pula sozinho se a última rodada terminou há menos de 70 h (tabela `radar_rodadas`), o que dá exatamente "a cada 3 dias" (um cron `*/3` do mês teria intervalos de 1 e 2 dias na virada do mês). Segredos: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `VERTEX_API_KEY` vão do `.env` para o Secret Manager sem aparecer na tela. A primeira rodada só grava a linha de base (nenhum evento). Variáveis: `RADAR_MODELO`, `RADAR_TETO_USD` (só diminui), `RADAR_ENSAIO=1` (lê tudo e não grava), `RADAR_FORCAR=1`, `RADAR_ADAPTADORES`.
 
 Comando para ligar, depois da migração em produção:
 ```
@@ -125,6 +135,6 @@ Relatório completo (o que mudou nas fontes, gravidade, itens afetados por trech
 
 1. Dono manda colar a migração no Supabase de produção (eu entrego o SQL pela área de transferência) e eu confiro de fora que entrou inteira.
 2. Rodar o deploy do job (comando acima), primeiro em modo ensaio, depois normal; a primeira rodada só cria a linha de base.
-3. Decidir o canal completo do DOU: cadastro no INLABS (o dono se cadastra, o Radar lê o XML diário) ou ficar só com o canal de notícias do MS e a Conitec.
+3. (Futuro) Religar o DOU com o INLABS, ver "Diário Oficial desligado".
 4. Ligar na Administração a tela da fila (usa `app_admin_radar_fila` e `app_admin_radar_decidir`) e escolher os 2 agentes revisores e quem recebe o aviso das graves. Hoje a fila existe no banco e no relatório; a tela ainda não foi construída.
 5. Conferir na fatura do Google Cloud o custo real da IA (o contador usa preço de tabela) depois do primeiro mês.

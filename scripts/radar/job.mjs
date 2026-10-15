@@ -10,7 +10,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { criarCliente } from "./adaptadores/http.mjs";
-import { ORDEM } from "./adaptadores/index.mjs";
+import { ATIVOS, ORDEM } from "./adaptadores/index.mjs";
 import { ContadorCusto, StoreCustoSupabase, tetoEfetivo } from "./custo.mjs";
 import { EstadoSupabase } from "./estado.mjs";
 import { MODELO_PADRAO } from "./ia.mjs";
@@ -23,10 +23,10 @@ const lerJson = (f) => { try { return JSON.parse(fs.readFileSync(f, "utf8")); } 
 
 if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) { console.error("Faltam SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY."); process.exit(2); }
 const ENSAIO = env.RADAR_ENSAIO === "1";
-// Uma tarefa do Cloud Run por adaptador (--tasks=4): CLOUD_RUN_TASK_INDEX 0..3 = conitec, dou, vacinacao, febrasgo. Uma lenta ou com falha não derruba as outras.
+// Uma tarefa do Cloud Run por adaptador ATIVO (--tasks=3): CLOUD_RUN_TASK_INDEX 0..2 = conitec, vacinacao, febrasgo (DOU desligado). Uma lenta ou com falha não derruba as outras.
 const idx = env.CLOUD_RUN_TASK_INDEX !== undefined ? Number(env.CLOUD_RUN_TASK_INDEX) : null;
 const quaisEnv = (env.RADAR_ADAPTADORES ?? "").split(",").map((s) => s.trim()).filter((s) => ORDEM.includes(s));
-const quais = idx !== null && ORDEM[idx] ? [ORDEM[idx]] : quaisEnv;
+const quais = idx !== null && ATIVOS[idx] ? [ATIVOS[idx]] : quaisEnv;
 const NOME = quais.length === 1 ? quais[0] : "todos";
 const estado = new EstadoSupabase({ url: env.SUPABASE_URL, chave: env.SUPABASE_SERVICE_ROLE_KEY });
 const contador = new ContadorCusto({ store: new StoreCustoSupabase({ url: env.SUPABASE_URL, chave: env.SUPABASE_SERVICE_ROLE_KEY }), tetoUsd: tetoEfetivo(env.RADAR_TETO_USD) });
@@ -47,7 +47,7 @@ if (env.RADAR_FORCAR !== "1") {
 const t0 = Date.now();
 const inicio = ENSAIO ? null : await fetch(`${REST}/radar_rodadas`, { method: "POST", headers: { ...H, prefer: "return=representation" }, body: JSON.stringify({ ensaio: false, resumo: { adaptador: NOME, tarefa: idx } }) }).then((x) => (x.ok ? x.json() : null)).then((j) => j?.[0]?.id ?? null).catch(() => null);
 const r = await vigiarAdaptadores({
-  cliente, estado, quais: quais.length ? quais : ORDEM, contador, chaveIA: env.VERTEX_API_KEY || null, modelo: env.RADAR_MODELO || MODELO_PADRAO,
+  cliente, estado, quais: quais.length ? quais : ATIVOS, contador, chaveIA: env.VERTEX_API_KEY || null, modelo: env.RADAR_MODELO || MODELO_PADRAO,
   dossies: lerJson(path.join(RAIZ, "scripts/portao-atualidade/dossies-100.json")), ligacao: lerJson(path.join(RAIZ, "scripts/grandes-temas/ligacao-questoes.json")),
   gravarBase: false,
 });

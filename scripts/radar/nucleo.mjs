@@ -2,7 +2,7 @@
 // mudança e há orçamento) pede a explicação ao Gemini. Usado pelo ensaio local (vigia.mjs) e pelo job do Cloud Run (job.mjs).
 // NUNCA grava em questão, aula, gabarito ou atualização: devolve eventos; quem registra é o chamador (arquivo ou radar_registrar_evento).
 import { classificarGravidade, classificarItemAdaptador, compararVersoes, diffItens, observacaoDaIA, temasDoTitulo } from "./lib.mjs";
-import { coletarTodos, ORDEM } from "./adaptadores/index.mjs";
+import { coletarTodos, ATIVOS } from "./adaptadores/index.mjs";
 import { analisarComTeto, montarPrompt, MODELO_PADRAO } from "./ia.mjs";
 import { separarPaginas } from "./adaptadores/pdf.mjs";
 
@@ -31,7 +31,7 @@ function resumoDoDiff(diff) { return diff ? { ...diff.resumo } : {}; }
  * @param {object} [p.contador] ContadorCusto      @param {string} [p.chaveIA]  @param {string} [p.modelo]
  * @param {number} [p.maxIA]   teto de chamadas desta rodada (além do teto mensal em dinheiro)
  */
-export async function vigiarAdaptadores({ cliente, estado, quais = ORDEM, dossies = null, ligacao = null, contador = null, chaveIA = null, modelo = MODELO_PADRAO, maxIA = 20, opcoes = {}, fetchIA, gravarBase = true }) {
+export async function vigiarAdaptadores({ cliente, estado, quais = ATIVOS, dossies = null, ligacao = null, contador = null, chaveIA = null, modelo = MODELO_PADRAO, maxIA = 20, opcoes = {}, fetchIA, gravarBase = true }) {
   const resultados = await coletarTodos(cliente, { quais, opcoes });
   const eventos = [], porAdaptador = [], baseParaSalvar = [];
   let chamadasIA = 0;

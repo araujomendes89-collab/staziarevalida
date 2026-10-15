@@ -33,7 +33,7 @@ import {
 import { ContadorCusto, StoreCustoArquivo, tetoEfetivo } from "./custo.mjs";
 import { analisarComTeto, MODELO_PADRAO, montarPrompt } from "./ia.mjs";
 import { criarCliente } from "./adaptadores/http.mjs";
-import { ORDEM } from "./adaptadores/index.mjs";
+import { ATIVOS, ORDEM } from "./adaptadores/index.mjs";
 import { EstadoArquivo, EstadoMemoria } from "./estado.mjs";
 import { carregarMapaDeProducao, itensAfetadosPorTrecho, lerEnv, resumoDoMapa } from "./mapa-trechos.mjs";
 import { vigiarAdaptadores } from "./nucleo.mjs";
@@ -57,7 +57,7 @@ const MAX_REMOTO = Number(A["max-remoto"] ?? 10);
 const MAX_PARES = Number(A["max-pares"] ?? 5);
 const MAX_IA = Number(A["max-ia"] ?? 3);
 const MODELO = A.modelo ?? MODELO_PADRAO;
-const ADAPTADORES = A.adaptadores ? A.adaptadores.split(",").filter((x) => ORDEM.includes(x)) : A.flags.has("adaptadores") ? ORDEM : [];
+const ADAPTADORES = A.adaptadores ? A.adaptadores.split(",").filter((x) => ORDEM.includes(x)) : A.flags.has("adaptadores") ? ATIVOS : [];
 const ENVELHECER = A.flags.has("envelhecer-base"), MAPA_PRODUCAO = A.flags.has("mapa-producao");
 const SEM_REDE = A.flags.has("sem-rede"), SEM_IA = A.flags.has("sem-ia"), SEM_HASH_LOCAL = A.flags.has("sem-hash-local");
 const agora = new Date();
