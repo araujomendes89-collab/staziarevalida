@@ -16,6 +16,7 @@ import { TutorDockProvider } from "./tutor/TutorDrawer.jsx";
 import { LessonsScreen } from "./study/LessonsScreen.jsx";
 import { aulasParaAluno } from "./features.js";
 import { UpdatesScreen } from "./study/UpdatesScreen.jsx";
+import { MapasScreen } from "./mapas/MapasScreen.jsx";
 import { Home2, Stations, Station, Peps, Perf2, SimPatient } from "../prototype/Phase2.jsx";
 import { Pair } from "../prototype/Match.jsx";
 import { Theory2 } from "../prototype/Theory2.jsx";
@@ -43,6 +44,7 @@ const TITLES = {
   aulas: ["Aulas teórico-práticas", "Aprender · conteúdo audiovisual por grande área"],
   temas: ["Temas Essenciais", "Aprender · os 100 temas prioritários, com as questões oficiais de cada um"],
   atualizacoes: ["Diretrizes e Atualizações", "Aprender · o que mudou nas condutas e onde conferir"],
+  mapas: ["Mapas Mentais", "Aprender · resumos visuais por tema, da revisão rápida ao aprofundado"],
   hoje: ["Plano de Hoje", "Aprender · praticar · revisar"],
   questoes: ["Banco de Questões", "Monte seu treino"],
   simulados: ["Simulados", "Condições de prova"],
@@ -70,7 +72,7 @@ const PHASE2_ROUTES = ["home2", "teoria2", "estacoes", "estacao", "dupla", "peps
 const ROUTES = new Set(["home", "home2", "sessao", "estacao", ...Object.keys(TITLES)]);
 
 // Telas já ligadas aos dados reais (as demais mostram o aviso de exemplo).
-const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", "planos"]);
+const CONNECTED = new Set(["home", "hoje", "questoes", "simulados", "flash", "erros", "plano", "desempenho", "analise", "perfil", "admin", "temas", "tutor", "trilha", "classificacao", "missoes", "conquistas", "aulas", "atualizacoes", "mapas", "planos"]);
 
 function greeting(name, now = new Date()) {
   const hour = now.getHours();
@@ -159,6 +161,7 @@ function Screen() {
   else if (route === "aulas") body = <LessonsScreen go={go} />;
   else if (route === "temas") body = <ThemesScreen go={go} />;
   else if (route === "atualizacoes") body = <UpdatesScreen go={go} />;
+  else if (route === "mapas") body = <MapasScreen go={go} />;
   else if (route === "questoes") body = <QuestionBuilder key="q" go={go} mode="q" />;
   else if (route === "simulados") body = <QuestionBuilder key="sim" go={go} mode="sim" />;
   else if (route === "flash") body = <FlashcardsScreen go={go} />;

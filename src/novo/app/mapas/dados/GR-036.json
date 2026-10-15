@@ -1,0 +1,185 @@
+{
+  "esquema": 1,
+  "slug": "queimaduras-e-lesao-eletrica",
+  "codigo": "GR-036",
+  "area": "cir",
+  "titulo": "Queimaduras e lesão elétrica",
+  "subtitulo": "Da via aérea à unidade de queimados",
+  "emblema": "cruz",
+  "revisao": {
+    "status": "pre-revisado por agente",
+    "origem": "Aula GR-036 versao 4 (pacote 2026-10-15-aulas-corrigidas), afirmacoes QM01 a QM89 e W01",
+    "gerado_em": "2026-10-15",
+    "aprovacao_humana": null,
+    "pendencias": [
+      "Fator da fórmula de Parkland: a aula traz 2 a 4 mL (pré-hospitalar sugere 4 mL) e diz que o gabarito das questões oficiais de cálculo no adulto usou o fator 2; mantidos os dois, sem opinar sobre o gabarito.",
+      "A aula informa que taxas iniciais fixas por faixa etária do curso internacional de trauma NAO entram na aula: omitidas.",
+      "Dose de hidroxocobalamina: a aula só cita o antídoto 'conforme os critérios oficiais'; nenhuma dose registrada.",
+      "Regra dos nove na criança: a aula traz 13,5% e 14% para cada membro inferior conforme a tabela usada; ambos mantidos.",
+      "Conferência 15/10: item do cianeto reescrito; antes ligava os sinais direto à hidroxocobalamina, e a aula diz que esses sinais 'levam a verificar' o cianeto e que o antídoto segue 'os critérios oficiais' (QM19, QM21)."
+    ]
+  },
+  "ramos": [
+    {
+      "id": "atendimento", "titulo": "Atendimento inicial", "cor": "azul", "icone": "prancheta",
+      "revisao": { "itens": [
+        "Afastar o paciente do agente e fazer avaliação primária e secundária",
+        { "t": "Politrauma grave: tratar primeiro o trauma e os efeitos sistêmicos; a queimadura vem depois", "tom": "atencao" },
+        "Expor a área; retirar roupas e objetos que não estejam aderidos à pele",
+        "Resfriar com soro fisiológico em abundância",
+        { "t": "Água gelada ou gelo: contraindicados", "tom": "alerta" },
+        "Cobrir com compressas secas, estéreis e não aderentes; prevenir hipotermia"
+      ] },
+      "aprofundado": [
+        { "titulo": "Passo a passo", "itens": ["Interromper o processo de queimadura e cobrir as lesões com tecido limpo.", "Cobrir com compressas secas, estéreis e não aderentes e prevenir a hipotermia, de preferência com manta metálica.", "Estimar a área queimada para informar o médico regulador.", "No atendimento pré-hospitalar, bolhas não se rompem nem se perfuram.", "Com exceção da sulfadiazina de prata 1%, cremes e loções não devem ser usados, inclusive para não atrapalhar a avaliação da ferida."] },
+        { "titulo": "Sequência", "itens": ["Na sequência atual do ATLS, o atendimento começa pelo x: em certos pacientes, o controle rápido da hemorragia externa exsanguinante vem antes do A da via aérea."] },
+        { "titulo": "Resfriamento", "itens": [{ "t": "O resfriamento de queimaduras extensas pode provocar hipotermia, especialmente na criança.", "tom": "atencao" }] }
+      ],
+      "claims": ["W01", "QM01", "QM02", "QM03", "QM04", "QM05", "QM06", "QM07", "QM08", "QM09"]
+    },
+    {
+      "id": "via-aerea", "titulo": "Via aérea, fumaça e circulares", "cor": "ciano", "icone": "pulmao",
+      "revisao": {
+        "linhas": [
+          { "rotulo": "Lesão inalatória", "itens": ["Suspeitar: ambiente fechado, face acometida, rouquidão, estridor, escarro carbonáceo, vibrissas queimadas", "Sinais evidentes ou insuficiência respiratória: considerar via aérea definitiva precoce"] },
+          { "rotulo": "Suporte", "itens": ["O2 a 100% em máscara umidificada e cabeceira a 30°", "Também intubar: Glasgow < 8, PaO2 < 60, PaCO2 > 55, saturação < 90 ou edema importante de face e orofaringe"] },
+          { "rotulo": "Intoxicações", "itens": [{ "t": "Monóxido de carbono: oximetria normal não afasta; O2 na máxima concentração, por 3 horas", "tom": "alerta" }, "Fumaça com Glasgow < 13, FC < 40, PAS < 90 ou PCR: pensar em cianeto; antídoto hidroxocobalamina, conforme os critérios oficiais"] }
+        ],
+        "itens": ["Queimadura circular de tórax ou membro: emergência; avaliar perfusão distal e escarotomia"]
+      },
+      "aprofundado": [
+        { "titulo": "Sinais de queimadura de vias aéreas", "itens": ["Cílios, sobrancelhas e pelos do nariz queimados, mudança da voz até a afonia, estridor laríngeo, sialorreia, secreções com fuligem.", "Na criança com esses sinais, considerar a intubação traqueal precoce."] },
+        { "titulo": "Monóxido de carbono", "itens": ["Há hipoxemia celular com oximetria periférica inalterada: o oxímetro não diferencia oxi-hemoglobina de carboxi-hemoglobina, e a leitura pode indicar valor maior que o real.", "Oferecer oxigênio na máxima concentração, independentemente da oximetria, de preferência em máscara não reinalante a 15 L/min; manter por três horas."] },
+        { "titulo": "Cianeto", "itens": ["Sintomas em poucos segundos; pode levar à morte por parada respiratória em poucos minutos.", "O antídoto é a hidroxocobalamina, seguindo os critérios oficiais."] },
+        { "titulo": "Queimaduras circulares", "itens": ["Tórax: pode precisar de escarotomia para melhorar a expansão da caixa torácica.", "Membros: avaliar perfusão periférica, pulso e temperatura e fazer escarotomia, se necessário."] }
+      ],
+      "claims": ["QM10", "QM11", "QM12", "QM13", "QM14", "QM15", "QM16", "QM17", "QM18", "QM19", "QM20", "QM21", "QM22", "QM23", "QM24", "QM25", "QM26"]
+    },
+    {
+      "id": "profundidade", "titulo": "Profundidade e extensão", "cor": "azul-forte", "icone": "lupa",
+      "revisao": {
+        "linhas": [
+          { "rotulo": "Profundidade", "itens": ["1º grau: eritema, sem bolhas; descama em 4 a 6 dias", "2º grau: bolhas; base rósea, úmida, dolorosa (superficial) ou branca, seca (profundo)", "3º grau: indolor, branca nacarada ou enegrecida, coriácea; precisa de enxertia"] },
+          { "rotulo": "Extensão (adulto)", "itens": ["Regra dos nove: cabeça e pescoço 9%, membro superior 9%, tronco 18% (cada face), membro inferior 18%, genitais 1%", "Palma da mão do paciente, com dedos: cerca de 1%"] },
+          { "rotulo": "Criança", "itens": ["Cabeça e pescoço 18%; cada membro inferior 13,5 a 14% conforme a tabela", "Lund e Browder é o mais adequado em pediatria"] }
+        ]
+      },
+      "aprofundado": [
+        { "titulo": "Profundidade", "itens": ["O 2º grau se restaura entre 7 e 21 dias.", "O 3º grau atinge epiderme, derme e estruturas profundas, não reepiteliza e precisa de enxertia de pele, também indicada no 2º grau profundo."] },
+        { "titulo": "Gravidade", "itens": ["A extensão, junto com a profundidade, a lesão inalatória, o politrauma e outros fatores, define a gravidade."] }
+      ],
+      "claims": ["QM27", "QM28", "QM29", "QM30", "QM31", "QM32", "QM33", "QM34", "QM35", "QM86", "QM87"]
+    },
+    {
+      "id": "reposicao", "titulo": "Reposição volêmica", "cor": "laranja", "icone": "gota", "lado": "centro",
+      "revisao": {
+        "fluxo": [
+          { "t": "Mais de 20% de SCQ: acesso periférico calibroso", "tom": "diag" },
+          { "t": "Ringer lactato pela fórmula de Parkland (2º e 3º graus)", "tom": "conduta" },
+          "Metade do volume nas primeiras 8 h; metade nas 16 h seguintes",
+          { "t": "Ajustar pela diurese: 0,5 a 1 mL/kg/h", "tom": "conduta" }
+        ],
+        "itens": [
+          "Parkland: 2 a 4 mL x peso (kg) x % de SCQ de 2º e 3º graus",
+          { "t": "Horas contadas da hora da queimadura, não da chegada", "tom": "alerta" },
+          { "t": "Nas 24 h iniciais, evitar coloide, diurético e droga vasoativa", "tom": "atencao" },
+          "Sonda vesical: acima de 20% no adulto e 10% na criança"
+        ]
+      },
+      "aprofundado": [
+        { "titulo": "Acesso e fluido", "itens": ["Preferir acesso periférico e calibroso, de preferência em área não queimada, mas se preciso em área queimada; no pré-hospitalar considerar a intraóssea.", "Acesso central só na impossibilidade do periférico.", "Cristaloide, preferencialmente ringer lactato; informar o volume infundido ao hospital de destino."] },
+        { "titulo": "Fórmula", "itens": ["Pré-hospitalar: sugere-se iniciar com 4 mL.", "Idosos e portadores de insuficiência renal ou cardíaca: começar com 2 a 3 mL/kg/% SCQ e observar a diurese com mais rigor.", "Volume por hora nas primeiras 8 h: dividir a metade do volume por 8."] },
+        { "titulo": "Fator na prova", "itens": [{ "t": "Nas questões oficiais de cálculo no adulto com queimadura térmica, o gabarito saiu com o fator 2 (2 x peso x % de SCQ).", "tom": "atencao" }] },
+        { "titulo": "Cuidados", "itens": ["O 1º grau fica fora do cálculo.", "A reposição precoce é importante, mas o excesso de fluido pode causar danos graves.", "Observar a glicemia nas crianças, nos diabéticos e sempre que necessário."] }
+      ],
+      "claims": ["QM36", "QM37", "QM38", "QM39", "QM40", "QM41", "QM42", "QM43", "QM44", "QM45", "QM46", "QM47", "QM48", "QM49"]
+    },
+    {
+      "id": "ferida", "titulo": "Ferida, dor e tétano", "cor": "verde", "icone": "pilula",
+      "revisao": {
+        "linhas": [
+          { "rotulo": "Dor e ferida", "itens": ["Analgesia sempre, por via venosa; sedação se necessário; no adulto, dipirona ou morfina", "Limpar com água e clorexidina desgermante 2% (ou água e sabão neutro)", "Sulfadiazina de prata 1%; curativo exposto na face e no períneo"] },
+          { "rotulo": "Antibiótico", "itens": ["Sistêmico só se colonizada e com sinais de infecção; evitar corticoide indiscriminado"] }
+        ],
+        "faixas": [
+          { "rotulo": "Alto risco: 3 doses ou mais, última há menos de 5 anos", "chip": "Nada", "texto": "sem vacina e sem soro ou imunoglobulina" },
+          { "rotulo": "3 doses ou mais, última há mais de 5 anos", "chip": "Reforço", "texto": "um reforço da vacina, sem soro ou imunoglobulina" },
+          { "rotulo": "História incerta ou menos de 3 doses", "chip": "Vacina + soro", "texto": "vacina e soro ou imunoglobulina" }
+        ]
+      },
+      "aprofundado": [
+        { "titulo": "Tétano: detalhes", "itens": ["Queimadura é ferimento de alto risco para tétano.", "Última dose há mais de 5 e menos de 10 anos, ou há 10 anos ou mais: um reforço, sem soro.", "Com a última dose há 10 anos ou mais, se houver suspeita de que os cuidados posteriores com a ferida não serão adequados, considerar também soro ou imunoglobulina.", { "t": "Imunodeprimido, desnutrido grave ou idoso: o reforço vem junto com imunoglobulina ou soro.", "tom": "atencao" }] },
+        { "titulo": "Cobertura", "itens": ["A compressa seca, estéril e não aderente é a medida do pré-hospitalar; no tratamento da ferida usa-se a sulfadiazina de prata 1%."] }
+      ],
+      "claims": ["QM05", "QM50", "QM51", "QM72", "QM73", "QM74", "QM75", "QM76", "QM77", "QM78", "QM79", "QM80", "QM88", "QM89"]
+    },
+    {
+      "id": "transferencia", "titulo": "Gravidade e transferência", "cor": "amarelo", "icone": "relogio",
+      "revisao": {
+        "linhas": [
+          { "rotulo": "Queimadura grave", "itens": ["Mais de 20% de SCQ no adulto ou mais de 10% na criança", "Menor de 3 ou maior de 65 anos; lesão inalatória", "Politrauma, doença prévia, química, elétrica, áreas nobres, violência ou tentativa de suicídio"] },
+          { "rotulo": "Transferir para unidade de queimados", "itens": ["2º grau em mais de 20% (adulto); mais de 10% em criança ou maior de 50 anos", "3º grau em qualquer extensão", "Face, olhos, períneo, mãos, pés, grandes articulações; elétrica; química; inalatória; circular"] }
+        ],
+        "fluxo": [
+          { "t": "Estabilização hemodinâmica e medidas iniciais", "tom": "conduta" },
+          "Solicitar a vaga, com leito de UTI reservado",
+          { "t": "Grave: médico acompanhando, UTI móvel e relatório", "tom": "conduta" }
+        ]
+      },
+      "aprofundado": [
+        { "titulo": "Áreas nobres", "itens": ["Olhos, orelhas, face, pescoço, mão, pé, região inguinal, grandes articulações e órgãos genitais."] },
+        { "titulo": "Outros critérios de transferência", "itens": ["Doenças associadas, tentativa de suicídio, politrauma, maus-tratos ou situação social adversa."] },
+        { "titulo": "Como transferir", "itens": ["Paciente grave só viaja acompanhado de médico, em ambulância com UTI móvel e possibilidade de assistência ventilatória.", "Enviar sempre relatório com as informações colhidas, as condutas e os exames realizados."] }
+      ],
+      "claims": ["QM52", "QM53", "QM54", "QM55", "QM56", "QM57", "QM58", "QM59", "QM60"]
+    },
+    {
+      "id": "especiais", "titulo": "Elétrica, química e criança", "cor": "roxo", "icone": "alerta",
+      "revisao": {
+        "linhas": [
+          { "rotulo": "Elétrica", "itens": ["Em geral muito agressiva; monitorização cardíaca contínua por 24 a 48 h e CPK e CKMB", "Avaliar mioglobinúria; diurese em torno de 1,5 mL/kg/h ou até clarear a urina", "Corrente pelo punho: avaliar antebraço, braço e membros inferiores (escarotomia com fasciotomia)"] },
+          { "rotulo": "Química", "itens": ["Proteção universal da equipe; identificar o agente", "Remover roupas e excesso do agente; água corrente por no mínimo 30 minutos", { "t": "Neutralizantes são contraindicados", "tom": "alerta" }] },
+          { "rotulo": "Criança", "itens": [{ "t": "Suspeita de maus-tratos: levar sempre ao hospital, mesmo com 1º grau pequeno; notificação compulsória", "tom": "alerta" }] }
+        ]
+      },
+      "aprofundado": [
+        { "titulo": "Elétrica", "itens": ["Identificar se a fonte foi de alta tensão, se a corrente era alternada ou contínua e se houve passagem de corrente, com ponto de entrada e saída.", "Avaliar traumas associados (como queda de altura), perda de consciência ou PCR no momento do acidente.", "Procurar sempre internar a vítima.", "A meta de diurese (1,5 mL/kg/h) é mais alta que a da queimadura térmica (0,5 a 1 mL/kg/h)."] },
+        { "titulo": "Química", "itens": ["Avaliar concentração, volume e duração do contato; a lesão é progressiva.", "Se for pó, remover antes com escova ou panos; irrigar exaustivamente os olhos se atingidos.", "Internar e, na dúvida, contatar o centro toxicológico mais próximo.", "Depois da descontaminação, a lesão por cáustico ou corrosivo é tratada como queimadura térmica."] },
+        { "titulo": "Criança", "itens": ["Informar a SCQ estimada à Regulação Médica ao definir o destino.", "Sugerem maus-tratos: ponta de cigarro, marcas de ferro de passar, escaldadura por imersão com limites bem definidos nas extremidades e nádegas, lesões no períneo e história conflitante com os achados."] }
+      ],
+      "claims": ["QM06", "QM34", "QM48", "QM61", "QM62", "QM63", "QM64", "QM65", "QM66", "QM67", "QM68", "QM69", "QM70", "QM71", "QM81", "QM82", "QM83", "QM84", "QM87"]
+    },
+    {
+      "id": "revalida", "titulo": "Revalida INEP: decisões e pegadinhas", "cor": "vermelho", "icone": "alerta",
+      "revisao": { "itens": [
+        { "t": "Esperar insuficiência respiratória para pensar na via aérea (rouquidão, fuligem, face queimada)", "tom": "alerta" },
+        { "t": "Afastar monóxido de carbono pela oximetria normal", "tom": "alerta" },
+        { "t": "Gelo ou água gelada; incluir o 1º grau no cálculo; contar as 8 h da chegada", "tom": "alerta" },
+        { "t": "Coloide ou diurético nas 24 h iniciais; julgar a lesão elétrica pelo tamanho da ferida", "tom": "alerta" },
+        { "t": "Neutralizar a queimadura química; reforço antitetânico com 3 doses e última há menos de 5 anos", "tom": "alerta" },
+        { "t": "Transferir o grande queimado sem estabilizar, sem médico ou sem relatório", "tom": "alerta" }
+      ] },
+      "aprofundado": [
+        { "titulo": "O que mudou desde a prova", "itens": ["Sequência do atendimento: em 2025, a nova edição do ATLS acrescentou um x antes do ABCDE, para o controle rápido da hemorragia externa exsanguinante em certos pacientes. No queimado que também sofreu outro trauma grave, continua: tratar primeiro o trauma e os efeitos sistêmicos, depois a queimadura.", "Reposição volêmica: os documentos nacionais aceitam 2 a 4 mL x peso x % de SCQ, metade nas primeiras 8 h contadas da hora da queimadura e diurese de 0,5 a 1 mL/kg/h; nas questões oficiais de cálculo no adulto, o gabarito usou o fator 2."] },
+        { "titulo": "Mais armadilhas", "itens": ["Em lugar de neutralizar a queimadura química, diluir em água corrente por no mínimo 30 minutos.", "Na lesão elétrica, esquecer a monitorização cardíaca.", "Em lugar de coloide ou diurético nas 24 h iniciais, ajustar o cristaloide pela diurese."] }
+      ],
+      "claims": ["W01", "QM03", "QM06", "QM11", "QM17", "QM39", "QM40", "QM41", "QM42", "QM43", "QM45", "QM47", "QM53", "QM58", "QM59", "QM60", "QM64", "QM69", "QM71", "QM76"]
+    }
+  ],
+  "pontos_chave": [
+    "Politrauma: primeiro o trauma, depois a queimadura",
+    "Rouquidão, fuligem e face queimada: considerar via aérea definitiva precoce",
+    "Oximetria normal não afasta intoxicação por monóxido de carbono",
+    "Parkland com ringer lactato, só 2º e 3º graus; metade nas primeiras 8 h da queimadura",
+    "Diurese de 0,5 a 1 mL/kg/h na térmica; cerca de 1,5 mL/kg/h na elétrica",
+    "Queimadura química: diluir em água corrente por no mínimo 30 minutos, sem neutralizar",
+    "Transferir depois de estabilizar, com médico, UTI móvel e relatório"
+  ],
+  "atencao": [
+    "Água gelada e gelo são contraindicados para resfriar a queimadura",
+    "As 8 primeiras horas contam da hora da queimadura, não da chegada",
+    "Fator de Parkland: 2 a 4 mL; nas questões oficiais do adulto o gabarito usou 2",
+    "Lesão elétrica: monitorização cardíaca por 24 a 48 h, mesmo com ferida pequena",
+    "Suspeita de maus-tratos: levar sempre ao hospital e notificar"
+  ]
+}

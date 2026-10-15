@@ -46,7 +46,7 @@ describe("Menu do celular: Mais", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Mais" }));
     const sheet = screen.getByRole("dialog", { name: "Todas as áreas" });
-    for (const nome of ["Plano de Hoje", "Temas Essenciais", "Diretrizes e Atualizações", "Banco de Questões", "Simulados", "Flashcards", "Caderno de Erros", "Missões", "Ranking", "Conquistas", "Desempenho", "Análise Inteligente", "Planejamento", "Tutor com IA", "Meu Plano", "Conta e ajuda"]) {
+    for (const nome of ["Plano de Hoje", "Temas Essenciais", "Diretrizes e Atualizações", "Mapas Mentais", "Banco de Questões", "Simulados", "Flashcards", "Caderno de Erros", "Missões", "Ranking", "Conquistas", "Desempenho", "Análise Inteligente", "Planejamento", "Tutor com IA", "Meu Plano", "Conta e ajuda"]) {
       expect(within(sheet).getByRole("button", { name: new RegExp(nome) })).toBeTruthy();
     }
     for (const fase2 of ["Estações", "Teoria", "PEPs", "Paciente", "Praticar em dupla"]) expect(within(sheet).queryByRole("button", { name: new RegExp(fase2) })).toBeNull();

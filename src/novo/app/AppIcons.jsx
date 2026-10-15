@@ -110,6 +110,25 @@ const DEF = {
       </>
     ),
   },
+  // Mapas Mentais: tema central com ramos coloridos
+  network: {
+    an: "pop",
+    d: (p) => (
+      <>
+        <defs>
+          {g(p + "c", "#3D6FD6", "#0F2E7A")}
+          {g(p + "a", "#6CDDD2", "#0B7F76")}
+          {g(p + "o", "#FFB15C", "#D9650A")}
+        </defs>
+        <path d="M13 13 7 8M19 13l6-5M13 19l-6 5M19 19l6 5" stroke="#9AA7BD" strokeWidth="1.6" strokeLinecap="round" />
+        <circle cx="16" cy="16" r="5.4" fill={u(p, "c")} />
+        <circle cx="6.5" cy="7" r="3.2" fill={u(p, "a")} />
+        <circle cx="25.5" cy="7" r="3.2" fill={u(p, "o")} />
+        <circle cx="6.5" cy="25" r="3.2" fill={u(p, "o")} />
+        <circle cx="25.5" cy="25" r="3.2" fill={u(p, "a")} />
+      </>
+    ),
+  },
   // Aulas: tela com o botão de play (conteúdo audiovisual)
   tv: {
     an: "pop",

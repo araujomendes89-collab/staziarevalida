@@ -1,0 +1,164 @@
+{
+  "esquema": 1,
+  "slug": "rastreamento-cancer-colo-do-utero",
+  "codigo": "GR-056",
+  "area": "go",
+  "titulo": "Rastreamento do câncer do colo do útero",
+  "subtitulo": "Do teste de DNA-HPV ao laudo da citologia",
+  "emblema": "cruz",
+  "revisao": {
+    "status": "pre-revisado por agente",
+    "origem": "Aula GR-056 versao 4 (pacote 2026-10-15-aulas-corrigidas), afirmacoes CU01 a CU109",
+    "gerado_em": "2026-10-15",
+    "aprovacao_humana": null,
+    "pendencias": [
+      "A aula não traz o tratamento das lesões além do 'ver e tratar', da excisão tipo 3 e da EZT, nem o seguimento após o tratamento: omitidos.",
+      "Entre 25 e 29 anos, a aula diz que manter as mesmas condutas é seguro e que a recomendação de iniciar o DNA-HPV é condicional nessa faixa (forte a partir dos 30); sem mais detalhes na aula.",
+      "Gestante com HSIL: aula traz colposcopia na referência, biópsia se sugerir invasão e reavaliação 90 dias após o parto; nada além disso.",
+      "Intervalo da citologia na imunossuprimida (semestral no 1º ano, depois anual) mantido como regra da citologia; a aula não detalha o seguimento após alterações nesse grupo.",
+      "Conferência 15/10: preparo com estrogênio no homem trans restrito a quem está 'em uso de hormônio', como na aula (CU29, CU30); antes parecia valer para todo homem trans com útero."
+    ]
+  },
+  "ramos": [
+    {
+      "id": "quem-quando", "titulo": "Quem, quando e com qual exame", "cor": "azul", "icone": "calendario",
+      "revisao": {
+        "itens": [
+          "Método primário: DNA-HPV oncogênico com genotipagem",
+          "Começa aos 25 anos; negativo, repetir em 5 anos",
+          "Termina quando o último teste depois dos 60 anos é negativo",
+          { "t": "Sem coteste: não fazer citologia junto com o DNA-HPV", "tom": "alerta" },
+          { "t": "Vacinada também é rastreada: a vacina não cobre todos os tipos oncogênicos", "tom": "atencao" },
+          "Colhido por médico, enfermagem ou autocoleta (barreira de acesso)"
+        ]
+      },
+      "aprofundado": [
+        { "titulo": "Coleta", "itens": ["O profissional colhe nos mesmos sítios da citologia: ecto e endocérvice.", "Autocoleta: amostra vaginal obtida pela própria mulher, sem espéculo, pensada para limitação ou barreira de acesso.", "Se a autocoleta exigir citologia reflexa, nova amostra é colhida por médico ou enfermagem em outra visita."] },
+        { "titulo": "Idade", "itens": ["Não se rastreia antes dos 25 anos. Teste feito por engano antes dos 25: resultado positivo não é considerado; orientar e começar aos 25.", "Acima de 60 anos sem teste prévio: faz o teste; se negativo, encerra.", "Entre 25 e 29 anos, é seguro manter as mesmas condutas das mulheres mais velhas."] },
+        { "titulo": "Teste positivo", "itens": ["Teste positivo não significa necessariamente lesão ou câncer; o aconselhamento antes da coleta esclarece isso."] }
+      ],
+      "claims": ["CU01", "CU02", "CU03", "CU04", "CU05", "CU06", "CU07", "CU08", "CU09", "CU10", "CU11", "CU13", "CU14", "CU44", "CU46", "CU68", "CU99", "CU100"]
+    },
+    {
+      "id": "situacoes", "titulo": "Situações especiais", "cor": "roxo", "icone": "pessoas",
+      "revisao": {
+        "linhas": [
+          { "rotulo": "Exceções à regra", "itens": ["Sem atividade sexual: não rastrear", "Histerectomia total por doença benigna, sem lesão de alto grau e com exames normais: pode sair", "Histerectomia por lesão precursora ou câncer: coleta vaginal por no mínimo 25 anos ou indefinidamente"] },
+          { "rotulo": "HIV ou imunossupressão", "itens": ["Começa após o início da atividade sexual; negativo repete em 3 anos; não encerra", { "t": "Qualquer tipo de HPV detectado: colposcopia", "tom": "alerta" }] },
+          { "rotulo": "Outros", "itens": ["Gestante: pode colher no pré-natal, em qualquer idade gestacional, ou na revisão puerperal", "Atrofia ao especular: creme de estriol vaginal por 14 noites; coleta 5 a 7 dias após suspender", "Homem trans com útero: mesma prevenção; em uso de hormônio, preparo com estrogênio antes da coleta"] }
+        ],
+        "itens": [{ "t": "Sintomas (sangramento anormal ou pós-coito): avaliar para câncer avançado, sem esperar a rodada", "tom": "alerta" }]
+      },
+      "aprofundado": [
+        { "titulo": "Após os 60 anos", "itens": ["Tratamento prévio de NIC 2, NIC 3 ou AIS: o rastreamento segue até 25 anos após o tratamento."] },
+        { "titulo": "Pós-menopausa e LGBTQIAPN+", "itens": ["Valem as mesmas regras do risco-padrão.", "No homem trans em uso de hormônio, a atrofia do epitélio vaginal pode tornar a citologia insatisfatória; preparo com estrogênio antes da coleta vaginal ou da colposcopia.", "Homens trans que mantêm útero e colo e outras pessoas nascidas com sistema reprodutivo feminino continuam sob risco."] },
+        { "titulo": "Sintomas", "itens": ["As recomendações de rastreamento não se aplicam a sintomáticas.", "Na suspeita, encaminhar ao serviço especializado, independentemente do intervalo desde o último exame."] }
+      ],
+      "claims": ["CU12", "CU15", "CU16", "CU17", "CU18", "CU19", "CU20", "CU21", "CU22", "CU23", "CU24", "CU25", "CU26", "CU27", "CU28", "CU29", "CU30", "CU31", "CU32", "CU67", "CU96", "CU101"]
+    },
+    {
+      "id": "resultado-hpv", "titulo": "Resultado do DNA-HPV: conduta", "cor": "laranja", "icone": "microscopio", "lado": "centro",
+      "revisao": {
+        "linhas": [
+          { "rotulo": "Resultado", "itens": ["Negativo: repetir em 5 anos", { "t": "HPV 16 e/ou 18: colposcopia", "tom": "conduta" }, "Outros tipos oncogênicos: citologia reflexa, de preferência na mesma amostra"] },
+          { "rotulo": "Citologia reflexa", "itens": [{ "t": "Alterada (ASC-US ou pior) ou insatisfatória: colposcopia", "tom": "conduta" }, "Negativa: repetir o DNA-HPV em 12 meses"] },
+          { "rotulo": "Teste de 12 meses", "itens": ["Negativo: volta aos 5 anos; 16 ou 18: colposcopia", "Outros tipos com reflexa negativa: mais 12 meses", "Persistência por 24 meses: colposcopia, qualquer que seja a citologia"] }
+        ],
+        "itens": ["Resultado inválido: nova coleta por profissional de saúde"]
+      },
+      "aprofundado": [
+        { "titulo": "Tipos oncogênicos", "itens": ["16, 18, 31, 33, 35, 39, 45, 51, 52, 56, 58 e 59.", "A genotipagem parcial identifica isoladamente 16 e 18 e um conjunto dos outros tipos.", "Alguns testes incluem tipos adicionais (66 e 68), sem que esses achados definam conduta."] },
+        { "titulo": "Pegadinhas", "itens": [{ "t": "HPV 51, 31 ou 45 não vai direto para colposcopia: o próximo passo é a citologia reflexa (fora a imunossuprimida).", "tom": "atencao" }, "A repetição em 12 meses também vale depois de colposcopia negativa feita por HPV 16 ou 18.", "Pós-menopausa com tipo que não 16/18 e reflexa insatisfatória por atrofia: colposcopia com preparo prévio de estrogênio tópico."] }
+      ],
+      "claims": ["CU14", "CU21", "CU34", "CU35", "CU36", "CU37", "CU38", "CU39", "CU40", "CU41", "CU42", "CU43", "CU45", "CU98", "CU104", "CU105"]
+    },
+    {
+      "id": "citologia", "titulo": "Citologia na transição", "cor": "ciano", "icone": "lupa",
+      "revisao": {
+        "itens": [
+          "Sem DNA-HPV no município: mantém a citologia de 25 a 64 anos",
+          "Trienal, depois de 2 exames anuais negativos",
+          "Para aos 64 anos com 2 negativos consecutivos nos últimos 5 anos, sem lesão prévia",
+          "Mais de 64 anos sem exame: 2 exames com 1 a 3 anos de intervalo; ambos negativos, dispensa",
+          "Quando o DNA-HPV chega, substitui a citologia na próxima data de rastreio",
+          "Amostra insatisfatória: repetir em 6 a 12 semanas"
+        ]
+      },
+      "aprofundado": [
+        { "titulo": "Transição", "itens": ["O convite prioriza mulheres de 30 a 49 anos com o último exame há mais de 36 meses ou que nunca o fizeram.", "Quem já tinha indicação de colposcopia pela citologia e não foi investigada vai à colposcopia, sem DNA-HPV para reavaliar a indicação."] },
+        { "titulo": "Laudos benignos", "itens": ["Inflamação sem agente identificado, metaplasia escamosa imatura, reparação, lactobacilos, cocos e outros bacilos: seguir a rotina.", "Sem queixa ou colpite, não é preciso encaminhar, tratar nem repetir; tratar só se houver queixa, como corrimento, prurido ou odor anormal.", "Atrofia dificultando a leitura: estrogenização por via vaginal."] },
+        { "titulo": "Imunossuprimida na citologia", "itens": ["Começa após o início da atividade sexual: exames semestrais no primeiro ano e, se normais, anuais."] }
+      ],
+      "claims": ["CU33", "CU47", "CU48", "CU49", "CU50", "CU51", "CU52", "CU53", "CU54", "CU55", "CU56", "CU65", "CU66", "CU69", "CU70", "CU94", "CU95", "CU103", "CU109"]
+    },
+    {
+      "id": "laudos", "titulo": "Laudo alterado e colposcopia", "cor": "azul-forte", "icone": "prancheta",
+      "revisao": {
+        "linhas": [
+          { "rotulo": "ASC-US", "itens": ["30 anos ou mais: repetir em 6 meses", "25 a 29 anos: repetir em 12 meses", "Menos de 25 anos: repetir em 3 anos; se normal, reiniciar aos 25"] },
+          { "rotulo": "LSIL", "itens": ["25 anos ou mais: repetir em 6 meses (não vai direto à colposcopia)", "Menos de 25 anos: repetir em 3 anos"] },
+          { "rotulo": "Colposcopia direta", "itens": ["ASC-H, AGC, HSIL, carcinoma escamoso invasor, AIS ou adenocarcinoma"] }
+        ],
+        "itens": [
+          "Repetições negativas: volta à rotina; lesão igual ou mais grave: colposcopia",
+          { "t": "HSIL: repetir a citologia como conduta inicial é inaceitável", "tom": "alerta" }
+        ]
+      },
+      "aprofundado": [
+        { "titulo": "Ver e tratar", "itens": ["HSIL a partir dos 25 anos, com achados anormais maiores, JEC visível (zona de transformação tipo 1 ou 2), lesão restrita ao colo e sem suspeita de invasão ou doença glandular: ver e tratar, com excisão tipo 1 ou 2.", "JEC não visível ou parcialmente visível (tipo 3) com achados maiores: excisão tipo 3.", { "t": "Até 24 anos, o ver e tratar é inaceitável (a HSIL vai à colposcopia). Na LSIL, tratar só pelo aspecto colposcópico também é inaceitável.", "tom": "alerta" }] },
+        { "titulo": "Métodos excisionais", "itens": ["Diagnosticam invasão não vista na citologia ou na colposcopia e tratam a lesão intraepitelial.", "O tratamento excisional ambulatorial é a exérese da zona de transformação (EZT), sob visão colposcópica e anestesia local."] },
+        { "titulo": "AGC", "itens": ["Além da colposcopia, avaliar o endométrio com ultrassonografia transvaginal acima de 35 anos.", "Abaixo de 35 anos, investigar o endométrio se houver sangramento uterino anormal ou se a citologia sugerir origem endometrial."] },
+        { "titulo": "Até 24 anos e gestante", "itens": ["Alta prevalência de infecção pelo HPV e baixa incidência de HSIL e de carcinoma invasor.", "Gestante com HSIL: colposcopia na referência; biópsia se sugerir invasão; lesão de alto grau sem invasão é reavaliada 90 dias após o parto."] }
+      ],
+      "claims": ["CU57", "CU58", "CU59", "CU60", "CU61", "CU62", "CU63", "CU64", "CU85", "CU86", "CU87", "CU88", "CU89", "CU90", "CU92", "CU93", "CU97", "CU102", "CU106", "CU107", "CU108"]
+    },
+    {
+      "id": "vacina", "titulo": "Vacina contra o HPV", "cor": "verde", "icone": "seringa",
+      "revisao": {
+        "itens": [
+          "Rotina: meninas e meninos de 9 anos até 14 anos, 11 meses e 29 dias, 1 dose",
+          "Sem histórico vacinal de 15 a 19 anos: dose única no resgate, conforme o estado",
+          "Imunodeprimidos de 9 a 45 anos: 3 doses",
+          "Tratadas por NIC 2, NIC 3 ou AIS: 3 doses (0, 2 e 6 meses), no mesmo ano ou até 12 meses depois",
+          { "t": "Contraindicada na gestação", "tom": "alerta" }
+        ]
+      },
+      "aprofundado": [
+        { "titulo": "Vacina quadrivalente", "itens": ["Protege contra os tipos 6, 11, 16 e 18 e suas complicações, como verrugas genitais e câncer do colo do útero.", "Esquema básico: 1 dose aos 9 anos."] },
+        { "titulo": "Imunodeprimidos e tratadas", "itens": ["Imunodeprimidos incluem HIV/aids, transplantados e pacientes oncológicos.", "Mulheres tratadas por NIC 2, NIC 3 ou AIS são vacinadas em qualquer idade."] }
+      ],
+      "claims": ["CU71", "CU72", "CU73", "CU74", "CU75", "CU76", "CU77", "CU78", "CU79"]
+    },
+    {
+      "id": "revalida", "titulo": "Revalida INEP: decisões e pegadinhas", "cor": "vermelho", "icone": "alerta",
+      "revisao": { "itens": [
+        { "t": "Coteste: citologia junto com o DNA-HPV", "tom": "alerta" },
+        { "t": "Rastrear antes dos 25 anos ou valorizar o teste positivo feito por engano", "tom": "alerta" },
+        { "t": "HPV que não é 16 nem 18 direto para colposcopia (fora a imunossuprimida); 16 ou 18 repetir em 12 meses", "tom": "alerta" },
+        { "t": "Dispensar a mulher vacinada do rastreamento", "tom": "alerta" },
+        { "t": "Trocar idades no ASC-US; LSIL de 25 anos ou mais direto à colposcopia; repetir citologia na HSIL", "tom": "alerta" },
+        { "t": "Na mulher com HIV: intervalo de 5 anos e data de encerramento (são 3 anos e não encerra)", "tom": "alerta" }
+      ] },
+      "aprofundado": [
+        { "titulo": "O que mudou desde a prova", "itens": ["Exame e intervalo: antes, citologia de 25 a 64 anos, trienal após dois exames anuais normais; em julho de 2025, o Ministério da Saúde aprovou o rastreamento organizado com DNA-HPV como exame primário, a partir dos 25 anos e a cada 5 anos se negativo. A citologia vale onde o teste ainda não chegou.", "Fim do rastreamento: antes, aos 64 anos; com o DNA-HPV, quando o último teste depois dos 60 anos é negativo.", "Imunossuprimidas: antes, qualquer citologia alterada (ASC-US ou pior) ia à colposcopia; com o DNA-HPV, negativo repete em 3 anos, não encerra e qualquer HPV detectado leva à colposcopia.", "Vacina: antes, só meninas de 9 a 13 anos e em mais de uma dose; hoje, meninas e meninos de 9 a 14 anos, 1 dose, com resgate de 15 a 19 anos."] }
+      ],
+      "claims": ["CU02", "CU08", "CU09", "CU13", "CU19", "CU20", "CU21", "CU34", "CU35", "CU38", "CU57", "CU60", "CU61", "CU62", "CU68", "CU80", "CU81", "CU82", "CU83", "CU84", "CU86"]
+    }
+  ],
+  "pontos_chave": [
+    "DNA-HPV com genotipagem é o exame primário, a partir dos 25 anos, repetido em 5 anos se negativo",
+    "Sem coteste e sem rastrear antes dos 25 anos",
+    "HPV 16 ou 18: colposcopia; outros tipos: citologia reflexa",
+    "Reflexa negativa: repetir o DNA-HPV em 12 meses; persistência por 24 meses: colposcopia",
+    "Mulher vivendo com HIV: repete em 3 anos, não encerra, qualquer HPV vai à colposcopia",
+    "Citologia segue onde o teste não chegou: ASC-US e LSIL por idade; ASC-H, AGC e HSIL na colposcopia",
+    "Vacina HPV: 1 dose aos 9 a 14 anos; contraindicada na gestação"
+  ],
+  "atencao": [
+    "Teste positivo não significa lesão ou câncer",
+    "A vacina não dispensa o rastreamento",
+    "Os cortes de idade do ASC-US são trocados com frequência: 6 meses, 12 meses e 3 anos",
+    "Sintomas fora do rastreamento: avaliar e encaminhar sem esperar o intervalo",
+    "Ver e tratar é inaceitável até 24 anos e na LSIL"
+  ]
+}

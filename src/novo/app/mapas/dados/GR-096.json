@@ -1,0 +1,193 @@
+{
+  "esquema": 1,
+  "slug": "transtornos-de-ansiedade-e-panico",
+  "codigo": "GR-096",
+  "area": "sm",
+  "titulo": "Ansiedade e pânico",
+  "subtitulo": "Do coração disparado ao tratamento certo",
+  "emblema": "cruz",
+  "revisao": {
+    "status": "pre-revisado por agente",
+    "origem": "Aula GR-096 versao do pacote 2026-10-15-aulas-corrigidas, afirmacoes AN01 a AN208",
+    "gerado_em": "2026-10-15",
+    "aprovacao_humana": null,
+    "pendencias": [
+      "A aula nao traz doses nem nomes de ISRS, IRSN ou benzodiazepinico de acao curta (so o diazepam na retirada); nenhum farmaco ou dose foi acrescentado.",
+      "A aula nao detalha criterios da reacao aguda ao estresse nem de ansiedade de separacao; omitidos.",
+      "As perguntas do teste de rastreamento nao constam na aula; so a regra 'sim a qualquer uma leva a avaliacao'.",
+      "Conferência 15/10: 'TCC essencial na agorafobia' trocado por 'particularmente importante', como na aula (AN95).",
+      "Conferência 15/10: 'nunca com menos de 2 semanas' trocado por 'evitando trocas com menos de 2 semanas', como na aula (AN119: 'evite').",
+      "Conferência 15/10: duração de 1 a 2 anos após a remissão recebeu de volta a ressalva 'a maioria das diretrizes sugere' (AN128; a aula diz que a duração ideal é controversa, AN142), no ramo de seguimento e no ponto-chave."
+    ]
+  },
+  "ramos": [
+    {
+      "id": "suspeita", "titulo": "Suspeita e rastreio", "cor": "azul", "icone": "estetoscopio",
+      "revisao": { "itens": [
+        "Ansiedade é emoção normal; vira transtorno com sofrimento ou prejuízo desproporcional",
+        "É o transtorno psiquiátrico mais prevalente, mas costuma ser subdiagnosticado",
+        { "t": "Na APS, o modo comum de apresentação são sintomas físicos sem explicação médica", "tom": "atencao" },
+        "Pensar em quem volta à UBS com múltiplas queixas sem origem específica e em quem hiperutiliza o serviço",
+        "Também em quem usa tabaco, álcool, outras drogas ou psicotrópicos, inclusive sem prescrição",
+        "Teste de rastreamento: sim a qualquer pergunta leva à avaliação diagnóstica"
+      ] },
+      "aprofundado": [
+        { "titulo": "Quando é transtorno", "itens": ["Surge sem estímulo ameaçador definido ou proporcional, com intensidade, duração ou frequência desproporcionais, sofrimento e prejuízo social ou profissional.", "Para muitos o curso é crônico, com remissões e recaídas.", "Quem tem transtorno de ansiedade usa mais os serviços de saúde e tem altas taxas de ideação suicida e de abuso e dependência de álcool, nicotina e outras drogas."] },
+        { "titulo": "Conduta diante de queixas repetidas", "itens": ["A equipe deve tranquilizar a pessoa sobre o estado geral de saúde e evitar exames desnecessários.", "Deixar claro que os sintomas provavelmente não têm origem orgânica, mas são sensações reais, não invenções.", "Depois de um estresse importante, avaliar a possibilidade de reação aguda ao estresse."] }
+      ],
+      "claims": ["AN01", "AN02", "AN03", "AN07", "AN08", "AN10", "AN11", "AN12", "AN13", "AN14", "AN201", "AN202", "AN203"]
+    },
+    {
+      "id": "excluir", "titulo": "Excluir outras causas", "cor": "ciano", "icone": "lupa",
+      "revisao": {
+        "itens": [
+          { "t": "Primeiro passo: afastar outro problema clínico", "tom": "diag" },
+          "Guiar-se por anamnese e exame clínico; exames só na suspeita de condição específica",
+          "Sintomas também podem ser secundários a drogas, abstinência, doenças clínicas ou outros transtornos mentais"
+        ],
+        "linhas": [
+          { "rotulo": "Doenças", "itens": ["Coração: doença coronariana, arritmia, insuficiência cardíaca", "Pulmão: DPOC, asma, apneia do sono, embolia pulmonar", "Endócrino: hiper e hipotireoidismo, hiperparatireoidismo, hipoglicemia, feocromocitoma"] },
+          { "rotulo": "Substâncias e remédios", "itens": ["Abstinência de álcool, cocaína, anfetaminas", "Simpaticomiméticos e estimulantes (cafeína, metilfenidato)", "Corticoides, bloqueadores de canal de cálcio, carbamazepina, antidepressivos"] }
+        ]
+      },
+      "aprofundado": [
+        { "titulo": "Detalhes", "itens": ["Simpaticomiméticos: pseudoefedrina, adrenalina, efedrina. Estimulantes: cafeína, anfetamina, aminofilina, teofilina, metilfenidato.", "Só depois de excluir doença clínica, fármacos e uso ou abstinência de substâncias se fecha o diagnóstico.", "Arritmias, isquemia cerebral, doença coronariana e tireotoxicose podem imitar a crise de pânico, mas história e exame clínico geralmente bastam para excluí-las."] }
+      ],
+      "claims": ["AN04", "AN15", "AN20", "AN21", "AN22", "AN23", "AN24", "AN25", "AN27", "AN28", "AN63"]
+    },
+    {
+      "id": "quadros", "titulo": "Quadros e critérios", "cor": "azul", "icone": "prancheta",
+      "revisao": {
+        "linhas": [
+          { "rotulo": "Ataque de pânico", "itens": ["Início súbito, pico em poucos minutos, pelo menos 4 sintomas", { "t": "Pode ocorrer em qualquer transtorno de ansiedade, não só no pânico", "tom": "atencao" }] },
+          { "rotulo": "Transtorno de pânico", "itens": ["Ataques recorrentes e inesperados", "Pelo menos um seguido de preocupação persistente, preocupação com consequências ou mudança de comportamento"] },
+          { "rotulo": "Agorafobia", "itens": ["Medo de 2 ou mais de 5 situações, por achar difícil escapar ou obter ajuda", "Mínimo de 6 meses"] },
+          { "rotulo": "TAG", "itens": ["Preocupação excessiva na maioria dos dias, no mínimo 6 meses", "Difícil de controlar, com 3 ou mais de 6 sintomas"] },
+          { "rotulo": "Outros", "itens": ["Ansiedade social: medo de avaliação negativa, geralmente mais de 6 meses", "Fobia específica: mínimo de 6 meses", "TEPT: mais de 1 mês", "TOC: mais de 1 hora por dia ou interferência na rotina"] }
+        ]
+      },
+      "aprofundado": [
+        { "titulo": "Ataque de pânico: sintomas", "itens": ["Palpitações, sudorese, tremores, falta de ar ou sufocamento, asfixia, dor ou desconforto torácico.", "Também parestesias, desrealização ou despersonalização, medo de perder o controle ou enlouquecer e medo de morrer."] },
+        { "titulo": "Agorafobia e TAG", "itens": ["As 5 situações da agorafobia: transporte público, espaços abertos, locais fechados, fila ou multidão e sair de casa sozinho. O medo é desproporcional ao perigo real.", "Os 6 sintomas da TAG: inquietação, fatigabilidade, dificuldade de concentração ou branco na mente, irritabilidade, tensão muscular e alteração do sono."] },
+        { "titulo": "Grupo e comorbidade", "itens": ["Inclui pânico, agorafobia, fobias específicas, ansiedade social, TAG e ansiedade de separação.", "Mais de um transtorno de ansiedade ao mesmo tempo é tão ou mais frequente que um só; o diagnóstico considera onde está o foco do medo.", "TOC e TEPT ficam em outros capítulos, mas são muito comórbidos e estudados em conjunto."] },
+        { "titulo": "TEPT e TOC", "itens": ["TEPT e estresse agudo partem de evento traumático com ameaça de morte, lesão grave ou violência sexual. No TEPT há revivência, esquiva e excitabilidade aumentada.", "Obsessões: pensamentos, impulsos ou imagens recorrentes e intrusivos que causam ansiedade acentuada. Compulsões: atos repetitivos em resposta à obsessão."] },
+        { "titulo": "Pesquisar sempre", "itens": ["Depressão, transtorno bipolar, tabagismo, uso problemático de álcool e dor crônica.", "PHQ-2 (duas questões) acima de 2 pontos: avaliar depressão.", "Suspeita de bipolar: apoio do psiquiatra do matriciamento ou encaminhamento à atenção especializada."] }
+      ],
+      "claims": ["AN05", "AN06", "AN16", "AN17", "AN18", "AN19", "AN29", "AN30", "AN31", "AN32", "AN34", "AN35", "AN36", "AN37", "AN38", "AN39", "AN40", "AN41", "AN42", "AN43", "AN44", "AN46", "AN47", "AN48", "AN49", "AN51", "AN52", "AN53", "AN61"]
+    },
+    {
+      "id": "crise", "titulo": "Manejo da crise de pânico", "cor": "laranja", "icone": "coracao",
+      "revisao": {
+        "fluxo": [
+          { "t": "Crise: início agudo, terror súbito, sintomas cardiorrespiratórios", "tom": "diag" },
+          { "t": "Tranquilizar: é ataque de ansiedade, passa em poucos minutos", "tom": "conduta" },
+          { "t": "Respirar pelo nariz, sem hiperventilar; respiração diafragmática se predomina hiperventilação", "tom": "conduta" },
+          { "t": "Muito intensa ou prolongada: benzodiazepínico de ação curta por via oral", "tom": "conduta" }
+        ],
+        "itens": [
+          "Na maior parte das vezes, tranquilizar e o caráter autolimitado bastam",
+          { "t": "Benzodiazepínico intramuscular não é recomendado: absorção errática", "tom": "alerta" },
+          "Sem resposta ao manejo inicial: serviço de emergência"
+        ]
+      },
+      "aprofundado": [
+        { "titulo": "Na emergência", "itens": ["Se a via oral não puder ser usada, benzodiazepínico por via endovenosa, lentamente, com monitorização respiratória."] },
+        { "titulo": "Alívio não é tratamento", "itens": ["O benzodiazepínico age rápido, mas o uso prolongado causa dependência; é contraindicado em quem tem suscetibilidade a dependência e abuso de substâncias.", "O uso indiscriminado está contraindicado, pelo alto índice de dependência e tolerância."] }
+      ],
+      "claims": ["AN62", "AN63", "AN64", "AN65", "AN66", "AN67", "AN68", "AN69", "AN70", "AN80", "AN112", "AN134", "AN205"]
+    },
+    {
+      "id": "risco", "titulo": "Risco de suicídio e emergência", "cor": "roxo", "icone": "escudo",
+      "revisao": {
+        "itens": [
+          { "t": "Avaliar risco de suicídio sempre: a mortalidade é maior nesse grupo", "tom": "alerta" },
+          "Alta letalidade: plano concreto, tentativa prévia, abuso de substâncias, meios letais, desesperança",
+          "Risco agudo de suicídio ou de auto ou heteroagressão: emergência",
+          { "t": "Não deixar a pessoa sozinha; chamar familiar; cuidar dos meios de suicídio", "tom": "conduta" },
+          "Risco de vida: quebra de confidencialidade permitida",
+          "Violência autoprovocada (tentativa, automutilação): notificação compulsória"
+        ]
+      },
+      "aprofundado": [
+        { "titulo": "Encaminhamento", "itens": ["Avaliar a necessidade de transporte por ambulância.", "Se o paciente não concordar, o contato com a família é feito para informar o risco."] },
+        { "titulo": "Notificação", "itens": ["Casos suspeitos ou confirmados, com ou sem ideação suicida.", "Notifica-se em até 24 horas após o atendimento; a tentativa de suicídio está na lista nacional como notificação imediata à secretaria municipal de saúde, em até 24 horas."] },
+        { "titulo": "Alta da emergência", "itens": ["Nem todo paciente em risco precisa ser internado ou avaliado por psiquiatra na emergência.", "A alta só com melhora, acompanhante responsável e contrarreferência estabelecida; retorno à unidade de referência em até uma semana."] }
+      ],
+      "claims": ["AN50", "AN60", "AN71", "AN72", "AN73", "AN74", "AN75", "AN81", "AN82", "AN83", "AN206", "AN207", "AN208", "AN134"]
+    },
+    {
+      "id": "tratamento", "titulo": "Tratamento de longo prazo", "cor": "verde", "icone": "pilula", "lado": "centro",
+      "revisao": {
+        "linhas": [
+          { "rotulo": "Base", "itens": ["Psicoeducação em qualquer tratamento", "Maior parte manejada na APS", "Leve: psicoeducação e exercício, ou TCC se piora", "Maior prejuízo funcional: psicofármaco e/ou TCC (primeira linha)"] },
+          { "rotulo": "Fármacos", "itens": ["ISRS: primeira escolha em qualquer transtorno de ansiedade; efeito em 2 a 6 semanas", "Pânico e TAG: ISRS ou IRSN; 2ª linha tricíclicos e benzodiazepínicos", "Começar com dose baixa e subir aos poucos"] },
+          { "rotulo": "Psicoterapia", "itens": ["TCC: maior evidência; particularmente importante na agorafobia", "Fobia específica: terapia de exposição", "TOC: TCC com exposição e prevenção de resposta, mais ISRS em dose geralmente alta"] },
+          { "rotulo": "Benzodiazepínico", "itens": [{ "t": "Só apoio: ansiedade muito intensa ou latência do antidepressivo (até 3 semanas)", "tom": "atencao" }] }
+        ]
+      },
+      "aprofundado": [
+        { "titulo": "Psicoeducação e hábitos", "itens": ["Orientar a enfrentar as situações temidas: a ansiedade diminui com o tempo de exposição.", "Atividade física regular; restringir café e bebidas alcoólicas.", "Fumar não é terapêutico; parar de fumar se associa à redução da ansiedade."] },
+        { "titulo": "ISRS", "itens": ["Pela eficácia e pelo baixo perfil de efeitos adversos. Dose baixa para não aumentar a ansiedade.", "Avisar que a ansiedade pode aumentar nos primeiros dias; evitar álcool e estimulantes.", "A inquietude inicial costuma ser transitória e, na maioria dos casos, não justifica suspender.", { "t": "Uso concomitante com IMAO é contraindicação.", "tom": "alerta" }, "Antidepressivos não causam dependência."] },
+        { "titulo": "Outros fármacos", "itens": ["Tricíclicos: eficazes, com efeitos anticolinérgicos mais proeminentes que os ISRS.", { "t": "Contraindicações dos tricíclicos: IMAO, algumas cardiopatias, glaucoma de ângulo fechado, prostatismo ou retenção urinária.", "tom": "alerta" }, "Benzodiazepínico em uso prolongado compromete a memória, aumenta o risco de queda em idosos e traz risco de overdose.", "Propranolol controla palpitações e tremores, mas não a ansiedade em si; serve à ansiedade social de desempenho, antes de apresentações públicas.", "Pânico: tratamento combinado pode ser mais efetivo que o antidepressivo isolado.", "Antipsicótico em monoterapia não deve ser usado em transtornos mentais leves; no bipolar, cautela com antidepressivos."] },
+        { "titulo": "Por transtorno", "itens": ["Pânico: TCC e ISRS ou IRSN na primeira linha.", "TAG: TCC eficaz.", "Ansiedade social: TCC e ISRS ou IRSN na primeira linha.", "TEPT: TCC focada no trauma e terapia de manejo do estresse são eficazes.", "TCC é eficaz também em quem é refratário às medicações e vence antecipação, hipervigilância e esquiva fóbica."] }
+      ],
+      "claims": ["AN26", "AN90", "AN91", "AN92", "AN93", "AN94", "AN95", "AN96", "AN97", "AN98", "AN99", "AN100", "AN101", "AN103", "AN104", "AN105", "AN106", "AN107", "AN108", "AN109", "AN110", "AN111", "AN112", "AN113", "AN114", "AN115", "AN116", "AN118", "AN120", "AN122", "AN138", "AN139", "AN140", "AN141", "AN204"]
+    },
+    {
+      "id": "acompanhamento", "titulo": "Seguimento e encaminhamento", "cor": "ciano", "icone": "calendario",
+      "revisao": {
+        "fluxo": [
+          { "t": "Com medicamento: 1º retorno em 1 semana", "tom": "conduta" },
+          { "t": "Reavaliação na 4ª semana", "tom": "diag" },
+          { "t": "Com remissão: retornos mensais; estável a partir do 4º mês, de 2 em 2 meses", "tom": "conduta" }
+        ],
+        "itens": [
+          "Psicoterapia: acompanhamento semanal sempre que possível",
+          { "t": "Avaliar intencionalidade suicida em todas as consultas", "tom": "alerta" },
+          "Sem resposta: aumentar dose e duração, ou trocar de fármaco; poucas mudanças por consulta, evitando trocas com menos de 2 semanas de intervalo",
+          "A maioria das diretrizes sugere manter por no mínimo 1 a 2 anos após a remissão; retirada gradual",
+          "Encaminhar: refratário, uso grave de substâncias, bipolar associado, ideação persistente, TOC grave, TEPT crônico"
+        ]
+      },
+      "aprofundado": [
+        { "titulo": "Antes de encaminhar por falta de resposta", "itens": ["Conferir psicoeducação, medicação adequada, aumento gradual até a dose máxima e tempo de efeito.", "Caso refratário: ausência de resposta ou resposta parcial a duas estratégias efetivas (psicoterapia e/ou psicofármaco em dose terapêutica, por pelo menos 8 semanas)."] },
+        { "titulo": "Outros motivos para encaminhar", "itens": ["Transtorno grave por uso de substâncias, bipolar associado e ideação suicida persistente, com ausência de melhora 12 semanas após o início do manejo na APS.", "TOC com sintomas graves delirantes e insight prejudicado; TEPT crônico.", "Sintomas psicóticos e crises sem resposta ao manejo inicial: emergência."] },
+        { "titulo": "Retirada de medicamentos", "itens": ["Fármacos não podem ser interrompidos de forma abrupta; a descontinuação precoce leva à recaída em número substancial de pacientes.", "A duração ideal da terapia de continuação é controversa.", { "t": "Dependência de benzodiazepínico: retirada gradual, em até 2 meses (doses baixas a moderadas) a 6 meses (doses muito altas).", "tom": "atencao" }, "Abstinência leve ou moderada: reintroduzir um de meia-vida longa, como o diazepam, e reduzir aos poucos em 8 a 12 semanas, com apoio psicossocial."] }
+      ],
+      "claims": ["AN102", "AN119", "AN121", "AN123", "AN124", "AN125", "AN126", "AN127", "AN128", "AN129", "AN130", "AN131", "AN132", "AN133", "AN134", "AN135", "AN136", "AN137", "AN142"]
+    },
+    {
+      "id": "revalida", "titulo": "Revalida INEP: decisões e pegadinhas", "cor": "vermelho", "icone": "alerta",
+      "revisao": { "itens": [
+        { "t": "Pedir novos exames a quem tem crise típica e exames recentes normais", "tom": "alerta" },
+        { "t": "Chamar todo ataque de pânico de transtorno de pânico", "tom": "alerta" },
+        { "t": "Diagnosticar TAG com poucas semanas: exige no mínimo 6 meses", "tom": "alerta" },
+        { "t": "Benzodiazepínico intramuscular na crise", "tom": "alerta" },
+        { "t": "Benzodiazepínico como tratamento de longo prazo", "tom": "alerta" },
+        { "t": "Suspender o ISRS por inquietude inicial ou trocar com menos de 2 semanas", "tom": "alerta" },
+        { "t": "Suspender logo após a melhora; esquecer de perguntar sobre suicídio, depressão, álcool e tabaco", "tom": "alerta" }
+      ] },
+      "aprofundado": [
+        { "titulo": "O que mudou desde a prova", "itens": ["Não há mudança de conduta a registrar: a orientação federal vigente para a APS é de março de 2022.", "ISRS ou IRSN e TCC na primeira linha do longo prazo; tricíclicos e benzodiazepínicos na segunda.", "Na crise muito intensa ou prolongada: benzodiazepínico de ação curta por via oral, não intramuscular.", "Depois da remissão, a maioria das diretrizes sugere manter por no mínimo 1 a 2 anos, com retirada gradual."] },
+        { "titulo": "Caso típico de prova", "itens": ["Crises recorrentes e inesperadas, preocupação com consequências, evita ônibus e sair sozinha: pânico com agorafobia.", "Exame físico e exames recentes normais, pedido de cateterismo: tranquilizar e evitar exames desnecessários.", "Cafeína se associa a sintomas de ansiedade: orientar reduzir o café.", "Investigar depressão (PHQ-2), álcool, tabaco e risco de suicídio.", "Plano: psicoeducação, TCC e ISRS em dose baixa, aumentado aos poucos; retorno em 1 semana e reavaliação na 4ª semana."] }
+      ],
+      "claims": ["AN09", "AN21", "AN26", "AN30", "AN36", "AN39", "AN49", "AN50", "AN52", "AN61", "AN63", "AN69", "AN70", "AN90", "AN93", "AN95", "AN100", "AN101", "AN104", "AN105", "AN106", "AN112", "AN113", "AN119", "AN124", "AN126", "AN128", "AN129", "AN139", "AN202", "AN203"]
+    }
+  ],
+  "pontos_chave": [
+    "Na APS, sintomas físicos sem explicação médica são a apresentação mais comum da ansiedade",
+    "Primeiro passo: afastar causa clínica, de substâncias e de fármacos, sem exames desnecessários",
+    "Ataque de pânico ocorre em qualquer transtorno de ansiedade; transtorno de pânico exige ataques recorrentes e inesperados",
+    "Crise: tranquilizar e orientar a respiração; se muito intensa, benzodiazepínico de ação curta por via oral",
+    "Longo prazo: psicoeducação, TCC e ISRS (ou IRSN) em dose baixa, aumentada aos poucos",
+    "Avaliar risco de suicídio em todas as consultas",
+    "A maioria das diretrizes sugere manter o tratamento por no mínimo 1 a 2 anos após a remissão, com retirada gradual"
+  ],
+  "atencao": [
+    "Benzodiazepínico não é tratamento de longo prazo e é contraindicado em quem tem suscetibilidade a dependência",
+    "Benzodiazepínico por via intramuscular não é recomendado, por causa da absorção errática",
+    "Inquietude com ISRS nos primeiros dias costuma ser transitória e, na maioria dos casos, não justifica suspender",
+    "Risco de vida permite quebrar a confidencialidade; violência autoprovocada exige notificação compulsória",
+    "Antes de encaminhar por falta de resposta, conferir psicoeducação, dose adequada, aumento gradual e tempo de efeito"
+  ]
+}
