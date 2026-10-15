@@ -45,7 +45,7 @@ const TITLES = {
   temas: ["Temas Essenciais", "Aprender · os 100 temas prioritários, com as questões oficiais de cada um"],
   atualizacoes: ["Diretrizes e Atualizações", "Aprender · o que mudou nas condutas e onde conferir"],
   mapas: ["Mapas Mentais", "Aprender · resumos visuais por tema, da revisão rápida ao aprofundado"],
-  hoje: ["Plano de Hoje", "Aprender · praticar · revisar"],
+  hoje: ["Plano de Hoje", "Ciclo diário · aprender, praticar, revisar"],
   questoes: ["Banco de Questões", "Monte seu treino"],
   simulados: ["Simulados", "Condições de prova"],
   flash: ["Flashcards", "Revisão espaçada"],
@@ -217,6 +217,7 @@ function Screen() {
       phase2Locked={phase2Locked}
       title={title}
       sub={sub}
+      headerKind={route === "home" ? "inicio" : route === "hoje" ? "plano" : undefined}
       info={{
         name: profile.name || "Sua conta",
         streakDays: boot.play?.enabled ? boot.play.streak : boot.streak_days,
@@ -225,6 +226,7 @@ function Screen() {
         isStaff: isStaffRole(boot.role),
         isReviewer: Boolean(boot.reviewer_areas?.length),
         radarGraves: radar.graves,
+        themeChoice: profile.theme || "light",
       }}
     >
       {!CONNECTED.has(route) && <ReconstructionNotice />}

@@ -8,8 +8,8 @@ export function reasonText(task) {
   const { reason, attempts = 0, accuracy } = task.ref ?? {};
   if (reason === "diagnostic") return "10 questões oficiais para calcular sua acurácia nas 5 grandes áreas e montar o plano dos próximos dias.";
   if (reason === "untrained") {
-    const done = attempts === 0 ? "nenhuma questão" : attempts === 1 ? "só 1 questão" : `só ${attempts} questões`;
-    return `Você respondeu ${done} desta área até agora.`;
+    if (attempts === 0) return "Você ainda não respondeu questões desta área.";
+    return `Você respondeu ${attempts === 1 ? "só 1 questão" : `só ${attempts} questões`} desta área até agora.`;
   }
   if (reason === "lowest_accuracy") return `É a sua menor acurácia entre as grandes áreas: ${Math.round(accuracy)}% em ${attempts} respostas.`;
   if (reason === "errors") return "Questões cuja última resposta foi errada. Acertando, elas saem da lista.";
