@@ -1031,5 +1031,9 @@
     "estado": "pendente de revisão médica (aprovada)",
     "ressalvas": [],
     "origem": "pôster gerado por IA (sintético) a partir da referência do dono; gemini-3-pro-image (Vertex), referência do dono, 3:2 2K (versão com logo no topo e marca d'água, 15/10)"
+  },
+  "icone": {
+    "webp": "/mapas-mentais/icone-trauma-toracico.webp",
+    "origem": "ícone 3D sintético gerado pelo diretor de arte (decorativo)"
   }
 }

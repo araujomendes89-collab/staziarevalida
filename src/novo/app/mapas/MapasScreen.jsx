@@ -74,6 +74,7 @@ export function MapasScreen({ go }) {
               <button type="button" className="mm-lcard" style={temaVars(m.codigo, m.area)} onClick={() => abrir(m)}>
                 <span className="mm-lcard-fita" aria-hidden="true" />
                 <span className="mm-lcard-area">{nomeDaArea(m.area)}</span>
+                {m.icone?.webp && <img className="mm-lcard-ico" src={m.icone.webp} alt="" loading="lazy" decoding="async" onError={(e) => { e.currentTarget.style.display = "none"; }} />}
                 <strong className="mm-lcard-t">{m.titulo}</strong>
                 {m.subtitulo && <span className="mm-lcard-s">{m.subtitulo}</span>}
                 <span className="mm-lcard-r">{m.ramos.length} ramos · revisão rápida e aprofundado</span>

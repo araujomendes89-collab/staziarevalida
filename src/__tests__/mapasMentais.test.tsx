@@ -68,7 +68,10 @@ describe("pôster realista (imagem) como visual principal", () => {
   });
   it("a lista não tem miniatura de imagem: só a caixa com os escritos", () => {
     render(<MemoryRouter><MapasScreen go={() => {}} /></MemoryRouter>);
-    expect(document.querySelector(".mm-lcard img")).toBeNull();
+    // só o ícone 3D decorativo (alt vazio, carregamento preguiçoso) pode aparecer no canto
+    const imgs = Array.from(document.querySelectorAll(".mm-lcard img"));
+    for (const i of imgs) { expect(i.className).toBe("mm-lcard-ico"); expect(i.getAttribute("alt")).toBe(""); expect(i.getAttribute("loading")).toBe("lazy"); }
+    expect(imgs.length).toBe(MAPAS.filter((m: any) => m.icone?.webp).length);
     expect(screen.getAllByText(/ramos · revisão rápida e aprofundado/).length).toBe(MAPAS.length);
   });
 });

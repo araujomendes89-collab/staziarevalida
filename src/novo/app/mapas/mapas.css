@@ -257,3 +257,7 @@
 .mm-voltar{font-weight:800;min-height:44px;padding:0 20px;border:2px solid var(--action-primary);color:var(--action-primary)}
 .mm-voltar:focus-visible,.mm-tc-voltar:focus-visible{outline:3px solid var(--action-primary);outline-offset:2px}
 .mm-tc-voltar{background:#fff!important;color:#0B2A63!important;border-color:#fff!important}
+
+/* ícone 3D decorativo no canto do cartão da lista (por fora do texto; some se faltar) */
+.mm-lcard-ico{position:absolute;top:12px;right:12px;width:56px;height:56px;object-fit:contain;pointer-events:none;filter:drop-shadow(0 6px 8px rgba(10,30,70,.22))}
+.mm-lcard-t{padding-right:64px}
