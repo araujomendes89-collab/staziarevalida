@@ -348,9 +348,7 @@ export function LoginScreen({ go }) {
             </div>
 
             <button type="button" className="lg-btn lg-btn-ghost" onClick={google} disabled={loading || success}>
-              <span className="lg-g" aria-hidden="true">
-                G
-              </span>
+              <img className="lg-g" src="/novo-assets/google.svg" alt="" width="20" height="20" />
               <span>Continuar com Google</span>
             </button>
 
