@@ -26,10 +26,10 @@ describe("Aulas fechadas ao aluno", () => {
     vi.stubEnv("VITE_AULAS_ALUNO", "1");
     expect(aulasParaAluno()).toBe(true);
   });
-  it("o menu do aluno não tem Aulas, mas mantém Grandes Temas e Atualizações", () => {
+  it("o menu do aluno não tem Aulas, mas mantém Temas Essenciais e Diretrizes e Atualizações", () => {
     mount();
     expect(screen.queryByRole("button", { name: /^Aulas$/ })).toBeNull();
-    expect(screen.getAllByText("Grandes Temas").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Temas Essenciais").length).toBeGreaterThan(0);
   });
   it("com o interruptor ligado o menu volta a ter Aulas", () => {
     vi.stubEnv("VITE_AULAS_ALUNO", "1");

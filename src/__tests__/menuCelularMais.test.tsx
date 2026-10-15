@@ -37,7 +37,7 @@ describe("Menu do celular: Mais", () => {
     mount();
     const bar = screen.getByRole("navigation", { name: "Navegação principal" });
     const names = within(bar).getAllByRole("button").map((b) => b.getAttribute("aria-label"));
-    expect(names).toEqual(["Início", "Trilha", "Estudar", "Ranking", "Perfil", "Mais"]);
+    expect(names).toEqual(["Jornada", "Trilha", "Praticar", "Ranking", "Perfil", "Mais"]);
   });
 
   it("'Mais' abre a lista com todas as áreas da 1ª fase e nenhuma da 2ª", () => {
@@ -46,7 +46,7 @@ describe("Menu do celular: Mais", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Mais" }));
     const sheet = screen.getByRole("dialog", { name: "Todas as áreas" });
-    for (const nome of ["Plano de hoje", "Grandes Temas", "Atualizações", "Questões", "Simulados", "Flashcards", "Caderno de erros", "Missões", "Classificação", "Conquistas", "Desempenho", "Análise", "Planejamento", "Nexus", "Planos", "Conta e ajuda"]) {
+    for (const nome of ["Plano de Hoje", "Temas Essenciais", "Diretrizes e Atualizações", "Banco de Questões", "Simulados", "Flashcards", "Caderno de Erros", "Missões", "Ranking", "Conquistas", "Desempenho", "Análise Inteligente", "Planejamento", "Tutor com IA", "Meu Plano", "Conta e ajuda"]) {
       expect(within(sheet).getByRole("button", { name: new RegExp(nome) })).toBeTruthy();
     }
     for (const fase2 of ["Estações", "Teoria", "PEPs", "Paciente", "Praticar em dupla"]) expect(within(sheet).queryByRole("button", { name: new RegExp(fase2) })).toBeNull();

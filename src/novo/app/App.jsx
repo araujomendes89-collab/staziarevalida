@@ -39,24 +39,24 @@ import { AchievementsScreen } from "./play/AchievementsScreen.jsx";
 
 // [título, subtítulo] de cada rota (o início é montado com nome e data reais).
 const TITLES = {
-  aulas: ["Aulas teórico-práticas", "Estudar · conteúdo audiovisual por grande área"],
-  temas: ["Grandes Temas do Revalida", "Estudar · os 100 temas prioritários, com as questões oficiais de cada um"],
-  atualizacoes: ["Atualizações", "Estudar · o que mudou nas condutas e onde conferir"],
-  hoje: ["Plano de hoje", "Estudar · praticar · revisar"],
-  questoes: ["Questões", "Monte seu treino"],
+  aulas: ["Aulas teórico-práticas", "Aprender · conteúdo audiovisual por grande área"],
+  temas: ["Temas Essenciais", "Aprender · os 100 temas prioritários, com as questões oficiais de cada um"],
+  atualizacoes: ["Diretrizes e Atualizações", "Aprender · o que mudou nas condutas e onde conferir"],
+  hoje: ["Plano de Hoje", "Aprender · praticar · revisar"],
+  questoes: ["Banco de Questões", "Monte seu treino"],
   simulados: ["Simulados", "Condições de prova"],
   flash: ["Flashcards", "Revisão espaçada"],
-  erros: ["Caderno de erros", "Revisar"],
+  erros: ["Caderno de Erros", "Revisar"],
   plano: ["Planejamento", "Cronograma até a prova"],
   desempenho: ["Desempenho", "Seus dados reais"],
-  analise: ["Análise", "Evolução · o que o Tutor percebeu nos seus erros e acertos"],
-  tutor: ["Stazia Tutor", "Seu professor particular para o Revalida"],
-  trilha: ["Trilha de aprendizado", "Stazia Arena · uma etapa de cada vez"],
-  classificacao: ["Classificação", "Stazia Arena · ranking e liga da semana"],
+  analise: ["Análise Inteligente", "Minha Evolução · o que o Tutor percebeu nos seus erros e acertos"],
+  tutor: ["Nexus · Tutor com IA", "Seu professor particular para o Revalida"],
+  trilha: ["Minha Trilha", "Stazia Arena · uma etapa de cada vez"],
+  classificacao: ["Ranking", "Stazia Arena · ranking e liga da semana"],
   missoes: ["Missões", "Stazia Arena · metas de hoje e da semana"],
   conquistas: ["Conquistas", "Stazia Arena · medalhas e recompensas"],
   perfil: ["Conta", "Dados, segurança e privacidade"],
-  planos: ["Planos", "Conta · o que cada plano inclui"],
+  planos: ["Meu Plano", "Conta · o que cada plano inclui"],
   teoria2: ["Teoria para a prática", "Esqueletos, documentos médicos e protocolos aplicados às estações"],
   estacoes: ["Banco de estações", "Estações nas 5 grandes áreas"],
   dupla: ["Praticar", "Treine em dupla com outro aluno"],
@@ -193,7 +193,7 @@ function Screen() {
         onChange={(v) => go(v)}
         options={[
           { value: "flash", label: "Flashcards" },
-          { value: "erros", label: "Caderno de erros" },
+          { value: "erros", label: "Caderno de Erros" },
         ]}
       />
     </div>
