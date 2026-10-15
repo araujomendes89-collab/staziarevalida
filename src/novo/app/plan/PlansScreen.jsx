@@ -2,11 +2,15 @@
 // escreveu em Administração > Planos (função app_plans_info), e a situação da própria pessoa. NÃO tem preço, NÃO tem botão de assinar
 // e não leva a pagamento nenhum: a assinatura pelo app ainda não está disponível (a Stripe está parada) e os preços só entram depois.
 import React from "react";
-import { Badge, Banner, Button, Card, EmptyState } from "../../ds";
+import { Badge, Banner, Button, EmptyState, Icon } from "../../ds";
 import { useSession } from "../session.jsx";
 import { currentPlanCode, hasFullAccess, planStatusLabel, usePlanLock } from "./planAccess.js";
+import { Panel, RichIcon, Tile, useNarrow } from "../evolucao/ui.jsx";
+import "./planos.css";
 
 const PLAN_NAME = { trial: "Teste grátis", pro: "Pro", elite: "Elite" };
+// ícone ilustrado e cor do azulejo de cada plano (pacote "Novas telas"): Teste grátis = lista de tarefas, Pro = brilho do Tutor, Elite = coroa
+const PLAN_ART = { trial: ["hoje", "blue"], pro: ["sparkles", "violet"], elite: ["crown", "gold"] };
 const minutes = (n) => `${n} ${n === 1 ? "minuto" : "minutos"}`;
 
 /** Os itens extras de um plano, só com o que o painel já tem (nada é inventado): minutos de voz do Tutor e a correção de estação do Elite. */
@@ -21,29 +25,48 @@ export function planExtras(code, info) {
   return extras;
 }
 
-function PlanCard({ plan, info, current }) {
+/** Um item do plano com o ícone certo: microfone para a voz do Tutor, prancheta para a correção de estação, marca para o resto. */
+function Item({ text, extra }) {
+  const icon = /^Voz do Tutor/.test(text) ? "mic" : /^Correção de estação/.test(text) ? "clipboard-check" : "check";
+  return (
+    <li className={`pn-item${extra ? " pn-item--extra" : ""}`}>
+      <Icon name={icon} size={18} />
+      <span>{text}</span>
+    </li>
+  );
+}
+
+function PlanCard({ plan, info, current, row }) {
   const features = Array.isArray(plan.features) ? plan.features : [];
   const extras = planExtras(plan.code, info);
   const description = (plan.description ?? "").trim();
   const empty = !description && features.length === 0 && extras.length === 0;
+  const [icon, tone] = PLAN_ART[plan.code] ?? PLAN_ART.trial;
+  const Tag = row ? "li" : "article";
   return (
-    <Card padding={24} data-testid={`plano-${plan.code}`}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <h3 style={{ margin: 0, font: "var(--type-h4)" }}>{plan.name || PLAN_NAME[plan.code]}</h3>
+    <Tag className={row ? "pn-row" : "ev-panel pn-card"} data-testid={`plano-${plan.code}`}>
+      <Tile tone={tone} size={row ? 44 : 48} radius={14}>
+        <RichIcon name={icon} size={row ? 30 : 32} />
+      </Tile>
+      <div className="pn-body">
+        <div className="pn-head">
+          <h3 className="pn-name">{plan.name || PLAN_NAME[plan.code]}</h3>
           {current && <Badge tone="pro">Seu plano</Badge>}
         </div>
-        {description && <p style={{ margin: 0, color: "var(--text-secondary)" }}>{description}</p>}
+        {description && <p className="pn-desc">{description}</p>}
         {(features.length > 0 || extras.length > 0) && (
-          <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4 }}>
-            {[...features, ...extras].map((item) => (
-              <li key={item}>{item}</li>
+          <ul className="pn-items">
+            {features.map((item) => (
+              <Item key={item} text={item} />
+            ))}
+            {extras.map((item) => (
+              <Item key={item} text={item} extra />
             ))}
           </ul>
         )}
-        {empty && <p style={{ margin: 0, color: "var(--text-tertiary)", font: "var(--type-body-sm)" }}>A equipe ainda vai descrever o que este plano inclui.</p>}
+        {empty && <p className="pn-empty">A equipe ainda vai descrever o que este plano inclui.</p>}
       </div>
-    </Card>
+    </Tag>
   );
 }
 
@@ -73,23 +96,42 @@ export function PlansScreen({ go }) {
   const plans = (info?.plans ?? []).filter((p) => p.code !== "trial" || p.offered_at_signup !== false || current === "trial");
   const paidParts = info?.tutor_paid ? "Os simulados completos, o Tutor e as estações Pro" : "Os simulados completos e as estações Pro";
 
+  const narrow = useNarrow();
+  const notice = (
+    <Banner tone="info" title="A assinatura pelo app ainda não está disponível">
+      Esta página só mostra o que cada plano inclui. Ainda não há cobrança nem preço aqui.
+    </Banner>
+  );
+  const situation = (
+    <section className="pn-hero" aria-label="Sua situação">
+      <span className="pn-hero__ic" aria-hidden="true">
+        <RichIcon name="crown" size={narrow ? 40 : 42} />
+      </span>
+      <span className="pn-hero__txt">
+        <span className="pn-hero__k">Sua situação</span>
+        {label ? <span className="pn-hero__h">{label}</span> : <span className="pn-hero__p">Não há plano registrado na sua conta.</span>}
+        {lock && (
+          <span className="pn-hero__p">
+            <b>{lock.title}.</b> {lock.text}
+          </span>
+        )}
+        {hasFullAccess(boot) && <span className="pn-hero__p">Você tem acesso completo ao app, sem precisar de plano.</span>}
+      </span>
+    </section>
+  );
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <Banner tone="info" title="A assinatura pelo app ainda não está disponível">
-        Esta página só mostra o que cada plano inclui. Ainda não há cobrança nem preço aqui.
-      </Banner>
-      <Card padding={24}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <h3 style={{ margin: 0, font: "var(--type-h4)" }}>Sua situação</h3>
-          {label ? <div><Badge tone="pro">{label}</Badge></div> : <p style={{ margin: 0, color: "var(--text-secondary)" }}>Não há plano registrado na sua conta.</p>}
-          {lock && (
-            <p style={{ margin: 0, color: "var(--text-secondary)" }}>
-              <b>{lock.title}.</b> {lock.text}
-            </p>
-          )}
-          {hasFullAccess(boot) && <p style={{ margin: 0, color: "var(--text-secondary)" }}>Você tem acesso completo ao app, sem precisar de plano.</p>}
-        </div>
-      </Card>
+    <div className="ev ev-stack pn">
+      {narrow ? (
+        <>
+          {situation}
+          {notice}
+        </>
+      ) : (
+        <>
+          {notice}
+          {situation}
+        </>
+      )}
       {state.status === "loading" && <p style={{ margin: 0, color: "var(--text-tertiary)" }}>Carregando os planos…</p>}
       {state.status === "error" && (
         <EmptyState
@@ -104,21 +146,33 @@ export function PlansScreen({ go }) {
           {plans.length === 0 ? (
             <EmptyState icon="crown" title="Nenhum plano para mostrar agora" description="Volte aqui mais tarde." />
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 16 }}>
-              {plans.map((plan) => (
-                <PlanCard key={plan.code} plan={plan} info={info} current={current === plan.code} />
-              ))}
-            </div>
+            <section className="pn-sec" aria-label="Planos">
+              <h2 className="ev-h2">O que cada plano inclui</h2>
+              {narrow ? (
+                <ul className="ev-panel pn-list">
+                  {plans.map((plan) => (
+                    <PlanCard key={plan.code} plan={plan} info={info} current={current === plan.code} row />
+                  ))}
+                </ul>
+              ) : (
+                <div className="pn-grid">
+                  {plans.map((plan) => (
+                    <PlanCard key={plan.code} plan={plan} info={info} current={current === plan.code} />
+                  ))}
+                </div>
+              )}
+            </section>
           )}
-          <p style={{ margin: 0, color: "var(--text-secondary)", font: "var(--type-body-sm)" }}>
-            {paidParts} ficam com os planos pagos e com o teste grátis enquanto ele vale. As questões e os flashcards ficam abertos para todos.
+          <p className="pn-note">
+            {paidParts} ficam com os planos pagos e com o teste grátis enquanto ele vale. <strong>As questões e os flashcards ficam abertos para todos.</strong>
           </p>
         </>
       )}
       <div>
-        <Button variant="secondary" icon="arrow-left" onClick={() => go("perfil")}>
+        <button type="button" className="pn-back" onClick={() => go("perfil")}>
+          <Icon name="chevron-left" size={18} />
           Voltar para a conta
-        </Button>
+        </button>
       </div>
     </div>
   );

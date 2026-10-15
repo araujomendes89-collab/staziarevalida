@@ -1,0 +1,23 @@
+/* Telas da onda 5 (Novas telas, 15/10/2026): Desempenho, Análise Inteligente, Planejamento, Conta e Meu plano.
+   Só tokens do design system (claro e escuro). Alvos de toque >= 44 px; foco visível; sem animação com "reduzir movimento". */
+.ev{--ev-r:22px;--ev-tile-blue-a:#F2F8FF;--ev-tile-blue-b:#DCECFF;--ev-tile-violet-a:#F7F4FF;--ev-tile-violet-b:#E6DEFD;--ev-tile-orange-a:#FFF8F1;--ev-tile-orange-b:#FFE6D1;--ev-tile-green-a:#EFFAF5;--ev-tile-green-b:#D3F1E3;--ev-tile-pink-a:#FEF4F9;--ev-tile-pink-b:#F9DBE8;--ev-tile-slate-a:#F4F6F9;--ev-tile-slate-b:#E3E8EF;--ev-tile-clinica-a:#F4F7FE;--ev-tile-clinica-b:#DFE7FB}
+[data-theme="dark"] .ev{--ev-tile-blue-a:rgba(61,165,255,.2);--ev-tile-blue-b:rgba(61,165,255,.1);--ev-tile-violet-a:rgba(164,139,250,.22);--ev-tile-violet-b:rgba(164,139,250,.1);--ev-tile-orange-a:rgba(245,154,94,.22);--ev-tile-orange-b:rgba(245,154,94,.1);--ev-tile-green-a:rgba(111,207,149,.2);--ev-tile-green-b:rgba(111,207,149,.1);--ev-tile-pink-a:rgba(238,141,186,.22);--ev-tile-pink-b:rgba(238,141,186,.1);--ev-tile-slate-a:rgba(255,255,255,.1);--ev-tile-slate-b:rgba(255,255,255,.05);--ev-tile-clinica-a:rgba(127,162,242,.22);--ev-tile-clinica-b:rgba(127,162,242,.1)}
+.ev-tile{display:inline-grid;place-items:center;flex:none;box-shadow:inset 0 1px 0 rgba(255,255,255,.9);background:linear-gradient(160deg,var(--ev-tile-blue-a),var(--ev-tile-blue-b))}
+[data-theme="dark"] .ev-tile{box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+.ev-tile--violet{background:linear-gradient(160deg,var(--ev-tile-violet-a),var(--ev-tile-violet-b))}
+.ev-tile--orange,.ev-tile--cirurgia{background:linear-gradient(160deg,var(--ev-tile-orange-a),var(--ev-tile-orange-b))}
+.ev-tile--green,.ev-tile--pediatria{background:linear-gradient(160deg,var(--ev-tile-green-a),var(--ev-tile-green-b))}
+.ev-tile--pink,.ev-tile--go{background:linear-gradient(160deg,var(--ev-tile-pink-a),var(--ev-tile-pink-b))}
+.ev-tile--slate{background:linear-gradient(160deg,var(--ev-tile-slate-a),var(--ev-tile-slate-b))}
+.ev-tile--clinica{background:linear-gradient(160deg,var(--ev-tile-clinica-a),var(--ev-tile-clinica-b))}
+.ev-tile--preventiva{background:linear-gradient(160deg,var(--ev-tile-violet-a),var(--ev-tile-violet-b))}
+.ev-ill{display:block;filter:drop-shadow(0 2px 3px rgba(13,28,66,.16))}
+.ev-panel{background:var(--surface-card);border:1px solid var(--border-default);border-radius:var(--ev-r);box-shadow:var(--shadow-xs);min-width:0}
+.ev-mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.ev-h2{margin:0;font:800 17px/1.25 var(--font-sans);color:var(--text-primary)}
+.ev-stack{display:flex;flex-direction:column;gap:20px}
+.ev :is(button,a):focus-visible{outline:none;box-shadow:var(--focus-ring)}
+@media (prefers-reduced-motion:reduce){.ev *{transition:none!important;animation:none!important}}
+.ev{--ev-tile-gold-a:#FFFAF0;--ev-tile-gold-b:#FDEBC8}
+[data-theme="dark"] .ev{--ev-tile-gold-a:rgba(255,207,107,.22);--ev-tile-gold-b:rgba(255,207,107,.1)}
+.ev-tile--gold{background:linear-gradient(160deg,var(--ev-tile-gold-a),var(--ev-tile-gold-b))}
