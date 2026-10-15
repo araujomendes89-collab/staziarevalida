@@ -10,6 +10,7 @@ import { isPlanLockMessage, usePlanLock, withSupport } from "../plan/planAccess.
 import { useSupportEmail } from "../support/supportContact.jsx";
 import "./practice.css";
 import { AREAS, SIM_MAX_MINUTES, STAZIAMED_NOTICE, areaLabel, examLabel, formatClock, formatMinutes, formatWhen, paceLabel, parseDuration, percent } from "./format.js";
+import { SCORING_MODES, TRI_MIN_QUESTIONS } from "./tri.js";
 
 const STATUS_OPTIONS = [
   { value: "unanswered", label: "Não resolvidas" },
@@ -35,6 +36,43 @@ function useDebounced(value, delay) {
     return () => clearTimeout(timer);
   }, [value, delay]);
   return debounced;
+}
+
+// "Como corrigir?" do simulado: Clássico por acertos (padrão) ou TRI (estimativa StaziaMed, opcional).
+function ScoringChoice({ value, onChange }) {
+  return (
+    <div>
+      <div id="sim-correcao" className="sm-field__label" style={{ marginBottom: 10 }}>
+        Como corrigir?
+      </div>
+      <div role="radiogroup" aria-labelledby="sim-correcao" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 10 }}>
+        {SCORING_MODES.map((mode) => {
+          const on = value === mode.value;
+          return (
+            <button
+              key={mode.value}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              aria-describedby={`sim-correcao-${mode.value}`}
+              onClick={() => onChange(mode.value)}
+              style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8, padding: 16, borderRadius: 16, border: `${on ? 2 : 1}px solid ${on ? "var(--selected-border)" : "var(--border-default)"}`, background: on ? "var(--selected-bg)" : "var(--surface-card)", cursor: "pointer", font: "inherit", color: "var(--text-primary)", textAlign: "left" }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ font: "var(--type-label)" }}>{mode.title}</span>
+                <Badge size="sm" tone={mode.value === "irt" ? "info" : "neutral"}>
+                  {mode.badge}
+                </Badge>
+              </span>
+              <span id={`sim-correcao-${mode.value}`} style={{ font: "var(--type-body-sm)", color: "var(--text-secondary)" }}>
+                {mode.text}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function RecentSessions({ sessions, go, sim }) {
@@ -126,6 +164,8 @@ export function QuestionBuilder({ go, mode }) {
   const [counts, setCounts] = React.useState(null);
   const [recent, setRecent] = React.useState([]);
   const [starting, setStarting] = React.useState(false);
+  // correção do simulado: "classic" (padrão) ou "irt" (TRI, estimativa StaziaMed)
+  const [scoring, setScoring] = React.useState("classic");
   const [error, setError] = React.useState(null);
 
   React.useEffect(() => {
@@ -169,6 +209,8 @@ export function QuestionBuilder({ go, mode }) {
       set({ timer, hours: String(Math.floor(minutes / 60)), minutes: String(minutes % 60) });
     } else set({ timer });
   };
+  const tri = sim && scoring === "irt";
+  const triTooFew = tri && total < TRI_MIN_QUESTIONS;
   const setDuration = (minutes) => set({ hours: String(Math.floor(minutes / 60)), minutes: String(minutes % 60) });
 
   // Questões Inéditas (a prova "staziamed" da lista): aberta a quem tem plano pago ou teste grátis em dia; para os outros, cadeado e convite
@@ -181,15 +223,19 @@ export function QuestionBuilder({ go, mode }) {
     setStarting(true);
     setError(null);
     try {
-      const started = await backend.rpc("app_start_session", {
-        p_kind: kind,
-        p_filters: { area: form.area, exam_id: form.exam, search: form.search.trim(), status: form.status },
-        p_count: requested,
-        p_time_limit_seconds: limitSeconds,
-      });
+      const filters = { area: form.area, exam_id: form.exam, search: form.search.trim(), status: form.status };
+      const started = tri
+        ? await backend.rpc("app_start_simulado_tri", { p_filters: filters, p_count: requested, p_time_limit_seconds: limitSeconds })
+        : await backend.rpc("app_start_session", { p_kind: kind, p_filters: filters, p_count: requested, p_time_limit_seconds: limitSeconds });
       go("sessao", { s: started.session_id });
     } catch (e) {
-      setError(isPlanLockMessage(e?.message) ? withSupport(e.message, supportEmail) : "Não foi possível iniciar. Ajuste os filtros e tente de novo.");
+      setError(
+        isPlanLockMessage(e?.message)
+          ? withSupport(e.message, supportEmail)
+          : tri && /simulado TRI/.test(e?.message ?? "")
+            ? e.message
+            : "Não foi possível iniciar. Ajuste os filtros e tente de novo."
+      );
       setStarting(false);
     }
   };
@@ -203,6 +249,7 @@ export function QuestionBuilder({ go, mode }) {
     areaLabel(form.area),
     sim ? (limitSeconds ? `${formatMinutes(limitSeconds / 60)} de prova` : form.timer === "none" ? "sem cronômetro" : "tempo a definir") : `~${formatMinutes(total * 2)}`,
     form.search.trim(),
+    tri && "correção TRI (estimativa)",
   ].filter(Boolean);
 
   return (
@@ -221,6 +268,7 @@ export function QuestionBuilder({ go, mode }) {
               <SegmentedControl fullWidth label="Tipo de simulado" value={simType} onChange={applySimType} options={SIM_TYPES} />
             </div>
           )}
+          {sim && <ScoringChoice value={scoring} onChange={setScoring} />}
           <TextField
             label="Tema ou assunto"
             icon="search"
@@ -355,13 +403,22 @@ export function QuestionBuilder({ go, mode }) {
                   : `${available} disponíveis com esses filtros.`}
             </div>
           )}
+          {tri && (
+            <div style={{ font: "var(--type-body-sm)", color: triTooFew ? "var(--warning-text)" : "var(--text-tertiary)", marginTop: 8 }} aria-live="polite">
+              {triTooFew
+                ? `O simulado TRI precisa de pelo menos ${TRI_MIN_QUESTIONS} questões. Escolha mais questões ou tire filtros.`
+                : total < 100
+                  ? `Correção TRI (estimativa StaziaMed): com ${total} questões a faixa de incerteza fica larga; com 100 fica mais precisa.`
+                  : "Correção TRI (estimativa StaziaMed): o resultado mostra a nota de 0 a 100 com a faixa de incerteza."}
+            </div>
+          )}
           {error && (
             <div style={{ marginTop: 16 }}>
               <Banner tone="danger">{error}</Banner>
             </div>
           )}
           <div style={{ marginTop: 20 }}>
-            <Button size="lg" fullWidth iconRight="arrow-right" onClick={start} loading={starting} disabled={!available || customInvalid || Boolean(lock) || lockedIneditas}>
+            <Button size="lg" fullWidth iconRight="arrow-right" onClick={start} loading={starting} disabled={!available || customInvalid || Boolean(lock) || lockedIneditas || triTooFew}>
               {sim ? "Iniciar simulado" : "Começar treino"}
             </Button>
           </div>

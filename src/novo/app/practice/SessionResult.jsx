@@ -7,6 +7,7 @@ import { Correction, PreliminarySeal, answerState, isAnnulled } from "./Correcti
 import { areaLabel, areaOf, formatClock, formatWhen, isStaziamed, percent, questionRef, splitStatement } from "./format.js";
 import { SupportTable } from "./SupportTable.jsx";
 import { QuestionFigures } from "./QuestionFigures.jsx";
+import { TriResult } from "./TriResult.jsx";
 
 // Anulada pela banca: fora de certas, erradas e em branco (não conta como acerto nem erro).
 const stateOf = (question) =>
@@ -100,6 +101,9 @@ export function SessionResult({ session, go, timeUp = false }) {
             O simulado foi finalizado com as respostas que estavam marcadas.
           </Banner>
         )}
+
+        {/* simulado corrigido em TRI (opcional): a estimativa vem em cima; o placar clássico continua logo abaixo */}
+        {sim && <TriResult sessionId={session.id} mobile={mobile} />}
 
         <Card style={{ borderRadius: 24 }} padding={mobile ? 22 : 32}>
           <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
