@@ -18,7 +18,8 @@
       "Conferência 15/10: item do cristaloide aquecido recebeu o contexto da aula ('conduta pré-hospitalar nacional', 'preferencialmente'; PT48, PT49), para não parecer regra geral do choque hemorrágico.",
       "Revisão reescrita em palavras-chave em 15/10 (sem fato novo)",
       "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
-      "Revisor 2 (15/10): \"punção com agulha\" esclarecida como cricotireoidostomia por punção (PT21, PT22)."
+      "Revisor 2 (15/10): \"punção com agulha\" esclarecida como cricotireoidostomia por punção (PT21, PT22).",
+      "Revisor B (15/10): \"Via aérea difícil\" e \"hipoxemia mais rápida\" são da GESTANTE (PT67, Manual de Gestação de Alto Risco 2022, p. 621), não da criança: saíram de \"Particularidades da criança\" e foram para \"Condutas essenciais\" (linha Gestante); a criança ficou só com o que a aula diz (PT23, PT24, PT26, PT27, PT28). Linha truncada do torniquete reescrita sem etiqueta (faixas passadas para itens; PT38 a PT40, PT78, PT82). Transferir/Regulação Médica segue no ramo completo."
     ]
   },
   "ramos": [
@@ -370,7 +371,7 @@
         {
           "titulo": "Mais pontos",
           "itens": [
-            "Via aérea sempre considerada difícil; hipoxemia mais rápida",
+            "Gestante: via aérea sempre considerada difícil; hipoxemia mais rápida",
             "Criança: prioridades iguais às do adulto; colar cervical e coxim de 2 a 3 cm no dorso (das escápulas ao quadril).",
             "Criança: cricotireoidostomia cirúrgica não; punção com agulha até 10 a 12 anos.",
             "Criança instável: no máximo 2 tentativas de veia em 90 segundos; depois, intraóssea.",
@@ -650,11 +651,11 @@
       "icone": "bebe",
       "cor": "amarelo",
       "itens": [
-        "Via aérea considerada difícil",
-        "Língua maior, laringe mais alta",
-        "Occipício proeminente",
-        "Hipoxemia mais rápida",
-        "Coxim de 2 a 3 cm no dorso"
+        "Língua maior que a do adulto",
+        "Laringe mais anterior e mais alta",
+        "Occipício proeminente, até os 4 anos",
+        "Colar cervical e coxim de 2 a 3 cm no dorso",
+        "Prioridades iguais às do adulto"
       ],
       "claims": [
         "PT21",
@@ -671,9 +672,7 @@
         "PT32",
         "PT33",
         "PT65",
-        "PT66",
-        "PT67",
-        "PT75"
+        "PT66"
       ]
     },
     "diagnostico": {
@@ -803,8 +802,8 @@
       "itens": [
         "Criança: cricotireoidostomia por punção, não cirúrgica",
         "Criança: até 2 tentativas de veia em 90 s",
-        "Gestante >20 semanas: inclinar à esquerda",
-        "Transferir: avisar a Regulação e dar relatório"
+        "Gestante: via aérea difícil e hipoxemia mais rápida",
+        "Gestante >20 semanas: inclinar à esquerda"
       ],
       "claims": [
         "PT21",
@@ -820,10 +819,6 @@
         "PT31",
         "PT32",
         "PT33",
-        "PT65",
-        "PT66",
-        "PT67",
-        "PT75",
         "PT57",
         "PT58",
         "PT59",
@@ -831,26 +826,20 @@
         "PT61",
         "PT62",
         "PT63",
-        "PT64"
+        "PT64",
+        "PT65",
+        "PT66",
+        "PT67",
+        "PT75"
       ]
     },
     "tratamento": {
       "titulo": "Hemorragia externa",
       "icone": "gota",
       "cor": "laranja",
-      "faixas": [
-        {
-          "rotulo": "Compressão direta",
-          "chip": "1ª opção",
-          "texto": "Reforçar por cima"
-        },
-        {
-          "rotulo": "Se segue sangrando",
-          "chip": "Acima",
-          "texto": "Torniquete acima"
-        }
-      ],
       "itens": [
+        "Compressão direta é a 1ª opção; reforçar por cima",
+        "Se segue sangrando: torniquete acima do ferimento",
         "Amputação com sangramento abundante: torniquete acima",
         "Anotar a hora; idealmente, no máximo 2 horas",
         "Torniquete frouxo aumenta o sangramento"

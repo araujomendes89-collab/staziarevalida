@@ -19,7 +19,8 @@
       "Removido dos avisos exibidos o item \"a aula não traz critérios de drenagem/toracotomia\" (nota de autoria); permanece no ramo aprofundado.",
       "Revisão reescrita em palavras-chave em 15/10 (sem fato novo)",
       "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
-      "Revisor 2 (15/10): faixas do tratamento imediato passadas para `itens`."
+      "Revisor 2 (15/10): faixas do tratamento imediato passadas para `itens`.",
+      "Revisor B (15/10): tamponamento ganhou o alívio (pericardiocentese ou toracotomia de urgência, TT49) com a ressalva do pré-hospitalar: só se o transporte for prolongado, com profissional treinado e material (TT47). Acessos de grosso calibre e FAST continuam no ramo completo."
     ]
   },
   "ramos": [
@@ -980,7 +981,8 @@
       "itens": [
         "Pneumotórax aberto: curativo oclusivo fixado em 3 lados",
         "Tórax instável: oxigênio em alto fluxo e analgesia",
-        "Tamponamento: dois acessos de grosso calibre e volume",
+        "Tamponamento: volume e pericardiocentese ou toracotomia",
+        "Pericardiocentese pré-hospitalar: só se transporte longo",
         "Não enfaixar nem estabilizar o segmento instável"
       ],
       "claims": [
@@ -992,13 +994,13 @@
         "TT11",
         "TT12",
         "TT13",
+        "TT14",
         "TT16",
         "TT17",
         "TT32",
         "TT33",
         "TT34",
         "TT35",
-        "TT14",
         "TT41",
         "TT42",
         "TT43",

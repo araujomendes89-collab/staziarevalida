@@ -19,7 +19,8 @@
       "Conferência 15/10: todos os itens exibidos conferidos contra a aula (afirmações AD01 a AD130); nenhuma correção necessária.",
       "Revisao reescrita em palavras-chave em 15/10 (sem fato novo)",
       "Poster (texto curto) escrito em 15/10 a partir da aula (sem fato novo)",
-      "Revisor 2 (15/10): fármaco e via dos estágios 2 e 3 (AD67, AD68) passados de `faixas` para `itens`. Sobreposição do cartão Atenção com \"Dependente que quer parar\" é da imagem: refazer o pôster."
+      "Revisor 2 (15/10): fármaco e via dos estágios 2 e 3 (AD67, AD68) passados de `faixas` para `itens`. Sobreposição do cartão Atenção com \"Dependente que quer parar\" é da imagem: refazer o pôster.",
+      "Revisor B (15/10): \"Sintomas leves: então encaminhar\" reescrito (estágio 2: benzodiazepínico oral de hora em hora até sintomas leves; depois, encaminhar; AD67); encefalopatia de Wernicke incluída (confusão, nistagmo, oftalmoplegia e ataxia; tiamina parenteral e desintoxicação no hospital; AD50, AD52); tiamina antes de encaminhar mantida no tratamento (AD69) e glicose só após a tiamina na Atenção (AD71)."
     ]
   },
   "ramos": [
@@ -959,11 +960,13 @@
       "cor": "ciano",
       "itens": [
         "Só o estágio 1 é tratado na atenção primária",
-        "Tiamina antes de encaminhar, se disponível",
+        "Wernicke (confusão, nistagmo, ataxia): tiamina parenteral",
         "Estágio 4 (delirium tremens): hospital",
         "Alucinação ou agitação: não confrontar"
       ],
       "claims": [
+        "AD50",
+        "AD52",
         "AD66",
         "AD69",
         "AD74",
@@ -976,14 +979,15 @@
       "cor": "laranja",
       "itens": [
         "Estágio 2: benzodiazepínico oral de hora em hora",
-        "Sintomas leves: então encaminhar",
+        "Até sintomas leves; depois, encaminhar",
         "Estágio 3: acionar o SAMU 192",
         "Dar benzodiazepínico intravenoso enquanto aguarda",
-        "Sem clorpromazina nem fenitoína"
+        "Tiamina antes de encaminhar, se disponível"
       ],
       "claims": [
         "AD67",
         "AD68",
+        "AD69",
         "AD70",
         "AD72"
       ]
