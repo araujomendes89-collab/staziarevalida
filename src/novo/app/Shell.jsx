@@ -42,97 +42,171 @@ function Badge({ n, ai }) {
   return <span className="smn-badge" aria-label={`${n} pendentes`}>{n}</span>;
 }
 
-// ---------------------------------------------------------------- computador: barra lateral em sanfona
-function Sidebar({ route, go, phase, info, theme }) {
+// ---------------------------------------------------------------- computador: barra lateral em sanfona (recolhível)
+const COL_KEY = "smf-col";
+function readCollapsed(narrow) {
+  try {
+    const v = localStorage.getItem(COL_KEY);
+    if (v === "1") return true;
+    if (v === "0") return false;
+  } catch (e) {
+    /* sem armazenamento: usa o padrão */
+  }
+  return narrow; // padrão: expandido; em tela web estreita (até 1280 px) começa recolhido
+}
+function Sidebar({ route, go, phase, info, theme, collapsed, setCollapsed }) {
   const groups = groupsOf(phase, { staff: info.isStaff });
   const current = groupOfRoute(route, phase);
   const [open, setOpen] = React.useState(current);
+  const [fly, setFly] = React.useState(null); // {id, top}: submenu flutuante do menu recolhido
+  const btnRefs = React.useRef({});
+  const flyRef = React.useRef(null);
   React.useEffect(() => {
     if (current) setOpen(current);
   }, [current]);
+  React.useEffect(() => setFly(null), [route, collapsed]);
+  React.useEffect(() => {
+    if (!fly) return undefined;
+    const first = flyRef.current && flyRef.current.querySelector("button");
+    if (first) first.focus();
+    const key = (e) => {
+      if (e.key === "Escape") {
+        const id = fly.id;
+        setFly(null);
+        btnRefs.current[id] && btnRefs.current[id].focus();
+      }
+    };
+    document.addEventListener("keydown", key);
+    return () => document.removeEventListener("keydown", key);
+  }, [fly]);
   const cfg = configItems(info);
   const tutorGo = phase === 2 ? "paciente" : "tutor";
+  const tutorLabel = phase === 2 ? "Paciente simulado" : "Perguntar ao tutor";
+  const toggleLabel = collapsed ? "Expandir menu" : "Recolher menu";
+  const opened = fly && groups.find((g) => g.id === fly.id);
+  const tip = (l) => (collapsed ? l : undefined);
+
+  const onGroup = (g) => {
+    if (g.direct) return go(g.direct);
+    if (collapsed) {
+      if (fly && fly.id === g.id) return setFly(null);
+      const el = btnRefs.current[g.id];
+      const top = el ? Math.max(12, Math.min(el.getBoundingClientRect().top - 8, window.innerHeight - 70 - g.items.length * 44)) : 16;
+      return setFly({ id: g.id, top });
+    }
+    setOpen(open === g.id ? null : g.id);
+  };
 
   return (
-    <nav className="smn-side" aria-label="Navegação principal">
-      <style>{RI_CSS}</style>
-      <button type="button" className="smn-logo" onClick={() => go(phase === 2 ? "home2" : "home")} aria-label="StaziaMed, início">
-        <img src={logoSrc(theme)} alt="StaziaMed Revalida" />
-      </button>
-      <button type="button" className="smn-user" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}`}>
-        <Avatar name={info.name} size={36} />
-        <span className="smn-grow">
-          <b>{info.name}</b>
-          <small><Icon name="repeat" size={12} />{phaseLabel(phase)}</small>
-        </span>
-        <Icon name="chevron-right" size={16} style={{ color: "var(--text-tertiary)" }} />
-      </button>
-      <div className="smn-list">
-        {groups.map((g) => {
-          if (g.direct) {
-            const on = route === g.direct;
-            return (
-              <button key={g.id} type="button" className={`smn-grp${on ? " is-current" : ""}`} aria-current={on ? "page" : undefined} onClick={() => go(g.direct)}>
-                <Ic name={g.icon} />
-                <span className="smn-lbl">{g.label}</span>
-                <Badge ai={Boolean(g.badgeText)} />
-              </button>
-            );
-          }
-          const isOpen = open === g.id;
-          const hasCurrent = current === g.id;
-          const gb = groupBadge(g, info);
-          return (
-            <div key={g.id}>
-              <button
-                type="button"
-                className={`smn-grp${hasCurrent && !isOpen ? " is-current" : ""}`}
-                aria-expanded={isOpen}
-                aria-controls={`smn-sub-${g.id}`}
-                onClick={() => setOpen(isOpen ? null : g.id)}
-              >
-                <Ic name={g.icon} />
-                <span className="smn-lbl">{g.label}</span>
-                {!isOpen && <Badge n={gb} />}
-                <Icon name="chevron-right" size={16} className="smn-chev" />
-              </button>
-              {isOpen && (
-                <div className="smn-sub" id={`smn-sub-${g.id}`}>
-                  {g.items.map(([id, ic, l]) => (
-                    <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} onClick={() => go(id)}>
-                      <Ic name={ic} size={20} />
-                      <span className="smn-lbl">{l}</span>
-                      <Badge n={badgeOf(id, info)} />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <div className="smn-foot">
-        <button type="button" className="smn-cta" onClick={() => go(tutorGo)}>
-          <Icon name="sparkles" size={18} />
-          {phase === 2 ? "Paciente simulado" : "Perguntar ao tutor"}
+    <>
+      <nav className={`smn-side${collapsed ? " is-collapsed" : ""}`} aria-label="Navegação principal">
+        <style>{RI_CSS}</style>
+        <button type="button" className="smn-toggle" onClick={() => setCollapsed(!collapsed)} aria-label={toggleLabel} title={toggleLabel} aria-expanded={!collapsed} aria-controls="smn-side-body">
+          <Icon name="chevron-left" size={14} className="smn-toggle-ic" />
         </button>
-        {cfg.map(([id, ic, l]) => (
-          <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} onClick={() => go(id)}>
-            <Ic name={ic} size={20} />
-            <span className="smn-lbl">{l}</span>
-            <Badge n={badgeOf(id, info)} />
+        <button type="button" className="smn-logo" onClick={() => go(phase === 2 ? "home2" : "home")} aria-label="StaziaMed, início" title={tip("StaziaMed, início")}>
+          {collapsed ? <img src={logoSrc(theme, "symbol")} alt="" style={{ height: 36, width: "auto" }} /> : <img src={logoSrc(theme)} alt="StaziaMed Revalida" />}
+        </button>
+        <div id="smn-side-body" style={{ display: "contents" }}>
+          <button type="button" className="smn-user" onClick={() => go("perfil")} aria-label={`Conta de ${info.name}, ${phaseLabel(phase)}`} title={tip(info.name)}>
+            <Avatar name={info.name} size={36} />
+            {!collapsed && (
+              <>
+                <span className="smn-grow">
+                  <b>{info.name}</b>
+                  <small><Icon name="repeat" size={12} />{phaseLabel(phase)}</small>
+                </span>
+                <Icon name="chevron-right" size={16} style={{ color: "var(--text-tertiary)" }} />
+              </>
+            )}
           </button>
-        ))}
-        <button type="button" className="smn-item" aria-current={route === "perfil" ? "page" : undefined} onClick={() => go("perfil")}>
-          <Ic name="settings" size={20} />
-          <span className="smn-lbl">Preferências</span>
-        </button>
-        <button type="button" className="smn-item" onClick={() => info.onSignOut && info.onSignOut()}>
-          <Ic name="log-out" size={20} />
-          <span className="smn-lbl">Sair</span>
-        </button>
-      </div>
-    </nav>
+          <div className="smn-list">
+            {groups.map((g) => {
+              if (g.direct) {
+                const on = route === g.direct;
+                return (
+                  <button key={g.id} type="button" className={`smn-grp${on ? " is-current" : ""}`} aria-current={on ? "page" : undefined} aria-label={g.label} title={tip(g.label)} onClick={() => go(g.direct)}>
+                    <Ic name={g.icon} />
+                    {!collapsed && <span className="smn-lbl">{g.label}</span>}
+                    {!collapsed && <Badge ai={Boolean(g.badgeText)} />}
+                  </button>
+                );
+              }
+              const isOpen = !collapsed && open === g.id;
+              const hasCurrent = current === g.id;
+              const gb = groupBadge(g, info);
+              return (
+                <div key={g.id}>
+                  <button
+                    ref={(el) => (btnRefs.current[g.id] = el)}
+                    type="button"
+                    className={`smn-grp${hasCurrent && !isOpen ? " is-current" : ""}`}
+                    aria-expanded={collapsed ? Boolean(fly && fly.id === g.id) : isOpen}
+                    aria-haspopup={collapsed ? "true" : undefined}
+                    aria-controls={collapsed ? undefined : `smn-sub-${g.id}`}
+                    aria-label={g.label}
+                    title={tip(g.label)}
+                    onClick={() => onGroup(g)}
+                  >
+                    <Ic name={g.icon} />
+                    {!collapsed && <span className="smn-lbl">{g.label}</span>}
+                    {!isOpen && (collapsed ? gb != null && <span className="smn-dot" aria-label={`${gb} pendentes`} /> : <Badge n={gb} />)}
+                    {!collapsed && <Icon name="chevron-right" size={16} className="smn-chev" />}
+                  </button>
+                  {isOpen && (
+                    <div className="smn-sub" id={`smn-sub-${g.id}`}>
+                      {g.items.map(([id, ic, l]) => (
+                        <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} onClick={() => go(id)}>
+                          <Ic name={ic} size={20} />
+                          <span className="smn-lbl">{l}</span>
+                          <Badge n={badgeOf(id, info)} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div className="smn-foot">
+            <button type="button" className="smn-cta" onClick={() => go(tutorGo)} aria-label={tutorLabel} title={tip(tutorLabel)}>
+              <Icon name="sparkles" size={18} />
+              {!collapsed && tutorLabel}
+            </button>
+            {cfg.map(([id, ic, l]) => (
+              <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} aria-label={l} title={tip(l)} onClick={() => go(id)}>
+                <Ic name={ic} size={20} />
+                {!collapsed && <span className="smn-lbl">{l}</span>}
+                {!collapsed && <Badge n={badgeOf(id, info)} />}
+              </button>
+            ))}
+            <button type="button" className="smn-item" aria-current={route === "perfil" ? "page" : undefined} aria-label="Preferências" title={tip("Preferências")} onClick={() => go("perfil")}>
+              <Ic name="settings" size={20} />
+              {!collapsed && <span className="smn-lbl">Preferências</span>}
+            </button>
+            <button type="button" className="smn-item" aria-label="Sair" title={tip("Sair")} onClick={() => info.onSignOut && info.onSignOut()}>
+              <Ic name="log-out" size={20} />
+              {!collapsed && <span className="smn-lbl">Sair</span>}
+            </button>
+          </div>
+        </div>
+      </nav>
+      {opened && (
+        <>
+          <div className="smn-more-back" style={{ background: "transparent", zIndex: 44 }} onClick={() => setFly(null)} aria-hidden="true" />
+          <div className="smn-fly" ref={flyRef} role="group" aria-label={opened.label} style={{ top: fly.top, left: 116 }}>
+            <h2>{opened.label}</h2>
+            {opened.items.map(([id, ic, l]) => (
+              <button key={id} type="button" className="smn-item" aria-current={route === id ? "page" : undefined} onClick={() => go(id)}>
+                <Ic name={ic} size={22} />
+                <span className="smn-lbl">{l}</span>
+                <Badge n={badgeOf(id, info)} />
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </>
   );
 }
 
@@ -411,7 +485,29 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
   const layout = useLayout();
   const full = FULL.includes(route);
   const mobile = layout === "mobile";
-  const marginLeft = full || mobile ? 0 : layout === "tablet" ? 116 : 304;
+  const narrowWeb = useMQ("(max-width: 1280px)");
+  const [pref, setPref] = React.useState(() => readCollapsed(narrowWeb));
+  const userSet = React.useRef(false);
+  React.useEffect(() => {
+    if (!userSet.current) {
+      try {
+        if (localStorage.getItem(COL_KEY) == null) setPref(narrowWeb);
+      } catch (e) {
+        setPref(narrowWeb);
+      }
+    }
+  }, [narrowWeb]);
+  const setCollapsed = (v) => {
+    userSet.current = true;
+    setPref(v);
+    try {
+      localStorage.setItem(COL_KEY, v ? "1" : "0");
+    } catch (e) {
+      /* sem armazenamento: vale só nesta visita */
+    }
+  };
+  const collapsed = pref;
+  const marginLeft = full || mobile ? 0 : layout === "tablet" ? 116 : collapsed ? 116 : 304;
   return (
     <div className="smn" style={{ minHeight: "100vh", background: "var(--bg-app)" }}>
       {!full && (
@@ -419,9 +515,9 @@ function AppShell({ route, go, theme, setTheme, title, sub, children, bare, phas
           Pular para o conteúdo
         </a>
       )}
-      {!full && layout === "desktop" && <Sidebar route={route} go={go} phase={phase} info={info} theme={theme} />}
+      {!full && layout === "desktop" && <Sidebar route={route} go={go} phase={phase} info={info} theme={theme} collapsed={collapsed} setCollapsed={setCollapsed} />}
       {!full && layout === "tablet" && <Rail route={route} go={go} phase={phase} info={info} theme={theme} />}
-      <main id="conteudo" tabIndex={-1} style={{ marginLeft, padding: bare ? 0 : mobile ? "24px 18px calc(104px + env(safe-area-inset-bottom))" : layout === "tablet" ? "28px 28px 64px" : "36px 48px 64px", outline: "none" }}>
+      <main id="conteudo" tabIndex={-1} style={{ marginLeft, transition: "margin-left var(--dur-base) var(--ease-standard)", padding: bare ? 0 : mobile ? "24px 18px calc(104px + env(safe-area-inset-bottom))" : layout === "tablet" ? "28px 28px 64px" : "36px 48px 64px", outline: "none" }}>
         {bare ? (
           children
         ) : (

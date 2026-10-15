@@ -123,6 +123,33 @@ describe("Menu do celular: Mais", () => {
     expect(screen.getByText("Revisão médica")).toBeTruthy();
   });
 
+  it("computador: botão Recolher/Expandir menu, trilho só com ícones e tooltips, guarda a escolha", () => {
+    setWidth(1400);
+    localStorage.removeItem("smf-col");
+    const go = mount();
+    const nav = screen.getByRole("navigation", { name: "Navegação principal" });
+    const btn = screen.getByRole("button", { name: "Recolher menu" });
+    expect(btn.getAttribute("aria-expanded")).toBe("true");
+    expect(within(nav).getByText("Minha jornada")).toBeTruthy();
+    fireEvent.click(btn);
+    const exp = screen.getByRole("button", { name: "Expandir menu" });
+    expect(exp.getAttribute("aria-expanded")).toBe("false");
+    expect(localStorage.getItem("smf-col")).toBe("1");
+    expect(within(nav).queryByText("Minha jornada")).toBeNull(); // só ícones
+    expect(screen.getByRole("button", { name: "Perguntar ao tutor" }).getAttribute("title")).toBe("Perguntar ao tutor");
+    // clicar no ícone do grupo abre o submenu flutuante; Esc fecha
+    fireEvent.click(screen.getByRole("button", { name: "Praticar" }));
+    const fly = screen.getByRole("group", { name: "Praticar" });
+    fireEvent.click(within(fly).getByRole("button", { name: /Simulados/ }));
+    expect(go).toHaveBeenCalledWith("simulados");
+    fireEvent.click(screen.getByRole("button", { name: "Praticar" }));
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("group", { name: "Praticar" })).toBeNull();
+    fireEvent.click(exp);
+    expect(localStorage.getItem("smf-col")).toBe("0");
+    localStorage.removeItem("smf-col");
+  });
+
   it("tablet (834 px): trilho com painel; o painel lista os itens do grupo e leva à rota", () => {
     setWidth(834);
     const go = mount();

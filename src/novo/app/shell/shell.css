@@ -6,7 +6,7 @@
 .smn :is(button,a):focus-visible{outline:none;box-shadow:var(--focus-ring)}
 
 /* ---------- barra lateral (computador) ---------- */
-.smn-side{position:fixed;left:16px;top:16px;bottom:16px;width:264px;z-index:20;display:flex;flex-direction:column;border-radius:24px;background:var(--surface-card);border:1px solid var(--border-default);box-shadow:var(--shadow-sm)}
+.smn-side{transition:width var(--dur-base) var(--ease-standard);position:fixed;box-shadow:var(--shadow-lg);left:16px;top:16px;bottom:16px;width:264px;z-index:20;display:flex;flex-direction:column;border-radius:24px;background:var(--surface-card);border:1px solid var(--border-default)}
 .smn-logo{display:flex;justify-content:center;padding:20px 20px 12px;border:0;background:none;cursor:pointer;border-radius:16px}
 .smn-logo img{display:block;width:100%;max-width:176px;height:auto}
 .smn-user{display:flex;align-items:center;gap:10px;margin:0 12px 8px;padding:10px;border-radius:16px;border:1px solid var(--border-subtle);background:var(--surface-card);cursor:pointer;text-align:left;color:var(--text-primary);font:inherit;min-height:56px}
@@ -69,3 +69,20 @@
 .smn-pill:hover{border-color:var(--border-strong)}
 .smn-hdr-btn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:0;background:none;padding:0;cursor:pointer;border-radius:50%}
 @media (max-width:860px){.smn-phase button{min-height:44px}}
+
+/* ---------- recolher e expandir (computador) ---------- */
+.smn-toggle{position:absolute;top:34px;right:-14px;z-index:2;width:28px;height:28px;border-radius:999px;border:1px solid var(--border-default);background:var(--surface-card);color:var(--text-tertiary);display:grid;place-items:center;cursor:pointer;box-shadow:var(--shadow-sm)}
+.smn-toggle:hover{color:var(--text-primary)}
+.smn-toggle::after{content:"";position:absolute;inset:-8px} /* alvo de toque maior (44 px) */
+.smn-toggle-ic{transition:transform var(--dur-base) var(--ease-standard)}
+.smn-side.is-collapsed .smn-toggle-ic{transform:rotate(180deg)}
+.smn-side.is-collapsed{width:84px}
+.smn-side.is-collapsed .smn-logo{padding:18px 0 12px;min-height:72px;align-items:center}
+.smn-side.is-collapsed .smn-user{margin:0 auto 8px;padding:4px;width:52px;min-height:52px;justify-content:center;border-color:transparent}
+.smn-side.is-collapsed .smn-list{padding:4px 12px 8px}
+.smn-side.is-collapsed .smn-grp,.smn-side.is-collapsed .smn-item,.smn-side.is-collapsed .smn-cta{justify-content:center;padding:0;position:relative}
+.smn-side.is-collapsed .smn-cta{width:52px;margin-inline:auto}
+.smn-side.is-collapsed .smn-foot{padding:8px 12px 12px;align-items:stretch}
+.smn-dot{position:absolute;top:8px;right:10px;width:9px;height:9px;border-radius:50%;background:var(--danger-solid);border:2px solid var(--surface-card)}
+.smn-fly .smn-item{width:100%}
+@media (prefers-reduced-motion:reduce){.smn-side,.smn-toggle-ic,main{transition:none!important}}
