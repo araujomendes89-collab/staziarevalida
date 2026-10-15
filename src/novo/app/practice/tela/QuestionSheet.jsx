@@ -47,7 +47,7 @@ export function QuestionChips({ question, topic = null, bookmarked = false }) {
 }
 
 /** Enunciado: "Caso clínico", figuras e tabela de apoio, e a caixa "Pergunta" (a última frase, quando dá para separar). */
-export function QuestionStatement({ question }) {
+export function QuestionStatement({ question, hint = null }) {
   const { stem, ask } = splitStatement(question.statement);
   return (
     <>
@@ -65,8 +65,10 @@ export function QuestionStatement({ question }) {
           <h1 className="tq-ask__text" lang="pt-BR" style={{ textAlign: "justify", hyphens: "auto" }}>
             {ask}
           </h1>
+          {hint}
         </div>
       )}
+      {!ask && hint && <div className="tq-ask">{hint}</div>}
     </>
   );
 }
@@ -75,7 +77,7 @@ export function QuestionStatement({ question }) {
  * Alternativas. stateOf(id): idle | selected | correct | incorrect | dimmed. `revealed` trava tudo e mostra os selos
  * "Gabarito" e "Sua resposta". Riscar é só da tela (nada vai ao banco).
  */
-export function Alternatives({ options, stateOf, chosen = null, struck = [], revealed = false, onPick, onStrike, strikeDisabled = () => false }) {
+export function Alternatives({ options, stateOf, chosen = null, struck = [], revealed = false, locked = false, onPick, onStrike, strikeDisabled = () => false }) {
   return (
     <div role="radiogroup" aria-label="Alternativas" className="tq-alts">
       {options.map((option) => {
@@ -83,7 +85,7 @@ export function Alternatives({ options, stateOf, chosen = null, struck = [], rev
         const isStruck = struck.includes(option.id);
         const mine = chosen === option.id;
         const badge = !revealed ? null : state === "correct" ? (mine ? "Gabarito · Sua resposta" : "Gabarito") : mine ? "Sua resposta" : null;
-        const lock = revealed;
+        const lock = revealed || locked;
         return (
           <div key={option.id} className="tq-alt" data-state={state} data-struck={isStruck ? "true" : "false"}>
             <button type="button" className="tq-alt__main" role="radio" aria-checked={state === "selected" || (revealed && mine)} disabled={lock} onClick={() => onPick?.(option.id)}>
@@ -103,7 +105,7 @@ export function Alternatives({ options, stateOf, chosen = null, struck = [], rev
                 aria-pressed={isStruck}
                 aria-label={`${isStruck ? "Desfazer risco da alternativa" : "Riscar alternativa"} ${option.id}`}
                 title={`${isStruck ? "Desfazer risco da alternativa" : "Riscar alternativa"} ${option.id}`}
-                disabled={strikeDisabled(option.id)}
+                disabled={locked || strikeDisabled(option.id)}
                 onClick={() => onStrike?.(option.id)}
               >
                 <Icon name="strikethrough" size={18} />
@@ -261,7 +263,7 @@ export function ReportQuestion({ question }) {
  * Cartão completo. `answer` (a correção, só depois de responder) e `aside` (o painel lateral) chegam prontos da tela.
  * `banner`: avisos e erros acima do enunciado.
  */
-export function QuestionSheet({ question, revealed = false, topic = null, bookmarked = false, banner = null, alternatives, answer = null, footer = null, report = null, compact = false }) {
+export function QuestionSheet({ question, revealed = false, topic = null, bookmarked = false, banner = null, hint = null, alternatives, answer = null, footer = null, report = null, compact = false }) {
   return (
     <section className={`tq-sheet${compact ? " tq-sheet--static" : ""}`} aria-label="Questão">
       <QuestionChips question={question} topic={revealed ? topic : null} bookmarked={bookmarked} />
@@ -271,7 +273,7 @@ export function QuestionSheet({ question, revealed = false, topic = null, bookma
         </div>
       )}
       {banner && <div className="tq-err">{banner}</div>}
-      <QuestionStatement question={question} />
+      <QuestionStatement question={question} hint={hint} />
       {alternatives}
       {revealed && answer}
       {footer}

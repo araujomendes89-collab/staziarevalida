@@ -18,7 +18,7 @@ const STATE = {
   annulled: { icon: "ban", color: "var(--text-tertiary)", label: "Anulada" },
 };
 
-function ReviewRow({ question, position, first, open, onToggle, go }) {
+function ReviewRow({ question, position, first, open, onToggle, go, showDifficulty }) {
   const state = STATE[stateOf(question)];
   return (
     <div style={{ borderTop: first ? 0 : "1px solid var(--border-subtle)" }}>
@@ -37,7 +37,7 @@ function ReviewRow({ question, position, first, open, onToggle, go }) {
       </button>
       {open && (
         <div style={{ padding: "4px 0 24px" }}>
-          <QuestionReview question={question} selected={question.selected} correction={question.correction} go={go} />
+          <QuestionReview question={question} selected={question.selected} correction={question.correction} go={go} showDifficulty={showDifficulty} />
         </div>
       )}
     </div>
@@ -171,6 +171,7 @@ export function SessionResult({ session, go, timeUp = false }) {
                 onToggle={() => setOpenId(openId === row.question.id ? null : row.question.id)}
                 first={index === 0}
                 go={go}
+                showDifficulty={!sim}
               />
             ))}
           </div>

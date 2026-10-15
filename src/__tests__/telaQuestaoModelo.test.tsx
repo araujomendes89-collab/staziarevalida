@@ -97,8 +97,18 @@ describe("Simulado: cabeçalho do simulado só aqui, sem correção", () => {
     expect(screen.getByRole("button", { name: "Pausar o simulado" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Encerrar o simulado" })).toBeTruthy();
     fireEvent.click(screen.getByRole("radio", { name: /Alternativa C/ }));
+    // escolher não grava e não libera avançar; não há "Pular" no simulado
+    expect(backend.rpc.mock.calls.some((c: any[]) => c[0] === "app_answer_question")).toBe(false);
+    expect((screen.getByRole("button", { name: "Confirmar resposta" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.queryByRole("button", { name: "Próxima questão" })).toBeNull();
+    expect(screen.queryByText("Pular")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar resposta" }));
     await waitFor(() => expect(backend.rpc.mock.calls.some((c: any[]) => c[0] === "app_answer_question" && c[1].p_option === "C")).toBe(true));
-    expect(screen.getByText("Alternativa C guardada")).toBeTruthy();
+    // depois de confirmar: resposta travada, sem correção, e só agora libera "Próxima questão"
+    expect(await screen.findByText("Resposta confirmada")).toBeTruthy();
+    expect((screen.getByRole("radio", { name: /Alternativa A/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("radio", { name: /Alternativa C/ }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Próxima questão" }) as HTMLButtonElement).disabled).toBe(false);
     for (const s of SEGREDOS) expect(container.textContent).not.toContain(s);
     expect(container.querySelector(".tq-answer")).toBeNull();
     expect(screen.queryByText("Gabarito")).toBeNull();
@@ -172,6 +182,121 @@ describe("Questão Inédita: sem fontes ao aluno (decisão do dono)", () => {
     for (const termo of ["FONTE-SECRETA", "ORGAO-SECRETO", "trecho", "Fontes oficiais citadas"]) expect(container.textContent).not.toContain(termo);
     expect(container.querySelector(".tq-src")).toBeNull();
     expect(screen.queryByRole("button", { name: /Tutor/ })).toBeNull();
+  });
+});
+
+describe("Treino: pular e a lista de questões não feitas antes de finalizar", () => {
+  it("pular a última abre a lista; tocar numa questão volta a ela; só 'Finalizar mesmo assim' encerra", async () => {
+    const qs = [question({ id: "q1" }), question({ id: "q2", statement: "Segunda questão do treino. Qual a conduta?" })];
+    await open(session("treino", qs));
+    fireEvent.click(screen.getByText("Pular")); // q1 em branco
+    expect(await screen.findByText(/Segunda questão do treino/)).toBeTruthy();
+    fireEvent.click(screen.getByText("Pular")); // q2 em branco, era a última
+    expect(await screen.findByRole("heading", { name: "Questões não feitas" })).toBeTruthy();
+    expect(screen.getByText(/As 2 questões não feitas ficam em branco e não entram no placar/)).toBeTruthy();
+    expect(backend.rpc.mock.calls.some((c: any[]) => c[0] === "app_finish_session")).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Ir para a questão 1" }));
+    expect(await screen.findByRole("radiogroup", { name: "Alternativas" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: /Alternativa C/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar resposta" }));
+    await screen.findByText("Você acertou");
+    // voltando de uma em branco, avançar mostra o que ainda falta (a 2) em vez de finalizar
+    fireEvent.click(screen.getByRole("button", { name: /Próxima questão|Concluir treino/ }));
+    expect(await screen.findByRole("heading", { name: "Questões não feitas" })).toBeTruthy();
+    expect(screen.getByText(/A questão não feita fica em branco/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Ir para a questão 1" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Voltar às questões" }));
+    expect(await screen.findByRole("radiogroup", { name: "Alternativas" })).toBeTruthy();
+  });
+
+  it("sem questão em branco, concluir finaliza direto", async () => {
+    backend.rpc.mockImplementation(async (fn: string, args: any) => {
+      if (fn === "app_get_session") return sessionData;
+      if (fn === "app_answer_question") return { ...correction(), selected: args.p_option, is_correct: true, play: null };
+      if (fn === "app_finish_session") return { ...sessionData, finished_at: iso(NOW), result: { total: 1, answered: 1, correct: 1, active_seconds: 5, elapsed_seconds: 5, paused_seconds: 0, by_area: [] }, questions: [] };
+      throw new Error(`rpc não simulada: ${fn}`);
+    });
+    await open(session("treino", [question()]));
+    fireEvent.click(screen.getByRole("radio", { name: /Alternativa C/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar resposta" }));
+    await screen.findByText("Você acertou");
+    fireEvent.click(screen.getByRole("button", { name: "Concluir treino" }));
+    await waitFor(() => expect(backend.rpc.mock.calls.some((c: any[]) => c[0] === "app_finish_session")).toBe(true));
+    expect(screen.queryByRole("heading", { name: "Questões não feitas" })).toBeNull();
+  });
+});
+
+describe("Dificuldade validada: só no treino, depois de responder, nunca em simulado", () => {
+  const withDifficulty = (level: number | null) => {
+    const base = backend.rpc.getMockImplementation()!;
+    backend.rpc.mockImplementation(async (fn: string, args: any) => (fn === "app_question_difficulty" ? (level ? { level } : null) : base(fn, args)));
+  };
+  it("treino corrigido: 5 barras e o rótulo; sem validação, nada (nada estimado)", async () => {
+    withDifficulty(3);
+    const q = question({ selected: "B", correction: correction() });
+    const { container } = await open(session("treino", [q]));
+    expect(await screen.findByText("Média")).toBeTruthy();
+    expect(screen.getByRole("img", { name: "Dificuldade média, 3 de 5" })).toBeTruthy();
+    expect(container.querySelectorAll('.tq-diff__bars i[data-on="true"]')).toHaveLength(3);
+    cleanup();
+    withDifficulty(null);
+    await open(session("treino", [q]));
+    await screen.findByText("Área e tema");
+    expect(screen.queryByText("Dificuldade")).toBeNull();
+  });
+  it("simulado e antes de responder: a função nem é chamada", async () => {
+    withDifficulty(4);
+    await open(session("treino", [question()]));
+    expect(backend.rpc.mock.calls.some((c: any[]) => c[0] === "app_question_difficulty")).toBe(false);
+    cleanup();
+    backend.rpc.mockClear();
+    await open(session("simulado", [question({ selected: "A" })]));
+    expect(backend.rpc.mock.calls.some((c: any[]) => c[0] === "app_question_difficulty")).toBe(false);
+    expect(screen.queryByText("Dificuldade")).toBeNull();
+  });
+});
+
+describe("Dica do Tutor antes de responder: só no treino, só quando o servidor libera", () => {
+  const fetchMock = vi.fn();
+  beforeEach(() => {
+    fetchMock.mockReset();
+    vi.stubGlobal("fetch", fetchMock);
+  });
+  afterEach(() => vi.unstubAllGlobals());
+  const serverOn = (on: boolean) =>
+    fetchMock.mockImplementation(async (url: string) =>
+      String(url).endsWith("/status")
+        ? new Response(JSON.stringify({ ready: true, question_hint: on }), { status: 200 })
+        : new Response(JSON.stringify({ hint: "Releia o que a pergunta pede e destaque os dados do caso.", source: "ia" }), { status: 200 })
+    );
+
+  it("servidor sem a dica liberada (padrão): o botão não aparece", async () => {
+    serverOn(false);
+    const newBackend = { ...backend, accessToken: async () => "t" };
+    Object.assign(backend, { accessToken: newBackend.accessToken });
+    await open(session("treino", [question()]));
+    await screen.findByText("Pular");
+    expect(screen.queryByRole("button", { name: /Peça uma dica/ })).toBeNull();
+    delete backend.accessToken;
+  });
+
+  it("liberada: o botão abre a dica, que vem do servidor e não traz gabarito; some depois de responder e no simulado", async () => {
+    serverOn(true);
+    backend.accessToken = async () => "t";
+    await open(session("treino", [question()]));
+    fireEvent.click(await screen.findByRole("button", { name: "Travou? Peça uma dica ao Tutor" }));
+    expect(await screen.findByText(/Releia o que a pergunta pede/)).toBeTruthy();
+    expect(fetchMock.mock.calls.some((c: any[]) => String(c[0]).endsWith("/question-hint") && JSON.parse(c[1].body).question_id === "q1")).toBe(true);
+    expect(screen.queryByText(/^Gabarito/)).toBeNull();
+    fireEvent.click(screen.getByRole("radio", { name: /Alternativa C/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar resposta" }));
+    await screen.findByText("Você acertou");
+    expect(screen.queryByRole("button", { name: /dica ao Tutor/ })).toBeNull();
+    cleanup();
+    await open(session("simulado", [question()]));
+    await screen.findByText("Restante");
+    expect(screen.queryByRole("button", { name: /Peça uma dica/ })).toBeNull();
+    delete backend.accessToken;
   });
 });
 

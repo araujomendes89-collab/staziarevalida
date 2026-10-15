@@ -182,7 +182,7 @@ describe("Fonte desatualizada", () => {
 });
 
 describe("O que o aluno recebe da Questão StaziaMed publicada", () => {
-  it("a correção traz as fontes oficiais com o trecho SÓ depois de responder; a coluna sources nunca traz o trecho; o Início separa as inéditas", async () => {
+  it("a correção NÃO traz fontes das inéditas (só a tabela interna as guarda); a coluna sources nunca traz o trecho; o Início separa as inéditas", async () => {
     const r = await readyDraft(env);
     const out = await publish(r.id, await approve(r.id));
     const [{ topic }] = await env.sql<{ topic: string }>(`select topic from public.draft_questions where id = $1`, [r.id]);
@@ -196,9 +196,11 @@ describe("O que o aluno recebe da Questão StaziaMed publicada", () => {
     const answered = await env.rpc<any>(USERS.PRO, "app_answer_question", { p_session_id: s.session_id, p_question_id: out.question_id, p_option: "B" });
     expect(answered.is_correct).toBe(false);
     expect(answered.origin).toBe("staziamed");
-    expect(answered.official_sources).toHaveLength(1);
-    expect(answered.official_sources[0]).toMatchObject({ source: r.title, organ: "Ministério da Saúde (teste)", version: "2026", page: 7, quote: "indica-se amoxicilina 90 mg/kg/dia por 10 dias" });
-    expect(answered.sources).toEqual([{ title: r.title, organ: "Ministério da Saúde (teste)", level: "A", page: 7, version: "2026" }]);
+    // decisão do dono (15/10/2026, migração 10500): as fontes das inéditas ficam na tabela interna; o aluno não as recebe, nem depois de responder
+    expect(answered.official_sources ?? null).toBeNull();
+    expect(answered.sources ?? []).toEqual([]);
+    expect(JSON.stringify(answered)).not.toContain("amoxicilina 90");
+    expect((await env.sql(`select jsonb_array_length(source_quotes) as n from public.questions where id = $1`, [out.question_id]))[0].n).toBe(1); // a tabela interna guarda o trecho
     expect(answered.inep_intent).toBeNull();
     // o Início: o tema com erro mostra as oficiais e, separado, as inéditas
     const home = await env.rpc<any>(USERS.PRO, "app_home", {});

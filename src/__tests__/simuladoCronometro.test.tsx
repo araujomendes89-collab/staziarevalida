@@ -160,7 +160,11 @@ describe("Cronômetro durante o simulado", () => {
     expect(await screen.findByText(/Caso clínico número 1/)).toBeTruthy();
     expect(backend.rpc).toHaveBeenCalledWith("app_resume_session", { p_session_id: "s1" });
     fireEvent.keyDown(window, { key: "b" });
+    // escolher não grava: só "Confirmar resposta" guarda e trava a resposta (sem correção no simulado)
+    expect(backend.rpc).not.toHaveBeenCalledWith("app_answer_question", expect.anything());
+    fireEvent.click(screen.getByRole("button", { name: "Confirmar resposta" }));
     await waitFor(() => expect(backend.rpc).toHaveBeenCalledWith("app_answer_question", expect.objectContaining({ p_question_id: "q1", p_option: "B" })));
+    expect(await screen.findByText("Resposta confirmada")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Encerrar o simulado" }));
     expect(await screen.findByRole("heading", { name: "Encerrar o simulado?" })).toBeTruthy();

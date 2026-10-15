@@ -20,8 +20,8 @@ const DEF = {
     d: (p) => (
       <>
         <defs>
-          {g(p + "r", "#6CDDD2", "#0B7F76", "1", "0")}
-          {g(p + "a", "#6CDDD2", "#0B7F76")}
+          {g(p + "r", "#7AC2FF", "#0A5FC4", "1", "0")}
+          {g(p + "a", "#7AC2FF", "#0A5FC4")}
           {g(p + "b", "#7C9BE0", "#1E3F8A")}
           {g(p + "f", "#FF7B72", "#D63B3B")}
         </defs>
@@ -44,7 +44,7 @@ const DEF = {
       <>
         <defs>
           {g(p + "t", "#FF7B72", "#D63B3B")}
-          {g(p + "s", "#6CDDD2", "#0B7F76")}
+          {g(p + "s", "#7AC2FF", "#0A5FC4")}
         </defs>
         <circle cx="15" cy="17.5" r="11.5" fill={u(p, "t")} />
         <circle cx="15" cy="17.5" r="8.4" fill="#fff" />
@@ -102,7 +102,7 @@ const DEF = {
       <>
         <defs>
           {g(p + "s", "#FFD2B0", "#E8A77E")}
-          {g(p + "a", "#3CCFC2", "#0B7F76")}
+          {g(p + "a", "#4DB2FF", "#0A5FC4")}
         </defs>
         <circle cx="16" cy="10.5" r="5.6" fill={u(p, "s")} />
         <path d="M5.5 28c0-6 4.7-10.5 10.5-10.5S26.5 22 26.5 28z" fill={u(p, "a")} />
@@ -117,7 +117,7 @@ const DEF = {
       <>
         <defs>
           {g(p + "c", "#3D6FD6", "#0F2E7A")}
-          {g(p + "a", "#6CDDD2", "#0B7F76")}
+          {g(p + "a", "#7AC2FF", "#0A5FC4")}
           {g(p + "o", "#FFB15C", "#D9650A")}
         </defs>
         <path d="M13 13 7 8M19 13l6-5M13 19l-6 5M19 19l6 5" stroke="#9AA7BD" strokeWidth="1.6" strokeLinecap="round" />
@@ -137,7 +137,7 @@ const DEF = {
         <defs>
           {g(p + "b", "#7C9BE0", "#1E3F8A")}
           {g(p + "s", "#E9F0FF", "#C6D4F2")}
-          {g(p + "a", "#6CDDD2", "#0B7F76")}
+          {g(p + "a", "#7AC2FF", "#0A5FC4")}
         </defs>
         <rect x="3" y="5" width="26" height="18" rx="3.2" fill={u(p, "b")} />
         <rect x="5.4" y="7.4" width="21.2" height="13.2" rx="1.6" fill={u(p, "s")} />
@@ -179,7 +179,7 @@ const DEF = {
       <>
         <defs>
           {g(p + "b", "#7C9BE0", "#1E3F8A")}
-          {g(p + "t", "#6CDDD2", "#0B7F76")}
+          {g(p + "t", "#7AC2FF", "#0A5FC4")}
           {g(p + "o", "#FFB15C", "#D9650A")}
         </defs>
         <path d="M14.5 6.2A11.3 11.3 0 1 0 25.8 17.5H14.5z" fill={u(p, "b")} />

@@ -9,7 +9,7 @@
   --tq-ring: #009dfe;
   --tq-accent-soft: #ebf5ff;
   --tq-accent-line: #b3dcff;
-  --tq-accent-text: #0a6fd8;
+  --tq-accent-text: #0b5fc4;
   --tq-on-accent: #fff;
   --tq-hover: var(--gray-100);
   --tq-letter-bg: var(--gray-50);
@@ -229,6 +229,31 @@
 .tq-pause p { margin: 0; font-size: 15px; color: var(--text-secondary); }
 .tq-pause__btns { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 8px; }
 .tq-pause__btns .tq-primary { justify-content: center; height: 48px; }
+
+/* dica do Tutor (dentro da caixa Pergunta) */
+.tq-hint { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--tq-accent-line); display: flex; flex-direction: column; gap: 8px; }
+.tq-hint__btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 10px 0 6px; border-radius: 10px; border: 0; background: transparent; color: var(--tq-ai-text); font-size: 14px; font-weight: 700; cursor: pointer; }
+.tq-hint__btn:hover { background: var(--tq-hover); }
+.tq-hint__t { margin: 0; padding: 0 6px; font-size: 15px; line-height: 1.6; color: var(--tq-ai-text); }
+
+/* dificuldade validada (5 barras) */
+.tq-diff { display: inline-flex; align-items: center; gap: 10px; }
+.tq-diff__bars { display: inline-flex; gap: 3px; }
+.tq-diff__bars i { width: 18px; height: 6px; border-radius: 999px; background: var(--border-default); }
+.tq-diff[data-tone="success"] .tq-diff__bars i[data-on="true"] { background: var(--success-solid); }
+.tq-diff[data-tone="warning"] .tq-diff__bars i[data-on="true"] { background: var(--warning-solid); }
+.tq-diff[data-tone="danger"] .tq-diff__bars i[data-on="true"] { background: var(--danger-solid); }
+.tq-diff b { font-weight: 600; }
+.tq-diff[data-tone="success"] b { color: var(--success-text); }
+.tq-diff[data-tone="warning"] b { color: var(--warning-text); }
+.tq-diff[data-tone="danger"] b { color: var(--danger-text); }
+
+/* lista de questões não feitas (antes de finalizar) */
+.tq-main > div, .tq-main li { min-width: 0; }
+.tq-pending { width: 100%; min-width: 0; max-width: 100%; box-sizing: border-box; display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--border-default); background: var(--surface-card); color: var(--text-primary); cursor: pointer; text-align: left; font: inherit; }
+.tq-pending:hover { border-color: var(--border-strong); background: var(--bg-app); }
+.tq-pending__n { width: 28px; flex: none; font-weight: 600; color: var(--tq-accent-text); }
+.tq-pending__t { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; color: var(--text-secondary); }
 
 /* cartão dentro de uma lista (resultado e caderno de erros): sem a largura de página */
 .tq-sheet--static { flex: none; max-width: none; margin: 0; padding-bottom: 24px; box-shadow: none; }

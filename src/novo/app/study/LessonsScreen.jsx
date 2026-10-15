@@ -48,7 +48,7 @@ export function AreaTabs({ value, onChange, counts }) {
 }
 
 function Poster({ lesson, big, hideTitle = false }) {
-  const c = AREA_COLOR[lesson.area] ?? "#0B6F68";
+  const c = AREA_COLOR[lesson.area] ?? "#0A6FD8";
   return (
     <div style={{ position: "relative", height: "100%", borderRadius: 14, overflow: "hidden", background: `linear-gradient(160deg,${c} 0%,color-mix(in oklab,${c} 45%,#08122B) 100%)`, display: "flex", flexDirection: "column", justifyContent: "space-between", padding: 14, color: "#fff" }}>
       <span style={{ alignSelf: "flex-start", font: "700 10px var(--font-sans)", letterSpacing: ".1em", textTransform: "uppercase", padding: "4px 8px", borderRadius: 6, background: "rgba(255,255,255,.18)" }}>{areaLabel(lesson.area)}</span>
@@ -76,7 +76,7 @@ function Carousel({ lessons, onOpen }) {
     addEventListener("keydown", k);
     return () => removeEventListener("keydown", k);
   }, []);
-  const c = cur ? AREA_COLOR[cur.area] : "#0B6F68";
+  const c = cur ? AREA_COLOR[cur.area] : "#0A6FD8";
   const CW = mobile ? 180 : 220;
   const CH = mobile ? 250 : 300;
   const GAP = mobile ? 120 : 170;
@@ -302,7 +302,7 @@ export function LessonDetail({ lesson: initial, go, onBack, onChanged }) {
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState(null);
   const [play, setPlay] = React.useState(null);
-  const c = AREA_COLOR[lesson.area] ?? "#0B6F68";
+  const c = AREA_COLOR[lesson.area] ?? "#0A6FD8";
   const done = Boolean(lesson.progress?.completed_at);
   const embed = videoEmbed(lesson.video_url);
   const measurable = canMeasureEnd(embed);

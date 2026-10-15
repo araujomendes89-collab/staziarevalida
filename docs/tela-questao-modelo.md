@@ -46,15 +46,15 @@ Celular: o Runner usava `useMQ`; o modelo é responsivo por CSS (quebra em 720 p
 | Imagens e tabela de apoio | não (sem exemplo) | sim | **Mantido** dentro do caso, antes das alternativas |
 | Alternativas com riscar por linha | sim | riscar era um modo na barra | **Trocado** (ícone por alternativa; tocar numa riscada tira o risco e escolhe) |
 | Marcar para revisão | sim | sim (`app_set_bookmark`) | **Trocado** |
-| Pular | sim | não havia | **Adicionado** como "ir para a próxima sem responder" (já existiam brancos); sem nova regra |
+| Pular | sim | não havia | **Treino:** deixa em branco, com lista de não feitas antes de finalizar. **Simulado:** não há |
 | Anterior | não | sim (simulado) | **Mantido** no rodapé |
-| Confirmar resposta | sim | treino sim; simulado grava ao marcar | Treino: "Confirmar resposta". Simulado: grava ao marcar e o botão avança (não corrige: é prova) |
-| Dica do Tutor antes de responder ("Travou?") | sim | **não existe** (o código dizia que entra com o Tutor) | **Fora.** Dar dica antes de responder exige função nova e cuidado com vazar gabarito |
+| Confirmar resposta | sim | treino sim; simulado gravava ao marcar | Os dois: confirmar trava; no simulado sem correção |
+| Dica do Tutor antes de responder ("Travou?") | sim | não existia | **Feita**, só treino, nasce desligada, nunca revela gabarito |
 | Veredito, "Gabarito: C", explicação, letras A/B/D | sim | sim | **Trocado** |
 | Anulada, em branco, preliminar, em revisão | não | sim | **Mantido** com o visual novo |
 | Análise Stazia, conduta, fontes vinculadas, "o que mudou" | não | sim | **Mantido** dentro do bloco de correção |
 | Área e tema, subtema | sim | área, tema e subtema vêm na correção | **Trocado** |
-| Dificuldade em 5 barras | sim | **sem dado** | **Fora** |
+| Dificuldade em 5 barras | sim | cadastro validado (novo, vazio) | **Feito**, só treino, só com valor validado |
 | "Gabarito StaziaMed · autoral, não oficial" | sim | sim (inédita) | **Trocado** |
 | Fontes | sim | oficiais: 1 fonte do gabarito; inéditas: tabela interna | Ver decisão 2 |
 | Discutir com o Tutor | sim | sim (só oficial, não anulada, após responder) | **Trocado** (botão roxo); mesmas regras |
@@ -76,18 +76,20 @@ Celular: o Runner usava `useMQ`; o modelo é responsivo por CSS (quebra em 720 p
 
 1. Resolução (treino/simulado): risco médio, feito. 2. Correção: risco médio (muitos blocos), feito. 3. Resultado e caderno de erros: baixo, feito (agora também mostram imagem da questão no caderno). 4. Nexus e mini-quiz de Atualizações: **não trocados** (formato próprio; trocar seria redesenho, risco alto, baixo ganho). 5. Admin: não se aplica.
 
-## 6. Decisões do dono
+## 6. Decisões do dono (respondidas em 15/10/2026) e o que foi feito
 
-1. **Azul do modelo x teal do app.** O modelo usa azul `#0a6fd8`; o design system do app usa teal. Segui o modelo só dentro da tela de questão (tokens escopados `.tq`); o resto do app segue teal. Se quiser uma cor só, é decisão do dono (trocar o primário do app ou ajustar o modelo).
-2. **Fontes das inéditas**: removidas da tela (ver acima). Confirmar e decidir se o servidor para de enviar.
-3. **Dica do Tutor antes de responder** e **dificuldade**: ficaram fora por falta de dado/função. Querem criar?
-4. **"Pular" no treino** deixa a questão em branco sem volta (já era possível finalizar com brancos). Aceitável?
-5. **"Questão Inédita · nº N"** mantido (selo padronizado do app) no lugar de "Questão StaziaMed nº N" do modelo.
-6. No simulado o botão avança em vez de "Confirmar resposta" (prova não corrige na hora).
+1. **Layout em todos os simulados.** O mesmo componente atende treino e simulado (inclusive TRI, que usa a mesma sessão). **Fontes das inéditas**: fora da tela e **também fora do servidor**: a migração `20261003010500_tela_questao_modelo.sql` (aditiva) faz a correção do aluno devolver `official_sources` nulo e `sources` vazio nas inéditas; a tabela interna segue intacta. Há arquivo de desfazer (`supabase/desfazer/`) e o ensaio com desfazer e reaplicação passou num Postgres de teste (PGlite). **NÃO foi aplicada no Supabase de verdade.**
+2. **Azul no app todo.** A rampa de cor principal agora é azul (#0A6FD8 = 700) nos tokens de tema, claro e escuro (o nome `--teal-*` ficou por compatibilidade: 47 usos). Texto de marca usa o tom 800 para manter contraste AA. Conferido por captura (galeria de componentes e menu, claro/escuro, computador/celular). **Ficaram de fora de propósito:** a tela de login (arte escura aprovada, paleta própria), os orbes de voz do Tutor e as cores por tema das Aulas (`temaCores.js`), que são paletas próprias.
+3. **Pular no treino + lista de não feitas.** Ao concluir (ou voltar de uma em branco), se sobrou questão não feita aparece "Questões não feitas" com a lista; tocar volta à questão; "Finalizar mesmo assim" encerra. Sem sobra, finaliza direto.
+4. **Dificuldade e dica do Tutor (só treino, nunca simulado).**
+   - Dificuldade: tabela `question_difficulty_review` (nível 1 a 5, quem validou e quando) + `app_admin_set_question_difficulty` (só equipe) + `app_question_difficulty` (aluno, só depois de responder num treino). Nada é calculado nem estimado: **hoje nenhuma questão tem dificuldade validada, então nada aparece até a equipe cadastrar.** Falta a tela de cadastro na Administração.
+   - Dica: `POST /api/tutor/question-hint` (servidor) + `app_question_hint_context` (banco devolve só enunciado e alternativas, só de questão sem resposta num treino aberto). Passa pelo caminho do Tutor (aceite, plano, IA liberada) e por um conferidor por software que barra letra de alternativa, "gabarito" e "resposta correta" (se barrar duas vezes, dá uma dica genérica sem IA). **Nasce desligada:** só funciona com `TUTOR_QUESTION_HINT=1` no servidor e Tutor ligado; teto de 15 dicas por dia por aluno (`TUTOR_QUESTION_HINT_DAILY`). Sem isso nenhuma IA é chamada e nenhuma chave é usada. Falta um botão no painel do Tutor para ligar (hoje é variável do servidor).
+5. **Rótulo** "Questão Inédita · nº N" mantido.
+6. **Simulado com "Confirmar resposta".** Escolher não grava; confirmar guarda e trava a resposta (sem correção) e só então libera "Próxima questão". Não há "Pular" no simulado; "Anterior" continua.
 
 ## 7. Arquivos
 
-- Novos: `src/novo/app/practice/tela/` (`tela-questao.css`, `QuestionHeader.jsx`, `QuestionSheet.jsx`, `QuestionReview.jsx`), `src/__tests__/telaQuestaoModelo.test.tsx`, `scripts/previa-questoes/` (prévia com dados simulados, porta 31942).
+- Novos: `src/novo/app/practice/tela/` (`tela-questao.css`, `QuestionHeader.jsx`, `QuestionSheet.jsx`, `QuestionReview.jsx`, `TutorHint.jsx`), `server/tutor/questionHint.ts`, migração `supabase/migrations/20261003010500_tela_questao_modelo.sql` e `supabase/desfazer/…desfazer.sql`, testes `telaQuestaoModelo.test.tsx`, `telaQuestaoModeloBanco.test.ts`, `tutorDicaQuestao.test.ts`, `scripts/previa-questoes/` (prévia com dados simulados, porta 31942).
 - Alterados: `PracticeSession.jsx`, `Correction.jsx` (agora `CorrectionBody`, `CorrectionSide`, `useCorrectionData`; `Correction` segue exportada), `SessionResult.jsx`, `ErrorNotebook.jsx`, `TutorDrawer.jsx` (variante visual do botão), e 5 testes ajustados só por texto/marcação.
 - Prévia: `npx vite --config scripts/previa-questoes/vite.config.mjs` e abrir `http://127.0.0.1:31942/?modo=treino|simulado&q=inedita|oficial|tabela|anulada&estado=respondendo|certo|errado&tema=escuro`.
 - Capturas e folha: `/Volumes/StaziaMed/.tmp-aulas/tela-questao/capturas/` (44 capturas + `FOLHA-modelo-x-implementado.png`).

@@ -5,7 +5,7 @@ import { CorrectionBody, CorrectionSide, answerState, useCorrectionData } from "
 import { Alternatives, QuestionSheet } from "./QuestionSheet.jsx";
 import "./tela-questao.css";
 
-export function QuestionReview({ question, selected, correction, go = null, tutorContext = "question", children = null }) {
+export function QuestionReview({ question, selected, correction, go = null, tutorContext = "question", showDifficulty = false, children = null }) {
   const data = useCorrectionData(question, correction);
   return (
     <div className="tq tq-review">
@@ -20,7 +20,7 @@ export function QuestionReview({ question, selected, correction, go = null, tuto
         answer={<CorrectionBody selected={selected} correction={correction} question={question} data={data} />}
       />
       <div className="tq-side">
-        <CorrectionSide selected={selected} correction={correction} question={question} data={data} tutorContext={tutorContext} go={go} />
+        <CorrectionSide selected={selected} correction={correction} question={question} data={data} tutorContext={tutorContext} go={go} showDifficulty={showDifficulty} />
       </div>
       {children}
     </div>

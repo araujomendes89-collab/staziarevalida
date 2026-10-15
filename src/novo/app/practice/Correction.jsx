@@ -276,13 +276,42 @@ export function CorrectionBody({ selected, correction, question, data }) {
   );
 }
 
+const DIFFICULTY = [
+  { label: "Muito fácil", tone: "success" },
+  { label: "Fácil", tone: "success" },
+  { label: "Média", tone: "warning" },
+  { label: "Difícil", tone: "danger" },
+  { label: "Muito difícil", tone: "danger" },
+];
+
+/** Dificuldade de 1 a 5 de CADASTRO VALIDADO pela equipe (app_question_difficulty). Só no treino, depois de responder; sem validação, nulo. */
+export function useQuestionDifficulty(questionId, enabled) {
+  const { backend } = useSession();
+  const [state, setState] = React.useState({ id: null, level: null });
+  React.useEffect(() => {
+    let alive = true;
+    if (!enabled || !questionId) return undefined;
+    Promise.resolve()
+      .then(() => backend.rpc("app_question_difficulty", { p_question_id: questionId }))
+      .then(
+        (r) => alive && setState({ id: questionId, level: Number.isInteger(r?.level) && r.level >= 1 && r.level <= 5 ? r.level : null }),
+        () => alive && setState({ id: questionId, level: null })
+      );
+    return () => {
+      alive = false;
+    };
+  }, [backend, questionId, enabled]);
+  return enabled && state.id === questionId ? state.level : null;
+}
+
 /**
  * Painel lateral. Área e tema (o tema só existe depois de responder, vem da correção), selo do gabarito, fontes do gabarito
  * (só das questões oficiais, que o app já mostrava), Tutor (não abre para Inédita nem anulada), flashcard e relacionadas.
  * Não mostra dificuldade: o banco não tem esse dado.
  */
-export function CorrectionSide({ selected, correction, question, data, tutorContext = "question", go = null, inSession = false, children = null }) {
+export function CorrectionSide({ selected, correction, question, data, tutorContext = "question", go = null, inSession = false, showDifficulty = false, children = null }) {
   const { staz, annulled } = data;
+  const level = useQuestionDifficulty(question?.id, showDifficulty && !annulled);
   const area = areaOf(question?.area);
   const source = correction.sources?.[0];
   const title = correction.topic ? `${areaLabel(question?.area)} — ${correction.topic}` : areaLabel(question?.area);
@@ -300,12 +329,31 @@ export function CorrectionSide({ selected, correction, question, data, tutorCont
             {correction.subtopic && <div className="tq-ctx__sub">{correction.subtopic}</div>}
           </div>
         </div>
-        {staz && !annulled && (
+        {((staz && !annulled) || level) && (
           <dl className="tq-dl">
-            <dt>Gabarito</dt>
-            <dd>
-              <strong>Gabarito StaziaMed</strong> · questão autoral, não oficial do Inep
-            </dd>
+            {staz && !annulled && (
+              <>
+                <dt>Gabarito</dt>
+                <dd>
+                  <strong>Gabarito StaziaMed</strong> · questão autoral, não oficial do Inep
+                </dd>
+              </>
+            )}
+            {level && (
+              <>
+                <dt>Dificuldade</dt>
+                <dd>
+                  <span className="tq-diff" data-tone={DIFFICULTY[level - 1].tone}>
+                    <span className="tq-diff__bars" role="img" aria-label={`Dificuldade ${DIFFICULTY[level - 1].label.toLowerCase()}, ${level} de 5`}>
+                      {[1, 2, 3, 4, 5].map((n) => (
+                        <i key={n} data-on={n <= level ? "true" : "false"} />
+                      ))}
+                    </span>
+                    <b>{DIFFICULTY[level - 1].label}</b>
+                  </span>
+                </dd>
+              </>
+            )}
           </dl>
         )}
       </div>

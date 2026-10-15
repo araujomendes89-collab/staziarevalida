@@ -17,6 +17,7 @@ import { SessionResult } from "./SessionResult.jsx";
 import { areaLabel, formatClock } from "./format.js";
 import { XPToast, useTurnFeedback } from "../play/PlayFeedback.jsx";
 import { QuestionHeader, timerLevel } from "./tela/QuestionHeader.jsx";
+import { TutorHint, useHintAvailable } from "./tela/TutorHint.jsx";
 import { Alternatives, QuestionFooter, QuestionSheet, ReportQuestion } from "./tela/QuestionSheet.jsx";
 import "./tela/tela-questao.css";
 
@@ -92,7 +93,8 @@ function Runner({ session, go, onFinished }) {
   });
   const [picked, setPicked] = React.useState(null); // treino: alternativa escolhida, ainda sem confirmar
   const [strike, setStrike] = React.useState({}); // alternativas riscadas por questão (só na tela)
-  const [confirming, setConfirming] = React.useState(false); // false · "finish" (última questão) · "end" (encerrar pelo cronômetro)
+  const [confirming, setConfirming] = React.useState(false); // false · "finish" (última questão, ou resposta em branco no treino) · "end" (encerrar pelo cronômetro)
+  const [reviewing, setReviewing] = React.useState(false); // voltou a uma questão em branco pela lista antes de finalizar
   const [busy, setBusy] = React.useState(false);
   const [timer, setTimer] = React.useState(() => readTimer(session));
   const [toggling, setToggling] = React.useState(false); // pausando ou continuando
@@ -106,7 +108,9 @@ function Runner({ session, go, onFinished }) {
   const question = questions[index];
   const answered = questions.filter((q) => q.selected != null).length;
   const revealed = !sim && question.correction != null;
-  const selected = sim || revealed ? question.selected : picked;
+  // resposta fechada: treino corrigido, ou simulado com a resposta já confirmada (sem correção, só trava)
+  const locked = revealed || (sim && question.selected != null);
+  const selected = locked ? question.selected : picked;
   const struck = strike[question.id] ?? [];
   const last = index + 1 >= total;
   const patch = (id, changes) => setQuestions((list) => list.map((q) => (q.id === id ? { ...q, ...changes } : q)));
@@ -175,7 +179,8 @@ function Runner({ session, go, onFinished }) {
     setToggling(false);
   };
 
-  const goTo = (next) => {
+  const goTo = (next, fromList = false) => {
+    setReviewing(fromList);
     setIndex(next);
     setPicked(null);
     setError(null);
@@ -184,67 +189,55 @@ function Runner({ session, go, onFinished }) {
   };
 
   const choose = (option) => {
-    if (busy || revealed) return;
+    if (busy || locked) return;
     // tocar numa alternativa riscada tira o risco e a escolhe (como no modelo)
     if (struck.includes(option)) setStrike((all) => ({ ...all, [question.id]: struck.filter((o) => o !== option) }));
-    if (!sim) {
-      setPicked(option);
-      return;
-    }
-    const previous = question.selected;
-    if (previous === option) return;
-    const id = question.id;
-    const ms = activeMs();
-    patch(id, { selected: option, active_ms: ms });
-    setError(null);
-    saving.current = saving.current
-      .catch(() => {})
-      .then(() => backend.rpc("app_answer_question", { p_session_id: session.id, p_question_id: id, p_option: option, p_active_ms: ms }))
-      .catch(async (e) => {
-        patch(id, { selected: previous });
-        if (/pausado/i.test(e?.message ?? "")) {
-          // pausado em outra janela: pausar de novo não muda nada e devolve o cronômetro como está no banco
-          const state = await backend.rpc("app_pause_session", { p_session_id: session.id }).catch(() => null);
-          if (state) setTimer(readTimer(state));
-          setError("O simulado foi pausado em outra janela. Continue para responder.");
-        } else setError("Não foi possível guardar sua resposta. Marque de novo.");
-      });
+    setPicked(option);
   };
 
-  // Riscar é só da tela. A resposta já guardada do simulado não se risca; no treino, riscar a escolhida desmarca.
+  // Riscar é só da tela; no treino, riscar a escolhida desmarca.
   const strikeOption = (option) => {
-    if (busy || revealed) return;
-    if (sim && question.selected === option) return;
+    if (busy || locked) return;
     if (picked === option) setPicked(null);
     setStrike((all) => ({ ...all, [question.id]: struck.includes(option) ? struck.filter((o) => o !== option) : [...struck, option] }));
   };
 
+  // "Confirmar resposta": no treino o banco corrige; no simulado só guarda e trava a resposta (a correção vem no fim).
   const confirm = async () => {
-    if (picked == null || busy) return;
+    if (picked == null || busy || locked) return;
     setBusy(true);
     setError(null);
     const ms = activeMs();
     try {
-      const correction = await backend.rpc("app_answer_question", {
-        p_session_id: session.id,
-        p_question_id: question.id,
-        p_option: picked,
-        p_active_ms: ms,
-      });
-      const { play, ...rest } = correction;
-      patch(question.id, { selected: rest.selected, correction: rest, play, active_ms: ms });
-      if (play?.xp?.valid) setSessionXp((n) => n + (play.xp.total ?? 0) + (play.bonus ?? []).reduce((sum, b) => sum + (b.xp ?? 0), 0));
-      feedback.push(play);
+      await saving.current.catch(() => {});
+      const result = await backend.rpc("app_answer_question", { p_session_id: session.id, p_question_id: question.id, p_option: picked, p_active_ms: ms });
+      if (sim) {
+        patch(question.id, { selected: picked, active_ms: ms });
+      } else {
+        const { play, ...rest } = result;
+        patch(question.id, { selected: rest.selected, correction: rest, play, active_ms: ms });
+        if (play?.xp?.valid) setSessionXp((n) => n + (play.xp.total ?? 0) + (play.bonus ?? []).reduce((sum, b) => sum + (b.xp ?? 0), 0));
+        feedback.push(play);
+      }
       setPicked(null);
-    } catch {
-      setError("Não foi possível registrar sua resposta. Tente de novo.");
+    } catch (e) {
+      if (sim && /pausado/i.test(e?.message ?? "")) {
+        // pausado em outra janela: pausar de novo não muda nada e devolve o cronômetro como está no banco
+        const state = await backend.rpc("app_pause_session", { p_session_id: session.id }).catch(() => null);
+        if (state) setTimer(readTimer(state));
+        setError("O simulado foi pausado em outra janela. Continue para responder.");
+      } else if (sim && timeIsUp(e)) finish(true);
+      else setError(sim ? "Não foi possível guardar sua resposta. Confirme de novo." : "Não foi possível registrar sua resposta. Tente de novo.");
     }
     setBusy(false);
   };
 
+  // Avançar. No treino, antes de finalizar (última questão, ou voltando de uma em branco), se sobrou questão não feita
+  // aparece a lista delas; só finaliza direto quando não sobrou nenhuma.
   const next = () => {
-    if (!last) goTo(index + 1);
-    else if (sim) setConfirming("finish");
+    const pending = questions.some((q) => q.selected == null);
+    if (!last && !reviewing) goTo(index + 1);
+    else if (sim || pending) setConfirming("finish");
     else finish();
   };
 
@@ -271,8 +264,9 @@ function Runner({ session, go, onFinished }) {
       // Num botão comum, o Enter é do próprio botão; numa alternativa, confirma/avança.
       if (tag === "button" && event.target.getAttribute("role") !== "radio") return;
       event.preventDefault();
-      if (!sim && !revealed) confirm();
-      else next();
+      if (!locked) {
+        if (picked != null) confirm();
+      } else next();
       return;
     }
     const option = question.options[["a", "b", "c", "d"].indexOf(event.key.toLowerCase())] ?? question.options[["1", "2", "3", "4"].indexOf(event.key)];
@@ -294,6 +288,7 @@ function Runner({ session, go, onFinished }) {
   const level = sim && !paused ? timerLevel(remaining, limit) : "ok";
   const clock = remaining !== null ? remaining : spent;
   const ending = confirming === "end";
+  const hintAvailable = useHintAvailable(backend);
   const correctionData = useCorrectionData(question, revealed ? question.correction : null);
 
   // Progresso: um traço por questão (até 30) com a cor do resultado no treino; acima disso, barra contínua.
@@ -317,40 +312,45 @@ function Runner({ session, go, onFinished }) {
     aria: `${sim ? (remaining !== null ? "Tempo restante do simulado" : "Tempo de prova") : "Tempo respondendo"} ${formatClock(clock)}${paused ? ", pausado" : ""}`,
   };
 
-  // Rodapé: no treino, "Confirmar resposta" corrige; no simulado a resposta fica guardada ao marcar e o botão avança.
-  const primary =
-    !sim && !revealed
-      ? { label: "Confirmar resposta", onClick: confirm, disabled: picked == null || busy, loading: busy }
-      : { label: last ? (sim ? "Finalizar simulado" : "Concluir treino") : "Próxima questão", onClick: next, disabled: busy || (sim && selected == null), loading: busy };
-  const hint = revealed ? "" : selected ? `Alternativa ${selected} ${sim ? "guardada" : "selecionada"}` : "Escolha uma alternativa";
+  // Rodapé: "Confirmar resposta" nos dois modos (no treino corrige; no simulado só guarda e trava). Só depois de confirmar libera avançar.
+  const primary = !locked
+    ? { label: "Confirmar resposta", onClick: confirm, disabled: picked == null || busy, loading: busy }
+    : { label: last ? (sim ? "Finalizar simulado" : "Concluir treino") : "Próxima questão", onClick: next, disabled: busy, loading: busy };
+  const hint = locked ? (sim ? "Resposta confirmada" : "") : picked ? `Alternativa ${picked} selecionada` : "Escolha uma alternativa";
 
   const status = (
-    <div style={{ maxWidth: 560, margin: "0 auto", flex: "1 1 100%", padding: "20px 0" }}>
+    <div style={{ maxWidth: 620, margin: "0 auto", flex: "1 1 100%", padding: "20px 0" }}>
       <Card style={{ borderRadius: 24 }} padding={mobile ? 22 : 32}>
-        <h1 style={{ margin: 0, font: "var(--type-h2)" }}>{ending ? "Encerrar o simulado?" : "Finalizar simulado?"}</h1>
+        <h1 style={{ margin: 0, font: "var(--type-h2)" }}>{ending ? "Encerrar o simulado?" : sim ? "Finalizar simulado?" : "Questões não feitas"}</h1>
         <p style={{ margin: "10px 0 0", color: "var(--text-secondary)" }}>
           Você respondeu {answered} de {total} questões.
-          {blanks.length > 0 && ` ${blanks.length === 1 ? "A questão em branco conta" : `As ${blanks.length} em branco contam`} como erro.`}
+          {blanks.length > 0 &&
+            (sim
+              ? ` ${blanks.length === 1 ? "A questão em branco conta" : `As ${blanks.length} em branco contam`} como erro.`
+              : ` ${blanks.length === 1 ? "A questão não feita fica" : `As ${blanks.length} questões não feitas ficam`} em branco e não entra${blanks.length === 1 ? "" : "m"} no placar. Toque numa delas para voltar.`)}
           {ending && remaining !== null && ` Ainda restam ${formatClock(remaining)} de prova.`}
         </p>
         {blanks.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 16 }} aria-label="Questões em branco">
+          <ul style={{ listStyle: "none", margin: "16px 0 0", padding: 0, display: "flex", flexDirection: "column", gap: 8 }} aria-label="Questões em branco">
             {blanks.slice(0, BLANK_CHIPS).map(({ q, k }) => (
-              <button
-                key={q.id}
-                type="button"
-                className="sm-chip"
-                onClick={() => {
-                  goTo(k);
-                  if (paused) resume(); // para responder, o cronômetro volta a correr
-                }}
-                aria-label={`Ir para a questão ${k + 1}`}
-              >
-                {k + 1}
-              </button>
+              <li key={q.id}>
+                <button
+                  type="button"
+                  className="tq-pending"
+                  onClick={() => {
+                    goTo(k, true);
+                    if (paused) resume(); // para responder, o cronômetro volta a correr
+                  }}
+                  aria-label={`Ir para a questão ${k + 1}`}
+                >
+                  <span className="tq-mono tq-pending__n">{k + 1}</span>
+                  <span className="tq-pending__t">{q.statement}</span>
+                  <Icon name="arrow-right" size={16} />
+                </button>
+              </li>
             ))}
-            {blanks.length > BLANK_CHIPS && <span style={{ alignSelf: "center", color: "var(--text-tertiary)" }}>e mais {blanks.length - BLANK_CHIPS}</span>}
-          </div>
+            {blanks.length > BLANK_CHIPS && <li style={{ color: "var(--text-tertiary)" }}>e mais {blanks.length - BLANK_CHIPS}</li>}
+          </ul>
         )}
         {error && (
           <div style={{ marginTop: 16 }}>
@@ -359,7 +359,7 @@ function Runner({ session, go, onFinished }) {
         )}
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 24 }}>
           <Button onClick={() => finish()} loading={busy}>
-            {ending ? "Encerrar e ver resultado" : "Finalizar e ver resultado"}
+            {ending ? "Encerrar e ver resultado" : sim ? "Finalizar e ver resultado" : "Finalizar mesmo assim"}
           </Button>
           <Button variant="secondary" onClick={() => setConfirming(false)} disabled={busy}>
             {paused ? "Voltar" : "Voltar às questões"}
@@ -426,16 +426,18 @@ function Runner({ session, go, onFinished }) {
               topic={revealed ? question.correction.topic : null}
               bookmarked={!!question.bookmarked}
               banner={error ? <Banner tone="danger">{error}</Banner> : null}
+              hint={!sim && !revealed && hintAvailable ? <TutorHint key={question.id} questionId={question.id} /> : null}
               alternatives={
                 <Alternatives
                   options={question.options}
                   stateOf={optionState}
-                  chosen={revealed ? question.selected : selected}
+                  chosen={locked ? question.selected : selected}
                   struck={struck}
                   revealed={revealed}
+                  locked={locked}
                   onPick={choose}
                   onStrike={strikeOption}
-                  strikeDisabled={(id) => busy || (sim && question.selected === id)}
+                  strikeDisabled={() => busy}
                 />
               }
               answer={revealed ? <CorrectionBody selected={question.selected} correction={question.correction} question={question} data={correctionData} /> : null}
@@ -445,7 +447,7 @@ function Runner({ session, go, onFinished }) {
                   onMark={toggleMark}
                   onPrev={sim ? () => goTo(index - 1) : null}
                   prevDisabled={index === 0}
-                  onSkip={revealed ? null : next}
+                  onSkip={sim || locked ? null : next}
                   skipDisabled={busy}
                   hint={hint}
                   primary={primary}
@@ -455,7 +457,7 @@ function Runner({ session, go, onFinished }) {
             />
             {revealed && (
               <aside className="tq-side" aria-label="Contexto da questão" aria-live="polite">
-                <CorrectionSide selected={question.selected} correction={question.correction} question={question} data={correctionData} go={go} inSession>
+                <CorrectionSide selected={question.selected} correction={question.correction} question={question} data={correctionData} go={go} inSession showDifficulty={!sim}>
                   {question.play && <XPToast play={question.play} />}
                 </CorrectionSide>
               </aside>

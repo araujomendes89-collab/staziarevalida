@@ -10,6 +10,7 @@ import { endVoice, purgeVoiceTranscripts, recordVoiceMetrics, recordVoiceUsage, 
 import { runTutorTool, TOOL_NAMES } from "./tools";
 import { delegateVoice, sayVoice, type Letter } from "./delegate";
 import { tutorSettings } from "./settings";
+import { questionHint, questionHintEnabled } from "./questionHint";
 import { planProviders } from "./voiceProviders";
 import { elevenLabsReadiness, officialVoiceForPersonality } from "./officialVoices";
 import { samplePath } from "./voicePreview";
@@ -71,7 +72,7 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
     // GPT-Live disponível agora? (o navegador manda a oferta WebRTC antes de abrir; se o GPT-Live falhar, o servidor cai no Realtime)
     const plan = planProviders(settings.voice_provider, process.env, vr.live, vr.realtime, true, vr.gemini);
     res.json({
-      ready: status.ready, simulated: status.isMock, neural_voice: voice.ready, realtime_voice: vr.ready && settings.voice_enabled !== false, live_voice: plan.first === "live",
+      ready: status.ready, simulated: status.isMock, question_hint: questionHintEnabled() && settings.enabled && status.ready, neural_voice: voice.ready, realtime_voice: vr.ready && settings.voice_enabled !== false, live_voice: plan.first === "live",
       // qual voz o aplicativo abre primeiro (o Gemini não precisa da oferta WebRTC; o GPT-Live precisa)
       voice_hint: plan.first,
       voice_session_max_seconds: settings.voice_session_max_seconds,
@@ -210,6 +211,21 @@ export function createTutorRouter(deps: TutorDeps | null, pending: string | null
       if (error instanceof TutorError) return failTutor(res, error);
       deps!.log?.(`[tutor] erro: ${(error as Error).message}`);
       fail(res, 500, "O Tutor não conseguiu responder agora.");
+    }
+  });
+
+  /**
+   * Dica ANTES de responder (só treino; nasce desligada: TUTOR_QUESTION_HINT=1). body: { question_id }. Nunca traz gabarito, explicação nem fontes.
+   */
+  router.post("/question-hint", async (req: Authed, res) => {
+    try {
+      const questionId = String(req.body?.question_id ?? "");
+      if (!/^[A-Za-z0-9_.:-]{3,80}$/.test(questionId)) return fail(res, 400, "Questão inválida.");
+      res.json(await questionHint(deps!, req.user!, questionId));
+    } catch (error) {
+      if (error instanceof TutorError) return failTutor(res, error);
+      deps!.log?.(`[tutor] dica: erro: ${(error as Error).message}`);
+      fail(res, 500, "O Tutor não conseguiu dar a dica agora.");
     }
   });
 

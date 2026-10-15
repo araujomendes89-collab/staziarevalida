@@ -100,6 +100,9 @@ export const CATALOGO: Record<string, { classe: Classe; como: Como }> = {
   app_my_ineditas: { classe: "as_duas", como: "historico" }, // 010300: contadores "X de Y liberadas", sem conteúdo de questão
   app_admin_ineditas_limits: { classe: "as_duas", como: "equipe" }, // 010300: só conta as publicadas, para o administrador
   app_question_figure: { classe: "as_duas", como: "historico" }, // exige acesso às inéditas
+  app_question_difficulty: { classe: "as_duas", como: "historico" }, // 010500: dificuldade validada, só de questão que o aluno pode abrir e já respondeu num treino
+  app_question_hint_context: { classe: "as_duas", como: "historico" }, // 010500: enunciado e alternativas para a dica do Tutor (nunca gabarito), só de questão que o aluno pode abrir
+  app_admin_set_question_difficulty: { classe: "as_duas", como: "equipe" }, // 010500: só a equipe valida a dificuldade
   staziamed_topic_weights: { classe: "so_oficiais", como: "filtra" },
   // 010400: o simulado TRI só conta questão oficial do Inep (a inédita não tem calibração oficial); cada uma confere origin no corpo
   irt_calibration_matrix: { classe: "so_oficiais", como: "filtra" }, // a matriz da calibração só traz oficiais
@@ -320,6 +323,8 @@ describe("Migração", () => {
     await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003009970_grandes_temas_100.sql", import.meta.url)), "utf8"));
     // a 010300 (inéditas por plano) redefine funções da 9801/9910/9920/9930: colar a 9801 de novo pede colar a 010300 depois
     await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003010300_ineditas_por_plano.sql", import.meta.url)), "utf8"));
+    // a 010500 (tela de questão no modelo) redefine a correção do aluno por cima: colar a 9801 de novo pede colar a 010500 depois
+    await env.dev.db.exec(fs.readFileSync(fileURLToPath(new URL("../../supabase/migrations/20261003010500_tela_questao_modelo.sql", import.meta.url)), "utf8"));
     expect(await snap()).toEqual(before);
   });
 });

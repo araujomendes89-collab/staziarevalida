@@ -1,6 +1,7 @@
 :root{
-/* Brand teal — from the logo gradient start */
---teal-50:#EEFBF9;--teal-100:#D2F4EF;--teal-200:#A6E8DF;--teal-300:#6CD5CA;--teal-400:#2DBDB1;--teal-500:#12A79B;--teal-600:#0C8A80;--teal-700:#0B6F68;--teal-800:#0D5853;--teal-900:#0E4945;
+/* Cor principal da marca: AZUL do modelo "Tela de Questão" (#0A6FD8 = 700), decisão do dono de 15/10/2026. O NOME --teal-* ficou só por compatibilidade
+   (47 usos nas telas); os valores são azuis. Antes (teal): 50 #EEFBF9 · 500 #12A79B · 700 #0B6F68 · 900 #0E4945. */
+--teal-50:#EBF5FF;--teal-100:#D6EBFF;--teal-200:#B3DCFF;--teal-300:#7AC2FF;--teal-400:#3DA5FF;--teal-500:#1B8CF0;--teal-600:#0F7DE4;--teal-700:#0A6FD8;--teal-800:#0B5FC4;--teal-900:#084BA0;
 /* Brand navy — from the logo gradient end + wordmark */
 --navy-50:#F1F5FB;--navy-100:#E2E9F5;--navy-200:#C4D1EA;--navy-300:#93A8D3;--navy-400:#5E7DBA;--navy-500:#3A5CA2;--navy-600:#254588;--navy-700:#1A346E;--navy-800:#132858;--navy-900:#0D1C42;--navy-950:#08122B;
 /* Neutrals — cool slate */

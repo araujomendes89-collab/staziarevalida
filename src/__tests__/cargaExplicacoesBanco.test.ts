@@ -366,6 +366,9 @@ describe("aluno e visitante sem acesso novo", () => {
     const f = fs.readFileSync(path.join(ROOT, "supabase/migrations/20261003009920_carga_explicacoes.sql"), "utf8");
     await t.db.exec(f);
     await t.db.exec(f);
+    // a 9990 (portão de atualidade) redefine app_admin_comment_review_approve_exam e a 010500 (tela de questão no modelo) redefine a correção do
+    // aluno, as duas por cima da 9920: colar a 9920 de novo pede colar a 9990 e a 010500 depois
+    for (const depois of ["20261003009990_portao_atualidade.sql", "20261003010500_tela_questao_modelo.sql"]) await t.db.exec(fs.readFileSync(path.join(ROOT, "supabase/migrations", depois), "utf8"));
     expect(await fns()).toBe(antes);
     expect(JSON.stringify(await t.sql(`select * from public.questions order by id`))).toBe(dados);
   });

@@ -185,6 +185,7 @@ function answer(id, option) {
 }
 
 const backend = {
+  accessToken: async () => "previa", // a prévia responde /api/tutor com dados simulados (main.jsx)
   async rpc(fn, args = {}) {
     await new Promise((r) => setTimeout(r, 40));
     switch (fn) {
@@ -221,6 +222,9 @@ const backend = {
       case "app_question_commentary":
       case "app_question_source_links":
         return null;
+      case "app_question_difficulty":
+        // dificuldade validada de exemplo (3 = Média); no simulado o app nem chama
+        return kind === "simulado" || state.selected[args.p_question_id] == null ? null : { level: setName === "oficial" ? 4 : 3 };
       case "app_related_questions":
         return [];
       default:
