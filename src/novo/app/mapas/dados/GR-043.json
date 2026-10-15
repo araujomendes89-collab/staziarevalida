@@ -130,7 +130,7 @@
           {
             "rotulo": "Urgência (outras)",
             "itens": [
-              "Sangramento em qualquer IG",
+              "Sangramento em qualquer idade gestacional",
               "Perda de líquido persistente"
             ]
           }
@@ -303,7 +303,7 @@
             "itens": [
               "Idealmente 7 a 12 sem, por cabeça-nádega",
               {
-                "t": "IG da 1ª USG nunca é recalculada",
+                "t": "A idade gestacional da 1ª ultrassonografia nunca é recalculada",
                 "tom": "alerta"
               }
             ]
@@ -583,7 +583,7 @@
             "rotulo": "Anemia",
             "itens": [
               "Hb > 11 afasta; 9 a 11: ferro oral",
-              "Hb < 9, IG ≥ 14 sem: preferir ferro EV"
+              "Hb < 9 e idade gestacional ≥ 14 semanas: preferir ferro endovenoso"
             ]
           }
         ],
@@ -658,7 +658,7 @@
             "tom": "alerta"
           },
           {
-            "t": "Pular dTpa; recalcular IG por USG tardia",
+            "t": "Pular a dTpa; recalcular a idade gestacional por ultrassom tardio",
             "tom": "alerta"
           },
           {

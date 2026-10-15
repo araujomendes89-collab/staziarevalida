@@ -651,5 +651,11 @@
     "Dor no local de injeção antiga não é alergia à penicilina",
     "Cicatriz sorológica não é falha terapêutica e não é notificada",
     "Doxiciclina é contraindicada na gestação e na amamentação"
-  ]
+  ],
+  "foto": {
+    "webp": "/mapas-mentais/sifilis-adquirida.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  }
 }

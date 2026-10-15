@@ -4,73 +4,11 @@
 import React from "react";
 import { MapaIcon, Emblema } from "./icones.jsx";
 import { corDe, distribuir, itemDe } from "./mapas.js";
+import { Itens, Fluxo, Revisao, ImagemCentral } from "./partes.jsx";
+import { Poster } from "./Poster.jsx";
 import "./mapas.css";
 
 const LARGURA_ABERTA = 960; // a partir daqui o mapa vira o desenho horizontal com fios curvos
-
-function Itens({ itens }) {
-  if (!itens?.length) return null;
-  return (
-    <ul className="mm-ul">
-      {itens.map((raw, i) => {
-        const { t, tom } = itemDe(raw);
-        return (
-          <li key={i} className="mm-li" data-tom={tom || undefined}>
-            {t}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-function Fluxo({ passos }) {
-  if (!passos?.length) return null;
-  return (
-    <ol className="mm-fluxo" aria-label="Sequência de conduta">
-      {passos.map((raw, i) => {
-        const { t, tom } = itemDe(raw);
-        return (
-          <li key={i} className="mm-passo-li">
-            {i > 0 && <span className="mm-seta" aria-hidden="true"><MapaIcon nome="seta" size={14} sw={2.4} /></span>}
-            <span className="mm-passo" data-tom={tom || undefined}>{t}</span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-function Revisao({ v }) {
-  if (!v) return null;
-  return (
-    <>
-      {v.faixas?.length > 0 && (
-        <div className="mm-faixas">
-          {v.faixas.map((f, i) => (
-            <div key={i} className="mm-faixa">
-              <span className="mm-faixa-r">{f.rotulo}</span>
-              {f.chip && <span className="mm-faixa-c">{f.chip}</span>}
-              <span className="mm-faixa-t">{f.texto}</span>
-            </div>
-          ))}
-        </div>
-      )}
-      {v.linhas?.length > 0 && (
-        <div className="mm-linhas">
-          {v.linhas.map((l, i) => (
-            <div key={i} className="mm-linha">
-              <div className="mm-linha-r">{l.rotulo}</div>
-              <Itens itens={l.itens} />
-            </div>
-          ))}
-        </div>
-      )}
-      <Itens itens={v.itens} />
-      <Fluxo passos={v.fluxo} />
-    </>
-  );
-}
 
 function Ramo({ r, modo, aberto, onToggle, setRef }) {
   const [p, d, l] = corDe(r.cor);
@@ -110,20 +48,6 @@ function Ramo({ r, modo, aberto, onToggle, setRef }) {
   );
 }
 
-/** Imagem central: campo opcional `foto` {webp, avif, foco, alt} (sem texto nem logo dentro da imagem; efeitos de vidro/brilho por CSS).
- *  Sem imagem, ou se ela falhar ao carregar, entra o emblema desenhado em SVG (fallback). */
-function ImagemCentral({ mapa }) {
-  const [falhou, setFalhou] = React.useState(false);
-  const f = mapa.foto;
-  if (!f?.webp || falhou) return <Emblema tipo={mapa.emblema} />;
-  return (
-    <picture>
-      {f.avif && <source srcSet={f.avif} type="image/avif" />}
-      <img className="mm-imagem" src={f.webp} alt={f.alt ?? ""} loading="lazy" style={f.foco ? { objectPosition: f.foco } : undefined} onError={() => setFalhou(true)} />
-    </picture>
-  );
-}
-
 function Centro({ mapa, setRef }) {
   const palavras = String(mapa.titulo).trim().split(/\s+/);
   const primeira = palavras[0];
@@ -146,6 +70,7 @@ function Centro({ mapa, setRef }) {
 export function MapaMental({ mapa, modoInicial = "revisao" }) {
   const [modo, setModo] = React.useState(modoInicial);
   const [abertos, setAbertos] = React.useState(() => new Set());
+  const [vista, setVista] = React.useState(() => (typeof matchMedia === "function" && matchMedia("(min-width: 900px)").matches ? "poster" : "lista"));
   const [largo, setLargo] = React.useState(false);
   const [fios, setFios] = React.useState([]);
   const board = React.useRef(null);
@@ -240,6 +165,12 @@ export function MapaMental({ mapa, modoInicial = "revisao" }) {
           <button type="button" aria-pressed={modo === "revisao"} onClick={() => trocarModo("revisao")}>Revisão</button>
           <button type="button" aria-pressed={modo === "aprofundado"} onClick={() => trocarModo("aprofundado")} disabled={!temDeep}>Aprofundado</button>
         </div>
+        {modo === "revisao" && (
+          <div className="mm-modos" role="group" aria-label="Forma do mapa">
+            <button type="button" aria-pressed={vista === "poster"} onClick={() => setVista("poster")}>Pôster</button>
+            <button type="button" aria-pressed={vista === "lista"} onClick={() => setVista("lista")}>Empilhado</button>
+          </div>
+        )}
         {modo === "aprofundado" && temDeep && (
           <button type="button" className="mm-todos" onClick={alternarTodos}>{todosAbertos ? "Recolher tudo" : "Abrir tudo"}</button>
         )}
@@ -251,6 +182,10 @@ export function MapaMental({ mapa, modoInicial = "revisao" }) {
         </ul>
       </div>
 
+      {modo === "revisao" && vista === "poster" ? (
+        <Poster mapa={mapa} />
+      ) : (
+        <>
       <div ref={board} className={"mm-board" + (largo ? " mm-wide" : "")}>
         {largo && (
           <svg className="mm-fios" aria-hidden="true" focusable="false">
@@ -299,6 +234,8 @@ export function MapaMental({ mapa, modoInicial = "revisao" }) {
             </section>
           )}
         </div>
+      )}
+        </>
       )}
     </div>
   );

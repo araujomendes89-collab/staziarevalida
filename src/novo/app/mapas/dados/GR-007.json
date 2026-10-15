@@ -203,7 +203,7 @@
             "rotulo": "Grupo A",
             "itens": [
               "Ambulatorial; exames a critério médico",
-              "Adulto: 60 mL/kg/dia, 1/3 com SRO"
+              "Adulto: 60 mL/kg/dia, 1/3 com sais de reidratação oral"
             ]
           },
           {
@@ -861,5 +861,11 @@
     "Plaquetas só em sangramento persistente não controlado, após corrigir o choque",
     "Dengue e Zika cruzam na sorologia: testar em paralelo",
     "Idoso: risco de sobrecarga de fluidos; vigiar edema pulmonar"
-  ]
+  ],
+  "foto": {
+    "webp": "/mapas-mentais/dengue-e-outras-arboviroses.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  }
 }

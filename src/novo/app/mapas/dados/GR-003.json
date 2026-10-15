@@ -826,12 +826,18 @@
     "Grau 2 ou 3: iniciar com 2 fármacos de mecanismos diferentes",
     "Meta inicial abaixo de 140/90; 130/80 se bem tolerado",
     "Emergência hipertensiva: definida pela lesão de órgão-alvo",
-    "Urgência: queda gradual oral em 24-48 h, sem captopril SL"
+    "Urgência: queda gradual por via oral em 24 a 48 horas, sem captopril sublingual"
   ],
   "atencao": [
     "Antes de falar em crise, conferir a técnica de medida",
     "Nifedipino de liberação rápida: não usar em elevação aguda da PA",
     "IECA, BRA e antagonistas de mineralocorticoides: contraindicados na gestação",
     "Antes de chamar de resistente, verificar a adesão"
-  ]
+  ],
+  "foto": {
+    "webp": "/mapas-mentais/hipertensao-arterial-sistemica.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  }
 }

@@ -343,7 +343,7 @@
             "itens": [
               "Colar cervical + coxim no dorso, 2-3 cm",
               {
-                "t": "Sem crico cirúrgica: punção com agulha",
+                "t": "Sem cricotireoidostomia cirúrgica: punção com agulha",
                 "tom": "alerta"
               }
             ]
@@ -548,12 +548,18 @@
     "Amputação sangrando muito: torniquete direto, acima",
     "Choque no trauma: presumir hemorragia; soro é só ponte",
     "Pelve com deformidade visível: apenas imobilizar",
-    "Criança: sem crico cirúrgica; punção com agulha"
+    "Criança: sem cricotireoidostomia cirúrgica; punção com agulha"
   ],
   "atencao": [
     "Torniquete frouxo aumenta o sangramento",
     "Registrar a hora do torniquete; idealmente, no máx. 2 horas",
     "Gestante > 20 semanas: inclinar a prancha inteira, em bloco",
     "Criança instável: no máx. 2 tentativas de veia em 90 s"
-  ]
+  ],
+  "foto": {
+    "webp": "/mapas-mentais/atendimento-inicial-ao-politraumatizado.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  }
 }

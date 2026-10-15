@@ -101,7 +101,7 @@
           {
             "rotulo": "Hipertensivo",
             "itens": [
-              "Pré-hosp.: hipotensão + sinais respirat.",
+              "Pré-hospitalar: hipotensão e sinais respiratórios",
               "Murmúrio diminuído/ausente; timpanismo"
             ]
           },
@@ -288,7 +288,7 @@
           "Murmúrio ausente/diminuído, macicez, choque",
           "Cada espaço pleural: 2500 a 3000 mL de sangue",
           {
-            "t": "Pré-hosp.: no choque, considerar hemorragia",
+            "t": "Pré-hospitalar: no choque, considerar hemorragia",
             "tom": "atencao"
           },
           "Trauma penetrante: pensar em pneumotórax junto",
@@ -350,7 +350,7 @@
             "rotulo": "Conduta",
             "itens": [
               "Dois acessos de grosso calibre + volume",
-              "USG à beira do leito (FAST/E-FAST)"
+              "Ultrassom à beira do leito (FAST ou E-FAST)"
             ]
           }
         ],

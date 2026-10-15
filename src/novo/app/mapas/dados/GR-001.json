@@ -127,21 +127,24 @@
                 "t": "Nenhuma imagem é patognomônica",
                 "tom": "atencao"
               }
-            ]
+            ],
+            "icone": "pulmao"
           },
           {
             "rotulo": "Caso novo",
             "itens": [
               "TRM-TB: exame de escolha",
               "Sem TRM-TB: baciloscopia + cultura"
-            ]
+            ],
+            "icone": "microscopio"
           },
           {
             "rotulo": "Cultura com TS",
             "itens": [
               "Sempre: HIV, criança, extrapulmonar",
               "Demais: TRM-TB positivo/persistência"
-            ]
+            ],
+            "icone": "tubo"
           }
         ],
         "fluxo": [
@@ -388,14 +391,16 @@
             "rotulo": "Com sintomas",
             "itens": [
               "Escarro e radiografia de tórax"
-            ]
+            ],
+            "icone": "estetoscopio"
           },
           {
             "rotulo": "Contato sem sintomas",
             "itens": [
               "PT e/ou radiografia de tórax",
               "PT 5 mm ou mais: tratar ILTB"
-            ]
+            ],
+            "icone": "pessoas"
           },
           {
             "rotulo": "ILTB",
@@ -405,7 +410,8 @@
                 "tom": "alerta"
               },
               "Preferencial: 3HP"
-            ]
+            ],
+            "icone": "escudo"
           }
         ],
         "itens": [
@@ -484,8 +490,8 @@
         "itens": [
           "RN de caso confirmado: sem BCG ao nascer",
           "Isoniazida (ou rifampicina) 3 meses, depois PT",
-          "TB sensível não grave, 3m-16a: esquema de 4m",
-          "BPaLM (2026): TB resistente à rifampicina, 6 m",
+          "3 meses a 16 anos, TB sensível não grave: esquema de 4 meses",
+          "BPaLM (2026): TB resistente à rifampicina, 6 meses",
           {
             "t": "BPaLM: não usar em gestantes e lactantes",
             "tom": "alerta"
@@ -653,5 +659,11 @@
     "PT e IGRA indicam infecção latente: não diagnosticam doença ativa",
     "ILTB: 3HP é o preferencial, mas há alternativas e restrições",
     "Resistência à rifampicina detectada: referência terciária imediata"
-  ]
+  ],
+  "foto": {
+    "webp": "/mapas-mentais/tuberculose-pulmonar.webp",
+    "foco": "50% 50%",
+    "alt": "Ilustração médica em vidro translúcido do tema (sintética; estética sem validação científica, pendente de revisão humana)",
+    "origem": "imagem sintética gerada pelo diretor de arte; estado: pendente de revisão médica"
+  }
 }

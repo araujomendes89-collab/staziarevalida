@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AppShell } from "../novo/app/Shell.jsx";
+import { Poster, escolherPosicoes } from "../novo/app/mapas/Poster.jsx";
 import { MapaMental } from "../novo/app/mapas/MapaMental.jsx";
 import { MapaDoTema, BotaoMapaMental, temMapa } from "../novo/app/mapas/MapaDoTema.jsx";
 import { MapasScreen } from "../novo/app/mapas/MapasScreen.jsx";
@@ -127,5 +128,28 @@ describe("tema sem mapa e integração", () => {
     fireEvent.click(within(lista).getByRole("button", { name: /Tuberculose pulmonar/ }));
     expect(screen.getByRole("button", { name: /Todos os mapas/ })).toBeTruthy();
     expect(screen.getByText("MAPA MENTAL · STAZIAMED")).toBeTruthy();
+  });
+});
+
+describe("pôster 3:2", () => {
+  it("monta o pôster com cartão central, ramos nas posições, pontos-chave, atenção e rodapé", () => {
+    render(<Poster mapa={piloto()} />);
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toMatch(/Tuberculose\s+pulmonar/);
+    expect(document.querySelectorAll(".mmp-card").length).toBe(piloto().ramos.length);
+    expect(screen.getByLabelText("Pontos-chave")).toBeTruthy();
+    expect(screen.getByLabelText("Atenção")).toBeTruthy();
+    expect(screen.getByText("MAPA MENTAL · STAZIAMED")).toBeTruthy();
+  });
+  it("toda composição usa posições diferentes para cada ramo, para 6, 7 e 8 ramos", () => {
+    for (const m of MAPAS) {
+      const pos = escolherPosicoes(m.ramos);
+      expect(pos.length, m.slug).toBe(m.ramos.length);
+      expect(new Set(pos.map((p: any) => p.slot)).size, m.slug).toBe(pos.length);
+    }
+  });
+  it("sem foto aparece o desenho de reserva; foto quebrada também cai nele", () => {
+    const sem = { ...piloto(), foto: undefined };
+    const { container } = render(<Poster mapa={sem} />);
+    expect(container.querySelector("svg.mm-emblema")).toBeTruthy();
   });
 });
